@@ -1,5 +1,6 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Addr, Uint128};
+use cw20::Cw20ReceiveMsg;
 
 use crate::amp::AndrAddr;
 
@@ -23,6 +24,17 @@ pub enum ExecuteMsg {
         amount: Option<Uint128>,
         asset: String,
     },
+    #[serde(rename = "withdraw_cw20")]
+    WithdrawCW20 {
+        amount: Option<Uint128>,
+        asset: String,
+    },
+    Receive(Cw20ReceiveMsg),
+}
+
+#[cw_serde]
+pub enum Cw20HookMsg {
+    Deposit { address: Option<AndrAddr> },
 }
 
 #[cw_serde]

@@ -5,12 +5,13 @@ use andromeda_std::amp::AndrAddr;
 
 use andromeda_std::error::{from_semver, ContractError};
 use andromeda_std::os::aos_querier::AOSQuerier;
-use andromeda_std::os::economics::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
+use andromeda_std::os::economics::{Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use cosmwasm_std::{
-    attr, coin, ensure, entry_point, Addr, BankMsg, Binary, CosmosMsg, Deps, DepsMut, Empty, Env,
-    MessageInfo, Response, Storage, Uint128,
+    attr, coin, ensure, entry_point, from_binary, to_binary, Addr, BankMsg, Binary, CosmosMsg,
+    Deps, DepsMut, Empty, Env, MessageInfo, Response, Storage, SubMsg, Uint128, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
+use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use semver::Version;
 
 // version info for migration info
@@ -50,8 +51,70 @@ pub fn execute(
     match msg {
         ExecuteMsg::Deposit { address } => execute_deposit_native(deps, info, address),
         ExecuteMsg::PayFee { payee, action } => execute_pay_fee(deps, env, info, payee, action),
-        ExecuteMsg::Withdraw { amount, asset } => execute_withdraw(deps, info, amount, asset),
+        ExecuteMsg::Withdraw { amount, asset } => {
+            execute_withdraw_native(deps, info, amount, asset)
+        }
+        ExecuteMsg::Receive(cw20msg) => cw20_receive(deps, env, info, cw20msg),
+        ExecuteMsg::WithdrawCW20 { amount, asset } => {
+            execute_withdraw_cw20(deps, info, amount, asset)
+        }
     }
+}
+
+pub fn cw20_receive(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    msg: Cw20ReceiveMsg,
+) -> Result<Response, ContractError> {
+    let sender = deps.api.addr_validate(&msg.sender)?;
+    let amount = msg.amount;
+
+    match from_binary::<Cw20HookMsg>(&msg.msg)? {
+        Cw20HookMsg::Deposit { address } => {
+            execute_cw20_deposit(deps, info, sender, amount, address)
+        }
+    }
+}
+
+pub fn execute_cw20_deposit(
+    deps: DepsMut,
+    info: MessageInfo,
+    sender: Addr,
+    amount: Uint128,
+    address: Option<AndrAddr>,
+) -> Result<Response, ContractError> {
+    ensure!(
+        amount > Uint128::zero(),
+        ContractError::InvalidFunds {
+            msg: "Cannot send 0 amount to deposit".to_string()
+        }
+    );
+    let token_address = info.sender.clone();
+    let resp = Response::default().add_attributes(vec![
+        attr("action", "receive"),
+        attr("sender", sender.to_string()),
+        attr("amount", amount.to_string()),
+        attr("token_address", token_address.to_string()),
+    ]);
+
+    let sender = if let Some(address) = address {
+        address.get_raw_address(&deps.as_ref())?
+    } else {
+        sender
+    };
+
+    let balance = BALANCES
+        .load(deps.storage, (sender.clone(), token_address.to_string()))
+        .unwrap_or_default();
+
+    BALANCES.save(
+        deps.storage,
+        (sender.clone(), token_address.to_string()),
+        &(balance + amount),
+    )?;
+
+    Ok(resp)
 }
 
 pub fn execute_deposit_native(
@@ -230,7 +293,7 @@ fn execute_pay_fee(
     }
 }
 
-fn execute_withdraw(
+fn execute_withdraw_native(
     deps: DepsMut,
     info: MessageInfo,
     amount: Option<Uint128>,
@@ -268,6 +331,64 @@ fn execute_withdraw(
     ];
 
     resp = resp.add_message(cosmos_msg);
+
+    Ok(resp)
+}
+
+pub(crate) fn cw20_withdraw_msg(
+    amount: Uint128,
+    asset: impl Into<String>,
+    recipient: impl Into<String>,
+) -> SubMsg {
+    let exec_msg = Cw20ExecuteMsg::Transfer {
+        recipient: recipient.into(),
+        amount,
+    };
+
+    SubMsg::reply_on_error(
+        CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: asset.into(),
+            msg: to_binary(&exec_msg).unwrap(),
+            funds: vec![],
+        }),
+        999,
+    )
+}
+
+fn execute_withdraw_cw20(
+    deps: DepsMut,
+    info: MessageInfo,
+    amount: Option<Uint128>,
+    asset: String,
+) -> Result<Response, ContractError> {
+    let mut resp = Response::default();
+
+    let balance = BALANCES
+        .load(deps.storage, (info.sender.clone(), asset.to_string()))
+        .unwrap_or_default();
+
+    let amount = if let Some(amount) = amount {
+        amount
+    } else {
+        balance
+    };
+
+    ensure!(
+        balance >= amount && !balance.is_zero(),
+        ContractError::InsufficientFunds {}
+    );
+
+    spend_balance(deps.storage, &info.sender, asset.clone(), amount)?;
+
+    let msg = cw20_withdraw_msg(amount, asset, info.sender.clone());
+
+    resp.attributes = vec![
+        attr("action", "withdraw"),
+        attr("sender", info.sender.to_string()),
+        attr("amount", amount),
+    ];
+
+    resp = resp.add_submessage(msg);
 
     Ok(resp)
 }

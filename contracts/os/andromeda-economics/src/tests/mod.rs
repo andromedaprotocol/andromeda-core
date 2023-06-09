@@ -1,15 +1,17 @@
+use andromeda_std::amp::AndrAddr;
 use andromeda_std::error::ContractError;
 #[cfg(test)]
 use andromeda_std::testing::mock_querier::{
     mock_dependencies_custom, MOCK_ACTION, MOCK_KERNEL_CONTRACT,
 };
 use andromeda_std::testing::mock_querier::{MOCK_ADO_PUBLISHER, MOCK_APP_CONTRACT};
-use cosmwasm_std::{coin, Addr, BankMsg, CosmosMsg, Uint128};
+use cosmwasm_std::{coin, to_binary, Addr, BankMsg, CosmosMsg, SubMsg, Uint128, WasmMsg};
+use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 
-use crate::contract::{execute, instantiate, spend_balance};
+use crate::contract::{cw20_withdraw_msg, execute, instantiate, spend_balance};
 use crate::state::BALANCES;
 
-use andromeda_std::os::economics::{ExecuteMsg, InstantiateMsg};
+use andromeda_std::os::economics::{Cw20HookMsg, ExecuteMsg, InstantiateMsg};
 
 use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 
@@ -410,6 +412,160 @@ fn test_withdraw() {
             to_address: info.sender.to_string(),
             amount: vec![coin(5, asset)],
         })
+    );
+
+    let balance = BALANCES
+        .load(deps.as_ref().storage, (info.sender, "uusd".to_string()))
+        .unwrap();
+    assert_eq!(balance, Uint128::from(5u128));
+}
+
+fn cw20_deposit_msg(
+    sender: impl Into<String>,
+    amount: Uint128,
+    recipient: Option<AndrAddr>,
+) -> ExecuteMsg {
+    ExecuteMsg::Receive(Cw20ReceiveMsg {
+        sender: sender.into(),
+        amount,
+        msg: to_binary(&Cw20HookMsg::Deposit { address: recipient }).unwrap(),
+    })
+}
+
+#[test]
+fn test_cw20_deposit() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let env = mock_env();
+    let asset = "cw20asset";
+    let info = mock_info(asset, &[]);
+    let depositee = "depositee";
+    let recipient = AndrAddr::from_string("recipient");
+
+    // Send 0 amount
+    let msg = cw20_deposit_msg(depositee.clone(), Uint128::zero(), None);
+
+    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap_err();
+    assert_eq!(
+        res,
+        ContractError::InvalidFunds {
+            msg: "Cannot send 0 amount to deposit".to_string()
+        }
+    );
+
+    // Send valid amount direct deposit
+    let msg = cw20_deposit_msg(depositee.clone(), Uint128::from(10u128), None);
+
+    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
+    assert!(res.is_ok());
+
+    // Check sender balance
+    let balance = BALANCES
+        .load(
+            deps.as_ref().storage,
+            (Addr::unchecked(depositee), asset.to_string()),
+        )
+        .unwrap();
+    assert_eq!(balance, Uint128::from(10u128));
+
+    // Send valid amount deposit on behalf
+    let msg = cw20_deposit_msg(
+        depositee.clone(),
+        Uint128::from(10u128),
+        Some(recipient.clone()),
+    );
+
+    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
+    assert!(res.is_ok());
+
+    let balance = BALANCES
+        .load(
+            deps.as_ref().storage,
+            (Addr::unchecked(recipient.to_string()), asset.to_string()),
+        )
+        .unwrap();
+    assert_eq!(balance, Uint128::from(10u128));
+}
+
+#[test]
+fn test_withdraw_cw20() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let env = mock_env();
+    let info = mock_info("creator", &[]);
+    let asset = "uusd";
+
+    //Withdraw all funds
+    let msg = ExecuteMsg::WithdrawCW20 {
+        amount: None,
+        asset: asset.to_string(),
+    };
+
+    BALANCES
+        .save(
+            deps.as_mut().storage,
+            (info.sender.clone(), asset.to_string()),
+            &Uint128::from(10u128),
+        )
+        .unwrap();
+
+    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+    assert_eq!(res.messages.len(), 1);
+    assert_eq!(
+        res.messages.first().unwrap().msg,
+        cw20_withdraw_msg(
+            Uint128::from(10u128),
+            asset.to_string(),
+            info.sender.clone()
+        )
+        .msg
+    );
+
+    let balance = BALANCES
+        .load(
+            deps.as_ref().storage,
+            (info.sender.clone(), "uusd".to_string()),
+        )
+        .unwrap();
+    assert_eq!(balance, Uint128::from(0u128));
+
+    //Insufficient balance
+    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap_err();
+    assert_eq!(res, ContractError::InsufficientFunds {});
+
+    let msg = ExecuteMsg::WithdrawCW20 {
+        amount: Some(Uint128::from(10u128)),
+        asset: asset.to_string(),
+    };
+
+    BALANCES
+        .save(
+            deps.as_mut().storage,
+            (info.sender.clone(), asset.to_string()),
+            &Uint128::from(1u128),
+        )
+        .unwrap();
+
+    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap_err();
+    assert_eq!(res, ContractError::InsufficientFunds {});
+
+    // Partial withdraw
+    let msg = ExecuteMsg::WithdrawCW20 {
+        amount: Some(Uint128::from(5u128)),
+        asset: asset.to_string(),
+    };
+
+    BALANCES
+        .save(
+            deps.as_mut().storage,
+            (info.sender.clone(), asset.to_string()),
+            &Uint128::from(10u128),
+        )
+        .unwrap();
+
+    let res = execute(deps.as_mut(), env, info.clone(), msg).unwrap();
+    assert_eq!(res.messages.len(), 1);
+    assert_eq!(
+        res.messages.first().unwrap().msg,
+        cw20_withdraw_msg(Uint128::from(5u128), asset, info.sender.clone()).msg
     );
 
     let balance = BALANCES
