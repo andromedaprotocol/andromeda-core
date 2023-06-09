@@ -4,7 +4,7 @@ use andromeda_std::testing::mock_querier::{
     mock_dependencies_custom, MOCK_ACTION, MOCK_KERNEL_CONTRACT,
 };
 use andromeda_std::testing::mock_querier::{MOCK_ADO_PUBLISHER, MOCK_APP_CONTRACT};
-use cosmwasm_std::{coin, Addr, Uint128};
+use cosmwasm_std::{coin, Addr, BankMsg, CosmosMsg, Uint128};
 
 use crate::contract::{execute, instantiate, spend_balance};
 use crate::state::BALANCES;
@@ -327,4 +327,96 @@ fn test_pay_fee_joint() {
 
     let res = execute(deps.as_mut(), env, info, msg).unwrap_err();
     assert_eq!(res, ContractError::InsufficientFunds {});
+}
+
+#[test]
+fn test_withdraw() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let env = mock_env();
+    let info = mock_info("creator", &[]);
+    let asset = "uusd";
+
+    //Withdraw all funds
+    let msg = ExecuteMsg::Withdraw {
+        amount: None,
+        asset: asset.to_string(),
+    };
+
+    BALANCES
+        .save(
+            deps.as_mut().storage,
+            (info.sender.clone(), asset.to_string()),
+            &Uint128::from(10u128),
+        )
+        .unwrap();
+
+    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+    assert_eq!(res.messages.len(), 1);
+    assert_eq!(
+        res.messages.first().unwrap().msg,
+        CosmosMsg::Bank(BankMsg::Send {
+            to_address: info.sender.to_string(),
+            amount: vec![coin(10, asset)],
+        })
+    );
+
+    let balance = BALANCES
+        .load(
+            deps.as_ref().storage,
+            (info.sender.clone(), "uusd".to_string()),
+        )
+        .unwrap();
+    assert_eq!(balance, Uint128::from(0u128));
+
+    //Insufficient balance
+    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap_err();
+    assert_eq!(res, ContractError::InsufficientFunds {});
+
+    let msg = ExecuteMsg::Withdraw {
+        amount: Some(Uint128::from(10u128)),
+        asset: asset.to_string(),
+    };
+
+    BALANCES
+        .save(
+            deps.as_mut().storage,
+            (info.sender.clone(), asset.to_string()),
+            &Uint128::from(1u128),
+        )
+        .unwrap();
+
+    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap_err();
+    assert_eq!(res, ContractError::InsufficientFunds {});
+
+    // Partial withdraw
+    let msg = ExecuteMsg::Withdraw {
+        amount: Some(Uint128::from(5u128)),
+        asset: asset.to_string(),
+    };
+
+    BALANCES
+        .save(
+            deps.as_mut().storage,
+            (info.sender.clone(), asset.to_string()),
+            &Uint128::from(10u128),
+        )
+        .unwrap();
+
+    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+    assert_eq!(res.messages.len(), 1);
+    assert_eq!(
+        res.messages.first().unwrap().msg,
+        CosmosMsg::Bank(BankMsg::Send {
+            to_address: info.sender.to_string(),
+            amount: vec![coin(5, asset)],
+        })
+    );
+
+    let balance = BALANCES
+        .load(
+            deps.as_ref().storage,
+            (info.sender.clone(), "uusd".to_string()),
+        )
+        .unwrap();
+    assert_eq!(balance, Uint128::from(5u128));
 }

@@ -395,7 +395,7 @@ impl WasmMockQuerier {
                         SystemResult::Ok(ContractResult::Ok(
                             to_binary(&ActionFee::new(
                                 MOCK_ACTION.to_string(),
-                                AssetInfo::native("uusd"),
+                                "uusd".to_string(),
                                 Uint128::from(10u128),
                             ))
                             .unwrap(),

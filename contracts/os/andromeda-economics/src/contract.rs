@@ -7,8 +7,8 @@ use andromeda_std::error::{from_semver, ContractError};
 use andromeda_std::os::aos_querier::AOSQuerier;
 use andromeda_std::os::economics::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use cosmwasm_std::{
-    attr, ensure, entry_point, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Response, Storage,
-    Uint128,
+    attr, coin, ensure, entry_point, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Empty,
+    Env, MessageInfo, Response, Storage, Uint128,
 };
 use cw2::{get_contract_version, set_contract_version};
 use semver::Version;
@@ -50,6 +50,7 @@ pub fn execute(
     match msg {
         ExecuteMsg::Deposit { address } => execute_deposit_native(deps, info, address),
         ExecuteMsg::PayFee { payee, action } => execute_pay_fee(deps, env, info, payee, action),
+        ExecuteMsg::Withdraw { amount, asset } => execute_withdraw(deps, info, amount, asset),
     }
 }
 
@@ -218,6 +219,48 @@ fn execute_pay_fee(
     } else {
         Err(ContractError::InvalidSender {})
     }
+}
+
+fn execute_withdraw(
+    deps: DepsMut,
+    info: MessageInfo,
+    amount: Option<Uint128>,
+    asset: String,
+) -> Result<Response, ContractError> {
+    let mut resp = Response::default();
+
+    let balance = BALANCES
+        .load(deps.storage, (info.sender.clone(), asset.to_string()))
+        .unwrap_or_default();
+
+    let amount = if let Some(amount) = amount {
+        amount
+    } else {
+        balance
+    };
+
+    ensure!(
+        balance >= amount && !balance.is_zero(),
+        ContractError::InsufficientFunds {}
+    );
+
+    spend_balance(deps.storage, &info.sender, asset.clone(), amount)?;
+
+    let bank_msg = BankMsg::Send {
+        to_address: info.sender.clone().into(),
+        amount: vec![coin(amount.u128(), asset.clone())],
+    };
+    let cosmos_msg: CosmosMsg<Empty> = CosmosMsg::Bank(bank_msg);
+
+    resp.attributes = vec![
+        attr("action", "withdraw"),
+        attr("sender", info.sender.to_string()),
+        attr("amount", amount),
+    ];
+
+    resp = resp.add_message(cosmos_msg);
+
+    Ok(resp)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

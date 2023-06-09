@@ -1,5 +1,5 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::Addr;
+use cosmwasm_std::{Addr, Uint128};
 
 use crate::amp::AndrAddr;
 
@@ -12,8 +12,17 @@ pub struct InstantiateMsg {
 
 #[cw_serde]
 pub enum ExecuteMsg {
-    Deposit { address: Option<AndrAddr> },
-    PayFee { payee: Addr, action: String },
+    Deposit {
+        address: Option<AndrAddr>,
+    },
+    PayFee {
+        payee: Addr,
+        action: String,
+    },
+    Withdraw {
+        amount: Option<Uint128>,
+        asset: String,
+    },
 }
 
 #[cw_serde]

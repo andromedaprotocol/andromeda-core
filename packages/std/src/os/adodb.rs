@@ -41,13 +41,13 @@ pub enum ExecuteMsg {
 #[cw_serde]
 pub struct ActionFee {
     pub action: String,
-    pub asset: AssetInfo,
+    pub asset: String,
     pub amount: Uint128,
     pub receiver: Option<Addr>,
 }
 
 impl ActionFee {
-    pub fn new(action: String, asset: AssetInfo, amount: Uint128) -> Self {
+    pub fn new(action: String, asset: String, amount: Uint128) -> Self {
         Self {
             action,
             asset,

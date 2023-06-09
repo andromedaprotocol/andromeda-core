@@ -1,7 +1,6 @@
 #[cfg(test)]
 use andromeda_std::testing::mock_querier::{mock_dependencies_custom, MOCK_KERNEL_CONTRACT};
-use cosmwasm_std::{Addr, Uint128};
-use cw_asset::AssetInfo;
+use cosmwasm_std::Uint128;
 
 use crate::contract::{execute, instantiate};
 use crate::state::{ACTION_FEES, CODE_ID, PUBLISHER, VERSION_CODE_ID};
@@ -154,13 +153,13 @@ fn test_publish() {
         ActionFee {
             action: "action".to_string(),
             amount: Uint128::from(1u128),
-            asset: AssetInfo::Cw20(Addr::unchecked("somecw20token")),
+            asset: "somecw20token".to_string(),
             receiver: None,
         },
         ActionFee {
             action: "action2".to_string(),
             amount: Uint128::from(2u128),
-            asset: AssetInfo::Native("uusd".to_string()),
+            asset: "uusd".to_string(),
             receiver: None,
         },
     ];
@@ -237,13 +236,13 @@ fn test_update_action_fees() {
         ActionFee {
             action: "action".to_string(),
             amount: Uint128::from(1u128),
-            asset: AssetInfo::Cw20(Addr::unchecked("somecw20token")),
+            asset: "somecw20token".to_string(),
             receiver: None,
         },
         ActionFee {
             action: "action2".to_string(),
             amount: Uint128::from(2u128),
-            asset: AssetInfo::Native("uusd".to_string()),
+            asset: "uusd".to_string(),
             receiver: None,
         },
     ];
@@ -317,11 +316,7 @@ fn test_remove_action_fees() {
         .save(
             deps.as_mut().storage,
             (ado_type.to_string(), action.to_string()),
-            &ActionFee::new(
-                action.to_string(),
-                AssetInfo::Native("uusd".to_string()),
-                Uint128::from(1u128),
-            ),
+            &ActionFee::new(action.to_string(), "uusd".to_string(), Uint128::from(1u128)),
         )
         .unwrap();
 
