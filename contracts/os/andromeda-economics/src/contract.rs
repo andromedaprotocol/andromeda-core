@@ -90,7 +90,7 @@ pub fn execute_cw20_deposit(
             msg: "Cannot send 0 amount to deposit".to_string()
         }
     );
-    let token_address = info.sender.clone();
+    let token_address = info.sender;
     let resp = Response::default().add_attributes(vec![
         attr("action", "receive"),
         attr("sender", sender.to_string()),
@@ -110,7 +110,7 @@ pub fn execute_cw20_deposit(
 
     BALANCES.save(
         deps.storage,
-        (sender.clone(), token_address.to_string()),
+        (sender, token_address.to_string()),
         &(balance + amount),
     )?;
 

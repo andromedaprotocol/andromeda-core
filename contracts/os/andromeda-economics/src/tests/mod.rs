@@ -5,8 +5,8 @@ use andromeda_std::testing::mock_querier::{
     mock_dependencies_custom, MOCK_ACTION, MOCK_KERNEL_CONTRACT,
 };
 use andromeda_std::testing::mock_querier::{MOCK_ADO_PUBLISHER, MOCK_APP_CONTRACT};
-use cosmwasm_std::{coin, to_binary, Addr, BankMsg, CosmosMsg, SubMsg, Uint128, WasmMsg};
-use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
+use cosmwasm_std::{coin, to_binary, Addr, BankMsg, CosmosMsg, Uint128};
+use cw20::Cw20ReceiveMsg;
 
 use crate::contract::{cw20_withdraw_msg, execute, instantiate, spend_balance};
 use crate::state::BALANCES;
@@ -444,7 +444,7 @@ fn test_cw20_deposit() {
     // Send 0 amount
     let msg = cw20_deposit_msg(depositee.clone(), Uint128::zero(), None);
 
-    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap_err();
+    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap_err();
     assert_eq!(
         res,
         ContractError::InvalidFunds {
@@ -455,7 +455,7 @@ fn test_cw20_deposit() {
     // Send valid amount direct deposit
     let msg = cw20_deposit_msg(depositee.clone(), Uint128::from(10u128), None);
 
-    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
+    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg);
     assert!(res.is_ok());
 
     // Check sender balance
@@ -474,7 +474,7 @@ fn test_cw20_deposit() {
         Some(recipient.clone()),
     );
 
-    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
+    let res = execute(deps.as_mut(), env, info, msg);
     assert!(res.is_ok());
 
     let balance = BALANCES
