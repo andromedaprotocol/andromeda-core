@@ -1,6 +1,7 @@
 #[cfg(feature = "primitive")]
 use crate::ado_base::primitive::{GetValueResponse, Primitive};
 use crate::{
+    ado_base::AndromedaQuery,
     ado_contract::ADOContract,
     amp::{ADO_DB_KEY, VFS_KEY},
     os::adodb::{ActionFee, QueryMsg as ADODBQueryMsg},
@@ -32,6 +33,8 @@ pub const MOCK_KERNEL_CONTRACT: &str = "kernel_contract";
 pub const MOCK_VFS_CONTRACT: &str = "vfs_contract";
 /// Mock ADODB Contract Address
 pub const MOCK_ADODB_CONTRACT: &str = "adodb_contract";
+// Mock ADO Publisher
+pub const MOCK_ADO_PUBLISHER: &str = "ado_publisher";
 
 #[cfg(feature = "modules")]
 /// Mock Rates Contract Address
@@ -119,7 +122,10 @@ impl WasmMockQuerier {
                     MOCK_ADODB_CONTRACT => self.handle_adodb_query(msg),
                     #[cfg(feature = "modules")]
                     MOCK_ADDRESS_LIST_CONTRACT => self.handle_address_list_query(msg),
-                    _ => panic!("Unsupported query for contract: {}", contract_addr),
+                    _ => match from_binary::<AndromedaQuery>(msg) {
+                        Ok(msg) => self.handle_ado_query(msg),
+                        _ => panic!("Unsupported query for contract: {}", contract_addr),
+                    },
                 }
             }
             QueryRequest::Wasm(WasmQuery::Raw { contract_addr, key }) => {
@@ -410,8 +416,31 @@ impl WasmMockQuerier {
                 },
                 None => SystemResult::Ok(ContractResult::Err("Invalid Key".to_string())),
             }
+        } else if key_str.contains("publisher") {
+            let split = key_str.split("ado_type");
+            let key = split.last();
+            match key {
+                Some(key) => match key {
+                    FAKE_ADODB_KEY => {
+                        SystemResult::Ok(ContractResult::Err("Invalid Key".to_string()))
+                    }
+                    _ => {
+                        SystemResult::Ok(ContractResult::Ok(to_binary(MOCK_ADO_PUBLISHER).unwrap()))
+                    }
+                },
+                None => SystemResult::Ok(ContractResult::Err("Invalid Key".to_string())),
+            }
         } else {
             panic!("Invalid ADODB Raw Query")
+        }
+    }
+
+    pub fn handle_ado_query(&self, msg: AndromedaQuery) -> QuerierResult {
+        match msg {
+            AndromedaQuery::AppContract {} => SystemResult::Ok(ContractResult::Ok(
+                to_binary(&MOCK_APP_CONTRACT.to_string()).unwrap(),
+            )),
+            _ => panic!("Unsupported ADO query"),
         }
     }
 

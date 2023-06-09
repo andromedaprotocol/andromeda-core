@@ -2,7 +2,7 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     attr, ensure, has_coins, to_binary, Api, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut,
-    Empty, Env, MessageInfo, QuerierWrapper, Response, Storage, SubMsg, Uint128,
+    Empty, Env, MessageInfo, QuerierWrapper, Response, SubMsg, Uint128,
 };
 
 use crate::state::{

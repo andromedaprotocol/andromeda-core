@@ -1,5 +1,5 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::Uint128;
+use cosmwasm_std::{Addr, Uint128};
 use cw_asset::AssetInfo;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -41,16 +41,27 @@ pub enum ExecuteMsg {
 #[cw_serde]
 pub struct ActionFee {
     pub action: String,
-    pub fee_asset: AssetInfo,
-    pub fee_amount: Uint128,
+    pub asset: AssetInfo,
+    pub amount: Uint128,
+    pub receiver: Option<Addr>,
 }
 
 impl ActionFee {
-    pub fn new(action: String, fee_asset: AssetInfo, fee_amount: Uint128) -> Self {
+    pub fn new(action: String, asset: AssetInfo, amount: Uint128) -> Self {
         Self {
             action,
-            fee_asset,
-            fee_amount,
+            asset,
+            amount,
+            receiver: None,
+        }
+    }
+
+    pub fn with_receive(&self, receiver: Addr) -> Self {
+        Self {
+            action: self.action.clone(),
+            asset: self.asset.clone(),
+            amount: self.amount,
+            receiver: Some(receiver),
         }
     }
 }

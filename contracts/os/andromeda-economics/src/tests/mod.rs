@@ -3,9 +3,10 @@ use andromeda_std::error::ContractError;
 use andromeda_std::testing::mock_querier::{
     mock_dependencies_custom, MOCK_ACTION, MOCK_KERNEL_CONTRACT,
 };
+use andromeda_std::testing::mock_querier::{MOCK_ADO_PUBLISHER, MOCK_APP_CONTRACT};
 use cosmwasm_std::{coin, Addr, Uint128};
 
-use crate::contract::{execute, instantiate};
+use crate::contract::{execute, instantiate, spend_balance};
 use crate::state::BALANCES;
 
 use andromeda_std::os::economics::{ExecuteMsg, InstantiateMsg};
@@ -74,6 +75,47 @@ fn test_deposit() {
 }
 
 #[test]
+fn test_spend_balance() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let amount = Uint128::from(100u128);
+    let payee = Addr::unchecked("payee");
+    let asset = "uusd";
+
+    let res = spend_balance(deps.as_mut().storage, &payee, asset.to_string(), amount).unwrap();
+    assert_eq!(res, amount.clone());
+
+    BALANCES
+        .save(
+            deps.as_mut().storage,
+            (payee.clone(), asset.to_string()),
+            &Uint128::from(50u128),
+        )
+        .unwrap();
+
+    let res = spend_balance(deps.as_mut().storage, &payee, asset.to_string(), amount).unwrap();
+    let post_balance = BALANCES
+        .load(deps.as_ref().storage, (payee.clone(), asset.to_string()))
+        .unwrap();
+    assert_eq!(res, Uint128::from(50u128));
+    assert_eq!(post_balance, Uint128::from(0u128));
+
+    BALANCES
+        .save(
+            deps.as_mut().storage,
+            (payee.clone(), asset.to_string()),
+            &Uint128::from(150u128),
+        )
+        .unwrap();
+
+    let res = spend_balance(deps.as_mut().storage, &payee, asset.to_string(), amount).unwrap();
+    let post_balance = BALANCES
+        .load(deps.as_ref().storage, (payee.clone(), asset.to_string()))
+        .unwrap();
+    assert_eq!(res, Uint128::zero());
+    assert_eq!(post_balance, Uint128::from(50u128));
+}
+
+#[test]
 fn test_pay_fee() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
@@ -108,4 +150,187 @@ fn test_pay_fee() {
         )
         .unwrap();
     assert_eq!(balance, Uint128::from(0u128));
+
+    // Check publisher balance
+    let publisher = Addr::unchecked(MOCK_ADO_PUBLISHER);
+    let balance = BALANCES
+        .load(deps.as_ref().storage, (publisher, "uusd".to_string()))
+        .unwrap_or_default();
+    assert_eq!(balance, Uint128::from(10u128));
+}
+
+// Tests payment for fees via the contract balance
+#[test]
+fn test_pay_fee_contract() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let env = mock_env();
+    let info = mock_info("creator", &[]);
+    let payee = "payee";
+
+    let msg = ExecuteMsg::PayFee {
+        payee: Addr::unchecked(payee),
+        action: MOCK_ACTION.to_string(),
+    };
+
+    BALANCES
+        .save(
+            deps.as_mut().storage,
+            (info.sender.clone(), "uusd".to_string()),
+            &Uint128::from(10u128),
+        )
+        .unwrap();
+
+    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg);
+    assert!(res.is_ok());
+
+    let balance = BALANCES
+        .load(
+            deps.as_ref().storage,
+            (info.sender.clone(), "uusd".to_string()),
+        )
+        .unwrap();
+    assert_eq!(balance, Uint128::from(0u128));
+
+    // Check publisher balance
+    let publisher = Addr::unchecked(MOCK_ADO_PUBLISHER);
+    let balance = BALANCES
+        .load(deps.as_ref().storage, (publisher, "uusd".to_string()))
+        .unwrap_or_default();
+    assert_eq!(balance, Uint128::from(10u128));
+}
+
+#[test]
+fn test_pay_fee_app() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let env = mock_env();
+    let info = mock_info("creator", &[]);
+    let payee = "payee";
+
+    let msg = ExecuteMsg::PayFee {
+        payee: Addr::unchecked(payee),
+        action: MOCK_ACTION.to_string(),
+    };
+
+    BALANCES
+        .save(
+            deps.as_mut().storage,
+            (Addr::unchecked(MOCK_APP_CONTRACT), "uusd".to_string()),
+            &Uint128::from(10u128),
+        )
+        .unwrap();
+
+    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg);
+    assert!(res.is_ok());
+
+    let balance = BALANCES
+        .load(
+            deps.as_ref().storage,
+            (info.sender.clone(), "uusd".to_string()),
+        )
+        .unwrap();
+    assert_eq!(balance, Uint128::from(0u128));
+
+    // Check publisher balance
+    let publisher = Addr::unchecked(MOCK_ADO_PUBLISHER);
+    let balance = BALANCES
+        .load(deps.as_ref().storage, (publisher, "uusd".to_string()))
+        .unwrap_or_default();
+    assert_eq!(balance, Uint128::from(10u128));
+}
+
+// Tests payment of fees via fallthrough
+#[test]
+fn test_pay_fee_joint() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let env = mock_env();
+    let info = mock_info("creator", &[]);
+    let payee = "payee";
+
+    let msg = ExecuteMsg::PayFee {
+        payee: Addr::unchecked(payee),
+        action: MOCK_ACTION.to_string(),
+    };
+
+    // Contract balance
+    BALANCES
+        .save(
+            deps.as_mut().storage,
+            (info.sender.clone(), "uusd".to_string()),
+            &Uint128::from(4u128),
+        )
+        .unwrap();
+    // Payee balance
+    BALANCES
+        .save(
+            deps.as_mut().storage,
+            (Addr::unchecked(payee), "uusd".to_string()),
+            &Uint128::from(3u128),
+        )
+        .unwrap();
+    // App balance
+    BALANCES
+        .save(
+            deps.as_mut().storage,
+            (Addr::unchecked(MOCK_APP_CONTRACT), "uusd".to_string()),
+            &Uint128::from(3u128),
+        )
+        .unwrap();
+
+    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
+    assert!(res.is_ok());
+
+    // Check contract balance
+    let balance = BALANCES
+        .load(
+            deps.as_ref().storage,
+            (info.sender.clone(), "uusd".to_string()),
+        )
+        .unwrap();
+    assert_eq!(balance, Uint128::from(0u128));
+
+    // Check payee balance
+    let balance = BALANCES
+        .load(
+            deps.as_ref().storage,
+            (Addr::unchecked(payee), "uusd".to_string()),
+        )
+        .unwrap();
+    assert_eq!(balance, Uint128::from(0u128));
+
+    // Check app balance
+    let balance = BALANCES
+        .load(
+            deps.as_ref().storage,
+            (Addr::unchecked(MOCK_APP_CONTRACT), "uusd".to_string()),
+        )
+        .unwrap();
+    assert_eq!(balance, Uint128::from(0u128));
+
+    // Check publisher balance
+    let publisher = Addr::unchecked(MOCK_ADO_PUBLISHER);
+    let balance = BALANCES
+        .load(deps.as_ref().storage, (publisher, "uusd".to_string()))
+        .unwrap_or_default();
+    assert_eq!(balance, Uint128::from(10u128));
+
+    // Check insufficient funds
+    // Contract balance
+    BALANCES
+        .save(
+            deps.as_mut().storage,
+            (info.sender.clone(), "uusd".to_string()),
+            &Uint128::from(4u128),
+        )
+        .unwrap();
+    // App balance
+    BALANCES
+        .save(
+            deps.as_mut().storage,
+            (Addr::unchecked(MOCK_APP_CONTRACT), "uusd".to_string()),
+            &Uint128::from(3u128),
+        )
+        .unwrap();
+
+    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap_err();
+    assert_eq!(res, ContractError::InsufficientFunds {});
 }

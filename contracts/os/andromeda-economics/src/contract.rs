@@ -1,5 +1,5 @@
 use crate::state::BALANCES;
-use andromeda_std::ado_base::InstantiateMsg as BaseInstantiateMsg;
+use andromeda_std::ado_base::{AndromedaQuery, InstantiateMsg as BaseInstantiateMsg};
 use andromeda_std::ado_contract::ADOContract;
 use andromeda_std::amp::AndrAddr;
 
@@ -7,7 +7,8 @@ use andromeda_std::error::{from_semver, ContractError};
 use andromeda_std::os::aos_querier::AOSQuerier;
 use andromeda_std::os::economics::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use cosmwasm_std::{
-    attr, ensure, entry_point, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Response,
+    attr, ensure, entry_point, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Response, Storage,
+    Uint128,
 };
 use cw2::{get_contract_version, set_contract_version};
 use semver::Version;
@@ -49,7 +50,6 @@ pub fn execute(
     match msg {
         ExecuteMsg::Deposit { address } => execute_deposit_native(deps, info, address),
         ExecuteMsg::PayFee { payee, action } => execute_pay_fee(deps, env, info, payee, action),
-        _ => Ok(Response::default()),
     }
 }
 
@@ -93,6 +93,39 @@ pub fn execute_deposit_native(
     Ok(resp)
 }
 
+pub(crate) fn spend_balance(
+    storage: &mut dyn Storage,
+    addr: &Addr,
+    asset: String,
+    amount: Uint128,
+) -> Result<Uint128, ContractError> {
+    let balance = BALANCES
+        .load(storage, (addr.clone(), asset.to_string()))
+        .unwrap_or_default();
+
+    let remainder = if amount > balance {
+        amount - balance
+    } else {
+        Uint128::zero()
+    };
+    let post_balance = if balance > amount {
+        balance - amount
+    } else {
+        Uint128::zero()
+    };
+
+    BALANCES.save(storage, (addr.clone(), asset.to_string()), &post_balance)?;
+
+    Ok(remainder)
+}
+
+/// Charges a fee depending on the sending ADO and the action being performed.
+/// Sender must be an ADO contract else this will error.
+///
+/// Fees are charged in the following order:
+/// 1. ADO
+/// 2. App
+/// 3. Payee
 fn execute_pay_fee(
     deps: DepsMut,
     _env: Env,
@@ -108,7 +141,7 @@ fn execute_pay_fee(
         attr("payee", payee.to_string()),
     ];
 
-    let contract_info = deps.querier.query_wasm_contract_info(info.sender);
+    let contract_info = deps.querier.query_wasm_contract_info(info.sender.clone());
     if let Ok(contract_info) = contract_info {
         let code_id = contract_info.code_id;
         let adodb_addr = ADOContract::default().get_adodb_address(deps.storage, &deps.querier)?;
@@ -122,31 +155,63 @@ fn execute_pay_fee(
         match fee {
             None => return Ok(resp),
             Some(fee) => {
-                let asset_string = fee.fee_asset.to_string();
+                let asset_string = fee.asset.to_string();
                 let asset = asset_string.split(":").last().unwrap();
-                let balance = BALANCES
-                    .load(deps.as_ref().storage, (payee.clone(), asset.to_string()))
-                    .unwrap_or_default();
+
+                // Charge ADO first
+                let mut remainder =
+                    spend_balance(deps.storage, &info.sender, asset.to_string(), fee.amount)?;
+
+                // Next charge the app
+                if remainder > Uint128::zero() {
+                    let app_contract = deps.querier.query_wasm_smart::<Option<Addr>>(
+                        &info.sender,
+                        &AndromedaQuery::AppContract {},
+                    )?;
+                    remainder = if let Some(app_contract) = app_contract {
+                        spend_balance(deps.storage, &app_contract, asset.to_string(), remainder)?
+                    } else {
+                        remainder
+                    };
+                }
+
+                // Next charge the payee
+                if remainder > Uint128::zero() {
+                    remainder = spend_balance(deps.storage, &payee, asset.to_string(), remainder)?;
+                }
+
+                // If balance remaining then not enough funds to pay fee
                 ensure!(
-                    balance >= fee.fee_amount,
+                    remainder == Uint128::zero(),
                     ContractError::InsufficientFunds {}
                 );
 
+                let recipient = if let Some(receiver) = fee.receiver {
+                    receiver
+                } else {
+                    let publisher = AOSQuerier::ado_publisher_getter(
+                        &deps.querier,
+                        &adodb_addr,
+                        ado_type.as_str(),
+                    )?;
+                    deps.api.addr_validate(&publisher)?
+                };
+
+                let receiver_balance = BALANCES
+                    .load(
+                        deps.as_ref().storage,
+                        (recipient.clone(), asset.to_string()),
+                    )
+                    .unwrap_or_default();
                 BALANCES.save(
                     deps.storage,
-                    (payee.clone(), asset.to_string()),
-                    &(balance - fee.fee_amount),
+                    (recipient.clone(), asset.to_string()),
+                    &(receiver_balance + fee.amount),
                 )?;
 
-                //TODO: send fee to publisher
-                // BALANCES.save(
-                //     deps.storage,
-                //     (payee.clone(), fee.fee_asset.to_string()),
-                //     &(balance + fee.fee_amount),
-                // )?;
-
-                resp =
-                    resp.add_attribute("paid_fee", format!("{}{}", fee.fee_amount, fee.fee_asset));
+                resp = resp
+                    .add_attribute("paid_fee", format!("{}{}", fee.amount, fee.asset))
+                    .add_attribute("fee_recipient", recipient.to_string());
                 return Ok(resp);
             }
         }

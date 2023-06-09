@@ -62,6 +62,20 @@ impl AOSQuerier {
         }
     }
 
+    pub fn ado_publisher_getter(
+        querier: &QuerierWrapper,
+        adodb_addr: &Addr,
+        ado_type: &str,
+    ) -> Result<String, ContractError> {
+        let key = AOSQuerier::get_map_storage_key("publisher", &[ado_type.as_bytes()])?;
+        let verify: Option<String> = AOSQuerier::query_storage(querier, adodb_addr, &key)?;
+
+        match verify {
+            Some(publisher) => Ok(publisher),
+            None => Err(ContractError::InvalidAddress {}),
+        }
+    }
+
     /// Checks if the code id exists in the ADODB by querying its raw storage for the code id's ado type
     pub fn verify_code_id(
         querier: &QuerierWrapper,

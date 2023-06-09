@@ -153,13 +153,15 @@ fn test_publish() {
     let action_fees = vec![
         ActionFee {
             action: "action".to_string(),
-            fee_amount: Uint128::from(1u128),
-            fee_asset: AssetInfo::Cw20(Addr::unchecked("somecw20token")),
+            amount: Uint128::from(1u128),
+            asset: AssetInfo::Cw20(Addr::unchecked("somecw20token")),
+            receiver: None,
         },
         ActionFee {
             action: "action2".to_string(),
-            fee_amount: Uint128::from(2u128),
-            fee_asset: AssetInfo::Native("uusd".to_string()),
+            amount: Uint128::from(2u128),
+            asset: AssetInfo::Native("uusd".to_string()),
+            receiver: None,
         },
     ];
 
@@ -191,21 +193,21 @@ fn test_publish() {
         .unwrap();
     assert_eq!(vers_code_id, 1u64);
 
-    let fee_one = ACTION_FEES
+    let one = ACTION_FEES
         .load(
             deps.as_ref().storage,
             ("ado_type".to_string(), "action".to_string()),
         )
         .unwrap();
-    assert_eq!(fee_one, action_fees[0]);
+    assert_eq!(one, action_fees[0]);
 
-    let fee_two = ACTION_FEES
+    let two = ACTION_FEES
         .load(
             deps.as_ref().storage,
             ("ado_type".to_string(), "action2".to_string()),
         )
         .unwrap();
-    assert_eq!(fee_two, action_fees[1]);
+    assert_eq!(two, action_fees[1]);
 
     // Test unauthorised
     let unauth_info = mock_info("not_owner", &[]);
@@ -234,13 +236,15 @@ fn test_update_action_fees() {
     let action_fees = vec![
         ActionFee {
             action: "action".to_string(),
-            fee_amount: Uint128::from(1u128),
-            fee_asset: AssetInfo::Cw20(Addr::unchecked("somecw20token")),
+            amount: Uint128::from(1u128),
+            asset: AssetInfo::Cw20(Addr::unchecked("somecw20token")),
+            receiver: None,
         },
         ActionFee {
             action: "action2".to_string(),
-            fee_amount: Uint128::from(2u128),
-            fee_asset: AssetInfo::Native("uusd".to_string()),
+            amount: Uint128::from(2u128),
+            asset: AssetInfo::Native("uusd".to_string()),
+            receiver: None,
         },
     ];
 
@@ -252,21 +256,21 @@ fn test_update_action_fees() {
     let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
     assert!(res.is_ok());
 
-    let fee_one = ACTION_FEES
+    let one = ACTION_FEES
         .load(
             deps.as_ref().storage,
             ("ado_type".to_string(), "action".to_string()),
         )
         .unwrap();
-    assert_eq!(fee_one, action_fees[0]);
+    assert_eq!(one, action_fees[0]);
 
-    let fee_two = ACTION_FEES
+    let two = ACTION_FEES
         .load(
             deps.as_ref().storage,
             ("ado_type".to_string(), "action2".to_string()),
         )
         .unwrap();
-    assert_eq!(fee_two, action_fees[1]);
+    assert_eq!(two, action_fees[1]);
 
     // Test unauthorised
     let unauth_info = mock_info("not_owner", &[]);
