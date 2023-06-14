@@ -60,7 +60,13 @@ pub struct MigrateMsg {}
 
 #[cw_serde]
 #[derive(QueryResponses)]
-pub enum QueryMsg {}
+pub enum QueryMsg {
+    /// Queries the current balance for a given AndrAddr and asset tuple
+    ///
+    /// Returns a `Uint128` representing the current balance
+    #[returns(Uint128)]
+    Balance { asset: String, address: AndrAddr },
+}
 
 #[cfg(test)]
 mod test {}

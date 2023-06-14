@@ -429,5 +429,17 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(_deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
-    match msg {}
+    match msg {
+        QueryMsg::Balance { address, asset } => {
+            Ok(to_binary(&query_balance(_deps, address, asset)?)?)
+        }
+    }
+}
+
+fn query_balance(deps: Deps, address: AndrAddr, asset: String) -> Result<Uint128, ContractError> {
+    let addr = address.get_raw_address(&deps)?;
+    let balance = BALANCES
+        .load(deps.storage, (addr, asset))
+        .unwrap_or_default();
+    Ok(balance)
 }
