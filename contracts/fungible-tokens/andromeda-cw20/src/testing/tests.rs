@@ -1,6 +1,7 @@
 use crate::contract::{execute, instantiate, query};
 use crate::testing::mock_querier::{mock_dependencies_custom, MOCK_RATES_CONTRACT};
 use andromeda_fungible_tokens::cw20::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use andromeda_std::testing::mock_querier::MOCK_ADDRESS_LIST_CONTRACT;
 use andromeda_std::{
     ado_base::Module, amp::addresses::AndrAddr, error::ContractError,
     testing::mock_querier::MOCK_KERNEL_CONTRACT,
@@ -55,12 +56,12 @@ fn test_transfer() {
             is_mutable: false,
         },
         //TODO uncomment once address_list is updated
-        // Module {
-        //     name: Some(MOCK_ADDRESSLIST_CONTRACT.to_owned()),
-        //     address: AndrAddr::from_string(MOCK_ADDRESSLIST_CONTRACT.to_owned()),
+        Module {
+            name: Some(MOCK_ADDRESS_LIST_CONTRACT.to_owned()),
+            address: AndrAddr::from_string(MOCK_ADDRESS_LIST_CONTRACT.to_owned()),
 
-        //     is_mutable: false,
-        // },
+            is_mutable: false,
+        },
     ];
 
     let mut deps = mock_dependencies_custom(&[]);
@@ -70,12 +71,11 @@ fn test_transfer() {
             .add_attribute("method", "instantiate")
             .add_attribute("type", "cw20")
             .add_attribute("action", "register_module")
-            .add_attribute("module_idx", "1"),
-        // .add_attribute("action", "register_module")
-        // .add_attribute("module_idx", "2")
-        // .add_attribute("action", "register_module")
+            .add_attribute("module_idx", "1")
+            .add_attribute("action", "register_module")
+            .add_attribute("module_idx", "2"), // .add_attribute("action", "register_module")
         // .add_attribute("module_idx", "3")
-        // .add_attribute("method", "instantiate")
+        // .add_attribute("method", "instantiate"),
         res
     );
 
