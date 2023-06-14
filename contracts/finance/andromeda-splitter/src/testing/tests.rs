@@ -3,12 +3,14 @@ use andromeda_std::{
     amp::{
         messages::{AMPMsg, AMPPkt},
         recipient::Recipient,
+        AndrAddr,
     },
     error::ContractError,
+    testing::mock_querier::MOCK_ADDRESS_LIST_CONTRACT,
 };
 
 use cosmwasm_std::{
-    attr, coins, from_binary,
+    attr, coin, coins, from_binary,
     testing::{mock_env, mock_info},
     to_binary, BankMsg, Coin, CosmosMsg, Decimal, DepsMut, Response, StdError, SubMsg, Timestamp,
 };
@@ -390,25 +392,30 @@ fn test_execute_send_error() {
 //TODO should pass when modules are updated
 #[test]
 fn test_modules() {
-    let mut deps = mock_dependencies_custom(&[]);
+    let mut deps = mock_dependencies_custom(&[coin(1000, "uusd")]);
     let env = mock_env();
     let info = mock_info("creator", &[]);
     let msg = InstantiateMsg {
-        modules: None,
+        modules: Some(vec![Module {
+            name: Some(MOCK_ADDRESS_LIST_CONTRACT.to_string()),
+            is_mutable: false,
+            address: AndrAddr::from_string(MOCK_ADDRESS_LIST_CONTRACT.to_owned()),
+        }]),
         recipients: vec![AddressPercent {
             recipient: Recipient::from_string(String::from("Some Address")),
             percent: Decimal::percent(100),
         }],
         lock_time: Some(100_000),
-        kernel_address: "kernel_address".to_string(),
+        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: Some(OWNER.to_string()),
     };
     let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
     let expected_res = Response::new()
-        .add_attribute("action", "register_module")
-        .add_attribute("module_idx", "1")
         .add_attribute("method", "instantiate")
-        .add_attribute("type", "splitter");
+        .add_attribute("type", "splitter")
+        .add_attribute("action", "register_module")
+        .add_attribute("module_idx", "1");
+
     assert_eq!(expected_res, res);
 
     let msg = ExecuteMsg::Send {};

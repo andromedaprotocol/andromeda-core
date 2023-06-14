@@ -2,8 +2,8 @@ use crate::{
     contract::{execute, instantiate, query},
     state::{auction_infos, TOKEN_AUCTION_STATE},
     testing::mock_querier::{
-        mock_dependencies_custom, MOCK_RATES_CONTRACT, MOCK_TAX_RECIPIENT, MOCK_TOKEN_ADDR,
-        MOCK_TOKEN_OWNER, MOCK_UNCLAIMED_TOKEN, RATES,
+        mock_dependencies_custom, MOCK_TAX_RECIPIENT, MOCK_TOKEN_ADDR, MOCK_TOKEN_OWNER,
+        MOCK_UNCLAIMED_TOKEN, RATES,
     },
 };
 use andromeda_non_fungible_tokens::{
@@ -18,7 +18,7 @@ use andromeda_std::{
     amp::addresses::AndrAddr,
     common::{encode_binary, expiration::MILLISECONDS_TO_NANOSECONDS_RATIO},
     error::ContractError,
-    testing::mock_querier::MOCK_KERNEL_CONTRACT,
+    testing::mock_querier::{MOCK_KERNEL_CONTRACT, MOCK_RATES_CONTRACT},
 };
 use cosmwasm_std::{
     attr, coin, coins, from_binary,
@@ -955,12 +955,18 @@ fn execute_claim() {
 fn execute_claim_with_modules() {
     let mut deps = mock_dependencies_custom(&[]);
     let mut env = mock_env();
-    let modules = vec![Module {
-        name: Some(RATES.to_owned()),
-        address: AndrAddr::from_string(MOCK_RATES_CONTRACT.to_owned()),
-        is_mutable: false,
-    }];
-    let _res = init(deps.as_mut(), Some(modules));
+    let info = mock_info("owner", &[]);
+    let module = Module {
+        module_name: Some("rates".to_string()),
+        address: MOCK_RATES_CONTRACT.to_owned(),
+
+        is_mutable: true,
+    };
+    let msg = InstantiateMsg {
+        modules: Some(vec![module]),
+        kernel_address: None,
+    };
+    let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
     start_auction(deps.as_mut(), None, None);
 
@@ -991,11 +997,11 @@ fn execute_claim_with_modules() {
     assert_eq!(
         Response::new()
             .add_message(CosmosMsg::Bank(BankMsg::Send {
-                to_address: MOCK_TAX_RECIPIENT.to_owned(),
+                to_address: MOCK_RATES_RECIPIENT.to_owned(),
                 amount: coins(10, "uusd"),
             }))
             .add_message(CosmosMsg::Bank(BankMsg::Send {
-                to_address: MOCK_TAX_RECIPIENT.to_owned(),
+                to_address: MOCK_RATES_RECIPIENT.to_owned(),
                 amount: coins(10, "uusd"),
             }))
             .add_message(CosmosMsg::Bank(BankMsg::Send {
