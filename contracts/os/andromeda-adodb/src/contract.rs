@@ -1,12 +1,13 @@
 use crate::state::{
-    read_code_id, store_code_id, ACTION_FEES, ADO_TYPE, CODE_ID, PUBLISHER, VERSION_CODE_ID,
+    read_code_id, store_code_id, ACTION_FEES, ADO_TYPE, CODE_ID, LATEST_VERSION, PUBLISHER,
+    VERSION_CODE_ID,
 };
 use andromeda_std::ado_base::InstantiateMsg as BaseInstantiateMsg;
 use andromeda_std::ado_contract::ADOContract;
 use andromeda_std::common::encode_binary;
 use andromeda_std::error::{from_semver, ContractError};
 use andromeda_std::os::adodb::{
-    ADOVersion, ActionFee, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
+    ADOMetadata, ADOVersion, ActionFee, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
 };
 use cosmwasm_std::{
     attr, ensure, entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError,
@@ -149,6 +150,17 @@ pub fn publish(
         ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {}
     );
+    let current_ado_version = LATEST_VERSION.may_load(deps.storage, ado_type.clone())?;
+    if let Some(ado_version) = current_ado_version {
+        let new_version = semver::Version::parse(&version).unwrap();
+        let current_version = semver::Version::parse(&ado_version).unwrap();
+        ensure!(
+            new_version > current_version,
+            ContractError::InvalidADOVersion {
+                msg: Some("Version must be newer than the current version".to_string())
+            }
+        );
+    }
 
     //TODO: Get Code ID info with cosmwasm 1.2
 
@@ -309,7 +321,13 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractErr
     match msg {
         QueryMsg::CodeId { ado_type } => encode_binary(&query_code_id(deps, ado_type)?),
         QueryMsg::ADOType { code_id } => encode_binary(&query_ado_type(deps, code_id)?),
-        _ => encode_binary(&true),
+        QueryMsg::ADOMetadata { ado_type } => encode_binary(&query_ado_metadata(deps, ado_type)?),
+        QueryMsg::ActionFee { ado_type, action } => {
+            encode_binary(&query_action_fee(deps, ado_type, action)?)
+        }
+        QueryMsg::ActionFeeByCodeId { code_id, action } => {
+            encode_binary(&query_action_fee_by_code_id(deps, code_id, action)?)
+        }
     }
 }
 
@@ -320,4 +338,31 @@ fn query_code_id(deps: Deps, key: String) -> Result<u64, ContractError> {
 
 fn query_ado_type(deps: Deps, code_id: u64) -> Result<Option<String>, ContractError> {
     Ok(ADO_TYPE.may_load(deps.storage, code_id)?)
+}
+
+fn query_ado_metadata(deps: Deps, ado_type: String) -> Result<ADOMetadata, ContractError> {
+    let publisher = PUBLISHER.load(deps.storage, ado_type.clone())?;
+    let latest_version = LATEST_VERSION.load(deps.storage, ado_type.to_string())?;
+
+    Ok(ADOMetadata {
+        publisher,
+        latest_version,
+    })
+}
+
+fn query_action_fee(
+    deps: Deps,
+    ado_type: String,
+    action: String,
+) -> Result<Option<ActionFee>, ContractError> {
+    Ok(ACTION_FEES.may_load(deps.storage, (ado_type, action))?)
+}
+
+fn query_action_fee_by_code_id(
+    deps: Deps,
+    code_id: u64,
+    action: String,
+) -> Result<Option<ActionFee>, ContractError> {
+    let ado_type = ADO_TYPE.load(deps.storage, code_id)?;
+    Ok(ACTION_FEES.may_load(deps.storage, (ado_type, action))?)
 }

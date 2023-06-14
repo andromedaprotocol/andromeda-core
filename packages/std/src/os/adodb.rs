@@ -70,9 +70,8 @@ pub struct MigrateMsg {}
 
 #[cw_serde]
 pub struct ADOMetadata {
-    publisher: String,
-    latest_version: String,
-    maintainers: Vec<String>,
+    pub publisher: String,
+    pub latest_version: String,
 }
 
 #[cw_serde]
@@ -86,9 +85,9 @@ pub enum QueryMsg {
     #[returns(Option<ADOMetadata>)]
     #[serde(rename = "ado_metadata")]
     ADOMetadata { ado_type: String },
-    #[returns(ActionFee)]
+    #[returns(Option<ActionFee>)]
     ActionFee { ado_type: String, action: String },
-    #[returns(ActionFee)]
+    #[returns(Option<ActionFee>)]
     ActionFeeByCodeId { code_id: u64, action: String },
 }
 
