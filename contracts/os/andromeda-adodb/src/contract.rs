@@ -342,7 +342,7 @@ fn query_ado_type(deps: Deps, code_id: u64) -> Result<Option<String>, ContractEr
 
 fn query_ado_metadata(deps: Deps, ado_type: String) -> Result<ADOMetadata, ContractError> {
     let publisher = PUBLISHER.load(deps.storage, ado_type.clone())?;
-    let latest_version = LATEST_VERSION.load(deps.storage, ado_type.to_string())?;
+    let latest_version = LATEST_VERSION.load(deps.storage, ado_type)?;
 
     Ok(ADOMetadata {
         publisher,
