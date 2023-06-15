@@ -957,7 +957,7 @@ fn execute_claim_with_modules() {
     let mut env = mock_env();
     let info = mock_info("owner", &[]);
     let module = Module {
-        module_name: Some("rates".to_string()),
+        name: Some("rates".to_string()),
         address: MOCK_RATES_CONTRACT.to_owned(),
 
         is_mutable: true,
