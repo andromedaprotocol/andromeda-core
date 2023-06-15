@@ -1,17 +1,13 @@
 use andromeda_finance::cross_chain_swap::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 
 use andromeda_std::{
-    ado_base::{hooks::AndromedaHook, InstantiateMsg as BaseInstantiateMsg},
-    common::encode_binary,
+    ado_base::InstantiateMsg as BaseInstantiateMsg,
     error::{from_semver, ContractError},
 };
 use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
-use cosmwasm_std::{
-    attr, ensure, entry_point, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
-    Response, SubMsg, Timestamp, Uint128,
-};
+use cosmwasm_std::{ensure, entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Response};
 use cw2::{get_contract_version, set_contract_version};
-use cw_utils::{nonpayable, Expiration};
+
 use semver::Version;
 
 // version info for migration info
@@ -31,7 +27,7 @@ pub fn instantiate(
         deps.storage,
         env,
         deps.api,
-        info.clone(),
+        info,
         BaseInstantiateMsg {
             ado_type: "andromeda-cross-chain-swap".to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
@@ -51,7 +47,7 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
-    let contract = ADOContract::default();
+    let _contract = ADOContract::default();
     let ctx = ExecuteContext::new(deps, info, env);
 
     match msg {
@@ -63,10 +59,8 @@ pub fn execute(
 }
 
 pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
-    let contract = ADOContract::default();
-    match msg {
-        _ => ADOContract::default().execute(ctx, msg),
-    }
+    let _contract = ADOContract::default();
+    ADOContract::default().execute(ctx, msg)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -105,7 +99,5 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
-    match msg {
-        _ => ADOContract::default().query::<QueryMsg>(deps, env, msg, None),
-    }
+    ADOContract::default().query::<QueryMsg>(deps, env, msg, None)
 }

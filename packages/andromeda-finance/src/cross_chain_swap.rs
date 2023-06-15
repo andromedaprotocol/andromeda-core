@@ -19,6 +19,4 @@ pub struct MigrateMsg {}
 pub enum QueryMsg {}
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-}
+mod tests {}
