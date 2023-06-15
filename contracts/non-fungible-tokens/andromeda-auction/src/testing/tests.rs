@@ -2,8 +2,8 @@ use crate::{
     contract::{execute, instantiate, query},
     state::{auction_infos, TOKEN_AUCTION_STATE},
     testing::mock_querier::{
-        mock_dependencies_custom, MOCK_TAX_RECIPIENT, MOCK_TOKEN_ADDR, MOCK_TOKEN_OWNER,
-        MOCK_UNCLAIMED_TOKEN, RATES,
+        mock_dependencies_custom, MOCK_ROYALTY_RECIPIENT, MOCK_TAX_RECIPIENT, MOCK_TOKEN_ADDR,
+        MOCK_TOKEN_OWNER, MOCK_UNCLAIMED_TOKEN,
     },
 };
 use andromeda_non_fungible_tokens::{
@@ -958,15 +958,15 @@ fn execute_claim_with_modules() {
     let info = mock_info("owner", &[]);
     let module = Module {
         name: Some("rates".to_string()),
-        address: MOCK_RATES_CONTRACT.to_owned(),
-
+        address: AndrAddr::from_string(MOCK_RATES_CONTRACT.to_owned()),
         is_mutable: true,
     };
     let msg = InstantiateMsg {
         modules: Some(vec![module]),
-        kernel_address: None,
+        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+        owner: None,
     };
-    let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
+    let _res = instantiate(deps.as_mut(), env.clone(), &info, msg).unwrap();
 
     start_auction(deps.as_mut(), None, None);
 
@@ -997,15 +997,15 @@ fn execute_claim_with_modules() {
     assert_eq!(
         Response::new()
             .add_message(CosmosMsg::Bank(BankMsg::Send {
-                to_address: MOCK_RATES_RECIPIENT.to_owned(),
+                to_address: MOCK_ROYALTY_RECIPIENT.to_owned(),
                 amount: coins(10, "uusd"),
             }))
             .add_message(CosmosMsg::Bank(BankMsg::Send {
-                to_address: MOCK_RATES_RECIPIENT.to_owned(),
-                amount: coins(10, "uusd"),
+                to_address: MOCK_TAX_RECIPIENT.to_owned(),
+                amount: coins(50, "uusd"),
             }))
             .add_message(CosmosMsg::Bank(BankMsg::Send {
-                to_address: "owner".to_string(),
+                to_address: MOCK_TOKEN_OWNER.to_string(),
                 amount: coins(90, "uusd"),
             }))
             .add_message(CosmosMsg::Wasm(WasmMsg::Execute {

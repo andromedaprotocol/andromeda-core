@@ -42,6 +42,9 @@ pub enum ContractError {
     #[error("InvalidOrigin")]
     InvalidOrigin {},
 
+    #[error("InvalidSender")]
+    InvalidSender {},
+
     #[error("RewardTooLow")]
     RewardTooLow {},
 
@@ -293,6 +296,9 @@ pub enum ContractError {
 
     #[error("InvalidFunds: {msg}")]
     InvalidFunds { msg: String },
+
+    #[error("InvalidADOVersion: {msg:?}")]
+    InvalidADOVersion { msg: Option<String> },
 
     #[error("AuctionRewardAlreadyClaimed")]
     AuctionAlreadyClaimed {},

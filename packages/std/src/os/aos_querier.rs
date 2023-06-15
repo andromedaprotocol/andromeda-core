@@ -7,6 +7,8 @@ use lazy_static::__Deref;
 use serde::de::DeserializeOwned;
 use std::str::from_utf8;
 
+use super::adodb::ActionFee;
+
 #[cw_serde]
 pub struct AOSQuerier();
 
@@ -50,12 +52,23 @@ impl AOSQuerier {
         querier: &QuerierWrapper,
         adodb_addr: &Addr,
         code_id: u64,
-    ) -> Result<String, ContractError> {
+    ) -> Result<Option<String>, ContractError> {
         let key = AOSQuerier::get_map_storage_key("ado_type", &[code_id.to_string().as_bytes()])?;
+        let ado_type: Option<String> = AOSQuerier::query_storage(querier, adodb_addr, &key)?;
+
+        Ok(ado_type)
+    }
+
+    pub fn ado_publisher_getter(
+        querier: &QuerierWrapper,
+        adodb_addr: &Addr,
+        ado_type: &str,
+    ) -> Result<String, ContractError> {
+        let key = AOSQuerier::get_map_storage_key("publisher", &[ado_type.as_bytes()])?;
         let verify: Option<String> = AOSQuerier::query_storage(querier, adodb_addr, &key)?;
 
         match verify {
-            Some(ado_type) => Ok(ado_type),
+            Some(publisher) => Ok(publisher),
             None => Err(ContractError::InvalidAddress {}),
         }
     }
@@ -118,5 +131,20 @@ impl AOSQuerier {
             Some(address) => Ok(address),
             None => Err(ContractError::InvalidAddress {}),
         }
+    }
+
+    pub fn action_fee_getter(
+        querier: &QuerierWrapper,
+        adodb_addr: &Addr,
+        ado_type: &str,
+        action: &str,
+    ) -> Result<Option<ActionFee>, ContractError> {
+        let key = AOSQuerier::get_map_storage_key(
+            "action_fees",
+            &[ado_type.as_bytes(), action.as_bytes()],
+        )?;
+        let fee: Option<ActionFee> = AOSQuerier::query_storage(querier, adodb_addr, &key)?;
+
+        Ok(fee)
     }
 }

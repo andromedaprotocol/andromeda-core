@@ -7,7 +7,7 @@ use cosmwasm_std::coin;
 use cosmwasm_std::testing::{
     mock_env, mock_info, MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR,
 };
-use cosmwasm_std::BankMsg;
+
 use cosmwasm_std::BankQuery;
 use cosmwasm_std::{
     from_binary, from_slice, to_binary, Coin, ContractResult, Empty, OwnedDeps, Querier,

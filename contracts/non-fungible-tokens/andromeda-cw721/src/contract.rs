@@ -2,7 +2,7 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     attr, ensure, has_coins, to_binary, Api, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut,
-    Empty, Env, MessageInfo, QuerierWrapper, Response, Storage, SubMsg, Uint128,
+    Empty, Env, MessageInfo, QuerierWrapper, Response, SubMsg, Uint128,
 };
 
 use crate::state::{
@@ -13,7 +13,7 @@ use andromeda_non_fungible_tokens::cw721::{
 };
 use andromeda_std::{
     ado_contract::{
-        permissioning::{is_context_permissioned, is_context_permissioned_strict, Permission},
+        permissioning::{is_context_permissioned, is_context_permissioned_strict},
         ADOContract,
     },
     common::context::ExecuteContext,
@@ -114,6 +114,22 @@ fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Cont
         )?,
         ContractError::Unauthorized {}
     );
+
+    let payee = if let Some(amp_ctx) = ctx.amp_ctx.clone() {
+        ctx.deps
+            .api
+            .addr_validate(amp_ctx.ctx.get_origin().as_str())?
+    } else {
+        ctx.info.sender.clone()
+    };
+
+    let fee_msg = ADOContract::default().pay_fee(
+        ctx.deps.storage,
+        &ctx.deps.querier,
+        msg.as_ref().to_string(),
+        payee,
+    )?;
+
     if let ExecuteMsg::Approve { token_id, .. } = &msg {
         ensure!(
             !is_archived(ctx.deps.storage, token_id)?,
@@ -129,7 +145,7 @@ fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Cont
         },
     )?;
 
-    match msg {
+    let res = match msg {
         ExecuteMsg::Mint {
             token_id,
             token_uri,
@@ -148,7 +164,8 @@ fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Cont
         ExecuteMsg::Archive { token_id } => execute_archive(ctx, token_id),
         ExecuteMsg::Burn { token_id } => execute_burn(ctx, token_id),
         _ => contract.execute_with_fallback(ctx, msg, execute_cw721),
-    }
+    }?;
+    Ok(res.add_submessage(fee_msg))
 }
 
 fn execute_cw721(

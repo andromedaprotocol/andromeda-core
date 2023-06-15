@@ -110,6 +110,8 @@ pub enum AndromedaQuery {
     IsOperator { address: String },
     #[returns(self::version::VersionResponse)]
     Version {},
+    #[returns(Option<::cosmwasm_std::Addr>)]
+    AppContract {},
     #[cfg(feature = "modules")]
     #[returns(Module)]
     Module { id: Uint64 },
