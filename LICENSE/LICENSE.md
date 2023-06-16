@@ -1,121 +1,674 @@
-12/12/2022 
- 
-Please read these terms carefully. Use of the Site acknowledges that you have read and accepted the terms and conditions.
-These terms and conditions (“Terms”) constitute a binding legal agreement between each individual, entity, group, or association who views, interacts, links to or otherwise uses or derives any benefit from the Site www.andromedaprotocol.io (“Users”) and Andromeda Labs, a British Virgin Islands company
-### 1. Introduction
-Welcome to Andromeda Protocol, a blockchain network maintained by a decentralized team of developers that is deployed in the Cosmos blockchain ecosystem (“Andromeda”, “we”, “us”, or “our”). Andromeda Labs developed the initial code for Andromeda, however, it does not own or control the Andromeda Protocol, which is run by a decentralized validator set. These Terms of Service (“Terms”) govern your access to and use of the Andromeda Protocol website(s) and our APIs (the “Website”), and any other software, tools, features, or functionalities provided on or in connection with our services; including without limitation using our services to view, explore and use our tools, at your own discretion, to connect directly with others to purchase, sell, or transfer ANDR tokens on public blockchains (collectively, the “Service”). “Andromeda tokens” in these Terms means a utility or governance token or similar digital item implemented on a blockchain (such as the Andromeda, Juno, or Cosmos blockchain), which uses smart contracts to link to or otherwise be associated with certain content or data. For purposes of these Terms, “user”, “you”, and “your” means you as the user of the Service. If you use the Service on behalf of a company or other entity then “you” includes you and that entity, and you represent and warrant that (a) you are an authorized representative of the entity with the authority to bind the entity to these Terms, and (b) you agree to these Terms on the entity’s behalf. PLEASE READ THESE TERMS OF SERVICE CAREFULLY AS THEY CONTAIN IMPORTANT INFORMATION AND AFFECT YOUR LEGAL RIGHTS. AS OUTLINED IN SECTION 15 BELOW, THEY INCLUDE A MANDATORY ARBITRATION AGREEMENT AND CLASS ACTION WAIVER WHICH (WITH LIMITED EXCEPTIONS) REQUIRE ANY DISPUTES BETWEEN US TO BE RESOLVED THROUGH INDIVIDUAL ARBITRATION RATHER THAN BY A JUDGE OR JURY IN COURT. BY CLICKING TO ACCEPT OR USING OUR SERVICE, YOU AGREE TO BE BOUND BY THESE TERMS AND ALL OF THE TERMS INCORPORATED HEREIN BY REFERENCE. IF YOU DO NOT AGREE TO THESE TERMS, YOU MAY NOT ACCESS OR USE THE SERVICE. Andromeda Protocol is not a wallet provider, exchange, broker, financial institution, or creditor. Andromeda provides a peer-to-peer web3 service that helps users discover and directly interact with each other and tokens available on public blockchains. We do not have custody or control over the tokens or blockchains you are interacting with, and we do not execute or effectuate purchases, transfers, or sales of tokens. To use our Service, you must use a third-party wallet that allows you to engage in transactions on blockchains. Andromeda Protocol is not party to any agreement between any users. You bear full responsibility for verifying the identity, legitimacy, and authenticity of smart contracts that you engage with or tokens that you acquire from third-parties and we make no claims about the identity, legitimacy, functionality, or authenticity of users, smart contracts, or tokens (and any content associated with such) visible on the Service. Because we have a growing number of services, we sometimes need to provide additional terms for specific services (and such services are deemed part of the “Service” hereunder and shall also be subject to these Terms). Those additional terms and conditions, which are available with the relevant service, then become part of your agreement with us if you use those services. In the event of a conflict between these Terms and any additional applicable terms we may provide for a specific service, such additional terms shall control for that specific service. Andromeda reserves the right to change or modify these Terms at any time and in our sole discretion. If we make material changes to these Terms, we will use reasonable efforts to provide notice of such changes, such as by providing notice through the Service or updating the “Last Updated” date at the beginning of these Terms. By continuing to access or use the Service, you confirm your acceptance of the revised Terms and all the terms incorporated therein by reference effective as of the date these Terms are updated. It is your sole responsibility to review the Terms from time to time to view such changes and to ensure that you understand the terms and conditions that apply when you access or use the Service.
-### 2. Accessing the Service
-Your blockchain address functions as your identity on Andromeda Protocol. Accordingly, you will need a blockchain address and a third-party wallet to access the Service. Your account on the service (“Account”) will be associated with your blockchain address. Your Account on Andromeda Protocol will be associated with your linked blockchain address and display the tokens for that blockchain address (and, if applicable, any content associated with such tokens). By using your wallet in connection with the Service, you agree that you are using that wallet under the terms and conditions of the applicable provider of the wallet. Wallets are not operated by, maintained by, or affiliated with Andromeda Protocol, and Andromeda Protocol does not have custody or control over the contents of your wallet and has no ability to retrieve or transfer its contents. Andromeda Protocol accepts no responsibility for, or liability to you, in connection with your use of a wallet and makes no representations or warranties regarding how the Service will operate with any specific wallet. You are solely responsible for keeping your wallet secure and you should never share your wallet credentials or seed phrase with anyone. If you discover an issue related to your wallet, please contact your wallet provider. Likewise, you are solely responsible for your Account and any associated wallet, and we are not liable for any acts or omissions by you in connection with your Account or as a result of your Account or wallet being compromised. You agree to immediately notify us if you discover or otherwise suspect any security issues related to the Service or your Account to service@andromedaprotocol.io. You also represent and warrant that you will comply with all applicable laws (e.g., local, state, federal and other laws) when using the Service. Without limiting the foregoing, by using the Service, you represent and warrant that: (a) you are not located in a country that is subject to a U.S. Government embargo; and (b) you have not been identified as a Specially Designated National or placed on any U.S. Government list of prohibited, sanctioned, or restricted parties. If you access or use the Service outside the United States, you are solely responsible for ensuring that your access and use of the Service in such country, territory, or jurisdiction does not violate any applicable laws. The Andromeda Protocol may require you to provide additional information and documents in certain circumstances, such as at the request of any government authority, as any applicable law or regulation dictates, or to investigate a potential violation of these Terms. In such cases, Andromeda Protocol, in its sole discretion, may block your ability to access the Service until such additional information and documents are processed by Andromeda Protocol. If you do not provide complete and accurate information in response to such a request, Andromeda Protocol may refuse to restore your access to the Service. Your access and use of the Service may be interrupted from time to time for any of several reasons, including, without limitation, the malfunction of equipment, periodic updating, maintenance, or repair of the Service or other actions that Andromeda Protocol, in its sole discretion, may elect to take. We require all users to be at least 18 years old. If you are at least 13 years old but under 18 years old, you may only use Andromeda Protocol through a parent or guardian’s Account and with their approval and oversight. That account holder is responsible for your actions using the Account. It is prohibited to use our Service if you are under 13 years old.
-### 3. Ownership
-The Service, including its “look and feel” (e.g., text, graphics, images, logos, page headers, button icons, and scripts), proprietary content, information, and other materials, and all content and other materials contained therein, including, without limitation, the Andromeda Protocol brands, logo, and all designs, text, graphics, pictures, data, software, sound files, other files, and the selection and arrangement thereof are the proprietary property of or our affiliates, licensors, or users, as applicable, and you agree not to take any action(s) inconsistent with such ownership interests. We and our affiliates, licensors, and users, as applicable, reserve all rights in connection with the Service and its content, including, without limitation, the exclusive right to create derivative works. Andromeda Protocol’s name, logo, trademarks, and any Andromeda Protocol product or service names, designs, logos, and slogans are the intellectual property of Andromeda Protocol or our affiliates or licensors and may not be copied, imitated, or used, in whole or in part, without our prior written permission in each instance. You may not use any metatags or other “hidden text” utilizing “Andromeda Protocol” or any other name, trademark, or product or service name of Andromeda Protocol or our affiliates or licensors without our prior written permission. In addition, the “look and feel” of the Service constitutes the service mark, trademark, or trade dress of Andromeda Protocol and may not be copied, imitated or used, in whole or in part, without our prior written permission. All other third-party trademarks, registered trademarks, and product names mentioned on the Service or contained in the content linked to or associated with any tokens displayed on the Service are the property of their respective owners and may not be copied, imitated, or used, in whole or in part, without the permission of the applicable intellectual property rights holder. Reference to any products, services, processes or other information by name, trademark, manufacturer, supplier or otherwise does not constitute or imply endorsement, sponsorship, or recommendation by Andromeda Protocol.
-### 4. License
-To Access and Use Our Service and Content You are hereby granted a limited, revocable, nonexclusive, non transferable, non-sublicensable, and personal license to access and use the Service provided, however, such license is subject to your compliance with these Terms. If any software, content, or other materials owned by, controlled by, or licensed to us are distributed or made available to you as part of your use of the Service, we hereby grant you a non-commercial, personal, non-assignable, non-sublicensable, non-transferable, and non-exclusive right and license to access and display such software, content, and materials provided to you as part of the Service (and right to download a single copy of the Website onto your applicable equipment or device), in each case for the sole purpose of enabling you to use the Service as permitted by these Terms, provided that your license in any content linked to or associated with any tokens is solely as set forth by the applicable seller or creator of such token.
-### 5. License to Access and Use Service and Content
-As a peer-to-peer web3 service, Andromeda Protocol helps you deploy smart contracts across the Cosmos ecosystem and interact with different blockchains in the Cosmos ecosystem. Andromeda Protocol or its affiliates does not make any representations or warranties about this third-party content visible through our Service, including any content associated with tokens displayed on the Service, and you bear responsibility for verifying the legitimacy, authenticity, and legality of tokens that you acquire from third-parties. We also cannot guarantee that any tokens visible on Andromeda Protocol will always remain visible or available to be bought, sold, or transferred. The Service may also contain links or functionality to access or use third-party websites (“Third-Party Websites”) and applications (“Third-Party Applications”), or otherwise display, include, or make available content, data, information, services, applications, or materials from third parties (“Third-Party Materials”). When you click on a link to, or access and use, a Third-Party Website or Third-Party Application, though we may not warn you that you have left our Service, you are subject to the terms and conditions (including privacy policies) of another website or destination. Such Third-Party Websites, Third-Party Applications, and Third-Party Materials are not under the control of Andromeda Protocol, and may be “open” applications for which no recourse is possible. Andromeda Protocol and its affiliates are not responsible or liable for any Third-Party Websites, Third-Party Applications, and Third-Party Materials. Andromeda Protocol provides links to these Third-Party Websites and Third-Party Applications only as a convenience and does not review, approve, monitor, endorse, warrant, or make any representations with respect to Third-Party Websites or Third-Party Applications, or their products or services or associated Third-Party Materials. You use all links in Third-Party Websites, Third-Party Applications, and Third-Party Materials at your own risk.
-### 6. User Conduct
-To protect the Andromeda Protocol community and comply with our legal obligations, we reserve the right to act, with or without advance notice, if we believe you have violated these Terms. This may include removing your access to the Service; disabling your ability to access our Service; or other actions. You agree that you will not violate any law, contract, intellectual property, or other third-party right, and that you are solely responsible for your conduct and content while accessing or using the Service. You also agree that you will not:
-- Use or attempt to use another user’s Account without authorization from such user;
-- Pose as another person or entity;
-- Claim an Andromeda Protocol username for the purpose of reselling it or otherwise engage in name squatting; Access the Service from a different blockchain address if we’ve blocked any of your other blockchain addresses from accessing the Service, unless you have our written permission first;
-- Distribute spam;
-- Use the Service – including through disseminating any software or interacting with any API – that could damage, disable, overburden, or impair the functioning of the Service in any manner;
-- Bypass or ignore instructions that control access to the Service, including attempting to circumvent any rate limiting systems by using multiple API keys, directing traffic through multiple IP addresses, or otherwise obfuscating the source of traffic you send to Andromeda Protocol;
-- Use any data mining, robot, spider, crawler, scraper, script, browser extension, offline reader, or other automated means or interface not authorized by us to access the Service, extract data, or otherwise interfere with or modify the rendering of Service pages or functionality;
-- Reverse engineer, duplicate, decompile, disassemble, or decode any aspect of the Service, or do anything that might discover source code or bypass or circumvent measures employed to prevent or limit access to any service, area, or code of the Service;
-- Sell or resell the Service or attempt to circumvent any Andromeda Protocol fee systems;
-- Engage in behaviors that have the intention or the effect of artificially causing an item or collection to appear at the top of search results, or artificially increasing view counts, favorites, or other metrics that Andromeda Protocol might use to sort search results;
-- Use the Service or data collected from our Service for any advertising or direct marketing activity (including without limitation, email marketing, SMS marketing, and telemarketing);
-- Use the Service for money laundering, terrorist financing, or other illicit finance;
-- Use the Service from a country sanctioned by the government of the United States or to facilitate transactions involving individuals sanctioned by the government of the United States or located in sanctioned countries;
-- Use the Service to carry out any financial activities subject to registration or licensing, including but not limited to creating, selling, or buying securities, commodities, options, or debt instruments;
-- Use the Service to engage in price manipulation, fraud, or other deceptive, misleading, or manipulative activity;
-- Use the Service to buy, sell, or transfer stolen items, fraudulently obtained items, items taken without authorization, or any other illegally obtained items;
--Infringe or violate the intellectual property rights or any other rights of others; Create or display illegal or harmful content, such as content that may involve child sexual exploitation; Create or display NFTs or other items that promote suicide or self-harm, incites hate or violence against others, or doxes another individual;
-- Use the Service for any illegal or unauthorized purpose, including creating or displaying illegal content, such as content that may involve child sexual exploitation, or encouraging or promoting any activity that violates the Terms of Service; or
-- Use the Service in any manner that could interfere with, disrupt, negatively affect or inhibit other users from fully enjoying the Service.
+                    GNU GENERAL PUBLIC LICENSE
+                       Version 3, 29 June 2007
 
-We might allow users to post NSFW content, but that content and other associated material is subject to being marked NSFW and may be handled differently than non-NSFW content in navigation menus and search results.
-### 7. Intellectual Property Rights
-You are solely responsible for your use of the Service and for any information you provide, including compliance with applicable laws, rules, and regulations, as well as these Terms, including the User Conduct requirements outlined above. By using the Service in conjunction with creating, submitting, posting, promoting, or displaying content, or by complying with Andromeda Protocol’s metadata standards in your metadata API responses, you grant us a worldwide, non-exclusive, sublicensable, royalty-free license to use, copy, modify, and display any content, including but not limited to text, materials, images, files, communications, comments, feedback, suggestions, ideas, concepts, questions, data, or otherwise, that you submit or post on or through the Service for our current and future business purposes, including to provide, promote, and improve the Service. Andromeda Protocol does not claim that submitting, posting, or displaying this content on or through the Service gives Andromeda Protocol any ownership of the content. We're not saying we own it, but we might use it for marketing/promotional purposes. You represent and warrant that you have, or have obtained, all rights, licenses, consents, permissions, power, or authority necessary to grant the rights granted herein for any content that you create, submit, post, promote, or display on or through the Service. You represent and warrant that such content does not contain material subject to copyright, trademark, publicity rights, or other intellectual property rights, unless you have necessary permission or are otherwise legally entitled to post the material and to grant Andromeda Protocol the license described above, and that the content does not violate any laws. Andromeda Protocol will take down works in response to Digital Millennium Copyright Act (“DMCA”) takedown notices and/or other intellectual property infringement claims and will terminate a user's access to the Service if the user is determined to be a repeat infringer. If you believe that your content has been copied in a way that constitutes copyright or trademark infringement, or violates your publicity or other intellectual property rights, please submit written notice to service@andromedaprotocol.io. For us to process your infringement claim regarding content on the Service, you must be the rightsholder or someone authorized to act on behalf of the rightsholder. Your notice must include:
-- Identification of the copyrighted work(s), trademark, publicity rights, or other intellectual property rights that you claim is being infringed;
-- Identification of the allegedly infringing material that is requested to be removed, including a description of the specific location (i.e., URLs) on the Service of the material claimed to be infringing, so that we may locate the material;
-- Your contact information  at a minimum, your full legal name (not pseudonym) and email address; A declaration that contains all of the following:
-    - A statement that you have a good faith belief that use of the material in the manner complained of is not authorized by the intellectual property rights owner, its agent, or the law;
-    - A statement that the information in the notice is accurate; and
-    - A statement under penalty of perjury that you are authorized to act on behalf of the intellectual property owner of the intellectual property that is allegedly being infringed.
-    - Your physical or electronic signature (of your full legal name).
-  
-Please note that we will forward your notice of intellectual property infringement, including your contact information, to the party who will have their content removed so they understand why it is no longer available on Andromeda Protocol and can also contact you to resolve any dispute.
-### 8. Communication Preferences
-By creating an Account, you consent to receive electronic communications from Andromeda Protocol (e.g., via email, push notification, text messages, or other types of messages).
-### 9. Indemnification
-By agreeing to these Terms and accessing the Service, you agree, to the fullest extent permitted by applicable law, to indemnify, defend, and hold harmless Andromeda Labs, Andromeda Protocol, and our respective past, present, and future employees, officers, directors, contractors, consultants, equity holders, suppliers, vendors, service providers, parent companies, subsidiaries, affiliates, agents, representatives, predecessors, successors, lawyers, accountants, insurers, and assigns (individually and collectively, the “Andromeda Parties”), from and against all actual or alleged claims, damages, awards, judgments, losses, liabilities, obligations, penalties, interest, fees, expenses (including, without limitation, attorneys’ fees and expenses), and costs (including, without limitation, court costs, costs of settlement, and costs of pursuing indemnification and insurance), of every kind and nature whatsoever, whether known or unknown, foreseen or unforeseen, matured or unmatured, or suspected or unsuspected, in law or equity, whether in tort, contract, or otherwise (collectively, “Claims”), including, but not limited to, damages to property or personal injury, that are caused by, arise out of or are related to (a) your use or misuse of the Service or its content, (b) any Feedback you provide, (c) your violation or breach of any term of these Terms or applicable law, and (d) your violation of the rights of or obligations to a third party, including another user or third-party, and (e) your negligence or willful misconduct. You agree to promptly notify Andromeda Protocol of any Claims and cooperate with the Andromeda Parties in defending such Claims. You further agree that the Andromeda Parties shall have control of the defense or settlement of any Claims. THIS INDEMNITY IS IN ADDITION TO, AND NOT IN LIEU OF, ANY OTHER INDEMNITIES SET FORTH IN A WRITTEN AGREEMENT BETWEEN YOU AND ANDROMEDA PROTOCOL.
-### 10. Disclaimers
-YOUR ACCESS TO AND USE OF THE SERVICE IS AT YOUR OWN RISK. YOU UNDERSTAND AND AGREE THAT THE SERVICE IS PROVIDED ON AN “AS IS” AND “AS AVAILABLE” BASIS AND ANDROMEDA PARTIES EXPRESSLY DISCLAIM WARRANTIES OR CONDITIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED. ANDROMEDA PARTIES MAKE NO WARRANTY OR REPRESENTATION AND DISCLAIM ALL RESPONSIBILITY FOR WHETHER THE SERVICE: (A) WILL MEET YOUR REQUIREMENTS; (B) WILL BE AVAILABLE ON AN UNINTERRUPTED, TIMELY, SECURE, OR ERROR-FREE BASIS; OR (C) WILL BE ACCURATE, RELIABLE, COMPLETE, LEGAL, OR SAFE. ANDROMEDA PARTIES DISCLAIM ALL OTHER WARRANTIES OR CONDITIONS, EXPRESS OR IMPLIED, INCLUDING, WITHOUT LIMITATION, IMPLIED WARRANTIES OR CONDITIONS OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, TITLE, AND NON-INFRINGEMENT. ANDROMEDA PARTIES WILL NOT BE LIABLE FOR ANY LOSS OF ANY KIND FROM ANY ACTION TAKEN OR TAKEN IN RELIANCE ON MATERIAL OR INFORMATION, CONTAINED ON THE SERVICE. WHILE ANDROMEDA PROTOCOL ATTEMPTS TO MAKE YOUR ACCESS TO AND USE OF THE SERVICE SAFE, ANDROMEDA PARTIES CANNOT AND DOES NOT REPRESENT OR WARRANT THAT THE SERVICE, CONTENT, ARE FREE OF VIRUSES OR OTHER HARMFUL COMPONENTS. WE CANNOT GUARANTEE THE SECURITY OF ANY DATA THAT YOU DISCLOSE ONLINE. NO ADVICE OR INFORMATION, WHETHER ORAL OR OBTAINED FROM THE ANDROMEDA PARTIES OR THROUGH THE SERVICE, WILL CREATE ANY WARRANTY OR REPRESENTATION NOT EXPRESSLY MADE HEREIN. YOU ACCEPT THE INHERENT SECURITY RISKS OF PROVIDING INFORMATION AND DEALING ONLINE OVER THE INTERNET AND WILL NOT HOLD ANDROMEDA PARTIES RESPONSIBLE FOR ANY BREACH OF SECURITY. ANDROMEDA PARTIES WILL NOT BE RESPONSIBLE OR LIABLE TO YOU FOR ANY LOSS AND TAKE NO RESPONSIBILITY FOR, AND WILL NOT BE LIABLE TO YOU FOR, ANY USE OF NFTS, CONTENT, AND/OR CONTENT LINKED TO OR ASSOCIATED WITH TOKEN TRANSACTIONS, INCLUDING BUT NOT LIMITED TO ANY LOSSES, DAMAGES, OR CLAIMS ARISING FROM: (A) USER ERROR, INCORRECTLY CONSTRUCTED TRANSACTIONS, OR MISTYPED ADDRESSES; (B) SERVER FAILURE OR DATA LOSS; (C) UNAUTHORIZED ACCESS OR USE; (D) ANY UNAUTHORIZED THIRD-PARTY ACTIVITIES, INCLUDING WITHOUT LIMITATION THE USE OF VIRUSES, PHISHING, BRUTEFORCING OR OTHER MEANS OF ATTACK AGAINST THE SERVICE OR YOU. YOU AGREE ANDROMEDA PARTIES CANNOT AFFECT OR OTHERWISE CONTROL THE TRANSFER OF TITLE OR RIGHT IN ANY TOKENS. YOU AGREE THAT ANDROMEDA PARTIES ARE NOT RESPONSIBLE OR LIABLE FOR ANY SUSTAINED LOSSES OR INJURY DUE TO VULNERABILITY OR ANY KIND OF FAILURE, ABNORMAL BEHAVIOR OF SOFTWARE (E.G., WALLET, SMART CONTRACT), BLOCKCHAINS OR ANY OTHER FEATURES OF THE SERVICE. NO ANDROMEDA PARTY IS RESPONSIBLE FOR LOSSES OR INJURY DUE TO LATE REPORTS BY DEVELOPERS OR REPRESENTATIVES (OR NO REPORT AT ALL) OF ANY ISSUES WITH THE BLOCKCHAIN, INCLUDING FORKS, TECHNICAL NODE ISSUES OR ANY OTHER ISSUES HAVING LOSSES OR INJURY AS A RESULT. Some jurisdictions do not allow the exclusion of implied warranties in contracts with consumers, so the above exclusion may not apply to you.
-### 11. Assumption of Risk
-You accept and acknowledge: The value of digital assets including tokens is subjective. Prices of tokens are subject to extreme volatility and fluctuations in price. You acknowledge that you fully understand this subjectivity and volatility and that you may lose money using the Service. A lack of use or public interest in the creation and development of distributed ecosystems could negatively impact the development of those ecosystems and related applications and could therefore also negatively impact the potential utility of tokens. The regulatory regime governing blockchain technologies, non-fungible tokens, cryptocurrency, and other crypto-based items is uncertain, and new regulations or policies may materially adversely affect the development of the Service and the utility of tokens. You are solely responsible for determining what, if any, taxes apply to your transactions. Andromeda Protocol is not responsible for determining the taxes that apply to your use of the Service, including regarding tokens. There are risks associated with digital assets furnished by third parties through peer-to-peer transactions, including but not limited to, the risk of purchasing counterfeit items, mislabeled items, items that are vulnerable to metadata decay, items on smart contracts with bugs, and items that may become untransferable. You represent and warrant that you have done sufficient research before making any decisions to sell, obtain, transfer, or otherwise interact with the Service. We do not control the public blockchains that you are interacting with, and we do not control certain smart contracts and protocols that may be integral to your ability to complete transactions on these public blockchains. Additionally, blockchain transactions are irreversible and Andromeda Protocol has no ability to reverse any transactions on the blockchain. There are risks associated with using Internet and blockchain-based products, including, but not limited to, the risk associated with hardware, software, and Internet connections, the risk of malicious software introduction, and the risk that third parties may obtain unauthorized access to your third-party wallet or Account. You accept and acknowledge that Andromeda Protocol will not be responsible for any communication failures, disruptions, errors, distortions or delays you may experience when using the Service or any Blockchain network, however caused. The Service might rely on third-party platforms, developers, or vendors. If we are unable to maintain a good relationship with such platform providers, developers, or vendors; if the terms and conditions or pricing of such third parties change; if we violate or cannot comply with the terms and conditions of such third parties; or if any of such third parties lose market share or falls out of favor or is unavailable for a prolonged period of time, access to and use of the Service will suffer. Under no circumstances shall the inability to use the Service in conjunction with the purchase, sale, or transfer of items available on any blockchains serve as grounds for a claim against Andromeda Protocol. If you have a dispute with one or more users, YOU RELEASE ANDROMEDA PARTIES FROM CLAIMS, DEMANDS, AND DAMAGES OF EVERY KIND AND NATURE, KNOWN AND UNKNOWN, ARISING OUT OF OR IN ANY WAY CONNECTED WITH SUCH DISPUTES. IN ENTERING INTO THIS RELEASE, YOU EXPRESSLY WAIVE ANY PROTECTIONS (WHETHER STATUTORY OR OTHERWISE) THAT WOULD OTHERWISE LIMIT THE COVERAGE OF THIS RELEASE TO INCLUDE THOSE CLAIMS WHICH YOU MAY KNOW OR SUSPECT TO EXIST IN YOUR FAVOR AT THE TIME OF AGREEING TO THIS RELEASE.
-### 12. Limitation of Liability
-TO THE FULLEST EXTENT PERMITTED BY LAW, YOU AGREE THAT IN NO EVENT WILL ANDROMEDA PARTIES OR ITS SERVICE PROVIDERS (I.E. HOSTING SERVICES) BE LIABLE TO YOU OR ANY THIRD PARTY FOR ANY LOST PROFIT OR ANY INDIRECT, CONSEQUENTIAL, EXEMPLARY, INCIDENTAL, SPECIAL, OR PUNITIVE DAMAGES ARISING FROM THESE TERMS OR THE SERVICE, PRODUCTS OR THIRD-PARTY SITES AND PRODUCTS, OR FOR ANY DAMAGES RELATED TO LOSS OF REVENUE, LOSS OF PROFITS, LOSS OF BUSINESS OR ANTICIPATED SAVINGS, LOSS OF USE, LOSS OF GOODWILL, OR LOSS OF DATA, AND WHETHER CAUSED BY STRICT LIABILITY OR TORT (INCLUDING NEGLIGENCE), BREACH OF CONTRACT, OR OTHERWISE, EVEN IF FORESEEABLE AND EVEN IF ANDROMEDA PARTIES OR ITS SERVICE PROVIDERS HAVE BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES; OR (B) FOR ANY OTHER CLAIM, DEMAND, OR DAMAGES WHATSOEVER RESULTING FROM OR ARISING OUT OF OR IN CONNECTION WITH THESE TERMS OF THE DELIVERY, USE, OR PERFORMANCE OF THE SERVICE. ACCESS TO, AND USE OF, THE SERVICE, PRODUCTS OR THIRD-PARTY SITES, AND PRODUCTS ARE AT YOUR OWN DISCRETION AND RISK, AND YOU WILL BE SOLELY RESPONSIBLE FOR ANY DAMAGE TO YOUR COMPUTER SYSTEM OR MOBILE DEVICE OR LOSS OF DATA RESULTING THEREFROM. NOTWITHSTANDING ANYTHING TO THE CONTRARY CONTAINED HEREIN, IN NO EVENT SHALL THE MAXIMUM AGGREGATE LIABILITY OF ANDROMEDA PARTIES  ARISING OUT OF OR IN ANY WAY RELATED TO THESE TERMS, THE ACCESS TO AND USE OF THE SERVICE, CONTENT, OR ANY ANDROMEDA PROTOCOL PRODUCTS OR SERVICES EXCEED THE GREATER OF (A) $100 OR (B) THE AMOUNT RECEIVED BY ANDROMEDA PROTOCOL FOR ITS SERVICE DIRECTLY RELATING TO THE ITEMS THAT ARE THE SUBJECT OF THE CLAIM. THE FOREGOING LIMITATIONS WILL APPLY EVEN IF THE ABOVE-STATED REMEDY FAILS OF ITS ESSENTIAL PURPOSE. Some jurisdictions do not allow the exclusion or limitation of incidental or consequential damages, so the above limitation or exclusion may not apply to you. Some jurisdictions also limit disclaimers or limitations of liability for personal injury from consumer products, so this limitation may not apply to personal injury claims.
-### 13. Privacy Policy
-When you use the Service, the only information we collect from you is your blockchain wallet address, completed transaction hashes, and token identifiers. We do not collect any personal information from you. We do, however, use third-party services, which may receive your publicly available personal information. We do not take responsibility for any information you make public on the Service, the Cosmos blockchain, or any other blockchain by taking actions through the Andromeda Protocol interface.
-### 14. Modifications to the Service
-You agree that Andromeda Protocol reserves the right in our sole discretion to modify, suspend, or discontinue, temporarily or permanently, the Service (or any features or parts thereof) at any time and without liability as a result. You agree that such circumstances do not give rise to a breach of this Agreement. You agree that to the extent, if any, such circumstances present a claim against Andromeda Protocol, any such claim is outside the limited scope of liability set forth in this Agreement.
-### 15. Dispute Resolution
-Arbitration Dispute Resolution. Please read the following arbitration agreement in this Section (“Arbitration Agreement”) carefully. It requires you to arbitrate disputes with Andromeda Parties and limits the way you can seek relief from us. This section does not govern disputes between users or between users and third parties. Andromeda Protocol does not provide dispute resolution services for such disagreements and the parties must resolve those disputes directly. Applicability of Arbitration Agreement. You agree that any dispute, controversy, or claim relating in any way to your access or use of the Service, or to any aspect of your relationship with Andromeda Protocol, will be resolved by binding arbitration, rather than in court, including threshold questions of the arbitrability of such dispute, controversy, or claim except that (1) you or Andromeda Protocol may assert claims in small claims court, but only if the claims qualify, the claims remain only in such court, and the claims remain on an individual, non-representative, and non-class basis; and (2) you or Andromeda Parties may seek injunctive or equitable relief in a court of proper jurisdiction if the claim relates to intellectual property infringement or other misuse of intellectual property rights. Dispute resolution process. You and Andromeda Parties both agree to engage in good-faith efforts to resolve disputes prior to either party initiating an arbitration, small claims court proceeding, or equitable relief for intellectual property infringement. You must initiate this dispute resolution process by sending a letter describing the nature of your claim and desired resolution to Andromeda Protocol  (service@andromedaprotocol.io). Both parties agree to meet and confer personally, by telephone, or by videoconference (hereinafter “Conference”) to discuss the dispute and attempt in good faith to reach a mutually beneficial outcome that avoids the expenses of arbitration or, where applicable, litigation. If you are represented by counsel, your counsel may participate in the Conference as well, but you agree to fully participate in the Conference. Likewise, if Andromeda Protocol is represented by counsel, its counsel may participate in the Conference as well, but Andromeda Protocol agrees to have a company representative fully participate in the Conference. The statute of limitations and any filing fee deadlines shall be tolled while the parties engage in the informal dispute resolution process and Conference required by this paragraph. If the parties do not reach an agreement to resolve the dispute within thirty (30) days after initiation of this dispute resolution process, either party may commence arbitration, file an action in small claims court, or file a claim for injunctive or equitable relief in a court of proper jurisdiction for matters relating to intellectual property infringement, if the claims qualify. Arbitration Rules and Forum. The U.S. Federal Arbitration Act governs the interpretation and enforcement of this Arbitration Agreement. To begin an arbitration proceeding after participating in the dispute resolution process, you must send a message requesting arbitration and describing your claim to legal@andromedaprotocol.io. The arbitration will be conducted by the International Centre for Dispute Resolution (ICDR), an established alternative dispute resolution provider. Disputes involving claims and counterclaims under $500,000, not inclusive of attorneys’ fees and interest, shall be subject to ICDR’s most current version of the International Expedited Procedures then in effect; all other claims shall be subject to ICDR’s most current version of the International Dispute Resolution Procedures then in effect. ICDR’s rules are available at icdr.org. If ICDR is not available to arbitrate, the parties will select an alternative arbitral forum. You are responsible for all costs that you incur in the arbitration, including without limitation, fees for attorneys or expert witnesses. As permitted by the applicable rules, you may choose to have the arbitration conducted by telephone or videoconference, based on written submissions. Any judgment on the award rendered by the arbitrator may be entered in any court of competent jurisdiction. Any in-person hearing shall be held in Dallas, Texas, U.S. Authority of Arbitrator. The arbitrator shall have exclusive authority to (a) determine the scope and enforceability of this Arbitration Agreement and (b) resolve any dispute related to the interpretation, applicability, enforceability, or formation of this Arbitration Agreement including, but not limited to, any claim that all or any part of this Arbitration Agreement is void or voidable. The arbitration will decide the rights and liabilities, if any, of you and Andromeda Parties. The arbitration proceeding will not be consolidated with any other matters or joined with any other cases or parties. The arbitrator shall have the authority to grant motions dispositive of all or part of any claim. The arbitrator shall have the authority to award monetary damages and to grant any non-monetary remedy or relief available to an individual under applicable law, the arbitral forum’s rules, and these Terms. The arbitrator shall issue a written award and statement of decision describing the essential findings and conclusions on which the award is based, including the calculation of any damages awarded. The arbitrator has the same authority to award relief on an individual basis that a judge in a court of law would have. The award of the arbitrator is final and binding upon you and us. Waiver of Jury Trial. YOU AND ANDROMEDA PARTIES HEREBY WAIVE ANY CONSTITUTIONAL AND STATUTORY RIGHTS TO SUE IN COURT AND HAVE A TRIAL IN FRONT OF A JUDGE OR A JURY. You and Andromeda Parties are instead electing that all claims and disputes shall be resolved by arbitration under this Arbitration Agreement, except as specified in the second bullet of this Section 15, above (“Applicability of Arbitration Agreement”). An arbitrator can award on an individual basis the same damages and relief as a court and must follow these Terms as a court would. However, there is no judge or jury in arbitration, and court review of an arbitration award is subject to very limited review. Waiver of Class Actions and Class Arbitrations. ALL CLAIMS AND DISPUTES WITHIN THE SCOPE OF THIS ARBITRATION AGREEMENT MUST BE ARBITRATED ON AN INDIVIDUAL BASIS AND NOT ON A REPRESENTATIVE OR COLLECTIVE CLASS BASIS. ONLY INDIVIDUAL RELIEF IS AVAILABLE, AND CLAIMS OF MORE THAN ONE USER, PERSON, OR ENTITY CANNOT BE ARBITRATED OR CONSOLIDATED WITH THOSE OF ANY OTHER USER, PERSON, OR ENTITY. Accordingly, under the arbitration procedures outlined in this section, an arbitrator shall not combine or consolidate more than one party’s claims without the written consent of all affected parties to an arbitration proceeding. Without limiting the generality of the foregoing, you and Andromeda Parties agree that no dispute shall proceed by way of class arbitration without the written consent of all affected parties. If a decision is issued stating that applicable law precludes enforcement of any part of this subsection’s limitations as to a given claim for relief, then that claim must be severed from the arbitration and brought in the state or federal courts located in the State of Delaware. All other claims shall be arbitrated. Severability. Except as provided in this Section, if any part or parts of this Arbitration Agreement are found under the law to be invalid or unenforceable, then such specific part or parts shall be of no force and effect and shall be severed and the remainder of the Arbitration Agreement shall continue in full force and effect. Survival of Agreement. This Arbitration Agreement will survive the termination of your relationship with Andromeda Protocol. Modification. Notwithstanding any provision in these Terms to the contrary, we agree that if Andromeda Protocol makes any future material change to this Arbitration Agreement, you may reject that change within thirty (30) days of such change becoming effective by writing to legal@andromedaprotocol.io.
-### 16. Governing Law and Venue
-Except as otherwise expressly stated herein, these Terms and your access to and use of the Service shall be governed by and construed and enforced in accordance with the laws of the British Virgin Islands (without regard to conflict of law rules, or any other jurisdiction that would cause the application of the laws of any other jurisdiction). For any dispute between the parties that is not subject to arbitration as set forth in Section 15, each party hereby submits to the exclusive jurisdiction of the Courts of the British Virgin Islands and agrees that any such action, suit, proceeding, or dispute shall be brought only in such courts.
-### 17. Termination
-If you breach any of the provisions of these Terms, all licenses granted by Andromeda Protocol will terminate automatically. Additionally, notwithstanding anything contained in these Terms, we reserve the right, with or without notice and in our sole discretion, to suspend, disable, or terminate your ability to access or use the Service (or any part of the foregoing) at any time and for any or no reason, and you acknowledge and agree that we shall have no liability or obligation to you in such event and that you will not be entitled to a refund of any amounts that you have already paid to us.
-### 18. Severability
-If any term, clause, or provision of these Terms is held invalid or unenforceable, then that term, clause, or provision will be severable from these Terms and will not affect the validity or enforceability of any remaining part of that term, clause, or provision, or any other term, clause, or provision of these Terms.
-### 19. Injunctive Relief
-You agree that a breach of these Terms will cause irreparable injury to Andromeda Protocol for which monetary damages would not be an adequate remedy and Andromeda Protocol shall be entitled to equitable relief in addition to any remedies it may have hereunder or at law without a bond, other security, or proof of damages.
-### 20. Export Laws
-You agree that you will not export or re-export, directly or indirectly, the Service, or other information or materials provided by Andromeda Protocol hereunder, to any country for which the United States or any other relevant jurisdiction requires any export license or other governmental approval at the time of export without first obtaining such license or approval. But without limitation, the Service may not be exported or re-exported (a) into any U.S. embargoed countries or any country that has been designated by the U.S. Government as a “terrorist supporting” country, or (b) to anyone listed on any U.S. Government list of prohibited or restricted parties, including the U.S. Treasury Department’s list of Specially Designated Nationals or the U.S. Department of Commerce Denied Person’s List or Entity List. By using the Service, you represent and warrant that you are not located in any such country or on any such list. You are responsible for and hereby agree to comply at your sole expense with all applicable United States export laws and regulations.
-### 21. Survival
-All sections which by their nature should survive the termination of these Terms shall continue in full force and effect after and notwithstanding any termination of these Terms by Andromeda Parties or you. Termination will not limit any of Andromeda Parties’ other rights or remedies at law or in equity.
-### 22. Miscellaneous
+ Copyright (C) 2007 Free Software Foundation, Inc. [https://fsf.org/](https://fsf.org/)
+ Everyone is permitted to copy and distribute verbatim copies
+ of this license document, but changing it is not allowed.
 
-(a)   Entire Agreement. These Terms constitute the entire agreement the parties relating to the subject matter hereof and supersede all prior or        contemporaneous agreements and understandings, both written and oral, between the parties with respect to the subject matter hereof. 
+                            Preamble
 
-(b)  Amendments and Modifications. These Terms may only be amended, modified, altered or supplemented by or with the written consent of Site Operator. Site  Operator reserves, the right, in its sole and absolute discretion, to amend, modify, alter or supplement these Terms from time to time. The most current version of these Terms will be posted on the Site. Any changes or modifications will be effective immediately upon the modified Agreement being posted to the Site. A User shall be responsible for reviewing and becoming familiar with any such modifications. Each User hereby waives any right such User may have to receive specific notice of such changes or modifications. Use of the Site by a User after any modification of these Terms constitutes the User’s acceptance of the modified terms and conditions. If a User does not agree to any such modifications, the User must immediately stop using the Site.
+  The GNU General Public License is a free, copyleft license for
+software and other kinds of works.
 
-(c) Force Majeure. Site Operator shall not incur any liability or penalty for not performing any act or fulfilling any duty or obligation hereunder or in connection with the matters contemplated hereby by reason of any occurrence that is not within its control (including any provision of any present or future law or regulation or any act of any governmental authority, any act of God or war or terrorism, any epidemic or pandemic, or the unavailability, disruption or malfunction of the Internet, the World Wide Web or any other electronic network, the Cosmos network or blockchain or chains within the Cosmos network or Andromeda Smart Contract System or any aspect thereof, or any consensus attack, or hack, or denial-of-service or other attack on the foregoing or any aspect thereof, or on the other software, networks and infrastructure that enables Site Operator to provide the Site), it being understood that Site Operator shall use commercially reasonable efforts, consistent with accepted practices in the industries in which Site Operator operates, as applicable, to resume performance as soon as reasonably practicable under the circumstances.
+  The licenses for most software and other practical works are designed
+to take away your freedom to share and change the works.  By contrast,
+the GNU General Public License is intended to guarantee your freedom to
+share and change all versions of a program--to make sure it remains free
+software for all its users.  We, the Free Software Foundation, use the
+GNU General Public License for most of our software; it applies also to
+any other work released this way by its authors.  You can apply it to
+your programs, too.
 
-(d) Successors and Assigns. These Terms shall inure to the benefit of Site Operator, the Users, and their respective permitted successors, permitted assigns, permitted transferees and permitted delegates and shall be binding upon all of the foregoing persons and any person who may otherwise succeed to any right, obligation or liability under these Terms by operation of law or otherwise. A User shall not assign any of a User rights or delegate any of a User liabilities or obligations under these Terms to any other person without Site Operator’s advance written consent. Site Operator may freely assign, transfer or delegate its rights, obligations and liabilities under these Terms to the maximum extent permitted by applicable law. 
+  When we speak of free software, we are referring to freedom, not
+price.  Our General Public Licenses are designed to make sure that you
+have the freedom to distribute copies of free software (and charge for
+them if you wish), that you receive source code or can get it if you
+want it, that you can change the software or use pieces of it in new
+free programs, and that you know you can do these things.
 
-(e) No Implied Waiver. No failure or delay on the part of Site Operator in the exercise of any power, right, privilege or remedy under these Terms shall operate as a waiver of such power, right, privilege or remedy; and no single or partial exercise of any such power, right, privilege or remedy shall preclude any other or further exercise thereof or of any other power, right, privilege or remedy. Site Operator shall not be deemed to have waived any claim arising out of these Terms, or any power, right, privilege or remedy under these Terms, unless the waiver of such claim, power, right, privilege or remedy is expressly set forth in a written instrument duly executed and delivered on behalf of Site Operator, and any such waiver shall not be applicable or have any effect except in the specific instance in which it is given. 
+  To protect your rights, we need to prevent others from denying you
+these rights or asking you to surrender the rights.  Therefore, you have
+certain responsibilities if you distribute copies of the software, or if
+you modify it: responsibilities to respect the freedom of others.
 
-(f) Headings. The section headings used herein are for reference only and shall not be read to have any legal effect. 
+  For example, if you distribute copies of such a program, whether
+gratis or for a fee, you must pass on to the recipients the same
+freedoms that you received.  You must make sure that they, too, receive
+or can get the source code.  And you must show them these terms so they
+know their rights.
 
-(g) Operations. The Service is operated by us outside the United States. Those who choose to access the Service from locations outside the British Virgin Islands do so at their own initiative and are responsible for compliance with applicable local laws. 
+  Developers that use the GNU GPL protect your rights with two steps:
+(1) assert copyright on the software, and (2) offer you this License
+giving you legal permission to copy, distribute and/or modify it.
 
-(h) No Third Party Beneficiary. Except as otherwise provided herein, these Terms are intended solely for the benefit of the parties and are not intended to confer third-party beneficiary rights upon any other person or entity.
+  For the developers' and authors' protection, the GPL clearly explains
+that there is no warranty for this free software.  For both users' and
+authors' sake, the GPL requires that modified versions be marked as
+changed, so that their problems will not be attributed erroneously to
+authors of previous versions.
 
-(i) California End-User Consumer Rights. In accordance with Cal. Civ. Code Sec. 1789.3, if a User is a California State resident, the User may file grievances and complaints regarding the Site with the California Department of Consumer Affairs, Consumer Information Division; 1625 North Market Blvd., Suite N 112, 1625 North Market Blvd., Suite N 112, Sacramento, CA 95834 or by phone at 800-952-5210; or by email to: dca@dca.ca.gov.
+  Some devices are designed to deny users access to install or run
+modified versions of the software inside them, although the manufacturer
+can do so.  This is fundamentally incompatible with the aim of
+protecting users' freedom to change the software.  The systematic
+pattern of such abuse occurs in the area of products for individuals to
+use, which is precisely where it is most unacceptable.  Therefore, we
+have designed this version of the GPL to prohibit the practice for those
+products.  If such problems arise substantially in other domains, we
+stand ready to extend this provision to those domains in future versions
+of the GPL, as needed to protect the freedom of users.
 
-(j) Rules of Interpretation. 
+  Finally, every program is threatened constantly by software patents.
+States should not allow patents to restrict development and use of
+software on general-purpose computers, but in those that do, we wish to
+avoid the special danger that patents applied to a free program could
+make it effectively proprietary.  To prevent this, the GPL assures that
+patents cannot be used to render the program non-free.
 
-   (i)  “hereof,” “herein,” “hereunder,” “hereby” and words of similar import will, unless otherwise stated, be construed to refer to these Terms as a whole and not to any particular provision of these Terms;
-   
-   
-   (ii)  “include(s)” and “including” shall be construed to be followed by the words “without limitation”;
-   
-   
-   (iii) “or” shall be construed to be the “inclusive or” rather than “exclusive or” unless the context requires otherwise;
-   
-   
-   (iv)  any rule of construction to the effect that ambiguities are to be resolved against the drafting party shall not be applied in the construction or interpretation of these Terms;
-   
-   
-   (v)  section titles, captions and headings are for convenience of reference only and have no legal or contractual effect.;
-   
-   
-   (vi) whenever the context requires: the singular number shall include the plural, and vice versa; the masculine gender shall include the feminine and neuter genders; the feminine gender shall include the masculine and neuter genders; and the neuter gender shall include the masculine and feminine genders; and
-   
-   
-   (vii)  except as otherwise indicated, all references in these Terms to “Sections,” “clauses,” etc., are intended to refer to Sections of Sections, clauses, etc. of these Terms.
-   
-### 23. Disclaimer for staking of Andromeda Protocol tokens
-The Andromeda Protocol is a decentralized peer-to-peer blockchain that people can use to stake IBC-enabled governance tokens called ANDR. The Andromeda Protocol is made up of free, public, and open-source software. Your use of the Andromeda Protocol involves various risks, including but not limited to losses incurred while ANDR tokens are being staked on third-party validators, and supplied to decentralized exchanges and liquidity pools, as well as losses due to the fluctuation of prices of ANDR or other tokens in a trading pair or liquidity pool, including impermanent loss. Before claiming any rewards ANDR tokens or staking any ANDR tokens through the Andromeda Protocol website or otherwise you should do your own due diligence to make sure you understand how the Andromeda Protocol works. Additionally, you can access the Andromeda network and Service through several web or mobile interfaces which the Andromeda core team does not control. The Andromeda Protocol will not accept any responsibility for any loss of ANDR tokens or while using these interfaces. You are responsible for doing your own due diligence on those interfaces to understand the fees and the risks they present. USE OF THE ANDROMEDA PROTOCOL IS PROVIDED “AS IS”, AT YOUR OWN RISK, AND WITHOUT WARRANTIES OF ANY KIND. Although Andromeda Labs developed the initial code for Andromeda Protocol, it does not own or control the Andromeda Protocol, which is run by a decentralized validator set. Upgrades and modifications to the protocol are managed through community-driven voting by holders of the Andromeda Protocol governance token. No developer or entity involved in creating the Andromeda Protocol will be liable for any claims or damages whatsoever associated with your use, inability to use, or your interaction with other users of the Andromeda Protocol, including any direct, indirect, incidental, special, exemplary, punitive or consequential damages, or loss of profits, cryptocurrencies, tokens, or anything else of value.
+  The precise terms and conditions for copying, distribution and
+modification follow.
 
+                       TERMS AND CONDITIONS
+
+  0. Definitions.
+
+  "This License" refers to version 3 of the GNU General Public License.
+
+  "Copyright" also means copyright-like laws that apply to other kinds of
+works, such as semiconductor masks.
+
+  "The Program" refers to any copyrightable work licensed under this
+License.  Each licensee is addressed as "you".  "Licensees" and
+"recipients" may be individuals or organizations.
+
+  To "modify" a work means to copy from or adapt all or part of the work
+in a fashion requiring copyright permission, other than the making of an
+exact copy.  The resulting work is called a "modified version" of the
+earlier work or a work "based on" the earlier work.
+
+  A "covered work" means either the unmodified Program or a work based
+on the Program.
+
+  To "propagate" a work means to do anything with it that, without
+permission, would make you directly or secondarily liable for
+infringement under applicable copyright law, except executing it on a
+computer or modifying a private copy.  Propagation includes copying,
+distribution (with or without modification), making available to the
+public, and in some countries other activities as well.
+
+  To "convey" a work means any kind of propagation that enables other
+parties to make or receive copies.  Mere interaction with a user through
+a computer network, with no transfer of a copy, is not conveying.
+
+  An interactive user interface displays "Appropriate Legal Notices"
+to the extent that it includes a convenient and prominently visible
+feature that (1) displays an appropriate copyright notice, and (2)
+tells the user that there is no warranty for the work (except to the
+extent that warranties are provided), that licensees may convey the
+work under this License, and how to view a copy of this License.  If
+the interface presents a list of user commands or options, such as a
+menu, a prominent item in the list meets this criterion.
+
+  1. Source Code.
+
+  The "source code" for a work means the preferred form of the work
+for making modifications to it.  "Object code" means any non-source
+form of a work.
+
+  A "Standard Interface" means an interface that either is an official
+standard defined by a recognized standards body, or, in the case of
+interfaces specified for a particular programming language, one that
+is widely used among developers working in that language.
+
+  The "System Libraries" of an executable work include anything, other
+than the work as a whole, that (a) is included in the normal form of
+packaging a Major Component, but which is not part of that Major
+Component, and (b) serves only to enable use of the work with that
+Major Component, or to implement a Standard Interface for which an
+implementation is available to the public in source code form.  A
+"Major Component", in this context, means a major essential component
+(kernel, window system, and so on) of the specific operating system
+(if any) on which the executable work runs, or a compiler used to
+produce the work, or an object code interpreter used to run it.
+
+  The "Corresponding Source" for a work in object code form means all
+the source code needed to generate, install, and (for an executable
+work) run the object code and to modify the work, including scripts to
+control those activities.  However, it does not include the work's
+System Libraries, or general-purpose tools or generally available free
+programs which are used unmodified in performing those activities but
+which are not part of the work.  For example, Corresponding Source
+includes interface definition files associated with source files for
+the work, and the source code for shared libraries and dynamically
+linked subprograms that the work is specifically designed to require,
+such as by intimate data communication or control flow between those
+subprograms and other parts of the work.
+
+  The Corresponding Source need not include anything that users
+can regenerate automatically from other parts of the Corresponding
+Source.
+
+  The Corresponding Source for a work in source code form is that
+same work.
+
+  2. Basic Permissions.
+
+  All rights granted under this License are granted for the term of
+copyright on the Program, and are irrevocable provided the stated
+conditions are met.  This License explicitly affirms your unlimited
+permission to run the unmodified Program.  The output from running a
+covered work is covered by this License only if the output, given its
+content, constitutes a covered work.  This License acknowledges your
+rights of fair use or other equivalent, as provided by copyright law.
+
+  You may make, run and propagate covered works that you do not
+convey, without conditions so long as your license otherwise remains
+in force.  You may convey covered works to others for the sole purpose
+of having them make modifications exclusively for you, or provide you
+with facilities for running those works, provided that you comply with
+the terms of this License in conveying all material for which you do
+not control copyright.  Those thus making or running the covered works
+for you must do so exclusively on your behalf, under your direction
+and control, on terms that prohibit them from making any copies of
+your copyrighted material outside their relationship with you.
+
+  Conveying under any other circumstances is permitted solely under
+the conditions stated below.  Sublicensing is not allowed; section 10
+makes it unnecessary.
+
+  3. Protecting Users' Legal Rights From Anti-Circumvention Law.
+
+  No covered work shall be deemed part of an effective technological
+measure under any applicable law fulfilling obligations under article
+11 of the WIPO copyright treaty adopted on 20 December 1996, or
+similar laws prohibiting or restricting circumvention of such
+measures.
+
+  When you convey a covered work, you waive any legal power to forbid
+circumvention of technological measures to the extent such circumvention
+is effected by exercising rights under this License with respect to
+the covered work, and you disclaim any intention to limit operation or
+modification of the work as a means of enforcing, against the work's
+users, your or third parties' legal rights to forbid circumvention of
+technological measures.
+
+  4. Conveying Verbatim Copies.
+
+  You may convey verbatim copies of the Program's source code as you
+receive it, in any medium, provided that you conspicuously and
+appropriately publish on each copy an appropriate copyright notice;
+keep intact all notices stating that this License and any
+non-permissive terms added in accord with section 7 apply to the code;
+keep intact all notices of the absence of any warranty; and give all
+recipients a copy of this License along with the Program.
+
+  You may charge any price or no price for each copy that you convey,
+and you may offer support or warranty protection for a fee.
+
+  5. Conveying Modified Source Versions.
+
+  You may convey a work based on the Program, or the modifications to
+produce it from the Program, in the form of source code under the
+terms of section 4, provided that you also meet all of these conditions:
+
+    a) The work must carry prominent notices stating that you modified
+    it, and giving a relevant date.
+
+    b) The work must carry prominent notices stating that it is
+    released under this License and any conditions added under section
+    7.  This requirement modifies the requirement in section 4 to
+    "keep intact all notices".
+
+    c) You must license the entire work, as a whole, under this
+    License to anyone who comes into possession of a copy.  This
+    License will therefore apply, along with any applicable section 7
+    additional terms, to the whole of the work, and all its parts,
+    regardless of how they are packaged.  This License gives no
+    permission to license the work in any other way, but it does not
+    invalidate such permission if you have separately received it.
+
+    d) If the work has interactive user interfaces, each must display
+    Appropriate Legal Notices; however, if the Program has interactive
+    interfaces that do not display Appropriate Legal Notices, your
+    work need not make them do so.
+
+  A compilation of a covered work with other separate and independent
+works, which are not by their nature extensions of the covered work,
+and which are not combined with it such as to form a larger program,
+in or on a volume of a storage or distribution medium, is called an
+"aggregate" if the compilation and its resulting copyright are not
+used to limit the access or legal rights of the compilation's users
+beyond what the individual works permit.  Inclusion of a covered work
+in an aggregate does not cause this License to apply to the other
+parts of the aggregate.
+
+  6. Conveying Non-Source Forms.
+
+  You may convey a covered work in object code form under the terms
+of sections 4 and 5, provided that you also convey the
+machine-readable Corresponding Source under the terms of this License,
+in one of these ways:
+
+    a) Convey the object code in, or embodied in, a physical product
+    (including a physical distribution medium), accompanied by the
+    Corresponding Source fixed on a durable physical medium
+    customarily used for software interchange.
+
+    b) Convey the object code in, or embodied in, a physical product
+    (including a physical distribution medium), accompanied by a
+    written offer, valid for at least three years and valid for as
+    long as you offer spare parts or customer support for that product
+    model, to give anyone who possesses the object code either (1) a
+    copy of the Corresponding Source for all the software in the
+    product that is covered by this License, on a durable physical
+    medium customarily used for software interchange, for a price no
+    more than your reasonable cost of physically performing this
+    conveying of source, or (2) access to copy the
+    Corresponding Source from a network server at no charge.
+
+    c) Convey individual copies of the object code with a copy of the
+    written offer to provide the Corresponding Source.  This
+    alternative is allowed only occasionally and noncommercially, and
+    only if you received the object code with such an offer, in accord
+    with subsection 6b.
+
+    d) Convey the object code by offering access from a designated
+    place (gratis or for a charge), and offer equivalent access to the
+    Corresponding Source in the same way through the same place at no
+    further charge.  You need not require recipients to copy the
+    Corresponding Source along with the object code.  If the place to
+    copy the object code is a network server, the Corresponding Source
+    may be on a different server (operated by you or a third party)
+    that supports equivalent copying facilities, provided you maintain
+    clear directions next to the object code saying where to find the
+    Corresponding Source.  Regardless of what server hosts the
+    Corresponding Source, you remain obligated to ensure that it is
+    available for as long as needed to satisfy these requirements.
+
+    e) Convey the object code using peer-to-peer transmission, provided
+    you inform other peers where the object code and Corresponding
+    Source of the work are being offered to the general public at no
+    charge under subsection 6d.
+
+  A separable portion of the object code, whose source code is excluded
+from the Corresponding Source as a System Library, need not be
+included in conveying the object code work.
+
+  A "User Product" is either (1) a "consumer product", which means any
+tangible personal property which is normally used for personal, family,
+or household purposes, or (2) anything designed or sold for incorporation
+into a dwelling.  In determining whether a product is a consumer product,
+doubtful cases shall be resolved in favor of coverage.  For a particular
+product received by a particular user, "normally used" refers to a
+typical or common use of that class of product, regardless of the status
+of the particular user or of the way in which the particular user
+actually uses, or expects or is expected to use, the product.  A product
+is a consumer product regardless of whether the product has substantial
+commercial, industrial or non-consumer uses, unless such uses represent
+the only significant mode of use of the product.
+
+  "Installation Information" for a User Product means any methods,
+procedures, authorization keys, or other information required to install
+and execute modified versions of a covered work in that User Product from
+a modified version of its Corresponding Source.  The information must
+suffice to ensure that the continued functioning of the modified object
+code is in no case prevented or interfered with solely because
+modification has been made.
+
+  If you convey an object code work under this section in, or with, or
+specifically for use in, a User Product, and the conveying occurs as
+part of a transaction in which the right of possession and use of the
+User Product is transferred to the recipient in perpetuity or for a
+fixed term (regardless of how the transaction is characterized), the
+Corresponding Source conveyed under this section must be accompanied
+by the Installation Information.  But this requirement does not apply
+if neither you nor any third party retains the ability to install
+modified object code on the User Product (for example, the work has
+been installed in ROM).
+
+  The requirement to provide Installation Information does not include a
+requirement to continue to provide support service, warranty, or updates
+for a work that has been modified or installed by the recipient, or for
+the User Product in which it has been modified or installed.  Access to a
+network may be denied when the modification itself materially and
+adversely affects the operation of the network or violates the rules and
+protocols for communication across the network.
+
+  Corresponding Source conveyed, and Installation Information provided,
+in accord with this section must be in a format that is publicly
+documented (and with an implementation available to the public in
+source code form), and must require no special password or key for
+unpacking, reading or copying.
+
+  7. Additional Terms.
+
+  "Additional permissions" are terms that supplement the terms of this
+License by making exceptions from one or more of its conditions.
+Additional permissions that are applicable to the entire Program shall
+be treated as though they were included in this License, to the extent
+that they are valid under applicable law.  If additional permissions
+apply only to part of the Program, that part may be used separately
+under those permissions, but the entire Program remains governed by
+this License without regard to the additional permissions.
+
+  When you convey a copy of a covered work, you may at your option
+remove any additional permissions from that copy, or from any part of
+it.  (Additional permissions may be written to require their own
+removal in certain cases when you modify the work.)  You may place
+additional permissions on material, added by you to a covered work,
+for which you have or can give appropriate copyright permission.
+
+  Notwithstanding any other provision of this License, for material you
+add to a covered work, you may (if authorized by the copyright holders of
+that material) supplement the terms of this License with terms:
+
+    a) Disclaiming warranty or limiting liability differently from the
+    terms of sections 15 and 16 of this License; or
+
+    b) Requiring preservation of specified reasonable legal notices or
+    author attributions in that material or in the Appropriate Legal
+    Notices displayed by works containing it; or
+
+    c) Prohibiting misrepresentation of the origin of that material, or
+    requiring that modified versions of such material be marked in
+    reasonable ways as different from the original version; or
+
+    d) Limiting the use for publicity purposes of names of licensors or
+    authors of the material; or
+
+    e) Declining to grant rights under trademark law for use of some
+    trade names, trademarks, or service marks; or
+
+    f) Requiring indemnification of licensors and authors of that
+    material by anyone who conveys the material (or modified versions of
+    it) with contractual assumptions of liability to the recipient, for
+    any liability that these contractual assumptions directly impose on
+    those licensors and authors.
+
+  All other non-permissive additional terms are considered "further
+restrictions" within the meaning of section 10.  If the Program as you
+received it, or any part of it, contains a notice stating that it is
+governed by this License along with a term that is a further
+restriction, you may remove that term.  If a license document contains
+a further restriction but permits relicensing or conveying under this
+License, you may add to a covered work material governed by the terms
+of that license document, provided that the further restriction does
+not survive such relicensing or conveying.
+
+  If you add terms to a covered work in accord with this section, you
+must place, in the relevant source files, a statement of the
+additional terms that apply to those files, or a notice indicating
+where to find the applicable terms.
+
+  Additional terms, permissive or non-permissive, may be stated in the
+form of a separately written license, or stated as exceptions;
+the above requirements apply either way.
+
+  8. Termination.
+
+  You may not propagate or modify a covered work except as expressly
+provided under this License.  Any attempt otherwise to propagate or
+modify it is void, and will automatically terminate your rights under
+this License (including any patent licenses granted under the third
+paragraph of section 11).
+
+  However, if you cease all violation of this License, then your
+license from a particular copyright holder is reinstated (a)
+provisionally, unless and until the copyright holder explicitly and
+finally terminates your license, and (b) permanently, if the copyright
+holder fails to notify you of the violation by some reasonable means
+prior to 60 days after the cessation.
+
+  Moreover, your license from a particular copyright holder is
+reinstated permanently if the copyright holder notifies you of the
+violation by some reasonable means, this is the first time you have
+received notice of violation of this License (for any work) from that
+copyright holder, and you cure the violation prior to 30 days after
+your receipt of the notice.
+
+  Termination of your rights under this section does not terminate the
+licenses of parties who have received copies or rights from you under
+this License.  If your rights have been terminated and not permanently
+reinstated, you do not qualify to receive new licenses for the same
+material under section 10.
+
+  9. Acceptance Not Required for Having Copies.
+
+  You are not required to accept this License in order to receive or
+run a copy of the Program.  Ancillary propagation of a covered work
+occurring solely as a consequence of using peer-to-peer transmission
+to receive a copy likewise does not require acceptance.  However,
+nothing other than this License grants you permission to propagate or
+modify any covered work.  These actions infringe copyright if you do
+not accept this License.  Therefore, by modifying or propagating a
+covered work, you indicate your acceptance of this License to do so.
+
+  10. Automatic Licensing of Downstream Recipients.
+
+  Each time you convey a covered work, the recipient automatically
+receives a license from the original licensors, to run, modify and
+propagate that work, subject to this License.  You are not responsible
+for enforcing compliance by third parties with this License.
+
+  An "entity transaction" is a transaction transferring control of an
+organization, or substantially all assets of one, or subdividing an
+organization, or merging organizations.  If propagation of a covered
+work results from an entity transaction, each party to that
+transaction who receives a copy of the work also receives whatever
+licenses to the work the party's predecessor in interest had or could
+give under the previous paragraph, plus a right to possession of the
+Corresponding Source of the work from the predecessor in interest, if
+the predecessor has it or can get it with reasonable efforts.
+
+  You may not impose any further restrictions on the exercise of the
+rights granted or affirmed under this License.  For example, you may
+not impose a license fee, royalty, or other charge for exercise of
+rights granted under this License, and you may not initiate litigation
+(including a cross-claim or counterclaim in a lawsuit) alleging that
+any patent claim is infringed by making, using, selling, offering for
+sale, or importing the Program or any portion of it.
+
+  11. Patents.
+
+  A "contributor" is a copyright holder who authorizes use under this
+License of the Program or a work on which the Program is based.  The
+work thus licensed is called the contributor's "contributor version".
+
+  A contributor's "essential patent claims" are all patent claims
+owned or controlled by the contributor, whether already acquired or
+hereafter acquired, that would be infringed by some manner, permitted
+by this License, of making, using, or selling its contributor version,
+but do not include claims that would be infringed only as a
+consequence of further modification of the contributor version.  For
+purposes of this definition, "control" includes the right to grant
+patent sublicenses in a manner consistent with the requirements of
+this License.
+
+  Each contributor grants you a non-exclusive, worldwide, royalty-free
+patent license under the contributor's essential patent claims, to
+make, use, sell, offer for sale, import and otherwise run, modify and
+propagate the contents of its contributor version.
+
+  In the following three paragraphs, a "patent license" is any express
+agreement or commitment, however denominated, not to enforce a patent
+(such as an express permission to practice a patent or covenant not to
+sue for patent infringement).  To "grant" such a patent license to a
+party means to make such an agreement or commitment not to enforce a
+patent against the party.
+
+  If you convey a covered work, knowingly relying on a patent license,
+and the Corresponding Source of the work is not available for anyone
+to copy, free of charge and under the terms of this License, through a
+publicly available network server or other readily accessible means,
+then you must either (1) cause the Corresponding Source to be so
+available, or (2) arrange to deprive yourself of the benefit of the
+patent license for this particular work, or (3) arrange, in a manner
+consistent with the requirements of this License, to extend the patent
+license to downstream recipients.  "Knowingly relying" means you have
+actual knowledge that, but for the patent license, your conveying the
+covered work in a country, or your recipient's use of the covered work
+in a country, would infringe one or more identifiable patents in that
+country that you have reason to believe are valid.
+
+  If, pursuant to or in connection with a single transaction or
+arrangement, you convey, or propagate by procuring conveyance of, a
+covered work, and grant a patent license to some of the parties
+receiving the covered work authorizing them to use, propagate, modify
+or convey a specific copy of the covered work, then the patent license
+you grant is automatically extended to all recipients of the covered
+work and works based on it.
+
+  A patent license is "discriminatory" if it does not include within
+the scope of its coverage, prohibits the exercise of, or is
+conditioned on the non-exercise of one or more of the rights that are
+specifically granted under this License.  You may not convey a covered
+work if you are a party to an arrangement with a third party that is
+in the business of distributing software, under which you make payment
+to the third party based on the extent of your activity of conveying
+the work, and under which the third party grants, to any of the
+parties who would receive the covered work from you, a discriminatory
+patent license (a) in connection with copies of the covered work
+conveyed by you (or copies made from those copies), or (b) primarily
+for and in connection with specific products or compilations that
+contain the covered work, unless you entered into that arrangement,
+or that patent license was granted, prior to 28 March 2007.
+
+  Nothing in this License shall be construed as excluding or limiting
+any implied license or other defenses to infringement that may
+otherwise be available to you under applicable patent law.
+
+  12. No Surrender of Others' Freedom.
+
+  If conditions are imposed on you (whether by court order, agreement or
+otherwise) that contradict the conditions of this License, they do not
+excuse you from the conditions of this License.  If you cannot convey a
+covered work so as to satisfy simultaneously your obligations under this
+License and any other pertinent obligations, then as a consequence you may
+not convey it at all.  For example, if you agree to terms that obligate you
+to collect a royalty for further conveying from those to whom you convey
+the Program, the only way you could satisfy both those terms and this
+License would be to refrain entirely from conveying the Program.
+
+  13. Use with the GNU Affero General Public License.
+
+  Notwithstanding any other provision of this License, you have
+permission to link or combine any covered work with a work licensed
+under version 3 of the GNU Affero General Public License into a single
+combined work, and to convey the resulting work.  The terms of this
+License will continue to apply to the part which is the covered work,
+but the special requirements of the GNU Affero General Public License,
+section 13, concerning interaction through a network will apply to the
+combination as such.
+
+  14. Revised Versions of this License.
+
+  The Free Software Foundation may publish revised and/or new versions of
+the GNU General Public License from time to time.  Such new versions will
+be similar in spirit to the present version, but may differ in detail to
+address new problems or concerns.
+
+  Each version is given a distinguishing version number.  If the
+Program specifies that a certain numbered version of the GNU General
+Public License "or any later version" applies to it, you have the
+option of following the terms and conditions either of that numbered
+version or of any later version published by the Free Software
+Foundation.  If the Program does not specify a version number of the
+GNU General Public License, you may choose any version ever published
+by the Free Software Foundation.
+
+  If the Program specifies that a proxy can decide which future
+versions of the GNU General Public License can be used, that proxy's
+public statement of acceptance of a version permanently authorizes you
+to choose that version for the Program.
+
+  Later license versions may give you additional or different
+permissions.  However, no additional obligations are imposed on any
+author or copyright holder as a result of your choosing to follow a
+later version.
+
+  15. Disclaimer of Warranty.
+
+  THERE IS NO WARRANTY FOR THE PROGRAM, TO THE EXTENT PERMITTED BY
+APPLICABLE LAW.  EXCEPT WHEN OTHERWISE STATED IN WRITING THE COPYRIGHT
+HOLDERS AND/OR OTHER PARTIES PROVIDE THE PROGRAM "AS IS" WITHOUT WARRANTY
+OF ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING, BUT NOT LIMITED TO,
+THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+PURPOSE.  THE ENTIRE RISK AS TO THE QUALITY AND PERFORMANCE OF THE PROGRAM
+IS WITH YOU.  SHOULD THE PROGRAM PROVE DEFECTIVE, YOU ASSUME THE COST OF
+ALL NECESSARY SERVICING, REPAIR OR CORRECTION.
+
+  16. Limitation of Liability.
+
+  IN NO EVENT UNLESS REQUIRED BY APPLICABLE LAW OR AGREED TO IN WRITING
+WILL ANY COPYRIGHT HOLDER, OR ANY OTHER PARTY WHO MODIFIES AND/OR CONVEYS
+THE PROGRAM AS PERMITTED ABOVE, BE LIABLE TO YOU FOR DAMAGES, INCLUDING ANY
+GENERAL, SPECIAL, INCIDENTAL OR CONSEQUENTIAL DAMAGES ARISING OUT OF THE
+USE OR INABILITY TO USE THE PROGRAM (INCLUDING BUT NOT LIMITED TO LOSS OF
+DATA OR DATA BEING RENDERED INACCURATE OR LOSSES SUSTAINED BY YOU OR THIRD
+PARTIES OR A FAILURE OF THE PROGRAM TO OPERATE WITH ANY OTHER PROGRAMS),
+EVEN IF SUCH HOLDER OR OTHER PARTY HAS BEEN ADVISED OF THE POSSIBILITY OF
+SUCH DAMAGES.
+
+  17. Interpretation of Sections 15 and 16.
+
+  If the disclaimer of warranty and limitation of liability provided
+above cannot be given local legal effect according to their terms,
+reviewing courts shall apply local law that most closely approximates
+an absolute waiver of all civil liability in connection with the
+Program, unless a warranty or assumption of liability accompanies a
+copy of the Program in return for a fee.
+
+                     END OF TERMS AND CONDITIONS
+
+            How to Apply These Terms to Your New Programs
+
+  If you develop a new program, and you want it to be of the greatest
+possible use to the public, the best way to achieve this is to make it
+free software which everyone can redistribute and change under these terms.
+
+  To do so, attach the following notices to the program.  It is safest
+to attach them to the start of each source file to most effectively
+state the exclusion of warranty; and each file should have at least
+the "copyright" line and a pointer to where the full notice is found.
+
+    <one line to give the program's name and a brief idea of what it does.>
+    Copyright (C) <year>  <name of author>
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see [https://www.gnu.org/licenses/](https://www.gnu.org/licenses/).
+
+Also add information on how to contact you by electronic and paper mail.
+
+  If the program does terminal interaction, make it output a short
+notice like this when it starts in an interactive mode:
+
+    \<program>  Copyright (C) \<year>  \<name of author> <br>
+This program comes with ABSOLUTELY NO WARRANTY; for details type "`show w`".
+    This is free software, and you are welcome to redistribute it
+ under certain conditions; type "`show c`" for details.
+
+The hypothetical commands "`show w`" and "`show c`" should show the appropriate
+parts of the General Public License.  Of course, your program's commands
+might be different; for a GUI interface, you would use an "about box".
+
+  You should also get your employer (if you work as a programmer) or school,
+if any, to sign a "copyright disclaimer" for the program, if necessary.
+For more information on this, and how to apply and follow the GNU GPL, see
+[https://www.gnu.org/licenses/](https://www.gnu.org/licenses/).
+
+  The GNU General Public License does not permit incorporating your program
+into proprietary programs.  If your program is a subroutine library, you
+may consider it more useful to permit linking proprietary applications with
+the library.  If this is what you want to do, use the GNU Lesser General
+Public License instead of this License.  But first, please read
+[https://www.gnu.org/licenses/why-not-lgpl.html](https://www.gnu.org/licenses/why-not-lgpl.html).
