@@ -64,9 +64,9 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
     //TODO: Handle recovery for failed swap
 
     if msg.result.is_err() {
-        return Err(ContractError::Std(StdError::generic_err(
+        Err(ContractError::Std(StdError::generic_err(
             msg.result.unwrap_err(),
-        )));
+        )))
     } else {
         match state.dex.as_str() {
             "osmo" => {
@@ -92,9 +92,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
 
                 Ok(Response::default().add_submessage(sub_msg))
             }
-            _ => {
-                return Err(ContractError::Std(StdError::generic_err("Unsupported dex")));
-            }
+            _ => Err(ContractError::Std(StdError::generic_err("Unsupported dex"))),
         }
     }
 }
