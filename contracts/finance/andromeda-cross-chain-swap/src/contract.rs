@@ -1,14 +1,29 @@
-use andromeda_finance::cross_chain_swap::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
+use andromeda_finance::cross_chain_swap::{
+    ExecuteMsg, InstantiateMsg, MigrateMsg, OsmosisSwapResponse, QueryMsg,
+};
 
 use andromeda_std::{
     ado_base::InstantiateMsg as BaseInstantiateMsg,
+    amp::{
+        messages::{AMPMsg, AMPPkt},
+        AndrAddr,
+    },
     error::{from_semver, ContractError},
 };
 use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
-use cosmwasm_std::{ensure, entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Response};
+use cosmwasm_std::{
+    ensure, entry_point, Binary, Coin, Decimal, Deps, DepsMut, Env, MessageInfo, Reply, Response,
+    StdError, SubMsg,
+};
 use cw2::{get_contract_version, set_contract_version};
 
+use cw_utils::one_coin;
 use semver::Version;
+
+use crate::{
+    dex::{execute_swap_osmo, parse_swap_reply},
+    state::{ForwardReplyState, FORWARD_REPLY_STATE},
+};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-cross-chain-swap";
@@ -41,6 +56,50 @@ pub fn instantiate(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
+pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractError> {
+    // Load and clear forward state
+    let state = FORWARD_REPLY_STATE.load(deps.storage)?;
+    FORWARD_REPLY_STATE.remove(deps.storage);
+
+    //TODO: Handle recovery for failed swap
+
+    if msg.result.is_err() {
+        return Err(ContractError::Std(StdError::generic_err(
+            msg.result.unwrap_err(),
+        )));
+    } else {
+        match state.dex.as_str() {
+            "osmo" => {
+                let swap_resp: OsmosisSwapResponse = parse_swap_reply(msg)?;
+                let funds = vec![Coin {
+                    denom: swap_resp.token_out_denom,
+                    amount: swap_resp.amount,
+                }];
+                let mut pkt = if let Some(amp_ctx) = state.amp_ctx {
+                    AMPPkt::new(amp_ctx.get_origin(), amp_ctx.get_previous_sender(), vec![])
+                } else {
+                    AMPPkt::new(env.contract.address.clone(), env.contract.address, vec![])
+                };
+                let msg = AMPMsg::new(
+                    state.addr,
+                    state.msg.unwrap_or_default(),
+                    Some(funds.clone()),
+                );
+                pkt.add_message(msg);
+                let kernel_address =
+                    ADOContract::default().get_kernel_address(deps.as_ref().storage)?;
+                let sub_msg = pkt.to_sub_msg(kernel_address, Some(funds), 101)?;
+
+                Ok(Response::default().add_submessage(sub_msg))
+            }
+            _ => {
+                return Err(ContractError::Std(StdError::generic_err("Unsupported dex")));
+            }
+        }
+    }
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
     deps: DepsMut,
     env: Env,
@@ -61,6 +120,56 @@ pub fn execute(
 pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     let _contract = ADOContract::default();
     ADOContract::default().execute(ctx, msg)
+}
+
+fn execute_swap_and_forward(
+    ctx: ExecuteContext,
+    dex: String,
+    to_denom: String,
+    forward_addr: AndrAddr,
+    forward_msg: Option<Binary>,
+    slippage_percentage: Decimal,
+    window_seconds: Option<u64>,
+) -> Result<Response, ContractError> {
+    let msg: SubMsg;
+    let input_coin = one_coin(&ctx.info)?;
+    if FORWARD_REPLY_STATE
+        .may_load(ctx.deps.as_ref().storage)?
+        .is_some()
+    {
+        return Err(ContractError::Unauthorized {});
+    }
+
+    match dex.as_str() {
+        "osmo" => {
+            msg = execute_swap_osmo(
+                ctx,
+                input_coin,
+                to_denom,
+                slippage_percentage,
+                window_seconds,
+            )?;
+        }
+        _ => return Err(ContractError::UnsupportedOperation {}),
+    }
+
+    let amp_ctx = if let Some(pkt) = ctx.amp_ctx {
+        Some(pkt.ctx)
+    } else {
+        None
+    };
+
+    FORWARD_REPLY_STATE.save(
+        ctx.deps.storage,
+        &ForwardReplyState {
+            addr: forward_addr,
+            msg: forward_msg,
+            dex,
+            amp_ctx,
+        },
+    );
+
+    Ok(Response::default().add_submessage(msg))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
