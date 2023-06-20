@@ -1,7 +1,7 @@
 use andromeda_finance::cross_chain_swap::{OsmosisSlippage, OsmosisSwapMsg};
 use andromeda_std::{
-    ado_contract::ADOContract, common::context::ExecuteContext, error::ContractError,
-    os::aos_querier::AOSQuerier,
+    ado_contract::ADOContract, amp::OSMOSIS_ROUTER_KEY, common::context::ExecuteContext,
+    error::ContractError, os::aos_querier::AOSQuerier,
 };
 use cosmwasm_std::{
     from_binary, wasm_execute, Coin, Decimal, Reply, StdError, SubMsg, SubMsgResponse, SubMsgResult,
@@ -43,7 +43,7 @@ pub(crate) fn execute_swap_osmo(
     let address = AOSQuerier::kernel_address_getter(
         &ctx.deps.querier,
         &ADOContract::default().get_kernel_address(ctx.deps.as_ref().storage)?,
-        "osmosis-router",
+        OSMOSIS_ROUTER_KEY,
     )?;
 
     let msg = wasm_execute(address, &msg, vec![input_coin])?;

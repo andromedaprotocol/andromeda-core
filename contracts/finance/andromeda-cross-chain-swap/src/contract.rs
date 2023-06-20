@@ -182,7 +182,11 @@ fn execute_swap_and_forward(
                 window_seconds,
             )?;
         }
-        _ => return Err(ContractError::UnsupportedOperation {}),
+        _ => {
+            return Err(ContractError::Std(StdError::GenericErr {
+                msg: "Unsupported Dex".to_string(),
+            }))
+        }
     }
 
     Ok(Response::default().add_submessage(msg))

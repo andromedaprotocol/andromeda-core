@@ -79,8 +79,6 @@ impl WasmMockQuerier {
         match &request {
             QueryRequest::Wasm(WasmQuery::Smart { contract_addr, msg }) => {
                 match contract_addr.as_str() {
-                    MOCK_RATES_CONTRACT => self.handle_rates_query(msg),
-                    MOCK_ADDRESS_LIST_CONTRACT => self.handle_addresslist_query(msg),
                     _ => AndrMockQuerier::new(MockQuerier::new(&[])).handle_query(request),
                 }
             }
