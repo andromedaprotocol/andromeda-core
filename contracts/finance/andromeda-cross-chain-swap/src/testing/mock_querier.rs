@@ -77,7 +77,7 @@ impl Querier for WasmMockQuerier {
 impl WasmMockQuerier {
     pub fn handle_query(&self, request: &QueryRequest<cosmwasm_std::Empty>) -> QuerierResult {
         match &request {
-            QueryRequest::Wasm(WasmQuery::Smart { contract_addr, msg }) => {
+            QueryRequest::Wasm(WasmQuery::Smart { contract_addr, msg: _ }) => {
                 match contract_addr.as_str() {
                     _ => AndrMockQuerier::new(MockQuerier::new(&[])).handle_query(request),
                 }

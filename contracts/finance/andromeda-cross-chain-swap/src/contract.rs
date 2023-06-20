@@ -12,8 +12,8 @@ use andromeda_std::{
 };
 use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
 use cosmwasm_std::{
-    ensure, entry_point, Binary, Coin, Decimal, Deps, DepsMut, Env, MessageInfo, Reply, Response,
-    StdError, SubMsg,
+    attr, ensure, entry_point, Binary, Coin, Decimal, Deps, DepsMut, Env, MessageInfo, Reply,
+    Response, StdError, SubMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
 
@@ -21,7 +21,7 @@ use cw_utils::one_coin;
 use semver::Version;
 
 use crate::{
-    dex::{execute_swap_osmo, parse_swap_reply},
+    dex::{execute_swap_osmo, parse_swap_reply, MSG_FORWARD_ID, MSG_SWAP_ID},
     state::{ForwardReplyState, FORWARD_REPLY_STATE},
 };
 
@@ -57,43 +57,68 @@ pub fn instantiate(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractError> {
-    // Load and clear forward state
-    let state = FORWARD_REPLY_STATE.load(deps.storage)?;
-    FORWARD_REPLY_STATE.remove(deps.storage);
-
     //TODO: Handle recovery for failed swap
-
-    if msg.result.is_err() {
-        Err(ContractError::Std(StdError::generic_err(
-            msg.result.unwrap_err(),
-        )))
-    } else {
-        match state.dex.as_str() {
-            "osmo" => {
-                let swap_resp: OsmosisSwapResponse = parse_swap_reply(msg)?;
-                let funds = vec![Coin {
-                    denom: swap_resp.token_out_denom,
-                    amount: swap_resp.amount,
-                }];
-                let mut pkt = if let Some(amp_ctx) = state.amp_ctx {
-                    AMPPkt::new(amp_ctx.get_origin(), amp_ctx.get_previous_sender(), vec![])
-                } else {
-                    AMPPkt::new(env.contract.address.clone(), env.contract.address, vec![])
-                };
-                let msg = AMPMsg::new(
-                    state.addr,
-                    state.msg.unwrap_or_default(),
-                    Some(funds.clone()),
-                );
-                pkt.add_message(msg);
-                let kernel_address =
-                    ADOContract::default().get_kernel_address(deps.as_ref().storage)?;
-                let sub_msg = pkt.to_sub_msg(kernel_address, Some(funds), 101)?;
-
-                Ok(Response::default().add_submessage(sub_msg))
+    deps.api.debug(format!("Reply: {:?}", msg).as_str());
+    match msg.id {
+        MSG_SWAP_ID => {
+            deps.api.debug("Handling Reply");
+            // Load and clear forward state
+            let state = FORWARD_REPLY_STATE.load(deps.storage)?;
+            FORWARD_REPLY_STATE.remove(deps.storage);
+            if msg.result.is_err() {
+                Err(ContractError::Std(StdError::generic_err(
+                    msg.result.unwrap_err(),
+                )))
+            } else {
+                match state.dex.as_str() {
+                    "osmo" => {
+                        let swap_resp: OsmosisSwapResponse = parse_swap_reply(msg)?;
+                        let funds = vec![Coin {
+                            denom: swap_resp.token_out_denom.clone(),
+                            amount: swap_resp.amount.clone(),
+                        }];
+                        let mut pkt = if let Some(amp_ctx) = state.amp_ctx {
+                            AMPPkt::new(amp_ctx.get_origin(), amp_ctx.get_previous_sender(), vec![])
+                        } else {
+                            AMPPkt::new(env.contract.address.clone(), env.contract.address, vec![])
+                        };
+                        let msg = AMPMsg::new(
+                            state.addr.clone(),
+                            state.msg.clone().unwrap_or_default(),
+                            Some(funds.clone()),
+                        );
+                        pkt = pkt.add_message(msg);
+                        let kernel_address =
+                            ADOContract::default().get_kernel_address(deps.as_ref().storage)?;
+                        let sub_msg =
+                            pkt.to_sub_msg(kernel_address.clone(), Some(funds), MSG_FORWARD_ID)?;
+                        let mut resp = Response::default();
+                        resp = resp.add_submessage(sub_msg).add_attributes(vec![
+                            attr("action", "osmo_swap_and_forward_success"),
+                            attr("to_denom", swap_resp.token_out_denom),
+                            attr("to_amount", swap_resp.amount),
+                            attr("forward_addr", state.addr),
+                            attr("kernel_address", kernel_address),
+                        ]);
+                        Ok(resp)
+                    }
+                    _ => Err(ContractError::Std(StdError::generic_err("Unsupported dex"))),
+                }
             }
-            _ => Err(ContractError::Std(StdError::generic_err("Unsupported dex"))),
         }
+        MSG_FORWARD_ID => {
+            if msg.result.is_err() {
+                return Err(ContractError::Std(StdError::generic_err(
+                    msg.result.unwrap_err(),
+                )));
+            }
+
+            Ok(Response::default()
+                .add_attributes(vec![attr("action", "message_forwarded_success")]))
+        }
+        _ => Err(ContractError::Std(StdError::GenericErr {
+            msg: "Invalid Reply ID".to_string(),
+        })),
     }
 }
 

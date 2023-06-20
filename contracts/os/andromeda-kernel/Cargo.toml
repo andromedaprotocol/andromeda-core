@@ -1,6 +1,6 @@
 [package]
 name = "andromeda-kernel"
-version = "0.2.0"
+version = "0.2.8"
 authors = ["Connor Barr <crnbarr@gmail.com>"]
 edition = "2018"
 

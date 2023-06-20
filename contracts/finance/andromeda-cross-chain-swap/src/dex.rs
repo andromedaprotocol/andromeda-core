@@ -8,6 +8,9 @@ use cosmwasm_std::{
 };
 use serde::de::DeserializeOwned;
 
+pub const MSG_SWAP_ID: u64 = 1;
+pub const MSG_FORWARD_ID: u64 = 2;
+
 // Adapted from: https://github.com/osmosis-labs/osmosis/blob/main/cosmwasm/contracts/crosschain-swaps/src/utils.rs#LL8C1-L23C2
 // Parses a swap reply to the correct message type
 pub(crate) fn parse_swap_reply<T: DeserializeOwned>(msg: Reply) -> Result<T, ContractError> {
@@ -47,7 +50,7 @@ pub(crate) fn execute_swap_osmo(
     )?;
 
     let msg = wasm_execute(address, &msg, vec![input_coin])?;
-    let sub_msg = SubMsg::new(msg);
+    let sub_msg = SubMsg::reply_always(msg, MSG_SWAP_ID);
 
     Ok(sub_msg)
 }

@@ -1,11 +1,11 @@
 use andromeda_std::{
-    ado_base::modules::Module, amp::AndrAddr, error::ContractError,
+    amp::AndrAddr, error::ContractError,
     testing::mock_querier::MOCK_OSMOSIS_ROUTER_CONTRACT,
 };
 
 use cosmwasm_std::{
-    testing::{mock_dependencies, mock_env, mock_info},
-    to_binary, wasm_execute, CosmosMsg, Decimal, DepsMut, Response, StdError, SubMsg, WasmMsg,
+    testing::{mock_env, mock_info},
+    to_binary, CosmosMsg, Decimal, DepsMut, Response, StdError, WasmMsg,
 };
 
 pub const OWNER: &str = "creator";
@@ -44,7 +44,7 @@ fn test_swap_and_forward_invalid_dex() {
     let mut deps = mock_dependencies_custom(&[]);
     init(deps.as_mut());
     let in_coin = coin(100, "uosmo");
-    let info = mock_info("sender", &[in_coin.clone()]);
+    let info = mock_info("sender", &[in_coin]);
     let env = mock_env();
     let recipient_addr = AndrAddr::from_string("recipient");
     let slippage_percentage = Decimal::percent(1);
@@ -52,9 +52,9 @@ fn test_swap_and_forward_invalid_dex() {
     let msg = ExecuteMsg::SwapAndForward {
         dex: "notadex".to_string(),
         to_denom: "uusd".to_string(),
-        forward_addr: recipient_addr.clone(),
+        forward_addr: recipient_addr,
         forward_msg: None,
-        slippage_percentage: slippage_percentage.clone(),
+        slippage_percentage: slippage_percentage,
         window_seconds: None,
     };
 
@@ -73,7 +73,7 @@ fn test_swap_and_forward_current_state_failure() {
     let mut deps = mock_dependencies_custom(&[]);
     init(deps.as_mut());
     let in_coin = coin(100, "uosmo");
-    let info = mock_info("sender", &[in_coin.clone()]);
+    let info = mock_info("sender", &[in_coin]);
     let env = mock_env();
     let recipient_addr = AndrAddr::from_string("recipient");
     let slippage_percentage = Decimal::percent(1);
@@ -91,9 +91,9 @@ fn test_swap_and_forward_current_state_failure() {
     let msg = ExecuteMsg::SwapAndForward {
         dex: "notadex".to_string(),
         to_denom: "uusd".to_string(),
-        forward_addr: recipient_addr.clone(),
+        forward_addr: recipient_addr,
         forward_msg: None,
-        slippage_percentage: slippage_percentage.clone(),
+        slippage_percentage: slippage_percentage,
         window_seconds: None,
     };
 
@@ -117,7 +117,7 @@ fn test_swap_and_forward_osmo() {
         to_denom: "uusd".to_string(),
         forward_addr: recipient_addr.clone(),
         forward_msg: None,
-        slippage_percentage: slippage_percentage.clone(),
+        slippage_percentage: slippage_percentage,
         window_seconds: None,
     };
 

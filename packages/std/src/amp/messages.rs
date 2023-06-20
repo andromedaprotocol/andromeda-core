@@ -192,8 +192,9 @@ impl AMPPkt {
     }
 
     /// Adds a message to the current AMP Packet
-    pub fn add_message(&mut self, message: AMPMsg) {
-        self.messages.push(message)
+    pub fn add_message(mut self, message: AMPMsg) -> Self {
+        self.messages.push(message);
+        self
     }
 
     /// Gets all unique recipients for messages
@@ -340,7 +341,7 @@ mod tests {
         assert_eq!(recipients[0], "test".to_string());
         assert_eq!(recipients[1], "test2".to_string());
 
-        pkt.add_message(AMPMsg::new("test", Binary::default(), None));
+        pkt = pkt.add_message(AMPMsg::new("test", Binary::default(), None));
         let recipients = pkt.get_unique_recipients();
         assert_eq!(recipients.len(), 2);
         assert_eq!(recipients[0], "test".to_string());
@@ -362,7 +363,7 @@ mod tests {
         assert_eq!(messages.len(), 1);
         assert_eq!(messages[0].recipient.to_string(), "test2".to_string());
 
-        pkt.add_message(AMPMsg::new("test", Binary::default(), None));
+        pkt = pkt.add_message(AMPMsg::new("test", Binary::default(), None));
         let messages = pkt.get_messages_for_recipient("test".to_string());
         assert_eq!(messages.len(), 2);
         assert_eq!(messages[0].recipient.to_string(), "test".to_string());
