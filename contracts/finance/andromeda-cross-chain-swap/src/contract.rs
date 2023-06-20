@@ -119,7 +119,25 @@ pub fn execute(
 
 pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     let _contract = ADOContract::default();
-    ADOContract::default().execute(ctx, msg)
+    match msg {
+        ExecuteMsg::SwapAndForward {
+            dex,
+            to_denom,
+            forward_addr,
+            forward_msg,
+            slippage_percentage,
+            window_seconds,
+        } => execute_swap_and_forward(
+            ctx,
+            dex,
+            to_denom,
+            forward_addr,
+            forward_msg,
+            slippage_percentage,
+            window_seconds,
+        ),
+        _ => Err(ContractError::UnsupportedOperation {}),
+    }
 }
 
 fn execute_swap_and_forward(
@@ -140,6 +158,22 @@ fn execute_swap_and_forward(
         return Err(ContractError::Unauthorized {});
     }
 
+    let amp_ctx = if let Some(pkt) = ctx.amp_ctx.clone() {
+        Some(pkt.ctx)
+    } else {
+        None
+    };
+
+    FORWARD_REPLY_STATE.save(
+        ctx.deps.storage,
+        &ForwardReplyState {
+            addr: forward_addr,
+            msg: forward_msg,
+            dex: dex.clone(),
+            amp_ctx,
+        },
+    )?;
+
     match dex.as_str() {
         "osmo" => {
             msg = execute_swap_osmo(
@@ -152,22 +186,6 @@ fn execute_swap_and_forward(
         }
         _ => return Err(ContractError::UnsupportedOperation {}),
     }
-
-    let amp_ctx = if let Some(pkt) = ctx.amp_ctx {
-        Some(pkt.ctx)
-    } else {
-        None
-    };
-
-    FORWARD_REPLY_STATE.save(
-        ctx.deps.storage,
-        &ForwardReplyState {
-            addr: forward_addr,
-            msg: forward_msg,
-            dex,
-            amp_ctx,
-        },
-    );
 
     Ok(Response::default().add_submessage(msg))
 }

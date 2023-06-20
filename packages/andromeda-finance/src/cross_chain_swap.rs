@@ -13,7 +13,7 @@ pub enum ExecuteMsg {
         dex: String,
         to_denom: String,
         forward_addr: AndrAddr,
-        forward_msg: Binary,
+        forward_msg: Option<Binary>,
         slippage_percentage: Decimal,
         window_seconds: Option<u64>,
     },

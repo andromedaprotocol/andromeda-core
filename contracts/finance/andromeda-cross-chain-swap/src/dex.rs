@@ -17,7 +17,7 @@ pub(crate) fn parse_swap_reply<T: DeserializeOwned>(msg: Reply) -> Result<T, Con
         )))
     };
 
-    let parsed = cw_utils::parse_execute_response_data(&b).map_err(|e| {
+    let parsed = cw_utils::parse_execute_response_data(&b).map_err(|_e| {
         ContractError::Std(StdError::generic_err("failed to parse swaprouter response"))
     })?;
     let swap_response: T = from_binary(&parsed.data.unwrap_or_default())?;
@@ -32,7 +32,7 @@ pub(crate) fn execute_swap_osmo(
     window_seconds: Option<u64>,
 ) -> Result<SubMsg, ContractError> {
     let msg = OsmosisSwapMsg::Swap {
-        input_coin,
+        input_coin: input_coin.clone(),
         output_denom: to_denom,
         slippage: OsmosisSlippage::Twap {
             window_seconds,
