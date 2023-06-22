@@ -292,6 +292,34 @@ impl AMPPkt {
         new.ctx.id = id;
         new
     }
+
+    pub fn to_ibc_hooks_memo(&self, contract_addr: String, callback_addr: String) -> String {
+        #[derive(::serde::Serialize)]
+        struct IbcHooksWasmMsg<T: ::serde::Serialize> {
+            contract: String,
+            msg: T,
+        }
+        #[derive(::serde::Serialize)]
+        struct IbcHooksMsg<T: ::serde::Serialize> {
+            wasm: IbcHooksWasmMsg<T>,
+            ibc_callback: String,
+        }
+        let wasm_msg = IbcHooksWasmMsg {
+            contract: contract_addr,
+            msg: KernelExecuteMsg::AMPReceive(self.clone()),
+        };
+        let msg = IbcHooksMsg {
+            wasm: wasm_msg,
+            ibc_callback: callback_addr,
+        };
+
+        serde_json_wasm::to_string(&msg).unwrap()
+    }
+
+    pub fn to_memo(&self) -> String {
+        let serialized = serde_json_wasm::to_string(&self).unwrap();
+        serialized
+    }
 }
 
 #[cfg(test)]
@@ -411,5 +439,20 @@ mod tests {
                 funds: vec![],
             })
         );
+    }
+    #[test]
+    fn test_to_memo() {
+        let msg = AMPPkt::new("origin", "previoussender", vec![]);
+
+        let memo = msg.to_memo();
+        assert_eq!(memo, "{\"messages\":[],\"ctx\":{\"origin\":\"origin\",\"origin_username\":null,\"previous_sender\":\"previoussender\",\"id\":0}}".to_string());
+    }
+
+    #[test]
+    fn test_to_ibc_hooks_memo() {
+        let msg = AMPPkt::new("origin", "previoussender", vec![]);
+        let contract_addr = "contractaddr";
+        let memo = msg.to_ibc_hooks_memo(contract_addr.to_string());
+        assert_eq!(memo, "{\"wasm\":{\"contract\":\"contractaddr\",\"msg\":{\"amp_receive\":{\"messages\":[],\"ctx\":{\"origin\":\"origin\",\"origin_username\":null,\"previous_sender\":\"previoussender\",\"id\":0}}}}".to_string());
     }
 }

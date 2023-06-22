@@ -1,6 +1,6 @@
 [package]
-name = "andromeda-kernel"
-version = "0.2.8"
+name = "andromeda-message-bridge"
+version = "0.2.9"
 authors = ["Connor Barr <crnbarr@gmail.com>"]
 edition = "2021"
 rust-version = "1.65.0"
@@ -27,9 +27,15 @@ cosmwasm-schema = { workspace = true }
 cw-storage-plus = { workspace = true }
 cw2 = { workspace = true }
 semver = { workspace = true }
-
+serde-json-wasm = "0.5.0"
+cw-utils= { workspace = true }
+serde= { workspace = true }
 andromeda-std = { workspace = true }
-
+prost = {version = "0.11.2", default-features = false, features = ["prost-derive"]}
+osmosis-std-derive= { version="0.15.3" }
+osmosis-std = "0.1.4"
+schemars = "0.8.10"
+sha256="1.1.4"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 cw-multi-test = { version = "0.16.0", optional = true }
