@@ -10,7 +10,7 @@ use cosmwasm_std::{
     to_binary, Binary, Coin, ContractResult, OwnedDeps, Querier, QuerierResult, QueryRequest,
     SystemError, SystemResult, WasmQuery,
 };
-use cosmwasm_std::{BankMsg, CosmosMsg, Response, SubMsg, Uint128};
+use cosmwasm_std::{BankMsg, CosmosMsg, Response, SubMsg};
 use cw721::{Cw721QueryMsg, OwnerOfResponse, TokensResponse};
 
 pub use andromeda_std::testing::mock_querier::{
@@ -20,10 +20,8 @@ pub use andromeda_std::testing::mock_querier::{
 pub const MOCK_TOKEN_CONTRACT: &str = "token_contract";
 pub const MOCK_UNCLAIMED_TOKEN: &str = "unclaimed_token";
 pub const MOCK_TOKEN_ADDR: &str = "token_addr";
-pub const MOCK_TAX_RECIPIENT: &str = "tax_recipient";
 pub const MOCK_RATES_RECIPIENT: &str = "rates_recipient";
 pub const MOCK_TOKEN_OWNER: &str = "owner";
-pub const MOCK_ROYALTY_RECIPIENT: &str = "royalty_recipient";
 pub const MOCK_TOKENS_FOR_SALE: &[&str] = &[
     "token1", "token2", "token3", "token4", "token5", "token6", "token7",
 ];
