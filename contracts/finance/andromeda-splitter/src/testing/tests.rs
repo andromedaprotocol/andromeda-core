@@ -389,7 +389,6 @@ fn test_execute_send_error() {
     assert_eq!(res, expected_res);
 }
 
-//TODO should pass when modules are updated
 #[test]
 fn test_modules() {
     let mut deps = mock_dependencies_custom(&[coin(1000, "uusd")]);
@@ -466,7 +465,6 @@ fn test_update_app_contract() {
     );
 }
 
-//TODO should pass when recipient validation is implemented
 #[test]
 fn test_update_app_contract_invalid_recipient() {
     let mut deps = mock_dependencies_custom(&[]);

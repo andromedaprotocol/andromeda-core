@@ -55,7 +55,6 @@ fn test_transfer() {
 
             is_mutable: false,
         },
-        //TODO uncomment once address_list is updated
         Module {
             name: Some(MOCK_ADDRESS_LIST_CONTRACT.to_owned()),
             address: AndrAddr::from_string(MOCK_ADDRESS_LIST_CONTRACT.to_owned()),
@@ -73,9 +72,10 @@ fn test_transfer() {
             .add_attribute("action", "register_module")
             .add_attribute("module_idx", "1")
             .add_attribute("action", "register_module")
-            .add_attribute("module_idx", "2"), // .add_attribute("action", "register_module")
-        // .add_attribute("module_idx", "3")
-        // .add_attribute("method", "instantiate"),
+            .add_attribute("module_idx", "2")
+            .add_attribute("action", "register_module")
+            .add_attribute("module_idx", "3")
+            .add_attribute("method", "instantiate"),
         res
     );
 
