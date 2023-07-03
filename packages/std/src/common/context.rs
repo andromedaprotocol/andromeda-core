@@ -25,7 +25,7 @@ impl<'a> ExecuteContext<'a> {
     }
 
     pub fn contains_sender(&self, addr: &str) -> bool {
-        if self.info.sender.to_string() == addr {
+        if self.info.sender == addr {
             return true;
         }
 

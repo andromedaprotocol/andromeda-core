@@ -1,9 +1,10 @@
 #[cfg(feature = "primitive")]
 use crate::ado_base::primitive::{GetValueResponse, Primitive};
 use crate::{
+    ado_base::AndromedaQuery,
     ado_contract::ADOContract,
     amp::{ADO_DB_KEY, VFS_KEY},
-    os::adodb::QueryMsg as ADODBQueryMsg,
+    os::adodb::{ActionFee, QueryMsg as ADODBQueryMsg},
     os::kernel::QueryMsg as KernelQueryMsg,
     os::vfs::QueryMsg as VFSQueryMsg,
 };
@@ -13,7 +14,7 @@ use cosmwasm_std::{
     from_binary, from_slice,
     testing::{MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
     to_binary, Addr, Binary, Coin, ContractInfoResponse, ContractResult, OwnedDeps, Querier,
-    QuerierResult, QueryRequest, SystemError, SystemResult, WasmQuery,
+    QuerierResult, QueryRequest, SystemError, SystemResult, Uint128, WasmQuery,
 };
 #[cfg(feature = "primitive")]
 use cosmwasm_std::{Decimal, Uint128};
@@ -31,6 +32,8 @@ pub const MOCK_KERNEL_CONTRACT: &str = "kernel_contract";
 pub const MOCK_VFS_CONTRACT: &str = "vfs_contract";
 /// Mock ADODB Contract Address
 pub const MOCK_ADODB_CONTRACT: &str = "adodb_contract";
+// Mock ADO Publisher
+pub const MOCK_ADO_PUBLISHER: &str = "ado_publisher";
 
 #[cfg(feature = "modules")]
 /// Mock Rates Contract Address
@@ -45,6 +48,8 @@ pub const INVALID_CONTRACT: &str = "invalid_contract";
 pub const FAKE_VFS_PATH: &str = "/f";
 /// An invalid ADODB Key
 pub const FAKE_ADODB_KEY: &str = "fake_adodb_key";
+/// A valid action
+pub const MOCK_ACTION: &str = "action";
 #[cfg(feature = "modules")]
 pub const UNWHITELISTED_ADDRESS: &str = "unwhitelisted_address";
 #[cfg(feature = "modules")]
@@ -116,7 +121,10 @@ impl WasmMockQuerier {
                     MOCK_ADODB_CONTRACT => self.handle_adodb_query(msg),
                     #[cfg(feature = "modules")]
                     MOCK_ADDRESS_LIST_CONTRACT => self.handle_address_list_query(msg),
-                    _ => panic!("Unsupported query for contract: {}", contract_addr),
+                    _ => match from_binary::<AndromedaQuery>(msg) {
+                        Ok(msg) => self.handle_ado_query(msg),
+                        _ => panic!("Unsupported query for contract: {}", contract_addr),
+                    },
                 }
             }
             QueryRequest::Wasm(WasmQuery::Raw { contract_addr, key }) => {
@@ -200,11 +208,11 @@ impl WasmMockQuerier {
                 1 => SystemResult::Ok(ContractResult::Ok(to_binary(&"ADOType").unwrap())),
                 _ => SystemResult::Ok(ContractResult::Err("Invalid Code ID".to_string())),
             },
-            ADODBQueryMsg::CodeId { key } => match key.as_str() {
+            ADODBQueryMsg::CodeId { ado_type } => match ado_type.as_str() {
                 FAKE_ADODB_KEY => SystemResult::Ok(ContractResult::Err("Invalid Key".to_string())),
                 _ => SystemResult::Ok(ContractResult::Ok(to_binary(&1).unwrap())),
             },
-            // _ => SystemResult::Ok(ContractResult::Err("Not implemented".to_string())),
+            _ => SystemResult::Ok(ContractResult::Err("Not implemented".to_string())),
         }
     }
 
@@ -377,8 +385,61 @@ impl WasmMockQuerier {
             } else {
                 panic!("Invalid ADODB Raw Query")
             }
+        } else if key_str.contains("action_fees") {
+            let split = key_str.split("action_fees");
+            let key = split.last();
+            match key {
+                Some(key) => {
+                    if key.contains("ADOTypeaction") {
+                        SystemResult::Ok(ContractResult::Ok(
+                            to_binary(&ActionFee::new(
+                                MOCK_ACTION.to_string(),
+                                "uusd".to_string(),
+                                Uint128::from(10u128),
+                            ))
+                            .unwrap(),
+                        ))
+                    } else {
+                        SystemResult::Ok(ContractResult::Err("Invalid Key".to_string()))
+                    }
+                }
+                None => SystemResult::Ok(ContractResult::Err("Invalid Key".to_string())),
+            }
+        } else if key_str.contains("ado_type") {
+            let split = key_str.split("ado_type");
+            let key = split.last();
+            match key {
+                Some(key) => match key {
+                    "1" => SystemResult::Ok(ContractResult::Ok(to_binary("ADOType").unwrap())),
+                    _ => SystemResult::Ok(ContractResult::Err("Invalid Key".to_string())),
+                },
+                None => SystemResult::Ok(ContractResult::Err("Invalid Key".to_string())),
+            }
+        } else if key_str.contains("publisher") {
+            let split = key_str.split("ado_type");
+            let key = split.last();
+            match key {
+                Some(key) => match key {
+                    FAKE_ADODB_KEY => {
+                        SystemResult::Ok(ContractResult::Err("Invalid Key".to_string()))
+                    }
+                    _ => {
+                        SystemResult::Ok(ContractResult::Ok(to_binary(MOCK_ADO_PUBLISHER).unwrap()))
+                    }
+                },
+                None => SystemResult::Ok(ContractResult::Err("Invalid Key".to_string())),
+            }
         } else {
             panic!("Invalid ADODB Raw Query")
+        }
+    }
+
+    pub fn handle_ado_query(&self, msg: AndromedaQuery) -> QuerierResult {
+        match msg {
+            AndromedaQuery::AppContract {} => SystemResult::Ok(ContractResult::Ok(
+                to_binary(&MOCK_APP_CONTRACT.to_string()).unwrap(),
+            )),
+            _ => panic!("Unsupported ADO query"),
         }
     }
 

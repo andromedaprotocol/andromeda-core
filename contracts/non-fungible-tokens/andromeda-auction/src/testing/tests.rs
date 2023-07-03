@@ -1002,10 +1002,10 @@ fn execute_claim_with_modules() {
             }))
             .add_message(CosmosMsg::Bank(BankMsg::Send {
                 to_address: MOCK_RATES_RECIPIENT.to_owned(),
-                amount: coins(10, "uusd"),
+                amount: coins(50, "uusd"),
             }))
             .add_message(CosmosMsg::Bank(BankMsg::Send {
-                to_address: "owner".to_string(),
+                to_address: MOCK_TOKEN_OWNER.to_string(),
                 amount: coins(90, "uusd"),
             }))
             .add_message(CosmosMsg::Wasm(WasmMsg::Execute {

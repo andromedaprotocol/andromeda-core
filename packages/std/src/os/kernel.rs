@@ -20,6 +20,10 @@ pub enum ExecuteMsg {
         exit_at_error: Option<bool>,
         gas_limit: Option<u64>,
     },
+    AMPDirectNoCtx {
+        recipient: AndrAddr,
+        message: Binary,
+    },
     /// Upserts a key address to the kernel, restricted to the owner of the kernel
     UpsertKeyAddress { key: String, value: String },
 }

@@ -36,6 +36,7 @@ dependencies = [
  "andromeda-std",
  "cosmwasm-schema",
  "cosmwasm-std",
+ "cw-asset",
  "cw-multi-test",
  "cw-storage-plus 1.0.1",
  "cw2 1.0.1",
@@ -169,6 +170,20 @@ dependencies = [
  "cw2 1.0.1",
  "cw721 0.17.0",
  "cw721-base 0.17.0",
+ "semver",
+]
+
+[[package]]
+name = "andromeda-economics"
+version = "0.2.0"
+dependencies = [
+ "andromeda-std",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-multi-test",
+ "cw-storage-plus 1.0.1",
+ "cw2 1.0.1",
+ "cw20",
  "semver",
 ]
 

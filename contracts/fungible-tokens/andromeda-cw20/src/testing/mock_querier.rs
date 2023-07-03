@@ -152,8 +152,9 @@ impl WasmMockQuerier {
                                 })),
                             ],
                         ),
+                        // TODO: IMPLEMENT CW20
                         Funds::Cw20(_) => {
-                            let resp: Response = Response::default();
+                            let resp = OnFundsTransferResponse::default();
                             return SystemResult::Ok(ContractResult::Ok(to_binary(&resp).unwrap()));
                         }
                     };

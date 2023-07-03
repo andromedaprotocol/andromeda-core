@@ -51,6 +51,9 @@ impl<'a> ADOContract<'a> {
                 AndromedaQuery::Module { id } => encode_binary(&self.query_module(deps, id)?),
                 #[cfg(feature = "modules")]
                 AndromedaQuery::ModuleIds {} => encode_binary(&self.query_module_ids(deps)?),
+                AndromedaQuery::AppContract {} => {
+                    encode_binary(&self.get_app_contract(deps.storage)?)
+                }
                 _ => Err(ContractError::UnsupportedOperation {}),
             },
             Err(_) => match fallback_query_function {

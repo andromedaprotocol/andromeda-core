@@ -2,14 +2,14 @@ use crate::ado_contract::ADOContract;
 use crate::amp::addresses::AndrAddr;
 use crate::amp::messages::AMPPkt;
 use crate::common::context::ExecuteContext;
-use crate::os::aos_querier::AOSQuerier;
+use crate::os::{aos_querier::AOSQuerier, economics::ExecuteMsg as EconomicsExecuteMsg};
 use crate::{
     ado_base::{AndromedaMsg, InstantiateMsg},
     error::ContractError,
 };
 use cosmwasm_std::{
-    attr, from_binary, to_binary, Addr, Api, Deps, DepsMut, Env, MessageInfo, QuerierWrapper,
-    Response, Storage,
+    attr, from_binary, to_binary, Addr, Api, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
+    QuerierWrapper, Response, Storage, SubMsg, WasmMsg,
 };
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -219,6 +219,38 @@ impl<'a> ADOContract<'a> {
             let response = handler(ctx, msg)?;
             Ok(response)
         }
+    }
+
+    /// Generates a message to pay a fee for a given action by the given payee
+    ///
+    /// Fees are paid in the following fallthrough priority:
+    /// 1. ADO Contract
+    /// 2. App Contract for sending ADO
+    /// 3. Provided Payee
+    ///
+    /// If any of the above cannot pay the fee the remainder is paid by the next in the list until no remainder remains.
+    /// If there is still a remainder after all 3 payments then the fee cannot be paid and the message will error.
+    pub fn pay_fee(
+        &self,
+        storage: &dyn Storage,
+        querier: &QuerierWrapper,
+        action: String,
+        payee: Addr,
+    ) -> Result<SubMsg, ContractError> {
+        let kernel_address = self.get_kernel_address(storage)?;
+        let economics_contract_address =
+            AOSQuerier::kernel_address_getter(querier, &kernel_address, "economics")?;
+        let economics_msg = EconomicsExecuteMsg::PayFee { action, payee };
+        let msg = SubMsg::reply_on_error(
+            CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: economics_contract_address.to_string(),
+                msg: to_binary(&economics_msg)?,
+                funds: vec![],
+            }),
+            9999,
+        );
+
+        Ok(msg)
     }
 }
 

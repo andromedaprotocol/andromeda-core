@@ -219,7 +219,7 @@ fn test_deposit_strategy() {
         .unwrap();
     let msg_two = yield_strategy
         .strategy_type
-        .deposit(deps.as_ref().storage, extra_sent_funds, recipient.clone())
+        .deposit(deps.as_ref().storage, extra_sent_funds, recipient)
         .unwrap();
     let expected = Response::default()
         .add_submessage(msg)
@@ -351,7 +351,7 @@ fn test_deposit_strategy_insufficient_partial_amount() {
         msg: Some(
             DepositMsg::default()
                 .with_amount(coin(100, sent_funds.denom.clone()))
-                .with_strategy(yield_strategy.strategy_type.clone())
+                .with_strategy(yield_strategy.strategy_type)
                 .to_binary()
                 .unwrap(),
         ),

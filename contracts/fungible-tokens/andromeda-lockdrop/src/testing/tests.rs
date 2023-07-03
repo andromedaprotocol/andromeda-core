@@ -8,7 +8,7 @@ use andromeda_std::{
 };
 use cosmwasm_std::{
     coin, coins, from_binary,
-    testing::{mock_dependencies_with_balance, mock_env, mock_info, MOCK_CONTRACT_ADDR},
+    testing::{mock_env, mock_info, MOCK_CONTRACT_ADDR},
     to_binary, Addr, BankMsg, Decimal, DepsMut, Response, Uint128, WasmMsg,
 };
 
