@@ -1,6 +1,6 @@
 // IBC Proto messages
 // Original: https://github.com/osmosis-labs/osmosis/blob/main/cosmwasm/packages/registry/src/proto.rs
-// All credit goes to Osmosis
+// All credit goes to Osmosis Labs
 
 use osmosis_std_derive::CosmwasmExt;
 
