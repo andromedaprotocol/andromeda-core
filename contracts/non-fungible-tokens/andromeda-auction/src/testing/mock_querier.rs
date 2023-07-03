@@ -10,7 +10,7 @@ use cosmwasm_std::{
     to_binary, Binary, Coin, ContractResult, OwnedDeps, Querier, QuerierResult, QueryRequest,
     SystemError, SystemResult, WasmQuery,
 };
-use cosmwasm_std::{BankMsg, CosmosMsg, Response, SubMsg, Uint128};
+use cosmwasm_std::{BankMsg, CosmosMsg, Response, SubMsg};
 use cw721::{Cw721QueryMsg, OwnerOfResponse, TokensResponse};
 
 pub use andromeda_std::testing::mock_querier::{
@@ -20,16 +20,14 @@ pub use andromeda_std::testing::mock_querier::{
 pub const MOCK_TOKEN_CONTRACT: &str = "token_contract";
 pub const MOCK_UNCLAIMED_TOKEN: &str = "unclaimed_token";
 pub const MOCK_TOKEN_ADDR: &str = "token_addr";
-pub const MOCK_TAX_RECIPIENT: &str = "tax_recipient";
-pub const MOCK_TOKEN_OWNER: &str = "token_owner";
-pub const MOCK_ROYALTY_RECIPIENT: &str = "royalty_recipient";
+pub const MOCK_RATES_RECIPIENT: &str = "rates_recipient";
+pub const MOCK_TOKEN_OWNER: &str = "owner";
 pub const MOCK_TOKENS_FOR_SALE: &[&str] = &[
     "token1", "token2", "token3", "token4", "token5", "token6", "token7",
 ];
 
 pub const MOCK_CONDITIONS_MET_CONTRACT: &str = "conditions_met";
 pub const MOCK_CONDITIONS_NOT_MET_CONTRACT: &str = "conditions_not_met";
-pub const RATES: &str = "rates";
 
 /// Alternative to `cosmwasm_std::testing::mock_dependencies` that allows us to respond to custom queries.
 ///
@@ -164,7 +162,7 @@ impl WasmMockQuerier {
                             }),
                             vec![
                                 SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-                                    to_address: MOCK_ROYALTY_RECIPIENT.to_owned(),
+                                    to_address: MOCK_RATES_RECIPIENT.to_owned(),
                                     amount: vec![Coin {
                                         // Royalty of 10%
                                         amount: coin.amount.multiply_ratio(10u128, 100u128),
@@ -172,13 +170,21 @@ impl WasmMockQuerier {
                                     }],
                                 })),
                                 SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-                                    to_address: MOCK_TAX_RECIPIENT.to_owned(),
+                                    to_address: MOCK_RATES_RECIPIENT.to_owned(),
                                     amount: vec![Coin {
-                                        // Flat tax of 50
-                                        amount: Uint128::from(50u128),
+                                        // Royalty of 10%
+                                        amount: coin.amount.multiply_ratio(10u128, 100u128),
                                         denom: coin.denom.clone(),
                                     }],
                                 })),
+                                // SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+                                //     to_address: MOCK_TAX_RECIPIENT.to_owned(),
+                                //     amount: vec![Coin {
+                                //         // Flat tax of 50
+                                //         amount: Uint128::from(50u128),
+                                //         denom: coin.denom.clone(),
+                                //     }],
+                                // })),
                             ],
                         ),
                         Funds::Cw20(_) => {

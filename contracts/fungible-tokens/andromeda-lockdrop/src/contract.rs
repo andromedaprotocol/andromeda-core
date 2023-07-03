@@ -478,6 +478,7 @@ fn execute_withdraw_proceeds(
     let balance = native_token
         .info
         .query_balance(&deps.querier, env.contract.address)?;
+
     ensure!(
         balance >= state.total_native_locked,
         ContractError::InvalidWithdrawal {

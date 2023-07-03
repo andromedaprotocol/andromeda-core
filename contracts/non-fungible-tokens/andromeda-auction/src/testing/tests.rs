@@ -2,8 +2,8 @@ use crate::{
     contract::{execute, instantiate, query},
     state::{auction_infos, TOKEN_AUCTION_STATE},
     testing::mock_querier::{
-        mock_dependencies_custom, MOCK_ROYALTY_RECIPIENT, MOCK_TAX_RECIPIENT, MOCK_TOKEN_ADDR,
-        MOCK_TOKEN_OWNER, MOCK_UNCLAIMED_TOKEN,
+        mock_dependencies_custom, MOCK_RATES_RECIPIENT, MOCK_TOKEN_ADDR, MOCK_TOKEN_OWNER,
+        MOCK_UNCLAIMED_TOKEN,
     },
 };
 use andromeda_non_fungible_tokens::{
@@ -959,13 +959,12 @@ fn execute_claim_with_modules() {
     let module = Module {
         name: Some("rates".to_string()),
         address: AndrAddr::from_string(MOCK_RATES_CONTRACT.to_owned()),
-
         is_mutable: true,
     };
     let msg = InstantiateMsg {
         modules: Some(vec![module]),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
-        owner: None,
+        owner: Some("owner".to_string()),
     };
     let _res = instantiate(deps.as_mut(), env.clone(), &info, msg).unwrap();
 

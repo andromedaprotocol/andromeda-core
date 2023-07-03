@@ -30,7 +30,7 @@ use andromeda_finance::splitter::{
 
 fn init(deps: DepsMut, modules: Option<Vec<Module>>) -> Response {
     let mock_recipient: Vec<AddressPercent> = vec![AddressPercent {
-        recipient: Recipient::from_string(String::from("Some Address")),
+        recipient: Recipient::from_string(String::from("some_address")),
         percent: Decimal::percent(100),
     }];
     let msg = InstantiateMsg {
@@ -389,7 +389,6 @@ fn test_execute_send_error() {
     assert_eq!(res, expected_res);
 }
 
-//TODO should pass when modules are updated
 #[test]
 fn test_modules() {
     let mut deps = mock_dependencies_custom(&[coin(1000, "uusd")]);
@@ -402,7 +401,7 @@ fn test_modules() {
             address: AndrAddr::from_string(MOCK_ADDRESS_LIST_CONTRACT.to_owned()),
         }]),
         recipients: vec![AddressPercent {
-            recipient: Recipient::from_string(String::from("Some Address")),
+            recipient: Recipient::from_string(String::from("some_address")),
             percent: Decimal::percent(100),
         }],
         lock_time: Some(100_000),
@@ -436,7 +435,7 @@ fn test_modules() {
     assert_eq!(
         Response::new()
             .add_message(BankMsg::Send {
-                to_address: "Some Address".to_string(),
+                to_address: "some_address".to_string(),
                 amount: coins(100, "uusd"),
             })
             .add_attribute("action", "send")
@@ -466,7 +465,6 @@ fn test_update_app_contract() {
     );
 }
 
-//TODO should pass when recipient validation is implemented
 #[test]
 fn test_update_app_contract_invalid_recipient() {
     let mut deps = mock_dependencies_custom(&[]);
@@ -475,7 +473,7 @@ fn test_update_app_contract_invalid_recipient() {
     let info = mock_info(OWNER, &[]);
 
     let msg = ExecuteMsg::UpdateAppContract {
-        address: "app_contract".to_string(),
+        address: "z".to_string(),
     };
 
     let res = execute(deps.as_mut(), mock_env(), info, msg);
