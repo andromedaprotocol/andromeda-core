@@ -997,11 +997,11 @@ fn execute_claim_with_modules() {
     assert_eq!(
         Response::new()
             .add_message(CosmosMsg::Bank(BankMsg::Send {
-                to_address: MOCK_ROYALTY_RECIPIENT.to_owned(),
+                to_address: MOCK_RATES_RECIPIENT.to_owned(),
                 amount: coins(10, "uusd"),
             }))
             .add_message(CosmosMsg::Bank(BankMsg::Send {
-                to_address: MOCK_TAX_RECIPIENT.to_owned(),
+                to_address: MOCK_RATES_RECIPIENT.to_owned(),
                 amount: coins(50, "uusd"),
             }))
             .add_message(CosmosMsg::Bank(BankMsg::Send {
