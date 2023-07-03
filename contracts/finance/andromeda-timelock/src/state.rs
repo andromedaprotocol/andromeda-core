@@ -1,5 +1,5 @@
 use andromeda_finance::timelock::Escrow;
-use common::error::ContractError;
+use andromeda_std::error::ContractError;
 use cosmwasm_std::{Order, Storage};
 use cw_storage_plus::{Bound, Index, IndexList, IndexedMap, MultiIndex};
 

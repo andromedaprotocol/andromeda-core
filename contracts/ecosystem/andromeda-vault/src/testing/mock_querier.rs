@@ -1,11 +1,15 @@
 //use andromeda_ecosystem::anchor_earn::PositionResponse;
-use common::ado_base::{
-    operators::IsOperatorResponse, recipient::Recipient, AndromedaQuery, QueryMsg,
+use andromeda_std::testing::mock_querier::WasmMockQuerier as AndrMockQuerier;
+use andromeda_std::{
+    ado_base::{operators::IsOperatorResponse, AndromedaQuery, InstantiateMsg},
+    ado_contract::ADOContract,
+    amp::Recipient,
+    testing::mock_querier::MOCK_KERNEL_CONTRACT,
 };
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
     from_binary, from_slice,
-    testing::{MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
+    testing::{mock_env, mock_info, MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
     to_binary, Binary, Coin, ContractResult, OwnedDeps, Querier, QuerierResult, QueryRequest,
     SystemError, SystemResult, Uint128, WasmQuery,
 };
@@ -20,20 +24,38 @@ pub struct PositionResponse {
 pub const MOCK_ANCHOR_CONTRACT: &str = "anchor_contract";
 pub const MOCK_VAULT_CONTRACT: &str = "vault_contract";
 
+/// Alternative to `cosmwasm_std::testing::mock_dependencies` that allows us to respond to custom queries.
+///
+/// Automatically assigns a kernel address as MOCK_KERNEL_CONTRACT.
 pub fn mock_dependencies_custom(
     contract_balance: &[Coin],
 ) -> OwnedDeps<MockStorage, MockApi, WasmMockQuerier> {
     let custom_querier: WasmMockQuerier =
         WasmMockQuerier::new(MockQuerier::new(&[(MOCK_CONTRACT_ADDR, contract_balance)]));
-
-    OwnedDeps {
-        storage: MockStorage::default(),
+    let storage = MockStorage::default();
+    let mut deps = OwnedDeps {
+        storage,
         api: MockApi::default(),
         querier: custom_querier,
         custom_query_type: std::marker::PhantomData,
-    }
+    };
+    ADOContract::default()
+        .instantiate(
+            &mut deps.storage,
+            mock_env(),
+            &deps.api,
+            mock_info("sender", &[]),
+            InstantiateMsg {
+                ado_type: "vault".to_string(),
+                ado_version: "test".to_string(),
+                operators: None,
+                kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+                owner: None,
+            },
+        )
+        .unwrap();
+    deps
 }
-
 pub struct WasmMockQuerier {
     pub base: MockQuerier,
 }
@@ -60,32 +82,29 @@ impl WasmMockQuerier {
             QueryRequest::Wasm(WasmQuery::Smart { contract_addr, msg }) => {
                 match contract_addr.as_str() {
                     MOCK_ANCHOR_CONTRACT => self.handle_anchor_balance_query(msg),
-                    _ => panic!("DO NOT ENTER HERE"),
+                    _ => AndrMockQuerier::new(MockQuerier::new(&[])).handle_query(request),
                 }
             }
-            _ => self.base.handle_query(request),
+            _ => AndrMockQuerier::new(MockQuerier::new(&[])).handle_query(request),
         }
     }
 
     fn handle_anchor_balance_query(&self, msg: &Binary) -> QuerierResult {
         match from_binary(msg).unwrap() {
-            QueryMsg::AndrQuery(andr_msg) => match andr_msg {
-                AndromedaQuery::Get(data) => {
-                    let recipient: String = from_binary(&data.unwrap()).unwrap();
-                    let msg_response = PositionResponse {
-                        recipient: Recipient::Addr(recipient),
-                        aust_amount: Uint128::from(10u128),
-                    };
-                    SystemResult::Ok(ContractResult::Ok(to_binary(&msg_response).unwrap()))
-                }
-                AndromedaQuery::IsOperator { address } => {
-                    let msg_response = IsOperatorResponse {
-                        is_operator: address == MOCK_VAULT_CONTRACT,
-                    };
-                    SystemResult::Ok(ContractResult::Ok(to_binary(&msg_response).unwrap()))
-                }
-                _ => panic!("Unsupported Query"),
-            },
+            AndromedaQuery::Balance { address } => {
+                let msg_response = PositionResponse {
+                    recipient: Recipient::from_string(address),
+                    aust_amount: Uint128::from(10u128),
+                };
+                SystemResult::Ok(ContractResult::Ok(to_binary(&msg_response).unwrap()))
+            }
+            AndromedaQuery::IsOperator { address } => {
+                let msg_response = IsOperatorResponse {
+                    is_operator: address == MOCK_VAULT_CONTRACT,
+                };
+                SystemResult::Ok(ContractResult::Ok(to_binary(&msg_response).unwrap()))
+            }
+            _ => panic!("Unsupported Query"),
         }
     }
 

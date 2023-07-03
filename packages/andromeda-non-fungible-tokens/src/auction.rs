@@ -1,22 +1,17 @@
-use andromeda_os::messages::AMPPkt;
-use common::{
-    ado_base::{modules::Module, AndromedaMsg, AndromedaQuery},
-    OrderBy,
-};
+use andromeda_std::common::OrderBy;
+use andromeda_std::{andr_exec, andr_instantiate, andr_query};
+
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Addr, Timestamp, Uint128};
 use cw721::{Cw721ReceiveMsg, Expiration};
 
+#[andr_instantiate]
 #[cw_serde]
-pub struct InstantiateMsg {
-    pub modules: Option<Vec<Module>>,
-    pub kernel_address: Option<String>,
-}
+pub struct InstantiateMsg {}
 
+#[andr_exec]
 #[cw_serde]
 pub enum ExecuteMsg {
-    AndrReceive(AndromedaMsg),
-    AMPReceive(AMPPkt),
     ReceiveNft(Cw721ReceiveMsg),
     /// Places a bid on the current auction for the given token_id. The previous largest bid gets
     /// automatically sent back to the bidder when they are outbid.
@@ -58,12 +53,10 @@ pub enum Cw721HookMsg {
         whitelist: Option<Vec<Addr>>,
     },
 }
-
+#[andr_query]
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
-    #[returns(AndromedaQuery)]
-    AndrQuery(AndromedaQuery),
     /// Gets the latest auction state for the given token. This will either be the current auction
     /// if there is one in progress or the last completed one.
     #[returns(AuctionStateResponse)]

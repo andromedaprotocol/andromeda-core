@@ -3,23 +3,6 @@
 version = 3
 
 [[package]]
-name = "ado-base"
-version = "0.1.0"
-dependencies = [
- "andromeda-os",
- "common",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-asset",
- "cw-storage-plus 0.16.0",
- "cw2 0.16.0",
- "cw20 0.16.0",
- "schemars",
- "semver",
- "serde",
-]
-
-[[package]]
 name = "ahash"
 version = "0.7.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -31,155 +14,90 @@ dependencies = [
 ]
 
 [[package]]
-name = "aho-corasick"
-version = "0.7.20"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cc936419f96fa211c1b9166887b38e5e40b19958e5b895be7c1f93adec7071ac"
-dependencies = [
- "memchr",
-]
-
-[[package]]
 name = "andromeda-address-list"
-version = "0.1.3"
+version = "0.2.1"
 dependencies = [
- "ado-base",
+ "andromeda-app",
  "andromeda-modules",
- "common",
+ "andromeda-std",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-multi-test",
- "cw-storage-plus 0.16.0",
- "cw-utils 0.16.0",
- "cw2 0.16.0",
- "schemars",
+ "cw-storage-plus 1.1.0",
+ "cw-utils 1.0.1",
+ "cw2 1.1.0",
  "semver",
- "serde",
 ]
 
 [[package]]
 name = "andromeda-adodb"
 version = "0.1.2"
 dependencies = [
- "ado-base",
- "andromeda-os",
- "andromeda-testing",
- "common",
+ "andromeda-std",
  "cosmwasm-schema",
  "cosmwasm-std",
+ "cw-asset",
  "cw-multi-test",
- "cw-storage-plus 0.16.0",
- "cw2 0.16.0",
- "cw721",
- "schemars",
+ "cw-storage-plus 1.1.0",
+ "cw2 1.1.0",
  "semver",
- "serde",
 ]
 
 [[package]]
 name = "andromeda-app"
 version = "0.1.0"
 dependencies = [
- "common",
+ "andromeda-std",
  "cosmwasm-schema",
  "cosmwasm-std",
- "schemars",
- "serde",
 ]
 
 [[package]]
 name = "andromeda-app-contract"
 version = "0.2.1"
 dependencies = [
- "ado-base",
  "andromeda-app",
- "andromeda-automation",
- "andromeda-os",
- "andromeda-testing",
- "common",
+ "andromeda-std",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-multi-test",
- "cw-storage-plus 0.16.0",
- "cw2 0.16.0",
- "prost",
- "schemars",
+ "cw-storage-plus 1.1.0",
+ "cw2 1.1.0",
+ "prost 0.9.0",
  "semver",
- "serde",
 ]
 
 [[package]]
 name = "andromeda-auction"
-version = "0.2.2"
+version = "0.2.1"
 dependencies = [
- "ado-base",
- "andromeda-modules",
+ "andromeda-app",
  "andromeda-non-fungible-tokens",
- "andromeda-os",
- "andromeda-testing",
- "common",
+ "andromeda-std",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-multi-test",
- "cw-storage-plus 0.16.0",
- "cw-utils 0.16.0",
- "cw2 0.16.0",
- "cw20 0.16.0",
- "cw721",
- "schemars",
+ "cw-storage-plus 1.1.0",
+ "cw-utils 1.0.1",
+ "cw2 1.1.0",
+ "cw20",
+ "cw721 0.17.0",
  "semver",
- "serde",
 ]
 
 [[package]]
-name = "andromeda-automation"
-version = "0.1.0"
+name = "andromeda-cross-chain-swap"
+version = "0.2.0"
 dependencies = [
- "andromeda-os",
- "common",
- "cosmwasm-schema",
- "cosmwasm-std",
- "schemars",
- "serde",
-]
-
-[[package]]
-name = "andromeda-condition"
-version = "0.1.0"
-dependencies = [
- "ado-base",
- "andromeda-automation",
+ "andromeda-app",
  "andromeda-finance",
- "andromeda-testing",
- "common",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-storage-plus 0.16.0",
- "cw-utils 0.16.0",
- "cw2 0.16.0",
- "cw20 0.16.0",
- "schemars",
- "semver",
- "serde",
-]
-
-[[package]]
-name = "andromeda-counter"
-version = "0.1.0"
-dependencies = [
- "ado-base",
- "andromeda-automation",
- "andromeda-os",
- "andromeda-testing",
- "base64",
- "common",
+ "andromeda-std",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-multi-test",
- "cw-storage-plus 0.13.4",
- "cw-utils 0.16.0",
- "cw2 0.13.4",
- "cw20 0.13.4",
+ "cw-storage-plus 1.1.0",
+ "cw-utils 1.0.1",
+ "cw2 1.1.0",
  "schemars",
  "semver",
  "serde",
@@ -189,210 +107,115 @@ dependencies = [
 name = "andromeda-crowdfund"
 version = "0.2.1"
 dependencies = [
- "ado-base",
  "andromeda-app",
  "andromeda-non-fungible-tokens",
- "andromeda-os",
- "common",
+ "andromeda-std",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-multi-test",
- "cw-storage-plus 0.16.0",
- "cw-utils 0.16.0",
- "cw2 0.16.0",
- "cw721",
- "schemars",
+ "cw-storage-plus 1.1.0",
+ "cw-utils 1.0.1",
+ "cw2 1.1.0",
+ "cw721 0.17.0",
  "semver",
- "serde",
 ]
 
 [[package]]
 name = "andromeda-cw20"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
- "ado-base",
  "andromeda-app",
  "andromeda-fungible-tokens",
- "andromeda-modules",
- "andromeda-os",
- "andromeda-testing",
- "common",
+ "andromeda-std",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-multi-test",
- "cw-storage-plus 0.16.0",
- "cw2 0.16.0",
- "cw20 0.16.0",
+ "cw-storage-plus 1.1.0",
+ "cw-utils 1.0.1",
+ "cw2 1.1.0",
+ "cw20",
  "cw20-base",
- "schemars",
  "semver",
- "serde",
 ]
 
 [[package]]
-name = "andromeda-cw20-staking"
-version = "0.2.0"
+name = "andromeda-cw20-exchange"
+version = "0.2.1"
 dependencies = [
- "ado-base",
+ "andromeda-app",
  "andromeda-fungible-tokens",
- "andromeda-os",
- "andromeda-testing",
- "common",
+ "andromeda-std",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-asset",
  "cw-multi-test",
- "cw-storage-plus 0.16.0",
- "cw-utils 0.16.0",
- "cw2 0.16.0",
- "cw20 0.16.0",
- "schemars",
+ "cw-storage-plus 1.1.0",
+ "cw-utils 1.0.1",
+ "cw2 1.1.0",
+ "cw20",
  "semver",
- "serde",
+]
+
+[[package]]
+name = "andromeda-cw20-staking"
+version = "0.2.1"
+dependencies = [
+ "andromeda-app",
+ "andromeda-fungible-tokens",
+ "andromeda-std",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-asset",
+ "cw-multi-test",
+ "cw-storage-plus 1.1.0",
+ "cw-utils 1.0.1",
+ "cw2 1.1.0",
+ "cw20",
+ "cw20-base",
+ "semver",
 ]
 
 [[package]]
 name = "andromeda-cw721"
 version = "0.2.1"
 dependencies = [
- "ado-base",
- "andromeda-modules",
  "andromeda-non-fungible-tokens",
- "andromeda-os",
- "andromeda-testing",
- "common",
+ "andromeda-std",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-multi-test",
- "cw-storage-plus 0.16.0",
- "cw2 0.16.0",
- "cw721",
- "cw721-base",
- "schemars",
+ "cw-storage-plus 1.1.0",
+ "cw2 1.1.0",
+ "cw721 0.17.0",
+ "cw721-base 0.17.0",
  "semver",
- "serde",
 ]
 
 [[package]]
-name = "andromeda-cw721-bids"
+name = "andromeda-economics"
 version = "0.2.0"
 dependencies = [
- "ado-base",
- "andromeda-non-fungible-tokens",
- "andromeda-os",
- "andromeda-testing",
- "common",
+ "andromeda-std",
  "cosmwasm-schema",
  "cosmwasm-std",
- "cw-storage-plus 0.16.0",
- "cw-utils 0.16.0",
- "cw2 0.16.0",
- "cw721",
- "cw721-base",
- "schemars",
+ "cw-multi-test",
+ "cw-storage-plus 1.1.0",
+ "cw2 1.1.0",
+ "cw20",
  "semver",
- "serde",
-]
-
-[[package]]
-name = "andromeda-cw721-staking"
-version = "0.2.0"
-dependencies = [
- "ado-base",
- "andromeda-non-fungible-tokens",
- "andromeda-os",
- "common",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-storage-plus 0.16.0",
- "cw-utils 0.16.0",
- "cw2 0.16.0",
- "cw721",
- "schemars",
- "semver",
- "serde",
-]
-
-[[package]]
-name = "andromeda-cw721-timelock"
-version = "0.2.0"
-dependencies = [
- "ado-base",
- "andromeda-non-fungible-tokens",
- "andromeda-os",
- "common",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-storage-plus 0.16.0",
- "cw-utils 0.16.0",
- "cw2 0.16.0",
- "cw721",
- "schemars",
- "semver",
- "serde",
-]
-
-[[package]]
-name = "andromeda-data-storage"
-version = "0.1.0"
-dependencies = [
- "common",
- "cosmwasm-schema",
- "cosmwasm-std",
- "schemars",
- "serde",
 ]
 
 [[package]]
 name = "andromeda-ecosystem"
 version = "0.1.0"
 dependencies = [
- "andromeda-os",
- "common",
+ "andromeda-std",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-asset",
- "cw-storage-plus 0.16.0",
- "cw20 0.16.0",
+ "cw-storage-plus 1.1.0",
+ "cw20",
  "schemars",
- "serde",
-]
-
-[[package]]
-name = "andromeda-evaluation"
-version = "0.1.0"
-dependencies = [
- "ado-base",
- "andromeda-automation",
- "andromeda-testing",
- "common",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-storage-plus 0.13.4",
- "cw-utils 0.16.0",
- "cw2 0.13.4",
- "cw20 0.13.4",
- "schemars",
- "semver",
- "serde",
-]
-
-[[package]]
-name = "andromeda-execute"
-version = "0.1.0"
-dependencies = [
- "ado-base",
- "andromeda-automation",
- "andromeda-testing",
- "common",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-storage-plus 0.13.4",
- "cw-utils 0.16.0",
- "cw2 0.13.4",
- "cw20 0.13.4",
- "schemars",
- "semver",
  "serde",
 ]
 
@@ -400,13 +223,12 @@ dependencies = [
 name = "andromeda-finance"
 version = "0.1.0"
 dependencies = [
- "andromeda-os",
- "common",
+ "andromeda-std",
  "cosmwasm-schema",
  "cosmwasm-std",
- "cw-utils 0.16.0",
- "cw20 0.16.0",
- "schemars",
+ "cw-utils 1.0.1",
+ "cw721 0.17.0",
+ "cw721-base 0.17.0",
  "serde",
 ]
 
@@ -414,202 +236,125 @@ dependencies = [
 name = "andromeda-fungible-tokens"
 version = "0.1.0"
 dependencies = [
- "andromeda-os",
- "common",
+ "andromeda-std",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-asset",
- "cw-utils 0.16.0",
- "cw20 0.16.0",
+ "cw-utils 1.0.1",
+ "cw20",
  "cw20-base",
- "schemars",
- "serde",
-]
-
-[[package]]
-name = "andromeda-gumball"
-version = "0.2.0"
-dependencies = [
- "ado-base",
- "andromeda-non-fungible-tokens",
- "andromeda-os",
- "base64",
- "common",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-storage-plus 0.16.0",
- "cw-utils 0.16.0",
- "cw2 0.16.0",
- "cw721",
- "schemars",
- "semver",
- "serde",
-]
-
-[[package]]
-name = "andromeda-ibc"
-version = "0.1.0"
-dependencies = [
- "andromeda-os",
- "common",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-asset",
- "cw-cii",
- "cw-paginate",
- "cw-pause-once",
- "cw-storage-plus 1.0.1",
- "cw-utils 1.0.1",
- "cw2 1.0.1",
- "cw721",
- "cw721-base",
- "cw721-proxy-derive",
- "serde",
- "thiserror",
- "zip-optional",
-]
-
-[[package]]
-name = "andromeda-ics721"
-version = "0.1.0"
-dependencies = [
- "ado-base",
- "andromeda-ibc",
- "andromeda-non-fungible-tokens",
- "common",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-cii",
- "cw-multi-test",
- "cw-pause-once",
- "cw-storage-plus 1.0.1",
- "cw-utils 1.0.1",
- "cw2 1.0.1",
- "cw721",
- "cw721-base",
- "schemars",
- "semver",
  "serde",
 ]
 
 [[package]]
 name = "andromeda-kernel"
-version = "0.2.0"
+version = "0.2.14"
 dependencies = [
- "ado-base",
- "andromeda-ibc",
- "andromeda-os",
- "andromeda-testing",
- "common",
+ "andromeda-std",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-multi-test",
- "cw-storage-plus 0.16.0",
- "cw2 0.16.0",
- "cw721",
- "schemars",
+ "cw-storage-plus 1.1.0",
+ "cw2 1.1.0",
  "semver",
- "serde",
 ]
 
 [[package]]
 name = "andromeda-lockdrop"
-version = "1.2.0"
+version = "0.2.1"
 dependencies = [
- "ado-base",
+ "andromeda-app",
  "andromeda-fungible-tokens",
- "andromeda-os",
- "common",
+ "andromeda-std",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-asset",
- "cw-storage-plus 0.16.0",
- "cw-utils 0.16.0",
- "cw2 0.16.0",
- "cw20 0.16.0",
- "schemars",
+ "cw-multi-test",
+ "cw-storage-plus 1.1.0",
+ "cw-utils 1.0.1",
+ "cw2 1.1.0",
+ "cw20",
  "semver",
- "serde",
+]
+
+[[package]]
+name = "andromeda-macros"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
 ]
 
 [[package]]
 name = "andromeda-marketplace"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
- "ado-base",
  "andromeda-app",
- "andromeda-modules",
  "andromeda-non-fungible-tokens",
- "andromeda-os",
- "andromeda-testing",
- "common",
+ "andromeda-std",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-multi-test",
- "cw-storage-plus 0.16.0",
- "cw-utils 0.16.0",
- "cw2 0.16.0",
- "cw20 0.16.0",
- "cw721",
- "schemars",
+ "cw-storage-plus 1.1.0",
+ "cw-utils 1.0.1",
+ "cw2 1.1.0",
+ "cw721 0.17.0",
  "semver",
- "serde",
 ]
 
 [[package]]
 name = "andromeda-merkle-airdrop"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
- "ado-base",
+ "andromeda-app",
  "andromeda-fungible-tokens",
- "andromeda-os",
- "common",
+ "andromeda-std",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-asset",
- "cw-storage-plus 0.16.0",
- "cw-utils 0.16.0",
- "cw2 0.16.0",
- "cw20 0.16.0",
+ "cw-multi-test",
+ "cw-storage-plus 1.1.0",
+ "cw-utils 1.0.1",
+ "cw2 1.1.0",
+ "cw20",
  "hex",
- "schemars",
  "semver",
  "serde",
- "sha2 0.9.9",
+ "sha2 0.10.7",
 ]
 
 [[package]]
 name = "andromeda-message-bridge"
-version = "0.1.0"
+version = "0.2.9"
 dependencies = [
- "ado-base",
- "andromeda-ibc",
- "andromeda-non-fungible-tokens",
- "andromeda-os",
- "andromeda-testing",
- "common",
+ "andromeda-std",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-multi-test",
- "cw-storage-plus 0.16.0",
- "cw-utils 0.16.0",
- "cw2 0.16.0",
+ "cw-storage-plus 1.1.0",
+ "cw-utils 1.0.1",
+ "cw2 1.1.0",
+ "osmosis-std",
+ "osmosis-std-derive 0.15.3",
+ "prost 0.11.9",
  "schemars",
  "semver",
  "serde",
+ "serde-json-wasm",
+ "sha256",
 ]
 
 [[package]]
 name = "andromeda-modules"
 version = "0.1.0"
 dependencies = [
- "andromeda-finance",
- "andromeda-os",
- "andromeda-testing",
- "common",
+ "andromeda-std",
  "cosmwasm-schema",
  "cosmwasm-std",
- "schemars",
+ "cw-utils 1.0.1",
+ "cw721 0.17.0",
+ "cw721-base 0.17.0",
  "serde",
 ]
 
@@ -617,375 +362,176 @@ dependencies = [
 name = "andromeda-non-fungible-tokens"
 version = "0.1.0"
 dependencies = [
- "andromeda-os",
- "common",
+ "andromeda-std",
  "cosmwasm-schema",
  "cosmwasm-std",
- "cw-utils 0.16.0",
- "cw721",
- "cw721-base",
- "schemars",
- "serde",
-]
-
-[[package]]
-name = "andromeda-oracle"
-version = "0.1.0"
-dependencies = [
- "ado-base",
- "andromeda-automation",
- "andromeda-testing",
- "common",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-storage-plus 0.13.4",
- "cw-utils 0.16.0",
- "cw2 0.13.4",
- "cw20 0.13.4",
- "schemars",
- "semver",
- "serde",
- "serde-json-value-wasm",
- "serde-json-wasm 0.4.1",
-]
-
-[[package]]
-name = "andromeda-os"
-version = "0.1.0"
-dependencies = [
- "common",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-asset",
- "cw-storage-plus 0.16.0",
- "cw2 0.16.0",
- "cw20 0.16.0",
- "lazy_static",
- "regex",
- "schemars",
- "semver",
- "serde",
-]
-
-[[package]]
-name = "andromeda-primitive"
-version = "0.1.0"
-dependencies = [
- "ado-base",
- "andromeda-data-storage",
- "common",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-multi-test",
- "cw-storage-plus 0.16.0",
- "cw-utils 0.16.0",
- "cw2 0.16.0",
- "schemars",
- "semver",
- "serde",
-]
-
-[[package]]
-name = "andromeda-process"
-version = "0.1.0"
-dependencies = [
- "ado-base",
- "andromeda-automation",
- "andromeda-testing",
- "common",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-storage-plus 0.15.1",
- "cw2 0.15.1",
- "prost",
- "schemars",
- "semver",
+ "cw-utils 1.0.1",
+ "cw721 0.17.0",
+ "cw721-base 0.17.0",
  "serde",
 ]
 
 [[package]]
 name = "andromeda-rate-limiting-withdrawals"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
- "ado-base",
+ "andromeda-app",
  "andromeda-finance",
- "andromeda-os",
- "andromeda-testing",
- "common",
+ "andromeda-std",
  "cosmwasm-schema",
  "cosmwasm-std",
- "cw-storage-plus 0.16.0",
- "cw-utils 0.16.0",
- "cw2 0.16.0",
- "cw20 0.16.0",
- "schemars",
+ "cw-multi-test",
+ "cw-storage-plus 1.1.0",
+ "cw-utils 1.0.1",
+ "cw2 1.1.0",
+ "cw20",
  "semver",
- "serde",
 ]
 
 [[package]]
 name = "andromeda-rates"
-version = "0.1.2"
+version = "0.2.1"
 dependencies = [
- "ado-base",
+ "andromeda-app",
  "andromeda-modules",
- "andromeda-os",
- "andromeda-testing",
- "common",
+ "andromeda-std",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-multi-test",
- "cw-storage-plus 0.16.0",
- "cw-utils 0.16.0",
- "cw2 0.16.0",
- "cw20 0.16.0",
- "schemars",
+ "cw-storage-plus 1.1.0",
+ "cw-utils 1.0.1",
+ "cw2 1.1.0",
+ "cw20",
  "semver",
- "serde",
-]
-
-[[package]]
-name = "andromeda-receipt"
-version = "0.1.2"
-dependencies = [
- "ado-base",
- "andromeda-modules",
- "common",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-storage-plus 0.16.0",
- "cw-utils 0.16.0",
- "cw2 0.16.0",
- "schemars",
- "semver",
- "serde",
 ]
 
 [[package]]
 name = "andromeda-splitter"
-version = "0.2.0"
+version = "0.2.3"
 dependencies = [
- "ado-base",
+ "andromeda-app",
  "andromeda-finance",
- "andromeda-os",
- "andromeda-testing",
- "common",
+ "andromeda-std",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-multi-test",
- "cw-storage-plus 0.16.0",
- "cw-utils 0.16.0",
- "cw2 0.16.0",
- "schemars",
+ "cw-storage-plus 1.1.0",
+ "cw-utils 1.0.1",
+ "cw2 1.1.0",
  "semver",
- "serde",
 ]
 
 [[package]]
-name = "andromeda-storage"
+name = "andromeda-std"
 version = "0.1.0"
 dependencies = [
- "ado-base",
- "andromeda-automation",
- "andromeda-testing",
- "common",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-storage-plus 0.13.4",
- "cw-utils 0.16.0",
- "cw2 0.13.4",
- "cw20 0.13.4",
- "schemars",
- "semver",
- "serde",
-]
-
-[[package]]
-name = "andromeda-swapper"
-version = "0.2.0"
-dependencies = [
- "ado-base",
- "andromeda-ecosystem",
- "andromeda-os",
- "andromeda-testing",
- "common",
+ "andromeda-macros",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-asset",
- "cw-storage-plus 0.16.0",
- "cw-utils 0.16.0",
- "cw2 0.16.0",
- "cw20 0.16.0",
- "prost",
+ "cw-cii",
+ "cw-pause-once",
+ "cw-storage-plus 1.1.0",
+ "cw-utils 1.0.1",
+ "cw20",
+ "cw20-base",
+ "cw721 0.17.0",
+ "cw721-base 0.17.0",
+ "cw721-proxy-derive",
+ "hex",
+ "lazy_static",
  "schemars",
  "semver",
  "serde",
-]
-
-[[package]]
-name = "andromeda-task-balancer"
-version = "0.1.0"
-dependencies = [
- "ado-base",
- "andromeda-app",
- "andromeda-automation",
- "andromeda-testing",
- "common",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cosmwasm-storage",
- "cw-multi-test",
- "cw-storage-plus 0.15.1",
- "cw2 0.15.1",
- "schemars",
- "semver",
- "serde",
+ "serde-json-wasm",
+ "strum_macros",
  "thiserror",
-]
-
-[[package]]
-name = "andromeda-testing"
-version = "0.1.0"
-dependencies = [
- "andromeda-adodb",
- "andromeda-app",
- "andromeda-kernel",
- "andromeda-modules",
- "andromeda-non-fungible-tokens",
- "andromeda-os",
- "andromeda-primitive",
- "andromeda-vfs",
- "common",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-multi-test",
- "cw20 0.16.0",
- "cw721",
- "prost",
+ "zip-optional",
 ]
 
 [[package]]
 name = "andromeda-timelock"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
- "ado-base",
+ "andromeda-app",
  "andromeda-finance",
- "andromeda-os",
- "andromeda-testing",
- "common",
+ "andromeda-std",
  "cosmwasm-schema",
  "cosmwasm-std",
- "cw-storage-plus 0.16.0",
- "cw2 0.16.0",
- "cw721",
- "schemars",
+ "cw-multi-test",
+ "cw-storage-plus 1.1.0",
+ "cw-utils 1.0.1",
+ "cw2 1.1.0",
  "semver",
- "serde",
 ]
 
 [[package]]
 name = "andromeda-vault"
 version = "0.2.0"
 dependencies = [
- "ado-base",
  "andromeda-ecosystem",
- "andromeda-os",
- "common",
+ "andromeda-std",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-multi-test",
- "cw-storage-plus 0.16.0",
- "cw-utils 0.16.0",
- "cw2 0.16.0",
- "cw20 0.16.0",
- "schemars",
+ "cw-storage-plus 1.1.0",
+ "cw-utils 1.0.1",
+ "cw2 1.1.0",
  "semver",
- "serde",
 ]
 
 [[package]]
 name = "andromeda-vesting"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
- "ado-base",
+ "andromeda-app",
  "andromeda-finance",
- "andromeda-os",
- "common",
+ "andromeda-std",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-asset",
- "cw-storage-plus 0.16.0",
- "cw-utils 0.16.0",
- "cw2 0.16.0",
- "schemars",
+ "cw-multi-test",
+ "cw-storage-plus 1.1.0",
+ "cw-utils 1.0.1",
+ "cw2 1.1.0",
  "semver",
- "serde",
 ]
 
 [[package]]
 name = "andromeda-vfs"
 version = "0.2.0"
 dependencies = [
- "ado-base",
- "andromeda-os",
- "andromeda-testing",
- "common",
+ "andromeda-std",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-multi-test",
- "cw-storage-plus 0.16.0",
- "cw2 0.16.0",
- "schemars",
+ "cw-storage-plus 1.1.0",
+ "cw2 1.1.0",
  "semver",
  "serde",
 ]
 
 [[package]]
 name = "andromeda-weighted-distribution-splitter"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
- "ado-base",
  "andromeda-app",
  "andromeda-finance",
- "andromeda-os",
- "andromeda-testing",
- "common",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-storage-plus 0.16.0",
- "cw-utils 0.16.0",
- "cw2 0.16.0",
- "schemars",
- "semver",
- "serde",
-]
-
-[[package]]
-name = "andromeda-wrapped-cw721"
-version = "0.2.0"
-dependencies = [
- "ado-base",
- "andromeda-non-fungible-tokens",
- "andromeda-os",
- "andromeda-testing",
- "common",
+ "andromeda-std",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-multi-test",
- "cw-storage-plus 0.16.0",
- "cw2 0.16.0",
- "cw721",
- "cw721-base",
- "schemars",
+ "cw-storage-plus 1.1.0",
+ "cw-utils 1.0.1",
+ "cw2 1.1.0",
  "semver",
- "serde",
 ]
 
 [[package]]
 name = "anyhow"
-version = "1.0.68"
+version = "1.0.71"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2cb2f989d18dd141ab8ae82f64d1a8cdd37e0840f73a406896cf5e99502fab61"
+checksum = "9c7d0618f0e0b7e8ff11427422b64564d5fb0be1940354bfe2e0529b18a9d9b8"
 
 [[package]]
 name = "base16ct"
@@ -1001,9 +547,9 @@ checksum = "9e1b586273c5702936fe7b7d6896644d8be71e6314cfe09d3167c95f712589e8"
 
 [[package]]
 name = "base64ct"
-version = "1.5.3"
+version = "1.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b645a089122eccb6111b4f81cbc1a49f5900ac4666bb93ac027feaecf15607bf"
+checksum = "8c3c1a368f70d6cf7302d78f8f7093da241fb8e8807c05cc9e51a125895a6d5b"
 
 [[package]]
 name = "block-buffer"
@@ -1016,9 +562,9 @@ dependencies = [
 
 [[package]]
 name = "block-buffer"
-version = "0.10.3"
+version = "0.10.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "69cce20737498f97b993470a6e536b8523f0af7892a4f928cceb1ac5e52ebe7e"
+checksum = "3078c7629b62d3f0439517fa394996acacc5cbc91c5a20d8c658e77abd503a71"
 dependencies = [
  "generic-array",
 ]
@@ -1031,9 +577,9 @@ checksum = "14c189c53d098945499cdfa7ecc63567cf3886b3332b312a5b4585d8d3a6a610"
 
 [[package]]
 name = "bytes"
-version = "1.3.0"
+version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dfb24e866b15a1af2a1b663f10c6b6b8f397a84aadb828f12e5b289ec23a3a3c"
+checksum = "89b2fd2a0dcf38d7971e2194b6b6eebab45ae01067456a7fd93d5547a61b70be"
 
 [[package]]
 name = "cfg-if"
@@ -1042,40 +588,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
-name = "common"
-version = "0.1.0"
-dependencies = [
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-asset",
- "cw-pause-once",
- "cw-storage-plus 0.16.0",
- "cw-utils 0.16.0",
- "cw1155",
- "cw1155-base",
- "cw20 0.16.0",
- "cw20-base",
- "cw721-base",
- "hex",
- "schemars",
- "semver",
- "serde",
- "thiserror",
-]
-
-[[package]]
 name = "const-oid"
-version = "0.9.1"
+version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cec318a675afcb6a1ea1d4340e2d377e56e47c266f28043ceccbf4412ddfdd3b"
+checksum = "6340df57935414636969091153f35f68d9f00bbc8fb4a9c6054706c213e6c6bc"
 
 [[package]]
 name = "cosmwasm-crypto"
-version = "1.2.1"
+version = "1.2.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7fecd74d3a0041114110d1260f77fcb644c5d2403549b37096c44f0e643a5177"
+checksum = "bb64554a91d6a9231127f4355d351130a0b94e663d5d9dc8b3a54ca17d83de49"
 dependencies = [
- "digest 0.10.6",
+ "digest 0.10.7",
  "ed25519-zebra",
  "k256",
  "rand_core 0.6.4",
@@ -1084,18 +608,18 @@ dependencies = [
 
 [[package]]
 name = "cosmwasm-derive"
-version = "1.2.1"
+version = "1.2.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d5abeeb891e6d0098402e4d3d042f90451db52651d2fe14b170e69a1dd3e4115"
+checksum = "a0fb2ce09f41a3dae1a234d56a9988f9aff4c76441cd50ef1ee9a4f20415b028"
 dependencies = [
- "syn",
+ "syn 1.0.109",
 ]
 
 [[package]]
 name = "cosmwasm-schema"
-version = "1.2.1"
+version = "1.2.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9118e36843df6648fd0a626c46438f87038f296ec750cef3832cafc483c483f9"
+checksum = "230e5d1cefae5331db8934763c81b9c871db6a2cd899056a5694fa71d292c815"
 dependencies = [
  "cosmwasm-schema-derive",
  "schemars",
@@ -1106,20 +630,20 @@ dependencies = [
 
 [[package]]
 name = "cosmwasm-schema-derive"
-version = "1.2.1"
+version = "1.2.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "78d6fc9854ac14e46cb69b0f396547893f93d2847aef975950ebbe73342324f3"
+checksum = "43dadf7c23406cb28079d69e6cb922c9c29b9157b0fe887e3b79c783b7d4bcb8"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn",
+ "syn 1.0.109",
 ]
 
 [[package]]
 name = "cosmwasm-std"
-version = "1.2.1"
+version = "1.2.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5034c772c1369b160731aa00bb81f93733ab2884928edd8d588733d607ac5af4"
+checksum = "4337eef8dfaf8572fe6b6b415d6ec25f9308c7bb09f2da63789209fb131363be"
 dependencies = [
  "base64",
  "cosmwasm-crypto",
@@ -1129,27 +653,17 @@ dependencies = [
  "hex",
  "schemars",
  "serde",
- "serde-json-wasm 0.5.0",
- "sha2 0.10.6",
+ "serde-json-wasm",
+ "sha2 0.10.7",
  "thiserror",
  "uint",
 ]
 
 [[package]]
-name = "cosmwasm-storage"
-version = "1.1.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9162c3f85412914d5be2ee650ebdbf11b08e5e9acdebcf4dc03608fb01cf9676"
-dependencies = [
- "cosmwasm-std",
- "serde",
-]
-
-[[package]]
 name = "cpufeatures"
-version = "0.2.5"
+version = "0.2.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "28d997bd5e24a5928dd43e46dc529867e207907fe0b239c3477d924f7f2ca320"
+checksum = "03e69e28e9f7f77debdedbaafa2866e1de9ba56df55a8bd7cfc724c25a09987c"
 dependencies = [
  "libc",
 ]
@@ -1196,22 +710,32 @@ dependencies = [
 ]
 
 [[package]]
-name = "cw-asset"
-version = "2.4.0"
+name = "cw-address-like"
+version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "28e955303c96778b58ad52bbbabbe10b170ae1c8df2fec08ce7d7eedf2c22701"
+checksum = "451a4691083a88a3c0630a8a88799e9d4cd6679b7ce8ff22b8da2873ff31d380"
+dependencies = [
+ "cosmwasm-std",
+]
+
+[[package]]
+name = "cw-asset"
+version = "3.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "64e2cf17accdcafe71859a683b6ed3f18311634a769550aacf4829b50151b221"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
- "cw-storage-plus 0.16.0",
- "cw1155",
- "cw20 0.16.0",
+ "cw-address-like",
+ "cw-storage-plus 1.1.0",
+ "cw20",
+ "thiserror",
 ]
 
 [[package]]
 name = "cw-cii"
 version = "0.0.1"
-source = "git+https://github.com/public-awesome/ics721.git#3af19e421a95aec5291a0cabbe796c58698ac97f"
+source = "git+https://github.com/public-awesome/ics721.git#b06251fde0e8e662ae37f3931f74ddbd9b8e8844"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -1219,68 +743,59 @@ dependencies = [
 
 [[package]]
 name = "cw-multi-test"
-version = "0.16.2"
+version = "0.16.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c2eb84554bbfa6b66736abcd6a9bfdf237ee0ecb83910f746dff7f799093c80a"
+checksum = "127c7bb95853b8e828bdab97065c81cb5ddc20f7339180b61b2300565aaa99d1"
 dependencies = [
  "anyhow",
  "cosmwasm-std",
- "cw-storage-plus 1.0.1",
+ "cw-storage-plus 1.1.0",
  "cw-utils 1.0.1",
  "derivative",
  "itertools",
  "k256",
- "prost",
+ "prost 0.9.0",
  "schemars",
  "serde",
  "thiserror",
 ]
 
 [[package]]
-name = "cw-paginate"
-version = "2.0.0-beta"
-source = "git+https://github.com/DA0-DA0/dao-contracts.git?tag=v2.0.0-beta#74bd3881fdd86829e5e8b132b9952dd64f2d0737"
+name = "cw-ownable"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "093dfb4520c48b5848274dd88ea99e280a04bc08729603341c7fb0d758c74321"
 dependencies = [
+ "cosmwasm-schema",
  "cosmwasm-std",
- "cosmwasm-storage",
- "cw-storage-plus 0.16.0",
- "serde",
+ "cw-address-like",
+ "cw-ownable-derive",
+ "cw-storage-plus 1.1.0",
+ "cw-utils 1.0.1",
+ "thiserror",
+]
+
+[[package]]
+name = "cw-ownable-derive"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a1d3bf2e0f341bb6cc100d7d441d31cf713fbd3ce0c511f91e79f14b40a889af"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
 ]
 
 [[package]]
 name = "cw-pause-once"
 version = "0.0.1"
-source = "git+https://github.com/public-awesome/ics721.git#3af19e421a95aec5291a0cabbe796c58698ac97f"
+source = "git+https://github.com/public-awesome/ics721.git#b06251fde0e8e662ae37f3931f74ddbd9b8e8844"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-storage-plus 0.15.1",
  "cw-utils 0.15.1",
  "thiserror",
-]
-
-[[package]]
-name = "cw-rate-limiter"
-version = "0.0.1"
-source = "git+https://github.com/0xekez/cw721-proxy.git#b1c98f5b84f21eac2c5a8a89f18209802ce6a3dd"
-dependencies = [
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-storage-plus 0.16.0",
- "schemars",
- "serde",
- "thiserror",
-]
-
-[[package]]
-name = "cw-storage-plus"
-version = "0.13.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "648b1507290bbc03a8d88463d7cd9b04b1fa0155e5eef366c4fa052b9caaac7a"
-dependencies = [
- "cosmwasm-std",
- "schemars",
- "serde",
 ]
 
 [[package]]
@@ -1307,25 +822,13 @@ dependencies = [
 
 [[package]]
 name = "cw-storage-plus"
-version = "1.0.1"
+version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "053a5083c258acd68386734f428a5a171b29f7d733151ae83090c6fcc9417ffa"
+checksum = "3f0e92a069d62067f3472c62e30adedb4cab1754725c0f2a682b3128d2bf3c79"
 dependencies = [
  "cosmwasm-std",
  "schemars",
  "serde",
-]
-
-[[package]]
-name = "cw-utils"
-version = "0.13.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9dbaecb78c8e8abfd6b4258c7f4fbeb5c49a5e45ee4d910d3240ee8e1d714e1b"
-dependencies = [
- "cosmwasm-std",
- "schemars",
- "serde",
- "thiserror",
 ]
 
 [[package]]
@@ -1366,53 +869,11 @@ checksum = "c80e93d1deccb8588db03945016a292c3c631e6325d349ebb35d2db6f4f946f7"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
- "cw2 1.0.1",
+ "cw2 1.1.0",
  "schemars",
  "semver",
  "serde",
  "thiserror",
-]
-
-[[package]]
-name = "cw1155"
-version = "0.16.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4be0ebb4d95abc0e3f8ea00fbcf10afec5416b0aa1122c703de69850296897c5"
-dependencies = [
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-utils 0.16.0",
- "schemars",
- "serde",
-]
-
-[[package]]
-name = "cw1155-base"
-version = "0.16.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b847cda4bdab297bcbe64be0cce5eed18b4dea58358a819fb96df81ff9aa1e5a"
-dependencies = [
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-storage-plus 0.16.0",
- "cw-utils 0.16.0",
- "cw1155",
- "cw2 0.16.0",
- "schemars",
- "serde",
- "thiserror",
-]
-
-[[package]]
-name = "cw2"
-version = "0.13.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "04cf4639517490dd36b333bbd6c4fbd92e325fd0acf4683b41753bc5eb63bfc1"
-dependencies = [
- "cosmwasm-std",
- "cw-storage-plus 0.13.4",
- "schemars",
- "serde",
 ]
 
 [[package]]
@@ -1443,54 +904,43 @@ dependencies = [
 
 [[package]]
 name = "cw2"
-version = "1.0.1"
+version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8fb70cee2cf0b4a8ff7253e6bc6647107905e8eb37208f87d54f67810faa62f8"
+checksum = "29ac2dc7a55ad64173ca1e0a46697c31b7a5c51342f55a1e84a724da4eb99908"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
- "cw-storage-plus 1.0.1",
+ "cw-storage-plus 1.1.0",
  "schemars",
  "serde",
+ "thiserror",
 ]
 
 [[package]]
 name = "cw20"
-version = "0.13.4"
+version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4cb782b8f110819a4eb5dbbcfed25ffba49ec16bbe32b4ad8da50a5ce68fec05"
-dependencies = [
- "cosmwasm-std",
- "cw-utils 0.13.4",
- "schemars",
- "serde",
-]
-
-[[package]]
-name = "cw20"
-version = "0.16.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a45a8794a5dd33b66af34caee52a7beceb690856adcc1682b6e3db88b2cdee62"
+checksum = "011c45920f8200bd5d32d4fe52502506f64f2f75651ab408054d4cfc75ca3a9b"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
- "cw-utils 0.16.0",
+ "cw-utils 1.0.1",
  "schemars",
  "serde",
 ]
 
 [[package]]
 name = "cw20-base"
-version = "0.16.0"
+version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "61d826fa1084d026d0abdb54faa5956972efa3a9053473bfcefb5388960aab69"
+checksum = "0b3ad456059901a36cfa68b596d85d579c3df2b797dae9950dc34c27e14e995f"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
- "cw-storage-plus 0.16.0",
- "cw-utils 0.16.0",
- "cw2 0.16.0",
- "cw20 0.16.0",
+ "cw-storage-plus 1.1.0",
+ "cw-utils 1.0.1",
+ "cw2 1.1.0",
+ "cw20",
  "schemars",
  "semver",
  "serde",
@@ -1511,6 +961,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw721"
+version = "0.17.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "aa49f5096cc1587489ac5d1d345936e8139738f40ad07a94c7b157b19f975c00"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-utils 1.0.1",
+ "schemars",
+ "serde",
+]
+
+[[package]]
 name = "cw721-base"
 version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1521,22 +984,28 @@ dependencies = [
  "cw-storage-plus 0.16.0",
  "cw-utils 0.16.0",
  "cw2 0.16.0",
- "cw721",
+ "cw721 0.16.0",
  "schemars",
  "serde",
  "thiserror",
 ]
 
 [[package]]
-name = "cw721-proxy"
-version = "0.0.1"
-source = "git+https://github.com/0xekez/cw721-proxy.git#b1c98f5b84f21eac2c5a8a89f18209802ce6a3dd"
+name = "cw721-base"
+version = "0.17.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "72c2be7476fa786c3adc96b00e33a0c5917d2a84774d94c5dd76e987c315570f"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
- "cw-storage-plus 0.16.0",
- "cw721",
- "cw721-proxy-derive",
+ "cw-ownable",
+ "cw-storage-plus 1.1.0",
+ "cw-utils 1.0.1",
+ "cw2 1.1.0",
+ "cw721 0.17.0",
+ "cw721-base 0.16.0",
+ "schemars",
+ "serde",
  "thiserror",
 ]
 
@@ -1545,26 +1014,10 @@ name = "cw721-proxy-derive"
 version = "0.0.1"
 source = "git+https://github.com/0xekez/cw721-proxy.git#b1c98f5b84f21eac2c5a8a89f18209802ce6a3dd"
 dependencies = [
- "cw721",
+ "cw721 0.16.0",
  "proc-macro2",
  "quote",
- "syn",
-]
-
-[[package]]
-name = "cw721-rate-limited-proxy"
-version = "0.0.1"
-source = "git+https://github.com/0xekez/cw721-proxy.git#b1c98f5b84f21eac2c5a8a89f18209802ce6a3dd"
-dependencies = [
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-rate-limiter",
- "cw-storage-plus 0.16.0",
- "cw2 0.16.0",
- "cw721",
- "cw721-proxy",
- "cw721-proxy-derive",
- "thiserror",
+ "syn 1.0.109",
 ]
 
 [[package]]
@@ -1585,7 +1038,7 @@ checksum = "fcc3dd5e9e9c0b295d6e1e4d811fb6f157d5ffd784b8d202fc62eac8035a770b"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn",
+ "syn 1.0.109",
 ]
 
 [[package]]
@@ -1599,20 +1052,20 @@ dependencies = [
 
 [[package]]
 name = "digest"
-version = "0.10.6"
+version = "0.10.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8168378f4e5023e7218c89c891c0fd8ecdb5e5e4f18cb78f38cf245dd021e76f"
+checksum = "9ed9a281f7bc9b7576e61468ba615a66a5c8cfdff42420a70aa82701a3b1e292"
 dependencies = [
- "block-buffer 0.10.3",
+ "block-buffer 0.10.4",
  "crypto-common",
  "subtle",
 ]
 
 [[package]]
 name = "dyn-clone"
-version = "1.0.10"
+version = "1.0.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c9b0705efd4599c15a38151f4721f7bc388306f61084d3bfd50bd07fbca5cb60"
+checksum = "68b0cf012f1230e43cd00ebb729c6bb58707ecfa8ad08b52ef3a4ccd2697fc30"
 
 [[package]]
 name = "ecdsa"
@@ -1643,9 +1096,9 @@ dependencies = [
 
 [[package]]
 name = "either"
-version = "1.8.0"
+version = "1.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "90e5c1c8368803113bf0c9584fc495a58b86dc8a29edbf8fe877d21d9507e797"
+checksum = "7fcaabb2fef8c910e7f4c7ce9f67a1283a1715879a7c230ca9d6d1ae31f16d91"
 
 [[package]]
 name = "elliptic-curve"
@@ -1656,7 +1109,7 @@ dependencies = [
  "base16ct",
  "crypto-bigint",
  "der",
- "digest 0.10.6",
+ "digest 0.10.7",
  "ff",
  "generic-array",
  "group",
@@ -1685,9 +1138,9 @@ checksum = "c8cbd1169bd7b4a0a20d92b9af7a7e0422888bd38a6f5ec29c1fd8c1558a272e"
 
 [[package]]
 name = "generic-array"
-version = "0.14.6"
+version = "0.14.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bff49e947297f3312447abdca79f45f4738097cc82b06e72054d2223f601f1b9"
+checksum = "85649ca51fd72272d7821adaf274ad91c288277713d9c18820d8499a7ff69e9a"
 dependencies = [
  "typenum",
  "version_check",
@@ -1695,9 +1148,9 @@ dependencies = [
 
 [[package]]
 name = "getrandom"
-version = "0.2.8"
+version = "0.2.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c05aeb6a22b8f62540c194aac980f2115af067bfe15a0734d7277a768d396b31"
+checksum = "be4136b2a15dd319360be1c07d9933517ccf0be8f16bf62a3bee4f0d618df427"
 dependencies = [
  "cfg-if",
  "libc",
@@ -1725,6 +1178,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "heck"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "95505c38b4572b2d910cecb0281560f54b440a19336cbbcb27bf6ce6adc6f5a8"
+
+[[package]]
 name = "hex"
 version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1736,7 +1195,7 @@ version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6c49c37c09c17a53d937dfbb742eb3a961d65a994e6bcdcf37e7399d0cc8ab5e"
 dependencies = [
- "digest 0.10.6",
+ "digest 0.10.7",
 ]
 
 [[package]]
@@ -1750,9 +1209,9 @@ dependencies = [
 
 [[package]]
 name = "itoa"
-version = "1.0.5"
+version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fad582f4b9e86b6caa621cabeb0963332d92eea04729ab12892c2533951e6440"
+checksum = "c0aa48fab2893d8a49caa94082ae8488f4e1050d73b367881dcd2198f4199fd8"
 
 [[package]]
 name = "k256"
@@ -1763,7 +1222,7 @@ dependencies = [
  "cfg-if",
  "ecdsa",
  "elliptic-curve",
- "sha2 0.10.6",
+ "sha2 0.10.7",
 ]
 
 [[package]]
@@ -1774,27 +1233,59 @@ checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 
 [[package]]
 name = "libc"
-version = "0.2.139"
+version = "0.2.147"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "201de327520df007757c1f0adce6e827fe8562fbc28bfd9c15571c66ca1f5f79"
-
-[[package]]
-name = "memchr"
-version = "2.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2dffe52ecf27772e601905b7522cb4ef790d2cc203488bbd0e2fe85fcb74566d"
+checksum = "b4668fb0ea861c1df094127ac5f1da3409a82116a4ba74fca2e58ef927159bb3"
 
 [[package]]
 name = "once_cell"
-version = "1.17.0"
+version = "1.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6f61fba1741ea2b3d6a1e3178721804bb716a68a6aeba1149b5d52e3d464ea66"
+checksum = "dd8b5dd2ae5ed71462c540258bedcb51965123ad7e7ccf4b9a8cafaa4a63576d"
 
 [[package]]
 name = "opaque-debug"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "624a8340c38c1b80fd549087862da4ba43e08858af025b236e509b6649fc13d5"
+
+[[package]]
+name = "osmosis-std"
+version = "0.1.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "50fb348fd7aefc37038ba8125e18b360af5bd44c6e007d2b10346777995857e3"
+dependencies = [
+ "cosmwasm-std",
+ "osmosis-std-derive 0.1.7",
+ "prost 0.11.9",
+ "prost-types",
+ "schemars",
+ "serde",
+]
+
+[[package]]
+name = "osmosis-std-derive"
+version = "0.1.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "743ed6a9bb8d2c210a8c184a874244dbf56ebb2f6062c3848300b7ea9817ca50"
+dependencies = [
+ "itertools",
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
+]
+
+[[package]]
+name = "osmosis-std-derive"
+version = "0.15.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f4d482a16be198ee04e0f94e10dd9b8d02332dcf33bc5ea4b255e7e25eedc5df"
+dependencies = [
+ "itertools",
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
+]
 
 [[package]]
 name = "pkcs8"
@@ -1808,9 +1299,9 @@ dependencies = [
 
 [[package]]
 name = "proc-macro2"
-version = "1.0.50"
+version = "1.0.63"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6ef7d57beacfaf2d8aee5937dab7b7f28de3cb8b1828479bb5de2a7106f2bae2"
+checksum = "7b368fba921b0dce7e60f5e04ec15e565b3303972b42bcfde1d0713b881959eb"
 dependencies = [
  "unicode-ident",
 ]
@@ -1822,7 +1313,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "444879275cb4fd84958b1a1d5420d15e6fcf7c235fe47f053c9c2a80aceb6001"
 dependencies = [
  "bytes",
- "prost-derive",
+ "prost-derive 0.9.0",
+]
+
+[[package]]
+name = "prost"
+version = "0.11.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0b82eaa1d779e9a4bc1c3217db8ffbeabaae1dca241bf70183242128d48681cd"
+dependencies = [
+ "bytes",
+ "prost-derive 0.11.9",
 ]
 
 [[package]]
@@ -1835,14 +1336,36 @@ dependencies = [
  "itertools",
  "proc-macro2",
  "quote",
- "syn",
+ "syn 1.0.109",
+]
+
+[[package]]
+name = "prost-derive"
+version = "0.11.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e5d2d8d10f3c6ded6da8b05b5fb3b8a5082514344d56c9f871412d29b4e075b4"
+dependencies = [
+ "anyhow",
+ "itertools",
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
+]
+
+[[package]]
+name = "prost-types"
+version = "0.11.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "213622a1460818959ac1181aaeb2dc9c7f63df720db7d788b3e24eacd1983e13"
+dependencies = [
+ "prost 0.11.9",
 ]
 
 [[package]]
 name = "quote"
-version = "1.0.23"
+version = "1.0.29"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8856d8364d252a14d474036ea1358d63c9e6965c8e5c1885c18f73d70bff9c7b"
+checksum = "573015e8ab27661678357f27dc26460738fd2b6c86e46f386fde94cb5d913105"
 dependencies = [
  "proc-macro2",
 ]
@@ -1863,23 +1386,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "regex"
-version = "1.7.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "48aaa5748ba571fb95cd2c85c09f629215d3a6ece942baa100950af03a34f733"
-dependencies = [
- "aho-corasick",
- "memchr",
- "regex-syntax",
-]
-
-[[package]]
-name = "regex-syntax"
-version = "0.6.28"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "456c603be3e8d448b072f410900c09faf164fbce2d480456f50eea6e25f9c848"
-
-[[package]]
 name = "rfc6979"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1891,16 +1397,22 @@ dependencies = [
 ]
 
 [[package]]
-name = "ryu"
+name = "rustversion"
 version = "1.0.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7b4b9743ed687d4b4bcedf9ff5eaa7398495ae14e61cba0a295704edbc7decde"
+checksum = "4f3208ce4d8448b3f3e7d168a73f5e0c43a61e32930de3bceeccedb388b6bf06"
+
+[[package]]
+name = "ryu"
+version = "1.0.13"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f91339c0467de62360649f8d3e185ca8de4224ff281f66000de5eb2a77a79041"
 
 [[package]]
 name = "schemars"
-version = "0.8.11"
+version = "0.8.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2a5fb6c61f29e723026dc8e923d94c694313212abbecbbe5f55a7748eec5b307"
+checksum = "02c613288622e5f0c3fdc5dbd4db1c5fbe752746b1d1a56a0630b78fd00de44f"
 dependencies = [
  "dyn-clone",
  "schemars_derive",
@@ -1910,14 +1422,14 @@ dependencies = [
 
 [[package]]
 name = "schemars_derive"
-version = "0.8.11"
+version = "0.8.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f188d036977451159430f3b8dc82ec76364a42b7e289c2b18a9a18f4470058e9"
+checksum = "109da1e6b197438deb6db99952990c7f959572794b80ff93707d55a232545e7c"
 dependencies = [
  "proc-macro2",
  "quote",
  "serde_derive_internals",
- "syn",
+ "syn 1.0.109",
 ]
 
 [[package]]
@@ -1936,55 +1448,37 @@ dependencies = [
 
 [[package]]
 name = "semver"
-version = "1.0.16"
+version = "1.0.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "58bc9567378fc7690d6b2addae4e60ac2eeea07becb2c64b9f218b53865cba2a"
+checksum = "bebd363326d05ec3e2f532ab7660680f3b02130d780c299bca73469d521bc0ed"
 
 [[package]]
 name = "serde"
-version = "1.0.152"
+version = "1.0.165"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bb7d1f0d3021d347a83e556fc4683dea2ea09d87bccdf88ff5c12545d89d5efb"
+checksum = "c939f902bb7d0ccc5bce4f03297e161543c2dcb30914faf032c2bd0b7a0d48fc"
 dependencies = [
  "serde_derive",
 ]
 
 [[package]]
-name = "serde-json-value-wasm"
-version = "0.1.0"
-source = "git+https://github.com/chris-ricketts/serde-json-value-wasm#fa4ad6b5ba39715d71eb378af697563f76065415"
-dependencies = [
- "serde",
- "serde-json-wasm 0.4.1",
-]
-
-[[package]]
 name = "serde-json-wasm"
-version = "0.4.1"
+version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "479b4dbc401ca13ee8ce902851b834893251404c4f3c65370a49e047a6be09a5"
-dependencies = [
- "serde",
-]
-
-[[package]]
-name = "serde-json-wasm"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a15bee9b04dd165c3f4e142628982ddde884c2022a89e8ddf99c4829bf2c3a58"
+checksum = "16a62a1fad1e1828b24acac8f2b468971dade7b8c3c2e672bcadefefb1f8c137"
 dependencies = [
  "serde",
 ]
 
 [[package]]
 name = "serde_derive"
-version = "1.0.152"
+version = "1.0.165"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "af487d118eecd09402d70a5d72551860e788df87b464af30e5ea6a38c75c541e"
+checksum = "6eaae920e25fffe4019b75ff65e7660e72091e59dd204cb5849bbd6a3fd343d7"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn",
+ "syn 2.0.23",
 ]
 
 [[package]]
@@ -1995,14 +1489,14 @@ checksum = "85bf8229e7920a9f636479437026331ce11aa132b4dde37d121944a44d6e5f3c"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn",
+ "syn 1.0.109",
 ]
 
 [[package]]
 name = "serde_json"
-version = "1.0.91"
+version = "1.0.99"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "877c235533714907a8c2464236f5c4b2a17262ef1bd71f38f35ea592c8da6883"
+checksum = "46266871c240a00b8f503b877622fe33430b3c7d963bdc0f2adc511e54a1eae3"
 dependencies = [
  "itoa",
  "ryu",
@@ -2024,13 +1518,23 @@ dependencies = [
 
 [[package]]
 name = "sha2"
-version = "0.10.6"
+version = "0.10.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "82e6b795fe2e3b1e845bafcb27aa35405c4d47cdfc92af5fc8d3002f76cebdc0"
+checksum = "479fb9d862239e610720565ca91403019f2f00410f1864c5aa7479b950a76ed8"
 dependencies = [
  "cfg-if",
  "cpufeatures",
- "digest 0.10.6",
+ "digest 0.10.7",
+]
+
+[[package]]
+name = "sha256"
+version = "1.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "08a975c1bc0941703000eaf232c4d8ce188d8d5408d6344b6b2c8c6262772828"
+dependencies = [
+ "hex",
+ "sha2 0.10.7",
 ]
 
 [[package]]
@@ -2039,7 +1543,7 @@ version = "1.6.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "74233d3b3b2f6d4b006dc19dee745e73e2a6bfb6f93607cd3b02bd5b00797d7c"
 dependencies = [
- "digest 0.10.6",
+ "digest 0.10.7",
  "rand_core 0.6.4",
 ]
 
@@ -2060,16 +1564,29 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 
 [[package]]
-name = "subtle"
-version = "2.4.1"
+name = "strum_macros"
+version = "0.24.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6bdef32e8150c2a081110b42772ffe7d7c9032b606bc226c8260fd97e0976601"
+checksum = "1e385be0d24f186b4ce2f9982191e7101bb737312ad61c1f2f984f34bcf85d59"
+dependencies = [
+ "heck",
+ "proc-macro2",
+ "quote",
+ "rustversion",
+ "syn 1.0.109",
+]
+
+[[package]]
+name = "subtle"
+version = "2.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "81cdd64d312baedb58e21336b31bc043b77e01cc99033ce76ef539f78e965ebc"
 
 [[package]]
 name = "syn"
-version = "1.0.107"
+version = "1.0.109"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1f4064b5b16e03ae50984a5a8ed5d4f8803e6bc1fd170a3cda91a1be4b18e3f5"
+checksum = "72b64191b275b66ffe2469e8af2c1cfe3bafa67b529ead792a6d0160888b4237"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2077,67 +1594,34 @@ dependencies = [
 ]
 
 [[package]]
-name = "tests-integration"
-version = "0.1.0"
+name = "syn"
+version = "2.0.23"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "59fb7d6d8281a51045d62b8eb3a7d1ce347b76f312af50cd3dc0af39c87c1737"
 dependencies = [
- "andromeda-address-list",
- "andromeda-adodb",
- "andromeda-app",
- "andromeda-app-contract",
- "andromeda-auction",
- "andromeda-automation",
- "andromeda-counter",
- "andromeda-crowdfund",
- "andromeda-cw20",
- "andromeda-cw20-staking",
- "andromeda-cw721",
- "andromeda-ecosystem",
- "andromeda-finance",
- "andromeda-fungible-tokens",
- "andromeda-ibc",
- "andromeda-ics721",
- "andromeda-kernel",
- "andromeda-marketplace",
- "andromeda-message-bridge",
- "andromeda-modules",
- "andromeda-non-fungible-tokens",
- "andromeda-os",
- "andromeda-rates",
- "andromeda-splitter",
- "andromeda-testing",
- "andromeda-vault",
- "andromeda-vfs",
- "andromeda-wrapped-cw721",
- "common",
- "cosmwasm-std",
- "cw-cii",
- "cw-multi-test",
- "cw-pause-once",
- "cw20 0.16.0",
- "cw20-base",
- "cw721",
- "cw721-base",
- "cw721-rate-limited-proxy",
+ "proc-macro2",
+ "quote",
+ "unicode-ident",
 ]
 
 [[package]]
 name = "thiserror"
-version = "1.0.38"
+version = "1.0.40"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6a9cd18aa97d5c45c6603caea1da6628790b37f7a34b6ca89522331c5180fed0"
+checksum = "978c9a314bd8dc99be594bc3c175faaa9794be04a5a5e153caba6915336cebac"
 dependencies = [
  "thiserror-impl",
 ]
 
 [[package]]
 name = "thiserror-impl"
-version = "1.0.38"
+version = "1.0.40"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1fb327af4685e4d03fa8cbcf1716380da910eeb2bb8be417e7f9fd3fb164f36f"
+checksum = "f9456a42c5b0d803c8cd86e73dd7cc9edd429499f37a3550d286d5e86720569f"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn",
+ "syn 2.0.23",
 ]
 
 [[package]]
@@ -2160,9 +1644,9 @@ dependencies = [
 
 [[package]]
 name = "unicode-ident"
-version = "1.0.6"
+version = "1.0.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "84a22b9f218b40614adcb3f4ff08b703773ad44fa9423e4e0d346d5db86e4ebc"
+checksum = "b15811caf2415fb889178633e7724bad2509101cde276048e013b9def5e51fa0"
 
 [[package]]
 name = "version_check"
@@ -2178,11 +1662,11 @@ checksum = "9c8d87e72b64a3b4db28d11ce29237c246188f4f51057d65a7eab63b7987e423"
 
 [[package]]
 name = "zeroize"
-version = "1.5.7"
+version = "1.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c394b5bd0c6f669e7275d9c20aa90ae064cb22e75a1cad54e1b34088034b149f"
+checksum = "2a0956f1ba7c7909bfb66c2e9e4124ab6f6482560f6628b5aaeba39207c9aad9"
 
 [[package]]
 name = "zip-optional"
 version = "0.1.0"
-source = "git+https://github.com/public-awesome/ics721.git#3af19e421a95aec5291a0cabbe796c58698ac97f"
+source = "git+https://github.com/public-awesome/ics721.git#b06251fde0e8e662ae37f3931f74ddbd9b8e8844"

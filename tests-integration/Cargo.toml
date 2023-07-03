@@ -60,12 +60,12 @@ andromeda-vfs = { path = "../contracts/os/andromeda-vfs", features = ["testing"]
 
 #Other Crates
 common = { version = "0.1.0", path = "../packages/common" }
-andromeda-testing = { path = "../packages/andromeda-testing", features = ["testing"] }
+# andromeda-testing = { path = "../packages/andromeda-testing", features = ["testing"] }
 
 #Cosmwasm Crates
 cosmwasm-std = "1.1.6"
-cw721-base = { version = "0.16.0", features = ["library"] }
-cw721 = "0.16.0"
+cw721-base = { version = "0.17.0", features = ["library"] }
+cw721 = { workspace = true }
 cw20 = "0.16.0"
 cw20-base = "0.16.0"
 cw-cii = { git = "https://github.com/public-awesome/ics721.git" }

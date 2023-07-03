@@ -1,7 +1,6 @@
 [package]
 name = "andromeda-modules"
 version = "0.1.0"
-authors = ["Connor Barr <crnbarr@gmail.com>"]
 edition = "2018"
 
 [features]
@@ -12,14 +11,12 @@ backtraces = ["cosmwasm-std/backtraces"]
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-cosmwasm-std = "1.2.1"
-cosmwasm-schema = "1.2.1"
+cosmwasm-std = { workspace = true }
+cosmwasm-schema = { workspace = true }
 serde = { version = "1.0.127", default-features = false, features = ["derive"] }
-schemars = "0.8.10"
-common = { path = "../common", version = "0.1.0" }
-andromeda-finance = { version = "0.1.0", path = "../andromeda-finance" }
-andromeda-os = { version = "0.1.0", path = "../../packages/andromeda-os" }
+cw-utils = { workspace = true }
+cw721 = { workspace = true }
+cw721-base = { version = "0.17.0", features=["library"]}
 
+andromeda-std = { workspace = true, features=["module_hooks"] }
 
-[dev-dependencies]
-andromeda-testing = { version = "0.1.0", path = "../andromeda-testing" }

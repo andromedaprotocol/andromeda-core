@@ -1,5 +1,6 @@
 use andromeda_non_fungible_tokens::marketplace::{SaleStateResponse, Status};
-use common::error::ContractError;
+use andromeda_std::error::ContractError;
+
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Order, Storage, SubMsg, Uint128};
 use cw_storage_plus::{Bound, Index, IndexList, IndexedMap, Item, Map, MultiIndex};

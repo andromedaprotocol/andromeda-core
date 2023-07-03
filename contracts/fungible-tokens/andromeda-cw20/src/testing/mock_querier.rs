@@ -1,25 +1,56 @@
-use andromeda_app::app::QueryMsg as AppQueryMsg;
-use andromeda_os::kernel::QueryMsg as KernelQueryMsg;
-use andromeda_os::vfs::QueryMsg as VfsQueryMessage;
-use common::{
-    ado_base::hooks::{AndromedaHook, HookMsg, OnFundsTransferResponse},
-    Funds,
-};
+use andromeda_fungible_tokens::cw20::QueryMsg as Cw20Query;
+
+use andromeda_std::ado_base::hooks::{AndromedaHook, HookMsg, OnFundsTransferResponse};
+use andromeda_std::ado_base::InstantiateMsg;
+use andromeda_std::ado_contract::ADOContract;
+use andromeda_std::common::Funds;
+use andromeda_std::testing::mock_querier::WasmMockQuerier as AndrMockQuerier;
+use andromeda_std::testing::mock_querier::MOCK_KERNEL_CONTRACT;
+pub use andromeda_std::testing::mock_querier::{MOCK_ADDRESS_LIST_CONTRACT, MOCK_APP_CONTRACT};
+use cosmwasm_std::testing::{mock_env, mock_info, MockApi, MockQuerier, MockStorage};
 use cosmwasm_std::{
-    from_binary, from_slice, testing::MockQuerier, to_binary, BankMsg, Binary, Coin,
-    ContractResult, CosmosMsg, Querier, QuerierResult, QueryRequest, Response, SubMsg, SystemError,
-    SystemResult, Uint128, WasmQuery,
+    from_binary, from_slice, to_binary, BankMsg, Binary, Coin, ContractResult, CosmosMsg,
+    OwnedDeps, Querier, QuerierResult, QueryRequest, Response, SubMsg, SystemError, SystemResult,
+    Uint128, WasmQuery,
 };
-pub const MOCK_RATES_CONTRACT: &str = "rates_contract";
-pub const MOCK_APP_CONTRACT: &str = "app_contract";
-pub const MOCK_ADDRESSLIST_CONTRACT: &str = "addresslist_contract";
-pub const MOCK_KERNEL_CONTRACT: &str = "kernel_contract";
-pub const MOCK_VFS_CONTRACT: &str = "vfs_contract";
+
+pub const MOCK_CW20_CONTRACT: &str = "mock_cw20_contract";
+pub const MOCK_RATES_CONTRACT: &str = "mock_rates_contract";
 pub const MOCK_TAX_RECIPIENT: &str = "tax_recipient";
 pub const MOCK_ROYALTY_RECIPIENT: &str = "royalty_recipient";
 
+pub fn mock_dependencies_custom(
+    contract_balance: &[Coin],
+) -> OwnedDeps<MockStorage, MockApi, WasmMockQuerier> {
+    let custom_querier: WasmMockQuerier =
+        WasmMockQuerier::new(MockQuerier::new(&[(MOCK_CW20_CONTRACT, contract_balance)]));
+    let storage = MockStorage::default();
+    let mut deps = OwnedDeps {
+        storage,
+        api: MockApi::default(),
+        querier: custom_querier,
+        custom_query_type: std::marker::PhantomData,
+    };
+    ADOContract::default()
+        .instantiate(
+            &mut deps.storage,
+            mock_env(),
+            &deps.api,
+            mock_info("sender", &[]),
+            InstantiateMsg {
+                ado_type: "cw20".to_string(),
+                ado_version: "test".to_string(),
+                operators: None,
+                kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+                owner: None,
+            },
+        )
+        .unwrap();
+    deps
+}
+
 pub struct WasmMockQuerier {
-    base: MockQuerier,
+    pub base: MockQuerier,
     pub contract_address: String,
     pub tokens_left_to_burn: usize,
 }
@@ -45,47 +76,45 @@ impl WasmMockQuerier {
         match &request {
             QueryRequest::Wasm(WasmQuery::Smart { contract_addr, msg }) => {
                 match contract_addr.as_str() {
+                    // MOCK_TOKEN_CONTRACT => self.handle_token_query(msg),
+                    MOCK_CW20_CONTRACT => self.handle_cw20_query(msg),
                     MOCK_RATES_CONTRACT => self.handle_rates_query(msg),
-                    MOCK_APP_CONTRACT => self.handle_app_query(msg),
-                    MOCK_ADDRESSLIST_CONTRACT => self.handle_addresslist_query(msg),
-                    MOCK_KERNEL_CONTRACT => self.handle_kernel_query(msg),
-                    MOCK_VFS_CONTRACT => self.handle_vfs_query(msg),
-                    _ => panic!("Unknown Contract Address {}", contract_addr),
+                    MOCK_ADDRESS_LIST_CONTRACT => self.handle_addresslist_query(msg),
+                    _ => AndrMockQuerier::new(MockQuerier::new(&[])).handle_query(request),
                 }
             }
-            _ => self.base.handle_query(request),
+            _ => AndrMockQuerier::new(MockQuerier::new(&[])).handle_query(request),
         }
     }
 
-    fn handle_vfs_query(&self, msg: &Binary) -> QuerierResult {
+    fn handle_cw20_query(&self, msg: &Binary) -> QuerierResult {
         match from_binary(msg).unwrap() {
-            VfsQueryMessage::ResolvePath { path } => {
-                if path.len() < 2 {
-                    SystemResult::Ok(ContractResult::Err("InvalidComponent".to_string()))
-                } else {
-                    SystemResult::Ok(ContractResult::Ok(to_binary(&path).unwrap()))
+            Cw20Query::Owner {} => {
+                let res = andromeda_std::ado_base::ownership::ContractOwnerResponse {
+                    owner: "owner".to_string(),
+                };
+
+                SystemResult::Ok(ContractResult::Ok(to_binary(&res).unwrap()))
+            }
+
+            _ => panic!("Unsupported Query"),
+        }
+    }
+
+    fn handle_addresslist_query(&self, msg: &Binary) -> QuerierResult {
+        match from_binary(msg).unwrap() {
+            HookMsg::AndrHook(hook_msg) => match hook_msg {
+                AndromedaHook::OnExecute { sender, payload: _ } => {
+                    let whitelisted_addresses = ["sender"];
+                    let response: Response = Response::default();
+                    if whitelisted_addresses.contains(&sender.as_str()) {
+                        SystemResult::Ok(ContractResult::Ok(to_binary(&response).unwrap()))
+                    } else {
+                        SystemResult::Ok(ContractResult::Err("InvalidAddress".to_string()))
+                    }
                 }
-            } // _ => panic!("Unsupported Query: {:?}", msg),
-        }
-    }
-
-    fn handle_kernel_query(&self, msg: &Binary) -> QuerierResult {
-        match from_binary(msg).unwrap() {
-            KernelQueryMsg::KeyAddress { key: _ } => {
-                SystemResult::Ok(ContractResult::Ok(to_binary(&MOCK_VFS_CONTRACT).unwrap()))
-            }
-            _ => panic!("Unsupported Query: {}", msg),
-        }
-    }
-
-    fn handle_app_query(&self, msg: &Binary) -> QuerierResult {
-        let valid_identifiers = ["e", "b"];
-        match from_binary(msg).unwrap() {
-            AppQueryMsg::ComponentExists { name } => {
-                let value = valid_identifiers.contains(&name.as_str());
-                SystemResult::Ok(ContractResult::Ok(to_binary(&value).unwrap()))
-            }
-            _ => panic!("Unsupported Query: {}", msg),
+                _ => SystemResult::Ok(ContractResult::Ok(to_binary(&None::<Response>).unwrap())),
+            },
         }
     }
 
@@ -123,8 +152,9 @@ impl WasmMockQuerier {
                                 })),
                             ],
                         ),
+                        // TODO: IMPLEMENT CW20
                         Funds::Cw20(_) => {
-                            let resp: Response = Response::default();
+                            let resp = OnFundsTransferResponse::default();
                             return SystemResult::Ok(ContractResult::Ok(to_binary(&resp).unwrap()));
                         }
                     };
@@ -139,21 +169,13 @@ impl WasmMockQuerier {
             },
         }
     }
-
-    fn handle_addresslist_query(&self, msg: &Binary) -> QuerierResult {
-        match from_binary(msg).unwrap() {
-            HookMsg::AndrHook(hook_msg) => match hook_msg {
-                AndromedaHook::OnExecute { sender, payload: _ } => {
-                    let whitelisted_addresses = ["sender"];
-                    let response: Response = Response::default();
-                    if whitelisted_addresses.contains(&sender.as_str()) {
-                        SystemResult::Ok(ContractResult::Ok(to_binary(&response).unwrap()))
-                    } else {
-                        SystemResult::Ok(ContractResult::Err("InvalidAddress".to_string()))
-                    }
-                }
-                _ => SystemResult::Ok(ContractResult::Ok(to_binary(&None::<Response>).unwrap())),
-            },
+}
+impl WasmMockQuerier {
+    pub fn new(base: MockQuerier) -> Self {
+        WasmMockQuerier {
+            base,
+            contract_address: mock_env().contract.address.to_string(),
+            tokens_left_to_burn: 2,
         }
     }
 }

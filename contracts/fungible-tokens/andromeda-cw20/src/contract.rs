@@ -1,25 +1,21 @@
-use andromeda_os::{
-    messages::{AMPMsg, AMPPkt},
-    recipient::generate_msg_native_kernel,
+use andromeda_fungible_tokens::cw20::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
+use andromeda_std::{
+    ado_base::{hooks::AndromedaHook, InstantiateMsg as BaseInstantiateMsg},
+    ado_contract::ADOContract,
+    common::Funds,
+    common::{context::ExecuteContext, encode_binary},
+    error::{from_semver, ContractError},
 };
-#[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    ensure, from_binary, to_binary, Addr, Api, Binary, Coin, CosmosMsg, Deps, DepsMut, Env,
-    MessageInfo, Response, StdResult, Storage, SubMsg, Uint128, WasmMsg,
+    ensure, from_binary, to_binary, Addr, Api, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
+    Response, StdResult, Storage, SubMsg, Uint128, WasmMsg,
 };
 
-use ado_base::ADOContract;
-use andromeda_fungible_tokens::cw20::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
-use common::{
-    ado_base::{hooks::AndromedaHook, AndromedaMsg, InstantiateMsg as BaseInstantiateMsg},
-    error::{from_semver, ContractError},
-    Funds,
-};
 use cw2::{get_contract_version, set_contract_version};
 use cw20::{Cw20Coin, Cw20ExecuteMsg};
 use cw20_base::{
-    contract::{execute as execute_cw20, instantiate as cw20_instantiate, query as query_cw20},
+    contract::{execute as execute_cw20, instantiate as cw20_instantiate},
     state::BALANCES,
 };
 use semver::Version;
@@ -46,13 +42,18 @@ pub fn instantiate(
             ado_type: "cw20".to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
             operators: None,
-            modules: msg.modules.clone(),
             kernel_address: msg.clone().kernel_address,
+            owner: msg.clone().owner,
         },
     )?;
+    let modules_resp =
+        contract.register_modules(info.sender.as_str(), deps.storage, msg.clone().modules)?;
+
     let cw20_resp = cw20_instantiate(deps, env, info, msg.into())?;
 
     Ok(resp
+        .add_submessages(modules_resp.messages)
+        .add_attributes(modules_resp.attributes)
         .add_submessages(cw20_resp.messages)
         .add_attributes(cw20_resp.attributes))
 }
@@ -65,174 +66,53 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
-
-    // Do this before the hooks get fired off to ensure that there are no errors from the app
-    // address not being fully setup yet.
-    if let ExecuteMsg::AndrReceive(andr_msg) = msg.clone() {
-        if let AndromedaMsg::UpdateAppContract { address } = andr_msg {
-            return contract.execute_update_app_contract(deps, info, address, None);
-        } else if let AndromedaMsg::UpdateOwner { address } = andr_msg {
-            return contract.execute_update_owner(deps, info, address);
-        }
-    }
+    // };
 
     contract.module_hook::<Response>(
-        deps.storage,
-        deps.api,
-        deps.querier,
+        &deps.as_ref(),
         AndromedaHook::OnExecute {
             sender: info.sender.to_string(),
-            payload: to_binary(&msg)?,
+            payload: encode_binary(&msg)?,
         },
     )?;
+    let ctx = ExecuteContext::new(deps, info, env);
 
     match msg {
-        ExecuteMsg::AndrReceive(msg) => contract.execute(deps, env, info, msg, execute),
-        ExecuteMsg::AMPReceive(pkt) => handle_amp_packet(deps, env, info, pkt),
-        ExecuteMsg::Transfer { recipient, amount } => {
-            execute_transfer(deps, env, info, recipient, amount)
+        ExecuteMsg::AMPReceive(pkt) => {
+            ADOContract::default().execute_amp_receive(ctx, pkt, handle_execute)
         }
-        ExecuteMsg::Burn { amount } => execute_burn(deps, env, info, amount),
+        _ => handle_execute(ctx, msg),
+    }
+}
+
+pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+    // };
+
+    match msg {
+        ExecuteMsg::Transfer { recipient, amount } => execute_transfer(ctx, recipient, amount),
+        ExecuteMsg::Burn { amount } => execute_burn(ctx, amount),
         ExecuteMsg::Send {
             contract,
             amount,
             msg,
-        } => execute_send(deps, env, info, contract, amount, msg),
-        ExecuteMsg::Mint { recipient, amount } => execute_mint(deps, env, info, recipient, amount),
+        } => execute_send(ctx, contract, amount, msg),
+        ExecuteMsg::Mint { recipient, amount } => execute_mint(ctx, recipient, amount),
 
-        _ => Ok(execute_cw20(deps, env, info, msg.into())?),
+        _ => Ok(execute_cw20(ctx.deps, ctx.env, ctx.info, msg.into())?),
     }
-}
-
-pub struct ExecuteEnv<'a> {
-    deps: DepsMut<'a>,
-    pub env: Env,
-    pub info: MessageInfo,
-}
-
-fn handle_amp_packet(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    packet: AMPPkt,
-) -> Result<Response, ContractError> {
-    let mut res = Response::default();
-
-    // Get kernel address
-    let kernel_address = ADOContract::default().get_kernel_address(deps.storage)?;
-
-    // Original packet sender
-    let origin = packet.get_origin();
-
-    // This contract will become the previous sender after sending the message back to the kernel
-    let previous_sender = env.clone().contract.address;
-
-    let execute_env = ExecuteEnv { deps, env, info };
-
-    let msg_opt = packet.messages.first();
-
-    if let Some(msg) = msg_opt {
-        let exec_msg: ExecuteMsg = from_binary(&msg.message)?;
-        let funds = msg.funds.to_vec();
-        let mut exec_info = execute_env.info.clone();
-        exec_info.funds = funds.clone();
-
-        if msg.exit_at_error {
-            let env = execute_env.env.clone();
-            let mut exec_res = execute(execute_env.deps, env, exec_info, exec_msg)?;
-
-            if packet.messages.len() > 1 {
-                let adjusted_messages: Vec<AMPMsg> =
-                    packet.messages.iter().skip(1).cloned().collect();
-
-                let unused_funds: Vec<Coin> = adjusted_messages
-                    .iter()
-                    .flat_map(|msg| msg.funds.iter().cloned())
-                    .collect();
-
-                let kernel_message = generate_msg_native_kernel(
-                    unused_funds,
-                    origin,
-                    previous_sender.to_string(),
-                    adjusted_messages,
-                    kernel_address.into_string(),
-                )?;
-
-                exec_res.messages.push(kernel_message);
-            }
-
-            res = res
-                .add_attributes(exec_res.attributes)
-                .add_submessages(exec_res.messages)
-                .add_events(exec_res.events);
-        } else {
-            match execute(
-                execute_env.deps,
-                execute_env.env.clone(),
-                exec_info,
-                exec_msg,
-            ) {
-                Ok(mut exec_res) => {
-                    if packet.messages.len() > 1 {
-                        let adjusted_messages: Vec<AMPMsg> =
-                            packet.messages.iter().skip(1).cloned().collect();
-
-                        let unused_funds: Vec<Coin> = adjusted_messages
-                            .iter()
-                            .flat_map(|msg| msg.funds.iter().cloned())
-                            .collect();
-
-                        let kernel_message = generate_msg_native_kernel(
-                            unused_funds,
-                            origin,
-                            previous_sender.to_string(),
-                            adjusted_messages,
-                            kernel_address.into_string(),
-                        )?;
-
-                        exec_res.messages.push(kernel_message);
-                    }
-
-                    res = res
-                        .add_attributes(exec_res.attributes)
-                        .add_submessages(exec_res.messages)
-                        .add_events(exec_res.events);
-                }
-                Err(_) => {
-                    // There's an error, but the user opted for the operation to proceed
-                    // No funds are used in the event of an error
-                    if packet.messages.len() > 1 {
-                        let adjusted_messages: Vec<AMPMsg> =
-                            packet.messages.iter().skip(1).cloned().collect();
-
-                        let kernel_message = generate_msg_native_kernel(
-                            funds,
-                            origin,
-                            previous_sender.to_string(),
-                            adjusted_messages,
-                            kernel_address.into_string(),
-                        )?;
-                        res = res.add_submessage(kernel_message);
-                    }
-                }
-            }
-        }
-    }
-
-    Ok(res)
 }
 
 fn execute_transfer(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
+    ctx: ExecuteContext,
     recipient: String,
     amount: Uint128,
 ) -> Result<Response, ContractError> {
+    let ExecuteContext {
+        deps, info, env, ..
+    } = ctx;
+
     let (msgs, events, remainder) = ADOContract::default().on_funds_transfer(
-        deps.storage,
-        deps.api,
-        &deps.querier,
+        &deps.as_ref(),
         info.sender.to_string(),
         Funds::Cw20(Cw20Coin {
             address: env.contract.address.to_string(),
@@ -286,12 +166,11 @@ fn transfer_tokens(
     Ok(())
 }
 
-fn execute_burn(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    amount: Uint128,
-) -> Result<Response, ContractError> {
+fn execute_burn(ctx: ExecuteContext, amount: Uint128) -> Result<Response, ContractError> {
+    let ExecuteContext {
+        deps, info, env, ..
+    } = ctx;
+
     Ok(execute_cw20(
         deps,
         env,
@@ -301,17 +180,17 @@ fn execute_burn(
 }
 
 fn execute_send(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
+    ctx: ExecuteContext,
     contract: String,
     amount: Uint128,
     msg: Binary,
 ) -> Result<Response, ContractError> {
+    let ExecuteContext {
+        deps, info, env, ..
+    } = ctx;
+
     let (msgs, events, remainder) = ADOContract::default().on_funds_transfer(
-        deps.storage,
-        deps.api,
-        &deps.querier,
+        &deps.as_ref(),
         info.sender.to_string(),
         Funds::Cw20(Cw20Coin {
             address: env.contract.address.to_string(),
@@ -350,12 +229,14 @@ fn execute_send(
 }
 
 fn execute_mint(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
+    ctx: ExecuteContext,
     recipient: String,
     amount: Uint128,
 ) -> Result<Response, ContractError> {
+    let ExecuteContext {
+        deps, info, env, ..
+    } = ctx;
+
     Ok(execute_cw20(
         deps,
         env,
@@ -426,8 +307,5 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
-    match msg {
-        QueryMsg::AndrQuery(msg) => ADOContract::default().query(deps, env, msg, query),
-        _ => Ok(query_cw20(deps, env, msg.into())?),
-    }
+    ADOContract::default().query::<QueryMsg>(deps, env, msg, None)
 }

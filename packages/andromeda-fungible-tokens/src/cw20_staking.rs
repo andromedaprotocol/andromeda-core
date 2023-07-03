@@ -1,30 +1,25 @@
-use andromeda_os::messages::AMPPkt;
-use common::{
-    ado_base::{AndromedaMsg, AndromedaQuery},
-    error::ContractError,
-    expiration::MILLISECONDS_TO_NANOSECONDS_RATIO,
-};
+use andromeda_std::amp::addresses::AndrAddr;
+use andromeda_std::common::expiration::MILLISECONDS_TO_NANOSECONDS_RATIO;
+use andromeda_std::error::ContractError;
+use andromeda_std::{andr_exec, andr_instantiate, andr_query};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{ensure, Api, BlockInfo, Decimal, Decimal256, Uint128};
 use cw20::Cw20ReceiveMsg;
 use cw_asset::{AssetInfo, AssetInfoUnchecked};
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 use std::fmt;
 
+#[andr_instantiate]
 #[cw_serde]
 pub struct InstantiateMsg {
     /// The cw20 token that can be staked.
-    pub staking_token: String,
+    pub staking_token: AndrAddr,
     /// Any rewards in addition to the staking token. This list cannot include the staking token.
     pub additional_rewards: Option<Vec<RewardTokenUnchecked>>,
-    pub kernel_address: Option<String>,
 }
 
+#[andr_exec]
 #[cw_serde]
 pub enum ExecuteMsg {
-    AndrReceive(AndromedaMsg),
-    AMPReceive(AMPPkt),
     Receive(Cw20ReceiveMsg),
     /// Add `reward_token` as another reward token. Owner only.
     AddRewardToken {
@@ -53,11 +48,10 @@ pub enum Cw20HookMsg {
     UpdateGlobalIndex {},
 }
 
+#[andr_query]
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
-    #[returns(AndromedaQuery)]
-    AndrQuery(AndromedaQuery),
     /// Gets the config of the contract.
     #[returns(Config)]
     Config {},
@@ -83,7 +77,7 @@ pub enum QueryMsg {
 #[cw_serde]
 pub struct Config {
     /// The token accepted for staking.
-    pub staking_token: String,
+    pub staking_token: AndrAddr,
     /// The current number of reward tokens, cannot exceed `MAX_REWARD_TOKENS`.
     pub number_of_reward_tokens: u32,
 }
@@ -108,7 +102,8 @@ impl RewardTokenUnchecked {
         block_info: &BlockInfo,
         api: &dyn Api,
     ) -> Result<RewardToken, ContractError> {
-        let checked_asset_info = self.asset_info.check(api, None)?;
+        //TODO replace unwrap() with ? once cw-asset is integrated in error.rs
+        let checked_asset_info = self.asset_info.check(api, None).unwrap();
         let reward_type = match self.allocation_config {
             None => RewardType::NonAllocated {
                 previous_reward_balance: Uint128::zero(),
@@ -193,7 +188,7 @@ pub struct AllocationInfo {
     pub state: AllocationState,
 }
 
-#[derive(Copy, Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq, Eq)]
+#[cw_serde]
 pub struct AllocationConfig {
     /// Timestamp from which Rewards will start getting accrued against the staked LP tokens
     pub init_timestamp: u64,
@@ -207,7 +202,7 @@ pub struct AllocationConfig {
     pub reward_increase: Option<Decimal>,
 }
 
-#[derive(Copy, Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq, Eq)]
+#[cw_serde]
 pub struct AllocationState {
     /// Keeps track of the distribution cycle
     pub current_cycle: u64,

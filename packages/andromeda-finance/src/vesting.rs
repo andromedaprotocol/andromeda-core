@@ -1,12 +1,11 @@
-use andromeda_os::messages::AMPPkt;
-use common::{
-    ado_base::{recipient::Recipient, AndromedaMsg, AndromedaQuery},
-    withdraw::WithdrawalType,
+use andromeda_std::{
+    amp::Recipient, andr_exec, andr_instantiate, andr_query, common::withdraw::WithdrawalType,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Uint128, VoteOption};
 use cw_utils::Duration;
 
+#[andr_instantiate]
 #[cw_serde]
 pub struct InstantiateMsg {
     /// The recipient of all funds locked in this contract.
@@ -17,13 +16,11 @@ pub struct InstantiateMsg {
     pub denom: String,
     /// The unbonding duration of the native staking module.
     pub unbonding_duration: Duration,
-    pub kernel_address: Option<String>,
 }
 
+#[andr_exec]
 #[cw_serde]
 pub enum ExecuteMsg {
-    AndrReceive(AndromedaMsg),
-    AMPReceive(AMPPkt),
     /// Claim the number of batches specified starting from the beginning. If not
     /// specified then the max will be claimed.
     Claim {
@@ -69,17 +66,13 @@ pub enum ExecuteMsg {
     /// Withdraws rewards from all delegations to the sender.
     WithdrawRewards {},
     /// Votes on the specified proposal with the specified vote.
-    Vote {
-        proposal_id: u64,
-        vote: VoteOption,
-    },
+    Vote { proposal_id: u64, vote: VoteOption },
 }
 
+#[andr_query]
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
-    #[returns(AndromedaQuery)]
-    AndrQuery(AndromedaQuery),
     /// Queries the config.
     #[returns(Config)]
     Config {},

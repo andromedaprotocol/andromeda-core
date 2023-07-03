@@ -1,13 +1,10 @@
-use andromeda_os::messages::AMPPkt;
+use andromeda_std::{
+    amp::recipient::Recipient, andr_exec, andr_instantiate, andr_query, common::merge_coins,
+    error::ContractError,
+};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{ensure, Api, BlockInfo, Coin};
 use cw_utils::Expiration;
-
-use common::{
-    ado_base::{modules::Module, recipient::Recipient, AndromedaMsg, AndromedaQuery},
-    error::ContractError,
-    merge_coins,
-};
 
 #[cw_serde]
 /// Enum used to specify the condition which must be met in order for the Escrow to unlock.
@@ -119,17 +116,13 @@ impl Escrow {
     }
 }
 
+#[andr_instantiate]
 #[cw_serde]
-pub struct InstantiateMsg {
-    /// An optional vector of modules
-    pub modules: Option<Vec<Module>>,
-    pub kernel_address: Option<String>,
-}
+pub struct InstantiateMsg {}
 
+#[andr_exec]
 #[cw_serde]
 pub enum ExecuteMsg {
-    AndrReceive(AndromedaMsg),
-    AMPReceive(AMPPkt),
     /// Hold funds in Escrow
     HoldFunds {
         condition: Option<EscrowCondition>,
@@ -150,11 +143,10 @@ pub enum ExecuteMsg {
 #[serde(rename_all = "snake_case")]
 pub struct MigrateMsg {}
 
+#[andr_query]
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
-    #[returns(AndromedaQuery)]
-    AndrQuery(AndromedaQuery),
     /// Queries funds held by an address
     #[returns(GetLockedFundsResponse)]
     GetLockedFunds { owner: String, recipient: String },
@@ -191,7 +183,7 @@ mod tests {
         let deps = mock_dependencies();
         let condition = EscrowCondition::Expiration(Expiration::AtHeight(1500));
         let coins = vec![coin(100u128, "uluna")];
-        let recipient = Recipient::Addr("owner".into());
+        let recipient = Recipient::from_string("owner");
 
         let valid_escrow = Escrow {
             recipient: recipient.clone(),
@@ -220,7 +212,7 @@ mod tests {
         valid_escrow.validate(deps.as_ref().api, &block).unwrap();
 
         let invalid_recipient_escrow = Escrow {
-            recipient: Recipient::Addr(String::default()),
+            recipient: Recipient::from_string(String::default()),
             coins: coins.clone(),
             condition: Some(condition.clone()),
             recipient_addr: String::default(),
@@ -297,7 +289,7 @@ mod tests {
     #[test]
     fn test_validate_funds_condition() {
         let deps = mock_dependencies();
-        let recipient = Recipient::Addr("owner".into());
+        let recipient = Recipient::from_string("owner");
 
         let valid_escrow = Escrow {
             recipient: recipient.clone(),
@@ -361,7 +353,7 @@ mod tests {
 
     #[test]
     fn test_min_funds_deposited() {
-        let recipient = Recipient::Addr("owner".into());
+        let recipient = Recipient::from_string("owner");
         let escrow = Escrow {
             recipient: recipient.clone(),
             coins: vec![coin(100, "uluna")],
@@ -400,7 +392,7 @@ mod tests {
         let mut escrow = Escrow {
             coins: vec![coin(100, "uusd"), coin(100, "uluna")],
             condition: None,
-            recipient: Recipient::Addr("".into()),
+            recipient: Recipient::from_string(""),
             recipient_addr: "".to_string(),
         };
         let funds_to_add = vec![coin(25, "uluna"), coin(50, "uusd"), coin(100, "ucad")];

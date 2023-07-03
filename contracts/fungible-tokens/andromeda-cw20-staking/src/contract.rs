@@ -1,17 +1,21 @@
-use andromeda_os::{
-    messages::{AMPMsg, AMPPkt},
-    recipient::generate_msg_native_kernel,
+use std::str::FromStr;
+
+use andromeda_std::{
+    ado_base::{hooks::AndromedaHook, InstantiateMsg as BaseInstantiateMsg},
+    ado_contract::ADOContract,
+    common::{context::ExecuteContext, encode_binary},
+    error::{from_semver, ContractError},
 };
-#[cfg(not(feature = "library"))]
-use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, ensure, from_binary, Addr, Api, Attribute, Binary, Coin, CosmosMsg, Decimal, Decimal256,
-    Deps, DepsMut, Env, MessageInfo, Order, QuerierWrapper, Response, Storage, Uint128, Uint256,
+    attr, entry_point, Attribute, Decimal, Decimal256, Order, QuerierWrapper, Uint256,
+};
+use cosmwasm_std::{
+    ensure, from_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response,
+    Storage, Uint128,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw20::Cw20ReceiveMsg;
 use cw_asset::{Asset, AssetInfo, AssetInfoUnchecked};
-use std::str::FromStr;
 
 use crate::{
     allocated_rewards::update_allocated_index,
@@ -20,17 +24,12 @@ use crate::{
         STAKER_REWARD_INFOS, STATE,
     },
 };
-use ado_base::ADOContract;
+
 use andromeda_fungible_tokens::cw20_staking::{
     Config, Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, RewardToken,
     RewardTokenUnchecked, RewardType, StakerResponse, State,
 };
-use common::{
-    ado_base::InstantiateMsg as BaseInstantiateMsg,
-    app::GetAddress,
-    encode_binary,
-    error::{from_semver, ContractError},
-};
+
 use cw_utils::nonpayable;
 use semver::Version;
 
@@ -53,7 +52,7 @@ pub fn instantiate(
                 max: MAX_REWARD_TOKENS,
             }
         );
-        let staking_token = AssetInfoUnchecked::cw20(msg.staking_token.to_lowercase());
+        let staking_token = AssetInfoUnchecked::cw20(msg.staking_token.to_string().to_lowercase());
         let staking_token_identifier = msg.staking_token.clone();
         let additional_rewards: Result<Vec<RewardToken>, ContractError> = additional_rewards
             .into_iter()
@@ -63,7 +62,7 @@ pub fn instantiate(
                 ensure!(
                     staking_token != r.asset_info,
                     ContractError::InvalidAsset {
-                        asset: staking_token_identifier.clone(),
+                        asset: staking_token_identifier.to_string(),
                     }
                 );
                 r.check(&env.block, deps.api)
@@ -90,19 +89,26 @@ pub fn instantiate(
         },
     )?;
 
-    ADOContract::default().instantiate(
+    let contract = ADOContract::default();
+    let resp = contract.instantiate(
         deps.storage,
         env,
         deps.api,
-        info,
+        info.clone(),
         BaseInstantiateMsg {
             ado_type: "cw20-staking".to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
             operators: None,
-            modules: None,
             kernel_address: msg.kernel_address,
+            owner: msg.owner,
         },
-    )
+    )?;
+    let modules_resp =
+        contract.register_modules(info.sender.as_str(), deps.storage, msg.modules)?;
+
+    Ok(resp
+        .add_submessages(modules_resp.messages)
+        .add_attributes(modules_resp.attributes))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -112,167 +118,74 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
-    match msg {
-        ExecuteMsg::AndrReceive(msg) => {
-            ADOContract::default().execute(deps, env, info, msg, execute)
-        }
-        ExecuteMsg::AMPReceive(pkt) => handle_amp_packet(deps, env, info, pkt),
-        ExecuteMsg::Receive(msg) => receive_cw20(deps, env, info, msg),
+    let contract = ADOContract::default();
+    // };
 
-        ExecuteMsg::AddRewardToken { reward_token } => {
-            execute_add_reward_token(deps, env, info, reward_token)
+    contract.module_hook::<Response>(
+        &deps.as_ref(),
+        AndromedaHook::OnExecute {
+            sender: info.sender.to_string(),
+            payload: encode_binary(&msg)?,
+        },
+    )?;
+    let ctx = ExecuteContext::new(deps, info, env);
+
+    match msg {
+        ExecuteMsg::AMPReceive(pkt) => {
+            ADOContract::default().execute_amp_receive(ctx, pkt, handle_execute)
         }
+        _ => handle_execute(ctx, msg),
+    }
+}
+
+pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+    let contract = ADOContract::default();
+    // };
+
+    contract.module_hook::<Response>(
+        &ctx.deps.as_ref(),
+        AndromedaHook::OnExecute {
+            sender: ctx.info.sender.to_string(),
+            payload: encode_binary(&msg)?,
+        },
+    )?;
+    match msg {
+        ExecuteMsg::Receive(msg) => receive_cw20(ctx, msg),
+
+        ExecuteMsg::AddRewardToken { reward_token } => execute_add_reward_token(ctx, reward_token),
         ExecuteMsg::UpdateGlobalIndexes { asset_infos } => match asset_infos {
             None => update_global_indexes(
-                deps.storage,
-                &deps.querier,
-                env.block.time.seconds(),
-                env.contract.address,
+                ctx.deps.storage,
+                &ctx.deps.querier,
+                ctx.env.block.time.seconds(),
+                ctx.env.contract.address,
                 None,
             ),
             Some(asset_infos) => {
                 let asset_infos: Result<Vec<AssetInfo>, ContractError> = asset_infos
                     .iter()
-                    .map(|a| Ok(a.check(deps.api, None)?))
+                    .map(|a| Ok(a.check(ctx.deps.api, None)?))
                     .collect();
                 update_global_indexes(
-                    deps.storage,
-                    &deps.querier,
-                    env.block.time.seconds(),
-                    env.contract.address,
+                    ctx.deps.storage,
+                    &ctx.deps.querier,
+                    ctx.env.block.time.seconds(),
+                    ctx.env.contract.address,
                     Some(asset_infos?),
                 )
             }
         },
-        ExecuteMsg::UnstakeTokens { amount } => execute_unstake_tokens(deps, env, info, amount),
-        ExecuteMsg::ClaimRewards {} => execute_claim_rewards(deps, env, info),
+        ExecuteMsg::UnstakeTokens { amount } => execute_unstake_tokens(ctx, amount),
+        ExecuteMsg::ClaimRewards {} => execute_claim_rewards(ctx),
+        // _ => ADOContract::default().execute(ctx, msg),
+        _ => ADOContract::default().execute(ctx, msg),
     }
 }
 
-pub struct ExecuteEnv<'a> {
-    deps: DepsMut<'a>,
-    pub env: Env,
-    pub info: MessageInfo,
-}
-
-fn handle_amp_packet(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    packet: AMPPkt,
-) -> Result<Response, ContractError> {
-    let mut res = Response::default();
-
-    // Get kernel address
-    let kernel_address = ADOContract::default().get_kernel_address(deps.storage)?;
-
-    // Original packet sender
-    let origin = packet.get_origin();
-
-    // This contract will become the previous sender after sending the message back to the kernel
-    let previous_sender = env.clone().contract.address;
-
-    let execute_env = ExecuteEnv { deps, env, info };
-
-    let msg_opt = packet.messages.first();
-
-    if let Some(msg) = msg_opt {
-        let exec_msg: ExecuteMsg = from_binary(&msg.message)?;
-        let funds = msg.funds.to_vec();
-        let mut exec_info = execute_env.info.clone();
-        exec_info.funds = funds.clone();
-
-        if msg.exit_at_error {
-            let env = execute_env.env.clone();
-            let mut exec_res = execute(execute_env.deps, env, exec_info, exec_msg)?;
-
-            if packet.messages.len() > 1 {
-                let adjusted_messages: Vec<AMPMsg> =
-                    packet.messages.iter().skip(1).cloned().collect();
-
-                let unused_funds: Vec<Coin> = adjusted_messages
-                    .iter()
-                    .flat_map(|msg| msg.funds.iter().cloned())
-                    .collect();
-
-                let kernel_message = generate_msg_native_kernel(
-                    unused_funds,
-                    origin,
-                    previous_sender.to_string(),
-                    adjusted_messages,
-                    kernel_address.into_string(),
-                )?;
-
-                exec_res.messages.push(kernel_message);
-            }
-
-            res = res
-                .add_attributes(exec_res.attributes)
-                .add_submessages(exec_res.messages)
-                .add_events(exec_res.events);
-        } else {
-            match execute(
-                execute_env.deps,
-                execute_env.env.clone(),
-                exec_info,
-                exec_msg,
-            ) {
-                Ok(mut exec_res) => {
-                    if packet.messages.len() > 1 {
-                        let adjusted_messages: Vec<AMPMsg> =
-                            packet.messages.iter().skip(1).cloned().collect();
-
-                        let unused_funds: Vec<Coin> = adjusted_messages
-                            .iter()
-                            .flat_map(|msg| msg.funds.iter().cloned())
-                            .collect();
-
-                        let kernel_message = generate_msg_native_kernel(
-                            unused_funds,
-                            origin,
-                            previous_sender.to_string(),
-                            adjusted_messages,
-                            kernel_address.into_string(),
-                        )?;
-
-                        exec_res.messages.push(kernel_message);
-                    }
-
-                    res = res
-                        .add_attributes(exec_res.attributes)
-                        .add_submessages(exec_res.messages)
-                        .add_events(exec_res.events);
-                }
-                Err(_) => {
-                    // There's an error, but the user opted for the operation to proceed
-                    // No funds are used in the event of an error
-                    if packet.messages.len() > 1 {
-                        let adjusted_messages: Vec<AMPMsg> =
-                            packet.messages.iter().skip(1).cloned().collect();
-
-                        let kernel_message = generate_msg_native_kernel(
-                            funds,
-                            origin,
-                            previous_sender.to_string(),
-                            adjusted_messages,
-                            kernel_address.into_string(),
-                        )?;
-                        res = res.add_submessage(kernel_message);
-                    }
-                }
-            }
-        }
-    }
-
-    Ok(res)
-}
-
-fn receive_cw20(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    msg: Cw20ReceiveMsg,
-) -> Result<Response, ContractError> {
+fn receive_cw20(ctx: ExecuteContext, msg: Cw20ReceiveMsg) -> Result<Response, ContractError> {
+    let ExecuteContext {
+        deps, info, env, ..
+    } = ctx;
     ensure!(
         !msg.amount.is_zero(),
         ContractError::InvalidFunds {
@@ -295,11 +208,12 @@ fn receive_cw20(
 }
 
 fn execute_add_reward_token(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
+    ctx: ExecuteContext,
     reward_token: RewardTokenUnchecked,
 ) -> Result<Response, ContractError> {
+    let ExecuteContext {
+        deps, info, env, ..
+    } = ctx;
     let contract = ADOContract::default();
     ensure!(
         contract.is_owner_or_operator(deps.storage, info.sender.as_str())?,
@@ -322,12 +236,8 @@ fn execute_add_reward_token(
         }
     );
 
-    let staking_token_address = config.staking_token.get_address(
-        deps.api,
-        &deps.querier,
-        contract.get_app_contract(deps.storage)?,
-    )?;
-    let staking_token = AssetInfo::cw20(deps.api.addr_validate(&staking_token_address)?);
+    let staking_token_address = config.staking_token.get_raw_address(&deps.as_ref())?;
+    let staking_token = AssetInfo::cw20(deps.api.addr_validate(staking_token_address.as_str())?);
     ensure!(
         staking_token != reward_token.asset_info,
         ContractError::InvalidAsset {
@@ -366,11 +276,8 @@ fn execute_stake_tokens(
     let contract = ADOContract::default();
     let config = CONFIG.load(deps.storage)?;
 
-    let mission_contract = contract.get_app_contract(deps.storage)?;
-    let staking_token_address =
-        config
-            .staking_token
-            .get_address(deps.api, &deps.querier, mission_contract)?;
+    let _mission_contract = contract.get_app_contract(deps.storage)?;
+    let staking_token_address = config.staking_token.get_raw_address(&deps.as_ref())?;
     ensure!(
         token_address == staking_token_address,
         ContractError::InvalidFunds {
@@ -392,7 +299,7 @@ fn execute_stake_tokens(
     // Update the rewards for the user. This must be done before the new share is calculated.
     update_staker_rewards(deps.storage, &sender, &staker)?;
 
-    let staking_token = AssetInfo::cw20(deps.api.addr_validate(&staking_token_address)?);
+    let staking_token = AssetInfo::cw20(deps.api.addr_validate(staking_token_address.as_ref())?);
 
     // Balance already increased, so subtract deposit amount
     let total_balance = staking_token
@@ -419,15 +326,16 @@ fn execute_stake_tokens(
 }
 
 fn execute_unstake_tokens(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
+    ctx: ExecuteContext,
     amount: Option<Uint128>,
 ) -> Result<Response, ContractError> {
+    let ExecuteContext {
+        deps, info, env, ..
+    } = ctx;
     nonpayable(&info)?;
     let sender = info.sender.as_str();
 
-    let staking_token = get_staking_token(deps.storage, deps.api, &deps.querier)?;
+    let staking_token = get_staking_token(deps.as_ref())?;
 
     let total_balance = staking_token.query_balance(&deps.querier, env.contract.address.clone())?;
 
@@ -485,11 +393,10 @@ fn execute_unstake_tokens(
     }
 }
 
-fn execute_claim_rewards(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-) -> Result<Response, ContractError> {
+fn execute_claim_rewards(ctx: ExecuteContext) -> Result<Response, ContractError> {
+    let ExecuteContext {
+        deps, info, env, ..
+    } = ctx;
     let sender = info.sender.as_str();
     if let Some(staker) = STAKERS.may_load(deps.storage, sender)? {
         // Update indexes, important for allocated rewards.
@@ -611,7 +518,7 @@ fn update_global_index(
         return Ok(());
     }
 
-    match reward_token.reward_type {
+    match &reward_token.reward_type {
         RewardType::NonAllocated {
             previous_reward_balance,
         } => {
@@ -619,7 +526,7 @@ fn update_global_index(
                 state,
                 querier,
                 reward_token,
-                previous_reward_balance,
+                *previous_reward_balance,
                 contract_address,
             )?;
         }
@@ -630,8 +537,8 @@ fn update_global_index(
             update_allocated_index(
                 state.total_share,
                 reward_token,
-                allocation_config,
-                allocation_state,
+                allocation_config.clone(),
+                allocation_state.clone(),
                 current_timestamp,
             )?;
         }
@@ -706,20 +613,14 @@ fn update_staker_reward_info(
     staker_reward_info.pending_rewards += Decimal256::from_ratio(rewards, 1u128);
 }
 
-pub(crate) fn get_staking_token(
-    storage: &dyn Storage,
-    api: &dyn Api,
-    querier: &QuerierWrapper,
-) -> Result<AssetInfo, ContractError> {
-    let contract = ADOContract::default();
-    let config = CONFIG.load(storage)?;
+pub(crate) fn get_staking_token(deps: Deps) -> Result<AssetInfo, ContractError> {
+    let _contract = ADOContract::default();
+    let config = CONFIG.load(deps.storage)?;
 
-    let mission_contract = contract.get_app_contract(storage)?;
-    let staking_token_address = config
-        .staking_token
-        .get_address(api, querier, mission_contract)?;
+    // let mission_contract = contract.get_app_contract(deps.storage)?;
+    let staking_token_address = config.staking_token.get_raw_address(&deps)?;
 
-    let staking_token = AssetInfo::cw20(api.addr_validate(&staking_token_address)?);
+    let staking_token = AssetInfo::cw20(deps.api.addr_validate(staking_token_address.as_ref())?);
 
     Ok(staking_token)
 }
@@ -727,7 +628,6 @@ pub(crate) fn get_staking_token(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
-        QueryMsg::AndrQuery(msg) => ADOContract::default().query(deps, env, msg, query),
         QueryMsg::Config {} => encode_binary(&query_config(deps)?),
         QueryMsg::State {} => encode_binary(&query_state(deps)?),
         QueryMsg::Staker { address } => encode_binary(&query_staker(deps, env, address)?),
@@ -735,6 +635,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
             encode_binary(&query_stakers(deps, env, start_after, limit)?)
         }
         QueryMsg::Timestamp {} => encode_binary(&query_timestamp(env)),
+        _ => ADOContract::default().query::<QueryMsg>(deps, env, msg, None),
     }
 }
 
@@ -751,7 +652,7 @@ fn query_staker(deps: Deps, env: Env, address: String) -> Result<StakerResponse,
     let state = STATE.load(deps.storage)?;
     let pending_rewards =
         get_pending_rewards(deps.storage, &deps.querier, &env, &address, &staker)?;
-    let staking_token = get_staking_token(deps.storage, deps.api, &deps.querier)?;
+    let staking_token = get_staking_token(deps)?;
     let total_balance = staking_token.query_balance(&deps.querier, env.contract.address)?;
     let balance = staker
         .share
@@ -806,7 +707,7 @@ fn query_stakers(
     limit: Option<u32>,
 ) -> Result<Vec<StakerResponse>, ContractError> {
     let start = start_after.as_deref();
-    get_stakers(deps.storage, &deps.querier, deps.api, &env, start, limit)
+    get_stakers(deps, &deps.querier, deps.api, &env, start, limit)
 }
 
 fn query_timestamp(env: Env) -> u64 {

@@ -3,8 +3,8 @@ use crate::{
     state::{resolve_pathname, USERS},
 };
 
-use andromeda_os::vfs::{ExecuteMsg, InstantiateMsg};
-use common::error::ContractError;
+use andromeda_std::error::ContractError;
+use andromeda_std::os::vfs::{ExecuteMsg, InstantiateMsg};
 use cosmwasm_std::{
     testing::{mock_dependencies, mock_env, mock_info},
     Addr,
@@ -16,6 +16,7 @@ fn proper_initialization() {
     let info = mock_info("creator", &[]);
     let msg = InstantiateMsg {
         kernel_address: "kernel".to_string(),
+        owner: None,
     };
     let env = mock_env();
 

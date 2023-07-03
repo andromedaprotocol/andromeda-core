@@ -2,26 +2,19 @@ use crate::state::{
     get_available_tokens, Purchase, AVAILABLE_TOKENS, CONFIG, NUMBER_OF_TOKENS_AVAILABLE,
     PURCHASES, SALE_CONDUCTED, STATE,
 };
-use ado_base::ADOContract;
 use andromeda_non_fungible_tokens::{
     crowdfund::{
         Config, CrowdfundMintMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, State,
     },
-    cw721::{ExecuteMsg as Cw721ExecuteMsg, MintMsg, QueryMsg as Cw721QueryMsg, TokenExtension},
+    cw721::{ExecuteMsg as Cw721ExecuteMsg, MintMsg, QueryMsg as Cw721QueryMsg},
 };
-use andromeda_os::recipient::AMPRecipient as Recipient;
-use andromeda_os::{
-    messages::{AMPMsg, AMPPkt},
-    recipient::generate_msg_native_kernel,
-};
+use andromeda_std::amp::{messages::AMPPkt, recipient::Recipient};
+use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
 
-use common::{
-    ado_base::{hooks::AndromedaHook, AndromedaMsg, InstantiateMsg as BaseInstantiateMsg},
-    deduct_funds, encode_binary,
+use andromeda_std::{
+    ado_base::{hooks::AndromedaHook, InstantiateMsg as BaseInstantiateMsg},
+    common::{deduct_funds, encode_binary, merge_sub_msgs, rates::get_tax_amount, Funds},
     error::{from_semver, ContractError},
-    merge_sub_msgs,
-    rates::get_tax_amount,
-    Funds,
 };
 use cw2::{get_contract_version, set_contract_version};
 use semver::Version;
@@ -29,9 +22,9 @@ use semver::Version;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    ensure, from_binary, has_coins, Api, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env,
-    MessageInfo, Order, QuerierWrapper, QueryRequest, Reply, Response, StdError, Storage, SubMsg,
-    Uint128, WasmMsg, WasmQuery,
+    coins, ensure, has_coins, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
+    Order, QuerierWrapper, QueryRequest, Reply, Response, StdError, Storage, SubMsg, Uint128,
+    WasmMsg, WasmQuery,
 };
 use cw721::TokensResponse;
 use cw_utils::{nonpayable, Expiration};
@@ -60,19 +53,25 @@ pub fn instantiate(
     )?;
     SALE_CONDUCTED.save(deps.storage, &false)?;
     NUMBER_OF_TOKENS_AVAILABLE.save(deps.storage, &Uint128::zero())?;
-    ADOContract::default().instantiate(
+    let inst_resp = ADOContract::default().instantiate(
         deps.storage,
         env,
         deps.api,
-        info,
+        info.clone(),
         BaseInstantiateMsg {
             ado_type: "crowdfund".to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
             operators: None,
-            modules: msg.modules,
             kernel_address: msg.kernel_address,
+            owner: msg.owner,
         },
-    )
+    )?;
+    let mod_resp =
+        ADOContract::default().register_modules(info.sender.as_str(), deps.storage, msg.modules)?;
+
+    Ok(inst_resp
+        .add_attributes(mod_resp.attributes)
+        .add_submessages(mod_resp.messages))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -94,42 +93,38 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
-
-    // Do this before the hooks get fired off to ensure that there are no errors from the app
-    // address not being fully setup yet.
-    if let ExecuteMsg::AndrReceive(andr_msg) = msg.clone() {
-        if let AndromedaMsg::UpdateAppContract { address } = andr_msg {
-            let config = CONFIG.load(deps.storage)?;
-            return contract.execute_update_app_contract(
-                deps,
-                info,
-                address,
-                Some(vec![config.token_address]),
-            );
-        } else if let AndromedaMsg::UpdateOwner { address } = andr_msg {
-            return contract.execute_update_owner(deps, info, address);
-        }
-    }
-
-    //Andromeda Messages can be executed without modules, if they are a wrapped execute message they will loop back
-    if let ExecuteMsg::AndrReceive(andr_msg) = msg {
-        return contract.execute(deps, env, info, andr_msg, execute);
-    };
+    // };
 
     contract.module_hook::<Response>(
-        deps.storage,
-        deps.api,
-        deps.querier,
+        &deps.as_ref(),
         AndromedaHook::OnExecute {
             sender: info.sender.to_string(),
             payload: encode_binary(&msg)?,
         },
     )?;
+    let ctx = ExecuteContext::new(deps, info, env);
 
     match msg {
-        ExecuteMsg::AndrReceive(msg) => contract.execute(deps, env, info, msg, execute),
-        ExecuteMsg::AMPReceive(pkt) => handle_amp_packet(deps, env, info, pkt),
-        ExecuteMsg::Mint(mint_msgs) => execute_mint(deps, env, info, mint_msgs),
+        ExecuteMsg::AMPReceive(pkt) => {
+            ADOContract::default().execute_amp_receive(ctx, pkt, handle_execute)
+        }
+        _ => handle_execute(ctx, msg),
+    }
+}
+
+pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+    let contract = ADOContract::default();
+    // };
+
+    contract.module_hook::<Response>(
+        &ctx.deps.as_ref(),
+        AndromedaHook::OnExecute {
+            sender: ctx.info.sender.to_string(),
+            payload: encode_binary(&msg)?,
+        },
+    )?;
+    match msg {
+        ExecuteMsg::Mint(mint_msgs) => execute_mint(ctx, mint_msgs),
         ExecuteMsg::StartSale {
             expiration,
             price,
@@ -137,150 +132,28 @@ pub fn execute(
             max_amount_per_wallet,
             recipient,
         } => execute_start_sale(
-            deps,
-            env,
-            info,
+            ctx,
             expiration,
             price,
             min_tokens_sold,
             max_amount_per_wallet,
             recipient,
         ),
-        ExecuteMsg::Purchase { number_of_tokens } => {
-            execute_purchase(deps, env, info, number_of_tokens)
-        }
-        ExecuteMsg::PurchaseByTokenId { token_id } => {
-            execute_purchase_by_token_id(deps, env, info, token_id)
-        }
-        ExecuteMsg::ClaimRefund {} => execute_claim_refund(deps, env, info),
-        ExecuteMsg::EndSale { limit } => execute_end_sale(deps, env, info, limit),
+        ExecuteMsg::Purchase { number_of_tokens } => execute_purchase(ctx, number_of_tokens),
+        ExecuteMsg::PurchaseByTokenId { token_id } => execute_purchase_by_token_id(ctx, token_id),
+        ExecuteMsg::ClaimRefund {} => execute_claim_refund(ctx),
+        ExecuteMsg::EndSale { limit } => execute_end_sale(ctx, limit),
+        _ => ADOContract::default().execute(ctx, msg),
     }
-}
-
-pub struct ExecuteEnv<'a> {
-    deps: DepsMut<'a>,
-    pub env: Env,
-    pub info: MessageInfo,
-}
-
-fn handle_amp_packet(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    packet: AMPPkt,
-) -> Result<Response, ContractError> {
-    let mut res = Response::default();
-
-    // Get kernel address
-    let kernel_address = ADOContract::default().get_kernel_address(deps.storage)?;
-
-    // Original packet sender
-    let origin = packet.get_origin();
-
-    // This contract will become the previous sender after sending the message back to the kernel
-    let previous_sender = env.clone().contract.address;
-
-    let execute_env = ExecuteEnv { deps, env, info };
-
-    let msg_opt = packet.messages.first();
-
-    if let Some(msg) = msg_opt {
-        let exec_msg: ExecuteMsg = from_binary(&msg.message)?;
-        let funds = msg.funds.to_vec();
-        let mut exec_info = execute_env.info.clone();
-        exec_info.funds = funds.clone();
-
-        if msg.exit_at_error {
-            let env = execute_env.env.clone();
-            let mut exec_res = execute(execute_env.deps, env, exec_info, exec_msg)?;
-
-            if packet.messages.len() > 1 {
-                let adjusted_messages: Vec<AMPMsg> =
-                    packet.messages.iter().skip(1).cloned().collect();
-
-                let unused_funds: Vec<Coin> = adjusted_messages
-                    .iter()
-                    .flat_map(|msg| msg.funds.iter().cloned())
-                    .collect();
-
-                let kernel_message = generate_msg_native_kernel(
-                    unused_funds,
-                    origin,
-                    previous_sender.to_string(),
-                    adjusted_messages,
-                    kernel_address.into_string(),
-                )?;
-
-                exec_res.messages.push(kernel_message);
-            }
-
-            res = res
-                .add_attributes(exec_res.attributes)
-                .add_submessages(exec_res.messages)
-                .add_events(exec_res.events);
-        } else {
-            match execute(
-                execute_env.deps,
-                execute_env.env.clone(),
-                exec_info,
-                exec_msg,
-            ) {
-                Ok(mut exec_res) => {
-                    if packet.messages.len() > 1 {
-                        let adjusted_messages: Vec<AMPMsg> =
-                            packet.messages.iter().skip(1).cloned().collect();
-
-                        let unused_funds: Vec<Coin> = adjusted_messages
-                            .iter()
-                            .flat_map(|msg| msg.funds.iter().cloned())
-                            .collect();
-
-                        let kernel_message = generate_msg_native_kernel(
-                            unused_funds,
-                            origin,
-                            previous_sender.to_string(),
-                            adjusted_messages,
-                            kernel_address.into_string(),
-                        )?;
-
-                        exec_res.messages.push(kernel_message);
-                    }
-
-                    res = res
-                        .add_attributes(exec_res.attributes)
-                        .add_submessages(exec_res.messages)
-                        .add_events(exec_res.events);
-                }
-                Err(_) => {
-                    // There's an error, but the user opted for the operation to proceed
-                    // No funds are used in the event of an error
-                    if packet.messages.len() > 1 {
-                        let adjusted_messages: Vec<AMPMsg> =
-                            packet.messages.iter().skip(1).cloned().collect();
-
-                        let kernel_message = generate_msg_native_kernel(
-                            funds,
-                            origin,
-                            previous_sender.to_string(),
-                            adjusted_messages,
-                            kernel_address.into_string(),
-                        )?;
-                        res = res.add_submessage(kernel_message);
-                    }
-                }
-            }
-        }
-    }
-
-    Ok(res)
 }
 
 fn execute_mint(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
+    ctx: ExecuteContext,
     mint_msgs: Vec<CrowdfundMintMsg>,
 ) -> Result<Response, ContractError> {
+    let ExecuteContext {
+        deps, info, env, ..
+    } = ctx;
     nonpayable(&info)?;
 
     ensure!(
@@ -308,15 +181,14 @@ fn execute_mint(
 
     let token_contract = config.token_address;
     let crowdfund_contract = env.contract.address.to_string();
-    let resolved_path =
-        contract.resolve_path(deps.storage, &deps.querier, deps.api, token_contract)?;
+    let resolved_path = token_contract.get_raw_address(&deps.as_ref())?;
 
     let mut resp = Response::new();
     for mint_msg in mint_msgs {
         let mint_resp = mint(
             deps.storage,
             &crowdfund_contract,
-            resolved_path.clone(),
+            resolved_path.to_string(),
             mint_msg,
         )?;
         resp = resp
@@ -333,7 +205,7 @@ fn mint(
     token_contract: String,
     mint_msg: CrowdfundMintMsg,
 ) -> Result<Response, ContractError> {
-    let mint_msg: MintMsg<TokenExtension> = MintMsg {
+    let mint_msg: MintMsg = MintMsg {
         token_id: mint_msg.token_id,
         owner: mint_msg
             .owner
@@ -354,36 +226,33 @@ fn mint(
         .add_attribute("action", "mint")
         .add_message(WasmMsg::Execute {
             contract_addr: token_contract,
-            msg: encode_binary(&Cw721ExecuteMsg::Mint(Box::new(mint_msg)))?,
+            msg: encode_binary(&Cw721ExecuteMsg::Mint {
+                token_id: mint_msg.token_id,
+                owner: mint_msg.owner,
+                token_uri: mint_msg.token_uri,
+                extension: mint_msg.extension,
+            })?,
             funds: vec![],
         }))
 }
 
 #[allow(clippy::too_many_arguments)]
 fn execute_start_sale(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
+    ctx: ExecuteContext,
     expiration: Expiration,
     price: Coin,
     min_tokens_sold: Uint128,
     max_amount_per_wallet: Option<u32>,
     recipient: Recipient,
 ) -> Result<Response, ContractError> {
+    let ExecuteContext {
+        deps, info, env, ..
+    } = ctx;
     nonpayable(&info)?;
     let ado_contract = ADOContract::default();
-    let kernel_address = ado_contract.get_kernel_address(deps.storage)?;
-    let vfs_address = ado_contract.get_vfs_address(&deps.querier, kernel_address)?;
-    let app_address = ado_contract.get_app_contract(deps.storage)?;
 
     // Validate recipient
-    ado_contract.validate_andr_address(
-        deps.api,
-        &deps.querier,
-        recipient.get_addr()?,
-        app_address,
-        vfs_address,
-    )?;
+    ado_contract.validate_andr_addresses(&deps.as_ref(), vec![recipient.address.clone()])?;
     ensure!(
         ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {}
@@ -428,11 +297,15 @@ fn execute_start_sale(
 }
 
 fn execute_purchase_by_token_id(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
+    ctx: ExecuteContext,
     token_id: String,
 ) -> Result<Response, ContractError> {
+    let ExecuteContext {
+        mut deps,
+        info,
+        env,
+        ..
+    } = ctx;
     let sender = info.sender.to_string();
     let state = STATE.may_load(deps.storage)?;
 
@@ -460,9 +333,7 @@ fn execute_purchase_by_token_id(
     ensure!(max_possible > 0, ContractError::PurchaseLimitReached {});
 
     purchase_tokens(
-        deps.storage,
-        deps.api,
-        &deps.querier,
+        &mut deps,
         vec![token_id.clone()],
         &info,
         &mut state,
@@ -478,11 +349,15 @@ fn execute_purchase_by_token_id(
 }
 
 fn execute_purchase(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
+    ctx: ExecuteContext,
     number_of_tokens: Option<u32>,
 ) -> Result<Response, ContractError> {
+    let ExecuteContext {
+        mut deps,
+        info,
+        env,
+        ..
+    } = ctx;
     let sender = info.sender.to_string();
     let state = STATE.may_load(deps.storage)?;
 
@@ -512,15 +387,8 @@ fn execute_purchase(
 
     let number_of_tokens_purchased = token_ids.len();
 
-    let required_payment = purchase_tokens(
-        deps.storage,
-        deps.api,
-        &deps.querier,
-        token_ids,
-        &info,
-        &mut state,
-        &mut purchases,
-    )?;
+    let required_payment =
+        purchase_tokens(&mut deps, token_ids, &info, &mut state, &mut purchases)?;
 
     PURCHASES.save(deps.storage, &sender, &purchases)?;
     STATE.save(deps.storage, &state)?;
@@ -553,9 +421,7 @@ fn execute_purchase(
 }
 
 fn purchase_tokens(
-    storage: &mut dyn Storage,
-    api: &dyn Api,
-    querier: &QuerierWrapper,
+    deps: &mut DepsMut,
     token_ids: Vec<String>,
     info: &MessageInfo,
     state: &mut State,
@@ -580,15 +446,13 @@ fn purchase_tokens(
 
     // This is the same for each token, so we only need to do it once.
     let (msgs, _events, remainder) = ADOContract::default().on_funds_transfer(
-        storage,
-        api,
-        querier,
+        &deps.as_ref(),
         info.sender.to_string(),
         Funds::Native(state.price.clone()),
         encode_binary(&"")?,
     )?;
 
-    let mut current_number = NUMBER_OF_TOKENS_AVAILABLE.load(storage)?;
+    let mut current_number = NUMBER_OF_TOKENS_AVAILABLE.load(deps.storage)?;
     for token_id in token_ids {
         let remaining_amount = remainder.try_get_coin()?;
 
@@ -608,10 +472,10 @@ fn purchase_tokens(
 
         purchases.push(purchase);
 
-        AVAILABLE_TOKENS.remove(storage, &token_id);
+        AVAILABLE_TOKENS.remove(deps.storage, &token_id);
         current_number -= Uint128::new(1);
     }
-    NUMBER_OF_TOKENS_AVAILABLE.save(storage, &current_number)?;
+    NUMBER_OF_TOKENS_AVAILABLE.save(deps.storage, &current_number)?;
 
     // CHECK :: User has sent enough to cover taxes.
     let required_payment = Coin {
@@ -626,11 +490,10 @@ fn purchase_tokens(
     Ok(required_payment)
 }
 
-fn execute_claim_refund(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-) -> Result<Response, ContractError> {
+fn execute_claim_refund(ctx: ExecuteContext) -> Result<Response, ContractError> {
+    let ExecuteContext {
+        deps, info, env, ..
+    } = ctx;
     nonpayable(&info)?;
 
     let state = STATE.may_load(deps.storage)?;
@@ -657,12 +520,13 @@ fn execute_claim_refund(
     Ok(resp.add_attribute("action", "claim_refund"))
 }
 
-fn execute_end_sale(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    limit: Option<u32>,
-) -> Result<Response, ContractError> {
+fn execute_end_sale(ctx: ExecuteContext, limit: Option<u32>) -> Result<Response, ContractError> {
+    let ExecuteContext {
+        mut deps,
+        info,
+        env,
+        amp_ctx,
+    } = ctx;
     nonpayable(&info)?;
 
     let state = STATE.may_load(deps.storage)?;
@@ -675,20 +539,22 @@ fn execute_end_sale(
         ContractError::SaleNotEnded {}
     );
     if state.amount_sold < state.min_tokens_sold {
-        issue_refunds_and_burn_tokens(deps, env, limit)
+        issue_refunds_and_burn_tokens(&mut deps, env, limit)
     } else {
-        let origin = info.sender.into_string();
-        let previous_sender = env.clone().contract.address.into_string();
-        let kernel_address = ADOContract::default()
-            .get_kernel_address(deps.storage)?
-            .into_string();
-
-        transfer_tokens_and_send_funds(deps, env, limit, origin, previous_sender, kernel_address)
+        transfer_tokens_and_send_funds(
+            ExecuteContext {
+                deps,
+                info,
+                env,
+                amp_ctx,
+            },
+            limit,
+        )
     }
 }
 
 fn issue_refunds_and_burn_tokens(
-    deps: DepsMut,
+    deps: &mut DepsMut,
     env: Env,
     limit: Option<u32>,
 ) -> Result<Response, ContractError> {
@@ -711,13 +577,7 @@ fn issue_refunds_and_burn_tokens(
     }
 
     // Burn `limit` number of tokens
-    let burn_msgs = get_burn_messages(
-        deps.storage,
-        &deps.querier,
-        deps.api,
-        env.contract.address.to_string(),
-        limit,
-    )?;
+    let burn_msgs = get_burn_messages(deps, env.contract.address.to_string(), limit)?;
 
     if burn_msgs.is_empty() && purchases.is_empty() {
         // When all tokens have been burned and all purchases have been refunded, the sale is over.
@@ -731,56 +591,59 @@ fn issue_refunds_and_burn_tokens(
 }
 
 fn transfer_tokens_and_send_funds(
-    deps: DepsMut,
-    env: Env,
+    ctx: ExecuteContext,
     limit: Option<u32>,
-    origin: String,
-    _previous_sender: String,
-    kernel_address: String,
 ) -> Result<Response, ContractError> {
+    let ExecuteContext {
+        mut deps,
+        info,
+        env,
+        ..
+    } = ctx;
     let mut state = STATE.load(deps.storage)?;
     let mut resp = Response::new();
     let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
 
-    let recipient = state.recipient.get_addr()?;
-
-    let message = state.recipient.get_message()?.unwrap_or_default();
-
     ensure!(limit > 0, ContractError::LimitMustNotBeZero {});
     // Send the funds if they haven't been sent yet and if all of the tokens have been transferred.
+    let mut pkt = match ctx.amp_ctx {
+        Some(pkt) => pkt,
+        None => AMPPkt::new(info.sender, env.contract.address.clone(), vec![]),
+    };
+
     if state.amount_transferred == state.amount_sold {
         if state.amount_to_send > Uint128::zero() {
-            let amp_message = AMPMsg::new(
-                recipient,
-                message,
-                Some(vec![Coin {
-                    denom: state.price.denom.clone(),
-                    amount: state.amount_to_send,
-                }]),
-                None,
-                None,
-                None,
-            );
-            let msg = amp_message.generate_sub_message(
-                kernel_address,
-                origin,
-                env.contract.address.to_string(),
-                1,
-            )?;
+            let funds = vec![Coin {
+                denom: state.price.denom.clone(),
+                amount: state.amount_to_send,
+            }];
+            match state.recipient.msg.clone() {
+                None => {
+                    resp = resp.add_submessage(
+                        state.recipient.generate_direct_msg(&deps.as_ref(), funds)?,
+                    );
+                }
+                Some(_) => {
+                    let amp_message = state.recipient.clone().generate_amp_msg(Some(funds));
+                    pkt = pkt.add_message(amp_message);
+                    let kernel_address = ADOContract::default().get_kernel_address(deps.storage)?;
+                    let sub_msg = pkt.to_sub_msg(
+                        kernel_address,
+                        Some(coins(
+                            state.amount_to_send.u128(),
+                            state.price.denom.clone(),
+                        )),
+                        1,
+                    )?;
+                    resp = resp.add_submessage(sub_msg);
+                }
+            }
             state.amount_to_send = Uint128::zero();
             STATE.save(deps.storage, &state)?;
-
-            resp = resp.add_submessage(msg);
         }
         // Once all purchased tokens have been transferred, begin burning `limit` number of tokens
         // that were not purchased.
-        let burn_msgs = get_burn_messages(
-            deps.storage,
-            &deps.querier,
-            deps.api,
-            env.contract.address.to_string(),
-            limit,
-        )?;
+        let burn_msgs = get_burn_messages(&mut deps, env.contract.address.to_string(), limit)?;
 
         if burn_msgs.is_empty() {
             // When burn messages are empty, we have finished the sale, which is represented by
@@ -789,7 +652,6 @@ fn transfer_tokens_and_send_funds(
         } else {
             resp = resp.add_messages(burn_msgs);
         }
-
         // If we are here then there are no purchases to process so we can exit.
         return Ok(resp.add_attribute("action", "transfer_tokens_and_send_funds"));
     }
@@ -828,12 +690,7 @@ fn transfer_tokens_and_send_funds(
     }
 
     // Resolve the token contract address from the VFS
-    let token_contract_address = ADOContract::default().resolve_path(
-        deps.storage,
-        &deps.querier,
-        deps.api,
-        config.token_address,
-    )?;
+    let token_contract_address = config.token_address.get_raw_address(&deps.as_ref())?;
     for purchase in purchases.into_iter() {
         let purchaser = purchase.purchaser;
         let should_remove = purchaser != last_purchaser || remove_last_purchaser;
@@ -846,7 +703,7 @@ fn transfer_tokens_and_send_funds(
         }
         rate_messages.extend(purchase.msgs);
         transfer_msgs.push(CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: token_contract_address.clone(),
+            contract_addr: token_contract_address.to_string(),
             msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
                 recipient: purchaser,
                 token_id: purchase.token_id,
@@ -915,24 +772,21 @@ fn process_refund(
 }
 
 fn get_burn_messages(
-    storage: &mut dyn Storage,
-    querier: &QuerierWrapper,
-    api: &dyn Api,
+    deps: &mut DepsMut,
     address: String,
     limit: usize,
 ) -> Result<Vec<CosmosMsg>, ContractError> {
-    let config = CONFIG.load(storage)?;
-    let token_address =
-        ADOContract::default().resolve_path(storage, querier, api, config.token_address)?;
-    let tokens_to_burn = query_tokens(querier, token_address.clone(), address, limit)?;
+    let config = CONFIG.load(deps.storage)?;
+    let token_address = config.token_address.get_raw_address(&deps.as_ref())?;
+    let tokens_to_burn = query_tokens(&deps.querier, token_address.to_string(), address, limit)?;
 
     tokens_to_burn
         .into_iter()
         .map(|token_id| {
             // Any token that is burnable has been added to this map, and so must be removed.
-            AVAILABLE_TOKENS.remove(storage, &token_id);
+            AVAILABLE_TOKENS.remove(deps.storage, &token_id);
             Ok(CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: token_address.clone(),
+                contract_addr: token_address.to_string(),
                 funds: vec![],
                 msg: encode_binary(&Cw721ExecuteMsg::Burn { token_id })?,
             }))
@@ -967,13 +821,13 @@ fn query_tokens(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
-        QueryMsg::AndrQuery(msg) => ADOContract::default().query(deps, env, msg, query),
         QueryMsg::State {} => encode_binary(&query_state(deps)?),
         QueryMsg::Config {} => encode_binary(&query_config(deps)?),
         QueryMsg::AvailableTokens { start_after, limit } => {
             encode_binary(&query_available_tokens(deps, start_after, limit)?)
         }
         QueryMsg::IsTokenAvailable { id } => encode_binary(&query_is_token_available(deps, id)),
+        _ => ADOContract::default().query::<QueryMsg>(deps, env, msg, None),
     }
 }
 

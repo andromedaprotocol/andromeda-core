@@ -1,9 +1,9 @@
-use crate::{contract::*, state::ADO_ADDRESSES};
+use super::{contract::*, state::ADO_ADDRESSES};
 use andromeda_app::app::{AppComponent, ExecuteMsg, InstantiateMsg};
-use andromeda_os::vfs::{convert_component_name, ExecuteMsg as VFSExecuteMsg};
-use andromeda_testing::testing::mock_querier::mock_dependencies_custom;
+use andromeda_std::os::vfs::{convert_component_name, ExecuteMsg as VFSExecuteMsg};
+use andromeda_std::testing::mock_querier::{mock_dependencies_custom, MOCK_KERNEL_CONTRACT};
 
-use common::{ado_base::AndromedaMsg, error::ContractError};
+use andromeda_std::{ado_base::AndromedaMsg, error::ContractError};
 use cosmwasm_std::{
     attr,
     testing::{mock_env, mock_info},
@@ -17,7 +17,8 @@ fn test_empty_instantiation() {
     let msg = InstantiateMsg {
         app_components: vec![],
         name: String::from("Some App"),
-        kernel_address: "kernel_contract".to_string(),
+        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+        owner: None,
     };
     let info = mock_info("creator", &[]);
 
@@ -37,7 +38,8 @@ fn test_instantiation() {
             instantiate_msg: to_binary(&true).unwrap(),
         }],
         name: String::from("Some App"),
-        kernel_address: "kernel_contract".to_string(),
+        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+        owner: None,
     };
     let info = mock_info("creator", &[]);
 
@@ -46,7 +48,7 @@ fn test_instantiation() {
     let inst_submsg: SubMsg<Empty> = SubMsg {
         id: 1,
         msg: CosmosMsg::Wasm(WasmMsg::Instantiate {
-            code_id: 4,
+            code_id: 1,
             msg: to_binary(&true).unwrap(),
             funds: vec![],
             label: "Instantiate: cw721".to_string(),
@@ -105,7 +107,8 @@ fn test_instantiation_duplicate_components() {
             },
         ],
         name: String::from("Some App"),
-        kernel_address: "kernel_contract".to_string(),
+        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+        owner: None,
     };
     let info = mock_info("creator", &[]);
 
@@ -121,7 +124,8 @@ fn test_add_app_component_unauthorized() {
     let inst_msg = InstantiateMsg {
         app_components: vec![],
         name: String::from("Some App"),
-        kernel_address: "kernel_contract".to_string(),
+        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+        owner: None,
     };
 
     instantiate(deps.as_mut(), env.clone(), info, inst_msg).unwrap();
@@ -151,8 +155,8 @@ fn test_add_app_component_duplicate_name() {
             instantiate_msg: to_binary(&true).unwrap(),
         }],
         name: String::from("Some App"),
-
-        kernel_address: "kernel_contract".to_string(),
+        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+        owner: None,
     };
 
     instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
@@ -184,7 +188,8 @@ fn test_add_app_component() {
     let inst_msg = InstantiateMsg {
         app_components: vec![],
         name: String::from("Some App"),
-        kernel_address: "kernel_contract".to_string(),
+        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+        owner: None,
     };
 
     instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
@@ -202,7 +207,7 @@ fn test_add_app_component() {
     let inst_submsg: SubMsg<Empty> = SubMsg {
         id: 1,
         msg: CosmosMsg::Wasm(WasmMsg::Instantiate {
-            code_id: 4,
+            code_id: 1,
             msg: to_binary(&true).unwrap(),
             funds: vec![],
             label: "Instantiate: cw721".to_string(),
@@ -235,8 +240,8 @@ fn test_claim_ownership_unauth() {
     let inst_msg = InstantiateMsg {
         app_components: vec![],
         name: String::from("Some App"),
-
-        kernel_address: "kernel_contract".to_string(),
+        owner: None,
+        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
     };
 
     instantiate(deps.as_mut(), env.clone(), info, inst_msg).unwrap();
@@ -256,8 +261,8 @@ fn test_claim_ownership_not_found() {
     let inst_msg = InstantiateMsg {
         app_components: vec![],
         name: String::from("Some App"),
-
-        kernel_address: "kernel_contract".to_string(),
+        owner: None,
+        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
     };
 
     instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
@@ -283,8 +288,8 @@ fn test_claim_ownership_empty() {
     let inst_msg = InstantiateMsg {
         app_components: vec![],
         name: String::from("Some App"),
-
-        kernel_address: "kernel_contract".to_string(),
+        owner: None,
+        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
     };
 
     instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
@@ -303,8 +308,8 @@ fn test_claim_ownership_all() {
     let inst_msg = InstantiateMsg {
         app_components: vec![],
         name: String::from("Some App"),
-
-        kernel_address: "kernel_contract".to_string(),
+        owner: None,
+        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
     };
 
     instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
@@ -332,9 +337,9 @@ fn test_claim_ownership_all() {
         id: 101,
         msg: CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: "anchoraddress".to_string(),
-            msg: to_binary(&ExecuteMsg::AndrReceive(AndromedaMsg::UpdateOwner {
+            msg: to_binary(&AndromedaMsg::UpdateOwner {
                 address: "creator".to_string(),
-            }))
+            })
             .unwrap(),
             funds: vec![],
         }),
@@ -345,9 +350,9 @@ fn test_claim_ownership_all() {
         id: 101,
         msg: CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: "tokenaddress".to_string(),
-            msg: to_binary(&ExecuteMsg::AndrReceive(AndromedaMsg::UpdateOwner {
+            msg: to_binary(&AndromedaMsg::UpdateOwner {
                 address: "creator".to_string(),
-            }))
+            })
             .unwrap(),
             funds: vec![],
         }),
@@ -369,8 +374,8 @@ fn test_claim_ownership() {
     let inst_msg = InstantiateMsg {
         app_components: vec![],
         name: String::from("Some App"),
-
-        kernel_address: "kernel_contract".to_string(),
+        owner: None,
+        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
     };
 
     instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
@@ -400,9 +405,9 @@ fn test_claim_ownership() {
         id: 101,
         msg: CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: "tokenaddress".to_string(),
-            msg: to_binary(&ExecuteMsg::AndrReceive(AndromedaMsg::UpdateOwner {
+            msg: to_binary(&AndromedaMsg::UpdateOwner {
                 address: "creator".to_string(),
-            }))
+            })
             .unwrap(),
             funds: vec![],
         }),
@@ -424,8 +429,8 @@ fn test_proxy_message_unauth() {
     let inst_msg = InstantiateMsg {
         app_components: vec![],
         name: String::from("Some App"),
-
-        kernel_address: "kernel_contract".to_string(),
+        owner: None,
+        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
     };
 
     instantiate(deps.as_mut(), env.clone(), info, inst_msg).unwrap();
@@ -448,8 +453,8 @@ fn test_proxy_message_not_found() {
     let inst_msg = InstantiateMsg {
         app_components: vec![],
         name: String::from("Some App"),
-
-        kernel_address: "kernel_contract".to_string(),
+        owner: None,
+        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
     };
 
     instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
@@ -476,8 +481,8 @@ fn test_proxy_message() {
     let inst_msg = InstantiateMsg {
         app_components: vec![],
         name: String::from("Some App"),
-
-        kernel_address: "kernel_contract".to_string(),
+        owner: None,
+        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
     };
     ADO_ADDRESSES
         .save(
@@ -523,8 +528,8 @@ fn test_update_address_unauth() {
     let inst_msg = InstantiateMsg {
         app_components: vec![],
         name: String::from("Some App"),
-
-        kernel_address: "kernel_contract".to_string(),
+        owner: None,
+        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
     };
 
     ADO_ADDRESSES
@@ -554,8 +559,8 @@ fn test_update_address_not_found() {
     let inst_msg = InstantiateMsg {
         app_components: vec![],
         name: String::from("Some App"),
-
-        kernel_address: "kernel_contract".to_string(),
+        owner: None,
+        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
     };
 
     instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
@@ -582,8 +587,8 @@ fn test_update_address() {
     let inst_msg = InstantiateMsg {
         app_components: vec![],
         name: String::from("Some App"),
-
-        kernel_address: "kernel_contract".to_string(),
+        owner: None,
+        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
     };
 
     ADO_ADDRESSES

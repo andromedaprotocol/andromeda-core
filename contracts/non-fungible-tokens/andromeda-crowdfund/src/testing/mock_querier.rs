@@ -1,24 +1,23 @@
-use andromeda_app::app::QueryMsg as AppQueryMsg;
-use andromeda_os::kernel::QueryMsg as KernelQueryMsg;
-use andromeda_os::vfs::QueryMsg as VfsQueryMessage;
-use common::{
-    ado_base::hooks::{AndromedaHook, HookMsg, OnFundsTransferResponse},
-    Funds,
-};
+use andromeda_std::ado_base::hooks::{AndromedaHook, HookMsg, OnFundsTransferResponse};
+use andromeda_std::ado_base::InstantiateMsg;
+use andromeda_std::ado_contract::ADOContract;
+use andromeda_std::common::Funds;
+use andromeda_std::testing::mock_querier::WasmMockQuerier as AndrMockQuerier;
+use cosmwasm_std::testing::mock_info;
 use cosmwasm_std::{
     from_binary, from_slice,
     testing::{mock_env, MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
-    to_binary, BankMsg, Binary, Coin, ContractResult, CosmosMsg, OwnedDeps, Querier, QuerierResult,
-    QueryRequest, Response, SubMsg, SystemError, SystemResult, Uint128, WasmQuery,
+    to_binary, Binary, Coin, ContractResult, OwnedDeps, Querier, QuerierResult, QueryRequest,
+    SystemError, SystemResult, WasmQuery,
 };
+use cosmwasm_std::{BankMsg, CosmosMsg, Response, SubMsg, Uint128};
 use cw721::{Cw721QueryMsg, TokensResponse};
 
+pub use andromeda_std::testing::mock_querier::{
+    MOCK_ADDRESS_LIST_CONTRACT, MOCK_APP_CONTRACT, MOCK_KERNEL_CONTRACT, MOCK_RATES_CONTRACT,
+};
+
 pub const MOCK_TOKEN_CONTRACT: &str = "token_contract";
-pub const MOCK_RATES_CONTRACT: &str = "rates_contract";
-pub const MOCK_APP_CONTRACT: &str = "app_contract";
-pub const MOCK_ADDRESSLIST_CONTRACT: &str = "addresslist_contract";
-pub const MOCK_KERNEL_CONTRACT: &str = "kernel_contract";
-pub const MOCK_VFS_CONTRACT: &str = "vfs_contract";
 
 pub const MOCK_TAX_RECIPIENT: &str = "tax_recipient";
 pub const MOCK_ROYALTY_RECIPIENT: &str = "royalty_recipient";
@@ -29,22 +28,41 @@ pub const MOCK_TOKENS_FOR_SALE: &[&str] = &[
 pub const MOCK_CONDITIONS_MET_CONTRACT: &str = "conditions_met";
 pub const MOCK_CONDITIONS_NOT_MET_CONTRACT: &str = "conditions_not_met";
 
+/// Alternative to `cosmwasm_std::testing::mock_dependencies` that allows us to respond to custom queries.
+///
+/// Automatically assigns a kernel address as MOCK_KERNEL_CONTRACT.
 pub fn mock_dependencies_custom(
     contract_balance: &[Coin],
 ) -> OwnedDeps<MockStorage, MockApi, WasmMockQuerier> {
     let custom_querier: WasmMockQuerier =
         WasmMockQuerier::new(MockQuerier::new(&[(MOCK_CONTRACT_ADDR, contract_balance)]));
-
-    OwnedDeps {
-        storage: MockStorage::default(),
+    let storage = MockStorage::default();
+    let mut deps = OwnedDeps {
+        storage,
         api: MockApi::default(),
         querier: custom_querier,
         custom_query_type: std::marker::PhantomData,
-    }
+    };
+    ADOContract::default()
+        .instantiate(
+            &mut deps.storage,
+            mock_env(),
+            &deps.api,
+            mock_info("sender", &[]),
+            InstantiateMsg {
+                ado_type: "crowdfund".to_string(),
+                ado_version: "test".to_string(),
+                operators: None,
+                kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+                owner: None,
+            },
+        )
+        .unwrap();
+    deps
 }
 
 pub struct WasmMockQuerier {
-    base: MockQuerier,
+    pub base: MockQuerier,
     pub contract_address: String,
     pub tokens_left_to_burn: usize,
 }
@@ -72,47 +90,11 @@ impl WasmMockQuerier {
                 match contract_addr.as_str() {
                     MOCK_TOKEN_CONTRACT => self.handle_token_query(msg),
                     MOCK_RATES_CONTRACT => self.handle_rates_query(msg),
-                    MOCK_APP_CONTRACT => self.handle_app_query(msg),
-                    MOCK_ADDRESSLIST_CONTRACT => self.handle_addresslist_query(msg),
-                    MOCK_KERNEL_CONTRACT => self.handle_kernel_query(msg),
-                    MOCK_VFS_CONTRACT => self.handle_vfs_query(msg),
-
-                    _ => panic!("Unknown Contract Address {}", contract_addr),
+                    MOCK_ADDRESS_LIST_CONTRACT => self.handle_addresslist_query(msg),
+                    _ => AndrMockQuerier::new(MockQuerier::new(&[])).handle_query(request),
                 }
             }
-            _ => self.base.handle_query(request),
-        }
-    }
-
-    fn handle_vfs_query(&self, msg: &Binary) -> QuerierResult {
-        match from_binary(msg).unwrap() {
-            VfsQueryMessage::ResolvePath { path } => {
-                if path.len() < 2 {
-                    SystemResult::Ok(ContractResult::Err("InvalidComponent".to_string()))
-                } else {
-                    SystemResult::Ok(ContractResult::Ok(to_binary(&path).unwrap()))
-                }
-            } // _ => panic!("Unsupported Query: {:?}", msg),
-        }
-    }
-
-    fn handle_kernel_query(&self, msg: &Binary) -> QuerierResult {
-        match from_binary(msg).unwrap() {
-            KernelQueryMsg::KeyAddress { key: _ } => {
-                SystemResult::Ok(ContractResult::Ok(to_binary(&MOCK_VFS_CONTRACT).unwrap()))
-            }
-            _ => panic!("Unsupported Query: {}", msg),
-        }
-    }
-
-    fn handle_app_query(&self, msg: &Binary) -> QuerierResult {
-        let valid_identifiers = ["e", "b"];
-        match from_binary(msg).unwrap() {
-            AppQueryMsg::ComponentExists { name } => {
-                let value = valid_identifiers.contains(&name.as_str());
-                SystemResult::Ok(ContractResult::Ok(to_binary(&value).unwrap()))
-            }
-            _ => panic!("Unsupported Query: {}", msg),
+            _ => AndrMockQuerier::new(MockQuerier::new(&[])).handle_query(request),
         }
     }
 

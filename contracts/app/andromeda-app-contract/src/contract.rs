@@ -3,21 +3,20 @@ use crate::state::{
     load_component_addresses, load_component_addresses_with_name, load_component_descriptors,
     ADO_ADDRESSES, ADO_DESCRIPTORS, ADO_IDX, APP_NAME, ASSIGNED_IDX,
 };
-use ado_base::ADOContract;
 use andromeda_app::app::{
     AppComponent, ComponentAddress, ConfigResponse, ExecuteMsg, InstantiateMsg, MigrateMsg,
     QueryMsg,
 };
-use andromeda_os::{
+use andromeda_std::ado_contract::ADOContract;
+use andromeda_std::common::context::ExecuteContext;
+use andromeda_std::os::{
     kernel::QueryMsg as KernelQueryMsg,
     vfs::{convert_component_name, validate_component_name, ExecuteMsg as VFSExecuteMsg},
 };
-use common::{
-    ado_base::{AndromedaQuery, InstantiateMsg as BaseInstantiateMsg},
-    encode_binary,
+use andromeda_std::{
+    ado_base::InstantiateMsg as BaseInstantiateMsg,
+    common::{encode_binary, response::get_reply_address},
     error::{from_semver, ContractError},
-    parse_message,
-    response::get_reply_address,
 };
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
@@ -62,8 +61,8 @@ pub fn instantiate(
                 ado_type: "app".to_string(),
                 ado_version: CONTRACT_VERSION.to_string(),
                 operators: None,
-                modules: None,
-                kernel_address: Some(msg.kernel_address.clone()),
+                kernel_address: msg.kernel_address.clone(),
+                owner: msg.owner,
             },
         )?
         .add_attribute("owner", &sender)
@@ -71,17 +70,11 @@ pub fn instantiate(
 
     let mut msgs: Vec<SubMsg> = vec![];
     for component in msg.app_components {
+        component.verify(&deps.as_ref()).unwrap();
         let comp_resp = execute_add_app_component(&deps.querier, deps.storage, &sender, component)?;
         msgs.extend(comp_resp.messages);
     }
-
-    // Register App in VFS
-    let vfs_address_query = KernelQueryMsg::KeyAddress {
-        key: "vfs".to_string(),
-    };
-    let vfs_address: Addr = deps
-        .querier
-        .query_wasm_smart(msg.kernel_address, &vfs_address_query)?;
+    let vfs_address = ADOContract::default().get_vfs_address(deps.storage, &deps.querier)?;
 
     let add_path_msg = VFSExecuteMsg::AddParentPath {
         name: convert_component_name(msg.name),
@@ -130,7 +123,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
 
     // Once all components are registered we need to register them with the VFS
     let curr_idx = ADO_IDX.load(deps.storage)?;
-    if id == curr_idx.to_string() {
+    if id == (curr_idx - 1).to_string() {
         // Only assign app to new components
         let assigned_idx = ASSIGNED_IDX.load(deps.storage).unwrap_or(1);
         let addresses: Vec<Addr> =
@@ -138,7 +131,9 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
         for address in addresses {
             let assign_app_msg =
                 generate_assign_app_message(&address, env.contract.address.as_str())?;
-            resp = resp.add_submessage(assign_app_msg)
+            resp = resp
+                .add_submessage(assign_app_msg)
+                .add_attribute("assign_app", address);
         }
         ASSIGNED_IDX.save(deps.storage, &curr_idx)?;
     }
@@ -177,18 +172,27 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
+    let ctx = ExecuteContext::new(deps, info, env);
     match msg {
-        ExecuteMsg::AndrReceive(msg) => {
-            ADOContract::default().execute(deps, env, info, msg, execute)
+        ExecuteMsg::AMPReceive(pkt) => {
+            ADOContract::default().execute_amp_receive(ctx, pkt, handle_execute)
         }
-        ExecuteMsg::AddAppComponent { component } => {
-            execute_add_app_component(&deps.querier, deps.storage, info.sender.as_str(), component)
-        }
-        ExecuteMsg::ClaimOwnership { name } => {
-            execute_claim_ownership(deps.storage, info.sender.as_str(), name)
-        }
-        ExecuteMsg::ProxyMessage { msg, name } => execute_message(deps, info, name, msg),
-        ExecuteMsg::UpdateAddress { name, addr } => execute_update_address(deps, info, name, addr),
+        _ => handle_execute(ctx, msg),
+    }
+}
+
+pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+    match msg {
+        ExecuteMsg::AddAppComponent { component } => execute_add_app_component(
+            &ctx.deps.querier,
+            ctx.deps.storage,
+            ctx.info.sender.as_str(),
+            component,
+        ),
+        ExecuteMsg::ClaimOwnership { name } => execute_claim_ownership(ctx, name),
+        ExecuteMsg::ProxyMessage { msg, name } => execute_message(ctx, name, msg),
+        ExecuteMsg::UpdateAddress { name, addr } => execute_update_address(ctx, name, addr),
+        _ => ADOContract::default().execute(ctx, msg),
     }
 }
 
@@ -229,23 +233,28 @@ fn execute_add_app_component(
 }
 
 fn execute_claim_ownership(
-    storage: &mut dyn Storage,
-    sender: &str,
+    ctx: ExecuteContext,
     name_opt: Option<String>,
 ) -> Result<Response, ContractError> {
     ensure!(
-        ADOContract::default().is_contract_owner(storage, sender)?,
+        ADOContract::default().is_contract_owner(ctx.deps.storage, ctx.info.sender.as_str())?,
         ContractError::Unauthorized {}
     );
 
     let mut msgs: Vec<SubMsg> = vec![];
     if let Some(name) = name_opt {
-        let address = ADO_ADDRESSES.load(storage, &name)?;
-        msgs.push(generate_ownership_message(address, sender)?);
+        let address = ADO_ADDRESSES.load(ctx.deps.storage, &name)?;
+        msgs.push(generate_ownership_message(
+            address,
+            ctx.info.sender.as_str(),
+        )?);
     } else {
-        let addresses = load_component_addresses(storage, None)?;
+        let addresses = load_component_addresses(ctx.deps.storage, None)?;
         for address in addresses {
-            msgs.push(generate_ownership_message(address, sender)?);
+            msgs.push(generate_ownership_message(
+                address,
+                ctx.info.sender.as_str(),
+            )?);
         }
     }
 
@@ -255,11 +264,11 @@ fn execute_claim_ownership(
 }
 
 fn execute_message(
-    deps: DepsMut,
-    info: MessageInfo,
+    ctx: ExecuteContext,
     name: String,
     msg: Binary,
 ) -> Result<Response, ContractError> {
+    let ExecuteContext { info, deps, .. } = ctx;
     //Temporary until message sender attached to Andromeda Comms
     ensure!(
         ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
@@ -293,11 +302,11 @@ fn has_update_address_privilege(
 }
 
 fn execute_update_address(
-    deps: DepsMut,
-    info: MessageInfo,
+    ctx: ExecuteContext,
     name: String,
     addr: String,
 ) -> Result<Response, ContractError> {
+    let ExecuteContext { deps, info, .. } = ctx;
     let ado_addr = ADO_ADDRESSES.load(deps.storage, &name)?;
     ensure!(
         has_update_address_privilege(deps.storage, info.sender.as_str(), ado_addr.as_str())?,
@@ -364,7 +373,6 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
-        QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps, env, msg),
         QueryMsg::GetAddress { name } => encode_binary(&query_component_address(deps, name)?),
         QueryMsg::GetAddressesWithNames {} => {
             encode_binary(&query_component_addresses_with_name(deps)?)
@@ -372,26 +380,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
         QueryMsg::GetComponents {} => encode_binary(&query_component_descriptors(deps)?),
         QueryMsg::Config {} => encode_binary(&query_config(deps)?),
         QueryMsg::ComponentExists { name } => encode_binary(&query_component_exists(deps, name)),
-    }
-}
-
-fn handle_andromeda_query(
-    deps: Deps,
-    env: Env,
-    msg: AndromedaQuery,
-) -> Result<Binary, ContractError> {
-    match msg {
-        AndromedaQuery::Get(data) => match data {
-            None => Err(ContractError::ParsingError {
-                err: String::from("No data passed with AndrGet query"),
-            }),
-            Some(_) => {
-                //Default to get address for given ADO name
-                let name: String = parse_message(&data)?;
-                encode_binary(&query_component_address(deps, name)?)
-            }
-        },
-        _ => ADOContract::default().query(deps, env, msg, query),
+        _ => ADOContract::default().query::<QueryMsg>(deps, env, msg, None),
     }
 }
 

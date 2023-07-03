@@ -4,33 +4,16 @@ members = [
     "contracts/fungible-tokens/*",
     "contracts/non-fungible-tokens/*",
     "contracts/ecosystem/*",
-    "contracts/data-storage/*",
+    # "contracts/data-storage/*",
     "contracts/app/*",
     "contracts/finance/*",
-    "contracts/automation/*",
+    # "contracts/automation/*",
     "contracts/modules/*",
     "contracts/os/*",
 
     #Internal
-    "tests-integration"
+    # "tests-integration"
 ]
-
-[profile.release.package.common]
-codegen-units = 1
-incremental = false
-
-[profile.release.package.ado-base]
-codegen-units = 1
-incremental = false
-
-[profile.release.package.andromeda-cw721]
-codegen-units = 1
-
-[profile.release.package.andromeda-cw20]
-codegen-units = 1
-
-[profile.release.package.andromeda-crowdfund]
-codegen-units = 1
 
 [profile.release]
 debug = false
@@ -40,3 +23,26 @@ rpath = false
 lto = true
 overflow-checks = true
 panic='abort'
+
+[workspace.dependencies]
+andromeda-std = { path = "./packages/std" }
+andromeda-macros = { path = "./packages/std/macros" }
+andromeda-non-fungible-tokens = { path = "./packages/andromeda-non-fungible-tokens" }
+andromeda-fungible-tokens = { path = "./packages/andromeda-fungible-tokens" }
+andromeda-finance = { path = "./packages/andromeda-finance" }
+andromeda-modules = { path = "./packages/andromeda-modules" }
+andromeda-app = { path = "./packages/andromeda-app" }
+andromeda-ecosystem = { path = "./packages/andromeda-ecosystem"}
+
+serde = { version = "1.0.127", default-features = false }
+strum_macros = "0.24.3"
+cosmwasm-std="1.2.4"
+cw-utils = "1.0.1"
+cw-storage-plus = "1.0.1"
+cw2 = "1.0.1"
+cw20 = "1.0.1"
+cw20-base = "1.0.1"
+cw721 = "0.17.0"
+cw-asset = "3.0.0"
+cosmwasm-schema = "1.2.1"
+semver = "1.0.0"

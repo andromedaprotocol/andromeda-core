@@ -1,4 +1,4 @@
-use common::error::ContractError;
+use andromeda_std::error::ContractError;
 use cosmwasm_std::{ensure, Addr, Api, StdError, Storage};
 use cw_storage_plus::{Index, IndexList, IndexedMap, Map, MultiIndex};
 use serde::{Deserialize, Serialize};

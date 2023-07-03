@@ -11,9 +11,7 @@ backtraces = ["cosmwasm-std/backtraces"]
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-cosmwasm-std = "1.2.1"
-cosmwasm-schema = "1.2.1"
-serde = { version = "1.0.127", default-features = false, features = ["derive"] }
-schemars = "0.8.10"
+cosmwasm-std = { workspace = true }
+cosmwasm-schema = { workspace = true }
 
-common = { path = "../common", version = "0.1.0" }
+andromeda-std = { workspace = true }

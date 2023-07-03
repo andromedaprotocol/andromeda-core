@@ -1,10 +1,7 @@
-use andromeda_os::messages::AMPPkt;
-use andromeda_os::recipient::AMPRecipient as Recipient;
-use common::{
-    ado_base::{AndromedaMsg, AndromedaQuery},
-    error::ContractError,
-    withdraw::Withdrawal,
-};
+use andromeda_std::amp::recipient::Recipient;
+use andromeda_std::amp::AndrAddr;
+use andromeda_std::{ado_base::withdraw::Withdrawal, error::ContractError};
+use andromeda_std::{andr_exec, andr_instantiate, andr_query};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{
     to_binary, wasm_execute, Binary, Coin, CosmosMsg, ReplyOn, Storage, SubMsg, Uint128,
@@ -28,7 +25,7 @@ pub enum StrategyType {
 #[serde(rename_all = "snake_case")]
 pub struct YieldStrategy {
     pub strategy_type: StrategyType,
-    pub address: String,
+    pub address: AndrAddr,
 }
 
 impl StrategyType {
@@ -46,7 +43,10 @@ impl StrategyType {
             Ok(addr) => {
                 let msg = wasm_execute(
                     addr,
-                    &ExecuteMsg::AndrReceive(AndromedaMsg::Receive(Some(to_binary(&recipient)?))),
+                    &ExecuteMsg::Deposit {
+                        recipient: Some(recipient.address),
+                        msg: recipient.msg,
+                    },
                     vec![funds],
                 )?;
                 let sub_msg = SubMsg {
@@ -71,42 +71,65 @@ impl fmt::Display for StrategyType {
 }
 
 #[cw_serde]
-pub struct InstantiateMsg {
-    pub kernel_address: Option<String>,
+pub struct DepositMsg {
+    pub strategy: Option<StrategyType>,
+    pub amount: Option<Coin>,
+    pub deposit_msg: Option<Binary>,
 }
 
+impl DepositMsg {
+    pub fn default() -> DepositMsg {
+        DepositMsg {
+            strategy: None,
+            amount: None,
+            deposit_msg: None,
+        }
+    }
+
+    pub fn to_binary(&self) -> Result<Binary, ContractError> {
+        Ok(to_binary(self)?)
+    }
+
+    pub fn with_amount(&mut self, amount: Coin) -> &mut Self {
+        self.amount = Some(amount);
+        self
+    }
+
+    pub fn with_strategy(&mut self, strategy: StrategyType) -> &mut Self {
+        self.strategy = Some(strategy);
+        self
+    }
+}
+
+#[andr_instantiate("no_modules")]
+#[cw_serde]
+pub struct InstantiateMsg {}
+
+#[andr_exec]
 #[cw_serde]
 pub enum ExecuteMsg {
-    Deposit {
-        recipient: Option<Recipient>,
-        amount: Option<Coin>,
-        strategy: Option<StrategyType>,
-    },
-    Withdraw {
+    WithdrawVault {
         recipient: Option<Recipient>,
         withdrawals: Vec<Withdrawal>,
         strategy: Option<StrategyType>,
     },
     UpdateStrategy {
         strategy: StrategyType,
-        address: String,
+        address: AndrAddr,
     },
-    AndrReceive(AndromedaMsg),
-    AMPReceive(AMPPkt),
 }
 
+#[andr_query]
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
-    #[returns(AndromedaQuery)]
-    AndrQuery(AndromedaQuery),
-    #[returns(Binary)]
-    Balance {
-        address: String,
+    #[returns(cosmwasm_std::Binary)]
+    VaultBalance {
+        address: AndrAddr,
         strategy: Option<StrategyType>,
         denom: Option<String>,
     },
-    #[returns(Binary)]
+    #[returns(cosmwasm_std::Binary)]
     StrategyAddress { strategy: StrategyType },
 }
 

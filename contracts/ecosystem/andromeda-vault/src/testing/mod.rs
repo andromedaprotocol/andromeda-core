@@ -4,31 +4,32 @@ use self::mock_querier::{MOCK_ANCHOR_CONTRACT, MOCK_VAULT_CONTRACT};
 use crate::contract::*;
 use crate::testing::mock_querier::{mock_dependencies_custom, PositionResponse};
 use andromeda_ecosystem::vault::{
-    ExecuteMsg, InstantiateMsg, QueryMsg, StrategyAddressResponse, StrategyType, YieldStrategy,
-    BALANCES, STRATEGY_CONTRACT_ADDRESSES,
+    DepositMsg, ExecuteMsg, InstantiateMsg, QueryMsg, StrategyAddressResponse, StrategyType,
+    YieldStrategy, BALANCES, STRATEGY_CONTRACT_ADDRESSES,
 };
-use andromeda_os::recipient::AMPRecipient as Recipient;
-use common::app::GetAddress;
-use common::{
+use andromeda_std::amp::{AndrAddr, Recipient};
+use andromeda_std::testing::mock_querier::MOCK_KERNEL_CONTRACT;
+use andromeda_std::{
+    ado_base::withdraw::{Withdrawal, WithdrawalType},
     ado_base::AndromedaMsg,
     error::ContractError,
-    withdraw::{Withdrawal, WithdrawalType},
 };
 use cosmwasm_std::{
     coin, from_binary,
-    testing::{mock_dependencies, mock_env, mock_info},
-    to_binary, wasm_execute, Addr, BankMsg, Coin, CosmosMsg, Decimal, DepsMut, Env, MessageInfo,
-    ReplyOn, Response, SubMsg, Uint128, WasmMsg,
+    testing::{mock_env, mock_info},
+    to_binary, Addr, BankMsg, Coin, CosmosMsg, Decimal, DepsMut, Env, MessageInfo, ReplyOn,
+    Response, SubMsg, Uint128, WasmMsg,
 };
 
 #[test]
 fn test_instantiate() {
     let inst_msg = InstantiateMsg {
-        kernel_address: None,
+        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+        owner: None,
     };
     let env = mock_env();
     let info = mock_info("minter", &[]);
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies_custom(&[]);
 
     instantiate(deps.as_mut(), env, info, inst_msg).unwrap();
 }
@@ -38,14 +39,13 @@ fn test_deposit() {
     let env = mock_env();
     let sent_funds = coin(100, "uusd");
     let extra_sent_funds = coin(100, "uluna");
-    let depositor = "depositor".to_string();
-    let mut deps = mock_dependencies();
+    let depositor = "/depositor".to_string();
+    let mut deps = mock_dependencies_custom(&[]);
 
     let info = mock_info(&depositor, &[sent_funds.clone(), extra_sent_funds.clone()]);
     let msg = ExecuteMsg::Deposit {
         recipient: None,
-        amount: None,
-        strategy: None,
+        msg: None,
     };
 
     execute(deps.as_mut(), env, info, msg).unwrap();
@@ -65,7 +65,7 @@ fn add_strategy(
     env: Env,
     info: MessageInfo,
     strategy: StrategyType,
-    address: String,
+    address: AndrAddr,
 ) -> Response {
     let msg = ExecuteMsg::UpdateStrategy { strategy, address };
     execute(deps, env, info, msg).unwrap()
@@ -77,7 +77,8 @@ fn test_execute_update_strategy() {
     let depositor = "depositor".to_string();
     let mut deps = mock_dependencies_custom(&[]);
     let inst_msg = InstantiateMsg {
-        kernel_address: None,
+        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+        owner: None,
     };
     let info = mock_info(&depositor, &[]);
     instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
@@ -87,20 +88,20 @@ fn test_execute_update_strategy() {
         env,
         info,
         StrategyType::Anchor,
-        MOCK_ANCHOR_CONTRACT.to_string(),
+        AndrAddr::from_string(MOCK_ANCHOR_CONTRACT),
     );
 
     let expected = Response::default()
         .add_attribute("action", "update_strategy")
         .add_attribute("strategy_type", StrategyType::Anchor.to_string())
-        .add_attribute("addr", MOCK_ANCHOR_CONTRACT.to_string());
+        .add_attribute("addr", AndrAddr::from_string(MOCK_ANCHOR_CONTRACT));
 
     assert_eq!(resp, expected);
 
     let addr = STRATEGY_CONTRACT_ADDRESSES
         .load(deps.as_mut().storage, StrategyType::Anchor.to_string())
         .unwrap();
-    assert_eq!(addr, MOCK_ANCHOR_CONTRACT.to_string());
+    assert_eq!(addr, AndrAddr::from_string(MOCK_ANCHOR_CONTRACT));
 }
 
 #[test]
@@ -109,14 +110,15 @@ fn test_execute_update_strategy_not_operator() {
     let depositor = "depositor".to_string();
     let mut deps = mock_dependencies_custom(&[]);
     let inst_msg = InstantiateMsg {
-        kernel_address: None,
+        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+        owner: None,
     };
     let info = mock_info(&depositor, &[]);
     instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
     env.contract.address = Addr::unchecked("someinvalidvaultaddress");
     let msg = ExecuteMsg::UpdateStrategy {
         strategy: StrategyType::Anchor,
-        address: MOCK_ANCHOR_CONTRACT.to_string(),
+        address: AndrAddr::from_string(MOCK_ANCHOR_CONTRACT),
     };
     let resp = execute(deps.as_mut(), env, info, msg).unwrap_err();
 
@@ -131,13 +133,12 @@ fn test_execute_update_strategy_not_operator() {
 fn test_deposit_insufficient_funds() {
     let env = mock_env();
     let depositor = "depositor".to_string();
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies_custom(&[]);
 
     let info = mock_info(&depositor, &[]);
     let msg = ExecuteMsg::Deposit {
         recipient: None,
-        amount: None,
-        strategy: None,
+        msg: None,
     };
 
     let err = execute(deps.as_mut(), env.clone(), info, msg).unwrap_err();
@@ -146,8 +147,12 @@ fn test_deposit_insufficient_funds() {
     let info_with_funds = mock_info(&depositor, &[coin(100, "uusd")]);
     let msg = ExecuteMsg::Deposit {
         recipient: None,
-        amount: Some(coin(0u128, "uusd")),
-        strategy: None,
+        msg: Some(
+            DepositMsg::default()
+                .with_amount(coin(0u128, "uusd"))
+                .to_binary()
+                .unwrap(),
+        ),
     };
 
     let err = execute(deps.as_mut(), env.clone(), info_with_funds.clone(), msg).unwrap_err();
@@ -155,8 +160,12 @@ fn test_deposit_insufficient_funds() {
 
     let msg = ExecuteMsg::Deposit {
         recipient: None,
-        amount: Some(coin(150u128, "uusd")),
-        strategy: None,
+        msg: Some(
+            DepositMsg::default()
+                .with_amount(coin(150u128, "uusd"))
+                .to_binary()
+                .unwrap(),
+        ),
     };
 
     let err = execute(deps.as_mut(), env, info_with_funds, msg).unwrap_err();
@@ -167,10 +176,11 @@ fn test_deposit_insufficient_funds() {
 fn test_deposit_strategy() {
     let yield_strategy = YieldStrategy {
         strategy_type: StrategyType::Anchor,
-        address: MOCK_ANCHOR_CONTRACT.to_string(),
+        address: AndrAddr::from_string(MOCK_ANCHOR_CONTRACT),
     };
     let inst_msg = InstantiateMsg {
-        kernel_address: None,
+        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+        owner: None,
     };
     let mut env = mock_env();
     let info = mock_info("minter", &[]);
@@ -193,45 +203,27 @@ fn test_deposit_strategy() {
     let info = mock_info(&depositor, &funds);
     let msg = ExecuteMsg::Deposit {
         recipient: None,
-        amount: None,
-        strategy: Some(yield_strategy.clone().strategy_type),
+        msg: Some(
+            DepositMsg::default()
+                .with_strategy(yield_strategy.strategy_type.clone())
+                .to_binary()
+                .unwrap(),
+        ),
     };
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
-    let recipient = Recipient::Addr("depositor".to_string());
+    let recipient = Recipient::from_string("depositor");
 
-    let msg = wasm_execute(
-        yield_strategy
-            .address
-            .get_address(deps.as_ref().api, &deps.as_ref().querier, None)
-            .unwrap(),
-        &ExecuteMsg::AndrReceive(AndromedaMsg::Receive(Some(to_binary(&recipient).unwrap()))),
-        vec![sent_funds],
-    )
-    .unwrap();
-    let msg_two = wasm_execute(
-        yield_strategy
-            .address
-            .get_address(deps.as_ref().api, &deps.as_ref().querier, None)
-            .unwrap(),
-        &ExecuteMsg::AndrReceive(AndromedaMsg::Receive(Some(to_binary(&recipient).unwrap()))),
-        vec![extra_sent_funds],
-    )
-    .unwrap();
-    let deposit_submsg = SubMsg {
-        id: 1,
-        msg: CosmosMsg::Wasm(msg),
-        gas_limit: None,
-        reply_on: ReplyOn::Error,
-    };
-    let deposit_submsg_two = SubMsg {
-        id: 1,
-        msg: CosmosMsg::Wasm(msg_two),
-        gas_limit: None,
-        reply_on: ReplyOn::Error,
-    };
+    let msg = yield_strategy
+        .strategy_type
+        .deposit(deps.as_mut().storage, sent_funds, recipient.clone())
+        .unwrap();
+    let msg_two = yield_strategy
+        .strategy_type
+        .deposit(deps.as_ref().storage, extra_sent_funds, recipient)
+        .unwrap();
     let expected = Response::default()
-        .add_submessage(deposit_submsg)
-        .add_submessage(deposit_submsg_two);
+        .add_submessage(msg)
+        .add_submessage(msg_two);
 
     assert_eq!(expected, res)
 }
@@ -240,10 +232,11 @@ fn test_deposit_strategy() {
 fn test_deposit_strategy_partial_amount() {
     let yield_strategy = YieldStrategy {
         strategy_type: StrategyType::Anchor,
-        address: MOCK_ANCHOR_CONTRACT.to_string(),
+        address: AndrAddr::from_string(MOCK_ANCHOR_CONTRACT),
     };
     let inst_msg = InstantiateMsg {
-        kernel_address: None,
+        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+        owner: None,
     };
     let mut env = mock_env();
     let info = mock_info("minter", &[]);
@@ -273,29 +266,25 @@ fn test_deposit_strategy_partial_amount() {
     let info = mock_info(&depositor, &funds);
     let msg = ExecuteMsg::Deposit {
         recipient: None,
-        amount: Some(coin(100, sent_funds.denom.clone())),
-        strategy: Some(yield_strategy.clone().strategy_type),
+        msg: Some(
+            DepositMsg::default()
+                .with_amount(coin(100, sent_funds.denom.clone()))
+                .with_strategy(yield_strategy.strategy_type.clone())
+                .to_binary()
+                .unwrap(),
+        ),
     };
 
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
 
-    let msg = wasm_execute(
-        yield_strategy
-            .address
-            .get_address(deps.as_ref().api, &deps.as_ref().querier, None)
-            .unwrap(),
-        &ExecuteMsg::AndrReceive(AndromedaMsg::Receive(Some(
-            to_binary(&Recipient::Addr("depositor".to_string())).unwrap(),
-        ))),
-        vec![coin(100, sent_funds.denom.clone())],
-    )
-    .unwrap();
-    let deposit_submsg = SubMsg {
-        id: 1,
-        msg: CosmosMsg::Wasm(msg),
-        gas_limit: None,
-        reply_on: ReplyOn::Error,
-    };
+    let deposit_submsg = yield_strategy
+        .strategy_type
+        .deposit(
+            deps.as_ref().storage,
+            coin(100, sent_funds.clone().denom),
+            Recipient::from_string("depositor"),
+        )
+        .unwrap();
     let expected = Response::default().add_submessage(deposit_submsg);
 
     assert_eq!(expected, res);
@@ -310,14 +299,18 @@ fn test_deposit_strategy_partial_amount() {
 #[test]
 fn test_deposit_strategy_empty_funds_non_empty_amount() {
     let env = mock_env();
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies_custom(&[]);
 
     let depositor = "depositor".to_string();
     let info = mock_info(&depositor, &[]);
     let msg = ExecuteMsg::Deposit {
         recipient: None,
-        amount: Some(coin(100, "uusd")),
-        strategy: None,
+        msg: Some(
+            DepositMsg::default()
+                .with_amount(coin(100, "uusd"))
+                .to_binary()
+                .unwrap(),
+        ),
     };
 
     let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
@@ -329,14 +322,15 @@ fn test_deposit_strategy_empty_funds_non_empty_amount() {
 fn test_deposit_strategy_insufficient_partial_amount() {
     let yield_strategy = YieldStrategy {
         strategy_type: StrategyType::Anchor,
-        address: "terra1anchoraddress".to_string(),
+        address: AndrAddr::from_string("anchoraddress"),
     };
     let inst_msg = InstantiateMsg {
-        kernel_address: None,
+        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+        owner: None,
     };
     let env = mock_env();
     let info = mock_info("minter", &[]);
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies_custom(&[]);
 
     instantiate(deps.as_mut(), env.clone(), info, inst_msg).unwrap();
 
@@ -354,8 +348,13 @@ fn test_deposit_strategy_insufficient_partial_amount() {
     let info = mock_info(&depositor, &funds);
     let msg = ExecuteMsg::Deposit {
         recipient: None,
-        amount: Some(coin(100, sent_funds.denom.clone())),
-        strategy: Some(yield_strategy.strategy_type),
+        msg: Some(
+            DepositMsg::default()
+                .with_amount(coin(100, sent_funds.denom.clone()))
+                .with_strategy(yield_strategy.strategy_type)
+                .to_binary()
+                .unwrap(),
+        ),
     };
 
     let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
@@ -371,11 +370,11 @@ fn test_deposit_strategy_insufficient_partial_amount() {
 #[test]
 fn test_withdraw_empty() {
     let env = mock_env();
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies_custom(&[]);
 
     let depositor = "depositor".to_string();
     let info = mock_info(&depositor, &[]);
-    let msg = ExecuteMsg::Withdraw {
+    let msg = ExecuteMsg::WithdrawVault {
         recipient: None,
         withdrawals: vec![],
         strategy: None,
@@ -393,7 +392,7 @@ fn test_withdraw_empty() {
 #[test]
 fn test_withdraw_invalid_withdrawals() {
     let env = mock_env();
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies_custom(&[]);
 
     let depositor = "depositor".to_string();
     BALANCES
@@ -404,7 +403,7 @@ fn test_withdraw_invalid_withdrawals() {
         )
         .unwrap();
     let info = mock_info(&depositor, &[]);
-    let msg = ExecuteMsg::Withdraw {
+    let msg = ExecuteMsg::WithdrawVault {
         recipient: None,
         withdrawals: vec![Withdrawal {
             token: "uusd".to_string(),
@@ -421,7 +420,7 @@ fn test_withdraw_invalid_withdrawals() {
         err
     );
 
-    let msg = ExecuteMsg::Withdraw {
+    let msg = ExecuteMsg::WithdrawVault {
         recipient: None,
         withdrawals: vec![Withdrawal {
             token: "uusd".to_string(),
@@ -442,11 +441,11 @@ fn test_withdraw_invalid_withdrawals() {
 #[test]
 fn test_withdraw_single_no_strategy_insufficientfunds() {
     let env = mock_env();
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies_custom(&[]);
 
     let depositor = "depositor".to_string();
     let info = mock_info(&depositor, &[]);
-    let msg = ExecuteMsg::Withdraw {
+    let msg = ExecuteMsg::WithdrawVault {
         recipient: None,
         withdrawals: vec![Withdrawal {
             token: "uusd".to_string(),
@@ -466,7 +465,7 @@ fn test_withdraw_single_no_strategy_insufficientfunds() {
         )
         .unwrap();
 
-    let msg = ExecuteMsg::Withdraw {
+    let msg = ExecuteMsg::WithdrawVault {
         recipient: None,
         withdrawals: vec![Withdrawal {
             token: "uusd".to_string(),
@@ -482,7 +481,7 @@ fn test_withdraw_single_no_strategy_insufficientfunds() {
 #[test]
 fn test_withdraw_single_no_strategy_amount() {
     let env = mock_env();
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies_custom(&[]);
     let depositor = "depositor".to_string();
     BALANCES
         .save(
@@ -493,7 +492,7 @@ fn test_withdraw_single_no_strategy_amount() {
         .unwrap();
 
     let info = mock_info(&depositor, &[]);
-    let msg = ExecuteMsg::Withdraw {
+    let msg = ExecuteMsg::WithdrawVault {
         recipient: None,
         withdrawals: vec![Withdrawal {
             token: "uusd".to_string(),
@@ -519,7 +518,7 @@ fn test_withdraw_single_no_strategy_amount() {
 #[test]
 fn test_withdraw_single_no_strategy_percentage() {
     let env = mock_env();
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies_custom(&[]);
     let depositor = "depositor".to_string();
     BALANCES
         .save(
@@ -530,7 +529,7 @@ fn test_withdraw_single_no_strategy_percentage() {
         .unwrap();
 
     let info = mock_info(&depositor, &[]);
-    let msg = ExecuteMsg::Withdraw {
+    let msg = ExecuteMsg::WithdrawVault {
         recipient: None,
         withdrawals: vec![Withdrawal {
             token: "uusd".to_string(),
@@ -556,7 +555,7 @@ fn test_withdraw_single_no_strategy_percentage() {
 #[test]
 fn test_withdraw_multi_no_strategy_insufficientfunds() {
     let env = mock_env();
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies_custom(&[]);
     let depositor = "depositor".to_string();
     BALANCES
         .save(
@@ -568,7 +567,7 @@ fn test_withdraw_multi_no_strategy_insufficientfunds() {
 
     let depositor = "depositor".to_string();
     let info = mock_info(&depositor, &[]);
-    let msg = ExecuteMsg::Withdraw {
+    let msg = ExecuteMsg::WithdrawVault {
         recipient: None,
         withdrawals: vec![
             Withdrawal {
@@ -590,7 +589,7 @@ fn test_withdraw_multi_no_strategy_insufficientfunds() {
 #[test]
 fn test_withdraw_multi_no_strategy_mixed() {
     let env = mock_env();
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies_custom(&[]);
     let depositor = "depositor".to_string();
     BALANCES
         .save(
@@ -608,7 +607,7 @@ fn test_withdraw_multi_no_strategy_mixed() {
         .unwrap();
 
     let info = mock_info(&depositor, &[]);
-    let msg = ExecuteMsg::Withdraw {
+    let msg = ExecuteMsg::WithdrawVault {
         recipient: None,
         withdrawals: vec![
             Withdrawal {
@@ -648,7 +647,7 @@ fn test_withdraw_multi_no_strategy_mixed() {
 #[test]
 fn test_withdraw_multi_no_strategy_recipient() {
     let env = mock_env();
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies_custom(&[]);
     let depositor = "depositor".to_string();
     BALANCES
         .save(
@@ -666,8 +665,8 @@ fn test_withdraw_multi_no_strategy_recipient() {
         .unwrap();
 
     let info = mock_info(&depositor, &[]);
-    let msg = ExecuteMsg::Withdraw {
-        recipient: Some(Recipient::Addr("recipient".to_string())),
+    let msg = ExecuteMsg::WithdrawVault {
+        recipient: Some(Recipient::from_string("recipient")),
         withdrawals: vec![
             Withdrawal {
                 token: "uusd".to_string(),
@@ -706,7 +705,7 @@ fn test_withdraw_multi_no_strategy_recipient() {
 #[test]
 fn test_withdraw_single_strategy() {
     let env = mock_env();
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies_custom(&[]);
     let depositor = "depositor".to_string();
     STRATEGY_CONTRACT_ADDRESSES
         .save(
@@ -721,19 +720,17 @@ fn test_withdraw_single_strategy() {
     }];
 
     let info = mock_info(&depositor, &[]);
-    let msg = ExecuteMsg::Withdraw {
+    let msg = ExecuteMsg::WithdrawVault {
         recipient: None,
         withdrawals: withdrawals.clone(),
         strategy: Some(StrategyType::Anchor),
     };
 
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
-    let withdraw_exec = to_binary(&ExecuteMsg::AndrReceive(AndromedaMsg::Withdraw {
-        recipient: Some(common::ado_base::recipient::Recipient::Addr(
-            "depositor".to_string(),
-        )),
+    let withdraw_exec = to_binary(&AndromedaMsg::Withdraw {
+        recipient: Some(Recipient::from_string("depositor")),
         tokens_to_withdraw: Some(withdrawals),
-    }))
+    })
     .unwrap();
     let withdraw_submsg = SubMsg {
         id: 104,
@@ -753,7 +750,7 @@ fn test_withdraw_single_strategy() {
 #[test]
 fn test_withdraw_invalid_strategy() {
     let env = mock_env();
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies_custom(&[]);
     let depositor = "depositor".to_string();
     let withdrawals = vec![Withdrawal {
         token: "aust".to_string(),
@@ -761,7 +758,7 @@ fn test_withdraw_invalid_strategy() {
     }];
 
     let info = mock_info(&depositor, &[]);
-    let msg = ExecuteMsg::Withdraw {
+    let msg = ExecuteMsg::WithdrawVault {
         recipient: None,
         withdrawals,
         strategy: Some(StrategyType::Anchor),
@@ -778,7 +775,7 @@ fn test_withdraw_invalid_strategy() {
 
 #[test]
 fn test_query_local_balance() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
     let depositor = "depositor";
     let balance_one = coin(100, "uluna");
@@ -798,8 +795,8 @@ fn test_query_local_balance() {
         )
         .unwrap();
 
-    let single_query = QueryMsg::Balance {
-        address: depositor.to_string(),
+    let single_query = QueryMsg::VaultBalance {
+        address: AndrAddr::from_string(depositor),
         strategy: None,
         denom: Some(balance_one.denom.clone()),
     };
@@ -809,8 +806,8 @@ fn test_query_local_balance() {
     assert_eq!(1, balance.len());
     assert_eq!(balance_one, balance[0]);
 
-    let multi_query = QueryMsg::Balance {
-        address: depositor.to_string(),
+    let multi_query = QueryMsg::VaultBalance {
+        address: AndrAddr::from_string(depositor),
         strategy: None,
         denom: None,
     };
@@ -836,8 +833,8 @@ fn test_query_strategy_balance() {
         )
         .unwrap();
 
-    let single_query = QueryMsg::Balance {
-        address: depositor.to_string(),
+    let single_query = QueryMsg::VaultBalance {
+        address: AndrAddr::from_string(depositor),
         strategy: Some(StrategyType::Anchor),
         denom: None,
     };
@@ -849,7 +846,8 @@ fn test_query_strategy_balance() {
         "depositor".to_string(),
         balance
             .recipient
-            .get_addr(deps.as_ref().api, &deps.as_ref().querier, None)
+            .address
+            .get_raw_address(&deps.as_ref())
             .unwrap()
     );
 }
@@ -873,7 +871,10 @@ fn test_query_strategy_address() {
 
     let resp = query(deps.as_ref(), env, single_query).unwrap();
     let addr_resp: StrategyAddressResponse = from_binary(&resp).unwrap();
-    assert_eq!(MOCK_ANCHOR_CONTRACT.to_string(), addr_resp.address);
+    assert_eq!(
+        AndrAddr::from_string(MOCK_ANCHOR_CONTRACT),
+        addr_resp.address
+    );
     assert_eq!(StrategyType::Anchor, addr_resp.strategy);
 }
 

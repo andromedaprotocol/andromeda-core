@@ -1,3 +1,7 @@
+use andromeda_std::{
+    amp::addresses::AndrAddr, common::expiration::MILLISECONDS_TO_NANOSECONDS_RATIO,
+    error::ContractError, testing::mock_querier::MOCK_KERNEL_CONTRACT,
+};
 use cosmwasm_std::{
     coins, from_binary,
     testing::{mock_dependencies, mock_env, mock_info, MOCK_CONTRACT_ADDR},
@@ -17,7 +21,6 @@ use andromeda_fungible_tokens::cw20_staking::{
     AllocationConfig, AllocationState, Config, Cw20HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg,
     RewardToken, RewardTokenUnchecked, RewardType, StakerResponse, State,
 };
-use common::{error::ContractError, expiration::MILLISECONDS_TO_NANOSECONDS_RATIO};
 use cw_asset::{AssetInfo, AssetInfoUnchecked};
 
 const MOCK_STAKING_TOKEN: &str = "staking_token";
@@ -31,9 +34,11 @@ fn init(
     let info = mock_info("owner", &[]);
 
     let msg = InstantiateMsg {
-        staking_token: MOCK_STAKING_TOKEN.to_owned(),
+        staking_token: AndrAddr::from_string(MOCK_STAKING_TOKEN.to_owned()),
         additional_rewards,
-        kernel_address: None,
+        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+        owner: None,
+        modules: None,
     };
 
     instantiate(deps, mock_env(), info, msg)
@@ -78,7 +83,7 @@ fn test_instantiate() {
 
     assert_eq!(
         Config {
-            staking_token: MOCK_STAKING_TOKEN.to_owned(),
+            staking_token: AndrAddr::from_string(MOCK_STAKING_TOKEN.to_owned()),
             number_of_reward_tokens: 3,
         },
         CONFIG.load(deps.as_ref().storage).unwrap()
@@ -1621,7 +1626,7 @@ fn test_add_reward_token_unauthorized() {
 
 #[test]
 fn test_add_reward_token_exceeds_max() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies_custom(&[]);
 
     let mut reward_tokens: Vec<RewardTokenUnchecked> = vec![];
 

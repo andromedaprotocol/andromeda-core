@@ -11,7 +11,7 @@ use andromeda_cw721::mock::{
     mock_andromeda_cw721, mock_cw721_instantiate_msg, mock_cw721_owner_of,
 };
 use andromeda_finance::splitter::AddressPercent;
-use andromeda_os::recipient::{ADORecipient, AMPRecipient};
+use andromeda_os::recipient::{ADORecipient, Recipient};
 
 use andromeda_modules::rates::{Rate, RateInfo};
 use andromeda_rates::mock::{mock_andromeda_rates, mock_rates_instantiate_msg};
@@ -105,7 +105,7 @@ fn test_crowdfund_app() {
     let rates: Vec<RateInfo> = [RateInfo {
         rate: Rate::Flat(coin(1, "uandr")),
         is_additive: false,
-        recipients: [common::ado_base::recipient::Recipient::Addr(
+        recipients: [common::ado_base::recipient::Recipient::from_string(
             rates_recipient.to_string(),
         )]
         .to_vec(),
@@ -170,23 +170,23 @@ fn test_crowdfund_app() {
     };
 
     // Create splitter recipient structures
-    let vault_one_recipient = AMPRecipient::ADO(ADORecipient {
+    let vault_one_recipient = Recipient::ADO(ADORecipient {
         address: "/am/app/3".to_string(),
         msg: Some(
             to_binary(&mock_vault_deposit_msg(
-                Some(AMPRecipient::Addr(vault_one_recipient_addr.to_string())),
+                Some(Recipient::from_string(vault_one_recipient_addr.to_string())),
                 None,
                 None,
             ))
             .unwrap(),
         ),
     });
-    let vault_two_recipient = AMPRecipient::ADO(ADORecipient {
+    let vault_two_recipient = Recipient::ADO(ADORecipient {
         address: "/am/app/4".to_string(),
 
         msg: Some(
             to_binary(&mock_vault_deposit_msg(
-                Some(AMPRecipient::Addr(vault_two_recipient_addr.to_string())),
+                Some(Recipient::from_string(vault_two_recipient_addr.to_string())),
                 None,
                 None,
             ))
@@ -298,7 +298,7 @@ fn test_crowdfund_app() {
     // Start Sale
     let token_price = coin(100, "uandr");
 
-    let sale_recipient = AMPRecipient::ADO(ADORecipient {
+    let sale_recipient = Recipient::ADO(ADORecipient {
         address: splitter_addr,
         msg: Some(to_binary(&mock_splitter_send_msg(None)).unwrap()),
     });

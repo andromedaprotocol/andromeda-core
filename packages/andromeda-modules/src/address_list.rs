@@ -1,40 +1,31 @@
-use common::ado_base::{hooks::AndromedaHook, AndromedaMsg, AndromedaQuery};
+use andromeda_std::{andr_exec, andr_instantiate, andr_query};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 
+#[andr_instantiate("no_modules")]
 #[cw_serde]
 pub struct InstantiateMsg {
     pub is_inclusive: bool,
-    pub kernel_address: Option<String>,
 }
 
+#[andr_exec]
 #[cw_serde]
 pub enum ExecuteMsg {
-    AndrReceive(AndromedaMsg),
     /// Add an address to the address list
-    AddAddress {
-        address: String,
-    },
+    AddAddress { address: String },
     /// Remove an address from the address list
-    RemoveAddress {
-        address: String,
-    },
+    RemoveAddress { address: String },
 }
 
 #[cw_serde]
-#[serde(rename_all = "snake_case")]
 pub struct MigrateMsg {}
 
+#[andr_query]
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
     /// Query if address is included
     #[returns(IncludesAddressResponse)]
     IncludesAddress { address: String },
-    /// Query the current contract owner
-    #[returns(AndromedaHook)]
-    AndrHook(AndromedaHook),
-    #[returns(AndromedaQuery)]
-    AndrQuery(AndromedaQuery),
     #[returns(bool)]
     IsInclusive {},
 }

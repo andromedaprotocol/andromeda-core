@@ -19,6 +19,12 @@
     },
     "name": {
       "type": "string"
+    },
+    "owner": {
+      "type": [
+        "string",
+        "null"
+      ]
     }
   },
   "additionalProperties": false,

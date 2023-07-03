@@ -1,10 +1,10 @@
-use andromeda_os::messages::AMPPkt;
-use common::ado_base::{AndromedaMsg, AndromedaQuery};
+use andromeda_std::{andr_exec, andr_instantiate, andr_query};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Decimal;
 use cosmwasm_std::Uint128;
 use cw20::Cw20ReceiveMsg;
 
+#[andr_instantiate]
 #[cw_serde]
 pub struct InstantiateMsg {
     /// The bootsrap contract to be used in the second phase.
@@ -19,13 +19,11 @@ pub struct InstantiateMsg {
     pub incentive_token: String,
     /// The native token being deposited.
     pub native_denom: String,
-    pub kernel_address: Option<String>,
 }
 
+#[andr_exec]
 #[cw_serde]
 pub enum ExecuteMsg {
-    AndrReceive(AndromedaMsg),
-    AMPReceive(AMPPkt),
     Receive(Cw20ReceiveMsg),
     /// Function to deposit native fund in the contract in exchange for recieving a proportion of the
     /// TOKEN.
@@ -51,11 +49,10 @@ pub enum Cw20HookMsg {
     IncreaseIncentives {},
 }
 
+#[andr_query]
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
-    #[returns(AndromedaQuery)]
-    AndrQuery(AndromedaQuery),
     /// Gets the config information.
     #[returns(ConfigResponse)]
     Config {},

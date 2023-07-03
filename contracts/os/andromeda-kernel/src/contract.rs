@@ -1,22 +1,22 @@
-use ado_base::state::ADOContract;
-use andromeda_os::messages::{AMPMsg, AMPPkt};
-use andromeda_os::{
-    adodb::QueryMsg as ADODBQueryMsg,
-    kernel::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
-};
-use common::{
-    ado_base::{AndromedaQuery, InstantiateMsg as BaseInstantiateMsg},
-    encode_binary,
-    error::ContractError,
-};
+use andromeda_std::ado_base::InstantiateMsg as BaseInstantiateMsg;
+use andromeda_std::ado_contract::ADOContract;
+use andromeda_std::amp::addresses::AndrAddr;
+use andromeda_std::amp::messages::{AMPMsg, AMPMsgConfig, AMPPkt};
+use andromeda_std::common::encode_binary;
+use andromeda_std::error::ContractError;
+use andromeda_std::ibc::message_bridge::ExecuteMsg as IBCBridgeExecMsg;
+use andromeda_std::os::aos_querier::AOSQuerier;
+use andromeda_std::os::kernel::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use cosmwasm_std::{
-    attr, ensure, entry_point, to_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Reply,
-    ReplyOn, Response, StdError, SubMsg, WasmMsg,
+    attr, ensure, entry_point, to_binary, wasm_execute, Addr, BankMsg, Binary, CosmosMsg, Deps,
+    DepsMut, Env, MessageInfo, Reply, ReplyOn, Response, StdError, SubMsg, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
 use semver::Version;
 
-use crate::state::{parse_path, parse_path_direct, ADO_DB_KEY, KERNEL_ADDRESSES, VFS_KEY};
+use crate::state::{
+    parse_path_direct, parse_path_direct_no_ctx, ADO_DB_KEY, IBC_BRIDGE, KERNEL_ADDRESSES,
+};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-kernel";
@@ -27,20 +27,20 @@ pub fn instantiate(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    _msg: InstantiateMsg,
+    msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     ADOContract::default().instantiate(
         deps.storage,
-        env,
+        env.clone(),
         deps.api,
         info,
         BaseInstantiateMsg {
             ado_type: "kernel".to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
             operators: None,
-            modules: None,
-            kernel_address: None,
+            kernel_address: env.contract.address.to_string(),
+            owner: msg.owner,
         },
     )
 }
@@ -89,15 +89,23 @@ pub fn execute(
             exit_at_error,
             gas_limit,
         ),
+        ExecuteMsg::AMPDirectNoCtx { recipient, message } => handle_amp_direct_no_ctx(
+            execute_env.deps,
+            execute_env.env,
+            execute_env.info,
+            recipient,
+            message,
+        ),
         ExecuteMsg::UpsertKeyAddress { key, value } => upsert_key_address(execute_env, key, value),
     }
 }
+
 #[allow(clippy::too_many_arguments)]
 pub fn handle_amp_direct(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    recipient: String,
+    recipient: AndrAddr,
     message: Binary,
     reply_on: Option<ReplyOn>,
     exit_at_error: Option<bool>,
@@ -126,22 +134,63 @@ pub fn handle_amp_direct(
         let amp_pkt = AMPPkt::new(
             origin,
             previous_sender,
-            vec![AMPMsg::new(
-                recipient.clone(),
-                message.clone(),
-                Some(info.clone().funds),
-                reply_on,
-                exit_at_error,
-                gas_limit,
-            )],
+            vec![
+                AMPMsg::new(recipient.clone(), message.clone(), Some(info.clone().funds))
+                    .with_config(AMPMsgConfig::new(reply_on, exit_at_error, gas_limit)),
+            ],
         );
         Ok(Response::default()
             .add_submessage(SubMsg::new(WasmMsg::Execute {
-                contract_addr: recipient.clone(),
+                contract_addr: recipient.clone().into(),
                 msg: to_binary(&ExecuteMsg::AMPReceive(amp_pkt))?,
                 funds: info.funds,
             }))
             .add_attribute("action", "handle_amp_direct")
+            .add_attribute("recipient", recipient)
+            .add_attribute("message", message.to_string()))
+    }
+}
+
+pub fn handle_amp_direct_no_ctx(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    recipient: AndrAddr,
+    message: Binary,
+) -> Result<Response, ContractError> {
+    let origin = info.clone().sender;
+    let previous_sender = env.contract.address;
+
+    let parsed_path = parse_path_direct_no_ctx(
+        recipient.clone(),
+        message.clone(),
+        info.funds.clone(),
+        deps.storage,
+    )?;
+    // If parsed path yields a SubMsg, it means that the recipient is on another chain
+    if let Some(msg) = parsed_path {
+        Ok(Response::default()
+            .add_submessage(msg)
+            .add_attribute("action", "handle_amp_direct_no_ctx")
+            .add_attribute("recipient", recipient)
+            .add_attribute("message", message.to_string()))
+    } else {
+        let amp_pkt = AMPPkt::new(
+            origin,
+            previous_sender,
+            vec![AMPMsg::new(
+                recipient.clone(),
+                message.clone(),
+                Some(info.clone().funds),
+            )],
+        );
+        Ok(Response::default()
+            .add_submessage(SubMsg::new(WasmMsg::Execute {
+                contract_addr: recipient.clone().into(),
+                msg: to_binary(&ExecuteMsg::AMPReceive(amp_pkt))?,
+                funds: info.funds,
+            }))
+            .add_attribute("action", "handle_amp_direct_no_ctx")
             .add_attribute("recipient", recipient)
             .add_attribute("message", message.to_string()))
     }
@@ -155,40 +204,99 @@ pub fn handle_amp_packet(
         query_verify_address(
             execute_env.deps.as_ref(),
             execute_env.info.sender.to_string(),
-        )?,
+        )? || packet.ctx.get_origin() == execute_env.info.sender,
         ContractError::Unauthorized {}
+    );
+    ensure!(
+        packet.ctx.id == 0,
+        ContractError::InvalidPacket {
+            error: Some("Packet ID cannot be provided from outside the Kernel".into())
+        }
     );
 
     let mut res = Response::default();
-
-    let vfs_address = KERNEL_ADDRESSES.may_load(execute_env.deps.storage, VFS_KEY)?;
-    for amp_message in packet.clone().messages {
-        let parsed_path = parse_path(
-            amp_message.recipient.clone(),
-            amp_message.clone(),
-            execute_env.deps.storage,
-        )?;
-        if let Some(sub_msg) = parsed_path {
-            res = res.add_submessage(sub_msg);
-            continue;
-        };
-        let contract_addr = amp_message.get_recipient_address(
-            execute_env.deps.api,
-            &execute_env.deps.querier,
-            vfs_address.clone(),
-        )?;
-        let msg = amp_message.generate_sub_message(
-            contract_addr,
-            packet.get_origin(),
-            packet.get_previous_sender(),
-            1,
-        )?;
-
-        res = res.add_submessage(msg)
+    ensure!(
+        !packet.messages.is_empty(),
+        ContractError::InvalidPacket {
+            error: Some("No messages supplied".to_string())
+        }
+    );
+    for message in packet.messages {
+        if let Some(protocol) = message.recipient.get_protocol() {
+            match protocol {
+                "ibc" => {
+                    let bridge_addr =
+                        KERNEL_ADDRESSES.may_load(execute_env.deps.storage, IBC_BRIDGE)?;
+                    if bridge_addr.is_none() {
+                        return Err(ContractError::InvalidPacket {
+                            error: Some("IBC not enabled in kernel".to_string()),
+                        });
+                    } else {
+                        let bridge_addr = bridge_addr.unwrap();
+                        let chain = message.recipient.get_chain();
+                        if chain.is_none() {
+                            return Err(ContractError::InvalidPacket {
+                                error: Some("Chain not provided".to_string()),
+                            });
+                        }
+                        let msg = IBCBridgeExecMsg::SendMessage {
+                            chain: chain.unwrap().to_string(),
+                            recipient: AndrAddr::from_string(message.recipient.get_raw_path()),
+                            message: message.message.clone(),
+                        };
+                        let cosmos_msg =
+                            wasm_execute(bridge_addr.clone(), &msg, message.funds.clone())?;
+                        res = res
+                            .add_submessage(SubMsg::reply_always(cosmos_msg, 1))
+                            .add_attributes(vec![
+                                attr("sub_action", "handle_ibc_amp"),
+                                attr("chain", chain.unwrap()),
+                                attr("recipient", message.recipient.get_raw_path()),
+                                attr("bridge_addr", bridge_addr),
+                                attr("message_funds", message.funds[0].to_string()),
+                            ]);
+                    }
+                }
+                &_ => panic!("Invalid protocol"),
+            }
+        } else {
+            let recipient_addr = message
+                .recipient
+                .get_raw_address(&execute_env.deps.as_ref())?;
+            let msg = message.message;
+            if Binary::default() == msg {
+                ensure!(
+                    !message.funds.is_empty(),
+                    ContractError::InvalidPacket {
+                        error: Some("No message or funds supplied".to_string())
+                    }
+                );
+                // The message is a bank message
+                let sub_msg = BankMsg::Send {
+                    to_address: recipient_addr.to_string(),
+                    amount: message.funds.clone(),
+                };
+                res = res
+                    .add_submessage(SubMsg::reply_on_error(CosmosMsg::Bank(sub_msg), 1))
+                    .add_attributes(vec![
+                        attr("recipient", recipient_addr),
+                        attr("bank_send_amount", message.funds[0].to_string()),
+                    ]);
+            } else {
+                let sub_msg = WasmMsg::Execute {
+                    contract_addr: recipient_addr.to_string(),
+                    msg,
+                    funds: message.funds,
+                };
+                // TODO: ADD ID
+                res = res
+                    .add_submessage(SubMsg::reply_on_error(CosmosMsg::Wasm(sub_msg), 1))
+                    .add_attributes(vec![attr("recipient", recipient_addr)]);
+            }
+        }
     }
 
-    // TODO: GENERATE ATTRIBUTES FROM AMP PACKET
-    Ok(res)
+    Ok(res.add_attribute("action", "handle_amp_packet"))
 }
 
 fn upsert_key_address(
@@ -259,20 +367,11 @@ fn from_semver(err: semver::Error) -> StdError {
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
+pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
-        QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps, env, msg),
         QueryMsg::KeyAddress { key } => encode_binary(&query_key_address(deps, key)?),
         QueryMsg::VerifyAddress { address } => encode_binary(&query_verify_address(deps, address)?),
     }
-}
-
-fn handle_andromeda_query(
-    deps: Deps,
-    env: Env,
-    msg: AndromedaQuery,
-) -> Result<Binary, ContractError> {
-    ADOContract::default().query(deps, env, msg, query)
 }
 
 fn query_key_address(deps: Deps, key: String) -> Result<Addr, ContractError> {
@@ -282,15 +381,7 @@ fn query_key_address(deps: Deps, key: String) -> Result<Addr, ContractError> {
 fn query_verify_address(deps: Deps, address: String) -> Result<bool, ContractError> {
     let db_address = KERNEL_ADDRESSES.load(deps.storage, ADO_DB_KEY)?;
     let contract_info = deps.querier.query_wasm_contract_info(address)?;
-    let query = ADODBQueryMsg::ADOType {
-        code_id: contract_info.code_id,
-    };
 
-    match deps
-        .querier
-        .query_wasm_smart::<Option<String>>(db_address, &query)?
-    {
-        Some(_a) => Ok(true),
-        None => Ok(false),
-    }
+    let ado_type = AOSQuerier::ado_type_getter(&deps.querier, &db_address, contract_info.code_id)?;
+    Ok(ado_type.is_some())
 }

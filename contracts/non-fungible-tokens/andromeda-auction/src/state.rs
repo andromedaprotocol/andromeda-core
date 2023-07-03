@@ -1,6 +1,5 @@
 use andromeda_non_fungible_tokens::auction::{AuctionInfo, Bid, TokenAuctionState};
-use common::{error::ContractError, OrderBy};
-
+use andromeda_std::{common::OrderBy, error::ContractError};
 use cosmwasm_std::{Order, StdResult, Storage, Uint128};
 
 use cw_storage_plus::{Bound, Index, IndexList, IndexedMap, Item, Map, MultiIndex};

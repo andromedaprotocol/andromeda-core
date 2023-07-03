@@ -1,19 +1,16 @@
-use andromeda_os::messages::AMPPkt;
-use common::ado_base::{modules::Module, AndromedaMsg, AndromedaQuery};
+use andromeda_std::{andr_exec, andr_instantiate, andr_query};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
 use cw721::Cw721ReceiveMsg;
 
+#[andr_instantiate]
 #[cw_serde]
-pub struct InstantiateMsg {
-    pub modules: Option<Vec<Module>>,
-    pub kernel_address: Option<String>,
-}
+#[serde(rename_all = "snake_case")]
+pub struct InstantiateMsg {}
 
+#[andr_exec]
 #[cw_serde]
 pub enum ExecuteMsg {
-    AndrReceive(AndromedaMsg),
-    AMPReceive(AMPPkt),
     ReceiveNft(Cw721ReceiveMsg),
     /// Transfers NFT to buyer and sends funds to seller
     Buy {
@@ -53,11 +50,10 @@ pub struct SaleInfo {
     pub token_id: String,
 }
 
+#[andr_query]
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
-    #[returns(AndromedaQuery)]
-    AndrQuery(AndromedaQuery),
     /// Gets the latest sale state for the given token. This will either be the current sale
     /// if there is one in progress or the last completed one.
     #[returns(SaleStateResponse)]
