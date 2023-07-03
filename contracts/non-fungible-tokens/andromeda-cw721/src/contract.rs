@@ -257,7 +257,7 @@ fn execute_batch_mint(
             env: ctx.env.clone(),
             amp_ctx: ctx.amp_ctx.clone(),
         };
-        let mint_resp = execute_mint(ctx, msg.token_id, msg.token_uri, msg.owner, msg.extension)?;
+        let mint_resp = mint(ctx, msg.token_id, msg.token_uri, msg.owner, msg.extension)?;
         resp = resp
             .add_attributes(mint_resp.attributes)
             .add_submessages(mint_resp.messages);
@@ -476,7 +476,6 @@ fn execute_burn(env: ExecuteContext, token_id: String) -> Result<Response, Contr
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
-        QueryMsg::AndrHook(msg) => handle_andr_hook(deps, msg),
         QueryMsg::IsArchived { token_id } => Ok(to_binary(&is_archived(deps.storage, &token_id)?)?),
         QueryMsg::TransferAgreement { token_id } => {
             Ok(to_binary(&query_transfer_agreement(deps, token_id)?)?)
@@ -496,30 +495,6 @@ pub fn query_transfer_agreement(
 pub fn query_minter(deps: Deps) -> Result<String, ContractError> {
     let owner = ADOContract::default().query_contract_owner(deps)?;
     Ok(owner.owner)
-}
-
-fn handle_andr_hook(deps: Deps, msg: AndromedaHook) -> Result<Binary, ContractError> {
-    match msg {
-        AndromedaHook::OnFundsTransfer {
-            sender,
-            payload: _,
-            amount,
-        } => {
-            let (msgs, events, remainder) = ADOContract::default().on_funds_transfer(
-                &deps,
-                sender,
-                amount,
-                encode_binary(&String::default())?,
-            )?;
-            let res = OnFundsTransferResponse {
-                msgs,
-                events,
-                leftover_funds: remainder,
-            };
-            Ok(encode_binary(&Some(res))?)
-        }
-        _ => Ok(encode_binary(&None::<Response>)?),
-    }
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

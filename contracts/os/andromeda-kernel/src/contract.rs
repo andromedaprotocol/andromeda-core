@@ -4,19 +4,22 @@ use andromeda_std::amp::addresses::AndrAddr;
 use andromeda_std::amp::messages::{AMPMsg, AMPMsgConfig, AMPPkt};
 use andromeda_std::common::encode_binary;
 use andromeda_std::error::ContractError;
+use andromeda_std::ibc::message_bridge::ExecuteMsg as IBCBridgeExecMsg;
 use andromeda_std::os::aos_querier::AOSQuerier;
 use andromeda_std::os::{
     adodb::QueryMsg as ADODBQueryMsg,
     kernel::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
 };
 use cosmwasm_std::{
-    attr, ensure, entry_point, to_binary, Addr, BankMsg, Binary, CosmosMsg, Deps, DepsMut, Env,
-    MessageInfo, Reply, ReplyOn, Response, StdError, SubMsg, WasmMsg,
+    attr, ensure, entry_point, to_binary, wasm_execute, Addr, BankMsg, Binary, CosmosMsg, Deps,
+    DepsMut, Env, MessageInfo, Reply, ReplyOn, Response, StdError, SubMsg, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
 use semver::Version;
 
-use crate::state::{new_message_id, parse_path_direct, ADO_DB_KEY, KERNEL_ADDRESSES, VFS_KEY};
+use crate::state::{
+    new_message_id, parse_path_direct, ADO_DB_KEY, IBC_BRIDGE, KERNEL_ADDRESSES, VFS_KEY,
+};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-kernel";
@@ -154,59 +157,92 @@ pub fn handle_amp_packet(
     //     )? || packet.ctx.get_origin() == execute_env.info.sender.to_string(),
     //     ContractError::Unauthorized {}
     // );
-    // ensure!(
-    //     packet.ctx.id == 0,
-    //     ContractError::InvalidPacket {
-    //         error: Some("Packet ID cannot be provided from outside the Kernel".into())
-    //     }
-    // );
+    ensure!(
+        packet.ctx.id == 0,
+        ContractError::InvalidPacket {
+            error: Some("Packet ID cannot be provided from outside the Kernel".into())
+        }
+    );
 
     let mut res = Response::default();
-    // ensure!(
-    //     !packet.messages.is_empty(),
-    //     ContractError::InvalidPacket {
-    //         error: Some("No messages supplied".to_string())
-    //     }
-    // );
+    ensure!(
+        !packet.messages.is_empty(),
+        ContractError::InvalidPacket {
+            error: Some("No messages supplied".to_string())
+        }
+    );
     for message in packet.messages {
-        // if let Some(protocol) = message.recipient.get_protocol() {
-        //     match protocol {
-        //         "ibc" => {}
-        //         &_ => panic!("Invalid protocol"),
-        //     }
-        // }
-        let recipient_addr = message
-            .recipient
-            .get_raw_address(&execute_env.deps.as_ref())?;
-        let msg = message.message;
-        if Binary::default() == msg {
-            // ensure!(
-            //     !message.funds.is_empty(),
-            //     ContractError::InvalidPacket {
-            //         error: Some("No message or funds supplied".to_string())
-            //     }
-            // );
-            // The message is a bank message
-            let sub_msg = BankMsg::Send {
-                to_address: recipient_addr.to_string(),
-                amount: message.funds.clone(),
-            };
-            res = res
-                .add_submessage(SubMsg::reply_on_error(CosmosMsg::Bank(sub_msg), 1))
-                .add_attributes(vec![
-                    attr("recipient", recipient_addr),
-                    attr("bank_send_amount", message.funds[0].to_string()),
-                ]);
+        if let Some(protocol) = message.recipient.get_protocol() {
+            match protocol {
+                "ibc" => {
+                    let bridge_addr =
+                        KERNEL_ADDRESSES.may_load(execute_env.deps.storage, IBC_BRIDGE)?;
+                    if let None = bridge_addr {
+                        return Err(ContractError::InvalidPacket {
+                            error: Some("IBC not enabled in kernel".to_string()),
+                        });
+                    } else {
+                        let bridge_addr = bridge_addr.unwrap();
+                        let chain = message.recipient.get_chain();
+                        if let None = chain {
+                            return Err(ContractError::InvalidPacket {
+                                error: Some("Chain not provided".to_string()),
+                            });
+                        }
+                        let msg = IBCBridgeExecMsg::SendMessage {
+                            chain: chain.unwrap().to_string(),
+                            recipient: AndrAddr::from_string(message.recipient.get_raw_path()),
+                            message: message.message.clone(),
+                        };
+                        let cosmos_msg =
+                            wasm_execute(bridge_addr.clone(), &msg, message.funds.clone())?;
+                        res = res
+                            .add_submessage(SubMsg::reply_always(cosmos_msg, 1))
+                            .add_attributes(vec![
+                                attr("sub_action", "handle_ibc_amp"),
+                                attr("chain", chain.unwrap()),
+                                attr("recipient", message.recipient.get_raw_path()),
+                                attr("bridge_addr", bridge_addr),
+                                attr("message_funds", message.funds[0].to_string()),
+                            ]);
+                    }
+                }
+                &_ => panic!("Invalid protocol"),
+            }
         } else {
-            let sub_msg = WasmMsg::Execute {
-                contract_addr: recipient_addr.to_string(),
-                msg,
-                funds: message.funds,
-            };
-            // TODO: ADD ID
-            res = res
-                .add_submessage(SubMsg::reply_on_error(CosmosMsg::Wasm(sub_msg), 1))
-                .add_attributes(vec![attr("recipient", recipient_addr)]);
+            let recipient_addr = message
+                .recipient
+                .get_raw_address(&execute_env.deps.as_ref())?;
+            let msg = message.message;
+            if Binary::default() == msg {
+                ensure!(
+                    !message.funds.is_empty(),
+                    ContractError::InvalidPacket {
+                        error: Some("No message or funds supplied".to_string())
+                    }
+                );
+                // The message is a bank message
+                let sub_msg = BankMsg::Send {
+                    to_address: recipient_addr.to_string(),
+                    amount: message.funds.clone(),
+                };
+                res = res
+                    .add_submessage(SubMsg::reply_on_error(CosmosMsg::Bank(sub_msg), 1))
+                    .add_attributes(vec![
+                        attr("recipient", recipient_addr),
+                        attr("bank_send_amount", message.funds[0].to_string()),
+                    ]);
+            } else {
+                let sub_msg = WasmMsg::Execute {
+                    contract_addr: recipient_addr.to_string(),
+                    msg,
+                    funds: message.funds,
+                };
+                // TODO: ADD ID
+                res = res
+                    .add_submessage(SubMsg::reply_on_error(CosmosMsg::Wasm(sub_msg), 1))
+                    .add_attributes(vec![attr("recipient", recipient_addr)]);
+            }
         }
     }
 

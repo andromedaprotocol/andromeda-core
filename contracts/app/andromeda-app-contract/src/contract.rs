@@ -123,7 +123,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
 
     // Once all components are registered we need to register them with the VFS
     let curr_idx = ADO_IDX.load(deps.storage)?;
-    if id == curr_idx.to_string() {
+    if id == (curr_idx - 1).to_string() {
         // Only assign app to new components
         let assigned_idx = ASSIGNED_IDX.load(deps.storage).unwrap_or(1);
         let addresses: Vec<Addr> =
@@ -131,7 +131,9 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
         for address in addresses {
             let assign_app_msg =
                 generate_assign_app_message(&address, env.contract.address.as_str())?;
-            resp = resp.add_submessage(assign_app_msg)
+            resp = resp
+                .add_submessage(assign_app_msg)
+                .add_attribute("assign_app", address);
         }
         ASSIGNED_IDX.save(deps.storage, &curr_idx)?;
     }

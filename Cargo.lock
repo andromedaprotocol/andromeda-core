@@ -248,7 +248,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-kernel"
-version = "0.2.8"
+version = "0.2.14"
 dependencies = [
  "andromeda-std",
  "cosmwasm-schema",
@@ -407,7 +407,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-splitter"
-version = "0.2.1"
+version = "0.2.3"
 dependencies = [
  "andromeda-app",
  "andromeda-finance",

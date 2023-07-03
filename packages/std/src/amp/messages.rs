@@ -8,6 +8,7 @@ use cosmwasm_std::{
     to_binary, Addr, Binary, Coin, ContractInfoResponse, CosmosMsg, Deps, MessageInfo,
     QueryRequest, ReplyOn, SubMsg, WasmMsg, WasmQuery,
 };
+use serde::Serialize;
 
 use super::addresses::AndrAddr;
 use super::ADO_DB_KEY;
@@ -90,6 +91,7 @@ pub struct AMPMsg {
 
 impl AMPMsg {
     /// Creates a new AMPMsg
+
     pub fn new(recipient: impl Into<String>, message: Binary, funds: Option<Vec<Coin>>) -> AMPMsg {
         AMPMsg {
             recipient: AndrAddr::from_string(recipient),
@@ -109,6 +111,7 @@ impl AMPMsg {
     }
 
     /// Generates an AMPPkt containing the given AMPMsg
+
     pub fn generate_amp_pkt(
         &self,
         deps: &Deps,
@@ -157,11 +160,13 @@ impl AMPCtx {
     }
 
     /// Gets the original sender of a message
+
     pub fn get_origin(&self) -> String {
         self.origin.clone()
     }
 
     /// Gets the previous sender of a message
+
     pub fn get_previous_sender(&self) -> String {
         self.previous_sender.clone()
     }
@@ -172,6 +177,7 @@ impl AMPCtx {
 /// It contains an original sender, if used for authorisation the sender must be authorised
 /// The previous sender is the one who sent the message
 /// A packet may contain several messages which allows for message batching
+
 pub struct AMPPkt {
     /// Any messages associated with the packet
     pub messages: Vec<AMPMsg>,
@@ -227,6 +233,7 @@ impl AMPPkt {
     /// 3. The sender has a code ID stored within the ADODB (and as such is a valid ADO)
     ///
     /// If the sender is not valid, an error is returned
+
     pub fn verify_origin(&self, info: &MessageInfo, deps: &Deps) -> Result<(), ContractError> {
         let kernel_address = ADOContract::default().get_kernel_address(deps.storage)?;
         if info.sender == self.ctx.origin || info.sender == kernel_address {
@@ -254,7 +261,8 @@ impl AMPPkt {
         }
     }
 
-    /// Verifies the origin of the AMPPkt and returns the origin if it is valid
+    ///Verifies the origin of the AMPPkt and returns the origin if it is valid
+
     pub fn get_verified_origin(
         &self,
         info: &MessageInfo,
@@ -269,6 +277,7 @@ impl AMPPkt {
     }
 
     /// Generates a SubMsg to send the AMPPkt to the kernel
+
     pub fn to_sub_msg(
         &self,
         kernel_address: impl Into<String>,
@@ -286,12 +295,15 @@ impl AMPPkt {
         Ok(sub_msg)
     }
 
-    /// Attaches an ID to the current packet
+    ///  Attaches an ID to the current packet
+
     pub fn with_id(&self, id: u64) -> AMPPkt {
         let mut new = self.clone();
         new.ctx.id = id;
         new
     }
+
+    /// Converts a given AMP Packet to an IBC Hook memo for use with Osmosis' IBC Hooks module
 
     pub fn to_ibc_hooks_memo(&self, contract_addr: String, callback_addr: String) -> String {
         #[derive(::serde::Serialize)]
@@ -316,9 +328,27 @@ impl AMPPkt {
         serde_json_wasm::to_string(&msg).unwrap()
     }
 
-    pub fn to_memo(&self) -> String {
+    /// Serializes the given AMP Packet to a JSON string
+
+    pub fn to_json(&self) -> String {
         let serialized = serde_json_wasm::to_string(&self).unwrap();
         serialized
+    }
+
+    /// Generates an AMP Packet from context
+
+    pub fn from_ctx(ctx: Option<AMPPkt>, current_address: String) -> Self {
+        let mut ctx = if let Some(pkt) = ctx {
+            pkt.ctx
+        } else {
+            AMPCtx::new(current_address.clone(), current_address.clone(), 0, None)
+        };
+        ctx.previous_sender = current_address;
+
+        Self {
+            messages: vec![],
+            ctx,
+        }
     }
 }
 
@@ -441,10 +471,10 @@ mod tests {
         );
     }
     #[test]
-    fn test_to_memo() {
+    fn test_to_json() {
         let msg = AMPPkt::new("origin", "previoussender", vec![]);
 
-        let memo = msg.to_memo();
+        let memo = msg.to_json();
         assert_eq!(memo, "{\"messages\":[],\"ctx\":{\"origin\":\"origin\",\"origin_username\":null,\"previous_sender\":\"previoussender\",\"id\":0}}".to_string());
     }
 
@@ -452,7 +482,7 @@ mod tests {
     fn test_to_ibc_hooks_memo() {
         let msg = AMPPkt::new("origin", "previoussender", vec![]);
         let contract_addr = "contractaddr";
-        let memo = msg.to_ibc_hooks_memo(contract_addr.to_string());
-        assert_eq!(memo, "{\"wasm\":{\"contract\":\"contractaddr\",\"msg\":{\"amp_receive\":{\"messages\":[],\"ctx\":{\"origin\":\"origin\",\"origin_username\":null,\"previous_sender\":\"previoussender\",\"id\":0}}}}".to_string());
+        let memo = msg.to_ibc_hooks_memo(contract_addr.to_string(), "callback".to_string());
+        assert_eq!(memo, "{\"wasm\":{\"contract\":\"contractaddr\",\"msg\":{\"a_m_p_receive\":{\"messages\":[],\"ctx\":{\"origin\":\"origin\",\"origin_username\":null,\"previous_sender\":\"previoussender\",\"id\":0}}}},\"ibc_callback\":\"callback\"}".to_string());
     }
 }

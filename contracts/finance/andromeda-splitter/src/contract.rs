@@ -6,13 +6,15 @@ use andromeda_finance::splitter::{
 
 use andromeda_std::{
     ado_base::{hooks::AndromedaHook, InstantiateMsg as BaseInstantiateMsg},
+    amp::messages::AMPPkt,
     common::encode_binary,
     error::{from_semver, ContractError},
+    os::kernel,
 };
 use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
 use cosmwasm_std::{
     attr, ensure, entry_point, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
-    Response, SubMsg, Timestamp, Uint128,
+    Reply, Response, StdError, SubMsg, Timestamp, Uint128,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw_utils::{nonpayable, Expiration};
@@ -90,6 +92,17 @@ pub fn instantiate(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
+pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
+    if msg.result.is_err() {
+        return Err(ContractError::Std(StdError::generic_err(
+            msg.result.unwrap_err(),
+        )));
+    }
+
+    Ok(Response::default())
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
     deps: DepsMut,
     env: Env,
@@ -157,6 +170,7 @@ fn execute_send(ctx: ExecuteContext) -> Result<Response, ContractError> {
     let splitter = SPLITTER.load(deps.storage)?;
 
     let mut msgs: Vec<SubMsg> = Vec::new();
+    let mut amp_funds: Vec<Coin> = Vec::new();
 
     let mut remainder_funds = info.funds.clone();
     // Looking at this nested for loop, we could find a way to reduce time/memory complexity to avoid DoS.
@@ -168,6 +182,8 @@ fn execute_send(ctx: ExecuteContext) -> Result<Response, ContractError> {
         ContractError::ExceedsMaxAllowedCoins {}
     );
 
+    let mut pkt = AMPPkt::from_ctx(ctx.amp_ctx, ctx.env.contract.address.to_string());
+
     for recipient_addr in &splitter.recipients {
         let recipient_percent = recipient_addr.percent;
         let mut vec_coin: Vec<Coin> = Vec::new();
@@ -175,16 +191,17 @@ fn execute_send(ctx: ExecuteContext) -> Result<Response, ContractError> {
             let mut recip_coin: Coin = coin.clone();
             recip_coin.amount = coin.amount * recipient_percent;
             remainder_funds[i].amount -= recip_coin.amount;
-            vec_coin.push(recip_coin);
+            vec_coin.push(recip_coin.clone());
+            amp_funds.push(recip_coin);
         }
 
-        let direct_message = recipient_addr
-            .recipient
-            .generate_direct_msg(&deps.as_ref(), vec_coin)?;
-        msgs.push(direct_message);
+        // let direct_message = recipient_addr
+        //     .recipient
+        //     .generate_direct_msg(&deps.as_ref(), vec_coin)?;
+        let amp_msg = recipient_addr.recipient.generate_amp_msg(Some(vec_coin));
+        pkt = pkt.add_message(amp_msg);
     }
     remainder_funds.retain(|x| x.amount > Uint128::zero());
-    // Who is the sender of this function?
 
     // Why does the remaining funds go the the sender of the executor of the splitter?
     // Is it considered tax(fee) or mistake?
@@ -197,6 +214,9 @@ fn execute_send(ctx: ExecuteContext) -> Result<Response, ContractError> {
             amount: remainder_funds,
         })));
     }
+    let kernel_address = ADOContract::default().get_kernel_address(deps.as_ref().storage)?;
+    let distro_msg = pkt.to_sub_msg(kernel_address, Some(amp_funds), 1)?;
+    msgs.push(distro_msg);
 
     Ok(Response::new()
         .add_submessages(msgs)
