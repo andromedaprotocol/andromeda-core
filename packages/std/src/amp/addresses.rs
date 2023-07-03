@@ -60,6 +60,10 @@ impl AndrAddr {
     ///
     /// If the address is assumed to be a VFS path and no VFS contract address is provided then an appropriate error is returned.
     pub fn get_raw_address(&self, deps: &Deps) -> Result<Addr, ContractError> {
+        if !self.is_vfs_path() {
+            return Ok(deps.api.addr_validate(&self.0)?);
+        }
+
         let contract = ADOContract::default();
         let vfs_contract = contract.get_vfs_address(deps.storage, &deps.querier)?;
         self.get_raw_address_from_vfs(deps, vfs_contract)

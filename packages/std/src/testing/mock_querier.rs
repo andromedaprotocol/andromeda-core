@@ -3,7 +3,7 @@ use crate::ado_base::primitive::{GetValueResponse, Primitive};
 use crate::{
     ado_base::AndromedaQuery,
     ado_contract::ADOContract,
-    amp::{ADO_DB_KEY, VFS_KEY},
+    amp::{ADO_DB_KEY, OSMOSIS_ROUTER_KEY, VFS_KEY},
     os::adodb::{ActionFee, QueryMsg as ADODBQueryMsg},
     os::kernel::QueryMsg as KernelQueryMsg,
     os::vfs::QueryMsg as VFSQueryMsg,
@@ -34,6 +34,8 @@ pub const MOCK_VFS_CONTRACT: &str = "vfs_contract";
 pub const MOCK_ADODB_CONTRACT: &str = "adodb_contract";
 // Mock ADO Publisher
 pub const MOCK_ADO_PUBLISHER: &str = "ado_publisher";
+// Mock Osmosis Router
+pub const MOCK_OSMOSIS_ROUTER_CONTRACT: &str = "osmosis_router";
 
 #[cfg(feature = "modules")]
 /// Mock Rates Contract Address
@@ -357,6 +359,9 @@ impl WasmMockQuerier {
                     )),
                     ADO_DB_KEY => SystemResult::Ok(ContractResult::Ok(
                         to_binary(&MOCK_ADODB_CONTRACT.to_string()).unwrap(),
+                    )),
+                    OSMOSIS_ROUTER_KEY => SystemResult::Ok(ContractResult::Ok(
+                        to_binary(&MOCK_OSMOSIS_ROUTER_CONTRACT.to_string()).unwrap(),
                     )),
                     _ => panic!("Invalid Kernel Address Key"),
                 }

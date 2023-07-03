@@ -18,8 +18,7 @@ pub fn add_app_component(
     component: &AppComponent,
 ) -> Result<u64, ContractError> {
     let idx = ADO_IDX.may_load(storage)?.unwrap_or(1u64);
-    let idx_str = idx.to_string();
-    ADO_DESCRIPTORS.save(storage, &idx_str, component)?;
+    ADO_DESCRIPTORS.save(storage, &idx.to_string(), component)?;
     ADO_IDX.save(storage, &(idx + 1))?;
 
     Ok(idx)
