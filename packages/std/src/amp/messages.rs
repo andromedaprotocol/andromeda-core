@@ -8,7 +8,6 @@ use cosmwasm_std::{
     to_binary, Addr, Binary, Coin, ContractInfoResponse, CosmosMsg, Deps, MessageInfo,
     QueryRequest, ReplyOn, SubMsg, WasmMsg, WasmQuery,
 };
-use serde::Serialize;
 
 use super::addresses::AndrAddr;
 use super::ADO_DB_KEY;
@@ -331,8 +330,7 @@ impl AMPPkt {
     /// Serializes the given AMP Packet to a JSON string
 
     pub fn to_json(&self) -> String {
-        let serialized = serde_json_wasm::to_string(&self).unwrap();
-        serialized
+        serde_json_wasm::to_string(&self).unwrap()
     }
 
     /// Generates an AMP Packet from context

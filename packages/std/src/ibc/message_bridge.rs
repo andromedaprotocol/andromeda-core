@@ -1,4 +1,3 @@
-use crate::ado_base::{AndromedaMsg, AndromedaQuery};
 use crate::amp::messages::{AMPMsg, AMPPkt};
 use crate::amp::AndrAddr;
 use cosmwasm_schema::{cw_serde, QueryResponses};

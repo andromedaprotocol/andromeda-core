@@ -1,6 +1,5 @@
 use andromeda_std::{
-    amp::AndrAddr, error::ContractError,
-    testing::mock_querier::MOCK_OSMOSIS_ROUTER_CONTRACT,
+    amp::AndrAddr, error::ContractError, testing::mock_querier::MOCK_OSMOSIS_ROUTER_CONTRACT,
 };
 
 use cosmwasm_std::{
@@ -54,7 +53,7 @@ fn test_swap_and_forward_invalid_dex() {
         to_denom: "uusd".to_string(),
         forward_addr: recipient_addr,
         forward_msg: None,
-        slippage_percentage: slippage_percentage,
+        slippage_percentage,
         window_seconds: None,
     };
 
@@ -93,7 +92,7 @@ fn test_swap_and_forward_current_state_failure() {
         to_denom: "uusd".to_string(),
         forward_addr: recipient_addr,
         forward_msg: None,
-        slippage_percentage: slippage_percentage,
+        slippage_percentage,
         window_seconds: None,
     };
 
@@ -117,7 +116,7 @@ fn test_swap_and_forward_osmo() {
         to_denom: "uusd".to_string(),
         forward_addr: recipient_addr.clone(),
         forward_msg: None,
-        slippage_percentage: slippage_percentage,
+        slippage_percentage,
         window_seconds: None,
     };
 

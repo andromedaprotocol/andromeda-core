@@ -9,7 +9,6 @@ use andromeda_std::{
     amp::messages::AMPPkt,
     common::encode_binary,
     error::{from_semver, ContractError},
-    os::kernel,
 };
 use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
 use cosmwasm_std::{

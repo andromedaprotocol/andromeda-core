@@ -3,14 +3,14 @@ use andromeda_std::amp::AndrAddr;
 use andromeda_std::common::encode_binary;
 use andromeda_std::error::from_semver;
 use andromeda_std::ibc::message_bridge::{ExecuteMsg, IbcExecuteMsg, InstantiateMsg, QueryMsg};
-use andromeda_std::os::kernel::{self, MigrateMsg};
+use andromeda_std::os::kernel::MigrateMsg;
 use andromeda_std::{ado_base::InstantiateMsg as BaseInstantiateMsg, error::ContractError};
 
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, ensure, to_binary, Binary, Coin, Deps, DepsMut, Env, IbcMsg, IbcTimeout, MessageInfo,
-    Response, Timestamp, WasmMsg,
+    attr, ensure, to_binary, Binary, Deps, DepsMut, Env, IbcMsg, IbcTimeout, MessageInfo, Response,
+    WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw_utils::one_coin;
@@ -55,7 +55,7 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
-    let contract = ADOContract::default();
+    let _contract = ADOContract::default();
     match msg {
         ExecuteMsg::SendMessage {
             chain,
@@ -176,7 +176,7 @@ pub fn execute_send_message(
         )?;
         Ok(Response::new()
             .add_attribute("method", "execute_send_message")
-            .add_attribute("channel", channel.clone())
+            .add_attribute("channel", channel)
             .add_attribute("chain", chain)
             .add_message(msg))
     }
@@ -315,9 +315,10 @@ pub fn sudo(deps: DepsMut, _env: Env, msg: SudoMsg) -> Result<Response, Contract
             ack,
             success,
         }) => receive_ack(deps, channel, sequence, ack, success),
-        SudoMsg::IBCLifecycleComplete(IBCLifecycleComplete::IBCTimeout { channel, sequence }) => {
-            Ok(Response::default())
-        }
+        SudoMsg::IBCLifecycleComplete(IBCLifecycleComplete::IBCTimeout {
+            channel: _,
+            sequence: _,
+        }) => Ok(Response::default()),
     }
 }
 

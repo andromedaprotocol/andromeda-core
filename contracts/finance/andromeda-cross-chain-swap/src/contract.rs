@@ -75,7 +75,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                         let swap_resp: OsmosisSwapResponse = parse_swap_reply(msg)?;
                         let funds = vec![Coin {
                             denom: swap_resp.token_out_denom.clone(),
-                            amount: swap_resp.amount.clone(),
+                            amount: swap_resp.amount,
                         }];
                         let mut pkt = if let Some(amp_ctx) = state.amp_ctx {
                             AMPPkt::new(amp_ctx.get_origin(), amp_ctx.get_previous_sender(), vec![])

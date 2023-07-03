@@ -6,10 +6,7 @@ use andromeda_std::common::encode_binary;
 use andromeda_std::error::ContractError;
 use andromeda_std::ibc::message_bridge::ExecuteMsg as IBCBridgeExecMsg;
 use andromeda_std::os::aos_querier::AOSQuerier;
-use andromeda_std::os::{
-    adodb::QueryMsg as ADODBQueryMsg,
-    kernel::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
-};
+use andromeda_std::os::kernel::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use cosmwasm_std::{
     attr, ensure, entry_point, to_binary, wasm_execute, Addr, BankMsg, Binary, CosmosMsg, Deps,
     DepsMut, Env, MessageInfo, Reply, ReplyOn, Response, StdError, SubMsg, WasmMsg,
@@ -18,8 +15,7 @@ use cw2::{get_contract_version, set_contract_version};
 use semver::Version;
 
 use crate::state::{
-    new_message_id, parse_path_direct, parse_path_direct_no_ctx, ADO_DB_KEY, IBC_BRIDGE,
-    KERNEL_ADDRESSES, VFS_KEY,
+    parse_path_direct, parse_path_direct_no_ctx, ADO_DB_KEY, IBC_BRIDGE, KERNEL_ADDRESSES,
 };
 
 // version info for migration info
@@ -208,7 +204,7 @@ pub fn handle_amp_packet(
         query_verify_address(
             execute_env.deps.as_ref(),
             execute_env.info.sender.to_string(),
-        )? || packet.ctx.get_origin() == execute_env.info.sender.to_string(),
+        )? || packet.ctx.get_origin() == execute_env.info.sender,
         ContractError::Unauthorized {}
     );
     ensure!(
@@ -231,14 +227,14 @@ pub fn handle_amp_packet(
                 "ibc" => {
                     let bridge_addr =
                         KERNEL_ADDRESSES.may_load(execute_env.deps.storage, IBC_BRIDGE)?;
-                    if let None = bridge_addr {
+                    if bridge_addr.is_none() {
                         return Err(ContractError::InvalidPacket {
                             error: Some("IBC not enabled in kernel".to_string()),
                         });
                     } else {
                         let bridge_addr = bridge_addr.unwrap();
                         let chain = message.recipient.get_chain();
-                        if let None = chain {
+                        if chain.is_none() {
                             return Err(ContractError::InvalidPacket {
                                 error: Some("Chain not provided".to_string()),
                             });

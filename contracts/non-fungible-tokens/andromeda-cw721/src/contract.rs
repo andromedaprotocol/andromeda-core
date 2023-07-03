@@ -22,10 +22,7 @@ use cw2::{get_contract_version, set_contract_version};
 use semver::Version;
 
 use andromeda_std::{
-    ado_base::{
-        hooks::{AndromedaHook, OnFundsTransferResponse},
-        InstantiateMsg as BaseInstantiateMsg,
-    },
+    ado_base::{hooks::AndromedaHook, InstantiateMsg as BaseInstantiateMsg},
     common::encode_binary,
     common::rates::get_tax_amount,
     common::Funds,

@@ -17,8 +17,7 @@ use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     ensure, from_binary, Binary, Coin, DepsMut, Env, Ibc3ChannelOpenResponse, IbcBasicResponse,
     IbcChannel, IbcChannelCloseMsg, IbcChannelConnectMsg, IbcChannelOpenMsg, IbcOrder,
-    IbcPacketAckMsg, IbcPacketReceiveMsg, IbcPacketTimeoutMsg, IbcReceiveResponse, Response,
-    Timestamp,
+    IbcPacketReceiveMsg, IbcPacketTimeoutMsg, IbcReceiveResponse, Response, Timestamp,
 };
 use sha256::digest;
 
@@ -58,9 +57,9 @@ pub fn ibc_packet_timeout(
 }
 
 pub fn receive_ack(
-    deps: DepsMut,
-    source_channel: String,
-    sequence: u64,
+    _deps: DepsMut,
+    _source_channel: String,
+    _sequence: u64,
     _ack: String,
     success: bool,
 ) -> Result<Response, ContractError> {
@@ -216,7 +215,7 @@ pub fn validate_order_and_version(
 const TRANSFER_PORT: &str = "transfer";
 
 fn generate_ibc_denom(channel: String, denom: String) -> String {
-    let path = format!("{}/{}/{}", TRANSFER_PORT.to_string(), channel, denom);
+    let path = format!("{}/{}/{}", TRANSFER_PORT, channel, denom);
     format!("ibc/{}", digest(path).to_uppercase())
 }
 
@@ -236,11 +235,7 @@ pub fn generate_transfer_message(
 
     let msg = AMPPkt {
         ctx: ctx.unwrap_or(AMPCtx::new(from_addr.clone(), from_addr.clone(), 0, None)),
-        messages: vec![AMPMsg::new(
-            recipient,
-            message,
-            Some(vec![new_coin.clone()]),
-        )],
+        messages: vec![AMPMsg::new(recipient, message, Some(vec![new_coin]))],
     };
     let serialized = msg.to_ibc_hooks_memo(to_addr.clone(), from_addr.clone());
 
