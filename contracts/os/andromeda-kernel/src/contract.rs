@@ -150,13 +150,13 @@ pub fn handle_amp_packet(
     execute_env: ExecuteEnv,
     packet: AMPPkt,
 ) -> Result<Response, ContractError> {
-    // ensure!(
-    //     query_verify_address(
-    //         execute_env.deps.as_ref(),
-    //         execute_env.info.sender.to_string(),
-    //     )? || packet.ctx.get_origin() == execute_env.info.sender.to_string(),
-    //     ContractError::Unauthorized {}
-    // );
+    ensure!(
+        query_verify_address(
+            execute_env.deps.as_ref(),
+            execute_env.info.sender.to_string(),
+        )? || packet.ctx.get_origin() == execute_env.info.sender.to_string(),
+        ContractError::Unauthorized {}
+    );
     ensure!(
         packet.ctx.id == 0,
         ContractError::InvalidPacket {
