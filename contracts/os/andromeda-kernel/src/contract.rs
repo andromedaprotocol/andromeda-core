@@ -18,7 +18,8 @@ use cw2::{get_contract_version, set_contract_version};
 use semver::Version;
 
 use crate::state::{
-    new_message_id, parse_path_direct, ADO_DB_KEY, IBC_BRIDGE, KERNEL_ADDRESSES, VFS_KEY,
+    new_message_id, parse_path_direct, parse_path_direct_no_ctx, ADO_DB_KEY, IBC_BRIDGE,
+    KERNEL_ADDRESSES, VFS_KEY,
 };
 
 // version info for migration info
