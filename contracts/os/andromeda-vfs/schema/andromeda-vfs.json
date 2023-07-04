@@ -6,6 +6,21 @@
     "$schema": "http://json-schema.org/draft-07/schema#",
     "title": "InstantiateMsg",
     "type": "object",
+    "required": [
+      "kernel_address"
+    ],
+    "properties": {
+      "kernel_address": {
+        "description": "Address of the Kernel contract on chain",
+        "type": "string"
+      },
+      "owner": {
+        "type": [
+          "string",
+          "null"
+        ]
+      }
+    },
     "additionalProperties": false
   },
   "execute": {
@@ -13,60 +28,23 @@
     "title": "ExecuteMsg",
     "oneOf": [
       {
-        "description": "Receives an AMP Packet for relaying",
         "type": "object",
         "required": [
-          "a_m_p_receive"
+          "add_path"
         ],
         "properties": {
-          "a_m_p_receive": {
-            "$ref": "#/definitions/AMPPkt"
-          }
-        },
-        "additionalProperties": false
-      },
-      {
-        "type": "object",
-        "required": [
-          "a_m_p_direct"
-        ],
-        "properties": {
-          "a_m_p_direct": {
+          "add_path": {
             "type": "object",
             "required": [
-              "message",
-              "recipient"
+              "address",
+              "name"
             ],
             "properties": {
-              "exit_at_error": {
-                "type": [
-                  "boolean",
-                  "null"
-                ]
+              "address": {
+                "$ref": "#/definitions/Addr"
               },
-              "gas_limit": {
-                "type": [
-                  "integer",
-                  "null"
-                ],
-                "format": "uint64",
-                "minimum": 0.0
-              },
-              "message": {
-                "$ref": "#/definitions/Binary"
-              },
-              "recipient": {
+              "name": {
                 "type": "string"
-              },
-              "reply_on": {
-                "anyOf": [
-                  {
-                    "$ref": "#/definitions/ReplyOn"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
               }
             },
             "additionalProperties": false
@@ -75,23 +53,53 @@
         "additionalProperties": false
       },
       {
-        "description": "Upserts a key address to the kernel, restricted to the owner of the kernel",
         "type": "object",
         "required": [
-          "upsert_key_address"
+          "add_parent_path"
         ],
         "properties": {
-          "upsert_key_address": {
+          "add_parent_path": {
             "type": "object",
             "required": [
-              "key",
-              "value"
+              "name",
+              "parent_address"
             ],
             "properties": {
-              "key": {
+              "name": {
                 "type": "string"
               },
-              "value": {
+              "parent_address": {
+                "$ref": "#/definitions/Addr"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "register_user"
+        ],
+        "properties": {
+          "register_user": {
+            "type": "object",
+            "required": [
+              "username"
+            ],
+            "properties": {
+              "address": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Addr"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "username": {
                 "type": "string"
               }
             },
@@ -102,141 +110,8 @@
       }
     ],
     "definitions": {
-      "AMPMsg": {
-        "description": "This struct defines how the kernel parses and relays messages between ADOs It contains a simple recipient string which may use our namespacing implementation or a simple contract address If the desired recipient is via IBC then namespacing must be employed The attached message must be a binary encoded execute message for the receiving ADO Funds can be attached for an individual message and will be attached accordingly",
-        "type": "object",
-        "required": [
-          "exit_at_error",
-          "funds",
-          "message",
-          "recipient",
-          "reply_on"
-        ],
-        "properties": {
-          "exit_at_error": {
-            "description": "Determines whether the operation should terminate or proceed upon a failed message",
-            "type": "boolean"
-          },
-          "funds": {
-            "description": "Any funds to be attached to the message, defaults to an empty vector",
-            "type": "array",
-            "items": {
-              "$ref": "#/definitions/Coin"
-            }
-          },
-          "gas_limit": {
-            "description": "An optional imposed gas limit for the message",
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "uint64",
-            "minimum": 0.0
-          },
-          "message": {
-            "description": "The message to be sent to the recipient",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Binary"
-              }
-            ]
-          },
-          "recipient": {
-            "description": "The message recipient, can be a contract/wallet address or a namespaced URI",
-            "type": "string"
-          },
-          "reply_on": {
-            "description": "When the message should reply, defaults to Always",
-            "allOf": [
-              {
-                "$ref": "#/definitions/ReplyOn"
-              }
-            ]
-          }
-        },
-        "additionalProperties": false
-      },
-      "AMPPkt": {
-        "description": "An Andromeda packet contains all message protocol related data, this is what is sent between ADOs when communicating It contains an original sender, if used for authorisation the sender must be authorised The previous sender is the one who sent the message A packet may contain several messages which allows for message batching",
-        "type": "object",
-        "required": [
-          "messages",
-          "origin",
-          "previous_sender"
-        ],
-        "properties": {
-          "messages": {
-            "description": "Any messages associated with the packet",
-            "type": "array",
-            "items": {
-              "$ref": "#/definitions/AMPMsg"
-            }
-          },
-          "origin": {
-            "description": "The original sender of the packet, immutable, can be retrieved with `AMPPkt.get_origin`",
-            "type": "string"
-          },
-          "previous_sender": {
-            "description": "The previous sender of the packet, immutable, can be retrieved with `AMPPkt.get_previous_sender`",
-            "type": "string"
-          }
-        },
-        "additionalProperties": false
-      },
-      "Binary": {
-        "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
-        "type": "string"
-      },
-      "Coin": {
-        "type": "object",
-        "required": [
-          "amount",
-          "denom"
-        ],
-        "properties": {
-          "amount": {
-            "$ref": "#/definitions/Uint128"
-          },
-          "denom": {
-            "type": "string"
-          }
-        }
-      },
-      "ReplyOn": {
-        "description": "Use this to define when the contract gets a response callback. If you only need it for errors or success you can select just those in order to save gas.",
-        "oneOf": [
-          {
-            "description": "Always perform a callback after SubMsg is processed",
-            "type": "string",
-            "enum": [
-              "always"
-            ]
-          },
-          {
-            "description": "Only callback if SubMsg returned an error, no callback on success case",
-            "type": "string",
-            "enum": [
-              "error"
-            ]
-          },
-          {
-            "description": "Only callback if SubMsg was successful, no callback on error case",
-            "type": "string",
-            "enum": [
-              "success"
-            ]
-          },
-          {
-            "description": "Never make a callback - this is like the original CosmosMsg semantics",
-            "type": "string",
-            "enum": [
-              "never"
-            ]
-          }
-        ]
-      },
-      "Uint128": {
-        "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
+      "Addr": {
+        "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
         "type": "string"
       }
     }
@@ -248,49 +123,16 @@
       {
         "type": "object",
         "required": [
-          "andr_query"
+          "resolve_path"
         ],
         "properties": {
-          "andr_query": {
-            "$ref": "#/definitions/AndromedaQuery"
-          }
-        },
-        "additionalProperties": false
-      },
-      {
-        "type": "object",
-        "required": [
-          "key_address"
-        ],
-        "properties": {
-          "key_address": {
+          "resolve_path": {
             "type": "object",
             "required": [
-              "key"
+              "path"
             ],
             "properties": {
-              "key": {
-                "type": "string"
-              }
-            },
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
-      },
-      {
-        "type": "object",
-        "required": [
-          "verify_address"
-        ],
-        "properties": {
-          "verify_address": {
-            "type": "object",
-            "required": [
-              "address"
-            ],
-            "properties": {
-              "address": {
+              "path": {
                 "type": "string"
               }
             },
@@ -299,381 +141,16 @@
         },
         "additionalProperties": false
       }
-    ],
-    "definitions": {
-      "AndromedaQuery": {
-        "oneOf": [
-          {
-            "type": "object",
-            "required": [
-              "get"
-            ],
-            "properties": {
-              "get": {
-                "anyOf": [
-                  {
-                    "$ref": "#/definitions/Binary"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              }
-            },
-            "additionalProperties": false
-          },
-          {
-            "type": "object",
-            "required": [
-              "owner"
-            ],
-            "properties": {
-              "owner": {
-                "type": "object",
-                "additionalProperties": false
-              }
-            },
-            "additionalProperties": false
-          },
-          {
-            "type": "object",
-            "required": [
-              "operators"
-            ],
-            "properties": {
-              "operators": {
-                "type": "object",
-                "additionalProperties": false
-              }
-            },
-            "additionalProperties": false
-          },
-          {
-            "type": "object",
-            "required": [
-              "type"
-            ],
-            "properties": {
-              "type": {
-                "type": "object",
-                "additionalProperties": false
-              }
-            },
-            "additionalProperties": false
-          },
-          {
-            "type": "object",
-            "required": [
-              "kernel_address"
-            ],
-            "properties": {
-              "kernel_address": {
-                "type": "object",
-                "additionalProperties": false
-              }
-            },
-            "additionalProperties": false
-          },
-          {
-            "type": "object",
-            "required": [
-              "original_publisher"
-            ],
-            "properties": {
-              "original_publisher": {
-                "type": "object",
-                "additionalProperties": false
-              }
-            },
-            "additionalProperties": false
-          },
-          {
-            "type": "object",
-            "required": [
-              "block_height_upon_creation"
-            ],
-            "properties": {
-              "block_height_upon_creation": {
-                "type": "object",
-                "additionalProperties": false
-              }
-            },
-            "additionalProperties": false
-          },
-          {
-            "type": "object",
-            "required": [
-              "is_operator"
-            ],
-            "properties": {
-              "is_operator": {
-                "type": "object",
-                "required": [
-                  "address"
-                ],
-                "properties": {
-                  "address": {
-                    "type": "string"
-                  }
-                },
-                "additionalProperties": false
-              }
-            },
-            "additionalProperties": false
-          },
-          {
-            "type": "object",
-            "required": [
-              "module"
-            ],
-            "properties": {
-              "module": {
-                "type": "object",
-                "required": [
-                  "id"
-                ],
-                "properties": {
-                  "id": {
-                    "$ref": "#/definitions/Uint64"
-                  }
-                },
-                "additionalProperties": false
-              }
-            },
-            "additionalProperties": false
-          },
-          {
-            "type": "object",
-            "required": [
-              "module_ids"
-            ],
-            "properties": {
-              "module_ids": {
-                "type": "object",
-                "additionalProperties": false
-              }
-            },
-            "additionalProperties": false
-          },
-          {
-            "type": "object",
-            "required": [
-              "version"
-            ],
-            "properties": {
-              "version": {
-                "type": "object",
-                "additionalProperties": false
-              }
-            },
-            "additionalProperties": false
-          }
-        ]
-      },
-      "Binary": {
-        "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
-        "type": "string"
-      },
-      "Uint64": {
-        "description": "A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u64` to get the value out:\n\n``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);\n\nlet b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```",
-        "type": "string"
-      }
-    }
+    ]
   },
   "migrate": null,
   "sudo": null,
   "responses": {
-    "andr_query": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "AndromedaQuery",
-      "oneOf": [
-        {
-          "type": "object",
-          "required": [
-            "get"
-          ],
-          "properties": {
-            "get": {
-              "anyOf": [
-                {
-                  "$ref": "#/definitions/Binary"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "owner"
-          ],
-          "properties": {
-            "owner": {
-              "type": "object",
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "operators"
-          ],
-          "properties": {
-            "operators": {
-              "type": "object",
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "type"
-          ],
-          "properties": {
-            "type": {
-              "type": "object",
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "kernel_address"
-          ],
-          "properties": {
-            "kernel_address": {
-              "type": "object",
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "original_publisher"
-          ],
-          "properties": {
-            "original_publisher": {
-              "type": "object",
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "block_height_upon_creation"
-          ],
-          "properties": {
-            "block_height_upon_creation": {
-              "type": "object",
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "is_operator"
-          ],
-          "properties": {
-            "is_operator": {
-              "type": "object",
-              "required": [
-                "address"
-              ],
-              "properties": {
-                "address": {
-                  "type": "string"
-                }
-              },
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "module"
-          ],
-          "properties": {
-            "module": {
-              "type": "object",
-              "required": [
-                "id"
-              ],
-              "properties": {
-                "id": {
-                  "$ref": "#/definitions/Uint64"
-                }
-              },
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "module_ids"
-          ],
-          "properties": {
-            "module_ids": {
-              "type": "object",
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "version"
-          ],
-          "properties": {
-            "version": {
-              "type": "object",
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
-        }
-      ],
-      "definitions": {
-        "Binary": {
-          "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
-          "type": "string"
-        },
-        "Uint64": {
-          "description": "A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u64` to get the value out:\n\n``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);\n\nlet b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```",
-          "type": "string"
-        }
-      }
-    },
-    "key_address": {
+    "resolve_path": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Addr",
       "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
       "type": "string"
-    },
-    "verify_address": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Boolean",
-      "type": "boolean"
     }
   }
 }
