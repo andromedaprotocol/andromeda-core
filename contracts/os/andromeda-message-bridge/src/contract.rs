@@ -1,16 +1,18 @@
 use andromeda_std::ado_contract::ADOContract;
+use andromeda_std::amp::messages::AMPMsg;
 use andromeda_std::amp::AndrAddr;
 use andromeda_std::common::encode_binary;
 use andromeda_std::error::from_semver;
 use andromeda_std::ibc::message_bridge::{ExecuteMsg, IbcExecuteMsg, InstantiateMsg, QueryMsg};
+use andromeda_std::os::kernel::ExecuteMsg as KernelExecuteMsg;
 use andromeda_std::os::kernel::MigrateMsg;
 use andromeda_std::{ado_base::InstantiateMsg as BaseInstantiateMsg, error::ContractError};
 
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, ensure, to_binary, Binary, Coin, Deps, DepsMut, Env, IbcMsg, IbcTimeout, MessageInfo,
-    Response, Timestamp, WasmMsg,
+    attr, ensure, to_binary, Binary, Deps, DepsMut, Env, IbcMsg, IbcTimeout, MessageInfo, Response,
+    WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw_utils::one_coin;
@@ -57,6 +59,11 @@ pub fn execute(
 ) -> Result<Response, ContractError> {
     let _contract = ADOContract::default();
     match msg {
+        ExecuteMsg::SendAmpMessage {
+            chain,
+            recipient,
+            message,
+        } => execute_send_amp_message(deps, env, info, chain, recipient, message),
         ExecuteMsg::SendMessage {
             chain,
             recipient,
@@ -131,6 +138,56 @@ pub fn execute(
 //             }))
 //     }
 // }
+
+pub fn execute_send_amp_message(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    chain: String,
+    recipient: AndrAddr,
+    message: AMPMsg,
+) -> Result<Response, ContractError> {
+    let channel = read_channel(deps.storage, chain.clone())?;
+
+    // IbcTransfer supports only one coin at a time
+    one_coin(&info)?;
+
+    if info.funds.is_empty() {
+        let kernel_msg = KernelExecuteMsg::AMPMessage { message };
+        Ok(Response::new()
+            .add_attribute("method", "execute_send_amp_message")
+            .add_attribute("channel", channel.clone())
+            .add_attribute("chain", chain)
+            // outbound IBC message, where packet is then received on other chain
+            .add_message(IbcMsg::SendPacket {
+                channel_id: channel,
+                data: to_binary(&IbcExecuteMsg::SendAmpPacket {
+                    message: to_binary(&kernel_msg)?,
+                })?,
+                timeout: IbcTimeout::with_timestamp(env.block.time.plus_seconds(300)),
+            }))
+    } else {
+        // let port = env.contract.address.to_string();
+        let funds = &info.funds[0];
+        let kernel_address = CHAIN_KERNEL_ADDRESSES.load(deps.storage, chain.clone())?;
+
+        let msg = generate_transfer_message(
+            recipient,
+            message.message,
+            funds.clone(),
+            channel.clone(),
+            env.contract.address.to_string(),
+            kernel_address,
+            env.block.time,
+            None,
+        )?;
+        Ok(Response::new()
+            .add_attribute("method", "execute_send_message")
+            .add_attribute("channel", channel)
+            .add_attribute("chain", chain)
+            .add_message(msg))
+    }
+}
 
 pub fn execute_send_message(
     deps: DepsMut,

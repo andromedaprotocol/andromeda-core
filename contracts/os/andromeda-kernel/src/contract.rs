@@ -96,6 +96,9 @@ pub fn execute(
             recipient,
             message,
         ),
+        ExecuteMsg::AMPMessage { message } => {
+            handle_amp_message(execute_env.deps, execute_env.env, execute_env.info, message)
+        }
         ExecuteMsg::UpsertKeyAddress { key, value } => upsert_key_address(execute_env, key, value),
     }
 }
@@ -149,6 +152,29 @@ pub fn handle_amp_direct(
             .add_attribute("recipient", recipient)
             .add_attribute("message", message.to_string()))
     }
+}
+
+pub fn handle_amp_message(
+    _deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    message: AMPMsg,
+) -> Result<Response, ContractError> {
+    let origin = info.clone().sender;
+    let previous_sender = env.contract.address;
+
+    let amp_pkt = AMPPkt::new(origin.clone(), previous_sender, vec![message.clone()]);
+    Ok(Response::default()
+        .add_submessage(SubMsg::new(WasmMsg::Execute {
+            contract_addr: message.clone().recipient.into(),
+            msg: to_binary(&ExecuteMsg::AMPReceive(amp_pkt))?,
+            funds: info.funds,
+        }))
+        .add_attribute("action", "handle_amp_message")
+        .add_attribute("recipient", message.recipient)
+        .add_attribute("message", message.message.to_string())
+        .add_attribute("message", message.message.to_string())
+        .add_attribute("origin", origin.to_string()))
 }
 
 pub fn handle_amp_direct_no_ctx(

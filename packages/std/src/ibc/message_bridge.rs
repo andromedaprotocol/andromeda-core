@@ -1,7 +1,6 @@
 use crate::amp::messages::{AMPMsg, AMPPkt};
 use crate::amp::AndrAddr;
 use crate::error::ContractError;
-use crate::os::kernel::adjust_recipient_with_protocol;
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{ensure, Binary, Coin, Env, IbcMsg, IbcTimeout, MessageInfo, Timestamp};
 
@@ -18,6 +17,13 @@ pub enum ExecuteMsg {
         recipient: AndrAddr,
         message: Binary,
     },
+    /// Receives an AMPMsg, creates a new AMPPkt that contains the AMPMsg and sends it to the recipient
+    SendAmpMessage {
+        chain: String,
+        recipient: AndrAddr,
+        message: AMPMsg,
+    },
+
     SendAmpPacket {
         chain: String,
         message: Vec<AMPMsg>,

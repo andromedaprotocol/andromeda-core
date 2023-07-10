@@ -1,5 +1,5 @@
-use crate::amp::addresses::AndrAddr;
 use crate::amp::messages::AMPPkt;
+use crate::amp::{addresses::AndrAddr, messages::AMPMsg};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Binary, ReplyOn};
 
@@ -25,6 +25,8 @@ pub enum ExecuteMsg {
         recipient: AndrAddr,
         message: Binary,
     },
+    /// Constructs an AMPPkt with a given AMPMsg and sends it to the recipient
+    AMPMessage { message: AMPMsg },
     /// Upserts a key address to the kernel, restricted to the owner of the kernel
     UpsertKeyAddress { key: String, value: String },
 }
