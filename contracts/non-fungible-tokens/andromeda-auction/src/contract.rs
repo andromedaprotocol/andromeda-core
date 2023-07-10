@@ -616,9 +616,73 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
             start_after,
             limit,
         )?),
+        QueryMsg::IsCancelled {
+            token_id,
+            token_address,
+        } => encode_binary(&query_is_cancelled(deps, token_id, token_address)?),
+        QueryMsg::IsClaimed {
+            token_id,
+            token_address,
+        } => encode_binary(&query_is_claimed(deps, env, token_id, token_address)?),
+        // QueryMsg::IsClosed {
+        //     token_id,
+        //     token_address,
+        // } => encode_binary(&query_is_closed(deps, env, token_id, token_address)?),
         _ => ADOContract::default().query::<QueryMsg>(deps, env, msg, None),
     }
 }
+
+fn query_is_cancelled(
+    deps: Deps,
+    token_id: String,
+    token_address: String,
+) -> Result<bool, ContractError> {
+    let token_auction_state_result =
+        get_existing_token_auction_state(deps.storage, &token_id, &token_address);
+    if let Ok(token_auction_state) = token_auction_state_result {
+        return Ok(token_auction_state.is_cancelled);
+    }
+    Err(ContractError::AuctionDoesNotExist {})
+}
+
+fn query_is_claimed(
+    deps: Deps,
+    env: Env,
+    token_id: String,
+    token_address: String,
+) -> Result<bool, ContractError> {
+    let token_auction_state =
+        get_existing_token_auction_state(deps.storage, &token_id, &token_address)?;
+
+    let token_owner = query_owner_of(
+        deps.querier,
+        token_auction_state.token_address.clone(),
+        token_id.clone(),
+    )?
+    .owner;
+
+    // if token owner isn't the contract, it means that it has been claimed. If they're equal it means that it hasn't been claimed and will return false
+    return Ok(token_owner != env.contract.address);
+}
+
+// fn query_is_closed(
+//     deps: Deps,
+//     env: Env,
+//     token_id: String,
+//     token_address: String,
+// ) -> Result<bool, ContractError> {
+//     let token_auction_state =
+//         get_existing_token_auction_state(deps.storage, &token_id, &token_address)?;
+
+//     let token_owner = query_owner_of(
+//         deps.querier,
+//         token_auction_state.token_address.clone(),
+//         token_id.clone(),
+//     )?
+//     .owner;
+
+//     return Ok(token_auction_state.start_time.is_expired(&env.block));
+// }
 
 fn query_auction_ids(
     deps: Deps,

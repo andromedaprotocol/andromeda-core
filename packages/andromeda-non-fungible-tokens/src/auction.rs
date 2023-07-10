@@ -88,6 +88,23 @@ pub enum QueryMsg {
         limit: Option<u64>,
         order_by: Option<OrderBy>,
     },
+
+    #[returns(bool)]
+    IsCancelled {
+        token_id: String,
+        token_address: String,
+    },
+
+    // #[returns(bool)]
+    // IsClosed {
+    //     token_id: String,
+    //     token_address: String,
+    // },
+    #[returns(bool)]
+    IsClaimed {
+        token_id: String,
+        token_address: String,
+    },
 }
 
 #[cw_serde]
