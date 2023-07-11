@@ -333,19 +333,24 @@ fn execute_place_bid(
         ContractError::HighestBidderCannotOutBid {}
     );
 
-    let coin_denom = token_auction_state.coin_denom.clone();
     let payment: &Coin = &info.funds[0];
     ensure!(
-        payment.denom == coin_denom && payment.amount > Uint128::zero(),
+        payment.denom == token_auction_state.coin_denom && payment.amount > Uint128::zero(),
         ContractError::InvalidFunds {
-            msg: format!("No {coin_denom} assets are provided to auction"),
+            msg: format!(
+                "No {} assets are provided to auction",
+                token_auction_state.coin_denom
+            ),
         }
     );
     let min_bid = token_auction_state.min_bid.unwrap_or(Uint128::zero());
     ensure!(
         payment.amount >= min_bid,
         ContractError::InvalidFunds {
-            msg: format!("Must provide at least {min_bid} {coin_denom} to bid")
+            msg: format!(
+                "Must provide at least {min_bid} {} to bid",
+                token_auction_state.coin_denom
+            )
         }
     );
     ensure!(

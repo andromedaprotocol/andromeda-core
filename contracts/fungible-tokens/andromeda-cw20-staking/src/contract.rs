@@ -53,7 +53,7 @@ pub fn instantiate(
             }
         );
         let staking_token = AssetInfoUnchecked::cw20(msg.staking_token.to_string().to_lowercase());
-        let staking_token_identifier = msg.staking_token.clone();
+        let staking_token_identifier = msg.staking_token.to_string();
         let additional_rewards: Result<Vec<RewardToken>, ContractError> = additional_rewards
             .into_iter()
             .map(|r| {

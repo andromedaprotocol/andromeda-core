@@ -150,14 +150,13 @@ pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
 fn execute_send(ctx: ExecuteContext) -> Result<Response, ContractError> {
     let ExecuteContext { deps, info, .. } = ctx;
 
-    let sent_funds: Vec<Coin> = info.funds.clone();
     ensure!(
-        !sent_funds.is_empty(),
+        !info.funds.is_empty(),
         ContractError::InvalidFunds {
             msg: "At least one coin should to be sent".to_string(),
         }
     );
-    for coin in sent_funds.clone() {
+    for coin in info.funds.clone() {
         ensure!(
             !coin.amount.is_zero(),
             ContractError::InvalidFunds {
@@ -186,7 +185,7 @@ fn execute_send(ctx: ExecuteContext) -> Result<Response, ContractError> {
     for recipient_addr in &splitter.recipients {
         let recipient_percent = recipient_addr.percent;
         let mut vec_coin: Vec<Coin> = Vec::new();
-        for (i, coin) in sent_funds.iter().enumerate() {
+        for (i, coin) in info.funds.clone().iter().enumerate() {
             let mut recip_coin: Coin = coin.clone();
             recip_coin.amount = coin.amount * recipient_percent;
             remainder_funds[i].amount -= recip_coin.amount;
