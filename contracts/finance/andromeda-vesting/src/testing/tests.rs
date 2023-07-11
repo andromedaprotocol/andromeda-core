@@ -1409,12 +1409,12 @@ fn test_redelegate_no_funds() {
 
 #[test]
 fn test_redelegate() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies_custom(&[]);
     init(deps.as_mut());
 
     let info = mock_info("owner", &[]);
 
-    set_delegation(&mut deps.querier, 100, "uusd");
+    set_delegation(&mut deps.querier.base, 100, "uusd");
 
     let msg = ExecuteMsg::Redelegate {
         amount: None,
@@ -1446,12 +1446,12 @@ fn test_redelegate() {
 
 #[test]
 fn test_redelegate_more_than_max() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies_custom(&[]);
     init(deps.as_mut());
 
     let info = mock_info("owner", &[]);
 
-    set_delegation(&mut deps.querier, 100, "uusd");
+    set_delegation(&mut deps.querier.base, 100, "uusd");
 
     let msg = ExecuteMsg::Redelegate {
         amount: Some(Uint128::new(200)),
@@ -1517,12 +1517,12 @@ fn test_undelegate_no_funds() {
 
 #[test]
 fn test_undelegate() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies_custom(&[]);
     init(deps.as_mut());
 
     let info = mock_info("owner", &[]);
 
-    set_delegation(&mut deps.querier, 100, "uusd");
+    set_delegation(&mut deps.querier.base, 100, "uusd");
 
     let msg = ExecuteMsg::Undelegate {
         amount: None,
@@ -1551,12 +1551,12 @@ fn test_undelegate() {
 
 #[test]
 fn test_undelegate_more_than_max() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies_custom(&[]);
     init(deps.as_mut());
 
     let info = mock_info("owner", &[]);
 
-    set_delegation(&mut deps.querier, 100, "uusd");
+    set_delegation(&mut deps.querier.base, 100, "uusd");
 
     let msg = ExecuteMsg::Undelegate {
         amount: Some(Uint128::new(200)),

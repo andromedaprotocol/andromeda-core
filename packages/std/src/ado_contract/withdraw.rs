@@ -114,17 +114,20 @@ impl<'a> ADOContract<'a> {
         Ok(Response::new()
             .add_submessages(msgs)
             .add_attribute("action", "withdraw")
-            .add_attribute("recipient", format!("{:?}", recipient)))
+            .add_attribute("recipient", recipient.address.to_string()))
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::testing::mock_querier::{mock_dependencies_custom, MOCK_CW20_CONTRACT};
+    use crate::{
+        amp::AndrAddr,
+        testing::mock_querier::{mock_dependencies_custom, MOCK_CW20_CONTRACT},
+    };
     use cosmwasm_std::{
         testing::{mock_dependencies, mock_env, mock_info},
-        to_binary, Addr, BankMsg, CosmosMsg, WasmMsg,
+        to_binary, Addr, BankMsg, Coin, CosmosMsg, WasmMsg,
     };
     use cw20::Cw20ExecuteMsg;
 
@@ -169,7 +172,7 @@ mod tests {
 
     #[test]
     fn test_execute_withdraw_native() {
-        let mut deps = mock_dependencies();
+        let mut deps = mock_dependencies_custom(&[Coin::new(100, "uusd")]);
         let owner = "owner";
         ADOContract::default()
             .owner
@@ -199,7 +202,7 @@ mod tests {
             Response::new()
                 .add_submessage(msg)
                 .add_attribute("action", "withdraw")
-                .add_attribute("recipient", "Addr(\"address\")"),
+                .add_attribute("recipient", "address"),
             res
         );
     }
@@ -245,14 +248,14 @@ mod tests {
             Response::new()
                 .add_submessage(msg)
                 .add_attribute("action", "withdraw")
-                .add_attribute("recipient", "Addr(\"address\")"),
+                .add_attribute("recipient", "address"),
             res
         );
     }
 
     #[test]
     fn test_execute_withdraw_selective() {
-        let mut deps = mock_dependencies();
+        let mut deps = mock_dependencies_custom(&[Coin::new(100, "uusd")]);
         let owner = "owner";
         ADOContract::default()
             .owner
@@ -293,7 +296,7 @@ mod tests {
             Response::new()
                 .add_submessage(msg)
                 .add_attribute("action", "withdraw")
-                .add_attribute("recipient", "Addr(\"address\")"),
+                .add_attribute("recipient", "address"),
             res
         );
     }

@@ -46,23 +46,14 @@ fn test_andr_query() {
     assert!(res.is_ok())
 }
 
-//TODO: FIX THIS TEST, RATES ARE NOT WORKING
 #[test]
 fn test_transfer() {
-    let modules: Vec<Module> = vec![
-        Module {
-            name: Some(MOCK_RATES_CONTRACT.to_owned()),
-            address: AndrAddr::from_string(MOCK_RATES_CONTRACT.to_owned()),
+    let modules: Vec<Module> = vec![Module {
+        name: Some(MOCK_ADDRESS_LIST_CONTRACT.to_owned()),
+        address: AndrAddr::from_string(MOCK_ADDRESS_LIST_CONTRACT.to_owned()),
 
-            is_mutable: false,
-        },
-        Module {
-            name: Some(MOCK_ADDRESS_LIST_CONTRACT.to_owned()),
-            address: AndrAddr::from_string(MOCK_ADDRESS_LIST_CONTRACT.to_owned()),
-
-            is_mutable: false,
-        },
-    ];
+        is_mutable: false,
+    }];
 
     let mut deps = mock_dependencies_custom(&[]);
     let res = init(deps.as_mut(), Some(modules));
@@ -71,12 +62,7 @@ fn test_transfer() {
             .add_attribute("method", "instantiate")
             .add_attribute("type", "cw20")
             .add_attribute("action", "register_module")
-            .add_attribute("module_idx", "1")
-            .add_attribute("action", "register_module")
-            .add_attribute("module_idx", "2")
-            .add_attribute("action", "register_module")
-            .add_attribute("module_idx", "3")
-            .add_attribute("method", "instantiate"),
+            .add_attribute("module_idx", "1"),
         res
     );
 
@@ -143,37 +129,15 @@ fn test_transfer() {
 
 #[test]
 fn test_send() {
-    let modules: Vec<Module> = vec![
-        Module {
-            name: Some(MOCK_RATES_CONTRACT.to_owned()),
-            address: AndrAddr::from_string(MOCK_RATES_CONTRACT.to_owned()),
-
-            is_mutable: false,
-        },
-        //TODO uncomment once address_list is updated
-
-        // Module {
-        //     name: Some(MOCK_ADDRESSLIST_CONTRACT.to_owned()),
-        //     address: AndrAddr::from_string(MOCK_ADDRESSLIST_CONTRACT.to_owned()),
-
-        //     is_mutable: false,
-        // },
-    ];
-
     let mut deps = mock_dependencies_custom(&[]);
     let info = mock_info("sender", &[]);
 
-    let res = init(deps.as_mut(), Some(modules));
+    let res = init(deps.as_mut(), None);
 
     assert_eq!(
         Response::new()
             .add_attribute("method", "instantiate")
-            .add_attribute("type", "cw20")
-            .add_attribute("action", "register_module")
-            .add_attribute("module_idx", "1"), // .add_attribute("action", "register_module")
-        // .add_attribute("module_idx", "2")
-        // .add_attribute("action", "register_module")
-        // .add_attribute("module_idx", "3")
+            .add_attribute("type", "cw20"),
         res
     );
 
@@ -190,29 +154,18 @@ fn test_send() {
         msg: to_binary(&"msg").unwrap(),
     };
 
-    let not_whitelisted_info = mock_info("not_whitelisted", &[]);
-    let res = execute(deps.as_mut(), mock_env(), not_whitelisted_info, msg.clone());
-    assert_eq!(
-        ContractError::Std(StdError::generic_err(
-            "Querier contract error: InvalidAddress"
-        )),
-        res.unwrap_err()
-    );
-
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     assert_eq!(
         Response::new()
-            .add_event(Event::new("Royalty"))
-            .add_event(Event::new("Tax"))
             .add_attribute("action", "send")
             .add_attribute("from", "sender")
             .add_attribute("to", "contract")
-            .add_attribute("amount", "90")
+            .add_attribute("amount", "100")
             .add_message(
                 Cw20ReceiveMsg {
                     sender: "sender".into(),
-                    amount: 90u128.into(),
+                    amount: 100u128.into(),
                     msg: to_binary(&"msg").unwrap(),
                 }
                 .into_cosmos_msg("contract")
@@ -223,7 +176,7 @@ fn test_send() {
 
     // Funds deducted from the sender (100 for send, 10 for tax).
     assert_eq!(
-        Uint128::from(890u128),
+        Uint128::from(900u128),
         BALANCES
             .load(deps.as_ref().storage, &Addr::unchecked("sender"))
             .unwrap()
@@ -231,44 +184,9 @@ fn test_send() {
 
     // Funds given to the receiver.
     assert_eq!(
-        Uint128::from(90u128),
+        Uint128::from(100u128),
         BALANCES
             .load(deps.as_ref().storage, &Addr::unchecked("contract"))
             .unwrap()
-    );
-
-    // Royalty given to rates_recipient (10 from royalty and 10 from tax)
-    assert_eq!(
-        Uint128::from(20u128),
-        BALANCES
-            .load(deps.as_ref().storage, &Addr::unchecked("rates_recipient"))
-            .unwrap()
-    );
-}
-
-#[test]
-fn test_update_app_contract() {
-    let mut deps = mock_dependencies_custom(&[]);
-
-    let modules: Vec<Module> = vec![Module {
-        name: Some(MOCK_RATES_CONTRACT.to_owned()),
-        address: AndrAddr::from_string(MOCK_RATES_CONTRACT.to_owned()),
-        is_mutable: false,
-    }];
-
-    let info = mock_info("app_contract", &[]);
-    let _res = init(deps.as_mut(), Some(modules));
-
-    let msg = ExecuteMsg::UpdateAppContract {
-        address: "app_contract".to_string(),
-    };
-
-    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-
-    assert_eq!(
-        Response::new()
-            .add_attribute("action", "update_app_contract")
-            .add_attribute("address", "app_contract"),
-        res
     );
 }

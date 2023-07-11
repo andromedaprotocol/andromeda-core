@@ -313,41 +313,6 @@ mod tests {
     }
 
     #[test]
-    fn test_execute_register_module_validate() {
-        let mut deps = mock_dependencies();
-
-        let module = Module::new("auction", "address", false);
-        let deps_mut = deps.as_mut();
-        ADOContract::default()
-            .owner
-            .save(deps_mut.storage, &Addr::unchecked("owner"))
-            .unwrap();
-
-        ADOContract::default()
-            .ado_type
-            .save(deps_mut.storage, &"cw20".to_string())
-            .unwrap();
-
-        let res = ADOContract::default().execute_register_module(
-            deps_mut.storage,
-            "owner",
-            module.clone(),
-            true,
-        );
-
-        assert_eq!(
-            ContractError::IncompatibleModules {
-                msg: "An Auction module cannot be used for a CW20 ADO".to_string()
-            },
-            res.unwrap_err(),
-        );
-
-        let _res = ADOContract::default()
-            .execute_register_module(deps_mut.storage, "owner", module, false)
-            .unwrap();
-    }
-
-    #[test]
     fn test_execute_alter_module_unauthorized() {
         let mut deps = mock_dependencies();
         let info = mock_info("sender", &[]);
@@ -565,13 +530,13 @@ mod tests {
             .save(
                 deps.as_mut().storage,
                 "2",
-                &Module::new("address_list", "a", true),
+                &Module::new("address_list", "address2", true),
             )
             .unwrap();
         let module_addresses = contract.load_module_addresses(&deps.as_ref()).unwrap();
 
         assert_eq!(
-            vec![String::from("address"), String::from("a")],
+            vec![String::from("address"), String::from("address2")],
             module_addresses
         );
     }

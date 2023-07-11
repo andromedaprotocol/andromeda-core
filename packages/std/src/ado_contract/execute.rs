@@ -311,13 +311,6 @@ mod tests {
         let info = mock_info("owner", &[]);
         let deps_mut = deps.as_mut();
         contract
-            .register_modules(
-                info.sender.as_str(),
-                deps_mut.storage,
-                Some(vec![Module::new("module", "cosmos1...".to_string(), false)]),
-            )
-            .unwrap();
-        contract
             .instantiate(
                 deps_mut.storage,
                 mock_env(),
@@ -330,6 +323,13 @@ mod tests {
                     kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
                     owner: None,
                 },
+            )
+            .unwrap();
+        contract
+            .register_modules(
+                info.sender.as_str(),
+                deps_mut.storage,
+                Some(vec![Module::new("module", "cosmos1...".to_string(), false)]),
             )
             .unwrap();
 

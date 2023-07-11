@@ -3,7 +3,7 @@ use crate::ado_base::primitive::{GetValueResponse, Primitive};
 use crate::{
     ado_base::AndromedaQuery,
     ado_contract::ADOContract,
-    amp::{ADO_DB_KEY, OSMOSIS_ROUTER_KEY, VFS_KEY},
+    amp::{ADO_DB_KEY, ECONOMICS_KEY, OSMOSIS_ROUTER_KEY, VFS_KEY},
     os::adodb::{ActionFee, QueryMsg as ADODBQueryMsg},
     os::kernel::QueryMsg as KernelQueryMsg,
     os::vfs::QueryMsg as VFSQueryMsg,
@@ -36,6 +36,8 @@ pub const MOCK_ADODB_CONTRACT: &str = "adodb_contract";
 pub const MOCK_ADO_PUBLISHER: &str = "ado_publisher";
 // Mock Osmosis Router
 pub const MOCK_OSMOSIS_ROUTER_CONTRACT: &str = "osmosis_router";
+// Mock Economics Contract
+pub const MOCK_ECONOMICS_CONTRACT: &str = "economics_contract";
 
 #[cfg(feature = "modules")]
 /// Mock Rates Contract Address
@@ -111,6 +113,28 @@ impl WasmMockQuerier {
     ///
     /// Any other addresses are handled by the default querier.
     pub fn handle_query(&self, request: &QueryRequest<cosmwasm_std::Empty>) -> QuerierResult {
+        MockAndromedaQuerier::default().handle_query(&self.base, request)
+    }
+
+    pub fn new(base: MockQuerier) -> Self {
+        WasmMockQuerier { base }
+    }
+}
+
+pub struct MockAndromedaQuerier {}
+
+impl Default for MockAndromedaQuerier {
+    fn default() -> Self {
+        MockAndromedaQuerier {}
+    }
+}
+
+impl MockAndromedaQuerier {
+    pub fn handle_query(
+        self,
+        querier: &MockQuerier,
+        request: &QueryRequest<cosmwasm_std::Empty>,
+    ) -> QuerierResult {
         match &request {
             QueryRequest::Wasm(WasmQuery::Smart { contract_addr, msg }) => {
                 match contract_addr.as_str() {
@@ -147,7 +171,7 @@ impl WasmMockQuerier {
                 };
                 SystemResult::Ok(ContractResult::Ok(to_binary(&resp).unwrap()))
             }
-            _ => self.base.handle_query(request),
+            _ => querier.handle_query(request),
         }
     }
 
@@ -363,6 +387,9 @@ impl WasmMockQuerier {
                     OSMOSIS_ROUTER_KEY => SystemResult::Ok(ContractResult::Ok(
                         to_binary(&MOCK_OSMOSIS_ROUTER_CONTRACT.to_string()).unwrap(),
                     )),
+                    ECONOMICS_KEY => SystemResult::Ok(ContractResult::Ok(
+                        to_binary(&MOCK_ECONOMICS_CONTRACT.to_string()).unwrap(),
+                    )),
                     _ => panic!("Invalid Kernel Address Key"),
                 }
             } else {
@@ -446,10 +473,6 @@ impl WasmMockQuerier {
             )),
             _ => panic!("Unsupported ADO query"),
         }
-    }
-
-    pub fn new(base: MockQuerier) -> Self {
-        WasmMockQuerier { base }
     }
 }
 

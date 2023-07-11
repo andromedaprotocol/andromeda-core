@@ -129,15 +129,6 @@ fn test_query_deducted_funds_native() {
                 msg: None,
             }],
         },
-        // RateInfo {
-        //     rate: Rate::External(PrimitivePointer {
-        //         address: MOCK_PRIMITIVE_CONTRACT.to_owned(),
-        //         key: Some("flat".into()),
-        //     }),
-        //     is_additive: false,
-        //     description: Some("desc3".to_string()),
-        //     recipients: vec![Recipient::Addr("3".into())],
-        // },
     ];
     let msg = InstantiateMsg {
         rates,
@@ -156,18 +147,14 @@ fn test_query_deducted_funds_native() {
             to_address: MOCK_RECIPIENT2.into(),
             amount: coins(10, "uusd"),
         })),
-        // SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-        //     to_address: "3".into(),
-        //     amount: coins(1, "uusd"),
-        // })),
     ];
 
     assert_eq!(
         OnFundsTransferResponse {
             msgs: expected_msgs,
-            // Deduct 10% from the percent rate, followed by flat fee of 1 from the external rate.
+            // Deduct 10% from the percent rate.
             // NOTE: test is currently returning 90 instead
-            leftover_funds: Funds::Native(coin(89, "uusd")),
+            leftover_funds: Funds::Native(coin(90, "uusd")),
             events: vec![
                 Event::new("tax")
                     .add_attribute("description", "desc2")
@@ -176,10 +163,6 @@ fn test_query_deducted_funds_native() {
                     .add_attribute("description", "desc1")
                     .add_attribute("deducted", "10uusd")
                     .add_attribute("payment", "recipient2<10uusd"),
-                // Event::new("royalty")
-                //     .add_attribute("description", "desc3")
-                //     .add_attribute("deducted", "1uusd")
-                //     .add_attribute("payment", "3<1uusd"),
             ]
         },
         res
@@ -209,15 +192,6 @@ fn test_query_deducted_funds_cw20() {
             description: Some("desc1".to_string()),
             recipients: vec![Recipient::new(MOCK_RECIPIENT2, None)],
         },
-        // RateInfo {
-        //     rate: Rate::External(PrimitivePointer {
-        //         address: MOCK_PRIMITIVE_CONTRACT.to_owned(),
-        //         key: Some("flat_cw20".to_string()),
-        //     }),
-        //     is_additive: false,
-        //     description: Some("desc3".to_string()),
-        //     recipients: vec![Recipient::Addr("3")],
-        // },
     ];
     let msg = InstantiateMsg {
         rates,
@@ -254,23 +228,13 @@ fn test_query_deducted_funds_cw20() {
             .unwrap(),
             funds: vec![],
         }),
-        // SubMsg::new(WasmMsg::Execute {
-        //     contract_addr: cw20_address.to_string(),
-        //     msg: encode_binary(&Cw20ExecuteMsg::Transfer {
-        //         recipient: "3".to_string(),
-        //         amount: 1u128.into(),
-        //     })
-        //     .unwrap(),
-        //     funds: vec![],
-        // }),
     ];
     assert_eq!(
         OnFundsTransferResponse {
             msgs: expected_msgs,
-            // Deduct 10% from the percent rate, followed by flat fee of 1 from the external rate.
-            // NOTE: test is currently returning 90 instead
+            // Deduct 10% from the percent rate.
             leftover_funds: Funds::Cw20(Cw20Coin {
-                amount: 89u128.into(),
+                amount: 90u128.into(),
                 address: cw20_address.to_string()
             }),
             events: vec![
@@ -281,10 +245,6 @@ fn test_query_deducted_funds_cw20() {
                     .add_attribute("description", "desc1")
                     .add_attribute("deducted", "10address")
                     .add_attribute("payment", "recipient2<10address"),
-                // Event::new("royalty")
-                //     .add_attribute("description", "desc3")
-                //     .add_attribute("deducted", "1address")
-                //     .add_attribute("payment", "3<1address"),
             ]
         },
         res

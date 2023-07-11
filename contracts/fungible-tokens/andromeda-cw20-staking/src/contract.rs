@@ -119,7 +119,6 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
-    // };
 
     contract.module_hook::<Response>(
         &deps.as_ref(),
@@ -151,7 +150,6 @@ pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
     )?;
     match msg {
         ExecuteMsg::Receive(msg) => receive_cw20(ctx, msg),
-
         ExecuteMsg::AddRewardToken { reward_token } => execute_add_reward_token(ctx, reward_token),
         ExecuteMsg::UpdateGlobalIndexes { asset_infos } => match asset_infos {
             None => update_global_indexes(

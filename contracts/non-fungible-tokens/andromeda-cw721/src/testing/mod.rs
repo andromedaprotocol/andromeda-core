@@ -4,9 +4,11 @@ use cosmwasm_std::{
     Addr, Coin, DepsMut, Env, Response, Uint128,
 };
 
-use andromeda_std::amp::addresses::AndrAddr;
 use andromeda_std::error::ContractError;
 use andromeda_std::{ado_base::modules::Module, testing::mock_querier::FAKE_VFS_PATH};
+use andromeda_std::{
+    ado_contract::ADOContract, amp::addresses::AndrAddr, testing::mock_querier::MOCK_APP_CONTRACT,
+};
 
 use crate::contract::*;
 use andromeda_non_fungible_tokens::cw721::{
@@ -275,12 +277,23 @@ fn test_burn() {
     let info = mock_info(creator.as_str(), &[]);
     let res = execute(deps.as_mut(), env, info.clone(), msg).unwrap();
 
+    let fee_message = ADOContract::default()
+        .pay_fee(
+            deps.as_ref().storage,
+            &deps.as_ref().querier,
+            "Burn".to_string(),
+            Addr::unchecked("creator".to_string()),
+        )
+        .unwrap();
+
     assert_eq!(
-        Response::default().add_attributes(vec![
-            attr("action", "burn"),
-            attr("token_id", &token_id),
-            attr("sender", info.sender.to_string()),
-        ]),
+        Response::default()
+            .add_submessage(fee_message)
+            .add_attributes(vec![
+                attr("action", "burn"),
+                attr("token_id", &token_id),
+                attr("sender", info.sender.to_string()),
+            ]),
         res
     );
 
@@ -472,84 +485,55 @@ fn test_modules() {
     // assert_eq!(expected_response, res);
 }
 
-#[test]
-fn test_transfer_with_offer() {
-    todo!("Implement with cw721 bids module");
-    // let modules: Vec<Module> = vec![Module {
-    //     module_name: Some("bids".to_owned()),
-    //     address: MOCK_BIDS_CONTRACT.to_owned(),
-    //     is_mutable: false,
-    // }];
+// TODO: IMPLEMENT
+// #[test]
+// fn test_transfer_with_offer() {
+// todo!("Implement with cw721 bids module");
+// let modules: Vec<Module> = vec![Module {
+//     module_name: Some("bids".to_owned()),
+//     address: MOCK_BIDS_CONTRACT.to_owned(),
+//     is_mutable: false,
+// }];
 
-    // let mut deps = mock_dependencies_custom(&coins(100, "uusd"));
+// let mut deps = mock_dependencies_custom(&coins(100, "uusd"));
 
-    // let token_id = String::from("testtoken");
-    // let creator = String::from("creator");
-    // let env = mock_env();
-    // init_setup(deps.as_mut(), env.clone(), Some(modules));
-    // mint_token(
-    //     deps.as_mut(),
-    //     env,
-    //     token_id.clone(),
-    //     creator.clone(),
-    //     TokenExtension {
-    //         publisher: creator.clone(),
-    //     },
-    // );
+// let token_id = String::from("testtoken");
+// let creator = String::from("creator");
+// let env = mock_env();
+// init_setup(deps.as_mut(), env.clone(), Some(modules));
+// mint_token(
+//     deps.as_mut(),
+//     env,
+//     token_id.clone(),
+//     creator.clone(),
+//     TokenExtension {
+//         publisher: creator.clone(),
+//     },
+// );
 
-    // let msg = ExecuteMsg::TransferNft {
-    //     recipient: "purchaser".to_string(),
-    //     token_id: token_id.clone(),
-    // };
-    // let info = mock_info(&creator, &[]);
-    // let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-    // let msg: SubMsg = SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-    //     contract_addr: MOCK_BIDS_CONTRACT.to_owned(),
-    //     funds: vec![],
-    //     msg: to_binary(&BidsExecuteMsg::AcceptBid {
-    //         token_id,
-    //         recipient: creator,
-    //     })
-    //     .unwrap(),
-    // }));
-    // assert_eq!(
-    //     Response::new()
-    //         .add_submessage(msg)
-    //         .add_attribute("action", "transfer")
-    //         .add_attribute("recipient", "purchaser"),
-    //     res
-    // );
-}
-
-#[test]
-fn test_update_app_contract() {
-    let mut deps = mock_dependencies_custom(&[]);
-
-    let info = mock_info("app_contract", &[]);
-    let inst_msg = InstantiateMsg {
-        name: NAME.to_string(),
-        symbol: SYMBOL.to_string(),
-        minter: AndrAddr::from_string("eee"),
-        modules: None,
-        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
-        owner: None,
-    };
-
-    let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), inst_msg).unwrap();
-
-    let msg = ExecuteMsg::UpdateAppContract {
-        address: "app_contract".to_string(),
-    };
-
-    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-
-    assert_eq!(
-        Response::new()
-            .add_attribute("action", "update_app_contract")
-            .add_attribute("address", "app_contract"),
-        res
-    );
-}
+// let msg = ExecuteMsg::TransferNft {
+//     recipient: "purchaser".to_string(),
+//     token_id: token_id.clone(),
+// };
+// let info = mock_info(&creator, &[]);
+// let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+// let msg: SubMsg = SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+//     contract_addr: MOCK_BIDS_CONTRACT.to_owned(),
+//     funds: vec![],
+//     msg: to_binary(&BidsExecuteMsg::AcceptBid {
+//         token_id,
+//         recipient: creator,
+//     })
+//     .unwrap(),
+// }));
+// assert_eq!(
+//     Response::new()
+//         .add_submessage(msg)
+//         .add_attribute("action", "transfer")
+//         .add_attribute("recipient", "purchaser"),
+//     res
+// );
+// }
 
 #[test]
 fn test_update_app_contract_invalid_minter() {

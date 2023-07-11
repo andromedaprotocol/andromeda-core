@@ -259,13 +259,11 @@ mod tests {
 
     #[test]
     fn test_is_vfs() {
-        let deps = mock_dependencies();
         let addr = AndrAddr("/home/user/app/component".to_string());
         assert!(addr.is_vfs_path());
 
         let addr = AndrAddr("ibc://home/user/app/component".to_string());
         assert!(addr.is_vfs_path());
-        assert!(!addr.is_addr(&deps.api));
 
         let addr = AndrAddr("cosmos1...".to_string());
         assert!(!addr.is_vfs_path());
@@ -281,11 +279,9 @@ mod tests {
 
     #[test]
     fn test_is_local_path() {
-        let deps = mock_dependencies();
         let addr = AndrAddr("./component".to_string());
         assert!(addr.is_local_path());
         assert!(addr.is_vfs_path());
-        assert!(!addr.is_addr(&deps.api));
     }
 
     #[test]

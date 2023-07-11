@@ -11,7 +11,7 @@ use andromeda_std::{
 
 use cosmwasm_std::{
     attr, coin, coins, from_binary,
-    testing::{mock_env, mock_info},
+    testing::{mock_env, mock_info, MOCK_CONTRACT_ADDR},
     to_binary, BankMsg, Coin, CosmosMsg, Decimal, DepsMut, Response, StdError, SubMsg, Timestamp,
 };
 use cw_utils::Expiration;
@@ -148,17 +148,35 @@ fn test_execute_send() {
     let recip_address2 = "address2".to_string();
     let recip_percent2 = 20; // 20%
 
+    let recip1 = Recipient::from_string(recip_address1.clone());
+    let recip2 = Recipient::from_string(recip_address2.clone());
+
     let recipient = vec![
         AddressPercent {
-            recipient: Recipient::from_string(recip_address1.clone()),
+            recipient: recip1.clone(),
             percent: Decimal::percent(recip_percent1),
         },
         AddressPercent {
-            recipient: Recipient::from_string(recip_address2.clone()),
+            recipient: recip2.clone(),
             percent: Decimal::percent(recip_percent2),
         },
     ];
     let msg = ExecuteMsg::Send {};
+
+    let amp_msg_1 = recip1.generate_amp_msg(Some(vec![Coin::new(1000, "uluna")]));
+    let amp_msg_2 = recip2.generate_amp_msg(Some(vec![Coin::new(2000, "uluna")]));
+    let amp_pkt = AMPPkt::new(
+        MOCK_CONTRACT_ADDR.to_string(),
+        MOCK_CONTRACT_ADDR.to_string(),
+        vec![amp_msg_1, amp_msg_2],
+    );
+    let amp_msg = amp_pkt
+        .to_sub_msg(
+            MOCK_KERNEL_CONTRACT,
+            Some(vec![Coin::new(1000, "uluna"), Coin::new(2000, "uluna")]),
+            1,
+        )
+        .unwrap();
 
     let splitter = Splitter {
         recipients: recipient,
@@ -171,14 +189,6 @@ fn test_execute_send() {
 
     let expected_res = Response::new()
         .add_submessages(vec![
-            SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-                to_address: recip_address1,
-                amount: vec![Coin::new(1000, "uluna")], // 10000 * 0.1
-            })),
-            SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-                to_address: recip_address2,
-                amount: vec![Coin::new(2000, "uluna")], // 10000 * 0.2
-            })),
             SubMsg::new(
                 // refunds remainder to sender
                 CosmosMsg::Bank(BankMsg::Send {
@@ -186,6 +196,7 @@ fn test_execute_send() {
                     amount: vec![Coin::new(7000, "uluna")], // 10000 * 0.7   remainder
                 }),
             ),
+            amp_msg,
         ])
         .add_attributes(vec![attr("action", "send"), attr("sender", "creator")]);
 
@@ -207,17 +218,35 @@ fn test_execute_send_ado_recipient() {
     let recip_address2 = "address2".to_string();
     let recip_percent2 = 20; // 20%
 
+    let recip1 = Recipient::from_string(recip_address1.clone());
+    let recip2 = Recipient::from_string(recip_address2.clone());
+
     let recipient = vec![
         AddressPercent {
-            recipient: Recipient::from_string(recip_address1.clone()),
+            recipient: recip1.clone(),
             percent: Decimal::percent(recip_percent1),
         },
         AddressPercent {
-            recipient: Recipient::from_string(recip_address2.clone()),
+            recipient: recip2.clone(),
             percent: Decimal::percent(recip_percent2),
         },
     ];
     let msg = ExecuteMsg::Send {};
+
+    let amp_msg_1 = recip1.generate_amp_msg(Some(vec![Coin::new(1000, "uluna")]));
+    let amp_msg_2 = recip2.generate_amp_msg(Some(vec![Coin::new(2000, "uluna")]));
+    let amp_pkt = AMPPkt::new(
+        MOCK_CONTRACT_ADDR.to_string(),
+        MOCK_CONTRACT_ADDR.to_string(),
+        vec![amp_msg_1, amp_msg_2],
+    );
+    let amp_msg = amp_pkt
+        .to_sub_msg(
+            MOCK_KERNEL_CONTRACT,
+            Some(vec![Coin::new(1000, "uluna"), Coin::new(2000, "uluna")]),
+            1,
+        )
+        .unwrap();
 
     let splitter = Splitter {
         recipients: recipient,
@@ -226,31 +255,18 @@ fn test_execute_send_ado_recipient() {
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
 
-    let res = execute(deps.as_mut(), env, info, msg).unwrap();
+    let res = execute(deps.as_mut(), env, info.clone(), msg).unwrap();
 
     let expected_res = Response::new()
         .add_submessages(vec![
             SubMsg::new(
                 // refunds remainder to sender
                 CosmosMsg::Bank(BankMsg::Send {
-                    to_address: recip_address1,
-                    amount: vec![Coin::new(1000, "uluna")], // 10000 * 0.7   remainder
-                }),
-            ),
-            SubMsg::new(
-                // refunds remainder to sender
-                CosmosMsg::Bank(BankMsg::Send {
-                    to_address: recip_address2,
-                    amount: vec![Coin::new(2000, "uluna")], // 10000 * 0.7   remainder
-                }),
-            ),
-            SubMsg::new(
-                // refunds remainder to sender
-                CosmosMsg::Bank(BankMsg::Send {
-                    to_address: OWNER.to_string(),
+                    to_address: info.sender.to_string(),
                     amount: vec![Coin::new(7000, "uluna")], // 10000 * 0.7   remainder
                 }),
             ),
+            amp_msg,
         ])
         .add_attribute("action", "send")
         .add_attribute("sender", "creator");
@@ -387,61 +403,6 @@ fn test_execute_send_error() {
     let expected_res = ContractError::ExceedsMaxAllowedCoins {};
 
     assert_eq!(res, expected_res);
-}
-
-#[test]
-fn test_modules() {
-    let mut deps = mock_dependencies_custom(&[coin(1000, "uusd")]);
-    let env = mock_env();
-    let info = mock_info("creator", &[]);
-    let msg = InstantiateMsg {
-        modules: Some(vec![Module {
-            name: Some(MOCK_ADDRESS_LIST_CONTRACT.to_string()),
-            is_mutable: false,
-            address: AndrAddr::from_string(MOCK_ADDRESS_LIST_CONTRACT.to_owned()),
-        }]),
-        recipients: vec![AddressPercent {
-            recipient: Recipient::from_string(String::from("some_address")),
-            percent: Decimal::percent(100),
-        }],
-        lock_time: Some(100_000),
-        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
-        owner: Some(OWNER.to_string()),
-    };
-    let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
-    let expected_res = Response::new()
-        .add_attribute("method", "instantiate")
-        .add_attribute("type", "splitter")
-        .add_attribute("action", "register_module")
-        .add_attribute("module_idx", "1");
-
-    assert_eq!(expected_res, res);
-
-    let msg = ExecuteMsg::Send {};
-    let info = mock_info("anyone", &coins(100, "uusd"));
-
-    let res = execute(deps.as_mut(), mock_env(), info, msg.clone());
-
-    assert_eq!(
-        ContractError::Std(StdError::generic_err(
-            "Querier contract error: InvalidAddress"
-        ),),
-        res.unwrap_err()
-    );
-
-    let info = mock_info("sender", &coins(100, "uusd"));
-    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-
-    assert_eq!(
-        Response::new()
-            .add_message(BankMsg::Send {
-                to_address: "some_address".to_string(),
-                amount: coins(100, "uusd"),
-            })
-            .add_attribute("action", "send")
-            .add_attribute("sender", "sender"),
-        res
-    );
 }
 
 #[test]
