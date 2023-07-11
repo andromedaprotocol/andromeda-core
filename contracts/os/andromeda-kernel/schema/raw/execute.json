@@ -16,6 +16,7 @@
       "additionalProperties": false
     },
     {
+      "description": "Creates an original AMP packet",
       "type": "object",
       "required": [
         "a_m_p_direct"
@@ -46,7 +47,7 @@
               "$ref": "#/definitions/Binary"
             },
             "recipient": {
-              "type": "string"
+              "$ref": "#/definitions/AndrAddr"
             },
             "reply_on": {
               "anyOf": [
@@ -57,6 +58,53 @@
                   "type": "null"
                 }
               ]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "a_m_p_direct_no_ctx"
+      ],
+      "properties": {
+        "a_m_p_direct_no_ctx": {
+          "type": "object",
+          "required": [
+            "message",
+            "recipient"
+          ],
+          "properties": {
+            "message": {
+              "$ref": "#/definitions/Binary"
+            },
+            "recipient": {
+              "$ref": "#/definitions/AndrAddr"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Constructs an AMPPkt with a given AMPMsg and sends it to the recipient",
+      "type": "object",
+      "required": [
+        "a_m_p_message"
+      ],
+      "properties": {
+        "a_m_p_message": {
+          "type": "object",
+          "required": [
+            "message"
+          ],
+          "properties": {
+            "message": {
+              "$ref": "#/definitions/AMPMsg"
             }
           },
           "additionalProperties": false
@@ -92,20 +140,55 @@
     }
   ],
   "definitions": {
-    "AMPMsg": {
-      "description": "This struct defines how the kernel parses and relays messages between ADOs It contains a simple recipient string which may use our namespacing implementation or a simple contract address If the desired recipient is via IBC then namespacing must be employed The attached message must be a binary encoded execute message for the receiving ADO Funds can be attached for an individual message and will be attached accordingly",
+    "AMPCtx": {
       "type": "object",
       "required": [
-        "exit_at_error",
-        "funds",
-        "message",
-        "recipient",
-        "reply_on"
+        "id",
+        "origin",
+        "previous_sender"
       ],
       "properties": {
-        "exit_at_error": {
-          "description": "Determines whether the operation should terminate or proceed upon a failed message",
-          "type": "boolean"
+        "id": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "origin": {
+          "type": "string"
+        },
+        "origin_username": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/AndrAddr"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "previous_sender": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "AMPMsg": {
+      "description": "This struct defines how the kernel parses and relays messages between ADOs If the desired recipient is via IBC then namespacing must be employed The attached message must be a binary encoded execute message for the receiving ADO Funds can be attached for an individual message and will be attached accordingly",
+      "type": "object",
+      "required": [
+        "config",
+        "funds",
+        "message",
+        "recipient"
+      ],
+      "properties": {
+        "config": {
+          "description": "When the message should reply, defaults to Always",
+          "allOf": [
+            {
+              "$ref": "#/definitions/AMPMsgConfig"
+            }
+          ]
         },
         "funds": {
           "description": "Any funds to be attached to the message, defaults to an empty vector",
@@ -113,15 +196,6 @@
           "items": {
             "$ref": "#/definitions/Coin"
           }
-        },
-        "gas_limit": {
-          "description": "An optional imposed gas limit for the message",
-          "type": [
-            "integer",
-            "null"
-          ],
-          "format": "uint64",
-          "minimum": 0.0
         },
         "message": {
           "description": "The message to be sent to the recipient",
@@ -133,7 +207,40 @@
         },
         "recipient": {
           "description": "The message recipient, can be a contract/wallet address or a namespaced URI",
-          "type": "string"
+          "allOf": [
+            {
+              "$ref": "#/definitions/AndrAddr"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "AMPMsgConfig": {
+      "description": "The configuration of the message to be sent.\n\nUsed when a sub message is generated for the given AMP Msg (only used in the case of Wasm Messages).",
+      "type": "object",
+      "required": [
+        "direct",
+        "exit_at_error",
+        "reply_on"
+      ],
+      "properties": {
+        "direct": {
+          "description": "Whether to send the message directly to the given recipient",
+          "type": "boolean"
+        },
+        "exit_at_error": {
+          "description": "Determines whether the operation should terminate or proceed upon a failed message",
+          "type": "boolean"
+        },
+        "gas_limit": {
+          "description": "An optional imposed gas limit for the message",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0.0
         },
         "reply_on": {
           "description": "When the message should reply, defaults to Always",
@@ -150,28 +257,26 @@
       "description": "An Andromeda packet contains all message protocol related data, this is what is sent between ADOs when communicating It contains an original sender, if used for authorisation the sender must be authorised The previous sender is the one who sent the message A packet may contain several messages which allows for message batching",
       "type": "object",
       "required": [
-        "messages",
-        "origin",
-        "previous_sender"
+        "ctx",
+        "messages"
       ],
       "properties": {
+        "ctx": {
+          "$ref": "#/definitions/AMPCtx"
+        },
         "messages": {
           "description": "Any messages associated with the packet",
           "type": "array",
           "items": {
             "$ref": "#/definitions/AMPMsg"
           }
-        },
-        "origin": {
-          "description": "The original sender of the packet, immutable, can be retrieved with `AMPPkt.get_origin`",
-          "type": "string"
-        },
-        "previous_sender": {
-          "description": "The previous sender of the packet, immutable, can be retrieved with `AMPPkt.get_previous_sender`",
-          "type": "string"
         }
       },
       "additionalProperties": false
+    },
+    "AndrAddr": {
+      "description": "An address that can be used within the Andromeda ecosystem. Inspired by the cosmwasm-std `Addr` type. https://github.com/CosmWasm/cosmwasm/blob/2a1c698520a1aacedfe3f4803b0d7d653892217a/packages/std/src/addresses.rs#L33\n\nThis address can be one of two things: 1. A valid human readable address e.g. `cosmos1...` 2. A valid Andromeda VFS path e.g. `/home/user/app/component`\n\nVFS paths can be local in the case of an app and can be done by referencing `./component` they can also contain protocols for cross chain communication. A VFS path is usually structured as so:\n\n`<protocol>://<chain (required if ibc used)>/<path>` or `ibc://cosmoshub-4/user/app/component`",
+      "type": "string"
     },
     "Binary": {
       "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",

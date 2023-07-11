@@ -1,0 +1,15 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TokenAddressResponse",
+  "type": "object",
+  "required": [
+    "address"
+  ],
+  "properties": {
+    "address": {
+      "description": "The address of the token being sold",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}

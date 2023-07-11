@@ -3,18 +3,6 @@
   "title": "QueryMsg",
   "oneOf": [
     {
-      "type": "object",
-      "required": [
-        "andr_query"
-      ],
-      "properties": {
-        "andr_query": {
-          "$ref": "#/definitions/AndromedaQuery"
-        }
-      },
-      "additionalProperties": false
-    },
-    {
       "description": "The current config of the Splitter contract",
       "type": "object",
       "required": [
@@ -27,180 +15,178 @@
         }
       },
       "additionalProperties": false
-    }
-  ],
-  "definitions": {
-    "AndromedaQuery": {
-      "oneOf": [
-        {
+    },
+    {
+      "type": "object",
+      "required": [
+        "owner"
+      ],
+      "properties": {
+        "owner": {
           "type": "object",
-          "required": [
-            "get"
-          ],
-          "properties": {
-            "get": {
-              "anyOf": [
-                {
-                  "$ref": "#/definitions/Binary"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            }
-          },
           "additionalProperties": false
-        },
-        {
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "operators"
+      ],
+      "properties": {
+        "operators": {
           "type": "object",
-          "required": [
-            "owner"
-          ],
-          "properties": {
-            "owner": {
-              "type": "object",
-              "additionalProperties": false
-            }
-          },
           "additionalProperties": false
-        },
-        {
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "type"
+      ],
+      "properties": {
+        "type": {
           "type": "object",
-          "required": [
-            "operators"
-          ],
-          "properties": {
-            "operators": {
-              "type": "object",
-              "additionalProperties": false
-            }
-          },
           "additionalProperties": false
-        },
-        {
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "kernel_address"
+      ],
+      "properties": {
+        "kernel_address": {
           "type": "object",
-          "required": [
-            "type"
-          ],
-          "properties": {
-            "type": {
-              "type": "object",
-              "additionalProperties": false
-            }
-          },
           "additionalProperties": false
-        },
-        {
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "original_publisher"
+      ],
+      "properties": {
+        "original_publisher": {
           "type": "object",
-          "required": [
-            "kernel_address"
-          ],
-          "properties": {
-            "kernel_address": {
-              "type": "object",
-              "additionalProperties": false
-            }
-          },
           "additionalProperties": false
-        },
-        {
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "block_height_upon_creation"
+      ],
+      "properties": {
+        "block_height_upon_creation": {
           "type": "object",
-          "required": [
-            "original_publisher"
-          ],
-          "properties": {
-            "original_publisher": {
-              "type": "object",
-              "additionalProperties": false
-            }
-          },
           "additionalProperties": false
-        },
-        {
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "is_operator"
+      ],
+      "properties": {
+        "is_operator": {
           "type": "object",
           "required": [
-            "block_height_upon_creation"
+            "address"
           ],
           "properties": {
-            "block_height_upon_creation": {
-              "type": "object",
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "is_operator"
-          ],
-          "properties": {
-            "is_operator": {
-              "type": "object",
-              "required": [
-                "address"
-              ],
-              "properties": {
-                "address": {
-                  "type": "string"
-                }
-              },
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "module"
-          ],
-          "properties": {
-            "module": {
-              "type": "object",
-              "required": [
-                "id"
-              ],
-              "properties": {
-                "id": {
-                  "$ref": "#/definitions/Uint64"
-                }
-              },
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "module_ids"
-          ],
-          "properties": {
-            "module_ids": {
-              "type": "object",
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "version"
-          ],
-          "properties": {
-            "version": {
-              "type": "object",
-              "additionalProperties": false
+            "address": {
+              "type": "string"
             }
           },
           "additionalProperties": false
         }
-      ]
+      },
+      "additionalProperties": false
     },
-    "Binary": {
-      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+    {
+      "type": "object",
+      "required": [
+        "version"
+      ],
+      "properties": {
+        "version": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "balance"
+      ],
+      "properties": {
+        "balance": {
+          "type": "object",
+          "required": [
+            "address"
+          ],
+          "properties": {
+            "address": {
+              "$ref": "#/definitions/AndrAddr"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "module"
+      ],
+      "properties": {
+        "module": {
+          "type": "object",
+          "required": [
+            "id"
+          ],
+          "properties": {
+            "id": {
+              "$ref": "#/definitions/Uint64"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "module_ids"
+      ],
+      "properties": {
+        "module_ids": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  ],
+  "definitions": {
+    "AndrAddr": {
+      "description": "An address that can be used within the Andromeda ecosystem. Inspired by the cosmwasm-std `Addr` type. https://github.com/CosmWasm/cosmwasm/blob/2a1c698520a1aacedfe3f4803b0d7d653892217a/packages/std/src/addresses.rs#L33\n\nThis address can be one of two things: 1. A valid human readable address e.g. `cosmos1...` 2. A valid Andromeda VFS path e.g. `/home/user/app/component`\n\nVFS paths can be local in the case of an app and can be done by referencing `./component` they can also contain protocols for cross chain communication. A VFS path is usually structured as so:\n\n`<protocol>://<chain (required if ibc used)>/<path>` or `ibc://cosmoshub-4/user/app/component`",
       "type": "string"
     },
     "Uint64": {

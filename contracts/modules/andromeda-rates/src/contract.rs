@@ -61,8 +61,6 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
-    // };
-
     let ctx = ExecuteContext::new(deps, info, env);
 
     match msg {
@@ -74,15 +72,6 @@ pub fn execute(
 }
 
 pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
-    let contract = ADOContract::default();
-
-    contract.module_hook::<Response>(
-        &ctx.deps.as_ref(),
-        AndromedaHook::OnExecute {
-            sender: ctx.info.sender.to_string(),
-            payload: encode_binary(&msg)?,
-        },
-    )?;
     match msg {
         ExecuteMsg::UpdateRates { rates } => execute_update_rates(ctx, rates),
         _ => ADOContract::default().execute(ctx, msg),

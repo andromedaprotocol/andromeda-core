@@ -1,0 +1,16 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "BlockHeightResponse",
+  "type": "object",
+  "required": [
+    "block_height"
+  ],
+  "properties": {
+    "block_height": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    }
+  },
+  "additionalProperties": false
+}

@@ -3,14 +3,12 @@
   "title": "InstantiateMsg",
   "type": "object",
   "required": [
+    "kernel_address",
     "recipients"
   ],
   "properties": {
     "kernel_address": {
-      "type": [
-        "string",
-        "null"
-      ]
+      "type": "string"
     },
     "lock_time": {
       "type": [
@@ -29,6 +27,12 @@
         "$ref": "#/definitions/Module"
       }
     },
+    "owner": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "recipients": {
       "description": "The vector of recipients for the contract. Anytime a `Send` execute message is sent the amount sent will be divided amongst these recipients depending on their assigned weight.",
       "type": "array",
@@ -39,58 +43,6 @@
   },
   "additionalProperties": false,
   "definitions": {
-    "ADORecipient": {
-      "type": "object",
-      "required": [
-        "address"
-      ],
-      "properties": {
-        "address": {
-          "description": "Addr can also be a human-readable identifier used in a app contract.",
-          "type": "string"
-        },
-        "msg": {
-          "anyOf": [
-            {
-              "$ref": "#/definitions/Binary"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        }
-      },
-      "additionalProperties": false
-    },
-    "AMPRecipient": {
-      "oneOf": [
-        {
-          "description": "An address that is not another ADO. It is assumed that it is a valid address.",
-          "type": "object",
-          "required": [
-            "addr"
-          ],
-          "properties": {
-            "addr": {
-              "type": "string"
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "a_d_o"
-          ],
-          "properties": {
-            "a_d_o": {
-              "$ref": "#/definitions/ADORecipient"
-            }
-          },
-          "additionalProperties": false
-        }
-      ]
-    },
     "AddressWeight": {
       "type": "object",
       "required": [
@@ -99,13 +51,17 @@
       ],
       "properties": {
         "recipient": {
-          "$ref": "#/definitions/AMPRecipient"
+          "$ref": "#/definitions/Recipient"
         },
         "weight": {
           "$ref": "#/definitions/Uint128"
         }
       },
       "additionalProperties": false
+    },
+    "AndrAddr": {
+      "description": "An address that can be used within the Andromeda ecosystem. Inspired by the cosmwasm-std `Addr` type. https://github.com/CosmWasm/cosmwasm/blob/2a1c698520a1aacedfe3f4803b0d7d653892217a/packages/std/src/addresses.rs#L33\n\nThis address can be one of two things: 1. A valid human readable address e.g. `cosmos1...` 2. A valid Andromeda VFS path e.g. `/home/user/app/component`\n\nVFS paths can be local in the case of an app and can be done by referencing `./component` they can also contain protocols for cross chain communication. A VFS path is usually structured as so:\n\n`<protocol>://<chain (required if ibc used)>/<path>` or `ibc://cosmoshub-4/user/app/component`",
+      "type": "string"
     },
     "Binary": {
       "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
@@ -120,15 +76,38 @@
       ],
       "properties": {
         "address": {
-          "type": "string"
+          "$ref": "#/definitions/AndrAddr"
         },
         "is_mutable": {
           "type": "boolean"
         },
-        "module_name": {
+        "name": {
           "type": [
             "string",
             "null"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "Recipient": {
+      "description": "A simple struct used for inter-contract communication. The struct can be used in two ways:\n\n1. Simply just providing an `AndrAddr` which will treat the communication as a transfer of any related funds 2. Providing an `AndrAddr` and a `Binary` message which will be sent to the contract at the resolved address\n\nThe `Binary` message can be any message that the contract at the resolved address can handle.",
+      "type": "object",
+      "required": [
+        "address"
+      ],
+      "properties": {
+        "address": {
+          "$ref": "#/definitions/AndrAddr"
+        },
+        "msg": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Binary"
+            },
+            {
+              "type": "null"
+            }
           ]
         }
       },

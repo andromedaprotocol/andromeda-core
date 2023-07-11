@@ -3,100 +3,19 @@
   "title": "ExecuteMsg",
   "oneOf": [
     {
+      "description": "Deposit funds to be used by the Andromeda economics module to pay for ADO fees.\n\nAn optional valid VFS path can be provided to deposit funds on behalf of another address.",
       "type": "object",
       "required": [
-        "andr_receive"
+        "deposit"
       ],
       "properties": {
-        "andr_receive": {
-          "$ref": "#/definitions/AndromedaMsg"
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "type": "object",
-      "required": [
-        "update_code_id"
-      ],
-      "properties": {
-        "update_code_id": {
+        "deposit": {
           "type": "object",
-          "required": [
-            "code_id",
-            "code_id_key"
-          ],
           "properties": {
-            "code_id": {
-              "type": "integer",
-              "format": "uint64",
-              "minimum": 0.0
-            },
-            "code_id_key": {
-              "type": "string"
-            }
-          },
-          "additionalProperties": false
-        }
-      },
-      "additionalProperties": false
-    }
-  ],
-  "definitions": {
-    "ADORecipient": {
-      "description": "ADOs use a default Receive message for handling funds, this struct states that the recipient is an ADO and may attach the data field to the Receive message",
-      "type": "object",
-      "required": [
-        "address"
-      ],
-      "properties": {
-        "address": {
-          "description": "Addr can also be a human-readable identifier used in a app contract.",
-          "allOf": [
-            {
-              "$ref": "#/definitions/AndrAddress"
-            }
-          ]
-        },
-        "msg": {
-          "anyOf": [
-            {
-              "$ref": "#/definitions/Binary"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        }
-      },
-      "additionalProperties": false
-    },
-    "AndrAddress": {
-      "type": "object",
-      "required": [
-        "identifier"
-      ],
-      "properties": {
-        "identifier": {
-          "description": "Can be either an address or identifier of an ADO in a app.",
-          "type": "string"
-        }
-      },
-      "additionalProperties": false
-    },
-    "AndromedaMsg": {
-      "oneOf": [
-        {
-          "description": "Standard Messages",
-          "type": "object",
-          "required": [
-            "receive"
-          ],
-          "properties": {
-            "receive": {
+            "address": {
               "anyOf": [
                 {
-                  "$ref": "#/definitions/Binary"
+                  "$ref": "#/definitions/AndrAddr"
                 },
                 {
                   "type": "null"
@@ -105,343 +24,150 @@
             }
           },
           "additionalProperties": false
-        },
-        {
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Pay a fee for the given action. The sender must be a valid ADO contract.\n\nFees are paid in the following fallthrough priority: 1. The balance of the ADO contract itself 2. The balance of the App contract for the ADO 3. The provided payee address",
+      "type": "object",
+      "required": [
+        "pay_fee"
+      ],
+      "properties": {
+        "pay_fee": {
           "type": "object",
           "required": [
-            "update_owner"
+            "action",
+            "payee"
           ],
           "properties": {
-            "update_owner": {
-              "type": "object",
-              "required": [
-                "address"
-              ],
-              "properties": {
-                "address": {
-                  "type": "string"
-                }
-              },
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "update_operators"
-          ],
-          "properties": {
-            "update_operators": {
-              "type": "object",
-              "required": [
-                "operators"
-              ],
-              "properties": {
-                "operators": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                }
-              },
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "update_app_contract"
-          ],
-          "properties": {
-            "update_app_contract": {
-              "type": "object",
-              "required": [
-                "address"
-              ],
-              "properties": {
-                "address": {
-                  "type": "string"
-                }
-              },
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "withdraw"
-          ],
-          "properties": {
-            "withdraw": {
-              "type": "object",
-              "properties": {
-                "recipient": {
-                  "anyOf": [
-                    {
-                      "$ref": "#/definitions/Recipient"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                },
-                "tokens_to_withdraw": {
-                  "type": [
-                    "array",
-                    "null"
-                  ],
-                  "items": {
-                    "$ref": "#/definitions/Withdrawal"
-                  }
-                }
-              },
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "register_module"
-          ],
-          "properties": {
-            "register_module": {
-              "type": "object",
-              "required": [
-                "module"
-              ],
-              "properties": {
-                "module": {
-                  "$ref": "#/definitions/Module"
-                }
-              },
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "deregister_module"
-          ],
-          "properties": {
-            "deregister_module": {
-              "type": "object",
-              "required": [
-                "module_idx"
-              ],
-              "properties": {
-                "module_idx": {
-                  "$ref": "#/definitions/Uint64"
-                }
-              },
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "alter_module"
-          ],
-          "properties": {
-            "alter_module": {
-              "type": "object",
-              "required": [
-                "module",
-                "module_idx"
-              ],
-              "properties": {
-                "module": {
-                  "$ref": "#/definitions/Module"
-                },
-                "module_idx": {
-                  "$ref": "#/definitions/Uint64"
-                }
-              },
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "refresh_address"
-          ],
-          "properties": {
-            "refresh_address": {
-              "type": "object",
-              "required": [
-                "contract"
-              ],
-              "properties": {
-                "contract": {
-                  "type": "string"
-                }
-              },
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "refresh_addresses"
-          ],
-          "properties": {
-            "refresh_addresses": {
-              "type": "object",
-              "properties": {
-                "limit": {
-                  "type": [
-                    "integer",
-                    "null"
-                  ],
-                  "format": "uint32",
-                  "minimum": 0.0
-                },
-                "start_after": {
-                  "type": [
-                    "string",
-                    "null"
-                  ]
-                }
-              },
-              "additionalProperties": false
+            "action": {
+              "type": "string"
+            },
+            "payee": {
+              "$ref": "#/definitions/Addr"
             }
           },
           "additionalProperties": false
         }
-      ]
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Withdraw native funds from the Andromeda economics module.\n\nIf no amount is provided all funds are withdrawn for the given asset.",
+      "type": "object",
+      "required": [
+        "withdraw"
+      ],
+      "properties": {
+        "withdraw": {
+          "type": "object",
+          "required": [
+            "asset"
+          ],
+          "properties": {
+            "amount": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Uint128"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "asset": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Withdraw CW20 funds from the Andromeda economics module.\n\nIf no amount is provided all funds are withdrawn for the given asset.",
+      "type": "object",
+      "required": [
+        "withdraw_cw20"
+      ],
+      "properties": {
+        "withdraw_cw20": {
+          "type": "object",
+          "required": [
+            "asset"
+          ],
+          "properties": {
+            "amount": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Uint128"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "asset": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "receive"
+      ],
+      "properties": {
+        "receive": {
+          "$ref": "#/definitions/Cw20ReceiveMsg"
+        }
+      },
+      "additionalProperties": false
+    }
+  ],
+  "definitions": {
+    "Addr": {
+      "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+      "type": "string"
+    },
+    "AndrAddr": {
+      "description": "An address that can be used within the Andromeda ecosystem. Inspired by the cosmwasm-std `Addr` type. https://github.com/CosmWasm/cosmwasm/blob/2a1c698520a1aacedfe3f4803b0d7d653892217a/packages/std/src/addresses.rs#L33\n\nThis address can be one of two things: 1. A valid human readable address e.g. `cosmos1...` 2. A valid Andromeda VFS path e.g. `/home/user/app/component`\n\nVFS paths can be local in the case of an app and can be done by referencing `./component` they can also contain protocols for cross chain communication. A VFS path is usually structured as so:\n\n`<protocol>://<chain (required if ibc used)>/<path>` or `ibc://cosmoshub-4/user/app/component`",
+      "type": "string"
     },
     "Binary": {
       "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
       "type": "string"
     },
-    "Decimal": {
-      "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 (which is (2^128 - 1) / 10^18)",
-      "type": "string"
-    },
-    "Module": {
-      "description": "A struct describing a token module, provided with the instantiation message this struct is used to record the info about the module and how/if it should be instantiated",
+    "Cw20ReceiveMsg": {
+      "description": "Cw20ReceiveMsg should be de/serialized under `Receive()` variant in a ExecuteMsg",
       "type": "object",
       "required": [
-        "address",
-        "is_mutable"
+        "amount",
+        "msg",
+        "sender"
       ],
       "properties": {
-        "address": {
+        "amount": {
+          "$ref": "#/definitions/Uint128"
+        },
+        "msg": {
+          "$ref": "#/definitions/Binary"
+        },
+        "sender": {
           "type": "string"
-        },
-        "is_mutable": {
-          "type": "boolean"
-        },
-        "module_name": {
-          "type": [
-            "string",
-            "null"
-          ]
         }
       },
       "additionalProperties": false
-    },
-    "Recipient": {
-      "oneOf": [
-        {
-          "description": "An address that is not another ADO. It is assumed that it is a valid address.",
-          "type": "object",
-          "required": [
-            "addr"
-          ],
-          "properties": {
-            "addr": {
-              "type": "string"
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "a_d_o"
-          ],
-          "properties": {
-            "a_d_o": {
-              "$ref": "#/definitions/ADORecipient"
-            }
-          },
-          "additionalProperties": false
-        }
-      ]
     },
     "Uint128": {
       "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
       "type": "string"
-    },
-    "Uint64": {
-      "description": "A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u64` to get the value out:\n\n``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);\n\nlet b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```",
-      "type": "string"
-    },
-    "Withdrawal": {
-      "type": "object",
-      "required": [
-        "token"
-      ],
-      "properties": {
-        "token": {
-          "type": "string"
-        },
-        "withdrawal_type": {
-          "anyOf": [
-            {
-              "$ref": "#/definitions/WithdrawalType"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        }
-      },
-      "additionalProperties": false
-    },
-    "WithdrawalType": {
-      "oneOf": [
-        {
-          "type": "object",
-          "required": [
-            "amount"
-          ],
-          "properties": {
-            "amount": {
-              "$ref": "#/definitions/Uint128"
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "percentage"
-          ],
-          "properties": {
-            "percentage": {
-              "$ref": "#/definitions/Decimal"
-            }
-          },
-          "additionalProperties": false
-        }
-      ]
     }
   }
 }

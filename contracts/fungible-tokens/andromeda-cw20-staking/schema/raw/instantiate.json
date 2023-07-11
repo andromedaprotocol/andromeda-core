@@ -3,6 +3,7 @@
   "title": "InstantiateMsg",
   "type": "object",
   "required": [
+    "kernel_address",
     "staking_token"
   ],
   "properties": {
@@ -17,6 +18,18 @@
       }
     },
     "kernel_address": {
+      "type": "string"
+    },
+    "modules": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/Module"
+      }
+    },
+    "owner": {
       "type": [
         "string",
         "null"
@@ -24,7 +37,11 @@
     },
     "staking_token": {
       "description": "The cw20 token that can be staked.",
-      "type": "string"
+      "allOf": [
+        {
+          "$ref": "#/definitions/AndrAddr"
+        }
+      ]
     }
   },
   "additionalProperties": false,
@@ -75,10 +92,15 @@
           "format": "uint64",
           "minimum": 0.0
         }
-      }
+      },
+      "additionalProperties": false
+    },
+    "AndrAddr": {
+      "description": "An address that can be used within the Andromeda ecosystem. Inspired by the cosmwasm-std `Addr` type. https://github.com/CosmWasm/cosmwasm/blob/2a1c698520a1aacedfe3f4803b0d7d653892217a/packages/std/src/addresses.rs#L33\n\nThis address can be one of two things: 1. A valid human readable address e.g. `cosmos1...` 2. A valid Andromeda VFS path e.g. `/home/user/app/component`\n\nVFS paths can be local in the case of an app and can be done by referencing `./component` they can also contain protocols for cross chain communication. A VFS path is usually structured as so:\n\n`<protocol>://<chain (required if ibc used)>/<path>` or `ibc://cosmoshub-4/user/app/component`",
+      "type": "string"
     },
     "AssetInfoBase_for_String": {
-      "description": "Represents the type of an fungible asset\n\nEach **asset info** instance can be one of three variants:\n\n- Native SDK coins. To create an **asset info** instance of this type, provide the denomination. - CW20 tokens. To create an **asset info** instance of this type, provide the contract address. - CW1155 tokens. To create an **asset info** instance of this type, provide the contract address and token ID.",
+      "description": "Represents the type of an fungible asset.\n\nEach **asset info** instance can be one of three variants:\n\n- Native SDK coins. To create an **asset info** instance of this type, provide the denomination. - CW20 tokens. To create an **asset info** instance of this type, provide the contract address.",
       "oneOf": [
         {
           "type": "object",
@@ -103,34 +125,35 @@
             }
           },
           "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "cw1155"
-          ],
-          "properties": {
-            "cw1155": {
-              "type": "array",
-              "items": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "string"
-                }
-              ],
-              "maxItems": 2,
-              "minItems": 2
-            }
-          },
-          "additionalProperties": false
         }
       ]
     },
     "Decimal": {
       "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 (which is (2^128 - 1) / 10^18)",
       "type": "string"
+    },
+    "Module": {
+      "description": "A struct describing a token module, provided with the instantiation message this struct is used to record the info about the module and how/if it should be instantiated",
+      "type": "object",
+      "required": [
+        "address",
+        "is_mutable"
+      ],
+      "properties": {
+        "address": {
+          "$ref": "#/definitions/AndrAddr"
+        },
+        "is_mutable": {
+          "type": "boolean"
+        },
+        "name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
     },
     "RewardTokenUnchecked": {
       "type": "object",

@@ -5,29 +5,16 @@
     {
       "type": "object",
       "required": [
-        "andr_query"
-      ],
-      "properties": {
-        "andr_query": {
-          "$ref": "#/definitions/AndromedaQuery"
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "description": "All code IDs for Andromeda contracts",
-      "type": "object",
-      "required": [
         "code_id"
       ],
       "properties": {
         "code_id": {
           "type": "object",
           "required": [
-            "key"
+            "ado_type"
           ],
           "properties": {
-            "key": {
+            "ado_type": {
               "type": "string"
             }
           },
@@ -39,10 +26,10 @@
     {
       "type": "object",
       "required": [
-        "a_d_o_type"
+        "ado_type"
       ],
       "properties": {
-        "a_d_o_type": {
+        "ado_type": {
           "type": "object",
           "required": [
             "code_id"
@@ -58,185 +45,79 @@
         }
       },
       "additionalProperties": false
-    }
-  ],
-  "definitions": {
-    "AndromedaQuery": {
-      "oneOf": [
-        {
+    },
+    {
+      "type": "object",
+      "required": [
+        "ado_metadata"
+      ],
+      "properties": {
+        "ado_metadata": {
           "type": "object",
           "required": [
-            "get"
+            "ado_type"
           ],
           "properties": {
-            "get": {
-              "anyOf": [
-                {
-                  "$ref": "#/definitions/Binary"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "owner"
-          ],
-          "properties": {
-            "owner": {
-              "type": "object",
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "operators"
-          ],
-          "properties": {
-            "operators": {
-              "type": "object",
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "type"
-          ],
-          "properties": {
-            "type": {
-              "type": "object",
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "kernel_address"
-          ],
-          "properties": {
-            "kernel_address": {
-              "type": "object",
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "original_publisher"
-          ],
-          "properties": {
-            "original_publisher": {
-              "type": "object",
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "block_height_upon_creation"
-          ],
-          "properties": {
-            "block_height_upon_creation": {
-              "type": "object",
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "is_operator"
-          ],
-          "properties": {
-            "is_operator": {
-              "type": "object",
-              "required": [
-                "address"
-              ],
-              "properties": {
-                "address": {
-                  "type": "string"
-                }
-              },
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "module"
-          ],
-          "properties": {
-            "module": {
-              "type": "object",
-              "required": [
-                "id"
-              ],
-              "properties": {
-                "id": {
-                  "$ref": "#/definitions/Uint64"
-                }
-              },
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "module_ids"
-          ],
-          "properties": {
-            "module_ids": {
-              "type": "object",
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "version"
-          ],
-          "properties": {
-            "version": {
-              "type": "object",
-              "additionalProperties": false
+            "ado_type": {
+              "type": "string"
             }
           },
           "additionalProperties": false
         }
-      ]
+      },
+      "additionalProperties": false
     },
-    "Binary": {
-      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
-      "type": "string"
+    {
+      "type": "object",
+      "required": [
+        "action_fee"
+      ],
+      "properties": {
+        "action_fee": {
+          "type": "object",
+          "required": [
+            "action",
+            "ado_type"
+          ],
+          "properties": {
+            "action": {
+              "type": "string"
+            },
+            "ado_type": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
     },
-    "Uint64": {
-      "description": "A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u64` to get the value out:\n\n``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);\n\nlet b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```",
-      "type": "string"
+    {
+      "type": "object",
+      "required": [
+        "action_fee_by_code_id"
+      ],
+      "properties": {
+        "action_fee_by_code_id": {
+          "type": "object",
+          "required": [
+            "action",
+            "code_id"
+          ],
+          "properties": {
+            "action": {
+              "type": "string"
+            },
+            "code_id": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
     }
-  }
+  ]
 }
