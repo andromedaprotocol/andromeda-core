@@ -209,15 +209,14 @@ impl<'a> ADOContract<'a> {
         packet.verify_origin(&ctx.info, &ctx.deps.as_ref())?;
         let ctx = ctx.with_ctx(packet.clone());
         let msg_opt = packet.messages.pop();
-        if msg_opt.is_none() {
+        if let Some(msg_opt) = msg_opt {
+            let msg: E = from_binary(&msg_opt.message)?;
+            let response = handler(ctx, msg)?;
+            Ok(response)
+        } else {
             Err(ContractError::InvalidPacket {
                 error: Some("AMP Packet received with no messages".to_string()),
             })
-        } else {
-            let amp_msg = msg_opt.unwrap();
-            let msg: E = from_binary(&amp_msg.message)?;
-            let response = handler(ctx, msg)?;
-            Ok(response)
         }
     }
 

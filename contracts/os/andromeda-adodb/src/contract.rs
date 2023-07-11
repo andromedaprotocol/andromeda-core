@@ -136,6 +136,7 @@ pub fn update_action_fees(
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn publish(
     deps: DepsMut,
     _env: Env,

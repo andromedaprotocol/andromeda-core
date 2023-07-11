@@ -5,23 +5,12 @@ use andromeda_std::amp::messages::AMPMsg;
 use andromeda_std::error::ContractError;
 use andromeda_std::ibc::message_bridge::ExecuteMsg as BridgeExecuteMsg;
 use cosmwasm_std::{to_binary, Addr, Binary, Coin, CosmosMsg, ReplyOn, Storage, SubMsg, WasmMsg};
-use cw_storage_plus::Item;
 use cw_storage_plus::Map;
 
-pub const ADO_DB_KEY: &str = "adodb";
-pub const VFS_KEY: &str = "vfs";
 pub const IBC_BRIDGE: &str = "ibc-bridge";
 pub const WORMHOLE_BRIDGE: &str = "wormhole-bridge";
 
 pub const KERNEL_ADDRESSES: Map<&str, Addr> = Map::new("kernel_addresses");
-pub const MESSAGE_IDX: Item<u64> = Item::new("message_idx");
-
-pub fn new_message_id(storage: &mut dyn Storage) -> Result<u64, ContractError> {
-    let mut message_idx = MESSAGE_IDX.load(storage)?;
-    message_idx += 1;
-    MESSAGE_IDX.save(storage, &message_idx)?;
-    Ok(message_idx)
-}
 
 #[allow(clippy::too_many_arguments)]
 pub fn parse_path_direct(

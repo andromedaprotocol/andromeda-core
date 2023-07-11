@@ -436,10 +436,8 @@ impl MockAndromedaQuerier {
             let split = key_str.split("ado_type");
             let key = split.last();
             match key {
-                Some(key) => match key {
-                    "1" => SystemResult::Ok(ContractResult::Ok(to_binary("ADOType").unwrap())),
-                    _ => SystemResult::Ok(ContractResult::Err("Invalid Key".to_string())),
-                },
+                Some("1") => SystemResult::Ok(ContractResult::Ok(to_binary("ADOType").unwrap())),
+                Some(_) => SystemResult::Ok(ContractResult::Err("Invalid Key".to_string())),
                 None => SystemResult::Ok(ContractResult::Err("Invalid Key".to_string())),
             }
         } else if key_str.contains("publisher") {

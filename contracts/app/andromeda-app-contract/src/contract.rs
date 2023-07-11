@@ -8,6 +8,7 @@ use andromeda_app::app::{
     QueryMsg,
 };
 use andromeda_std::ado_contract::ADOContract;
+use andromeda_std::amp::VFS_KEY;
 use andromeda_std::common::context::ExecuteContext;
 use andromeda_std::os::{
     kernel::QueryMsg as KernelQueryMsg,
@@ -148,7 +149,7 @@ pub fn register_component_path(
     address: Addr,
 ) -> Result<SubMsg, ContractError> {
     let vfs_address_query = KernelQueryMsg::KeyAddress {
-        key: "vfs".to_string(),
+        key: VFS_KEY.to_string(),
     };
     let vfs_address: Addr = querier.query_wasm_smart(kernel_address, &vfs_address_query)?;
 

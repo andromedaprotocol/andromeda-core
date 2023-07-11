@@ -2,7 +2,7 @@ use andromeda_std::ado_base::hooks::{AndromedaHook, HookMsg, OnFundsTransferResp
 use andromeda_std::ado_base::InstantiateMsg;
 use andromeda_std::ado_contract::ADOContract;
 use andromeda_std::common::Funds;
-use andromeda_std::testing::mock_querier::WasmMockQuerier as AndrMockQuerier;
+use andromeda_std::testing::mock_querier::MockAndromedaQuerier;
 use cosmwasm_std::testing::mock_info;
 use cosmwasm_std::{
     from_binary, from_slice,
@@ -82,11 +82,10 @@ impl WasmMockQuerier {
             QueryRequest::Wasm(WasmQuery::Smart { contract_addr, msg }) => {
                 match contract_addr.as_str() {
                     MOCK_RATES_CONTRACT => self.handle_rates_query(msg),
-                    _MOCK_ADDRESS_LIST_CONTRACT => self.handle_addresslist_query(msg),
-                    _ => AndrMockQuerier::new(MockQuerier::new(&[])).handle_query(request),
+                    _ => MockAndromedaQuerier::default().handle_query(&self.base, request),
                 }
             }
-            _ => AndrMockQuerier::new(MockQuerier::new(&[])).handle_query(request),
+            _ => MockAndromedaQuerier::default().handle_query(&self.base, request),
         }
     }
 
@@ -135,23 +134,6 @@ impl WasmMockQuerier {
                         leftover_funds: new_funds,
                     };
                     SystemResult::Ok(ContractResult::Ok(to_binary(&Some(response)).unwrap()))
-                }
-                _ => SystemResult::Ok(ContractResult::Ok(to_binary(&None::<Response>).unwrap())),
-            },
-        }
-    }
-
-    fn handle_addresslist_query(&self, msg: &Binary) -> QuerierResult {
-        match from_binary(msg).unwrap() {
-            HookMsg::AndrHook(hook_msg) => match hook_msg {
-                AndromedaHook::OnExecute { sender, payload: _ } => {
-                    let whitelisted_addresses = ["sender"];
-                    let response: Response = Response::default();
-                    if whitelisted_addresses.contains(&sender.as_str()) {
-                        SystemResult::Ok(ContractResult::Ok(to_binary(&response).unwrap()))
-                    } else {
-                        SystemResult::Ok(ContractResult::Err("InvalidAddress".to_string()))
-                    }
                 }
                 _ => SystemResult::Ok(ContractResult::Ok(to_binary(&None::<Response>).unwrap())),
             },

@@ -1,3 +1,5 @@
+use std::fmt;
+
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{ensure, Env, MessageInfo, Response, Storage};
 use cw_storage_plus::{Index, IndexList, IndexedMap, Map, MultiIndex};
@@ -30,11 +32,13 @@ pub enum Permission {
     Whitelisted(Option<Expiration>),
 }
 
-impl Permission {
-    pub fn default() -> Self {
+impl std::default::Default for Permission {
+    fn default() -> Self {
         Self::Whitelisted(None)
     }
+}
 
+impl Permission {
     pub fn blacklisted(expiration: Option<Expiration>) -> Self {
         Self::Blacklisted(expiration)
     }
@@ -87,8 +91,16 @@ impl Permission {
         }
     }
 
-    pub fn to_string(&self) -> String {
-        match self {
+    pub fn consume_use(&mut self) {
+        if let Self::Limited { uses, .. } = self {
+            *uses -= 1
+        }
+    }
+}
+
+impl fmt::Display for Permission {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let self_as_string = match self {
             Self::Blacklisted(expiration) => {
                 if let Some(expiration) = expiration {
                     format!("blacklisted:{}", expiration)
@@ -110,14 +122,8 @@ impl Permission {
                     "whitelisted".to_string()
                 }
             }
-        }
-    }
-
-    pub fn consume_use(&mut self) {
-        match self {
-            Self::Limited { uses, .. } => *uses -= 1,
-            _ => {}
-        }
+        };
+        write!(f, "{}", self_as_string)
     }
 }
 
@@ -563,7 +569,7 @@ mod tests {
         let contract = ADOContract::default();
         contract
             .owner
-            .save(deps.as_mut().storage, &Addr::unchecked(actor.clone()))
+            .save(deps.as_mut().storage, &Addr::unchecked(actor))
             .unwrap();
 
         let res =
@@ -642,7 +648,7 @@ mod tests {
             &context.info,
             &context.env,
             &context.amp_ctx,
-            action.clone()
+            action
         )
         .unwrap());
 
@@ -654,7 +660,7 @@ mod tests {
             &context.info,
             &context.env,
             &context.amp_ctx,
-            action.clone()
+            action
         )
         .unwrap());
 
@@ -667,7 +673,7 @@ mod tests {
             &context.info,
             &context.env,
             &context.amp_ctx,
-            action.clone()
+            action
         )
         .unwrap());
 
@@ -679,7 +685,7 @@ mod tests {
             &context.info,
             &context.env,
             &context.amp_ctx,
-            action.clone()
+            action
         )
         .unwrap());
 
@@ -692,7 +698,7 @@ mod tests {
             &context.info,
             &context.env,
             &context.amp_ctx,
-            action.clone()
+            action
         )
         .unwrap());
 
@@ -705,7 +711,7 @@ mod tests {
             &context.info,
             &context.env,
             &context.amp_ctx,
-            action.clone()
+            action
         )
         .unwrap());
 
@@ -718,7 +724,7 @@ mod tests {
             &context.info,
             &context.env,
             &context.amp_ctx,
-            action.clone()
+            action
         )
         .unwrap());
 
@@ -731,7 +737,7 @@ mod tests {
             &context.info,
             &context.env,
             &context.amp_ctx,
-            action.clone()
+            action
         )
         .unwrap());
 
@@ -743,7 +749,7 @@ mod tests {
             &context.info,
             &context.env,
             &context.amp_ctx,
-            action.clone()
+            action
         )
         .unwrap());
     }
@@ -769,7 +775,7 @@ mod tests {
             &context.info,
             &context.env,
             &context.amp_ctx,
-            action.clone()
+            action
         )
         .unwrap());
 
@@ -782,7 +788,7 @@ mod tests {
             &context.info,
             &context.env,
             &context.amp_ctx,
-            action.clone()
+            action
         )
         .unwrap());
 
@@ -794,7 +800,7 @@ mod tests {
             &context.info,
             &context.env,
             &context.amp_ctx,
-            action.clone()
+            action
         )
         .unwrap());
 
@@ -807,7 +813,7 @@ mod tests {
             &context.info,
             &context.env,
             &context.amp_ctx,
-            action.clone()
+            action
         )
         .unwrap());
 
@@ -820,7 +826,7 @@ mod tests {
             &context.info,
             &context.env,
             &context.amp_ctx,
-            action.clone()
+            action
         )
         .unwrap());
 
@@ -832,7 +838,7 @@ mod tests {
             &context.info,
             &context.env,
             &context.amp_ctx,
-            action.clone()
+            action
         )
         .unwrap());
     }

@@ -2,6 +2,7 @@ use andromeda_std::ado_base::InstantiateMsg as BaseInstantiateMsg;
 use andromeda_std::ado_contract::ADOContract;
 use andromeda_std::amp::addresses::AndrAddr;
 use andromeda_std::amp::messages::{AMPMsg, AMPMsgConfig, AMPPkt};
+use andromeda_std::amp::ADO_DB_KEY;
 use andromeda_std::common::encode_binary;
 use andromeda_std::error::ContractError;
 use andromeda_std::ibc::message_bridge::ExecuteMsg as IBCBridgeExecMsg;
@@ -14,9 +15,7 @@ use cosmwasm_std::{
 use cw2::{get_contract_version, set_contract_version};
 use semver::Version;
 
-use crate::state::{
-    parse_path_direct, parse_path_direct_no_ctx, ADO_DB_KEY, IBC_BRIDGE, KERNEL_ADDRESSES,
-};
+use crate::state::{parse_path_direct, parse_path_direct_no_ctx, IBC_BRIDGE, KERNEL_ADDRESSES};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-kernel";
@@ -253,34 +252,29 @@ pub fn handle_amp_packet(
                 "ibc" => {
                     let bridge_addr =
                         KERNEL_ADDRESSES.may_load(execute_env.deps.storage, IBC_BRIDGE)?;
-                    if bridge_addr.is_none() {
-                        return Err(ContractError::InvalidPacket {
-                            error: Some("IBC not enabled in kernel".to_string()),
-                        });
-                    } else {
-                        let bridge_addr = bridge_addr.unwrap();
-                        let chain = message.recipient.get_chain();
-                        if chain.is_none() {
+                    if let Some(bridge_addr) = bridge_addr {
+                        if let Some(chain) = message.recipient.get_chain() {
+                            let msg = IBCBridgeExecMsg::SendMessage {
+                                chain: chain.to_string(),
+                                recipient: AndrAddr::from_string(message.recipient.get_raw_path()),
+                                message: message.message.clone(),
+                            };
+                            let cosmos_msg =
+                                wasm_execute(bridge_addr.clone(), &msg, message.funds.clone())?;
+                            res = res
+                                .add_submessage(SubMsg::reply_always(cosmos_msg, 1))
+                                .add_attribute("action", "handle_amp_packet")
+                                .add_attribute("recipient", message.recipient)
+                                .add_attribute("message", message.message.to_string());
+                        } else {
                             return Err(ContractError::InvalidPacket {
                                 error: Some("Chain not provided".to_string()),
                             });
                         }
-                        let msg = IBCBridgeExecMsg::SendMessage {
-                            chain: chain.unwrap().to_string(),
-                            recipient: AndrAddr::from_string(message.recipient.get_raw_path()),
-                            message: message.message.clone(),
-                        };
-                        let cosmos_msg =
-                            wasm_execute(bridge_addr.clone(), &msg, message.funds.clone())?;
-                        res = res
-                            .add_submessage(SubMsg::reply_always(cosmos_msg, 1))
-                            .add_attributes(vec![
-                                attr("sub_action", "handle_ibc_amp"),
-                                attr("chain", chain.unwrap()),
-                                attr("recipient", message.recipient.get_raw_path()),
-                                attr("bridge_addr", bridge_addr),
-                                attr("message_funds", message.funds[0].to_string()),
-                            ]);
+                    } else {
+                        return Err(ContractError::InvalidPacket {
+                            error: Some("IBC not enabled in kernel".to_string()),
+                        });
                     }
                 }
                 &_ => panic!("Invalid protocol"),

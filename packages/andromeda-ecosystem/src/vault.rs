@@ -71,6 +71,7 @@ impl fmt::Display for StrategyType {
 }
 
 #[cw_serde]
+#[derive(Default)]
 pub struct DepositMsg {
     pub strategy: Option<StrategyType>,
     pub amount: Option<Coin>,
@@ -78,14 +79,6 @@ pub struct DepositMsg {
 }
 
 impl DepositMsg {
-    pub fn default() -> DepositMsg {
-        DepositMsg {
-            strategy: None,
-            amount: None,
-            deposit_msg: None,
-        }
-    }
-
     pub fn to_binary(&self) -> Result<Binary, ContractError> {
         Ok(to_binary(self)?)
     }

@@ -442,7 +442,7 @@ fn test_cw20_deposit() {
     let recipient = AndrAddr::from_string("recipient");
 
     // Send 0 amount
-    let msg = cw20_deposit_msg(depositee.clone(), Uint128::zero(), None);
+    let msg = cw20_deposit_msg(depositee, Uint128::zero(), None);
 
     let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap_err();
     assert_eq!(
@@ -453,7 +453,7 @@ fn test_cw20_deposit() {
     );
 
     // Send valid amount direct deposit
-    let msg = cw20_deposit_msg(depositee.clone(), Uint128::from(10u128), None);
+    let msg = cw20_deposit_msg(depositee, Uint128::from(10u128), None);
 
     let res = execute(deps.as_mut(), env.clone(), info.clone(), msg);
     assert!(res.is_ok());
@@ -468,11 +468,7 @@ fn test_cw20_deposit() {
     assert_eq!(balance, Uint128::from(10u128));
 
     // Send valid amount deposit on behalf
-    let msg = cw20_deposit_msg(
-        depositee.clone(),
-        Uint128::from(10u128),
-        Some(recipient.clone()),
-    );
+    let msg = cw20_deposit_msg(depositee, Uint128::from(10u128), Some(recipient.clone()));
 
     let res = execute(deps.as_mut(), env, info, msg);
     assert!(res.is_ok());

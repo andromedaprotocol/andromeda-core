@@ -219,6 +219,7 @@ fn generate_ibc_denom(channel: String, denom: String) -> String {
     format!("ibc/{}", digest(path).to_uppercase())
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn generate_transfer_message(
     recipient: AndrAddr,
     message: Binary,

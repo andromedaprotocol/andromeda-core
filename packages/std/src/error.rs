@@ -595,13 +595,13 @@ impl From<Cw20ContractError> for ContractError {
             Cw20ContractError::Unauthorized {} => ContractError::Unauthorized {},
             Cw20ContractError::CannotExceedCap {} => ContractError::CannotExceedCap {},
             Cw20ContractError::InvalidPngHeader {} => ContractError::InvalidPngHeader {},
-            Cw20ContractError::InvalidZeroAmount {} => ContractError::InvalidZeroAmount {},
             Cw20ContractError::InvalidXmlPreamble {} => ContractError::InvalidXmlPreamble {},
             Cw20ContractError::CannotSetOwnAccount {} => ContractError::CannotSetOwnAccount {},
             Cw20ContractError::DuplicateInitialBalanceAddresses {} => {
                 ContractError::DuplicateInitialBalanceAddresses {}
             }
             Cw20ContractError::InvalidExpiration {} => ContractError::InvalidExpiration {},
+            _ => panic!("Unsupported cw20 error: {:?}", err),
         }
     }
 }
