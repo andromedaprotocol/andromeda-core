@@ -6,9 +6,7 @@ use cosmwasm_std::{
 
 use andromeda_std::error::ContractError;
 use andromeda_std::{ado_base::modules::Module, testing::mock_querier::FAKE_VFS_PATH};
-use andromeda_std::{
-    ado_contract::ADOContract, amp::addresses::AndrAddr, testing::mock_querier::MOCK_APP_CONTRACT,
-};
+use andromeda_std::{ado_contract::ADOContract, amp::addresses::AndrAddr};
 
 use crate::contract::*;
 use andromeda_non_fungible_tokens::cw721::{

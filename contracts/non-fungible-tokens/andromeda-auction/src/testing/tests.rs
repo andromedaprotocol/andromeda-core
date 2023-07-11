@@ -2,8 +2,7 @@ use crate::{
     contract::{execute, instantiate, query},
     state::{auction_infos, TOKEN_AUCTION_STATE},
     testing::mock_querier::{
-        mock_dependencies_custom, MOCK_RATES_RECIPIENT, MOCK_TOKEN_ADDR, MOCK_TOKEN_OWNER,
-        MOCK_UNCLAIMED_TOKEN,
+        mock_dependencies_custom, MOCK_TOKEN_ADDR, MOCK_TOKEN_OWNER, MOCK_UNCLAIMED_TOKEN,
     },
 };
 use andromeda_non_fungible_tokens::{
@@ -15,10 +14,9 @@ use andromeda_non_fungible_tokens::{
 };
 use andromeda_std::{
     ado_base::modules::Module,
-    amp::addresses::AndrAddr,
     common::{encode_binary, expiration::MILLISECONDS_TO_NANOSECONDS_RATIO},
     error::ContractError,
-    testing::mock_querier::{MOCK_KERNEL_CONTRACT, MOCK_RATES_CONTRACT},
+    testing::mock_querier::MOCK_KERNEL_CONTRACT,
 };
 use cosmwasm_std::{
     attr, coin, coins, from_binary,

@@ -654,15 +654,11 @@ fn query_is_claimed(
     let token_auction_state =
         get_existing_token_auction_state(deps.storage, &token_id, &token_address)?;
 
-    let token_owner = query_owner_of(
-        deps.querier,
-        token_auction_state.token_address.clone(),
-        token_id.clone(),
-    )?
-    .owner;
+    let token_owner =
+        query_owner_of(deps.querier, token_auction_state.token_address, token_id)?.owner;
 
     // if token owner isn't the contract, it means that it has been claimed. If they're equal it means that it hasn't been claimed and will return false
-    return Ok(token_owner != env.contract.address);
+    Ok(token_owner != env.contract.address)
 }
 
 fn query_is_closed(

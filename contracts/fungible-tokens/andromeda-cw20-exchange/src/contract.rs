@@ -3,9 +3,9 @@ use andromeda_fungible_tokens::cw20_exchange::{
     SaleResponse, TokenAddressResponse,
 };
 use andromeda_std::{
-    ado_base::{hooks::AndromedaHook, InstantiateMsg as BaseInstantiateMsg},
+    ado_base::InstantiateMsg as BaseInstantiateMsg,
     ado_contract::ADOContract,
-    common::{context::ExecuteContext, encode_binary},
+    common::context::ExecuteContext,
     error::{from_semver, ContractError},
 };
 use cosmwasm_std::{
@@ -47,7 +47,7 @@ pub fn instantiate(
         deps.storage,
         env,
         deps.api,
-        info.clone(),
+        info,
         BaseInstantiateMsg {
             ado_type: "cw20-exchange".to_string(),
             ado_version: CONTRACT_VERSION.to_string(),

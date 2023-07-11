@@ -4,7 +4,7 @@ use andromeda_std::{
 };
 use cosmwasm_std::{
     coin, coins, from_binary,
-    testing::{mock_dependencies, mock_env, mock_info, MockQuerier, MOCK_CONTRACT_ADDR},
+    testing::{mock_env, mock_info, MockQuerier, MOCK_CONTRACT_ADDR},
     Addr, BankMsg, Coin, CosmosMsg, Decimal, DepsMut, DistributionMsg, FullDelegation, GovMsg,
     Response, StakingMsg, Uint128, Validator, VoteOption,
 };

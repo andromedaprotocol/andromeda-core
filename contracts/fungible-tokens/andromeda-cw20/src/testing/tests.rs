@@ -1,5 +1,5 @@
 use crate::contract::{execute, instantiate, query};
-use crate::testing::mock_querier::{mock_dependencies_custom, MOCK_RATES_CONTRACT};
+use crate::testing::mock_querier::mock_dependencies_custom;
 use andromeda_fungible_tokens::cw20::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use andromeda_std::testing::mock_querier::MOCK_ADDRESS_LIST_CONTRACT;
 use andromeda_std::{
@@ -8,7 +8,7 @@ use andromeda_std::{
 };
 use cosmwasm_std::{
     testing::{mock_env, mock_info},
-    to_binary, Addr, DepsMut, Event, Response, StdError, Uint128,
+    to_binary, Addr, DepsMut, Response, StdError, Uint128,
 };
 use cw20::{Cw20Coin, Cw20ReceiveMsg};
 use cw20_base::state::BALANCES;

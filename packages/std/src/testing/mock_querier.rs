@@ -121,13 +121,8 @@ impl WasmMockQuerier {
     }
 }
 
+#[derive(Default)]
 pub struct MockAndromedaQuerier {}
-
-impl Default for MockAndromedaQuerier {
-    fn default() -> Self {
-        MockAndromedaQuerier {}
-    }
-}
 
 impl MockAndromedaQuerier {
     pub fn handle_query(

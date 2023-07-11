@@ -3,16 +3,14 @@ use andromeda_std::{
     amp::{
         messages::{AMPMsg, AMPPkt},
         recipient::Recipient,
-        AndrAddr,
     },
     error::ContractError,
-    testing::mock_querier::MOCK_ADDRESS_LIST_CONTRACT,
 };
 
 use cosmwasm_std::{
-    attr, coin, coins, from_binary,
+    attr, from_binary,
     testing::{mock_env, mock_info, MOCK_CONTRACT_ADDR},
-    to_binary, BankMsg, Coin, CosmosMsg, Decimal, DepsMut, Response, StdError, SubMsg, Timestamp,
+    to_binary, BankMsg, Coin, CosmosMsg, Decimal, DepsMut, Response, SubMsg, Timestamp,
 };
 use cw_utils::Expiration;
 pub const OWNER: &str = "creator";
@@ -148,8 +146,8 @@ fn test_execute_send() {
     let recip_address2 = "address2".to_string();
     let recip_percent2 = 20; // 20%
 
-    let recip1 = Recipient::from_string(recip_address1.clone());
-    let recip2 = Recipient::from_string(recip_address2.clone());
+    let recip1 = Recipient::from_string(recip_address1);
+    let recip2 = Recipient::from_string(recip_address2);
 
     let recipient = vec![
         AddressPercent {
@@ -218,8 +216,8 @@ fn test_execute_send_ado_recipient() {
     let recip_address2 = "address2".to_string();
     let recip_percent2 = 20; // 20%
 
-    let recip1 = Recipient::from_string(recip_address1.clone());
-    let recip2 = Recipient::from_string(recip_address2.clone());
+    let recip1 = Recipient::from_string(recip_address1);
+    let recip2 = Recipient::from_string(recip_address2);
 
     let recipient = vec![
         AddressPercent {
