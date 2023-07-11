@@ -95,11 +95,13 @@ pub enum QueryMsg {
         token_address: String,
     },
 
-    // #[returns(bool)]
-    // IsClosed {
-    //     token_id: String,
-    //     token_address: String,
-    // },
+    /// Returns true only if the auction has been cancelled, the token has been claimed, or the end time has expired
+    #[returns(bool)]
+    IsClosed {
+        token_id: String,
+        token_address: String,
+    },
+
     #[returns(bool)]
     IsClaimed {
         token_id: String,
