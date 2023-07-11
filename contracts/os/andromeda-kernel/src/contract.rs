@@ -297,13 +297,36 @@ pub fn handle_amp_packet(
                         error: Some("No message or funds supplied".to_string())
                     }
                 );
+
                 // The message is a bank message
                 let sub_msg = BankMsg::Send {
                     to_address: recipient_addr.to_string(),
                     amount: message.funds.clone(),
                 };
+
+                let origin = packet.ctx.get_origin();
+                let previous_sender = execute_env.env.contract.address.to_string();
+
+                let amp_msg = AMPMsg::new(
+                    recipient_addr.clone(),
+                    to_binary(&sub_msg)?,
+                    Some(vec![message.funds[0].clone()]),
+                );
+
+                let new_packet = AMPPkt::new(origin, previous_sender, vec![amp_msg]);
+
+                let msg = to_binary(&ExecuteMsg::AMPReceive(new_packet))?;
+
                 res = res
-                    .add_submessage(SubMsg::reply_on_error(CosmosMsg::Bank(sub_msg), 1))
+                    .add_submessage(SubMsg::reply_on_error(
+                        CosmosMsg::Wasm(WasmMsg::Execute {
+                            contract_addr: recipient_addr.to_string(),
+                            msg,
+                            funds: vec![message.funds[0].clone()],
+                        }),
+                        1,
+                    ))
+                    // .add_submessage(SubMsg::reply_on_error(CosmosMsg::Bank(sub_msg), 1))
                     .add_attributes(vec![
                         attr("recipient", recipient_addr),
                         attr("bank_send_amount", message.funds[0].to_string()),
@@ -312,11 +335,33 @@ pub fn handle_amp_packet(
                 let sub_msg = WasmMsg::Execute {
                     contract_addr: recipient_addr.to_string(),
                     msg,
-                    funds: message.funds,
+                    funds: message.funds.clone(),
                 };
+
+                let origin = packet.ctx.get_origin();
+                let previous_sender = execute_env.env.contract.address.to_string();
+
+                let amp_msg = AMPMsg::new(
+                    recipient_addr.clone(),
+                    to_binary(&sub_msg)?,
+                    Some(vec![message.funds[0].clone()]),
+                );
+
+                let new_packet = AMPPkt::new(origin, previous_sender, vec![amp_msg]);
+
+                let msg = to_binary(&ExecuteMsg::AMPReceive(new_packet))?;
+
                 // TODO: ADD ID
                 res = res
-                    .add_submessage(SubMsg::reply_on_error(CosmosMsg::Wasm(sub_msg), 1))
+                    .add_submessage(SubMsg::reply_on_error(
+                        CosmosMsg::Wasm(WasmMsg::Execute {
+                            contract_addr: recipient_addr.to_string(),
+                            msg,
+                            funds: vec![message.funds[0].clone()],
+                        }),
+                        1,
+                    ))
+                    // .add_submessage(SubMsg::reply_on_error(CosmosMsg::Wasm(sub_msg), 1))
                     .add_attributes(vec![attr("recipient", recipient_addr)]);
             }
         }
