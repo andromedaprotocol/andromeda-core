@@ -56,12 +56,8 @@ pub fn instantiate(
             owner: msg.owner,
         },
     )?;
-    let modules_resp =
-        contract.register_modules(info.sender.as_str(), deps.storage, msg.modules)?;
 
-    Ok(resp
-        .add_submessages(modules_resp.messages)
-        .add_attributes(modules_resp.attributes))
+    Ok(resp)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -82,16 +78,6 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
-    let contract = ADOContract::default();
-    // };
-
-    contract.module_hook::<Response>(
-        &deps.as_ref(),
-        AndromedaHook::OnExecute {
-            sender: info.sender.to_string(),
-            payload: encode_binary(&msg)?,
-        },
-    )?;
     let ctx = ExecuteContext::new(deps, info, env);
 
     match msg {
@@ -103,16 +89,6 @@ pub fn execute(
 }
 
 pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
-    let contract = ADOContract::default();
-    // };
-
-    contract.module_hook::<Response>(
-        &ctx.deps.as_ref(),
-        AndromedaHook::OnExecute {
-            sender: ctx.info.sender.to_string(),
-            payload: encode_binary(&msg)?,
-        },
-    )?;
     match msg {
         ExecuteMsg::CancelSale { asset } => execute_cancel_sale(ctx, asset),
         ExecuteMsg::Purchase { recipient } => execute_purchase_native(ctx, recipient),
