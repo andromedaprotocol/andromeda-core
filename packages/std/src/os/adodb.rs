@@ -78,7 +78,7 @@ pub struct ADOMetadata {
 #[derive(QueryResponses)]
 pub enum QueryMsg {
     #[returns(u64)]
-    CodeId { ado_type: String },
+    CodeId { key: String },
     #[returns(Option<String>)]
     #[serde(rename = "ado_type")]
     ADOType { code_id: u64 },
