@@ -111,6 +111,8 @@ pub fn execute(
 }
 
 pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+    let contract = ADOContract::default();
+
     if !matches!(msg, ExecuteMsg::UpdateAppContract { .. })
         && !matches!(msg, ExecuteMsg::UpdateOwner { .. })
     {

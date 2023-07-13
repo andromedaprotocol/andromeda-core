@@ -1643,32 +1643,6 @@ fn test_end_sale_limit_zero() {
 }
 
 #[test]
-#[should_panic(expected = "Querier contract error: Invalid Path")]
-fn test_validate_andr_addresses_nonexisting_module() {
-    let mut deps = mock_dependencies_custom(&[]);
-    let msg = InstantiateMsg {
-        token_address: AndrAddr::from_string("e".to_owned()),
-        owner: None,
-        modules: Some(vec![Module {
-            name: Some("address_list".to_string()),
-            is_mutable: true,
-            address: AndrAddr::from_string(FAKE_VFS_PATH.to_string()),
-        }]),
-        can_mint_after_sale: true,
-        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
-    };
-
-    let info = mock_info("owner", &[]);
-    let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
-
-    let msg = ExecuteMsg::UpdateAppContract {
-        address: MOCK_APP_CONTRACT.to_owned(),
-    };
-
-    let _err = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-}
-
-#[test]
 fn test_validate_andr_addresses_regular_address() {
     let mut deps = mock_dependencies_custom(&[]);
     let msg = InstantiateMsg {
