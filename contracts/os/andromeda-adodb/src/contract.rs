@@ -7,11 +7,11 @@ use andromeda_std::ado_contract::ADOContract;
 use andromeda_std::common::encode_binary;
 use andromeda_std::error::{from_semver, ContractError};
 use andromeda_std::os::adodb::{
-    ADOMetadata, ADOVersion, ActionFee, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
+    ADOMetadata, ADOVersion, ActionFee, AndrQuery, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
 };
 use cosmwasm_std::{
-    attr, ensure, entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError,
-    Storage,
+    attr, ensure, entry_point, from_binary, to_binary, Binary, Deps, DepsMut, Env, MessageInfo,
+    Reply, Response, StdError, Storage,
 };
 use cw2::{get_contract_version, set_contract_version};
 use semver::Version;
@@ -329,6 +329,23 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractErr
         QueryMsg::ActionFeeByCodeId { code_id, action } => {
             encode_binary(&query_action_fee_by_code_id(deps, code_id, action)?)
         }
+        QueryMsg::AndrQuery(query) => temp_query_andr(deps, query),
+    }
+}
+
+fn temp_query_andr(deps: Deps, query: AndrQuery) -> Result<Binary, ContractError> {
+    match query {
+        AndrQuery::Get(key) => temp_query_get(deps, key),
+    }
+}
+
+fn temp_query_get(deps: Deps, msg: Option<Binary>) -> Result<Binary, ContractError> {
+    if let Some(msg) = msg {
+        let ado_key: String = from_binary(&msg)?;
+
+        Ok(to_binary(&query_code_id(deps, ado_key)?)?)
+    } else {
+        Err(ContractError::InvalidQuery {})
     }
 }
 
