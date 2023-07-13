@@ -66,7 +66,6 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
-    // };
 
     contract.module_hook::<Response>(
         &deps.as_ref(),
@@ -86,8 +85,6 @@ pub fn execute(
 }
 
 pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
-    // };
-
     match msg {
         ExecuteMsg::Transfer { recipient, amount } => execute_transfer(ctx, recipient, amount),
         ExecuteMsg::Burn { amount } => execute_burn(ctx, amount),
@@ -97,8 +94,14 @@ pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
             msg,
         } => execute_send(ctx, contract, amount, msg),
         ExecuteMsg::Mint { recipient, amount } => execute_mint(ctx, recipient, amount),
+        _ => ADOContract::default().execute_with_fallback(ctx, msg, execute_cw20_ctx),
+    }
+}
 
-        _ => Ok(execute_cw20(ctx.deps, ctx.env, ctx.info, msg.into())?),
+fn execute_cw20_ctx(ctx: ExecuteContext, msg: Cw20ExecuteMsg) -> Result<Response, ContractError> {
+    match execute_cw20(ctx.deps, ctx.env, ctx.info, msg) {
+        Err(e) => Err(e.into()),
+        Ok(resp) => Ok(resp),
     }
 }
 

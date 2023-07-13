@@ -692,21 +692,20 @@ fn test_withdraw_proceeds() {
         res
     );
 
-    //TODO make this actually remove the withdrawn funds
     // Remove withdrawn funds.
     deps.querier
         .base
         .update_balance(env.contract.address.clone(), vec![]);
 
     // try to withdraw again
-    let _res = execute(deps.as_mut(), env, info, msg).unwrap();
+    let res = execute(deps.as_mut(), env, info, msg);
 
-    // assert_eq!(
-    //     ContractError::InvalidWithdrawal {
-    //         msg: Some("Already withdrew funds".to_string()),
-    //     },
-    //     res.unwrap_err()
-    // );
+    assert_eq!(
+        ContractError::InvalidWithdrawal {
+            msg: Some("Already withdrew funds".to_string()),
+        },
+        res.unwrap_err()
+    );
 }
 
 #[test]

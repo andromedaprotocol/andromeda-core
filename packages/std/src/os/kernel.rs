@@ -42,26 +42,3 @@ pub enum QueryMsg {
     #[returns(bool)]
     VerifyAddress { address: String },
 }
-
-// turns ibc://juno/path into /path
-pub fn adjust_recipient_with_protocol(recipient: &str) -> String {
-    let mut count_slashes = 0;
-    let mut last_slash_index = 0;
-
-    // Iterate through each character in the input string
-    for (i, c) in recipient.chars().enumerate() {
-        // If the current character is a slash
-        if c == '/' {
-            count_slashes += 1;
-            last_slash_index = i;
-
-            // If we've found the third slash, exit the loop
-            if count_slashes == 3 {
-                break;
-            }
-        }
-    }
-
-    // Return the substring starting from the last slash index
-    recipient[last_slash_index..].to_owned()
-}
