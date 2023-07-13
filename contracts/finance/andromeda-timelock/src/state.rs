@@ -50,7 +50,7 @@ pub fn get_keys_for_recipient(
 }
 
 pub fn get_key(owner: &str, recipient: &str) -> Vec<u8> {
-    vec![owner.as_bytes(), recipient.as_bytes()].concat()
+    [owner.as_bytes(), recipient.as_bytes()].concat()
 }
 
 #[cfg(test)]

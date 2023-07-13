@@ -19,7 +19,6 @@ use andromeda_std::{
     amp::{addresses::AndrAddr, recipient::Recipient},
     common::encode_binary,
     error::ContractError,
-    testing::mock_querier::FAKE_VFS_PATH,
 };
 use cosmwasm_std::{
     coin, coins, from_binary,

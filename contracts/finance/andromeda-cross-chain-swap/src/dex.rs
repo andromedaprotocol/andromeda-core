@@ -17,7 +17,7 @@ pub(crate) fn parse_swap_reply<T: DeserializeOwned>(msg: Reply) -> Result<T, Con
     let SubMsgResult::Ok(SubMsgResponse { data: Some(b), .. }) = msg.result else {
         return Err(ContractError::Std(StdError::generic_err(
             "failed to parse swaprouter response",
-        )))
+        )));
     };
 
     let parsed = cw_utils::parse_execute_response_data(&b).map_err(|_e| {

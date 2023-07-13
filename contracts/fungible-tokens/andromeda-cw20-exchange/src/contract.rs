@@ -223,7 +223,7 @@ pub fn execute_purchase(
     let mut resp = Response::default();
 
     let Some(mut sale) = SALE.may_load(deps.storage, &asset_sent.to_string())? else {
-        return Err(ContractError::NoOngoingSale {  })
+        return Err(ContractError::NoOngoingSale {});
     };
 
     let purchased = amount_sent.checked_div(sale.exchange_rate).unwrap();
@@ -322,7 +322,7 @@ pub fn execute_cancel_sale(
     );
 
     let Some(sale) = SALE.may_load(deps.storage, &asset.to_string())? else {
-        return Err(ContractError::NoOngoingSale {  })
+        return Err(ContractError::NoOngoingSale {});
     };
 
     let mut resp = Response::default();
