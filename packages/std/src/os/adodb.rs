@@ -94,6 +94,7 @@ pub enum QueryMsg {
     ActionFee { ado_type: String, action: String },
     #[returns(Option<ActionFee>)]
     ActionFeeByCodeId { code_id: u64, action: String },
+    // TODO: REMOVE
     #[returns(u64)]
     AndrQuery(AndrQuery),
 }

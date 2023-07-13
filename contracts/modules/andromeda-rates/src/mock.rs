@@ -10,9 +10,14 @@ pub fn mock_andromeda_rates() -> Box<dyn Contract<Empty>> {
     Box::new(contract)
 }
 
-pub fn mock_rates_instantiate_msg(rates: Vec<RateInfo>) -> InstantiateMsg {
+pub fn mock_rates_instantiate_msg(
+    rates: Vec<RateInfo>,
+    kernel_address: impl Into<String>,
+    owner: Option<String>,
+) -> InstantiateMsg {
     InstantiateMsg {
         rates,
-        kernel_address: None,
+        kernel_address: kernel_address.into(),
+        owner,
     }
 }

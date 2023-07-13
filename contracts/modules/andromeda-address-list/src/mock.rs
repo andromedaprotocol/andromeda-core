@@ -10,10 +10,15 @@ pub fn mock_andromeda_address_list() -> Box<dyn Contract<Empty>> {
     Box::new(contract)
 }
 
-pub fn mock_address_list_instantiate_msg(is_inclusive: bool) -> InstantiateMsg {
+pub fn mock_address_list_instantiate_msg(
+    is_inclusive: bool,
+    kernel_address: impl Into<String>,
+    owner: Option<String>,
+) -> InstantiateMsg {
     InstantiateMsg {
         is_inclusive,
-        kernel_address: None,
+        kernel_address: kernel_address.into(),
+        owner,
     }
 }
 

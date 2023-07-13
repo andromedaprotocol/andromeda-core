@@ -622,9 +622,7 @@ impl From<Cw721ContractError> for ContractError {
             Cw721ContractError::ApprovalNotFound { spender } => {
                 ContractError::ApprovalNotFound { spender }
             }
-            Cw721ContractError::WrongMigrateVersion(_) => ContractError::CannotMigrate {
-                previous_contract: "".to_string(),
-            },
+            Cw721ContractError::Version(_) => ContractError::InvalidADOVersion { msg: None },
         }
     }
 }

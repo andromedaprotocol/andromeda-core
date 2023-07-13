@@ -1,7 +1,10 @@
 #![cfg(all(not(target_arch = "wasm32"), feature = "testing"))]
 
 use crate::contract::{execute, instantiate, query, reply};
-use andromeda_std::os::kernel::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use andromeda_std::{
+    amp::AndrAddr,
+    os::kernel::{ExecuteMsg, InstantiateMsg, QueryMsg},
+};
 use cosmwasm_std::{Binary, Empty, ReplyOn};
 use cw_multi_test::{Contract, ContractWrapper};
 
@@ -10,8 +13,8 @@ pub fn mock_andromeda_kernel() -> Box<dyn Contract<Empty>> {
     Box::new(contract)
 }
 
-pub fn mock_kernel_instantiate_message() -> InstantiateMsg {
-    InstantiateMsg {}
+pub fn mock_kernel_instantiate_message(owner: Option<String>) -> InstantiateMsg {
+    InstantiateMsg { owner }
 }
 
 pub fn mock_upsert_key_address(key: impl Into<String>, value: impl Into<String>) -> ExecuteMsg {
@@ -29,7 +32,7 @@ pub fn mock_amp_direct(
     gas_limit: Option<u64>,
 ) -> ExecuteMsg {
     ExecuteMsg::AMPDirect {
-        recipient: recipient.into(),
+        recipient: AndrAddr::from_string(recipient.into()),
         message,
         reply_on,
         exit_at_error,

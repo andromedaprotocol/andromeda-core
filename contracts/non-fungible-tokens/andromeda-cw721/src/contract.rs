@@ -134,13 +134,15 @@ fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Cont
         );
     }
 
-    contract.module_hook::<Response>(
-        &ctx.deps.as_ref(),
-        AndromedaHook::OnExecute {
-            sender: ctx.info.sender.to_string(),
-            payload: encode_binary(&msg)?,
-        },
-    )?;
+    if !matches!(msg, ExecuteMsg::UpdateAppContract { .. }) {
+        contract.module_hook::<Response>(
+            &ctx.deps.as_ref(),
+            AndromedaHook::OnExecute {
+                sender: ctx.info.sender.to_string(),
+                payload: encode_binary(&msg)?,
+            },
+        )?;
+    }
 
     let res = match msg {
         ExecuteMsg::Mint {

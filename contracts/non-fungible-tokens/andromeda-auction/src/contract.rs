@@ -66,16 +66,6 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
-    let contract = ADOContract::default();
-    // };
-
-    contract.module_hook::<Response>(
-        &deps.as_ref(),
-        AndromedaHook::OnExecute {
-            sender: info.sender.to_string(),
-            payload: encode_binary(&msg)?,
-        },
-    )?;
     let ctx = ExecuteContext::new(deps, info, env);
 
     match msg {
@@ -88,15 +78,18 @@ pub fn execute(
 
 pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
-    // };
 
-    contract.module_hook::<Response>(
-        &ctx.deps.as_ref(),
-        AndromedaHook::OnExecute {
-            sender: ctx.info.sender.to_string(),
-            payload: encode_binary(&msg)?,
-        },
-    )?;
+    if !matches!(msg, ExecuteMsg::UpdateAppContract { .. })
+        && !matches!(msg, ExecuteMsg::UpdateOwner { .. })
+    {
+        contract.module_hook::<Response>(
+            &ctx.deps.as_ref(),
+            AndromedaHook::OnExecute {
+                sender: ctx.info.sender.to_string(),
+                payload: encode_binary(&msg)?,
+            },
+        )?;
+    }
     match msg {
         ExecuteMsg::ReceiveNft(msg) => handle_receive_cw721(ctx, msg),
         ExecuteMsg::UpdateAuction {

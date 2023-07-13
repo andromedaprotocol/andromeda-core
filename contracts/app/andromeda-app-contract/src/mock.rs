@@ -14,11 +14,13 @@ pub fn mock_app_instantiate_msg(
     name: impl Into<String>,
     app_components: Vec<AppComponent>,
     kernel_address: impl Into<String>,
+    owner: Option<String>,
 ) -> InstantiateMsg {
     InstantiateMsg {
         app_components,
         name: name.into(),
         kernel_address: kernel_address.into(),
+        owner,
     }
 }
 

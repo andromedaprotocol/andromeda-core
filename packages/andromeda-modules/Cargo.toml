@@ -17,7 +17,7 @@ cosmwasm-schema = { workspace = true }
 serde = { version = "1.0.127", default-features = false, features = ["derive"] }
 cw-utils = { workspace = true }
 cw721 = { workspace = true }
-cw721-base = { version = "0.17.0", features=["library"]}
+cw721-base = { workspace = true }
 
 andromeda-std = { workspace = true, features=["module_hooks"] }
 

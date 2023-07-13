@@ -97,15 +97,19 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
-    // };
 
-    contract.module_hook::<Response>(
-        &deps.as_ref(),
-        AndromedaHook::OnExecute {
-            sender: info.sender.to_string(),
-            payload: encode_binary(&msg)?,
-        },
-    )?;
+    if !matches!(msg, ExecuteMsg::UpdateAppContract { .. })
+        && !matches!(msg, ExecuteMsg::UpdateOwner { .. })
+    {
+        contract.module_hook::<Response>(
+            &deps.as_ref(),
+            AndromedaHook::OnExecute {
+                sender: info.sender.to_string(),
+                payload: encode_binary(&msg)?,
+            },
+        )?;
+    }
+
     let ctx = ExecuteContext::new(deps, info, env);
 
     match msg {
@@ -117,16 +121,6 @@ pub fn execute(
 }
 
 pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
-    let contract = ADOContract::default();
-    // };
-
-    contract.module_hook::<Response>(
-        &ctx.deps.as_ref(),
-        AndromedaHook::OnExecute {
-            sender: ctx.info.sender.to_string(),
-            payload: encode_binary(&msg)?,
-        },
-    )?;
     match msg {
         ExecuteMsg::Deposits { recipient } => execute_deposit(ctx, recipient),
         ExecuteMsg::Withdraws { amount } => execute_withdraw(ctx, amount),

@@ -10,9 +10,13 @@ pub fn mock_andromeda_vfs() -> Box<dyn Contract<Empty>> {
     Box::new(contract)
 }
 
-pub fn mock_vfs_instantiate_message(kernel_address: impl Into<String>) -> InstantiateMsg {
+pub fn mock_vfs_instantiate_message(
+    kernel_address: impl Into<String>,
+    owner: Option<String>,
+) -> InstantiateMsg {
     InstantiateMsg {
         kernel_address: kernel_address.into(),
+        owner,
     }
 }
 

@@ -33,6 +33,7 @@ andromeda-finance = { path = "./packages/andromeda-finance" }
 andromeda-modules = { path = "./packages/andromeda-modules" }
 andromeda-app = { path = "./packages/andromeda-app" }
 andromeda-ecosystem = { path = "./packages/andromeda-ecosystem"}
+andromeda-testing = { path = "./packages/andromeda-testing"}
 
 serde = { version = "1.0.127", default-features = false }
 strum_macros = "0.24.3"
@@ -42,7 +43,8 @@ cw-storage-plus = "1.0.1"
 cw2 = "1.0.1"
 cw20 = "1.0.1"
 cw20-base = "1.0.1"
-cw721 = "0.17.0"
+cw721 = "0.18.0"
+cw721-base = { version = "0.18.0", features = ["library"]}
 cw-asset = "3.0.0"
 cosmwasm-schema = "1.2.1"
 semver = "1.0.0"

@@ -27,7 +27,7 @@ testing = ["cw-multi-test"]
 cosmwasm-std = { workspace = true }
 cosmwasm-schema = { workspace = true }
 cw-storage-plus = { workspace = true }
-cw721-base = { version = "0.17.0", features = ["library"] }
+cw721-base = { workspace = true }
 cw721 = { workspace = true }
 cw2 = { workspace = true }
 semver = { workspace = true }

@@ -114,6 +114,7 @@ impl AndrAddr {
     /// Whether the provided address is a VFS path
     pub fn is_vfs_path(&self) -> bool {
         self.is_local_path()
+            || self.0.len() < 3
             || self.0.starts_with('/')
             || self.0.split("://").count() > 1
             || self.0.split('/').count() > 1

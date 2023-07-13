@@ -10,9 +10,13 @@ pub fn mock_andromeda_adodb() -> Box<dyn Contract<Empty>> {
     Box::new(contract)
 }
 
-pub fn mock_adodb_instantiate_msg() -> InstantiateMsg {
+pub fn mock_adodb_instantiate_msg(
+    kernel_address: impl Into<String>,
+    owner: Option<String>,
+) -> InstantiateMsg {
     InstantiateMsg {
-        kernel_address: Some("kernel_address".to_string()),
+        kernel_address: kernel_address.into(),
+        owner,
     }
 }
 

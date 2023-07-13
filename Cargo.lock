@@ -81,7 +81,7 @@ dependencies = [
  "cw-utils 1.0.1",
  "cw2 1.1.0",
  "cw20",
- "cw721 0.17.0",
+ "cw721 0.18.0",
  "semver",
 ]
 
@@ -116,7 +116,7 @@ dependencies = [
  "cw-storage-plus 1.1.0",
  "cw-utils 1.0.1",
  "cw2 1.1.0",
- "cw721 0.17.0",
+ "cw721 0.18.0",
  "semver",
 ]
 
@@ -186,8 +186,8 @@ dependencies = [
  "cw-multi-test",
  "cw-storage-plus 1.1.0",
  "cw2 1.1.0",
- "cw721 0.17.0",
- "cw721-base 0.17.0",
+ "cw721 0.18.0",
+ "cw721-base 0.18.0",
  "semver",
 ]
 
@@ -227,8 +227,8 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-utils 1.0.1",
- "cw721 0.17.0",
- "cw721-base 0.17.0",
+ "cw721 0.18.0",
+ "cw721-base 0.18.0",
  "serde",
 ]
 
@@ -299,7 +299,7 @@ dependencies = [
  "cw-storage-plus 1.1.0",
  "cw-utils 1.0.1",
  "cw2 1.1.0",
- "cw721 0.17.0",
+ "cw721 0.18.0",
  "semver",
 ]
 
@@ -353,8 +353,8 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-utils 1.0.1",
- "cw721 0.17.0",
- "cw721-base 0.17.0",
+ "cw721 0.18.0",
+ "cw721-base 0.18.0",
  "serde",
 ]
 
@@ -366,8 +366,8 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-utils 1.0.1",
- "cw721 0.17.0",
- "cw721-base 0.17.0",
+ "cw721 0.18.0",
+ "cw721-base 0.18.0",
  "serde",
 ]
 
@@ -435,8 +435,8 @@ dependencies = [
  "cw-utils 1.0.1",
  "cw20",
  "cw20-base",
- "cw721 0.17.0",
- "cw721-base 0.17.0",
+ "cw721 0.18.0",
+ "cw721-base 0.18.0",
  "cw721-proxy-derive",
  "hex",
  "lazy_static",
@@ -447,6 +447,26 @@ dependencies = [
  "strum_macros",
  "thiserror",
  "zip-optional",
+]
+
+[[package]]
+name = "andromeda-testing"
+version = "0.1.0"
+dependencies = [
+ "andromeda-adodb",
+ "andromeda-app",
+ "andromeda-economics",
+ "andromeda-kernel",
+ "andromeda-modules",
+ "andromeda-non-fungible-tokens",
+ "andromeda-std",
+ "andromeda-vfs",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-multi-test",
+ "cw20",
+ "cw721 0.18.0",
+ "prost 0.9.0",
 ]
 
 [[package]]
@@ -974,6 +994,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw721"
+version = "0.18.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e3c4d286625ccadc957fe480dd3bdc54ada19e0e6b5b9325379db3130569e914"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-utils 1.0.1",
+ "schemars",
+ "serde",
+]
+
+[[package]]
 name = "cw721-base"
 version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1003,6 +1036,25 @@ dependencies = [
  "cw-utils 1.0.1",
  "cw2 1.1.0",
  "cw721 0.17.0",
+ "cw721-base 0.16.0",
+ "schemars",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
+name = "cw721-base"
+version = "0.18.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "da518d9f68bfda7d972cbaca2e8fcf04651d0edc3de72b04ae2bcd9289c81614"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-ownable",
+ "cw-storage-plus 1.1.0",
+ "cw-utils 1.0.1",
+ "cw2 1.1.0",
+ "cw721 0.18.0",
  "cw721-base 0.16.0",
  "schemars",
  "serde",
@@ -1608,7 +1660,20 @@ dependencies = [
 name = "tests-integration"
 version = "0.1.0"
 dependencies = [
+ "andromeda-address-list",
+ "andromeda-app",
+ "andromeda-app-contract",
+ "andromeda-cw721",
+ "andromeda-marketplace",
+ "andromeda-modules",
+ "andromeda-non-fungible-tokens",
+ "andromeda-rates",
+ "andromeda-std",
+ "andromeda-testing",
+ "cosmwasm-std",
  "cw-multi-test",
+ "cw721 0.18.0",
+ "cw721-base 0.17.0",
 ]
 
 [[package]]
