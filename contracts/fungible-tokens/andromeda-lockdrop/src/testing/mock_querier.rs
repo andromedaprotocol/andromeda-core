@@ -2,15 +2,15 @@ use andromeda_std::ado_base::hooks::{AndromedaHook, HookMsg, OnFundsTransferResp
 use andromeda_std::ado_base::InstantiateMsg;
 use andromeda_std::ado_contract::ADOContract;
 use andromeda_std::common::Funds;
-use andromeda_std::testing::mock_querier::WasmMockQuerier as AndrMockQuerier;
+use andromeda_std::testing::mock_querier::MockAndromedaQuerier;
 use cosmwasm_std::testing::mock_info;
-use cosmwasm_std::{coin, BankMsg, CosmosMsg, Response, SubMsg, Uint128};
 use cosmwasm_std::{
     from_binary, from_slice,
     testing::{mock_env, MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
     to_binary, Binary, Coin, ContractResult, OwnedDeps, Querier, QuerierResult, QueryRequest,
     SystemError, SystemResult, WasmQuery,
 };
+use cosmwasm_std::{BankMsg, CosmosMsg, Response, SubMsg, Uint128};
 
 pub use andromeda_std::testing::mock_querier::{
     MOCK_ADDRESS_LIST_CONTRACT, MOCK_APP_CONTRACT, MOCK_KERNEL_CONTRACT, MOCK_RATES_CONTRACT,
@@ -89,14 +89,10 @@ impl WasmMockQuerier {
                 match contract_addr.as_str() {
                     MOCK_RATES_CONTRACT => self.handle_rates_query(msg),
                     MOCK_ADDRESS_LIST_CONTRACT => self.handle_addresslist_query(msg),
-                    _ => AndrMockQuerier::new(MockQuerier::new(&[])).handle_query(request),
+                    _ => MockAndromedaQuerier::default().handle_query(&self.base, request),
                 }
             }
-            _ => AndrMockQuerier::new(MockQuerier::new(&[(
-                MOCK_CONTRACT_ADDR,
-                &[coin(100, "uusd")],
-            )]))
-            .handle_query(request),
+            _ => MockAndromedaQuerier::default().handle_query(&self.base, request),
         }
     }
 

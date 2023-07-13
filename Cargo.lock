@@ -1605,6 +1605,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "tests-integration"
+version = "0.1.0"
+dependencies = [
+ "cw-multi-test",
+]
+
+[[package]]
 name = "thiserror"
 version = "1.0.40"
 source = "registry+https://github.com/rust-lang/crates.io-index"

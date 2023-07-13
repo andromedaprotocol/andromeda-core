@@ -1,5 +1,5 @@
 //use andromeda_ecosystem::anchor_earn::PositionResponse;
-use andromeda_std::testing::mock_querier::WasmMockQuerier as AndrMockQuerier;
+use andromeda_std::testing::mock_querier::MockAndromedaQuerier;
 use andromeda_std::{
     ado_base::{operators::IsOperatorResponse, AndromedaQuery, InstantiateMsg},
     ado_contract::ADOContract,
@@ -82,10 +82,10 @@ impl WasmMockQuerier {
             QueryRequest::Wasm(WasmQuery::Smart { contract_addr, msg }) => {
                 match contract_addr.as_str() {
                     MOCK_ANCHOR_CONTRACT => self.handle_anchor_balance_query(msg),
-                    _ => AndrMockQuerier::new(MockQuerier::new(&[])).handle_query(request),
+                    _ => MockAndromedaQuerier::default().handle_query(&self.base, request),
                 }
             }
-            _ => AndrMockQuerier::new(MockQuerier::new(&[])).handle_query(request),
+            _ => MockAndromedaQuerier::default().handle_query(&self.base, request),
         }
     }
 

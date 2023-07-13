@@ -86,8 +86,6 @@ jobs:
     name: Actions - build contracts & schemas
     steps:
       - uses: actions/checkout@v2
-        with:
-          required-permission: write
       - name: Build Schema
         run: |
           chmod +x "${GITHUB_WORKSPACE}/build_schema.sh"

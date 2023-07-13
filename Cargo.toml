@@ -12,7 +12,7 @@ members = [
     "contracts/os/*",
 
     #Internal
-    # "tests-integration"
+    "tests-integration"
 ]
 
 [profile.release]

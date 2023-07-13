@@ -1,8 +1,6 @@
 use andromeda_std::ado_base::InstantiateMsg;
 use andromeda_std::ado_contract::ADOContract;
-use andromeda_std::testing::mock_querier::{
-    WasmMockQuerier as AndrMockQuerier, MOCK_KERNEL_CONTRACT,
-};
+use andromeda_std::testing::mock_querier::{MockAndromedaQuerier, MOCK_KERNEL_CONTRACT};
 use cosmwasm_std::testing::{
     mock_env, mock_info, MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR,
 };
@@ -105,10 +103,10 @@ impl WasmMockQuerier {
                             to_binary(&Cw20BalanceResponse { balance }).unwrap(),
                         ))
                     }
-                    _ => AndrMockQuerier::new(MockQuerier::new(&[])).handle_query(request),
+                    _ => MockAndromedaQuerier::default().handle_query(&self.base, request),
                 }
             }
-            _ => AndrMockQuerier::new(MockQuerier::new(&[])).handle_query(request),
+            _ => MockAndromedaQuerier::default().handle_query(&self.base, request),
         }
     }
 }

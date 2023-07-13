@@ -37,7 +37,7 @@ fn init(deps: DepsMut, modules: Option<Vec<Module>>) -> Response {
     };
 
     let info = mock_info("owner", &[]);
-    instantiate(deps, mock_env(), &info, msg).unwrap()
+    instantiate(deps, mock_env(), info, msg).unwrap()
 }
 
 fn query_latest_auction_state_helper(deps: Deps, env: Env) -> AuctionStateResponse {

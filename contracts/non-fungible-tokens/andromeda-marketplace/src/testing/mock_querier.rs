@@ -1,5 +1,5 @@
 use andromeda_app::app::QueryMsg as AppQueryMsg;
-use andromeda_std::testing::mock_querier::WasmMockQuerier as AndrMockQuerier;
+use andromeda_std::testing::mock_querier::MockAndromedaQuerier;
 pub use andromeda_std::testing::mock_querier::{
     MOCK_ADDRESS_LIST_CONTRACT, MOCK_APP_CONTRACT, MOCK_KERNEL_CONTRACT,
 };
@@ -92,10 +92,10 @@ impl WasmMockQuerier {
                     MOCK_RATES_CONTRACT => self.handle_rates_query(msg),
                     MOCK_APP_CONTRACT => self.handle_app_query(msg),
                     MOCK_ADDRESSLIST_CONTRACT => self.handle_addresslist_query(msg),
-                    _ => AndrMockQuerier::new(MockQuerier::new(&[])).handle_query(request),
+                    _ => MockAndromedaQuerier::default().handle_query(&self.base, request),
                 }
             }
-            _ => AndrMockQuerier::new(MockQuerier::new(&[])).handle_query(request),
+            _ => MockAndromedaQuerier::default().handle_query(&self.base, request),
         }
     }
 
