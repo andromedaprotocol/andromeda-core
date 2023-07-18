@@ -209,7 +209,7 @@ fn test_crowdfund_app() {
         crowdfund_app_component.clone(),
         vault_one_app_component.clone(),
         vault_two_app_component.clone(),
-        splitter_app_component.clone(),
+        splitter_app_component,
     ];
     let app_init_msg = mock_app_instantiate_msg(
         "app".to_string(),
@@ -334,12 +334,7 @@ fn test_crowdfund_app() {
         )
         .unwrap();
     router
-        .execute_contract(
-            owner.clone(),
-            Addr::unchecked(crowdfund_addr.clone()),
-            &end_sale_msg,
-            &[],
-        )
+        .execute_contract(owner, Addr::unchecked(crowdfund_addr), &end_sale_msg, &[])
         .unwrap();
 
     // Check final state

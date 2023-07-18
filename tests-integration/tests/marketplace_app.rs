@@ -107,14 +107,10 @@ fn test_marketplace_app() {
     );
 
     let modules: Vec<Module> = vec![
-        Module::new(
-            "rates",
-            format!("./{}", rates_component.clone().name),
-            false,
-        ),
+        Module::new("rates", format!("./{}", rates_component.name), false),
         Module::new(
             "address-list",
-            format!("./{}", address_list_component.clone().name),
+            format!("./{}", address_list_component.name),
             false,
         ),
     ];

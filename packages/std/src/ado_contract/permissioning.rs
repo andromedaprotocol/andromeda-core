@@ -291,11 +291,7 @@ impl<'a> ADOContract<'a> {
         start_after: Option<String>,
     ) -> Result<Vec<PermissionInfo>, ContractError> {
         let actor = actor.into();
-        let min = if let Some(start_after) = start_after {
-            Some(Bound::inclusive(start_after))
-        } else {
-            None
-        };
+        let min = start_after.map(Bound::inclusive);
         let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
         let permissions = permissions()
             .idx
@@ -303,10 +299,7 @@ impl<'a> ADOContract<'a> {
             .prefix(actor)
             .range(deps.storage, min, None, Order::Ascending)
             .take(limit)
-            .map(|p| {
-                let val = p.unwrap().1;
-                val
-            })
+            .map(|p| p.unwrap().1)
             .collect::<Vec<PermissionInfo>>();
         Ok(permissions)
     }
@@ -845,10 +838,7 @@ mod tests {
 
         let contract = ADOContract::default();
 
-        contract
-            .owner
-            .save(ctx.deps.storage, &info.sender.clone())
-            .unwrap();
+        contract.owner.save(ctx.deps.storage, &info.sender).unwrap();
 
         let actions = ADOContract::default()
             .query_permissioned_actions(ctx.deps.as_ref())
