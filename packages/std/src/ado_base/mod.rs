@@ -7,9 +7,11 @@ pub mod kernel_address;
 pub mod modules;
 pub mod operators;
 pub mod ownership;
+pub mod permissioning;
 #[cfg(feature = "primitive")]
 pub mod primitive;
 pub mod version;
+
 #[cfg(feature = "withdraw")]
 pub mod withdraw;
 #[cfg(feature = "withdraw")]
@@ -17,7 +19,7 @@ use crate::ado_base::withdraw::Withdrawal;
 #[cfg(feature = "withdraw")]
 use crate::amp::recipient::Recipient;
 use crate::{
-    ado_contract::permissioning::Permission,
+    ado_base::permissioning::Permission,
     amp::{messages::AMPPkt, AndrAddr},
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
@@ -122,4 +124,12 @@ pub enum AndromedaQuery {
     #[cfg(feature = "withdraw")]
     #[returns(::cosmwasm_std::BalanceResponse)]
     Balance { address: AndrAddr },
+    #[returns(Vec<self::permissioning::PermissionInfo>)]
+    Permissions {
+        actor: AndrAddr,
+        limit: Option<u32>,
+        start_after: Option<String>,
+    },
+    #[returns(Vec<String>)]
+    PermissionedActions {},
 }

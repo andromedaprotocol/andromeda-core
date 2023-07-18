@@ -1,142 +1,29 @@
-use std::fmt;
-
-use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{ensure, Env, MessageInfo, Response, Storage};
-use cw_storage_plus::{Index, IndexList, IndexedMap, Map, MultiIndex};
-use cw_utils::Expiration;
-
 use crate::{
+    ado_base::permissioning::{Permission, PermissionInfo},
     amp::{messages::AMPPkt, AndrAddr},
     common::context::ExecuteContext,
     error::ContractError,
 };
+use cosmwasm_std::{ensure, Deps, Env, MessageInfo, Order, Response, Storage};
+use cw_storage_plus::{Bound, Index, IndexList, IndexedMap, Map, MultiIndex};
 
 use super::ADOContract;
 
 pub const PERMISSIONED_ACTIONS: Map<String, bool> = Map::new("andr_permissioned_actions");
 
-/// An enum to represent a user's permission for an action
-///
-/// - **Blacklisted** - The user cannot perform the action until after the provided expiration
-/// - **Limited** - The user can perform the action while uses are remaining and before the provided expiration **for a permissioned action**
-/// - **Whitelisted** - The user can perform the action until the provided expiration **for a permissioned action**
-///
-/// Expiration defaults to `Never` if not provided
-#[cw_serde]
-pub enum Permission {
-    Blacklisted(Option<Expiration>),
-    Limited {
-        expiration: Option<Expiration>,
-        uses: u32,
-    },
-    Whitelisted(Option<Expiration>),
-}
-
-impl std::default::Default for Permission {
-    fn default() -> Self {
-        Self::Whitelisted(None)
-    }
-}
-
-impl Permission {
-    pub fn blacklisted(expiration: Option<Expiration>) -> Self {
-        Self::Blacklisted(expiration)
-    }
-
-    pub fn whitelisted(expiration: Option<Expiration>) -> Self {
-        Self::Whitelisted(expiration)
-    }
-
-    pub fn limited(expiration: Option<Expiration>, uses: u32) -> Self {
-        Self::Limited { expiration, uses }
-    }
-
-    pub fn is_permissioned(&self, env: &Env, strict: bool) -> bool {
-        match self {
-            Self::Blacklisted(expiration) => {
-                if let Some(expiration) = expiration {
-                    if expiration.is_expired(&env.block) {
-                        return true;
-                    }
-                }
-                false
-            }
-            Self::Limited { expiration, uses } => {
-                if let Some(expiration) = expiration {
-                    if expiration.is_expired(&env.block) {
-                        return !strict;
-                    }
-                }
-                if *uses == 0 {
-                    return !strict;
-                }
-                true
-            }
-            Self::Whitelisted(expiration) => {
-                if let Some(expiration) = expiration {
-                    if expiration.is_expired(&env.block) {
-                        return !strict;
-                    }
-                }
-                true
-            }
-        }
-    }
-
-    pub fn get_expiration(&self) -> Expiration {
-        match self {
-            Self::Blacklisted(expiration) => expiration.unwrap_or_default(),
-            Self::Limited { expiration, .. } => expiration.unwrap_or_default(),
-            Self::Whitelisted(expiration) => expiration.unwrap_or_default(),
-        }
-    }
-
-    pub fn consume_use(&mut self) {
-        if let Self::Limited { uses, .. } = self {
-            *uses -= 1
-        }
-    }
-}
-
-impl fmt::Display for Permission {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let self_as_string = match self {
-            Self::Blacklisted(expiration) => {
-                if let Some(expiration) = expiration {
-                    format!("blacklisted:{}", expiration)
-                } else {
-                    "blacklisted".to_string()
-                }
-            }
-            Self::Limited { expiration, uses } => {
-                if let Some(expiration) = expiration {
-                    format!("limited:{}:{}", expiration, uses)
-                } else {
-                    format!("limited:{}", uses)
-                }
-            }
-            Self::Whitelisted(expiration) => {
-                if let Some(expiration) = expiration {
-                    format!("whitelisted:{}", expiration)
-                } else {
-                    "whitelisted".to_string()
-                }
-            }
-        };
-        write!(f, "{}", self_as_string)
-    }
-}
+const MAX_QUERY_LIMIT: u32 = 50;
+const DEFAULT_QUERY_LIMIT: u32 = 25;
 
 pub struct PermissionsIndices<'a> {
     /// PK: action + actor
     ///
     /// Secondary key: actor
-    pub permissions: MultiIndex<'a, String, Permission, String>,
+    pub permissions: MultiIndex<'a, String, PermissionInfo, String>,
 }
 
-impl<'a> IndexList<Permission> for PermissionsIndices<'a> {
-    fn get_indexes(&'_ self) -> Box<dyn Iterator<Item = &'_ dyn Index<Permission>> + '_> {
-        let v: Vec<&dyn Index<Permission>> = vec![&self.permissions];
+impl<'a> IndexList<PermissionInfo> for PermissionsIndices<'a> {
+    fn get_indexes(&'_ self) -> Box<dyn Iterator<Item = &'_ dyn Index<PermissionInfo>> + '_> {
+        let v: Vec<&dyn Index<PermissionInfo>> = vec![&self.permissions];
         Box::new(v.into_iter())
     }
 }
@@ -144,9 +31,9 @@ impl<'a> IndexList<Permission> for PermissionsIndices<'a> {
 /// Permissions for the ADO contract
 ///
 /// Permissions are stored in a multi-indexed map with the primary key being the action and actor
-pub fn permissions<'a>() -> IndexedMap<'a, &'a str, Permission, PermissionsIndices<'a>> {
+pub fn permissions<'a>() -> IndexedMap<'a, &'a str, PermissionInfo, PermissionsIndices<'a>> {
     let indexes = PermissionsIndices {
-        permissions: MultiIndex::new(|_pk: &[u8], r| r.to_string(), "andr_permissions", "actor"),
+        permissions: MultiIndex::new(|_pk: &[u8], r| r.actor.clone(), "andr_permissions", "actor"),
     };
     IndexedMap::new("andr_permissions", indexes)
 }
@@ -186,8 +73,12 @@ impl<'a> ADOContract<'a> {
                     permission.consume_use();
                     permissions().save(
                         store,
-                        (action_string + actor_string.as_str()).as_str(),
-                        &permission,
+                        (action_string.clone() + actor_string.as_str()).as_str(),
+                        &PermissionInfo {
+                            action: action_string,
+                            actor: actor_string,
+                            permission,
+                        },
                     )?;
                 }
 
@@ -233,8 +124,12 @@ impl<'a> ADOContract<'a> {
                     permission.consume_use();
                     permissions().save(
                         store,
-                        (action_string + actor_string.as_str()).as_str(),
-                        &permission,
+                        (action_string.clone() + actor_string.as_str()).as_str(),
+                        &PermissionInfo {
+                            action: action_string,
+                            actor: actor_string,
+                            permission,
+                        },
                     )?;
                 }
 
@@ -253,7 +148,11 @@ impl<'a> ADOContract<'a> {
         let action = action.into();
         let actor = actor.into();
         let key = action + &actor;
-        Ok(permissions().may_load(store, &key)?)
+        if let Some(PermissionInfo { permission, .. }) = permissions().may_load(store, &key)? {
+            Ok(Some(permission))
+        } else {
+            Ok(None)
+        }
     }
 
     /// Sets the permission for the given action and actor
@@ -265,8 +164,16 @@ impl<'a> ADOContract<'a> {
     ) -> Result<(), ContractError> {
         let action = action.into();
         let actor = actor.into();
-        let key = action + &actor;
-        permissions().save(store, &key, &permission)?;
+        let key = action.clone() + &actor;
+        permissions().save(
+            store,
+            &key,
+            &PermissionInfo {
+                action,
+                actor,
+                permission,
+            },
+        )?;
         Ok(())
     }
 
@@ -374,6 +281,43 @@ impl<'a> ADOContract<'a> {
             ("action", action_string.as_str()),
         ]))
     }
+
+    /// Queries all permissions for a given actor
+    pub fn query_permissions(
+        &self,
+        deps: Deps,
+        actor: impl Into<String>,
+        limit: Option<u32>,
+        start_after: Option<String>,
+    ) -> Result<Vec<PermissionInfo>, ContractError> {
+        let actor = actor.into();
+        let min = if let Some(start_after) = start_after {
+            Some(Bound::inclusive(start_after))
+        } else {
+            None
+        };
+        let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
+        let permissions = permissions()
+            .idx
+            .permissions
+            .prefix(actor)
+            .range(deps.storage, min, None, Order::Ascending)
+            .take(limit)
+            .map(|p| {
+                let val = p.unwrap().1;
+                val
+            })
+            .collect::<Vec<PermissionInfo>>();
+        Ok(permissions)
+    }
+
+    pub fn query_permissioned_actions(&self, deps: Deps) -> Result<Vec<String>, ContractError> {
+        let actions = PERMISSIONED_ACTIONS
+            .keys(deps.storage, None, None, Order::Ascending)
+            .map(|p| p.unwrap())
+            .collect::<Vec<String>>();
+        Ok(actions)
+    }
 }
 
 /// Checks if the provided context is authorised to perform the provided action.
@@ -456,6 +400,7 @@ mod tests {
         testing::{mock_dependencies, mock_env, mock_info},
         Addr,
     };
+    use cw_utils::Expiration;
 
     use crate::amp::messages::AMPPkt;
 
@@ -841,5 +786,85 @@ mod tests {
             action
         )
         .unwrap());
+    }
+
+    #[test]
+    fn test_query_permissions() {
+        let actor = "actor";
+        let mut deps = mock_dependencies();
+
+        let permissions = ADOContract::default()
+            .query_permissions(deps.as_ref(), actor, None, None)
+            .unwrap();
+
+        assert!(permissions.is_empty());
+
+        let permission = Permission::whitelisted(None);
+        let action = "action";
+
+        ADOContract::set_permission(deps.as_mut().storage, action, actor, permission.clone())
+            .unwrap();
+
+        let permissions = ADOContract::default()
+            .query_permissions(deps.as_ref(), actor, None, None)
+            .unwrap();
+
+        assert_eq!(permissions.len(), 1);
+        assert_eq!(permissions[0].action, action);
+        assert_eq!(permissions[0].permission, permission);
+
+        let multi_permissions = vec![
+            ("action2".to_string(), Permission::blacklisted(None)),
+            ("action3".to_string(), Permission::whitelisted(None)),
+            ("action4".to_string(), Permission::blacklisted(None)),
+            ("action5".to_string(), Permission::whitelisted(None)),
+        ];
+
+        for (action, permission) in multi_permissions {
+            ADOContract::set_permission(deps.as_mut().storage, &action, actor, permission).unwrap();
+        }
+
+        let permissions = ADOContract::default()
+            .query_permissions(deps.as_ref(), actor, None, None)
+            .unwrap();
+
+        assert_eq!(permissions.len(), 5);
+    }
+
+    #[test]
+    fn test_query_permissioned_actions() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = mock_info("owner", &[]);
+        let ctx = ExecuteContext {
+            deps: deps.as_mut(),
+            env,
+            info: info.clone(),
+            amp_ctx: None,
+        };
+
+        let contract = ADOContract::default();
+
+        contract
+            .owner
+            .save(ctx.deps.storage, &info.sender.clone())
+            .unwrap();
+
+        let actions = ADOContract::default()
+            .query_permissioned_actions(ctx.deps.as_ref())
+            .unwrap();
+
+        assert!(actions.is_empty());
+
+        ADOContract::default()
+            .execute_permission_action(ctx, "action")
+            .unwrap();
+
+        let actions = ADOContract::default()
+            .query_permissioned_actions(deps.as_ref())
+            .unwrap();
+
+        assert_eq!(actions.len(), 1);
+        assert_eq!(actions[0], "action");
     }
 }

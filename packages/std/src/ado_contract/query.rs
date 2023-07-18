@@ -54,6 +54,14 @@ impl<'a> ADOContract<'a> {
                 AndromedaQuery::AppContract {} => {
                     encode_binary(&self.get_app_contract(deps.storage)?)
                 }
+                AndromedaQuery::Permissions {
+                    actor,
+                    limit,
+                    start_after,
+                } => encode_binary(&self.query_permissions(deps, actor, limit, start_after)?),
+                AndromedaQuery::PermissionedActions {} => {
+                    encode_binary(&self.query_permissioned_actions(deps)?)
+                }
                 _ => Err(ContractError::UnsupportedOperation {}),
             },
             Err(_) => match fallback_query_function {

@@ -1,6 +1,9 @@
 use proc_macro::TokenStream;
 use quote::{quote, ToTokens};
-use syn::{parse::Parser, parse_macro_input, AttributeArgs, DeriveInput, Lit, NestedMeta};
+use syn::{parse::Parser, parse_macro_input, DeriveInput, NestedMeta};
+
+#[cfg(feature = "modules")]
+use syn::{AttributeArgs, Lit};
 
 /// Taken from: https://github.com/DA0-DA0/dao-contracts/blob/74bd3881fdd86829e5e8b132b9952dd64f2d0737/packages/dao-macros/src/lib.rs#L9
 /// Used to merge two enums together.
@@ -59,7 +62,7 @@ pub fn andr_exec(args: TokenStream, input: TokenStream) -> TokenStream {
                 SetPermission {
                     actor: ::andromeda_std::amp::AndrAddr,
                     action: String,
-                    permission: ::andromeda_std::ado_contract::permissioning::Permission,
+                    permission: ::andromeda_std::ado_base::permissioning::Permission,
                 },
                 RemovePermission {
                     action: String,
@@ -256,6 +259,10 @@ pub fn andr_query(metadata: TokenStream, input: TokenStream) -> TokenStream {
                 Balance {
                     address: ::andromeda_std::amp::AndrAddr,
                 },
+                #[returns(Vec<::andromeda_std::ado_base::permissioning::PermissionInfo>)]
+                Permissions { actor: String, limit: Option<u32>, start_after: Option<String> },
+                #[returns(Vec<String>)]
+                PermissionedActions { },
             }
         }
         .into(),

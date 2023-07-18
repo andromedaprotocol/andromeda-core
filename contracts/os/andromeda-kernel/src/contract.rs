@@ -4,7 +4,6 @@ use andromeda_std::amp::addresses::AndrAddr;
 use andromeda_std::amp::messages::{AMPMsg, AMPMsgConfig, AMPPkt};
 use andromeda_std::amp::ADO_DB_KEY;
 use andromeda_std::common::encode_binary;
-use andromeda_std::common::response::get_reply_address;
 use andromeda_std::error::ContractError;
 use andromeda_std::ibc::message_bridge::ExecuteMsg as IBCBridgeExecMsg;
 use andromeda_std::os::aos_querier::AOSQuerier;
