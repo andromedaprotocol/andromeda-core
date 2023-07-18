@@ -15,9 +15,9 @@ use andromeda_cw721::mock::{
 use andromeda_non_fungible_tokens::auction::{
     AuctionIdsResponse, AuctionStateResponse, BidsResponse,
 };
-use andromeda_os::messages::{AMPMsg, AMPPkt};
+use andromeda_std::amp::messages::{AMPMsg, AMPPkt};
+use andromeda_std::common::expiration::MILLISECONDS_TO_NANOSECONDS_RATIO;
 use andromeda_testing::mock::MockAndromeda;
-use common::expiration::MILLISECONDS_TO_NANOSECONDS_RATIO;
 use cosmwasm_std::{coin, to_binary, Addr, BlockInfo, Timestamp, Uint128};
 use cw721::OwnerOfResponse;
 use cw_multi_test::{App, Executor};
@@ -78,7 +78,8 @@ fn test_auction_app() {
         "TT".to_string(),
         owner.to_string(),
         None,
-        Some(andr.kernel_address.to_string()),
+        andr.kernel_address.to_string(),
+        None,
     );
     let cw721_component = AppComponent::new(
         "1".to_string(),
@@ -87,7 +88,7 @@ fn test_auction_app() {
     );
 
     let auction_init_msg =
-        mock_auction_instantiate_msg(None, Some(andr.kernel_address.to_string()));
+        mock_auction_instantiate_msg(None, andr.kernel_address.to_string(), None);
     let auction_component = AppComponent::new(
         "2".to_string(),
         "auction".to_string(),
@@ -100,6 +101,7 @@ fn test_auction_app() {
         "AuctionApp".to_string(),
         app_components.clone(),
         andr.kernel_address.clone(),
+        None,
     );
 
     let app_addr = router
@@ -191,9 +193,6 @@ fn test_auction_app() {
         auction_addr.clone(),
         to_binary(&bid_msg).unwrap(),
         Some(vec![coin(50, "uandr")]),
-        None,
-        Some(true),
-        None,
     );
 
     let packet = AMPPkt::new(

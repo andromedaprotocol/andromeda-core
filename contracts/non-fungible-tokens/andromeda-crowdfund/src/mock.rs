@@ -5,8 +5,8 @@ use andromeda_non_fungible_tokens::{
     crowdfund::{CrowdfundMintMsg, ExecuteMsg, InstantiateMsg},
     cw721::TokenExtension,
 };
-use andromeda_os::recipient::AMPRecipient as Recipient;
-use common::ado_base::modules::Module;
+use andromeda_std::amp::Recipient;
+use andromeda_std::{ado_base::modules::Module, amp::AndrAddr};
 use cosmwasm_std::{Coin, Empty, Uint128};
 use cw_multi_test::{Contract, ContractWrapper};
 use cw_utils::Expiration;
@@ -17,16 +17,18 @@ pub fn mock_andromeda_crowdfund() -> Box<dyn Contract<Empty>> {
 }
 
 pub fn mock_crowdfund_instantiate_msg(
-    token_address: String,
+    token_address: AndrAddr,
     can_mint_after_sale: bool,
     modules: Option<Vec<Module>>,
-    kernel_address: Option<String>,
+    kernel_address: impl Into<String>,
+    owner: Option<String>,
 ) -> InstantiateMsg {
     InstantiateMsg {
         token_address,
         can_mint_after_sale,
         modules,
-        kernel_address,
+        kernel_address: kernel_address.into(),
+        owner,
     }
 }
 
@@ -68,15 +70,7 @@ pub fn mock_crowdfund_quick_mint_msg(amount: u32, publisher: String) -> ExecuteM
     let mut mint_msgs: Vec<CrowdfundMintMsg> = Vec::new();
     for i in 0..amount {
         let extension = TokenExtension {
-            name: i.to_string(),
             publisher: publisher.clone(),
-            description: None,
-            attributes: vec![],
-            image: i.to_string(),
-            image_data: None,
-            external_url: None,
-            animation_url: None,
-            youtube_url: None,
         };
 
         let msg = mock_crowdfund_mint_msg(i.to_string(), extension, None, None);

@@ -16,8 +16,8 @@ andromeda-app-contract = { path = "../contracts/app/andromeda-app-contract", fea
 #Non-Fungible Tokens
 andromeda-non-fungible-tokens = { workspace = true }
 andromeda-cw721 = { path = "../contracts/non-fungible-tokens/andromeda-cw721", features = ["testing"] }
-# andromeda-crowdfund = { path = "../contracts/non-fungible-tokens/andromeda-crowdfund", features = ["testing"] }
-# andromeda-auction = { path = "../contracts/non-fungible-tokens/andromeda-auction", features = ["testing"] }
+andromeda-crowdfund = { path = "../contracts/non-fungible-tokens/andromeda-crowdfund", features = ["testing"] }
+andromeda-auction = { path = "../contracts/non-fungible-tokens/andromeda-auction", features = ["testing"] }
 # # andromeda-wrapped-cw721 = { path = "../contracts/non-fungible-tokens/andromeda-wrapped-cw721", features = ["testing"] }
 andromeda-marketplace = { path = "../contracts/non-fungible-tokens/andromeda-marketplace", features = ["testing"] }
 # # andromeda-ics721 = { path = "../contracts/non-fungible-tokens/andromeda-ics721", features = ["testing"] }
@@ -44,12 +44,12 @@ andromeda-rates = { path = "../contracts/modules/andromeda-rates", features = ["
 andromeda-address-list = { path = "../contracts/modules/andromeda-address-list", features = ["testing"] }
 
 # #Ecosystem
-# andromeda-ecosystem = {  path = "../packages/andromeda-ecosystem" }
-# andromeda-vault = { path = "../contracts/ecosystem/andromeda-vault", features = ["testing"] }
+andromeda-ecosystem = {  workspace = true }
+andromeda-vault = { path = "../contracts/ecosystem/andromeda-vault", features = ["testing"] }
 
 # #Finance
-# andromeda-finance = { path = "../packages/andromeda-finance"}
-# andromeda-splitter = { path = "../contracts/finance/andromeda-splitter", features = ["testing"] }
+andromeda-finance = { workspace = true }
+andromeda-splitter = { path = "../contracts/finance/andromeda-splitter", features = ["testing"] }
 
 # #OS
 # andromeda-kernel = { path = "../contracts/os/andromeda-kernel", features = ["testing"] }
@@ -75,7 +75,7 @@ cw721 = { workspace = true }
 andromeda-std = { workspace = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-cw-multi-test = { version = "0.16.0" }
+cw-multi-test = { version = "0.16.5" }
 
 
 # [[test]]
@@ -84,8 +84,11 @@ cw-multi-test = { version = "0.16.0" }
 # [[test]]
 # name = "crowdfund_app"
 
-# [[test]]
-# name = "auction_app"
+[[test]]
+name = "auction_app"
+
+[[test]]
+name = "marketplace_app"
 
 # [[test]]
 # name = "cw20_staking_app"

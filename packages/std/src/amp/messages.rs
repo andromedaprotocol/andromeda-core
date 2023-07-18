@@ -16,6 +16,7 @@ use super::ADO_DB_KEY;
 #[cw_serde]
 pub enum ExecuteMsg {
     /// The common message enum to receive an AMP message within a contract.
+    #[serde(rename = "amp_receive")]
     AMPReceive(AMPPkt),
 }
 
@@ -279,13 +280,13 @@ impl AMPPkt {
 
     pub fn to_sub_msg(
         &self,
-        kernel_address: impl Into<String>,
+        address: impl Into<String>,
         funds: Option<Vec<Coin>>,
         id: u64,
     ) -> Result<SubMsg, ContractError> {
         let sub_msg = SubMsg::reply_always(
             WasmMsg::Execute {
-                contract_addr: kernel_address.into(),
+                contract_addr: address.into(),
                 msg: encode_binary(&KernelExecuteMsg::AMPReceive(self.clone()))?,
                 funds: funds.unwrap_or_default(),
             },

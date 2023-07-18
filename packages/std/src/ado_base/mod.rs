@@ -79,6 +79,7 @@ pub enum AndromedaMsg {
         recipient: Option<AndrAddr>,
         msg: Option<Binary>,
     },
+    #[serde(rename = "amp_receive")]
     AMPReceive(AMPPkt),
     SetPermission {
         actor: AndrAddr,

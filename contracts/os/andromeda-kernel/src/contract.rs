@@ -4,6 +4,7 @@ use andromeda_std::amp::addresses::AndrAddr;
 use andromeda_std::amp::messages::{AMPMsg, AMPMsgConfig, AMPPkt};
 use andromeda_std::amp::ADO_DB_KEY;
 use andromeda_std::common::encode_binary;
+use andromeda_std::common::response::get_reply_address;
 use andromeda_std::error::ContractError;
 use andromeda_std::ibc::message_bridge::ExecuteMsg as IBCBridgeExecMsg;
 use andromeda_std::os::aos_querier::AOSQuerier;
@@ -298,69 +299,37 @@ pub fn handle_amp_packet(
                     amount: message.funds.clone(),
                 };
 
-                let origin = packet.ctx.get_origin();
-                let previous_sender = execute_env.env.contract.address.to_string();
-
-                let amp_msg = AMPMsg::new(
-                    recipient_addr.clone(),
-                    to_binary(&sub_msg)?,
-                    Some(vec![message.funds[0].clone()]),
-                );
-
-                let new_packet = AMPPkt::new(origin, previous_sender, vec![amp_msg]);
-
-                let msg = to_binary(&ExecuteMsg::AMPReceive(new_packet))?;
-
                 res = res
-                    .add_submessage(SubMsg::reply_on_error(
-                        CosmosMsg::Wasm(WasmMsg::Execute {
-                            contract_addr: recipient_addr.to_string(),
-                            msg,
-                            funds: vec![message.funds[0].clone()],
-                        }),
-                        1,
-                    ))
-                    // .add_submessage(SubMsg::reply_on_error(CosmosMsg::Bank(sub_msg), 1))
+                    .add_submessage(SubMsg::reply_on_error(CosmosMsg::Bank(sub_msg), 1))
                     .add_attributes(vec![
                         attr("recipient", recipient_addr),
                         attr("bank_send_amount", message.funds[0].to_string()),
                     ]);
             } else {
-                let sub_msg = WasmMsg::Execute {
-                    contract_addr: recipient_addr.to_string(),
-                    msg,
-                    funds: message.funds.clone(),
-                };
-
                 let origin = packet.ctx.get_origin();
-                let previous_sender = execute_env.env.contract.address.to_string();
+                let previous_sender = execute_env.info.sender.to_string();
 
                 let amp_msg = AMPMsg::new(
                     recipient_addr.clone(),
-                    to_binary(&sub_msg)?,
+                    msg,
                     Some(vec![message.funds[0].clone()]),
                 );
 
                 let new_packet = AMPPkt::new(origin, previous_sender, vec![amp_msg]);
 
-                let msg = to_binary(&ExecuteMsg::AMPReceive(new_packet))?;
-
+                // let msg = to_binary(&ExecuteMsg::AMPReceive(new_packet))?;
+                let sub_msg = new_packet.to_sub_msg(
+                    recipient_addr.clone(),
+                    Some(vec![message.funds[0].clone()]),
+                    1,
+                )?;
                 // TODO: ADD ID
                 res = res
-                    .add_submessage(SubMsg::reply_on_error(
-                        CosmosMsg::Wasm(WasmMsg::Execute {
-                            contract_addr: recipient_addr.to_string(),
-                            msg,
-                            funds: vec![message.funds[0].clone()],
-                        }),
-                        1,
-                    ))
-                    // .add_submessage(SubMsg::reply_on_error(CosmosMsg::Wasm(sub_msg), 1))
+                    .add_submessage(sub_msg)
                     .add_attributes(vec![attr("recipient", recipient_addr)]);
             }
         }
     }
-
     Ok(res.add_attribute("action", "handle_amp_packet"))
 }
 

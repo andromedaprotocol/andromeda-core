@@ -6,10 +6,10 @@
       "description": "Receives an AMP Packet for relaying",
       "type": "object",
       "required": [
-        "a_m_p_receive"
+        "amp_receive"
       ],
       "properties": {
-        "a_m_p_receive": {
+        "amp_receive": {
           "$ref": "#/definitions/AMPPkt"
         }
       },

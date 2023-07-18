@@ -10,8 +10,8 @@ pub struct InstantiateMsg {
 
 #[cw_serde]
 pub enum ExecuteMsg {
-    // #[serde(rename = "amp_receive")]
     /// Receives an AMP Packet for relaying
+    #[serde(rename = "amp_receive")]
     AMPReceive(AMPPkt),
     /// Creates an original AMP packet
     AMPDirect {

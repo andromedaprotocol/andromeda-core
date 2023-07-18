@@ -119,7 +119,6 @@ fn execute_deposit(
 
     // Validate address
     let recipient_addr = recipient.get_raw_address(&deps.as_ref())?;
-
     // If no amount is provided then the sent funds are used as a deposit
     let deposited_funds = if let Some(deposit_amount) = amount {
         ensure!(
@@ -179,7 +178,6 @@ fn execute_deposit(
         // Depositing to vault
         None => {
             for funds in deposited_funds {
-                let recipient_addr = recipient.get_raw_address(&deps.as_ref())?;
                 let balance_key = (recipient_addr.as_str(), funds.denom.as_str());
                 let curr_balance = BALANCES
                     .may_load(deps.storage, balance_key)?
@@ -204,7 +202,6 @@ fn execute_deposit(
             resp = resp.add_submessages(deposit_msgs)
         }
     }
-
     Ok(resp)
 }
 

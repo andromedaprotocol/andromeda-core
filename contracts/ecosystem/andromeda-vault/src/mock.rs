@@ -2,8 +2,8 @@
 
 use crate::contract::{execute, instantiate, query};
 use andromeda_ecosystem::vault::{ExecuteMsg, InstantiateMsg, QueryMsg, StrategyType};
-use andromeda_os::recipient::AMPRecipient as Recipient;
-use cosmwasm_std::{Coin, Empty};
+use andromeda_std::amp::AndrAddr;
+use cosmwasm_std::{Binary, Empty};
 use cw_multi_test::{Contract, ContractWrapper};
 
 pub fn mock_andromeda_vault() -> Box<dyn Contract<Empty>> {
@@ -11,29 +11,27 @@ pub fn mock_andromeda_vault() -> Box<dyn Contract<Empty>> {
     Box::new(contract)
 }
 
-pub fn mock_vault_instantiate_msg(kernel_address: Option<String>) -> InstantiateMsg {
-    InstantiateMsg { kernel_address }
-}
-
-/// Used to generate a deposit message for a vault
-pub fn mock_vault_deposit_msg(
-    recipient: Option<Recipient>,
-    amount: Option<Coin>,
-    strategy: Option<StrategyType>,
-) -> ExecuteMsg {
-    ExecuteMsg::Deposit {
-        recipient,
-        amount,
-        strategy,
+pub fn mock_vault_instantiate_msg(
+    kernel_address: impl Into<String>,
+    owner: Option<String>,
+) -> InstantiateMsg {
+    InstantiateMsg {
+        kernel_address: kernel_address.into(),
+        owner,
     }
 }
 
+/// Used to generate a deposit message for a vault
+pub fn mock_vault_deposit_msg(recipient: Option<AndrAddr>, msg: Option<Binary>) -> ExecuteMsg {
+    ExecuteMsg::Deposit { recipient, msg }
+}
+
 pub fn mock_vault_get_balance(
-    address: String,
+    address: AndrAddr,
     denom: Option<String>,
     strategy: Option<StrategyType>,
 ) -> QueryMsg {
-    QueryMsg::Balance {
+    QueryMsg::VaultBalance {
         address,
         strategy,
         denom,

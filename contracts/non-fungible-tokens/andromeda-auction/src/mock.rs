@@ -2,8 +2,8 @@
 
 use crate::contract::{execute, instantiate, query};
 use andromeda_non_fungible_tokens::auction::{Cw721HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg};
-use andromeda_os::messages::AMPPkt;
-use common::ado_base::modules::Module;
+use andromeda_std::ado_base::modules::Module;
+use andromeda_std::amp::messages::AMPPkt;
 use cosmwasm_std::{Addr, Empty, Uint128};
 use cw_multi_test::{Contract, ContractWrapper};
 
@@ -14,11 +14,13 @@ pub fn mock_andromeda_auction() -> Box<dyn Contract<Empty>> {
 
 pub fn mock_auction_instantiate_msg(
     modules: Option<Vec<Module>>,
-    kernel_address: Option<String>,
+    kernel_address: impl Into<String>,
+    owner: Option<String>,
 ) -> InstantiateMsg {
     InstantiateMsg {
         modules,
-        kernel_address,
+        kernel_address: kernel_address.into(),
+        owner,
     }
 }
 
