@@ -286,6 +286,54 @@
     {
       "type": "object",
       "required": [
+        "permissions"
+      ],
+      "properties": {
+        "permissions": {
+          "type": "object",
+          "required": [
+            "actor"
+          ],
+          "properties": {
+            "actor": {
+              "type": "string"
+            },
+            "limit": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint32",
+              "minimum": 0.0
+            },
+            "start_after": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "permissioned_actions"
+      ],
+      "properties": {
+        "permissioned_actions": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
         "module"
       ],
       "properties": {
