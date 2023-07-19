@@ -59,7 +59,7 @@ pub fn instantiate(
             deps.api,
             info.clone(),
             BaseInstantiateMsg {
-                ado_type: "app".to_string(),
+                ado_type: "app-contract".to_string(),
                 ado_version: CONTRACT_VERSION.to_string(),
                 operators: None,
                 kernel_address: msg.kernel_address.clone(),
