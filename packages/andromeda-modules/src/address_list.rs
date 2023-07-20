@@ -14,6 +14,8 @@ pub enum ExecuteMsg {
     AddAddress { address: String },
     /// Remove an address from the address list
     RemoveAddress { address: String },
+    /// Add multiple addresses to the address list
+    AddAddresses { addresses: Vec<String> },
 }
 
 #[cw_serde]

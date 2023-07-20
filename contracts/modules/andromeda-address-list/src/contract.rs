@@ -8,7 +8,7 @@ use andromeda_std::{
     error::{from_semver, ContractError},
 };
 
-use cosmwasm_std::{attr, ensure, Binary, Deps, DepsMut, Env, MessageInfo, Response};
+use cosmwasm_std::{attr, ensure, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError};
 use cosmwasm_std::{entry_point, to_binary};
 use cw2::{get_contract_version, set_contract_version};
 use cw_utils::nonpayable;
@@ -65,13 +65,14 @@ pub fn execute(
 }
 
 pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
-    let _contract = ADOContract::default();
     match msg {
         ExecuteMsg::AddAddress { address } => execute_add_address(ctx, address),
         ExecuteMsg::RemoveAddress { address } => execute_remove_address(ctx, address),
+        ExecuteMsg::AddAddresses { addresses } => execute_add_addresses(ctx, addresses),
         _ => ADOContract::default().execute(ctx, msg),
     }
 }
+
 fn execute_add_address(ctx: ExecuteContext, address: String) -> Result<Response, ContractError> {
     let ExecuteContext { deps, info, .. } = ctx;
     nonpayable(&info)?;
@@ -101,6 +102,41 @@ fn execute_remove_address(ctx: ExecuteContext, address: String) -> Result<Respon
     Ok(Response::new().add_attributes(vec![
         attr("action", "remove_address"),
         attr("address", address),
+    ]))
+}
+
+const MAX_ADDRESSES_SIZE: usize = 100;
+
+fn execute_add_addresses(
+    ctx: ExecuteContext,
+    addresses: Vec<String>,
+) -> Result<Response, ContractError> {
+    let ExecuteContext { deps, info, .. } = ctx;
+    nonpayable(&info)?;
+
+    ensure!(
+        !addresses.is_empty(),
+        ContractError::Std(StdError::generic_err("addresses cannot be empty"))
+    );
+    ensure!(
+        addresses.len() <= MAX_ADDRESSES_SIZE,
+        ContractError::Std(StdError::generic_err(
+            "addresses length cannot be more than 100"
+        ))
+    );
+
+    ensure!(
+        ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {}
+    );
+
+    for address in addresses.clone() {
+        add_address(deps.storage, &address)?;
+    }
+
+    Ok(Response::new().add_attributes(vec![
+        attr("action", "add_addresses"),
+        attr("addresses", addresses.join(",")),
     ]))
 }
 

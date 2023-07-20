@@ -10,7 +10,7 @@ use andromeda_std::ado_contract::ADOContract;
 use andromeda_std::common::encode_binary;
 use andromeda_std::error::ContractError;
 
-use cosmwasm_std::{attr, from_binary, DepsMut, MessageInfo};
+use cosmwasm_std::{attr, from_binary, DepsMut, MessageInfo, StdError};
 use cosmwasm_std::{
     testing::{mock_env, mock_info},
     Response,
@@ -68,6 +68,69 @@ fn test_add_address() {
     assert_eq!(expected, res);
 
     let whitelisted = ADDRESS_LIST.load(deps.as_ref().storage, address).unwrap();
+    assert!(whitelisted);
+
+    let included = ADDRESS_LIST.load(deps.as_ref().storage, "111").unwrap_err();
+
+    match included {
+        cosmwasm_std::StdError::NotFound { .. } => {}
+        _ => {
+            panic!();
+        }
+    }
+
+    //add address for unregistered operator
+    let unauth_info = mock_info("anyone", &[]);
+    let res = execute(deps.as_mut(), env, unauth_info, msg).unwrap_err();
+    assert_eq!(ContractError::Unauthorized {}, res);
+}
+
+#[test]
+fn test_add_addresses() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let env = mock_env();
+
+    let operator = "creator";
+    let info = mock_info(operator, &[]);
+
+    let address = "whitelistee";
+    let address_two = "whitlistee2";
+
+    init(deps.as_mut(), info.clone());
+
+    ADOContract::default()
+        .execute_update_operators(deps.as_mut(), info.clone(), vec![operator.to_owned()])
+        .unwrap();
+
+    let msg = ExecuteMsg::AddAddresses { addresses: vec![] };
+
+    //add address for registered operator
+
+    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap_err();
+    assert_eq!(
+        res,
+        ContractError::Std(StdError::generic_err("addresses cannot be empty"))
+    );
+
+    let addresses = vec![address.to_string(), address_two.to_string()];
+    let msg = ExecuteMsg::AddAddresses {
+        addresses: addresses.clone(),
+    };
+
+    //add address for registered operator
+
+    let res = execute(deps.as_mut(), env.clone(), info, msg.clone()).unwrap();
+    let expected = Response::default().add_attributes(vec![
+        attr("action", "add_addresses"),
+        attr("addresses", addresses.join(",")),
+    ]);
+    assert_eq!(expected, res);
+
+    let whitelisted = ADDRESS_LIST.load(deps.as_ref().storage, address).unwrap();
+    assert!(whitelisted);
+    let whitelisted = ADDRESS_LIST
+        .load(deps.as_ref().storage, address_two)
+        .unwrap();
     assert!(whitelisted);
 
     let included = ADDRESS_LIST.load(deps.as_ref().storage, "111").unwrap_err();

@@ -37,10 +37,8 @@ pub const MOCK_OSMOSIS_ROUTER_CONTRACT: &str = "osmosis_router";
 // Mock Economics Contract
 pub const MOCK_ECONOMICS_CONTRACT: &str = "economics_contract";
 
-#[cfg(feature = "modules")]
 /// Mock Rates Contract Address
 pub const MOCK_RATES_CONTRACT: &str = "rates_contract";
-#[cfg(feature = "modules")]
 /// Mock Address List Contract Address
 pub const MOCK_ADDRESS_LIST_CONTRACT: &str = "address_list_contract";
 
@@ -52,9 +50,7 @@ pub const FAKE_VFS_PATH: &str = "/f";
 pub const FAKE_ADODB_KEY: &str = "fake_adodb_key";
 /// A valid action
 pub const MOCK_ACTION: &str = "action";
-#[cfg(feature = "modules")]
 pub const UNWHITELISTED_ADDRESS: &str = "unwhitelisted_address";
-#[cfg(feature = "modules")]
 pub const RATES_EXCLUDED_ADDRESS: &str = "rates_excluded_address";
 
 pub struct WasmMockQuerier {
