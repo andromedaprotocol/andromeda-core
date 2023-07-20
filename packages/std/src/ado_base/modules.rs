@@ -52,7 +52,7 @@ impl Module {
 
 #[cfg(test)]
 mod tests {
-    #[cfg(feature="modules")]
+    #[cfg(feature = "modules")]
     use super::*;
 
     #[test]
