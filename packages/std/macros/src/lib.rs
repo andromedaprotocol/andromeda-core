@@ -37,6 +37,7 @@ fn merge_variants(left: TokenStream, right: TokenStream) -> TokenStream {
 ///
 /// **Must be placed before `#[cw_serde]`**
 pub fn andr_exec(_args: TokenStream, input: TokenStream) -> TokenStream {
+    #[allow(unused_mut)]
     let mut merged = merge_variants(
         input,
         quote! {

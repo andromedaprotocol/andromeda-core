@@ -76,7 +76,7 @@ fn test_instantiation() {
         .add_submessage(inst_submsg)
         .add_attributes(vec![
             attr("method", "instantiate"),
-            attr("type", "app"),
+            attr("type", "app-contract"),
             attr("owner", "creator"),
             attr("andr_app", "Some App"),
         ]);

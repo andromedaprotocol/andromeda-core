@@ -52,9 +52,11 @@ impl Module {
 
 #[cfg(test)]
 mod tests {
+    #[cfg(feature="modules")]
     use super::*;
 
     #[test]
+    #[cfg(feature = "modules")]
     fn test_validate_uniqueness() {
         let module1 = Module::new("module", "addr1", false);
         let module2 = Module::new("module", "addr2", false);

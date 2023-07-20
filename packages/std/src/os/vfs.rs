@@ -1,36 +1,36 @@
 use crate::error::ContractError;
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Addr, QuerierWrapper};
-// use regex::Regex;
+use cosmwasm_std::{ensure, Addr, QuerierWrapper};
+use regex::Regex;
 
-// pub const COMPONENT_NAME_REGEX: &str = r"^[A-Za-z0-9\.\-_]{1,40}$";
-// pub const PATH_REGEX: &str = r"^([A-Za-z0-9]+://)?(/)?([A-Za-z0-9\.]{1,40}(/)?)+$";
+pub const COMPONENT_NAME_REGEX: &str = r"^[A-Za-z0-9\.\-_]{1,40}$";
+pub const PATH_REGEX: &str = r"^([A-Za-z0-9]+://)?(/)?([A-Za-z0-9\.]{1,40}(/)?)+$";
 
 pub fn convert_component_name(path: String) -> String {
     path.replace(' ', "_")
 }
 
-pub fn validate_component_name(_path: String) -> Result<bool, ContractError> {
-    // let re = Regex::new(COMPONENT_NAME_REGEX).unwrap();
+pub fn validate_component_name(path: String) -> Result<bool, ContractError> {
+    let re = Regex::new(COMPONENT_NAME_REGEX).unwrap();
 
-    // ensure!(
-    //     re.is_match(&path),
-    //     ContractError::InvalidPathname {
-    //         error: Some("Pathname includes an invalid character".to_string())
-    //     }
-    // );
+    ensure!(
+        re.is_match(&path),
+        ContractError::InvalidPathname {
+            error: Some("Pathname includes an invalid character".to_string())
+        }
+    );
     Ok(true)
 }
 
-pub fn validate_path_name(_path: String) -> Result<bool, ContractError> {
-    // let re = Regex::new(PATH_REGEX).unwrap();
+pub fn validate_path_name(path: String) -> Result<bool, ContractError> {
+    let re = Regex::new(PATH_REGEX).unwrap();
 
-    // ensure!(
-    //     re.is_match(&path),
-    //     ContractError::InvalidPathname {
-    //         error: Some("Pathname includes an invalid character".to_string())
-    //     }
-    // );
+    ensure!(
+        re.is_match(&path),
+        ContractError::InvalidPathname {
+            error: Some("Pathname includes an invalid character".to_string())
+        }
+    );
     Ok(true)
 }
 
@@ -58,8 +58,6 @@ impl PathDetails {
 
 #[cw_serde]
 pub enum ExecuteMsg {
-    // Receives an AMP Packet for relaying
-    // AMPReceive(AMPPkt),
     AddPath {
         name: String,
         address: Addr,
@@ -99,71 +97,67 @@ pub fn vfs_resolve_path(
 mod test {
     use super::*;
 
-    // Commented out until validate_component_name is re-implemented
+    #[test]
+    fn test_validate_component_name() {
+        let valid_name = "component1";
+        validate_component_name(valid_name.to_string()).unwrap();
 
-    // #[test]
-    // fn test_validate_component_name() {
-    //     let valid_name = "component1";
-    //     validate_component_name(valid_name.to_string()).unwrap();
+        let valid_name = "component-1";
+        validate_component_name(valid_name.to_string()).unwrap();
 
-    //     let valid_name = "component-1";
-    //     validate_component_name(valid_name.to_string()).unwrap();
+        let valid_name = "component_1";
+        validate_component_name(valid_name.to_string()).unwrap();
 
-    //     let valid_name = "component_1";
-    //     validate_component_name(valid_name.to_string()).unwrap();
+        let valid_name = ".component-1";
+        validate_component_name(valid_name.to_string()).unwrap();
 
-    //     let valid_name = ".component-1";
-    //     validate_component_name(valid_name.to_string()).unwrap();
+        let empty_name = "";
+        let res = validate_component_name(empty_name.to_string());
+        assert!(res.is_err());
 
-    //     let empty_name = "";
-    //     let res = validate_component_name(empty_name.to_string());
-    //     assert!(res.is_err());
+        let invalid_name = "/ /";
+        let res = validate_component_name(invalid_name.to_string());
+        assert!(res.is_err());
 
-    //     let invalid_name = "/ /";
-    //     let res = validate_component_name(invalid_name.to_string());
-    //     assert!(res.is_err());
+        let invalid_name = " ";
+        let res = validate_component_name(invalid_name.to_string());
+        assert!(res.is_err());
 
-    //     let invalid_name = " ";
-    //     let res = validate_component_name(invalid_name.to_string());
-    //     assert!(res.is_err());
+        let invalid_name =
+            "somereallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallylongname";
+        let res = validate_component_name(invalid_name.to_string());
+        assert!(res.is_err());
+    }
 
-    //     let invalid_name =
-    //         "somereallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallylongname";
-    //     let res = validate_component_name(invalid_name.to_string());
-    //     assert!(res.is_err());
-    // }
+    #[test]
+    fn test_validate_path_name() {
+        let valid_path = "/username";
+        validate_path_name(valid_path.to_string()).unwrap();
 
-    // Commented out until validate_path_name is re-implemented
+        let valid_path = "username/dir1/file";
+        validate_path_name(valid_path.to_string()).unwrap();
 
-    // #[test]
-    // fn test_validate_path_name() {
-    //     let valid_path = "/username";
-    //     validate_path_name(valid_path.to_string()).unwrap();
+        let valid_path = "/username/dir1/file/";
+        validate_path_name(valid_path.to_string()).unwrap();
 
-    //     let valid_path = "username/dir1/file";
-    //     validate_path_name(valid_path.to_string()).unwrap();
+        let valid_path = "vfs://home/username/dir1/file/";
+        validate_path_name(valid_path.to_string()).unwrap();
 
-    //     let valid_path = "/username/dir1/file/";
-    //     validate_path_name(valid_path.to_string()).unwrap();
+        let valid_path = "vfs://chain/username/dir1/file/";
+        validate_path_name(valid_path.to_string()).unwrap();
 
-    //     let valid_path = "vfs://home/username/dir1/file/";
-    //     validate_path_name(valid_path.to_string()).unwrap();
+        let empty_path = "";
+        let res = validate_path_name(empty_path.to_string());
+        assert!(res.is_err());
 
-    //     let valid_path = "vfs://chain/username/dir1/file/";
-    //     validate_path_name(valid_path.to_string()).unwrap();
+        let invalid_path = "//// ///";
+        let res = validate_path_name(invalid_path.to_string());
+        assert!(res.is_err());
 
-    // let empty_path = "";
-    // let res = validate_path_name(empty_path.to_string());
-    // assert!(res.is_err());
-
-    // let invalid_path = "//// ///";
-    // let res = validate_path_name(invalid_path.to_string());
-    // assert!(res.is_err());
-
-    // let invalid_path = "vfs:/username/dir1/f!le";
-    // let res = validate_path_name(invalid_path.to_string());
-    // assert!(res.is_err())
-    // }
+        let invalid_path = "vfs:/username/dir1/f!le";
+        let res = validate_path_name(invalid_path.to_string());
+        assert!(res.is_err())
+    }
 
     #[test]
     fn test_convert_component_name() {

@@ -1,6 +1,8 @@
 use andromeda_std::ado_contract::ADOContract;
 
-use andromeda_std::os::vfs::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
+use andromeda_std::os::vfs::{
+    validate_component_name, validate_path_name, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
+};
 use andromeda_std::{
     ado_base::InstantiateMsg as BaseInstantiateMsg, common::encode_binary, error::ContractError,
 };
@@ -82,7 +84,7 @@ fn execute_add_path(
     name: String,
     address: Addr,
 ) -> Result<Response, ContractError> {
-    // validate_component_name(name.clone())?;
+    validate_component_name(name.clone())?;
     add_pathname(
         execute_env.deps.storage,
         execute_env.info.sender,
@@ -177,6 +179,6 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractErr
 }
 
 fn query_resolve_path(deps: Deps, path: String) -> Result<Addr, ContractError> {
-    // validate_path_name(path.clone())?;
+    validate_path_name(path.clone())?;
     resolve_pathname(deps.storage, deps.api, path)
 }

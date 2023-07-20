@@ -29,6 +29,7 @@ cw-asset = { version = "3.0.0" }
 thiserror = { version = "1.0.21" }
 lazy_static = "1"
 hex = "0.4"
+regex = { version = "1.9.1", default-features = false}
 andromeda-macros = { workspace = true }
 strum_macros = { workspace = true }
 cw721 = { workspace = true }
