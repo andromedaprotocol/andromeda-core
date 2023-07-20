@@ -1,11 +1,12 @@
 use crate::{
-    contract::{execute, instantiate},
-    state::{resolve_pathname, USERS},
+    contract::{execute, instantiate, query},
+    state::{resolve_pathname, ADDRESS_USERNAME, USERS},
 };
 
-use andromeda_std::error::ContractError;
 use andromeda_std::os::vfs::{ExecuteMsg, InstantiateMsg};
+use andromeda_std::{error::ContractError, os::vfs::QueryMsg};
 use cosmwasm_std::{
+    from_binary,
     testing::{mock_dependencies, mock_env, mock_info},
     Addr,
 };
@@ -33,7 +34,6 @@ fn test_register_user() {
     let env = mock_env();
     let msg = ExecuteMsg::RegisterUser {
         username: username.to_string(),
-        address: None,
     };
 
     execute(deps.as_mut(), env, info, msg).unwrap();
@@ -52,7 +52,6 @@ fn test_register_user_unauthorized() {
     let env = mock_env();
     let msg = ExecuteMsg::RegisterUser {
         username: username.to_string(),
-        address: None,
     };
 
     USERS
@@ -64,29 +63,28 @@ fn test_register_user_unauthorized() {
 }
 
 #[test]
-fn test_register_user_proxy() {
+fn test_register_user_already_registered() {
     let mut deps = mock_dependencies();
     let username = "user1";
+    let new_username = "user2";
     let sender = "sender";
-    let new_occupier = "occupier";
     let info = mock_info(sender, &[]);
     let env = mock_env();
     let msg = ExecuteMsg::RegisterUser {
-        username: username.to_string(),
-        address: Some(Addr::unchecked(new_occupier)),
+        username: new_username.to_string(),
     };
 
     USERS
         .save(deps.as_mut().storage, username, &Addr::unchecked(sender))
         .unwrap();
 
-    execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
-
-    let saved = USERS.load(deps.as_ref().storage, username).unwrap();
-    assert_eq!(saved, new_occupier);
-
-    let res = execute(deps.as_mut(), env, info, msg).unwrap_err();
-    assert_eq!(res, ContractError::Unauthorized {})
+    execute(deps.as_mut(), env, info, msg).unwrap();
+    let addr = USERS.load(deps.as_ref().storage, new_username).unwrap();
+    assert_eq!(addr, sender);
+    let username = ADDRESS_USERNAME
+        .load(deps.as_ref().storage, sender)
+        .unwrap();
+    assert_eq!(username, new_username)
 }
 
 #[test]
@@ -141,4 +139,35 @@ fn test_add_parent_path() {
     let resolved_addr = resolve_pathname(deps.as_ref().storage, deps.as_ref().api, path).unwrap();
 
     assert_eq!(resolved_addr, sender)
+}
+
+#[test]
+fn test_get_username() {
+    let mut deps = mock_dependencies();
+    let env = mock_env();
+    let username = "u1";
+    let sender = "sender";
+
+    ADDRESS_USERNAME
+        .save(deps.as_mut().storage, sender, &username.to_string())
+        .unwrap();
+
+    let query_msg = QueryMsg::GetUsername {
+        address: Addr::unchecked(sender),
+    };
+
+    let res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
+    let val: String = from_binary(&res).unwrap();
+
+    assert_eq!(val, username);
+
+    let unregistered_addr = "notregistered";
+    let query_msg = QueryMsg::GetUsername {
+        address: Addr::unchecked(unregistered_addr),
+    };
+
+    let res = query(deps.as_ref(), env, query_msg).unwrap();
+    let val: String = from_binary(&res).unwrap();
+
+    assert_eq!(val, unregistered_addr);
 }

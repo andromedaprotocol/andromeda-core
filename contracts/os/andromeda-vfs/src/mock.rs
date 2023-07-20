@@ -20,10 +20,9 @@ pub fn mock_vfs_instantiate_message(
     }
 }
 
-pub fn mock_register_user(username: impl Into<String>, address: Option<Addr>) -> ExecuteMsg {
+pub fn mock_register_user(username: impl Into<String>) -> ExecuteMsg {
     ExecuteMsg::RegisterUser {
         username: username.into(),
-        address,
     }
 }
 

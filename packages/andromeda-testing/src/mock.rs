@@ -119,7 +119,7 @@ impl MockAndromeda {
         mock_andr.register_kernel_key_address(app, "adodb", adodb_address);
         mock_andr.register_kernel_key_address(app, "vfs", vfs_address);
         mock_andr.register_kernel_key_address(app, "economics", economics_address);
-        mock_andr.register_user(app, admin_address.clone(), ADMIN_USERNAME, None);
+        mock_andr.register_user(app, admin_address.clone(), ADMIN_USERNAME);
 
         mock_andr
     }
@@ -164,20 +164,14 @@ impl MockAndromeda {
     }
 
     /// Registers a user on the VFS
-    pub fn register_user(
-        &self,
-        app: &mut App,
-        sender: Addr,
-        username: impl Into<String>,
-        proxy_address: Option<Addr>,
-    ) {
+    pub fn register_user(&self, app: &mut App, sender: Addr, username: impl Into<String>) {
         let vfs_address_query = mock_get_key_address("vfs");
         let vfs_address: Addr = app
             .wrap()
             .query_wasm_smart(self.kernel_address.clone(), &vfs_address_query)
             .unwrap();
 
-        let register_msg = mock_register_user(username, proxy_address);
+        let register_msg = mock_register_user(username);
 
         app.execute_contract(sender, vfs_address, &register_msg, &[])
             .unwrap();

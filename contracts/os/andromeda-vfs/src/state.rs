@@ -11,7 +11,7 @@ pub struct PathInfo {
 
 pub struct PathIndices<'a> {
     /// PK: parent_address + component_name
-    /// Secondary key: component_name
+    /// Secondary key: address
     pub index: MultiIndex<'a, String, PathInfo, String>,
 }
 
@@ -26,12 +26,13 @@ impl<'a> IndexList<PathInfo> for PathIndices<'a> {
 
 pub fn paths<'a>() -> IndexedMap<'a, &'a str, PathInfo, PathIndices<'a>> {
     let indexes = PathIndices {
-        index: MultiIndex::new(|_pk: &[u8], r| r.name.clone(), "path", "path_index"),
+        index: MultiIndex::new(|_pk: &[u8], r| r.address.to_string(), "path", "path_index"),
     };
     IndexedMap::new("path", indexes)
 }
 
 pub const USERS: Map<&str, Addr> = Map::new("users");
+pub const ADDRESS_USERNAME: Map<&str, String> = Map::new("address_username");
 
 pub fn split_pathname(path: String) -> Vec<String> {
     path.split('/')
@@ -105,37 +106,6 @@ mod test {
     use cosmwasm_std::testing::mock_dependencies;
 
     use super::*;
-
-    // #[test]
-    // fn test_path_parser() {
-    //     let pathname = "ibc://juno/path";
-    //     let protocol: Option<&str> = if let Some(idx) = pathname.find(":") {
-    //         let first_word = &pathname[..idx];
-    //         println!("first word: {}", first_word);
-    //         Some(first_word)
-    //     } else {
-    //         None
-    //     };
-    //     match protocol {
-    //         Some("ibc") => todo!(),
-    //         Some("wormhole") => todo!(),
-    //         _ => todo!(),
-    //     }
-    //     let supported_protocols = vec!["ibc", "wormhole"];
-    //     let supported_chains = vec!["juno", "injective"];
-    //     let mut res = split_pathname(pathname.to_string());
-    //     let expected = vec!["ibc", "juno", "path"];
-
-    //     let _ = &res[0].pop();
-    //     let prot = &res[0];
-
-    //     assert!(supported_protocols.contains(&prot.as_str()));
-
-    //     assert_eq!(res, expected);
-
-    //     let parsed_path = path_parser(expected);
-    //     println!("parsed path: {:?}", parsed_path);
-    // }
 
     #[test]
     fn test_split_pathname() {

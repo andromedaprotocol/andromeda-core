@@ -7,12 +7,13 @@ use andromeda_std::{
     ado_base::InstantiateMsg as BaseInstantiateMsg, common::encode_binary, error::ContractError,
 };
 use cosmwasm_std::{
-    ensure, entry_point, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError,
+    attr, ensure, entry_point, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response,
+    StdError,
 };
 use cw2::{get_contract_version, set_contract_version};
 use semver::Version;
 
-use crate::state::{add_pathname, resolve_pathname, validate_username, USERS};
+use crate::state::{add_pathname, resolve_pathname, validate_username, ADDRESS_USERNAME, USERS};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-vfs";
@@ -69,9 +70,7 @@ pub fn execute(
 
     match msg {
         ExecuteMsg::AddPath { name, address } => execute_add_path(execute_env, name, address),
-        ExecuteMsg::RegisterUser { username, address } => {
-            execute_register_user(execute_env, username, address)
-        }
+        ExecuteMsg::RegisterUser { username } => execute_register_user(execute_env, username),
         ExecuteMsg::AddParentPath {
             name,
             parent_address,
@@ -112,7 +111,6 @@ fn execute_add_parent_path(
 fn execute_register_user(
     execute_env: ExecuteEnv,
     username: String,
-    address: Option<Addr>,
 ) -> Result<Response, ContractError> {
     let current_user_address = USERS.may_load(execute_env.deps.storage, username.as_str())?;
     if current_user_address.is_some() {
@@ -122,15 +120,27 @@ fn execute_register_user(
         );
     }
 
+    //Remove username registration from previous username
+    USERS.remove(execute_env.deps.storage, username.as_str());
+
     validate_username(username.clone())?;
-    let address_to_store = address.unwrap_or(execute_env.info.sender);
     USERS.save(
         execute_env.deps.storage,
         username.as_str(),
-        &address_to_store,
+        &execute_env.info.sender.clone(),
+    )?;
+    //Update current address' username
+    ADDRESS_USERNAME.save(
+        execute_env.deps.storage,
+        &execute_env.info.sender.to_string(),
+        &username,
     )?;
 
-    Ok(Response::default())
+    Ok(Response::default().add_attributes(vec![
+        attr("action", "register_username"),
+        attr("addr", execute_env.info.sender),
+        attr("username", username),
+    ]))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -175,10 +185,18 @@ fn from_semver(err: semver::Error) -> StdError {
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::ResolvePath { path } => encode_binary(&query_resolve_path(deps, path)?),
+        QueryMsg::GetUsername { address } => encode_binary(&query_get_username(deps, address)?),
     }
 }
 
 fn query_resolve_path(deps: Deps, path: String) -> Result<Addr, ContractError> {
     validate_path_name(path.clone())?;
     resolve_pathname(deps.storage, deps.api, path)
+}
+
+fn query_get_username(deps: Deps, addr: Addr) -> Result<String, ContractError> {
+    let username = ADDRESS_USERNAME
+        .may_load(deps.storage, addr.to_string().as_str())?
+        .unwrap_or(addr.to_string());
+    Ok(username)
 }

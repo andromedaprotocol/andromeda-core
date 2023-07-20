@@ -58,18 +58,9 @@ impl PathDetails {
 
 #[cw_serde]
 pub enum ExecuteMsg {
-    AddPath {
-        name: String,
-        address: Addr,
-    },
-    AddParentPath {
-        name: String,
-        parent_address: Addr,
-    },
-    RegisterUser {
-        username: String,
-        address: Option<Addr>,
-    },
+    AddPath { name: String, address: Addr },
+    AddParentPath { name: String, parent_address: Addr },
+    RegisterUser { username: String },
 }
 
 #[cw_serde]
@@ -80,6 +71,8 @@ pub struct MigrateMsg {}
 pub enum QueryMsg {
     #[returns(Addr)]
     ResolvePath { path: String },
+    #[returns(String)]
+    GetUsername { address: Addr },
 }
 
 /// Queries the provided VFS contract address to resolve the given path
