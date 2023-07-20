@@ -106,7 +106,7 @@ fn test_add_addresses() {
 
     //add address for registered operator
 
-    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap_err();
+    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap_err();
     assert_eq!(
         res,
         ContractError::Std(StdError::generic_err("addresses cannot be empty"))
