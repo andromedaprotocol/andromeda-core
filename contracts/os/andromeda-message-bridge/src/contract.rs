@@ -153,7 +153,7 @@ pub fn execute_send_amp_message(
     one_coin(&info)?;
 
     if info.funds.is_empty() {
-        let kernel_msg = KernelExecuteMsg::AMPMessage { message };
+        let kernel_msg = KernelExecuteMsg::Send { message };
         Ok(Response::new()
             .add_attribute("method", "execute_send_amp_message")
             .add_attribute("channel", channel.clone())

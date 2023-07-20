@@ -82,7 +82,6 @@ impl WasmMockQuerier {
                     _ => MockAndromedaQuerier::default().handle_query(&self.base, request),
                 }
             }
-            //TODO: Need better support for passing the base querier to the custom querier.
             _ => MockAndromedaQuerier::default().handle_query(&self.base, request),
         }
     }

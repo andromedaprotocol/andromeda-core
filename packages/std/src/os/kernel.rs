@@ -1,7 +1,6 @@
+use crate::amp::messages::AMPMsg;
 use crate::amp::messages::AMPPkt;
-use crate::amp::{addresses::AndrAddr, messages::AMPMsg};
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Binary, ReplyOn};
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -13,20 +12,8 @@ pub enum ExecuteMsg {
     /// Receives an AMP Packet for relaying
     #[serde(rename = "amp_receive")]
     AMPReceive(AMPPkt),
-    /// Creates an original AMP packet
-    AMPDirect {
-        recipient: AndrAddr,
-        message: Binary,
-        reply_on: Option<ReplyOn>,
-        exit_at_error: Option<bool>,
-        gas_limit: Option<u64>,
-    },
-    AMPDirectNoCtx {
-        recipient: AndrAddr,
-        message: Binary,
-    },
     /// Constructs an AMPPkt with a given AMPMsg and sends it to the recipient
-    AMPMessage { message: AMPMsg },
+    Send { message: AMPMsg },
     /// Upserts a key address to the kernel, restricted to the owner of the kernel
     UpsertKeyAddress { key: String, value: String },
 }

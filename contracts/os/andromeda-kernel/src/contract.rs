@@ -1,7 +1,7 @@
 use andromeda_std::ado_base::InstantiateMsg as BaseInstantiateMsg;
 use andromeda_std::ado_contract::ADOContract;
 use andromeda_std::amp::addresses::AndrAddr;
-use andromeda_std::amp::messages::{AMPMsg, AMPMsgConfig, AMPPkt};
+use andromeda_std::amp::messages::{AMPMsg, AMPPkt};
 use andromeda_std::amp::ADO_DB_KEY;
 use andromeda_std::common::encode_binary;
 use andromeda_std::error::ContractError;
@@ -9,13 +9,13 @@ use andromeda_std::ibc::message_bridge::ExecuteMsg as IBCBridgeExecMsg;
 use andromeda_std::os::aos_querier::AOSQuerier;
 use andromeda_std::os::kernel::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use cosmwasm_std::{
-    attr, ensure, entry_point, to_binary, wasm_execute, Addr, BankMsg, Binary, CosmosMsg, Deps,
-    DepsMut, Env, MessageInfo, Reply, ReplyOn, Response, StdError, SubMsg, WasmMsg,
+    attr, ensure, entry_point, wasm_execute, Addr, BankMsg, Binary, CosmosMsg, Deps, DepsMut, Env,
+    MessageInfo, Reply, Response, StdError, SubMsg, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
 use semver::Version;
 
-use crate::state::{parse_path_direct, parse_path_direct_no_ctx, IBC_BRIDGE, KERNEL_ADDRESSES};
+use crate::state::{IBC_BRIDGE, KERNEL_ADDRESSES};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-kernel";
@@ -72,153 +72,33 @@ pub fn execute(
 
     match msg {
         ExecuteMsg::AMPReceive(packet) => handle_amp_packet(execute_env, packet),
-        ExecuteMsg::AMPDirect {
-            recipient,
-            message,
-            reply_on,
-            exit_at_error,
-            gas_limit,
-        } => handle_amp_direct(
-            execute_env.deps,
-            execute_env.env,
-            execute_env.info,
-            recipient,
-            message,
-            reply_on,
-            exit_at_error,
-            gas_limit,
-        ),
-        ExecuteMsg::AMPDirectNoCtx { recipient, message } => handle_amp_direct_no_ctx(
-            execute_env.deps,
-            execute_env.env,
-            execute_env.info,
-            recipient,
-            message,
-        ),
-        ExecuteMsg::AMPMessage { message } => {
+        ExecuteMsg::Send { message } => {
             handle_amp_message(execute_env.deps, execute_env.env, execute_env.info, message)
         }
         ExecuteMsg::UpsertKeyAddress { key, value } => upsert_key_address(execute_env, key, value),
     }
 }
 
-#[allow(clippy::too_many_arguments)]
-pub fn handle_amp_direct(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    recipient: AndrAddr,
-    message: Binary,
-    reply_on: Option<ReplyOn>,
-    exit_at_error: Option<bool>,
-    gas_limit: Option<u64>,
-) -> Result<Response, ContractError> {
-    let origin = info.clone().sender;
-    let previous_sender = env.contract.address;
-
-    let parsed_path = parse_path_direct(
-        recipient.clone(),
-        message.clone(),
-        info.funds.clone(),
-        deps.storage,
-        reply_on.clone(),
-        exit_at_error,
-        gas_limit,
-    )?;
-    // If parsed path yields a SubMsg, it means that the recipient is on another chain
-    if let Some(msg) = parsed_path {
-        Ok(Response::default()
-            .add_submessage(msg)
-            .add_attribute("action", "handle_amp_direct")
-            .add_attribute("recipient", recipient)
-            .add_attribute("message", message.to_string()))
-    } else {
-        let amp_pkt = AMPPkt::new(
-            origin,
-            previous_sender,
-            vec![
-                AMPMsg::new(recipient.clone(), message.clone(), Some(info.clone().funds))
-                    .with_config(AMPMsgConfig::new(reply_on, exit_at_error, gas_limit)),
-            ],
-        );
-        Ok(Response::default()
-            .add_submessage(SubMsg::new(WasmMsg::Execute {
-                contract_addr: recipient.clone().into(),
-                msg: to_binary(&ExecuteMsg::AMPReceive(amp_pkt))?,
-                funds: info.funds,
-            }))
-            .add_attribute("action", "handle_amp_direct")
-            .add_attribute("recipient", recipient)
-            .add_attribute("message", message.to_string()))
-    }
-}
-
 pub fn handle_amp_message(
-    _deps: DepsMut,
-    env: Env,
+    deps: DepsMut,
+    _env: Env,
     info: MessageInfo,
     message: AMPMsg,
 ) -> Result<Response, ContractError> {
     let origin = info.clone().sender;
-    let previous_sender = env.contract.address;
+    let recipient = message.recipient.get_raw_address(&deps.as_ref())?;
+    //TODO: ADD IBC HANDLING
 
-    let amp_pkt = AMPPkt::new(origin.clone(), previous_sender, vec![message.clone()]);
     Ok(Response::default()
         .add_submessage(SubMsg::new(WasmMsg::Execute {
-            contract_addr: message.clone().recipient.into(),
-            msg: to_binary(&ExecuteMsg::AMPReceive(amp_pkt))?,
+            contract_addr: recipient.to_string(),
+            msg: message.message.clone(),
             funds: info.funds,
         }))
         .add_attribute("action", "handle_amp_message")
         .add_attribute("recipient", message.recipient)
         .add_attribute("message", message.message.to_string())
-        .add_attribute("message", message.message.to_string())
         .add_attribute("origin", origin.to_string()))
-}
-
-pub fn handle_amp_direct_no_ctx(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    recipient: AndrAddr,
-    message: Binary,
-) -> Result<Response, ContractError> {
-    let origin = info.clone().sender;
-    let previous_sender = env.contract.address;
-
-    let parsed_path = parse_path_direct_no_ctx(
-        recipient.clone(),
-        message.clone(),
-        info.funds.clone(),
-        deps.storage,
-    )?;
-    // If parsed path yields a SubMsg, it means that the recipient is on another chain
-    if let Some(msg) = parsed_path {
-        Ok(Response::default()
-            .add_submessage(msg)
-            .add_attribute("action", "handle_amp_direct_no_ctx")
-            .add_attribute("recipient", recipient)
-            .add_attribute("message", message.to_string()))
-    } else {
-        let amp_pkt = AMPPkt::new(
-            origin,
-            previous_sender,
-            vec![AMPMsg::new(
-                recipient.clone(),
-                message.clone(),
-                Some(info.clone().funds),
-            )],
-        );
-        Ok(Response::default()
-            .add_submessage(SubMsg::new(WasmMsg::Execute {
-                contract_addr: recipient.clone().into(),
-                msg: to_binary(&ExecuteMsg::AMPReceive(amp_pkt))?,
-                funds: info.funds,
-            }))
-            .add_attribute("action", "handle_amp_direct_no_ctx")
-            .add_attribute("recipient", recipient)
-            .add_attribute("message", message.to_string()))
-    }
 }
 
 pub fn handle_amp_packet(
@@ -316,7 +196,6 @@ pub fn handle_amp_packet(
 
                 let new_packet = AMPPkt::new(origin, previous_sender, vec![amp_msg]);
 
-                // let msg = to_binary(&ExecuteMsg::AMPReceive(new_packet))?;
                 let sub_msg = new_packet.to_sub_msg(
                     recipient_addr.clone(),
                     Some(vec![message.funds[0].clone()]),

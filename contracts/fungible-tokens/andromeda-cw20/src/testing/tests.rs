@@ -96,12 +96,10 @@ fn test_transfer() {
             .add_attribute("action", "transfer")
             .add_attribute("from", "sender")
             .add_attribute("to", "other")
-            //TODO: RATES NOT WORKING
             .add_attribute("amount", "100"),
         res
     );
 
-    // TODO: RATES NOT WORKING
     // Funds deducted from the sender (100 for send, 10 for tax).
     assert_eq!(
         Uint128::from(900u128),
