@@ -1,5 +1,5 @@
 use cosmwasm_std::{
-    attr, coins, from_binary,
+    attr, coin, coins, from_binary,
     testing::{mock_env, mock_info},
     Addr, Coin, DepsMut, Env, Response, StdError, Uint128,
 };
@@ -8,7 +8,7 @@ use andromeda_std::error::ContractError;
 use andromeda_std::{ado_base::modules::Module, testing::mock_querier::FAKE_VFS_PATH};
 use andromeda_std::{ado_contract::ADOContract, amp::addresses::AndrAddr};
 
-use crate::contract::*;
+use crate::{contract::*, state::TRANSFER_AGREEMENTS};
 use andromeda_non_fungible_tokens::cw721::{
     ExecuteMsg, InstantiateMsg, MintMsg, QueryMsg, TokenExtension, TransferAgreement,
 };
@@ -82,16 +82,33 @@ fn test_transfer_nft() {
         ContractError::Unauthorized {}
     );
 
+    TRANSFER_AGREEMENTS
+        .save(
+            deps.as_mut().storage,
+            &token_id,
+            &TransferAgreement {
+                amount: coin(100u128, "uandr"),
+                purchaser: "some_purchaser".to_string(),
+            },
+        )
+        .unwrap();
+
     let info = mock_info(creator.as_str(), &[]);
     assert!(execute(deps.as_mut(), env.clone(), info, transfer_msg).is_ok());
 
     let query_msg = QueryMsg::OwnerOf {
-        token_id,
+        token_id: token_id.clone(),
         include_expired: None,
     };
     let query_resp = query(deps.as_ref(), env, query_msg).unwrap();
     let resp: OwnerOfResponse = from_binary(&query_resp).unwrap();
-    assert_eq!(resp.owner, String::from("recipient"))
+    assert_eq!(resp.owner, String::from("recipient"));
+
+    let agreement = TRANSFER_AGREEMENTS
+        .may_load(deps.as_ref().storage, &token_id)
+        .unwrap();
+
+    assert!(agreement.is_none());
 }
 
 #[test]

@@ -29,7 +29,7 @@ use andromeda_std::{
     common::Funds,
     error::{from_semver, ContractError},
 };
-use cw721::ContractInfoResponse;
+use cw721::{ContractInfoResponse, Cw721Execute};
 use cw721_base::{state::TokenInfo, Cw721Contract, ExecuteMsg as Cw721ExecuteMsg};
 
 pub type AndrCW721Contract<'a> = Cw721Contract<'a, TokenExtension, Empty, ExecuteMsg, QueryMsg>;
@@ -153,6 +153,11 @@ fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Cont
         } => execute_update_transfer_agreement(ctx, token_id, agreement),
         ExecuteMsg::Archive { token_id } => execute_archive(ctx, token_id),
         ExecuteMsg::Burn { token_id } => execute_burn(ctx, token_id),
+        ExecuteMsg::SendNft {
+            contract,
+            token_id,
+            msg,
+        } => execute_send_nft(ctx, contract, token_id, msg),
         _ => {
             let serialized = to_binary(&msg)?;
 
@@ -328,13 +333,10 @@ fn execute_transfer(
         Uint128::zero()
     };
 
-    ensure!(
-        !is_archived(deps.storage, &token_id)?,
-        ContractError::TokenIsArchived {}
-    );
     check_can_send(deps.as_ref(), env, info, &token_id, &token, tax_amount)?;
     token.owner = deps.api.addr_validate(&recipient)?;
     token.approvals.clear();
+    TRANSFER_AGREEMENTS.remove(deps.storage, &token_id);
     contract.tokens.save(deps.storage, &token_id, &token)?;
     Ok(resp
         .add_attribute("action", "transfer")
@@ -474,6 +476,21 @@ fn execute_burn(env: ExecuteContext, token_id: String) -> Result<Response, Contr
         attr("token_id", token_id),
         attr("sender", info.sender),
     ]))
+}
+
+fn execute_send_nft(
+    ctx: ExecuteContext,
+    token_id: String,
+    contract_addr: String,
+    msg: Binary,
+) -> Result<Response, ContractError> {
+    let ExecuteContext {
+        deps, info, env, ..
+    } = ctx;
+    let contract = AndrCW721Contract::default();
+    TRANSFER_AGREEMENTS.remove(deps.storage, &token_id);
+
+    Ok(contract.send_nft(deps, env, info, contract_addr, token_id, msg)?)
 }
 
 #[cfg_attr(not(feature = "imported"), entry_point)]
