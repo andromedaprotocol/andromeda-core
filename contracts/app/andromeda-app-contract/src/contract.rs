@@ -381,7 +381,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
         QueryMsg::GetComponents {} => encode_binary(&query_component_descriptors(deps)?),
         QueryMsg::Config {} => encode_binary(&query_config(deps)?),
         QueryMsg::ComponentExists { name } => encode_binary(&query_component_exists(deps, name)),
-        _ => ADOContract::default().query::<QueryMsg>(deps, env, msg, None),
+        _ => ADOContract::default().query(deps, env, msg),
     }
 }
 

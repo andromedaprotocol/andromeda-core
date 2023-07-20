@@ -9,9 +9,9 @@ use andromeda_std::{
     error::ContractError,
 };
 use cosmwasm_std::{
-    attr, coins,
+    attr,
     testing::{mock_env, mock_info},
-    BankMsg, Response, Timestamp, Uint128,
+    Response, Timestamp, Uint128,
 };
 use cw_utils::Expiration;
 
@@ -22,63 +22,8 @@ use crate::{
 use andromeda_finance::weighted_splitter::{AddressWeight, ExecuteMsg, InstantiateMsg, Splitter};
 use cosmwasm_std::testing::mock_dependencies;
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
-const MOCK_RATES_RECIPIENT: &str = "rates_recipient";
 const MOCK_RECIPIENT1: &str = "recipient1";
 const MOCK_RECIPIENT2: &str = "recipient2";
-#[test]
-fn test_modules() {
-    let mut deps = mock_dependencies_custom(&[]);
-    let env = mock_env();
-    let info = mock_info("creator", &[]);
-    let msg = InstantiateMsg {
-        modules: Some(vec![Module {
-            name: Some("address_list".to_string()),
-            is_mutable: false,
-            address: AndrAddr::from_string(MOCK_ADDRESS_LIST_CONTRACT.to_string()),
-        }]),
-        recipients: vec![AddressWeight {
-            recipient: Recipient::from_string(MOCK_RATES_RECIPIENT.to_string()),
-            weight: Uint128::new(100),
-        }],
-        lock_time: None,
-        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
-        owner: None,
-    };
-    let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
-    let expected_res = Response::new()
-        .add_attribute("method", "instantiate")
-        .add_attribute("type", "weighted-distribution-splitter")
-        .add_attribute("action", "register_module")
-        .add_attribute("module_idx", "1");
-    assert_eq!(expected_res, res);
-
-    let msg = ExecuteMsg::Send {};
-    let info = mock_info("anyone", &coins(100, "uusd"));
-
-    let _res = execute(deps.as_mut(), mock_env(), info, msg.clone());
-
-    //NOTE waiting on module address validation
-    // assert_eq!(
-    //     ContractError::Std(StdError::generic_err(
-    //         "Querier contract error: InvalidAddress"
-    //     ),),
-    //     res.unwrap_err()
-    // );
-
-    let info = mock_info("sender", &coins(100, "uusd"));
-    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-
-    assert_eq!(
-        Response::new()
-            .add_message(BankMsg::Send {
-                to_address: MOCK_RATES_RECIPIENT.to_string(),
-                amount: coins(100, "uusd"),
-            })
-            .add_attribute("action", "send")
-            .add_attribute("sender", "sender"),
-        res
-    );
-}
 
 #[test]
 fn test_update_app_contract() {

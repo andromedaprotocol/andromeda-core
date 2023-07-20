@@ -1,6 +1,8 @@
 use andromeda_fungible_tokens::cw20::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use andromeda_std::{
-    ado_base::{hooks::AndromedaHook, InstantiateMsg as BaseInstantiateMsg},
+    ado_base::{
+        hooks::AndromedaHook, AndromedaMsg, AndromedaQuery, InstantiateMsg as BaseInstantiateMsg,
+    },
     ado_contract::ADOContract,
     common::Funds,
     common::{context::ExecuteContext, encode_binary},
@@ -15,7 +17,7 @@ use cosmwasm_std::{
 use cw2::{get_contract_version, set_contract_version};
 use cw20::{Cw20Coin, Cw20ExecuteMsg};
 use cw20_base::{
-    contract::{execute as execute_cw20, instantiate as cw20_instantiate},
+    contract::{execute as execute_cw20, instantiate as cw20_instantiate, query as cw20_query},
     state::BALANCES,
 };
 use semver::Version;
@@ -97,14 +99,13 @@ pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
             msg,
         } => execute_send(ctx, contract, amount, msg),
         ExecuteMsg::Mint { recipient, amount } => execute_mint(ctx, recipient, amount),
-        _ => ADOContract::default().execute_with_fallback(ctx, msg, execute_cw20_ctx),
-    }
-}
-
-fn execute_cw20_ctx(ctx: ExecuteContext, msg: Cw20ExecuteMsg) -> Result<Response, ContractError> {
-    match execute_cw20(ctx.deps, ctx.env, ctx.info, msg) {
-        Err(e) => Err(e.into()),
-        Ok(resp) => Ok(resp),
+        _ => {
+            let serialized = encode_binary(&msg)?;
+            match from_binary::<AndromedaMsg>(&serialized) {
+                Ok(msg) => ADOContract::default().execute(ctx, msg),
+                _ => Ok(execute_cw20(ctx.deps, ctx.env, ctx.info, msg.into())?),
+            }
+        }
     }
 }
 
@@ -313,5 +314,9 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
-    ADOContract::default().query::<QueryMsg>(deps, env, msg, None)
+    let serialized = to_binary(&msg)?;
+    match from_binary::<AndromedaQuery>(&serialized) {
+        Ok(msg) => ADOContract::default().query(deps, env, msg),
+        _ => Ok(cw20_query(deps, env, msg.into())?),
+    }
 }

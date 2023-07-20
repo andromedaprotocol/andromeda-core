@@ -5,11 +5,9 @@ use crate::{
     error::ContractError,
 };
 use cosmwasm_std::{ensure, Deps, Env, MessageInfo, Order, Response, Storage};
-use cw_storage_plus::{Bound, Index, IndexList, IndexedMap, Map, MultiIndex};
+use cw_storage_plus::{Bound, Index, IndexList, IndexedMap, MultiIndex};
 
 use super::ADOContract;
-
-pub const PERMISSIONED_ACTIONS: Map<String, bool> = Map::new("andr_permissioned_actions");
 
 const MAX_QUERY_LIMIT: u32 = 50;
 const DEFAULT_QUERY_LIMIT: u32 = 25;
@@ -58,7 +56,8 @@ impl<'a> ADOContract<'a> {
         }
 
         let permission = Self::get_permission(store, action_string.clone(), actor_string.clone())?;
-        let permissioned_action = PERMISSIONED_ACTIONS
+        let permissioned_action = self
+            .permissioned_actions
             .may_load(store, action_string.clone())?
             .unwrap_or(false);
         match permission {
@@ -242,16 +241,18 @@ impl<'a> ADOContract<'a> {
 
     /// Enables permissioning for a given action
     pub fn permission_action(
+        &self,
         action: impl Into<String>,
         store: &mut dyn Storage,
     ) -> Result<(), ContractError> {
-        PERMISSIONED_ACTIONS.save(store, action.into(), &true)?;
+        self.permissioned_actions
+            .save(store, action.into(), &true)?;
         Ok(())
     }
 
     /// Disables permissioning for a given action
     pub fn disable_action_permission(&self, action: impl Into<String>, store: &mut dyn Storage) {
-        PERMISSIONED_ACTIONS.remove(store, action.into());
+        self.permissioned_actions.remove(store, action.into());
     }
 
     pub fn execute_permission_action(
@@ -261,7 +262,7 @@ impl<'a> ADOContract<'a> {
     ) -> Result<Response, ContractError> {
         let action_string: String = action.into();
         Self::is_contract_owner(self, ctx.deps.storage, ctx.info.sender.as_str())?;
-        Self::permission_action(action_string.clone(), ctx.deps.storage)?;
+        self.permission_action(action_string.clone(), ctx.deps.storage)?;
         Ok(Response::default().add_attributes(vec![
             ("action", "permission_action"),
             ("action", action_string.as_str()),
@@ -305,7 +306,8 @@ impl<'a> ADOContract<'a> {
     }
 
     pub fn query_permissioned_actions(&self, deps: Deps) -> Result<Vec<String>, ContractError> {
-        let actions = PERMISSIONED_ACTIONS
+        let actions = self
+            .permissioned_actions
             .keys(deps.storage, None, None, Order::Ascending)
             .map(|p| p.unwrap())
             .collect::<Vec<String>>();
@@ -411,7 +413,9 @@ mod tests {
             .save(deps.as_mut().storage, &Addr::unchecked("owner"))
             .unwrap();
 
-        ADOContract::permission_action(action, deps.as_mut().storage).unwrap();
+        ADOContract::default()
+            .permission_action(action, deps.as_mut().storage)
+            .unwrap();
 
         // Test Whitelisting
         let res = contract.is_permissioned(deps.as_mut().storage, env.clone(), action, actor);
@@ -464,7 +468,9 @@ mod tests {
             .save(deps.as_mut().storage, &Addr::unchecked("owner"))
             .unwrap();
 
-        ADOContract::permission_action(action, deps.as_mut().storage).unwrap();
+        ADOContract::default()
+            .permission_action(action, deps.as_mut().storage)
+            .unwrap();
 
         // Test Blacklisted
         let permission = Permission::blacklisted(None);
@@ -533,7 +539,9 @@ mod tests {
             .save(deps.as_mut().storage, &Addr::unchecked("owner"))
             .unwrap();
 
-        ADOContract::permission_action(action, deps.as_mut().storage).unwrap();
+        ADOContract::default()
+            .permission_action(action, deps.as_mut().storage)
+            .unwrap();
 
         let res = contract.is_permissioned(deps.as_mut().storage, env.clone(), action, actor);
 
@@ -591,7 +599,9 @@ mod tests {
         .unwrap());
 
         let context = ExecuteContext::new(deps.as_mut(), info.clone(), env.clone());
-        ADOContract::permission_action(action, context.deps.storage).unwrap();
+        ADOContract::default()
+            .permission_action(action, context.deps.storage)
+            .unwrap();
 
         assert!(!is_context_permissioned(
             context.deps.storage,

@@ -1,10 +1,7 @@
-use andromeda_std::{andr_exec, andr_instantiate, andr_query};
+use andromeda_std::{andr_exec, andr_instantiate, andr_instantiate_modules, andr_query};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Binary, Uint128};
-use cw20::{
-    AllAccountsResponse, AllAllowancesResponse, AllowanceResponse, Cw20Coin, DownloadLogoResponse,
-    Logo, MarketingInfoResponse, MinterResponse, TokenInfoResponse,
-};
+use cw20::{Cw20Coin, Logo, MinterResponse};
 use cw20_base::msg::{
     ExecuteMsg as Cw20ExecuteMsg, InstantiateMarketingInfo, InstantiateMsg as Cw20InstantiateMsg,
     QueryMsg as Cw20QueryMsg,
@@ -12,6 +9,7 @@ use cw20_base::msg::{
 use cw_utils::Expiration;
 
 #[andr_instantiate]
+#[andr_instantiate_modules]
 #[cw_serde]
 pub struct InstantiateMsg {
     pub name: String,
@@ -186,22 +184,22 @@ pub enum QueryMsg {
     // Balance { address: AndrAddr },
     /// Returns metadata on the contract - name, decimals, supply, etc.
     /// Return type: TokenInfoResponse.
-    #[returns(TokenInfoResponse)]
+    #[returns(cw20::TokenInfoResponse)]
     TokenInfo {},
     /// Only with "mintable" extension.
     /// Returns who can mint and the hard cap on maximum tokens after minting.
     /// Return type: MinterResponse.
-    #[returns(MinterResponse)]
+    #[returns(cw20::MinterResponse)]
     Minter {},
     /// Only with "allowance" extension.
     /// Returns how much spender can use from owner account, 0 if unset.
     /// Return type: AllowanceResponse.
-    #[returns(AllowanceResponse)]
+    #[returns(cw20::AllowanceResponse)]
     Allowance { owner: String, spender: String },
     /// Only with "enumerable" extension (and "allowances")
     /// Returns all allowances this owner has approved. Supports pagination.
     /// Return type: AllAllowancesResponse.
-    #[returns(AllAllowancesResponse)]
+    #[returns(cw20::AllAllowancesResponse)]
     AllAllowances {
         owner: String,
         start_after: Option<String>,
@@ -210,7 +208,7 @@ pub enum QueryMsg {
     /// Only with "enumerable" extension
     /// Returns all accounts that have balances. Supports pagination.
     /// Return type: AllAccountsResponse.
-    #[returns(AllAccountsResponse)]
+    #[returns(cw20::AllAccountsResponse)]
     AllAccounts {
         start_after: Option<String>,
         limit: Option<u32>,
@@ -219,13 +217,13 @@ pub enum QueryMsg {
     /// Returns more metadata on the contract to display in the client:
     /// - description, logo, project url, etc.
     /// Return type: MarketingInfoResponse
-    #[returns(MarketingInfoResponse)]
+    #[returns(cw20::MarketingInfoResponse)]
     MarketingInfo {},
     /// Only with "marketing" extension
     /// Downloads the mbeded logo data (if stored on chain). Errors if no logo data ftored for this
     /// contract.
     /// Return type: DownloadLogoResponse.
-    #[returns(DownloadLogoResponse)]
+    #[returns(cw20::DownloadLogoResponse)]
     DownloadLogo {},
 }
 

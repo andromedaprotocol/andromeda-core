@@ -24,9 +24,7 @@ use andromeda_finance::vesting::{
     BatchResponse, Config, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
 };
 use andromeda_std::{
-    ado_base::{hooks::AndromedaHook, InstantiateMsg as BaseInstantiateMsg},
-    common::encode_binary,
-    error::from_semver,
+    ado_base::InstantiateMsg as BaseInstantiateMsg, common::encode_binary, error::from_semver,
 };
 
 const CONTRACT_NAME: &str = "crates.io:andromeda-vesting";
@@ -63,12 +61,8 @@ pub fn instantiate(
             owner: msg.owner,
         },
     )?;
-    let mod_resp =
-        ADOContract::default().register_modules(info.sender.as_str(), deps.storage, msg.modules)?;
 
-    Ok(inst_resp
-        .add_attributes(mod_resp.attributes)
-        .add_submessages(mod_resp.messages))
+    Ok(inst_resp)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -89,19 +83,6 @@ pub fn execute(
 }
 
 pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
-    let contract = ADOContract::default();
-
-    if !matches!(msg, ExecuteMsg::UpdateAppContract { .. })
-        && !matches!(msg, ExecuteMsg::UpdateOwner { .. })
-    {
-        contract.module_hook::<Response>(
-            &ctx.deps.as_ref(),
-            AndromedaHook::OnExecute {
-                sender: ctx.info.sender.to_string(),
-                payload: encode_binary(&msg)?,
-            },
-        )?;
-    }
     match msg {
         ExecuteMsg::CreateBatch {
             lockup_duration,
@@ -585,7 +566,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
         QueryMsg::Batches { start_after, limit } => {
             encode_binary(&query_batches(deps, env, start_after, limit)?)
         }
-        _ => ADOContract::default().query::<QueryMsg>(deps, env, msg, None),
+        _ => ADOContract::default().query(deps, env, msg),
     }
 }
 

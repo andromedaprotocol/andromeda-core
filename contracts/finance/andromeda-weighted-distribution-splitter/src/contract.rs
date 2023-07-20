@@ -4,7 +4,7 @@ use andromeda_finance::weighted_splitter::{
     MigrateMsg, QueryMsg, Splitter,
 };
 use andromeda_std::{
-    ado_base::{hooks::AndromedaHook, InstantiateMsg as BaseInstantiateMsg},
+    ado_base::InstantiateMsg as BaseInstantiateMsg,
     ado_contract::ADOContract,
     amp::Recipient,
     common::{context::ExecuteContext, encode_binary},
@@ -82,12 +82,8 @@ pub fn instantiate(
             owner: msg.owner,
         },
     )?;
-    let modules_resp =
-        contract.register_modules(info.sender.as_str(), deps.storage, msg.modules)?;
 
-    Ok(resp
-        .add_submessages(modules_resp.messages)
-        .add_attributes(modules_resp.attributes))
+    Ok(resp)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -108,19 +104,6 @@ pub fn execute(
 }
 
 pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
-    let contract = ADOContract::default();
-
-    if !matches!(msg, ExecuteMsg::UpdateAppContract { .. })
-        && !matches!(msg, ExecuteMsg::UpdateOwner { .. })
-    {
-        contract.module_hook::<Response>(
-            &ctx.deps.as_ref(),
-            AndromedaHook::OnExecute {
-                sender: ctx.info.sender.to_string(),
-                payload: encode_binary(&msg)?,
-            },
-        )?;
-    }
     match msg {
         ExecuteMsg::UpdateRecipients { recipients } => execute_update_recipients(ctx, recipients),
         ExecuteMsg::UpdateRecipientWeight { recipient } => {
@@ -501,7 +484,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
     match msg {
         QueryMsg::GetSplitterConfig {} => encode_binary(&query_splitter(deps)?),
         QueryMsg::GetUserWeight { user } => encode_binary(&query_user_weight(deps, user)?),
-        _ => ADOContract::default().query::<QueryMsg>(deps, env, msg, None),
+        _ => ADOContract::default().query(deps, env, msg),
     }
 }
 

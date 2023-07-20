@@ -1,97 +1,18 @@
-use andromeda_std::{
-    ado_base::Module,
-    amp::{AndrAddr, Recipient},
-    error::ContractError,
-    testing::mock_querier::{MOCK_ADDRESS_LIST_CONTRACT, MOCK_KERNEL_CONTRACT},
-};
+use andromeda_std::{amp::Recipient, error::ContractError};
 use cosmwasm_std::{
     attr, coin, coins, from_binary,
     testing::{mock_env, mock_info},
-    BankMsg, Coin, DepsMut, Response, StdError, Timestamp,
+    BankMsg, Coin, Response, Timestamp,
 };
 use cw_utils::Expiration;
 
 use crate::{
-    contract::{execute, instantiate, query},
+    contract::{execute, query},
     testing::mock_querier::mock_dependencies_custom,
 };
 use andromeda_finance::timelock::{
-    Escrow, EscrowCondition, ExecuteMsg, GetLockedFundsResponse, InstantiateMsg, QueryMsg,
+    Escrow, EscrowCondition, ExecuteMsg, GetLockedFundsResponse, QueryMsg,
 };
-
-fn init(deps: DepsMut, _modules: Option<Vec<Module>>) -> Response {
-    let modules = vec![Module {
-        name: Some("address_list".to_string()),
-        is_mutable: false,
-        address: AndrAddr::from_string(MOCK_ADDRESS_LIST_CONTRACT.to_owned()),
-    }];
-
-    let msg = InstantiateMsg {
-        owner: None,
-        modules: Some(modules),
-        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
-    };
-    let info = mock_info("owner", &[]);
-    instantiate(deps, mock_env(), info, msg).unwrap()
-}
-
-#[test]
-fn test_modules() {
-    let mut deps = mock_dependencies_custom(&[]);
-    let res = init(deps.as_mut(), None);
-
-    assert_eq!(
-        Response::new()
-            .add_attribute("method", "instantiate")
-            .add_attribute("type", "timelock")
-            .add_attribute("action", "register_module")
-            .add_attribute("module_idx", "1"),
-        res
-    );
-
-    let msg = ExecuteMsg::HoldFunds {
-        condition: None,
-        recipient: None,
-    };
-    let info = mock_info("anyone", &coins(100, "uusd"));
-    let res = execute(deps.as_mut(), mock_env(), info, msg.clone());
-    assert_eq!(
-        ContractError::Std(StdError::generic_err(
-            "Querier contract error: InvalidAddress"
-        )),
-        res.unwrap_err()
-    );
-
-    let info = mock_info("sender", &coins(100, "uusd"));
-    let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-    // assert_eq!(
-    //     Response::new()
-    //         .add_attribute("action", "hold_funds")
-    //         .add_attribute("sender", "sender")
-    //         .add_attribute("recipient", "Recipient { address: AndrAddr(\"sender\")")
-    //         .add_attribute("condition", "None"),
-    //     res.
-    // );
-}
-
-// #[test]
-// fn test_update_app_contract() {
-//     let mut deps = mock_dependencies_custom(&[]);
-
-//     let info = mock_info("app_contract", &[]);
-//     let _res = init(deps.as_mut(), None);
-
-//     let msg = ExecuteMsg::UpdateAppContract {
-//         address: "app_contract".to_string(),
-//     };
-//     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-//     assert_eq!(
-//         Response::new()
-//             .add_attribute("action", "update_app_contract")
-//             .add_attribute("address", "app_contract"),
-//         res
-//     );
-// }
 
 #[test]
 fn test_execute_hold_funds() {

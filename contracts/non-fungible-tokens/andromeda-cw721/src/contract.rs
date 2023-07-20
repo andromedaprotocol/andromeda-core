@@ -1,8 +1,8 @@
 #[cfg(not(feature = "imported"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, ensure, has_coins, to_binary, Api, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut,
-    Empty, Env, MessageInfo, QuerierWrapper, Response, SubMsg, Uint128,
+    attr, ensure, from_binary, has_coins, to_binary, Api, BankMsg, Binary, Coin, CosmosMsg, Deps,
+    DepsMut, Empty, Env, MessageInfo, QuerierWrapper, Response, SubMsg, Uint128,
 };
 
 use crate::state::{
@@ -12,6 +12,7 @@ use andromeda_non_fungible_tokens::cw721::{
     ExecuteMsg, InstantiateMsg, MigrateMsg, MintMsg, QueryMsg, TokenExtension, TransferAgreement,
 };
 use andromeda_std::{
+    ado_base::{AndromedaMsg, AndromedaQuery},
     ado_contract::{
         permissioning::{is_context_permissioned, is_context_permissioned_strict},
         ADOContract,
@@ -134,16 +135,6 @@ fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Cont
         );
     }
 
-    if !matches!(msg, ExecuteMsg::UpdateAppContract { .. }) {
-        contract.module_hook::<Response>(
-            &ctx.deps.as_ref(),
-            AndromedaHook::OnExecute {
-                sender: ctx.info.sender.to_string(),
-                payload: encode_binary(&msg)?,
-            },
-        )?;
-    }
-
     let res = match msg {
         ExecuteMsg::Mint {
             token_id,
@@ -162,7 +153,14 @@ fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Cont
         } => execute_update_transfer_agreement(ctx, token_id, agreement),
         ExecuteMsg::Archive { token_id } => execute_archive(ctx, token_id),
         ExecuteMsg::Burn { token_id } => execute_burn(ctx, token_id),
-        _ => contract.execute_with_fallback(ctx, msg, execute_cw721),
+        _ => {
+            let serialized = to_binary(&msg)?;
+
+            match from_binary::<AndromedaMsg>(&serialized) {
+                Ok(msg) => contract.execute(ctx, msg),
+                Err(_) => execute_cw721(ctx, msg.into()),
+            }
+        }
     }?;
     Ok(res.add_submessage(fee_msg))
 }
@@ -480,7 +478,13 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
             Ok(to_binary(&query_transfer_agreement(deps, token_id)?)?)
         }
         QueryMsg::Minter {} => Ok(to_binary(&query_minter(deps)?)?),
-        _ => Ok(AndrCW721Contract::default().query(deps, env, msg.into())?),
+        _ => {
+            let serialized = to_binary(&msg)?;
+            match from_binary::<AndromedaQuery>(&serialized) {
+                Ok(msg) => ADOContract::default().query(deps, env, msg),
+                _ => Ok(AndrCW721Contract::default().query(deps, env, msg.into())?),
+            }
+        } // _ => Ok(AndrCW721Contract::default().query(deps, env, msg.into())?),
     }
 }
 

@@ -96,21 +96,6 @@ impl<'a> ADOContract<'a> {
         }
     }
 
-    /// Handles execution of ADO specific messages with a fallback function in the case that the provided message must be handled by an external package.
-    pub fn execute_with_fallback<E: DeserializeOwned>(
-        &self,
-        ctx: ExecuteContext,
-        msg: impl Serialize,
-        fallback_execute_function: ExecuteContextFunction<E>,
-    ) -> Result<Response, ContractError> {
-        let deserialized = from_binary::<E>(&to_binary(&msg)?);
-
-        match deserialized {
-            Ok(deserialized) => fallback_execute_function(ctx, deserialized),
-            Err(_) => self.execute(ctx, msg),
-        }
-    }
-
     /// Validates all provided `AndrAddr` addresses.
     ///
     /// Requires the VFS address to be set if any address is a VFS path.
@@ -162,12 +147,14 @@ impl<'a> ADOContract<'a> {
         Ok(())
     }
 
+    #[inline]
     /// Gets the stored address for the Kernel contract
     pub fn get_kernel_address(&self, storage: &dyn Storage) -> Result<Addr, ContractError> {
         let kernel_address = self.kernel_address.load(storage)?;
         Ok(kernel_address)
     }
 
+    #[inline]
     /// Gets the current address for the VFS contract.
     pub fn get_vfs_address(
         &self,
@@ -178,6 +165,7 @@ impl<'a> ADOContract<'a> {
         AOSQuerier::vfs_address_getter(querier, &kernel_address)
     }
 
+    #[inline]
     /// Gets the current address for the VFS contract.
     pub fn get_adodb_address(
         &self,
@@ -188,6 +176,7 @@ impl<'a> ADOContract<'a> {
         AOSQuerier::adodb_address_getter(querier, &kernel_address)
     }
 
+    #[inline]
     /// Updates the current version of the contract.
     pub fn execute_update_version(&self, deps: DepsMut) -> Result<Response, ContractError> {
         self.version

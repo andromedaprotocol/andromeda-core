@@ -197,7 +197,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
         QueryMsg::WithdrawalPercentAllowed { timestamp } => {
             encode_binary(&query_max_withdrawable_percent(deps, env, timestamp)?)
         }
-        _ => ADOContract::default().query::<ExecuteMsg>(deps, env, msg, None),
+        _ => ADOContract::default().query(deps, env, msg),
     }
 }
 

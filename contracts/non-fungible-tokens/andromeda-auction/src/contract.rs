@@ -626,7 +626,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
             token_id,
             token_address,
         } => encode_binary(&query_is_closed(deps, env, token_id, token_address)?),
-        _ => ADOContract::default().query::<QueryMsg>(deps, env, msg, None),
+        _ => ADOContract::default().query(deps, env, msg),
     }
 }
 

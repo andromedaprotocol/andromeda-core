@@ -3,16 +3,12 @@ pub mod block_height;
 #[cfg(any(feature = "module_hooks", feature = "modules"))]
 pub mod hooks;
 pub mod kernel_address;
-#[cfg(feature = "modules")]
 pub mod modules;
 pub mod operators;
 pub mod ownership;
 pub mod permissioning;
-#[cfg(feature = "primitive")]
-pub mod primitive;
 pub mod version;
 
-#[cfg(feature = "withdraw")]
 pub mod withdraw;
 #[cfg(feature = "withdraw")]
 use crate::ado_base::withdraw::Withdrawal;
@@ -24,7 +20,6 @@ use crate::{
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Binary;
-#[cfg(feature = "modules")]
 pub use modules::Module;
 
 #[cfg(feature = "modules")]
@@ -67,15 +62,6 @@ pub enum AndromedaMsg {
     AlterModule {
         module_idx: Uint64,
         module: Module,
-    },
-    #[cfg(feature = "primitive")]
-    RefreshAddress {
-        contract: String,
-    },
-    #[cfg(feature = "primitive")]
-    RefreshAddresses {
-        limit: Option<u32>,
-        start_after: Option<String>,
     },
     Deposit {
         recipient: Option<AndrAddr>,

@@ -253,5 +253,5 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
-    ADOContract::default().query::<QueryMsg>(deps, env, msg, None)
+    ADOContract::default().query(deps, env, msg)
 }

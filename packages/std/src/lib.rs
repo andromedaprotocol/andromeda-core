@@ -6,7 +6,7 @@ pub mod error;
 pub mod ibc;
 pub mod os;
 
-pub use andromeda_macros::{andr_exec, andr_instantiate, andr_query};
+pub use andromeda_macros::{andr_exec, andr_instantiate, andr_instantiate_modules, andr_query};
 pub use cw_utils::Expiration;
 pub use strum_macros::AsRefStr;
 

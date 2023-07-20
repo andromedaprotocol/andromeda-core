@@ -1,4 +1,6 @@
-use andromeda_std::{amp::addresses::AndrAddr, andr_exec, andr_instantiate, andr_query};
+use andromeda_std::{
+    amp::addresses::AndrAddr, andr_exec, andr_instantiate, andr_instantiate_modules, andr_query,
+};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 
 use cosmwasm_std::{Binary, Coin, CustomMsg};
@@ -7,6 +9,7 @@ use cw721::Expiration;
 use cw721_base::{ExecuteMsg as Cw721ExecuteMsg, QueryMsg as Cw721QueryMsg};
 
 #[andr_instantiate]
+#[andr_instantiate_modules]
 #[cw_serde]
 pub struct InstantiateMsg {
     /// Name of the NFT contract

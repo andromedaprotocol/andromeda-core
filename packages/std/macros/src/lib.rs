@@ -1,9 +1,6 @@
 use proc_macro::TokenStream;
 use quote::{quote, ToTokens};
-use syn::{parse::Parser, parse_macro_input, DeriveInput, NestedMeta};
-
-#[cfg(feature = "modules")]
-use syn::{AttributeArgs, Lit};
+use syn::{parse::Parser, parse_macro_input, DeriveInput};
 
 /// Taken from: https://github.com/DA0-DA0/dao-contracts/blob/74bd3881fdd86829e5e8b132b9952dd64f2d0737/packages/dao-macros/src/lib.rs#L9
 /// Used to merge two enums together.
@@ -39,7 +36,7 @@ fn merge_variants(left: TokenStream, right: TokenStream) -> TokenStream {
 /// e.g. `ExecuteMsg::MyMessage{..}.as_ref_str()` will return `"MyMessage"`
 ///
 /// **Must be placed before `#[cw_serde]`**
-pub fn andr_exec(args: TokenStream, input: TokenStream) -> TokenStream {
+pub fn andr_exec(_args: TokenStream, input: TokenStream) -> TokenStream {
     let mut merged = merge_variants(
         input,
         quote! {
@@ -74,28 +71,24 @@ pub fn andr_exec(args: TokenStream, input: TokenStream) -> TokenStream {
     );
     #[cfg(feature = "modules")]
     {
-        let args = parse_macro_input!(args as AttributeArgs);
-        let excluding_modules = excludes_modules(args);
-        if !excluding_modules {
-            merged = merge_variants(
-                merged,
-                quote! {
-                    enum Right {
-                        RegisterModule {
-                            module: ::andromeda_std::ado_base::Module,
-                        },
-                        DeregisterModule {
-                            module_idx: ::cosmwasm_std::Uint64,
-                        },
-                        AlterModule {
-                            module_idx: ::cosmwasm_std::Uint64,
-                            module: ::andromeda_std::ado_base::Module,
-                        },
-                    }
+        merged = merge_variants(
+            merged,
+            quote! {
+                enum Right {
+                    RegisterModule {
+                        module: ::andromeda_std::ado_base::Module,
+                    },
+                    DeregisterModule {
+                        module_idx: ::cosmwasm_std::Uint64,
+                    },
+                    AlterModule {
+                        module_idx: ::cosmwasm_std::Uint64,
+                        module: ::andromeda_std::ado_base::Module,
+                    },
                 }
-                .into(),
-            )
-        }
+            }
+            .into(),
+        )
     }
 
     #[cfg(feature = "withdraw")]
@@ -130,17 +123,6 @@ fn andr_exec_derive(input: DeriveInput) -> DeriveInput {
     }
 }
 
-#[cfg(feature = "modules")]
-fn excludes_modules(args: Vec<NestedMeta>) -> bool {
-    args.iter().any(|arg| {
-        if let NestedMeta::Lit(Lit::Str(path)) = arg {
-            path.value() == "no_modules"
-        } else {
-            false
-        }
-    })
-}
-
 /// Adjusted from https://users.rust-lang.org/t/solved-derive-and-proc-macro-add-field-to-an-existing-struct/52307/3
 /// Adds all fields required to instantiate an ADO to a struct.
 ///
@@ -149,7 +131,7 @@ fn excludes_modules(args: Vec<NestedMeta>) -> bool {
 /// 2. Owner of the ADO (optional, assumed to be sender otherwise)
 /// 3. Modules (optional, requires `modules` feature)
 #[proc_macro_attribute]
-pub fn andr_instantiate(args: TokenStream, input: TokenStream) -> TokenStream {
+pub fn andr_instantiate(_args: TokenStream, input: TokenStream) -> TokenStream {
     let mut ast = parse_macro_input!(input as DeriveInput);
     match &mut ast.data {
         syn::Data::Struct(ref mut struct_data) => {
@@ -164,20 +146,6 @@ pub fn andr_instantiate(args: TokenStream, input: TokenStream) -> TokenStream {
                         .parse2(quote! { pub owner: Option<String> })
                         .unwrap(),
                 );
-                #[cfg(feature = "modules")]
-                {
-                    let args = parse_macro_input!(args as AttributeArgs);
-                    let excluding_modules = excludes_modules(args);
-                    if !excluding_modules {
-                        fields.named.push(
-                            syn::Field::parse_named
-                                .parse2(
-                                    quote! { pub modules: Option<Vec<::andromeda_std::ado_base::Module>> },
-                                )
-                                .unwrap(),
-                        );
-                    }
-                }
             }
 
             quote! {
@@ -190,37 +158,19 @@ pub fn andr_instantiate(args: TokenStream, input: TokenStream) -> TokenStream {
 }
 
 #[proc_macro_attribute]
-pub fn andr_instantiate_modules(args: TokenStream, input: TokenStream) -> TokenStream {
+pub fn andr_instantiate_modules(_args: TokenStream, input: TokenStream) -> TokenStream {
     let mut ast = parse_macro_input!(input as DeriveInput);
     match &mut ast.data {
         syn::Data::Struct(ref mut struct_data) => {
             if let syn::Fields::Named(fields) = &mut struct_data.fields {
                 fields.named.push(
                     syn::Field::parse_named
-                        .parse2(quote! { pub kernel_address: String })
+                        .parse2(
+                            quote! { pub modules: Option<Vec<::andromeda_std::ado_base::Module>> },
+                        )
                         .unwrap(),
                 );
-                fields.named.push(
-                    syn::Field::parse_named
-                        .parse2(quote! { pub owner: Option<String> })
-                        .unwrap(),
-                );
-                #[cfg(feature = "modules")]
-                {
-                    let args = parse_macro_input!(args as AttributeArgs);
-                    let excluding_modules = excludes_modules(args);
-                    if !excluding_modules {
-                        fields.named.push(
-                            syn::Field::parse_named
-                                .parse2(
-                                    quote! { pub modules: Option<Vec<::andromeda_std::ado_base::Module>> },
-                                )
-                                .unwrap(),
-                        );
-                    }
-                }
             }
-
             quote! {
                 #ast
             }
@@ -234,7 +184,8 @@ pub fn andr_instantiate_modules(args: TokenStream, input: TokenStream) -> TokenS
 /// Attaches all relevant ADO messages to a set of Query messages for a given contract.
 ///
 /// **Must be placed before `#[cw_serde]`**
-pub fn andr_query(metadata: TokenStream, input: TokenStream) -> TokenStream {
+pub fn andr_query(_metadata: TokenStream, input: TokenStream) -> TokenStream {
+    #[allow(unused_mut)]
     let mut merged = merge_variants(
         input,
         quote! {
@@ -270,22 +221,18 @@ pub fn andr_query(metadata: TokenStream, input: TokenStream) -> TokenStream {
 
     #[cfg(feature = "modules")]
     {
-        let args = parse_macro_input!(metadata as AttributeArgs);
-        let excluding_modules = excludes_modules(args);
-        if !excluding_modules {
-            merged = merge_variants(
-                merged,
-                quote! {
-                    enum Right {
-                        #[returns(andromeda_std::ado_base::Module)]
-                        Module { id: ::cosmwasm_std::Uint64 },
-                        #[returns(Vec<String>)]
-                        ModuleIds {},
-                    }
+        merged = merge_variants(
+            merged,
+            quote! {
+                enum Right {
+                    #[returns(andromeda_std::ado_base::Module)]
+                    Module { id: ::cosmwasm_std::Uint64 },
+                    #[returns(Vec<String>)]
+                    ModuleIds {},
                 }
-                .into(),
-            );
-        }
+            }
+            .into(),
+        );
     }
     #[cfg(feature = "module_hooks")]
     {

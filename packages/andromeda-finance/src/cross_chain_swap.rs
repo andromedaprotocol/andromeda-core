@@ -2,11 +2,11 @@ use andromeda_std::{amp::AndrAddr, andr_exec, andr_instantiate, andr_query};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Binary, Coin, Decimal, Uint128};
 
-#[andr_instantiate("no_modules")]
+#[andr_instantiate]
 #[cw_serde]
 pub struct InstantiateMsg {}
 
-#[andr_exec("no_modules")]
+#[andr_exec]
 #[cw_serde]
 pub enum ExecuteMsg {
     SwapAndForward {
@@ -23,7 +23,7 @@ pub enum ExecuteMsg {
 #[serde(rename_all = "snake_case")]
 pub struct MigrateMsg {}
 
-#[andr_query("no_modules")]
+#[andr_query]
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {}

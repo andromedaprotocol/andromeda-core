@@ -390,7 +390,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
         QueryMsg::SaleAssets { start_after, limit } => {
             query_sale_assets(deps, start_after.as_deref(), limit)
         }
-        _ => ADOContract::default().query::<QueryMsg>(deps, env, msg, None),
+        _ => ADOContract::default().query(deps, env, msg),
     }
 }
 

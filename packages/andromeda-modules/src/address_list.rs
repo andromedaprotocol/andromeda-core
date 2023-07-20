@@ -1,7 +1,7 @@
 use andromeda_std::{andr_exec, andr_instantiate, andr_query};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 
-#[andr_instantiate("no_modules")]
+#[andr_instantiate]
 #[cw_serde]
 pub struct InstantiateMsg {
     pub is_inclusive: bool,

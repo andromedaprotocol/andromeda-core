@@ -1,5 +1,3 @@
-#[cfg(feature = "primitive")]
-use crate::ado_base::primitive::{GetValueResponse, Primitive};
 use crate::{
     ado_base::AndromedaQuery,
     ado_contract::ADOContract,

@@ -627,7 +627,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
             encode_binary(&query_stakers(deps, env, start_after, limit)?)
         }
         QueryMsg::Timestamp {} => encode_binary(&query_timestamp(env)),
-        _ => ADOContract::default().query::<QueryMsg>(deps, env, msg, None),
+        _ => ADOContract::default().query(deps, env, msg),
     }
 }
 

@@ -2,14 +2,11 @@ pub mod app;
 mod execute;
 #[cfg(feature = "instantiate")]
 mod instantiate;
+
 #[cfg(feature = "modules")]
 pub mod modules;
 
 mod ownership;
-
-//TODO: Redo this feature
-// #[cfg(feature = "primitive")]
-// pub mod primitive;
 
 pub mod permissioning;
 mod query;

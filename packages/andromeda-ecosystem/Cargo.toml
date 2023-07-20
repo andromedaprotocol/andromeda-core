@@ -20,4 +20,4 @@ schemars = "0.8.10"
 #astroport = "1.0.1"
 cw20 = { workspace = true }
 cw-asset = { workspace = true  }
-andromeda-std = { workspace = true, features = ["withdraw"] }
+andromeda-std = { workspace = true }

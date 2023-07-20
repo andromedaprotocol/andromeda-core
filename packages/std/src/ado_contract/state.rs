@@ -14,6 +14,7 @@ pub struct ADOContract<'a> {
     pub(crate) version: Item<'a, String>,
     pub(crate) app_contract: Item<'a, Addr>,
     pub(crate) kernel_address: Item<'a, Addr>,
+    pub(crate) permissioned_actions: Map<'a, String, bool>,
     #[cfg(feature = "modules")]
     pub(crate) module_info: Map<'a, &'a str, Module>,
     #[cfg(feature = "modules")]
@@ -33,6 +34,7 @@ impl<'a> Default for ADOContract<'a> {
             version: Item::new("version"),
             app_contract: Item::new("app_contract"),
             kernel_address: Item::new("kernel_address"),
+            permissioned_actions: Map::new("andr_permissioned_actions"),
             #[cfg(feature = "modules")]
             module_info: Map::new("andr_modules"),
             #[cfg(feature = "modules")]

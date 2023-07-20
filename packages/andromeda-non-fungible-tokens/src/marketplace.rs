@@ -1,9 +1,10 @@
-use andromeda_std::{andr_exec, andr_instantiate, andr_query};
+use andromeda_std::{andr_exec, andr_instantiate, andr_instantiate_modules, andr_query};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
 use cw721::Cw721ReceiveMsg;
 
 #[andr_instantiate]
+#[andr_instantiate_modules]
 #[cw_serde]
 #[serde(rename_all = "snake_case")]
 pub struct InstantiateMsg {}

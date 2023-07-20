@@ -1,5 +1,4 @@
 use andromeda_std::{
-    ado_base::modules::Module,
     amp::{
         messages::{AMPMsg, AMPPkt},
         recipient::Recipient,
@@ -26,13 +25,12 @@ use andromeda_finance::splitter::{
     AddressPercent, ExecuteMsg, GetSplitterConfigResponse, InstantiateMsg, QueryMsg, Splitter,
 };
 
-fn init(deps: DepsMut, modules: Option<Vec<Module>>) -> Response {
+fn init(deps: DepsMut) -> Response {
     let mock_recipient: Vec<AddressPercent> = vec![AddressPercent {
         recipient: Recipient::from_string(String::from("some_address")),
         percent: Decimal::percent(100),
     }];
     let msg = InstantiateMsg {
-        modules,
         owner: Some(OWNER.to_owned()),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         recipients: mock_recipient,
@@ -46,14 +44,14 @@ fn init(deps: DepsMut, modules: Option<Vec<Module>>) -> Response {
 #[test]
 fn test_instantiate() {
     let mut deps = mock_dependencies_custom(&[]);
-    let res = init(deps.as_mut(), None);
+    let res = init(deps.as_mut());
     assert_eq!(0, res.messages.len());
 }
 
 #[test]
 fn test_execute_update_lock() {
     let mut deps = mock_dependencies_custom(&[]);
-    let _res = init(deps.as_mut(), None);
+    let _res = init(deps.as_mut());
 
     let env = mock_env();
 
@@ -91,7 +89,7 @@ fn test_execute_update_lock() {
 fn test_execute_update_recipients() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
-    let _res = init(deps.as_mut(), None);
+    let _res = init(deps.as_mut());
 
     let recipient = vec![
         AddressPercent {
@@ -134,7 +132,7 @@ fn test_execute_update_recipients() {
 fn test_execute_send() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
-    let _res: Response = init(deps.as_mut(), None);
+    let _res: Response = init(deps.as_mut());
 
     let sender_funds_amount = 10000u128;
 
@@ -205,7 +203,7 @@ fn test_execute_send() {
 fn test_execute_send_ado_recipient() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
-    let _res: Response = init(deps.as_mut(), None);
+    let _res: Response = init(deps.as_mut());
 
     let sender_funds_amount = 10000u128;
     let info = mock_info(OWNER, &[Coin::new(sender_funds_amount, "uluna")]);
@@ -276,7 +274,7 @@ fn test_execute_send_ado_recipient() {
 fn test_handle_packet_exit_with_error_true() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
-    let _res: Response = init(deps.as_mut(), None);
+    let _res: Response = init(deps.as_mut());
 
     let sender_funds_amount = 0u128;
     let info = mock_info(OWNER, &[Coin::new(sender_funds_amount, "uluna")]);
@@ -355,7 +353,7 @@ fn test_execute_send_error() {
     //Executes send with more than 5 tokens [ACK-04]
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
-    let _res: Response = init(deps.as_mut(), None);
+    let _res: Response = init(deps.as_mut());
 
     let sender_funds_amount = 10000u128;
     let owner = "creator";
@@ -406,7 +404,7 @@ fn test_execute_send_error() {
 #[test]
 fn test_update_app_contract() {
     let mut deps = mock_dependencies_custom(&[]);
-    let _res: Response = init(deps.as_mut(), None);
+    let _res: Response = init(deps.as_mut());
 
     let info = mock_info(OWNER, &[]);
 
@@ -427,7 +425,7 @@ fn test_update_app_contract() {
 #[test]
 fn test_update_app_contract_invalid_recipient() {
     let mut deps = mock_dependencies_custom(&[]);
-    let _res: Response = init(deps.as_mut(), None);
+    let _res: Response = init(deps.as_mut());
 
     let info = mock_info(OWNER, &[]);
 

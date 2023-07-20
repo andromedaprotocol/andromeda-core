@@ -135,7 +135,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
     match msg {
         QueryMsg::AndrHook(msg) => handle_andromeda_hook(deps, msg),
         QueryMsg::Payments {} => encode_binary(&query_payments(deps)?),
-        _ => ADOContract::default().query::<QueryMsg>(deps, env, msg, None),
+        _ => ADOContract::default().query(deps, env, msg),
     }
 }
 

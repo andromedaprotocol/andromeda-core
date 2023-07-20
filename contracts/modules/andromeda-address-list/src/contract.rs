@@ -144,7 +144,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
         QueryMsg::AndrHook(msg) => handle_andr_hook(deps, msg),
         QueryMsg::IncludesAddress { address } => encode_binary(&query_address(deps, &address)?),
         QueryMsg::IsInclusive {} => encode_binary(&handle_is_inclusive(deps)?),
-        _ => ADOContract::default().query::<QueryMsg>(deps, env, msg, None),
+        _ => ADOContract::default().query(deps, env, msg),
     }
 }
 

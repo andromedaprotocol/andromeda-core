@@ -820,7 +820,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
             encode_binary(&query_available_tokens(deps, start_after, limit)?)
         }
         QueryMsg::IsTokenAvailable { id } => encode_binary(&query_is_token_available(deps, id)),
-        _ => ADOContract::default().query::<QueryMsg>(deps, env, msg, None),
+        _ => ADOContract::default().query(deps, env, msg),
     }
 }
 

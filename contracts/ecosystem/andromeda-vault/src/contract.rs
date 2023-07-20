@@ -421,7 +421,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
             denom,
         } => query_balance(deps, address, strategy, denom),
         QueryMsg::StrategyAddress { strategy } => query_strategy_address(deps, env, strategy),
-        _ => ADOContract::default().query::<ExecuteMsg>(deps, env, msg, None),
+        _ => ADOContract::default().query(deps, env, msg),
     }
 }
 
