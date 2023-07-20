@@ -247,6 +247,12 @@ fn execute_batch_mint(
             )?,
         ContractError::Unauthorized {}
     );
+    ensure!(
+        !tokens_to_mint.is_empty(),
+        ContractError::Std(cosmwasm_std::StdError::GenericErr {
+            msg: String::from("No tokens to mint")
+        })
+    );
     for msg in tokens_to_mint {
         let ctx = ExecuteContext {
             deps: ctx.deps.branch(),

@@ -1,7 +1,7 @@
 use cosmwasm_std::{
     attr, coins, from_binary,
     testing::{mock_env, mock_info},
-    Addr, Coin, DepsMut, Env, Response, Uint128,
+    Addr, Coin, DepsMut, Env, Response, StdError, Uint128,
 };
 
 use andromeda_std::error::ContractError;
@@ -592,6 +592,14 @@ fn test_batch_mint() {
     }
 
     instantiate(deps.as_mut(), mock_env(), info.clone(), inst_msg).unwrap();
+
+    let msg: ExecuteMsg = ExecuteMsg::BatchMint { tokens: vec![] };
+
+    let err = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap_err();
+    assert_eq!(
+        err,
+        ContractError::Std(StdError::generic_err("No tokens to mint"))
+    );
 
     let msg: ExecuteMsg = ExecuteMsg::BatchMint { tokens: mint_msgs };
 
