@@ -127,12 +127,12 @@ fn execute_register_user(
     USERS.save(
         execute_env.deps.storage,
         username.as_str(),
-        &execute_env.info.sender.clone(),
+        &execute_env.info.sender,
     )?;
     //Update current address' username
     ADDRESS_USERNAME.save(
         execute_env.deps.storage,
-        &execute_env.info.sender.to_string(),
+        execute_env.info.sender.as_ref(),
         &username,
     )?;
 
