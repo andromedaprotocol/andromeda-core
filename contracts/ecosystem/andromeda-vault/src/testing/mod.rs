@@ -14,6 +14,7 @@ use andromeda_std::{
     ado_base::AndromedaMsg,
     error::ContractError,
 };
+use cosmwasm_std::attr;
 use cosmwasm_std::{
     coin, from_binary,
     testing::{mock_env, mock_info},
@@ -223,7 +224,11 @@ fn test_deposit_strategy() {
         .unwrap();
     let expected = Response::default()
         .add_submessage(msg)
-        .add_submessage(msg_two);
+        .add_submessage(msg_two)
+        .add_attributes(vec![
+            attr("action", "deposit"),
+            attr("recipient", "depositor"),
+        ]);
 
     assert_eq!(expected, res)
 }
@@ -285,7 +290,12 @@ fn test_deposit_strategy_partial_amount() {
             Recipient::from_string("depositor"),
         )
         .unwrap();
-    let expected = Response::default().add_submessage(deposit_submsg);
+    let expected = Response::default()
+        .add_submessage(deposit_submsg)
+        .add_attributes(vec![
+            attr("action", "deposit"),
+            attr("recipient", "depositor"),
+        ]);
 
     assert_eq!(expected, res);
 
