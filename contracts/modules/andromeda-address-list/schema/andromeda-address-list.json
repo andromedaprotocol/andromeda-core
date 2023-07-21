@@ -75,6 +75,31 @@
         "additionalProperties": false
       },
       {
+        "description": "Add multiple addresses to the address list",
+        "type": "object",
+        "required": [
+          "add_addresses"
+        ],
+        "properties": {
+          "add_addresses": {
+            "type": "object",
+            "required": [
+              "addresses"
+            ],
+            "properties": {
+              "addresses": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
         "type": "object",
         "required": [
           "amp_receive"
@@ -234,6 +259,27 @@
               },
               "actor": {
                 "$ref": "#/definitions/AndrAddr"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "permission_action"
+        ],
+        "properties": {
+          "permission_action": {
+            "type": "object",
+            "required": [
+              "action"
+            ],
+            "properties": {
+              "action": {
+                "type": "string"
               }
             },
             "additionalProperties": false

@@ -185,6 +185,7 @@ fn test_crowdfund_app() {
             .unwrap(),
         ),
     };
+
     let splitter_recipients = vec![
         AddressPercent {
             recipient: vault_one_recipient,
@@ -316,7 +317,11 @@ fn test_crowdfund_app() {
             )
             .unwrap();
     }
-
+    let crowdfund_balance = router
+        .wrap()
+        .query_balance(crowdfund_addr.clone(), token_price.denom)
+        .unwrap();
+    assert_eq!(crowdfund_balance.amount, Uint128::from(300u128));
     // End Sale
     let block_info = router.block_info();
     router.set_block(BlockInfo {

@@ -591,6 +591,27 @@
       {
         "type": "object",
         "required": [
+          "permission_action"
+        ],
+        "properties": {
+          "permission_action": {
+            "type": "object",
+            "required": [
+              "action"
+            ],
+            "properties": {
+              "action": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
           "register_module"
         ],
         "properties": {
@@ -1314,6 +1335,27 @@
                   },
                   "actor": {
                     "$ref": "#/definitions/AndrAddr"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "permission_action"
+            ],
+            "properties": {
+              "permission_action": {
+                "type": "object",
+                "required": [
+                  "action"
+                ],
+                "properties": {
+                  "action": {
+                    "type": "string"
                   }
                 },
                 "additionalProperties": false

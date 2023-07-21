@@ -55,7 +55,6 @@ impl AOSQuerier {
     ) -> Result<Option<String>, ContractError> {
         let key = AOSQuerier::get_map_storage_key("ado_type", &[code_id.to_string().as_bytes()])?;
         let ado_type: Option<String> = AOSQuerier::query_storage(querier, adodb_addr, &key)?;
-
         Ok(ado_type)
     }
 

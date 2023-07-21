@@ -47,9 +47,11 @@ pub fn instantiate(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
     if msg.result.is_err() {
-        return Err(ContractError::Std(StdError::generic_err(
-            msg.result.unwrap_err(),
-        )));
+        return Err(ContractError::Std(StdError::generic_err(format!(
+            "{}:{}",
+            msg.id,
+            msg.result.unwrap_err()
+        ))));
     }
 
     Ok(Response::default())
@@ -72,19 +74,13 @@ pub fn execute(
 
     match msg {
         ExecuteMsg::AMPReceive(packet) => handle_amp_packet(execute_env, packet),
-        ExecuteMsg::Send { message } => {
-            handle_amp_message(execute_env.deps, execute_env.env, execute_env.info, message)
-        }
+        ExecuteMsg::Send { message } => handle_send(execute_env, message),
         ExecuteMsg::UpsertKeyAddress { key, value } => upsert_key_address(execute_env, key, value),
     }
 }
 
-pub fn handle_amp_message(
-    deps: DepsMut,
-    _env: Env,
-    info: MessageInfo,
-    message: AMPMsg,
-) -> Result<Response, ContractError> {
+pub fn handle_send(execute_env: ExecuteEnv, message: AMPMsg) -> Result<Response, ContractError> {
+    let ExecuteEnv { deps, info, .. } = execute_env;
     let origin = info.clone().sender;
     let recipient = message.recipient.get_raw_address(&deps.as_ref())?;
     //TODO: ADD IBC HANDLING
@@ -126,7 +122,7 @@ pub fn handle_amp_packet(
             error: Some("No messages supplied".to_string())
         }
     );
-    for message in packet.messages {
+    for (idx, message) in packet.messages.iter().enumerate() {
         if let Some(protocol) = message.recipient.get_protocol() {
             match protocol {
                 "ibc" => {
@@ -144,7 +140,10 @@ pub fn handle_amp_packet(
                             res = res
                                 .add_submessage(SubMsg::reply_always(cosmos_msg, 1))
                                 .add_attribute("action", "handle_amp_packet")
-                                .add_attribute("recipient", message.recipient)
+                                .add_attribute(
+                                    format!("recipient:{}", idx),
+                                    message.recipient.clone(),
+                                )
                                 .add_attribute("message", message.message.to_string());
                         } else {
                             return Err(ContractError::InvalidPacket {
@@ -163,7 +162,7 @@ pub fn handle_amp_packet(
             let recipient_addr = message
                 .recipient
                 .get_raw_address(&execute_env.deps.as_ref())?;
-            let msg = message.message;
+            let msg = message.message.clone();
             if Binary::default() == msg {
                 ensure!(
                     !message.funds.is_empty(),
@@ -181,7 +180,7 @@ pub fn handle_amp_packet(
                 res = res
                     .add_submessage(SubMsg::reply_on_error(CosmosMsg::Bank(sub_msg), 1))
                     .add_attributes(vec![
-                        attr("recipient", recipient_addr),
+                        attr(format!("recipient:{}", idx), recipient_addr),
                         attr("bank_send_amount", message.funds[0].to_string()),
                     ]);
             } else {
@@ -199,12 +198,12 @@ pub fn handle_amp_packet(
                 let sub_msg = new_packet.to_sub_msg(
                     recipient_addr.clone(),
                     Some(vec![message.funds[0].clone()]),
-                    1,
+                    idx as u64,
                 )?;
                 // TODO: ADD ID
                 res = res
                     .add_submessage(sub_msg)
-                    .add_attributes(vec![attr("recipient", recipient_addr)]);
+                    .add_attributes(vec![attr(format!("recipient:{}", idx), recipient_addr)]);
             }
         }
     }

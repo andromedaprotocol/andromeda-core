@@ -1,7 +1,8 @@
 #![cfg(all(not(target_arch = "wasm32"), feature = "testing"))]
 
 use andromeda_adodb::mock::{
-    mock_adodb_instantiate_msg, mock_andromeda_adodb, mock_get_code_id_msg, mock_store_code_id_msg,
+    mock_adodb_instantiate_msg, mock_andromeda_adodb, mock_get_code_id_msg, mock_publish,
+    mock_store_code_id_msg,
 };
 use andromeda_economics::mock::{mock_andromeda_economics, mock_economics_instantiate_msg};
 use andromeda_kernel::mock::{
@@ -126,7 +127,7 @@ impl MockAndromeda {
 
     /// Stores a given Code ID under the given key in the ADO DB contract
     pub fn store_code_id(&self, app: &mut App, key: &str, code_id: u64) {
-        let msg = mock_store_code_id_msg(key.to_string(), code_id);
+        let msg = mock_publish(code_id, key, "0.1.0", None, None);
 
         app.execute_contract(
             self.admin_address.clone(),

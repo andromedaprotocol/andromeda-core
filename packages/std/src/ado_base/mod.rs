@@ -78,6 +78,9 @@ pub enum AndromedaMsg {
         action: String,
         actor: AndrAddr,
     },
+    PermissionAction {
+        action: String,
+    },
 }
 
 #[cw_serde]

@@ -64,16 +64,6 @@
             "username"
           ],
           "properties": {
-            "address": {
-              "anyOf": [
-                {
-                  "$ref": "#/definitions/Addr"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
             "username": {
               "type": "string"
             }

@@ -182,9 +182,11 @@ pub fn publish(
     );
 
     store_code_id(deps.storage, &version, code_id)?;
-    if let Some(publisher) = publisher.clone() {
-        PUBLISHER.save(deps.storage, version.get_type(), &publisher)?;
-    }
+    PUBLISHER.save(
+        deps.storage,
+        version.get_type(),
+        &publisher.clone().unwrap_or(info.sender.to_string()),
+    )?;
 
     if let Some(fees) = action_fees {
         update_action_fees(deps.storage, version.get_type(), fees)?;
@@ -194,7 +196,7 @@ pub fn publish(
         attr("action", "publish_ado"),
         attr("ado_type", version.into_string()),
         attr("code_id", code_id.to_string()),
-        attr("publisher", publisher.unwrap_or_default()),
+        attr("publisher", publisher.unwrap_or(info.sender.to_string())),
     ]))
 }
 
@@ -355,7 +357,7 @@ fn query_code_id(deps: Deps, key: String) -> Result<u64, ContractError> {
 }
 
 fn query_ado_type(deps: Deps, code_id: u64) -> Result<Option<String>, ContractError> {
-    Ok(ADO_TYPE.may_load(deps.storage, code_id)?)
+    Ok(ADO_TYPE.may_load(deps.storage, &code_id.to_string())?)
 }
 
 fn query_ado_metadata(deps: Deps, ado_type: String) -> Result<ADOMetadata, ContractError> {
@@ -381,6 +383,6 @@ fn query_action_fee_by_code_id(
     code_id: u64,
     action: String,
 ) -> Result<Option<ActionFee>, ContractError> {
-    let ado_type = ADO_TYPE.load(deps.storage, code_id)?;
+    let ado_type = ADO_TYPE.load(deps.storage, &code_id.to_string())?;
     Ok(ACTION_FEES.may_load(deps.storage, (ado_type, action))?)
 }

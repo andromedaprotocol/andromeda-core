@@ -1,6 +1,6 @@
 {
   "contract_name": "andromeda-kernel",
-  "contract_version": "0.2.14",
+  "contract_version": "0.2.15",
   "idl_version": "1.0.0",
   "instantiate": {
     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -34,88 +34,13 @@
         "additionalProperties": false
       },
       {
-        "description": "Creates an original AMP packet",
-        "type": "object",
-        "required": [
-          "a_m_p_direct"
-        ],
-        "properties": {
-          "a_m_p_direct": {
-            "type": "object",
-            "required": [
-              "message",
-              "recipient"
-            ],
-            "properties": {
-              "exit_at_error": {
-                "type": [
-                  "boolean",
-                  "null"
-                ]
-              },
-              "gas_limit": {
-                "type": [
-                  "integer",
-                  "null"
-                ],
-                "format": "uint64",
-                "minimum": 0.0
-              },
-              "message": {
-                "$ref": "#/definitions/Binary"
-              },
-              "recipient": {
-                "$ref": "#/definitions/AndrAddr"
-              },
-              "reply_on": {
-                "anyOf": [
-                  {
-                    "$ref": "#/definitions/ReplyOn"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              }
-            },
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
-      },
-      {
-        "type": "object",
-        "required": [
-          "a_m_p_direct_no_ctx"
-        ],
-        "properties": {
-          "a_m_p_direct_no_ctx": {
-            "type": "object",
-            "required": [
-              "message",
-              "recipient"
-            ],
-            "properties": {
-              "message": {
-                "$ref": "#/definitions/Binary"
-              },
-              "recipient": {
-                "$ref": "#/definitions/AndrAddr"
-              }
-            },
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
-      },
-      {
         "description": "Constructs an AMPPkt with a given AMPMsg and sends it to the recipient",
         "type": "object",
         "required": [
-          "a_m_p_message"
+          "send"
         ],
         "properties": {
-          "a_m_p_message": {
+          "send": {
             "type": "object",
             "required": [
               "message"

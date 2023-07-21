@@ -17,7 +17,7 @@ use andromeda_std::{
 };
 
 use cosmwasm_std::{
-    coin, ensure, entry_point, from_binary, to_binary, BankMsg, Binary, Coin, ContractResult,
+    attr, coin, ensure, entry_point, from_binary, to_binary, BankMsg, Binary, Coin, ContractResult,
     CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Order, QueryRequest, Reply, ReplyOn,
     Response, StdError, SubMsg, SystemResult, Uint128, WasmMsg, WasmQuery,
 };
@@ -167,7 +167,7 @@ fn execute_deposit(
         let funds_vec: Vec<Coin> = vec![deposit_amount];
         funds_vec
     } else {
-        info.funds
+        info.funds.to_vec()
     };
 
     ensure!(
@@ -202,7 +202,10 @@ fn execute_deposit(
             resp = resp.add_submessages(deposit_msgs)
         }
     }
-    Ok(resp)
+    Ok(resp.add_attributes(vec![
+        attr("action", "deposit"),
+        attr("recipient", recipient_addr),
+    ]))
 }
 
 pub fn execute_withdraw(

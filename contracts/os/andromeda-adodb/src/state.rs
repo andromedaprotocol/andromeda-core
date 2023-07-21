@@ -5,7 +5,7 @@ use cw_storage_plus::Map;
 /// Stores a mapping between ADO type and its latest code ID
 pub const CODE_ID: Map<&str, u64> = Map::new("code_id");
 /// Stores a mapping between a code ID and its type
-pub const ADO_TYPE: Map<u64, String> = Map::new("ado_type");
+pub const ADO_TYPE: Map<&str, String> = Map::new("ado_type");
 /// Stores a mapping between a code ID and its publisher
 pub const PUBLISHER: Map<String, String> = Map::new("publisher");
 /// Stores a mapping between an ADO type/version and its code ID
@@ -21,7 +21,7 @@ pub fn store_code_id(
     code_id: u64,
 ) -> StdResult<()> {
     CODE_ID.save(storage, &ado_version.get_type(), &code_id)?;
-    ADO_TYPE.save(storage, code_id, &ado_version.get_type())?;
+    ADO_TYPE.save(storage, &code_id.to_string(), &ado_version.get_type())?;
     LATEST_VERSION.save(storage, ado_version.get_type(), &ado_version.get_version())?;
     VERSION_CODE_ID.save(
         storage,

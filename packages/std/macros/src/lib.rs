@@ -66,6 +66,9 @@ pub fn andr_exec(_args: TokenStream, input: TokenStream) -> TokenStream {
                     action: String,
                     actor: ::andromeda_std::amp::AndrAddr,
                 },
+                PermissionAction {
+                    action: String
+                },
             }
         }
         .into(),
