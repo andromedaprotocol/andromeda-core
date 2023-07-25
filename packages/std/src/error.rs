@@ -2,7 +2,6 @@ use cosmwasm_std::{OverflowError, StdError};
 use cw20_base::ContractError as Cw20ContractError;
 use cw721_base::ContractError as Cw721ContractError;
 use cw_asset::AssetError;
-use cw_pause_once::PauseError;
 use cw_utils::{Expiration, ParseReplyError, PaymentError};
 use hex::FromHexError;
 use std::convert::From;
@@ -20,9 +19,6 @@ pub enum ContractError {
 
     #[error("{0}")]
     Payment(#[from] PaymentError),
-
-    #[error("{0}")]
-    PauseError(#[from] PauseError),
 
     #[error("{0}")]
     ParseReplyError(#[from] ParseReplyError),

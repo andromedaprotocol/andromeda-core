@@ -33,8 +33,4 @@ regex = { version = "1.9.1", default-features = false}
 andromeda-macros = { workspace = true }
 strum_macros = { workspace = true }
 cw721 = { workspace = true }
-zip-optional = { git = "https://github.com/public-awesome/ics721.git" }
-cw721-proxy-derive = { git = "https://github.com/0xekez/cw721-proxy.git" }
-cw-cii = { git = "https://github.com/public-awesome/ics721.git" }
-cw-pause-once = { git = "https://github.com/public-awesome/ics721.git" }
 serde-json-wasm = "0.5.0"
