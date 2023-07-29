@@ -181,7 +181,10 @@ pub fn handle_amp_packet(
                     .add_submessage(SubMsg::reply_on_error(CosmosMsg::Bank(sub_msg), 1))
                     .add_attributes(vec![
                         attr(format!("recipient:{}", idx), recipient_addr),
-                        attr("bank_send_amount", message.funds[0].to_string()),
+                        attr(
+                            format!("bank_send_amount:{}", idx),
+                            message.funds[0].to_string(),
+                        ),
                     ]);
             } else {
                 let origin = packet.ctx.get_origin();
