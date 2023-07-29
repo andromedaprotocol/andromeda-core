@@ -157,7 +157,7 @@ fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Cont
             contract,
             token_id,
             msg,
-        } => execute_send_nft(ctx, contract, token_id, msg),
+        } => execute_send_nft(ctx, token_id, contract, msg),
         _ => {
             let serialized = to_binary(&msg)?;
 
