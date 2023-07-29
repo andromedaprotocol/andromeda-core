@@ -1,6 +1,5 @@
 use crate::state::{
-    read_code_id, store_code_id, ACTION_FEES, ADO_TYPE, CODE_ID, LATEST_VERSION, PUBLISHER,
-    VERSION_CODE_ID,
+    read_code_id, store_code_id, ACTION_FEES, ADO_TYPE, LATEST_VERSION, PUBLISHER, read_latest_code_id, read_all_ado_types
 };
 use andromeda_std::ado_base::InstantiateMsg as BaseInstantiateMsg;
 use andromeda_std::ado_contract::ADOContract;
@@ -84,15 +83,15 @@ pub fn execute(
         ),
         ExecuteMsg::UpdateActionFees {
             action_fees,
-            ado_type,
-        } => execute_update_action_fees(deps, info, ado_type, action_fees),
+            ado_type
+        } => execute_update_action_fees(deps, info, &ADOVersion::from_string(ado_type), action_fees),
         ExecuteMsg::RemoveActionFees { ado_type, actions } => {
-            execute_remove_actions(deps, info, ado_type, actions)
+            execute_remove_actions(deps, info, &ADOVersion::from_string(ado_type), actions)
         }
         ExecuteMsg::UpdatePublisher {
             ado_type,
             publisher,
-        } => execute_update_publisher(deps, info, ado_type, publisher),
+        } => execute_update_publisher(deps, info, &ADOVersion::from_string(ado_type), publisher),
     }
 }
 
@@ -122,14 +121,14 @@ pub fn add_update_code_id(
 
 pub fn update_action_fees(
     storage: &mut dyn Storage,
-    ado_type: String,
+    ado_version: &ADOVersion,
     fees: Vec<ActionFee>,
 ) -> Result<(), ContractError> {
     for action_fee in fees {
         ACTION_FEES.save(
             storage,
-            (ado_type.clone(), action_fee.clone().action),
-            &action_fee,
+            &(ado_version.get_type(), ado_version.get_version(), action_fee.clone().action),
+            &action_fee.clone(),
         )?;
     }
 
@@ -151,10 +150,10 @@ pub fn publish(
         ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {}
     );
-    let current_ado_version = LATEST_VERSION.may_load(deps.storage, ado_type.clone())?;
+    let current_ado_version = LATEST_VERSION.may_load(deps.storage, &ado_type)?;
     if let Some(ado_version) = current_ado_version {
         let new_version = semver::Version::parse(&version).unwrap();
-        let current_version = semver::Version::parse(&ado_version).unwrap();
+        let current_version = semver::Version::parse(&ado_version.0).unwrap();
         ensure!(
             new_version > current_version,
             ContractError::InvalidADOVersion {
@@ -172,10 +171,10 @@ pub fn publish(
     );
 
     // Ensure version is not already published
-    let curr_code_id =
-        VERSION_CODE_ID.may_load(deps.storage, (version.get_type(), version.get_version()))?;
+    let curr_code_id=
+        read_code_id(deps.storage, &version);
     ensure!(
-        curr_code_id.is_none(),
+        curr_code_id.is_err(),
         ContractError::InvalidADOVersion {
             msg: Some(String::from("Version already published"))
         }
@@ -184,12 +183,12 @@ pub fn publish(
     store_code_id(deps.storage, &version, code_id)?;
     PUBLISHER.save(
         deps.storage,
-        version.get_type(),
+        &version.get_tuple(),
         &publisher.clone().unwrap_or(info.sender.to_string()),
     )?;
 
     if let Some(fees) = action_fees {
-        update_action_fees(deps.storage, version.get_type(), fees)?;
+        update_action_fees(deps.storage, &version, fees)?;
     }
 
     Ok(Response::default().add_attributes(vec![
@@ -203,42 +202,42 @@ pub fn publish(
 fn execute_update_action_fees(
     deps: DepsMut,
     info: MessageInfo,
-    ado_type: String,
+    ado_version: &ADOVersion,
     action_fees: Vec<ActionFee>,
 ) -> Result<Response, ContractError> {
     ensure!(
         ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {}
     );
-    let ado_type_exists = CODE_ID.may_load(deps.storage, &ado_type)?;
+    let ado_type_exists = read_code_id(deps.storage, ado_version);
     ensure!(
-        ado_type_exists.is_some(),
+        ado_type_exists.is_ok(),
         ContractError::InvalidADOVersion {
             msg: Some("ADO type does not exist".to_string())
         }
     );
 
-    update_action_fees(deps.storage, ado_type.clone(), action_fees)?;
+    update_action_fees(deps.storage, ado_version, action_fees)?;
 
     Ok(Response::default().add_attributes(vec![
         attr("action", "update_action_fees"),
-        attr("ado_type", ado_type),
+        attr("ado_type", ado_version.clone().into_string()),
     ]))
 }
 
 fn execute_remove_actions(
     deps: DepsMut,
     info: MessageInfo,
-    ado_type: String,
+    ado_version: &ADOVersion,
     actions: Vec<String>,
 ) -> Result<Response, ContractError> {
     ensure!(
         ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {}
     );
-    let ado_type_exists = CODE_ID.may_load(deps.storage, &ado_type)?;
+    let ado_type_exists = read_code_id(deps.storage, ado_version);
     ensure!(
-        ado_type_exists.is_some(),
+        ado_type_exists.is_ok(),
         ContractError::InvalidADOVersion {
             msg: Some("ADO type does not exist".to_string())
         }
@@ -246,11 +245,11 @@ fn execute_remove_actions(
 
     let mut res = Response::default().add_attributes(vec![
         attr("action", "remove_actions"),
-        attr("ado_type", ado_type.clone()),
+        attr("ado_type", ado_version.clone().into_string()),
     ]);
 
     for action in actions {
-        ACTION_FEES.remove(deps.storage, (ado_type.clone(), action.clone()));
+        ACTION_FEES.remove(deps.storage, &(ado_version.get_type(), ado_version.get_version(), action.clone()));
         res = res.add_attribute("action_fee_removed", action);
     }
 
@@ -260,7 +259,7 @@ fn execute_remove_actions(
 fn execute_update_publisher(
     deps: DepsMut,
     info: MessageInfo,
-    ado_type: String,
+    ado_version: &ADOVersion,
     publisher: String,
 ) -> Result<Response, ContractError> {
     ensure!(
@@ -268,19 +267,19 @@ fn execute_update_publisher(
         ContractError::Unauthorized {}
     );
 
-    let ado_type_exists = CODE_ID.may_load(deps.storage, &ado_type)?;
+    let ado_type_exists = read_code_id(deps.storage, ado_version);
     ensure!(
-        ado_type_exists.is_some(),
+        ado_type_exists.is_ok(),
         ContractError::InvalidADOVersion {
             msg: Some("ADO type does not exist".to_string())
         }
     );
 
-    PUBLISHER.save(deps.storage, ado_type.clone(), &publisher)?;
+    PUBLISHER.save(deps.storage, &ado_version.get_tuple(), &publisher)?;
 
     Ok(Response::default().add_attributes(vec![
         attr("action", "update_publisher"),
-        attr("ado_type", ado_type),
+        attr("ado_type", ado_version.clone().into_string()),
         attr("publisher", publisher),
     ]))
 }
@@ -324,6 +323,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractErr
     match msg {
         QueryMsg::CodeId { key } => encode_binary(&query_code_id(deps, key)?),
         QueryMsg::ADOType { code_id } => encode_binary(&query_ado_type(deps, code_id)?),
+        QueryMsg::AllADOType {  } => encode_binary(&query_all_ado_type(deps)?),
         QueryMsg::ADOMetadata { ado_type } => encode_binary(&query_ado_metadata(deps, ado_type)?),
         QueryMsg::ActionFee { ado_type, action } => {
             encode_binary(&query_action_fee(deps, ado_type, action)?)
@@ -352,21 +352,28 @@ fn temp_query_get(deps: Deps, msg: Option<Binary>) -> Result<Binary, ContractErr
 }
 
 fn query_code_id(deps: Deps, key: String) -> Result<u64, ContractError> {
-    let code_id = read_code_id(deps.storage, &key)?;
+    let code_id = read_code_id(deps.storage, &ADOVersion::from_string(key))?;
     Ok(code_id)
 }
 
-fn query_ado_type(deps: Deps, code_id: u64) -> Result<Option<String>, ContractError> {
-    Ok(ADO_TYPE.may_load(deps.storage, &code_id.to_string())?)
+fn query_ado_type(deps: Deps, code_id: u64) -> Result<Option<ADOVersion>, ContractError> {
+    let ado_version = ADO_TYPE.may_load(deps.storage, code_id)?;
+    Ok(ado_version)
+}
+
+fn query_all_ado_type(deps: Deps) -> Result<Vec<String>, ContractError> {
+    let ado_types = read_all_ado_types(deps.storage)?;
+    Ok(ado_types)
 }
 
 fn query_ado_metadata(deps: Deps, ado_type: String) -> Result<ADOMetadata, ContractError> {
-    let publisher = PUBLISHER.load(deps.storage, ado_type.clone())?;
-    let latest_version = LATEST_VERSION.load(deps.storage, ado_type)?;
+    let ado_version = ADOVersion::from_string(ado_type);
+    let publisher = PUBLISHER.load(deps.storage, &ado_version.get_tuple())?;
+    let latest_version = read_latest_code_id(deps.storage, ado_version.get_type())?;
 
     Ok(ADOMetadata {
         publisher,
-        latest_version,
+        latest_version:latest_version.0,
     })
 }
 
@@ -375,7 +382,8 @@ fn query_action_fee(
     ado_type: String,
     action: String,
 ) -> Result<Option<ActionFee>, ContractError> {
-    Ok(ACTION_FEES.may_load(deps.storage, (ado_type, action))?)
+    let ado_version = ADOVersion::from_string(ado_type);
+    Ok(ACTION_FEES.may_load(deps.storage, &(ado_version.get_type(), ado_version.get_version(), action))?)
 }
 
 fn query_action_fee_by_code_id(
@@ -383,6 +391,6 @@ fn query_action_fee_by_code_id(
     code_id: u64,
     action: String,
 ) -> Result<Option<ActionFee>, ContractError> {
-    let ado_type = ADO_TYPE.load(deps.storage, &code_id.to_string())?;
-    Ok(ACTION_FEES.may_load(deps.storage, (ado_type, action))?)
+    let ado_version = ADO_TYPE.load(deps.storage, code_id)?;
+    Ok(ACTION_FEES.may_load(deps.storage, &(ado_version.get_type(), ado_version.get_version(), action))?)
 }

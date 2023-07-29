@@ -3,11 +3,11 @@ use andromeda_std::testing::mock_querier::{mock_dependencies_custom, MOCK_KERNEL
 use cosmwasm_std::Uint128;
 
 use crate::contract::{execute, instantiate};
-use crate::state::{ACTION_FEES, CODE_ID, PUBLISHER, VERSION_CODE_ID};
+use crate::state::{ACTION_FEES, CODE_ID, PUBLISHER, LATEST_VERSION};
 
 use andromeda_std::ado_contract::ADOContract;
 use andromeda_std::error::ContractError;
-use andromeda_std::os::adodb::{ActionFee, ExecuteMsg, InstantiateMsg};
+use andromeda_std::os::adodb::{ActionFee, ExecuteMsg, InstantiateMsg, ADOVersion};
 
 use cosmwasm_std::{
     attr,
@@ -164,10 +164,12 @@ fn test_publish() {
         },
     ];
 
+    let ado_version = ADOVersion::from_type("ado_type").with_version("0.1.0");
+    let code_id = 1;
     let msg = ExecuteMsg::Publish {
-        ado_type: "ado_type".to_string(),
-        version: "0.1.0".to_string(),
-        code_id: 1,
+        ado_type: ado_version.get_type(),
+        version: ado_version.get_version(),
+        code_id: code_id,
         action_fees: Some(action_fees.clone()),
         publisher: Some(owner.clone()),
     };
@@ -175,38 +177,32 @@ fn test_publish() {
     let resp = execute(deps.as_mut(), env.clone(), info, msg.clone());
 
     assert!(resp.is_ok());
-
     let publisher = PUBLISHER
-        .load(deps.as_ref().storage, "ado_type".to_string())
+        .load(deps.as_ref().storage, &ado_version.get_tuple())
         .unwrap();
     assert_eq!(publisher, owner);
 
-    let code_id = CODE_ID.load(deps.as_ref().storage, "ado_type").unwrap();
+    let code_id = CODE_ID.load(deps.as_ref().storage, &ado_version.get_tuple()).unwrap();
     assert_eq!(code_id, 1u64);
 
-    let vers_code_id = VERSION_CODE_ID
+    let vers_code_id = LATEST_VERSION
         .load(
             deps.as_ref().storage,
-            ("ado_type".to_string(), "0.1.0".to_string()),
+            &ado_version.get_type(),
         )
         .unwrap();
-    assert_eq!(vers_code_id, 1u64);
+    assert_eq!(vers_code_id.0, ado_version.get_version());
+    assert_eq!(vers_code_id.1, code_id);
 
-    let one = ACTION_FEES
-        .load(
-            deps.as_ref().storage,
-            ("ado_type".to_string(), "action".to_string()),
-        )
-        .unwrap();
-    assert_eq!(one, action_fees[0]);
 
-    let two = ACTION_FEES
-        .load(
+    // TEST ACTION FEE
+    for action_fee in action_fees.clone() {
+        let fee = ACTION_FEES.load(
             deps.as_ref().storage,
-            ("ado_type".to_string(), "action2".to_string()),
-        )
-        .unwrap();
-    assert_eq!(two, action_fees[1]);
+            &(ado_version.get_type(), ado_version.get_version(), action_fee.clone().action)
+        ).unwrap();
+        assert_eq!(fee, action_fee);
+    }
 
     // Test unauthorised
     let unauth_info = mock_info("not_owner", &[]);
@@ -220,7 +216,8 @@ fn test_update_action_fees() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
     let info = mock_info(owner.as_str(), &[]);
-    let ado_type = "ado_type";
+    let ado_version = ADOVersion::from_type("ado_type").with_version("0.1.0");
+    let code_id = 1;
 
     instantiate(
         deps.as_mut(),
@@ -250,7 +247,7 @@ fn test_update_action_fees() {
 
     let msg = ExecuteMsg::UpdateActionFees {
         action_fees: action_fees.clone(),
-        ado_type: ado_type.to_string(),
+        ado_type: ado_version.clone().into_string(),
     };
 
     let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap_err();
@@ -262,27 +259,20 @@ fn test_update_action_fees() {
     );
 
     CODE_ID
-        .save(deps.as_mut().storage, ado_type, &1u64)
+        .save(deps.as_mut().storage, &ado_version.get_tuple(), &code_id)
         .unwrap();
 
     let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
     assert!(res.is_ok());
 
-    let one = ACTION_FEES
-        .load(
+    // TEST ACTION FEE
+    for action_fee in action_fees.clone() {
+        let fee = ACTION_FEES.load(
             deps.as_ref().storage,
-            ("ado_type".to_string(), "action".to_string()),
-        )
-        .unwrap();
-    assert_eq!(one, action_fees[0]);
-
-    let two = ACTION_FEES
-        .load(
-            deps.as_ref().storage,
-            ("ado_type".to_string(), "action2".to_string()),
-        )
-        .unwrap();
-    assert_eq!(two, action_fees[1]);
+            &(ado_version.get_type(), ado_version.get_version(), action_fee.clone().action)
+        ).unwrap();
+        assert_eq!(fee, action_fee);
+    }
 
     // Test unauthorised
     let unauth_info = mock_info("not_owner", &[]);
@@ -296,7 +286,8 @@ fn test_remove_action_fees() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
     let info = mock_info(owner.as_str(), &[]);
-    let ado_type = "ado_type";
+    let ado_version = ADOVersion::from_type("ado_type").with_version("0.1.0");
+    let code_id = 1;
     let action = "action";
     instantiate(
         deps.as_mut(),
@@ -310,7 +301,7 @@ fn test_remove_action_fees() {
     .unwrap();
 
     let msg = ExecuteMsg::RemoveActionFees {
-        ado_type: ado_type.to_string(),
+        ado_type: ado_version.clone().into_string(),
         actions: vec![action.to_string(), "not_an_action".to_string()], // Add extra action to ensure no error when a false action is provided
     };
     let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap_err();
@@ -322,13 +313,13 @@ fn test_remove_action_fees() {
     );
 
     CODE_ID
-        .save(deps.as_mut().storage, ado_type, &1u64)
+        .save(deps.as_mut().storage, &ado_version.get_tuple(), &code_id)
         .unwrap();
 
     ACTION_FEES
         .save(
             deps.as_mut().storage,
-            (ado_type.to_string(), action.to_string()),
+            &(ado_version.get_type(), ado_version.get_version(), action.to_string()),
             &ActionFee::new(action.to_string(), "uusd".to_string(), Uint128::from(1u128)),
         )
         .unwrap();
@@ -337,12 +328,13 @@ fn test_remove_action_fees() {
     let res = execute(deps.as_mut(), env.clone(), unauth_info, msg.clone()).unwrap_err();
     assert_eq!(res, ContractError::Unauthorized {});
 
-    execute(deps.as_mut(), env, info, msg).unwrap();
+    let res = execute(deps.as_mut(), env, info, msg);
+    assert!(res.is_ok());
 
     let fee = ACTION_FEES
         .may_load(
             deps.as_ref().storage,
-            (ado_type.to_string(), action.to_string()),
+            &(ado_version.get_type(), ado_version.get_version(), action.to_string()),
         )
         .unwrap();
 
@@ -355,7 +347,9 @@ fn test_update_publisher() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
     let info = mock_info(owner.as_str(), &[]);
-    let ado_type = "ado_type";
+    let ado_version = ADOVersion::from_type("ado_type").with_version("0.1.0");
+    let code_id = 1;
+    let test_publisher = "new_publisher".to_string();
 
     instantiate(
         deps.as_mut(),
@@ -369,8 +363,8 @@ fn test_update_publisher() {
     .unwrap();
 
     let msg = ExecuteMsg::UpdatePublisher {
-        ado_type: ado_type.to_string(),
-        publisher: "new_publisher".to_string(),
+        ado_type: ado_version.clone().into_string(),
+        publisher: test_publisher.clone(),
     };
 
     let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap_err();
@@ -382,16 +376,16 @@ fn test_update_publisher() {
     );
 
     CODE_ID
-        .save(deps.as_mut().storage, ado_type, &1u64)
+        .save(deps.as_mut().storage, &ado_version.get_tuple(), &code_id)
         .unwrap();
 
     let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
     assert!(res.is_ok());
 
     let publisher = PUBLISHER
-        .load(deps.as_ref().storage, ado_type.to_string())
+        .load(deps.as_ref().storage, &ado_version.get_tuple())
         .unwrap();
-    assert_eq!(publisher, "new_publisher".to_string());
+    assert_eq!(publisher, test_publisher);
 
     // Test unauthorised
     let unauth_info = mock_info("not_owner", &[]);

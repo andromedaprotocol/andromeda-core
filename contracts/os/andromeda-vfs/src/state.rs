@@ -3,7 +3,7 @@ use cosmwasm_std::{ensure, Addr, Api, StdError, Storage};
 use cw_storage_plus::{Index, IndexList, IndexedMap, Map, MultiIndex};
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 pub struct PathInfo {
     pub name: String,
     pub address: Addr,
@@ -12,7 +12,7 @@ pub struct PathInfo {
 pub struct PathIndices<'a> {
     /// PK: parent_address + component_name
     /// Secondary key: address
-    pub index: MultiIndex<'a, String, PathInfo, String>,
+    pub index: MultiIndex<'a, Addr, PathInfo, (Addr, String)>,
 }
 
 impl<'a> IndexList<PathInfo> for PathIndices<'a> {
@@ -24,9 +24,9 @@ impl<'a> IndexList<PathInfo> for PathIndices<'a> {
     }
 }
 
-pub fn paths<'a>() -> IndexedMap<'a, &'a str, PathInfo, PathIndices<'a>> {
+pub fn paths<'a>() -> IndexedMap<'a, &'a (Addr, String), PathInfo, PathIndices<'a>> {
     let indexes = PathIndices {
-        index: MultiIndex::new(|_pk: &[u8], r| r.address.to_string(), "path", "path_index"),
+        index: MultiIndex::new(|_pk: &[u8], r| r.address.clone(), "path", "path_index"),
     };
     IndexedMap::new("path", indexes)
 }
@@ -59,13 +59,27 @@ pub fn resolve_pathname(
         if idx == 0 {
             continue;
         }
-
         address = paths()
-            .load(storage, (address.to_string() + part.as_str()).as_str())?
+            .load(storage, &(address,part.clone()))?
             .address;
     }
 
     Ok(address)
+}
+
+pub fn get_subdir(
+    storage: &dyn Storage,
+    api: &dyn Api,
+    pathname: String,
+) -> Result<Vec<PathInfo>, ContractError> {
+    let address = resolve_pathname(storage, api, pathname)?;
+
+    let subdirs = paths()
+    .prefix(address).range(storage, None, None, cosmwasm_std::Order::Ascending)
+    .map(|r|r.unwrap().1)
+    .collect();
+
+    Ok(subdirs)
 }
 
 pub fn add_pathname(
@@ -76,7 +90,7 @@ pub fn add_pathname(
 ) -> Result<(), StdError> {
     paths().save(
         storage,
-        &(parent_addr.to_string() + name.as_str()),
+        &(parent_addr,name.clone()),
         &PathInfo { name, address },
     )
 }
@@ -159,7 +173,7 @@ mod test {
         paths()
             .save(
                 deps.as_mut().storage,
-                (username_address.to_string() + first_directory).as_str(),
+                &(username_address, first_directory.to_string()),
                 &PathInfo {
                     name: first_directory.to_string(),
                     address: first_directory_address.clone(),
@@ -178,7 +192,7 @@ mod test {
         paths()
             .save(
                 deps.as_mut().storage,
-                (first_directory_address.to_string() + second_directory).as_str(),
+                &(first_directory_address, second_directory.to_string()),
                 &PathInfo {
                     name: second_directory.to_string(),
                     address: second_directory_address.clone(),
@@ -197,7 +211,7 @@ mod test {
         paths()
             .save(
                 deps.as_mut().storage,
-                (second_directory_address.to_string() + file).as_str(),
+                &(second_directory_address ,file.to_string()),
                 &PathInfo {
                     name: file.to_string(),
                     address: file_address.clone(),

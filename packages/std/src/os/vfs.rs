@@ -71,6 +71,8 @@ pub struct MigrateMsg {}
 pub enum QueryMsg {
     #[returns(Addr)]
     ResolvePath { path: String },
+    #[returns(Vec<PathDetails>)]
+    SubDir { path: String },
     #[returns(String)]
     GetUsername { address: Addr },
 }
