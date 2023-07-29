@@ -1,5 +1,6 @@
 use crate::state::{
-    read_code_id, store_code_id, ACTION_FEES, ADO_TYPE, LATEST_VERSION, PUBLISHER, read_latest_code_id, read_all_ado_types
+    read_all_ado_types, read_code_id, read_latest_code_id, store_code_id, ACTION_FEES, ADO_TYPE,
+    LATEST_VERSION, PUBLISHER,
 };
 use andromeda_std::ado_base::InstantiateMsg as BaseInstantiateMsg;
 use andromeda_std::ado_contract::ADOContract;
@@ -83,8 +84,10 @@ pub fn execute(
         ),
         ExecuteMsg::UpdateActionFees {
             action_fees,
-            ado_type
-        } => execute_update_action_fees(deps, info, &ADOVersion::from_string(ado_type), action_fees),
+            ado_type,
+        } => {
+            execute_update_action_fees(deps, info, &ADOVersion::from_string(ado_type), action_fees)
+        }
         ExecuteMsg::RemoveActionFees { ado_type, actions } => {
             execute_remove_actions(deps, info, &ADOVersion::from_string(ado_type), actions)
         }
@@ -127,7 +130,11 @@ pub fn update_action_fees(
     for action_fee in fees {
         ACTION_FEES.save(
             storage,
-            &(ado_version.get_type(), ado_version.get_version(), action_fee.clone().action),
+            &(
+                ado_version.get_type(),
+                ado_version.get_version(),
+                action_fee.clone().action,
+            ),
             &action_fee.clone(),
         )?;
     }
@@ -171,8 +178,7 @@ pub fn publish(
     );
 
     // Ensure version is not already published
-    let curr_code_id=
-        read_code_id(deps.storage, &version);
+    let curr_code_id = read_code_id(deps.storage, &version);
     ensure!(
         curr_code_id.is_err(),
         ContractError::InvalidADOVersion {
@@ -249,7 +255,14 @@ fn execute_remove_actions(
     ]);
 
     for action in actions {
-        ACTION_FEES.remove(deps.storage, &(ado_version.get_type(), ado_version.get_version(), action.clone()));
+        ACTION_FEES.remove(
+            deps.storage,
+            &(
+                ado_version.get_type(),
+                ado_version.get_version(),
+                action.clone(),
+            ),
+        );
         res = res.add_attribute("action_fee_removed", action);
     }
 
@@ -323,7 +336,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractErr
     match msg {
         QueryMsg::CodeId { key } => encode_binary(&query_code_id(deps, key)?),
         QueryMsg::ADOType { code_id } => encode_binary(&query_ado_type(deps, code_id)?),
-        QueryMsg::AllADOType {  } => encode_binary(&query_all_ado_type(deps)?),
+        QueryMsg::AllADOType {} => encode_binary(&query_all_ado_type(deps)?),
         QueryMsg::ADOMetadata { ado_type } => encode_binary(&query_ado_metadata(deps, ado_type)?),
         QueryMsg::ActionFee { ado_type, action } => {
             encode_binary(&query_action_fee(deps, ado_type, action)?)
@@ -373,7 +386,7 @@ fn query_ado_metadata(deps: Deps, ado_type: String) -> Result<ADOMetadata, Contr
 
     Ok(ADOMetadata {
         publisher,
-        latest_version:latest_version.0,
+        latest_version: latest_version.0,
     })
 }
 
@@ -383,7 +396,10 @@ fn query_action_fee(
     action: String,
 ) -> Result<Option<ActionFee>, ContractError> {
     let ado_version = ADOVersion::from_string(ado_type);
-    Ok(ACTION_FEES.may_load(deps.storage, &(ado_version.get_type(), ado_version.get_version(), action))?)
+    Ok(ACTION_FEES.may_load(
+        deps.storage,
+        &(ado_version.get_type(), ado_version.get_version(), action),
+    )?)
 }
 
 fn query_action_fee_by_code_id(
@@ -392,5 +408,8 @@ fn query_action_fee_by_code_id(
     action: String,
 ) -> Result<Option<ActionFee>, ContractError> {
     let ado_version = ADO_TYPE.load(deps.storage, code_id)?;
-    Ok(ACTION_FEES.may_load(deps.storage, &(ado_version.get_type(), ado_version.get_version(), action))?)
+    Ok(ACTION_FEES.may_load(
+        deps.storage,
+        &(ado_version.get_type(), ado_version.get_version(), action),
+    )?)
 }
