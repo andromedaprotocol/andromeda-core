@@ -131,8 +131,7 @@ pub fn update_action_fees(
         ACTION_FEES.save(
             storage,
             &(
-                ado_version.get_type(),
-                ado_version.get_version(),
+                ado_version.clone().into_string(),
                 action_fee.clone().action,
             ),
             &action_fee.clone(),
@@ -189,7 +188,7 @@ pub fn publish(
     store_code_id(deps.storage, &version, code_id)?;
     PUBLISHER.save(
         deps.storage,
-        &version.get_tuple(),
+        version.as_str(),
         &publisher.clone().unwrap_or(info.sender.to_string()),
     )?;
 
@@ -258,8 +257,7 @@ fn execute_remove_actions(
         ACTION_FEES.remove(
             deps.storage,
             &(
-                ado_version.get_type(),
-                ado_version.get_version(),
+                ado_version.clone().into_string(),
                 action.clone(),
             ),
         );
@@ -288,7 +286,7 @@ fn execute_update_publisher(
         }
     );
 
-    PUBLISHER.save(deps.storage, &ado_version.get_tuple(), &publisher)?;
+    PUBLISHER.save(deps.storage, &ado_version.as_str(), &publisher)?;
 
     Ok(Response::default().add_attributes(vec![
         attr("action", "update_publisher"),
@@ -369,7 +367,7 @@ fn query_code_id(deps: Deps, key: String) -> Result<u64, ContractError> {
     Ok(code_id)
 }
 
-fn query_ado_type(deps: Deps, code_id: u64) -> Result<Option<ADOVersion>, ContractError> {
+fn query_ado_type(deps: Deps, code_id: u64) -> Result<Option<String>, ContractError> {
     let ado_version = ADO_TYPE.may_load(deps.storage, code_id)?;
     Ok(ado_version)
 }
@@ -381,7 +379,7 @@ fn query_all_ado_type(deps: Deps) -> Result<Vec<String>, ContractError> {
 
 fn query_ado_metadata(deps: Deps, ado_type: String) -> Result<ADOMetadata, ContractError> {
     let ado_version = ADOVersion::from_string(ado_type);
-    let publisher = PUBLISHER.load(deps.storage, &ado_version.get_tuple())?;
+    let publisher = PUBLISHER.load(deps.storage, &ado_version.as_str())?;
     let latest_version = read_latest_code_id(deps.storage, ado_version.get_type())?;
 
     Ok(ADOMetadata {
@@ -398,7 +396,7 @@ fn query_action_fee(
     let ado_version = ADOVersion::from_string(ado_type);
     Ok(ACTION_FEES.may_load(
         deps.storage,
-        &(ado_version.get_type(), ado_version.get_version(), action),
+        &(ado_version.into_string(), action),
     )?)
 }
 
@@ -410,6 +408,6 @@ fn query_action_fee_by_code_id(
     let ado_version = ADO_TYPE.load(deps.storage, code_id)?;
     Ok(ACTION_FEES.may_load(
         deps.storage,
-        &(ado_version.get_type(), ado_version.get_version(), action),
+        &(ado_version, action),
     )?)
 }

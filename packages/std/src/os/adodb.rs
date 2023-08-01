@@ -136,6 +136,8 @@ impl ADOVersion {
     #[inline]
     pub fn with_version(&self, version: impl Into<String>) -> ADOVersion {
         let mut ado_version = self.clone();
+        // Remove any previous version string if present
+        ado_version.0 = ado_version.get_type();
         ado_version.0.push('@');
         ado_version.0.push_str(&version.into());
         ado_version

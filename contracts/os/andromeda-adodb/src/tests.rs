@@ -178,11 +178,11 @@ fn test_publish() {
 
     assert!(resp.is_ok());
     let publisher = PUBLISHER
-        .load(deps.as_ref().storage, &ado_version.get_tuple())
+        .load(deps.as_ref().storage, &ado_version.as_str())
         .unwrap();
     assert_eq!(publisher, owner);
 
-    let code_id = CODE_ID.load(deps.as_ref().storage, &ado_version.get_tuple()).unwrap();
+    let code_id = CODE_ID.load(deps.as_ref().storage, &ado_version.as_str()).unwrap();
     assert_eq!(code_id, 1u64);
 
     let vers_code_id = LATEST_VERSION
@@ -191,7 +191,7 @@ fn test_publish() {
             &ado_version.get_type(),
         )
         .unwrap();
-    assert_eq!(vers_code_id.0, ado_version.get_version());
+    assert_eq!(vers_code_id.0, ado_version.clone().into_string());
     assert_eq!(vers_code_id.1, code_id);
 
 
@@ -199,7 +199,7 @@ fn test_publish() {
     for action_fee in action_fees.clone() {
         let fee = ACTION_FEES.load(
             deps.as_ref().storage,
-            &(ado_version.get_type(), ado_version.get_version(), action_fee.clone().action)
+            &(ado_version.clone().into_string(), action_fee.clone().action)
         ).unwrap();
         assert_eq!(fee, action_fee);
     }
@@ -259,7 +259,7 @@ fn test_update_action_fees() {
     );
 
     CODE_ID
-        .save(deps.as_mut().storage, &ado_version.get_tuple(), &code_id)
+        .save(deps.as_mut().storage, &ado_version.as_str(), &code_id)
         .unwrap();
 
     let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
@@ -269,7 +269,7 @@ fn test_update_action_fees() {
     for action_fee in action_fees.clone() {
         let fee = ACTION_FEES.load(
             deps.as_ref().storage,
-            &(ado_version.get_type(), ado_version.get_version(), action_fee.clone().action)
+            &(ado_version.clone().into_string(), action_fee.clone().action)
         ).unwrap();
         assert_eq!(fee, action_fee);
     }
@@ -313,13 +313,13 @@ fn test_remove_action_fees() {
     );
 
     CODE_ID
-        .save(deps.as_mut().storage, &ado_version.get_tuple(), &code_id)
+        .save(deps.as_mut().storage, &ado_version.clone().as_str(), &code_id)
         .unwrap();
 
     ACTION_FEES
         .save(
             deps.as_mut().storage,
-            &(ado_version.get_type(), ado_version.get_version(), action.to_string()),
+            &(ado_version.clone().into_string(), action.to_string()),
             &ActionFee::new(action.to_string(), "uusd".to_string(), Uint128::from(1u128)),
         )
         .unwrap();
@@ -334,7 +334,7 @@ fn test_remove_action_fees() {
     let fee = ACTION_FEES
         .may_load(
             deps.as_ref().storage,
-            &(ado_version.get_type(), ado_version.get_version(), action.to_string()),
+            &(ado_version.clone().into_string(), action.to_string()),
         )
         .unwrap();
 
@@ -376,14 +376,14 @@ fn test_update_publisher() {
     );
 
     CODE_ID
-        .save(deps.as_mut().storage, &ado_version.get_tuple(), &code_id)
+        .save(deps.as_mut().storage, &ado_version.as_str(), &code_id)
         .unwrap();
 
     let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
     assert!(res.is_ok());
 
     let publisher = PUBLISHER
-        .load(deps.as_ref().storage, &ado_version.get_tuple())
+        .load(deps.as_ref().storage, &ado_version.as_str())
         .unwrap();
     assert_eq!(publisher, test_publisher);
 
