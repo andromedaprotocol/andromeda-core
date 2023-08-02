@@ -346,3 +346,32 @@ fn non_creator_cannot_delete_value() {
     let res: Result<Response, ContractError> = execute(deps.as_mut(), mock_env(), user1, msg);
     assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
 }
+
+#[test]
+fn query_all_key() {
+    let mut deps = mock_dependencies_custom(&[]);
+
+    let msg = InstantiateMsg {
+        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+        owner: None,
+        vfs_name: None,
+    };
+    let info = mock_info("creator", &[]);
+
+    // we can just call .unwrap() to assert this was a success
+    let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+    let keys: Vec<String> = vec!["key1".into(), "key2".into()];
+    for key in keys.clone() {
+        let msg = ExecuteMsg::SetValue {
+            key: Some(key),
+            value: Primitive::String("value".to_string()),
+        };
+        execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+    }
+
+    let res: Vec<String> =
+        from_binary(&query(deps.as_ref(), mock_env(), QueryMsg::AllKeys {}).unwrap()).unwrap();
+
+    assert_eq!(res, keys)
+}

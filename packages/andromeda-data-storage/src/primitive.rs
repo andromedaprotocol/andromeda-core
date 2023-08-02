@@ -30,6 +30,8 @@ pub struct MigrateMsg {}
 pub enum QueryMsg {
     #[returns(GetValueResponse)]
     GetValue { key: Option<String> },
+    #[returns(Vec<String>)]
+    AllKeys { },
 }
 
 #[cw_serde]

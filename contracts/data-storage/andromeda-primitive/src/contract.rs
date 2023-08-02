@@ -2,7 +2,7 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     ensure, to_binary, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Response,
-    StdError, SubMsg, WasmMsg,
+    StdError, SubMsg, WasmMsg, Storage,
 };
 use cw2::{get_contract_version, set_contract_version};
 
@@ -178,6 +178,12 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::GetValue { key } => encode_binary(&query_value(deps.storage, key)?),
+        QueryMsg::AllKeys {} => encode_binary(&query_all_keys(deps.storage)?),
         _ => ADOContract::default().query(deps, env, msg),
     }
+}
+
+fn query_all_keys(storage:&dyn Storage)->Result<Vec<String>, ContractError> {
+    let keys = DATA.keys(storage, None, None, cosmwasm_std::Order::Ascending).map(|key| key.unwrap()).collect();
+    Ok(keys)
 }
