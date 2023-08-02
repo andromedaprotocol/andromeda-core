@@ -192,6 +192,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "andromeda-data-storage"
+version = "0.1.0"
+dependencies = [
+ "andromeda-std",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-utils 1.0.1",
+ "serde",
+]
+
+[[package]]
 name = "andromeda-economics"
 version = "0.2.0"
 dependencies = [
@@ -359,6 +370,22 @@ dependencies = [
  "cw721 0.18.0",
  "cw721-base 0.18.0",
  "serde",
+]
+
+[[package]]
+name = "andromeda-primitive"
+version = "0.2.0"
+dependencies = [
+ "andromeda-data-storage",
+ "andromeda-std",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-multi-test",
+ "cw-storage-plus 1.1.0",
+ "cw-utils 1.0.1",
+ "cw2 1.1.0",
+ "cw20",
+ "semver",
 ]
 
 [[package]]
