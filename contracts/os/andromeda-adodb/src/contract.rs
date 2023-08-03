@@ -328,7 +328,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractErr
     match msg {
         QueryMsg::CodeId { key } => encode_binary(&query_code_id(deps, key)?),
         QueryMsg::ADOType { code_id } => encode_binary(&query_ado_type(deps, code_id)?),
-        QueryMsg::AllADOType {} => encode_binary(&query_all_ado_type(deps)?),
+        QueryMsg::AllADOTypes {} => encode_binary(&query_all_ado_type(deps)?),
         QueryMsg::ADOMetadata { ado_type } => encode_binary(&query_ado_metadata(deps, ado_type)?),
         QueryMsg::ActionFee { ado_type, action } => {
             encode_binary(&query_action_fee(deps, ado_type, action)?)

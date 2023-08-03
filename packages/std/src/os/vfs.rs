@@ -23,7 +23,7 @@ pub fn validate_component_name(path: String) -> Result<bool, ContractError> {
     Ok(true)
 }
 
-pub fn validate_user_name(username: String) -> Result<bool, ContractError> {
+pub fn validate_username(username: String) -> Result<bool, ContractError> {
     ensure!(
         !username.is_empty(),
         ContractError::InvalidUsername {

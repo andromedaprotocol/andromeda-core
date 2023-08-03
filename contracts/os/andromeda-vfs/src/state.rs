@@ -138,7 +138,7 @@ pub fn add_pathname(
 
 #[cfg(test)]
 mod test {
-    use andromeda_std::os::vfs::validate_user_name;
+    use andromeda_std::os::vfs::validate_username;
     use cosmwasm_std::testing::mock_dependencies;
 
     use super::*;
@@ -156,14 +156,14 @@ mod test {
     #[test]
     fn test_validate_username() {
         let valid_user = "username1980";
-        validate_user_name(valid_user.to_string()).unwrap();
+        validate_username(valid_user.to_string()).unwrap();
 
         let empty_user = "";
-        let res = validate_user_name(empty_user.to_string());
+        let res = validate_username(empty_user.to_string());
         assert!(res.is_err());
 
         let invalid_user = "///////";
-        let res = validate_user_name(invalid_user.to_string());
+        let res = validate_username(invalid_user.to_string());
         assert!(res.is_err());
     }
 

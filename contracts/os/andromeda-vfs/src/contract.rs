@@ -1,7 +1,7 @@
 use andromeda_std::ado_contract::ADOContract;
 
 use andromeda_std::os::vfs::{
-    validate_component_name, validate_path_name, validate_user_name, ExecuteMsg, InstantiateMsg,
+    validate_component_name, validate_path_name, validate_username, ExecuteMsg, InstantiateMsg,
     MigrateMsg, QueryMsg,
 };
 use andromeda_std::{
@@ -126,7 +126,7 @@ fn execute_register_user(
     //Remove username registration from previous username
     USERS.remove(execute_env.deps.storage, username.as_str());
 
-    validate_user_name(username.clone())?;
+    validate_username(username.clone())?;
     USERS.save(
         execute_env.deps.storage,
         username.as_str(),
