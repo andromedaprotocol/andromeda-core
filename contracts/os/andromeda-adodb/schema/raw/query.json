@@ -49,10 +49,10 @@
     {
       "type": "object",
       "required": [
-        "all_ado_type"
+        "all_ado_types"
       ],
       "properties": {
-        "all_ado_type": {
+        "all_ado_types": {
           "type": "object",
           "additionalProperties": false
         }
