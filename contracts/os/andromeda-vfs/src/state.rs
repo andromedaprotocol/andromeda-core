@@ -1,5 +1,5 @@
 use andromeda_std::error::ContractError;
-use cosmwasm_std::{ensure, Addr, Api, StdError, Storage};
+use cosmwasm_std::{Addr, Api, StdError, Storage};
 use cw_storage_plus::{Index, IndexList, IndexedMap, Map, MultiIndex};
 use serde::{Deserialize, Serialize};
 
@@ -136,28 +136,9 @@ pub fn add_pathname(
     )
 }
 
-pub fn validate_username(username: String) -> Result<bool, ContractError> {
-    ensure!(
-        !username.is_empty(),
-        ContractError::InvalidUsername {
-            error: Some("Username cannot be empty.".to_string())
-        }
-    );
-    ensure!(
-        username.chars().all(|ch| ch.is_alphanumeric()),
-        ContractError::InvalidUsername {
-            error: Some(
-                "Username contains invalid characters. All characters must be alphanumeric."
-                    .to_string()
-            )
-        }
-    );
-
-    Ok(true)
-}
-
 #[cfg(test)]
 mod test {
+    use andromeda_std::os::vfs::validate_user_name;
     use cosmwasm_std::testing::mock_dependencies;
 
     use super::*;
@@ -175,14 +156,14 @@ mod test {
     #[test]
     fn test_validate_username() {
         let valid_user = "username1980";
-        validate_username(valid_user.to_string()).unwrap();
+        validate_user_name(valid_user.to_string()).unwrap();
 
         let empty_user = "";
-        let res = validate_username(empty_user.to_string());
+        let res = validate_user_name(empty_user.to_string());
         assert!(res.is_err());
 
         let invalid_user = "///////";
-        let res = validate_username(invalid_user.to_string());
+        let res = validate_user_name(invalid_user.to_string());
         assert!(res.is_err());
     }
 

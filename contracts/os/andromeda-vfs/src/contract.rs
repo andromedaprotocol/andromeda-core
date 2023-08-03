@@ -1,7 +1,8 @@
 use andromeda_std::ado_contract::ADOContract;
 
 use andromeda_std::os::vfs::{
-    validate_component_name, validate_path_name, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
+    validate_component_name, validate_path_name, validate_user_name, ExecuteMsg, InstantiateMsg,
+    MigrateMsg, QueryMsg,
 };
 use andromeda_std::{
     ado_base::InstantiateMsg as BaseInstantiateMsg, common::encode_binary, error::ContractError,
@@ -14,8 +15,7 @@ use cw2::{get_contract_version, set_contract_version};
 use semver::Version;
 
 use crate::state::{
-    add_pathname, get_paths, get_subdir, resolve_pathname, validate_username, PathInfo,
-    ADDRESS_USERNAME, USERS,
+    add_pathname, get_paths, get_subdir, resolve_pathname, PathInfo, ADDRESS_USERNAME, USERS,
 };
 
 // version info for migration info
@@ -126,7 +126,7 @@ fn execute_register_user(
     //Remove username registration from previous username
     USERS.remove(execute_env.deps.storage, username.as_str());
 
-    validate_username(username.clone())?;
+    validate_user_name(username.clone())?;
     USERS.save(
         execute_env.deps.storage,
         username.as_str(),
