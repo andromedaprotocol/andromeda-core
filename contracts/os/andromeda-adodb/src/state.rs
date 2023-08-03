@@ -18,27 +18,35 @@ pub fn store_code_id(
     ado_version: &ADOVersion,
     code_id: u64,
 ) -> StdResult<()> {
-    let _ = ADO_TYPE.save(storage, code_id, &ado_version.clone().into_string()).unwrap();
-    let _ = LATEST_VERSION.save(
-        storage,
-        &ado_version.get_type(),
-        &(ado_version.clone().into_string(), code_id),
-    ).unwrap();
-    let _ = CODE_ID.save(storage, ado_version.as_str(), &code_id).unwrap();
+    ADO_TYPE
+        .save(storage, code_id, &ado_version.clone().into_string())
+        .unwrap();
+    LATEST_VERSION
+        .save(
+            storage,
+            &ado_version.get_type(),
+            &(ado_version.clone().into_string(), code_id),
+        )
+        .unwrap();
+    CODE_ID
+        .save(storage, ado_version.as_str(), &code_id)
+        .unwrap();
 
     // Check if there is any default ado set for this ado type. Defaults do not have versions appended to them.
     let default_ado = ADOVersion::from_type(ado_version.get_type());
     let default_code_id = read_code_id(storage, &default_ado);
 
     // There is no default, add one default for this
-    if default_code_id.is_err(){
-        CODE_ID.save(storage, default_ado.as_str(), &code_id).unwrap();
+    if default_code_id.is_err() {
+        CODE_ID
+            .save(storage, default_ado.as_str(), &code_id)
+            .unwrap();
     }
     Ok(())
 }
 
 pub fn read_code_id(storage: &dyn Storage, ado_version: &ADOVersion) -> StdResult<u64> {
-    CODE_ID.load(storage, &ado_version.as_str())
+    CODE_ID.load(storage, ado_version.as_str())
 }
 
 pub fn read_latest_code_id(storage: &dyn Storage, ado_type: String) -> StdResult<(String, u64)> {

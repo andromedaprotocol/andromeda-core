@@ -239,7 +239,7 @@ fn test_get_subdir() {
     };
     let res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
     let val: Vec<PathInfo> = from_binary(&res).unwrap();
-    assert_eq!(val, root_paths.clone());
+    assert_eq!(val, root_paths);
 
     let subdir = &root_paths[0].name;
     let query_msg = QueryMsg::SubDir {
@@ -247,7 +247,7 @@ fn test_get_subdir() {
     };
     let res = query(deps.as_ref(), env, query_msg).unwrap();
     let val: Vec<PathInfo> = from_binary(&res).unwrap();
-    assert_eq!(val, sub_paths.clone());
+    assert_eq!(val, sub_paths);
 }
 
 #[test]
@@ -285,7 +285,11 @@ fn test_get_paths() {
         .save(deps.as_mut().storage, username, &sender)
         .unwrap();
     ADDRESS_USERNAME
-        .save(deps.as_mut().storage, &sender.as_str(), &username.to_string())
+        .save(
+            deps.as_mut().storage,
+            sender.as_str(),
+            &username.to_string(),
+        )
         .unwrap();
 
     // Add all root components
@@ -306,7 +310,7 @@ fn test_get_paths() {
         }
     }
 
-    for path in root_paths.clone() {
+    for path in root_paths {
         let path_name = format!("/{username}/{name}", name = path.name);
         let resolved_addr =
             resolve_pathname(deps.as_ref().storage, deps.as_ref().api, path_name.clone());
@@ -317,7 +321,7 @@ fn test_get_paths() {
     let query_msg = QueryMsg::Paths {
         addr: sub_paths[0].address.clone(),
     };
-    let res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
+    let res = query(deps.as_ref(), env, query_msg).unwrap();
     let val: Vec<String> = from_binary(&res).unwrap();
-    assert_eq!(val.len(),2);
+    assert_eq!(val.len(), 2);
 }

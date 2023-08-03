@@ -130,10 +130,7 @@ pub fn update_action_fees(
     for action_fee in fees {
         ACTION_FEES.save(
             storage,
-            &(
-                ado_version.clone().into_string(),
-                action_fee.clone().action,
-            ),
+            &(ado_version.clone().into_string(), action_fee.clone().action),
             &action_fee.clone(),
         )?;
     }
@@ -256,10 +253,7 @@ fn execute_remove_actions(
     for action in actions {
         ACTION_FEES.remove(
             deps.storage,
-            &(
-                ado_version.clone().into_string(),
-                action.clone(),
-            ),
+            &(ado_version.clone().into_string(), action.clone()),
         );
         res = res.add_attribute("action_fee_removed", action);
     }
@@ -286,7 +280,7 @@ fn execute_update_publisher(
         }
     );
 
-    PUBLISHER.save(deps.storage, &ado_version.as_str(), &publisher)?;
+    PUBLISHER.save(deps.storage, ado_version.as_str(), &publisher)?;
 
     Ok(Response::default().add_attributes(vec![
         attr("action", "update_publisher"),
@@ -379,7 +373,7 @@ fn query_all_ado_type(deps: Deps) -> Result<Vec<String>, ContractError> {
 
 fn query_ado_metadata(deps: Deps, ado_type: String) -> Result<ADOMetadata, ContractError> {
     let ado_version = ADOVersion::from_string(ado_type);
-    let publisher = PUBLISHER.load(deps.storage, &ado_version.as_str())?;
+    let publisher = PUBLISHER.load(deps.storage, ado_version.as_str())?;
     let latest_version = read_latest_code_id(deps.storage, ado_version.get_type())?;
 
     Ok(ADOMetadata {
@@ -394,10 +388,7 @@ fn query_action_fee(
     action: String,
 ) -> Result<Option<ActionFee>, ContractError> {
     let ado_version = ADOVersion::from_string(ado_type);
-    Ok(ACTION_FEES.may_load(
-        deps.storage,
-        &(ado_version.into_string(), action),
-    )?)
+    Ok(ACTION_FEES.may_load(deps.storage, &(ado_version.into_string(), action))?)
 }
 
 fn query_action_fee_by_code_id(
@@ -406,8 +397,5 @@ fn query_action_fee_by_code_id(
     action: String,
 ) -> Result<Option<ActionFee>, ContractError> {
     let ado_version = ADO_TYPE.load(deps.storage, code_id)?;
-    Ok(ACTION_FEES.may_load(
-        deps.storage,
-        &(ado_version, action),
-    )?)
+    Ok(ACTION_FEES.may_load(deps.storage, &(ado_version, action))?)
 }

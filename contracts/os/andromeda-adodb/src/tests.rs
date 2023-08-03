@@ -3,11 +3,11 @@ use andromeda_std::testing::mock_querier::{mock_dependencies_custom, MOCK_KERNEL
 use cosmwasm_std::Uint128;
 
 use crate::contract::{execute, instantiate};
-use crate::state::{ACTION_FEES, CODE_ID, PUBLISHER, LATEST_VERSION};
+use crate::state::{ACTION_FEES, CODE_ID, LATEST_VERSION, PUBLISHER};
 
 use andromeda_std::ado_contract::ADOContract;
 use andromeda_std::error::ContractError;
-use andromeda_std::os::adodb::{ActionFee, ExecuteMsg, InstantiateMsg, ADOVersion};
+use andromeda_std::os::adodb::{ADOVersion, ActionFee, ExecuteMsg, InstantiateMsg};
 
 use cosmwasm_std::{
     attr,
@@ -169,7 +169,7 @@ fn test_publish() {
     let msg = ExecuteMsg::Publish {
         ado_type: ado_version.get_type(),
         version: ado_version.get_version(),
-        code_id: code_id,
+        code_id,
         action_fees: Some(action_fees.clone()),
         publisher: Some(owner.clone()),
     };
@@ -178,29 +178,29 @@ fn test_publish() {
 
     assert!(resp.is_ok());
     let publisher = PUBLISHER
-        .load(deps.as_ref().storage, &ado_version.as_str())
+        .load(deps.as_ref().storage, ado_version.as_str())
         .unwrap();
     assert_eq!(publisher, owner);
 
-    let code_id = CODE_ID.load(deps.as_ref().storage, &ado_version.as_str()).unwrap();
+    let code_id = CODE_ID
+        .load(deps.as_ref().storage, ado_version.as_str())
+        .unwrap();
     assert_eq!(code_id, 1u64);
 
     let vers_code_id = LATEST_VERSION
-        .load(
-            deps.as_ref().storage,
-            &ado_version.get_type(),
-        )
+        .load(deps.as_ref().storage, &ado_version.get_type())
         .unwrap();
     assert_eq!(vers_code_id.0, ado_version.clone().into_string());
     assert_eq!(vers_code_id.1, code_id);
 
-
     // TEST ACTION FEE
-    for action_fee in action_fees.clone() {
-        let fee = ACTION_FEES.load(
-            deps.as_ref().storage,
-            &(ado_version.clone().into_string(), action_fee.clone().action)
-        ).unwrap();
+    for action_fee in action_fees {
+        let fee = ACTION_FEES
+            .load(
+                deps.as_ref().storage,
+                &(ado_version.clone().into_string(), action_fee.clone().action),
+            )
+            .unwrap();
         assert_eq!(fee, action_fee);
     }
 
@@ -259,18 +259,20 @@ fn test_update_action_fees() {
     );
 
     CODE_ID
-        .save(deps.as_mut().storage, &ado_version.as_str(), &code_id)
+        .save(deps.as_mut().storage, ado_version.as_str(), &code_id)
         .unwrap();
 
     let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
     assert!(res.is_ok());
 
     // TEST ACTION FEE
-    for action_fee in action_fees.clone() {
-        let fee = ACTION_FEES.load(
-            deps.as_ref().storage,
-            &(ado_version.clone().into_string(), action_fee.clone().action)
-        ).unwrap();
+    for action_fee in action_fees {
+        let fee = ACTION_FEES
+            .load(
+                deps.as_ref().storage,
+                &(ado_version.clone().into_string(), action_fee.clone().action),
+            )
+            .unwrap();
         assert_eq!(fee, action_fee);
     }
 
@@ -313,7 +315,7 @@ fn test_remove_action_fees() {
     );
 
     CODE_ID
-        .save(deps.as_mut().storage, &ado_version.clone().as_str(), &code_id)
+        .save(deps.as_mut().storage, ado_version.as_str(), &code_id)
         .unwrap();
 
     ACTION_FEES
@@ -334,7 +336,7 @@ fn test_remove_action_fees() {
     let fee = ACTION_FEES
         .may_load(
             deps.as_ref().storage,
-            &(ado_version.clone().into_string(), action.to_string()),
+            &(ado_version.into_string(), action.to_string()),
         )
         .unwrap();
 
@@ -376,14 +378,14 @@ fn test_update_publisher() {
     );
 
     CODE_ID
-        .save(deps.as_mut().storage, &ado_version.as_str(), &code_id)
+        .save(deps.as_mut().storage, ado_version.as_str(), &code_id)
         .unwrap();
 
     let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
     assert!(res.is_ok());
 
     let publisher = PUBLISHER
-        .load(deps.as_ref().storage, &ado_version.as_str())
+        .load(deps.as_ref().storage, ado_version.as_str())
         .unwrap();
     assert_eq!(publisher, test_publisher);
 

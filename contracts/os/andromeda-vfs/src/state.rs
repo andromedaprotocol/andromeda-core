@@ -94,22 +94,24 @@ pub fn get_subdir(
 }
 
 pub fn get_paths(storage: &dyn Storage, addr: Addr) -> Result<Vec<String>, ContractError> {
-    let mut resolved_paths:Vec<String> = vec![];
-    let parent_dirs:Vec<PathInfo> = paths()
+    let mut resolved_paths: Vec<String> = vec![];
+    let parent_dirs: Vec<PathInfo> = paths()
         .idx
         .address
         .prefix(addr.clone())
         .range(storage, None, None, cosmwasm_std::Order::Ascending)
         .map(|r| r.unwrap().1)
         .collect();
-    if parent_dirs.len() == 0 {
+    if parent_dirs.is_empty() {
         // Its a user address
-        let username_or_address = ADDRESS_USERNAME.load(storage, addr.clone().to_string().as_str()).unwrap_or(addr.to_string());
+        let username_or_address = ADDRESS_USERNAME
+            .load(storage, addr.to_string().as_str())
+            .unwrap_or(addr.to_string());
         resolved_paths.push(username_or_address)
     }
     for parent_dir in parent_dirs {
         let parent_paths = get_paths(storage, parent_dir.clone().parent_address)?;
-        for parent_path in parent_paths{
+        for parent_path in parent_paths {
             resolved_paths.push(parent_path + "/" + parent_dir.name.as_str());
         }
     }
@@ -239,7 +241,7 @@ mod test {
                 &PathInfo {
                     name: second_directory.to_string(),
                     address: second_directory_address.clone(),
-                    parent_address: first_directory_address.clone(),
+                    parent_address: first_directory_address,
                 },
             )
             .unwrap();
@@ -259,7 +261,7 @@ mod test {
                 &PathInfo {
                     name: file.to_string(),
                     address: file_address.clone(),
-                    parent_address: second_directory_address.clone(),
+                    parent_address: second_directory_address,
                 },
             )
             .unwrap();

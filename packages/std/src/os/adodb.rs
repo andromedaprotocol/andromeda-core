@@ -89,7 +89,7 @@ pub enum QueryMsg {
     ADOType { code_id: u64 },
     #[returns(Vec<String>)]
     #[serde(rename = "all_ado_type")]
-    AllADOType {  },
+    AllADOType {},
     #[returns(Option<ADOMetadata>)]
     #[serde(rename = "ado_metadata")]
     ADOMetadata { ado_type: String },
@@ -180,9 +180,8 @@ impl ADOVersion {
 
     /// Gets the type for the given ADOVersion
     pub fn get_tuple(&self) -> (String, String) {
-        (self.get_type(),self.get_version())
+        (self.get_type(), self.get_version())
     }
-    
 }
 
 #[cfg(test)]
