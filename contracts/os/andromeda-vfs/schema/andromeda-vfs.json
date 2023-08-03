@@ -1,6 +1,6 @@
 {
   "contract_name": "andromeda-vfs",
-  "contract_version": "0.2.0",
+  "contract_version": "0.2.2",
   "idl_version": "1.0.0",
   "instantiate": {
     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -155,6 +155,27 @@
       {
         "type": "object",
         "required": [
+          "paths"
+        ],
+        "properties": {
+          "paths": {
+            "type": "object",
+            "required": [
+              "addr"
+            ],
+            "properties": {
+              "addr": {
+                "$ref": "#/definitions/Addr"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
           "get_username"
         ],
         "properties": {
@@ -188,6 +209,14 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "String",
       "type": "string"
+    },
+    "paths": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Array_of_String",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
     },
     "resolve_path": {
       "$schema": "http://json-schema.org/draft-07/schema#",

@@ -47,6 +47,27 @@
     {
       "type": "object",
       "required": [
+        "paths"
+      ],
+      "properties": {
+        "paths": {
+          "type": "object",
+          "required": [
+            "addr"
+          ],
+          "properties": {
+            "addr": {
+              "$ref": "#/definitions/Addr"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
         "get_username"
       ],
       "properties": {

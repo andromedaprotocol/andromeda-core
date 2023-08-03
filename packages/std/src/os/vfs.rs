@@ -73,6 +73,8 @@ pub enum QueryMsg {
     ResolvePath { path: String },
     #[returns(Vec<PathDetails>)]
     SubDir { path: String },
+    #[returns(Vec<String>)]
+    Paths { addr: Addr },
     #[returns(String)]
     GetUsername { address: Addr },
 }

@@ -1,6 +1,6 @@
 use crate::{
     contract::{execute, instantiate, query},
-    state::{resolve_pathname, ADDRESS_USERNAME, USERS, PathInfo, add_pathname},
+    state::{add_pathname, resolve_pathname, PathInfo, ADDRESS_USERNAME, USERS},
 };
 
 use andromeda_std::os::vfs::{ExecuteMsg, InstantiateMsg};
@@ -180,59 +180,144 @@ fn test_get_subdir() {
     let env = mock_env();
     let root_paths = vec![
         PathInfo {
-            name:"f1".to_string(),
-            address:Addr::unchecked("f1addr")
+            name: "f1".to_string(),
+            address: Addr::unchecked("f1addr"),
+            parent_address: sender.clone(),
         },
         PathInfo {
-            name:"f2".to_string(),
-            address:Addr::unchecked("f2addr")
+            name: "f2".to_string(),
+            address: Addr::unchecked("f2addr"),
+            parent_address: sender.clone(),
         },
     ];
     let sub_paths = vec![
         PathInfo {
-            name:"sub1".to_string(),
-            address:Addr::unchecked("sub1addr")
+            name: "sub1".to_string(),
+            address: Addr::unchecked("sub1addr"),
+            parent_address: root_paths[0].address.clone(),
         },
         PathInfo {
-            name:"sub2".to_string(),
-            address:Addr::unchecked("sub2addr")
+            name: "sub2".to_string(),
+            address: Addr::unchecked("sub2addr"),
+            parent_address: root_paths[0].address.clone(),
         },
     ];
 
     USERS
-    .save(deps.as_mut().storage, username, &sender)
-    .unwrap();
+        .save(deps.as_mut().storage, username, &sender)
+        .unwrap();
 
     // Add all root components
     for path in root_paths.clone() {
-        let _ = add_pathname(deps.as_mut().storage, sender.clone(), path.name, path.address);
+        let _ = add_pathname(
+            deps.as_mut().storage,
+            sender.clone(),
+            path.name,
+            path.address,
+        );
     }
 
-    // Register child components for only first root component
     for path in sub_paths.clone() {
-        let _ = add_pathname(deps.as_mut().storage, root_paths[0].address.clone(), path.name, path.address);
+        let _ = add_pathname(
+            deps.as_mut().storage,
+            path.parent_address.clone(),
+            path.name,
+            path.address,
+        );
     }
 
     for path in root_paths.clone() {
-        let path_name = format!("/{username}/{name}",name=path.name);
-        let resolved_addr = resolve_pathname(deps.as_ref().storage, deps.as_ref().api, path_name.clone());
-        assert!(resolved_addr.is_ok(),"{path_name} not found");
+        let path_name = format!("/{username}/{name}", name = path.name);
+        let resolved_addr =
+            resolve_pathname(deps.as_ref().storage, deps.as_ref().api, path_name.clone());
+        assert!(resolved_addr.is_ok(), "{path_name} not found");
         assert_eq!(resolved_addr.unwrap(), path.address)
     }
 
-
     let query_msg = QueryMsg::SubDir {
-        path:format!("/{username}")
+        path: format!("/{username}"),
     };
     let res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
-    let val:Vec<PathInfo>  = from_binary(&res).unwrap();
+    let val: Vec<PathInfo> = from_binary(&res).unwrap();
     assert_eq!(val, root_paths.clone());
 
     let subdir = &root_paths[0].name;
     let query_msg = QueryMsg::SubDir {
-        path:format!("/{username}/{subdir}")
+        path: format!("/{username}/{subdir}"),
     };
     let res = query(deps.as_ref(), env, query_msg).unwrap();
-    let val:Vec<PathInfo>  = from_binary(&res).unwrap();
+    let val: Vec<PathInfo> = from_binary(&res).unwrap();
     assert_eq!(val, sub_paths.clone());
+}
+
+#[test]
+fn test_get_paths() {
+    let mut deps = mock_dependencies();
+    let username = "u1";
+    let sender = Addr::unchecked("sender");
+    let env = mock_env();
+    let root_paths = vec![
+        PathInfo {
+            name: "f1".to_string(),
+            address: Addr::unchecked("f1addr"),
+            parent_address: sender.clone(),
+        },
+        PathInfo {
+            name: "f2".to_string(),
+            address: Addr::unchecked("f2addr"),
+            parent_address: sender.clone(),
+        },
+    ];
+    let sub_paths = vec![
+        PathInfo {
+            name: "sub1".to_string(),
+            address: Addr::unchecked("sub1addr"),
+            parent_address: root_paths[0].address.clone(),
+        },
+        PathInfo {
+            name: "sub2".to_string(),
+            address: Addr::unchecked("sub2addr"),
+            parent_address: root_paths[0].address.clone(),
+        },
+    ];
+
+    USERS
+        .save(deps.as_mut().storage, username, &sender)
+        .unwrap();
+    ADDRESS_USERNAME
+        .save(deps.as_mut().storage, &sender.as_str(), &username.to_string())
+        .unwrap();
+
+    // Add all root components
+    for path in root_paths.clone() {
+        let _ = add_pathname(
+            deps.as_mut().storage,
+            sender.clone(),
+            path.name,
+            path.address.clone(),
+        );
+        for sub_path in sub_paths.clone() {
+            let _ = add_pathname(
+                deps.as_mut().storage,
+                path.address.clone(),
+                sub_path.name,
+                sub_path.address,
+            );
+        }
+    }
+
+    for path in root_paths.clone() {
+        let path_name = format!("/{username}/{name}", name = path.name);
+        let resolved_addr =
+            resolve_pathname(deps.as_ref().storage, deps.as_ref().api, path_name.clone());
+        assert!(resolved_addr.is_ok(), "{path_name} not found");
+        assert_eq!(resolved_addr.unwrap(), path.address)
+    }
+
+    let query_msg = QueryMsg::Paths {
+        addr: sub_paths[0].address.clone(),
+    };
+    let res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
+    let val: Vec<String> = from_binary(&res).unwrap();
+    assert_eq!(val.len(),2);
 }

@@ -13,7 +13,10 @@ use cosmwasm_std::{
 use cw2::{get_contract_version, set_contract_version};
 use semver::Version;
 
-use crate::state::{add_pathname, resolve_pathname, validate_username, ADDRESS_USERNAME, USERS, get_subdir, PathInfo};
+use crate::state::{
+    add_pathname, get_paths, get_subdir, resolve_pathname, validate_username, PathInfo,
+    ADDRESS_USERNAME, USERS,
+};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-vfs";
@@ -186,6 +189,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractErr
     match msg {
         QueryMsg::ResolvePath { path } => encode_binary(&query_resolve_path(deps, path)?),
         QueryMsg::SubDir { path } => encode_binary(&query_subdir(deps, path)?),
+        QueryMsg::Paths { addr } => encode_binary(&query_paths(deps, addr)?),
         QueryMsg::GetUsername { address } => encode_binary(&query_get_username(deps, address)?),
     }
 }
@@ -197,6 +201,10 @@ fn query_resolve_path(deps: Deps, path: String) -> Result<Addr, ContractError> {
 fn query_subdir(deps: Deps, path: String) -> Result<Vec<PathInfo>, ContractError> {
     validate_path_name(path.clone())?;
     get_subdir(deps.storage, deps.api, path)
+}
+
+fn query_paths(deps: Deps, addr: Addr) -> Result<Vec<String>, ContractError> {
+    get_paths(deps.storage, addr)
 }
 
 fn query_get_username(deps: Deps, addr: Addr) -> Result<String, ContractError> {
