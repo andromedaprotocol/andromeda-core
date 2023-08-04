@@ -19,11 +19,13 @@ resolver="2"
 [profile.release]
 debug = false
 debug-assertions = false
-opt-level = 3
+opt-level = 'z'
+codegen-units = 1
 rpath = false
 lto = true
 overflow-checks = true
 panic='abort'
+strip=true
 
 [workspace.dependencies]
 andromeda-std = { path = "./packages/std" }

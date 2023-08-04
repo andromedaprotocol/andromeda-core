@@ -4,6 +4,7 @@ use cosmwasm_std::{ensure, Addr, QuerierWrapper};
 use regex::Regex;
 
 pub const COMPONENT_NAME_REGEX: &str = r"^[A-Za-z0-9\.\-_]{1,40}$";
+pub const USERNAME_REGEX: &str = r"^[a-z0-9]+$";
 pub const PATH_REGEX: &str = r"^([A-Za-z0-9]+://)?(/)?([A-Za-z0-9\.\-_]{1,40}(/)?)+$";
 
 pub fn convert_component_name(path: String) -> String {
@@ -17,6 +18,26 @@ pub fn validate_component_name(path: String) -> Result<bool, ContractError> {
         re.is_match(&path),
         ContractError::InvalidPathname {
             error: Some("Pathname includes an invalid character".to_string())
+        }
+    );
+    Ok(true)
+}
+
+pub fn validate_username(username: String) -> Result<bool, ContractError> {
+    ensure!(
+        !username.is_empty(),
+        ContractError::InvalidUsername {
+            error: Some("Username cannot be empty.".to_string())
+        }
+    );
+    let re = Regex::new(USERNAME_REGEX).unwrap();
+    ensure!(
+        re.is_match(&username),
+        ContractError::InvalidPathname {
+            error: Some(
+                "Username contains invalid characters. All characters must be alphanumeric."
+                    .to_string()
+            )
         }
     );
     Ok(true)
@@ -71,6 +92,10 @@ pub struct MigrateMsg {}
 pub enum QueryMsg {
     #[returns(Addr)]
     ResolvePath { path: String },
+    #[returns(Vec<PathDetails>)]
+    SubDir { path: String },
+    #[returns(Vec<String>)]
+    Paths { addr: Addr },
     #[returns(String)]
     GetUsername { address: Addr },
 }
