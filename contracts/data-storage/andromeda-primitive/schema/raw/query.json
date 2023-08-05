@@ -26,6 +26,19 @@
     {
       "type": "object",
       "required": [
+        "all_keys"
+      ],
+      "properties": {
+        "all_keys": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
         "owner"
       ],
       "properties": {

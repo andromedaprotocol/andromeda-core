@@ -34,3 +34,7 @@ done
 for c in contracts/os/*; do
     (cd $c && cargo schema)
 done
+
+for c in contracts/data-storage/*; do
+    (cd $c && cargo schema)
+done

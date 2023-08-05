@@ -193,7 +193,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-data-storage"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "andromeda-std",
  "cosmwasm-schema",
@@ -1633,18 +1633,24 @@ dependencies = [
  "andromeda-auction",
  "andromeda-crowdfund",
  "andromeda-cw721",
+ "andromeda-data-storage",
  "andromeda-ecosystem",
  "andromeda-finance",
  "andromeda-kernel",
  "andromeda-marketplace",
  "andromeda-modules",
  "andromeda-non-fungible-tokens",
+ "andromeda-primitive",
  "andromeda-rates",
  "andromeda-splitter",
  "andromeda-std",
  "andromeda-testing",
  "andromeda-vault",
+<<<<<<< HEAD
  "andromeda-vfs",
+=======
+ "cosmwasm-schema",
+>>>>>>> b41fd7fc (Added primitive)
  "cosmwasm-std",
  "cw-multi-test",
  "cw721 0.18.0",

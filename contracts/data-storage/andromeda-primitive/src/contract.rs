@@ -2,7 +2,7 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     ensure, to_binary, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Response,
-    StdError, SubMsg, WasmMsg, Storage,
+    StdError, Storage, SubMsg, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
 
@@ -105,9 +105,6 @@ pub fn execute_set_value(
         ADOContract::default().is_owner_or_operator(deps.storage, &sender)?,
         ContractError::Unauthorized {}
     );
-    if value.is_invalid() {
-        return Err(ContractError::InvalidPrimitive {});
-    }
     let key: &str = get_key_or_default(&key);
     DATA.update::<_, StdError>(deps.storage, key, |old| match old {
         Some(_) => Ok(value.clone()),
@@ -183,7 +180,10 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
     }
 }
 
-fn query_all_keys(storage:&dyn Storage)->Result<Vec<String>, ContractError> {
-    let keys = DATA.keys(storage, None, None, cosmwasm_std::Order::Ascending).map(|key| key.unwrap()).collect();
+fn query_all_keys(storage: &dyn Storage) -> Result<Vec<String>, ContractError> {
+    let keys = DATA
+        .keys(storage, None, None, cosmwasm_std::Order::Ascending)
+        .map(|key| key.unwrap())
+        .collect();
     Ok(keys)
 }

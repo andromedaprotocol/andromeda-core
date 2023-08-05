@@ -644,6 +644,21 @@
               }
             },
             "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "object"
+            ],
+            "properties": {
+              "object": {
+                "type": "object",
+                "additionalProperties": {
+                  "$ref": "#/definitions/Primitive"
+                }
+              }
+            },
+            "additionalProperties": false
           }
         ]
       },
@@ -718,6 +733,19 @@
                 ]
               }
             },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "all_keys"
+        ],
+        "properties": {
+          "all_keys": {
+            "type": "object",
             "additionalProperties": false
           }
         },
@@ -1081,6 +1109,14 @@
   "migrate": null,
   "sudo": null,
   "responses": {
+    "all_keys": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Array_of_String",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
     "andr_hook": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Binary",
@@ -1268,6 +1304,21 @@
               "properties": {
                 "binary": {
                   "$ref": "#/definitions/Binary"
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": [
+                "object"
+              ],
+              "properties": {
+                "object": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "$ref": "#/definitions/Primitive"
+                  }
                 }
               },
               "additionalProperties": false
