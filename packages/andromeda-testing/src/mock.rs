@@ -13,8 +13,8 @@ use andromeda_vfs::mock::{
     mock_add_path, mock_andromeda_vfs, mock_register_user, mock_resolve_path_query,
     mock_vfs_instantiate_message,
 };
-use cosmwasm_std::Addr;
-use cw_multi_test::{App, Executor};
+use cosmwasm_std::{Addr, Empty};
+use cw_multi_test::{App, Contract, Executor};
 
 pub const ADMIN_USERNAME: &str = "am";
 
@@ -138,9 +138,19 @@ impl MockAndromeda {
         .unwrap();
     }
 
+    pub fn store_ado(
+        &self,
+        app: &mut App,
+        contract: Box<dyn Contract<Empty>>,
+        ado_type: impl Into<String>,
+    ) {
+        let code_id = app.store_code(contract);
+        self.store_code_id(app, ado_type.into().as_str(), code_id);
+    }
+
     /// Gets the Code ID for a given key from the ADO DB contract
-    pub fn get_code_id(&self, app: &mut App, key: String) -> u64 {
-        let msg = mock_get_code_id_msg(key);
+    pub fn get_code_id(&self, app: &mut App, key: impl Into<String>) -> u64 {
+        let msg = mock_get_code_id_msg(key.into());
 
         app.wrap()
             .query_wasm_smart(self.adodb_address.clone(), &msg)
