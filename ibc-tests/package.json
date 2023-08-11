@@ -18,6 +18,7 @@
   "dependencies": {
     "@confio/relayer": "^0.8.0",
     "axios": "^1.4.0",
+    "cli-progress": "^3.12.0",
     "node-fetch": "^3.3.2",
     "sha256": "^0.2.0"
   },
@@ -25,6 +26,7 @@
     "@andromedaprotocol/andromeda.js": "^0.3.3",
     "@ava/typescript": "^3.0.1",
     "@istanbuljs/nyc-config-typescript": "^1.0.2",
+    "@types/cli-progress": "^3.11.0",
     "@types/mocha": "^10.0.1",
     "@types/node": "^18.0.6",
     "@types/sha256": "^0.2.0",

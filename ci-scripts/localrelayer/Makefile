@@ -22,3 +22,4 @@ restartd: stop
 clean:
 	@rm -rfI $(HOME)/.osmosisd-local-a/
 	@rm -rfI $(HOME)/.osmosisd-local-b/
+	@rm -rfI ./template/.osmosisd-*

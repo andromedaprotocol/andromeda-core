@@ -4,10 +4,10 @@ import { readFileSync } from "fs";
 import {
   AckWithMetadata,
   CosmWasmSigner,
+  IbcClient,
   RelayInfo,
   testutils,
 } from "@confio/relayer";
-import { IbcClient } from "@confio/relayer";
 import { ChainDefinition } from "@confio/relayer/build/lib/helpers";
 import { IbcClientOptions } from "@confio/relayer/build/lib/ibcclient";
 import { SigningCosmWasmClient } from "@cosmjs/cosmwasm-stargate";
@@ -15,6 +15,7 @@ import { fromBase64, fromUtf8 } from "@cosmjs/encoding";
 import { DirectSecp256k1HdWallet } from "@cosmjs/proto-signing";
 import { GasPrice } from "@cosmjs/stargate";
 import { assert } from "@cosmjs/utils";
+import cliprogress from "cli-progress";
 
 import configs from "./configs";
 
@@ -26,9 +27,14 @@ function encode(data: any) {
 
 const { generateMnemonic } = testutils;
 
-let mnemonic = "";
+let mnemonic =
+  "notice oak worry limit wrap speak medal online prefer cluster roof addict wrist behave treat actual wasp year salad speed social layer crew genius";
 
 export const IbcVersion = "simple-ica-v2";
+
+export async function awaitMulti(promises: Promise<any>[]) {
+  return await Promise.all(promises);
+}
 
 async function signingCosmWasmClient(
   chain: ChainDefinition,
@@ -109,7 +115,6 @@ export async function setupContracts(
 
   for (const name in contracts) {
     const path = contracts[name];
-    console.info(`Storing ${name} from ${path}...`);
     const wasm = readFileSync(path);
     const receipt = await cosmwasm.sign.upload(
       cosmwasm.senderAddress,
@@ -117,7 +122,6 @@ export async function setupContracts(
       "auto",
       `Upload ${name}`
     );
-    console.debug(`Upload ${name} with CodeID: ${receipt.codeId}`);
     results[name] = receipt.codeId;
   }
 
@@ -129,9 +133,9 @@ export async function setupOsmosisClient(): Promise<CosmWasmSigner> {
   // create apps and fund an account
   mnemonic = mnemonic.length > 0 ? mnemonic : generateMnemonic();
   const cosmwasm = await signingCosmWasmClient(osmosisA, mnemonic);
-  console.debug("Funding account on chain A...");
-  await fundAccount(osmosisA, cosmwasm.senderAddress, "4000000");
-  console.debug("Funded account on chain A");
+  // console.debug("Funding account on chain A...");
+  // await fundAccount(osmosisA, cosmwasm.senderAddress, "4000000");
+  // console.debug("Funded account on chain A");
   return cosmwasm;
 }
 
@@ -140,9 +144,9 @@ export async function setupOsmosisClientB(): Promise<CosmWasmSigner> {
   // create apps and fund an account
   mnemonic = mnemonic.length > 0 ? mnemonic : generateMnemonic();
   const cosmwasm = await signingCosmWasmClient(osmosisB, mnemonic);
-  console.debug("Funding account on chain B...");
-  await fundAccount(osmosisB, cosmwasm.senderAddress, "4000000");
-  console.debug("Funded account on chain B");
+  // console.debug("Funding account on chain B...");
+  // await fundAccount(osmosisB, cosmwasm.senderAddress, "4000000");
+  // console.debug("Funded account on chain B");
   return cosmwasm;
 }
 
@@ -268,15 +272,9 @@ export async function setupRelayerInfo(
 ) {
   const newMnemonic =
     "black frequent sponsor nice claim rally hunt suit parent size stumble expire forest avocado mistake agree trend witness lounge shiver image smoke stool chicken";
-  console.log("Generating Relayer Info...");
   const info = [
     await ibcClient(chainA, newMnemonic),
     await ibcClient(chainB, newMnemonic),
   ];
-  // for (let i = 0; i < info.length; i++) {
-  //   const sign = info[i];
-  //   await fundAccount([chainA, chainB][i], sign.senderAddress, "4000000");
-  // }
-  console.log("Generated Relayer Info", info[0].senderAddress);
   return info;
 }

@@ -14,8 +14,8 @@ enabled = true
 
 [mode.packets]
 enabled = true
-clear_interval = 100
-clear_on_start = true
+clear_interval = 120
+clear_on_start = false
 tx_confirmation = true
 
 [rest]
@@ -59,10 +59,7 @@ denom = 'uosmo'
 
 [chains.packet_filter]
 policy = 'allow'
-list = [[
-    'transfer',
-    'channel-*',
-]]
+list = [['transfer', 'channel-*']]
 
 [chains.address_type]
 derivation = 'cosmos'
@@ -98,10 +95,7 @@ denom = 'uosmo'
 
 [chains.packet_filter]
 policy = 'allow'
-list = [[
-    'transfer',
-    'channel-*',
-]]
+list = [['transfer', 'channel-*']]
 
 [chains.address_type]
 derivation = 'cosmos'

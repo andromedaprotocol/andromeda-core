@@ -9,8 +9,8 @@ use andromeda_std::ibc::message_bridge::ExecuteMsg as IBCBridgeExecMsg;
 use andromeda_std::os::aos_querier::AOSQuerier;
 use andromeda_std::os::kernel::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use cosmwasm_std::{
-    attr, ensure, entry_point, wasm_execute, Addr, BankMsg, Binary, CosmosMsg, Deps, DepsMut, Env,
-    MessageInfo, Reply, Response, StdError, SubMsg, WasmMsg,
+    attr, ensure, entry_point, wasm_execute, Addr, BankMsg, Binary, CosmosMsg, Deps, DepsMut,
+    Empty, Env, MessageInfo, Reply, Response, StdError, SubMsg, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
 use semver::Version;
@@ -89,21 +89,37 @@ pub fn execute(
 }
 
 pub fn handle_send(execute_env: ExecuteEnv, message: AMPMsg) -> Result<Response, ContractError> {
-    let ExecuteEnv { deps, info, .. } = execute_env;
-    let origin = info.clone().sender;
-    let recipient = message.recipient.get_raw_address(&deps.as_ref())?;
-    //TODO: ADD IBC HANDLING
+    let ExecuteEnv { deps, .. } = execute_env;
+    let vfs_address = KERNEL_ADDRESSES.load(deps.storage, VFS_KEY)?;
+    let recipient = message
+        .recipient
+        .get_raw_address_from_vfs(&deps.as_ref(), vfs_address)?;
 
-    Ok(Response::default()
-        .add_submessage(SubMsg::new(WasmMsg::Execute {
+    let sub_msg: SubMsg<Empty> = if Binary::default() == message.message {
+        SubMsg::new(BankMsg::Send {
+            to_address: recipient.to_string(),
+            amount: message.funds,
+        })
+    } else {
+        SubMsg::new(WasmMsg::Execute {
             contract_addr: recipient.to_string(),
             msg: message.message.clone(),
-            funds: info.funds,
-        }))
+            funds: message.funds,
+        })
+    };
+    //TODO: ADD IBC HANDLING
+
+    let msg_attr = if Binary::default() == message.message {
+        "send_funds".to_string()
+    } else {
+        message.message.to_string()
+    };
+
+    Ok(Response::default()
+        .add_submessage(sub_msg)
         .add_attribute("action", "handle_amp_message")
         .add_attribute("recipient", message.recipient)
-        .add_attribute("message", message.message.to_string())
-        .add_attribute("origin", origin.to_string()))
+        .add_attribute("message", msg_attr))
 }
 
 pub fn handle_amp_packet(

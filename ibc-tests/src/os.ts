@@ -15,7 +15,6 @@ export async function instantiateOs(
     "auto"
   );
   addresses["kernel"] = res.contractAddress;
-  console.debug(`Kernel address: ${addresses["kernel"]}`);
   for (const name in codeIds) {
     if (name === "kernel") {
       continue;
@@ -28,7 +27,6 @@ export async function instantiateOs(
         "auto"
       );
       addresses[name] = res.contractAddress;
-      console.debug(`${name} address: ${addresses[name]}`);
     }
   }
 
@@ -42,14 +40,12 @@ async function assignKeyAddresses(
   const kernelAddress = addresses["kernel"];
   for (const name in addresses) {
     if (name === "kernel") continue;
-
     await client.sign.execute(
       client.senderAddress,
       kernelAddress,
       { upsert_key_address: { key: name, value: addresses[name] } },
       "auto"
     );
-    console.debug(`Assigned ${name} to ${addresses[name]}`);
   }
 }
 
@@ -61,7 +57,6 @@ export async function setupOS(client: CosmWasmSigner) {
     economics: "./contracts/andromeda_economics.wasm",
     "ibc-bridge": "./contracts/andromeda_message_bridge.wasm",
   };
-
   const codeIds = await setupContracts(client, contracts);
   const addresses = await instantiateOs(client, codeIds);
   await assignKeyAddresses(client, addresses);

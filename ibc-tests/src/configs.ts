@@ -4,7 +4,7 @@ import { ChainDefinition } from "@confio/relayer/build/lib/helpers";
 const { osmosis: oldOsmo } = testutils;
 
 const faucetMnemonic =
-  "increase bread alpha rigid glide amused approve oblige print asset idea enact lawn proof unfold jeans rabbit audit return chuckle valve rather cactus great";
+  "notice oak worry limit wrap speak medal online prefer cluster roof addict wrist behave treat actual wasp year salad speed social layer crew genius";
 
 const osmosisA: ChainDefinition = {
   ...oldOsmo,
@@ -17,9 +17,9 @@ const osmosisA: ChainDefinition = {
     mnemonic: faucetMnemonic,
     address0: "osmo19wpkq20hq9r08qht3qhrvya7fm00cflvrhu6s3",
   },
-  blockTime: 15000,
-  estimatedBlockTime: 15000,
-  estimatedIndexerTime: 250,
+  blockTime: 1000,
+  estimatedBlockTime: 1000,
+  estimatedIndexerTime: 3000,
 };
 
 const osmosisB: ChainDefinition = {
@@ -33,9 +33,9 @@ const osmosisB: ChainDefinition = {
     mnemonic: faucetMnemonic,
     address0: "osmo19wpkq20hq9r08qht3qhrvya7fm00cflvrhu6s3",
   },
-  blockTime: 15000,
-  estimatedBlockTime: 15000,
-  estimatedIndexerTime: 250,
+  blockTime: 1000,
+  estimatedBlockTime: 1000,
+  estimatedIndexerTime: 3000,
 };
 
 export default {

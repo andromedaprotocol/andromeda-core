@@ -5,10 +5,7 @@ use crate::{
 };
 use andromeda_std::error::{ContractError, Never};
 use andromeda_std::{
-    amp::{
-        messages::{AMPCtx, AMPMsg, AMPPkt},
-        AndrAddr,
-    },
+    amp::{messages::AMPMsg, AndrAddr},
     ibc::message_bridge::IbcExecuteMsg,
 };
 use cosmwasm_schema::cw_serde;
@@ -228,16 +225,11 @@ pub fn generate_transfer_message(
     from_addr: String,
     to_addr: String,
     time: Timestamp,
-    ctx: Option<AMPCtx>,
 ) -> Result<MsgTransfer, ContractError> {
     // Convert funds denom
     let new_denom = generate_ibc_denom(channel.clone(), funds.clone().denom);
     let new_coin = Coin::new(funds.amount.u128(), new_denom);
-
-    let msg = AMPPkt {
-        ctx: ctx.unwrap_or(AMPCtx::new(from_addr.clone(), from_addr.clone(), 0, None)),
-        messages: vec![AMPMsg::new(recipient, message, Some(vec![new_coin]))],
-    };
+    let msg = AMPMsg::new(recipient, message, Some(vec![new_coin]));
     let serialized = msg.to_ibc_hooks_memo(to_addr.clone(), from_addr.clone());
 
     let ts = time.plus_seconds(PACKET_LIFETIME);

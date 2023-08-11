@@ -133,6 +133,31 @@ impl AMPMsg {
             }),
         })
     }
+
+    pub fn to_ibc_hooks_memo(&self, contract_addr: String, callback_addr: String) -> String {
+        #[derive(::serde::Serialize)]
+        struct IbcHooksWasmMsg<T: ::serde::Serialize> {
+            contract: String,
+            msg: T,
+        }
+        #[derive(::serde::Serialize)]
+        struct IbcHooksMsg<T: ::serde::Serialize> {
+            wasm: IbcHooksWasmMsg<T>,
+            ibc_callback: String,
+        }
+        let wasm_msg = IbcHooksWasmMsg {
+            contract: contract_addr,
+            msg: KernelExecuteMsg::Send {
+                message: self.clone(),
+            },
+        };
+        let msg = IbcHooksMsg {
+            wasm: wasm_msg,
+            ibc_callback: callback_addr,
+        };
+
+        serde_json_wasm::to_string(&msg).unwrap()
+    }
 }
 
 #[cw_serde]
