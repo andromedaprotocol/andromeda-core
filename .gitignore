@@ -5,4 +5,4 @@ target/
 **/.DS_Store
 artifacts*
 .vscode*
-# ci-scripts/localrelayer/template/
+ci-scripts/localrelayer/template/

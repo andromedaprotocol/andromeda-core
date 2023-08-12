@@ -122,9 +122,10 @@ jobs:
         run: |
           cd ./ci-scripts/localrelayer
           make startd
+      - run: pwd
       - name: Run IBC Tests
         run: |
-          cd ../../ibc-tests"
+          cd ./ibc-tests
           npm i
           npm test
 
