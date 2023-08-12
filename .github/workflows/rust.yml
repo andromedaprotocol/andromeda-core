@@ -95,7 +95,7 @@ jobs:
       - name: Build
         run: |
           chmod +x "${GITHUB_WORKSPACE}/build.sh"
-          "${GITHUB_WORKSPACE}/build.sh" all
+          "${GITHUB_WORKSPACE}/build.sh" os
       - name: Check contract sizes
         run: |
           chmod +x "${GITHUB_WORKSPACE}/.github/file-size.sh"
@@ -117,14 +117,14 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: contracts
-          path: "${GITHUB_WORKSPACE}/ibc-tests/contracts"
+          path: "./ibc-tests/contracts"
       - name: Start Chains
         run: |
-          cd "${GITHUB_WORKSPACE}/ci-scripts/localrelayer"
-          make start
+          cd ./ci-scripts/localrelayer
+          make startd
       - name: Run IBC Tests
         run: |
-          cd "${GITHUB_WORKSPACE}/ibc-tests"
+          cd ../../ibc-tests"
           npm i
           npm test
 
