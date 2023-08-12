@@ -1,0 +1,491 @@
+=============== Aug 12, 2023 (UTC) ===============
+10:04:54.465906 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
+10:04:54.471332 db@open opening
+10:04:54.473773 version@stat F·[] S·0B[] Sc·[]
+10:04:54.475884 db@janitor F·2 G·0
+10:04:54.476169 db@open done T·4.567ms
+=============== Aug 12, 2023 (UTC) ===============
+10:05:41.115529 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
+10:05:41.118774 version@stat F·[] S·0B[] Sc·[]
+10:05:41.119042 db@open opening
+10:05:41.119468 journal@recovery F·1
+10:05:41.119896 journal@recovery recovering @1
+10:05:41.123122 memdb@flush created L0@2 N·45 S·892B "blo..\x00\x01\x81,v1":"blo..k\x00\x01,v33"
+10:05:41.124395 version@stat F·[1] S·892B[892B] Sc·[0.25]
+10:05:41.133498 db@janitor F·3 G·0
+10:05:41.133758 db@open done T·14.334917ms
+=============== Aug 12, 2023 (UTC) ===============
+10:06:41.480661 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
+10:06:41.485782 version@stat F·[1] S·892B[892B] Sc·[0.25]
+10:06:41.486327 db@open opening
+10:06:41.486845 journal@recovery F·1
+10:06:41.487261 journal@recovery recovering @3
+10:06:41.490406 memdb@flush created L0@5 N·106 S·1KiB "blo..\x00\x01\x84,v47":"blo..k\x00\x01,v111"
+10:06:41.491769 version@stat F·[2] S·2KiB[2KiB] Sc·[0.50]
+10:06:41.499472 db@janitor F·4 G·0
+10:06:41.499756 db@open done T·13.067333ms
+10:13:51.280886 memdb@flush N·11066 S·3MiB
+10:13:51.418778 memdb@flush created L0@9 N·11066 S·2MiB "\x01E?..\xc0\xfd\x1c,v2581":"\xfb\xc1\x19..-\xa4G,v4460"
+10:13:51.419551 version@stat F·[3] S·2MiB[2MiB] Sc·[0.75]
+10:13:51.421931 memdb@flush committed F·1 T·140.0975ms
+10:13:51.424056 journal@remove removed @6
+10:33:55.746027 memdb@flush N·24951 S·3MiB
+10:33:55.861076 memdb@flush created L0@11 N·24951 S·2MiB "\x01\xb4\xf4..f\xab\x8c,v16378":"\xffװ..\xc8u\",v16330"
+10:33:55.861337 version@stat F·[4] S·5MiB[5MiB] Sc·[1.00]
+10:33:55.862527 memdb@flush committed F·1 T·115.807167ms
+10:33:55.863799 journal@remove removed @8
+10:33:55.864089 table@compaction L0·4 -> L1·0 S·5MiB Q·36189
+10:33:55.984978 table@build created L1@12 N·25550 S·2MiB "\x01E?..\xc0\xfd\x1c,v2581":"i\xb1\xbe..\xf62I,v4313"
+10:33:56.042190 table@build created L1@13 N·2483 S·2MiB "k\x12h..\xe0\xb8{,v27203":"\xc6'\xa1..\xc3\n\x91,v11248"
+10:33:56.059999 table@build created L1@14 N·34 S·820KiB "\xca~\x13..\t\xea\x98,v17496":"\xffװ..\xc8u\",v16330"
+10:33:56.060231 version@stat F·[0 3] S·5MiB[0B 5MiB] Sc·[0.00 0.05]
+10:33:56.060779 table@compaction committed F-1 S-65KiB Ke·0 D·8101 T·196.42775ms
+10:33:56.061571 table@remove removed @11
+10:33:56.062385 table@remove removed @9
+10:33:56.063110 table@remove removed @2
+10:49:49.037927 memdb@flush N·19240 S·3MiB
+10:49:49.124647 memdb@flush created L0@16 N·19240 S·2MiB "\x04\xcd8..\xc6\x1f\xdb,v53355":"\xed/\t..Q7\xb5,v50235"
+10:49:49.124923 version@stat F·[1 3] S·7MiB[2MiB 5MiB] Sc·[0.25 0.05]
+10:49:49.125808 memdb@flush committed F·1 T·87.324458ms
+10:49:49.129726 journal@remove removed @10
+10:51:57.176152 table@compaction L0·1 -> L1·3 S·7MiB Q·58663
+10:51:57.232744 table@build created L1@17 N·66 S·2MiB "\x01E?..\xc0\xfd\x1c,v2581":"H\xe0\"..\x1f\xed\xb8,v48022"
+10:51:57.468687 table@build created L1@18 N·40466 S·2MiB "I!\x13..\xa9\xf0X,v7397":"q\x1dT..\xc6\xd5\xc8,v16282"
+10:51:57.526135 table@build created L1@19 N·2505 S·2MiB "rec..2/0,v6135":"\xc5\x02\x7f..\x1eTs,v2032"
+10:51:57.547108 table@build created L1@20 N·42 S·1MiB "\xc6'\xa1..\xc3\n\x91,v11248":"\xffװ..\xc8u\",v16330"
+10:51:57.547486 version@stat F·[0 4] S·7MiB[0B 7MiB] Sc·[0.00 0.08]
+10:51:57.549357 table@compaction committed F~ S-34KiB Ke·0 D·4228 T·372.069ms
+10:51:57.550550 table@remove removed @16
+10:51:57.551544 table@remove removed @12
+10:51:57.552834 table@remove removed @13
+10:51:57.553844 table@remove removed @14
+11:03:27.183887 memdb@flush N·17208 S·3MiB
+11:03:27.296031 memdb@flush created L0@22 N·17208 S·2MiB "\x01\x1fn..#\x9d\x8e,v58612":"\xfd\xe8\xb6..\x19HK,v64853"
+11:03:27.296302 version@stat F·[1 4] S·10MiB[2MiB 7MiB] Sc·[0.25 0.08]
+11:03:27.297362 memdb@flush committed F·1 T·112.570251ms
+11:03:27.299780 journal@remove removed @15
+11:06:00.747929 table@compaction L0·1 -> L1·4 S·10MiB Q·76326
+11:06:00.780234 table@build created L1@23 N·68 S·2MiB "\x01\x1fn..#\x9d\x8e,v58612":"?\xa7\xab..\x1d\xb6\",v50417"
+11:06:00.827938 table@build created L1@24 N·9127 S·2MiB "?\xb0\xad..k\x91r,v17109":"blo..k\x00\x01,v51821"
+11:06:01.098697 table@build created L1@25 N·47109 S·2MiB "blo..k\x00\x01,v51840":"yoc..\x1ack,v11344"
+11:06:01.134713 table@build created L1@26 N·65 S·2MiB "|,a..d\\x,v16974":"\xba\x8eK..\xc8+\x9d,v48912"
+11:06:01.164473 table@build created L1@27 N·66 S·2MiB "\xbb\x8f{..\x868\xf9,v12184":"\xfb\b%..n\xcf\xe5,v7493"
+11:06:01.167802 table@build created L1@28 N·6 S·100KiB "\xfb\"\xc4..aX\xcc,v70829":"\xffװ..\xc8u\",v16330"
+11:06:01.168127 version@stat F·[0 6] S·10MiB[0B 10MiB] Sc·[0.00 0.10]
+11:06:01.168776 table@compaction committed F+1 S-30KiB Ke·0 D·3846 T·419.768166ms
+11:06:01.169547 table@remove removed @22
+11:06:01.170248 table@remove removed @17
+11:06:01.170979 table@remove removed @18
+11:06:01.171818 table@remove removed @19
+11:06:01.172561 table@remove removed @20
+11:19:31.337604 memdb@flush N·20053 S·3MiB
+11:19:31.459287 memdb@flush created L0@30 N·20053 S·2MiB "\x05\x1d\xaf..\x89\xdd\xcf,v77954":"\xfd\xae\xb6..|\x93l,v79087"
+11:19:31.460079 version@stat F·[1 6] S·12MiB[2MiB 10MiB] Sc·[0.25 0.10]
+11:19:31.462667 memdb@flush committed F·1 T·124.408042ms
+11:19:31.464376 journal@remove removed @21
+11:22:03.408284 table@compaction L0·1 -> L1·6 S·12MiB Q·96249
+11:22:03.444020 table@build created L1@31 N·61 S·2MiB "\x01\x1fn..#\x9d\x8e,v58612":"/\xf5P..\x7f\xa1\xfe,v48214"
+11:22:03.472977 table@build created L1@32 N·49 S·2MiB "/\xf8O..^\xcc\xe1,v2275":"R\x84\x87..\x8e\xbf\x85,v52837"
+11:22:03.759814 table@build created L1@33 N·64950 S·2MiB "SD\xe1..\xa7d>,v68812":"b\x80!..\x85KQ,v64236"
+11:22:03.869024 table@build created L1@34 N·6850 S·2MiB "b\x8a\x9f..\x9a\xfa\x02,v18809":"\x85\x99\xdf..\xf0:E,v9986"
+11:22:03.899987 table@build created L1@35 N·68 S·2MiB "\x85\xfe\xae..mR!,v52741":"\xb8o\v..2\x99B,v92604"
+11:22:03.937257 table@build created L1@36 N·66 S·2MiB "\xb8\xff\xba..\xde\xd3R,v48367":"\xf6ζ..\x06:\x9b,v56858"
+11:22:03.946314 table@build created L1@37 N·16 S·352KiB "\xf7\x1f*..\xb1|\x03,v16576":"\xffװ..\xc8u\",v16330"
+11:22:03.946548 version@stat F·[0 7] S·12MiB[0B 12MiB] Sc·[0.00 0.13]
+11:22:03.947199 table@compaction committed F~ S-42KiB Ke·0 D·4434 T·538.589167ms
+11:22:03.947992 table@remove removed @30
+11:22:03.948746 table@remove removed @23
+11:22:03.949490 table@remove removed @24
+11:22:03.950210 table@remove removed @25
+11:22:03.950931 table@remove removed @26
+11:22:03.951633 table@remove removed @27
+11:22:03.952166 table@remove removed @28
+11:31:57.823416 memdb@flush N·16882 S·3MiB
+11:31:57.923232 memdb@flush created L0@39 N·16882 S·2MiB "\a\xa3\x0e..\x8d)n,v106713":"\xf9\xbf\x1a..\xa7\x8cW,v96606"
+11:31:57.923603 version@stat F·[1 7] S·15MiB[2MiB 12MiB] Sc·[0.25 0.13]
+11:31:57.924429 memdb@flush committed F·1 T·100.330209ms
+11:31:57.925536 journal@remove removed @29
+11:36:34.195118 table@compaction L0·1 -> L1·7 S·15MiB Q·115603
+11:36:34.256735 table@build created L1@40 N·49 S·2MiB "\x01\x1fn..#\x9d\x8e,v58612":"\x1d{8..\x10\v\x8a,v2224"
+11:36:34.293093 table@build created L1@41 N·70 S·2MiB "\x1dЁ..\xbaY\xa7,v93500":"B\xb3!..ny\xad,v96249"
+11:36:34.318742 table@build created L1@42 N·41 S·2MiB "D[-..\xaac\x87,v2128":"Z\xff\xeb..\xaa+\x97,v50369"
+11:36:34.587007 table@build created L1@43 N·78041 S·2MiB "[\x1f\xed..B\xf2\xc5,v64284":"d\xc0\xb4..\xb9\xb4\xd7,v9938"
+11:36:34.669769 table@build created L1@44 N·6741 S·2MiB "e:\xee..\xb8j\x81,v106461":"\x85\x99\xdf..\xf0:E,v9986"
+11:36:34.702140 table@build created L1@45 N·83 S·2MiB "\x85\xfe\xae..mR!,v52741":"\xb4'\x9c..I\x11O,v92748"
+11:36:34.734299 table@build created L1@46 N·62 S·2MiB "\xb5\x00\x9d..\xd74\x18,v86016":"\xddv0..譇,v17888"
+11:36:34.751849 table@build created L1@47 N·42 S·1MiB "ޜ\xf1..<\x92\xe4,v93390":"\xffװ..\xc8u\",v16330"
+11:36:34.752143 version@stat F·[0 8] S·15MiB[0B 15MiB] Sc·[0.00 0.15]
+11:36:34.753764 table@compaction committed F~ S-37KiB Ke·0 D·3813 T·555.755501ms
+11:36:34.754595 table@remove removed @39
+11:36:34.755580 table@remove removed @31
+11:36:34.756758 table@remove removed @32
+11:36:34.757842 table@remove removed @33
+11:36:34.758863 table@remove removed @34
+11:36:34.761578 table@remove removed @35
+11:36:34.763437 table@remove removed @36
+11:36:34.764739 table@remove removed @37
+11:47:23.752701 memdb@flush N·18923 S·3MiB
+11:47:23.884556 memdb@flush created L0@49 N·18923 S·2MiB "\x00\x96\x8f..l\x10\xb3,v128361":"\xfd\x1f6..Y\xa5\xfe,v114826"
+11:47:23.885553 version@stat F·[1 8] S·18MiB[2MiB 15MiB] Sc·[0.25 0.15]
+11:47:23.888526 memdb@flush committed F·1 T·134.976874ms
+11:47:23.891661 journal@remove removed @38
+11:47:52.269975 table@compaction L0·1 -> L1·8 S·18MiB Q·129834
+11:47:52.326753 table@build created L1@50 N·56 S·2MiB "\x00\x96\x8f..l\x10\xb3,v128361":"\x1c\x016..\xdaYa,v48118"
+11:47:52.361278 table@build created L1@51 N·62 S·2MiB "\x1c6\xdf..\x82\xeb\x1a,v101437":"9\x96\x9e..\xf6\x84x,v106394"
+11:47:52.401260 table@build created L1@52 N·44 S·2MiB ":\xa8\xb8..L\x16\xfe,v58663":"R\x84\x87..\x8e\xbf\x85,v52837"
+11:47:52.753100 table@build created L1@53 N·60077 S·2MiB "R\xbfS..*O\xbe,v96105":"blo..k\x00\x01,v9670"
+11:47:52.912594 table@build created L1@54 N·34700 S·2MiB "blo..k\x00\x01,v9689":"tra..9/0,v76626"
+11:47:53.047257 table@build created L1@55 N·4752 S·2MiB "tra..2/0,v79336":"\x8dl8..ݩr,v114478"
+11:47:53.090439 table@build created L1@56 N·72 S·2MiB "\x8er\xff..\xf8\x82\xb5,v127217":"\xb6\x1f\xc7..\xd7ʱ,v74075"
+11:47:53.121712 table@build created L1@57 N·47 S·2MiB "\xb6b\xce..\xa7\xee\x13,v48070":"\xd5O\x89..L\xab\xb5,v52789"
+11:47:53.160613 table@build created L1@58 N·70 S·1MiB "՟\xab..\xf5C\xb1,v1184":"\xffװ..\xc8u\",v16330"
+11:47:53.161083 version@stat F·[0 9] S·18MiB[0B 18MiB] Sc·[0.00 0.18]
+11:47:53.161755 table@compaction committed F~ S-32KiB Ke·0 D·4172 T·889.641959ms
+11:47:53.162658 table@remove removed @49
+11:47:53.163632 table@remove removed @40
+11:47:53.164429 table@remove removed @41
+11:47:53.165376 table@remove removed @42
+11:47:53.166196 table@remove removed @43
+11:47:53.167000 table@remove removed @44
+11:47:53.167861 table@remove removed @45
+11:47:53.168652 table@remove removed @46
+11:47:53.169262 table@remove removed @47
+11:49:05.024280 memdb@flush N·4097 S·3MiB
+11:49:05.086323 memdb@flush created L0@60 N·4097 S·3MiB "\x05\x1f\xce..2օ,v131570":"\xfe\xb8,..g\xa6\x05,v129582"
+11:49:05.086631 version@stat F·[1 9] S·21MiB[3MiB 18MiB] Sc·[0.25 0.18]
+11:49:05.087353 memdb@flush committed F·1 T·62.493082ms
+11:49:05.088379 journal@remove removed @48
+11:49:41.735189 table@compaction L0·1 -> L1·9 S·21MiB Q·134354
+11:49:41.810408 table@build created L1@61 N·51 S·2MiB "\x00\x96\x8f..l\x10\xb3,v128361":"\x13\xe6\xe0..\xc2Ŀ,v48816"
+11:49:41.875911 table@build created L1@62 N·61 S·2MiB "\x14n\x1f..\xa9O\x00,v7748":"2\xbf^..~P\x11,v74171"
+11:49:41.971597 table@build created L1@63 N·60 S·2MiB "3\xac*..Ӗ\x84,v130145":"H\xe0\"..\x1f\xed\xb8,v48022"
+11:49:42.012955 table@build created L1@64 N·42 S·2MiB "I!\x13..\xa9\xf0X,v7397":"Z\xeb\xfa..\xf9˖,v52693"
+11:49:42.336294 table@build created L1@65 N·91319 S·2MiB "Z\xff\xeb..\xaa+\x97,v50369":"b\x80!..\x85KQ,v64236"
+11:49:42.424870 table@build created L1@66 N·5478 S·2MiB "b\x8a\x9f..\x9a\xfa\x02,v18809":"t?-..\xe9\x9c.,v130493"
+11:49:42.500401 table@build created L1@67 N·5659 S·2MiB "tra..2/0,v6179":"\x88ŗ..\xa9ԙ,v131618"
+11:49:42.537222 table@build created L1@68 N·64 S·2MiB "\x88\xe2\xbb..Q\xc5\xe7,v58499":"\xa7\x06t..\x98\xad\xfd,v7349"
+11:49:42.569356 table@build created L1@69 N·61 S·2MiB "\xa76\xaf..\xca\xcc,,v132554":"\xc6\x16\xc1..S\xd8\x01,v56906"
+11:49:42.604620 table@build created L1@70 N·59 S·2MiB "\xc6'\xa1..\xc3\n\x91,v11248":"\xe8͟..$\x8e\t,v100341"
+11:49:42.621620 table@build created L1@71 N·43 S·910KiB "\xe9!\xc4..\x15\x05\xe7,v1813":"\xffװ..\xc8u\",v16330"
+11:49:42.621941 version@stat F·[0 11] S·21MiB[0B 21MiB] Sc·[0.00 0.22]
+11:49:42.623296 table@compaction committed F+1 S-8KiB Ke·0 D·1080 T·887.152334ms
+11:49:42.624204 table@remove removed @60
+11:49:42.624879 table@remove removed @50
+11:49:42.625635 table@remove removed @51
+11:49:42.626377 table@remove removed @52
+11:49:42.627139 table@remove removed @53
+11:49:42.627876 table@remove removed @54
+11:49:42.628581 table@remove removed @55
+11:49:42.629412 table@remove removed @56
+11:49:42.630127 table@remove removed @57
+11:49:42.630735 table@remove removed @58
+11:52:09.532857 memdb@flush N·5125 S·3MiB
+11:52:09.617358 memdb@flush created L0@73 N·5125 S·3MiB "\x01Yy..\xfe\n+,v134502":"\xfd\x97\x02..:\xbb\x0e,v134454"
+11:52:09.617972 version@stat F·[1 11] S·25MiB[3MiB 21MiB] Sc·[0.25 0.22]
+11:52:09.619002 memdb@flush committed F·1 T·84.622833ms
+11:52:09.621782 journal@remove removed @59
+11:54:20.190544 table@compaction L0·1 -> L1·11 S·25MiB Q·141229
+11:54:20.232135 table@build created L1@74 N·44 S·2MiB "\x00\x96\x8f..l\x10\xb3,v128361":"\x10\x7f!..\xaf-\",v10034"
+11:54:20.261069 table@build created L1@75 N·51 S·2MiB "\x10\xda\xe7..:\x19\x8a,v79426":"%\xba\xe2..ƃ\x1b,v75919"
+11:54:20.302482 table@build created L1@76 N·72 S·2MiB "&y\xad..,\xf1\xe6,v100896":"B\xb3!..ny\xad,v96249"
+11:54:20.337495 table@build created L1@77 N·34 S·2MiB "B\xf1\xfd..\xb0\f\t,v128862":"P@H..zvA,v129082"
+11:54:20.366821 table@build created L1@78 N·44 S·2MiB "Px#..e\xef],v131666":"_C\x86..\a\xe8\r,v129882"
+11:54:20.691425 table@build created L1@79 N·97146 S·2MiB "_\xc7Y..\x93|\x9b,v57134":"fun..6/0,v79876"
+11:54:20.777955 table@build created L1@80 N·6461 S·2MiB "fun..2/0,v79708":"tx...8/0,v99273"
+11:54:20.842572 table@build created L1@81 N·2669 S·2MiB "tx...1/0,v12446":"\x88c(..\x87\xae\xb2,v74123"
+11:54:20.881909 table@build created L1@82 N·61 S·2MiB "\x88\xc2\x19..k\xb3o,v93153":"\xa4\x92\"..H\xc2!,v134702"
+11:54:20.935454 table@build created L1@83 N·58 S·2MiB "\xa4\xb2\xad..\xa6It,v66347":"\xba\x8eK..\xc8+\x9d,v48912"
+11:54:21.005658 table@build created L1@84 N·35 S·2MiB "\xbb\x8f{..\x868\xf9,v12184":"\xcf\x1eD..~<?,v11152"
+11:54:21.085048 table@build created L1@85 N·83 S·2MiB "\xd0*\xfa..\x83vS,v8485":"\xfa\xc6x..r\xf8d,v133802"
+11:54:21.096530 table@build created L1@86 N·16 S·456KiB "\xfa\xe7\xb4..\xd0Q\x0f,v18398":"\xffװ..\xc8u\",v16330"
+11:54:21.096801 version@stat F·[0 13] S·25MiB[0B 25MiB] Sc·[0.00 0.25]
+11:54:21.097730 table@compaction committed F+1 S-20KiB Ke·0 D·1248 T·905.968792ms
+11:54:21.098680 table@remove removed @73
+11:54:21.099459 table@remove removed @61
+11:54:21.099947 table@remove removed @62
+11:54:21.100758 table@remove removed @63
+11:54:21.101488 table@remove removed @64
+11:54:21.101937 table@remove removed @65
+11:54:21.102888 table@remove removed @66
+11:54:21.103635 table@remove removed @67
+11:54:21.104898 table@remove removed @68
+11:54:21.105481 table@remove removed @69
+11:54:21.106304 table@remove removed @70
+11:54:21.106951 table@remove removed @71
+11:54:38.593303 memdb@flush N·4450 S·3MiB
+11:54:38.689434 memdb@flush created L0@88 N·4450 S·3MiB "\x01\xa4\xb5..\xeb1\xb1,v141329":"\xff5\x83..\x8b\xcf\",v142129"
+11:54:38.689692 version@stat F·[1 13] S·28MiB[3MiB 25MiB] Sc·[0.25 0.25]
+11:54:38.690423 memdb@flush committed F·1 T·96.282668ms
+11:54:38.691631 journal@remove removed @72
+11:55:53.301790 table@compaction L0·1 -> L1·13 S·28MiB Q·144488
+11:55:53.336676 table@build created L1@89 N·46 S·2MiB "\x00\x96\x8f..l\x10\xb3,v128361":"\x10\x10\xa6..\x99\x98\xe2,v128457"
+11:55:53.364705 table@build created L1@90 N·51 S·2MiB "\x10Ji..\xd6\xe3!,v4409":"#\xea\xc6..\xe9̸,v128409"
+11:55:53.394091 table@build created L1@91 N·61 S·2MiB "$\xc0\x8b..#\xba\x83,v74420":"8\xcd\xc1..C\xc4%,v76074"
+11:55:53.427592 table@build created L1@92 N·45 S·2MiB "9\x8cY..\x19\xae\x87,v93204":"J\xcb\xd3..p!Q,v58100"
+11:55:53.454306 table@build created L1@93 N·32 S·2MiB "K\x1d\xb2..\xc2J\x8a,v140210":"V\x8f\xf9..]\xd2`,v50321"
+11:55:53.684382 table@build created L1@94 N·58605 S·2MiB "V\x92\xcb..\x04Ȫ,v10592":"blo..k\x00\x01,v17139"
+11:55:53.855822 table@build created L1@95 N·41551 S·2MiB "blo..k\x00\x01,v17230":"k\x12h..\xe0\xb8{,v27203"
+11:55:53.944955 table@build created L1@96 N·7823 S·2MiB "kP\xae..\xfd?\x05,v134819":"vu:..G\xf6\x84,v141177"
+11:55:53.995972 table@build created L1@97 N·1619 S·2MiB "v\x8d\xdb..\xe0\x7f-,v133754":"\x8c\x12R..\x9ay\xc9,v96153"
+11:55:54.027854 table@build created L1@98 N·66 S·2MiB "\x8c=\xa4..\x7f\x05\x90,v100641":"\xa7\x035..\x06I\x1f,v114526"
+11:55:54.058537 table@build created L1@99 N·54 S·2MiB "\xa7\x06t..\x98\xad\xfd,v7349":"\xba\x8eK..\xc8+\x9d,v48912"
+11:55:54.084344 table@build created L1@100 N·33 S·2MiB "\xbb7\x9b.._\xa9$,v141577":"\xcc\x12\xd7..؎\x05,v129282"
+11:55:54.119050 table@build created L1@101 N·63 S·2MiB "\xccx6..\xfe\xa7~,v52885":"\xe8͟..$\x8e\t,v100341"
+11:55:54.143933 table@build created L1@102 N·53 S·1MiB "\xe9!\xc4..\x15\x05\xe7,v1813":"\xffװ..\xc8u\",v16330"
+11:55:54.144212 version@stat F·[0 14] S·28MiB[0B 28MiB] Sc·[0.00 0.29]
+11:55:54.144877 table@compaction committed F~ S-10KiB Ke·0 D·1122 T·841.672ms
+11:55:54.145808 table@remove removed @88
+11:55:54.146598 table@remove removed @74
+11:55:54.147298 table@remove removed @75
+11:55:54.148058 table@remove removed @76
+11:55:54.148828 table@remove removed @77
+11:55:54.149484 table@remove removed @78
+11:55:54.150158 table@remove removed @79
+11:55:54.150939 table@remove removed @80
+11:55:54.151816 table@remove removed @81
+11:55:54.152504 table@remove removed @82
+11:55:54.153308 table@remove removed @83
+11:55:54.154084 table@remove removed @84
+11:55:54.155179 table@remove removed @85
+11:55:54.156018 table@remove removed @86
+11:56:27.945041 memdb@flush N·3995 S·3MiB
+11:56:28.025099 memdb@flush created L0@104 N·3995 S·3MiB "\x00\x14Y..\x01;l,v144703":"\xf7'\n..!j\xd0,v142677"
+11:56:28.025729 version@stat F·[1 14] S·32MiB[3MiB 28MiB] Sc·[0.25 0.29]
+11:56:28.028614 memdb@flush committed F·1 T·82.98875ms
+11:56:28.030395 journal@remove removed @87
+11:57:03.706416 table@compaction L0·1 -> L1·14 S·32MiB Q·147768
+11:57:03.794941 table@build created L1@105 N·50 S·2MiB "\x00\x14Y..\x01;l,v144703":"\x0f\x8f\x03..\x0fb=,v58148"
+11:57:03.861049 table@build created L1@106 N·47 S·2MiB "\x0f\xe9x..\xeb\"\xc8,v4217":"\x1e\x87;..2\x95\x84,v48166"
+11:57:03.907466 table@build created L1@107 N·48 S·2MiB "\x1f<\xf5..\xb9b\x01,v143303":"0\xa5\x03..\v\xf2\x8d,v132702"
+11:57:03.973394 table@build created L1@108 N·54 S·2MiB "0\xa8\xbe..\x9fo\xd1,v139593":"?\xa7\xab..\x1d\xb6\",v50417"
+11:57:04.009156 table@build created L1@109 N·40 S·2MiB "?\xb0\xad..k\x91r,v17109":"M\xd9\xca..4\xef\x8a,v133002"
+11:57:04.041091 table@build created L1@110 N·42 S·2MiB "N\x13\x88..:)e,v78773":"[\x96D..Ԃ\xa7,v144188"
+11:57:04.351546 table@build created L1@111 N·98161 S·2MiB "[\x96\x80..\x91\xceR,v14456":"b\x80!..\x85KQ,v64236"
+11:57:04.412898 table@build created L1@112 N·4034 S·2MiB "b\x8a\x9f..\x9a\xfa\x02,v18809":"m0\xa8..-\xdb\xde,v133302"
+11:57:04.518966 table@build created L1@113 N·10246 S·2MiB "mes..4/0,v2510":"yoc..\x1ack,v11344"
+11:57:04.548267 table@build created L1@114 N·58 S·2MiB "|,a..d\\x,v16974":"\x8dl8..ݩr,v114478"
+11:57:04.581383 table@build created L1@115 N·64 S·2MiB "\x8d\xa4\x81..\xb8\xf7\xa9,v132184":"\xa7\x06t..\x98\xad\xfd,v7349"
+11:57:04.612831 table@build created L1@116 N·55 S·2MiB "\xa7\x13\xab..\x1e\t/,v141729":"\xbb7\x9b.._\xa9$,v141577"
+11:57:04.647614 table@build created L1@117 N·32 S·2MiB "\xbb\x8f{..\x868\xf9,v12184":"\xc9Bj..\x82\x8cw,v140677"
+11:57:04.705807 table@build created L1@118 N·54 S·2MiB "ɺ\x17..\xd3\xe6\x90,v92949":"\xdd\u00a0..j#&,v145172"
+11:57:04.733376 table@build created L1@119 N·50 S·2MiB "ޜ\xf1..<\x92\xe4,v93390":"\xf7'\n..!j\xd0,v142677"
+11:57:04.745534 table@build created L1@120 N·27 S·852KiB "\xf7^t..!E\x11,v133102":"\xffװ..\xc8u\",v16330"
+11:57:04.747179 version@stat F·[0 16] S·32MiB[0B 32MiB] Sc·[0.00 0.32]
+11:57:04.747913 table@compaction committed F+1 S-9KiB Ke·0 D·1035 T·1.037471876s
+11:57:04.749058 table@remove removed @104
+11:57:04.749797 table@remove removed @89
+11:57:04.750661 table@remove removed @90
+11:57:04.751348 table@remove removed @91
+11:57:04.751816 table@remove removed @92
+11:57:04.752501 table@remove removed @93
+11:57:04.753327 table@remove removed @94
+11:57:04.754044 table@remove removed @95
+11:57:04.754895 table@remove removed @96
+11:57:04.755570 table@remove removed @97
+11:57:04.756339 table@remove removed @98
+11:57:04.757105 table@remove removed @99
+11:57:04.757925 table@remove removed @100
+11:57:04.758793 table@remove removed @101
+11:57:04.759476 table@remove removed @102
+12:02:09.847069 memdb@flush N·8280 S·3MiB
+12:02:09.975457 memdb@flush created L0@122 N·8280 S·3MiB "\x03\x82N..\xa2\xb1D,v153268":"\xfb\xed\xb6..@w\x99,v153834"
+12:02:09.975985 version@stat F·[1 16] S·35MiB[3MiB 32MiB] Sc·[0.25 0.32]
+12:02:09.977281 memdb@flush committed F·1 T·129.407458ms
+12:02:09.979555 journal@remove removed @103
+12:02:46.462964 table@compaction L0·1 -> L1·16 S·35MiB Q·156234
+12:02:46.527482 table@build created L1@123 N·48 S·2MiB "\x00\x14Y..\x01;l,v144703":"\x0e\\\\..\\\x97\xb3,v139689"
+12:02:46.564672 table@build created L1@124 N·48 S·2MiB "\x0f\x00\x19..\xee\x9c\xe5,v74318":"\x1c\xf4\xe8..\xf6i$,v106327"
+12:02:46.591069 table@build created L1@125 N·48 S·2MiB "\x1c\xf5<..)\xd3l,v49161":".\xcc\x1e..\x99:w,v140277"
+12:02:46.636056 table@build created L1@126 N·56 S·2MiB ".\xdd\x0f..\xb9\x89\xb8,v64700":"<\xba\xa0..(\xa0F,v145572"
+12:02:46.691696 table@build created L1@127 N·33 S·2MiB "<\xf4j..\xdb\x15b,v74471":"H\xe0\"..\x1f\xed\xb8,v48022"
+12:02:46.743093 table@build created L1@128 N·35 S·2MiB "I!\x13..\xa9\xf0X,v7397":"S1\x84..\x10\x93$,v141777"
+12:02:46.865045 table@build created L1@129 N·17017 S·2MiB "SD\xe1..\xa7d>,v68812":"blo..k\x00\x01,v71889"
+12:02:47.234786 table@build created L1@130 N·89801 S·2MiB "blo..k\x00\x01,v71908":"eq\xad..b\xab\a,v145272"
+12:02:47.278640 table@build created L1@131 N·3219 S·2MiB "exe..8/0,v79121":"p\x02\x1e..\x8c\xc5M,v126863"
+12:02:47.401677 table@build created L1@132 N·8749 S·2MiB "q\x17\x1a..\xebc\xea,v146624":"\x80\xfaJ..\xa5\x8f\xcd,v100245"
+12:02:47.439712 table@build created L1@133 N·41 S·2MiB "\x81\x14\xa0..]\rI,v74872":"\x8c\x12R..\x9ay\xc9,v96153"
+12:02:47.484529 table@build created L1@134 N·64 S·2MiB "\x8c=\xa4..\x7f\x05\x90,v100641":"\xa3G\xa1..&\xf3\x8e,v129782"
+12:02:47.525309 table@build created L1@135 N·58 S·2MiB "\xa3\x87O..ُI,v129434":"\xb6b\xce..\xa7\xee\x13,v48070"
+12:02:47.559197 table@build created L1@136 N·35 S·2MiB "\xb6\xbf\xde..\xa4\x96e,v132654":"\xc5\x02\x7f..\x1eTs,v2032"
+12:02:47.582912 table@build created L1@137 N·32 S·2MiB "\xc5\a7..>.\xfa,v74624":"\xd0\xc2o..\r\x14\xd0,v145772"
+12:02:47.674179 table@build created L1@138 N·51 S·2MiB "\xd36\xf7..9\xc5\x1c,v133902":"\xe4)\xa8..$[#,v146772"
+12:02:47.715929 table@build created L1@139 N·56 S·2MiB "\xe44\xe9..\xa5\x05D,v74369":"\xfb\b%..n\xcf\xe5,v7493"
+12:02:47.722925 table@build created L1@140 N·18 S·327KiB "\xfb\x18N..v\x1c\xea,v154204":"\xffװ..\xc8u\",v16330"
+12:02:47.723190 version@stat F·[0 18] S·35MiB[0B 35MiB] Sc·[0.00 0.35]
+12:02:47.724080 table@compaction committed F+1 S-28KiB Ke·0 D·1933 T·1.259367293s
+12:02:47.725282 table@remove removed @122
+12:02:47.726835 table@remove removed @105
+12:02:47.727860 table@remove removed @106
+12:02:47.728832 table@remove removed @107
+12:02:47.729334 table@remove removed @108
+12:02:47.730221 table@remove removed @109
+12:02:47.731111 table@remove removed @110
+12:02:47.732011 table@remove removed @111
+12:02:47.732847 table@remove removed @112
+12:02:47.733578 table@remove removed @113
+12:02:47.734535 table@remove removed @114
+12:02:47.735035 table@remove removed @115
+12:02:47.735775 table@remove removed @116
+12:02:47.736543 table@remove removed @117
+12:02:47.737324 table@remove removed @118
+12:02:47.738279 table@remove removed @119
+12:02:47.738968 table@remove removed @120
+12:03:34.363179 memdb@flush N·3271 S·3MiB
+12:03:34.426180 memdb@flush created L0@142 N·3271 S·3MiB "\x05\xa0\xd8..\x9eU\xab,v156434":"\xfe\x0fY..\xc6v\xa9,v156234"
+12:03:34.426475 version@stat F·[1 18] S·39MiB[3MiB 35MiB] Sc·[0.25 0.35]
+12:03:34.427727 memdb@flush committed F·1 T·63.291543ms
+12:03:34.428719 journal@remove removed @121
+12:04:11.244339 table@compaction L0·1 -> L1·18 S·39MiB Q·159463
+12:04:11.312846 table@build created L1@143 N·51 S·2MiB "\x00\x14Y..\x01;l,v144703":"\x0e\\\\..\\\x97\xb3,v139689"
+12:04:11.374110 table@build created L1@144 N·47 S·2MiB "\x0f\x00\x19..\xee\x9c\xe5,v74318":"\x1c\x016..\xdaYa,v48118"
+12:04:11.438901 table@build created L1@145 N·49 S·2MiB "\x1c6\xdf..\x82\xeb\x1a,v101437":"-\x94\x93..;_\x1f,v145672"
+12:04:11.512236 table@build created L1@146 N·52 S·2MiB "-\x95\xaf..\x7f\xaa\xbc,v10786":"8\xf3(..\xaa\xed\xe5,v142577"
+12:04:11.556808 table@build created L1@147 N·38 S·2MiB "9\x8cY..\x19\xae\x87,v93204":"D\xea\xb1..\x84\b\xe0,v130293"
+12:04:11.596384 table@build created L1@148 N·33 S·2MiB "E7\x14..Q\xfb\",v134302":"N\x13\x88..:)e,v78773"
+12:04:11.628452 table@build created L1@149 N·44 S·2MiB "N6\xd3..:\xd0<,v134929":"[\x96D..Ԃ\xa7,v144188"
+12:04:11.881926 table@build created L1@150 N·80776 S·2MiB "[\x96\x80..\x91\xceR,v14456":"blo..k\x00\x01,v78239"
+12:04:12.010825 table@build created L1@151 N·28489 S·2MiB "blo..k\x00\x01,v78258":"jTt..l\x1c\a,v140977"
+12:04:12.075026 table@build created L1@152 N·6367 S·2MiB "jiv..\x9f\xab\x06,v114979":"tx...7/0,v76527"
+12:04:12.159963 table@build created L1@153 N·5499 S·2MiB "tx...8/0,v76578":"\x83\x00\x8c..\x81\x89\x80,v133402"
+12:04:12.187515 table@build created L1@154 N·43 S·2MiB "\x83c\x12..jEL,v132302":"\x8dl8..ݩr,v114478"
+12:04:12.218825 table@build created L1@155 N·63 S·2MiB "\x8d\xa4\x81..\xb8\xf7\xa9,v132184":"\xa3G\xa1..&\xf3\x8e,v129782"
+12:04:12.250708 table@build created L1@156 N·58 S·2MiB "\xa3w\x86..\n\xd8b,v155434":"\xb4\xe8\xe4..aq\xf4,v155982"
+12:04:12.274873 table@build created L1@157 N·31 S·2MiB "\xb4\xeeB..\xa6\xf5\x84,v134402":"\xc0\xbd<..\xff!N,v146672"
+12:04:12.314727 table@build created L1@158 N·33 S·2MiB "\xc0\xf9\x0e..Ƭ\x88,v153364":"\xce\x1fc..s\x88r,v141077"
+12:04:12.352067 table@build created L1@159 N·50 S·2MiB "\xce[)..\x91b\xa0,v2428":"\xdd\u00a0..j#&,v145172"
+12:04:12.383215 table@build created L1@160 N·36 S·2MiB "ޖ*..\xd0c\xb7,v155582":"\xea\xf1\xb6..\x80:\x82,v155052"
+12:04:12.417932 table@build created L1@161 N·61 S·2MiB "\xea\xfeN..Oظ,v4265":"\xffװ..\xc8u\",v16330"
+12:04:12.418391 version@stat F·[0 19] S·39MiB[0B 39MiB] Sc·[0.00 0.39]
+12:04:12.419299 table@compaction committed F~ S-4KiB Ke·0 D·860 T·1.174189584s
+12:04:12.420395 table@remove removed @142
+12:04:12.421454 table@remove removed @123
+12:04:12.422560 table@remove removed @124
+12:04:12.423394 table@remove removed @125
+12:04:12.424293 table@remove removed @126
+12:04:12.425280 table@remove removed @127
+12:04:12.425927 table@remove removed @128
+12:04:12.427047 table@remove removed @129
+12:04:12.428005 table@remove removed @130
+12:04:12.428891 table@remove removed @131
+12:04:12.429742 table@remove removed @132
+12:04:12.430569 table@remove removed @133
+12:04:12.431384 table@remove removed @134
+12:04:12.431988 table@remove removed @135
+12:04:12.432987 table@remove removed @136
+12:04:12.433858 table@remove removed @137
+12:04:12.434684 table@remove removed @138
+12:04:12.435496 table@remove removed @139
+12:04:12.437280 table@remove removed @140
+12:04:34.235321 memdb@flush N·2888 S·3MiB
+12:04:34.343561 memdb@flush created L0@163 N·2888 S·3MiB "\x00\x92\t..\xf7_\xce,v159611":"\xfbfP..\x7f$\xfa,v158600"
+12:04:34.346093 version@stat F·[1 19] S·42MiB[3MiB 39MiB] Sc·[0.25 0.39]
+12:04:34.347193 memdb@flush committed F·1 T·110.98625ms
+12:04:34.348571 journal@remove removed @141
+12:05:17.607374 table@compaction L0·1 -> L1·19 S·42MiB Q·162264
+12:05:17.669692 table@build created L1@164 N·48 S·2MiB "\x00\x14Y..\x01;l,v144703":"\f$\x06..\xb7M\x91,v129182"
+12:05:17.698847 table@build created L1@165 N·39 S·2MiB "\fL:../ݙ,v134102":"\x16Z@..\x90\x83\xa3,v134202"
+12:05:17.727362 table@build created L1@166 N·57 S·2MiB "\x16iN..\x11V\x9e,v101350":"*1\xd1..\x99\xde\xe9,v140477"
+12:05:17.759119 table@build created L1@167 N·49 S·2MiB "*\xf5_..])\xcd,v79924":"6>r..\xff\x10J,v142277"
+12:05:17.787967 table@build created L1@168 N·47 S·2MiB "6u\x89..\xd85\x11,v8003":"B\xb3!..ny\xad,v96249"
+12:05:17.813857 table@build created L1@169 N·36 S·2MiB "B՚..\xb50\x99,v146572":"K\xe0%..\xc7i\t,v78725"
+12:05:17.837867 table@build created L1@170 N·35 S·2MiB "K\xf8\x04..\n\xc9\x18,v154004":"V\x8f\xf9..]\xd2`,v50321"
+12:05:17.861951 table@build created L1@171 N·206 S·2MiB "V\x92\xcb..\x04Ȫ,v10592":"b\x06\xec..\xa7\xdfC,v158911"
+12:05:18.230641 table@build created L1@172 N·109407 S·2MiB "blo..\x00\x01\x81,v1":"d\xc0\xb4..\xb9\xb4\xd7,v9938"
+12:05:18.283382 table@build created L1@173 N·3623 S·2MiB "e:\xee..\xb8j\x81,v106461":"m\xc5\xe8.. \x1a\n,v11200"
+12:05:18.375056 table@build created L1@174 N·7771 S·2MiB "m\xdb...\xaf\xcc\x1f,v129993":"v\xdc\x11..7\xb3\xff,v156182"
+12:05:18.418999 table@build created L1@175 N·2198 S·2MiB "v\xeds..*\xe3X,v5113":"\x85\xfe\xae..mR!,v52741"
+12:05:18.447583 table@build created L1@176 N·50 S·2MiB "\x86De..7\xb4Z,v16627":"\x92\x18\xeb..\x8dߍ,v141477"
+12:05:18.481668 table@build created L1@177 N·52 S·2MiB "\x92)C..]\xe2z,v140377":"\xa4\x92\"..H\xc2!,v134702"
+12:05:18.516568 table@build created L1@178 N·60 S·2MiB "\xa4\xa71..\x02\xcd\x15,v146972":"\xb4\xeeB..\xa6\xf5\x84,v134402"
+12:05:18.537452 table@build created L1@179 N·32 S·2MiB "\xb5\x00\x9d..\xd74\x18,v86016":"\xbe\x02\xaf..\x81j4,v58244"
+12:05:18.562619 table@build created L1@180 N·33 S·2MiB "\xbeE\x8e..\xac\xe8-,v57389":"\xcc\x12\xd7..؎\x05,v129282"
+12:05:18.590596 table@build created L1@181 N·36 S·2MiB "\xccx6..\xfe\xa7~,v52885":"\xd79\x92..\xa9\x9f\x84,v159211"
+12:05:18.616688 table@build created L1@182 N·42 S·2MiB "\u05f9\xf0..\xe0=],v8596":"\xe4\xa0\xf9..\nM@,v10933"
+12:05:18.645167 table@build created L1@183 N·49 S·2MiB "\xe4\xba8..Q\xf0\xa3,v156382":"\xf7'\n..!j\xd0,v142677"
+12:05:18.662224 table@build created L1@184 N·36 S·1MiB "\xf7^t..!E\x11,v133102":"\xffװ..\xc8u\",v16330"
+12:05:18.662490 version@stat F·[0 21] S·42MiB[0B 42MiB] Sc·[0.00 0.43]
+12:05:18.663391 table@compaction committed F+1 S-12KiB Ke·0 D·802 T·1.053442293s
+12:05:18.664291 table@remove removed @163
+12:05:18.665237 table@remove removed @143
+12:05:18.666195 table@remove removed @144
+12:05:18.666970 table@remove removed @145
+12:05:18.667875 table@remove removed @146
+12:05:18.668596 table@remove removed @147
+12:05:18.669313 table@remove removed @148
+12:05:18.669938 table@remove removed @149
+12:05:18.670632 table@remove removed @150
+12:05:18.671556 table@remove removed @151
+12:05:18.672328 table@remove removed @152
+12:05:18.673098 table@remove removed @153
+12:05:18.673970 table@remove removed @154
+12:05:18.674677 table@remove removed @155
+12:05:18.675335 table@remove removed @156
+12:05:18.676072 table@remove removed @157
+12:05:18.676846 table@remove removed @158
+12:05:18.677470 table@remove removed @159
+12:05:18.678170 table@remove removed @160
+12:05:18.678885 table@remove removed @161
+12:05:55.556895 memdb@flush N·3482 S·3MiB
+12:05:55.626206 memdb@flush created L0@186 N·3482 S·3MiB "\x03y\xd8..\xc47p,v163182":"\xfd\x01\xcf..\xea\xf2\xa8,v163282"
+12:05:55.626519 version@stat F·[1 21] S·46MiB[3MiB 42MiB] Sc·[0.25 0.43]
+12:05:55.627609 memdb@flush committed F·1 T·69.491792ms
+12:05:55.628645 journal@remove removed @162
+12:06:31.631779 table@compaction L0·1 -> L1·21 S·46MiB Q·165571
+12:06:31.677834 table@build created L1@187 N·47 S·2MiB "\x00\x14Y..\x01;l,v144703":"\n\xe5'..\x99\xb7\xc6,v18703"
+12:06:31.703839 table@build created L1@188 N·33 S·2MiB "\v68..m\xad\x97,v129634":"\x12ɠ..ި\t,v144872"
+12:06:31.737858 table@build created L1@189 N·55 S·2MiB "\x12\xf9\x80..I\xfcI,v153885":"#\xea\xc6..\xe9̸,v128409"
+12:06:31.766526 table@build created L1@190 N·45 S·2MiB "$\x95\x87..p\x8cD,v146072":"0\xa8\xbe..\x9fo\xd1,v139593"
+12:06:31.796256 table@build created L1@191 N·58 S·2MiB "1\xd3\xfd..\xccmY,v133654":"=\xb45..b'\xb7,v157579"
+12:06:31.822294 table@build created L1@192 N·31 S·2MiB ">\x05\x13..\xba;\x13,v139497":"F[\x91.. \x93\v,v158711"
+12:06:31.849399 table@build created L1@193 N·42 S·2MiB "F_\x8f..\x1d\xb3\xef,v66044":"Px#..e\xef],v131666"
+12:06:31.881091 table@build created L1@194 N·43 S·2MiB "Qq\xb9..ܴ\xd9,v128505":"[\x96D..Ԃ\xa7,v144188"
+12:06:32.030890 table@build created L1@195 N·45792 S·2MiB "[\x96\x80..\x91\xceR,v14456":"blo..k\x00\x01,v62434"
+12:06:32.275401 table@build created L1@196 N·66041 S·2MiB "blo..k\x00\x01,v62453":"gm0..At\x98,v142477"
+12:06:32.324098 table@build created L1@197 N·3227 S·2MiB "g\x81N..\x98[c,v130793":"q\x1dT..\xc6\xd5\xc8,v16282"
+12:06:32.465544 table@build created L1@198 N·10589 S·2MiB "q:\xbb..K\xc1\xec,v74267":"{\x9e\xe2..Kb\xae,v155482"
+12:06:32.490551 table@build created L1@199 N·45 S·2MiB "|,a..d\\x,v16974":"\x88\v\xf7..\x91\x1c0,v64332"
+12:06:32.516581 table@build created L1@200 N·43 S·2MiB "\x88\x11X..\x9b\xdex,v8208":"\x90\x99W..3f\xdb,v141877"
+12:06:32.551002 table@build created L1@201 N·56 S·2MiB "\x91<\xdd..O\x92\x01,v81971":"\xa3\x0fM..\xb46\xf9,v161128"
+12:06:32.588918 table@build created L1@202 N·57 S·2MiB "\xa3G\xa1..&\xf3\x8e,v129782":"\xb2\xb1d..\xdf\x1f\xf4,v132402"
+12:06:32.619656 table@build created L1@203 N·31 S·2MiB "\xb2\xe6\xd4..a\x99\x97,v2632":"\xbb7\x9b.._\xa9$,v141577"
+12:06:32.642842 table@build created L1@204 N·38 S·2MiB "\xbb\x8f{..\x868\xf9,v12184":"\xc6\x16\xc1..S\xd8\x01,v56906"
+12:06:32.667761 table@build created L1@205 N·31 S·2MiB "\xc6'\xa1..\xc3\n\x91,v11248":"\xd0\xccy..\\\xeeE,v154852"
+12:06:32.695940 table@build created L1@206 N·48 S·2MiB "҃\x88..\x17\x1f\x95,v159111":"\xdd\u00a0..j#&,v145172"
+12:06:32.721887 table@build created L1@207 N·34 S·2MiB "ޖ*..\xd0c\xb7,v155582":"\xe9T\xf4..\x81RJ,v140577"
+12:06:32.753631 table@build created L1@208 N·56 S·2MiB "\xe9\xc6\x05..X\xcdb,v7799":"\xfbfP..\x7f$\xfa,v158600"
+12:06:32.761227 table@build created L1@209 N·19 S·543KiB "\xfb\x81@..td\xca,v155534":"\xffװ..\xc8u\",v16330"
+12:06:32.761516 version@stat F·[0 23] S·46MiB[0B 46MiB] Sc·[0.00 0.46]
+12:06:32.762258 table@compaction committed F+1 S-20KiB Ke·0 D·927 T·1.127980375s
+12:06:32.763114 table@remove removed @186
+12:06:32.764037 table@remove removed @164
+12:06:32.764842 table@remove removed @165
+12:06:32.765312 table@remove removed @166
+12:06:32.766073 table@remove removed @167
+12:06:32.766830 table@remove removed @168
+12:06:32.767518 table@remove removed @169
+12:06:32.768271 table@remove removed @170
+12:06:32.768980 table@remove removed @171
+12:06:32.769796 table@remove removed @172
+12:06:32.770527 table@remove removed @173
+12:06:32.771263 table@remove removed @174
+12:06:32.771993 table@remove removed @175
+12:06:32.772792 table@remove removed @176
+12:06:32.773577 table@remove removed @177
+12:06:32.774464 table@remove removed @178
+12:06:32.775332 table@remove removed @179
+12:06:32.776043 table@remove removed @180
+12:06:32.776794 table@remove removed @181
+12:06:32.777523 table@remove removed @182
+12:06:32.778363 table@remove removed @183
+12:06:32.779107 table@remove removed @184
+=============== Aug 12, 2023 (UTC) ===============
+12:07:13.991042 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
+12:07:13.997955 version@stat F·[0 23] S·46MiB[0B 46MiB] Sc·[0.00 0.46]
+12:07:13.998316 db@open opening
+12:07:13.998729 journal@recovery F·1
+12:07:13.999210 journal@recovery recovering @185
+12:07:14.067822 memdb@flush created L0@210 N·2100 S·1MiB "\x03ӷ..o\xe7\xd9,v164745":"\xf6\x1a\xae..\x85\xf3\x88,v165297"
+12:07:14.070982 version@stat F·[1 23] S·47MiB[1MiB 46MiB] Sc·[0.25 0.46]
+12:07:14.083897 db@janitor F·27 G·1
+12:07:14.086137 db@janitor removing table-5
+12:07:14.088671 db@open done T·90.065708ms
