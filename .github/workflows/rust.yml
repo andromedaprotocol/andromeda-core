@@ -85,6 +85,9 @@ jobs:
     runs-on: ubuntu-latest
     name: Actions - build contracts and upload artifacts
     steps:
+      - name: Log
+        run: |
+          ls -la "${GITHUB_WORKSPACE}"
       - name: Build
         run: |
           chmod +x "${GITHUB_WORKSPACE}/build.sh"
