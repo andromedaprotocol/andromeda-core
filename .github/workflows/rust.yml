@@ -87,8 +87,8 @@ jobs:
     steps:
       - name: Build
         run: |
-          chmod +x "${GITHUB_WORKSPACE}/build.sh"
-          "${GITHUB_WORKSPACE}/build.sh all"
+          chmod +x "${GITHUB_WORKSPACE}/build_all.sh"
+          "${GITHUB_WORKSPACE}/build_all.sh"
       - name: Check contract sizes
         run: |
           chmod +x "${GITHUB_WORKSPACE}/.github/file-size.sh"
