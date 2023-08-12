@@ -85,6 +85,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Actions - build contracts & schemas
     steps:
+      - run: sudo apt install binaryen
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
         with:
