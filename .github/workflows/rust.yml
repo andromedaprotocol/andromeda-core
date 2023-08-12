@@ -85,13 +85,12 @@ jobs:
     runs-on: ubuntu-latest
     name: Actions - build contracts and upload artifacts
     steps:
-      - name: Log
-        run: |
-          ls -la "${GITHUB_WORKSPACE}"
+      - uses: actions/checkout@v2
       - name: Build
         run: |
           chmod +x "${GITHUB_WORKSPACE}/build.sh"
           "${GITHUB_WORKSPACE}/build.sh all"
+      - uses: actions/checkout@v2
       - name: Check contract sizes
         run: |
           chmod +x "${GITHUB_WORKSPACE}/.github/file-size.sh"
@@ -107,15 +106,18 @@ jobs:
     name: Actions - ibc tests
     needs: build
     steps:
+      - uses: actions/checkout@v2
       - name: Download Contracts
         uses: actions/download-artifact@v2
         with:
           name: contracts
           path: "${GITHUB_WORKSPACE}/artifacts"
+      - uses: actions/checkout@v2
       - name: Start Chains
         run: |
           cd ./ci-scripts/localrelayer
           make start
+      - uses: actions/checkout@v2
       - name: Run IBC Tests
         run: |
           cd ./ibc-tests
