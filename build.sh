@@ -25,8 +25,6 @@ build_contract () {
     local OUT_FILESIZE=$(($(wc -c <"$OUT_FILE") +0))
     local LOG="$BUILD_TARGET \t\t: $IN_FILESIZE \t- $OUT_FILESIZE bytes"
     FILE_LOG="$FILE_LOG\n$LOG"
-
-    exit 0
 }
 
 build_category () {
