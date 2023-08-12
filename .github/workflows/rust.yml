@@ -83,13 +83,13 @@ jobs:
 
   build:
     runs-on: ubuntu-latest
-    name: Actions - build contracts and upload artifacts
+    name: Actions - build contracts & schemas
     steps:
       - uses: actions/checkout@v2
-      - name: Build Schema
+      - name: Build
         run: |
           chmod +x "${GITHUB_WORKSPACE}/build.sh"
-          "${GITHUB_WORKSPACE}/build.sh all"
+          "${GITHUB_WORKSPACE}/build.sh" all
       - name: Check contract sizes
         run: |
           chmod +x "${GITHUB_WORKSPACE}/.github/file-size.sh"
