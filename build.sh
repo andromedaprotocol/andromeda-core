@@ -10,7 +10,7 @@ local FILE_LOG=""
 build_contract () {
     local CONTRACT=$1
     echo "Building contract $CONTRACT..."
-    cargo wasm -p $CONTRACT
+    cargo wasm -p $CONTRACT -q
 
     # Get the version of the contract processed
     local BUILD_VERSION=$(cargo pkgid $CONTRACT | cut -d# -f2 | cut -d: -f2)
@@ -43,6 +43,7 @@ build_category () {
 build_all() {
     for directory in contracts/*/; do
         build_category $(basename $directory)
+
     done
 }
 

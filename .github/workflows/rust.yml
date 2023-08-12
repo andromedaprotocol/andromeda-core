@@ -86,7 +86,7 @@ jobs:
     name: Actions - build contracts and upload artifacts
     defaults:
       run:
-        working-directory: "${{ github.workspace }}"
+        working-directory: "${GITHUB_WORKSPACE}"
     steps:
       - run: sudo apt install binaryen
       - uses: actions-rs/toolchain@v1
@@ -108,6 +108,7 @@ jobs:
         with:
           name: contracts
           path: "${GITHUB_WORKSPACE}/artifacts"
+          if-no-files-found: error
 
   ibc-tests:
     runs-on: ubuntu-latest
