@@ -92,7 +92,6 @@ jobs:
       - run: rustup override set 1.67.0
       - run: rustup target add wasm32-unknown-unknown
       - uses: actions/checkout@v2
-      - run: pwd
       - name: Build
         run: |
           chmod +x "${GITHUB_WORKSPACE}/build.sh"
@@ -105,7 +104,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: contracts
-          path: "${GITHUB_WORKSPACE}/artifacts"
+          path: ./artifacts
           if-no-files-found: error
 
   ibc-tests:
