@@ -83,13 +83,8 @@ jobs:
 
   build:
     runs-on: ubuntu-latest
-    name: Actions - build contracts & schemas
+    name: Actions - build contracts and upload artifacts
     steps:
-      - uses: actions/checkout@v2
-      - name: Build Schema
-        run: |
-          chmod +x "${GITHUB_WORKSPACE}/build_schema.sh"
-          "${GITHUB_WORKSPACE}/build_schema.sh"
       - name: Build
         run: |
           chmod +x "${GITHUB_WORKSPACE}/build.sh"
@@ -103,3 +98,33 @@ jobs:
         with:
           name: contracts
           path: "${GITHUB_WORKSPACE}/artifacts"
+
+  ibc-tests:
+    runs-on: ubuntu-latest
+    name: Actions - ibc tests
+    needs: build
+    steps:
+      - name: Download Contracts
+        uses: actions/download-artifact@v2
+        with:
+          name: contracts
+          path: "${GITHUB_WORKSPACE}/artifacts"
+      - name: Start Chains
+        run: |
+          cd ./ci-scripts/localrelayer
+          make start
+      - name: Run IBC Tests
+        run: |
+          cd ./ibc-tests
+          npm i
+          npm test
+
+  build-schemas:
+    runs-on: ubuntu-latest
+    name: Actions - build schemas
+    steps:
+      - uses: actions/checkout@v2
+      - name: Build Schema
+        run: |
+          chmod +x "${GITHUB_WORKSPACE}/build_schema.sh"
+          "${GITHUB_WORKSPACE}/build_schema.sh"
