@@ -84,6 +84,9 @@ jobs:
   build:
     runs-on: ubuntu-latest
     name: Actions - build contracts and upload artifacts
+    defaults:
+      run:
+        working-directory: "${{ github.workspace }}"
     steps:
       - run: sudo apt install binaryen
       - uses: actions-rs/toolchain@v1
