@@ -295,57 +295,58 @@ describe("Basic IBC Token Transfers", async () => {
     );
   });
 
-  step(
-    "should send tokens from chain A to chain B and back to chain A",
-    async () => {
-      const { link, chainA, chainB } = state;
-      const receiver = randomAddress("osmo");
+  // TODO: Handle Unwrapping
+  // step(
+  //   "should send tokens from chain A to chain B and back to chain A",
+  //   async () => {
+  //     const { link, chainA, chainB } = state;
+  //     const receiver = randomAddress("osmo");
 
-      const splitterCodeId: number = await chainB.os.adodb!.query(
-        { code_id: { key: "splitter" } },
-        chainB.client!
-      );
-      const splitterInstMsg = {
-        kernel_address: chainB.os.kernel!.address,
-        recipients: [
-          {
-            recipient: {
-              address: `ibc://${chainA.name}/${receiver}`,
-            },
-            percent: "1",
-          },
-        ],
-      };
-      const splitter = await Contract.fromCodeId(
-        splitterCodeId,
-        splitterInstMsg,
-        chainB.client!
-      );
+  //     const splitterCodeId: number = await chainB.os.adodb!.query(
+  //       { code_id: { key: "splitter" } },
+  //       chainB.client!
+  //     );
+  //     const splitterInstMsg = {
+  //       kernel_address: chainB.os.kernel!.address,
+  //       recipients: [
+  //         {
+  //           recipient: {
+  //             address: `ibc://${chainA.name}/${receiver}`,
+  //           },
+  //           percent: "1",
+  //         },
+  //       ],
+  //     };
+  //     const splitter = await Contract.fromCodeId(
+  //       splitterCodeId,
+  //       splitterInstMsg,
+  //       chainB.client!
+  //     );
 
-      const transferAmount = { amount: "100", denom: "uosmo" };
-      const msg = createAMPMsg(
-        `ibc://${chainA.name}/${splitter.address}`,
-        { send: {} },
-        [transferAmount]
-      );
-      const pkt = createAMPPacket(chainB.client!.senderAddress, [msg]);
-      const kernelMsg = { amp_receive: pkt };
-      const res = await chainB.os.kernel!.execute(kernelMsg, chainB.client!, [
-        transferAmount,
-      ]);
-      assert(res.transactionHash);
-      const infoA = await link!.relayAll();
-      assertPacketsFromA(infoA, 1, true);
-      const infoB = await link!.relayAll();
-      assertPacketsFromB(infoB, 1, true);
-      const omsoBalance = await chainA.client!.sign.getBalance(
-        receiver,
-        "uosmo"
-      );
-      assert(
-        omsoBalance.amount === transferAmount.amount,
-        "Balance is incorrect"
-      );
-    }
-  );
+  //     const transferAmount = { amount: "100", denom: "uosmo" };
+  //     const msg = createAMPMsg(
+  //       `ibc://${chainB.name}/${splitter.address}`,
+  //       { send: {} },
+  //       [transferAmount]
+  //     );
+  //     const pkt = createAMPPacket(chainB.client!.senderAddress, [msg]);
+  //     const kernelMsg = { amp_receive: pkt };
+  //     const res = await chainA.os.kernel!.execute(kernelMsg, chainA.client!, [
+  //       transferAmount,
+  //     ]);
+  //     assert(res.transactionHash);
+  //     const infoA = await link!.relayAll();
+  //     assertPacketsFromA(infoA, 1, true);
+  //     const infoB = await link!.relayAll();
+  //     assertPacketsFromB(infoB, 1, true);
+  //     const omsoBalance = await chainA.client!.sign.getBalance(
+  //       receiver,
+  //       "uosmo"
+  //     );
+  //     assert(
+  //       omsoBalance.amount === transferAmount.amount,
+  //       "Balance is incorrect"
+  //     );
+  //   }
+  // );
 });

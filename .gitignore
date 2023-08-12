@@ -5,7 +5,4 @@ target/
 **/.DS_Store
 artifacts*
 .vscode*
-**/*.ldb
-**/*.bak
-**/data/**/*.log
-**/snapshots/*
+# ci-scripts/localrelayer/template/

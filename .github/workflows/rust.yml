@@ -92,9 +92,14 @@ jobs:
           "${GITHUB_WORKSPACE}/build_schema.sh"
       - name: Build
         run: |
-          chmod +x "${GITHUB_WORKSPACE}/build_all.sh"
-          "${GITHUB_WORKSPACE}/build_all.sh"
+          chmod +x "${GITHUB_WORKSPACE}/build.sh"
+          "${GITHUB_WORKSPACE}/build.sh all"
       - name: Check contract sizes
         run: |
           chmod +x "${GITHUB_WORKSPACE}/.github/file-size.sh"
           "${GITHUB_WORKSPACE}/.github/file-size.sh"
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: contracts
+          path: "${GITHUB_WORKSPACE}/artifacts"

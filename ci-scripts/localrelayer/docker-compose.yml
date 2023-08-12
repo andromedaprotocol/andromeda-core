@@ -9,7 +9,6 @@ services:
         GO_VERSION: "1.20"
     volumes:
       - ./scripts/setup_chain.sh:/osmosis/setup.sh
-      # - $HOME/.osmosisd-local-a/:/osmosis/.osmosisd/
       - ./template/.osmosisd-local-a/:/osmosis/.osmosisd/
     entrypoint:
       - /osmosis/setup.sh
@@ -34,7 +33,6 @@ services:
         GO_VERSION: "1.20"
     volumes:
       - ./scripts/setup_chain.sh:/osmosis/setup.sh
-      # - $HOME/.osmosisd-local-b/:/osmosis/.osmosisd/
       - ./template/.osmosisd-local-b:/osmosis/.osmosisd
     entrypoint:
       - /osmosis/setup.sh
