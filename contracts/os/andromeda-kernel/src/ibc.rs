@@ -1,8 +1,5 @@
+use crate::ack::make_ack_fail;
 use crate::proto::MsgTransfer;
-use crate::{
-    ack::{make_ack_fail, make_ack_success},
-    contract::try_wasm_msg,
-};
 use andromeda_std::error::{ContractError, Never};
 use andromeda_std::{
     amp::{messages::AMPMsg, AndrAddr},
@@ -123,7 +120,7 @@ pub fn ibc_packet_receive(
 }
 
 pub fn do_ibc_packet_receive(
-    deps: DepsMut,
+    _deps: DepsMut,
     _env: Env,
     msg: IbcPacketReceiveMsg,
 ) -> Result<IbcReceiveResponse, ContractError> {
@@ -131,25 +128,8 @@ pub fn do_ibc_packet_receive(
     let msg: IbcExecuteMsg = from_binary(&msg.packet.data)?;
 
     match msg {
-        IbcExecuteMsg::SendMessage { recipient, message } => {
-            execute_send_message(deps, recipient, message)
-        }
+        IbcExecuteMsg::SendMessage { .. } => Ok(IbcReceiveResponse::default()),
     }
-}
-
-fn execute_send_message(
-    deps: DepsMut,
-    recipient: String,
-    message: Binary,
-) -> Result<IbcReceiveResponse, ContractError> {
-    let wasm_msg = try_wasm_msg(deps, recipient.clone(), message.clone())?;
-
-    Ok(IbcReceiveResponse::new()
-        .add_message(wasm_msg)
-        .add_attribute("method", "execute_send_message")
-        .add_attribute("message", message.to_string())
-        .add_attribute("recipient", recipient)
-        .set_ack(make_ack_success()))
 }
 
 pub fn validate_order_and_version(

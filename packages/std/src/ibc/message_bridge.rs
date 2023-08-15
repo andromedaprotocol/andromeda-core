@@ -17,17 +17,6 @@ pub enum ExecuteMsg {
         recipient: AndrAddr,
         message: Binary,
     },
-    /// Receives an AMPMsg, creates a new AMPPkt that contains the AMPMsg and sends it to the recipient
-    SendAmpMessage {
-        chain: String,
-        recipient: AndrAddr,
-        message: AMPMsg,
-    },
-
-    SendAmpPacket {
-        chain: String,
-        message: Vec<AMPMsg>,
-    },
     SaveChannel {
         channel: String,
         chain: String,
@@ -43,7 +32,6 @@ pub enum ExecuteMsg {
 #[cw_serde]
 pub enum IbcExecuteMsg {
     SendMessage { recipient: String, message: Binary },
-    SendAmpPacket { message: Binary },
 }
 
 #[cw_serde]
