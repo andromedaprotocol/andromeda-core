@@ -10,7 +10,7 @@ import digest from "sha256";
 import configs from "./configs";
 import Contract from "./contract";
 import { setupOS } from "./os";
-import { waitForRelayer } from "./relayer";
+import { waitForChain, waitForRelayer } from "./relayer";
 import {
   assertPacketsFromA,
   assertPacketsFromB,
@@ -111,6 +111,8 @@ async function setupState() {
 }
 
 before(async () => {
+  await waitForChain(osmosisA.tendermintUrlHttp);
+  await waitForChain(osmosisB.tendermintUrlHttp);
   await waitForRelayer();
   await setupState();
 });
