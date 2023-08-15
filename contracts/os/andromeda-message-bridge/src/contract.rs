@@ -98,7 +98,7 @@ pub fn execute_send_message(
             .add_message(IbcMsg::SendPacket {
                 channel_id: channel,
                 data: to_binary(&IbcExecuteMsg::SendMessage {
-                    recipient: recipient.to_string(),
+                    recipient: AndrAddr::from_string(recipient.get_raw_path()),
                     message,
                 })?,
                 timeout: IbcTimeout::with_timestamp(env.block.time.plus_seconds(300)),

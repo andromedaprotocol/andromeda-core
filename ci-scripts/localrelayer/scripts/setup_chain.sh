@@ -97,7 +97,7 @@ edit_config () {
     # Expose the rpc
     dasel put string -f $CONFIG_FOLDER/config.toml '.rpc.laddr' "tcp://0.0.0.0:26657"
 
-    dasel put string -f $CONFIG_FOLDER/config.toml '.consensus.timeout_commit' "1500ms"
+    dasel put string -f $CONFIG_FOLDER/config.toml '.consensus.timeout_commit' "1000ms"
 }
 
 if [[ ! -d $CONFIG_FOLDER ]]

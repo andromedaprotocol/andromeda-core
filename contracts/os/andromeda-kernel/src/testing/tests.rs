@@ -16,7 +16,10 @@ use cosmwasm_std::{
 fn proper_initialization() {
     let mut deps = mock_dependencies();
     let info = mock_info("creator", &[]);
-    let msg = InstantiateMsg { owner: None };
+    let msg = InstantiateMsg {
+        owner: None,
+        chain_name: None,
+    };
     let env = mock_env();
 
     let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
@@ -32,7 +35,10 @@ fn test_create_ado() {
         deps.as_mut(),
         env.clone(),
         info.clone(),
-        InstantiateMsg { owner: None },
+        InstantiateMsg {
+            owner: None,
+            chain_name: None,
+        },
     )
     .unwrap();
 

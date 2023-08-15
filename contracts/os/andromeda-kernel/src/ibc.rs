@@ -1,5 +1,5 @@
-use crate::ack::make_ack_fail;
-use crate::proto::MsgTransfer;
+use crate::ack::{make_ack_fail, make_ack_success};
+use crate::proto::{DenomTrace, MsgTransfer, QueryDenomTraceRequest};
 use andromeda_std::error::{ContractError, Never};
 use andromeda_std::{
     amp::{messages::AMPMsg, AndrAddr},
@@ -9,10 +9,12 @@ use cosmwasm_schema::cw_serde;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    ensure, from_binary, Binary, Coin, DepsMut, Env, Ibc3ChannelOpenResponse, IbcBasicResponse,
-    IbcChannel, IbcChannelCloseMsg, IbcChannelConnectMsg, IbcChannelOpenMsg, IbcOrder,
-    IbcPacketReceiveMsg, IbcPacketTimeoutMsg, IbcReceiveResponse, Response, Timestamp,
+    ensure, from_binary, from_slice, Binary, Coin, Deps, DepsMut, Env, Ibc3ChannelOpenResponse,
+    IbcBasicResponse, IbcChannel, IbcChannelCloseMsg, IbcChannelConnectMsg, IbcChannelOpenMsg,
+    IbcOrder, IbcPacketAckMsg, IbcPacketReceiveMsg, IbcPacketTimeoutMsg, IbcReceiveResponse,
+    Timestamp,
 };
+use itertools::Itertools;
 use sha256::digest;
 
 pub const IBC_VERSION: &str = "message-bridge-1";
@@ -48,20 +50,6 @@ pub fn ibc_packet_timeout(
     // respond to this likely as it means that the packet in question
     // isn't going anywhere.
     Ok(IbcBasicResponse::new().add_attribute("method", "ibc_packet_timeout"))
-}
-
-pub fn receive_ack(
-    _deps: DepsMut,
-    _source_channel: String,
-    _sequence: u64,
-    _ack: String,
-    success: bool,
-) -> Result<Response, ContractError> {
-    if success {
-        Ok(Response::default().add_attribute("response", "success"))
-    } else {
-        Ok(Response::default().add_attribute("response", "failure"))
-    }
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -119,16 +107,38 @@ pub fn ibc_packet_receive(
     }
 }
 
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn ibc_packet_ack(
+    _deps: DepsMut,
+    _env: Env,
+    msg: IbcPacketAckMsg,
+) -> Result<IbcBasicResponse, ContractError> {
+    // which local channel was this packet send from
+    // let caller = msg.original_packet.src.channel_id.clone();
+    // we need to parse the ack based on our request
+    let original_packet: IbcExecuteMsg = from_slice(&msg.original_packet.data)?;
+    let pkt_res = match original_packet {
+        _ => IbcReceiveResponse::default(),
+    };
+
+    Ok(IbcBasicResponse::new()
+        .add_attribute("method", "ibc_packet_ack")
+        .add_attributes(pkt_res.attributes)
+        .add_submessages(pkt_res.messages))
+}
+
 pub fn do_ibc_packet_receive(
     _deps: DepsMut,
     _env: Env,
     msg: IbcPacketReceiveMsg,
 ) -> Result<IbcReceiveResponse, ContractError> {
+    // let channel = msg.packet.src.channel_id;
     // The channel this packet is being relayed along on this chain.
     let msg: IbcExecuteMsg = from_binary(&msg.packet.data)?;
-
     match msg {
-        IbcExecuteMsg::SendMessage { .. } => Ok(IbcReceiveResponse::default()),
+        IbcExecuteMsg::SendMessage { .. } => {
+            Ok(IbcReceiveResponse::default().set_ack(make_ack_success()))
+        }
     }
 }
 
@@ -184,6 +194,7 @@ fn generate_ibc_denom(channel: String, denom: String) -> String {
 
 #[allow(clippy::too_many_arguments)]
 pub fn generate_transfer_message(
+    deps: &Deps,
     recipient: AndrAddr,
     message: Binary,
     funds: Coin,
@@ -193,9 +204,20 @@ pub fn generate_transfer_message(
     time: Timestamp,
 ) -> Result<MsgTransfer, ContractError> {
     // Convert funds denom
-    let new_denom = generate_ibc_denom(channel.clone(), funds.clone().denom);
+    let new_denom = if funds.denom.clone().starts_with("ibc/") {
+        let hops = unwrap_denom_path(deps, &funds.denom)?;
+        if hops.len() == 1 {
+            generate_ibc_denom(channel.clone(), hops[0].local_denom.clone())
+        } else if hops[1].local_denom.starts_with("ibc/") || hops[1].on != Some(channel.clone()) {
+            generate_ibc_denom(channel.clone(), hops[1].local_denom.clone())
+        } else {
+            hops[1].local_denom.clone()
+        }
+    } else {
+        generate_ibc_denom(channel.clone(), funds.clone().denom)
+    };
     let new_coin = Coin::new(funds.amount.u128(), new_denom);
-    let msg = AMPMsg::new(recipient, message, Some(vec![new_coin]));
+    let msg = AMPMsg::new(recipient.get_raw_path(), message, Some(vec![new_coin]));
     let serialized = msg.to_ibc_hooks_memo(to_addr.clone(), from_addr.clone());
 
     let ts = time.plus_seconds(PACKET_LIFETIME);
@@ -210,6 +232,82 @@ pub fn generate_transfer_message(
         timeout_timestamp: Some(ts.nanos()),
         memo: serialized,
     })
+}
+
+#[cw_serde]
+pub struct MultiHopDenom {
+    pub local_denom: String,
+    pub on: Option<String>,
+    pub via: Option<String>, // This is optional because native tokens have no channel
+}
+
+pub fn hash_denom_trace(unwrapped: &str) -> String {
+    format!("ibc/{}", sha256::digest(unwrapped))
+}
+
+pub fn unwrap_denom_path(deps: &Deps, denom: &str) -> Result<Vec<MultiHopDenom>, ContractError> {
+    // Check that the denom is an IBC denom
+    if !denom.starts_with("ibc/") {
+        return Ok(vec![MultiHopDenom {
+            local_denom: denom.to_string(),
+            on: None,
+            via: None,
+        }]);
+    }
+
+    // Get the denom trace
+    let res = QueryDenomTraceRequest {
+        hash: denom.to_string(),
+    }
+    .query(&deps.querier)
+    .map_err(|_| ContractError::InvalidDenomTrace {
+        denom: denom.to_string(),
+    })?;
+
+    let DenomTrace { path, base_denom } = match res.denom_trace {
+        Some(denom_trace) => Ok(denom_trace),
+        None => Err(ContractError::InvalidDenomTrace {
+            denom: denom.into(),
+        }),
+    }?;
+
+    deps.api.debug(&format!("procesing denom trace {path}"));
+    // Let's iterate over the parts of the denom trace and extract the
+    // chain/channels into a more useful structure: MultiHopDenom
+    let mut hops: Vec<MultiHopDenom> = vec![];
+    let mut rest: &str = &path;
+    let parts = path.split('/');
+
+    for chunk in &parts.chunks(2) {
+        let Some((port, channel)) = chunk.take(2).collect_tuple() else {
+            return Err(ContractError::InvalidDenomTracePath{ path: path.clone(), denom: denom.into() });
+        };
+
+        // Check that the port is "transfer"
+        if port != TRANSFER_PORT {
+            return Err(ContractError::InvalidTransferPort { port: port.into() });
+        }
+
+        // Check that the channel is valid
+        let full_trace = rest.to_owned() + "/" + &base_denom;
+        hops.push(MultiHopDenom {
+            local_denom: hash_denom_trace(&full_trace),
+            on: Some(channel.to_string()),
+            via: Some(channel.to_string()),
+        });
+
+        rest = rest
+            .trim_start_matches(&format!("{port}/{channel}"))
+            .trim_start_matches('/'); // hops other than first and last will have this slash
+    }
+
+    hops.push(MultiHopDenom {
+        local_denom: base_denom,
+        on: None,
+        via: None,
+    });
+
+    Ok(hops)
 }
 
 #[cfg(test)]

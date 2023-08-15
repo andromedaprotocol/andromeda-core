@@ -3,18 +3,15 @@ use crate::{
     ack::{make_ack_fail, make_ack_success},
     contract::try_wasm_msg,
 };
+use andromeda_std::amp::{messages::AMPMsg, AndrAddr};
 use andromeda_std::error::{ContractError, Never};
-use andromeda_std::{
-    amp::{messages::AMPMsg, AndrAddr},
-    ibc::message_bridge::IbcExecuteMsg,
-};
 use cosmwasm_schema::cw_serde;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    ensure, from_binary, Binary, Coin, DepsMut, Env, Ibc3ChannelOpenResponse, IbcBasicResponse,
-    IbcChannel, IbcChannelCloseMsg, IbcChannelConnectMsg, IbcChannelOpenMsg, IbcOrder,
-    IbcPacketReceiveMsg, IbcPacketTimeoutMsg, IbcReceiveResponse, Response, Timestamp,
+    ensure, Binary, Coin, DepsMut, Env, Ibc3ChannelOpenResponse, IbcBasicResponse, IbcChannel,
+    IbcChannelCloseMsg, IbcChannelConnectMsg, IbcChannelOpenMsg, IbcOrder, IbcPacketReceiveMsg,
+    IbcPacketTimeoutMsg, IbcReceiveResponse, Response, Timestamp,
 };
 use sha256::digest;
 
@@ -123,21 +120,16 @@ pub fn ibc_packet_receive(
 }
 
 pub fn do_ibc_packet_receive(
-    deps: DepsMut,
+    _deps: DepsMut,
     _env: Env,
-    msg: IbcPacketReceiveMsg,
+    _msg: IbcPacketReceiveMsg,
 ) -> Result<IbcReceiveResponse, ContractError> {
     // The channel this packet is being relayed along on this chain.
-    let msg: IbcExecuteMsg = from_binary(&msg.packet.data)?;
 
-    match msg {
-        IbcExecuteMsg::SendMessage { recipient, message } => {
-            execute_send_message(deps, recipient, message)
-        }
-    }
+    Ok(IbcReceiveResponse::default())
 }
 
-fn execute_send_message(
+fn _execute_send_message(
     deps: DepsMut,
     recipient: String,
     message: Binary,

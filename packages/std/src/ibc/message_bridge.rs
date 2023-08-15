@@ -31,7 +31,10 @@ pub enum ExecuteMsg {
 
 #[cw_serde]
 pub enum IbcExecuteMsg {
-    SendMessage { recipient: String, message: Binary },
+    SendMessage {
+        recipient: AndrAddr,
+        message: Binary,
+    },
 }
 
 #[cw_serde]

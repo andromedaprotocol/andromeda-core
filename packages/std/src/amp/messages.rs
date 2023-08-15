@@ -91,7 +91,6 @@ pub struct AMPMsg {
 
 impl AMPMsg {
     /// Creates a new AMPMsg
-
     pub fn new(recipient: impl Into<String>, message: Binary, funds: Option<Vec<Coin>>) -> AMPMsg {
         AMPMsg {
             recipient: AndrAddr::from_string(recipient),
@@ -111,7 +110,6 @@ impl AMPMsg {
     }
 
     /// Generates an AMPPkt containing the given AMPMsg
-
     pub fn generate_amp_pkt(
         &self,
         deps: &Deps,
@@ -185,13 +183,11 @@ impl AMPCtx {
     }
 
     /// Gets the original sender of a message
-
     pub fn get_origin(&self) -> String {
         self.origin.clone()
     }
 
     /// Gets the previous sender of a message
-
     pub fn get_previous_sender(&self) -> String {
         self.previous_sender.clone()
     }
@@ -258,7 +254,6 @@ impl AMPPkt {
     /// 3. The sender has a code ID stored within the ADODB (and as such is a valid ADO)
     ///
     /// If the sender is not valid, an error is returned
-
     pub fn verify_origin(&self, info: &MessageInfo, deps: &Deps) -> Result<(), ContractError> {
         let kernel_address = ADOContract::default().get_kernel_address(deps.storage)?;
         if info.sender == self.ctx.origin || info.sender == kernel_address {
@@ -287,7 +282,6 @@ impl AMPPkt {
     }
 
     ///Verifies the origin of the AMPPkt and returns the origin if it is valid
-
     pub fn get_verified_origin(
         &self,
         info: &MessageInfo,
@@ -321,7 +315,6 @@ impl AMPPkt {
     }
 
     ///  Attaches an ID to the current packet
-
     pub fn with_id(&self, id: u64) -> AMPPkt {
         let mut new = self.clone();
         new.ctx.id = id;
@@ -329,7 +322,6 @@ impl AMPPkt {
     }
 
     /// Converts a given AMP Packet to an IBC Hook memo for use with Osmosis' IBC Hooks module
-
     pub fn to_ibc_hooks_memo(&self, contract_addr: String, callback_addr: String) -> String {
         #[derive(::serde::Serialize)]
         struct IbcHooksWasmMsg<T: ::serde::Serialize> {
@@ -354,13 +346,11 @@ impl AMPPkt {
     }
 
     /// Serializes the given AMP Packet to a JSON string
-
     pub fn to_json(&self) -> String {
         serde_json_wasm::to_string(&self).unwrap()
     }
 
     /// Generates an AMP Packet from context
-
     pub fn from_ctx(ctx: Option<AMPPkt>, current_address: String) -> Self {
         let mut ctx = if let Some(pkt) = ctx {
             pkt.ctx

@@ -22,7 +22,7 @@ library = []
 testing = ["cw-multi-test"]
 
 [dependencies]
-cosmwasm-std = { workspace = true }
+cosmwasm-std = { workspace = true, features = ["ibc3"] }
 cosmwasm-schema = { workspace = true }
 cw-storage-plus = { workspace = true }
 cw2 = { workspace = true }
@@ -38,6 +38,8 @@ prost = { version = "0.11.2", default-features = false, features = [
 ] }
 serde = { workspace = true }
 schemars = "0.8.10"
+hex = "0.4.3"
+itertools = "0.10"
 
 
 andromeda-std = { workspace = true }

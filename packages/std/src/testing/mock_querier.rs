@@ -186,7 +186,7 @@ impl MockAndromedaQuerier {
                 }
                 _ => SystemResult::Ok(ContractResult::Ok(to_binary(&true).unwrap())),
             },
-            // _ => SystemResult::Ok(ContractResult::Err("Not implemented".to_string())),
+            _ => SystemResult::Ok(ContractResult::Err("Not implemented".to_string())),
         }
     }
 

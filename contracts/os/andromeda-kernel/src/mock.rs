@@ -11,7 +11,10 @@ pub fn mock_andromeda_kernel() -> Box<dyn Contract<Empty>> {
 }
 
 pub fn mock_kernel_instantiate_message(owner: Option<String>) -> InstantiateMsg {
-    InstantiateMsg { owner }
+    InstantiateMsg {
+        owner,
+        chain_name: None,
+    }
 }
 
 pub fn mock_upsert_key_address(key: impl Into<String>, value: impl Into<String>) -> ExecuteMsg {

@@ -257,6 +257,8 @@ dependencies = [
  "cw-storage-plus 1.1.0",
  "cw2 1.1.0",
  "enum-repr",
+ "hex",
+ "itertools",
  "osmosis-std",
  "osmosis-std-derive 0.15.3",
  "prost 0.11.9",
