@@ -219,10 +219,7 @@ impl MsgHandler {
                 .add_submessage(SubMsg::reply_on_error(CosmosMsg::Bank(sub_msg), 1))
                 .add_attributes(vec![
                     attr(format!("recipient:{sequence}"), recipient_addr),
-                    attr(
-                        format!("bank_send_amount:{sequence}"),
-                        funds[0].to_string(),
-                    ),
+                    attr(format!("bank_send_amount:{sequence}"), funds[0].to_string()),
                 ]);
         } else {
             let origin = if let Some(amp_ctx) = execute_env.amp_ctx.clone() {
@@ -245,10 +242,9 @@ impl MsgHandler {
                 Some(vec![funds[0].clone()]),
                 ReplyId::AMPMsg.repr(),
             )?;
-            res = res.add_submessage(sub_msg).add_attributes(vec![attr(
-                format!("recipient:{sequence}"),
-                recipient_addr,
-            )]);
+            res = res
+                .add_submessage(sub_msg)
+                .add_attributes(vec![attr(format!("recipient:{sequence}"), recipient_addr)]);
         }
         Ok(res)
     }

@@ -240,7 +240,7 @@ pub fn generate_transfer_message(
     // Convert funds denom
     let new_denom = if funds.denom.starts_with("ibc/") {
         let hops = unwrap_denom_path(deps, &funds.denom)?;
-        /**
+        /*
         Hops are ordered from most recent hop to the first hop, we check if we're unwrapping by checking the channel of the most recent hop.
         If the channels match we're unwrapping and the receiving denom is the local denom of the previous hop (hop[1]).
         Otherwise we're wrapping and we proceed as expected.
