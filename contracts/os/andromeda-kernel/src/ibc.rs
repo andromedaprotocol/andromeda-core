@@ -1,5 +1,7 @@
 use crate::ack::{make_ack_fail, make_ack_success};
+use crate::execute;
 use crate::proto::{DenomTrace, MsgTransfer, QueryDenomTraceRequest};
+use andromeda_std::common::context::ExecuteContext;
 use andromeda_std::error::{ContractError, Never};
 use andromeda_std::{
     amp::{messages::AMPMsg, AndrAddr},
@@ -9,10 +11,10 @@ use cosmwasm_schema::cw_serde;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    ensure, from_binary, from_slice, Binary, Coin, Deps, DepsMut, Env, Ibc3ChannelOpenResponse,
-    IbcBasicResponse, IbcChannel, IbcChannelCloseMsg, IbcChannelConnectMsg, IbcChannelOpenMsg,
-    IbcOrder, IbcPacketAckMsg, IbcPacketReceiveMsg, IbcPacketTimeoutMsg, IbcReceiveResponse,
-    Timestamp,
+    ensure, from_binary, from_slice, Addr, Binary, Coin, Deps, DepsMut, Env,
+    Ibc3ChannelOpenResponse, IbcBasicResponse, IbcChannel, IbcChannelCloseMsg,
+    IbcChannelConnectMsg, IbcChannelOpenMsg, IbcOrder, IbcPacketAckMsg, IbcPacketReceiveMsg,
+    IbcPacketTimeoutMsg, IbcReceiveResponse, MessageInfo, Timestamp,
 };
 use itertools::Itertools;
 use sha256::digest;
@@ -109,8 +111,8 @@ pub fn ibc_packet_receive(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn ibc_packet_ack(
-    _deps: DepsMut,
-    _env: Env,
+    deps: DepsMut,
+    env: Env,
     msg: IbcPacketAckMsg,
 ) -> Result<IbcBasicResponse, ContractError> {
     // which local channel was this packet send from
@@ -118,26 +120,58 @@ pub fn ibc_packet_ack(
     // we need to parse the ack based on our request
     let original_packet: IbcExecuteMsg = from_slice(&msg.original_packet.data)?;
     let pkt_res = match original_packet {
-        _ => IbcReceiveResponse::default(),
-    };
+        IbcExecuteMsg::SendMessage { recipient, message } => {
+            // TODO: Can we also add a username in this message?
+            let execute_env = ExecuteContext {
+                env,
+                deps,
+                info: MessageInfo {
+                    funds: vec![],
+                    sender: Addr::unchecked("foreign_kernel"),
+                },
+                amp_ctx: None,
+            };
+            let amp_msg = AMPMsg::new(recipient, message, None);
+            let res = execute::send(execute_env, amp_msg)?;
 
-    Ok(IbcBasicResponse::new()
-        .add_attribute("method", "ibc_packet_ack")
-        .add_attributes(pkt_res.attributes)
-        .add_submessages(pkt_res.messages))
+            Ok::<IbcBasicResponse, ContractError>(
+                IbcBasicResponse::new()
+                    .add_attributes(res.attributes)
+                    .add_submessages(res.messages)
+                    .add_events(res.events),
+            )
+        }
+    }?;
+
+    Ok(pkt_res.add_attribute("method", "ibc_packet_ack"))
 }
 
 pub fn do_ibc_packet_receive(
-    _deps: DepsMut,
-    _env: Env,
+    deps: DepsMut,
+    env: Env,
     msg: IbcPacketReceiveMsg,
 ) -> Result<IbcReceiveResponse, ContractError> {
-    // let channel = msg.packet.src.channel_id;
-    // The channel this packet is being relayed along on this chain.
     let msg: IbcExecuteMsg = from_binary(&msg.packet.data)?;
     match msg {
-        IbcExecuteMsg::SendMessage { .. } => {
-            Ok(IbcReceiveResponse::default().set_ack(make_ack_success()))
+        IbcExecuteMsg::SendMessage { recipient, message } => {
+            // TODO: Can we also add a username in this message?
+            let execute_env = ExecuteContext {
+                env,
+                deps,
+                info: MessageInfo {
+                    funds: vec![],
+                    sender: Addr::unchecked("foreign_kernel"),
+                },
+                amp_ctx: None,
+            };
+            let amp_msg = AMPMsg::new(recipient, message, None);
+            let res = execute::send(execute_env, amp_msg)?;
+
+            Ok(IbcReceiveResponse::new()
+                .set_ack(make_ack_success())
+                .add_attributes(res.attributes)
+                .add_submessages(res.messages)
+                .add_events(res.events))
         }
     }
 }
