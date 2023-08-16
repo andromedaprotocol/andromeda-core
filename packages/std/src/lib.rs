@@ -3,7 +3,6 @@ pub mod ado_contract;
 pub mod amp;
 pub mod common;
 pub mod error;
-pub mod ibc;
 pub mod os;
 
 pub use andromeda_macros::{andr_exec, andr_instantiate, andr_instantiate_modules, andr_query};

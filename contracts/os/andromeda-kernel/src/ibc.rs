@@ -5,7 +5,7 @@ use andromeda_std::common::context::ExecuteContext;
 use andromeda_std::error::{ContractError, Never};
 use andromeda_std::{
     amp::{messages::AMPMsg, AndrAddr},
-    ibc::message_bridge::IbcExecuteMsg,
+    os::kernel::IbcExecuteMsg,
 };
 use cosmwasm_schema::cw_serde;
 #[cfg(not(feature = "library"))]

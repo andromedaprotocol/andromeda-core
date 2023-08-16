@@ -5,8 +5,8 @@ use andromeda_std::amp::{ADO_DB_KEY, VFS_KEY};
 
 use andromeda_std::common::context::ExecuteContext;
 use andromeda_std::error::ContractError;
-use andromeda_std::ibc::message_bridge::IbcExecuteMsg;
 use andromeda_std::os::aos_querier::AOSQuerier;
+use andromeda_std::os::kernel::IbcExecuteMsg;
 
 use cosmwasm_std::{
     attr, ensure, to_binary, BankMsg, Binary, CosmosMsg, IbcMsg, Response, SubMsg, WasmMsg,

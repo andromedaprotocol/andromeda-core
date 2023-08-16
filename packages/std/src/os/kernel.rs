@@ -55,3 +55,11 @@ pub enum QueryMsg {
     #[returns(Option<ChannelInfoResponse>)]
     ChannelInfo { chain: String },
 }
+
+#[cw_serde]
+pub enum IbcExecuteMsg {
+    SendMessage {
+        recipient: AndrAddr,
+        message: Binary,
+    },
+}
