@@ -169,7 +169,7 @@ describe("Operating System", () => {
       portA,
       portB,
       Order.ORDER_UNORDERED,
-      "message-bridge-1"
+      "andr-kernel-1"
     );
 
     state.channel = channel;

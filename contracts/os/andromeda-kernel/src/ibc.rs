@@ -19,7 +19,7 @@ use cosmwasm_std::{
 use itertools::Itertools;
 use sha256::digest;
 
-pub const IBC_VERSION: &str = "message-bridge-1";
+pub const IBC_VERSION: &str = "andr-kernel-1";
 pub const PACKET_LIFETIME: u64 = 604_800u64;
 
 #[cw_serde]
