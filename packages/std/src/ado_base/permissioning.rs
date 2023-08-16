@@ -99,26 +99,26 @@ impl fmt::Display for Permission {
         let self_as_string = match self {
             Self::Blacklisted(expiration) => {
                 if let Some(expiration) = expiration {
-                    format!("blacklisted:{}", expiration)
+                    format!("blacklisted:{expiration}")
                 } else {
                     "blacklisted".to_string()
                 }
             }
             Self::Limited { expiration, uses } => {
                 if let Some(expiration) = expiration {
-                    format!("limited:{}:{}", expiration, uses)
+                    format!("limited:{expiration}:{uses}")
                 } else {
-                    format!("limited:{}", uses)
+                    format!("limited:{uses}")
                 }
             }
             Self::Whitelisted(expiration) => {
                 if let Some(expiration) = expiration {
-                    format!("whitelisted:{}", expiration)
+                    format!("whitelisted:{expiration}")
                 } else {
                     "whitelisted".to_string()
                 }
             }
         };
-        write!(f, "{}", self_as_string)
+        write!(f, "{self_as_string}")
     }
 }

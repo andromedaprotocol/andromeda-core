@@ -222,7 +222,7 @@ pub fn validate_order_and_version(
 const TRANSFER_PORT: &str = "transfer";
 
 fn generate_ibc_denom(channel: String, denom: String) -> String {
-    let path = format!("{}/{}/{}", TRANSFER_PORT, channel, denom);
+    let path = format!("{TRANSFER_PORT}/{channel}/{denom}");
     format!("ibc/{}", digest(path).to_uppercase())
 }
 
@@ -238,8 +238,13 @@ pub fn generate_transfer_message(
     time: Timestamp,
 ) -> Result<MsgTransfer, ContractError> {
     // Convert funds denom
-    let new_denom = if funds.denom.clone().starts_with("ibc/") {
+    let new_denom = if funds.denom.starts_with("ibc/") {
         let hops = unwrap_denom_path(deps, &funds.denom)?;
+        /**
+        Hops are ordered from most recent hop to the first hop, we check if we're unwrapping by checking the channel of the most recent hop.
+        If the channels match we're unwrapping and the receiving denom is the local denom of the previous hop (hop[1]).
+        Otherwise we're wrapping and we proceed as expected.
+        */
         if !hops[0].on.eq(&Some(channel.clone())) {
             generate_ibc_denom(channel.clone(), hops[0].local_denom.clone())
         } else {

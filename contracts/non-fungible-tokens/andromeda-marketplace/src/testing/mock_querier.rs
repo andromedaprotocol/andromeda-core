@@ -106,7 +106,7 @@ impl WasmMockQuerier {
                 let value = valid_identifiers.contains(&name.as_str());
                 SystemResult::Ok(ContractResult::Ok(to_binary(&value).unwrap()))
             }
-            _ => panic!("Unsupported Query: {}", msg),
+            _ => panic!("Unsupported Query: {msg}"),
         }
     }
 

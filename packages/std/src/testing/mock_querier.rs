@@ -138,7 +138,7 @@ impl MockAndromedaQuerier {
                     MOCK_ADDRESS_LIST_CONTRACT => self.handle_address_list_query(msg),
                     _ => match from_binary::<AndromedaQuery>(msg) {
                         Ok(msg) => self.handle_ado_query(msg),
-                        _ => panic!("Unsupported query for contract: {}", contract_addr),
+                        _ => panic!("Unsupported query for contract: {contract_addr}"),
                     },
                 }
             }
@@ -148,7 +148,7 @@ impl MockAndromedaQuerier {
                     MOCK_KERNEL_CONTRACT => self.handle_kernel_raw_query(key),
                     MOCK_VFS_CONTRACT => self.handle_kernel_raw_query(key),
                     MOCK_ADODB_CONTRACT => self.handle_adodb_raw_query(key),
-                    _ => panic!("Unsupported query for contract: {}", contract_addr),
+                    _ => panic!("Unsupported query for contract: {contract_addr}"),
                 }
             }
             // Defaults to code ID 1, returns 2 for `INVALID_CONTRACT` which is considered an invalid ADODB code id

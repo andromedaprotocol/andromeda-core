@@ -31,7 +31,7 @@ pub fn instantiate(
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     if let Some(chain_name) = msg.chain_name {
-        ENV_VARIABLES.save(deps.storage, &CHAIN_NAME_KEY, &chain_name)?;
+        ENV_VARIABLES.save(deps.storage, CHAIN_NAME_KEY, &chain_name)?;
     }
 
     ADOContract::default().instantiate(

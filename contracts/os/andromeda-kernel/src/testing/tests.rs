@@ -58,10 +58,10 @@ fn test_create_ado() {
         msg: Binary::default(),
         owner: None,
     };
-    let res = execute(deps.as_mut(), env, info.clone(), create_msg.clone()).unwrap();
+    let res = execute(deps.as_mut(), env, info.clone(), create_msg).unwrap();
     assert_eq!(1, res.messages.len());
     assert_eq!(
         ADO_OWNER.load(deps.as_ref().storage).unwrap(),
-        info.sender.clone()
+        info.sender
     );
 }

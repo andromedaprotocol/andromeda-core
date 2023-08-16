@@ -606,7 +606,7 @@ impl From<Cw20ContractError> for ContractError {
                 ContractError::DuplicateInitialBalanceAddresses {}
             }
             Cw20ContractError::InvalidExpiration {} => ContractError::InvalidExpiration {},
-            _ => panic!("Unsupported cw20 error: {:?}", err),
+            _ => panic!("Unsupported cw20 error: {err:?}"),
         }
     }
 }

@@ -190,7 +190,7 @@ pub fn validate_order_and_version(
 const TRANSFER_PORT: &str = "transfer";
 
 fn generate_ibc_denom(channel: String, denom: String) -> String {
-    let path = format!("{}/{}/{}", TRANSFER_PORT, channel, denom);
+    let path = format!("{TRANSFER_PORT}/{channel}/{denom}");
     format!("ibc/{}", digest(path).to_uppercase())
 }
 

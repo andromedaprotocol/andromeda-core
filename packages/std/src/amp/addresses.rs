@@ -98,7 +98,7 @@ impl AndrAddr {
                 match app_contract {
                     None => Err(ContractError::AppContractNotSpecified {}),
                     Some(app_contract) => Ok(AndrAddr(
-                        self.0.replace("./", &format!("{}/", app_contract)),
+                        self.0.replace("./", &format!("{app_contract}/")),
                     )),
                 }
             }

@@ -97,9 +97,9 @@ pub fn create(
         code_id,
         msg,
         funds: vec![],
-        label: format!("ADO:{}", ado_type),
+        label: format!("ADO:{ado_type}"),
     };
-    let sub_msg = SubMsg::reply_always(wasm_msg.clone(), ReplyId::CreateADO.repr());
+    let sub_msg = SubMsg::reply_always(wasm_msg, ReplyId::CreateADO.repr());
 
     // TODO: Is this check necessary?
     // ensure!(
@@ -218,9 +218,9 @@ impl MsgHandler {
             res = res
                 .add_submessage(SubMsg::reply_on_error(CosmosMsg::Bank(sub_msg), 1))
                 .add_attributes(vec![
-                    attr(format!("recipient:{}", sequence), recipient_addr),
+                    attr(format!("recipient:{sequence}"), recipient_addr),
                     attr(
-                        format!("bank_send_amount:{}", sequence),
+                        format!("bank_send_amount:{sequence}"),
                         funds[0].to_string(),
                     ),
                 ]);
@@ -246,7 +246,7 @@ impl MsgHandler {
                 ReplyId::AMPMsg.repr(),
             )?;
             res = res.add_submessage(sub_msg).add_attributes(vec![attr(
-                format!("recipient:{}", sequence),
+                format!("recipient:{sequence}"),
                 recipient_addr,
             )]);
         }
@@ -270,18 +270,18 @@ impl MsgHandler {
                     Ok::<ChannelInfo, ContractError>(channel_info)
                 } else {
                     return Err(ContractError::InvalidPacket {
-                        error: Some(format!("Channel not found for chain {}", chain)),
+                        error: Some(format!("Channel not found for chain {chain}")),
                     });
                 }?;
             if !self.message().funds.is_empty() {
-                return self.handle_ibc_hooks(execute_env, sequence, channel_info);
+                self.handle_ibc_hooks(execute_env, sequence, channel_info)
             } else {
-                return self.handle_ibc_direct(execute_env, sequence, channel_info);
+                self.handle_ibc_direct(execute_env, sequence, channel_info)
             }
         } else {
-            return Err(ContractError::InvalidPacket {
+            Err(ContractError::InvalidPacket {
                 error: Some("Chain not provided".to_string()),
-            });
+            })
         }
     }
 
@@ -305,7 +305,7 @@ impl MsgHandler {
             Ok::<String, ContractError>(direct_channel)
         } else {
             return Err(ContractError::InvalidPacket {
-                error: Some(format!("Channel not found for chain {}", chain)),
+                error: Some(format!("Channel not found for chain {chain}")),
             });
         }?;
 
@@ -325,8 +325,8 @@ impl MsgHandler {
         };
 
         Ok(Response::default()
-            .add_attribute(format!("method:{}", sequence), "execute_send_message")
-            .add_attribute(format!("channel:{}", sequence), channel)
+            .add_attribute(format!("method:{sequence}"), "execute_send_message")
+            .add_attribute(format!("channel:{sequence}"), channel)
             .add_attribute("receiving_kernel_address:{}", channel_info.kernel_address)
             .add_attribute("chain:{}", chain)
             .add_message(msg))
@@ -349,7 +349,7 @@ impl MsgHandler {
             Ok::<String, ContractError>(ics20_channel)
         } else {
             return Err(ContractError::InvalidPacket {
-                error: Some(format!("Channel not found for chain {}", chain)),
+                error: Some(format!("Channel not found for chain {chain}")),
             });
         }?;
         let msg_funds = &funds[0].clone();
@@ -365,12 +365,12 @@ impl MsgHandler {
         )?;
         Ok(Response::default()
             .add_message(msg)
-            .add_attribute(format!("method:{}", sequence), "execute_send_message")
-            .add_attribute(format!("channel:{}", sequence), channel)
+            .add_attribute(format!("method:{sequence}"), "execute_send_message")
+            .add_attribute(format!("channel:{sequence}"), channel)
             .add_attribute(
-                format!("receiving_kernel_address:{}", sequence),
+                format!("receiving_kernel_address:{sequence}"),
                 channel_info.kernel_address,
             )
-            .add_attribute(format!("chain:{}", sequence), chain))
+            .add_attribute(format!("chain:{sequence}"), chain))
     }
 }
