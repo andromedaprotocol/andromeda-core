@@ -232,11 +232,12 @@ pub fn generate_transfer_message(
     })
 }
 
+// Methods adapted from Osmosis Registry contract found here:
+// https://github.com/osmosis-labs/osmosis/blob/main/cosmwasm/packages/registry/src/registry.rs#L14
 #[cw_serde]
 pub struct MultiHopDenom {
     pub local_denom: String,
     pub on: Option<String>,
-    pub via: Option<String>, // This is optional because native tokens have no channel
 }
 
 pub fn hash_denom_trace(unwrapped: &str) -> String {
@@ -249,7 +250,6 @@ pub fn unwrap_denom_path(deps: &Deps, denom: &str) -> Result<Vec<MultiHopDenom>,
         return Ok(vec![MultiHopDenom {
             local_denom: denom.to_string(),
             on: None,
-            via: None,
         }]);
     }
 
@@ -291,7 +291,6 @@ pub fn unwrap_denom_path(deps: &Deps, denom: &str) -> Result<Vec<MultiHopDenom>,
         hops.push(MultiHopDenom {
             local_denom: hash_denom_trace(&full_trace),
             on: Some(channel.to_string()),
-            via: Some(channel.to_string()),
         });
 
         rest = rest
@@ -302,7 +301,6 @@ pub fn unwrap_denom_path(deps: &Deps, denom: &str) -> Result<Vec<MultiHopDenom>,
     hops.push(MultiHopDenom {
         local_denom: base_denom,
         on: None,
-        via: None,
     });
 
     Ok(hops)
