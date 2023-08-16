@@ -1,7 +1,8 @@
 use andromeda_std::ado_contract::ADOContract;
 
 use andromeda_std::os::vfs::{
-    validate_component_name, validate_path_name, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
+    validate_component_name, validate_path_name, validate_username, ExecuteMsg, InstantiateMsg,
+    MigrateMsg, QueryMsg,
 };
 use andromeda_std::{
     ado_base::InstantiateMsg as BaseInstantiateMsg, common::encode_binary, error::ContractError,
@@ -13,7 +14,9 @@ use cosmwasm_std::{
 use cw2::{get_contract_version, set_contract_version};
 use semver::Version;
 
-use crate::state::{add_pathname, resolve_pathname, validate_username, ADDRESS_USERNAME, USERS};
+use crate::state::{
+    add_pathname, get_paths, get_subdir, resolve_pathname, PathInfo, ADDRESS_USERNAME, USERS,
+};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-vfs";
@@ -185,6 +188,8 @@ fn from_semver(err: semver::Error) -> StdError {
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::ResolvePath { path } => encode_binary(&query_resolve_path(deps, path)?),
+        QueryMsg::SubDir { path } => encode_binary(&query_subdir(deps, path)?),
+        QueryMsg::Paths { addr } => encode_binary(&query_paths(deps, addr)?),
         QueryMsg::GetUsername { address } => encode_binary(&query_get_username(deps, address)?),
     }
 }
@@ -192,6 +197,14 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractErr
 fn query_resolve_path(deps: Deps, path: String) -> Result<Addr, ContractError> {
     validate_path_name(path.clone())?;
     resolve_pathname(deps.storage, deps.api, path)
+}
+fn query_subdir(deps: Deps, path: String) -> Result<Vec<PathInfo>, ContractError> {
+    validate_path_name(path.clone())?;
+    get_subdir(deps.storage, deps.api, path)
+}
+
+fn query_paths(deps: Deps, addr: Addr) -> Result<Vec<String>, ContractError> {
+    get_paths(deps.storage, addr)
 }
 
 fn query_get_username(deps: Deps, addr: Addr) -> Result<String, ContractError> {

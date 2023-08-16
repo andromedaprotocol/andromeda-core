@@ -43,7 +43,6 @@ build_category () {
 build_all() {
     for directory in contracts/*/; do
         build_category $(basename $directory)
-
     done
 }
 

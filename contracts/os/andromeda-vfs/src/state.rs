@@ -1,32 +1,42 @@
 use andromeda_std::error::ContractError;
-use cosmwasm_std::{ensure, Addr, Api, StdError, Storage};
+use cosmwasm_std::{Addr, Api, StdError, Storage};
 use cw_storage_plus::{Index, IndexList, IndexedMap, Map, MultiIndex};
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 pub struct PathInfo {
     pub name: String,
     pub address: Addr,
+    pub parent_address: Addr,
 }
 
 pub struct PathIndices<'a> {
     /// PK: parent_address + component_name
     /// Secondary key: address
-    pub index: MultiIndex<'a, String, PathInfo, String>,
+    pub address: MultiIndex<'a, Addr, PathInfo, (Addr, String)>,
+
+    /// PK: parent_address + component_name
+    /// Secondary key: parent_address
+    pub parent: MultiIndex<'a, Addr, PathInfo, (Addr, String)>,
 }
 
 impl<'a> IndexList<PathInfo> for PathIndices<'a> {
     fn get_indexes(
         &'_ self,
     ) -> Box<dyn Iterator<Item = &'_ dyn cw_storage_plus::Index<PathInfo>> + '_> {
-        let v: Vec<&dyn Index<PathInfo>> = vec![&self.index];
+        let v: Vec<&dyn Index<PathInfo>> = vec![&self.address, &self.parent];
         Box::new(v.into_iter())
     }
 }
 
-pub fn paths<'a>() -> IndexedMap<'a, &'a str, PathInfo, PathIndices<'a>> {
+pub fn paths<'a>() -> IndexedMap<'a, &'a (Addr, String), PathInfo, PathIndices<'a>> {
     let indexes = PathIndices {
-        index: MultiIndex::new(|_pk: &[u8], r| r.address.to_string(), "path", "path_index"),
+        address: MultiIndex::new(|_pk: &[u8], r| r.address.clone(), "path", "path_index"),
+        parent: MultiIndex::new(
+            |_pk: &[u8], r| r.parent_address.clone(),
+            "path",
+            "parent_index",
+        ),
     };
     IndexedMap::new("path", indexes)
 }
@@ -59,13 +69,54 @@ pub fn resolve_pathname(
         if idx == 0 {
             continue;
         }
-
-        address = paths()
-            .load(storage, (address.to_string() + part.as_str()).as_str())?
-            .address;
+        address = paths().load(storage, &(address, part.clone()))?.address;
     }
 
     Ok(address)
+}
+
+pub fn get_subdir(
+    storage: &dyn Storage,
+    api: &dyn Api,
+    pathname: String,
+) -> Result<Vec<PathInfo>, ContractError> {
+    let address = resolve_pathname(storage, api, pathname)?;
+
+    let subdirs = paths()
+        .idx
+        .parent
+        .prefix(address)
+        .range(storage, None, None, cosmwasm_std::Order::Ascending)
+        .map(|r| r.unwrap().1)
+        .collect();
+
+    Ok(subdirs)
+}
+
+pub fn get_paths(storage: &dyn Storage, addr: Addr) -> Result<Vec<String>, ContractError> {
+    let mut resolved_paths: Vec<String> = vec![];
+    let parent_dirs: Vec<PathInfo> = paths()
+        .idx
+        .address
+        .prefix(addr.clone())
+        .range(storage, None, None, cosmwasm_std::Order::Ascending)
+        .map(|r| r.unwrap().1)
+        .collect();
+    if parent_dirs.is_empty() {
+        // Its a user address
+        let username_or_address = ADDRESS_USERNAME
+            .load(storage, addr.to_string().as_str())
+            .unwrap_or(addr.to_string());
+        resolved_paths.push(username_or_address)
+    }
+    for parent_dir in parent_dirs {
+        let parent_paths = get_paths(storage, parent_dir.clone().parent_address)?;
+        for parent_path in parent_paths {
+            resolved_paths.push(parent_path + "/" + parent_dir.name.as_str());
+        }
+    }
+
+    Ok(resolved_paths)
 }
 
 pub fn add_pathname(
@@ -76,33 +127,18 @@ pub fn add_pathname(
 ) -> Result<(), StdError> {
     paths().save(
         storage,
-        &(parent_addr.to_string() + name.as_str()),
-        &PathInfo { name, address },
+        &(parent_addr.clone(), name.clone()),
+        &PathInfo {
+            name,
+            address,
+            parent_address: parent_addr,
+        },
     )
-}
-
-pub fn validate_username(username: String) -> Result<bool, ContractError> {
-    ensure!(
-        !username.is_empty(),
-        ContractError::InvalidUsername {
-            error: Some("Username cannot be empty.".to_string())
-        }
-    );
-    ensure!(
-        username.chars().all(|ch| ch.is_alphanumeric()),
-        ContractError::InvalidUsername {
-            error: Some(
-                "Username contains invalid characters. All characters must be alphanumeric."
-                    .to_string()
-            )
-        }
-    );
-
-    Ok(true)
 }
 
 #[cfg(test)]
 mod test {
+    use andromeda_std::os::vfs::validate_username;
     use cosmwasm_std::testing::mock_dependencies;
 
     use super::*;
@@ -159,10 +195,11 @@ mod test {
         paths()
             .save(
                 deps.as_mut().storage,
-                (username_address.to_string() + first_directory).as_str(),
+                &(username_address.clone(), first_directory.to_string()),
                 &PathInfo {
                     name: first_directory.to_string(),
                     address: first_directory_address.clone(),
+                    parent_address: username_address,
                 },
             )
             .unwrap();
@@ -178,10 +215,14 @@ mod test {
         paths()
             .save(
                 deps.as_mut().storage,
-                (first_directory_address.to_string() + second_directory).as_str(),
+                &(
+                    first_directory_address.clone(),
+                    second_directory.to_string(),
+                ),
                 &PathInfo {
                     name: second_directory.to_string(),
                     address: second_directory_address.clone(),
+                    parent_address: first_directory_address,
                 },
             )
             .unwrap();
@@ -197,10 +238,11 @@ mod test {
         paths()
             .save(
                 deps.as_mut().storage,
-                (second_directory_address.to_string() + file).as_str(),
+                &(second_directory_address.clone(), file.to_string()),
                 &PathInfo {
                     name: file.to_string(),
                     address: file_address.clone(),
+                    parent_address: second_directory_address,
                 },
             )
             .unwrap();
