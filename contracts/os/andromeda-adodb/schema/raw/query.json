@@ -49,6 +49,19 @@
     {
       "type": "object",
       "required": [
+        "all_ado_types"
+      ],
+      "properties": {
+        "all_ado_types": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
         "ado_metadata"
       ],
       "properties": {

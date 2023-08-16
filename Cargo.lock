@@ -31,7 +31,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-adodb"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "andromeda-std",
  "cosmwasm-schema",
@@ -507,7 +507,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-vfs"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "andromeda-std",
  "cosmwasm-schema",
