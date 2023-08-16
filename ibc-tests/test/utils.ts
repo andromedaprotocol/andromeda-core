@@ -5,6 +5,7 @@ import {
   AckWithMetadata,
   CosmWasmSigner,
   IbcClient,
+  Link,
   RelayInfo,
   testutils,
 } from "@confio/relayer";
@@ -313,4 +314,29 @@ export async function uploadAllADOs(client: CosmWasmSigner, adodb: Contract) {
   for (const name of names) {
     await uploadADO(name, client, adodb);
   }
+}
+
+async function sleep(timeout: number) {
+  return new Promise((resolve) => setTimeout(resolve, timeout));
+}
+export async function relayAll(link: Link): Promise<RelayInfo> {
+  let counter = 0;
+  while (counter < 10) {
+    try {
+      const info = await link.relayAll();
+
+      return info!;
+    } catch (error: unknown) {
+      const { message } = error as Error;
+      if (message.includes("incorrect account sequence")) {
+        console.debug("Retrying relayAll");
+        counter++;
+        await sleep(1000);
+      } else {
+        throw error;
+      }
+    }
+  }
+
+  throw new Error("Unreachable");
 }

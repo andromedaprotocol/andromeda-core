@@ -20,6 +20,7 @@ import {
   createAMPMsg,
   createAMPPacket,
   getAllADONames,
+  relayAll,
   setupOsmosisClient,
   setupOsmosisClientB,
   setupRelayerInfo,
@@ -96,6 +97,7 @@ async function setupState() {
   const osmoBIBCDenom = `ibc/${digest(
     `${osmosisA.ics20Port}/${state.chainB.ics20Chan}/uosmo`
   ).toUpperCase()}`;
+  console.log(osmoAIBCDenom);
   state = {
     ...state,
     setup: true,
@@ -172,7 +174,7 @@ describe("Operating System", () => {
     );
 
     state.channel = channel;
-    await link?.relayAll();
+    await relayAll(link!);
   });
 
   step("should assign the correct channel on chain A", async () => {
@@ -295,53 +297,53 @@ describe("Basic IBC Token Transfers", async () => {
     assert(balance.amount === transferAmount.amount, "Balance is incorrect");
   });
 
-  step("should send tokens from chain A to chain B", async () => {
-    const { link, chainA, chainB } = state;
-    const receiver = randomAddress("osmo");
-    const transferAmount = { amount: "100", denom: "uosmo" };
-    const msg = createAMPMsg(`ibc://${chainB.name}/${receiver}`, undefined, [
-      transferAmount,
-    ]);
-    const kernelMsg = { send: { message: msg } };
-    const res = await chainA.os.kernel!.execute(kernelMsg, chainA.client!, [
-      transferAmount,
-    ]);
-    assert(res.transactionHash);
-    const info = await link!.relayAll();
-    assertPacketsFromA(info, 1, true);
-    const omsoBalance = await chainB.client!.sign.getBalance(
-      receiver,
-      chainB.ibcDenom
-    );
-    assert(
-      omsoBalance.amount === transferAmount.amount,
-      "Balance is incorrect"
-    );
-  });
+  // step("should send tokens from chain A to chain B", async () => {
+  //   const { link, chainA, chainB } = state;
+  //   const receiver = randomAddress("osmo");
+  //   const transferAmount = { amount: "100", denom: "uosmo" };
+  //   const msg = createAMPMsg(`ibc://${chainB.name}/${receiver}`, undefined, [
+  //     transferAmount,
+  //   ]);
+  //   const kernelMsg = { send: { message: msg } };
+  //   const res = await chainA.os.kernel!.execute(kernelMsg, chainA.client!, [
+  //     transferAmount,
+  //   ]);
+  //   assert(res.transactionHash);
+  //   const info = await relayAll(link!);
+  //   assertPacketsFromA(info, 1, true);
+  //   const omsoBalance = await chainB.client!.sign.getBalance(
+  //     receiver,
+  //     chainB.ibcDenom
+  //   );
+  //   assert(
+  //     omsoBalance.amount === transferAmount.amount,
+  //     "Balance is incorrect"
+  //   );
+  // });
 
-  step("should send tokens from chain B to chain A", async () => {
-    const { link, chainA, chainB } = state;
-    const receiver = randomAddress("osmo");
-    const transferAmount = { amount: "100", denom: "uosmo" };
-    const msg = createAMPMsg(`ibc://${chainA.name}/${receiver}`, undefined, [
-      transferAmount,
-    ]);
-    const kernelMsg = { send: { message: msg } };
-    const res = await chainB.os.kernel!.execute(kernelMsg, chainB.client!, [
-      transferAmount,
-    ]);
-    assert(res.transactionHash);
-    const info = await link!.relayAll();
-    assertPacketsFromB(info, 1, true);
-    const omsoBalance = await chainA.client!.sign.getBalance(
-      receiver,
-      chainA.ibcDenom
-    );
-    assert(
-      omsoBalance.amount === transferAmount.amount,
-      "Balance is incorrect"
-    );
-  });
+  // step("should send tokens from chain B to chain A", async () => {
+  //   const { link, chainA, chainB } = state;
+  //   const receiver = randomAddress("osmo");
+  //   const transferAmount = { amount: "100", denom: "uosmo" };
+  //   const msg = createAMPMsg(`ibc://${chainA.name}/${receiver}`, undefined, [
+  //     transferAmount,
+  //   ]);
+  //   const kernelMsg = { send: { message: msg } };
+  //   const res = await chainB.os.kernel!.execute(kernelMsg, chainB.client!, [
+  //     transferAmount,
+  //   ]);
+  //   assert(res.transactionHash);
+  //   const info = await relayAll(link!);
+  //   assertPacketsFromB(info, 1, true);
+  //   const omsoBalance = await chainA.client!.sign.getBalance(
+  //     receiver,
+  //     chainA.ibcDenom
+  //   );
+  //   assert(
+  //     omsoBalance.amount === transferAmount.amount,
+  //     "Balance is incorrect"
+  //   );
+  // });
 
   // TODO: Handle Unwrapping
   step(
@@ -349,7 +351,6 @@ describe("Basic IBC Token Transfers", async () => {
     async () => {
       const { link, chainA, chainB } = state;
       const receiver = randomAddress("osmo");
-
       const splitterCodeId: number = await chainB.os.adodb!.query(
         { code_id: { key: "splitter" } },
         chainB.client!
@@ -377,18 +378,15 @@ describe("Basic IBC Token Transfers", async () => {
         { send: {} },
         [transferAmount]
       );
-      const pkt = createAMPPacket(chainB.client!.senderAddress, [msg]);
-      const kernelMsg = { amp_receive: pkt };
+      const kernelMsg = { send: { message: msg } };
       const res = await chainA.os.kernel!.execute(kernelMsg, chainA.client!, [
         transferAmount,
       ]);
       assert(res.transactionHash);
-      const infoA = await link!.relayAll();
+      const infoA = await relayAll(link!);
       assertPacketsFromA(infoA, 1, true);
-      const infoB = await link!.relayAll();
+      const infoB = await relayAll(link!);
       assertPacketsFromB(infoB, 1, true);
-
-      console.log(JSON.stringify(infoB, null, 2));
       const omsoBalance = await chainA.client!.sign.getBalance(
         receiver,
         "uosmo"

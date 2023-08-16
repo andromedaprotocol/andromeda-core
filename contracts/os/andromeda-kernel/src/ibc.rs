@@ -206,10 +206,8 @@ pub fn generate_transfer_message(
     // Convert funds denom
     let new_denom = if funds.denom.clone().starts_with("ibc/") {
         let hops = unwrap_denom_path(deps, &funds.denom)?;
-        if hops.len() == 1 {
+        if !hops[0].on.eq(&Some(channel.clone())) {
             generate_ibc_denom(channel.clone(), hops[0].local_denom.clone())
-        } else if hops[1].local_denom.starts_with("ibc/") || hops[1].on != Some(channel.clone()) {
-            generate_ibc_denom(channel.clone(), hops[1].local_denom.clone())
         } else {
             hops[1].local_denom.clone()
         }
