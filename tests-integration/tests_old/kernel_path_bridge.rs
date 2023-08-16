@@ -55,18 +55,8 @@ fn kernel() {
     let counter_code_id = router.store_code(mock_andromeda_counter());
     let app_code_id = router.store_code(mock_andromeda_app());
 
-    andr.store_code_id(&mut router, "message-bridge", message_bridge_code_id);
     andr.store_code_id(&mut router, "counter", counter_code_id);
     andr.store_code_id(&mut router, "app", app_code_id);
-
-    // Generate Message Bridge Contract
-    let message_bridge_init_msg =
-        mock_message_bridge_instantiate_msg(Some(andr.kernel_address.to_string()));
-    let messsage_bridge_app_component = AppComponent::new(
-        "message-bridge",
-        "message-bridge",
-        to_binary(&message_bridge_init_msg).unwrap(),
-    );
 
     // Generate Counter Contract
 
@@ -74,8 +64,7 @@ fn kernel() {
     let counter_app_component =
         AppComponent::new("counter", "counter", to_binary(&counter_init_msg).unwrap());
 
-    let app_components: Vec<AppComponent> =
-        vec![messsage_bridge_app_component, counter_app_component];
+    let app_components: Vec<AppComponent> = vec![counter_app_component];
 
     let app_init_msg = mock_app_instantiate_msg(
         "app1",

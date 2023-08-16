@@ -336,27 +336,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "andromeda-message-bridge"
-version = "0.2.9"
-dependencies = [
- "andromeda-std",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-multi-test",
- "cw-storage-plus 1.1.0",
- "cw-utils 1.0.1",
- "cw2 1.1.0",
- "osmosis-std",
- "osmosis-std-derive 0.15.3",
- "prost 0.11.9",
- "schemars",
- "semver",
- "serde",
- "serde-json-wasm 0.5.1",
- "sha256",
-]
-
-[[package]]
 name = "andromeda-modules"
 version = "0.1.0"
 dependencies = [
