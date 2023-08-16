@@ -50,7 +50,7 @@ services:
     networks:
       - localosmosis
   hermes:
-    image: informalsystems/hermes:1.1.0
+    image: informalsystems/hermes:1.5.0
     user: root:root
     volumes:
       - ./scripts/setup_hermes.sh:/home/hermes/setup.sh

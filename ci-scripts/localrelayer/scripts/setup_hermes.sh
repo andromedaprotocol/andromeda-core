@@ -42,15 +42,24 @@ add_keys(){
 create_channel(){
     echo "🥱 Waiting for $CHAIN_A_ID to start"
     COUNTER=0
-    until $(curl --output /dev/null --silent --head --fail http://$CHAIN_A_ID:26657/status); do
-        printf '.'
+    until $(curl --output /dev/null --silent --fail --head http://$CHAIN_A_ID:26657/status); do
+        echo 'Waiting for rpc'
+        sleep 2
+    done
+    # GRPC Return an error with code 1 for HTTP/0.9 error. Its different than port not open hence we can check for error code 1 and wait for it to be enabled
+    until [ $(curl --output /dev/null --silent --fail http://$CHAIN_A_ID:9090 || echo $?) -eq 1 ]; do
+        echo 'Waiting for grpc'
         sleep 2
     done
 
     echo "🥱 Waiting for $CHAIN_B_ID to start"
     COUNTER=0
-    until $(curl --output /dev/null --silent --head --fail http://$CHAIN_B_ID:26657/status); do
-        printf '.'
+    until $(curl --output /dev/null --silent --fail --head http://$CHAIN_B_ID:26657/status); do
+        echo 'Waiting for rpc'
+        sleep 5
+    done
+    until [ $(curl --output /dev/null --silent --fail http://$CHAIN_B_ID:9090 || echo $?) -eq 1 ]; do
+        echo 'Waiting for grpc'
         sleep 5
     done
 

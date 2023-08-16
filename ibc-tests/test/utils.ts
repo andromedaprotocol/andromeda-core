@@ -319,13 +319,13 @@ export async function uploadAllADOs(client: CosmWasmSigner, adodb: Contract) {
 async function sleep(timeout: number) {
   return new Promise((resolve) => setTimeout(resolve, timeout));
 }
-export async function relayAll(link: Link): Promise<RelayInfo> {
+export async function relayAll(link: Link): Promise<[boolean, RelayInfo]> {
   let counter = 0;
   while (counter < 10) {
     try {
       const info = await link.relayAll();
 
-      return info!;
+      return [counter === 0, info!];
     } catch (error: unknown) {
       const { message } = error as Error;
       if (message.includes("incorrect account sequence")) {

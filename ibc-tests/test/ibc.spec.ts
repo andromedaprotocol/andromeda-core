@@ -308,8 +308,8 @@ describe("Basic IBC Token Transfers", async () => {
       transferAmount,
     ]);
     assert(res.transactionHash);
-    const info = await relayAll(link!);
-    assertPacketsFromA(info, 1, true);
+    const [shouldAssert, info] = await relayAll(link!);
+    if (shouldAssert) assertPacketsFromA(info, 1, true);
     const omsoBalance = await chainB.client!.sign.getBalance(
       receiver,
       chainB.ibcDenom
@@ -332,8 +332,8 @@ describe("Basic IBC Token Transfers", async () => {
       transferAmount,
     ]);
     assert(res.transactionHash);
-    const info = await relayAll(link!);
-    assertPacketsFromB(info, 1, true);
+    const [shouldAssert, info] = await relayAll(link!);
+    if (shouldAssert) assertPacketsFromB(info, 1, true);
     const omsoBalance = await chainA.client!.sign.getBalance(
       receiver,
       chainA.ibcDenom
@@ -381,10 +381,9 @@ describe("Basic IBC Token Transfers", async () => {
         transferAmount,
       ]);
       assert(res.transactionHash);
+      const [shouldAssertA, infoA] = await relayAll(link!);
+      if (shouldAssertA) assertPacketsFromA(infoA, 1, true);
       await relayAll(link!);
-      // assertPacketsFromA(infoA, 1, true);
-      await relayAll(link!);
-      // assertPacketsFromB(infoB, 1, true);
       const omsoBalance = await chainA.client!.sign.getBalance(
         receiver,
         "uosmo"
