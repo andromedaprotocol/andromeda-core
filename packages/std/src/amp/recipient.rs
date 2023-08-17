@@ -14,6 +14,7 @@ use cw20::{Cw20Coin, Cw20ExecuteMsg};
 pub struct Recipient {
     pub address: AndrAddr,
     pub msg: Option<Binary>,
+    pub ibc_recovery_address: Option<AndrAddr>,
 }
 
 impl Recipient {
@@ -21,6 +22,7 @@ impl Recipient {
         Recipient {
             address: AndrAddr::from_string(addr),
             msg,
+            ibc_recovery_address: None,
         }
     }
 
@@ -29,6 +31,7 @@ impl Recipient {
         Recipient {
             address: AndrAddr::from_string(addr.into()),
             msg: None,
+            ibc_recovery_address: None,
         }
     }
 
@@ -100,6 +103,14 @@ impl Recipient {
             self.msg.clone().unwrap_or_default(),
             funds,
         )
+        .with_ibc_recovery(self.ibc_recovery_address.clone())
+    }
+
+    /// Adds an IBC recovery address to the recipient
+    ///
+    /// This address can be used to recover any funds on failed IBC messages
+    pub fn with_ibc_recovery(&mut self, addr: impl Into<String>) {
+        self.ibc_recovery_address = Some(AndrAddr::from_string(addr.into()));
     }
 }
 

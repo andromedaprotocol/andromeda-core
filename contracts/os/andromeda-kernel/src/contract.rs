@@ -13,9 +13,9 @@ use cw2::{get_contract_version, set_contract_version};
 use semver::Version;
 
 use crate::ibc::{IBCLifecycleComplete, SudoMsg};
-use crate::reply::{on_reply_create_ado, ReplyId};
+use crate::reply::{on_reply_create_ado, on_reply_ibc_hooks_packet_send, ReplyId};
 use crate::state::{CHAIN_NAME_KEY, ENV_VARIABLES};
-use crate::{execute, query};
+use crate::{execute, query, sudo};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-kernel";
@@ -61,6 +61,7 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
 
     match ReplyId::from_repr(msg.id) {
         Some(ReplyId::CreateADO) => on_reply_create_ado(deps, msg),
+        Some(ReplyId::IBCHooksPacketSend) => on_reply_ibc_hooks_packet_send(deps, msg),
         _ => Ok(Response::default()),
     }
 }
@@ -82,7 +83,12 @@ pub fn execute(
     match msg {
         ExecuteMsg::AMPReceive(packet) => {
             execute_env.amp_ctx = Some(packet.clone());
-            execute::amp_receive(execute_env, packet)
+            execute::amp_receive(
+                &mut execute_env.deps,
+                execute_env.info,
+                execute_env.env,
+                packet,
+            )
         }
         ExecuteMsg::Send { message } => execute::send(execute_env, message),
         ExecuteMsg::UpsertKeyAddress { key, value } => {
@@ -109,15 +115,17 @@ pub fn execute(
 }
 
 #[cfg_attr(not(feature = "imported"), entry_point)]
-pub fn sudo(_deps: DepsMut, _env: Env, msg: SudoMsg) -> Result<Response, ContractError> {
+pub fn sudo(deps: DepsMut, _env: Env, msg: SudoMsg) -> Result<Response, ContractError> {
     match msg {
-        SudoMsg::IBCLifecycleComplete(IBCLifecycleComplete::IBCAck { .. }) => {
-            Ok(Response::default().set_data(b"{}"))
+        SudoMsg::IBCLifecycleComplete(IBCLifecycleComplete::IBCAck {
+            channel,
+            sequence,
+            ack,
+            success,
+        }) => sudo::ibc_lifecycle::receive_ack(deps, channel, sequence, ack, success),
+        SudoMsg::IBCLifecycleComplete(IBCLifecycleComplete::IBCTimeout { channel, sequence }) => {
+            sudo::ibc_lifecycle::receive_timeout(deps, channel, sequence)
         }
-        SudoMsg::IBCLifecycleComplete(IBCLifecycleComplete::IBCTimeout {
-            channel: _,
-            sequence: _,
-        }) => Ok(Response::default()),
     }
 }
 
@@ -167,5 +175,6 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractErr
             encode_binary(&query::verify_address(deps, address)?)
         }
         QueryMsg::ChannelInfo { chain } => encode_binary(&query::channel_info(deps, chain)?),
+        QueryMsg::Recoveries { addr } => encode_binary(&query::recoveries(deps, addr)?),
     }
 }

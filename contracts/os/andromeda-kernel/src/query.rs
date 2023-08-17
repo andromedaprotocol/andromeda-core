@@ -3,9 +3,9 @@ use andromeda_std::{
     error::ContractError,
     os::{aos_querier::AOSQuerier, kernel::ChannelInfoResponse},
 };
-use cosmwasm_std::{Addr, Deps};
+use cosmwasm_std::{Addr, Coin, Deps};
 
-use crate::state::{CHANNELS, KERNEL_ADDRESSES};
+use crate::state::{CHANNELS, IBC_FUND_RECOVERY, KERNEL_ADDRESSES};
 
 pub fn key_address(deps: Deps, key: String) -> Result<Addr, ContractError> {
     Ok(KERNEL_ADDRESSES.load(deps.storage, &key)?)
@@ -39,4 +39,10 @@ pub fn channel_info(
         None
     };
     Ok(resp)
+}
+
+pub fn recoveries(deps: Deps, addr: Addr) -> Result<Vec<Coin>, ContractError> {
+    Ok(IBC_FUND_RECOVERY
+        .may_load(deps.storage, &addr)?
+        .unwrap_or_default())
 }

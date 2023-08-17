@@ -324,7 +324,7 @@ export async function relayAll(link: Link): Promise<[boolean, RelayInfo]> {
   while (counter < 10) {
     try {
       const info = await link.relayAll();
-
+      console.log(JSON.stringify(info, null, 2));
       return [counter === 0, info!];
     } catch (error: unknown) {
       const { message } = error as Error;

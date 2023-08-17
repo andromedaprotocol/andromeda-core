@@ -2,6 +2,7 @@ use crate::amp::messages::AMPMsg;
 use crate::amp::messages::AMPPkt;
 use crate::amp::AndrAddr;
 use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_std::Addr;
 use cosmwasm_std::Binary;
 
 #[cw_serde]
@@ -54,6 +55,8 @@ pub enum QueryMsg {
     VerifyAddress { address: String },
     #[returns(Option<ChannelInfoResponse>)]
     ChannelInfo { chain: String },
+    #[returns(Vec<::cosmwasm_std::Coin>)]
+    Recoveries { addr: Addr },
 }
 
 #[cw_serde]

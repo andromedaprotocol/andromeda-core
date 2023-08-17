@@ -6,10 +6,7 @@ use andromeda_modules::rates::{ExecuteMsg, InstantiateMsg, QueryMsg, RateInfo};
 use andromeda_modules::rates::{PaymentsResponse, Rate};
 use andromeda_std::ado_base::hooks::OnFundsTransferResponse;
 use andromeda_std::common::Funds;
-use andromeda_std::{
-    amp::{addresses::AndrAddr, recipient::Recipient},
-    common::encode_binary,
-};
+use andromeda_std::{amp::recipient::Recipient, common::encode_binary};
 
 use cosmwasm_std::{attr, Decimal, Event};
 use cosmwasm_std::{
@@ -115,19 +112,13 @@ fn test_query_deducted_funds_native() {
             }),
             is_additive: true,
             description: Some("desc2".to_string()),
-            recipients: vec![Recipient {
-                address: AndrAddr::from_string(MOCK_RECIPIENT1),
-                msg: None,
-            }],
+            recipients: vec![Recipient::from_string(MOCK_RECIPIENT1)],
         },
         RateInfo {
             rate: Rate::from(Decimal::percent(10)),
             is_additive: false,
             description: Some("desc1".to_string()),
-            recipients: vec![Recipient {
-                address: AndrAddr::from_string(MOCK_RECIPIENT2),
-                msg: None,
-            }],
+            recipients: vec![Recipient::from_string(MOCK_RECIPIENT2)],
         },
     ];
     let msg = InstantiateMsg {

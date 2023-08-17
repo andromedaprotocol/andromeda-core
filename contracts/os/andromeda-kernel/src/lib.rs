@@ -8,6 +8,7 @@ mod proto;
 mod query;
 pub mod reply;
 mod state;
+mod sudo;
 
 #[cfg(test)]
 mod testing;
