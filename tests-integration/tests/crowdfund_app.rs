@@ -23,10 +23,9 @@ use std::str::FromStr;
 
 use andromeda_testing::mock::MockAndromeda;
 use andromeda_vault::mock::{
-    mock_andromeda_vault, mock_vault_deposit_msg, mock_vault_get_balance,
-    mock_vault_instantiate_msg,
+    mock_andromeda_vault, mock_vault_deposit_msg, mock_vault_instantiate_msg,
 };
-use cosmwasm_std::{coin, to_binary, Addr, BlockInfo, Coin, Decimal, Uint128};
+use cosmwasm_std::{coin, to_binary, Addr, BlockInfo, Decimal, Uint128};
 use cw721::{Expiration, OwnerOfResponse};
 use cw_multi_test::{App, Executor};
 
@@ -166,17 +165,19 @@ fn test_crowdfund_app() {
 
     // Create splitter recipient structures
     let vault_one_recipient =
-        Recipient::from_string(format!("/am/app/{}", vault_one_app_component.name.clone()))
-            .with_msg(mock_vault_deposit_msg(
+        Recipient::from_string(format!("/am/app/{}", vault_one_app_component.name)).with_msg(
+            mock_vault_deposit_msg(
                 Some(AndrAddr::from_string(vault_one_recipient_addr.to_string())),
                 None,
-            ));
+            ),
+        );
     let vault_two_recipient =
-        Recipient::from_string(format!("/am/app/{}", vault_two_app_component.name.clone()))
-            .with_msg(mock_vault_deposit_msg(
+        Recipient::from_string(format!("/am/app/{}", vault_two_app_component.name)).with_msg(
+            mock_vault_deposit_msg(
                 Some(AndrAddr::from_string(vault_two_recipient_addr.to_string())),
                 None,
-            ));
+            ),
+        );
 
     let splitter_recipients = vec![
         AddressPercent {
@@ -229,7 +230,7 @@ fn test_crowdfund_app() {
 
     assert_eq!(components, app_components);
 
-    let vault_one_addr: String = router
+    let _vault_one_addr: String = router
         .wrap()
         .query_wasm_smart(
             app_addr.clone(),
@@ -237,7 +238,7 @@ fn test_crowdfund_app() {
         )
         .unwrap();
 
-    let vault_two_addr: String = router
+    let _vault_two_addr: String = router
         .wrap()
         .query_wasm_smart(
             app_addr.clone(),
@@ -276,9 +277,8 @@ fn test_crowdfund_app() {
     // Start Sale
     let token_price = coin(100, "uandr");
 
-    let sale_recipient =
-        Recipient::from_string(format!("/am/app/{}", splitter_app_component.name.clone()))
-            .with_msg(mock_splitter_send_msg());
+    let sale_recipient = Recipient::from_string(format!("/am/app/{}", splitter_app_component.name))
+        .with_msg(mock_splitter_send_msg());
     let start_msg = mock_start_crowdfund_msg(
         Expiration::AtHeight(router.block_info().height + 5),
         token_price.clone(),
