@@ -177,11 +177,29 @@ impl AMPMsg {
 
     /// Adds an IBC recovery address to the message
     pub fn with_ibc_recovery(&self, recovery_addr: Option<AndrAddr>) -> AMPMsg {
-        let mut msg = self.clone();
-        let mut ibc_config = msg.config.ibc_config.unwrap_or_default();
-        ibc_config.recovery_addr = recovery_addr;
-        msg.config.ibc_config = Some(ibc_config);
-        msg
+        if let Some(ibc_config) = self.config.ibc_config.clone() {
+            let mut ibc_config = ibc_config;
+            ibc_config.recovery_addr = recovery_addr;
+            let mut msg = self.clone();
+            msg.config.ibc_config = Some(ibc_config);
+            msg
+        } else {
+            if let Some(recovery_addr) = recovery_addr {
+                let ibc_config = Some(IBCConfig {
+                    recovery_addr: Some(recovery_addr),
+                });
+                let mut msg = self.clone();
+                msg.config.ibc_config = ibc_config;
+                msg
+            } else {
+                self.clone()
+            }
+        }
+        // let mut msg = self.clone();
+        // let mut ibc_config = msg.config.ibc_config.unwrap_or_default();
+        // ibc_config.recovery_addr = recovery_addr;
+        // msg.config.ibc_config = Some(ibc_config);
+        // msg
     }
 }
 

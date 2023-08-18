@@ -241,7 +241,10 @@ impl MsgHandler {
             };
 
             res = res
-                .add_submessage(SubMsg::reply_on_error(CosmosMsg::Bank(sub_msg), 1))
+                .add_submessage(SubMsg::reply_on_error(
+                    CosmosMsg::Bank(sub_msg),
+                    ReplyId::AMPMsg.repr(),
+                ))
                 .add_attributes(vec![
                     attr(format!("recipient:{sequence}"), recipient_addr),
                     attr(format!("bank_send_amount:{sequence}"), funds[0].to_string()),

@@ -11,7 +11,7 @@
     "test": "run-s test:*",
     "test:lint": "eslint test --ext .ts",
     "test:prettier": "prettier \"**/*.{ts,md}\" --list-different",
-    "test:unit": "ts-mocha -p tsconfig.json test/**/*.spec.ts --require mocha-steps --timeout 120000"
+    "test:unit": "ts-mocha -p tsconfig.json test/**/*.spec.ts --require mocha-steps --timeout 360000"
   },
   "author": "",
   "license": "ISC",

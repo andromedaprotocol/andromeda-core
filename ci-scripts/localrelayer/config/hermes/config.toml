@@ -14,8 +14,8 @@ enabled = true
 
 [mode.packets]
 enabled = true
-clear_interval = 120
-clear_on_start = false
+clear_interval = 0
+clear_on_start = true
 tx_confirmation = true
 
 [rest]
@@ -47,7 +47,7 @@ max_tx_size = 2097152
 clock_drift = '5s'
 max_block_time = '30s'
 memo_prefix = ''
-sequential_batch_tx = true
+sequential_batch_tx = false
 
 [chains.trust_threshold]
 numerator = '1'
@@ -83,7 +83,7 @@ max_tx_size = 2097152
 clock_drift = '5s'
 max_block_time = '30s'
 memo_prefix = ''
-sequential_batch_tx = true
+sequential_batch_tx = false
 
 [chains.trust_threshold]
 numerator = '1'

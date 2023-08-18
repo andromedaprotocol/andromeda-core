@@ -81,15 +81,12 @@ pub fn execute(
     };
 
     match msg {
-        ExecuteMsg::AMPReceive(packet) => {
-            execute_env.amp_ctx = Some(packet.clone());
-            execute::amp_receive(
-                &mut execute_env.deps,
-                execute_env.info,
-                execute_env.env,
-                packet,
-            )
-        }
+        ExecuteMsg::AMPReceive(packet) => execute::amp_receive(
+            &mut execute_env.deps,
+            execute_env.info,
+            execute_env.env,
+            packet,
+        ),
         ExecuteMsg::Send { message } => execute::send(execute_env, message),
         ExecuteMsg::UpsertKeyAddress { key, value } => {
             execute::upsert_key_address(execute_env, key, value)
