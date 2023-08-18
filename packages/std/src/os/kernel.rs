@@ -33,6 +33,8 @@ pub enum ExecuteMsg {
         chain: String,
         kernel_address: String,
     },
+    /// Recovers funds from failed IBC messages
+    Recover {},
 }
 
 #[cw_serde]

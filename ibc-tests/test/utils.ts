@@ -209,6 +209,10 @@ export function parseBinary(bin: string): Record<string, unknown> {
   return JSON.parse(fromUtf8(fromBase64(bin)));
 }
 
+export interface AMPIBCConfig {
+  recovery_addr?: string;
+}
+
 export interface AMPMsg {
   recipient: string;
   message: string;
@@ -218,13 +222,15 @@ export interface AMPMsg {
     exit_at_error: boolean;
     gas_limit?: number;
     direct: boolean;
+    ibc_config?: AMPIBCConfig;
   };
 }
 
 export function createAMPMsg(
   recipient: string,
   msg: Record<string, unknown> | "" = "",
-  funds: { amount: string; denom: string }[] = []
+  funds: { amount: string; denom: string }[] = [],
+  ibcConfig?: AMPIBCConfig
 ): AMPMsg {
   return {
     recipient,
@@ -234,6 +240,7 @@ export function createAMPMsg(
       reply_on: "error",
       exit_at_error: false,
       direct: true,
+      ibc_config: ibcConfig,
     },
   };
 }

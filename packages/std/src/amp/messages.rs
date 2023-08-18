@@ -193,11 +193,6 @@ impl AMPMsg {
         } else {
             self.clone()
         }
-        // let mut msg = self.clone();
-        // let mut ibc_config = msg.config.ibc_config.unwrap_or_default();
-        // ibc_config.recovery_addr = recovery_addr;
-        // msg.config.ibc_config = Some(ibc_config);
-        // msg
     }
 }
 

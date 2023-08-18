@@ -10,12 +10,12 @@ use andromeda_std::os::kernel::IbcExecuteMsg;
 
 use cosmwasm_std::{
     attr, ensure, to_binary, Addr, BankMsg, Binary, CosmosMsg, DepsMut, Env, IbcMsg, MessageInfo,
-    Response, SubMsg, WasmMsg,
+    Response, StdError, SubMsg, WasmMsg,
 };
 
 use crate::ibc::{generate_transfer_message, PACKET_LIFETIME};
 use crate::state::{
-    ChannelInfo, IBCHooksPacketSendState, ADO_OWNER, CHANNELS, KERNEL_ADDRESSES,
+    ChannelInfo, IBCHooksPacketSendState, ADO_OWNER, CHANNELS, IBC_FUND_RECOVERY, KERNEL_ADDRESSES,
     OUTGOING_IBC_HOOKS_PACKETS,
 };
 use crate::{query, reply::ReplyId};
@@ -169,6 +169,27 @@ pub fn assign_channels(
         attr("chain", chain),
         attr("kernel_address", channel_info.kernel_address),
     ]))
+}
+
+pub fn recover(execute_env: ExecuteContext) -> Result<Response, ContractError> {
+    let recoveries = IBC_FUND_RECOVERY
+        .load(execute_env.deps.storage, &execute_env.info.sender)
+        .unwrap_or_default();
+    IBC_FUND_RECOVERY.remove(execute_env.deps.storage, &execute_env.info.sender);
+    ensure!(
+        !recoveries.is_empty(),
+        ContractError::Std(StdError::generic_err("No recoveries found"))
+    );
+
+    let bank_msg = BankMsg::Send {
+        to_address: execute_env.info.sender.to_string(),
+        amount: recoveries,
+    };
+    let sub_msg = SubMsg::reply_always(bank_msg, ReplyId::Recovery.repr());
+
+    Ok(Response::default()
+        .add_attribute("action", "recover")
+        .add_submessage(sub_msg))
 }
 
 /// Handles a given AMP message and returns a response
