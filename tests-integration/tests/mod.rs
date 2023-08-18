@@ -6,3 +6,6 @@ mod auction_app;
 
 #[cfg(test)]
 mod kernel;
+
+#[cfg(test)]
+mod crowdfund_app;

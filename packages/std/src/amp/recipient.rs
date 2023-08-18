@@ -1,8 +1,9 @@
 use super::{addresses::AndrAddr, messages::AMPMsg};
 use crate::{common::encode_binary, error::ContractError};
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{BankMsg, Binary, Coin, CosmosMsg, Deps, SubMsg, WasmMsg};
+use cosmwasm_std::{to_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, SubMsg, WasmMsg};
 use cw20::{Cw20Coin, Cw20ExecuteMsg};
+use serde::Serialize;
 
 /// A simple struct used for inter-contract communication. The struct can be used in two ways:
 ///
@@ -112,6 +113,13 @@ impl Recipient {
     pub fn with_ibc_recovery(self, addr: impl Into<String>) -> Self {
         let mut new_recip = self;
         new_recip.ibc_recovery_address = Some(AndrAddr::from_string(addr.into()));
+        new_recip
+    }
+
+    /// Adds a message to the recipient to be sent alongside any funds
+    pub fn with_msg(self, msg: impl Serialize) -> Self {
+        let mut new_recip = self;
+        new_recip.msg = Some(to_binary(&msg).unwrap());
         new_recip
     }
 }

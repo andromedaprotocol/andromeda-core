@@ -1,8 +1,10 @@
 use andromeda_app_contract::mock::mock_andromeda_app;
 use andromeda_finance::splitter::AddressPercent;
-use andromeda_splitter::mock::{mock_andromeda_splitter, mock_splitter_instantiate_msg};
+use andromeda_splitter::mock::{
+    mock_andromeda_splitter, mock_splitter_instantiate_msg, mock_splitter_send_msg,
+};
 use andromeda_std::{
-    amp::{AndrAddr, Recipient},
+    amp::{messages::AMPMsg, AndrAddr, Recipient},
     os::kernel::ExecuteMsg as KernelExecuteMsg,
 };
 use andromeda_testing::{mock::MockAndromeda, mock_contract::MockContract};
@@ -79,19 +81,18 @@ fn kernel() {
 
     assert_eq!(splitter_owner, owner.to_string());
 
-    // TODO: WHY IS THIS ERRORING?
-    // let res = kernel.execute(
-    //     &mut router,
-    //     KernelExecuteMsg::Send {
-    //         message: AMPMsg::new(
-    //             format!("/{}", splitter.addr()),
-    //             to_binary(&mock_splitter_send_msg()).unwrap(),
-    //             Some(vec![coin(100, "uandr")]),
-    //         ),
-    //     },
-    //     owner,
-    //     &[coin(100, "uandr")],
-    // );
+    let res = kernel.execute(
+        &mut router,
+        KernelExecuteMsg::Send {
+            message: AMPMsg::new(
+                format!("/{}", splitter.addr()),
+                to_binary(&mock_splitter_send_msg()).unwrap(),
+                Some(vec![coin(100, "uandr")]),
+            ),
+        },
+        owner,
+        &[coin(100, "uandr")],
+    );
 
-    // assert!(res.data.is_none());
+    assert!(res.data.is_none());
 }
