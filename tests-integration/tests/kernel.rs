@@ -1,10 +1,8 @@
 use andromeda_app_contract::mock::mock_andromeda_app;
 use andromeda_finance::splitter::AddressPercent;
-use andromeda_splitter::mock::{
-    mock_andromeda_splitter, mock_splitter_instantiate_msg, mock_splitter_send_msg,
-};
+use andromeda_splitter::mock::{mock_andromeda_splitter, mock_splitter_instantiate_msg};
 use andromeda_std::{
-    amp::{messages::AMPMsg, AndrAddr, Recipient},
+    amp::{AndrAddr, Recipient},
     os::kernel::ExecuteMsg as KernelExecuteMsg,
 };
 use andromeda_testing::{mock::MockAndromeda, mock_contract::MockContract};
@@ -54,9 +52,7 @@ fn kernel() {
     // andr.store_code_id(&mut router, "splitter", splitter_store_code);
     let splitter_msg = mock_splitter_instantiate_msg(
         vec![AddressPercent::new(
-            Recipient::from_string(owner.to_string())
-                .with_ibc_recovery(owner.clone())
-                .clone(),
+            Recipient::from_string(owner.to_string()).with_ibc_recovery(owner.clone()),
             Decimal::one(),
         )],
         andr.kernel_address.clone(),

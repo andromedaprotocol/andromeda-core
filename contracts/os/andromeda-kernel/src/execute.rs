@@ -250,7 +250,7 @@ impl MsgHandler {
                     attr(format!("bank_send_amount:{sequence}"), funds[0].to_string()),
                 ]);
         } else {
-            let origin = if let Some(amp_ctx) = ctx.clone() {
+            let origin = if let Some(amp_ctx) = ctx {
                 amp_ctx.ctx.get_origin()
             } else {
                 info.sender.to_string()
@@ -387,12 +387,10 @@ impl MsgHandler {
         {
             let addr = recovery_addr.get_raw_address(&deps.as_ref())?;
             Ok::<Addr, ContractError>(addr)
+        } else if let Some(AMPPkt { ctx, .. }) = ctx {
+            Ok::<Addr, ContractError>(deps.api.addr_validate(&ctx.get_origin())?)
         } else {
-            if let Some(AMPPkt { ctx, .. }) = ctx.clone() {
-                Ok::<Addr, ContractError>(deps.api.addr_validate(&ctx.get_origin())?)
-            } else {
-                Ok::<Addr, ContractError>(info.sender.clone())
-            }
+            Ok::<Addr, ContractError>(info.sender)
         }?;
         let outgoing_state = IBCHooksPacketSendState {
             channel_id: channel.clone(),
@@ -403,7 +401,7 @@ impl MsgHandler {
         let mut outgoing_packets = OUTGOING_IBC_HOOKS_PACKETS
             .load(deps.storage)
             .unwrap_or_default();
-        outgoing_packets.push(outgoing_state.clone());
+        outgoing_packets.push(outgoing_state);
         OUTGOING_IBC_HOOKS_PACKETS.save(deps.storage, &outgoing_packets)?;
 
         let msg = generate_transfer_message(

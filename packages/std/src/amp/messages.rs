@@ -183,17 +183,15 @@ impl AMPMsg {
             let mut msg = self.clone();
             msg.config.ibc_config = Some(ibc_config);
             msg
+        } else if let Some(recovery_addr) = recovery_addr {
+            let ibc_config = Some(IBCConfig {
+                recovery_addr: Some(recovery_addr),
+            });
+            let mut msg = self.clone();
+            msg.config.ibc_config = ibc_config;
+            msg
         } else {
-            if let Some(recovery_addr) = recovery_addr {
-                let ibc_config = Some(IBCConfig {
-                    recovery_addr: Some(recovery_addr),
-                });
-                let mut msg = self.clone();
-                msg.config.ibc_config = ibc_config;
-                msg
-            } else {
-                self.clone()
-            }
+            self.clone()
         }
         // let mut msg = self.clone();
         // let mut ibc_config = msg.config.ibc_config.unwrap_or_default();

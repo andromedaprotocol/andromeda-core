@@ -110,7 +110,7 @@ impl Recipient {
     ///
     /// This address can be used to recover any funds on failed IBC messages
     pub fn with_ibc_recovery(self, addr: impl Into<String>) -> Self {
-        let mut new_recip = self.clone();
+        let mut new_recip = self;
         new_recip.ibc_recovery_address = Some(AndrAddr::from_string(addr.into()));
         new_recip
     }

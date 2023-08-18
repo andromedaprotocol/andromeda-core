@@ -63,7 +63,7 @@ pub fn on_reply_ibc_hooks_packet_send(
     ensure!(
         !outgoing_packets.is_empty(),
         ContractError::InvalidPacket {
-            error: Some(format!("ibc hooks: no outgoing packets"))
+            error: Some("ibc hooks: no outgoing packets".to_string())
         }
     );
 
