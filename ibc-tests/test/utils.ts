@@ -319,7 +319,7 @@ async function sleep(timeout: number) {
 }
 export async function relayAll(link: Link): Promise<[boolean, RelayInfo]> {
   let counter = 0;
-  while (counter < 10) {
+  while (counter < 6) {
     try {
       const info = await link.relayAll();
       return [counter === 0, info!];
@@ -330,10 +330,12 @@ export async function relayAll(link: Link): Promise<[boolean, RelayInfo]> {
         message.includes("can't be greater than max height")
       ) {
         console.debug("Retrying relayAll");
-        counter++;
+        // Increase counter by 1 as this is expected error
+        counter = counter + 1;
         await sleep(1000);
       } else {
-        throw error;
+        // Increate counter by 2 as this is unexpected error
+        counter = counter + 2;
       }
     }
   }

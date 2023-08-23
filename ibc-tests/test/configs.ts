@@ -1,6 +1,9 @@
 import { testutils } from "@confio/relayer";
 import { ChainDefinition as RelayerChainDefinition } from "@confio/relayer/build/lib/helpers";
 
+const BASE_URL = "http://localhost";
+export const RELAYER_URL = `${BASE_URL}:5000`;
+
 export interface ChainDefinition extends RelayerChainDefinition {
   restUrl: string;
 }
@@ -14,9 +17,9 @@ const blockTime = 5000;
 const osmosisA: ChainDefinition = {
   ...oldOsmo,
   minFee: "0.25uosmo",
-  tendermintUrlWs: "ws://localhost:20121",
-  tendermintUrlHttp: "http://localhost:20121",
-  restUrl: "http://localhost:20221",
+  tendermintUrlWs: `${BASE_URL}:20121`,
+  tendermintUrlHttp: `${BASE_URL}:20121`,
+  restUrl: `${BASE_URL}:20221`,
   chainId: "localosmosis-1",
   faucet: {
     ...oldOsmo.faucet,
@@ -31,9 +34,9 @@ const osmosisA: ChainDefinition = {
 const osmosisB: ChainDefinition = {
   ...oldOsmo,
   minFee: "0.25uosmo",
-  tendermintUrlWs: "ws://localhost:20122",
-  tendermintUrlHttp: "http://localhost:20122",
-  restUrl: "http://localhost:20222",
+  tendermintUrlWs: `${BASE_URL}:20122`,
+  tendermintUrlHttp: `${BASE_URL}:20122`,
+  restUrl: `${BASE_URL}:20222`,
   chainId: "localosmosis-2",
   faucet: {
     ...oldOsmo.faucet,
@@ -46,9 +49,9 @@ const osmosisB: ChainDefinition = {
 };
 
 const andromedaA: ChainDefinition = {
-  tendermintUrlWs: "ws://localhost:20111",
-  tendermintUrlHttp: "http://localhost:20111",
-  restUrl: "http://localhost:20211",
+  tendermintUrlWs: `${BASE_URL}:20111`,
+  tendermintUrlHttp: `${BASE_URL}:20111`,
+  restUrl: `${BASE_URL}:20211`,
   chainId: "localandromeda-1",
   prefix: "andr",
   denomStaking: "stake",
@@ -70,9 +73,9 @@ const andromedaA: ChainDefinition = {
 };
 
 const terraA: ChainDefinition = {
-  tendermintUrlWs: "ws://localhost:20131",
-  tendermintUrlHttp: "http://localhost:20131",
-  restUrl: "http://localhost:20231",
+  tendermintUrlWs: `${BASE_URL}:20131`,
+  tendermintUrlHttp: `${BASE_URL}:20131`,
+  restUrl: `${BASE_URL}:20231`,
   chainId: "localterra-1",
   prefix: "terra",
   denomStaking: "stake",

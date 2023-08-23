@@ -1,6 +1,7 @@
 import axios from "axios";
 
-const URL = "http://localhost:5000";
+import { RELAYER_URL } from "./configs";
+
 const POLL_INTERVAL = 2000;
 const MAX_POLL_COUNT = 60;
 
@@ -29,7 +30,7 @@ export async function waitForChain(url: string) {
 export async function waitForRelayer() {
   for (let i = 0; i < MAX_POLL_COUNT; i++) {
     try {
-      await axios.get(`${URL}/state`);
+      await axios.get(`${RELAYER_URL}/state`);
       return;
     } catch {
       console.error(
