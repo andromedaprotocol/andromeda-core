@@ -1,0 +1,3 @@
+[submodule "ci-scripts/localrelayer"]
+	path = ci-scripts/localrelayer
+	url = git@github.com:andromedaprotocol/localrelayer.git
