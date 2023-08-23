@@ -1,5 +1,9 @@
 import { testutils } from "@confio/relayer";
-import { ChainDefinition } from "@confio/relayer/build/lib/helpers";
+import { ChainDefinition as RelayerChainDefinition } from "@confio/relayer/build/lib/helpers";
+
+export interface ChainDefinition extends RelayerChainDefinition {
+  restUrl: string;
+}
 
 const { osmosis: oldOsmo } = testutils;
 
@@ -9,10 +13,11 @@ const blockTime = 5000;
 
 const osmosisA: ChainDefinition = {
   ...oldOsmo,
-  minFee: "0.025uosmo",
-  tendermintUrlWs: "ws://localhost:26657",
-  tendermintUrlHttp: "http://localhost:26657",
-  chainId: "localosmosis-a",
+  minFee: "0.25uosmo",
+  tendermintUrlWs: "ws://localhost:20121",
+  tendermintUrlHttp: "http://localhost:20121",
+  restUrl: "http://localhost:20221",
+  chainId: "localosmosis-1",
   faucet: {
     ...oldOsmo.faucet,
     mnemonic: faucetMnemonic,
@@ -25,10 +30,11 @@ const osmosisA: ChainDefinition = {
 
 const osmosisB: ChainDefinition = {
   ...oldOsmo,
-  minFee: "0.025uosmo",
-  tendermintUrlWs: "ws://localhost:36657",
-  tendermintUrlHttp: "http://localhost:36657",
-  chainId: "localosmosis-b",
+  minFee: "0.25uosmo",
+  tendermintUrlWs: "ws://localhost:20122",
+  tendermintUrlHttp: "http://localhost:20122",
+  restUrl: "http://localhost:20222",
+  chainId: "localosmosis-2",
   faucet: {
     ...oldOsmo.faucet,
     mnemonic: faucetMnemonic,
@@ -39,9 +45,57 @@ const osmosisB: ChainDefinition = {
   estimatedIndexerTime: blockTime,
 };
 
+const andromedaA: ChainDefinition = {
+  tendermintUrlWs: "ws://localhost:20111",
+  tendermintUrlHttp: "http://localhost:20111",
+  restUrl: "http://localhost:20211",
+  chainId: "localandromeda-1",
+  prefix: "andr",
+  denomStaking: "stake",
+  denomFee: "uandr",
+  minFee: "0.25uandr",
+  blockTime,
+  faucet: {
+    mnemonic:
+      "enlist hip relief stomach skate base shallow young switch frequent cry park",
+    pubkey0: {
+      type: "tendermint/PubKeySecp256k1",
+      value: "A9cXhWb8ZpqCzkA8dQCPV29KdeRLV3rUYxrkHudLbQtS",
+    },
+    address0: "andr14qemq0vw6y3gc3u3e0aty2e764u4gs5lndxgyk",
+  },
+  ics20Port: "transfer",
+  estimatedBlockTime: blockTime,
+  estimatedIndexerTime: blockTime,
+};
+
+const terraA: ChainDefinition = {
+  tendermintUrlWs: "ws://localhost:20131",
+  tendermintUrlHttp: "http://localhost:20131",
+  restUrl: "http://localhost:20231",
+  chainId: "localterra-1",
+  prefix: "terra",
+  denomStaking: "stake",
+  denomFee: "uluna",
+  minFee: "0.25uluna",
+  blockTime,
+  faucet: {
+    mnemonic:
+      "enlist hip relief stomach skate base shallow young switch frequent cry park",
+    pubkey0: {
+      type: "tendermint/PubKeySecp256k1",
+      value: "A9cXhWb8ZpqCzkA8dQCPV29KdeRLV3rUYxrkHudLbQtS",
+    },
+    address0: "terra14qemq0vw6y3gc3u3e0aty2e764u4gs5lndxgyk",
+  },
+  ics20Port: "transfer",
+  estimatedBlockTime: blockTime,
+  estimatedIndexerTime: blockTime,
+};
+
 export default {
   osmosisA,
   osmosisB,
-  faucetA: "http://localhost:8000",
-  faucetB: "http://localhost:38000",
+  andromedaA,
+  terraA,
 };

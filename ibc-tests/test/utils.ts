@@ -9,18 +9,18 @@ import {
   RelayInfo,
   testutils,
 } from "@confio/relayer";
-import { ChainDefinition } from "@confio/relayer/build/lib/helpers";
 import { IbcClientOptions } from "@confio/relayer/build/lib/ibcclient";
+import { SigningCosmWasmClientOptions } from "@cosmjs/cosmwasm-stargate";
 import { SigningCosmWasmClient } from "@cosmjs/cosmwasm-stargate";
+import { stringToPath } from "@cosmjs/crypto";
 import { fromBase64, fromUtf8 } from "@cosmjs/encoding";
 import { DirectSecp256k1HdWallet } from "@cosmjs/proto-signing";
-import { GasPrice } from "@cosmjs/stargate";
+import { Coin, GasPrice } from "@cosmjs/stargate";
 import { assert } from "@cosmjs/utils";
+import axios from "axios";
 
-import configs from "./configs";
+import { ChainDefinition } from "./configs";
 import Contract from "./contract";
-
-const { osmosisA, osmosisB } = configs;
 
 function encode(data: unknown | string) {
   return Buffer.from(JSON.stringify(data)).toString("base64");
@@ -28,8 +28,8 @@ function encode(data: unknown | string) {
 
 const { generateMnemonic } = testutils;
 
-let mnemonic =
-  "notice oak worry limit wrap speak medal online prefer cluster roof addict wrist behave treat actual wasp year salad speed social layer crew genius";
+const mnemonic =
+  "bounce success option birth apple portion aunt rural episode solution hockey pencil lend session cause hedgehog slender journey system canvas decorate razor catch empty";
 
 export const IbcVersion = "simple-ica-v2";
 
@@ -41,12 +41,14 @@ async function signingCosmWasmClient(
   chain: ChainDefinition,
   mnemonic: string
 ): Promise<CosmWasmSigner> {
+  const hdPath =
+    chain.prefix === "terra" ? [stringToPath("m/44'/330'/0'/0/0")] : undefined;
   const signer = await DirectSecp256k1HdWallet.fromMnemonic(mnemonic, {
     prefix: chain.prefix,
+    hdPaths: hdPath as any,
   });
   const { address: senderAddress } = (await signer.getAccounts())[0];
-  const options = {
-    prefix: chain.prefix,
+  const options: SigningCosmWasmClientOptions = {
     gasPrice: GasPrice.fromString(chain.minFee),
     // This is just for tests - don't add this in production code
     broadcastPollIntervalMs: 100,
@@ -65,8 +67,11 @@ async function ibcClient(
   chain: ChainDefinition,
   clientMnemonic: string
 ): Promise<IbcClient> {
+  const hdPath =
+    chain.prefix === "terra" ? [stringToPath("m/44'/330'/0'/0/0")] : undefined;
   const signer = await DirectSecp256k1HdWallet.fromMnemonic(clientMnemonic, {
     prefix: chain.prefix,
+    hdPaths: hdPath as any,
   });
   const { address: senderAddress } = (await signer.getAccounts())[0];
   const options: IbcClientOptions = {
@@ -76,7 +81,6 @@ async function ibcClient(
     estimatedIndexerTime: 500,
     broadcastTimeoutMs: 15000,
     broadcastPollIntervalMs: 100,
-    prefix: chain.prefix,
   };
   const sign = await IbcClient.connectWithSigner(
     chain.tendermintUrlHttp,
@@ -93,7 +97,6 @@ export async function setupContracts(
   contracts: Record<string, string>
 ): Promise<Record<string, number>> {
   const results: Record<string, number> = {};
-
   for (const name in contracts) {
     const path = contracts[name];
     const wasm = readFileSync(path);
@@ -110,24 +113,12 @@ export async function setupContracts(
 }
 
 // This creates a client for the CosmWasm chain, that can interact with contracts
-export async function setupOsmosisClient(): Promise<CosmWasmSigner> {
-  // create apps and fund an account
-  mnemonic = mnemonic.length > 0 ? mnemonic : generateMnemonic();
-  const cosmwasm = await signingCosmWasmClient(osmosisA, mnemonic);
-  // console.debug("Funding account on chain A...");
-  // await fundAccount(osmosisA, cosmwasm.senderAddress, "4000000");
-  // console.debug("Funded account on chain A");
-  return cosmwasm;
-}
-
-// This creates a client for the CosmWasm chain, that can interact with contracts
-export async function setupOsmosisClientB(): Promise<CosmWasmSigner> {
-  // create apps and fund an account
-  mnemonic = mnemonic.length > 0 ? mnemonic : generateMnemonic();
-  const cosmwasm = await signingCosmWasmClient(osmosisB, mnemonic);
-  // console.debug("Funding account on chain B...");
-  // await fundAccount(osmosisB, cosmwasm.senderAddress, "4000000");
-  // console.debug("Funded account on chain B");
+export async function setupChainClient(
+  chain: ChainDefinition,
+  _mnemonic?: string
+): Promise<CosmWasmSigner> {
+  _mnemonic = _mnemonic || mnemonic || generateMnemonic();
+  const cosmwasm = await signingCosmWasmClient(chain, _mnemonic);
   return cosmwasm;
 }
 
@@ -334,7 +325,10 @@ export async function relayAll(link: Link): Promise<[boolean, RelayInfo]> {
       return [counter === 0, info!];
     } catch (error: unknown) {
       const { message } = error as Error;
-      if (message.includes("incorrect account sequence")) {
+      if (
+        message.includes("incorrect account sequence") ||
+        message.includes("can't be greater than max height")
+      ) {
         console.debug("Retrying relayAll");
         counter++;
         await sleep(1000);
@@ -345,4 +339,12 @@ export async function relayAll(link: Link): Promise<[boolean, RelayInfo]> {
   }
 
   throw new Error("Unreachable");
+}
+
+export async function getBalances(chain: ChainDefinition, address: string) {
+  const balances = await axios
+    .get(`${chain.restUrl}/cosmos/bank/v1beta1/balances/${address}`)
+    .then((res) => res.data.balances);
+  console.log(address, balances);
+  return balances as Coin[];
 }
