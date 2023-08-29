@@ -58,12 +58,12 @@ interface State {
 let state: State = {
   setup: false,
   logger: new CustomLogger(),
-  padding: osmosisB,
+  padding: terraA,
   chainA: {
     os: {},
     ics20Chan: "",
     ibcDenom: "",
-    name: "osmoterra-a",
+    name: "osmo-a",
     definition: osmosisA,
     denom: "uosmo",
   },
@@ -71,8 +71,8 @@ let state: State = {
     os: {},
     ics20Chan: "",
     ibcDenom: "",
-    name: "terraosmo-b",
-    definition: terraA,
+    name: "osmo-b",
+    definition: osmosisB,
     denom: "uosmo",
   },
 };
@@ -96,7 +96,7 @@ async function setupState() {
   console.log("Padding Clients...");
   const paddingLink = await Link.createWithNewConnections(
     src,
-    dest,
+    buffer,
     state.logger
   );
   state.logger.log(
@@ -171,6 +171,7 @@ async function setupState() {
 before(async () => {
   await waitForChain(state.chainA.definition.tendermintUrlHttp);
   await waitForChain(state.chainB.definition.tendermintUrlHttp);
+  await waitForChain(state.padding.tendermintUrlHttp);
   await setupState();
 });
 
