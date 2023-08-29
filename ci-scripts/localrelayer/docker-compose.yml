@@ -1,0 +1,103 @@
+version: "3"
+networks:
+  localchains:
+services:
+
+  localandromeda-1:
+      image: local:andromeda
+      platform: linux/x86_64
+      build:
+        context: ./chains/andromeda
+        dockerfile: Dockerfile
+      volumes:
+        - ./.config/.localandromeda-1/:/andromeda/.andromedad/
+      environment:
+        - CHAIN_ID=localandromeda-1
+        - STAKE_TOKEN=stake
+        - COIN_TOKEN=uandr
+        - VALIDATOR_MONIKER=validator
+        - VALIDATOR_MNEMONIC=family album bird seek tilt color pill danger message abuse manual tent almost ridge boost blast high comic core quantum spoon coconut oyster remove
+        - FAUCET_MNEMONIC=increase bread alpha rigid glide amused approve oblige print asset idea enact lawn proof unfold jeans rabbit audit return chuckle valve rather cactus great
+        - RELAYER_MNEMONIC=black frequent sponsor nice claim rally hunt suit parent size stumble expire forest avocado mistake agree trend witness lounge shiver image smoke stool chicken
+        - TEST_USER_1_MNEMONIC=bounce success option birth apple portion aunt rural episode solution hockey pencil lend session cause hedgehog slender journey system canvas decorate razor catch empty
+        - TEST_USER_2_MNEMONIC=second render cat sing soup reward cluster island bench diet lumber grocery repeat balcony perfect diesel stumble piano distance caught occur example ozone loyal
+        - TEST_USER_3_MNEMONIC=cream sport mango believe inhale text fish rely elegant below earth april wall rug ritual blossom cherry detail length blind digital proof identify ride
+      ports:
+        - 20111:26657 # RPC
+        - 20211:1317 # LCD
+        - 20311:9090 # GRPC
+      networks:
+        - localchains
+      restart: on-failure
+
+  localosmosis-1:
+      image: local:osmosis
+      platform: linux/x86_64
+      build:
+        context: ./chains/osmosis
+        dockerfile: Dockerfile
+      volumes:
+        - ./.config/.localosmosis-1/:/osmosis/.osmosisd/
+      environment:
+        - CHAIN_ID=localosmosis-1
+        - VALIDATOR_MONIKER=validator
+        - VALIDATOR_MNEMONIC=family album bird seek tilt color pill danger message abuse manual tent almost ridge boost blast high comic core quantum spoon coconut oyster remove
+        - FAUCET_MNEMONIC=increase bread alpha rigid glide amused approve oblige print asset idea enact lawn proof unfold jeans rabbit audit return chuckle valve rather cactus great
+        - RELAYER_MNEMONIC=black frequent sponsor nice claim rally hunt suit parent size stumble expire forest avocado mistake agree trend witness lounge shiver image smoke stool chicken
+        - TEST_USER_1_MNEMONIC=bounce success option birth apple portion aunt rural episode solution hockey pencil lend session cause hedgehog slender journey system canvas decorate razor catch empty
+        - TEST_USER_2_MNEMONIC=second render cat sing soup reward cluster island bench diet lumber grocery repeat balcony perfect diesel stumble piano distance caught occur example ozone loyal
+        - TEST_USER_3_MNEMONIC=cream sport mango believe inhale text fish rely elegant below earth april wall rug ritual blossom cherry detail length blind digital proof identify ride
+      ports:
+        - 20121:26657 # RPC
+        - 20221:1317 # LCD
+        - 20321:9090 # GRPC
+      networks:
+        - localchains
+      restart: on-failure
+
+  localosmosis-2:
+      image: local:osmosis
+      platform: linux/x86_64
+      volumes:
+        - ./.config/.localosmosis-2/:/osmosis/.osmosisd/
+      environment:
+        - CHAIN_ID=localosmosis-2
+        - VALIDATOR_MONIKER=validator
+        - VALIDATOR_MNEMONIC=family album bird seek tilt color pill danger message abuse manual tent almost ridge boost blast high comic core quantum spoon coconut oyster remove
+        - FAUCET_MNEMONIC=increase bread alpha rigid glide amused approve oblige print asset idea enact lawn proof unfold jeans rabbit audit return chuckle valve rather cactus great
+        - RELAYER_MNEMONIC=black frequent sponsor nice claim rally hunt suit parent size stumble expire forest avocado mistake agree trend witness lounge shiver image smoke stool chicken
+        - TEST_USER_1_MNEMONIC=bounce success option birth apple portion aunt rural episode solution hockey pencil lend session cause hedgehog slender journey system canvas decorate razor catch empty
+        - TEST_USER_2_MNEMONIC=second render cat sing soup reward cluster island bench diet lumber grocery repeat balcony perfect diesel stumble piano distance caught occur example ozone loyal
+        - TEST_USER_3_MNEMONIC=cream sport mango believe inhale text fish rely elegant below earth april wall rug ritual blossom cherry detail length blind digital proof identify ride
+      ports:
+        - 20122:26657 # RPC
+        - 20222:1317 # LCD
+        - 20322:9090 # GRPC
+      networks:
+        - localchains
+      restart: on-failure
+
+  localterra-1:
+      image: local:terra
+      platform: linux/x86_64
+      build:
+        context: ./chains/terra
+        dockerfile: Dockerfile
+      volumes:
+        - ./.config/.localterra-1/:/terra/.terrad/
+      environment:
+        - CHAIN_ID=localterra-1
+        - VALIDATOR_MONIKER=validator
+        - VALIDATOR_MNEMONIC=family album bird seek tilt color pill danger message abuse manual tent almost ridge boost blast high comic core quantum spoon coconut oyster remove
+        - FAUCET_MNEMONIC=increase bread alpha rigid glide amused approve oblige print asset idea enact lawn proof unfold jeans rabbit audit return chuckle valve rather cactus great
+        - RELAYER_MNEMONIC=black frequent sponsor nice claim rally hunt suit parent size stumble expire forest avocado mistake agree trend witness lounge shiver image smoke stool chicken
+        - TEST_USER_1_MNEMONIC=bounce success option birth apple portion aunt rural episode solution hockey pencil lend session cause hedgehog slender journey system canvas decorate razor catch empty
+        - TEST_USER_2_MNEMONIC=second render cat sing soup reward cluster island bench diet lumber grocery repeat balcony perfect diesel stumble piano distance caught occur example ozone loyal
+        - TEST_USER_3_MNEMONIC=cream sport mango believe inhale text fish rely elegant below earth april wall rug ritual blossom cherry detail length blind digital proof identify ride
+      ports:
+        - 20131:26657 # RPC
+        - 20231:1317 # LCD
+        - 20331:9090 # GRPC
+      networks:
+        - localchains
+      restart: on-failure

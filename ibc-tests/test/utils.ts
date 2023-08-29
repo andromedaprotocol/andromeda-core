@@ -21,6 +21,7 @@ import axios from "axios";
 
 import { ChainDefinition } from "./configs";
 import Contract from "./contract";
+import { getChainCache, setChainCache } from "./os";
 
 function encode(data: unknown | string) {
   return Buffer.from(JSON.stringify(data)).toString("base64");
@@ -249,13 +250,15 @@ export function createAMPPacket(sender: string, messages: AMPMsg[]) {
 
 export async function setupRelayerInfo(
   chainA: ChainDefinition,
-  chainB: ChainDefinition
+  chainB: ChainDefinition,
+  buffer: ChainDefinition
 ) {
   const newMnemonic =
-    "black frequent sponsor nice claim rally hunt suit parent size stumble expire forest avocado mistake agree trend witness lounge shiver image smoke stool chicken";
+    "cream sport mango believe inhale text fish rely elegant below earth april wall rug ritual blossom cherry detail length blind digital proof identify ride";
   const info = [
     await ibcClient(chainA, newMnemonic),
     await ibcClient(chainB, newMnemonic),
+    await ibcClient(buffer, newMnemonic),
   ];
   return info;
 }
@@ -287,6 +290,9 @@ export async function uploadADO(
   client: CosmWasmSigner,
   adodb: Contract
 ) {
+  const chainId = await client.sign.getChainId();
+  const cache = await getChainCache(chainId);
+  if (cache?.ALL_ADO?.[name]) return;
   const path = getADOPath(name);
   const version = getFileVersion(path);
 
@@ -305,6 +311,15 @@ export async function uploadADO(
   };
 
   await adodb.execute(publishMsg, client);
+  if (cache) {
+    await setChainCache(chainId, {
+      ...cache,
+      ALL_ADO: {
+        ...cache.ALL_ADO,
+        [name]: codeId,
+      },
+    });
+  }
 }
 
 export async function uploadAllADOs(client: CosmWasmSigner, adodb: Contract) {
@@ -319,28 +334,30 @@ async function sleep(timeout: number) {
 }
 export async function relayAll(link: Link): Promise<[boolean, RelayInfo]> {
   let counter = 0;
+  let err;
   while (counter < 6) {
     try {
       const info = await link.relayAll();
       return [counter === 0, info!];
     } catch (error: unknown) {
+      err = error;
       const { message } = error as Error;
       if (
         message.includes("incorrect account sequence") ||
         message.includes("can't be greater than max height")
       ) {
-        console.debug("Retrying relayAll");
         // Increase counter by 1 as this is expected error
         counter = counter + 1;
-        await sleep(1000);
       } else {
         // Increate counter by 2 as this is unexpected error
         counter = counter + 2;
       }
+      console.debug("Retrying relayAll");
+      await sleep(1000);
     }
   }
 
-  throw new Error("Unreachable");
+  throw err || new Error("Unreachable");
 }
 
 export async function getBalances(chain: ChainDefinition, address: string) {
@@ -349,4 +366,19 @@ export async function getBalances(chain: ChainDefinition, address: string) {
     .then((res) => res.data.balances);
   console.log(address, balances);
   return balances as Coin[];
+}
+
+export async function retryTill<T = any>(cb: () => Promise<T> | T, count = 5) {
+  let err;
+  while (count > 0) {
+    try {
+      const res = await cb();
+      return res;
+    } catch (_err) {
+      err = _err;
+      console.debug("Retrying...");
+      count--;
+    }
+  }
+  throw err;
 }
