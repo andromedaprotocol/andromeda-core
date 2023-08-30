@@ -85,10 +85,12 @@ async function setupState() {
     setupChainClient(state.chainB.definition),
   ])) as CosmWasmSigner[];
 
-  const [src, dest, buffer] = await setupRelayerInfo(
-    state.chainA.definition,
-    state.chainB.definition,
-    state.padding
+  const [src, dest, buffer] = await retryTill(() =>
+    setupRelayerInfo(
+      state.chainA.definition,
+      state.chainB.definition,
+      state.padding
+    )
   );
 
   // Paddding is important so both chains get differnt channel assinged
