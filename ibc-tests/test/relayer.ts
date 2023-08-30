@@ -1,7 +1,5 @@
 import axios from "axios";
 
-import { RELAYER_URL } from "./configs";
-
 const POLL_INTERVAL = 2000;
 const MAX_POLL_COUNT = 60;
 
@@ -16,8 +14,7 @@ export async function waitForChain(url: string) {
       return;
     } catch {
       console.error(
-        `No response from chain, retrying in ${POLL_INTERVAL / 1000}s (${
-          i + 1
+        `No response from ${url}, retrying in ${POLL_INTERVAL / 1000}s (${i + 1
         }/${MAX_POLL_COUNT})`
       );
       await sleep(POLL_INTERVAL);

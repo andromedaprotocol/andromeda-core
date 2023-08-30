@@ -1,6 +1,6 @@
-ARG TERRA_VERSION=2.4.1
+FROM alpine:3.15
 
-FROM ghcr.io/terra-money/core:sha-0324754
+COPY --from=ghcr.io/terra-money/core:sha-a03a065 /usr/local/bin/terrad /bin/terrad
 
 COPY scripts/setup_chain.sh /terra/setup.sh
 # Make sript executable

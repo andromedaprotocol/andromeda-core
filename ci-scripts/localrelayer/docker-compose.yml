@@ -5,7 +5,7 @@ services:
 
   localandromeda-1:
       image: local:andromeda
-      platform: linux/x86_64
+      platform: linux/amd64
       build:
         context: ./chains/andromeda
         dockerfile: Dockerfile
@@ -32,7 +32,7 @@ services:
 
   localosmosis-1:
       image: local:osmosis
-      platform: linux/x86_64
+      platform: linux/amd64
       build:
         context: ./chains/osmosis
         dockerfile: Dockerfile
@@ -57,7 +57,7 @@ services:
 
   localosmosis-2:
       image: local:osmosis
-      platform: linux/x86_64
+      platform: linux/amd64
       volumes:
         - ./.config/.localosmosis-2/:/osmosis/.osmosisd/
       environment:

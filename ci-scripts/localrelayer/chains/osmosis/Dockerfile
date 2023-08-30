@@ -1,8 +1,6 @@
 FROM alpine:3.15
 
-COPY ./osmosisd /bin/osmosisd
-# Make binary executable
-RUN chmod +x /bin/osmosisd
+COPY --from=osmolabs/osmosis-dev:19.0.0-rc0 /bin/osmosisd /bin/osmosisd
 
 COPY scripts/setup_chain.sh /osmosis/setup.sh
 # Make sript executable
