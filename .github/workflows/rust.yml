@@ -91,10 +91,6 @@ jobs:
         with:
           name: contracts
           path: "./ibc-tests/contracts"
-      - name: Start Chains
-        run: |
-          cd ./ci-scripts/localrelayer
-          make startd
       - name: Run IBC Tests
         run: |
           cd ./ibc-tests
