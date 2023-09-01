@@ -10,7 +10,7 @@ local FILE_LOG=""
 build_contract () {
     local CONTRACT=$1
     echo "Building contract $CONTRACT..."
-    cargo wasm -p $CONTRACT
+    cargo wasm -p $CONTRACT -q
 
     # Get the version of the contract processed
     local BUILD_VERSION=$(cargo pkgid $CONTRACT | cut -d# -f2 | cut -d: -f2)
@@ -82,6 +82,7 @@ for target in "$@"; do
         build_category $target
     else
         echo "$target is not a valid target"
+        exit 1
     fi
     echo -e "$FILE_LOG"
 done

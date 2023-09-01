@@ -2,20 +2,21 @@ use andromeda_std::ado_base::InstantiateMsg as BaseInstantiateMsg;
 use andromeda_std::ado_contract::ADOContract;
 use andromeda_std::amp::addresses::AndrAddr;
 use andromeda_std::amp::messages::{AMPMsg, AMPPkt};
-use andromeda_std::amp::ADO_DB_KEY;
+use andromeda_std::amp::{ADO_DB_KEY, VFS_KEY};
 use andromeda_std::common::encode_binary;
 use andromeda_std::error::ContractError;
 use andromeda_std::ibc::message_bridge::ExecuteMsg as IBCBridgeExecMsg;
 use andromeda_std::os::aos_querier::AOSQuerier;
 use andromeda_std::os::kernel::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use cosmwasm_std::{
-    attr, ensure, entry_point, wasm_execute, Addr, BankMsg, Binary, CosmosMsg, Deps, DepsMut, Env,
-    MessageInfo, Reply, Response, StdError, SubMsg, WasmMsg,
+    attr, ensure, entry_point, wasm_execute, Addr, BankMsg, Binary, CosmosMsg, Deps, DepsMut,
+    Empty, Env, MessageInfo, Reply, Response, StdError, SubMsg, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
 use semver::Version;
 
-use crate::state::{IBC_BRIDGE, KERNEL_ADDRESSES};
+use crate::reply::{on_reply_create_ado, ReplyId};
+use crate::state::{ADO_OWNER, IBC_BRIDGE, KERNEL_ADDRESSES};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-kernel";
@@ -45,7 +46,7 @@ pub fn instantiate(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
+pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
     if msg.result.is_err() {
         return Err(ContractError::Std(StdError::generic_err(format!(
             "{}:{}",
@@ -54,7 +55,10 @@ pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, Contract
         ))));
     }
 
-    Ok(Response::default())
+    match ReplyId::from_repr(msg.id) {
+        Some(ReplyId::CreateADO) => on_reply_create_ado(deps, msg),
+        _ => Ok(Response::default()),
+    }
 }
 
 pub struct ExecuteEnv<'a> {
@@ -76,25 +80,46 @@ pub fn execute(
         ExecuteMsg::AMPReceive(packet) => handle_amp_packet(execute_env, packet),
         ExecuteMsg::Send { message } => handle_send(execute_env, message),
         ExecuteMsg::UpsertKeyAddress { key, value } => upsert_key_address(execute_env, key, value),
+        ExecuteMsg::Create {
+            ado_type,
+            msg,
+            owner,
+        } => execute_create(execute_env, ado_type, msg, owner),
     }
 }
 
 pub fn handle_send(execute_env: ExecuteEnv, message: AMPMsg) -> Result<Response, ContractError> {
-    let ExecuteEnv { deps, info, .. } = execute_env;
-    let origin = info.clone().sender;
-    let recipient = message.recipient.get_raw_address(&deps.as_ref())?;
-    //TODO: ADD IBC HANDLING
+    let ExecuteEnv { deps, .. } = execute_env;
+    let vfs_address = KERNEL_ADDRESSES.load(deps.storage, VFS_KEY)?;
+    let recipient = message
+        .recipient
+        .get_raw_address_from_vfs(&deps.as_ref(), vfs_address)?;
 
-    Ok(Response::default()
-        .add_submessage(SubMsg::new(WasmMsg::Execute {
+    let sub_msg: SubMsg<Empty> = if Binary::default() == message.message {
+        SubMsg::new(BankMsg::Send {
+            to_address: recipient.to_string(),
+            amount: message.funds,
+        })
+    } else {
+        SubMsg::new(WasmMsg::Execute {
             contract_addr: recipient.to_string(),
             msg: message.message.clone(),
-            funds: info.funds,
-        }))
+            funds: message.funds,
+        })
+    };
+    //TODO: ADD IBC HANDLING
+
+    let msg_attr = if Binary::default() == message.message {
+        "send_funds".to_string()
+    } else {
+        message.message.to_string()
+    };
+
+    Ok(Response::default()
+        .add_submessage(sub_msg)
         .add_attribute("action", "handle_amp_message")
         .add_attribute("recipient", message.recipient)
-        .add_attribute("message", message.message.to_string())
-        .add_attribute("origin", origin.to_string()))
+        .add_attribute("message", msg_attr))
 }
 
 pub fn handle_amp_packet(
@@ -143,8 +168,7 @@ pub fn handle_amp_packet(
                                 .add_attribute(
                                     format!("recipient:{}", idx),
                                     message.recipient.clone(),
-                                )
-                                .add_attribute("message", message.message.to_string());
+                                );
                         } else {
                             return Err(ContractError::InvalidPacket {
                                 error: Some("Chain not provided".to_string()),
@@ -201,9 +225,8 @@ pub fn handle_amp_packet(
                 let sub_msg = new_packet.to_sub_msg(
                     recipient_addr.clone(),
                     Some(vec![message.funds[0].clone()]),
-                    idx as u64,
+                    ReplyId::AMPMsg.repr(),
                 )?;
-                // TODO: ADD ID
                 res = res
                     .add_submessage(sub_msg)
                     .add_attributes(vec![attr(format!("recipient:{}", idx), recipient_addr)]);
@@ -240,6 +263,42 @@ fn upsert_key_address(
         attr("key", key),
         attr("value", value),
     ]))
+}
+
+fn execute_create(
+    execute_env: ExecuteEnv,
+    ado_type: String,
+    msg: Binary,
+    owner: Option<AndrAddr>,
+) -> Result<Response, ContractError> {
+    let vfs_addr = KERNEL_ADDRESSES.load(execute_env.deps.storage, VFS_KEY)?;
+    let adodb_addr = KERNEL_ADDRESSES.load(execute_env.deps.storage, ADO_DB_KEY)?;
+
+    let ado_owner = owner.unwrap_or(AndrAddr::from_string(execute_env.info.sender.to_string()));
+    let owner_addr = ado_owner.get_raw_address_from_vfs(&execute_env.deps.as_ref(), vfs_addr)?;
+    let code_id = AOSQuerier::code_id_getter(&execute_env.deps.querier, &adodb_addr, &ado_type)?;
+    let wasm_msg = WasmMsg::Instantiate {
+        admin: Some(owner_addr.to_string()),
+        code_id,
+        msg,
+        funds: vec![],
+        label: format!("ADO:{}", ado_type),
+    };
+    let sub_msg = SubMsg::reply_always(wasm_msg.clone(), ReplyId::CreateADO.repr());
+
+    // TODO: Is this check necessary?
+    // ensure!(
+    //     !ADO_OWNER.exists(execute_env.deps.storage),
+    //     ContractError::Unauthorized {}
+    // );
+
+    ADO_OWNER.save(execute_env.deps.storage, &owner_addr)?;
+
+    Ok(Response::new()
+        .add_submessage(sub_msg)
+        .add_attribute("action", "execute_create")
+        .add_attribute("ado_type", ado_type)
+        .add_attribute("owner", ado_owner.to_string()))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -294,8 +353,12 @@ fn query_key_address(deps: Deps, key: String) -> Result<Addr, ContractError> {
 
 fn query_verify_address(deps: Deps, address: String) -> Result<bool, ContractError> {
     let db_address = KERNEL_ADDRESSES.load(deps.storage, ADO_DB_KEY)?;
-    let contract_info = deps.querier.query_wasm_contract_info(address)?;
-
-    let ado_type = AOSQuerier::ado_type_getter(&deps.querier, &db_address, contract_info.code_id)?;
-    Ok(ado_type.is_some())
+    let contract_info_res = deps.querier.query_wasm_contract_info(address);
+    if let Ok(contract_info) = contract_info_res {
+        let ado_type =
+            AOSQuerier::ado_type_getter(&deps.querier, &db_address, contract_info.code_id)?;
+        Ok(ado_type.is_some())
+    } else {
+        Ok(false)
+    }
 }

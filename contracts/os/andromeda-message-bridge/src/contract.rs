@@ -179,7 +179,6 @@ pub fn execute_send_amp_message(
             env.contract.address.to_string(),
             kernel_address,
             env.block.time,
-            None,
         )?;
         Ok(Response::new()
             .add_attribute("method", "execute_send_message")
@@ -229,7 +228,6 @@ pub fn execute_send_message(
             env.contract.address.to_string(),
             kernel_address,
             env.block.time,
-            None,
         )?;
         Ok(Response::new()
             .add_attribute("method", "execute_send_message")

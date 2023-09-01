@@ -11,6 +11,12 @@ pub struct AddressPercent {
     pub percent: Decimal,
 }
 
+impl AddressPercent {
+    pub fn new(recipient: Recipient, percent: Decimal) -> Self {
+        Self { recipient, percent }
+    }
+}
+
 #[cw_serde]
 /// A config struct for a `Splitter` contract.
 pub struct Splitter {
