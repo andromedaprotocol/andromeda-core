@@ -70,8 +70,8 @@ let state: State = {
     ics20Chan: "",
     ibcDenom: "",
     name: "chain-aa",
-    definition: junoA,
-    denom: junoA.denomFee,
+    definition: osmosisB,
+    denom: osmosisB.denomFee,
   },
 };
 
