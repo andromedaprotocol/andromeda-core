@@ -35,7 +35,7 @@ export class CustomLogger implements Logger {
 const FILE_NAME = `./relayer.log.txt`;
 async function logger(data: any, lineBreak = "\n📄") {
   if (typeof data !== "string") data = JSON.stringify(data);
-  appendFileSync(FILE_NAME, lineBreak + data);
+  appendFileSync(FILE_NAME, lineBreak + "\t" + data);
 }
 
 async function reset() {

@@ -1,8 +1,8 @@
 import { testutils } from "@confio/relayer";
 import { ChainDefinition as RelayerChainDefinition } from "@confio/relayer/build/lib/helpers";
 
-const BASE_URL = "localhost";
-// const BASE_URL = "18.212.50.191";
+// const BASE_URL = "localhost";
+const BASE_URL = "18.212.50.191";
 
 export interface ChainDefinition extends RelayerChainDefinition {
   restUrl: string;
@@ -96,9 +96,59 @@ const terraA: ChainDefinition = {
   estimatedIndexerTime: blockTime,
 };
 
+const junoA: ChainDefinition = {
+  tendermintUrlWs: `ws://${BASE_URL}:20141`,
+  tendermintUrlHttp: `http://${BASE_URL}:20141`,
+  restUrl: `http://${BASE_URL}:20241`,
+  chainId: "localjuno-1",
+  prefix: "juno",
+  denomStaking: "stake",
+  denomFee: "ujunox",
+  minFee: "2ujunox",
+  blockTime,
+  faucet: {
+    mnemonic:
+      "enlist hip relief stomach skate base shallow young switch frequent cry park",
+    pubkey0: {
+      type: "tendermint/PubKeySecp256k1",
+      value: "A9cXhWb8ZpqCzkA8dQCPV29KdeRLV3rUYxrkHudLbQtS",
+    },
+    address0: "juno14qemq0vw6y3gc3u3e0aty2e764u4gs5lndxgyk",
+  },
+  ics20Port: "transfer",
+  estimatedBlockTime: blockTime,
+  estimatedIndexerTime: blockTime,
+};
+
+const junoB: ChainDefinition = {
+  tendermintUrlWs: `ws://${BASE_URL}:20142`,
+  tendermintUrlHttp: `http://${BASE_URL}:20142`,
+  restUrl: `http://${BASE_URL}:20242`,
+  chainId: "localjuno-2",
+  prefix: "juno",
+  denomStaking: "stake",
+  denomFee: "ujunox",
+  minFee: "2ujunox",
+  blockTime,
+  faucet: {
+    mnemonic:
+      "enlist hip relief stomach skate base shallow young switch frequent cry park",
+    pubkey0: {
+      type: "tendermint/PubKeySecp256k1",
+      value: "A9cXhWb8ZpqCzkA8dQCPV29KdeRLV3rUYxrkHudLbQtS",
+    },
+    address0: "juno14qemq0vw6y3gc3u3e0aty2e764u4gs5lndxgyk",
+  },
+  ics20Port: "transfer",
+  estimatedBlockTime: blockTime,
+  estimatedIndexerTime: blockTime,
+};
+
 export default {
   osmosisA,
   osmosisB,
   andromedaA,
   terraA,
+  junoA,
+  junoB,
 };

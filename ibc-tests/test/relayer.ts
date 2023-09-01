@@ -14,7 +14,8 @@ export async function waitForChain(url: string) {
       return;
     } catch {
       console.error(
-        `No response from ${url}, retrying in ${POLL_INTERVAL / 1000}s (${i + 1
+        `No response from ${url}, retrying in ${POLL_INTERVAL / 1000}s (${
+          i + 1
         }/${MAX_POLL_COUNT})`
       );
       await sleep(POLL_INTERVAL);

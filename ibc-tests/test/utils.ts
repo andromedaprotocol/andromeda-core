@@ -250,15 +250,13 @@ export function createAMPPacket(sender: string, messages: AMPMsg[]) {
 
 export async function setupRelayerInfo(
   chainA: ChainDefinition,
-  chainB: ChainDefinition,
-  buffer: ChainDefinition
+  chainB: ChainDefinition
 ) {
   const newMnemonic =
     "cream sport mango believe inhale text fish rely elegant below earth april wall rug ritual blossom cherry detail length blind digital proof identify ride";
   const info = [
     await ibcClient(chainA, newMnemonic),
     await ibcClient(chainB, newMnemonic),
-    await ibcClient(buffer, newMnemonic),
   ];
   return info;
 }

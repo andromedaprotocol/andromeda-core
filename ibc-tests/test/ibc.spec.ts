@@ -27,7 +27,7 @@ import {
   uploadAllADOs,
 } from "./utils";
 
-const { osmosisA, osmosisB, terraA, andromedaA } = configs;
+const { osmosisA, osmosisB, terraA, andromedaA, junoA, junoB } = configs;
 
 interface Contracts {
   kernel?: Contract;
@@ -51,29 +51,27 @@ interface State {
   setup: boolean;
   chainA: ChainEnd;
   chainB: ChainEnd;
-  padding: ChainDefinition;
   logger: CustomLogger;
 }
 
 let state: State = {
   setup: false,
   logger: new CustomLogger(),
-  padding: terraA,
   chainA: {
     os: {},
     ics20Chan: "",
     ibcDenom: "",
-    name: "osmo-a",
+    name: "chain-ba",
     definition: osmosisA,
-    denom: "uosmo",
+    denom: osmosisA.denomFee,
   },
   chainB: {
     os: {},
     ics20Chan: "",
     ibcDenom: "",
-    name: "osmo-b",
+    name: "chain-aa",
     definition: osmosisB,
-    denom: "uosmo",
+    denom: osmosisB.denomFee,
   },
 };
 
@@ -86,40 +84,8 @@ async function setupState() {
   ])) as CosmWasmSigner[];
 
   const [src, dest, buffer] = await retryTill(() =>
-    setupRelayerInfo(
-      state.chainA.definition,
-      state.chainB.definition,
-      state.padding
-    )
+    setupRelayerInfo(state.chainA.definition, state.chainB.definition)
   );
-
-  // Paddding is important so both chains get differnt channel assinged
-  // This is helpful in IBC denom testing
-  console.log("Padding Clients...");
-  const paddingLink = await Link.createWithNewConnections(
-    src,
-    buffer,
-    state.logger
-  );
-  state.logger.log(
-    "Link A",
-    paddingLink.endA.clientID,
-    paddingLink.endA.connectionID
-  );
-  state.logger.log(
-    "Link B",
-    paddingLink.endB.clientID,
-    paddingLink.endB.connectionID
-  );
-  const paddingChannel = await paddingLink.createChannel(
-    "A",
-    state.chainA.definition.ics20Port,
-    state.padding.ics20Port,
-    Order.ORDER_UNORDERED,
-    "ics20-1"
-  );
-  state.logger.log("Channel Created", paddingChannel);
-  console.log("Padding complete");
 
   console.log("Creating link...");
   state.link = await Link.createWithNewConnections(src, dest, state.logger);
@@ -173,7 +139,6 @@ async function setupState() {
 before(async () => {
   await waitForChain(state.chainA.definition.tendermintUrlHttp);
   await waitForChain(state.chainB.definition.tendermintUrlHttp);
-  await waitForChain(state.padding.tendermintUrlHttp);
   await setupState();
 });
 
@@ -213,19 +178,24 @@ describe("Operating System", () => {
     }
   });
 
+  step("should clear existing recoveries", async () => {
+    await state.chainA.os
+      .kernel!.execute({ recover: {} }, state.chainA.client!)
+      .catch(() => {
+        return;
+      });
+    await state.chainB.os
+      .kernel!.execute({ recover: {} }, state.chainB.client!)
+      .catch(() => {
+        return;
+      });
+  });
+
   step("should create a channel between kernels", async () => {
     const {
       link,
-      chainA: {
-        os: osA,
-        client: clientA,
-        definition: { ics20Port: ics20PortA },
-      },
-      chainB: {
-        os: osB,
-        client: clientB,
-        definition: { ics20Port: ics20PortB },
-      },
+      chainA: { os: osA, client: clientA },
+      chainB: { os: osB, client: clientB },
     } = state;
     const portA = await osA.kernel!.getPort(clientA!);
     const portB = await osB.kernel!.getPort(clientB!);
@@ -415,6 +385,139 @@ describe("Basic IBC Token Transfers", async () => {
   });
 
   step(
+    "should send chain A tokens from chain A to chain B using splitter",
+    async () => {
+      const { link, chainA, chainB } = state;
+      const receiver = randomAddress(chainB.definition.prefix);
+      const splitterCodeId: number = await chainA.os.adodb!.query(
+        { code_id: { key: "splitter" } },
+        chainA.client!
+      );
+      const splitterInstMsg = {
+        kernel_address: chainA.os.kernel!.address,
+        recipients: [
+          {
+            recipient: {
+              address: `ibc://${chainB.name}/${receiver}`,
+            },
+            percent: "1",
+          },
+        ],
+      };
+      const splitter = await Contract.fromCodeId(
+        splitterCodeId,
+        splitterInstMsg,
+        chainA.client!
+      );
+
+      state.logger.log(
+        "chain A tokens from chain A to chain B using splitter - Splitter address",
+        splitter.address
+      );
+      state.logger.log(
+        "chain A tokens from chain A to chain B using splitter - Receiver address",
+        receiver
+      );
+
+      const transferAmount = { amount: "100", denom: chainA.denom };
+      const msg = createAMPMsg(`${splitter.address}`, { send: {} }, [
+        transferAmount,
+      ]);
+      const kernelMsg = { send: { message: msg } };
+      const res = await chainA.os.kernel!.execute(kernelMsg, chainA.client!, [
+        transferAmount,
+      ]);
+      assert(res.transactionHash);
+      const [shouldAssertA, infoB] = await relayAll(link!);
+      if (shouldAssertA) assertPacketsFromA(infoB, 1, true);
+      await relayAll(link!);
+      const chainABalance = await chainB.client!.sign.getBalance(
+        receiver,
+        chainA.ibcDenom
+      );
+      assert(
+        chainABalance.amount === transferAmount.amount,
+        "Balance is incorrect"
+      );
+    }
+  );
+
+  step(
+    "should send chain B tokens from chain A to chain B using splitter",
+    async () => {
+      const { link, chainA, chainB } = state;
+      const receiver = randomAddress(chainB.definition.prefix);
+      const splitterCodeId: number = await chainA.os.adodb!.query(
+        { code_id: { key: "splitter" } },
+        chainA.client!
+      );
+      const splitterInstMsg = {
+        kernel_address: chainA.os.kernel!.address,
+        recipients: [
+          {
+            recipient: {
+              address: `ibc://${chainB.name}/${receiver}`,
+            },
+            percent: "1",
+          },
+        ],
+      };
+      const splitter = await Contract.fromCodeId(
+        splitterCodeId,
+        splitterInstMsg,
+        chainA.client!
+      );
+
+      state.logger.log(
+        "chain B tokens from chain A to chain B using splitter - Splitter address",
+        splitter.address
+      );
+      state.logger.log(
+        "chain B tokens from chain A to chain B using splitter - Receiver address",
+        receiver
+      );
+
+      const transferAmount = { amount: "100", denom: chainB.denom };
+      const transferMsg = createAMPMsg(
+        `ibc://${chainA.name}/${chainA.client!.senderAddress}`,
+        undefined,
+        [transferAmount]
+      );
+      const transferKernelMsg = { send: { message: transferMsg } };
+      let res = await chainB.os.kernel!.execute(
+        transferKernelMsg,
+        chainB.client!,
+        [transferAmount]
+      );
+      assert(res.transactionHash);
+      const [shouldAssert, info] = await relayAll(link!);
+      if (shouldAssert) assertPacketsFromB(info, 1, true);
+
+      // Now send the ibc denom received above to the splitter
+      transferAmount.denom = chainB.ibcDenom;
+      const msg = createAMPMsg(`${splitter.address}`, { send: {} }, [
+        transferAmount,
+      ]);
+      const kernelMsg = { send: { message: msg } };
+      res = await chainA.os.kernel!.execute(kernelMsg, chainA.client!, [
+        transferAmount,
+      ]);
+      assert(res.transactionHash);
+      const [shouldAssertA, infoB] = await relayAll(link!);
+      if (shouldAssertA) assertPacketsFromA(infoB, 1, true);
+      await relayAll(link!);
+      const chainABalance = await chainB.client!.sign.getBalance(
+        receiver,
+        chainB.denom
+      );
+      assert(
+        chainABalance.amount === transferAmount.amount,
+        "Balance is incorrect"
+      );
+    }
+  );
+
+  step(
     "should send tokens from chain A to chain B and back to chain A",
     async () => {
       const { link, chainA, chainB } = state;
@@ -439,6 +542,12 @@ describe("Basic IBC Token Transfers", async () => {
         splitterInstMsg,
         chainB.client!
       );
+
+      state.logger.log(
+        "Chain A to B to Chain A - Splitter address",
+        splitter.address
+      );
+      state.logger.log("Chain A to B to Chain A - Receiver address", receiver);
 
       const transferAmount = { amount: "100", denom: chainA.denom };
       const msg = createAMPMsg(
@@ -476,12 +585,6 @@ describe("IBC Fund Recovery", async () => {
       const recoveryQuery = {
         recoveries: { addr: recoveryAddr },
       };
-      // We need to clear all recoveries for this client as cache may contain some old recovery
-      await chainA.os
-        .kernel!.execute({ recover: {} }, chainA.client!)
-        .catch(() => {
-          return;
-        });
       const splitterCodeId: number = await chainB.os.adodb!.query(
         { code_id: { key: "splitter" } },
         chainB.client!
@@ -503,6 +606,15 @@ describe("IBC Fund Recovery", async () => {
         chainB.client!
       );
 
+      state.logger.log(
+        "Chain A to B IBC Fail Recovery - Splitter address",
+        splitter.address
+      );
+      state.logger.log(
+        "Chain A to B IBC Fail Recovery - Receiver address",
+        receiver
+      );
+
       const transferAmount = { amount: "100", denom: chainA.denom };
       // ERROR HERE
       const msg = createAMPMsg(
@@ -519,10 +631,11 @@ describe("IBC Fund Recovery", async () => {
       ]);
       assert(res.transactionHash);
       const [shouldAssertA, infoA] = await relayAll(link!);
-      // if (shouldAssertA) assertPacketsFromA(infoA, 1, false);
+      if (shouldAssertA) assertPacketsFromA(infoA, 1, false);
+      await relayAll(link!);
       const recoveries: { amount: string; denom: string }[] =
         await chainA.os.kernel!.query(recoveryQuery, chainA.client!);
-      assert(recoveries.length > 0, "No recovery found");
+      assert(recoveries.length === 1, "No recovery found");
       assert(
         recoveries[0].amount === transferAmount.amount,
         "Incorrect amount"
@@ -565,6 +678,15 @@ describe("IBC Fund Recovery", async () => {
         splitterCodeId,
         splitterInstMsg,
         chainB.client!
+      );
+
+      state.logger.log(
+        "Chain A to B to Chain A IBC Fail Recovery - Splitter address",
+        splitter.address
+      );
+      state.logger.log(
+        "Chain A to B to Chain A IBC Fail Recovery - Receiver address",
+        receiver
       );
 
       const transferAmount = { amount: "100", denom: chainA.denom };
@@ -629,7 +751,7 @@ describe("IBC Fund Recovery", async () => {
         chainB.client!
       );
 
-      const transferAmount = { amount: "100", denom: chainA.denom };
+      const transferAmount = { amount: "100", denom: chainB.denom };
       const msg = createAMPMsg(splitter.address, { send: {} }, [
         transferAmount,
       ]);
