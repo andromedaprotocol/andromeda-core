@@ -106,3 +106,6 @@ dist
 .tern-port
 
 contracts/
+
+*.cache.json
+*.log.txt
