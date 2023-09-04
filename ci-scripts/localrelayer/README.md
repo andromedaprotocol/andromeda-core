@@ -7,7 +7,7 @@ Localrelayer is a local testing environment composed of two localOsmosis instanc
 ## Endpoints
 
 | Chain ID         | Component  | Endpoint                 |
-|------------------|------------|--------------------------|
+| ---------------- | ---------- | ------------------------ |
 | `localosmosis-a` | `RPC`      | <http://localhost:26657> |
 | `localosmosis-a` | `REST/LCD` | <http://localhost:1317>  |
 | `localosmosis-a` | `gRPC`     | <http://localhost:9090>  |
@@ -23,14 +23,13 @@ Localrelayer is a local testing environment composed of two localOsmosis instanc
 By default the following mnemonics are used:
 
 | Chain ID         | Account       | Mnemonic                                                                                                                                                          |
-|------------------|---------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `localosmosis-a` | `validator-a` | *family album bird seek tilt color pill danger message abuse manual tent almost ridge boost blast high comic core quantum spoon coconut oyster remove*            |
-| `localosmosis-a` | `faucet`      | *increase bread alpha rigid glide amused approve oblige print asset idea enact lawn proof unfold jeans rabbit audit return chuckle valve rather cactus great*     |
-| `localosmosis-a` | `relayer`     | *black frequent sponsor nice claim rally hunt suit parent size stumble expire forest avocado mistake agree trend witness lounge shiver image smoke stool chicken* |
-| `localosmosis-b` | `validator-b` | *family album bird seek tilt color pill danger message abuse manual tent almost ridge boost blast high comic core quantum spoon coconut oyster remove*            |
-| `localosmosis-b` | `faucet`      | *increase bread alpha rigid glide amused approve oblige print asset idea enact lawn proof unfold jeans rabbit audit return chuckle valve rather cactus great*     |
-| `localosmosis-b` | `relayer`     | *black frequent sponsor nice claim rally hunt suit parent size stumble expire forest avocado mistake agree trend witness lounge shiver image smoke stool chicken* |
-
+| ---------------- | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `localosmosis-a` | `validator-a` | _family album bird seek tilt color pill danger message abuse manual tent almost ridge boost blast high comic core quantum spoon coconut oyster remove_            |
+| `localosmosis-a` | `faucet`      | _increase bread alpha rigid glide amused approve oblige print asset idea enact lawn proof unfold jeans rabbit audit return chuckle valve rather cactus great_     |
+| `localosmosis-a` | `relayer`     | _black frequent sponsor nice claim rally hunt suit parent size stumble expire forest avocado mistake agree trend witness lounge shiver image smoke stool chicken_ |
+| `localosmosis-b` | `validator-b` | _family album bird seek tilt color pill danger message abuse manual tent almost ridge boost blast high comic core quantum spoon coconut oyster remove_            |
+| `localosmosis-b` | `faucet`      | _increase bread alpha rigid glide amused approve oblige print asset idea enact lawn proof unfold jeans rabbit audit return chuckle valve rather cactus great_     |
+| `localosmosis-b` | `relayer`     | _black frequent sponsor nice claim rally hunt suit parent size stumble expire forest avocado mistake agree trend witness lounge shiver image smoke stool chicken_ |
 
 ## Deploy
 
@@ -60,12 +59,12 @@ The command will:
  ⠿ Container localrelayer-localosmosis-b-1  Created
  ⠿ Container localrelayer-localosmosis-a-1  Created
  ⠿ Container localrelayer-faucet-a-1        Created
- ⠿ Container localrelayer-faucet-b-1        Created  
+ ⠿ Container localrelayer-faucet-b-1        Created
  ⠿ Container localrelayer-hermes-1          Created
 ```
 
 > If you don't want the logs, you can start in detached mode with the following command:
-> 
+>
 > `make startd`
 
 Check that everything is running:
@@ -156,7 +155,7 @@ Make sure `hermes` is running:
 Expected output:
 
 ```bash
-318c89d3015f   informalsystems/hermes:1.1.0   "/home/hermes/setup.…"   23 minutes ago   Up 22 minutes   0.0.0.0:3000->3000/tcp  
+318c89d3015f   informalsystems/hermes:1.1.0   "/home/hermes/setup.…"   23 minutes ago   Up 22 minutes   0.0.0.0:3000->3000/tcp
 ```
 
 Exec inside the container:
