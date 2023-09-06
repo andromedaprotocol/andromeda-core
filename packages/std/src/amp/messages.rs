@@ -20,6 +20,19 @@ pub enum ExecuteMsg {
     AMPReceive(AMPPkt),
 }
 
+#[cw_serde]
+#[derive(Default)]
+pub struct IBCConfig {
+    pub recovery_addr: Option<AndrAddr>,
+}
+
+impl IBCConfig {
+    #[inline]
+    pub fn new(recovery_addr: Option<AndrAddr>) -> IBCConfig {
+        IBCConfig { recovery_addr }
+    }
+}
+
 /// The configuration of the message to be sent.
 ///
 /// Used when a sub message is generated for the given AMP Msg (only used in the case of Wasm Messages).
@@ -33,6 +46,7 @@ pub struct AMPMsgConfig {
     pub gas_limit: Option<u64>,
     /// Whether to send the message directly to the given recipient
     pub direct: bool,
+    pub ibc_config: Option<IBCConfig>,
 }
 
 impl AMPMsgConfig {
@@ -41,12 +55,14 @@ impl AMPMsgConfig {
         reply_on: Option<ReplyOn>,
         exit_at_error: Option<bool>,
         gas_limit: Option<u64>,
+        ibc_config: Option<IBCConfig>,
     ) -> AMPMsgConfig {
         AMPMsgConfig {
             reply_on: reply_on.unwrap_or(ReplyOn::Always),
             exit_at_error: exit_at_error.unwrap_or(true),
             gas_limit,
             direct: false,
+            ibc_config,
         }
     }
 
@@ -57,6 +73,7 @@ impl AMPMsgConfig {
             exit_at_error: self.exit_at_error,
             gas_limit: self.gas_limit,
             direct: true,
+            ibc_config: self.ibc_config,
         }
     }
 }
@@ -69,6 +86,7 @@ impl Default for AMPMsgConfig {
             exit_at_error: true,
             gas_limit: None,
             direct: false,
+            ibc_config: None,
         }
     }
 }
@@ -155,6 +173,26 @@ impl AMPMsg {
         };
 
         serde_json_wasm::to_string(&msg).unwrap()
+    }
+
+    /// Adds an IBC recovery address to the message
+    pub fn with_ibc_recovery(&self, recovery_addr: Option<AndrAddr>) -> AMPMsg {
+        if let Some(ibc_config) = self.config.ibc_config.clone() {
+            let mut ibc_config = ibc_config;
+            ibc_config.recovery_addr = recovery_addr;
+            let mut msg = self.clone();
+            msg.config.ibc_config = Some(ibc_config);
+            msg
+        } else if let Some(recovery_addr) = recovery_addr {
+            let ibc_config = Some(IBCConfig {
+                recovery_addr: Some(recovery_addr),
+            });
+            let mut msg = self.clone();
+            msg.config.ibc_config = ibc_config;
+            msg
+        } else {
+            self.clone()
+        }
     }
 }
 

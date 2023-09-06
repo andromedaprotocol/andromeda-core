@@ -7,7 +7,7 @@ use lazy_static::__Deref;
 use serde::de::DeserializeOwned;
 use std::str::from_utf8;
 
-use super::adodb::ActionFee;
+use super::adodb::{ActionFee, QueryMsg as ADODBQueryMsg};
 
 #[cw_serde]
 pub struct AOSQuerier();
@@ -55,6 +55,16 @@ impl AOSQuerier {
     ) -> Result<Option<String>, ContractError> {
         let key = AOSQuerier::get_map_storage_key("ado_type", &[code_id.to_string().as_bytes()])?;
         let ado_type: Option<String> = AOSQuerier::query_storage(querier, adodb_addr, &key)?;
+        Ok(ado_type)
+    }
+
+    pub fn ado_type_getter_smart(
+        querier: &QuerierWrapper,
+        adodb_addr: &Addr,
+        code_id: u64,
+    ) -> Result<Option<String>, ContractError> {
+        let query = ADODBQueryMsg::ADOType { code_id };
+        let ado_type: Option<String> = querier.query_wasm_smart(adodb_addr, &query)?;
         Ok(ado_type)
     }
 

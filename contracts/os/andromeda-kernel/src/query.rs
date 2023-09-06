@@ -3,9 +3,9 @@ use andromeda_std::{
     error::ContractError,
     os::{aos_querier::AOSQuerier, kernel::ChannelInfoResponse},
 };
-use cosmwasm_std::{Addr, Deps};
+use cosmwasm_std::{Addr, Coin, Deps};
 
-use crate::state::{CHANNELS, KERNEL_ADDRESSES};
+use crate::state::{CHANNELS, IBC_FUND_RECOVERY, KERNEL_ADDRESSES};
 
 pub fn key_address(deps: Deps, key: String) -> Result<Addr, ContractError> {
     Ok(KERNEL_ADDRESSES.load(deps.storage, &key)?)
@@ -15,8 +15,9 @@ pub fn verify_address(deps: Deps, address: String) -> Result<bool, ContractError
     let db_address = KERNEL_ADDRESSES.load(deps.storage, ADO_DB_KEY)?;
     let contract_info_res = deps.querier.query_wasm_contract_info(address);
     if let Ok(contract_info) = contract_info_res {
+        // TODO: This is failing in integration tests?
         let ado_type =
-            AOSQuerier::ado_type_getter(&deps.querier, &db_address, contract_info.code_id)?;
+            AOSQuerier::ado_type_getter_smart(&deps.querier, &db_address, contract_info.code_id)?;
         Ok(ado_type.is_some())
     } else {
         Ok(false)
@@ -39,4 +40,10 @@ pub fn channel_info(
         None
     };
     Ok(resp)
+}
+
+pub fn recoveries(deps: Deps, addr: Addr) -> Result<Vec<Coin>, ContractError> {
+    Ok(IBC_FUND_RECOVERY
+        .may_load(deps.storage, &addr)?
+        .unwrap_or_default())
 }
