@@ -1,24 +1,25 @@
-use crate::proto::MsgTransfer;
-use crate::{
-    ack::{make_ack_fail, make_ack_success},
-    contract::{try_wasm_msg, try_wasm_msg_amp},
-};
+use crate::ack::{make_ack_fail, make_ack_success};
+use crate::execute;
+use crate::proto::{DenomTrace, MsgTransfer, QueryDenomTraceRequest};
+use andromeda_std::common::context::ExecuteContext;
 use andromeda_std::error::{ContractError, Never};
 use andromeda_std::{
     amp::{messages::AMPMsg, AndrAddr},
-    ibc::message_bridge::IbcExecuteMsg,
+    os::kernel::IbcExecuteMsg,
 };
 use cosmwasm_schema::cw_serde;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    ensure, from_binary, Binary, Coin, DepsMut, Env, Ibc3ChannelOpenResponse, IbcBasicResponse,
-    IbcChannel, IbcChannelCloseMsg, IbcChannelConnectMsg, IbcChannelOpenMsg, IbcOrder,
-    IbcPacketReceiveMsg, IbcPacketTimeoutMsg, IbcReceiveResponse, Response, Timestamp,
+    ensure, from_binary, from_slice, Addr, Binary, Coin, Deps, DepsMut, Env,
+    Ibc3ChannelOpenResponse, IbcBasicResponse, IbcChannel, IbcChannelCloseMsg,
+    IbcChannelConnectMsg, IbcChannelOpenMsg, IbcOrder, IbcPacketAckMsg, IbcPacketReceiveMsg,
+    IbcPacketTimeoutMsg, IbcReceiveResponse, MessageInfo, Timestamp,
 };
+use itertools::Itertools;
 use sha256::digest;
 
-pub const IBC_VERSION: &str = "message-bridge-1";
+pub const IBC_VERSION: &str = "andr-kernel-1";
 pub const PACKET_LIFETIME: u64 = 604_800u64;
 
 #[cw_serde]
@@ -51,20 +52,6 @@ pub fn ibc_packet_timeout(
     // respond to this likely as it means that the packet in question
     // isn't going anywhere.
     Ok(IbcBasicResponse::new().add_attribute("method", "ibc_packet_timeout"))
-}
-
-pub fn receive_ack(
-    _deps: DepsMut,
-    _source_channel: String,
-    _sequence: u64,
-    _ack: String,
-    success: bool,
-) -> Result<Response, ContractError> {
-    if success {
-        Ok(Response::default().add_attribute("response", "success"))
-    } else {
-        Ok(Response::default().add_attribute("response", "failure"))
-    }
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -122,48 +109,71 @@ pub fn ibc_packet_receive(
     }
 }
 
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn ibc_packet_ack(
+    deps: DepsMut,
+    env: Env,
+    msg: IbcPacketAckMsg,
+) -> Result<IbcBasicResponse, ContractError> {
+    // which local channel was this packet send from
+    // let caller = msg.original_packet.src.channel_id.clone();
+    // we need to parse the ack based on our request
+    let original_packet: IbcExecuteMsg = from_slice(&msg.original_packet.data)?;
+    let pkt_res = match original_packet {
+        IbcExecuteMsg::SendMessage { recipient, message } => {
+            // TODO: Can we also add a username in this message?
+            let execute_env = ExecuteContext {
+                env,
+                deps,
+                info: MessageInfo {
+                    funds: vec![],
+                    sender: Addr::unchecked("foreign_kernel"),
+                },
+                amp_ctx: None,
+            };
+            let amp_msg = AMPMsg::new(recipient, message, None);
+            let res = execute::send(execute_env, amp_msg)?;
+
+            Ok::<IbcBasicResponse, ContractError>(
+                IbcBasicResponse::new()
+                    .add_attributes(res.attributes)
+                    .add_submessages(res.messages)
+                    .add_events(res.events),
+            )
+        }
+    }?;
+
+    Ok(pkt_res.add_attribute("method", "ibc_packet_ack"))
+}
+
 pub fn do_ibc_packet_receive(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     msg: IbcPacketReceiveMsg,
 ) -> Result<IbcReceiveResponse, ContractError> {
-    // The channel this packet is being relayed along on this chain.
     let msg: IbcExecuteMsg = from_binary(&msg.packet.data)?;
-
     match msg {
         IbcExecuteMsg::SendMessage { recipient, message } => {
-            execute_send_message(deps, recipient, message)
+            // TODO: Can we also add a username in this message?
+            let execute_env = ExecuteContext {
+                env,
+                deps,
+                info: MessageInfo {
+                    funds: vec![],
+                    sender: Addr::unchecked("foreign_kernel"),
+                },
+                amp_ctx: None,
+            };
+            let amp_msg = AMPMsg::new(recipient, message, None);
+            let res = execute::send(execute_env, amp_msg)?;
+
+            Ok(IbcReceiveResponse::new()
+                .set_ack(make_ack_success())
+                .add_attributes(res.attributes)
+                .add_submessages(res.messages)
+                .add_events(res.events))
         }
-        IbcExecuteMsg::SendAmpPacket { message } => execute_send_amp_pkt(deps, message),
     }
-}
-
-fn execute_send_amp_pkt(
-    deps: DepsMut,
-    message: Binary,
-) -> Result<IbcReceiveResponse, ContractError> {
-    let wasm_msg = try_wasm_msg_amp(deps, message.clone())?;
-
-    Ok(IbcReceiveResponse::new()
-        .add_message(wasm_msg)
-        .add_attribute("method", "execute_send_message")
-        .add_attribute("message", message.to_string())
-        .set_ack(make_ack_success()))
-}
-
-fn execute_send_message(
-    deps: DepsMut,
-    recipient: String,
-    message: Binary,
-) -> Result<IbcReceiveResponse, ContractError> {
-    let wasm_msg = try_wasm_msg(deps, recipient.clone(), message.clone())?;
-
-    Ok(IbcReceiveResponse::new()
-        .add_message(wasm_msg)
-        .add_attribute("method", "execute_send_message")
-        .add_attribute("message", message.to_string())
-        .add_attribute("recipient", recipient)
-        .set_ack(make_ack_success()))
 }
 
 pub fn validate_order_and_version(
@@ -212,12 +222,13 @@ pub fn validate_order_and_version(
 const TRANSFER_PORT: &str = "transfer";
 
 fn generate_ibc_denom(channel: String, denom: String) -> String {
-    let path = format!("{}/{}/{}", TRANSFER_PORT, channel, denom);
+    let path = format!("{TRANSFER_PORT}/{channel}/{denom}");
     format!("ibc/{}", digest(path).to_uppercase())
 }
 
 #[allow(clippy::too_many_arguments)]
 pub fn generate_transfer_message(
+    deps: &Deps,
     recipient: AndrAddr,
     message: Binary,
     funds: Coin,
@@ -227,9 +238,23 @@ pub fn generate_transfer_message(
     time: Timestamp,
 ) -> Result<MsgTransfer, ContractError> {
     // Convert funds denom
-    let new_denom = generate_ibc_denom(channel.clone(), funds.clone().denom);
+    let new_denom = if funds.denom.starts_with("ibc/") {
+        let hops = unwrap_denom_path(deps, &funds.denom)?;
+        /*
+        Hops are ordered from most recent hop to the first hop, we check if we're unwrapping by checking the channel of the most recent hop.
+        If the channels match we're unwrapping and the receiving denom is the local denom of the previous hop (hop[1]).
+        Otherwise we're wrapping and we proceed as expected.
+        */
+        if !hops[0].on.eq(&Some(channel.clone())) {
+            generate_ibc_denom(channel.clone(), hops[0].local_denom.clone())
+        } else {
+            hops[1].local_denom.clone()
+        }
+    } else {
+        generate_ibc_denom(channel.clone(), funds.clone().denom)
+    };
     let new_coin = Coin::new(funds.amount.u128(), new_denom);
-    let msg = AMPMsg::new(recipient, message, Some(vec![new_coin]));
+    let msg = AMPMsg::new(recipient.get_raw_path(), message, Some(vec![new_coin]));
     let serialized = msg.to_ibc_hooks_memo(to_addr.clone(), from_addr.clone());
 
     let ts = time.plus_seconds(PACKET_LIFETIME);
@@ -244,6 +269,83 @@ pub fn generate_transfer_message(
         timeout_timestamp: Some(ts.nanos()),
         memo: serialized,
     })
+}
+
+// Methods adapted from Osmosis Registry contract found here:
+// https://github.com/osmosis-labs/osmosis/blob/main/cosmwasm/packages/registry/src/registry.rs#L14
+#[cw_serde]
+pub struct MultiHopDenom {
+    pub local_denom: String,
+    pub on: Option<String>,
+}
+
+pub fn hash_denom_trace(unwrapped: &str) -> String {
+    format!("ibc/{}", sha256::digest(unwrapped))
+}
+
+pub fn unwrap_denom_path(deps: &Deps, denom: &str) -> Result<Vec<MultiHopDenom>, ContractError> {
+    // Check that the denom is an IBC denom
+    if !denom.starts_with("ibc/") {
+        return Ok(vec![MultiHopDenom {
+            local_denom: denom.to_string(),
+            on: None,
+        }]);
+    }
+
+    // Get the denom trace
+    let res = QueryDenomTraceRequest {
+        hash: denom.to_string(),
+    }
+    .query(&deps.querier)
+    .map_err(|_| ContractError::InvalidDenomTrace {
+        denom: denom.to_string(),
+    })?;
+
+    let DenomTrace { path, base_denom } = match res.denom_trace {
+        Some(denom_trace) => Ok(denom_trace),
+        None => Err(ContractError::InvalidDenomTrace {
+            denom: denom.into(),
+        }),
+    }?;
+
+    deps.api.debug(&format!("procesing denom trace {path}"));
+    // Let's iterate over the parts of the denom trace and extract the
+    // chain/channels into a more useful structure: MultiHopDenom
+    let mut hops: Vec<MultiHopDenom> = vec![];
+    let mut rest: &str = &path;
+    let parts = path.split('/');
+
+    for chunk in &parts.chunks(2) {
+        let Some((port, channel)) = chunk.take(2).collect_tuple() else {
+            return Err(ContractError::InvalidDenomTracePath {
+                path: path.clone(),
+                denom: denom.into(),
+            });
+        };
+
+        // Check that the port is "transfer"
+        if port != TRANSFER_PORT {
+            return Err(ContractError::InvalidTransferPort { port: port.into() });
+        }
+
+        // Check that the channel is valid
+        let full_trace = rest.to_owned() + "/" + &base_denom;
+        hops.push(MultiHopDenom {
+            local_denom: hash_denom_trace(&full_trace),
+            on: Some(channel.to_string()),
+        });
+
+        rest = rest
+            .trim_start_matches(&format!("{port}/{channel}"))
+            .trim_start_matches('/'); // hops other than first and last will have this slash
+    }
+
+    hops.push(MultiHopDenom {
+        local_denom: base_denom,
+        on: None,
+    });
+
+    Ok(hops)
 }
 
 #[cfg(test)]

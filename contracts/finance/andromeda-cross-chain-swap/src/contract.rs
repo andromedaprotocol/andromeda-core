@@ -58,7 +58,7 @@ pub fn instantiate(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractError> {
     //TODO: Handle recovery for failed swap
-    deps.api.debug(format!("Reply: {:?}", msg).as_str());
+    deps.api.debug(format!("Reply: {msg:?}").as_str());
     match msg.id {
         MSG_SWAP_ID => {
             deps.api.debug("Handling Reply");

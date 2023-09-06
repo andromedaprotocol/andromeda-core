@@ -61,4 +61,9 @@ export default class Contract {
   ): Promise<T> {
     return signer.sign.queryContractSmart(this.address, msg);
   }
+
+  async getPort(signer: CosmWasmSigner): Promise<string> {
+    const { ibcPortId } = await signer.sign.getContract(this.address);
+    return ibcPortId!;
+  }
 }

@@ -579,6 +579,15 @@ pub enum ContractError {
 
     #[error("Invalid Packet, {error:?}")]
     InvalidPacket { error: Option<String> },
+
+    #[error("Invalid Denom Trace: {denom}")]
+    InvalidDenomTrace { denom: String },
+
+    #[error("Invalid Denom Trace Path: {path} - {denom}")]
+    InvalidDenomTracePath { path: String, denom: String },
+
+    #[error("Invalid Transfer Port: {port}")]
+    InvalidTransferPort { port: String },
 }
 
 impl From<Cw20ContractError> for ContractError {
@@ -597,7 +606,7 @@ impl From<Cw20ContractError> for ContractError {
                 ContractError::DuplicateInitialBalanceAddresses {}
             }
             Cw20ContractError::InvalidExpiration {} => ContractError::InvalidExpiration {},
-            _ => panic!("Unsupported cw20 error: {:?}", err),
+            _ => panic!("Unsupported cw20 error: {err:?}"),
         }
     }
 }

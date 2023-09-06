@@ -7,6 +7,7 @@ use cosmwasm_std::Binary;
 #[cw_serde]
 pub struct InstantiateMsg {
     pub owner: Option<String>,
+    pub chain_name: Option<String>,
 }
 
 #[cw_serde]
@@ -24,10 +25,25 @@ pub enum ExecuteMsg {
         msg: Binary,
         owner: Option<AndrAddr>,
     },
+    /// Assigns a given channel to the given chain
+    AssignChannels {
+        ics20_channel_id: Option<String>,
+        direct_channel_id: Option<String>,
+        chain: String,
+        kernel_address: String,
+    },
 }
 
 #[cw_serde]
 pub struct MigrateMsg {}
+
+#[cw_serde]
+pub struct ChannelInfoResponse {
+    pub ics20: Option<String>,
+    pub direct: Option<String>,
+    pub kernel_address: String,
+    pub supported_modules: Vec<String>,
+}
 
 #[cw_serde]
 #[derive(QueryResponses)]
@@ -36,4 +52,14 @@ pub enum QueryMsg {
     KeyAddress { key: String },
     #[returns(bool)]
     VerifyAddress { address: String },
+    #[returns(Option<ChannelInfoResponse>)]
+    ChannelInfo { chain: String },
+}
+
+#[cw_serde]
+pub enum IbcExecuteMsg {
+    SendMessage {
+        recipient: AndrAddr,
+        message: Binary,
+    },
 }

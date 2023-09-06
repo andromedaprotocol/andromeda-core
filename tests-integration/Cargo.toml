@@ -11,26 +11,30 @@ modules = []
 [dev-dependencies]
 #App
 andromeda-app = { workspace = true }
-andromeda-app-contract = { path = "../contracts/app/andromeda-app-contract", features = ["testing"] }
+andromeda-app-contract = { path = "../contracts/app/andromeda-app-contract", features = [
+    "testing",
+] }
 
 #Non-Fungible Tokens
 andromeda-non-fungible-tokens = { workspace = true }
-andromeda-cw721 = { path = "../contracts/non-fungible-tokens/andromeda-cw721", features = ["testing"] }
-andromeda-crowdfund = { path = "../contracts/non-fungible-tokens/andromeda-crowdfund", features = ["testing"] }
-andromeda-auction = { path = "../contracts/non-fungible-tokens/andromeda-auction", features = ["testing"] }
+andromeda-cw721 = { path = "../contracts/non-fungible-tokens/andromeda-cw721", features = [
+    "testing",
+] }
+andromeda-crowdfund = { path = "../contracts/non-fungible-tokens/andromeda-crowdfund", features = [
+    "testing",
+] }
+andromeda-auction = { path = "../contracts/non-fungible-tokens/andromeda-auction", features = [
+    "testing",
+] }
 # # andromeda-wrapped-cw721 = { path = "../contracts/non-fungible-tokens/andromeda-wrapped-cw721", features = ["testing"] }
-andromeda-marketplace = { path = "../contracts/non-fungible-tokens/andromeda-marketplace", features = ["testing"] }
+andromeda-marketplace = { path = "../contracts/non-fungible-tokens/andromeda-marketplace", features = [
+    "testing",
+] }
 # # andromeda-ics721 = { path = "../contracts/non-fungible-tokens/andromeda-ics721", features = ["testing"] }
-
-# #IBC
-# # andromeda-ibc = { path = "../packages/andromeda-ibc" }
-# andromeda-message-bridge = { path = "../contracts/os/andromeda-message-bridge", features = ["testing"] }
 
 # #Automation
 # # andromeda-automation = { path = "../packages/andromeda-automation" }
 # # andromeda-counter = { path = "../contracts/automation/andromeda-counter", features = ["testing"] }
-
-
 
 
 #Fungible Tokens
@@ -40,22 +44,35 @@ andromeda-marketplace = { path = "../contracts/non-fungible-tokens/andromeda-mar
 
 # #Modules
 andromeda-modules = { workspace = true }
-andromeda-rates = { path = "../contracts/modules/andromeda-rates", features = ["testing"] }
-andromeda-address-list = { path = "../contracts/modules/andromeda-address-list", features = ["testing"] }
+andromeda-rates = { path = "../contracts/modules/andromeda-rates", features = [
+    "testing",
+] }
+andromeda-address-list = { path = "../contracts/modules/andromeda-address-list", features = [
+    "testing",
+] }
 
 # #Ecosystem
-andromeda-ecosystem = {  workspace = true }
-andromeda-vault = { path = "../contracts/ecosystem/andromeda-vault", features = ["testing"] }
+andromeda-ecosystem = { workspace = true }
+andromeda-vault = { path = "../contracts/ecosystem/andromeda-vault", features = [
+    "testing",
+] }
 
 # #Finance
 andromeda-finance = { workspace = true }
-andromeda-splitter = { path = "../contracts/finance/andromeda-splitter", features = ["testing"] }
+andromeda-splitter = { path = "../contracts/finance/andromeda-splitter", features = [
+    "testing",
+] }
 
 # #OS
-andromeda-kernel = { path = "../contracts/os/andromeda-kernel", features = ["testing"] }
-andromeda-adodb = { path = "../contracts/os/andromeda-adodb", features = ["testing"] }
-andromeda-vfs = { path = "../contracts/os/andromeda-vfs", features = ["testing"]}
-
+andromeda-kernel = { path = "../contracts/os/andromeda-kernel", features = [
+    "testing",
+] }
+andromeda-adodb = { path = "../contracts/os/andromeda-adodb", features = [
+    "testing",
+] }
+andromeda-vfs = { path = "../contracts/os/andromeda-vfs", features = [
+    "testing",
+] }
 
 
 #Other Crates
@@ -63,7 +80,7 @@ andromeda-vfs = { path = "../contracts/os/andromeda-vfs", features = ["testing"]
 andromeda-testing = { workspace = true, features = ["testing"] }
 
 #Cosmwasm Crates
-cosmwasm-std = { workspace = true}
+cosmwasm-std = { workspace = true }
 cw721-base = { workspace = true }
 cw721 = { workspace = true }
 # cw20 = "0.16.0"

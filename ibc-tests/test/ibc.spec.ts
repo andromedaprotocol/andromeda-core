@@ -3,7 +3,9 @@ import {
   CosmWasmSigner,
   randomAddress,
 } from "@confio/relayer/build/lib/helpers";
+import { ChannelPair } from "@confio/relayer/build/lib/link";
 import { assert } from "chai";
+import { Order } from "cosmjs-types/ibc/core/channel/v1/channel";
 import { step } from "mocha-steps";
 import digest from "sha256";
 
@@ -18,6 +20,7 @@ import {
   createAMPMsg,
   createAMPPacket,
   getAllADONames,
+  relayAll,
   setupOsmosisClient,
   setupOsmosisClientB,
   setupRelayerInfo,
@@ -30,12 +33,12 @@ interface Contracts {
   kernel?: Contract;
   vfs?: Contract;
   economics?: Contract;
-  "ibc-bridge"?: Contract;
   adodb?: Contract;
 }
 
 interface State {
   link?: Link;
+  channel?: ChannelPair;
   setup: boolean;
   chainA: {
     client?: CosmWasmSigner;
@@ -121,8 +124,8 @@ describe("Operating System", () => {
   step("should be deployed correctly...", async () => {
     const { chainA, chainB } = state;
     const [addressesA, addressesB] = (await awaitMulti([
-      setupOS(chainA.client! as CosmWasmSigner),
-      setupOS(chainB.client! as CosmWasmSigner),
+      setupOS(chainA.client! as CosmWasmSigner, chainA.name),
+      setupOS(chainB.client! as CosmWasmSigner, chainB.name),
     ])) as Record<keyof Contracts, string>[];
     for (const contract in addressesA) {
       chainA.os[contract as keyof Contracts] = Contract.fromAddress(
@@ -153,29 +156,75 @@ describe("Operating System", () => {
     }
   });
 
+  step("should create a channel between kernels", async () => {
+    const {
+      link,
+      chainA: { os: osA, client: clientA },
+      chainB: { os: osB, client: clientB },
+    } = state;
+    const portA = await osA.kernel!.getPort(clientA!);
+    const portB = await osB.kernel!.getPort(clientB!);
+    const channel = await link?.createChannel(
+      "A",
+      portA,
+      portB,
+      Order.ORDER_UNORDERED,
+      "andr-kernel-1"
+    );
+
+    state.channel = channel;
+    await relayAll(link!);
+  });
+
   step("should assign the correct channel on chain A", async () => {
-    const { chainA, chainB } = state;
+    const { chainA, chainB, channel } = state;
 
     const osmoABridgeMsg = {
-      save_channel: {
-        channel: chainA.ics20Chan,
+      assign_channels: {
+        ics20_channel_id: chainA.ics20Chan,
         kernel_address: chainB.os.kernel!.address,
         chain: chainB.name,
+        direct_channel_id: channel?.src.channelId,
       },
     };
-    await chainA.os["ibc-bridge"]!.execute(osmoABridgeMsg, chainA.client!);
+    await chainA.os.kernel!.execute(osmoABridgeMsg, chainA.client!);
+
+    const assignedChannels = await chainA.os.kernel!.query<{
+      ics20: string;
+      direct: string;
+    }>(
+      {
+        channel_info: { chain: chainB.name },
+      },
+      chainA.client!
+    );
+    assert(assignedChannels.ics20 == chainA.ics20Chan);
+    assert(assignedChannels.direct == channel?.src.channelId);
   });
 
   step("should assign the correct channel on chain B", async () => {
-    const { chainA, chainB } = state;
+    const { chainA, chainB, channel } = state;
     const osmoBBridgeMsg = {
-      save_channel: {
-        channel: chainB.ics20Chan,
+      assign_channels: {
+        ics20_channel_id: chainB.ics20Chan,
         kernel_address: chainA.os.kernel!.address,
         chain: chainA.name,
+        direct_channel_id: channel?.dest.channelId,
       },
     };
-    await chainB.os["ibc-bridge"]!.execute(osmoBBridgeMsg, chainB.client!);
+    await chainB.os.kernel!.execute(osmoBBridgeMsg, chainB.client!);
+
+    const assignedChannels = await chainB.os.kernel!.query<{
+      ics20: string;
+      direct: string;
+    }>(
+      {
+        channel_info: { chain: chainA.name },
+      },
+      chainB.client!
+    );
+    assert(assignedChannels.ics20 == chainA.ics20Chan);
+    assert(assignedChannels.direct == channel?.src.channelId);
   });
 
   step("should upload all contracts correctly", async () => {
@@ -254,13 +303,12 @@ describe("Basic IBC Token Transfers", async () => {
     const msg = createAMPMsg(`ibc://${chainB.name}/${receiver}`, undefined, [
       transferAmount,
     ]);
-    const pkt = createAMPPacket(chainA.client!.senderAddress, [msg]);
-    const kernelMsg = { amp_receive: pkt };
+    const kernelMsg = { send: { message: msg } };
     const res = await chainA.os.kernel!.execute(kernelMsg, chainA.client!, [
       transferAmount,
     ]);
     assert(res.transactionHash);
-    const info = await link!.relayAll();
+    const info = await relayAll(link!);
     assertPacketsFromA(info, 1, true);
     const omsoBalance = await chainB.client!.sign.getBalance(
       receiver,
@@ -279,13 +327,12 @@ describe("Basic IBC Token Transfers", async () => {
     const msg = createAMPMsg(`ibc://${chainA.name}/${receiver}`, undefined, [
       transferAmount,
     ]);
-    const pkt = createAMPPacket(chainB.client!.senderAddress, [msg]);
-    const kernelMsg = { amp_receive: pkt };
+    const kernelMsg = { send: { message: msg } };
     const res = await chainB.os.kernel!.execute(kernelMsg, chainB.client!, [
       transferAmount,
     ]);
     assert(res.transactionHash);
-    const info = await link!.relayAll();
+    const info = await relayAll(link!);
     assertPacketsFromB(info, 1, true);
     const omsoBalance = await chainA.client!.sign.getBalance(
       receiver,
@@ -297,58 +344,55 @@ describe("Basic IBC Token Transfers", async () => {
     );
   });
 
-  // TODO: Handle Unwrapping
-  // step(
-  //   "should send tokens from chain A to chain B and back to chain A",
-  //   async () => {
-  //     const { link, chainA, chainB } = state;
-  //     const receiver = randomAddress("osmo");
+  step(
+    "should send tokens from chain A to chain B and back to chain A",
+    async () => {
+      const { link, chainA, chainB } = state;
+      const receiver = randomAddress("osmo");
+      const splitterCodeId: number = await chainB.os.adodb!.query(
+        { code_id: { key: "splitter" } },
+        chainB.client!
+      );
+      const splitterInstMsg = {
+        kernel_address: chainB.os.kernel!.address,
+        recipients: [
+          {
+            recipient: {
+              address: `ibc://${chainA.name}/${receiver}`,
+            },
+            percent: "1",
+          },
+        ],
+      };
+      const splitter = await Contract.fromCodeId(
+        splitterCodeId,
+        splitterInstMsg,
+        chainB.client!
+      );
 
-  //     const splitterCodeId: number = await chainB.os.adodb!.query(
-  //       { code_id: { key: "splitter" } },
-  //       chainB.client!
-  //     );
-  //     const splitterInstMsg = {
-  //       kernel_address: chainB.os.kernel!.address,
-  //       recipients: [
-  //         {
-  //           recipient: {
-  //             address: `ibc://${chainA.name}/${receiver}`,
-  //           },
-  //           percent: "1",
-  //         },
-  //       ],
-  //     };
-  //     const splitter = await Contract.fromCodeId(
-  //       splitterCodeId,
-  //       splitterInstMsg,
-  //       chainB.client!
-  //     );
-
-  //     const transferAmount = { amount: "100", denom: "uosmo" };
-  //     const msg = createAMPMsg(
-  //       `ibc://${chainB.name}/${splitter.address}`,
-  //       { send: {} },
-  //       [transferAmount]
-  //     );
-  //     const pkt = createAMPPacket(chainB.client!.senderAddress, [msg]);
-  //     const kernelMsg = { amp_receive: pkt };
-  //     const res = await chainA.os.kernel!.execute(kernelMsg, chainA.client!, [
-  //       transferAmount,
-  //     ]);
-  //     assert(res.transactionHash);
-  //     const infoA = await link!.relayAll();
-  //     assertPacketsFromA(infoA, 1, true);
-  //     const infoB = await link!.relayAll();
-  //     assertPacketsFromB(infoB, 1, true);
-  //     const omsoBalance = await chainA.client!.sign.getBalance(
-  //       receiver,
-  //       "uosmo"
-  //     );
-  //     assert(
-  //       omsoBalance.amount === transferAmount.amount,
-  //       "Balance is incorrect"
-  //     );
-  //   }
-  // );
+      const transferAmount = { amount: "100", denom: "uosmo" };
+      const msg = createAMPMsg(
+        `ibc://${chainB.name}/${splitter.address}`,
+        { send: {} },
+        [transferAmount]
+      );
+      const kernelMsg = { send: { message: msg } };
+      const res = await chainA.os.kernel!.execute(kernelMsg, chainA.client!, [
+        transferAmount,
+      ]);
+      assert(res.transactionHash);
+      await relayAll(link!);
+      // assertPacketsFromA(infoA, 1, true);
+      await relayAll(link!);
+      // assertPacketsFromB(infoB, 1, true);
+      const omsoBalance = await chainA.client!.sign.getBalance(
+        receiver,
+        "uosmo"
+      );
+      assert(
+        omsoBalance.amount === transferAmount.amount,
+        "Balance is incorrect"
+      );
+    }
+  );
 });

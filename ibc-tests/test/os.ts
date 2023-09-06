@@ -4,13 +4,14 @@ import { getADOPath, setupContracts } from "./utils";
 
 export async function instantiateOs(
   client: CosmWasmSigner,
-  codeIds: Record<string, number>
+  codeIds: Record<string, number>,
+  chainName: string
 ) {
   const addresses: Record<string, string> = {};
   const res = await client.sign.instantiate(
     client.senderAddress,
     codeIds["kernel"],
-    {},
+    { chain_name: chainName },
     "Kernel",
     "auto"
   );
@@ -49,16 +50,15 @@ async function assignKeyAddresses(
   }
 }
 
-export async function setupOS(client: CosmWasmSigner) {
+export async function setupOS(client: CosmWasmSigner, chainName: string) {
   const contracts: Record<string, string> = {
     kernel: getADOPath("kernel"),
     adodb: getADOPath("adodb"),
     vfs: getADOPath("vfs"),
     economics: getADOPath("economics"),
-    "ibc-bridge": getADOPath("message_bridge"),
   };
   const codeIds = await setupContracts(client, contracts);
-  const addresses = await instantiateOs(client, codeIds);
+  const addresses = await instantiateOs(client, codeIds, chainName);
   await assignKeyAddresses(client, addresses);
   return addresses;
 }

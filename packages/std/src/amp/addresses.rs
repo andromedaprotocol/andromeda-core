@@ -97,9 +97,9 @@ impl AndrAddr {
                 let app_contract = ADOContract::default().get_app_contract(storage)?;
                 match app_contract {
                     None => Err(ContractError::AppContractNotSpecified {}),
-                    Some(app_contract) => Ok(AndrAddr(
-                        self.0.replace("./", &format!("{}/", app_contract)),
-                    )),
+                    Some(app_contract) => {
+                        Ok(AndrAddr(self.0.replace("./", &format!("{app_contract}/"))))
+                    }
                 }
             }
             false => Ok(self.clone()),
