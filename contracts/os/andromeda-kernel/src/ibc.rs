@@ -317,7 +317,10 @@ pub fn unwrap_denom_path(deps: &Deps, denom: &str) -> Result<Vec<MultiHopDenom>,
 
     for chunk in &parts.chunks(2) {
         let Some((port, channel)) = chunk.take(2).collect_tuple() else {
-            return Err(ContractError::InvalidDenomTracePath{ path: path.clone(), denom: denom.into() });
+            return Err(ContractError::InvalidDenomTracePath {
+                path: path.clone(),
+                denom: denom.into(),
+            });
         };
 
         // Check that the port is "transfer"
