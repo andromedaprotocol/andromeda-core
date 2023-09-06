@@ -2,7 +2,7 @@ import { testutils } from "@confio/relayer";
 import { ChainDefinition as RelayerChainDefinition } from "@confio/relayer/build/lib/helpers";
 
 // const BASE_URL = "localhost";
-const BASE_URL = "18.212.50.191";
+const BASE_URL = process.env.LOCAL ? "localhost" : "18.212.50.191";
 
 export interface ChainDefinition extends RelayerChainDefinition {
   restUrl: string;
