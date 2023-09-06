@@ -11,12 +11,15 @@
     "test": "run-s test:*",
     "test:lint": "eslint test --ext .ts",
     "test:prettier": "prettier \"**/*.{ts,md}\" --list-different",
-    "test:unit": "ts-mocha -p tsconfig.json test/**/*.spec.ts --require mocha-steps --timeout 360000"
+    "test:unit": "ts-mocha -p tsconfig.json test/**/*.spec.ts --require mocha-steps --timeout 360000 --full-trace"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@confio/relayer": "^0.8.0",
+    "@confio/relayer": "^0.10.0",
+    "@cosmjs/cosmwasm-stargate": "^0.31.1",
+    "@cosmjs/crypto": "^0.31.1",
+    "@cosmjs/stargate": "^0.31.1",
     "axios": "^1.4.0",
     "sha256": "^0.2.0"
   },
