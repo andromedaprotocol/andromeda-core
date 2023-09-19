@@ -3,7 +3,8 @@
   "title": "InstantiateMsg",
   "type": "object",
   "required": [
-    "kernel_address"
+    "kernel_address",
+    "restriction"
   ],
   "properties": {
     "kernel_address": {
@@ -15,12 +16,19 @@
         "null"
       ]
     },
-    "vfs_name": {
-      "type": [
-        "string",
-        "null"
-      ]
+    "restriction": {
+      "$ref": "#/definitions/PrimitiveRestriction"
     }
   },
-  "additionalProperties": false
+  "additionalProperties": false,
+  "definitions": {
+    "PrimitiveRestriction": {
+      "type": "string",
+      "enum": [
+        "private",
+        "public",
+        "restricted"
+      ]
+    }
+  }
 }

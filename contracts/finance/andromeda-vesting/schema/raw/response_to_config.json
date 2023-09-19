@@ -88,6 +88,16 @@
         "address": {
           "$ref": "#/definitions/AndrAddr"
         },
+        "ibc_recovery_address": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/AndrAddr"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "msg": {
           "anyOf": [
             {

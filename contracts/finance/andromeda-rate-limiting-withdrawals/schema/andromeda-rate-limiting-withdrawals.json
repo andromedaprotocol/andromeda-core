@@ -76,6 +76,16 @@
           "address": {
             "$ref": "#/definitions/AndrAddr"
           },
+          "ibc_recovery_address": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/AndrAddr"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "msg": {
             "anyOf": [
               {
@@ -517,6 +527,16 @@
             "format": "uint64",
             "minimum": 0.0
           },
+          "ibc_config": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/IBCConfig"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "reply_on": {
             "description": "When the message should reply, defaults to Always",
             "allOf": [
@@ -639,6 +659,22 @@
           }
         ]
       },
+      "IBCConfig": {
+        "type": "object",
+        "properties": {
+          "recovery_addr": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/AndrAddr"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
       "Module": {
         "description": "A struct describing a token module, provided with the instantiation message this struct is used to record the info about the module and how/if it should be instantiated",
         "type": "object",
@@ -747,6 +783,16 @@
         "properties": {
           "address": {
             "$ref": "#/definitions/AndrAddr"
+          },
+          "ibc_recovery_address": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/AndrAddr"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "msg": {
             "anyOf": [
@@ -1213,6 +1259,16 @@
           "properties": {
             "address": {
               "$ref": "#/definitions/AndrAddr"
+            },
+            "ibc_recovery_address": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/AndrAddr"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "msg": {
               "anyOf": [

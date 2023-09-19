@@ -104,6 +104,16 @@
           "address": {
             "$ref": "#/definitions/AndrAddr"
           },
+          "ibc_recovery_address": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/AndrAddr"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "msg": {
             "anyOf": [
               {
@@ -548,6 +558,16 @@
             "format": "uint64",
             "minimum": 0.0
           },
+          "ibc_config": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/IBCConfig"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "reply_on": {
             "description": "When the message should reply, defaults to Always",
             "allOf": [
@@ -666,6 +686,22 @@
           }
         ]
       },
+      "IBCConfig": {
+        "type": "object",
+        "properties": {
+          "recovery_addr": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/AndrAddr"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
       "Permission": {
         "description": "An enum to represent a user's permission for an action\n\n- **Blacklisted** - The user cannot perform the action until after the provided expiration - **Limited** - The user can perform the action while uses are remaining and before the provided expiration **for a permissioned action** - **Whitelisted** - The user can perform the action until the provided expiration **for a permissioned action**\n\nExpiration defaults to `Never` if not provided",
         "oneOf": [
@@ -751,6 +787,16 @@
         "properties": {
           "address": {
             "$ref": "#/definitions/AndrAddr"
+          },
+          "ibc_recovery_address": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/AndrAddr"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "msg": {
             "anyOf": [
@@ -1057,6 +1103,16 @@
           "address": {
             "$ref": "#/definitions/AndrAddr"
           },
+          "ibc_recovery_address": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/AndrAddr"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "msg": {
             "anyOf": [
               {
@@ -1224,6 +1280,16 @@
           "properties": {
             "address": {
               "$ref": "#/definitions/AndrAddr"
+            },
+            "ibc_recovery_address": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/AndrAddr"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "msg": {
               "anyOf": [

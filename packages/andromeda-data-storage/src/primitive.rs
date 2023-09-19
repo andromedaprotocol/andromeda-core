@@ -1,11 +1,11 @@
 use andromeda_std::{andr_exec, andr_instantiate, andr_query};
 use cosmwasm_schema::{cw_serde, schemars::Map, QueryResponses};
-use cosmwasm_std::{Binary, Coin, Decimal, StdError, Uint128};
+use cosmwasm_std::{Addr, Binary, Coin, Decimal, StdError, Uint128};
 
 #[andr_instantiate]
 #[cw_serde]
 pub struct InstantiateMsg {
-    pub vfs_name: Option<String>,
+    pub restriction: PrimitiveRestriction,
 }
 
 #[andr_exec]
@@ -17,7 +17,12 @@ pub enum ExecuteMsg {
         value: Primitive,
     },
     /// If key is not specified the default key will be used.
-    DeleteValue { key: Option<String> },
+    DeleteValue {
+        key: Option<String>,
+    },
+    UpdateRestriction {
+        restriction: PrimitiveRestriction,
+    },
 }
 
 #[cw_serde]
@@ -39,11 +44,19 @@ pub enum Primitive {
     Uint128(Uint128),
     Decimal(Decimal),
     Coin(Coin),
+    Addr(Addr),
     String(String),
     Bool(bool),
     Vec(Vec<Primitive>),
     Binary(Binary),
     Object(Map<String, Primitive>),
+}
+
+#[cw_serde]
+pub enum PrimitiveRestriction {
+    Private,
+    Public,
+    Restricted,
 }
 
 fn parse_error(type_name: String) -> StdError {
@@ -80,6 +93,12 @@ impl From<bool> for Primitive {
 impl From<Coin> for Primitive {
     fn from(value: Coin) -> Self {
         Primitive::Coin(value)
+    }
+}
+
+impl From<Addr> for Primitive {
+    fn from(value: Addr) -> Self {
+        Primitive::Addr(value)
     }
 }
 
@@ -143,6 +162,13 @@ impl Primitive {
         match self {
             Primitive::Coin(coin) => Ok(coin.clone()),
             _ => Err(parse_error(String::from("Coin"))),
+        }
+    }
+
+    pub fn try_get_addr(&self) -> Result<Addr, StdError> {
+        match self {
+            Primitive::Addr(addr) => Ok(addr.clone()),
+            _ => Err(parse_error(String::from("Addr"))),
         }
     }
 

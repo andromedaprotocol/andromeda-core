@@ -3,7 +3,10 @@ use crate::{
     state::{add_pathname, resolve_pathname, PathInfo, ADDRESS_USERNAME, USERS},
 };
 
-use andromeda_std::os::vfs::{ExecuteMsg, InstantiateMsg};
+use andromeda_std::{
+    amp::AndrAddr,
+    os::vfs::{ExecuteMsg, InstantiateMsg},
+};
 use andromeda_std::{error::ContractError, os::vfs::QueryMsg};
 use cosmwasm_std::{
     from_binary,
@@ -125,7 +128,7 @@ fn test_add_parent_path() {
     let env = mock_env();
     let msg = ExecuteMsg::AddParentPath {
         name: component_name.to_string(),
-        parent_address: user_address.clone(),
+        parent_address: AndrAddr::from_string(user_address.clone()),
     };
 
     execute(deps.as_mut(), env, info, msg).unwrap();

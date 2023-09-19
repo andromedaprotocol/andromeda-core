@@ -1,5 +1,6 @@
 use andromeda_std::ado_contract::ADOContract;
 
+use andromeda_std::amp::AndrAddr;
 use andromeda_std::os::vfs::{
     validate_component_name, validate_path_name, validate_username, ExecuteMsg, InstantiateMsg,
     MigrateMsg, QueryMsg,
@@ -15,7 +16,7 @@ use cw2::{get_contract_version, set_contract_version};
 use semver::Version;
 
 use crate::state::{
-    add_pathname, get_paths, get_subdir, resolve_pathname, PathInfo, ADDRESS_USERNAME, USERS,
+    add_pathname, get_paths, get_subdir, paths, resolve_pathname, PathInfo, ADDRESS_USERNAME, USERS,
 };
 
 // version info for migration info
@@ -99,15 +100,38 @@ fn execute_add_path(
 fn execute_add_parent_path(
     execute_env: ExecuteEnv,
     name: String,
-    parent_address: Addr,
+    parent_address: AndrAddr,
 ) -> Result<Response, ContractError> {
-    // validate_component_name(name.clone())?;
-    add_pathname(
+    validate_component_name(name.clone())?;
+    let parent_address = resolve_pathname(
         execute_env.deps.storage,
-        parent_address,
-        name,
-        execute_env.info.sender,
+        execute_env.deps.api,
+        parent_address.into_string(),
     )?;
+    let existing = paths()
+        .load(
+            execute_env.deps.storage,
+            &(parent_address.clone(), name.clone()),
+        )
+        .ok();
+    // Ensure that this path is not already added or if already added it should point to same address as above. This prevent external users to override existing paths.
+    // Only add path method can override existing paths as its safe because only owner of the path can execute it
+    match existing {
+        None => {
+            add_pathname(
+                execute_env.deps.storage,
+                parent_address,
+                name,
+                execute_env.info.sender,
+            )?;
+        }
+        Some(path) => {
+            ensure!(
+                path.address == execute_env.info.sender,
+                ContractError::Unauthorized {}
+            )
+        }
+    };
     Ok(Response::default())
 }
 

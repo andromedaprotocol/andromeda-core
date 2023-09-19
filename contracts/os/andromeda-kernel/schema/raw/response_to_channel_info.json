@@ -1,0 +1,45 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Nullable_ChannelInfoResponse",
+  "anyOf": [
+    {
+      "$ref": "#/definitions/ChannelInfoResponse"
+    },
+    {
+      "type": "null"
+    }
+  ],
+  "definitions": {
+    "ChannelInfoResponse": {
+      "type": "object",
+      "required": [
+        "kernel_address",
+        "supported_modules"
+      ],
+      "properties": {
+        "direct": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "ics20": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "kernel_address": {
+          "type": "string"
+        },
+        "supported_modules": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

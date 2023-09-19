@@ -318,6 +318,16 @@
           "format": "uint64",
           "minimum": 0.0
         },
+        "ibc_config": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/IBCConfig"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "reply_on": {
           "description": "When the message should reply, defaults to Always",
           "allOf": [
@@ -423,6 +433,22 @@
           "additionalProperties": false
         }
       ]
+    },
+    "IBCConfig": {
+      "type": "object",
+      "properties": {
+        "recovery_addr": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/AndrAddr"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
     },
     "PercentRate": {
       "type": "object",
@@ -581,6 +607,16 @@
       "properties": {
         "address": {
           "$ref": "#/definitions/AndrAddr"
+        },
+        "ibc_recovery_address": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/AndrAddr"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "msg": {
           "anyOf": [

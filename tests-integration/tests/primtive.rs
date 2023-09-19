@@ -48,8 +48,11 @@ fn test_primtive() {
 
     andr.store_code_id(&mut router, "primitve", primtive_code_id);
 
-    let primitive_init_msg =
-        mock_primitive_instantiate_msg(andr.kernel_address.to_string(), None, None);
+    let primitive_init_msg = mock_primitive_instantiate_msg(
+        andr.kernel_address.to_string(),
+        None,
+        andromeda_data_storage::primitive::PrimitiveRestriction::Private,
+    );
 
     let primitive_addr = router
         .instantiate_contract(

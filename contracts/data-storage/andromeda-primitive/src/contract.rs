@@ -1,16 +1,14 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{
-    ensure, to_binary, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Response,
-    StdError, Storage, SubMsg, WasmMsg,
-};
+use cosmwasm_std::{ensure, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError, Storage};
 use cw2::{get_contract_version, set_contract_version};
 
-use crate::state::{get_key_or_default, query_value, DATA};
-use andromeda_data_storage::primitive::{
-    ExecuteMsg, InstantiateMsg, MigrateMsg, Primitive, QueryMsg,
+use crate::state::{
+    get_key_or_default, has_key_permission, query_value, DATA, KEY_OWNER, RESTRICTION,
 };
-use andromeda_std::os::vfs::ExecuteMsg as VFSExecuteMsg;
+use andromeda_data_storage::primitive::{
+    ExecuteMsg, InstantiateMsg, MigrateMsg, Primitive, PrimitiveRestriction, QueryMsg,
+};
 use andromeda_std::{
     ado_base::InstantiateMsg as BaseInstantiateMsg,
     ado_contract::ADOContract,
@@ -24,8 +22,6 @@ use semver::Version;
 const CONTRACT_NAME: &str = "crates.io:andromeda-primitive";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-const REGISTER_PARENT_PATH_MSG: u64 = 1001;
-
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
@@ -34,12 +30,11 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    let mut msgs: Vec<SubMsg> = vec![];
     let resp = ADOContract::default().instantiate(
         deps.storage,
         env,
         deps.api,
-        info.clone(),
+        info,
         BaseInstantiateMsg {
             ado_type: "primitive".to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
@@ -48,24 +43,8 @@ pub fn instantiate(
             owner: msg.owner,
         },
     )?;
-    if msg.vfs_name.is_some() {
-        let vfs_address = ADOContract::default().get_vfs_address(deps.storage, &deps.querier)?;
-
-        let add_path_msg = VFSExecuteMsg::AddParentPath {
-            name: msg.vfs_name.unwrap(),
-            parent_address: info.sender,
-        };
-        let cosmos_msg: CosmosMsg<Empty> = CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: vfs_address.to_string(),
-            msg: to_binary(&add_path_msg)?,
-            funds: vec![],
-        });
-
-        let register_msg = SubMsg::reply_on_error(cosmos_msg, REGISTER_PARENT_PATH_MSG);
-        msgs.push(register_msg);
-    }
-
-    Ok(resp.add_submessages(msgs))
+    RESTRICTION.save(deps.storage, &msg.restriction)?;
+    Ok(resp)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -88,8 +67,28 @@ pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
     match msg {
         ExecuteMsg::SetValue { key, value } => execute_set_value(ctx.deps, ctx.info, key, value),
         ExecuteMsg::DeleteValue { key } => execute_delete_value(ctx.deps, ctx.info, key),
+        ExecuteMsg::UpdateRestriction { restriction } => {
+            execute_update_restriction(ctx.deps, ctx.info, restriction)
+        }
         _ => ADOContract::default().execute(ctx, msg),
     }
+}
+
+pub fn execute_update_restriction(
+    deps: DepsMut,
+    info: MessageInfo,
+    restriction: PrimitiveRestriction,
+) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+    let sender = info.sender;
+    ensure!(
+        ADOContract::default().is_owner_or_operator(deps.storage, sender.as_ref())?,
+        ContractError::Unauthorized {}
+    );
+    RESTRICTION.save(deps.storage, &restriction)?;
+    Ok(Response::new()
+        .add_attribute("method", "update_restriction")
+        .add_attribute("sender", sender))
 }
 
 pub fn execute_set_value(
@@ -99,16 +98,20 @@ pub fn execute_set_value(
     value: Primitive,
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
-
-    let sender = info.sender.to_string();
+    let sender = info.sender;
+    let key: &str = get_key_or_default(&key);
     ensure!(
-        ADOContract::default().is_owner_or_operator(deps.storage, &sender)?,
+        has_key_permission(deps.storage, &sender, key)?,
         ContractError::Unauthorized {}
     );
-    let key: &str = get_key_or_default(&key);
     DATA.update::<_, StdError>(deps.storage, key, |old| match old {
         Some(_) => Ok(value.clone()),
         None => Ok(value.clone()),
+    })?;
+    // Update the owner of the key
+    KEY_OWNER.update::<_, StdError>(deps.storage, key, |old| match old {
+        Some(old) => Ok(old),
+        None => Ok(sender.clone()),
     })?;
 
     Ok(Response::new()
@@ -124,13 +127,15 @@ pub fn execute_delete_value(
     key: Option<String>,
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
-    let sender = info.sender.to_string();
+    let sender = info.sender;
+
+    let key = get_key_or_default(&key);
     ensure!(
-        ADOContract::default().is_owner_or_operator(deps.storage, &sender)?,
+        has_key_permission(deps.storage, &sender, key)?,
         ContractError::Unauthorized {}
     );
-    let key = get_key_or_default(&key);
     DATA.remove(deps.storage, key);
+    KEY_OWNER.remove(deps.storage, key);
     Ok(Response::new()
         .add_attribute("method", "delete_value")
         .add_attribute("sender", sender)
