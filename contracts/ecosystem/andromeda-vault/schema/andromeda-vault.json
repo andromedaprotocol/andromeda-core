@@ -308,7 +308,7 @@
                   "null"
                 ],
                 "items": {
-                  "$ref": "#/definitions/Withdrawal2"
+                  "$ref": "#/definitions/Withdrawal"
                 }
               }
             },
@@ -739,57 +739,7 @@
         },
         "additionalProperties": false
       },
-      "Withdrawal2": {
-        "type": "object",
-        "required": [
-          "token"
-        ],
-        "properties": {
-          "token": {
-            "type": "string"
-          },
-          "withdrawal_type": {
-            "anyOf": [
-              {
-                "$ref": "#/definitions/WithdrawalType2"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "additionalProperties": false
-      },
       "WithdrawalType": {
-        "oneOf": [
-          {
-            "type": "object",
-            "required": [
-              "amount"
-            ],
-            "properties": {
-              "amount": {
-                "$ref": "#/definitions/Uint128"
-              }
-            },
-            "additionalProperties": false
-          },
-          {
-            "type": "object",
-            "required": [
-              "percentage"
-            ],
-            "properties": {
-              "percentage": {
-                "$ref": "#/definitions/Decimal"
-              }
-            },
-            "additionalProperties": false
-          }
-        ]
-      },
-      "WithdrawalType2": {
         "oneOf": [
           {
             "type": "object",
