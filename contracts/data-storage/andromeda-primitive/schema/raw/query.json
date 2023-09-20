@@ -39,6 +39,27 @@
     {
       "type": "object",
       "required": [
+        "owner_keys"
+      ],
+      "properties": {
+        "owner_keys": {
+          "type": "object",
+          "required": [
+            "owner"
+          ],
+          "properties": {
+            "owner": {
+              "$ref": "#/definitions/AndrAddr"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
         "owner"
       ],
       "properties": {

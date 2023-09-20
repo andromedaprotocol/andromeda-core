@@ -1,4 +1,4 @@
-use andromeda_std::{andr_exec, andr_instantiate, andr_query};
+use andromeda_std::{amp::AndrAddr, andr_exec, andr_instantiate, andr_query};
 use cosmwasm_schema::{cw_serde, schemars::Map, QueryResponses};
 use cosmwasm_std::{Addr, Binary, Coin, Decimal, StdError, Uint128};
 
@@ -37,6 +37,8 @@ pub enum QueryMsg {
     GetValue { key: Option<String> },
     #[returns(Vec<String>)]
     AllKeys {},
+    #[returns(Vec<String>)]
+    OwnerKeys { owner: AndrAddr },
 }
 
 #[cw_serde]

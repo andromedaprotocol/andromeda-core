@@ -16,6 +16,7 @@ use andromeda_data_storage::primitive::{
 };
 
 use andromeda_std::{
+    amp::AndrAddr,
     error::ContractError,
     testing::mock_querier::{mock_dependencies_custom, WasmMockQuerier},
 };
@@ -297,6 +298,65 @@ fn query_all_key() {
         from_binary(&query(deps.as_ref(), mock_env(), QueryMsg::AllKeys {}).unwrap()).unwrap();
 
     assert_eq!(res, keys)
+}
+
+#[test]
+fn query_owner_keys() {
+    let (mut deps, _) = proper_initialization(PrimitiveRestriction::Restricted);
+
+    let keys: Vec<String> = vec!["1".into(), "2".into()];
+    let value = Primitive::String("value".to_string());
+    let sender = "sender1".to_string();
+    for key in keys.clone() {
+        set_value_helper(
+            deps.as_mut(),
+            &Some(format!("{sender}-{key}")),
+            &value,
+            &sender,
+        )
+        .unwrap();
+    }
+
+    let sender = "sender2".to_string();
+    for key in keys {
+        set_value_helper(
+            deps.as_mut(),
+            &Some(format!("{sender}-{key}")),
+            &value,
+            &sender,
+        )
+        .unwrap();
+    }
+
+    let res: Vec<String> =
+        from_binary(&query(deps.as_ref(), mock_env(), QueryMsg::AllKeys {}).unwrap()).unwrap();
+    assert!(res.len() == 4, "Not all keys added");
+
+    let res: Vec<String> = from_binary(
+        &query(
+            deps.as_ref(),
+            mock_env(),
+            QueryMsg::OwnerKeys {
+                owner: AndrAddr::from_string("sender1"),
+            },
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    assert!(res.len() == 2, "assertion failed {res:?}", res = res);
+
+    let res: Vec<String> = from_binary(
+        &query(
+            deps.as_ref(),
+            mock_env(),
+            QueryMsg::OwnerKeys {
+                owner: AndrAddr::from_string("sender2"),
+            },
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    assert!(res.len() == 2, "assertion failed {res:?}", res = res);
 }
 
 #[test]

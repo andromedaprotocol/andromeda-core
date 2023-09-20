@@ -12,6 +12,7 @@ use andromeda_data_storage::primitive::{
 use andromeda_std::{
     ado_base::InstantiateMsg as BaseInstantiateMsg,
     ado_contract::ADOContract,
+    amp::AndrAddr,
     common::{context::ExecuteContext, encode_binary},
     error::{from_semver, ContractError},
 };
@@ -181,6 +182,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
     match msg {
         QueryMsg::GetValue { key } => encode_binary(&query_value(deps.storage, key)?),
         QueryMsg::AllKeys {} => encode_binary(&query_all_keys(deps.storage)?),
+        QueryMsg::OwnerKeys { owner } => encode_binary(&query_owner_keys(&deps, owner)?),
         _ => ADOContract::default().query(deps, env, msg),
     }
 }
@@ -189,6 +191,16 @@ fn query_all_keys(storage: &dyn Storage) -> Result<Vec<String>, ContractError> {
     let keys = DATA
         .keys(storage, None, None, cosmwasm_std::Order::Ascending)
         .map(|key| key.unwrap())
+        .collect();
+    Ok(keys)
+}
+
+fn query_owner_keys(deps: &Deps, owner: AndrAddr) -> Result<Vec<String>, ContractError> {
+    let owner = owner.get_raw_address(deps)?;
+    let keys = KEY_OWNER
+        .range(deps.storage, None, None, cosmwasm_std::Order::Ascending)
+        .filter(|x| x.as_ref().unwrap().1 == owner)
+        .map(|key| key.unwrap().0)
         .collect();
     Ok(keys)
 }
