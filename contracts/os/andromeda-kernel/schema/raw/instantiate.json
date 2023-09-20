@@ -3,6 +3,12 @@
   "title": "InstantiateMsg",
   "type": "object",
   "properties": {
+    "chain_name": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "owner": {
       "type": [
         "string",

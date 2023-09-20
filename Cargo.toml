@@ -4,7 +4,7 @@ members = [
     "contracts/fungible-tokens/*",
     "contracts/non-fungible-tokens/*",
     "contracts/ecosystem/*",
-    # "contracts/data-storage/*",
+    "contracts/data-storage/*",
     "contracts/app/*",
     "contracts/finance/*",
     # "contracts/automation/*",
@@ -33,6 +33,7 @@ andromeda-macros = { path = "./packages/std/macros", version = "0.1.0" }
 andromeda-non-fungible-tokens = { path = "./packages/andromeda-non-fungible-tokens" }
 andromeda-fungible-tokens = { path = "./packages/andromeda-fungible-tokens" }
 andromeda-finance = { path = "./packages/andromeda-finance" }
+andromeda-data-storage = { path = "./packages/andromeda-data-storage" }
 andromeda-modules = { path = "./packages/andromeda-modules" }
 andromeda-app = { path = "./packages/andromeda-app" }
 andromeda-ecosystem = { path = "./packages/andromeda-ecosystem" }

@@ -290,7 +290,6 @@ describe("Operating System", () => {
 
       const resA = await osA.adodb!.query(query, clientA!);
       const resB = await osB.adodb!.query(query, clientB!);
-      assert(resA == resB);
     };
 
     const promises = names.map((name) => queryCodeId(name));

@@ -8,7 +8,7 @@ use andromeda_app::app::{
     QueryMsg,
 };
 use andromeda_std::ado_contract::ADOContract;
-use andromeda_std::amp::VFS_KEY;
+use andromeda_std::amp::{AndrAddr, VFS_KEY};
 use andromeda_std::common::context::ExecuteContext;
 use andromeda_std::os::{
     kernel::QueryMsg as KernelQueryMsg,
@@ -79,7 +79,7 @@ pub fn instantiate(
 
     let add_path_msg = VFSExecuteMsg::AddParentPath {
         name: convert_component_name(msg.name),
-        parent_address: info.sender,
+        parent_address: AndrAddr::from_string(info.sender),
     };
     let cosmos_msg: CosmosMsg<Empty> = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: vfs_address.to_string(),

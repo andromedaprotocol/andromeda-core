@@ -1,5 +1,6 @@
 use super::{contract::*, state::ADO_ADDRESSES};
 use andromeda_app::app::{AppComponent, ExecuteMsg, InstantiateMsg};
+use andromeda_std::amp::AndrAddr;
 use andromeda_std::os::vfs::{convert_component_name, ExecuteMsg as VFSExecuteMsg};
 use andromeda_std::testing::mock_querier::{mock_dependencies_custom, MOCK_KERNEL_CONTRACT};
 
@@ -63,7 +64,7 @@ fn test_instantiation() {
             contract_addr: "vfs_contract".to_string(),
             msg: to_binary(&VFSExecuteMsg::AddParentPath {
                 name: convert_component_name("Some App".to_string()),
-                parent_address: info.sender,
+                parent_address: AndrAddr::from_string(info.sender),
             })
             .unwrap(),
             funds: vec![],

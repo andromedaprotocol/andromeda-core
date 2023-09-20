@@ -1,4 +1,4 @@
-use crate::error::ContractError;
+use crate::{amp::AndrAddr, error::ContractError};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{ensure, Addr, QuerierWrapper};
 use regex::Regex;
@@ -79,9 +79,17 @@ impl PathDetails {
 
 #[cw_serde]
 pub enum ExecuteMsg {
-    AddPath { name: String, address: Addr },
-    AddParentPath { name: String, parent_address: Addr },
-    RegisterUser { username: String },
+    AddPath {
+        name: String,
+        address: Addr,
+    },
+    AddParentPath {
+        name: String,
+        parent_address: AndrAddr,
+    },
+    RegisterUser {
+        username: String,
+    },
 }
 
 #[cw_serde]

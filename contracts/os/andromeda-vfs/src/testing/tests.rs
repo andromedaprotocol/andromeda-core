@@ -3,7 +3,10 @@ use crate::{
     state::{add_pathname, resolve_pathname, PathInfo, ADDRESS_USERNAME, USERS},
 };
 
-use andromeda_std::os::vfs::{ExecuteMsg, InstantiateMsg};
+use andromeda_std::{
+    amp::AndrAddr,
+    os::vfs::{ExecuteMsg, InstantiateMsg},
+};
 use andromeda_std::{error::ContractError, os::vfs::QueryMsg};
 use cosmwasm_std::{
     from_binary,
@@ -125,7 +128,7 @@ fn test_add_parent_path() {
     let env = mock_env();
     let msg = ExecuteMsg::AddParentPath {
         name: component_name.to_string(),
-        parent_address: user_address.clone(),
+        parent_address: AndrAddr::from_string(user_address.clone()),
     };
 
     execute(deps.as_mut(), env, info, msg).unwrap();
@@ -139,6 +142,41 @@ fn test_add_parent_path() {
     let resolved_addr = resolve_pathname(deps.as_ref().storage, deps.as_ref().api, path).unwrap();
 
     assert_eq!(resolved_addr, sender)
+}
+
+/**
+ * This test tries to override existing vfs path using add parent path method.
+ * Here user_one will set his address as identifier in vfs. Another user user_two
+ * will try to override this field with his address so that he can get the benefits
+ * like splitter funds etc without user_one authorisation.
+ * Add Parent path has a protection to prevent such type of override and this test is
+ * VERY IMPORTANT from security perspective
+ */
+#[test]
+fn test_override_add_parent_path() {
+    let mut deps = mock_dependencies();
+    let env = mock_env();
+
+    let user_address = Addr::unchecked("user_one");
+    let component_name = "identifier";
+    let info = mock_info(user_address.as_str(), &[]);
+    let msg = ExecuteMsg::AddParentPath {
+        name: component_name.to_string(),
+        parent_address: AndrAddr::from_string(user_address.clone()),
+    };
+
+    execute(deps.as_mut(), env.clone(), info, msg).unwrap();
+
+    // Try to override above address with your address
+    let info = mock_info("user_two", &[]);
+    let msg = ExecuteMsg::AddParentPath {
+        name: component_name.to_string(),
+        parent_address: AndrAddr::from_string(user_address),
+    };
+
+    // This will error, user_two is trying to add his address as identifier for /user_one/identifier vfs path
+    let res = execute(deps.as_mut(), env, info, msg).unwrap_err();
+    assert_eq!(res, ContractError::Unauthorized {});
 }
 
 #[test]

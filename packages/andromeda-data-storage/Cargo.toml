@@ -1,0 +1,21 @@
+[package]
+name = "andromeda-data-storage"
+version = "0.2.0"
+edition = "2018"
+rust-version = "1.65.0"
+
+[features]
+backtraces = ["cosmwasm-std/backtraces"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+cosmwasm-std = { workspace = true }
+cosmwasm-schema = { workspace = true }
+serde = { version = "1.0.127", default-features = false, features = ["derive"] }
+cw-utils = { workspace = true }
+
+andromeda-std = { workspace = true, features=["module_hooks"] }
+

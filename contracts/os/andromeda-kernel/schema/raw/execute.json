@@ -62,6 +62,94 @@
         }
       },
       "additionalProperties": false
+    },
+    {
+      "description": "Creates an ADO with the given type and message",
+      "type": "object",
+      "required": [
+        "create"
+      ],
+      "properties": {
+        "create": {
+          "type": "object",
+          "required": [
+            "ado_type",
+            "msg"
+          ],
+          "properties": {
+            "ado_type": {
+              "type": "string"
+            },
+            "msg": {
+              "$ref": "#/definitions/Binary"
+            },
+            "owner": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/AndrAddr"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Assigns a given channel to the given chain",
+      "type": "object",
+      "required": [
+        "assign_channels"
+      ],
+      "properties": {
+        "assign_channels": {
+          "type": "object",
+          "required": [
+            "chain",
+            "kernel_address"
+          ],
+          "properties": {
+            "chain": {
+              "type": "string"
+            },
+            "direct_channel_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "ics20_channel_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "kernel_address": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Recovers funds from failed IBC messages",
+      "type": "object",
+      "required": [
+        "recover"
+      ],
+      "properties": {
+        "recover": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
     }
   ],
   "definitions": {
@@ -167,6 +255,16 @@
           "format": "uint64",
           "minimum": 0.0
         },
+        "ibc_config": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/IBCConfig"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "reply_on": {
           "description": "When the message should reply, defaults to Always",
           "allOf": [
@@ -221,6 +319,22 @@
           "type": "string"
         }
       }
+    },
+    "IBCConfig": {
+      "type": "object",
+      "properties": {
+        "recovery_addr": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/AndrAddr"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
     },
     "ReplyOn": {
       "description": "Use this to define when the contract gets a response callback. If you only need it for errors or success you can select just those in order to save gas.",
