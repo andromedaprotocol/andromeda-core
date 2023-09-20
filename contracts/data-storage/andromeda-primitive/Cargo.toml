@@ -1,7 +1,15 @@
 [package]
 name = "andromeda-primitive"
 version = "0.2.0"
-edition = "2018"
+authors = ["Connor Barr <crnbarr@gmail.com>","Anshudhar Kumar Singh <anshudhar2001@gmail.com>"]
+edition = "2021"
+rust-version = "1.69.0"
+
+exclude = [
+  # Those files are rust-optimizer artifacts. You might want to commit them for convenience but they should not be part of the source code publication.
+  "contract.wasm",
+  "hash.txt",
+]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
