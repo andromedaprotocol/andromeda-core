@@ -209,6 +209,9 @@ impl MockAndromedaQuerier {
             VFSQueryMsg::GetUsername { address } => {
                 SystemResult::Ok(ContractResult::Ok(to_binary(&address).unwrap()))
             }
+            VFSQueryMsg::GetLibrary { address } => {
+                SystemResult::Ok(ContractResult::Ok(to_binary(&address).unwrap()))
+            }
         }
     }
 
