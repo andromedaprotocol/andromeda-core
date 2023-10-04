@@ -133,7 +133,7 @@ fn test_add_path() {
     let msg = ExecuteMsg::AddPath {
         name: component_name_two.to_string(),
         address: component_addr_two.clone(),
-        parent_address: Some(component_addr.clone()),
+        parent_address: Some(AndrAddr::from_string(component_addr.clone())),
     };
 
     execute(deps.as_mut(), env.clone(), info, msg).unwrap();
@@ -155,7 +155,7 @@ fn test_add_path() {
     let msg = ExecuteMsg::AddPath {
         name: component_name_two.to_string(),
         address: component_addr_two,
-        parent_address: Some(component_addr),
+        parent_address: Some(AndrAddr::from_string(component_addr)),
     };
 
     let err = execute(deps.as_mut(), env, info, msg).unwrap_err();

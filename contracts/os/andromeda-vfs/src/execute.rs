@@ -18,7 +18,7 @@ pub fn add_path(
     env: ExecuteEnv,
     name: String,
     address: Addr,
-    parent_address: Option<Addr>,
+    parent_address: Option<AndrAddr>,
 ) -> Result<Response, ContractError> {
     let kernel_address = ADOContract::default().get_kernel_address(env.deps.storage)?;
     ensure!(
@@ -28,13 +28,10 @@ pub fn add_path(
                 .is_contract_owner(env.deps.storage, env.info.sender.as_str())?,
         ContractError::Unauthorized {}
     );
+    let parent_andr_addr = parent_address.unwrap_or(AndrAddr::from_string(env.info.sender));
+    let parent_addr = resolve_pathname(env.deps.storage, env.deps.api, parent_andr_addr)?;
     validate_component_name(name.clone())?;
-    add_pathname(
-        env.deps.storage,
-        parent_address.unwrap_or(env.info.sender),
-        name,
-        address,
-    )?;
+    add_pathname(env.deps.storage, parent_addr, name, address)?;
     Ok(Response::default())
 }
 

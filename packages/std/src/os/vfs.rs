@@ -82,7 +82,7 @@ pub enum ExecuteMsg {
     AddPath {
         name: String,
         address: Addr,
-        parent_address: Option<Addr>,
+        parent_address: Option<AndrAddr>,
     },
     AddParentPath {
         name: String,
