@@ -58,7 +58,7 @@ fn test_instantiation() {
         reply_on: ReplyOn::Always,
         gas_limit: None,
     };
-    let sender = info.sender.clone();
+    let sender = info.sender;
     let register_submsg: SubMsg<Empty> = SubMsg {
         id: 1002,
         msg: CosmosMsg::Wasm(WasmMsg::Execute {
