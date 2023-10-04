@@ -303,7 +303,7 @@ describe("Basic IBC Token Transfers", async () => {
     const { chainA } = state;
     const receiver = randomAddress(chainA.definition.prefix);
     const transferAmount = { amount: "100", denom: chainA.denom };
-    const msg = createAMPMsg(`/${receiver}`, undefined, [transferAmount]);
+    const msg = createAMPMsg(`${receiver}`, undefined, [transferAmount]);
     const kernelMsg = { send: { message: msg } };
     const res = await chainA.os.kernel!.execute(kernelMsg, chainA.client!, [
       transferAmount,
@@ -321,7 +321,7 @@ describe("Basic IBC Token Transfers", async () => {
     const { chainB } = state;
     const receiver = randomAddress(chainB.definition.prefix);
     const transferAmount = { amount: "100", denom: chainB.denom };
-    const msg = createAMPMsg(`/${receiver}`, undefined, [transferAmount]);
+    const msg = createAMPMsg(`${receiver}`, undefined, [transferAmount]);
     const kernelMsg = { send: { message: msg } };
     const res = await chainB.os.kernel!.execute(kernelMsg, chainB.client!, [
       transferAmount,
@@ -339,9 +339,11 @@ describe("Basic IBC Token Transfers", async () => {
     const { link, chainA, chainB } = state;
     const receiver = randomAddress(chainB.definition.prefix);
     const transferAmount = { amount: "105", denom: chainA.denom };
-    const msg = createAMPMsg(`ibc://${chainB.name}/${receiver}`, undefined, [
-      transferAmount,
-    ]);
+    const msg = createAMPMsg(
+      `ibc://${chainB.name}/home/${receiver}`,
+      undefined,
+      [transferAmount]
+    );
     const kernelMsg = { send: { message: msg } };
     const res = await chainA.os.kernel!.execute(kernelMsg, chainA.client!, [
       transferAmount,
@@ -363,9 +365,11 @@ describe("Basic IBC Token Transfers", async () => {
     const { link, chainA, chainB } = state;
     const receiver = randomAddress(chainA.definition.prefix);
     const transferAmount = { amount: "105", denom: chainB.denom };
-    const msg = createAMPMsg(`ibc://${chainA.name}/${receiver}`, undefined, [
-      transferAmount,
-    ]);
+    const msg = createAMPMsg(
+      `ibc://${chainA.name}/home/${receiver}`,
+      undefined,
+      [transferAmount]
+    );
     const kernelMsg = { send: { message: msg } };
     const res = await chainB.os.kernel!.execute(kernelMsg, chainB.client!, [
       transferAmount,
@@ -397,7 +401,7 @@ describe("Basic IBC Token Transfers", async () => {
         recipients: [
           {
             recipient: {
-              address: `ibc://${chainB.name}/${receiver}`,
+              address: `ibc://${chainB.name}/home/${receiver}`,
             },
             percent: "1",
           },
@@ -455,7 +459,7 @@ describe("Basic IBC Token Transfers", async () => {
         recipients: [
           {
             recipient: {
-              address: `ibc://${chainB.name}/${receiver}`,
+              address: `ibc://${chainB.name}/home/${receiver}`,
             },
             percent: "1",
           },
@@ -478,7 +482,7 @@ describe("Basic IBC Token Transfers", async () => {
 
       const transferAmount = { amount: "100", denom: chainB.denom };
       const transferMsg = createAMPMsg(
-        `ibc://${chainA.name}/${chainA.client!.senderAddress}`,
+        `ibc://${chainA.name}/home/${chainA.client!.senderAddress}`,
         undefined,
         [transferAmount]
       );
@@ -530,7 +534,7 @@ describe("Basic IBC Token Transfers", async () => {
         recipients: [
           {
             recipient: {
-              address: `ibc://${chainA.name}/${receiver}`,
+              address: `ibc://${chainA.name}/home/${receiver}`,
             },
             percent: "1",
           },
@@ -550,7 +554,7 @@ describe("Basic IBC Token Transfers", async () => {
 
       const transferAmount = { amount: "100", denom: chainA.denom };
       const msg = createAMPMsg(
-        `ibc://${chainB.name}/${splitter.address}`,
+        `ibc://${chainB.name}/home/${splitter.address}`,
         { send: {} },
         [transferAmount]
       );
@@ -593,7 +597,7 @@ describe("IBC Fund Recovery", async () => {
         recipients: [
           {
             recipient: {
-              address: `ibc://${chainA.name}/${receiver}`,
+              address: `ibc://${chainA.name}/home/${receiver}`,
             },
             percent: "1",
           },
@@ -617,7 +621,7 @@ describe("IBC Fund Recovery", async () => {
       const transferAmount = { amount: "100", denom: chainA.denom };
       // ERROR HERE
       const msg = createAMPMsg(
-        `ibc://${chainB.name}/${splitter.address}`,
+        `ibc://${chainB.name}/home/${splitter.address}`,
         { not_a_valid_message: {} },
         [transferAmount],
         {
@@ -665,7 +669,7 @@ describe("IBC Fund Recovery", async () => {
         recipients: [
           {
             recipient: {
-              address: `ibc://${chainA.name}/${receiver}`,
+              address: `ibc://${chainA.name}/home/${receiver}`,
               msg: "eyJzZW5kIjp7fX0=", // { send: {} } encoded
               ibc_recovery_address: recoveryAddr,
             },
@@ -690,7 +694,7 @@ describe("IBC Fund Recovery", async () => {
 
       const transferAmount = { amount: "100", denom: chainA.denom };
       const msg = createAMPMsg(
-        `ibc://${chainB.name}/${splitter.address}`,
+        `ibc://${chainB.name}/home/${splitter.address}`,
         { send: {} },
         [transferAmount]
       );
@@ -737,7 +741,7 @@ describe("IBC Fund Recovery", async () => {
         recipients: [
           {
             recipient: {
-              address: `ibc://${chainA.name}/${receiver}`,
+              address: `ibc://${chainA.name}/home/${receiver}`,
               msg: "eyJzZW5kIjp7fX0=", // { send: {} } encoded
             },
             percent: "1",
