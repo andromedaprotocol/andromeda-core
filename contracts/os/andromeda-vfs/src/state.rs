@@ -78,7 +78,7 @@ pub fn resolve_path(
 ) -> Result<Addr, ContractError> {
     let mut parts = split_pathname(pathname.to_string());
 
-    let username_or_address = if parts[0].starts_with("~") && parts.len() == 1 {
+    let username_or_address = if parts[0].starts_with('~') && parts.len() == 1 {
         parts[0].remove(0);
         parts[0].as_str()
     } else {
@@ -212,7 +212,7 @@ mod test {
         let res = resolve_path(
             deps.as_ref().storage,
             deps.as_ref().api,
-            AndrAddr::from_string(format!("/home/{username}").to_string()),
+            AndrAddr::from_string(format!("/home/{username}")),
         )
         .unwrap();
         assert_eq!(res, username_address);
@@ -220,7 +220,7 @@ mod test {
         let res = resolve_path(
             deps.as_ref().storage,
             deps.as_ref().api,
-            AndrAddr::from_string(format!("~{username}").to_string()),
+            AndrAddr::from_string(format!("~{username}")),
         )
         .unwrap();
         assert_eq!(res, username_address);
@@ -228,7 +228,7 @@ mod test {
         let res = resolve_path(
             deps.as_ref().storage,
             deps.as_ref().api,
-            AndrAddr::from_string(format!("~/{username}").to_string()),
+            AndrAddr::from_string(format!("~/{username}")),
         )
         .unwrap();
         assert_eq!(res, username_address);
@@ -248,7 +248,7 @@ mod test {
         let res = resolve_path(
             deps.as_ref().storage,
             deps.as_ref().api,
-            AndrAddr::from_string(format!("/home/{username}/{first_directory}").to_string()),
+            AndrAddr::from_string(format!("/home/{username}/{first_directory}")),
         )
         .unwrap();
         assert_eq!(res, first_directory_address);
@@ -271,9 +271,9 @@ mod test {
         let res = resolve_path(
             deps.as_ref().storage,
             deps.as_ref().api,
-            AndrAddr::from_string(
-                format!("/home/{username}/{first_directory}/{second_directory}").to_string(),
-            ),
+            AndrAddr::from_string(format!(
+                "/home/{username}/{first_directory}/{second_directory}"
+            )),
         )
         .unwrap();
         assert_eq!(res, second_directory_address);
@@ -293,9 +293,9 @@ mod test {
         let res = resolve_path(
             deps.as_ref().storage,
             deps.as_ref().api,
-            AndrAddr::from_string(
-                format!("/home/{username}/{first_directory}/{second_directory}/{file}").to_string(),
-            ),
+            AndrAddr::from_string(format!(
+                "/home/{username}/{first_directory}/{second_directory}/{file}"
+            )),
         )
         .unwrap();
         assert_eq!(res, file_address)

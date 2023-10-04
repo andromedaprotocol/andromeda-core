@@ -117,7 +117,7 @@ impl AndrAddr {
             || self.0.starts_with('/')
             || self.0.split("://").count() > 1
             || self.0.split('/').count() > 1
-            || self.0.starts_with("~")
+            || self.0.starts_with('~')
     }
 
     /// Whether the provided address is a valid human readable address
@@ -195,7 +195,7 @@ impl AndrAddr {
                 true => self.0.as_str(),
                 false => {
                     let raw_path = self.get_raw_path();
-                    if raw_path.starts_with("~") {
+                    if raw_path.starts_with('~') {
                         return "home";
                     }
                     raw_path.split('/').nth(1).unwrap()

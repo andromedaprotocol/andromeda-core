@@ -126,7 +126,7 @@ fn test_add_path() {
     )
     .unwrap();
 
-    assert_eq!(resolved_addr, component_addr.clone());
+    assert_eq!(resolved_addr, component_addr);
 
     let component_name_two = "component_two";
     let component_addr_two = Addr::unchecked("component_two_addr");
@@ -154,7 +154,7 @@ fn test_add_path() {
     let component_addr_two = Addr::unchecked("component_two_addr");
     let msg = ExecuteMsg::AddPath {
         name: component_name_two.to_string(),
-        address: component_addr_two.clone(),
+        address: component_addr_two,
         parent_address: Some(component_addr),
     };
 
@@ -173,7 +173,7 @@ fn test_add_parent_path() {
     let env = mock_env();
     let msg = ExecuteMsg::AddParentPath {
         name: component_name.to_string(),
-        parent_address: AndrAddr::from_string(format!("/home/{user_address}").clone()),
+        parent_address: AndrAddr::from_string(format!("/home/{user_address}")),
     };
 
     execute(deps.as_mut(), env, info, msg).unwrap();
@@ -212,7 +212,7 @@ fn test_override_add_parent_path() {
     let info = mock_info(user_address.as_str(), &[]);
     let msg = ExecuteMsg::AddParentPath {
         name: component_name.to_string(),
-        parent_address: AndrAddr::from_string(format!("/home/{user_address}").clone()),
+        parent_address: AndrAddr::from_string(format!("/home/{user_address}")),
     };
 
     execute(deps.as_mut(), env.clone(), info, msg).unwrap();
