@@ -8,14 +8,14 @@ use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use crate::{
     contract::{execute, instantiate, query},
     state::{
-        Config, Staker, StakerRewardInfo, State, CONFIG, MAX_REWARD_TOKENS, REWARD_TOKENS, STAKERS,
+        Staker, StakerRewardInfo, CONFIG, MAX_REWARD_TOKENS, REWARD_TOKENS, STAKERS,
         STAKER_REWARD_INFOS, STATE,
     },
     testing::mock_querier::mock_dependencies_custom,
 };
 use andromeda_fungible_tokens::cw20_staking::{
-    AllocationConfig, AllocationState, Cw20HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg,
-    RewardToken, RewardTokenUnchecked, RewardType, StakerResponse,
+    AllocationConfig, AllocationState, Config, Cw20HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg,
+    RewardToken, RewardTokenUnchecked, RewardType, StakerResponse, State,
 };
 use common::{
     app::AndrAddress, error::ContractError, expiration::MILLISECONDS_TO_NANOSECONDS_RATIO,
@@ -155,7 +155,7 @@ fn test_instantiate_exceed_max() {
 
     for i in 0..MAX_REWARD_TOKENS + 1 {
         reward_tokens.push(RewardTokenUnchecked {
-            asset_info: AssetInfoUnchecked::cw20(format!("token{}", i)),
+            asset_info: AssetInfoUnchecked::cw20(format!("token{i}")),
             allocation_config: None,
         });
     }
@@ -1632,7 +1632,7 @@ fn test_add_reward_token_exceeds_max() {
 
     for i in 0..MAX_REWARD_TOKENS {
         reward_tokens.push(RewardTokenUnchecked {
-            asset_info: AssetInfoUnchecked::cw20(format!("token{}", i)),
+            asset_info: AssetInfoUnchecked::cw20(format!("token{i}")),
             allocation_config: None,
         });
     }

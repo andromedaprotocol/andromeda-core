@@ -57,7 +57,27 @@ jobs:
           profile: minimal
       - run: cargo fetch --verbose
       - run: cargo build
-      - run: cargo test --verbose --all
+      - run: cargo test --verbose --all --lib
+        env:
+          RUST_BACKTRACE: 1
+
+  integration-test:
+    name: Actions - integration test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 1
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+      - run: cargo fetch --verbose
+      - run: cargo build
+      - run: cargo test -p tests-integration --verbose
         env:
           RUST_BACKTRACE: 1
 

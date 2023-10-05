@@ -1,17 +1,15 @@
 use common::ado_base::{AndromedaMsg, AndromedaQuery};
+use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
 use cw_asset::{AssetInfo, AssetInfoUnchecked};
 use cw_utils::Expiration;
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct InstantiateMsg {
     pub asset_info: AssetInfoUnchecked,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum ExecuteMsg {
     AndrReceive(AndromedaMsg),
     RegisterMerkleRoot {
@@ -33,24 +31,30 @@ pub enum ExecuteMsg {
     },
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
+#[derive(QueryResponses)]
 pub enum QueryMsg {
+    #[returns(AndromedaQuery)]
     AndrQuery(AndromedaQuery),
+    #[returns(ConfigResponse)]
     Config {},
+    #[returns(MerkleRootResponse)]
     MerkleRoot { stage: u8 },
+    #[returns(LatestStageResponse)]
     LatestStage {},
+    #[returns(IsClaimedResponse)]
     IsClaimed { stage: u8, address: String },
+    #[returns(TotalClaimedResponse)]
     TotalClaimed { stage: u8 },
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+#[cw_serde]
 #[serde(rename_all = "snake_case")]
 pub struct ConfigResponse {
     pub asset_info: AssetInfo,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct MerkleRootResponse {
     pub stage: u8,
     /// MerkleRoot is hex-encoded merkle root.
@@ -59,20 +63,20 @@ pub struct MerkleRootResponse {
     pub total_amount: Uint128,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct LatestStageResponse {
     pub latest_stage: u8,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct IsClaimedResponse {
     pub is_claimed: bool,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct TotalClaimedResponse {
     pub total_claimed: Uint128,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct MigrateMsg {}

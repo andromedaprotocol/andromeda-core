@@ -1,9 +1,9 @@
 <p>&nbsp;</p>
 <p align="center">
-<img src="https://github.com/andromedaprotocol/andromeda-core/blob/development/asset/core-logo-light.png" width=1000>
+<img src="https://github.com/andromedaprotocol/andromeda-core/blob/development/asset/core-logo.png" width=1000>
 </p>
 
-A monorepository containing all the contracts and packages related to Andromeda Protocol. Full documentation for all the contracts can be found [here](https://app.gitbook.com/@andromedaprotocol/s/andromeda/).
+A monorepository containing all the contracts and packages related to Andromeda Protocol. Full documentation for all the contracts can be found [here](https://docs.andromedaprotocol.io/andromeda/platform-and-framework/introduction).
 
 ## ADO Categories 
 
@@ -70,10 +70,6 @@ The pacakges also includes the [ado_base](https://github.com/andromedaprotocol/a
 
 ## Development
 
-### Environment Setup
-
-To set up your environment follow the documentation provided at [Juno Docs](https://docs.junonetwork.io/juno/readme).
-
 ### Testing
 
 All tests can be run using:
@@ -136,3 +132,10 @@ rustup toolchain install nightly
 ```sh
 cargo clippy --all --all-targets -- -D warnings
 ```
+### Creating and Interacting with ADOs
+
+Andromeda is deployed on many of the Cosmos chains. Usually this will require you to set up an environment for each chain. Luckily, Andromeda has built the Andromeda CLI, an all in one tool to build, interact, and manage ADOs and wallets for any of the chains. The CLI documentation can be found [here](https://docs.andromedaprotocol.io/andromeda/andromeda-cli/introduction).
+
+## Licensing
+
+[Terms and Conditions](https://github.com/andromedaprotocol/andromeda-core/blob/development/LICENSE/LICENSE.md)

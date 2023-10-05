@@ -1,13 +1,11 @@
+use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Binary, Coin, Decimal, StdError, Uint128};
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
 pub use value::{PrimitivePointer, Value};
 
 mod value;
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum Primitive {
     Uint128(Uint128),
     Decimal(Decimal),
@@ -21,7 +19,7 @@ pub enum Primitive {
 fn parse_error(type_name: String) -> StdError {
     StdError::ParseErr {
         target_type: type_name.clone(),
-        msg: format!("Primitive is not a {}", type_name),
+        msg: format!("Primitive is not a {type_name}"),
     }
 }
 
@@ -130,7 +128,7 @@ impl Primitive {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct GetValueResponse {
     pub key: String,
     pub value: Primitive,

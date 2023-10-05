@@ -4,10 +4,12 @@ use common::{
     error::ContractError,
     withdraw::Withdrawal,
 };
-use cosmwasm_std::{to_binary, wasm_execute, Coin, CosmosMsg, ReplyOn, Storage, SubMsg, Uint128};
+use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_std::{
+    to_binary, wasm_execute, Binary, Coin, CosmosMsg, ReplyOn, Storage, SubMsg, Uint128,
+};
 use cw_storage_plus::Map;
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
+
 use std::fmt;
 
 /// Mapping between (Address, Funds Denom) and the amount
@@ -15,14 +17,14 @@ pub const BALANCES: Map<(&str, &str), Uint128> = Map::new("balances");
 pub const STRATEGY_CONTRACT_ADDRESSES: Map<String, String> =
     Map::new("strategy_contract_addresses");
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum StrategyType {
     Anchor,
     // NoStrategy, //Can be used if we wish to add a default strategy
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
+#[serde(rename_all = "snake_case")]
 pub struct YieldStrategy {
     pub strategy_type: StrategyType,
     pub address: AndrAddress,
@@ -67,11 +69,10 @@ impl fmt::Display for StrategyType {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct InstantiateMsg {}
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum ExecuteMsg {
     Deposit {
         recipient: Option<Recipient>,
@@ -90,25 +91,26 @@ pub enum ExecuteMsg {
     AndrReceive(AndromedaMsg),
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
+#[derive(QueryResponses)]
 pub enum QueryMsg {
+    #[returns(AndromedaQuery)]
     AndrQuery(AndromedaQuery),
+    #[returns(Binary)]
     Balance {
         address: String,
         strategy: Option<StrategyType>,
         denom: Option<String>,
     },
-    StrategyAddress {
-        strategy: StrategyType,
-    },
+    #[returns(Binary)]
+    StrategyAddress { strategy: StrategyType },
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct StrategyAddressResponse {
     pub strategy: StrategyType,
     pub address: String,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct MigrateMsg {}

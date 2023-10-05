@@ -1,12 +1,16 @@
-use crate::state::{StakedNft, ALLOWED_CONTRACTS, REWARD, STAKED_NFTS, UNBONDING_PERIOD};
+use crate::state::{ALLOWED_CONTRACTS, REWARD, STAKED_NFTS, UNBONDING_PERIOD};
 use ado_base::state::ADOContract;
 use andromeda_non_fungible_tokens::cw721_staking::{
-    Cw721HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
+    Cw721HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, StakedNft,
 };
-use common::{ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError};
+use common::{
+    ado_base::InstantiateMsg as BaseInstantiateMsg,
+    encode_binary,
+    error::{from_semver, ContractError},
+};
 use cosmwasm_std::{
     attr, ensure, entry_point, from_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env,
-    MessageInfo, Response, StdError, Uint128, WasmMsg,
+    MessageInfo, Response, Uint128, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw721::{Cw721ExecuteMsg, Cw721ReceiveMsg};
@@ -415,10 +419,6 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
     Ok(Response::default())
 }
 
-fn from_semver(err: semver::Error) -> StdError {
-    StdError::generic_err(format!("Semver: {}", err))
-}
-
 #[cfg(test)]
 mod tests {
 
@@ -706,7 +706,7 @@ mod tests {
         println!("{:?}", env.block.time.clone().seconds());
         let time_spent = env.block.time.clone().seconds() - details.time_of_staking.seconds();
 
-        println!("{:?}", time_spent);
+        println!("{time_spent:?}");
         let set_reward = REWARD.load(&deps.storage).unwrap();
         let expected_reward = set_reward.amount * Uint128::from(time_spent);
 

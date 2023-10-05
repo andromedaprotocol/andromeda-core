@@ -9,14 +9,14 @@ use andromeda_non_fungible_tokens::marketplace::{
 use common::{
     ado_base::{hooks::AndromedaHook, AndromedaMsg, InstantiateMsg as BaseInstantiateMsg},
     encode_binary,
-    error::ContractError,
+    error::{from_semver, ContractError},
     rates::get_tax_amount,
     Funds,
 };
 use cosmwasm_std::{
     attr, ensure, entry_point, from_binary, has_coins, Api, BankMsg, Binary, Coin, CosmosMsg, Deps,
-    DepsMut, Env, MessageInfo, QuerierWrapper, QueryRequest, Response, StdError, Storage, SubMsg,
-    Uint128, WasmMsg, WasmQuery,
+    DepsMut, Env, MessageInfo, QuerierWrapper, QueryRequest, Response, Storage, SubMsg, Uint128,
+    WasmMsg, WasmQuery,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, Cw721ReceiveMsg, OwnerOfResponse};
@@ -61,9 +61,13 @@ pub fn execute(
 
     // Do this before the hooks get fired off to ensure that there are no errors from the app
     // address not being fully setup yet.
-    if let ExecuteMsg::AndrReceive(AndromedaMsg::UpdateAppContract { address }) = msg {
-        return contract.execute_update_app_contract(deps, info, address, None);
-    };
+    if let ExecuteMsg::AndrReceive(andr_msg) = msg.clone() {
+        if let AndromedaMsg::UpdateAppContract { address } = andr_msg {
+            return contract.execute_update_app_contract(deps, info, address, None);
+        } else if let AndromedaMsg::UpdateOwner { address } = andr_msg {
+            return contract.execute_update_owner(deps, info, address);
+        }
+    }
 
     contract.module_hook::<Response>(
         deps.storage,
@@ -74,6 +78,7 @@ pub fn execute(
             payload: encode_binary(&msg)?,
         },
     )?;
+
     match msg {
         ExecuteMsg::AndrReceive(msg) => {
             ADOContract::default().execute(deps, env, info, msg, execute)
@@ -245,7 +250,7 @@ fn execute_buy(
     ensure!(
         payment.denom == coin_denom,
         ContractError::InvalidFunds {
-            msg: format!("No {} assets are provided to sale", coin_denom),
+            msg: format!("No {coin_denom} assets are provided to sale"),
         }
     );
     ensure!(
@@ -288,7 +293,7 @@ fn execute_buy(
         .add_attribute("action", "buy")
         .add_attribute("token_id", token_id)
         .add_attribute("token_contract", token_sale_state.token_address)
-        .add_attribute("recipient", &info.sender.to_string())
+        .add_attribute("recipient", info.sender.to_string())
         .add_attribute("sale_id", token_sale_state.sale_id))
 }
 
@@ -529,10 +534,6 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
     contract.execute_update_version(deps)?;
 
     Ok(Response::default())
-}
-
-fn from_semver(err: semver::Error) -> StdError {
-    StdError::generic_err(format!("Semver: {}", err))
 }
 
 #[cfg(test)]

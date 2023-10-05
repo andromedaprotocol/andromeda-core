@@ -14,7 +14,7 @@ use common::{
         InstantiateMsg as BaseInstantiateMsg,
     },
     encode_binary,
-    error::ContractError,
+    error::{from_semver, ContractError},
     rates::get_tax_amount,
     Funds,
 };
@@ -70,6 +70,9 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
+        ExecuteMsg::AndrReceive(msg) => {
+            ADOContract::default().execute(deps, env, info, msg, execute)
+        }
         ExecuteMsg::PlaceBid {
             token_id,
             expiration,
@@ -321,13 +324,10 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
     Ok(Response::default())
 }
 
-fn from_semver(err: semver::Error) -> StdError {
-    StdError::generic_err(format!("Semver: {}", err))
-}
-
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
+        QueryMsg::AndrQuery(msg) => ADOContract::default().query(deps, env, msg, query),
         QueryMsg::AndrHook(msg) => handle_andr_hook(deps, env, msg),
         QueryMsg::Bid { token_id } => encode_binary(&query_bid(deps, token_id)?),
         QueryMsg::AllBids {

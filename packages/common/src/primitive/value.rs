@@ -4,12 +4,10 @@ use crate::{
     error::ContractError,
     primitive::{GetValueResponse, Primitive},
 };
+use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{to_binary, Addr, Api, Coin, Decimal, QuerierWrapper, StdError, Uint128};
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum Value<T>
 where
     // This restriction is to ensure that `T` is a type that can be stored as a `Primitive`. It
@@ -25,7 +23,7 @@ where
     Pointer(PrimitivePointer),
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct PrimitivePointer {
     /// The address of the primitive contract.
     pub address: AndrAddress,

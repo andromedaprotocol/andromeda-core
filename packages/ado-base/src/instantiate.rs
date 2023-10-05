@@ -26,7 +26,7 @@ impl<'a> ADOContract<'a> {
                     code_id,
                     msg,
                     funds: vec![],
-                    label: format!("Instantiate: {}", ado_type),
+                    label: format!("Instantiate: {ado_type}"),
                 }),
                 gas_limit: None,
             }),
@@ -40,7 +40,7 @@ impl<'a> ADOContract<'a> {
         name: &str,
     ) -> Result<u64, ContractError> {
         // Do we want to cache the factory address?
-        let factory_address = self.get_address_from_primitive(storage, querier, "factory")?;
+        let factory_address = self.get_address_from_primitive(storage, querier, "adodb")?;
         let code_id: u64 = query_get(Some(encode_binary(&name)?), factory_address, querier)?;
         Ok(code_id)
     }

@@ -1,12 +1,14 @@
 use cosmwasm_std::{OverflowError, StdError};
 use cw20_base::ContractError as Cw20ContractError;
 use cw721_base::ContractError as Cw721ContractError;
+use cw_pause_once::PauseError;
 use cw_utils::{Expiration, ParseReplyError, PaymentError};
-use std::convert::From;
-use std::string::FromUtf8Error;
-use thiserror::Error;
 
 use hex::FromHexError;
+use std::convert::From;
+use std::str::ParseBoolError;
+use std::string::FromUtf8Error;
+use thiserror::Error;
 
 #[derive(Error, Debug, PartialEq)]
 pub enum ContractError {
@@ -17,10 +19,13 @@ pub enum ContractError {
     Hex(#[from] FromHexError),
 
     #[error("{0}")]
-    ParseReply(#[from] ParseReplyError),
+    Payment(#[from] PaymentError),
 
     #[error("{0}")]
-    Payment(#[from] PaymentError),
+    PauseError(#[from] PauseError),
+
+    #[error("{0}")]
+    ParseReplyError(#[from] ParseReplyError),
 
     #[error("Unauthorized")]
     Unauthorized {},
@@ -28,22 +33,66 @@ pub enum ContractError {
     #[error("ContractLocked")]
     ContractLocked {},
 
+    #[error("UnidentifiedMsgID")]
+    UnidentifiedMsgID {},
+
+    #[error("UnmetCondition")]
+    UnmetCondition {},
+
     #[error("RewardTooLow")]
     RewardTooLow {},
 
     #[error("IncompleteUnbondingPeriod")]
     IncompleteUnbondingPeriod {},
+
     #[error("LockedNFT")]
     LockedNFT {},
 
     #[error("UserNotFound")]
     UserNotFound {},
 
+    #[error("ProcessNotFound")]
+    ProcessNotFound {},
+
+    #[error("only unordered channels are supported")]
+    OrderedChannel {},
+
+    #[error("invalid IBC channel version - got ({actual}), expected ({expected})")]
+    InvalidVersion { actual: String, expected: String },
+
+    #[error("tokenId list has different length than tokenUri list")]
+    TokenInfoLenMissmatch {},
+
+    #[error("ICS 721 channels may not be closed")]
+    CantCloseChannel {},
+
+    #[error("Paused")]
+    Paused {},
+
+    #[error("EmptyOptional")]
+    EmptyOptional {},
+
+    #[error("EmptyOptional")]
+    EmptyClassId {},
+
+    #[error("NoTokens")]
+    NoTokens {},
+
+    #[error("UnrecognisedReplyId")]
+    UnrecognisedReplyId {},
+
+    #[error("ImbalancedTokenInfo")]
+    ImbalancedTokenInfo {},
+
     #[error("UnsupportedNFT")]
     UnsupportedNFT {},
 
+    #[error("UnsupportedReturnType")]
+    UnsupportedReturnType {},
+
     #[error("AlreadyUnbonded")]
     AlreadyUnbonded {},
+
     #[error("NFTNotFound")]
     NFTNotFound {},
 
@@ -56,6 +105,15 @@ pub enum ContractError {
     #[error("StillBonded")]
     StillBonded {},
 
+    #[error("ParseBoolError")]
+    ParseBoolError {},
+
+    #[error("NoResponseElementNeeded")]
+    NoResponseElementNeeded {},
+
+    #[error("ResponseElementRequired")]
+    ResponseElementRequired {},
+
     #[error("InsufficientBondedTime")]
     InsufficientBondedTime {},
 
@@ -67,6 +125,12 @@ pub enum ContractError {
 
     #[error("InvalidWeight")]
     InvalidWeight {},
+
+    #[error("NoResults")]
+    NoResults {},
+
+    #[error("MissingParameters")]
+    MissingParameters {},
 
     #[error("OnlyOneSourceAllowed")]
     OnlyOneSourceAllowed {},
@@ -89,6 +153,9 @@ pub enum ContractError {
     #[error("NotInRefillMode")]
     NotInRefillMode {},
 
+    #[error("NotEnoughResults")]
+    NotEnoughResults {},
+
     #[error("ReachedRecipientLimit")]
     ReachedRecipientLimit {},
 
@@ -106,6 +173,9 @@ pub enum ContractError {
 
     #[error("ExpirationInPast")]
     ExpirationInPast {},
+
+    #[error("ExecuteError")]
+    ExecuteError {},
 
     #[error("UnspecifiedWithdrawalFrequency")]
     UnspecifiedWithdrawalFrequency {},
@@ -172,6 +242,9 @@ pub enum ContractError {
 
     #[error("SaleNotOpen")]
     SaleNotOpen {},
+
+    #[error("NoTargetADOs")]
+    NoTargetADOs {},
 
     #[error("TokenOwnerCannotBid")]
     TokenOwnerCannotBid {},
@@ -346,6 +419,9 @@ pub enum ContractError {
     #[error("TooManyAppComponents")]
     TooManyAppComponents {},
 
+    #[error("TooManyComponents")]
+    TooManyComponents {},
+
     #[error("InvalidLtvRatio: {msg}")]
     InvalidLtvRatio { msg: String },
 
@@ -451,11 +527,17 @@ pub enum ContractError {
     #[error("Token not available")]
     TokenNotAvailable {},
 
+    #[error("Invalid expiration")]
+    InvalidExpiration {},
+
     #[error("Too many mint messages, limit is {limit}")]
     TooManyMintMessages { limit: u32 },
 
     #[error("App contract not specified")]
     AppContractNotSpecified {},
+
+    #[error("JsonError")]
+    JsonError {},
 
     #[error("Invalid component: {name}")]
     InvalidComponent { name: String },
@@ -489,7 +571,14 @@ impl From<Cw20ContractError> for ContractError {
             Cw20ContractError::DuplicateInitialBalanceAddresses {} => {
                 ContractError::DuplicateInitialBalanceAddresses {}
             }
+            Cw20ContractError::InvalidExpiration {} => ContractError::InvalidExpiration {},
         }
+    }
+}
+
+impl From<ParseBoolError> for ContractError {
+    fn from(_err: ParseBoolError) -> Self {
+        ContractError::ParseBoolError {}
     }
 }
 
@@ -517,4 +606,13 @@ impl From<OverflowError> for ContractError {
     fn from(_err: OverflowError) -> Self {
         ContractError::Overflow {}
     }
+}
+
+/// Enum that can never be constructed. Used as an error type where we
+/// can not error.
+#[derive(Error, Debug)]
+pub enum Never {}
+
+pub fn from_semver(err: semver::Error) -> StdError {
+    StdError::generic_err(format!("Semver: {err}"))
 }

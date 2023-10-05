@@ -2,17 +2,16 @@ use common::{
     ado_base::{hooks::AndromedaHook, AndromedaMsg, AndromedaQuery},
     error::ContractError,
 };
+use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{to_binary, CosmosMsg, Event, SubMsg, Uint128, WasmMsg};
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct Config {
     /// The address authorized to mint new receipts
     pub minter: String,
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+#[cw_serde]
 /// A struct representation of a receipt. Contains a vector of CosmWasm
 /// [Event](https://docs.rs/cosmwasm-std/0.16.0/cosmwasm_std/struct.Event.html) structs.
 pub struct Receipt {
@@ -20,14 +19,13 @@ pub struct Receipt {
     pub events: Vec<Event>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct InstantiateMsg {
     /// The address authorized to mint new receipts
     pub minter: String,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum ExecuteMsg {
     AndrReceive(AndromedaMsg),
     /// Mint a new receipt. Only executable by the assigned `minter` address. Generates a receipt ID.
@@ -41,30 +39,31 @@ pub enum ExecuteMsg {
     },
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
+#[cw_serde]
 #[serde(rename_all = "snake_case")]
 pub struct MigrateMsg {}
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
+#[derive(QueryResponses)]
 pub enum QueryMsg {
+    #[returns(AndromedaQuery)]
     AndrQuery(AndromedaQuery),
     /// Query receipt by its generated ID.
-    Receipt {
-        receipt_id: Uint128,
-    },
+    #[returns(ReceiptResponse)]
+    Receipt { receipt_id: Uint128 },
     /// The current contract config.
+    #[returns(ContractInfoResponse)]
     ContractInfo {},
+    #[returns(AndromedaHook)]
     AndrHook(AndromedaHook),
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub struct ContractInfoResponse {
     pub config: Config,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct ReceiptResponse {
     pub receipt: Receipt,
 }

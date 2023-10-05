@@ -9,7 +9,7 @@ use andromeda_data_storage::primitive::{ExecuteMsg, InstantiateMsg, MigrateMsg, 
 use common::{
     ado_base::{AndromedaQuery, InstantiateMsg as BaseInstantiateMsg},
     encode_binary,
-    error::ContractError,
+    error::{from_semver, ContractError},
     parse_message,
     primitive::{GetValueResponse, Primitive},
 };
@@ -85,7 +85,7 @@ pub fn execute_set_value(
         .add_attribute("method", "set_value")
         .add_attribute("sender", sender)
         .add_attribute("key", key)
-        .add_attribute("value", format!("{:?}", value)))
+        .add_attribute("value", format!("{value:?}")))
 }
 
 pub fn execute_delete_value(
@@ -139,10 +139,6 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
     contract.execute_update_version(deps)?;
 
     Ok(Response::default())
-}
-
-fn from_semver(err: semver::Error) -> StdError {
-    StdError::generic_err(format!("Semver: {}", err))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

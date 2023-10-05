@@ -7,12 +7,12 @@ members = [
     "contracts/data-storage/*",
     "contracts/app/*",
     "contracts/finance/*",
-    "contracts/modules/*"
-]
+    "contracts/automation/*",
+    "contracts/modules/*",
 
-[profile.release.package.andromeda-protocol]
-codegen-units = 1
-incremental = false
+    #Internal
+    "tests-integration"
+]
 
 [profile.release.package.common]
 codegen-units = 1
@@ -26,9 +26,6 @@ incremental = false
 codegen-units = 1
 
 [profile.release.package.andromeda-cw20]
-codegen-units = 1
-
-[profile.release.package.andromeda-anchor-earn]
 codegen-units = 1
 
 [profile.release.package.andromeda-crowdfund]

@@ -10,8 +10,11 @@ use andromeda_non_fungible_tokens::{
     },
 };
 use common::{
-    ado_base::InstantiateMsg as BaseInstantiateMsg, app::AndrAddress, encode_binary,
-    error::ContractError, response::get_reply_address,
+    ado_base::InstantiateMsg as BaseInstantiateMsg,
+    app::AndrAddress,
+    encode_binary,
+    error::{from_semver, ContractError},
+    response::get_reply_address,
 };
 use cosmwasm_std::{
     ensure, entry_point, from_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo,
@@ -134,10 +137,6 @@ fn execute_wrap(
     wrapped_token_id: Option<String>,
 ) -> Result<Response, ContractError> {
     ensure!(
-        ADOContract::default().is_owner_or_operator(deps.storage, &sender)?,
-        ContractError::Unauthorized {}
-    );
-    ensure!(
         token_address != env.contract.address,
         ContractError::CannotDoubleWrapToken {}
     );
@@ -246,8 +245,15 @@ fn get_original_nft_data(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
+        QueryMsg::NFTContractAddress {} => encode_binary(&query_nft_contract_address(deps)?),
         QueryMsg::AndrQuery(msg) => ADOContract::default().query(deps, env, msg, query),
     }
+}
+
+pub fn query_nft_contract_address(deps: Deps) -> Result<String, ContractError> {
+    let addr = ANDROMEDA_CW721_ADDR.load(deps.storage)?;
+
+    Ok(addr)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -282,10 +288,6 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
     contract.execute_update_version(deps)?;
 
     Ok(Response::default())
-}
-
-fn from_semver(err: semver::Error) -> StdError {
-    StdError::generic_err(format!("Semver: {}", err))
 }
 
 #[cfg(test)]
@@ -401,19 +403,7 @@ mod tests {
 
         init(deps.as_mut());
 
-        let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
-            sender: "not_owner".to_string(),
-            token_id: token_id.clone(),
-            msg: encode_binary(&Cw721HookMsg::Wrap {
-                wrapped_token_id: None,
-            })
-            .unwrap(),
-        });
-
         let info = mock_info(&token_address, &[]);
-        let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
-        assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
-
         let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
             sender: owner.clone(),
             token_id: token_id.clone(),

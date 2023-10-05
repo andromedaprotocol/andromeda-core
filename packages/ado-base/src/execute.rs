@@ -1,13 +1,15 @@
 use crate::ADOContract;
+#[cfg(feature = "modules")]
+use common::ado_base::modules::Module;
 use common::{
-    ado_base::{modules::Module, AndromedaMsg, ExecuteMsg, InstantiateMsg},
+    ado_base::{AndromedaMsg, ExecuteMsg, InstantiateMsg},
     app::AndrAddress,
     error::ContractError,
     parse_message,
 };
-use cosmwasm_std::{
-    attr, ensure, Api, DepsMut, Env, MessageInfo, Order, QuerierWrapper, Response, Storage,
-};
+#[cfg(feature = "modules")]
+use cosmwasm_std::QuerierWrapper;
+use cosmwasm_std::{attr, ensure, Api, DepsMut, Env, MessageInfo, Order, Response, Storage};
 use serde::de::DeserializeOwned;
 
 type ExecuteFunction<E> = fn(DepsMut, Env, MessageInfo, E) -> Result<Response, ContractError>;
@@ -189,7 +191,7 @@ impl<'a> ADOContract<'a> {
             .save(deps.storage, &env!("CARGO_PKG_VERSION").to_string())?;
         Ok(Response::new()
             .add_attribute("action", "update_version")
-            .add_attribute("version", &env!("CARGO_PKG_VERSION").to_string()))
+            .add_attribute("version", env!("CARGO_PKG_VERSION").to_string()))
     }
 }
 

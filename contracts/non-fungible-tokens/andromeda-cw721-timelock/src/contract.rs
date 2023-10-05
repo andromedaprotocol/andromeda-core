@@ -1,18 +1,22 @@
 use ado_base::state::ADOContract;
 use andromeda_non_fungible_tokens::cw721_timelock::{
-    Cw721HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
+    Cw721HookMsg, ExecuteMsg, InstantiateMsg, LockDetails, MigrateMsg, QueryMsg,
 };
-use common::{ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError};
+use common::{
+    ado_base::InstantiateMsg as BaseInstantiateMsg,
+    encode_binary,
+    error::{from_semver, ContractError},
+};
 use cosmwasm_std::{
     ensure, entry_point, from_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response,
-    StdError, WasmMsg,
+    WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw721::{Cw721ExecuteMsg, Cw721ReceiveMsg, Expiration};
 use cw_utils::nonpayable;
 use semver::Version;
 
-use crate::state::{LockDetails, LOCKED_ITEMS};
+use crate::state::LOCKED_ITEMS;
 
 // 1 day in seconds
 const ONE_DAY: u64 = 86_400;
@@ -219,10 +223,6 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
     contract.execute_update_version(deps)?;
 
     Ok(Response::default())
-}
-
-fn from_semver(err: semver::Error) -> StdError {
-    StdError::generic_err(format!("Semver: {}", err))
 }
 
 #[cfg(test)]

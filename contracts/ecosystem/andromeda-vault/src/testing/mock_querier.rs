@@ -2,17 +2,16 @@
 use common::ado_base::{
     operators::IsOperatorResponse, recipient::Recipient, AndromedaQuery, QueryMsg,
 };
+use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
     from_binary, from_slice,
     testing::{MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
     to_binary, Binary, Coin, ContractResult, OwnedDeps, Querier, QuerierResult, QueryRequest,
     SystemError, SystemResult, Uint128, WasmQuery,
 };
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
 // This is here since anchor_earn is defunct now.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct PositionResponse {
     pub recipient: Recipient,
     pub aust_amount: Uint128,
@@ -46,7 +45,7 @@ impl Querier for WasmMockQuerier {
             Ok(v) => v,
             Err(e) => {
                 return SystemResult::Err(SystemError::InvalidRequest {
-                    error: format!("Parsing query request: {}", e),
+                    error: format!("Parsing query request: {e}"),
                     request: bin_request.into(),
                 })
             }

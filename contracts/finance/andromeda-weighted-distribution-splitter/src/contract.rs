@@ -12,12 +12,12 @@ use common::{
     },
     app::AndrAddress,
     encode_binary,
-    error::ContractError,
+    error::{from_semver, ContractError},
 };
 
 use cosmwasm_std::{
     attr, ensure, entry_point, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
-    Response, StdError, SubMsg, Timestamp, Uint128,
+    Response, SubMsg, Timestamp, Uint128,
 };
 
 use cw_utils::{nonpayable, Expiration};
@@ -95,19 +95,22 @@ pub fn execute(
 ) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
 
-    // Do this before the hooks get fired off to ensure that there is no conflict with the app
-    // contract not being whitelisted.
-    // Handled separately due to extra data required
-    if let ExecuteMsg::AndrReceive(AndromedaMsg::UpdateAppContract { address }) = msg {
-        let splitter = SPLITTER.load(deps.storage)?;
-        let mut andr_addresses: Vec<AndrAddress> = vec![];
-        for recipient in splitter.recipients {
-            if let Recipient::ADO(ado_recipient) = recipient.recipient {
-                andr_addresses.push(ado_recipient.address);
+    // Do this before the hooks get fired off to ensure that there are no errors from the app
+    // address not being fully setup yet.
+    if let ExecuteMsg::AndrReceive(andr_msg) = msg.clone() {
+        if let AndromedaMsg::UpdateAppContract { address } = andr_msg {
+            let splitter = SPLITTER.load(deps.storage)?;
+            let mut andr_addresses: Vec<AndrAddress> = vec![];
+            for recipient in splitter.recipients {
+                if let Recipient::ADO(ado_recipient) = recipient.recipient {
+                    andr_addresses.push(ado_recipient.address);
+                }
             }
+            return contract.execute_update_app_contract(deps, info, address, Some(andr_addresses));
+        } else if let AndromedaMsg::UpdateOwner { address } = andr_msg {
+            return contract.execute_update_owner(deps, info, address);
         }
-        return contract.execute_update_app_contract(deps, info, address, Some(andr_addresses));
-    };
+    }
 
     //Andromeda Messages can be executed without modules, if they are a wrapped execute message they will loop back
     if let ExecuteMsg::AndrReceive(andr_msg) = msg {
@@ -486,10 +489,6 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
     contract.execute_update_version(deps)?;
 
     Ok(Response::default())
-}
-
-fn from_semver(err: semver::Error) -> StdError {
-    StdError::generic_err(format!("Semver: {}", err))
 }
 
 #[entry_point]

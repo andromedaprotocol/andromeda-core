@@ -1,14 +1,12 @@
 use common::ado_base::{AndromedaMsg, AndromedaQuery};
-
+use cosmwasm_schema::{cw_serde, QueryResponses};
 use cw721::Cw721ReceiveMsg;
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
+use cw_utils::Expiration;
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct InstantiateMsg {}
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum ExecuteMsg {
     AndrReceive(AndromedaMsg),
     /// Transfers the given token to the recipient once the time lock has expired.
@@ -18,8 +16,7 @@ pub enum ExecuteMsg {
     ReceiveNft(Cw721ReceiveMsg),
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum Cw721HookMsg {
     /// Locks the token in the contract for the desired time while setting the recipient as the sender if not provided.
     StartLock {
@@ -28,13 +25,23 @@ pub enum Cw721HookMsg {
     },
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
+#[derive(QueryResponses)]
 pub enum QueryMsg {
+    #[returns(AndromedaQuery)]
     AndrQuery(AndromedaQuery),
+    #[returns(LockDetails)]
     LockedToken { lock_id: String },
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
+#[cw_serde]
+pub struct LockDetails {
+    pub recipient: String,
+    pub expiration: Expiration,
+    pub nft_id: String,
+    pub nft_contract: String,
+}
+
+#[cw_serde]
 #[serde(rename_all = "snake_case")]
 pub struct MigrateMsg {}

@@ -1,10 +1,12 @@
 use crate::state::{
-    get_available_tokens, Config, Purchase, State, AVAILABLE_TOKENS, CONFIG,
-    NUMBER_OF_TOKENS_AVAILABLE, PURCHASES, SALE_CONDUCTED, STATE,
+    get_available_tokens, Purchase, AVAILABLE_TOKENS, CONFIG, NUMBER_OF_TOKENS_AVAILABLE,
+    PURCHASES, SALE_CONDUCTED, STATE,
 };
 use ado_base::ADOContract;
 use andromeda_non_fungible_tokens::{
-    crowdfund::{CrowdfundMintMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
+    crowdfund::{
+        Config, CrowdfundMintMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, State,
+    },
     cw721::{ExecuteMsg as Cw721ExecuteMsg, MintMsg, QueryMsg as Cw721QueryMsg, TokenExtension},
 };
 use common::{
@@ -13,7 +15,7 @@ use common::{
         InstantiateMsg as BaseInstantiateMsg,
     },
     deduct_funds, encode_binary,
-    error::ContractError,
+    error::{from_semver, ContractError},
     merge_sub_msgs,
     rates::get_tax_amount,
     Funds,
@@ -92,16 +94,19 @@ pub fn execute(
 
     // Do this before the hooks get fired off to ensure that there are no errors from the app
     // address not being fully setup yet.
-    // Handled separately due to extra data required
-    if let ExecuteMsg::AndrReceive(AndromedaMsg::UpdateAppContract { address }) = msg {
-        let config = CONFIG.load(deps.storage)?;
-        return contract.execute_update_app_contract(
-            deps,
-            info,
-            address,
-            Some(vec![config.token_address]),
-        );
-    };
+    if let ExecuteMsg::AndrReceive(andr_msg) = msg.clone() {
+        if let AndromedaMsg::UpdateAppContract { address } = andr_msg {
+            let config = CONFIG.load(deps.storage)?;
+            return contract.execute_update_app_contract(
+                deps,
+                info,
+                address,
+                Some(vec![config.token_address]),
+            );
+        } else if let AndromedaMsg::UpdateOwner { address } = andr_msg {
+            return contract.execute_update_owner(deps, info, address);
+        }
+    }
 
     //Andromeda Messages can be executed without modules, if they are a wrapped execute message they will loop back
     if let ExecuteMsg::AndrReceive(andr_msg) = msg {
@@ -867,8 +872,4 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
     contract.execute_update_version(deps)?;
 
     Ok(Response::default())
-}
-
-fn from_semver(err: semver::Error) -> StdError {
-    StdError::generic_err(format!("Semver: {}", err))
 }

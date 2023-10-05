@@ -1,10 +1,10 @@
 use common::ado_base::{AndromedaMsg, AndromedaQuery};
+use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_std::Decimal;
 use cosmwasm_std::Uint128;
 use cw20::Cw20ReceiveMsg;
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct InstantiateMsg {
     /// The bootsrap contract to be used in the second phase.
     // pub bootstrap_contract: Option<AndrAddress>,
@@ -20,8 +20,7 @@ pub struct InstantiateMsg {
     pub native_denom: String,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum ExecuteMsg {
     Receive(Cw20ReceiveMsg),
     AndrReceive(AndromedaMsg),
@@ -43,33 +42,33 @@ pub enum ExecuteMsg {
     },
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum Cw20HookMsg {
     /// Increase the incentives for the deposited token. Sender must be the incentive token.
     IncreaseIncentives {},
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
+#[derive(QueryResponses)]
 pub enum QueryMsg {
+    #[returns(AndromedaQuery)]
     AndrQuery(AndromedaQuery),
     /// Gets the config information.
+    #[returns(ConfigResponse)]
     Config {},
     /// Gets the state information.
+    #[returns(StateResponse)]
     State {},
     /// Gets information for the user with `address`.
-    UserInfo {
-        address: String,
-    },
+    #[returns(UserInfoResponse)]
+    UserInfo { address: String },
     /// Gets the withdrawal percent allowed given the timestamp, or the current time if not
     /// specified.
-    WithdrawalPercentAllowed {
-        timestamp: Option<u64>,
-    },
+    #[returns(Decimal)]
+    WithdrawalPercentAllowed { timestamp: Option<u64> },
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct ConfigResponse {
     /// Bootstrap Contract address to which tokens can be delegated to for bootstrapping TOKEN-NATIVE Pool.
     // pub bootstrap_contract_address: Option<String>,
@@ -87,7 +86,7 @@ pub struct ConfigResponse {
     pub native_denom: String,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct StateResponse {
     /// Total NATIVE deposited at the end of Lockdrop window. This value remains unchanged post the lockdrop window.
     pub total_native_locked: Uint128,
@@ -95,7 +94,7 @@ pub struct StateResponse {
     pub are_claims_allowed: bool,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct UserInfoResponse {
     pub total_native_locked: Uint128,
     pub total_incentives: Uint128,
@@ -103,5 +102,5 @@ pub struct UserInfoResponse {
     pub withdrawal_flag: bool,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct MigrateMsg {}

@@ -2,14 +2,14 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     ensure, from_binary, to_binary, Addr, Api, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
-    Response, StdError, StdResult, Storage, SubMsg, Uint128, WasmMsg,
+    Response, StdResult, Storage, SubMsg, Uint128, WasmMsg,
 };
 
 use ado_base::ADOContract;
 use andromeda_fungible_tokens::cw20::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use common::{
-    ado_base::{hooks::AndromedaHook, InstantiateMsg as BaseInstantiateMsg},
-    error::ContractError,
+    ado_base::{hooks::AndromedaHook, AndromedaMsg, InstantiateMsg as BaseInstantiateMsg},
+    error::{from_semver, ContractError},
     Funds,
 };
 use cw2::{get_contract_version, set_contract_version};
@@ -62,10 +62,15 @@ pub fn execute(
 ) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
 
-    //Andromeda Messages can be executed without modules, if they are a wrapped execute message they will loop back
-    if let ExecuteMsg::AndrReceive(andr_msg) = msg {
-        return contract.execute(deps, env, info, andr_msg, execute);
-    };
+    // Do this before the hooks get fired off to ensure that there are no errors from the app
+    // address not being fully setup yet.
+    if let ExecuteMsg::AndrReceive(andr_msg) = msg.clone() {
+        if let AndromedaMsg::UpdateAppContract { address } = andr_msg {
+            return contract.execute_update_app_contract(deps, info, address, None);
+        } else if let AndromedaMsg::UpdateOwner { address } = andr_msg {
+            return contract.execute_update_owner(deps, info, address);
+        }
+    }
 
     contract.module_hook::<Response>(
         deps.storage,
@@ -114,6 +119,7 @@ fn execute_transfer(
             recipient: recipient.clone(),
         })?,
     )?;
+
     let remaining_amount = match remainder {
         Funds::Native(..) => amount, //What do we do in the case that the rates returns remaining amount as native funds?
         Funds::Cw20(coin) => coin.amount,
@@ -292,10 +298,6 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
     contract.execute_update_version(deps)?;
 
     Ok(Response::default())
-}
-
-fn from_semver(err: semver::Error) -> StdError {
-    StdError::generic_err(format!("Semver: {}", err))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

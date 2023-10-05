@@ -1,24 +1,23 @@
 use crate::state::{
-    auction_infos, read_auction_infos, read_bids, AuctionInfo, TokenAuctionState, BIDS,
-    NEXT_AUCTION_ID, TOKEN_AUCTION_STATE,
+    auction_infos, read_auction_infos, read_bids, BIDS, NEXT_AUCTION_ID, TOKEN_AUCTION_STATE,
 };
 use ado_base::state::ADOContract;
 use andromeda_non_fungible_tokens::auction::{
-    AuctionIdsResponse, AuctionStateResponse, Bid, BidsResponse, Cw721HookMsg, ExecuteMsg,
-    InstantiateMsg, MigrateMsg, QueryMsg,
+    AuctionIdsResponse, AuctionInfo, AuctionStateResponse, Bid, BidsResponse, Cw721HookMsg,
+    ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, TokenAuctionState,
 };
 use common::{
-    ado_base::{hooks::AndromedaHook, InstantiateMsg as BaseInstantiateMsg},
+    ado_base::{hooks::AndromedaHook, AndromedaMsg, InstantiateMsg as BaseInstantiateMsg},
     encode_binary,
-    error::ContractError,
+    error::{from_semver, ContractError},
     expiration::{expiration_from_milliseconds, MILLISECONDS_TO_NANOSECONDS_RATIO},
     rates::get_tax_amount,
     Funds, OrderBy,
 };
 use cosmwasm_std::{
     attr, coins, ensure, entry_point, from_binary, Addr, Api, BankMsg, Binary, BlockInfo, Coin,
-    CosmosMsg, Deps, DepsMut, Env, MessageInfo, QuerierWrapper, QueryRequest, Response, StdError,
-    Storage, SubMsg, Uint128, WasmMsg, WasmQuery,
+    CosmosMsg, Deps, DepsMut, Env, MessageInfo, QuerierWrapper, QueryRequest, Response, Storage,
+    SubMsg, Uint128, WasmMsg, WasmQuery,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, Cw721ReceiveMsg, Expiration, OwnerOfResponse};
@@ -61,10 +60,15 @@ pub fn execute(
 ) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
 
-    //Andromeda Messages can be executed without modules, if they are a wrapped execute message they will loop back
-    if let ExecuteMsg::AndrReceive(andr_msg) = msg {
-        return contract.execute(deps, env, info, andr_msg, execute);
-    };
+    // Do this before the hooks get fired off to ensure that there are no errors from the app
+    // address not being fully setup yet.
+    if let ExecuteMsg::AndrReceive(andr_msg) = msg.clone() {
+        if let AndromedaMsg::UpdateAppContract { address } = andr_msg {
+            return contract.execute_update_app_contract(deps, info, address, None);
+        } else if let AndromedaMsg::UpdateOwner { address } = andr_msg {
+            return contract.execute_update_owner(deps, info, address);
+        }
+    }
 
     contract.module_hook::<Response>(
         deps.storage,
@@ -159,7 +163,7 @@ fn execute_start_auction(
 ) -> Result<Response, ContractError> {
     ensure!(
         start_time > 0 && duration > 0,
-        ContractError::InvalidExpirationTime {}
+        ContractError::InvalidExpiration {}
     );
 
     let start_expiration = expiration_from_milliseconds(start_time)?;
@@ -234,7 +238,7 @@ fn execute_update_auction(
     );
     ensure!(
         start_time > 0 && duration > 0,
-        ContractError::InvalidExpirationTime {}
+        ContractError::InvalidExpiration {}
     );
 
     let start_exp = expiration_from_milliseconds(start_time)?;
@@ -320,14 +324,14 @@ fn execute_place_bid(
     ensure!(
         payment.denom == coin_denom && payment.amount > Uint128::zero(),
         ContractError::InvalidFunds {
-            msg: format!("No {} assets are provided to auction", coin_denom),
+            msg: format!("No {coin_denom} assets are provided to auction"),
         }
     );
     let min_bid = token_auction_state.min_bid.unwrap_or(Uint128::zero());
     ensure!(
         payment.amount >= min_bid,
         ContractError::InvalidFunds {
-            msg: format!("Must provide at least {} {} to bid", min_bid, coin_denom)
+            msg: format!("Must provide at least {min_bid} {coin_denom} to bid")
         }
     );
     ensure!(
@@ -724,18 +728,15 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
     Ok(Response::default())
 }
 
-fn from_semver(err: semver::Error) -> StdError {
-    StdError::generic_err(format!("Semver: {}", err))
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::mock_querier::{
         mock_dependencies_custom, MOCK_TOKEN_ADDR, MOCK_TOKEN_OWNER, MOCK_UNCLAIMED_TOKEN,
     };
-    use crate::state::AuctionInfo;
-    use andromeda_non_fungible_tokens::auction::{Cw721HookMsg, ExecuteMsg, InstantiateMsg};
+    use andromeda_non_fungible_tokens::auction::{
+        AuctionInfo, Cw721HookMsg, ExecuteMsg, InstantiateMsg,
+    };
     use andromeda_testing::testing::mock_querier::{MOCK_RATES_CONTRACT, MOCK_RATES_RECIPIENT};
     use common::ado_base::modules::Module;
     use common::app::AndrAddress;
@@ -1323,7 +1324,7 @@ mod tests {
         let info = mock_info(MOCK_TOKEN_ADDR, &[]);
         let res = execute(deps.as_mut(), env, info, msg);
 
-        assert_eq!(ContractError::InvalidExpirationTime {}, res.unwrap_err());
+        assert_eq!(ContractError::InvalidExpiration {}, res.unwrap_err());
     }
 
     #[test]
@@ -1352,7 +1353,7 @@ mod tests {
         let info = mock_info(MOCK_TOKEN_ADDR, &[]);
         let res = execute(deps.as_mut(), env, info, msg);
 
-        assert_eq!(ContractError::InvalidExpirationTime {}, res.unwrap_err());
+        assert_eq!(ContractError::InvalidExpiration {}, res.unwrap_err());
     }
 
     // #[test]
@@ -1410,7 +1411,7 @@ mod tests {
         let info = mock_info(MOCK_TOKEN_OWNER, &[]);
         let res = execute(deps.as_mut(), env, info, msg);
 
-        assert_eq!(ContractError::InvalidExpirationTime {}, res.unwrap_err());
+        assert_eq!(ContractError::InvalidExpiration {}, res.unwrap_err());
     }
 
     #[test]
@@ -1473,7 +1474,7 @@ mod tests {
         let info = mock_info(MOCK_TOKEN_OWNER, &[]);
         let res = execute(deps.as_mut(), env, info, msg);
 
-        assert_eq!(ContractError::InvalidExpirationTime {}, res.unwrap_err());
+        assert_eq!(ContractError::InvalidExpiration {}, res.unwrap_err());
     }
 
     #[test]
