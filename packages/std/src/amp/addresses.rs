@@ -1,8 +1,9 @@
 use std::fmt::{Display, Formatter, Result as FMTResult};
 
 use crate::error::ContractError;
+use crate::os::vfs::vfs_resolve_symlink;
 use crate::{ado_contract::ADOContract, os::vfs::vfs_resolve_path};
-use cosmwasm_std::{Addr, Api, Deps, Storage};
+use cosmwasm_std::{Addr, Api, Deps, QuerierWrapper, Storage};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -82,8 +83,10 @@ impl AndrAddr {
         match self.is_vfs_path() {
             false => Ok(deps.api.addr_validate(&self.0)?),
             true => {
+                let vfs_contract: String = vfs_contract.into();
                 // Convert local path to VFS path before querying
-                let valid_vfs_path = self.local_path_to_vfs_path(deps.storage)?;
+                let valid_vfs_path =
+                    self.local_path_to_vfs_path(deps.storage, &deps.querier, vfs_contract.clone())?;
                 let vfs_addr = Addr::unchecked(vfs_contract);
                 vfs_resolve_path(valid_vfs_path, vfs_addr, &deps.querier)
             }
@@ -91,15 +94,22 @@ impl AndrAddr {
     }
 
     /// Converts a local path to a valid VFS path by replacing `./` with the app contract address
-    fn local_path_to_vfs_path(&self, storage: &dyn Storage) -> Result<AndrAddr, ContractError> {
+    fn local_path_to_vfs_path(
+        &self,
+        storage: &dyn Storage,
+        querier: &QuerierWrapper,
+        vfs_contract: impl Into<String>,
+    ) -> Result<AndrAddr, ContractError> {
         match self.is_local_path() {
             true => {
                 let app_contract = ADOContract::default().get_app_contract(storage)?;
                 match app_contract {
                     None => Err(ContractError::AppContractNotSpecified {}),
-                    Some(app_contract) => Ok(AndrAddr(
-                        self.0.replace("./", &format!("/home/{app_contract}/")),
-                    )),
+                    Some(app_contract) => {
+                        let replaced =
+                            AndrAddr(self.0.replace("./", &format!("/home/{app_contract}/")));
+                        vfs_resolve_symlink(replaced, vfs_contract, querier)
+                    }
                 }
             }
             false => Ok(self.clone()),
