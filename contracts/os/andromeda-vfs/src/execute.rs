@@ -32,8 +32,18 @@ pub fn add_path(
     let parent_andr_addr = parent_address.unwrap_or(AndrAddr::from_string(env.info.sender));
     let parent_addr = resolve_pathname(env.deps.storage, env.deps.api, parent_andr_addr)?;
     validate_component_name(name.clone())?;
-    add_pathname(env.deps.storage, parent_addr, name, address)?;
-    Ok(Response::default())
+    add_pathname(
+        env.deps.storage,
+        parent_addr.clone(),
+        name.clone(),
+        address.clone(),
+    )?;
+    Ok(Response::default().add_attributes(vec![
+        attr("action", "add_path"),
+        attr("addr", address),
+        attr("name", name),
+        attr("parent", parent_addr),
+    ]))
 }
 
 pub fn add_symlink(
@@ -53,8 +63,18 @@ pub fn add_symlink(
     let parent_andr_addr = parent_address.unwrap_or(AndrAddr::from_string(env.info.sender));
     let parent_addr = resolve_pathname(env.deps.storage, env.deps.api, parent_andr_addr)?;
     validate_component_name(name.clone())?;
-    add_path_symlink(env.deps.storage, parent_addr, name, symlink)?;
-    Ok(Response::default())
+    add_path_symlink(
+        env.deps.storage,
+        parent_addr.clone(),
+        name.clone(),
+        symlink.clone(),
+    )?;
+    Ok(Response::default().add_attributes(vec![
+        attr("action", "add_symlink"),
+        attr("symlink", symlink),
+        attr("name", name),
+        attr("parent", parent_addr),
+    ]))
 }
 
 pub fn add_parent_path(
