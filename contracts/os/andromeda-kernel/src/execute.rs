@@ -8,6 +8,7 @@ use andromeda_std::error::ContractError;
 use andromeda_std::os::aos_querier::AOSQuerier;
 use andromeda_std::os::kernel::IbcExecuteMsg;
 
+use andromeda_std::os::vfs::vfs_resolve_symlink;
 use cosmwasm_std::{
     attr, ensure, to_binary, Addr, BankMsg, Binary, CosmosMsg, DepsMut, Env, IbcMsg, MessageInfo,
     Response, StdError, SubMsg, WasmMsg,
@@ -58,7 +59,7 @@ pub fn amp_receive(
         }
     );
     for (idx, message) in packet.messages.iter().enumerate() {
-        let handler = MsgHandler::new(message.clone());
+        let mut handler = MsgHandler::new(message.clone());
         res = handler.handle(
             deps.branch(),
             info.clone(),
@@ -195,6 +196,7 @@ pub fn recover(execute_env: ExecuteContext) -> Result<Response, ContractError> {
 /// Handles a given AMP message and returns a response
 ///
 /// Separated due to common functionality across multiple messages
+#[derive(Clone)]
 struct MsgHandler(AMPMsg);
 
 impl MsgHandler {
@@ -206,15 +208,31 @@ impl MsgHandler {
         &self.0
     }
 
+    fn update_recipient(&mut self, recipient: AndrAddr) -> Self {
+        self.0.recipient = recipient;
+        self.clone()
+    }
+
     #[inline]
     pub fn handle(
-        &self,
+        &mut self,
         deps: DepsMut,
         info: MessageInfo,
         env: Env,
         ctx: Option<AMPPkt>,
         sequence: u64,
     ) -> Result<Response, ContractError> {
+        let resolved_recipient = if self.message().recipient.is_vfs_path() {
+            let vfs_address = KERNEL_ADDRESSES.load(deps.storage, VFS_KEY)?;
+            vfs_resolve_symlink(
+                self.message().recipient.clone(),
+                vfs_address.to_string(),
+                &deps.querier,
+            )?
+        } else {
+            self.message().recipient.clone()
+        };
+        self.update_recipient(resolved_recipient);
         let protocol = self.message().recipient.get_protocol();
 
         match protocol {

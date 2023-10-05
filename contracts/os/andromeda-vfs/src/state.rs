@@ -226,6 +226,9 @@ pub fn resolve_symlink(
     path: AndrAddr,
 ) -> Result<AndrAddr, ContractError> {
     let mut parts = split_pathname(path.to_string());
+    if !path.is_vfs_path() || path.get_protocol().is_some() || parts.len() <= 2 {
+        return Ok(path);
+    }
     let final_part = parts.pop().unwrap();
     let reconstructed_addr = parts.join("/");
     let addr = resolve_pathname(
@@ -558,8 +561,29 @@ mod test {
             deps.as_ref().api,
             AndrAddr::from_string(format!("ibc://chain/home/{symlink_parent}/{symlink}")),
         )
-        .unwrap_err();
+        .unwrap();
 
-        assert_eq!(res, ContractError::InvalidAddress {});
+        assert_eq!(
+            res,
+            AndrAddr::from_string(format!("ibc://chain/home/{symlink_parent}/{symlink}"))
+        );
+
+        let res = resolve_symlink(
+            deps.as_ref().storage,
+            deps.as_ref().api,
+            AndrAddr::from_string("someaddress"),
+        )
+        .unwrap();
+
+        assert_eq!(res, AndrAddr::from_string("someaddress"));
+
+        let res = resolve_symlink(
+            deps.as_ref().storage,
+            deps.as_ref().api,
+            AndrAddr::from_string("/home/someuser"),
+        )
+        .unwrap();
+
+        assert_eq!(res, AndrAddr::from_string("/home/someuser"));
     }
 }

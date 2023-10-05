@@ -576,6 +576,74 @@ describe("Basic IBC Token Transfers", async () => {
       );
     }
   );
+
+  step(
+    "should send chain A tokens from chain A to chain B using VFS symlink",
+    async () => {
+      const { link, chainA, chainB } = state;
+      const receiver = randomAddress(chainB.definition.prefix);
+      const symlinkName = "chain-b-recipient";
+      const symlink = `ibc://${chainB.name}/home/${receiver}`;
+      const splitterCodeId: number = await chainA.os.adodb!.query(
+        { code_id: { key: "splitter" } },
+        chainA.client!
+      );
+      const splitterInstMsg = {
+        kernel_address: chainA.os.kernel!.address,
+        recipients: [
+          {
+            recipient: {
+              address: `/home/${chainA.client?.senderAddress}/${symlinkName}`,
+            },
+            percent: "1",
+          },
+        ],
+      };
+      const splitter = await Contract.fromCodeId(
+        splitterCodeId,
+        splitterInstMsg,
+        chainA.client!
+      );
+
+      const vfs_msg = {
+        add_symlink: {
+          name: symlinkName,
+          symlink,
+        },
+      };
+      await chainA.os.vfs?.execute(vfs_msg, chainA.client!);
+
+      state.logger.log(
+        "chain A tokens from chain A to chain B using splitter - Splitter address",
+        splitter.address
+      );
+      state.logger.log(
+        "chain A tokens from chain A to chain B using splitter - Receiver address",
+        receiver
+      );
+
+      const transferAmount = { amount: "100", denom: chainA.denom };
+      const msg = createAMPMsg(`${splitter.address}`, { send: {} }, [
+        transferAmount,
+      ]);
+      const kernelMsg = { send: { message: msg } };
+      const res = await chainA.os.kernel!.execute(kernelMsg, chainA.client!, [
+        transferAmount,
+      ]);
+      assert(res.transactionHash);
+      const [shouldAssertA, infoB] = await relayAll(link!);
+      if (shouldAssertA) assertPacketsFromA(infoB, 1, true);
+      await relayAll(link!);
+      const chainBBalance = await chainB.client!.sign.getBalance(
+        receiver,
+        chainA.ibcDenom
+      );
+      assert(
+        chainBBalance.amount === transferAmount.amount,
+        "Balance is incorrect"
+      );
+    }
+  );
 });
 
 describe("IBC Fund Recovery", async () => {
