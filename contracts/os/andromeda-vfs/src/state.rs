@@ -220,6 +220,26 @@ pub fn add_path_symlink(
     )
 }
 
+pub fn resolve_symlink(
+    storage: &dyn Storage,
+    api: &dyn Api,
+    path: AndrAddr,
+) -> Result<AndrAddr, ContractError> {
+    let mut parts = split_pathname(path.to_string());
+    let final_part = parts.pop().unwrap();
+    let reconstructed_addr = parts.join("/");
+    let addr = resolve_pathname(
+        storage,
+        api,
+        AndrAddr::from_string(format!("/{reconstructed_addr}")),
+    )?;
+    let info = paths().load(storage, &(addr, final_part))?;
+    match info.symlink {
+        Some(symlink) => Ok(symlink),
+        None => Ok(path),
+    }
+}
+
 #[cfg(test)]
 mod test {
     use andromeda_std::os::vfs::validate_username;
@@ -491,7 +511,7 @@ mod test {
             AndrAddr::from_string(format!("/home/{username}/{first_directory}")),
         )
         .unwrap();
-        assert_eq!(res, first_directory_address);
+        assert_eq!(res, first_directory_address.clone());
 
         let symlink_parent = Addr::unchecked("parentaddress");
         let symlink_name = "symlink";
@@ -500,7 +520,7 @@ mod test {
             deps.as_mut().storage,
             symlink_parent.clone(),
             symlink_name.to_string(),
-            symlink,
+            symlink.clone(),
         )
         .unwrap();
 
@@ -511,5 +531,35 @@ mod test {
         )
         .unwrap();
         assert_eq!(res, first_directory_address);
+
+        let res = resolve_symlink(
+            deps.as_ref().storage,
+            deps.as_ref().api,
+            AndrAddr::from_string(format!("/home/{symlink_parent}/{symlink_name}")),
+        )
+        .unwrap();
+
+        assert_eq!(res, symlink);
+
+        let res = resolve_symlink(
+            deps.as_ref().storage,
+            deps.as_ref().api,
+            AndrAddr::from_string(format!("/home/{username}/{first_directory}")),
+        )
+        .unwrap();
+
+        assert_eq!(
+            res,
+            AndrAddr::from_string(format!("/home/{username}/{first_directory}"))
+        );
+
+        let res = resolve_symlink(
+            deps.as_ref().storage,
+            deps.as_ref().api,
+            AndrAddr::from_string(format!("ibc://chain/home/{symlink_parent}/{symlink}")),
+        )
+        .unwrap_err();
+
+        assert_eq!(res, ContractError::InvalidAddress {});
     }
 }

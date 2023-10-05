@@ -128,5 +128,6 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractErr
         QueryMsg::Paths { addr } => encode_binary(&query::paths(deps, addr)?),
         QueryMsg::GetUsername { address } => encode_binary(&query::get_username(deps, address)?),
         QueryMsg::GetLibrary { address } => encode_binary(&query::get_library_name(deps, address)?),
+        QueryMsg::ResolveSymlink { path } => encode_binary(&query::get_symlink(deps, path)?),
     }
 }

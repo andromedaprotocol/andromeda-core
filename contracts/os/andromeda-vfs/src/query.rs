@@ -3,7 +3,8 @@ use andromeda_std::{amp::AndrAddr, error::ContractError};
 use cosmwasm_std::{Addr, Deps};
 
 use crate::state::{
-    get_paths, get_subdir, resolve_pathname, PathInfo, ADDRESS_LIBRARY, ADDRESS_USERNAME,
+    get_paths, get_subdir, resolve_pathname, resolve_symlink, PathInfo, ADDRESS_LIBRARY,
+    ADDRESS_USERNAME,
 };
 
 pub fn resolve_path(deps: Deps, path: AndrAddr) -> Result<Addr, ContractError> {
@@ -17,6 +18,10 @@ pub fn subdir(deps: Deps, path: AndrAddr) -> Result<Vec<PathInfo>, ContractError
 
 pub fn paths(deps: Deps, addr: Addr) -> Result<Vec<String>, ContractError> {
     get_paths(deps.storage, addr)
+}
+
+pub fn get_symlink(deps: Deps, addr: AndrAddr) -> Result<AndrAddr, ContractError> {
+    resolve_symlink(deps.storage, deps.api, addr)
 }
 
 pub fn get_username(deps: Deps, addr: Addr) -> Result<String, ContractError> {
