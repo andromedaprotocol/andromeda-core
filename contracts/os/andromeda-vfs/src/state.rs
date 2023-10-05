@@ -231,11 +231,13 @@ pub fn resolve_symlink(
     }
     let final_part = parts.pop().unwrap();
     let reconstructed_addr = parts.join("/");
-    let addr = resolve_pathname(
-        storage,
-        api,
-        AndrAddr::from_string(format!("/{reconstructed_addr}")),
-    )?;
+    // Need to prepend a '/' unless the path starts with '~'
+    let remaining_path = if reconstructed_addr.starts_with('~') {
+        AndrAddr::from_string(reconstructed_addr)
+    } else {
+        AndrAddr::from_string(format!("/{reconstructed_addr}"))
+    };
+    let addr = resolve_pathname(storage, api, remaining_path)?;
     let info = paths().load(storage, &(addr, final_part))?;
     match info.symlink {
         Some(symlink) => Ok(symlink),
@@ -514,7 +516,7 @@ mod test {
             AndrAddr::from_string(format!("/home/{username}/{first_directory}")),
         )
         .unwrap();
-        assert_eq!(res, first_directory_address.clone());
+        assert_eq!(res, first_directory_address);
 
         let symlink_parent = Addr::unchecked("parentaddress");
         let symlink_name = "symlink";

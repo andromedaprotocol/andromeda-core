@@ -265,7 +265,7 @@ fn test_add_symlink() {
         ))),
     };
 
-    execute(deps.as_mut(), env.clone(), info, msg).unwrap();
+    execute(deps.as_mut(), env, info, msg).unwrap();
 
     let path = format!("/home/{username}/{component_name}/{symlink_four_name}");
 
