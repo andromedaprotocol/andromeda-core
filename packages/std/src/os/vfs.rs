@@ -84,6 +84,11 @@ pub enum ExecuteMsg {
         address: Addr,
         parent_address: Option<AndrAddr>,
     },
+    AddSymlink {
+        name: String,
+        symlink: AndrAddr,
+        parent_address: Option<AndrAddr>,
+    },
     AddParentPath {
         name: String,
         parent_address: AndrAddr,

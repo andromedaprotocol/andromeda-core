@@ -302,11 +302,13 @@ fn test_get_subdir() {
             name: "f1".to_string(),
             address: Addr::unchecked("f1addr"),
             parent_address: sender.clone(),
+            symlink: None,
         },
         PathInfo {
             name: "f2".to_string(),
             address: Addr::unchecked("f2addr"),
             parent_address: sender.clone(),
+            symlink: None,
         },
     ];
     let sub_paths = vec![
@@ -314,11 +316,13 @@ fn test_get_subdir() {
             name: "sub1".to_string(),
             address: Addr::unchecked("sub1addr"),
             parent_address: root_paths[0].address.clone(),
+            symlink: None,
         },
         PathInfo {
             name: "sub2".to_string(),
             address: Addr::unchecked("sub2addr"),
             parent_address: root_paths[0].address.clone(),
+            symlink: None,
         },
     ];
 
@@ -383,11 +387,13 @@ fn test_get_paths() {
             name: "f1".to_string(),
             address: Addr::unchecked("f1addr"),
             parent_address: sender.clone(),
+            symlink: None,
         },
         PathInfo {
             name: "f2".to_string(),
             address: Addr::unchecked("f2addr"),
             parent_address: sender.clone(),
+            symlink: None,
         },
     ];
     let sub_paths = vec![
@@ -395,11 +401,13 @@ fn test_get_paths() {
             name: "sub1".to_string(),
             address: Addr::unchecked("sub1addr"),
             parent_address: root_paths[0].address.clone(),
+            symlink: None,
         },
         PathInfo {
             name: "sub2".to_string(),
             address: Addr::unchecked("sub2addr"),
             parent_address: root_paths[0].address.clone(),
+            symlink: None,
         },
     ];
 

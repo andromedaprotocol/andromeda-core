@@ -65,6 +65,11 @@ pub fn execute(
             address,
             parent_address,
         } => execute::add_path(execute_env, name, address, parent_address),
+        ExecuteMsg::AddSymlink {
+            name,
+            symlink,
+            parent_address,
+        } => execute::add_symlink(execute_env, name, symlink, parent_address),
         ExecuteMsg::RegisterUser { username } => execute::register_user(execute_env, username),
         ExecuteMsg::AddParentPath {
             name,
