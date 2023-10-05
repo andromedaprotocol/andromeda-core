@@ -163,6 +163,123 @@ fn test_add_path() {
 }
 
 #[test]
+fn test_add_symlink() {
+    let mut deps = mock_dependencies();
+    let username = "u1";
+    let component_name = "f1";
+    let sender = "sender";
+    let component_addr = Addr::unchecked("f1addr");
+    let info = mock_info(sender, &[]);
+    let env = mock_env();
+    instantiate_contract(deps.as_mut(), env.clone(), info.clone());
+
+    let msg = ExecuteMsg::AddPath {
+        name: component_name.to_string(),
+        address: component_addr.clone(),
+        parent_address: None,
+    };
+
+    execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+    USERS
+        .save(deps.as_mut().storage, username, &Addr::unchecked(sender))
+        .unwrap();
+
+    let path = format!("/home/{username}/{component_name}");
+
+    let resolved_addr = resolve_pathname(
+        deps.as_ref().storage,
+        deps.as_ref().api,
+        AndrAddr::from_string(path),
+    )
+    .unwrap();
+
+    assert_eq!(resolved_addr, component_addr);
+
+    let symlink_name = "symlink";
+    let msg = ExecuteMsg::AddSymlink {
+        name: symlink_name.to_string(),
+        symlink: AndrAddr::from_string(format!("/home/{username}/{component_name}")),
+        parent_address: None,
+    };
+
+    execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+    let path = format!("/home/{username}/{symlink_name}");
+
+    let resolved_addr = resolve_pathname(
+        deps.as_ref().storage,
+        deps.as_ref().api,
+        AndrAddr::from_string(path),
+    )
+    .unwrap();
+
+    assert_eq!(resolved_addr, component_addr);
+
+    let symlink_two_name = "symlink_two";
+    let msg = ExecuteMsg::AddSymlink {
+        name: symlink_two_name.to_string(),
+        symlink: AndrAddr::from_string(format!("ibc://chain/home/{username}/{component_name}")),
+        parent_address: None,
+    };
+
+    execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+    let path = format!("/home/{username}/{symlink_two_name}");
+
+    let err = resolve_pathname(
+        deps.as_ref().storage,
+        deps.as_ref().api,
+        AndrAddr::from_string(path),
+    )
+    .unwrap_err();
+
+    assert_eq!(err, ContractError::InvalidAddress {});
+
+    let symlink_three_name = "symlink_three";
+    let msg = ExecuteMsg::AddSymlink {
+        name: symlink_three_name.to_string(),
+        symlink: AndrAddr::from_string(format!("/home/{username}/{symlink_name}")),
+        parent_address: None,
+    };
+
+    execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+    let path = format!("/home/{username}/{symlink_three_name}");
+
+    let resolved_addr = resolve_pathname(
+        deps.as_ref().storage,
+        deps.as_ref().api,
+        AndrAddr::from_string(path),
+    )
+    .unwrap();
+
+    assert_eq!(resolved_addr, component_addr);
+
+    let symlink_four_name = "symlink_four";
+    let msg = ExecuteMsg::AddSymlink {
+        name: symlink_four_name.to_string(),
+        symlink: AndrAddr::from_string(format!("/home/{username}/{component_name}")),
+        parent_address: Some(AndrAddr::from_string(format!(
+            "/home/{username}/{component_name}/"
+        ))),
+    };
+
+    execute(deps.as_mut(), env.clone(), info, msg).unwrap();
+
+    let path = format!("/home/{username}/{component_name}/{symlink_four_name}");
+
+    let resolved_addr = resolve_pathname(
+        deps.as_ref().storage,
+        deps.as_ref().api,
+        AndrAddr::from_string(path),
+    )
+    .unwrap();
+
+    assert_eq!(resolved_addr, component_addr);
+}
+
+#[test]
 fn test_add_parent_path() {
     let mut deps = mock_dependencies();
     let username = "u1";
