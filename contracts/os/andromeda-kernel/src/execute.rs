@@ -6,7 +6,7 @@ use andromeda_std::amp::{ADO_DB_KEY, VFS_KEY};
 use andromeda_std::common::context::ExecuteContext;
 use andromeda_std::error::ContractError;
 use andromeda_std::os::aos_querier::AOSQuerier;
-use andromeda_std::os::kernel::IbcExecuteMsg;
+use andromeda_std::os::kernel::{ChannelInfo, IbcExecuteMsg};
 
 use andromeda_std::os::vfs::vfs_resolve_symlink;
 use cosmwasm_std::{
@@ -16,7 +16,7 @@ use cosmwasm_std::{
 
 use crate::ibc::{generate_transfer_message, PACKET_LIFETIME};
 use crate::state::{
-    ChannelInfo, IBCHooksPacketSendState, ADO_OWNER, CHANNELS, IBC_FUND_RECOVERY, KERNEL_ADDRESSES,
+    IBCHooksPacketSendState, ADO_OWNER, CHANNELS, IBC_FUND_RECOVERY, KERNEL_ADDRESSES,
     OUTGOING_IBC_HOOKS_PACKETS,
 };
 use crate::{query, reply::ReplyId};

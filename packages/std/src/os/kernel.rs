@@ -6,9 +6,17 @@ use cosmwasm_std::Addr;
 use cosmwasm_std::Binary;
 
 #[cw_serde]
+pub struct ChannelInfo {
+    pub kernel_address: String,
+    pub ics20_channel_id: Option<String>,
+    pub direct_channel_id: Option<String>,
+    pub supported_modules: Vec<String>,
+}
+
+#[cw_serde]
 pub struct InstantiateMsg {
     pub owner: Option<String>,
-    pub chain_name: Option<String>,
+    pub chain_name: String,
 }
 
 #[cw_serde]

@@ -15,6 +15,7 @@ pub enum ReplyId {
     ClaimOwnership = 101,
     AssignApp = 102,
     RegisterPath = 103,
+    CrossChainCreate = 104,
 }
 
 pub fn on_component_instantiation(deps: DepsMut, msg: Reply) -> Result<Response, ContractError> {

@@ -1,5 +1,5 @@
 use super::{contract::*, state::ADO_ADDRESSES};
-use andromeda_app::app::{AppComponent, ExecuteMsg, InstantiateMsg};
+use andromeda_app::app::{AppComponent, ComponentType, ExecuteMsg, InstantiateMsg};
 use andromeda_std::amp::AndrAddr;
 use andromeda_std::os::vfs::{convert_component_name, ExecuteMsg as VFSExecuteMsg};
 use andromeda_std::testing::mock_querier::{mock_dependencies_custom, MOCK_KERNEL_CONTRACT};
@@ -20,6 +20,7 @@ fn test_empty_instantiation() {
         name: String::from("Some App"),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
+        chain_info: None,
     };
     let info = mock_info("creator", &[]);
 
@@ -36,11 +37,12 @@ fn test_instantiation() {
         app_components: vec![AppComponent {
             name: "token".to_string(),
             ado_type: "cw721".to_string(),
-            instantiate_msg: to_binary(&true).unwrap(),
+            component_type: ComponentType::default(),
         }],
         name: String::from("Some App"),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
+        chain_info: None,
     };
     let info = mock_info("creator", &[]);
 
@@ -100,17 +102,18 @@ fn test_instantiation_duplicate_components() {
             AppComponent {
                 name: "component".to_string(),
                 ado_type: "cw721".to_string(),
-                instantiate_msg: to_binary(&true).unwrap(),
+                component_type: ComponentType::default(),
             },
             AppComponent {
                 name: "component".to_string(),
                 ado_type: "cw20".to_string(),
-                instantiate_msg: to_binary(&true).unwrap(),
+                component_type: ComponentType::default(),
             },
         ],
         name: String::from("Some App"),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
+        chain_info: None,
     };
     let info = mock_info("creator", &[]);
 
@@ -128,6 +131,7 @@ fn test_add_app_component_unauthorized() {
         name: String::from("Some App"),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
+        chain_info: None,
     };
 
     instantiate(deps.as_mut(), env.clone(), info, inst_msg).unwrap();
@@ -137,7 +141,7 @@ fn test_add_app_component_unauthorized() {
         component: AppComponent {
             name: "token".to_string(),
             ado_type: "cw721".to_string(),
-            instantiate_msg: to_binary(&true).unwrap(),
+            component_type: ComponentType::default(),
         },
     };
 
@@ -154,11 +158,12 @@ fn test_add_app_component_duplicate_name() {
         app_components: vec![AppComponent {
             name: "token".to_string(),
             ado_type: "cw721".to_string(),
-            instantiate_msg: to_binary(&true).unwrap(),
+            component_type: ComponentType::default(),
         }],
         name: String::from("Some App"),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
+        chain_info: None,
     };
 
     instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
@@ -174,7 +179,7 @@ fn test_add_app_component_duplicate_name() {
         component: AppComponent {
             name: "token".to_string(),
             ado_type: "cw721".to_string(),
-            instantiate_msg: to_binary(&true).unwrap(),
+            component_type: ComponentType::default(),
         },
     };
 
@@ -192,6 +197,7 @@ fn test_add_app_component() {
         name: String::from("Some App"),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
+        chain_info: None,
     };
 
     instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
@@ -200,7 +206,7 @@ fn test_add_app_component() {
         component: AppComponent {
             name: "token".to_string(),
             ado_type: "cw721".to_string(),
-            instantiate_msg: to_binary(&true).unwrap(),
+            component_type: ComponentType::default(),
         },
     };
 
@@ -244,6 +250,7 @@ fn test_claim_ownership_unauth() {
         name: String::from("Some App"),
         owner: None,
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+        chain_info: None,
     };
 
     instantiate(deps.as_mut(), env.clone(), info, inst_msg).unwrap();
@@ -268,6 +275,7 @@ fn test_claim_ownership_not_found() {
         name: String::from("Some App"),
         owner: None,
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+        chain_info: None,
     };
 
     instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
@@ -296,6 +304,7 @@ fn test_claim_ownership_empty() {
         name: String::from("Some App"),
         owner: None,
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+        chain_info: None,
     };
 
     instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
@@ -319,6 +328,7 @@ fn test_claim_ownership_all() {
         name: String::from("Some App"),
         owner: None,
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+        chain_info: None,
     };
 
     instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
@@ -388,6 +398,7 @@ fn test_claim_ownership() {
         name: String::from("Some App"),
         owner: None,
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+        chain_info: None,
     };
 
     instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
@@ -444,6 +455,7 @@ fn test_proxy_message_unauth() {
         name: String::from("Some App"),
         owner: None,
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+        chain_info: None,
     };
 
     instantiate(deps.as_mut(), env.clone(), info, inst_msg).unwrap();
@@ -468,6 +480,7 @@ fn test_proxy_message_not_found() {
         name: String::from("Some App"),
         owner: None,
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+        chain_info: None,
     };
 
     instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
@@ -496,6 +509,7 @@ fn test_proxy_message() {
         name: String::from("Some App"),
         owner: None,
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+        chain_info: None,
     };
     ADO_ADDRESSES
         .save(
@@ -543,6 +557,7 @@ fn test_update_address_unauth() {
         name: String::from("Some App"),
         owner: None,
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+        chain_info: None,
     };
 
     ADO_ADDRESSES
@@ -574,6 +589,7 @@ fn test_update_address_not_found() {
         name: String::from("Some App"),
         owner: None,
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+        chain_info: None,
     };
 
     instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
@@ -602,6 +618,7 @@ fn test_update_address() {
         name: String::from("Some App"),
         owner: None,
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+        chain_info: None,
     };
 
     ADO_ADDRESSES

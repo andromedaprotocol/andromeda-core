@@ -2,7 +2,7 @@ use crate::state::{
     add_app_component, generate_assign_app_message, generate_ownership_message,
     load_component_addresses, ADO_ADDRESSES,
 };
-use andromeda_app::app::AppComponent;
+use andromeda_app::app::{AppComponent, ComponentType};
 use andromeda_std::ado_contract::ADOContract;
 use andromeda_std::common::context::ExecuteContext;
 use andromeda_std::error::ContractError;
@@ -34,20 +34,46 @@ pub fn handle_add_app_component(
     ADO_ADDRESSES.save(storage, &component.name, &Addr::unchecked(""))?;
 
     let idx = add_app_component(storage, &component)?;
-    let inst_msg = contract.generate_instantiate_msg(
-        storage,
-        querier,
-        idx,
-        component.instantiate_msg,
-        component.ado_type.clone(),
-        sender.to_string(),
-    )?;
 
-    Ok(Response::new()
-        .add_submessage(inst_msg)
+    let mut resp = Response::new()
         .add_attribute("method", "add_app_component")
-        .add_attribute("name", component.name)
-        .add_attribute("type", component.ado_type))
+        .add_attribute("name", component.name.clone())
+        .add_attribute("type", component.ado_type.clone());
+
+    match component.component_type {
+        ComponentType::New(instantiate_msg) => {
+            let inst_msg = contract.generate_instantiate_msg(
+                storage,
+                querier,
+                idx,
+                instantiate_msg,
+                component.ado_type.clone(),
+                sender.to_string(),
+            )?;
+            resp = resp.add_submessage(inst_msg);
+        }
+        ComponentType::Symlink(symlink) => {
+            let msg = VFSExecuteMsg::AddSymlink {
+                name: component.name,
+                symlink,
+                parent_address: None,
+            };
+            let cosmos_msg = CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: AOSQuerier::vfs_address_getter(
+                    querier,
+                    &contract.get_kernel_address(storage)?,
+                )?
+                .to_string(),
+                msg: to_binary(&msg)?,
+                funds: vec![],
+            });
+            let sub_msg = SubMsg::reply_on_error(cosmos_msg, ReplyId::RegisterPath.repr());
+            resp = resp.add_submessage(sub_msg);
+        }
+        _ => return Err(ContractError::Unauthorized {}),
+    }
+
+    Ok(resp)
 }
 
 pub fn claim_ownership(

@@ -1,6 +1,13 @@
-use andromeda_app::app::{AppComponent, ComponentAddress};
-use andromeda_std::{ado_base::AndromedaMsg, error::ContractError};
-use cosmwasm_std::{to_binary, Addr, Coin, CosmosMsg, Order, ReplyOn, Storage, SubMsg, WasmMsg};
+use andromeda_app::app::{
+    AppComponent, ChainInfo, ComponentAddress, ComponentType, CrossChainComponent, InstantiateMsg,
+};
+use andromeda_std::{
+    ado_base::AndromedaMsg, ado_contract::ADOContract, amp::AndrAddr, error::ContractError,
+    os::aos_querier::AOSQuerier, os::kernel::ExecuteMsg as KernelExecuteMsg,
+};
+use cosmwasm_std::{
+    to_binary, Addr, Coin, CosmosMsg, DepsMut, Order, ReplyOn, Storage, SubMsg, WasmMsg,
+};
 use cw_storage_plus::{Bound, Item, Map};
 
 use crate::reply::ReplyId;
@@ -99,4 +106,95 @@ pub fn generate_assign_app_message(addr: &Addr, app_addr: &str) -> Result<SubMsg
         }),
         gas_limit: None,
     })
+}
+
+pub fn get_chain_info(chain_name: String, chain_info: Option<Vec<ChainInfo>>) -> Option<ChainInfo> {
+    match chain_info {
+        Some(chain_info) => {
+            let idx = chain_info
+                .iter()
+                .position(|info| info.chain_name == chain_name)?;
+            Some(chain_info[idx].clone())
+        }
+        None => None,
+    }
+}
+
+/// Creates a sub message to create a recpliant app on the target chain
+pub fn create_cross_chain_message(
+    deps: &DepsMut,
+    app_name: String,
+    owner: String,
+    components: Vec<AppComponent>,
+    chain_info: ChainInfo,
+) -> Result<SubMsg, ContractError> {
+    let kernel_address = ADOContract::default().get_kernel_address(deps.storage)?;
+    let curr_chain = AOSQuerier::get_current_chain(&deps.querier, &kernel_address)?;
+    let channel_info = AOSQuerier::get_chain_info(
+        &deps.querier,
+        &kernel_address,
+        chain_info.chain_name.as_str(),
+    )?;
+    let mut new_components: Vec<AppComponent> = Vec::new();
+    for component in components {
+        let name = component.name;
+        let new_component = match component.component_type {
+            ComponentType::CrossChain(CrossChainComponent {
+                chain,
+                instantiate_msg,
+            }) => {
+                if chain == chain_info.chain_name {
+                    AppComponent {
+                        name,
+                        ado_type: component.ado_type,
+                        component_type: ComponentType::New(instantiate_msg),
+                    }
+                } else {
+                    AppComponent {
+                        name: name.clone(),
+                        ado_type: component.ado_type,
+                        component_type: ComponentType::Symlink(AndrAddr::from_string(format!(
+                            "ibc://{curr_chain}/home/{owner}/{app_name}/{name}"
+                        ))),
+                    }
+                }
+            }
+            _ => AppComponent {
+                name: name.clone(),
+                ado_type: component.ado_type,
+                component_type: ComponentType::Symlink(AndrAddr::from_string(format!(
+                    "ibc://{curr_chain}/home/{owner}/{app_name}/{name}"
+                ))),
+            },
+        };
+        new_components.push(new_component);
+    }
+    let msg = InstantiateMsg {
+        owner: Some(owner),
+        app_components: new_components,
+        name: app_name,
+        chain_info: None,
+        kernel_address: channel_info.kernel_address,
+    };
+
+    let kernel_msg = KernelExecuteMsg::Create {
+        ado_type: "app".to_string(),
+        msg: to_binary(&msg)?,
+        owner: Some(AndrAddr::from_string(chain_info.owner)),
+        chain: Some(chain_info.chain_name),
+    };
+
+    let cosmos_msg = CosmosMsg::Wasm(WasmMsg::Execute {
+        contract_addr: kernel_address.to_string(),
+        msg: to_binary(&kernel_msg)?,
+        funds: vec![],
+    });
+    let sub_msg = SubMsg {
+        id: ReplyId::CrossChainCreate.repr(),
+        reply_on: ReplyOn::Error,
+        msg: cosmos_msg,
+        gas_limit: None,
+    };
+
+    Ok(sub_msg)
 }

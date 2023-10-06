@@ -14,7 +14,7 @@ use semver::Version;
 
 use crate::ibc::{IBCLifecycleComplete, SudoMsg};
 use crate::reply::{on_reply_create_ado, on_reply_ibc_hooks_packet_send, ReplyId};
-use crate::state::{CHAIN_NAME_KEY, ENV_VARIABLES};
+use crate::state::{CHAIN_NAME_KEY, CURR_CHAIN, ENV_VARIABLES};
 use crate::{execute, query, sudo};
 
 // version info for migration info
@@ -30,9 +30,7 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    if let Some(chain_name) = msg.chain_name {
-        ENV_VARIABLES.save(deps.storage, CHAIN_NAME_KEY, &chain_name)?;
-    }
+    CURR_CHAIN.save(deps.storage, &msg.chain_name)?;
 
     ADOContract::default().instantiate(
         deps.storage,

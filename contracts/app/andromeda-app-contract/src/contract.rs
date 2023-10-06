@@ -1,6 +1,9 @@
 use crate::reply::{on_component_instantiation, ReplyId};
-use crate::state::APP_NAME;
-use andromeda_app::app::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
+use crate::state::{create_cross_chain_message, get_chain_info, APP_NAME};
+use andromeda_app::app::{
+    AppComponent, ChainInfo, ComponentType, CrossChainComponent, ExecuteMsg, InstantiateMsg,
+    MigrateMsg, QueryMsg,
+};
 use andromeda_std::ado_contract::ADOContract;
 use andromeda_std::amp::AndrAddr;
 use andromeda_std::common::context::ExecuteContext;
@@ -43,12 +46,12 @@ pub fn instantiate(
     );
 
     let sender = info.sender.to_string();
-    let resp = ADOContract::default()
+    let mut resp = ADOContract::default()
         .instantiate(
             deps.storage,
             env.clone(),
             deps.api,
-            info,
+            info.clone(),
             BaseInstantiateMsg {
                 ado_type: "app-contract".to_string(),
                 ado_version: CONTRACT_VERSION.to_string(),
@@ -57,20 +60,54 @@ pub fn instantiate(
                 owner: msg.owner.clone(),
             },
         )?
-        .add_attribute("owner", &msg.owner.unwrap_or(sender.clone()))
+        .add_attribute("owner", &msg.owner.clone().unwrap_or(sender.clone()))
         .add_attribute("andr_app", msg.name.clone());
 
     let mut msgs: Vec<SubMsg> = vec![];
-    for component in msg.app_components {
+    let app_name = msg.name;
+    for component in msg.app_components.clone() {
         component.verify(&deps.as_ref()).unwrap();
-        let comp_resp =
-            execute::handle_add_app_component(&deps.querier, deps.storage, &sender, component)?;
-        msgs.extend(comp_resp.messages);
+        match component.component_type {
+            ComponentType::CrossChain(CrossChainComponent { chain, .. }) => {
+                let chain_info = get_chain_info(chain.clone(), msg.chain_info.clone());
+                ensure!(
+                    chain_info.is_some(),
+                    ContractError::InvalidComponent {
+                        name: component.name.clone()
+                    }
+                );
+                let owner_addr = chain_info.unwrap().owner;
+                let name = component.name;
+                let new_component = AppComponent {
+                    name: name.clone(),
+                    ado_type: component.ado_type,
+                    component_type: ComponentType::Symlink(AndrAddr::from_string(format!(
+                        "ibc://{chain}/home/{owner_addr}/{app_name}/{name}"
+                    ))),
+                };
+                let comp_resp = execute::handle_add_app_component(
+                    &deps.querier,
+                    deps.storage,
+                    &sender,
+                    new_component,
+                )?;
+                msgs.extend(comp_resp.messages);
+            }
+            _ => {
+                let comp_resp = execute::handle_add_app_component(
+                    &deps.querier,
+                    deps.storage,
+                    &sender,
+                    component,
+                )?;
+                msgs.extend(comp_resp.messages);
+            }
+        }
     }
     let vfs_address = ADOContract::default().get_vfs_address(deps.storage, &deps.querier)?;
 
     let add_path_msg = VFSExecuteMsg::AddParentPath {
-        name: convert_component_name(msg.name),
+        name: convert_component_name(app_name.clone()),
         parent_address: AndrAddr::from_string(format!("~{sender}")),
     };
     let cosmos_msg: CosmosMsg<Empty> = CosmosMsg::Wasm(WasmMsg::Execute {
@@ -89,11 +126,24 @@ pub fn instantiate(
         }),
         ReplyId::AssignApp.repr(),
     );
-
-    Ok(resp
+    resp = resp
         .add_submessage(register_msg)
         .add_submessages(msgs)
-        .add_submessage(assign_app_msg))
+        .add_submessage(assign_app_msg);
+
+    if let Some(chain_info) = msg.chain_info {
+        for chain_inf in chain_info {
+            let sub_msg = create_cross_chain_message(
+                &deps,
+                app_name.clone(),
+                msg.owner.clone().unwrap_or(info.sender.to_string()),
+                msg.app_components.clone(),
+                chain_inf,
+            )?;
+            resp = resp.add_submessage(sub_msg);
+        }
+    }
+    Ok(resp)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

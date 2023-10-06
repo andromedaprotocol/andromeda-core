@@ -21,6 +21,7 @@ pub fn mock_app_instantiate_msg(
         name: name.into(),
         kernel_address: kernel_address.into(),
         owner,
+        chain_info: None,
     }
 }
 
