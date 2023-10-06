@@ -10,7 +10,7 @@ use andromeda_std::{
     os::aos_querier::AOSQuerier,
 };
 use cosmwasm_std::{
-    ensure, to_binary, wasm_execute, Addr, DepsMut, Empty, Reply, Response, SubMsg, SubMsgResponse,
+    ensure, wasm_execute, Addr, DepsMut, Empty, Reply, Response, SubMsg, SubMsgResponse,
     SubMsgResult,
 };
 use enum_repr::EnumRepr;
@@ -38,7 +38,7 @@ pub fn on_reply_create_ado(deps: DepsMut, msg: Reply) -> Result<Response, Contra
         let msg = AndromedaMsg::UpdateOwner {
             address: new_owner.to_string(),
         };
-        let wasm_msg = wasm_execute(ado_addr.clone(), &msg, vec![])?;
+        let wasm_msg = wasm_execute(ado_addr, &msg, vec![])?;
         let sub_msg: SubMsg<Empty> =
             SubMsg::reply_on_success(wasm_msg, ReplyId::UpdateOwnership as u64);
         res = res.add_submessage(sub_msg);
