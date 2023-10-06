@@ -156,4 +156,16 @@ impl AOSQuerier {
 
         Ok(fee)
     }
+
+    /// Queries the kernel's raw storage for the VFS's address
+    pub fn ado_owner_getter(
+        querier: &QuerierWrapper,
+        ado_addr: &Addr,
+    ) -> Result<Addr, ContractError> {
+        let verify: Option<Addr> = AOSQuerier::query_storage(querier, ado_addr, "owner")?;
+        match verify {
+            Some(address) => Ok(address),
+            None => Err(ContractError::InvalidAddress {}),
+        }
+    }
 }

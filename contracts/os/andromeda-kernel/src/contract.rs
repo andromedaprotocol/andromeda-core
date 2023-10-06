@@ -95,7 +95,8 @@ pub fn execute(
             ado_type,
             msg,
             owner,
-        } => execute::create(execute_env, ado_type, msg, owner),
+            chain,
+        } => execute::create(execute_env, ado_type, msg, owner, chain),
         ExecuteMsg::AssignChannels {
             ics20_channel_id,
             direct_channel_id,

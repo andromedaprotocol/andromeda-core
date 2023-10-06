@@ -69,6 +69,7 @@ fn kernel() {
             ado_type: "splitter".to_string(),
             msg: to_binary(&splitter_msg).unwrap(),
             owner: Some(AndrAddr::from_string("~/am".to_string())),
+            chain: None,
         },
         owner.clone(),
         &[],

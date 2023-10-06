@@ -57,6 +57,7 @@ fn test_create_ado() {
         ado_type: "ado_type".to_string(),
         msg: Binary::default(),
         owner: None,
+        chain: None,
     };
     let res = execute(deps.as_mut(), env, info.clone(), create_msg).unwrap();
     assert_eq!(1, res.messages.len());

@@ -105,35 +105,77 @@ pub fn create(
     ado_type: String,
     msg: Binary,
     owner: Option<AndrAddr>,
+    chain: Option<String>,
 ) -> Result<Response, ContractError> {
-    let vfs_addr = KERNEL_ADDRESSES.load(execute_env.deps.storage, VFS_KEY)?;
-    let adodb_addr = KERNEL_ADDRESSES.load(execute_env.deps.storage, ADO_DB_KEY)?;
+    // If chain is provided an owner must be provided
+    ensure!(
+        chain.is_none() || owner.is_some(),
+        ContractError::Unauthorized {}
+    );
+    if chain.is_some() {
+        let chain = chain.unwrap();
+        let channel_info =
+            if let Some(channel_info) = CHANNELS.may_load(execute_env.deps.storage, &chain)? {
+                Ok::<ChannelInfo, ContractError>(channel_info)
+            } else {
+                return Err(ContractError::InvalidPacket {
+                    error: Some(format!("Channel not found for chain {chain}")),
+                });
+            }?;
+        let kernel_msg = IbcExecuteMsg::CreateADO {
+            instantiation_msg: msg,
+            owner: owner.clone().unwrap(),
+            ado_type: ado_type.clone(),
+        };
+        let msg = IbcMsg::SendPacket {
+            channel_id: channel_info.direct_channel_id.clone().unwrap(),
+            data: to_binary(&kernel_msg)?,
+            timeout: execute_env
+                .env
+                .block
+                .time
+                .plus_seconds(PACKET_LIFETIME)
+                .into(),
+        };
+        Ok(Response::default().add_message(msg).add_attributes(vec![
+            attr("action", "execute_create"),
+            attr("ado_type", ado_type),
+            attr("owner", owner.unwrap().to_string()),
+            attr("chain", chain),
+            attr("receiving_kernel_address", channel_info.kernel_address),
+        ]))
+    } else {
+        let vfs_addr = KERNEL_ADDRESSES.load(execute_env.deps.storage, VFS_KEY)?;
+        let adodb_addr = KERNEL_ADDRESSES.load(execute_env.deps.storage, ADO_DB_KEY)?;
 
-    let ado_owner = owner.unwrap_or(AndrAddr::from_string(execute_env.info.sender.to_string()));
-    let owner_addr = ado_owner.get_raw_address_from_vfs(&execute_env.deps.as_ref(), vfs_addr)?;
-    let code_id = AOSQuerier::code_id_getter(&execute_env.deps.querier, &adodb_addr, &ado_type)?;
-    let wasm_msg = WasmMsg::Instantiate {
-        admin: Some(owner_addr.to_string()),
-        code_id,
-        msg,
-        funds: vec![],
-        label: format!("ADO:{ado_type}"),
-    };
-    let sub_msg = SubMsg::reply_always(wasm_msg, ReplyId::CreateADO.repr());
+        let ado_owner = owner.unwrap_or(AndrAddr::from_string(execute_env.info.sender.to_string()));
+        let owner_addr =
+            ado_owner.get_raw_address_from_vfs(&execute_env.deps.as_ref(), vfs_addr)?;
+        let code_id =
+            AOSQuerier::code_id_getter(&execute_env.deps.querier, &adodb_addr, &ado_type)?;
+        let wasm_msg = WasmMsg::Instantiate {
+            admin: Some(owner_addr.to_string()),
+            code_id,
+            msg,
+            funds: vec![],
+            label: format!("ADO:{ado_type}"),
+        };
+        let sub_msg = SubMsg::reply_always(wasm_msg, ReplyId::CreateADO.repr());
 
-    // TODO: Is this check necessary?
-    // ensure!(
-    //     !ADO_OWNER.exists(execute_env.deps.storage),
-    //     ContractError::Unauthorized {}
-    // );
+        // TODO: Is this check necessary?
+        // ensure!(
+        //     !ADO_OWNER.exists(execute_env.deps.storage),
+        //     ContractError::Unauthorized {}
+        // );
 
-    ADO_OWNER.save(execute_env.deps.storage, &owner_addr)?;
+        ADO_OWNER.save(execute_env.deps.storage, &owner_addr)?;
 
-    Ok(Response::new()
-        .add_submessage(sub_msg)
-        .add_attribute("action", "execute_create")
-        .add_attribute("ado_type", ado_type)
-        .add_attribute("owner", ado_owner.to_string()))
+        Ok(Response::new()
+            .add_submessage(sub_msg)
+            .add_attribute("action", "execute_create")
+            .add_attribute("ado_type", ado_type)
+            .add_attribute("owner", ado_owner.to_string()))
+    }
 }
 
 pub fn assign_channels(

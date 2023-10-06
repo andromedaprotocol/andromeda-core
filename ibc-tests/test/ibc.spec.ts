@@ -4,6 +4,7 @@ import {
   randomAddress,
 } from "@confio/relayer/build/lib/helpers";
 import { ChannelPair } from "@confio/relayer/build/lib/link";
+import { toBinary } from "@cosmjs/cosmwasm-stargate";
 import { assert } from "chai";
 import { Order } from "cosmjs-types/ibc/core/channel/v1/channel";
 import { step } from "mocha-steps";
@@ -20,6 +21,7 @@ import {
   awaitMulti,
   createAMPMsg,
   getAllADONames,
+  parseAcknowledgementSuccess,
   relayAll,
   retryTill,
   setupChainClient,
@@ -298,237 +300,360 @@ describe("Operating System", () => {
   });
 });
 
-describe("Basic IBC Token Transfers", async () => {
-  step("should send tokens from chain A to chain A", async () => {
-    const { chainA } = state;
-    const receiver = randomAddress(chainA.definition.prefix);
-    const transferAmount = { amount: "100", denom: chainA.denom };
-    const msg = createAMPMsg(`${receiver}`, undefined, [transferAmount]);
-    const kernelMsg = { send: { message: msg } };
-    const res = await chainA.os.kernel!.execute(kernelMsg, chainA.client!, [
-      transferAmount,
-    ]);
-    assert(res.transactionHash);
+// describe("Basic IBC Token Transfers", async () => {
+//   step("should send tokens from chain A to chain A", async () => {
+//     const { chainA } = state;
+//     const receiver = randomAddress(chainA.definition.prefix);
+//     const transferAmount = { amount: "100", denom: chainA.denom };
+//     const msg = createAMPMsg(`${receiver}`, undefined, [transferAmount]);
+//     const kernelMsg = { send: { message: msg } };
+//     const res = await chainA.os.kernel!.execute(kernelMsg, chainA.client!, [
+//       transferAmount,
+//     ]);
+//     assert(res.transactionHash);
 
-    const balance = await chainA.client!.sign.getBalance(
-      receiver,
-      transferAmount.denom
-    );
-    assert(balance.amount === transferAmount.amount, "Balance is incorrect");
-  });
+//     const balance = await chainA.client!.sign.getBalance(
+//       receiver,
+//       transferAmount.denom
+//     );
+//     assert(balance.amount === transferAmount.amount, "Balance is incorrect");
+//   });
 
-  step("should send tokens from chain B to chain B", async () => {
-    const { chainB } = state;
-    const receiver = randomAddress(chainB.definition.prefix);
-    const transferAmount = { amount: "100", denom: chainB.denom };
-    const msg = createAMPMsg(`${receiver}`, undefined, [transferAmount]);
-    const kernelMsg = { send: { message: msg } };
-    const res = await chainB.os.kernel!.execute(kernelMsg, chainB.client!, [
-      transferAmount,
-    ]);
-    assert(res.transactionHash);
+//   step("should send tokens from chain B to chain B", async () => {
+//     const { chainB } = state;
+//     const receiver = randomAddress(chainB.definition.prefix);
+//     const transferAmount = { amount: "100", denom: chainB.denom };
+//     const msg = createAMPMsg(`${receiver}`, undefined, [transferAmount]);
+//     const kernelMsg = { send: { message: msg } };
+//     const res = await chainB.os.kernel!.execute(kernelMsg, chainB.client!, [
+//       transferAmount,
+//     ]);
+//     assert(res.transactionHash);
 
-    const balance = await chainB.client!.sign.getBalance(
-      receiver,
-      transferAmount.denom
-    );
-    assert(balance.amount === transferAmount.amount, "Balance is incorrect");
-  });
+//     const balance = await chainB.client!.sign.getBalance(
+//       receiver,
+//       transferAmount.denom
+//     );
+//     assert(balance.amount === transferAmount.amount, "Balance is incorrect");
+//   });
 
-  step("should send tokens from chain A to chain B", async () => {
-    const { link, chainA, chainB } = state;
-    const receiver = randomAddress(chainB.definition.prefix);
-    const transferAmount = { amount: "105", denom: chainA.denom };
-    const msg = createAMPMsg(
-      `ibc://${chainB.name}/home/${receiver}`,
-      undefined,
-      [transferAmount]
-    );
-    const kernelMsg = { send: { message: msg } };
-    const res = await chainA.os.kernel!.execute(kernelMsg, chainA.client!, [
-      transferAmount,
-    ]);
-    assert(res.transactionHash);
-    const [shouldAssert, info] = await relayAll(link!);
-    if (shouldAssert) assertPacketsFromA(info, 1, true);
-    const chainBBalance = await chainB.client!.sign.getBalance(
-      receiver,
-      chainA.ibcDenom
-    );
-    assert(
-      chainBBalance.amount === transferAmount.amount,
-      "Balance is incorrect"
-    );
-  });
+//   step("should send tokens from chain A to chain B", async () => {
+//     const { link, chainA, chainB } = state;
+//     const receiver = randomAddress(chainB.definition.prefix);
+//     const transferAmount = { amount: "105", denom: chainA.denom };
+//     const msg = createAMPMsg(
+//       `ibc://${chainB.name}/home/${receiver}`,
+//       undefined,
+//       [transferAmount]
+//     );
+//     const kernelMsg = { send: { message: msg } };
+//     const res = await chainA.os.kernel!.execute(kernelMsg, chainA.client!, [
+//       transferAmount,
+//     ]);
+//     assert(res.transactionHash);
+//     const [shouldAssert, info] = await relayAll(link!);
+//     if (shouldAssert) assertPacketsFromA(info, 1, true);
+//     const chainBBalance = await chainB.client!.sign.getBalance(
+//       receiver,
+//       chainA.ibcDenom
+//     );
+//     assert(
+//       chainBBalance.amount === transferAmount.amount,
+//       "Balance is incorrect"
+//     );
+//   });
 
-  step("should send tokens from chain B to chain A", async () => {
-    const { link, chainA, chainB } = state;
-    const receiver = randomAddress(chainA.definition.prefix);
-    const transferAmount = { amount: "105", denom: chainB.denom };
-    const msg = createAMPMsg(
-      `ibc://${chainA.name}/home/${receiver}`,
-      undefined,
-      [transferAmount]
-    );
-    const kernelMsg = { send: { message: msg } };
-    const res = await chainB.os.kernel!.execute(kernelMsg, chainB.client!, [
-      transferAmount,
-    ]);
-    assert(res.transactionHash);
-    const [shouldAssert, info] = await relayAll(link!);
-    if (shouldAssert) assertPacketsFromB(info, 1, true);
-    const chainABalance = await chainA.client!.sign.getBalance(
-      receiver,
-      chainB.ibcDenom
-    );
-    assert(
-      chainABalance.amount === transferAmount.amount,
-      "Balance is incorrect"
-    );
-  });
+//   step("should send tokens from chain B to chain A", async () => {
+//     const { link, chainA, chainB } = state;
+//     const receiver = randomAddress(chainA.definition.prefix);
+//     const transferAmount = { amount: "105", denom: chainB.denom };
+//     const msg = createAMPMsg(
+//       `ibc://${chainA.name}/home/${receiver}`,
+//       undefined,
+//       [transferAmount]
+//     );
+//     const kernelMsg = { send: { message: msg } };
+//     const res = await chainB.os.kernel!.execute(kernelMsg, chainB.client!, [
+//       transferAmount,
+//     ]);
+//     assert(res.transactionHash);
+//     const [shouldAssert, info] = await relayAll(link!);
+//     if (shouldAssert) assertPacketsFromB(info, 1, true);
+//     const chainABalance = await chainA.client!.sign.getBalance(
+//       receiver,
+//       chainB.ibcDenom
+//     );
+//     assert(
+//       chainABalance.amount === transferAmount.amount,
+//       "Balance is incorrect"
+//     );
+//   });
 
+//   step(
+//     "should send chain A tokens from chain A to chain B using splitter",
+//     async () => {
+//       const { link, chainA, chainB } = state;
+//       const receiver = randomAddress(chainB.definition.prefix);
+//       const splitterCodeId: number = await chainA.os.adodb!.query(
+//         { code_id: { key: "splitter" } },
+//         chainA.client!
+//       );
+//       const splitterInstMsg = {
+//         kernel_address: chainA.os.kernel!.address,
+//         recipients: [
+//           {
+//             recipient: {
+//               address: `ibc://${chainB.name}/home/${receiver}`,
+//             },
+//             percent: "1",
+//           },
+//         ],
+//       };
+//       const splitter = await Contract.fromCodeId(
+//         splitterCodeId,
+//         splitterInstMsg,
+//         chainA.client!
+//       );
+
+//       state.logger.log(
+//         "chain A tokens from chain A to chain B using splitter - Splitter address",
+//         splitter.address
+//       );
+//       state.logger.log(
+//         "chain A tokens from chain A to chain B using splitter - Receiver address",
+//         receiver
+//       );
+
+//       const transferAmount = { amount: "100", denom: chainA.denom };
+//       const msg = createAMPMsg(`${splitter.address}`, { send: {} }, [
+//         transferAmount,
+//       ]);
+//       const kernelMsg = { send: { message: msg } };
+//       const res = await chainA.os.kernel!.execute(kernelMsg, chainA.client!, [
+//         transferAmount,
+//       ]);
+//       assert(res.transactionHash);
+//       const [shouldAssertA, infoB] = await relayAll(link!);
+//       if (shouldAssertA) assertPacketsFromA(infoB, 1, true);
+//       await relayAll(link!);
+//       const chainABalance = await chainB.client!.sign.getBalance(
+//         receiver,
+//         chainA.ibcDenom
+//       );
+//       assert(
+//         chainABalance.amount === transferAmount.amount,
+//         "Balance is incorrect"
+//       );
+//     }
+//   );
+
+//   step(
+//     "should send chain B tokens from chain A to chain B using splitter",
+//     async () => {
+//       const { link, chainA, chainB } = state;
+//       const receiver = randomAddress(chainB.definition.prefix);
+//       const splitterCodeId: number = await chainA.os.adodb!.query(
+//         { code_id: { key: "splitter" } },
+//         chainA.client!
+//       );
+//       const splitterInstMsg = {
+//         kernel_address: chainA.os.kernel!.address,
+//         recipients: [
+//           {
+//             recipient: {
+//               address: `ibc://${chainB.name}/home/${receiver}`,
+//             },
+//             percent: "1",
+//           },
+//         ],
+//       };
+//       const splitter = await Contract.fromCodeId(
+//         splitterCodeId,
+//         splitterInstMsg,
+//         chainA.client!
+//       );
+
+//       state.logger.log(
+//         "chain B tokens from chain A to chain B using splitter - Splitter address",
+//         splitter.address
+//       );
+//       state.logger.log(
+//         "chain B tokens from chain A to chain B using splitter - Receiver address",
+//         receiver
+//       );
+
+//       const transferAmount = { amount: "100", denom: chainB.denom };
+//       const transferMsg = createAMPMsg(
+//         `ibc://${chainA.name}/home/${chainA.client!.senderAddress}`,
+//         undefined,
+//         [transferAmount]
+//       );
+//       const transferKernelMsg = { send: { message: transferMsg } };
+//       let res = await chainB.os.kernel!.execute(
+//         transferKernelMsg,
+//         chainB.client!,
+//         [transferAmount]
+//       );
+//       assert(res.transactionHash);
+//       const [shouldAssert, info] = await relayAll(link!);
+//       if (shouldAssert) assertPacketsFromB(info, 1, true);
+
+//       // Now send the ibc denom received above to the splitter
+//       transferAmount.denom = chainB.ibcDenom;
+//       const msg = createAMPMsg(`${splitter.address}`, { send: {} }, [
+//         transferAmount,
+//       ]);
+//       const kernelMsg = { send: { message: msg } };
+//       res = await chainA.os.kernel!.execute(kernelMsg, chainA.client!, [
+//         transferAmount,
+//       ]);
+//       assert(res.transactionHash);
+//       const [shouldAssertA, infoB] = await relayAll(link!);
+//       if (shouldAssertA) assertPacketsFromA(infoB, 1, true);
+//       await relayAll(link!);
+//       const chainABalance = await chainB.client!.sign.getBalance(
+//         receiver,
+//         chainB.denom
+//       );
+//       assert(
+//         chainABalance.amount === transferAmount.amount,
+//         "Balance is incorrect"
+//       );
+//     }
+//   );
+
+//   step(
+//     "should send tokens from chain A to chain B and back to chain A",
+//     async () => {
+//       const { link, chainA, chainB } = state;
+//       const receiver = randomAddress(chainA.definition.prefix);
+//       const splitterCodeId: number = await chainB.os.adodb!.query(
+//         { code_id: { key: "splitter" } },
+//         chainB.client!
+//       );
+//       const splitterInstMsg = {
+//         kernel_address: chainB.os.kernel!.address,
+//         recipients: [
+//           {
+//             recipient: {
+//               address: `ibc://${chainA.name}/home/${receiver}`,
+//             },
+//             percent: "1",
+//           },
+//         ],
+//       };
+//       const splitter = await Contract.fromCodeId(
+//         splitterCodeId,
+//         splitterInstMsg,
+//         chainB.client!
+//       );
+
+//       state.logger.log(
+//         "Chain A to B to Chain A - Splitter address",
+//         splitter.address
+//       );
+//       state.logger.log("Chain A to B to Chain A - Receiver address", receiver);
+
+//       const transferAmount = { amount: "100", denom: chainA.denom };
+//       const msg = createAMPMsg(
+//         `ibc://${chainB.name}/home/${splitter.address}`,
+//         { send: {} },
+//         [transferAmount]
+//       );
+//       const kernelMsg = { send: { message: msg } };
+//       const res = await chainA.os.kernel!.execute(kernelMsg, chainA.client!, [
+//         transferAmount,
+//       ]);
+//       assert(res.transactionHash);
+//       const [shouldAssertA, infoA] = await relayAll(link!);
+//       if (shouldAssertA) assertPacketsFromA(infoA, 1, true);
+//       await relayAll(link!);
+//       const chainABalance = await chainA.client!.sign.getBalance(
+//         receiver,
+//         chainA.denom
+//       );
+//       assert(
+//         chainABalance.amount === transferAmount.amount,
+//         "Balance is incorrect"
+//       );
+//     }
+//   );
+
+//   step(
+//     "should send chain A tokens from chain A to chain B using VFS symlink",
+//     async () => {
+//       const { link, chainA, chainB } = state;
+//       const receiver = randomAddress(chainB.definition.prefix);
+//       const symlinkName = "chain-b-recipient";
+//       const symlink = `ibc://${chainB.name}/home/${receiver}`;
+//       const splitterCodeId: number = await chainA.os.adodb!.query(
+//         { code_id: { key: "splitter" } },
+//         chainA.client!
+//       );
+//       const splitterInstMsg = {
+//         kernel_address: chainA.os.kernel!.address,
+//         recipients: [
+//           {
+//             recipient: {
+//               address: `/home/${chainA.client?.senderAddress}/${symlinkName}`,
+//             },
+//             percent: "1",
+//           },
+//         ],
+//       };
+//       const splitter = await Contract.fromCodeId(
+//         splitterCodeId,
+//         splitterInstMsg,
+//         chainA.client!
+//       );
+
+//       const vfs_msg = {
+//         add_symlink: {
+//           name: symlinkName,
+//           symlink,
+//         },
+//       };
+//       await chainA.os.vfs?.execute(vfs_msg, chainA.client!);
+
+//       state.logger.log(
+//         "chain A tokens from chain A to chain B using splitter - Splitter address",
+//         splitter.address
+//       );
+//       state.logger.log(
+//         "chain A tokens from chain A to chain B using splitter - Receiver address",
+//         receiver
+//       );
+
+//       const transferAmount = { amount: "100", denom: chainA.denom };
+//       const msg = createAMPMsg(`${splitter.address}`, { send: {} }, [
+//         transferAmount,
+//       ]);
+//       const kernelMsg = { send: { message: msg } };
+//       const res = await chainA.os.kernel!.execute(kernelMsg, chainA.client!, [
+//         transferAmount,
+//       ]);
+//       assert(res.transactionHash);
+//       const [shouldAssertA, infoB] = await relayAll(link!);
+//       if (shouldAssertA) assertPacketsFromA(infoB, 1, true);
+//       await relayAll(link!);
+//       const chainBBalance = await chainB.client!.sign.getBalance(
+//         receiver,
+//         chainA.ibcDenom
+//       );
+//       assert(
+//         chainBBalance.amount === transferAmount.amount,
+//         "Balance is incorrect"
+//       );
+//     }
+//   );
+// });
+
+describe("Cross Chain ADO Creation", async () => {
   step(
-    "should send chain A tokens from chain A to chain B using splitter",
-    async () => {
-      const { link, chainA, chainB } = state;
-      const receiver = randomAddress(chainB.definition.prefix);
-      const splitterCodeId: number = await chainA.os.adodb!.query(
-        { code_id: { key: "splitter" } },
-        chainA.client!
-      );
-      const splitterInstMsg = {
-        kernel_address: chainA.os.kernel!.address,
-        recipients: [
-          {
-            recipient: {
-              address: `ibc://${chainB.name}/home/${receiver}`,
-            },
-            percent: "1",
-          },
-        ],
-      };
-      const splitter = await Contract.fromCodeId(
-        splitterCodeId,
-        splitterInstMsg,
-        chainA.client!
-      );
-
-      state.logger.log(
-        "chain A tokens from chain A to chain B using splitter - Splitter address",
-        splitter.address
-      );
-      state.logger.log(
-        "chain A tokens from chain A to chain B using splitter - Receiver address",
-        receiver
-      );
-
-      const transferAmount = { amount: "100", denom: chainA.denom };
-      const msg = createAMPMsg(`${splitter.address}`, { send: {} }, [
-        transferAmount,
-      ]);
-      const kernelMsg = { send: { message: msg } };
-      const res = await chainA.os.kernel!.execute(kernelMsg, chainA.client!, [
-        transferAmount,
-      ]);
-      assert(res.transactionHash);
-      const [shouldAssertA, infoB] = await relayAll(link!);
-      if (shouldAssertA) assertPacketsFromA(infoB, 1, true);
-      await relayAll(link!);
-      const chainABalance = await chainB.client!.sign.getBalance(
-        receiver,
-        chainA.ibcDenom
-      );
-      assert(
-        chainABalance.amount === transferAmount.amount,
-        "Balance is incorrect"
-      );
-    }
-  );
-
-  step(
-    "should send chain B tokens from chain A to chain B using splitter",
-    async () => {
-      const { link, chainA, chainB } = state;
-      const receiver = randomAddress(chainB.definition.prefix);
-      const splitterCodeId: number = await chainA.os.adodb!.query(
-        { code_id: { key: "splitter" } },
-        chainA.client!
-      );
-      const splitterInstMsg = {
-        kernel_address: chainA.os.kernel!.address,
-        recipients: [
-          {
-            recipient: {
-              address: `ibc://${chainB.name}/home/${receiver}`,
-            },
-            percent: "1",
-          },
-        ],
-      };
-      const splitter = await Contract.fromCodeId(
-        splitterCodeId,
-        splitterInstMsg,
-        chainA.client!
-      );
-
-      state.logger.log(
-        "chain B tokens from chain A to chain B using splitter - Splitter address",
-        splitter.address
-      );
-      state.logger.log(
-        "chain B tokens from chain A to chain B using splitter - Receiver address",
-        receiver
-      );
-
-      const transferAmount = { amount: "100", denom: chainB.denom };
-      const transferMsg = createAMPMsg(
-        `ibc://${chainA.name}/home/${chainA.client!.senderAddress}`,
-        undefined,
-        [transferAmount]
-      );
-      const transferKernelMsg = { send: { message: transferMsg } };
-      let res = await chainB.os.kernel!.execute(
-        transferKernelMsg,
-        chainB.client!,
-        [transferAmount]
-      );
-      assert(res.transactionHash);
-      const [shouldAssert, info] = await relayAll(link!);
-      if (shouldAssert) assertPacketsFromB(info, 1, true);
-
-      // Now send the ibc denom received above to the splitter
-      transferAmount.denom = chainB.ibcDenom;
-      const msg = createAMPMsg(`${splitter.address}`, { send: {} }, [
-        transferAmount,
-      ]);
-      const kernelMsg = { send: { message: msg } };
-      res = await chainA.os.kernel!.execute(kernelMsg, chainA.client!, [
-        transferAmount,
-      ]);
-      assert(res.transactionHash);
-      const [shouldAssertA, infoB] = await relayAll(link!);
-      if (shouldAssertA) assertPacketsFromA(infoB, 1, true);
-      await relayAll(link!);
-      const chainABalance = await chainB.client!.sign.getBalance(
-        receiver,
-        chainB.denom
-      );
-      assert(
-        chainABalance.amount === transferAmount.amount,
-        "Balance is incorrect"
-      );
-    }
-  );
-
-  step(
-    "should send tokens from chain A to chain B and back to chain A",
+    "should create an ADO on chain B when sent to the kernel on chain A",
     async () => {
       const { link, chainA, chainB } = state;
       const receiver = randomAddress(chainA.definition.prefix);
-      const splitterCodeId: number = await chainB.os.adodb!.query(
-        { code_id: { key: "splitter" } },
-        chainB.client!
-      );
       const splitterInstMsg = {
         kernel_address: chainB.os.kernel!.address,
         recipients: [
@@ -540,315 +665,227 @@ describe("Basic IBC Token Transfers", async () => {
           },
         ],
       };
-      const splitter = await Contract.fromCodeId(
-        splitterCodeId,
-        splitterInstMsg,
-        chainB.client!
-      );
-
-      state.logger.log(
-        "Chain A to B to Chain A - Splitter address",
-        splitter.address
-      );
-      state.logger.log("Chain A to B to Chain A - Receiver address", receiver);
-
-      const transferAmount = { amount: "100", denom: chainA.denom };
-      const msg = createAMPMsg(
-        `ibc://${chainB.name}/home/${splitter.address}`,
-        { send: {} },
-        [transferAmount]
-      );
-      const kernelMsg = { send: { message: msg } };
-      const res = await chainA.os.kernel!.execute(kernelMsg, chainA.client!, [
-        transferAmount,
-      ]);
-      assert(res.transactionHash);
-      const [shouldAssertA, infoA] = await relayAll(link!);
-      if (shouldAssertA) assertPacketsFromA(infoA, 1, true);
-      await relayAll(link!);
-      const chainABalance = await chainA.client!.sign.getBalance(
-        receiver,
-        chainA.denom
-      );
-      assert(
-        chainABalance.amount === transferAmount.amount,
-        "Balance is incorrect"
-      );
-    }
-  );
-
-  step(
-    "should send chain A tokens from chain A to chain B using VFS symlink",
-    async () => {
-      const { link, chainA, chainB } = state;
-      const receiver = randomAddress(chainB.definition.prefix);
-      const symlinkName = "chain-b-recipient";
-      const symlink = `ibc://${chainB.name}/home/${receiver}`;
-      const splitterCodeId: number = await chainA.os.adodb!.query(
-        { code_id: { key: "splitter" } },
-        chainA.client!
-      );
-      const splitterInstMsg = {
-        kernel_address: chainA.os.kernel!.address,
-        recipients: [
-          {
-            recipient: {
-              address: `/home/${chainA.client?.senderAddress}/${symlinkName}`,
-            },
-            percent: "1",
-          },
-        ],
-      };
-      const splitter = await Contract.fromCodeId(
-        splitterCodeId,
-        splitterInstMsg,
-        chainA.client!
-      );
-
-      const vfs_msg = {
-        add_symlink: {
-          name: symlinkName,
-          symlink,
+      const message = {
+        create: {
+          ado_type: "splitter",
+          owner: receiver,
+          chain: chainB.name,
+          msg: toBinary(splitterInstMsg),
         },
       };
-      await chainA.os.vfs?.execute(vfs_msg, chainA.client!);
 
-      state.logger.log(
-        "chain A tokens from chain A to chain B using splitter - Splitter address",
-        splitter.address
-      );
-      state.logger.log(
-        "chain A tokens from chain A to chain B using splitter - Receiver address",
-        receiver
-      );
-
-      const transferAmount = { amount: "100", denom: chainA.denom };
-      const msg = createAMPMsg(`${splitter.address}`, { send: {} }, [
-        transferAmount,
-      ]);
-      const kernelMsg = { send: { message: msg } };
-      const res = await chainA.os.kernel!.execute(kernelMsg, chainA.client!, [
-        transferAmount,
-      ]);
+      const res = await chainA.os.kernel!.execute(message, chainA.client!);
       assert(res.transactionHash);
-      const [shouldAssertA, infoB] = await relayAll(link!);
-      if (shouldAssertA) assertPacketsFromA(infoB, 1, true);
-      await relayAll(link!);
-      const chainBBalance = await chainB.client!.sign.getBalance(
-        receiver,
-        chainA.ibcDenom
-      );
-      assert(
-        chainBBalance.amount === transferAmount.amount,
-        "Balance is incorrect"
-      );
-    }
-  );
-});
 
-describe("IBC Fund Recovery", async () => {
-  step(
-    "should recover funds on a failed IBC hooks message from chain A to chain B",
-    async () => {
-      const { link, chainA, chainB } = state;
-      const receiver = randomAddress(chainA.definition.prefix);
-      const recoveryAddr = chainA.client!.senderAddress;
-      const recoveryQuery = {
-        recoveries: { addr: recoveryAddr },
-      };
-      const splitterCodeId: number = await chainB.os.adodb!.query(
-        { code_id: { key: "splitter" } },
-        chainB.client!
-      );
-      const splitterInstMsg = {
-        kernel_address: chainB.os.kernel!.address,
-        recipients: [
-          {
-            recipient: {
-              address: `ibc://${chainA.name}/home/${receiver}`,
-            },
-            percent: "1",
-          },
-        ],
-      };
-      const splitter = await Contract.fromCodeId(
-        splitterCodeId,
-        splitterInstMsg,
-        chainB.client!
-      );
-
-      state.logger.log(
-        "Chain A to B IBC Fail Recovery - Splitter address",
-        splitter.address
-      );
-      state.logger.log(
-        "Chain A to B IBC Fail Recovery - Receiver address",
-        receiver
-      );
-
-      const transferAmount = { amount: "100", denom: chainA.denom };
-      // ERROR HERE
-      const msg = createAMPMsg(
-        `ibc://${chainB.name}/home/${splitter.address}`,
-        { not_a_valid_message: {} },
-        [transferAmount],
-        {
-          recovery_addr: recoveryAddr,
-        }
-      );
-      const kernelMsg = { send: { message: msg } };
-      const res = await chainA.os.kernel!.execute(kernelMsg, chainA.client!, [
-        transferAmount,
-      ]);
-      assert(res.transactionHash);
-      const [shouldAssertA, infoA] = await relayAll(link!);
-      if (shouldAssertA) assertPacketsFromA(infoA, 1, false);
-      await relayAll(link!);
-      const recoveries: { amount: string; denom: string }[] =
-        await chainA.os.kernel!.query(recoveryQuery, chainA.client!);
-      assert(recoveries.length === 1, "No recovery found");
-      assert(
-        recoveries[0].amount === transferAmount.amount,
-        "Incorrect amount"
-      );
-      assert(recoveries[0].denom === transferAmount.denom, "Incorrect denom");
-
-      const recoveryRes = await chainA.os.kernel!.execute(
-        { recover: {} },
-        chainA.client!
-      );
-      assert(recoveryRes.transactionHash);
-    }
-  );
-
-  step(
-    "should recover funds on a failed IBC hooks message after sending from chain A to chain B and responding back to chain A",
-    async () => {
-      const { link, chainA, chainB } = state;
-      const receiver = randomAddress(chainA.definition.prefix);
-      const recoveryAddr = chainB.client!.senderAddress;
-      const splitterCodeId: number = await chainB.os.adodb!.query(
-        { code_id: { key: "splitter" } },
-        chainB.client!
-      );
-      // Will error with recipient as it is not a splitter contract
-      const splitterInstMsg = {
-        kernel_address: chainB.os.kernel!.address,
-        recipients: [
-          {
-            recipient: {
-              address: `ibc://${chainA.name}/home/${receiver}`,
-              msg: "eyJzZW5kIjp7fX0=", // { send: {} } encoded
-              ibc_recovery_address: recoveryAddr,
-            },
-            percent: "1",
-          },
-        ],
-      };
-      const splitter = await Contract.fromCodeId(
-        splitterCodeId,
-        splitterInstMsg,
-        chainB.client!
-      );
-
-      state.logger.log(
-        "Chain A to B to Chain A IBC Fail Recovery - Splitter address",
-        splitter.address
-      );
-      state.logger.log(
-        "Chain A to B to Chain A IBC Fail Recovery - Receiver address",
-        receiver
-      );
-
-      const transferAmount = { amount: "100", denom: chainA.denom };
-      const msg = createAMPMsg(
-        `ibc://${chainB.name}/home/${splitter.address}`,
-        { send: {} },
-        [transferAmount]
-      );
-      const kernelMsg = { send: { message: msg } };
-      const res = await chainA.os.kernel!.execute(kernelMsg, chainA.client!, [
-        transferAmount,
-      ]);
-      assert(res.transactionHash);
       const [shouldAssertA, infoA] = await relayAll(link!);
       if (shouldAssertA) assertPacketsFromA(infoA, 1, true);
-      await relayAll(link!);
-      const recoveryQuery = {
-        recoveries: { addr: recoveryAddr },
-      };
-      const recoveries: { amount: string; denom: string }[] =
-        await chainB.os.kernel!.query(recoveryQuery, chainB.client!);
-      assert(recoveries.length === 1, "No recovery found");
-      assert(
-        recoveries[0].amount === transferAmount.amount,
-        "Incorrect amount"
-      );
-      assert(recoveries[0].denom === chainA.ibcDenom, "Incorrect denom");
-      const recoveryRes = await chainB.os.kernel!.execute(
-        { recover: {} },
-        chainB.client!
-      );
-      assert(recoveryRes.transactionHash);
-    }
-  );
-
-  step(
-    "should assign the original sender as the recovery address in an AMP packet when none is provided",
-    async () => {
-      const { link, chainA, chainB } = state;
-      const receiver = randomAddress(chainA.definition.prefix);
-      const recoveryAddr = chainB.client!.senderAddress;
-      const splitterCodeId: number = await chainB.os.adodb!.query(
-        { code_id: { key: "splitter" } },
-        chainB.client!
-      );
-      // Will error with recipient as it is not a splitter contract
-      const splitterInstMsg = {
-        kernel_address: chainB.os.kernel!.address,
-        recipients: [
-          {
-            recipient: {
-              address: `ibc://${chainA.name}/home/${receiver}`,
-              msg: "eyJzZW5kIjp7fX0=", // { send: {} } encoded
-            },
-            percent: "1",
-          },
-        ],
-      };
-      const splitter = await Contract.fromCodeId(
-        splitterCodeId,
-        splitterInstMsg,
-        chainB.client!
-      );
-
-      const transferAmount = { amount: "100", denom: chainB.denom };
-      const msg = createAMPMsg(splitter.address, { send: {} }, [
-        transferAmount,
-      ]);
-      const kernelMsg = { send: { message: msg } };
-      const res = await chainB.os.kernel!.execute(kernelMsg, chainB.client!, [
-        transferAmount,
-      ]);
-      assert(res.transactionHash);
-      const [shouldAssertB, infoB] = await relayAll(link!);
-      if (shouldAssertB) assertPacketsFromB(infoB, 1, false);
-      const recoveryQuery = {
-        recoveries: { addr: recoveryAddr },
-      };
-      const recoveries: { amount: string; denom: string }[] =
-        await chainB.os.kernel!.query(recoveryQuery, chainB.client!);
-      assert(recoveries.length === 1, "No recovery found");
-      assert(
-        recoveries[0].amount === transferAmount.amount,
-        "Incorrect amount"
-      );
-      assert(recoveries[0].denom === transferAmount.denom, "Incorrect denom");
-      const recoveryRes = await chainB.os.kernel!.execute(
-        { recover: {} },
-        chainB.client!
-      );
-      assert(recoveryRes.transactionHash);
     }
   );
 });
+
+// describe("IBC Fund Recovery", async () => {
+//   step(
+//     "should recover funds on a failed IBC hooks message from chain A to chain B",
+//     async () => {
+//       const { link, chainA, chainB } = state;
+//       const receiver = randomAddress(chainA.definition.prefix);
+//       const recoveryAddr = chainA.client!.senderAddress;
+//       const recoveryQuery = {
+//         recoveries: { addr: recoveryAddr },
+//       };
+//       const splitterCodeId: number = await chainB.os.adodb!.query(
+//         { code_id: { key: "splitter" } },
+//         chainB.client!
+//       );
+//       const splitterInstMsg = {
+//         kernel_address: chainB.os.kernel!.address,
+//         recipients: [
+//           {
+//             recipient: {
+//               address: `ibc://${chainA.name}/home/${receiver}`,
+//             },
+//             percent: "1",
+//           },
+//         ],
+//       };
+//       const splitter = await Contract.fromCodeId(
+//         splitterCodeId,
+//         splitterInstMsg,
+//         chainB.client!
+//       );
+
+//       state.logger.log(
+//         "Chain A to B IBC Fail Recovery - Splitter address",
+//         splitter.address
+//       );
+//       state.logger.log(
+//         "Chain A to B IBC Fail Recovery - Receiver address",
+//         receiver
+//       );
+
+//       const transferAmount = { amount: "100", denom: chainA.denom };
+//       // ERROR HERE
+//       const msg = createAMPMsg(
+//         `ibc://${chainB.name}/home/${splitter.address}`,
+//         { not_a_valid_message: {} },
+//         [transferAmount],
+//         {
+//           recovery_addr: recoveryAddr,
+//         }
+//       );
+//       const kernelMsg = { send: { message: msg } };
+//       const res = await chainA.os.kernel!.execute(kernelMsg, chainA.client!, [
+//         transferAmount,
+//       ]);
+//       assert(res.transactionHash);
+//       const [shouldAssertA, infoA] = await relayAll(link!);
+//       if (shouldAssertA) assertPacketsFromA(infoA, 1, false);
+//       await relayAll(link!);
+//       const recoveries: { amount: string; denom: string }[] =
+//         await chainA.os.kernel!.query(recoveryQuery, chainA.client!);
+//       assert(recoveries.length === 1, "No recovery found");
+//       assert(
+//         recoveries[0].amount === transferAmount.amount,
+//         "Incorrect amount"
+//       );
+//       assert(recoveries[0].denom === transferAmount.denom, "Incorrect denom");
+
+//       const recoveryRes = await chainA.os.kernel!.execute(
+//         { recover: {} },
+//         chainA.client!
+//       );
+//       assert(recoveryRes.transactionHash);
+//     }
+//   );
+
+//   step(
+//     "should recover funds on a failed IBC hooks message after sending from chain A to chain B and responding back to chain A",
+//     async () => {
+//       const { link, chainA, chainB } = state;
+//       const receiver = randomAddress(chainA.definition.prefix);
+//       const recoveryAddr = chainB.client!.senderAddress;
+//       const splitterCodeId: number = await chainB.os.adodb!.query(
+//         { code_id: { key: "splitter" } },
+//         chainB.client!
+//       );
+//       // Will error with recipient as it is not a splitter contract
+//       const splitterInstMsg = {
+//         kernel_address: chainB.os.kernel!.address,
+//         recipients: [
+//           {
+//             recipient: {
+//               address: `ibc://${chainA.name}/home/${receiver}`,
+//               msg: "eyJzZW5kIjp7fX0=", // { send: {} } encoded
+//               ibc_recovery_address: recoveryAddr,
+//             },
+//             percent: "1",
+//           },
+//         ],
+//       };
+//       const splitter = await Contract.fromCodeId(
+//         splitterCodeId,
+//         splitterInstMsg,
+//         chainB.client!
+//       );
+
+//       state.logger.log(
+//         "Chain A to B to Chain A IBC Fail Recovery - Splitter address",
+//         splitter.address
+//       );
+//       state.logger.log(
+//         "Chain A to B to Chain A IBC Fail Recovery - Receiver address",
+//         receiver
+//       );
+
+//       const transferAmount = { amount: "100", denom: chainA.denom };
+//       const msg = createAMPMsg(
+//         `ibc://${chainB.name}/home/${splitter.address}`,
+//         { send: {} },
+//         [transferAmount]
+//       );
+//       const kernelMsg = { send: { message: msg } };
+//       const res = await chainA.os.kernel!.execute(kernelMsg, chainA.client!, [
+//         transferAmount,
+//       ]);
+//       assert(res.transactionHash);
+//       const [shouldAssertA, infoA] = await relayAll(link!);
+//       if (shouldAssertA) assertPacketsFromA(infoA, 1, true);
+//       await relayAll(link!);
+//       const recoveryQuery = {
+//         recoveries: { addr: recoveryAddr },
+//       };
+//       const recoveries: { amount: string; denom: string }[] =
+//         await chainB.os.kernel!.query(recoveryQuery, chainB.client!);
+//       assert(recoveries.length === 1, "No recovery found");
+//       assert(
+//         recoveries[0].amount === transferAmount.amount,
+//         "Incorrect amount"
+//       );
+//       assert(recoveries[0].denom === chainA.ibcDenom, "Incorrect denom");
+//       const recoveryRes = await chainB.os.kernel!.execute(
+//         { recover: {} },
+//         chainB.client!
+//       );
+//       assert(recoveryRes.transactionHash);
+//     }
+//   );
+
+//   step(
+//     "should assign the original sender as the recovery address in an AMP packet when none is provided",
+//     async () => {
+//       const { link, chainA, chainB } = state;
+//       const receiver = randomAddress(chainA.definition.prefix);
+//       const recoveryAddr = chainB.client!.senderAddress;
+//       const splitterCodeId: number = await chainB.os.adodb!.query(
+//         { code_id: { key: "splitter" } },
+//         chainB.client!
+//       );
+//       // Will error with recipient as it is not a splitter contract
+//       const splitterInstMsg = {
+//         kernel_address: chainB.os.kernel!.address,
+//         recipients: [
+//           {
+//             recipient: {
+//               address: `ibc://${chainA.name}/home/${receiver}`,
+//               msg: "eyJzZW5kIjp7fX0=", // { send: {} } encoded
+//             },
+//             percent: "1",
+//           },
+//         ],
+//       };
+//       const splitter = await Contract.fromCodeId(
+//         splitterCodeId,
+//         splitterInstMsg,
+//         chainB.client!
+//       );
+
+//       const transferAmount = { amount: "100", denom: chainB.denom };
+//       const msg = createAMPMsg(splitter.address, { send: {} }, [
+//         transferAmount,
+//       ]);
+//       const kernelMsg = { send: { message: msg } };
+//       const res = await chainB.os.kernel!.execute(kernelMsg, chainB.client!, [
+//         transferAmount,
+//       ]);
+//       assert(res.transactionHash);
+//       const [shouldAssertB, infoB] = await relayAll(link!);
+//       if (shouldAssertB) assertPacketsFromB(infoB, 1, false);
+//       const recoveryQuery = {
+//         recoveries: { addr: recoveryAddr },
+//       };
+//       const recoveries: { amount: string; denom: string }[] =
+//         await chainB.os.kernel!.query(recoveryQuery, chainB.client!);
+//       assert(recoveries.length === 1, "No recovery found");
+//       assert(
+//         recoveries[0].amount === transferAmount.amount,
+//         "Incorrect amount"
+//       );
+//       assert(recoveries[0].denom === transferAmount.denom, "Incorrect denom");
+//       const recoveryRes = await chainB.os.kernel!.execute(
+//         { recover: {} },
+//         chainB.client!
+//       );
+//       assert(recoveryRes.transactionHash);
+//     }
+//   );
+// });
