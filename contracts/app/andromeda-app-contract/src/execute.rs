@@ -30,9 +30,6 @@ pub fn handle_add_app_component(
     let current_addr = ADO_ADDRESSES.may_load(storage, &component.name)?;
     ensure!(current_addr.is_none(), ContractError::NameAlreadyTaken {});
 
-    // This is a default value that will be overridden on `reply`.
-    ADO_ADDRESSES.save(storage, &component.name, &Addr::unchecked(""))?;
-
     let idx = add_app_component(storage, &component)?;
 
     let mut resp = Response::new()
@@ -51,6 +48,7 @@ pub fn handle_add_app_component(
                 sender.to_string(),
             )?;
             resp = resp.add_submessage(inst_msg);
+            ADO_ADDRESSES.save(storage, &component.name, &Addr::unchecked(""))?;
         }
         ComponentType::Symlink(symlink) => {
             let msg = VFSExecuteMsg::AddSymlink {
@@ -83,7 +81,7 @@ pub fn claim_ownership(
 ) -> Result<Response, ContractError> {
     ensure!(
         ADOContract::default().is_contract_owner(ctx.deps.storage, ctx.info.sender.as_str())?
-            || ctx.env.contract.address.clone() == ctx.info.sender.clone(),
+            || ctx.env.contract.address == ctx.info.sender,
         ContractError::Unauthorized {}
     );
 

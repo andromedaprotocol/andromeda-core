@@ -14,7 +14,7 @@ use semver::Version;
 
 use crate::ibc::{IBCLifecycleComplete, SudoMsg};
 use crate::reply::{on_reply_create_ado, on_reply_ibc_hooks_packet_send, ReplyId};
-use crate::state::{CHAIN_NAME_KEY, CURR_CHAIN, ENV_VARIABLES};
+use crate::state::CURR_CHAIN;
 use crate::{execute, query, sudo};
 
 // version info for migration info
@@ -48,7 +48,7 @@ pub fn instantiate(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
+pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractError> {
     if msg.result.is_err() {
         return Err(ContractError::Std(StdError::generic_err(format!(
             "{}:{}",
@@ -58,7 +58,7 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
     }
 
     match ReplyId::from_repr(msg.id) {
-        Some(ReplyId::CreateADO) => on_reply_create_ado(deps, msg),
+        Some(ReplyId::CreateADO) => on_reply_create_ado(deps, env, msg),
         Some(ReplyId::IBCHooksPacketSend) => on_reply_ibc_hooks_packet_send(deps, msg),
         _ => Ok(Response::default()),
     }

@@ -1,8 +1,8 @@
 use crate::reply::{on_component_instantiation, ReplyId};
 use crate::state::{create_cross_chain_message, get_chain_info, APP_NAME};
 use andromeda_app::app::{
-    AppComponent, ChainInfo, ComponentType, CrossChainComponent, ExecuteMsg, InstantiateMsg,
-    MigrateMsg, QueryMsg,
+    AppComponent, ComponentType, CrossChainComponent, ExecuteMsg, InstantiateMsg, MigrateMsg,
+    QueryMsg,
 };
 use andromeda_std::ado_contract::ADOContract;
 use andromeda_std::amp::AndrAddr;
@@ -45,7 +45,7 @@ pub fn instantiate(
         ContractError::TooManyAppComponents {}
     );
 
-    let sender = info.sender.to_string();
+    let sender = msg.owner.clone().unwrap_or(info.sender.to_string());
     let mut resp = ADOContract::default()
         .instantiate(
             deps.storage,
@@ -108,7 +108,7 @@ pub fn instantiate(
 
     let add_path_msg = VFSExecuteMsg::AddParentPath {
         name: convert_component_name(app_name.clone()),
-        parent_address: AndrAddr::from_string(format!("~{sender}")),
+        parent_address: AndrAddr::from_string(sender),
     };
     let cosmos_msg: CosmosMsg<Empty> = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: vfs_address.to_string(),
@@ -132,13 +132,13 @@ pub fn instantiate(
         .add_submessage(assign_app_msg);
 
     if let Some(chain_info) = msg.chain_info {
-        for chain_inf in chain_info {
+        for chain in chain_info {
             let sub_msg = create_cross_chain_message(
                 &deps,
                 app_name.clone(),
                 msg.owner.clone().unwrap_or(info.sender.to_string()),
                 msg.app_components.clone(),
-                chain_inf,
+                chain,
             )?;
             resp = resp.add_submessage(sub_msg);
         }

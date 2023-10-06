@@ -122,11 +122,11 @@ pub fn create(
                 });
             }?;
         let kernel_msg = IbcExecuteMsg::CreateADO {
-            instantiation_msg: msg,
+            instantiation_msg: msg.clone(),
             owner: owner.clone().unwrap(),
             ado_type: ado_type.clone(),
         };
-        let msg = IbcMsg::SendPacket {
+        let ibc_msg = IbcMsg::SendPacket {
             channel_id: channel_info.direct_channel_id.clone().unwrap(),
             data: to_binary(&kernel_msg)?,
             timeout: execute_env
@@ -136,13 +136,16 @@ pub fn create(
                 .plus_seconds(PACKET_LIFETIME)
                 .into(),
         };
-        Ok(Response::default().add_message(msg).add_attributes(vec![
-            attr("action", "execute_create"),
-            attr("ado_type", ado_type),
-            attr("owner", owner.unwrap().to_string()),
-            attr("chain", chain),
-            attr("receiving_kernel_address", channel_info.kernel_address),
-        ]))
+        Ok(Response::default()
+            .add_message(ibc_msg)
+            .add_attributes(vec![
+                attr("action", "execute_create"),
+                attr("ado_type", ado_type),
+                attr("owner", owner.unwrap().to_string()),
+                attr("chain", chain),
+                attr("receiving_kernel_address", channel_info.kernel_address),
+                attr("msg", msg.to_string()),
+            ]))
     } else {
         let vfs_addr = KERNEL_ADDRESSES.load(execute_env.deps.storage, VFS_KEY)?;
         let adodb_addr = KERNEL_ADDRESSES.load(execute_env.deps.storage, ADO_DB_KEY)?;

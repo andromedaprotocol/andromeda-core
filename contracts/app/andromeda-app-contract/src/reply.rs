@@ -1,13 +1,12 @@
 use andromeda_std::{
     ado_contract::ADOContract, common::response::get_reply_address, error::ContractError,
 };
-use cosmwasm_std::{Addr, DepsMut, Env, Reply, Response};
+use cosmwasm_std::{DepsMut, Reply, Response};
 use enum_repr::EnumRepr;
 
 use crate::execute;
 use crate::state::{
-    generate_assign_app_message, load_component_addresses, ADO_ADDRESSES, ADO_DESCRIPTORS, ADO_IDX,
-    ASSIGNED_IDX,
+    ADO_ADDRESSES, ADO_DESCRIPTORS,
 };
 
 #[EnumRepr(type = "u64")]

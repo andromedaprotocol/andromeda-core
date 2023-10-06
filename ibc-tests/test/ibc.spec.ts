@@ -241,6 +241,7 @@ describe("Operating System", () => {
     );
     assert(assignedChannels.ics20 == chainA.ics20Chan);
     assert(assignedChannels.direct == channel?.src.channelId);
+    assert(assignedChannels.direct == channel?.src.channelId);
   });
 
   step("should assign the correct channel on chain B", async () => {
@@ -676,6 +677,154 @@ describe("Cross Chain ADO Creation", async () => {
 
       const res = await chainA.os.kernel!.execute(message, chainA.client!);
       assert(res.transactionHash);
+
+      const [shouldAssertA, infoA] = await relayAll(link!);
+      if (shouldAssertA) assertPacketsFromA(infoA, 1, true);
+    }
+  );
+
+  step(
+    "should create an app on chain A containing a splitter on chain A",
+    async () => {
+      const { link, chainA, chainB } = state;
+      const receiver = randomAddress(chainA.definition.prefix);
+      const splitterInstMsg = {
+        kernel_address: chainA.os.kernel!.address,
+        recipients: [
+          {
+            recipient: {
+              address: `ibc://${chainA.name}/home/${receiver}`,
+            },
+            percent: "1",
+          },
+        ],
+      };
+      const appInstMsg = {
+        kernel_address: chainA.os.kernel!.address,
+        app_components: [
+          {
+            name: "splitter-b",
+            ado_type: "splitter",
+            component_type: {
+              new: toBinary(splitterInstMsg),
+            },
+          },
+        ],
+        name: "myapp",
+        owner: receiver,
+      };
+
+      const kernel_msg = {
+        create: {
+          ado_type: "app-contract",
+          owner: receiver,
+          msg: toBinary(appInstMsg),
+        },
+      };
+
+      const res = await chainA.os.kernel!.execute(kernel_msg, chainA.client!);
+      assert(res.transactionHash);
+    }
+  );
+
+  step(
+    "should create an app on chain B via the kernel on chain A",
+    async () => {
+      const { link, chainA, chainB } = state;
+      const receiver = randomAddress(chainA.definition.prefix);
+      const splitterInstMsg = {
+        kernel_address: chainB.os.kernel!.address,
+        recipients: [
+          {
+            recipient: {
+              address: `ibc://${chainA.name}/home/${receiver}`,
+            },
+            percent: "1",
+          },
+        ],
+      };
+      const appInstMsg = {
+        kernel_address: chainB.os.kernel!.address,
+        app_components: [
+          {
+            name: "splitter-b",
+            ado_type: "splitter",
+            component_type: {
+              new: toBinary(splitterInstMsg),
+            },
+          },
+        ],
+        name: "myapp",
+        owner: receiver,
+      };
+
+      const kernel_msg = {
+        create: {
+          ado_type: "app-contract",
+          owner: receiver,
+          msg: toBinary(appInstMsg),
+          chain: chainB.name,
+        },
+      };
+
+      const res = await chainA.os.kernel!.execute(kernel_msg, chainA.client!);
+      assert(res.transactionHash);
+
+      // const [shouldAssertA, infoA] = await relayAll(link!);
+      // if (shouldAssertA) assertPacketsFromA(infoA, 1, true);
+    }
+  );
+
+  step(
+    "should create an app on chain A containing a splitter on chain B",
+    async () => {
+      const { link, chainA, chainB } = state;
+      const receiver = randomAddress(chainA.definition.prefix);
+      const splitterInstMsg = {
+        kernel_address: chainB.os.kernel!.address,
+        recipients: [
+          {
+            recipient: {
+              address: `ibc://${chainA.name}/home/${receiver}`,
+            },
+            percent: "1",
+          },
+        ],
+      };
+      const appInstMsg = {
+        kernel_address: chainA.os.kernel!.address,
+        app_components: [
+          {
+            name: "splitter-b",
+            ado_type: "splitter",
+            component_type: {
+              cross_chain: {
+                chain: chainB.name,
+                instantiate_msg: toBinary(splitterInstMsg),
+              },
+            },
+          },
+        ],
+        chain_info: [
+          {
+            chain_name: chainB.name,
+            owner: receiver,
+          },
+        ],
+        name: "myxchainapp",
+      };
+
+      const appCodeId: number = await chainA.os.adodb!.query(
+        { code_id: { key: "app-contract" } },
+        chainA.client!
+      );
+      const app = await Contract.fromCodeId(
+        appCodeId,
+        appInstMsg,
+        chainA.client!,
+        true
+      );
+      assert(app.address);
 
       const [shouldAssertA, infoA] = await relayAll(link!);
       if (shouldAssertA) assertPacketsFromA(infoA, 1, true);

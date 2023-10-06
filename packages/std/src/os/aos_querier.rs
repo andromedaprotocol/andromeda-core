@@ -191,7 +191,7 @@ impl AOSQuerier {
     ) -> Result<ChannelInfo, ContractError> {
         let key = AOSQuerier::get_map_storage_key("kernel_channels", &[chain_name.as_bytes()])?;
         let verify: Option<ChannelInfo> =
-            AOSQuerier::query_storage(querier, kernel_addr, "kernel_curr_chain")?;
+            AOSQuerier::query_storage(querier, kernel_addr, key.as_str())?;
         match verify {
             Some(chain) => Ok(chain),
             None => Err(ContractError::InvalidAddress {}),

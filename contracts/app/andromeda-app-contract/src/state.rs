@@ -170,7 +170,7 @@ pub fn create_cross_chain_message(
         new_components.push(new_component);
     }
     let msg = InstantiateMsg {
-        owner: Some(owner),
+        owner: Some(chain_info.owner.clone()),
         app_components: new_components,
         name: app_name,
         chain_info: None,
@@ -178,7 +178,7 @@ pub fn create_cross_chain_message(
     };
 
     let kernel_msg = KernelExecuteMsg::Create {
-        ado_type: "app".to_string(),
+        ado_type: "app-contract".to_string(),
         msg: to_binary(&msg)?,
         owner: Some(AndrAddr::from_string(chain_info.owner)),
         chain: Some(chain_info.chain_name),

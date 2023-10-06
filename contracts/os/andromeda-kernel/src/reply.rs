@@ -10,7 +10,7 @@ use andromeda_std::{
     os::aos_querier::AOSQuerier,
 };
 use cosmwasm_std::{
-    ensure, wasm_execute, Addr, DepsMut, Empty, Reply, Response, SubMsg, SubMsgResponse,
+    ensure, wasm_execute, Addr, DepsMut, Empty, Env, Reply, Response, SubMsg, SubMsgResponse,
     SubMsgResult,
 };
 use enum_repr::EnumRepr;
@@ -27,14 +27,14 @@ pub enum ReplyId {
 /// Handles the reply from an ADO creation
 ///
 /// Sends an execute message to assign the new owner to the ADO
-pub fn on_reply_create_ado(deps: DepsMut, msg: Reply) -> Result<Response, ContractError> {
+pub fn on_reply_create_ado(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractError> {
     let new_owner = ADO_OWNER.load(deps.as_ref().storage)?;
     let ado_addr = get_reply_address(msg)?;
 
     let curr_owner =
         AOSQuerier::ado_owner_getter(&deps.querier, &Addr::unchecked(ado_addr.clone()))?;
     let mut res = Response::default();
-    if curr_owner != new_owner {
+    if curr_owner == env.contract.address {
         let msg = AndromedaMsg::UpdateOwner {
             address: new_owner.to_string(),
         };

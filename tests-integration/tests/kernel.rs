@@ -9,7 +9,7 @@ use andromeda_std::{
 };
 use andromeda_testing::{mock::MockAndromeda, mock_contract::MockContract};
 
-use cosmwasm_std::{coin, from_binary, to_binary, Addr, Decimal};
+use cosmwasm_std::{coin, to_binary, Addr, Decimal};
 
 use cw_multi_test::App;
 

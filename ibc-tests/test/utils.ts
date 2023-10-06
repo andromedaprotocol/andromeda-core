@@ -263,7 +263,7 @@ export async function setupRelayerInfo(
 
 export function getADOPath(name: string) {
   const files = readdirSync("./contracts");
-  const path = files.find((x) => x.includes(name));
+  const path = files.find((x) => x.includes(name.replace(/-/g, "_")));
 
   return `./contracts/${path}`;
 }
@@ -275,7 +275,7 @@ export function getFileVersion(path: string) {
 
 export function getFileName(path: string) {
   const split = path.split("@");
-  return split[0].replace("andromeda_", "");
+  return split[0].replace("andromeda_", "").replace(/_/g, "-");
 }
 
 export function getAllADONames() {
@@ -336,7 +336,14 @@ export async function relayAll(link: Link): Promise<[boolean, RelayInfo]> {
   while (counter < 6) {
     try {
       const info = await link.relayAll();
-      return [counter === 0, info!];
+      return [
+        counter === 0 ||
+          info.acksFromA.length > 0 ||
+          info.acksFromB.length > 0 ||
+          info.packetsFromA > 0 ||
+          info.packetsFromB > 0,
+        info!,
+      ];
     } catch (error: unknown) {
       err = error;
       const { message } = error as Error;
