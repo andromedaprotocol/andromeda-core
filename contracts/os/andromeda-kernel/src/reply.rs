@@ -26,7 +26,7 @@ pub enum ReplyId {
 
 /// Handles the reply from an ADO creation
 ///
-/// Sends an execute message to assign the new owner to the ADO. Will error if the owner is assigned in the ADO creation message.
+/// Sends an execute message to assign the new owner to the ADO
 pub fn on_reply_create_ado(deps: DepsMut, msg: Reply) -> Result<Response, ContractError> {
     let new_owner = ADO_OWNER.load(deps.as_ref().storage)?;
     let ado_addr = get_reply_address(msg)?;
