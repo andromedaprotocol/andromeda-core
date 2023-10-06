@@ -1,33 +1,20 @@
 use crate::state::{
-    add_app_component, generate_assign_app_message, generate_ownership_message,
-    load_component_addresses, load_component_addresses_with_name, load_component_descriptors,
-    ADO_ADDRESSES, ADO_DESCRIPTORS, ADO_IDX, APP_NAME, ASSIGNED_IDX,
+    add_app_component, generate_ownership_message, load_component_addresses, ADO_ADDRESSES,
 };
-use andromeda_app::app::{
-    AppComponent, ComponentAddress, ConfigResponse, ExecuteMsg, InstantiateMsg, MigrateMsg,
-    QueryMsg,
-};
+use andromeda_app::app::AppComponent;
 use andromeda_std::ado_contract::ADOContract;
-use andromeda_std::amp::{AndrAddr, VFS_KEY};
+use andromeda_std::amp::VFS_KEY;
 use andromeda_std::common::context::ExecuteContext;
+use andromeda_std::error::ContractError;
 use andromeda_std::os::{
     kernel::QueryMsg as KernelQueryMsg,
-    vfs::{convert_component_name, validate_component_name, ExecuteMsg as VFSExecuteMsg},
+    vfs::{validate_component_name, ExecuteMsg as VFSExecuteMsg},
 };
-use andromeda_std::{
-    ado_base::InstantiateMsg as BaseInstantiateMsg,
-    common::{encode_binary, response::get_reply_address},
-    error::{from_semver, ContractError},
-};
-#[cfg(not(feature = "library"))]
-use cosmwasm_std::entry_point;
-use cosmwasm_std::{
-    ensure, to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo,
-    QuerierWrapper, Reply, ReplyOn, Response, StdError, Storage, SubMsg, WasmMsg,
-};
-use cw2::{get_contract_version, set_contract_version};
 
-use semver::Version;
+use cosmwasm_std::{
+    ensure, to_binary, Addr, Binary, CosmosMsg, QuerierWrapper, ReplyOn, Response, Storage, SubMsg,
+    WasmMsg,
+};
 
 pub fn handle_add_app_component(
     querier: &QuerierWrapper,

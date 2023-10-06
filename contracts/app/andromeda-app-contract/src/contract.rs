@@ -1,19 +1,15 @@
 use crate::state::{
-    add_app_component, generate_assign_app_message, generate_ownership_message,
-    load_component_addresses, load_component_addresses_with_name, load_component_descriptors,
-    ADO_ADDRESSES, ADO_DESCRIPTORS, ADO_IDX, APP_NAME, ASSIGNED_IDX,
+    generate_assign_app_message, load_component_addresses, load_component_addresses_with_name,
+    load_component_descriptors, ADO_ADDRESSES, ADO_DESCRIPTORS, ADO_IDX, APP_NAME, ASSIGNED_IDX,
 };
 use andromeda_app::app::{
     AppComponent, ComponentAddress, ConfigResponse, ExecuteMsg, InstantiateMsg, MigrateMsg,
     QueryMsg,
 };
 use andromeda_std::ado_contract::ADOContract;
-use andromeda_std::amp::{AndrAddr, VFS_KEY};
+use andromeda_std::amp::AndrAddr;
 use andromeda_std::common::context::ExecuteContext;
-use andromeda_std::os::{
-    kernel::QueryMsg as KernelQueryMsg,
-    vfs::{convert_component_name, validate_component_name, ExecuteMsg as VFSExecuteMsg},
-};
+use andromeda_std::os::vfs::{convert_component_name, ExecuteMsg as VFSExecuteMsg};
 use andromeda_std::{
     ado_base::InstantiateMsg as BaseInstantiateMsg,
     common::{encode_binary, response::get_reply_address},
@@ -22,12 +18,12 @@ use andromeda_std::{
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    ensure, to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo,
-    QuerierWrapper, Reply, ReplyOn, Response, StdError, Storage, SubMsg, WasmMsg,
+    ensure, to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Reply,
+    Response, StdError, SubMsg, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
 
-use crate::execute;
+use crate::{execute, query};
 use semver::Version;
 
 // version info for migration info
@@ -211,39 +207,13 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
-        QueryMsg::GetAddress { name } => encode_binary(&query_component_address(deps, name)?),
+        QueryMsg::GetAddress { name } => encode_binary(&query::component_address(deps, name)?),
         QueryMsg::GetAddressesWithNames {} => {
-            encode_binary(&query_component_addresses_with_name(deps)?)
+            encode_binary(&query::component_addresses_with_name(deps)?)
         }
-        QueryMsg::GetComponents {} => encode_binary(&query_component_descriptors(deps)?),
-        QueryMsg::Config {} => encode_binary(&query_config(deps)?),
-        QueryMsg::ComponentExists { name } => encode_binary(&query_component_exists(deps, name)),
+        QueryMsg::GetComponents {} => encode_binary(&query::component_descriptors(deps)?),
+        QueryMsg::Config {} => encode_binary(&query::config(deps)?),
+        QueryMsg::ComponentExists { name } => encode_binary(&query::component_exists(deps, name)),
         _ => ADOContract::default().query(deps, env, msg),
     }
-}
-
-fn query_component_address(deps: Deps, name: String) -> Result<String, ContractError> {
-    let value = ADO_ADDRESSES.load(deps.storage, &name)?;
-    Ok(value.to_string())
-}
-
-fn query_component_descriptors(deps: Deps) -> Result<Vec<AppComponent>, ContractError> {
-    let value = load_component_descriptors(deps.storage)?;
-    Ok(value)
-}
-
-fn query_component_exists(deps: Deps, name: String) -> bool {
-    ADO_ADDRESSES.has(deps.storage, &name)
-}
-
-fn query_component_addresses_with_name(deps: Deps) -> Result<Vec<ComponentAddress>, ContractError> {
-    let value = load_component_addresses_with_name(deps.storage)?;
-    Ok(value)
-}
-
-fn query_config(deps: Deps) -> Result<ConfigResponse, ContractError> {
-    let name = APP_NAME.load(deps.storage)?;
-    let owner = ADOContract::default().query_contract_owner(deps)?.owner;
-
-    Ok(ConfigResponse { name, owner })
 }
