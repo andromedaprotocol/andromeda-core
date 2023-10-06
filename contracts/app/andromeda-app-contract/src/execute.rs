@@ -1,16 +1,15 @@
 use crate::state::{
-    add_app_component, generate_ownership_message, load_component_addresses, ADO_ADDRESSES,
+    add_app_component, generate_assign_app_message, generate_ownership_message,
+    load_component_addresses, ADO_ADDRESSES,
 };
 use andromeda_app::app::AppComponent;
 use andromeda_std::ado_contract::ADOContract;
-use andromeda_std::amp::VFS_KEY;
 use andromeda_std::common::context::ExecuteContext;
 use andromeda_std::error::ContractError;
-use andromeda_std::os::{
-    kernel::QueryMsg as KernelQueryMsg,
-    vfs::{validate_component_name, ExecuteMsg as VFSExecuteMsg},
-};
+use andromeda_std::os::aos_querier::AOSQuerier;
+use andromeda_std::os::vfs::ExecuteMsg as VFSExecuteMsg;
 
+use crate::reply::ReplyId;
 use cosmwasm_std::{
     ensure, to_binary, Addr, Binary, CosmosMsg, QuerierWrapper, ReplyOn, Response, Storage, SubMsg,
     WasmMsg,
@@ -22,7 +21,6 @@ pub fn handle_add_app_component(
     sender: &str,
     component: AppComponent,
 ) -> Result<Response, ContractError> {
-    validate_component_name(component.name.clone())?;
     let contract = ADOContract::default();
     ensure!(
         contract.is_contract_owner(storage, sender)?,
@@ -55,9 +53,11 @@ pub fn handle_add_app_component(
 pub fn claim_ownership(
     ctx: ExecuteContext,
     name_opt: Option<String>,
+    new_owner: Option<Addr>,
 ) -> Result<Response, ContractError> {
     ensure!(
-        ADOContract::default().is_contract_owner(ctx.deps.storage, ctx.info.sender.as_str())?,
+        ADOContract::default().is_contract_owner(ctx.deps.storage, ctx.info.sender.as_str())?
+            || ctx.env.contract.address.clone() == ctx.info.sender.clone(),
         ContractError::Unauthorized {}
     );
 
@@ -71,10 +71,16 @@ pub fn claim_ownership(
     } else {
         let addresses = load_component_addresses(ctx.deps.storage, None)?;
         for address in addresses {
-            msgs.push(generate_ownership_message(
-                address,
-                ctx.info.sender.as_str(),
-            )?);
+            let curr_owner = AOSQuerier::ado_owner_getter(&ctx.deps.querier, &address)?;
+            if curr_owner == ctx.env.contract.address {
+                msgs.push(generate_ownership_message(
+                    address,
+                    new_owner
+                        .clone()
+                        .unwrap_or(ctx.info.sender.clone())
+                        .as_str(),
+                )?);
+            }
         }
     }
 
@@ -140,7 +146,7 @@ pub fn update_address(
     if !name.starts_with('.') {
         let kernel_address = ADOContract::default().get_kernel_address(deps.storage)?;
         let register_component_path_msg = register_component_path(
-            kernel_address.to_string(),
+            kernel_address,
             &deps.querier,
             name,
             deps.api.addr_validate(&addr)?,
@@ -152,18 +158,13 @@ pub fn update_address(
     Ok(resp)
 }
 
-const REGISTER_PATH_MSG_ID: u64 = 1001;
-
 pub fn register_component_path(
-    kernel_address: String,
+    kernel_address: Addr,
     querier: &QuerierWrapper,
     name: impl Into<String>,
     address: Addr,
 ) -> Result<SubMsg, ContractError> {
-    let vfs_address_query = KernelQueryMsg::KeyAddress {
-        key: VFS_KEY.to_string(),
-    };
-    let vfs_address: Addr = querier.query_wasm_smart(kernel_address, &vfs_address_query)?;
+    let vfs_address: Addr = AOSQuerier::vfs_address_getter(querier, &kernel_address)?;
 
     let add_path_msg = VFSExecuteMsg::AddPath {
         name: name.into(),
@@ -176,5 +177,29 @@ pub fn register_component_path(
         funds: vec![],
     });
 
-    Ok(SubMsg::reply_on_error(cosmos_msg, REGISTER_PATH_MSG_ID))
+    Ok(SubMsg::reply_on_error(
+        cosmos_msg,
+        ReplyId::RegisterPath.repr(),
+    ))
+}
+
+pub fn assign_app_to_components(ctx: ExecuteContext) -> Result<Response, ContractError> {
+    let ExecuteContext {
+        deps, env, info, ..
+    } = ctx;
+    let mut resp = Response::default();
+    ensure!(
+        info.sender == env.contract.address,
+        ContractError::Unauthorized {}
+    );
+
+    let addresses = load_component_addresses(deps.storage, None)?;
+    for address in addresses {
+        let assign_app_msg = generate_assign_app_message(&address, env.contract.address.as_str())?;
+        resp = resp
+            .add_submessage(assign_app_msg)
+            .add_attribute("assign_app", address);
+    }
+
+    Ok(resp)
 }

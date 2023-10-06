@@ -3,6 +3,8 @@ use andromeda_std::{ado_base::AndromedaMsg, error::ContractError};
 use cosmwasm_std::{to_binary, Addr, Coin, CosmosMsg, Order, ReplyOn, Storage, SubMsg, WasmMsg};
 use cw_storage_plus::{Bound, Item, Map};
 
+use crate::reply::ReplyId;
+
 /// Used to store the addresses of each ADO within the app
 pub const ADO_ADDRESSES: Map<&str, Addr> = Map::new("ado_addresses");
 /// Stores a record of the describing structs for each ADO
@@ -72,7 +74,7 @@ pub fn generate_ownership_message(addr: Addr, owner: &str) -> Result<SubMsg, Con
         address: owner.to_string(),
     })?;
     Ok(SubMsg {
-        id: 101,
+        id: ReplyId::ClaimOwnership.repr(),
         reply_on: ReplyOn::Error,
         msg: CosmosMsg::Wasm(WasmMsg::Execute {
             msg,
@@ -88,7 +90,7 @@ pub fn generate_assign_app_message(addr: &Addr, app_addr: &str) -> Result<SubMsg
         address: app_addr.to_string(),
     })?;
     Ok(SubMsg {
-        id: 103,
+        id: ReplyId::AssignApp.repr(),
         reply_on: ReplyOn::Error,
         msg: CosmosMsg::Wasm(WasmMsg::Execute {
             msg,

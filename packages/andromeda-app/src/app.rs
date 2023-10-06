@@ -3,7 +3,7 @@ use andromeda_std::{
     os::aos_querier::AOSQuerier,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Binary, Deps};
+use cosmwasm_std::{Addr, Binary, Deps};
 
 #[cw_serde]
 pub struct AppComponent {
@@ -53,10 +53,23 @@ pub struct InstantiateMsg {
 #[andr_exec]
 #[cw_serde]
 pub enum ExecuteMsg {
-    AddAppComponent { component: AppComponent },
-    ClaimOwnership { name: Option<String> },
-    ProxyMessage { name: String, msg: Binary },
-    UpdateAddress { name: String, addr: String },
+    AddAppComponent {
+        component: AppComponent,
+    },
+    ClaimOwnership {
+        name: Option<String>,
+        new_owner: Option<Addr>,
+    },
+    ProxyMessage {
+        name: String,
+        msg: Binary,
+    },
+    UpdateAddress {
+        name: String,
+        addr: String,
+    },
+    // Only available to the app contract itself
+    AssignAppToComponents {},
 }
 
 #[cw_serde]

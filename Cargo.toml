@@ -52,3 +52,4 @@ cw721-base = { version = "0.18.0", features = ["library"] }
 cw-asset = "3.0.0"
 cosmwasm-schema = "1.2.1"
 semver = "1.0.0"
+enum-repr = "0.2.6"

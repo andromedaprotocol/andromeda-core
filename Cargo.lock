@@ -63,6 +63,7 @@ dependencies = [
  "cw-multi-test",
  "cw-storage-plus 1.1.0",
  "cw2 1.1.0",
+ "enum-repr",
  "prost 0.9.0",
  "semver",
 ]

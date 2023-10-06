@@ -27,6 +27,7 @@ pub fn mock_app_instantiate_msg(
 pub fn mock_claim_ownership_msg(component_name: Option<String>) -> ExecuteMsg {
     ExecuteMsg::ClaimOwnership {
         name: component_name,
+        new_owner: None,
     }
 }
 

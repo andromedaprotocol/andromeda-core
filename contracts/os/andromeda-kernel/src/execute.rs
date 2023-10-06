@@ -112,8 +112,7 @@ pub fn create(
         chain.is_none() || owner.is_some(),
         ContractError::Unauthorized {}
     );
-    if chain.is_some() {
-        let chain = chain.unwrap();
+    if let Some(chain) = chain {
         let channel_info =
             if let Some(channel_info) = CHANNELS.may_load(execute_env.deps.storage, &chain)? {
                 Ok::<ChannelInfo, ContractError>(channel_info)

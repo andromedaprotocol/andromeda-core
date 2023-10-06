@@ -249,7 +249,10 @@ fn test_claim_ownership_unauth() {
     instantiate(deps.as_mut(), env.clone(), info, inst_msg).unwrap();
 
     let unauth_info = mock_info("anyone", &[]);
-    let msg = ExecuteMsg::ClaimOwnership { name: None };
+    let msg = ExecuteMsg::ClaimOwnership {
+        name: None,
+        new_owner: None,
+    };
 
     let err = execute(deps.as_mut(), env, unauth_info, msg).unwrap_err();
     assert_eq!(ContractError::Unauthorized {}, err);
@@ -271,6 +274,7 @@ fn test_claim_ownership_not_found() {
 
     let msg = ExecuteMsg::ClaimOwnership {
         name: Some("token".to_string()),
+        new_owner: None,
     };
 
     let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
@@ -296,7 +300,10 @@ fn test_claim_ownership_empty() {
 
     instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
 
-    let msg = ExecuteMsg::ClaimOwnership { name: None };
+    let msg = ExecuteMsg::ClaimOwnership {
+        name: None,
+        new_owner: None,
+    };
 
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
     assert_eq!(0, res.messages.len());
@@ -330,7 +337,10 @@ fn test_claim_ownership_all() {
         )
         .unwrap();
 
-    let msg = ExecuteMsg::ClaimOwnership { name: None };
+    let msg = ExecuteMsg::ClaimOwnership {
+        name: None,
+        new_owner: None,
+    };
 
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
     assert_eq!(2, res.messages.len());
@@ -398,6 +408,7 @@ fn test_claim_ownership() {
 
     let msg = ExecuteMsg::ClaimOwnership {
         name: Some("token".to_string()),
+        new_owner: None,
     };
 
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
