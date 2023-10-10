@@ -84,6 +84,11 @@ pub enum ExecuteMsg {
         address: Addr,
         parent_address: Option<AndrAddr>,
     },
+    AddSymlink {
+        name: String,
+        symlink: AndrAddr,
+        parent_address: Option<AndrAddr>,
+    },
     AddParentPath {
         name: String,
         parent_address: AndrAddr,
@@ -114,6 +119,8 @@ pub enum QueryMsg {
     GetUsername { address: Addr },
     #[returns(String)]
     GetLibrary { address: Addr },
+    #[returns(AndrAddr)]
+    ResolveSymlink { path: AndrAddr },
 }
 
 /// Queries the provided VFS contract address to resolve the given path
@@ -126,6 +133,19 @@ pub fn vfs_resolve_path(
         path: AndrAddr::from_string(path.into()),
     };
     let addr = querier.query_wasm_smart::<Addr>(vfs_contract, &query)?;
+    Ok(addr)
+}
+
+/// Queries the provided VFS contract address to resolve the given path
+pub fn vfs_resolve_symlink(
+    path: impl Into<String>,
+    vfs_contract: impl Into<String>,
+    querier: &QuerierWrapper,
+) -> Result<AndrAddr, ContractError> {
+    let query = QueryMsg::ResolveSymlink {
+        path: AndrAddr::from_string(path.into()),
+    };
+    let addr = querier.query_wasm_smart::<AndrAddr>(vfs_contract, &query)?;
     Ok(addr)
 }
 

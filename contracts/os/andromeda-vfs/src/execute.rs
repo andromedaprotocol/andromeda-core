@@ -5,7 +5,8 @@ use andromeda_std::os::vfs::{validate_component_name, validate_username};
 use cosmwasm_std::{attr, ensure, Addr, DepsMut, Env, MessageInfo, Response};
 
 use crate::state::{
-    add_pathname, paths, resolve_pathname, ADDRESS_LIBRARY, ADDRESS_USERNAME, LIBRARIES, USERS,
+    add_path_symlink, add_pathname, paths, resolve_pathname, ADDRESS_LIBRARY, ADDRESS_USERNAME,
+    LIBRARIES, USERS,
 };
 
 pub struct ExecuteEnv<'a> {
@@ -31,8 +32,49 @@ pub fn add_path(
     let parent_andr_addr = parent_address.unwrap_or(AndrAddr::from_string(env.info.sender));
     let parent_addr = resolve_pathname(env.deps.storage, env.deps.api, parent_andr_addr)?;
     validate_component_name(name.clone())?;
-    add_pathname(env.deps.storage, parent_addr, name, address)?;
-    Ok(Response::default())
+    add_pathname(
+        env.deps.storage,
+        parent_addr.clone(),
+        name.clone(),
+        address.clone(),
+    )?;
+    Ok(Response::default().add_attributes(vec![
+        attr("action", "add_path"),
+        attr("addr", address),
+        attr("name", name),
+        attr("parent", parent_addr),
+    ]))
+}
+
+pub fn add_symlink(
+    env: ExecuteEnv,
+    name: String,
+    symlink: AndrAddr,
+    parent_address: Option<AndrAddr>,
+) -> Result<Response, ContractError> {
+    let kernel_address = ADOContract::default().get_kernel_address(env.deps.storage)?;
+    ensure!(
+        parent_address.is_none()
+            || env.info.sender == kernel_address
+            || ADOContract::default()
+                .is_contract_owner(env.deps.storage, env.info.sender.as_str())?,
+        ContractError::Unauthorized {}
+    );
+    let parent_andr_addr = parent_address.unwrap_or(AndrAddr::from_string(env.info.sender));
+    let parent_addr = resolve_pathname(env.deps.storage, env.deps.api, parent_andr_addr)?;
+    validate_component_name(name.clone())?;
+    add_path_symlink(
+        env.deps.storage,
+        parent_addr.clone(),
+        name.clone(),
+        symlink.clone(),
+    )?;
+    Ok(Response::default().add_attributes(vec![
+        attr("action", "add_symlink"),
+        attr("symlink", symlink),
+        attr("name", name),
+        attr("parent", parent_addr),
+    ]))
 }
 
 pub fn add_parent_path(

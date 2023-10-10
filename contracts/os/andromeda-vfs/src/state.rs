@@ -8,6 +8,7 @@ pub struct PathInfo {
     pub name: String,
     pub address: Addr,
     pub parent_address: Addr,
+    pub symlink: Option<AndrAddr>,
 }
 
 pub struct PathIndices<'a> {
@@ -93,7 +94,7 @@ fn resolve_home_path(
         Err(_e) => USERS.load(storage, username_or_address)?,
     };
 
-    resolve_path(storage, parts, user_address)
+    resolve_path(storage, api, parts, user_address)
 }
 
 fn resolve_lib_path(
@@ -114,11 +115,12 @@ fn resolve_lib_path(
         Err(_e) => LIBRARIES.load(storage, username_or_address)?,
     };
 
-    resolve_path(storage, parts, user_address)
+    resolve_path(storage, api, parts, user_address)
 }
 
 fn resolve_path(
     storage: &dyn Storage,
+    api: &dyn Api,
     parts: Vec<String>,
     user_address: Addr,
 ) -> Result<Addr, ContractError> {
@@ -128,7 +130,11 @@ fn resolve_path(
         if idx <= 1 {
             continue;
         }
-        address = paths().load(storage, &(address, part.clone()))?.address;
+        let info = paths().load(storage, &(address, part.clone()))?;
+        address = match info.symlink {
+            Some(symlink) => resolve_pathname(storage, api, symlink)?,
+            None => info.address,
+        };
     }
 
     Ok(address)
@@ -191,8 +197,52 @@ pub fn add_pathname(
             name,
             address,
             parent_address: parent_addr,
+            symlink: None,
         },
     )
+}
+
+pub fn add_path_symlink(
+    storage: &mut dyn Storage,
+    parent_addr: Addr,
+    name: String,
+    symlink: AndrAddr,
+) -> Result<(), StdError> {
+    paths().save(
+        storage,
+        &(parent_addr.clone(), name.clone()),
+        &PathInfo {
+            name,
+            address: Addr::unchecked("invalidaddress"),
+            parent_address: parent_addr,
+            symlink: Some(symlink),
+        },
+    )
+}
+
+pub fn resolve_symlink(
+    storage: &dyn Storage,
+    api: &dyn Api,
+    path: AndrAddr,
+) -> Result<AndrAddr, ContractError> {
+    let mut parts = split_pathname(path.to_string());
+    if !path.is_vfs_path() || path.get_protocol().is_some() || parts.len() <= 2 {
+        return Ok(path);
+    }
+    let final_part = parts.pop().unwrap();
+    let reconstructed_addr = parts.join("/");
+    // Need to prepend a '/' unless the path starts with '~'
+    let remaining_path = if reconstructed_addr.starts_with('~') {
+        AndrAddr::from_string(reconstructed_addr)
+    } else {
+        AndrAddr::from_string(format!("/{reconstructed_addr}"))
+    };
+    let addr = resolve_pathname(storage, api, remaining_path)?;
+    let info = paths().load(storage, &(addr, final_part))?;
+    match info.symlink {
+        Some(symlink) => Ok(symlink),
+        None => Ok(path),
+    }
 }
 
 #[cfg(test)]
@@ -275,6 +325,7 @@ mod test {
                     name: first_directory.to_string(),
                     address: first_directory_address.clone(),
                     parent_address: username_address,
+                    symlink: None,
                 },
             )
             .unwrap();
@@ -298,6 +349,7 @@ mod test {
                     name: second_directory.to_string(),
                     address: second_directory_address.clone(),
                     parent_address: first_directory_address,
+                    symlink: None,
                 },
             )
             .unwrap();
@@ -320,6 +372,7 @@ mod test {
                     name: file.to_string(),
                     address: file_address.clone(),
                     parent_address: second_directory_address,
+                    symlink: None,
                 },
             )
             .unwrap();
@@ -368,6 +421,7 @@ mod test {
                     name: first_directory.to_string(),
                     address: first_directory_address.clone(),
                     parent_address: username_address,
+                    symlink: None,
                 },
             )
             .unwrap();
@@ -391,6 +445,7 @@ mod test {
                     name: second_directory.to_string(),
                     address: second_directory_address.clone(),
                     parent_address: first_directory_address,
+                    symlink: None,
                 },
             )
             .unwrap();
@@ -413,6 +468,7 @@ mod test {
                     name: file.to_string(),
                     address: file_address.clone(),
                     parent_address: second_directory_address,
+                    symlink: None,
                 },
             )
             .unwrap();
@@ -426,5 +482,110 @@ mod test {
         )
         .unwrap();
         assert_eq!(res, file_address)
+    }
+
+    #[test]
+    fn test_resolve_symlink() {
+        let mut deps = mock_dependencies();
+        let username = "u1";
+        let first_directory = "d1";
+
+        let username_address = Addr::unchecked("useraddress");
+        let first_directory_address = Addr::unchecked("dir1address");
+
+        USERS
+            .save(deps.as_mut().storage, username, &username_address)
+            .unwrap();
+
+        paths()
+            .save(
+                deps.as_mut().storage,
+                &(username_address.clone(), first_directory.to_string()),
+                &PathInfo {
+                    name: first_directory.to_string(),
+                    address: first_directory_address.clone(),
+                    parent_address: username_address,
+                    symlink: None,
+                },
+            )
+            .unwrap();
+
+        let res = resolve_home_path(
+            deps.as_ref().storage,
+            deps.as_ref().api,
+            AndrAddr::from_string(format!("/home/{username}/{first_directory}")),
+        )
+        .unwrap();
+        assert_eq!(res, first_directory_address);
+
+        let symlink_parent = Addr::unchecked("parentaddress");
+        let symlink_name = "symlink";
+        let symlink = AndrAddr::from_string(format!("/home/{username}/{first_directory}"));
+        add_path_symlink(
+            deps.as_mut().storage,
+            symlink_parent.clone(),
+            symlink_name.to_string(),
+            symlink.clone(),
+        )
+        .unwrap();
+
+        let res = resolve_home_path(
+            deps.as_ref().storage,
+            deps.as_ref().api,
+            AndrAddr::from_string(format!("/home/{symlink_parent}/{symlink_name}")),
+        )
+        .unwrap();
+        assert_eq!(res, first_directory_address);
+
+        let res = resolve_symlink(
+            deps.as_ref().storage,
+            deps.as_ref().api,
+            AndrAddr::from_string(format!("/home/{symlink_parent}/{symlink_name}")),
+        )
+        .unwrap();
+
+        assert_eq!(res, symlink);
+
+        let res = resolve_symlink(
+            deps.as_ref().storage,
+            deps.as_ref().api,
+            AndrAddr::from_string(format!("/home/{username}/{first_directory}")),
+        )
+        .unwrap();
+
+        assert_eq!(
+            res,
+            AndrAddr::from_string(format!("/home/{username}/{first_directory}"))
+        );
+
+        let res = resolve_symlink(
+            deps.as_ref().storage,
+            deps.as_ref().api,
+            AndrAddr::from_string(format!("ibc://chain/home/{symlink_parent}/{symlink}")),
+        )
+        .unwrap();
+
+        assert_eq!(
+            res,
+            AndrAddr::from_string(format!("ibc://chain/home/{symlink_parent}/{symlink}"))
+        );
+
+        let res = resolve_symlink(
+            deps.as_ref().storage,
+            deps.as_ref().api,
+            AndrAddr::from_string("someaddress"),
+        )
+        .unwrap();
+
+        assert_eq!(res, AndrAddr::from_string("someaddress"));
+
+        let res = resolve_symlink(
+            deps.as_ref().storage,
+            deps.as_ref().api,
+            AndrAddr::from_string("/home/someuser"),
+        )
+        .unwrap();
+
+        assert_eq!(res, AndrAddr::from_string("/home/someuser"));
     }
 }
