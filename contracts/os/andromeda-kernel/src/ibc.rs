@@ -118,42 +118,43 @@ pub fn ibc_packet_ack(
     // which local channel was this packet send from
     // let caller = msg.original_packet.src.channel_id.clone();
     // we need to parse the ack based on our request
-    let original_packet: IbcExecuteMsg = from_slice(&msg.original_packet.data)?;
-    let execute_env = ExecuteContext {
-        env,
-        deps,
-        info: MessageInfo {
-            funds: vec![],
-            sender: Addr::unchecked("foreign_kernel"),
-        },
-        amp_ctx: None,
-    };
-    let pkt_res = match original_packet {
-        IbcExecuteMsg::SendMessage { recipient, message } => {
-            let amp_msg = AMPMsg::new(recipient, message, None);
-            let res = execute::send(execute_env, amp_msg)?;
+    // let original_packet: IbcExecuteMsg = from_slice(&msg.original_packet.data)?;
+    // let execute_env = ExecuteContext {
+    //     env,
+    //     deps,
+    //     info: MessageInfo {
+    //         funds: vec![],
+    //         sender: Addr::unchecked("foreign_kernel"),
+    //     },
+    //     amp_ctx: None,
+    // };
+    // let pkt_res = match original_packet {
+    //     IbcExecuteMsg::SendMessage { recipient, message } => {
+    //         let amp_msg = AMPMsg::new(recipient, message, None);
+    //         let res = execute::send(execute_env, amp_msg)?;
 
-            Ok::<IbcBasicResponse, ContractError>(
-                IbcBasicResponse::new()
-                    .add_attributes(res.attributes)
-                    .add_submessages(res.messages)
-                    .add_events(res.events),
-            )
-        }
-        IbcExecuteMsg::CreateADO {
-            instantiation_msg,
-            owner,
-            ado_type,
-        } => {
-            let res = ibc_create_ado(execute_env, owner, ado_type, instantiation_msg)?;
-            Ok(IbcBasicResponse::new()
-                .add_events(res.events)
-                .add_attributes(res.attributes)
-                .add_submessages(res.messages))
-        }
-    }?;
+    //         Ok::<IbcBasicResponse, ContractError>(
+    //             IbcBasicResponse::new()
+    //                 .add_attributes(res.attributes)
+    //                 .add_submessages(res.messages)
+    //                 .add_events(res.events),
+    //         )
+    //     }
+    //     IbcExecuteMsg::CreateADO {
+    //         instantiation_msg,
+    //         owner,
+    //         ado_type,
+    //     } => {
+    //         let res = ibc_create_ado(execute_env, owner, ado_type, instantiation_msg)?;
+    //         Ok(IbcBasicResponse::new()
+    //             .add_events(res.events)
+    //             .add_attributes(res.attributes)
+    //             .add_submessages(res.messages))
+    //     }
+    // }?;
 
-    Ok(pkt_res.add_attribute("method", "ibc_packet_ack"))
+    // Ok(pkt_res.add_attribute("method", "ibc_packet_ack"))
+    Ok(IbcBasicResponse::new())
 }
 
 pub fn do_ibc_packet_receive(

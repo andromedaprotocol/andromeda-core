@@ -28,8 +28,6 @@ use semver::Version;
 const CONTRACT_NAME: &str = "crates.io:andromeda-app-contract";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-const REGISTER_PARENT_PATH_MSG_MSG: u64 = 1002;
-
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
@@ -116,7 +114,7 @@ pub fn instantiate(
         funds: vec![],
     });
 
-    let register_msg = SubMsg::reply_on_error(cosmos_msg, REGISTER_PARENT_PATH_MSG_MSG);
+    let register_msg = SubMsg::reply_on_error(cosmos_msg, ReplyId::RegisterPath.repr());
     let assign_app_msg = ExecuteMsg::AssignAppToComponents {};
     let assign_app_msg = SubMsg::reply_on_error(
         CosmosMsg::Wasm::<Empty>(WasmMsg::Execute {
