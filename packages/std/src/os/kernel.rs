@@ -6,9 +6,17 @@ use cosmwasm_std::Addr;
 use cosmwasm_std::Binary;
 
 #[cw_serde]
+pub struct ChannelInfo {
+    pub kernel_address: String,
+    pub ics20_channel_id: Option<String>,
+    pub direct_channel_id: Option<String>,
+    pub supported_modules: Vec<String>,
+}
+
+#[cw_serde]
 pub struct InstantiateMsg {
     pub owner: Option<String>,
-    pub chain_name: Option<String>,
+    pub chain_name: String,
 }
 
 #[cw_serde]
@@ -25,6 +33,7 @@ pub enum ExecuteMsg {
         ado_type: String,
         msg: Binary,
         owner: Option<AndrAddr>,
+        chain: Option<String>,
     },
     /// Assigns a given channel to the given chain
     AssignChannels {
@@ -66,5 +75,10 @@ pub enum IbcExecuteMsg {
     SendMessage {
         recipient: AndrAddr,
         message: Binary,
+    },
+    CreateADO {
+        instantiation_msg: Binary,
+        owner: AndrAddr,
+        ado_type: String,
     },
 }

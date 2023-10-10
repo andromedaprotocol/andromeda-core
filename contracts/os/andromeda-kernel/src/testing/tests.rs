@@ -18,7 +18,7 @@ fn proper_initialization() {
     let info = mock_info("creator", &[]);
     let msg = InstantiateMsg {
         owner: None,
-        chain_name: None,
+        chain_name: "test".to_string(),
     };
     let env = mock_env();
 
@@ -37,7 +37,7 @@ fn test_create_ado() {
         info.clone(),
         InstantiateMsg {
             owner: None,
-            chain_name: None,
+            chain_name: "test".to_string(),
         },
     )
     .unwrap();
@@ -57,6 +57,7 @@ fn test_create_ado() {
         ado_type: "ado_type".to_string(),
         msg: Binary::default(),
         owner: None,
+        chain: None,
     };
     let res = execute(deps.as_mut(), env, info.clone(), create_msg).unwrap();
     assert_eq!(1, res.messages.len());

@@ -21,12 +21,14 @@ pub fn mock_app_instantiate_msg(
         name: name.into(),
         kernel_address: kernel_address.into(),
         owner,
+        chain_info: None,
     }
 }
 
 pub fn mock_claim_ownership_msg(component_name: Option<String>) -> ExecuteMsg {
     ExecuteMsg::ClaimOwnership {
         name: component_name,
+        new_owner: None,
     }
 }
 

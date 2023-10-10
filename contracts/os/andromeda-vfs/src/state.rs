@@ -277,6 +277,14 @@ mod test {
     }
 
     #[test]
+    fn test_resolve_pathname() {
+        let path = AndrAddr::from_string("cosmos1...");
+        let res =
+            resolve_pathname(&mock_dependencies().storage, &mock_dependencies().api, path).unwrap();
+        assert_eq!(res, Addr::unchecked("cosmos1..."));
+    }
+
+    #[test]
     fn test_resolve_home_path() {
         let mut deps = mock_dependencies();
         let username = "u1";

@@ -1,4 +1,4 @@
-use crate::ack::{make_ack_fail, make_ack_success};
+use crate::ack::{make_ack_create_ado_success, make_ack_fail, make_ack_success};
 use crate::execute;
 use crate::proto::{DenomTrace, MsgTransfer, QueryDenomTraceRequest};
 use andromeda_std::common::context::ExecuteContext;
@@ -11,10 +11,10 @@ use cosmwasm_schema::cw_serde;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    ensure, from_binary, from_slice, Addr, Binary, Coin, Deps, DepsMut, Env,
-    Ibc3ChannelOpenResponse, IbcBasicResponse, IbcChannel, IbcChannelCloseMsg,
-    IbcChannelConnectMsg, IbcChannelOpenMsg, IbcOrder, IbcPacketAckMsg, IbcPacketReceiveMsg,
-    IbcPacketTimeoutMsg, IbcReceiveResponse, MessageInfo, Timestamp,
+    ensure, from_binary, Addr, Binary, Coin, Deps, DepsMut, Env, Ibc3ChannelOpenResponse,
+    IbcBasicResponse, IbcChannel, IbcChannelCloseMsg, IbcChannelConnectMsg, IbcChannelOpenMsg,
+    IbcOrder, IbcPacketAckMsg, IbcPacketReceiveMsg, IbcPacketTimeoutMsg, IbcReceiveResponse,
+    MessageInfo, Timestamp,
 };
 use itertools::Itertools;
 use sha256::digest;
@@ -111,39 +111,11 @@ pub fn ibc_packet_receive(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn ibc_packet_ack(
-    deps: DepsMut,
-    env: Env,
-    msg: IbcPacketAckMsg,
+    _deps: DepsMut,
+    _env: Env,
+    _msg: IbcPacketAckMsg,
 ) -> Result<IbcBasicResponse, ContractError> {
-    // which local channel was this packet send from
-    // let caller = msg.original_packet.src.channel_id.clone();
-    // we need to parse the ack based on our request
-    let original_packet: IbcExecuteMsg = from_slice(&msg.original_packet.data)?;
-    let pkt_res = match original_packet {
-        IbcExecuteMsg::SendMessage { recipient, message } => {
-            // TODO: Can we also add a username in this message?
-            let execute_env = ExecuteContext {
-                env,
-                deps,
-                info: MessageInfo {
-                    funds: vec![],
-                    sender: Addr::unchecked("foreign_kernel"),
-                },
-                amp_ctx: None,
-            };
-            let amp_msg = AMPMsg::new(recipient, message, None);
-            let res = execute::send(execute_env, amp_msg)?;
-
-            Ok::<IbcBasicResponse, ContractError>(
-                IbcBasicResponse::new()
-                    .add_attributes(res.attributes)
-                    .add_submessages(res.messages)
-                    .add_events(res.events),
-            )
-        }
-    }?;
-
-    Ok(pkt_res.add_attribute("method", "ibc_packet_ack"))
+    Ok(IbcBasicResponse::new())
 }
 
 pub fn do_ibc_packet_receive(
@@ -152,18 +124,19 @@ pub fn do_ibc_packet_receive(
     msg: IbcPacketReceiveMsg,
 ) -> Result<IbcReceiveResponse, ContractError> {
     let msg: IbcExecuteMsg = from_binary(&msg.packet.data)?;
+    let execute_env = ExecuteContext {
+        env,
+        deps,
+        info: MessageInfo {
+            funds: vec![],
+            sender: Addr::unchecked("foreign_kernel"),
+        },
+        amp_ctx: None,
+    };
     match msg {
         IbcExecuteMsg::SendMessage { recipient, message } => {
             // TODO: Can we also add a username in this message?
-            let execute_env = ExecuteContext {
-                env,
-                deps,
-                info: MessageInfo {
-                    funds: vec![],
-                    sender: Addr::unchecked("foreign_kernel"),
-                },
-                amp_ctx: None,
-            };
+
             let amp_msg = AMPMsg::new(recipient, message, None);
             let res = execute::send(execute_env, amp_msg)?;
 
@@ -173,7 +146,26 @@ pub fn do_ibc_packet_receive(
                 .add_submessages(res.messages)
                 .add_events(res.events))
         }
+        IbcExecuteMsg::CreateADO {
+            instantiation_msg,
+            owner,
+            ado_type,
+        } => ibc_create_ado(execute_env, owner, ado_type, instantiation_msg),
     }
+}
+
+pub fn ibc_create_ado(
+    execute_env: ExecuteContext,
+    owner: AndrAddr,
+    ado_type: String,
+    msg: Binary,
+) -> Result<IbcReceiveResponse, ContractError> {
+    let res = execute::create(execute_env, ado_type, msg, Some(owner), None)?;
+    Ok(IbcReceiveResponse::new()
+        .add_attributes(res.attributes)
+        .add_events(res.events)
+        .add_submessages(res.messages)
+        .set_ack(make_ack_create_ado_success()))
 }
 
 pub fn validate_order_and_version(

@@ -1,4 +1,4 @@
-use andromeda_app::app::AppComponent;
+use andromeda_app::app::{AppComponent, ComponentType};
 use andromeda_app_contract::mock::{
     mock_andromeda_app, mock_app_instantiate_msg, mock_claim_ownership_msg, mock_get_address_msg,
     mock_get_components_msg,
@@ -132,7 +132,7 @@ fn test_crowdfund_app() {
     let crowdfund_app_component = AppComponent {
         name: "1".to_string(),
         ado_type: "crowdfund".to_string(),
-        instantiate_msg: to_binary(&crowdfund_init_msg).unwrap(),
+        component_type: ComponentType::New(to_binary(&crowdfund_init_msg).unwrap()),
     };
 
     let cw721_init_msg = mock_cw721_instantiate_msg(
@@ -146,21 +146,21 @@ fn test_crowdfund_app() {
     let cw721_component = AppComponent {
         name: "2".to_string(),
         ado_type: "cw721".to_string(),
-        instantiate_msg: to_binary(&cw721_init_msg).unwrap(),
+        component_type: ComponentType::new(cw721_init_msg),
     };
 
     let vault_one_init_msg = mock_vault_instantiate_msg(andr.kernel_address.to_string(), None);
     let vault_one_app_component = AppComponent {
         name: "3".to_string(),
         ado_type: "vault".to_string(),
-        instantiate_msg: to_binary(&vault_one_init_msg).unwrap(),
+        component_type: ComponentType::new(&vault_one_init_msg),
     };
 
     let vault_two_init_msg = mock_vault_instantiate_msg(andr.kernel_address.to_string(), None);
     let vault_two_app_component = AppComponent {
         name: "4".to_string(),
         ado_type: "vault".to_string(),
-        instantiate_msg: to_binary(&vault_two_init_msg).unwrap(),
+        component_type: ComponentType::new(&vault_two_init_msg),
     };
 
     // Create splitter recipient structures
@@ -194,7 +194,7 @@ fn test_crowdfund_app() {
         mock_splitter_instantiate_msg(splitter_recipients, andr.kernel_address.clone(), None, None);
     let splitter_app_component = AppComponent {
         name: "5".to_string(),
-        instantiate_msg: to_binary(&splitter_init_msg).unwrap(),
+        component_type: ComponentType::new(&splitter_init_msg),
         ado_type: "splitter".to_string(),
     };
 

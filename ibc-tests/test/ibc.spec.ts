@@ -4,6 +4,7 @@ import {
   randomAddress,
 } from "@confio/relayer/build/lib/helpers";
 import { ChannelPair } from "@confio/relayer/build/lib/link";
+import { toBinary } from "@cosmjs/cosmwasm-stargate";
 import { assert } from "chai";
 import { Order } from "cosmjs-types/ibc/core/channel/v1/channel";
 import { step } from "mocha-steps";
@@ -20,6 +21,7 @@ import {
   awaitMulti,
   createAMPMsg,
   getAllADONames,
+  parseAcknowledgementSuccess,
   relayAll,
   retryTill,
   setupChainClient,
@@ -238,6 +240,7 @@ describe("Operating System", () => {
       chainA.client!
     );
     assert(assignedChannels.ics20 == chainA.ics20Chan);
+    assert(assignedChannels.direct == channel?.src.channelId);
     assert(assignedChannels.direct == channel?.src.channelId);
   });
 
@@ -642,6 +645,240 @@ describe("Basic IBC Token Transfers", async () => {
         chainBBalance.amount === transferAmount.amount,
         "Balance is incorrect"
       );
+    }
+  );
+});
+
+describe("Cross Chain ADO Creation", async () => {
+  step(
+    "should create an ADO on chain B when sent to the kernel on chain A",
+    async () => {
+      const { link, chainA, chainB } = state;
+      const receiver = randomAddress(chainA.definition.prefix);
+      const splitterInstMsg = {
+        kernel_address: chainB.os.kernel!.address,
+        recipients: [
+          {
+            recipient: {
+              address: `ibc://${chainA.name}/home/${receiver}`,
+            },
+            percent: "1",
+          },
+        ],
+      };
+      const message = {
+        create: {
+          ado_type: "splitter",
+          owner: receiver,
+          chain: chainB.name,
+          msg: toBinary(splitterInstMsg),
+        },
+      };
+
+      const res = await chainA.os.kernel!.execute(message, chainA.client!);
+      assert(res.transactionHash);
+
+      const [shouldAssertA, infoA] = await relayAll(link!);
+      if (shouldAssertA) assertPacketsFromA(infoA, 1, true);
+    }
+  );
+
+  step(
+    "should create an app on chain A containing a splitter on chain A",
+    async () => {
+      const { chainA } = state;
+      const receiver = randomAddress(chainA.definition.prefix);
+      const splitterInstMsg = {
+        kernel_address: chainA.os.kernel!.address,
+        recipients: [
+          {
+            recipient: {
+              address: `ibc://${chainA.name}/home/${receiver}`,
+            },
+            percent: "1",
+          },
+        ],
+      };
+      const appName = `${receiver.substring(0, 8)}-app`;
+      const appInstMsg = {
+        kernel_address: chainA.os.kernel!.address,
+        app_components: [
+          {
+            name: "splitter-b",
+            ado_type: "splitter",
+            component_type: {
+              new: toBinary(splitterInstMsg),
+            },
+          },
+        ],
+        name: appName,
+        owner: receiver,
+      };
+
+      const kernel_msg = {
+        create: {
+          ado_type: "app-contract",
+          owner: receiver,
+          msg: toBinary(appInstMsg),
+        },
+      };
+
+      const res = await chainA.os.kernel!.execute(kernel_msg, chainA.client!);
+      assert(res.transactionHash);
+    }
+  );
+
+  step(
+    "should create an app on chain B via the kernel on chain A",
+    async () => {
+      const { link, chainA, chainB } = state;
+      const receiver = randomAddress(chainA.definition.prefix);
+      const splitterInstMsg = {
+        kernel_address: chainB.os.kernel!.address,
+        recipients: [
+          {
+            recipient: {
+              address: `ibc://${chainA.name}/home/${receiver}`,
+            },
+            percent: "1",
+          },
+        ],
+      };
+      const appName = `${receiver.substring(0, 8)}-app`;
+      const appInstMsg = {
+        kernel_address: chainB.os.kernel!.address,
+        app_components: [
+          {
+            name: "splitter-b",
+            ado_type: "splitter",
+            component_type: {
+              new: toBinary(splitterInstMsg),
+            },
+          },
+        ],
+        name: appName,
+        owner: chainB.client!.senderAddress,
+      };
+
+      const kernel_msg = {
+        create: {
+          ado_type: "app-contract",
+          owner: chainB.client!.senderAddress,
+          msg: toBinary(appInstMsg),
+          chain: chainB.name,
+        },
+      };
+
+      const res = await chainA.os.kernel!.execute(kernel_msg, chainA.client!);
+      assert(res.transactionHash);
+
+      const [shouldAssertA, infoA] = await relayAll(link!);
+      if (shouldAssertA) assertPacketsFromA(infoA, 1, true);
+
+      const resp = await chainB.os.vfs!.query(
+        {
+          resolve_path: {
+            path: `/home/${chainB.client!.senderAddress}/${appName}`,
+          },
+        },
+        chainB.client!
+      );
+      assert(resp);
+    }
+  );
+
+  step(
+    "should create an app on chain A containing a splitter on chain B",
+    async () => {
+      const { link, chainA, chainB } = state;
+      const receiver = randomAddress(chainA.definition.prefix);
+      const splitterInstMsg = {
+        kernel_address: chainB.os.kernel!.address,
+        recipients: [
+          {
+            recipient: {
+              address: `ibc://${chainA.name}/home/${receiver}`,
+            },
+            percent: "1",
+          },
+        ],
+      };
+      const appName = `${receiver.substring(0, 8)}-app`;
+      const appInstMsg = {
+        kernel_address: chainA.os.kernel!.address,
+        app_components: [
+          {
+            name: "splitter-b",
+            ado_type: "splitter",
+            component_type: {
+              cross_chain: {
+                chain: chainB.name,
+                instantiate_msg: toBinary(splitterInstMsg),
+              },
+            },
+          },
+        ],
+        chain_info: [
+          {
+            chain_name: chainB.name,
+            owner: receiver,
+          },
+        ],
+        name: appName,
+      };
+
+      const appCodeId: number = await chainA.os.adodb!.query(
+        { code_id: { key: "app-contract" } },
+        chainA.client!
+      );
+      const app = await Contract.fromCodeId(
+        appCodeId,
+        appInstMsg,
+        chainA.client!
+      );
+      assert(app.address);
+
+      const [shouldAssertA, infoA] = await relayAll(link!);
+      if (shouldAssertA) assertPacketsFromA(infoA, 1, true);
+
+      const resp = await chainB.os.vfs!.query(
+        {
+          resolve_path: {
+            path: `/home/${receiver}/${appName}/splitter-b`,
+          },
+        },
+        chainB.client!
+      );
+      assert(resp);
+
+      const respTwo = await chainA.os.vfs!.query(
+        {
+          resolve_symlink: {
+            path: `/home/${
+              chainA.client!.senderAddress
+            }/myxchainapp/splitter-b`,
+          },
+        },
+        chainA.client!
+      );
+      assert(respTwo);
+
+      const sendMsg = createAMPMsg(
+        `/home/${chainA.client!.senderAddress}/${appName}/splitter-b`,
+        undefined,
+        [{ amount: "100", denom: chainA.denom }]
+      );
+      const sendKernelMsg = { send: { message: sendMsg } };
+      const res = await chainA.os.kernel!.execute(
+        sendKernelMsg,
+        chainA.client!,
+        [{ amount: "100", denom: chainA.denom }]
+      );
+
+      assert(res);
+
+      const [shouldAssertATwo, infoATwo] = await relayAll(link!);
+      if (shouldAssertATwo) assertPacketsFromA(infoATwo, 1, true);
     }
   );
 });

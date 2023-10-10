@@ -14,5 +14,5 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 cosmwasm-std = { workspace = true }
 cosmwasm-schema = { workspace = true }
-
+serde = { workspace = true }
 andromeda-std = { workspace = true }

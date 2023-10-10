@@ -12,7 +12,8 @@ export default class Contract {
   static async fromCodeId(
     codeId: number,
     instantiateMsg: Record<string, unknown>,
-    signer: CosmWasmSigner
+    signer: CosmWasmSigner,
+    log = false
   ) {
     const instantiate = await signer.sign.instantiate(
       signer.senderAddress,
@@ -21,6 +22,7 @@ export default class Contract {
       "Instantiate",
       "auto"
     );
+    if (log) console.log(JSON.stringify(instantiate.events, null, 2));
     return new Contract(instantiate.contractAddress, codeId);
   }
 

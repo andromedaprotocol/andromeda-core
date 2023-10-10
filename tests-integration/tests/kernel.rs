@@ -9,7 +9,7 @@ use andromeda_std::{
 };
 use andromeda_testing::{mock::MockAndromeda, mock_contract::MockContract};
 
-use cosmwasm_std::{coin, from_binary, to_binary, Addr, Decimal};
+use cosmwasm_std::{coin, to_binary, Addr, Decimal};
 
 use cw_multi_test::App;
 
@@ -69,13 +69,25 @@ fn kernel() {
             ado_type: "splitter".to_string(),
             msg: to_binary(&splitter_msg).unwrap(),
             owner: Some(AndrAddr::from_string("~/am".to_string())),
+            chain: None,
         },
         owner.clone(),
         &[],
     );
 
-    assert!(res.data.is_some());
-    let addr: Addr = from_binary(&res.data.unwrap()).unwrap();
+    let event_key = res
+        .events
+        .iter()
+        .position(|ev| ev.ty == "instantiate")
+        .unwrap();
+    let inst_event = res.events.get(event_key).unwrap();
+    let attr_key = inst_event
+        .attributes
+        .iter()
+        .position(|attr| attr.key == "_contract_addr")
+        .unwrap();
+    let attr = inst_event.attributes.get(attr_key).unwrap();
+    let addr: Addr = Addr::unchecked(attr.value.clone());
     let splitter = MockContract::from(addr.to_string());
     let splitter_owner = splitter.query_owner(&router);
 

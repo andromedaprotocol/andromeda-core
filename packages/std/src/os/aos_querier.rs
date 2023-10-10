@@ -8,6 +8,7 @@ use serde::de::DeserializeOwned;
 use std::str::from_utf8;
 
 use super::adodb::{ActionFee, QueryMsg as ADODBQueryMsg};
+use super::kernel::ChannelInfo;
 
 #[cw_serde]
 pub struct AOSQuerier();
@@ -155,5 +156,45 @@ impl AOSQuerier {
         let fee: Option<ActionFee> = AOSQuerier::query_storage(querier, adodb_addr, &key)?;
 
         Ok(fee)
+    }
+
+    /// Queries the kernel's raw storage for the VFS's address
+    pub fn ado_owner_getter(
+        querier: &QuerierWrapper,
+        ado_addr: &Addr,
+    ) -> Result<Addr, ContractError> {
+        let verify: Option<Addr> = AOSQuerier::query_storage(querier, ado_addr, "owner")?;
+        match verify {
+            Some(address) => Ok(address),
+            None => Err(ContractError::InvalidAddress {}),
+        }
+    }
+
+    /// Queries the current chain name from the kernel
+    pub fn get_current_chain(
+        querier: &QuerierWrapper,
+        kernel_addr: &Addr,
+    ) -> Result<String, ContractError> {
+        let verify: Option<String> =
+            AOSQuerier::query_storage(querier, kernel_addr, "kernel_curr_chain")?;
+        match verify {
+            Some(chain) => Ok(chain),
+            None => Err(ContractError::InvalidAddress {}),
+        }
+    }
+
+    /// Queries the current chain name from the kernel
+    pub fn get_chain_info(
+        querier: &QuerierWrapper,
+        kernel_addr: &Addr,
+        chain_name: &str,
+    ) -> Result<ChannelInfo, ContractError> {
+        let key = AOSQuerier::get_map_storage_key("kernel_channels", &[chain_name.as_bytes()])?;
+        let verify: Option<ChannelInfo> =
+            AOSQuerier::query_storage(querier, kernel_addr, key.as_str())?;
+        match verify {
+            Some(chain) => Ok(chain),
+            None => Err(ContractError::InvalidAddress {}),
+        }
     }
 }
