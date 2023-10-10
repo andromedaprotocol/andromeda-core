@@ -5,9 +5,7 @@ use cosmwasm_std::{DepsMut, Reply, Response};
 use enum_repr::EnumRepr;
 
 use crate::execute;
-use crate::state::{
-    ADO_ADDRESSES, ADO_DESCRIPTORS,
-};
+use crate::state::{ADO_ADDRESSES, ADO_DESCRIPTORS};
 
 #[EnumRepr(type = "u64")]
 pub enum ReplyId {
