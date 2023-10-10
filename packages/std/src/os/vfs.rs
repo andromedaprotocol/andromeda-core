@@ -5,7 +5,7 @@ use regex::Regex;
 
 pub const COMPONENT_NAME_REGEX: &str = r"^[A-Za-z0-9\.\-_]{1,40}$";
 pub const USERNAME_REGEX: &str = r"^[a-z0-9]+$";
-pub const PATH_REGEX: &str = r"^([A-Za-z0-9]+://)?(/)?([A-Za-z0-9\.\-_]{1,40}(/)?)+$";
+pub const PATH_REGEX: &str = r"^((([A-Za-z0-9]+://)?([A-Za-z0-9\.\-_]{1,40})?(/)?(home|lib)/)|(~(/)?))([A-Za-z0-9\.\-_]{1,40}(/)?)+$";
 
 pub fn convert_component_name(path: String) -> String {
     path.replace(' ', "_")
@@ -82,6 +82,7 @@ pub enum ExecuteMsg {
     AddPath {
         name: String,
         address: Addr,
+        parent_address: Option<AndrAddr>,
     },
     AddParentPath {
         name: String,
@@ -89,6 +90,11 @@ pub enum ExecuteMsg {
     },
     RegisterUser {
         username: String,
+    },
+    // Restricted to VFS owner/Kernel
+    RegisterLibrary {
+        lib_name: String,
+        lib_address: Addr,
     },
 }
 
@@ -99,13 +105,15 @@ pub struct MigrateMsg {}
 #[derive(QueryResponses)]
 pub enum QueryMsg {
     #[returns(Addr)]
-    ResolvePath { path: String },
+    ResolvePath { path: AndrAddr },
     #[returns(Vec<PathDetails>)]
-    SubDir { path: String },
+    SubDir { path: AndrAddr },
     #[returns(Vec<String>)]
     Paths { addr: Addr },
     #[returns(String)]
     GetUsername { address: Addr },
+    #[returns(String)]
+    GetLibrary { address: Addr },
 }
 
 /// Queries the provided VFS contract address to resolve the given path
@@ -114,7 +122,9 @@ pub fn vfs_resolve_path(
     vfs_contract: impl Into<String>,
     querier: &QuerierWrapper,
 ) -> Result<Addr, ContractError> {
-    let query = QueryMsg::ResolvePath { path: path.into() };
+    let query = QueryMsg::ResolvePath {
+        path: AndrAddr::from_string(path.into()),
+    };
     let addr = querier.query_wasm_smart::<Addr>(vfs_contract, &query)?;
     Ok(addr)
 }
@@ -157,19 +167,22 @@ mod test {
 
     #[test]
     fn test_validate_path_name() {
-        let valid_path = "/username";
+        let valid_path = "/home/username";
         validate_path_name(valid_path.to_string()).unwrap();
 
-        let valid_path = "username/dir1/file";
+        let valid_path = "~username";
         validate_path_name(valid_path.to_string()).unwrap();
 
-        let valid_path = "/username/dir1/file/";
+        let valid_path = "~/username";
         validate_path_name(valid_path.to_string()).unwrap();
 
-        let valid_path = "vfs://home/username/dir1/file/";
+        let valid_path = "/home/username/dir1/file";
         validate_path_name(valid_path.to_string()).unwrap();
 
-        let valid_path = "vfs://chain/username/dir1/file/";
+        let valid_path = "/home/username/dir1/file/";
+        validate_path_name(valid_path.to_string()).unwrap();
+
+        let valid_path = "vfs://chain/home/username/dir1/file/";
         validate_path_name(valid_path.to_string()).unwrap();
 
         let empty_path = "";
@@ -182,7 +195,27 @@ mod test {
 
         let invalid_path = "vfs:/username/dir1/f!le";
         let res = validate_path_name(invalid_path.to_string());
-        assert!(res.is_err())
+        assert!(res.is_err());
+
+        let invalid_path = "vfs://home/username/dir1/f!le";
+        let res = validate_path_name(invalid_path.to_string());
+        assert!(res.is_err());
+
+        let invalid_path = "vfs://chain1//username/dir1/f!le";
+        let res = validate_path_name(invalid_path.to_string());
+        assert!(res.is_err());
+
+        let invalid_path = "vfs://username/dir1/f!le";
+        let res = validate_path_name(invalid_path.to_string());
+        assert!(res.is_err());
+
+        let invalid_path = "vfs://~username/dir1/f!le";
+        let res = validate_path_name(invalid_path.to_string());
+        assert!(res.is_err());
+
+        let invalid_path = "vfs://~/username/dir1/f!le";
+        let res = validate_path_name(invalid_path.to_string());
+        assert!(res.is_err());
     }
 
     #[test]

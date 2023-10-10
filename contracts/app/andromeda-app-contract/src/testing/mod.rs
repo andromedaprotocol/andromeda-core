@@ -58,13 +58,14 @@ fn test_instantiation() {
         reply_on: ReplyOn::Always,
         gas_limit: None,
     };
+    let sender = info.sender;
     let register_submsg: SubMsg<Empty> = SubMsg {
         id: 1002,
         msg: CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: "vfs_contract".to_string(),
             msg: to_binary(&VFSExecuteMsg::AddParentPath {
                 name: convert_component_name("Some App".to_string()),
-                parent_address: AndrAddr::from_string(info.sender),
+                parent_address: AndrAddr::from_string(format!("~{sender}")),
             })
             .unwrap(),
             funds: vec![],

@@ -1,5 +1,5 @@
-use andromeda_std::error::ContractError;
-use cosmwasm_std::{Addr, Api, StdError, Storage};
+use andromeda_std::{amp::AndrAddr, error::ContractError};
+use cosmwasm_std::{ensure, Addr, Api, StdError, Storage};
 use cw_storage_plus::{Index, IndexList, IndexedMap, Map, MultiIndex};
 use serde::{Deserialize, Serialize};
 
@@ -42,7 +42,9 @@ pub fn paths<'a>() -> IndexedMap<'a, &'a (Addr, String), PathInfo, PathIndices<'
 }
 
 pub const USERS: Map<&str, Addr> = Map::new("users");
+pub const LIBRARIES: Map<&str, Addr> = Map::new("libraries");
 pub const ADDRESS_USERNAME: Map<&str, String> = Map::new("address_username");
+pub const ADDRESS_LIBRARY: Map<&str, String> = Map::new("address_library");
 
 pub fn split_pathname(path: String) -> Vec<String> {
     path.split('/')
@@ -54,19 +56,76 @@ pub fn split_pathname(path: String) -> Vec<String> {
 pub fn resolve_pathname(
     storage: &dyn Storage,
     api: &dyn Api,
-    pathname: String,
+    pathname: AndrAddr,
 ) -> Result<Addr, ContractError> {
-    let parts = split_pathname(pathname);
+    // As cross-chain queries are not currently possible we need to ensure the pathname being resolved is local
+    ensure!(
+        pathname.get_protocol().is_none(),
+        ContractError::InvalidAddress {}
+    );
 
-    let username_or_address = parts.first().unwrap();
+    if pathname.is_vfs_path() {
+        match pathname.get_root_dir() {
+            "home" => resolve_home_path(storage, api, pathname),
+            "lib" => resolve_lib_path(storage, api, pathname),
+            &_ => Err(ContractError::InvalidAddress {}),
+        }
+    } else {
+        Ok(api.addr_validate(pathname.as_str())?)
+    }
+}
+
+fn resolve_home_path(
+    storage: &dyn Storage,
+    api: &dyn Api,
+    pathname: AndrAddr,
+) -> Result<Addr, ContractError> {
+    let mut parts = split_pathname(pathname.to_string());
+
+    let username_or_address = if parts[0].starts_with('~') && parts.len() == 1 {
+        parts[0].remove(0);
+        parts[0].as_str()
+    } else {
+        parts[1].as_str()
+    };
     let user_address = match api.addr_validate(username_or_address) {
         Ok(addr) => addr,
-        Err(_e) => USERS.load(storage, username_or_address.as_str())?,
+        Err(_e) => USERS.load(storage, username_or_address)?,
     };
+
+    resolve_path(storage, parts, user_address)
+}
+
+fn resolve_lib_path(
+    storage: &dyn Storage,
+    api: &dyn Api,
+    pathname: AndrAddr,
+) -> Result<Addr, ContractError> {
+    let mut parts = split_pathname(pathname.to_string());
+
+    let username_or_address = if parts[0].starts_with('~') && parts.len() == 1 {
+        parts[0].remove(0);
+        parts[0].as_str()
+    } else {
+        parts[1].as_str()
+    };
+    let user_address = match api.addr_validate(username_or_address) {
+        Ok(addr) => addr,
+        Err(_e) => LIBRARIES.load(storage, username_or_address)?,
+    };
+
+    resolve_path(storage, parts, user_address)
+}
+
+fn resolve_path(
+    storage: &dyn Storage,
+    parts: Vec<String>,
+    user_address: Addr,
+) -> Result<Addr, ContractError> {
     let mut address = user_address;
     for (idx, part) in parts.iter().enumerate() {
-        // Skip username
-        if idx == 0 {
+        // Skip username and root dir
+        if idx <= 1 {
             continue;
         }
         address = paths().load(storage, &(address, part.clone()))?.address;
@@ -78,7 +137,7 @@ pub fn resolve_pathname(
 pub fn get_subdir(
     storage: &dyn Storage,
     api: &dyn Api,
-    pathname: String,
+    pathname: AndrAddr,
 ) -> Result<Vec<PathInfo>, ContractError> {
     let address = resolve_pathname(storage, api, pathname)?;
 
@@ -168,7 +227,7 @@ mod test {
     }
 
     #[test]
-    fn test_resolve_pathname() {
+    fn test_resolve_home_path() {
         let mut deps = mock_dependencies();
         let username = "u1";
         let first_directory = "d1";
@@ -184,10 +243,26 @@ mod test {
             .save(deps.as_mut().storage, username, &username_address)
             .unwrap();
 
-        let res = resolve_pathname(
+        let res = resolve_home_path(
             deps.as_ref().storage,
             deps.as_ref().api,
-            username.to_string(),
+            AndrAddr::from_string(format!("/home/{username}")),
+        )
+        .unwrap();
+        assert_eq!(res, username_address);
+
+        let res = resolve_home_path(
+            deps.as_ref().storage,
+            deps.as_ref().api,
+            AndrAddr::from_string(format!("~{username}")),
+        )
+        .unwrap();
+        assert_eq!(res, username_address);
+
+        let res = resolve_home_path(
+            deps.as_ref().storage,
+            deps.as_ref().api,
+            AndrAddr::from_string(format!("~/{username}")),
         )
         .unwrap();
         assert_eq!(res, username_address);
@@ -204,10 +279,10 @@ mod test {
             )
             .unwrap();
 
-        let res = resolve_pathname(
+        let res = resolve_home_path(
             deps.as_ref().storage,
             deps.as_ref().api,
-            "/u1/d1".to_string(),
+            AndrAddr::from_string(format!("/home/{username}/{first_directory}")),
         )
         .unwrap();
         assert_eq!(res, first_directory_address);
@@ -227,10 +302,12 @@ mod test {
             )
             .unwrap();
 
-        let res = resolve_pathname(
+        let res = resolve_home_path(
             deps.as_ref().storage,
             deps.as_ref().api,
-            "/u1/d1/d2".to_string(),
+            AndrAddr::from_string(format!(
+                "/home/{username}/{first_directory}/{second_directory}"
+            )),
         )
         .unwrap();
         assert_eq!(res, second_directory_address);
@@ -247,10 +324,105 @@ mod test {
             )
             .unwrap();
 
-        let res = resolve_pathname(
+        let res = resolve_home_path(
             deps.as_ref().storage,
             deps.as_ref().api,
-            "/u1/d1/d2/f1".to_string(),
+            AndrAddr::from_string(format!(
+                "/home/{username}/{first_directory}/{second_directory}/{file}"
+            )),
+        )
+        .unwrap();
+        assert_eq!(res, file_address)
+    }
+
+    #[test]
+    fn test_resolve_lib_path() {
+        let mut deps = mock_dependencies();
+        let lib_name = "l1";
+        let first_directory = "d1";
+        let second_directory = "d2";
+        let file = "f1";
+
+        let username_address = Addr::unchecked("useraddress");
+        let first_directory_address = Addr::unchecked("dir1address");
+        let second_directory_address = Addr::unchecked("dir2address");
+        let file_address = Addr::unchecked("fileaddress");
+
+        LIBRARIES
+            .save(deps.as_mut().storage, lib_name, &username_address)
+            .unwrap();
+
+        let res = resolve_lib_path(
+            deps.as_ref().storage,
+            deps.as_ref().api,
+            AndrAddr::from_string(format!("/lib/{lib_name}")),
+        )
+        .unwrap();
+        assert_eq!(res, username_address);
+
+        paths()
+            .save(
+                deps.as_mut().storage,
+                &(username_address.clone(), first_directory.to_string()),
+                &PathInfo {
+                    name: first_directory.to_string(),
+                    address: first_directory_address.clone(),
+                    parent_address: username_address,
+                },
+            )
+            .unwrap();
+
+        let res = resolve_lib_path(
+            deps.as_ref().storage,
+            deps.as_ref().api,
+            AndrAddr::from_string(format!("/lib/{lib_name}/{first_directory}")),
+        )
+        .unwrap();
+        assert_eq!(res, first_directory_address);
+
+        paths()
+            .save(
+                deps.as_mut().storage,
+                &(
+                    first_directory_address.clone(),
+                    second_directory.to_string(),
+                ),
+                &PathInfo {
+                    name: second_directory.to_string(),
+                    address: second_directory_address.clone(),
+                    parent_address: first_directory_address,
+                },
+            )
+            .unwrap();
+
+        let res = resolve_lib_path(
+            deps.as_ref().storage,
+            deps.as_ref().api,
+            AndrAddr::from_string(format!(
+                "/lib/{lib_name}/{first_directory}/{second_directory}"
+            )),
+        )
+        .unwrap();
+        assert_eq!(res, second_directory_address);
+
+        paths()
+            .save(
+                deps.as_mut().storage,
+                &(second_directory_address.clone(), file.to_string()),
+                &PathInfo {
+                    name: file.to_string(),
+                    address: file_address.clone(),
+                    parent_address: second_directory_address,
+                },
+            )
+            .unwrap();
+
+        let res = resolve_lib_path(
+            deps.as_ref().storage,
+            deps.as_ref().api,
+            AndrAddr::from_string(format!(
+                "/lib/{lib_name}/{first_directory}/{second_directory}/{file}"
+            )),
         )
         .unwrap();
         assert_eq!(res, file_address)

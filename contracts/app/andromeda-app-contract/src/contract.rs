@@ -57,7 +57,7 @@ pub fn instantiate(
             deps.storage,
             env,
             deps.api,
-            info.clone(),
+            info,
             BaseInstantiateMsg {
                 ado_type: "app-contract".to_string(),
                 ado_version: CONTRACT_VERSION.to_string(),
@@ -79,7 +79,7 @@ pub fn instantiate(
 
     let add_path_msg = VFSExecuteMsg::AddParentPath {
         name: convert_component_name(msg.name),
-        parent_address: AndrAddr::from_string(info.sender),
+        parent_address: AndrAddr::from_string(format!("~{sender}")),
     };
     let cosmos_msg: CosmosMsg<Empty> = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: vfs_address.to_string(),
@@ -156,6 +156,7 @@ pub fn register_component_path(
     let add_path_msg = VFSExecuteMsg::AddPath {
         name: name.into(),
         address,
+        parent_address: None,
     };
     let cosmos_msg = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: vfs_address.to_string(),

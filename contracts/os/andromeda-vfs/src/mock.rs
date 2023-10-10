@@ -1,7 +1,10 @@
 #![cfg(all(not(target_arch = "wasm32"), feature = "testing"))]
 
 use crate::contract::{execute, instantiate, query, reply};
-use andromeda_std::os::vfs::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use andromeda_std::{
+    amp::AndrAddr,
+    os::vfs::{ExecuteMsg, InstantiateMsg, QueryMsg},
+};
 use cosmwasm_std::{Addr, Empty};
 use cw_multi_test::{Contract, ContractWrapper};
 
@@ -30,9 +33,12 @@ pub fn mock_add_path(name: impl Into<String>, address: Addr) -> ExecuteMsg {
     ExecuteMsg::AddPath {
         name: name.into(),
         address,
+        parent_address: None,
     }
 }
 
 pub fn mock_resolve_path_query(path: impl Into<String>) -> QueryMsg {
-    QueryMsg::ResolvePath { path: path.into() }
+    QueryMsg::ResolvePath {
+        path: AndrAddr::from_string(path.into()),
+    }
 }

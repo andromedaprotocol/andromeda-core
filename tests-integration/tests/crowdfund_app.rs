@@ -165,14 +165,14 @@ fn test_crowdfund_app() {
 
     // Create splitter recipient structures
     let vault_one_recipient =
-        Recipient::from_string(format!("/am/app/{}", vault_one_app_component.name)).with_msg(
+        Recipient::from_string(format!("~/am/app/{}", vault_one_app_component.name)).with_msg(
             mock_vault_deposit_msg(
                 Some(AndrAddr::from_string(vault_one_recipient_addr.to_string())),
                 None,
             ),
         );
     let vault_two_recipient =
-        Recipient::from_string(format!("/am/app/{}", vault_two_app_component.name)).with_msg(
+        Recipient::from_string(format!("~/am/app/{}", vault_two_app_component.name)).with_msg(
             mock_vault_deposit_msg(
                 Some(AndrAddr::from_string(vault_two_recipient_addr.to_string())),
                 None,
@@ -277,8 +277,9 @@ fn test_crowdfund_app() {
     // Start Sale
     let token_price = coin(100, "uandr");
 
-    let sale_recipient = Recipient::from_string(format!("/am/app/{}", splitter_app_component.name))
-        .with_msg(mock_splitter_send_msg());
+    let sale_recipient =
+        Recipient::from_string(format!("~/am/app/{}", splitter_app_component.name))
+            .with_msg(mock_splitter_send_msg());
     let start_msg = mock_start_crowdfund_msg(
         Expiration::AtHeight(router.block_info().height + 5),
         token_price.clone(),

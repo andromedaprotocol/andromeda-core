@@ -1,6 +1,6 @@
 use crate::{
     contract::{execute, instantiate, query},
-    state::{add_pathname, resolve_pathname, PathInfo, ADDRESS_USERNAME, USERS},
+    state::{add_pathname, resolve_pathname, PathInfo, ADDRESS_LIBRARY, ADDRESS_USERNAME, USERS},
 };
 
 use andromeda_std::{
@@ -11,21 +11,25 @@ use andromeda_std::{error::ContractError, os::vfs::QueryMsg};
 use cosmwasm_std::{
     from_binary,
     testing::{mock_dependencies, mock_env, mock_info},
-    Addr,
+    Addr, DepsMut, Env, MessageInfo,
 };
+
+fn instantiate_contract(deps: DepsMut, env: Env, info: MessageInfo) {
+    let msg = InstantiateMsg {
+        kernel_address: "kernel".to_string(),
+        owner: None,
+    };
+
+    let res = instantiate(deps, env, info, msg).unwrap();
+    assert_eq!(0, res.messages.len());
+}
 
 #[test]
 fn proper_initialization() {
     let mut deps = mock_dependencies();
     let info = mock_info("creator", &[]);
-    let msg = InstantiateMsg {
-        kernel_address: "kernel".to_string(),
-        owner: None,
-    };
     let env = mock_env();
-
-    let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
-    assert_eq!(0, res.messages.len());
+    instantiate_contract(deps.as_mut(), env, info)
 }
 
 #[test]
@@ -99,22 +103,63 @@ fn test_add_path() {
     let component_addr = Addr::unchecked("f1addr");
     let info = mock_info(sender, &[]);
     let env = mock_env();
+    instantiate_contract(deps.as_mut(), env.clone(), info.clone());
+
     let msg = ExecuteMsg::AddPath {
         name: component_name.to_string(),
         address: component_addr.clone(),
+        parent_address: None,
     };
 
-    execute(deps.as_mut(), env, info, msg).unwrap();
+    execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
     USERS
         .save(deps.as_mut().storage, username, &Addr::unchecked(sender))
         .unwrap();
 
-    let path = format!("/{username}/{component_name}");
+    let path = format!("/home/{username}/{component_name}");
 
-    let resolved_addr = resolve_pathname(deps.as_ref().storage, deps.as_ref().api, path).unwrap();
+    let resolved_addr = resolve_pathname(
+        deps.as_ref().storage,
+        deps.as_ref().api,
+        AndrAddr::from_string(path),
+    )
+    .unwrap();
 
-    assert_eq!(resolved_addr, component_addr)
+    assert_eq!(resolved_addr, component_addr);
+
+    let component_name_two = "component_two";
+    let component_addr_two = Addr::unchecked("component_two_addr");
+    let msg = ExecuteMsg::AddPath {
+        name: component_name_two.to_string(),
+        address: component_addr_two.clone(),
+        parent_address: Some(AndrAddr::from_string(component_addr.clone())),
+    };
+
+    execute(deps.as_mut(), env.clone(), info, msg).unwrap();
+
+    let path = format!("/home/{username}/{component_name}/{component_name_two}");
+
+    let resolved_addr = resolve_pathname(
+        deps.as_ref().storage,
+        deps.as_ref().api,
+        AndrAddr::from_string(path),
+    )
+    .unwrap();
+
+    assert_eq!(resolved_addr, component_addr_two);
+
+    let info = mock_info("not_the_owner", &[]);
+    let component_name_two = "component_two";
+    let component_addr_two = Addr::unchecked("component_two_addr");
+    let msg = ExecuteMsg::AddPath {
+        name: component_name_two.to_string(),
+        address: component_addr_two,
+        parent_address: Some(AndrAddr::from_string(component_addr)),
+    };
+
+    let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
+    assert_eq!(err, ContractError::Unauthorized {})
 }
 
 #[test]
@@ -128,7 +173,7 @@ fn test_add_parent_path() {
     let env = mock_env();
     let msg = ExecuteMsg::AddParentPath {
         name: component_name.to_string(),
-        parent_address: AndrAddr::from_string(user_address.clone()),
+        parent_address: AndrAddr::from_string(format!("/home/{user_address}")),
     };
 
     execute(deps.as_mut(), env, info, msg).unwrap();
@@ -137,9 +182,14 @@ fn test_add_parent_path() {
         .save(deps.as_mut().storage, username, &user_address)
         .unwrap();
 
-    let path = format!("/{username}/{component_name}");
+    let path = format!("/home/{username}/{component_name}");
 
-    let resolved_addr = resolve_pathname(deps.as_ref().storage, deps.as_ref().api, path).unwrap();
+    let resolved_addr = resolve_pathname(
+        deps.as_ref().storage,
+        deps.as_ref().api,
+        AndrAddr::from_string(path),
+    )
+    .unwrap();
 
     assert_eq!(resolved_addr, sender)
 }
@@ -162,7 +212,7 @@ fn test_override_add_parent_path() {
     let info = mock_info(user_address.as_str(), &[]);
     let msg = ExecuteMsg::AddParentPath {
         name: component_name.to_string(),
-        parent_address: AndrAddr::from_string(user_address.clone()),
+        parent_address: AndrAddr::from_string(format!("/home/{user_address}")),
     };
 
     execute(deps.as_mut(), env.clone(), info, msg).unwrap();
@@ -171,7 +221,7 @@ fn test_override_add_parent_path() {
     let info = mock_info("user_two", &[]);
     let msg = ExecuteMsg::AddParentPath {
         name: component_name.to_string(),
-        parent_address: AndrAddr::from_string(user_address),
+        parent_address: AndrAddr::from_string(format!("/home/{user_address}")),
     };
 
     // This will error, user_two is trying to add his address as identifier for /user_one/identifier vfs path
@@ -201,6 +251,37 @@ fn test_get_username() {
 
     let unregistered_addr = "notregistered";
     let query_msg = QueryMsg::GetUsername {
+        address: Addr::unchecked(unregistered_addr),
+    };
+
+    let res = query(deps.as_ref(), env, query_msg).unwrap();
+    let val: String = from_binary(&res).unwrap();
+
+    assert_eq!(val, unregistered_addr);
+}
+
+#[test]
+fn test_get_library() {
+    let mut deps = mock_dependencies();
+    let env = mock_env();
+    let lib_name = "l1";
+    let sender = "sender";
+
+    ADDRESS_LIBRARY
+        .save(deps.as_mut().storage, sender, &lib_name.to_string())
+        .unwrap();
+
+    let query_msg = QueryMsg::GetLibrary {
+        address: Addr::unchecked(sender),
+    };
+
+    let res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
+    let val: String = from_binary(&res).unwrap();
+
+    assert_eq!(val, lib_name);
+
+    let unregistered_addr = "notregistered";
+    let query_msg = QueryMsg::GetLibrary {
         address: Addr::unchecked(unregistered_addr),
     };
 
@@ -265,15 +346,18 @@ fn test_get_subdir() {
     }
 
     for path in root_paths.clone() {
-        let path_name = format!("/{username}/{name}", name = path.name);
-        let resolved_addr =
-            resolve_pathname(deps.as_ref().storage, deps.as_ref().api, path_name.clone());
+        let path_name = format!("/home/{username}/{name}", name = path.name);
+        let resolved_addr = resolve_pathname(
+            deps.as_ref().storage,
+            deps.as_ref().api,
+            AndrAddr::from_string(path_name.clone()),
+        );
         assert!(resolved_addr.is_ok(), "{path_name} not found");
         assert_eq!(resolved_addr.unwrap(), path.address)
     }
 
     let query_msg = QueryMsg::SubDir {
-        path: format!("/{username}"),
+        path: AndrAddr::from_string(format!("/home/{username}")),
     };
     let res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
     let val: Vec<PathInfo> = from_binary(&res).unwrap();
@@ -281,7 +365,7 @@ fn test_get_subdir() {
 
     let subdir = &root_paths[0].name;
     let query_msg = QueryMsg::SubDir {
-        path: format!("/{username}/{subdir}"),
+        path: AndrAddr::from_string(format!("/home/{username}/{subdir}")),
     };
     let res = query(deps.as_ref(), env, query_msg).unwrap();
     let val: Vec<PathInfo> = from_binary(&res).unwrap();
@@ -349,9 +433,12 @@ fn test_get_paths() {
     }
 
     for path in root_paths {
-        let path_name = format!("/{username}/{name}", name = path.name);
-        let resolved_addr =
-            resolve_pathname(deps.as_ref().storage, deps.as_ref().api, path_name.clone());
+        let path_name = format!("/home/{username}/{name}", name = path.name);
+        let resolved_addr = resolve_pathname(
+            deps.as_ref().storage,
+            deps.as_ref().api,
+            AndrAddr::from_string(path_name.clone()),
+        );
         assert!(resolved_addr.is_ok(), "{path_name} not found");
         assert_eq!(resolved_addr.unwrap(), path.address)
     }

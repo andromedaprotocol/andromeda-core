@@ -68,7 +68,7 @@ fn kernel() {
         KernelExecuteMsg::Create {
             ado_type: "splitter".to_string(),
             msg: to_binary(&splitter_msg).unwrap(),
-            owner: Some(AndrAddr::from_string("/am".to_string())),
+            owner: Some(AndrAddr::from_string("~/am".to_string())),
         },
         owner.clone(),
         &[],
@@ -85,7 +85,7 @@ fn kernel() {
         &mut router,
         KernelExecuteMsg::Send {
             message: AMPMsg::new(
-                format!("/{}", splitter.addr()),
+                format!("~/{}", splitter.addr()),
                 to_binary(&mock_splitter_send_msg()).unwrap(),
                 Some(vec![coin(100, "uandr")]),
             ),
