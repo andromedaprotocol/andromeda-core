@@ -17,7 +17,7 @@ pub struct OutgoingPacket {
 }
 
 pub const KERNEL_ADDRESSES: Map<&str, Addr> = Map::new("kernel_addresses");
-pub const ENV_VARIABLES: Map<&str, String> = Map::new("kernel_env_variables");
+pub const _ENV_VARIABLES: Map<&str, String> = Map::new("kernel_env_variables");
 pub const CURR_CHAIN: Item<String> = Item::new("kernel_curr_chain");
 
 //Temporary storage for creating a new ADO to assign a new owner
