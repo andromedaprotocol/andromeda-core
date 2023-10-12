@@ -1,7 +1,4 @@
-use andromeda_std::{
-    ado_contract::ADOContract, amp::AndrAddr, andr_exec, andr_instantiate, andr_query,
-    error::ContractError,
-};
+use andromeda_std::{amp::AndrAddr, andr_exec, andr_instantiate, andr_query, error::ContractError};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{to_binary, Addr, Binary, Deps};
 use serde::Serialize;
@@ -71,7 +68,7 @@ impl AppComponent {
         }
     }
 
-    pub fn verify(&self, deps: &Deps) -> Result<(), ContractError> {
+    pub fn verify(&self, _deps: &Deps) -> Result<(), ContractError> {
         if self.name.is_empty() {
             panic!("name cannot be empty");
         }

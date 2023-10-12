@@ -420,7 +420,7 @@ fn test_get_code_id() {
         version: ado_version.get_version(),
         code_id,
         action_fees: None,
-        publisher: Some(owner.clone()),
+        publisher: Some(owner),
     };
     execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
@@ -439,9 +439,9 @@ fn test_get_code_id() {
     assert_eq!(value, code_id);
 
     let query_msg = QueryMsg::CodeId {
-        key: format!("{}@latest", ado_version.get_type()).to_string(),
+        key: format!("{}@latest", ado_version.get_type()),
     };
-    let res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
+    let res = query(deps.as_ref(), env, query_msg).unwrap();
     let value: u64 = from_binary(&res).unwrap();
     assert_eq!(value, code_id);
 }
