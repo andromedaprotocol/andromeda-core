@@ -53,10 +53,6 @@ pub fn andr_exec(_args: TokenStream, input: TokenStream) -> TokenStream {
                 UpdateAppContract {
                     address: String,
                 },
-                Deposit {
-                    recipient: Option<::andromeda_std::amp::AndrAddr>,
-                    msg: Option<::cosmwasm_std::Binary>,
-                },
                 SetPermission {
                     actor: ::andromeda_std::amp::AndrAddr,
                     action: String,
@@ -101,6 +97,10 @@ pub fn andr_exec(_args: TokenStream, input: TokenStream) -> TokenStream {
             merged,
             quote! {
                 enum Right {
+                    Deposit {
+                        recipient: Option<::andromeda_std::amp::AndrAddr>,
+                        msg: Option<::cosmwasm_std::Binary>,
+                    },
                     Withdraw {
                         recipient: Option<::andromeda_std::amp::Recipient>,
                         tokens_to_withdraw: Option<Vec<::andromeda_std::common::withdraw::Withdrawal>>,

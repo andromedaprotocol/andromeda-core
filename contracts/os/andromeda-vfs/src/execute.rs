@@ -1,6 +1,7 @@
 use andromeda_std::ado_contract::ADOContract;
 use andromeda_std::amp::AndrAddr;
 use andromeda_std::error::ContractError;
+use andromeda_std::os::aos_querier::AOSQuerier;
 use andromeda_std::os::vfs::{validate_component_name, validate_username};
 use cosmwasm_std::{attr, ensure, Addr, DepsMut, Env, MessageInfo, Response};
 
@@ -104,6 +105,12 @@ pub fn add_parent_path(
 }
 
 pub fn register_user(env: ExecuteEnv, username: String) -> Result<Response, ContractError> {
+    let kernel = &ADOContract::default().get_kernel_address(env.deps.storage)?;
+    let curr_chain = AOSQuerier::get_current_chain(&env.deps.querier, &kernel)?;
+    ensure!(
+        curr_chain == "andromeda" || env.info.sender == kernel,
+        ContractError::Unauthorized {}
+    );
     let current_user_address = USERS.may_load(env.deps.storage, username.as_str())?;
     if current_user_address.is_some() {
         ensure!(
