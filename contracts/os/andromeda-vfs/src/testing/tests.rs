@@ -131,7 +131,7 @@ fn test_register_user_foreign_chain() {
         address: Some(Addr::unchecked(sender)),
     };
     let info = mock_info(MOCK_FAKE_KERNEL_CONTRACT, &[]);
-    execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+    execute(deps.as_mut(), env.clone(), info, msg).unwrap();
     let addr = USERS.load(deps.as_ref().storage, username).unwrap();
     assert_eq!(addr, sender);
 
@@ -166,7 +166,7 @@ fn test_register_user_cross_chain() {
         .save(deps.as_mut().storage, sender, &username.to_string())
         .unwrap();
 
-    let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
+    let res = execute(deps.as_mut(), env, info, msg).unwrap();
     assert_eq!(res.messages.len(), 1);
 
     let expected = KernelExecuteMsg::Internal(InternalMsg::RegisterUserCrossChain {

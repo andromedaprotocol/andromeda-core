@@ -116,7 +116,7 @@ pub fn register_user(
     address: Option<Addr>,
 ) -> Result<Response, ContractError> {
     let kernel = &ADOContract::default().get_kernel_address(env.deps.storage)?;
-    let curr_chain = AOSQuerier::get_current_chain(&env.deps.querier, &kernel)?;
+    let curr_chain = AOSQuerier::get_current_chain(&env.deps.querier, kernel)?;
     // Can only register username directly on Andromeda chain
     ensure!(
         curr_chain == "andromeda" || env.info.sender == kernel,

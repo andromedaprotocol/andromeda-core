@@ -109,15 +109,15 @@ fn test_register_user_cross_chain() {
         address: address.to_string(),
         chain: chain.to_string(),
     });
-    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap_err();
+    let res = execute(deps.as_mut(), env.clone(), info, msg.clone()).unwrap_err();
     assert_eq!(res, ContractError::Unauthorized {});
 
     let info = mock_info(MOCK_VFS_CONTRACT, &[]);
-    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+    let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
     assert_eq!(res.messages.len(), 1);
 
     let expected = IbcMsg::SendPacket {
-        channel_id: channel_info.direct_channel_id.clone().unwrap(),
+        channel_id: channel_info.direct_channel_id.unwrap(),
         data: to_binary(&IbcExecuteMsg::RegisterUsername {
             username: username.to_string(),
             address: address.to_string(),
