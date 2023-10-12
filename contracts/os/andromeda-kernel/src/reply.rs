@@ -22,6 +22,7 @@ pub enum ReplyId {
     UpdateOwnership = 3,
     IBCHooksPacketSend = 4,
     Recovery = 5,
+    RegisterUsername = 6,
 }
 
 /// Handles the reply from an ADO creation

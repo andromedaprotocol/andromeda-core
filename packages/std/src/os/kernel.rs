@@ -25,9 +25,14 @@ pub enum ExecuteMsg {
     #[serde(rename = "amp_receive")]
     AMPReceive(AMPPkt),
     /// Constructs an AMPPkt with a given AMPMsg and sends it to the recipient
-    Send { message: AMPMsg },
+    Send {
+        message: AMPMsg,
+    },
     /// Upserts a key address to the kernel, restricted to the owner of the kernel
-    UpsertKeyAddress { key: String, value: String },
+    UpsertKeyAddress {
+        key: String,
+        value: String,
+    },
     /// Creates an ADO with the given type and message
     Create {
         ado_type: String,
@@ -44,6 +49,18 @@ pub enum ExecuteMsg {
     },
     /// Recovers funds from failed IBC messages
     Recover {},
+    // Only accessible to key contracts
+    Internal(InternalMsg),
+}
+
+#[cw_serde]
+pub enum InternalMsg {
+    // Restricted to VFS
+    RegisterUserCrossChain {
+        username: String,
+        address: String,
+        chain: String,
+    },
 }
 
 #[cw_serde]
@@ -80,5 +97,9 @@ pub enum IbcExecuteMsg {
         instantiation_msg: Binary,
         owner: AndrAddr,
         ado_type: String,
+    },
+    RegisterUsername {
+        username: String,
+        address: String,
     },
 }

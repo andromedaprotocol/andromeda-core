@@ -95,11 +95,16 @@ pub enum ExecuteMsg {
     },
     RegisterUser {
         username: String,
+        address: Option<Addr>,
     },
     // Restricted to VFS owner/Kernel
     RegisterLibrary {
         lib_name: String,
         lib_address: Addr,
+    },
+    RegisterUserCrossChain {
+        chain: String,
+        address: String,
     },
 }
 

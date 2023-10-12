@@ -26,6 +26,8 @@ pub const MOCK_APP_CONTRACT: &str = "app_contract";
 pub const MOCK_PRIMITIVE_CONTRACT: &str = "primitive_contract";
 /// Mock Kernel Contract Address
 pub const MOCK_KERNEL_CONTRACT: &str = "kernel_contract";
+/// Mock Kernel Contract Address on foreign chain
+pub const MOCK_FAKE_KERNEL_CONTRACT: &str = "fake_kernel_contract";
 /// Mock VFS Contract Address
 pub const MOCK_VFS_CONTRACT: &str = "vfs_contract";
 /// Mock ADODB Contract Address
@@ -145,8 +147,8 @@ impl MockAndromedaQuerier {
             QueryRequest::Wasm(WasmQuery::Raw { contract_addr, key }) => {
                 match contract_addr.as_str() {
                     // MOCK_APP_CONTRACT => self.handle_app_raw_query(key),
-                    MOCK_KERNEL_CONTRACT => self.handle_kernel_raw_query(key),
-                    MOCK_VFS_CONTRACT => self.handle_kernel_raw_query(key),
+                    MOCK_KERNEL_CONTRACT => self.handle_kernel_raw_query(key, false),
+                    MOCK_FAKE_KERNEL_CONTRACT => self.handle_kernel_raw_query(key, true),
                     MOCK_ADODB_CONTRACT => self.handle_adodb_raw_query(key),
                     _ => panic!("Unsupported query for contract: {contract_addr}"),
                 }
@@ -375,7 +377,7 @@ impl MockAndromedaQuerier {
         }
     }
 
-    pub fn handle_kernel_raw_query(&self, key: &Binary) -> QuerierResult {
+    pub fn handle_kernel_raw_query(&self, key: &Binary, fake: bool) -> QuerierResult {
         let key_vec = key.as_slice();
         let key_str = String::from_utf8(key_vec.to_vec()).unwrap();
 
@@ -401,6 +403,13 @@ impl MockAndromedaQuerier {
             } else {
                 panic!("Invalid Kernel Address Raw Query")
             }
+        } else if key_str.contains("curr_chain") {
+            let res = if fake {
+                "fake_chain".to_string()
+            } else {
+                "andromeda".to_string()
+            };
+            SystemResult::Ok(ContractResult::Ok(to_binary(&res).unwrap()))
         } else {
             panic!("Invalid Kernel Raw Query")
         }

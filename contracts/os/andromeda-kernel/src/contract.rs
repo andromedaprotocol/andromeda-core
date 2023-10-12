@@ -108,6 +108,7 @@ pub fn execute(
             kernel_address,
         ),
         ExecuteMsg::Recover {} => execute::recover(execute_env),
+        ExecuteMsg::Internal(msg) => execute::internal(execute_env, msg),
     }
 }
 
