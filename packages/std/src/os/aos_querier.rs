@@ -99,7 +99,7 @@ impl AOSQuerier {
         }
     }
 
-    pub fn code_id_getter(
+    pub fn code_id_getter_raw(
         querier: &QuerierWrapper,
         adodb_addr: &Addr,
         ado_type: &str,
@@ -111,6 +111,18 @@ impl AOSQuerier {
             Some(code_id) => Ok(code_id),
             None => Err(ContractError::InvalidAddress {}),
         }
+    }
+
+    pub fn code_id_getter(
+        querier: &QuerierWrapper,
+        adodb_addr: &Addr,
+        ado_type: &str,
+    ) -> Result<u64, ContractError> {
+        let query = ADODBQueryMsg::CodeId {
+            key: ado_type.to_string(),
+        };
+        let code_id: u64 = querier.query_wasm_smart(adodb_addr, &query)?;
+        Ok(code_id)
     }
 
     /// Queries the kernel's raw storage for the VFS's address

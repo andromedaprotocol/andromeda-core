@@ -1,6 +1,6 @@
 use andromeda_std::{
     ado_contract::ADOContract, amp::AndrAddr, andr_exec, andr_instantiate, andr_query,
-    error::ContractError, os::aos_querier::AOSQuerier,
+    error::ContractError,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{to_binary, Addr, Binary, Deps};
@@ -79,10 +79,6 @@ impl AppComponent {
             panic!("ado_type cannot be empty");
         }
         self.component_type.verify()?;
-        let adodb_addr = ADOContract::default()
-            .get_adodb_address(deps.storage, &deps.querier)
-            .unwrap();
-        AOSQuerier::code_id_getter(&deps.querier, &adodb_addr, &self.ado_type).unwrap();
         Ok(())
     }
 }

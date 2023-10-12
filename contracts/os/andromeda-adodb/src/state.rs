@@ -1,5 +1,8 @@
-use andromeda_std::os::adodb::{ADOVersion, ActionFee};
-use cosmwasm_std::{Order, StdResult, Storage};
+use andromeda_std::{
+    error::ContractError,
+    os::adodb::{ADOVersion, ActionFee},
+};
+use cosmwasm_std::{ensure, Order, StdResult, Storage};
 use cw_storage_plus::Map;
 
 /// Stores a mapping from an ADO type/version to its code ID
@@ -17,7 +20,12 @@ pub fn store_code_id(
     storage: &mut dyn Storage,
     ado_version: &ADOVersion,
     code_id: u64,
-) -> StdResult<()> {
+) -> Result<(), ContractError> {
+    let curr_type = ADO_TYPE.may_load(storage, code_id)?;
+    ensure!(
+        curr_type.is_none() || curr_type.unwrap() == ado_version.get_type(),
+        ContractError::Unauthorized {}
+    );
     ADO_TYPE
         .save(storage, code_id, &ado_version.clone().into_string())
         .unwrap();
@@ -46,7 +54,12 @@ pub fn store_code_id(
 }
 
 pub fn read_code_id(storage: &dyn Storage, ado_version: &ADOVersion) -> StdResult<u64> {
-    CODE_ID.load(storage, ado_version.as_str())
+    if ado_version.get_version() == "latest" {
+        let (_version, code_id) = read_latest_code_id(storage, ado_version.get_type())?;
+        Ok(code_id)
+    } else {
+        CODE_ID.load(storage, ado_version.as_str())
+    }
 }
 
 pub fn read_latest_code_id(storage: &dyn Storage, ado_type: String) -> StdResult<(String, u64)> {

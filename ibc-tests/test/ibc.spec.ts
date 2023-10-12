@@ -63,7 +63,7 @@ let state: State = {
     os: {},
     ics20Chan: "",
     ibcDenom: "",
-    name: "chain-ba",
+    name: "andromeda",
     definition: osmosisA,
     denom: osmosisA.denomFee,
   },
@@ -693,7 +693,7 @@ describe("Cross Chain ADO Creation", async () => {
         recipients: [
           {
             recipient: {
-              address: `ibc://${chainA.name}/home/${receiver}`,
+              address: `/home/${receiver}`,
             },
             percent: "1",
           },
@@ -705,7 +705,7 @@ describe("Cross Chain ADO Creation", async () => {
         app_components: [
           {
             name: "splitter-b",
-            ado_type: "splitter",
+            ado_type: "splitter@0.2.3",
             component_type: {
               new: toBinary(splitterInstMsg),
             },
@@ -718,7 +718,6 @@ describe("Cross Chain ADO Creation", async () => {
       const kernel_msg = {
         create: {
           ado_type: "app-contract",
-          owner: receiver,
           msg: toBinary(appInstMsg),
         },
       };
@@ -854,9 +853,7 @@ describe("Cross Chain ADO Creation", async () => {
       const respTwo = await chainA.os.vfs!.query(
         {
           resolve_symlink: {
-            path: `/home/${
-              chainA.client!.senderAddress
-            }/myxchainapp/splitter-b`,
+            path: `/home/${chainA.client!.senderAddress}/${appName}/splitter-b`,
           },
         },
         chainA.client!
@@ -1088,4 +1085,59 @@ describe("IBC Fund Recovery", async () => {
       assert(recoveryRes.transactionHash);
     }
   );
+});
+
+describe("User Registration", async () => {
+  step("should register a user on chain A", async () => {
+    const { chainA } = state;
+    const username = "user1";
+    const msg = {
+      register_user: {
+        username,
+      },
+    };
+
+    const res = await chainA.os.vfs!.execute(msg, chainA.client!);
+    assert(res.transactionHash);
+  });
+
+  step("should error on user registration on chain B", async () => {
+    const { chainB } = state;
+    const username = "user1";
+    const msg = {
+      register_user: {
+        username,
+      },
+    };
+
+    try {
+      await chainB.os.vfs!.execute(msg, chainB.client!);
+      throw new Error("Should have errored");
+    } catch (error) {
+      const { message } = error as Error;
+      assert(!message.includes("Should have errored"));
+    }
+  });
+
+  step("should propagate the registered user to chain B", async () => {
+    const { chainA, chainB, link } = state;
+    const msg = {
+      register_user_cross_chain: {
+        address: chainB.client!.senderAddress,
+        chain: chainB.name,
+      },
+    };
+
+    const res = await chainA.os.vfs!.execute(msg, chainA.client!);
+    assert(res.transactionHash);
+
+    const [shouldAssert, info] = await relayAll(link!);
+    if (shouldAssert) assertPacketsFromA(info, 1, true);
+
+    const userRes = await chainB.os.vfs!.query(
+      { resolve_path: { path: "~user1" } },
+      chainB.client!
+    );
+    assert(userRes === chainB.client!.senderAddress);
+  });
 });
