@@ -83,7 +83,7 @@ fn test_publish() {
     let vers_code_id = LATEST_VERSION
         .load(deps.as_ref().storage, &ado_version.get_type())
         .unwrap();
-    assert_eq!(vers_code_id.0, ado_version.clone().into_string());
+    assert_eq!(vers_code_id.0, ado_version.get_version());
     assert_eq!(vers_code_id.1, code_id);
 
     // TEST ACTION FEE
@@ -337,4 +337,55 @@ fn test_get_code_id() {
     let res = query(deps.as_ref(), env, query_msg).unwrap();
     let value: u64 = from_binary(&res).unwrap();
     assert_eq!(value, code_id);
+}
+
+#[test]
+fn test_all_ado_types() {
+    let owner = String::from("owner");
+    let mut deps = mock_dependencies_custom(&[]);
+    let env = mock_env();
+    let info = mock_info(owner.as_str(), &[]);
+    instantiate(
+        deps.as_mut(),
+        mock_env(),
+        mock_info(&owner, &[]),
+        InstantiateMsg {
+            kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+            owner: None,
+        },
+    )
+    .unwrap();
+
+    let mut code_id = 1;
+
+    let ados = vec![
+        ADOVersion::from_string("ado_type_1@0.1.0".to_string()),
+        ADOVersion::from_string("ado_type_1@0.1.1".to_string()),
+        ADOVersion::from_string("ado_type_2@0.1.0".to_string()),
+    ];
+
+    ados.iter().for_each(|ado_version| {
+        let msg = ExecuteMsg::Publish {
+            ado_type: ado_version.get_type(),
+            version: ado_version.get_version(),
+            code_id,
+            action_fees: None,
+            publisher: Some(owner.clone()),
+        };
+        execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+        code_id = code_id + 1;
+    });
+
+    let query_msg = QueryMsg::AllADOTypes {
+        start_after: None,
+        limit: None,
+    };
+    let res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
+    let value: Vec<String> = from_binary(&res).unwrap();
+    let expected = vec![
+        "ado_type_1@0.1.0".to_string(),
+        "ado_type_1@0.1.1".to_string(),
+        "ado_type_2@0.1.0".to_string(),
+    ];
+    assert_eq!(value, expected);
 }

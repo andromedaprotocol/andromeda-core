@@ -16,8 +16,8 @@ use cosmwasm_std::{
 
 use crate::ibc::{generate_transfer_message, PACKET_LIFETIME};
 use crate::state::{
-    IBCHooksPacketSendState, ADO_OWNER, CHANNELS, IBC_FUND_RECOVERY, KERNEL_ADDRESSES,
-    OUTGOING_IBC_HOOKS_PACKETS,
+    IBCHooksPacketSendState, ADO_OWNER, CHAIN_TO_CHANNEL, CHANNEL_TO_CHAIN, IBC_FUND_RECOVERY,
+    KERNEL_ADDRESSES, OUTGOING_IBC_HOOKS_PACKETS,
 };
 use crate::{query, reply::ReplyId};
 
@@ -113,14 +113,15 @@ pub fn create(
         ContractError::Unauthorized {}
     );
     if let Some(chain) = chain {
-        let channel_info =
-            if let Some(channel_info) = CHANNELS.may_load(execute_env.deps.storage, &chain)? {
-                Ok::<ChannelInfo, ContractError>(channel_info)
-            } else {
-                return Err(ContractError::InvalidPacket {
-                    error: Some(format!("Channel not found for chain {chain}")),
-                });
-            }?;
+        let channel_info = if let Some(channel_info) =
+            CHAIN_TO_CHANNEL.may_load(execute_env.deps.storage, &chain)?
+        {
+            Ok::<ChannelInfo, ContractError>(channel_info)
+        } else {
+            return Err(ContractError::InvalidPacket {
+                error: Some(format!("Channel not found for chain {chain}")),
+            });
+        }?;
         let kernel_msg = IbcExecuteMsg::CreateADO {
             instantiation_msg: msg.clone(),
             owner: owner.clone().unwrap(),
@@ -202,7 +203,7 @@ pub fn register_user_cross_chain(
         ContractError::Unauthorized {}
     );
     let channel_info =
-        if let Some(channel_info) = CHANNELS.may_load(execute_env.deps.storage, &chain)? {
+        if let Some(channel_info) = CHAIN_TO_CHANNEL.may_load(execute_env.deps.storage, &chain)? {
             Ok::<ChannelInfo, ContractError>(channel_info)
         } else {
             return Err(ContractError::InvalidPacket {
@@ -254,7 +255,13 @@ pub fn assign_channels(
         kernel_address,
         supported_modules: vec![],
     };
-    CHANNELS.save(execute_env.deps.storage, &chain, &channel_info)?;
+    CHAIN_TO_CHANNEL.save(execute_env.deps.storage, &chain, &channel_info)?;
+    if let Some(channel) = channel_info.direct_channel_id.clone() {
+        CHANNEL_TO_CHAIN.save(execute_env.deps.storage, &channel, &chain)?;
+    }
+    if let Some(channel) = channel_info.ics20_channel_id.clone() {
+        CHANNEL_TO_CHAIN.save(execute_env.deps.storage, &channel, &chain)?;
+    }
 
     Ok(Response::default().add_attributes(vec![
         attr("action", "assign_channel"),
@@ -430,13 +437,14 @@ impl MsgHandler {
         sequence: u64,
     ) -> Result<Response, ContractError> {
         if let Some(chain) = self.message().recipient.get_chain() {
-            let channel_info = if let Some(channel_info) = CHANNELS.may_load(deps.storage, chain)? {
-                Ok::<ChannelInfo, ContractError>(channel_info)
-            } else {
-                return Err(ContractError::InvalidPacket {
-                    error: Some(format!("Channel not found for chain {chain}")),
-                });
-            }?;
+            let channel_info =
+                if let Some(channel_info) = CHAIN_TO_CHANNEL.may_load(deps.storage, chain)? {
+                    Ok::<ChannelInfo, ContractError>(channel_info)
+                } else {
+                    return Err(ContractError::InvalidPacket {
+                        error: Some(format!("Channel not found for chain {chain}")),
+                    });
+                }?;
             if !self.message().funds.is_empty() {
                 self.handle_ibc_hooks(deps, info, env, ctx, sequence, channel_info)
             } else {

@@ -23,7 +23,10 @@ pub const CURR_CHAIN: Item<String> = Item::new("kernel_curr_chain");
 //Temporary storage for creating a new ADO to assign a new owner
 pub const ADO_OWNER: Item<Addr> = Item::new("ado_owner");
 
-pub const CHANNELS: Map<&str, ChannelInfo> = Map::new("kernel_channels");
+// Mapping from chain name to channel info
+pub const CHAIN_TO_CHANNEL: Map<&str, ChannelInfo> = Map::new("kernel_channels");
+// Mapping from channel id to chain name
+pub const CHANNEL_TO_CHAIN: Map<&str, String> = Map::new("kernel_channel_name");
 
 /// Used to store the most recent outgoing IBC hooks packet
 ///

@@ -2,7 +2,7 @@ use crate::ack::{make_ack_create_ado_success, make_ack_fail, make_ack_success};
 use crate::execute;
 use crate::proto::{DenomTrace, MsgTransfer, QueryDenomTraceRequest};
 use crate::reply::ReplyId;
-use crate::state::KERNEL_ADDRESSES;
+use crate::state::{CHANNEL_TO_CHAIN, KERNEL_ADDRESSES};
 use andromeda_std::amp::VFS_KEY;
 use andromeda_std::common::context::ExecuteContext;
 use andromeda_std::error::{ContractError, Never};
@@ -126,6 +126,11 @@ pub fn do_ibc_packet_receive(
     env: Env,
     msg: IbcPacketReceiveMsg,
 ) -> Result<IbcReceiveResponse, ContractError> {
+    let channel = msg.packet.dest.channel_id;
+    ensure!(
+        CHANNEL_TO_CHAIN.has(deps.storage, channel.as_str()),
+        ContractError::Unauthorized {}
+    );
     let msg: IbcExecuteMsg = from_binary(&msg.packet.data)?;
     let execute_env = ExecuteContext {
         env,

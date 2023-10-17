@@ -1,7 +1,7 @@
 use crate::{
     contract::{execute, instantiate},
     ibc::PACKET_LIFETIME,
-    state::{ADO_OWNER, CHANNELS, KERNEL_ADDRESSES},
+    state::{ADO_OWNER, CHAIN_TO_CHANNEL, KERNEL_ADDRESSES},
 };
 use andromeda_std::{
     amp::{ADO_DB_KEY, VFS_KEY},
@@ -98,7 +98,7 @@ fn test_register_user_cross_chain() {
         direct_channel_id: Some("2".to_string()),
         supported_modules: vec![],
     };
-    CHANNELS
+    CHAIN_TO_CHANNEL
         .save(deps.as_mut().storage, chain, &channel_info)
         .unwrap();
 

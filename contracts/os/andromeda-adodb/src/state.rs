@@ -33,7 +33,7 @@ pub fn store_code_id(
         .save(
             storage,
             &ado_version.get_type(),
-            &(ado_version.clone().into_string(), code_id),
+            &(ado_version.get_version(), code_id),
         )
         .unwrap();
     CODE_ID

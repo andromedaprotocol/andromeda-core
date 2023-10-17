@@ -5,7 +5,7 @@ use andromeda_std::{
 };
 use cosmwasm_std::{Addr, Coin, Deps};
 
-use crate::state::{CHANNELS, IBC_FUND_RECOVERY, KERNEL_ADDRESSES};
+use crate::state::{CHAIN_TO_CHANNEL, IBC_FUND_RECOVERY, KERNEL_ADDRESSES};
 
 pub fn key_address(deps: Deps, key: String) -> Result<Addr, ContractError> {
     Ok(KERNEL_ADDRESSES.load(deps.storage, &key)?)
@@ -27,7 +27,7 @@ pub fn channel_info(
     deps: Deps,
     chain: String,
 ) -> Result<Option<ChannelInfoResponse>, ContractError> {
-    let info = CHANNELS.may_load(deps.storage, &chain)?;
+    let info = CHAIN_TO_CHANNEL.may_load(deps.storage, &chain)?;
     let resp = if let Some(info) = info {
         Some(ChannelInfoResponse {
             ics20: info.ics20_channel_id,
