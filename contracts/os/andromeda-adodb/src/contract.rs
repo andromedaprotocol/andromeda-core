@@ -1,5 +1,5 @@
 use crate::state::{
-    read_all_ado_types, read_code_id, read_latest_code_id, store_code_id, ACTION_FEES, ADO_TYPE,
+    read_code_id, read_latest_code_id, store_code_id, ACTION_FEES, ADO_TYPE, CODE_ID,
     LATEST_VERSION, PUBLISHER,
 };
 use andromeda_std::ado_base::InstantiateMsg as BaseInstantiateMsg;
@@ -10,10 +10,11 @@ use andromeda_std::os::adodb::{
     ADOMetadata, ADOVersion, ActionFee, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
 };
 use cosmwasm_std::{
-    attr, ensure, entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError,
-    Storage,
+    attr, ensure, entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Order, Reply, Response,
+    StdError, StdResult, Storage,
 };
 use cw2::{get_contract_version, set_contract_version};
+use cw_storage_plus::Bound;
 use semver::Version;
 
 // version info for migration info
@@ -300,7 +301,19 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractErr
     match msg {
         QueryMsg::CodeId { key } => encode_binary(&query_code_id(deps, key)?),
         QueryMsg::ADOType { code_id } => encode_binary(&query_ado_type(deps, code_id)?),
-        QueryMsg::AllADOTypes {} => encode_binary(&query_all_ado_type(deps)?),
+        QueryMsg::AllADOTypes { start_after, limit } => {
+            encode_binary(&query_all_ado_types(deps.storage, start_after, limit)?)
+        }
+        QueryMsg::ADOVersions {
+            ado_type,
+            start_after,
+            limit,
+        } => encode_binary(&query_ado_versions(
+            deps.storage,
+            &ado_type,
+            start_after,
+            limit,
+        )?),
         QueryMsg::ADOMetadata { ado_type } => encode_binary(&query_ado_metadata(deps, ado_type)?),
         QueryMsg::ActionFee { ado_type, action } => {
             encode_binary(&query_action_fee(deps, ado_type, action)?)
@@ -321,9 +334,49 @@ fn query_ado_type(deps: Deps, code_id: u64) -> Result<Option<String>, ContractEr
     Ok(ado_version)
 }
 
-fn query_all_ado_type(deps: Deps) -> Result<Vec<String>, ContractError> {
-    let ado_types = read_all_ado_types(deps.storage)?;
-    Ok(ado_types)
+const DEFAULT_LIMIT: u32 = 10;
+const MAX_LIMIT: u32 = 100;
+
+pub fn query_all_ado_types(
+    storage: &dyn Storage,
+    start_after: Option<String>,
+    limit: Option<u32>,
+) -> Result<Vec<String>, ContractError> {
+    let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
+    let start = start_after.map(|s| Bound::ExclusiveRaw(s.into()));
+
+    let ado_types: StdResult<Vec<String>> = CODE_ID
+        .keys(storage, start, None, Order::Ascending)
+        .take(limit)
+        .collect();
+    Ok(ado_types?)
+}
+
+pub fn query_ado_versions(
+    storage: &dyn Storage,
+    ado_type: &str,
+    start_after: Option<String>,
+    limit: Option<u32>,
+) -> Result<Vec<String>, ContractError> {
+    let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
+    let start_after = start_after.unwrap_or(ado_type.to_string());
+    let start = Some(Bound::exclusive(start_after.as_str()));
+
+    // All versions have @ as starting point, we can add A which has higher ascii than @ to get the
+    let end_ado_type = format!("{ado_type}A");
+    let end = Some(Bound::exclusive(end_ado_type.as_str()));
+
+    let mut versions: Vec<String> = CODE_ID
+        .keys(storage, start, end, Order::Ascending)
+        .take(limit)
+        .map(|item| item.unwrap())
+        .collect();
+    versions.sort_by(|a, b| {
+        let version_a: Version = ADOVersion::from_string(a).get_version().parse().unwrap();
+        let version_b: Version = ADOVersion::from_string(b).get_version().parse().unwrap();
+        version_b.cmp(&version_a)
+    });
+    Ok(versions)
 }
 
 fn query_ado_metadata(deps: Deps, ado_type: String) -> Result<ADOMetadata, ContractError> {

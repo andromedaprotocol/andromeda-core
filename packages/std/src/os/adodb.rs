@@ -79,7 +79,17 @@ pub enum QueryMsg {
     ADOType { code_id: u64 },
     #[returns(Vec<String>)]
     #[serde(rename = "all_ado_types")]
-    AllADOTypes {},
+    AllADOTypes {
+        start_after: Option<String>,
+        limit: Option<u32>,
+    },
+    #[returns(Vec<String>)]
+    #[serde(rename = "ado_versions")]
+    ADOVersions {
+        ado_type: String,
+        start_after: Option<String>,
+        limit: Option<u32>,
+    },
     #[returns(Option<ADOMetadata>)]
     #[serde(rename = "ado_metadata")]
     ADOMetadata { ado_type: String },

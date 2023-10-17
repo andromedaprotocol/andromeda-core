@@ -2,7 +2,7 @@ use andromeda_std::{
     error::ContractError,
     os::adodb::{ADOVersion, ActionFee},
 };
-use cosmwasm_std::{ensure, Order, StdResult, Storage};
+use cosmwasm_std::{ensure, StdResult, Storage};
 use cw_storage_plus::Map;
 
 /// Stores a mapping from an ADO type/version to its code ID
@@ -66,10 +66,10 @@ pub fn read_latest_code_id(storage: &dyn Storage, ado_type: String) -> StdResult
     LATEST_VERSION.load(storage, &ado_type)
 }
 
-pub fn read_all_ado_types(storage: &dyn Storage) -> StdResult<Vec<String>> {
-    let ado_types = CODE_ID
-        .keys(storage, None, None, Order::Ascending)
-        .flatten()
-        .collect();
-    Ok(ado_types)
-}
+// pub fn read_all_ado_types(storage: &dyn Storage) -> StdResult<Vec<String>> {
+//     let ado_types = CODE_ID
+//         .keys(storage, None, None, Order::Ascending)
+//         .flatten()
+//         .collect();
+//     Ok(ado_types)
+// }
