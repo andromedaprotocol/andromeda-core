@@ -129,7 +129,6 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
-    let _contract = ADOContract::default();
     let ctx = ExecuteContext::new(deps, info, env);
 
     match msg {
