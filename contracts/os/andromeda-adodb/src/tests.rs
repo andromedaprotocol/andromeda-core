@@ -373,14 +373,14 @@ fn test_all_ado_types() {
             publisher: Some(owner.clone()),
         };
         execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
-        code_id = code_id + 1;
+        code_id += 1;
     });
 
     let query_msg = QueryMsg::AllADOTypes {
         start_after: None,
         limit: None,
     };
-    let res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
+    let res = query(deps.as_ref(), env, query_msg).unwrap();
     let value: Vec<String> = from_binary(&res).unwrap();
     let expected = vec![
         "ado_type_1@0.1.0".to_string(),
