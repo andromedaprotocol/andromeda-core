@@ -20,14 +20,6 @@ pub fn mock_adodb_instantiate_msg(
     }
 }
 
-/// Used to generate a message to store a Code ID
-pub fn mock_store_code_id_msg(code_id_key: String, code_id: u64) -> ExecuteMsg {
-    ExecuteMsg::UpdateCodeId {
-        code_id_key,
-        code_id,
-    }
-}
-
 pub fn mock_publish(
     code_id: u64,
     ado_type: impl Into<String>,

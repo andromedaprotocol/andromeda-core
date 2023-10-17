@@ -138,8 +138,6 @@ pub fn do_ibc_packet_receive(
     };
     match msg {
         IbcExecuteMsg::SendMessage { recipient, message } => {
-            // TODO: Can we also add a username in this message?
-
             let amp_msg = AMPMsg::new(recipient, message, None);
             let res = execute::send(execute_env, amp_msg)?;
 

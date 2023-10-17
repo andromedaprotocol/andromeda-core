@@ -1,5 +1,5 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Addr, Binary, Uint128};
+use cosmwasm_std::{Addr, Uint128};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -11,11 +11,6 @@ pub struct InstantiateMsg {
 
 #[cw_serde]
 pub enum ExecuteMsg {
-    // TODO: REMOVE WHEN TESTED
-    UpdateCodeId {
-        code_id_key: String,
-        code_id: u64,
-    },
     Publish {
         code_id: u64,
         ado_type: String,
@@ -75,11 +70,6 @@ pub struct ADOMetadata {
 }
 
 #[cw_serde]
-pub enum AndrQuery {
-    Get(Option<Binary>),
-}
-
-#[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
     #[returns(u64)]
@@ -97,9 +87,6 @@ pub enum QueryMsg {
     ActionFee { ado_type: String, action: String },
     #[returns(Option<ActionFee>)]
     ActionFeeByCodeId { code_id: u64, action: String },
-    // TODO: REMOVE
-    #[returns(u64)]
-    AndrQuery(AndrQuery),
 }
 
 #[derive(

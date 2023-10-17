@@ -2,7 +2,6 @@
 
 use andromeda_adodb::mock::{
     mock_adodb_instantiate_msg, mock_andromeda_adodb, mock_get_code_id_msg, mock_publish,
-    mock_store_code_id_msg,
 };
 use andromeda_economics::mock::{mock_andromeda_economics, mock_economics_instantiate_msg};
 use andromeda_kernel::mock::{
@@ -83,12 +82,19 @@ impl MockAndromeda {
                 Some(admin_address.to_string()),
             )
             .unwrap();
-
+        // mock_publish(code_id, key, "0.1.0", None, None);
         // Add Code IDs
-        let store_adodb_code_id_msg = mock_store_code_id_msg("adodb".to_string(), adodb_code_id); //Dev Note: In future change this to "adodb" for the key
-        let store_kernel_code_id_msg = mock_store_code_id_msg("kernel".to_string(), kernel_code_id);
-        let store_economics_code_id_msg =
-            mock_store_code_id_msg("economics".to_string(), economics_code_id);
+        let store_adodb_code_id_msg =
+            mock_publish(adodb_code_id, "adodb".to_string(), "0.1.0", None, None); //Dev Note: In future change this to "adodb" for the key
+        let store_kernel_code_id_msg =
+            mock_publish(kernel_code_id, "kernel".to_string(), "0.1.0", None, None);
+        let store_economics_code_id_msg = mock_publish(
+            economics_code_id,
+            "economics".to_string(),
+            "0.1.0",
+            None,
+            None,
+        );
         app.execute_contract(
             admin_address.clone(),
             adodb_address.clone(),
