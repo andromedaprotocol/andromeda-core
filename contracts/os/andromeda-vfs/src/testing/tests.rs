@@ -5,18 +5,24 @@ use crate::{
 
 use andromeda_std::{
     amp::AndrAddr,
-    os::vfs::{ExecuteMsg, InstantiateMsg},
+    os::{
+        kernel::{ExecuteMsg as KernelExecuteMsg, InternalMsg},
+        vfs::{ExecuteMsg, InstantiateMsg},
+    },
+    testing::mock_querier::{
+        mock_dependencies_custom, MOCK_FAKE_KERNEL_CONTRACT, MOCK_KERNEL_CONTRACT,
+    },
 };
 use andromeda_std::{error::ContractError, os::vfs::QueryMsg};
 use cosmwasm_std::{
     from_binary,
     testing::{mock_dependencies, mock_env, mock_info},
-    Addr, DepsMut, Env, MessageInfo,
+    to_binary, Addr, CosmosMsg, DepsMut, Env, MessageInfo, WasmMsg,
 };
 
 fn instantiate_contract(deps: DepsMut, env: Env, info: MessageInfo) {
     let msg = InstantiateMsg {
-        kernel_address: "kernel".to_string(),
+        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
     };
 
@@ -34,15 +40,16 @@ fn proper_initialization() {
 
 #[test]
 fn test_register_user() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies_custom(&[]);
     let username = "user1";
     let sender = "sender";
     let info = mock_info(sender, &[]);
     let env = mock_env();
     let msg = ExecuteMsg::RegisterUser {
         username: username.to_string(),
+        address: None,
     };
-
+    instantiate_contract(deps.as_mut(), env.clone(), info.clone());
     execute(deps.as_mut(), env, info, msg).unwrap();
 
     let saved = USERS.load(deps.as_ref().storage, username).unwrap();
@@ -51,7 +58,7 @@ fn test_register_user() {
 
 #[test]
 fn test_register_user_unauthorized() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies_custom(&[]);
     let username = "user1";
     let sender = "sender";
     let occupier = "occupier";
@@ -59,8 +66,9 @@ fn test_register_user_unauthorized() {
     let env = mock_env();
     let msg = ExecuteMsg::RegisterUser {
         username: username.to_string(),
+        address: None,
     };
-
+    instantiate_contract(deps.as_mut(), env.clone(), info.clone());
     USERS
         .save(deps.as_mut().storage, username, &Addr::unchecked(occupier))
         .unwrap();
@@ -71,7 +79,7 @@ fn test_register_user_unauthorized() {
 
 #[test]
 fn test_register_user_already_registered() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies_custom(&[]);
     let username = "user1";
     let new_username = "user2";
     let sender = "sender";
@@ -79,7 +87,9 @@ fn test_register_user_already_registered() {
     let env = mock_env();
     let msg = ExecuteMsg::RegisterUser {
         username: new_username.to_string(),
+        address: None,
     };
+    instantiate_contract(deps.as_mut(), env.clone(), info.clone());
 
     USERS
         .save(deps.as_mut().storage, username, &Addr::unchecked(sender))
@@ -92,6 +102,87 @@ fn test_register_user_already_registered() {
         .load(deps.as_ref().storage, sender)
         .unwrap();
     assert_eq!(username, new_username)
+}
+
+#[test]
+fn test_register_user_foreign_chain() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let username = "user1";
+    let sender = "sender";
+    let info = mock_info(sender, &[]);
+    let env = mock_env();
+    let msg = InstantiateMsg {
+        kernel_address: MOCK_FAKE_KERNEL_CONTRACT.to_string(),
+        owner: None,
+    };
+
+    let res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+    assert_eq!(0, res.messages.len());
+
+    let msg = ExecuteMsg::RegisterUser {
+        username: username.to_string(),
+        address: None,
+    };
+    let err = execute(deps.as_mut(), env.clone(), info, msg).unwrap_err();
+    assert_eq!(err, ContractError::Unauthorized {});
+
+    let msg = ExecuteMsg::RegisterUser {
+        username: username.to_string(),
+        address: Some(Addr::unchecked(sender)),
+    };
+    let info = mock_info(MOCK_FAKE_KERNEL_CONTRACT, &[]);
+    execute(deps.as_mut(), env.clone(), info, msg).unwrap();
+    let addr = USERS.load(deps.as_ref().storage, username).unwrap();
+    assert_eq!(addr, sender);
+
+    let msg = ExecuteMsg::RegisterUser {
+        username: username.to_string(),
+        address: None,
+    };
+    let info = mock_info(MOCK_FAKE_KERNEL_CONTRACT, &[]);
+    let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
+    assert_eq!(err, ContractError::Unauthorized {});
+}
+
+#[test]
+fn test_register_user_cross_chain() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let username = "user1";
+    let sender = "sender";
+    let foreign_address = "address";
+    let chain = "chain";
+    let info = mock_info(sender, &[]);
+    let env = mock_env();
+    instantiate_contract(deps.as_mut(), env.clone(), info.clone());
+
+    let msg = ExecuteMsg::RegisterUserCrossChain {
+        chain: chain.to_string(),
+        address: foreign_address.to_string(),
+    };
+    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
+    assert!(res.is_err());
+
+    ADDRESS_USERNAME
+        .save(deps.as_mut().storage, sender, &username.to_string())
+        .unwrap();
+
+    let res = execute(deps.as_mut(), env, info, msg).unwrap();
+    assert_eq!(res.messages.len(), 1);
+
+    let expected = KernelExecuteMsg::Internal(InternalMsg::RegisterUserCrossChain {
+        username: username.to_string(),
+        address: foreign_address.to_string(),
+        chain: chain.to_string(),
+    });
+
+    assert_eq!(
+        res.messages[0].msg,
+        CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: MOCK_KERNEL_CONTRACT.to_string(),
+            msg: to_binary(&expected).unwrap(),
+            funds: vec![],
+        })
+    );
 }
 
 #[test]

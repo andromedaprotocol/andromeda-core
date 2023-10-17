@@ -1,13 +1,13 @@
 #[cfg(test)]
 use andromeda_std::testing::mock_querier::{mock_dependencies_custom, MOCK_KERNEL_CONTRACT};
-use cosmwasm_std::Uint128;
+use cosmwasm_std::{from_binary, Uint128};
 
-use crate::contract::{execute, instantiate};
+use crate::contract::{execute, instantiate, query};
 use crate::state::{ACTION_FEES, CODE_ID, LATEST_VERSION, PUBLISHER};
 
 use andromeda_std::ado_contract::ADOContract;
 use andromeda_std::error::ContractError;
-use andromeda_std::os::adodb::{ADOVersion, ActionFee, ExecuteMsg, InstantiateMsg};
+use andromeda_std::os::adodb::{ADOVersion, ActionFee, ExecuteMsg, InstantiateMsg, QueryMsg};
 
 use cosmwasm_std::{
     attr,
@@ -393,4 +393,55 @@ fn test_update_publisher() {
     let unauth_info = mock_info("not_owner", &[]);
     let resp = execute(deps.as_mut(), env, unauth_info, msg).unwrap_err();
     assert_eq!(resp, ContractError::Unauthorized {});
+}
+
+#[test]
+fn test_get_code_id() {
+    let owner = String::from("owner");
+    let mut deps = mock_dependencies_custom(&[]);
+    let env = mock_env();
+    let info = mock_info(owner.as_str(), &[]);
+    let ado_version = ADOVersion::from_type("ado_type").with_version("0.1.0");
+    let code_id = 1;
+
+    instantiate(
+        deps.as_mut(),
+        mock_env(),
+        mock_info(&owner, &[]),
+        InstantiateMsg {
+            kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+            owner: None,
+        },
+    )
+    .unwrap();
+
+    let msg = ExecuteMsg::Publish {
+        ado_type: ado_version.get_type(),
+        version: ado_version.get_version(),
+        code_id,
+        action_fees: None,
+        publisher: Some(owner),
+    };
+    execute(deps.as_mut(), env.clone(), info, msg).unwrap();
+
+    let query_msg = QueryMsg::CodeId {
+        key: ado_version.clone().into_string(),
+    };
+    let res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
+    let value: u64 = from_binary(&res).unwrap();
+    assert_eq!(value, code_id);
+
+    let query_msg = QueryMsg::CodeId {
+        key: ado_version.get_type(),
+    };
+    let res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
+    let value: u64 = from_binary(&res).unwrap();
+    assert_eq!(value, code_id);
+
+    let query_msg = QueryMsg::CodeId {
+        key: format!("{}@latest", ado_version.get_type()),
+    };
+    let res = query(deps.as_ref(), env, query_msg).unwrap();
+    let value: u64 = from_binary(&res).unwrap();
+    assert_eq!(value, code_id);
 }

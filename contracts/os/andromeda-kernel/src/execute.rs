@@ -6,7 +6,7 @@ use andromeda_std::amp::{ADO_DB_KEY, VFS_KEY};
 use andromeda_std::common::context::ExecuteContext;
 use andromeda_std::error::ContractError;
 use andromeda_std::os::aos_querier::AOSQuerier;
-use andromeda_std::os::kernel::{ChannelInfo, IbcExecuteMsg};
+use andromeda_std::os::kernel::{ChannelInfo, IbcExecuteMsg, InternalMsg};
 
 use andromeda_std::os::vfs::vfs_resolve_symlink;
 use cosmwasm_std::{
@@ -178,6 +178,61 @@ pub fn create(
             .add_attribute("ado_type", ado_type)
             .add_attribute("owner", ado_owner.to_string()))
     }
+}
+
+pub fn internal(env: ExecuteContext, msg: InternalMsg) -> Result<Response, ContractError> {
+    match msg {
+        InternalMsg::RegisterUserCrossChain {
+            username,
+            address,
+            chain,
+        } => register_user_cross_chain(env, chain, username, address),
+    }
+}
+
+pub fn register_user_cross_chain(
+    execute_env: ExecuteContext,
+    chain: String,
+    username: String,
+    address: String,
+) -> Result<Response, ContractError> {
+    let vfs = KERNEL_ADDRESSES.load(execute_env.deps.storage, VFS_KEY)?;
+    ensure!(
+        execute_env.info.sender == vfs,
+        ContractError::Unauthorized {}
+    );
+    let channel_info =
+        if let Some(channel_info) = CHANNELS.may_load(execute_env.deps.storage, &chain)? {
+            Ok::<ChannelInfo, ContractError>(channel_info)
+        } else {
+            return Err(ContractError::InvalidPacket {
+                error: Some(format!("Channel not found for chain {chain}")),
+            });
+        }?;
+    let kernel_msg = IbcExecuteMsg::RegisterUsername {
+        username: username.clone(),
+        address: address.clone(),
+    };
+    let ibc_msg = IbcMsg::SendPacket {
+        channel_id: channel_info.direct_channel_id.clone().unwrap(),
+        data: to_binary(&kernel_msg)?,
+        timeout: execute_env
+            .env
+            .block
+            .time
+            .plus_seconds(PACKET_LIFETIME)
+            .into(),
+    };
+
+    Ok(Response::default()
+        .add_attributes(vec![
+            attr("action", "register_user_cross_chain"),
+            attr("username", username),
+            attr("address", address),
+            attr("chain", chain),
+            attr("receiving_kernel_address", channel_info.kernel_address),
+        ])
+        .add_message(ibc_msg))
 }
 
 pub fn assign_channels(

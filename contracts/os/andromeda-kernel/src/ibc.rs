@@ -1,20 +1,23 @@
 use crate::ack::{make_ack_create_ado_success, make_ack_fail, make_ack_success};
 use crate::execute;
 use crate::proto::{DenomTrace, MsgTransfer, QueryDenomTraceRequest};
+use crate::reply::ReplyId;
+use crate::state::KERNEL_ADDRESSES;
+use andromeda_std::amp::VFS_KEY;
 use andromeda_std::common::context::ExecuteContext;
 use andromeda_std::error::{ContractError, Never};
 use andromeda_std::{
     amp::{messages::AMPMsg, AndrAddr},
-    os::kernel::IbcExecuteMsg,
+    os::{kernel::IbcExecuteMsg, vfs::ExecuteMsg as VFSExecuteMsg},
 };
 use cosmwasm_schema::cw_serde;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    ensure, from_binary, Addr, Binary, Coin, Deps, DepsMut, Env, Ibc3ChannelOpenResponse,
-    IbcBasicResponse, IbcChannel, IbcChannelCloseMsg, IbcChannelConnectMsg, IbcChannelOpenMsg,
-    IbcOrder, IbcPacketAckMsg, IbcPacketReceiveMsg, IbcPacketTimeoutMsg, IbcReceiveResponse,
-    MessageInfo, Timestamp,
+    ensure, from_binary, to_binary, Addr, Binary, Coin, Deps, DepsMut, Empty, Env,
+    Ibc3ChannelOpenResponse, IbcBasicResponse, IbcChannel, IbcChannelCloseMsg,
+    IbcChannelConnectMsg, IbcChannelOpenMsg, IbcOrder, IbcPacketAckMsg, IbcPacketReceiveMsg,
+    IbcPacketTimeoutMsg, IbcReceiveResponse, MessageInfo, SubMsg, Timestamp, WasmMsg,
 };
 use itertools::Itertools;
 use sha256::digest;
@@ -151,6 +154,9 @@ pub fn do_ibc_packet_receive(
             owner,
             ado_type,
         } => ibc_create_ado(execute_env, owner, ado_type, instantiation_msg),
+        IbcExecuteMsg::RegisterUsername { username, address } => {
+            ibc_register_username(execute_env, username, address)
+        }
     }
 }
 
@@ -166,6 +172,29 @@ pub fn ibc_create_ado(
         .add_events(res.events)
         .add_submessages(res.messages)
         .set_ack(make_ack_create_ado_success()))
+}
+
+pub fn ibc_register_username(
+    execute_env: ExecuteContext,
+    username: String,
+    addr: String,
+) -> Result<IbcReceiveResponse, ContractError> {
+    let vfs_address = KERNEL_ADDRESSES.load(execute_env.deps.storage, VFS_KEY)?;
+    let msg = VFSExecuteMsg::RegisterUser {
+        username,
+        address: Some(execute_env.deps.api.addr_validate(&addr)?),
+    };
+    let sub_msg: SubMsg<Empty> = SubMsg::reply_on_error(
+        WasmMsg::Execute {
+            contract_addr: vfs_address.to_string(),
+            msg: to_binary(&msg)?,
+            funds: vec![],
+        },
+        ReplyId::RegisterUsername.repr(),
+    );
+    Ok(IbcReceiveResponse::new()
+        .add_submessage(sub_msg)
+        .set_ack(make_ack_success()))
 }
 
 pub fn validate_order_and_version(

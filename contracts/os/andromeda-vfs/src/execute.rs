@@ -1,8 +1,15 @@
 use andromeda_std::ado_contract::ADOContract;
 use andromeda_std::amp::AndrAddr;
 use andromeda_std::error::ContractError;
-use andromeda_std::os::vfs::{validate_component_name, validate_username};
-use cosmwasm_std::{attr, ensure, Addr, DepsMut, Env, MessageInfo, Response};
+use andromeda_std::os::aos_querier::AOSQuerier;
+use andromeda_std::os::kernel::InternalMsg;
+use andromeda_std::os::{
+    kernel::ExecuteMsg as KernelExecuteMsg,
+    vfs::{validate_component_name, validate_username},
+};
+use cosmwasm_std::{
+    attr, ensure, to_binary, Addr, DepsMut, Env, MessageInfo, Response, SubMsg, WasmMsg,
+};
 
 use crate::state::{
     add_path_symlink, add_pathname, paths, resolve_pathname, ADDRESS_LIBRARY, ADDRESS_USERNAME,
@@ -103,11 +110,33 @@ pub fn add_parent_path(
     Ok(Response::default())
 }
 
-pub fn register_user(env: ExecuteEnv, username: String) -> Result<Response, ContractError> {
+pub fn register_user(
+    env: ExecuteEnv,
+    username: String,
+    address: Option<Addr>,
+) -> Result<Response, ContractError> {
+    let kernel = &ADOContract::default().get_kernel_address(env.deps.storage)?;
+    let curr_chain = AOSQuerier::get_current_chain(&env.deps.querier, kernel)?;
+    // Can only register username directly on Andromeda chain
+    ensure!(
+        curr_chain == "andromeda" || env.info.sender == kernel,
+        ContractError::Unauthorized {}
+    );
+    // If address is provided sender must be Kernel
+    ensure!(
+        address.is_none() || env.info.sender == kernel,
+        ContractError::Unauthorized {}
+    );
+    // Kernel must provide an address
+    ensure!(
+        env.info.sender != kernel || address.is_some(),
+        ContractError::Unauthorized {}
+    );
+    let sender = address.unwrap_or(env.info.sender.clone());
     let current_user_address = USERS.may_load(env.deps.storage, username.as_str())?;
     if current_user_address.is_some() {
         ensure!(
-            current_user_address.unwrap() == env.info.sender,
+            current_user_address.unwrap() == sender,
             ContractError::Unauthorized {}
         );
     }
@@ -116,13 +145,13 @@ pub fn register_user(env: ExecuteEnv, username: String) -> Result<Response, Cont
     USERS.remove(env.deps.storage, username.as_str());
 
     validate_username(username.clone())?;
-    USERS.save(env.deps.storage, username.as_str(), &env.info.sender)?;
+    USERS.save(env.deps.storage, username.as_str(), &sender)?;
     //Update current address' username
-    ADDRESS_USERNAME.save(env.deps.storage, env.info.sender.as_ref(), &username)?;
+    ADDRESS_USERNAME.save(env.deps.storage, sender.as_ref(), &username)?;
 
     Ok(Response::default().add_attributes(vec![
         attr("action", "register_username"),
-        attr("addr", env.info.sender),
+        attr("addr", sender),
         attr("username", username),
     ]))
 }
@@ -150,4 +179,35 @@ pub fn register_library(
         attr("addr", lib_address),
         attr("library_name", lib_name),
     ]))
+}
+
+pub fn register_user_cross_chain(
+    env: ExecuteEnv,
+    chain: String,
+    address: String,
+) -> Result<Response, ContractError> {
+    let kernel = ADOContract::default().get_kernel_address(env.deps.storage)?;
+    let username = ADDRESS_USERNAME.load(env.deps.storage, env.info.sender.as_str())?;
+    let msg = KernelExecuteMsg::Internal(InternalMsg::RegisterUserCrossChain {
+        username: username.clone(),
+        address: address.clone(),
+        chain: chain.clone(),
+    });
+    let sub_msg = SubMsg::reply_on_error(
+        WasmMsg::Execute {
+            contract_addr: kernel.to_string(),
+            msg: to_binary(&msg)?,
+            funds: vec![],
+        },
+        1,
+    );
+
+    Ok(Response::default()
+        .add_attributes(vec![
+            attr("action", "register_user_cross_chain"),
+            attr("addr", address),
+            attr("username", username),
+            attr("chain", chain),
+        ])
+        .add_submessage(sub_msg))
 }

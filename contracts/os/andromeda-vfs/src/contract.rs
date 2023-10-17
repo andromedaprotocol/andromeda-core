@@ -70,7 +70,9 @@ pub fn execute(
             symlink,
             parent_address,
         } => execute::add_symlink(execute_env, name, symlink, parent_address),
-        ExecuteMsg::RegisterUser { username } => execute::register_user(execute_env, username),
+        ExecuteMsg::RegisterUser { username, address } => {
+            execute::register_user(execute_env, username, address)
+        }
         ExecuteMsg::AddParentPath {
             name,
             parent_address,
@@ -79,6 +81,9 @@ pub fn execute(
             lib_name,
             lib_address,
         } => execute::register_library(execute_env, lib_name, lib_address),
+        ExecuteMsg::RegisterUserCrossChain { chain, address } => {
+            execute::register_user_cross_chain(execute_env, chain, address)
+        }
     }
 }
 
