@@ -29,33 +29,6 @@
       {
         "type": "object",
         "required": [
-          "update_code_id"
-        ],
-        "properties": {
-          "update_code_id": {
-            "type": "object",
-            "required": [
-              "code_id",
-              "code_id_key"
-            ],
-            "properties": {
-              "code_id": {
-                "type": "integer",
-                "format": "uint64",
-                "minimum": 0.0
-              },
-              "code_id_key": {
-                "type": "string"
-              }
-            },
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
-      },
-      {
-        "type": "object",
-        "required": [
           "publish"
         ],
         "properties": {
@@ -355,49 +328,8 @@
           }
         },
         "additionalProperties": false
-      },
-      {
-        "type": "object",
-        "required": [
-          "andr_query"
-        ],
-        "properties": {
-          "andr_query": {
-            "$ref": "#/definitions/AndrQuery"
-          }
-        },
-        "additionalProperties": false
       }
-    ],
-    "definitions": {
-      "AndrQuery": {
-        "oneOf": [
-          {
-            "type": "object",
-            "required": [
-              "get"
-            ],
-            "properties": {
-              "get": {
-                "anyOf": [
-                  {
-                    "$ref": "#/definitions/Binary"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              }
-            },
-            "additionalProperties": false
-          }
-        ]
-      },
-      "Binary": {
-        "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
-        "type": "string"
-      }
-    }
+    ]
   },
   "migrate": null,
   "sudo": null,
@@ -551,13 +483,6 @@
       "items": {
         "type": "string"
       }
-    },
-    "andr_query": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "uint64",
-      "type": "integer",
-      "format": "uint64",
-      "minimum": 0.0
     },
     "code_id": {
       "$schema": "http://json-schema.org/draft-07/schema#",

@@ -5,33 +5,6 @@
     {
       "type": "object",
       "required": [
-        "update_code_id"
-      ],
-      "properties": {
-        "update_code_id": {
-          "type": "object",
-          "required": [
-            "code_id",
-            "code_id_key"
-          ],
-          "properties": {
-            "code_id": {
-              "type": "integer",
-              "format": "uint64",
-              "minimum": 0.0
-            },
-            "code_id_key": {
-              "type": "string"
-            }
-          },
-          "additionalProperties": false
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "type": "object",
-      "required": [
         "publish"
       ],
       "properties": {

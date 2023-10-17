@@ -20,6 +20,51 @@
             },
             "name": {
               "type": "string"
+            },
+            "parent_address": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/AndrAddr"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "add_symlink"
+      ],
+      "properties": {
+        "add_symlink": {
+          "type": "object",
+          "required": [
+            "name",
+            "symlink"
+          ],
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "parent_address": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/AndrAddr"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "symlink": {
+              "$ref": "#/definitions/AndrAddr"
             }
           },
           "additionalProperties": false
@@ -64,7 +109,67 @@
             "username"
           ],
           "properties": {
+            "address": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Addr"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
             "username": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "register_library"
+      ],
+      "properties": {
+        "register_library": {
+          "type": "object",
+          "required": [
+            "lib_address",
+            "lib_name"
+          ],
+          "properties": {
+            "lib_address": {
+              "$ref": "#/definitions/Addr"
+            },
+            "lib_name": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "register_user_cross_chain"
+      ],
+      "properties": {
+        "register_user_cross_chain": {
+          "type": "object",
+          "required": [
+            "address",
+            "chain"
+          ],
+          "properties": {
+            "address": {
+              "type": "string"
+            },
+            "chain": {
               "type": "string"
             }
           },

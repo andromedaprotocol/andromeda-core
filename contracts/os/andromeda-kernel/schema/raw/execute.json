@@ -80,6 +80,12 @@
             "ado_type": {
               "type": "string"
             },
+            "chain": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
             "msg": {
               "$ref": "#/definitions/Binary"
             },
@@ -147,6 +153,18 @@
         "recover": {
           "type": "object",
           "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "internal"
+      ],
+      "properties": {
+        "internal": {
+          "$ref": "#/definitions/InternalMsg"
         }
       },
       "additionalProperties": false
@@ -335,6 +353,39 @@
         }
       },
       "additionalProperties": false
+    },
+    "InternalMsg": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "register_user_cross_chain"
+          ],
+          "properties": {
+            "register_user_cross_chain": {
+              "type": "object",
+              "required": [
+                "address",
+                "chain",
+                "username"
+              ],
+              "properties": {
+                "address": {
+                  "type": "string"
+                },
+                "chain": {
+                  "type": "string"
+                },
+                "username": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
     },
     "ReplyOn": {
       "description": "Use this to define when the contract gets a response callback. If you only need it for errors or success you can select just those in order to save gas.",
