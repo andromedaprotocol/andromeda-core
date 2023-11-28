@@ -271,12 +271,14 @@ mod tests {
     use super::*;
     #[cfg(feature = "modules")]
     use crate::ado_base::modules::Module;
-    use crate::testing::mock_querier::{
-        mock_dependencies_custom, MOCK_APP_CONTRACT, MOCK_KERNEL_CONTRACT,
-    };
+    use crate::testing::mock_querier::MOCK_KERNEL_CONTRACT;
+    #[cfg(feature = "modules")]
+    use crate::testing::mock_querier::{mock_dependencies_custom, MOCK_APP_CONTRACT};
+    #[cfg(feature = "modules")]
+    use cosmwasm_std::Uint64;
     use cosmwasm_std::{
         testing::{mock_dependencies, mock_env, mock_info},
-        Addr, Uint64,
+        Addr,
     };
 
     #[test]

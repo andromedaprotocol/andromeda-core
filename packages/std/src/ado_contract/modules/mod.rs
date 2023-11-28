@@ -6,7 +6,7 @@ use crate::{
     common::Funds,
 };
 use cosmwasm_std::{
-    Binary, Deps, Event, Order, QuerierWrapper, Response, StdError, Storage, SubMsg, Uint64,
+    ensure, Binary, Deps, Event, Order, QuerierWrapper, Response, StdError, Storage, SubMsg, Uint64,
 };
 use cw_storage_plus::Bound;
 use serde::de::DeserializeOwned;
@@ -132,6 +132,9 @@ impl<'a> ADOContract<'a> {
 
     /// Loads all registered modules in Vector form
     pub(crate) fn load_modules(&self, storage: &dyn Storage) -> Result<Vec<Module>, ContractError> {
+        // if !self.module_idx.may_load(storage)?.is_some() {
+        //     return Ok(Vec::new());
+        // }
         let module_idx = self.module_idx.may_load(storage)?.unwrap_or(1);
         let min = Some(Bound::inclusive("1"));
         let modules: Vec<Module> = self
@@ -164,6 +167,18 @@ impl<'a> ADOContract<'a> {
 
     /// Validates all modules.
     fn validate_modules(&self, modules: &[Module]) -> Result<(), ContractError> {
+        ensure!(
+            modules.len() > 0,
+            ContractError::InvalidModules {
+                msg: "Must provide at least one module".to_string()
+            }
+        );
+        ensure!(
+            modules.len() <= 100,
+            ContractError::InvalidModules {
+                msg: "Cannot have more than 100 modules".to_string()
+            }
+        );
         for module in modules {
             module.validate(modules)?;
         }
@@ -248,7 +263,7 @@ mod tests {
     use crate::testing::mock_querier::{mock_dependencies_custom, MOCK_APP_CONTRACT};
     use cosmwasm_std::{
         testing::{mock_dependencies, mock_info},
-        Addr,
+        to_binary, Addr, Coin,
     };
 
     #[test]
@@ -511,6 +526,9 @@ mod tests {
     fn test_load_module_addresses() {
         let mut deps = mock_dependencies_custom(&[]);
         let contract = ADOContract::default();
+
+        let resp = contract.load_module_addresses(&deps.as_ref()).unwrap();
+        assert!(resp.is_empty());
         contract
             .app_contract
             .save(deps.as_mut().storage, &Addr::unchecked(MOCK_APP_CONTRACT))
@@ -557,5 +575,62 @@ mod tests {
             ContractError::Std(StdError::generic_err("AnotherError")),
             res
         );
+    }
+
+    #[test]
+    fn test_validate_modules() {
+        let mut modules = vec![];
+        let err = ADOContract::default()
+            .validate_modules(&modules)
+            .unwrap_err();
+        assert_eq!(
+            err,
+            ContractError::InvalidModules {
+                msg: "Must provide at least one module".to_string()
+            }
+        );
+
+        let mut i = 0;
+        while i < 101 {
+            modules.push(Module::new(i.to_string(), i.to_string(), true));
+            i += 1;
+        }
+
+        let err = ADOContract::default()
+            .validate_modules(&modules)
+            .unwrap_err();
+        assert_eq!(
+            err,
+            ContractError::InvalidModules {
+                msg: "Cannot have more than 100 modules".to_string()
+            }
+        );
+
+        modules.clear();
+        modules.push(Module::new("address_list", "address", true));
+        modules.push(Module::new("receipt", "address", true));
+        modules.push(Module::new("auction", "address", true));
+
+        let res = ADOContract::default().validate_modules(&modules);
+        assert!(res.is_ok());
+    }
+
+    #[test]
+    fn test_module_hook() {
+        let deps = mock_dependencies_custom(&[]);
+        let contract = ADOContract::default();
+
+        let resp: Vec<String> = contract
+            .module_hook(
+                &deps.as_ref(),
+                AndromedaHook::OnFundsTransfer {
+                    payload: to_binary(&true).unwrap(),
+                    sender: "sender".to_string(),
+                    amount: Funds::Native(Coin::new(100u128, "uandr")),
+                },
+            )
+            .unwrap();
+
+        assert!(resp.is_empty());
     }
 }

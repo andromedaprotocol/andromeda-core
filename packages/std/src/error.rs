@@ -588,6 +588,9 @@ pub enum ContractError {
 
     #[error("Invalid Transfer Port: {port}")]
     InvalidTransferPort { port: String },
+
+    #[error("Invalid Modules: {msg}")]
+    InvalidModules { msg: String },
 }
 
 impl From<Cw20ContractError> for ContractError {
