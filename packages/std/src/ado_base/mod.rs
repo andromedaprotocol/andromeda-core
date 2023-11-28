@@ -19,7 +19,7 @@ use crate::{
     amp::{messages::AMPPkt, AndrAddr},
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::Binary;
+use cosmwasm_std::{Addr, Binary};
 pub use modules::Module;
 
 #[cfg(feature = "modules")]
@@ -44,6 +44,9 @@ pub enum AndromedaMsg {
     },
     UpdateAppContract {
         address: String,
+    },
+    UpdateKernelAddress {
+        address: Addr,
     },
     #[cfg(feature = "withdraw")]
     Withdraw {

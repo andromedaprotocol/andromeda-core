@@ -8,7 +8,7 @@ use crate::{
     error::ContractError,
 };
 use cosmwasm_std::{
-    attr, from_binary, to_binary, Addr, Api, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
+    attr, ensure, from_binary, to_binary, Addr, Api, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
     QuerierWrapper, Response, Storage, SubMsg, WasmMsg,
 };
 use serde::de::DeserializeOwned;
@@ -56,6 +56,9 @@ impl<'a> ADOContract<'a> {
                 }
                 AndromedaMsg::UpdateAppContract { address } => {
                     self.execute_update_app_contract(ctx.deps, ctx.info, address, None)
+                }
+                AndromedaMsg::UpdateKernelAddress { address } => {
+                    update_kernel_address(ctx.deps, ctx.info, address)
                 }
                 #[cfg(feature = "withdraw")]
                 AndromedaMsg::Withdraw {
@@ -245,10 +248,28 @@ impl<'a> ADOContract<'a> {
     }
 }
 
+/// Updates the current kernel address used by the ADO
+/// Requires the sender to be the owner of the ADO
+pub fn update_kernel_address(
+    deps: DepsMut,
+    info: MessageInfo,
+    address: Addr,
+) -> Result<Response, ContractError> {
+    let contract = ADOContract::default();
+    ensure!(
+        contract.is_contract_owner(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {}
+    );
+    contract.kernel_address.save(deps.storage, &address)?;
+    Ok(Response::new()
+        .add_attribute("action", "update_kernel_address")
+        .add_attribute("address", address))
+}
+
 #[cfg(test)]
-#[cfg(feature = "modules")]
 mod tests {
     use super::*;
+    #[cfg(feature = "modules")]
     use crate::ado_base::modules::Module;
     use crate::testing::mock_querier::{
         mock_dependencies_custom, MOCK_APP_CONTRACT, MOCK_KERNEL_CONTRACT,
@@ -259,6 +280,7 @@ mod tests {
     };
 
     #[test]
+    #[cfg(feature = "modules")]
     fn test_register_module_invalid_identifier() {
         let contract = ADOContract::default();
         let mut deps = mock_dependencies_custom(&[]);
@@ -295,6 +317,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "modules")]
     fn test_alter_module_invalid_identifier() {
         let contract = ADOContract::default();
         let mut deps = mock_dependencies_custom(&[]);
@@ -411,5 +434,56 @@ mod tests {
                 Some(vec![Module::new("module", "cosmos1...".to_string(), false)]),
             )
             .unwrap();
+    }
+
+    #[test]
+    fn test_update_kernel_address() {
+        let contract = ADOContract::default();
+        let mut deps = mock_dependencies();
+
+        let info = mock_info("owner", &[]);
+        let deps_mut = deps.as_mut();
+        contract
+            .instantiate(
+                deps_mut.storage,
+                mock_env(),
+                deps_mut.api,
+                info.clone(),
+                InstantiateMsg {
+                    ado_type: "type".to_string(),
+                    ado_version: "version".to_string(),
+                    owner: None,
+                    operators: None,
+                    kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+                },
+            )
+            .unwrap();
+
+        let address = String::from("address");
+
+        let msg = AndromedaMsg::UpdateKernelAddress {
+            address: Addr::unchecked(address.clone()),
+        };
+
+        let res = contract
+            .execute(ExecuteContext::new(deps.as_mut(), info, mock_env()), msg)
+            .unwrap();
+
+        let msg = AndromedaMsg::UpdateKernelAddress {
+            address: Addr::unchecked(address.clone()),
+        };
+
+        assert_eq!(
+            Response::new()
+                .add_attribute("action", "update_kernel_address")
+                .add_attribute("address", address),
+            res
+        );
+
+        let res = contract.execute(
+            ExecuteContext::new(deps.as_mut(), mock_info("not_owner", &[]), mock_env()),
+            msg,
+        );
+        assert!(res.is_err())
     }
 }

@@ -44,6 +44,9 @@ pub fn andr_exec(_args: TokenStream, input: TokenStream) -> TokenStream {
             enum Right {
                 #[serde(rename="amp_receive")]
                 AMPReceive(::andromeda_std::amp::messages::AMPPkt),
+                UpdateKernelAddress {
+                    address: ::cosmwasm_std::Addr,
+                },
                 UpdateOwner {
                     address: String,
                 },
