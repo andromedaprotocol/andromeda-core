@@ -137,8 +137,11 @@ pub fn vfs_resolve_path(
     let query = QueryMsg::ResolvePath {
         path: AndrAddr::from_string(path.into()),
     };
-    let addr = querier.query_wasm_smart::<Addr>(vfs_contract, &query)?;
-    Ok(addr)
+    let addr = querier.query_wasm_smart::<Addr>(vfs_contract, &query);
+    match addr {
+        Ok(addr) => Ok(addr),
+        Err(_) => Err(ContractError::InvalidAddress {}),
+    }
 }
 
 /// Queries the provided VFS contract address to resolve the given path

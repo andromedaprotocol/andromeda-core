@@ -11,6 +11,7 @@ use cosmwasm_std::{
 use cw_storage_plus::Bound;
 use serde::de::DeserializeOwned;
 
+use crate::os::kernel::QueryMsg as KernelQueryMsg;
 use crate::{ado_base::modules::Module, error::ContractError};
 
 pub mod execute;
@@ -42,7 +43,22 @@ impl<'a> ADOContract<'a> {
         deps: &Deps,
         module: &Module,
     ) -> Result<(), ContractError> {
-        self.validate_andr_addresses(deps, vec![module.address.to_owned()])?;
+        // Validate module is an ADO
+        let addr = module.address.get_raw_address(deps)?;
+        let query = KernelQueryMsg::VerifyAddress {
+            address: addr.to_string(),
+        };
+        let kernel_addr = self.get_kernel_address(deps.storage)?;
+        let res: bool = deps.querier.query_wasm_smart(kernel_addr, &query)?;
+        ensure!(
+            res,
+            ContractError::InvalidModule {
+                msg: Some(format!(
+                    "Module {} is not a valid ADO",
+                    module.name.clone().unwrap_or(module.address.to_string())
+                ))
+            }
+        );
         Ok(())
     }
 
