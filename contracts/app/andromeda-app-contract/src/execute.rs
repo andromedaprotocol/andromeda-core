@@ -152,6 +152,7 @@ pub fn update_address(
     name: String,
     addr: String,
 ) -> Result<Response, ContractError> {
+    ctx.deps.api.addr_validate(addr.as_str())?;
     let ExecuteContext { deps, info, .. } = ctx;
     let ado_addr = ADO_ADDRESSES.load(deps.storage, &name)?;
     ensure!(
