@@ -1,3 +1,4 @@
+use andromeda_std::amp::AndrAddr;
 use andromeda_std::common::OrderBy;
 use andromeda_std::{andr_exec, andr_instantiate, andr_instantiate_modules, andr_query};
 
@@ -8,7 +9,9 @@ use cw721::{Cw721ReceiveMsg, Expiration};
 #[andr_instantiate]
 #[andr_instantiate_modules]
 #[cw_serde]
-pub struct InstantiateMsg {}
+pub struct InstantiateMsg {
+    pub authorized_token_addresses: Option<Vec<AndrAddr>>,
+}
 
 #[andr_exec]
 #[cw_serde]
@@ -37,6 +40,15 @@ pub enum ExecuteMsg {
     CancelAuction {
         token_id: String,
         token_address: String,
+    },
+    /// Restricted to owner
+    AuthorizeTokenContract {
+        addr: AndrAddr,
+        expiration: Option<Expiration>,
+    },
+    /// Restricted to owner
+    DeauthorizeTokenContract {
+        addr: AndrAddr,
     },
 }
 

@@ -2,10 +2,11 @@
 
 use crate::contract::{execute, instantiate, query};
 use andromeda_non_fungible_tokens::auction::{Cw721HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg};
-use andromeda_std::ado_base::modules::Module;
 use andromeda_std::amp::messages::AMPPkt;
+use andromeda_std::{ado_base::modules::Module, amp::AndrAddr};
 use cosmwasm_std::{Addr, Empty, Uint128};
 use cw_multi_test::{Contract, ContractWrapper};
+use cw_utils::Expiration;
 
 pub fn mock_andromeda_auction() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new_with_empty(execute, instantiate, query);
@@ -16,11 +17,13 @@ pub fn mock_auction_instantiate_msg(
     modules: Option<Vec<Module>>,
     kernel_address: impl Into<String>,
     owner: Option<String>,
+    authorized_token_addresses: Option<Vec<AndrAddr>>,
 ) -> InstantiateMsg {
     InstantiateMsg {
         modules,
         kernel_address: kernel_address.into(),
         owner,
+        authorized_token_addresses,
     }
 }
 
@@ -37,6 +40,16 @@ pub fn mock_start_auction(
         coin_denom,
         min_bid,
         whitelist,
+    }
+}
+
+pub fn mock_authorize_token_address(
+    token_address: impl Into<String>,
+    expiration: Option<Expiration>,
+) -> ExecuteMsg {
+    ExecuteMsg::AuthorizeTokenContract {
+        addr: AndrAddr::from_string(token_address.into()),
+        expiration,
     }
 }
 

@@ -5,9 +5,11 @@ use andromeda_non_fungible_tokens::auction::{
     AuctionIdsResponse, AuctionInfo, AuctionStateResponse, Bid, BidsResponse, Cw721HookMsg,
     ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, TokenAuctionState,
 };
-
 use andromeda_std::{
-    ado_base::{hooks::AndromedaHook, InstantiateMsg as BaseInstantiateMsg},
+    ado_base::{
+        hooks::AndromedaHook, permissioning::Permission, InstantiateMsg as BaseInstantiateMsg,
+    },
+    amp::AndrAddr,
     common::Funds,
     common::{encode_binary, expiration::expiration_from_milliseconds, OrderBy},
     common::{expiration::MILLISECONDS_TO_NANOSECONDS_RATIO, rates::get_tax_amount},
@@ -27,6 +29,8 @@ use semver::Version;
 
 const CONTRACT_NAME: &str = "crates.io:andromeda_auction";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
+
+const SEND_NFT_ACTION: &str = "SEND_NFT";
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -53,6 +57,18 @@ pub fn instantiate(
     )?;
     let modules_resp =
         contract.register_modules(info.sender.as_str(), deps.storage, msg.modules)?;
+
+    if let Some(authorized_token_addresses) = msg.authorized_token_addresses {
+        for token_address in authorized_token_addresses {
+            let addr = token_address.get_raw_address(&deps.as_ref())?;
+            ADOContract::set_permission(
+                deps.storage,
+                SEND_NFT_ACTION,
+                addr,
+                Permission::Whitelisted(None),
+            )?;
+        }
+    }
 
     Ok(resp
         .add_submessages(modules_resp.messages)
@@ -122,6 +138,12 @@ pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
             token_id,
             token_address,
         } => execute_claim(ctx, token_id, token_address),
+        ExecuteMsg::AuthorizeTokenContract { addr, expiration } => {
+            execute_authorize_token_contract(ctx.deps, ctx.info, addr, expiration)
+        }
+        ExecuteMsg::DeauthorizeTokenContract { addr } => {
+            execute_deauthorize_token_contract(ctx.deps, ctx.info, addr)
+        }
         _ => ADOContract::default().execute(ctx, msg),
     }
 }
@@ -130,6 +152,12 @@ fn handle_receive_cw721(
     ctx: ExecuteContext,
     msg: Cw721ReceiveMsg,
 ) -> Result<Response, ContractError> {
+    ADOContract::default().is_permissioned_strict(
+        ctx.deps.storage,
+        ctx.env.clone(),
+        SEND_NFT_ACTION,
+        ctx.info.sender.clone(),
+    )?;
     match from_binary(&msg.msg)? {
         Cw721HookMsg::StartAuction {
             start_time,
@@ -508,6 +536,51 @@ fn execute_claim(
         .add_attribute("recipient", &token_auction_state.high_bidder_addr)
         .add_attribute("winning_bid_amount", token_auction_state.high_bidder_amount)
         .add_attribute("auction_id", token_auction_state.auction_id))
+}
+
+fn execute_authorize_token_contract(
+    deps: DepsMut,
+    info: MessageInfo,
+    token_address: AndrAddr,
+    expiration: Option<Expiration>,
+) -> Result<Response, ContractError> {
+    let contract = ADOContract::default();
+    let addr = token_address.get_raw_address(&deps.as_ref())?;
+    ensure!(
+        contract.is_contract_owner(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {}
+    );
+    ADOContract::set_permission(
+        deps.storage,
+        SEND_NFT_ACTION,
+        addr.to_string(),
+        Permission::Whitelisted(expiration),
+    )?;
+
+    Ok(Response::default().add_attributes(vec![
+        attr("action", "authorize_token_contract"),
+        attr("token_address", addr),
+    ]))
+}
+
+fn execute_deauthorize_token_contract(
+    deps: DepsMut,
+    info: MessageInfo,
+    token_address: AndrAddr,
+) -> Result<Response, ContractError> {
+    let contract = ADOContract::default();
+    let addr = token_address.get_raw_address(&deps.as_ref())?;
+    ensure!(
+        contract.is_contract_owner(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {}
+    );
+
+    ADOContract::remove_permission(deps.storage, SEND_NFT_ACTION, addr.to_string())?;
+
+    Ok(Response::default().add_attributes(vec![
+        attr("action", "deauthorize_token_contract"),
+        attr("token_address", addr),
+    ]))
 }
 
 fn purchase_token(

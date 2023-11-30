@@ -14,6 +14,7 @@ use andromeda_non_fungible_tokens::{
 };
 use andromeda_std::{
     ado_base::modules::Module,
+    amp::AndrAddr,
     common::{encode_binary, expiration::MILLISECONDS_TO_NANOSECONDS_RATIO},
     error::ContractError,
     testing::mock_querier::MOCK_KERNEL_CONTRACT,
@@ -34,6 +35,7 @@ fn init(deps: DepsMut, modules: Option<Vec<Module>>) -> Response {
         owner: None,
         modules,
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+        authorized_token_addresses: Some(vec![AndrAddr::from_string(MOCK_TOKEN_ADDR)]),
     };
 
     let info = mock_info("owner", &[]);

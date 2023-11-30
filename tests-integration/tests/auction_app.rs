@@ -2,11 +2,13 @@
 
 use andromeda_app::app::AppComponent;
 use andromeda_app_contract::mock::{
-    mock_andromeda_app, mock_app_instantiate_msg, mock_get_address_msg, mock_get_components_msg,
+    mock_andromeda_app, mock_app_instantiate_msg, mock_claim_ownership_msg, mock_get_address_msg,
+    mock_get_components_msg,
 };
 use andromeda_auction::mock::{
-    mock_andromeda_auction, mock_auction_instantiate_msg, mock_claim_auction, mock_get_auction_ids,
-    mock_get_auction_state, mock_get_bids, mock_place_bid, mock_receive_packet, mock_start_auction,
+    mock_andromeda_auction, mock_auction_instantiate_msg, mock_authorize_token_address,
+    mock_claim_auction, mock_get_auction_ids, mock_get_auction_state, mock_get_bids,
+    mock_place_bid, mock_receive_packet, mock_start_auction,
 };
 use andromeda_cw721::mock::{
     mock_andromeda_cw721, mock_cw721_instantiate_msg, mock_cw721_owner_of, mock_quick_mint_msg,
@@ -88,7 +90,7 @@ fn test_auction_app() {
     );
 
     let auction_init_msg =
-        mock_auction_instantiate_msg(None, andr.kernel_address.to_string(), None);
+        mock_auction_instantiate_msg(None, andr.kernel_address.to_string(), None, None);
     let auction_component = AppComponent::new(
         "2".to_string(),
         "auction".to_string(),
@@ -122,6 +124,15 @@ fn test_auction_app() {
 
     assert_eq!(components, app_components);
 
+    router
+        .execute_contract(
+            owner.clone(),
+            Addr::unchecked(app_addr.clone()),
+            &mock_claim_ownership_msg(None),
+            &[],
+        )
+        .unwrap();
+
     // Mint Tokens
     let cw721_addr: String = router
         .wrap()
@@ -145,6 +156,15 @@ fn test_auction_app() {
         .wrap()
         .query_wasm_smart(app_addr, &mock_get_address_msg("2".to_string()))
         .unwrap();
+    router
+        .execute_contract(
+            owner.clone(),
+            Addr::unchecked(auction_addr.clone()),
+            &mock_authorize_token_address(cw721_addr.clone(), None),
+            &[],
+        )
+        .unwrap();
+
     let start_time = router.block_info().time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO + 100;
     let receive_msg = mock_start_auction(start_time, 1000, "uandr".to_string(), None, None);
     let send_msg = mock_send_nft(
