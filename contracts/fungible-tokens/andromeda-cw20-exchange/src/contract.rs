@@ -270,7 +270,7 @@ pub fn execute_purchase(
     // Transfer exchanged asset to recipient
     resp = resp.add_submessage(generate_transfer_message(
         asset_sent.clone(),
-        amount_sent,
+        amount_sent - remainder,
         sale.recipient.clone(),
         RECIPIENT_REPLY_ID,
     )?);
@@ -281,7 +281,7 @@ pub fn execute_purchase(
         attr("recipient", recipient),
         attr("amount", purchased),
         attr("purchase_asset", asset_sent.to_string()),
-        attr("purchase_asset_amount_send", amount_sent),
+        attr("purchase_asset_amount_send", amount_sent - remainder),
         attr("recipient", sale.recipient),
     ]))
 }

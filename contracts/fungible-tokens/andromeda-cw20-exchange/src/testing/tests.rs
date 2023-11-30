@@ -8,7 +8,8 @@ use andromeda_std::{
 use cosmwasm_std::{
     attr, coin, coins, from_binary,
     testing::{mock_env, mock_info},
-    to_binary, wasm_execute, Addr, BankMsg, CosmosMsg, DepsMut, Empty, Response, SubMsg, Uint128,
+    to_binary, wasm_execute, Addr, BankMsg, Coin, CosmosMsg, DepsMut, Empty, Response, SubMsg,
+    Uint128,
 };
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use cw_asset::AssetInfo;
@@ -588,7 +589,7 @@ pub fn test_purchase_native() {
 
     init(deps.as_mut()).unwrap();
 
-    let exchange_rate = Uint128::from(10u128);
+    let exchange_rate = Uint128::from(9u128);
     let sale_amount = Uint128::from(100u128);
     SALE.save(
         deps.as_mut().storage,
@@ -602,28 +603,36 @@ pub fn test_purchase_native() {
     .unwrap();
 
     // Purchase Tokens
-    // Purchase Tokens
     let purchase_amount = coins(100, "test");
     let msg = ExecuteMsg::Purchase { recipient: None };
     let info = mock_info("purchaser", &purchase_amount);
 
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
 
+    // Check refund
+    let msg = res.messages[0].clone();
+    let expected_wasm: CosmosMsg<Empty> = CosmosMsg::Bank(BankMsg::Send {
+        to_address: purchaser.to_string(),
+        amount: vec![Coin::new(1, "test")],
+    });
+    let expected = SubMsg::reply_on_error(expected_wasm, 1);
+    assert_eq!(msg, expected);
+
     // Check transfer
-    let msg = res.messages.first().unwrap();
+    let msg = res.messages[1].clone();
     let expected_wasm: CosmosMsg<Empty> = CosmosMsg::Wasm(
         wasm_execute(
             MOCK_TOKEN_ADDRESS.to_string(),
             &Cw20ExecuteMsg::Transfer {
                 recipient: purchaser.to_string(),
-                amount: Uint128::from(10u128),
+                amount: Uint128::from(11u128),
             },
             vec![],
         )
         .unwrap(),
     );
     let expected = SubMsg::reply_on_error(expected_wasm, 2);
-    assert_eq!(msg, &expected);
+    assert_eq!(msg, expected);
 
     // Check sale amount updated
     let sale = SALE
@@ -632,14 +641,14 @@ pub fn test_purchase_native() {
 
     assert_eq!(
         sale.amount,
-        sale_amount.checked_sub(Uint128::from(10u128)).unwrap()
+        sale_amount.checked_sub(Uint128::from(11u128)).unwrap()
     );
 
     // Check recipient received funds
-    let msg = &res.messages[1];
+    let msg = &res.messages[2];
     let expected_wasm: CosmosMsg<Empty> = CosmosMsg::Bank(BankMsg::Send {
         to_address: owner.to_string(),
-        amount: purchase_amount.to_vec(),
+        amount: vec![Coin::new(99, "test")],
     });
     let expected = SubMsg::reply_on_error(expected_wasm, 3);
 
