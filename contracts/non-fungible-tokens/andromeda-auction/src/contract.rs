@@ -178,6 +178,22 @@ fn handle_receive_cw721(
     }
 }
 
+fn validate_denom(_querier: &QuerierWrapper, denom: String) -> Result<(), ContractError> {
+    ensure!(
+        denom.len() > 0,
+        ContractError::InvalidAsset { asset: denom }
+    );
+    // Denom can be validated with cosmwasm 1.3
+    // let denom_metadata = querier.query_denom_metadata(denom.clone());
+    // ensure!(
+    //     denom_metadata.is_ok(),
+    //     ContractError::InvalidAsset {
+    //         asset: denom
+    //     }
+    // );
+    Ok(())
+}
+
 #[allow(clippy::too_many_arguments)]
 fn execute_start_auction(
     ctx: ExecuteContext,
@@ -189,6 +205,7 @@ fn execute_start_auction(
     whitelist: Option<Vec<Addr>>,
     min_bid: Option<Uint128>,
 ) -> Result<Response, ContractError> {
+    validate_denom(&ctx.deps.querier, coin_denom.clone())?;
     ensure!(
         start_time > 0 && duration > 0,
         ContractError::InvalidExpiration {}
@@ -259,7 +276,7 @@ fn execute_update_auction(
         deps, info, env, ..
     } = ctx;
     nonpayable(&info)?;
-
+    validate_denom(&deps.querier, coin_denom.clone())?;
     let mut token_auction_state =
         get_existing_token_auction_state(deps.storage, &token_id, &token_address)?;
     ensure!(
