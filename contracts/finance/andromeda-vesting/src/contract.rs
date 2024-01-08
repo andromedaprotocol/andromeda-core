@@ -1,3 +1,8 @@
+use andromeda_std::{
+    ado_contract::ADOContract,
+    common::{context::ExecuteContext, withdraw::WithdrawalType},
+    error::ContractError,
+};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
@@ -11,20 +16,15 @@ use cw_utils::nonpayable;
 use semver::Version;
 use std::cmp;
 
-use ado_base::ADOContract;
-use andromeda_finance::vesting::{
-    BatchResponse, Config, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
-};
-use common::{
-    ado_base::InstantiateMsg as BaseInstantiateMsg,
-    encode_binary,
-    error::{from_semver, ContractError},
-    withdraw::WithdrawalType,
-};
-
 use crate::state::{
     batches, get_all_batches_with_ids, get_claimable_batches_with_ids, save_new_batch, Batch,
     CONFIG,
+};
+use andromeda_finance::vesting::{
+    BatchResponse, Config, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
+};
+use andromeda_std::{
+    ado_base::InstantiateMsg as BaseInstantiateMsg, common::encode_binary, error::from_semver,
 };
 
 const CONTRACT_NAME: &str = "crates.io:andromeda-vesting";
@@ -48,7 +48,7 @@ pub fn instantiate(
 
     CONFIG.save(deps.storage, &config)?;
 
-    ADOContract::default().instantiate(
+    let inst_resp = ADOContract::default().instantiate(
         deps.storage,
         env,
         deps.api,
@@ -57,10 +57,12 @@ pub fn instantiate(
             ado_type: "vesting".to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
             operators: None,
-            modules: None,
-            primitive_contract: None,
+            kernel_address: msg.kernel_address,
+            owner: msg.owner,
         },
-    )
+    )?;
+
+    Ok(inst_resp)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -70,19 +72,25 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
+    let ctx = ExecuteContext::new(deps, info, env);
+
     match msg {
-        ExecuteMsg::AndrReceive(msg) => {
-            ADOContract::default().execute(deps, env, info, msg, execute)
+        ExecuteMsg::AMPReceive(pkt) => {
+            ADOContract::default().execute_amp_receive(ctx, pkt, handle_execute)
         }
+        _ => handle_execute(ctx, msg),
+    }
+}
+
+pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+    match msg {
         ExecuteMsg::CreateBatch {
             lockup_duration,
             release_unit,
             release_amount,
             validator_to_delegate_to,
         } => execute_create_batch(
-            deps,
-            info,
-            env,
+            ctx,
             lockup_duration,
             release_unit,
             release_amount,
@@ -91,33 +99,30 @@ pub fn execute(
         ExecuteMsg::Claim {
             number_of_claims,
             batch_id,
-        } => execute_claim(deps, env, info, number_of_claims, batch_id),
-        ExecuteMsg::ClaimAll { limit, up_to_time } => {
-            execute_claim_all(deps, env, info, limit, up_to_time)
-        }
+        } => execute_claim(ctx, number_of_claims, batch_id),
+        ExecuteMsg::ClaimAll { limit, up_to_time } => execute_claim_all(ctx, limit, up_to_time),
         ExecuteMsg::Delegate { amount, validator } => {
-            execute_delegate(deps, env, info, amount, validator)
+            execute_delegate(ctx.deps, ctx.env, ctx.info, amount, validator)
         }
-        ExecuteMsg::Redelegate { amount, from, to } => {
-            execute_redelegate(deps, env, info, amount, from, to)
-        }
-        ExecuteMsg::Undelegate { amount, validator } => {
-            execute_undelegate(deps, env, info, amount, validator)
-        }
-        ExecuteMsg::WithdrawRewards {} => execute_withdraw_rewards(deps, env, info),
-        ExecuteMsg::Vote { proposal_id, vote } => execute_vote(deps, info, proposal_id, vote),
+        ExecuteMsg::Redelegate { amount, from, to } => execute_redelegate(ctx, amount, from, to),
+        ExecuteMsg::Undelegate { amount, validator } => execute_undelegate(ctx, amount, validator),
+        ExecuteMsg::WithdrawRewards {} => execute_withdraw_rewards(ctx),
+        ExecuteMsg::Vote { proposal_id, vote } => execute_vote(ctx, proposal_id, vote),
+
+        _ => ADOContract::default().execute(ctx, msg),
     }
 }
 
 fn execute_create_batch(
-    deps: DepsMut,
-    info: MessageInfo,
-    env: Env,
+    ctx: ExecuteContext,
     lockup_duration: Option<u64>,
     release_unit: u64,
     release_amount: WithdrawalType,
     validator_to_delegate_to: Option<String>,
 ) -> Result<Response, ContractError> {
+    let ExecuteContext {
+        deps, info, env, ..
+    } = ctx;
     ensure!(
         ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {}
@@ -192,12 +197,13 @@ fn execute_create_batch(
 }
 
 fn execute_claim(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
+    ctx: ExecuteContext,
     number_of_claims: Option<u64>,
     batch_id: u64,
 ) -> Result<Response, ContractError> {
+    let ExecuteContext {
+        deps, info, env, ..
+    } = ctx;
     let contract = ADOContract::default();
     // Should this be owner or recipient?
     ensure!(
@@ -220,11 +226,8 @@ fn execute_claim(
     key.save(deps.storage, &batch)?;
 
     let config = CONFIG.load(deps.storage)?;
-    let app_contract = contract.get_app_contract(deps.storage)?;
-    let withdraw_msg = config.recipient.generate_msg_native(
-        deps.api,
-        &deps.querier,
-        app_contract,
+    let withdraw_msg = config.recipient.generate_direct_msg(
+        &deps.as_ref(),
         vec![Coin::new(amount_to_send.u128(), config.denom)],
     )?;
 
@@ -237,12 +240,13 @@ fn execute_claim(
 }
 
 fn execute_claim_all(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
+    ctx: ExecuteContext,
     limit: Option<u32>,
     up_to_time: Option<u64>,
 ) -> Result<Response, ContractError> {
+    let ExecuteContext {
+        deps, info, env, ..
+    } = ctx;
     nonpayable(&info)?;
 
     let contract = ADOContract::default();
@@ -288,11 +292,8 @@ fn execute_claim_all(
     // claimable amounts. Erroring for one would make the whole transaction fai.
     if !total_amount_to_send.is_zero() {
         let config = CONFIG.load(deps.storage)?;
-        let app_contract = contract.get_app_contract(deps.storage)?;
-        msgs.push(config.recipient.generate_msg_native(
-            deps.api,
-            &deps.querier,
-            app_contract,
+        msgs.push(config.recipient.generate_direct_msg(
+            &deps.as_ref(),
             vec![Coin::new(total_amount_to_send.u128(), config.denom)],
         )?)
     }
@@ -338,13 +339,14 @@ fn execute_delegate(
 }
 
 fn execute_redelegate(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
+    ctx: ExecuteContext,
     amount: Option<Uint128>,
     from: String,
     to: String,
 ) -> Result<Response, ContractError> {
+    let ExecuteContext {
+        deps, info, env, ..
+    } = ctx;
     let sender = info.sender.to_string();
     ensure!(
         ADOContract::default().is_contract_owner(deps.storage, &sender)?,
@@ -379,12 +381,13 @@ fn execute_redelegate(
 }
 
 fn execute_undelegate(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
+    ctx: ExecuteContext,
     amount: Option<Uint128>,
     validator: String,
 ) -> Result<Response, ContractError> {
+    let ExecuteContext {
+        deps, info, env, ..
+    } = ctx;
     let sender = info.sender.to_string();
     ensure!(
         ADOContract::default().is_contract_owner(deps.storage, &sender)?,
@@ -416,11 +419,10 @@ fn execute_undelegate(
         .add_attribute("amount", amount))
 }
 
-fn execute_withdraw_rewards(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-) -> Result<Response, ContractError> {
+fn execute_withdraw_rewards(ctx: ExecuteContext) -> Result<Response, ContractError> {
+    let ExecuteContext {
+        deps, info, env, ..
+    } = ctx;
     nonpayable(&info)?;
 
     let sender = info.sender.to_string();
@@ -485,11 +487,11 @@ fn claim_batch(
 }
 
 fn execute_vote(
-    deps: DepsMut,
-    info: MessageInfo,
+    ctx: ExecuteContext,
     proposal_id: u64,
     vote: VoteOption,
 ) -> Result<Response, ContractError> {
+    let ExecuteContext { deps, info, .. } = ctx;
     nonpayable(&info)?;
     ensure!(
         ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
@@ -559,12 +561,12 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
-        QueryMsg::AndrQuery(msg) => ADOContract::default().query(deps, env, msg, query),
         QueryMsg::Config {} => encode_binary(&query_config(deps)?),
         QueryMsg::Batch { id } => encode_binary(&query_batch(deps, env, id)?),
         QueryMsg::Batches { start_after, limit } => {
             encode_binary(&query_batches(deps, env, start_after, limit)?)
         }
+        _ => ADOContract::default().query(deps, env, msg),
     }
 }
 

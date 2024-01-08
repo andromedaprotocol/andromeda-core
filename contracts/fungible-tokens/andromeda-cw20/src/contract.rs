@@ -1,21 +1,23 @@
-#[cfg(not(feature = "library"))]
+use andromeda_fungible_tokens::cw20::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
+use andromeda_std::{
+    ado_base::{
+        hooks::AndromedaHook, AndromedaMsg, AndromedaQuery, InstantiateMsg as BaseInstantiateMsg,
+    },
+    ado_contract::ADOContract,
+    common::Funds,
+    common::{context::ExecuteContext, encode_binary},
+    error::{from_semver, ContractError},
+};
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     ensure, from_binary, to_binary, Addr, Api, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
     Response, StdResult, Storage, SubMsg, Uint128, WasmMsg,
 };
 
-use ado_base::ADOContract;
-use andromeda_fungible_tokens::cw20::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
-use common::{
-    ado_base::{hooks::AndromedaHook, AndromedaMsg, InstantiateMsg as BaseInstantiateMsg},
-    error::{from_semver, ContractError},
-    Funds,
-};
 use cw2::{get_contract_version, set_contract_version};
 use cw20::{Cw20Coin, Cw20ExecuteMsg};
 use cw20_base::{
-    contract::{execute as execute_cw20, instantiate as cw20_instantiate, query as query_cw20},
+    contract::{execute as execute_cw20, instantiate as cw20_instantiate, query as cw20_query},
     state::BALANCES,
 };
 use semver::Version;
@@ -42,13 +44,18 @@ pub fn instantiate(
             ado_type: "cw20".to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
             operators: None,
-            modules: msg.modules.clone(),
-            primitive_contract: None,
+            kernel_address: msg.clone().kernel_address,
+            owner: msg.clone().owner,
         },
     )?;
+    let modules_resp =
+        contract.register_modules(info.sender.as_str(), deps.storage, msg.clone().modules)?;
+
     let cw20_resp = cw20_instantiate(deps, env, info, msg.into())?;
 
     Ok(resp
+        .add_submessages(modules_resp.messages)
+        .add_attributes(modules_resp.attributes)
         .add_submessages(cw20_resp.messages)
         .add_attributes(cw20_resp.attributes))
 }
@@ -60,55 +67,59 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
-    let contract = ADOContract::default();
-
-    // Do this before the hooks get fired off to ensure that there are no errors from the app
-    // address not being fully setup yet.
-    if let ExecuteMsg::AndrReceive(andr_msg) = msg.clone() {
-        if let AndromedaMsg::UpdateAppContract { address } = andr_msg {
-            return contract.execute_update_app_contract(deps, info, address, None);
-        } else if let AndromedaMsg::UpdateOwner { address } = andr_msg {
-            return contract.execute_update_owner(deps, info, address);
-        }
-    }
-
-    contract.module_hook::<Response>(
-        deps.storage,
-        deps.api,
-        deps.querier,
-        AndromedaHook::OnExecute {
-            sender: info.sender.to_string(),
-            payload: to_binary(&msg)?,
-        },
-    )?;
+    let ctx = ExecuteContext::new(deps, info, env);
 
     match msg {
-        ExecuteMsg::Transfer { recipient, amount } => {
-            execute_transfer(deps, env, info, recipient, amount)
+        ExecuteMsg::AMPReceive(pkt) => {
+            ADOContract::default().execute_amp_receive(ctx, pkt, handle_execute)
         }
-        ExecuteMsg::Burn { amount } => execute_burn(deps, env, info, amount),
+        _ => handle_execute(ctx, msg),
+    }
+}
+
+pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+    let contract = ADOContract::default();
+    if !matches!(msg, ExecuteMsg::UpdateAppContract { .. })
+        && !matches!(msg, ExecuteMsg::UpdateOwner { .. })
+    {
+        contract.module_hook::<Response>(
+            &ctx.deps.as_ref(),
+            AndromedaHook::OnExecute {
+                sender: ctx.info.sender.to_string(),
+                payload: encode_binary(&msg)?,
+            },
+        )?;
+    }
+    match msg {
+        ExecuteMsg::Transfer { recipient, amount } => execute_transfer(ctx, recipient, amount),
+        ExecuteMsg::Burn { amount } => execute_burn(ctx, amount),
         ExecuteMsg::Send {
             contract,
             amount,
             msg,
-        } => execute_send(deps, env, info, contract, amount, msg),
-        ExecuteMsg::Mint { recipient, amount } => execute_mint(deps, env, info, recipient, amount),
-        ExecuteMsg::AndrReceive(msg) => contract.execute(deps, env, info, msg, execute),
-        _ => Ok(execute_cw20(deps, env, info, msg.into())?),
+        } => execute_send(ctx, contract, amount, msg),
+        ExecuteMsg::Mint { recipient, amount } => execute_mint(ctx, recipient, amount),
+        _ => {
+            let serialized = encode_binary(&msg)?;
+            match from_binary::<AndromedaMsg>(&serialized) {
+                Ok(msg) => ADOContract::default().execute(ctx, msg),
+                _ => Ok(execute_cw20(ctx.deps, ctx.env, ctx.info, msg.into())?),
+            }
+        }
     }
 }
 
 fn execute_transfer(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
+    ctx: ExecuteContext,
     recipient: String,
     amount: Uint128,
 ) -> Result<Response, ContractError> {
+    let ExecuteContext {
+        deps, info, env, ..
+    } = ctx;
+
     let (msgs, events, remainder) = ADOContract::default().on_funds_transfer(
-        deps.storage,
-        deps.api,
-        &deps.querier,
+        &deps.as_ref(),
         info.sender.to_string(),
         Funds::Cw20(Cw20Coin {
             address: env.contract.address.to_string(),
@@ -162,12 +173,11 @@ fn transfer_tokens(
     Ok(())
 }
 
-fn execute_burn(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    amount: Uint128,
-) -> Result<Response, ContractError> {
+fn execute_burn(ctx: ExecuteContext, amount: Uint128) -> Result<Response, ContractError> {
+    let ExecuteContext {
+        deps, info, env, ..
+    } = ctx;
+
     Ok(execute_cw20(
         deps,
         env,
@@ -177,17 +187,17 @@ fn execute_burn(
 }
 
 fn execute_send(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
+    ctx: ExecuteContext,
     contract: String,
     amount: Uint128,
     msg: Binary,
 ) -> Result<Response, ContractError> {
+    let ExecuteContext {
+        deps, info, env, ..
+    } = ctx;
+
     let (msgs, events, remainder) = ADOContract::default().on_funds_transfer(
-        deps.storage,
-        deps.api,
-        &deps.querier,
+        &deps.as_ref(),
         info.sender.to_string(),
         Funds::Cw20(Cw20Coin {
             address: env.contract.address.to_string(),
@@ -226,12 +236,14 @@ fn execute_send(
 }
 
 fn execute_mint(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
+    ctx: ExecuteContext,
     recipient: String,
     amount: Uint128,
 ) -> Result<Response, ContractError> {
+    let ExecuteContext {
+        deps, info, env, ..
+    } = ctx;
+
     Ok(execute_cw20(
         deps,
         env,
@@ -302,8 +314,9 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
-    match msg {
-        QueryMsg::AndrQuery(msg) => ADOContract::default().query(deps, env, msg, query),
-        _ => Ok(query_cw20(deps, env, msg.into())?),
+    let serialized = to_binary(&msg)?;
+    match from_binary::<AndromedaQuery>(&serialized) {
+        Ok(msg) => ADOContract::default().query(deps, env, msg),
+        _ => Ok(cw20_query(deps, env, msg.into())?),
     }
 }

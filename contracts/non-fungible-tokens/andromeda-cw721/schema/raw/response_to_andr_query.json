@@ -63,6 +63,19 @@
     {
       "type": "object",
       "required": [
+        "kernel_address"
+      ],
+      "properties": {
+        "kernel_address": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
         "original_publisher"
       ],
       "properties": {

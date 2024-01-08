@@ -1,17 +1,13 @@
 use crate::state::SPLITTER;
-
-use ado_base::ADOContract;
 use andromeda_finance::weighted_splitter::{
     AddressWeight, ExecuteMsg, GetSplitterConfigResponse, GetUserWeightResponse, InstantiateMsg,
     MigrateMsg, QueryMsg, Splitter,
 };
-use common::{
-    ado_base::{
-        hooks::AndromedaHook, recipient::Recipient, AndromedaMsg,
-        InstantiateMsg as BaseInstantiateMsg,
-    },
-    app::AndrAddress,
-    encode_binary,
+use andromeda_std::{
+    ado_base::InstantiateMsg as BaseInstantiateMsg,
+    ado_contract::ADOContract,
+    amp::Recipient,
+    common::{context::ExecuteContext, encode_binary},
     error::{from_semver, ContractError},
 };
 
@@ -33,7 +29,7 @@ const ONE_DAY: u64 = 86_400;
 // 1 year in seconds
 const ONE_YEAR: u64 = 31_536_000;
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
     env: Env,
@@ -41,11 +37,13 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+    let _app_contract = ADOContract::default().get_app_contract(deps.storage)?;
     // Max 100 recipients
     ensure!(
         msg.recipients.len() <= 100,
         ContractError::ReachedRecipientLimit {}
     );
+
     let current_time = env.block.time.seconds();
     let splitter = match msg.lock_time {
         Some(lock_time) => {
@@ -70,8 +68,8 @@ pub fn instantiate(
     };
 
     SPLITTER.save(deps.storage, &splitter)?;
-
-    ADOContract::default().instantiate(
+    let contract = ADOContract::default();
+    let resp = contract.instantiate(
         deps.storage,
         env,
         deps.api,
@@ -80,77 +78,54 @@ pub fn instantiate(
             ado_type: "weighted-distribution-splitter".to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
             operators: None,
-            modules: msg.modules,
-            primitive_contract: None,
+            kernel_address: msg.kernel_address,
+            owner: msg.owner,
         },
-    )
+    )?;
+
+    Ok(resp)
 }
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
-    let contract = ADOContract::default();
-
-    // Do this before the hooks get fired off to ensure that there are no errors from the app
-    // address not being fully setup yet.
-    if let ExecuteMsg::AndrReceive(andr_msg) = msg.clone() {
-        if let AndromedaMsg::UpdateAppContract { address } = andr_msg {
-            let splitter = SPLITTER.load(deps.storage)?;
-            let mut andr_addresses: Vec<AndrAddress> = vec![];
-            for recipient in splitter.recipients {
-                if let Recipient::ADO(ado_recipient) = recipient.recipient {
-                    andr_addresses.push(ado_recipient.address);
-                }
-            }
-            return contract.execute_update_app_contract(deps, info, address, Some(andr_addresses));
-        } else if let AndromedaMsg::UpdateOwner { address } = andr_msg {
-            return contract.execute_update_owner(deps, info, address);
-        }
-    }
-
-    //Andromeda Messages can be executed without modules, if they are a wrapped execute message they will loop back
-    if let ExecuteMsg::AndrReceive(andr_msg) = msg {
-        return contract.execute(deps, env, info, andr_msg, execute);
-    };
-
-    contract.module_hook::<Response>(
-        deps.storage,
-        deps.api,
-        deps.querier,
-        AndromedaHook::OnExecute {
-            sender: info.sender.to_string(),
-            payload: encode_binary(&msg)?,
-        },
-    )?;
+    let ctx = ExecuteContext::new(deps, info, env);
 
     match msg {
-        ExecuteMsg::UpdateRecipients { recipients } => {
-            execute_update_recipients(deps, env, info, recipients)
+        ExecuteMsg::AMPReceive(pkt) => {
+            ADOContract::default().execute_amp_receive(ctx, pkt, handle_execute)
         }
-        ExecuteMsg::UpdateRecipientWeight { recipient } => {
-            execute_update_recipient_weight(deps, env, info, recipient)
-        }
-        ExecuteMsg::AddRecipient { recipient } => execute_add_recipient(deps, env, info, recipient),
-        ExecuteMsg::RemoveRecipient { recipient } => {
-            execute_remove_recipient(deps, env, info, recipient)
-        }
-        ExecuteMsg::UpdateLock { lock_time } => execute_update_lock(deps, env, info, lock_time),
+        _ => handle_execute(ctx, msg),
+    }
+}
 
-        ExecuteMsg::Send {} => execute_send(deps, info),
-        ExecuteMsg::AndrReceive(msg) => execute_andromeda(deps, env, info, msg),
+pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+    match msg {
+        ExecuteMsg::UpdateRecipients { recipients } => execute_update_recipients(ctx, recipients),
+        ExecuteMsg::UpdateRecipientWeight { recipient } => {
+            execute_update_recipient_weight(ctx, recipient)
+        }
+        ExecuteMsg::AddRecipient { recipient } => execute_add_recipient(ctx, recipient),
+        ExecuteMsg::RemoveRecipient { recipient } => execute_remove_recipient(ctx, recipient),
+        ExecuteMsg::UpdateLock { lock_time } => execute_update_lock(ctx, lock_time),
+
+        ExecuteMsg::Send {} => execute_send(ctx),
+
+        _ => ADOContract::default().execute(ctx, msg),
     }
 }
 
 pub fn execute_update_recipient_weight(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
+    ctx: ExecuteContext,
     recipient: AddressWeight,
 ) -> Result<Response, ContractError> {
+    let ExecuteContext {
+        deps, info, env, ..
+    } = ctx;
     nonpayable(&info)?;
     // Only the contract's owner can update a recipient's weight
     ensure!(
@@ -192,11 +167,12 @@ pub fn execute_update_recipient_weight(
 }
 
 pub fn execute_add_recipient(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
+    ctx: ExecuteContext,
     recipient: AddressWeight,
 ) -> Result<Response, ContractError> {
+    let ExecuteContext {
+        deps, info, env, ..
+    } = ctx;
     nonpayable(&info)?;
 
     // Only the contract's owner can add a recipient
@@ -248,19 +224,8 @@ pub fn execute_add_recipient(
     Ok(Response::default().add_attributes(vec![attr("action", "added_recipient")]))
 }
 
-pub fn execute_andromeda(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    msg: AndromedaMsg,
-) -> Result<Response, ContractError> {
-    match msg {
-        AndromedaMsg::Receive(..) => execute_send(deps, info),
-        _ => ADOContract::default().execute(deps, env, info, msg, execute),
-    }
-}
-
-fn execute_send(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError> {
+fn execute_send(ctx: ExecuteContext) -> Result<Response, ContractError> {
+    let ExecuteContext { deps, info, .. } = ctx;
     // Amount of coins sent should be at least 1
     ensure!(
         !&info.funds.is_empty(),
@@ -276,9 +241,7 @@ fn execute_send(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractEr
 
     let splitter = SPLITTER.load(deps.storage)?;
     let mut msgs: Vec<SubMsg> = Vec::new();
-
     let mut remainder_funds = info.funds.clone();
-
     let mut total_weight = Uint128::zero();
 
     // Calculate the total weight of all recipients
@@ -300,13 +263,10 @@ fn execute_send(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractEr
         }
         // ADO receivers must use AndromedaMsg::Receive to execute their functionality
         // Others may just receive the funds
-        let msg = recipient_addr.recipient.generate_msg_native(
-            deps.api,
-            &deps.querier,
-            ADOContract::default().get_app_contract(deps.storage)?,
-            vec_coin,
-        )?;
-        msgs.push(msg);
+        let direct_message = recipient_addr
+            .recipient
+            .generate_direct_msg(&deps.as_ref(), vec_coin)?;
+        msgs.push(direct_message);
     }
     remainder_funds.retain(|x| x.amount > Uint128::zero());
 
@@ -317,17 +277,45 @@ fn execute_send(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractEr
         })));
     }
 
+    // // Generates the SubMsg intended for the kernel
+    // // Check if any messages are intended for kernel in the first place
+    // let contract = ADOContract::default();
+
+    // // The original sender of the message
+    // let origin = match packet {
+    //     Some(p) => p.get_verified_origin(),
+    //     None => info.sender.to_string(),
+    // };
+
+    // // The previous sender of the message is the contract
+    // let previous_sender = env.contract.address;
+
+    // if !amp_msgs.is_empty() {
+    //     // The kernel address has been validated and saved during instantiation
+    //     let kernel_address = contract.get_kernel_address(deps.storage)?;
+
+    //     let msg = generate_msg_native_kernel(
+    //         kernel_funds,
+    //         origin,
+    //         previous_sender.into_string(),
+    //         amp_msgs,
+    //         kernel_address.into_string(),
+    //     )?;
+    //     msgs.push(msg);
+    // }
+
     Ok(Response::new()
         .add_submessages(msgs)
         .add_attributes(vec![attr("action", "send"), attr("sender", info.sender)]))
 }
 
 fn execute_update_recipients(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
+    ctx: ExecuteContext,
     recipients: Vec<AddressWeight>,
 ) -> Result<Response, ContractError> {
+    let ExecuteContext {
+        deps, info, env, ..
+    } = ctx;
     nonpayable(&info)?;
 
     // Only the owner can use this function
@@ -369,11 +357,12 @@ fn execute_update_recipients(
 }
 
 fn execute_remove_recipient(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
+    ctx: ExecuteContext,
     recipient: Recipient,
 ) -> Result<Response, ContractError> {
+    let ExecuteContext {
+        deps, info, env, ..
+    } = ctx;
     nonpayable(&info)?;
 
     ensure!(
@@ -414,12 +403,11 @@ fn execute_remove_recipient(
     Ok(Response::default().add_attributes(vec![attr("action", "removed_recipient")]))
 }
 
-fn execute_update_lock(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    lock_time: u64,
-) -> Result<Response, ContractError> {
+fn execute_update_lock(ctx: ExecuteContext, lock_time: u64) -> Result<Response, ContractError> {
+    let ExecuteContext {
+        deps, info, env, ..
+    } = ctx;
+
     nonpayable(&info)?;
 
     ensure!(
@@ -496,7 +484,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
     match msg {
         QueryMsg::GetSplitterConfig {} => encode_binary(&query_splitter(deps)?),
         QueryMsg::GetUserWeight { user } => encode_binary(&query_user_weight(deps, user)?),
-        QueryMsg::AndrQuery(msg) => ADOContract::default().query(deps, env, msg, query),
+        _ => ADOContract::default().query(deps, env, msg),
     }
 }
 

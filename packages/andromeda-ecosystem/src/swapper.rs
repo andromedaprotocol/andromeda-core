@@ -1,7 +1,5 @@
-use common::{
-    ado_base::{recipient::Recipient, AndromedaMsg, AndromedaQuery},
-    app::AndrAddress,
-};
+use andromeda_os::messages::AMPPkt;
+use common::ado_base::{recipient::Recipient, AndromedaMsg, AndromedaQuery};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Binary;
 use cw20::Cw20ReceiveMsg;
@@ -38,6 +36,7 @@ pub enum SwapperCw20HookMsg {
 pub struct InstantiateMsg {
     pub swapper_impl: SwapperImpl,
     pub primitive_contract: String,
+    pub kernel_address: Option<String>,
 }
 
 #[cw_serde]
@@ -45,7 +44,7 @@ pub enum SwapperImpl {
     /// Specifies the instantiation specification for the swapper impl.
     New(InstantiateInfo),
     /// Specifies the swapper impl by reference to an existing contract.
-    Reference(AndrAddress),
+    Reference(String),
 }
 
 #[cw_serde]
@@ -61,6 +60,7 @@ pub struct InstantiateInfo {
 #[cw_serde]
 pub enum ExecuteMsg {
     AndrReceive(AndromedaMsg),
+    AMPReceive(AMPPkt),
     Receive(Cw20ReceiveMsg),
     Swap {
         ask_asset_info: AssetInfo,
@@ -88,7 +88,7 @@ pub enum Cw20HookMsg {
 pub enum QueryMsg {
     #[returns(AndromedaQuery)]
     AndrQuery(AndromedaQuery),
-    #[returns(AndrAddress)]
+    #[returns(String)]
     SwapperImpl {},
 }
 

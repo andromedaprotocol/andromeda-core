@@ -1,32 +1,32 @@
 // The mars lockdrop contract was used as a base for this.
 // https://github.com/mars-protocol/mars-periphery/tree/main/contracts/lockdrop
 
-use cosmwasm_std::{
-    ensure, entry_point, from_binary, Binary, Decimal, Deps, DepsMut, Env, MessageInfo, Response,
-    Uint128,
-};
-use cw2::{get_contract_version, set_contract_version};
-use cw20::Cw20ReceiveMsg;
-use cw_asset::Asset;
-
-use ado_base::ADOContract;
 use andromeda_fungible_tokens::lockdrop::{
     ConfigResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, StateResponse,
     UserInfoResponse,
 };
-use common::{
-    ado_base::InstantiateMsg as BaseInstantiateMsg,
-    encode_binary,
+use andromeda_std::{
+    ado_base::{hooks::AndromedaHook, InstantiateMsg as BaseInstantiateMsg},
+    ado_contract::ADOContract,
+    common::expiration::MILLISECONDS_TO_NANOSECONDS_RATIO,
+    common::{context::ExecuteContext, encode_binary},
     error::{from_semver, ContractError},
-    expiration::MILLISECONDS_TO_NANOSECONDS_RATIO,
 };
+use cosmwasm_std::{
+    ensure, from_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, Uint128,
+};
+use cosmwasm_std::{entry_point, Decimal};
+use cw_asset::Asset;
 
 use crate::state::{Config, State, CONFIG, STATE, USER_INFO};
+use cw2::{get_contract_version, set_contract_version};
+use cw20::Cw20ReceiveMsg;
+
 use cw_utils::nonpayable;
 use semver::Version;
 
 // version info for migration info
-const CONTRACT_NAME: &str = "andromeda-lockup";
+const CONTRACT_NAME: &str = "andromeda-lockdrop";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 //----------------------------------------------------------------------------------------
@@ -72,19 +72,25 @@ pub fn instantiate(
     CONFIG.save(deps.storage, &config)?;
     STATE.save(deps.storage, &State::default())?;
 
-    ADOContract::default().instantiate(
+    let inst_resp = ADOContract::default().instantiate(
         deps.storage,
         env,
         deps.api,
-        info,
+        info.clone(),
         BaseInstantiateMsg {
             ado_type: "lockdrop".to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
             operators: None,
-            modules: None,
-            primitive_contract: None,
+            kernel_address: msg.kernel_address,
+            owner: msg.owner,
         },
-    )
+    )?;
+    let mod_resp =
+        ADOContract::default().register_modules(info.sender.as_str(), deps.storage, msg.modules)?;
+
+    Ok(inst_resp
+        .add_attributes(mod_resp.attributes)
+        .add_submessages(mod_resp.messages))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -94,18 +100,40 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
+    let ctx = ExecuteContext::new(deps, info, env);
+
     match msg {
-        ExecuteMsg::AndrReceive(msg) => {
-            ADOContract::default().execute(deps, env, info, msg, execute)
+        ExecuteMsg::AMPReceive(pkt) => {
+            ADOContract::default().execute_amp_receive(ctx, pkt, handle_execute)
         }
-        ExecuteMsg::Receive(msg) => receive_cw20(deps, env, info, msg),
-        ExecuteMsg::DepositNative {} => execute_deposit_native(deps, env, info),
-        ExecuteMsg::WithdrawNative { amount } => execute_withdraw_native(deps, env, info, amount),
-        ExecuteMsg::EnableClaims {} => execute_enable_claims(deps, env, info),
-        ExecuteMsg::ClaimRewards {} => execute_claim_rewards(deps, env, info),
-        ExecuteMsg::WithdrawProceeds { recipient } => {
-            execute_withdraw_proceeds(deps, env, info, recipient)
-        }
+        _ => handle_execute(ctx, msg),
+    }
+}
+
+pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+    let contract = ADOContract::default();
+
+    if !matches!(msg, ExecuteMsg::UpdateAppContract { .. })
+        && !matches!(msg, ExecuteMsg::UpdateOwner { .. })
+    {
+        contract.module_hook::<Response>(
+            &ctx.deps.as_ref(),
+            AndromedaHook::OnExecute {
+                sender: ctx.info.sender.to_string(),
+                payload: encode_binary(&msg)?,
+            },
+        )?;
+    }
+
+    match msg {
+        ExecuteMsg::Receive(msg) => receive_cw20(ctx, msg),
+        ExecuteMsg::DepositNative {} => execute_deposit_native(ctx),
+        ExecuteMsg::WithdrawNative { amount } => execute_withdraw_native(ctx, amount),
+        ExecuteMsg::EnableClaims {} => execute_enable_claims(ctx),
+        ExecuteMsg::ClaimRewards {} => execute_claim_rewards(ctx),
+        ExecuteMsg::WithdrawProceeds { recipient } => execute_withdraw_proceeds(ctx, recipient),
+
+        _ => handle_execute(ctx, msg),
     }
 }
 
@@ -144,9 +172,7 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 }
 
 pub fn receive_cw20(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
+    ctx: ExecuteContext,
     cw20_msg: Cw20ReceiveMsg,
 ) -> Result<Response, ContractError> {
     // CHECK :: Tokens sent > 0
@@ -158,22 +184,20 @@ pub fn receive_cw20(
     );
 
     match from_binary(&cw20_msg.msg)? {
-        Cw20HookMsg::IncreaseIncentives {} => {
-            execute_increase_incentives(deps, env, info, cw20_msg.amount)
-        }
+        Cw20HookMsg::IncreaseIncentives {} => execute_increase_incentives(ctx, cw20_msg.amount),
     }
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
-        QueryMsg::AndrQuery(msg) => ADOContract::default().query(deps, env, msg, query),
         QueryMsg::Config {} => encode_binary(&query_config(deps)?),
         QueryMsg::State {} => encode_binary(&query_state(deps)?),
         QueryMsg::UserInfo { address } => encode_binary(&query_user_info(deps, env, address)?),
         QueryMsg::WithdrawalPercentAllowed { timestamp } => {
             encode_binary(&query_max_withdrawable_percent(deps, env, timestamp)?)
         }
+        _ => ADOContract::default().query(deps, env, msg),
     }
 }
 
@@ -184,11 +208,12 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
 /// @dev Facilitates increasing token incentives that are to be distributed as Lockdrop participation reward
 /// @params amount : Number of tokens which are to be added to current incentives
 pub fn execute_increase_incentives(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
+    ctx: ExecuteContext,
     amount: Uint128,
 ) -> Result<Response, ContractError> {
+    let ExecuteContext {
+        deps, env, info, ..
+    } = ctx;
     let mut config = CONFIG.load(deps.storage)?;
 
     ensure!(
@@ -211,11 +236,10 @@ pub fn execute_increase_incentives(
 }
 
 /// @dev Facilitates NATIVE deposits.
-pub fn execute_deposit_native(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-) -> Result<Response, ContractError> {
+pub fn execute_deposit_native(ctx: ExecuteContext) -> Result<Response, ContractError> {
+    let ExecuteContext {
+        deps, env, info, ..
+    } = ctx;
     let config = CONFIG.load(deps.storage)?;
     let mut state = STATE.load(deps.storage)?;
 
@@ -273,11 +297,12 @@ pub fn execute_deposit_native(
 /// @dev Facilitates NATIVE withdrawal from an existing Lockup position. Can only be called when deposit / withdrawal window is open
 /// @param withdraw_amount : NATIVE amount to be withdrawn
 pub fn execute_withdraw_native(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
+    ctx: ExecuteContext,
     withdraw_amount: Option<Uint128>,
 ) -> Result<Response, ContractError> {
+    let ExecuteContext {
+        deps, env, info, ..
+    } = ctx;
     let config = CONFIG.load(deps.storage)?;
     let mut state = STATE.load(deps.storage)?;
 
@@ -342,11 +367,10 @@ pub fn execute_withdraw_native(
 /// Function callable only by Bootstrap contract (if it is specified) to enable TOKEN Claims by users.
 /// Called along-with Bootstrap contract's LP Pool provide liquidity tx. If it is not
 /// specified then anyone can execute this when the phase has ended.
-pub fn execute_enable_claims(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-) -> Result<Response, ContractError> {
+pub fn execute_enable_claims(ctx: ExecuteContext) -> Result<Response, ContractError> {
+    let ExecuteContext {
+        deps, env, info, ..
+    } = ctx;
     nonpayable(&info)?;
 
     // let contract = ADOContract::default();
@@ -384,11 +408,8 @@ pub fn execute_enable_claims(
 }
 
 /// @dev Function to claim Rewards from lockdrop.
-pub fn execute_claim_rewards(
-    deps: DepsMut,
-    _env: Env,
-    info: MessageInfo,
-) -> Result<Response, ContractError> {
+pub fn execute_claim_rewards(ctx: ExecuteContext) -> Result<Response, ContractError> {
+    let ExecuteContext { deps, info, .. } = ctx;
     let config = CONFIG.load(deps.storage)?;
     let state = STATE.load(deps.storage)?;
 
@@ -428,11 +449,12 @@ pub fn execute_claim_rewards(
 }
 
 fn execute_withdraw_proceeds(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
+    ctx: ExecuteContext,
     recipient: Option<String>,
 ) -> Result<Response, ContractError> {
+    let ExecuteContext {
+        deps, env, info, ..
+    } = ctx;
     nonpayable(&info)?;
 
     let recipient = recipient.unwrap_or_else(|| info.sender.to_string());
@@ -458,6 +480,7 @@ fn execute_withdraw_proceeds(
     let balance = native_token
         .info
         .query_balance(&deps.querier, env.contract.address)?;
+
     ensure!(
         balance >= state.total_native_locked,
         ContractError::InvalidWithdrawal {

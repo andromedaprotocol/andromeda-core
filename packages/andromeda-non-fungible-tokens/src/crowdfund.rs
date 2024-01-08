@@ -1,22 +1,21 @@
 use crate::cw721::TokenExtension;
-use common::{
-    ado_base::{modules::Module, recipient::Recipient, AndromedaMsg, AndromedaQuery},
-    app::AndrAddress,
-};
+use andromeda_std::amp::{addresses::AndrAddr, recipient::Recipient};
+use andromeda_std::{andr_exec, andr_instantiate, andr_instantiate_modules, andr_query};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Coin, Uint128};
 use cw_utils::Expiration;
 
+#[andr_instantiate]
+#[andr_instantiate_modules]
 #[cw_serde]
 pub struct InstantiateMsg {
-    pub token_address: AndrAddress,
+    pub token_address: AndrAddr,
     pub can_mint_after_sale: bool,
-    pub modules: Option<Vec<Module>>,
 }
 
+#[andr_exec]
 #[cw_serde]
 pub enum ExecuteMsg {
-    AndrReceive(AndromedaMsg),
     /// Mints a new token to be sold in a future sale. Only possible when the sale is not ongoing.
     Mint(Vec<CrowdfundMintMsg>),
     /// Starts the sale if one is not already ongoing.
@@ -33,27 +32,20 @@ pub enum ExecuteMsg {
         recipient: Recipient,
     },
     /// Puchases tokens in an ongoing sale.
-    Purchase {
-        number_of_tokens: Option<u32>,
-    },
+    Purchase { number_of_tokens: Option<u32> },
     /// Purchases the token with the given id.
-    PurchaseByTokenId {
-        token_id: String,
-    },
+    PurchaseByTokenId { token_id: String },
     /// Allow a user to claim their own refund if the minimum number of tokens are not sold.
     ClaimRefund {},
     /// Ends the ongoing sale by completing `limit` number of operations depending on if the minimum number
     /// of tokens was sold.
-    EndSale {
-        limit: Option<u32>,
-    },
+    EndSale { limit: Option<u32> },
 }
 
+#[andr_query]
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
-    #[returns(AndromedaQuery)]
-    AndrQuery(AndromedaQuery),
     #[returns(State)]
     State {},
     #[returns(Config)]
@@ -70,7 +62,7 @@ pub enum QueryMsg {
 #[cw_serde]
 pub struct Config {
     /// The address of the token contract whose tokens are being sold.
-    pub token_address: AndrAddress,
+    pub token_address: AndrAddr,
     /// Whether or not the owner can mint additional tokens after the sale has been conducted.
     pub can_mint_after_sale: bool,
 }

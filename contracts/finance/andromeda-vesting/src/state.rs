@@ -1,5 +1,5 @@
 use andromeda_finance::vesting::Config;
-use common::{error::ContractError, withdraw::WithdrawalType};
+use andromeda_std::{common::withdraw::WithdrawalType, error::ContractError};
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{ensure, Order, Storage, Uint128};
 use cw_storage_plus::{Bound, Index, IndexList, IndexedMap, Item, MultiIndex};

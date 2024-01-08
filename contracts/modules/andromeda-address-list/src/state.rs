@@ -17,12 +17,5 @@ pub fn remove_address(storage: &mut dyn Storage, addr: &str) {
 }
 /// Query if a given address is included in the address list.
 pub fn includes_address(storage: &dyn Storage, addr: &str) -> StdResult<bool> {
-    match ADDRESS_LIST.load(storage, addr) {
-        Ok(included) => Ok(included),
-        Err(e) => match e {
-            //If no value for address return false
-            cosmwasm_std::StdError::NotFound { .. } => Ok(false),
-            _ => Err(e),
-        },
-    }
+    Ok(ADDRESS_LIST.may_load(storage, addr)?.unwrap_or(false))
 }

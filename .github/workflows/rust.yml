@@ -10,8 +10,8 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  clippy:
-    name: Actions - clippy
+  linting:
+    name: Linting
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -19,30 +19,17 @@ jobs:
           fetch-depth: 1
       - uses: actions-rs/toolchain@v1
         with:
-          toolchain: stable
-          components: clippy
+          toolchain: 1.69.0
+          components: rustfmt, clippy
           profile: minimal
           override: true
       - run: cargo fetch --verbose
       - run: cargo clippy --all --all-targets -- -D warnings
-
-  rustfmt:
-    name: Actions - rustfmt
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          fetch-depth: 1
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          components: rustfmt
-          profile: minimal
-          override: true
       - run: cargo fmt -- --check
 
-  unit-test:
-    name: Actions - unit test
+  contract-tests:
+    name: Contract Tests
+    needs: linting
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -53,50 +40,70 @@ jobs:
           fetch-depth: 1
       - uses: actions-rs/toolchain@v1
         with:
-          toolchain: stable
+          toolchain: 1.69.0
           profile: minimal
       - run: cargo fetch --verbose
       - run: cargo build
       - run: cargo test --verbose --all --lib
         env:
           RUST_BACKTRACE: 1
-
-  integration-test:
-    name: Actions - integration test
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          fetch-depth: 1
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          profile: minimal
-      - run: cargo fetch --verbose
-      - run: cargo build
       - run: cargo test -p tests-integration --verbose
         env:
           RUST_BACKTRACE: 1
 
   build:
     runs-on: ubuntu-latest
-    name: Actions - build contracts & schemas
+    name: Actions - build contracts and upload artifacts
+    needs: [contract-tests]
     steps:
-      - uses: actions/checkout@v2
+      - run: sudo apt install binaryen
+      - uses: actions-rs/toolchain@v1
         with:
-          required-permission: write
-      - name: Build Schema
-        run: |
-          chmod +x "${GITHUB_WORKSPACE}/build_schema.sh"
-          "${GITHUB_WORKSPACE}/build_schema.sh"
+          toolchain: 1.69.0
+      - run: rustup override set 1.69.0
+      - run: rustup target add wasm32-unknown-unknown
+      - uses: actions/checkout@v2
       - name: Build
         run: |
-          chmod +x "${GITHUB_WORKSPACE}/build_all.sh"
-          "${GITHUB_WORKSPACE}/build_all.sh"
+          chmod +x "${GITHUB_WORKSPACE}/build.sh"
+          "${GITHUB_WORKSPACE}/build.sh" all
       - name: Check contract sizes
         run: |
           chmod +x "${GITHUB_WORKSPACE}/.github/file-size.sh"
           "${GITHUB_WORKSPACE}/.github/file-size.sh"
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: contracts
+          path: ./artifacts/
+          if-no-files-found: error
+
+  ibc-tests:
+    runs-on: ubuntu-latest
+    name: Post Build - IBC Tests
+    needs: build
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 1
+      - name: Download Contracts
+        uses: actions/download-artifact@v2
+        with:
+          name: contracts
+          path: "./ibc-tests/contracts"
+      - name: Run IBC Tests
+        run: |
+          cd ./ibc-tests
+          npm i
+          npm test
+
+  build-schemas:
+    runs-on: ubuntu-latest
+    name: Actions - build schemas
+    needs: contract-tests
+    steps:
+      - uses: actions/checkout@v2
+      - name: Build Schema
+        run: |
+          chmod +x "${GITHUB_WORKSPACE}/build_schema.sh"
+          "${GITHUB_WORKSPACE}/build_schema.sh"

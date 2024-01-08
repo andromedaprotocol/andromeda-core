@@ -1,0 +1,30 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Nullable_ADOMetadata",
+  "anyOf": [
+    {
+      "$ref": "#/definitions/ADOMetadata"
+    },
+    {
+      "type": "null"
+    }
+  ],
+  "definitions": {
+    "ADOMetadata": {
+      "type": "object",
+      "required": [
+        "latest_version",
+        "publisher"
+      ],
+      "properties": {
+        "latest_version": {
+          "type": "string"
+        },
+        "publisher": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

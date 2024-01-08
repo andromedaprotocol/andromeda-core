@@ -2,7 +2,8 @@
 
 use crate::contract::{execute, instantiate, query};
 use andromeda_non_fungible_tokens::marketplace::{Cw721HookMsg, ExecuteMsg, InstantiateMsg};
-use common::ado_base::modules::Module;
+use andromeda_std::ado_base::modules::Module;
+use andromeda_std::amp::messages::AMPPkt;
 use cosmwasm_std::{Empty, Uint128};
 use cw_multi_test::{Contract, ContractWrapper};
 
@@ -11,8 +12,16 @@ pub fn mock_andromeda_marketplace() -> Box<dyn Contract<Empty>> {
     Box::new(contract)
 }
 
-pub fn mock_marketplace_instantiate_msg(modules: Option<Vec<Module>>) -> InstantiateMsg {
-    InstantiateMsg { modules }
+pub fn mock_marketplace_instantiate_msg(
+    kernel_address: String,
+    modules: Option<Vec<Module>>,
+    owner: Option<String>,
+) -> InstantiateMsg {
+    InstantiateMsg {
+        modules,
+        kernel_address,
+        owner,
+    }
 }
 
 pub fn mock_start_sale(price: Uint128, coin_denom: impl Into<String>) -> Cw721HookMsg {
@@ -27,4 +36,8 @@ pub fn mock_buy_token(token_address: impl Into<String>, token_id: impl Into<Stri
         token_id: token_id.into(),
         token_address: token_address.into(),
     }
+}
+
+pub fn mock_receive_packet(packet: AMPPkt) -> ExecuteMsg {
+    ExecuteMsg::AMPReceive(packet)
 }

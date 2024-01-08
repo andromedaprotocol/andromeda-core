@@ -2,11 +2,10 @@
 
 use crate::contract::{execute, instantiate, query};
 use andromeda_non_fungible_tokens::cw721::{
-    ExecuteMsg, InstantiateMsg, QueryMsg, TokenExtension, TransferAgreement,
+    ExecuteMsg, InstantiateMsg, MintMsg, QueryMsg, TokenExtension, TransferAgreement,
 };
-use common::{ado_base::modules::Module, app::AndrAddress, primitive::Value};
+use andromeda_std::{ado_base::modules::Module, amp::addresses::AndrAddr};
 use cosmwasm_std::{Binary, Coin, Empty};
-use cw721_base::MintMsg;
 use cw_multi_test::{Contract, ContractWrapper};
 
 pub fn mock_andromeda_cw721() -> Box<dyn Contract<Empty>> {
@@ -17,14 +16,18 @@ pub fn mock_andromeda_cw721() -> Box<dyn Contract<Empty>> {
 pub fn mock_cw721_instantiate_msg(
     name: String,
     symbol: String,
-    minter: String,
+    minter: impl Into<String>,
     modules: Option<Vec<Module>>,
+    kernel_address: String,
+    owner: Option<String>,
 ) -> InstantiateMsg {
     InstantiateMsg {
         name,
         symbol,
-        minter: AndrAddress { identifier: minter },
+        minter: AndrAddr::from_string(minter.into()),
         modules,
+        kernel_address,
+        owner,
     }
 }
 
@@ -40,7 +43,7 @@ pub fn mock_mint_msg(
     extension: TokenExtension,
     token_uri: Option<String>,
     owner: String,
-) -> MintMsg<TokenExtension> {
+) -> MintMsg {
     MintMsg {
         token_id,
         owner,
@@ -50,18 +53,10 @@ pub fn mock_mint_msg(
 }
 
 pub fn mock_quick_mint_msg(amount: u32, owner: String) -> ExecuteMsg {
-    let mut mint_msgs: Vec<MintMsg<TokenExtension>> = Vec::new();
+    let mut mint_msgs: Vec<MintMsg> = Vec::new();
     for i in 0..amount {
         let extension = TokenExtension {
-            name: i.to_string(),
             publisher: owner.clone(),
-            description: None,
-            attributes: vec![],
-            image: i.to_string(),
-            image_data: None,
-            external_url: None,
-            animation_url: None,
-            youtube_url: None,
         };
 
         let msg = mock_mint_msg(i.to_string(), extension, None, owner.clone());
@@ -86,7 +81,7 @@ pub fn mock_transfer_nft(recipient: String, token_id: String) -> ExecuteMsg {
     }
 }
 
-pub fn mock_transfer_agreement(amount: Value<Coin>, purchaser: String) -> TransferAgreement {
+pub fn mock_transfer_agreement(amount: Coin, purchaser: String) -> TransferAgreement {
     TransferAgreement { amount, purchaser }
 }
 

@@ -3,11 +3,21 @@
   "title": "InstantiateMsg",
   "type": "object",
   "required": [
-    "is_inclusive"
+    "is_inclusive",
+    "kernel_address"
   ],
   "properties": {
     "is_inclusive": {
       "type": "boolean"
+    },
+    "kernel_address": {
+      "type": "string"
+    },
+    "owner": {
+      "type": [
+        "string",
+        "null"
+      ]
     }
   },
   "additionalProperties": false

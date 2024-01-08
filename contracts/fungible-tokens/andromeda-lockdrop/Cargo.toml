@@ -1,15 +1,9 @@
 [package]
 name = "andromeda-lockdrop"
-version = "1.0.0"
-edition = "2018"
+version = "0.2.1"
+edition = "2021"
+rust-version = "1.65.0"
 
-exclude = [
-  # Those files are rust-optimizer artifacts. You might want to commit them for convenience but they should not be part of the source code publication.
-  "contract.wasm",
-  "hash.txt",
-]
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [lib]
 crate-type = ["cdylib", "rlib"]
 
@@ -18,22 +12,24 @@ crate-type = ["cdylib", "rlib"]
 backtraces = ["cosmwasm-std/backtraces"]
 # use library feature to disable all instantiate/execute/query exports
 library = []
+testing = ["cw-multi-test"]
+
 
 [dependencies]
-cosmwasm-std = "1.1.6"
-cosmwasm-schema = "1.1.6"
-cw-storage-plus = "0.16.0"
-cw2 = "0.16.0"
-cw20 = "0.16.0"
-cw-asset = "2.0.0"
-semver = "1"
-cw-utils = "0.16.0"
+cosmwasm-std = { workspace = true }
+cosmwasm-schema = { workspace = true }
+cw-storage-plus = { workspace = true }
+cw-utils = { workspace = true}
+cw-asset = { workspace = true }
+cw2 = { workspace = true }
+cw20 = { workspace = true }
+semver = { workspace = true }
 
-schemars = "0.8.10"
-serde = { version = "1.0.127", default-features = false, features = ["derive"] }
+andromeda-std = { workspace = true, features = ["modules"] }
+andromeda-fungible-tokens = { workspace = true }
 
-andromeda-fungible-tokens = { version = "0.1.0", path = "../../../packages/andromeda-fungible-tokens" }
-common = { version = "0.1.0", path = "../../../packages/common" }
-ado-base = { path = "../../../packages/ado-base", version = "0.1.0" }
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+cw-multi-test = { version = "0.16.0", optional = true }
 
-
+[dev-dependencies]
+andromeda-app = { version = "0.1.0", path = "../../../packages/andromeda-app" }

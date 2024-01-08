@@ -1,6 +1,7 @@
 #![cfg(all(not(target_arch = "wasm32"), feature = "testing"))]
 use crate::contract::{execute, instantiate, query, reply};
 use andromeda_app::app::{AppComponent, ExecuteMsg, InstantiateMsg, QueryMsg};
+
 use cosmwasm_std::Empty;
 use cw_multi_test::{Contract, ContractWrapper};
 
@@ -10,21 +11,24 @@ pub fn mock_andromeda_app() -> Box<dyn Contract<Empty>> {
 }
 
 pub fn mock_app_instantiate_msg(
-    name: String,
+    name: impl Into<String>,
     app_components: Vec<AppComponent>,
-    primitive_contract: String,
+    kernel_address: impl Into<String>,
+    owner: Option<String>,
 ) -> InstantiateMsg {
     InstantiateMsg {
         app_components,
-        name,
-        primitive_contract,
-        target_ados: None,
+        name: name.into(),
+        kernel_address: kernel_address.into(),
+        owner,
+        chain_info: None,
     }
 }
 
 pub fn mock_claim_ownership_msg(component_name: Option<String>) -> ExecuteMsg {
     ExecuteMsg::ClaimOwnership {
         name: component_name,
+        new_owner: None,
     }
 }
 

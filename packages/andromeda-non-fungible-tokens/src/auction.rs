@@ -1,19 +1,18 @@
-use common::{
-    ado_base::{modules::Module, AndromedaMsg, AndromedaQuery},
-    OrderBy,
-};
+use andromeda_std::common::OrderBy;
+use andromeda_std::{andr_exec, andr_instantiate, andr_instantiate_modules, andr_query};
+
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Addr, Timestamp, Uint128};
 use cw721::{Cw721ReceiveMsg, Expiration};
 
+#[andr_instantiate]
+#[andr_instantiate_modules]
 #[cw_serde]
-pub struct InstantiateMsg {
-    pub modules: Option<Vec<Module>>,
-}
+pub struct InstantiateMsg {}
 
+#[andr_exec]
 #[cw_serde]
 pub enum ExecuteMsg {
-    AndrReceive(AndromedaMsg),
     ReceiveNft(Cw721ReceiveMsg),
     /// Places a bid on the current auction for the given token_id. The previous largest bid gets
     /// automatically sent back to the bidder when they are outbid.
@@ -55,12 +54,10 @@ pub enum Cw721HookMsg {
         whitelist: Option<Vec<Addr>>,
     },
 }
-
+#[andr_query]
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
-    #[returns(AndromedaQuery)]
-    AndrQuery(AndromedaQuery),
     /// Gets the latest auction state for the given token. This will either be the current auction
     /// if there is one in progress or the last completed one.
     #[returns(AuctionStateResponse)]
@@ -91,6 +88,25 @@ pub enum QueryMsg {
         start_after: Option<u64>,
         limit: Option<u64>,
         order_by: Option<OrderBy>,
+    },
+
+    #[returns(bool)]
+    IsCancelled {
+        token_id: String,
+        token_address: String,
+    },
+
+    /// Returns true only if the auction has been cancelled, the token has been claimed, or the end time has expired
+    #[returns(bool)]
+    IsClosed {
+        token_id: String,
+        token_address: String,
+    },
+
+    #[returns(bool)]
+    IsClaimed {
+        token_id: String,
+        token_address: String,
     },
 }
 

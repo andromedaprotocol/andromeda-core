@@ -1,17 +1,19 @@
-use common::ado_base::{AndromedaMsg, AndromedaQuery};
+use andromeda_std::{andr_exec, andr_instantiate, andr_instantiate_modules, andr_query};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
 use cw_asset::{AssetInfo, AssetInfoUnchecked};
 use cw_utils::Expiration;
 
+#[andr_instantiate]
+#[andr_instantiate_modules]
 #[cw_serde]
 pub struct InstantiateMsg {
     pub asset_info: AssetInfoUnchecked,
 }
 
+#[andr_exec]
 #[cw_serde]
 pub enum ExecuteMsg {
-    AndrReceive(AndromedaMsg),
     RegisterMerkleRoot {
         /// MerkleRoot is hex-encoded merkle root.
         merkle_root: String,
@@ -26,16 +28,13 @@ pub enum ExecuteMsg {
         proof: Vec<String>,
     },
     /// Burn the remaining tokens after expire time (only owner)
-    Burn {
-        stage: u8,
-    },
+    Burn { stage: u8 },
 }
 
+#[andr_query]
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
-    #[returns(AndromedaQuery)]
-    AndrQuery(AndromedaQuery),
     #[returns(ConfigResponse)]
     Config {},
     #[returns(MerkleRootResponse)]

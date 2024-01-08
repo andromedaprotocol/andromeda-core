@@ -1,4 +1,4 @@
-use common::ado_base::{modules::Module, AndromedaMsg, AndromedaQuery};
+use andromeda_std::{andr_exec, andr_instantiate, andr_instantiate_modules, andr_query};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Timestamp, Uint128};
 
@@ -34,11 +34,12 @@ pub struct ContractAndKey {
     pub key: Option<String>,
 }
 
+#[andr_instantiate]
+#[andr_instantiate_modules]
 #[cw_serde]
 pub struct InstantiateMsg {
     pub allowed_coin: CoinAndLimit,
     pub minimal_withdrawal_frequency: MinimumFrequency,
-    pub modules: Option<Vec<Module>>,
 }
 
 #[cw_serde]
@@ -47,22 +48,22 @@ pub enum MinimumFrequency {
     AddressAndKey { address_and_key: ContractAndKey },
 }
 
+#[andr_exec]
 #[cw_serde]
+//NOTE can't name Deposit and Withdraw while implementing andr_exec
 pub enum ExecuteMsg {
-    Deposit { recipient: Option<String> },
-    Withdraw { amount: Uint128 },
-    AndrReceive(AndromedaMsg),
+    Deposits { recipient: Option<String> },
+    Withdraws { amount: Uint128 },
 }
 
 #[cw_serde]
 #[serde(rename_all = "snake_case")]
 pub struct MigrateMsg {}
 
+#[andr_query]
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
-    #[returns(AndromedaQuery)]
-    AndrQuery(AndromedaQuery),
     /// Provides the allowed coin and limits for withdrawal size and frequency
     #[returns(CoinAllowance)]
     CoinAllowanceDetails {},
