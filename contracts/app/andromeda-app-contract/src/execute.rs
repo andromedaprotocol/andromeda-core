@@ -11,8 +11,8 @@ use andromeda_std::os::vfs::ExecuteMsg as VFSExecuteMsg;
 
 use crate::reply::ReplyId;
 use cosmwasm_std::{
-    ensure, to_binary, Addr, Binary, CosmosMsg, QuerierWrapper, ReplyOn, Response, Storage, SubMsg,
-    WasmMsg,
+    ensure, to_binary, Addr, Binary, CosmosMsg, Order, QuerierWrapper, ReplyOn, Response, Storage,
+    SubMsg, WasmMsg,
 };
 
 pub fn handle_add_app_component(
@@ -26,6 +26,11 @@ pub fn handle_add_app_component(
         contract.is_contract_owner(storage, sender)?,
         ContractError::Unauthorized {}
     );
+
+    let amount = ADO_ADDRESSES
+        .keys(storage, None, None, Order::Ascending)
+        .count();
+    ensure!(amount < 50, ContractError::TooManyAppComponents {});
 
     let current_addr = ADO_ADDRESSES.may_load(storage, &component.name)?;
     ensure!(current_addr.is_none(), ContractError::NameAlreadyTaken {});

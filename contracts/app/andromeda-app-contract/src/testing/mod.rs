@@ -624,6 +624,43 @@ fn test_update_address() {
     assert_eq!(Addr::unchecked("newtokenaddress"), addr)
 }
 
+#[test]
+fn test_add_app_component_limit() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let env = mock_env();
+    let info = mock_info("creator", &[]);
+
+    let msg = InstantiateMsg {
+        app_components: vec![],
+        name: String::from("Some App"),
+        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+        owner: None,
+        chain_info: None,
+    };
+
+    // we can just call .unwrap() to assert this was a success
+    instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+    let mut i = 0;
+    while i < 50 {
+        i += 1;
+        ADO_ADDRESSES
+            .save(deps.as_mut().storage, &i.to_string(), &Addr::unchecked(""))
+            .unwrap();
+    }
+
+    let msg = ExecuteMsg::AddAppComponent {
+        component: AppComponent {
+            name: "token".to_string(),
+            ado_type: "cw721".to_string(),
+            component_type: ComponentType::New(to_binary(&true).unwrap()),
+        },
+    };
+
+    let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
+    assert_eq!(ContractError::TooManyAppComponents {}, err);
+}
+
 // TODO: UPDATE WITH 1.2 CHANGES
 // #[test]
 // fn test_reply_assign_app() {

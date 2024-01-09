@@ -430,9 +430,6 @@ pub enum ContractError {
     #[error("TooManyAppComponents")]
     TooManyAppComponents {},
 
-    #[error("TooManyComponents")]
-    TooManyComponents {},
-
     #[error("InvalidLtvRatio: {msg}")]
     InvalidLtvRatio { msg: String },
 
