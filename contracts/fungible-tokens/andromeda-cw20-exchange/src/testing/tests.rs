@@ -977,3 +977,31 @@ fn test_query_sale_assets() {
     assert_eq!(resp.assets[0], "cw20:testaddress");
     assert_eq!(resp.assets[1], "native:test");
 }
+
+#[test]
+fn test_start_sale_same_asset() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let token_info = mock_info("cw20", &[]);
+
+    init(deps.as_mut()).unwrap();
+
+    let cw20_msg = Cw20ReceiveMsg {
+        sender: "owner".to_string(),
+        msg: to_binary(&Cw20HookMsg::StartSale {
+            asset: AssetInfo::Cw20(Addr::unchecked("cw20")),
+            exchange_rate: Uint128::from(10u128),
+            recipient: None,
+        })
+        .unwrap(),
+        amount: Uint128::from(100u128),
+    };
+    let msg = ExecuteMsg::Receive(cw20_msg);
+
+    let err = execute(deps.as_mut(), mock_env(), token_info, msg).unwrap_err();
+    assert_eq!(
+        err,
+        ContractError::InvalidAsset {
+            asset: AssetInfo::Cw20(Addr::unchecked("cw20")).to_string()
+        }
+    );
+}

@@ -148,6 +148,12 @@ pub fn execute_start_sale(
         .get_raw_address(&deps.as_ref())?;
 
     ensure!(
+        asset != AssetInfo::Cw20(token_addr.clone()),
+        ContractError::InvalidAsset {
+            asset: asset.to_string()
+        }
+    );
+    ensure!(
         !exchange_rate.is_zero(),
         ContractError::InvalidZeroAmount {}
     );
