@@ -37,11 +37,11 @@ pub enum ExecuteMsg {
     ClaimRewards {},
     /// Called by the bootstrap contract when liquidity is added to the TOKEN-NATIVE Pool to enable TOKEN withdrawals by users.
     EnableClaims {},
-    /// Called by the owner after the phase is over to withdraw all of the NATIVE token to the
-    /// given recipient, or themselves if not specified.
-    WithdrawProceeds {
-        recipient: Option<String>,
-    },
+    // Called by the owner after the phase is over to withdraw all of the NATIVE token to the
+    // given recipient, or themselves if not specified.
+    // WithdrawProceeds {
+    //     recipient: Option<String>,
+    // },
 }
 
 #[cw_serde]

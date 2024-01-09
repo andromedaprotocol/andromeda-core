@@ -131,8 +131,7 @@ pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
         ExecuteMsg::WithdrawNative { amount } => execute_withdraw_native(ctx, amount),
         ExecuteMsg::EnableClaims {} => execute_enable_claims(ctx),
         ExecuteMsg::ClaimRewards {} => execute_claim_rewards(ctx),
-        ExecuteMsg::WithdrawProceeds { recipient } => execute_withdraw_proceeds(ctx, recipient),
-
+        // ExecuteMsg::WithdrawProceeds { recipient } => execute_withdraw_proceeds(ctx, recipient),
         _ => handle_execute(ctx, msg),
     }
 }
@@ -224,7 +223,7 @@ pub fn execute_increase_incentives(
     );
 
     ensure!(
-        is_withdraw_open(env.block.time.seconds(), &config),
+        env.block.time.seconds() < config.init_timestamp + config.deposit_window,
         ContractError::TokenAlreadyBeingDistributed {}
     );
 
@@ -392,7 +391,7 @@ pub fn execute_enable_claims(ctx: ExecuteContext) -> Result<Response, ContractEr
 
     // CHECK :: Claims can only be enabled after the deposit / withdrawal windows are closed
     ensure!(
-        !is_withdraw_open(env.block.time.seconds(), &config),
+        is_phase_over(env.block.time.seconds(), &config),
         ContractError::PhaseOngoing {}
     );
 
@@ -448,54 +447,54 @@ pub fn execute_claim_rewards(ctx: ExecuteContext) -> Result<Response, ContractEr
         .add_message(transfer_msg))
 }
 
-fn execute_withdraw_proceeds(
-    ctx: ExecuteContext,
-    recipient: Option<String>,
-) -> Result<Response, ContractError> {
-    let ExecuteContext {
-        deps, env, info, ..
-    } = ctx;
-    nonpayable(&info)?;
+// fn execute_withdraw_proceeds(
+//     ctx: ExecuteContext,
+//     recipient: Option<String>,
+// ) -> Result<Response, ContractError> {
+//     let ExecuteContext {
+//         deps, env, info, ..
+//     } = ctx;
+//     nonpayable(&info)?;
 
-    let recipient = recipient.unwrap_or_else(|| info.sender.to_string());
-    let config = CONFIG.load(deps.storage)?;
-    let state = STATE.load(deps.storage)?;
-    // CHECK :: Only Owner can call this function
-    ensure!(
-        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {}
-    );
+//     let recipient = recipient.unwrap_or_else(|| info.sender.to_string());
+//     let config = CONFIG.load(deps.storage)?;
+//     let state = STATE.load(deps.storage)?;
+//     // CHECK :: Only Owner can call this function
+//     ensure!(
+//         ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
+//         ContractError::Unauthorized {}
+//     );
 
-    // CHECK :: Lockdrop withdrawal window should be closed
-    let current_timestamp = env.block.time.seconds();
-    ensure!(
-        current_timestamp >= config.init_timestamp && !is_withdraw_open(current_timestamp, &config),
-        ContractError::InvalidWithdrawal {
-            msg: Some("Lockdrop withdrawals haven't concluded yet".to_string()),
-        }
-    );
+//     // CHECK :: Lockdrop withdrawal window should be closed
+//     let current_timestamp = env.block.time.seconds();
+//     ensure!(
+//         current_timestamp >= config.init_timestamp && is_phase_over(current_timestamp, &config),
+//         ContractError::InvalidWithdrawal {
+//             msg: Some("Lockdrop withdrawals haven't concluded yet".to_string()),
+//         }
+//     );
 
-    let native_token = Asset::native(config.native_denom, state.total_native_locked);
+//     let native_token = Asset::native(config.native_denom, state.total_native_locked);
 
-    let balance = native_token
-        .info
-        .query_balance(&deps.querier, env.contract.address)?;
+//     let balance = native_token
+//         .info
+//         .query_balance(&deps.querier, env.contract.address)?;
 
-    ensure!(
-        balance >= state.total_native_locked,
-        ContractError::InvalidWithdrawal {
-            msg: Some("Already withdrew funds".to_string()),
-        }
-    );
+//     ensure!(
+//         balance >= state.total_native_locked,
+//         ContractError::InvalidWithdrawal {
+//             msg: Some("Already withdrew funds".to_string()),
+//         }
+//     );
 
-    let transfer_msg = native_token.transfer_msg(recipient)?;
+//     let transfer_msg = native_token.transfer_msg(recipient)?;
 
-    Ok(Response::new()
-        .add_message(transfer_msg)
-        .add_attribute("action", "withdraw_proceeds")
-        .add_attribute("amount", state.total_native_locked)
-        .add_attribute("timestamp", env.block.time.seconds().to_string()))
-}
+//     Ok(Response::new()
+//         .add_message(transfer_msg)
+//         .add_attribute("action", "withdraw_proceeds")
+//         .add_attribute("amount", state.total_native_locked)
+//         .add_attribute("timestamp", env.block.time.seconds().to_string()))
+// }
 
 //----------------------------------------------------------------------------------------
 // Query Functions
@@ -591,9 +590,13 @@ fn is_deposit_open(current_timestamp: u64, config: &Config) -> bool {
 
 /// @dev Returns true if withdrawals are allowed
 fn is_withdraw_open(current_timestamp: u64, config: &Config) -> bool {
-    let withdrawals_opened_till =
-        config.init_timestamp + config.deposit_window + config.withdrawal_window;
-    (current_timestamp >= config.init_timestamp) && (withdrawals_opened_till >= current_timestamp)
+    current_timestamp >= config.init_timestamp
+}
+
+fn is_phase_over(current_timestamp: u64, config: &Config) -> bool {
+    let deposits_opened_till = config.init_timestamp + config.deposit_window;
+    let withdrawals_opened_till = deposits_opened_till + config.withdrawal_window;
+    withdrawals_opened_till <= current_timestamp
 }
 
 /// @dev Helper function to calculate maximum % of NATIVE deposited that can be withdrawn

@@ -8,7 +8,7 @@ use andromeda_std::{
 };
 use cosmwasm_std::{
     coin, coins, from_binary,
-    testing::{mock_env, mock_info, MOCK_CONTRACT_ADDR},
+    testing::{mock_env, mock_info},
     to_binary, Addr, BankMsg, Decimal, DepsMut, Response, Uint128, WasmMsg,
 };
 
@@ -571,142 +571,115 @@ fn test_withdraw_native_withdraw_phase_second_half() {
     );
 }
 
-#[test]
-fn test_withdraw_native_withdrawal_closed() {
-    let mut deps = mock_dependencies_custom(&[]);
-    init(deps.as_mut()).unwrap();
+// #[test]
+// fn test_withdraw_proceeds_unauthorized() {
+//     let mut deps = mock_dependencies_custom(&[]);
+//     init(deps.as_mut()).unwrap();
 
-    let msg = ExecuteMsg::DepositNative {};
-    let info = mock_info("sender", &coins(100, "uusd"));
+//     let msg = ExecuteMsg::WithdrawProceeds { recipient: None };
 
-    let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+//     let info = mock_info("not owner", &[]);
+//     let res = execute(deps.as_mut(), mock_env(), info, msg);
 
-    let msg = ExecuteMsg::WithdrawNative { amount: None };
+//     assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
+// }
 
-    let mut env = mock_env();
-    env.block.time = env
-        .block
-        .time
-        .plus_seconds(DEPOSIT_WINDOW + WITHDRAWAL_WINDOW + 1);
-    let res = execute(deps.as_mut(), env, info, msg);
+// #[test]
+// fn test_withdraw_proceeds_phase_not_started() {
+//     let mut deps = mock_dependencies_custom(&[]);
+//     init(deps.as_mut()).unwrap();
 
-    assert_eq!(
-        ContractError::InvalidWithdrawal {
-            msg: Some("Withdrawals not available".to_string()),
-        },
-        res.unwrap_err()
-    );
-}
+//     let msg = ExecuteMsg::WithdrawProceeds { recipient: None };
 
-#[test]
-fn test_withdraw_proceeds_unauthorized() {
-    let mut deps = mock_dependencies_custom(&[]);
-    init(deps.as_mut()).unwrap();
+//     let info = mock_info("owner", &[]);
+//     let mut env = mock_env();
+//     env.block.time = env.block.time.minus_seconds(1);
+//     let res = execute(deps.as_mut(), env, info, msg);
 
-    let msg = ExecuteMsg::WithdrawProceeds { recipient: None };
+//     assert_eq!(
+//         ContractError::InvalidWithdrawal {
+//             msg: Some("Lockdrop withdrawals haven't concluded yet".to_string()),
+//         },
+//         res.unwrap_err()
+//     );
+// }
 
-    let info = mock_info("not owner", &[]);
-    let res = execute(deps.as_mut(), mock_env(), info, msg);
+// #[test]
+// fn test_withdraw_proceeds_phase_not_ended() {
+//     let mut deps = mock_dependencies_custom(&[]);
+//     init(deps.as_mut()).unwrap();
 
-    assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
-}
+//     let msg = ExecuteMsg::WithdrawProceeds { recipient: None };
 
-#[test]
-fn test_withdraw_proceeds_phase_not_started() {
-    let mut deps = mock_dependencies_custom(&[]);
-    init(deps.as_mut()).unwrap();
+//     let info = mock_info("owner", &[]);
+//     let mut env = mock_env();
+//     env.block.time = env.block.time.plus_seconds(DEPOSIT_WINDOW);
+//     let res = execute(deps.as_mut(), mock_env(), info, msg);
 
-    let msg = ExecuteMsg::WithdrawProceeds { recipient: None };
+//     assert_eq!(
+//         ContractError::InvalidWithdrawal {
+//             msg: Some("Lockdrop withdrawals haven't concluded yet".to_string()),
+//         },
+//         res.unwrap_err()
+//     );
+// }
 
-    let info = mock_info("owner", &[]);
-    let mut env = mock_env();
-    env.block.time = env.block.time.minus_seconds(1);
-    let res = execute(deps.as_mut(), env, info, msg);
+// #[test]
+// fn test_withdraw_proceeds() {
+//     // This uusd is to simulate the deposit made prior to withdrawing proceeds. This is needed
+//     // since the mock querier doesn't automatically assign balances.
+//     let amount = 100;
+//     let mut deps = mock_dependencies_custom(&[coin(amount, "uusd")]);
+//     init(deps.as_mut()).unwrap();
 
-    assert_eq!(
-        ContractError::InvalidWithdrawal {
-            msg: Some("Lockdrop withdrawals haven't concluded yet".to_string()),
-        },
-        res.unwrap_err()
-    );
-}
+//     let msg = ExecuteMsg::DepositNative {};
+//     let info = mock_info("sender", &coins(amount, "uusd"));
 
-#[test]
-fn test_withdraw_proceeds_phase_not_ended() {
-    let mut deps = mock_dependencies_custom(&[]);
-    init(deps.as_mut()).unwrap();
+//     let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-    let msg = ExecuteMsg::WithdrawProceeds { recipient: None };
+//     // Update contract's balance after deposit
+//     deps.querier
+//         .base
+//         .update_balance(MOCK_CONTRACT_ADDR, coins(amount, "uusd"));
 
-    let info = mock_info("owner", &[]);
-    let mut env = mock_env();
-    env.block.time = env.block.time.plus_seconds(DEPOSIT_WINDOW);
-    let res = execute(deps.as_mut(), mock_env(), info, msg);
+//     let msg = ExecuteMsg::WithdrawProceeds { recipient: None };
 
-    assert_eq!(
-        ContractError::InvalidWithdrawal {
-            msg: Some("Lockdrop withdrawals haven't concluded yet".to_string()),
-        },
-        res.unwrap_err()
-    );
-}
+//     let info = mock_info("owner", &[]);
+//     let mut env = mock_env();
+//     env.block.time = env
+//         .block
+//         .time
+//         .plus_seconds(DEPOSIT_WINDOW + WITHDRAWAL_WINDOW + 1);
 
-#[test]
-fn test_withdraw_proceeds() {
-    // This uusd is to simulate the deposit made prior to withdrawing proceeds. This is needed
-    // since the mock querier doesn't automatically assign balances.
-    let amount = 100;
-    let mut deps = mock_dependencies_custom(&[coin(amount, "uusd")]);
-    init(deps.as_mut()).unwrap();
+//     let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
 
-    let msg = ExecuteMsg::DepositNative {};
-    let info = mock_info("sender", &coins(amount, "uusd"));
+//     assert_eq!(
+//         Response::new()
+//             .add_message(BankMsg::Send {
+//                 to_address: "owner".to_string(),
+//                 amount: coins(100, "uusd")
+//             })
+//             .add_attribute("action", "withdraw_proceeds")
+//             .add_attribute("amount", "100")
+//             .add_attribute("timestamp", env.block.time.seconds().to_string()),
+//         res
+//     );
 
-    let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+//     // Remove withdrawn funds.
+//     deps.querier
+//         .base
+//         .update_balance(env.contract.address.clone(), vec![]);
 
-    // Update contract's balance after deposit
-    deps.querier
-        .base
-        .update_balance(MOCK_CONTRACT_ADDR, coins(amount, "uusd"));
+//     // try to withdraw again
+//     let res = execute(deps.as_mut(), env, info, msg);
 
-    let msg = ExecuteMsg::WithdrawProceeds { recipient: None };
-
-    let info = mock_info("owner", &[]);
-    let mut env = mock_env();
-    env.block.time = env
-        .block
-        .time
-        .plus_seconds(DEPOSIT_WINDOW + WITHDRAWAL_WINDOW + 1);
-
-    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
-
-    assert_eq!(
-        Response::new()
-            .add_message(BankMsg::Send {
-                to_address: "owner".to_string(),
-                amount: coins(100, "uusd")
-            })
-            .add_attribute("action", "withdraw_proceeds")
-            .add_attribute("amount", "100")
-            .add_attribute("timestamp", env.block.time.seconds().to_string()),
-        res
-    );
-
-    // Remove withdrawn funds.
-    deps.querier
-        .base
-        .update_balance(env.contract.address.clone(), vec![]);
-
-    // try to withdraw again
-    let res = execute(deps.as_mut(), env, info, msg);
-
-    assert_eq!(
-        ContractError::InvalidWithdrawal {
-            msg: Some("Already withdrew funds".to_string()),
-        },
-        res.unwrap_err()
-    );
-}
+//     assert_eq!(
+//         ContractError::InvalidWithdrawal {
+//             msg: Some("Already withdrew funds".to_string()),
+//         },
+//         res.unwrap_err()
+//     );
+// }
 
 #[test]
 fn test_enable_claims_no_bootstrap_specified() {
@@ -808,7 +781,7 @@ fn test_enable_claims_phase_not_ended() {
     env.block.time = env
         .block
         .time
-        .plus_seconds(DEPOSIT_WINDOW + WITHDRAWAL_WINDOW);
+        .plus_seconds(DEPOSIT_WINDOW + WITHDRAWAL_WINDOW - 1);
 
     let info = mock_info("sender", &[]);
     let res = execute(deps.as_mut(), env, info, msg);
