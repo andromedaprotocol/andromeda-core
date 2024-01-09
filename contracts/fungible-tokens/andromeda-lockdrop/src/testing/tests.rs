@@ -994,6 +994,15 @@ fn test_query_withdrawable_percent() {
 
     assert_eq!(Decimal::one(), res);
 
+    let msg = QueryMsg::WithdrawalPercentAllowed { timestamp: Some(0) };
+    let err = query(deps.as_ref(), mock_env(), msg).unwrap_err();
+    assert_eq!(
+        err,
+        ContractError::InvalidTimestamp {
+            msg: "Provided timestamp is in past".to_string()
+        }
+    );
+
     let timestamp = mock_env().block.time.plus_seconds(DEPOSIT_WINDOW + 1);
     let msg = QueryMsg::WithdrawalPercentAllowed {
         timestamp: Some(timestamp.seconds()),
