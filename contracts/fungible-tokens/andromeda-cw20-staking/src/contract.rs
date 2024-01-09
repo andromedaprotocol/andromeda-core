@@ -265,10 +265,8 @@ fn execute_stake_tokens(
     token_address: String,
     amount: Uint128,
 ) -> Result<Response, ContractError> {
-    let contract = ADOContract::default();
     let config = CONFIG.load(deps.storage)?;
 
-    let _mission_contract = contract.get_app_contract(deps.storage)?;
     let staking_token_address = config.staking_token.get_raw_address(&deps.as_ref())?;
     ensure!(
         token_address == staking_token_address,
