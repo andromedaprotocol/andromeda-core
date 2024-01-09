@@ -64,7 +64,7 @@ pub enum QueryMsg {
     #[returns(UserInfoResponse)]
     UserInfo { address: String },
     /// Gets the withdrawal percent allowed given the timestamp, or the current time if not
-    /// specified.
+    /// specified. Timestamp is in seconds.
     #[returns(::cosmwasm_std::Decimal)]
     WithdrawalPercentAllowed { timestamp: Option<u64> },
 }

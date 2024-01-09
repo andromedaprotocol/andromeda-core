@@ -588,6 +588,9 @@ pub enum ContractError {
 
     #[error("Invalid Modules: {msg}")]
     InvalidModules { msg: String },
+
+    #[error("Invalid time: {msg}")]
+    InvalidTimestamp { msg: String },
 }
 
 impl From<Cw20ContractError> for ContractError {

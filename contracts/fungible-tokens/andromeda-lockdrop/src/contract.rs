@@ -13,7 +13,7 @@ use andromeda_std::{
     error::{from_semver, ContractError},
 };
 use cosmwasm_std::{
-    ensure, from_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, Uint128,
+    ensure, from_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, Timestamp, Uint128,
 };
 use cosmwasm_std::{entry_point, Decimal};
 use cw_asset::Asset;
@@ -565,9 +565,16 @@ pub fn query_max_withdrawable_percent(
     timestamp: Option<u64>,
 ) -> Result<Decimal, ContractError> {
     let config = CONFIG.load(deps.storage)?;
-
     Ok(match timestamp {
-        Some(timestamp) => allowed_withdrawal_percent(timestamp, &config),
+        Some(timestamp) => {
+            ensure!(
+                Timestamp::from_seconds(timestamp) >= env.block.time,
+                ContractError::InvalidTimestamp {
+                    msg: "Provided timestamp is in past".to_string()
+                }
+            );
+            allowed_withdrawal_percent(timestamp, &config)
+        }
         None => allowed_withdrawal_percent(env.block.time.seconds(), &config),
     })
 }
