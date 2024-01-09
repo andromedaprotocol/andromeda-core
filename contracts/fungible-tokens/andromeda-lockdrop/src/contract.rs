@@ -597,14 +597,14 @@ pub fn allowed_withdrawal_percent(current_timestamp: u64, config: &Config) -> De
 
     // Deposit window :: 100% withdrawals allowed
     if current_timestamp < withdrawal_cutoff_init_point {
-        return Decimal::from_ratio(100u32, 100u32);
+        return Decimal::percent(100);
     }
 
     let withdrawal_cutoff_second_point =
         withdrawal_cutoff_init_point + (config.withdrawal_window / 2u64);
     // Deposit window closed, 1st half of withdrawal window :: 50% withdrawals allowed
     if current_timestamp <= withdrawal_cutoff_second_point {
-        return Decimal::from_ratio(50u32, 100u32);
+        return Decimal::percent(50);
     }
 
     // max withdrawal allowed decreasing linearly from 50% to 0% vs time elapsed
@@ -619,6 +619,6 @@ pub fn allowed_withdrawal_percent(current_timestamp: u64, config: &Config) -> De
     }
     // Withdrawals not allowed
     else {
-        Decimal::from_ratio(0u32, 100u32)
+        Decimal::zero()
     }
 }
