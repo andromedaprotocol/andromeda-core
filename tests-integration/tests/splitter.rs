@@ -61,7 +61,7 @@ fn test_splitter() {
     let splitter_init_msg = mock_splitter_instantiate_msg(splitter_recipients, andr.kernel_address.clone(), None, None);
     let splitter_app_component = AppComponent {
         name: "1".to_string(),
-        component_type: ComponentType::new(&splitter_init_msg),
+        component_type: ComponentType::new(splitter_init_msg),
         ado_type: "splitter".to_string(),
     };
 
@@ -69,7 +69,7 @@ fn test_splitter() {
 
     let app_init_msg = mock_app_instantiate_msg(
         "app".to_string(),
-        app_components.clone(),
+        app_components,
         andr.kernel_address.clone(),
         None,
     );
@@ -88,7 +88,7 @@ fn test_splitter() {
     let splitter_addr: String = router
         .wrap()
         .query_wasm_smart(
-            app_addr.clone(),
+            app_addr,
             &mock_get_address_msg(splitter_app_component.name),
         )
         .unwrap();
@@ -97,9 +97,9 @@ fn test_splitter() {
     router
         .execute_contract(
             owner,
-            Addr::unchecked(splitter_addr.clone()),
+            Addr::unchecked(splitter_addr),
             & SplitterExecuteMsg::Send {},
-            &[token.clone()],
+            &[token],
         )
         .unwrap();
     
