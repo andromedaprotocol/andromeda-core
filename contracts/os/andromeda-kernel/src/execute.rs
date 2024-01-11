@@ -62,7 +62,7 @@ pub fn amp_receive(
     let mut res_messages = Vec::new();
     let mut res_attributes = Vec::new();
     let mut res_events = Vec::new();
-    
+
     for (idx, message) in packet.messages.iter().enumerate() {
         let mut handler = MsgHandler::new(message.clone());
         let msg_res = handler.handle(

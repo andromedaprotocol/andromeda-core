@@ -1,17 +1,15 @@
 use andromeda_app::app::{AppComponent, ComponentType};
 use andromeda_app_contract::mock::{
-    mock_andromeda_app, mock_app_instantiate_msg, mock_get_address_msg
+    mock_andromeda_app, mock_app_instantiate_msg, mock_get_address_msg,
 };
 
 use andromeda_testing::mock::MockAndromeda;
 
-use andromeda_std::amp::{Recipient};
+use andromeda_std::amp::Recipient;
 use cosmwasm_std::{coin, Addr, Decimal, Uint128};
 
 use andromeda_finance::splitter::{AddressPercent, ExecuteMsg as SplitterExecuteMsg};
-use andromeda_splitter::mock::{
-    mock_andromeda_splitter, mock_splitter_instantiate_msg
-};
+use andromeda_splitter::mock::{mock_andromeda_splitter, mock_splitter_instantiate_msg};
 
 use std::str::FromStr;
 
@@ -38,7 +36,7 @@ fn test_splitter() {
     let owner = Addr::unchecked("owner");
     let recipient_1 = Addr::unchecked("recipient_1");
     let recipient_2 = Addr::unchecked("recipient_2");
-    
+
     let mut router = mock_app();
     let andr = mock_andromeda(&mut router, owner.clone());
 
@@ -58,7 +56,8 @@ fn test_splitter() {
         },
     ];
 
-    let splitter_init_msg = mock_splitter_instantiate_msg(splitter_recipients, andr.kernel_address.clone(), None, None);
+    let splitter_init_msg =
+        mock_splitter_instantiate_msg(splitter_recipients, andr.kernel_address.clone(), None, None);
     let splitter_app_component = AppComponent {
         name: "1".to_string(),
         component_type: ComponentType::new(splitter_init_msg),
@@ -87,10 +86,7 @@ fn test_splitter() {
 
     let splitter_addr: String = router
         .wrap()
-        .query_wasm_smart(
-            app_addr,
-            &mock_get_address_msg(splitter_app_component.name),
-        )
+        .query_wasm_smart(app_addr, &mock_get_address_msg(splitter_app_component.name))
         .unwrap();
 
     let token = coin(1000, "uandr");
@@ -98,22 +94,14 @@ fn test_splitter() {
         .execute_contract(
             owner,
             Addr::unchecked(splitter_addr),
-            & SplitterExecuteMsg::Send {},
+            &SplitterExecuteMsg::Send {},
             &[token],
         )
         .unwrap();
-    
-    let balance_1 = router
-        .wrap()
-        .query_balance(recipient_1, "uandr")
-        .unwrap();
-    let balance_2 = router
-        .wrap()
-        .query_balance(recipient_2, "uandr")
-        .unwrap();
-    
+
+    let balance_1 = router.wrap().query_balance(recipient_1, "uandr").unwrap();
+    let balance_2 = router.wrap().query_balance(recipient_2, "uandr").unwrap();
 
     assert_eq!(balance_1.amount, Uint128::from(200u128));
     assert_eq!(balance_2.amount, Uint128::from(800u128));
-
 }
