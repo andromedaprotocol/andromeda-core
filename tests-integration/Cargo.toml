@@ -112,6 +112,9 @@ name = "auction_app"
 [[test]]
 name = "marketplace_app"
 
+[[test]]
+name = "splitter"
+
 # [[test]]
 # name = "cw20_staking_app"
 

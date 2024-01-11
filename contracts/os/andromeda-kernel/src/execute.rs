@@ -58,16 +58,28 @@ pub fn amp_receive(
             error: Some("No messages supplied".to_string())
         }
     );
+
+    let mut res_messages = Vec::new();
+    let mut res_attributes = Vec::new();
+    let mut res_events = Vec::new();
+    
     for (idx, message) in packet.messages.iter().enumerate() {
         let mut handler = MsgHandler::new(message.clone());
-        res = handler.handle(
+        let msg_res = handler.handle(
             deps.branch(),
             info.clone(),
             env.clone(),
             Some(packet.clone()),
             idx as u64,
         )?;
+        res_messages.extend_from_slice(&msg_res.messages);
+        res_attributes.extend_from_slice(&msg_res.attributes);
+        res_events.extend_from_slice(&msg_res.events);
     }
+
+    res.messages.extend_from_slice(&res_messages);
+    res.attributes.extend_from_slice(&res_attributes);
+    res.events.extend_from_slice(&res_events);
     Ok(res.add_attribute("action", "handle_amp_packet"))
 }
 
