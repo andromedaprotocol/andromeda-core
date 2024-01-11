@@ -59,10 +59,6 @@ pub fn amp_receive(
         }
     );
 
-    let mut res_messages = Vec::new();
-    let mut res_attributes = Vec::new();
-    let mut res_events = Vec::new();
-
     for (idx, message) in packet.messages.iter().enumerate() {
         let mut handler = MsgHandler::new(message.clone());
         let msg_res = handler.handle(
@@ -72,14 +68,11 @@ pub fn amp_receive(
             Some(packet.clone()),
             idx as u64,
         )?;
-        res_messages.extend_from_slice(&msg_res.messages);
-        res_attributes.extend_from_slice(&msg_res.attributes);
-        res_events.extend_from_slice(&msg_res.events);
+        res.messages.extend_from_slice(&msg_res.messages);
+        res.attributes.extend_from_slice(&msg_res.attributes);
+        res.events.extend_from_slice(&msg_res.events);
     }
 
-    res.messages.extend_from_slice(&res_messages);
-    res.attributes.extend_from_slice(&res_attributes);
-    res.events.extend_from_slice(&res_events);
     Ok(res.add_attribute("action", "handle_amp_packet"))
 }
 
