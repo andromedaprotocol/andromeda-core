@@ -83,6 +83,7 @@ pub fn load_component_descriptors(
 pub fn generate_ownership_message(addr: Addr, owner: &str) -> Result<SubMsg, ContractError> {
     let msg = to_binary(&AndromedaMsg::Ownership(OwnershipMessage::UpdateOwner {
         new_owner: Addr::unchecked(owner),
+        expiration: None,
     }))?;
     Ok(SubMsg {
         id: ReplyId::ClaimOwnership.repr(),

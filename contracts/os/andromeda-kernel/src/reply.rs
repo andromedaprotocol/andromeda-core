@@ -38,7 +38,10 @@ pub fn on_reply_create_ado(deps: DepsMut, env: Env, msg: Reply) -> Result<Respon
         AOSQuerier::ado_owner_getter(&deps.querier, &Addr::unchecked(ado_addr.clone()))?;
     let mut res = Response::default();
     if curr_owner == env.contract.address {
-        let msg = AndromedaMsg::Ownership(OwnershipMessage::UpdateOwner { new_owner });
+        let msg = AndromedaMsg::Ownership(OwnershipMessage::UpdateOwner {
+            new_owner,
+            expiration: None,
+        });
         let wasm_msg = wasm_execute(ado_addr, &msg, vec![])?;
         let sub_msg: SubMsg<Empty> =
             SubMsg::reply_on_success(wasm_msg, ReplyId::UpdateOwnership as u64);

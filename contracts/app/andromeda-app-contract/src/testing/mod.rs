@@ -415,6 +415,7 @@ fn test_claim_ownership() {
             contract_addr: "tokenaddress".to_string(),
             msg: to_binary(&AndromedaMsg::Ownership(OwnershipMessage::UpdateOwner {
                 new_owner: Addr::unchecked("creator"),
+                expiration: None,
             }))
             .unwrap(),
             funds: vec![],

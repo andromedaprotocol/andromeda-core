@@ -48,7 +48,9 @@ impl<'a> ADOContract<'a> {
         let msg = to_binary(&msg)?;
         match from_binary::<AndromedaMsg>(&msg) {
             Ok(msg) => match msg {
-                AndromedaMsg::Ownership(msg) => self.execute_ownership(ctx.deps, ctx.info, msg),
+                AndromedaMsg::Ownership(msg) => {
+                    self.execute_ownership(ctx.deps, ctx.env, ctx.info, msg)
+                }
                 AndromedaMsg::UpdateAppContract { address } => {
                     self.execute_update_app_contract(ctx.deps, ctx.info, address, None)
                 }
