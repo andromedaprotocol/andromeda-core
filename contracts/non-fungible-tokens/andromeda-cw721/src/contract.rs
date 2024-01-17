@@ -519,8 +519,10 @@ pub fn query_transfer_agreement(
 }
 
 pub fn query_minter(deps: Deps) -> Result<String, ContractError> {
-    let owner = ADOContract::default().query_contract_owner(deps)?;
-    Ok(owner.owner)
+    let minter = ANDR_MINTER
+        .load(deps.storage)?
+        .get_raw_address(&deps)?;
+    Ok(minter.to_string())
 }
 
 #[cfg_attr(not(feature = "imported"), entry_point)]

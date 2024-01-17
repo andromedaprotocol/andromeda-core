@@ -38,6 +38,10 @@ pub fn mock_cw721_owner_of(token_id: String, include_expired: Option<bool>) -> Q
     }
 }
 
+pub fn mock_cw721_minter_query() -> QueryMsg {
+    QueryMsg::Minter {}
+}
+
 pub fn mock_mint_msg(
     token_id: String,
     extension: TokenExtension,
