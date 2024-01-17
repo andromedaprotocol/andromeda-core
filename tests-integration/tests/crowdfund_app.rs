@@ -265,10 +265,7 @@ fn test_crowdfund_app() {
 
     let cw721_addr: String = router
         .wrap()
-        .query_wasm_smart(
-            app_addr,
-            &mock_get_address_msg(cw721_component.name),
-        )
+        .query_wasm_smart(app_addr, &mock_get_address_msg(cw721_component.name))
         .unwrap();
 
     let minter: String = router

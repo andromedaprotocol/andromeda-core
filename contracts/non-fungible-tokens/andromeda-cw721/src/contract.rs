@@ -519,9 +519,7 @@ pub fn query_transfer_agreement(
 }
 
 pub fn query_minter(deps: Deps) -> Result<String, ContractError> {
-    let minter = ANDR_MINTER
-        .load(deps.storage)?
-        .get_raw_address(&deps)?;
+    let minter = ANDR_MINTER.load(deps.storage)?.get_raw_address(&deps)?;
     Ok(minter.to_string())
 }
 
