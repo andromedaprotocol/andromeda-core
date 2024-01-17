@@ -184,7 +184,7 @@ impl<'a> ADOContract<'a> {
     /// Validates all modules.
     fn validate_modules(&self, modules: &[Module]) -> Result<(), ContractError> {
         ensure!(
-            modules.len() > 0,
+            !modules.is_empty(),
             ContractError::InvalidModules {
                 msg: "Must provide at least one module".to_string()
             }

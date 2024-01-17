@@ -45,7 +45,7 @@ impl<'a> ADOContract<'a> {
             !self.is_contract_owner(deps.storage, new_owner.as_str())?,
             ContractError::Unauthorized {}
         );
-        let new_owner_addr = deps.api.addr_validate(&new_owner.to_string())?;
+        let new_owner_addr = deps.api.addr_validate(new_owner.as_ref())?;
         NEW_OWNER.save(deps.storage, &new_owner_addr)?;
 
         if let Some(exp) = expiration {
@@ -206,12 +206,8 @@ mod test {
             None,
         );
         assert!(res.is_err());
-        let res = contract.update_owner(
-            deps.as_mut(),
-            mock_info("new_owner", &[]),
-            new_owner.clone(),
-            None,
-        );
+        let res =
+            contract.update_owner(deps.as_mut(), mock_info("new_owner", &[]), new_owner, None);
         assert!(res.is_err());
     }
 
@@ -258,8 +254,7 @@ mod test {
 
         let mut env = mock_env();
         env.block.height = 2;
-        let res =
-            contract.accept_ownership(deps.as_mut(), env.clone(), mock_info("new_owner", &[]));
+        let res = contract.accept_ownership(deps.as_mut(), env, mock_info("new_owner", &[]));
         assert!(res.is_err());
         let saved_owner = contract.owner.load(deps.as_ref().storage).unwrap();
         assert_eq!(saved_owner, Addr::unchecked("owner"));

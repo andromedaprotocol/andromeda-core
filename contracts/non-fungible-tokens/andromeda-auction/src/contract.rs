@@ -184,7 +184,7 @@ fn handle_receive_cw721(
 
 fn validate_denom(_querier: &QuerierWrapper, denom: String) -> Result<(), ContractError> {
     ensure!(
-        denom.len() > 0,
+        !denom.is_empty(),
         ContractError::InvalidAsset { asset: denom }
     );
     // Denom can be validated with cosmwasm 1.3
