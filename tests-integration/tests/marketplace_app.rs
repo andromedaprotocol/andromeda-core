@@ -196,6 +196,7 @@ fn test_marketplace_app() {
 
     let token_id = "0";
 
+    andr.accept_ownership(&mut router, address_list_addr.clone(), owner.clone());
     // Whitelist
     router
         .execute_contract(

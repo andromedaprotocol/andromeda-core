@@ -6,6 +6,7 @@ use andromeda_non_fungible_tokens::marketplace::{
     Cw721HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, SaleIdsResponse,
     SaleStateResponse, Status,
 };
+use andromeda_std::ado_base::ownership::OwnershipMessage;
 use andromeda_std::ado_contract::ADOContract;
 
 use andromeda_std::common::context::ExecuteContext;
@@ -69,20 +70,22 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
+    let ctx = ExecuteContext::new(deps, info, env);
 
     if !matches!(msg, ExecuteMsg::UpdateAppContract { .. })
-        && !matches!(msg, ExecuteMsg::UpdateOwner { .. })
+        && !matches!(
+            msg,
+            ExecuteMsg::Ownership(OwnershipMessage::UpdateOwner { .. })
+        )
     {
         contract.module_hook::<Response>(
-            &deps.as_ref(),
+            &ctx.deps.as_ref(),
             AndromedaHook::OnExecute {
-                sender: info.sender.to_string(),
+                sender: ctx.info.sender.to_string(),
                 payload: encode_binary(&msg)?,
             },
         )?;
     }
-
-    let ctx = ExecuteContext::new(deps, info, env);
 
     match msg {
         ExecuteMsg::AMPReceive(pkt) => {

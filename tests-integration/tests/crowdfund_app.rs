@@ -265,6 +265,7 @@ fn test_crowdfund_app() {
 
     // Mint Tokens
     let mint_msg = mock_crowdfund_quick_mint_msg(5, owner.to_string());
+    andr.accept_ownership(&mut router, crowdfund_addr.clone(), owner.clone());
     router
         .execute_contract(
             owner.clone(),

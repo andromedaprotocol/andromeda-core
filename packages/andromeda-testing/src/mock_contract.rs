@@ -1,6 +1,9 @@
 use core::fmt;
 
-use andromeda_std::ado_base::{ownership::ContractOwnerResponse, AndromedaQuery};
+use andromeda_std::ado_base::{
+    ownership::{ContractOwnerResponse, OwnershipMessage},
+    AndromedaMsg, AndromedaQuery,
+};
 use cosmwasm_std::{Addr, Coin};
 use cw_multi_test::{App, AppResponse, Executor};
 use serde::{de::DeserializeOwned, Serialize};
@@ -36,6 +39,15 @@ impl MockContract {
     pub fn query_owner(&self, app: &App) -> String {
         self.query::<AndromedaQuery, ContractOwnerResponse>(app, AndromedaQuery::Owner {})
             .owner
+    }
+
+    pub fn accept_ownership(&self, app: &mut App, sender: Addr) {
+        self.execute(
+            app,
+            AndromedaMsg::Ownership(OwnershipMessage::AcceptOwnership {}),
+            sender,
+            &[],
+        );
     }
 }
 

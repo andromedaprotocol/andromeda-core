@@ -1,7 +1,8 @@
 use andromeda_fungible_tokens::cw20::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use andromeda_std::{
     ado_base::{
-        hooks::AndromedaHook, AndromedaMsg, AndromedaQuery, InstantiateMsg as BaseInstantiateMsg,
+        hooks::AndromedaHook, ownership::OwnershipMessage, AndromedaMsg, AndromedaQuery,
+        InstantiateMsg as BaseInstantiateMsg,
     },
     ado_contract::ADOContract,
     common::Funds,
@@ -80,7 +81,10 @@ pub fn execute(
 pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
     if !matches!(msg, ExecuteMsg::UpdateAppContract { .. })
-        && !matches!(msg, ExecuteMsg::UpdateOwner { .. })
+        && !matches!(
+            msg,
+            ExecuteMsg::Ownership(OwnershipMessage::UpdateOwner { .. })
+        )
     {
         contract.module_hook::<Response>(
             &ctx.deps.as_ref(),

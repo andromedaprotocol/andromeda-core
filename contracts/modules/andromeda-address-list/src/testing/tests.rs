@@ -10,7 +10,7 @@ use andromeda_std::ado_contract::ADOContract;
 use andromeda_std::common::encode_binary;
 use andromeda_std::error::ContractError;
 
-use cosmwasm_std::{attr, from_binary, DepsMut, MessageInfo, StdError};
+use cosmwasm_std::{attr, from_binary, Addr, DepsMut, MessageInfo, StdError};
 use cosmwasm_std::{
     testing::{mock_env, mock_info},
     Response,
@@ -51,7 +51,7 @@ fn test_add_address() {
     init(deps.as_mut(), info.clone());
 
     ADOContract::default()
-        .execute_update_operators(deps.as_mut(), info.clone(), vec![operator.to_owned()])
+        .update_operators(deps.as_mut(), info.clone(), vec![Addr::unchecked(operator)])
         .unwrap();
 
     let msg = ExecuteMsg::AddAddress {
@@ -99,7 +99,7 @@ fn test_add_addresses() {
     init(deps.as_mut(), info.clone());
 
     ADOContract::default()
-        .execute_update_operators(deps.as_mut(), info.clone(), vec![operator.to_owned()])
+        .update_operators(deps.as_mut(), info.clone(), vec![Addr::unchecked(operator)])
         .unwrap();
 
     let msg = ExecuteMsg::AddAddresses { addresses: vec![] };
@@ -162,7 +162,7 @@ fn test_remove_address() {
 
     //save operator
     ADOContract::default()
-        .execute_update_operators(deps.as_mut(), info.clone(), vec![operator.to_owned()])
+        .update_operators(deps.as_mut(), info.clone(), vec![Addr::unchecked(operator)])
         .unwrap();
 
     let msg = ExecuteMsg::RemoveAddress {
@@ -237,7 +237,7 @@ fn test_execute_hook_blacklist() {
     // Mark it as a blacklist.
     IS_INCLUSIVE.save(deps.as_mut().storage, &false).unwrap();
     ADOContract::default()
-        .execute_update_operators(deps.as_mut(), info.clone(), vec![operator.to_owned()])
+        .update_operators(deps.as_mut(), info.clone(), vec![Addr::unchecked(operator)])
         .unwrap();
 
     let msg = ExecuteMsg::AddAddress {

@@ -7,7 +7,8 @@ use andromeda_non_fungible_tokens::auction::{
 };
 use andromeda_std::{
     ado_base::{
-        hooks::AndromedaHook, permissioning::Permission, InstantiateMsg as BaseInstantiateMsg,
+        hooks::AndromedaHook, ownership::OwnershipMessage, permissioning::Permission,
+        InstantiateMsg as BaseInstantiateMsg,
     },
     amp::AndrAddr,
     common::Funds,
@@ -96,7 +97,10 @@ pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
     let contract = ADOContract::default();
 
     if !matches!(msg, ExecuteMsg::UpdateAppContract { .. })
-        && !matches!(msg, ExecuteMsg::UpdateOwner { .. })
+        && !matches!(
+            msg,
+            ExecuteMsg::Ownership(OwnershipMessage::UpdateOwner { .. })
+        )
     {
         contract.module_hook::<Response>(
             &ctx.deps.as_ref(),
