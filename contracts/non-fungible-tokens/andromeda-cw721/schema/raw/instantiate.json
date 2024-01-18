@@ -3,21 +3,24 @@
   "title": "InstantiateMsg",
   "type": "object",
   "required": [
+    "kernel_address",
     "minter",
     "name",
     "symbol"
   ],
   "properties": {
+    "kernel_address": {
+      "type": "string"
+    },
     "minter": {
       "description": "The minter is the only one who can create new NFTs. This is designed for a base NFT that is controlled by an external program or contract. You will likely replace this with custom logic in custom NFTs",
       "allOf": [
         {
-          "$ref": "#/definitions/AndrAddress"
+          "$ref": "#/definitions/AndrAddr"
         }
       ]
     },
     "modules": {
-      "description": "The attached Andromeda modules",
       "type": [
         "array",
         "null"
@@ -30,6 +33,12 @@
       "description": "Name of the NFT contract",
       "type": "string"
     },
+    "owner": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "symbol": {
       "description": "Symbol of the NFT contract",
       "type": "string"
@@ -37,36 +46,29 @@
   },
   "additionalProperties": false,
   "definitions": {
-    "AndrAddress": {
-      "type": "object",
-      "required": [
-        "identifier"
-      ],
-      "properties": {
-        "identifier": {
-          "description": "Can be either an address or identifier of an ADO in a app.",
-          "type": "string"
-        }
-      },
-      "additionalProperties": false
+    "AndrAddr": {
+      "description": "An address that can be used within the Andromeda ecosystem. Inspired by the cosmwasm-std `Addr` type. https://github.com/CosmWasm/cosmwasm/blob/2a1c698520a1aacedfe3f4803b0d7d653892217a/packages/std/src/addresses.rs#L33\n\nThis address can be one of two things: 1. A valid human readable address e.g. `cosmos1...` 2. A valid Andromeda VFS path e.g. `/home/user/app/component`\n\nVFS paths can be local in the case of an app and can be done by referencing `./component` they can also contain protocols for cross chain communication. A VFS path is usually structured as so:\n\n`<protocol>://<chain (required if ibc used)>/<path>` or `ibc://cosmoshub-4/user/app/component`",
+      "type": "string"
     },
     "Module": {
       "description": "A struct describing a token module, provided with the instantiation message this struct is used to record the info about the module and how/if it should be instantiated",
       "type": "object",
       "required": [
         "address",
-        "is_mutable",
-        "module_type"
+        "is_mutable"
       ],
       "properties": {
         "address": {
-          "$ref": "#/definitions/AndrAddress"
+          "$ref": "#/definitions/AndrAddr"
         },
         "is_mutable": {
           "type": "boolean"
         },
-        "module_type": {
-          "type": "string"
+        "name": {
+          "type": [
+            "string",
+            "null"
+          ]
         }
       },
       "additionalProperties": false

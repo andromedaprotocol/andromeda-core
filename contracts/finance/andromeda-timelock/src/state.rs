@@ -1,5 +1,5 @@
 use andromeda_finance::timelock::Escrow;
-use common::error::ContractError;
+use andromeda_std::error::ContractError;
 use cosmwasm_std::{Order, Storage};
 use cw_storage_plus::{Bound, Index, IndexList, IndexedMap, MultiIndex};
 
@@ -50,7 +50,7 @@ pub fn get_keys_for_recipient(
 }
 
 pub fn get_key(owner: &str, recipient: &str) -> Vec<u8> {
-    vec![owner.as_bytes(), recipient.as_bytes()].concat()
+    [owner.as_bytes(), recipient.as_bytes()].concat()
 }
 
 #[cfg(test)]

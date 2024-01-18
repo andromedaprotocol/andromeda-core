@@ -1,16 +1,8 @@
 [package]
 name = "andromeda-vesting"
-version = "0.1.0"
-authors = ["AndrewPochapsky <andrew.pochapsky@gmail.com>"]
-edition = "2018"
-
-exclude = [
-  # Those files are rust-optimizer artifacts. You might want to commit them for convenience but they should not be part of the source code publication.
-  "contract.wasm",
-  "hash.txt",
-]
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+version = "0.2.1"
+edition = "2021"
+rust-version = "1.65.0"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
@@ -20,19 +12,24 @@ crate-type = ["cdylib", "rlib"]
 backtraces = ["cosmwasm-std/backtraces"]
 # use library feature to disable all instantiate/execute/query exports
 library = []
+testing = ["cw-multi-test"]
+
 
 [dependencies]
-cosmwasm-std = { version = "1.1.2", features = ["staking", "stargate"] }
-cosmwasm-schema = { version = "1.1.2" }
-cw-storage-plus = "0.16.0"
-schemars = "0.8.10"
-serde = { version = "1.0.127", default-features = false, features = ["derive"] }
-cw2 = "0.16.0"
-cw-utils = "0.16.0"
-cw-asset = "2.0.0"
-semver = "1"
+cosmwasm-std = { workspace = true, features = ["staking", "stargate"] }
+cosmwasm-schema = { workspace = true }
+cw-storage-plus = { workspace = true }
+cw-utils = { workspace = true}
+cw-asset = { workspace = true}
+cw2 = { workspace = true }
+semver = { workspace = true }
 
-andromeda-finance = { version = "0.1.0", path = "../../../packages/andromeda-finance" }
-common = { version = "0.1.0", path = "../../../packages/common" }
-ado-base = { path = "../../../packages/ado-base", version = "0.1.0" }
+andromeda-std = { workspace = true }
+andromeda-finance = { workspace = true }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+cw-multi-test = { version = "0.16.0", optional = true }
+
+[dev-dependencies]
+andromeda-app = { version = "0.1.0", path = "../../../packages/andromeda-app" }
 

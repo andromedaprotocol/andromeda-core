@@ -30,6 +30,3 @@ pub const MERKLE_ROOT: Map<u8, String> = Map::new(MERKLE_ROOT_PREFIX);
 
 pub const CLAIM_PREFIX: &str = "claim";
 pub const CLAIM: Map<(&Addr, u8), bool> = Map::new(CLAIM_PREFIX);
-
-pub const CLAIMED_AMOUNT_PREFIX: &str = "claimed_amount";
-pub const CLAIMED_AMOUNT: Map<(&Addr, u8), bool> = Map::new(CLAIMED_AMOUNT_PREFIX);

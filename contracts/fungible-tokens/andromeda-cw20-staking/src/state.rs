@@ -1,9 +1,9 @@
-use cosmwasm_std::{Api, Decimal256, Env, Order, QuerierWrapper, Storage, Uint128};
+use cosmwasm_std::{Api, Decimal256, Deps, Env, Order, QuerierWrapper, Uint128};
 use cw_storage_plus::{Bound, Item, Map};
 
 use crate::contract::{get_pending_rewards, get_staking_token};
 use andromeda_fungible_tokens::cw20_staking::{Config, RewardToken, StakerResponse, State};
-use common::error::ContractError;
+use andromeda_std::error::ContractError;
 use cosmwasm_schema::cw_serde;
 
 pub const MAX_REWARD_TOKENS: u32 = 10;
@@ -39,9 +39,9 @@ const MAX_LIMIT: u32 = 30;
 const DEFAULT_LIMIT: u32 = 10;
 
 pub(crate) fn get_stakers(
-    storage: &dyn Storage,
+    deps: Deps,
     querier: &QuerierWrapper,
-    api: &dyn Api,
+    _api: &dyn Api,
     env: &Env,
     start_after: Option<&str>,
     limit: Option<u32>,
@@ -50,13 +50,14 @@ pub(crate) fn get_stakers(
     let start = start_after.map(Bound::exclusive);
 
     STAKERS
-        .range(storage, start, None, Order::Ascending)
+        .range(deps.storage, start, None, Order::Ascending)
         .take(limit)
         .map(|elem| {
             let (address, staker) = elem?;
-            let state = STATE.load(storage)?;
-            let pending_rewards = get_pending_rewards(storage, querier, env, &address, &staker)?;
-            let staking_token = get_staking_token(storage, api, querier)?;
+            let state = STATE.load(deps.storage)?;
+            let pending_rewards =
+                get_pending_rewards(deps.storage, querier, env, &address, &staker)?;
+            let staking_token = get_staking_token(deps)?;
             let total_balance =
                 staking_token.query_balance(querier, env.contract.address.clone())?;
             let balance = staker

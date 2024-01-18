@@ -1,9 +1,11 @@
-use common::ado_base::{AndromedaMsg, AndromedaQuery};
+use andromeda_std::andr_instantiate_modules;
+use andromeda_std::{andr_exec, andr_instantiate, andr_query};
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::Decimal;
 use cosmwasm_std::Uint128;
 use cw20::Cw20ReceiveMsg;
 
+#[andr_instantiate]
+#[andr_instantiate_modules]
 #[cw_serde]
 pub struct InstantiateMsg {
     /// The bootsrap contract to be used in the second phase.
@@ -20,10 +22,10 @@ pub struct InstantiateMsg {
     pub native_denom: String,
 }
 
+#[andr_exec]
 #[cw_serde]
 pub enum ExecuteMsg {
     Receive(Cw20ReceiveMsg),
-    AndrReceive(AndromedaMsg),
     /// Function to deposit native fund in the contract in exchange for recieving a proportion of the
     /// TOKEN.
     DepositNative {},
@@ -48,11 +50,10 @@ pub enum Cw20HookMsg {
     IncreaseIncentives {},
 }
 
+#[andr_query]
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
-    #[returns(AndromedaQuery)]
-    AndrQuery(AndromedaQuery),
     /// Gets the config information.
     #[returns(ConfigResponse)]
     Config {},
@@ -64,7 +65,7 @@ pub enum QueryMsg {
     UserInfo { address: String },
     /// Gets the withdrawal percent allowed given the timestamp, or the current time if not
     /// specified.
-    #[returns(Decimal)]
+    #[returns(::cosmwasm_std::Decimal)]
     WithdrawalPercentAllowed { timestamp: Option<u64> },
 }
 

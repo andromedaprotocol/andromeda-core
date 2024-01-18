@@ -1,73 +1,122 @@
 [package]
 name = "tests-integration"
 version = "0.1.0"
-edition = "2018"
+edition = "2021"
+rust-version = "1.65.0"
 publish = false
+
+[features]
+modules = []
 
 [dev-dependencies]
 #App
-andromeda-app = { path = "../packages/andromeda-app" }
-andromeda-app-contract = { path = "../contracts/app/andromeda-app-contract", features = ["testing"] }
+andromeda-app = { workspace = true }
+andromeda-app-contract = { path = "../contracts/app/andromeda-app-contract", features = [
+    "testing",
+] }
 
 #Non-Fungible Tokens
-andromeda-non-fungible-tokens = { path = "../packages/andromeda-non-fungible-tokens" }
-andromeda-cw721 = { path = "../contracts/non-fungible-tokens/andromeda-cw721", features = ["testing"] }
-andromeda-crowdfund = { path = "../contracts/non-fungible-tokens/andromeda-crowdfund", features = ["testing"] }
-andromeda-auction = { path = "../contracts/non-fungible-tokens/andromeda-auction", features = ["testing"] }
-andromeda-wrapped-cw721 = { path = "../contracts/non-fungible-tokens/andromeda-wrapped-cw721", features = ["testing"] }
-andromeda-marketplace = { path = "../contracts/non-fungible-tokens/andromeda-marketplace", features = ["testing"] }
-andromeda-ics721 = { path = "../contracts/non-fungible-tokens/andromeda-ics721", features = ["testing"] }
+andromeda-non-fungible-tokens = { workspace = true }
+andromeda-cw721 = { path = "../contracts/non-fungible-tokens/andromeda-cw721", features = [
+    "testing",
+] }
+andromeda-crowdfund = { path = "../contracts/non-fungible-tokens/andromeda-crowdfund", features = [
+    "testing",
+] }
+andromeda-auction = { path = "../contracts/non-fungible-tokens/andromeda-auction", features = [
+    "testing",
+] }
+# # andromeda-wrapped-cw721 = { path = "../contracts/non-fungible-tokens/andromeda-wrapped-cw721", features = ["testing"] }
+andromeda-marketplace = { path = "../contracts/non-fungible-tokens/andromeda-marketplace", features = [
+    "testing",
+] }
+# # andromeda-ics721 = { path = "../contracts/non-fungible-tokens/andromeda-ics721", features = ["testing"] }
 
-#IBC
-andromeda-ibc = { path = "../packages/andromeda-ibc" }
+# #Automation
+# # andromeda-automation = { path = "../packages/andromeda-automation" }
+# # andromeda-counter = { path = "../contracts/automation/andromeda-counter", features = ["testing"] }
+
 
 #Fungible Tokens
-andromeda-fungible-tokens = { path = "../packages/andromeda-fungible-tokens" }
-andromeda-cw20 = { path = "../contracts/fungible-tokens/andromeda-cw20", features = ["testing"] }
-andromeda-cw20-staking = { path = "../contracts/fungible-tokens/andromeda-cw20-staking", features = ["testing"] }
+# andromeda-fungible-tokens = { path = "../packages/andromeda-fungible-tokens" }
+# andromeda-cw20 = { path = "../contracts/fungible-tokens/andromeda-cw20", features = ["testing"] }
+# andromeda-cw20-staking = { path = "../contracts/fungible-tokens/andromeda-cw20-staking", features = ["testing"] }
 
-#Modules
-andromeda-modules = { path = "../packages/andromeda-modules" }
-andromeda-rates = { path = "../contracts/modules/andromeda-rates", features = ["testing"] }
-andromeda-address-list = { path = "../contracts/modules/andromeda-address-list", features = ["testing"] }
+# #Modules
+andromeda-modules = { workspace = true }
+andromeda-rates = { path = "../contracts/modules/andromeda-rates", features = [
+    "testing",
+] }
+andromeda-address-list = { path = "../contracts/modules/andromeda-address-list", features = [
+    "testing",
+] }
 
-#Ecosystem
-andromeda-ecosystem = {  path = "../packages/andromeda-ecosystem" }
-andromeda-vault = { path = "../contracts/ecosystem/andromeda-vault", features = ["testing"] }
+# #Ecosystem
+andromeda-ecosystem = { workspace = true }
+andromeda-vault = { path = "../contracts/ecosystem/andromeda-vault", features = [
+    "testing",
+] }
 
-#Finance
-andromeda-finance = { path = "../packages/andromeda-finance"}
-andromeda-splitter = { path = "../contracts/finance/andromeda-splitter", features = ["testing"] }
+# #Finance
+andromeda-finance = { workspace = true }
+andromeda-splitter = { path = "../contracts/finance/andromeda-splitter", features = [
+    "testing",
+] }
+
+# Data Storage
+andromeda-data-storage = { workspace = true }
+andromeda-primitive = { path = "../contracts/data-storage/andromeda-primitive", features = ["testing"] }
+
+# #OS
+andromeda-kernel = { path = "../contracts/os/andromeda-kernel", features = [
+    "testing",
+] }
+andromeda-adodb = { path = "../contracts/os/andromeda-adodb", features = [
+    "testing",
+] }
+andromeda-vfs = { path = "../contracts/os/andromeda-vfs", features = [
+    "testing",
+] }
+
 
 #Other Crates
-common = { version = "0.1.0", path = "../packages/common" }
-andromeda-testing = { path = "../packages/andromeda-testing", features = ["testing"] }
+# common = { version = "0.1.0", path = "../packages/common" }
+andromeda-testing = { workspace = true, features = ["testing"] }
 
 #Cosmwasm Crates
-cosmwasm-std = "1.1.6"
-cw721-base = { version = "0.16.0", features = ["library"] }
-cw721 = "0.16.0"
-cw20 = "0.16.0"
-cw20-base = "0.16.0"
-cw-cii = { git = "https://github.com/public-awesome/ics721.git" }
-cw-pause-once = { git = "https://github.com/public-awesome/ics721.git" }
-cw721-rate-limited-proxy = { git = "https://github.com/0xekez/cw721-proxy.git" }
+cosmwasm-std = { workspace = true}
+cosmwasm-schema = { workspace = true }
+cw721-base = { workspace = true }
+cw721 = { workspace = true }
+# cw20 = "0.16.0"
+# cw20-base = { workspace = true }
+# cw-cii = { git = "https://github.com/public-awesome/ics721.git" }
+# cw-pause-once = { git = "https://github.com/public-awesome/ics721.git" }
+# cw721-rate-limited-proxy = { git = "https://github.com/0xekez/cw721-proxy.git" }
+
+andromeda-std = { workspace = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-cw-multi-test = { version = "0.16.0" }
+cw-multi-test = { version = "0.16.5" }
 
 
-[[test]]
-name = "cw721"
+# [[test]]
+# name = "cw721"
 
-[[test]]
-name = "crowdfund_app"
+# [[test]]
+# name = "crowdfund_app"
 
 [[test]]
 name = "auction_app"
 
 [[test]]
-name = "cw20_staking_app"
+name = "marketplace_app"
 
-[[test]]
-name = "wrapped_cw721_app"
+# [[test]]
+# name = "cw20_staking_app"
+
+# [[test]]
+# name = "wrapped_cw721_app"
+
+# [[test]]
+# name = "kernel"

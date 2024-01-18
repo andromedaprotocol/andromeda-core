@@ -1,6 +1,10 @@
+use andromeda_std::{
+    amp::Recipient, common::withdraw::WithdrawalType, error::ContractError,
+    testing::mock_querier::MOCK_KERNEL_CONTRACT,
+};
 use cosmwasm_std::{
     coin, coins, from_binary,
-    testing::{mock_dependencies, mock_env, mock_info, MockQuerier, MOCK_CONTRACT_ADDR},
+    testing::{mock_env, mock_info, MockQuerier, MOCK_CONTRACT_ADDR},
     Addr, BankMsg, Coin, CosmosMsg, Decimal, DepsMut, DistributionMsg, FullDelegation, GovMsg,
     Response, StakingMsg, Uint128, Validator, VoteOption,
 };
@@ -9,20 +13,23 @@ use cw_utils::Duration;
 use crate::{
     contract::{execute, instantiate, query},
     state::{batches, Batch, CONFIG, NEXT_ID},
+    testing::mock_querier::mock_dependencies_custom,
 };
 
 use andromeda_finance::vesting::{BatchResponse, Config, ExecuteMsg, InstantiateMsg, QueryMsg};
-use common::{ado_base::recipient::Recipient, error::ContractError, withdraw::WithdrawalType};
 
 const DEFAULT_VALIDATOR: &str = "validator";
 const UNBONDING_BLOCK_DURATION: u64 = 5;
 
 fn init(deps: DepsMut) -> Response {
     let msg = InstantiateMsg {
-        recipient: Recipient::Addr("recipient".to_string()),
+        recipient: Recipient::from_string("recipient"),
         is_multi_batch_enabled: true,
         denom: "uusd".to_string(),
         unbonding_duration: Duration::Height(UNBONDING_BLOCK_DURATION),
+        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+        owner: None,
+        modules: None,
     };
 
     let info = mock_info("owner", &[]);
@@ -78,7 +85,7 @@ fn create_batch(
 
 #[test]
 fn test_instantiate() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies_custom(&[]);
 
     let res = init(deps.as_mut());
 
@@ -91,7 +98,7 @@ fn test_instantiate() {
 
     assert_eq!(
         Config {
-            recipient: Recipient::Addr("recipient".to_string()),
+            recipient: Recipient::from_string("recipient"),
             is_multi_batch_enabled: true,
             denom: "uusd".to_string(),
             unbonding_duration: Duration::Height(UNBONDING_BLOCK_DURATION)
@@ -102,7 +109,7 @@ fn test_instantiate() {
 
 #[test]
 fn test_create_batch_unauthorized() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies_custom(&[]);
     init(deps.as_mut());
 
     let info = mock_info("not_owner", &[]);
@@ -121,7 +128,8 @@ fn test_create_batch_unauthorized() {
 
 #[test]
 fn test_create_batch_no_funds() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies_custom(&[]);
+
     init(deps.as_mut());
 
     let info = mock_info("owner", &[]);
@@ -145,7 +153,7 @@ fn test_create_batch_no_funds() {
 
 #[test]
 fn test_create_batch_invalid_denom() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies_custom(&[]);
     init(deps.as_mut());
 
     let info = mock_info("owner", &coins(500, "uluna"));
@@ -169,7 +177,7 @@ fn test_create_batch_invalid_denom() {
 
 #[test]
 fn test_create_batch_valid_denom_zero_amount() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies_custom(&[]);
     init(deps.as_mut());
 
     let info = mock_info("owner", &coins(0, "uusd"));
@@ -193,7 +201,7 @@ fn test_create_batch_valid_denom_zero_amount() {
 
 #[test]
 fn test_create_batch_release_unit_zero() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies_custom(&[]);
     init(deps.as_mut());
 
     let info = mock_info("owner", &coins(100, "uusd"));
@@ -212,7 +220,7 @@ fn test_create_batch_release_unit_zero() {
 
 #[test]
 fn test_create_batch_release_amount_zero() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies_custom(&[]);
     init(deps.as_mut());
 
     let info = mock_info("owner", &coins(100, "uusd"));
@@ -231,7 +239,7 @@ fn test_create_batch_release_amount_zero() {
 
 #[test]
 fn test_create_batch() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies_custom(&[]);
     init(deps.as_mut());
 
     let info = mock_info("owner", &coins(100, "uusd"));
@@ -311,12 +319,13 @@ fn test_create_batch() {
 
 #[test]
 fn test_create_batch_and_delegate() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies_custom(&[coin(1000, "uusd")]);
     init(deps.as_mut());
 
     let info = mock_info("owner", &coins(100, "uusd"));
 
     deps.querier
+        .base
         .update_balance(MOCK_CONTRACT_ADDR, coins(100, "uusd"));
 
     let msg = ExecuteMsg::CreateBatch {
@@ -354,12 +363,15 @@ fn test_create_batch_and_delegate() {
 
 #[test]
 fn test_create_batch_multi_batch_not_supported() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies_custom(&[]);
     let msg = InstantiateMsg {
-        recipient: Recipient::Addr("recipient".to_string()),
+        recipient: Recipient::from_string("recipient"),
         is_multi_batch_enabled: false,
         denom: "uusd".to_string(),
         unbonding_duration: Duration::Height(0u64),
+        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+        owner: None,
+        modules: None,
     };
 
     let info = mock_info("owner", &[]);
@@ -411,7 +423,7 @@ fn test_create_batch_multi_batch_not_supported() {
 
 #[test]
 fn test_claim_batch_unauthorized() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies_custom(&[]);
     init(deps.as_mut());
 
     let info = mock_info("not_owner", &[]);
@@ -428,7 +440,7 @@ fn test_claim_batch_unauthorized() {
 
 #[test]
 fn test_claim_batch_still_locked() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies_custom(&[]);
     init(deps.as_mut());
     let info = mock_info("owner", &coins(100, "uusd"));
 
@@ -455,7 +467,7 @@ fn test_claim_batch_still_locked() {
 
 #[test]
 fn test_claim_batch_no_funds_available() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies_custom(&[]);
     init(deps.as_mut());
     let info = mock_info("owner", &coins(100, "uusd"));
 
@@ -483,7 +495,7 @@ fn test_claim_batch_no_funds_available() {
 
 #[test]
 fn test_claim_batch_all_funds_delegated() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies_custom(&[coin(1000, "uusd")]);
     init(deps.as_mut());
     let info = mock_info("owner", &coins(100, "uusd"));
 
@@ -498,6 +510,7 @@ fn test_claim_batch_all_funds_delegated() {
     let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
     deps.querier
+        .base
         .update_balance(MOCK_CONTRACT_ADDR, coins(100, "uusd"));
 
     // Delegate tokens
@@ -526,7 +539,7 @@ fn test_claim_batch_all_funds_delegated() {
 
 #[test]
 fn test_claim_batch_some_funds_delegated() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies_custom(&[]);
     init(deps.as_mut());
     let info = mock_info("owner", &coins(100, "uusd"));
 
@@ -541,6 +554,7 @@ fn test_claim_batch_some_funds_delegated() {
     let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
     deps.querier
+        .base
         .update_balance(MOCK_CONTRACT_ADDR, coins(100, "uusd"));
 
     // Delegate tokens
@@ -556,6 +570,7 @@ fn test_claim_batch_some_funds_delegated() {
     env.block.time = env.block.time.plus_seconds(1000);
 
     deps.querier
+        .base
         .update_balance(MOCK_CONTRACT_ADDR, coins(30, "uusd"));
 
     // Claim batch.
@@ -583,7 +598,7 @@ fn test_claim_batch_some_funds_delegated() {
 
 #[test]
 fn test_claim_batch_single_claim() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies_custom(&[]);
     init(deps.as_mut());
     let info = mock_info("owner", &coins(100, "uusd"));
 
@@ -600,6 +615,7 @@ fn test_claim_batch_single_claim() {
     let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
     deps.querier
+        .base
         .update_balance(MOCK_CONTRACT_ADDR, coins(100, "uusd"));
 
     // Skip time.
@@ -664,7 +680,7 @@ fn test_claim_batch_single_claim() {
 
 #[test]
 fn test_claim_batch_not_nice_numbers_single_release() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies_custom(&[]);
     init(deps.as_mut());
     let info = mock_info("owner", &coins(7, "uusd"));
 
@@ -681,6 +697,7 @@ fn test_claim_batch_not_nice_numbers_single_release() {
     let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
     deps.querier
+        .base
         .update_balance(MOCK_CONTRACT_ADDR, coins(7, "uusd"));
 
     // Skip time.
@@ -725,7 +742,7 @@ fn test_claim_batch_not_nice_numbers_single_release() {
 
 #[test]
 fn test_claim_batch_not_nice_numbers_multiple_releases() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies_custom(&[]);
     init(deps.as_mut());
     let info = mock_info("owner", &coins(14, "uusd"));
 
@@ -742,6 +759,7 @@ fn test_claim_batch_not_nice_numbers_multiple_releases() {
     let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
     deps.querier
+        .base
         .update_balance(MOCK_CONTRACT_ADDR, coins(14, "uusd"));
 
     // Skip time.
@@ -786,7 +804,7 @@ fn test_claim_batch_not_nice_numbers_multiple_releases() {
 
 #[test]
 fn test_claim_batch_middle_of_interval() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies_custom(&[]);
     init(deps.as_mut());
     let info = mock_info("owner", &coins(100, "uusd"));
 
@@ -803,6 +821,7 @@ fn test_claim_batch_middle_of_interval() {
     let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
     deps.querier
+        .base
         .update_balance(MOCK_CONTRACT_ADDR, coins(100, "uusd"));
 
     // Claim batch.
@@ -852,7 +871,7 @@ fn test_claim_batch_middle_of_interval() {
 
 #[test]
 fn test_claim_batch_multiple_claims() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies_custom(&[]);
     init(deps.as_mut());
     let info = mock_info("owner", &coins(100, "uusd"));
 
@@ -869,6 +888,7 @@ fn test_claim_batch_multiple_claims() {
     let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
     deps.querier
+        .base
         .update_balance(MOCK_CONTRACT_ADDR, coins(100, "uusd"));
 
     let mut env = mock_env();
@@ -945,7 +965,7 @@ fn test_claim_batch_multiple_claims() {
 
 #[test]
 fn test_claim_batch_all_releases() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies_custom(&[]);
     init(deps.as_mut());
     let info = mock_info("owner", &coins(100, "uusd"));
 
@@ -962,6 +982,7 @@ fn test_claim_batch_all_releases() {
     let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
     deps.querier
+        .base
         .update_balance(MOCK_CONTRACT_ADDR, coins(100, "uusd"));
 
     let mut env = mock_env();
@@ -1011,7 +1032,7 @@ fn test_claim_batch_all_releases() {
 
 #[test]
 fn test_claim_batch_too_high_of_claim() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies_custom(&[]);
     init(deps.as_mut());
     let info = mock_info("owner", &coins(100, "uusd"));
 
@@ -1028,6 +1049,7 @@ fn test_claim_batch_too_high_of_claim() {
     let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
     deps.querier
+        .base
         .update_balance(MOCK_CONTRACT_ADDR, coins(100, "uusd"));
 
     let mut env = mock_env();
@@ -1072,7 +1094,7 @@ fn test_claim_batch_too_high_of_claim() {
 
 #[test]
 fn test_claim_all_unauthorized() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies_custom(&[]);
     init(deps.as_mut());
 
     let info = mock_info("not_owner", &[]);
@@ -1089,7 +1111,7 @@ fn test_claim_all_unauthorized() {
 
 #[test]
 fn test_claim_all() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies_custom(&[]);
     init(deps.as_mut());
 
     let release_unit = 10;
@@ -1118,6 +1140,7 @@ fn test_claim_all() {
     );
 
     deps.querier
+        .base
         .update_balance(MOCK_CONTRACT_ADDR, coins(400, "uusd"));
 
     // Speed up time.
@@ -1244,7 +1267,7 @@ fn test_claim_all() {
 
 #[test]
 fn test_delegate_unauthorized() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies_custom(&[]);
     init(deps.as_mut());
 
     let info = mock_info("not_owner", &[]);
@@ -1261,7 +1284,7 @@ fn test_delegate_unauthorized() {
 
 #[test]
 fn test_delegate_no_funds() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies_custom(&[]);
     init(deps.as_mut());
 
     let info = mock_info("owner", &[]);
@@ -1278,10 +1301,11 @@ fn test_delegate_no_funds() {
 
 #[test]
 fn test_delegate() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies_custom(&[]);
     init(deps.as_mut());
 
     deps.querier
+        .base
         .update_balance(MOCK_CONTRACT_ADDR, coins(100, "uusd"));
 
     let info = mock_info("owner", &[]);
@@ -1313,10 +1337,11 @@ fn test_delegate() {
 
 #[test]
 fn test_delegate_more_than_balance() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies_custom(&[]);
     init(deps.as_mut());
 
     deps.querier
+        .base
         .update_balance(MOCK_CONTRACT_ADDR, coins(100, "uusd"));
 
     let info = mock_info("owner", &[]);
@@ -1348,7 +1373,7 @@ fn test_delegate_more_than_balance() {
 
 #[test]
 fn test_redelegate_unauthorized() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies_custom(&[]);
     init(deps.as_mut());
 
     let info = mock_info("not_owner", &[]);
@@ -1366,7 +1391,7 @@ fn test_redelegate_unauthorized() {
 
 #[test]
 fn test_redelegate_no_funds() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies_custom(&[]);
     init(deps.as_mut());
 
     let info = mock_info("owner", &[]);
@@ -1384,12 +1409,12 @@ fn test_redelegate_no_funds() {
 
 #[test]
 fn test_redelegate() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies_custom(&[]);
     init(deps.as_mut());
 
     let info = mock_info("owner", &[]);
 
-    set_delegation(&mut deps.querier, 100, "uusd");
+    set_delegation(&mut deps.querier.base, 100, "uusd");
 
     let msg = ExecuteMsg::Redelegate {
         amount: None,
@@ -1421,12 +1446,12 @@ fn test_redelegate() {
 
 #[test]
 fn test_redelegate_more_than_max() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies_custom(&[]);
     init(deps.as_mut());
 
     let info = mock_info("owner", &[]);
 
-    set_delegation(&mut deps.querier, 100, "uusd");
+    set_delegation(&mut deps.querier.base, 100, "uusd");
 
     let msg = ExecuteMsg::Redelegate {
         amount: Some(Uint128::new(200)),
@@ -1458,7 +1483,7 @@ fn test_redelegate_more_than_max() {
 
 #[test]
 fn test_undelegate_unauthorized() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies_custom(&[]);
     init(deps.as_mut());
 
     let info = mock_info("not_owner", &[]);
@@ -1475,7 +1500,7 @@ fn test_undelegate_unauthorized() {
 
 #[test]
 fn test_undelegate_no_funds() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies_custom(&[]);
     init(deps.as_mut());
 
     let info = mock_info("owner", &[]);
@@ -1492,12 +1517,12 @@ fn test_undelegate_no_funds() {
 
 #[test]
 fn test_undelegate() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies_custom(&[]);
     init(deps.as_mut());
 
     let info = mock_info("owner", &[]);
 
-    set_delegation(&mut deps.querier, 100, "uusd");
+    set_delegation(&mut deps.querier.base, 100, "uusd");
 
     let msg = ExecuteMsg::Undelegate {
         amount: None,
@@ -1526,12 +1551,12 @@ fn test_undelegate() {
 
 #[test]
 fn test_undelegate_more_than_max() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies_custom(&[]);
     init(deps.as_mut());
 
     let info = mock_info("owner", &[]);
 
-    set_delegation(&mut deps.querier, 100, "uusd");
+    set_delegation(&mut deps.querier.base, 100, "uusd");
 
     let msg = ExecuteMsg::Undelegate {
         amount: Some(Uint128::new(200)),
@@ -1560,7 +1585,7 @@ fn test_undelegate_more_than_max() {
 
 #[test]
 fn test_withdraw_rewards_unauthorized() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies_custom(&[]);
     init(deps.as_mut());
 
     let info = mock_info("not_owner", &[]);
@@ -1574,7 +1599,7 @@ fn test_withdraw_rewards_unauthorized() {
 
 #[test]
 fn test_vote_unauthorized() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies_custom(&[]);
     init(deps.as_mut());
 
     let info = mock_info("not_owner", &[]);
@@ -1591,14 +1616,14 @@ fn test_vote_unauthorized() {
 
 #[test]
 fn test_withdraw_rewards() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies_custom(&[]);
     init(deps.as_mut());
 
     let info = mock_info("owner", &[]);
 
     let msg = ExecuteMsg::WithdrawRewards {};
 
-    deps.querier.update_staking(
+    deps.querier.base.update_staking(
         "ustake",
         &[
             sample_validator("validator1"),
@@ -1643,7 +1668,7 @@ fn test_withdraw_rewards() {
 
 #[test]
 fn test_vote() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies_custom(&[]);
     init(deps.as_mut());
 
     let info = mock_info("owner", &[]);

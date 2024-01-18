@@ -17,14 +17,14 @@ use crate::state::{
     Config, CLAIM, CONFIG, LATEST_STAGE, MERKLE_ROOT, STAGE_AMOUNT, STAGE_AMOUNT_CLAIMED,
     STAGE_EXPIRATION,
 };
-use ado_base::ADOContract;
 use andromeda_fungible_tokens::airdrop::{
     ConfigResponse, ExecuteMsg, InstantiateMsg, IsClaimedResponse, LatestStageResponse,
     MerkleRootResponse, MigrateMsg, QueryMsg, TotalClaimedResponse,
 };
-use common::{
+use andromeda_std::{
     ado_base::InstantiateMsg as BaseInstantiateMsg,
-    encode_binary,
+    ado_contract::ADOContract,
+    common::{context::ExecuteContext, encode_binary},
     error::{from_semver, ContractError},
 };
 
@@ -51,7 +51,8 @@ pub fn instantiate(
     let stage = 0;
     LATEST_STAGE.save(deps.storage, &stage)?;
 
-    ADOContract::default().instantiate(
+    let contract = ADOContract::default();
+    let resp = contract.instantiate(
         deps.storage,
         env,
         deps.api,
@@ -60,10 +61,12 @@ pub fn instantiate(
             ado_type: "merkle-airdrop".to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
             operators: None,
-            modules: None,
-            primitive_contract: None,
+            kernel_address: msg.kernel_address,
+            owner: msg.owner,
         },
-    )
+    )?;
+
+    Ok(resp)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -73,32 +76,40 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
+    let ctx = ExecuteContext::new(deps, info, env);
+
     match msg {
-        ExecuteMsg::AndrReceive(msg) => {
-            ADOContract::default().execute(deps, env, info, msg, execute)
+        ExecuteMsg::AMPReceive(pkt) => {
+            ADOContract::default().execute_amp_receive(ctx, pkt, handle_execute)
         }
+        _ => handle_execute(ctx, msg),
+    }
+}
+
+pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+    match msg {
         ExecuteMsg::RegisterMerkleRoot {
             merkle_root,
             expiration,
             total_amount,
-        } => execute_register_merkle_root(deps, env, info, merkle_root, expiration, total_amount),
+        } => execute_register_merkle_root(ctx, merkle_root, expiration, total_amount),
         ExecuteMsg::Claim {
             stage,
             amount,
             proof,
-        } => execute_claim(deps, env, info, stage, amount, proof),
-        ExecuteMsg::Burn { stage } => execute_burn(deps, env, info, stage),
+        } => execute_claim(ctx, stage, amount, proof),
+        ExecuteMsg::Burn { stage } => execute_burn(ctx, stage),
+        _ => ADOContract::default().execute(ctx, msg),
     }
 }
 
 pub fn execute_register_merkle_root(
-    deps: DepsMut,
-    _env: Env,
-    info: MessageInfo,
+    ctx: ExecuteContext,
     merkle_root: String,
     expiration: Option<Expiration>,
     total_amount: Option<Uint128>,
 ) -> Result<Response, ContractError> {
+    let ExecuteContext { deps, info, .. } = ctx;
     nonpayable(&info)?;
 
     ensure!(
@@ -133,13 +144,14 @@ pub fn execute_register_merkle_root(
 }
 
 pub fn execute_claim(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
+    ctx: ExecuteContext,
     stage: u8,
     amount: Uint128,
     proof: Vec<String>,
 ) -> Result<Response, ContractError> {
+    let ExecuteContext {
+        deps, info, env, ..
+    } = ctx;
     nonpayable(&info)?;
 
     // not expired
@@ -169,7 +181,7 @@ pub fn execute_claim(
         hex::decode_to_slice(p, &mut proof_buf)?;
         let mut hashes = [hash, proof_buf];
         hashes.sort_unstable();
-        sha2::Sha256::digest(&hashes.concat())
+        sha2::Sha256::digest(hashes.concat())
             .as_slice()
             .try_into()
             .map_err(|_| ContractError::WrongLength {})
@@ -214,12 +226,10 @@ pub fn execute_claim(
     Ok(res)
 }
 
-pub fn execute_burn(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    stage: u8,
-) -> Result<Response, ContractError> {
+pub fn execute_burn(ctx: ExecuteContext, stage: u8) -> Result<Response, ContractError> {
+    let ExecuteContext {
+        deps, info, env, ..
+    } = ctx;
     ensure!(
         ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {}
@@ -276,7 +286,6 @@ pub fn execute_burn(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
-        QueryMsg::AndrQuery(msg) => ADOContract::default().query(deps, env, msg, query),
         QueryMsg::Config {} => encode_binary(&query_config(deps)?),
         QueryMsg::MerkleRoot { stage } => encode_binary(&query_merkle_root(deps, stage)?),
         QueryMsg::LatestStage {} => encode_binary(&query_latest_stage(deps)?),
@@ -284,6 +293,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
             encode_binary(&query_is_claimed(deps, stage, address)?)
         }
         QueryMsg::TotalClaimed { stage } => encode_binary(&query_total_claimed(deps, stage)?),
+        _ => ADOContract::default().query(deps, env, msg),
     }
 }
 
@@ -367,646 +377,4 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
     contract.execute_update_version(deps)?;
 
     Ok(Response::default())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-    use cosmwasm_std::{from_binary, from_slice, CosmosMsg, SubMsg};
-    use cw_asset::AssetInfoUnchecked;
-    use serde::Deserialize;
-
-    #[test]
-    fn proper_instantiation() {
-        let mut deps = mock_dependencies();
-
-        let msg = InstantiateMsg {
-            asset_info: AssetInfoUnchecked::cw20("anchor0000"),
-        };
-
-        let env = mock_env();
-        let info = mock_info("owner0000", &[]);
-
-        // we can just call .unwrap() to assert this was a success
-        let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
-
-        // it worked, let's query the state
-        let res = query(deps.as_ref(), env.clone(), QueryMsg::Config {}).unwrap();
-        let config: ConfigResponse = from_binary(&res).unwrap();
-        assert!(ADOContract::default()
-            .is_contract_owner(deps.as_ref().storage, "owner0000")
-            .unwrap());
-        assert_eq!(
-            AssetInfoBase::cw20(Addr::unchecked("anchor0000")),
-            config.asset_info
-        );
-
-        let res = query(deps.as_ref(), env, QueryMsg::LatestStage {}).unwrap();
-        let latest_stage: LatestStageResponse = from_binary(&res).unwrap();
-        assert_eq!(0u8, latest_stage.latest_stage);
-    }
-
-    #[test]
-    fn register_merkle_root() {
-        let mut deps = mock_dependencies();
-
-        let msg = InstantiateMsg {
-            asset_info: AssetInfoUnchecked::cw20("anchor0000"),
-        };
-
-        let env = mock_env();
-        let info = mock_info("owner0000", &[]);
-        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
-
-        // register new merkle root
-        let env = mock_env();
-        let info = mock_info("owner0000", &[]);
-        let msg = ExecuteMsg::RegisterMerkleRoot {
-            merkle_root: "634de21cde1044f41d90373733b0f0fb1c1c71f9652b905cdf159e73c4cf0d37"
-                .to_string(),
-            expiration: None,
-
-            total_amount: None,
-        };
-
-        let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
-        assert_eq!(
-            res.attributes,
-            vec![
-                attr("action", "register_merkle_root"),
-                attr("stage", "1"),
-                attr(
-                    "merkle_root",
-                    "634de21cde1044f41d90373733b0f0fb1c1c71f9652b905cdf159e73c4cf0d37"
-                ),
-                attr("total_amount", "0")
-            ]
-        );
-
-        let res = query(deps.as_ref(), env.clone(), QueryMsg::LatestStage {}).unwrap();
-        let latest_stage: LatestStageResponse = from_binary(&res).unwrap();
-        assert_eq!(1u8, latest_stage.latest_stage);
-
-        let res = query(
-            deps.as_ref(),
-            env,
-            QueryMsg::MerkleRoot {
-                stage: latest_stage.latest_stage,
-            },
-        )
-        .unwrap();
-        let merkle_root: MerkleRootResponse = from_binary(&res).unwrap();
-        assert_eq!(
-            "634de21cde1044f41d90373733b0f0fb1c1c71f9652b905cdf159e73c4cf0d37".to_string(),
-            merkle_root.merkle_root
-        );
-    }
-
-    const TEST_DATA_1: &[u8] = include_bytes!("../testdata/airdrop_stage_1_test_data.json");
-    const TEST_DATA_2: &[u8] = include_bytes!("../testdata/airdrop_stage_2_test_data.json");
-
-    #[derive(Deserialize, Debug)]
-    struct Encoded {
-        account: String,
-        amount: Uint128,
-        root: String,
-        proofs: Vec<String>,
-    }
-
-    #[test]
-    fn claim() {
-        // Run test 1
-        let mut deps = mock_dependencies();
-        let test_data: Encoded = from_slice(TEST_DATA_1).unwrap();
-
-        let msg = InstantiateMsg {
-            asset_info: AssetInfoUnchecked::cw20("token0000"),
-        };
-
-        let env = mock_env();
-        let info = mock_info("owner0000", &[]);
-        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
-
-        let env = mock_env();
-        let info = mock_info("owner0000", &[]);
-        let msg = ExecuteMsg::RegisterMerkleRoot {
-            merkle_root: test_data.root,
-            expiration: None,
-
-            total_amount: None,
-        };
-        let _res = execute(deps.as_mut(), env, info, msg).unwrap();
-
-        let msg = ExecuteMsg::Claim {
-            amount: test_data.amount,
-            stage: 1u8,
-            proof: test_data.proofs,
-        };
-
-        let env = mock_env();
-        let info = mock_info(test_data.account.as_str(), &[]);
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
-        let expected = SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: "token0000".to_string(),
-            funds: vec![],
-            msg: to_binary(&Cw20ExecuteMsg::Transfer {
-                recipient: test_data.account.clone(),
-                amount: test_data.amount,
-            })
-            .unwrap(),
-        }));
-        assert_eq!(res.messages, vec![expected]);
-
-        assert_eq!(
-            res.attributes,
-            vec![
-                attr("action", "claim"),
-                attr("stage", "1"),
-                attr("address", test_data.account.clone()),
-                attr("amount", test_data.amount)
-            ]
-        );
-
-        // Check total claimed on stage 1
-        assert_eq!(
-            from_binary::<TotalClaimedResponse>(
-                &query(
-                    deps.as_ref(),
-                    env.clone(),
-                    QueryMsg::TotalClaimed { stage: 1 }
-                )
-                .unwrap()
-            )
-            .unwrap()
-            .total_claimed,
-            test_data.amount
-        );
-
-        // Check address is claimed
-        assert!(
-            from_binary::<IsClaimedResponse>(
-                &query(
-                    deps.as_ref(),
-                    env.clone(),
-                    QueryMsg::IsClaimed {
-                        stage: 1,
-                        address: test_data.account
-                    }
-                )
-                .unwrap()
-            )
-            .unwrap()
-            .is_claimed
-        );
-
-        // check error on double claim
-        let res = execute(deps.as_mut(), env, info, msg).unwrap_err();
-        assert_eq!(res, ContractError::Claimed {});
-
-        // Second test
-        let test_data: Encoded = from_slice(TEST_DATA_2).unwrap();
-
-        // register new drop
-        let env = mock_env();
-        let info = mock_info("owner0000", &[]);
-        let msg = ExecuteMsg::RegisterMerkleRoot {
-            merkle_root: test_data.root,
-            expiration: None,
-
-            total_amount: None,
-        };
-        let _res = execute(deps.as_mut(), env, info, msg).unwrap();
-
-        // Claim next airdrop
-        let msg = ExecuteMsg::Claim {
-            amount: test_data.amount,
-            stage: 2u8,
-            proof: test_data.proofs,
-        };
-
-        let env = mock_env();
-        let info = mock_info(test_data.account.as_str(), &[]);
-        let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
-        let expected: SubMsg<_> = SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: "token0000".to_string(),
-            funds: vec![],
-            msg: to_binary(&Cw20ExecuteMsg::Transfer {
-                recipient: test_data.account.clone(),
-                amount: test_data.amount,
-            })
-            .unwrap(),
-        }));
-        assert_eq!(res.messages, vec![expected]);
-
-        assert_eq!(
-            res.attributes,
-            vec![
-                attr("action", "claim"),
-                attr("stage", "2"),
-                attr("address", test_data.account),
-                attr("amount", test_data.amount)
-            ]
-        );
-
-        // Check total claimed on stage 2
-        assert_eq!(
-            from_binary::<TotalClaimedResponse>(
-                &query(deps.as_ref(), env, QueryMsg::TotalClaimed { stage: 2 }).unwrap()
-            )
-            .unwrap()
-            .total_claimed,
-            test_data.amount
-        );
-    }
-
-    const TEST_DATA_1_MULTI: &[u8] =
-        include_bytes!("../testdata/airdrop_stage_1_test_multi_data.json");
-
-    #[derive(Deserialize, Debug)]
-    struct Proof {
-        account: String,
-        amount: Uint128,
-        proofs: Vec<String>,
-    }
-
-    #[derive(Deserialize, Debug)]
-    struct MultipleData {
-        total_claimed_amount: Uint128,
-        root: String,
-        accounts: Vec<Proof>,
-    }
-
-    #[test]
-    fn claim_native() {
-        let mut deps = mock_dependencies();
-        let test_data: Encoded = from_slice(TEST_DATA_1).unwrap();
-
-        let msg = InstantiateMsg {
-            asset_info: AssetInfoUnchecked::native("uusd"),
-        };
-
-        let env = mock_env();
-        let info = mock_info("owner0000", &[]);
-        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
-
-        let env = mock_env();
-        let info = mock_info("owner0000", &[]);
-        let msg = ExecuteMsg::RegisterMerkleRoot {
-            merkle_root: test_data.root,
-            expiration: None,
-            total_amount: None,
-        };
-        let _res = execute(deps.as_mut(), env, info, msg).unwrap();
-
-        let msg = ExecuteMsg::Claim {
-            amount: test_data.amount,
-            stage: 1u8,
-            proof: test_data.proofs,
-        };
-
-        let env = mock_env();
-        let info = mock_info(test_data.account.as_str(), &[]);
-        let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
-        let expected = SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-            to_address: test_data.account.clone(),
-            amount: vec![Coin {
-                amount: test_data.amount,
-                denom: "uusd".to_string(),
-            }],
-        }));
-        assert_eq!(res.messages, vec![expected]);
-
-        assert_eq!(
-            res.attributes,
-            vec![
-                attr("action", "claim"),
-                attr("stage", "1"),
-                attr("address", test_data.account.clone()),
-                attr("amount", test_data.amount)
-            ]
-        );
-
-        // Check total claimed on stage 1
-        assert_eq!(
-            from_binary::<TotalClaimedResponse>(
-                &query(
-                    deps.as_ref(),
-                    env.clone(),
-                    QueryMsg::TotalClaimed { stage: 1 }
-                )
-                .unwrap()
-            )
-            .unwrap()
-            .total_claimed,
-            test_data.amount
-        );
-
-        // Check address is claimed
-        assert!(
-            from_binary::<IsClaimedResponse>(
-                &query(
-                    deps.as_ref(),
-                    env,
-                    QueryMsg::IsClaimed {
-                        stage: 1,
-                        address: test_data.account
-                    }
-                )
-                .unwrap()
-            )
-            .unwrap()
-            .is_claimed
-        );
-    }
-
-    #[test]
-    fn multiple_claim() {
-        // Run test 1
-        let mut deps = mock_dependencies();
-        let test_data: MultipleData = from_slice(TEST_DATA_1_MULTI).unwrap();
-
-        let msg = InstantiateMsg {
-            asset_info: AssetInfoUnchecked::cw20("token0000"),
-        };
-
-        let env = mock_env();
-        let info = mock_info("owner0000", &[]);
-        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
-
-        let env = mock_env();
-        let info = mock_info("owner0000", &[]);
-        let msg = ExecuteMsg::RegisterMerkleRoot {
-            merkle_root: test_data.root,
-            expiration: None,
-
-            total_amount: None,
-        };
-        let _res = execute(deps.as_mut(), env, info, msg).unwrap();
-
-        // Loop accounts and claim
-        for account in test_data.accounts.iter() {
-            let msg = ExecuteMsg::Claim {
-                amount: account.amount,
-                stage: 1u8,
-                proof: account.proofs.clone(),
-            };
-
-            let env = mock_env();
-            let info = mock_info(account.account.as_str(), &[]);
-            let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
-            let expected = SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: "token0000".to_string(),
-                funds: vec![],
-                msg: to_binary(&Cw20ExecuteMsg::Transfer {
-                    recipient: account.account.clone(),
-                    amount: account.amount,
-                })
-                .unwrap(),
-            }));
-            assert_eq!(res.messages, vec![expected]);
-
-            assert_eq!(
-                res.attributes,
-                vec![
-                    attr("action", "claim"),
-                    attr("stage", "1"),
-                    attr("address", account.account.clone()),
-                    attr("amount", account.amount)
-                ]
-            );
-        }
-
-        // Check total claimed on stage 1
-        let env = mock_env();
-        assert_eq!(
-            from_binary::<TotalClaimedResponse>(
-                &query(deps.as_ref(), env, QueryMsg::TotalClaimed { stage: 1 }).unwrap()
-            )
-            .unwrap()
-            .total_claimed,
-            test_data.total_claimed_amount
-        );
-    }
-
-    // Check expiration. Chain height in tests is 12345
-    #[test]
-    fn stage_expires() {
-        let mut deps = mock_dependencies();
-
-        let msg = InstantiateMsg {
-            asset_info: AssetInfoUnchecked::cw20("anchor0000"),
-        };
-
-        let env = mock_env();
-        let info = mock_info("owner0000", &[]);
-        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
-
-        // can register merkle root
-        let env = mock_env();
-        let info = mock_info("owner0000", &[]);
-        let msg = ExecuteMsg::RegisterMerkleRoot {
-            merkle_root: "5d4f48f147cb6cb742b376dce5626b2a036f69faec10cd73631c791780e150fc"
-                .to_string(),
-            expiration: Some(Expiration::AtHeight(100)),
-
-            total_amount: None,
-        };
-        execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
-
-        // can't claim expired
-        let msg = ExecuteMsg::Claim {
-            amount: Uint128::new(5),
-            stage: 1u8,
-            proof: vec![],
-        };
-
-        let res = execute(deps.as_mut(), env, info, msg).unwrap_err();
-        assert_eq!(
-            res,
-            ContractError::StageExpired {
-                stage: 1,
-                expiration: Expiration::AtHeight(100)
-            }
-        )
-    }
-
-    #[test]
-    fn cant_burn() {
-        let mut deps = mock_dependencies();
-
-        let msg = InstantiateMsg {
-            asset_info: AssetInfoUnchecked::cw20("token0000"),
-        };
-
-        let env = mock_env();
-        let info = mock_info("owner0000", &[]);
-        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
-
-        // can register merkle root
-        let env = mock_env();
-        let info = mock_info("owner0000", &[]);
-        let msg = ExecuteMsg::RegisterMerkleRoot {
-            merkle_root: "5d4f48f147cb6cb742b376dce5626b2a036f69faec10cd73631c791780e150fc"
-                .to_string(),
-            expiration: Some(Expiration::AtHeight(12346)),
-
-            total_amount: Some(Uint128::new(100000)),
-        };
-        execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
-
-        // Can't burn not expired stage
-        let msg = ExecuteMsg::Burn { stage: 1u8 };
-
-        let res = execute(deps.as_mut(), env, info, msg).unwrap_err();
-        assert_eq!(
-            res,
-            ContractError::StageNotExpired {
-                stage: 1,
-                expiration: Expiration::AtHeight(12346)
-            }
-        )
-    }
-
-    #[test]
-    fn can_burn() {
-        let mut deps = mock_dependencies();
-        let test_data: Encoded = from_slice(TEST_DATA_1).unwrap();
-
-        let msg = InstantiateMsg {
-            asset_info: AssetInfoUnchecked::cw20("token0000"),
-        };
-
-        let mut env = mock_env();
-        let info = mock_info("owner0000", &[]);
-        let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
-
-        let info = mock_info("owner0000", &[]);
-        let msg = ExecuteMsg::RegisterMerkleRoot {
-            merkle_root: test_data.root,
-            expiration: Some(Expiration::AtHeight(12500)),
-
-            total_amount: Some(Uint128::new(10000)),
-        };
-        execute(deps.as_mut(), env.clone(), info, msg).unwrap();
-
-        // Claim some tokens
-        let msg = ExecuteMsg::Claim {
-            amount: test_data.amount,
-            stage: 1u8,
-            proof: test_data.proofs,
-        };
-
-        let info = mock_info(test_data.account.as_str(), &[]);
-        let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
-        let expected = SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: "token0000".to_string(),
-            funds: vec![],
-            msg: to_binary(&Cw20ExecuteMsg::Transfer {
-                recipient: test_data.account.clone(),
-                amount: test_data.amount,
-            })
-            .unwrap(),
-        }));
-        assert_eq!(res.messages, vec![expected]);
-
-        assert_eq!(
-            res.attributes,
-            vec![
-                attr("action", "claim"),
-                attr("stage", "1"),
-                attr("address", test_data.account.clone()),
-                attr("amount", test_data.amount)
-            ]
-        );
-
-        // makes the stage expire
-        env.block.height = 12501;
-
-        // Can burn after expired stage
-        let msg = ExecuteMsg::Burn { stage: 1u8 };
-
-        let info = mock_info("owner0000", &[]);
-        let res = execute(deps.as_mut(), env, info, msg).unwrap();
-
-        let expected = SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: "token0000".to_string(),
-            funds: vec![],
-            msg: to_binary(&Cw20ExecuteMsg::Burn {
-                amount: Uint128::new(9900),
-            })
-            .unwrap(),
-        }));
-        assert_eq!(res.messages, vec![expected]);
-
-        assert_eq!(
-            res.attributes,
-            vec![
-                attr("action", "burn"),
-                attr("stage", "1"),
-                attr("address", "owner0000"),
-                attr("amount", Uint128::new(9900)),
-            ]
-        );
-    }
-
-    #[test]
-    fn can_burn_native() {
-        let mut deps = mock_dependencies();
-        let test_data: Encoded = from_slice(TEST_DATA_1).unwrap();
-
-        let msg = InstantiateMsg {
-            asset_info: AssetInfoUnchecked::native("uusd"),
-        };
-
-        let mut env = mock_env();
-        let info = mock_info("owner0000", &[]);
-        let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
-
-        let info = mock_info("owner0000", &[]);
-        let msg = ExecuteMsg::RegisterMerkleRoot {
-            merkle_root: test_data.root,
-            expiration: Some(Expiration::AtHeight(12500)),
-
-            total_amount: Some(Uint128::new(10000)),
-        };
-        execute(deps.as_mut(), env.clone(), info, msg).unwrap();
-
-        // Claim some tokens
-        let msg = ExecuteMsg::Claim {
-            amount: test_data.amount,
-            stage: 1u8,
-            proof: test_data.proofs,
-        };
-
-        let info = mock_info(test_data.account.as_str(), &[]);
-        let _res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
-
-        // makes the stage expire
-        env.block.height = 12501;
-
-        // Can burn after expired stage
-        let msg = ExecuteMsg::Burn { stage: 1u8 };
-
-        let info = mock_info("owner0000", &[]);
-        let res = execute(deps.as_mut(), env, info, msg).unwrap();
-
-        let expected = SubMsg::new(CosmosMsg::Bank(BankMsg::Burn {
-            amount: vec![Coin {
-                amount: Uint128::new(9900),
-                denom: "uusd".to_string(),
-            }],
-        }));
-        assert_eq!(res.messages, vec![expected]);
-
-        assert_eq!(
-            res.attributes,
-            vec![
-                attr("action", "burn"),
-                attr("stage", "1"),
-                attr("address", "owner0000"),
-                attr("amount", Uint128::new(9900)),
-            ]
-        );
-    }
 }

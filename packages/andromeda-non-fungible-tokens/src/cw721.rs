@@ -1,20 +1,16 @@
-use common::{
-    ado_base::{hooks::AndromedaHook, modules::Module, AndromedaMsg, AndromedaQuery},
-    app::AndrAddress,
-    primitive::Value,
+use andromeda_std::{
+    amp::addresses::AndrAddr, andr_exec, andr_instantiate, andr_instantiate_modules, andr_query,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 
 use cosmwasm_std::{Binary, Coin, CustomMsg};
-use cw721::{
-    AllNftInfoResponse, ApprovalResponse, ApprovalsResponse, ContractInfoResponse, Expiration,
-    NftInfoResponse, NumTokensResponse, OperatorsResponse, OwnerOfResponse, TokensResponse,
-};
-pub use cw721_base::MintMsg;
-use cw721_base::{ExecuteMsg as Cw721ExecuteMsg, MinterResponse, QueryMsg as Cw721QueryMsg};
+use cw721::Expiration;
 
+use cw721_base::{ExecuteMsg as Cw721ExecuteMsg, QueryMsg as Cw721QueryMsg};
+
+#[andr_instantiate]
+#[andr_instantiate_modules]
 #[cw_serde]
-#[serde(rename_all = "snake_case")]
 pub struct InstantiateMsg {
     /// Name of the NFT contract
     pub name: String,
@@ -23,16 +19,14 @@ pub struct InstantiateMsg {
     /// The minter is the only one who can create new NFTs.
     /// This is designed for a base NFT that is controlled by an external program
     /// or contract. You will likely replace this with custom logic in custom NFTs
-    pub minter: AndrAddress,
-    ///The attached Andromeda modules
-    pub modules: Option<Vec<Module>>,
+    pub minter: AndrAddr,
 }
 
 #[cw_serde]
 /// A struct used to represent an agreed transfer of a token. The `purchaser` may use the `Transfer` message for this token as long as funds are provided equalling the `amount` defined in the agreement.
 pub struct TransferAgreement {
     /// The amount required for the purchaser to transfer ownership of the token
-    pub amount: Value<Coin>,
+    pub amount: Coin,
     /// The address of the purchaser
     pub purchaser: String,
 }
@@ -52,34 +46,43 @@ pub struct MetadataAttribute {
 #[cw_serde]
 #[derive(Default)]
 pub struct TokenExtension {
-    /// The name of the token
-    pub name: String,
     /// The original publisher of the token
     pub publisher: String,
-    /// An optional description of the token
-    pub description: Option<String>,
-    /// The metadata of the token (if it exists)
-    pub attributes: Vec<MetadataAttribute>,
-    /// URL to token image
-    pub image: String,
-    /// Raw SVG image data
-    pub image_data: Option<String>,
-    /// A URL to the token's source
-    pub external_url: Option<String>,
-    /// A URL to any multi-media attachments
-    pub animation_url: Option<String>,
-    /// A URL to a related YouTube videos
-    pub youtube_url: Option<String>,
 }
 
 impl CustomMsg for ExecuteMsg {}
 impl CustomMsg for QueryMsg {}
 
 #[cw_serde]
+pub struct MintMsg {
+    /// Unique ID of the NFT
+    pub token_id: String,
+    /// The owner of the newly minter NFT
+    pub owner: String,
+    /// Universal resource identifier for this NFT
+    /// Should point to a JSON file that conforms to the ERC721
+    /// Metadata JSON Schema
+    pub token_uri: Option<String>,
+    /// Any custom extension used by this contract
+    pub extension: TokenExtension,
+}
+
+#[andr_exec]
+#[cw_serde]
 pub enum ExecuteMsg {
-    AndrReceive(AndromedaMsg),
     /// Mints a token
-    Mint(Box<MintMsg<TokenExtension>>),
+    Mint {
+        /// Unique ID of the NFT
+        token_id: String,
+        /// The owner of the newly minter NFT
+        owner: String,
+        /// Universal resource identifier for this NFT
+        /// Should point to a JSON file that conforms to the ERC721
+        /// Metadata JSON Schema
+        token_uri: Option<String>,
+        /// Any custom extension used by this contract
+        extension: TokenExtension,
+    },
     /// Transfers ownership of a token
     TransferNft {
         recipient: String,
@@ -127,7 +130,7 @@ pub enum ExecuteMsg {
     },
     /// Mint multiple tokens at a time
     BatchMint {
-        tokens: Vec<MintMsg<TokenExtension>>,
+        tokens: Vec<MintMsg>,
     },
     Extension {
         msg: Box<ExecuteMsg>,
@@ -169,7 +172,17 @@ impl From<ExecuteMsg> for Cw721ExecuteMsg<TokenExtension, ExecuteMsg> {
                 Cw721ExecuteMsg::ApproveAll { operator, expires }
             }
             ExecuteMsg::RevokeAll { operator } => Cw721ExecuteMsg::RevokeAll { operator },
-            ExecuteMsg::Mint(msg) => Cw721ExecuteMsg::Mint(*msg),
+            ExecuteMsg::Mint {
+                extension,
+                token_id,
+                token_uri,
+                owner,
+            } => Cw721ExecuteMsg::Mint {
+                extension,
+                token_id,
+                token_uri,
+                owner,
+            },
             ExecuteMsg::Burn { token_id } => Cw721ExecuteMsg::Burn { token_id },
             ExecuteMsg::Extension { msg } => Cw721ExecuteMsg::Extension { msg: *msg },
             _ => panic!("Unsupported message"),
@@ -177,22 +190,18 @@ impl From<ExecuteMsg> for Cw721ExecuteMsg<TokenExtension, ExecuteMsg> {
     }
 }
 
+#[andr_query]
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
-    #[returns(AndromedaQuery)]
-    AndrQuery(AndromedaQuery),
-    #[returns(AndromedaHook)]
-    AndrHook(AndromedaHook),
-
     /// Owner of the given token by ID
-    #[returns(OwnerOfResponse)]
+    #[returns(cw721::OwnerOfResponse)]
     OwnerOf {
         token_id: String,
         include_expired: Option<bool>,
     },
     /// Approvals for a given address (paginated)
-    #[returns(OperatorsResponse)]
+    #[returns(cw721::OperatorsResponse)]
     AllOperators {
         owner: String,
         include_expired: Option<bool>,
@@ -200,26 +209,26 @@ pub enum QueryMsg {
         limit: Option<u32>,
     },
     /// Amount of tokens minted by the contract
-    #[returns(NumTokensResponse)]
+    #[returns(cw721::NumTokensResponse)]
     NumTokens {},
     /// The data of a token
-    #[returns(NftInfoResponse<TokenExtension>)]
+    #[returns(cw721::NftInfoResponse<TokenExtension>)]
     NftInfo { token_id: String },
     /// The data of a token and any approvals assigned to it
-    #[returns(AllNftInfoResponse<TokenExtension>)]
+    #[returns(cw721::AllNftInfoResponse<TokenExtension>)]
     AllNftInfo {
         token_id: String,
         include_expired: Option<bool>,
     },
     /// All tokens minted by the contract owned by a given address (paginated)
-    #[returns(TokensResponse)]
+    #[returns(cw721::TokensResponse)]
     Tokens {
         owner: String,
         start_after: Option<String>,
         limit: Option<u32>,
     },
     /// All tokens minted by the contract (paginated)
-    #[returns(TokensResponse)]
+    #[returns(cw721::TokensResponse)]
     AllTokens {
         start_after: Option<String>,
         limit: Option<u32>,
@@ -231,13 +240,13 @@ pub enum QueryMsg {
     #[returns(Option<TransferAgreement>)]
     TransferAgreement { token_id: String },
     /// The current config of the contract
-    #[returns(ContractInfoResponse)]
+    #[returns(cw721::ContractInfoResponse)]
     ContractInfo {},
     #[returns(TokenExtension)]
     Extension { msg: Box<QueryMsg> },
-    #[returns(MinterResponse)]
+    #[returns(cw721_base::MinterResponse)]
     Minter {},
-    #[returns(ApprovalResponse)]
+    #[returns(cw721::ApprovalResponse)]
     Approval {
         token_id: String,
         spender: String,
@@ -245,7 +254,7 @@ pub enum QueryMsg {
     },
     /// Return approvals that a token has
     /// Return type: `ApprovalsResponse`
-    #[returns(ApprovalsResponse)]
+    #[returns(cw721::ApprovalsResponse)]
     Approvals {
         token_id: String,
         include_expired: Option<bool>,

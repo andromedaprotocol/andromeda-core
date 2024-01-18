@@ -1,0 +1,21 @@
+[package]
+name = "andromeda-macros"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.65.0"
+description = "Macros for Andromeda Digital Objects"
+license = "MIT"
+
+[lib]
+proc-macro = true
+
+[features]
+modules = []
+withdraw = []
+module_hooks = []
+
+[dependencies]
+syn = { version = "1.0.0", features = ["derive"]}
+proc-macro2 = "1.0"
+quote="1.0"
+

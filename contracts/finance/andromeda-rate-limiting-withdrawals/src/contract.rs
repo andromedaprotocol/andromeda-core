@@ -1,19 +1,20 @@
 use crate::state::{ACCOUNTS, ALLOWED_COIN};
-use ado_base::ADOContract;
+
 use andromeda_finance::rate_limiting_withdrawals::{
     AccountDetails, CoinAllowance, ExecuteMsg, InstantiateMsg, MigrateMsg, MinimumFrequency,
     QueryMsg,
 };
-use common::{
-    ado_base::{hooks::AndromedaHook, AndromedaMsg, InstantiateMsg as BaseInstantiateMsg},
-    encode_binary,
+use andromeda_std::ado_contract::ADOContract;
+use andromeda_std::common::context::ExecuteContext;
+use andromeda_std::{
+    ado_base::{hooks::AndromedaHook, InstantiateMsg as BaseInstantiateMsg},
+    common::encode_binary,
     error::{from_semver, ContractError},
-    primitive::GetValueResponse,
-    query_primitive,
 };
+
 use cosmwasm_std::{
-    ensure, entry_point, to_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env,
-    MessageInfo, Response, Uint128,
+    ensure, entry_point, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
+    Response, Uint128,
 };
 use cw2::{get_contract_version, set_contract_version};
 
@@ -24,7 +25,7 @@ use semver::Version;
 const CONTRACT_NAME: &str = "crates.io:andromeda-rate-limiting-withdrawals";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
     env: Env,
@@ -42,38 +43,53 @@ pub fn instantiate(
                 minimal_withdrawal_frequency: time,
             },
         )?,
-        MinimumFrequency::AddressAndKey { address_and_key } => ALLOWED_COIN.save(
+        //NOTE temporary until a replacement for primitive is implemented
+        _ => ALLOWED_COIN.save(
             deps.storage,
             &CoinAllowance {
-                coin: msg.allowed_coin.clone().coin,
+                coin: msg.allowed_coin.coin,
                 limit: msg.allowed_coin.limit,
-                minimal_withdrawal_frequency: query_primitive::<GetValueResponse>(
-                    deps.querier,
-                    address_and_key.contract_address,
-                    address_and_key.key,
-                )?
-                .value
-                .try_get_uint128()?,
+                minimal_withdrawal_frequency: Uint128::zero(),
             },
         )?,
+        // MinimumFrequency::AddressAndKey { address_and_key } => ALLOWED_COIN.save(
+        //     deps.storage,
+        //     &CoinAllowance {
+        //         coin: msg.allowed_coin.clone().coin,
+        //         limit: msg.allowed_coin.limit,
+        //         minimal_withdrawal_frequency: query_primitive::<GetValueResponse>(
+        //             deps.querier,
+        //             address_and_key.contract_address,
+        //             address_and_key.key,
+        //         )?
+        //         .value
+        //         .try_get_uint128()?,
+        //     },
+        // )?,
     }
 
-    ADOContract::default().instantiate(
+    let inst_resp = ADOContract::default().instantiate(
         deps.storage,
         env,
         deps.api,
-        info,
+        info.clone(),
         BaseInstantiateMsg {
             ado_type: "rate-limiting-withdrawals".to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
             operators: None,
-            modules: msg.modules,
-            primitive_contract: None,
+            kernel_address: msg.kernel_address,
+            owner: msg.owner,
         },
-    )
+    )?;
+    let mod_resp =
+        ADOContract::default().register_modules(info.sender.as_str(), deps.storage, msg.modules)?;
+
+    Ok(inst_resp
+        .add_attributes(mod_resp.attributes)
+        .add_submessages(mod_resp.messages))
 }
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
     deps: DepsMut,
     env: Env,
@@ -82,40 +98,41 @@ pub fn execute(
 ) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
 
-    // Do this before the hooks get fired off to ensure that there are no errors from the app
-    // address not being fully setup yet.
-    if let ExecuteMsg::AndrReceive(andr_msg) = msg.clone() {
-        if let AndromedaMsg::UpdateAppContract { address } = andr_msg {
-            return contract.execute_update_app_contract(deps, info, address, None);
-        } else if let AndromedaMsg::UpdateOwner { address } = andr_msg {
-            return contract.execute_update_owner(deps, info, address);
-        }
+    if !matches!(msg, ExecuteMsg::UpdateAppContract { .. })
+        && !matches!(msg, ExecuteMsg::UpdateOwner { .. })
+    {
+        contract.module_hook::<Response>(
+            &deps.as_ref(),
+            AndromedaHook::OnExecute {
+                sender: info.sender.to_string(),
+                payload: encode_binary(&msg)?,
+            },
+        )?;
     }
 
-    contract.module_hook::<Response>(
-        deps.storage,
-        deps.api,
-        deps.querier,
-        AndromedaHook::OnExecute {
-            sender: info.sender.to_string(),
-            payload: to_binary(&msg)?,
-        },
-    )?;
+    let ctx = ExecuteContext::new(deps, info, env);
+
     match msg {
-        ExecuteMsg::Deposit { recipient } => execute_deposit(deps, env, info, recipient),
-        ExecuteMsg::Withdraw { amount } => execute_withdraw(deps, env, info, amount),
-        ExecuteMsg::AndrReceive(msg) => {
-            ADOContract::default().execute(deps, env, info, msg, execute)
+        ExecuteMsg::AMPReceive(pkt) => {
+            ADOContract::default().execute_amp_receive(ctx, pkt, handle_execute)
         }
+        _ => handle_execute(ctx, msg),
+    }
+}
+
+pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+    match msg {
+        ExecuteMsg::Deposits { recipient } => execute_deposit(ctx, recipient),
+        ExecuteMsg::Withdraws { amount } => execute_withdraw(ctx, amount),
+        _ => ADOContract::default().execute(ctx, msg),
     }
 }
 
 fn execute_deposit(
-    deps: DepsMut,
-    _env: Env,
-    info: MessageInfo,
+    ctx: ExecuteContext,
     recipient: Option<String>,
 ) -> Result<Response, ContractError> {
+    let ExecuteContext { deps, info, .. } = ctx;
     // The contract only supports one type of coin
     one_coin(&info)?;
 
@@ -165,12 +182,11 @@ fn execute_deposit(
     Ok(res)
 }
 
-fn execute_withdraw(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    amount: Uint128,
-) -> Result<Response, ContractError> {
+fn execute_withdraw(ctx: ExecuteContext, amount: Uint128) -> Result<Response, ContractError> {
+    let ExecuteContext {
+        deps, info, env, ..
+    } = ctx;
+
     nonpayable(&info)?;
     // check if sender has an account
     let account = ACCOUNTS.may_load(deps.storage, info.sender.to_string())?;
@@ -301,7 +317,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
         QueryMsg::AccountDetails { account } => {
             encode_binary(&query_account_details(deps, account)?)
         }
-        QueryMsg::AndrQuery(msg) => ADOContract::default().query(deps, env, msg, query),
+        _ => ADOContract::default().query(deps, env, msg),
     }
 }
 
@@ -317,330 +333,4 @@ fn query_account_details(deps: Deps, account: String) -> Result<AccountDetails, 
 fn query_coin_allowance_details(deps: Deps) -> Result<CoinAllowance, ContractError> {
     let details = ALLOWED_COIN.load(deps.storage)?;
     Ok(details)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use andromeda_finance::rate_limiting_withdrawals::CoinAndLimit;
-    use cosmwasm_std::coin;
-    use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-
-    #[test]
-    fn test_instantiate_works() {
-        let mut deps = mock_dependencies();
-        let env = mock_env();
-        let info = mock_info("creator", &[]);
-        let msg = InstantiateMsg {
-            modules: None,
-            allowed_coin: CoinAndLimit {
-                coin: "junox".to_string(),
-                limit: Uint128::from(50_u64),
-            },
-            minimal_withdrawal_frequency: MinimumFrequency::Time {
-                time: Uint128::from(10_u16),
-            },
-        };
-        let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
-        assert_eq!(0, res.messages.len());
-    }
-
-    #[test]
-    fn test_deposit_zero_funds() {
-        let mut deps = mock_dependencies();
-        let env = mock_env();
-        let info = mock_info("creator", &[]);
-        let msg = InstantiateMsg {
-            modules: None,
-            allowed_coin: CoinAndLimit {
-                coin: "junox".to_string(),
-                limit: Uint128::from(50_u64),
-            },
-            minimal_withdrawal_frequency: MinimumFrequency::Time {
-                time: Uint128::from(10_u16),
-            },
-        };
-        let _res = instantiate(deps.as_mut(), env, info.clone(), msg).unwrap();
-
-        let exec = ExecuteMsg::Deposit { recipient: None };
-        let _err = execute(deps.as_mut(), mock_env(), info, exec).unwrap_err();
-    }
-
-    #[test]
-    fn test_deposit_invalid_funds() {
-        let mut deps = mock_dependencies();
-        let env = mock_env();
-        let info = mock_info("creator", &[]);
-        let msg = InstantiateMsg {
-            modules: None,
-            allowed_coin: CoinAndLimit {
-                coin: "junox".to_string(),
-                limit: Uint128::from(50_u64),
-            },
-            minimal_withdrawal_frequency: MinimumFrequency::Time {
-                time: Uint128::from(10_u16),
-            },
-        };
-        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
-        let exec = ExecuteMsg::Deposit {
-            recipient: Some("me".to_string()),
-        };
-
-        let info = mock_info("creator", &[coin(30, "uusd")]);
-
-        let err = execute(deps.as_mut(), mock_env(), info, exec).unwrap_err();
-        assert_eq!(
-            err,
-            ContractError::InvalidFunds {
-                msg: "Coin must be part of the allowed list".to_string(),
-            }
-        )
-    }
-
-    #[test]
-    fn test_deposit_new_account_works() {
-        let mut deps = mock_dependencies();
-        let env = mock_env();
-        let info = mock_info("creator", &[]);
-        let msg = InstantiateMsg {
-            modules: None,
-            allowed_coin: CoinAndLimit {
-                coin: "junox".to_string(),
-                limit: Uint128::from(50_u64),
-            },
-            minimal_withdrawal_frequency: MinimumFrequency::Time {
-                time: Uint128::from(10_u16),
-            },
-        };
-        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
-        let exec = ExecuteMsg::Deposit {
-            recipient: Some("andromedauser".to_string()),
-        };
-
-        let info = mock_info("creator", &[coin(30, "junox")]);
-
-        let _res = execute(deps.as_mut(), mock_env(), info, exec).unwrap();
-        let expected_balance = AccountDetails {
-            balance: Uint128::from(30_u16),
-            latest_withdrawal: None,
-        };
-        let actual_balance = ACCOUNTS
-            .load(&deps.storage, "andromedauser".to_string())
-            .unwrap();
-        assert_eq!(expected_balance, actual_balance)
-    }
-
-    #[test]
-    fn test_deposit_existing_account_works() {
-        let mut deps = mock_dependencies();
-        let env = mock_env();
-        let info = mock_info("creator", &[]);
-        let msg = InstantiateMsg {
-            modules: None,
-            allowed_coin: CoinAndLimit {
-                coin: "junox".to_string(),
-                limit: Uint128::from(50_u64),
-            },
-            minimal_withdrawal_frequency: MinimumFrequency::Time {
-                time: Uint128::from(10_u16),
-            },
-        };
-        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
-        let exec = ExecuteMsg::Deposit {
-            recipient: Some("andromedauser".to_string()),
-        };
-
-        let info = mock_info("creator", &[coin(30, "junox")]);
-
-        let _res = execute(deps.as_mut(), mock_env(), info, exec).unwrap();
-        let exec = ExecuteMsg::Deposit { recipient: None };
-
-        let info = mock_info("andromedauser", &[coin(70, "junox")]);
-
-        let _res = execute(deps.as_mut(), mock_env(), info, exec).unwrap();
-        let expected_balance = AccountDetails {
-            balance: Uint128::from(100_u16),
-            latest_withdrawal: None,
-        };
-        let actual_balance = ACCOUNTS
-            .load(&deps.storage, "andromedauser".to_string())
-            .unwrap();
-        assert_eq!(expected_balance, actual_balance)
-    }
-
-    #[test]
-    fn test_withdraw_account_not_found() {
-        let mut deps = mock_dependencies();
-        let env = mock_env();
-        let info = mock_info("creator", &[]);
-        let msg = InstantiateMsg {
-            modules: None,
-            allowed_coin: CoinAndLimit {
-                coin: "junox".to_string(),
-                limit: Uint128::from(50_u64),
-            },
-            minimal_withdrawal_frequency: MinimumFrequency::Time {
-                time: Uint128::from(10_u16),
-            },
-        };
-        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
-        let exec = ExecuteMsg::Deposit {
-            recipient: Some("andromedauser".to_string()),
-        };
-
-        let info = mock_info("creator", &[coin(30, "junox")]);
-
-        let _res = execute(deps.as_mut(), mock_env(), info, exec).unwrap();
-
-        let info = mock_info("random", &[]);
-        let exec = ExecuteMsg::Withdraw {
-            amount: Uint128::from(19_u16),
-        };
-        let err = execute(deps.as_mut(), mock_env(), info, exec).unwrap_err();
-        assert_eq!(err, ContractError::AccountNotFound {});
-    }
-
-    #[test]
-    fn test_withdraw_over_account_limit() {
-        let mut deps = mock_dependencies();
-        let env = mock_env();
-        let info = mock_info("creator", &[]);
-        let msg = InstantiateMsg {
-            modules: None,
-            allowed_coin: CoinAndLimit {
-                coin: "junox".to_string(),
-                limit: Uint128::from(50_u64),
-            },
-            minimal_withdrawal_frequency: MinimumFrequency::Time {
-                time: Uint128::from(10_u16),
-            },
-        };
-        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
-        let exec = ExecuteMsg::Deposit {
-            recipient: Some("andromedauser".to_string()),
-        };
-
-        let info = mock_info("creator", &[coin(30, "junox")]);
-
-        let _res = execute(deps.as_mut(), mock_env(), info, exec).unwrap();
-
-        let info = mock_info("andromedauser", &[]);
-        let exec = ExecuteMsg::Withdraw {
-            amount: Uint128::from(31_u16),
-        };
-        let err = execute(deps.as_mut(), mock_env(), info, exec).unwrap_err();
-        assert_eq!(err, ContractError::InsufficientFunds {});
-    }
-
-    #[test]
-    fn test_withdraw_funds_locked() {
-        let mut deps = mock_dependencies();
-        let env = mock_env();
-        let info = mock_info("creator", &[]);
-        let msg = InstantiateMsg {
-            modules: None,
-            allowed_coin: CoinAndLimit {
-                coin: "junox".to_string(),
-                limit: Uint128::from(50_u64),
-            },
-            minimal_withdrawal_frequency: MinimumFrequency::Time {
-                time: Uint128::from(10_u16),
-            },
-        };
-        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
-        let exec = ExecuteMsg::Deposit {
-            recipient: Some("andromedauser".to_string()),
-        };
-
-        let info = mock_info("creator", &[coin(30, "junox")]);
-
-        let _res = execute(deps.as_mut(), mock_env(), info, exec).unwrap();
-
-        let info = mock_info("andromedauser", &[]);
-        let exec = ExecuteMsg::Withdraw {
-            amount: Uint128::from(10_u16),
-        };
-        let _res = execute(deps.as_mut(), mock_env(), info, exec).unwrap();
-
-        let info = mock_info("andromedauser", &[]);
-        let exec = ExecuteMsg::Withdraw {
-            amount: Uint128::from(10_u16),
-        };
-
-        let err = execute(deps.as_mut(), mock_env(), info, exec).unwrap_err();
-
-        assert_eq!(err, ContractError::FundsAreLocked {});
-    }
-
-    #[test]
-    fn test_withdraw_over_allowed_limit() {
-        let mut deps = mock_dependencies();
-        let env = mock_env();
-        let info = mock_info("creator", &[]);
-        let msg = InstantiateMsg {
-            modules: None,
-            allowed_coin: CoinAndLimit {
-                coin: "junox".to_string(),
-                limit: Uint128::from(20_u64),
-            },
-            minimal_withdrawal_frequency: MinimumFrequency::Time {
-                time: Uint128::from(10_u16),
-            },
-        };
-        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
-        let exec = ExecuteMsg::Deposit {
-            recipient: Some("andromedauser".to_string()),
-        };
-
-        let info = mock_info("creator", &[coin(30, "junox")]);
-
-        let _res = execute(deps.as_mut(), mock_env(), info, exec).unwrap();
-
-        let info = mock_info("andromedauser", &[]);
-        let exec = ExecuteMsg::Withdraw {
-            amount: Uint128::from(21_u16),
-        };
-        let err = execute(deps.as_mut(), mock_env(), info, exec).unwrap_err();
-        assert_eq!(err, ContractError::WithdrawalLimitExceeded {});
-    }
-
-    #[test]
-    fn test_withdraw_works() {
-        let mut deps = mock_dependencies();
-        let env = mock_env();
-        let info = mock_info("creator", &[]);
-        let msg = InstantiateMsg {
-            modules: None,
-            allowed_coin: CoinAndLimit {
-                coin: "junox".to_string(),
-                limit: Uint128::from(50_u64),
-            },
-            minimal_withdrawal_frequency: MinimumFrequency::Time {
-                time: Uint128::from(10_u16),
-            },
-        };
-        let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
-        let exec = ExecuteMsg::Deposit {
-            recipient: Some("andromedauser".to_string()),
-        };
-
-        let info = mock_info("creator", &[coin(30, "junox")]);
-
-        let _res = execute(deps.as_mut(), mock_env(), info, exec).unwrap();
-
-        let info = mock_info("andromedauser", &[]);
-        let exec = ExecuteMsg::Withdraw {
-            amount: Uint128::from(10_u16),
-        };
-        let _res = execute(deps.as_mut(), mock_env(), info, exec).unwrap();
-
-        let expected_balance = AccountDetails {
-            balance: Uint128::from(20_u16),
-            latest_withdrawal: Some(env.block.time),
-        };
-        let actual_balance = ACCOUNTS
-            .load(&deps.storage, "andromedauser".to_string())
-            .unwrap();
-        assert_eq!(expected_balance, actual_balance)
-    }
 }

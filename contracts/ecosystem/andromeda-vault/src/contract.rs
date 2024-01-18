@@ -1,23 +1,25 @@
-use ado_base::state::ADOContract;
 use andromeda_ecosystem::vault::{
-    ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, StrategyAddressResponse, StrategyType,
-    BALANCES, STRATEGY_CONTRACT_ADDRESSES,
+    DepositMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, StrategyAddressResponse,
+    StrategyType, BALANCES, STRATEGY_CONTRACT_ADDRESSES,
 };
-use common::{
+use andromeda_std::ado_contract::ADOContract;
+
+use andromeda_std::amp::{AndrAddr, Recipient};
+
+use andromeda_std::common::context::ExecuteContext;
+use andromeda_std::{
+    ado_base::withdraw::{Withdrawal, WithdrawalType},
     ado_base::{
-        operators::IsOperatorResponse, recipient::Recipient, AndromedaMsg, AndromedaQuery,
-        InstantiateMsg as BaseInstantiateMsg, QueryMsg as AndrQueryMsg,
+        operators::IsOperatorResponse, AndromedaMsg, AndromedaQuery,
+        InstantiateMsg as BaseInstantiateMsg,
     },
-    app::AndrAddress,
-    encode_binary,
     error::{from_semver, ContractError},
-    parse_message,
-    withdraw::{Withdrawal, WithdrawalType},
 };
+
 use cosmwasm_std::{
-    coin, ensure, entry_point, to_binary, BankMsg, Binary, Coin, ContractResult, CosmosMsg, Deps,
-    DepsMut, Empty, Env, MessageInfo, Order, QueryRequest, Reply, ReplyOn, Response, StdError,
-    SubMsg, SystemResult, Uint128, WasmMsg, WasmQuery,
+    attr, coin, ensure, entry_point, from_binary, to_binary, BankMsg, Binary, Coin, ContractResult,
+    CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Order, QueryRequest, Reply, ReplyOn,
+    Response, StdError, SubMsg, SystemResult, Uint128, WasmMsg, WasmQuery,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw_utils::nonpayable;
@@ -32,7 +34,7 @@ pub fn instantiate(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    _msg: InstantiateMsg,
+    msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
@@ -45,8 +47,8 @@ pub fn instantiate(
             ado_type: "vault".to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
             operators: None,
-            modules: None,
-            primitive_contract: None,
+            owner: msg.owner,
+            kernel_address: msg.kernel_address,
         },
     )
 }
@@ -69,50 +71,54 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
+    let ctx = ExecuteContext::new(deps, info, env);
+
     match msg {
-        ExecuteMsg::AndrReceive(msg) => execute_andr_receive(deps, env, info, msg),
-        ExecuteMsg::Deposit {
-            recipient,
-            amount,
-            strategy,
-        } => execute_deposit(deps, env, info, amount, recipient, strategy),
-        ExecuteMsg::Withdraw {
-            recipient,
-            withdrawals,
-            strategy,
-        } => execute_withdraw(deps, env, info, recipient, withdrawals, strategy),
-        ExecuteMsg::UpdateStrategy { strategy, address } => {
-            execute_update_strategy(deps, env, info, strategy, address)
+        ExecuteMsg::AMPReceive(pkt) => {
+            ADOContract::default().execute_amp_receive(ctx, pkt, handle_execute)
         }
+        _ => handle_execute(ctx, msg),
     }
 }
 
-fn execute_andr_receive(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    msg: AndromedaMsg,
-) -> Result<Response, ContractError> {
+pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     match msg {
-        AndromedaMsg::Receive(None) => {
-            let sender = info.sender.to_string();
-            execute_deposit(deps, env, info, None, Some(Recipient::Addr(sender)), None)
+        ExecuteMsg::Deposit { recipient, msg } => execute_deposit(ctx, recipient, msg),
+        ExecuteMsg::WithdrawVault {
+            recipient,
+            withdrawals,
+            strategy,
+        } => execute_withdraw(ctx, recipient, withdrawals, strategy),
+        ExecuteMsg::UpdateStrategy { strategy, address } => {
+            execute_update_strategy(ctx, strategy, address)
         }
-        _ => ADOContract::default().execute(deps, env, info, msg, execute),
+        ExecuteMsg::Withdraw { .. } => Err(ContractError::NotImplemented {
+            msg: Some("Please use WithdrawVault".to_string()),
+        }),
+        _ => ADOContract::default().execute(ctx, msg),
     }
 }
 
 fn execute_deposit(
-    deps: DepsMut,
-    _env: Env,
-    info: MessageInfo,
-    amount: Option<Coin>,
-    recipient: Option<Recipient>,
-    strategy: Option<StrategyType>,
+    ctx: ExecuteContext,
+    recipient: Option<AndrAddr>,
+    msg: Option<Binary>,
 ) -> Result<Response, ContractError> {
+    let ExecuteContext { deps, info, .. } = ctx;
+    let DepositMsg {
+        strategy,
+        amount,
+        deposit_msg,
+    } = match msg {
+        None => DepositMsg::default(),
+        Some(msg) => from_binary(&msg)?,
+    };
     let mut resp = Response::default();
-    let recipient = recipient.unwrap_or_else(|| Recipient::Addr(info.sender.to_string()));
 
+    let recipient = recipient.unwrap_or_else(|| AndrAddr::from_string(info.sender.to_string()));
+
+    // Validate address
+    let recipient_addr = recipient.get_raw_address(&deps.as_ref())?;
     // If no amount is provided then the sent funds are used as a deposit
     let deposited_funds = if let Some(deposit_amount) = amount {
         ensure!(
@@ -132,11 +138,6 @@ fn execute_deposit(
         // If depositing to a yield strategy we must first check that the sender has either provided the amount to deposit
         // or has a combination of the amount within the vault and within the sent funds
         if strategy.is_some() && deposit_balance <= deposit_amount.amount {
-            let recipient_addr = recipient.get_addr(
-                deps.api,
-                &deps.querier,
-                ADOContract::default().get_app_contract(deps.storage)?,
-            )?;
             let balance_key = (recipient_addr.as_str(), deposit_amount.denom.as_str());
             let vault_balance = BALANCES
                 .may_load(deps.storage, balance_key)?
@@ -166,7 +167,7 @@ fn execute_deposit(
         let funds_vec: Vec<Coin> = vec![deposit_amount];
         funds_vec
     } else {
-        info.funds
+        info.funds.to_vec()
     };
 
     ensure!(
@@ -177,11 +178,6 @@ fn execute_deposit(
         // Depositing to vault
         None => {
             for funds in deposited_funds {
-                let recipient_addr = recipient.get_addr(
-                    deps.api,
-                    &deps.querier,
-                    ADOContract::default().get_app_contract(deps.storage)?,
-                )?;
                 let balance_key = (recipient_addr.as_str(), funds.denom.as_str());
                 let curr_balance = BALANCES
                     .may_load(deps.storage, balance_key)?
@@ -196,24 +192,29 @@ fn execute_deposit(
         Some(strategy) => {
             let mut deposit_msgs: Vec<SubMsg> = Vec::new();
             for funds in deposited_funds {
-                let deposit_msg = strategy.deposit(deps.storage, funds, recipient.clone())?;
+                let deposit_msg = strategy.deposit(
+                    deps.storage,
+                    funds,
+                    Recipient::new(recipient.clone(), deposit_msg.clone()),
+                )?;
                 deposit_msgs.push(deposit_msg);
             }
             resp = resp.add_submessages(deposit_msgs)
         }
     }
-
-    Ok(resp)
+    Ok(resp.add_attributes(vec![
+        attr("action", "deposit"),
+        attr("recipient", recipient_addr),
+    ]))
 }
 
 pub fn execute_withdraw(
-    deps: DepsMut,
-    _env: Env,
-    info: MessageInfo,
+    ctx: ExecuteContext,
     recipient: Option<Recipient>,
     withdrawals: Vec<Withdrawal>,
     strategy: Option<StrategyType>,
 ) -> Result<Response, ContractError> {
+    let ExecuteContext { info, deps, .. } = ctx;
     nonpayable(&info)?;
 
     ensure!(
@@ -238,12 +239,9 @@ pub fn withdraw_vault(
     let mut withdrawal_amount: Vec<Coin> = Vec::new();
 
     let recipient = recipient
-        .unwrap_or_else(|| Recipient::Addr(info.sender.to_string()))
-        .get_addr(
-            deps.api,
-            &deps.querier,
-            ADOContract::default().get_app_contract(deps.storage)?,
-        )?;
+        .unwrap_or_else(|| Recipient::from_string(info.sender.to_string()))
+        .address
+        .get_raw_address(&deps.as_ref())?;
     for withdrawal in withdrawals {
         let denom = withdrawal.token;
         let balance = BALANCES
@@ -295,7 +293,7 @@ pub fn withdraw_vault(
         }
     }
     let withdrawal_msg = CosmosMsg::Bank(BankMsg::Send {
-        to_address: recipient,
+        to_address: recipient.into(),
         amount: withdrawal_amount,
     });
     Ok(res.add_message(withdrawal_msg))
@@ -308,7 +306,7 @@ pub fn withdraw_strategy(
     withdrawals: Vec<Withdrawal>,
 ) -> Result<Response, ContractError> {
     let res = Response::default();
-    let recipient = Recipient::Addr(info.sender.to_string());
+    let recipient = Recipient::from_string(info.sender.to_string());
     let addr_opt = STRATEGY_CONTRACT_ADDRESSES.may_load(deps.storage, strategy.to_string())?;
     if addr_opt.is_none() {
         return Err(ContractError::InvalidStrategy {
@@ -317,10 +315,10 @@ pub fn withdraw_strategy(
     }
 
     let addr = addr_opt.unwrap();
-    let withdraw_exec = to_binary(&ExecuteMsg::AndrReceive(AndromedaMsg::Withdraw {
+    let withdraw_exec = to_binary(&AndromedaMsg::Withdraw {
         recipient: Some(recipient),
         tokens_to_withdraw: Some(withdrawals),
-    }))?;
+    })?;
     let withdraw_submsg = SubMsg {
         id: 104,
         msg: CosmosMsg::Wasm(WasmMsg::Execute {
@@ -336,18 +334,18 @@ pub fn withdraw_strategy(
 }
 
 fn execute_update_strategy(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
+    ctx: ExecuteContext,
     strategy: StrategyType,
-    address: AndrAddress,
+    address: AndrAddr,
 ) -> Result<Response, ContractError> {
+    let ExecuteContext {
+        deps, env, info, ..
+    } = ctx;
     ensure!(
         ADOContract::default().is_contract_owner(deps.storage, info.sender.as_ref())?,
         ContractError::Unauthorized {}
     );
-    let app_contract = ADOContract::default().get_app_contract(deps.storage)?;
-    let strategy_addr = address.get_address(deps.api, &deps.querier, app_contract)?;
+    let strategy_addr = address.get_raw_address(&deps.as_ref())?;
 
     //The vault contract must be an operator for the given contract in order to enable withdrawals
     //DEV: with custom approval functionality this check can be removed
@@ -360,9 +358,9 @@ fn execute_update_strategy(
     // )?;
     let strategy_is_operator: IsOperatorResponse = deps.querier.query_wasm_smart(
         strategy_addr.clone(),
-        &QueryMsg::AndrQuery(AndromedaQuery::IsOperator {
+        &QueryMsg::IsOperator {
             address: env.contract.address.to_string(),
-        }),
+        },
     )?;
     ensure!(
         strategy_is_operator.is_operator,
@@ -371,7 +369,11 @@ fn execute_update_strategy(
         }
     );
 
-    STRATEGY_CONTRACT_ADDRESSES.save(deps.storage, strategy.to_string(), &strategy_addr)?;
+    STRATEGY_CONTRACT_ADDRESSES.save(
+        deps.storage,
+        strategy.to_string(),
+        &strategy_addr.to_string(),
+    )?;
 
     Ok(Response::default()
         .add_attribute("action", "update_strategy")
@@ -416,34 +418,19 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
-        QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps, env, msg),
-        QueryMsg::Balance {
+        QueryMsg::VaultBalance {
             address,
             strategy,
             denom,
-        } => query_balance(deps, env, address, strategy, denom),
+        } => query_balance(deps, address, strategy, denom),
         QueryMsg::StrategyAddress { strategy } => query_strategy_address(deps, env, strategy),
-    }
-}
-
-fn handle_andromeda_query(
-    deps: Deps,
-    env: Env,
-    msg: AndromedaQuery,
-) -> Result<Binary, ContractError> {
-    match msg {
-        AndromedaQuery::Get(data) => {
-            let address: String = parse_message(&data)?;
-            encode_binary(&query_balance(deps, env, address, None, None)?)
-        }
-        _ => ADOContract::default().query(deps, env, msg, query),
+        _ => ADOContract::default().query(deps, env, msg),
     }
 }
 
 fn query_balance(
     deps: Deps,
-    _env: Env,
-    address: String,
+    address: AndrAddr,
     strategy: Option<StrategyType>,
     denom: Option<String>,
 ) -> Result<Binary, ContractError> {
@@ -452,23 +439,24 @@ fn query_balance(
         // DEV NOTE: Why does this ensure! a generic type when not using custom query?
         let query: QueryRequest<Empty> = QueryRequest::Wasm(WasmQuery::Smart {
             contract_addr: strategy_addr,
-            msg: to_binary(&AndrQueryMsg::AndrQuery(AndromedaQuery::Get(Some(
-                to_binary(&address)?,
-            ))))?,
+            msg: to_binary(&AndromedaQuery::Balance { address })?,
         });
         match deps.querier.raw_query(&to_binary(&query)?) {
             SystemResult::Ok(ContractResult::Ok(value)) => Ok(value),
             _ => Err(ContractError::InvalidQuery {}),
         }
     } else if let Some(denom) = denom {
-        let balance = BALANCES.load(deps.storage, (&address, denom.as_str()))?;
+        let balance = BALANCES.load(
+            deps.storage,
+            ((address.get_raw_address(&deps)?.as_str()), denom.as_str()),
+        )?;
         Ok(to_binary(&[Coin {
             denom,
             amount: balance,
         }])?)
     } else {
         let balances: Result<Vec<Coin>, ContractError> = BALANCES
-            .prefix(&address)
+            .prefix(address.get_raw_address(&deps)?.as_str())
             .range(deps.storage, None, None, Order::Ascending)
             .map(|v| {
                 let (denom, balance) = v?;

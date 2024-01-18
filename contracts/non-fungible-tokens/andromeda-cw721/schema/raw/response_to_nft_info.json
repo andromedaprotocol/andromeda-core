@@ -24,94 +24,16 @@
   },
   "additionalProperties": false,
   "definitions": {
-    "MetadataAttribute": {
-      "type": "object",
-      "required": [
-        "trait_type",
-        "value"
-      ],
-      "properties": {
-        "display_type": {
-          "description": "The string used to display the attribute, if none is provided the `key` field can be used",
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "trait_type": {
-          "description": "The key for the attribute",
-          "type": "string"
-        },
-        "value": {
-          "description": "The value for the attribute",
-          "type": "string"
-        }
-      },
-      "additionalProperties": false
-    },
     "TokenExtension": {
       "description": "https://docs.opensea.io/docs/metadata-standards Replicates OpenSea Metadata Standards",
       "type": "object",
       "required": [
-        "attributes",
-        "image",
-        "name",
         "publisher"
       ],
       "properties": {
-        "animation_url": {
-          "description": "A URL to any multi-media attachments",
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "attributes": {
-          "description": "The metadata of the token (if it exists)",
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/MetadataAttribute"
-          }
-        },
-        "description": {
-          "description": "An optional description of the token",
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "external_url": {
-          "description": "A URL to the token's source",
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "image": {
-          "description": "URL to token image",
-          "type": "string"
-        },
-        "image_data": {
-          "description": "Raw SVG image data",
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "name": {
-          "description": "The name of the token",
-          "type": "string"
-        },
         "publisher": {
           "description": "The original publisher of the token",
           "type": "string"
-        },
-        "youtube_url": {
-          "description": "A URL to a related YouTube videos",
-          "type": [
-            "string",
-            "null"
-          ]
         }
       },
       "additionalProperties": false

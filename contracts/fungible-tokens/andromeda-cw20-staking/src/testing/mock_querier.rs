@@ -1,4 +1,13 @@
-use cosmwasm_std::testing::{MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR};
+use andromeda_std::ado_base::InstantiateMsg;
+use andromeda_std::ado_contract::ADOContract;
+
+use andromeda_std::testing::mock_querier::MockAndromedaQuerier;
+use andromeda_std::testing::mock_querier::MOCK_KERNEL_CONTRACT;
+
+use cosmwasm_std::testing::{
+    mock_env, mock_info, MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR,
+};
+
 use cosmwasm_std::{
     from_binary, from_slice, to_binary, Coin, ContractResult, Empty, OwnedDeps, Querier,
     QuerierResult, QueryRequest, SystemError, SystemResult, Uint128, WasmQuery,
@@ -6,20 +15,34 @@ use cosmwasm_std::{
 use cw20::{BalanceResponse as Cw20BalanceResponse, Cw20QueryMsg};
 use std::collections::HashMap;
 
-/// mock_dependencies is a drop-in replacement for cosmwasm_std::testing::mock_dependencies
-/// this uses our CustomQuerier.
 pub fn mock_dependencies_custom(
     contract_balance: &[Coin],
 ) -> OwnedDeps<MockStorage, MockApi, WasmMockQuerier> {
     let custom_querier: WasmMockQuerier =
         WasmMockQuerier::new(MockQuerier::new(&[(MOCK_CONTRACT_ADDR, contract_balance)]));
-
-    OwnedDeps {
+    let storage = MockStorage::default();
+    let mut deps = OwnedDeps {
+        storage,
         api: MockApi::default(),
-        storage: MockStorage::default(),
         querier: custom_querier,
         custom_query_type: std::marker::PhantomData,
-    }
+    };
+    ADOContract::default()
+        .instantiate(
+            &mut deps.storage,
+            mock_env(),
+            &deps.api,
+            mock_info("sender", &[]),
+            InstantiateMsg {
+                ado_type: "cw20-staking".to_string(),
+                ado_version: "test".to_string(),
+                operators: None,
+                kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+                owner: None,
+            },
+        )
+        .unwrap();
+    deps
 }
 
 pub struct WasmMockQuerier {
@@ -107,10 +130,10 @@ impl WasmMockQuerier {
                             to_binary(&Cw20BalanceResponse { balance }).unwrap(),
                         ))
                     }
-                    _ => panic!("DO NOT ENTER HERE"),
+                    _ => MockAndromedaQuerier::default().handle_query(&self.base, request),
                 }
             }
-            _ => self.base.handle_query(request),
+            _ => MockAndromedaQuerier::default().handle_query(&self.base, request),
         }
     }
 }

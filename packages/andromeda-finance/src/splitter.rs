@@ -1,17 +1,20 @@
-use common::{
-    ado_base::{modules::Module, recipient::Recipient, AndromedaMsg, AndromedaQuery},
-    error::ContractError,
+use andromeda_std::{
+    amp::recipient::Recipient, andr_exec, andr_instantiate, andr_query, error::ContractError,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{ensure, Decimal};
+use cosmwasm_std::{ensure, Decimal, ReplyOn};
 use cw_utils::Expiration;
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
 #[cw_serde]
 pub struct AddressPercent {
     pub recipient: Recipient,
     pub percent: Decimal,
+}
+
+impl AddressPercent {
+    pub fn new(recipient: Recipient, percent: Decimal) -> Self {
+        Self { recipient, percent }
+    }
 }
 
 #[cw_serde]
@@ -23,13 +26,13 @@ pub struct Splitter {
     pub lock: Expiration,
 }
 
+#[andr_instantiate]
 #[cw_serde]
 pub struct InstantiateMsg {
     /// The vector of recipients for the contract. Anytime a `Send` execute message is
     /// sent the amount sent will be divided amongst these recipients depending on their assigned percentage.
     pub recipients: Vec<AddressPercent>,
     pub lock_time: Option<u64>,
-    pub modules: Option<Vec<Module>>,
 }
 
 impl InstantiateMsg {
@@ -40,35 +43,37 @@ impl InstantiateMsg {
 }
 
 #[cw_serde]
+pub struct ReplyGasExit {
+    pub reply_on: Option<ReplyOn>,
+    pub gas_limit: Option<u64>,
+    pub exit_at_error: Option<bool>,
+}
+
+#[andr_exec]
+#[cw_serde]
 pub enum ExecuteMsg {
     /// Update the recipients list. Only executable by the contract owner when the contract is not locked.
-    UpdateRecipients {
-        recipients: Vec<AddressPercent>,
-    },
+    UpdateRecipients { recipients: Vec<AddressPercent> },
     /// Used to lock/unlock the contract allowing the config to be updated.
-    UpdateLock {
-        lock_time: u64,
-    },
+    UpdateLock { lock_time: u64 },
     /// Divides any attached funds to the message amongst the recipients list.
     Send {},
-    AndrReceive(AndromedaMsg),
 }
 
 #[cw_serde]
 #[serde(rename_all = "snake_case")]
 pub struct MigrateMsg {}
 
+#[andr_query]
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
-    #[returns(AndromedaQuery)]
-    AndrQuery(AndromedaQuery),
     /// The current config of the Splitter contract
     #[returns(GetSplitterConfigResponse)]
     GetSplitterConfig {},
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct GetSplitterConfigResponse {
     pub config: Splitter,
 }

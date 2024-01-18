@@ -1,4 +1,11 @@
 #[cfg(test)]
-mod crowdfund_app;
+mod marketplace_app;
+
 #[cfg(test)]
-mod cw721;
+mod auction_app;
+
+#[cfg(test)]
+mod kernel;
+
+#[cfg(test)]
+mod crowdfund_app;

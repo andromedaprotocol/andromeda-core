@@ -13,13 +13,16 @@ use andromeda_cw721::mock::{
     mock_send_nft,
 };
 use andromeda_marketplace::mock::{
-    mock_andromeda_marketplace, mock_buy_token, mock_marketplace_instantiate_msg, mock_start_sale,
+    mock_andromeda_marketplace, mock_buy_token, mock_marketplace_instantiate_msg,
+    mock_receive_packet, mock_start_sale,
 };
 use andromeda_modules::rates::{Rate, RateInfo};
 
 use andromeda_rates::mock::{mock_andromeda_rates, mock_rates_instantiate_msg};
+use andromeda_std::ado_base::modules::Module;
+use andromeda_std::amp::messages::{AMPMsg, AMPPkt};
+use andromeda_std::amp::Recipient;
 use andromeda_testing::mock::MockAndromeda;
-use common::ado_base::{modules::Module, recipient::Recipient};
 use cosmwasm_std::{coin, to_binary, Addr, Uint128};
 use cw721::OwnerOfResponse;
 use cw_multi_test::{App, Executor};
@@ -50,7 +53,7 @@ fn mock_andromeda(app: &mut App, admin_address: Addr) -> MockAndromeda {
 }
 
 #[test]
-fn test_auction_app() {
+fn test_marketplace_app() {
     let owner = Addr::unchecked("owner");
     let buyer = Addr::unchecked("buyer");
     let rates_receiver = Addr::unchecked("receiver");
@@ -77,6 +80,8 @@ fn test_auction_app() {
         "TT".to_string(),
         owner.to_string(),
         None,
+        andr.kernel_address.to_string(),
+        None,
     );
     let cw721_component = AppComponent::new(
         "1".to_string(),
@@ -88,12 +93,13 @@ fn test_auction_app() {
         rate: Rate::Flat(coin(100, "uandr")),
         is_additive: true,
         description: None,
-        recipients: vec![Recipient::Addr(rates_receiver.to_string())],
+        recipients: vec![Recipient::from_string(rates_receiver.to_string())],
     }];
-    let rates_init_msg = mock_rates_instantiate_msg(rates);
+    let rates_init_msg = mock_rates_instantiate_msg(rates, andr.kernel_address.to_string(), None);
     let rates_component = AppComponent::new("2", "rates", to_binary(&rates_init_msg).unwrap());
 
-    let address_list_init_msg = mock_address_list_instantiate_msg(true);
+    let address_list_init_msg =
+        mock_address_list_instantiate_msg(true, andr.kernel_address.to_string(), None);
     let address_list_component = AppComponent::new(
         "3",
         "address-list",
@@ -101,10 +107,15 @@ fn test_auction_app() {
     );
 
     let modules: Vec<Module> = vec![
-        Module::new("rates", rates_component.clone().name, false),
-        Module::new("address-list", address_list_component.clone().name, false),
+        Module::new("rates", format!("./{}", rates_component.name), false),
+        Module::new(
+            "address-list",
+            format!("./{}", address_list_component.name),
+            false,
+        ),
     ];
-    let marketplace_init_msg = mock_marketplace_instantiate_msg(Some(modules));
+    let marketplace_init_msg =
+        mock_marketplace_instantiate_msg(andr.kernel_address.to_string(), Some(modules), None);
     let marketplace_component = AppComponent::new(
         "4".to_string(),
         "marketplace".to_string(),
@@ -121,7 +132,8 @@ fn test_auction_app() {
     let app_init_msg = mock_app_instantiate_msg(
         "Auction App".to_string(),
         app_components.clone(),
-        andr.registry_address.to_string(),
+        andr.kernel_address.to_string(),
+        None,
     );
 
     let app_addr = router
@@ -219,11 +231,23 @@ fn test_auction_app() {
 
     // Buy Token
     let buy_msg = mock_buy_token(cw721_addr.clone(), token_id);
+    let amp_msg = AMPMsg::new(
+        Addr::unchecked(marketplace_addr.clone()),
+        to_binary(&buy_msg).unwrap(),
+        Some(vec![coin(200, "uandr")]),
+    );
+
+    let packet = AMPPkt::new(
+        buyer.clone(),
+        andr.kernel_address.to_string(),
+        vec![amp_msg],
+    );
+    let receive_packet_msg = mock_receive_packet(packet);
     router
         .execute_contract(
             buyer.clone(),
             Addr::unchecked(marketplace_addr),
-            &buy_msg,
+            &receive_packet_msg,
             &[coin(200, "uandr")],
         )
         .unwrap();
