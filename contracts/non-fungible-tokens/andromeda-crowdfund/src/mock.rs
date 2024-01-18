@@ -59,6 +59,7 @@ impl MockCrowdfund {
         MockCrowdfund(Addr::unchecked(addr))
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn execute_start_sale(
         &self,
         sender: Addr,

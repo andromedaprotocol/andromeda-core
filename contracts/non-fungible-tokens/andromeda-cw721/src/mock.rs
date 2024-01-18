@@ -27,6 +27,7 @@ impl From<Addr> for MockCW721 {
 impl MockADO for MockCW721 {}
 
 impl MockCW721 {
+    #[allow(clippy::too_many_arguments)]
     pub fn instantiate(
         code_id: u64,
         sender: Addr,

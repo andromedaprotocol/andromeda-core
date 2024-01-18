@@ -213,11 +213,9 @@ fn test_crowdfund_app() {
     app.execute_claim_ownership(&mut router, owner.clone(), None);
 
     let cw721_contract =
-        app.query_ado_by_component_name::<MockCW721>(&mut router, cw721_component.name.clone());
-    let crowdfund_contract = app.query_ado_by_component_name::<MockCrowdfund>(
-        &mut router,
-        crowdfund_app_component.name.clone(),
-    );
+        app.query_ado_by_component_name::<MockCW721>(&mut router, cw721_component.name);
+    let crowdfund_contract =
+        app.query_ado_by_component_name::<MockCrowdfund>(&mut router, crowdfund_app_component.name);
 
     let minter = cw721_contract.query_minter(&mut router);
     assert_eq!(minter, crowdfund_contract.addr());
@@ -262,7 +260,7 @@ fn test_crowdfund_app() {
     });
 
     crowdfund_contract.execute_end_sale(owner.clone(), &mut router, None);
-    crowdfund_contract.execute_end_sale(owner.clone(), &mut router, None);
+    crowdfund_contract.execute_end_sale(owner, &mut router, None);
 
     // Check final state
     //Check token transfers
