@@ -65,7 +65,9 @@ andromeda-splitter = { path = "../contracts/finance/andromeda-splitter", feature
 
 # Data Storage
 andromeda-data-storage = { workspace = true }
-andromeda-primitive = { path = "../contracts/data-storage/andromeda-primitive", features = ["testing"] }
+andromeda-primitive = { path = "../contracts/data-storage/andromeda-primitive", features = [
+    "testing",
+] }
 
 # #OS
 andromeda-kernel = { path = "../contracts/os/andromeda-kernel", features = [
@@ -84,7 +86,7 @@ andromeda-vfs = { path = "../contracts/os/andromeda-vfs", features = [
 andromeda-testing = { workspace = true, features = ["testing"] }
 
 #Cosmwasm Crates
-cosmwasm-std = { workspace = true}
+cosmwasm-std = { workspace = true }
 cosmwasm-schema = { workspace = true }
 cw721-base = { workspace = true }
 cw721 = { workspace = true }
@@ -111,6 +113,9 @@ name = "auction_app"
 
 [[test]]
 name = "marketplace_app"
+
+[[test]]
+name = "splitter"
 
 # [[test]]
 # name = "cw20_staking_app"

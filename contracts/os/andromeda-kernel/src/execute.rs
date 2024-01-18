@@ -58,16 +58,21 @@ pub fn amp_receive(
             error: Some("No messages supplied".to_string())
         }
     );
+
     for (idx, message) in packet.messages.iter().enumerate() {
         let mut handler = MsgHandler::new(message.clone());
-        res = handler.handle(
+        let msg_res = handler.handle(
             deps.branch(),
             info.clone(),
             env.clone(),
             Some(packet.clone()),
             idx as u64,
         )?;
+        res.messages.extend_from_slice(&msg_res.messages);
+        res.attributes.extend_from_slice(&msg_res.attributes);
+        res.events.extend_from_slice(&msg_res.events);
     }
+
     Ok(res.add_attribute("action", "handle_amp_packet"))
 }
 

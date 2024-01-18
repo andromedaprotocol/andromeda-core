@@ -348,6 +348,10 @@ fn test_crowdfund_app() {
 
     // Check final state
     //Check token transfers
+    let cw721_addr: String = router
+        .wrap()
+        .query_wasm_smart(app_addr, &mock_get_address_msg(cw721_component.name))
+        .unwrap();
     for (i, buyer) in buyers.iter().enumerate() {
         let query_msg = mock_cw721_owner_of(i.to_string(), None);
         let owner: OwnerOfResponse = router
