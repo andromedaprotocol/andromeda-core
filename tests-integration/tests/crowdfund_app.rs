@@ -8,7 +8,7 @@ use andromeda_crowdfund::mock::{
     mock_end_crowdfund_msg, mock_purchase_msg, mock_start_crowdfund_msg,
 };
 use andromeda_cw721::mock::{
-    mock_andromeda_cw721, mock_cw721_instantiate_msg, mock_cw721_owner_of,
+    mock_andromeda_cw721, mock_cw721_instantiate_msg, mock_cw721_minter_query, mock_cw721_owner_of,
 };
 use andromeda_finance::splitter::AddressPercent;
 use andromeda_std::amp::{AndrAddr, Recipient};
@@ -263,6 +263,18 @@ fn test_crowdfund_app() {
         )
         .unwrap();
 
+    let cw721_addr: String = router
+        .wrap()
+        .query_wasm_smart(app_addr, &mock_get_address_msg(cw721_component.name))
+        .unwrap();
+
+    let minter: String = router
+        .wrap()
+        .query_wasm_smart(cw721_addr.clone(), &mock_cw721_minter_query())
+        .unwrap();
+
+    assert_eq!(minter, crowdfund_addr);
+
     // Mint Tokens
     let mint_msg = mock_crowdfund_quick_mint_msg(5, owner.to_string());
     router
@@ -336,10 +348,6 @@ fn test_crowdfund_app() {
 
     // Check final state
     //Check token transfers
-    let cw721_addr: String = router
-        .wrap()
-        .query_wasm_smart(app_addr, &mock_get_address_msg(cw721_component.name))
-        .unwrap();
     for (i, buyer) in buyers.iter().enumerate() {
         let query_msg = mock_cw721_owner_of(i.to_string(), None);
         let owner: OwnerOfResponse = router
