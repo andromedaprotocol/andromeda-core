@@ -7,7 +7,10 @@ use andromeda_std::{
     amp::{messages::AMPMsg, AndrAddr, Recipient},
     os::kernel::ExecuteMsg as KernelExecuteMsg,
 };
-use andromeda_testing::{mock::MockAndromeda, mock_contract::MockContract};
+use andromeda_testing::{
+    mock::MockAndromeda,
+    mock_contract::{BaseMockContract, MockADO, MockContract},
+};
 
 use cosmwasm_std::{coin, to_binary, Addr, Decimal};
 
@@ -62,7 +65,7 @@ fn kernel() {
         None,
     );
 
-    let kernel = MockContract::from(andr.kernel_address.to_string());
+    let kernel = BaseMockContract::from(andr.kernel_address.to_string());
     let res = kernel.execute(
         &mut router,
         KernelExecuteMsg::Create {
@@ -88,7 +91,7 @@ fn kernel() {
         .unwrap();
     let attr = inst_event.attributes.get(attr_key).unwrap();
     let addr: Addr = Addr::unchecked(attr.value.clone());
-    let splitter = MockContract::from(addr.to_string());
+    let splitter = BaseMockContract::from(addr.to_string());
     let splitter_owner = splitter.query_owner(&router);
 
     assert_eq!(splitter_owner, owner.to_string());

@@ -1,9 +1,75 @@
 #![cfg(all(not(target_arch = "wasm32"), feature = "testing"))]
 use crate::contract::{execute, instantiate, query, reply};
 use andromeda_app::app::{AppComponent, ExecuteMsg, InstantiateMsg, QueryMsg};
+use andromeda_testing::mock_contract::{MockADO, MockContract};
+use cosmwasm_std::{Addr, Empty};
+use cw_multi_test::{App, AppResponse, Contract, ContractWrapper, Executor};
 
-use cosmwasm_std::Empty;
-use cw_multi_test::{Contract, ContractWrapper};
+pub struct MockApp(Addr);
+
+impl MockContract for MockApp {
+    fn addr(&self) -> &Addr {
+        &self.0
+    }
+}
+
+impl MockADO for MockApp {}
+
+impl From<String> for MockApp {
+    fn from(addr: String) -> Self {
+        Self(Addr::unchecked(addr))
+    }
+}
+
+impl MockApp {
+    pub fn instantiate(
+        code_id: u64,
+        sender: Addr,
+        app: &mut App,
+        name: impl Into<String>,
+        app_components: Vec<AppComponent>,
+        kernel_address: impl Into<String>,
+        owner: Option<String>,
+    ) -> MockApp {
+        let msg = mock_app_instantiate_msg(name, app_components, kernel_address, owner);
+        let addr = app
+            .instantiate_contract(
+                code_id,
+                sender.clone(),
+                &msg,
+                &[],
+                "App Contract",
+                Some(sender.to_string()),
+            )
+            .unwrap();
+        MockApp(Addr::unchecked(addr))
+    }
+
+    pub fn execute_claim_ownership(
+        &self,
+        app: &mut App,
+        sender: Addr,
+        component_name: Option<String>,
+    ) -> AppResponse {
+        self.execute(app, mock_claim_ownership_msg(component_name), sender, &[])
+    }
+
+    pub fn query_components(&self, app: &mut App) -> Vec<AppComponent> {
+        self.query::<QueryMsg, Vec<AppComponent>>(app, mock_get_components_msg())
+    }
+
+    pub fn query_component_addr(&self, app: &mut App, name: impl Into<String>) -> Addr {
+        self.query::<QueryMsg, Addr>(app, mock_get_address_msg(name.into()))
+    }
+
+    pub fn query_ado_by_component_name<C: From<Addr>>(
+        &self,
+        app: &mut App,
+        name: impl Into<String>,
+    ) -> C {
+        C::from(self.query_component_addr(app, name))
+    }
+}
 
 pub fn mock_andromeda_app() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new_with_empty(execute, instantiate, query).with_reply(reply);

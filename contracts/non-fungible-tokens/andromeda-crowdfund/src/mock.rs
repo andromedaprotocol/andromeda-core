@@ -7,9 +7,118 @@ use andromeda_non_fungible_tokens::{
 };
 use andromeda_std::amp::Recipient;
 use andromeda_std::{ado_base::modules::Module, amp::AndrAddr};
-use cosmwasm_std::{Coin, Empty, Uint128};
-use cw_multi_test::{Contract, ContractWrapper};
+use andromeda_testing::mock_contract::{MockADO, MockContract};
+use cosmwasm_std::{Addr, Coin, Empty, Uint128};
+use cw_multi_test::{App, AppResponse, Contract, ContractWrapper, Executor};
 use cw_utils::Expiration;
+
+pub struct MockCrowdfund(Addr);
+
+impl MockContract for MockCrowdfund {
+    fn addr(&self) -> &Addr {
+        &self.0
+    }
+}
+
+impl From<Addr> for MockCrowdfund {
+    fn from(addr: Addr) -> Self {
+        Self(addr)
+    }
+}
+
+impl MockADO for MockCrowdfund {}
+
+impl MockCrowdfund {
+    pub fn instantiate(
+        code_id: u64,
+        sender: Addr,
+        app: &mut App,
+        token_address: AndrAddr,
+        can_mint_after_sale: bool,
+        modules: Option<Vec<Module>>,
+        kernel_address: impl Into<String>,
+        owner: Option<String>,
+    ) -> MockCrowdfund {
+        let msg = mock_crowdfund_instantiate_msg(
+            token_address,
+            can_mint_after_sale,
+            modules,
+            kernel_address,
+            owner,
+        );
+        let addr = app
+            .instantiate_contract(
+                code_id,
+                sender.clone(),
+                &msg,
+                &[],
+                "Andromeda Crowdfund Contract",
+                Some(sender.to_string()),
+            )
+            .unwrap();
+        MockCrowdfund(Addr::unchecked(addr))
+    }
+
+    pub fn execute_start_sale(
+        &self,
+        sender: Addr,
+        app: &mut App,
+        expiration: Expiration,
+        price: Coin,
+        min_tokens_sold: Uint128,
+        max_amount_per_wallet: Option<u32>,
+        recipient: Recipient,
+    ) -> AppResponse {
+        let msg = mock_start_crowdfund_msg(
+            expiration,
+            price,
+            min_tokens_sold,
+            max_amount_per_wallet,
+            recipient,
+        );
+        self.execute(app, msg, sender, &[])
+    }
+
+    pub fn execute_end_sale(&self, sender: Addr, app: &mut App, limit: Option<u32>) -> AppResponse {
+        let msg = mock_end_crowdfund_msg(limit);
+        self.execute(app, msg, sender, &[])
+    }
+
+    pub fn execute_mint(
+        &self,
+        sender: Addr,
+        app: &mut App,
+        token_id: String,
+        extension: TokenExtension,
+        token_uri: Option<String>,
+        owner: Option<String>,
+    ) -> AppResponse {
+        let msg = mock_crowdfund_mint_msg(token_id, extension, token_uri, owner);
+        self.execute(app, msg, sender, &[])
+    }
+
+    pub fn execute_quick_mint(
+        &self,
+        sender: Addr,
+        app: &mut App,
+        amount: u32,
+        publisher: String,
+    ) -> AppResponse {
+        let msg = mock_crowdfund_quick_mint_msg(amount, publisher);
+        self.execute(app, msg, sender, &[])
+    }
+
+    pub fn execute_purchase(
+        &self,
+        sender: Addr,
+        app: &mut App,
+        number_of_tokens: Option<u32>,
+        funds: &[Coin],
+    ) -> AppResponse {
+        let msg = mock_purchase_msg(number_of_tokens);
+        self.execute(app, msg, sender, funds)
+    }
+}
 
 pub fn mock_andromeda_crowdfund() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new_with_empty(execute, instantiate, query).with_reply(reply);

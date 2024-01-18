@@ -149,9 +149,10 @@ impl MockAndromeda {
         app: &mut App,
         contract: Box<dyn Contract<Empty>>,
         ado_type: impl Into<String>,
-    ) {
+    ) -> u64 {
         let code_id = app.store_code(contract);
         self.store_code_id(app, ado_type.into().as_str(), code_id);
+        code_id
     }
 
     /// Gets the Code ID for a given key from the ADO DB contract
