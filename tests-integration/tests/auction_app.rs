@@ -142,6 +142,7 @@ fn test_auction_app() {
         )
         .unwrap();
     let mint_msg = mock_quick_mint_msg(1, owner.to_string());
+    andr.accept_ownership(&mut router, cw721_addr.clone(), owner.clone());
     router
         .execute_contract(
             owner.clone(),
@@ -156,6 +157,7 @@ fn test_auction_app() {
         .wrap()
         .query_wasm_smart(app_addr, &mock_get_address_msg("2".to_string()))
         .unwrap();
+    andr.accept_ownership(&mut router, auction_addr.clone(), owner.clone());
     router
         .execute_contract(
             owner.clone(),

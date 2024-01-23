@@ -8,7 +8,10 @@ use andromeda_non_fungible_tokens::{
     },
     cw721::{ExecuteMsg as Cw721ExecuteMsg, MintMsg, QueryMsg as Cw721QueryMsg},
 };
-use andromeda_std::amp::{messages::AMPPkt, recipient::Recipient};
+use andromeda_std::{
+    ado_base::ownership::OwnershipMessage,
+    amp::{messages::AMPPkt, recipient::Recipient},
+};
 use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
 
 use andromeda_std::{
@@ -106,7 +109,10 @@ pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
     let contract = ADOContract::default();
 
     if !matches!(msg, ExecuteMsg::UpdateAppContract { .. })
-        && !matches!(msg, ExecuteMsg::UpdateOwner { .. })
+        && !matches!(
+            msg,
+            ExecuteMsg::Ownership(OwnershipMessage::UpdateOwner { .. })
+        )
     {
         contract.module_hook::<Response>(
             &ctx.deps.as_ref(),

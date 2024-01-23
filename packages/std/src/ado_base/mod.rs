@@ -25,6 +25,8 @@ pub use modules::Module;
 #[cfg(feature = "modules")]
 use cosmwasm_std::Uint64;
 
+use self::ownership::OwnershipMessage;
+
 #[cw_serde]
 pub struct InstantiateMsg {
     pub ado_type: String,
@@ -36,12 +38,7 @@ pub struct InstantiateMsg {
 
 #[cw_serde]
 pub enum AndromedaMsg {
-    UpdateOwner {
-        address: String,
-    },
-    UpdateOperators {
-        operators: Vec<String>,
-    },
+    Ownership(OwnershipMessage),
     UpdateAppContract {
         address: String,
     },

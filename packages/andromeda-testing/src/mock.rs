@@ -8,6 +8,7 @@ use andromeda_kernel::mock::{
     mock_andromeda_kernel, mock_get_key_address, mock_kernel_instantiate_message,
     mock_upsert_key_address,
 };
+use andromeda_std::ado_base::{ownership::OwnershipMessage, AndromedaMsg};
 use andromeda_vfs::mock::{
     mock_add_path, mock_andromeda_vfs, mock_register_user, mock_resolve_path_query,
     mock_vfs_instantiate_message,
@@ -222,5 +223,17 @@ impl MockAndromeda {
 
         let query = mock_resolve_path_query(path);
         app.wrap().query_wasm_smart(vfs_address, &query).unwrap()
+    }
+
+    /// Accepts ownership of the given contract for the given sender
+    pub fn accept_ownership(
+        &self,
+        app: &mut App,
+        address: impl Into<String>,
+        sender: impl Into<String>,
+    ) {
+        let msg = AndromedaMsg::Ownership(OwnershipMessage::AcceptOwnership {});
+        app.execute_contract(Addr::unchecked(sender), Addr::unchecked(address), &msg, &[])
+            .unwrap();
     }
 }

@@ -48,17 +48,14 @@ impl<'a> ADOContract<'a> {
         let msg = to_binary(&msg)?;
         match from_binary::<AndromedaMsg>(&msg) {
             Ok(msg) => match msg {
-                AndromedaMsg::UpdateOwner { address } => {
-                    self.execute_update_owner(ctx.deps, ctx.info, address)
-                }
-                AndromedaMsg::UpdateOperators { operators } => {
-                    self.execute_update_operators(ctx.deps, ctx.info, operators)
+                AndromedaMsg::Ownership(msg) => {
+                    self.execute_ownership(ctx.deps, ctx.env, ctx.info, msg)
                 }
                 AndromedaMsg::UpdateAppContract { address } => {
                     self.execute_update_app_contract(ctx.deps, ctx.info, address, None)
                 }
                 AndromedaMsg::UpdateKernelAddress { address } => {
-                    update_kernel_address(ctx.deps, ctx.info, address)
+                    self.update_kernel_address(ctx.deps, ctx.info, address)
                 }
                 #[cfg(feature = "withdraw")]
                 AndromedaMsg::Withdraw {
@@ -145,7 +142,6 @@ impl<'a> ADOContract<'a> {
         address: AndrAddr,
         vfs_address: Addr,
     ) -> Result<(), ContractError> {
-        // Validate address string is valid
         address.validate(deps.api)?;
         if !address.is_addr(deps.api) {
             address.get_raw_address_from_vfs(deps, vfs_address)?;
@@ -203,16 +199,16 @@ impl<'a> ADOContract<'a> {
     ) -> Result<Response, ContractError> {
         packet.verify_origin(&ctx.info, &ctx.deps.as_ref())?;
         let ctx = ctx.with_ctx(packet.clone());
-        let msg_opt = packet.messages.pop();
-        if let Some(msg_opt) = msg_opt {
-            let msg: E = from_binary(&msg_opt.message)?;
-            let response = handler(ctx, msg)?;
-            Ok(response)
-        } else {
-            Err(ContractError::InvalidPacket {
-                error: Some("AMP Packet received with no messages".to_string()),
-            })
-        }
+        ensure!(
+            packet.messages.len() == 1,
+            ContractError::InvalidPacket {
+                error: Some("Invalid packet length".to_string())
+            }
+        );
+        let msg = packet.messages.pop().unwrap();
+        let msg: E = from_binary(&msg.message)?;
+        let response = handler(ctx, msg)?;
+        Ok(response)
     }
 
     /// Generates a message to pay a fee for a given action by the given payee
@@ -246,24 +242,24 @@ impl<'a> ADOContract<'a> {
 
         Ok(msg)
     }
-}
 
-/// Updates the current kernel address used by the ADO
-/// Requires the sender to be the owner of the ADO
-pub fn update_kernel_address(
-    deps: DepsMut,
-    info: MessageInfo,
-    address: Addr,
-) -> Result<Response, ContractError> {
-    let contract = ADOContract::default();
-    ensure!(
-        contract.is_contract_owner(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {}
-    );
-    contract.kernel_address.save(deps.storage, &address)?;
-    Ok(Response::new()
-        .add_attribute("action", "update_kernel_address")
-        .add_attribute("address", address))
+    /// Updates the current kernel address used by the ADO
+    /// Requires the sender to be the owner of the ADO
+    pub fn update_kernel_address(
+        &self,
+        deps: DepsMut,
+        info: MessageInfo,
+        address: Addr,
+    ) -> Result<Response, ContractError> {
+        ensure!(
+            self.is_contract_owner(deps.storage, info.sender.as_str())?,
+            ContractError::Unauthorized {}
+        );
+        self.kernel_address.save(deps.storage, &address)?;
+        Ok(Response::new()
+            .add_attribute("action", "update_kernel_address")
+            .add_attribute("address", address))
+    }
 }
 
 #[cfg(test)]

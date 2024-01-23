@@ -44,7 +44,7 @@ pub fn handle_add_app_component(
 
     match component.component_type {
         ComponentType::New(instantiate_msg) => {
-            let inst_msg = contract.generate_instantiate_msg(
+            let inst_msg = generate_instantiate_msg(
                 storage,
                 querier,
                 idx,
@@ -77,6 +77,36 @@ pub fn handle_add_app_component(
     }
 
     Ok(resp)
+}
+
+fn generate_instantiate_msg(
+    storage: &mut dyn Storage,
+    querier: &QuerierWrapper,
+    msg_id: u64,
+    msg: Binary,
+    ado_type: String,
+    sender: String,
+) -> Result<SubMsg, ContractError> {
+    let adodb_addr = ADOContract::default().get_adodb_address(storage, querier)?;
+    match AOSQuerier::code_id_getter(querier, &adodb_addr, &ado_type) {
+        Err(_) => Err(ContractError::InvalidModule {
+            msg: Some(String::from(
+                "ADO type provided does not have a valid Code Id",
+            )),
+        }),
+        Ok(code_id) => Ok(SubMsg {
+            id: msg_id,
+            reply_on: ReplyOn::Always,
+            msg: CosmosMsg::Wasm(WasmMsg::Instantiate {
+                admin: Some(sender),
+                code_id,
+                msg,
+                funds: vec![],
+                label: format!("Instantiate: {ado_type}"),
+            }),
+            gas_limit: None,
+        }),
+    }
 }
 
 pub fn claim_ownership(

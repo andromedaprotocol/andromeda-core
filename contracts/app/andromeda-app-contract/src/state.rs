@@ -2,8 +2,12 @@ use andromeda_app::app::{
     AppComponent, ChainInfo, ComponentAddress, ComponentType, CrossChainComponent, InstantiateMsg,
 };
 use andromeda_std::{
-    ado_base::AndromedaMsg, ado_contract::ADOContract, amp::AndrAddr, error::ContractError,
-    os::aos_querier::AOSQuerier, os::kernel::ExecuteMsg as KernelExecuteMsg,
+    ado_base::{ownership::OwnershipMessage, AndromedaMsg},
+    ado_contract::ADOContract,
+    amp::AndrAddr,
+    error::ContractError,
+    os::aos_querier::AOSQuerier,
+    os::kernel::ExecuteMsg as KernelExecuteMsg,
 };
 use cosmwasm_std::{
     to_binary, Addr, Coin, CosmosMsg, DepsMut, Order, ReplyOn, Storage, SubMsg, WasmMsg,
@@ -77,9 +81,10 @@ pub fn load_component_descriptors(
 }
 
 pub fn generate_ownership_message(addr: Addr, owner: &str) -> Result<SubMsg, ContractError> {
-    let msg = to_binary(&AndromedaMsg::UpdateOwner {
-        address: owner.to_string(),
-    })?;
+    let msg = to_binary(&AndromedaMsg::Ownership(OwnershipMessage::UpdateOwner {
+        new_owner: Addr::unchecked(owner),
+        expiration: None,
+    }))?;
     Ok(SubMsg {
         id: ReplyId::ClaimOwnership.repr(),
         reply_on: ReplyOn::Error,

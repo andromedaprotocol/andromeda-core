@@ -4,6 +4,7 @@ use andromeda_finance::rate_limiting_withdrawals::{
     AccountDetails, CoinAllowance, ExecuteMsg, InstantiateMsg, MigrateMsg, MinimumFrequency,
     QueryMsg,
 };
+use andromeda_std::ado_base::ownership::OwnershipMessage;
 use andromeda_std::ado_contract::ADOContract;
 use andromeda_std::common::context::ExecuteContext;
 use andromeda_std::{
@@ -98,20 +99,22 @@ pub fn execute(
 ) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
 
+    let ctx = ExecuteContext::new(deps, info, env);
+
     if !matches!(msg, ExecuteMsg::UpdateAppContract { .. })
-        && !matches!(msg, ExecuteMsg::UpdateOwner { .. })
+        && !matches!(
+            msg,
+            ExecuteMsg::Ownership(OwnershipMessage::UpdateOwner { .. })
+        )
     {
         contract.module_hook::<Response>(
-            &deps.as_ref(),
+            &ctx.deps.as_ref(),
             AndromedaHook::OnExecute {
-                sender: info.sender.to_string(),
+                sender: ctx.info.sender.to_string(),
                 payload: encode_binary(&msg)?,
             },
         )?;
     }
-
-    let ctx = ExecuteContext::new(deps, info, env);
-
     match msg {
         ExecuteMsg::AMPReceive(pkt) => {
             ADOContract::default().execute_amp_receive(ctx, pkt, handle_execute)

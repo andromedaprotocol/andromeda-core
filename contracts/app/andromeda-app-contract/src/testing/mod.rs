@@ -2,6 +2,7 @@ use crate::reply::ReplyId;
 
 use super::{contract::*, state::ADO_ADDRESSES};
 use andromeda_app::app::{AppComponent, ComponentType, ExecuteMsg, InstantiateMsg};
+use andromeda_std::ado_base::ownership::OwnershipMessage;
 use andromeda_std::amp::AndrAddr;
 use andromeda_std::os::vfs::{convert_component_name, ExecuteMsg as VFSExecuteMsg};
 use andromeda_std::testing::mock_querier::{mock_dependencies_custom, MOCK_KERNEL_CONTRACT};
@@ -412,9 +413,10 @@ fn test_claim_ownership() {
         id: 101,
         msg: CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: "tokenaddress".to_string(),
-            msg: to_binary(&AndromedaMsg::UpdateOwner {
-                address: "creator".to_string(),
-            })
+            msg: to_binary(&AndromedaMsg::Ownership(OwnershipMessage::UpdateOwner {
+                new_owner: Addr::unchecked("creator"),
+                expiration: None,
+            }))
             .unwrap(),
             funds: vec![],
         }),

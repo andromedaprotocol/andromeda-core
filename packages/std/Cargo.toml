@@ -2,7 +2,7 @@
 name = "andromeda-std"
 version = "0.1.0"
 edition = "2021"
-rust-version  = "1.65.0"
+rust-version = "1.65.0"
 description = "The standard library for creating an Andromeda Digital Object"
 license = "MIT"
 
@@ -11,19 +11,18 @@ withdraw = ["andromeda-macros/withdraw"]
 primitive = []
 modules = ["andromeda-macros/modules"]
 module_hooks = ["andromeda-macros/module_hooks"]
-instantiate = []
 
 [lib]
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-cosmwasm-std = { workspace=true, features = ["ibc3"] }
+cosmwasm-std = { workspace = true, features = ["ibc3"] }
 cosmwasm-schema = { workspace = true }
 cw-storage-plus = { workspace = true }
 schemars = "0.8.10"
 serde = { version = "1.0.127", default-features = false, features = ["derive"] }
 semver = { workspace = true }
-cw20 = { version = "1.0.1"}
+cw20 = { version = "1.0.1" }
 cw20-base = { workspace = true, features = ["library"] }
 cw721-base = { workspace = true }
 cw-utils = { workspace = true }
@@ -31,7 +30,7 @@ cw-asset = { version = "3.0.0" }
 thiserror = { version = "1.0.21" }
 lazy_static = "1"
 hex = "0.4"
-regex = { version = "1.9.1", default-features = false}
+regex = { version = "1.9.1", default-features = false }
 andromeda-macros = { workspace = true }
 strum_macros = { workspace = true }
 cw721 = { workspace = true }
