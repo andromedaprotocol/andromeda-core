@@ -22,13 +22,21 @@ prost = "0.9.0"
 andromeda-non-fungible-tokens = { version = "0.1.0", path = "../andromeda-non-fungible-tokens" }
 andromeda-app = { version = "0.1.0", path = "../andromeda-app" }
 andromeda-modules = { version = "0.1.0", path = "../andromeda-modules" }
-andromeda-adodb = { path = "../../contracts/os/andromeda-adodb", features = ["testing"] }
-andromeda-kernel = { path = "../../contracts/os/andromeda-kernel", features = ["testing"] }
-andromeda-vfs = { path = "../../contracts/os/andromeda-vfs", features = ["testing"] }
-andromeda-economics = { path = "../../contracts/os/andromeda-economics", features = ["testing", "library"] }
+andromeda-adodb = { version = "0.2.1", path = "../../contracts/os/andromeda-adodb", features = [
+    "testing",
+] }
+andromeda-kernel = { version = "0.2.15", path = "../../contracts/os/andromeda-kernel", features = [
+    "testing",
+] }
+andromeda-vfs = { version = "0.2.2", path = "../../contracts/os/andromeda-vfs", features = [
+    "testing",
+] }
+andromeda-economics = { version = "0.2.0", path = "../../contracts/os/andromeda-economics", features = [
+    "testing",
+    "library",
+] }
 andromeda-std = { workspace = true }
 serde = { workspace = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 cw-multi-test = { version = "0.16.5", optional = true }
-
