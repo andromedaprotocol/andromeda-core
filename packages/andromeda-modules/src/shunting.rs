@@ -22,7 +22,7 @@ pub struct MigrateMsg {}
 #[derive(QueryResponses)]
 pub enum QueryMsg {
     #[returns(ShuntingResponse)]
-    Result {},
+    EvalExpression {},
 }
 
 #[cw_serde]
@@ -30,16 +30,28 @@ pub struct ShuntingResponse {
     pub result: String,
 }
 
-/// Evaluate a shunting result.
-///
-/// ## Arguments
-/// * `expression` - Input string which represents math expressions
-///
-/// Returns the eval result in float64.
-pub fn eval_expression(expression: &str) -> Result<f64, ContractError> {
-    let expr = ShuntingParser::parse_str(expression).unwrap();
-    let result = MathContext::new().eval(&expr).unwrap();
-    Ok(result)
+#[cw_serde]
+pub struct ShuntingObject {
+    pub expression: String,
+}
+impl ShuntingObject {
+    pub fn eval(&self) -> Result<f64, ContractError> {
+        let expr = ShuntingParser::parse_str(&self.expression);
+        if expr.is_err() {
+            return Err(ContractError::InvalidExpression {
+                msg: "Expression is not valid".to_string(),
+            });
+        };
+
+        let result = MathContext::new().eval(&expr.unwrap());
+        if result.is_err() {
+            return Err(ContractError::InvalidExpression {
+                msg: result.unwrap_err(),
+            });
+        }
+
+        Ok(result.unwrap())
+    }
 }
 
 #[cfg(test)]
@@ -48,8 +60,9 @@ mod tests {
 
     #[test]
     fn test_eval_expression() {
-        let input = "sin(0.2)^2 + cos(0.2)^2";
-        let received = eval_expression(input).unwrap();
+        let expression = "sin(0.2)^2 + cos(0.2)^2".to_string();
+        let object = ShuntingObject { expression };
+        let received = object.eval().unwrap();
         let expected: f64 = 1.0;
         assert_eq!(expected, received);
     }

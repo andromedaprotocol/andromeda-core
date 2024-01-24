@@ -426,6 +426,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "andromeda-shunting"
+version = "0.2.1"
+dependencies = [
+ "andromeda-app",
+ "andromeda-modules",
+ "andromeda-std",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-multi-test",
+ "cw-storage-plus 1.1.0",
+ "cw-utils 1.0.1",
+ "cw2 1.1.0",
+ "semver",
+]
+
+[[package]]
 name = "andromeda-splitter"
 version = "0.2.3"
 dependencies = [

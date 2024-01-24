@@ -43,6 +43,8 @@ pub const MOCK_ECONOMICS_CONTRACT: &str = "economics_contract";
 pub const MOCK_RATES_CONTRACT: &str = "rates_contract";
 /// Mock Address List Contract Address
 pub const MOCK_ADDRESS_LIST_CONTRACT: &str = "address_list_contract";
+/// Mock Shunting Contract Address
+pub const MOCK_SHUNTING_CONTRACT: &str = "shunting_contract";
 
 /// An invalid contract address
 pub const INVALID_CONTRACT: &str = "invalid_contract";
