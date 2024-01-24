@@ -96,19 +96,23 @@ fn test_auction_app() {
 
     // Mint Tokens
     let cw721: MockCW721 = app.query_ado_by_component_name(&mut router, cw721_component.name);
-    cw721.execute_quick_mint(&mut router, owner.clone(), 1, owner.to_string());
+    cw721
+        .execute_quick_mint(&mut router, owner.clone(), 1, owner.to_string())
+        .unwrap();
 
     // Send Token to Auction
     let auction: MockAuction = app.query_ado_by_component_name(&mut router, auction_component.name);
     let start_time = router.block_info().time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO + 100;
     let receive_msg = mock_start_auction(start_time, 1000, "uandr".to_string(), None, None);
-    cw721.execute_send_nft(
-        &mut router,
-        owner.clone(),
-        auction.addr(),
-        "0",
-        to_json_binary(&receive_msg).unwrap(),
-    );
+    cw721
+        .execute_send_nft(
+            &mut router,
+            owner.clone(),
+            auction.addr(),
+            "0",
+            to_json_binary(&receive_msg).unwrap(),
+        )
+        .unwrap();
 
     router.set_block(BlockInfo {
         height: router.block_info().height,
@@ -167,15 +171,17 @@ fn test_auction_app() {
         time: Timestamp::from_nanos((start_time + 1001) * MILLISECONDS_TO_NANOSECONDS_RATIO),
         chain_id: router.block_info().chain_id,
     });
-    auction.execute_claim_auction(
-        &mut router,
-        buyer_two.clone(),
-        "0".to_string(),
-        cw721.addr().to_string(),
-    );
+    auction
+        .execute_claim_auction(
+            &mut router,
+            buyer_two.clone(),
+            "0".to_string(),
+            cw721.addr().to_string(),
+        )
+        .unwrap();
 
     // Check Final State
-    let token_owner = cw721.query_owner_of(&mut router, "0");
+    let token_owner = cw721.query_owner_of(&router, "0");
     assert_eq!(token_owner, buyer_two);
     let owner_balance = router.wrap().query_balance(owner, "uandr").unwrap();
     assert_eq!(owner_balance.amount, Uint128::from(200u128));

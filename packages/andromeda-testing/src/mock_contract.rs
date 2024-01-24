@@ -5,6 +5,10 @@ use cosmwasm_std::{Addr, Coin};
 use cw_multi_test::{App, AppResponse, Executor};
 use serde::{de::DeserializeOwned, Serialize};
 
+pub use anyhow::Result as AnyResult;
+
+pub type ExecuteResult = AnyResult<AppResponse>;
+
 pub struct BaseMockContract(Addr);
 
 impl BaseMockContract {
@@ -36,9 +40,8 @@ pub trait MockContract {
         msg: M,
         sender: Addr,
         funds: &[Coin],
-    ) -> AppResponse {
+    ) -> AnyResult<AppResponse> {
         app.execute_contract(sender, self.addr().clone(), &msg, funds)
-            .unwrap()
     }
 
     fn query<M: Serialize + fmt::Debug, T: DeserializeOwned>(&self, app: &App, msg: M) -> T {

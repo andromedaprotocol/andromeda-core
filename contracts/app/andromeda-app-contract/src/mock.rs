@@ -3,7 +3,7 @@ use crate::contract::{execute, instantiate, query, reply};
 use andromeda_app::app::{AppComponent, ExecuteMsg, InstantiateMsg, QueryMsg};
 use andromeda_testing::{
     mock_ado,
-    mock_contract::{MockADO, MockContract},
+    mock_contract::{AnyResult, MockADO, MockContract},
 };
 use cosmwasm_std::{Addr, Empty};
 use cw_multi_test::{App, AppResponse, Contract, ContractWrapper, Executor};
@@ -40,7 +40,7 @@ impl MockApp {
         app: &mut App,
         sender: Addr,
         component_name: Option<String>,
-    ) -> AppResponse {
+    ) -> AnyResult<AppResponse> {
         self.execute(app, mock_claim_ownership_msg(component_name), sender, &[])
     }
 

@@ -9,7 +9,7 @@ use andromeda_std::ado_base::modules::Module;
 use andromeda_std::amp::messages::AMPPkt;
 use andromeda_testing::{
     mock_ado,
-    mock_contract::{MockADO, MockContract},
+    mock_contract::{ExecuteResult, MockADO, MockContract},
 };
 use cosmwasm_std::{Addr, Coin, Empty, Uint128};
 use cw_multi_test::{App, AppResponse, Contract, ContractWrapper, Executor};
@@ -75,7 +75,7 @@ impl MockAuction {
         sender: Addr,
         token_id: String,
         token_address: String,
-    ) -> AppResponse {
+    ) -> ExecuteResult {
         let msg = mock_claim_auction(token_id, token_address);
         self.execute(app, msg, sender, &[])
     }

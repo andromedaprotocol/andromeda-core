@@ -66,17 +66,19 @@ fn kernel() {
     );
 
     let kernel = BaseMockContract::from(andr.kernel_address.to_string());
-    let res = kernel.execute(
-        &mut router,
-        KernelExecuteMsg::Create {
-            ado_type: "splitter".to_string(),
-            msg: to_json_binary(&splitter_msg).unwrap(),
-            owner: Some(AndrAddr::from_string("~/am".to_string())),
-            chain: None,
-        },
-        owner.clone(),
-        &[],
-    );
+    let res = kernel
+        .execute(
+            &mut router,
+            KernelExecuteMsg::Create {
+                ado_type: "splitter".to_string(),
+                msg: to_json_binary(&splitter_msg).unwrap(),
+                owner: Some(AndrAddr::from_string("~/am".to_string())),
+                chain: None,
+            },
+            owner.clone(),
+            &[],
+        )
+        .unwrap();
 
     let event_key = res
         .events
@@ -96,18 +98,20 @@ fn kernel() {
 
     assert_eq!(splitter_owner, owner.to_string());
 
-    let res = kernel.execute(
-        &mut router,
-        KernelExecuteMsg::Send {
-            message: AMPMsg::new(
-                format!("~/{}", splitter.addr()),
-                to_json_binary(&mock_splitter_send_msg()).unwrap(),
-                Some(vec![coin(100, "uandr")]),
-            ),
-        },
-        owner,
-        &[coin(100, "uandr")],
-    );
+    let res = kernel
+        .execute(
+            &mut router,
+            KernelExecuteMsg::Send {
+                message: AMPMsg::new(
+                    format!("~/{}", splitter.addr()),
+                    to_json_binary(&mock_splitter_send_msg()).unwrap(),
+                    Some(vec![coin(100, "uandr")]),
+                ),
+            },
+            owner,
+            &[coin(100, "uandr")],
+        )
+        .unwrap();
 
     assert!(res.data.is_none());
 }

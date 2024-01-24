@@ -9,10 +9,10 @@ use andromeda_std::amp::Recipient;
 use andromeda_std::{ado_base::modules::Module, amp::AndrAddr};
 use andromeda_testing::{
     mock_ado,
-    mock_contract::{MockADO, MockContract},
+    mock_contract::{ExecuteResult, MockADO, MockContract},
 };
 use cosmwasm_std::{Addr, Coin, Empty, Uint128};
-use cw_multi_test::{App, AppResponse, Contract, ContractWrapper, Executor};
+use cw_multi_test::{App, Contract, ContractWrapper, Executor};
 use cw_utils::Expiration;
 
 pub struct MockCrowdfund(Addr);
@@ -60,7 +60,7 @@ impl MockCrowdfund {
         min_tokens_sold: Uint128,
         max_amount_per_wallet: Option<u32>,
         recipient: Recipient,
-    ) -> AppResponse {
+    ) -> ExecuteResult {
         let msg = mock_start_crowdfund_msg(
             expiration,
             price,
@@ -71,7 +71,12 @@ impl MockCrowdfund {
         self.execute(app, msg, sender, &[])
     }
 
-    pub fn execute_end_sale(&self, sender: Addr, app: &mut App, limit: Option<u32>) -> AppResponse {
+    pub fn execute_end_sale(
+        &self,
+        sender: Addr,
+        app: &mut App,
+        limit: Option<u32>,
+    ) -> ExecuteResult {
         let msg = mock_end_crowdfund_msg(limit);
         self.execute(app, msg, sender, &[])
     }
@@ -84,7 +89,7 @@ impl MockCrowdfund {
         extension: TokenExtension,
         token_uri: Option<String>,
         owner: Option<String>,
-    ) -> AppResponse {
+    ) -> ExecuteResult {
         let msg = mock_crowdfund_mint_msg(token_id, extension, token_uri, owner);
         self.execute(app, msg, sender, &[])
     }
@@ -95,7 +100,7 @@ impl MockCrowdfund {
         app: &mut App,
         amount: u32,
         publisher: String,
-    ) -> AppResponse {
+    ) -> ExecuteResult {
         let msg = mock_crowdfund_quick_mint_msg(amount, publisher);
         self.execute(app, msg, sender, &[])
     }
@@ -106,7 +111,7 @@ impl MockCrowdfund {
         app: &mut App,
         number_of_tokens: Option<u32>,
         funds: &[Coin],
-    ) -> AppResponse {
+    ) -> ExecuteResult {
         let msg = mock_purchase_msg(number_of_tokens);
         self.execute(app, msg, sender, funds)
     }

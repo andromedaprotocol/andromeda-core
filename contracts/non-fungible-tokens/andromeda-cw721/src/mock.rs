@@ -7,11 +7,11 @@ use andromeda_non_fungible_tokens::cw721::{
 use andromeda_std::{ado_base::modules::Module, amp::addresses::AndrAddr};
 use andromeda_testing::{
     mock_ado,
-    mock_contract::{MockADO, MockContract},
+    mock_contract::{ExecuteResult, MockADO, MockContract},
 };
 use cosmwasm_std::{Addr, Binary, Coin, Empty};
 use cw721::OwnerOfResponse;
-use cw_multi_test::{App, AppResponse, Contract, ContractWrapper, Executor};
+use cw_multi_test::{App, Contract, ContractWrapper, Executor};
 
 pub struct MockCW721(Addr);
 mock_ado!(MockCW721);
@@ -56,7 +56,7 @@ impl MockCW721 {
         sender: Addr,
         amount: u32,
         owner: impl Into<String>,
-    ) -> AppResponse {
+    ) -> ExecuteResult {
         let msg = mock_quick_mint_msg(amount, owner.into());
         self.execute(app, msg, sender, &[])
     }
@@ -68,7 +68,7 @@ impl MockCW721 {
         contract: impl Into<String>,
         token_id: impl Into<String>,
         msg: Binary,
-    ) -> AppResponse {
+    ) -> ExecuteResult {
         let msg = mock_send_nft(contract.into(), token_id.into(), msg);
         self.execute(app, msg, sender, &[])
     }

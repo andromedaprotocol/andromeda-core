@@ -210,7 +210,8 @@ fn test_crowdfund_app() {
 
     let _vault_one_addr = app.query_component_addr(&mut router, vault_one_app_component.name);
     let _vault_two_addr = app.query_component_addr(&mut router, vault_two_app_component.name);
-    app.execute_claim_ownership(&mut router, owner.clone(), None);
+    app.execute_claim_ownership(&mut router, owner.clone(), None)
+        .unwrap();
 
     let cw721_contract =
         app.query_ado_by_component_name::<MockCW721>(&mut router, cw721_component.name);
@@ -225,7 +226,9 @@ fn test_crowdfund_app() {
     assert_eq!(minter, crowdfund_contract.addr());
 
     // Mint Tokens
-    crowdfund_contract.execute_quick_mint(owner.clone(), &mut router, 5, owner.to_string());
+    crowdfund_contract
+        .execute_quick_mint(owner.clone(), &mut router, 5, owner.to_string())
+        .unwrap();
 
     // Start Sale
     let token_price = coin(100, "uandr");
@@ -234,20 +237,24 @@ fn test_crowdfund_app() {
         Recipient::from_string(format!("~/am/app/{}", splitter_app_component.name))
             .with_msg(mock_splitter_send_msg());
     let expiration = Expiration::AtHeight(router.block_info().height + 5);
-    crowdfund_contract.execute_start_sale(
-        owner.clone(),
-        &mut router,
-        expiration,
-        token_price.clone(),
-        Uint128::from(3u128),
-        Some(1),
-        sale_recipient,
-    );
+    crowdfund_contract
+        .execute_start_sale(
+            owner.clone(),
+            &mut router,
+            expiration,
+            token_price.clone(),
+            Uint128::from(3u128),
+            Some(1),
+            sale_recipient,
+        )
+        .unwrap();
 
     // Buy Tokens
     let buyers = vec![buyer_one, buyer_two, buyer_three];
     for buyer in buyers.clone() {
-        crowdfund_contract.execute_purchase(buyer, &mut router, Some(1), &[token_price.clone()]);
+        crowdfund_contract
+            .execute_purchase(buyer, &mut router, Some(1), &[token_price.clone()])
+            .unwrap();
     }
     let crowdfund_balance = router
         .wrap()
@@ -263,13 +270,17 @@ fn test_crowdfund_app() {
         chain_id: block_info.chain_id,
     });
 
-    crowdfund_contract.execute_end_sale(owner.clone(), &mut router, None);
-    crowdfund_contract.execute_end_sale(owner, &mut router, None);
+    crowdfund_contract
+        .execute_end_sale(owner.clone(), &mut router, None)
+        .unwrap();
+    crowdfund_contract
+        .execute_end_sale(owner, &mut router, None)
+        .unwrap();
 
     // Check final state
     //Check token transfers
     for (i, buyer) in buyers.iter().enumerate() {
-        let owner = cw721_contract.query_owner_of(&mut router, i.to_string());
+        let owner = cw721_contract.query_owner_of(&router, i.to_string());
         assert_eq!(owner, buyer.to_string());
     }
 
