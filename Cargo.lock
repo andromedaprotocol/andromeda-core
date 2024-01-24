@@ -77,6 +77,7 @@ dependencies = [
  "andromeda-app",
  "andromeda-non-fungible-tokens",
  "andromeda-std",
+ "andromeda-testing",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-multi-test",

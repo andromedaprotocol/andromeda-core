@@ -5,26 +5,16 @@ use andromeda_non_fungible_tokens::cw721::{
     ExecuteMsg, InstantiateMsg, MintMsg, QueryMsg, TokenExtension, TransferAgreement,
 };
 use andromeda_std::{ado_base::modules::Module, amp::addresses::AndrAddr};
-use andromeda_testing::mock_contract::{MockADO, MockContract};
+use andromeda_testing::{
+    mock_ado,
+    mock_contract::{MockADO, MockContract},
+};
 use cosmwasm_std::{Addr, Binary, Coin, Empty};
 use cw721::OwnerOfResponse;
 use cw_multi_test::{App, AppResponse, Contract, ContractWrapper, Executor};
 
 pub struct MockCW721(Addr);
-
-impl MockContract for MockCW721 {
-    fn addr(&self) -> &Addr {
-        &self.0
-    }
-}
-
-impl From<Addr> for MockCW721 {
-    fn from(addr: Addr) -> Self {
-        Self(addr)
-    }
-}
-
-impl MockADO for MockCW721 {}
+mock_ado!(MockCW721);
 
 impl MockCW721 {
     #[allow(clippy::too_many_arguments)]
@@ -68,6 +58,18 @@ impl MockCW721 {
         owner: impl Into<String>,
     ) -> AppResponse {
         let msg = mock_quick_mint_msg(amount, owner.into());
+        self.execute(app, msg, sender, &[])
+    }
+
+    pub fn execute_send_nft(
+        &self,
+        app: &mut App,
+        sender: Addr,
+        contract: impl Into<String>,
+        token_id: impl Into<String>,
+        msg: Binary,
+    ) -> AppResponse {
+        let msg = mock_send_nft(contract.into(), token_id.into(), msg);
         self.execute(app, msg, sender, &[])
     }
 

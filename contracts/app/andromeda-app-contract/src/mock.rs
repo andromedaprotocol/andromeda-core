@@ -1,25 +1,15 @@
 #![cfg(all(not(target_arch = "wasm32"), feature = "testing"))]
 use crate::contract::{execute, instantiate, query, reply};
 use andromeda_app::app::{AppComponent, ExecuteMsg, InstantiateMsg, QueryMsg};
-use andromeda_testing::mock_contract::{MockADO, MockContract};
+use andromeda_testing::{
+    mock_ado,
+    mock_contract::{MockADO, MockContract},
+};
 use cosmwasm_std::{Addr, Empty};
 use cw_multi_test::{App, AppResponse, Contract, ContractWrapper, Executor};
 
 pub struct MockApp(Addr);
-
-impl MockContract for MockApp {
-    fn addr(&self) -> &Addr {
-        &self.0
-    }
-}
-
-impl MockADO for MockApp {}
-
-impl From<String> for MockApp {
-    fn from(addr: String) -> Self {
-        Self(Addr::unchecked(addr))
-    }
-}
+mock_ado!(MockApp);
 
 impl MockApp {
     pub fn instantiate(

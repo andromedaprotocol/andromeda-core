@@ -1,11 +1,107 @@
 #![cfg(all(not(target_arch = "wasm32"), feature = "testing"))]
 
 use crate::contract::{execute, instantiate, query};
-use andromeda_non_fungible_tokens::auction::{Cw721HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg};
+use andromeda_non_fungible_tokens::auction::{
+    AuctionIdsResponse, AuctionStateResponse, Bid, BidsResponse, Cw721HookMsg, ExecuteMsg,
+    InstantiateMsg, QueryMsg,
+};
 use andromeda_std::ado_base::modules::Module;
 use andromeda_std::amp::messages::AMPPkt;
-use cosmwasm_std::{Addr, Empty, Uint128};
-use cw_multi_test::{Contract, ContractWrapper};
+use andromeda_testing::{
+    mock_ado,
+    mock_contract::{MockADO, MockContract},
+};
+use cosmwasm_std::{Addr, Coin, Empty, Uint128};
+use cw_multi_test::{App, AppResponse, Contract, ContractWrapper, Executor};
+
+pub struct MockAuction(Addr);
+mock_ado!(MockAuction);
+
+impl MockAuction {
+    pub fn instantiate(
+        code_id: u64,
+        sender: Addr,
+        app: &mut App,
+        modules: Option<Vec<Module>>,
+        kernel_address: impl Into<String>,
+        owner: Option<String>,
+    ) -> MockAuction {
+        let msg = mock_auction_instantiate_msg(modules, kernel_address, owner);
+        let addr = app
+            .instantiate_contract(
+                code_id,
+                sender.clone(),
+                &msg,
+                &[],
+                "Auction Contract",
+                Some(sender.to_string()),
+            )
+            .unwrap();
+        MockAuction(Addr::unchecked(addr))
+    }
+
+    pub fn execute_start_auction(
+        &self,
+        app: &mut App,
+        sender: Addr,
+        start_time: u64,
+        duration: u64,
+        coin_denom: String,
+        min_bid: Option<Uint128>,
+        whitelist: Option<Vec<Addr>>,
+    ) -> AppResponse {
+        let msg = mock_start_auction(start_time, duration, coin_denom, min_bid, whitelist);
+        app.execute_contract(sender, self.addr().clone(), &msg, &[])
+            .unwrap()
+    }
+
+    pub fn execute_place_bid(
+        &self,
+        app: &mut App,
+        sender: Addr,
+        token_id: String,
+        token_address: String,
+        funds: &[Coin],
+    ) -> AppResponse {
+        let msg = mock_place_bid(token_id, token_address);
+        app.execute_contract(sender, self.addr().clone(), &msg, funds)
+            .unwrap()
+    }
+
+    pub fn execute_claim_auction(
+        &self,
+        app: &mut App,
+        sender: Addr,
+        token_id: String,
+        token_address: String,
+    ) -> AppResponse {
+        let msg = mock_claim_auction(token_id, token_address);
+        app.execute_contract(sender, self.addr().clone(), &msg, &[])
+            .unwrap()
+    }
+
+    pub fn query_auction_ids(
+        &self,
+        app: &mut App,
+        token_id: String,
+        token_address: String,
+    ) -> Vec<Uint128> {
+        let msg = mock_get_auction_ids(token_id, token_address);
+        let res: AuctionIdsResponse = self.query(app, msg);
+        res.auction_ids
+    }
+
+    pub fn query_auction_state(&self, app: &mut App, auction_id: Uint128) -> AuctionStateResponse {
+        let msg = mock_get_auction_state(auction_id);
+        self.query(app, msg)
+    }
+
+    pub fn query_bids(&self, app: &mut App, auction_id: Uint128) -> Vec<Bid> {
+        let msg = mock_get_bids(auction_id);
+        let res: BidsResponse = self.query(app, msg);
+        res.bids
+    }
+}
 
 pub fn mock_andromeda_auction() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new_with_empty(execute, instantiate, query);

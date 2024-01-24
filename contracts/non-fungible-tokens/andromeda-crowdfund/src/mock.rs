@@ -7,26 +7,16 @@ use andromeda_non_fungible_tokens::{
 };
 use andromeda_std::amp::Recipient;
 use andromeda_std::{ado_base::modules::Module, amp::AndrAddr};
-use andromeda_testing::mock_contract::{MockADO, MockContract};
+use andromeda_testing::{
+    mock_ado,
+    mock_contract::{MockADO, MockContract},
+};
 use cosmwasm_std::{Addr, Coin, Empty, Uint128};
 use cw_multi_test::{App, AppResponse, Contract, ContractWrapper, Executor};
 use cw_utils::Expiration;
 
 pub struct MockCrowdfund(Addr);
-
-impl MockContract for MockCrowdfund {
-    fn addr(&self) -> &Addr {
-        &self.0
-    }
-}
-
-impl From<Addr> for MockCrowdfund {
-    fn from(addr: Addr) -> Self {
-        Self(addr)
-    }
-}
-
-impl MockADO for MockCrowdfund {}
+mock_ado!(MockCrowdfund);
 
 impl MockCrowdfund {
     pub fn instantiate(

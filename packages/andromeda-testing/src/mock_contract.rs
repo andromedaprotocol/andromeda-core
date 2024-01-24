@@ -54,3 +54,22 @@ pub trait MockADO: MockContract {
             .owner
     }
 }
+
+#[macro_export]
+macro_rules! mock_ado {
+    ($t:ident) => {
+        impl MockContract for $t {
+            fn addr(&self) -> &Addr {
+                &self.0
+            }
+        }
+
+        impl From<Addr> for $t {
+            fn from(addr: Addr) -> Self {
+                Self(addr)
+            }
+        }
+
+        impl MockADO for $t {}
+    };
+}
