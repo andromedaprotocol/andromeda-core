@@ -23,7 +23,7 @@ use andromeda_std::ado_base::modules::Module;
 use andromeda_std::amp::messages::{AMPMsg, AMPPkt};
 use andromeda_std::amp::Recipient;
 use andromeda_testing::mock::MockAndromeda;
-use cosmwasm_std::{coin, to_binary, Addr, Uint128};
+use cosmwasm_std::{coin, to_json_binary, Addr, Uint128};
 use cw721::OwnerOfResponse;
 use cw_multi_test::{App, Executor};
 
@@ -86,7 +86,7 @@ fn test_marketplace_app() {
     let cw721_component = AppComponent::new(
         "1".to_string(),
         "cw721".to_string(),
-        to_binary(&cw721_init_msg).unwrap(),
+        to_json_binary(&cw721_init_msg).unwrap(),
     );
 
     let rates: Vec<RateInfo> = vec![RateInfo {
@@ -96,14 +96,14 @@ fn test_marketplace_app() {
         recipients: vec![Recipient::from_string(rates_receiver.to_string())],
     }];
     let rates_init_msg = mock_rates_instantiate_msg(rates, andr.kernel_address.to_string(), None);
-    let rates_component = AppComponent::new("2", "rates", to_binary(&rates_init_msg).unwrap());
+    let rates_component = AppComponent::new("2", "rates", to_json_binary(&rates_init_msg).unwrap());
 
     let address_list_init_msg =
         mock_address_list_instantiate_msg(true, andr.kernel_address.to_string(), None);
     let address_list_component = AppComponent::new(
         "3",
         "address-list",
-        to_binary(&address_list_init_msg).unwrap(),
+        to_json_binary(&address_list_init_msg).unwrap(),
     );
 
     let modules: Vec<Module> = vec![
@@ -119,7 +119,7 @@ fn test_marketplace_app() {
     let marketplace_component = AppComponent::new(
         "4".to_string(),
         "marketplace".to_string(),
-        to_binary(&marketplace_init_msg).unwrap(),
+        to_json_binary(&marketplace_init_msg).unwrap(),
     );
 
     // Create App
@@ -218,7 +218,7 @@ fn test_marketplace_app() {
     let send_nft_msg = mock_send_nft(
         marketplace_addr.clone(),
         token_id.to_string(),
-        to_binary(&mock_start_sale(Uint128::from(100u128), "uandr")).unwrap(),
+        to_json_binary(&mock_start_sale(Uint128::from(100u128), "uandr")).unwrap(),
     );
     router
         .execute_contract(
@@ -233,7 +233,7 @@ fn test_marketplace_app() {
     let buy_msg = mock_buy_token(cw721_addr.clone(), token_id);
     let amp_msg = AMPMsg::new(
         Addr::unchecked(marketplace_addr.clone()),
-        to_binary(&buy_msg).unwrap(),
+        to_json_binary(&buy_msg).unwrap(),
         Some(vec![coin(200, "uandr")]),
     );
 

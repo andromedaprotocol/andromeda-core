@@ -4,10 +4,10 @@ use common::{
     Funds,
 };
 use cosmwasm_std::{
-    from_binary, from_slice,
+    from_json,
     testing::{mock_env, MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
-    to_binary, BankMsg, Binary, Coin, ContractResult, CosmosMsg, OwnedDeps, Querier, QuerierResult,
-    QueryRequest, Response, SubMsg, SystemError, SystemResult, Uint128, WasmQuery,
+    to_json_binary, BankMsg, Binary, Coin, ContractResult, CosmosMsg, OwnedDeps, Querier,
+    QuerierResult, QueryRequest, Response, SubMsg, SystemError, SystemResult, Uint128, WasmQuery,
 };
 
 pub const MOCK_TOKEN_CONTRACT: &str = "token_contract";
@@ -54,7 +54,7 @@ pub struct WasmMockQuerier {
 impl Querier for WasmMockQuerier {
     fn raw_query(&self, bin_request: &[u8]) -> QuerierResult {
         // MockQuerier doesn't support Custom, so we ignore it completely here
-        let request: QueryRequest<cosmwasm_std::Empty> = match from_slice(bin_request) {
+        let request: QueryRequest<cosmwasm_std::Empty> = match from_json(bin_request) {
             Ok(v) => v,
             Err(e) => {
                 return SystemResult::Err(SystemError::InvalidRequest {
@@ -85,17 +85,17 @@ impl WasmMockQuerier {
 
     fn handle_app_query(&self, msg: &Binary) -> QuerierResult {
         let valid_identifiers = ["e", "b"];
-        match from_binary(msg).unwrap() {
+        match from_json(msg).unwrap() {
             AppQueryMsg::ComponentExists { name } => {
                 let value = valid_identifiers.contains(&name.as_str());
-                SystemResult::Ok(ContractResult::Ok(to_binary(&value).unwrap()))
+                SystemResult::Ok(ContractResult::Ok(to_json_binary(&value).unwrap()))
             }
             _ => panic!("Unsupported Query: {}", msg),
         }
     }
 
     fn handle_rates_query(&self, msg: &Binary) -> QuerierResult {
-        match from_binary(msg).unwrap() {
+        match from_json(msg).unwrap() {
             HookMsg::AndrHook(hook_msg) => match hook_msg {
                 AndromedaHook::OnFundsTransfer {
                     sender: _,
@@ -130,7 +130,7 @@ impl WasmMockQuerier {
                         ),
                         Funds::Cw20(_) => {
                             return SystemResult::Ok(ContractResult::Ok(
-                                to_binary(&None::<Response>).unwrap(),
+                                to_json_binary(&None::<Response>).unwrap(),
                             ))
                         }
                     };
@@ -139,21 +139,23 @@ impl WasmMockQuerier {
                         events: vec![],
                         leftover_funds: new_funds,
                     };
-                    SystemResult::Ok(ContractResult::Ok(to_binary(&response).unwrap()))
+                    SystemResult::Ok(ContractResult::Ok(to_json_binary(&response).unwrap()))
                 }
-                _ => SystemResult::Ok(ContractResult::Ok(to_binary(&None::<Response>).unwrap())),
+                _ => SystemResult::Ok(ContractResult::Ok(
+                    to_json_binary(&None::<Response>).unwrap(),
+                )),
             },
         }
     }
 
     fn handle_addresslist_query(&self, msg: &Binary) -> QuerierResult {
-        match from_binary(msg).unwrap() {
+        match from_json(msg).unwrap() {
             HookMsg::AndrHook(hook_msg) => match hook_msg {
                 AndromedaHook::OnExecute { sender, payload: _ } => {
                     let whitelisted_addresses = ["sender"];
                     let response: Response = Response::default();
                     if whitelisted_addresses.contains(&sender.as_str()) {
-                        SystemResult::Ok(ContractResult::Ok(to_binary(&response).unwrap()))
+                        SystemResult::Ok(ContractResult::Ok(to_json_binary(&response).unwrap()))
                     } else {
                         SystemResult::Ok(ContractResult::Err("InvalidAddress".to_string()))
                     }

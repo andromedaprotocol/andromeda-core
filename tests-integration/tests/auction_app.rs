@@ -9,7 +9,7 @@ use andromeda_cw721::mock::{mock_andromeda_cw721, mock_cw721_instantiate_msg, Mo
 
 use andromeda_std::common::expiration::MILLISECONDS_TO_NANOSECONDS_RATIO;
 use andromeda_testing::{mock::MockAndromeda, mock_contract::MockContract};
-use cosmwasm_std::{coin, to_binary, Addr, BlockInfo, Timestamp, Uint128};
+use cosmwasm_std::{coin, to_json_binary, Addr, BlockInfo, Timestamp, Uint128};
 
 use cw_multi_test::App;
 
@@ -72,7 +72,7 @@ fn test_auction_app() {
     let cw721_component = AppComponent::new(
         "1".to_string(),
         "cw721".to_string(),
-        to_binary(&cw721_init_msg).unwrap(),
+        to_json_binary(&cw721_init_msg).unwrap(),
     );
 
     let auction_init_msg =
@@ -80,7 +80,7 @@ fn test_auction_app() {
     let auction_component = AppComponent::new(
         "2".to_string(),
         "auction".to_string(),
-        to_binary(&auction_init_msg).unwrap(),
+        to_json_binary(&auction_init_msg).unwrap(),
     );
 
     // Create App
@@ -108,7 +108,7 @@ fn test_auction_app() {
         owner.clone(),
         auction.addr(),
         "0",
-        to_binary(&receive_msg).unwrap(),
+        to_json_binary(&receive_msg).unwrap(),
     );
 
     router.set_block(BlockInfo {

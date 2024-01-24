@@ -5,9 +5,9 @@ use andromeda_std::common::Funds;
 use andromeda_std::testing::mock_querier::MockAndromedaQuerier;
 use cosmwasm_std::testing::mock_info;
 use cosmwasm_std::{
-    from_binary, from_slice,
+    from_json,
     testing::{mock_env, MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
-    to_binary, Binary, Coin, ContractResult, OwnedDeps, Querier, QuerierResult, QueryRequest,
+    to_json_binary, Binary, Coin, ContractResult, OwnedDeps, Querier, QuerierResult, QueryRequest,
     SystemError, SystemResult, WasmQuery,
 };
 use cosmwasm_std::{BankMsg, CosmosMsg, Response, SubMsg, Uint128};
@@ -63,7 +63,7 @@ pub struct WasmMockQuerier {
 impl Querier for WasmMockQuerier {
     fn raw_query(&self, bin_request: &[u8]) -> QuerierResult {
         // MockQuerier doesn't support Custom, so we ignore it completely here
-        let request: QueryRequest<cosmwasm_std::Empty> = match from_slice(bin_request) {
+        let request: QueryRequest<cosmwasm_std::Empty> = match from_json(bin_request) {
             Ok(v) => v,
             Err(e) => {
                 return SystemResult::Err(SystemError::InvalidRequest {
@@ -90,7 +90,7 @@ impl WasmMockQuerier {
     }
 
     fn handle_rates_query(&self, msg: &Binary) -> QuerierResult {
-        match from_binary(msg).unwrap() {
+        match from_json(msg).unwrap() {
             HookMsg::AndrHook(hook_msg) => match hook_msg {
                 AndromedaHook::OnFundsTransfer {
                     sender: _,
@@ -125,7 +125,9 @@ impl WasmMockQuerier {
                         ),
                         Funds::Cw20(_) => {
                             let resp: Response = Response::default();
-                            return SystemResult::Ok(ContractResult::Ok(to_binary(&resp).unwrap()));
+                            return SystemResult::Ok(ContractResult::Ok(
+                                to_json_binary(&resp).unwrap(),
+                            ));
                         }
                     };
                     let response = OnFundsTransferResponse {
@@ -133,9 +135,11 @@ impl WasmMockQuerier {
                         events: vec![],
                         leftover_funds: new_funds,
                     };
-                    SystemResult::Ok(ContractResult::Ok(to_binary(&Some(response)).unwrap()))
+                    SystemResult::Ok(ContractResult::Ok(to_json_binary(&Some(response)).unwrap()))
                 }
-                _ => SystemResult::Ok(ContractResult::Ok(to_binary(&None::<Response>).unwrap())),
+                _ => SystemResult::Ok(ContractResult::Ok(
+                    to_json_binary(&None::<Response>).unwrap(),
+                )),
             },
         }
     }

@@ -16,8 +16,8 @@ use andromeda_std::{
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    ensure, to_binary, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Reply, Response,
-    StdError, SubMsg, WasmMsg,
+    ensure, to_json_binary, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Reply,
+    Response, StdError, SubMsg, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
 
@@ -110,7 +110,7 @@ pub fn instantiate(
     };
     let cosmos_msg: CosmosMsg<Empty> = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: vfs_address.to_string(),
-        msg: to_binary(&add_path_msg)?,
+        msg: to_json_binary(&add_path_msg)?,
         funds: vec![],
     });
 
@@ -119,7 +119,7 @@ pub fn instantiate(
     let assign_app_msg = SubMsg::reply_on_error(
         CosmosMsg::Wasm::<Empty>(WasmMsg::Execute {
             contract_addr: env.contract.address.to_string(),
-            msg: to_binary(&assign_app_msg)?,
+            msg: to_json_binary(&assign_app_msg)?,
             funds: vec![],
         }),
         ReplyId::AssignApp.repr(),

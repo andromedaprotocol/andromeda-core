@@ -19,7 +19,7 @@ use andromeda_testing::{mock::MockAndromeda, mock_contract::MockContract};
 use andromeda_vault::mock::{
     mock_andromeda_vault, mock_vault_deposit_msg, mock_vault_instantiate_msg,
 };
-use cosmwasm_std::{coin, to_binary, Addr, BlockInfo, Decimal, Uint128};
+use cosmwasm_std::{coin, to_json_binary, Addr, BlockInfo, Decimal, Uint128};
 use cw721::Expiration;
 use cw_multi_test::{App, Executor};
 
@@ -113,7 +113,7 @@ fn test_crowdfund_app() {
         name: "1".to_string(),
         ado_type: "crowdfund".to_string(),
         component_type: ComponentType::New(
-            to_binary(&mock_crowdfund_instantiate_msg(
+            to_json_binary(&mock_crowdfund_instantiate_msg(
                 AndrAddr::from_string("./2".to_string()),
                 false,
                 Some(modules),

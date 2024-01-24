@@ -6,7 +6,7 @@ use andromeda_std::{
     testing::mock_querier::{mock_dependencies_custom, WasmMockQuerier, MOCK_KERNEL_CONTRACT},
 };
 use cosmwasm_std::{
-    from_binary,
+    from_json,
     testing::{mock_env, mock_info, MockApi, MockStorage},
     Deps, DepsMut, MessageInfo, OwnedDeps, Response,
 };
@@ -31,7 +31,7 @@ pub fn proper_initialization(restriction: PrimitiveRestriction) -> (MockDeps, Me
 pub fn query_value(deps: Deps, name: &Option<String>) -> Result<GetValueResponse, ContractError> {
     let res = query(deps, mock_env(), QueryMsg::GetValue { key: name.clone() });
     match res {
-        Ok(res) => Ok(from_binary(&res).unwrap()),
+        Ok(res) => Ok(from_json(&res).unwrap()),
         Err(err) => Err(err),
     }
 }

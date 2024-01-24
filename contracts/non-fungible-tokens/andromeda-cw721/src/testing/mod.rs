@@ -1,5 +1,5 @@
 use cosmwasm_std::{
-    attr, coin, coins, from_binary,
+    attr, coin, coins, from_json,
     testing::{mock_env, mock_info},
     Addr, Coin, DepsMut, Env, Response, StdError, Uint128,
 };
@@ -101,7 +101,7 @@ fn test_transfer_nft() {
         include_expired: None,
     };
     let query_resp = query(deps.as_ref(), env, query_msg).unwrap();
-    let resp: OwnerOfResponse = from_binary(&query_resp).unwrap();
+    let resp: OwnerOfResponse = from_json(&query_resp).unwrap();
     assert_eq!(resp.owner, String::from("recipient"));
 
     let agreement = TRANSFER_AGREEMENTS
@@ -172,7 +172,7 @@ fn test_agreed_transfer_nft() {
         include_expired: None,
     };
     let query_resp = query(deps.as_ref(), env, query_msg).unwrap();
-    let resp: OwnerOfResponse = from_binary(&query_resp).unwrap();
+    let resp: OwnerOfResponse = from_json(&query_resp).unwrap();
     assert_eq!(resp.owner, String::from("recipient"))
 }
 
@@ -222,7 +222,7 @@ fn test_agreed_transfer_nft_wildcard() {
         include_expired: None,
     };
     let query_resp = query(deps.as_ref(), env, query_msg).unwrap();
-    let resp: OwnerOfResponse = from_binary(&query_resp).unwrap();
+    let resp: OwnerOfResponse = from_json(&query_resp).unwrap();
     assert_eq!(resp.owner, String::from("recipient"))
 }
 
@@ -258,7 +258,7 @@ fn test_archive() {
 
     let query_msg = QueryMsg::IsArchived { token_id };
     let query_resp = query(deps.as_ref(), env, query_msg).unwrap();
-    let resp: bool = from_binary(&query_resp).unwrap();
+    let resp: bool = from_json(&query_resp).unwrap();
     assert!(resp)
 }
 
@@ -396,7 +396,7 @@ fn test_transfer_agreement() {
 
     let query_msg = QueryMsg::TransferAgreement { token_id };
     let query_resp = query(deps.as_ref(), env, query_msg).unwrap();
-    let resp: Option<TransferAgreement> = from_binary(&query_resp).unwrap();
+    let resp: Option<TransferAgreement> = from_json(&query_resp).unwrap();
     assert!(resp.is_some());
     assert_eq!(resp, Some(agreement))
 }
@@ -482,12 +482,12 @@ fn test_modules() {
     // // Test the hook.
     // let msg = QueryMsg::AndrHook(AndromedaHook::OnFundsTransfer {
     //     sender: "sender".to_string(),
-    //     payload: to_binary(&token_id).unwrap(),
+    //     payload: to_json_binary(&token_id).unwrap(),
     //     amount: Funds::Native(coin(100, "uusd")),
     // });
 
     // let res: OnFundsTransferResponse =
-    //     from_binary(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
+    //     from_json(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
 
     // let expected_response = OnFundsTransferResponse {
     //     msgs: vec![
@@ -535,7 +535,7 @@ fn test_modules() {
 // let msg: SubMsg = SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
 //     contract_addr: MOCK_BIDS_CONTRACT.to_owned(),
 //     funds: vec![],
-//     msg: to_binary(&BidsExecuteMsg::AcceptBid {
+//     msg: to_json_binary(&BidsExecuteMsg::AcceptBid {
 //         token_id,
 //         recipient: creator,
 //     })
@@ -629,7 +629,7 @@ fn test_batch_mint() {
             include_expired: None,
         };
         let query_resp = query(deps.as_ref(), mock_env(), query_msg).unwrap();
-        let info: AllNftInfoResponse<TokenExtension> = from_binary(&query_resp).unwrap();
+        let info: AllNftInfoResponse<TokenExtension> = from_json(&query_resp).unwrap();
         assert_eq!(info.access.owner, owner.to_string());
         i += 1;
     }

@@ -1,7 +1,7 @@
 use super::{addresses::AndrAddr, messages::AMPMsg};
 use crate::{common::encode_binary, error::ContractError};
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{to_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, SubMsg, WasmMsg};
+use cosmwasm_std::{to_json_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, SubMsg, WasmMsg};
 use cw20::{Cw20Coin, Cw20ExecuteMsg};
 use serde::Serialize;
 
@@ -119,14 +119,14 @@ impl Recipient {
     /// Adds a message to the recipient to be sent alongside any funds
     pub fn with_msg(self, msg: impl Serialize) -> Self {
         let mut new_recip = self;
-        new_recip.msg = Some(to_binary(&msg).unwrap());
+        new_recip.msg = Some(to_json_binary(&msg).unwrap());
         new_recip
     }
 }
 
 #[cfg(test)]
 mod test {
-    use cosmwasm_std::{from_binary, testing::mock_dependencies, Uint128};
+    use cosmwasm_std::{from_json, testing::mock_dependencies, Uint128};
 
     use super::*;
 
@@ -186,7 +186,7 @@ mod test {
             }) => {
                 assert_eq!(contract_addr, "test");
                 assert_eq!(funds, vec![] as Vec<Coin>);
-                match from_binary(&msg).unwrap() {
+                match from_json(&msg).unwrap() {
                     Cw20ExecuteMsg::Transfer { recipient, amount } => {
                         assert_eq!(recipient, "test");
                         assert_eq!(amount, cw20_coin.amount);
@@ -209,7 +209,7 @@ mod test {
             }) => {
                 assert_eq!(contract_addr, "test");
                 assert_eq!(funds, vec![] as Vec<Coin>);
-                match from_binary(&msg).unwrap() {
+                match from_json(&msg).unwrap() {
                     Cw20ExecuteMsg::Send {
                         contract,
                         amount,

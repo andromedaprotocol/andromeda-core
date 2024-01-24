@@ -7,9 +7,9 @@ use andromeda_std::{
 };
 use cosmwasm_schema::{cw_serde, serde::Deserialize};
 use cosmwasm_std::{
-    attr, from_binary, from_slice,
+    attr, from_json,
     testing::{mock_env, mock_info},
-    to_binary, Addr, BankMsg, Coin, CosmosMsg, SubMsg, Uint128, WasmMsg,
+    to_json_binary, Addr, BankMsg, Coin, CosmosMsg, SubMsg, Uint128, WasmMsg,
 };
 use cw20::Cw20ExecuteMsg;
 use cw_asset::{AssetInfoBase, AssetInfoUnchecked};
@@ -39,7 +39,7 @@ fn proper_instantiation() {
 
     // it worked, let's query the state
     let res = query(deps.as_ref(), env.clone(), QueryMsg::Config {}).unwrap();
-    let config: ConfigResponse = from_binary(&res).unwrap();
+    let config: ConfigResponse = from_json(&res).unwrap();
     assert!(ADOContract::default()
         .is_contract_owner(deps.as_ref().storage, "owner0000")
         .unwrap());
@@ -49,7 +49,7 @@ fn proper_instantiation() {
     );
 
     let res = query(deps.as_ref(), env, QueryMsg::LatestStage {}).unwrap();
-    let latest_stage: LatestStageResponse = from_binary(&res).unwrap();
+    let latest_stage: LatestStageResponse = from_json(&res).unwrap();
     assert_eq!(0u8, latest_stage.latest_stage);
 }
 
@@ -93,7 +93,7 @@ fn register_merkle_root() {
     );
 
     let res = query(deps.as_ref(), env.clone(), QueryMsg::LatestStage {}).unwrap();
-    let latest_stage: LatestStageResponse = from_binary(&res).unwrap();
+    let latest_stage: LatestStageResponse = from_json(&res).unwrap();
     assert_eq!(1u8, latest_stage.latest_stage);
 
     let res = query(
@@ -104,7 +104,7 @@ fn register_merkle_root() {
         },
     )
     .unwrap();
-    let merkle_root: MerkleRootResponse = from_binary(&res).unwrap();
+    let merkle_root: MerkleRootResponse = from_json(&res).unwrap();
     assert_eq!(
         "634de21cde1044f41d90373733b0f0fb1c1c71f9652b905cdf159e73c4cf0d37".to_string(),
         merkle_root.merkle_root
@@ -126,7 +126,7 @@ struct Encoded {
 fn claim() {
     // Run test 1
     let mut deps = mock_dependencies_custom(&[]);
-    let test_data: Encoded = from_slice(TEST_DATA_1).unwrap();
+    let test_data: Encoded = from_json(TEST_DATA_1).unwrap();
 
     let msg = InstantiateMsg {
         asset_info: AssetInfoUnchecked::cw20("token0000"),
@@ -161,7 +161,7 @@ fn claim() {
     let expected = SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: "token0000".to_string(),
         funds: vec![],
-        msg: to_binary(&Cw20ExecuteMsg::Transfer {
+        msg: to_json_binary(&Cw20ExecuteMsg::Transfer {
             recipient: test_data.account.clone(),
             amount: test_data.amount,
         })
@@ -181,7 +181,7 @@ fn claim() {
 
     // Check total claimed on stage 1
     assert_eq!(
-        from_binary::<TotalClaimedResponse>(
+        from_json::<TotalClaimedResponse>(
             &query(
                 deps.as_ref(),
                 env.clone(),
@@ -196,7 +196,7 @@ fn claim() {
 
     // Check address is claimed
     assert!(
-        from_binary::<IsClaimedResponse>(
+        from_json::<IsClaimedResponse>(
             &query(
                 deps.as_ref(),
                 env.clone(),
@@ -216,7 +216,7 @@ fn claim() {
     assert_eq!(res, ContractError::Claimed {});
 
     // Second test
-    let test_data: Encoded = from_slice(TEST_DATA_2).unwrap();
+    let test_data: Encoded = from_json(TEST_DATA_2).unwrap();
 
     // register new drop
     let env = mock_env();
@@ -242,7 +242,7 @@ fn claim() {
     let expected: SubMsg<_> = SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: "token0000".to_string(),
         funds: vec![],
-        msg: to_binary(&Cw20ExecuteMsg::Transfer {
+        msg: to_json_binary(&Cw20ExecuteMsg::Transfer {
             recipient: test_data.account.clone(),
             amount: test_data.amount,
         })
@@ -262,7 +262,7 @@ fn claim() {
 
     // Check total claimed on stage 2
     assert_eq!(
-        from_binary::<TotalClaimedResponse>(
+        from_json::<TotalClaimedResponse>(
             &query(deps.as_ref(), env, QueryMsg::TotalClaimed { stage: 2 }).unwrap()
         )
         .unwrap()
@@ -290,7 +290,7 @@ struct MultipleData {
 #[test]
 fn claim_native() {
     let mut deps = mock_dependencies_custom(&[]);
-    let test_data: Encoded = from_slice(TEST_DATA_1).unwrap();
+    let test_data: Encoded = from_json(TEST_DATA_1).unwrap();
 
     let msg = InstantiateMsg {
         asset_info: AssetInfoUnchecked::native("uusd"),
@@ -342,7 +342,7 @@ fn claim_native() {
 
     // Check total claimed on stage 1
     assert_eq!(
-        from_binary::<TotalClaimedResponse>(
+        from_json::<TotalClaimedResponse>(
             &query(
                 deps.as_ref(),
                 env.clone(),
@@ -357,7 +357,7 @@ fn claim_native() {
 
     // Check address is claimed
     assert!(
-        from_binary::<IsClaimedResponse>(
+        from_json::<IsClaimedResponse>(
             &query(
                 deps.as_ref(),
                 env,
@@ -377,7 +377,7 @@ fn claim_native() {
 fn multiple_claim() {
     // Run test 1
     let mut deps = mock_dependencies_custom(&[]);
-    let test_data: MultipleData = from_slice(TEST_DATA_1_MULTI).unwrap();
+    let test_data: MultipleData = from_json(TEST_DATA_1_MULTI).unwrap();
 
     let msg = InstantiateMsg {
         asset_info: AssetInfoUnchecked::cw20("token0000"),
@@ -413,7 +413,7 @@ fn multiple_claim() {
         let expected = SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: "token0000".to_string(),
             funds: vec![],
-            msg: to_binary(&Cw20ExecuteMsg::Transfer {
+            msg: to_json_binary(&Cw20ExecuteMsg::Transfer {
                 recipient: account.account.clone(),
                 amount: account.amount,
             })
@@ -435,7 +435,7 @@ fn multiple_claim() {
     // Check total claimed on stage 1
     let env = mock_env();
     assert_eq!(
-        from_binary::<TotalClaimedResponse>(
+        from_json::<TotalClaimedResponse>(
             &query(deps.as_ref(), env, QueryMsg::TotalClaimed { stage: 1 }).unwrap()
         )
         .unwrap()
@@ -530,7 +530,7 @@ fn cant_burn() {
 #[test]
 fn can_burn() {
     let mut deps = mock_dependencies_custom(&[]);
-    let test_data: Encoded = from_slice(TEST_DATA_1).unwrap();
+    let test_data: Encoded = from_json(TEST_DATA_1).unwrap();
 
     let msg = InstantiateMsg {
         asset_info: AssetInfoUnchecked::cw20("token0000"),
@@ -564,7 +564,7 @@ fn can_burn() {
     let expected = SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: "token0000".to_string(),
         funds: vec![],
-        msg: to_binary(&Cw20ExecuteMsg::Transfer {
+        msg: to_json_binary(&Cw20ExecuteMsg::Transfer {
             recipient: test_data.account.clone(),
             amount: test_data.amount,
         })
@@ -594,7 +594,7 @@ fn can_burn() {
     let expected = SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: "token0000".to_string(),
         funds: vec![],
-        msg: to_binary(&Cw20ExecuteMsg::Burn {
+        msg: to_json_binary(&Cw20ExecuteMsg::Burn {
             amount: Uint128::new(9900),
         })
         .unwrap(),
@@ -615,7 +615,7 @@ fn can_burn() {
 #[test]
 fn can_burn_native() {
     let mut deps = mock_dependencies_custom(&[]);
-    let test_data: Encoded = from_slice(TEST_DATA_1).unwrap();
+    let test_data: Encoded = from_json(TEST_DATA_1).unwrap();
 
     let msg = InstantiateMsg {
         asset_info: AssetInfoUnchecked::native("uusd"),

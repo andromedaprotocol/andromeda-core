@@ -8,7 +8,7 @@ use andromeda_std::{
 };
 use cosmwasm_std::{
     testing::{mock_env, mock_info},
-    to_binary, Addr, DepsMut, Response, StdError, Uint128,
+    to_json_binary, Addr, DepsMut, Response, StdError, Uint128,
 };
 use cw20::{Cw20Coin, Cw20ReceiveMsg};
 use cw20_base::state::BALANCES;
@@ -149,7 +149,7 @@ fn test_send() {
     let msg = ExecuteMsg::Send {
         contract: "contract".into(),
         amount: 100u128.into(),
-        msg: to_binary(&"msg").unwrap(),
+        msg: to_json_binary(&"msg").unwrap(),
     };
 
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
@@ -164,7 +164,7 @@ fn test_send() {
                 Cw20ReceiveMsg {
                     sender: "sender".into(),
                     amount: 100u128.into(),
-                    msg: to_binary(&"msg").unwrap(),
+                    msg: to_json_binary(&"msg").unwrap(),
                 }
                 .into_cosmos_msg("contract")
                 .unwrap(),

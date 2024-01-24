@@ -8,7 +8,7 @@ use andromeda_std::os::aos_querier::AOSQuerier;
 use andromeda_std::os::economics::{Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 #[allow(unused_imports)]
 use cosmwasm_std::{
-    attr, coin, ensure, entry_point, from_binary, to_binary, Addr, BankMsg, Binary, CosmosMsg,
+    attr, coin, ensure, entry_point, from_json, to_json_binary, Addr, BankMsg, Binary, CosmosMsg,
     Deps, DepsMut, Empty, Env, MessageInfo, Response, Storage, SubMsg, Uint128, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
@@ -71,7 +71,7 @@ pub fn cw20_receive(
     let sender = deps.api.addr_validate(&msg.sender)?;
     let amount = msg.amount;
 
-    match from_binary::<Cw20HookMsg>(&msg.msg)? {
+    match from_json::<Cw20HookMsg>(&msg.msg)? {
         Cw20HookMsg::Deposit { address } => {
             execute_cw20_deposit(deps, info, sender, amount, address)
         }
@@ -349,7 +349,7 @@ pub(crate) fn cw20_withdraw_msg(
     SubMsg::reply_on_error(
         CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: asset.into(),
-            msg: to_binary(&exec_msg).unwrap(),
+            msg: to_json_binary(&exec_msg).unwrap(),
             funds: vec![],
         }),
         999,
@@ -432,7 +432,7 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 pub fn query(_deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::Balance { address, asset } => {
-            Ok(to_binary(&query_balance(_deps, address, asset)?)?)
+            Ok(to_json_binary(&query_balance(_deps, address, asset)?)?)
         }
     }
 }
