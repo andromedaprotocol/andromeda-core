@@ -40,6 +40,7 @@ impl MockAuction {
         MockAuction(Addr::unchecked(addr))
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn execute_start_auction(
         &self,
         app: &mut App,

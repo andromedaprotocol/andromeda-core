@@ -19,6 +19,7 @@ pub struct MockCrowdfund(Addr);
 mock_ado!(MockCrowdfund);
 
 impl MockCrowdfund {
+    #[allow(clippy::too_many_arguments)]
     pub fn instantiate(
         code_id: u64,
         sender: Addr,
