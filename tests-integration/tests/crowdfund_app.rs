@@ -220,6 +220,10 @@ fn test_crowdfund_app() {
     let minter = cw721_contract.query_minter(&mut router);
     assert_eq!(minter, crowdfund_contract.addr());
 
+    let minter = cw721_contract.query_minter(&mut router);
+
+    assert_eq!(minter, crowdfund_contract.addr());
+
     // Mint Tokens
     crowdfund_contract.execute_quick_mint(owner.clone(), &mut router, 5, owner.to_string());
 

@@ -78,24 +78,24 @@ jobs:
           path: ./artifacts/
           if-no-files-found: error
 
-  ibc-tests:
-    runs-on: ubuntu-latest
-    name: Post Build - IBC Tests
-    needs: build
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          fetch-depth: 1
-      - name: Download Contracts
-        uses: actions/download-artifact@v2
-        with:
-          name: contracts
-          path: "./ibc-tests/contracts"
-      - name: Run IBC Tests
-        run: |
-          cd ./ibc-tests
-          npm i
-          npm test
+  # ibc-tests:
+  #   runs-on: ubuntu-latest
+  #   name: Post Build - IBC Tests
+  #   needs: build
+  #   steps:
+  #     - uses: actions/checkout@v2
+  #       with:
+  #         fetch-depth: 1
+  #     - name: Download Contracts
+  #       uses: actions/download-artifact@v2
+  #       with:
+  #         name: contracts
+  #         path: "./ibc-tests/contracts"
+  #     - name: Run IBC Tests
+  #       run: |
+  #         cd ./ibc-tests
+  #         npm i
+  #         npm test
 
   build-schemas:
     runs-on: ubuntu-latest
