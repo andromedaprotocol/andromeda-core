@@ -77,8 +77,7 @@ impl MockAuction {
         token_address: String,
     ) -> AppResponse {
         let msg = mock_claim_auction(token_id, token_address);
-        app.execute_contract(sender, self.addr().clone(), &msg, &[])
-            .unwrap()
+        self.execute(app, msg, sender, &[])
     }
 
     pub fn query_auction_ids(

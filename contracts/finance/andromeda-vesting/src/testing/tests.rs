@@ -625,7 +625,7 @@ fn test_claim_batch_single_claim() {
 
     // Query created batch.
     let msg = QueryMsg::Batch { id: 1 };
-    let res: BatchResponse = from_json(&query(deps.as_ref(), env.clone(), msg).unwrap()).unwrap();
+    let res: BatchResponse = from_json(query(deps.as_ref(), env.clone(), msg).unwrap()).unwrap();
 
     let lockup_end = mock_env().block.time.seconds();
     assert_eq!(
@@ -1153,7 +1153,7 @@ fn test_claim_all() {
         limit: None,
     };
     let res: Vec<BatchResponse> =
-        from_json(&query(deps.as_ref(), env.clone(), msg).unwrap()).unwrap();
+        from_json(query(deps.as_ref(), env.clone(), msg).unwrap()).unwrap();
 
     let lockup_end = mock_env().block.time.seconds();
     assert_eq!(

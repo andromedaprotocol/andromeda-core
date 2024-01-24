@@ -210,7 +210,7 @@ fn test_execute_hook_whitelist() {
         payload: encode_binary(&"".to_string()).unwrap(),
     });
 
-    let res: Option<Response> = from_json(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
+    let res: Option<Response> = from_json(query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
     assert_eq!(None, res);
 
     let msg = QueryMsg::AndrHook(AndromedaHook::OnExecute {
@@ -249,7 +249,7 @@ fn test_execute_hook_blacklist() {
         payload: encode_binary(&"".to_string()).unwrap(),
     });
 
-    let res: Option<Response> = from_json(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
+    let res: Option<Response> = from_json(query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
     assert_eq!(None, res);
 
     let msg = QueryMsg::AndrHook(AndromedaHook::OnExecute {
@@ -276,7 +276,7 @@ fn test_andr_get_query() {
     };
 
     let res: IncludesAddressResponse =
-        from_json(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
+        from_json(query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
 
     assert_eq!(IncludesAddressResponse { included: true }, res);
 }

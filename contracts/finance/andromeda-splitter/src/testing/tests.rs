@@ -343,7 +343,7 @@ fn test_query_splitter() {
 
     let query_msg = QueryMsg::GetSplitterConfig {};
     let res = query(deps.as_ref(), env, query_msg).unwrap();
-    let val: GetSplitterConfigResponse = from_json(&res).unwrap();
+    let val: GetSplitterConfigResponse = from_json(res).unwrap();
 
     assert_eq!(val.config, splitter);
 }

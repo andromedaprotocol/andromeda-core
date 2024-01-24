@@ -45,7 +45,7 @@ fn query_latest_auction_state_helper(deps: Deps, env: Env) -> AuctionStateRespon
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
         token_address: MOCK_TOKEN_ADDR.to_owned(),
     };
-    from_json(&query(deps, env, query_msg).unwrap()).unwrap()
+    from_json(query(deps, env, query_msg).unwrap()).unwrap()
 }
 
 fn start_auction(deps: DepsMut, whitelist: Option<Vec<Addr>>, min_bid: Option<Uint128>) {
@@ -343,6 +343,7 @@ fn execute_place_bid_multiple_bids() {
         whitelist: None,
         is_cancelled: false,
         min_bid: None,
+        owner: "owner".to_string(),
     };
 
     let res = query_latest_auction_state_helper(deps.as_ref(), env.clone());

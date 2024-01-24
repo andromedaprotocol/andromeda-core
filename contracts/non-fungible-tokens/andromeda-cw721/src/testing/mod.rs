@@ -101,7 +101,7 @@ fn test_transfer_nft() {
         include_expired: None,
     };
     let query_resp = query(deps.as_ref(), env, query_msg).unwrap();
-    let resp: OwnerOfResponse = from_json(&query_resp).unwrap();
+    let resp: OwnerOfResponse = from_json(query_resp).unwrap();
     assert_eq!(resp.owner, String::from("recipient"));
 
     let agreement = TRANSFER_AGREEMENTS
@@ -172,7 +172,7 @@ fn test_agreed_transfer_nft() {
         include_expired: None,
     };
     let query_resp = query(deps.as_ref(), env, query_msg).unwrap();
-    let resp: OwnerOfResponse = from_json(&query_resp).unwrap();
+    let resp: OwnerOfResponse = from_json(query_resp).unwrap();
     assert_eq!(resp.owner, String::from("recipient"))
 }
 
@@ -222,7 +222,7 @@ fn test_agreed_transfer_nft_wildcard() {
         include_expired: None,
     };
     let query_resp = query(deps.as_ref(), env, query_msg).unwrap();
-    let resp: OwnerOfResponse = from_json(&query_resp).unwrap();
+    let resp: OwnerOfResponse = from_json(query_resp).unwrap();
     assert_eq!(resp.owner, String::from("recipient"))
 }
 
@@ -258,7 +258,7 @@ fn test_archive() {
 
     let query_msg = QueryMsg::IsArchived { token_id };
     let query_resp = query(deps.as_ref(), env, query_msg).unwrap();
-    let resp: bool = from_json(&query_resp).unwrap();
+    let resp: bool = from_json(query_resp).unwrap();
     assert!(resp)
 }
 
@@ -396,7 +396,7 @@ fn test_transfer_agreement() {
 
     let query_msg = QueryMsg::TransferAgreement { token_id };
     let query_resp = query(deps.as_ref(), env, query_msg).unwrap();
-    let resp: Option<TransferAgreement> = from_json(&query_resp).unwrap();
+    let resp: Option<TransferAgreement> = from_json(query_resp).unwrap();
     assert!(resp.is_some());
     assert_eq!(resp, Some(agreement))
 }

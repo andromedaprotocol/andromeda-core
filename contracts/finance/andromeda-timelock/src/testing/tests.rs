@@ -47,7 +47,7 @@ fn test_execute_hold_funds() {
     };
 
     let res = query(deps.as_ref(), env, query_msg).unwrap();
-    let val: GetLockedFundsResponse = from_json(&res).unwrap();
+    let val: GetLockedFundsResponse = from_json(res).unwrap();
     let expected = Escrow {
         coins: funds,
         condition: Some(condition),
@@ -91,7 +91,7 @@ fn test_execute_hold_funds_escrow_updated() {
     };
 
     let res = query(deps.as_ref(), env, query_msg).unwrap();
-    let val: GetLockedFundsResponse = from_json(&res).unwrap();
+    let val: GetLockedFundsResponse = from_json(res).unwrap();
     let expected = Escrow {
         // Coins get merged.
         coins: vec![coin(200, "uusd"), coin(100, "uluna")],

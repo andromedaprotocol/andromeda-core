@@ -77,7 +77,7 @@ impl MockCW721 {
         self.query::<QueryMsg, Addr>(app, mock_cw721_minter_query())
     }
 
-    pub fn query_owner_of(&self, app: &mut App, token_id: impl Into<String>) -> Addr {
+    pub fn query_owner_of(&self, app: &App, token_id: impl Into<String>) -> Addr {
         Addr::unchecked(
             self.query::<QueryMsg, OwnerOfResponse>(
                 app,

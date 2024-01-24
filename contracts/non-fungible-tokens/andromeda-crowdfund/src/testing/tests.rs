@@ -850,7 +850,7 @@ fn test_multiple_purchases() {
         start_after: None,
         limit: None,
     };
-    let res: Vec<String> = from_json(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
+    let res: Vec<String> = from_json(query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
     assert_eq!(
         vec![
             MOCK_TOKENS_FOR_SALE[0],
@@ -865,14 +865,14 @@ fn test_multiple_purchases() {
     let msg = QueryMsg::IsTokenAvailable {
         id: MOCK_TOKENS_FOR_SALE[0].to_owned(),
     };
-    let res: bool = from_json(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
+    let res: bool = from_json(query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
     assert!(res);
 
     // Query if another token is available
     let msg = QueryMsg::IsTokenAvailable {
         id: MOCK_TOKENS_FOR_SALE[4].to_owned(),
     };
-    let res: bool = from_json(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
+    let res: bool = from_json(query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
     assert!(!res);
 
     // Purchase 2 tokens

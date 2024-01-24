@@ -186,7 +186,7 @@ mod test {
             }) => {
                 assert_eq!(contract_addr, "test");
                 assert_eq!(funds, vec![] as Vec<Coin>);
-                match from_json(&msg).unwrap() {
+                match from_json(msg).unwrap() {
                     Cw20ExecuteMsg::Transfer { recipient, amount } => {
                         assert_eq!(recipient, "test");
                         assert_eq!(amount, cw20_coin.amount);
@@ -209,7 +209,7 @@ mod test {
             }) => {
                 assert_eq!(contract_addr, "test");
                 assert_eq!(funds, vec![] as Vec<Coin>);
-                match from_json(&msg).unwrap() {
+                match from_json(msg).unwrap() {
                     Cw20ExecuteMsg::Send {
                         contract,
                         amount,

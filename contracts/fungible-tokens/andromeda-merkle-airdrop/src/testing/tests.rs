@@ -39,7 +39,7 @@ fn proper_instantiation() {
 
     // it worked, let's query the state
     let res = query(deps.as_ref(), env.clone(), QueryMsg::Config {}).unwrap();
-    let config: ConfigResponse = from_json(&res).unwrap();
+    let config: ConfigResponse = from_json(res).unwrap();
     assert!(ADOContract::default()
         .is_contract_owner(deps.as_ref().storage, "owner0000")
         .unwrap());
@@ -49,7 +49,7 @@ fn proper_instantiation() {
     );
 
     let res = query(deps.as_ref(), env, QueryMsg::LatestStage {}).unwrap();
-    let latest_stage: LatestStageResponse = from_json(&res).unwrap();
+    let latest_stage: LatestStageResponse = from_json(res).unwrap();
     assert_eq!(0u8, latest_stage.latest_stage);
 }
 
@@ -93,7 +93,7 @@ fn register_merkle_root() {
     );
 
     let res = query(deps.as_ref(), env.clone(), QueryMsg::LatestStage {}).unwrap();
-    let latest_stage: LatestStageResponse = from_json(&res).unwrap();
+    let latest_stage: LatestStageResponse = from_json(res).unwrap();
     assert_eq!(1u8, latest_stage.latest_stage);
 
     let res = query(
@@ -104,7 +104,7 @@ fn register_merkle_root() {
         },
     )
     .unwrap();
-    let merkle_root: MerkleRootResponse = from_json(&res).unwrap();
+    let merkle_root: MerkleRootResponse = from_json(res).unwrap();
     assert_eq!(
         "634de21cde1044f41d90373733b0f0fb1c1c71f9652b905cdf159e73c4cf0d37".to_string(),
         merkle_root.merkle_root

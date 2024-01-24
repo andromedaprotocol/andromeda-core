@@ -877,7 +877,7 @@ fn test_claim_rewards() {
         limit: None,
     };
     let res: Vec<StakerResponse> =
-        from_json(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
+        from_json(query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
 
     assert_eq!(
         vec![
@@ -986,7 +986,7 @@ fn test_claim_rewards() {
         limit: None,
     };
     let res: Vec<StakerResponse> =
-        from_json(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
+        from_json(query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
 
     assert_eq!(
         vec![
@@ -1253,7 +1253,7 @@ fn test_stake_rewards_update() {
     let mut env = mock_env();
     env.block.time = env.block.time.plus_seconds(50);
 
-    let res: StakerResponse = from_json(&query(deps.as_ref(), env.clone(), msg).unwrap()).unwrap();
+    let res: StakerResponse = from_json(query(deps.as_ref(), env.clone(), msg).unwrap()).unwrap();
 
     assert_eq!(
         StakerResponse {

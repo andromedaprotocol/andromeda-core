@@ -20,7 +20,7 @@ fn mock_app() -> App {
             .init_balance(
                 storage,
                 &Addr::unchecked("owner"),
-                [coin(999999, "uandr")].to_vec(),
+                [coin(100, "uandr")].to_vec(),
             )
             .unwrap();
         router
@@ -54,7 +54,6 @@ fn test_auction_app() {
 
     let mut router = mock_app();
     let andr = mock_andromeda(&mut router, owner.clone());
-
     // Store contract codes
     andr.store_ado(&mut router, mock_andromeda_cw721(), "cw721");
     andr.store_ado(&mut router, mock_andromeda_auction(), "auction");
@@ -127,6 +126,7 @@ fn test_auction_app() {
     let auction_state = auction.query_auction_state(&mut router, *auction_id);
 
     assert_eq!(auction_state.coin_denom, "uandr".to_string());
+    assert_eq!(auction_state.owner, owner.to_string());
 
     // Place Bid One
     auction.execute_place_bid(
@@ -167,11 +167,6 @@ fn test_auction_app() {
         time: Timestamp::from_nanos((start_time + 1001) * MILLISECONDS_TO_NANOSECONDS_RATIO),
         chain_id: router.block_info().chain_id,
     });
-    let seller_pre_balance = router
-        .wrap()
-        .query_balance(owner, "uandr".to_string())
-        .unwrap();
-
     auction.execute_claim_auction(
         &mut router,
         buyer_two.clone(),
@@ -180,18 +175,8 @@ fn test_auction_app() {
     );
 
     // Check Final State
-    let owner = cw721.query_owner_of(&mut router, "0");
-    assert_eq!(owner, buyer_two);
-
-    let seller_post_balance = router
-        .wrap()
-        .query_balance(owner, "uandr".to_string())
-        .unwrap();
-    assert_eq!(
-        seller_pre_balance.amount,
-        seller_post_balance
-            .amount
-            .checked_sub(Uint128::from(100u128))
-            .unwrap()
-    );
+    let token_owner = cw721.query_owner_of(&mut router, "0");
+    assert_eq!(token_owner, buyer_two);
+    let owner_balance = router.wrap().query_balance(owner, "uandr").unwrap();
+    assert_eq!(owner_balance.amount, Uint128::from(200u128));
 }

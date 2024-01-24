@@ -810,7 +810,7 @@ fn test_query_sale() {
         asset: exchange_asset.clone(),
     };
     let not_found_response: SaleResponse =
-        from_json(&query(deps.as_ref(), env.clone(), msg.clone()).unwrap()).unwrap();
+        from_json(query(deps.as_ref(), env.clone(), msg.clone()).unwrap()).unwrap();
 
     assert!(not_found_response.sale.is_none());
 
@@ -824,7 +824,7 @@ fn test_query_sale() {
     SALE.save(deps.as_mut().storage, &exchange_asset.to_string(), &sale)
         .unwrap();
 
-    let found_response: SaleResponse = from_json(&query(deps.as_ref(), env, msg).unwrap()).unwrap();
+    let found_response: SaleResponse = from_json(query(deps.as_ref(), env, msg).unwrap()).unwrap();
 
     assert_eq!(found_response.sale, Some(sale));
 }
@@ -837,7 +837,7 @@ fn test_query_token_address() {
     init(deps.as_mut()).unwrap();
 
     let msg = QueryMsg::TokenAddress {};
-    let resp: TokenAddressResponse = from_json(&query(deps.as_ref(), env, msg).unwrap()).unwrap();
+    let resp: TokenAddressResponse = from_json(query(deps.as_ref(), env, msg).unwrap()).unwrap();
 
     assert_eq!(resp.address, MOCK_TOKEN_ADDRESS.to_string())
 }
@@ -863,7 +863,7 @@ fn test_andr_query() {
         asset: exchange_asset,
     };
     let query_msg_response: SaleResponse =
-        from_json(&query(deps.as_ref(), env, msg).unwrap()).unwrap();
+        from_json(query(deps.as_ref(), env, msg).unwrap()).unwrap();
 
     assert_eq!(query_msg_response.sale, Some(sale));
 
@@ -962,7 +962,7 @@ fn test_query_sale_assets() {
         start_after: None,
     };
     let resp: SaleAssetsResponse =
-        from_json(&query(deps.as_ref(), env, query_msg).unwrap()).unwrap();
+        from_json(query(deps.as_ref(), env, query_msg).unwrap()).unwrap();
 
     assert_eq!(resp.assets.len(), 2);
     assert_eq!(resp.assets[0], "cw20:testaddress");

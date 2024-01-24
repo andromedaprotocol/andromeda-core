@@ -59,7 +59,7 @@ fn test_instantiate() {
 
     let msg = QueryMsg::Config {};
     let config_res: ConfigResponse =
-        from_json(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
+        from_json(query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
 
     assert_eq!(
         ConfigResponse {
@@ -76,7 +76,7 @@ fn test_instantiate() {
 
     let msg = QueryMsg::State {};
     let state_res: StateResponse =
-        from_json(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
+        from_json(query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
 
     assert_eq!(
         StateResponse {
@@ -891,7 +891,7 @@ fn test_claim_rewards() {
         address: "user1".to_string(),
     };
     let user_res: UserInfoResponse =
-        from_json(&query(deps.as_ref(), env.clone(), msg).unwrap()).unwrap();
+        from_json(query(deps.as_ref(), env.clone(), msg).unwrap()).unwrap();
 
     assert_eq!(
         UserInfoResponse {
@@ -929,7 +929,7 @@ fn test_claim_rewards() {
         address: "user2".to_string(),
     };
     let user_res: UserInfoResponse =
-        from_json(&query(deps.as_ref(), env.clone(), msg).unwrap()).unwrap();
+        from_json(query(deps.as_ref(), env.clone(), msg).unwrap()).unwrap();
 
     assert_eq!(
         UserInfoResponse {
@@ -990,7 +990,7 @@ fn test_query_withdrawable_percent() {
     init(deps.as_mut()).unwrap();
 
     let msg = QueryMsg::WithdrawalPercentAllowed { timestamp: None };
-    let res: Decimal = from_json(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
+    let res: Decimal = from_json(query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
 
     assert_eq!(Decimal::one(), res);
 
@@ -998,7 +998,7 @@ fn test_query_withdrawable_percent() {
     let msg = QueryMsg::WithdrawalPercentAllowed {
         timestamp: Some(timestamp.seconds()),
     };
-    let res: Decimal = from_json(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
+    let res: Decimal = from_json(query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
 
     assert_eq!(Decimal::percent(50), res);
 
@@ -1009,7 +1009,7 @@ fn test_query_withdrawable_percent() {
     let msg = QueryMsg::WithdrawalPercentAllowed {
         timestamp: Some(timestamp.seconds()),
     };
-    let res: Decimal = from_json(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
+    let res: Decimal = from_json(query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
 
     assert_eq!(Decimal::zero(), res);
 }

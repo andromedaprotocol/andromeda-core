@@ -812,7 +812,7 @@ fn test_query_local_balance() {
     };
 
     let resp = query(deps.as_ref(), env.clone(), single_query).unwrap();
-    let balance: Vec<Coin> = from_json(&resp).unwrap();
+    let balance: Vec<Coin> = from_json(resp).unwrap();
     assert_eq!(1, balance.len());
     assert_eq!(balance_one, balance[0]);
 
@@ -823,7 +823,7 @@ fn test_query_local_balance() {
     };
 
     let resp = query(deps.as_ref(), env, multi_query).unwrap();
-    let balance: Vec<Coin> = from_json(&resp).unwrap();
+    let balance: Vec<Coin> = from_json(resp).unwrap();
     assert_eq!(2, balance.len());
     assert_eq!(balance_one, balance[0]);
     assert_eq!(balance_two, balance[1]);
@@ -850,7 +850,7 @@ fn test_query_strategy_balance() {
     };
 
     let resp = query(deps.as_ref(), env, single_query).unwrap();
-    let balance: PositionResponse = from_json(&resp).unwrap();
+    let balance: PositionResponse = from_json(resp).unwrap();
     assert_eq!(Uint128::from(10u128), balance.aust_amount);
     assert_eq!(
         "depositor".to_string(),
@@ -880,7 +880,7 @@ fn test_query_strategy_address() {
     };
 
     let resp = query(deps.as_ref(), env, single_query).unwrap();
-    let addr_resp: StrategyAddressResponse = from_json(&resp).unwrap();
+    let addr_resp: StrategyAddressResponse = from_json(resp).unwrap();
     assert_eq!(
         AndrAddr::from_string(MOCK_ANCHOR_CONTRACT),
         addr_resp.address

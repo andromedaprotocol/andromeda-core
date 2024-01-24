@@ -453,7 +453,7 @@ fn test_get_username() {
     };
 
     let res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
-    let val: String = from_json(&res).unwrap();
+    let val: String = from_json(res).unwrap();
 
     assert_eq!(val, username);
 
@@ -463,7 +463,7 @@ fn test_get_username() {
     };
 
     let res = query(deps.as_ref(), env, query_msg).unwrap();
-    let val: String = from_json(&res).unwrap();
+    let val: String = from_json(res).unwrap();
 
     assert_eq!(val, unregistered_addr);
 }
@@ -484,7 +484,7 @@ fn test_get_library() {
     };
 
     let res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
-    let val: String = from_json(&res).unwrap();
+    let val: String = from_json(res).unwrap();
 
     assert_eq!(val, lib_name);
 
@@ -494,7 +494,7 @@ fn test_get_library() {
     };
 
     let res = query(deps.as_ref(), env, query_msg).unwrap();
-    let val: String = from_json(&res).unwrap();
+    let val: String = from_json(res).unwrap();
 
     assert_eq!(val, unregistered_addr);
 }
@@ -572,7 +572,7 @@ fn test_get_subdir() {
         path: AndrAddr::from_string(format!("/home/{username}")),
     };
     let res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
-    let val: Vec<PathInfo> = from_json(&res).unwrap();
+    let val: Vec<PathInfo> = from_json(res).unwrap();
     assert_eq!(val, root_paths);
 
     let subdir = &root_paths[0].name;
@@ -580,7 +580,7 @@ fn test_get_subdir() {
         path: AndrAddr::from_string(format!("/home/{username}/{subdir}")),
     };
     let res = query(deps.as_ref(), env, query_msg).unwrap();
-    let val: Vec<PathInfo> = from_json(&res).unwrap();
+    let val: Vec<PathInfo> = from_json(res).unwrap();
     assert_eq!(val, sub_paths);
 }
 
@@ -663,6 +663,6 @@ fn test_get_paths() {
         addr: sub_paths[0].address.clone(),
     };
     let res = query(deps.as_ref(), env, query_msg).unwrap();
-    let val: Vec<String> = from_json(&res).unwrap();
+    let val: Vec<String> = from_json(res).unwrap();
     assert_eq!(val.len(), 2);
 }

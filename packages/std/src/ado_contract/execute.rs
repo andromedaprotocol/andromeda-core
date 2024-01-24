@@ -202,7 +202,7 @@ impl<'a> ADOContract<'a> {
         let ctx = ctx.with_ctx(packet.clone());
         let msg_opt = packet.messages.pop();
         if let Some(msg_opt) = msg_opt {
-            let msg: E = from_json(&msg_opt.message)?;
+            let msg: E = from_json(msg_opt.message)?;
             let response = handler(ctx, msg)?;
             Ok(response)
         } else {
