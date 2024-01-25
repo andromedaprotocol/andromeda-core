@@ -1,4 +1,4 @@
-#![cfg(all(not(target_arch = "wasm32"), feature = "testing"))]
+#![cfg(all(not(target_arch = "wasm32")))]
 
 use andromeda_adodb::mock::mock_andromeda_adodb;
 use andromeda_economics::mock::mock_andromeda_economics;

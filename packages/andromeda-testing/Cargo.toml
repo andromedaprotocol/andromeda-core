@@ -6,7 +6,6 @@ edition = "2018"
 
 [features]
 backtraces = ["cosmwasm-std/backtraces"]
-testing = ["cw-multi-test"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [lib]
@@ -39,5 +38,5 @@ andromeda-std = { workspace = true }
 serde = { workspace = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-cw-multi-test = { workspace = true, optional = true }
+cw-multi-test = { workspace = true }
 anyhow = "1.0.79"
