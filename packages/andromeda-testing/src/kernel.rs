@@ -41,9 +41,8 @@ impl MockKernel {
         value: impl Into<String>,
     ) -> ExecuteResult {
         let msg = mock_upsert_key_address(key, value);
-        let res = self.execute(app, &msg, sender, &[]);
 
-        res
+        self.execute(app, &msg, sender, &[])
     }
 
     pub fn execute_create(
@@ -56,9 +55,8 @@ impl MockKernel {
         chain: Option<String>,
     ) -> ExecuteResult {
         let msg = mock_create(ado_type, msg, owner, chain);
-        let res = self.execute(app, &msg, sender, &[]);
 
-        res
+        self.execute(app, &msg, sender, &[])
     }
 
     pub fn execute_send(
@@ -71,15 +69,13 @@ impl MockKernel {
         config: Option<AMPMsgConfig>,
     ) -> ExecuteResult {
         let msg = mock_send(recipient, msg, funds.clone(), config);
-        let res = self.execute(app, &msg, sender, &funds);
 
-        res
+        self.execute(app, &msg, sender, &funds)
     }
 
     pub fn query_key_address(&self, app: &App, key: impl Into<String>) -> String {
         let msg = mock_get_key_address(key);
-        let res = self.query(app, &msg);
 
-        res
+        self.query(app, msg)
     }
 }

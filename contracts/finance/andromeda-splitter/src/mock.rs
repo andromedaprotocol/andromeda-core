@@ -20,23 +20,15 @@ impl MockSplitter {
         owner: Option<String>,
     ) -> Self {
         let msg = mock_splitter_instantiate_msg(recipients, kernel_address, lock_time, owner);
-        let res = app.instantiate_contract(
-            code_id,
-            sender.clone(),
-            &msg,
-            &[],
-            "Andromeda Splitter",
-            None,
-        );
+        let res = app.instantiate_contract(code_id, sender, &msg, &[], "Andromeda Splitter", None);
 
         Self(res.unwrap())
     }
 
     pub fn execute_send(&self, app: &mut App, sender: Addr, funds: &[Coin]) -> ExecuteResult {
         let msg = mock_splitter_send_msg();
-        let res = self.execute(app, &msg, sender, funds);
 
-        res
+        self.execute(app, &msg, sender, funds)
     }
 }
 

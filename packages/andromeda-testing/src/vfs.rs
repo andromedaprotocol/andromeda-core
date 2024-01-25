@@ -35,9 +35,8 @@ impl MockVFS {
         username: String,
     ) -> ExecuteResult {
         let msg = mock_register_user(username);
-        let res = self.execute(app, &msg, sender, &[]);
 
-        res
+        self.execute(app, &msg, sender, &[])
     }
 
     pub fn execute_add_path(
@@ -48,14 +47,13 @@ impl MockVFS {
         address: Addr,
     ) -> ExecuteResult {
         let msg = mock_add_path(name, address);
-        let res = self.execute(app, &msg, sender, &[]);
 
-        res
+        self.execute(app, &msg, sender, &[])
     }
 
     pub fn query_resolve_path(&self, app: &mut App, path: String) -> String {
         let msg = mock_resolve_path_query(path);
-        let res: String = self.query(app, &msg);
+        let res: String = self.query(app, msg);
 
         res
     }

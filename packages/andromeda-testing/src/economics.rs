@@ -37,9 +37,8 @@ impl MockEconomics {
         funds: &[Coin],
     ) -> ExecuteResult {
         let msg = mock_deposit(address);
-        let res = self.execute(app, &msg, sender, funds);
 
-        res
+        self.execute(app, &msg, sender, funds)
     }
 
     pub fn execute_withdraw(
@@ -50,9 +49,8 @@ impl MockEconomics {
         amount: Option<Uint128>,
     ) -> ExecuteResult {
         let msg = mock_withdraw(amount, asset.into());
-        let res = self.execute(app, &msg, sender, &[]);
 
-        res
+        self.execute(app, &msg, sender, &[])
     }
 
     pub fn query_balance(
@@ -62,7 +60,7 @@ impl MockEconomics {
         asset: impl Into<String>,
     ) -> Uint128 {
         let msg = mock_balance(address, asset);
-        let res: Uint128 = self.query(app, &msg);
+        let res: Uint128 = self.query(app, msg);
 
         res
     }

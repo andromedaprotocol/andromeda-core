@@ -85,7 +85,7 @@ fn kernel() {
         .kernel
         .execute_send(
             &mut router,
-            owner.clone(),
+            owner,
             splitter.addr(),
             mock_splitter_send_msg(),
             vec![coin(100, "uandr")],

@@ -28,6 +28,7 @@ impl MockADODB {
         Self(res.unwrap())
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn execute_publish(
         &self,
         app: &mut App,
@@ -39,14 +40,13 @@ impl MockADODB {
         action_fees: Option<Vec<ActionFee>>,
     ) -> ExecuteResult {
         let msg = mock_publish(code_id, ado_type, version, publisher, action_fees);
-        let res = self.execute(app, &msg, sender, &[]);
 
-        res
+        self.execute(app, &msg, sender, &[])
     }
 
     pub fn query_code_id(&self, app: &mut App, key: impl Into<String>) -> u64 {
         let msg = mock_get_code_id_msg(key.into());
-        let res: u64 = self.query(app, &msg);
+        let res: u64 = self.query(app, msg);
 
         res
     }
