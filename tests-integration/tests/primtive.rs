@@ -6,7 +6,7 @@ use andromeda_primitive::mock::{
     mock_andromeda_primitive, mock_primitive_get_value, mock_primitive_instantiate_msg,
     mock_store_value_msg,
 };
-use andromeda_testing::mock::MockAndromeda;
+use andromeda_testing::{MockAndromeda, MockContract};
 use cosmwasm_schema::schemars::Map;
 use cosmwasm_std::{coin, Addr};
 use cw_multi_test::{App, Executor};
@@ -49,7 +49,7 @@ fn test_primtive() {
     andr.store_code_id(&mut router, "primitve", primtive_code_id);
 
     let primitive_init_msg = mock_primitive_instantiate_msg(
-        andr.kernel_address.to_string(),
+        andr.kernel.addr().to_string(),
         None,
         andromeda_data_storage::primitive::PrimitiveRestriction::Private,
     );

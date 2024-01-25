@@ -3,7 +3,7 @@ use andromeda_app_contract::mock::{
     mock_andromeda_app, mock_app_instantiate_msg, mock_get_address_msg,
 };
 
-use andromeda_testing::mock::MockAndromeda;
+use andromeda_testing::{MockAndromeda, MockContract};
 
 use andromeda_std::amp::Recipient;
 use cosmwasm_std::{coin, Addr, Decimal, Uint128};
@@ -57,7 +57,7 @@ fn test_splitter() {
     ];
 
     let splitter_init_msg =
-        mock_splitter_instantiate_msg(splitter_recipients, andr.kernel_address.clone(), None, None);
+        mock_splitter_instantiate_msg(splitter_recipients, andr.kernel.addr().clone(), None, None);
     let splitter_app_component = AppComponent {
         name: "1".to_string(),
         component_type: ComponentType::new(splitter_init_msg),
@@ -69,7 +69,7 @@ fn test_splitter() {
     let app_init_msg = mock_app_instantiate_msg(
         "app".to_string(),
         app_components,
-        andr.kernel_address.clone(),
+        andr.kernel.addr().clone(),
         None,
     );
 

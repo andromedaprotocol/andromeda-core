@@ -65,7 +65,7 @@ fn test_auction_app() {
         "TT".to_string(),
         owner.to_string(),
         None,
-        andr.kernel_address.to_string(),
+        andr.kernel.addr().to_string(),
         None,
     );
     let cw721_component = AppComponent::new(
@@ -74,8 +74,7 @@ fn test_auction_app() {
         to_json_binary(&cw721_init_msg).unwrap(),
     );
 
-    let auction_init_msg =
-        mock_auction_instantiate_msg(None, andr.kernel_address.to_string(), None);
+    let auction_init_msg = mock_auction_instantiate_msg(None, andr.kernel.addr().to_string(), None);
     let auction_component = AppComponent::new(
         "2".to_string(),
         "auction".to_string(),
@@ -90,7 +89,7 @@ fn test_auction_app() {
         &mut router,
         "Auction App",
         app_components,
-        andr.kernel_address,
+        andr.kernel.addr(),
         Some(owner.to_string()),
     );
 

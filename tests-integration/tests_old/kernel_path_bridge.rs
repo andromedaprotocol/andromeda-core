@@ -60,7 +60,7 @@ fn kernel() {
 
     // Generate Counter Contract
 
-    let counter_init_msg = mock_counter_instantiate_msg(andr.kernel_address.to_string());
+    let counter_init_msg = mock_counter_instantiate_msg(andr.kernel.addr().to_string());
     let counter_app_component = AppComponent::new(
         "counter",
         "counter",
@@ -72,7 +72,7 @@ fn kernel() {
     let app_init_msg = mock_app_instantiate_msg(
         "app1",
         app_components.clone(),
-        andr.kernel_address.to_string(),
+        andr.kernel.addr().to_string(),
     );
 
     let app_addr = router
@@ -100,7 +100,7 @@ fn kernel() {
     let vfs_address_query = mock_get_key_address("vfs");
     let vfs_address: Addr = router
         .wrap()
-        .query_wasm_smart(andr.kernel_address.clone(), &vfs_address_query)
+        .query_wasm_smart(andr.kernel.addr().clone(), &vfs_address_query)
         .unwrap();
 
     let query = mock_resolve_path_query("/am/app1/.hidden_vault");
@@ -125,7 +125,7 @@ fn kernel() {
     router
         .execute_contract(
             owner.clone(),
-            andr.kernel_address.clone(),
+            andr.kernel.addr().clone(),
             &upsert_msg,
             &coins(10, "uandr"),
         )
@@ -155,7 +155,7 @@ fn kernel() {
 
     // // So far the kernel is successfully sending a packet to the relevant message bridge using the parser
     // let res = router
-    //     .execute_contract(owner, andr.kernel_address, &send_msg, &coins(100, "uandr"))
+    //     .execute_contract(owner, andr.kernel.addr(), &send_msg, &coins(100, "uandr"))
     //     .unwrap();
     // println!("{:?}", res)
 

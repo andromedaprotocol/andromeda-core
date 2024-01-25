@@ -435,6 +435,7 @@ dependencies = [
  "andromeda-app",
  "andromeda-finance",
  "andromeda-std",
+ "andromeda-testing",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-multi-test",

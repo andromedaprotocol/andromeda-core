@@ -95,7 +95,7 @@ fn test_crowdfund_app() {
         description: Some("Some test rate".to_string()),
     }]
     .to_vec();
-    let rates_init_msg = mock_rates_instantiate_msg(rates, andr.kernel_address.to_string(), None);
+    let rates_init_msg = mock_rates_instantiate_msg(rates, andr.kernel.addr().to_string(), None);
     let rates_addr = router
         .instantiate_contract(
             rates_code_id,
@@ -117,7 +117,7 @@ fn test_crowdfund_app() {
                 AndrAddr::from_string("./2".to_string()),
                 false,
                 Some(modules),
-                andr.kernel_address.to_string(),
+                andr.kernel.addr().to_string(),
                 None,
             ))
             .unwrap(),
@@ -131,7 +131,7 @@ fn test_crowdfund_app() {
             "TT".to_string(),
             "./1", // Crowdfund must be minter
             None,
-            andr.kernel_address.to_string(),
+            andr.kernel.addr().to_string(),
             None,
         )),
     };
@@ -139,7 +139,7 @@ fn test_crowdfund_app() {
         name: "3".to_string(),
         ado_type: "vault".to_string(),
         component_type: ComponentType::new(mock_vault_instantiate_msg(
-            andr.kernel_address.to_string(),
+            andr.kernel.addr().to_string(),
             None,
         )),
     };
@@ -147,7 +147,7 @@ fn test_crowdfund_app() {
         name: "4".to_string(),
         ado_type: "vault".to_string(),
         component_type: ComponentType::new(mock_vault_instantiate_msg(
-            andr.kernel_address.to_string(),
+            andr.kernel.addr().to_string(),
             None,
         )),
     };
@@ -180,7 +180,7 @@ fn test_crowdfund_app() {
     ];
 
     let splitter_init_msg =
-        mock_splitter_instantiate_msg(splitter_recipients, andr.kernel_address.clone(), None, None);
+        mock_splitter_instantiate_msg(splitter_recipients, andr.kernel.addr().clone(), None, None);
     let splitter_app_component = AppComponent {
         name: "5".to_string(),
         component_type: ComponentType::new(&splitter_init_msg),
@@ -201,7 +201,7 @@ fn test_crowdfund_app() {
         &mut router,
         "app",
         app_components.clone(),
-        andr.kernel_address.clone(),
+        andr.kernel.addr().clone(),
         Some(owner.to_string()),
     );
 

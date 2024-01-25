@@ -22,7 +22,7 @@ use andromeda_rates::mock::{mock_andromeda_rates, mock_rates_instantiate_msg};
 use andromeda_std::ado_base::modules::Module;
 use andromeda_std::amp::messages::{AMPMsg, AMPPkt};
 use andromeda_std::amp::Recipient;
-use andromeda_testing::mock::MockAndromeda;
+use andromeda_testing::{MockAndromeda, MockContract};
 use cosmwasm_std::{coin, to_json_binary, Addr, Uint128};
 use cw721::OwnerOfResponse;
 use cw_multi_test::{App, Executor};
@@ -80,7 +80,7 @@ fn test_marketplace_app() {
         "TT".to_string(),
         owner.to_string(),
         None,
-        andr.kernel_address.to_string(),
+        andr.kernel.addr().to_string(),
         None,
     );
     let cw721_component = AppComponent::new(
@@ -95,11 +95,11 @@ fn test_marketplace_app() {
         description: None,
         recipients: vec![Recipient::from_string(rates_receiver.to_string())],
     }];
-    let rates_init_msg = mock_rates_instantiate_msg(rates, andr.kernel_address.to_string(), None);
+    let rates_init_msg = mock_rates_instantiate_msg(rates, andr.kernel.addr().to_string(), None);
     let rates_component = AppComponent::new("2", "rates", to_json_binary(&rates_init_msg).unwrap());
 
     let address_list_init_msg =
-        mock_address_list_instantiate_msg(true, andr.kernel_address.to_string(), None);
+        mock_address_list_instantiate_msg(true, andr.kernel.addr().to_string(), None);
     let address_list_component = AppComponent::new(
         "3",
         "address-list",
@@ -115,7 +115,7 @@ fn test_marketplace_app() {
         ),
     ];
     let marketplace_init_msg =
-        mock_marketplace_instantiate_msg(andr.kernel_address.to_string(), Some(modules), None);
+        mock_marketplace_instantiate_msg(andr.kernel.addr().to_string(), Some(modules), None);
     let marketplace_component = AppComponent::new(
         "4".to_string(),
         "marketplace".to_string(),
@@ -132,7 +132,7 @@ fn test_marketplace_app() {
     let app_init_msg = mock_app_instantiate_msg(
         "Auction App".to_string(),
         app_components.clone(),
-        andr.kernel_address.to_string(),
+        andr.kernel.addr().to_string(),
         None,
     );
 
@@ -237,11 +237,7 @@ fn test_marketplace_app() {
         Some(vec![coin(200, "uandr")]),
     );
 
-    let packet = AMPPkt::new(
-        buyer.clone(),
-        andr.kernel_address.to_string(),
-        vec![amp_msg],
-    );
+    let packet = AMPPkt::new(buyer.clone(), andr.kernel.addr().to_string(), vec![amp_msg]);
     let receive_packet_msg = mock_receive_packet(packet);
     router
         .execute_contract(
