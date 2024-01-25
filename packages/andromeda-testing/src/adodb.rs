@@ -1,11 +1,11 @@
 use crate::{mock_ado, mock_contract::ExecuteResult, MockADO, MockContract};
 use andromeda_adodb::mock::*;
-use andromeda_std::os::adodb::ActionFee;
+use andromeda_std::os::adodb::{ActionFee, ExecuteMsg, QueryMsg};
 use cosmwasm_std::Addr;
 use cw_multi_test::{App, Executor};
 
 pub struct MockADODB(Addr);
-mock_ado!(MockADODB);
+mock_ado!(MockADODB, ExecuteMsg, QueryMsg);
 
 impl MockADODB {
     pub fn instantiate(

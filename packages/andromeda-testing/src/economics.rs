@@ -1,12 +1,15 @@
 use andromeda_economics::mock::*;
-use andromeda_std::amp::AndrAddr;
+use andromeda_std::{
+    amp::AndrAddr,
+    os::economics::{ExecuteMsg, QueryMsg},
+};
 use cosmwasm_std::{Addr, Coin, Uint128};
 use cw_multi_test::{App, Executor};
 
 use crate::{mock_ado, mock_contract::ExecuteResult, MockADO, MockContract};
 
 pub struct MockEconomics(Addr);
-mock_ado!(MockEconomics);
+mock_ado!(MockEconomics, ExecuteMsg, QueryMsg);
 
 impl MockEconomics {
     pub fn instantiate(

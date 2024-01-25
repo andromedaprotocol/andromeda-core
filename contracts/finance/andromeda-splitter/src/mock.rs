@@ -1,13 +1,13 @@
 #![cfg(all(not(target_arch = "wasm32"), feature = "testing"))]
 
 use crate::contract::{execute, instantiate, query, reply};
-use andromeda_finance::splitter::{AddressPercent, ExecuteMsg, InstantiateMsg};
+use andromeda_finance::splitter::{AddressPercent, ExecuteMsg, InstantiateMsg, QueryMsg};
 use andromeda_testing::{mock_ado, mock_contract::ExecuteResult, MockADO, MockContract};
 use cosmwasm_std::{Addr, Coin, Empty};
 use cw_multi_test::{App, Contract, ContractWrapper, Executor};
 
 pub struct MockSplitter(Addr);
-mock_ado!(MockSplitter);
+mock_ado!(MockSplitter, ExecuteMsg, QueryMsg);
 
 impl MockSplitter {
     pub fn instantiate(

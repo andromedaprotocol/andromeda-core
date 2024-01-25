@@ -9,59 +9,41 @@ pub use anyhow::Result as AnyResult;
 
 pub type ExecuteResult = AnyResult<AppResponse>;
 
-pub struct BaseMockContract(Addr);
-
-impl BaseMockContract {
-    pub fn addr(&self) -> &Addr {
-        &self.0
-    }
-}
-
-impl MockContract for BaseMockContract {
-    fn addr(&self) -> &Addr {
-        &self.0
-    }
-}
-
-impl From<String> for BaseMockContract {
-    fn from(addr: String) -> Self {
-        Self(Addr::unchecked(addr))
-    }
-}
-
-impl MockADO for BaseMockContract {}
-
-pub trait MockContract {
+pub trait MockContract<E: Serialize + fmt::Debug, Q: Serialize + fmt::Debug> {
     fn addr(&self) -> &Addr;
 
-    fn execute<M: Serialize + fmt::Debug>(
+    fn execute(
         &self,
         app: &mut App,
-        msg: M,
+        msg: &E,
         sender: Addr,
         funds: &[Coin],
     ) -> AnyResult<AppResponse> {
         app.execute_contract(sender, self.addr().clone(), &msg, funds)
     }
 
-    fn query<M: Serialize + fmt::Debug, T: DeserializeOwned>(&self, app: &App, msg: M) -> T {
+    fn query<T: DeserializeOwned>(&self, app: &App, msg: Q) -> T {
         app.wrap()
             .query_wasm_smart::<T>(self.addr().clone(), &msg)
             .unwrap()
     }
 }
 
-pub trait MockADO: MockContract {
+pub trait MockADO<E: Serialize + fmt::Debug, Q: Serialize + fmt::Debug>:
+    MockContract<E, Q>
+{
     fn query_owner(&self, app: &App) -> String {
-        self.query::<AndromedaQuery, ContractOwnerResponse>(app, AndromedaQuery::Owner {})
+        app.wrap()
+            .query_wasm_smart::<ContractOwnerResponse>(self.addr(), &AndromedaQuery::Owner {})
+            .unwrap()
             .owner
     }
 }
 
 #[macro_export]
 macro_rules! mock_ado {
-    ($t:ident) => {
-        impl MockContract for $t {
+    ($t:ident, $e:ident, $q:ident) => {
+        impl MockContract<$e, $q> for $t {
             fn addr(&self) -> &Addr {
                 &self.0
             }
@@ -73,6 +55,6 @@ macro_rules! mock_ado {
             }
         }
 
-        impl MockADO for $t {}
+        impl MockADO<$e, $q> for $t {}
     };
 }

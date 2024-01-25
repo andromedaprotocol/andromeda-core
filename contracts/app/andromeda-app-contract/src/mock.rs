@@ -9,7 +9,7 @@ use cosmwasm_std::{Addr, Empty};
 use cw_multi_test::{App, AppResponse, Contract, ContractWrapper, Executor};
 
 pub struct MockApp(Addr);
-mock_ado!(MockApp);
+mock_ado!(MockApp, ExecuteMsg, QueryMsg);
 
 impl MockApp {
     pub fn instantiate(
@@ -41,15 +41,15 @@ impl MockApp {
         sender: Addr,
         component_name: Option<String>,
     ) -> AnyResult<AppResponse> {
-        self.execute(app, mock_claim_ownership_msg(component_name), sender, &[])
+        self.execute(app, &mock_claim_ownership_msg(component_name), sender, &[])
     }
 
     pub fn query_components(&self, app: &mut App) -> Vec<AppComponent> {
-        self.query::<QueryMsg, Vec<AppComponent>>(app, mock_get_components_msg())
+        self.query::<Vec<AppComponent>>(app, mock_get_components_msg())
     }
 
     pub fn query_component_addr(&self, app: &mut App, name: impl Into<String>) -> Addr {
-        self.query::<QueryMsg, Addr>(app, mock_get_address_msg(name.into()))
+        self.query::<Addr>(app, mock_get_address_msg(name.into()))
     }
 
     pub fn query_ado_by_component_name<C: From<Addr>>(

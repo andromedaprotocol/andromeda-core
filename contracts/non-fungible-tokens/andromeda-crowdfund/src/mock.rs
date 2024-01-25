@@ -2,7 +2,7 @@
 
 use crate::contract::{execute, instantiate, query, reply};
 use andromeda_non_fungible_tokens::{
-    crowdfund::{CrowdfundMintMsg, ExecuteMsg, InstantiateMsg},
+    crowdfund::{CrowdfundMintMsg, ExecuteMsg, InstantiateMsg, QueryMsg},
     cw721::TokenExtension,
 };
 use andromeda_std::amp::Recipient;
@@ -16,7 +16,7 @@ use cw_multi_test::{App, Contract, ContractWrapper, Executor};
 use cw_utils::Expiration;
 
 pub struct MockCrowdfund(Addr);
-mock_ado!(MockCrowdfund);
+mock_ado!(MockCrowdfund, ExecuteMsg, QueryMsg);
 
 impl MockCrowdfund {
     #[allow(clippy::too_many_arguments)]
@@ -68,7 +68,7 @@ impl MockCrowdfund {
             max_amount_per_wallet,
             recipient,
         );
-        self.execute(app, msg, sender, &[])
+        self.execute(app, &msg, sender, &[])
     }
 
     pub fn execute_end_sale(
@@ -78,7 +78,7 @@ impl MockCrowdfund {
         limit: Option<u32>,
     ) -> ExecuteResult {
         let msg = mock_end_crowdfund_msg(limit);
-        self.execute(app, msg, sender, &[])
+        self.execute(app, &msg, sender, &[])
     }
 
     pub fn execute_mint(
@@ -90,8 +90,10 @@ impl MockCrowdfund {
         token_uri: Option<String>,
         owner: Option<String>,
     ) -> ExecuteResult {
-        let msg = mock_crowdfund_mint_msg(token_id, extension, token_uri, owner);
-        self.execute(app, msg, sender, &[])
+        let msg = ExecuteMsg::Mint(vec![mock_crowdfund_mint_msg(
+            token_id, extension, token_uri, owner,
+        )]);
+        self.execute(app, &msg, sender, &[])
     }
 
     pub fn execute_quick_mint(
@@ -102,7 +104,7 @@ impl MockCrowdfund {
         publisher: String,
     ) -> ExecuteResult {
         let msg = mock_crowdfund_quick_mint_msg(amount, publisher);
-        self.execute(app, msg, sender, &[])
+        self.execute(app, &msg, sender, &[])
     }
 
     pub fn execute_purchase(
@@ -113,7 +115,7 @@ impl MockCrowdfund {
         funds: &[Coin],
     ) -> ExecuteResult {
         let msg = mock_purchase_msg(number_of_tokens);
-        self.execute(app, msg, sender, funds)
+        self.execute(app, &msg, sender, funds)
     }
 }
 

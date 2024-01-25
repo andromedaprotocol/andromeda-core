@@ -1,16 +1,16 @@
 use crate::mock_contract::ExecuteResult;
 
-use super::mock_contract::{MockADO, MockContract};
 use andromeda_kernel::mock::*;
 use andromeda_std::amp::{messages::AMPMsgConfig, AndrAddr};
+use andromeda_std::os::kernel::{ExecuteMsg, QueryMsg};
 use cosmwasm_std::{Addr, Coin};
 use cw_multi_test::{App, Executor};
 use serde::Serialize;
 
-use super::mock_ado;
+use super::{mock_ado, MockADO, MockContract};
 
 pub struct MockKernel(pub Addr);
-mock_ado!(MockKernel);
+mock_ado!(MockKernel, ExecuteMsg, QueryMsg);
 
 impl MockKernel {
     pub fn instantiate(

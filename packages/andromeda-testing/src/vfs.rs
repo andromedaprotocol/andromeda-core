@@ -1,11 +1,11 @@
+use crate::{mock_ado, mock_contract::ExecuteResult, MockADO, MockContract};
+use andromeda_std::os::vfs::{ExecuteMsg, QueryMsg};
 use andromeda_vfs::mock::*;
 use cosmwasm_std::Addr;
 use cw_multi_test::{App, Executor};
 
-use crate::{mock_ado, mock_contract::ExecuteResult, MockADO, MockContract};
-
 pub struct MockVFS(Addr);
-mock_ado!(MockVFS);
+mock_ado!(MockVFS, ExecuteMsg, QueryMsg);
 
 impl MockVFS {
     pub fn instantiate(

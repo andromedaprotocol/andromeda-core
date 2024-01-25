@@ -14,7 +14,7 @@ use cw721::OwnerOfResponse;
 use cw_multi_test::{App, Contract, ContractWrapper, Executor};
 
 pub struct MockCW721(Addr);
-mock_ado!(MockCW721);
+mock_ado!(MockCW721, ExecuteMsg, QueryMsg);
 
 impl MockCW721 {
     #[allow(clippy::too_many_arguments)]
@@ -47,7 +47,7 @@ impl MockCW721 {
                 Some(sender.to_string()),
             )
             .unwrap();
-        MockCW721(Addr::unchecked(addr))
+        MockCW721(addr)
     }
 
     pub fn execute_quick_mint(
@@ -58,7 +58,7 @@ impl MockCW721 {
         owner: impl Into<String>,
     ) -> ExecuteResult {
         let msg = mock_quick_mint_msg(amount, owner.into());
-        self.execute(app, msg, sender, &[])
+        self.execute(app, &msg, sender, &[])
     }
 
     pub fn execute_send_nft(
@@ -70,20 +70,17 @@ impl MockCW721 {
         msg: Binary,
     ) -> ExecuteResult {
         let msg = mock_send_nft(contract.into(), token_id.into(), msg);
-        self.execute(app, msg, sender, &[])
+        self.execute(app, &msg, sender, &[])
     }
 
     pub fn query_minter(&self, app: &mut App) -> Addr {
-        self.query::<QueryMsg, Addr>(app, mock_cw721_minter_query())
+        self.query::<Addr>(app, mock_cw721_minter_query())
     }
 
     pub fn query_owner_of(&self, app: &App, token_id: impl Into<String>) -> Addr {
         Addr::unchecked(
-            self.query::<QueryMsg, OwnerOfResponse>(
-                app,
-                mock_cw721_owner_of(token_id.into(), None),
-            )
-            .owner,
+            self.query::<OwnerOfResponse>(app, mock_cw721_owner_of(token_id.into(), None))
+                .owner,
         )
     }
 }

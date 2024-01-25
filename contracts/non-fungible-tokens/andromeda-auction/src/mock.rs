@@ -15,7 +15,7 @@ use cosmwasm_std::{Addr, Coin, Empty, Uint128};
 use cw_multi_test::{App, AppResponse, Contract, ContractWrapper, Executor};
 
 pub struct MockAuction(Addr);
-mock_ado!(MockAuction);
+mock_ado!(MockAuction, ExecuteMsg, QueryMsg);
 
 impl MockAuction {
     pub fn instantiate(
@@ -77,7 +77,7 @@ impl MockAuction {
         token_address: String,
     ) -> ExecuteResult {
         let msg = mock_claim_auction(token_id, token_address);
-        self.execute(app, msg, sender, &[])
+        self.execute(app, &msg, sender, &[])
     }
 
     pub fn query_auction_ids(
