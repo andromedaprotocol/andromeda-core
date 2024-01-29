@@ -28,7 +28,7 @@ pub struct MockAndromeda {
 }
 ```
 
-The `admin_address` has ownership of the aOS and as such can make adjustments as required.
+The `admin_address` has ownership of the aOS and as such can make adjustments as required. It is also registered under the VFS as user `am`, therefore any ADOs registered with the admin address would be accessible via `~/am/...` when using the VFS.
 
 The next step is to add some ADOs to the setup, this can be done with the `store_ado` method:
 
