@@ -94,13 +94,13 @@ fn test_auction_app() {
     );
 
     // Mint Tokens
-    let cw721: MockCW721 = app.query_ado_by_component_name(&mut router, cw721_component.name);
+    let cw721: MockCW721 = app.query_ado_by_component_name(&router, cw721_component.name);
     cw721
         .execute_quick_mint(&mut router, owner.clone(), 1, owner.to_string())
         .unwrap();
 
     // Send Token to Auction
-    let auction: MockAuction = app.query_ado_by_component_name(&mut router, auction_component.name);
+    let auction: MockAuction = app.query_ado_by_component_name(&router, auction_component.name);
     let start_time = router.block_info().time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO + 100;
     let receive_msg = mock_start_auction(start_time, 1000, "uandr".to_string(), None, None);
     cw721
@@ -109,7 +109,7 @@ fn test_auction_app() {
             owner.clone(),
             auction.addr(),
             "0",
-            to_json_binary(&receive_msg).unwrap(),
+            &receive_msg,
         )
         .unwrap();
 

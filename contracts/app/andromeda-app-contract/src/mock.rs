@@ -44,17 +44,17 @@ impl MockApp {
         self.execute(app, &mock_claim_ownership_msg(component_name), sender, &[])
     }
 
-    pub fn query_components(&self, app: &mut App) -> Vec<AppComponent> {
+    pub fn query_components(&self, app: &App) -> Vec<AppComponent> {
         self.query::<Vec<AppComponent>>(app, mock_get_components_msg())
     }
 
-    pub fn query_component_addr(&self, app: &mut App, name: impl Into<String>) -> Addr {
+    pub fn query_component_addr(&self, app: &App, name: impl Into<String>) -> Addr {
         self.query::<Addr>(app, mock_get_address_msg(name.into()))
     }
 
     pub fn query_ado_by_component_name<C: From<Addr>>(
         &self,
-        app: &mut App,
+        app: &App,
         name: impl Into<String>,
     ) -> C {
         C::from(self.query_component_addr(app, name))

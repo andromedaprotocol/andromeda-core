@@ -40,16 +40,6 @@ pub fn store_code_id(
         .save(storage, ado_version.as_str(), &code_id)
         .unwrap();
 
-    // Check if there is any default ado set for this ado type. Defaults do not have versions appended to them.
-    let default_ado = ADOVersion::from_type(ado_version.get_type());
-    let default_code_id = read_code_id(storage, &default_ado);
-
-    // There is no default, add one default for this
-    if default_code_id.is_err() {
-        CODE_ID
-            .save(storage, default_ado.as_str(), &code_id)
-            .unwrap();
-    }
     Ok(())
 }
 

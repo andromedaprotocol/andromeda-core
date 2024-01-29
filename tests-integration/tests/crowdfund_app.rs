@@ -205,24 +205,20 @@ fn test_crowdfund_app() {
         Some(owner.to_string()),
     );
 
-    let components = app.query_components(&mut router);
+    let components = app.query_components(&router);
     assert_eq!(components, app_components);
 
-    let _vault_one_addr = app.query_component_addr(&mut router, vault_one_app_component.name);
-    let _vault_two_addr = app.query_component_addr(&mut router, vault_two_app_component.name);
+    let _vault_one_addr = app.query_component_addr(&router, vault_one_app_component.name);
+    let _vault_two_addr = app.query_component_addr(&router, vault_two_app_component.name);
     app.execute_claim_ownership(&mut router, owner.clone(), None)
         .unwrap();
 
     let cw721_contract =
-        app.query_ado_by_component_name::<MockCW721>(&mut router, cw721_component.name);
+        app.query_ado_by_component_name::<MockCW721>(&router, cw721_component.name);
     let crowdfund_contract =
-        app.query_ado_by_component_name::<MockCrowdfund>(&mut router, crowdfund_app_component.name);
+        app.query_ado_by_component_name::<MockCrowdfund>(&router, crowdfund_app_component.name);
 
-    let minter = cw721_contract.query_minter(&mut router);
-    assert_eq!(minter, crowdfund_contract.addr());
-
-    let minter = cw721_contract.query_minter(&mut router);
-
+    let minter = cw721_contract.query_minter(&router);
     assert_eq!(minter, crowdfund_contract.addr());
 
     // Mint Tokens

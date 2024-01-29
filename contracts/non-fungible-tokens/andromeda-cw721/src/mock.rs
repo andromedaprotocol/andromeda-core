@@ -9,7 +9,8 @@ use andromeda_testing::{
     mock_ado,
     mock_contract::{ExecuteResult, MockADO, MockContract},
 };
-use cosmwasm_std::{Addr, Binary, Coin, Empty};
+use cosmwasm_schema::serde::Serialize;
+use cosmwasm_std::{to_json_binary, Addr, Binary, Coin, Empty};
 use cw721::OwnerOfResponse;
 use cw_multi_test::{App, Contract, ContractWrapper, Executor};
 
@@ -67,13 +68,17 @@ impl MockCW721 {
         sender: Addr,
         contract: impl Into<String>,
         token_id: impl Into<String>,
-        msg: Binary,
+        msg: &impl Serialize,
     ) -> ExecuteResult {
-        let msg = mock_send_nft(contract.into(), token_id.into(), msg);
+        let msg = mock_send_nft(
+            contract.into(),
+            token_id.into(),
+            to_json_binary(msg).unwrap(),
+        );
         self.execute(app, &msg, sender, &[])
     }
 
-    pub fn query_minter(&self, app: &mut App) -> Addr {
+    pub fn query_minter(&self, app: &App) -> Addr {
         self.query::<Addr>(app, mock_cw721_minter_query())
     }
 

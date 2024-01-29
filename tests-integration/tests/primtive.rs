@@ -37,7 +37,7 @@ fn mock_andromeda(app: &mut App, admin_address: Addr) -> MockAndromeda {
 }
 
 #[test]
-fn test_primtive() {
+fn test_primitive() {
     let sender = Addr::unchecked("owner");
 
     let mut router = mock_app();
