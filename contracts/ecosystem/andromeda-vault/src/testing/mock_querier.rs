@@ -8,9 +8,9 @@ use andromeda_std::{
 };
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
-    from_binary, from_slice,
+    from_json,
     testing::{mock_env, mock_info, MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
-    to_binary, Binary, Coin, ContractResult, OwnedDeps, Querier, QuerierResult, QueryRequest,
+    to_json_binary, Binary, Coin, ContractResult, OwnedDeps, Querier, QuerierResult, QueryRequest,
     SystemError, SystemResult, Uint128, WasmQuery,
 };
 
@@ -63,7 +63,7 @@ pub struct WasmMockQuerier {
 impl Querier for WasmMockQuerier {
     fn raw_query(&self, bin_request: &[u8]) -> QuerierResult {
         // MockQuerier doesn't support Custom, so we ignore it completely here
-        let request: QueryRequest<cosmwasm_std::Empty> = match from_slice(bin_request) {
+        let request: QueryRequest<cosmwasm_std::Empty> = match from_json(bin_request) {
             Ok(v) => v,
             Err(e) => {
                 return SystemResult::Err(SystemError::InvalidRequest {
@@ -90,19 +90,19 @@ impl WasmMockQuerier {
     }
 
     fn handle_anchor_balance_query(&self, msg: &Binary) -> QuerierResult {
-        match from_binary(msg).unwrap() {
+        match from_json(msg).unwrap() {
             AndromedaQuery::Balance { address } => {
                 let msg_response = PositionResponse {
                     recipient: Recipient::from_string(address),
                     aust_amount: Uint128::from(10u128),
                 };
-                SystemResult::Ok(ContractResult::Ok(to_binary(&msg_response).unwrap()))
+                SystemResult::Ok(ContractResult::Ok(to_json_binary(&msg_response).unwrap()))
             }
             AndromedaQuery::IsOperator { address } => {
                 let msg_response = IsOperatorResponse {
                     is_operator: address == MOCK_VAULT_CONTRACT,
                 };
-                SystemResult::Ok(ContractResult::Ok(to_binary(&msg_response).unwrap()))
+                SystemResult::Ok(ContractResult::Ok(to_json_binary(&msg_response).unwrap()))
             }
             _ => panic!("Unsupported Query"),
         }

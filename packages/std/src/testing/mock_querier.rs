@@ -9,9 +9,9 @@ use crate::{
 #[cfg(feature = "modules")]
 use cosmwasm_std::SubMsg;
 use cosmwasm_std::{
-    from_binary, from_slice,
+    from_json,
     testing::{MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
-    to_binary, Addr, Binary, Coin, ContractInfoResponse, ContractResult, OwnedDeps, Querier,
+    to_json_binary, Addr, Binary, Coin, ContractInfoResponse, ContractResult, OwnedDeps, Querier,
     QuerierResult, QueryRequest, SystemError, SystemResult, Uint128, WasmQuery,
 };
 #[cfg(feature = "primitive")]
@@ -87,7 +87,7 @@ pub fn mock_dependencies_custom(
 impl Querier for WasmMockQuerier {
     fn raw_query(&self, bin_request: &[u8]) -> QuerierResult {
         // MockQuerier doesn't support Custom, so we ignore it completely here
-        let request: QueryRequest<cosmwasm_std::Empty> = match from_slice(bin_request) {
+        let request: QueryRequest<cosmwasm_std::Empty> = match from_json(bin_request) {
             Ok(v) => v,
             Err(e) => {
                 return SystemResult::Err(SystemError::InvalidRequest {
@@ -138,7 +138,7 @@ impl MockAndromedaQuerier {
                     MOCK_ADODB_CONTRACT => self.handle_adodb_query(msg),
                     #[cfg(feature = "modules")]
                     MOCK_ADDRESS_LIST_CONTRACT => self.handle_address_list_query(msg),
-                    _ => match from_binary::<AndromedaQuery>(msg) {
+                    _ => match from_json::<AndromedaQuery>(msg) {
                         Ok(msg) => self.handle_ado_query(msg),
                         _ => panic!("Unsupported query for contract: {contract_addr}"),
                     },
@@ -160,7 +160,7 @@ impl MockAndromedaQuerier {
                     INVALID_CONTRACT => 2,
                     _ => 1,
                 };
-                SystemResult::Ok(ContractResult::Ok(to_binary(&resp).unwrap()))
+                SystemResult::Ok(ContractResult::Ok(to_json_binary(&resp).unwrap()))
             }
             _ => querier.handle_query(request),
         }
@@ -172,21 +172,21 @@ impl MockAndromedaQuerier {
     ///
     /// Returns `true` for `VerifyAddress` for any address excluding `INVALID_CONTRACT`.
     fn handle_kernel_query(&self, msg: &Binary) -> QuerierResult {
-        match from_binary(msg).unwrap() {
+        match from_json(msg).unwrap() {
             KernelQueryMsg::KeyAddress { key } => match key.as_str() {
-                VFS_KEY => {
-                    SystemResult::Ok(ContractResult::Ok(to_binary(&MOCK_VFS_CONTRACT).unwrap()))
-                }
-                ADO_DB_KEY => {
-                    SystemResult::Ok(ContractResult::Ok(to_binary(&MOCK_ADODB_CONTRACT).unwrap()))
-                }
+                VFS_KEY => SystemResult::Ok(ContractResult::Ok(
+                    to_json_binary(&MOCK_VFS_CONTRACT).unwrap(),
+                )),
+                ADO_DB_KEY => SystemResult::Ok(ContractResult::Ok(
+                    to_json_binary(&MOCK_ADODB_CONTRACT).unwrap(),
+                )),
                 &_ => SystemResult::Ok(ContractResult::Err("Invalid Key".to_string())),
             },
             KernelQueryMsg::VerifyAddress { address } => match address.as_str() {
                 INVALID_CONTRACT => {
                     SystemResult::Ok(ContractResult::Err("Invalid Address".to_string()))
                 }
-                _ => SystemResult::Ok(ContractResult::Ok(to_binary(&true).unwrap())),
+                _ => SystemResult::Ok(ContractResult::Ok(to_json_binary(&true).unwrap())),
             },
             _ => SystemResult::Ok(ContractResult::Err("Not implemented".to_string())),
         }
@@ -196,27 +196,27 @@ impl MockAndromedaQuerier {
     ///
     /// Returns the path provided for `ResolvePath` queries, or an error for`FAKE_PATH`.
     fn handle_vfs_query(&self, msg: &Binary) -> QuerierResult {
-        match from_binary(msg).unwrap() {
+        match from_json(msg).unwrap() {
             VFSQueryMsg::ResolvePath { path } => match path.as_str() {
                 FAKE_VFS_PATH => SystemResult::Ok(ContractResult::Err("Invalid Path".to_string())),
-                _ => SystemResult::Ok(ContractResult::Ok(to_binary(&path).unwrap())),
+                _ => SystemResult::Ok(ContractResult::Ok(to_json_binary(&path).unwrap())),
             },
             VFSQueryMsg::ResolveSymlink { path } => match path.as_str() {
                 FAKE_VFS_PATH => SystemResult::Ok(ContractResult::Err("Invalid Path".to_string())),
-                _ => SystemResult::Ok(ContractResult::Ok(to_binary(&path).unwrap())),
+                _ => SystemResult::Ok(ContractResult::Ok(to_json_binary(&path).unwrap())),
             },
             VFSQueryMsg::SubDir { path } => match path.as_str() {
                 FAKE_VFS_PATH => SystemResult::Ok(ContractResult::Err("Invalid Path".to_string())),
-                _ => SystemResult::Ok(ContractResult::Ok(to_binary(&path).unwrap())),
+                _ => SystemResult::Ok(ContractResult::Ok(to_json_binary(&path).unwrap())),
             },
             VFSQueryMsg::Paths { addr } => {
-                SystemResult::Ok(ContractResult::Ok(to_binary(&addr).unwrap()))
+                SystemResult::Ok(ContractResult::Ok(to_json_binary(&addr).unwrap()))
             }
             VFSQueryMsg::GetUsername { address } => {
-                SystemResult::Ok(ContractResult::Ok(to_binary(&address).unwrap()))
+                SystemResult::Ok(ContractResult::Ok(to_json_binary(&address).unwrap()))
             }
             VFSQueryMsg::GetLibrary { address } => {
-                SystemResult::Ok(ContractResult::Ok(to_binary(&address).unwrap()))
+                SystemResult::Ok(ContractResult::Ok(to_json_binary(&address).unwrap()))
             }
         }
     }
@@ -225,7 +225,7 @@ impl MockAndromedaQuerier {
     ///
     /// Returns `"actual_address"` for `Get` queries.
     fn handle_app_query(&self, _msg: &Binary) -> QuerierResult {
-        // match from_binary(msg).unwrap() {
+        // match from_json(msg).unwrap() {
         //     _ => SystemResult::Ok(ContractResult::Err("Error".to_string())),
         // }
         todo!()
@@ -237,14 +237,14 @@ impl MockAndromedaQuerier {
     ///
     /// Returns an error for `CodeId` queries with key `FAKE_ADODB_KEY` and 1 otherwise.
     fn handle_adodb_query(&self, msg: &Binary) -> QuerierResult {
-        match from_binary(msg).unwrap() {
+        match from_json(msg).unwrap() {
             ADODBQueryMsg::ADOType { code_id } => match code_id {
-                1 => SystemResult::Ok(ContractResult::Ok(to_binary(&"ADOType").unwrap())),
+                1 => SystemResult::Ok(ContractResult::Ok(to_json_binary(&"ADOType").unwrap())),
                 _ => SystemResult::Ok(ContractResult::Err("Invalid Code ID".to_string())),
             },
             ADODBQueryMsg::CodeId { key } => match key.as_str() {
                 FAKE_ADODB_KEY => SystemResult::Ok(ContractResult::Err("Invalid Key".to_string())),
-                _ => SystemResult::Ok(ContractResult::Ok(to_binary(&1).unwrap())),
+                _ => SystemResult::Ok(ContractResult::Ok(to_json_binary(&1).unwrap())),
             },
             _ => SystemResult::Ok(ContractResult::Err("Not implemented".to_string())),
         }
@@ -255,7 +255,7 @@ impl MockAndromedaQuerier {
     ///
     /// Returns a default value for each primitive type.
     fn handle_primitive_query(&self, msg: &Binary) -> QuerierResult {
-        match from_binary(msg).unwrap() {
+        match from_json(msg).unwrap() {
             QueryMsg::AndrQuery(AndromedaQuery::Get(data)) => {
                 let res = match data {
                     None => GetValueResponse {
@@ -263,7 +263,7 @@ impl MockAndromedaQuerier {
                         value: Primitive::Decimal(Decimal::zero()),
                     },
                     Some(data) => {
-                        let key: String = from_binary(&data).unwrap();
+                        let key: String = from_json(&data).unwrap();
                         match key.as_str() {
                             "String" => GetValueResponse {
                                 key,
@@ -298,7 +298,7 @@ impl MockAndromedaQuerier {
                     }
                 };
 
-                SystemResult::Ok(ContractResult::Ok(to_binary(&res).unwrap()))
+                SystemResult::Ok(ContractResult::Ok(to_json_binary(&res).unwrap()))
             }
             _ => panic!("Unsupported Query"),
         }
@@ -312,21 +312,21 @@ impl MockAndromedaQuerier {
         use cosmwasm_std::Response;
 
         use crate::ado_base::hooks::{AndromedaHook, HookMsg, OnFundsTransferResponse};
-        match from_binary(msg).unwrap() {
+        match from_json(msg).unwrap() {
             HookMsg::AndrHook(hook) => match hook {
                 AndromedaHook::OnExecute { sender, .. } => match sender.as_str() {
                     UNWHITELISTED_ADDRESS => {
                         SystemResult::Ok(ContractResult::Err("Unwhitelisted Address".to_string()))
                     }
                     _ => SystemResult::Ok(ContractResult::Ok(
-                        to_binary::<Response>(&Response::default()).unwrap(),
+                        to_json_binary::<Response>(&Response::default()).unwrap(),
                     )),
                 },
                 AndromedaHook::OnFundsTransfer { .. } => SystemResult::Ok(ContractResult::Ok(
-                    to_binary(&OnFundsTransferResponse::default()).unwrap(),
+                    to_json_binary(&OnFundsTransferResponse::default()).unwrap(),
                 )),
                 AndromedaHook::OnTokenTransfer { .. } => SystemResult::Ok(ContractResult::Ok(
-                    to_binary::<Response>(&Response::default()).unwrap(),
+                    to_json_binary::<Response>(&Response::default()).unwrap(),
                 )),
             },
         }
@@ -341,22 +341,22 @@ impl MockAndromedaQuerier {
         use cosmwasm_std::Response;
 
         use crate::ado_base::hooks::{AndromedaHook, HookMsg, OnFundsTransferResponse};
-        match from_binary(msg).unwrap() {
+        match from_json(msg).unwrap() {
             HookMsg::AndrHook(hook) => match hook {
                 AndromedaHook::OnExecute { .. } => SystemResult::Ok(ContractResult::Ok(
-                    to_binary::<Response>(&Response::default()).unwrap(),
+                    to_json_binary::<Response>(&Response::default()).unwrap(),
                 )),
                 AndromedaHook::OnFundsTransfer { sender, .. } => {
                     if sender.as_str() == RATES_EXCLUDED_ADDRESS {
                         return SystemResult::Ok(ContractResult::Ok(
-                            to_binary(&OnFundsTransferResponse::default()).unwrap(),
+                            to_json_binary(&OnFundsTransferResponse::default()).unwrap(),
                         ));
                     }
                     // let msgs = calculate_mock_rates_response(sender, payload, amount);
                     todo!("Implement Rates Query")
                 }
                 AndromedaHook::OnTokenTransfer { .. } => SystemResult::Ok(ContractResult::Ok(
-                    to_binary::<Response>(&Response::default()).unwrap(),
+                    to_json_binary::<Response>(&Response::default()).unwrap(),
                 )),
             },
         }
@@ -366,12 +366,14 @@ impl MockAndromedaQuerier {
     ///
     /// Returns a balance of 10 for any `Balance` query.
     fn handle_cw20_query(&self, msg: &Binary) -> QuerierResult {
-        match from_binary(msg).unwrap() {
+        match from_json(msg).unwrap() {
             Cw20QueryMsg::Balance { .. } => {
                 let balance_response = BalanceResponse {
                     balance: 10u128.into(),
                 };
-                SystemResult::Ok(ContractResult::Ok(to_binary(&balance_response).unwrap()))
+                SystemResult::Ok(ContractResult::Ok(
+                    to_json_binary(&balance_response).unwrap(),
+                ))
             }
             _ => panic!("Unsupported Query"),
         }
@@ -387,16 +389,16 @@ impl MockAndromedaQuerier {
             if let Some(key) = key {
                 match key {
                     VFS_KEY => SystemResult::Ok(ContractResult::Ok(
-                        to_binary(&MOCK_VFS_CONTRACT.to_string()).unwrap(),
+                        to_json_binary(&MOCK_VFS_CONTRACT.to_string()).unwrap(),
                     )),
                     ADO_DB_KEY => SystemResult::Ok(ContractResult::Ok(
-                        to_binary(&MOCK_ADODB_CONTRACT.to_string()).unwrap(),
+                        to_json_binary(&MOCK_ADODB_CONTRACT.to_string()).unwrap(),
                     )),
                     OSMOSIS_ROUTER_KEY => SystemResult::Ok(ContractResult::Ok(
-                        to_binary(&MOCK_OSMOSIS_ROUTER_CONTRACT.to_string()).unwrap(),
+                        to_json_binary(&MOCK_OSMOSIS_ROUTER_CONTRACT.to_string()).unwrap(),
                     )),
                     ECONOMICS_KEY => SystemResult::Ok(ContractResult::Ok(
-                        to_binary(&MOCK_ECONOMICS_CONTRACT.to_string()).unwrap(),
+                        to_json_binary(&MOCK_ECONOMICS_CONTRACT.to_string()).unwrap(),
                     )),
                     _ => panic!("Invalid Kernel Address Key"),
                 }
@@ -409,7 +411,7 @@ impl MockAndromedaQuerier {
             } else {
                 "andromeda".to_string()
             };
-            SystemResult::Ok(ContractResult::Ok(to_binary(&res).unwrap()))
+            SystemResult::Ok(ContractResult::Ok(to_json_binary(&res).unwrap()))
         } else {
             panic!("Invalid Kernel Raw Query")
         }
@@ -427,7 +429,7 @@ impl MockAndromedaQuerier {
                     FAKE_ADODB_KEY => {
                         SystemResult::Ok(ContractResult::Err("Invalid Key".to_string()))
                     }
-                    _ => SystemResult::Ok(ContractResult::Ok(to_binary(&1).unwrap())),
+                    _ => SystemResult::Ok(ContractResult::Ok(to_json_binary(&1).unwrap())),
                 }
             } else {
                 panic!("Invalid ADODB Raw Query")
@@ -439,7 +441,7 @@ impl MockAndromedaQuerier {
                 Some(key) => {
                     if key.contains("ADOTypeaction") {
                         SystemResult::Ok(ContractResult::Ok(
-                            to_binary(&ActionFee::new(
+                            to_json_binary(&ActionFee::new(
                                 MOCK_ACTION.to_string(),
                                 "uusd".to_string(),
                                 Uint128::from(10u128),
@@ -456,7 +458,9 @@ impl MockAndromedaQuerier {
             let split = key_str.split("ado_type");
             let key = split.last();
             match key {
-                Some("1") => SystemResult::Ok(ContractResult::Ok(to_binary("ADOType").unwrap())),
+                Some("1") => {
+                    SystemResult::Ok(ContractResult::Ok(to_json_binary("ADOType").unwrap()))
+                }
                 Some(_) => SystemResult::Ok(ContractResult::Err("Invalid Key".to_string())),
                 None => SystemResult::Ok(ContractResult::Err("Invalid Key".to_string())),
             }
@@ -468,9 +472,9 @@ impl MockAndromedaQuerier {
                     FAKE_ADODB_KEY => {
                         SystemResult::Ok(ContractResult::Err("Invalid Key".to_string()))
                     }
-                    _ => {
-                        SystemResult::Ok(ContractResult::Ok(to_binary(MOCK_ADO_PUBLISHER).unwrap()))
-                    }
+                    _ => SystemResult::Ok(ContractResult::Ok(
+                        to_json_binary(MOCK_ADO_PUBLISHER).unwrap(),
+                    )),
                 },
                 None => SystemResult::Ok(ContractResult::Err("Invalid Key".to_string())),
             }
@@ -482,7 +486,7 @@ impl MockAndromedaQuerier {
     pub fn handle_ado_query(&self, msg: AndromedaQuery) -> QuerierResult {
         match msg {
             AndromedaQuery::AppContract {} => SystemResult::Ok(ContractResult::Ok(
-                to_binary(&MOCK_APP_CONTRACT.to_string()).unwrap(),
+                to_json_binary(&MOCK_APP_CONTRACT.to_string()).unwrap(),
             )),
             _ => panic!("Unsupported ADO query"),
         }

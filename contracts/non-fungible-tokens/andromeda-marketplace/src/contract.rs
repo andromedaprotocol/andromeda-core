@@ -21,7 +21,7 @@ use semver::Version;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, ensure, from_binary, has_coins, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env,
+    attr, ensure, from_json, has_coins, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env,
     MessageInfo, QuerierWrapper, QueryRequest, Response, Storage, SubMsg, Uint128, WasmMsg,
     WasmQuery,
 };
@@ -121,7 +121,7 @@ fn handle_receive_cw721(
         deps, info, env, ..
     } = ctx;
 
-    match from_binary(&msg.msg)? {
+    match from_json(&msg.msg)? {
         Cw721HookMsg::StartSale { price, coin_denom } => execute_start_sale(
             deps,
             env,

@@ -11,8 +11,8 @@ use andromeda_std::os::vfs::ExecuteMsg as VFSExecuteMsg;
 
 use crate::reply::ReplyId;
 use cosmwasm_std::{
-    ensure, to_binary, Addr, Binary, CosmosMsg, QuerierWrapper, ReplyOn, Response, Storage, SubMsg,
-    WasmMsg,
+    ensure, to_json_binary, Addr, Binary, CosmosMsg, QuerierWrapper, ReplyOn, Response, Storage,
+    SubMsg, WasmMsg,
 };
 
 pub fn handle_add_app_component(
@@ -62,7 +62,7 @@ pub fn handle_add_app_component(
                     &contract.get_kernel_address(storage)?,
                 )?
                 .to_string(),
-                msg: to_binary(&msg)?,
+                msg: to_json_binary(&msg)?,
                 funds: vec![],
             });
             let sub_msg = SubMsg::reply_on_error(cosmos_msg, ReplyId::RegisterPath.repr());
@@ -197,7 +197,7 @@ pub fn register_component_path(
     };
     let cosmos_msg = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: vfs_address.to_string(),
-        msg: to_binary(&add_path_msg)?,
+        msg: to_json_binary(&add_path_msg)?,
         funds: vec![],
     });
 

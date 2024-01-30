@@ -1,7 +1,7 @@
 use crate::amp::{ADO_DB_KEY, VFS_KEY};
 use crate::error::ContractError;
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{from_slice, Addr, QuerierWrapper};
+use cosmwasm_std::{from_json, Addr, QuerierWrapper};
 use cw_storage_plus::Path;
 use lazy_static::__Deref;
 use serde::de::DeserializeOwned;
@@ -42,7 +42,7 @@ impl AOSQuerier {
         match data {
             Some(data) => {
                 let res = from_utf8(&data)?;
-                let res = from_slice(res.as_bytes())?;
+                let res = from_json(res.as_bytes())?;
                 Ok(Some(res))
             }
             None => Ok(None),

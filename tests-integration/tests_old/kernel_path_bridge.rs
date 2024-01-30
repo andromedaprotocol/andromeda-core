@@ -13,7 +13,7 @@ use andromeda_message_bridge::mock::{
 use andromeda_os::messages::AMPMsg;
 use andromeda_testing::mock::MockAndromeda;
 use andromeda_vfs::mock::mock_resolve_path_query;
-use cosmwasm_std::{coin, coins, to_binary, Addr};
+use cosmwasm_std::{coin, coins, to_json_binary, Addr};
 use cw_multi_test::{App, Executor};
 
 fn mock_app() -> App {
@@ -60,16 +60,19 @@ fn kernel() {
 
     // Generate Counter Contract
 
-    let counter_init_msg = mock_counter_instantiate_msg(andr.kernel_address.to_string());
-    let counter_app_component =
-        AppComponent::new("counter", "counter", to_binary(&counter_init_msg).unwrap());
+    let counter_init_msg = mock_counter_instantiate_msg(andr.kernel.addr().to_string());
+    let counter_app_component = AppComponent::new(
+        "counter",
+        "counter",
+        to_json_binary(&counter_init_msg).unwrap(),
+    );
 
     let app_components: Vec<AppComponent> = vec![counter_app_component];
 
     let app_init_msg = mock_app_instantiate_msg(
         "app1",
         app_components.clone(),
-        andr.kernel_address.to_string(),
+        andr.kernel.addr().to_string(),
     );
 
     let app_addr = router
@@ -97,7 +100,7 @@ fn kernel() {
     let vfs_address_query = mock_get_key_address("vfs");
     let vfs_address: Addr = router
         .wrap()
-        .query_wasm_smart(andr.kernel_address.clone(), &vfs_address_query)
+        .query_wasm_smart(andr.kernel.addr().clone(), &vfs_address_query)
         .unwrap();
 
     let query = mock_resolve_path_query("/am/app1/.hidden_vault");
@@ -122,7 +125,7 @@ fn kernel() {
     router
         .execute_contract(
             owner.clone(),
-            andr.kernel_address.clone(),
+            andr.kernel.addr().clone(),
             &upsert_msg,
             &coins(10, "uandr"),
         )
@@ -130,7 +133,7 @@ fn kernel() {
 
     // Create a direct AMP message
     let recipient = "ibc://juno/user_1/app2/counter";
-    let message = to_binary(&CounterExecuteMsg::IncrementOne {}).unwrap();
+    let message = to_json_binary(&CounterExecuteMsg::IncrementOne {}).unwrap();
     let _send_msg = mock_amp_direct(recipient, message.clone(), None, None, None);
     let amp_msg = vec![AMPMsg::new(
         recipient,
@@ -152,7 +155,7 @@ fn kernel() {
 
     // // So far the kernel is successfully sending a packet to the relevant message bridge using the parser
     // let res = router
-    //     .execute_contract(owner, andr.kernel_address, &send_msg, &coins(100, "uandr"))
+    //     .execute_contract(owner, andr.kernel.addr(), &send_msg, &coins(100, "uandr"))
     //     .unwrap();
     // println!("{:?}", res)
 

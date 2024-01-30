@@ -46,7 +46,7 @@ pub fn on_reply_create_ado(deps: DepsMut, env: Env, msg: Reply) -> Result<Respon
     }
 
     Ok(res)
-    // .set_data(to_binary(&ado_addr)?)
+    // .set_data(to_json_binary(&ado_addr)?)
 }
 
 use ::prost::Message;

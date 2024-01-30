@@ -6,9 +6,10 @@ use andromeda_std::{
     amp::AndrAddr, error::ContractError, testing::mock_querier::MOCK_KERNEL_CONTRACT,
 };
 use cosmwasm_std::{
-    attr, coin, coins, from_binary,
+    attr, coin, coins, from_json,
     testing::{mock_env, mock_info},
-    to_binary, wasm_execute, Addr, BankMsg, CosmosMsg, DepsMut, Empty, Response, SubMsg, Uint128,
+    to_json_binary, wasm_execute, Addr, BankMsg, CosmosMsg, DepsMut, Empty, Response, SubMsg,
+    Uint128,
 };
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use cw_asset::AssetInfo;
@@ -61,7 +62,7 @@ pub fn test_start_sale_invalid_token() {
     // sends the message directly with the owner address provided
     let receive_msg = Cw20ReceiveMsg {
         sender: owner.to_string(),
-        msg: to_binary(&hook).unwrap(),
+        msg: to_json_binary(&hook).unwrap(),
         amount: Uint128::from(100u128),
     };
     let msg = ExecuteMsg::Receive(receive_msg);
@@ -93,7 +94,7 @@ pub fn test_start_sale_unauthorised() {
     };
     let receive_msg = Cw20ReceiveMsg {
         sender: "not_owner".to_string(),
-        msg: to_binary(&hook).unwrap(),
+        msg: to_json_binary(&hook).unwrap(),
         amount: Uint128::from(100u128),
     };
     let msg = ExecuteMsg::Receive(receive_msg);
@@ -120,7 +121,7 @@ pub fn test_start_sale_zero_amount() {
     };
     let receive_msg = Cw20ReceiveMsg {
         sender: "not_owner".to_string(),
-        msg: to_binary(&hook).unwrap(),
+        msg: to_json_binary(&hook).unwrap(),
         amount: Uint128::zero(),
     };
     let msg = ExecuteMsg::Receive(receive_msg);
@@ -155,7 +156,7 @@ pub fn test_start_sale() {
     };
     let receive_msg = Cw20ReceiveMsg {
         sender: owner.to_string(),
-        msg: to_binary(&hook).unwrap(),
+        msg: to_json_binary(&hook).unwrap(),
         amount: sale_amount,
     };
     let msg = ExecuteMsg::Receive(receive_msg);
@@ -191,7 +192,7 @@ pub fn test_start_sale_ongoing() {
     };
     let receive_msg = Cw20ReceiveMsg {
         sender: owner.to_string(),
-        msg: to_binary(&hook).unwrap(),
+        msg: to_json_binary(&hook).unwrap(),
         amount: sale_amount,
     };
     let msg = ExecuteMsg::Receive(receive_msg);
@@ -223,7 +224,7 @@ pub fn test_start_sale_zero_exchange_rate() {
     };
     let receive_msg = Cw20ReceiveMsg {
         sender: owner.to_string(),
-        msg: to_binary(&hook).unwrap(),
+        msg: to_json_binary(&hook).unwrap(),
         amount: sale_amount,
     };
     let msg = ExecuteMsg::Receive(receive_msg);
@@ -248,7 +249,7 @@ pub fn test_purchase_no_sale() {
     let hook = Cw20HookMsg::Purchase { recipient: None };
     let receive_msg = Cw20ReceiveMsg {
         sender: purchaser.to_string(),
-        msg: to_binary(&hook).unwrap(),
+        msg: to_json_binary(&hook).unwrap(),
         amount: purchase_amount,
     };
     let msg = ExecuteMsg::Receive(receive_msg);
@@ -287,7 +288,7 @@ pub fn test_purchase_not_enough_sent() {
     let hook = Cw20HookMsg::Purchase { recipient: None };
     let receive_msg = Cw20ReceiveMsg {
         sender: purchaser.to_string(),
-        msg: to_binary(&hook).unwrap(),
+        msg: to_json_binary(&hook).unwrap(),
         amount: purchase_amount,
     };
     let msg = ExecuteMsg::Receive(receive_msg);
@@ -331,7 +332,7 @@ pub fn test_purchase_no_tokens_left() {
     let hook = Cw20HookMsg::Purchase { recipient: None };
     let receive_msg = Cw20ReceiveMsg {
         sender: purchaser.to_string(),
-        msg: to_binary(&hook).unwrap(),
+        msg: to_json_binary(&hook).unwrap(),
         amount: purchase_amount,
     };
     let msg = ExecuteMsg::Receive(receive_msg);
@@ -370,7 +371,7 @@ pub fn test_purchase_not_enough_tokens() {
     let hook = Cw20HookMsg::Purchase { recipient: None };
     let receive_msg = Cw20ReceiveMsg {
         sender: purchaser.to_string(),
-        msg: to_binary(&hook).unwrap(),
+        msg: to_json_binary(&hook).unwrap(),
         amount: purchase_amount,
     };
     let msg = ExecuteMsg::Receive(receive_msg);
@@ -410,7 +411,7 @@ pub fn test_purchase() {
     let hook = Cw20HookMsg::Purchase { recipient: None };
     let receive_msg = Cw20ReceiveMsg {
         sender: purchaser.to_string(),
-        msg: to_binary(&hook).unwrap(),
+        msg: to_json_binary(&hook).unwrap(),
         amount: purchase_amount,
     };
     let msg = ExecuteMsg::Receive(receive_msg);
@@ -809,7 +810,7 @@ fn test_query_sale() {
         asset: exchange_asset.clone(),
     };
     let not_found_response: SaleResponse =
-        from_binary(&query(deps.as_ref(), env.clone(), msg.clone()).unwrap()).unwrap();
+        from_json(query(deps.as_ref(), env.clone(), msg.clone()).unwrap()).unwrap();
 
     assert!(not_found_response.sale.is_none());
 
@@ -823,8 +824,7 @@ fn test_query_sale() {
     SALE.save(deps.as_mut().storage, &exchange_asset.to_string(), &sale)
         .unwrap();
 
-    let found_response: SaleResponse =
-        from_binary(&query(deps.as_ref(), env, msg).unwrap()).unwrap();
+    let found_response: SaleResponse = from_json(query(deps.as_ref(), env, msg).unwrap()).unwrap();
 
     assert_eq!(found_response.sale, Some(sale));
 }
@@ -837,7 +837,7 @@ fn test_query_token_address() {
     init(deps.as_mut()).unwrap();
 
     let msg = QueryMsg::TokenAddress {};
-    let resp: TokenAddressResponse = from_binary(&query(deps.as_ref(), env, msg).unwrap()).unwrap();
+    let resp: TokenAddressResponse = from_json(query(deps.as_ref(), env, msg).unwrap()).unwrap();
 
     assert_eq!(resp.address, MOCK_TOKEN_ADDRESS.to_string())
 }
@@ -863,15 +863,15 @@ fn test_andr_query() {
         asset: exchange_asset,
     };
     let query_msg_response: SaleResponse =
-        from_binary(&query(deps.as_ref(), env, msg).unwrap()).unwrap();
+        from_json(query(deps.as_ref(), env, msg).unwrap()).unwrap();
 
     assert_eq!(query_msg_response.sale, Some(sale));
 
     // let key_msg = QueryMsg::AndrQuery(AndromedaQuery::Get(Some(
-    //     to_binary(&exchange_asset.to_string()).unwrap(),
+    //     to_json_binary(&exchange_asset.to_string()).unwrap(),
     // )));
     // let key_response: SaleResponse =
-    //     from_binary(&query(deps.as_ref(), env, key_msg).unwrap()).unwrap();
+    //     from_json(&query(deps.as_ref(), env, key_msg).unwrap()).unwrap();
 
     // assert_eq!(key_response.sale, Some(sale));
 }
@@ -962,7 +962,7 @@ fn test_query_sale_assets() {
         start_after: None,
     };
     let resp: SaleAssetsResponse =
-        from_binary(&query(deps.as_ref(), env, query_msg).unwrap()).unwrap();
+        from_json(query(deps.as_ref(), env, query_msg).unwrap()).unwrap();
 
     assert_eq!(resp.assets.len(), 2);
     assert_eq!(resp.assets[0], "cw20:testaddress");

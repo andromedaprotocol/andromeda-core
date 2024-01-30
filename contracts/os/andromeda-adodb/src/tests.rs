@@ -1,6 +1,6 @@
 #[cfg(test)]
 use andromeda_std::testing::mock_querier::{mock_dependencies_custom, MOCK_KERNEL_CONTRACT};
-use cosmwasm_std::{from_binary, Uint128};
+use cosmwasm_std::{from_json, Uint128};
 
 use crate::contract::{execute, instantiate, query};
 use crate::state::{ACTION_FEES, CODE_ID, LATEST_VERSION, PUBLISHER};
@@ -321,21 +321,21 @@ fn test_get_code_id() {
         key: ado_version.clone().into_string(),
     };
     let res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
-    let value: u64 = from_binary(&res).unwrap();
+    let value: u64 = from_json(res).unwrap();
     assert_eq!(value, code_id);
 
     let query_msg = QueryMsg::CodeId {
         key: ado_version.get_type(),
     };
     let res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
-    let value: u64 = from_binary(&res).unwrap();
+    let value: u64 = from_json(res).unwrap();
     assert_eq!(value, code_id);
 
     let query_msg = QueryMsg::CodeId {
         key: format!("{}@latest", ado_version.get_type()),
     };
     let res = query(deps.as_ref(), env, query_msg).unwrap();
-    let value: u64 = from_binary(&res).unwrap();
+    let value: u64 = from_json(res).unwrap();
     assert_eq!(value, code_id);
 }
 
@@ -381,7 +381,7 @@ fn test_all_ado_types() {
         limit: None,
     };
     let res = query(deps.as_ref(), env, query_msg).unwrap();
-    let value: Vec<String> = from_binary(&res).unwrap();
+    let value: Vec<String> = from_json(res).unwrap();
     let expected = vec![
         "ado_type_1@0.1.0".to_string(),
         "ado_type_1@0.1.1".to_string(),

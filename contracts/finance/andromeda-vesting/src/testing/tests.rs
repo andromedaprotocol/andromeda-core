@@ -3,7 +3,7 @@ use andromeda_std::{
     testing::mock_querier::MOCK_KERNEL_CONTRACT,
 };
 use cosmwasm_std::{
-    coin, coins, from_binary,
+    coin, coins, from_json,
     testing::{mock_env, mock_info, MockQuerier, MOCK_CONTRACT_ADDR},
     Addr, BankMsg, Coin, CosmosMsg, Decimal, DepsMut, DistributionMsg, FullDelegation, GovMsg,
     Response, StakingMsg, Uint128, Validator, VoteOption,
@@ -625,7 +625,7 @@ fn test_claim_batch_single_claim() {
 
     // Query created batch.
     let msg = QueryMsg::Batch { id: 1 };
-    let res: BatchResponse = from_binary(&query(deps.as_ref(), env.clone(), msg).unwrap()).unwrap();
+    let res: BatchResponse = from_json(query(deps.as_ref(), env.clone(), msg).unwrap()).unwrap();
 
     let lockup_end = mock_env().block.time.seconds();
     assert_eq!(
@@ -1153,7 +1153,7 @@ fn test_claim_all() {
         limit: None,
     };
     let res: Vec<BatchResponse> =
-        from_binary(&query(deps.as_ref(), env.clone(), msg).unwrap()).unwrap();
+        from_json(query(deps.as_ref(), env.clone(), msg).unwrap()).unwrap();
 
     let lockup_end = mock_env().block.time.seconds();
     assert_eq!(

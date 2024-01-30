@@ -5,8 +5,90 @@ use andromeda_non_fungible_tokens::cw721::{
     ExecuteMsg, InstantiateMsg, MintMsg, QueryMsg, TokenExtension, TransferAgreement,
 };
 use andromeda_std::{ado_base::modules::Module, amp::addresses::AndrAddr};
-use cosmwasm_std::{Binary, Coin, Empty};
-use cw_multi_test::{Contract, ContractWrapper};
+use andromeda_testing::{
+    mock_ado,
+    mock_contract::{ExecuteResult, MockADO, MockContract},
+};
+use cosmwasm_schema::serde::Serialize;
+use cosmwasm_std::{to_json_binary, Addr, Binary, Coin, Empty};
+use cw721::OwnerOfResponse;
+use cw_multi_test::{App, Contract, ContractWrapper, Executor};
+
+pub struct MockCW721(Addr);
+mock_ado!(MockCW721, ExecuteMsg, QueryMsg);
+
+impl MockCW721 {
+    #[allow(clippy::too_many_arguments)]
+    pub fn instantiate(
+        code_id: u64,
+        sender: Addr,
+        app: &mut App,
+        name: impl Into<String>,
+        symbol: impl Into<String>,
+        minter: impl Into<String>,
+        modules: Option<Vec<Module>>,
+        kernel_address: impl Into<String>,
+        owner: Option<String>,
+    ) -> MockCW721 {
+        let msg = mock_cw721_instantiate_msg(
+            name.into(),
+            symbol.into(),
+            minter.into(),
+            modules,
+            kernel_address.into(),
+            owner,
+        );
+        let addr = app
+            .instantiate_contract(
+                code_id,
+                sender.clone(),
+                &msg,
+                &[],
+                "CW721 Contract",
+                Some(sender.to_string()),
+            )
+            .unwrap();
+        MockCW721(addr)
+    }
+
+    pub fn execute_quick_mint(
+        &self,
+        app: &mut App,
+        sender: Addr,
+        amount: u32,
+        owner: impl Into<String>,
+    ) -> ExecuteResult {
+        let msg = mock_quick_mint_msg(amount, owner.into());
+        self.execute(app, &msg, sender, &[])
+    }
+
+    pub fn execute_send_nft(
+        &self,
+        app: &mut App,
+        sender: Addr,
+        contract: impl Into<String>,
+        token_id: impl Into<String>,
+        msg: &impl Serialize,
+    ) -> ExecuteResult {
+        let msg = mock_send_nft(
+            contract.into(),
+            token_id.into(),
+            to_json_binary(msg).unwrap(),
+        );
+        self.execute(app, &msg, sender, &[])
+    }
+
+    pub fn query_minter(&self, app: &App) -> Addr {
+        self.query::<Addr>(app, mock_cw721_minter_query())
+    }
+
+    pub fn query_owner_of(&self, app: &App, token_id: impl Into<String>) -> Addr {
+        Addr::unchecked(
+            self.query::<OwnerOfResponse>(app, mock_cw721_owner_of(token_id.into(), None))
+                .owner,
+        )
+    }
+}
 
 pub fn mock_andromeda_cw721() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new_with_empty(execute, instantiate, query);
