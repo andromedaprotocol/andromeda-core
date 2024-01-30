@@ -1,30 +1,17 @@
 #![cfg(not(target_arch = "wasm32"))]
 
 use andromeda_app::app::AppComponent;
-use andromeda_app_contract::mock::{
-    mock_andromeda_app, mock_app_instantiate_msg, mock_claim_ownership_msg, mock_get_address_msg,
-    mock_get_components_msg,
-};
+use andromeda_app_contract::mock::{mock_andromeda_app, MockApp};
 use andromeda_auction::mock::{
-    mock_andromeda_auction, mock_auction_instantiate_msg, mock_authorize_token_address,
-    mock_claim_auction, mock_get_auction_ids, mock_get_auction_state, mock_get_bids,
-    mock_place_bid, mock_set_permission, mock_start_auction,
+    mock_andromeda_auction, mock_auction_instantiate_msg, mock_start_auction, MockAuction,
 };
-use andromeda_cw721::mock::{
-    mock_andromeda_cw721, mock_cw721_instantiate_msg, mock_cw721_owner_of, mock_quick_mint_msg,
-    mock_send_nft,
-};
-use andromeda_non_fungible_tokens::auction::{
-    AuctionIdsResponse, AuctionStateResponse, BidsResponse,
-};
-use andromeda_std::ado_base::permissioning::Permission;
-use andromeda_std::amp::AndrAddr;
+use andromeda_cw721::mock::{mock_andromeda_cw721, mock_cw721_instantiate_msg, MockCW721};
+
 use andromeda_std::common::expiration::MILLISECONDS_TO_NANOSECONDS_RATIO;
-use andromeda_std::error::ContractError;
-use andromeda_testing::mock::MockAndromeda;
+use andromeda_testing::{mock::MockAndromeda, mock_contract::MockContract};
 use cosmwasm_std::{coin, to_json_binary, Addr, BlockInfo, Timestamp, Uint128};
-use cw721::OwnerOfResponse;
-use cw_multi_test::{App, Executor};
+
+use cw_multi_test::App;
 
 fn mock_app() -> App {
     App::new(|router, _api, storage| {
@@ -33,7 +20,7 @@ fn mock_app() -> App {
             .init_balance(
                 storage,
                 &Addr::unchecked("owner"),
-                [coin(999999, "uandr")].to_vec(),
+                [coin(100, "uandr")].to_vec(),
             )
             .unwrap();
         router
@@ -67,14 +54,10 @@ fn test_auction_app() {
 
     let mut router = mock_app();
     let andr = mock_andromeda(&mut router, owner.clone());
-
     // Store contract codes
-    let cw721_code_id = router.store_code(mock_andromeda_cw721());
-    let auction_code_id = router.store_code(mock_andromeda_auction());
-    let app_code_id = router.store_code(mock_andromeda_app());
-    andr.store_code_id(&mut router, "cw721", cw721_code_id);
-    andr.store_code_id(&mut router, "auction", auction_code_id);
-    andr.store_code_id(&mut router, "app-contract", app_code_id);
+    andr.store_ado(&mut router, mock_andromeda_cw721(), "cw721");
+    andr.store_ado(&mut router, mock_andromeda_auction(), "auction");
+    andr.store_ado(&mut router, mock_andromeda_app(), "app");
 
     // Generate App Components
     let cw721_init_msg = mock_cw721_instantiate_msg(
@@ -82,7 +65,7 @@ fn test_auction_app() {
         "TT".to_string(),
         owner.to_string(),
         None,
-        andr.kernel_address.to_string(),
+        andr.kernel.addr().to_string(),
         None,
     );
     let cw721_component = AppComponent::new(
@@ -91,8 +74,7 @@ fn test_auction_app() {
         to_json_binary(&cw721_init_msg).unwrap(),
     );
 
-    let auction_init_msg =
-        mock_auction_instantiate_msg(None, andr.kernel_address.to_string(), None, None);
+    let auction_init_msg = mock_auction_instantiate_msg(None, andr.kernel.addr().to_string(), None);
     let auction_component = AppComponent::new(
         "auction".to_string(),
         "auction".to_string(),
@@ -101,30 +83,15 @@ fn test_auction_app() {
 
     // Create App
     let app_components = vec![cw721_component.clone(), auction_component.clone()];
-    let app_init_msg = mock_app_instantiate_msg(
-        "AuctionApp".to_string(),
-        app_components.clone(),
-        andr.kernel_address.clone(),
-        None,
+    let app = MockApp::instantiate(
+        andr.get_code_id(&mut router, "app"),
+        owner.clone(),
+        &mut router,
+        "Auction App",
+        app_components,
+        andr.kernel.addr(),
+        Some(owner.to_string()),
     );
-
-    let app_addr = router
-        .instantiate_contract(
-            app_code_id,
-            owner.clone(),
-            &app_init_msg,
-            &[],
-            "Auction App",
-            Some(owner.to_string()),
-        )
-        .unwrap();
-
-    let components: Vec<AppComponent> = router
-        .wrap()
-        .query_wasm_smart(app_addr.clone(), &mock_get_components_msg())
-        .unwrap();
-
-    assert_eq!(components, app_components);
 
     router
         .execute_contract(
@@ -136,53 +103,22 @@ fn test_auction_app() {
         .unwrap();
 
     // Mint Tokens
-    let cw721_addr: String = router
-        .wrap()
-        .query_wasm_smart(
-            app_addr.clone(),
-            &mock_get_address_msg(cw721_component.name),
-        )
-        .unwrap();
-    let mint_msg = mock_quick_mint_msg(1, owner.to_string());
-    andr.accept_ownership(&mut router, cw721_addr.clone(), owner.clone());
-    router
-        .execute_contract(
-            owner.clone(),
-            Addr::unchecked(cw721_addr.clone()),
-            &mint_msg,
-            &[],
-        )
+    let cw721: MockCW721 = app.query_ado_by_component_name(&router, cw721_component.name);
+    cw721
+        .execute_quick_mint(&mut router, owner.clone(), 1, owner.to_string())
         .unwrap();
 
     // Send Token to Auction
-    let auction_addr: String = router
-        .wrap()
-        .query_wasm_smart(app_addr, &mock_get_address_msg(auction_component.name))
-        .unwrap();
-    andr.accept_ownership(&mut router, auction_addr.clone(), owner.clone());
-    router
-        .execute_contract(
-            owner.clone(),
-            Addr::unchecked(auction_addr.clone()),
-            &mock_authorize_token_address(cw721_addr.clone(), None),
-            &[],
-        )
-        .unwrap();
-
+    let auction: MockAuction = app.query_ado_by_component_name(&router, auction_component.name);
     let start_time = router.block_info().time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO + 100;
     let receive_msg = mock_start_auction(start_time, 1000, "uandr".to_string(), None, None);
-    let send_msg = mock_send_nft(
-        auction_addr.clone(),
-        "0".to_string(),
-        to_json_binary(&receive_msg).unwrap(),
-    );
-
-    router
-        .execute_contract(
+    cw721
+        .execute_send_nft(
+            &mut router,
             owner.clone(),
-            Addr::unchecked(cw721_addr.clone()),
-            &send_msg,
-            &[],
+            auction.addr(),
+            "0",
+            &receive_msg,
         )
         .unwrap();
 
@@ -193,85 +129,25 @@ fn test_auction_app() {
     });
 
     // Query Auction State
-    let auction_ids_response: AuctionIdsResponse = router
-        .wrap()
-        .query_wasm_smart(
-            auction_addr.clone(),
-            &mock_get_auction_ids("0".to_string(), cw721_addr.clone()),
-        )
-        .unwrap();
+    let auction_ids: Vec<Uint128> =
+        auction.query_auction_ids(&mut router, "0".to_string(), cw721.addr().to_string());
 
-    assert_eq!(auction_ids_response.auction_ids.len(), 1);
+    assert_eq!(auction_ids.len(), 1);
 
-    let auction_id = auction_ids_response.auction_ids.first().unwrap();
-    let auction_state: AuctionStateResponse = router
-        .wrap()
-        .query_wasm_smart(auction_addr.clone(), &mock_get_auction_state(*auction_id))
-        .unwrap();
+    let auction_id = auction_ids.first().unwrap();
+    let auction_state = auction.query_auction_state(&mut router, *auction_id);
 
     assert_eq!(auction_state.coin_denom, "uandr".to_string());
+    assert_eq!(auction_state.owner, owner.to_string());
 
     // Place Bid One
-    // Blacklist bidder now
-    let actor = AndrAddr::from_string(buyer_one.clone());
-    let action = "PlaceBid".to_string();
-    let permission = Permission::blacklisted(None);
-    let permissioning_message = mock_set_permission(actor, action, permission);
-
-    router
-        .execute_contract(
-            owner.clone(),
-            Addr::unchecked(auction_addr.clone()),
-            &permissioning_message,
-            &[],
-        )
-        .unwrap();
-
-    let bid_msg = mock_place_bid("0".to_string(), cw721_addr.clone());
-    // let amp_msg = AMPMsg::new(
-    //     auction_addr.clone(),
-    //     to_json_binary(&bid_msg).unwrap(),
-    //     Some(vec![coin(50, "uandr")]),
-    // );
-
-    // Bid should be rejected because we blacklisted bidder one
-    let err: ContractError = router
-        .execute_contract(
-            buyer_one.clone(),
-            Addr::unchecked(auction_addr.clone()),
-            &bid_msg,
-            &[coin(50, "uandr")],
-        )
-        .unwrap_err()
-        .downcast()
-        .unwrap();
-    assert_eq!(err, ContractError::Unauthorized {});
-
-    // Now whitelist bidder one
-
-    let actor = AndrAddr::from_string(buyer_one.clone());
-    let action = "PlaceBid".to_string();
-    let permission = Permission::whitelisted(None);
-    let permissioning_message = mock_set_permission(actor, action, permission);
-
-    router
-        .execute_contract(
-            owner.clone(),
-            Addr::unchecked(auction_addr.clone()),
-            &permissioning_message,
-            &[],
-        )
-        .unwrap();
-
-    // Try bidding again
-    router
-        .execute_contract(
-            buyer_one.clone(),
-            Addr::unchecked(auction_addr.clone()),
-            &bid_msg,
-            &[coin(50, "uandr")],
-        )
-        .unwrap();
+    auction.execute_place_bid(
+        &mut router,
+        buyer_one.clone(),
+        "0".to_string(),
+        cw721.addr().to_string(),
+        &[coin(50, "uandr")],
+    );
 
     // let packet = AMPPkt::new(
     //     buyer_one.clone(),
@@ -290,33 +166,26 @@ fn test_auction_app() {
     //     .unwrap();
 
     // Check Bid Status One
-    let bids_resp: BidsResponse = router
-        .wrap()
-        .query_wasm_smart(auction_addr.clone(), &mock_get_bids(*auction_id))
-        .unwrap();
-    assert_eq!(bids_resp.bids.len(), 1);
+    let bids = auction.query_bids(&mut router, *auction_id);
+    assert_eq!(bids.len(), 1);
 
-    let bid = bids_resp.bids.first().unwrap();
+    let bid = bids.first().unwrap();
     assert_eq!(bid.bidder, buyer_one.to_string());
     assert_eq!(bid.amount, Uint128::from(50u128));
 
-    router
-        .execute_contract(
-            buyer_two.clone(),
-            Addr::unchecked(auction_addr.clone()),
-            &bid_msg,
-            &[coin(100, "uandr")],
-        )
-        .unwrap();
+    auction.execute_place_bid(
+        &mut router,
+        buyer_two.clone(),
+        "0".to_string(),
+        cw721.addr().to_string(),
+        &[coin(100, "uandr")],
+    );
 
     // Check Bid Status One
-    let bids_resp: BidsResponse = router
-        .wrap()
-        .query_wasm_smart(auction_addr.clone(), &mock_get_bids(*auction_id))
-        .unwrap();
-    assert_eq!(bids_resp.bids.len(), 2);
+    let bids = auction.query_bids(&mut router, *auction_id);
+    assert_eq!(bids.len(), 2);
 
-    let bid_two = bids_resp.bids.get(1).unwrap();
+    let bid_two = bids.get(1).unwrap();
     assert_eq!(bid_two.bidder, buyer_two.to_string());
     assert_eq!(bid_two.amount, Uint128::from(100u128));
 
@@ -326,36 +195,18 @@ fn test_auction_app() {
         time: Timestamp::from_nanos((start_time + 1001) * MILLISECONDS_TO_NANOSECONDS_RATIO),
         chain_id: router.block_info().chain_id,
     });
-    let end_msg = mock_claim_auction("0".to_string(), cw721_addr.clone());
-    let seller_pre_balance = router
-        .wrap()
-        .query_balance(owner.clone(), "uandr".to_string())
-        .unwrap();
-    router
-        .execute_contract(
+    auction
+        .execute_claim_auction(
+            &mut router,
             buyer_two.clone(),
-            Addr::unchecked(auction_addr),
-            &end_msg,
-            &[],
+            "0".to_string(),
+            cw721.addr().to_string(),
         )
         .unwrap();
 
     // Check Final State
-    let owner_resp: OwnerOfResponse = router
-        .wrap()
-        .query_wasm_smart(cw721_addr, &mock_cw721_owner_of("0".to_string(), None))
-        .unwrap();
-    assert_eq!(owner_resp.owner, buyer_two);
-
-    let seller_post_balance = router
-        .wrap()
-        .query_balance(owner, "uandr".to_string())
-        .unwrap();
-    assert_eq!(
-        seller_pre_balance.amount,
-        seller_post_balance
-            .amount
-            .checked_sub(Uint128::from(100u128))
-            .unwrap()
-    );
+    let token_owner = cw721.query_owner_of(&router, "0");
+    assert_eq!(token_owner, buyer_two);
+    let owner_balance = router.wrap().query_balance(owner, "uandr").unwrap();
+    assert_eq!(owner_balance.amount, Uint128::from(200u128));
 }

@@ -11,8 +11,7 @@ use andromeda_std::{
     os::kernel::ExecuteMsg as KernelExecuteMsg,
 };
 use cosmwasm_std::{
-    ensure, to_json_binary, Addr, Coin, CosmosMsg, DepsMut, Order, ReplyOn, Storage, SubMsg,
-    WasmMsg,
+    to_json_binary, Addr, Coin, CosmosMsg, DepsMut, Order, ReplyOn, Storage, SubMsg, WasmMsg,
 };
 use cw_storage_plus::{Bound, Item, Map};
 

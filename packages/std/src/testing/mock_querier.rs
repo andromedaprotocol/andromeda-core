@@ -12,9 +12,10 @@ use crate::{
 #[cfg(feature = "modules")]
 use cosmwasm_std::SubMsg;
 use cosmwasm_std::{
-    from_json,
+    from_json, from_json,
     testing::{MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
-    to_json_binary, Addr, Binary, Coin, ContractInfoResponse, ContractResult, OwnedDeps, Querier,
+    to_json_binary, to_json_binary, Addr, Addr, Binary, Binary, Coin, Coin, ContractInfoResponse,
+    ContractInfoResponse, ContractResult, ContractResult, OwnedDeps, OwnedDeps, Querier, Querier,
     QuerierResult, QueryRequest, SystemError, SystemResult, Uint128, WasmQuery,
 };
 #[cfg(feature = "primitive")]

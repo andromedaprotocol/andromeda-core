@@ -19,8 +19,8 @@ testing = ["cw-multi-test"]
 cosmwasm-std = { workspace = true, features = ["staking", "stargate"] }
 cosmwasm-schema = { workspace = true }
 cw-storage-plus = { workspace = true }
-cw-utils = { workspace = true}
-cw-asset = { workspace = true}
+cw-utils = { workspace = true }
+cw-asset = { workspace = true }
 cw2 = { workspace = true }
 semver = { workspace = true }
 
@@ -28,8 +28,7 @@ andromeda-std = { workspace = true }
 andromeda-finance = { workspace = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-cw-multi-test = { version = "1.0.0", optional = true }
+cw-multi-test = { workspace = true, optional = true }
 
 [dev-dependencies]
 andromeda-app = { version = "0.1.0", path = "../../../packages/andromeda-app" }
-

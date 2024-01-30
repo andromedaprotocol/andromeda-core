@@ -324,11 +324,18 @@ fn test_handle_packet_exit_with_error_true() {
     let pkt = AMPPkt::new(
         info.clone().sender,
         "cosmos2contract",
-        vec![AMPMsg::new(
-            recip_address1,
-            to_json_binary(&ExecuteMsg::Send {}).unwrap(),
-            Some(vec![Coin::new(0, "uluna")]),
-        )],
+        vec![
+            AMPMsg::new(
+                recip_address1,
+                to_json_binary(&ExecuteMsg::Send {}).unwrap(),
+                Some(vec![Coin::new(0, "uluna")]),
+            ),
+            AMPMsg::new(
+                recip_address2,
+                to_json_binary(&ExecuteMsg::Send {}).unwrap(),
+                Some(vec![Coin::new(0, "uluna")]),
+            ),
+        ],
     );
     let msg = ExecuteMsg::AMPReceive(pkt);
 

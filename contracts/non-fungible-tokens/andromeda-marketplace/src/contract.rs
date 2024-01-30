@@ -26,8 +26,9 @@ use semver::Version;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, ensure, from_json, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
-    QuerierWrapper, QueryRequest, Response, Storage, SubMsg, Uint128, WasmMsg, WasmQuery,
+    attr, ensure, from_json, has_coins, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env,
+    MessageInfo, QuerierWrapper, QueryRequest, Response, Storage, SubMsg, Uint128, WasmMsg,
+    WasmQuery,
 };
 
 use cw_utils::{nonpayable, Expiration};

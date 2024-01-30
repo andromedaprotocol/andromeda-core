@@ -91,7 +91,7 @@ fn test_cw20_staking_app() {
             Some(Uint128::from(1000000u128)),
         )),
         None,
-        Some(andr.kernel_address.to_string()),
+        Some(andr.kernel.addr().to_string()),
     );
     let cw20_component = AppComponent::new(
         "1".to_string(),
@@ -101,7 +101,7 @@ fn test_cw20_staking_app() {
 
     let cw20_staking_init_msg = mock_cw20_staking_instantiate_msg(
         cw20_component.clone().name,
-        Some(andr.kernel_address.to_string()),
+        Some(andr.kernel.addr().to_string()),
     );
     let cw20_staking_component = AppComponent::new(
         "2".to_string(),
@@ -114,7 +114,7 @@ fn test_cw20_staking_app() {
     let app_init_msg = mock_app_instantiate_msg(
         "Staking App".to_string(),
         app_components.clone(),
-        andr.kernel_address,
+        andr.kernel.addr(),
     );
 
     let app_addr = router

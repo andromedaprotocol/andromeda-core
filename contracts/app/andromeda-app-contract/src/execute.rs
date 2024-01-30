@@ -10,8 +10,8 @@ use andromeda_std::os::vfs::ExecuteMsg as VFSExecuteMsg;
 use andromeda_std::{ado_contract::ADOContract, amp::AndrAddr};
 
 use cosmwasm_std::{
-    ensure, to_json_binary, Addr, Binary, CosmosMsg, Order, QuerierWrapper, ReplyOn, Response,
-    Storage, SubMsg, WasmMsg,
+    ensure, to_json_binary, Addr, Binary, CosmosMsg, QuerierWrapper, ReplyOn, Response, Storage,
+    SubMsg, WasmMsg,
 };
 
 pub fn handle_add_app_component(

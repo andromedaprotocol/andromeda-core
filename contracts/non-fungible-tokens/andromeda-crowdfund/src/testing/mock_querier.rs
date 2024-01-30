@@ -7,8 +7,9 @@ use cosmwasm_std::testing::mock_info;
 use cosmwasm_std::{
     from_json,
     testing::{mock_env, MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
-    to_json_binary, Binary, Coin, ContractResult, OwnedDeps, Querier, QuerierResult, QueryRequest,
-    SystemError, SystemResult, WasmQuery,
+    to_json_binary, to_json_binary, Binary, Binary, Coin, Coin, ContractResult, ContractResult,
+    OwnedDeps, OwnedDeps, Querier, Querier, QuerierResult, QuerierResult, QueryRequest,
+    QueryRequest, SystemError, SystemResult, WasmQuery,
 };
 use cosmwasm_std::{BankMsg, CosmosMsg, Response, SubMsg, Uint128};
 use cw721::{ContractInfoResponse, Cw721QueryMsg, TokensResponse};
