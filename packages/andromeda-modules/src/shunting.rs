@@ -1,0 +1,30 @@
+use andromeda_std::{andr_exec, andr_instantiate, andr_query};
+use cosmwasm_schema::{cw_serde, QueryResponses};
+
+#[andr_instantiate]
+#[cw_serde]
+pub struct InstantiateMsg {
+    pub expressions: Vec<String>,
+}
+
+#[andr_exec]
+#[cw_serde]
+pub enum ExecuteMsg {
+    UpdateExpressions { expressions: Vec<String> },
+}
+
+#[cw_serde]
+pub struct MigrateMsg {}
+
+#[andr_query]
+#[cw_serde]
+#[derive(QueryResponses)]
+pub enum QueryMsg {
+    #[returns(ShuntingResponse)]
+    EvalWithParams { params: Vec<String> },
+}
+
+#[cw_serde]
+pub struct ShuntingResponse {
+    pub result: String,
+}

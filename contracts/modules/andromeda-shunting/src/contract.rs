@@ -1,0 +1,147 @@
+use andromeda_modules::shunting::ShuntingResponse;
+#[cfg(not(feature = "library"))]
+use andromeda_modules::shunting::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use andromeda_std::{
+    ado_base::InstantiateMsg as BaseInstantiateMsg,
+    ado_contract::ADOContract,
+    common::{context::ExecuteContext, encode_binary},
+    error::ContractError,
+};
+
+use cosmwasm_std::entry_point;
+use cosmwasm_std::{attr, ensure, Binary, Deps, DepsMut, Env, MessageInfo, Response};
+use cw2::set_contract_version;
+use cw_utils::nonpayable;
+
+use crate::state::EXPRESSIONS;
+use shunting::*;
+
+const CONTRACT_NAME: &str = "crates.io:andromeda-shunting";
+const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn instantiate(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    msg: InstantiateMsg,
+) -> Result<Response, ContractError> {
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+    EXPRESSIONS.save(deps.storage, &msg.expressions)?;
+
+    let inst_resp = ADOContract::default().instantiate(
+        deps.storage,
+        env,
+        deps.api,
+        info,
+        BaseInstantiateMsg {
+            ado_type: "shunting".to_string(),
+            ado_version: CONTRACT_VERSION.to_string(),
+            operators: None,
+            kernel_address: msg.kernel_address,
+            owner: msg.owner,
+        },
+    )?;
+
+    Ok(inst_resp)
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn execute(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    msg: ExecuteMsg,
+) -> Result<Response, ContractError> {
+    let _contract = ADOContract::default();
+    let ctx = ExecuteContext::new(deps, info, env);
+
+    match msg {
+        ExecuteMsg::AMPReceive(pkt) => {
+            ADOContract::default().execute_amp_receive(ctx, pkt, handle_execute)
+        }
+        _ => handle_execute(ctx, msg),
+    }
+}
+
+pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+    match msg {
+        ExecuteMsg::UpdateExpressions { expressions } => {
+            execute_update_expression(ctx, expressions)
+        }
+        _ => ADOContract::default().execute(ctx, msg),
+    }
+}
+
+fn execute_update_expression(
+    ctx: ExecuteContext,
+    expressions: Vec<String>,
+) -> Result<Response, ContractError> {
+    let ExecuteContext { deps, info, .. } = ctx;
+    nonpayable(&info)?;
+
+    ensure!(
+        ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {}
+    );
+
+    EXPRESSIONS.save(deps.storage, &expressions)?;
+
+    Ok(Response::new().add_attributes(vec![attr("action", "update_expression")]))
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
+    match msg {
+        QueryMsg::EvalWithParams { params } => {
+            encode_binary(&handle_eval_expression(deps, params)?)
+        }
+        _ => ADOContract::default().query(deps, env, msg),
+    }
+}
+
+fn handle_eval_expression(
+    deps: Deps,
+    params: Vec<String>,
+) -> Result<ShuntingResponse, ContractError> {
+    let expressions = EXPRESSIONS.load(deps.storage)?;
+    let mut results: Vec<f64> = Vec::new();
+    let mut result: f64 = 0.0;
+    for (index, expression) in expressions.iter().enumerate() {
+        let mut parsed_expression = expression.to_string();
+
+        // replace {:0}, {:1} with actual params in expression
+        for (ndx, param) in params.iter().enumerate() {
+            let placeholder = format!("x{}", ndx);
+            parsed_expression = parsed_expression.replace(&placeholder, param);
+        }
+
+        for (i, sub_result) in results.iter().enumerate().take(index) {
+            let placeholder = format!("y{}", i);
+            parsed_expression = parsed_expression.replace(&placeholder, &sub_result.to_string());
+        }
+
+        result = eval(&parsed_expression).unwrap();
+        results.push(result);
+    }
+
+    Ok(ShuntingResponse {
+        result: result.to_string(),
+    })
+}
+
+fn eval(expr: &str) -> Result<f64, ContractError> {
+    let expr = ShuntingParser::parse_str(expr);
+    if expr.is_err() {
+        return Err(ContractError::InvalidExpression {
+            msg: "Invalid Expression".to_string(),
+        });
+    };
+
+    let result = MathContext::new().eval(&expr.unwrap());
+    if let Err(msg) = result {
+        return Err(ContractError::InvalidExpression { msg });
+    }
+
+    Ok(result.unwrap())
+}
