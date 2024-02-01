@@ -283,7 +283,7 @@ mod test {
                 ado_type: "test_ado".to_string(),
                 component_type: ComponentType::Symlink(AndrAddr::from_string(format!(
                     "ibc://andromeda/home/{}/test_app/test_component",
-                    target_owner.clone()
+                    target_owner
                 ))),
             },
         ];

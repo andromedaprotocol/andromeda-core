@@ -4,6 +4,27 @@ use cosmwasm_schema::cw_serde;
 use cosmwasm_std::Env;
 use cw_utils::Expiration;
 
+use crate::amp::AndrAddr;
+
+#[cw_serde]
+pub enum PermissioningMessage {
+    SetPermission {
+        actor: AndrAddr,
+        action: String,
+        permission: Permission,
+    },
+    RemovePermission {
+        action: String,
+        actor: AndrAddr,
+    },
+    PermissionAction {
+        action: String,
+    },
+    DisableActionPermissioning {
+        action: String,
+    },
+}
+
 #[cw_serde]
 pub struct PermissionInfo {
     pub permission: Permission,
