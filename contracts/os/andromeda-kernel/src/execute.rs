@@ -445,7 +445,7 @@ impl MsgHandler {
                         error: Some(format!("Channel not found for chain {chain}")),
                     });
                 }?;
-            if !self.message().funds.is_empty() {
+            if self.message().funds.is_empty() {
                 self.handle_ibc_hooks(deps, info, env, ctx, sequence, channel_info)
             } else {
                 self.handle_ibc_direct(deps, info, env, ctx, sequence, channel_info)
