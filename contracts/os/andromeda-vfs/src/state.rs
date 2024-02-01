@@ -83,7 +83,7 @@ fn resolve_home_path(
 ) -> Result<Addr, ContractError> {
     let mut parts = split_pathname(pathname.to_string());
 
-    let username_or_address = if parts[0].starts_with('~') && parts.len() == 1 {
+    let username_or_address = if parts[0].starts_with('~') && !parts[0].eq("~") {
         parts[0].remove(0);
         parts[0].as_str()
     } else {
@@ -94,8 +94,20 @@ fn resolve_home_path(
         Err(_e) => USERS.load(storage, username_or_address)?,
     };
 
-    resolve_path(storage, api, parts, user_address)
+    let remaining_parts = parts
+        .to_vec()
+        .iter()
+        .filter(|part| {
+            !SKIP_PARTS.contains(&part.as_str())
+                && part.to_string() != *username_or_address
+        })
+        .map(|part| part.to_string())
+        .collect::<Vec<String>>();
+
+    resolve_path(storage, api, remaining_parts, user_address)
 }
+
+const SKIP_PARTS: [&str; 3] = ["home", "lib", "~"];
 
 fn resolve_lib_path(
     storage: &dyn Storage,
@@ -104,18 +116,28 @@ fn resolve_lib_path(
 ) -> Result<Addr, ContractError> {
     let mut parts = split_pathname(pathname.to_string());
 
-    let username_or_address = if parts[0].starts_with('~') && parts.len() == 1 {
+    let username_or_address = if parts[0].starts_with('~') && !parts[0].starts_with("~/") {
         parts[0].remove(0);
         parts[0].as_str()
     } else {
         parts[1].as_str()
     };
+
     let user_address = match api.addr_validate(username_or_address) {
         Ok(addr) => addr,
         Err(_e) => LIBRARIES.load(storage, username_or_address)?,
     };
+    let remaining_parts = parts
+        .to_vec()
+        .iter()
+        .filter(|part| {
+            !SKIP_PARTS.contains(&part.as_str())
+                && part.to_string() != *username_or_address
+        })
+        .map(|part| part.to_string())
+        .collect::<Vec<String>>();
 
-    resolve_path(storage, api, parts, user_address)
+    resolve_path(storage, api, remaining_parts, user_address)
 }
 
 fn resolve_path(
@@ -125,11 +147,7 @@ fn resolve_path(
     user_address: Addr,
 ) -> Result<Addr, ContractError> {
     let mut address = user_address;
-    for (idx, part) in parts.iter().enumerate() {
-        // Skip username and root dir
-        if idx <= 1 {
-            continue;
-        }
+    for part in parts.iter() {
         let info = paths().load(storage, &(address, part.clone()))?;
         address = match info.symlink {
             Some(symlink) => resolve_pathname(storage, api, symlink)?,
@@ -347,6 +365,13 @@ mod test {
             deps.as_ref().storage,
             deps.as_ref().api,
             AndrAddr::from_string(format!("/home/{username}/{first_directory}")),
+        )
+        .unwrap();
+        assert_eq!(res, first_directory_address);
+        let res = resolve_home_path(
+            deps.as_ref().storage,
+            deps.as_ref().api,
+            AndrAddr::from_string(format!("~{username}/{first_directory}")),
         )
         .unwrap();
         assert_eq!(res, first_directory_address);
