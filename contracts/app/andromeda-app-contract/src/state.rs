@@ -121,6 +121,7 @@ pub fn get_chain_info(chain_name: String, chain_info: Option<Vec<ChainInfo>>) ->
 }
 
 /// Creates a sub message to create a recpliant app on the target chain
+/// Apps are altered to be symlinks or instantiations depending on if they are for the target chain
 pub fn create_cross_chain_message(
     deps: &DepsMut,
     app_name: String,
@@ -143,6 +144,7 @@ pub fn create_cross_chain_message(
                 chain,
                 instantiate_msg,
             }) => {
+                // If component for target chain instantiate component
                 if chain == chain_info.chain_name {
                     AppComponent {
                         name,
@@ -150,15 +152,17 @@ pub fn create_cross_chain_message(
                         component_type: ComponentType::New(instantiate_msg),
                     }
                 } else {
+                    // Otherwise use a symlink to the component
                     AppComponent {
                         name: name.clone(),
                         ado_type: component.ado_type,
                         component_type: ComponentType::Symlink(AndrAddr::from_string(format!(
-                            "ibc://{curr_chain}/home/{owner}/{app_name}/{name}"
+                            "ibc://{chain}/home/{owner}/{app_name}/{name}"
                         ))),
                     }
                 }
             }
+            // Must be some form of local component (symlink or new) so create symlink references
             _ => AppComponent {
                 name: name.clone(),
                 ado_type: component.ado_type,
