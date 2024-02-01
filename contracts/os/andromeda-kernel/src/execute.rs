@@ -21,14 +21,8 @@ use crate::state::{
 };
 use crate::{query, reply::ReplyId};
 
-pub fn send(execute_env: ExecuteContext, message: AMPMsg) -> Result<Response, ContractError> {
-    let res = MsgHandler::new(message).handle(
-        execute_env.deps,
-        execute_env.info,
-        execute_env.env,
-        execute_env.amp_ctx,
-        0,
-    )?;
+pub fn send(ctx: ExecuteContext, message: AMPMsg) -> Result<Response, ContractError> {
+    let res = MsgHandler(message).handle(ctx.deps, ctx.info, ctx.env, ctx.amp_ctx, 0)?;
 
     Ok(res)
 }
@@ -385,15 +379,17 @@ impl MsgHandler {
                 amount: funds.clone(),
             };
 
+            let mut attrs = vec![];
+            for (idx, fund) in funds.iter().enumerate() {
+                attrs.push(attr(format!("funds:{sequence}:{idx}"), fund.to_string()));
+            }
+            attrs.push(attr(format!("recipient:{sequence}"), recipient_addr));
             res = res
                 .add_submessage(SubMsg::reply_on_error(
                     CosmosMsg::Bank(sub_msg),
                     ReplyId::AMPMsg.repr(),
                 ))
-                .add_attributes(vec![
-                    attr(format!("recipient:{sequence}"), recipient_addr),
-                    attr(format!("bank_send_amount:{sequence}"), funds[0].to_string()),
-                ]);
+                .add_attributes(attrs);
         } else {
             let origin = if let Some(amp_ctx) = ctx {
                 amp_ctx.ctx.get_origin()
@@ -402,17 +398,13 @@ impl MsgHandler {
             };
             let previous_sender = info.sender.to_string();
 
-            let amp_msg = AMPMsg::new(
-                recipient_addr.clone(),
-                message.clone(),
-                Some(vec![funds[0].clone()]),
-            );
+            let amp_msg = AMPMsg::new(recipient_addr.clone(), message.clone(), Some(funds.clone()));
 
             let new_packet = AMPPkt::new(origin, previous_sender, vec![amp_msg]);
 
             let sub_msg = new_packet.to_sub_msg(
                 recipient_addr.clone(),
-                Some(vec![funds[0].clone()]),
+                Some(funds.clone()),
                 ReplyId::AMPMsg.repr(),
             )?;
             res = res
