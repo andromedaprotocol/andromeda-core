@@ -27,7 +27,7 @@ pub fn store_code_id(
         ContractError::Unauthorized {}
     );
     ADO_TYPE
-        .save(storage, code_id, &ado_version.clone().into_string())
+        .save(storage, code_id, &ado_version.get_type())
         .unwrap();
     LATEST_VERSION
         .save(
