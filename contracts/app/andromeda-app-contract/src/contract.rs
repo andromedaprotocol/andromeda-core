@@ -130,13 +130,14 @@ pub fn instantiate(
         .add_submessage(assign_app_msg);
 
     if let Some(chain_info) = msg.chain_info {
-        for chain in chain_info {
+        for chain in chain_info.clone() {
             let sub_msg = create_cross_chain_message(
                 &deps,
                 app_name.clone(),
                 msg.owner.clone().unwrap_or(info.sender.to_string()),
                 msg.app_components.clone(),
                 chain,
+                chain_info.clone(),
             )?;
             resp = resp.add_submessage(sub_msg);
         }

@@ -2,9 +2,12 @@ use crate::{
     ado_base::AndromedaQuery,
     ado_contract::ADOContract,
     amp::{ADO_DB_KEY, ECONOMICS_KEY, OSMOSIS_ROUTER_KEY, VFS_KEY},
-    os::adodb::{ActionFee, QueryMsg as ADODBQueryMsg},
     os::kernel::QueryMsg as KernelQueryMsg,
     os::vfs::QueryMsg as VFSQueryMsg,
+    os::{
+        adodb::{ActionFee, QueryMsg as ADODBQueryMsg},
+        kernel::ChannelInfo,
+    },
 };
 #[cfg(feature = "modules")]
 use cosmwasm_std::SubMsg;
@@ -410,6 +413,16 @@ impl MockAndromedaQuerier {
                 "andromeda".to_string()
             };
             SystemResult::Ok(ContractResult::Ok(to_binary(&res).unwrap()))
+        } else if key_str.contains("channel") {
+            SystemResult::Ok(ContractResult::Ok(
+                to_binary(&ChannelInfo {
+                    kernel_address: "kernel".to_string(),
+                    ics20_channel_id: Some("1".to_string()),
+                    direct_channel_id: Some("2".to_string()),
+                    supported_modules: vec![],
+                })
+                .unwrap(),
+            ))
         } else {
             panic!("Invalid Kernel Raw Query")
         }
