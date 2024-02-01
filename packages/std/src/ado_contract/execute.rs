@@ -8,7 +8,7 @@ use crate::{
     error::ContractError,
 };
 use cosmwasm_std::{
-    attr, from_binary, to_binary, Addr, Api, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
+    attr, ensure, from_binary, to_binary, Addr, Api, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
     QuerierWrapper, Response, Storage, SubMsg, WasmMsg,
 };
 use serde::de::DeserializeOwned;
@@ -118,7 +118,7 @@ impl<'a> ADOContract<'a> {
             }
             Err(_) => {
                 for address in addresses {
-                    address.is_addr(deps.api);
+                    ensure!(address.is_addr(deps.api), ContractError::InvalidAddress {});
                 }
                 Ok(())
             }
