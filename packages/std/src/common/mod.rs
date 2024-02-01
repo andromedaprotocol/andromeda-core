@@ -8,6 +8,7 @@ pub mod withdraw;
 use crate::error::ContractError;
 use cosmwasm_std::{
     ensure, from_binary, to_binary, BankMsg, Binary, Coin, CosmosMsg, QuerierWrapper, SubMsg,
+    Uint128,
 };
 use cw20::Cw20Coin;
 
@@ -138,9 +139,12 @@ pub fn merge_coins(coins: &mut Vec<Coin>, coins_to_add: Vec<Coin>) {
     // typically at most 2 denoms. Even in the future there are not that many Terra native coins
     // where this will be a problem.
     for coin in coins.iter_mut() {
-        let same_denom_coin = coins_to_add.iter().find(|&c| c.denom == coin.denom);
-        if let Some(same_denom_coin) = same_denom_coin {
-            coin.amount += same_denom_coin.amount;
+        let same_denom_coin: Vec<&Coin> = coins_to_add
+            .iter()
+            .filter(|&c| c.denom == coin.denom)
+            .collect();
+        for same_coin in same_denom_coin.iter() {
+            coin.amount += same_coin.amount;
         }
     }
     for coin_to_add in coins_to_add.iter() {
@@ -155,20 +159,29 @@ pub fn merge_coins(coins: &mut Vec<Coin>, coins_to_add: Vec<Coin>) {
 /// ## Arguments
 /// * `coins` - The vector of `Coin` structs from which to deduct the given funds
 /// * `funds` - The amount to deduct
-pub fn deduct_funds(coins: &mut [Coin], funds: &Coin) -> Result<bool, ContractError> {
-    let coin_amount = coins.iter_mut().find(|c| c.denom.eq(&funds.denom));
+pub fn deduct_funds(coins: &mut [Coin], funds: &Coin) -> Result<(), ContractError> {
+    let coin_amount: Vec<&mut Coin> = coins
+        .iter_mut()
+        .filter(|c| c.denom.eq(&funds.denom))
+        .collect();
 
-    match coin_amount {
-        Some(c) => {
-            ensure!(
-                c.amount >= funds.amount,
-                ContractError::InsufficientFunds {}
-            );
-            c.amount -= funds.amount;
-            Ok(true)
+    let mut remainder = funds.amount;
+    for same_coin in coin_amount {
+        if same_coin.amount > remainder {
+            same_coin.amount -= remainder;
+            return Ok(());
+        } else {
+            remainder -= same_coin.amount;
+            same_coin.amount = Uint128::zero();
         }
-        None => Err(ContractError::InsufficientFunds {}),
     }
+
+    ensure!(
+        remainder == Uint128::zero(),
+        ContractError::InsufficientFunds {}
+    );
+
+    Ok(())
 }
 
 #[cfg(test)]
@@ -204,11 +217,17 @@ mod test {
     #[test]
     fn test_merge_coins() {
         let mut coins = vec![coin(100, "uusd"), coin(100, "uluna")];
-        let funds_to_add = vec![coin(25, "uluna"), coin(50, "uusd"), coin(100, "ucad")];
+        let funds_to_add = vec![
+            coin(25, "uluna"),
+            coin(50, "uusd"),
+            coin(100, "ucad"),
+            coin(50, "uluna"),
+            coin(100, "uluna"),
+        ];
 
         merge_coins(&mut coins, funds_to_add);
         assert_eq!(
-            vec![coin(150, "uusd"), coin(125, "uluna"), coin(100, "ucad")],
+            vec![coin(150, "uusd"), coin(275, "uluna"), coin(100, "ucad")],
             coins
         );
     }
@@ -264,16 +283,18 @@ mod test {
 
     #[test]
     fn test_deduct_funds() {
-        let mut funds: Vec<Coin> = vec![coin(100, "uluna")];
+        let mut funds: Vec<Coin> = vec![coin(5, "uluna"), coin(100, "uusd"), coin(100, "uluna")];
 
         deduct_funds(&mut funds, &coin(10, "uluna")).unwrap();
 
-        assert_eq!(Uint128::from(90_u64), funds[0].amount);
+        assert_eq!(Uint128::zero(), funds[0].amount);
         assert_eq!(String::from("uluna"), funds[0].denom);
+        assert_eq!(Uint128::from(95u128), funds[2].amount);
+        assert_eq!(String::from("uluna"), funds[2].denom);
 
         let mut funds: Vec<Coin> = vec![Coin {
             denom: String::from("uluna"),
-            amount: Uint128::from(5_u64),
+            amount: Uint128::from(5u64),
         }];
 
         let e = deduct_funds(&mut funds, &coin(10, "uluna")).unwrap_err();
