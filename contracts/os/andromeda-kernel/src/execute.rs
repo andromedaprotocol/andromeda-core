@@ -208,8 +208,15 @@ pub fn register_user_cross_chain(
         username: username.clone(),
         address: address.clone(),
     };
+    let channel_id = if let Some(direct_channel_id) = channel_info.direct_channel_id {
+        Ok::<String, ContractError>(direct_channel_id)
+    } else {
+        return Err(ContractError::InvalidPacket {
+            error: Some(format!("Channel not found for chain {chain}")),
+        });
+    }?;
     let ibc_msg = IbcMsg::SendPacket {
-        channel_id: channel_info.direct_channel_id.clone().unwrap(),
+        channel_id,
         data: to_binary(&kernel_msg)?,
         timeout: execute_env
             .env
@@ -243,7 +250,9 @@ pub fn assign_channels(
         ContractError::Unauthorized {}
     );
 
-    let mut channel_info = CHAIN_TO_CHANNEL.load(execute_env.deps.storage, &chain)?;
+    let mut channel_info = CHAIN_TO_CHANNEL
+        .load(execute_env.deps.storage, &chain)
+        .unwrap_or_default();
     channel_info.kernel_address = kernel_address;
     if let Some(channel) = direct_channel_id {
         CHANNEL_TO_CHAIN.save(execute_env.deps.storage, &channel, &chain)?;

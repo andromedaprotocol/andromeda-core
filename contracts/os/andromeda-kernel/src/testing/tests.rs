@@ -153,23 +153,13 @@ fn test_assign_channels() {
         direct_channel_id: Some("2".to_string()),
         supported_modules: vec![],
     };
-    CHAIN_TO_CHANNEL
-        .save(deps.as_mut().storage, chain, &channel_info)
-        .unwrap();
-    CHANNEL_TO_CHAIN
-        .save(
-            deps.as_mut().storage,
-            &channel_info.direct_channel_id.unwrap(),
-            &chain.to_string(),
-        )
-        .unwrap();
-    CHANNEL_TO_CHAIN
-        .save(
-            deps.as_mut().storage,
-            &channel_info.ics20_channel_id.unwrap(),
-            &chain.to_string(),
-        )
-        .unwrap();
+    let msg = ExecuteMsg::AssignChannels {
+        ics20_channel_id: channel_info.ics20_channel_id.clone(),
+        direct_channel_id: channel_info.direct_channel_id.clone(),
+        chain: chain.to_string(),
+        kernel_address: channel_info.kernel_address,
+    };
+    execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
     let msg = ExecuteMsg::AssignChannels {
         ics20_channel_id: None,
@@ -235,4 +225,48 @@ fn test_assign_channels_unauthorized() {
     };
     let err = execute(deps.as_mut(), env, unauth_info, msg).unwrap_err();
     assert_eq!(err, ContractError::Unauthorized {});
+}
+
+#[test]
+fn test_send_cross_chain_no_channel() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let info = mock_info(MOCK_VFS_CONTRACT, &[]);
+    let env = mock_env();
+    instantiate(
+        deps.as_mut(),
+        env.clone(),
+        info.clone(),
+        InstantiateMsg {
+            owner: None,
+            chain_name: "andromeda".to_string(),
+        },
+    )
+    .unwrap();
+    KERNEL_ADDRESSES
+        .save(
+            deps.as_mut().storage,
+            VFS_KEY,
+            &Addr::unchecked(MOCK_VFS_CONTRACT),
+        )
+        .unwrap();
+    let msg = ExecuteMsg::AssignChannels {
+        ics20_channel_id: None,
+        direct_channel_id: None,
+        chain: "chain2".to_string(),
+        kernel_address: Addr::unchecked("kernal2").to_string(),
+    };
+    execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+    let internal_msg = InternalMsg::RegisterUserCrossChain {
+        username: "name".to_string(),
+        address: Addr::unchecked("addr").to_string(),
+        chain: "chain2".to_string(),
+    };
+    let msg = ExecuteMsg::Internal(internal_msg);
+    let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
+    assert_eq!(
+        err,
+        ContractError::InvalidPacket {
+            error: Some("Channel not found for chain chain2".to_string())
+        }
+    );
 }
