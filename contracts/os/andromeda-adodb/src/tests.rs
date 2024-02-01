@@ -91,7 +91,7 @@ fn test_publish() {
         let fee = ACTION_FEES
             .load(
                 deps.as_ref().storage,
-                &(ado_version.clone().into_string(), action_fee.clone().action),
+                &(ado_version.get_type(), action_fee.clone().action),
             )
             .unwrap();
         assert_eq!(fee, action_fee);
@@ -163,7 +163,7 @@ fn test_update_action_fees() {
         let fee = ACTION_FEES
             .load(
                 deps.as_ref().storage,
-                &(ado_version.clone().into_string(), action_fee.clone().action),
+                &(ado_version.get_type(), action_fee.clone().action),
             )
             .unwrap();
         assert_eq!(fee, action_fee);
