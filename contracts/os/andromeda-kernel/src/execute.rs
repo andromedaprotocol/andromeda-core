@@ -402,6 +402,7 @@ impl MsgHandler {
 
             let new_packet = AMPPkt::new(origin, previous_sender, vec![amp_msg]);
 
+            //TODO: Check funds are sent with message
             let sub_msg = new_packet.to_sub_msg(
                 recipient_addr.clone(),
                 Some(funds.clone()),
