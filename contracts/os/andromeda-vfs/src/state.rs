@@ -274,6 +274,11 @@ mod test {
         let invalid_user = "///////";
         let res = validate_username(invalid_user.to_string());
         assert!(res.is_err());
+
+        let invalid_user =
+            "reallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallylongusername";
+        let res = validate_username(invalid_user.to_string());
+        assert!(res.is_err());
     }
 
     #[test]

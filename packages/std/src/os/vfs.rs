@@ -4,7 +4,7 @@ use cosmwasm_std::{ensure, Addr, QuerierWrapper};
 use regex::Regex;
 
 pub const COMPONENT_NAME_REGEX: &str = r"^[A-Za-z0-9\.\-_]{1,40}$";
-pub const USERNAME_REGEX: &str = r"^[a-z0-9]+$";
+pub const USERNAME_REGEX: &str = r"^[a-z0-9]{1, 40}$";
 pub const PATH_REGEX: &str = r"^((([A-Za-z0-9]+://)?([A-Za-z0-9\.\-_]{1,40})?(/)?(home|lib)/)|(~(/)?))([A-Za-z0-9\.\-_]{1,40}(/)?)+$";
 
 pub fn convert_component_name(path: String) -> String {
