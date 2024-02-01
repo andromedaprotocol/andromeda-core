@@ -243,19 +243,17 @@ pub fn assign_channels(
         ContractError::Unauthorized {}
     );
 
-    let channel_info = ChannelInfo {
-        ics20_channel_id,
-        direct_channel_id,
-        kernel_address,
-        supported_modules: vec![],
-    };
+    let mut channel_info = CHAIN_TO_CHANNEL.load(execute_env.deps.storage, &chain)?;
+    channel_info.kernel_address = kernel_address;
+    if let Some(channel) = direct_channel_id {
+        CHANNEL_TO_CHAIN.save(execute_env.deps.storage, &channel, &chain)?;
+        channel_info.direct_channel_id = Some(channel);
+    }
+    if let Some(channel) = ics20_channel_id {
+        CHANNEL_TO_CHAIN.save(execute_env.deps.storage, &channel, &chain)?;
+        channel_info.ics20_channel_id = Some(channel);
+    }
     CHAIN_TO_CHANNEL.save(execute_env.deps.storage, &chain, &channel_info)?;
-    if let Some(channel) = channel_info.direct_channel_id.clone() {
-        CHANNEL_TO_CHAIN.save(execute_env.deps.storage, &channel, &chain)?;
-    }
-    if let Some(channel) = channel_info.ics20_channel_id.clone() {
-        CHANNEL_TO_CHAIN.save(execute_env.deps.storage, &channel, &chain)?;
-    }
 
     Ok(Response::default().add_attributes(vec![
         attr("action", "assign_channel"),

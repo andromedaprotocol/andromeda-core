@@ -1,14 +1,15 @@
 use crate::{
     contract::{execute, instantiate},
     ibc::PACKET_LIFETIME,
-    state::{ADO_OWNER, CHAIN_TO_CHANNEL, KERNEL_ADDRESSES},
+    state::{ADO_OWNER, CHAIN_TO_CHANNEL, CHANNEL_TO_CHAIN, KERNEL_ADDRESSES},
 };
 use andromeda_std::{
     amp::{ADO_DB_KEY, VFS_KEY},
     error::ContractError,
     os::kernel::{ChannelInfo, ExecuteMsg, IbcExecuteMsg, InstantiateMsg, InternalMsg},
     testing::mock_querier::{
-        mock_dependencies_custom, MOCK_ADODB_CONTRACT, MOCK_FAKE_KERNEL_CONTRACT, MOCK_VFS_CONTRACT,
+        mock_dependencies_custom, MOCK_ADODB_CONTRACT, MOCK_FAKE_KERNEL_CONTRACT,
+        MOCK_KERNEL_CONTRACT, MOCK_VFS_CONTRACT,
     },
 };
 use cosmwasm_std::{
@@ -127,4 +128,111 @@ fn test_register_user_cross_chain() {
     };
 
     assert_eq!(res.messages.first().unwrap().msg, CosmosMsg::Ibc(expected));
+}
+
+#[test]
+fn test_assign_channels() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let info = mock_info("creator", &[]);
+    let env = mock_env();
+    let chain = "chain";
+    instantiate(
+        deps.as_mut(),
+        env.clone(),
+        info.clone(),
+        InstantiateMsg {
+            owner: None,
+            chain_name: "andromeda".to_string(),
+        },
+    )
+    .unwrap();
+
+    let channel_info = ChannelInfo {
+        kernel_address: MOCK_FAKE_KERNEL_CONTRACT.to_string(),
+        ics20_channel_id: Some("1".to_string()),
+        direct_channel_id: Some("2".to_string()),
+        supported_modules: vec![],
+    };
+    CHAIN_TO_CHANNEL
+        .save(deps.as_mut().storage, chain, &channel_info)
+        .unwrap();
+    CHANNEL_TO_CHAIN
+        .save(
+            deps.as_mut().storage,
+            &channel_info.direct_channel_id.unwrap(),
+            &chain.to_string(),
+        )
+        .unwrap();
+    CHANNEL_TO_CHAIN
+        .save(
+            deps.as_mut().storage,
+            &channel_info.ics20_channel_id.unwrap(),
+            &chain.to_string(),
+        )
+        .unwrap();
+
+    let msg = ExecuteMsg::AssignChannels {
+        ics20_channel_id: None,
+        direct_channel_id: Some("3".to_string()),
+        chain: chain.to_string(),
+        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+    };
+    execute(deps.as_mut(), env, info, msg).unwrap();
+
+    let channel_info = CHAIN_TO_CHANNEL.load(deps.as_ref().storage, chain).unwrap();
+    assert_eq!(
+        channel_info.direct_channel_id.clone().unwrap(),
+        "3".to_string()
+    );
+    assert_eq!(
+        channel_info.ics20_channel_id.clone().unwrap(),
+        "1".to_string()
+    );
+    assert_eq!(
+        channel_info.kernel_address,
+        MOCK_KERNEL_CONTRACT.to_string()
+    );
+
+    let ics20_channel_chain = CHANNEL_TO_CHAIN
+        .load(
+            deps.as_ref().storage,
+            &channel_info.ics20_channel_id.unwrap(),
+        )
+        .unwrap();
+    assert_eq!(ics20_channel_chain, chain.to_string());
+    let direct_channel_chain = CHANNEL_TO_CHAIN
+        .load(
+            deps.as_ref().storage,
+            &channel_info.direct_channel_id.unwrap(),
+        )
+        .unwrap();
+    assert_eq!(direct_channel_chain, chain.to_string());
+}
+
+#[test]
+fn test_assign_channels_unauthorized() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let info = mock_info("creator", &[]);
+    let env = mock_env();
+    let chain = "chain";
+    instantiate(
+        deps.as_mut(),
+        env.clone(),
+        info,
+        InstantiateMsg {
+            owner: None,
+            chain_name: "andromeda".to_string(),
+        },
+    )
+    .unwrap();
+
+    let unauth_info = mock_info("attacker", &[]);
+    let msg = ExecuteMsg::AssignChannels {
+        ics20_channel_id: None,
+        direct_channel_id: Some("3".to_string()),
+        chain: chain.to_string(),
+        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+    };
+    let err = execute(deps.as_mut(), env, unauth_info, msg).unwrap_err();
+    assert_eq!(err, ContractError::Unauthorized {});
 }
