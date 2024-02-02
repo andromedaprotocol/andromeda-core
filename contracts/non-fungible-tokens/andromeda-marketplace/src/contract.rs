@@ -276,8 +276,15 @@ fn execute_buy(
         }
     );
     ensure!(
-        payment.amount >= token_sale_state.price,
-        ContractError::InsufficientFunds {}
+        payment.amount.eq(&token_sale_state.price),
+        ContractError::InvalidFunds {
+            msg: format!(
+                "Invalid funds provided, expected: {}{}, received: {}",
+                token_sale_state.price,
+                token_sale_state.coin_denom,
+                payment.to_string()
+            )
+        }
     );
 
     let key = token_sale_state.sale_id.u128();
