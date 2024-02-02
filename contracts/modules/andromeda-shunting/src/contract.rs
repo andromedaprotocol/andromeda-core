@@ -16,6 +16,8 @@ use cw_utils::nonpayable;
 use crate::state::EXPRESSIONS;
 use shunting::*;
 
+use serde_json::from_str;
+
 const CONTRACT_NAME: &str = "crates.io:andromeda-shunting";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -107,15 +109,20 @@ fn handle_eval_expression(
     let expressions = EXPRESSIONS.load(deps.storage)?;
     let mut results: Vec<f64> = Vec::new();
     let mut result: f64 = 0.0;
+
+    // replace parameters that require other shunting
+    let params = parse_params(deps, params)?;
+
     for (index, expression) in expressions.iter().enumerate() {
         let mut parsed_expression = expression.to_string();
 
-        // replace {:0}, {:1} with actual params in expression
+        // replace x0, x1 ... with actual params in expression
         for (ndx, param) in params.iter().enumerate() {
             let placeholder = format!("x{}", ndx);
             parsed_expression = parsed_expression.replace(&placeholder, param);
         }
 
+        // replace y0, y1 ... with calculation results
         for (i, sub_result) in results.iter().enumerate().take(index) {
             let placeholder = format!("y{}", i);
             parsed_expression = parsed_expression.replace(&placeholder, &sub_result.to_string());
@@ -128,6 +135,29 @@ fn handle_eval_expression(
     Ok(ShuntingResponse {
         result: result.to_string(),
     })
+}
+
+fn parse_params(deps: Deps, params: Vec<String>) -> Result<Vec<String>, ContractError> {
+    let mut parsed_params = Vec::new();
+
+    for param in params {
+        match param.split_once(':') {
+            Some((addr, sub_param)) => {
+                if let Ok(v) = from_str::<Vec<String>>(sub_param) {
+                    let query = QueryMsg::EvalWithParams { params: v };
+
+                    let response: ShuntingResponse = deps.querier.query_wasm_smart(addr, &query)?;
+                    parsed_params.push(response.result);
+                } else {
+                    return Err(ContractError::InvalidExpression {
+                        msg: "Invalid Expression".to_string(),
+                    });
+                }
+            }
+            None => parsed_params.push(param),
+        }
+    }
+    Ok(parsed_params)
 }
 
 fn eval(expr: &str) -> Result<f64, ContractError> {
