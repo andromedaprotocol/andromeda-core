@@ -344,7 +344,7 @@ fn execute_buy_with_tax_and_royalty_insufficient_funds() {
     };
 
     let info = mock_info("someone", &coins(100, "uusd".to_string()));
-    let err = execute(deps.as_mut(), mock_env(), info, msg.clone()).unwrap_err();
+    let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
     assert!(matches!(err, ContractError::InvalidFunds { .. }));
 }
 
@@ -367,7 +367,7 @@ fn execute_buy_with_tax_and_royalty_too_many_funds() {
     };
 
     let info = mock_info("someone", &coins(200, "uusd".to_string()));
-    let err = execute(deps.as_mut(), mock_env(), info, msg.clone()).unwrap_err();
+    let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
     assert!(matches!(err, ContractError::InvalidFunds { .. }));
 }
 
