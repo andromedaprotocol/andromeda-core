@@ -11,4 +11,4 @@ mod kernel;
 mod crowdfund_app;
 
 #[cfg(test)]
-mod module;
+mod lockdrop;

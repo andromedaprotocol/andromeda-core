@@ -11,6 +11,7 @@ pub fn mock_andromeda_lockdrop() -> Box<dyn Contract<Empty>> {
     Box::new(contract)
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn mock_lockdrop_instantiate_msg(
     init_timestamp: u64,
     deposit_window: u64,

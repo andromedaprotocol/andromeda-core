@@ -324,7 +324,8 @@ pub fn execute_withdraw_native(
     );
 
     // Check :: Amount should be within the allowed withdrawal limit bounds
-    let max_withdrawal_percent = allowed_withdrawal_percent(env.block.time.seconds(), &config);
+    // let max_withdrawal_percent = allowed_withdrawal_percent(env.block.time.seconds(), &config);
+    let max_withdrawal_percent = Decimal::one();
     let max_withdrawal_allowed = user_info.total_native_locked * max_withdrawal_percent;
     let withdraw_amount = withdraw_amount.unwrap_or(max_withdrawal_allowed);
     ensure!(
@@ -600,8 +601,8 @@ fn is_withdraw_open(current_timestamp: u64, config: &Config) -> bool {
 
 fn is_phase_over(current_timestamp: u64, config: &Config) -> bool {
     let deposits_opened_till = config.init_timestamp + config.deposit_window;
-    let withdrawals_opened_till = deposits_opened_till + config.withdrawal_window;
-    withdrawals_opened_till <= current_timestamp
+    // let withdrawals_opened_till = deposits_opened_till + config.withdrawal_window;
+    deposits_opened_till <= current_timestamp
 }
 
 /// @dev Helper function to calculate maximum % of NATIVE deposited that can be withdrawn

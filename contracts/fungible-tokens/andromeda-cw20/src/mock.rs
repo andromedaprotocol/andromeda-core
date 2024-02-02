@@ -16,6 +16,7 @@ pub fn mock_minter(minter: String, cap: Option<Uint128>) -> MinterResponse {
     MinterResponse { minter, cap }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn mock_cw20_instantiate_msg(
     owner: Option<String>,
     name: String,

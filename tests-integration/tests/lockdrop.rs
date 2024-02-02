@@ -4,7 +4,7 @@ use andromeda_lockdrop::mock::{
     mock_deposit_native, mock_enable_claims, mock_lockdrop_instantiate_msg, mock_withdraw_native,
 };
 use andromeda_testing::mock::MockAndromeda;
-use cosmwasm_std::{coin, to_binary, Addr, BlockInfo};
+use cosmwasm_std::{coin, to_binary, Addr, BlockInfo, Uint128};
 use cw20::Cw20Coin;
 use cw_multi_test::{App, Executor};
 
@@ -35,7 +35,7 @@ fn mock_andromeda(app: &mut App, admin_address: Addr) -> MockAndromeda {
 
 /// Test taken from audit report
 #[test]
-fn test_no_modules() {
+fn test_lockdrop() {
     let mut app = mock_app();
     let andr = mock_andromeda(&mut app, Addr::unchecked("owner"));
     let code = mock_andromeda_cw20();
@@ -93,29 +93,27 @@ fn test_no_modules() {
         .unwrap();
 
     app.set_block(BlockInfo {
-        time: app.block_info().time.plus_seconds(100),
+        time: app.block_info().time.plus_seconds(1),
         ..app.block_info()
     });
 
     let msg = mock_deposit_native();
-    let _resp = app
-        .execute_contract(
-            Addr::unchecked("user1"),
-            lockdrop_addr.clone(),
-            &msg,
-            &[coin(500, "uusd")],
-        )
-        .unwrap();
+    app.execute_contract(
+        Addr::unchecked("user1"),
+        lockdrop_addr.clone(),
+        &msg,
+        &[coin(500, "uusd")],
+    )
+    .unwrap();
 
     let msg = mock_deposit_native();
-    let _resp = app
-        .execute_contract(
-            Addr::unchecked("user2"),
-            lockdrop_addr.clone(),
-            &msg,
-            &[coin(500, "uusd")],
-        )
-        .unwrap();
+    app.execute_contract(
+        Addr::unchecked("user2"),
+        lockdrop_addr.clone(),
+        &msg,
+        &[coin(500, "uusd")],
+    )
+    .unwrap();
 
     let msg = mock_cw20_send(
         lockdrop_addr.to_string(),
@@ -123,15 +121,11 @@ fn test_no_modules() {
         to_binary(&mock_cw20_hook_increase_incentives()).unwrap(),
     );
 
-    let _resp = app.execute_contract(
-        Addr::unchecked("owner"),
-        cw20_incentives_address,
-        &msg,
-        &[],
-    );
+    app.execute_contract(Addr::unchecked("owner"), cw20_incentives_address, &msg, &[])
+        .unwrap();
 
     app.set_block(BlockInfo {
-        time: app.block_info().time.plus_seconds(201),
+        time: app.block_info().time.plus_seconds(100),
         ..app.block_info()
     });
 
@@ -143,24 +137,29 @@ fn test_no_modules() {
     //claim
 
     let msg = mock_claim_rewards();
-    let _result = app
-        .execute_contract(Addr::unchecked("user1"), lockdrop_addr.clone(), &msg, &[])
+    app.execute_contract(Addr::unchecked("user1"), lockdrop_addr.clone(), &msg, &[])
         .unwrap();
 
     let msg = mock_claim_rewards();
-    let _result = app
-        .execute_contract(Addr::unchecked("user2"), lockdrop_addr, &msg, &[])
+    app.execute_contract(Addr::unchecked("user2"), lockdrop_addr.clone(), &msg, &[])
         .unwrap();
 
-    let _balance = app
+    let balance = app
         .wrap()
         .query_balance("user1", "uusd".to_string())
         .unwrap();
 
-    let _msg = mock_withdraw_native(None);
+    assert_eq!(balance.amount, Uint128::zero());
 
-    // Fix in later commit
-    // let result = app
-    //     .execute_contract(Addr::unchecked("user1"), lockdrop_addr.clone(), &msg, &[])
-    //     .unwrap();
+    let msg = mock_withdraw_native(None);
+
+    app.execute_contract(Addr::unchecked("user1"), lockdrop_addr, &msg, &[])
+        .unwrap();
+
+    let balance = app
+        .wrap()
+        .query_balance("user1", "uusd".to_string())
+        .unwrap();
+
+    assert_eq!(balance.amount, Uint128::from(500u128));
 }
