@@ -31,6 +31,9 @@ pub enum ExecuteMsg {
         /// The recipient of the funds if the sale met the minimum sold.
         recipient: Recipient,
     },
+    /// Updates the token address to a new one.
+    /// Only accessible by owner
+    UpdateTokenContract { address: AndrAddr },
     /// Puchases tokens in an ongoing sale.
     Purchase { number_of_tokens: Option<u32> },
     /// Purchases the token with the given id.

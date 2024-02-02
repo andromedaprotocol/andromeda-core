@@ -10,7 +10,7 @@ use andromeda_non_fungible_tokens::{
 };
 use andromeda_std::{
     ado_base::ownership::OwnershipMessage,
-    amp::{messages::AMPPkt, recipient::Recipient},
+    amp::{messages::AMPPkt, recipient::Recipient, AndrAddr},
 };
 use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
 
@@ -29,7 +29,7 @@ use cosmwasm_std::{
     Order, QuerierWrapper, QueryRequest, Reply, Response, StdError, Storage, SubMsg, Uint128,
     WasmMsg, WasmQuery,
 };
-use cw721::TokensResponse;
+use cw721::{ContractInfoResponse, TokensResponse};
 use cw_utils::{nonpayable, Expiration};
 use std::cmp;
 
@@ -142,6 +142,7 @@ pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
         ExecuteMsg::PurchaseByTokenId { token_id } => execute_purchase_by_token_id(ctx, token_id),
         ExecuteMsg::ClaimRefund {} => execute_claim_refund(ctx),
         ExecuteMsg::EndSale { limit } => execute_end_sale(ctx, limit),
+        ExecuteMsg::UpdateTokenContract { address } => execute_update_token_contract(ctx, address),
         _ => ADOContract::default().execute(ctx, msg),
     }
 }
@@ -233,6 +234,39 @@ fn mint(
             })?,
             funds: vec![],
         }))
+}
+
+fn execute_update_token_contract(
+    ctx: ExecuteContext,
+    address: AndrAddr,
+) -> Result<Response, ContractError> {
+    let ExecuteContext { deps, info, .. } = ctx;
+    nonpayable(&info)?;
+
+    let contract = ADOContract::default();
+    ensure!(
+        contract.is_contract_owner(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {}
+    );
+    // Ensure no tokens have been minted already
+    let num_tokens = NUMBER_OF_TOKENS_AVAILABLE
+        .load(deps.storage)
+        .unwrap_or(Uint128::zero());
+    ensure!(num_tokens.is_zero(), ContractError::Unauthorized {});
+
+    // Will error if not a valid path
+    let addr = address.get_raw_address(&deps.as_ref())?;
+    let query = Cw721QueryMsg::ContractInfo {};
+
+    // Check contract is a valid CW721 contract
+    let res: Result<ContractInfoResponse, StdError> = deps.querier.query_wasm_smart(addr, &query);
+    ensure!(res.is_ok(), ContractError::Unauthorized {});
+
+    CONFIG.update(deps.storage, |mut config| {
+        config.token_address = address;
+        Ok::<_, ContractError>(config)
+    })?;
+    Ok(Response::new().add_attribute("action", "update_token_contract"))
 }
 
 #[allow(clippy::too_many_arguments)]
