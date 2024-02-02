@@ -11,7 +11,7 @@ use cosmwasm_std::{
     SystemError, SystemResult, WasmQuery,
 };
 use cosmwasm_std::{BankMsg, CosmosMsg, Response, SubMsg, Uint128};
-use cw721::{Cw721QueryMsg, TokensResponse};
+use cw721::{ContractInfoResponse, Cw721QueryMsg, TokensResponse};
 
 pub use andromeda_std::testing::mock_querier::{
     MOCK_ADDRESS_LIST_CONTRACT, MOCK_APP_CONTRACT, MOCK_KERNEL_CONTRACT, MOCK_RATES_CONTRACT,
@@ -122,6 +122,13 @@ impl WasmMockQuerier {
                     }
                 };
 
+                SystemResult::Ok(ContractResult::Ok(to_binary(&res).unwrap()))
+            }
+            Cw721QueryMsg::ContractInfo {} => {
+                let res = ContractInfoResponse {
+                    name: "Test Tokens".to_string(),
+                    symbol: "TTT".to_string(),
+                };
                 SystemResult::Ok(ContractResult::Ok(to_binary(&res).unwrap()))
             }
 

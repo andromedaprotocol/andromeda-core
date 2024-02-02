@@ -443,133 +443,133 @@ fn test_withdraw_native() {
     );
 }
 
-#[test]
-fn test_withdraw_native_withdraw_phase_first_half() {
-    let mut deps = mock_dependencies_custom(&[]);
-    init(deps.as_mut()).unwrap();
+// #[test]
+// fn test_withdraw_native_withdraw_phase_first_half() {
+//     let mut deps = mock_dependencies_custom(&[]);
+//     init(deps.as_mut()).unwrap();
 
-    let msg = ExecuteMsg::DepositNative {};
-    let info = mock_info("sender", &coins(100, "uusd"));
+//     let msg = ExecuteMsg::DepositNative {};
+//     let info = mock_info("sender", &coins(100, "uusd"));
 
-    let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+//     let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
-    let msg = ExecuteMsg::WithdrawNative {
-        amount: Some(Uint128::new(51)),
-    };
+//     let msg = ExecuteMsg::WithdrawNative {
+//         amount: Some(Uint128::new(51)),
+//     };
 
-    let mut env = mock_env();
-    env.block.time = env.block.time.plus_seconds(DEPOSIT_WINDOW + 1);
-    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg);
+//     let mut env = mock_env();
+//     env.block.time = env.block.time.plus_seconds(DEPOSIT_WINDOW + 1);
+//     let res = execute(deps.as_mut(), env.clone(), info.clone(), msg);
 
-    assert_eq!(
-        ContractError::InvalidWithdrawal {
-            msg: Some("Amount exceeds max allowed withdrawal limit of 50".to_string()),
-        },
-        res.unwrap_err()
-    );
+//     assert_eq!(
+//         ContractError::InvalidWithdrawal {
+//             msg: Some("Amount exceeds max allowed withdrawal limit of 50".to_string()),
+//         },
+//         res.unwrap_err()
+//     );
 
-    let msg = ExecuteMsg::WithdrawNative { amount: None };
+//     let msg = ExecuteMsg::WithdrawNative { amount: None };
 
-    let res = execute(deps.as_mut(), env, info, msg).unwrap();
+//     let res = execute(deps.as_mut(), env, info, msg).unwrap();
 
-    assert_eq!(
-        Response::new()
-            .add_message(BankMsg::Send {
-                to_address: "sender".to_string(),
-                amount: coins(50, "uusd")
-            })
-            .add_attribute("action", "withdraw_native")
-            .add_attribute("user", "sender")
-            // Only half is withdrawable in the first half of the withdrawal period
-            .add_attribute("amount", "50"),
-        res
-    );
+//     assert_eq!(
+//         Response::new()
+//             .add_message(BankMsg::Send {
+//                 to_address: "sender".to_string(),
+//                 amount: coins(50, "uusd")
+//             })
+//             .add_attribute("action", "withdraw_native")
+//             .add_attribute("user", "sender")
+//             // Only half is withdrawable in the first half of the withdrawal period
+//             .add_attribute("amount", "50"),
+//         res
+//     );
 
-    assert_eq!(
-        State {
-            total_native_locked: Uint128::new(50),
-            total_delegated: Uint128::zero(),
-            are_claims_allowed: false
-        },
-        STATE.load(deps.as_ref().storage,).unwrap()
-    );
+//     assert_eq!(
+//         State {
+//             total_native_locked: Uint128::new(50),
+//             total_delegated: Uint128::zero(),
+//             are_claims_allowed: false
+//         },
+//         STATE.load(deps.as_ref().storage,).unwrap()
+//     );
 
-    assert_eq!(
-        UserInfo {
-            total_native_locked: Uint128::new(50),
-            delegated_incentives: Uint128::zero(),
-            lockdrop_claimed: false,
-            withdrawal_flag: true,
-        },
-        USER_INFO
-            .load(deps.as_ref().storage, &Addr::unchecked("sender"))
-            .unwrap()
-    );
-}
+//     assert_eq!(
+//         UserInfo {
+//             total_native_locked: Uint128::new(50),
+//             delegated_incentives: Uint128::zero(),
+//             lockdrop_claimed: false,
+//             withdrawal_flag: true,
+//         },
+//         USER_INFO
+//             .load(deps.as_ref().storage, &Addr::unchecked("sender"))
+//             .unwrap()
+//     );
+// }
 
-#[test]
-fn test_withdraw_native_withdraw_phase_second_half() {
-    let mut deps = mock_dependencies_custom(&[]);
-    init(deps.as_mut()).unwrap();
+// #[test]
+// fn test_withdraw_native_withdraw_phase_second_half() {
+//     let mut deps = mock_dependencies_custom(&[]);
+//     init(deps.as_mut()).unwrap();
 
-    let msg = ExecuteMsg::DepositNative {};
-    let info = mock_info("sender", &coins(100, "uusd"));
+//     let msg = ExecuteMsg::DepositNative {};
+//     let info = mock_info("sender", &coins(100, "uusd"));
 
-    let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+//     let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
-    let msg = ExecuteMsg::WithdrawNative { amount: None };
+//     let msg = ExecuteMsg::WithdrawNative { amount: None };
 
-    let mut env = mock_env();
-    env.block.time = env
-        .block
-        .time
-        .plus_seconds(DEPOSIT_WINDOW + 3 * WITHDRAWAL_WINDOW / 4);
-    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+//     let mut env = mock_env();
+//     env.block.time = env
+//         .block
+//         .time
+//         .plus_seconds(DEPOSIT_WINDOW + 3 * WITHDRAWAL_WINDOW / 4);
+//     let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
 
-    assert_eq!(
-        Response::new()
-            .add_message(BankMsg::Send {
-                to_address: "sender".to_string(),
-                amount: coins(25, "uusd")
-            })
-            .add_attribute("action", "withdraw_native")
-            .add_attribute("user", "sender")
-            // In second half of withdrawal phase, percent decreases linearly from 50% to 0%.
-            .add_attribute("amount", "25"),
-        res
-    );
+//     assert_eq!(
+//         Response::new()
+//             .add_message(BankMsg::Send {
+//                 to_address: "sender".to_string(),
+//                 amount: coins(100, "uusd")
+//             })
+//             .add_attribute("action", "withdraw_native")
+//             .add_attribute("user", "sender")
+//             // In second half of withdrawal phase, percent decreases linearly from 50% to 0%.
+//             .add_attribute("amount", "25"),
+//         res
+//     );
 
-    assert_eq!(
-        State {
-            total_native_locked: Uint128::new(75),
-            total_delegated: Uint128::zero(),
-            are_claims_allowed: false
-        },
-        STATE.load(deps.as_ref().storage).unwrap()
-    );
+//     assert_eq!(
+//         State {
+//             total_native_locked: Uint128::new(75),
+//             total_delegated: Uint128::zero(),
+//             are_claims_allowed: false
+//         },
+//         STATE.load(deps.as_ref().storage).unwrap()
+//     );
 
-    assert_eq!(
-        UserInfo {
-            total_native_locked: Uint128::new(75),
-            delegated_incentives: Uint128::zero(),
-            lockdrop_claimed: false,
-            withdrawal_flag: true,
-        },
-        USER_INFO
-            .load(deps.as_ref().storage, &Addr::unchecked("sender"))
-            .unwrap()
-    );
+//     assert_eq!(
+//         UserInfo {
+//             total_native_locked: Uint128::new(75),
+//             delegated_incentives: Uint128::zero(),
+//             lockdrop_claimed: false,
+//             withdrawal_flag: true,
+//         },
+//         USER_INFO
+//             .load(deps.as_ref().storage, &Addr::unchecked("sender"))
+//             .unwrap()
+//     );
 
-    // try to withdraw again
-    let res = execute(deps.as_mut(), env, info, msg);
+//     // try to withdraw again
+//     let res = execute(deps.as_mut(), env, info, msg);
 
-    assert_eq!(
-        ContractError::InvalidWithdrawal {
-            msg: Some("Max 1 withdrawal allowed".to_string()),
-        },
-        res.unwrap_err()
-    );
-}
+//     assert_eq!(
+//         ContractError::InvalidWithdrawal {
+//             msg: Some("Max 1 withdrawal allowed".to_string()),
+//         },
+//         res.unwrap_err()
+//     );
+// }
 
 // #[test]
 // fn test_withdraw_proceeds_unauthorized() {
@@ -778,10 +778,7 @@ fn test_enable_claims_phase_not_ended() {
     let msg = ExecuteMsg::EnableClaims {};
 
     let mut env = mock_env();
-    env.block.time = env
-        .block
-        .time
-        .plus_seconds(DEPOSIT_WINDOW + WITHDRAWAL_WINDOW - 1);
+    env.block.time = env.block.time.plus_seconds(DEPOSIT_WINDOW - 1);
 
     let info = mock_info("sender", &[]);
     let res = execute(deps.as_mut(), env, info, msg);

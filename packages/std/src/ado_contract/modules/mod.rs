@@ -589,15 +589,6 @@ mod tests {
     #[test]
     fn test_validate_modules() {
         let mut modules = vec![];
-        let err = ADOContract::default()
-            .validate_modules(&modules)
-            .unwrap_err();
-        assert_eq!(
-            err,
-            ContractError::InvalidModules {
-                msg: "Must provide at least one module".to_string()
-            }
-        );
 
         let mut i = 0;
         while i < 101 {

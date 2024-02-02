@@ -140,7 +140,10 @@ impl MockAndromedaQuerier {
                     MOCK_ADDRESS_LIST_CONTRACT => self.handle_address_list_query(msg),
                     _ => match from_binary::<AndromedaQuery>(msg) {
                         Ok(msg) => self.handle_ado_query(msg),
-                        _ => panic!("Unsupported query for contract: {contract_addr}"),
+                        _ => SystemResult::Err(SystemError::InvalidRequest {
+                            error: "Unsupported query".to_string(),
+                            request: to_binary(&request).unwrap(),
+                        }),
                     },
                 }
             }
