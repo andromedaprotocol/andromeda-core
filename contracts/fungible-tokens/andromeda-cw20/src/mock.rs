@@ -2,7 +2,7 @@
 
 use crate::contract::{execute, instantiate, query};
 use andromeda_fungible_tokens::cw20::{ExecuteMsg, InstantiateMsg, QueryMsg};
-use common::ado_base::modules::Module;
+use andromeda_std::{ado_base::modules::Module, amp::AndrAddr};
 use cosmwasm_std::{Binary, Empty, Uint128};
 use cw20::MinterResponse;
 use cw_multi_test::{Contract, ContractWrapper};
@@ -17,13 +17,14 @@ pub fn mock_minter(minter: String, cap: Option<Uint128>) -> MinterResponse {
 }
 
 pub fn mock_cw20_instantiate_msg(
+    owner: Option<String>,
     name: String,
     symbol: String,
     decimals: u8,
     initial_balances: Vec<cw20::Cw20Coin>,
     mint: Option<MinterResponse>,
     modules: Option<Vec<Module>>,
-    kernel_address: Option<String>,
+    kernel_address: String,
 ) -> InstantiateMsg {
     InstantiateMsg {
         name,
@@ -34,10 +35,12 @@ pub fn mock_cw20_instantiate_msg(
         marketing: None,
         modules,
         kernel_address,
+        owner,
     }
 }
 
-pub fn mock_get_cw20_balance(address: String) -> QueryMsg {
+pub fn mock_get_cw20_balance(address: impl Into<String>) -> QueryMsg {
+    let address = AndrAddr::from_string(address.into());
     QueryMsg::Balance { address }
 }
 

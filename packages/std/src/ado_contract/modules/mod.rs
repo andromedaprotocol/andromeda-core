@@ -69,15 +69,14 @@ impl<'a> ADOContract<'a> {
         modules: Option<Vec<Module>>,
     ) -> Result<Response, ContractError> {
         let mut resp = Response::new();
-        if let Some(modules) = modules {
-            self.validate_modules(&modules)?;
-            for module in modules {
-                let register_response =
-                    self.execute_register_module(storage, sender, module, false)?;
-                resp = resp
-                    .add_attributes(register_response.attributes)
-                    .add_submessages(register_response.messages)
-            }
+        let modules = modules.unwrap_or_default();
+
+        self.validate_modules(&modules)?;
+        for module in modules {
+            let register_response = self.execute_register_module(storage, sender, module, false)?;
+            resp = resp
+                .add_attributes(register_response.attributes)
+                .add_submessages(register_response.messages)
         }
 
         Ok(resp)
@@ -183,12 +182,6 @@ impl<'a> ADOContract<'a> {
 
     /// Validates all modules.
     fn validate_modules(&self, modules: &[Module]) -> Result<(), ContractError> {
-        ensure!(
-            !modules.is_empty(),
-            ContractError::InvalidModules {
-                msg: "Must provide at least one module".to_string()
-            }
-        );
         ensure!(
             modules.len() <= 100,
             ContractError::InvalidModules {

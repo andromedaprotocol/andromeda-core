@@ -39,7 +39,12 @@ andromeda-marketplace = { path = "../contracts/non-fungible-tokens/andromeda-mar
 
 #Fungible Tokens
 # andromeda-fungible-tokens = { path = "../packages/andromeda-fungible-tokens" }
-# andromeda-cw20 = { path = "../contracts/fungible-tokens/andromeda-cw20", features = ["testing"] }
+andromeda-cw20 = { path = "../contracts/fungible-tokens/andromeda-cw20", features = [
+    "testing",
+] }
+andromeda-lockdrop = { path = "../contracts/fungible-tokens/andromeda-lockdrop", features = [
+    "testing",
+] }
 # andromeda-cw20-staking = { path = "../contracts/fungible-tokens/andromeda-cw20-staking", features = ["testing"] }
 
 # #Modules
@@ -65,7 +70,9 @@ andromeda-splitter = { path = "../contracts/finance/andromeda-splitter", feature
 
 # Data Storage
 andromeda-data-storage = { workspace = true }
-andromeda-primitive = { path = "../contracts/data-storage/andromeda-primitive", features = ["testing"] }
+andromeda-primitive = { path = "../contracts/data-storage/andromeda-primitive", features = [
+    "testing",
+] }
 
 # #OS
 andromeda-kernel = { path = "../contracts/os/andromeda-kernel", features = [
@@ -84,11 +91,11 @@ andromeda-vfs = { path = "../contracts/os/andromeda-vfs", features = [
 andromeda-testing = { workspace = true, features = ["testing"] }
 
 #Cosmwasm Crates
-cosmwasm-std = { workspace = true}
+cosmwasm-std = { workspace = true }
 cosmwasm-schema = { workspace = true }
 cw721-base = { workspace = true }
 cw721 = { workspace = true }
-# cw20 = "0.16.0"
+cw20 = { workspace = true }
 # cw20-base = { workspace = true }
 # cw-cii = { git = "https://github.com/public-awesome/ics721.git" }
 # cw-pause-once = { git = "https://github.com/public-awesome/ics721.git" }
