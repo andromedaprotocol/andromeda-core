@@ -41,7 +41,7 @@ fn test_shunting() {
     andr.store_code_id(&mut router, "shunting", shunting_code_id);
 
     // goal: test nested shunting by calculating the area circle
-    // user story: want to get the area of the circle using formula `phi * square(r)` 
+    // user story: want to get the area of the circle using formula `phi * square(r)`
     // phi is passed as param, square(r) should be calculated from a shunting that calculates the square
 
     // expression for calculating the area of circles. x0 is for phi, x1 is for r squared which is to be calculated by square shunting
