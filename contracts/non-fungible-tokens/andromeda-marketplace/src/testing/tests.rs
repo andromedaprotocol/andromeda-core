@@ -237,8 +237,8 @@ fn execute_buy_invalid_coins_sent() {
 
     // Correct denom but empty
     let info = mock_info("sender", &[coin(0, "uusd")]);
-    let res = execute(deps.as_mut(), env, info, msg);
-    assert_eq!(ContractError::InsufficientFunds {}, res.unwrap_err());
+    let res = execute(deps.as_mut(), env, info, msg).unwrap_err();
+    assert!(matches!(res, ContractError::InvalidFunds { .. }));
 }
 
 #[test]
