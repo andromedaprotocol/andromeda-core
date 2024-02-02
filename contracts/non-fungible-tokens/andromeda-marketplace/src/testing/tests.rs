@@ -344,8 +344,31 @@ fn execute_buy_with_tax_and_royalty_insufficient_funds() {
     };
 
     let info = mock_info("someone", &coins(100, "uusd".to_string()));
-    let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
-    assert_eq!(err, ContractError::InsufficientFunds {})
+    let err = execute(deps.as_mut(), mock_env(), info, msg.clone()).unwrap_err();
+    assert!(matches!(err, ContractError::InvalidFunds { .. }));
+}
+
+#[test]
+fn execute_buy_with_tax_and_royalty_too_many_funds() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let modules = vec![Module {
+        name: Some(RATES.to_owned()),
+        address: AndrAddr::from_string(MOCK_RATES_CONTRACT.to_owned()),
+        is_mutable: false,
+    }];
+    let _res = init(deps.as_mut(), Some(modules));
+
+    start_sale(deps.as_mut());
+    assert_sale_created(deps.as_ref());
+
+    let msg = ExecuteMsg::Buy {
+        token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
+        token_address: MOCK_TOKEN_ADDR.to_string(),
+    };
+
+    let info = mock_info("someone", &coins(200, "uusd".to_string()));
+    let err = execute(deps.as_mut(), mock_env(), info, msg.clone()).unwrap_err();
+    assert!(matches!(err, ContractError::InvalidFunds { .. }));
 }
 
 #[test]

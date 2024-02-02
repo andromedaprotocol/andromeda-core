@@ -22,9 +22,8 @@ use semver::Version;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, ensure, from_binary, has_coins, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env,
-    MessageInfo, QuerierWrapper, QueryRequest, Response, Storage, SubMsg, Uint128, WasmMsg,
-    WasmQuery,
+    attr, ensure, from_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
+    QuerierWrapper, QueryRequest, Response, Storage, SubMsg, Uint128, WasmMsg, WasmQuery,
 };
 
 use cw_utils::nonpayable;
@@ -275,17 +274,6 @@ fn execute_buy(
             msg: format!("No {coin_denom} assets are provided to sale"),
         }
     );
-    ensure!(
-        payment.amount.eq(&token_sale_state.price),
-        ContractError::InvalidFunds {
-            msg: format!(
-                "Invalid funds provided, expected: {}{}, received: {}",
-                token_sale_state.price,
-                token_sale_state.coin_denom,
-                payment.to_string()
-            )
-        }
-    );
 
     let key = token_sale_state.sale_id.u128();
 
@@ -389,8 +377,14 @@ fn purchase_token(
         amount: state.price + total_tax_amount,
     };
     ensure!(
-        has_coins(&info.funds, &required_payment),
-        ContractError::InsufficientFunds {}
+        // has_coins(&info.funds, &required_payment),
+        info.funds[0].amount.eq(&required_payment.amount),
+        ContractError::InvalidFunds {
+            msg: format!(
+                "Invalid funds provided, expected: {}, received: {}",
+                required_payment, info.funds[0]
+            )
+        }
     );
 
     let after_tax_payment = Coin {
