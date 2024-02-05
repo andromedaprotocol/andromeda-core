@@ -41,7 +41,54 @@ fn proper_initialization() {
 #[test]
 fn test_register_user() {
     let mut deps = mock_dependencies_custom(&[]);
+    // Using a username less than 3 characters long to simulate an invalid CosmWasm Address
+    let username = "u1";
+    let sender = "sender";
+    let info = mock_info(sender, &[]);
+    let env = mock_env();
+    let msg = ExecuteMsg::RegisterUser {
+        username: username.to_string(),
+        address: None,
+    };
+    instantiate_contract(deps.as_mut(), env.clone(), info.clone());
+    execute(deps.as_mut(), env, info, msg).unwrap();
+
+    let saved = USERS.load(deps.as_ref().storage, username).unwrap();
+    assert_eq!(saved, sender)
+}
+
+// Test using a username that represents a valid CosmWasm Address that IS NOT the same as the sender's address
+#[test]
+fn test_register_user_valid_cosmwasm_address() {
+    let mut deps = mock_dependencies_custom(&[]);
+    // Using a username less than 3 characters long to simulate an invalid CosmWasm Address
     let username = "user1";
+    let sender = "sender";
+    let info = mock_info(sender, &[]);
+    let env = mock_env();
+    let msg = ExecuteMsg::RegisterUser {
+        username: username.to_string(),
+        address: None,
+    };
+    instantiate_contract(deps.as_mut(), env.clone(), info.clone());
+    let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
+    assert_eq!(
+        err,
+        ContractError::InvalidUsername {
+            error: Some(
+                "Usernames that are valid addresses should be the same as the sender's address"
+                    .to_string()
+            )
+        }
+    )
+}
+
+// Test using a username that represents a valid CosmWasm Address that IS the same as the sender's address
+#[test]
+fn test_register_user_valid_cosmwasm_address_user() {
+    let mut deps = mock_dependencies_custom(&[]);
+    // Using a username less than 3 characters long to simulate an invalid CosmWasm Address
+    let username = "sender";
     let sender = "sender";
     let info = mock_info(sender, &[]);
     let env = mock_env();
@@ -80,8 +127,9 @@ fn test_register_user_unauthorized() {
 #[test]
 fn test_register_user_already_registered() {
     let mut deps = mock_dependencies_custom(&[]);
-    let username = "user1";
-    let new_username = "user2";
+    // Using a usernames less than 3 characters long to simulate an invalid CosmWasm Address
+    let username = "u1";
+    let new_username = "u2";
     let sender = "sender";
     let info = mock_info(sender, &[]);
     let env = mock_env();
@@ -107,7 +155,8 @@ fn test_register_user_already_registered() {
 #[test]
 fn test_register_user_foreign_chain() {
     let mut deps = mock_dependencies_custom(&[]);
-    let username = "user1";
+    // Using a usernames less than 3 characters long to simulate an invalid CosmWasm Address
+    let username = "u1";
     let sender = "sender";
     let info = mock_info(sender, &[]);
     let env = mock_env();

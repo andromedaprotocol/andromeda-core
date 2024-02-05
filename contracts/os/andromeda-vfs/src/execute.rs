@@ -144,7 +144,25 @@ pub fn register_user(
     //Remove username registration from previous username
     USERS.remove(env.deps.storage, username.as_str());
 
-    validate_username(username.clone())?;
+    // If the username is a valid address, it should be equal to info.sender
+    match env.deps.api.addr_validate(&username) {
+        Ok(username) => {
+            // No need to validate the username any further if this passess
+            ensure!(
+                username == env.info.sender,
+                ContractError::InvalidUsername {
+                    error: Some(
+                        "Usernames that are valid addresses should be the same as the sender's address"
+                            .to_string()
+                    )
+                }
+            )
+        }
+        Err(_) => {
+            validate_username(username.clone())?;
+        }
+    }
+
     USERS.save(env.deps.storage, username.as_str(), &sender)?;
     //Update current address' username
     ADDRESS_USERNAME.save(env.deps.storage, sender.as_ref(), &username)?;
