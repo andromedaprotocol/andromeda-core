@@ -98,8 +98,7 @@ fn resolve_home_path(
         .to_vec()
         .iter()
         .filter(|part| {
-            !SKIP_PARTS.contains(&part.as_str())
-                && part.to_string() != *username_or_address
+            !SKIP_PARTS.contains(&part.as_str()) && part.to_string() != *username_or_address
         })
         .map(|part| part.to_string())
         .collect::<Vec<String>>();
@@ -114,14 +113,9 @@ fn resolve_lib_path(
     api: &dyn Api,
     pathname: AndrAddr,
 ) -> Result<Addr, ContractError> {
-    let mut parts = split_pathname(pathname.to_string());
+    let parts = split_pathname(pathname.to_string());
 
-    let username_or_address = if parts[0].starts_with('~') && !parts[0].starts_with("~/") {
-        parts[0].remove(0);
-        parts[0].as_str()
-    } else {
-        parts[1].as_str()
-    };
+    let username_or_address = parts[1].as_str();
 
     let user_address = match api.addr_validate(username_or_address) {
         Ok(addr) => addr,
@@ -131,8 +125,7 @@ fn resolve_lib_path(
         .to_vec()
         .iter()
         .filter(|part| {
-            !SKIP_PARTS.contains(&part.as_str())
-                && part.to_string() != *username_or_address
+            !SKIP_PARTS.contains(&part.as_str()) && part.to_string() != *username_or_address
         })
         .map(|part| part.to_string())
         .collect::<Vec<String>>();
