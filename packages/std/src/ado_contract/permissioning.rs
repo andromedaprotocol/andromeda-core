@@ -91,7 +91,7 @@ impl<'a> ADOContract<'a> {
 
                 // Consume a use for a limited permission
                 if let Permission::Limited { .. } = permission {
-                    permission.consume_use();
+                    permission.consume_use()?;
                     permissions().save(
                         store,
                         (action_string.clone() + actor_string.as_str()).as_str(),
@@ -142,7 +142,7 @@ impl<'a> ADOContract<'a> {
 
                 // Consume a use for a limited permission
                 if let Permission::Limited { .. } = permission {
-                    permission.consume_use();
+                    permission.consume_use()?;
                     permissions().save(
                         store,
                         (action_string.clone() + actor_string.as_str()).as_str(),

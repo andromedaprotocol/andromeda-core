@@ -266,6 +266,9 @@ pub enum ContractError {
     #[error("Overflow")]
     Overflow {},
 
+    #[error("Underflow")]
+    Underflow {},
+
     #[error("CannotWithdrawHighestBid")]
     CannotWithdrawHighestBid {},
 
