@@ -12,6 +12,12 @@ pub fn convert_component_name(path: String) -> String {
 }
 
 pub fn validate_component_name(path: String) -> Result<bool, ContractError> {
+    ensure!(
+        path != ".",
+        ContractError::InvalidPathname {
+            error: Some("Pathname can't be '.'".to_string())
+        }
+    );
     let re = Regex::new(COMPONENT_NAME_REGEX).unwrap();
 
     ensure!(
@@ -174,6 +180,10 @@ mod test {
 
         let empty_name = "";
         let res = validate_component_name(empty_name.to_string());
+        assert!(res.is_err());
+
+        let dot_name = ".";
+        let res = validate_component_name(dot_name.to_string());
         assert!(res.is_err());
 
         let invalid_name = "/ /";
