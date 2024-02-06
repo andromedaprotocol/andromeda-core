@@ -2,7 +2,7 @@ use andromeda_std::{
     error::ContractError,
     os::adodb::{ADOVersion, ActionFee},
 };
-use cosmwasm_std::{ensure, StdResult, Storage};
+use cosmwasm_std::{ensure, Api, StdResult, Storage};
 use cw_storage_plus::Map;
 
 /// Stores a mapping from an ADO type/version to its code ID
@@ -68,10 +68,12 @@ pub fn read_latest_code_id(storage: &dyn Storage, ado_type: String) -> StdResult
 
 pub fn save_action_fees(
     storage: &mut dyn Storage,
+    api: &dyn Api,
     ado_version: &ADOVersion,
     fees: Vec<ActionFee>,
 ) -> Result<(), ContractError> {
     for action_fee in fees {
+        action_fee.validate_asset(api)?;
         ACTION_FEES.save(
             storage,
             &(ado_version.get_type(), action_fee.clone().action),

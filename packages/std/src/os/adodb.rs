@@ -1,10 +1,12 @@
 use std::str::FromStr;
 
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Addr, Uint128};
+use cosmwasm_std::{ensure, Addr, Api, Uint128};
 use schemars::JsonSchema;
 use semver::Version;
 use serde::{Deserialize, Serialize};
+
+use crate::error::ContractError;
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -59,6 +61,47 @@ impl ActionFee {
             asset: self.asset.clone(),
             amount: self.amount,
             receiver: Some(receiver),
+        }
+    }
+
+    /// Valiades the provided asset for an action fee
+    /// An asset is valid if it fits the format "cw20:address" or "native:denom"
+    /// If the asset type is cw20 the address is also validated
+    /// TODO: Add denom validation in future cosmwasm version
+    pub fn validate_asset(&self, api: &dyn Api) -> Result<(), ContractError> {
+        let asset_split = self.asset.split(':').collect::<Vec<&str>>();
+        // Ensure asset is in the format "cw20:address" or "native:denom"
+        // This is double validated as the asset type in the ADODB contract for fees is validated as cw20:* or native:*
+        ensure!(
+            asset_split.len() == 2 && !asset_split.is_empty(),
+            ContractError::InvalidAsset {
+                asset: self.asset.clone()
+            }
+        );
+        let asset_type = asset_split[0];
+        ensure!(
+            asset_type == "cw20" || asset_type == "native",
+            ContractError::InvalidAsset {
+                asset: self.asset.clone()
+            }
+        );
+
+        if asset_type == "cw20" {
+            api.addr_validate(asset_split[1])?;
+        }
+
+        Ok(())
+    }
+
+    /// Gets the asset string without the asset type
+    ///
+    /// i.e. **cw20:address** would return **"address"** or native:denom would return **"denom"**
+    pub fn get_asset_string(&self) -> Result<&str, ContractError> {
+        match self.asset.split(':').last() {
+            Some(asset) => Ok(asset),
+            None => Err(ContractError::InvalidAsset {
+                asset: self.asset.clone(),
+            }),
         }
     }
 }
@@ -189,6 +232,8 @@ impl ADOVersion {
 
 #[cfg(test)]
 mod tests {
+    use cosmwasm_std::testing::mock_dependencies;
+
     use super::*;
 
     #[test]
@@ -228,5 +273,31 @@ mod tests {
 
         let ado_version = ADOVersion::from_string("ado_type@latest");
         assert_eq!(ado_version.get_type(), "ado_type");
+    }
+
+    #[test]
+    fn test_action_fee_asset() {
+        let deps = mock_dependencies();
+        let action_fee = ActionFee::new(
+            "action".to_string(),
+            "cw20:address".to_string(),
+            Uint128::zero(),
+        );
+        assert!(action_fee.validate_asset(deps.as_ref().api).is_ok());
+
+        let action_fee = ActionFee::new(
+            "action".to_string(),
+            "native:denom".to_string(),
+            Uint128::zero(),
+        );
+        assert!(action_fee.validate_asset(deps.as_ref().api).is_ok());
+
+        let action_fee =
+            ActionFee::new("action".to_string(), "cw20:aw".to_string(), Uint128::zero());
+        assert!(action_fee.validate_asset(deps.as_ref().api).is_err());
+
+        let action_fee =
+            ActionFee::new("action".to_string(), "invalid".to_string(), Uint128::zero());
+        assert!(action_fee.validate_asset(deps.as_ref().api).is_err());
     }
 }
