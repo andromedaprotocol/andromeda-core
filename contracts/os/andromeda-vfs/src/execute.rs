@@ -134,22 +134,16 @@ pub fn register_user(
     );
     let sender = address.unwrap_or(env.info.sender.clone());
     let current_user_address = USERS.may_load(env.deps.storage, username.as_str())?;
-    if current_user_address.is_some() {
-        ensure!(
-            current_user_address.unwrap() == sender,
-            ContractError::Unauthorized {}
-        );
-    }
+    ensure!(
+        current_user_address.is_none(),
+        ContractError::InvalidUsername {
+            error: Some("Username already taken".to_string())
+        }
+    );
 
     //Remove username registration from previous username
     let current_username = ADDRESS_USERNAME.may_load(env.deps.storage, sender.as_ref())?;
     if let Some(current_username) = current_username {
-        ensure!(
-            current_username != username,
-            ContractError::InvalidUsername {
-                error: Some("New username and current username are the same".to_string())
-            }
-        );
         USERS.remove(env.deps.storage, current_username.as_str());
     }
 

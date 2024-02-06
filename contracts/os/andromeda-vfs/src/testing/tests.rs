@@ -104,7 +104,7 @@ fn test_register_user_duplicate() {
     assert_eq!(
         res.unwrap_err(),
         ContractError::InvalidUsername {
-            error: Some("New username and current username are the same".to_string())
+            error: Some("Username already taken".to_string())
         }
     )
 }
@@ -173,7 +173,12 @@ fn test_register_user_unauthorized() {
         .unwrap();
 
     let res = execute(deps.as_mut(), env, info, msg).unwrap_err();
-    assert_eq!(res, ContractError::Unauthorized {})
+    assert_eq!(
+        res,
+        ContractError::InvalidUsername {
+            error: Some("Username already taken".to_string())
+        }
+    )
 }
 
 #[test]
