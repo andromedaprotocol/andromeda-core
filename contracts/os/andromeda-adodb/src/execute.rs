@@ -23,6 +23,13 @@ pub fn publish(
         ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {}
     );
+    ensure!(
+        // Using trim to rule out non-empty strings made up of only spaces
+        !ado_type.trim().is_empty(),
+        ContractError::InvalidADOType {
+            msg: Some("ado_type can't be an empty string".to_string())
+        }
+    );
     let current_ado_version = LATEST_VERSION.may_load(deps.storage, &ado_type)?;
     if let Some(ado_version) = current_ado_version {
         let new_version = semver::Version::parse(&version).unwrap();
