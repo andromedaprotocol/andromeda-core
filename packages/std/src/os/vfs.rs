@@ -5,8 +5,7 @@ use regex::Regex;
 
 pub const COMPONENT_NAME_REGEX: &str = r"^[A-Za-z0-9\.\-_]{1,40}$";
 pub const USERNAME_REGEX: &str = r"^[a-z0-9]{1, 40}$";
-pub const PATH_REGEX: &str = r"^((([A-Za-z0-9]+://)?([A-Za-z0-9\.\-_]{1,40})?(/)?(home|lib)/)|(~(/)?))([A-Za-z0-9\.\-_]{1,40}(/)?)+$";
-
+pub const PATH_REGEX: &str = r"^((([A-Za-z0-9]+://)?([A-Za-z0-9\.\-_]{1,40})?(/)?(home|lib)/)|(~(/)?)|(\./))([A-Za-z0-9\.\-_]{1,40}(/)?)+$";
 pub fn convert_component_name(path: String) -> String {
     path.replace(' ', "_")
 }
@@ -202,6 +201,9 @@ mod test {
 
     #[test]
     fn test_validate_path_name() {
+        let valid_path = "./username/app";
+        validate_path_name(valid_path.to_string()).unwrap();
+
         let valid_path = "/home/username";
         validate_path_name(valid_path.to_string()).unwrap();
 

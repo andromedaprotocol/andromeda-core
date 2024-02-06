@@ -294,6 +294,9 @@ mod tests {
         let addr = AndrAddr("/home/user/app/component".to_string());
         assert!(addr.is_vfs_path());
 
+        let addr = AndrAddr("./user/app/component".to_string());
+        assert!(addr.is_vfs_path());
+
         let addr = AndrAddr("ibc://chain/home/user/app/component".to_string());
         assert!(addr.is_vfs_path());
 
