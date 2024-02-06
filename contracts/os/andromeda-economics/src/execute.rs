@@ -158,7 +158,25 @@ pub fn pay_fee(
             None => Ok(resp),
             Some(fee) => {
                 let asset_string = fee.asset.to_string();
-                let asset = asset_string.split(':').last().unwrap();
+                let asset_split: Vec<&str> = asset_string.split(':').collect();
+
+                // Ensure asset is in the format "cw20:address" or "native:denom"
+                // This is double validated as the asset type in the ADODB contract for fees is validated as cw20:* or native:*
+                ensure!(
+                    asset_split.len() == 2 && !asset_split.is_empty(),
+                    ContractError::InvalidAsset {
+                        asset: asset_string
+                    }
+                );
+                let asset_type = asset_split[0];
+                ensure!(
+                    asset_type == "cw20" || asset_type == "native",
+                    ContractError::InvalidAsset {
+                        asset: asset_string
+                    }
+                );
+
+                let asset = asset_split[1];
 
                 // Removing ADO/App payments temporarily pending discussion
                 // Charge ADO first
