@@ -77,6 +77,20 @@ fn test_publish() {
         }
     );
 
+    // Invalid version
+    let ado_version = ADOVersion::from_type("ado_type");
+    let code_id = 1;
+    let msg = ExecuteMsg::Publish {
+        ado_type: ado_version.get_type(),
+        version: ado_version.get_version(),
+        code_id,
+        action_fees: Some(action_fees.clone()),
+        publisher: Some(owner.clone()),
+    };
+
+    let err = execute(deps.as_mut(), env.clone(), info.clone(), msg);
+    assert!(err.is_err());
+
     // ado_type made only of spaces
     let ado_version = ADOVersion::from_type("       ").with_version("0.1.0");
     let code_id = 1;

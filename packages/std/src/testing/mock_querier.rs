@@ -454,7 +454,7 @@ impl MockAndromedaQuerier {
                         SystemResult::Ok(ContractResult::Ok(
                             to_binary(&ActionFee::new(
                                 MOCK_ACTION.to_string(),
-                                "uusd".to_string(),
+                                "native:uusd".to_string(),
                                 Uint128::from(10u128),
                             ))
                             .unwrap(),

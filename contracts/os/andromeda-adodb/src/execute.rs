@@ -31,8 +31,14 @@ pub fn publish(
         }
     );
     let current_ado_version = LATEST_VERSION.may_load(deps.storage, &ado_type)?;
+    ensure!(
+        semver::Version::parse(&version).is_ok(),
+        ContractError::InvalidADOVersion {
+            msg: Some("Provided version is not valid semver".to_string())
+        }
+    );
+    let new_version = semver::Version::parse(&version).unwrap();
     if let Some(ado_version) = current_ado_version {
-        let new_version = semver::Version::parse(&version).unwrap();
         let current_version = semver::Version::parse(&ado_version.0).unwrap();
         ensure!(
             new_version > current_version,

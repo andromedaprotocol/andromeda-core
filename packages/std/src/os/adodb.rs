@@ -1,6 +1,9 @@
+use std::str::FromStr;
+
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Addr, Uint128};
 use schemars::JsonSchema;
+use semver::Version;
 use serde::{Deserialize, Serialize};
 
 #[cw_serde]
@@ -151,7 +154,10 @@ impl ADOVersion {
     /// - `ado_type`
     /// - `ado_type@latest`
     pub fn validate(&self) -> bool {
-        !self.clone().into_string().is_empty() && self.clone().into_string().split('@').count() <= 2
+        !self.clone().into_string().is_empty()
+            && self.clone().into_string().split('@').count() <= 2
+            && (self.get_version() == "latest"
+                || Version::from_str(self.get_version().as_str()).is_ok())
     }
 
     /// Gets the version for the given ADOVersion
