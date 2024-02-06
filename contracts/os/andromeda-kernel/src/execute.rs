@@ -34,8 +34,8 @@ pub fn amp_receive(
     packet: AMPPkt,
 ) -> Result<Response, ContractError> {
     ensure!(
-        query::verify_address(deps.as_ref(), info.sender.to_string(),)?
-            || packet.ctx.get_origin() == info.sender,
+        packet.ctx.get_origin() == info.sender
+            || query::verify_address(deps.as_ref(), info.sender.to_string(),)?,
         ContractError::Unauthorized {}
     );
     ensure!(
@@ -470,7 +470,7 @@ impl MsgHandler {
             recipient, message, ..
         } = self.message();
         ensure!(
-            Binary::default().eq(message),
+            !Binary::default().eq(message),
             ContractError::InvalidPacket {
                 error: Some("Cannot send an empty message without funds via IBC".to_string())
             }

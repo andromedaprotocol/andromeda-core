@@ -4,7 +4,10 @@ use crate::{
     state::{ADO_OWNER, CHAIN_TO_CHANNEL, CHANNEL_TO_CHAIN, KERNEL_ADDRESSES},
 };
 use andromeda_std::{
-    amp::{ADO_DB_KEY, VFS_KEY},
+    amp::{
+        messages::{AMPMsg, AMPPkt},
+        ADO_DB_KEY, VFS_KEY,
+    },
     error::ContractError,
     os::kernel::{ChannelInfo, ExecuteMsg, IbcExecuteMsg, InstantiateMsg, InternalMsg},
     testing::mock_querier::{
@@ -269,4 +272,49 @@ fn test_send_cross_chain_no_channel() {
             error: Some("Channel not found for chain chain2".to_string())
         }
     );
+}
+
+// Test provided by Quantstamp as part of audit
+#[test]
+fn test_handle_ibc_direct() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let info = mock_info("user", &[]);
+    let env = mock_env();
+    let chain = "andromeda";
+    instantiate(
+        deps.as_mut(),
+        env.clone(),
+        info.clone(),
+        InstantiateMsg {
+            owner: None,
+            chain_name: "andromeda".to_string(),
+        },
+    )
+    .unwrap();
+    let channel_info = ChannelInfo {
+        kernel_address: MOCK_FAKE_KERNEL_CONTRACT.to_string(),
+        ics20_channel_id: Some("1".to_string()),
+        direct_channel_id: Some("2".to_string()),
+        supported_modules: vec![],
+    };
+    KERNEL_ADDRESSES
+        .save(
+            deps.as_mut().storage,
+            VFS_KEY,
+            &Addr::unchecked(MOCK_VFS_CONTRACT),
+        )
+        .unwrap();
+    CHAIN_TO_CHANNEL
+        .save(deps.as_mut().storage, chain, &channel_info)
+        .unwrap();
+    let dummy_msg = ExecuteMsg::UpsertKeyAddress {
+        key: "key".to_string(),
+        value: "value".to_string(),
+    };
+    let amp_msg = AMPMsg::new("ibc://andromeda/..", to_binary(&dummy_msg).unwrap(), None);
+    let packet = AMPPkt::new("user", "user", vec![amp_msg]);
+    let msg = ExecuteMsg::AMPReceive(packet);
+    let res = execute(deps.as_mut(), env, info, msg);
+    // * message fails even though it is a non-default binary message
+    assert!(res.is_ok());
 }

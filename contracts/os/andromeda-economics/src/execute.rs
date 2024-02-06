@@ -157,7 +157,7 @@ pub fn pay_fee(
             // No fee
             None => Ok(resp),
             Some(fee) => {
-                let asset_string = fee.asset.to_string();
+                let asset_string = fee.asset.clone();
                 let asset_split: Vec<&str> = asset_string.split(':').collect();
 
                 // Ensure asset is in the format "cw20:address" or "native:denom"
