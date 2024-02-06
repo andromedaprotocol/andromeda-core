@@ -142,7 +142,16 @@ pub fn register_user(
     }
 
     //Remove username registration from previous username
-    USERS.remove(env.deps.storage, username.as_str());
+    let current_username = ADDRESS_USERNAME.may_load(env.deps.storage, sender.as_ref())?;
+    if let Some(current_username) = current_username {
+        ensure!(
+            current_username != username,
+            ContractError::InvalidUsername {
+                error: Some("New username and current username are the same".to_string())
+            }
+        );
+        USERS.remove(env.deps.storage, current_username.as_str());
+    }
 
     // If the username is a valid address, it should be equal to info.sender
     match env.deps.api.addr_validate(&username) {
