@@ -68,7 +68,7 @@ fn test_publish() {
         publisher: Some(owner.clone()),
     };
 
-    let err = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap_err();
+    let err = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap_err();
 
     assert_eq!(
         err,
@@ -88,7 +88,7 @@ fn test_publish() {
         publisher: Some(owner.clone()),
     };
 
-    let err = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap_err();
+    let err = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap_err();
 
     assert_eq!(
         err,

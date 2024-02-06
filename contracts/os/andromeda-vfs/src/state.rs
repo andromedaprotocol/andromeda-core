@@ -133,6 +133,8 @@ fn resolve_lib_path(
     resolve_path(storage, api, remaining_parts, user_address)
 }
 
+const MAX_DEPTH: u8 = 50;
+
 fn resolve_path(
     storage: &dyn Storage,
     api: &dyn Api,
@@ -140,6 +142,10 @@ fn resolve_path(
     user_address: Addr,
 ) -> Result<Addr, ContractError> {
     let mut address = user_address;
+    ensure!(
+        parts.len() as u8 <= MAX_DEPTH,
+        ContractError::InvalidAddress {}
+    );
     for part in parts.iter() {
         let info = paths().load(storage, &(address, part.clone()))?;
         address = match info.symlink {
@@ -618,5 +624,48 @@ mod test {
         .unwrap();
 
         assert_eq!(res, AndrAddr::from_string("/home/someuser"));
+    }
+
+    #[test]
+    fn test_resolve_path_too_long() {
+        let mut deps = mock_dependencies();
+        let mut path = "~/u1".to_owned();
+
+        for i in 0..MAX_DEPTH + 1 {
+            path.push_str(format!("/d{}", i).as_str());
+        }
+
+        USERS
+            .save(deps.as_mut().storage, "u1", &Addr::unchecked("u1"))
+            .unwrap();
+
+        let res = resolve_home_path(
+            deps.as_ref().storage,
+            deps.as_ref().api,
+            AndrAddr::from_string(path),
+        );
+
+        assert!(res.is_err());
+        assert_eq!(res.unwrap_err(), ContractError::InvalidAddress {});
+
+        let mut deps = mock_dependencies();
+        let mut path: String = "/lib/u1".to_owned();
+
+        for i in 0..MAX_DEPTH + 1 {
+            path.push_str(format!("/d{}", i).as_str());
+        }
+
+        LIBRARIES
+            .save(deps.as_mut().storage, "u1", &Addr::unchecked("u1"))
+            .unwrap();
+
+        let res = resolve_lib_path(
+            deps.as_ref().storage,
+            deps.as_ref().api,
+            AndrAddr::from_string(path),
+        );
+
+        assert!(res.is_err());
+        assert_eq!(res.unwrap_err(), ContractError::InvalidAddress {})
     }
 }
