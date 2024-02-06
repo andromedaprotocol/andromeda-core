@@ -1,12 +1,9 @@
-
 use crate::{execute, query};
 use andromeda_std::ado_base::InstantiateMsg as BaseInstantiateMsg;
 use andromeda_std::ado_contract::ADOContract;
 use andromeda_std::common::encode_binary;
 use andromeda_std::error::{from_semver, ContractError};
-use andromeda_std::os::adodb::{
-    ADOVersion, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
-};
+use andromeda_std::os::adodb::{ADOVersion, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use cosmwasm_std::{
     ensure, entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError,
 };
