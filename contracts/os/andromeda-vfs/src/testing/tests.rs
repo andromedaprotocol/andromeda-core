@@ -10,7 +10,8 @@ use andromeda_std::{
         vfs::{ExecuteMsg, InstantiateMsg},
     },
     testing::mock_querier::{
-        mock_dependencies_custom, MOCK_FAKE_KERNEL_CONTRACT, MOCK_KERNEL_CONTRACT,
+        mock_dependencies_custom, MOCK_APP_CONTRACT, MOCK_FAKE_KERNEL_CONTRACT,
+        MOCK_KERNEL_CONTRACT,
     },
 };
 use andromeda_std::{error::ContractError, os::vfs::QueryMsg};
@@ -477,15 +478,15 @@ fn test_add_symlink() {
 }
 
 #[test]
-fn test_add_parent_path() {
-    let mut deps = mock_dependencies();
+fn test_add_child() {
+    let mut deps = mock_dependencies_custom(&[]);
     let username = "u1";
     let user_address = Addr::unchecked("useraddr");
     let component_name = "f1";
-    let sender = "sender";
+    let sender = MOCK_APP_CONTRACT;
     let info = mock_info(sender, &[]);
     let env = mock_env();
-    let msg = ExecuteMsg::AddParentPath {
+    let msg = ExecuteMsg::AddChild {
         name: component_name.to_string(),
         parent_address: AndrAddr::from_string(format!("/home/{user_address}")),
     };
@@ -508,6 +509,24 @@ fn test_add_parent_path() {
     assert_eq!(resolved_addr, sender)
 }
 
+#[test]
+fn test_add_child_not_app_contract() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let user_address = Addr::unchecked("useraddr");
+    let component_name = "f1";
+    let sender = "not_an_app_contract";
+    let info = mock_info(sender, &[]);
+    let env = mock_env();
+    let msg = ExecuteMsg::AddChild {
+        name: component_name.to_string(),
+        parent_address: AndrAddr::from_string(format!("/home/{user_address}")),
+    };
+
+    let res = execute(deps.as_mut(), env, info, msg);
+    assert!(res.is_err());
+    assert_eq!(res.unwrap_err(), ContractError::Unauthorized {})
+}
+
 /**
  * This test tries to override existing vfs path using add parent path method.
  * Here user_one will set his address as identifier in vfs. Another user user_two
@@ -517,14 +536,14 @@ fn test_add_parent_path() {
  * VERY IMPORTANT from security perspective
  */
 #[test]
-fn test_override_add_parent_path() {
-    let mut deps = mock_dependencies();
+fn test_override_add_child() {
+    let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
 
     let user_address = Addr::unchecked("user_one");
     let component_name = "identifier";
-    let info = mock_info(user_address.as_str(), &[]);
-    let msg = ExecuteMsg::AddParentPath {
+    let info = mock_info(MOCK_APP_CONTRACT, &[]);
+    let msg = ExecuteMsg::AddChild {
         name: component_name.to_string(),
         parent_address: AndrAddr::from_string(format!("/home/{user_address}")),
     };
@@ -533,7 +552,7 @@ fn test_override_add_parent_path() {
 
     // Try to override above address with your address
     let info = mock_info("user_two", &[]);
-    let msg = ExecuteMsg::AddParentPath {
+    let msg = ExecuteMsg::AddChild {
         name: component_name.to_string(),
         parent_address: AndrAddr::from_string(format!("/home/{user_address}")),
     };

@@ -84,27 +84,41 @@ pub fn add_symlink(
     ]))
 }
 
-pub fn add_parent_path(
+pub fn add_child(
     env: ExecuteEnv,
     name: String,
     parent_address: AndrAddr,
 ) -> Result<Response, ContractError> {
+    let ExecuteEnv { deps, info, .. } = env;
+
+    let sender_code_id_res = deps.querier.query_wasm_contract_info(info.sender.clone());
+    // Sender must be a contract
+    ensure!(sender_code_id_res.is_ok(), ContractError::Unauthorized {});
+    let sender_code_id = sender_code_id_res?.code_id;
+    let ado_type = AOSQuerier::ado_type_getter(
+        &deps.querier,
+        &ADOContract::default().get_adodb_address(deps.as_ref().storage, &deps.querier)?,
+        sender_code_id,
+    )?;
+    // Sender must be an app contract
+    ensure!(
+        ado_type.is_some() && ado_type.unwrap() == "app-contract",
+        ContractError::Unauthorized {}
+    );
+
     validate_component_name(name.clone())?;
-    let parent_address = resolve_pathname(env.deps.storage, env.deps.api, parent_address)?;
+    let parent_address = resolve_pathname(deps.storage, deps.api, parent_address)?;
     let existing = paths()
-        .load(env.deps.storage, &(parent_address.clone(), name.clone()))
+        .load(deps.storage, &(parent_address.clone(), name.clone()))
         .ok();
     // Ensure that this path is not already added or if already added it should point to same address as above. This prevent external users to override existing paths.
     // Only add path method can override existing paths as its safe because only owner of the path can execute it
     match existing {
         None => {
-            add_pathname(env.deps.storage, parent_address, name, env.info.sender)?;
+            add_pathname(deps.storage, parent_address, name, info.sender)?;
         }
         Some(path) => {
-            ensure!(
-                path.address == env.info.sender,
-                ContractError::Unauthorized {}
-            )
+            ensure!(path.address == info.sender, ContractError::Unauthorized {})
         }
     };
     Ok(Response::default())

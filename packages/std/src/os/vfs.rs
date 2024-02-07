@@ -94,7 +94,8 @@ pub enum ExecuteMsg {
         symlink: AndrAddr,
         parent_address: Option<AndrAddr>,
     },
-    AddParentPath {
+    // Registers a child, currently only accessible by an App Contract
+    AddChild {
         name: String,
         parent_address: AndrAddr,
     },
