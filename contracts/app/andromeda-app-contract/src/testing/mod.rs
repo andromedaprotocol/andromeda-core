@@ -4,7 +4,9 @@ use super::{contract::*, state::ADO_ADDRESSES};
 use andromeda_app::app::{AppComponent, ComponentType, ExecuteMsg, InstantiateMsg};
 use andromeda_std::amp::AndrAddr;
 use andromeda_std::os::vfs::{convert_component_name, ExecuteMsg as VFSExecuteMsg};
-use andromeda_std::testing::mock_querier::{mock_dependencies_custom, MOCK_KERNEL_CONTRACT};
+use andromeda_std::testing::mock_querier::{
+    mock_dependencies_custom, MOCK_ANCHOR_CONTRACT, MOCK_CW20_CONTRACT, MOCK_KERNEL_CONTRACT,
+};
 
 use andromeda_std::{ado_base::AndromedaMsg, error::ContractError};
 
@@ -332,44 +334,43 @@ fn test_claim_ownership_empty() {
     assert_eq!(0, res.messages.len());
 }
 
-//TODO: Fix this test
-// #[test]
-// fn test_claim_ownership_all() {
-//     let mut deps = mock_dependencies_custom(&[]);
-//     let env = mock_env();
-//     let info = mock_info("creator", &[]);
-//     let inst_msg = InstantiateMsg {
-//         app_components: vec![],
-//         name: String::from("Some App"),
-//         owner: None,
-//         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
-//         chain_info: None,
-//     };
+#[test]
+fn test_claim_ownership_all() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let env = mock_env();
+    let info = mock_info("creator", &[]);
+    let inst_msg = InstantiateMsg {
+        app_components: vec![],
+        name: String::from("Some App"),
+        owner: None,
+        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+        chain_info: None,
+    };
 
-//     instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
-//     ADO_ADDRESSES
-//         .save(
-//             deps.as_mut().storage,
-//             "token",
-//             &Addr::unchecked("tokenaddress".to_string()),
-//         )
-//         .unwrap();
-//     ADO_ADDRESSES
-//         .save(
-//             deps.as_mut().storage,
-//             "anchor",
-//             &Addr::unchecked("anchoraddress".to_string()),
-//         )
-//         .unwrap();
+    instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
+    ADO_ADDRESSES
+        .save(
+            deps.as_mut().storage,
+            "token",
+            &Addr::unchecked(MOCK_CW20_CONTRACT),
+        )
+        .unwrap();
+    ADO_ADDRESSES
+        .save(
+            deps.as_mut().storage,
+            "anchor",
+            &Addr::unchecked(MOCK_ANCHOR_CONTRACT),
+        )
+        .unwrap();
 
-//     let msg = ExecuteMsg::ClaimOwnership {
-//         name: None,
-//         new_owner: None,
-//     };
+    let msg = ExecuteMsg::ClaimOwnership {
+        name: None,
+        new_owner: None,
+    };
 
-//     let res = execute(deps.as_mut(), env, info, msg).unwrap();
-//     assert_eq!(2, res.messages.len());
-// }
+    let res = execute(deps.as_mut(), env, info, msg).unwrap();
+    assert_eq!(2, res.messages.len());
+}
 
 #[test]
 fn test_claim_ownership() {

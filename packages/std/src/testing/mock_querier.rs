@@ -23,6 +23,8 @@ use cw20::{BalanceResponse, Cw20QueryMsg};
 
 /// Mock CW20 Contract Address
 pub const MOCK_CW20_CONTRACT: &str = "cw20_contract";
+/// Mock Anchor Contract Address
+pub const MOCK_ANCHOR_CONTRACT: &str = "anchor_contract";
 /// Mock App Contract Address
 pub const MOCK_APP_CONTRACT: &str = "app_contract";
 /// Mock Primitive Contract Address
@@ -153,6 +155,9 @@ impl MockAndromedaQuerier {
                     MOCK_KERNEL_CONTRACT => self.handle_kernel_raw_query(key, false),
                     MOCK_FAKE_KERNEL_CONTRACT => self.handle_kernel_raw_query(key, true),
                     MOCK_ADODB_CONTRACT => self.handle_adodb_raw_query(key),
+                    MOCK_CW20_CONTRACT => self.handle_cw20_owner_query(key),
+                    MOCK_ANCHOR_CONTRACT => self.handle_anchor_owner_query(key),
+
                     _ => panic!("Unsupported query for contract: {contract_addr}"),
                 }
             }
@@ -167,6 +172,14 @@ impl MockAndromedaQuerier {
             }
             _ => querier.handle_query(request),
         }
+    }
+
+    fn handle_cw20_owner_query(&self, _msg: &Binary) -> QuerierResult {
+        SystemResult::Ok(ContractResult::Ok(to_binary("cosmos2contract").unwrap()))
+    }
+
+    fn handle_anchor_owner_query(&self, _msg: &Binary) -> QuerierResult {
+        SystemResult::Ok(ContractResult::Ok(to_binary("cosmos2contract").unwrap()))
     }
 
     /// Handles all kernel queries.
