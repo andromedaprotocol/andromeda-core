@@ -37,7 +37,12 @@ pub fn add_path(
         ContractError::Unauthorized {}
     );
     let parent_andr_addr = parent_address.unwrap_or(AndrAddr::from_string(env.info.sender));
-    let parent_addr = resolve_pathname(env.deps.storage, env.deps.api, parent_andr_addr)?;
+    let parent_addr = resolve_pathname(
+        env.deps.storage,
+        env.deps.api,
+        parent_andr_addr,
+        &mut vec![],
+    )?;
     validate_component_name(name.clone())?;
     add_pathname(
         env.deps.storage,
@@ -68,10 +73,16 @@ pub fn add_symlink(
         ContractError::Unauthorized {}
     );
     let parent_andr_addr = parent_address.unwrap_or(AndrAddr::from_string(env.info.sender));
-    let parent_addr = resolve_pathname(env.deps.storage, env.deps.api, parent_andr_addr)?;
+    let parent_addr = resolve_pathname(
+        env.deps.storage,
+        env.deps.api,
+        parent_andr_addr,
+        &mut vec![],
+    )?;
     validate_component_name(name.clone())?;
     add_path_symlink(
         env.deps.storage,
+        env.deps.api,
         parent_addr.clone(),
         name.clone(),
         symlink.clone(),
@@ -107,7 +118,7 @@ pub fn add_child(
     );
 
     validate_component_name(name.clone())?;
-    let parent_address = resolve_pathname(deps.storage, deps.api, parent_address)?;
+    let parent_address = resolve_pathname(deps.storage, deps.api, parent_address, &mut vec![])?;
     let existing = paths()
         .load(deps.storage, &(parent_address.clone(), name.clone()))
         .ok();

@@ -94,7 +94,7 @@ fn test_crowdfund_app() {
     andr.store_code_id(&mut router, "crowdfund", crowdfund_code_id);
     andr.store_code_id(&mut router, "vault", vault_code_id);
     andr.store_code_id(&mut router, "splitter", splitter_code_id);
-    andr.store_code_id(&mut router, "app", app_code_id);
+    andr.store_code_id(&mut router, "app-contract", app_code_id);
     andr.store_code_id(&mut router, "rates", rates_code_id);
 
     // Generate App Components

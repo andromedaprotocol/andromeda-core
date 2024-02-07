@@ -321,6 +321,7 @@ fn test_add_path() {
         deps.as_ref().storage,
         deps.as_ref().api,
         AndrAddr::from_string(path),
+        &mut vec![],
     )
     .unwrap();
 
@@ -342,6 +343,7 @@ fn test_add_path() {
         deps.as_ref().storage,
         deps.as_ref().api,
         AndrAddr::from_string(path),
+        &mut vec![],
     )
     .unwrap();
 
@@ -389,6 +391,7 @@ fn test_add_symlink() {
         deps.as_ref().storage,
         deps.as_ref().api,
         AndrAddr::from_string(path),
+        &mut vec![],
     )
     .unwrap();
 
@@ -409,6 +412,7 @@ fn test_add_symlink() {
         deps.as_ref().storage,
         deps.as_ref().api,
         AndrAddr::from_string(path),
+        &mut vec![],
     )
     .unwrap();
 
@@ -429,6 +433,7 @@ fn test_add_symlink() {
         deps.as_ref().storage,
         deps.as_ref().api,
         AndrAddr::from_string(path),
+        &mut vec![],
     )
     .unwrap_err();
 
@@ -449,6 +454,7 @@ fn test_add_symlink() {
         deps.as_ref().storage,
         deps.as_ref().api,
         AndrAddr::from_string(path),
+        &mut vec![],
     )
     .unwrap();
 
@@ -467,14 +473,20 @@ fn test_add_symlink() {
 
     let path = format!("/home/{username}/{component_name}/{symlink_four_name}");
 
-    let resolved_addr = resolve_pathname(
+    let err = resolve_pathname(
         deps.as_ref().storage,
         deps.as_ref().api,
         AndrAddr::from_string(path),
+        &mut vec![],
     )
-    .unwrap();
+    .unwrap_err();
 
-    assert_eq!(resolved_addr, component_addr);
+    assert_eq!(
+        err,
+        ContractError::InvalidPathname {
+            error: Some("Pathname contains a looping reference".to_string())
+        }
+    );
 }
 
 #[test]
@@ -503,6 +515,7 @@ fn test_add_child() {
         deps.as_ref().storage,
         deps.as_ref().api,
         AndrAddr::from_string(path),
+        &mut vec![],
     )
     .unwrap();
 
@@ -665,17 +678,14 @@ fn test_get_subdir() {
 
     // Add all root components
     for path in root_paths.clone() {
-        let _ = add_pathname(
-            deps.as_mut().storage,
-            sender.clone(),
-            path.name,
-            path.address,
-        );
+        let DepsMut { storage, .. } = deps.as_mut();
+        let _ = add_pathname(storage, sender.clone(), path.name, path.address);
     }
 
     for path in sub_paths.clone() {
+        let DepsMut { storage, .. } = deps.as_mut();
         let _ = add_pathname(
-            deps.as_mut().storage,
+            storage,
             path.parent_address.clone(),
             path.name,
             path.address,
@@ -688,6 +698,7 @@ fn test_get_subdir() {
             deps.as_ref().storage,
             deps.as_ref().api,
             AndrAddr::from_string(path_name.clone()),
+            &mut vec![],
         );
         assert!(resolved_addr.is_ok(), "{path_name} not found");
         assert_eq!(resolved_addr.unwrap(), path.address)
@@ -757,15 +768,11 @@ fn test_get_paths() {
 
     // Add all root components
     for path in root_paths.clone() {
-        let _ = add_pathname(
-            deps.as_mut().storage,
-            sender.clone(),
-            path.name,
-            path.address.clone(),
-        );
+        let DepsMut { storage, .. } = deps.as_mut();
+        let _ = add_pathname(storage, sender.clone(), path.name, path.address.clone());
         for sub_path in sub_paths.clone() {
             let _ = add_pathname(
-                deps.as_mut().storage,
+                storage,
                 path.address.clone(),
                 sub_path.name,
                 sub_path.address,
@@ -779,6 +786,7 @@ fn test_get_paths() {
             deps.as_ref().storage,
             deps.as_ref().api,
             AndrAddr::from_string(path_name.clone()),
+            &mut vec![],
         );
         assert!(resolved_addr.is_ok(), "{path_name} not found");
         assert_eq!(resolved_addr.unwrap(), path.address)

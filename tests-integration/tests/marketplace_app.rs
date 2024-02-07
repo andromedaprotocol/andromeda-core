@@ -72,7 +72,7 @@ fn test_marketplace_app() {
     andr.store_code_id(&mut router, "marketplace", marketplace_code_id);
     andr.store_code_id(&mut router, "rates", rates_code_id);
     andr.store_code_id(&mut router, "address-list", address_list_code_id);
-    andr.store_code_id(&mut router, "app", app_code_id);
+    andr.store_code_id(&mut router, "app-contract", app_code_id);
 
     // Generate App Components
     let cw721_init_msg = mock_cw721_instantiate_msg(

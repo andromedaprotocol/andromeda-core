@@ -1,5 +1,5 @@
 use andromeda_std::{amp::AndrAddr, error::ContractError};
-use cosmwasm_std::{ensure, Addr, Api, StdError, Storage};
+use cosmwasm_std::{ensure, Addr, Api, Storage};
 use cw_storage_plus::{Index, IndexList, IndexedMap, Map, MultiIndex};
 use serde::{Deserialize, Serialize};
 
@@ -47,6 +47,11 @@ pub const LIBRARIES: Map<&str, Addr> = Map::new("libraries");
 pub const ADDRESS_USERNAME: Map<&str, String> = Map::new("address_username");
 pub const ADDRESS_LIBRARY: Map<&str, String> = Map::new("address_library");
 
+/**
+   Splits a pathname into its components.
+
+    * **path**: The full path to be split
+*/
 pub fn split_pathname(path: String) -> Vec<String> {
     path.split('/')
         .filter(|string| !string.is_empty())
@@ -54,10 +59,19 @@ pub fn split_pathname(path: String) -> Vec<String> {
         .collect::<Vec<String>>()
 }
 
+/**
+   Resolves a given path to an address.
+
+    * **storage**: CosmWasm storage struct
+    * **api**: CosmWasm API struct
+    * **path**: The full path to be resolved
+    * **resolved_paths**: A vector of resolved paths to prevent looping or paths that are too long
+*/
 pub fn resolve_pathname(
     storage: &dyn Storage,
     api: &dyn Api,
     pathname: AndrAddr,
+    resolved_paths: &mut Vec<(Addr, String)>,
 ) -> Result<Addr, ContractError> {
     // As cross-chain queries are not currently possible we need to ensure the pathname being resolved is local
     ensure!(
@@ -67,8 +81,8 @@ pub fn resolve_pathname(
 
     if pathname.is_vfs_path() {
         match pathname.get_root_dir() {
-            "home" => resolve_home_path(storage, api, pathname),
-            "lib" => resolve_lib_path(storage, api, pathname),
+            "home" => resolve_home_path(storage, api, pathname, resolved_paths),
+            "lib" => resolve_lib_path(storage, api, pathname, resolved_paths),
             &_ => Err(ContractError::InvalidAddress {}),
         }
     } else {
@@ -76,17 +90,28 @@ pub fn resolve_pathname(
     }
 }
 
+/**
+   Resolves a given home path.
+
+    * **storage**: CosmWasm storage struct
+    * **api**: CosmWasm API struct
+    * **path**: The full path to be resolved
+    * **resolved_paths**: A vector of resolved paths to prevent looping or paths that are too long
+*/
 fn resolve_home_path(
     storage: &dyn Storage,
     api: &dyn Api,
-    pathname: AndrAddr,
+    path: AndrAddr,
+    resolved_paths: &mut Vec<(Addr, String)>,
 ) -> Result<Addr, ContractError> {
-    let mut parts = split_pathname(pathname.to_string());
+    let mut parts = split_pathname(path.to_string());
 
+    let mut amount_to_skip = 1;
     let username_or_address = if parts[0].starts_with('~') && !parts[0].eq("~") {
         parts[0].remove(0);
         parts[0].as_str()
     } else {
+        amount_to_skip = 2;
         parts[1].as_str()
     };
     let user_address = match api.addr_validate(username_or_address) {
@@ -94,62 +119,82 @@ fn resolve_home_path(
         Err(_e) => USERS.load(storage, username_or_address)?,
     };
 
-    let remaining_parts = parts
-        .to_vec()
-        .iter()
-        .filter(|part| {
-            !SKIP_PARTS.contains(&part.as_str()) && part.to_string() != *username_or_address
-        })
-        .map(|part| part.to_string())
-        .collect::<Vec<String>>();
-
-    resolve_path(storage, api, remaining_parts, user_address)
+    let mut remaining_parts = parts.to_vec();
+    remaining_parts.drain(0..amount_to_skip);
+    resolve_path(storage, api, remaining_parts, user_address, resolved_paths)
 }
 
-const SKIP_PARTS: [&str; 3] = ["home", "lib", "~"];
+/**
+   Resolves a given library path.
 
+    * **storage**: CosmWasm storage struct
+    * **api**: CosmWasm API struct
+    * **path**: The full path to be resolved
+    * **resolved_paths**: A vector of resolved paths to prevent looping or paths that are too long
+*/
 fn resolve_lib_path(
     storage: &dyn Storage,
     api: &dyn Api,
-    pathname: AndrAddr,
+    path: AndrAddr,
+    resolved_paths: &mut Vec<(Addr, String)>,
 ) -> Result<Addr, ContractError> {
-    let parts = split_pathname(pathname.to_string());
+    let parts = split_pathname(path.to_string());
 
-    let username_or_address = parts[1].as_str();
+    let library_or_address = parts[1].as_str();
 
-    let user_address = match api.addr_validate(username_or_address) {
+    let lib_address = match api.addr_validate(library_or_address) {
         Ok(addr) => addr,
-        Err(_e) => LIBRARIES.load(storage, username_or_address)?,
+        Err(_e) => LIBRARIES.load(storage, library_or_address)?,
     };
-    let remaining_parts = parts
-        .to_vec()
-        .iter()
-        .filter(|part| {
-            !SKIP_PARTS.contains(&part.as_str()) && part.to_string() != *username_or_address
-        })
-        .map(|part| part.to_string())
-        .collect::<Vec<String>>();
-
-    resolve_path(storage, api, remaining_parts, user_address)
+    let mut remaining_parts = parts.to_vec();
+    remaining_parts.drain(0..2);
+    resolve_path(storage, api, remaining_parts, lib_address, resolved_paths)
 }
 
 const MAX_DEPTH: u8 = 50;
 
+/**
+   Resolves a given path after the first section has been resolved.
+
+   Iterates through the path and resolves each section until the final section is resolved before returning the address.
+
+    * **storage**: CosmWasm storage struct
+    * **api**: CosmWasm API struct
+    * **parts**: The remaining parts of the path to resolve
+    * **parent_address**: The address of the parent lib/user
+    * **resolved_paths**: A vector of resolved paths to prevent looping or paths that are too long
+*/
 fn resolve_path(
     storage: &dyn Storage,
     api: &dyn Api,
     parts: Vec<String>,
-    user_address: Addr,
+    parent_address: Addr,
+    resolved_paths: &mut Vec<(Addr, String)>,
 ) -> Result<Addr, ContractError> {
-    let mut address = user_address;
+    let mut address = parent_address;
+    // Preemptive length check to prevent resolving paths that are too long
     ensure!(
         parts.len() as u8 <= MAX_DEPTH,
         ContractError::InvalidAddress {}
     );
+
     for part in parts.iter() {
-        let info = paths().load(storage, &(address, part.clone()))?;
+        // To prevent resolving paths that are too long
+        ensure!(
+            resolved_paths.len() as u8 <= MAX_DEPTH,
+            ContractError::InvalidAddress {}
+        );
+        // Prevent looping
+        ensure!(
+            !resolved_paths.contains(&(address.clone(), part.clone())),
+            ContractError::InvalidPathname {
+                error: Some("Pathname contains a looping reference".to_string())
+            }
+        );
+        let info = paths().load(storage, &(address.clone(), part.clone()))?;
+        resolved_paths.push((address, part.clone()));
         address = match info.symlink {
-            Some(symlink) => resolve_pathname(storage, api, symlink)?,
+            Some(symlink) => resolve_pathname(storage, api, symlink, resolved_paths)?,
             None => info.address,
         };
     }
@@ -162,7 +207,7 @@ pub fn get_subdir(
     api: &dyn Api,
     pathname: AndrAddr,
 ) -> Result<Vec<PathInfo>, ContractError> {
-    let address = resolve_pathname(storage, api, pathname)?;
+    let address = resolve_pathname(storage, api, pathname, &mut vec![])?;
 
     let subdirs = paths()
         .idx
@@ -206,7 +251,7 @@ pub fn add_pathname(
     parent_addr: Addr,
     name: String,
     address: Addr,
-) -> Result<(), StdError> {
+) -> Result<(), ContractError> {
     paths().save(
         storage,
         &(parent_addr.clone(), name.clone()),
@@ -216,25 +261,34 @@ pub fn add_pathname(
             parent_address: parent_addr,
             symlink: None,
         },
-    )
+    )?;
+    Ok(())
 }
 
 pub fn add_path_symlink(
     storage: &mut dyn Storage,
+    api: &dyn Api,
     parent_addr: Addr,
     name: String,
     symlink: AndrAddr,
-) -> Result<(), StdError> {
+) -> Result<(), ContractError> {
     paths().save(
         storage,
         &(parent_addr.clone(), name.clone()),
         &PathInfo {
-            name,
+            name: name.clone(),
             address: Addr::unchecked("invalidaddress"),
-            parent_address: parent_addr,
-            symlink: Some(symlink),
+            parent_address: parent_addr.clone(),
+            symlink: Some(symlink.clone()),
         },
-    )
+    )?;
+    if symlink.get_protocol().is_none() {
+        // Ensure that the symlink resolves to a valid address
+        let pathname = AndrAddr::from_string(format!("~/{}/{}", parent_addr, name));
+        resolve_pathname(storage, api, pathname, &mut vec![])?;
+    }
+
+    Ok(())
 }
 
 pub fn resolve_symlink(
@@ -254,7 +308,7 @@ pub fn resolve_symlink(
     } else {
         AndrAddr::from_string(format!("/{reconstructed_addr}"))
     };
-    let addr = resolve_pathname(storage, api, remaining_path)?;
+    let addr = resolve_pathname(storage, api, remaining_path, &mut vec![])?;
     let info = paths().load(storage, &(addr, final_part))?;
     match info.symlink {
         Some(symlink) => Ok(symlink),
@@ -265,7 +319,7 @@ pub fn resolve_symlink(
 #[cfg(test)]
 mod test {
     use andromeda_std::os::vfs::validate_username;
-    use cosmwasm_std::testing::mock_dependencies;
+    use cosmwasm_std::{testing::mock_dependencies, DepsMut};
 
     use super::*;
 
@@ -301,8 +355,13 @@ mod test {
     #[test]
     fn test_resolve_pathname() {
         let path = AndrAddr::from_string("cosmos1...");
-        let res =
-            resolve_pathname(&mock_dependencies().storage, &mock_dependencies().api, path).unwrap();
+        let res = resolve_pathname(
+            &mock_dependencies().storage,
+            &mock_dependencies().api,
+            path,
+            &mut vec![],
+        )
+        .unwrap();
         assert_eq!(res, Addr::unchecked("cosmos1..."));
     }
 
@@ -327,6 +386,7 @@ mod test {
             deps.as_ref().storage,
             deps.as_ref().api,
             AndrAddr::from_string(format!("/home/{username}")),
+            &mut vec![],
         )
         .unwrap();
         assert_eq!(res, username_address);
@@ -335,6 +395,7 @@ mod test {
             deps.as_ref().storage,
             deps.as_ref().api,
             AndrAddr::from_string(format!("~{username}")),
+            &mut vec![],
         )
         .unwrap();
         assert_eq!(res, username_address);
@@ -343,6 +404,7 @@ mod test {
             deps.as_ref().storage,
             deps.as_ref().api,
             AndrAddr::from_string(format!("~/{username}")),
+            &mut vec![],
         )
         .unwrap();
         assert_eq!(res, username_address);
@@ -364,6 +426,7 @@ mod test {
             deps.as_ref().storage,
             deps.as_ref().api,
             AndrAddr::from_string(format!("/home/{username}/{first_directory}")),
+            &mut vec![],
         )
         .unwrap();
         assert_eq!(res, first_directory_address);
@@ -371,6 +434,7 @@ mod test {
             deps.as_ref().storage,
             deps.as_ref().api,
             AndrAddr::from_string(format!("~{username}/{first_directory}")),
+            &mut vec![],
         )
         .unwrap();
         assert_eq!(res, first_directory_address);
@@ -397,6 +461,7 @@ mod test {
             AndrAddr::from_string(format!(
                 "/home/{username}/{first_directory}/{second_directory}"
             )),
+            &mut vec![],
         )
         .unwrap();
         assert_eq!(res, second_directory_address);
@@ -420,6 +485,7 @@ mod test {
             AndrAddr::from_string(format!(
                 "/home/{username}/{first_directory}/{second_directory}/{file}"
             )),
+            &mut vec![],
         )
         .unwrap();
         assert_eq!(res, file_address)
@@ -446,6 +512,7 @@ mod test {
             deps.as_ref().storage,
             deps.as_ref().api,
             AndrAddr::from_string(format!("/lib/{lib_name}")),
+            &mut vec![],
         )
         .unwrap();
         assert_eq!(res, username_address);
@@ -467,6 +534,7 @@ mod test {
             deps.as_ref().storage,
             deps.as_ref().api,
             AndrAddr::from_string(format!("/lib/{lib_name}/{first_directory}")),
+            &mut vec![],
         )
         .unwrap();
         assert_eq!(res, first_directory_address);
@@ -493,6 +561,7 @@ mod test {
             AndrAddr::from_string(format!(
                 "/lib/{lib_name}/{first_directory}/{second_directory}"
             )),
+            &mut vec![],
         )
         .unwrap();
         assert_eq!(res, second_directory_address);
@@ -516,6 +585,7 @@ mod test {
             AndrAddr::from_string(format!(
                 "/lib/{lib_name}/{first_directory}/{second_directory}/{file}"
             )),
+            &mut vec![],
         )
         .unwrap();
         assert_eq!(res, file_address)
@@ -551,6 +621,7 @@ mod test {
             deps.as_ref().storage,
             deps.as_ref().api,
             AndrAddr::from_string(format!("/home/{username}/{first_directory}")),
+            &mut vec![],
         )
         .unwrap();
         assert_eq!(res, first_directory_address);
@@ -558,8 +629,10 @@ mod test {
         let symlink_parent = Addr::unchecked("parentaddress");
         let symlink_name = "symlink";
         let symlink = AndrAddr::from_string(format!("/home/{username}/{first_directory}"));
+        let DepsMut { api, storage, .. } = deps.as_mut();
         add_path_symlink(
-            deps.as_mut().storage,
+            storage,
+            api,
             symlink_parent.clone(),
             symlink_name.to_string(),
             symlink.clone(),
@@ -570,6 +643,7 @@ mod test {
             deps.as_ref().storage,
             deps.as_ref().api,
             AndrAddr::from_string(format!("/home/{symlink_parent}/{symlink_name}")),
+            &mut vec![],
         )
         .unwrap();
         assert_eq!(res, first_directory_address);
@@ -643,6 +717,7 @@ mod test {
             deps.as_ref().storage,
             deps.as_ref().api,
             AndrAddr::from_string(path),
+            &mut vec![],
         );
 
         assert!(res.is_err());
@@ -663,9 +738,108 @@ mod test {
             deps.as_ref().storage,
             deps.as_ref().api,
             AndrAddr::from_string(path),
+            &mut vec![],
         );
 
         assert!(res.is_err());
         assert_eq!(res.unwrap_err(), ContractError::InvalidAddress {})
+    }
+
+    #[test]
+    fn test_resolve_path_loop() {
+        let mut deps = mock_dependencies();
+        let path = "~/u1/d0".to_owned();
+
+        USERS
+            .save(deps.as_mut().storage, "u1", &Addr::unchecked("u1"))
+            .unwrap();
+        paths()
+            .save(
+                deps.as_mut().storage,
+                &(Addr::unchecked("u1"), "d0".to_string()),
+                &PathInfo {
+                    name: "d0".to_string(),
+                    address: Addr::unchecked("d0"),
+                    parent_address: Addr::unchecked("u1"),
+                    symlink: None,
+                },
+            )
+            .unwrap();
+
+        let res = resolve_home_path(
+            deps.as_ref().storage,
+            deps.as_ref().api,
+            AndrAddr::from_string(path.clone()),
+            &mut vec![],
+        );
+
+        assert!(res.is_ok());
+
+        paths()
+            .save(
+                deps.as_mut().storage,
+                &(Addr::unchecked("d0"), "d1".to_string()),
+                &PathInfo {
+                    name: "d0".to_string(),
+                    address: Addr::unchecked("u1"),
+                    parent_address: Addr::unchecked("d1"),
+                    symlink: None,
+                },
+            )
+            .unwrap();
+
+        let new_path = format!("{}/d1/d0", path);
+        let res = resolve_home_path(
+            deps.as_ref().storage,
+            deps.as_ref().api,
+            AndrAddr::from_string(new_path),
+            &mut vec![],
+        );
+
+        assert!(res.is_err());
+        assert_eq!(
+            res.unwrap_err(),
+            ContractError::InvalidPathname {
+                error: Some("Pathname contains a looping reference".to_string())
+            }
+        );
+    }
+
+    #[test]
+    fn test_add_symlink_looping_reference() {
+        let mut deps = mock_dependencies();
+        let username = "u1";
+        let first_directory = "d1";
+
+        let username_address = Addr::unchecked("useraddress");
+        let first_directory_address = Addr::unchecked("dir1address");
+
+        USERS
+            .save(deps.as_mut().storage, username, &username_address)
+            .unwrap();
+
+        let DepsMut { api, storage, .. } = deps.as_mut();
+        add_pathname(
+            storage,
+            username_address,
+            first_directory.to_string(),
+            first_directory_address.clone(),
+        )
+        .unwrap();
+
+        let res = add_path_symlink(
+            storage,
+            api,
+            first_directory_address,
+            username.to_string(),
+            AndrAddr::from_string(format!("/home/{username}/{first_directory}/{username}")),
+        );
+        assert!(res.is_err());
+        assert_eq!(
+            res.unwrap_err(),
+            ContractError::InvalidPathname {
+                error: Some("Pathname contains a looping reference".to_string())
+            }
+        )
     }
 }
