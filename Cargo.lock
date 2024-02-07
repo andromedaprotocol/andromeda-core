@@ -215,6 +215,7 @@ dependencies = [
  "cw-storage-plus 1.1.0",
  "cw2 1.1.0",
  "cw20",
+ "enum-repr",
  "semver",
 ]
 

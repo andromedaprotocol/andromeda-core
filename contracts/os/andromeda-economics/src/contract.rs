@@ -1,6 +1,6 @@
+use crate::reply::ReplyId;
 use andromeda_std::ado_base::InstantiateMsg as BaseInstantiateMsg;
 use andromeda_std::ado_contract::ADOContract;
-
 use andromeda_std::error::{from_semver, ContractError};
 use andromeda_std::os::economics::{Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 #[allow(unused_imports)]
@@ -8,6 +8,7 @@ use cosmwasm_std::{
     attr, coin, ensure, entry_point, from_binary, to_binary, Addr, BankMsg, Binary, CosmosMsg,
     Deps, DepsMut, Empty, Env, MessageInfo, Response, Storage, SubMsg, Uint128, WasmMsg,
 };
+use cosmwasm_std::{Reply, StdError};
 use cw2::{get_contract_version, set_contract_version};
 use cw20::Cw20ReceiveMsg;
 use semver::Version;
@@ -39,6 +40,25 @@ pub fn instantiate(
             owner: msg.owner,
         },
     )
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
+    // if msg.result.is_err() {
+    //     return Err(ContractError::Std(StdError::generic_err(
+    //         msg.result.unwrap_err(),
+    //     )));
+    // }
+
+    match ReplyId::from_repr(msg.id) {
+        Some(ReplyId::Cw20WithdrawMsg) => Err(ContractError::Std(StdError::generic_err(
+            msg.result.unwrap_err(),
+        ))),
+        Some(ReplyId::PayFee) => Err(ContractError::Std(StdError::generic_err(
+            msg.result.unwrap_err(),
+        ))),
+        _ => Ok(Response::default()),
+    }
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

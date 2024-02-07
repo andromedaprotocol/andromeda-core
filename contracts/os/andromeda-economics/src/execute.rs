@@ -1,3 +1,4 @@
+use crate::reply::ReplyId;
 use andromeda_std::{
     ado_contract::ADOContract, amp::AndrAddr, error::ContractError, os::aos_querier::AOSQuerier,
 };
@@ -282,7 +283,7 @@ pub(crate) fn cw20_withdraw_msg(
             msg: to_binary(&exec_msg).unwrap(),
             funds: vec![],
         }),
-        999,
+        ReplyId::Cw20WithdrawMsg.repr(),
     )
 }
 
