@@ -51,10 +51,62 @@ fn test_register_user() {
         address: None,
     };
     instantiate_contract(deps.as_mut(), env.clone(), info.clone());
-    execute(deps.as_mut(), env, info, msg).unwrap();
+    execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
     let saved = USERS.load(deps.as_ref().storage, username).unwrap();
-    assert_eq!(saved, sender)
+    assert_eq!(saved, sender);
+    let username_saved = ADDRESS_USERNAME
+        .load(deps.as_ref().storage, sender)
+        .unwrap();
+    assert_eq!(username_saved, username);
+
+    let new_username = "u2";
+    let msg = ExecuteMsg::RegisterUser {
+        username: new_username.to_string(),
+        address: None,
+    };
+    execute(deps.as_mut(), env, info, msg).unwrap();
+
+    let saved = USERS.load(deps.as_ref().storage, new_username).unwrap();
+    assert_eq!(saved, sender);
+    let username_saved = ADDRESS_USERNAME
+        .load(deps.as_ref().storage, sender)
+        .unwrap();
+    assert_eq!(username_saved, new_username);
+    let deleted = USERS.may_load(deps.as_ref().storage, username).unwrap();
+    assert!(deleted.is_none())
+}
+
+#[test]
+fn test_register_user_duplicate() {
+    let mut deps = mock_dependencies_custom(&[]);
+    // Using a username less than 3 characters long to simulate an invalid CosmWasm Address
+    let username = "u1";
+    let sender = "sender";
+    let info = mock_info(sender, &[]);
+    let env = mock_env();
+    let msg = ExecuteMsg::RegisterUser {
+        username: username.to_string(),
+        address: None,
+    };
+    instantiate_contract(deps.as_mut(), env.clone(), info.clone());
+    execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+
+    let saved = USERS.load(deps.as_ref().storage, username).unwrap();
+    assert_eq!(saved, sender);
+    let username_saved = ADDRESS_USERNAME
+        .load(deps.as_ref().storage, sender)
+        .unwrap();
+    assert_eq!(username_saved, username);
+
+    let res = execute(deps.as_mut(), env, info, msg);
+    assert!(res.is_err());
+    assert_eq!(
+        res.unwrap_err(),
+        ContractError::InvalidUsername {
+            error: Some("Username already taken".to_string())
+        }
+    )
 }
 
 // Test using a username that represents a valid CosmWasm Address that IS NOT the same as the sender's address
@@ -121,7 +173,12 @@ fn test_register_user_unauthorized() {
         .unwrap();
 
     let res = execute(deps.as_mut(), env, info, msg).unwrap_err();
-    assert_eq!(res, ContractError::Unauthorized {})
+    assert_eq!(
+        res,
+        ContractError::InvalidUsername {
+            error: Some("Username already taken".to_string())
+        }
+    )
 }
 
 #[test]

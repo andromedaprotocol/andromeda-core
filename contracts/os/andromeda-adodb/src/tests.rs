@@ -46,13 +46,13 @@ fn test_publish() {
         ActionFee {
             action: "action".to_string(),
             amount: Uint128::from(1u128),
-            asset: "somecw20token".to_string(),
+            asset: "cw20:somecw20token".to_string(),
             receiver: None,
         },
         ActionFee {
             action: "action2".to_string(),
             amount: Uint128::from(2u128),
-            asset: "uusd".to_string(),
+            asset: "native:uusd".to_string(),
             receiver: None,
         },
     ];
@@ -181,13 +181,13 @@ fn test_update_action_fees() {
         ActionFee {
             action: "action".to_string(),
             amount: Uint128::from(1u128),
-            asset: "somecw20token".to_string(),
+            asset: "cw20:somecw20token".to_string(),
             receiver: None,
         },
         ActionFee {
             action: "action2".to_string(),
             amount: Uint128::from(2u128),
-            asset: "uusd".to_string(),
+            asset: "native:uusd".to_string(),
             receiver: None,
         },
     ];

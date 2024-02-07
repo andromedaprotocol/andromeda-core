@@ -73,7 +73,7 @@ pub fn publish(
     )?;
 
     if let Some(fees) = action_fees {
-        save_action_fees(deps.storage, &version, fees)?;
+        save_action_fees(deps.storage, deps.api, &version, fees)?;
     }
 
     Ok(Response::default().add_attributes(vec![
@@ -102,7 +102,7 @@ pub fn update_action_fees(
         }
     );
 
-    save_action_fees(deps.storage, ado_version, action_fees)?;
+    save_action_fees(deps.storage, deps.api, ado_version, action_fees)?;
 
     Ok(Response::default().add_attributes(vec![
         attr("action", "update_action_fees"),
