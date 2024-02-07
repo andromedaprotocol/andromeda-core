@@ -165,6 +165,7 @@ impl MockAndromedaQuerier {
             QueryRequest::Wasm(WasmQuery::ContractInfo { contract_addr }) => {
                 let mut resp = ContractInfoResponse::default();
                 resp.code_id = match contract_addr.as_str() {
+                    MOCK_APP_CONTRACT => 3,
                     INVALID_CONTRACT => 2,
                     _ => 1,
                 };
@@ -482,6 +483,9 @@ impl MockAndromedaQuerier {
             let split = key_str.split("ado_type");
             let key = split.last();
             match key {
+                Some("3") => {
+                    SystemResult::Ok(ContractResult::Ok(to_binary("app-contract").unwrap()))
+                }
                 Some("1") => SystemResult::Ok(ContractResult::Ok(to_binary("ADOType").unwrap())),
                 Some(_) => SystemResult::Ok(ContractResult::Err("Invalid Key".to_string())),
                 None => SystemResult::Ok(ContractResult::Err("Invalid Key".to_string())),

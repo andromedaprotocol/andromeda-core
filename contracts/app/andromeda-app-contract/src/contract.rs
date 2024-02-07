@@ -104,7 +104,7 @@ pub fn instantiate(
     }
     let vfs_address = ADOContract::default().get_vfs_address(deps.storage, &deps.querier)?;
 
-    let add_path_msg = VFSExecuteMsg::AddParentPath {
+    let add_path_msg = VFSExecuteMsg::AddChild {
         name: convert_component_name(app_name.clone()),
         parent_address: AndrAddr::from_string(sender),
     };

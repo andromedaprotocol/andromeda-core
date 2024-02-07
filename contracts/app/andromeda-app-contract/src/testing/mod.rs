@@ -70,7 +70,7 @@ fn test_instantiation() {
         id: ReplyId::RegisterPath.repr(),
         msg: CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: "vfs_contract".to_string(),
-            msg: to_binary(&VFSExecuteMsg::AddParentPath {
+            msg: to_binary(&VFSExecuteMsg::AddChild {
                 name: convert_component_name("Some App".to_string()),
                 parent_address: AndrAddr::from_string(format!("{sender}")),
             })
