@@ -6,13 +6,13 @@ use crate::{
 use andromeda_std::{
     amp::{
         messages::{AMPMsg, AMPPkt},
-        ADO_DB_KEY, VFS_KEY,
+        ADO_DB_KEY, ECONOMICS_KEY, VFS_KEY,
     },
     error::ContractError,
     os::kernel::{ChannelInfo, ExecuteMsg, IbcExecuteMsg, InstantiateMsg, InternalMsg},
     testing::mock_querier::{
-        mock_dependencies_custom, MOCK_ADODB_CONTRACT, MOCK_FAKE_KERNEL_CONTRACT,
-        MOCK_KERNEL_CONTRACT, MOCK_VFS_CONTRACT,
+        mock_dependencies_custom, MOCK_ADODB_CONTRACT, MOCK_ECONOMICS_CONTRACT,
+        MOCK_FAKE_KERNEL_CONTRACT, MOCK_KERNEL_CONTRACT, MOCK_VFS_CONTRACT,
     },
 };
 use cosmwasm_std::{
@@ -291,6 +291,13 @@ fn test_handle_ibc_direct() {
         },
     )
     .unwrap();
+    // Test would fail without this because we need to check the adodb
+    let assign_key_msg = ExecuteMsg::UpsertKeyAddress {
+        key: ADO_DB_KEY.to_string(),
+        value: MOCK_ADODB_CONTRACT.to_string(),
+    };
+    execute(deps.as_mut(), env.clone(), info.clone(), assign_key_msg).unwrap();
+
     let channel_info = ChannelInfo {
         kernel_address: MOCK_FAKE_KERNEL_CONTRACT.to_string(),
         ics20_channel_id: Some("1".to_string()),
