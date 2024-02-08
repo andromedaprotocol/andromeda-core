@@ -33,9 +33,9 @@ pub fn amp_receive(
     env: Env,
     packet: AMPPkt,
 ) -> Result<Response, ContractError> {
+    // Only verified ADOs can access this function
     ensure!(
-        packet.ctx.get_origin() == info.sender
-            || query::verify_address(deps.as_ref(), info.sender.to_string(),)?,
+        query::verify_address(deps.as_ref(), info.sender.to_string(),)?,
         ContractError::Unauthorized {}
     );
     ensure!(
