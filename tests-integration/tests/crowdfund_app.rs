@@ -23,9 +23,10 @@ use std::str::FromStr;
 
 use andromeda_testing::mock::MockAndromeda;
 use andromeda_vault::mock::{
-    mock_andromeda_vault, mock_vault_deposit_msg, mock_vault_instantiate_msg,
+    mock_andromeda_vault, mock_vault_deposit_msg, mock_vault_get_balance,
+    mock_vault_instantiate_msg,
 };
-use cosmwasm_std::{coin, to_binary, Addr, BlockInfo, Decimal, Uint128};
+use cosmwasm_std::{coin, to_binary, Addr, BlockInfo, Coin, Decimal, Uint128};
 use cw721::{Expiration, OwnerOfResponse};
 use cw_multi_test::{App, Executor};
 
@@ -153,14 +154,14 @@ fn test_crowdfund_app() {
     let vault_one_app_component = AppComponent {
         name: "3".to_string(),
         ado_type: "vault".to_string(),
-        component_type: ComponentType::new(&vault_one_init_msg),
+        component_type: ComponentType::new(vault_one_init_msg),
     };
 
     let vault_two_init_msg = mock_vault_instantiate_msg(andr.kernel_address.to_string(), None);
     let vault_two_app_component = AppComponent {
         name: "4".to_string(),
         ado_type: "vault".to_string(),
-        component_type: ComponentType::new(&vault_two_init_msg),
+        component_type: ComponentType::new(vault_two_init_msg),
     };
 
     // Create splitter recipient structures
@@ -178,7 +179,10 @@ fn test_crowdfund_app() {
                 None,
             ),
         );
-
+    // The vault query works only for the last element in this vector.
+    // Currently the balance check for vault one is failing. But if the elements are switched, it starts working and vault two balance check fails
+    // Only one of the recipients' deposit messages is being sent, and it's always the last elements'
+    // Eventhough it shows in execute_send's response in the splitter that both messages are being sent.
     let splitter_recipients = vec![
         AddressPercent {
             recipient: vault_one_recipient,
@@ -194,7 +198,7 @@ fn test_crowdfund_app() {
         mock_splitter_instantiate_msg(splitter_recipients, andr.kernel_address.clone(), None, None);
     let splitter_app_component = AppComponent {
         name: "5".to_string(),
-        component_type: ComponentType::new(&splitter_init_msg),
+        component_type: ComponentType::new(splitter_init_msg),
         ado_type: "splitter".to_string(),
     };
 
@@ -230,7 +234,7 @@ fn test_crowdfund_app() {
 
     assert_eq!(components, app_components);
 
-    let _vault_one_addr: String = router
+    let vault_one_addr: String = router
         .wrap()
         .query_wasm_smart(
             app_addr.clone(),
@@ -238,7 +242,7 @@ fn test_crowdfund_app() {
         )
         .unwrap();
 
-    let _vault_two_addr: String = router
+    let vault_two_addr: String = router
         .wrap()
         .query_wasm_smart(
             app_addr.clone(),
@@ -351,7 +355,7 @@ fn test_crowdfund_app() {
     }
 
     // TODO: FIX VAULT BALANCES
-    // //Check vault balances
+    //Check vault balances
 
     // let balance_one: Vec<Coin> = router
     //     .wrap()
@@ -367,17 +371,17 @@ fn test_crowdfund_app() {
     // assert!(!balance_one.is_empty());
     // assert_eq!(balance_one[0], coin(148, "uandr"));
 
-    // let balance_two: Vec<Coin> = router
-    //     .wrap()
-    //     .query_wasm_smart(
-    //         vault_two_addr,
-    //         &mock_vault_get_balance(
-    //             AndrAddr::from_string(vault_two_recipient_addr.to_string()),
-    //             None,
-    //             None,
-    //         ),
-    //     )
-    //     .unwrap();
-    // assert!(!balance_two.is_empty());
-    // assert_eq!(balance_two[0], coin(148, "uandr"));
+    let balance_two: Vec<Coin> = router
+        .wrap()
+        .query_wasm_smart(
+            vault_two_addr,
+            &mock_vault_get_balance(
+                AndrAddr::from_string(vault_two_recipient_addr.to_string()),
+                None,
+                None,
+            ),
+        )
+        .unwrap();
+    assert!(!balance_two.is_empty());
+    assert_eq!(balance_two[0], coin(148, "uandr"));
 }
