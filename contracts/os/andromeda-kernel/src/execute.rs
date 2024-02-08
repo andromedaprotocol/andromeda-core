@@ -409,12 +409,15 @@ impl MsgHandler {
 
             let new_packet = AMPPkt::new(origin, previous_sender, vec![amp_msg]);
 
-            //TODO: Check funds are sent with message
-            let sub_msg = new_packet.to_sub_msg(
-                recipient_addr.clone(),
-                Some(funds.clone()),
-                ReplyId::AMPMsg.repr(),
-            )?;
+            let sub_msg = if funds.is_empty() {
+                new_packet.to_sub_msg(recipient_addr.clone(), None, ReplyId::AMPMsg.repr())?
+            } else {
+                new_packet.to_sub_msg(
+                    recipient_addr.clone(),
+                    Some(funds.clone()),
+                    ReplyId::AMPMsg.repr(),
+                )?
+            };
             res = res
                 .add_submessage(sub_msg)
                 .add_attributes(vec![attr(format!("recipient:{sequence}"), recipient_addr)]);
