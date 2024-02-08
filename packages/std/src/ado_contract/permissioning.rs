@@ -215,7 +215,6 @@ impl<'a> ADOContract<'a> {
     ///
     /// **Whitelisted/Limited permissions will only work for permissioned actions**
     ///
-    /// TODO: Add permission for execute context
     pub fn execute_set_permission(
         &self,
         ctx: ExecuteContext,
@@ -245,7 +244,6 @@ impl<'a> ADOContract<'a> {
     }
 
     /// Execute handler for setting permission
-    /// TODO: Add permission for execute context
     pub fn execute_remove_permission(
         &self,
         ctx: ExecuteContext,

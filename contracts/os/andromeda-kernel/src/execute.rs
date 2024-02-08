@@ -160,10 +160,10 @@ pub fn create(
         let sub_msg = SubMsg::reply_always(wasm_msg, ReplyId::CreateADO.repr());
 
         // TODO: Is this check necessary?
-        // ensure!(
-        //     !ADO_OWNER.exists(execute_env.deps.storage),
-        //     ContractError::Unauthorized {}
-        // );
+        ensure!(
+            !ADO_OWNER.exists(execute_env.deps.storage),
+            ContractError::Unauthorized {}
+        );
 
         ADO_OWNER.save(execute_env.deps.storage, &owner_addr)?;
 
