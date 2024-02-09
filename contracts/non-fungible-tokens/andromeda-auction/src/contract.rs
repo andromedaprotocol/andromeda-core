@@ -268,7 +268,7 @@ fn execute_update_auction(
         &token_auction_state,
     )?;
     Ok(Response::new().add_attributes(vec![
-        attr("action", "start_auction"),
+        attr("action", "update_auction"),
         attr("start_time", start_time.to_string()),
         attr("end_time", end_exp.to_string()),
         attr("coin_denom", coin_denom),

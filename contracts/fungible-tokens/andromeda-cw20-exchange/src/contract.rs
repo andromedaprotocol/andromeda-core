@@ -5,18 +5,22 @@ use andromeda_fungible_tokens::cw20_exchange::{
 use andromeda_std::{
     ado_base::InstantiateMsg as BaseInstantiateMsg,
     ado_contract::ADOContract,
-    common::context::ExecuteContext,
+    common::{
+        context::ExecuteContext,
+        expiration::{expiration_from_milliseconds, MILLISECONDS_TO_NANOSECONDS_RATIO},
+    },
     error::{from_semver, ContractError},
 };
 use cosmwasm_std::{
     attr, coin, ensure, entry_point, from_json, to_json_binary, wasm_execute, BankMsg, Binary,
-    CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError, SubMsg, Uint128,
+    BlockInfo, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError, SubMsg,
+    Uint128,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use cw_asset::AssetInfo;
 use cw_storage_plus::Bound;
-use cw_utils::{nonpayable, one_coin};
+use cw_utils::{nonpayable, one_coin, Expiration};
 use semver::Version;
 
 use crate::state::{SALE, TOKEN_ADDRESS};
@@ -120,7 +124,18 @@ pub fn execute_receive(
             asset,
             exchange_rate,
             recipient,
-        } => execute_start_sale(ctx, amount_sent, asset, exchange_rate, sender, recipient),
+            start_time,
+            duration,
+        } => execute_start_sale(
+            ctx,
+            amount_sent,
+            asset,
+            exchange_rate,
+            sender,
+            recipient,
+            start_time,
+            duration,
+        ),
         Cw20HookMsg::Purchase { recipient } => execute_purchase(
             ctx,
             amount_sent,
@@ -131,6 +146,7 @@ pub fn execute_receive(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn execute_start_sale(
     ctx: ExecuteContext,
     amount: Uint128,
@@ -140,6 +156,9 @@ pub fn execute_start_sale(
     sender: String,
     // The recipient of the sale proceeds
     recipient: Option<String>,
+
+    start_time: Option<u64>,
+    duration: Option<u64>,
 ) -> Result<Response, ContractError> {
     let ExecuteContext { deps, info, .. } = ctx;
 
@@ -163,6 +182,39 @@ pub fn execute_start_sale(
         }
     );
 
+    let start_expiration = if let Some(start_time) = start_time {
+        expiration_from_milliseconds(start_time)?
+    } else {
+        Expiration::Never {}
+    };
+
+    // Validate start time only if it's provided
+    match start_expiration {
+        Expiration::Never {} => (),
+        _ => {
+            let block_time = block_to_expiration(&ctx.env.block, start_expiration).unwrap();
+
+            // Make sure start time is valid
+            ensure!(
+                start_expiration.gt(&block_time),
+                ContractError::StartTimeInThePast {
+                    current_time: ctx.env.block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO,
+                    current_block: ctx.env.block.height,
+                }
+            );
+        }
+    }
+
+    let end_expiration = if let Some(duration) = duration {
+        // If there's no start time, consider it as now
+        expiration_from_milliseconds(
+            start_time.unwrap_or(ctx.env.block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO)
+                + duration,
+        )?
+    } else {
+        Expiration::Never {}
+    };
+
     // Do not allow duplicate sales
     let current_sale = SALE.may_load(deps.storage, &asset.to_string())?;
     ensure!(current_sale.is_none(), ContractError::SaleNotEnded {});
@@ -171,6 +223,8 @@ pub fn execute_start_sale(
         amount,
         exchange_rate,
         recipient: recipient.unwrap_or(sender),
+        start_time: start_expiration,
+        end_time: end_expiration,
     };
     SALE.save(deps.storage, &asset.to_string(), &sale)?;
 
@@ -225,6 +279,17 @@ pub fn execute_purchase(
     let Some(mut sale) = SALE.may_load(deps.storage, &asset_sent.to_string())? else {
         return Err(ContractError::NoOngoingSale {});
     };
+
+    // Check if sale has started, the only two options are an expired start_time or a start time that never expires because if the user doesn't provide a start time, it's saved as Never
+    ensure!(
+        sale.start_time.is_expired(&ctx.env.block) || sale.start_time == Expiration::Never {},
+        ContractError::SaleNotStarted {}
+    );
+    // Check if sale has ended
+    ensure!(
+        !sale.end_time.is_expired(&ctx.env.block),
+        ContractError::SaleEnded {}
+    );
 
     let purchased = amount_sent.checked_div(sale.exchange_rate).unwrap();
     let remainder = amount_sent.checked_sub(purchased.checked_mul(sale.exchange_rate)?)?;
@@ -346,6 +411,14 @@ pub fn execute_cancel_sale(
         attr("action", "cancel_sale"),
         attr("asset", asset.to_string()),
     ]))
+}
+
+fn block_to_expiration(block: &BlockInfo, model: Expiration) -> Option<Expiration> {
+    match model {
+        Expiration::AtTime(_) => Some(Expiration::AtTime(block.time)),
+        Expiration::AtHeight(_) => Some(Expiration::AtHeight(block.height)),
+        Expiration::Never {} => None,
+    }
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
