@@ -6,13 +6,13 @@ use crate::{
 use andromeda_std::{
     amp::{
         messages::{AMPMsg, AMPPkt},
-        ADO_DB_KEY, ECONOMICS_KEY, VFS_KEY,
+        ADO_DB_KEY, VFS_KEY,
     },
     error::ContractError,
     os::kernel::{ChannelInfo, ExecuteMsg, IbcExecuteMsg, InstantiateMsg, InternalMsg},
     testing::mock_querier::{
-        mock_dependencies_custom, MOCK_ADODB_CONTRACT, MOCK_ECONOMICS_CONTRACT,
-        MOCK_FAKE_KERNEL_CONTRACT, MOCK_KERNEL_CONTRACT, MOCK_VFS_CONTRACT,
+        mock_dependencies_custom, MOCK_ADODB_CONTRACT, MOCK_FAKE_KERNEL_CONTRACT,
+        MOCK_KERNEL_CONTRACT, MOCK_VFS_CONTRACT,
     },
 };
 use cosmwasm_std::{

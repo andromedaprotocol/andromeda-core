@@ -234,7 +234,7 @@ fn test_crowdfund_app() {
 
     assert_eq!(components, app_components);
 
-    let vault_one_addr: String = router
+    let _vault_one_addr: String = router
         .wrap()
         .query_wasm_smart(
             app_addr.clone(),
