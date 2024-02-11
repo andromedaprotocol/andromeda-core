@@ -246,7 +246,7 @@ pub fn test_start_sale_invalid_start_time() {
     let exchange_rate = Uint128::from(10u128);
     let sale_amount = Uint128::from(100u128);
     let hook = Cw20HookMsg::StartSale {
-        asset: exchange_asset.clone(),
+        asset: exchange_asset,
         exchange_rate,
         recipient: None,
         start_time: Some(1),
