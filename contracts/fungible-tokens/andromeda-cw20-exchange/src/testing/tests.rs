@@ -154,7 +154,7 @@ pub fn test_start_sale() {
     let token_info = mock_info(MOCK_TOKEN_ADDRESS, &[]);
 
     init(deps.as_mut()).unwrap();
-    let current_time = env.clone().block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO;
+    let current_time = env.block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO;
     let exchange_rate = Uint128::from(10u128);
     let sale_amount = Uint128::from(100u128);
     let hook = Cw20HookMsg::StartSale {
@@ -172,7 +172,7 @@ pub fn test_start_sale() {
     };
     let msg = ExecuteMsg::Receive(receive_msg);
 
-    execute(deps.as_mut(), env.clone(), token_info, msg).unwrap();
+    execute(deps.as_mut(), env, token_info, msg).unwrap();
 
     let sale = SALE
         .load(deps.as_ref().storage, &exchange_asset.to_string())
@@ -218,7 +218,7 @@ pub fn test_start_sale_no_start_no_duration() {
     };
     let msg = ExecuteMsg::Receive(receive_msg);
 
-    execute(deps.as_mut(), env.clone(), token_info, msg).unwrap();
+    execute(deps.as_mut(), env, token_info, msg).unwrap();
 
     let sale = SALE
         .load(deps.as_ref().storage, &exchange_asset.to_string())
@@ -382,6 +382,7 @@ pub fn test_purchase_not_enough_sent() {
             recipient: owner.to_string(),
             start_time: Expiration::Never {},
             end_time: Expiration::Never {},
+            start_amount: Uint128::from(100u128),
         },
     )
     .unwrap();
@@ -428,6 +429,7 @@ pub fn test_purchase_no_tokens_left() {
             recipient: owner.to_string(),
             start_time: Expiration::Never {},
             end_time: Expiration::Never {},
+            start_amount: Uint128::zero(),
         },
     )
     .unwrap();
@@ -469,6 +471,7 @@ pub fn test_purchase_not_enough_tokens() {
             recipient: owner.to_string(),
             start_time: Expiration::Never {},
             end_time: Expiration::Never {},
+            start_amount: Uint128::one(),
         },
     )
     .unwrap();
@@ -511,6 +514,7 @@ pub fn test_purchase() {
             recipient: owner.to_string(),
             start_time: Expiration::Never {},
             end_time: Expiration::Never {},
+            start_amount: sale_amount,
         },
     )
     .unwrap();
@@ -596,6 +600,7 @@ pub fn test_purchase_with_start_and_duration() {
             start_time: Expiration::AtTime(env.block.time.minus_nanos(1)),
             // end time in the future
             end_time: Expiration::AtTime(env.block.time.plus_nanos(1)),
+            start_amount: sale_amount,
         },
     )
     .unwrap();
@@ -679,6 +684,7 @@ pub fn test_purchase_sale_not_started() {
             recipient: owner.to_string(),
             start_time: Expiration::AtTime(env.block.time.plus_nanos(1)),
             end_time: Expiration::Never {},
+            start_amount: sale_amount,
         },
     )
     .unwrap();
@@ -720,6 +726,7 @@ pub fn test_purchase_sale_duration_ended() {
             recipient: owner.to_string(),
             start_time: Expiration::Never {},
             end_time: Expiration::AtTime(env.block.time.minus_nanos(1)),
+            start_amount: sale_amount,
         },
     )
     .unwrap();
@@ -775,6 +782,7 @@ pub fn test_purchase_not_enough_sent_native() {
             recipient: owner.to_string(),
             start_time: Expiration::Never {},
             end_time: Expiration::Never {},
+            start_amount: Uint128::from(100u128),
         },
     )
     .unwrap();
@@ -813,6 +821,7 @@ pub fn test_purchase_no_tokens_left_native() {
             recipient: owner.to_string(),
             start_time: Expiration::Never {},
             end_time: Expiration::Never {},
+            start_amount: Uint128::zero(),
         },
     )
     .unwrap();
@@ -847,6 +856,7 @@ pub fn test_purchase_not_enough_tokens_native() {
             recipient: owner.to_string(),
             start_time: Expiration::Never {},
             end_time: Expiration::Never {},
+            start_amount: Uint128::from(1u128),
         },
     )
     .unwrap();
@@ -883,6 +893,7 @@ pub fn test_purchase_native() {
             recipient: owner.to_string(),
             start_time: Expiration::Never {},
             end_time: Expiration::Never {},
+            start_amount: sale_amount,
         },
     )
     .unwrap();
@@ -951,6 +962,7 @@ pub fn test_purchase_refund() {
             recipient: owner.to_string(),
             start_time: Expiration::Never {},
             end_time: Expiration::Never {},
+            start_amount: Uint128::from(100u128),
         },
     )
     .unwrap();
@@ -999,6 +1011,7 @@ pub fn test_cancel_sale_unauthorised() {
             recipient: owner.to_string(),
             start_time: Expiration::Never {},
             end_time: Expiration::Never {},
+            start_amount: sale_amount,
         },
     )
     .unwrap();
@@ -1055,6 +1068,7 @@ pub fn test_cancel_sale() {
             recipient: owner.to_string(),
             start_time: Expiration::Never {},
             end_time: Expiration::Never {},
+            start_amount: sale_amount,
         },
     )
     .unwrap();
@@ -1113,6 +1127,7 @@ fn test_query_sale() {
         recipient: "owner".to_string(),
         start_time: Expiration::Never {},
         end_time: Expiration::Never {},
+        start_amount: sale_amount,
     };
     SALE.save(deps.as_mut().storage, &exchange_asset.to_string(), &sale)
         .unwrap();
@@ -1150,6 +1165,7 @@ fn test_andr_query() {
         recipient: "owner".to_string(),
         start_time: Expiration::Never {},
         end_time: Expiration::Never {},
+        start_amount: sale_amount,
     };
     SALE.save(deps.as_mut().storage, &exchange_asset.to_string(), &sale)
         .unwrap();
@@ -1190,6 +1206,7 @@ fn test_purchase_native_invalid_coins() {
             recipient: owner.to_string(),
             start_time: Expiration::Never {},
             end_time: Expiration::Never {},
+            start_amount: Uint128::from(100u128),
         },
     )
     .unwrap();
@@ -1242,6 +1259,7 @@ fn test_query_sale_assets() {
             recipient: owner.to_string(),
             start_time: Expiration::Never {},
             end_time: Expiration::Never {},
+            start_amount: Uint128::from(100u128),
         },
     )
     .unwrap();
@@ -1254,6 +1272,7 @@ fn test_query_sale_assets() {
             recipient: owner.to_string(),
             start_time: Expiration::Never {},
             end_time: Expiration::Never {},
+            start_amount: Uint128::from(100u128),
         },
     )
     .unwrap();

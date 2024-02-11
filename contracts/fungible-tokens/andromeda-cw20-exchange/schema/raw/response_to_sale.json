@@ -72,6 +72,7 @@
         "end_time",
         "exchange_rate",
         "recipient",
+        "start_amount",
         "start_time"
       ],
       "properties": {
@@ -102,6 +103,14 @@
         "recipient": {
           "description": "The recipient of the sale proceeds",
           "type": "string"
+        },
+        "start_amount": {
+          "description": "The amount for sale at the given rate at the start of the sale",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Uint128"
+            }
+          ]
         },
         "start_time": {
           "description": "The time when the sale starts",

@@ -36,12 +36,12 @@ pub struct Sale {
     pub amount: Uint128,
     /// The recipient of the sale proceeds
     pub recipient: String,
-
     /// The time when the sale starts
     pub start_time: Expiration,
-
     /// The time when the sale ends
     pub end_time: Expiration,
+    /// The amount for sale at the given rate at the start of the sale
+    pub start_amount: Uint128,
 }
 
 #[derive(Deserialize, Serialize)]
