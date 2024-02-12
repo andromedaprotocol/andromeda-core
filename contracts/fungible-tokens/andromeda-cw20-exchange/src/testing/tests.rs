@@ -218,7 +218,7 @@ pub fn test_start_sale_no_start_no_duration() {
     };
     let msg = ExecuteMsg::Receive(receive_msg);
 
-    execute(deps.as_mut(), env.clone(), token_info, msg).unwrap();
+    execute(deps.as_mut(), env, token_info, msg).unwrap();
 
     let sale = SALE
         .load(deps.as_ref().storage, &exchange_asset.to_string())

@@ -192,8 +192,6 @@ pub fn execute_start_sale(
 
     // Validate start time
     let block_time = block_to_expiration(&ctx.env.block, start_expiration).unwrap();
-
-    // Make sure start time is valid
     ensure!(
         start_expiration.gt(&block_time),
         ContractError::StartTimeInThePast {
