@@ -299,6 +299,9 @@ pub enum ContractError {
     #[error("InvalidADOVersion: {msg:?}")]
     InvalidADOVersion { msg: Option<String> },
 
+    #[error("InvalidCodeID: {msg:?}")]
+    InvalidCodeID { msg: Option<String> },
+
     #[error("InvalidADOType: {msg:?}")]
     InvalidADOType { msg: Option<String> },
 

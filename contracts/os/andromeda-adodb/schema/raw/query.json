@@ -54,6 +54,57 @@
       "properties": {
         "all_ado_types": {
           "type": "object",
+          "properties": {
+            "limit": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint32",
+              "minimum": 0.0
+            },
+            "start_after": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "ado_versions"
+      ],
+      "properties": {
+        "ado_versions": {
+          "type": "object",
+          "required": [
+            "ado_type"
+          ],
+          "properties": {
+            "ado_type": {
+              "type": "string"
+            },
+            "limit": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint32",
+              "minimum": 0.0
+            },
+            "start_after": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
           "additionalProperties": false
         }
       },

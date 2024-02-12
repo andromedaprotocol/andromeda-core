@@ -23,6 +23,12 @@ pub enum ExecuteMsg {
         version: String,
         publisher: Option<String>,
     },
+    Unpublish {
+        code_id: u64,
+        ado_type: String,
+        action_fees: Option<Vec<ActionFee>>,
+        version: String,
+    },
     UpdateActionFees {
         ado_type: String,
         action_fees: Vec<ActionFee>,
