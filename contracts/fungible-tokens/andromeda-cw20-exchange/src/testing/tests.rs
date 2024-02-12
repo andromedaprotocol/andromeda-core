@@ -1080,7 +1080,6 @@ pub fn test_cancel_sale() {
             exchange_rate,
             recipient: owner.to_string(),
             start_time: Expiration::AtTime(env.block.time),
-
             end_time: Expiration::Never {},
             start_amount: sale_amount,
         },
@@ -1101,10 +1100,25 @@ pub fn test_cancel_sale() {
 
     // Ensure any remaining funds are returned
     let message = res.messages.first().unwrap();
+    // let expected_message = SubMsg::reply_on_error(
+    //     CosmosMsg::Wasm(
+    //         wasm_execute(
+    //             "exchanged_asset",
+    //             &Cw20ExecuteMsg::Transfer {
+    //                 recipient: owner.to_string(),
+    //                 amount: sale_amount,
+    //             },
+    //             vec![],
+    //         )
+    //         .unwrap(),
+    //     ),
+    //     1,
+
+    // );
     let expected_message = SubMsg::reply_on_error(
         CosmosMsg::Wasm(
             wasm_execute(
-                "exchanged_asset",
+                "cw20",
                 &Cw20ExecuteMsg::Transfer {
                     recipient: owner.to_string(),
                     amount: sale_amount,

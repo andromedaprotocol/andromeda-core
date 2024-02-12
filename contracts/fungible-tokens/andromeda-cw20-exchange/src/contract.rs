@@ -390,9 +390,14 @@ pub fn execute_cancel_sale(
 
     // Refund any remaining amount
     if !sale.amount.is_zero() {
+        let token_addr = TOKEN_ADDRESS
+            .load(deps.storage)?
+            .get_raw_address(&deps.as_ref())?;
+
+        let token = AssetInfo::Cw20(token_addr);
         resp = resp
             .add_submessage(generate_transfer_message(
-                asset.clone(),
+                token,
                 sale.amount,
                 info.sender.to_string(),
                 REFUND_REPLY_ID,
