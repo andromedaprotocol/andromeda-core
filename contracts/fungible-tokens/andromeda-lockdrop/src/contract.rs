@@ -347,12 +347,12 @@ pub fn execute_withdraw_native(
         user_info.withdrawal_flag = true;
     }
 
-    user_info.total_native_locked -= withdraw_amount;
+    user_info.total_native_locked = user_info.total_native_locked.checked_sub(withdraw_amount)?;
 
     USER_INFO.save(deps.storage, &withdrawer_address, &user_info)?;
 
     // STATE :: UPDATE --> SAVE
-    state.total_native_locked -= withdraw_amount;
+    state.total_native_locked = state.total_native_locked.checked_sub(withdraw_amount)?;
     STATE.save(deps.storage, &state)?;
 
     // COSMOS_MSG ::TRANSFER WITHDRAWN native token

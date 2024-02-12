@@ -258,7 +258,7 @@ fn execute_send(ctx: ExecuteContext) -> Result<Response, ContractError> {
         for (i, coin) in info.funds.iter().enumerate() {
             let mut recip_coin: Coin = coin.clone();
             recip_coin.amount = coin.amount.multiply_ratio(recipient_weight, total_weight);
-            remainder_funds[i].amount -= recip_coin.amount;
+            remainder_funds[i].amount = remainder_funds[i].amount.checked_sub(recip_coin.amount)?;
             vec_coin.push(recip_coin);
         }
         // ADO receivers must use AndromedaMsg::Receive to execute their functionality

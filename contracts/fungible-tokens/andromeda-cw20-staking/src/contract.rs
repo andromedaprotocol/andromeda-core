@@ -367,9 +367,8 @@ fn execute_unstake_tokens(
             info: staking_token,
             amount: withdraw_amount,
         };
-
-        staker.share -= withdraw_share;
-        state.total_share -= withdraw_share;
+        staker.share = staker.share.checked_sub(withdraw_share)?;
+        state.total_share = state.total_share.checked_sub(withdraw_share)?;
 
         STATE.save(deps.storage, &state)?;
         STAKERS.save(deps.storage, sender, &staker)?;

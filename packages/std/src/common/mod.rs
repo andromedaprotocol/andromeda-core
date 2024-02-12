@@ -169,10 +169,10 @@ pub fn deduct_funds(coins: &mut [Coin], funds: &Coin) -> Result<(), ContractErro
     let mut remainder = funds.amount;
     for same_coin in coin_amount {
         if same_coin.amount > remainder {
-            same_coin.amount -= remainder;
+            same_coin.amount = same_coin.amount.checked_sub(remainder)?;
             return Ok(());
         } else {
-            remainder -= same_coin.amount;
+            remainder = remainder.checked_sub(same_coin.amount)?;
             same_coin.amount = Uint128::zero();
         }
     }

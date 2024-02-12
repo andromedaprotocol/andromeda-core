@@ -465,7 +465,7 @@ fn purchase_tokens(
         purchases.push(purchase);
 
         AVAILABLE_TOKENS.remove(deps.storage, &token_id);
-        current_number -= Uint128::new(1);
+        current_number = current_number.checked_sub(Uint128::one())?;
     }
     NUMBER_OF_TOKENS_AVAILABLE.save(deps.storage, &current_number)?;
 
@@ -612,14 +612,14 @@ fn transfer_tokens_and_send_funds(
                 denom: state.price.denom.clone(),
                 amount: state.amount_to_send,
             }];
-            match state.recipient.msg.clone() {
+            match state.recipient.msg {
                 None => {
                     resp = resp.add_submessage(
                         state.recipient.generate_direct_msg(&deps.as_ref(), funds)?,
                     );
                 }
                 Some(_) => {
-                    let amp_message = state.recipient.clone().generate_amp_msg(Some(funds));
+                    let amp_message = state.recipient.generate_amp_msg(Some(funds));
                     pkt = pkt.add_message(amp_message);
                     let kernel_address = ADOContract::default().get_kernel_address(deps.storage)?;
                     let sub_msg = pkt.to_sub_msg(

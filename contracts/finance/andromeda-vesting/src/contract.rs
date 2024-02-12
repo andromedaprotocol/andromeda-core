@@ -480,7 +480,6 @@ fn claim_batch(
     // We dont want to update the last_claim_time when there are no funds to claim.
     if !amount_to_send.is_zero() {
         batch.amount_claimed = batch.amount_claimed.checked_add(amount_to_send)?;
-
         batch.last_claimed_release_time += number_of_claims * batch.release_unit;
     }
 
