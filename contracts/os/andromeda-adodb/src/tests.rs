@@ -348,7 +348,7 @@ fn test_unpublish() {
         action_fees: Some(action_fees.clone()),
     };
 
-    let resp = execute(deps.as_mut(), env.clone(), info, msg.clone());
+    let resp = execute(deps.as_mut(), env, info, msg);
 
     assert!(resp.is_ok());
 
@@ -362,7 +362,7 @@ fn test_unpublish() {
     assert!(vers_code_id.is_err());
 
     // TEST ACTION FEE
-    for action_fee in action_fees.clone() {
+    for action_fee in action_fees {
         let fee = ACTION_FEES.load(
             deps.as_ref().storage,
             &(ado_version.get_type(), action_fee.clone().action),
