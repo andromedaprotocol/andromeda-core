@@ -304,8 +304,8 @@ fn execute_stake_tokens(
         amount.multiply_ratio(state.total_share, total_balance)
     };
 
-    staker.share += share;
-    state.total_share += share;
+    staker.share = staker.share.checked_add(share)?;
+    state.total_share = state.total_share.checked_add(share)?;
 
     STATE.save(deps.storage, &state)?;
     STAKERS.save(deps.storage, &sender, &staker)?;

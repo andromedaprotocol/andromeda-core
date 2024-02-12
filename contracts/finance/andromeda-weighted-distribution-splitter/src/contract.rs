@@ -247,7 +247,7 @@ fn execute_send(ctx: ExecuteContext) -> Result<Response, ContractError> {
     // Calculate the total weight of all recipients
     for recipient_addr in &splitter.recipients {
         let recipient_weight = recipient_addr.weight;
-        total_weight += recipient_weight;
+        total_weight = total_weight.checked_add(recipient_weight)?;
     }
 
     // Each recipient recieves the funds * (the recipient's weight / total weight of all recipients)
@@ -498,7 +498,7 @@ fn query_user_weight(deps: Deps, user: Recipient) -> Result<GetUserWeightRespons
     let mut total_weight = Uint128::zero();
     for recipient_addr in &recipients {
         let recipient_weight = recipient_addr.weight;
-        total_weight += recipient_weight;
+        total_weight = total_weight.checked_add(recipient_weight)?;
     }
 
     if let Some(i) = addrs {

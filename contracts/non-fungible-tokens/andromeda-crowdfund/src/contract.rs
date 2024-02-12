@@ -457,11 +457,10 @@ fn purchase_tokens(
             msgs: msgs.clone(),
             purchaser: info.sender.to_string(),
         };
+        total_tax_amount = total_tax_amount.checked_add(tax_amount)?;
 
-        total_tax_amount += tax_amount;
-
-        state.amount_to_send += remaining_amount.amount;
-        state.amount_sold += Uint128::new(1);
+        state.amount_to_send = state.amount_to_send.checked_add(remaining_amount.amount)?;
+        state.amount_sold = state.amount_sold.checked_add(Uint128::one())?;
 
         purchases.push(purchase);
 
@@ -473,8 +472,11 @@ fn purchase_tokens(
     // CHECK :: User has sent enough to cover taxes.
     let required_payment = Coin {
         denom: state.price.denom.clone(),
-        amount: state.price.amount * Uint128::from(number_of_tokens_purchased as u128)
-            + total_tax_amount,
+        amount: state
+            .price
+            .amount
+            .checked_mul(Uint128::from(number_of_tokens_purchased as u128))?
+            .checked_add(total_tax_amount)?,
     };
     ensure!(
         has_coins(&info.funds, &required_payment),
@@ -703,8 +705,7 @@ fn transfer_tokens_and_send_funds(
             })?,
             funds: vec![],
         }));
-
-        state.amount_transferred += Uint128::from(1u128);
+        state.amount_transferred = state.amount_transferred.checked_add(Uint128::one())?;
     }
     // If the last purchaser wasn't removed, remove the subset of purchases that were processed.
     if PURCHASES.has(deps.storage, &last_purchaser) {
