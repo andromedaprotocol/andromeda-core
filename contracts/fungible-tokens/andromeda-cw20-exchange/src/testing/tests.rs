@@ -218,7 +218,7 @@ pub fn test_start_sale_no_start_no_duration() {
     };
     let msg = ExecuteMsg::Receive(receive_msg);
 
-    execute(deps.as_mut(), env, token_info, msg).unwrap();
+    execute(deps.as_mut(), env.clone(), token_info, msg).unwrap();
 
     let sale = SALE
         .load(deps.as_ref().storage, &exchange_asset.to_string())
@@ -227,7 +227,11 @@ pub fn test_start_sale_no_start_no_duration() {
     assert_eq!(sale.exchange_rate, exchange_rate);
     assert_eq!(sale.amount, sale_amount);
 
-    assert_eq!(sale.start_time, Expiration::Never {});
+    assert_eq!(
+        sale.start_time,
+        // Current time + 1
+        Expiration::AtTime(Timestamp::from_nanos(1571797419880000000))
+    );
 
     assert_eq!(sale.end_time, Expiration::Never {});
 }
@@ -380,7 +384,7 @@ pub fn test_purchase_not_enough_sent() {
             amount: Uint128::from(100u128),
             exchange_rate,
             recipient: owner.to_string(),
-            start_time: Expiration::Never {},
+            start_time: Expiration::AtTime(env.block.time),
             end_time: Expiration::Never {},
             start_amount: Uint128::from(100u128),
         },
@@ -427,7 +431,7 @@ pub fn test_purchase_no_tokens_left() {
             amount: Uint128::zero(),
             exchange_rate,
             recipient: owner.to_string(),
-            start_time: Expiration::Never {},
+            start_time: Expiration::AtTime(env.block.time),
             end_time: Expiration::Never {},
             start_amount: Uint128::zero(),
         },
@@ -469,7 +473,8 @@ pub fn test_purchase_not_enough_tokens() {
             amount: Uint128::one(),
             exchange_rate,
             recipient: owner.to_string(),
-            start_time: Expiration::Never {},
+            start_time: Expiration::AtTime(env.block.time),
+
             end_time: Expiration::Never {},
             start_amount: Uint128::one(),
         },
@@ -512,7 +517,8 @@ pub fn test_purchase() {
             amount: sale_amount,
             exchange_rate,
             recipient: owner.to_string(),
-            start_time: Expiration::Never {},
+            start_time: Expiration::AtTime(env.block.time),
+
             end_time: Expiration::Never {},
             start_amount: sale_amount,
         },
@@ -724,7 +730,8 @@ pub fn test_purchase_sale_duration_ended() {
             amount: sale_amount,
             exchange_rate,
             recipient: owner.to_string(),
-            start_time: Expiration::Never {},
+            start_time: Expiration::AtTime(env.block.time),
+
             end_time: Expiration::AtTime(env.block.time.minus_nanos(1)),
             start_amount: sale_amount,
         },
@@ -780,7 +787,8 @@ pub fn test_purchase_not_enough_sent_native() {
             amount: Uint128::from(100u128),
             exchange_rate,
             recipient: owner.to_string(),
-            start_time: Expiration::Never {},
+            start_time: Expiration::AtTime(env.block.time),
+
             end_time: Expiration::Never {},
             start_amount: Uint128::from(100u128),
         },
@@ -819,7 +827,8 @@ pub fn test_purchase_no_tokens_left_native() {
             amount: Uint128::zero(),
             exchange_rate,
             recipient: owner.to_string(),
-            start_time: Expiration::Never {},
+            start_time: Expiration::AtTime(env.block.time),
+
             end_time: Expiration::Never {},
             start_amount: Uint128::zero(),
         },
@@ -854,7 +863,8 @@ pub fn test_purchase_not_enough_tokens_native() {
             amount: Uint128::from(1u128),
             exchange_rate,
             recipient: owner.to_string(),
-            start_time: Expiration::Never {},
+            start_time: Expiration::AtTime(env.block.time),
+
             end_time: Expiration::Never {},
             start_amount: Uint128::from(1u128),
         },
@@ -891,7 +901,8 @@ pub fn test_purchase_native() {
             amount: sale_amount,
             exchange_rate,
             recipient: owner.to_string(),
-            start_time: Expiration::Never {},
+            start_time: Expiration::AtTime(env.block.time),
+
             end_time: Expiration::Never {},
             start_amount: sale_amount,
         },
@@ -960,7 +971,8 @@ pub fn test_purchase_refund() {
             amount: Uint128::from(100u128),
             exchange_rate,
             recipient: owner.to_string(),
-            start_time: Expiration::Never {},
+            start_time: Expiration::AtTime(env.block.time),
+
             end_time: Expiration::Never {},
             start_amount: Uint128::from(100u128),
         },
@@ -1009,7 +1021,8 @@ pub fn test_cancel_sale_unauthorised() {
             amount: sale_amount,
             exchange_rate,
             recipient: owner.to_string(),
-            start_time: Expiration::Never {},
+            start_time: Expiration::AtTime(env.block.time),
+
             end_time: Expiration::Never {},
             start_amount: sale_amount,
         },
@@ -1066,7 +1079,8 @@ pub fn test_cancel_sale() {
             amount: sale_amount,
             exchange_rate,
             recipient: owner.to_string(),
-            start_time: Expiration::Never {},
+            start_time: Expiration::AtTime(env.block.time),
+
             end_time: Expiration::Never {},
             start_amount: sale_amount,
         },
@@ -1125,7 +1139,8 @@ fn test_query_sale() {
         amount: sale_amount,
         exchange_rate,
         recipient: "owner".to_string(),
-        start_time: Expiration::Never {},
+        start_time: Expiration::AtTime(env.block.time),
+
         end_time: Expiration::Never {},
         start_amount: sale_amount,
     };
@@ -1163,7 +1178,8 @@ fn test_andr_query() {
         amount: sale_amount,
         exchange_rate,
         recipient: "owner".to_string(),
-        start_time: Expiration::Never {},
+        start_time: Expiration::AtTime(env.block.time),
+
         end_time: Expiration::Never {},
         start_amount: sale_amount,
     };
@@ -1204,7 +1220,8 @@ fn test_purchase_native_invalid_coins() {
             amount: Uint128::from(100u128),
             exchange_rate,
             recipient: owner.to_string(),
-            start_time: Expiration::Never {},
+            start_time: Expiration::AtTime(env.block.time),
+
             end_time: Expiration::Never {},
             start_amount: Uint128::from(100u128),
         },
@@ -1257,7 +1274,8 @@ fn test_query_sale_assets() {
             amount: Uint128::from(100u128),
             exchange_rate,
             recipient: owner.to_string(),
-            start_time: Expiration::Never {},
+            start_time: Expiration::AtTime(env.block.time),
+
             end_time: Expiration::Never {},
             start_amount: Uint128::from(100u128),
         },
@@ -1270,7 +1288,8 @@ fn test_query_sale_assets() {
             amount: Uint128::from(100u128),
             exchange_rate,
             recipient: owner.to_string(),
-            start_time: Expiration::Never {},
+            start_time: Expiration::AtTime(env.block.time),
+
             end_time: Expiration::Never {},
             start_amount: Uint128::from(100u128),
         },

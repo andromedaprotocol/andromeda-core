@@ -156,7 +156,6 @@ pub fn execute_start_sale(
     sender: String,
     // The recipient of the sale proceeds
     recipient: Option<String>,
-
     start_time: Option<u64>,
     duration: Option<u64>,
 ) -> Result<Response, ContractError> {
@@ -182,35 +181,30 @@ pub fn execute_start_sale(
         }
     );
 
+    let current_time = ctx.env.block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO;
+
     let start_expiration = if let Some(start_time) = start_time {
         expiration_from_milliseconds(start_time)?
     } else {
-        Expiration::Never {}
+        // Set as current time + 1 so that it isn't expired from the very start
+        expiration_from_milliseconds(current_time + 1)?
     };
 
-    // Validate start time only if it's provided
-    match start_expiration {
-        Expiration::Never {} => (),
-        _ => {
-            let block_time = block_to_expiration(&ctx.env.block, start_expiration).unwrap();
+    // Validate start time
+    let block_time = block_to_expiration(&ctx.env.block, start_expiration).unwrap();
 
-            // Make sure start time is valid
-            ensure!(
-                start_expiration.gt(&block_time),
-                ContractError::StartTimeInThePast {
-                    current_time: ctx.env.block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO,
-                    current_block: ctx.env.block.height,
-                }
-            );
+    // Make sure start time is valid
+    ensure!(
+        start_expiration.gt(&block_time),
+        ContractError::StartTimeInThePast {
+            current_time,
+            current_block: ctx.env.block.height,
         }
-    }
+    );
 
     let end_expiration = if let Some(duration) = duration {
         // If there's no start time, consider it as now
-        expiration_from_milliseconds(
-            start_time.unwrap_or(ctx.env.block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO)
-                + duration,
-        )?
+        expiration_from_milliseconds(start_time.unwrap_or(current_time) + duration)?
     } else {
         Expiration::Never {}
     };
@@ -234,6 +228,9 @@ pub fn execute_start_sale(
         attr("asset", asset.to_string()),
         attr("rate", exchange_rate),
         attr("amount", amount),
+        attr("start_time", start_expiration.to_string()),
+        attr("end_time", end_expiration.to_string()),
+        attr("start_amount", amount),
     ]))
 }
 
@@ -281,9 +278,9 @@ pub fn execute_purchase(
         return Err(ContractError::NoOngoingSale {});
     };
 
-    // Check if sale has started, the only two options are an expired start_time or a start time that never expires because if the user doesn't provide a start time, it's saved as Never
+    // Check if sale has started
     ensure!(
-        sale.start_time.is_expired(&ctx.env.block) || sale.start_time == Expiration::Never {},
+        sale.start_time.is_expired(&ctx.env.block),
         ContractError::SaleNotStarted {}
     );
     // Check if sale has ended
