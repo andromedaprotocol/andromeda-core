@@ -14,7 +14,7 @@ use cw2::set_contract_version;
 use cw_utils::nonpayable;
 
 use crate::state::EXPRESSIONS;
-use shunting::*;
+use simple_shunting::*;
 
 use serde_json::from_str;
 
