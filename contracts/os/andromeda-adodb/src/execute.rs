@@ -1,5 +1,6 @@
 use crate::state::{
-    read_code_id, save_action_fees, store_code_id, ACTION_FEES, LATEST_VERSION, PUBLISHER,
+    read_code_id, remove_action_fees, remove_code_id, save_action_fees, store_code_id, ACTION_FEES,
+    ADO_TYPE, LATEST_VERSION, PUBLISHER,
 };
 
 use andromeda_std::ado_contract::ADOContract;
@@ -81,6 +82,76 @@ pub fn publish(
         attr("ado_type", version.into_string()),
         attr("code_id", code_id.to_string()),
         attr("publisher", publisher.unwrap_or(info.sender.to_string())),
+    ]))
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn unpublish(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    code_id: u64,
+    ado_type: String,
+    version: String,
+    action_fees: Option<Vec<ActionFee>>,
+) -> Result<Response, ContractError> {
+    ensure!(
+        ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {}
+    );
+    ensure!(
+        // Using trim to rule out non-empty strings made up of only spaces
+        !ado_type.trim().is_empty(),
+        ContractError::InvalidADOType {
+            msg: Some("ado_type can't be an empty string".to_string())
+        }
+    );
+    ensure!(
+        semver::Version::parse(&version).is_ok(),
+        ContractError::InvalidADOVersion {
+            msg: Some("Provided version is not valid semver".to_string())
+        }
+    );
+
+    //TODO: Get Code ID info with cosmwasm 1.2
+
+    let version = ADOVersion::from_type(ado_type).with_version(version);
+    ensure!(
+        version.validate(),
+        ContractError::InvalidADOVersion { msg: None }
+    );
+
+    // Ensure version is already published
+    let curr_code_id = read_code_id(deps.storage, &version);
+    ensure!(
+        curr_code_id.is_ok(),
+        ContractError::InvalidADOVersion {
+            msg: Some(String::from("Version not already published"))
+        }
+    );
+
+    // If this fails then the CodeID isn't available
+    let code_id_verify = ADO_TYPE.load(deps.storage, code_id);
+
+    ensure!(
+        code_id_verify.is_ok(),
+        ContractError::InvalidCodeID {
+            msg: Some(String::from("Code ID not already published"))
+        }
+    );
+
+    remove_code_id(deps.storage, &version, code_id)?;
+    PUBLISHER.remove(deps.storage, version.as_str());
+
+    if let Some(fees) = action_fees {
+        remove_action_fees(deps.storage, deps.api, &version, fees)?;
+    }
+
+    Ok(Response::default().add_attributes(vec![
+        attr("action", "unpublish_ado"),
+        attr("ado_type", version.into_string()),
+        attr("code_id", code_id.to_string()),
+        attr("remover", info.sender.to_string()),
     ]))
 }
 

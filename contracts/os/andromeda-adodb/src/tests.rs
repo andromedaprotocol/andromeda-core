@@ -158,6 +158,220 @@ fn test_publish() {
 }
 
 #[test]
+fn test_unpublish() {
+    let owner = String::from("owner");
+    let mut deps = mock_dependencies_custom(&[]);
+    let env = mock_env();
+    let info = mock_info(owner.as_str(), &[]);
+
+    instantiate(
+        deps.as_mut(),
+        mock_env(),
+        mock_info(&owner, &[]),
+        InstantiateMsg {
+            kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+            owner: None,
+        },
+    )
+    .unwrap();
+
+    let action_fees = vec![
+        ActionFee {
+            action: "action".to_string(),
+            amount: Uint128::from(1u128),
+            asset: "cw20:somecw20token".to_string(),
+            receiver: None,
+        },
+        ActionFee {
+            action: "action2".to_string(),
+            amount: Uint128::from(2u128),
+            asset: "native:uusd".to_string(),
+            receiver: None,
+        },
+    ];
+
+    // Empty ado_type
+    let ado_version = ADOVersion::from_type("").with_version("0.1.0");
+    let code_id = 1;
+    let msg = ExecuteMsg::Publish {
+        ado_type: ado_version.get_type(),
+        version: ado_version.get_version(),
+        code_id,
+        action_fees: Some(action_fees.clone()),
+        publisher: Some(owner.clone()),
+    };
+
+    let err = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap_err();
+
+    assert_eq!(
+        err,
+        ContractError::InvalidADOType {
+            msg: Some("ado_type can't be an empty string".to_string())
+        }
+    );
+
+    // Invalid version
+    let ado_version = ADOVersion::from_type("ado_type");
+    let code_id = 1;
+    let msg = ExecuteMsg::Publish {
+        ado_type: ado_version.get_type(),
+        version: ado_version.get_version(),
+        code_id,
+        action_fees: Some(action_fees.clone()),
+        publisher: Some(owner.clone()),
+    };
+
+    let err = execute(deps.as_mut(), env.clone(), info.clone(), msg);
+    assert!(err.is_err());
+
+    // ado_type made only of spaces
+    let ado_version = ADOVersion::from_type("       ").with_version("0.1.0");
+    let code_id = 1;
+    let msg = ExecuteMsg::Publish {
+        ado_type: ado_version.get_type(),
+        version: ado_version.get_version(),
+        code_id,
+        action_fees: Some(action_fees.clone()),
+        publisher: Some(owner.clone()),
+    };
+
+    let err = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap_err();
+
+    assert_eq!(
+        err,
+        ContractError::InvalidADOType {
+            msg: Some("ado_type can't be an empty string".to_string())
+        }
+    );
+
+    let ado_version = ADOVersion::from_type("ado_type").with_version("0.1.0");
+    let code_id = 1;
+    let msg = ExecuteMsg::Publish {
+        ado_type: ado_version.get_type(),
+        version: ado_version.get_version(),
+        code_id,
+        action_fees: Some(action_fees.clone()),
+        publisher: Some(owner.clone()),
+    };
+
+    let resp = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
+
+    assert!(resp.is_ok());
+    let publisher = PUBLISHER
+        .load(deps.as_ref().storage, ado_version.as_str())
+        .unwrap();
+    assert_eq!(publisher, owner);
+
+    let code_id = CODE_ID
+        .load(deps.as_ref().storage, ado_version.as_str())
+        .unwrap();
+    assert_eq!(code_id, 1u64);
+
+    let vers_code_id = LATEST_VERSION
+        .load(deps.as_ref().storage, &ado_version.get_type())
+        .unwrap();
+    assert_eq!(vers_code_id.0, ado_version.get_version());
+    assert_eq!(vers_code_id.1, code_id);
+
+    // TEST ACTION FEE
+    for action_fee in action_fees.clone() {
+        let fee = ACTION_FEES
+            .load(
+                deps.as_ref().storage,
+                &(ado_version.get_type(), action_fee.clone().action),
+            )
+            .unwrap();
+        assert_eq!(fee, action_fee);
+    }
+
+    // Test unauthorised
+    let unauth_info = mock_info("not_owner", &[]);
+    let resp = execute(deps.as_mut(), env.clone(), unauth_info.clone(), msg);
+    assert!(resp.is_err());
+
+    // Test unpublish
+
+    // Unauthorized
+
+    let msg = ExecuteMsg::Unpublish {
+        ado_type: ado_version.get_type(),
+        version: ado_version.get_version(),
+        code_id,
+        action_fees: Some(action_fees.clone()),
+    };
+
+    let err = execute(deps.as_mut(), env.clone(), unauth_info, msg).unwrap_err();
+
+    assert_eq!(err, ContractError::Unauthorized {});
+
+    // Invalid Version
+    let invalid_ado_version = ADOVersion::from_type("ado_type").with_version("0.2.0");
+    let msg = ExecuteMsg::Unpublish {
+        ado_type: ado_version.get_type(),
+        version: invalid_ado_version.get_version(),
+        code_id,
+        action_fees: Some(action_fees.clone()),
+    };
+
+    let err = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap_err();
+
+    assert_eq!(
+        err,
+        ContractError::InvalidADOVersion {
+            msg: Some(String::from("Version not already published"))
+        }
+    );
+
+    // Unavailable Code ID
+    let unavailable_code_id = 961;
+    let msg = ExecuteMsg::Unpublish {
+        ado_type: ado_version.get_type(),
+        version: ado_version.get_version(),
+        code_id: unavailable_code_id,
+        action_fees: Some(action_fees.clone()),
+    };
+
+    let err = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap_err();
+
+    assert_eq!(
+        err,
+        ContractError::InvalidCodeID {
+            msg: Some(String::from("Code ID not already published"))
+        }
+    );
+
+    // Works
+    let msg = ExecuteMsg::Unpublish {
+        ado_type: ado_version.get_type(),
+        version: ado_version.get_version(),
+        code_id,
+        action_fees: Some(action_fees.clone()),
+    };
+
+    let resp = execute(deps.as_mut(), env, info, msg);
+
+    assert!(resp.is_ok());
+
+    let publisher = PUBLISHER.load(deps.as_ref().storage, ado_version.as_str());
+    assert!(publisher.is_err());
+
+    let code_id = CODE_ID.load(deps.as_ref().storage, ado_version.as_str());
+    assert!(code_id.is_err());
+
+    let vers_code_id = LATEST_VERSION.load(deps.as_ref().storage, &ado_version.get_type());
+    assert!(vers_code_id.is_err());
+
+    // TEST ACTION FEE
+    for action_fee in action_fees {
+        let fee = ACTION_FEES.load(
+            deps.as_ref().storage,
+            &(ado_version.get_type(), action_fee.clone().action),
+        );
+        assert!(fee.is_err());
+    }
+}
+
+#[test]
 fn test_update_action_fees() {
     let owner = String::from("owner");
     let mut deps = mock_dependencies_custom(&[]);

@@ -31,6 +31,14 @@ fn mock_app() -> App {
                 [coin(1000, "uandr")].to_vec(),
             )
             .unwrap();
+        router
+            .bank
+            .init_balance(
+                storage,
+                &Addr::unchecked("user1"),
+                [coin(1, "uandr")].to_vec(),
+            )
+            .unwrap();
     })
 }
 
@@ -41,6 +49,7 @@ fn mock_andromeda(app: &mut App, admin_address: Addr) -> MockAndromeda {
 #[test]
 fn kernel() {
     let owner = Addr::unchecked("owner");
+    let user1 = "user1";
 
     let mut router = mock_app();
     let andr = mock_andromeda(&mut router, owner.clone());
@@ -54,7 +63,7 @@ fn kernel() {
     // andr.store_code_id(&mut router, "splitter", splitter_store_code);
     let splitter_msg = mock_splitter_instantiate_msg(
         vec![AddressPercent::new(
-            Recipient::from_string(owner.to_string()).with_ibc_recovery(owner.clone()),
+            Recipient::from_string(user1.to_string()).with_ibc_recovery(owner.clone()),
             Decimal::one(),
         )],
         andr.kernel_address.clone(),
@@ -102,9 +111,25 @@ fn kernel() {
                 Some(vec![coin(100, "uandr")]),
             ),
         },
-        owner,
+        owner.clone(),
         &[coin(100, "uandr")],
     );
+
+    let user1_balance = router
+        .wrap()
+        .query_balance(user1, "uandr".to_string())
+        .unwrap();
+
+    // user1 had one coin before the splitter execute msg which is expected to increase his balance by 100uandr
+    assert_eq!(user1_balance, coin(101, "uandr"));
+
+    let owner_balance = router
+        .wrap()
+        .query_balance(owner, "uandr".to_string())
+        .unwrap();
+
+    // The owner's balance should be his starting balance subtracted by the 100 he send with the splitter execute msg
+    assert_eq!(owner_balance, coin(999999 - 100, "uandr"));
 
     assert!(res.data.is_none());
 }

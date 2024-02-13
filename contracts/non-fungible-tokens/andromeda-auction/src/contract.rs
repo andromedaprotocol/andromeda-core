@@ -531,6 +531,7 @@ fn purchase_token(
     let tax_amount = get_tax_amount(&msgs, state.high_bidder_amount, remaining_amount.amount);
 
     // Calculate total tax
+    // total_tax_amount = total_tax_amount.checked_add(tax_amount)?;
     total_tax_amount += tax_amount;
 
     let after_tax_payment = Coin {

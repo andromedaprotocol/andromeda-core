@@ -144,6 +144,7 @@ pub fn merge_coins(coins: &mut Vec<Coin>, coins_to_add: Vec<Coin>) {
             .filter(|&c| c.denom == coin.denom)
             .collect();
         for same_coin in same_denom_coin.iter() {
+            // coin.amount = coin.amount.checked_add(same_coin.amount)?;
             coin.amount += same_coin.amount;
         }
     }
@@ -168,10 +169,10 @@ pub fn deduct_funds(coins: &mut [Coin], funds: &Coin) -> Result<(), ContractErro
     let mut remainder = funds.amount;
     for same_coin in coin_amount {
         if same_coin.amount > remainder {
-            same_coin.amount -= remainder;
+            same_coin.amount = same_coin.amount.checked_sub(remainder)?;
             return Ok(());
         } else {
-            remainder -= same_coin.amount;
+            remainder = remainder.checked_sub(same_coin.amount)?;
             same_coin.amount = Uint128::zero();
         }
     }

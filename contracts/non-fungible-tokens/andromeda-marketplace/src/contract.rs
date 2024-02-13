@@ -372,7 +372,7 @@ fn purchase_token(
     let tax_amount = get_tax_amount(&msgs, state.price, remaining_amount.amount);
 
     // Calculate total tax
-    total_tax_amount += tax_amount;
+    total_tax_amount = total_tax_amount.checked_add(tax_amount)?;
 
     let required_payment = Coin {
         denom: state.coin_denom.clone(),

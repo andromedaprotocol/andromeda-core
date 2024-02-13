@@ -282,7 +282,7 @@ fn execute_claim_all(
             Some(num_available_claims),
         )?;
 
-        total_amount_to_send += amount_to_send;
+        total_amount_to_send = total_amount_to_send.checked_add(amount_to_send)?;
 
         key.save(deps.storage, &batch)?;
     }
@@ -472,15 +472,31 @@ fn claim_batch(
         num_available_claims,
     );
 
-    let amount_to_send = amount_per_claim * Uint128::from(number_of_claims);
+    let amount_to_send = amount_per_claim.checked_mul(Uint128::from(number_of_claims))?;
     let amount_available = cmp::min(batch.amount - batch.amount_claimed, total_amount);
 
     let amount_to_send = cmp::min(amount_to_send, amount_available);
 
     // We dont want to update the last_claim_time when there are no funds to claim.
     if !amount_to_send.is_zero() {
-        batch.amount_claimed += amount_to_send;
-        batch.last_claimed_release_time += number_of_claims * batch.release_unit;
+        batch.amount_claimed = batch.amount_claimed.checked_add(amount_to_send)?;
+
+        // Safe math version
+        let claims_release_unit = number_of_claims.checked_mul(batch.release_unit);
+        if let Some(claims_release_unit) = claims_release_unit {
+            let new_claimed_release_time = batch
+                .last_claimed_release_time
+                .checked_add(claims_release_unit);
+            if let Some(new_claimed_release_time) = new_claimed_release_time {
+                batch.last_claimed_release_time = new_claimed_release_time;
+            } else {
+                return Err(ContractError::Overflow {});
+            }
+        } else {
+            return Err(ContractError::Overflow {});
+        }
+        // The unsafe version
+        // batch.last_claimed_release_time += number_of_claims * batch.release_unit;
     }
 
     Ok(amount_to_send)

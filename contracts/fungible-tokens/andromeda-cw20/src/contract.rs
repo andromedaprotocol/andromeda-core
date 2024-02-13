@@ -168,7 +168,9 @@ fn transfer_tokens(
     BALANCES.update(
         storage,
         recipient,
-        |balance: Option<Uint128>| -> StdResult<_> { Ok(balance.unwrap_or_default() + amount) },
+        |balance: Option<Uint128>| -> StdResult<_> {
+            Ok(balance.unwrap_or_default().checked_add(amount)?)
+        },
     )?;
     Ok(())
 }

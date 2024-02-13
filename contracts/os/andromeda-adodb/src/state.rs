@@ -53,6 +53,31 @@ pub fn store_code_id(
     Ok(())
 }
 
+pub fn remove_code_id(
+    storage: &mut dyn Storage,
+    ado_version: &ADOVersion,
+    code_id: u64,
+) -> Result<(), ContractError> {
+    let curr_type = ADO_TYPE.may_load(storage, code_id)?;
+    ensure!(
+        curr_type.is_none() || curr_type.unwrap() == ado_version.get_type(),
+        ContractError::Unauthorized {}
+    );
+    ADO_TYPE.remove(storage, code_id);
+    LATEST_VERSION.remove(storage, &ado_version.get_type());
+    CODE_ID.remove(storage, ado_version.as_str());
+
+    // Check if there is any default ado set for this ado type. Defaults do not have versions appended to them.
+    let default_ado = ADOVersion::from_type(ado_version.get_type());
+    let default_code_id = read_code_id(storage, &default_ado);
+
+    // There is no default, add one default for this
+    if default_code_id.is_ok() {
+        CODE_ID.remove(storage, default_ado.as_str());
+    }
+    Ok(())
+}
+
 pub fn read_code_id(storage: &dyn Storage, ado_version: &ADOVersion) -> StdResult<u64> {
     if ado_version.get_version() == "latest" {
         let (_version, code_id) = read_latest_code_id(storage, ado_version.get_type())?;
@@ -79,6 +104,23 @@ pub fn save_action_fees(
             &(ado_version.get_type(), action_fee.clone().action),
             &action_fee.clone(),
         )?;
+    }
+
+    Ok(())
+}
+
+pub fn remove_action_fees(
+    storage: &mut dyn Storage,
+    api: &dyn Api,
+    ado_version: &ADOVersion,
+    fees: Vec<ActionFee>,
+) -> Result<(), ContractError> {
+    for action_fee in fees {
+        action_fee.validate_asset(api)?;
+        ACTION_FEES.remove(
+            storage,
+            &(ado_version.get_type(), action_fee.clone().action),
+        );
     }
 
     Ok(())
