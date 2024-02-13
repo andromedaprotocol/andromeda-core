@@ -212,7 +212,12 @@ fn execute_add_reward_token(
         ContractError::Unauthorized {}
     );
     let mut config = CONFIG.load(deps.storage)?;
-    config.number_of_reward_tokens += 1;
+
+    let new_number = config.number_of_reward_tokens.checked_add(1);
+    match new_number {
+        Some(new_number) => config.number_of_reward_tokens = new_number,
+        None => return Err(ContractError::Overflow {}),
+    }
     ensure!(
         config.number_of_reward_tokens <= MAX_REWARD_TOKENS,
         ContractError::MaxRewardTokensExceeded {
