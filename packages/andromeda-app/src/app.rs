@@ -1,6 +1,6 @@
 use andromeda_std::{amp::AndrAddr, andr_exec, andr_instantiate, andr_query, error::ContractError};
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{to_binary, Addr, Binary, Deps};
+use cosmwasm_std::{to_binary, Binary, Deps};
 use serde::Serialize;
 
 #[cw_serde]
@@ -102,7 +102,7 @@ pub enum ExecuteMsg {
     },
     ClaimOwnership {
         name: Option<String>,
-        new_owner: Option<Addr>,
+        new_owner: Option<AndrAddr>,
     },
     ProxyMessage {
         name: String,

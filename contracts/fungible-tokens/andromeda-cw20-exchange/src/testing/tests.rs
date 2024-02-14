@@ -3,16 +3,18 @@ use andromeda_fungible_tokens::cw20_exchange::{
     TokenAddressResponse,
 };
 use andromeda_std::{
-    amp::AndrAddr, error::ContractError, testing::mock_querier::MOCK_KERNEL_CONTRACT,
+    amp::AndrAddr, common::expiration::MILLISECONDS_TO_NANOSECONDS_RATIO, error::ContractError,
+    testing::mock_querier::MOCK_KERNEL_CONTRACT,
 };
 use cosmwasm_std::{
     attr, coin, coins, from_binary,
     testing::{mock_env, mock_info},
     to_binary, wasm_execute, Addr, BankMsg, Coin, CosmosMsg, DepsMut, Empty, Response, SubMsg,
-    Uint128,
+    Timestamp, Uint128,
 };
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use cw_asset::AssetInfo;
+use cw_utils::Expiration;
 pub const MOCK_TOKEN_ADDRESS: &str = "cw20";
 
 use crate::{
@@ -57,6 +59,8 @@ pub fn test_start_sale_invalid_token() {
         asset: exchange_asset,
         exchange_rate: Uint128::from(10u128),
         recipient: None,
+        start_time: None,
+        duration: None,
     };
     // Owner set as Cw20ReceiveMsg sender to ensure that this message will error even if a malicious user
     // sends the message directly with the owner address provided
@@ -91,6 +95,8 @@ pub fn test_start_sale_unauthorised() {
         asset: exchange_asset,
         exchange_rate: Uint128::from(10u128),
         recipient: None,
+        start_time: None,
+        duration: None,
     };
     let receive_msg = Cw20ReceiveMsg {
         sender: "not_owner".to_string(),
@@ -118,6 +124,8 @@ pub fn test_start_sale_zero_amount() {
         asset: exchange_asset,
         exchange_rate: Uint128::from(10u128),
         recipient: None,
+        start_time: None,
+        duration: None,
     };
     let receive_msg = Cw20ReceiveMsg {
         sender: "not_owner".to_string(),
@@ -146,13 +154,16 @@ pub fn test_start_sale() {
     let token_info = mock_info(MOCK_TOKEN_ADDRESS, &[]);
 
     init(deps.as_mut()).unwrap();
-
+    let current_time = env.block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO;
     let exchange_rate = Uint128::from(10u128);
     let sale_amount = Uint128::from(100u128);
     let hook = Cw20HookMsg::StartSale {
         asset: exchange_asset.clone(),
         exchange_rate,
         recipient: None,
+        // A start time ahead of the current time
+        start_time: Some(current_time + 10),
+        duration: Some(1),
     };
     let receive_msg = Cw20ReceiveMsg {
         sender: owner.to_string(),
@@ -168,7 +179,98 @@ pub fn test_start_sale() {
         .unwrap();
 
     assert_eq!(sale.exchange_rate, exchange_rate);
-    assert_eq!(sale.amount, sale_amount)
+    assert_eq!(sale.amount, sale_amount);
+
+    let expected_start_time =
+        Timestamp::from_nanos((current_time + 10) * MILLISECONDS_TO_NANOSECONDS_RATIO);
+    assert_eq!(sale.start_time, Expiration::AtTime(expected_start_time));
+
+    let expected_expiration_time =
+        Timestamp::from_nanos((current_time + 11) * MILLISECONDS_TO_NANOSECONDS_RATIO);
+    assert_eq!(sale.end_time, Expiration::AtTime(expected_expiration_time));
+}
+
+#[test]
+pub fn test_start_sale_no_start_no_duration() {
+    let env = mock_env();
+    let mut deps = mock_dependencies_custom(&[]);
+
+    let owner = Addr::unchecked("owner");
+    let exchange_asset = AssetInfo::Cw20(Addr::unchecked("exchanged_asset"));
+    //     let info = mock_info(owner.as_str(), &[]);
+    let token_info = mock_info(MOCK_TOKEN_ADDRESS, &[]);
+
+    init(deps.as_mut()).unwrap();
+    let exchange_rate = Uint128::from(10u128);
+    let sale_amount = Uint128::from(100u128);
+    let hook = Cw20HookMsg::StartSale {
+        asset: exchange_asset.clone(),
+        exchange_rate,
+        recipient: None,
+        // A start time ahead of the current time
+        start_time: None,
+        duration: None,
+    };
+    let receive_msg = Cw20ReceiveMsg {
+        sender: owner.to_string(),
+        msg: to_binary(&hook).unwrap(),
+        amount: sale_amount,
+    };
+    let msg = ExecuteMsg::Receive(receive_msg);
+
+    execute(deps.as_mut(), env, token_info, msg).unwrap();
+
+    let sale = SALE
+        .load(deps.as_ref().storage, &exchange_asset.to_string())
+        .unwrap();
+
+    assert_eq!(sale.exchange_rate, exchange_rate);
+    assert_eq!(sale.amount, sale_amount);
+
+    assert_eq!(
+        sale.start_time,
+        // Current time + 1
+        Expiration::AtTime(Timestamp::from_nanos(1571797419880000000))
+    );
+
+    assert_eq!(sale.end_time, Expiration::Never {});
+}
+
+#[test]
+pub fn test_start_sale_invalid_start_time() {
+    let env = mock_env();
+    let mut deps = mock_dependencies_custom(&[]);
+
+    let owner = Addr::unchecked("owner");
+    let exchange_asset = AssetInfo::Cw20(Addr::unchecked("exchanged_asset"));
+    let token_info = mock_info(MOCK_TOKEN_ADDRESS, &[]);
+
+    init(deps.as_mut()).unwrap();
+
+    let exchange_rate = Uint128::from(10u128);
+    let sale_amount = Uint128::from(100u128);
+    let hook = Cw20HookMsg::StartSale {
+        asset: exchange_asset,
+        exchange_rate,
+        recipient: None,
+        start_time: Some(1),
+        duration: None,
+    };
+    let receive_msg = Cw20ReceiveMsg {
+        sender: owner.to_string(),
+        msg: to_binary(&hook).unwrap(),
+        amount: sale_amount,
+    };
+    let msg = ExecuteMsg::Receive(receive_msg);
+
+    let err = execute(deps.as_mut(), env, token_info, msg).unwrap_err();
+    assert_eq!(
+        err,
+        ContractError::StartTimeInThePast {
+            current_time: 1571797419879,
+            current_block: 12345
+        }
+    );
 }
 
 #[test]
@@ -189,6 +291,8 @@ pub fn test_start_sale_ongoing() {
         asset: exchange_asset,
         exchange_rate,
         recipient: None,
+        start_time: None,
+        duration: None,
     };
     let receive_msg = Cw20ReceiveMsg {
         sender: owner.to_string(),
@@ -221,6 +325,8 @@ pub fn test_start_sale_zero_exchange_rate() {
         asset: exchange_asset,
         exchange_rate,
         recipient: None,
+        start_time: None,
+        duration: None,
     };
     let receive_msg = Cw20ReceiveMsg {
         sender: owner.to_string(),
@@ -278,6 +384,9 @@ pub fn test_purchase_not_enough_sent() {
             amount: Uint128::from(100u128),
             exchange_rate,
             recipient: owner.to_string(),
+            start_time: Expiration::AtTime(env.block.time),
+            end_time: Expiration::Never {},
+            start_amount: Uint128::from(100u128),
         },
     )
     .unwrap();
@@ -322,6 +431,9 @@ pub fn test_purchase_no_tokens_left() {
             amount: Uint128::zero(),
             exchange_rate,
             recipient: owner.to_string(),
+            start_time: Expiration::AtTime(env.block.time),
+            end_time: Expiration::Never {},
+            start_amount: Uint128::zero(),
         },
     )
     .unwrap();
@@ -361,6 +473,10 @@ pub fn test_purchase_not_enough_tokens() {
             amount: Uint128::one(),
             exchange_rate,
             recipient: owner.to_string(),
+            start_time: Expiration::AtTime(env.block.time),
+
+            end_time: Expiration::Never {},
+            start_amount: Uint128::one(),
         },
     )
     .unwrap();
@@ -401,6 +517,10 @@ pub fn test_purchase() {
             amount: sale_amount,
             exchange_rate,
             recipient: owner.to_string(),
+            start_time: Expiration::AtTime(env.block.time),
+
+            end_time: Expiration::Never {},
+            start_amount: sale_amount,
         },
     )
     .unwrap();
@@ -463,6 +583,177 @@ pub fn test_purchase() {
 }
 
 #[test]
+pub fn test_purchase_with_start_and_duration() {
+    let env = mock_env();
+    let mut deps = mock_dependencies_custom(&[]);
+
+    let owner = Addr::unchecked("owner");
+    let purchaser = Addr::unchecked("purchaser");
+    let exchange_asset = AssetInfo::Cw20(Addr::unchecked("exchanged_asset"));
+
+    init(deps.as_mut()).unwrap();
+
+    let exchange_rate = Uint128::from(10u128);
+    let sale_amount = Uint128::from(100u128);
+    SALE.save(
+        deps.as_mut().storage,
+        &exchange_asset.to_string(),
+        &Sale {
+            amount: sale_amount,
+            exchange_rate,
+            recipient: owner.to_string(),
+            // start time in the past
+            start_time: Expiration::AtTime(env.block.time.minus_nanos(1)),
+            // end time in the future
+            end_time: Expiration::AtTime(env.block.time.plus_nanos(1)),
+            start_amount: sale_amount,
+        },
+    )
+    .unwrap();
+
+    // Purchase Tokens
+    let exchange_info = mock_info("exchanged_asset", &[]);
+    let purchase_amount = Uint128::from(100u128);
+    let hook = Cw20HookMsg::Purchase { recipient: None };
+    let receive_msg = Cw20ReceiveMsg {
+        sender: purchaser.to_string(),
+        msg: to_binary(&hook).unwrap(),
+        amount: purchase_amount,
+    };
+    let msg = ExecuteMsg::Receive(receive_msg);
+
+    let res = execute(deps.as_mut(), env, exchange_info, msg).unwrap();
+
+    // Check transfer
+    let msg = res.messages.first().unwrap();
+    let expected_wasm: CosmosMsg<Empty> = CosmosMsg::Wasm(
+        wasm_execute(
+            MOCK_TOKEN_ADDRESS.to_string(),
+            &Cw20ExecuteMsg::Transfer {
+                recipient: purchaser.to_string(),
+                amount: Uint128::from(10u128),
+            },
+            vec![],
+        )
+        .unwrap(),
+    );
+    let expected = SubMsg::reply_on_error(expected_wasm, 2);
+    assert_eq!(msg, &expected);
+
+    // Check sale amount updated
+    let sale = SALE
+        .load(deps.as_mut().storage, &exchange_asset.to_string())
+        .unwrap();
+
+    assert_eq!(
+        sale.amount,
+        sale_amount.checked_sub(Uint128::from(10u128)).unwrap()
+    );
+
+    // Check recipient received funds
+    let msg = &res.messages[1];
+    let expected_wasm: CosmosMsg<Empty> = CosmosMsg::Wasm(
+        wasm_execute(
+            "exchanged_asset".to_string(),
+            &Cw20ExecuteMsg::Transfer {
+                recipient: owner.to_string(),
+                amount: purchase_amount,
+            },
+            vec![],
+        )
+        .unwrap(),
+    );
+    let expected = SubMsg::reply_on_error(expected_wasm, 3);
+
+    assert_eq!(msg, &expected);
+}
+
+#[test]
+pub fn test_purchase_sale_not_started() {
+    let env = mock_env();
+    let mut deps = mock_dependencies_custom(&[]);
+
+    let owner = Addr::unchecked("owner");
+    let purchaser = Addr::unchecked("purchaser");
+    let exchange_asset = AssetInfo::Cw20(Addr::unchecked("exchanged_asset"));
+
+    init(deps.as_mut()).unwrap();
+
+    let exchange_rate = Uint128::from(10u128);
+    let sale_amount = Uint128::from(100u128);
+    SALE.save(
+        deps.as_mut().storage,
+        &exchange_asset.to_string(),
+        &Sale {
+            amount: sale_amount,
+            exchange_rate,
+            recipient: owner.to_string(),
+            start_time: Expiration::AtTime(env.block.time.plus_nanos(1)),
+            end_time: Expiration::Never {},
+            start_amount: sale_amount,
+        },
+    )
+    .unwrap();
+
+    // Purchase Tokens
+    let exchange_info = mock_info("exchanged_asset", &[]);
+    let purchase_amount = Uint128::from(100u128);
+    let hook = Cw20HookMsg::Purchase { recipient: None };
+    let receive_msg = Cw20ReceiveMsg {
+        sender: purchaser.to_string(),
+        msg: to_binary(&hook).unwrap(),
+        amount: purchase_amount,
+    };
+    let msg = ExecuteMsg::Receive(receive_msg);
+
+    let err = execute(deps.as_mut(), env, exchange_info, msg).unwrap_err();
+    assert_eq!(err, ContractError::SaleNotStarted {})
+}
+
+#[test]
+pub fn test_purchase_sale_duration_ended() {
+    let env = mock_env();
+    let mut deps = mock_dependencies_custom(&[]);
+
+    let owner = Addr::unchecked("owner");
+    let purchaser = Addr::unchecked("purchaser");
+    let exchange_asset = AssetInfo::Cw20(Addr::unchecked("exchanged_asset"));
+
+    init(deps.as_mut()).unwrap();
+
+    let exchange_rate = Uint128::from(10u128);
+    let sale_amount = Uint128::from(100u128);
+    SALE.save(
+        deps.as_mut().storage,
+        &exchange_asset.to_string(),
+        &Sale {
+            amount: sale_amount,
+            exchange_rate,
+            recipient: owner.to_string(),
+            start_time: Expiration::AtTime(env.block.time),
+
+            end_time: Expiration::AtTime(env.block.time.minus_nanos(1)),
+            start_amount: sale_amount,
+        },
+    )
+    .unwrap();
+
+    // Purchase Tokens
+    let exchange_info = mock_info("exchanged_asset", &[]);
+    let purchase_amount = Uint128::from(100u128);
+    let hook = Cw20HookMsg::Purchase { recipient: None };
+    let receive_msg = Cw20ReceiveMsg {
+        sender: purchaser.to_string(),
+        msg: to_binary(&hook).unwrap(),
+        amount: purchase_amount,
+    };
+    let msg = ExecuteMsg::Receive(receive_msg);
+
+    let err = execute(deps.as_mut(), env, exchange_info, msg).unwrap_err();
+    assert_eq!(err, ContractError::SaleEnded {})
+}
+
+#[test]
 pub fn test_purchase_no_sale_native() {
     let env = mock_env();
     let mut deps = mock_dependencies_custom(&[]);
@@ -496,6 +787,10 @@ pub fn test_purchase_not_enough_sent_native() {
             amount: Uint128::from(100u128),
             exchange_rate,
             recipient: owner.to_string(),
+            start_time: Expiration::AtTime(env.block.time),
+
+            end_time: Expiration::Never {},
+            start_amount: Uint128::from(100u128),
         },
     )
     .unwrap();
@@ -532,6 +827,10 @@ pub fn test_purchase_no_tokens_left_native() {
             amount: Uint128::zero(),
             exchange_rate,
             recipient: owner.to_string(),
+            start_time: Expiration::AtTime(env.block.time),
+
+            end_time: Expiration::Never {},
+            start_amount: Uint128::zero(),
         },
     )
     .unwrap();
@@ -564,6 +863,10 @@ pub fn test_purchase_not_enough_tokens_native() {
             amount: Uint128::from(1u128),
             exchange_rate,
             recipient: owner.to_string(),
+            start_time: Expiration::AtTime(env.block.time),
+
+            end_time: Expiration::Never {},
+            start_amount: Uint128::from(1u128),
         },
     )
     .unwrap();
@@ -598,6 +901,10 @@ pub fn test_purchase_native() {
             amount: sale_amount,
             exchange_rate,
             recipient: owner.to_string(),
+            start_time: Expiration::AtTime(env.block.time),
+
+            end_time: Expiration::Never {},
+            start_amount: sale_amount,
         },
     )
     .unwrap();
@@ -672,6 +979,10 @@ pub fn test_purchase_refund() {
             amount: Uint128::from(100u128),
             exchange_rate,
             recipient: owner.to_string(),
+            start_time: Expiration::AtTime(env.block.time),
+
+            end_time: Expiration::Never {},
+            start_amount: Uint128::from(100u128),
         },
     )
     .unwrap();
@@ -718,6 +1029,10 @@ pub fn test_cancel_sale_unauthorised() {
             amount: sale_amount,
             exchange_rate,
             recipient: owner.to_string(),
+            start_time: Expiration::AtTime(env.block.time),
+
+            end_time: Expiration::Never {},
+            start_amount: sale_amount,
         },
     )
     .unwrap();
@@ -772,6 +1087,9 @@ pub fn test_cancel_sale() {
             amount: sale_amount,
             exchange_rate,
             recipient: owner.to_string(),
+            start_time: Expiration::AtTime(env.block.time),
+            end_time: Expiration::Never {},
+            start_amount: sale_amount,
         },
     )
     .unwrap();
@@ -793,7 +1111,7 @@ pub fn test_cancel_sale() {
     let expected_message = SubMsg::reply_on_error(
         CosmosMsg::Wasm(
             wasm_execute(
-                "exchanged_asset",
+                "cw20",
                 &Cw20ExecuteMsg::Transfer {
                     recipient: owner.to_string(),
                     amount: sale_amount,
@@ -828,6 +1146,10 @@ fn test_query_sale() {
         amount: sale_amount,
         exchange_rate,
         recipient: "owner".to_string(),
+        start_time: Expiration::AtTime(env.block.time),
+
+        end_time: Expiration::Never {},
+        start_amount: sale_amount,
     };
     SALE.save(deps.as_mut().storage, &exchange_asset.to_string(), &sale)
         .unwrap();
@@ -864,6 +1186,10 @@ fn test_andr_query() {
         amount: sale_amount,
         exchange_rate,
         recipient: "owner".to_string(),
+        start_time: Expiration::AtTime(env.block.time),
+
+        end_time: Expiration::Never {},
+        start_amount: sale_amount,
     };
     SALE.save(deps.as_mut().storage, &exchange_asset.to_string(), &sale)
         .unwrap();
@@ -902,6 +1228,10 @@ fn test_purchase_native_invalid_coins() {
             amount: Uint128::from(100u128),
             exchange_rate,
             recipient: owner.to_string(),
+            start_time: Expiration::AtTime(env.block.time),
+
+            end_time: Expiration::Never {},
+            start_amount: Uint128::from(100u128),
         },
     )
     .unwrap();
@@ -952,6 +1282,10 @@ fn test_query_sale_assets() {
             amount: Uint128::from(100u128),
             exchange_rate,
             recipient: owner.to_string(),
+            start_time: Expiration::AtTime(env.block.time),
+
+            end_time: Expiration::Never {},
+            start_amount: Uint128::from(100u128),
         },
     )
     .unwrap();
@@ -962,6 +1296,10 @@ fn test_query_sale_assets() {
             amount: Uint128::from(100u128),
             exchange_rate,
             recipient: owner.to_string(),
+            start_time: Expiration::AtTime(env.block.time),
+
+            end_time: Expiration::Never {},
+            start_amount: Uint128::from(100u128),
         },
     )
     .unwrap();
@@ -991,6 +1329,8 @@ fn test_start_sale_same_asset() {
             asset: AssetInfo::Cw20(Addr::unchecked("cw20")),
             exchange_rate: Uint128::from(10u128),
             recipient: None,
+            start_time: None,
+            duration: None,
         })
         .unwrap(),
         amount: Uint128::from(100u128),
