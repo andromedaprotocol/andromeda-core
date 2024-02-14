@@ -174,18 +174,15 @@ fn execute_start_sale(
     };
 
     // To guard against misleading start times
-    // let block_time = block_to_expiration(&env.block, start_expiration).unwrap();
-    // println!(
-    //     "block time is: {:?} and start_expiration is: {:?}",
-    //     block_time, start_expiration
-    // );
-    // ensure!(
-    //     start_expiration.gt(&block_time),
-    //     ContractError::StartTimeInThePast {
-    //         current_time: env.block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO,
-    //         current_block: env.block.height,
-    //     }
-    // );
+    let recent_past_timestamp = env.block.time.minus_seconds(1);
+    let recent_past_expiration = expiration_from_milliseconds(recent_past_timestamp.seconds())?;
+    ensure!(
+        start_expiration.gt(&recent_past_expiration),
+        ContractError::StartTimeInThePast {
+            current_time: env.block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO,
+            current_block: env.block.height,
+        }
+    );
 
     let sale_id = get_and_increment_next_sale_id(deps.storage, &token_id, &token_address)?;
     let status = Status::Open;
