@@ -9,6 +9,9 @@ use andromeda_non_fungible_tokens::marketplace::{
 use andromeda_std::ado_contract::ADOContract;
 
 use andromeda_std::common::context::ExecuteContext;
+use andromeda_std::common::expiration::{
+    block_to_expiration, expiration_from_milliseconds, MILLISECONDS_TO_NANOSECONDS_RATIO,
+};
 use andromeda_std::{
     ado_base::{hooks::AndromedaHook, InstantiateMsg as BaseInstantiateMsg},
     common::{encode_binary, rates::get_tax_amount, Funds},
@@ -26,7 +29,7 @@ use cosmwasm_std::{
     WasmQuery,
 };
 
-use cw_utils::nonpayable;
+use cw_utils::{nonpayable, Expiration};
 
 const CONTRACT_NAME: &str = "crates.io:andromeda-marketplace";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -122,7 +125,12 @@ fn handle_receive_cw721(
     } = ctx;
 
     match from_json(&msg.msg)? {
-        Cw721HookMsg::StartSale { price, coin_denom } => execute_start_sale(
+        Cw721HookMsg::StartSale {
+            price,
+            coin_denom,
+            start_time,
+            duration,
+        } => execute_start_sale(
             deps,
             env,
             msg.sender,
@@ -130,6 +138,8 @@ fn handle_receive_cw721(
             info.sender.to_string(),
             price,
             coin_denom,
+            start_time,
+            duration,
         ),
     }
 }
@@ -137,17 +147,54 @@ fn handle_receive_cw721(
 #[allow(clippy::too_many_arguments)]
 fn execute_start_sale(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     sender: String,
     token_id: String,
     token_address: String,
     price: Uint128,
     coin_denom: String,
+    start_time: Option<u64>,
+    duration: Option<u64>,
 ) -> Result<Response, ContractError> {
     // Price can't be zero
     ensure!(price > Uint128::zero(), ContractError::InvalidZeroAmount {});
+    let current_time = env.block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO;
+    // If start time wasn't provided, it will be set as the current_time
+    let start_expiration = if let Some(start_time) = start_time {
+        expiration_from_milliseconds(start_time)?
+    } else {
+        expiration_from_milliseconds(current_time)?
+    };
+
+    // If no duration is provided, the exipration will be set as Never
+    let end_expiration = if let Some(duration) = duration {
+        expiration_from_milliseconds(start_time.unwrap_or(current_time) + duration)?
+    } else {
+        Expiration::Never {}
+    };
+
+    // To guard against misleading start times
+    // let block_time = block_to_expiration(&env.block, start_expiration).unwrap();
+    // println!(
+    //     "block time is: {:?} and start_expiration is: {:?}",
+    //     block_time, start_expiration
+    // );
+    // ensure!(
+    //     start_expiration.gt(&block_time),
+    //     ContractError::StartTimeInThePast {
+    //         current_time: env.block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO,
+    //         current_block: env.block.height,
+    //     }
+    // );
 
     let sale_id = get_and_increment_next_sale_id(deps.storage, &token_id, &token_address)?;
+
+    // If the start time is expired, it means that it already started
+    let status = if start_expiration.is_expired(&env.block) || start_time.is_none() {
+        Status::Open
+    } else {
+        Status::Pending
+    };
 
     TOKEN_SALE_STATE.save(
         deps.storage,
@@ -159,17 +206,21 @@ fn execute_start_sale(
             token_id: token_id.clone(),
             token_address: token_address.clone(),
             price,
-            status: Status::Open,
+            status: status.clone(),
+            start_time: start_expiration,
+            end_time: end_expiration,
         },
     )?;
     Ok(Response::new().add_attributes(vec![
         attr("action", "start_sale"),
-        attr("status", "Open"),
+        attr("status", status.to_string()),
         attr("coin_denom", coin_denom),
         attr("price", price),
         attr("sale_id", sale_id.to_string()),
         attr("token_id", token_id),
         attr("token_address", token_address),
+        attr("start_time", start_expiration.to_string()),
+        attr("end_time", end_expiration.to_string()),
     ]))
 }
 
@@ -229,11 +280,35 @@ fn execute_buy(
     let mut token_sale_state =
         get_existing_token_sale_state(deps.storage, &token_id, &token_address)?;
 
-    // Sale needs to be open
-    ensure!(
-        token_sale_state.status == Status::Open,
-        ContractError::SaleNotOpen {}
-    );
+    let key = token_sale_state.sale_id.u128();
+
+    match token_sale_state.status {
+        Status::Open => (),
+        Status::Pending => (),
+        Status::Expired => return Err(ContractError::SaleExpired {}),
+        Status::Executed => return Err(ContractError::SaleExecuted {}),
+        Status::Cancelled => return Err(ContractError::SaleCancelled {}),
+    }
+
+    // Make sure the end time isn't expired, if it is we'll return an error and change the Status to expired in case if it's set as Open or Pending
+    if token_sale_state.end_time.is_expired(&env.block) {
+        if token_sale_state.status == Status::Open || token_sale_state.status == Status::Pending {
+            token_sale_state.status = Status::Expired;
+            TOKEN_SALE_STATE.save(deps.storage, key, &token_sale_state)?;
+        }
+        return Err(ContractError::SaleExpired {});
+    }
+
+    // If start time hasn't expired, it means that the sale hasn't started yet.
+    if !token_sale_state.start_time.is_expired(&env.block) {
+        return Err(ContractError::SaleNotStarted {});
+    }
+
+    // Reaching this code means that the start time is expired and the end time isn't. So we can safely change the status if it's Pending to Open
+    if token_sale_state.status == Status::Pending {
+        token_sale_state.status = Status::Open;
+        TOKEN_SALE_STATE.save(deps.storage, key, &token_sale_state)?;
+    }
 
     // The owner can't buy his own NFT
     ensure!(
@@ -276,8 +351,6 @@ fn execute_buy(
         payment.amount >= token_sale_state.price,
         ContractError::InsufficientFunds {}
     );
-
-    let key = token_sale_state.sale_id.u128();
 
     // Change sale status from Open to Executed
     token_sale_state.status = Status::Executed;
@@ -326,9 +399,9 @@ fn execute_cancel(
         ContractError::Unauthorized {}
     );
 
-    // Sale needs to be open to be cancelled
+    // Sale needs to be open or pending to be cancelled
     ensure!(
-        token_sale_state.status == Status::Open,
+        token_sale_state.status == Status::Open || token_sale_state.status == Status::Pending,
         ContractError::SaleNotOpen {}
     );
 

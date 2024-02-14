@@ -1,4 +1,4 @@
-use cosmwasm_std::{ensure, Timestamp};
+use cosmwasm_std::{ensure, BlockInfo, Timestamp};
 use cw_utils::Expiration;
 
 use crate::error::ContractError;
@@ -21,6 +21,14 @@ pub fn expiration_from_milliseconds(time: u64) -> Result<Expiration, ContractErr
     Ok(Expiration::AtTime(Timestamp::from_nanos(
         time * MILLISECONDS_TO_NANOSECONDS_RATIO,
     )))
+}
+
+pub fn block_to_expiration(block: &BlockInfo, model: Expiration) -> Option<Expiration> {
+    match model {
+        Expiration::AtTime(_) => Some(Expiration::AtTime(block.time)),
+        Expiration::AtHeight(_) => Some(Expiration::AtHeight(block.height)),
+        Expiration::Never {} => None,
+    }
 }
 
 #[cfg(test)]

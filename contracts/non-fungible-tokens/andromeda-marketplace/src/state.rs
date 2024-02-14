@@ -4,6 +4,7 @@ use andromeda_std::error::ContractError;
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Order, Storage, SubMsg, Uint128};
 use cw_storage_plus::{Bound, Index, IndexList, IndexedMap, Item, Map, MultiIndex};
+use cw_utils::Expiration;
 
 const MAX_LIMIT: u64 = 30;
 const DEFAULT_LIMIT: u64 = 10;
@@ -17,6 +18,8 @@ pub struct TokenSaleState {
     pub token_address: String,
     pub price: Uint128,
     pub status: Status,
+    pub start_time: Expiration,
+    pub end_time: Expiration,
 }
 
 #[cw_serde]

@@ -2,15 +2,21 @@ use andromeda_non_fungible_tokens::marketplace::{
     Cw721HookMsg, ExecuteMsg, InstantiateMsg, Status,
 };
 use andromeda_std::{
-    ado_base::modules::Module, amp::addresses::AndrAddr, common::encode_binary,
+    ado_base::modules::Module,
+    amp::addresses::AndrAddr,
+    common::{
+        encode_binary,
+        expiration::{expiration_from_milliseconds, MILLISECONDS_TO_NANOSECONDS_RATIO},
+    },
     error::ContractError,
 };
 use cosmwasm_std::{
     coin, coins,
     testing::{mock_env, mock_info},
-    BankMsg, CosmosMsg, Deps, DepsMut, Response, SubMsg, Uint128, WasmMsg,
+    BankMsg, CosmosMsg, Deps, DepsMut, Env, Response, SubMsg, Timestamp, Uint128, WasmMsg,
 };
 use cw721::{Cw721ExecuteMsg, Cw721ReceiveMsg};
+use cw_utils::Expiration;
 
 use super::mock_querier::MOCK_KERNEL_CONTRACT;
 use crate::{
@@ -26,6 +32,8 @@ fn start_sale(deps: DepsMut) {
     let hook_msg = Cw721HookMsg::StartSale {
         coin_denom: "uusd".to_string(),
         price: Uint128::new(100),
+        start_time: None,
+        duration: None,
     };
     let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
         sender: MOCK_TOKEN_OWNER.to_owned(),
@@ -49,7 +57,9 @@ fn init(deps: DepsMut, modules: Option<Vec<Module>>) -> Response {
     instantiate(deps, mock_env(), info, msg).unwrap()
 }
 
-fn assert_sale_created(deps: Deps) {
+fn assert_sale_created(deps: Deps, env: Env) {
+    let current_time = env.block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO;
+    let start_time_expiration = expiration_from_milliseconds(current_time).unwrap();
     assert_eq!(
         TokenSaleState {
             coin_denom: "uusd".to_string(),
@@ -58,7 +68,9 @@ fn assert_sale_created(deps: Deps) {
             token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
             token_address: MOCK_TOKEN_ADDR.to_owned(),
             status: Status::Open,
-            price: Uint128::new(100)
+            price: Uint128::new(100),
+            start_time: start_time_expiration,
+            end_time: Expiration::Never {}
         },
         TOKEN_SALE_STATE.load(deps.storage, 1u128).unwrap()
     );
@@ -106,7 +118,7 @@ fn execute_buy_sale_not_open_already_bought() {
     let _res = init(deps.as_mut(), None);
 
     start_sale(deps.as_mut());
-    assert_sale_created(deps.as_ref());
+    assert_sale_created(deps.as_ref(), env.clone());
 
     let msg = ExecuteMsg::Buy {
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
@@ -123,7 +135,7 @@ fn execute_buy_sale_not_open_already_bought() {
 
     let info = mock_info("sender", &coins(100, "uusd".to_string()));
     let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
-    assert_eq!(err, ContractError::SaleNotOpen {})
+    assert_eq!(err, ContractError::SaleExecuted {})
 }
 
 #[test]
@@ -134,7 +146,7 @@ fn execute_buy_sale_not_open_cancelled() {
     let _res = init(deps.as_mut(), None);
 
     start_sale(deps.as_mut());
-    assert_sale_created(deps.as_ref());
+    assert_sale_created(deps.as_ref(), env.clone());
 
     let msg = ExecuteMsg::CancelSale {
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
@@ -150,7 +162,7 @@ fn execute_buy_sale_not_open_cancelled() {
     };
     let info = mock_info("sender", &coins(100, "uusd".to_string()));
     let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
-    assert_eq!(err, ContractError::SaleNotOpen {})
+    assert_eq!(err, ContractError::SaleCancelled {})
 }
 
 #[test]
@@ -161,7 +173,7 @@ fn execute_buy_token_owner_cannot_buy() {
     let _res = init(deps.as_mut(), None);
 
     start_sale(deps.as_mut());
-    assert_sale_created(deps.as_ref());
+    assert_sale_created(deps.as_ref(), env.clone());
 
     let msg = ExecuteMsg::Buy {
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
@@ -205,7 +217,7 @@ fn execute_buy_invalid_coins_sent() {
     let _res = init(deps.as_mut(), None);
 
     start_sale(deps.as_mut());
-    assert_sale_created(deps.as_ref());
+    assert_sale_created(deps.as_ref(), env.clone());
 
     let error = ContractError::InvalidFunds {
         msg: "Sales ensure! exactly one coin to be sent.".to_string(),
@@ -249,7 +261,7 @@ fn execute_buy_works() {
     let _res = init(deps.as_mut(), None);
 
     start_sale(deps.as_mut());
-    assert_sale_created(deps.as_ref());
+    assert_sale_created(deps.as_ref(), env.clone());
 
     let msg = ExecuteMsg::Buy {
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
@@ -268,7 +280,7 @@ fn execute_update_sale_unauthorized() {
     let _res = init(deps.as_mut(), None);
 
     start_sale(deps.as_mut());
-    assert_sale_created(deps.as_ref());
+    assert_sale_created(deps.as_ref(), env.clone());
 
     let msg = ExecuteMsg::UpdateSale {
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
@@ -290,7 +302,7 @@ fn execute_update_sale_invalid_price() {
     let _res = init(deps.as_mut(), None);
 
     start_sale(deps.as_mut());
-    assert_sale_created(deps.as_ref());
+    assert_sale_created(deps.as_ref(), env.clone());
 
     let msg = ExecuteMsg::UpdateSale {
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
@@ -312,6 +324,8 @@ fn execute_start_sale_invalid_price() {
     let hook_msg = Cw721HookMsg::StartSale {
         coin_denom: "uusd".to_string(),
         price: Uint128::zero(),
+        start_time: None,
+        duration: None,
     };
     let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
         sender: MOCK_TOKEN_OWNER.to_owned(),
@@ -336,7 +350,7 @@ fn execute_buy_with_tax_and_royalty_insufficient_funds() {
     let _res = init(deps.as_mut(), Some(modules));
 
     start_sale(deps.as_mut());
-    assert_sale_created(deps.as_ref());
+    assert_sale_created(deps.as_ref(), mock_env());
 
     let msg = ExecuteMsg::Buy {
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
@@ -359,7 +373,7 @@ fn execute_buy_with_tax_and_royalty_works() {
     let _res = init(deps.as_mut(), Some(modules));
 
     start_sale(deps.as_mut());
-    assert_sale_created(deps.as_ref());
+    assert_sale_created(deps.as_ref(), mock_env());
 
     let msg = ExecuteMsg::Buy {
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
