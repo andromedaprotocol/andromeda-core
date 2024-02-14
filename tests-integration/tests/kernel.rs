@@ -161,7 +161,7 @@ fn kernel() {
 
     let owner_balance = router
         .wrap()
-        .query_balance(owner.clone(), "uandr".to_string())
+        .query_balance(owner, "uandr".to_string())
         .unwrap();
 
     // The owner's balance should be his starting balance subtracted by the 100 he sent with the splitter execute msg
