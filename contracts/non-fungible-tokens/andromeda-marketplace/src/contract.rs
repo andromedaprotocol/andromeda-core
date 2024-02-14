@@ -188,13 +188,7 @@ fn execute_start_sale(
     // );
 
     let sale_id = get_and_increment_next_sale_id(deps.storage, &token_id, &token_address)?;
-
-    // If the start time is expired, it means that it already started
-    let status = if start_expiration.is_expired(&env.block) || start_time.is_none() {
-        Status::Open
-    } else {
-        Status::Pending
-    };
+    let status = Status::Open;
 
     TOKEN_SALE_STATE.save(
         deps.storage,
@@ -283,31 +277,22 @@ fn execute_buy(
     let key = token_sale_state.sale_id.u128();
 
     match token_sale_state.status {
-        Status::Open => (),
-        Status::Pending => (),
+        Status::Open => {
+            // Make sure the end time isn't expired, if it is we'll return an error and change the Status to expired in case if it's set as Open or Pending
+            ensure!(
+                !token_sale_state.end_time.is_expired(&env.block),
+                ContractError::SaleExpired {}
+            );
+
+            // If start time hasn't expired, it means that the sale hasn't started yet.
+            ensure!(
+                token_sale_state.start_time.is_expired(&env.block),
+                ContractError::SaleNotStarted {}
+            );
+        }
         Status::Expired => return Err(ContractError::SaleExpired {}),
         Status::Executed => return Err(ContractError::SaleExecuted {}),
         Status::Cancelled => return Err(ContractError::SaleCancelled {}),
-    }
-
-    // Make sure the end time isn't expired, if it is we'll return an error and change the Status to expired in case if it's set as Open or Pending
-    if token_sale_state.end_time.is_expired(&env.block) {
-        if token_sale_state.status == Status::Open || token_sale_state.status == Status::Pending {
-            token_sale_state.status = Status::Expired;
-            TOKEN_SALE_STATE.save(deps.storage, key, &token_sale_state)?;
-        }
-        return Err(ContractError::SaleExpired {});
-    }
-
-    // If start time hasn't expired, it means that the sale hasn't started yet.
-    if !token_sale_state.start_time.is_expired(&env.block) {
-        return Err(ContractError::SaleNotStarted {});
-    }
-
-    // Reaching this code means that the start time is expired and the end time isn't. So we can safely change the status if it's Pending to Open
-    if token_sale_state.status == Status::Pending {
-        token_sale_state.status = Status::Open;
-        TOKEN_SALE_STATE.save(deps.storage, key, &token_sale_state)?;
     }
 
     // The owner can't buy his own NFT
@@ -401,7 +386,7 @@ fn execute_cancel(
 
     // Sale needs to be open or pending to be cancelled
     ensure!(
-        token_sale_state.status == Status::Open || token_sale_state.status == Status::Pending,
+        token_sale_state.status == Status::Open,
         ContractError::SaleNotOpen {}
     );
 

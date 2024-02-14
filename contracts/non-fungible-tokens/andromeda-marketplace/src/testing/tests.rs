@@ -46,6 +46,46 @@ fn start_sale(deps: DepsMut) {
     let _res = execute(deps, env, info, msg).unwrap();
 }
 
+fn start_sale_future_start(deps: DepsMut, env: Env) {
+    let current_time = env.block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO;
+    let hook_msg = Cw721HookMsg::StartSale {
+        coin_denom: "uusd".to_string(),
+        price: Uint128::new(100),
+        // Add one to the current time to have it set in the future
+        start_time: Some(current_time + 1),
+        duration: None,
+    };
+    let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
+        sender: MOCK_TOKEN_OWNER.to_owned(),
+        token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
+        msg: encode_binary(&hook_msg).unwrap(),
+    });
+    let env = mock_env();
+
+    let info = mock_info(MOCK_TOKEN_ADDR, &[]);
+    let _res = execute(deps, env, info, msg).unwrap();
+}
+
+fn start_sale_future_start_with_duration(deps: DepsMut, env: Env) {
+    let current_time = env.block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO;
+    let hook_msg = Cw721HookMsg::StartSale {
+        coin_denom: "uusd".to_string(),
+        price: Uint128::new(100),
+        // Add one to the current time to have it set in the future
+        start_time: Some(current_time + 1),
+        duration: Some(1),
+    };
+    let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
+        sender: MOCK_TOKEN_OWNER.to_owned(),
+        token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
+        msg: encode_binary(&hook_msg).unwrap(),
+    });
+    let env = mock_env();
+
+    let info = mock_info(MOCK_TOKEN_ADDR, &[]);
+    let _res = execute(deps, env, info, msg).unwrap();
+}
+
 fn init(deps: DepsMut, modules: Option<Vec<Module>>) -> Response {
     let msg = InstantiateMsg {
         owner: None,
@@ -90,11 +130,55 @@ fn assert_sale_created(deps: Deps, env: Env) {
     );
 }
 
+fn assert_sale_created_future_start(deps: Deps, env: Env) {
+    let current_time = env.block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO;
+    // Add one to the current time to have it set in the future
+    let start_time_expiration = expiration_from_milliseconds(current_time + 1).unwrap();
+    assert_eq!(
+        TokenSaleState {
+            coin_denom: "uusd".to_string(),
+            sale_id: 1u128.into(),
+            owner: MOCK_TOKEN_OWNER.to_string(),
+            token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
+            token_address: MOCK_TOKEN_ADDR.to_owned(),
+            status: Status::Open,
+            price: Uint128::new(100),
+            start_time: start_time_expiration,
+            end_time: Expiration::Never {}
+        },
+        TOKEN_SALE_STATE.load(deps.storage, 1u128).unwrap()
+    );
+
+    assert_eq!(
+        SaleInfo {
+            sale_ids: vec![Uint128::from(1u128)],
+            token_address: MOCK_TOKEN_ADDR.to_owned(),
+            token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
+        },
+        sale_infos()
+            .load(
+                deps.storage,
+                &(MOCK_UNCLAIMED_TOKEN.to_owned() + MOCK_TOKEN_ADDR)
+            )
+            .unwrap()
+    );
+}
+
 #[test]
 fn test_sale_instantiate() {
     let mut deps = mock_dependencies_custom(&[]);
     let res = init(deps.as_mut(), None);
     assert_eq!(0, res.messages.len());
+}
+
+#[test]
+fn test_sale_instantiate_future_start() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let res = init(deps.as_mut(), None);
+    assert_eq!(0, res.messages.len());
+
+    start_sale_future_start(deps.as_mut(), mock_env());
+    assert_sale_created_future_start(deps.as_ref(), mock_env());
 }
 
 #[test]
@@ -270,6 +354,47 @@ fn execute_buy_works() {
 
     let info = mock_info("someone", &coins(100, "uusd".to_string()));
     let _res = execute(deps.as_mut(), env, info, msg).unwrap();
+}
+
+#[test]
+fn execute_buy_future_start() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let env = mock_env();
+
+    let _res = init(deps.as_mut(), None);
+
+    start_sale_future_start(deps.as_mut(), mock_env());
+    assert_sale_created_future_start(deps.as_ref(), mock_env());
+
+    let msg = ExecuteMsg::Buy {
+        token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
+        token_address: MOCK_TOKEN_ADDR.to_string(),
+    };
+
+    let info = mock_info("someone", &coins(100, "uusd".to_string()));
+    let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
+    assert_eq!(err, ContractError::SaleNotStarted {})
+}
+
+#[test]
+fn execute_buy_expired() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let mut env = mock_env();
+
+    let _res = init(deps.as_mut(), None);
+
+    start_sale_future_start_with_duration(deps.as_mut(), mock_env());
+
+    let msg = ExecuteMsg::Buy {
+        token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
+        token_address: MOCK_TOKEN_ADDR.to_string(),
+    };
+
+    let info = mock_info("someone", &coins(100, "uusd".to_string()));
+    env.block.time = env.block.time.plus_days(100);
+
+    let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
+    assert_eq!(err, ContractError::SaleExpired {})
 }
 
 #[test]

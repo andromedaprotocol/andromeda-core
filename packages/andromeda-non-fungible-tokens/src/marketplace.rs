@@ -46,7 +46,6 @@ pub enum Cw721HookMsg {
 #[cw_serde]
 pub enum Status {
     Open,
-    Pending,
     Expired,
     Executed,
     Cancelled,
@@ -55,7 +54,6 @@ impl Display for Status {
     fn fmt(&self, f: &mut Formatter) -> Result {
         match self {
             Status::Open => f.write_str("Open"),
-            Status::Pending => f.write_str("Pending"),
             Status::Expired => f.write_str("Expired"),
             Status::Executed => f.write_str("Executed"),
             Status::Cancelled => f.write_str("Cancelled"),
