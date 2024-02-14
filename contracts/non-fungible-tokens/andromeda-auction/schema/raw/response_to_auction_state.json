@@ -9,6 +9,7 @@
     "high_bidder_addr",
     "high_bidder_amount",
     "is_cancelled",
+    "owner",
     "start_time"
   ],
   "properties": {
@@ -39,6 +40,9 @@
           "type": "null"
         }
       ]
+    },
+    "owner": {
+      "type": "string"
     },
     "start_time": {
       "$ref": "#/definitions/Expiration"

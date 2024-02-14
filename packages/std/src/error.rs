@@ -248,6 +248,12 @@ pub enum ContractError {
     #[error("AuctionEnded")]
     AuctionEnded {},
 
+    #[error("SaleNotStarted")]
+    SaleNotStarted {},
+
+    #[error("SaleEnded")]
+    SaleEnded {},
+
     #[error("SaleNotOpen")]
     SaleNotOpen {},
 
@@ -543,6 +549,9 @@ pub enum ContractError {
 
     #[error("Invalid expiration")]
     InvalidExpiration {},
+
+    #[error("Invalid start time")]
+    InvalidStartTime {},
 
     #[error("Too many mint messages, limit is {limit}")]
     TooManyMintMessages { limit: u32 },

@@ -5,6 +5,7 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
 use cw20::Cw20ReceiveMsg;
 use cw_asset::AssetInfo;
+use cw_utils::Expiration;
 use serde::{Deserialize, Serialize};
 
 #[andr_instantiate]
@@ -35,6 +36,12 @@ pub struct Sale {
     pub amount: Uint128,
     /// The recipient of the sale proceeds
     pub recipient: String,
+    /// The time when the sale starts
+    pub start_time: Expiration,
+    /// The time when the sale ends
+    pub end_time: Expiration,
+    /// The amount for sale at the given rate at the start of the sale
+    pub start_amount: Uint128,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -48,6 +55,8 @@ pub enum Cw20HookMsg {
         /// The recipient of the sale proceeds
         /// Sender is used if `None` provided
         recipient: Option<String>,
+        start_time: Option<u64>,
+        duration: Option<u64>,
     },
     /// Purchases tokens
     Purchase {

@@ -3,7 +3,7 @@ use cw_utils::Expiration;
 
 use crate::error::ContractError;
 
-pub const MILLISECONDS_TO_NANOSECONDS_RATIO: u64 = 1000000;
+pub const MILLISECONDS_TO_NANOSECONDS_RATIO: u64 = 1_000_000;
 
 /// Creates a CosmWasm Expiration struct given a time in milliseconds
 /// # Arguments
