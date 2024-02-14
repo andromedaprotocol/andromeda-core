@@ -271,30 +271,6 @@ fn execute_buy_token_owner_cannot_buy() {
     assert_eq!(ContractError::TokenOwnerCannotBuy {}, res.unwrap_err());
 }
 
-// #[test]
-// fn execute_buy_whitelist() {
-//     let mut deps = mock_dependencies_custom(&[]);
-//     let env = mock_env();
-//     let info = mock_info("owner", &[]);
-//     let msg = InstantiateMsg {
-//     let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
-
-//     start_sale(deps.as_mut(), Some(vec![Addr::unchecked("sender")]));
-//     assert_sale_created(deps.as_ref(), Some(vec![Addr::unchecked("sender")]));
-
-//     let msg = ExecuteMsg::Buy {
-//         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
-//         token_address: MOCK_TOKEN_ADDR.to_string(),
-//     };
-
-//     let info = mock_info("not_sender", &coins(100, "uusd".to_string()));
-//     let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
-//     assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
-
-//     let info = mock_info("sender", &coins(100, "uusd".to_string()));
-//     let _res = execute(deps.as_mut(), env, info, msg).unwrap();
-// }
-
 #[test]
 fn execute_buy_invalid_coins_sent() {
     let mut deps = mock_dependencies_custom(&[]);
