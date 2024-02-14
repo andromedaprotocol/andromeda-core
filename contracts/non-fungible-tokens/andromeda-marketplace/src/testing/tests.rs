@@ -73,6 +73,7 @@ fn start_sale_future_start_with_duration(deps: DepsMut, env: Env) {
         price: Uint128::new(100),
         // Add one to the current time to have it set in the future
         start_time: Some(current_time + 1),
+        // Add duration, the end time's expiration will be current time + duration
         duration: Some(1),
     };
     let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
@@ -109,6 +110,7 @@ fn assert_sale_created(deps: Deps, env: Env) {
             token_address: MOCK_TOKEN_ADDR.to_owned(),
             status: Status::Open,
             price: Uint128::new(100),
+            // start sale function has start_time set as None, so it defaults to the current time
             start_time: start_time_expiration,
             end_time: Expiration::Never {}
         },
@@ -372,12 +374,13 @@ fn execute_buy_future_start() {
     };
 
     let info = mock_info("someone", &coins(100, "uusd".to_string()));
+    // The start time is ahead of the current block time, so it should return a Sale Not Started error.
     let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
     assert_eq!(err, ContractError::SaleNotStarted {})
 }
 
 #[test]
-fn execute_buy_expired() {
+fn execute_buy_sale_expired() {
     let mut deps = mock_dependencies_custom(&[]);
     let mut env = mock_env();
 
@@ -391,6 +394,7 @@ fn execute_buy_expired() {
     };
 
     let info = mock_info("someone", &coins(100, "uusd".to_string()));
+    // Forward block time so that the end time expires
     env.block.time = env.block.time.plus_days(100);
 
     let err = execute(deps.as_mut(), env, info, msg).unwrap_err();

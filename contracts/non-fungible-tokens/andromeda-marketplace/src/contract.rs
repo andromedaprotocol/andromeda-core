@@ -174,6 +174,7 @@ fn execute_start_sale(
     };
 
     // To guard against misleading start times
+    // Subtracting one second from the current block because the unit tests fail otherwise. The current time slightly differed from the block time.
     let recent_past_timestamp = env.block.time.minus_seconds(1);
     let recent_past_expiration = expiration_from_milliseconds(recent_past_timestamp.seconds())?;
     ensure!(
@@ -185,7 +186,6 @@ fn execute_start_sale(
     );
 
     let sale_id = get_and_increment_next_sale_id(deps.storage, &token_id, &token_address)?;
-    let status = Status::Open;
 
     TOKEN_SALE_STATE.save(
         deps.storage,
@@ -197,14 +197,14 @@ fn execute_start_sale(
             token_id: token_id.clone(),
             token_address: token_address.clone(),
             price,
-            status: status.clone(),
+            status: Status::Open,
             start_time: start_expiration,
             end_time: end_expiration,
         },
     )?;
     Ok(Response::new().add_attributes(vec![
         attr("action", "start_sale"),
-        attr("status", status.to_string()),
+        attr("status", "Open"),
         attr("coin_denom", coin_denom),
         attr("price", price),
         attr("sale_id", sale_id.to_string()),
@@ -391,7 +391,7 @@ fn execute_cancel(
         contract_addr: token_sale_state.token_address.clone(),
         msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
             recipient: info.sender.to_string(),
-            token_id,
+            token_id: token_id.clone(),
         })?,
         funds: vec![],
     })];
@@ -403,7 +403,14 @@ fn execute_cancel(
         &token_sale_state,
     )?;
 
-    Ok(Response::new().add_messages(messages))
+    Ok(Response::new()
+        .add_messages(messages)
+        .add_attribute("action", "cancel")
+        .add_attribute("status", "Cancelled")
+        .add_attribute("token_id", token_id)
+        .add_attribute("token_contract", token_sale_state.token_address)
+        .add_attribute("sale_id", token_sale_state.sale_id)
+        .add_attribute("recipient", info.sender))
 }
 
 fn purchase_token(
