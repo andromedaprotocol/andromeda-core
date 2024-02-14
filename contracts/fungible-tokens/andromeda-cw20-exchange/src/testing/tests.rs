@@ -1100,21 +1100,6 @@ pub fn test_cancel_sale() {
 
     // Ensure any remaining funds are returned
     let message = res.messages.first().unwrap();
-    // let expected_message = SubMsg::reply_on_error(
-    //     CosmosMsg::Wasm(
-    //         wasm_execute(
-    //             "exchanged_asset",
-    //             &Cw20ExecuteMsg::Transfer {
-    //                 recipient: owner.to_string(),
-    //                 amount: sale_amount,
-    //             },
-    //             vec![],
-    //         )
-    //         .unwrap(),
-    //     ),
-    //     1,
-
-    // );
     let expected_message = SubMsg::reply_on_error(
         CosmosMsg::Wasm(
             wasm_execute(
