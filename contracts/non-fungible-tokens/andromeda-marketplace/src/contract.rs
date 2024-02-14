@@ -10,7 +10,7 @@ use andromeda_std::ado_contract::ADOContract;
 
 use andromeda_std::common::context::ExecuteContext;
 use andromeda_std::common::expiration::{
-    block_to_expiration, expiration_from_milliseconds, MILLISECONDS_TO_NANOSECONDS_RATIO,
+    expiration_from_milliseconds, MILLISECONDS_TO_NANOSECONDS_RATIO,
 };
 use andromeda_std::{
     ado_base::{hooks::AndromedaHook, InstantiateMsg as BaseInstantiateMsg},

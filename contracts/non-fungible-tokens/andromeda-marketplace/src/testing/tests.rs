@@ -13,7 +13,7 @@ use andromeda_std::{
 use cosmwasm_std::{
     coin, coins,
     testing::{mock_env, mock_info},
-    BankMsg, CosmosMsg, Deps, DepsMut, Env, Response, SubMsg, Timestamp, Uint128, WasmMsg,
+    BankMsg, CosmosMsg, Deps, DepsMut, Env, Response, SubMsg, Uint128, WasmMsg,
 };
 use cw721::{Cw721ExecuteMsg, Cw721ReceiveMsg};
 use cw_utils::Expiration;
