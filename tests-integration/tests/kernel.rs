@@ -11,7 +11,7 @@ use andromeda_testing::{mock::MockAndromeda, mock_contract::MockContract};
 
 use cosmwasm_std::{coin, to_binary, Addr, Decimal};
 
-use cw_multi_test::App;
+use cw_multi_test::{App, Executor};
 
 fn mock_app() -> App {
     App::new(|router, _api, storage| {
@@ -53,14 +53,8 @@ fn kernel() {
 
     let mut router = mock_app();
     let andr = mock_andromeda(&mut router, owner.clone());
+    let splitter_code_id = router.store_code(mock_andromeda_splitter());
 
-    // Store contract codes
-    andr.store_ado(&mut router, mock_andromeda_app(), "app");
-    andr.store_ado(&mut router, mock_andromeda_splitter(), "splitter");
-
-    // let splitter_store_code = router.store_code(mock_andromeda_splitter());
-
-    // andr.store_code_id(&mut router, "splitter", splitter_store_code);
     let splitter_msg = mock_splitter_instantiate_msg(
         vec![AddressPercent::new(
             Recipient::from_string(user1.to_string()).with_ibc_recovery(owner.clone()),
@@ -70,8 +64,49 @@ fn kernel() {
         None,
         None,
     );
+    let splitter_addr = router
+        .instantiate_contract(
+            splitter_code_id,
+            Addr::unchecked(user1),
+            &splitter_msg,
+            &[],
+            "Splitter",
+            None,
+        )
+        .unwrap();
+    let kernel: MockContract = MockContract::from(andr.kernel_address.to_string());
 
-    let kernel = MockContract::from(andr.kernel_address.to_string());
+    // This will return an error because this splitter contract's code id isn't part of the ADODB
+    // It errors at the Kernel's AMPReceive Msg when it tries to verify the splitter's address
+    kernel.execute_err(
+        &mut router,
+        KernelExecuteMsg::Send {
+            message: AMPMsg::new(
+                splitter_addr,
+                to_binary(&mock_splitter_send_msg()).unwrap(),
+                Some(vec![coin(100, "uandr")]),
+            ),
+        },
+        owner.clone(),
+        &[coin(100, "uandr")],
+    );
+
+    // Works
+
+    // Store contract codes
+    andr.store_ado(&mut router, mock_andromeda_app(), "app");
+    andr.store_ado(&mut router, mock_andromeda_splitter(), "splitter");
+
+    let splitter_msg = mock_splitter_instantiate_msg(
+        vec![AddressPercent::new(
+            Recipient::from_string(user1.to_string()).with_ibc_recovery(owner.clone()),
+            Decimal::one(),
+        )],
+        andr.kernel_address.clone(),
+        None,
+        None,
+    );
+    let kernel: MockContract = MockContract::from(andr.kernel_address.to_string());
     let res = kernel.execute(
         &mut router,
         KernelExecuteMsg::Create {
@@ -102,6 +137,7 @@ fn kernel() {
 
     assert_eq!(splitter_owner, owner.to_string());
 
+    // This now works because the splitter's code id is stored in the ADODB
     let res = kernel.execute(
         &mut router,
         KernelExecuteMsg::Send {
@@ -125,10 +161,10 @@ fn kernel() {
 
     let owner_balance = router
         .wrap()
-        .query_balance(owner, "uandr".to_string())
+        .query_balance(owner.clone(), "uandr".to_string())
         .unwrap();
 
-    // The owner's balance should be his starting balance subtracted by the 100 he send with the splitter execute msg
+    // The owner's balance should be his starting balance subtracted by the 100 he sent with the splitter execute msg
     assert_eq!(owner_balance, coin(999999 - 100, "uandr"));
 
     assert!(res.data.is_none());
