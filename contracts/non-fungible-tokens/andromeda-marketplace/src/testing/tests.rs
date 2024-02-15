@@ -352,7 +352,7 @@ fn execute_buy_future_start() {
     let info = mock_info("someone", &coins(100, "uusd".to_string()));
     // The start time is ahead of the current block time, so it should return a Sale Not Started error.
     let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
-    assert_eq!(err, ContractError::SaleNotStarted {})
+    assert_eq!(err, ContractError::SaleNotOpen {})
 }
 
 #[test]

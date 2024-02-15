@@ -260,9 +260,6 @@ pub enum ContractError {
     #[error("SaleCancelled")]
     SaleCancelled {},
 
-    #[error("SaleNotStarted")]
-    SaleNotStarted {},
-
     #[error("NoTargetADOs")]
     NoTargetADOs {},
 

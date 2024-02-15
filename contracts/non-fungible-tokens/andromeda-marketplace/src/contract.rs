@@ -284,7 +284,7 @@ fn execute_buy(
             // If start time hasn't expired, it means that the sale hasn't started yet.
             ensure!(
                 token_sale_state.start_time.is_expired(&env.block),
-                ContractError::SaleNotStarted {}
+                ContractError::SaleNotOpen {}
             );
         }
         Status::Expired => return Err(ContractError::SaleExpired {}),
