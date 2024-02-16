@@ -126,6 +126,10 @@ pub struct ADOMetadata {
 pub enum QueryMsg {
     #[returns(u64)]
     CodeId { key: String },
+    #[returns(Vec<u64>)]
+    UnpublishedCodeIds {},
+    #[returns(IsUnpublishedCodeIdResponse)]
+    IsUnpublishedCodeId { code_id: u64 },
     #[returns(Option<String>)]
     #[serde(rename = "ado_type")]
     ADOType { code_id: u64 },
@@ -149,6 +153,11 @@ pub enum QueryMsg {
     ActionFee { ado_type: String, action: String },
     #[returns(Option<ActionFee>)]
     ActionFeeByCodeId { code_id: u64, action: String },
+}
+
+#[cw_serde]
+pub struct IsUnpublishedCodeIdResponse {
+    pub is_unpublished_code_id: bool,
 }
 
 #[derive(

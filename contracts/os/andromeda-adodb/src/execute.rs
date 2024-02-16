@@ -1,6 +1,6 @@
 use crate::state::{
     read_code_id, remove_action_fees, remove_code_id, save_action_fees, store_code_id, ACTION_FEES,
-    ADO_TYPE, LATEST_VERSION, PUBLISHER,
+    ADO_TYPE, LATEST_VERSION, PUBLISHER, UNPUBLISHED_CODE_IDS,
 };
 
 use andromeda_std::ado_contract::ADOContract;
@@ -24,6 +24,12 @@ pub fn publish(
         ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {}
     );
+    // Can't republish removed code ids
+    let unpublished_code_ids = UNPUBLISHED_CODE_IDS.may_load(deps.storage)?;
+    if let Some(ids) = unpublished_code_ids {
+        ensure!(!ids.contains(&code_id), ContractError::UnpublishedCodeID {})
+    }
+
     ensure!(
         // Using trim to rule out non-empty strings made up of only spaces
         !ado_type.trim().is_empty(),
@@ -145,6 +151,16 @@ pub fn unpublish(
 
     if let Some(fees) = action_fees {
         remove_action_fees(deps.storage, deps.api, &version, fees)?;
+    }
+
+    // Add the unpublished code id to the list
+    let unpublished_code_ids = UNPUBLISHED_CODE_IDS.may_load(deps.storage)?;
+    if let Some(mut ids) = unpublished_code_ids {
+        ids.push(code_id);
+        UNPUBLISHED_CODE_IDS.save(deps.storage, &ids)?;
+    } else {
+        // Handles the case when it's the first code id to be added to the list of unpublished code IDs
+        UNPUBLISHED_CODE_IDS.save(deps.storage, &vec![code_id])?;
     }
 
     Ok(Response::default().add_attributes(vec![

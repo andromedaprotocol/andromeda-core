@@ -3,7 +3,7 @@ use andromeda_std::testing::mock_querier::{mock_dependencies_custom, MOCK_KERNEL
 use cosmwasm_std::{from_binary, Uint128};
 
 use crate::contract::{execute, instantiate, query};
-use crate::state::{ACTION_FEES, CODE_ID, LATEST_VERSION, PUBLISHER};
+use crate::state::{ACTION_FEES, CODE_ID, LATEST_VERSION, PUBLISHER, UNPUBLISHED_CODE_IDS};
 
 use andromeda_std::error::ContractError;
 use andromeda_std::os::adodb::{ADOVersion, ActionFee, ExecuteMsg, InstantiateMsg, QueryMsg};
@@ -348,7 +348,7 @@ fn test_unpublish() {
         action_fees: Some(action_fees.clone()),
     };
 
-    let resp = execute(deps.as_mut(), env, info, msg);
+    let resp = execute(deps.as_mut(), env.clone(), info.clone(), msg);
 
     assert!(resp.is_ok());
 
@@ -362,13 +362,33 @@ fn test_unpublish() {
     assert!(vers_code_id.is_err());
 
     // TEST ACTION FEE
-    for action_fee in action_fees {
+    for action_fee in action_fees.clone() {
         let fee = ACTION_FEES.load(
             deps.as_ref().storage,
             &(ado_version.get_type(), action_fee.clone().action),
         );
         assert!(fee.is_err());
     }
+
+    // Check on unpublished code ids
+    let unpublished_code_ids = UNPUBLISHED_CODE_IDS.load(deps.as_ref().storage).unwrap();
+    // The code id that was originally published and then unpublished is 1
+    let expected_code_id = vec![1];
+    assert_eq!(unpublished_code_ids, expected_code_id);
+
+    // Make sure we can't republish an unpublished code id
+    let ado_version = ADOVersion::from_type("ado_type").with_version("0.1.0");
+    let msg = ExecuteMsg::Publish {
+        ado_type: ado_version.get_type(),
+        version: ado_version.get_version(),
+        code_id: 1,
+        action_fees: Some(action_fees.clone()),
+        publisher: Some(owner.clone()),
+    };
+
+    let err = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap_err();
+
+    assert_eq!(err, ContractError::UnpublishedCodeID {});
 }
 
 #[test]

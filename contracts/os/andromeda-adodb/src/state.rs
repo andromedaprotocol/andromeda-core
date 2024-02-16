@@ -3,10 +3,12 @@ use andromeda_std::{
     os::adodb::{ADOVersion, ActionFee},
 };
 use cosmwasm_std::{ensure, Api, StdResult, Storage};
-use cw_storage_plus::Map;
+use cw_storage_plus::{Item, Map};
 
 /// Stores a mapping from an ADO type/version to its code ID
 pub const CODE_ID: Map<&str, u64> = Map::new("code_id");
+/// Stores unpublished code IDs to prevent resubmission of malicious contracts
+pub const UNPUBLISHED_CODE_IDS: Item<Vec<u64>> = Item::new("unpublished_code_ids");
 /// Stores the latest version for a given ADO
 pub const LATEST_VERSION: Map<&str, (String, u64)> = Map::new("latest_version");
 /// Stores a mapping from code ID to ADO
@@ -71,7 +73,6 @@ pub fn remove_code_id(
     let default_ado = ADOVersion::from_type(ado_version.get_type());
     let default_code_id = read_code_id(storage, &default_ado);
 
-    // There is no default, add one default for this
     if default_code_id.is_ok() {
         CODE_ID.remove(storage, default_ado.as_str());
     }

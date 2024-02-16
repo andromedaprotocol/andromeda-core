@@ -26,6 +26,9 @@ pub enum ContractError {
     #[error("Unauthorized")]
     Unauthorized {},
 
+    #[error("UnpublishedCodeID")]
+    UnpublishedCodeID {},
+
     #[error("ContractLocked")]
     ContractLocked {},
 

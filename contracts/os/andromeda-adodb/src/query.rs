@@ -1,7 +1,10 @@
-use crate::state::{read_code_id, read_latest_code_id, ACTION_FEES, ADO_TYPE, CODE_ID, PUBLISHER};
+use crate::state::{
+    read_code_id, read_latest_code_id, ACTION_FEES, ADO_TYPE, CODE_ID, PUBLISHER,
+    UNPUBLISHED_CODE_IDS,
+};
 
 use andromeda_std::error::ContractError;
-use andromeda_std::os::adodb::{ADOMetadata, ADOVersion, ActionFee};
+use andromeda_std::os::adodb::{ADOMetadata, ADOVersion, ActionFee, IsUnpublishedCodeIdResponse};
 use cosmwasm_std::{Deps, Order, StdResult, Storage};
 
 use cw_storage_plus::Bound;
@@ -10,6 +13,31 @@ use semver::Version;
 pub fn code_id(deps: Deps, key: String) -> Result<u64, ContractError> {
     let code_id = read_code_id(deps.storage, &ADOVersion::from_string(key))?;
     Ok(code_id)
+}
+
+pub fn unpublished_code_ids(deps: Deps) -> Result<Vec<u64>, ContractError> {
+    let unpublished_code_ids = UNPUBLISHED_CODE_IDS.may_load(deps.storage)?;
+    if let Some(ids) = unpublished_code_ids {
+        Ok(ids)
+    } else {
+        Ok(vec![])
+    }
+}
+
+pub fn is_unpublished_code_id(
+    deps: Deps,
+    code_id: u64,
+) -> Result<IsUnpublishedCodeIdResponse, ContractError> {
+    let unpublished_code_ids = UNPUBLISHED_CODE_IDS.may_load(deps.storage)?;
+    if let Some(ids) = unpublished_code_ids {
+        Ok(IsUnpublishedCodeIdResponse {
+            is_unpublished_code_id: ids.contains(&code_id),
+        })
+    } else {
+        Ok(IsUnpublishedCodeIdResponse {
+            is_unpublished_code_id: false,
+        })
+    }
 }
 
 pub fn ado_type(deps: Deps, code_id: u64) -> Result<Option<String>, ContractError> {

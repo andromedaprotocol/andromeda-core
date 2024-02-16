@@ -133,6 +133,10 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::CodeId { key } => encode_binary(&query::code_id(deps, key)?),
+        QueryMsg::UnpublishedCodeIds {} => encode_binary(&query::unpublished_code_ids(deps)?),
+        QueryMsg::IsUnpublishedCodeId { code_id } => {
+            encode_binary(&query::is_unpublished_code_id(deps, code_id)?)
+        }
         QueryMsg::ADOType { code_id } => encode_binary(&query::ado_type(deps, code_id)?),
         QueryMsg::AllADOTypes { start_after, limit } => {
             encode_binary(&query::all_ado_types(deps.storage, start_after, limit)?)
