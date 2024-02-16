@@ -1517,8 +1517,17 @@
     },
     "get_address": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "String",
-      "type": "string"
+      "title": "GetAddressResponse",
+      "type": "object",
+      "required": [
+        "address"
+      ],
+      "properties": {
+        "address": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
     },
     "get_addresses_with_names": {
       "$schema": "http://json-schema.org/draft-07/schema#",

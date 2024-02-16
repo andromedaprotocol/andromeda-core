@@ -1,16 +1,20 @@
 use crate::state::{
     load_component_addresses_with_name, load_component_descriptors, ADO_ADDRESSES, APP_NAME,
 };
-use andromeda_app::app::{AppComponent, ComponentAddress, ComponentExistsResponse, ConfigResponse};
+use andromeda_app::app::{
+    AppComponent, ComponentAddress, ComponentExistsResponse, ConfigResponse, GetAddressResponse,
+};
 use andromeda_std::ado_contract::ADOContract;
 
 use andromeda_std::error::ContractError;
 
 use cosmwasm_std::Deps;
 
-pub fn component_address(deps: Deps, name: String) -> Result<String, ContractError> {
+pub fn component_address(deps: Deps, name: String) -> Result<GetAddressResponse, ContractError> {
     let value = ADO_ADDRESSES.load(deps.storage, &name)?;
-    Ok(value.to_string())
+    Ok(GetAddressResponse {
+        address: value.to_string(),
+    })
 }
 
 pub fn component_descriptors(deps: Deps) -> Result<Vec<AppComponent>, ContractError> {

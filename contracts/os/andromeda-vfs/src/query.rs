@@ -1,4 +1,4 @@
-use andromeda_std::os::vfs::validate_path_name;
+use andromeda_std::os::vfs::{validate_path_name, GetLibraryResponse, GetUsernameResponse};
 use andromeda_std::{amp::AndrAddr, error::ContractError};
 use cosmwasm_std::{Addr, Deps};
 
@@ -24,16 +24,16 @@ pub fn get_symlink(deps: Deps, addr: AndrAddr) -> Result<AndrAddr, ContractError
     resolve_symlink(deps.storage, deps.api, addr)
 }
 
-pub fn get_username(deps: Deps, addr: Addr) -> Result<String, ContractError> {
+pub fn get_username(deps: Deps, addr: Addr) -> Result<GetUsernameResponse, ContractError> {
     let username = ADDRESS_USERNAME
         .may_load(deps.storage, addr.to_string().as_str())?
         .unwrap_or(addr.to_string());
-    Ok(username)
+    Ok(GetUsernameResponse { username })
 }
 
-pub fn get_library_name(deps: Deps, addr: Addr) -> Result<String, ContractError> {
+pub fn get_library_name(deps: Deps, addr: Addr) -> Result<GetLibraryResponse, ContractError> {
     let lib_name = ADDRESS_LIBRARY
         .may_load(deps.storage, addr.to_string().as_str())?
         .unwrap_or(addr.to_string());
-    Ok(lib_name)
+    Ok(GetLibraryResponse { library: lib_name })
 }

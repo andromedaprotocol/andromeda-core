@@ -123,7 +123,7 @@ pub struct MigrateMsg {}
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
-    #[returns(String)]
+    #[returns(GetAddressResponse)]
     GetAddress { name: String },
     #[returns(AppComponent)]
     GetComponents {},
@@ -139,6 +139,11 @@ pub enum QueryMsg {
 pub struct ConfigResponse {
     pub owner: String,
     pub name: String,
+}
+
+#[cw_serde]
+pub struct GetAddressResponse {
+    pub address: String,
 }
 
 #[cw_serde]

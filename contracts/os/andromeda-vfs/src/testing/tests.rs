@@ -7,7 +7,7 @@ use andromeda_std::{
     amp::AndrAddr,
     os::{
         kernel::{ExecuteMsg as KernelExecuteMsg, InternalMsg},
-        vfs::{ExecuteMsg, InstantiateMsg},
+        vfs::{ExecuteMsg, GetLibraryResponse, GetUsernameResponse, InstantiateMsg},
     },
     testing::mock_querier::{
         mock_dependencies_custom, MOCK_FAKE_KERNEL_CONTRACT, MOCK_KERNEL_CONTRACT,
@@ -453,9 +453,9 @@ fn test_get_username() {
     };
 
     let res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
-    let val: String = from_json(res).unwrap();
+    let val: GetUsernameResponse = from_json(res).unwrap();
 
-    assert_eq!(val, username);
+    assert_eq!(val.username, username);
 
     let unregistered_addr = "notregistered";
     let query_msg = QueryMsg::GetUsername {
@@ -463,9 +463,9 @@ fn test_get_username() {
     };
 
     let res = query(deps.as_ref(), env, query_msg).unwrap();
-    let val: String = from_json(res).unwrap();
+    let val: GetUsernameResponse = from_json(res).unwrap();
 
-    assert_eq!(val, unregistered_addr);
+    assert_eq!(val.username, unregistered_addr);
 }
 
 #[test]
@@ -484,9 +484,9 @@ fn test_get_library() {
     };
 
     let res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
-    let val: String = from_json(res).unwrap();
+    let val: GetLibraryResponse = from_json(res).unwrap();
 
-    assert_eq!(val, lib_name);
+    assert_eq!(val.library, lib_name);
 
     let unregistered_addr = "notregistered";
     let query_msg = QueryMsg::GetLibrary {
@@ -494,9 +494,9 @@ fn test_get_library() {
     };
 
     let res = query(deps.as_ref(), env, query_msg).unwrap();
-    let val: String = from_json(res).unwrap();
+    let val: GetLibraryResponse = from_json(res).unwrap();
 
-    assert_eq!(val, unregistered_addr);
+    assert_eq!(val.library, unregistered_addr);
 }
 
 #[test]
