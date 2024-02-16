@@ -130,7 +130,7 @@ fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Cont
 
     if let ExecuteMsg::Approve { token_id, .. } = &msg {
         ensure!(
-            !is_archived(ctx.deps.storage, token_id)?,
+            !is_archived(ctx.deps.storage, token_id)?.is_archived,
             ContractError::TokenIsArchived {}
         );
     }
@@ -304,7 +304,7 @@ fn execute_transfer(
     let contract = AndrCW721Contract::default();
     let mut token = contract.tokens.load(deps.storage, &token_id)?;
     ensure!(
-        !is_archived(deps.storage, &token_id)?,
+        !is_archived(deps.storage, &token_id)?.is_archived,
         ContractError::TokenIsArchived {}
     );
 
@@ -419,7 +419,7 @@ fn execute_update_transfer_agreement(
     let token = contract.tokens.load(deps.storage, &token_id)?;
     ensure!(token.owner == info.sender, ContractError::Unauthorized {});
     ensure!(
-        !is_archived(deps.storage, &token_id)?,
+        !is_archived(deps.storage, &token_id)?.is_archived,
         ContractError::TokenIsArchived {}
     );
     if let Some(xfer_agreement) = &agreement {
@@ -441,7 +441,7 @@ fn execute_update_transfer_agreement(
 fn execute_archive(env: ExecuteContext, token_id: String) -> Result<Response, ContractError> {
     let ExecuteContext { deps, info, .. } = env;
     ensure!(
-        !is_archived(deps.storage, &token_id)?,
+        !is_archived(deps.storage, &token_id)?.is_archived,
         ContractError::TokenIsArchived {}
     );
     let contract = AndrCW721Contract::default();
@@ -461,7 +461,7 @@ fn execute_burn(env: ExecuteContext, token_id: String) -> Result<Response, Contr
     let token = contract.tokens.load(deps.storage, &token_id)?;
     ensure!(token.owner == info.sender, ContractError::Unauthorized {});
     ensure!(
-        !is_archived(deps.storage, &token_id)?,
+        !is_archived(deps.storage, &token_id)?.is_archived,
         ContractError::TokenIsArchived {}
     );
 

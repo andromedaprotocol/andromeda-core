@@ -40,7 +40,7 @@ pub fn amp_receive(
     packet: AMPPkt,
 ) -> Result<Response, ContractError> {
     ensure!(
-        query::verify_address(deps.as_ref(), info.sender.to_string(),)?
+        query::verify_address(deps.as_ref(), info.sender.to_string(),)?.verify_address
             || packet.ctx.get_origin() == info.sender,
         ContractError::Unauthorized {}
     );

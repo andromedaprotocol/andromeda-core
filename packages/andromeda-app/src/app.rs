@@ -127,7 +127,7 @@ pub enum QueryMsg {
     GetAddress { name: String },
     #[returns(AppComponent)]
     GetComponents {},
-    #[returns(bool)]
+    #[returns(ComponentExistsResponse)]
     ComponentExists { name: String },
     #[returns(Vec<AppComponent>)]
     GetAddressesWithNames {},
@@ -139,6 +139,11 @@ pub enum QueryMsg {
 pub struct ConfigResponse {
     pub owner: String,
     pub name: String,
+}
+
+#[cw_serde]
+pub struct ComponentExistsResponse {
+    pub component_exists: bool,
 }
 
 #[cw_serde]

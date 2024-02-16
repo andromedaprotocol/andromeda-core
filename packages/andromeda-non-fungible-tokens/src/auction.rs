@@ -90,20 +90,20 @@ pub enum QueryMsg {
         order_by: Option<OrderBy>,
     },
 
-    #[returns(bool)]
+    #[returns(IsCancelledResponse)]
     IsCancelled {
         token_id: String,
         token_address: String,
     },
 
     /// Returns true only if the auction has been cancelled, the token has been claimed, or the end time has expired
-    #[returns(bool)]
+    #[returns(IsClosedResponse)]
     IsClosed {
         token_id: String,
         token_address: String,
     },
 
-    #[returns(bool)]
+    #[returns(IsClaimedResponse)]
     IsClaimed {
         token_id: String,
         token_address: String,
@@ -190,6 +190,21 @@ pub struct AuctionIdsResponse {
 #[cw_serde]
 pub struct BidsResponse {
     pub bids: Vec<Bid>,
+}
+
+#[cw_serde]
+pub struct IsCancelledResponse {
+    pub is_cancelled: bool,
+}
+
+#[cw_serde]
+pub struct IsClosedResponse {
+    pub is_closed: bool,
+}
+
+#[cw_serde]
+pub struct IsClaimedResponse {
+    pub is_claimed: bool,
 }
 
 #[cw_serde]
