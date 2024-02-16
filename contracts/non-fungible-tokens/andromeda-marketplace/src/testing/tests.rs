@@ -198,7 +198,7 @@ fn test_execute_buy_non_existing_sale() {
 }
 
 #[test]
-fn execute_buy_sale_not_open_already_bought() {
+fn test_execute_buy_sale_not_open_already_bought() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
     let _res = init(deps.as_mut(), None);
@@ -225,7 +225,7 @@ fn execute_buy_sale_not_open_already_bought() {
 }
 
 #[test]
-fn execute_buy_sale_not_open_cancelled() {
+fn test_execute_buy_sale_not_open_cancelled() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
 
@@ -252,7 +252,7 @@ fn execute_buy_sale_not_open_cancelled() {
 }
 
 #[test]
-fn execute_buy_token_owner_cannot_buy() {
+fn test_execute_buy_token_owner_cannot_buy() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
 
@@ -272,7 +272,7 @@ fn execute_buy_token_owner_cannot_buy() {
 }
 
 #[test]
-fn execute_buy_invalid_coins_sent() {
+fn test_execute_buy_invalid_coins_sent() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
 
@@ -316,7 +316,7 @@ fn execute_buy_invalid_coins_sent() {
 }
 
 #[test]
-fn execute_buy_works() {
+fn test_execute_buy_works() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
 
@@ -335,7 +335,7 @@ fn execute_buy_works() {
 }
 
 #[test]
-fn execute_buy_future_start() {
+fn test_execute_buy_future_start() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
 
@@ -356,7 +356,7 @@ fn execute_buy_future_start() {
 }
 
 #[test]
-fn execute_buy_sale_expired() {
+fn test_execute_buy_sale_expired() {
     let mut deps = mock_dependencies_custom(&[]);
     let mut env = mock_env();
 
@@ -378,7 +378,7 @@ fn execute_buy_sale_expired() {
 }
 
 #[test]
-fn execute_update_sale_unauthorized() {
+fn test_execute_update_sale_unauthorized() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
 
@@ -400,7 +400,7 @@ fn execute_update_sale_unauthorized() {
 }
 
 #[test]
-fn execute_update_sale_invalid_price() {
+fn test_execute_update_sale_invalid_price() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
 
@@ -422,7 +422,7 @@ fn execute_update_sale_invalid_price() {
 }
 
 #[test]
-fn execute_start_sale_invalid_price() {
+fn test_execute_start_sale_invalid_price() {
     let mut deps = mock_dependencies_custom(&[]);
     let _res = init(deps.as_mut(), None);
 
@@ -445,7 +445,7 @@ fn execute_start_sale_invalid_price() {
 }
 
 #[test]
-fn execute_buy_with_tax_and_royalty_insufficient_funds() {
+fn test_execute_buy_with_tax_and_royalty_insufficient_funds() {
     let mut deps = mock_dependencies_custom(&[]);
     let modules = vec![Module {
         name: Some(RATES.to_owned()),
@@ -468,7 +468,7 @@ fn execute_buy_with_tax_and_royalty_insufficient_funds() {
 }
 
 #[test]
-fn execute_buy_with_tax_and_royalty_works() {
+fn test_execute_buy_with_tax_and_royalty_works() {
     let mut deps = mock_dependencies_custom(&[]);
     let modules = vec![Module {
         name: Some(RATES.to_owned()),
