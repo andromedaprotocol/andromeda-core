@@ -382,11 +382,11 @@ fn test_unpublish() {
         ado_type: ado_version.get_type(),
         version: ado_version.get_version(),
         code_id: 1,
-        action_fees: Some(action_fees.clone()),
-        publisher: Some(owner.clone()),
+        action_fees: Some(action_fees),
+        publisher: Some(owner),
     };
 
-    let err = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap_err();
+    let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
 
     assert_eq!(err, ContractError::UnpublishedCodeID {});
 }
