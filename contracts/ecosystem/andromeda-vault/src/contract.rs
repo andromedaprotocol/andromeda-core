@@ -7,6 +7,7 @@ use andromeda_std::ado_contract::ADOContract;
 use andromeda_std::amp::{AndrAddr, Recipient};
 
 use andromeda_std::common::context::ExecuteContext;
+use andromeda_std::common::encode_binary;
 use andromeda_std::{
     ado_base::withdraw::{Withdrawal, WithdrawalType},
     ado_base::{
@@ -111,7 +112,7 @@ fn execute_deposit(
         deposit_msg,
     } = match msg {
         None => DepositMsg::default(),
-        Some(msg) => from_json(&msg)?,
+        Some(msg) => from_json(msg)?,
     };
     let mut resp = Response::default();
 
@@ -423,7 +424,9 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
             strategy,
             denom,
         } => query_balance(deps, address, strategy, denom),
-        QueryMsg::StrategyAddress { strategy } => query_strategy_address(deps, env, strategy),
+        QueryMsg::StrategyAddress { strategy } => {
+            encode_binary(&query_strategy_address(deps, env, strategy)?)
+        }
         _ => ADOContract::default().query(deps, env, msg),
     }
 }
@@ -474,13 +477,13 @@ fn query_strategy_address(
     deps: Deps,
     _env: Env,
     strategy: StrategyType,
-) -> Result<Binary, ContractError> {
+) -> Result<StrategyAddressResponse, ContractError> {
     let addr = STRATEGY_CONTRACT_ADDRESSES.may_load(deps.storage, strategy.to_string())?;
     match addr {
-        Some(addr) => Ok(to_json_binary(&StrategyAddressResponse {
+        Some(addr) => Ok(StrategyAddressResponse {
             address: addr,
             strategy,
-        })?),
+        }),
         None => Err(ContractError::InvalidStrategy {
             strategy: strategy.to_string(),
         }),
