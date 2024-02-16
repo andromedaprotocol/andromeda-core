@@ -19,8 +19,24 @@
             "coin_denom": {
               "type": "string"
             },
+            "duration": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint64",
+              "minimum": 0.0
+            },
             "price": {
               "$ref": "#/definitions/Uint128"
+            },
+            "start_time": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint64",
+              "minimum": 0.0
             }
           },
           "additionalProperties": false

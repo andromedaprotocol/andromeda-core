@@ -68,6 +68,8 @@ pub fn mock_start_sale(price: Uint128, coin_denom: impl Into<String>) -> Cw721Ho
     Cw721HookMsg::StartSale {
         price,
         coin_denom: coin_denom.into(),
+        start_time: None,
+        duration: None,
     }
 }
 
