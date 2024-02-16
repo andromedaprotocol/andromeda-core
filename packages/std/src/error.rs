@@ -266,6 +266,15 @@ pub enum ContractError {
     #[error("SaleNotOpen")]
     SaleNotOpen {},
 
+    #[error("SaleExpired")]
+    SaleExpired {},
+
+    #[error("SaleExecuted")]
+    SaleExecuted {},
+
+    #[error("SaleCancelled")]
+    SaleCancelled {},
+
     #[error("NoTargetADOs")]
     NoTargetADOs {},
 

@@ -28,6 +28,7 @@
       "type": "string",
       "enum": [
         "open",
+        "expired",
         "executed",
         "cancelled"
       ]

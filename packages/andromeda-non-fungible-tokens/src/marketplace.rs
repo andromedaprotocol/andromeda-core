@@ -2,6 +2,7 @@ use andromeda_std::{andr_exec, andr_instantiate, andr_instantiate_modules, andr_
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
 use cw721::Cw721ReceiveMsg;
+use std::fmt::{Display, Formatter, Result};
 
 #[andr_instantiate]
 #[andr_instantiate_modules]
@@ -35,13 +36,29 @@ pub enum ExecuteMsg {
 pub enum Cw721HookMsg {
     /// Starts a new sale with the given parameters. The sale info can be modified before it
     /// has started but is immutable after that.
-    StartSale { price: Uint128, coin_denom: String },
+    StartSale {
+        price: Uint128,
+        coin_denom: String,
+        start_time: Option<u64>,
+        duration: Option<u64>,
+    },
 }
 #[cw_serde]
 pub enum Status {
     Open,
+    Expired,
     Executed,
     Cancelled,
+}
+impl Display for Status {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        match self {
+            Status::Open => f.write_str("Open"),
+            Status::Expired => f.write_str("Expired"),
+            Status::Executed => f.write_str("Executed"),
+            Status::Cancelled => f.write_str("Cancelled"),
+        }
+    }
 }
 
 #[cw_serde]

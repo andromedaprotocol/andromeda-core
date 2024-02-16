@@ -1,8 +1,6 @@
 use andromeda_app::app::QueryMsg as AppQueryMsg;
 use andromeda_std::testing::mock_querier::MockAndromedaQuerier;
-pub use andromeda_std::testing::mock_querier::{
-    MOCK_ADDRESS_LIST_CONTRACT, MOCK_APP_CONTRACT, MOCK_KERNEL_CONTRACT,
-};
+pub use andromeda_std::testing::mock_querier::{MOCK_APP_CONTRACT, MOCK_KERNEL_CONTRACT};
 use andromeda_std::{
     ado_base::hooks::{AndromedaHook, HookMsg, OnFundsTransferResponse},
     ado_contract::ADOContract,
