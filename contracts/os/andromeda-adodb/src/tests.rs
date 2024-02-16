@@ -382,13 +382,59 @@ fn test_unpublish() {
         ado_type: ado_version.get_type(),
         version: ado_version.get_version(),
         code_id: 1,
+        action_fees: Some(action_fees.clone()),
+        publisher: Some(owner.clone()),
+    };
+
+    let err = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap_err();
+
+    assert_eq!(err, ContractError::UnpublishedCodeID {});
+
+    // Make sure we can't republish unpublished versions of corresponding ADO types
+    // same type same version
+    let ado_version = ADOVersion::from_type("ado_type").with_version("0.1.0");
+    let code_id = 2;
+    let msg = ExecuteMsg::Publish {
+        ado_type: ado_version.get_type(),
+        version: ado_version.get_version(),
+        code_id,
+        action_fees: Some(action_fees.clone()),
+        publisher: Some(owner.clone()),
+    };
+
+    let err = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap_err();
+
+    assert_eq!(err, ContractError::UnpublishedVersion {});
+
+    // Different type same version should work
+    let ado_version = ADOVersion::from_type("ado_different_type").with_version("0.1.0");
+    let code_id = 3;
+    let msg = ExecuteMsg::Publish {
+        ado_type: ado_version.get_type(),
+        version: ado_version.get_version(),
+        code_id,
+        action_fees: Some(action_fees.clone()),
+        publisher: Some(owner.clone()),
+    };
+
+    let resp = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
+
+    assert!(resp.is_ok());
+
+    // Works with new code id and version of the same ado type
+    let ado_version = ADOVersion::from_type("ado_type").with_version("0.2.0");
+    let code_id = 2;
+    let msg = ExecuteMsg::Publish {
+        ado_type: ado_version.get_type(),
+        version: ado_version.get_version(),
+        code_id,
         action_fees: Some(action_fees),
         publisher: Some(owner),
     };
 
-    let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
+    let resp = execute(deps.as_mut(), env, info, msg);
 
-    assert_eq!(err, ContractError::UnpublishedCodeID {});
+    assert!(resp.is_ok());
 }
 
 #[test]

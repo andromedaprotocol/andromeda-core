@@ -1,6 +1,6 @@
 use crate::state::{
     read_code_id, read_latest_code_id, ACTION_FEES, ADO_TYPE, CODE_ID, PUBLISHER,
-    UNPUBLISHED_CODE_IDS,
+    UNPUBLISHED_CODE_IDS, UNPUBLISHED_VERSIONS,
 };
 
 use andromeda_std::error::ContractError;
@@ -88,6 +88,17 @@ pub fn ado_versions(
         version_b.cmp(&version_a)
     });
     Ok(versions)
+}
+
+pub fn unpublished_ado_versions(
+    storage: &dyn Storage,
+    ado_type: &str,
+) -> Result<Vec<String>, ContractError> {
+    let versions = UNPUBLISHED_VERSIONS.may_load(storage, ado_type)?;
+    match versions {
+        Some(versions) => Ok(versions),
+        None => Ok(vec![]),
+    }
 }
 
 pub fn ado_metadata(deps: Deps, ado_type: String) -> Result<ADOMetadata, ContractError> {

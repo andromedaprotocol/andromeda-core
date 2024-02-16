@@ -26,6 +26,42 @@
     {
       "type": "object",
       "required": [
+        "unpublished_code_ids"
+      ],
+      "properties": {
+        "unpublished_code_ids": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "is_unpublished_code_id"
+      ],
+      "properties": {
+        "is_unpublished_code_id": {
+          "type": "object",
+          "required": [
+            "code_id"
+          ],
+          "properties": {
+            "code_id": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
         "ado_type"
       ],
       "properties": {
@@ -103,6 +139,27 @@
                 "string",
                 "null"
               ]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "unpublished_ado_versions"
+      ],
+      "properties": {
+        "unpublished_ado_versions": {
+          "type": "object",
+          "required": [
+            "ado_type"
+          ],
+          "properties": {
+            "ado_type": {
+              "type": "string"
             }
           },
           "additionalProperties": false

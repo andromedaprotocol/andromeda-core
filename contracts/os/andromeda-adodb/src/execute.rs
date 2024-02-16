@@ -1,6 +1,6 @@
 use crate::state::{
     read_code_id, remove_action_fees, remove_code_id, save_action_fees, store_code_id, ACTION_FEES,
-    ADO_TYPE, LATEST_VERSION, PUBLISHER, UNPUBLISHED_CODE_IDS,
+    ADO_TYPE, LATEST_VERSION, PUBLISHER, UNPUBLISHED_CODE_IDS, UNPUBLISHED_VERSIONS,
 };
 
 use andromeda_std::ado_contract::ADOContract;
@@ -28,6 +28,15 @@ pub fn publish(
     let unpublished_code_ids = UNPUBLISHED_CODE_IDS.may_load(deps.storage)?;
     if let Some(ids) = unpublished_code_ids {
         ensure!(!ids.contains(&code_id), ContractError::UnpublishedCodeID {})
+    }
+
+    // Can't republish an unpublished version of the same ADO type
+    let unpublished_versions = UNPUBLISHED_VERSIONS.may_load(deps.storage, &ado_type)?;
+    if let Some(unpublished_versions) = unpublished_versions {
+        ensure!(
+            !unpublished_versions.contains(&version),
+            ContractError::UnpublishedVersion {}
+        )
     }
 
     ensure!(
@@ -121,7 +130,7 @@ pub fn unpublish(
 
     //TODO: Get Code ID info with cosmwasm 1.2
 
-    let version = ADOVersion::from_type(ado_type).with_version(version);
+    let version = ADOVersion::from_type(ado_type.clone()).with_version(version);
     ensure!(
         version.validate(),
         ContractError::InvalidADOVersion { msg: None }
@@ -161,6 +170,15 @@ pub fn unpublish(
     } else {
         // Handles the case when it's the first code id to be added to the list of unpublished code IDs
         UNPUBLISHED_CODE_IDS.save(deps.storage, &vec![code_id])?;
+    }
+
+    // Add unpublished version to corresponding ADO type
+    let unpublished_versions = UNPUBLISHED_VERSIONS.may_load(deps.storage, &ado_type)?;
+    if let Some(mut unpublished_versions) = unpublished_versions {
+        unpublished_versions.push(version.get_version());
+        UNPUBLISHED_VERSIONS.save(deps.storage, &ado_type, &unpublished_versions)?;
+    } else {
+        UNPUBLISHED_VERSIONS.save(deps.storage, &ado_type, &vec![version.get_version()])?;
     }
 
     Ok(Response::default().add_attributes(vec![

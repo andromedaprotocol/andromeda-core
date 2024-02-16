@@ -146,6 +146,9 @@ pub enum QueryMsg {
         start_after: Option<String>,
         limit: Option<u32>,
     },
+    #[returns(Vec<String>)]
+    #[serde(rename = "unpublished_ado_versions")]
+    UnpublishedADOVersions { ado_type: String },
     #[returns(Option<ADOMetadata>)]
     #[serde(rename = "ado_metadata")]
     ADOMetadata { ado_type: String },

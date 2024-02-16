@@ -151,6 +151,9 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractErr
             start_after,
             limit,
         )?),
+        QueryMsg::UnpublishedADOVersions { ado_type } => {
+            encode_binary(&query::unpublished_ado_versions(deps.storage, &ado_type)?)
+        }
         QueryMsg::ADOMetadata { ado_type } => encode_binary(&query::ado_metadata(deps, ado_type)?),
         QueryMsg::ActionFee { ado_type, action } => {
             encode_binary(&query::action_fee(deps, ado_type, action)?)
