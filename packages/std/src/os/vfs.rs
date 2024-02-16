@@ -120,22 +120,12 @@ pub enum QueryMsg {
     SubDir { path: AndrAddr },
     #[returns(Vec<String>)]
     Paths { addr: Addr },
-    #[returns(GetUsernameResponse)]
+    #[returns(String)]
     GetUsername { address: Addr },
-    #[returns(GetLibraryResponse)]
+    #[returns(String)]
     GetLibrary { address: Addr },
     #[returns(AndrAddr)]
     ResolveSymlink { path: AndrAddr },
-}
-
-#[cw_serde]
-pub struct GetUsernameResponse {
-    pub username: String,
-}
-
-#[cw_serde]
-pub struct GetLibraryResponse {
-    pub library: String,
 }
 
 /// Queries the provided VFS contract address to resolve the given path

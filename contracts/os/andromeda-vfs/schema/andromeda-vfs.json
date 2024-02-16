@@ -362,31 +362,13 @@
   "responses": {
     "get_library": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "GetLibraryResponse",
-      "type": "object",
-      "required": [
-        "library"
-      ],
-      "properties": {
-        "library": {
-          "type": "string"
-        }
-      },
-      "additionalProperties": false
+      "title": "String",
+      "type": "string"
     },
     "get_username": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "GetUsernameResponse",
-      "type": "object",
-      "required": [
-        "username"
-      ],
-      "properties": {
-        "username": {
-          "type": "string"
-        }
-      },
-      "additionalProperties": false
+      "title": "String",
+      "type": "string"
     },
     "paths": {
       "$schema": "http://json-schema.org/draft-07/schema#",
