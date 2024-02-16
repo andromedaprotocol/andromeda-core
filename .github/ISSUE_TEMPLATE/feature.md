@@ -7,11 +7,11 @@ assignees: ''
 
 ---
 
-**Description**
+# Description
 A clear and concise description of the feature or enhancement.
 
-**Implementation**
+# Implementation
 A suggestion of how to implement the feature or enhancement (where applicable).
 
-**Acceptance Criteria**
+# Acceptance Criteria
 What targets must be met for this feature or enhancement to be considered complete?
