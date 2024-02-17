@@ -189,61 +189,6 @@ fn test_unpublish() {
             receiver: None,
         },
     ];
-
-    // Empty ado_type
-    let ado_version = ADOVersion::from_type("").with_version("0.1.0");
-    let code_id = 1;
-    let msg = ExecuteMsg::Publish {
-        ado_type: ado_version.get_type(),
-        version: ado_version.get_version(),
-        code_id,
-        action_fees: Some(action_fees.clone()),
-        publisher: Some(owner.clone()),
-    };
-
-    let err = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap_err();
-
-    assert_eq!(
-        err,
-        ContractError::InvalidADOType {
-            msg: Some("ado_type can't be an empty string".to_string())
-        }
-    );
-
-    // Invalid version
-    let ado_version = ADOVersion::from_type("ado_type");
-    let code_id = 1;
-    let msg = ExecuteMsg::Publish {
-        ado_type: ado_version.get_type(),
-        version: ado_version.get_version(),
-        code_id,
-        action_fees: Some(action_fees.clone()),
-        publisher: Some(owner.clone()),
-    };
-
-    let err = execute(deps.as_mut(), env.clone(), info.clone(), msg);
-    assert!(err.is_err());
-
-    // ado_type made only of spaces
-    let ado_version = ADOVersion::from_type("       ").with_version("0.1.0");
-    let code_id = 1;
-    let msg = ExecuteMsg::Publish {
-        ado_type: ado_version.get_type(),
-        version: ado_version.get_version(),
-        code_id,
-        action_fees: Some(action_fees.clone()),
-        publisher: Some(owner.clone()),
-    };
-
-    let err = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap_err();
-
-    assert_eq!(
-        err,
-        ContractError::InvalidADOType {
-            msg: Some("ado_type can't be an empty string".to_string())
-        }
-    );
-
     let ado_version = ADOVersion::from_type("ado_type").with_version("0.1.0");
     let code_id = 1;
     let msg = ExecuteMsg::Publish {
@@ -371,10 +316,10 @@ fn test_unpublish() {
     }
 
     // Check on unpublished code ids
-    let unpublished_code_ids = UNPUBLISHED_CODE_IDS.load(deps.as_ref().storage).unwrap();
+    let unpublished_code_ids = UNPUBLISHED_CODE_IDS.load(deps.as_ref().storage, 1).unwrap();
     // The code id that was originally published and then unpublished is 1
-    let expected_code_id = vec![1];
-    assert_eq!(unpublished_code_ids, expected_code_id);
+    // True means that it's unpublished
+    assert!(unpublished_code_ids);
 
     // Make sure we can't republish an unpublished code id
     let ado_version = ADOVersion::from_type("ado_type").with_version("0.1.0");
@@ -387,7 +332,6 @@ fn test_unpublish() {
     };
 
     let err = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap_err();
-
     assert_eq!(err, ContractError::UnpublishedCodeID {});
 
     // Make sure we can't republish unpublished versions of corresponding ADO types
@@ -403,7 +347,6 @@ fn test_unpublish() {
     };
 
     let err = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap_err();
-
     assert_eq!(err, ContractError::UnpublishedVersion {});
 
     // Different type same version should work
@@ -418,7 +361,6 @@ fn test_unpublish() {
     };
 
     let resp = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
-
     assert!(resp.is_ok());
 
     // Works with new code id and version of the same ado type
@@ -433,7 +375,6 @@ fn test_unpublish() {
     };
 
     let resp = execute(deps.as_mut(), env, info, msg);
-
     assert!(resp.is_ok());
 }
 

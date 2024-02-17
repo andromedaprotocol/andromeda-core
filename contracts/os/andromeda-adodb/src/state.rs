@@ -3,14 +3,14 @@ use andromeda_std::{
     os::adodb::{ADOVersion, ActionFee},
 };
 use cosmwasm_std::{ensure, Api, StdResult, Storage};
-use cw_storage_plus::{Item, Map};
+use cw_storage_plus::Map;
 
 /// Stores a mapping from an ADO type/version to its code ID
 pub const CODE_ID: Map<&str, u64> = Map::new("code_id");
 /// Stores unpublished code IDs to prevent resubmission of malicious contracts
-pub const UNPUBLISHED_CODE_IDS: Item<Vec<u64>> = Item::new("unpublished_code_ids");
-/// Stores the ado types with their corresponding unpublished version(s)
-pub const UNPUBLISHED_VERSIONS: Map<&str, Vec<String>> = Map::new("unpublished_versions");
+pub const UNPUBLISHED_CODE_IDS: Map<u64, bool> = Map::new("unpublished_code_ids");
+/// Stores whether unpublished or not for a pair of (ADO type, ADO version). True means unpublished
+pub const UNPUBLISHED_VERSIONS: Map<(&str, &str), bool> = Map::new("unpublished_versions");
 /// Stores the latest version for a given ADO
 pub const LATEST_VERSION: Map<&str, (String, u64)> = Map::new("latest_version");
 /// Stores a mapping from code ID to ADO

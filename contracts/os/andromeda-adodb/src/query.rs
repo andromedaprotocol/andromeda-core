@@ -1,6 +1,6 @@
 use crate::state::{
     read_code_id, read_latest_code_id, ACTION_FEES, ADO_TYPE, CODE_ID, PUBLISHER,
-    UNPUBLISHED_CODE_IDS, UNPUBLISHED_VERSIONS,
+    UNPUBLISHED_CODE_IDS,
 };
 
 use andromeda_std::error::ContractError;
@@ -16,28 +16,23 @@ pub fn code_id(deps: Deps, key: String) -> Result<u64, ContractError> {
 }
 
 pub fn unpublished_code_ids(deps: Deps) -> Result<Vec<u64>, ContractError> {
-    let unpublished_code_ids = UNPUBLISHED_CODE_IDS.may_load(deps.storage)?;
-    if let Some(ids) = unpublished_code_ids {
-        Ok(ids)
-    } else {
-        Ok(vec![])
-    }
+    let unpublished_code_ids = UNPUBLISHED_CODE_IDS
+        .keys(deps.storage, None, None, Order::Ascending)
+        .collect::<Result<Vec<u64>, _>>();
+    // Returns empty vector if there are no unpublished code ids
+    Ok(unpublished_code_ids.unwrap_or(vec![]))
 }
 
 pub fn is_unpublished_code_id(
     deps: Deps,
     code_id: u64,
 ) -> Result<IsUnpublishedCodeIdResponse, ContractError> {
-    let unpublished_code_ids = UNPUBLISHED_CODE_IDS.may_load(deps.storage)?;
-    if let Some(ids) = unpublished_code_ids {
-        Ok(IsUnpublishedCodeIdResponse {
-            is_unpublished_code_id: ids.contains(&code_id),
-        })
-    } else {
-        Ok(IsUnpublishedCodeIdResponse {
-            is_unpublished_code_id: false,
-        })
-    }
+    let is_unpublished_code_id = UNPUBLISHED_CODE_IDS
+        .load(deps.storage, code_id)
+        .unwrap_or(false);
+    Ok(IsUnpublishedCodeIdResponse {
+        is_unpublished_code_id,
+    })
 }
 
 pub fn ado_type(deps: Deps, code_id: u64) -> Result<Option<String>, ContractError> {
@@ -90,16 +85,19 @@ pub fn ado_versions(
     Ok(versions)
 }
 
-pub fn unpublished_ado_versions(
-    storage: &dyn Storage,
-    ado_type: &str,
-) -> Result<Vec<String>, ContractError> {
-    let versions = UNPUBLISHED_VERSIONS.may_load(storage, ado_type)?;
-    match versions {
-        Some(versions) => Ok(versions),
-        None => Ok(vec![]),
-    }
-}
+// pub fn unpublished_ado_versions(
+//     storage: &dyn Storage,
+//     ado_type: &str,
+//     version: &str,
+// ) -> Result<Vec<String>, ContractError> {
+//     let versions = UNPUBLISHED_VERSIONS
+//         .may_load(storage, (ado_type, version))?
+//         .unwrap_or(false);
+//     match versions {
+//         Some(versions) => Ok(versions),
+//         None => Ok(vec![]),
+//     }
+// }
 
 pub fn ado_metadata(deps: Deps, ado_type: String) -> Result<ADOMetadata, ContractError> {
     let ado_version = ADOVersion::from_string(ado_type);

@@ -126,8 +126,8 @@ pub struct ADOMetadata {
 pub enum QueryMsg {
     #[returns(u64)]
     CodeId { key: String },
-    #[returns(Vec<u64>)]
-    UnpublishedCodeIds {},
+    // #[returns(Vec<u64>)]
+    // UnpublishedCodeIds {},
     #[returns(IsUnpublishedCodeIdResponse)]
     IsUnpublishedCodeId { code_id: u64 },
     #[returns(Option<String>)]
@@ -146,9 +146,9 @@ pub enum QueryMsg {
         start_after: Option<String>,
         limit: Option<u32>,
     },
-    #[returns(Vec<String>)]
-    #[serde(rename = "unpublished_ado_versions")]
-    UnpublishedADOVersions { ado_type: String },
+    // #[returns(Vec<String>)]
+    // #[serde(rename = "unpublished_ado_versions")]
+    // UnpublishedADOVersions { ado_type: String },
     #[returns(Option<ADOMetadata>)]
     #[serde(rename = "ado_metadata")]
     ADOMetadata { ado_type: String },

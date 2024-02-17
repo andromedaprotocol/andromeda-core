@@ -25,19 +25,16 @@ pub fn publish(
         ContractError::Unauthorized {}
     );
     // Can't republish removed code ids
-    let unpublished_code_ids = UNPUBLISHED_CODE_IDS.may_load(deps.storage)?;
-    if let Some(ids) = unpublished_code_ids {
-        ensure!(!ids.contains(&code_id), ContractError::UnpublishedCodeID {})
-    }
+    let unpublished_code_id = UNPUBLISHED_CODE_IDS
+        .may_load(deps.storage, code_id)?
+        .unwrap_or(false);
+    ensure!(!unpublished_code_id, ContractError::UnpublishedCodeID {});
 
     // Can't republish an unpublished version of the same ADO type
-    let unpublished_versions = UNPUBLISHED_VERSIONS.may_load(deps.storage, &ado_type)?;
-    if let Some(unpublished_versions) = unpublished_versions {
-        ensure!(
-            !unpublished_versions.contains(&version),
-            ContractError::UnpublishedVersion {}
-        )
-    }
+    let unpublished_version = UNPUBLISHED_VERSIONS
+        .may_load(deps.storage, (&ado_type, version.as_str()))?
+        .unwrap_or(false);
+    ensure!(!unpublished_version, ContractError::UnpublishedVersion {});
 
     ensure!(
         // Using trim to rule out non-empty strings made up of only spaces
@@ -163,27 +160,19 @@ pub fn unpublish(
     }
 
     // Add the unpublished code id to the list
-    let unpublished_code_ids = UNPUBLISHED_CODE_IDS.may_load(deps.storage)?;
-    if let Some(mut ids) = unpublished_code_ids {
-        ids.push(code_id);
-        UNPUBLISHED_CODE_IDS.save(deps.storage, &ids)?;
-    } else {
-        // Handles the case when it's the first code id to be added to the list of unpublished code IDs
-        UNPUBLISHED_CODE_IDS.save(deps.storage, &vec![code_id])?;
-    }
+    UNPUBLISHED_CODE_IDS.save(deps.storage, code_id, &true)?;
 
-    // Add unpublished version to corresponding ADO type
-    let unpublished_versions = UNPUBLISHED_VERSIONS.may_load(deps.storage, &ado_type)?;
-    if let Some(mut unpublished_versions) = unpublished_versions {
-        unpublished_versions.push(version.get_version());
-        UNPUBLISHED_VERSIONS.save(deps.storage, &ado_type, &unpublished_versions)?;
-    } else {
-        UNPUBLISHED_VERSIONS.save(deps.storage, &ado_type, &vec![version.get_version()])?;
-    }
+    // Set the value for ado type, ado version tuple as true, referring to its unpublished status
+    UNPUBLISHED_VERSIONS.save(
+        deps.storage,
+        (&ado_type, version.get_version().as_str()),
+        &true,
+    )?;
 
     Ok(Response::default().add_attributes(vec![
         attr("action", "unpublish_ado"),
-        attr("ado_type", version.into_string()),
+        attr("ado_type", ado_type),
+        attr("ado_version", version.get_version()),
         attr("code_id", code_id.to_string()),
         attr("remover", info.sender.to_string()),
     ]))

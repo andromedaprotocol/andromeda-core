@@ -133,7 +133,7 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::CodeId { key } => encode_binary(&query::code_id(deps, key)?),
-        QueryMsg::UnpublishedCodeIds {} => encode_binary(&query::unpublished_code_ids(deps)?),
+        // QueryMsg::UnpublishedCodeIds {} => encode_binary(&query::unpublished_code_ids(deps)?),
         QueryMsg::IsUnpublishedCodeId { code_id } => {
             encode_binary(&query::is_unpublished_code_id(deps, code_id)?)
         }
@@ -151,9 +151,9 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractErr
             start_after,
             limit,
         )?),
-        QueryMsg::UnpublishedADOVersions { ado_type } => {
-            encode_binary(&query::unpublished_ado_versions(deps.storage, &ado_type)?)
-        }
+        // QueryMsg::UnpublishedADOVersions { ado_type } => {
+        //     encode_binary(&query::unpublished_ado_versions(deps.storage, &ado_type)?)
+        // }
         QueryMsg::ADOMetadata { ado_type } => encode_binary(&query::ado_metadata(deps, ado_type)?),
         QueryMsg::ActionFee { ado_type, action } => {
             encode_binary(&query::action_fee(deps, ado_type, action)?)
