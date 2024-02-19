@@ -331,7 +331,7 @@ fn test_unpublish() {
         publisher: Some(owner.clone()),
     };
 
-    let err = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap_err();
+    let err = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap_err();
     assert_eq!(err, ContractError::UnpublishedCodeID {});
 
     // Make sure we can't republish unpublished versions of corresponding ADO types
@@ -346,7 +346,7 @@ fn test_unpublish() {
         publisher: Some(owner.clone()),
     };
 
-    let err = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap_err();
+    let err = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap_err();
     assert_eq!(err, ContractError::UnpublishedVersion {});
 
     // Different type same version should work
@@ -360,7 +360,7 @@ fn test_unpublish() {
         publisher: Some(owner.clone()),
     };
 
-    let resp = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
+    let resp = execute(deps.as_mut(), env.clone(), info.clone(), msg);
     assert!(resp.is_ok());
 
     // Works with new code id and version of the same ado type
