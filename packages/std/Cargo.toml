@@ -9,8 +9,6 @@ license = "MIT"
 [features]
 withdraw = ["andromeda-macros/withdraw"]
 primitive = []
-modules = ["andromeda-macros/modules"]
-module_hooks = ["andromeda-macros/module_hooks"]
 instantiate = []
 
 [lib]

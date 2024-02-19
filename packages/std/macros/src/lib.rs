@@ -214,7 +214,7 @@ pub fn andr_query(_metadata: TokenStream, input: TokenStream) -> TokenStream {
             .into(),
         );
     }
-    #[cfg(feature = "module_hooks")]
+    // #[cfg(feature = "module_hooks")]
     {
         merged = merge_variants(
             merged,
