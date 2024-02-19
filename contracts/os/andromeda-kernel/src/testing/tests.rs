@@ -323,10 +323,5 @@ fn test_handle_ibc_direct() {
     let msg = ExecuteMsg::AMPReceive(packet);
     let res = execute(deps.as_mut(), env, info, msg);
     // * message fails even though it is a non-default binary message
-    // assert!(res.is_ok());
-    // Cross chain components are currently disabled, so the response should be an error
-    assert_eq!(
-        res.unwrap_err(),
-        ContractError::CrossChainComponentsCurrentlyDisabled {}
-    )
+    assert!(res.is_ok());
 }
