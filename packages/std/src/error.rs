@@ -68,6 +68,9 @@ pub enum ContractError {
     #[error("invalid IBC channel version - got ({actual}), expected ({expected})")]
     InvalidVersion { actual: String, expected: String },
 
+    #[error("CrossChainComponentsCurrentlyDisabled")]
+    CrossChainComponentsCurrentlyDisabled {},
+
     #[error("tokenId list has different length than tokenUri list")]
     TokenInfoLenMissmatch {},
 
