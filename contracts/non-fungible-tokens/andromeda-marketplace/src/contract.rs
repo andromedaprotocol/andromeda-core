@@ -1,3 +1,5 @@
+use std::vec;
+
 use crate::state::{
     read_sale_infos, sale_infos, SaleInfo, TokenSaleState, NEXT_SALE_ID, TOKEN_SALE_STATE,
 };
@@ -56,12 +58,8 @@ pub fn instantiate(
             owner: msg.owner,
         },
     )?;
-    let mod_resp =
-        ADOContract::default().register_modules(info.sender.as_str(), deps.storage, msg.modules)?;
 
-    Ok(inst_resp
-        .add_attributes(mod_resp.attributes)
-        .add_submessages(mod_resp.messages))
+    Ok(inst_resp)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -71,20 +69,6 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
-    let contract = ADOContract::default();
-
-    if !matches!(msg, ExecuteMsg::UpdateAppContract { .. })
-        && !matches!(msg, ExecuteMsg::UpdateOwner { .. })
-    {
-        contract.module_hook::<Response>(
-            &deps.as_ref(),
-            AndromedaHook::OnExecute {
-                sender: info.sender.to_string(),
-                payload: encode_binary(&msg)?,
-            },
-        )?;
-    }
-
     let ctx = ExecuteContext::new(deps, info, env);
 
     match msg {
@@ -340,14 +324,19 @@ fn execute_buy(
     TOKEN_SALE_STATE.save(deps.storage, key, &token_sale_state)?;
 
     // Calculate the funds to be received after tax
-    let after_tax_payment = purchase_token(&mut deps, &info, token_sale_state.clone())?;
+    // let after_tax_payment = purchase_token(&mut deps, &info, token_sale_state.clone())?;
+    let after_tax_payment = Coin::new(
+        token_sale_state.price.u128(),
+        token_sale_state.coin_denom.clone(),
+    );
 
     Ok(Response::new()
-        .add_submessages(after_tax_payment.1)
+        // .add_submessages(after_tax_payment.1)
         // Send funds to the original owner.
         .add_message(CosmosMsg::Bank(BankMsg::Send {
             to_address: token_sale_state.owner,
-            amount: vec![after_tax_payment.0],
+            // amount: vec![after_tax_payment.0],
+            amount: vec![after_tax_payment],
         }))
         // Send NFT to buyer.
         .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
@@ -413,44 +402,44 @@ fn execute_cancel(
         .add_attribute("recipient", info.sender))
 }
 
-fn purchase_token(
-    deps: &mut DepsMut,
-    info: &MessageInfo,
-    state: TokenSaleState,
-) -> Result<(Coin, Vec<SubMsg>), ContractError> {
-    let total_cost = Coin::new(state.price.u128(), state.coin_denom.clone());
+// fn purchase_token(
+//     deps: &mut DepsMut,
+//     info: &MessageInfo,
+//     state: TokenSaleState,
+// ) -> Result<(Coin, Vec<SubMsg>), ContractError> {
+//     let total_cost = Coin::new(state.price.u128(), state.coin_denom.clone());
 
-    let mut total_tax_amount = Uint128::zero();
+//     let mut total_tax_amount = Uint128::zero();
 
-    let (msgs, _events, remainder) = ADOContract::default().on_funds_transfer(
-        &deps.as_ref(),
-        info.sender.to_string(),
-        Funds::Native(total_cost),
-        encode_binary(&"")?,
-    )?;
+//     let (msgs, _events, remainder) = ADOContract::default().on_funds_transfer(
+//         &deps.as_ref(),
+//         info.sender.to_string(),
+//         Funds::Native(total_cost),
+//         encode_binary(&"")?,
+//     )?;
 
-    let remaining_amount = remainder.try_get_coin()?;
+//     let remaining_amount = remainder.try_get_coin()?;
 
-    let tax_amount = get_tax_amount(&msgs, state.price, remaining_amount.amount);
+//     let tax_amount = get_tax_amount(&msgs, state.price, remaining_amount.amount);
 
-    // Calculate total tax
-    total_tax_amount += tax_amount;
+//     // Calculate total tax
+//     total_tax_amount += tax_amount;
 
-    let required_payment = Coin {
-        denom: state.coin_denom.clone(),
-        amount: state.price + total_tax_amount,
-    };
-    ensure!(
-        has_coins(&info.funds, &required_payment),
-        ContractError::InsufficientFunds {}
-    );
+//     let required_payment = Coin {
+//         denom: state.coin_denom.clone(),
+//         amount: state.price + total_tax_amount,
+//     };
+//     ensure!(
+//         has_coins(&info.funds, &required_payment),
+//         ContractError::InsufficientFunds {}
+//     );
 
-    let after_tax_payment = Coin {
-        denom: state.coin_denom,
-        amount: remaining_amount.amount,
-    };
-    Ok((after_tax_payment, msgs))
-}
+//     let after_tax_payment = Coin {
+//         denom: state.coin_denom,
+//         amount: remaining_amount.amount,
+//     };
+//     Ok((after_tax_payment, msgs))
+// }
 
 fn get_existing_token_sale_state(
     storage: &dyn Storage,
@@ -672,7 +661,7 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 //         let env = mock_env();
 //         let info = mock_info(owner, &[]);
 //         let msg = InstantiateMsg {
-//             modules: None,
+//
 //             kernel_address: None,
 //         };
 //         let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
@@ -685,7 +674,7 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 //         let env = mock_env();
 //         let info = mock_info(MOCK_TOKEN_OWNER, &[]);
 //         let msg = InstantiateMsg {
-//             modules: None,
+//
 //             kernel_address: None,
 //         };
 //         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
@@ -705,7 +694,7 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 //         let env = mock_env();
 //         let info = mock_info(MOCK_TOKEN_OWNER, &[]);
 //         let msg = InstantiateMsg {
-//             modules: None,
+//
 //             kernel_address: None,
 //         };
 //         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
@@ -737,7 +726,7 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 //         let env = mock_env();
 //         let info = mock_info(MOCK_TOKEN_OWNER, &[]);
 //         let msg = InstantiateMsg {
-//             modules: None,
+//
 //             kernel_address: None,
 //         };
 //         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
@@ -768,7 +757,7 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 //         let env = mock_env();
 //         let info = mock_info("owner", &[]);
 //         let msg = InstantiateMsg {
-//             modules: None,
+//
 //             kernel_address: None,
 //         };
 //         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
@@ -816,7 +805,7 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 //         let env = mock_env();
 //         let info = mock_info("owner", &[]);
 //         let msg = InstantiateMsg {
-//             modules: None,
+//
 //             kernel_address: None,
 //         };
 //         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
@@ -864,7 +853,7 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 //         let env = mock_env();
 //         let info = mock_info("owner", &[]);
 //         let msg = InstantiateMsg {
-//             modules: None,
+//
 //             kernel_address: None,
 //         };
 //         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
@@ -887,7 +876,7 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 //         let env = mock_env();
 //         let info = mock_info("owner", &[]);
 //         let msg = InstantiateMsg {
-//             modules: None,
+//
 //             kernel_address: None,
 //         };
 //         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
@@ -913,7 +902,7 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 //         let env = mock_env();
 //         let info = mock_info("owner", &[]);
 //         let msg = InstantiateMsg {
-//             modules: None,
+//
 //             kernel_address: None,
 //         };
 //         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
@@ -939,7 +928,7 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 //         let env = mock_env();
 //         let info = mock_info("owner", &[]);
 //         let msg = InstantiateMsg {
-//             modules: None,
+//
 //             kernel_address: None,
 //         };
 //         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
@@ -972,7 +961,7 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 //             is_mutable: false,
 //         }];
 //         let msg = InstantiateMsg {
-//             modules: Some(modules),
+//
 //             kernel_address: None,
 //         };
 //         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
@@ -1002,7 +991,7 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 //             is_mutable: false,
 //         }];
 //         let msg = InstantiateMsg {
-//             modules: Some(modules),
+//
 //             kernel_address: None,
 //         };
 //         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();

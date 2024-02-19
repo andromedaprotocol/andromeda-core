@@ -22,11 +22,10 @@ impl MockAuction {
         code_id: u64,
         sender: Addr,
         app: &mut App,
-        modules: Option<Vec<Module>>,
         kernel_address: impl Into<String>,
         owner: Option<String>,
     ) -> MockAuction {
-        let msg = mock_auction_instantiate_msg(modules, kernel_address, owner);
+        let msg = mock_auction_instantiate_msg(kernel_address, owner);
         let addr = app
             .instantiate_contract(
                 code_id,
@@ -109,12 +108,10 @@ pub fn mock_andromeda_auction() -> Box<dyn Contract<Empty>> {
 }
 
 pub fn mock_auction_instantiate_msg(
-    modules: Option<Vec<Module>>,
     kernel_address: impl Into<String>,
     owner: Option<String>,
 ) -> InstantiateMsg {
     InstantiateMsg {
-        modules,
         kernel_address: kernel_address.into(),
         owner,
     }

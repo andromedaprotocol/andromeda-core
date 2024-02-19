@@ -29,7 +29,7 @@ fn init_setup(deps: DepsMut, env: Env, modules: Option<Vec<Module>>) {
         name: NAME.to_string(),
         symbol: SYMBOL.to_string(),
         minter: AndrAddr::from_string(MINTER.to_string()),
-        modules,
+
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
     };
@@ -559,7 +559,7 @@ fn test_update_app_contract_invalid_minter() {
         name: NAME.to_string(),
         symbol: SYMBOL.to_string(),
         minter: AndrAddr::from_string(FAKE_VFS_PATH),
-        modules: None,
+
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: Some("owner".to_string()),
     };
@@ -587,7 +587,7 @@ fn test_batch_mint() {
         name: NAME.to_string(),
         symbol: SYMBOL.to_string(),
         minter: AndrAddr::from_string(MINTER),
-        modules: None,
+
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
     };

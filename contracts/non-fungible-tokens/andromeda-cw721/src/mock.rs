@@ -26,7 +26,6 @@ impl MockCW721 {
         name: impl Into<String>,
         symbol: impl Into<String>,
         minter: impl Into<String>,
-        modules: Option<Vec<Module>>,
         kernel_address: impl Into<String>,
         owner: Option<String>,
     ) -> MockCW721 {
@@ -34,7 +33,6 @@ impl MockCW721 {
             name.into(),
             symbol.into(),
             minter.into(),
-            modules,
             kernel_address.into(),
             owner,
         );
@@ -99,7 +97,6 @@ pub fn mock_cw721_instantiate_msg(
     name: String,
     symbol: String,
     minter: impl Into<String>,
-    modules: Option<Vec<Module>>,
     kernel_address: String,
     owner: Option<String>,
 ) -> InstantiateMsg {
@@ -107,7 +104,7 @@ pub fn mock_cw721_instantiate_msg(
         name,
         symbol,
         minter: AndrAddr::from_string(minter.into()),
-        modules,
+
         kernel_address,
         owner,
     }

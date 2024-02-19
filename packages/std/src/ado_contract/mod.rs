@@ -3,9 +3,6 @@ mod execute;
 #[cfg(feature = "instantiate")]
 mod instantiate;
 
-#[cfg(feature = "modules")]
-pub mod modules;
-
 mod ownership;
 
 pub mod permissioning;

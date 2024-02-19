@@ -19,10 +19,9 @@ impl MockMarketplace {
         sender: Addr,
         app: &mut App,
         kernel_address: impl Into<String>,
-        modules: Option<Vec<Module>>,
         owner: Option<String>,
     ) -> MockMarketplace {
-        let msg = mock_marketplace_instantiate_msg(kernel_address.into(), modules, owner);
+        let msg = mock_marketplace_instantiate_msg(kernel_address.into(), owner);
         let addr = app
             .instantiate_contract(
                 code_id,
@@ -54,11 +53,9 @@ pub fn mock_andromeda_marketplace() -> Box<dyn Contract<Empty>> {
 
 pub fn mock_marketplace_instantiate_msg(
     kernel_address: String,
-    modules: Option<Vec<Module>>,
     owner: Option<String>,
 ) -> InstantiateMsg {
     InstantiateMsg {
-        modules,
         kernel_address,
         owner,
     }

@@ -1,6 +1,5 @@
 pub mod ado_type;
 pub mod block_height;
-#[cfg(any(feature = "module_hooks", feature = "modules"))]
 pub mod hooks;
 pub mod kernel_address;
 pub mod modules;
@@ -22,7 +21,6 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Binary;
 pub use modules::Module;
 
-#[cfg(feature = "modules")]
 use cosmwasm_std::Uint64;
 
 #[cw_serde]
@@ -49,19 +47,6 @@ pub enum AndromedaMsg {
     Withdraw {
         recipient: Option<Recipient>,
         tokens_to_withdraw: Option<Vec<Withdrawal>>,
-    },
-    #[cfg(feature = "modules")]
-    RegisterModule {
-        module: Module,
-    },
-    #[cfg(feature = "modules")]
-    DeregisterModule {
-        module_idx: Uint64,
-    },
-    #[cfg(feature = "modules")]
-    AlterModule {
-        module_idx: Uint64,
-        module: Module,
     },
     Deposit {
         recipient: Option<AndrAddr>,
@@ -104,10 +89,10 @@ pub enum AndromedaQuery {
     Version {},
     #[returns(Option<::cosmwasm_std::Addr>)]
     AppContract {},
-    #[cfg(feature = "modules")]
+
     #[returns(Module)]
     Module { id: Uint64 },
-    #[cfg(feature = "modules")]
+
     #[returns(Vec<String>)]
     ModuleIds {},
     #[cfg(feature = "withdraw")]

@@ -29,10 +29,9 @@ use cw_utils::Expiration;
 // const ADDRESS_LIST: &str = "addresslist";
 // const RATES: &str = "rates";
 
-fn init(deps: DepsMut, modules: Option<Vec<Module>>) -> Response {
+fn init(deps: DepsMut) -> Response {
     let msg = InstantiateMsg {
         owner: None,
-        modules,
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
     };
 
@@ -105,7 +104,7 @@ fn assert_auction_created(deps: Deps, whitelist: Option<Vec<Addr>>, min_bid: Opt
 #[test]
 fn test_auction_instantiate() {
     let mut deps = mock_dependencies();
-    let res = init(deps.as_mut(), None);
+    let res = init(deps.as_mut());
     assert_eq!(0, res.messages.len());
 }
 
@@ -113,7 +112,7 @@ fn test_auction_instantiate() {
 fn test_execute_place_bid_non_existing_auction() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
-    let _res = init(deps.as_mut(), None);
+    let _res = init(deps.as_mut());
 
     let msg = ExecuteMsg::PlaceBid {
         token_id: MOCK_UNCLAIMED_TOKEN.to_string(),
@@ -128,7 +127,7 @@ fn test_execute_place_bid_non_existing_auction() {
 fn execute_place_bid_auction_not_started() {
     let mut deps = mock_dependencies_custom(&[]);
     let mut env = mock_env();
-    let _res = init(deps.as_mut(), None);
+    let _res = init(deps.as_mut());
 
     start_auction(deps.as_mut(), None, None);
     assert_auction_created(deps.as_ref(), None, None);
@@ -149,7 +148,7 @@ fn execute_place_bid_auction_not_started() {
 fn execute_place_bid_auction_ended() {
     let mut deps = mock_dependencies_custom(&[]);
     let mut env = mock_env();
-    let _res = init(deps.as_mut(), None);
+    let _res = init(deps.as_mut());
 
     start_auction(deps.as_mut(), None, None);
     assert_auction_created(deps.as_ref(), None, None);
@@ -170,7 +169,7 @@ fn execute_place_bid_auction_ended() {
 fn execute_place_bid_token_owner_cannot_bid() {
     let mut deps = mock_dependencies_custom(&[]);
     let mut env = mock_env();
-    let _res = init(deps.as_mut(), None);
+    let _res = init(deps.as_mut());
 
     start_auction(deps.as_mut(), None, None);
     assert_auction_created(deps.as_ref(), None, None);
@@ -191,7 +190,7 @@ fn execute_place_bid_token_owner_cannot_bid() {
 fn execute_place_bid_whitelist() {
     let mut deps = mock_dependencies_custom(&[]);
     let mut env = mock_env();
-    let _res = init(deps.as_mut(), None);
+    let _res = init(deps.as_mut());
 
     start_auction(deps.as_mut(), Some(vec![Addr::unchecked("sender")]), None);
     assert_auction_created(deps.as_ref(), Some(vec![Addr::unchecked("sender")]), None);
@@ -214,7 +213,7 @@ fn execute_place_bid_whitelist() {
 fn execute_place_bid_highest_bidder_cannot_outbid() {
     let mut deps = mock_dependencies_custom(&[]);
     let mut env = mock_env();
-    let _res = init(deps.as_mut(), None);
+    let _res = init(deps.as_mut());
 
     start_auction(deps.as_mut(), None, None);
     assert_auction_created(deps.as_ref(), None, None);
@@ -241,7 +240,7 @@ fn execute_place_bid_highest_bidder_cannot_outbid() {
 fn execute_place_bid_bid_smaller_than_highest_bid() {
     let mut deps = mock_dependencies_custom(&[]);
     let mut env = mock_env();
-    let _res = init(deps.as_mut(), None);
+    let _res = init(deps.as_mut());
 
     start_auction(deps.as_mut(), None, None);
     assert_auction_created(deps.as_ref(), None, None);
@@ -265,7 +264,7 @@ fn execute_place_bid_bid_smaller_than_highest_bid() {
 fn execute_place_bid_invalid_coins_sent() {
     let mut deps = mock_dependencies_custom(&[]);
     let mut env = mock_env();
-    let _res = init(deps.as_mut(), None);
+    let _res = init(deps.as_mut());
 
     start_auction(deps.as_mut(), None, None);
     assert_auction_created(deps.as_ref(), None, None);
@@ -309,7 +308,7 @@ fn execute_place_bid_invalid_coins_sent() {
 fn execute_place_bid_multiple_bids() {
     let mut deps = mock_dependencies_custom(&[]);
     let mut env = mock_env();
-    let _res = init(deps.as_mut(), None);
+    let _res = init(deps.as_mut());
 
     start_auction(deps.as_mut(), None, None);
     assert_auction_created(deps.as_ref(), None, None);
@@ -401,7 +400,7 @@ fn execute_place_bid_multiple_bids() {
 fn execute_place_bid_auction_cancelled() {
     let mut deps = mock_dependencies_custom(&[]);
     let mut env = mock_env();
-    let _res = init(deps.as_mut(), None);
+    let _res = init(deps.as_mut());
 
     start_auction(deps.as_mut(), None, None);
     assert_auction_created(deps.as_ref(), None, None);
@@ -428,7 +427,7 @@ fn execute_place_bid_auction_cancelled() {
 #[test]
 fn test_execute_start_auction() {
     let mut deps = mock_dependencies_custom(&[]);
-    let _res = init(deps.as_mut(), None);
+    let _res = init(deps.as_mut());
 
     let hook_msg = Cw721HookMsg::StartAuction {
         start_time: 100000,
@@ -467,7 +466,7 @@ fn test_execute_start_auction() {
 //     let mut deps = mock_dependencies_custom(&[]);
 //     let env = mock_env();
 //     let info = mock_info("owner", &[]);
-//     let msg = InstantiateMsg { modules: None, kernel_address: None };
+//     let msg = InstantiateMsg {  kernel_address: None };
 //     let _res = instantiate(deps.as_mut(), env, &info, msg).unwrap();
 
 //     let hook_msg = Cw721HookMsg::StartAuction {
@@ -506,7 +505,7 @@ fn test_execute_start_auction() {
 //     let mut deps = mock_dependencies_custom(&[]);
 //     let env = mock_env();
 //     let info = mock_info("owner", &[]);
-//     let msg = InstantiateMsg { modules: None, kernel_address: None };
+//     let msg = InstantiateMsg {  kernel_address: None };
 //     let _res = instantiate(deps.as_mut(), env, &info, msg).unwrap();
 
 //     let hook_msg = Cw721HookMsg::StartAuction {
@@ -536,7 +535,7 @@ fn test_execute_start_auction() {
 #[test]
 fn execute_start_auction_start_time_in_past() {
     let mut deps = mock_dependencies_custom(&[]);
-    let _res = init(deps.as_mut(), None);
+    let _res = init(deps.as_mut());
 
     let hook_msg = Cw721HookMsg::StartAuction {
         start_time: 100000,
@@ -568,7 +567,7 @@ fn execute_start_auction_start_time_in_past() {
 #[test]
 fn execute_start_auction_zero_start_time() {
     let mut deps = mock_dependencies_custom(&[]);
-    let _res = init(deps.as_mut(), None);
+    let _res = init(deps.as_mut());
 
     let hook_msg = Cw721HookMsg::StartAuction {
         start_time: 0,
@@ -594,7 +593,7 @@ fn execute_start_auction_zero_start_time() {
 #[test]
 fn execute_start_auction_zero_duration() {
     let mut deps = mock_dependencies_custom(&[]);
-    let _res = init(deps.as_mut(), None);
+    let _res = init(deps.as_mut());
 
     let hook_msg = Cw721HookMsg::StartAuction {
         start_time: 100,
@@ -622,7 +621,7 @@ fn execute_start_auction_zero_duration() {
 //     let mut deps = mock_dependencies_custom(&[]);
 //     let env = mock_env();
 //     let info = mock_info("owner", &[]);
-//     let msg = InstantiateMsg { modules: None, kernel_address: None };
+//     let msg = InstantiateMsg {  kernel_address: None };
 //     let _res = instantiate(deps.as_mut(), env, &info, msg).unwrap();
 
 //     let hook_msg = Cw721HookMsg::StartAuction {
@@ -649,7 +648,7 @@ fn execute_start_auction_zero_duration() {
 #[test]
 fn execute_update_auction_zero_start() {
     let mut deps = mock_dependencies_custom(&[]);
-    let _res = init(deps.as_mut(), None);
+    let _res = init(deps.as_mut());
 
     start_auction(deps.as_mut(), None, None);
 
@@ -675,7 +674,7 @@ fn execute_update_auction_zero_start() {
 #[test]
 fn execute_update_auction_start_time_in_past() {
     let mut deps = mock_dependencies_custom(&[]);
-    let _res = init(deps.as_mut(), None);
+    let _res = init(deps.as_mut());
 
     start_auction(deps.as_mut(), None, None);
 
@@ -707,7 +706,7 @@ fn execute_update_auction_start_time_in_past() {
 #[test]
 fn execute_update_auction_zero_duration() {
     let mut deps = mock_dependencies_custom(&[]);
-    let _res = init(deps.as_mut(), None);
+    let _res = init(deps.as_mut());
 
     start_auction(deps.as_mut(), None, None);
 
@@ -732,7 +731,7 @@ fn execute_update_auction_zero_duration() {
 #[test]
 fn execute_update_auction_unauthorized() {
     let mut deps = mock_dependencies_custom(&[]);
-    let _res = init(deps.as_mut(), None);
+    let _res = init(deps.as_mut());
 
     start_auction(deps.as_mut(), None, None);
 
@@ -757,7 +756,7 @@ fn execute_update_auction_unauthorized() {
 #[test]
 fn execute_update_auction_auction_started() {
     let mut deps = mock_dependencies_custom(&[]);
-    let _res = init(deps.as_mut(), None);
+    let _res = init(deps.as_mut());
 
     start_auction(deps.as_mut(), None, None);
 
@@ -782,7 +781,7 @@ fn execute_update_auction_auction_started() {
 #[test]
 fn execute_update_auction() {
     let mut deps = mock_dependencies_custom(&[]);
-    let _res = init(deps.as_mut(), None);
+    let _res = init(deps.as_mut());
 
     start_auction(deps.as_mut(), None, None);
 
@@ -825,7 +824,7 @@ fn execute_update_auction() {
 #[test]
 fn execute_start_auction_after_previous_finished() {
     let mut deps = mock_dependencies_custom(&[]);
-    let _res = init(deps.as_mut(), None);
+    let _res = init(deps.as_mut());
 
     // There was a previous auction.
     start_auction(deps.as_mut(), None, None);
@@ -864,7 +863,7 @@ fn execute_start_auction_after_previous_finished() {
 fn execute_claim_no_bids() {
     let mut deps = mock_dependencies_custom(&[]);
     let mut env = mock_env();
-    let _res = init(deps.as_mut(), None);
+    let _res = init(deps.as_mut());
 
     start_auction(deps.as_mut(), None, None);
 
@@ -902,7 +901,7 @@ fn execute_claim_no_bids() {
 fn execute_claim() {
     let mut deps = mock_dependencies_custom(&[]);
     let mut env = mock_env();
-    let _res = init(deps.as_mut(), None);
+    let _res = init(deps.as_mut());
 
     start_auction(deps.as_mut(), None, None);
 
@@ -954,7 +953,7 @@ fn execute_claim() {
 fn execute_claim_auction_not_ended() {
     let mut deps = mock_dependencies_custom(&[]);
     let mut env = mock_env();
-    let _res = init(deps.as_mut(), None);
+    let _res = init(deps.as_mut());
 
     start_auction(deps.as_mut(), None, None);
 
@@ -981,7 +980,7 @@ fn execute_claim_auction_not_ended() {
 #[test]
 fn execute_claim_auction_already_claimed() {
     let mut deps = mock_dependencies_custom(&[]);
-    let _res = init(deps.as_mut(), None);
+    let _res = init(deps.as_mut());
 
     let hook_msg = Cw721HookMsg::StartAuction {
         start_time: 100000,
@@ -1018,7 +1017,7 @@ fn execute_claim_auction_already_claimed() {
 fn execute_cancel_no_bids() {
     let mut deps = mock_dependencies_custom(&[]);
     let mut env = mock_env();
-    let _res = init(deps.as_mut(), None);
+    let _res = init(deps.as_mut());
 
     start_auction(deps.as_mut(), None, None);
 
@@ -1058,7 +1057,7 @@ fn execute_cancel_no_bids() {
 fn execute_cancel_with_bids() {
     let mut deps = mock_dependencies_custom(&[]);
     let mut env = mock_env();
-    let _res = init(deps.as_mut(), None);
+    let _res = init(deps.as_mut());
 
     start_auction(deps.as_mut(), None, None);
 
@@ -1110,7 +1109,7 @@ fn execute_cancel_with_bids() {
 fn execute_cancel_not_token_owner() {
     let mut deps = mock_dependencies_custom(&[]);
     let mut env = mock_env();
-    let _res = init(deps.as_mut(), None);
+    let _res = init(deps.as_mut());
 
     start_auction(deps.as_mut(), None, None);
 
@@ -1131,7 +1130,7 @@ fn execute_cancel_not_token_owner() {
 fn execute_cancel_auction_ended() {
     let mut deps = mock_dependencies_custom(&[]);
     let mut env = mock_env();
-    let _res = init(deps.as_mut(), None);
+    let _res = init(deps.as_mut());
 
     start_auction(deps.as_mut(), None, None);
 
@@ -1152,7 +1151,7 @@ fn execute_cancel_auction_ended() {
 fn execute_bid_below_min_price() {
     let mut deps = mock_dependencies_custom(&[]);
     let mut env = mock_env();
-    let _res = init(deps.as_mut(), None);
+    let _res = init(deps.as_mut());
 
     start_auction(deps.as_mut(), None, Some(Uint128::from(100u128)));
 

@@ -1,6 +1,4 @@
-use andromeda_std::{
-    amp::AndrAddr, andr_exec, andr_instantiate, andr_instantiate_modules, andr_query,
-};
+use andromeda_std::{amp::AndrAddr, andr_exec, andr_instantiate, andr_query};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
 use cw20::Cw20ReceiveMsg;
@@ -9,7 +7,6 @@ use cw_utils::Expiration;
 use serde::{Deserialize, Serialize};
 
 #[andr_instantiate]
-#[andr_instantiate_modules]
 #[cw_serde]
 pub struct InstantiateMsg {
     /// Address of the CW20 token to be sold

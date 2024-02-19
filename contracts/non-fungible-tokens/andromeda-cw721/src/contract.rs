@@ -72,13 +72,8 @@ pub fn instantiate(
             owner: msg.owner,
         },
     )?;
-    let modules_resp =
-        contract.register_modules(info.sender.as_str(), deps.storage, msg.modules)?;
 
-    Ok(resp
-        .add_submessages(modules_resp.messages)
-        .add_attributes(modules_resp.attributes)
-        .add_attributes(vec![attr("minter", msg.minter)]))
+    Ok(resp.add_attributes(vec![attr("minter", msg.minter)]))
 }
 
 #[cfg_attr(not(feature = "imported"), entry_point)]
@@ -283,23 +278,9 @@ fn execute_transfer(
         deps, info, env, ..
     } = env;
     let base_contract = ADOContract::default();
-    let responses = base_contract.module_hook::<Response>(
-        &deps.as_ref(),
-        AndromedaHook::OnTokenTransfer {
-            token_id: token_id.clone(),
-            sender: info.sender.to_string(),
-            recipient: recipient.clone(),
-        },
-    )?;
+
     // Reduce all responses into one.
-    let mut resp = responses
-        .into_iter()
-        .reduce(|resp, r| {
-            resp.add_submessages(r.messages)
-                .add_events(r.events)
-                .add_attributes(r.attributes)
-        })
-        .unwrap_or_else(Response::new);
+    let mut resp = Response::new();
 
     let contract = AndrCW721Contract::default();
     let mut token = contract.tokens.load(deps.storage, &token_id)?;
@@ -312,22 +293,28 @@ fn execute_transfer(
         &TRANSFER_AGREEMENTS.may_load(deps.storage, &token_id)?
     {
         let agreement_amount = get_transfer_agreement_amount(deps.api, &deps.querier, agreement)?;
-        let (mut msgs, events, remainder) = base_contract.on_funds_transfer(
-            &deps.as_ref(),
-            info.sender.to_string(),
-            Funds::Native(agreement_amount.clone()),
-            encode_binary(&ExecuteMsg::TransferNft {
-                token_id: token_id.clone(),
-                recipient: recipient.clone(),
-            })?,
-        )?;
-        let remaining_amount = remainder.try_get_coin()?;
-        let tax_amount = get_tax_amount(&msgs, agreement_amount.amount, remaining_amount.amount);
-        msgs.push(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+        // let (mut msgs, events, remainder) = base_contract.on_funds_transfer(
+        //     &deps.as_ref(),
+        //     info.sender.to_string(),
+        //     Funds::Native(agreement_amount.clone()),
+        //     encode_binary(&ExecuteMsg::TransferNft {
+        //         token_id: token_id.clone(),
+        //         recipient: recipient.clone(),
+        //     })?,
+        // )?;
+        let remaining_amount = Funds::Native(agreement_amount.clone()).try_get_coin()?;
+        // let tax_amount = get_tax_amount(&msgs, agreement_amount.amount, remaining_amount.amount);
+        let tax_amount = Uint128::zero();
+
+        // msgs.push(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+        //     to_address: token.owner.to_string(),
+        //     amount: vec![remaining_amount],
+        // })));
+        let msg = SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
             to_address: token.owner.to_string(),
             amount: vec![remaining_amount],
-        })));
-        resp = resp.add_submessages(msgs).add_events(events);
+        }));
+        resp = resp.add_submessage(msg);
         tax_amount
     } else {
         Uint128::zero()

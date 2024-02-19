@@ -37,7 +37,6 @@ fn test_update_app_contract() {
 
     let info = mock_info("app_contract", &[]);
     let msg = InstantiateMsg {
-        modules: Some(modules),
         recipients: vec![
             AddressWeight {
                 recipient: Recipient::new(MOCK_RECIPIENT1, None),
@@ -81,7 +80,7 @@ fn test_update_app_contract() {
 
 //     let info = mock_info("app_contract", &[]);
 //     let msg = InstantiateMsg {
-//         modules: Some(modules),
+//
 //         recipients: vec![AddressWeight {
 //             recipient: Recipient::new(MOCK_RECIPIENT1, None),
 //             weight: Uint128::new(100),
@@ -116,7 +115,7 @@ fn test_instantiate() {
             recipient: Recipient::from_string(MOCK_RECIPIENT1.to_string()),
             weight: Uint128::new(1),
         }],
-        modules: None,
+
         lock_time: None,
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,

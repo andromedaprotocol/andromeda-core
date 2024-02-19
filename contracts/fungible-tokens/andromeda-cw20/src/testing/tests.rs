@@ -15,7 +15,7 @@ use cw20_base::state::BALANCES;
 
 use super::mock_querier::MOCK_CW20_CONTRACT;
 
-fn init(deps: DepsMut, modules: Option<Vec<Module>>) -> Response {
+fn init(deps: DepsMut) -> Response {
     let msg = InstantiateMsg {
         name: MOCK_CW20_CONTRACT.into(),
         symbol: "Symbol".into(),
@@ -26,7 +26,7 @@ fn init(deps: DepsMut, modules: Option<Vec<Module>>) -> Response {
         }],
         mint: None,
         marketing: None,
-        modules,
+
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
     };
@@ -38,7 +38,7 @@ fn init(deps: DepsMut, modules: Option<Vec<Module>>) -> Response {
 #[test]
 fn test_andr_query() {
     let mut deps = mock_dependencies_custom(&[]);
-    let _res = init(deps.as_mut(), None);
+    let _res = init(deps.as_mut());
 
     let msg = QueryMsg::Owner {};
     let res = query(deps.as_ref(), mock_env(), msg);
@@ -48,21 +48,12 @@ fn test_andr_query() {
 
 #[test]
 fn test_transfer() {
-    let modules: Vec<Module> = vec![Module {
-        name: Some(MOCK_ADDRESS_LIST_CONTRACT.to_owned()),
-        address: AndrAddr::from_string(MOCK_ADDRESS_LIST_CONTRACT.to_owned()),
-
-        is_mutable: false,
-    }];
-
     let mut deps = mock_dependencies_custom(&[]);
-    let res = init(deps.as_mut(), Some(modules));
+    let res = init(deps.as_mut());
     assert_eq!(
         Response::new()
             .add_attribute("method", "instantiate")
-            .add_attribute("type", "cw20")
-            .add_attribute("action", "register_module")
-            .add_attribute("module_idx", "1"),
+            .add_attribute("type", "cw20"),
         res
     );
 
@@ -78,14 +69,14 @@ fn test_transfer() {
         amount: 100u128.into(),
     };
 
-    let not_whitelisted_info = mock_info("not_whitelisted", &[]);
-    let res = execute(deps.as_mut(), mock_env(), not_whitelisted_info, msg.clone());
-    assert_eq!(
-        ContractError::Std(StdError::generic_err(
-            "Querier contract error: InvalidAddress"
-        )),
-        res.unwrap_err()
-    );
+    // let not_whitelisted_info = mock_info("not_whitelisted", &[]);
+    // let res = execute(deps.as_mut(), mock_env(), not_whitelisted_info, msg.clone());
+    // assert_eq!(
+    //     ContractError::Std(StdError::generic_err(
+    //         "Querier contract error: InvalidAddress"
+    //     )),
+    //     res.unwrap_err()
+    // );
     let info = mock_info("sender", &[]);
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
@@ -130,7 +121,7 @@ fn test_send() {
     let mut deps = mock_dependencies_custom(&[]);
     let info = mock_info("sender", &[]);
 
-    let res = init(deps.as_mut(), None);
+    let res = init(deps.as_mut());
 
     assert_eq!(
         Response::new()

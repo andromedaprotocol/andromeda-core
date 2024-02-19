@@ -1,24 +1,19 @@
 use andromeda_fungible_tokens::cw20::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use andromeda_std::{
-    ado_base::{
-        hooks::AndromedaHook, AndromedaMsg, AndromedaQuery, InstantiateMsg as BaseInstantiateMsg,
-    },
+    ado_base::{AndromedaMsg, AndromedaQuery, InstantiateMsg as BaseInstantiateMsg},
     ado_contract::ADOContract,
-    common::Funds,
     common::{context::ExecuteContext, encode_binary},
     error::{from_semver, ContractError},
 };
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    ensure, from_json, to_json_binary, Addr, Api, Binary, CosmosMsg, Deps, DepsMut, Env,
-    MessageInfo, Response, StdResult, Storage, SubMsg, Uint128, WasmMsg,
+    ensure, from_json, to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, Uint128,
 };
 
 use cw2::{get_contract_version, set_contract_version};
-use cw20::{Cw20Coin, Cw20ExecuteMsg};
-use cw20_base::{
-    contract::{execute as execute_cw20, instantiate as cw20_instantiate, query as cw20_query},
-    state::BALANCES,
+use cw20::Cw20ExecuteMsg;
+use cw20_base::contract::{
+    execute as execute_cw20, instantiate as cw20_instantiate, query as cw20_query,
 };
 use semver::Version;
 
@@ -48,14 +43,10 @@ pub fn instantiate(
             owner: msg.clone().owner,
         },
     )?;
-    let modules_resp =
-        contract.register_modules(info.sender.as_str(), deps.storage, msg.clone().modules)?;
 
     let cw20_resp = cw20_instantiate(deps, env, info, msg.into())?;
 
     Ok(resp
-        .add_submessages(modules_resp.messages)
-        .add_attributes(modules_resp.attributes)
         .add_submessages(cw20_resp.messages)
         .add_attributes(cw20_resp.attributes))
 }
@@ -78,18 +69,6 @@ pub fn execute(
 }
 
 pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
-    let contract = ADOContract::default();
-    if !matches!(msg, ExecuteMsg::UpdateAppContract { .. })
-        && !matches!(msg, ExecuteMsg::UpdateOwner { .. })
-    {
-        contract.module_hook::<Response>(
-            &ctx.deps.as_ref(),
-            AndromedaHook::OnExecute {
-                sender: ctx.info.sender.to_string(),
-                payload: encode_binary(&msg)?,
-            },
-        )?;
-    }
     match msg {
         ExecuteMsg::Transfer { recipient, amount } => execute_transfer(ctx, recipient, amount),
         ExecuteMsg::Burn { amount } => execute_burn(ctx, amount),
@@ -118,59 +97,14 @@ fn execute_transfer(
         deps, info, env, ..
     } = ctx;
 
-    let (msgs, events, remainder) = ADOContract::default().on_funds_transfer(
-        &deps.as_ref(),
-        info.sender.to_string(),
-        Funds::Cw20(Cw20Coin {
-            address: env.contract.address.to_string(),
-            amount,
-        }),
-        to_json_binary(&ExecuteMsg::Transfer {
-            amount,
-            recipient: recipient.clone(),
-        })?,
-    )?;
-
-    let remaining_amount = match remainder {
-        Funds::Native(..) => amount, //What do we do in the case that the rates returns remaining amount as native funds?
-        Funds::Cw20(coin) => coin.amount,
-    };
-
-    let mut resp = filter_out_cw20_messages(msgs, deps.storage, deps.api, &info.sender)?;
-
     // Continue with standard cw20 operation
     let cw20_resp = execute_cw20(
         deps,
         env,
         info,
-        Cw20ExecuteMsg::Transfer {
-            recipient,
-            amount: remaining_amount,
-        },
+        Cw20ExecuteMsg::Transfer { recipient, amount },
     )?;
-    resp = resp.add_attributes(cw20_resp.attributes).add_events(events);
-    Ok(resp)
-}
-
-fn transfer_tokens(
-    storage: &mut dyn Storage,
-    sender: &Addr,
-    recipient: &Addr,
-    amount: Uint128,
-) -> Result<(), ContractError> {
-    BALANCES.update(
-        storage,
-        sender,
-        |balance: Option<Uint128>| -> StdResult<_> {
-            Ok(balance.unwrap_or_default().checked_sub(amount)?)
-        },
-    )?;
-    BALANCES.update(
-        storage,
-        recipient,
-        |balance: Option<Uint128>| -> StdResult<_> { Ok(balance.unwrap_or_default() + amount) },
-    )?;
-    Ok(())
+    Ok(cw20_resp)
 }
 
 fn execute_burn(ctx: ExecuteContext, amount: Uint128) -> Result<Response, ContractError> {
@@ -196,43 +130,18 @@ fn execute_send(
         deps, info, env, ..
     } = ctx;
 
-    let (msgs, events, remainder) = ADOContract::default().on_funds_transfer(
-        &deps.as_ref(),
-        info.sender.to_string(),
-        Funds::Cw20(Cw20Coin {
-            address: env.contract.address.to_string(),
-            amount,
-        }),
-        to_json_binary(&ExecuteMsg::Send {
-            amount,
-            contract: contract.clone(),
-            msg: msg.clone(),
-        })?,
-    )?;
-
-    let remaining_amount = match remainder {
-        Funds::Native(..) => amount, //What do we do in the case that the rates returns remaining amount as native funds?
-        Funds::Cw20(coin) => coin.amount,
-    };
-
-    let mut resp = filter_out_cw20_messages(msgs, deps.storage, deps.api, &info.sender)?;
-
     let cw20_resp = execute_cw20(
         deps,
         env,
         info,
         Cw20ExecuteMsg::Send {
             contract,
-            amount: remaining_amount,
+            amount,
             msg,
         },
     )?;
-    resp = resp
-        .add_attributes(cw20_resp.attributes)
-        .add_events(events)
-        .add_submessages(cw20_resp.messages);
 
-    Ok(resp)
+    Ok(cw20_resp)
 }
 
 fn execute_mint(
@@ -250,32 +159,6 @@ fn execute_mint(
         info,
         Cw20ExecuteMsg::Mint { recipient, amount },
     )?)
-}
-
-fn filter_out_cw20_messages(
-    msgs: Vec<SubMsg>,
-    storage: &mut dyn Storage,
-    api: &dyn Api,
-    sender: &Addr,
-) -> Result<Response, ContractError> {
-    let mut resp: Response = Response::new();
-    // Filter through payment messages to extract cw20 transfer messages to avoid looping
-    for sub_msg in msgs {
-        // Transfer messages are CosmosMsg::Wasm type
-        if let CosmosMsg::Wasm(WasmMsg::Execute { msg: exec_msg, .. }) = sub_msg.msg.clone() {
-            // If binary deserializes to a Cw20ExecuteMsg check the message type
-            if let Ok(Cw20ExecuteMsg::Transfer { recipient, amount }) =
-                from_json::<Cw20ExecuteMsg>(&exec_msg)
-            {
-                transfer_tokens(storage, sender, &api.addr_validate(&recipient)?, amount)?;
-            } else {
-                resp = resp.add_submessage(sub_msg);
-            }
-        } else {
-            resp = resp.add_submessage(sub_msg);
-        }
-    }
-    Ok(resp)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

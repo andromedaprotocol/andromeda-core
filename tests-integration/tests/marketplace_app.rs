@@ -13,7 +13,6 @@ use andromeda_marketplace::mock::{
 use andromeda_modules::rates::{Rate, RateInfo};
 
 use andromeda_rates::mock::{mock_andromeda_rates, mock_rates_instantiate_msg};
-use andromeda_std::ado_base::modules::Module;
 use andromeda_std::amp::messages::{AMPMsg, AMPPkt};
 use andromeda_std::amp::Recipient;
 use andromeda_testing::{MockAndromeda, MockContract};
@@ -66,7 +65,6 @@ fn test_marketplace_app() {
         "Test Tokens".to_string(),
         "TT".to_string(),
         owner.to_string(),
-        None,
         andr.kernel.addr().to_string(),
         None,
     );
@@ -93,16 +91,8 @@ fn test_marketplace_app() {
         to_json_binary(&address_list_init_msg).unwrap(),
     );
 
-    let modules: Vec<Module> = vec![
-        Module::new("rates", format!("./{}", rates_component.name), false),
-        Module::new(
-            "address-list",
-            format!("./{}", address_list_component.name),
-            false,
-        ),
-    ];
     let marketplace_init_msg =
-        mock_marketplace_instantiate_msg(andr.kernel.addr().to_string(), Some(modules), None);
+        mock_marketplace_instantiate_msg(andr.kernel.addr().to_string(), None);
     let marketplace_component = AppComponent::new(
         "4".to_string(),
         "marketplace".to_string(),

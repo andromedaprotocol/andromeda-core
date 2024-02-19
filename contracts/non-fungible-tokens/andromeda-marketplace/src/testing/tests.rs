@@ -87,10 +87,10 @@ fn start_sale_future_start_with_duration(deps: DepsMut, env: Env) {
     let _res = execute(deps, env, info, msg).unwrap();
 }
 
-fn init(deps: DepsMut, modules: Option<Vec<Module>>) -> Response {
+fn init(deps: DepsMut) -> Response {
     let msg = InstantiateMsg {
         owner: None,
-        modules,
+
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
     };
 
@@ -169,14 +169,14 @@ fn assert_sale_created_future_start(deps: Deps, env: Env) {
 #[test]
 fn test_sale_instantiate() {
     let mut deps = mock_dependencies_custom(&[]);
-    let res = init(deps.as_mut(), None);
+    let res = init(deps.as_mut());
     assert_eq!(0, res.messages.len());
 }
 
 #[test]
 fn test_sale_instantiate_future_start() {
     let mut deps = mock_dependencies_custom(&[]);
-    let res = init(deps.as_mut(), None);
+    let res = init(deps.as_mut());
     assert_eq!(0, res.messages.len());
 
     start_sale_future_start(deps.as_mut(), mock_env());
@@ -186,7 +186,7 @@ fn test_sale_instantiate_future_start() {
 #[test]
 fn test_execute_buy_non_existing_sale() {
     let mut deps = mock_dependencies_custom(&[]);
-    let _res = init(deps.as_mut(), None);
+    let _res = init(deps.as_mut());
     let env = mock_env();
     let msg = ExecuteMsg::Buy {
         token_id: MOCK_UNCLAIMED_TOKEN.to_string(),
@@ -201,7 +201,7 @@ fn test_execute_buy_non_existing_sale() {
 fn test_execute_buy_sale_not_open_already_bought() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
-    let _res = init(deps.as_mut(), None);
+    let _res = init(deps.as_mut());
 
     start_sale(deps.as_mut());
     assert_sale_created(deps.as_ref(), env.clone());
@@ -229,7 +229,7 @@ fn test_execute_buy_sale_not_open_cancelled() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
 
-    let _res = init(deps.as_mut(), None);
+    let _res = init(deps.as_mut());
 
     start_sale(deps.as_mut());
     assert_sale_created(deps.as_ref(), env.clone());
@@ -256,7 +256,7 @@ fn test_execute_buy_token_owner_cannot_buy() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
 
-    let _res = init(deps.as_mut(), None);
+    let _res = init(deps.as_mut());
 
     start_sale(deps.as_mut());
     assert_sale_created(deps.as_ref(), env.clone());
@@ -276,7 +276,7 @@ fn test_execute_buy_invalid_coins_sent() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
 
-    let _res = init(deps.as_mut(), None);
+    let _res = init(deps.as_mut());
 
     start_sale(deps.as_mut());
     assert_sale_created(deps.as_ref(), env.clone());
@@ -320,7 +320,7 @@ fn test_execute_buy_works() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
 
-    let _res = init(deps.as_mut(), None);
+    let _res = init(deps.as_mut());
 
     start_sale(deps.as_mut());
     assert_sale_created(deps.as_ref(), env.clone());
@@ -339,7 +339,7 @@ fn test_execute_buy_future_start() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
 
-    let _res = init(deps.as_mut(), None);
+    let _res = init(deps.as_mut());
 
     start_sale_future_start(deps.as_mut(), mock_env());
     assert_sale_created_future_start(deps.as_ref(), mock_env());
@@ -360,7 +360,7 @@ fn test_execute_buy_sale_expired() {
     let mut deps = mock_dependencies_custom(&[]);
     let mut env = mock_env();
 
-    let _res = init(deps.as_mut(), None);
+    let _res = init(deps.as_mut());
 
     start_sale_future_start_with_duration(deps.as_mut(), mock_env());
 
@@ -382,7 +382,7 @@ fn test_execute_update_sale_unauthorized() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
 
-    let _res = init(deps.as_mut(), None);
+    let _res = init(deps.as_mut());
 
     start_sale(deps.as_mut());
     assert_sale_created(deps.as_ref(), env.clone());
@@ -404,7 +404,7 @@ fn test_execute_update_sale_invalid_price() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
 
-    let _res = init(deps.as_mut(), None);
+    let _res = init(deps.as_mut());
 
     start_sale(deps.as_mut());
     assert_sale_created(deps.as_ref(), env.clone());
@@ -424,7 +424,7 @@ fn test_execute_update_sale_invalid_price() {
 #[test]
 fn test_execute_start_sale_invalid_price() {
     let mut deps = mock_dependencies_custom(&[]);
-    let _res = init(deps.as_mut(), None);
+    let _res = init(deps.as_mut());
 
     let hook_msg = Cw721HookMsg::StartSale {
         coin_denom: "uusd".to_string(),
@@ -452,7 +452,7 @@ fn test_execute_buy_with_tax_and_royalty_insufficient_funds() {
         address: AndrAddr::from_string(MOCK_RATES_CONTRACT.to_owned()),
         is_mutable: false,
     }];
-    let _res = init(deps.as_mut(), Some(modules));
+    let _res = init(deps.as_mut());
 
     start_sale(deps.as_mut());
     assert_sale_created(deps.as_ref(), mock_env());
@@ -475,7 +475,7 @@ fn test_execute_buy_with_tax_and_royalty_works() {
         address: AndrAddr::from_string(MOCK_RATES_CONTRACT.to_owned()),
         is_mutable: false,
     }];
-    let _res = init(deps.as_mut(), Some(modules));
+    let _res = init(deps.as_mut());
 
     start_sale(deps.as_mut());
     assert_sale_created(deps.as_ref(), mock_env());

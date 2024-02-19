@@ -30,7 +30,7 @@ pub struct Purchase {
     /// Amount of tax paid.
     pub tax_amount: Uint128,
     /// sub messages for sending funds for rates.
-    pub msgs: Vec<SubMsg>,
+    // pub msgs: Vec<SubMsg>,
     /// The purchaser of the token.
     pub purchaser: String,
 }

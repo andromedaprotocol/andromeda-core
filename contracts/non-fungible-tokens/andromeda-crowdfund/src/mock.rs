@@ -26,14 +26,12 @@ impl MockCrowdfund {
         app: &mut App,
         token_address: AndrAddr,
         can_mint_after_sale: bool,
-        modules: Option<Vec<Module>>,
         kernel_address: impl Into<String>,
         owner: Option<String>,
     ) -> MockCrowdfund {
         let msg = mock_crowdfund_instantiate_msg(
             token_address,
             can_mint_after_sale,
-            modules,
             kernel_address,
             owner,
         );
@@ -127,14 +125,12 @@ pub fn mock_andromeda_crowdfund() -> Box<dyn Contract<Empty>> {
 pub fn mock_crowdfund_instantiate_msg(
     token_address: AndrAddr,
     can_mint_after_sale: bool,
-    modules: Option<Vec<Module>>,
     kernel_address: impl Into<String>,
     owner: Option<String>,
 ) -> InstantiateMsg {
     InstantiateMsg {
         token_address,
         can_mint_after_sale,
-        modules,
         kernel_address: kernel_address.into(),
         owner,
     }

@@ -17,7 +17,5 @@ pub use kernel::MockKernel;
 pub use mock::MockAndromeda;
 #[cfg(all(not(target_arch = "wasm32")))]
 pub use mock_contract::MockADO;
-#[cfg(all(not(target_arch = "wasm32")))]
 pub use mock_contract::MockContract;
-#[cfg(all(not(target_arch = "wasm32")))]
 pub use vfs::MockVFS;

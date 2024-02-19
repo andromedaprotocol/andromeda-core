@@ -7,12 +7,9 @@ use andromeda_cw721::mock::{mock_andromeda_cw721, mock_cw721_instantiate_msg, Mo
 use andromeda_finance::splitter::AddressPercent;
 use andromeda_std::amp::{AndrAddr, Recipient};
 
-use andromeda_modules::rates::{Rate, RateInfo};
-use andromeda_rates::mock::{mock_andromeda_rates, mock_rates_instantiate_msg};
 use andromeda_splitter::mock::{
     mock_andromeda_splitter, mock_splitter_instantiate_msg, mock_splitter_send_msg,
 };
-use andromeda_std::ado_base::modules::Module;
 use std::str::FromStr;
 
 use andromeda_testing::{mock::MockAndromeda, mock_contract::MockContract};
@@ -21,7 +18,7 @@ use andromeda_vault::mock::{
 };
 use cosmwasm_std::{coin, to_json_binary, Addr, BlockInfo, Decimal, Uint128};
 use cw721::Expiration;
-use cw_multi_test::{App, Executor};
+use cw_multi_test::App;
 
 fn mock_app() -> App {
     App::new(|router, _api, storage| {
@@ -82,32 +79,9 @@ fn test_crowdfund_app() {
     andr.store_ado(&mut router, mock_andromeda_vault(), "vault");
     andr.store_ado(&mut router, mock_andromeda_splitter(), "splitter");
     let app_code_id = andr.store_ado(&mut router, mock_andromeda_app(), "app");
-    let rates_code_id = andr.store_ado(&mut router, mock_andromeda_rates(), "rates");
 
     // Generate App Components
     // App component names must be less than 3 characters or longer than 54 characters to force them to be 'invalid' as the MockApi struct used within the CosmWasm App struct only contains those two validation checks
-    let rates_recipient = "rates_recipient";
-    // Generate rates contract
-    let rates: Vec<RateInfo> = [RateInfo {
-        rate: Rate::Flat(coin(1, "uandr")),
-        is_additive: false,
-        recipients: [Recipient::from_string(rates_recipient.to_string())].to_vec(),
-        description: Some("Some test rate".to_string()),
-    }]
-    .to_vec();
-    let rates_init_msg = mock_rates_instantiate_msg(rates, andr.kernel.addr().to_string(), None);
-    let rates_addr = router
-        .instantiate_contract(
-            rates_code_id,
-            owner.clone(),
-            &rates_init_msg,
-            &[],
-            "rates",
-            None,
-        )
-        .unwrap();
-
-    let modules: Vec<Module> = vec![Module::new("rates", rates_addr.to_string(), false)];
 
     let crowdfund_app_component = AppComponent {
         name: "1".to_string(),
@@ -116,7 +90,6 @@ fn test_crowdfund_app() {
             to_json_binary(&mock_crowdfund_instantiate_msg(
                 AndrAddr::from_string("./2".to_string()),
                 false,
-                Some(modules),
                 andr.kernel.addr().to_string(),
                 None,
             ))
@@ -130,7 +103,6 @@ fn test_crowdfund_app() {
             "Test Tokens".to_string(),
             "TT".to_string(),
             "./1", // Crowdfund must be minter
-            None,
             andr.kernel.addr().to_string(),
             None,
         )),
@@ -183,7 +155,7 @@ fn test_crowdfund_app() {
         mock_splitter_instantiate_msg(splitter_recipients, andr.kernel.addr().clone(), None, None);
     let splitter_app_component = AppComponent {
         name: "5".to_string(),
-        component_type: ComponentType::new(&splitter_init_msg),
+        component_type: ComponentType::new(splitter_init_msg),
         ado_type: "splitter".to_string(),
     };
 

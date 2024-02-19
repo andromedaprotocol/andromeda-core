@@ -81,12 +81,8 @@ pub fn instantiate(
             owner: msg.owner,
         },
     )?;
-    let mod_resp =
-        ADOContract::default().register_modules(info.sender.as_str(), deps.storage, msg.modules)?;
 
-    Ok(inst_resp
-        .add_attributes(mod_resp.attributes)
-        .add_submessages(mod_resp.messages))
+    Ok(inst_resp)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -96,20 +92,6 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
-    let contract = ADOContract::default();
-
-    if !matches!(msg, ExecuteMsg::UpdateAppContract { .. })
-        && !matches!(msg, ExecuteMsg::UpdateOwner { .. })
-    {
-        contract.module_hook::<Response>(
-            &deps.as_ref(),
-            AndromedaHook::OnExecute {
-                sender: info.sender.to_string(),
-                payload: encode_binary(&msg)?,
-            },
-        )?;
-    }
-
     let ctx = ExecuteContext::new(deps, info, env);
 
     match msg {

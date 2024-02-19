@@ -1,13 +1,11 @@
 use andromeda_std::{
-    amp::Recipient, andr_exec, andr_instantiate, andr_instantiate_modules, andr_query,
-    common::withdraw::WithdrawalType,
+    amp::Recipient, andr_exec, andr_instantiate, andr_query, common::withdraw::WithdrawalType,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Uint128, VoteOption};
 use cw_utils::Duration;
 
 #[andr_instantiate]
-#[andr_instantiate_modules]
 #[cw_serde]
 pub struct InstantiateMsg {
     /// The recipient of all funds locked in this contract.

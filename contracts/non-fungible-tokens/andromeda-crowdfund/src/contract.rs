@@ -66,12 +66,8 @@ pub fn instantiate(
             owner: msg.owner,
         },
     )?;
-    let mod_resp =
-        ADOContract::default().register_modules(info.sender.as_str(), deps.storage, msg.modules)?;
 
-    Ok(inst_resp
-        .add_attributes(mod_resp.attributes)
-        .add_submessages(mod_resp.messages))
+    Ok(inst_resp)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -105,17 +101,6 @@ pub fn execute(
 pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
 
-    if !matches!(msg, ExecuteMsg::UpdateAppContract { .. })
-        && !matches!(msg, ExecuteMsg::UpdateOwner { .. })
-    {
-        contract.module_hook::<Response>(
-            &ctx.deps.as_ref(),
-            AndromedaHook::OnExecute {
-                sender: ctx.info.sender.to_string(),
-                payload: encode_binary(&msg)?,
-            },
-        )?;
-    }
     match msg {
         ExecuteMsg::Mint(mint_msgs) => execute_mint(ctx, mint_msgs),
         ExecuteMsg::StartSale {
@@ -438,23 +423,23 @@ fn purchase_tokens(
     let mut total_tax_amount = Uint128::zero();
 
     // This is the same for each token, so we only need to do it once.
-    let (msgs, _events, remainder) = ADOContract::default().on_funds_transfer(
-        &deps.as_ref(),
-        info.sender.to_string(),
-        Funds::Native(state.price.clone()),
-        encode_binary(&"")?,
-    )?;
+    // let (msgs, _events, remainder) = ADOContract::default().on_funds_transfer(
+    //     &deps.as_ref(),
+    //     info.sender.to_string(),
+    //     Funds::Native(state.price.clone()),
+    //     encode_binary(&"")?,
+    // )?;
 
     let mut current_number = NUMBER_OF_TOKENS_AVAILABLE.load(deps.storage)?;
     for token_id in token_ids {
-        let remaining_amount = remainder.try_get_coin()?;
-
-        let tax_amount = get_tax_amount(&msgs, state.price.amount, remaining_amount.amount);
+        let remaining_amount = Funds::Native(state.price.clone()).try_get_coin()?;
+        // let tax_amount = get_tax_amount(&msgs, state.price.amount, remaining_amount.amount);
+        let tax_amount = Uint128::zero();
 
         let purchase = Purchase {
             token_id: token_id.clone(),
             tax_amount,
-            msgs: msgs.clone(),
+            // msgs: msgs.clone(),
             purchaser: info.sender.to_string(),
         };
 
@@ -659,7 +644,7 @@ fn transfer_tokens_and_send_funds(
         .collect();
 
     let config = CONFIG.load(deps.storage)?;
-    let mut rate_messages: Vec<SubMsg> = vec![];
+    // let mut rate_messages: Vec<SubMsg> = vec![];
     let mut transfer_msgs: Vec<CosmosMsg> = vec![];
 
     let last_purchaser = if purchases.len() == 1 {
@@ -694,7 +679,7 @@ fn transfer_tokens_and_send_funds(
             // at the end, if not all of them were removed.
             number_of_last_purchases_removed += 1;
         }
-        rate_messages.extend(purchase.msgs);
+        // rate_messages.extend(purchase.msgs);
         transfer_msgs.push(CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: token_contract_address.to_string(),
             msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
@@ -717,10 +702,10 @@ fn transfer_tokens_and_send_funds(
     }
     STATE.save(deps.storage, &state)?;
 
-    Ok(resp
-        .add_attribute("action", "transfer_tokens_and_send_funds")
-        .add_messages(transfer_msgs)
-        .add_submessages(merge_sub_msgs(rate_messages)))
+    Ok(
+        resp.add_attribute("action", "transfer_tokens_and_send_funds")
+            .add_messages(transfer_msgs), // .add_submessages(merge_sub_msgs(rate_messages))
+    )
 }
 
 /// Processes a vector of purchases for the SAME user by merging all funds into a single BankMsg.

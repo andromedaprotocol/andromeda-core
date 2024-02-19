@@ -1,6 +1,6 @@
 use andromeda_std::{
-    amp::recipient::Recipient, andr_exec, andr_instantiate, andr_instantiate_modules, andr_query,
-    common::merge_coins, error::ContractError,
+    amp::recipient::Recipient, andr_exec, andr_instantiate, andr_query, common::merge_coins,
+    error::ContractError,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{ensure, Api, BlockInfo, Coin};
@@ -117,7 +117,6 @@ impl Escrow {
 }
 
 #[andr_instantiate]
-#[andr_instantiate_modules]
 #[cw_serde]
 pub struct InstantiateMsg {}
 

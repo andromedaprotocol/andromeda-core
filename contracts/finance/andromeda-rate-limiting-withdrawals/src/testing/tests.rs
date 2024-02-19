@@ -18,9 +18,8 @@ use andromeda_finance::rate_limiting_withdrawals::{
     AccountDetails, CoinAndLimit, ExecuteMsg, InstantiateMsg, MinimumFrequency,
 };
 
-fn init(deps: DepsMut, modules: Option<Vec<Module>>) -> Response {
+fn init(deps: DepsMut) -> Response {
     let msg = InstantiateMsg {
-        modules,
         owner: Some(OWNER.to_owned()),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         allowed_coin: CoinAndLimit {
@@ -39,7 +38,7 @@ fn init(deps: DepsMut, modules: Option<Vec<Module>>) -> Response {
 #[test]
 fn test_instantiate_works() {
     let mut deps = mock_dependencies_custom(&[]);
-    let res = init(deps.as_mut(), None);
+    let res = init(deps.as_mut());
     assert_eq!(0, res.messages.len());
 }
 
@@ -47,7 +46,7 @@ fn test_instantiate_works() {
 fn test_deposit_zero_funds() {
     let mut deps = mock_dependencies_custom(&[]);
     let info = mock_info("creator", &[]);
-    let _res = init(deps.as_mut(), None);
+    let _res = init(deps.as_mut());
 
     let exec = ExecuteMsg::Deposits { recipient: None };
     let _err = execute(deps.as_mut(), mock_env(), info, exec).unwrap_err();
@@ -56,7 +55,7 @@ fn test_deposit_zero_funds() {
 #[test]
 fn test_deposit_invalid_funds() {
     let mut deps = mock_dependencies_custom(&[]);
-    let _res = init(deps.as_mut(), None);
+    let _res = init(deps.as_mut());
 
     let exec = ExecuteMsg::Deposits {
         recipient: Some("me".to_string()),
@@ -76,7 +75,7 @@ fn test_deposit_invalid_funds() {
 #[test]
 fn test_deposit_new_account_works() {
     let mut deps = mock_dependencies_custom(&[]);
-    let _res = init(deps.as_mut(), None);
+    let _res = init(deps.as_mut());
 
     let exec = ExecuteMsg::Deposits {
         recipient: Some("andromedauser".to_string()),
@@ -98,7 +97,7 @@ fn test_deposit_new_account_works() {
 #[test]
 fn test_deposit_existing_account_works() {
     let mut deps = mock_dependencies_custom(&[]);
-    let _res = init(deps.as_mut(), None);
+    let _res = init(deps.as_mut());
 
     let exec = ExecuteMsg::Deposits {
         recipient: Some("andromedauser".to_string()),
@@ -125,7 +124,7 @@ fn test_deposit_existing_account_works() {
 #[test]
 fn test_withdraw_account_not_found() {
     let mut deps = mock_dependencies_custom(&[]);
-    let _res = init(deps.as_mut(), None);
+    let _res = init(deps.as_mut());
 
     let exec = ExecuteMsg::Deposits {
         recipient: Some("andromedauser".to_string()),
@@ -146,7 +145,7 @@ fn test_withdraw_account_not_found() {
 #[test]
 fn test_withdraw_over_account_limit() {
     let mut deps = mock_dependencies_custom(&[]);
-    let _res = init(deps.as_mut(), None);
+    let _res = init(deps.as_mut());
 
     let exec = ExecuteMsg::Deposits {
         recipient: Some("andromedauser".to_string()),
@@ -167,7 +166,7 @@ fn test_withdraw_over_account_limit() {
 #[test]
 fn test_withdraw_funds_locked() {
     let mut deps = mock_dependencies_custom(&[]);
-    let _res = init(deps.as_mut(), None);
+    let _res = init(deps.as_mut());
 
     let exec = ExecuteMsg::Deposits {
         recipient: Some("andromedauser".to_string()),
@@ -199,7 +198,6 @@ fn test_withdraw_over_allowed_limit() {
     let env = mock_env();
     let info = mock_info("creator", &[]);
     let msg = InstantiateMsg {
-        modules: None,
         allowed_coin: CoinAndLimit {
             coin: "junox".to_string(),
             limit: Uint128::from(20_u64),
@@ -233,7 +231,6 @@ fn test_withdraw_works() {
     let env = mock_env();
     let info = mock_info("creator", &[]);
     let msg = InstantiateMsg {
-        modules: None,
         allowed_coin: CoinAndLimit {
             coin: "junox".to_string(),
             limit: Uint128::from(50_u64),

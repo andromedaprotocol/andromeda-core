@@ -43,10 +43,7 @@ impl<'a> ADOContract<'a> {
                     encode_binary(&self.query_kernel_address(deps)?)
                 }
                 AndromedaQuery::Version {} => encode_binary(&self.query_version(deps)?),
-                #[cfg(feature = "modules")]
-                AndromedaQuery::Module { id } => encode_binary(&self.query_module(deps, id)?),
-                #[cfg(feature = "modules")]
-                AndromedaQuery::ModuleIds {} => encode_binary(&self.query_module_ids(deps)?),
+
                 AndromedaQuery::AppContract {} => {
                     encode_binary(&self.get_app_contract(deps.storage)?)
                 }

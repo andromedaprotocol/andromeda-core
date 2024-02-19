@@ -6,7 +6,7 @@ use crate::{
     os::kernel::QueryMsg as KernelQueryMsg,
     os::vfs::QueryMsg as VFSQueryMsg,
 };
-#[cfg(feature = "modules")]
+
 use cosmwasm_std::SubMsg;
 use cosmwasm_std::{
     from_json,
@@ -136,7 +136,7 @@ impl MockAndromedaQuerier {
                     MOCK_KERNEL_CONTRACT => self.handle_kernel_query(msg),
                     MOCK_VFS_CONTRACT => self.handle_vfs_query(msg),
                     MOCK_ADODB_CONTRACT => self.handle_adodb_query(msg),
-                    #[cfg(feature = "modules")]
+
                     MOCK_ADDRESS_LIST_CONTRACT => self.handle_address_list_query(msg),
                     _ => match from_json::<AndromedaQuery>(msg) {
                         Ok(msg) => self.handle_ado_query(msg),
@@ -304,7 +304,6 @@ impl MockAndromedaQuerier {
         }
     }
 
-    #[cfg(feature = "modules")]
     /// Handles all address list queries
     ///
     /// Returns `true` for `OnExecute` queries for any address excluding `UNWHITELISTED_ADDRESS`.
@@ -332,7 +331,6 @@ impl MockAndromedaQuerier {
         }
     }
 
-    #[cfg(feature = "modules")]
     /// Handles all rates queries
     ///
     /// The payments required are calculated using the `calculate_mock_rates_response` method within this crate
@@ -493,7 +491,6 @@ impl MockAndromedaQuerier {
     }
 }
 
-#[cfg(feature = "modules")]
 pub fn calculate_mock_rates_response() -> (Vec<SubMsg>, Vec<Coin>) {
     todo!("Implement after readding rates contract");
 }
