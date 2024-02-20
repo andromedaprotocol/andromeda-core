@@ -39,7 +39,7 @@ fn test_set_and_update_value_with_key() {
 
     assert_eq!(
         GetValueResponse {
-            key: key.unwrap_or("default".into()),
+            key: key.map(|_| "default".into()).unwrap(),
             value
         },
         query_res
@@ -70,7 +70,7 @@ fn test_set_and_update_value_without_key() {
 
     assert_eq!(
         GetValueResponse {
-            key: key.unwrap_or("default".into()),
+            key: key.map(|_| "default".into()).unwrap(),
             value
         },
         query_res
