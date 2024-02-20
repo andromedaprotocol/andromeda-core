@@ -1,17 +1,18 @@
 use andromeda_std::ado_contract::ADOContract;
 use andromeda_std::amp::addresses::AndrAddr;
-use andromeda_std::amp::messages::{AMPMsg, AMPPkt, IBCConfig};
+use andromeda_std::amp::messages::{AMPCtx, AMPMsg, AMPPkt, IBCConfig};
 use andromeda_std::amp::{ADO_DB_KEY, VFS_KEY};
 
 use andromeda_std::common::context::ExecuteContext;
+use andromeda_std::common::has_coins_merged;
 use andromeda_std::error::ContractError;
 use andromeda_std::os::aos_querier::AOSQuerier;
 use andromeda_std::os::kernel::{ChannelInfo, IbcExecuteMsg, InternalMsg};
 
 use andromeda_std::os::vfs::vfs_resolve_symlink;
 use cosmwasm_std::{
-    attr, ensure, to_binary, Addr, BankMsg, Binary, CosmosMsg, DepsMut, Env, IbcMsg, MessageInfo,
-    Response, StdError, SubMsg, WasmMsg,
+    attr, ensure, to_binary, Addr, BankMsg, Binary, Coin, ContractInfoResponse, CosmosMsg, DepsMut,
+    Env, IbcMsg, MessageInfo, Response, StdError, SubMsg, WasmMsg,
 };
 
 use crate::ibc::{generate_transfer_message, PACKET_LIFETIME};
@@ -22,8 +23,11 @@ use crate::state::{
 use crate::{query, reply::ReplyId};
 
 pub fn send(ctx: ExecuteContext, message: AMPMsg) -> Result<Response, ContractError> {
+    ensure!(
+        has_coins_merged(ctx.info.funds.as_slice(), message.funds.as_slice()),
+        ContractError::InsufficientFunds {}
+    );
     let res = MsgHandler(message).handle(ctx.deps, ctx.info, ctx.env, ctx.amp_ctx, 0)?;
-
     Ok(res)
 }
 
@@ -65,6 +69,17 @@ pub fn amp_receive(
         res.attributes.extend_from_slice(&msg_res.attributes);
         res.events.extend_from_slice(&msg_res.events);
     }
+
+    let message_funds = packet
+        .messages
+        .iter()
+        .flat_map(|m| m.funds.clone())
+        .collect::<Vec<Coin>>();
+    ensure!(
+        has_coins_merged(info.funds.as_slice(), message_funds.as_slice()),
+        ContractError::InsufficientFunds {}
+    );
+
     Ok(res.add_attribute("action", "handle_amp_packet"))
 }
 
@@ -302,7 +317,7 @@ pub fn recover(execute_env: ExecuteContext) -> Result<Response, ContractError> {
 ///
 /// Separated due to common functionality across multiple messages
 #[derive(Clone)]
-struct MsgHandler(AMPMsg);
+pub struct MsgHandler(AMPMsg);
 
 impl MsgHandler {
     pub fn new(msg: AMPMsg) -> Self {
@@ -342,7 +357,7 @@ impl MsgHandler {
 
         match protocol {
             Some("ibc") => self.handle_ibc(deps, info, env, ctx, sequence),
-            _ => self.handle_local(deps, info, env, ctx, sequence),
+            _ => self.handle_local(deps, info, env, ctx.map(|ctx| ctx.ctx), sequence),
         }
     }
 
@@ -353,12 +368,12 @@ impl MsgHandler {
 
     In both situations the sender can define the funds that are being attached to the message.
     */
-    fn handle_local(
+    pub fn handle_local(
         &self,
         deps: DepsMut,
         info: MessageInfo,
         _env: Env,
-        ctx: Option<AMPPkt>,
+        ctx: Option<AMPCtx>,
         sequence: u64,
     ) -> Result<Response, ContractError> {
         let mut res = Response::default();
@@ -366,9 +381,12 @@ impl MsgHandler {
             message,
             recipient,
             funds,
+            config,
             ..
         } = self.message();
         let recipient_addr = recipient.get_raw_address(&deps.as_ref())?;
+
+        let adodb_addr = KERNEL_ADDRESSES.load(deps.storage, ADO_DB_KEY)?;
 
         // A default message is a bank message
         if Binary::default() == message.clone() {
@@ -397,25 +415,44 @@ impl MsgHandler {
                 .add_attributes(attrs);
         } else {
             let origin = if let Some(amp_ctx) = ctx {
-                amp_ctx.ctx.get_origin()
+                amp_ctx.get_origin()
             } else {
                 info.sender.to_string()
             };
             let previous_sender = info.sender.to_string();
 
-            let amp_msg = AMPMsg::new(recipient_addr.clone(), message.clone(), Some(funds.clone()));
+            // Ensure recipient is a smart contract
+            let ContractInfoResponse {
+                code_id: recipient_code_id,
+                ..
+            } = deps
+                .querier
+                .query_wasm_contract_info(recipient_addr.clone())
+                .ok()
+                .ok_or(ContractError::InvalidPacket {
+                    error: Some("Recipient is not a contract".to_string()),
+                })?;
 
-            let new_packet = AMPPkt::new(origin, previous_sender, vec![amp_msg]);
-
-            let sub_msg = if funds.is_empty() {
-                new_packet.to_sub_msg(recipient_addr.clone(), None, ReplyId::AMPMsg.repr())?
+            let sub_msg = if config.direct
+                || AOSQuerier::ado_type_getter(&deps.querier, &adodb_addr, recipient_code_id)?
+                    .is_none()
+            {
+                // Message is direct (no AMP Ctx)
+                self.message()
+                    .generate_sub_msg_direct(recipient_addr.clone(), ReplyId::AMPMsg.repr())
             } else {
+                let amp_msg =
+                    AMPMsg::new(recipient_addr.clone(), message.clone(), Some(funds.clone()));
+
+                let new_packet = AMPPkt::new(origin, previous_sender, vec![amp_msg]);
+
                 new_packet.to_sub_msg(
                     recipient_addr.clone(),
                     Some(funds.clone()),
                     ReplyId::AMPMsg.repr(),
                 )?
             };
+
             res = res
                 .add_submessage(sub_msg)
                 .add_attributes(vec![attr(format!("recipient:{sequence}"), recipient_addr)]);

@@ -88,7 +88,14 @@ impl AndrAddr {
                 let valid_vfs_path =
                     self.local_path_to_vfs_path(deps.storage, &deps.querier, vfs_contract.clone())?;
                 let vfs_addr = Addr::unchecked(vfs_contract);
-                vfs_resolve_path(valid_vfs_path, vfs_addr, &deps.querier)
+                vfs_resolve_path(valid_vfs_path.clone(), vfs_addr, &deps.querier)
+                    .ok()
+                    .ok_or(ContractError::InvalidPathname {
+                        error: Some(format!(
+                            "{:?} does not exist in the file system",
+                            valid_vfs_path.0
+                        )),
+                    })
             }
         }
     }

@@ -60,6 +60,8 @@ pub const MOCK_ACTION: &str = "action";
 pub const UNWHITELISTED_ADDRESS: &str = "unwhitelisted_address";
 pub const RATES_EXCLUDED_ADDRESS: &str = "rates_excluded_address";
 
+pub const MOCK_WALLET: &str = "mock_wallet";
+
 pub struct WasmMockQuerier {
     pub base: MockQuerier,
 }
@@ -163,6 +165,11 @@ impl MockAndromedaQuerier {
             }
             // Defaults to code ID 1, returns 2 for `INVALID_CONTRACT` which is considered an invalid ADODB code id
             QueryRequest::Wasm(WasmQuery::ContractInfo { contract_addr }) => {
+                if contract_addr == MOCK_WALLET {
+                    return SystemResult::Ok(ContractResult::Err(
+                        "Not a valid contract".to_string(),
+                    ));
+                }
                 let mut resp = ContractInfoResponse::default();
                 resp.code_id = match contract_addr.as_str() {
                     MOCK_APP_CONTRACT => 3,
@@ -490,7 +497,7 @@ impl MockAndromedaQuerier {
                 } else if key == generic_contract_key {
                     SystemResult::Ok(ContractResult::Ok(to_binary("ADOType").unwrap()))
                 } else {
-                    SystemResult::Ok(ContractResult::Err("Invalid Key".to_string()))
+                    SystemResult::Ok(ContractResult::Ok(Binary::default()))
                 }
             } else {
                 SystemResult::Ok(ContractResult::Err("Invalid Key".to_string()))
