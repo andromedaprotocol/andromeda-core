@@ -1,3 +1,4 @@
+use andromeda_adodb::mock::mock_unpublish;
 use andromeda_app_contract::mock::mock_andromeda_app;
 use andromeda_finance::splitter::AddressPercent;
 use andromeda_splitter::mock::{
@@ -5,6 +6,7 @@ use andromeda_splitter::mock::{
 };
 use andromeda_std::{
     amp::{messages::AMPMsg, AndrAddr, Recipient},
+    error::ContractError,
     os::kernel::ExecuteMsg as KernelExecuteMsg,
 };
 use andromeda_testing::{mock::MockAndromeda, mock_contract::MockContract};
@@ -78,18 +80,20 @@ fn kernel() {
 
     // This will return an error because this splitter contract's code id isn't part of the ADODB
     // It errors at the Kernel's AMPReceive Msg when it tries to verify the splitter's address
-    kernel.execute_err(
-        &mut router,
-        KernelExecuteMsg::Send {
-            message: AMPMsg::new(
-                splitter_addr,
-                to_binary(&mock_splitter_send_msg()).unwrap(),
-                Some(vec![coin(100, "uandr")]),
-            ),
-        },
-        owner.clone(),
-        &[coin(100, "uandr")],
-    );
+    assert!(kernel
+        .execute(
+            &mut router,
+            KernelExecuteMsg::Send {
+                message: AMPMsg::new(
+                    splitter_addr,
+                    to_binary(&mock_splitter_send_msg()).unwrap(),
+                    Some(vec![coin(100, "uandr")]),
+                ),
+            },
+            owner.clone(),
+            &[coin(100, "uandr")],
+        )
+        .is_err());
 
     // Works
 
@@ -107,17 +111,19 @@ fn kernel() {
         None,
     );
     let kernel: MockContract = MockContract::from(andr.kernel_address.to_string());
-    let res = kernel.execute(
-        &mut router,
-        KernelExecuteMsg::Create {
-            ado_type: "splitter".to_string(),
-            msg: to_binary(&splitter_msg).unwrap(),
-            owner: Some(AndrAddr::from_string("~/am".to_string())),
-            chain: None,
-        },
-        owner.clone(),
-        &[],
-    );
+    let res = kernel
+        .execute(
+            &mut router,
+            KernelExecuteMsg::Create {
+                ado_type: "splitter".to_string(),
+                msg: to_binary(&splitter_msg).unwrap(),
+                owner: Some(AndrAddr::from_string("~/am".to_string())),
+                chain: None,
+            },
+            owner.clone(),
+            &[],
+        )
+        .unwrap();
 
     let event_key = res
         .events
@@ -138,18 +144,20 @@ fn kernel() {
     assert_eq!(splitter_owner, owner.to_string());
 
     // This now works because the splitter's code id is stored in the ADODB
-    let res = kernel.execute(
-        &mut router,
-        KernelExecuteMsg::Send {
-            message: AMPMsg::new(
-                format!("~/{}", splitter.addr()),
-                to_binary(&mock_splitter_send_msg()).unwrap(),
-                Some(vec![coin(100, "uandr")]),
-            ),
-        },
-        owner.clone(),
-        &[coin(100, "uandr")],
-    );
+    let res = kernel
+        .execute(
+            &mut router,
+            KernelExecuteMsg::Send {
+                message: AMPMsg::new(
+                    format!("~/{}", splitter.addr()),
+                    to_binary(&mock_splitter_send_msg()).unwrap(),
+                    Some(vec![coin(100, "uandr")]),
+                ),
+            },
+            owner.clone(),
+            &[coin(100, "uandr")],
+        )
+        .unwrap();
 
     let user1_balance = router
         .wrap()
@@ -161,11 +169,34 @@ fn kernel() {
 
     let owner_balance = router
         .wrap()
-        .query_balance(owner, "uandr".to_string())
+        .query_balance(owner.clone(), "uandr".to_string())
         .unwrap();
 
     // The owner's balance should be his starting balance subtracted by the 100 he sent with the splitter execute msg
     assert_eq!(owner_balance, coin(999999 - 100, "uandr"));
 
     assert!(res.data.is_none());
+
+    // Unpublish ADO and attempt again
+    router
+        .execute_contract(
+            andr.admin_address,
+            andr.adodb_address,
+            &mock_unpublish("splitter", "0.1.0"),
+            &[],
+        )
+        .unwrap();
+
+    let res = kernel.execute(
+        &mut router,
+        KernelExecuteMsg::Create {
+            ado_type: "splitter".to_string(),
+            msg: to_binary(&splitter_msg).unwrap(),
+            owner: Some(AndrAddr::from_string("~/am".to_string())),
+            chain: None,
+        },
+        owner.clone(),
+        &[],
+    );
+    assert!(res.is_err());
 }

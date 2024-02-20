@@ -1,10 +1,11 @@
 use core::fmt;
 
 use andromeda_std::ado_base::{ownership::ContractOwnerResponse, AndromedaQuery};
-use anyhow::Error;
 use cosmwasm_std::{Addr, Coin};
 use cw_multi_test::{App, AppResponse, Executor};
 use serde::{de::DeserializeOwned, Serialize};
+
+pub use anyhow::Result as AnyResult;
 
 pub struct MockContract(Addr);
 
@@ -23,20 +24,8 @@ impl MockContract {
         msg: M,
         sender: Addr,
         funds: &[Coin],
-    ) -> AppResponse {
+    ) -> AnyResult<AppResponse> {
         app.execute_contract(sender, self.addr().clone(), &msg, funds)
-            .unwrap()
-    }
-
-    pub fn execute_err<M: Serialize + fmt::Debug>(
-        &self,
-        app: &mut App,
-        msg: M,
-        sender: Addr,
-        funds: &[Coin],
-    ) -> Error {
-        app.execute_contract(sender, self.addr().clone(), &msg, funds)
-            .unwrap_err()
     }
 
     pub fn query<M: Serialize + fmt::Debug, T: DeserializeOwned>(&self, app: &App, msg: M) -> T {

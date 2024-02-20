@@ -241,8 +241,6 @@ fn test_unpublish() {
     let msg = ExecuteMsg::Unpublish {
         ado_type: ado_version.get_type(),
         version: ado_version.get_version(),
-        code_id,
-        action_fees: Some(action_fees.clone()),
     };
 
     let err = execute(deps.as_mut(), env.clone(), unauth_info, msg).unwrap_err();
@@ -254,8 +252,6 @@ fn test_unpublish() {
     let msg = ExecuteMsg::Unpublish {
         ado_type: ado_version.get_type(),
         version: invalid_ado_version.get_version(),
-        code_id,
-        action_fees: Some(action_fees.clone()),
     };
 
     let err = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap_err();
@@ -267,30 +263,10 @@ fn test_unpublish() {
         }
     );
 
-    // Unavailable Code ID
-    let unavailable_code_id = 961;
-    let msg = ExecuteMsg::Unpublish {
-        ado_type: ado_version.get_type(),
-        version: ado_version.get_version(),
-        code_id: unavailable_code_id,
-        action_fees: Some(action_fees.clone()),
-    };
-
-    let err = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap_err();
-
-    assert_eq!(
-        err,
-        ContractError::InvalidCodeID {
-            msg: Some(String::from("Code ID not already published"))
-        }
-    );
-
     // Works
     let msg = ExecuteMsg::Unpublish {
         ado_type: ado_version.get_type(),
         version: ado_version.get_version(),
-        code_id,
-        action_fees: Some(action_fees.clone()),
     };
 
     let resp = execute(deps.as_mut(), env.clone(), info.clone(), msg);
@@ -305,15 +281,6 @@ fn test_unpublish() {
 
     let vers_code_id = LATEST_VERSION.load(deps.as_ref().storage, &ado_version.get_type());
     assert!(vers_code_id.is_err());
-
-    // TEST ACTION FEE
-    for action_fee in action_fees.clone() {
-        let fee = ACTION_FEES.load(
-            deps.as_ref().storage,
-            &(ado_version.get_type(), action_fee.clone().action),
-        );
-        assert!(fee.is_err());
-    }
 
     // Check on unpublished code ids
     let unpublished_code_ids = UNPUBLISHED_CODE_IDS.load(deps.as_ref().storage, 1).unwrap();

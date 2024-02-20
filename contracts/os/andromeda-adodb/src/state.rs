@@ -111,28 +111,3 @@ pub fn save_action_fees(
 
     Ok(())
 }
-
-pub fn remove_action_fees(
-    storage: &mut dyn Storage,
-    api: &dyn Api,
-    ado_version: &ADOVersion,
-    fees: Vec<ActionFee>,
-) -> Result<(), ContractError> {
-    for action_fee in fees {
-        action_fee.validate_asset(api)?;
-        ACTION_FEES.remove(
-            storage,
-            &(ado_version.get_type(), action_fee.clone().action),
-        );
-    }
-
-    Ok(())
-}
-
-// pub fn read_all_ado_types(storage: &dyn Storage) -> StdResult<Vec<String>> {
-//     let ado_types = CODE_ID
-//         .keys(storage, None, None, Order::Ascending)
-//         .flatten()
-//         .collect();
-//     Ok(ado_types)
-// }

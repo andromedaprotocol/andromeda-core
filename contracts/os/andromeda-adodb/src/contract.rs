@@ -73,12 +73,9 @@ pub fn execute(
             action_fees,
             publisher,
         ),
-        ExecuteMsg::Unpublish {
-            code_id,
-            ado_type,
-            action_fees,
-            version,
-        } => execute::unpublish(deps, env, info, code_id, ado_type, version, action_fees),
+        ExecuteMsg::Unpublish { ado_type, version } => {
+            execute::unpublish(deps, env, info, ado_type, version)
+        }
         ExecuteMsg::UpdateActionFees {
             action_fees,
             ado_type,

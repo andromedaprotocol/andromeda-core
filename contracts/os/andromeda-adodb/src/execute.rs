@@ -1,6 +1,6 @@
 use crate::state::{
-    read_code_id, remove_action_fees, remove_code_id, save_action_fees, store_code_id, ACTION_FEES,
-    ADO_TYPE, LATEST_VERSION, PUBLISHER, UNPUBLISHED_CODE_IDS, UNPUBLISHED_VERSIONS,
+    read_code_id, remove_code_id, save_action_fees, store_code_id, ACTION_FEES, ADO_TYPE,
+    LATEST_VERSION, PUBLISHER, UNPUBLISHED_CODE_IDS, UNPUBLISHED_VERSIONS,
 };
 
 use andromeda_std::ado_contract::ADOContract;
@@ -102,10 +102,8 @@ pub fn unpublish(
     deps: DepsMut,
     _env: Env,
     info: MessageInfo,
-    code_id: u64,
     ado_type: String,
     version: String,
-    action_fees: Option<Vec<ActionFee>>,
 ) -> Result<Response, ContractError> {
     ensure!(
         ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
@@ -127,52 +125,44 @@ pub fn unpublish(
 
     //TODO: Get Code ID info with cosmwasm 1.2
 
-    let version = ADOVersion::from_type(ado_type.clone()).with_version(version);
+    let ado_version = ADOVersion::from_type(ado_type.clone()).with_version(version.clone());
     ensure!(
-        version.validate(),
+        ado_version.validate(),
         ContractError::InvalidADOVersion { msg: None }
     );
 
     // Ensure version is already published
-    let curr_code_id = read_code_id(deps.storage, &version);
-    ensure!(
-        curr_code_id.is_ok(),
-        ContractError::InvalidADOVersion {
-            msg: Some(String::from("Version not already published"))
-        }
-    );
-
+    let code_id =
+        read_code_id(deps.storage, &ado_version)
+            .ok()
+            .ok_or(ContractError::InvalidADOVersion {
+                msg: Some("Version not already published".to_string()),
+            })?;
     // If this fails then the CodeID isn't available
-    let code_id_verify = ADO_TYPE.load(deps.storage, code_id);
 
-    ensure!(
-        code_id_verify.is_ok(),
-        ContractError::InvalidCodeID {
-            msg: Some(String::from("Code ID not already published"))
-        }
-    );
+    // Verify Code ID exists
+    ADO_TYPE
+        .load(deps.storage, code_id)
+        .ok()
+        .ok_or(ContractError::InvalidCodeID {
+            msg: Some("Code ID not already published".to_string()),
+        })?;
 
-    remove_code_id(deps.storage, &version, code_id)?;
-    PUBLISHER.remove(deps.storage, version.as_str());
+    remove_code_id(deps.storage, &ado_version, code_id)?;
 
-    if let Some(fees) = action_fees {
-        remove_action_fees(deps.storage, deps.api, &version, fees)?;
-    }
+    // Remove publisher for this version
+    PUBLISHER.remove(deps.storage, ado_version.as_str());
 
     // Add the unpublished code id to the list
     UNPUBLISHED_CODE_IDS.save(deps.storage, code_id, &true)?;
 
     // Set the value for ado type, ado version tuple as true, referring to its unpublished status
-    UNPUBLISHED_VERSIONS.save(
-        deps.storage,
-        (&ado_type, version.get_version().as_str()),
-        &true,
-    )?;
+    UNPUBLISHED_VERSIONS.save(deps.storage, (&ado_type, version.as_str()), &true)?;
 
     Ok(Response::default().add_attributes(vec![
         attr("action", "unpublish_ado"),
         attr("ado_type", ado_type),
-        attr("ado_version", version.get_version()),
+        attr("ado_version", version),
         attr("code_id", code_id.to_string()),
         attr("remover", info.sender.to_string()),
     ]))
