@@ -149,7 +149,7 @@ pub fn merge_coins(coins: Vec<Coin>, coins_to_add: Vec<Coin>) -> Vec<Coin> {
     // typically at most 2 denoms. Even in the future there are not that many Terra native coins
     // where this will be a problem.
 
-    for coin in coins_to_add.clone() {
+    for coin in coins_to_add {
         let mut same_denom_coins = new_coins.iter_mut().filter(|c| c.denom == coin.denom);
         if let Some(same_denom_coin) = same_denom_coins.next() {
             same_denom_coin.amount += coin.amount
