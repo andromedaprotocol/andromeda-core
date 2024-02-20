@@ -1,5 +1,6 @@
 use andromeda_std::{andr_exec, andr_instantiate, andr_query};
 use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_std::Addr;
 
 #[andr_instantiate]
 #[cw_serde]
@@ -21,7 +22,20 @@ pub struct MigrateMsg {}
 #[derive(QueryResponses)]
 pub enum QueryMsg {
     #[returns(ShuntingResponse)]
-    EvalWithParams { params: Vec<String> },
+    Evaluate { params: Vec<EvaluateParam> },
+}
+
+#[cw_serde]
+pub enum EvaluateParam {
+    Value(String),
+    Reference(EvaluateRefParam),
+}
+
+#[cw_serde]
+pub struct EvaluateRefParam {
+    pub contract: Addr,
+    pub msg: String,
+    pub accessor: String,
 }
 
 #[cw_serde]

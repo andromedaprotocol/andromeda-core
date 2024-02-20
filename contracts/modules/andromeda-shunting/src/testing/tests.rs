@@ -3,8 +3,7 @@ pub use andromeda_std::testing::mock_querier::{
     MOCK_ADDRESS_LIST_CONTRACT, MOCK_APP_CONTRACT, MOCK_KERNEL_CONTRACT, MOCK_RATES_CONTRACT,
 };
 
-use andromeda_modules::shunting::ShuntingResponse;
-use andromeda_modules::shunting::{InstantiateMsg, QueryMsg};
+use andromeda_modules::shunting::{EvaluateParam, InstantiateMsg, QueryMsg, ShuntingResponse};
 use cosmwasm_std::{
     from_binary,
     testing::{mock_dependencies, mock_env, mock_info},
@@ -27,8 +26,8 @@ fn test_instantiate_query() {
         owner: None,
     };
     instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
-    let query_msg = QueryMsg::EvalWithParams {
-        params: vec!["0.8".to_string()],
+    let query_msg = QueryMsg::Evaluate {
+        params: vec![EvaluateParam::Value("0.8".to_string())],
     };
     let response: ShuntingResponse =
         from_binary(&query(deps.as_ref(), env, query_msg).unwrap()).unwrap();

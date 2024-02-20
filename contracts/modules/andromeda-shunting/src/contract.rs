@@ -1,22 +1,24 @@
 use andromeda_modules::shunting::ShuntingResponse;
 #[cfg(not(feature = "library"))]
-use andromeda_modules::shunting::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use andromeda_modules::shunting::{
+    EvaluateParam, EvaluateRefParam, ExecuteMsg, InstantiateMsg, QueryMsg,
+};
 use andromeda_std::{
     ado_base::InstantiateMsg as BaseInstantiateMsg,
     ado_contract::ADOContract,
     common::{context::ExecuteContext, encode_binary},
     error::ContractError,
 };
-
-use cosmwasm_std::entry_point;
-use cosmwasm_std::{attr, ensure, Binary, Deps, DepsMut, Env, MessageInfo, Response};
+use cosmwasm_std::{
+    attr, ensure, entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Response, WasmQuery,
+};
 use cw2::set_contract_version;
 use cw_utils::nonpayable;
 
+use serde_cw_value::Value;
+
 use crate::state::EXPRESSIONS;
 use simple_shunting::*;
-
-use serde_json::from_str;
 
 const CONTRACT_NAME: &str = "crates.io:andromeda-shunting";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -95,16 +97,14 @@ fn execute_update_expression(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
-        QueryMsg::EvalWithParams { params } => {
-            encode_binary(&handle_eval_expression(deps, params)?)
-        }
+        QueryMsg::Evaluate { params } => encode_binary(&handle_eval_expression(deps, params)?),
         _ => ADOContract::default().query(deps, env, msg),
     }
 }
 
 fn handle_eval_expression(
     deps: Deps,
-    params: Vec<String>,
+    params: Vec<EvaluateParam>,
 ) -> Result<ShuntingResponse, ContractError> {
     let expressions = EXPRESSIONS.load(deps.storage)?;
     let mut results: Vec<f64> = Vec::new();
@@ -137,24 +137,35 @@ fn handle_eval_expression(
     })
 }
 
-fn parse_params(deps: Deps, params: Vec<String>) -> Result<Vec<String>, ContractError> {
+fn parse_params(deps: Deps, params: Vec<EvaluateParam>) -> Result<Vec<String>, ContractError> {
     let mut parsed_params = Vec::new();
 
     for param in params {
-        match param.split_once(':') {
-            Some((addr, sub_param)) => {
-                if let Ok(v) = from_str::<Vec<String>>(sub_param) {
-                    let query = QueryMsg::EvalWithParams { params: v };
-
-                    let response: ShuntingResponse = deps.querier.query_wasm_smart(addr, &query)?;
-                    parsed_params.push(response.result);
-                } else {
-                    return Err(ContractError::InvalidExpression {
-                        msg: "Invalid Expression".to_string(),
-                    });
+        match param {
+            EvaluateParam::Value(val) => parsed_params.push(val),
+            EvaluateParam::Reference(val) => {
+                let EvaluateRefParam {
+                    contract,
+                    msg,
+                    accessor,
+                } = val;
+                let query_msg = WasmQuery::Smart {
+                    contract_addr: contract.to_string(),
+                    msg: Binary::from_base64(&msg)?,
                 }
+                .into();
+
+                let raw_result: Value = deps.querier.query::<Value>(&query_msg).unwrap();
+
+                let Value::Map(result) = raw_result else { unreachable!() };
+                let Value::String(val) = result.get(&Value::String(accessor.clone())).unwrap() else {
+                    return Err(ContractError::InvalidExpression {
+                        msg: format!("Invalid Accessor {}", accessor),
+                    });
+                };
+
+                parsed_params.push(val.to_string());
             }
-            None => parsed_params.push(param),
         }
     }
     Ok(parsed_params)

@@ -1,7 +1,7 @@
 #![cfg(all(not(target_arch = "wasm32"), feature = "testing"))]
 
 use crate::contract::{execute, instantiate, query};
-use andromeda_modules::shunting::{InstantiateMsg, QueryMsg};
+use andromeda_modules::shunting::{EvaluateParam, InstantiateMsg, QueryMsg};
 use cosmwasm_std::Empty;
 use cw_multi_test::{Contract, ContractWrapper};
 
@@ -22,6 +22,6 @@ pub fn mock_shunting_instantiate_msg(
     }
 }
 
-pub fn mock_shunting_query_msg(params: Vec<String>) -> QueryMsg {
-    QueryMsg::EvalWithParams { params }
+pub fn mock_shunting_query_msg(params: Vec<EvaluateParam>) -> QueryMsg {
+    QueryMsg::Evaluate { params }
 }

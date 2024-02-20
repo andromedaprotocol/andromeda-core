@@ -9,10 +9,11 @@ use cosmwasm_std::Addr;
 
 use cw_multi_test::{App, Executor};
 
-use andromeda_modules::shunting::ShuntingResponse;
+use andromeda_modules::shunting::{EvaluateParam, EvaluateRefParam, ShuntingResponse};
 use andromeda_shunting::mock::{
     mock_andromeda_shunting, mock_shunting_instantiate_msg, mock_shunting_query_msg,
 };
+use andromeda_std::common::encode_binary;
 
 fn mock_app() -> App {
     App::new(|router, _api, storage| {
@@ -108,10 +109,19 @@ fn test_shunting() {
         )
         .unwrap();
 
-    // parameter to be passed for querying circle area shunt. phi is passed as 3.14, r(2) squared is expected to be calculated from square shunting. r
+    // parameter to be passed for querying circle area shunt. phi is passed as 3.14, r(2) squared is expected to be calculated from square shunting.
+    let square_msg = mock_shunting_query_msg(vec![EvaluateParam::Value("2".to_string())]);
+
+    let square_msg_binary = encode_binary(&square_msg);
+    let base64_msg = square_msg_binary.expect("converting to base64").to_base64();
+
     let params = vec![
-        "3.14".to_string(),
-        format!("{}:[\"2\"]", shunting_square_addr),
+        EvaluateParam::Value("3.14".to_string()),
+        EvaluateParam::Reference(EvaluateRefParam {
+            contract: Addr::unchecked(shunting_square_addr),
+            msg: base64_msg,
+            accessor: "result".to_string(),
+        }),
     ];
 
     // should return the area of circle whose radius is 2
