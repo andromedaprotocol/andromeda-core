@@ -18,8 +18,8 @@ use cw_utils::nonpayable;
 use serde_cw_value::Value;
 
 use crate::state::EXPRESSIONS;
-use simple_shunting::*;
 use cw_json::JSON;
+use simple_shunting::*;
 
 const CONTRACT_NAME: &str = "crates.io:andromeda-shunting";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
