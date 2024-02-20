@@ -433,6 +433,7 @@ dependencies = [
  "andromeda-std",
  "cosmwasm-schema",
  "cosmwasm-std",
+ "cw-json",
  "cw-multi-test",
  "cw-storage-plus 1.1.0",
  "cw-utils 1.0.1",
@@ -785,6 +786,18 @@ dependencies = [
  "cw-storage-plus 1.1.0",
  "cw20",
  "thiserror",
+]
+
+[[package]]
+name = "cw-json"
+version = "0.1.0"
+source = "git+https://github.com/SlayerAnsh/cw-json.git#9c815f222f8caa43e6e9775249c76f59837c6bbf"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "serde",
+ "serde-cw-value",
+ "serde-json-wasm 1.0.0",
 ]
 
 [[package]]

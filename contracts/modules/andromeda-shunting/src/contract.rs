@@ -19,6 +19,7 @@ use serde_cw_value::Value;
 
 use crate::state::EXPRESSIONS;
 use simple_shunting::*;
+use cw_json::JSON;
 
 const CONTRACT_NAME: &str = "crates.io:andromeda-shunting";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -156,9 +157,8 @@ fn parse_params(deps: Deps, params: Vec<EvaluateParam>) -> Result<Vec<String>, C
                 .into();
 
                 let raw_result: Value = deps.querier.query::<Value>(&query_msg).unwrap();
-
-                let Value::Map(result) = raw_result else { unreachable!() };
-                let Value::String(val) = result.get(&Value::String(accessor.clone())).unwrap() else {
+                let json = JSON::from(raw_result);
+                let Value::String(val) = json.get(&accessor).unwrap() else {
                     return Err(ContractError::InvalidExpression {
                         msg: format!("Invalid Accessor {}", accessor),
                     });
