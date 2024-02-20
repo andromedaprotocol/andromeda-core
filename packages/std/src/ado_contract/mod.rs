@@ -7,7 +7,11 @@ mod ownership;
 
 pub mod permissioning;
 mod query;
+#[cfg(feature = "rates")]
+pub mod rates;
+
 pub mod state;
+
 #[cfg(feature = "withdraw")]
 pub mod withdraw;
 

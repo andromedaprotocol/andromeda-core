@@ -11,6 +11,7 @@ proc-macro = true
 
 [features]
 withdraw = []
+rates = []
 
 [dependencies]
 syn = { version = "1.0.0", features = ["derive"]}

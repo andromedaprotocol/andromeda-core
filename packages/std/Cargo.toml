@@ -10,6 +10,7 @@ license = "MIT"
 withdraw = ["andromeda-macros/withdraw"]
 primitive = []
 instantiate = []
+rates = ["andromeda-macros/rates"]
 
 [lib]
 crate-type = ["cdylib", "rlib"]
