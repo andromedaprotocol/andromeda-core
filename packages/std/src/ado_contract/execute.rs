@@ -14,7 +14,7 @@ use cosmwasm_std::{
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 
-type ExecuteContextFunction<E> = fn(ExecuteContext, E) -> Result<Response, ContractError>;
+type ExecuteContextFunction<M, E = ContractError> = fn(ExecuteContext, M) -> Result<Response, E>;
 
 impl<'a> ADOContract<'a> {
     pub fn instantiate(

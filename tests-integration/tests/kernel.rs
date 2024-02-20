@@ -6,7 +6,6 @@ use andromeda_splitter::mock::{
 };
 use andromeda_std::{
     amp::{messages::AMPMsg, AndrAddr, Recipient},
-    error::ContractError,
     os::kernel::ExecuteMsg as KernelExecuteMsg,
 };
 use andromeda_testing::{mock::MockAndromeda, mock_contract::MockContract};
