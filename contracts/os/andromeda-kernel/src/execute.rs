@@ -1,20 +1,18 @@
-use core::slice::SlicePattern;
-
 use andromeda_std::ado_contract::ADOContract;
 use andromeda_std::amp::addresses::AndrAddr;
 use andromeda_std::amp::messages::{AMPCtx, AMPMsg, AMPPkt, IBCConfig};
 use andromeda_std::amp::{ADO_DB_KEY, VFS_KEY};
 
 use andromeda_std::common::context::ExecuteContext;
-use andromeda_std::common::merge_coins;
+use andromeda_std::common::has_coins_merged;
 use andromeda_std::error::ContractError;
 use andromeda_std::os::aos_querier::AOSQuerier;
 use andromeda_std::os::kernel::{ChannelInfo, IbcExecuteMsg, InternalMsg};
 
 use andromeda_std::os::vfs::vfs_resolve_symlink;
 use cosmwasm_std::{
-    attr, ensure, has_coins, to_binary, Addr, BankMsg, Binary, Coin, ContractInfoResponse,
-    CosmosMsg, DepsMut, Env, IbcMsg, MessageInfo, Response, StdError, SubMsg, WasmMsg,
+    attr, ensure, to_binary, Addr, BankMsg, Binary, Coin, ContractInfoResponse, CosmosMsg, DepsMut,
+    Env, IbcMsg, MessageInfo, Response, StdError, SubMsg, WasmMsg,
 };
 
 use crate::ibc::{generate_transfer_message, PACKET_LIFETIME};
@@ -25,12 +23,10 @@ use crate::state::{
 use crate::{query, reply::ReplyId};
 
 pub fn send(ctx: ExecuteContext, message: AMPMsg) -> Result<Response, ContractError> {
-    for funds in message.funds {
-        ensure!(
-            has_coins(ctx.info.funds.as_slice(), &funds),
-            ContractError::InsufficientFunds {}
-        );
-    }
+    ensure!(
+        has_coins_merged(ctx.info.funds.as_slice(), message.funds.as_slice()),
+        ContractError::InsufficientFunds {}
+    );
     let res = MsgHandler(message).handle(ctx.deps, ctx.info, ctx.env, ctx.amp_ctx, 0)?;
     Ok(res)
 }
@@ -60,7 +56,6 @@ pub fn amp_receive(
             error: Some("No messages supplied".to_string())
         }
     );
-    let mut message_funds: Vec<Coin> = vec![];
     for (idx, message) in packet.messages.iter().enumerate() {
         let mut handler = MsgHandler::new(message.clone());
         let msg_res = handler.handle(
@@ -73,15 +68,17 @@ pub fn amp_receive(
         res.messages.extend_from_slice(&msg_res.messages);
         res.attributes.extend_from_slice(&msg_res.attributes);
         res.events.extend_from_slice(&msg_res.events);
-        merge_coins(&mut message_funds, message.funds.to_vec());
     }
 
-    for required_funds in message_funds {
-        ensure!(
-            has_coins(info.funds.as_slice(), &required_funds),
-            ContractError::InsufficientFunds {}
-        );
-    }
+    let message_funds = packet
+        .messages
+        .iter()
+        .flat_map(|m| m.funds.clone())
+        .collect::<Vec<Coin>>();
+    ensure!(
+        has_coins_merged(info.funds.as_slice(), message_funds.as_slice()),
+        ContractError::InsufficientFunds {}
+    );
 
     Ok(res.add_attribute("action", "handle_amp_packet"))
 }

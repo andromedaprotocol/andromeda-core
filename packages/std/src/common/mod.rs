@@ -7,8 +7,8 @@ pub mod withdraw;
 
 use crate::error::ContractError;
 use cosmwasm_std::{
-    ensure, from_binary, to_binary, BankMsg, Binary, Coin, CosmosMsg, QuerierWrapper, SubMsg,
-    Uint128,
+    ensure, from_binary, has_coins, to_binary, BankMsg, Binary, Coin, CosmosMsg, QuerierWrapper,
+    SubMsg, Uint128,
 };
 use cw20::Cw20Coin;
 
@@ -103,9 +103,14 @@ pub fn merge_sub_msgs(msgs: Vec<SubMsg>) -> Vec<SubMsg> {
     for msg in msgs.into_iter() {
         match msg.msg {
             CosmosMsg::Bank(BankMsg::Send { to_address, amount }) => {
-                let current_coins = map.get_mut(&to_address);
+                let current_coins = map.get(&to_address);
                 match current_coins {
-                    Some(current_coins) => merge_coins(current_coins, amount),
+                    Some(current_coins) => {
+                        map.insert(
+                            to_address.to_owned(),
+                            merge_coins(current_coins.to_vec(), amount),
+                        );
+                    }
                     None => {
                         map.insert(to_address.to_owned(), amount);
                     }
@@ -134,25 +139,46 @@ pub fn merge_sub_msgs(msgs: Vec<SubMsg>) -> Vec<SubMsg> {
 ///                    same denom
 ///
 /// Returns nothing as it is done in place.
-pub fn merge_coins(coins: &mut Vec<Coin>, coins_to_add: Vec<Coin>) {
+pub fn merge_coins(coins: Vec<Coin>, coins_to_add: Vec<Coin>) -> Vec<Coin> {
+    let mut new_coins: Vec<Coin> = if !coins.is_empty() {
+        merge_coins(vec![], coins.to_vec())
+    } else {
+        vec![]
+    };
     // Not the most efficient algorithm (O(n * m)) but we don't expect to deal with very large arrays of Coin,
     // typically at most 2 denoms. Even in the future there are not that many Terra native coins
     // where this will be a problem.
-    for coin in coins.iter_mut() {
-        let same_denom_coin: Vec<&Coin> = coins_to_add
-            .iter()
-            .filter(|&c| c.denom == coin.denom)
-            .collect();
-        for same_coin in same_denom_coin.iter() {
-            // coin.amount = coin.amount.checked_add(same_coin.amount)?;
-            coin.amount += same_coin.amount;
+
+    for coin in coins_to_add.clone() {
+        let mut same_denom_coins = new_coins.iter_mut().filter(|c| c.denom == coin.denom);
+        if let Some(same_denom_coin) = same_denom_coins.next() {
+            same_denom_coin.amount += coin.amount
+        } else {
+            new_coins.push(coin);
         }
     }
-    for coin_to_add in coins_to_add.iter() {
-        if !coins.iter().any(|c| c.denom == coin_to_add.denom) {
-            coins.push(coin_to_add.clone());
-        }
+
+    new_coins
+}
+
+/// Checks if the required funds can be covered by merging the provided coins.
+///
+/// ## Arguments
+/// * `coins` - The vector of `Coin` structs representing the available coins
+/// * `required` - The vector of `Coin` structs representing the required funds
+///
+/// Returns true if the required funds can be covered by merging the available coins, false otherwise.
+pub fn has_coins_merged(coins: &[Coin], required: &[Coin]) -> bool {
+    let merged_coins = merge_coins(vec![], coins.to_vec());
+    let merged_required = merge_coins(vec![], required.to_vec());
+
+    for required_funds in merged_required {
+        if !has_coins(&merged_coins, &required_funds) {
+            return false;
+        };
     }
+
+    true
 }
 
 /// Deducts a given amount from a vector of `Coin` structs. Alters the given vector, does not return a new vector.
@@ -217,19 +243,20 @@ mod test {
 
     #[test]
     fn test_merge_coins() {
-        let mut coins = vec![coin(100, "uusd"), coin(100, "uluna")];
+        let coins = vec![coin(100, "uusd"), coin(100, "uluna")];
         let funds_to_add = vec![
             coin(25, "uluna"),
             coin(50, "uusd"),
             coin(100, "ucad"),
             coin(50, "uluna"),
             coin(100, "uluna"),
+            coin(100, "ucad"),
         ];
 
-        merge_coins(&mut coins, funds_to_add);
+        let res = merge_coins(coins, funds_to_add);
         assert_eq!(
-            vec![coin(150, "uusd"), coin(275, "uluna"), coin(100, "ucad")],
-            coins
+            vec![coin(150, "uusd"), coin(275, "uluna"), coin(200, "ucad")],
+            res
         );
     }
 
@@ -301,5 +328,28 @@ mod test {
         let e = deduct_funds(&mut funds, &coin(10, "uluna")).unwrap_err();
 
         assert_eq!(ContractError::InsufficientFunds {}, e);
+    }
+    #[test]
+    fn test_has_coins_merged() {
+        let available_coins: Vec<Coin> = vec![
+            coin(50, "uluna"),
+            coin(200, "uusd"),
+            coin(50, "ukrw"),
+            coin(25, "uluna"),
+            coin(25, "uluna"),
+        ];
+        let required_funds: Vec<Coin> = vec![
+            coin(50, "uluna"),
+            coin(100, "uusd"),
+            coin(50, "ukrw"),
+            coin(50, "uluna"),
+        ];
+
+        assert!(has_coins_merged(&available_coins, &required_funds));
+
+        let insufficient_funds: Vec<Coin> =
+            vec![coin(10, "uluna"), coin(100, "uusd"), coin(50, "ukrw")];
+
+        assert!(!has_coins_merged(&insufficient_funds, &required_funds));
     }
 }
