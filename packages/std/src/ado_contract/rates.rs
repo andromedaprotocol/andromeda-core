@@ -211,7 +211,7 @@ impl<'a> ADOContract<'a> {
         for rate in config.clone().rates {
             rate.validate_rate(ctx.deps.as_ref())?;
         }
-        Self::set_rates(ctx.deps.storage, config.clone())?;
+        Self::set_rates(ctx.deps.storage, config)?;
 
         Ok(Response::default().add_attributes(vec![("action", "set_rates")]))
     }
