@@ -35,7 +35,7 @@ impl LocalRateType {
 #[cw_serde]
 pub enum LocalRateValue {
     // Percent fee
-    Percent(Decimal),
+    Percent(PercentRate),
     // Flat fee
     Flat(Coin),
 }
@@ -47,9 +47,9 @@ impl LocalRateValue {
                 ensure!(!coin.amount.is_zero(), ContractError::InvalidRate {});
             }
             // If it's a percentage, make sure it's greater than zero and less than or equal to 1 of type decimal (which represents 100%)
-            LocalRateValue::Percent(percent) => {
+            LocalRateValue::Percent(percent_rate) => {
                 ensure!(
-                    !percent.is_zero() && percent <= &Decimal::one(),
+                    !percent_rate.percent.is_zero() && percent_rate.percent <= Decimal::one(),
                     ContractError::InvalidRate {}
                 );
             }
@@ -137,18 +137,18 @@ impl ToString for PaymentAttribute {
 pub fn calculate_fee(fee_rate: LocalRateValue, payment: &Coin) -> Result<Coin, ContractError> {
     match fee_rate {
         LocalRateValue::Flat(rate) => Ok(Coin::new(rate.amount.u128(), rate.denom)),
-        LocalRateValue::Percent(percent) => {
+        LocalRateValue::Percent(percent_rate) => {
             // [COM-03] Make sure that fee_rate between 0 and 100.
             ensure!(
                 // No need for rate >=0 due to type limits (Question: Should add or remove?)
-                percent <= Decimal::one() && !percent.is_zero(),
+                percent_rate.percent <= Decimal::one() && !percent_rate.percent.is_zero(),
                 ContractError::InvalidRate {}
             );
-            let mut fee_amount = payment.amount * percent;
+            let mut fee_amount = payment.amount * percent_rate.percent;
 
             // Always round any remainder up and prioritise the fee receiver.
             // Inverse of percent will always exist.
-            let reversed_fee = fee_amount * percent.inv().unwrap();
+            let reversed_fee = fee_amount * percent_rate.percent.inv().unwrap();
             if payment.amount > reversed_fee {
                 // [COM-1] Added checked add to fee_amount rather than direct increment
                 fee_amount = fee_amount.checked_add(1u128.into())?;
@@ -375,7 +375,9 @@ mod tests {
     fn test_calculate_fee() {
         let payment = coin(101, "uluna");
         let expected = Ok(coin(5, "uluna"));
-        let fee = LocalRateValue::Percent(Decimal::percent(4));
+        let fee = LocalRateValue::Percent(PercentRate {
+            percent: Decimal::percent(4),
+        });
 
         let received = calculate_fee(fee, &payment);
 
