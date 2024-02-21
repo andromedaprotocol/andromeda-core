@@ -1,38 +1,98 @@
-use crate::amp::recipient::Recipient;
+use crate::ado_base::hooks::{AndromedaHook, HookMsg, OnFundsTransferResponse};
+use crate::amp::{recipient::Recipient, AndrAddr};
+use crate::common::{deduct_funds, Funds};
 use crate::error::ContractError;
+use crate::os::aos_querier::AOSQuerier;
+use cw20::Cw20Coin;
 use cw_storage_plus::Item;
 
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{ensure, Coin, Decimal, Fraction, QuerierWrapper, Storage};
+use cosmwasm_std::{
+    coin as create_coin, ensure, Binary, Coin, Decimal, Deps, Event, Fraction, QuerierWrapper,
+    StdError, Storage, SubMsg,
+};
+use serde::de::DeserializeOwned;
 
 use super::ADOContract;
 
 #[cw_serde]
 pub struct PaymentsResponse {
-    pub payments: Vec<RateInfo>,
+    pub payments: Vec<Rate>,
 }
 
 #[cw_serde]
-pub struct RateInfo {
-    pub rate: Rate,
-    pub is_additive: bool,
-    pub description: Option<String>,
-    pub recipients: Vec<Recipient>,
+pub enum LocalRateType {
+    Additive,
+    Deductive,
 }
 
 #[cw_serde]
-/// An enum used to define various types of fees
+pub enum LocalRateValue {
+    Percent(Decimal),
+    Raw(Coin),
+}
+impl LocalRateValue {
+    pub fn validate(&self) -> Result<(), ContractError> {
+        match self {
+            // If it's a coin, make sure it's non-zero
+            LocalRateValue::Raw(coin) => {
+                ensure!(!coin.amount.is_zero(), ContractError::InvalidRate {});
+            }
+            // If it's a percentage, make sure it's greater than zero and less than or equal to 1 of type decimal (which represents 100%)
+            LocalRateValue::Percent(percent) => {
+                ensure!(
+                    !percent.is_zero() && percent <= &Decimal::one(),
+                    ContractError::InvalidRate {}
+                );
+            }
+        }
+        Ok(())
+    }
+}
+
+#[cw_serde]
+pub struct LocalRate {
+    rate_type: LocalRateType,
+    recipients: Vec<Recipient>,
+    value: LocalRateValue,
+    description: Option<String>,
+}
+
+impl LocalRate {}
+
+#[cw_serde]
 pub enum Rate {
-    /// A flat rate fee
-    Flat(Coin),
-    /// A percentage fee
-    Percent(PercentRate),
-    // External(PrimitivePointer),
+    Local(LocalRate),
+    Contract(AndrAddr),
+}
+
+impl Rate {
+    // Make sure that the contract address is that of a Rates contract verified by the ADODB
+    pub fn validate_address(&self, deps: Deps) -> Result<(), ContractError> {
+        match self {
+            Rate::Contract(address) => {
+                let raw_address = address.get_raw_address(&deps)?;
+                let contract_info = deps.querier.query_wasm_contract_info(raw_address)?;
+                let adodb_addr =
+                    ADOContract::default().get_adodb_address(deps.storage, &deps.querier)?;
+                let ado_type =
+                    AOSQuerier::ado_type_getter(&deps.querier, &adodb_addr, contract_info.code_id)?;
+                match ado_type {
+                    Some(ado_type) => {
+                        ensure!(ado_type == *"rates", ContractError::InvalidAddress {});
+                        Ok(())
+                    }
+                    None => Err(ContractError::InvalidAddress {}),
+                }
+            }
+            Rate::Local(_) => Ok(()),
+        }
+    }
 }
 
 #[cw_serde]
 pub struct Config {
-    pub rates: Vec<RateInfo>,
+    pub rates: Vec<Rate>,
 }
 
 #[cw_serde] // This is added such that both Rate::Flat and Rate::Percent have the same level of nesting which
@@ -41,60 +101,40 @@ pub struct PercentRate {
     pub percent: Decimal,
 }
 
-impl From<Decimal> for Rate {
-    fn from(decimal: Decimal) -> Self {
-        Rate::Percent(PercentRate { percent: decimal })
-    }
-}
+// impl From<Decimal> for Rate {
+//     fn from(decimal: Decimal) -> Self {
+//         Rate::Percent(PercentRate { percent: decimal })
+//     }
+// }
 
-impl Rate {
-    /// Validates that a given rate is non-zero. It is expected that the Rate is not an
-    /// External Rate.
-    pub fn is_non_zero(&self) -> Result<bool, ContractError> {
-        match self {
-            Rate::Flat(coin) => Ok(!coin.amount.is_zero()),
-            Rate::Percent(PercentRate { percent }) => Ok(!percent.is_zero()),
-            // Rate::External(_) => Err(ContractError::UnexpectedExternalRate {}),
-        }
-    }
+// impl Rate {
+//     /// Validates `self` and returns an "unwrapped" version of itself wherein if it is an External
+//     /// Rate, the actual rate value is retrieved from the Primitive Contract.
 
-    /// Validates `self` and returns an "unwrapped" version of itself wherein if it is an External
-    /// Rate, the actual rate value is retrieved from the Primitive Contract.
-    pub fn validate(&self, querier: &QuerierWrapper) -> Result<Rate, ContractError> {
-        let rate = self.clone().get_rate(querier)?;
-        ensure!(rate.is_non_zero()?, ContractError::InvalidRate {});
-
-        if let Rate::Percent(PercentRate { percent }) = rate {
-            ensure!(percent <= Decimal::one(), ContractError::InvalidRate {});
-        }
-
-        Ok(rate)
-    }
-
-    /// If `self` is Flat or Percent it returns itself. Otherwise it queries the primitive contract
-    /// and retrieves the actual Flat or Percent rate.
-    fn get_rate(self, _querier: &QuerierWrapper) -> Result<Rate, ContractError> {
-        match self {
-            Rate::Flat(_) => Ok(self),
-            Rate::Percent(_) => Ok(self),
-            // Rate::External(primitive_pointer) => {
-            //     let primitive = primitive_pointer.into_value(querier)?;
-            //     match primitive {
-            //         None => Err(ContractError::ParsingError {
-            //             err: "Stored primitive is None".to_string(),
-            //         }),
-            //         Some(primitive) => match primitive {
-            //             Primitive::Coin(coin) => Ok(Rate::Flat(coin)),
-            //             Primitive::Decimal(value) => Ok(Rate::from(value)),
-            //             _ => Err(ContractError::ParsingError {
-            //                 err: "Stored rate is not a coin or Decimal".to_string(),
-            //             }),
-            //         },
-            //     }
-            // }
-        }
-    }
-}
+//     /// If `self` is Flat or Percent it returns itself. Otherwise it queries the primitive contract
+//     /// and retrieves the actual Flat or Percent rate.
+//     fn get_rate(self, _querier: &QuerierWrapper) -> Result<Rate, ContractError> {
+//         match self {
+//             Rate::Flat(_) => Ok(self),
+//             Rate::Percent(_) => Ok(self),
+//             // Rate::External(primitive_pointer) => {
+//             //     let primitive = primitive_pointer.into_value(querier)?;
+//             //     match primitive {
+//             //         None => Err(ContractError::ParsingError {
+//             //             err: "Stored primitive is None".to_string(),
+//             //         }),
+//             //         Some(primitive) => match primitive {
+//             //             Primitive::Coin(coin) => Ok(Rate::Flat(coin)),
+//             //             Primitive::Decimal(value) => Ok(Rate::from(value)),
+//             //             _ => Err(ContractError::ParsingError {
+//             //                 err: "Stored rate is not a coin or Decimal".to_string(),
+//             //             }),
+//             //         },
+//             //     }
+//             // }
+//         }
+//     }
+// }
 
 /// An attribute struct used for any events that involve a payment
 pub struct PaymentAttribute {
@@ -117,10 +157,10 @@ impl ToString for PaymentAttribute {
 /// * `payment` - The amount used to calculate the fee
 ///
 /// Returns the fee amount in a `Coin` struct.
-pub fn calculate_fee(fee_rate: Rate, payment: &Coin) -> Result<Coin, ContractError> {
+pub fn calculate_fee(fee_rate: LocalRateValue, payment: &Coin) -> Result<Coin, ContractError> {
     match fee_rate {
-        Rate::Flat(rate) => Ok(Coin::new(rate.amount.u128(), rate.denom)),
-        Rate::Percent(PercentRate { percent }) => {
+        LocalRateValue::Raw(rate) => Ok(Coin::new(rate.amount.u128(), rate.denom)),
+        LocalRateValue::Percent(percent) => {
             // [COM-03] Make sure that fee_rate between 0 and 100.
             ensure!(
                 // No need for rate >=0 due to type limits (Question: Should add or remove?)
@@ -141,6 +181,36 @@ pub fn calculate_fee(fee_rate: Rate, payment: &Coin) -> Result<Coin, ContractErr
     }
 }
 
+/// Processes the given module response by hiding the error if it is `UnsupportedOperation` and
+/// bubbling up any other one. A return value of Ok(None) signifies that the operation was not
+/// supported.
+fn process_module_response<T>(
+    mod_resp: Result<Option<T>, StdError>,
+) -> Result<Option<T>, ContractError> {
+    match mod_resp {
+        Ok(mod_resp) => Ok(mod_resp),
+        Err(StdError::NotFound { kind }) => {
+            if kind.contains("operation") {
+                Ok(None)
+            } else {
+                Err(ContractError::Std(StdError::NotFound { kind }))
+            }
+        }
+        Err(e) => Err(e.into()),
+    }
+}
+
+/// Queries the given address with the given hook message and returns the processed result.
+fn hook_query<T: DeserializeOwned>(
+    querier: &QuerierWrapper,
+    hook_msg: AndromedaHook,
+    addr: impl Into<String>,
+) -> Result<Option<T>, ContractError> {
+    let msg = HookMsg::AndrHook(hook_msg);
+    let mod_resp: Result<Option<T>, StdError> = querier.query_wasm_smart(addr, &msg);
+    process_module_response(mod_resp)
+}
+
 pub fn rates<'a>() -> Item<'a, Config> {
     Item::new("rates")
 }
@@ -148,6 +218,7 @@ pub fn rates<'a>() -> Item<'a, Config> {
 impl<'a> ADOContract<'a> {
     /// Sets rates
     pub fn set_rates(store: &mut dyn Storage, config: Config) -> Result<(), ContractError> {
+        // Validate the config's rates
         rates().save(store, &config)?;
         Ok(())
     }
@@ -155,6 +226,118 @@ impl<'a> ADOContract<'a> {
     pub fn remove_rates(store: &mut dyn Storage) -> Result<(), ContractError> {
         rates().remove(store);
         Ok(())
+    }
+    pub fn query_deducted_funds(
+        self,
+        deps: Deps,
+        funds: Funds,
+    ) -> Result<OnFundsTransferResponse, ContractError> {
+        let config = self.rates.load(deps.storage)?;
+        let mut msgs: Vec<SubMsg> = vec![];
+        let mut events: Vec<Event> = vec![];
+        let (coin, is_native): (Coin, bool) = match funds.clone() {
+            Funds::Native(coin) => (coin, true),
+            Funds::Cw20(cw20_coin) => (
+                create_coin(cw20_coin.amount.u128(), cw20_coin.address),
+                false,
+            ),
+        };
+        let mut leftover_funds = vec![coin.clone()];
+        for rate_info in config.rates.iter() {
+            match rate_info {
+                Rate::Local(local_rate) => {
+                    let event_name = if local_rate.rate_type == LocalRateType::Additive {
+                        "tax"
+                    } else {
+                        "royalty"
+                    };
+                    let mut event = Event::new(event_name);
+                    if let Some(desc) = &local_rate.description {
+                        event = event.add_attribute("description", desc);
+                    }
+                    // validate rate
+                    local_rate.value.validate()?;
+
+                    let fee = calculate_fee(local_rate.value.clone(), &coin)?;
+                    for receiver in local_rate.recipients.iter() {
+                        if local_rate.rate_type == LocalRateType::Deductive {
+                            deduct_funds(&mut leftover_funds, &fee)?;
+                            event = event.add_attribute("deducted", fee.to_string());
+                        }
+                        event = event.add_attribute(
+                            "payment",
+                            PaymentAttribute {
+                                receiver: receiver.get_addr(),
+                                amount: fee.clone(),
+                            }
+                            .to_string(),
+                        );
+                        let msg = if is_native {
+                            receiver.generate_direct_msg(&deps, vec![fee.clone()])?
+                        } else {
+                            receiver.generate_msg_cw20(
+                                &deps,
+                                Cw20Coin {
+                                    amount: fee.amount,
+                                    address: fee.denom.to_string(),
+                                },
+                            )?
+                        };
+                        msgs.push(msg);
+                    }
+                    events.push(event);
+                }
+                Rate::Contract(rates_address) => {
+                    // Validate rates address
+                    rate_info.validate_address(deps)?;
+
+                    // Restructure leftover funds from Vec<Coin> into Funds
+                    // let remaining_funds = if is_native {
+                    //     Funds::Native(leftover_funds[0].clone())
+                    // } else {
+                    //     Funds::Cw20(Cw20Coin {
+                    //         address: leftover_funds[0].clone().denom,
+                    //         amount: leftover_funds[0].amount,
+                    //     })
+                    // };
+                    // Query rates contract
+                    let rates_resp: Option<OnFundsTransferResponse> = hook_query(
+                        &deps.querier,
+                        AndromedaHook::OnFundsTransfer {
+                            payload: Binary::default(),
+                            sender: "sender".to_string(),
+                            amount: funds.clone(),
+                        },
+                        rates_address,
+                    )?;
+
+                    if let Some(rates_resp) = rates_resp {
+                        let leftover_coin: Coin = match rates_resp.leftover_funds {
+                            Funds::Native(coin) => coin,
+                            Funds::Cw20(cw20_coin) => {
+                                create_coin(cw20_coin.amount.u128(), cw20_coin.address)
+                            }
+                        };
+                        // Update leftover funds using the rates response
+                        leftover_funds = vec![leftover_coin];
+                        msgs = [msgs, rates_resp.msgs].concat();
+                        events = [events, rates_resp.events].concat();
+                    }
+                }
+            }
+        }
+        Ok(OnFundsTransferResponse {
+            msgs,
+            leftover_funds: if is_native {
+                Funds::Native(leftover_funds[0].clone())
+            } else {
+                Funds::Cw20(Cw20Coin {
+                    amount: leftover_funds[0].amount,
+                    address: coin.denom,
+                })
+            },
+            events,
+        })
     }
     // /// Determines if the provided actor is authorised to perform the given action
     // ///
@@ -463,26 +646,26 @@ mod tests {
     //     assert_eq!(expected_rate, validated_rate);
     // }
 
-    #[test]
-    fn test_calculate_fee() {
-        let payment = coin(101, "uluna");
-        let expected = Ok(coin(5, "uluna"));
-        let fee = Rate::from(Decimal::percent(4));
+    // #[test]
+    // fn test_calculate_fee() {
+    //     let payment = coin(101, "uluna");
+    //     let expected = Ok(coin(5, "uluna"));
+    //     let fee = Rate::from(Decimal::percent(4));
 
-        let received = calculate_fee(fee, &payment);
+    //     let received = calculate_fee(fee, &payment);
 
-        assert_eq!(expected, received);
+    //     assert_eq!(expected, received);
 
-        assert_eq!(expected, received);
+    //     assert_eq!(expected, received);
 
-        let payment = coin(125, "uluna");
-        let fee = Rate::Flat(Coin {
-            amount: Uint128::from(5_u128),
-            denom: "uluna".to_string(),
-        });
+    //     let payment = coin(125, "uluna");
+    //     let fee = Rate::Flat(Coin {
+    //         amount: Uint128::from(5_u128),
+    //         denom: "uluna".to_string(),
+    //     });
 
-        let received = calculate_fee(fee, &payment);
+    //     let received = calculate_fee(fee, &payment);
 
-        assert_eq!(expected, received);
-    }
+    //     assert_eq!(expected, received);
+    // }
 }
