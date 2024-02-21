@@ -1,5 +1,6 @@
 use crate::ado_base::hooks::{AndromedaHook, HookMsg, OnFundsTransferResponse};
 use crate::amp::{recipient::Recipient, AndrAddr};
+use crate::common::context::ExecuteContext;
 use crate::common::{deduct_funds, Funds};
 use crate::error::ContractError;
 use crate::os::aos_querier::AOSQuerier;
@@ -9,7 +10,7 @@ use cw_storage_plus::Item;
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
     coin as create_coin, ensure, Binary, Coin, Decimal, Deps, Event, Fraction, QuerierWrapper,
-    StdError, Storage, SubMsg,
+    Response, StdError, Storage, SubMsg,
 };
 use serde::de::DeserializeOwned;
 
@@ -25,17 +26,24 @@ pub enum LocalRateType {
     Additive,
     Deductive,
 }
+impl LocalRateType {
+    pub fn is_additive(&self) -> bool {
+        self == &LocalRateType::Additive
+    }
+}
 
 #[cw_serde]
 pub enum LocalRateValue {
+    // Percent fee
     Percent(Decimal),
-    Raw(Coin),
+    // Flat fee
+    Flat(Coin),
 }
 impl LocalRateValue {
     pub fn validate(&self) -> Result<(), ContractError> {
         match self {
             // If it's a coin, make sure it's non-zero
-            LocalRateValue::Raw(coin) => {
+            LocalRateValue::Flat(coin) => {
                 ensure!(!coin.amount.is_zero(), ContractError::InvalidRate {});
             }
             // If it's a percentage, make sure it's greater than zero and less than or equal to 1 of type decimal (which represents 100%)
@@ -67,8 +75,8 @@ pub enum Rate {
 }
 
 impl Rate {
-    // Make sure that the contract address is that of a Rates contract verified by the ADODB
-    pub fn validate_address(&self, deps: Deps) -> Result<(), ContractError> {
+    // Makes sure that the contract address is that of a Rates contract verified by the ADODB and validates the local rate value
+    pub fn validate_rate(&self, deps: Deps) -> Result<(), ContractError> {
         match self {
             Rate::Contract(address) => {
                 let raw_address = address.get_raw_address(&deps)?;
@@ -85,7 +93,11 @@ impl Rate {
                     None => Err(ContractError::InvalidAddress {}),
                 }
             }
-            Rate::Local(_) => Ok(()),
+            Rate::Local(local_rate) => {
+                // Validate the local rate value
+                local_rate.value.validate()?;
+                Ok(())
+            }
         }
     }
 }
@@ -100,41 +112,6 @@ pub struct Config {
 pub struct PercentRate {
     pub percent: Decimal,
 }
-
-// impl From<Decimal> for Rate {
-//     fn from(decimal: Decimal) -> Self {
-//         Rate::Percent(PercentRate { percent: decimal })
-//     }
-// }
-
-// impl Rate {
-//     /// Validates `self` and returns an "unwrapped" version of itself wherein if it is an External
-//     /// Rate, the actual rate value is retrieved from the Primitive Contract.
-
-//     /// If `self` is Flat or Percent it returns itself. Otherwise it queries the primitive contract
-//     /// and retrieves the actual Flat or Percent rate.
-//     fn get_rate(self, _querier: &QuerierWrapper) -> Result<Rate, ContractError> {
-//         match self {
-//             Rate::Flat(_) => Ok(self),
-//             Rate::Percent(_) => Ok(self),
-//             // Rate::External(primitive_pointer) => {
-//             //     let primitive = primitive_pointer.into_value(querier)?;
-//             //     match primitive {
-//             //         None => Err(ContractError::ParsingError {
-//             //             err: "Stored primitive is None".to_string(),
-//             //         }),
-//             //         Some(primitive) => match primitive {
-//             //             Primitive::Coin(coin) => Ok(Rate::Flat(coin)),
-//             //             Primitive::Decimal(value) => Ok(Rate::from(value)),
-//             //             _ => Err(ContractError::ParsingError {
-//             //                 err: "Stored rate is not a coin or Decimal".to_string(),
-//             //             }),
-//             //         },
-//             //     }
-//             // }
-//         }
-//     }
-// }
 
 /// An attribute struct used for any events that involve a payment
 pub struct PaymentAttribute {
@@ -159,7 +136,7 @@ impl ToString for PaymentAttribute {
 /// Returns the fee amount in a `Coin` struct.
 pub fn calculate_fee(fee_rate: LocalRateValue, payment: &Coin) -> Result<Coin, ContractError> {
     match fee_rate {
-        LocalRateValue::Raw(rate) => Ok(Coin::new(rate.amount.u128(), rate.denom)),
+        LocalRateValue::Flat(rate) => Ok(Coin::new(rate.amount.u128(), rate.denom)),
         LocalRateValue::Percent(percent) => {
             // [COM-03] Make sure that fee_rate between 0 and 100.
             ensure!(
@@ -218,15 +195,45 @@ pub fn rates<'a>() -> Item<'a, Config> {
 impl<'a> ADOContract<'a> {
     /// Sets rates
     pub fn set_rates(store: &mut dyn Storage, config: Config) -> Result<(), ContractError> {
-        // Validate the config's rates
         rates().save(store, &config)?;
         Ok(())
     }
-    /// Removes rates
+    pub fn execute_set_rates(
+        self,
+        ctx: ExecuteContext,
+        config: Config,
+    ) -> Result<Response, ContractError> {
+        ensure!(
+            Self::is_contract_owner(&self, ctx.deps.storage, ctx.info.sender.as_str())?,
+            ContractError::Unauthorized {}
+        );
+        // Validate rates
+        for rate in config.clone().rates {
+            rate.validate_rate(ctx.deps.as_ref())?;
+        }
+        Self::set_rates(ctx.deps.storage, config.clone())?;
+
+        Ok(Response::default().add_attributes(vec![("action", "set_rates")]))
+    }
     pub fn remove_rates(store: &mut dyn Storage) -> Result<(), ContractError> {
         rates().remove(store);
         Ok(())
     }
+    pub fn execute_remove_rates(self, ctx: ExecuteContext) -> Result<Response, ContractError> {
+        ensure!(
+            Self::is_contract_owner(&self, ctx.deps.storage, ctx.info.sender.as_str())?,
+            ContractError::Unauthorized {}
+        );
+
+        Self::remove_rates(ctx.deps.storage)?;
+
+        Ok(Response::default().add_attributes(vec![("action", "remove_rates")]))
+    }
+
+    pub fn get_rates(self, store: &mut dyn Storage) -> Result<Option<Config>, ContractError> {
+        Ok(rates().may_load(store)?)
+    }
+
     pub fn query_deducted_funds(
         self,
         deps: Deps,
@@ -246,7 +253,7 @@ impl<'a> ADOContract<'a> {
         for rate_info in config.rates.iter() {
             match rate_info {
                 Rate::Local(local_rate) => {
-                    let event_name = if local_rate.rate_type == LocalRateType::Additive {
+                    let event_name = if local_rate.rate_type.is_additive() {
                         "tax"
                     } else {
                         "royalty"
@@ -255,9 +262,6 @@ impl<'a> ADOContract<'a> {
                     if let Some(desc) = &local_rate.description {
                         event = event.add_attribute("description", desc);
                     }
-                    // validate rate
-                    local_rate.value.validate()?;
-
                     let fee = calculate_fee(local_rate.value.clone(), &coin)?;
                     for receiver in local_rate.recipients.iter() {
                         if local_rate.rate_type == LocalRateType::Deductive {
@@ -288,9 +292,6 @@ impl<'a> ADOContract<'a> {
                     events.push(event);
                 }
                 Rate::Contract(rates_address) => {
-                    // Validate rates address
-                    rate_info.validate_address(deps)?;
-
                     // Restructure leftover funds from Vec<Coin> into Funds
                     // let remaining_funds = if is_native {
                     //     Funds::Native(leftover_funds[0].clone())
@@ -339,282 +340,6 @@ impl<'a> ADOContract<'a> {
             events,
         })
     }
-    // /// Determines if the provided actor is authorised to perform the given action
-    // ///
-    // /// Returns an error if the given action is not permissioned for the given actor
-    // pub fn is_permissioned(
-    //     &self,
-    //     store: &mut dyn Storage,
-    //     env: Env,
-    //     action: impl Into<String>,
-    //     actor: impl Into<String>,
-    // ) -> Result<(), ContractError> {
-    //     // Converted to strings for cloning
-    //     let action_string: String = action.into();
-    //     let actor_string: String = actor.into();
-
-    //     if self.is_contract_owner(store, actor_string.as_str())? {
-    //         return Ok(());
-    //     }
-
-    //     let permission = Self::get_permission(store, action_string.clone(), actor_string.clone())?;
-    //     let permissioned_action = self
-    //         .permissioned_actions
-    //         .may_load(store, action_string.clone())?
-    //         .unwrap_or(false);
-    //     match permission {
-    //         Some(mut permission) => {
-    //             ensure!(
-    //                 permission.is_permissioned(&env, permissioned_action),
-    //                 ContractError::Unauthorized {}
-    //             );
-
-    //             // Consume a use for a limited permission
-    //             if let Permission::Limited { .. } = permission {
-    //                 permission.consume_use();
-    //                 permissions().save(
-    //                     store,
-    //                     (action_string.clone() + actor_string.as_str()).as_str(),
-    //                     &PermissionInfo {
-    //                         action: action_string,
-    //                         actor: actor_string,
-    //                         permission,
-    //                     },
-    //                 )?;
-    //             }
-
-    //             Ok(())
-    //         }
-    //         None => {
-    //             ensure!(!permissioned_action, ContractError::Unauthorized {});
-    //             Ok(())
-    //         }
-    //     }
-    // }
-
-    // /// Determines if the provided actor is authorised to perform the given action
-    // ///
-    // /// **Ignores the `PERMISSIONED_ACTIONS` map**
-    // ///
-    // /// Returns an error if the permission has expired or if no permission exists for a restricted ADO
-    // pub fn is_permissioned_strict(
-    //     &self,
-    //     store: &mut dyn Storage,
-    //     env: Env,
-    //     action: impl Into<String>,
-    //     actor: impl Into<String>,
-    // ) -> Result<(), ContractError> {
-    //     // Converted to strings for cloning
-    //     let action_string: String = action.into();
-    //     let actor_string: String = actor.into();
-
-    //     if self.is_contract_owner(store, actor_string.as_str())? {
-    //         return Ok(());
-    //     }
-
-    //     let permission = Self::get_permission(store, action_string.clone(), actor_string.clone())?;
-    //     match permission {
-    //         Some(mut permission) => {
-    //             ensure!(
-    //                 permission.is_permissioned(&env, true),
-    //                 ContractError::Unauthorized {}
-    //             );
-
-    //             // Consume a use for a limited permission
-    //             if let Permission::Limited { .. } = permission {
-    //                 permission.consume_use();
-    //                 permissions().save(
-    //                     store,
-    //                     (action_string.clone() + actor_string.as_str()).as_str(),
-    //                     &PermissionInfo {
-    //                         action: action_string,
-    //                         actor: actor_string,
-    //                         permission,
-    //                     },
-    //                 )?;
-    //             }
-
-    //             Ok(())
-    //         }
-    //         None => Err(ContractError::Unauthorized {}),
-    //     }
-    // }
-
-    // /// Gets the permission for the given action and actor
-    // pub fn get_permission(
-    //     store: &dyn Storage,
-    //     action: impl Into<String>,
-    //     actor: impl Into<String>,
-    // ) -> Result<Option<Permission>, ContractError> {
-    //     let action = action.into();
-    //     let actor = actor.into();
-    //     let key = action + &actor;
-    //     if let Some(PermissionInfo { permission, .. }) = permissions().may_load(store, &key)? {
-    //         Ok(Some(permission))
-    //     } else {
-    //         Ok(None)
-    //     }
-    // }
-
-    // /// Sets the permission for the given action and actor
-    // pub fn set_permission(
-    //     store: &mut dyn Storage,
-    //     action: impl Into<String>,
-    //     actor: impl Into<String>,
-    //     permission: Permission,
-    // ) -> Result<(), ContractError> {
-    //     let action = action.into();
-    //     let actor = actor.into();
-    //     let key = action.clone() + &actor;
-    //     permissions().save(
-    //         store,
-    //         &key,
-    //         &PermissionInfo {
-    //             action,
-    //             actor,
-    //             permission,
-    //         },
-    //     )?;
-    //     Ok(())
-    // }
-
-    // /// Removes the permission for the given action and actor
-    // pub fn remove_permission(
-    //     store: &mut dyn Storage,
-    //     action: impl Into<String>,
-    //     actor: impl Into<String>,
-    // ) -> Result<(), ContractError> {
-    //     let action = action.into();
-    //     let actor = actor.into();
-    //     let key = action + &actor;
-    //     permissions().remove(store, &key)?;
-    //     Ok(())
-    // }
-
-    // /// Execute handler for setting permission
-    // ///
-    // /// **Whitelisted/Limited permissions will only work for permissioned actions**
-    // ///
-    // /// TODO: Add permission for execute context
-    // pub fn execute_set_permission(
-    //     &self,
-    //     ctx: ExecuteContext,
-    //     actor: AndrAddr,
-    //     action: impl Into<String>,
-    //     permission: Permission,
-    // ) -> Result<Response, ContractError> {
-    //     Self::is_contract_owner(self, ctx.deps.storage, ctx.info.sender.as_str())?;
-    //     let actor_addr = actor.get_raw_address(&ctx.deps.as_ref())?;
-    //     let action = action.into();
-    //     Self::set_permission(
-    //         ctx.deps.storage,
-    //         action.clone(),
-    //         actor_addr.clone(),
-    //         permission.clone(),
-    //     )?;
-
-    //     Ok(Response::default().add_attributes(vec![
-    //         ("action", "set_permission"),
-    //         ("actor", actor_addr.as_str()),
-    //         ("action", action.as_str()),
-    //         ("permission", permission.to_string().as_str()),
-    //     ]))
-    // }
-
-    // /// Execute handler for setting permission
-    // /// TODO: Add permission for execute context
-    // pub fn execute_remove_permission(
-    //     &self,
-    //     ctx: ExecuteContext,
-    //     actor: AndrAddr,
-    //     action: impl Into<String>,
-    // ) -> Result<Response, ContractError> {
-    //     Self::is_contract_owner(self, ctx.deps.storage, ctx.info.sender.as_str())?;
-    //     let actor_addr = actor.get_raw_address(&ctx.deps.as_ref())?;
-    //     let action = action.into();
-    //     Self::remove_permission(ctx.deps.storage, action.clone(), actor_addr.clone())?;
-
-    //     Ok(Response::default().add_attributes(vec![
-    //         ("action", "remove_permission"),
-    //         ("actor", actor_addr.as_str()),
-    //         ("action", action.as_str()),
-    //     ]))
-    // }
-
-    // /// Enables permissioning for a given action
-    // pub fn permission_action(
-    //     &self,
-    //     action: impl Into<String>,
-    //     store: &mut dyn Storage,
-    // ) -> Result<(), ContractError> {
-    //     self.permissioned_actions
-    //         .save(store, action.into(), &true)?;
-    //     Ok(())
-    // }
-
-    // /// Disables permissioning for a given action
-    // pub fn disable_action_permission(&self, action: impl Into<String>, store: &mut dyn Storage) {
-    //     self.permissioned_actions.remove(store, action.into());
-    // }
-
-    // pub fn execute_permission_action(
-    //     &self,
-    //     ctx: ExecuteContext,
-    //     action: impl Into<String>,
-    // ) -> Result<Response, ContractError> {
-    //     let action_string: String = action.into();
-    //     Self::is_contract_owner(self, ctx.deps.storage, ctx.info.sender.as_str())?;
-    //     self.permission_action(action_string.clone(), ctx.deps.storage)?;
-    //     Ok(Response::default().add_attributes(vec![
-    //         ("action", "permission_action"),
-    //         ("action", action_string.as_str()),
-    //     ]))
-    // }
-
-    // pub fn execute_disable_action_permission(
-    //     &self,
-    //     ctx: ExecuteContext,
-    //     action: impl Into<String>,
-    // ) -> Result<Response, ContractError> {
-    //     let action_string: String = action.into();
-    //     Self::is_contract_owner(self, ctx.deps.storage, ctx.info.sender.as_str())?;
-    //     Self::disable_action_permission(self, action_string.clone(), ctx.deps.storage);
-    //     Ok(Response::default().add_attributes(vec![
-    //         ("action", "disable_action_permission"),
-    //         ("action", action_string.as_str()),
-    //     ]))
-    // }
-
-    // /// Queries all permissions for a given actor
-    // pub fn query_permissions(
-    //     &self,
-    //     deps: Deps,
-    //     actor: impl Into<String>,
-    //     limit: Option<u32>,
-    //     start_after: Option<String>,
-    // ) -> Result<Vec<PermissionInfo>, ContractError> {
-    //     let actor = actor.into();
-    //     let min = start_after.map(Bound::inclusive);
-    //     let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
-    //     let permissions = permissions()
-    //         .idx
-    //         .permissions
-    //         .prefix(actor)
-    //         .range(deps.storage, min, None, Order::Ascending)
-    //         .take(limit)
-    //         .map(|p| p.unwrap().1)
-    //         .collect::<Vec<PermissionInfo>>();
-    //     Ok(permissions)
-    // }
-
-    // pub fn query_permissioned_actions(&self, deps: Deps) -> Result<Vec<String>, ContractError> {
-    //     let actions = self
-    //         .permissioned_actions
-    //         .keys(deps.storage, None, None, Order::Ascending)
-    //         .map(|p| p.unwrap())
-    //         .collect::<Vec<String>>();
-    //     Ok(actions)
-    // }
 }
 
 #[cfg(test)]
@@ -646,26 +371,26 @@ mod tests {
     //     assert_eq!(expected_rate, validated_rate);
     // }
 
-    // #[test]
-    // fn test_calculate_fee() {
-    //     let payment = coin(101, "uluna");
-    //     let expected = Ok(coin(5, "uluna"));
-    //     let fee = Rate::from(Decimal::percent(4));
+    #[test]
+    fn test_calculate_fee() {
+        let payment = coin(101, "uluna");
+        let expected = Ok(coin(5, "uluna"));
+        let fee = LocalRateValue::Percent(Decimal::percent(4));
 
-    //     let received = calculate_fee(fee, &payment);
+        let received = calculate_fee(fee, &payment);
 
-    //     assert_eq!(expected, received);
+        assert_eq!(expected, received);
 
-    //     assert_eq!(expected, received);
+        assert_eq!(expected, received);
 
-    //     let payment = coin(125, "uluna");
-    //     let fee = Rate::Flat(Coin {
-    //         amount: Uint128::from(5_u128),
-    //         denom: "uluna".to_string(),
-    //     });
+        let payment = coin(125, "uluna");
+        let fee = LocalRateValue::Flat(Coin {
+            amount: Uint128::from(5_u128),
+            denom: "uluna".to_string(),
+        });
 
-    //     let received = calculate_fee(fee, &payment);
+        let received = calculate_fee(fee, &payment);
 
-    //     assert_eq!(expected, received);
-    // }
+        assert_eq!(expected, received);
+    }
 }
