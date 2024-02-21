@@ -343,6 +343,7 @@ impl<'a> ADOContract<'a> {
 }
 
 #[cfg(test)]
+#[cfg(feature = "rates")]
 mod tests {
 
     use cosmwasm_std::{coin, Uint128};
@@ -394,5 +395,45 @@ mod tests {
         let received = calculate_fee(fee, &payment);
 
         assert_eq!(expected, received);
+    }
+
+    #[test]
+    fn test_validate_local_rate_value() {
+        //Zero amount for flat fee
+        let zero_fee = LocalRateValue::Flat(coin(0_u128, "uandr"));
+        let err = zero_fee.validate().unwrap_err();
+        assert_eq!(err, ContractError::InvalidRate {});
+        // Non zero amount for flat fee
+        let non_zero_fee = LocalRateValue::Flat(coin(1_u128, "uandr"));
+        assert!(non_zero_fee.validate().is_ok());
+
+        // zero percent fee
+        let zero_percent_fee = LocalRateValue::Percent(PercentRate {
+            percent: Decimal::percent(0),
+        });
+        let err = zero_percent_fee.validate().unwrap_err();
+        assert_eq!(err, ContractError::InvalidRate {});
+
+        // Above one percent fee
+        let above_one_percent_fee = LocalRateValue::Percent(PercentRate {
+            percent: Decimal::percent(200),
+        });
+        let err = above_one_percent_fee.validate().unwrap_err();
+        assert_eq!(err, ContractError::InvalidRate {});
+
+        // above zero and equal or less than 1 for percent
+        let valid_percent_fee = LocalRateValue::Percent(PercentRate {
+            percent: Decimal::percent(50),
+        });
+        assert!(valid_percent_fee.validate().is_ok());
+    }
+
+    #[test]
+    fn test_is_additive_local_rate_type() {
+        let additive_rate = LocalRateType::Additive;
+        assert!(additive_rate.is_additive());
+
+        let additive_rate = LocalRateType::Deductive;
+        assert!(!additive_rate.is_additive())
     }
 }
