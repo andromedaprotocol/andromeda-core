@@ -99,7 +99,7 @@ pub fn execute(
 }
 
 pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
-    let contract = ADOContract::default();
+    let _contract = ADOContract::default();
 
     match msg {
         ExecuteMsg::Mint(mint_msgs) => execute_mint(ctx, mint_msgs),

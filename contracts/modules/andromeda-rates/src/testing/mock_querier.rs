@@ -12,14 +12,12 @@ use cosmwasm_std::{
 };
 use cosmwasm_std::{BankMsg, CosmosMsg, Response, SubMsg, Uint128};
 
-pub use andromeda_std::testing::mock_querier::{
-    MOCK_APP_CONTRACT, MOCK_KERNEL_CONTRACT, MOCK_RATES_CONTRACT,
-};
+pub use andromeda_std::testing::mock_querier::{MOCK_KERNEL_CONTRACT, MOCK_RATES_CONTRACT};
 pub const MOCK_TAX_RECIPIENT: &str = "tax_recipient";
 pub const MOCK_ROYALTY_RECIPIENT: &str = "royalty_recipient";
 pub const MOCK_OWNER: &str = "owner";
 pub const MOCK_RECIPIENT1: &str = "recipient1";
-pub const MOCK_RECIPIENT2: &str = "recipient2";
+pub const _MOCK_RECIPIENT2: &str = "recipient2";
 
 /// Alternative to `cosmwasm_std::testing::mock_dependencies` that allows us to respond to custom queries.
 ///

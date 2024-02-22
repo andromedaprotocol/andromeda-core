@@ -5,7 +5,6 @@ use andromeda_non_fungible_tokens::auction::{
     AuctionIdsResponse, AuctionStateResponse, Bid, BidsResponse, Cw721HookMsg, ExecuteMsg,
     InstantiateMsg, QueryMsg,
 };
-use andromeda_std::ado_base::modules::Module;
 use andromeda_std::amp::messages::AMPPkt;
 use andromeda_testing::{
     mock_ado,

@@ -13,7 +13,6 @@ use andromeda_non_fungible_tokens::{
     cw721::ExecuteMsg as Cw721ExecuteMsg,
 };
 use andromeda_std::{
-    ado_base::modules::Module,
     common::{encode_binary, expiration::MILLISECONDS_TO_NANOSECONDS_RATIO},
     error::ContractError,
     testing::mock_querier::MOCK_KERNEL_CONTRACT,

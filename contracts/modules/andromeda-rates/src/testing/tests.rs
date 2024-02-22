@@ -1,7 +1,6 @@
 use crate::contract::{execute, instantiate, query, query_deducted_funds};
-use crate::state::RATES;
 use crate::testing::mock_querier::{
-    mock_dependencies_custom, MOCK_KERNEL_CONTRACT, MOCK_OWNER, MOCK_RECIPIENT1, MOCK_RECIPIENT2,
+    mock_dependencies_custom, MOCK_KERNEL_CONTRACT, MOCK_OWNER, MOCK_RECIPIENT1,
 };
 use andromeda_modules::rates::{ExecuteMsg, InstantiateMsg, QueryMsg, RateResponse};
 
@@ -11,11 +10,11 @@ use andromeda_std::amp::AndrAddr;
 use andromeda_std::common::Funds;
 use andromeda_std::{amp::recipient::Recipient, common::encode_binary};
 
-use cosmwasm_std::{attr, Decimal, Event};
+use cosmwasm_std::{attr, Event};
 use cosmwasm_std::{
     coin, coins,
     testing::{mock_env, mock_info},
-    BankMsg, Coin, CosmosMsg, Response, SubMsg, Uint128, WasmMsg,
+    BankMsg, CosmosMsg, Response, SubMsg, WasmMsg,
 };
 use cw20::{Cw20Coin, Cw20ExecuteMsg};
 

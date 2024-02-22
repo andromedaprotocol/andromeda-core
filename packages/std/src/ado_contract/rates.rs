@@ -5,12 +5,12 @@ use crate::common::{deduct_funds, encode_binary, Funds};
 use crate::error::ContractError;
 use crate::os::aos_querier::AOSQuerier;
 use cw20::Cw20Coin;
-use cw_storage_plus::{Item, Map};
+use cw_storage_plus::Map;
 
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
-    coin as create_coin, ensure, Binary, Coin, Decimal, Deps, Event, Fraction, QuerierWrapper,
-    Response, StdError, Storage, SubMsg,
+    coin as create_coin, ensure, Coin, Decimal, Deps, Event, Fraction, QuerierWrapper, Response,
+    StdError, Storage, SubMsg,
 };
 use serde::de::DeserializeOwned;
 
@@ -321,7 +321,7 @@ impl<'a> ADOContract<'a> {
                     AndromedaHook::OnFundsTransfer {
                         payload: encode_binary(&action.to_string())?,
                         sender: "sender".to_string(),
-                        amount: funds.clone(),
+                        amount: funds,
                     },
                     rates_address,
                 )?;

@@ -1,11 +1,5 @@
-use andromeda_std::{
-    ado_contract::rates::{LocalRate, Rate},
-    amp::recipient::Recipient,
-    andr_exec, andr_instantiate, andr_query,
-    error::ContractError,
-};
+use andromeda_std::{ado_contract::rates::Rate, andr_exec, andr_instantiate, andr_query};
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{ensure, Coin, Decimal, Fraction, QuerierWrapper};
 
 #[andr_instantiate]
 #[cw_serde]
