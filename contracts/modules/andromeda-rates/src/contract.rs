@@ -1,15 +1,12 @@
 #[cfg(not(feature = "library"))]
-use crate::state::{Config, CONFIG};
-use andromeda_modules::rates::{
-    calculate_fee, ExecuteMsg, InstantiateMsg, MigrateMsg, PaymentAttribute, PaymentsResponse,
-    QueryMsg, RateInfo,
-};
+use crate::state::RATES;
+use andromeda_modules::rates::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, RateResponse};
 use andromeda_std::{
     ado_base::{
         hooks::{AndromedaHook, OnFundsTransferResponse},
         InstantiateMsg as BaseInstantiateMsg,
     },
-    ado_contract::ADOContract,
+    ado_contract::{rates::Rate, ADOContract},
     common::{context::ExecuteContext, deduct_funds, encode_binary, Funds},
     error::{from_semver, ContractError},
 };
@@ -34,8 +31,9 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    let config = Config { rates: msg.rates };
-    CONFIG.save(deps.storage, &config)?;
+    let action = msg.action;
+    let rate = msg.rate;
+    RATES.save(deps.storage, &action, &rate)?;
 
     let inst_resp = ADOContract::default().instantiate(
         deps.storage,
@@ -73,14 +71,17 @@ pub fn execute(
 
 pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::UpdateRates { rates } => execute_update_rates(ctx, rates),
+        ExecuteMsg::SetRate { action, rate } => execute_set_rate(ctx, action, rate),
+        ExecuteMsg::UpdateRate { action, rate } => execute_update_rate(ctx, action, rate),
+        ExecuteMsg::RemoveRate { action } => execute_remove_rate(ctx, action),
         _ => ADOContract::default().execute(ctx, msg),
     }
 }
 
-fn execute_update_rates(
+fn execute_set_rate(
     ctx: ExecuteContext,
-    rates: Vec<RateInfo>,
+    action: String,
+    rate: Rate,
 ) -> Result<Response, ContractError> {
     let ExecuteContext { deps, info, .. } = ctx;
     nonpayable(&info)?;
@@ -89,11 +90,47 @@ fn execute_update_rates(
         ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {}
     );
-    let mut config = CONFIG.load(deps.storage)?;
-    config.rates = rates;
-    CONFIG.save(deps.storage, &config)?;
+    rate.validate_rate(deps.as_ref())?;
+    RATES.save(deps.storage, &action, &rate)?;
 
-    Ok(Response::new().add_attributes(vec![attr("action", "update_rates")]))
+    Ok(Response::new().add_attributes(vec![attr("action", "set_rate")]))
+}
+
+fn execute_update_rate(
+    ctx: ExecuteContext,
+    action: String,
+    rate: Rate,
+) -> Result<Response, ContractError> {
+    let ExecuteContext { deps, info, .. } = ctx;
+    nonpayable(&info)?;
+
+    ensure!(
+        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {}
+    );
+    if RATES.has(deps.storage, &action) {
+        rate.validate_rate(deps.as_ref())?;
+        RATES.save(deps.storage, &action, &rate)?;
+        Ok(Response::new().add_attributes(vec![attr("action", "update_rates")]))
+    } else {
+        Err(ContractError::ActionNotFound {})
+    }
+}
+
+fn execute_remove_rate(ctx: ExecuteContext, action: String) -> Result<Response, ContractError> {
+    let ExecuteContext { deps, info, .. } = ctx;
+    nonpayable(&info)?;
+
+    ensure!(
+        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {}
+    );
+    if RATES.has(deps.storage, &action) {
+        RATES.remove(deps.storage, &action);
+        Ok(Response::new().add_attributes(vec![attr("action", "remove_rates")]))
+    } else {
+        Err(ContractError::ActionNotFound {})
+    }
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -134,90 +171,91 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::AndrHook(msg) => handle_andromeda_hook(deps, msg),
-        QueryMsg::Payments {} => encode_binary(&query_payments(deps)?),
+        QueryMsg::Rate { action } => encode_binary(&query_rate(deps, action)?),
         _ => ADOContract::default().query(deps, env, msg),
     }
 }
 
 fn handle_andromeda_hook(deps: Deps, msg: AndromedaHook) -> Result<Binary, ContractError> {
     match msg {
-        AndromedaHook::OnFundsTransfer { amount, .. } => {
-            encode_binary(&query_deducted_funds(deps, amount)?)
-        }
+        // AndromedaHook::OnFundsTransfer { amount, .. } => {
+        //     encode_binary(&query_deducted_funds(deps, amount)?)
+        // }
         _ => Ok(encode_binary(&None::<Response>)?),
     }
 }
 
-fn query_payments(deps: Deps) -> Result<PaymentsResponse, ContractError> {
-    let config = CONFIG.load(deps.storage)?;
-    let rates = config.rates;
-
-    Ok(PaymentsResponse { payments: rates })
-}
-
-//NOTE Currently set as pub for testing
-pub fn query_deducted_funds(
-    deps: Deps,
-    funds: Funds,
-) -> Result<OnFundsTransferResponse, ContractError> {
-    let config = CONFIG.load(deps.storage)?;
-    let mut msgs: Vec<SubMsg> = vec![];
-    let mut events: Vec<Event> = vec![];
-    let (coin, is_native): (Coin, bool) = match funds {
-        Funds::Native(coin) => (coin, true),
-        Funds::Cw20(cw20_coin) => (coin(cw20_coin.amount.u128(), cw20_coin.address), false),
-    };
-    let mut leftover_funds = vec![coin.clone()];
-    for rate_info in config.rates.iter() {
-        let event_name = if rate_info.is_additive {
-            "tax"
-        } else {
-            "royalty"
-        };
-        let mut event = Event::new(event_name);
-        if let Some(desc) = &rate_info.description {
-            event = event.add_attribute("description", desc);
-        }
-        let rate = rate_info.rate.validate(&deps.querier)?;
-        let fee = calculate_fee(rate, &coin)?;
-        for receiver in rate_info.recipients.iter() {
-            if !rate_info.is_additive {
-                deduct_funds(&mut leftover_funds, &fee)?;
-                event = event.add_attribute("deducted", fee.to_string());
-            }
-            event = event.add_attribute(
-                "payment",
-                PaymentAttribute {
-                    receiver: receiver.get_addr(),
-                    amount: fee.clone(),
-                }
-                .to_string(),
-            );
-            let msg = if is_native {
-                receiver.generate_direct_msg(&deps, vec![fee.clone()])?
-            } else {
-                receiver.generate_msg_cw20(
-                    &deps,
-                    Cw20Coin {
-                        amount: fee.amount,
-                        address: fee.denom.to_string(),
-                    },
-                )?
-            };
-            msgs.push(msg);
-        }
-        events.push(event);
+fn query_rate(deps: Deps, action: String) -> Result<RateResponse, ContractError> {
+    let rate = RATES.may_load(deps.storage, &action)?;
+    match rate {
+        Some(rate) => Ok(RateResponse { rate }),
+        None => Err(ContractError::ActionNotFound {}),
     }
-    Ok(OnFundsTransferResponse {
-        msgs,
-        leftover_funds: if is_native {
-            Funds::Native(leftover_funds[0].clone())
-        } else {
-            Funds::Cw20(Cw20Coin {
-                amount: leftover_funds[0].amount,
-                address: coin.denom,
-            })
-        },
-        events,
-    })
 }
+
+// //NOTE Currently set as pub for testing
+// pub fn query_deducted_funds(
+//     deps: Deps,
+//     funds: Funds,
+// ) -> Result<OnFundsTransferResponse, ContractError> {
+//     let config = CONFIG.load(deps.storage)?;
+//     let mut msgs: Vec<SubMsg> = vec![];
+//     let mut events: Vec<Event> = vec![];
+//     let (coin, is_native): (Coin, bool) = match funds {
+//         Funds::Native(coin) => (coin, true),
+//         Funds::Cw20(cw20_coin) => (coin(cw20_coin.amount.u128(), cw20_coin.address), false),
+//     };
+//     let mut leftover_funds = vec![coin.clone()];
+//     for rate_info in config.rates.iter() {
+//         let event_name = if rate_info.is_additive {
+//             "tax"
+//         } else {
+//             "royalty"
+//         };
+//         let mut event = Event::new(event_name);
+//         if let Some(desc) = &rate_info.description {
+//             event = event.add_attribute("description", desc);
+//         }
+//         let rate = rate_info.rate.validate(&deps.querier)?;
+//         let fee = calculate_fee(rate, &coin)?;
+//         for receiver in rate_info.recipients.iter() {
+//             if !rate_info.is_additive {
+//                 deduct_funds(&mut leftover_funds, &fee)?;
+//                 event = event.add_attribute("deducted", fee.to_string());
+//             }
+//             event = event.add_attribute(
+//                 "payment",
+//                 PaymentAttribute {
+//                     receiver: receiver.get_addr(),
+//                     amount: fee.clone(),
+//                 }
+//                 .to_string(),
+//             );
+//             let msg = if is_native {
+//                 receiver.generate_direct_msg(&deps, vec![fee.clone()])?
+//             } else {
+//                 receiver.generate_msg_cw20(
+//                     &deps,
+//                     Cw20Coin {
+//                         amount: fee.amount,
+//                         address: fee.denom.to_string(),
+//                     },
+//                 )?
+//             };
+//             msgs.push(msg);
+//         }
+//         events.push(event);
+//     }
+//     Ok(OnFundsTransferResponse {
+//         msgs,
+//         leftover_funds: if is_native {
+//             Funds::Native(leftover_funds[0].clone())
+//         } else {
+//             Funds::Cw20(Cw20Coin {
+//                 amount: leftover_funds[0].amount,
+//                 address: coin.denom,
+//             })
+//         },
+//         events,
+//     })
+// }

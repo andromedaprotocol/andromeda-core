@@ -60,10 +60,10 @@ impl LocalRateValue {
 
 #[cw_serde]
 pub struct LocalRate {
-    rate_type: LocalRateType,
-    recipients: Vec<Recipient>,
-    value: LocalRateValue,
-    description: Option<String>,
+    pub rate_type: LocalRateType,
+    pub recipients: Vec<Recipient>,
+    pub value: LocalRateValue,
+    pub description: Option<String>,
 }
 
 impl LocalRate {}
