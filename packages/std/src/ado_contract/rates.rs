@@ -1,163 +1,19 @@
 use crate::ado_base::hooks::{AndromedaHook, HookMsg, OnFundsTransferResponse};
-use crate::amp::{recipient::Recipient, AndrAddr};
+use crate::ado_base::rates::{
+    calculate_fee, LocalRateType, LocalRateValue, PaymentAttribute, Rate,
+};
 use crate::common::context::ExecuteContext;
 use crate::common::{deduct_funds, encode_binary, Funds};
 use crate::error::ContractError;
-use crate::os::aos_querier::AOSQuerier;
+use cosmwasm_std::{
+    coin as create_coin, ensure, Coin, Decimal, Deps, Event, QuerierWrapper, Response, StdError,
+    Storage, SubMsg,
+};
 use cw20::Cw20Coin;
 use cw_storage_plus::Map;
-
-use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{
-    coin as create_coin, ensure, Coin, Decimal, Deps, Event, Fraction, QuerierWrapper, Response,
-    StdError, Storage, SubMsg,
-};
 use serde::de::DeserializeOwned;
 
 use super::ADOContract;
-
-#[cw_serde]
-pub struct PaymentsResponse {
-    pub payments: Vec<Rate>,
-}
-
-#[cw_serde]
-pub enum LocalRateType {
-    Additive,
-    Deductive,
-}
-impl LocalRateType {
-    pub fn is_additive(&self) -> bool {
-        self == &LocalRateType::Additive
-    }
-}
-
-#[cw_serde]
-pub enum LocalRateValue {
-    // Percent fee
-    Percent(PercentRate),
-    // Flat fee
-    Flat(Coin),
-}
-impl LocalRateValue {
-    pub fn validate(&self) -> Result<(), ContractError> {
-        match self {
-            // If it's a coin, make sure it's non-zero
-            LocalRateValue::Flat(coin) => {
-                ensure!(!coin.amount.is_zero(), ContractError::InvalidRate {});
-            }
-            // If it's a percentage, make sure it's greater than zero and less than or equal to 1 of type decimal (which represents 100%)
-            LocalRateValue::Percent(percent_rate) => {
-                ensure!(
-                    !percent_rate.percent.is_zero() && percent_rate.percent <= Decimal::one(),
-                    ContractError::InvalidRate {}
-                );
-            }
-        }
-        Ok(())
-    }
-}
-
-#[cw_serde]
-pub struct LocalRate {
-    pub rate_type: LocalRateType,
-    pub recipients: Vec<Recipient>,
-    pub value: LocalRateValue,
-    pub description: Option<String>,
-}
-
-impl LocalRate {}
-
-#[cw_serde]
-pub enum Rate {
-    Local(LocalRate),
-    Contract(AndrAddr),
-}
-
-impl Rate {
-    // Makes sure that the contract address is that of a Rates contract verified by the ADODB and validates the local rate value
-    pub fn validate_rate(&self, deps: Deps) -> Result<(), ContractError> {
-        match self {
-            Rate::Contract(address) => {
-                let raw_address = address.get_raw_address(&deps)?;
-                let contract_info = deps.querier.query_wasm_contract_info(raw_address)?;
-                let adodb_addr =
-                    ADOContract::default().get_adodb_address(deps.storage, &deps.querier)?;
-                let ado_type =
-                    AOSQuerier::ado_type_getter(&deps.querier, &adodb_addr, contract_info.code_id)?;
-                match ado_type {
-                    Some(ado_type) => {
-                        ensure!(ado_type == *"rates", ContractError::InvalidAddress {});
-                        Ok(())
-                    }
-                    None => Err(ContractError::InvalidAddress {}),
-                }
-            }
-            Rate::Local(local_rate) => {
-                // Validate the local rate value
-                local_rate.value.validate()?;
-                Ok(())
-            }
-        }
-    }
-    pub fn is_local(&self) -> bool {
-        match self {
-            Rate::Contract(_) => false,
-            Rate::Local(_) => true,
-        }
-    }
-}
-
-#[cw_serde] // This is added such that both Rate::Flat and Rate::Percent have the same level of nesting which
-            // makes it easier to work with on the frontend.
-pub struct PercentRate {
-    pub percent: Decimal,
-}
-
-/// An attribute struct used for any events that involve a payment
-pub struct PaymentAttribute {
-    /// The amount paid
-    pub amount: Coin,
-    /// The address the payment was made to
-    pub receiver: String,
-}
-
-impl ToString for PaymentAttribute {
-    fn to_string(&self) -> String {
-        format!("{}<{}", self.receiver, self.amount)
-    }
-}
-
-/// Calculates a fee amount given a `Rate` and payment amount.
-///
-/// ## Arguments
-/// * `fee_rate` - The `Rate` of the fee to be paid
-/// * `payment` - The amount used to calculate the fee
-///
-/// Returns the fee amount in a `Coin` struct.
-pub fn calculate_fee(fee_rate: LocalRateValue, payment: &Coin) -> Result<Coin, ContractError> {
-    match fee_rate {
-        LocalRateValue::Flat(rate) => Ok(Coin::new(rate.amount.u128(), rate.denom)),
-        LocalRateValue::Percent(percent_rate) => {
-            // [COM-03] Make sure that fee_rate between 0 and 100.
-            ensure!(
-                // No need for rate >=0 due to type limits (Question: Should add or remove?)
-                percent_rate.percent <= Decimal::one() && !percent_rate.percent.is_zero(),
-                ContractError::InvalidRate {}
-            );
-            let mut fee_amount = payment.amount * percent_rate.percent;
-
-            // Always round any remainder up and prioritise the fee receiver.
-            // Inverse of percent will always exist.
-            let reversed_fee = fee_amount * percent_rate.percent.inv().unwrap();
-            if payment.amount > reversed_fee {
-                // [COM-1] Added checked add to fee_amount rather than direct increment
-                fee_amount = fee_amount.checked_add(1u128.into())?;
-            }
-            Ok(Coin::new(fee_amount.u128(), payment.denom.clone()))
-        } // Rate::External(_) => Err(ContractError::UnexpectedExternalRate {}),
-    }
-}
 
 /// Processes the given module response by hiding the error if it is `UnsupportedOperation` and
 /// bubbling up any other one. A return value of Ok(None) signifies that the operation was not
@@ -196,65 +52,76 @@ pub fn rates<'a>() -> Map<'a, &'a str, Rate> {
 impl<'a> ADOContract<'a> {
     /// Sets rates
     pub fn set_rates(
+        &self,
         store: &mut dyn Storage,
-        action: &str,
+        action: impl Into<String>,
         rate: Rate,
     ) -> Result<(), ContractError> {
-        rates().save(store, action, &rate)?;
+        let action: String = action.into();
+        self.rates.save(store, &action, &rate)?;
         Ok(())
     }
     pub fn execute_set_rates(
-        self,
+        &self,
         ctx: ExecuteContext,
-        action: &str,
+        action: impl Into<String>,
         rate: Rate,
     ) -> Result<Response, ContractError> {
         ensure!(
-            Self::is_contract_owner(&self, ctx.deps.storage, ctx.info.sender.as_str())?,
+            Self::is_contract_owner(self, ctx.deps.storage, ctx.info.sender.as_str())?,
             ContractError::Unauthorized {}
         );
+        let action: String = action.into();
         // Validate rates
         rate.validate_rate(ctx.deps.as_ref())?;
-
-        Self::set_rates(ctx.deps.storage, action, rate)?;
+        self.set_rates(ctx.deps.storage, action, rate)?;
 
         Ok(Response::default().add_attributes(vec![("action", "set_rates")]))
     }
-    pub fn remove_rates(store: &mut dyn Storage, action: &str) -> Result<(), ContractError> {
-        rates().remove(store, action);
+    pub fn remove_rates(
+        &self,
+        store: &mut dyn Storage,
+        action: impl Into<String>,
+    ) -> Result<(), ContractError> {
+        let action: String = action.into();
+        self.rates.remove(store, &action);
         Ok(())
     }
     pub fn execute_remove_rates(
-        self,
+        &self,
         ctx: ExecuteContext,
-        action: &str,
+        action: impl Into<String>,
     ) -> Result<Response, ContractError> {
         ensure!(
-            Self::is_contract_owner(&self, ctx.deps.storage, ctx.info.sender.as_str())?,
+            Self::is_contract_owner(self, ctx.deps.storage, ctx.info.sender.as_str())?,
             ContractError::Unauthorized {}
         );
+        let action: String = action.into();
+        self.remove_rates(ctx.deps.storage, action.clone())?;
 
-        Self::remove_rates(ctx.deps.storage, action)?;
-
-        Ok(Response::default()
-            .add_attributes(vec![("action", "remove_rates"), ("removed_action", action)]))
+        Ok(Response::default().add_attributes(vec![
+            ("action", "remove_rates"),
+            ("removed_action", &action),
+        ]))
     }
 
     pub fn get_rates(
-        self,
-        store: &mut dyn Storage,
-        action: &str,
+        &self,
+        deps: Deps,
+        action: impl Into<String>,
     ) -> Result<Option<Rate>, ContractError> {
-        Ok(rates().may_load(store, action)?)
+        let action: String = action.into();
+        Ok(rates().may_load(deps.storage, &action)?)
     }
 
     pub fn query_deducted_funds(
         self,
         deps: Deps,
-        action: &str,
+        action: impl Into<String>,
         funds: Funds,
     ) -> Result<OnFundsTransferResponse, ContractError> {
-        let rate = self.rates.load(deps.storage, action)?;
+        let action: String = action.into();
+        let rate = self.rates.load(deps.storage, &action)?;
         let mut msgs: Vec<SubMsg> = vec![];
         let mut events: Vec<Event> = vec![];
         let (coin, is_native): (Coin, bool) = match funds.clone() {
@@ -366,6 +233,11 @@ mod tests {
         Addr, Uint128,
     };
 
+    use crate::{
+        ado_base::rates::{calculate_fee, LocalRate, PercentRate},
+        amp::{AndrAddr, Recipient},
+    };
+
     use super::*;
 
     // #[test]
@@ -437,7 +309,8 @@ mod tests {
 
         let action = "deposit";
         // set rates
-        ADOContract::set_rates(&mut deps.storage, action, expected_rate.clone()).unwrap();
+        ADOContract::set_rates(&contract, &mut deps.storage, action, expected_rate.clone())
+            .unwrap();
 
         let rate = ADOContract::default()
             .rates
@@ -448,14 +321,14 @@ mod tests {
 
         // get rates
         let rate = ADOContract::default()
-            .get_rates(deps.as_mut().storage, action)
+            .get_rates(deps.as_ref(), action)
             .unwrap();
         assert_eq!(expected_rate, rate.unwrap());
 
         // remove rates
-        ADOContract::remove_rates(&mut deps.storage, action).unwrap();
+        ADOContract::remove_rates(&contract, &mut deps.storage, action).unwrap();
         let rate = ADOContract::default()
-            .get_rates(deps.as_mut().storage, action)
+            .get_rates(deps.as_ref(), action)
             .unwrap();
         assert!(rate.is_none());
     }

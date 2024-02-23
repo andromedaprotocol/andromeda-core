@@ -6,6 +6,7 @@ pub mod modules;
 pub mod operators;
 pub mod ownership;
 pub mod permissioning;
+pub mod rates;
 pub mod version;
 
 pub mod withdraw;
@@ -22,6 +23,8 @@ use cosmwasm_std::Binary;
 pub use modules::Module;
 
 use cosmwasm_std::Uint64;
+
+use self::rates::Rate;
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -66,6 +69,15 @@ pub enum AndromedaMsg {
     PermissionAction {
         action: String,
     },
+    #[cfg(feature = "rates")]
+    SetRate {
+        action: String,
+        rate: Rate,
+    },
+    #[cfg(feature = "rates")]
+    RemoveRate {
+        action: String,
+    },
 }
 
 #[cw_serde]
@@ -106,4 +118,8 @@ pub enum AndromedaQuery {
     },
     #[returns(Vec<String>)]
     PermissionedActions {},
+
+    #[cfg(feature = "rates")]
+    #[returns(Option<Rate>)]
+    GetRate { action: String },
 }

@@ -1,5 +1,5 @@
 #[cfg(feature = "rates")]
-use crate::ado_contract::rates::Rate;
+use crate::ado_base::rates::Rate;
 use cosmwasm_std::Addr;
 #[cfg(feature = "withdraw")]
 use cw_asset::AssetInfo;

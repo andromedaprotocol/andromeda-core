@@ -5,7 +5,7 @@ use crate::testing::mock_querier::{
 use andromeda_modules::rates::{ExecuteMsg, InstantiateMsg, QueryMsg, RateResponse};
 
 use andromeda_std::ado_base::hooks::OnFundsTransferResponse;
-use andromeda_std::ado_contract::rates::{LocalRate, LocalRateType, LocalRateValue, Rate};
+use andromeda_std::ado_base::rates::{LocalRate, LocalRateType, LocalRateValue, Rate};
 use andromeda_std::amp::AndrAddr;
 use andromeda_std::common::Funds;
 use andromeda_std::{amp::recipient::Recipient, common::encode_binary};
@@ -79,14 +79,14 @@ fn test_andr_receive() {
     };
     let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
     // Update rate
-    let msg = ExecuteMsg::UpdateRate {
+    let msg = ExecuteMsg::SetRate {
         action: action.clone(),
         rate,
     };
 
     let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
     assert_eq!(
-        Response::new().add_attributes(vec![attr("action", "update_rates")]),
+        Response::new().add_attributes(vec![attr("action", "set_rate")]),
         res
     );
 }

@@ -1,4 +1,4 @@
-use andromeda_std::{ado_contract::rates::Rate, andr_exec, andr_instantiate, andr_query};
+use andromeda_std::{ado_base::rates::Rate, andr_exec, andr_instantiate, andr_query};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 
 #[andr_instantiate]
@@ -12,7 +12,6 @@ pub struct InstantiateMsg {
 #[cw_serde]
 pub enum ExecuteMsg {
     SetRate { action: String, rate: Rate },
-    UpdateRate { action: String, rate: Rate },
     RemoveRate { action: String },
 }
 

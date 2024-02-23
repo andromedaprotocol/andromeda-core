@@ -4,12 +4,10 @@ use andromeda_modules::rates::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
 use andromeda_std::{
     ado_base::{
         hooks::{AndromedaHook, OnFundsTransferResponse},
+        rates::{calculate_fee, PaymentAttribute, Rate},
         InstantiateMsg as BaseInstantiateMsg,
     },
-    ado_contract::{
-        rates::{calculate_fee, PaymentAttribute, Rate},
-        ADOContract,
-    },
+    ado_contract::ADOContract,
     common::{context::ExecuteContext, deduct_funds, encode_binary, Funds},
     error::{from_semver, ContractError},
 };
@@ -75,7 +73,6 @@ pub fn execute(
 pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::SetRate { action, rate } => execute_set_rate(ctx, action, rate),
-        ExecuteMsg::UpdateRate { action, rate } => execute_update_rate(ctx, action, rate),
         ExecuteMsg::RemoveRate { action } => execute_remove_rate(ctx, action),
         _ => ADOContract::default().execute(ctx, msg),
     }
@@ -100,30 +97,6 @@ fn execute_set_rate(
     RATES.save(deps.storage, &action, &rate)?;
 
     Ok(Response::new().add_attributes(vec![attr("action", "set_rate")]))
-}
-
-fn execute_update_rate(
-    ctx: ExecuteContext,
-    action: String,
-    rate: Rate,
-) -> Result<Response, ContractError> {
-    let ExecuteContext { deps, info, .. } = ctx;
-    nonpayable(&info)?;
-
-    ensure!(
-        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {}
-    );
-    if RATES.has(deps.storage, &action) {
-        // Only local rates are allowed to be stored in the rates contract
-        ensure!(rate.is_local(), ContractError::InvalidRate {});
-
-        rate.validate_rate(deps.as_ref())?;
-        RATES.save(deps.storage, &action, &rate)?;
-        Ok(Response::new().add_attributes(vec![attr("action", "update_rates")]))
-    } else {
-        Err(ContractError::ActionNotFound {})
-    }
 }
 
 fn execute_remove_rate(ctx: ExecuteContext, action: String) -> Result<Response, ContractError> {
