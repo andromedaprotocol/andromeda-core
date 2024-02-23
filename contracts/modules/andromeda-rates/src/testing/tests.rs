@@ -79,12 +79,9 @@ fn test_andr_receive() {
     };
     let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
     // Update rate
-    let msg = ExecuteMsg::SetRate {
-        action: action.clone(),
-        rate,
-    };
+    let msg = ExecuteMsg::SetRate { action, rate };
 
-    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+    let res = execute(deps.as_mut(), env, info, msg).unwrap();
     assert_eq!(
         Response::new().add_attributes(vec![attr("action", "set_rate")]),
         res

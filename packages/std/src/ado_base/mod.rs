@@ -20,11 +20,11 @@ use crate::{
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Binary;
+use cosmwasm_std::Uint64;
 pub use modules::Module;
 
-use cosmwasm_std::Uint64;
-
-use self::rates::Rate;
+#[cfg(feature = "rates")]
+use crate::ado_base::rates::Rate;
 
 #[cw_serde]
 pub struct InstantiateMsg {
