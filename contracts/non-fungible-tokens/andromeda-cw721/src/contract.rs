@@ -63,7 +63,7 @@ pub fn instantiate(
         deps.storage,
         env,
         deps.api,
-        info.clone(),
+        info,
         BaseInstantiateMsg {
             ado_type: "cw721".to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
@@ -302,7 +302,7 @@ fn execute_transfer(
         //         recipient: recipient.clone(),
         //     })?,
         // )?;
-        let remaining_amount = Funds::Native(agreement_amount.clone()).try_get_coin()?;
+        let remaining_amount = Funds::Native(agreement_amount).try_get_coin()?;
         // let tax_amount = get_tax_amount(&msgs, agreement_amount.amount, remaining_amount.amount);
         let tax_amount = Uint128::zero();
 
