@@ -6,7 +6,7 @@ use andromeda_fungible_tokens::lockdrop::{
     UserInfoResponse,
 };
 use andromeda_std::{
-    ado_base::{hooks::AndromedaHook, InstantiateMsg as BaseInstantiateMsg},
+    ado_base::InstantiateMsg as BaseInstantiateMsg,
     ado_contract::ADOContract,
     common::expiration::MILLISECONDS_TO_NANOSECONDS_RATIO,
     common::{context::ExecuteContext, encode_binary},
@@ -105,7 +105,7 @@ pub fn execute(
 }
 
 pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
-    let contract = ADOContract::default();
+    let _contract = ADOContract::default();
 
     match msg {
         ExecuteMsg::Receive(msg) => receive_cw20(ctx, msg),

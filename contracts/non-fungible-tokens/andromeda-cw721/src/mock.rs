@@ -4,7 +4,7 @@ use crate::contract::{execute, instantiate, query};
 use andromeda_non_fungible_tokens::cw721::{
     ExecuteMsg, InstantiateMsg, MintMsg, QueryMsg, TokenExtension, TransferAgreement,
 };
-use andromeda_std::{ado_base::modules::Module, amp::addresses::AndrAddr};
+use andromeda_std::amp::addresses::AndrAddr;
 use andromeda_testing::{
     mock_ado,
     mock_contract::{ExecuteResult, MockADO, MockContract},

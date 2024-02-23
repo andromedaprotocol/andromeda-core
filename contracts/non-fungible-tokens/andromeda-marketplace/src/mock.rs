@@ -4,7 +4,6 @@ use crate::contract::{execute, instantiate, query};
 use andromeda_non_fungible_tokens::marketplace::{
     Cw721HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg,
 };
-use andromeda_std::ado_base::modules::Module;
 use andromeda_std::amp::messages::AMPPkt;
 use andromeda_testing::{mock_ado, mock_contract::ExecuteResult, MockADO, MockContract};
 use cosmwasm_std::{Addr, Empty, Uint128};

@@ -1,14 +1,10 @@
 use crate::contract::{execute, instantiate, query};
 use crate::testing::mock_querier::mock_dependencies_custom;
 use andromeda_fungible_tokens::cw20::{ExecuteMsg, InstantiateMsg, QueryMsg};
-use andromeda_std::testing::mock_querier::MOCK_ADDRESS_LIST_CONTRACT;
-use andromeda_std::{
-    ado_base::Module, amp::addresses::AndrAddr, error::ContractError,
-    testing::mock_querier::MOCK_KERNEL_CONTRACT,
-};
+use andromeda_std::testing::mock_querier::MOCK_KERNEL_CONTRACT;
 use cosmwasm_std::{
     testing::{mock_env, mock_info},
-    to_json_binary, Addr, DepsMut, Response, StdError, Uint128,
+    to_json_binary, Addr, DepsMut, Response, Uint128,
 };
 use cw20::{Cw20Coin, Cw20ReceiveMsg};
 use cw20_base::state::BALANCES;

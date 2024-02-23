@@ -15,8 +15,8 @@ use andromeda_std::common::expiration::{
     expiration_from_milliseconds, MILLISECONDS_TO_NANOSECONDS_RATIO,
 };
 use andromeda_std::{
-    ado_base::{hooks::AndromedaHook, InstantiateMsg as BaseInstantiateMsg},
-    common::{encode_binary, rates::get_tax_amount, Funds},
+    ado_base::InstantiateMsg as BaseInstantiateMsg,
+    common::encode_binary,
     error::{from_semver, ContractError},
 };
 use cw2::{get_contract_version, set_contract_version};
@@ -26,9 +26,8 @@ use semver::Version;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, ensure, from_json, has_coins, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env,
-    MessageInfo, QuerierWrapper, QueryRequest, Response, Storage, SubMsg, Uint128, WasmMsg,
-    WasmQuery,
+    attr, ensure, from_json, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
+    QuerierWrapper, QueryRequest, Response, Storage, Uint128, WasmMsg, WasmQuery,
 };
 
 use cw_utils::{nonpayable, Expiration};
@@ -246,10 +245,7 @@ fn execute_buy(
     token_address: String,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
-        mut deps,
-        info,
-        env,
-        ..
+        deps, info, env, ..
     } = ctx;
 
     let mut token_sale_state =

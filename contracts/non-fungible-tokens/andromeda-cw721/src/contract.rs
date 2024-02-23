@@ -23,9 +23,9 @@ use cw2::{get_contract_version, set_contract_version};
 use semver::Version;
 
 use andromeda_std::{
-    ado_base::{hooks::AndromedaHook, InstantiateMsg as BaseInstantiateMsg},
-    common::encode_binary,
-    common::rates::get_tax_amount,
+    ado_base::InstantiateMsg as BaseInstantiateMsg,
+    // common::encode_binary,
+    // common::rates::get_tax_amount,
     common::Funds,
     error::{from_semver, ContractError},
 };
@@ -277,7 +277,7 @@ fn execute_transfer(
     let ExecuteContext {
         deps, info, env, ..
     } = env;
-    let base_contract = ADOContract::default();
+    let _base_contract = ADOContract::default();
 
     // Reduce all responses into one.
     let mut resp = Response::new();

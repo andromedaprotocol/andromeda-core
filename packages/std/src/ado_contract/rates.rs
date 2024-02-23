@@ -1,13 +1,11 @@
 use crate::ado_base::hooks::{AndromedaHook, HookMsg, OnFundsTransferResponse};
-use crate::ado_base::rates::{
-    calculate_fee, LocalRateType, LocalRateValue, PaymentAttribute, Rate,
-};
+use crate::ado_base::rates::{calculate_fee, LocalRateType, PaymentAttribute, Rate};
 use crate::common::context::ExecuteContext;
 use crate::common::{deduct_funds, encode_binary, Funds};
 use crate::error::ContractError;
 use cosmwasm_std::{
-    coin as create_coin, ensure, Coin, Decimal, Deps, Event, QuerierWrapper, Response, StdError,
-    Storage, SubMsg,
+    coin as create_coin, ensure, Coin, Deps, Event, QuerierWrapper, Response, StdError, Storage,
+    SubMsg,
 };
 use cw20::Cw20Coin;
 use cw_storage_plus::Map;
@@ -230,11 +228,11 @@ mod tests {
     use cosmwasm_std::{
         coin,
         testing::{mock_dependencies, mock_env},
-        Addr, Uint128,
+        Addr, Decimal, Uint128,
     };
 
     use crate::{
-        ado_base::rates::{calculate_fee, LocalRate, PercentRate},
+        ado_base::rates::{calculate_fee, LocalRate, LocalRateValue, PercentRate},
         amp::{AndrAddr, Recipient},
     };
 

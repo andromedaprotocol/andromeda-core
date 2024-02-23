@@ -1,12 +1,7 @@
-use andromeda_std::testing::mock_querier::{
-    mock_dependencies_custom, MOCK_ADDRESS_LIST_CONTRACT, MOCK_KERNEL_CONTRACT,
-};
+use andromeda_std::testing::mock_querier::{mock_dependencies_custom, MOCK_KERNEL_CONTRACT};
 use andromeda_std::{
-    ado_base::modules::Module,
-    ado_base::InstantiateMsg as BaseInstantiateMsg,
-    ado_contract::ADOContract,
-    amp::{recipient::Recipient, AndrAddr},
-    error::ContractError,
+    ado_base::InstantiateMsg as BaseInstantiateMsg, ado_contract::ADOContract,
+    amp::recipient::Recipient, error::ContractError,
 };
 use cosmwasm_std::{
     attr,
@@ -28,12 +23,6 @@ const MOCK_RECIPIENT2: &str = "recipient2";
 #[test]
 fn test_update_app_contract() {
     let mut deps = mock_dependencies_custom(&[]);
-
-    let modules: Vec<Module> = vec![Module {
-        name: Some("address_list".to_string()),
-        address: AndrAddr::from_string(MOCK_ADDRESS_LIST_CONTRACT.to_string()),
-        is_mutable: false,
-    }];
 
     let info = mock_info("app_contract", &[]);
     let msg = InstantiateMsg {

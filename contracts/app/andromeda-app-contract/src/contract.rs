@@ -58,7 +58,7 @@ pub fn instantiate(
                 owner: msg.owner.clone(),
             },
         )?
-        .add_attribute("owner", &msg.owner.clone().unwrap_or(sender.clone()))
+        .add_attribute("owner", msg.owner.clone().unwrap_or(sender.clone()))
         .add_attribute("andr_app", msg.name.clone());
 
     let mut msgs: Vec<SubMsg> = vec![];

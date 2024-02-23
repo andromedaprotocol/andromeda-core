@@ -2,8 +2,7 @@ use andromeda_non_fungible_tokens::marketplace::{
     Cw721HookMsg, ExecuteMsg, InstantiateMsg, Status,
 };
 use andromeda_std::{
-    ado_base::modules::Module,
-    amp::addresses::AndrAddr,
+    // amp::addresses::AndrAddr,
     common::{
         encode_binary,
         expiration::{expiration_from_milliseconds, MILLISECONDS_TO_NANOSECONDS_RATIO},
@@ -23,8 +22,7 @@ use crate::{
     contract::{execute, instantiate},
     state::{sale_infos, SaleInfo, TokenSaleState, TOKEN_SALE_STATE},
     testing::mock_querier::{
-        mock_dependencies_custom, MOCK_RATES_CONTRACT, MOCK_TOKEN_ADDR, MOCK_TOKEN_OWNER,
-        MOCK_UNCLAIMED_TOKEN, RATES,
+        mock_dependencies_custom, MOCK_TOKEN_ADDR, MOCK_TOKEN_OWNER, MOCK_UNCLAIMED_TOKEN,
     },
 };
 
@@ -447,11 +445,6 @@ fn test_execute_start_sale_invalid_price() {
 #[test]
 fn test_execute_buy_with_tax_and_royalty_insufficient_funds() {
     let mut deps = mock_dependencies_custom(&[]);
-    let modules = vec![Module {
-        name: Some(RATES.to_owned()),
-        address: AndrAddr::from_string(MOCK_RATES_CONTRACT.to_owned()),
-        is_mutable: false,
-    }];
     let _res = init(deps.as_mut());
 
     start_sale(deps.as_mut());
@@ -470,11 +463,6 @@ fn test_execute_buy_with_tax_and_royalty_insufficient_funds() {
 #[test]
 fn test_execute_buy_with_tax_and_royalty_works() {
     let mut deps = mock_dependencies_custom(&[]);
-    let modules = vec![Module {
-        name: Some(RATES.to_owned()),
-        address: AndrAddr::from_string(MOCK_RATES_CONTRACT.to_owned()),
-        is_mutable: false,
-    }];
     let _res = init(deps.as_mut());
 
     start_sale(deps.as_mut());

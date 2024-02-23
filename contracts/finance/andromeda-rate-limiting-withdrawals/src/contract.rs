@@ -7,7 +7,7 @@ use andromeda_finance::rate_limiting_withdrawals::{
 use andromeda_std::ado_contract::ADOContract;
 use andromeda_std::common::context::ExecuteContext;
 use andromeda_std::{
-    ado_base::{hooks::AndromedaHook, InstantiateMsg as BaseInstantiateMsg},
+    ado_base::InstantiateMsg as BaseInstantiateMsg,
     common::encode_binary,
     error::{from_semver, ContractError},
 };

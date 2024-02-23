@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use andromeda_std::{
-    ado_base::{hooks::AndromedaHook, InstantiateMsg as BaseInstantiateMsg},
+    ado_base::InstantiateMsg as BaseInstantiateMsg,
     ado_contract::ADOContract,
     common::{context::ExecuteContext, encode_binary},
     error::{from_semver, ContractError},

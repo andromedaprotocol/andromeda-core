@@ -23,7 +23,7 @@ pub const MOCK_TAX_RECIPIENT: &str = "tax_recipient";
 pub const MOCK_ROYALTY_RECIPIENT: &str = "royalty_recipient";
 pub const MOCK_RATES_CONTRACT: &str = "rates_contract";
 
-pub const RATES: &str = "rates";
+pub const _RATES: &str = "rates";
 use andromeda_std::ado_base::InstantiateMsg;
 
 /// Alternative to `cosmwasm_std::testing::mock_dependencies` that allows us to respond to custom queries.
