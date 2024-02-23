@@ -184,7 +184,7 @@ impl<'a> ADOContract<'a> {
                 let rates_resp: Option<OnFundsTransferResponse> = hook_query(
                     &deps.querier,
                     AndromedaHook::OnFundsTransfer {
-                        payload: encode_binary(&action.to_string())?,
+                        payload: encode_binary(&action)?,
                         sender: "sender".to_string(),
                         amount: funds,
                     },
