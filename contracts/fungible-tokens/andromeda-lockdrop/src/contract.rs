@@ -74,7 +74,7 @@ pub fn instantiate(
         deps.storage,
         env,
         deps.api,
-        info.clone(),
+        info,
         BaseInstantiateMsg {
             ado_type: "lockdrop".to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
