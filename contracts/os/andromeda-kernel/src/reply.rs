@@ -61,7 +61,9 @@ pub fn on_reply_ibc_hooks_packet_send(
     msg: Reply,
 ) -> Result<Response, ContractError> {
     let SubMsgResult::Ok(SubMsgResponse { data: Some(b), .. }) = msg.result else {
-        return Err(ContractError::InvalidPacket { error: Some(format!("ibc hooks: failed reply: {:?}", msg.result)) })
+        return Err(ContractError::InvalidPacket {
+            error: Some(format!("ibc hooks: failed reply: {:?}", msg.result)),
+        });
     };
 
     let MsgTransferResponse { sequence } =

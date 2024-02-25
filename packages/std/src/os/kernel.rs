@@ -13,6 +13,17 @@ pub struct ChannelInfo {
     pub supported_modules: Vec<String>,
 }
 
+impl Default for ChannelInfo {
+    fn default() -> Self {
+        ChannelInfo {
+            kernel_address: "".to_string(),
+            ics20_channel_id: None,
+            direct_channel_id: None,
+            supported_modules: vec![],
+        }
+    }
+}
+
 #[cw_serde]
 pub struct InstantiateMsg {
     pub owner: Option<String>,

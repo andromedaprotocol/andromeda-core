@@ -51,18 +51,7 @@ pub fn andr_exec(_args: TokenStream, input: TokenStream) -> TokenStream {
                 UpdateAppContract {
                     address: String,
                 },
-                SetPermission {
-                    actor: ::andromeda_std::amp::AndrAddr,
-                    action: String,
-                    permission: ::andromeda_std::ado_base::permissioning::Permission,
-                },
-                RemovePermission {
-                    action: String,
-                    actor: ::andromeda_std::amp::AndrAddr,
-                },
-                PermissionAction {
-                    action: String
-                },
+                Permissioning(::andromeda_std::ado_base::permissioning::PermissioningMessage),
             }
         }
         .into(),

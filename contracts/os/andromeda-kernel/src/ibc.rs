@@ -1,4 +1,4 @@
-use crate::ack::{make_ack_create_ado_success, make_ack_fail, make_ack_success};
+use crate::ack::{make_ack_fail, make_ack_success};
 use crate::execute;
 use crate::proto::{DenomTrace, MsgTransfer, QueryDenomTraceRequest};
 use crate::reply::ReplyId;
@@ -164,17 +164,18 @@ pub fn do_ibc_packet_receive(
 }
 
 pub fn ibc_create_ado(
-    execute_env: ExecuteContext,
-    owner: AndrAddr,
-    ado_type: String,
-    msg: Binary,
+    _execute_env: ExecuteContext,
+    _owner: AndrAddr,
+    _ado_type: String,
+    _msg: Binary,
 ) -> Result<IbcReceiveResponse, ContractError> {
-    let res = execute::create(execute_env, ado_type, msg, Some(owner), None)?;
-    Ok(IbcReceiveResponse::new()
-        .add_attributes(res.attributes)
-        .add_events(res.events)
-        .add_submessages(res.messages)
-        .set_ack(make_ack_create_ado_success()))
+    Err(ContractError::CrossChainComponentsCurrentlyDisabled {})
+    // let res = execute::create(execute_env, ado_type, msg, Some(owner), None)?;
+    // Ok(IbcReceiveResponse::new()
+    //     .add_attributes(res.attributes)
+    //     .add_events(res.events)
+    //     .add_submessages(res.messages)
+    //     .set_ack(make_ack_create_ado_success()))
 }
 
 pub fn ibc_register_username(

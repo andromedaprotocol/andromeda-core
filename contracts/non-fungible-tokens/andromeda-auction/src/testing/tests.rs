@@ -860,7 +860,7 @@ fn execute_start_auction_after_previous_finished() {
         res
     );
 }
-//TODO make execute_claim tests pass
+
 #[test]
 fn execute_claim_no_bids() {
     let mut deps = mock_dependencies_custom(&[]);

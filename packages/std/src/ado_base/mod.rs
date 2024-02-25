@@ -14,10 +14,7 @@ pub mod withdraw;
 use crate::ado_base::withdraw::Withdrawal;
 #[cfg(feature = "withdraw")]
 use crate::amp::recipient::Recipient;
-use crate::{
-    ado_base::permissioning::Permission,
-    amp::{messages::AMPPkt, AndrAddr},
-};
+use crate::amp::{messages::AMPPkt, AndrAddr};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Addr, Binary};
 pub use modules::Module;
@@ -26,6 +23,7 @@ pub use modules::Module;
 use cosmwasm_std::Uint64;
 
 use self::ownership::OwnershipMessage;
+use self::permissioning::PermissioningMessage;
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -69,18 +67,7 @@ pub enum AndromedaMsg {
     },
     #[serde(rename = "amp_receive")]
     AMPReceive(AMPPkt),
-    SetPermission {
-        actor: AndrAddr,
-        action: String,
-        permission: Permission,
-    },
-    RemovePermission {
-        action: String,
-        actor: AndrAddr,
-    },
-    PermissionAction {
-        action: String,
-    },
+    Permissioning(PermissioningMessage),
 }
 
 #[cw_serde]

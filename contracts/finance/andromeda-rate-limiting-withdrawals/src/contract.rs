@@ -158,7 +158,7 @@ fn execute_deposit(
         // If the user does have an account in that coin
 
         // Calculate new amount of coins
-        let new_amount = account.balance + info.funds[0].amount;
+        let new_amount = account.balance.checked_add(info.funds[0].amount)?;
 
         // add new balance with updated coin
         let new_details = AccountDetails {

@@ -14,7 +14,7 @@ use cosmwasm_std::{
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 
-type ExecuteContextFunction<E> = fn(ExecuteContext, E) -> Result<Response, ContractError>;
+type ExecuteContextFunction<M, E = ContractError> = fn(ExecuteContext, M) -> Result<Response, E>;
 
 impl<'a> ADOContract<'a> {
     pub fn instantiate(
@@ -81,17 +81,7 @@ impl<'a> ADOContract<'a> {
                     self.validate_module_address(&ctx.deps.as_ref(), &module)?;
                     self.execute_alter_module(ctx.deps, ctx.info, module_idx, module)
                 }
-                AndromedaMsg::SetPermission {
-                    actor,
-                    action,
-                    permission,
-                } => self.execute_set_permission(ctx, actor, action, permission),
-                AndromedaMsg::RemovePermission { action, actor } => {
-                    self.execute_remove_permission(ctx, actor, action)
-                }
-                AndromedaMsg::PermissionAction { action } => {
-                    self.execute_permission_action(ctx, action)
-                }
+                AndromedaMsg::Permissioning(msg) => self.execute_permissioning(ctx, msg),
                 AndromedaMsg::AMPReceive(_) => panic!("AMP Receive should be handled separately"),
                 AndromedaMsg::Deposit { .. } => Err(ContractError::NotImplemented { msg: None }),
             },
@@ -128,7 +118,7 @@ impl<'a> ADOContract<'a> {
             }
             Err(_) => {
                 for address in addresses {
-                    address.is_addr(deps.api);
+                    ensure!(address.is_addr(deps.api), ContractError::InvalidAddress {});
                 }
                 Ok(())
             }

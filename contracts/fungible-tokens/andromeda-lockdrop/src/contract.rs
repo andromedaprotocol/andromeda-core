@@ -232,7 +232,7 @@ pub fn execute_increase_incentives(
         ContractError::TokenAlreadyBeingDistributed {}
     );
 
-    config.lockdrop_incentives += amount;
+    config.lockdrop_incentives = config.lockdrop_incentives.checked_add(amount)?;
     CONFIG.save(deps.storage, &config)?;
     Ok(Response::new()
         .add_attribute("action", "incentives_increased")
@@ -284,10 +284,12 @@ pub fn execute_deposit_native(ctx: ExecuteContext) -> Result<Response, ContractE
         .may_load(deps.storage, &depositor_address)?
         .unwrap_or_default();
 
-    user_info.total_native_locked += native_token.amount;
+    user_info.total_native_locked = user_info
+        .total_native_locked
+        .checked_add(native_token.amount)?;
 
     // STATE :: UPDATE --> SAVE
-    state.total_native_locked += native_token.amount;
+    state.total_native_locked = state.total_native_locked.checked_add(native_token.amount)?;
 
     STATE.save(deps.storage, &state)?;
     USER_INFO.save(deps.storage, &depositor_address, &user_info)?;
@@ -350,12 +352,12 @@ pub fn execute_withdraw_native(
         user_info.withdrawal_flag = true;
     }
 
-    user_info.total_native_locked -= withdraw_amount;
+    user_info.total_native_locked = user_info.total_native_locked.checked_sub(withdraw_amount)?;
 
     USER_INFO.save(deps.storage, &withdrawer_address, &user_info)?;
 
     // STATE :: UPDATE --> SAVE
-    state.total_native_locked -= withdraw_amount;
+    state.total_native_locked = state.total_native_locked.checked_sub(withdraw_amount)?;
     STATE.save(deps.storage, &state)?;
 
     // COSMOS_MSG ::TRANSFER WITHDRAWN native token

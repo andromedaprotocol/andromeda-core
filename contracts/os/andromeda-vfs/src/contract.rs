@@ -73,10 +73,10 @@ pub fn execute(
         ExecuteMsg::RegisterUser { username, address } => {
             execute::register_user(execute_env, username, address)
         }
-        ExecuteMsg::AddParentPath {
+        ExecuteMsg::AddChild {
             name,
             parent_address,
-        } => execute::add_parent_path(execute_env, name, parent_address),
+        } => execute::add_child(execute_env, name, parent_address),
         ExecuteMsg::RegisterLibrary {
             lib_name,
             lib_address,

@@ -196,7 +196,7 @@ pub fn execute_claim(
 
     // Update total claimed to reflect
     let mut claimed_amount = STAGE_AMOUNT_CLAIMED.load(deps.storage, stage)?;
-    claimed_amount += amount;
+    claimed_amount = claimed_amount.checked_add(amount)?;
     STAGE_AMOUNT_CLAIMED.save(deps.storage, stage, &claimed_amount)?;
 
     let transfer_msg: CosmosMsg = match config.asset_info {

@@ -1,34 +1,47 @@
 use crate::ado_contract::ADOContract;
 use crate::common::context::ExecuteContext;
 use crate::{ado_base::withdraw::Withdrawal, amp::recipient::Recipient, error::ContractError};
-use cosmwasm_std::{coin, ensure, Order, Response, StdError, Storage, SubMsg};
+use cosmwasm_std::{coin, ensure, MessageInfo, Order, Response, StdError, Storage, SubMsg};
 use cw20::Cw20Coin;
 
 use cw_asset::AssetInfo;
 
 impl<'a> ADOContract<'a> {
+    /// Add a withdrawable token to self.withdrawable_tokens. Can only be called by the contract's owner or operator.
     pub fn add_withdrawable_token(
         &self,
         storage: &mut dyn Storage,
+        info: MessageInfo,
         name: &str,
         asset_info: &AssetInfo,
     ) -> Result<(), ContractError> {
+        ensure!(
+            self.is_owner_or_operator(storage, info.sender.as_str())?,
+            ContractError::Unauthorized {}
+        );
         if !self.withdrawable_tokens.has(storage, name) {
             self.withdrawable_tokens.save(storage, name, asset_info)?;
         }
         Ok(())
     }
 
+    /// Remove a withdrawable token from self.withdrawable_tokens. Can only be called by the contract's owner or operator.
     pub fn remove_withdrawable_token(
         &self,
         storage: &mut dyn Storage,
+        info: MessageInfo,
         name: &str,
     ) -> Result<(), ContractError> {
+        ensure!(
+            self.is_owner_or_operator(storage, info.sender.as_str())?,
+            ContractError::Unauthorized {}
+        );
+
         self.withdrawable_tokens.remove(storage, name);
         Ok(())
     }
 
-    /// Withdraw all tokens in self.withdrawable_tokens with non-zero balance to the given recipient.
+    /// Withdraw all tokens in self.withdrawable_tokens with non-zero balance to the given recipient. Can only be called by the contract's owner or operator
     pub fn execute_withdraw(
         &self,
         ctx: ExecuteContext,

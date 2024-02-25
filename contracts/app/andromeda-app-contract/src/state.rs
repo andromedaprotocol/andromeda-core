@@ -10,7 +10,7 @@ use andromeda_std::{
     os::kernel::ExecuteMsg as KernelExecuteMsg,
 };
 use cosmwasm_std::{
-    to_binary, Addr, Coin, CosmosMsg, DepsMut, Order, ReplyOn, Storage, SubMsg, WasmMsg,
+    ensure, to_binary, Addr, Coin, CosmosMsg, DepsMut, Order, ReplyOn, Storage, SubMsg, WasmMsg,
 };
 use cw_storage_plus::{Bound, Item, Map};
 
@@ -126,19 +126,28 @@ pub fn get_chain_info(chain_name: String, chain_info: Option<Vec<ChainInfo>>) ->
 }
 
 /// Creates a sub message to create a recpliant app on the target chain
+/// Apps are altered to be symlinks or instantiations depending on if they are for the target chain
+/// * `deps` - Standarad Dependencies
+/// * `app_name` - The name of the app to be created
+/// * `owner` - The owner of the app on the target chain
+/// * `sender` - The sender of the message
+/// * `components` - The components of the app to be created
+/// * `target_chain_info` - The chain info for the target chain
+/// * `all_chain_info` - The chain info for all chains
 pub fn create_cross_chain_message(
     deps: &DepsMut,
     app_name: String,
     owner: String,
     components: Vec<AppComponent>,
-    chain_info: ChainInfo,
+    target_chain_info: ChainInfo,
+    all_chain_info: Vec<ChainInfo>,
 ) -> Result<SubMsg, ContractError> {
     let kernel_address = ADOContract::default().get_kernel_address(deps.storage)?;
     let curr_chain = AOSQuerier::get_current_chain(&deps.querier, &kernel_address)?;
     let channel_info = AOSQuerier::get_chain_info(
         &deps.querier,
         &kernel_address,
-        chain_info.chain_name.as_str(),
+        target_chain_info.chain_name.as_str(),
     )?;
     let mut new_components: Vec<AppComponent> = Vec::new();
     for component in components {
@@ -148,22 +157,33 @@ pub fn create_cross_chain_message(
                 chain,
                 instantiate_msg,
             }) => {
-                if chain == chain_info.chain_name {
+                // If component for target chain instantiate component
+                if chain == target_chain_info.chain_name {
                     AppComponent {
                         name,
                         ado_type: component.ado_type,
                         component_type: ComponentType::New(instantiate_msg),
                     }
+                // Otherwise use a symlink to the component
                 } else {
+                    // Unwrap the owner on the chain for this component
+                    let chain_info = all_chain_info.iter().find(|info| info.chain_name == chain);
+                    ensure!(
+                        chain_info.is_some(),
+                        ContractError::InvalidComponent { name }
+                    );
+                    let owner = chain_info.unwrap().owner.clone();
+
                     AppComponent {
                         name: name.clone(),
                         ado_type: component.ado_type,
                         component_type: ComponentType::Symlink(AndrAddr::from_string(format!(
-                            "ibc://{curr_chain}/home/{owner}/{app_name}/{name}"
+                            "ibc://{chain}/home/{owner}/{app_name}/{name}"
                         ))),
                     }
                 }
             }
+            // Must be some form of local component (symlink or new) so create symlink references
             _ => AppComponent {
                 name: name.clone(),
                 ado_type: component.ado_type,
@@ -175,7 +195,7 @@ pub fn create_cross_chain_message(
         new_components.push(new_component);
     }
     let msg = InstantiateMsg {
-        owner: Some(chain_info.owner.clone()),
+        owner: Some(target_chain_info.owner.clone()),
         app_components: new_components,
         name: app_name,
         chain_info: None,
@@ -185,8 +205,8 @@ pub fn create_cross_chain_message(
     let kernel_msg = KernelExecuteMsg::Create {
         ado_type: "app-contract".to_string(),
         msg: to_binary(&msg)?,
-        owner: Some(AndrAddr::from_string(chain_info.owner)),
-        chain: Some(chain_info.chain_name),
+        owner: Some(AndrAddr::from_string(target_chain_info.owner)),
+        chain: Some(target_chain_info.chain_name),
     };
 
     let cosmos_msg = CosmosMsg::Wasm(WasmMsg::Execute {
@@ -202,4 +222,110 @@ pub fn create_cross_chain_message(
     };
 
     Ok(sub_msg)
+}
+
+#[cfg(test)]
+mod test {
+    use andromeda_std::testing::mock_querier::mock_dependencies_custom;
+    use cosmwasm_std::from_binary;
+
+    use super::*;
+
+    #[test]
+    fn test_create_cross_chain_message() {
+        let mut deps = mock_dependencies_custom(&[]);
+        let app_name = "test_app".to_string();
+        let target_owner = "test_owner".to_string();
+        let target_chain = "target_chain".to_string();
+        let target_chain_info = ChainInfo {
+            chain_name: target_chain.clone(),
+            owner: target_owner.clone(),
+        };
+        let second_chain_info = ChainInfo {
+            chain_name: "test-chain".to_string(),
+            owner: "test-chain-owner".to_string(),
+        };
+        let all_chain_info = vec![target_chain_info.clone(), second_chain_info.clone()];
+        let components = vec![
+            AppComponent {
+                name: "test_component".to_string(),
+                ado_type: "test_ado".to_string(),
+                component_type: ComponentType::CrossChain(CrossChainComponent {
+                    chain: target_chain.clone(),
+                    instantiate_msg: to_binary(&"test_instantiate").unwrap(),
+                }),
+            },
+            AppComponent {
+                name: "test_component".to_string(),
+                ado_type: "test_ado".to_string(),
+                component_type: ComponentType::CrossChain(CrossChainComponent {
+                    chain: second_chain_info.chain_name.clone(),
+                    instantiate_msg: to_binary(&"test_instantiate").unwrap(),
+                }),
+            },
+            AppComponent {
+                name: "test_component".to_string(),
+                ado_type: "test_ado".to_string(),
+                component_type: ComponentType::New(to_binary(&"test_instantiate").unwrap()),
+            },
+        ];
+        let expected_components = vec![
+            AppComponent {
+                name: "test_component".to_string(),
+                ado_type: "test_ado".to_string(),
+                component_type: ComponentType::New(to_binary(&"test_instantiate").unwrap()),
+            },
+            AppComponent {
+                name: "test_component".to_string(),
+                ado_type: "test_ado".to_string(),
+                component_type: ComponentType::Symlink(AndrAddr::from_string(format!(
+                    "ibc://{}/home/{}/test_app/test_component",
+                    second_chain_info.chain_name, second_chain_info.owner
+                ))),
+            },
+            AppComponent {
+                name: "test_component".to_string(),
+                ado_type: "test_ado".to_string(),
+                component_type: ComponentType::Symlink(AndrAddr::from_string(format!(
+                    "ibc://andromeda/home/{}/test_app/test_component",
+                    target_owner
+                ))),
+            },
+        ];
+
+        let SubMsg { msg, .. } = create_cross_chain_message(
+            &deps.as_mut(),
+            app_name.clone(),
+            target_owner.clone(),
+            components,
+            target_chain_info,
+            all_chain_info,
+        )
+        .unwrap();
+
+        assert!(matches!(msg, CosmosMsg::Wasm(WasmMsg::Execute { .. })));
+
+        let msg = match msg {
+            CosmosMsg::Wasm(WasmMsg::Execute { msg, .. }) => msg,
+            _ => panic!("Wrong message type"),
+        };
+        match from_binary(&msg).unwrap() {
+            KernelExecuteMsg::Create {
+                ado_type,
+                msg,
+                owner,
+                chain,
+            } => {
+                assert_eq!(ado_type, "app-contract");
+                assert_eq!(owner, Some(AndrAddr::from_string(target_owner.clone())));
+                assert_eq!(chain, Some(target_chain));
+                let msg: InstantiateMsg = from_binary(&msg).unwrap();
+                assert_eq!(msg.name, app_name);
+                assert_eq!(msg.owner, Some(target_owner));
+                assert_eq!(msg.chain_info, None);
+                assert_eq!(msg.app_components, expected_components);
+            }
+            _ => panic!("Wrong message type"),
+        }
+    }
 }

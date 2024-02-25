@@ -5,8 +5,8 @@ use crate::os::aos_querier::AOSQuerier;
 use crate::os::{kernel::ExecuteMsg as KernelExecuteMsg, kernel::QueryMsg as KernelQueryMsg};
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
-    to_binary, Addr, Binary, Coin, ContractInfoResponse, CosmosMsg, Deps, MessageInfo,
-    QueryRequest, ReplyOn, SubMsg, WasmMsg, WasmQuery,
+    to_binary, wasm_execute, Addr, Binary, Coin, ContractInfoResponse, CosmosMsg, Deps, Empty,
+    MessageInfo, QueryRequest, ReplyOn, SubMsg, WasmMsg, WasmQuery,
 };
 
 use super::addresses::AndrAddr;
@@ -148,6 +148,15 @@ impl AMPMsg {
                 funds: self.funds.to_vec(),
             }),
         })
+    }
+
+    pub fn generate_sub_msg_direct(&self, addr: Addr, id: u64) -> SubMsg<Empty> {
+        SubMsg {
+            id,
+            reply_on: self.config.reply_on.clone(),
+            gas_limit: self.config.gas_limit,
+            msg: CosmosMsg::Wasm(wasm_execute(addr, &self.message, self.funds.to_vec()).unwrap()),
+        }
     }
 
     pub fn to_ibc_hooks_memo(&self, contract_addr: String, callback_addr: String) -> String {

@@ -2,9 +2,12 @@ use crate::{
     ado_base::AndromedaQuery,
     ado_contract::ADOContract,
     amp::{ADO_DB_KEY, ECONOMICS_KEY, OSMOSIS_ROUTER_KEY, VFS_KEY},
-    os::adodb::{ActionFee, QueryMsg as ADODBQueryMsg},
     os::kernel::QueryMsg as KernelQueryMsg,
     os::vfs::QueryMsg as VFSQueryMsg,
+    os::{
+        adodb::{ActionFee, QueryMsg as ADODBQueryMsg},
+        kernel::ChannelInfo,
+    },
 };
 #[cfg(feature = "modules")]
 use cosmwasm_std::SubMsg;
@@ -20,6 +23,8 @@ use cw20::{BalanceResponse, Cw20QueryMsg};
 
 /// Mock CW20 Contract Address
 pub const MOCK_CW20_CONTRACT: &str = "cw20_contract";
+/// Mock Anchor Contract Address
+pub const MOCK_ANCHOR_CONTRACT: &str = "anchor_contract";
 /// Mock App Contract Address
 pub const MOCK_APP_CONTRACT: &str = "app_contract";
 /// Mock Primitive Contract Address
@@ -54,6 +59,8 @@ pub const FAKE_ADODB_KEY: &str = "fake_adodb_key";
 pub const MOCK_ACTION: &str = "action";
 pub const UNWHITELISTED_ADDRESS: &str = "unwhitelisted_address";
 pub const RATES_EXCLUDED_ADDRESS: &str = "rates_excluded_address";
+
+pub const MOCK_WALLET: &str = "mock_wallet";
 
 pub struct WasmMockQuerier {
     pub base: MockQuerier,
@@ -153,13 +160,22 @@ impl MockAndromedaQuerier {
                     MOCK_KERNEL_CONTRACT => self.handle_kernel_raw_query(key, false),
                     MOCK_FAKE_KERNEL_CONTRACT => self.handle_kernel_raw_query(key, true),
                     MOCK_ADODB_CONTRACT => self.handle_adodb_raw_query(key),
+                    MOCK_CW20_CONTRACT => self.handle_cw20_owner_query(key),
+                    MOCK_ANCHOR_CONTRACT => self.handle_anchor_owner_query(key),
+
                     _ => panic!("Unsupported query for contract: {contract_addr}"),
                 }
             }
             // Defaults to code ID 1, returns 2 for `INVALID_CONTRACT` which is considered an invalid ADODB code id
             QueryRequest::Wasm(WasmQuery::ContractInfo { contract_addr }) => {
+                if contract_addr == MOCK_WALLET {
+                    return SystemResult::Ok(ContractResult::Err(
+                        "Not a valid contract".to_string(),
+                    ));
+                }
                 let mut resp = ContractInfoResponse::default();
                 resp.code_id = match contract_addr.as_str() {
+                    MOCK_APP_CONTRACT => 3,
                     INVALID_CONTRACT => 2,
                     _ => 1,
                 };
@@ -167,6 +183,14 @@ impl MockAndromedaQuerier {
             }
             _ => querier.handle_query(request),
         }
+    }
+
+    fn handle_cw20_owner_query(&self, _msg: &Binary) -> QuerierResult {
+        SystemResult::Ok(ContractResult::Ok(to_binary("cosmos2contract").unwrap()))
+    }
+
+    fn handle_anchor_owner_query(&self, _msg: &Binary) -> QuerierResult {
+        SystemResult::Ok(ContractResult::Ok(to_binary("cosmos2contract").unwrap()))
     }
 
     /// Handles all kernel queries.
@@ -413,6 +437,16 @@ impl MockAndromedaQuerier {
                 "andromeda".to_string()
             };
             SystemResult::Ok(ContractResult::Ok(to_binary(&res).unwrap()))
+        } else if key_str.contains("channel") {
+            SystemResult::Ok(ContractResult::Ok(
+                to_binary(&ChannelInfo {
+                    kernel_address: "kernel".to_string(),
+                    ics20_channel_id: Some("1".to_string()),
+                    direct_channel_id: Some("2".to_string()),
+                    supported_modules: vec![],
+                })
+                .unwrap(),
+            ))
         } else {
             panic!("Invalid Kernel Raw Query")
         }
@@ -444,7 +478,7 @@ impl MockAndromedaQuerier {
                         SystemResult::Ok(ContractResult::Ok(
                             to_binary(&ActionFee::new(
                                 MOCK_ACTION.to_string(),
-                                "uusd".to_string(),
+                                "native:uusd".to_string(),
                                 Uint128::from(10u128),
                             ))
                             .unwrap(),
@@ -458,10 +492,18 @@ impl MockAndromedaQuerier {
         } else if key_str.contains("ado_type") {
             let split = key_str.split("ado_type");
             let key = split.last();
-            match key {
-                Some("1") => SystemResult::Ok(ContractResult::Ok(to_binary("ADOType").unwrap())),
-                Some(_) => SystemResult::Ok(ContractResult::Err("Invalid Key".to_string())),
-                None => SystemResult::Ok(ContractResult::Err("Invalid Key".to_string())),
+            let app_contract_key = String::from_utf8(3u64.to_be_bytes().to_vec()).unwrap();
+            let generic_contract_key = String::from_utf8(1u64.to_be_bytes().to_vec()).unwrap();
+            if let Some(key) = key {
+                if key == app_contract_key {
+                    SystemResult::Ok(ContractResult::Ok(to_binary("app-contract").unwrap()))
+                } else if key == generic_contract_key {
+                    SystemResult::Ok(ContractResult::Ok(to_binary("ADOType").unwrap()))
+                } else {
+                    SystemResult::Ok(ContractResult::Ok(Binary::default()))
+                }
+            } else {
+                SystemResult::Ok(ContractResult::Err("Invalid Key".to_string()))
             }
         } else if key_str.contains("publisher") {
             let split = key_str.split("ado_type");
