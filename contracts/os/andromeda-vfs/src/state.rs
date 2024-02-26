@@ -1,6 +1,6 @@
 use andromeda_std::{amp::AndrAddr, error::ContractError};
 use cosmwasm_std::{ensure, Addr, Api, Storage};
-use cw_storage_plus::{Index, IndexList, IndexedMap, Map, MultiIndex};
+use cw_storage_plus::{Bound, Index, IndexList, IndexedMap, Map, MultiIndex};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
@@ -202,18 +202,31 @@ fn resolve_path(
     Ok(address)
 }
 
+const MAX_LIMIT: u32 = 100u32;
+const DEFAULT_LIMIT: u32 = 50u32;
+
 pub fn get_subdir(
     storage: &dyn Storage,
     api: &dyn Api,
     pathname: AndrAddr,
+    min: Option<(Addr, String)>,
+    max: Option<(Addr, String)>,
+    limit: Option<u32>,
 ) -> Result<Vec<PathInfo>, ContractError> {
     let address = resolve_pathname(storage, api, pathname, &mut vec![])?;
+    let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT);
 
     let subdirs = paths()
         .idx
         .parent
         .prefix(address)
-        .range(storage, None, None, cosmwasm_std::Order::Ascending)
+        .range(
+            storage,
+            min.map(Bound::inclusive),
+            max.map(Bound::inclusive),
+            cosmwasm_std::Order::Ascending,
+        )
+        .take(limit as usize)
         .map(|r| r.unwrap().1)
         .collect();
 

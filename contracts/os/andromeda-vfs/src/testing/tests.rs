@@ -706,6 +706,9 @@ fn test_get_subdir() {
 
     let query_msg = QueryMsg::SubDir {
         path: AndrAddr::from_string(format!("/home/{username}")),
+        min: None,
+        max: None,
+        limit: None,
     };
     let res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
     let val: Vec<PathInfo> = from_binary(&res).unwrap();
@@ -714,6 +717,9 @@ fn test_get_subdir() {
     let subdir = &root_paths[0].name;
     let query_msg = QueryMsg::SubDir {
         path: AndrAddr::from_string(format!("/home/{username}/{subdir}")),
+        min: None,
+        max: None,
+        limit: None,
     };
     let res = query(deps.as_ref(), env, query_msg).unwrap();
     let val: Vec<PathInfo> = from_binary(&res).unwrap();
