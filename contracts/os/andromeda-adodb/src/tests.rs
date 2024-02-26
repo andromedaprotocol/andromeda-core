@@ -428,8 +428,10 @@ fn test_unpublish() {
     assert!(resp.is_ok());
 
     // There shouldn't be any versions remaining since 0.3.0 was the last one
-    let vers_code_id = LATEST_VERSION.load(deps.as_ref().storage, &ado_version.get_type());
-    assert!(vers_code_id.is_err());
+    let vers_code_id = LATEST_VERSION
+        .may_load(deps.as_ref().storage, &ado_version.get_type())
+        .unwrap();
+    assert!(vers_code_id.is_none());
 }
 
 #[test]
