@@ -58,26 +58,11 @@
           "type": "object",
           "required": [
             "ado_type",
-            "code_id",
             "version"
           ],
           "properties": {
-            "action_fees": {
-              "type": [
-                "array",
-                "null"
-              ],
-              "items": {
-                "$ref": "#/definitions/ActionFee"
-              }
-            },
             "ado_type": {
               "type": "string"
-            },
-            "code_id": {
-              "type": "integer",
-              "format": "uint64",
-              "minimum": 0.0
             },
             "version": {
               "type": "string"

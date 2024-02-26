@@ -1,6 +1,6 @@
 {
   "contract_name": "andromeda-adodb",
-  "contract_version": "0.2.1",
+  "contract_version": "0.2.16",
   "idl_version": "1.0.0",
   "instantiate": {
     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -82,26 +82,11 @@
             "type": "object",
             "required": [
               "ado_type",
-              "code_id",
               "version"
             ],
             "properties": {
-              "action_fees": {
-                "type": [
-                  "array",
-                  "null"
-                ],
-                "items": {
-                  "$ref": "#/definitions/ActionFee"
-                }
-              },
               "ado_type": {
                 "type": "string"
-              },
-              "code_id": {
-                "type": "integer",
-                "format": "uint64",
-                "minimum": 0.0
               },
               "version": {
                 "type": "string"
@@ -263,19 +248,6 @@
       {
         "type": "object",
         "required": [
-          "unpublished_code_ids"
-        ],
-        "properties": {
-          "unpublished_code_ids": {
-            "type": "object",
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
-      },
-      {
-        "type": "object",
-        "required": [
           "is_unpublished_code_id"
         ],
         "properties": {
@@ -376,27 +348,6 @@
                   "string",
                   "null"
                 ]
-              }
-            },
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
-      },
-      {
-        "type": "object",
-        "required": [
-          "unpublished_ado_versions"
-        ],
-        "properties": {
-          "unpublished_ado_versions": {
-            "type": "object",
-            "required": [
-              "ado_type"
-            ],
-            "properties": {
-              "ado_type": {
-                "type": "string"
               }
             },
             "additionalProperties": false
@@ -660,24 +611,6 @@
         }
       },
       "additionalProperties": false
-    },
-    "unpublished_a_d_o_versions": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Array_of_String",
-      "type": "array",
-      "items": {
-        "type": "string"
-      }
-    },
-    "unpublished_code_ids": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Array_of_uint64",
-      "type": "array",
-      "items": {
-        "type": "integer",
-        "format": "uint64",
-        "minimum": 0.0
-      }
     }
   }
 }

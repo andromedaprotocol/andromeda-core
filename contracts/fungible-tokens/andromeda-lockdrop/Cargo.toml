@@ -1,6 +1,6 @@
 [package]
 name = "andromeda-lockdrop"
-version = "0.2.1"
+version = "0.2.16"
 edition = "2021"
 rust-version = "1.65.0"
 

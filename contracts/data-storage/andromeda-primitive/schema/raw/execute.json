@@ -88,20 +88,11 @@
     {
       "type": "object",
       "required": [
-        "update_owner"
+        "ownership"
       ],
       "properties": {
-        "update_owner": {
-          "type": "object",
-          "required": [
-            "address"
-          ],
-          "properties": {
-            "address": {
-              "type": "string"
-            }
-          },
-          "additionalProperties": false
+        "ownership": {
+          "$ref": "#/definitions/OwnershipMessage"
         }
       },
       "additionalProperties": false
@@ -109,20 +100,17 @@
     {
       "type": "object",
       "required": [
-        "update_operators"
+        "update_kernel_address"
       ],
       "properties": {
-        "update_operators": {
+        "update_kernel_address": {
           "type": "object",
           "required": [
-            "operators"
+            "address"
           ],
           "properties": {
-            "operators": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
+            "address": {
+              "$ref": "#/definitions/Addr"
             }
           },
           "additionalProperties": false
@@ -154,74 +142,11 @@
     {
       "type": "object",
       "required": [
-        "set_permission"
+        "permissioning"
       ],
       "properties": {
-        "set_permission": {
-          "type": "object",
-          "required": [
-            "action",
-            "actor",
-            "permission"
-          ],
-          "properties": {
-            "action": {
-              "type": "string"
-            },
-            "actor": {
-              "$ref": "#/definitions/AndrAddr"
-            },
-            "permission": {
-              "$ref": "#/definitions/Permission"
-            }
-          },
-          "additionalProperties": false
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "type": "object",
-      "required": [
-        "remove_permission"
-      ],
-      "properties": {
-        "remove_permission": {
-          "type": "object",
-          "required": [
-            "action",
-            "actor"
-          ],
-          "properties": {
-            "action": {
-              "type": "string"
-            },
-            "actor": {
-              "$ref": "#/definitions/AndrAddr"
-            }
-          },
-          "additionalProperties": false
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "type": "object",
-      "required": [
-        "permission_action"
-      ],
-      "properties": {
-        "permission_action": {
-          "type": "object",
-          "required": [
-            "action"
-          ],
-          "properties": {
-            "action": {
-              "type": "string"
-            }
-          },
-          "additionalProperties": false
+        "permissioning": {
+          "$ref": "#/definitions/PermissioningMessage"
         }
       },
       "additionalProperties": false
@@ -466,6 +391,73 @@
       },
       "additionalProperties": false
     },
+    "OwnershipMessage": {
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": [
+            "revoke_ownership_offer",
+            "accept_ownership",
+            "disown"
+          ]
+        },
+        {
+          "type": "object",
+          "required": [
+            "update_owner"
+          ],
+          "properties": {
+            "update_owner": {
+              "type": "object",
+              "required": [
+                "new_owner"
+              ],
+              "properties": {
+                "expiration": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/definitions/Expiration"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "new_owner": {
+                  "$ref": "#/definitions/Addr"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "update_operators"
+          ],
+          "properties": {
+            "update_operators": {
+              "type": "object",
+              "required": [
+                "new_operators"
+              ],
+              "properties": {
+                "new_operators": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/Addr"
+                  }
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
     "Permission": {
       "description": "An enum to represent a user's permission for an action\n\n- **Blacklisted** - The user cannot perform the action until after the provided expiration - **Limited** - The user can perform the action while uses are remaining and before the provided expiration **for a permissioned action** - **Whitelisted** - The user can perform the action until the provided expiration **for a permissioned action**\n\nExpiration defaults to `Never` if not provided",
       "oneOf": [
@@ -536,6 +528,106 @@
                   "type": "null"
                 }
               ]
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "PermissioningMessage": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "set_permission"
+          ],
+          "properties": {
+            "set_permission": {
+              "type": "object",
+              "required": [
+                "action",
+                "actor",
+                "permission"
+              ],
+              "properties": {
+                "action": {
+                  "type": "string"
+                },
+                "actor": {
+                  "$ref": "#/definitions/AndrAddr"
+                },
+                "permission": {
+                  "$ref": "#/definitions/Permission"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "remove_permission"
+          ],
+          "properties": {
+            "remove_permission": {
+              "type": "object",
+              "required": [
+                "action",
+                "actor"
+              ],
+              "properties": {
+                "action": {
+                  "type": "string"
+                },
+                "actor": {
+                  "$ref": "#/definitions/AndrAddr"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "permission_action"
+          ],
+          "properties": {
+            "permission_action": {
+              "type": "object",
+              "required": [
+                "action"
+              ],
+              "properties": {
+                "action": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "disable_action_permissioning"
+          ],
+          "properties": {
+            "disable_action_permissioning": {
+              "type": "object",
+              "required": [
+                "action"
+              ],
+              "properties": {
+                "action": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
             }
           },
           "additionalProperties": false

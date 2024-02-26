@@ -1,6 +1,6 @@
 {
   "contract_name": "andromeda-kernel",
-  "contract_version": "0.2.15",
+  "contract_version": "0.2.16",
   "idl_version": "1.0.0",
   "instantiate": {
     "$schema": "http://json-schema.org/draft-07/schema#",

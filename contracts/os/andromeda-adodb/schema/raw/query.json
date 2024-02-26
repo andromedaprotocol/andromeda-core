@@ -26,19 +26,6 @@
     {
       "type": "object",
       "required": [
-        "unpublished_code_ids"
-      ],
-      "properties": {
-        "unpublished_code_ids": {
-          "type": "object",
-          "additionalProperties": false
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "type": "object",
-      "required": [
         "is_unpublished_code_id"
       ],
       "properties": {
@@ -139,27 +126,6 @@
                 "string",
                 "null"
               ]
-            }
-          },
-          "additionalProperties": false
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "type": "object",
-      "required": [
-        "unpublished_ado_versions"
-      ],
-      "properties": {
-        "unpublished_ado_versions": {
-          "type": "object",
-          "required": [
-            "ado_type"
-          ],
-          "properties": {
-            "ado_type": {
-              "type": "string"
             }
           },
           "additionalProperties": false

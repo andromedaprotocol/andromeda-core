@@ -1,6 +1,6 @@
 {
   "contract_name": "andromeda-auction",
-  "contract_version": "0.2.1",
+  "contract_version": "0.2.16",
   "idl_version": "1.0.0",
   "instantiate": {
     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -10,6 +10,15 @@
       "kernel_address"
     ],
     "properties": {
+      "authorized_token_addresses": {
+        "type": [
+          "array",
+          "null"
+        ],
+        "items": {
+          "$ref": "#/definitions/AndrAddr"
+        }
+      },
       "kernel_address": {
         "type": "string"
       },
@@ -214,6 +223,60 @@
         "additionalProperties": false
       },
       {
+        "description": "Restricted to owner",
+        "type": "object",
+        "required": [
+          "authorize_token_contract"
+        ],
+        "properties": {
+          "authorize_token_contract": {
+            "type": "object",
+            "required": [
+              "addr"
+            ],
+            "properties": {
+              "addr": {
+                "$ref": "#/definitions/AndrAddr"
+              },
+              "expiration": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Expiration"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Restricted to owner",
+        "type": "object",
+        "required": [
+          "deauthorize_token_contract"
+        ],
+        "properties": {
+          "deauthorize_token_contract": {
+            "type": "object",
+            "required": [
+              "addr"
+            ],
+            "properties": {
+              "addr": {
+                "$ref": "#/definitions/AndrAddr"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
         "type": "object",
         "required": [
           "amp_receive"
@@ -228,20 +291,11 @@
       {
         "type": "object",
         "required": [
-          "update_owner"
+          "ownership"
         ],
         "properties": {
-          "update_owner": {
-            "type": "object",
-            "required": [
-              "address"
-            ],
-            "properties": {
-              "address": {
-                "type": "string"
-              }
-            },
-            "additionalProperties": false
+          "ownership": {
+            "$ref": "#/definitions/OwnershipMessage"
           }
         },
         "additionalProperties": false
@@ -249,20 +303,17 @@
       {
         "type": "object",
         "required": [
-          "update_operators"
+          "update_kernel_address"
         ],
         "properties": {
-          "update_operators": {
+          "update_kernel_address": {
             "type": "object",
             "required": [
-              "operators"
+              "address"
             ],
             "properties": {
-              "operators": {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                }
+              "address": {
+                "$ref": "#/definitions/Addr"
               }
             },
             "additionalProperties": false
@@ -294,74 +345,11 @@
       {
         "type": "object",
         "required": [
-          "set_permission"
+          "permissioning"
         ],
         "properties": {
-          "set_permission": {
-            "type": "object",
-            "required": [
-              "action",
-              "actor",
-              "permission"
-            ],
-            "properties": {
-              "action": {
-                "type": "string"
-              },
-              "actor": {
-                "$ref": "#/definitions/AndrAddr"
-              },
-              "permission": {
-                "$ref": "#/definitions/Permission"
-              }
-            },
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
-      },
-      {
-        "type": "object",
-        "required": [
-          "remove_permission"
-        ],
-        "properties": {
-          "remove_permission": {
-            "type": "object",
-            "required": [
-              "action",
-              "actor"
-            ],
-            "properties": {
-              "action": {
-                "type": "string"
-              },
-              "actor": {
-                "$ref": "#/definitions/AndrAddr"
-              }
-            },
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
-      },
-      {
-        "type": "object",
-        "required": [
-          "permission_action"
-        ],
-        "properties": {
-          "permission_action": {
-            "type": "object",
-            "required": [
-              "action"
-            ],
-            "properties": {
-              "action": {
-                "type": "string"
-              }
-            },
-            "additionalProperties": false
+          "permissioning": {
+            "$ref": "#/definitions/PermissioningMessage"
           }
         },
         "additionalProperties": false
@@ -713,6 +701,73 @@
         },
         "additionalProperties": false
       },
+      "OwnershipMessage": {
+        "oneOf": [
+          {
+            "type": "string",
+            "enum": [
+              "revoke_ownership_offer",
+              "accept_ownership",
+              "disown"
+            ]
+          },
+          {
+            "type": "object",
+            "required": [
+              "update_owner"
+            ],
+            "properties": {
+              "update_owner": {
+                "type": "object",
+                "required": [
+                  "new_owner"
+                ],
+                "properties": {
+                  "expiration": {
+                    "anyOf": [
+                      {
+                        "$ref": "#/definitions/Expiration"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "new_owner": {
+                    "$ref": "#/definitions/Addr"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "update_operators"
+            ],
+            "properties": {
+              "update_operators": {
+                "type": "object",
+                "required": [
+                  "new_operators"
+                ],
+                "properties": {
+                  "new_operators": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/definitions/Addr"
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      },
       "Permission": {
         "description": "An enum to represent a user's permission for an action\n\n- **Blacklisted** - The user cannot perform the action until after the provided expiration - **Limited** - The user can perform the action while uses are remaining and before the provided expiration **for a permissioned action** - **Whitelisted** - The user can perform the action until the provided expiration **for a permissioned action**\n\nExpiration defaults to `Never` if not provided",
         "oneOf": [
@@ -783,6 +838,106 @@
                     "type": "null"
                   }
                 ]
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      },
+      "PermissioningMessage": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "set_permission"
+            ],
+            "properties": {
+              "set_permission": {
+                "type": "object",
+                "required": [
+                  "action",
+                  "actor",
+                  "permission"
+                ],
+                "properties": {
+                  "action": {
+                    "type": "string"
+                  },
+                  "actor": {
+                    "$ref": "#/definitions/AndrAddr"
+                  },
+                  "permission": {
+                    "$ref": "#/definitions/Permission"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "remove_permission"
+            ],
+            "properties": {
+              "remove_permission": {
+                "type": "object",
+                "required": [
+                  "action",
+                  "actor"
+                ],
+                "properties": {
+                  "action": {
+                    "type": "string"
+                  },
+                  "actor": {
+                    "$ref": "#/definitions/AndrAddr"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "permission_action"
+            ],
+            "properties": {
+              "permission_action": {
+                "type": "object",
+                "required": [
+                  "action"
+                ],
+                "properties": {
+                  "action": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "disable_action_permissioning"
+            ],
+            "properties": {
+              "disable_action_permissioning": {
+                "type": "object",
+                "required": [
+                  "action"
+                ],
+                "properties": {
+                  "action": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -1292,174 +1447,12 @@
           }
         },
         "additionalProperties": false
-      },
-      {
-        "type": "object",
-        "required": [
-          "andr_hook"
-        ],
-        "properties": {
-          "andr_hook": {
-            "$ref": "#/definitions/AndromedaHook"
-          }
-        },
-        "additionalProperties": false
       }
     ],
     "definitions": {
       "AndrAddr": {
         "description": "An address that can be used within the Andromeda ecosystem. Inspired by the cosmwasm-std `Addr` type. https://github.com/CosmWasm/cosmwasm/blob/2a1c698520a1aacedfe3f4803b0d7d653892217a/packages/std/src/addresses.rs#L33\n\nThis address can be one of two things: 1. A valid human readable address e.g. `cosmos1...` 2. A valid Andromeda VFS path e.g. `/home/user/app/component`\n\nVFS paths can be local in the case of an app and can be done by referencing `./component` they can also contain protocols for cross chain communication. A VFS path is usually structured as so:\n\n`<protocol>://<chain (required if ibc used)>/<path>` or `ibc://cosmoshub-4/user/app/component`",
         "type": "string"
-      },
-      "AndromedaHook": {
-        "oneOf": [
-          {
-            "type": "object",
-            "required": [
-              "on_execute"
-            ],
-            "properties": {
-              "on_execute": {
-                "type": "object",
-                "required": [
-                  "payload",
-                  "sender"
-                ],
-                "properties": {
-                  "payload": {
-                    "$ref": "#/definitions/Binary"
-                  },
-                  "sender": {
-                    "type": "string"
-                  }
-                },
-                "additionalProperties": false
-              }
-            },
-            "additionalProperties": false
-          },
-          {
-            "type": "object",
-            "required": [
-              "on_funds_transfer"
-            ],
-            "properties": {
-              "on_funds_transfer": {
-                "type": "object",
-                "required": [
-                  "amount",
-                  "payload",
-                  "sender"
-                ],
-                "properties": {
-                  "amount": {
-                    "$ref": "#/definitions/Funds"
-                  },
-                  "payload": {
-                    "$ref": "#/definitions/Binary"
-                  },
-                  "sender": {
-                    "type": "string"
-                  }
-                },
-                "additionalProperties": false
-              }
-            },
-            "additionalProperties": false
-          },
-          {
-            "type": "object",
-            "required": [
-              "on_token_transfer"
-            ],
-            "properties": {
-              "on_token_transfer": {
-                "type": "object",
-                "required": [
-                  "recipient",
-                  "sender",
-                  "token_id"
-                ],
-                "properties": {
-                  "recipient": {
-                    "type": "string"
-                  },
-                  "sender": {
-                    "type": "string"
-                  },
-                  "token_id": {
-                    "type": "string"
-                  }
-                },
-                "additionalProperties": false
-              }
-            },
-            "additionalProperties": false
-          }
-        ]
-      },
-      "Binary": {
-        "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
-        "type": "string"
-      },
-      "Coin": {
-        "type": "object",
-        "required": [
-          "amount",
-          "denom"
-        ],
-        "properties": {
-          "amount": {
-            "$ref": "#/definitions/Uint128"
-          },
-          "denom": {
-            "type": "string"
-          }
-        }
-      },
-      "Cw20Coin": {
-        "type": "object",
-        "required": [
-          "address",
-          "amount"
-        ],
-        "properties": {
-          "address": {
-            "type": "string"
-          },
-          "amount": {
-            "$ref": "#/definitions/Uint128"
-          }
-        },
-        "additionalProperties": false
-      },
-      "Funds": {
-        "oneOf": [
-          {
-            "type": "object",
-            "required": [
-              "native"
-            ],
-            "properties": {
-              "native": {
-                "$ref": "#/definitions/Coin"
-              }
-            },
-            "additionalProperties": false
-          },
-          {
-            "type": "object",
-            "required": [
-              "cw20"
-            ],
-            "properties": {
-              "cw20": {
-                "$ref": "#/definitions/Cw20Coin"
-              }
-            },
-            "additionalProperties": false
-          }
-        ]
       },
       "OrderBy": {
         "type": "string",
@@ -1481,12 +1474,6 @@
   "migrate": null,
   "sudo": null,
   "responses": {
-    "andr_hook": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Binary",
-      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
-      "type": "string"
-    },
     "auction_ids": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "AuctionIdsResponse",
@@ -1552,7 +1539,6 @@
         "high_bidder_addr",
         "high_bidder_amount",
         "is_cancelled",
-        "owner",
         "start_time"
       ],
       "properties": {
@@ -1583,9 +1569,6 @@
               "type": "null"
             }
           ]
-        },
-        "owner": {
-          "type": "string"
         },
         "start_time": {
           "$ref": "#/definitions/Expiration"
@@ -1841,7 +1824,6 @@
         "high_bidder_addr",
         "high_bidder_amount",
         "is_cancelled",
-        "owner",
         "start_time"
       ],
       "properties": {
@@ -1872,9 +1854,6 @@
               "type": "null"
             }
           ]
-        },
-        "owner": {
-          "type": "string"
         },
         "start_time": {
           "$ref": "#/definitions/Expiration"

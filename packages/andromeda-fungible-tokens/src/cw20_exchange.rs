@@ -44,7 +44,7 @@ pub struct Sale {
     pub start_amount: Uint128,
 }
 
-#[derive(Deserialize, Serialize)]
+#[cw_serde]
 pub enum Cw20HookMsg {
     /// Starts a sale
     StartSale {

@@ -6,6 +6,15 @@
     "kernel_address"
   ],
   "properties": {
+    "authorized_token_addresses": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/AndrAddr"
+      }
+    },
     "kernel_address": {
       "type": "string"
     },

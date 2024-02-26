@@ -53,7 +53,7 @@
       "additionalProperties": false
     },
     {
-      "description": "Gets the withdrawal percent allowed given the timestamp, or the current time if not specified.",
+      "description": "Gets the withdrawal percent allowed given the timestamp, or the current time if not specified. Timestamp is in seconds.",
       "type": "object",
       "required": [
         "withdrawal_percent_allowed"
