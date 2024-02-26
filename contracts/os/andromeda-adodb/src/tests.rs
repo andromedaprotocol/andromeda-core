@@ -337,12 +337,86 @@ fn test_unpublish() {
         ado_type: ado_version.get_type(),
         version: ado_version.get_version(),
         code_id,
+        action_fees: Some(action_fees.clone()),
+        publisher: Some(owner.clone()),
+    };
+
+    let resp = execute(deps.as_mut(), env.clone(), info.clone(), msg);
+    assert!(resp.is_ok());
+
+    // Publish 2 versions of the same ADO type
+    let ado_version = ADOVersion::from_type("splitter").with_version("0.1.0");
+    let code_id = 10;
+    let msg = ExecuteMsg::Publish {
+        ado_type: ado_version.get_type(),
+        version: ado_version.get_version(),
+        code_id,
+        action_fees: Some(action_fees.clone()),
+        publisher: Some(owner.clone()),
+    };
+
+    let resp = execute(deps.as_mut(), env.clone(), info.clone(), msg);
+    assert!(resp.is_ok());
+
+    let ado_version = ADOVersion::from_type("splitter").with_version("0.2.0");
+    let code_id = 11;
+    let msg = ExecuteMsg::Publish {
+        ado_type: ado_version.get_type(),
+        version: ado_version.get_version(),
+        code_id,
+        action_fees: Some(action_fees.clone()),
+        publisher: Some(owner.clone()),
+    };
+
+    let resp = execute(deps.as_mut(), env.clone(), info.clone(), msg);
+    assert!(resp.is_ok());
+
+    let msg = ExecuteMsg::Unpublish {
+        ado_type: "splitter".to_string(),
+        version: "0.2.0".to_string(),
+    };
+
+    let resp = execute(deps.as_mut(), env.clone(), info.clone(), msg);
+
+    assert!(resp.is_ok());
+
+    let vers_code_id = LATEST_VERSION
+        .load(deps.as_ref().storage, "splitter")
+        .unwrap();
+    // We published 2 versions of the splitter. The first being version 0.1.0, and the other 0.2.0.
+    // While unpublishing the latest version, the penultimate version was set instead as the latest version
+    assert_eq!(vers_code_id, ("0.1.0".to_string(), 10));
+
+    // Let's try removing the penultimate version, the latest version should remain unchanged
+    // First we'll publish a newer version so that we'll have two.
+    let ado_version = ADOVersion::from_type("splitter").with_version("0.3.0");
+    let code_id = 12;
+    let msg = ExecuteMsg::Publish {
+        ado_type: ado_version.get_type(),
+        version: ado_version.get_version(),
+        code_id,
         action_fees: Some(action_fees),
         publisher: Some(owner),
     };
 
-    let resp = execute(deps.as_mut(), env, info, msg);
+    let resp = execute(deps.as_mut(), env.clone(), info.clone(), msg);
+    // Version 0.3.0 should now be the latest version, and removing 0.1.0 won't affect that.
     assert!(resp.is_ok());
+
+    // Remove version 0.1.0
+    let msg = ExecuteMsg::Unpublish {
+        ado_type: "splitter".to_string(),
+        version: "0.1.0".to_string(),
+    };
+
+    let resp = execute(deps.as_mut(), env.clone(), info.clone(), msg);
+
+    assert!(resp.is_ok());
+
+    let vers_code_id = LATEST_VERSION
+        .load(deps.as_ref().storage, "splitter")
+        .unwrap();
+    assert_eq!(vers_code_id, ("0.3.0".to_string(), 12));
 }
 
 #[test]

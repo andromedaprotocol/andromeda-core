@@ -68,7 +68,42 @@ pub fn remove_code_id(
         ContractError::Unauthorized {}
     );
     ADO_TYPE.remove(storage, code_id);
-    LATEST_VERSION.remove(storage, &ado_version.get_type());
+    let version_code = LATEST_VERSION.may_load(storage, &ado_version.get_type())?;
+    if let Some(version_code) = version_code {
+        // This means that the code_id we're trying to unpublish is also the latest
+        if version_code.1 == code_id {
+            let mut penultimate_version = semver::Version::new(0, 0, 0);
+            let latest_version = semver::Version::parse(&ado_version.get_version()).unwrap();
+            CODE_ID
+                .keys(storage, None, None, cosmwasm_std::Order::Descending)
+                .map(|v| v.unwrap())
+                // Filter out the keys by type first
+                .filter(|v| v.starts_with(&ado_version.get_type()))
+                // We want to get the penultimate version, since it will replace the latest version
+                .for_each(|v| {
+                    if let Some((_, version)) = v.split_once('@') {
+                        let current_version = semver::Version::parse(version).unwrap();
+                        if penultimate_version < current_version && current_version < latest_version
+                        {
+                            penultimate_version = current_version;
+                        };
+                    };
+                });
+            // In that case, the version we're removing is the only one for that ADO type.
+            if penultimate_version == semver::Version::new(0, 0, 0) {
+                LATEST_VERSION.remove(storage, &ado_version.get_type());
+            } else {
+                let version_type = ADOVersion::from_type(ado_version.get_type())
+                    .with_version(penultimate_version.to_string());
+                let penultimate_version_id = CODE_ID.load(storage, version_type.as_str())?;
+                LATEST_VERSION.save(
+                    storage,
+                    &ado_version.get_type(),
+                    &(penultimate_version.to_string(), penultimate_version_id),
+                )?;
+            }
+        }
+    }
     CODE_ID.remove(storage, ado_version.as_str());
 
     // Check if there is any default ado set for this ado type. Defaults do not have versions appended to them.
