@@ -44,11 +44,11 @@ pub fn instantiate(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
-    // if msg.result.is_err() {
-    //     return Err(ContractError::Std(StdError::generic_err(
-    //         msg.result.unwrap_err(),
-    //     )));
-    // }
+    if msg.result.is_err() {
+        return Err(ContractError::Std(StdError::generic_err(
+            msg.result.unwrap_err(),
+        )));
+    }
 
     match ReplyId::from_repr(msg.id) {
         Some(ReplyId::Cw20WithdrawMsg) => Err(ContractError::Std(StdError::generic_err(

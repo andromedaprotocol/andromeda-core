@@ -229,7 +229,7 @@ impl MockAndromedaQuerier {
                 FAKE_VFS_PATH => SystemResult::Ok(ContractResult::Err("Invalid Path".to_string())),
                 _ => SystemResult::Ok(ContractResult::Ok(to_binary(&path).unwrap())),
             },
-            VFSQueryMsg::SubDir { path } => match path.as_str() {
+            VFSQueryMsg::SubDir { path, .. } => match path.as_str() {
                 FAKE_VFS_PATH => SystemResult::Ok(ContractResult::Err("Invalid Path".to_string())),
                 _ => SystemResult::Ok(ContractResult::Ok(to_binary(&path).unwrap())),
             },

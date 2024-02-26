@@ -123,7 +123,12 @@ pub enum QueryMsg {
     #[returns(Addr)]
     ResolvePath { path: AndrAddr },
     #[returns(Vec<PathDetails>)]
-    SubDir { path: AndrAddr },
+    SubDir {
+        path: AndrAddr,
+        min: Option<(Addr, String)>,
+        max: Option<(Addr, String)>,
+        limit: Option<u32>,
+    },
     #[returns(Vec<String>)]
     Paths { addr: Addr },
     #[returns(String)]
