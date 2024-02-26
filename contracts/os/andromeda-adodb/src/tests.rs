@@ -424,7 +424,7 @@ fn test_unpublish() {
         version: "0.3.0".to_string(),
     };
 
-    let resp = execute(deps.as_mut(), env.clone(), info.clone(), msg);
+    let resp = execute(deps.as_mut(), env, info, msg);
     assert!(resp.is_ok());
 
     // There shouldn't be any versions remaining since 0.3.0 was the last one
