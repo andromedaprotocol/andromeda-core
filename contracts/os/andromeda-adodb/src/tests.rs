@@ -417,6 +417,19 @@ fn test_unpublish() {
         .load(deps.as_ref().storage, "splitter")
         .unwrap();
     assert_eq!(vers_code_id, ("0.3.0".to_string(), 12));
+
+    // 0.3.0 is now the only version remaining for the splitter type, removing it should not result in errors
+    let msg = ExecuteMsg::Unpublish {
+        ado_type: "splitter".to_string(),
+        version: "0.3.0".to_string(),
+    };
+
+    let resp = execute(deps.as_mut(), env.clone(), info.clone(), msg);
+    assert!(resp.is_ok());
+
+    // There shouldn't be any versions remaining since 0.3.0 was the last one
+    let vers_code_id = LATEST_VERSION.load(deps.as_ref().storage, &ado_version.get_type());
+    assert!(vers_code_id.is_err());
 }
 
 #[test]
