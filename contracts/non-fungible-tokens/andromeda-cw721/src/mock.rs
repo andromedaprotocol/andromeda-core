@@ -104,7 +104,6 @@ pub fn mock_cw721_instantiate_msg(
         name,
         symbol,
         minter: AndrAddr::from_string(minter.into()),
-
         kernel_address,
         owner,
     }

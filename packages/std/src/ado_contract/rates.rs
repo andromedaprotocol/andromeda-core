@@ -219,6 +219,42 @@ impl<'a> ADOContract<'a> {
             events,
         })
     }
+    // pub fn on_funds_transfer(
+    //     &self,
+    //     deps: &Deps,
+    //     sender: String,
+    //     amount: Funds,
+    //     msg: Binary,
+    // ) -> Result<(Vec<SubMsg>, Vec<Event>, Funds), ContractError> {
+    //     let mut remainder = amount;
+    //     let mut msgs: Vec<SubMsg> = Vec::new();
+    //     let mut events: Vec<Event> = Vec::new();
+
+    //     let vfs_address = self.get_vfs_address(deps.storage, &deps.querier)?;
+    //     let modules: Vec<Module> = self.load_modules(deps.storage)?;
+    //     for module in modules {
+    //         let module_address = module
+    //             .address
+    //             .get_raw_address_from_vfs(deps, vfs_address.clone())?;
+    //         let mod_resp: Option<OnFundsTransferResponse> = hook_query(
+    //             &deps.querier,
+    //             AndromedaHook::OnFundsTransfer {
+    //                 payload: msg.clone(),
+    //                 sender: sender.clone(),
+    //                 amount: remainder.clone(),
+    //             },
+    //             module_address,
+    //         )?;
+
+    //         if let Some(mod_resp) = mod_resp {
+    //             remainder = mod_resp.leftover_funds;
+    //             msgs = [msgs, mod_resp.msgs].concat();
+    //             events = [events, mod_resp.events].concat();
+    //         }
+    //     }
+
+    //     Ok((msgs, events, remainder))
+    // }
 }
 #[cfg(test)]
 #[cfg(feature = "rates")]
