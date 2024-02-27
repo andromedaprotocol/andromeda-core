@@ -41,6 +41,9 @@ pub enum ContractError {
     #[error("InvalidSender")]
     InvalidSender {},
 
+    #[error("InvalidValidator")]
+    InvalidValidator {},
+
     #[error("RewardTooLow")]
     RewardTooLow {},
 
