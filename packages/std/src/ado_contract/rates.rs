@@ -117,107 +117,112 @@ impl<'a> ADOContract<'a> {
         deps: Deps,
         action: impl Into<String>,
         funds: Funds,
-    ) -> Result<OnFundsTransferResponse, ContractError> {
+    ) -> Result<Option<OnFundsTransferResponse>, ContractError> {
         let action: String = action.into();
-        let rate = self.rates.load(deps.storage, &action)?;
-        let mut msgs: Vec<SubMsg> = vec![];
-        let mut events: Vec<Event> = vec![];
-        let (coin, is_native): (Coin, bool) = match funds.clone() {
-            Funds::Native(coin) => (coin, true),
-            Funds::Cw20(cw20_coin) => (
-                create_coin(cw20_coin.amount.u128(), cw20_coin.address),
-                false,
-            ),
-        };
-        let mut leftover_funds = vec![coin.clone()];
+        let rate = self.rates.may_load(deps.storage, &action)?;
         match rate {
-            Rate::Local(local_rate) => {
-                let event_name = if local_rate.rate_type.is_additive() {
-                    "tax"
-                } else {
-                    "royalty"
+            Some(rate) => {
+                let mut msgs: Vec<SubMsg> = vec![];
+                let mut events: Vec<Event> = vec![];
+                let (coin, is_native): (Coin, bool) = match funds.clone() {
+                    Funds::Native(coin) => (coin, true),
+                    Funds::Cw20(cw20_coin) => (
+                        create_coin(cw20_coin.amount.u128(), cw20_coin.address),
+                        false,
+                    ),
                 };
-                let mut event = Event::new(event_name);
-                if let Some(desc) = &local_rate.description {
-                    event = event.add_attribute("description", desc);
-                }
-                let fee = calculate_fee(local_rate.value.clone(), &coin)?;
-                for receiver in local_rate.recipients.iter() {
-                    if local_rate.rate_type == LocalRateType::Deductive {
-                        deduct_funds(&mut leftover_funds, &fee)?;
-                        event = event.add_attribute("deducted", fee.to_string());
+                let mut leftover_funds = vec![coin.clone()];
+                match rate {
+                    Rate::Local(local_rate) => {
+                        let event_name = if local_rate.rate_type.is_additive() {
+                            "tax"
+                        } else {
+                            "royalty"
+                        };
+                        let mut event = Event::new(event_name);
+                        if let Some(desc) = &local_rate.description {
+                            event = event.add_attribute("description", desc);
+                        }
+                        let fee = calculate_fee(local_rate.value.clone(), &coin)?;
+                        for receiver in local_rate.recipients.iter() {
+                            if local_rate.rate_type == LocalRateType::Deductive {
+                                deduct_funds(&mut leftover_funds, &fee)?;
+                                event = event.add_attribute("deducted", fee.to_string());
+                            }
+                            event = event.add_attribute(
+                                "payment",
+                                PaymentAttribute {
+                                    receiver: receiver.get_addr(),
+                                    amount: fee.clone(),
+                                }
+                                .to_string(),
+                            );
+                            let msg = if is_native {
+                                receiver.generate_direct_msg(&deps, vec![fee.clone()])?
+                            } else {
+                                receiver.generate_msg_cw20(
+                                    &deps,
+                                    Cw20Coin {
+                                        amount: fee.amount,
+                                        address: fee.denom.to_string(),
+                                    },
+                                )?
+                            };
+                            msgs.push(msg);
+                        }
+                        events.push(event);
                     }
-                    event = event.add_attribute(
-                        "payment",
-                        PaymentAttribute {
-                            receiver: receiver.get_addr(),
-                            amount: fee.clone(),
-                        }
-                        .to_string(),
-                    );
-                    let msg = if is_native {
-                        receiver.generate_direct_msg(&deps, vec![fee.clone()])?
-                    } else {
-                        receiver.generate_msg_cw20(
-                            &deps,
-                            Cw20Coin {
-                                amount: fee.amount,
-                                address: fee.denom.to_string(),
+                    Rate::Contract(rates_address) => {
+                        // Restructure leftover funds from Vec<Coin> into Funds
+                        // let remaining_funds = if is_native {
+                        //     Funds::Native(leftover_funds[0].clone())
+                        // } else {
+                        //     Funds::Cw20(Cw20Coin {
+                        //         address: leftover_funds[0].clone().denom,
+                        //         amount: leftover_funds[0].amount,
+                        //     })
+                        // };
+                        // Query rates contract
+                        let rates_resp: Option<OnFundsTransferResponse> = hook_query(
+                            &deps.querier,
+                            AndromedaHook::OnFundsTransfer {
+                                payload: encode_binary(&action)?,
+                                sender: "sender".to_string(),
+                                amount: funds,
                             },
-                        )?
-                    };
-                    msgs.push(msg);
-                }
-                events.push(event);
-            }
-            Rate::Contract(rates_address) => {
-                // Restructure leftover funds from Vec<Coin> into Funds
-                // let remaining_funds = if is_native {
-                //     Funds::Native(leftover_funds[0].clone())
-                // } else {
-                //     Funds::Cw20(Cw20Coin {
-                //         address: leftover_funds[0].clone().denom,
-                //         amount: leftover_funds[0].amount,
-                //     })
-                // };
-                // Query rates contract
-                let rates_resp: Option<OnFundsTransferResponse> = hook_query(
-                    &deps.querier,
-                    AndromedaHook::OnFundsTransfer {
-                        payload: encode_binary(&action)?,
-                        sender: "sender".to_string(),
-                        amount: funds,
-                    },
-                    rates_address,
-                )?;
+                            rates_address,
+                        )?;
 
-                if let Some(rates_resp) = rates_resp {
-                    let leftover_coin: Coin = match rates_resp.leftover_funds {
-                        Funds::Native(coin) => coin,
-                        Funds::Cw20(cw20_coin) => {
-                            create_coin(cw20_coin.amount.u128(), cw20_coin.address)
+                        if let Some(rates_resp) = rates_resp {
+                            let leftover_coin: Coin = match rates_resp.leftover_funds {
+                                Funds::Native(coin) => coin,
+                                Funds::Cw20(cw20_coin) => {
+                                    create_coin(cw20_coin.amount.u128(), cw20_coin.address)
+                                }
+                            };
+                            // Update leftover funds using the rates response
+                            leftover_funds = vec![leftover_coin];
+                            msgs = [msgs, rates_resp.msgs].concat();
+                            events = [events, rates_resp.events].concat();
                         }
-                    };
-                    // Update leftover funds using the rates response
-                    leftover_funds = vec![leftover_coin];
-                    msgs = [msgs, rates_resp.msgs].concat();
-                    events = [events, rates_resp.events].concat();
+                    }
                 }
-            }
-        }
 
-        Ok(OnFundsTransferResponse {
-            msgs,
-            leftover_funds: if is_native {
-                Funds::Native(leftover_funds[0].clone())
-            } else {
-                Funds::Cw20(Cw20Coin {
-                    amount: leftover_funds[0].amount,
-                    address: coin.denom,
-                })
-            },
-            events,
-        })
+                Ok(Some(OnFundsTransferResponse {
+                    msgs,
+                    leftover_funds: if is_native {
+                        Funds::Native(leftover_funds[0].clone())
+                    } else {
+                        Funds::Cw20(Cw20Coin {
+                            amount: leftover_funds[0].amount,
+                            address: coin.denom,
+                        })
+                    },
+                    events,
+                }))
+            }
+            None => Ok(None),
+        }
     }
     // pub fn on_funds_transfer(
     //     &self,
