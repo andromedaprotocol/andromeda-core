@@ -1,7 +1,7 @@
 use andromeda_non_fungible_tokens::crowdfund::{Config, State};
 use andromeda_std::error::ContractError;
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Order, Storage, Uint128};
+use cosmwasm_std::{Order, Storage, SubMsg, Uint128};
 use cw_storage_plus::{Bound, Item, Map};
 
 /// The config.
@@ -30,7 +30,7 @@ pub struct Purchase {
     /// Amount of tax paid.
     pub tax_amount: Uint128,
     /// sub messages for sending funds for rates.
-    // pub msgs: Vec<SubMsg>,
+    pub msgs: Vec<SubMsg>,
     /// The purchaser of the token.
     pub purchaser: String,
 }

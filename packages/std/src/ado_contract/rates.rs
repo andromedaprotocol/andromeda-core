@@ -1,5 +1,5 @@
 use crate::ado_base::hooks::{AndromedaHook, HookMsg, OnFundsTransferResponse};
-use crate::ado_base::rates::{calculate_fee, LocalRateType, PaymentAttribute, Rate};
+use crate::ado_base::rates::{calculate_fee, PaymentAttribute, Rate};
 use crate::common::context::ExecuteContext;
 use crate::common::{deduct_funds, encode_binary, Funds};
 use crate::error::ContractError;
@@ -145,7 +145,8 @@ impl<'a> ADOContract<'a> {
                         }
                         let fee = calculate_fee(local_rate.value.clone(), &coin)?;
                         for receiver in local_rate.recipients.iter() {
-                            if local_rate.rate_type == LocalRateType::Deductive {
+                            // If the rate type is deductive
+                            if !local_rate.rate_type.is_additive() {
                                 deduct_funds(&mut leftover_funds, &fee)?;
                                 event = event.add_attribute("deducted", fee.to_string());
                             }
@@ -273,7 +274,7 @@ mod tests {
     };
 
     use crate::{
-        ado_base::rates::{calculate_fee, LocalRate, LocalRateValue, PercentRate},
+        ado_base::rates::{calculate_fee, LocalRate, LocalRateType, LocalRateValue, PercentRate},
         amp::{AndrAddr, Recipient},
     };
 

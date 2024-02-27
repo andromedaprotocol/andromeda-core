@@ -14,6 +14,8 @@ use andromeda_non_fungible_tokens::{
     cw721::{ExecuteMsg as Cw721ExecuteMsg, TokenExtension},
 };
 use andromeda_std::{
+    ado_base::rates::{LocalRate, LocalRateType, LocalRateValue, PercentRate, Rate},
+    ado_contract::ADOContract,
     amp::{addresses::AndrAddr, recipient::Recipient},
     common::encode_binary,
     error::ContractError,
@@ -21,7 +23,7 @@ use andromeda_std::{
 use cosmwasm_std::{
     coin, coins, from_json,
     testing::{mock_env, mock_info},
-    Addr, BankMsg, Coin, CosmosMsg, DepsMut, Response, StdError, SubMsg, Uint128, WasmMsg,
+    Addr, BankMsg, Coin, CosmosMsg, Decimal, DepsMut, Response, StdError, SubMsg, Uint128, WasmMsg,
 };
 use cw_utils::Expiration;
 
@@ -35,7 +37,7 @@ fn get_purchase(token_id: impl Into<String>, purchaser: impl Into<String>) -> Pu
         token_id: token_id.into(),
         purchaser: purchaser.into(),
         tax_amount: Uint128::from(50u128),
-        // msgs: get_rates_messages(),
+        msgs: get_rates_messages(),
     }
 }
 
@@ -697,9 +699,26 @@ fn test_purchase_not_enough_for_tax() {
 
     let info = mock_info("sender", &coins(100u128, "uusd"));
 
+    let rate = Rate::Local(LocalRate {
+        rate_type: LocalRateType::Additive,
+        recipients: vec![Recipient {
+            address: AndrAddr::from_string("owner".to_string()),
+            msg: None,
+            ibc_recovery_address: None,
+        }],
+        value: LocalRateValue::Flat(coin(10_u128, "uusd")),
+        description: None,
+    });
+
+    // Set rates
+    ADOContract::default()
+        .set_rates(deps.as_mut().storage, "crowdfund", rate)
+        .unwrap();
+
     let msg = ExecuteMsg::Purchase {
         number_of_tokens: None,
     };
+    // Price is 100uusd, tax is 10uusd but the sender has only 100uusd attached to the message, so it should err.
     let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
     assert_eq!(ContractError::InsufficientFunds {}, res.unwrap_err());
 
@@ -774,6 +793,24 @@ fn test_purchase_by_token_id() {
     STATE.save(deps.as_mut().storage, &state).unwrap();
 
     let info = mock_info("sender", &coins(150, "uusd"));
+
+    let rate = Rate::Local(LocalRate {
+        rate_type: LocalRateType::Deductive,
+        recipients: vec![Recipient {
+            address: AndrAddr::from_string("owner".to_string()),
+            msg: None,
+            ibc_recovery_address: None,
+        }],
+        value: LocalRateValue::Percent(PercentRate {
+            percent: Decimal::percent(10),
+        }),
+        description: None,
+    });
+
+    // Set rates
+    ADOContract::default()
+        .set_rates(deps.as_mut().storage, "crowdfund", rate)
+        .unwrap();
 
     // Purchase a token.
     let msg = ExecuteMsg::PurchaseByTokenId {
@@ -854,6 +891,44 @@ fn test_multiple_purchases() {
     let msg = ExecuteMsg::Purchase {
         number_of_tokens: Some(2),
     };
+
+    // Set 10% royalty fee
+
+    let rate = Rate::Local(LocalRate {
+        rate_type: LocalRateType::Deductive,
+        recipients: vec![Recipient {
+            address: AndrAddr::from_string("royalty_recipient".to_string()),
+            msg: None,
+            ibc_recovery_address: None,
+        }],
+        value: LocalRateValue::Percent(PercentRate {
+            percent: Decimal::percent(10),
+        }),
+        description: None,
+    });
+
+    ADOContract::default()
+        .set_rates(deps.as_mut().storage, "crowdfund", rate)
+        .unwrap();
+    // TODO this test requires both a tax and a royalty to pass. This requires discussion on how to implement that.
+    // // Set 50% tax rate
+    // let rate = Rate::Local(LocalRate {
+    //     rate_type: LocalRateType::Additive,
+    //     recipients: vec![Recipient {
+    //         address: AndrAddr::from_string("tax_recipient".to_string()),
+    //         msg: None,
+    //         ibc_recovery_address: None,
+    //     }],
+    //     value: LocalRateValue::Percent(PercentRate {
+    //         percent: Decimal::percent(50),
+    //     }),
+    //     description: None,
+    // });
+
+    // // Set rates
+    // ADOContract::default()
+    //     .set_rates(deps.as_mut().storage, "crowdfund", rate)
+    //     .unwrap();
 
     let mut state = State {
         expiration: Expiration::AtHeight(mock_env().block.height + 1),
@@ -1023,6 +1098,24 @@ fn test_purchase_more_than_allowed_per_wallet() {
     };
     STATE.save(deps.as_mut().storage, &state).unwrap();
 
+    let rate = Rate::Local(LocalRate {
+        rate_type: LocalRateType::Additive,
+        recipients: vec![Recipient {
+            address: AndrAddr::from_string("owner".to_string()),
+            msg: None,
+            ibc_recovery_address: None,
+        }],
+        value: LocalRateValue::Percent(PercentRate {
+            percent: Decimal::percent(50),
+        }),
+        description: None,
+    });
+
+    // Set rates
+    ADOContract::default()
+        .set_rates(deps.as_mut().storage, "crowdfund", rate)
+        .unwrap();
+
     let info = mock_info("sender", &coins(600, "uusd"));
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
@@ -1096,6 +1189,24 @@ fn test_integration_conditions_not_met() {
             .unwrap(),
         Uint128::new(7)
     );
+    // TODO this test requires both a tax and a royalty to pass. This requires discussion on how to implement that.
+    // Set 10% royalty fee
+    let rate = Rate::Local(LocalRate {
+        rate_type: LocalRateType::Deductive,
+        recipients: vec![Recipient {
+            address: AndrAddr::from_string("royalty_recipient".to_string()),
+            msg: None,
+            ibc_recovery_address: None,
+        }],
+        value: LocalRateValue::Percent(PercentRate {
+            percent: Decimal::percent(10),
+        }),
+        description: None,
+    });
+
+    ADOContract::default()
+        .set_rates(deps.as_mut().storage, "crowdfund", rate)
+        .unwrap();
 
     let msg = ExecuteMsg::StartSale {
         expiration: Expiration::AtHeight(mock_env().block.height + 1),
@@ -1257,6 +1368,25 @@ fn test_integration_conditions_met() {
     init(deps.as_mut());
     let mut env = mock_env();
     env.contract.address = Addr::unchecked(MOCK_CONDITIONS_MET_CONTRACT);
+
+    // TODO this test requires both a tax and a royalty to pass. This requires discussion on how to implement that.
+    // Set 10% royalty fee
+    let rate = Rate::Local(LocalRate {
+        rate_type: LocalRateType::Deductive,
+        recipients: vec![Recipient {
+            address: AndrAddr::from_string("royalty_recipient".to_string()),
+            msg: None,
+            ibc_recovery_address: None,
+        }],
+        value: LocalRateValue::Percent(PercentRate {
+            percent: Decimal::percent(10),
+        }),
+        description: None,
+    });
+
+    ADOContract::default()
+        .set_rates(deps.as_mut().storage, "crowdfund", rate)
+        .unwrap();
 
     // Mint all tokens.
     for &token_id in MOCK_TOKENS_FOR_SALE {
@@ -1499,7 +1629,7 @@ fn test_end_sale_single_purchase() {
                 token_id: MOCK_TOKENS_FOR_SALE[0].to_owned(),
                 purchaser: "A".to_string(),
                 tax_amount: Uint128::zero(),
-                // msgs: vec![],
+                msgs: vec![],
             }],
         )
         .unwrap();
@@ -1547,7 +1677,7 @@ fn test_end_sale_all_tokens_sold() {
                 token_id: MOCK_TOKENS_FOR_SALE[0].to_owned(),
                 purchaser: "A".to_string(),
                 tax_amount: Uint128::zero(),
-                // msgs: vec![],
+                msgs: vec![],
             }],
         )
         .unwrap();
@@ -1601,7 +1731,7 @@ fn test_end_sale_limit_zero() {
                 token_id: MOCK_TOKENS_FOR_SALE[0].to_owned(),
                 purchaser: "A".to_string(),
                 tax_amount: Uint128::zero(),
-                // msgs: vec![],
+                msgs: vec![],
             }],
         )
         .unwrap();

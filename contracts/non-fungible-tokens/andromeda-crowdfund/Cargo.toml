@@ -24,7 +24,7 @@ cw721 = { workspace = true }
 cw2 = { workspace = true }
 semver = { workspace = true }
 
-andromeda-std = { workspace = true}
+andromeda-std = { workspace = true, features = ["rates"]}
 andromeda-non-fungible-tokens = { workspace = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
