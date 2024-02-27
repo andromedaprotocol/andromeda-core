@@ -8,7 +8,10 @@ use andromeda_non_fungible_tokens::{
     },
     cw721::{ExecuteMsg as Cw721ExecuteMsg, MintMsg, QueryMsg as Cw721QueryMsg},
 };
-use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
+use andromeda_std::{
+    ado_contract::ADOContract,
+    common::{context::ExecuteContext, merge_sub_msgs},
+};
 use andromeda_std::{
     amp::{messages::AMPPkt, recipient::Recipient},
     common::rates::get_tax_amount,
@@ -26,8 +29,8 @@ use semver::Version;
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     coins, ensure, has_coins, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
-    Order, QuerierWrapper, QueryRequest, Reply, Response, StdError, Storage, Uint128, WasmMsg,
-    WasmQuery,
+    Order, QuerierWrapper, QueryRequest, Reply, Response, StdError, Storage, SubMsg, Uint128,
+    WasmMsg, WasmQuery,
 };
 use cw721::TokensResponse;
 use cw_utils::{nonpayable, Expiration};
@@ -671,7 +674,7 @@ fn transfer_tokens_and_send_funds(
         .collect();
 
     let config = CONFIG.load(deps.storage)?;
-    // let mut rate_messages: Vec<SubMsg> = vec![];
+    let mut rate_messages: Vec<SubMsg> = vec![];
     let mut transfer_msgs: Vec<CosmosMsg> = vec![];
 
     let last_purchaser = if purchases.len() == 1 {
@@ -706,7 +709,7 @@ fn transfer_tokens_and_send_funds(
             // at the end, if not all of them were removed.
             number_of_last_purchases_removed += 1;
         }
-        // rate_messages.extend(purchase.msgs);
+        rate_messages.extend(purchase.msgs);
         transfer_msgs.push(CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: token_contract_address.to_string(),
             msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
@@ -729,10 +732,10 @@ fn transfer_tokens_and_send_funds(
     }
     STATE.save(deps.storage, &state)?;
 
-    Ok(
-        resp.add_attribute("action", "transfer_tokens_and_send_funds")
-            .add_messages(transfer_msgs), // .add_submessages(merge_sub_msgs(rate_messages))
-    )
+    Ok(resp
+        .add_attribute("action", "transfer_tokens_and_send_funds")
+        .add_messages(transfer_msgs)
+        .add_submessages(merge_sub_msgs(rate_messages)))
 }
 
 /// Processes a vector of purchases for the SAME user by merging all funds into a single BankMsg.
