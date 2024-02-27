@@ -14,6 +14,8 @@ use andromeda_std::common::context::ExecuteContext;
 use andromeda_std::common::expiration::{
     expiration_from_milliseconds, MILLISECONDS_TO_NANOSECONDS_RATIO,
 };
+use andromeda_std::common::rates::get_tax_amount;
+use andromeda_std::common::Funds;
 use andromeda_std::{
     ado_base::InstantiateMsg as BaseInstantiateMsg,
     common::encode_binary,
@@ -26,8 +28,9 @@ use semver::Version;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, ensure, from_json, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
-    QuerierWrapper, QueryRequest, Response, Storage, Uint128, WasmMsg, WasmQuery,
+    attr, ensure, from_json, has_coins, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env,
+    MessageInfo, QuerierWrapper, QueryRequest, Response, Storage, SubMsg, Uint128, WasmMsg,
+    WasmQuery,
 };
 
 use cw_utils::{nonpayable, Expiration};
@@ -245,7 +248,10 @@ fn execute_buy(
     token_address: String,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
-        deps, info, env, ..
+        mut deps,
+        info,
+        env,
+        ..
     } = ctx;
 
     let mut token_sale_state =
@@ -320,20 +326,34 @@ fn execute_buy(
     TOKEN_SALE_STATE.save(deps.storage, key, &token_sale_state)?;
 
     // Calculate the funds to be received after tax
-    // let after_tax_payment = purchase_token(&mut deps, &info, token_sale_state.clone())?;
-    let after_tax_payment = Coin::new(
-        token_sale_state.price.u128(),
-        token_sale_state.coin_denom.clone(),
-    );
+    let after_tax_payment = purchase_token(&mut deps, &info, token_sale_state.clone())?;
 
-    Ok(Response::new()
-        // .add_submessages(after_tax_payment.1)
-        // Send funds to the original owner.
-        .add_message(CosmosMsg::Bank(BankMsg::Send {
-            to_address: token_sale_state.owner,
-            // amount: vec![after_tax_payment.0],
-            amount: vec![after_tax_payment],
-        }))
+    let mut resp = Response::new();
+
+    match after_tax_payment {
+        Some(after_tax_payment) => {
+            resp = resp
+                .add_submessages(after_tax_payment.1)
+                // Send funds to the original owner.
+                .add_message(CosmosMsg::Bank(BankMsg::Send {
+                    to_address: token_sale_state.owner,
+                    amount: vec![after_tax_payment.0],
+                }))
+        }
+        None => {
+            let after_tax_payment = Coin::new(
+                token_sale_state.price.u128(),
+                token_sale_state.coin_denom.clone(),
+            );
+            // Send funds to the original owner.
+            resp = resp.add_message(CosmosMsg::Bank(BankMsg::Send {
+                to_address: token_sale_state.owner,
+                amount: vec![after_tax_payment],
+            }))
+        }
+    }
+
+    Ok(resp
         // Send NFT to buyer.
         .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: token_sale_state.token_address.clone(),
@@ -398,44 +418,51 @@ fn execute_cancel(
         .add_attribute("recipient", info.sender))
 }
 
-// fn purchase_token(
-//     deps: &mut DepsMut,
-//     info: &MessageInfo,
-//     state: TokenSaleState,
-// ) -> Result<(Coin, Vec<SubMsg>), ContractError> {
-//     let total_cost = Coin::new(state.price.u128(), state.coin_denom.clone());
+fn purchase_token(
+    deps: &mut DepsMut,
+    info: &MessageInfo,
+    state: TokenSaleState,
+) -> Result<Option<(Coin, Vec<SubMsg>)>, ContractError> {
+    let total_cost = Coin::new(state.price.u128(), state.coin_denom.clone());
 
-//     let mut total_tax_amount = Uint128::zero();
+    let mut total_tax_amount = Uint128::zero();
 
-//     let (msgs, _events, remainder) = ADOContract::default().on_funds_transfer(
-//         &deps.as_ref(),
-//         info.sender.to_string(),
-//         Funds::Native(total_cost),
-//         encode_binary(&"")?,
-//     )?;
+    let transfer_response = ADOContract::default().query_deducted_funds(
+        deps.as_ref(),
+        "marketplace",
+        Funds::Native(total_cost),
+    )?;
+    match transfer_response {
+        Some(transfer_response) => {
+            let remaining_amount = transfer_response.leftover_funds.try_get_coin()?;
 
-//     let remaining_amount = remainder.try_get_coin()?;
+            let tax_amount = get_tax_amount(
+                &transfer_response.msgs,
+                state.price,
+                remaining_amount.amount,
+            );
 
-//     let tax_amount = get_tax_amount(&msgs, state.price, remaining_amount.amount);
+            // Calculate total tax
+            total_tax_amount += tax_amount;
 
-//     // Calculate total tax
-//     total_tax_amount += tax_amount;
+            let required_payment = Coin {
+                denom: state.coin_denom.clone(),
+                amount: state.price + total_tax_amount,
+            };
+            ensure!(
+                has_coins(&info.funds, &required_payment),
+                ContractError::InsufficientFunds {}
+            );
 
-//     let required_payment = Coin {
-//         denom: state.coin_denom.clone(),
-//         amount: state.price + total_tax_amount,
-//     };
-//     ensure!(
-//         has_coins(&info.funds, &required_payment),
-//         ContractError::InsufficientFunds {}
-//     );
-
-//     let after_tax_payment = Coin {
-//         denom: state.coin_denom,
-//         amount: remaining_amount.amount,
-//     };
-//     Ok((after_tax_payment, msgs))
-// }
+            let after_tax_payment = Coin {
+                denom: state.coin_denom,
+                amount: remaining_amount.amount,
+            };
+            Ok(Some((after_tax_payment, transfer_response.msgs)))
+        }
+        None => Ok(None),
+    }
+}
 
 fn get_existing_token_sale_state(
     storage: &dyn Storage,
