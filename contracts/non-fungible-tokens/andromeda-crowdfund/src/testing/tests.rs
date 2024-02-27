@@ -49,7 +49,7 @@ fn get_rates_messages() -> Vec<SubMsg> {
             amount: vec![Coin {
                 // Royalty of 10%
                 amount: coin.amount.multiply_ratio(10u128, 100u128),
-                denom: coin.denom.clone(),
+                denom: coin.denom,
             }],
         })),
         // SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
