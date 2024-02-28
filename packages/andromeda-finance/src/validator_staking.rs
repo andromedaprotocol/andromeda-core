@@ -10,11 +10,11 @@ pub struct InstantiateMsg {
 
 impl InstantiateMsg {
     pub fn validate(&self, deps: &DepsMut) -> Result<bool, ContractError> {
-        validate_validator(deps, &self.default_validator)
+        is_validator(deps, &self.default_validator)
     }
 }
 
-pub fn validate_validator(deps: &DepsMut, validator: &Addr) -> Result<bool, ContractError> {
+pub fn is_validator(deps: &DepsMut, validator: &Addr) -> Result<bool, ContractError> {
     let validator = deps.querier.query_validator(validator)?;
     if validator.is_none() {
         return Err(ContractError::InvalidValidator {});
