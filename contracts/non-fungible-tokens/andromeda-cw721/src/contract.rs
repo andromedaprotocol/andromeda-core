@@ -11,6 +11,7 @@ use crate::state::{
 use andromeda_non_fungible_tokens::cw721::{
     ExecuteMsg, InstantiateMsg, MigrateMsg, MintMsg, QueryMsg, TokenExtension, TransferAgreement,
 };
+use andromeda_std::common::rates::get_tax_amount;
 use andromeda_std::{
     ado_base::{AndromedaMsg, AndromedaQuery},
     ado_contract::{
@@ -277,7 +278,7 @@ fn execute_transfer(
     let ExecuteContext {
         deps, info, env, ..
     } = env;
-    let _base_contract = ADOContract::default();
+    let base_contract = ADOContract::default();
 
     // Reduce all responses into one.
     let mut resp = Response::new();
@@ -293,29 +294,42 @@ fn execute_transfer(
         &TRANSFER_AGREEMENTS.may_load(deps.storage, &token_id)?
     {
         let agreement_amount = get_transfer_agreement_amount(deps.api, &deps.querier, agreement)?;
-        // let (mut msgs, events, remainder) = base_contract.on_funds_transfer(
-        //     &deps.as_ref(),
-        //     info.sender.to_string(),
-        //     Funds::Native(agreement_amount.clone()),
-        //     encode_binary(&ExecuteMsg::TransferNft {
-        //         token_id: token_id.clone(),
-        //         recipient: recipient.clone(),
-        //     })?,
-        // )?;
-        let remaining_amount = Funds::Native(agreement_amount).try_get_coin()?;
-        // let tax_amount = get_tax_amount(&msgs, agreement_amount.amount, remaining_amount.amount);
-        let tax_amount = Uint128::zero();
 
-        // msgs.push(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-        //     to_address: token.owner.to_string(),
-        //     amount: vec![remaining_amount],
-        // })));
-        let msg = SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-            to_address: token.owner.to_string(),
-            amount: vec![remaining_amount],
-        }));
-        resp = resp.add_submessage(msg);
-        tax_amount
+        let transfer_response = base_contract.query_deducted_funds(
+            deps.as_ref(),
+            "cw721",
+            Funds::Native(agreement_amount.clone()),
+        )?;
+
+        match transfer_response {
+            Some(mut transfer_response) => {
+                let remaining_amount = transfer_response.leftover_funds.try_get_coin()?;
+                println!("The remaining amount is: {:?}", remaining_amount);
+                let tax_amount = get_tax_amount(
+                    &transfer_response.msgs,
+                    agreement_amount.amount,
+                    remaining_amount.amount,
+                );
+                transfer_response
+                    .msgs
+                    .push(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+                        to_address: token.owner.to_string(),
+                        amount: vec![remaining_amount],
+                    })));
+                resp = resp.add_submessages(transfer_response.msgs);
+                tax_amount
+            }
+            None => {
+                let remaining_amount = Funds::Native(agreement_amount).try_get_coin()?;
+                let tax_amount = Uint128::zero();
+                let msg = SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+                    to_address: token.owner.to_string(),
+                    amount: vec![remaining_amount],
+                }));
+                resp = resp.add_submessage(msg);
+                tax_amount
+            }
+        }
     } else {
         Uint128::zero()
     };

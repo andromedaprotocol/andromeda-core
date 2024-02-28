@@ -1,7 +1,11 @@
 use crate::contract::{execute, instantiate, query};
 use crate::testing::mock_querier::mock_dependencies_custom;
 use andromeda_fungible_tokens::cw20::{ExecuteMsg, InstantiateMsg, QueryMsg};
+// use andromeda_std::ado_base::rates::{LocalRate, LocalRateType, LocalRateValue, PercentRate, Rate};
+// use andromeda_std::ado_contract::ADOContract;
+// use andromeda_std::amp::{AndrAddr, Recipient};
 use andromeda_std::testing::mock_querier::MOCK_KERNEL_CONTRACT;
+// use cosmwasm_std::{coin, Decimal};
 use cosmwasm_std::{
     testing::{mock_env, mock_info},
     to_json_binary, Addr, DepsMut, Response, Uint128,
@@ -132,6 +136,22 @@ fn test_send() {
             .load(deps.as_ref().storage, &Addr::unchecked("sender"))
             .unwrap()
     );
+
+    // let rate = Rate::Local(LocalRate {
+    //     rate_type: LocalRateType::Additive,
+    //     recipients: vec![Recipient {
+    //         address: AndrAddr::from_string("sender".to_string()),
+    //         msg: None,
+    //         ibc_recovery_address: None,
+    //     }],
+    //     value: LocalRateValue::Flat(coin(10, "uusd")),
+    //     description: None,
+    // });
+
+    // // Set rates
+    // ADOContract::default()
+    //     .set_rates(deps.as_mut().storage, "cw20", rate)
+    //     .unwrap();
 
     let msg = ExecuteMsg::Send {
         contract: "contract".into(),

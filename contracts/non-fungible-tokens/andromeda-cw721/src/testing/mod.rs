@@ -4,9 +4,23 @@ use cosmwasm_std::{
     Addr, Coin, DepsMut, Env, Response, StdError, Uint128,
 };
 
-use andromeda_std::error::ContractError;
-use andromeda_std::testing::mock_querier::FAKE_VFS_PATH;
 use andromeda_std::{ado_contract::ADOContract, amp::addresses::AndrAddr};
+use andromeda_std::{
+    // ado_base::{hooks::OnFundsTransferResponse, rates::LocalRate},
+    error::ContractError,
+};
+use andromeda_std::{
+    // ado_base::{
+    //     hooks::AndromedaHook,
+    //     rates::{LocalRateType, LocalRateValue, Rate},
+    // },
+    // amp::Recipient,
+    // common::Funds,
+    testing::{
+        // bank_sub_msg,
+        mock_querier::FAKE_VFS_PATH,
+    },
+};
 
 use crate::{contract::*, state::TRANSFER_AGREEMENTS};
 use andromeda_non_fungible_tokens::cw721::{
@@ -406,7 +420,7 @@ fn test_transfer_agreement() {
 //     let token_id = String::from("testtoken");
 //     let creator = String::from("creator");
 //     let env = mock_env();
-//     let _agreement = TransferAgreement {
+//     let agreement = TransferAgreement {
 //         purchaser: String::from("purchaser"),
 //         amount: Coin {
 //             amount: Uint128::from(100u64),
@@ -417,80 +431,99 @@ fn test_transfer_agreement() {
 //     mint_token(
 //         deps.as_mut(),
 //         env,
-//         token_id,
+//         token_id.clone(),
 //         creator.clone(),
-//         TokenExtension { publisher: creator },
+//         TokenExtension {
+//             publisher: creator.clone(),
+//         },
 //     );
 
-// let msg = ExecuteMsg::TransferAgreement {
-//     token_id: token_id.clone(),
-//     agreement: Some(agreement),
-// };
+//     let rate = Rate::Local(LocalRate {
+//         rate_type: LocalRateType::Deductive,
+//         recipients: vec![Recipient {
+//             address: AndrAddr::from_string("mrc".to_string()),
+//             msg: None,
+//             ibc_recovery_address: None,
+//         }],
+//         value: LocalRateValue::Flat(coin(10_u128, "uusd")),
+//         description: None,
+//     });
 
-// let not_whitelisted_info = mock_info("not_whitelisted", &[]);
-// let res = execute(deps.as_mut(), mock_env(), not_whitelisted_info, msg.clone());
-// assert_eq!(
-//     ContractError::Std(StdError::generic_err(
-//         "Querier contract error: InvalidAddress"
-//     )),
-//     res.unwrap_err()
-// );
+//     // Set rates
+//     ADOContract::default()
+//         .set_rates(deps.as_mut().storage, "cw721", rate)
+//         .unwrap();
 
-// let info = mock_info("creator", &[]);
-// let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+//     let msg = ExecuteMsg::TransferAgreement {
+//         token_id: token_id.clone(),
+//         agreement: Some(agreement),
+//     };
 
-// let msg = ExecuteMsg::TransferNft {
-//     token_id: token_id.clone(),
-//     recipient: "purchaser".into(),
-// };
+//     //TODO when address list is implemented
+//     // let not_whitelisted_info = mock_info("not_whitelisted", &[]);
+//     // let res = execute(deps.as_mut(), mock_env(), not_whitelisted_info, msg.clone());
+//     // assert_eq!(
+//     //     ContractError::Std(StdError::generic_err(
+//     //         "Querier contract error: InvalidAddress"
+//     //     )),
+//     //     res.unwrap_err()
+//     // );
 
-// // Tax not added by sender, remember that the contract holds 100 uusd which is enough to cover
-// // the taxes in this case.
-// let purchaser = mock_info("purchaser", &coins(100, "uusd"));
-// let res = execute(deps.as_mut(), mock_env(), purchaser, msg.clone());
-// assert_eq!(ContractError::InsufficientFunds {}, res.unwrap_err());
+//     let info = mock_info("creator", &[]);
+//     let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-// // Add 10 for tax.
-// let purchaser = mock_info("purchaser", &coins(100 + 10, "uusd"));
-// let res = execute(deps.as_mut(), mock_env(), purchaser, msg).unwrap();
+//     let msg = ExecuteMsg::TransferNft {
+//         token_id: token_id.clone(),
+//         recipient: "purchaser".into(),
+//     };
 
-// let sub_msgs: Vec<SubMsg> = vec![
-//     // For royalty.
-//     bank_sub_msg(MOCK_RATES_RECIPIENT, vec![coin(10, "uusd")]),
-//     // For tax.
-//     bank_sub_msg(MOCK_RATES_RECIPIENT, vec![coin(10, "uusd")]),
-//     bank_sub_msg(&creator, vec![coin(80, "uusd")]),
-// ];
+//     // Tax not added by sender, remember that the contract holds 100 uusd which is enough to cover
+//     // the taxes in this case.
+//     let purchaser = mock_info("purchaser", &coins(100, "uusd"));
+//     let res = execute(deps.as_mut(), mock_env(), purchaser, msg.clone());
+//     assert_eq!(ContractError::InsufficientFunds {}, res.unwrap_err());
 
-// assert_eq!(
-//     Response::new()
-//         .add_attribute("action", "transfer")
-//         .add_attribute("recipient", "purchaser")
-//         .add_submessages(sub_msgs)
-//         .add_event(Event::new("Royalty"))
-//         .add_event(Event::new("Tax")),
-//     res
-// );
+//     // Add 10 for tax.
+//     let purchaser = mock_info("purchaser", &coins(100 + 10, "uusd"));
+//     let res = execute(deps.as_mut(), mock_env(), purchaser, msg).unwrap();
 
-// // Test the hook.
-// let msg = QueryMsg::AndrHook(AndromedaHook::OnFundsTransfer {
-//     sender: "sender".to_string(),
-//     payload: to_json_binary(&token_id).unwrap(),
-//     amount: Funds::Native(coin(100, "uusd")),
-// });
+//     let sub_msgs: Vec<SubMsg> = vec![
+//         // For royalty.
+//         // bank_sub_msg("MOCK_RATES_RECIPIENT", vec![coin(10, "uusd")]),
+//         // For tax.
+//         bank_sub_msg("mrc", vec![coin(10, "uusd")]),
+//         bank_sub_msg(&creator, vec![coin(80, "uusd")]),
+//     ];
 
-// let res: OnFundsTransferResponse =
-//     from_json(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
+//     assert_eq!(
+//         Response::new()
+//             .add_attribute("action", "transfer")
+//             .add_attribute("recipient", "purchaser")
+//             .add_submessages(sub_msgs)
+//             .add_event(Event::new("Royalty"))
+//             .add_event(Event::new("Tax")),
+//         res
+//     );
 
-// let expected_response = OnFundsTransferResponse {
-//     msgs: vec![
-//         bank_sub_msg(MOCK_RATES_RECIPIENT, vec![coin(10, "uusd")]),
-//         bank_sub_msg(MOCK_RATES_RECIPIENT, vec![coin(10, "uusd")]),
-//     ],
-//     leftover_funds: Funds::Native(coin(90, "uusd")),
-//     events: vec![Event::new("Royalty"), Event::new("Tax")],
-// };
-// assert_eq!(expected_response, res);
+//     // Test the hook.
+//     let msg = QueryMsg::AndrHook(AndromedaHook::OnFundsTransfer {
+//         sender: "sender".to_string(),
+//         payload: to_json_binary(&token_id).unwrap(),
+//         amount: Funds::Native(coin(100, "uusd")),
+//     });
+
+//     let res: OnFundsTransferResponse =
+//         from_json(query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
+
+//     let expected_response = OnFundsTransferResponse {
+//         msgs: vec![
+//             bank_sub_msg("MOCK_RATES_RECIPIENT", vec![coin(10, "uusd")]),
+//             bank_sub_msg("MOCK_RATES_RECIPIENT", vec![coin(10, "uusd")]),
+//         ],
+//         leftover_funds: Funds::Native(coin(90, "uusd")),
+//         events: vec![Event::new("Royalty"), Event::new("Tax")],
+//     };
+//     assert_eq!(expected_response, res);
 // }
 
 // TODO: IMPLEMENT
