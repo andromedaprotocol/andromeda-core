@@ -1,9 +1,8 @@
-use andromeda_std::{andr_instantiate, andr_instantiate_modules, error::ContractError};
+use andromeda_std::{andr_instantiate, error::ContractError};
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, DepsMut};
 
 #[andr_instantiate]
-#[andr_instantiate_modules]
 #[cw_serde]
 pub struct InstantiateMsg {
     pub default_validator: Addr,

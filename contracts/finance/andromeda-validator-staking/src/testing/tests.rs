@@ -18,7 +18,6 @@ fn init(deps: DepsMut, default_validator: Addr) -> Result<Response, ContractErro
         default_validator,
         owner: Some(OWNER.to_owned()),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
-        modules: None,
     };
 
     let info = mock_info("owner", &[]);
