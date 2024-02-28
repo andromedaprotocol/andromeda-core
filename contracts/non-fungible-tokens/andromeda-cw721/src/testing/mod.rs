@@ -1,32 +1,16 @@
+use crate::{contract::*, state::TRANSFER_AGREEMENTS};
+use andromeda_non_fungible_tokens::cw721::{
+    ExecuteMsg, InstantiateMsg, MintMsg, QueryMsg, TokenExtension, TransferAgreement,
+};
+use andromeda_std::error::ContractError;
+use andromeda_std::testing::mock_querier::FAKE_VFS_PATH;
+use andromeda_std::testing::mock_querier::{mock_dependencies_custom, MOCK_KERNEL_CONTRACT};
+use andromeda_std::{ado_contract::ADOContract, amp::addresses::AndrAddr};
 use cosmwasm_std::{
     attr, coin, from_json,
     testing::{mock_env, mock_info},
     Addr, Coin, DepsMut, Env, Response, StdError, Uint128,
 };
-
-use andromeda_std::{ado_contract::ADOContract, amp::addresses::AndrAddr};
-use andromeda_std::{
-    // ado_base::{hooks::OnFundsTransferResponse, rates::LocalRate},
-    error::ContractError,
-};
-use andromeda_std::{
-    // ado_base::{
-    //     hooks::AndromedaHook,
-    //     rates::{LocalRateType, LocalRateValue, Rate},
-    // },
-    // amp::Recipient,
-    // common::Funds,
-    testing::{
-        // bank_sub_msg,
-        mock_querier::FAKE_VFS_PATH,
-    },
-};
-
-use crate::{contract::*, state::TRANSFER_AGREEMENTS};
-use andromeda_non_fungible_tokens::cw721::{
-    ExecuteMsg, InstantiateMsg, MintMsg, QueryMsg, TokenExtension, TransferAgreement,
-};
-use andromeda_std::testing::mock_querier::{mock_dependencies_custom, MOCK_KERNEL_CONTRACT};
 use cw721::{AllNftInfoResponse, OwnerOfResponse};
 
 const MINTER: &str = "minter";
