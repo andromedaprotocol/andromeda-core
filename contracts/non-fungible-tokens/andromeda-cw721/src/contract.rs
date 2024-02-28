@@ -304,7 +304,6 @@ fn execute_transfer(
         match transfer_response {
             Some(mut transfer_response) => {
                 let remaining_amount = transfer_response.leftover_funds.try_get_coin()?;
-                println!("The remaining amount is: {:?}", remaining_amount);
                 let tax_amount = get_tax_amount(
                     &transfer_response.msgs,
                     agreement_amount.amount,

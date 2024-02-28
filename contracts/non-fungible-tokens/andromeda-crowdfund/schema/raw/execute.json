@@ -321,66 +321,11 @@
     {
       "type": "object",
       "required": [
-        "register_module"
+        "rates"
       ],
       "properties": {
-        "register_module": {
-          "type": "object",
-          "required": [
-            "module"
-          ],
-          "properties": {
-            "module": {
-              "$ref": "#/definitions/Module"
-            }
-          },
-          "additionalProperties": false
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "type": "object",
-      "required": [
-        "deregister_module"
-      ],
-      "properties": {
-        "deregister_module": {
-          "type": "object",
-          "required": [
-            "module_idx"
-          ],
-          "properties": {
-            "module_idx": {
-              "$ref": "#/definitions/Uint64"
-            }
-          },
-          "additionalProperties": false
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "type": "object",
-      "required": [
-        "alter_module"
-      ],
-      "properties": {
-        "alter_module": {
-          "type": "object",
-          "required": [
-            "module",
-            "module_idx"
-          ],
-          "properties": {
-            "module": {
-              "$ref": "#/definitions/Module"
-            },
-            "module_idx": {
-              "$ref": "#/definitions/Uint64"
-            }
-          },
-          "additionalProperties": false
+        "rates": {
+          "$ref": "#/definitions/RatesMessage"
         }
       },
       "additionalProperties": false
@@ -590,6 +535,10 @@
       },
       "additionalProperties": false
     },
+    "Decimal": {
+      "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 (which is (2^128 - 1) / 10^18)",
+      "type": "string"
+    },
     "Expiration": {
       "description": "Expiration represents a point in time when some event happens. It can compare with a BlockInfo and will return is_expired() == true once the condition is hit (and for every block in the future)",
       "oneOf": [
@@ -653,25 +602,78 @@
       },
       "additionalProperties": false
     },
-    "Module": {
-      "description": "A struct describing a token module, provided with the instantiation message this struct is used to record the info about the module and how/if it should be instantiated",
+    "LocalRate": {
       "type": "object",
       "required": [
-        "address",
-        "is_mutable"
+        "rate_type",
+        "recipients",
+        "value"
       ],
       "properties": {
-        "address": {
-          "$ref": "#/definitions/AndrAddr"
-        },
-        "is_mutable": {
-          "type": "boolean"
-        },
-        "name": {
+        "description": {
           "type": [
             "string",
             "null"
           ]
+        },
+        "rate_type": {
+          "$ref": "#/definitions/LocalRateType"
+        },
+        "recipients": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Recipient"
+          }
+        },
+        "value": {
+          "$ref": "#/definitions/LocalRateValue"
+        }
+      },
+      "additionalProperties": false
+    },
+    "LocalRateType": {
+      "type": "string",
+      "enum": [
+        "additive",
+        "deductive"
+      ]
+    },
+    "LocalRateValue": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "percent"
+          ],
+          "properties": {
+            "percent": {
+              "$ref": "#/definitions/PercentRate"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "flat"
+          ],
+          "properties": {
+            "flat": {
+              "$ref": "#/definitions/Coin"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "PercentRate": {
+      "type": "object",
+      "required": [
+        "percent"
+      ],
+      "properties": {
+        "percent": {
+          "$ref": "#/definitions/Decimal"
         }
       },
       "additionalProperties": false
@@ -746,6 +748,84 @@
                   "type": "null"
                 }
               ]
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "Rate": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "local"
+          ],
+          "properties": {
+            "local": {
+              "$ref": "#/definitions/LocalRate"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "contract"
+          ],
+          "properties": {
+            "contract": {
+              "$ref": "#/definitions/AndrAddr"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "RatesMessage": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "set_rate"
+          ],
+          "properties": {
+            "set_rate": {
+              "type": "object",
+              "required": [
+                "action",
+                "rate"
+              ],
+              "properties": {
+                "action": {
+                  "type": "string"
+                },
+                "rate": {
+                  "$ref": "#/definitions/Rate"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "remove_rate"
+          ],
+          "properties": {
+            "remove_rate": {
+              "type": "object",
+              "required": [
+                "action"
+              ],
+              "properties": {
+                "action": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
             }
           },
           "additionalProperties": false
