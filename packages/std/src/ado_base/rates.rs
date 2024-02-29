@@ -1,11 +1,13 @@
 use crate::{
     ado_contract::ADOContract,
     amp::{AndrAddr, Recipient},
+    common::deduct_funds,
     error::ContractError,
     os::aos_querier::AOSQuerier,
 };
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{ensure, has_coins, Coin, Decimal, Deps, Fraction};
+use cosmwasm_std::{ensure, has_coins, Coin, Decimal, Deps, Event, Fraction, SubMsg};
+use cw20::Cw20Coin;
 
 #[cw_serde]
 pub enum RatesMessage {
@@ -16,11 +18,6 @@ pub enum RatesMessage {
 #[cw_serde]
 pub enum RatesQueryMessage {
     GetRate { action: String },
-}
-
-#[cw_serde]
-pub struct PaymentsResponse {
-    pub payments: Vec<Rate>,
 }
 
 /// An attribute struct used for any events that involve a payment
@@ -45,6 +42,13 @@ pub enum LocalRateType {
 impl LocalRateType {
     pub fn is_additive(&self) -> bool {
         self == &LocalRateType::Additive
+    }
+    pub fn create_event(&self) -> Event {
+        if self.is_additive() {
+            Event::new("tax")
+        } else {
+            Event::new("royalty")
+        }
     }
 }
 
@@ -81,8 +85,57 @@ pub struct LocalRate {
     pub value: LocalRateValue,
     pub description: Option<String>,
 }
+// Created this because of the very complex return value warning.
+type LocalRateResponse = (Vec<SubMsg>, Vec<Event>, Vec<Coin>);
 
-impl LocalRate {}
+impl LocalRate {
+    pub fn generate_response(
+        &self,
+        deps: Deps,
+        coin: Coin,
+        is_native: bool,
+    ) -> Result<LocalRateResponse, ContractError> {
+        let mut msgs: Vec<SubMsg> = vec![];
+        let mut events: Vec<Event> = vec![];
+        let mut leftover_funds = vec![coin.clone()];
+        // Tax event if the rate type is additive, or Royalty event if the rate type is deductive.
+        let mut event = self.rate_type.create_event();
+
+        if let Some(desc) = &self.description {
+            event = event.add_attribute("description", desc);
+        }
+        let fee = calculate_fee(self.value.clone(), &coin)?;
+        for receiver in self.recipients.iter() {
+            // If the rate type is deductive
+            if !self.rate_type.is_additive() {
+                deduct_funds(&mut leftover_funds, &fee)?;
+                event = event.add_attribute("deducted", fee.to_string());
+            }
+            event = event.add_attribute(
+                "payment",
+                PaymentAttribute {
+                    receiver: receiver.get_addr(),
+                    amount: fee.clone(),
+                }
+                .to_string(),
+            );
+            let msg = if is_native {
+                receiver.generate_direct_msg(&deps, vec![fee.clone()])?
+            } else {
+                receiver.generate_msg_cw20(
+                    &deps,
+                    Cw20Coin {
+                        amount: fee.amount,
+                        address: fee.denom.to_string(),
+                    },
+                )?
+            };
+            msgs.push(msg);
+        }
+        events.push(event);
+        Ok((msgs, events, leftover_funds))
+    }
+}
 
 #[cw_serde]
 pub enum Rate {
