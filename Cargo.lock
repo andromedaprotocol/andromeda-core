@@ -511,6 +511,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "andromeda-validator-staking"
+version = "0.1.0"
+dependencies = [
+ "andromeda-finance",
+ "andromeda-std",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-multi-test",
+ "cw-storage-plus 1.2.0",
+ "cw2 1.1.2",
+]
+
+[[package]]
 name = "andromeda-vault"
 version = "0.2.0"
 dependencies = [
