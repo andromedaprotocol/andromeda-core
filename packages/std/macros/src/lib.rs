@@ -200,9 +200,7 @@ pub fn andr_query(_metadata: TokenStream, input: TokenStream) -> TokenStream {
             quote! {
                 enum Right {
                     #[returns(Option<::andromeda_std::ado_base::rates::Rate>)]
-                    GetRate {
-                      action: String
-                    }
+                    Rates(::andromeda_std::ado_base::rates::RatesQueryMessage)
                 }
             }
             .into(),

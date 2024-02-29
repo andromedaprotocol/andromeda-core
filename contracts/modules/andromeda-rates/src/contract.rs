@@ -4,7 +4,7 @@ use andromeda_modules::rates::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
 use andromeda_std::{
     ado_base::{
         hooks::{AndromedaHook, OnFundsTransferResponse},
-        rates::{calculate_fee, PaymentAttribute, Rate},
+        rates::{calculate_fee, LocalRate, PaymentAttribute},
         InstantiateMsg as BaseInstantiateMsg,
     },
     ado_contract::ADOContract,
@@ -81,7 +81,7 @@ pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
 fn execute_set_rate(
     ctx: ExecuteContext,
     action: String,
-    rate: Rate,
+    rate: LocalRate,
 ) -> Result<Response, ContractError> {
     let ExecuteContext { deps, info, .. } = ctx;
     nonpayable(&info)?;
@@ -90,10 +90,8 @@ fn execute_set_rate(
         ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {}
     );
-    // Only local rates are allowed to be stored in the rates contract
-    ensure!(rate.is_local(), ContractError::InvalidRate {});
-
-    rate.validate_rate(deps.as_ref())?;
+    // Validate the local rate's value
+    rate.value.validate()?;
     RATES.save(deps.storage, &action, &rate)?;
 
     Ok(Response::new().add_attributes(vec![attr("action", "set_rate")]))
@@ -182,7 +180,7 @@ pub fn query_deducted_funds(
     funds: Funds,
 ) -> Result<OnFundsTransferResponse, ContractError> {
     let action: String = from_json(payload)?;
-    let rate = RATES.load(deps.storage, &action)?;
+    let local_rate = RATES.load(deps.storage, &action)?;
     let mut msgs: Vec<SubMsg> = vec![];
     let mut events: Vec<Event> = vec![];
     let (coin, is_native): (Coin, bool) = match funds {
@@ -191,60 +189,55 @@ pub fn query_deducted_funds(
     };
     let mut leftover_funds = vec![coin.clone()];
 
-    match rate {
-        Rate::Local(local_rate) => {
-            let event_name = if local_rate.rate_type.is_additive() {
-                "tax"
-            } else {
-                "royalty"
-            };
-            let mut event = Event::new(event_name);
-            if let Some(desc) = &local_rate.description {
-                event = event.add_attribute("description", desc);
-            }
-            local_rate.value.validate()?;
-            let fee = calculate_fee(local_rate.value, &coin)?;
-            for receiver in local_rate.recipients.iter() {
-                if !local_rate.rate_type.is_additive() {
-                    deduct_funds(&mut leftover_funds, &fee)?;
-                    event = event.add_attribute("deducted", fee.to_string());
-                }
-                event = event.add_attribute(
-                    "payment",
-                    PaymentAttribute {
-                        receiver: receiver.get_addr(),
-                        amount: fee.clone(),
-                    }
-                    .to_string(),
-                );
-                let msg = if is_native {
-                    receiver.generate_direct_msg(&deps, vec![fee.clone()])?
-                } else {
-                    receiver.generate_msg_cw20(
-                        &deps,
-                        Cw20Coin {
-                            amount: fee.amount,
-                            address: fee.denom.to_string(),
-                        },
-                    )?
-                };
-                msgs.push(msg);
-            }
-            events.push(event);
-
-            Ok(OnFundsTransferResponse {
-                msgs,
-                leftover_funds: if is_native {
-                    Funds::Native(leftover_funds[0].clone())
-                } else {
-                    Funds::Cw20(Cw20Coin {
-                        amount: leftover_funds[0].amount,
-                        address: coin.denom,
-                    })
-                },
-                events,
-            })
-        }
-        Rate::Contract(_) => Err(ContractError::InvalidRate {}),
+    let event_name = if local_rate.rate_type.is_additive() {
+        "tax"
+    } else {
+        "royalty"
+    };
+    let mut event = Event::new(event_name);
+    if let Some(desc) = &local_rate.description {
+        event = event.add_attribute("description", desc);
     }
+    local_rate.value.validate()?;
+    let fee = calculate_fee(local_rate.value, &coin)?;
+    for receiver in local_rate.recipients.iter() {
+        if !local_rate.rate_type.is_additive() {
+            deduct_funds(&mut leftover_funds, &fee)?;
+            event = event.add_attribute("deducted", fee.to_string());
+        }
+        event = event.add_attribute(
+            "payment",
+            PaymentAttribute {
+                receiver: receiver.get_addr(),
+                amount: fee.clone(),
+            }
+            .to_string(),
+        );
+        let msg = if is_native {
+            receiver.generate_direct_msg(&deps, vec![fee.clone()])?
+        } else {
+            receiver.generate_msg_cw20(
+                &deps,
+                Cw20Coin {
+                    amount: fee.amount,
+                    address: fee.denom.to_string(),
+                },
+            )?
+        };
+        msgs.push(msg);
+    }
+    events.push(event);
+
+    Ok(OnFundsTransferResponse {
+        msgs,
+        leftover_funds: if is_native {
+            Funds::Native(leftover_funds[0].clone())
+        } else {
+            Funds::Cw20(Cw20Coin {
+                amount: leftover_funds[0].amount,
+                address: coin.denom,
+            })
+        },
+        events,
+    })
 }

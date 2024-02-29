@@ -5,7 +5,7 @@ use crate::testing::mock_querier::{
 use andromeda_modules::rates::{ExecuteMsg, InstantiateMsg, QueryMsg, RateResponse};
 
 use andromeda_std::ado_base::hooks::OnFundsTransferResponse;
-use andromeda_std::ado_base::rates::{LocalRate, LocalRateType, LocalRateValue, Rate};
+use andromeda_std::ado_base::rates::{LocalRate, LocalRateType, LocalRateValue};
 use andromeda_std::amp::AndrAddr;
 use andromeda_std::common::Funds;
 use andromeda_std::{amp::recipient::Recipient, common::encode_binary};
@@ -25,7 +25,7 @@ fn test_instantiate_query() {
     let owner = "owner";
     let info = mock_info(owner, &[]);
     let action = "deposit".to_string();
-    let rate = Rate::Local(LocalRate {
+    let rate = LocalRate {
         rate_type: LocalRateType::Additive,
         recipients: vec![Recipient {
             address: AndrAddr::from_string("owner".to_string()),
@@ -34,7 +34,7 @@ fn test_instantiate_query() {
         }],
         value: LocalRateValue::Flat(coin(100_u128, "uandr")),
         description: None,
-    });
+    };
     let msg = InstantiateMsg {
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
@@ -61,7 +61,7 @@ fn test_andr_receive() {
     let owner = "owner";
     let info = mock_info(owner, &[]);
     let action: String = "deposit".to_string();
-    let rate = Rate::Local(LocalRate {
+    let rate = LocalRate {
         rate_type: LocalRateType::Additive,
         recipients: vec![Recipient {
             address: AndrAddr::from_string("owner".to_string()),
@@ -70,7 +70,7 @@ fn test_andr_receive() {
         }],
         value: LocalRateValue::Flat(coin(100_u128, "uandr")),
         description: None,
-    });
+    };
     let msg = InstantiateMsg {
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
@@ -95,7 +95,7 @@ fn test_query_deducted_funds_native() {
     let info = mock_info(MOCK_OWNER, &[coin(1000, "uusd")]);
     let action: String = "deposit".to_string();
     let payload = encode_binary(&action).unwrap();
-    let rate = Rate::Local(LocalRate {
+    let rate = LocalRate {
         rate_type: LocalRateType::Additive,
         recipients: vec![Recipient {
             address: AndrAddr::from_string("recipient1".to_string()),
@@ -104,7 +104,7 @@ fn test_query_deducted_funds_native() {
         }],
         value: LocalRateValue::Flat(coin(20_u128, "uandr")),
         description: None,
-    });
+    };
     let msg = InstantiateMsg {
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
@@ -152,7 +152,7 @@ fn test_query_deducted_funds_cw20() {
 
     let action: String = "deposit".to_string();
     let payload = encode_binary(&action).unwrap();
-    let rate = Rate::Local(LocalRate {
+    let rate = LocalRate {
         rate_type: LocalRateType::Additive,
         recipients: vec![Recipient {
             address: AndrAddr::from_string("recipient1".to_string()),
@@ -161,7 +161,7 @@ fn test_query_deducted_funds_cw20() {
         }],
         value: LocalRateValue::Flat(coin(20_u128, cw20_address)),
         description: None,
-    });
+    };
 
     // let rates = vec![
     //     RateInfo {

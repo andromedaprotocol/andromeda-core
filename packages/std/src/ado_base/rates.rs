@@ -5,12 +5,17 @@ use crate::{
     os::aos_querier::AOSQuerier,
 };
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{ensure, Coin, Decimal, Deps, Fraction};
+use cosmwasm_std::{ensure, has_coins, Coin, Decimal, Deps, Fraction};
 
 #[cw_serde]
 pub enum RatesMessage {
     SetRate { action: String, rate: Rate },
     RemoveRate { action: String },
+}
+
+#[cw_serde]
+pub enum RatesQueryMessage {
+    GetRate { action: String },
 }
 
 #[cw_serde]
@@ -118,9 +123,8 @@ impl Rate {
         }
     }
 }
-
-#[cw_serde] // This is added such that both Rate::Flat and Rate::Percent have the same level of nesting which
-            // makes it easier to work with on the frontend.
+// This is added such that both Rate::Flat and Rate::Percent have the same level of nesting which makes it easier to work with on the frontend.
+#[cw_serde]
 pub struct PercentRate {
     pub percent: Decimal,
 }
@@ -134,7 +138,13 @@ pub struct PercentRate {
 /// Returns the fee amount in a `Coin` struct.
 pub fn calculate_fee(fee_rate: LocalRateValue, payment: &Coin) -> Result<Coin, ContractError> {
     match fee_rate {
-        LocalRateValue::Flat(rate) => Ok(Coin::new(rate.amount.u128(), rate.denom)),
+        LocalRateValue::Flat(rate) => {
+            ensure!(
+                has_coins(&[payment.clone()], &rate),
+                ContractError::InsufficientFunds {}
+            );
+            Ok(Coin::new(rate.amount.u128(), rate.denom))
+        }
         LocalRateValue::Percent(percent_rate) => {
             // [COM-03] Make sure that fee_rate between 0 and 100.
             ensure!(

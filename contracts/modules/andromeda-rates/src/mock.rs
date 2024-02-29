@@ -2,7 +2,7 @@
 
 use crate::contract::{execute, instantiate, query};
 use andromeda_modules::rates::InstantiateMsg;
-use andromeda_std::ado_base::rates::Rate;
+use andromeda_std::ado_base::rates::LocalRate;
 use cosmwasm_std::Empty;
 use cw_multi_test::{Contract, ContractWrapper};
 
@@ -13,7 +13,7 @@ pub fn mock_andromeda_rates() -> Box<dyn Contract<Empty>> {
 
 pub fn mock_rates_instantiate_msg(
     action: String,
-    rate: Rate,
+    rate: LocalRate,
     kernel_address: impl Into<String>,
     owner: Option<String>,
 ) -> InstantiateMsg {
