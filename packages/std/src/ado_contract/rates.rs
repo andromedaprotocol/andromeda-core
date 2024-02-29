@@ -89,7 +89,7 @@ impl<'a> ADOContract<'a> {
         let rate = self.rates.may_load(deps.storage, &action)?;
         match rate {
             Some(rate) => {
-                let (coin, is_native): (Coin, bool) = match funds.clone() {
+                let (coin, is_native): (Coin, bool) = match funds {
                     Funds::Native(coin) => {
                         ensure!(
                             !coin.amount.is_zero(),
