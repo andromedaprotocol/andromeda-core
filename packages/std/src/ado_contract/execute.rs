@@ -1,3 +1,4 @@
+use crate::ado_base::rates::RatesMessage;
 use crate::ado_contract::ADOContract;
 use crate::amp::addresses::AndrAddr;
 use crate::amp::messages::AMPPkt;
@@ -75,9 +76,12 @@ impl<'a> ADOContract<'a> {
                     self.execute_permission_action(ctx, action)
                 }
                 #[cfg(feature = "rates")]
-                AndromedaMsg::SetRate { action, rate } => self.execute_set_rates(ctx, action, rate),
-                #[cfg(feature = "rates")]
-                AndromedaMsg::RemoveRate { action } => self.execute_remove_rates(ctx, action),
+                AndromedaMsg::Rates(rates_message) => match rates_message {
+                    RatesMessage::SetRate { action, rate } => {
+                        self.execute_set_rates(ctx, action, rate)
+                    }
+                    RatesMessage::RemoveRate { action } => self.execute_remove_rates(ctx, action),
+                },
 
                 AndromedaMsg::AMPReceive(_) => panic!("AMP Receive should be handled separately"),
                 AndromedaMsg::Deposit { .. } => Err(ContractError::NotImplemented { msg: None }),

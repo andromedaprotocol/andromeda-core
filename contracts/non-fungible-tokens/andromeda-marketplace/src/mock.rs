@@ -4,7 +4,10 @@ use crate::contract::{execute, instantiate, query};
 use andromeda_non_fungible_tokens::marketplace::{
     Cw721HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg,
 };
-use andromeda_std::amp::messages::AMPPkt;
+use andromeda_std::{
+    ado_base::rates::{Rate, RatesMessage},
+    amp::messages::AMPPkt,
+};
 use andromeda_testing::{mock_ado, mock_contract::ExecuteResult, MockADO, MockContract};
 use cosmwasm_std::{Addr, Empty, Uint128};
 use cw_multi_test::{App, Contract, ContractWrapper, Executor};
@@ -43,6 +46,16 @@ impl MockMarketplace {
     ) -> ExecuteResult {
         self.execute(app, &mock_buy_token(token_address, token_id), sender, &[])
     }
+
+    pub fn execute_set_rate(
+        &self,
+        app: &mut App,
+        sender: Addr,
+        action: impl Into<String>,
+        rate: Rate,
+    ) -> ExecuteResult {
+        self.execute(app, &mock_set_rates(action, rate), sender, &[])
+    }
 }
 
 pub fn mock_andromeda_marketplace() -> Box<dyn Contract<Empty>> {
@@ -74,6 +87,13 @@ pub fn mock_buy_token(token_address: impl Into<String>, token_id: impl Into<Stri
         token_id: token_id.into(),
         token_address: token_address.into(),
     }
+}
+
+pub fn mock_set_rates(action: impl Into<String>, rate: Rate) -> ExecuteMsg {
+    ExecuteMsg::Rates(RatesMessage::SetRate {
+        action: action.into(),
+        rate,
+    })
 }
 
 pub fn mock_receive_packet(packet: AMPPkt) -> ExecuteMsg {

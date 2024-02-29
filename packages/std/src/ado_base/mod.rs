@@ -26,6 +26,8 @@ pub use modules::Module;
 #[cfg(feature = "rates")]
 use crate::ado_base::rates::Rate;
 
+use self::rates::RatesMessage;
+
 #[cw_serde]
 pub struct InstantiateMsg {
     pub ado_type: String,
@@ -70,14 +72,15 @@ pub enum AndromedaMsg {
         action: String,
     },
     #[cfg(feature = "rates")]
-    SetRate {
-        action: String,
-        rate: Rate,
-    },
-    #[cfg(feature = "rates")]
-    RemoveRate {
-        action: String,
-    },
+    Rates(RatesMessage),
+    // SetRate {
+    //     action: String,
+    //     rate: Rate,
+    // },
+    // #[cfg(feature = "rates")]
+    // RemoveRate {
+    //     action: String,
+    // },
 }
 
 #[cw_serde]
