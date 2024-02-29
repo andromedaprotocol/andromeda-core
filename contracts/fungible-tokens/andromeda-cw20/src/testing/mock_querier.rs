@@ -1,23 +1,15 @@
 use andromeda_fungible_tokens::cw20::QueryMsg as Cw20Query;
-
-use andromeda_std::ado_base::hooks::{AndromedaHook, HookMsg, OnFundsTransferResponse};
 use andromeda_std::ado_base::InstantiateMsg;
 use andromeda_std::ado_contract::ADOContract;
-use andromeda_std::common::Funds;
 use andromeda_std::testing::mock_querier::MockAndromedaQuerier;
-pub use andromeda_std::testing::mock_querier::MOCK_ADDRESS_LIST_CONTRACT;
 use andromeda_std::testing::mock_querier::MOCK_KERNEL_CONTRACT;
 use cosmwasm_std::testing::{mock_env, mock_info, MockApi, MockQuerier, MockStorage};
 use cosmwasm_std::{
-    from_json, to_json_binary, BankMsg, Binary, Coin, ContractResult, CosmosMsg, OwnedDeps,
-    Querier, QuerierResult, QueryRequest, Response, SubMsg, SystemError, SystemResult, Uint128,
-    WasmQuery,
+    from_json, to_json_binary, Binary, Coin, ContractResult, OwnedDeps, Querier, QuerierResult,
+    QueryRequest, SystemError, SystemResult, WasmQuery,
 };
 
 pub const MOCK_CW20_CONTRACT: &str = "mock_cw20_contract";
-pub const MOCK_RATES_CONTRACT: &str = "mock_rates_contract";
-pub const MOCK_TAX_RECIPIENT: &str = "tax_recipient";
-pub const MOCK_ROYALTY_RECIPIENT: &str = "royalty_recipient";
 
 pub fn mock_dependencies_custom(
     contract_balance: &[Coin],
@@ -76,10 +68,7 @@ impl WasmMockQuerier {
         match &request {
             QueryRequest::Wasm(WasmQuery::Smart { contract_addr, msg }) => {
                 match contract_addr.as_str() {
-                    // MOCK_TOKEN_CONTRACT => self.handle_token_query(msg),
                     MOCK_CW20_CONTRACT => self.handle_cw20_query(msg),
-                    MOCK_RATES_CONTRACT => self.handle_rates_query(msg),
-                    MOCK_ADDRESS_LIST_CONTRACT => self.handle_addresslist_query(msg),
                     _ => MockAndromedaQuerier::default().handle_query(&self.base, request),
                 }
             }
@@ -98,81 +87,6 @@ impl WasmMockQuerier {
             }
 
             _ => panic!("Unsupported Query"),
-        }
-    }
-
-    fn handle_addresslist_query(&self, msg: &Binary) -> QuerierResult {
-        match from_json(msg).unwrap() {
-            HookMsg::AndrHook(hook_msg) => match hook_msg {
-                AndromedaHook::OnExecute { sender, payload: _ } => {
-                    let whitelisted_addresses = ["sender"];
-                    let response: Response = Response::default();
-                    if whitelisted_addresses.contains(&sender.as_str()) {
-                        SystemResult::Ok(ContractResult::Ok(to_json_binary(&response).unwrap()))
-                    } else {
-                        SystemResult::Ok(ContractResult::Err("InvalidAddress".to_string()))
-                    }
-                }
-                _ => SystemResult::Ok(ContractResult::Ok(
-                    to_json_binary(&None::<Response>).unwrap(),
-                )),
-            },
-        }
-    }
-
-    fn handle_rates_query(&self, msg: &Binary) -> QuerierResult {
-        match from_json(msg).unwrap() {
-            HookMsg::AndrHook(hook_msg) => match hook_msg {
-                AndromedaHook::OnFundsTransfer {
-                    sender: _,
-                    payload: _,
-                    amount,
-                } => {
-                    let (new_funds, msgs): (Funds, Vec<SubMsg>) = match amount {
-                        Funds::Native(ref coin) => (
-                            Funds::Native(Coin {
-                                // Deduct royalty of 10%.
-                                amount: coin.amount.multiply_ratio(90u128, 100u128),
-                                denom: coin.denom.clone(),
-                            }),
-                            vec![
-                                SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-                                    to_address: MOCK_ROYALTY_RECIPIENT.to_owned(),
-                                    amount: vec![Coin {
-                                        // Royalty of 10%
-                                        amount: coin.amount.multiply_ratio(10u128, 100u128),
-                                        denom: coin.denom.clone(),
-                                    }],
-                                })),
-                                SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-                                    to_address: MOCK_TAX_RECIPIENT.to_owned(),
-                                    amount: vec![Coin {
-                                        // Flat tax of 50
-                                        amount: Uint128::from(50u128),
-                                        denom: coin.denom.clone(),
-                                    }],
-                                })),
-                            ],
-                        ),
-                        // TODO: IMPLEMENT CW20
-                        Funds::Cw20(_) => {
-                            let resp = OnFundsTransferResponse::default();
-                            return SystemResult::Ok(ContractResult::Ok(
-                                to_json_binary(&resp).unwrap(),
-                            ));
-                        }
-                    };
-                    let response = OnFundsTransferResponse {
-                        msgs,
-                        events: vec![],
-                        leftover_funds: new_funds,
-                    };
-                    SystemResult::Ok(ContractResult::Ok(to_json_binary(&Some(response)).unwrap()))
-                }
-                _ => SystemResult::Ok(ContractResult::Ok(
-                    to_json_binary(&None::<Response>).unwrap(),
-                )),
-            },
         }
     }
 }

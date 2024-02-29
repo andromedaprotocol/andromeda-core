@@ -1,24 +1,6 @@
 use crate::common::Funds;
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Binary, Coin, Event, SubMsg};
-
-#[cw_serde]
-pub enum AndromedaHook {
-    OnExecute {
-        sender: String,
-        payload: Binary,
-    },
-    OnFundsTransfer {
-        sender: String,
-        payload: Binary,
-        amount: Funds,
-    },
-    OnTokenTransfer {
-        token_id: String,
-        sender: String,
-        recipient: String,
-    },
-}
+use cosmwasm_std::{Coin, Event, SubMsg};
 
 #[cw_serde]
 pub struct OnFundsTransferResponse {
@@ -35,10 +17,4 @@ impl Default for OnFundsTransferResponse {
             leftover_funds: Funds::Native(Coin::default()),
         }
     }
-}
-
-/// Helper enum for serialization
-#[cw_serde]
-pub enum HookMsg {
-    AndrHook(AndromedaHook),
 }

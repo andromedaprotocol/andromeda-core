@@ -3,7 +3,7 @@ use crate::state::RATES;
 use andromeda_modules::rates::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, RateResponse};
 use andromeda_std::{
     ado_base::{
-        hooks::{AndromedaHook, OnFundsTransferResponse},
+        hooks::OnFundsTransferResponse,
         rates::{calculate_fee, LocalRate, PaymentAttribute},
         InstantiateMsg as BaseInstantiateMsg,
     },
@@ -150,18 +150,8 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
-        QueryMsg::AndrHook(msg) => handle_andromeda_hook(deps, msg),
         QueryMsg::Rate { action } => encode_binary(&query_rate(deps, action)?),
         _ => ADOContract::default().query(deps, env, msg),
-    }
-}
-
-fn handle_andromeda_hook(deps: Deps, msg: AndromedaHook) -> Result<Binary, ContractError> {
-    match msg {
-        AndromedaHook::OnFundsTransfer {
-            amount, payload, ..
-        } => encode_binary(&query_deducted_funds(deps, payload, amount)?),
-        _ => Ok(encode_binary(&None::<Response>)?),
     }
 }
 

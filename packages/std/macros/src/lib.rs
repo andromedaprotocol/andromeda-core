@@ -206,20 +206,5 @@ pub fn andr_query(_metadata: TokenStream, input: TokenStream) -> TokenStream {
             .into(),
         );
     }
-
-    // #[cfg(feature = "module_hooks")]
-    {
-        merged = merge_variants(
-            merged,
-            quote! {
-                enum Right {
-                    #[returns(::cosmwasm_std::Binary)]
-                    AndrHook(::andromeda_std::ado_base::hooks::AndromedaHook),
-                }
-            }
-            .into(),
-        );
-    }
-
     merged
 }

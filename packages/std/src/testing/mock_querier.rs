@@ -137,7 +137,7 @@ impl MockAndromedaQuerier {
                     MOCK_VFS_CONTRACT => self.handle_vfs_query(msg),
                     MOCK_ADODB_CONTRACT => self.handle_adodb_query(msg),
 
-                    MOCK_ADDRESS_LIST_CONTRACT => self.handle_address_list_query(msg),
+                    // MOCK_ADDRESS_LIST_CONTRACT => self.handle_address_list_query(msg),
                     _ => match from_json::<AndromedaQuery>(msg) {
                         Ok(msg) => self.handle_ado_query(msg),
                         _ => panic!("Unsupported query for contract: {contract_addr}"),
@@ -301,62 +301,6 @@ impl MockAndromedaQuerier {
                 SystemResult::Ok(ContractResult::Ok(to_json_binary(&res).unwrap()))
             }
             _ => panic!("Unsupported Query"),
-        }
-    }
-
-    /// Handles all address list queries
-    ///
-    /// Returns `true` for `OnExecute` queries for any address excluding `UNWHITELISTED_ADDRESS`.
-    fn handle_address_list_query(&self, msg: &Binary) -> QuerierResult {
-        use cosmwasm_std::Response;
-
-        use crate::ado_base::hooks::{AndromedaHook, HookMsg, OnFundsTransferResponse};
-        match from_json(msg).unwrap() {
-            HookMsg::AndrHook(hook) => match hook {
-                AndromedaHook::OnExecute { sender, .. } => match sender.as_str() {
-                    UNWHITELISTED_ADDRESS => {
-                        SystemResult::Ok(ContractResult::Err("Unwhitelisted Address".to_string()))
-                    }
-                    _ => SystemResult::Ok(ContractResult::Ok(
-                        to_json_binary::<Response>(&Response::default()).unwrap(),
-                    )),
-                },
-                AndromedaHook::OnFundsTransfer { .. } => SystemResult::Ok(ContractResult::Ok(
-                    to_json_binary(&OnFundsTransferResponse::default()).unwrap(),
-                )),
-                AndromedaHook::OnTokenTransfer { .. } => SystemResult::Ok(ContractResult::Ok(
-                    to_json_binary::<Response>(&Response::default()).unwrap(),
-                )),
-            },
-        }
-    }
-
-    /// Handles all rates queries
-    ///
-    /// The payments required are calculated using the `calculate_mock_rates_response` method within this crate
-    /// unless the sender is assigned as `RATES_EXCLUDED_ADDRESS`.
-    fn _handle_rates_query(&self, msg: &Binary) -> QuerierResult {
-        use cosmwasm_std::Response;
-
-        use crate::ado_base::hooks::{AndromedaHook, HookMsg, OnFundsTransferResponse};
-        match from_json(msg).unwrap() {
-            HookMsg::AndrHook(hook) => match hook {
-                AndromedaHook::OnExecute { .. } => SystemResult::Ok(ContractResult::Ok(
-                    to_json_binary::<Response>(&Response::default()).unwrap(),
-                )),
-                AndromedaHook::OnFundsTransfer { sender, .. } => {
-                    if sender.as_str() == RATES_EXCLUDED_ADDRESS {
-                        return SystemResult::Ok(ContractResult::Ok(
-                            to_json_binary(&OnFundsTransferResponse::default()).unwrap(),
-                        ));
-                    }
-                    // let msgs = calculate_mock_rates_response(sender, payload, amount);
-                    todo!("Implement Rates Query")
-                }
-                AndromedaHook::OnTokenTransfer { .. } => SystemResult::Ok(ContractResult::Ok(
-                    to_json_binary::<Response>(&Response::default()).unwrap(),
-                )),
-            },
         }
     }
 
