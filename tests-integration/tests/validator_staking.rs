@@ -113,7 +113,7 @@ fn test_validator_stake() {
 
     let funds = vec![coin(1000, "TOKEN")];
     validator_staking
-        .execute_stake(&mut router, owner.clone(), None, funds)
+        .execute_stake(&mut router, owner, None, funds)
         .unwrap();
 
     let stake_info = validator_staking.query_staked_tokens(&router, None);
