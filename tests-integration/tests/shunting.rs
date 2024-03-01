@@ -46,7 +46,7 @@ fn test_shunting() {
     // phi is passed as param, square(r) should be calculated from a shunting that calculates the square
 
     // expression for calculating the area of circles. x0 is for phi, x1 is for r squared which is to be calculated by square shunting
-    let expressions = vec!["x0".to_string(), "x1".to_string(), "x0 * x1".to_string()];
+    let expressions = vec!["{x0}".to_string(), "{x1}".to_string(), "{x0} * {x1}".to_string()];
 
     let shunting_area_msg =
         mock_shunting_instantiate_msg(expressions, andr.kernel_address.clone(), None);
@@ -59,7 +59,7 @@ fn test_shunting() {
     };
 
     // expression for square shunting
-    let expressions = vec!["x0^2".to_string()];
+    let expressions = vec!["{x0}^2".to_string()];
     let shunting_square_msg =
         mock_shunting_instantiate_msg(expressions, andr.kernel_address.clone(), None);
 
