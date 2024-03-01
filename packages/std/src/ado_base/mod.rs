@@ -73,14 +73,6 @@ pub enum AndromedaMsg {
     },
     #[cfg(feature = "rates")]
     Rates(RatesMessage),
-    // SetRate {
-    //     action: String,
-    //     rate: Rate,
-    // },
-    // #[cfg(feature = "rates")]
-    // RemoveRate {
-    //     action: String,
-    // },
 }
 
 #[cw_serde]
