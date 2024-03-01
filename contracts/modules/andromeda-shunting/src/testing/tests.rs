@@ -16,9 +16,9 @@ fn test_instantiate_query() {
     let owner = "owner";
     let info = mock_info(owner, &[]);
     let expressions = vec![
-        "cos(x0)".to_string(),
-        "sin(x0)".to_string(),
-        "y0^2 + y1^2".to_string(),
+        "cos({x0})".to_string(),
+        "sin({x0})".to_string(),
+        "{y0}^2 + {y1}^2".to_string(),
     ];
     let msg = InstantiateMsg {
         expressions,

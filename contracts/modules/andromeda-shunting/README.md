@@ -34,12 +34,12 @@ The `expressions` field is provided as an array of mathematical expressions. For
 
 ```
 [
-    "x0 ^ 2",
-    "y0 * x1"
+    "{x0} ^ 2",
+    "{y0} * x1"
 ]
 ```
 
-In the expression, `x<n>` means the nth parameter in the params of the query, and `y<n>` means the result of the nth expression. In the above example, when evaluating the expression, the first expression calculate the square of the first parameter passed by the query and the second expression get the first expression's result and multiply it by second parameter. Only the last expression's result is returned as a query result. 
+In the expression, `{x<n>}` means the nth parameter in the params of the query, and `{y<n>}` means the result of the nth expression. In the above example, when evaluating the expression, the first expression calculate the square of the first parameter passed by the query and the second expression get the first expression's result and multiply it by second parameter. Only the last expression's result is returned as a query result. 
 
 _**Warning:** Expressions can only use the previous expression's result._
 
@@ -150,3 +150,16 @@ For instance, if there is a need to invoke another Shunting ADO contract with th
 }
 ```
 In this example, as the Shunting ADO returns a `ShuntingResponse` and the intention is to use the `"result"` field of the query response as a parameter, the `accessor` is specified as `"result"`. The `msg` is obtained through the base64 encoding of the aforementioned evaluate message.
+
+If the integrated smart contract yields a complex data structure, it may be necessary to utilize nested fields. For instance, consider a scenario where the returned value resembles the following.
+```json
+{
+    "parent1": {
+        "parent2": {
+            "result": "value"
+        }
+    }
+}
+```
+
+In this case to use `"result"` of the `"parent2"`, the `accessor` can be defined as `"parent1.parent2.result"`.

@@ -119,13 +119,13 @@ fn handle_eval_expression(
 
         // replace x0, x1 ... with actual params in expression
         for (ndx, param) in params.iter().enumerate() {
-            let placeholder = format!("x{}", ndx);
+            let placeholder = format!("{{x{}}}", ndx);
             parsed_expression = parsed_expression.replace(&placeholder, param);
         }
 
         // replace y0, y1 ... with calculation results
         for (i, sub_result) in results.iter().enumerate().take(index) {
-            let placeholder = format!("y{}", i);
+            let placeholder = format!("{{y{}}}", i);
             parsed_expression = parsed_expression.replace(&placeholder, &sub_result.to_string());
         }
 
@@ -172,16 +172,18 @@ fn parse_params(deps: Deps, params: Vec<EvaluateParam>) -> Result<Vec<String>, C
 }
 
 fn eval(expr: &str) -> Result<f64, ContractError> {
-    let expr = ShuntingParser::parse_str(expr);
-    if expr.is_err() {
+    let parsed_expr = ShuntingParser::parse_str(expr);
+    if parsed_expr.is_err() {
         return Err(ContractError::InvalidExpression {
-            msg: "Invalid Expression".to_string(),
+            msg: format!("Unable to parse expression: {}", expr),
         });
     };
 
-    let result = MathContext::new().eval(&expr.unwrap());
-    if let Err(msg) = result {
-        return Err(ContractError::InvalidExpression { msg });
+    let result = MathContext::new().eval(&parsed_expr.unwrap());
+    if let Err(_msg) = result {
+        return Err(ContractError::InvalidExpression {
+            msg: format!("Failed to evaulate the expressoin: {}", expr),
+        });
     }
 
     Ok(result.unwrap())
