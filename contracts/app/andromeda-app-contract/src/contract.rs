@@ -1,4 +1,4 @@
-use crate::reply::{on_component_instantiation, ReplyId};
+use crate::reply::on_component_instantiation;
 use crate::state::{create_cross_chain_message, get_chain_info, APP_NAME};
 use andromeda_app::app::{
     AppComponent, ComponentType, CrossChainComponent, ExecuteMsg, InstantiateMsg, MigrateMsg,
@@ -7,6 +7,7 @@ use andromeda_app::app::{
 use andromeda_std::ado_contract::ADOContract;
 use andromeda_std::amp::AndrAddr;
 use andromeda_std::common::context::ExecuteContext;
+use andromeda_std::common::reply::ReplyId;
 use andromeda_std::os::vfs::{convert_component_name, ExecuteMsg as VFSExecuteMsg};
 use andromeda_std::{
     ado_base::InstantiateMsg as BaseInstantiateMsg,

@@ -1,6 +1,6 @@
-use crate::reply::ReplyId;
 use andromeda_std::ado_base::InstantiateMsg as BaseInstantiateMsg;
 use andromeda_std::ado_contract::ADOContract;
+use andromeda_std::common::reply::ReplyId;
 use andromeda_std::error::{from_semver, ContractError};
 use andromeda_std::os::economics::{Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 #[allow(unused_imports)]

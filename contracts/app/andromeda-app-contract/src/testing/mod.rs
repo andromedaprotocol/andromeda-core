@@ -1,9 +1,9 @@
-use crate::reply::ReplyId;
 use crate::state::ADO_DESCRIPTORS;
 
 use super::{contract::*, state::ADO_ADDRESSES};
 use andromeda_app::app::{AppComponent, ComponentType, ExecuteMsg, InstantiateMsg};
 use andromeda_std::amp::AndrAddr;
+use andromeda_std::common::reply::ReplyId;
 use andromeda_std::os::vfs::{convert_component_name, ExecuteMsg as VFSExecuteMsg};
 use andromeda_std::testing::mock_querier::{
     mock_dependencies_custom, MOCK_ANCHOR_CONTRACT, MOCK_CW20_CONTRACT, MOCK_KERNEL_CONTRACT,

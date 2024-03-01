@@ -2,6 +2,7 @@ use crate::ado_contract::ADOContract;
 use crate::amp::addresses::AndrAddr;
 use crate::amp::messages::AMPPkt;
 use crate::common::context::ExecuteContext;
+use crate::common::reply::ReplyId;
 use crate::os::{aos_querier::AOSQuerier, economics::ExecuteMsg as EconomicsExecuteMsg};
 use crate::{
     ado_base::{AndromedaMsg, InstantiateMsg},
@@ -228,7 +229,7 @@ impl<'a> ADOContract<'a> {
                 msg: to_binary(&economics_msg)?,
                 funds: vec![],
             }),
-            9999,
+            ReplyId::PayFee.repr(),
         );
 
         Ok(msg)
