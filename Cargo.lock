@@ -516,6 +516,7 @@ version = "0.1.0"
 dependencies = [
  "andromeda-finance",
  "andromeda-std",
+ "andromeda-testing",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-multi-test",
@@ -1714,6 +1715,7 @@ dependencies = [
  "andromeda-splitter",
  "andromeda-std",
  "andromeda-testing",
+ "andromeda-validator-staking",
  "andromeda-vault",
  "andromeda-vfs",
  "cosmwasm-schema",
