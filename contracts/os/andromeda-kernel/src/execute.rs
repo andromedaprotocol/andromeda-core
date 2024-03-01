@@ -269,10 +269,18 @@ pub fn assign_channels(
         .unwrap_or_default();
     channel_info.kernel_address = kernel_address;
     if let Some(channel) = direct_channel_id {
+        // Remove old direct channel to chain if it exists
+        if let Some(direct_channel_id) = channel_info.direct_channel_id {
+            CHANNEL_TO_CHAIN.remove(execute_env.deps.storage, &direct_channel_id);
+        }
         CHANNEL_TO_CHAIN.save(execute_env.deps.storage, &channel, &chain)?;
         channel_info.direct_channel_id = Some(channel);
     }
     if let Some(channel) = ics20_channel_id {
+        // Remove old ics20 channel to chain if it exists
+        if let Some(ics20_channel_id) = channel_info.ics20_channel_id {
+            CHANNEL_TO_CHAIN.remove(execute_env.deps.storage, &ics20_channel_id);
+        }
         CHANNEL_TO_CHAIN.save(execute_env.deps.storage, &channel, &chain)?;
         channel_info.ics20_channel_id = Some(channel);
     }
