@@ -1,16 +1,16 @@
 use crate::{
-    contract::{instantiate, execute},
-    testing::mock_querier::{mock_dependencies_custom, VALID_VALIDATOR, DEFAULT_VALIDATOR},
+    contract::{execute, instantiate},
+    testing::mock_querier::{mock_dependencies_custom, DEFAULT_VALIDATOR, VALID_VALIDATOR},
 };
 
 use andromeda_std::{error::ContractError, testing::mock_querier::MOCK_KERNEL_CONTRACT};
 use cosmwasm_std::{
+    coin,
     testing::{mock_env, mock_info},
-    Addr, DepsMut, Response,
-    coin, StakingMsg,
+    Addr, DepsMut, Response, StakingMsg,
 };
 
-use andromeda_finance::validator_staking::{InstantiateMsg, ExecuteMsg};
+use andromeda_finance::validator_staking::{ExecuteMsg, InstantiateMsg};
 
 const OWNER: &str = "creator";
 
@@ -44,13 +44,8 @@ fn test_stake_with_invalid_funds() {
     let default_validator = Addr::unchecked(DEFAULT_VALIDATOR);
     init(deps.as_mut(), default_validator).unwrap();
 
-    let msg = ExecuteMsg::Stake {
-        validator: None
-    };
-    let info = mock_info("owner", &[
-        coin(100, "uandr"),
-        coin(100, "usdc"),
-    ]);
+    let msg = ExecuteMsg::Stake { validator: None };
+    let info = mock_info("owner", &[coin(100, "uandr"), coin(100, "usdc")]);
 
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
 
@@ -63,12 +58,8 @@ fn test_stake_with_default_validator() {
     let default_validator = Addr::unchecked(DEFAULT_VALIDATOR);
     init(deps.as_mut(), default_validator).unwrap();
 
-    let msg = ExecuteMsg::Stake {
-        validator: None
-    };
-    let info = mock_info("owner", &[
-        coin(100, "uandr")
-    ]);
+    let msg = ExecuteMsg::Stake { validator: None };
+    let info = mock_info("owner", &[coin(100, "uandr")]);
 
     let res = execute(deps.as_mut(), mock_env(), info, msg);
 
@@ -93,11 +84,9 @@ fn test_stake_with_validator() {
     init(deps.as_mut(), default_validator).unwrap();
 
     let msg = ExecuteMsg::Stake {
-        validator: Some(valid_validator)
+        validator: Some(valid_validator),
     };
-    let info = mock_info("owner", &[
-        coin(100, "uandr")
-    ]);
+    let info = mock_info("owner", &[coin(100, "uandr")]);
 
     let res = execute(deps.as_mut(), mock_env(), info, msg);
 
@@ -122,11 +111,9 @@ fn test_stake_with_invalid_validator() {
     init(deps.as_mut(), default_validator).unwrap();
 
     let msg = ExecuteMsg::Stake {
-        validator: Some(fake_validator)
+        validator: Some(fake_validator),
     };
-    let info = mock_info("owner", &[
-        coin(100, "uandr"),
-    ]);
+    let info = mock_info("owner", &[coin(100, "uandr")]);
 
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
 
