@@ -19,10 +19,7 @@ pub enum ExecuteMsg {
 #[derive(QueryResponses)]
 pub enum QueryMsg {
     #[returns(Option<FullDelegation>)]
-    StakedTokens {
-        delegator: Addr,
-        validator: Option<Addr>,
-    },
+    StakedTokens { validator: Option<Addr> },
 }
 
 impl InstantiateMsg {

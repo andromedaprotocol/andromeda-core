@@ -23,13 +23,8 @@ impl MockValidatorStaking {
         self.execute(app, &msg, sender, &funds)
     }
 
-    pub fn query_staked_tokens(
-        &self,
-        app: &App,
-        delegator: Addr,
-        validator: Option<Addr>,
-    ) -> Delegation {
-        let msg = mock_get_staked_tokens(delegator, validator);
+    pub fn query_staked_tokens(&self, app: &App, validator: Option<Addr>) -> Delegation {
+        let msg = mock_get_staked_tokens(validator);
         self.query(app, msg)
     }
 }
@@ -55,9 +50,6 @@ pub fn mock_execute_stake(validator: Option<Addr>) -> ExecuteMsg {
     ExecuteMsg::Stake { validator }
 }
 
-pub fn mock_get_staked_tokens(delegator: Addr, validator: Option<Addr>) -> QueryMsg {
-    QueryMsg::StakedTokens {
-        delegator,
-        validator,
-    }
+pub fn mock_get_staked_tokens(validator: Option<Addr>) -> QueryMsg {
+    QueryMsg::StakedTokens { validator }
 }

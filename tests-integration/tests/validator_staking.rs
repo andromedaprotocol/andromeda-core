@@ -18,7 +18,7 @@ fn mock_app() -> App {
             .init_balance(
                 storage,
                 &Addr::unchecked("owner"),
-                [coin(1000, "TOKEN")].to_vec(),
+                [coin(100000000000, "TOKEN"), coin(100000000000, "uandr")].to_vec(),
             )
             .unwrap();
 
@@ -34,6 +34,25 @@ fn mock_app() -> App {
                 },
                 Validator {
                     address: "validator_1".to_string(),
+                    commission: Decimal::zero(),
+                    max_commission: Decimal::percent(20),
+                    max_change_rate: Decimal::percent(1),
+                },
+            )
+            .unwrap();
+
+        router
+            .staking
+            .add_validator(
+                api,
+                storage,
+                &BlockInfo {
+                    height: 0,
+                    time: Timestamp::default(),
+                    chain_id: "my-testnet".to_string(),
+                },
+                Validator {
+                    address: "validator_2".to_string(),
                     commission: Decimal::zero(),
                     max_commission: Decimal::percent(20),
                     max_change_rate: Decimal::percent(1),
@@ -62,8 +81,11 @@ fn test_validator_stake() {
         mock_andromeda_validator_staking(),
         "validator-staking",
     );
-    let validator_staking_init_msg =
-        mock_validator_staking_instantiate_msg(validator_1, None, andr.kernel.addr().to_string());
+    let validator_staking_init_msg = mock_validator_staking_instantiate_msg(
+        validator_1.clone(),
+        None,
+        andr.kernel.addr().to_string(),
+    );
 
     let validator_staking_component = AppComponent::new(
         "1".to_string(),
@@ -85,16 +107,15 @@ fn test_validator_stake() {
     let validator_staking: MockValidatorStaking =
         app.query_ado_by_component_name(&router, validator_staking_component.name);
 
-    let funds = vec![coin(1000, "TOKEN")];
+    // Set owner of the Validator Staking componenent as owner for testing purpose
     app.execute_claim_ownership(&mut router, owner.clone(), Some("1".to_string()))
         .unwrap();
+
+    let funds = vec![coin(1000, "TOKEN")];
     validator_staking
         .execute_stake(&mut router, owner.clone(), None, funds)
         .unwrap();
 
-    let stake_info = validator_staking.query_staked_tokens(&router, owner, None);
-    println!(
-        "==================================={:?}===================================",
-        stake_info
-    );
+    let stake_info = validator_staking.query_staked_tokens(&router, None);
+    assert_eq!(stake_info.validator, validator_1.to_string());
 }

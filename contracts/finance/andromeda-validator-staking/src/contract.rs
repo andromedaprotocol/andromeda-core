@@ -63,22 +63,15 @@ pub fn execute(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
-        QueryMsg::StakedTokens {
-            validator,
-            delegator,
-        } => encode_binary(&query_staked_tokens(deps, delegator, validator)?),
+        QueryMsg::StakedTokens { validator } => {
+            encode_binary(&query_staked_tokens(deps, env.contract.address, validator)?)
+        }
         _ => ADOContract::default().query(deps, env, msg),
     }
 }
 
 fn execute_stake(ctx: ExecuteContext, validator: Option<Addr>) -> Result<Response, ContractError> {
     let ExecuteContext { deps, info, .. } = ctx;
-
-    // Ensure sender is the contract owner
-    ensure!(
-        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {}
-    );
 
     // Ensure only one type of coin is received
     ensure!(
