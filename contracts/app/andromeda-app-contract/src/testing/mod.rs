@@ -412,7 +412,7 @@ fn test_claim_ownership() {
     assert_eq!(1, res.messages.len());
 
     let exec_submsg: SubMsg<Empty> = SubMsg {
-        id: 101,
+        id: 200,
         msg: CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: "tokenaddress".to_string(),
             msg: to_binary(&AndromedaMsg::UpdateOwner {
@@ -686,7 +686,7 @@ fn test_reply_assign_app() {
     //     gas_limit: None,
     // };
     let new_exec_submsg: SubMsg<Empty> = SubMsg {
-        id: 103,
+        id: 202,
         msg: CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: "vfs_contract".to_string(),
             msg: to_binary(&VFSExecuteMsg::AddPath {
