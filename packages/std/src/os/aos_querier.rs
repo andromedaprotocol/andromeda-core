@@ -2,7 +2,7 @@ use crate::amp::{ADO_DB_KEY, VFS_KEY};
 use crate::error::ContractError;
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{from_slice, Addr, QuerierWrapper};
-use cw_storage_plus::Path;
+use cw_storage_plus::{Endian, Path};
 use lazy_static::__Deref;
 use serde::de::DeserializeOwned;
 use std::str::from_utf8;
@@ -54,7 +54,7 @@ impl AOSQuerier {
         adodb_addr: &Addr,
         code_id: u64,
     ) -> Result<Option<String>, ContractError> {
-        let key = AOSQuerier::get_map_storage_key("ado_type", &[code_id.to_string().as_bytes()])?;
+        let key = AOSQuerier::get_map_storage_key("ado_type", &[&code_id.to_be_bytes()])?;
         let ado_type: Option<String> = AOSQuerier::query_storage(querier, adodb_addr, &key)?;
         Ok(ado_type)
     }
