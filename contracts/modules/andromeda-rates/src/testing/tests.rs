@@ -4,8 +4,7 @@ use crate::testing::mock_querier::{
 };
 use andromeda_modules::rates::{ExecuteMsg, InstantiateMsg, QueryMsg, RateResponse};
 
-use andromeda_std::ado_base::hooks::OnFundsTransferResponse;
-use andromeda_std::ado_base::rates::{LocalRate, LocalRateType, LocalRateValue};
+use andromeda_std::ado_base::rates::{LocalRate, LocalRateType, LocalRateValue, RatesResponse};
 use andromeda_std::amp::AndrAddr;
 use andromeda_std::common::Funds;
 use andromeda_std::{amp::recipient::Recipient, common::encode_binary};
@@ -127,7 +126,7 @@ fn test_query_deducted_funds_native() {
     ];
 
     assert_eq!(
-        OnFundsTransferResponse {
+        RatesResponse {
             msgs: expected_msgs,
             leftover_funds: Funds::Native(coin(100, "uandr")),
             events: vec![
@@ -188,7 +187,7 @@ fn test_query_deducted_funds_cw20() {
     };
     let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
-    let res: OnFundsTransferResponse = query_deducted_funds(
+    let res: RatesResponse = query_deducted_funds(
         deps.as_ref(),
         payload,
         Funds::Cw20(Cw20Coin {
@@ -219,7 +218,7 @@ fn test_query_deducted_funds_cw20() {
         // }),
     ];
     assert_eq!(
-        OnFundsTransferResponse {
+        RatesResponse {
             msgs: expected_msgs,
             leftover_funds: Funds::Cw20(Cw20Coin {
                 amount: 100u128.into(),

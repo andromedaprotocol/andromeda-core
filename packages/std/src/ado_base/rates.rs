@@ -1,13 +1,30 @@
 use crate::{
     ado_contract::ADOContract,
     amp::{AndrAddr, Recipient},
-    common::deduct_funds,
+    common::{deduct_funds, Funds},
     error::ContractError,
     os::aos_querier::AOSQuerier,
 };
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{ensure, has_coins, Coin, Decimal, Deps, Event, Fraction, SubMsg};
 use cw20::Cw20Coin;
+
+#[cw_serde]
+pub struct RatesResponse {
+    pub msgs: Vec<SubMsg>,
+    pub events: Vec<Event>,
+    pub leftover_funds: Funds,
+}
+
+impl Default for RatesResponse {
+    fn default() -> Self {
+        Self {
+            msgs: Vec::new(),
+            events: Vec::new(),
+            leftover_funds: Funds::Native(Coin::default()),
+        }
+    }
+}
 
 #[cw_serde]
 pub enum RatesMessage {

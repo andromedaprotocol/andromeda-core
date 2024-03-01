@@ -1,5 +1,5 @@
-use crate::ado_base::hooks::OnFundsTransferResponse;
 use crate::ado_base::rates::Rate;
+use crate::ado_base::rates::RatesResponse;
 use crate::common::context::ExecuteContext;
 use crate::common::Funds;
 use crate::error::ContractError;
@@ -84,7 +84,7 @@ impl<'a> ADOContract<'a> {
         deps: Deps,
         action: impl Into<String>,
         funds: Funds,
-    ) -> Result<Option<OnFundsTransferResponse>, ContractError> {
+    ) -> Result<Option<RatesResponse>, ContractError> {
         let action: String = action.into();
         let rate = self.rates.may_load(deps.storage, &action)?;
         match rate {
@@ -125,7 +125,7 @@ impl<'a> ADOContract<'a> {
                     }
                 };
 
-                Ok(Some(OnFundsTransferResponse {
+                Ok(Some(RatesResponse {
                     msgs,
                     leftover_funds: if is_native {
                         Funds::Native(leftover_funds[0].clone())

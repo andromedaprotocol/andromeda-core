@@ -496,10 +496,10 @@ fn test_transfer_agreement() {
 //         amount: Funds::Native(coin(100, "uusd")),
 //     });
 
-//     let res: OnFundsTransferResponse =
+//     let res: RatesResponse =
 //         from_json(query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
 
-//     let expected_response = OnFundsTransferResponse {
+//     let expected_response = RatesResponse {
 //         msgs: vec![
 //             bank_sub_msg("MOCK_RATES_RECIPIENT", vec![coin(10, "uusd")]),
 //             bank_sub_msg("MOCK_RATES_RECIPIENT", vec![coin(10, "uusd")]),

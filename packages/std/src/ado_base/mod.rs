@@ -1,6 +1,5 @@
 pub mod ado_type;
 pub mod block_height;
-pub mod hooks;
 pub mod kernel_address;
 pub mod modules;
 pub mod operators;

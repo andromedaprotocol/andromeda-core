@@ -3,8 +3,7 @@ use crate::state::RATES;
 use andromeda_modules::rates::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, RateResponse};
 use andromeda_std::{
     ado_base::{
-        hooks::OnFundsTransferResponse,
-        rates::{calculate_fee, LocalRate, PaymentAttribute},
+        rates::{calculate_fee, LocalRate, PaymentAttribute, RatesResponse},
         InstantiateMsg as BaseInstantiateMsg,
     },
     ado_contract::ADOContract,
@@ -168,7 +167,7 @@ pub fn query_deducted_funds(
     deps: Deps,
     payload: Binary,
     funds: Funds,
-) -> Result<OnFundsTransferResponse, ContractError> {
+) -> Result<RatesResponse, ContractError> {
     let action: String = from_json(payload)?;
     let local_rate = RATES.load(deps.storage, &action)?;
     let mut msgs: Vec<SubMsg> = vec![];
@@ -218,7 +217,7 @@ pub fn query_deducted_funds(
     }
     events.push(event);
 
-    Ok(OnFundsTransferResponse {
+    Ok(RatesResponse {
         msgs,
         leftover_funds: if is_native {
             Funds::Native(leftover_funds[0].clone())
