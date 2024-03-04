@@ -9,3 +9,6 @@ mod kernel;
 
 #[cfg(test)]
 mod crowdfund_app;
+
+#[cfg(test)]
+mod validator_staking;
