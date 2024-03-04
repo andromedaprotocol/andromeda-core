@@ -1,8 +1,11 @@
-use cosmwasm_std::{StdResult, Storage};
+use andromeda_std::ado_base::permissioning::Permission;
+use cosmwasm_std::{Addr, StdResult, Storage};
 use cw_storage_plus::{Item, Map};
 
 pub const ADDRESS_LIST: Map<&str, bool> = Map::new("addresslist");
 pub const IS_INCLUSIVE: Item<bool> = Item::new("is_inclusive");
+/// A mapping of actor to permission
+pub const PERMISSIONS: Map<&Addr, Permission> = Map::new("permissioning");
 
 /// Add an address to the address list.
 pub fn add_address(storage: &mut dyn Storage, addr: &str) -> StdResult<()> {
@@ -18,4 +21,17 @@ pub fn remove_address(storage: &mut dyn Storage, addr: &str) {
 /// Query if a given address is included in the address list.
 pub fn includes_address(storage: &dyn Storage, addr: &str) -> StdResult<bool> {
     Ok(ADDRESS_LIST.may_load(storage, addr)?.unwrap_or(false))
+}
+/// Query if a given actor is included in the permissions list.
+pub fn includes_actor(storage: &dyn Storage, actor: &Addr) -> StdResult<bool> {
+    Ok(PERMISSIONS.has(storage, actor))
+}
+
+/// Add or update an actor's permission
+pub fn add_actor_permission(
+    storage: &mut dyn Storage,
+    actor: &Addr,
+    permission: &Permission,
+) -> StdResult<()> {
+    PERMISSIONS.save(storage, actor, permission)
 }

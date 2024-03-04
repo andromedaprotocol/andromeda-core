@@ -218,6 +218,9 @@ pub enum ContractError {
     #[error("AccountNotFound")]
     AccountNotFound {},
 
+    #[error("ActorNotFound")]
+    ActorNotFound {},
+
     #[error("ModuleDiscriptionTooLong: {msg}")]
     ModuleDiscriptionTooLong { msg: String },
 

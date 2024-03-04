@@ -1,20 +1,25 @@
-use andromeda_modules::address_list::IncludesAddressResponse;
+use andromeda_modules::address_list::{
+    ActorPermissionResponse, IncludesActorResponse, IncludesAddressResponse,
+};
 #[cfg(not(feature = "library"))]
 use andromeda_modules::address_list::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use andromeda_std::{
-    ado_base::InstantiateMsg as BaseInstantiateMsg,
+    ado_base::{permissioning::Permission, InstantiateMsg as BaseInstantiateMsg},
     ado_contract::ADOContract,
     common::{context::ExecuteContext, encode_binary},
     error::{from_semver, ContractError},
 };
 
-use cosmwasm_std::entry_point;
 use cosmwasm_std::{attr, ensure, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError};
+use cosmwasm_std::{entry_point, Addr};
 use cw2::{get_contract_version, set_contract_version};
 use cw_utils::nonpayable;
 use semver::Version;
 
-use crate::state::{add_address, includes_address, remove_address, IS_INCLUSIVE};
+use crate::state::{
+    add_actor_permission, add_address, includes_actor, includes_address, remove_address,
+    IS_INCLUSIVE, PERMISSIONS,
+};
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-addresslist";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -69,6 +74,10 @@ pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
         ExecuteMsg::AddAddress { address } => execute_add_address(ctx, address),
         ExecuteMsg::RemoveAddress { address } => execute_remove_address(ctx, address),
         ExecuteMsg::AddAddresses { addresses } => execute_add_addresses(ctx, addresses),
+        ExecuteMsg::AddActorPermission { actor, permission } => {
+            execute_add_actor_permission(ctx, actor, permission)
+        }
+        ExecuteMsg::RemoveActorPermission { actor } => execute_remove_actor_permission(ctx, actor),
         _ => ADOContract::default().execute(ctx, msg),
     }
 }
@@ -140,6 +149,50 @@ fn execute_add_addresses(
     ]))
 }
 
+fn execute_add_actor_permission(
+    ctx: ExecuteContext,
+    actor: Addr,
+    permission: Permission,
+) -> Result<Response, ContractError> {
+    let ExecuteContext { deps, info, .. } = ctx;
+    nonpayable(&info)?;
+    ensure!(
+        ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {}
+    );
+    add_actor_permission(deps.storage, &actor, &permission)?;
+
+    Ok(Response::new().add_attributes(vec![
+        attr("action", "add_actor_permission"),
+        attr("actor", actor),
+        attr("permission", permission.to_string()),
+    ]))
+}
+
+fn execute_remove_actor_permission(
+    ctx: ExecuteContext,
+    actor: Addr,
+) -> Result<Response, ContractError> {
+    let ExecuteContext { deps, info, .. } = ctx;
+    nonpayable(&info)?;
+    ensure!(
+        ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {}
+    );
+    // Ensure that the actor is present in the permissions list
+    ensure!(
+        PERMISSIONS.has(deps.storage, &actor),
+        ContractError::ActorNotFound {}
+    );
+
+    PERMISSIONS.remove(deps.storage, &actor);
+
+    Ok(Response::new().add_attributes(vec![
+        attr("action", "remove_actor_permission"),
+        attr("actor", actor),
+    ]))
+}
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
     // New version
@@ -179,6 +232,8 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
     match msg {
         QueryMsg::IncludesAddress { address } => encode_binary(&query_address(deps, &address)?),
         QueryMsg::IsInclusive {} => encode_binary(&handle_is_inclusive(deps)?),
+        QueryMsg::IncludesActor { actor } => encode_binary(&query_actor(deps, actor)?),
+        QueryMsg::ActorPermission { actor } => encode_binary(&query_actor_permission(deps, actor)?),
         _ => ADOContract::default().query(deps, env, msg),
     }
 }
@@ -192,4 +247,22 @@ fn query_address(deps: Deps, address: &str) -> Result<IncludesAddressResponse, C
     Ok(IncludesAddressResponse {
         included: includes_address(deps.storage, address)?,
     })
+}
+
+fn query_actor(deps: Deps, actor: Addr) -> Result<IncludesActorResponse, ContractError> {
+    Ok(IncludesActorResponse {
+        included: includes_actor(deps.storage, &actor)?,
+    })
+}
+
+fn query_actor_permission(
+    deps: Deps,
+    actor: Addr,
+) -> Result<ActorPermissionResponse, ContractError> {
+    let permission = PERMISSIONS.may_load(deps.storage, &actor)?;
+    if let Some(permission) = permission {
+        Ok(ActorPermissionResponse { permission })
+    } else {
+        Err(ContractError::ActorNotFound {})
+    }
 }

@@ -26,6 +26,7 @@ pub enum Permission {
         uses: u32,
     },
     Whitelisted(Option<Expiration>),
+    // Contract(AndrAddr),
 }
 
 impl std::default::Default for Permission {
@@ -46,6 +47,10 @@ impl Permission {
     pub fn limited(expiration: Option<Expiration>, uses: u32) -> Self {
         Self::Limited { expiration, uses }
     }
+
+    // pub fn contract(address: AndrAddr) -> Self {
+    //     Self::Contract(address)
+    // }
 
     pub fn is_permissioned(&self, env: &Env, strict: bool) -> bool {
         match self {
