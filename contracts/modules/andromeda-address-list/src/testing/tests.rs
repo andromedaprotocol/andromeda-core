@@ -251,7 +251,7 @@ fn test_add_remove_actor() {
         actor: actor.clone(),
         permission: contract_permission,
     };
-    let err = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap_err();
+    let err = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap_err();
     assert_eq!(
         err,
         ContractError::InvalidPermission {
