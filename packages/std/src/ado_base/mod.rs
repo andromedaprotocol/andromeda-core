@@ -5,6 +5,7 @@ pub mod modules;
 pub mod operators;
 pub mod ownership;
 pub mod permissioning;
+#[cfg(feature = "rates")]
 pub mod rates;
 pub mod version;
 
