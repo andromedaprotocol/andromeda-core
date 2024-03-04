@@ -12,16 +12,16 @@ use cosmwasm_std::{
 
 use andromeda_finance::validator_staking::{ExecuteMsg, InstantiateMsg};
 
-const OWNER: &str = "creator";
-
 fn init(deps: DepsMut, default_validator: Addr) -> Result<Response, ContractError> {
+    let contract_address = mock_env().contract.address.to_string();
+
     let msg = InstantiateMsg {
         default_validator,
-        owner: Some(OWNER.to_owned()),
+        owner: Some(contract_address.clone()),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
     };
 
-    let info = mock_info("owner", &[]);
+    let info = mock_info(&contract_address, &[]);
     instantiate(deps, mock_env(), info, msg)
 }
 
@@ -45,7 +45,9 @@ fn test_stake_with_invalid_funds() {
     init(deps.as_mut(), default_validator).unwrap();
 
     let msg = ExecuteMsg::Stake { validator: None };
-    let info = mock_info("owner", &[coin(100, "uandr"), coin(100, "usdc")]);
+    let contract_address = mock_env().contract.address.to_string();
+
+    let info = mock_info(&contract_address, &[coin(100, "uandr"), coin(100, "usdc")]);
 
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
 
@@ -59,7 +61,9 @@ fn test_stake_with_default_validator() {
     init(deps.as_mut(), default_validator).unwrap();
 
     let msg = ExecuteMsg::Stake { validator: None };
-    let info = mock_info("owner", &[coin(100, "uandr")]);
+    let contract_address = mock_env().contract.address.to_string();
+
+    let info = mock_info(&contract_address, &[coin(100, "uandr")]);
 
     let res = execute(deps.as_mut(), mock_env(), info, msg);
 
@@ -69,7 +73,7 @@ fn test_stake_with_default_validator() {
             amount: coin(100, "uandr"),
         })
         .add_attribute("action", "validator-stake")
-        .add_attribute("from", "owner".to_string())
+        .add_attribute("from", contract_address)
         .add_attribute("to", DEFAULT_VALIDATOR.to_string())
         .add_attribute("amount", "100".to_string());
 
@@ -86,7 +90,9 @@ fn test_stake_with_validator() {
     let msg = ExecuteMsg::Stake {
         validator: Some(valid_validator),
     };
-    let info = mock_info("owner", &[coin(100, "uandr")]);
+
+    let contract_address = mock_env().contract.address.to_string();
+    let info = mock_info(&contract_address, &[coin(100, "uandr")]);
 
     let res = execute(deps.as_mut(), mock_env(), info, msg);
 
@@ -96,7 +102,7 @@ fn test_stake_with_validator() {
             amount: coin(100, "uandr"),
         })
         .add_attribute("action", "validator-stake")
-        .add_attribute("from", "owner".to_string())
+        .add_attribute("from", contract_address)
         .add_attribute("to", VALID_VALIDATOR.to_string())
         .add_attribute("amount", "100".to_string());
 
@@ -113,7 +119,9 @@ fn test_stake_with_invalid_validator() {
     let msg = ExecuteMsg::Stake {
         validator: Some(fake_validator),
     };
-    let info = mock_info("owner", &[coin(100, "uandr")]);
+
+    let contract_address = mock_env().contract.address.to_string();
+    let info = mock_info(&contract_address, &[coin(100, "uandr")]);
 
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
 

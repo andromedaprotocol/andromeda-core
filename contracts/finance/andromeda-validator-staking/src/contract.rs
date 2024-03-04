@@ -56,6 +56,7 @@ pub fn execute(
 
     match msg {
         ExecuteMsg::Stake { validator } => execute_stake(ctx, validator),
+        ExecuteMsg::Unstake { validator } => execute_unstake(ctx, validator),
         _ => ADOContract::default().execute(ctx, msg),
     }
 }
@@ -100,6 +101,50 @@ fn execute_stake(ctx: ExecuteContext, validator: Option<Addr>) -> Result<Respons
         .add_attribute("from", info.sender)
         .add_attribute("to", validator.to_string())
         .add_attribute("amount", funds.amount);
+
+    Ok(res)
+}
+
+fn execute_unstake(
+    ctx: ExecuteContext,
+    validator: Option<Addr>,
+) -> Result<Response, ContractError> {
+    let ExecuteContext {
+        deps, info, env, ..
+    } = ctx;
+
+    let delegator = env.contract.address;
+    // Ensure sender is the contract owner
+    ensure!(
+        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {}
+    );
+
+    let default_validator = DEFAULT_VALIDATOR.load(deps.storage)?;
+    let validator = validator.unwrap_or(default_validator);
+
+    // Check if the validator is valid before unstaking
+    is_validator(&deps, &validator)?;
+
+    let Some(res) = deps.querier.query_delegation(delegator.to_string(), validator.to_string())? else {
+        return Err(ContractError::InvalidValidatorOperation { operation: "Unstake".to_string(), validator: validator.to_string() });
+    };
+
+    if res.amount.amount.u128() == 0 {
+        return Err(ContractError::InvalidValidatorOperation {
+            operation: "Unstake".to_string(),
+            validator: validator.to_string(),
+        });
+    }
+
+    let res = Response::new()
+        .add_message(StakingMsg::Undelegate {
+            validator: validator.to_string(),
+            amount: res.amount,
+        })
+        .add_attribute("action", "validator-unstake")
+        .add_attribute("from", info.sender)
+        .add_attribute("to", validator.to_string());
 
     Ok(res)
 }

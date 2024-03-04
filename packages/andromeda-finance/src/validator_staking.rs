@@ -12,6 +12,7 @@ pub struct InstantiateMsg {
 #[cw_serde]
 pub enum ExecuteMsg {
     Stake { validator: Option<Addr> },
+    Unstake { validator: Option<Addr> },
 }
 
 #[andr_query]

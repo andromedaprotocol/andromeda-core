@@ -38,6 +38,12 @@ pub enum ContractError {
     #[error("InvalidOrigin")]
     InvalidOrigin {},
 
+    #[error("Invalid {operation} Operation with {validator}")]
+    InvalidValidatorOperation {
+        operation: String,
+        validator: String,
+    },
+
     #[error("InvalidSender")]
     InvalidSender {},
 

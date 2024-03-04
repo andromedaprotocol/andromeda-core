@@ -7,7 +7,9 @@ use andromeda_validator_staking::mock::{
     mock_andromeda_validator_staking, mock_validator_staking_instantiate_msg, MockValidatorStaking,
 };
 
+use andromeda_std::error::ContractError::Std;
 use andromeda_testing::{mock::MockAndromeda, MockContract};
+use cosmwasm_std::StdError::GenericErr;
 use cosmwasm_std::{coin, to_json_binary, Addr, BlockInfo, Decimal, Timestamp, Validator};
 use cw_multi_test::App;
 
@@ -112,10 +114,27 @@ fn test_validator_stake() {
         .unwrap();
 
     let funds = vec![coin(1000, "TOKEN")];
+
     validator_staking
-        .execute_stake(&mut router, owner, None, funds)
+        .execute_stake(&mut router, owner.clone(), None, funds)
         .unwrap();
 
-    let stake_info = validator_staking.query_staked_tokens(&router, None);
+    let stake_info = validator_staking
+        .query_staked_tokens(&router, None)
+        .unwrap();
     assert_eq!(stake_info.validator, validator_1.to_string());
+
+    validator_staking
+        .execute_unstake(&mut router, owner, None)
+        .unwrap();
+
+    let err = validator_staking
+        .query_staked_tokens(&router, None)
+        .unwrap_err();
+    assert_eq!(
+        err,
+        Std(GenericErr {
+            msg: "Querier contract error: InvalidDelegation".to_string()
+        })
+    );
 }
