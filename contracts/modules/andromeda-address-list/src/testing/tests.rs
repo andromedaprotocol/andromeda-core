@@ -265,7 +265,7 @@ fn test_add_remove_actor() {
     let msg = ExecuteMsg::RemoveActorPermission {
         actor: random_actor,
     };
-    let err = execute(deps.as_mut(), env.clone(), info, msg.clone()).unwrap_err();
+    let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
     assert_eq!(err, ContractError::ActorNotFound {})
 }
 
