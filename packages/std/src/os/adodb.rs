@@ -101,6 +101,12 @@ impl ActionFee {
     ///
     /// i.e. **cw20:address** would return **"address"** or native:denom would return **"denom"**
     pub fn get_asset_string(&self) -> Result<&str, ContractError> {
+        ensure!(
+            self.asset.contains(':'),
+            ContractError::InvalidAsset {
+                asset: self.asset.clone()
+            }
+        );
         match self.asset.split(':').last() {
             Some(asset) => Ok(asset),
             None => Err(ContractError::InvalidAsset {
