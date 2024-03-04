@@ -8,12 +8,18 @@ use andromeda_non_fungible_tokens::{
     },
     cw721::{ExecuteMsg as Cw721ExecuteMsg, MintMsg, QueryMsg as Cw721QueryMsg},
 };
-use andromeda_std::amp::{messages::AMPPkt, recipient::Recipient};
-use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
+use andromeda_std::{
+    ado_contract::ADOContract,
+    common::{context::ExecuteContext, merge_sub_msgs},
+};
+use andromeda_std::{
+    amp::{messages::AMPPkt, recipient::Recipient},
+    common::rates::get_tax_amount,
+};
 
 use andromeda_std::{
-    ado_base::{hooks::AndromedaHook, InstantiateMsg as BaseInstantiateMsg},
-    common::{deduct_funds, encode_binary, merge_sub_msgs, rates::get_tax_amount, Funds},
+    ado_base::InstantiateMsg as BaseInstantiateMsg,
+    common::{deduct_funds, encode_binary, Funds},
     error::{from_semver, ContractError},
 };
 use cw2::{get_contract_version, set_contract_version};
@@ -57,7 +63,7 @@ pub fn instantiate(
         deps.storage,
         env,
         deps.api,
-        info.clone(),
+        info,
         BaseInstantiateMsg {
             ado_type: "crowdfund".to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
@@ -99,7 +105,7 @@ pub fn execute(
 }
 
 pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
-    let contract = ADOContract::default();
+    let _contract = ADOContract::default();
 
     match msg {
         ExecuteMsg::Mint(mint_msgs) => execute_mint(ctx, mint_msgs),
@@ -423,49 +429,73 @@ fn purchase_tokens(
     let mut total_tax_amount = Uint128::zero();
 
     // This is the same for each token, so we only need to do it once.
-    // let (msgs, _events, remainder) = ADOContract::default().on_funds_transfer(
-    //     &deps.as_ref(),
-    //     info.sender.to_string(),
-    //     Funds::Native(state.price.clone()),
-    //     encode_binary(&"")?,
-    // )?;
-
+    let transfer_response = ADOContract::default().query_deducted_funds(
+        deps.as_ref(),
+        "crowdfund",
+        Funds::Native(state.price.clone()),
+    )?;
     let mut current_number = NUMBER_OF_TOKENS_AVAILABLE.load(deps.storage)?;
-    for token_id in token_ids {
-        let remaining_amount = Funds::Native(state.price.clone()).try_get_coin()?;
-        // let tax_amount = get_tax_amount(&msgs, state.price.amount, remaining_amount.amount);
-        let tax_amount = Uint128::zero();
 
-        let purchase = Purchase {
-            token_id: token_id.clone(),
-            tax_amount,
-            // msgs: msgs.clone(),
-            purchaser: info.sender.to_string(),
-        };
+    match transfer_response {
+        Some(transfer_response) => {
+            for token_id in token_ids {
+                let remaining_amount = transfer_response.leftover_funds.try_get_coin()?;
+                let tax_amount = get_tax_amount(
+                    &transfer_response.msgs,
+                    state.price.amount,
+                    remaining_amount.amount,
+                );
 
-        total_tax_amount += tax_amount;
+                let purchase = Purchase {
+                    token_id: token_id.clone(),
+                    tax_amount,
+                    msgs: transfer_response.msgs.clone(),
+                    purchaser: info.sender.to_string(),
+                };
 
-        state.amount_to_send += remaining_amount.amount;
-        state.amount_sold += Uint128::new(1);
+                total_tax_amount += tax_amount;
 
-        purchases.push(purchase);
+                state.amount_to_send += remaining_amount.amount;
+                state.amount_sold += Uint128::new(1);
 
-        AVAILABLE_TOKENS.remove(deps.storage, &token_id);
-        current_number -= Uint128::new(1);
+                purchases.push(purchase);
+
+                AVAILABLE_TOKENS.remove(deps.storage, &token_id);
+                current_number -= Uint128::new(1);
+            }
+            NUMBER_OF_TOKENS_AVAILABLE.save(deps.storage, &current_number)?;
+
+            // CHECK :: User has sent enough to cover taxes.
+            let required_payment = Coin {
+                denom: state.price.denom.clone(),
+                amount: state.price.amount * Uint128::from(number_of_tokens_purchased as u128)
+                    + total_tax_amount,
+            };
+            ensure!(
+                has_coins(&info.funds, &required_payment),
+                ContractError::InsufficientFunds {}
+            );
+            Ok(required_payment)
+        }
+        None => {
+            for token_id in token_ids {
+                let purchase = Purchase {
+                    token_id: token_id.clone(),
+                    // Zero in this case
+                    tax_amount: total_tax_amount,
+                    msgs: vec![],
+                    purchaser: info.sender.to_string(),
+                };
+                state.amount_to_send += total_cost.amount;
+                state.amount_sold += Uint128::new(1);
+                purchases.push(purchase);
+                AVAILABLE_TOKENS.remove(deps.storage, &token_id);
+                current_number -= Uint128::new(1);
+            }
+            NUMBER_OF_TOKENS_AVAILABLE.save(deps.storage, &current_number)?;
+            Ok(total_cost)
+        }
     }
-    NUMBER_OF_TOKENS_AVAILABLE.save(deps.storage, &current_number)?;
-
-    // CHECK :: User has sent enough to cover taxes.
-    let required_payment = Coin {
-        denom: state.price.denom.clone(),
-        amount: state.price.amount * Uint128::from(number_of_tokens_purchased as u128)
-            + total_tax_amount,
-    };
-    ensure!(
-        has_coins(&info.funds, &required_payment),
-        ContractError::InsufficientFunds {}
-    );
-    Ok(required_payment)
 }
 
 fn execute_claim_refund(ctx: ExecuteContext) -> Result<Response, ContractError> {
@@ -644,7 +674,7 @@ fn transfer_tokens_and_send_funds(
         .collect();
 
     let config = CONFIG.load(deps.storage)?;
-    // let mut rate_messages: Vec<SubMsg> = vec![];
+    let mut rate_messages: Vec<SubMsg> = vec![];
     let mut transfer_msgs: Vec<CosmosMsg> = vec![];
 
     let last_purchaser = if purchases.len() == 1 {
@@ -679,7 +709,7 @@ fn transfer_tokens_and_send_funds(
             // at the end, if not all of them were removed.
             number_of_last_purchases_removed += 1;
         }
-        // rate_messages.extend(purchase.msgs);
+        rate_messages.extend(purchase.msgs);
         transfer_msgs.push(CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: token_contract_address.to_string(),
             msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
@@ -702,10 +732,10 @@ fn transfer_tokens_and_send_funds(
     }
     STATE.save(deps.storage, &state)?;
 
-    Ok(
-        resp.add_attribute("action", "transfer_tokens_and_send_funds")
-            .add_messages(transfer_msgs), // .add_submessages(merge_sub_msgs(rate_messages))
-    )
+    Ok(resp
+        .add_attribute("action", "transfer_tokens_and_send_funds")
+        .add_messages(transfer_msgs)
+        .add_submessages(merge_sub_msgs(rate_messages)))
 }
 
 /// Processes a vector of purchases for the SAME user by merging all funds into a single BankMsg.

@@ -7,6 +7,9 @@ use lazy_static::__Deref;
 use serde::de::DeserializeOwned;
 use std::str::from_utf8;
 
+#[cfg(feature = "rates")]
+use crate::ado_base::rates::LocalRate;
+
 use super::adodb::{ActionFee, QueryMsg as ADODBQueryMsg};
 use super::kernel::ChannelInfo;
 
@@ -206,6 +209,20 @@ impl AOSQuerier {
             AOSQuerier::query_storage(querier, kernel_addr, key.as_str())?;
         match verify {
             Some(chain) => Ok(chain),
+            None => Err(ContractError::InvalidAddress {}),
+        }
+    }
+    #[cfg(feature = "rates")]
+    /// Queries the rates contract
+    pub fn get_rate(
+        querier: &QuerierWrapper,
+        addr: &Addr,
+        action: &str,
+    ) -> Result<LocalRate, ContractError> {
+        let key = AOSQuerier::get_map_storage_key("rates", &[action.as_bytes()])?;
+        let verify: Option<LocalRate> = AOSQuerier::query_storage(querier, addr, key.as_str())?;
+        match verify {
+            Some(rate) => Ok(rate),
             None => Err(ContractError::InvalidAddress {}),
         }
     }

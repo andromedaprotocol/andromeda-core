@@ -1,7 +1,8 @@
 #![cfg(all(not(target_arch = "wasm32"), feature = "testing"))]
 
 use crate::contract::{execute, instantiate, query};
-use andromeda_modules::rates::{InstantiateMsg, RateInfo};
+use andromeda_modules::rates::InstantiateMsg;
+use andromeda_std::ado_base::rates::LocalRate;
 use cosmwasm_std::Empty;
 use cw_multi_test::{Contract, ContractWrapper};
 
@@ -11,13 +12,15 @@ pub fn mock_andromeda_rates() -> Box<dyn Contract<Empty>> {
 }
 
 pub fn mock_rates_instantiate_msg(
-    rates: Vec<RateInfo>,
+    action: String,
+    rate: LocalRate,
     kernel_address: impl Into<String>,
     owner: Option<String>,
 ) -> InstantiateMsg {
     InstantiateMsg {
-        rates,
         kernel_address: kernel_address.into(),
         owner,
+        action,
+        rate,
     }
 }

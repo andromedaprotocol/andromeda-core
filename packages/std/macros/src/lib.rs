@@ -70,21 +70,13 @@ pub fn andr_exec(_args: TokenStream, input: TokenStream) -> TokenStream {
         .into(),
     );
 
+    #[cfg(feature = "rates")]
     {
         merged = merge_variants(
             merged,
             quote! {
                 enum Right {
-                    RegisterModule {
-                        module: ::andromeda_std::ado_base::Module,
-                    },
-                    DeregisterModule {
-                        module_idx: ::cosmwasm_std::Uint64,
-                    },
-                    AlterModule {
-                        module_idx: ::cosmwasm_std::Uint64,
-                        module: ::andromeda_std::ado_base::Module,
-                    },
+                    Rates(::andromeda_std::ado_base::rates::RatesMessage)
                 }
             }
             .into(),
@@ -195,38 +187,24 @@ pub fn andr_query(_metadata: TokenStream, input: TokenStream) -> TokenStream {
                 Permissions { actor: String, limit: Option<u32>, start_after: Option<String> },
                 #[returns(Vec<String>)]
                 PermissionedActions { },
+
             }
         }
         .into(),
     );
 
+    #[cfg(feature = "rates")]
     {
         merged = merge_variants(
             merged,
             quote! {
                 enum Right {
-                    #[returns(andromeda_std::ado_base::Module)]
-                    Module { id: ::cosmwasm_std::Uint64 },
-                    #[returns(Vec<String>)]
-                    ModuleIds {},
+                    #[returns(Option<::andromeda_std::ado_base::rates::Rate>)]
+                    Rates(::andromeda_std::ado_base::rates::RatesQueryMessage)
                 }
             }
             .into(),
         );
     }
-    // #[cfg(feature = "module_hooks")]
-    {
-        merged = merge_variants(
-            merged,
-            quote! {
-                enum Right {
-                    #[returns(::cosmwasm_std::Binary)]
-                    AndrHook(::andromeda_std::ado_base::hooks::AndromedaHook),
-                }
-            }
-            .into(),
-        );
-    }
-
     merged
 }

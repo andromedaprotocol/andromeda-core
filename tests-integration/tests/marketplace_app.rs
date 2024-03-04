@@ -10,11 +10,11 @@ use andromeda_marketplace::mock::{
     mock_andromeda_marketplace, mock_buy_token, mock_marketplace_instantiate_msg,
     mock_receive_packet, mock_start_sale, MockMarketplace,
 };
-use andromeda_modules::rates::{Rate, RateInfo};
 
 use andromeda_rates::mock::{mock_andromeda_rates, mock_rates_instantiate_msg};
+use andromeda_std::ado_base::rates::{LocalRate, LocalRateType, LocalRateValue, Rate};
 use andromeda_std::amp::messages::{AMPMsg, AMPPkt};
-use andromeda_std::amp::Recipient;
+use andromeda_std::amp::{AndrAddr, Recipient};
 use andromeda_testing::{MockAndromeda, MockContract};
 use cosmwasm_std::{coin, to_json_binary, Addr, Uint128};
 use cw_multi_test::{App, Executor};
@@ -73,14 +73,22 @@ fn test_marketplace_app() {
         "cw721".to_string(),
         to_json_binary(&cw721_init_msg).unwrap(),
     );
-
-    let rates: Vec<RateInfo> = vec![RateInfo {
-        rate: Rate::Flat(coin(100, "uandr")),
-        is_additive: true,
+    let rate = LocalRate {
+        rate_type: LocalRateType::Additive,
+        recipients: vec![Recipient {
+            address: AndrAddr::from_string(rates_receiver.to_string()),
+            msg: None,
+            ibc_recovery_address: None,
+        }],
+        value: LocalRateValue::Flat(coin(100_u128, "uandr")),
         description: None,
-        recipients: vec![Recipient::from_string(rates_receiver.to_string())],
-    }];
-    let rates_init_msg = mock_rates_instantiate_msg(rates, andr.kernel.addr().to_string(), None);
+    };
+    let rates_init_msg = mock_rates_instantiate_msg(
+        "marketplace".to_string(),
+        rate.clone(),
+        andr.kernel.addr().to_string(),
+        None,
+    );
     let rates_component = AppComponent::new("2", "rates", to_json_binary(&rates_init_msg).unwrap());
 
     let address_list_init_msg =
@@ -134,6 +142,10 @@ fn test_marketplace_app() {
         .execute_quick_mint(&mut router, owner.clone(), 1, owner.to_string())
         .unwrap();
     let token_id = "0";
+
+    marketplace
+        .execute_set_rate(&mut router, owner.clone(), "marketplace", Rate::Local(rate))
+        .unwrap();
 
     // Whitelist
     address_list

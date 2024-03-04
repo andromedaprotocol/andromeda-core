@@ -13,7 +13,9 @@ use andromeda_non_fungible_tokens::{
     cw721::ExecuteMsg as Cw721ExecuteMsg,
 };
 use andromeda_std::{
-    ado_base::modules::Module,
+    ado_base::rates::{LocalRate, LocalRateType, LocalRateValue, Rate},
+    ado_contract::ADOContract,
+    amp::{AndrAddr, Recipient},
     common::{encode_binary, expiration::MILLISECONDS_TO_NANOSECONDS_RATIO},
     error::ContractError,
     testing::mock_querier::MOCK_KERNEL_CONTRACT,
@@ -902,6 +904,22 @@ fn execute_claim() {
     let mut deps = mock_dependencies_custom(&[]);
     let mut env = mock_env();
     let _res = init(deps.as_mut());
+
+    let rate = Rate::Local(LocalRate {
+        rate_type: LocalRateType::Additive,
+        recipients: vec![Recipient {
+            address: AndrAddr::from_string("owner".to_string()),
+            msg: None,
+            ibc_recovery_address: None,
+        }],
+        value: LocalRateValue::Flat(coin(100_u128, "uusd")),
+        description: None,
+    });
+
+    // Set rates
+    ADOContract::default()
+        .set_rates(deps.as_mut().storage, "auction", rate)
+        .unwrap();
 
     start_auction(deps.as_mut(), None, None);
 

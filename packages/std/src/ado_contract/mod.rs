@@ -7,6 +7,7 @@ mod ownership;
 
 pub mod permissioning;
 mod query;
+
 #[cfg(feature = "rates")]
 pub mod rates;
 

@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use andromeda_std::{
-    ado_base::{hooks::AndromedaHook, InstantiateMsg as BaseInstantiateMsg},
+    ado_base::InstantiateMsg as BaseInstantiateMsg,
     ado_contract::ADOContract,
     common::{context::ExecuteContext, encode_binary},
     error::{from_semver, ContractError},
@@ -94,7 +94,7 @@ pub fn instantiate(
         deps.storage,
         env,
         deps.api,
-        info.clone(),
+        info,
         BaseInstantiateMsg {
             ado_type: "cw20-staking".to_string(),
             ado_version: CONTRACT_VERSION.to_string(),

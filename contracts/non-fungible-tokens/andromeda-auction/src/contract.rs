@@ -7,10 +7,13 @@ use andromeda_non_fungible_tokens::auction::{
 };
 
 use andromeda_std::{
-    ado_base::{hooks::AndromedaHook, InstantiateMsg as BaseInstantiateMsg},
-    common::expiration::MILLISECONDS_TO_NANOSECONDS_RATIO,
-    common::Funds,
-    common::{encode_binary, expiration::expiration_from_milliseconds, OrderBy},
+    ado_base::InstantiateMsg as BaseInstantiateMsg,
+    common::{
+        encode_binary,
+        expiration::{expiration_from_milliseconds, MILLISECONDS_TO_NANOSECONDS_RATIO},
+        rates::get_tax_amount,
+        Funds, OrderBy,
+    },
     error::{from_semver, ContractError},
 };
 use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
@@ -42,7 +45,7 @@ pub fn instantiate(
         deps.storage,
         env,
         deps.api,
-        info.clone(),
+        info,
         BaseInstantiateMsg {
             ado_type: "auction".to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
@@ -467,19 +470,22 @@ fn execute_claim(
     }
 
     // Calculate the funds to be received after tax
-    // let after_tax_payment = purchase_token(deps.as_ref(), &info, token_auction_state.clone())?;
+    let after_tax_payment = purchase_token(deps.as_ref(), &info, token_auction_state.clone())?;
+    let mut resp = Response::new();
+    match after_tax_payment {
+        Some(after_tax_payment) => resp = resp.add_submessages(after_tax_payment.1),
+        None => {
+            resp = resp.add_message(CosmosMsg::Bank(BankMsg::Send {
+                to_address: token_auction_state.owner,
+                amount: coins(
+                    token_auction_state.high_bidder_amount.u128(),
+                    token_auction_state.coin_denom,
+                ),
+            }))
+        }
+    }
 
-    Ok(Response::new()
-        // .add_submessages(after_tax_payment.1)
-        // Send funds to the original owner.
-        .add_message(CosmosMsg::Bank(BankMsg::Send {
-            to_address: token_auction_state.owner,
-            // amount: vec![after_tax_payment.0],
-            amount: vec![Coin::new(
-                token_auction_state.high_bidder_amount.u128(),
-                token_auction_state.coin_denom.clone(),
-            )],
-        }))
+    Ok(resp
         // Send NFT to auction winner.
         .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: token_auction_state.token_address.clone(),
@@ -497,35 +503,41 @@ fn execute_claim(
         .add_attribute("auction_id", token_auction_state.auction_id))
 }
 
-// fn purchase_token(
-//     deps: Deps,
-//     info: &MessageInfo,
-//     state: TokenAuctionState,
-// ) -> Result<(Coin, Vec<SubMsg>), ContractError> {
-//     let total_cost = Coin::new(state.high_bidder_amount.u128(), state.coin_denom.clone());
+fn purchase_token(
+    deps: Deps,
+    _info: &MessageInfo,
+    state: TokenAuctionState,
+) -> Result<Option<(Coin, Vec<SubMsg>)>, ContractError> {
+    let total_cost = Coin::new(state.high_bidder_amount.u128(), state.coin_denom.clone());
 
-//     let mut total_tax_amount = Uint128::zero();
+    let transfer_response = ADOContract::default().query_deducted_funds(
+        deps,
+        "auction".to_string(),
+        Funds::Native(total_cost.clone()),
+    )?;
+    match transfer_response {
+        Some(transfer_response) => {
+            let mut total_tax_amount = Uint128::zero();
+            let remaining_amount = transfer_response.leftover_funds.try_get_coin()?;
 
-//     let (msgs, _events, remainder) = ADOContract::default().on_funds_transfer(
-//         &deps,
-//         info.sender.to_string(),
-//         Funds::Native(total_cost),
-//         encode_binary(&"")?,
-//     )?;
+            let tax_amount = get_tax_amount(
+                &transfer_response.msgs,
+                state.high_bidder_amount,
+                remaining_amount.amount,
+            );
 
-//     let remaining_amount = remainder.try_get_coin()?;
+            // Calculate total tax
+            total_tax_amount += tax_amount;
 
-//     let tax_amount = get_tax_amount(&msgs, state.high_bidder_amount, remaining_amount.amount);
-
-//     // Calculate total tax
-//     total_tax_amount += tax_amount;
-
-//     let after_tax_payment = Coin {
-//         denom: state.coin_denom,
-//         amount: total_cost.amount,
-//     };
-//     Ok((after_tax_payment))
-// }
+            let after_tax_payment = Coin {
+                denom: state.coin_denom,
+                amount: total_cost.amount,
+            };
+            Ok(Some((after_tax_payment, transfer_response.msgs)))
+        }
+        None => Ok(None),
+    }
+}
 
 fn get_existing_token_auction_state(
     storage: &dyn Storage,

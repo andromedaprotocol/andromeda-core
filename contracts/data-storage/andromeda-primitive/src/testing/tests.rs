@@ -36,14 +36,9 @@ fn test_set_and_update_value_with_key() {
     set_value(deps.as_mut(), &key, &value, info.sender.as_ref()).unwrap();
 
     let query_res: GetValueResponse = query_value(deps.as_ref(), &key).unwrap();
+    let key = String::from("key");
 
-    assert_eq!(
-        GetValueResponse {
-            key: key.unwrap_or("default".into()),
-            value
-        },
-        query_res
-    );
+    assert_eq!(GetValueResponse { key, value }, query_res);
 }
 
 #[test]
@@ -70,7 +65,7 @@ fn test_set_and_update_value_without_key() {
 
     assert_eq!(
         GetValueResponse {
-            key: key.unwrap_or("default".into()),
+            key: "default".into(),
             value
         },
         query_res

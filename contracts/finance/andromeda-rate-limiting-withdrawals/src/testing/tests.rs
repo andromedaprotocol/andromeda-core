@@ -1,4 +1,4 @@
-use andromeda_std::{ado_base::modules::Module, error::ContractError};
+use andromeda_std::error::ContractError;
 
 use cosmwasm_std::{
     coin,

@@ -5,8 +5,8 @@ use andromeda_non_fungible_tokens::{
     crowdfund::{CrowdfundMintMsg, ExecuteMsg, InstantiateMsg, QueryMsg},
     cw721::TokenExtension,
 };
+use andromeda_std::amp::AndrAddr;
 use andromeda_std::amp::Recipient;
-use andromeda_std::{ado_base::modules::Module, amp::AndrAddr};
 use andromeda_testing::{
     mock_ado,
     mock_contract::{ExecuteResult, MockADO, MockContract},

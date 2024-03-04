@@ -74,6 +74,9 @@ impl<'a> ADOContract<'a> {
                 AndromedaMsg::PermissionAction { action } => {
                     self.execute_permission_action(ctx, action)
                 }
+                #[cfg(feature = "rates")]
+                AndromedaMsg::Rates(rates_message) => self.execute_rates(ctx, rates_message),
+
                 AndromedaMsg::AMPReceive(_) => panic!("AMP Receive should be handled separately"),
                 AndromedaMsg::Deposit { .. } => Err(ContractError::NotImplemented { msg: None }),
             },

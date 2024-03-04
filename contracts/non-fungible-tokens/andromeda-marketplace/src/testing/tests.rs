@@ -2,8 +2,9 @@ use andromeda_non_fungible_tokens::marketplace::{
     Cw721HookMsg, ExecuteMsg, InstantiateMsg, Status,
 };
 use andromeda_std::{
-    ado_base::modules::Module,
-    amp::addresses::AndrAddr,
+    ado_base::rates::{LocalRate, LocalRateType, LocalRateValue, PercentRate, Rate},
+    ado_contract::ADOContract,
+    amp::{AndrAddr, Recipient},
     common::{
         encode_binary,
         expiration::{expiration_from_milliseconds, MILLISECONDS_TO_NANOSECONDS_RATIO},
@@ -13,7 +14,7 @@ use andromeda_std::{
 use cosmwasm_std::{
     coin, coins,
     testing::{mock_env, mock_info},
-    BankMsg, CosmosMsg, Deps, DepsMut, Env, Response, SubMsg, Uint128, WasmMsg,
+    BankMsg, CosmosMsg, Decimal, Deps, DepsMut, Env, Response, SubMsg, Uint128, WasmMsg,
 };
 use cw721::{Cw721ExecuteMsg, Cw721ReceiveMsg};
 use cw_utils::Expiration;
@@ -23,8 +24,7 @@ use crate::{
     contract::{execute, instantiate},
     state::{sale_infos, SaleInfo, TokenSaleState, TOKEN_SALE_STATE},
     testing::mock_querier::{
-        mock_dependencies_custom, MOCK_RATES_CONTRACT, MOCK_TOKEN_ADDR, MOCK_TOKEN_OWNER,
-        MOCK_UNCLAIMED_TOKEN, RATES,
+        mock_dependencies_custom, MOCK_TOKEN_ADDR, MOCK_TOKEN_OWNER, MOCK_UNCLAIMED_TOKEN,
     },
 };
 
@@ -447,15 +447,28 @@ fn test_execute_start_sale_invalid_price() {
 #[test]
 fn test_execute_buy_with_tax_and_royalty_insufficient_funds() {
     let mut deps = mock_dependencies_custom(&[]);
-    let modules = vec![Module {
-        name: Some(RATES.to_owned()),
-        address: AndrAddr::from_string(MOCK_RATES_CONTRACT.to_owned()),
-        is_mutable: false,
-    }];
     let _res = init(deps.as_mut());
 
     start_sale(deps.as_mut());
     assert_sale_created(deps.as_ref(), mock_env());
+
+    let rate = Rate::Local(LocalRate {
+        rate_type: LocalRateType::Additive,
+        recipients: vec![Recipient {
+            address: AndrAddr::from_string("tax_recipient".to_string()),
+            msg: None,
+            ibc_recovery_address: None,
+        }],
+        value: LocalRateValue::Percent(PercentRate {
+            percent: Decimal::percent(50),
+        }),
+        description: None,
+    });
+
+    // Set rates
+    ADOContract::default()
+        .set_rates(deps.as_mut().storage, "marketplace", rate)
+        .unwrap();
 
     let msg = ExecuteMsg::Buy {
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
@@ -467,14 +480,10 @@ fn test_execute_buy_with_tax_and_royalty_insufficient_funds() {
     assert_eq!(err, ContractError::InsufficientFunds {})
 }
 
+// TODO having both tax and royalty is currently unsupported
 #[test]
 fn test_execute_buy_with_tax_and_royalty_works() {
     let mut deps = mock_dependencies_custom(&[]);
-    let modules = vec![Module {
-        name: Some(RATES.to_owned()),
-        address: AndrAddr::from_string(MOCK_RATES_CONTRACT.to_owned()),
-        is_mutable: false,
-    }];
     let _res = init(deps.as_mut());
 
     start_sale(deps.as_mut());
@@ -485,20 +494,42 @@ fn test_execute_buy_with_tax_and_royalty_works() {
         token_address: MOCK_TOKEN_ADDR.to_string(),
     };
 
+    let rate = Rate::Local(LocalRate {
+        rate_type: LocalRateType::Additive,
+        recipients: vec![Recipient {
+            address: AndrAddr::from_string("tax_recipient".to_string()),
+            msg: None,
+            ibc_recovery_address: None,
+        }],
+        value: LocalRateValue::Percent(PercentRate {
+            percent: Decimal::percent(50),
+        }),
+        description: None,
+    });
+
+    // Set rates
+    ADOContract::default()
+        .set_rates(deps.as_mut().storage, "marketplace", rate)
+        .unwrap();
+
     let info = mock_info("someone", &coins(150, "uusd".to_string()));
     let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
     let expected: Vec<SubMsg<_>> = vec![
-        SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-            to_address: "royalty_recipient".to_string(),
-            amount: vec![coin(10, "uusd")],
-        })),
+        // SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+        //     to_address: "royalty_recipient".to_string(),
+        //     amount: vec![coin(10, "uusd")],
+        // })),
         SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
             to_address: "tax_recipient".to_string(),
             amount: vec![coin(50, "uusd")],
         })),
+        // SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+        //     to_address: "owner".to_string(),
+        //     amount: vec![coin(90, "uusd")],
+        // })),
         SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
             to_address: "owner".to_string(),
-            amount: vec![coin(90, "uusd")],
+            amount: vec![coin(100, "uusd")],
         })),
         SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: MOCK_TOKEN_ADDR.to_string(),

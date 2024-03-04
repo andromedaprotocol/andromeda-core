@@ -279,8 +279,8 @@ impl AMPPkt {
     pub fn get_messages_for_recipient(&self, recipient: String) -> Vec<AMPMsg> {
         self.messages
             .iter()
+            .filter(|&msg| msg.recipient == recipient.clone())
             .cloned()
-            .filter(|msg| msg.recipient == recipient.clone())
             .collect()
     }
 

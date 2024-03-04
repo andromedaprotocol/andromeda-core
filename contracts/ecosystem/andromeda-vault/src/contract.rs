@@ -111,7 +111,7 @@ fn execute_deposit(
         deposit_msg,
     } = match msg {
         None => DepositMsg::default(),
-        Some(msg) => from_json(&msg)?,
+        Some(msg) => from_json(msg)?,
     };
     let mut resp = Response::default();
 
