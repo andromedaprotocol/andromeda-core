@@ -133,7 +133,37 @@ fn test_register_user_valid_cosmwasm_address() {
                     .to_string()
             )
         }
-    )
+    );
+
+    let username = "SeNdEr";
+    let info = mock_info("attacker", &[]);
+    let env = mock_env();
+    let msg = ExecuteMsg::RegisterUser {
+        username: username.to_string(),
+        address: None,
+    };
+
+    let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
+    assert_eq!(
+        err,
+        ContractError::InvalidUsername {
+            error: Some(
+                "Usernames that are valid addresses should be the same as the sender's address"
+                    .to_string()
+            )
+        }
+    );
+
+    let username = "SeNdEr";
+    let info = mock_info(sender, &[]);
+    let env = mock_env();
+    let msg = ExecuteMsg::RegisterUser {
+        username: username.to_string(),
+        address: None,
+    };
+
+    let res = execute(deps.as_mut(), env, info, msg);
+    assert!(res.is_ok());
 }
 
 // Test using a username that represents a valid CosmWasm Address that IS the same as the sender's address

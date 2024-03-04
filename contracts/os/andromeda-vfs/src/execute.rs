@@ -173,7 +173,7 @@ pub fn register_user(
     }
 
     // If the username is a valid address, it should be equal to info.sender
-    match env.deps.api.addr_validate(&username) {
+    match env.deps.api.addr_validate(&username.to_lowercase()) {
         Ok(username) => {
             // No need to validate the username any further if this passess
             ensure!(
