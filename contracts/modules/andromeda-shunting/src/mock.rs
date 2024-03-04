@@ -1,9 +1,27 @@
 #![cfg(all(not(target_arch = "wasm32"), feature = "testing"))]
 
 use crate::contract::{execute, instantiate, query};
-use andromeda_modules::shunting::{EvaluateParam, InstantiateMsg, QueryMsg};
-use cosmwasm_std::Empty;
-use cw_multi_test::{Contract, ContractWrapper};
+use andromeda_modules::shunting::{
+    EvaluateParam, ExecuteMsg, InstantiateMsg, QueryMsg, ShuntingResponse,
+};
+use cosmwasm_std::{Addr, Empty};
+use cw_multi_test::{App, Contract, ContractWrapper};
+
+use andromeda_testing::{
+    mock_ado,
+    mock_contract::{MockADO, MockContract},
+};
+
+pub struct MockShunting(Addr);
+mock_ado!(MockShunting, ExecuteMsg, QueryMsg);
+
+impl MockShunting {
+    pub fn evaluate(&self, app: &App, params: Vec<EvaluateParam>) -> ShuntingResponse {
+        let msg = mock_shunting_evaluate(params);
+        let res: ShuntingResponse = self.query(app, msg);
+        res
+    }
+}
 
 pub fn mock_andromeda_shunting() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new_with_empty(execute, instantiate, query);
@@ -22,6 +40,6 @@ pub fn mock_shunting_instantiate_msg(
     }
 }
 
-pub fn mock_shunting_query_msg(params: Vec<EvaluateParam>) -> QueryMsg {
+pub fn mock_shunting_evaluate(params: Vec<EvaluateParam>) -> QueryMsg {
     QueryMsg::Evaluate { params }
 }

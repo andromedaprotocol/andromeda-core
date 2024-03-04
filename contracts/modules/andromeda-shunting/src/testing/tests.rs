@@ -5,7 +5,7 @@ pub use andromeda_std::testing::mock_querier::{
 
 use andromeda_modules::shunting::{EvaluateParam, InstantiateMsg, QueryMsg, ShuntingResponse};
 use cosmwasm_std::{
-    from_binary,
+    from_json,
     testing::{mock_dependencies, mock_env, mock_info},
 };
 
@@ -30,7 +30,7 @@ fn test_instantiate_query() {
         params: vec![EvaluateParam::Value("0.8".to_string())],
     };
     let response: ShuntingResponse =
-        from_binary(&query(deps.as_ref(), env, query_msg).unwrap()).unwrap();
+        from_json(query(deps.as_ref(), env, query_msg).unwrap()).unwrap();
 
     assert_eq!(
         response,
