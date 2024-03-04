@@ -40,8 +40,8 @@ pub fn ado_type(deps: Deps, code_id: u64) -> Result<Option<ADOVersion>, Contract
     Ok(ado_version)
 }
 
-const DEFAULT_LIMIT: u32 = 10;
-const MAX_LIMIT: u32 = 100;
+const DEFAULT_LIMIT: u32 = 100;
+const MAX_LIMIT: u32 = 200;
 
 pub fn all_ado_types(
     storage: &dyn Storage,
