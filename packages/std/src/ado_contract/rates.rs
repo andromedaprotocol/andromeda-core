@@ -1,4 +1,5 @@
 use crate::ado_base::rates::Rate;
+use crate::ado_base::rates::RatesMessage;
 use crate::ado_base::rates::RatesResponse;
 use crate::common::context::ExecuteContext;
 use crate::common::Funds;
@@ -25,6 +26,16 @@ impl<'a> ADOContract<'a> {
         let action: String = action.into();
         self.rates.save(store, &action, &rate)?;
         Ok(())
+    }
+    pub fn execute_rates(
+        &self,
+        ctx: ExecuteContext,
+        rates_message: RatesMessage,
+    ) -> Result<Response, ContractError> {
+        match rates_message {
+            RatesMessage::SetRate { action, rate } => self.execute_set_rates(ctx, action, rate),
+            RatesMessage::RemoveRate { action } => self.execute_remove_rates(ctx, action),
+        }
     }
     pub fn execute_set_rates(
         &self,
