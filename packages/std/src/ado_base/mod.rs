@@ -23,11 +23,6 @@ use cosmwasm_std::Binary;
 use cosmwasm_std::Uint64;
 pub use modules::Module;
 
-#[cfg(feature = "rates")]
-use crate::ado_base::rates::Rate;
-
-use self::rates::RatesMessage;
-
 #[cw_serde]
 pub struct InstantiateMsg {
     pub ado_type: String,
@@ -72,7 +67,7 @@ pub enum AndromedaMsg {
         action: String,
     },
     #[cfg(feature = "rates")]
-    Rates(RatesMessage),
+    Rates(self::rates::RatesMessage),
 }
 
 #[cw_serde]
@@ -115,6 +110,6 @@ pub enum AndromedaQuery {
     PermissionedActions {},
 
     #[cfg(feature = "rates")]
-    #[returns(Option<Rate>)]
+    #[returns(Option<self::rates::Rate>)]
     GetRate { action: String },
 }
