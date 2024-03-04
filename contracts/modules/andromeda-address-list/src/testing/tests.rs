@@ -245,7 +245,19 @@ fn test_add_remove_actor() {
     let res = execute(deps.as_mut(), env.clone(), unauth_info, msg).unwrap_err();
     assert_eq!(ContractError::Unauthorized {}, res);
 
-    //TODO add test for invalid permission
+    // Contract permissions aren't allowed to be saved in the address list contract
+    let contract_permission = Permission::Contract(Addr::unchecked("address_list"));
+    let msg = ExecuteMsg::AddActorPermission {
+        actor: actor.clone(),
+        permission: contract_permission,
+    };
+    let err = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap_err();
+    assert_eq!(
+        err,
+        ContractError::InvalidPermission {
+            msg: "Contract permissions aren't allowed in the address list contract".to_string()
+        }
+    );
 
     // Test remove actor
     let msg = ExecuteMsg::RemoveActorPermission {

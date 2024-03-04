@@ -160,6 +160,14 @@ fn execute_add_actor_permission(
         ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {}
     );
+    // Contract permissions aren't allowed in the address list contract
+    ensure!(
+        !matches!(permission, Permission::Contract(_)),
+        ContractError::InvalidPermission {
+            msg: "Contract permissions aren't allowed in the address list contract".to_string()
+        }
+    );
+
     add_actor_permission(deps.storage, &actor, &permission)?;
 
     Ok(Response::new().add_attributes(vec![

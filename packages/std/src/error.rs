@@ -314,6 +314,9 @@ pub enum ContractError {
     #[error("InvalidFunds: {msg}")]
     InvalidFunds { msg: String },
 
+    #[error("InvalidPermission: {msg}")]
+    InvalidPermission { msg: String },
+
     #[error("InvalidADOVersion: {msg:?}")]
     InvalidADOVersion { msg: Option<String> },
 

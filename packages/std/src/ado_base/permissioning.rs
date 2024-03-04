@@ -1,8 +1,10 @@
 use core::fmt;
 
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::Env;
+use cosmwasm_std::{Addr, Env, QuerierWrapper};
 use cw_utils::Expiration;
+
+use crate::os::aos_querier::AOSQuerier;
 
 #[cw_serde]
 pub struct PermissionInfo {
@@ -26,7 +28,7 @@ pub enum Permission {
         uses: u32,
     },
     Whitelisted(Option<Expiration>),
-    // Contract(AndrAddr),
+    Contract(Addr),
 }
 
 impl std::default::Default for Permission {
@@ -48,11 +50,17 @@ impl Permission {
         Self::Limited { expiration, uses }
     }
 
-    // pub fn contract(address: AndrAddr) -> Self {
-    //     Self::Contract(address)
-    // }
+    pub fn contract(address: Addr) -> Self {
+        Self::Contract(address)
+    }
 
-    pub fn is_permissioned(&self, env: &Env, strict: bool) -> bool {
+    pub fn is_permissioned(
+        &self,
+        querier: &QuerierWrapper,
+        actor: &str,
+        env: &Env,
+        strict: bool,
+    ) -> bool {
         match self {
             Self::Blacklisted(expiration) => {
                 if let Some(expiration) = expiration {
@@ -81,6 +89,16 @@ impl Permission {
                 }
                 true
             }
+            Self::Contract(addr) => {
+                let permission = AOSQuerier::get_permission(querier, addr, actor).unwrap();
+                if let Some(permission) = permission {
+                    // The address list contract doesn't allow Contract Permissions to be stored.
+                    // ensure!(!matches(Permission::Contract(_), permission));
+                    permission.is_permissioned(querier, actor, env, strict)
+                } else {
+                    strict
+                }
+            }
         }
     }
 
@@ -89,6 +107,7 @@ impl Permission {
             Self::Blacklisted(expiration) => expiration.unwrap_or_default(),
             Self::Limited { expiration, .. } => expiration.unwrap_or_default(),
             Self::Whitelisted(expiration) => expiration.unwrap_or_default(),
+            _ => todo!(),
         }
     }
 
@@ -123,6 +142,7 @@ impl fmt::Display for Permission {
                     "whitelisted".to_string()
                 }
             }
+            _ => todo!(),
         };
         write!(f, "{self_as_string}")
     }
