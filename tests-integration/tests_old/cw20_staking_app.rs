@@ -12,7 +12,7 @@ use andromeda_cw20_staking::mock::{
 };
 use andromeda_fungible_tokens::cw20_staking::StakerResponse;
 use andromeda_testing::mock::MockAndromeda;
-use cosmwasm_std::{coin, to_binary, Addr, Uint128};
+use cosmwasm_std::{coin, to_json_binary, Addr, Uint128};
 use cw20::{BalanceResponse, Cw20Coin};
 use cw_multi_test::{App, Executor};
 
@@ -91,22 +91,22 @@ fn test_cw20_staking_app() {
             Some(Uint128::from(1000000u128)),
         )),
         None,
-        Some(andr.kernel_address.to_string()),
+        Some(andr.kernel.addr().to_string()),
     );
     let cw20_component = AppComponent::new(
         "1".to_string(),
         "cw20".to_string(),
-        to_binary(&cw20_init_msg).unwrap(),
+        to_json_binary(&cw20_init_msg).unwrap(),
     );
 
     let cw20_staking_init_msg = mock_cw20_staking_instantiate_msg(
         cw20_component.clone().name,
-        Some(andr.kernel_address.to_string()),
+        Some(andr.kernel.addr().to_string()),
     );
     let cw20_staking_component = AppComponent::new(
         "2".to_string(),
         "cw20-staking".to_string(),
-        to_binary(&cw20_staking_init_msg).unwrap(),
+        to_json_binary(&cw20_staking_init_msg).unwrap(),
     );
 
     // Create App
@@ -114,7 +114,7 @@ fn test_cw20_staking_app() {
     let app_init_msg = mock_app_instantiate_msg(
         "Staking App".to_string(),
         app_components.clone(),
-        andr.kernel_address,
+        andr.kernel.addr(),
     );
 
     let app_addr = router
@@ -173,7 +173,7 @@ fn test_cw20_staking_app() {
     let staking_msg_one = mock_cw20_send(
         cw20_staking_addr.clone(),
         Uint128::from(1000u128),
-        to_binary(&mock_cw20_stake()).unwrap(),
+        to_json_binary(&mock_cw20_stake()).unwrap(),
     );
     router
         .execute_contract(
@@ -187,7 +187,7 @@ fn test_cw20_staking_app() {
     let staking_msg_two = mock_cw20_send(
         cw20_staking_addr.clone(),
         Uint128::from(2000u128),
-        to_binary(&mock_cw20_stake()).unwrap(),
+        to_json_binary(&mock_cw20_stake()).unwrap(),
     );
     router
         .execute_contract(

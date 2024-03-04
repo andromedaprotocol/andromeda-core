@@ -4,7 +4,7 @@ use andromeda_std::{
 
 use cosmwasm_std::{
     testing::{mock_env, mock_info},
-    to_binary, CosmosMsg, Decimal, DepsMut, Response, StdError, WasmMsg,
+    to_json_binary, CosmosMsg, Decimal, DepsMut, Response, StdError, WasmMsg,
 };
 
 pub const OWNER: &str = "creator";
@@ -134,7 +134,7 @@ fn test_swap_and_forward_osmo() {
     };
     let expected = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: MOCK_OSMOSIS_ROUTER_CONTRACT.to_string(),
-        msg: to_binary(&expected_msg).unwrap(),
+        msg: to_json_binary(&expected_msg).unwrap(),
         funds: vec![in_coin],
     });
     assert_eq!(res.messages[0].msg, expected);

@@ -6,7 +6,7 @@ use andromeda_std::{
     os::aos_querier::AOSQuerier, os::kernel::ExecuteMsg as KernelExecuteMsg,
 };
 use cosmwasm_std::{
-    to_binary, Addr, Coin, CosmosMsg, DepsMut, Order, ReplyOn, Storage, SubMsg, WasmMsg,
+    to_json_binary, Addr, Coin, CosmosMsg, DepsMut, Order, ReplyOn, Storage, SubMsg, WasmMsg,
 };
 use cw_storage_plus::{Bound, Item, Map};
 
@@ -77,7 +77,7 @@ pub fn load_component_descriptors(
 }
 
 pub fn generate_ownership_message(addr: Addr, owner: &str) -> Result<SubMsg, ContractError> {
-    let msg = to_binary(&AndromedaMsg::UpdateOwner {
+    let msg = to_json_binary(&AndromedaMsg::UpdateOwner {
         address: owner.to_string(),
     })?;
     Ok(SubMsg {
@@ -93,7 +93,7 @@ pub fn generate_ownership_message(addr: Addr, owner: &str) -> Result<SubMsg, Con
 }
 
 pub fn generate_assign_app_message(addr: &Addr, app_addr: &str) -> Result<SubMsg, ContractError> {
-    let msg = to_binary(&AndromedaMsg::UpdateAppContract {
+    let msg = to_json_binary(&AndromedaMsg::UpdateAppContract {
         address: app_addr.to_string(),
     })?;
     Ok(SubMsg {
@@ -179,14 +179,14 @@ pub fn create_cross_chain_message(
 
     let kernel_msg = KernelExecuteMsg::Create {
         ado_type: "app-contract".to_string(),
-        msg: to_binary(&msg)?,
+        msg: to_json_binary(&msg)?,
         owner: Some(AndrAddr::from_string(chain_info.owner)),
         chain: Some(chain_info.chain_name),
     };
 
     let cosmos_msg = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: kernel_address.to_string(),
-        msg: to_binary(&kernel_msg)?,
+        msg: to_json_binary(&kernel_msg)?,
         funds: vec![],
     });
     let sub_msg = SubMsg {

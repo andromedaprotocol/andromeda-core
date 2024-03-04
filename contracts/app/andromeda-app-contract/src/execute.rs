@@ -3,16 +3,16 @@ use crate::state::{
     load_component_addresses, ADO_ADDRESSES,
 };
 use andromeda_app::app::{AppComponent, ComponentType};
-use andromeda_std::ado_contract::ADOContract;
 use andromeda_std::common::context::ExecuteContext;
 use andromeda_std::error::ContractError;
 use andromeda_std::os::aos_querier::AOSQuerier;
 use andromeda_std::os::vfs::ExecuteMsg as VFSExecuteMsg;
+use andromeda_std::{ado_contract::ADOContract, amp::AndrAddr};
 
 use crate::reply::ReplyId;
 use cosmwasm_std::{
-    ensure, to_binary, Addr, Binary, CosmosMsg, QuerierWrapper, ReplyOn, Response, Storage, SubMsg,
-    WasmMsg,
+    ensure, to_json_binary, Addr, Binary, CosmosMsg, QuerierWrapper, ReplyOn, Response, Storage,
+    SubMsg, WasmMsg,
 };
 
 pub fn handle_add_app_component(
@@ -62,7 +62,7 @@ pub fn handle_add_app_component(
                     &contract.get_kernel_address(storage)?,
                 )?
                 .to_string(),
-                msg: to_binary(&msg)?,
+                msg: to_json_binary(&msg)?,
                 funds: vec![],
             });
             let sub_msg = SubMsg::reply_on_error(cosmos_msg, ReplyId::RegisterPath.repr());
@@ -77,7 +77,7 @@ pub fn handle_add_app_component(
 pub fn claim_ownership(
     ctx: ExecuteContext,
     name_opt: Option<String>,
-    new_owner: Option<Addr>,
+    new_owner: Option<AndrAddr>,
 ) -> Result<Response, ContractError> {
     ensure!(
         ADOContract::default().is_contract_owner(ctx.deps.storage, ctx.info.sender.as_str())?
@@ -94,16 +94,17 @@ pub fn claim_ownership(
         )?);
     } else {
         let addresses = load_component_addresses(ctx.deps.storage, None)?;
+
         for address in addresses {
             let curr_owner = AOSQuerier::ado_owner_getter(&ctx.deps.querier, &address)?;
+            // Get the AndrAddr's raw address if available, else get the message sender's address.
             if curr_owner == ctx.env.contract.address {
-                msgs.push(generate_ownership_message(
-                    address,
-                    new_owner
-                        .clone()
-                        .unwrap_or(ctx.info.sender.clone())
-                        .as_str(),
-                )?);
+                let new_owner = if let Some(new_owner) = new_owner.clone() {
+                    new_owner.get_raw_address(&ctx.deps.as_ref())?
+                } else {
+                    ctx.info.sender.clone()
+                };
+                msgs.push(generate_ownership_message(address, new_owner.as_str())?);
             }
         }
     }
@@ -197,7 +198,7 @@ pub fn register_component_path(
     };
     let cosmos_msg = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: vfs_address.to_string(),
-        msg: to_binary(&add_path_msg)?,
+        msg: to_json_binary(&add_path_msg)?,
         funds: vec![],
     });
 

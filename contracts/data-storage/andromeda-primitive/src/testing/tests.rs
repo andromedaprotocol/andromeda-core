@@ -1,5 +1,5 @@
 use cosmwasm_schema::schemars::Map;
-use cosmwasm_std::{from_binary, testing::mock_env};
+use cosmwasm_std::{from_json, testing::mock_env};
 
 use crate::{contract::query, state::DEFAULT_KEY};
 use andromeda_data_storage::primitive::{
@@ -207,7 +207,7 @@ fn test_query_all_key() {
     }
 
     let res: Vec<String> =
-        from_binary(&query(deps.as_ref(), mock_env(), QueryMsg::AllKeys {}).unwrap()).unwrap();
+        from_json(query(deps.as_ref(), mock_env(), QueryMsg::AllKeys {}).unwrap()).unwrap();
 
     assert_eq!(res, keys)
 }
@@ -241,11 +241,11 @@ fn test_query_owner_keys() {
     }
 
     let res: Vec<String> =
-        from_binary(&query(deps.as_ref(), mock_env(), QueryMsg::AllKeys {}).unwrap()).unwrap();
+        from_json(query(deps.as_ref(), mock_env(), QueryMsg::AllKeys {}).unwrap()).unwrap();
     assert!(res.len() == 4, "Not all keys added");
 
-    let res: Vec<String> = from_binary(
-        &query(
+    let res: Vec<String> = from_json(
+        query(
             deps.as_ref(),
             mock_env(),
             QueryMsg::OwnerKeys {
@@ -257,8 +257,8 @@ fn test_query_owner_keys() {
     .unwrap();
     assert!(res.len() == 2, "assertion failed {res:?}", res = res);
 
-    let res: Vec<String> = from_binary(
-        &query(
+    let res: Vec<String> = from_json(
+        query(
             deps.as_ref(),
             mock_env(),
             QueryMsg::OwnerKeys {

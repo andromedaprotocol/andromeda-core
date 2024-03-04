@@ -1,5 +1,5 @@
 use andromeda_ics721::contract;
-use cosmwasm_std::{to_binary, Addr, Empty, IbcTimeout, IbcTimeoutBlock};
+use cosmwasm_std::{to_json_binary, Addr, Empty, IbcTimeout, IbcTimeoutBlock};
 use cw_cii::{Admin, ContractInstantiateInfo};
 use cw_multi_test::{App, Contract, ContractWrapper, Executor};
 // use cw_pause_once::PauseError;
@@ -419,7 +419,7 @@ fn test_no_proxy_unauthorized() {
                 msg: cw721::Cw721ReceiveMsg {
                     sender: "ekez".to_string(),
                     token_id: "1".to_string(),
-                    msg: to_binary("").unwrap(),
+                    msg: to_json_binary("").unwrap(),
                 },
             },
             &[],
@@ -450,7 +450,7 @@ fn test_proxy_authorized() {
         &mut app,
         Some(ContractInstantiateInfo {
             code_id: proxy_id,
-            msg: to_binary(&rlp::msg::InstantiateMsg {
+            msg: to_json_binary(&rlp::msg::InstantiateMsg {
                 rate_limit: rlp::Rate::PerBlock(10),
                 origin: None,
             })
@@ -502,7 +502,7 @@ fn test_proxy_authorized() {
             msg: cw721::Cw721ReceiveMsg {
                 sender: "ekez".to_string(),
                 token_id: "1".to_string(),
-                msg: to_binary(&IbcOutgoingMsg {
+                msg: to_json_binary(&IbcOutgoingMsg {
                     receiver: "ekez".to_string(),
                     channel_id: "channel-0".to_string(),
                     timeout: IbcTimeout::with_block(IbcTimeoutBlock {
@@ -531,7 +531,7 @@ fn test_no_receive_with_proxy() {
         &mut app,
         Some(ContractInstantiateInfo {
             code_id: proxy_id,
-            msg: to_binary(&rlp::msg::InstantiateMsg {
+            msg: to_json_binary(&rlp::msg::InstantiateMsg {
                 rate_limit: rlp::Rate::PerBlock(10),
                 origin: None,
             })
@@ -548,7 +548,7 @@ fn test_no_receive_with_proxy() {
             &ExecuteMsg::ReceiveNft(cw721::Cw721ReceiveMsg {
                 sender: "ekez".to_string(),
                 token_id: "1".to_string(),
-                msg: to_binary(&IbcOutgoingMsg {
+                msg: to_json_binary(&IbcOutgoingMsg {
                     receiver: "ekez".to_string(),
                     channel_id: "channel-0".to_string(),
                     timeout: IbcTimeout::with_block(IbcTimeoutBlock {
@@ -620,7 +620,7 @@ fn test_no_receive_with_proxy() {
 //         WasmMsg::Migrate {
 //             contract_addr: bridge.to_string(),
 //             new_code_id: bridge_id,
-//             msg: to_binary(&MigrateMsg::WithUpdate {
+//             msg: to_json_binary(&MigrateMsg::WithUpdate {
 //                 pauser: Some("zeke".to_string()),
 //                 proxy: None,
 //             })

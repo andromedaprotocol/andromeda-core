@@ -5,7 +5,7 @@ use andromeda_std::testing::mock_querier::{
     mock_dependencies_custom, MOCK_ACTION, MOCK_KERNEL_CONTRACT,
 };
 use andromeda_std::testing::mock_querier::{MOCK_ADO_PUBLISHER, MOCK_APP_CONTRACT};
-use cosmwasm_std::{coin, to_binary, Addr, BankMsg, CosmosMsg, Uint128};
+use cosmwasm_std::{coin, to_json_binary, Addr, BankMsg, CosmosMsg, Uint128};
 use cw20::Cw20ReceiveMsg;
 
 use crate::contract::{cw20_withdraw_msg, execute, instantiate, spend_balance};
@@ -428,7 +428,7 @@ fn cw20_deposit_msg(
     ExecuteMsg::Receive(Cw20ReceiveMsg {
         sender: sender.into(),
         amount,
-        msg: to_binary(&Cw20HookMsg::Deposit { address: recipient }).unwrap(),
+        msg: to_json_binary(&Cw20HookMsg::Deposit { address: recipient }).unwrap(),
     })
 }
 

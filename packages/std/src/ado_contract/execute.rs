@@ -8,7 +8,7 @@ use crate::{
     error::ContractError,
 };
 use cosmwasm_std::{
-    attr, from_binary, to_binary, Addr, Api, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
+    attr, from_json, to_json_binary, Addr, Api, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
     QuerierWrapper, Response, Storage, SubMsg, WasmMsg,
 };
 use serde::de::DeserializeOwned;
@@ -45,8 +45,8 @@ impl<'a> ADOContract<'a> {
         ctx: ExecuteContext,
         msg: impl Serialize,
     ) -> Result<Response, ContractError> {
-        let msg = to_binary(&msg)?;
-        match from_binary::<AndromedaMsg>(&msg) {
+        let msg = to_json_binary(&msg)?;
+        match from_json::<AndromedaMsg>(&msg) {
             Ok(msg) => match msg {
                 AndromedaMsg::UpdateOwner { address } => {
                     self.execute_update_owner(ctx.deps, ctx.info, address)
@@ -202,7 +202,7 @@ impl<'a> ADOContract<'a> {
         let ctx = ctx.with_ctx(packet.clone());
         let msg_opt = packet.messages.pop();
         if let Some(msg_opt) = msg_opt {
-            let msg: E = from_binary(&msg_opt.message)?;
+            let msg: E = from_json(msg_opt.message)?;
             let response = handler(ctx, msg)?;
             Ok(response)
         } else {
@@ -235,7 +235,7 @@ impl<'a> ADOContract<'a> {
         let msg = SubMsg::reply_on_error(
             CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: economics_contract_address.to_string(),
-                msg: to_binary(&economics_msg)?,
+                msg: to_json_binary(&economics_msg)?,
                 funds: vec![],
             }),
             9999,

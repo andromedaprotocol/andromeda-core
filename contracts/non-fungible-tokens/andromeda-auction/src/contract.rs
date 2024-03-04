@@ -16,9 +16,9 @@ use andromeda_std::{
 use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
 
 use cosmwasm_std::{
-    attr, coins, ensure, entry_point, from_binary, Addr, BankMsg, Binary, BlockInfo, Coin,
-    CosmosMsg, Deps, DepsMut, Env, MessageInfo, QuerierWrapper, QueryRequest, Response, Storage,
-    SubMsg, Uint128, WasmMsg, WasmQuery,
+    attr, coins, ensure, entry_point, from_json, Addr, BankMsg, Binary, BlockInfo, Coin, CosmosMsg,
+    Deps, DepsMut, Env, MessageInfo, QuerierWrapper, QueryRequest, Response, Storage, SubMsg,
+    Uint128, WasmMsg, WasmQuery,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, Cw721ReceiveMsg, Expiration, OwnerOfResponse};
@@ -130,7 +130,7 @@ fn handle_receive_cw721(
     ctx: ExecuteContext,
     msg: Cw721ReceiveMsg,
 ) -> Result<Response, ContractError> {
-    match from_binary(&msg.msg)? {
+    match from_json(&msg.msg)? {
         Cw721HookMsg::StartAuction {
             start_time,
             duration,
@@ -268,7 +268,7 @@ fn execute_update_auction(
         &token_auction_state,
     )?;
     Ok(Response::new().add_attributes(vec![
-        attr("action", "start_auction"),
+        attr("action", "update_auction"),
         attr("start_time", start_time.to_string()),
         attr("end_time", end_exp.to_string()),
         attr("coin_denom", coin_denom),

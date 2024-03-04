@@ -12,7 +12,7 @@ use crate::{
     common::encode_binary,
     error::ContractError,
 };
-use cosmwasm_std::{from_binary, to_binary, Binary, Deps, Env, Order};
+use cosmwasm_std::{from_json, to_json_binary, Binary, Deps, Env, Order};
 use serde::Serialize;
 
 impl<'a> ADOContract<'a> {
@@ -23,9 +23,9 @@ impl<'a> ADOContract<'a> {
         _env: Env,
         msg: impl Serialize,
     ) -> Result<Binary, ContractError> {
-        let msg = to_binary(&msg)?;
+        let msg = to_json_binary(&msg)?;
 
-        match from_binary::<AndromedaQuery>(&msg) {
+        match from_json::<AndromedaQuery>(&msg) {
             Ok(msg) => match msg {
                 AndromedaQuery::Owner {} => encode_binary(&self.query_contract_owner(deps)?),
                 AndromedaQuery::Operators {} => encode_binary(&self.query_operators(deps)?),
