@@ -218,11 +218,14 @@ impl AOSQuerier {
         querier: &QuerierWrapper,
         contract_addr: &Addr,
         actor: &str,
-    ) -> Result<Option<Permission>, ContractError> {
+    ) -> Result<Permission, ContractError> {
         let key = AOSQuerier::get_map_storage_key("permissioning", &[actor.as_bytes()])?;
         let permission: Option<Permission> =
             AOSQuerier::query_storage(querier, contract_addr, key.as_str())?;
-        Ok(permission)
+        match permission {
+            Some(permission) => Ok(permission),
+            None => Err(ContractError::InvalidAddress {}),
+        }
     }
 
     #[cfg(feature = "rates")]

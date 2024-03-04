@@ -211,6 +211,10 @@ impl<'a> ADOContract<'a> {
         Self::is_contract_owner(self, ctx.deps.storage, ctx.info.sender.as_str())?;
         let actor_addr = actor.get_raw_address(&ctx.deps.as_ref())?;
         let action = action.into();
+
+        // Checks if address in a Contract permission is a valid address-list contract
+        permission.validate(&ctx)?;
+
         Self::set_permission(
             ctx.deps.storage,
             action.clone(),

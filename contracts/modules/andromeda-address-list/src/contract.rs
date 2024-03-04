@@ -21,7 +21,7 @@ use crate::state::{
     IS_INCLUSIVE, PERMISSIONS,
 };
 // version info for migration info
-const CONTRACT_NAME: &str = "crates.io:andromeda-addresslist";
+const CONTRACT_NAME: &str = "crates.io:andromeda-address-list";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]

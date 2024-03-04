@@ -1,10 +1,13 @@
 use core::fmt;
 
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Env, QuerierWrapper};
+use cosmwasm_std::{ensure, Addr, Env, QuerierWrapper};
 use cw_utils::Expiration;
 
-use crate::os::aos_querier::AOSQuerier;
+use crate::{
+    ado_contract::ADOContract, common::context::ExecuteContext, error::ContractError,
+    os::aos_querier::AOSQuerier,
+};
 
 #[cw_serde]
 pub struct PermissionInfo {
@@ -54,6 +57,37 @@ impl Permission {
         Self::Contract(address)
     }
 
+    pub fn is_contract(&self) -> bool {
+        matches!(self, Permission::Contract(_))
+    }
+
+    pub fn validate(&self, ctx: &ExecuteContext) -> Result<(), ContractError> {
+        match self {
+            // Checks if the address is an address-list contract found in the adodb
+            Permission::Contract(address) => {
+                let contract_info = ctx.deps.querier.query_wasm_contract_info(address)?;
+                let adodb_addr = ADOContract::default()
+                    .get_adodb_address(ctx.deps.storage, &ctx.deps.querier)?;
+                let ado_type = AOSQuerier::ado_type_getter(
+                    &ctx.deps.querier,
+                    &adodb_addr,
+                    contract_info.code_id,
+                )?;
+                match ado_type {
+                    Some(ado_type) => {
+                        ensure!(
+                            ado_type == *"address-list",
+                            ContractError::InvalidAddress {}
+                        );
+                        Ok(())
+                    }
+                    None => Err(ContractError::InvalidAddress {}),
+                }
+            }
+            _ => Ok(()),
+        }
+    }
+
     pub fn is_permissioned(
         &self,
         querier: &QuerierWrapper,
@@ -90,13 +124,12 @@ impl Permission {
                 true
             }
             Self::Contract(addr) => {
-                let permission = AOSQuerier::get_permission(querier, addr, actor).unwrap();
-                if let Some(permission) = permission {
-                    // The address list contract doesn't allow Contract Permissions to be stored.
-                    // ensure!(!matches(Permission::Contract(_), permission));
-                    permission.is_permissioned(querier, actor, env, strict)
-                } else {
-                    strict
+                let permission = AOSQuerier::get_permission(querier, addr, actor);
+                // The address list contract doesn't allow Contract Permissions to be stored in the first place.
+                // ensure!(!matches(Permission::Contract(_), permission));
+                match permission {
+                    Ok(permission) => permission.is_permissioned(querier, actor, env, strict),
+                    Err(_) => false,
                 }
             }
         }
