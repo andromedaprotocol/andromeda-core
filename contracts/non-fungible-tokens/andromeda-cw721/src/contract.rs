@@ -96,11 +96,11 @@ pub fn execute(
     }
 }
 
-fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
     ensure!(
         is_context_permissioned(
-            ctx.deps.storage,
+            &mut ctx.deps,
             &ctx.info,
             &ctx.env,
             &ctx.amp_ctx,
@@ -175,7 +175,7 @@ fn execute_cw721(
 }
 
 fn execute_mint(
-    ctx: ExecuteContext,
+    mut ctx: ExecuteContext,
     token_id: String,
     token_uri: Option<String>,
     owner: String,
@@ -187,7 +187,7 @@ fn execute_mint(
     ensure!(
         ctx.contains_sender(minter.as_str())
             | is_context_permissioned_strict(
-                ctx.deps.storage,
+                &mut ctx.deps,
                 &ctx.info,
                 &ctx.env,
                 &ctx.amp_ctx,
@@ -240,7 +240,7 @@ fn execute_batch_mint(
     ensure!(
         ctx.contains_sender(minter.as_str())
             | is_context_permissioned_strict(
-                ctx.deps.storage,
+                &mut ctx.deps,
                 &ctx.info,
                 &ctx.env,
                 &ctx.amp_ctx,
