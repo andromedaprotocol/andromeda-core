@@ -10,9 +10,9 @@ use andromeda_std::{
     error::{from_semver, ContractError},
 };
 
-use cosmwasm_std::entry_point;
-use cosmwasm_std::{attr, ensure, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError};
-use cosmwasm_std::{entry_point, Addr};
+use cosmwasm_std::{
+    attr, ensure, entry_point, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError,
+};
 use cw2::{get_contract_version, set_contract_version};
 use cw_utils::nonpayable;
 use semver::Version;
