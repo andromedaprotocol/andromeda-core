@@ -126,9 +126,13 @@ impl Permission {
             Self::Contract(addr) => {
                 let permission = AOSQuerier::get_permission(querier, addr, actor);
                 // The address list contract doesn't allow Contract Permissions to be stored in the first place.
-                // ensure!(!matches(Permission::Contract(_), permission));
                 match permission {
-                    Ok(permission) => permission.is_permissioned(querier, actor, env, strict),
+                    Ok(permission) => {
+                        if matches!(permission, Permission::Contract(_)) {
+                            return false;
+                        }
+                        permission.is_permissioned(querier, actor, env, strict)
+                    }
                     Err(_) => false,
                 }
             }
