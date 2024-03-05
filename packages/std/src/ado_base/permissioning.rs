@@ -68,7 +68,7 @@ impl Permission {
                 let contract_info = ctx.deps.querier.query_wasm_contract_info(address)?;
                 let adodb_addr = ADOContract::default()
                     .get_adodb_address(ctx.deps.storage, &ctx.deps.querier)?;
-                let ado_type = AOSQuerier::ado_type_getter(
+                let ado_type = AOSQuerier::ado_type_getter_smart(
                     &ctx.deps.querier,
                     &adodb_addr,
                     contract_info.code_id,
@@ -76,7 +76,7 @@ impl Permission {
                 match ado_type {
                     Some(ado_type) => {
                         ensure!(
-                            ado_type == *"address-list",
+                            ado_type.split('@').next().unwrap_or("default") == "address-list",
                             ContractError::InvalidAddress {}
                         );
                         Ok(())
