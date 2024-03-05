@@ -175,7 +175,9 @@ impl fmt::Display for Permission {
                     "whitelisted".to_string()
                 }
             }
-            _ => todo!(),
+            Self::Contract(address) => {
+                format!("contract:{address}")
+            }
         };
         write!(f, "{self_as_string}")
     }

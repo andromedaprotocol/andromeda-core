@@ -2,6 +2,7 @@
 
 use crate::contract::{execute, instantiate, query};
 use andromeda_modules::address_list::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use andromeda_std::ado_base::permissioning::Permission;
 use andromeda_testing::{mock_ado, mock_contract::ExecuteResult, MockADO, MockContract};
 use cosmwasm_std::{Addr, Empty};
 use cw_multi_test::{App, Contract, ContractWrapper, Executor};
@@ -41,6 +42,21 @@ impl MockAddressList {
         self.execute(app, &mock_add_address_msg(address), sender, &[])
     }
 
+    pub fn execute_actor_permission(
+        &self,
+        app: &mut App,
+        sender: Addr,
+        actor: Addr,
+        permission: Permission,
+    ) -> ExecuteResult {
+        self.execute(
+            app,
+            &mock_add_actor_permission_msg(actor, permission),
+            sender,
+            &[],
+        )
+    }
+
     pub fn query_includes_address(&self, app: &App, address: impl Into<String>) -> bool {
         self.query::<bool>(app, mock_includes_address_msg(address))
     }
@@ -67,6 +83,10 @@ pub fn mock_add_address_msg(address: impl Into<String>) -> ExecuteMsg {
     ExecuteMsg::AddAddress {
         address: address.into(),
     }
+}
+
+pub fn mock_add_actor_permission_msg(actor: Addr, permission: Permission) -> ExecuteMsg {
+    ExecuteMsg::AddActorPermission { actor, permission }
 }
 
 pub fn mock_includes_address_msg(address: impl Into<String>) -> QueryMsg {

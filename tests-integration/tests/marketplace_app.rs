@@ -11,10 +11,13 @@ use andromeda_marketplace::mock::{
     mock_receive_packet, mock_start_sale, MockMarketplace,
 };
 
+use andromeda_non_fungible_tokens::cw721::TokenExtension;
 use andromeda_rates::mock::{mock_andromeda_rates, mock_rates_instantiate_msg};
+use andromeda_std::ado_base::permissioning::Permission;
 use andromeda_std::ado_base::rates::{LocalRate, LocalRateType, LocalRateValue, Rate};
 use andromeda_std::amp::messages::{AMPMsg, AMPPkt};
 use andromeda_std::amp::{AndrAddr, Recipient};
+use andromeda_std::error::ContractError;
 use andromeda_testing::{MockAndromeda, MockContract};
 use cosmwasm_std::{coin, to_json_binary, Addr, Uint128};
 use cw_multi_test::{App, Executor};
@@ -143,6 +146,20 @@ fn test_marketplace_app() {
         .unwrap();
     let token_id = "0";
 
+    // This token will be used by the actor to test permissioning
+    let actor = AndrAddr::from_string("actor");
+    let actor_token_id = "1";
+    cw721
+        .execute_mint(
+            &mut router,
+            owner.clone(),
+            actor_token_id.to_string(),
+            TokenExtension::default(),
+            None,
+            actor.into_string(),
+        )
+        .unwrap();
+
     marketplace
         .execute_set_rate(&mut router, owner.clone(), "marketplace", Rate::Local(rate))
         .unwrap();
@@ -155,7 +172,63 @@ fn test_marketplace_app() {
         .execute_add_address(&mut router, owner.clone(), buyer.to_string())
         .unwrap();
 
-    // Send Token to Marketplace
+    // Add permission to address list contract
+    let actor = Addr::unchecked("actor");
+    let action = "SendNft".to_string();
+    let permission = Permission::blacklisted(None);
+    address_list
+        .execute_actor_permission(&mut router, owner.clone(), actor, permission)
+        .unwrap();
+
+    // Add contract permission to cw721 contract. The address is that of the address_list.
+    let contract_permission = Permission::contract(address_list.addr().to_owned());
+    let actor = AndrAddr::from_string("actor");
+    cw721
+        .execute_add_actor_permission(
+            &mut router,
+            owner.clone(),
+            actor,
+            action,
+            contract_permission,
+        )
+        .unwrap();
+
+    let actor = Addr::unchecked("actor");
+
+    // Send actor Token to Marketplace using blacklisted actor.
+    // If it wasn't for the blacklist permission, this wouldn't return an error.
+    let err: ContractError = cw721
+        .execute_send_nft(
+            &mut router,
+            actor,
+            marketplace.addr().clone(),
+            actor_token_id,
+            &mock_start_sale(Uint128::from(100u128), "uandr"),
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+
+    assert_eq!(err, ContractError::Unauthorized {});
+
+    // Now whitelist the same actor
+    let actor = Addr::unchecked("actor");
+    let permission = Permission::whitelisted(None);
+    address_list
+        .execute_actor_permission(&mut router, owner.clone(), actor.clone(), permission)
+        .unwrap();
+
+    cw721
+        .execute_send_nft(
+            &mut router,
+            actor,
+            marketplace.addr().clone(),
+            actor_token_id,
+            &mock_start_sale(Uint128::from(100u128), "uandr"),
+        )
+        .unwrap();
+
+    // Send Token to Marketplace using owner
     cw721
         .execute_send_nft(
             &mut router,
