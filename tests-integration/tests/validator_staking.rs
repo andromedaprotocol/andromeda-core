@@ -7,6 +7,7 @@ use andromeda_validator_staking::mock::{
     mock_andromeda_validator_staking, mock_validator_staking_instantiate_msg, MockValidatorStaking,
 };
 
+use andromeda_std::error::ContractError;
 use andromeda_std::error::ContractError::Std;
 use andromeda_testing::{mock::MockAndromeda, MockContract};
 use cosmwasm_std::StdError::GenericErr;
@@ -123,6 +124,32 @@ fn test_validator_stake() {
         .query_staked_tokens(&router, None)
         .unwrap();
     assert_eq!(stake_info.validator, validator_1.to_string());
+
+    // Test unstake with invalid validator
+    let err = validator_staking
+        .execute_unstake(
+            &mut router,
+            owner.clone(),
+            Some(Addr::unchecked("fake_validator")),
+        )
+        .unwrap_err();
+    let err = err.root_cause().downcast_ref::<ContractError>().unwrap();
+
+    let expected_err = ContractError::InvalidValidator {};
+    assert_eq!(err, &expected_err);
+
+    // Test unstake from invalid owner
+    let err = validator_staking
+        .execute_unstake(
+            &mut router,
+            Addr::unchecked("other"),
+            Some(Addr::unchecked("fake_validator")),
+        )
+        .unwrap_err();
+    let err = err.root_cause().downcast_ref::<ContractError>().unwrap();
+
+    let expected_err = ContractError::Unauthorized {};
+    assert_eq!(err, &expected_err);
 
     validator_staking
         .execute_unstake(&mut router, owner, None)
