@@ -10,6 +10,7 @@ use andromeda_std::{
     error::{from_semver, ContractError},
 };
 
+use cosmwasm_std::entry_point;
 use cosmwasm_std::{attr, ensure, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError};
 use cosmwasm_std::{entry_point, Addr};
 use cw2::{get_contract_version, set_contract_version};
