@@ -134,12 +134,13 @@ fn execute_unstake(
         return Err(ContractError::InvalidValidatorOperation { operation: "Unstake".to_string(), validator: validator.to_string() });
     };
 
-    if res.amount.amount.u128() == 0 {
-        return Err(ContractError::InvalidValidatorOperation {
+    ensure!(
+        !res.amount.amount.is_zero(),
+        ContractError::InvalidValidatorOperation {
             operation: "Unstake".to_string(),
             validator: validator.to_string(),
-        });
-    }
+        }
+    );
 
     let res = Response::new()
         .add_message(StakingMsg::Undelegate {
@@ -187,9 +188,10 @@ fn execute_claim(
     };
 
     // No reward to claim exist
-    if res.accumulated_rewards.is_empty() {
-        return Err(ContractError::InvalidClaim {});
-    }
+    ensure!(
+        !res.accumulated_rewards.is_empty(),
+        ContractError::InvalidClaim {}
+    );
 
     let res = Response::new()
         .add_message(DistributionMsg::SetWithdrawAddress {
