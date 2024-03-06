@@ -44,6 +44,9 @@ pub enum ContractError {
         validator: String,
     },
 
+    #[error("No Staking Reward")]
+    InvalidClaim {},
+
     #[error("InvalidSender")]
     InvalidSender {},
 

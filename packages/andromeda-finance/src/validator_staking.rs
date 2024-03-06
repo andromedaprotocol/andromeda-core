@@ -13,6 +13,10 @@ pub struct InstantiateMsg {
 pub enum ExecuteMsg {
     Stake { validator: Option<Addr> },
     Unstake { validator: Option<Addr> },
+    Claim { 
+        validator: Option<Addr>,
+        recipient: Option<Addr>
+    }
 }
 
 #[andr_query]

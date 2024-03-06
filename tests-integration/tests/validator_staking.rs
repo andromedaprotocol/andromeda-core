@@ -21,7 +21,7 @@ fn mock_app() -> App {
             .init_balance(
                 storage,
                 &Addr::unchecked("owner"),
-                [coin(100000000000, "TOKEN"), coin(100000000000, "uandr")].to_vec(),
+                [coin(1000, "TOKEN"), coin(1000, "uandr")].to_vec(),
             )
             .unwrap();
 
@@ -124,6 +124,66 @@ fn test_validator_stake() {
         .query_staked_tokens(&router, None)
         .unwrap();
     assert_eq!(stake_info.validator, validator_1.to_string());
+
+    // Testing when there is no reward to claim
+    let err = validator_staking
+        .execute_claim_reward(
+            &mut router,
+            owner.clone(),
+            Some(validator_1.clone()),
+            Some(owner.clone()),
+        )
+        .unwrap_err();
+    let err = err.root_cause().downcast_ref::<ContractError>().unwrap();
+    let expected_err = ContractError::InvalidClaim {};
+    assert_eq!(err, &expected_err);
+
+    // wait 1/2 year
+    router.set_block(BlockInfo {
+        height: router.block_info().height,
+        time: router.block_info().time.plus_seconds(60 * 60 * 24 * 365 / 2),
+        chain_id: router.block_info().chain_id,
+    });
+
+    // only owner can send claim message
+    let err = validator_staking
+        .execute_claim_reward(
+            &mut router,
+            Addr::unchecked("some_address"),
+            Some(validator_1.clone()),
+            Some(owner.clone()),
+        )
+        .unwrap_err();
+    let err = err.root_cause().downcast_ref::<ContractError>().unwrap();
+    let expected_err = ContractError::Unauthorized {};
+    assert_eq!(err, &expected_err);
+
+    // only owner can become a recipient
+    let err = validator_staking
+        .execute_claim_reward(
+            &mut router,
+            owner.clone(),
+            Some(validator_1.clone()),
+            Some(Addr::unchecked("some_address")),
+        )
+        .unwrap_err();
+    let err = err.root_cause().downcast_ref::<ContractError>().unwrap();
+    let expected_err = ContractError::Unauthorized {};
+    assert_eq!(err, &expected_err);
+
+    validator_staking
+        .execute_claim_reward(
+            &mut router,
+            owner.clone(),
+            Some(validator_1.clone()),
+            Some(owner.clone()),
+        )
+        .unwrap();
+
+    // Default APR 10% by cw-multi-test -> StakingInfo
+    // should now have 1000 * 10% / 2 - 0% commission = 50 tokens reward
+    let owner_balance = router.wrap().query_balance(owner.clone(), "TOKEN").unwrap();
+    assert_eq!(owner_balance, coin(50, "TOKEN"));
 
     // Test unstake with invalid validator
     let err = validator_staking
