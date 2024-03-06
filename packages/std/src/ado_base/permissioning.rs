@@ -5,8 +5,10 @@ use cosmwasm_std::{ensure, Addr, Env, QuerierWrapper};
 use cw_utils::Expiration;
 
 use crate::{
-    ado_contract::ADOContract, common::context::ExecuteContext, error::ContractError,
-    os::aos_querier::AOSQuerier,
+    ado_contract::ADOContract,
+    common::context::ExecuteContext,
+    error::ContractError,
+    os::{adodb::ADOVersion, aos_querier::AOSQuerier},
 };
 
 #[cw_serde]
@@ -73,12 +75,11 @@ impl Permission {
                     &adodb_addr,
                     contract_info.code_id,
                 )?;
+
                 match ado_type {
                     Some(ado_type) => {
-                        ensure!(
-                            ado_type.split('@').next().unwrap_or("default") == "address-list",
-                            ContractError::InvalidAddress {}
-                        );
+                        let ado_type = ADOVersion::from_string(ado_type).get_type();
+                        ensure!(ado_type == "address-list", ContractError::InvalidAddress {});
                         Ok(())
                     }
                     None => Err(ContractError::InvalidAddress {}),
