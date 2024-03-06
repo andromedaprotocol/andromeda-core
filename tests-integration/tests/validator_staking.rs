@@ -141,7 +141,10 @@ fn test_validator_stake() {
     // wait 1/2 year
     router.set_block(BlockInfo {
         height: router.block_info().height,
-        time: router.block_info().time.plus_seconds(60 * 60 * 24 * 365 / 2),
+        time: router
+            .block_info()
+            .time
+            .plus_seconds(60 * 60 * 24 * 365 / 2),
         chain_id: router.block_info().chain_id,
     });
 
@@ -175,7 +178,7 @@ fn test_validator_stake() {
         .execute_claim_reward(
             &mut router,
             owner.clone(),
-            Some(validator_1.clone()),
+            Some(validator_1),
             Some(owner.clone()),
         )
         .unwrap();

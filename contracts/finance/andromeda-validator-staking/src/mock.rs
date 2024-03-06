@@ -84,7 +84,10 @@ pub fn mock_execute_unstake(validator: Option<Addr>) -> ExecuteMsg {
 }
 
 pub fn mock_execute_claim_reward(validator: Option<Addr>, recipient: Option<Addr>) -> ExecuteMsg {
-    ExecuteMsg::Claim { validator, recipient }
+    ExecuteMsg::Claim {
+        validator,
+        recipient,
+    }
 }
 
 pub fn mock_get_staked_tokens(validator: Option<Addr>) -> QueryMsg {

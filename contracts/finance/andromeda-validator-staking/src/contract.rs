@@ -1,7 +1,7 @@
 use crate::state::DEFAULT_VALIDATOR;
 use cosmwasm_std::{
-    ensure, entry_point, Addr, Binary, Deps, DepsMut, DistributionMsg, Env, FullDelegation, MessageInfo, Response,
-    StakingMsg,
+    ensure, entry_point, Addr, Binary, Deps, DepsMut, DistributionMsg, Env, FullDelegation,
+    MessageInfo, Response, StakingMsg,
 };
 use cw2::set_contract_version;
 
@@ -57,7 +57,10 @@ pub fn execute(
     match msg {
         ExecuteMsg::Stake { validator } => execute_stake(ctx, validator),
         ExecuteMsg::Unstake { validator } => execute_unstake(ctx, validator),
-        ExecuteMsg::Claim { validator, recipient } => execute_claim(ctx, validator, recipient),
+        ExecuteMsg::Claim {
+            validator,
+            recipient,
+        } => execute_claim(ctx, validator, recipient),
         _ => ADOContract::default().execute(ctx, msg),
     }
 }
@@ -184,7 +187,7 @@ fn execute_claim(
     };
 
     // No reward to claim exist
-    if res.accumulated_rewards.len() == 0 {
+    if res.accumulated_rewards.is_empty() {
         return Err(ContractError::InvalidClaim {});
     }
 
@@ -192,7 +195,7 @@ fn execute_claim(
         .add_message(DistributionMsg::SetWithdrawAddress {
             address: recipient.to_string(),
         })
-        .add_message(DistributionMsg::WithdrawDelegatorReward  {
+        .add_message(DistributionMsg::WithdrawDelegatorReward {
             validator: validator.to_string(),
         })
         .add_attribute("action", "validator-claim-reward")
