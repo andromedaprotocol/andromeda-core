@@ -1,8 +1,15 @@
 use core::fmt;
 
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::Env;
+use cosmwasm_std::{ensure, Addr, Env, QuerierWrapper};
 use cw_utils::Expiration;
+
+use crate::{
+    ado_contract::ADOContract,
+    common::context::ExecuteContext,
+    error::ContractError,
+    os::{adodb::ADOVersion, aos_querier::AOSQuerier},
+};
 
 #[cw_serde]
 pub struct PermissionInfo {
@@ -26,6 +33,7 @@ pub enum Permission {
         uses: u32,
     },
     Whitelisted(Option<Expiration>),
+    Contract(Addr),
 }
 
 impl std::default::Default for Permission {
@@ -47,7 +55,47 @@ impl Permission {
         Self::Limited { expiration, uses }
     }
 
-    pub fn is_permissioned(&self, env: &Env, strict: bool) -> bool {
+    pub fn contract(address: Addr) -> Self {
+        Self::Contract(address)
+    }
+
+    pub fn is_contract(&self) -> bool {
+        matches!(self, Permission::Contract(_))
+    }
+
+    pub fn validate(&self, ctx: &ExecuteContext) -> Result<(), ContractError> {
+        match self {
+            // Checks if the address is an address-list contract found in the adodb
+            Permission::Contract(address) => {
+                let contract_info = ctx.deps.querier.query_wasm_contract_info(address)?;
+                let adodb_addr = ADOContract::default()
+                    .get_adodb_address(ctx.deps.storage, &ctx.deps.querier)?;
+                let ado_type = AOSQuerier::ado_type_getter_smart(
+                    &ctx.deps.querier,
+                    &adodb_addr,
+                    contract_info.code_id,
+                )?;
+
+                match ado_type {
+                    Some(ado_type) => {
+                        let ado_type = ADOVersion::from_string(ado_type).get_type();
+                        ensure!(ado_type == "address-list", ContractError::InvalidAddress {});
+                        Ok(())
+                    }
+                    None => Err(ContractError::InvalidAddress {}),
+                }
+            }
+            _ => Ok(()),
+        }
+    }
+
+    pub fn is_permissioned(
+        &self,
+        querier: &QuerierWrapper,
+        actor: &str,
+        env: &Env,
+        strict: bool,
+    ) -> bool {
         match self {
             Self::Blacklisted(expiration) => {
                 if let Some(expiration) = expiration {
@@ -76,6 +124,19 @@ impl Permission {
                 }
                 true
             }
+            Self::Contract(addr) => {
+                let permission = AOSQuerier::get_permission(querier, addr, actor);
+                // The address list contract doesn't allow Contract Permissions to be stored in the first place.
+                match permission {
+                    Ok(permission) => {
+                        if matches!(permission, Permission::Contract(_)) {
+                            return false;
+                        }
+                        permission.is_permissioned(querier, actor, env, strict)
+                    }
+                    Err(_) => false,
+                }
+            }
         }
     }
 
@@ -84,6 +145,7 @@ impl Permission {
             Self::Blacklisted(expiration) => expiration.unwrap_or_default(),
             Self::Limited { expiration, .. } => expiration.unwrap_or_default(),
             Self::Whitelisted(expiration) => expiration.unwrap_or_default(),
+            _ => todo!(),
         }
     }
 
@@ -117,6 +179,9 @@ impl fmt::Display for Permission {
                 } else {
                     "whitelisted".to_string()
                 }
+            }
+            Self::Contract(address) => {
+                format!("contract:{address}")
             }
         };
         write!(f, "{self_as_string}")

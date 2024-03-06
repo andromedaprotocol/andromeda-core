@@ -1,3 +1,4 @@
+use crate::ado_base::permissioning::Permission;
 use crate::amp::{ADO_DB_KEY, VFS_KEY};
 use crate::error::ContractError;
 use cosmwasm_schema::cw_serde;
@@ -212,6 +213,21 @@ impl AOSQuerier {
             None => Err(ContractError::InvalidAddress {}),
         }
     }
+    /// Queries an actor's permission from the address list contract
+    pub fn get_permission(
+        querier: &QuerierWrapper,
+        contract_addr: &Addr,
+        actor: &str,
+    ) -> Result<Permission, ContractError> {
+        let key = AOSQuerier::get_map_storage_key("permissioning", &[actor.as_bytes()])?;
+        let permission: Option<Permission> =
+            AOSQuerier::query_storage(querier, contract_addr, key.as_str())?;
+        match permission {
+            Some(permission) => Ok(permission),
+            None => Err(ContractError::InvalidAddress {}),
+        }
+    }
+
     #[cfg(feature = "rates")]
     /// Queries the rates contract
     pub fn get_rate(

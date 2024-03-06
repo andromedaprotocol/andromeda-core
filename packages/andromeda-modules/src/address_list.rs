@@ -1,5 +1,6 @@
-use andromeda_std::{andr_exec, andr_instantiate, andr_query};
+use andromeda_std::{ado_base::permissioning::Permission, andr_exec, andr_instantiate, andr_query};
 use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_std::Addr;
 
 #[andr_instantiate]
 #[cw_serde]
@@ -16,6 +17,10 @@ pub enum ExecuteMsg {
     RemoveAddress { address: String },
     /// Add multiple addresses to the address list
     AddAddresses { addresses: Vec<String> },
+    /// Adds an actor key and a permission value
+    AddActorPermission { actor: Addr, permission: Permission },
+    /// Removes actor alongisde his permission
+    RemoveActorPermission { actor: Addr },
 }
 
 #[cw_serde]
@@ -30,10 +35,25 @@ pub enum QueryMsg {
     IncludesAddress { address: String },
     #[returns(bool)]
     IsInclusive {},
+    #[returns(IncludesActorResponse)]
+    IncludesActor { actor: Addr },
+    #[returns(ActorPermissionResponse)]
+    ActorPermission { actor: Addr },
 }
 
 #[cw_serde]
 pub struct IncludesAddressResponse {
     /// Whether the address is included in the address list
     pub included: bool,
+}
+
+#[cw_serde]
+pub struct IncludesActorResponse {
+    /// Whether the actor is included in the permissions
+    pub included: bool,
+}
+
+#[cw_serde]
+pub struct ActorPermissionResponse {
+    pub permission: Permission,
 }

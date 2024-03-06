@@ -4,7 +4,7 @@ use crate::contract::{execute, instantiate, query};
 use andromeda_non_fungible_tokens::cw721::{
     ExecuteMsg, InstantiateMsg, MintMsg, QueryMsg, TokenExtension, TransferAgreement,
 };
-use andromeda_std::amp::addresses::AndrAddr;
+use andromeda_std::{ado_base::permissioning::Permission, amp::addresses::AndrAddr};
 use andromeda_testing::{
     mock_ado,
     mock_contract::{ExecuteResult, MockADO, MockContract},
@@ -60,6 +60,24 @@ impl MockCW721 {
         self.execute(app, &msg, sender, &[])
     }
 
+    pub fn execute_mint(
+        &self,
+        app: &mut App,
+        sender: Addr,
+        token_id: String,
+        extension: TokenExtension,
+        token_uri: Option<String>,
+        owner: impl Into<String>,
+    ) -> ExecuteResult {
+        let msg = ExecuteMsg::Mint {
+            token_id,
+            owner: owner.into(),
+            token_uri,
+            extension,
+        };
+        self.execute(app, &msg, sender, &[])
+    }
+
     pub fn execute_send_nft(
         &self,
         app: &mut App,
@@ -73,6 +91,18 @@ impl MockCW721 {
             token_id.into(),
             to_json_binary(msg).unwrap(),
         );
+        self.execute(app, &msg, sender, &[])
+    }
+
+    pub fn execute_add_actor_permission(
+        &self,
+        app: &mut App,
+        sender: Addr,
+        actor: AndrAddr,
+        action: String,
+        permission: Permission,
+    ) -> ExecuteResult {
+        let msg = mock_set_permision(actor, action, permission);
         self.execute(app, &msg, sender, &[])
     }
 
@@ -153,6 +183,14 @@ pub fn mock_send_nft(contract: String, token_id: String, msg: Binary) -> Execute
         contract,
         token_id,
         msg,
+    }
+}
+
+pub fn mock_set_permision(actor: AndrAddr, action: String, permission: Permission) -> ExecuteMsg {
+    ExecuteMsg::SetPermission {
+        actor,
+        action,
+        permission,
     }
 }
 
