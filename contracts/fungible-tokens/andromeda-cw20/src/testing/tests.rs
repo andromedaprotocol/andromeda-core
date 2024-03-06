@@ -1,11 +1,11 @@
 use crate::contract::{execute, instantiate, query};
 use crate::testing::mock_querier::mock_dependencies_custom;
 use andromeda_fungible_tokens::cw20::{ExecuteMsg, InstantiateMsg, QueryMsg};
-// use andromeda_std::ado_base::rates::{LocalRate, LocalRateType, LocalRateValue, PercentRate, Rate};
-// use andromeda_std::ado_contract::ADOContract;
-// use andromeda_std::amp::{AndrAddr, Recipient};
+use andromeda_std::ado_base::rates::{LocalRate, LocalRateType, LocalRateValue, PercentRate, Rate};
+use andromeda_std::ado_contract::ADOContract;
+use andromeda_std::amp::{AndrAddr, Recipient};
 use andromeda_std::testing::mock_querier::MOCK_KERNEL_CONTRACT;
-// use cosmwasm_std::{coin, Decimal};
+use cosmwasm_std::{attr, Decimal, Event};
 use cosmwasm_std::{
     testing::{mock_env, mock_info},
     to_json_binary, Addr, DepsMut, Response, Uint128,
@@ -20,10 +20,20 @@ fn init(deps: DepsMut) -> Response {
         name: MOCK_CW20_CONTRACT.into(),
         symbol: "Symbol".into(),
         decimals: 6,
-        initial_balances: vec![Cw20Coin {
-            amount: 1000u128.into(),
-            address: "sender".to_string(),
-        }],
+        initial_balances: vec![
+            Cw20Coin {
+                amount: 1000u128.into(),
+                address: "sender".to_string(),
+            },
+            Cw20Coin {
+                amount: 1u128.into(),
+                address: "rates_recipient".to_string(),
+            },
+            Cw20Coin {
+                amount: 1u128.into(),
+                address: "royalty_recipient".to_string(),
+            },
+        ],
         mint: None,
         marketing: None,
 
@@ -69,6 +79,38 @@ fn test_transfer() {
         amount: 100u128.into(),
     };
 
+    let rate = Rate::Local(LocalRate {
+        rate_type: LocalRateType::Deductive,
+        recipients: vec![Recipient {
+            address: AndrAddr::from_string("royalty_recipient".to_string()),
+            msg: None,
+            ibc_recovery_address: None,
+        }],
+        value: LocalRateValue::Percent(PercentRate {
+            percent: Decimal::percent(10),
+        }),
+        description: None,
+    });
+
+    // Set rates
+    ADOContract::default()
+        .set_rates(deps.as_mut().storage, "cw20", rate)
+        .unwrap();
+
+    let expected_event = Event::new("royalty").add_attributes(vec![
+        attr("deducted", "10cosmos2contract"),
+        attr("payment", "royalty_recipient<10cosmos2contract"),
+    ]);
+
+    // TODO test permissioning
+    // let permission = Permission::blacklisted(None);
+    // let actor = AndrAddr::from_string("actor");
+    // let action = "cw20";
+    // let ctx = ExecuteContext::new(deps.as_mut(), mock_info("sender", &[]), mock_env());
+    // ADOContract::default()
+    //     .execute_set_permission(ctx, actor, action, permission)
+    //     .unwrap();
+
     // let not_whitelisted_info = mock_info("not_whitelisted", &[]);
     // let res = execute(deps.as_mut(), mock_env(), not_whitelisted_info, msg.clone());
     // assert_eq!(
@@ -83,11 +125,11 @@ fn test_transfer() {
     assert_eq!(
         Response::new()
             // .add_event(Event::new("Royalty"))
-            // .add_event(Event::new("Tax"))
+            .add_event(expected_event)
             .add_attribute("action", "transfer")
             .add_attribute("from", "sender")
             .add_attribute("to", "other")
-            .add_attribute("amount", "100"),
+            .add_attribute("amount", "90"),
         res
     );
 
@@ -99,21 +141,21 @@ fn test_transfer() {
             .unwrap()
     );
 
-    // Funds given to the receiver.
+    // Funds given to the receiver. Remove 10 for the royalty
     assert_eq!(
-        Uint128::from(100u128),
+        Uint128::from(100u128 - 10u128),
         BALANCES
             .load(deps.as_ref().storage, &Addr::unchecked("other"))
             .unwrap()
     );
 
-    // Royalty given to rates_recipient
-    // assert_eq!(
-    //     Uint128::from(0u128),
-    //     BALANCES
-    //         .load(deps.as_ref().storage, &Addr::unchecked("rates_recipient"))
-    //         .unwrap()
-    // );
+    // Royalty given to royalty_recipient
+    assert_eq!(
+        Uint128::from(1u128 + 10u128),
+        BALANCES
+            .load(deps.as_ref().storage, &Addr::unchecked("royalty_recipient"))
+            .unwrap()
+    );
 }
 
 #[test]
@@ -137,21 +179,23 @@ fn test_send() {
             .unwrap()
     );
 
-    // let rate = Rate::Local(LocalRate {
-    //     rate_type: LocalRateType::Additive,
-    //     recipients: vec![Recipient {
-    //         address: AndrAddr::from_string("sender".to_string()),
-    //         msg: None,
-    //         ibc_recovery_address: None,
-    //     }],
-    //     value: LocalRateValue::Flat(coin(10, "uusd")),
-    //     description: None,
-    // });
+    let rate = Rate::Local(LocalRate {
+        rate_type: LocalRateType::Additive,
+        recipients: vec![Recipient {
+            address: AndrAddr::from_string("rates_recipient".to_string()),
+            msg: None,
+            ibc_recovery_address: None,
+        }],
+        value: LocalRateValue::Percent(PercentRate {
+            percent: Decimal::percent(10),
+        }),
+        description: None,
+    });
 
-    // // Set rates
-    // ADOContract::default()
-    //     .set_rates(deps.as_mut().storage, "cw20", rate)
-    //     .unwrap();
+    // Set rates
+    ADOContract::default()
+        .set_rates(deps.as_mut().storage, "cw20", rate)
+        .unwrap();
 
     let msg = ExecuteMsg::Send {
         contract: "contract".into(),
@@ -160,6 +204,8 @@ fn test_send() {
     };
 
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+    let expected_event = Event::new("tax")
+        .add_attributes(vec![attr("payment", "rates_recipient<10cosmos2contract")]);
 
     assert_eq!(
         Response::new()
@@ -175,13 +221,14 @@ fn test_send() {
                 }
                 .into_cosmos_msg("contract")
                 .unwrap(),
-            ),
+            )
+            .add_event(expected_event),
         res
     );
 
     // Funds deducted from the sender (100 for send, 10 for tax).
     assert_eq!(
-        Uint128::from(900u128),
+        Uint128::from(1_000u128 - 100u128 - 10u128),
         BALANCES
             .load(deps.as_ref().storage, &Addr::unchecked("sender"))
             .unwrap()
@@ -192,6 +239,14 @@ fn test_send() {
         Uint128::from(100u128),
         BALANCES
             .load(deps.as_ref().storage, &Addr::unchecked("contract"))
+            .unwrap()
+    );
+
+    // The rates recipient started with a balance of 1, and received 10 from the tax
+    assert_eq!(
+        Uint128::from(1u128 + 10u128),
+        BALANCES
+            .load(deps.as_ref().storage, &Addr::unchecked("rates_recipient"))
             .unwrap()
     );
 }

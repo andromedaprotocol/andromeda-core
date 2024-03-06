@@ -133,6 +133,7 @@ fn execute_transfer(
                 },
             )?;
             resp = resp
+                .add_submessages(cw20_resp.messages)
                 .add_attributes(cw20_resp.attributes)
                 .add_events(transfer_response.events);
 
@@ -174,7 +175,7 @@ fn execute_send(
         deps, info, env, ..
     } = ctx;
 
-    let transfer_response = ADOContract::default().query_deducted_funds(
+    let rates_response = ADOContract::default().query_deducted_funds(
         deps.as_ref(),
         "cw20",
         Funds::Cw20(Cw20Coin {
@@ -182,15 +183,15 @@ fn execute_send(
             amount,
         }),
     )?;
-    match transfer_response {
-        Some(transfer_response) => {
-            let remaining_amount = match transfer_response.leftover_funds {
+    match rates_response {
+        Some(rates_response) => {
+            let remaining_amount = match rates_response.leftover_funds {
                 Funds::Native(..) => amount, //What do we do in the case that the rates returns remaining amount as native funds?
                 Funds::Cw20(coin) => coin.amount,
             };
 
             let mut resp = filter_out_cw20_messages(
-                transfer_response.msgs,
+                rates_response.msgs,
                 deps.storage,
                 deps.api,
                 &info.sender,
@@ -207,8 +208,9 @@ fn execute_send(
                 },
             )?;
             resp = resp
+                .add_submessages(cw20_resp.messages)
                 .add_attributes(cw20_resp.attributes)
-                .add_events(transfer_response.events);
+                .add_events(rates_response.events);
 
             Ok(resp)
         }
