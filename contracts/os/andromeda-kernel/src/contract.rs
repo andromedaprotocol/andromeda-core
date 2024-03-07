@@ -169,6 +169,8 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractErr
         }
         QueryMsg::ChannelInfo { chain } => encode_binary(&query::channel_info(deps, chain)?),
         QueryMsg::Recoveries { addr } => encode_binary(&query::recoveries(deps, addr)?),
+        // Base queries
         QueryMsg::Version {} => encode_binary(&query::version(deps)?),
+        QueryMsg::Owner {} => encode_binary(&query::owner(deps)?),
     }
 }

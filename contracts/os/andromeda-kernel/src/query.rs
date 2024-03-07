@@ -1,5 +1,5 @@
 use andromeda_std::{
-    ado_base::version::VersionResponse,
+    ado_base::{ownership::ContractOwnerResponse, version::VersionResponse},
     ado_contract::ADOContract,
     amp::ADO_DB_KEY,
     error::ContractError,
@@ -50,9 +50,9 @@ pub fn recoveries(deps: Deps, addr: Addr) -> Result<Vec<Coin>, ContractError> {
 }
 
 pub fn version(deps: Deps) -> Result<VersionResponse, ContractError> {
-    // let contract_version = get_contract_version(deps.storage)?;
-    // Ok(VersionResponse {
-    //     version: contract_version.version,
-    // })
     ADOContract::default().query_version(deps)
+}
+
+pub fn owner(deps: Deps) -> Result<ContractOwnerResponse, ContractError> {
+    ADOContract::default().query_contract_owner(deps)
 }

@@ -1,3 +1,4 @@
+use crate::ado_base::ownership::ContractOwnerResponse;
 use crate::ado_base::version::VersionResponse;
 use crate::amp::messages::AMPMsg;
 use crate::amp::messages::AMPPkt;
@@ -86,8 +87,11 @@ pub enum QueryMsg {
     ChannelInfo { chain: String },
     #[returns(Vec<::cosmwasm_std::Coin>)]
     Recoveries { addr: Addr },
+    // Base queries
     #[returns(VersionResponse)]
     Version {},
+    #[returns(ContractOwnerResponse)]
+    Owner {},
 }
 
 #[cw_serde]
