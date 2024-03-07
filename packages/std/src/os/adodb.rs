@@ -6,7 +6,13 @@ use schemars::JsonSchema;
 use semver::Version;
 use serde::{Deserialize, Serialize};
 
-use crate::error::ContractError;
+use crate::{
+    ado_base::{
+        ado_type::TypeResponse, kernel_address::KernelAddressResponse,
+        ownership::ContractOwnerResponse, version::VersionResponse,
+    },
+    error::ContractError,
+};
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -160,6 +166,15 @@ pub enum QueryMsg {
     ActionFee { ado_type: String, action: String },
     #[returns(Option<ActionFee>)]
     ActionFeeByCodeId { code_id: u64, action: String },
+    // Base queries
+    #[returns(VersionResponse)]
+    Version {},
+    #[returns(TypeResponse)]
+    Type {},
+    #[returns(ContractOwnerResponse)]
+    Owner {},
+    #[returns(KernelAddressResponse)]
+    KernelAddress {},
 }
 
 #[cw_serde]

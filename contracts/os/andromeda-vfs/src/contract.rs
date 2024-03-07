@@ -1,5 +1,5 @@
+use andromeda_std::ado_base::os_querrier::{ado_type, kernel_address, owner, version};
 use andromeda_std::ado_contract::ADOContract;
-
 use andromeda_std::os::vfs::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use andromeda_std::{
     ado_base::InstantiateMsg as BaseInstantiateMsg, common::encode_binary, error::ContractError,
@@ -139,5 +139,10 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractErr
         QueryMsg::GetUsername { address } => encode_binary(&query::get_username(deps, address)?),
         QueryMsg::GetLibrary { address } => encode_binary(&query::get_library_name(deps, address)?),
         QueryMsg::ResolveSymlink { path } => encode_binary(&query::get_symlink(deps, path)?),
+        // Base queries
+        QueryMsg::Version {} => encode_binary(&version(deps)?),
+        QueryMsg::Type {} => encode_binary(&ado_type(deps)?),
+        QueryMsg::Owner {} => encode_binary(&owner(deps)?),
+        QueryMsg::KernelAddress {} => encode_binary(&kernel_address(deps)?),
     }
 }

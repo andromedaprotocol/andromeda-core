@@ -1,4 +1,5 @@
 use crate::{execute, query};
+use andromeda_std::ado_base::os_querrier::{ado_type, kernel_address, owner, version};
 use andromeda_std::ado_base::InstantiateMsg as BaseInstantiateMsg;
 use andromeda_std::ado_contract::ADOContract;
 use andromeda_std::common::encode_binary;
@@ -158,5 +159,10 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractErr
         QueryMsg::ActionFeeByCodeId { code_id, action } => {
             encode_binary(&query::action_fee_by_code_id(deps, code_id, action)?)
         }
+        // Base queries
+        QueryMsg::Version {} => encode_binary(&version(deps)?),
+        QueryMsg::Type {} => encode_binary(&ado_type(deps)?),
+        QueryMsg::Owner {} => encode_binary(&owner(deps)?),
+        QueryMsg::KernelAddress {} => encode_binary(&kernel_address(deps)?),
     }
 }
