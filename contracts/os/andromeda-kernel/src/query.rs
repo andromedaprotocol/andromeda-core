@@ -1,6 +1,4 @@
 use andromeda_std::{
-    ado_base::{ownership::ContractOwnerResponse, version::VersionResponse},
-    ado_contract::ADOContract,
     amp::ADO_DB_KEY,
     error::ContractError,
     os::{aos_querier::AOSQuerier, kernel::ChannelInfoResponse},
