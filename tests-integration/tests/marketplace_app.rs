@@ -12,7 +12,7 @@ use andromeda_marketplace::mock::{
 };
 
 use andromeda_non_fungible_tokens::cw721::TokenExtension;
-use andromeda_rates::mock::{mock_andromeda_rates, mock_rates_instantiate_msg};
+use andromeda_rates::mock::{mock_andromeda_rates, mock_rates_instantiate_msg, MockRates};
 use andromeda_std::ado_base::permissioning::Permission;
 use andromeda_std::ado_base::rates::{LocalRate, LocalRateType, LocalRateValue, Rate};
 use andromeda_std::amp::messages::{AMPMsg, AMPPkt};
@@ -47,6 +47,8 @@ fn mock_andromeda(app: &mut App, admin_address: Addr) -> MockAndromeda {
     MockAndromeda::new(app, &admin_address)
 }
 
+// NOTE: The external rate currently overwrites the local rate because they handle the same action.
+// You can comment out the external rate to see if the local rate works
 #[test]
 fn test_marketplace_app() {
     let owner = Addr::unchecked("owner");
@@ -76,6 +78,7 @@ fn test_marketplace_app() {
         "cw721".to_string(),
         to_json_binary(&cw721_init_msg).unwrap(),
     );
+    // This rate will be saved in the Rates contract and will be reference by the marketplace ADO
     let rate = LocalRate {
         rate_type: LocalRateType::Additive,
         recipients: vec![Recipient {
@@ -88,7 +91,7 @@ fn test_marketplace_app() {
     };
     let rates_init_msg = mock_rates_instantiate_msg(
         "marketplace".to_string(),
-        rate.clone(),
+        rate,
         andr.kernel.addr().to_string(),
         None,
     );
@@ -113,7 +116,7 @@ fn test_marketplace_app() {
     // Create App
     let app_components = vec![
         cw721_component.clone(),
-        rates_component,
+        rates_component.clone(),
         address_list_component.clone(),
         marketplace_component.clone(),
     ];
@@ -139,6 +142,7 @@ fn test_marketplace_app() {
         app.query_ado_by_component_name(&router, marketplace_component.name);
     let address_list: MockAddressList =
         app.query_ado_by_component_name(&router, address_list_component.name);
+    let rates: MockRates = app.query_ado_by_component_name(&router, rates_component.name);
 
     // Mint Tokens
     cw721
@@ -160,8 +164,28 @@ fn test_marketplace_app() {
         )
         .unwrap();
 
+    // Implement a Local Rate to the marketplace ADO, no external rates contract is being used.
+    let rate = LocalRate {
+        rate_type: LocalRateType::Additive,
+        recipients: vec![Recipient {
+            address: AndrAddr::from_string(rates_receiver.to_string()),
+            msg: None,
+            ibc_recovery_address: None,
+        }],
+        value: LocalRateValue::Flat(coin(100_u128, "uandr")),
+        description: None,
+    };
     marketplace
         .execute_set_rate(&mut router, owner.clone(), "marketplace", Rate::Local(rate))
+        .unwrap();
+
+    // Implement an external rate to the marketplace ADO
+    let rates_andr_addr = AndrAddr::from_string(rates.addr().to_owned());
+    let external_rate = Rate::Contract(rates_andr_addr);
+
+    //NOTE: Comment out the 3 lines below to test Local Rates
+    marketplace
+        .execute_set_rate(&mut router, owner.clone(), "marketplace", external_rate)
         .unwrap();
 
     // Whitelist

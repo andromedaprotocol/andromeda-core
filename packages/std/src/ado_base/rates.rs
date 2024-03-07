@@ -3,7 +3,7 @@ use crate::{
     amp::{AndrAddr, Recipient},
     common::{deduct_funds, Funds},
     error::ContractError,
-    os::aos_querier::AOSQuerier,
+    os::{adodb::ADOVersion, aos_querier::AOSQuerier},
 };
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{ensure, has_coins, Coin, Decimal, Deps, Event, Fraction, SubMsg};
@@ -169,11 +169,15 @@ impl Rate {
                 let contract_info = deps.querier.query_wasm_contract_info(raw_address)?;
                 let adodb_addr =
                     ADOContract::default().get_adodb_address(deps.storage, &deps.querier)?;
-                let ado_type =
-                    AOSQuerier::ado_type_getter(&deps.querier, &adodb_addr, contract_info.code_id)?;
+                let ado_type = AOSQuerier::ado_type_getter_smart(
+                    &deps.querier,
+                    &adodb_addr,
+                    contract_info.code_id,
+                )?;
                 match ado_type {
                     Some(ado_type) => {
-                        ensure!(ado_type == *"rates", ContractError::InvalidAddress {});
+                        let ado_type = ADOVersion::from_string(ado_type).get_type();
+                        ensure!(ado_type == "rates", ContractError::InvalidAddress {});
                         Ok(())
                     }
                     None => Err(ContractError::InvalidAddress {}),
