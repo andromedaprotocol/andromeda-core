@@ -1,3 +1,4 @@
+use andromeda_std::common::call_action::call_action;
 #[cfg(not(feature = "imported"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
@@ -14,10 +15,7 @@ use andromeda_non_fungible_tokens::cw721::{
 use andromeda_std::common::rates::get_tax_amount;
 use andromeda_std::{
     ado_base::{AndromedaMsg, AndromedaQuery},
-    ado_contract::{
-        permissioning::{is_context_permissioned, is_context_permissioned_strict},
-        ADOContract,
-    },
+    ado_contract::{permissioning::is_context_permissioned_strict, ADOContract},
     common::context::ExecuteContext,
 };
 use cw2::{get_contract_version, set_contract_version};
@@ -98,16 +96,14 @@ pub fn execute(
 
 fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
-    ensure!(
-        is_context_permissioned(
-            &mut ctx.deps,
-            &ctx.info,
-            &ctx.env,
-            &ctx.amp_ctx,
-            msg.as_ref()
-        )?,
-        ContractError::Unauthorized {}
-    );
+    // checks permissioning, will conduct other checks in the future
+    call_action(
+        &mut ctx.deps,
+        &ctx.info,
+        &ctx.env,
+        &ctx.amp_ctx,
+        msg.as_ref(),
+    )?;
 
     let payee = if let Some(amp_ctx) = ctx.amp_ctx.clone() {
         ctx.deps
