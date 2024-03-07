@@ -1,9 +1,12 @@
 use crate::contract::{execute, instantiate, query};
 use crate::testing::mock_querier::mock_dependencies_custom;
 use andromeda_fungible_tokens::cw20::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use andromeda_std::ado_base::permissioning::Permission;
 use andromeda_std::ado_base::rates::{LocalRate, LocalRateType, LocalRateValue, PercentRate, Rate};
 use andromeda_std::ado_contract::ADOContract;
 use andromeda_std::amp::{AndrAddr, Recipient};
+use andromeda_std::common::context::ExecuteContext;
+use andromeda_std::error::ContractError;
 use andromeda_std::testing::mock_querier::MOCK_KERNEL_CONTRACT;
 use cosmwasm_std::{attr, Decimal, Event};
 use cosmwasm_std::{
@@ -79,6 +82,7 @@ fn test_transfer() {
         amount: 100u128.into(),
     };
 
+    // Set a royalty of 10% to be paid to royalty_recipient
     let rate = Rate::Local(LocalRate {
         rate_type: LocalRateType::Deductive,
         recipients: vec![Recipient {
@@ -97,34 +101,37 @@ fn test_transfer() {
         .set_rates(deps.as_mut().storage, "cw20", rate)
         .unwrap();
 
+    // The expected events for the royalty
     let expected_event = Event::new("royalty").add_attributes(vec![
         attr("deducted", "10cosmos2contract"),
         attr("payment", "royalty_recipient<10cosmos2contract"),
     ]);
 
-    // TODO test permissioning
-    // let permission = Permission::blacklisted(None);
-    // let actor = AndrAddr::from_string("actor");
-    // let action = "cw20";
-    // let ctx = ExecuteContext::new(deps.as_mut(), mock_info("sender", &[]), mock_env());
-    // ADOContract::default()
-    //     .execute_set_permission(ctx, actor, action, permission)
-    //     .unwrap();
-
-    // let not_whitelisted_info = mock_info("not_whitelisted", &[]);
-    // let res = execute(deps.as_mut(), mock_env(), not_whitelisted_info, msg.clone());
-    // assert_eq!(
-    //     ContractError::Std(StdError::generic_err(
-    //         "Querier contract error: InvalidAddress"
-    //     )),
-    //     res.unwrap_err()
-    // );
+    // Blacklist the sender who otherwise would have been able to call the function successfully
+    let permission = Permission::blacklisted(None);
+    let actor = AndrAddr::from_string("sender");
+    let action = "Transfer";
+    let ctx = ExecuteContext::new(deps.as_mut(), mock_info("sender", &[]), mock_env());
+    ADOContract::default()
+        .execute_set_permission(ctx, actor, action, permission)
+        .unwrap();
     let info = mock_info("sender", &[]);
+    let err = execute(deps.as_mut(), mock_env(), info.clone(), msg.clone()).unwrap_err();
+
+    assert_eq!(err, ContractError::Unauthorized {});
+
+    // Now whitelist the sender, that should allow him to call the function successfully
+    let permission = Permission::whitelisted(None);
+    let actor = AndrAddr::from_string("sender");
+    let action = "Transfer";
+    let ctx = ExecuteContext::new(deps.as_mut(), mock_info("sender", &[]), mock_env());
+    ADOContract::default()
+        .execute_set_permission(ctx, actor, action, permission)
+        .unwrap();
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     assert_eq!(
         Response::new()
-            // .add_event(Event::new("Royalty"))
             .add_event(expected_event)
             .add_attribute("action", "transfer")
             .add_attribute("from", "sender")

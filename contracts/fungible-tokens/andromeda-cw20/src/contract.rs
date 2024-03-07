@@ -2,7 +2,7 @@ use andromeda_fungible_tokens::cw20::{ExecuteMsg, InstantiateMsg, MigrateMsg, Qu
 use andromeda_std::{
     ado_base::{AndromedaMsg, AndromedaQuery, InstantiateMsg as BaseInstantiateMsg},
     ado_contract::ADOContract,
-    common::{context::ExecuteContext, encode_binary, Funds},
+    common::{call_action::call_action, context::ExecuteContext, encode_binary, Funds},
     error::{from_semver, ContractError},
 };
 use cosmwasm_std::{
@@ -71,7 +71,14 @@ pub fn execute(
     }
 }
 
-pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+    call_action(
+        &mut ctx.deps,
+        &ctx.info,
+        &ctx.env,
+        &ctx.amp_ctx,
+        msg.as_ref(),
+    )?;
     match msg {
         ExecuteMsg::Transfer { recipient, amount } => execute_transfer(ctx, recipient, amount),
         ExecuteMsg::Burn { amount } => execute_burn(ctx, amount),
