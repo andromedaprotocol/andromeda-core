@@ -17,10 +17,11 @@ use std::str::FromStr;
 
 use andromeda_testing::{mock::MockAndromeda, mock_contract::MockContract};
 use andromeda_vault::mock::{
-    mock_andromeda_vault, mock_vault_deposit_msg, mock_vault_instantiate_msg,
+    mock_andromeda_vault, mock_vault_deposit_msg, mock_vault_get_balance,
+    mock_vault_instantiate_msg,
 };
-use cosmwasm_std::{coin, to_json_binary, Addr, BlockInfo, Decimal, Uint128};
-use cw721::Expiration;
+use cosmwasm_std::{coin, to_binary, Addr, BlockInfo, Coin, Decimal, Uint128};
+use cw721::{Expiration, OwnerOfResponse};
 use cw_multi_test::{App, Executor};
 
 fn mock_app() -> App {
@@ -77,12 +78,19 @@ fn test_crowdfund_app() {
     let andr = mock_andromeda(&mut router, owner.clone());
 
     // Store contract codes
-    andr.store_ado(&mut router, mock_andromeda_cw721(), "cw721");
-    andr.store_ado(&mut router, mock_andromeda_crowdfund(), "crowdfund");
-    andr.store_ado(&mut router, mock_andromeda_vault(), "vault");
-    andr.store_ado(&mut router, mock_andromeda_splitter(), "splitter");
-    let app_code_id = andr.store_ado(&mut router, mock_andromeda_app(), "app");
-    let rates_code_id = andr.store_ado(&mut router, mock_andromeda_rates(), "rates");
+    let cw721_code_id = router.store_code(mock_andromeda_cw721());
+    let crowdfund_code_id = router.store_code(mock_andromeda_crowdfund());
+    let vault_code_id = router.store_code(mock_andromeda_vault());
+    let splitter_code_id = router.store_code(mock_andromeda_splitter());
+    let app_code_id = router.store_code(mock_andromeda_app());
+    let rates_code_id = router.store_code(mock_andromeda_rates());
+
+    andr.store_code_id(&mut router, "cw721", cw721_code_id);
+    andr.store_code_id(&mut router, "crowdfund", crowdfund_code_id);
+    andr.store_code_id(&mut router, "vault", vault_code_id);
+    andr.store_code_id(&mut router, "splitter", splitter_code_id);
+    andr.store_code_id(&mut router, "app-contract", app_code_id);
+    andr.store_code_id(&mut router, "rates", rates_code_id);
 
     // Generate App Components
     // App component names must be less than 3 characters or longer than 54 characters to force them to be 'invalid' as the MockApi struct used within the CosmWasm App struct only contains those two validation checks
@@ -138,18 +146,12 @@ fn test_crowdfund_app() {
     let vault_one_app_component = AppComponent {
         name: "3".to_string(),
         ado_type: "vault".to_string(),
-        component_type: ComponentType::new(mock_vault_instantiate_msg(
-            andr.kernel.addr().to_string(),
-            None,
-        )),
+        component_type: ComponentType::new(vault_one_init_msg),
     };
     let vault_two_app_component = AppComponent {
         name: "4".to_string(),
         ado_type: "vault".to_string(),
-        component_type: ComponentType::new(mock_vault_instantiate_msg(
-            andr.kernel.addr().to_string(),
-            None,
-        )),
+        component_type: ComponentType::new(vault_two_init_msg),
     };
 
     // Create splitter recipient structures
@@ -167,7 +169,10 @@ fn test_crowdfund_app() {
                 None,
             ),
         );
-
+    // The vault query works only for the last element in this vector.
+    // Currently the balance check for vault one is failing. But if the elements are switched, it starts working and vault two balance check fails
+    // Only one of the recipients' deposit messages is being sent, and it's always the last elements'
+    // Eventhough it shows in execute_send's response in the splitter that both messages are being sent.
     let splitter_recipients = vec![
         AddressPercent {
             recipient: vault_one_recipient,
@@ -183,7 +188,7 @@ fn test_crowdfund_app() {
         mock_splitter_instantiate_msg(splitter_recipients, andr.kernel.addr().clone(), None, None);
     let splitter_app_component = AppComponent {
         name: "5".to_string(),
-        component_type: ComponentType::new(&splitter_init_msg),
+        component_type: ComponentType::new(splitter_init_msg),
         ado_type: "splitter".to_string(),
     };
 
@@ -208,9 +213,20 @@ fn test_crowdfund_app() {
     let components = app.query_components(&router);
     assert_eq!(components, app_components);
 
-    let _vault_one_addr = app.query_component_addr(&router, vault_one_app_component.name);
-    let _vault_two_addr = app.query_component_addr(&router, vault_two_app_component.name);
-    app.execute_claim_ownership(&mut router, owner.clone(), None)
+    let _vault_one_addr: String = router
+        .wrap()
+        .query_wasm_smart(
+            app_addr.clone(),
+            &mock_get_address_msg(vault_one_app_component.name),
+        )
+        .unwrap();
+
+    let vault_two_addr: String = router
+        .wrap()
+        .query_wasm_smart(
+            app_addr.clone(),
+            &mock_get_address_msg(vault_two_app_component.name),
+        )
         .unwrap();
 
     let cw721_contract =
@@ -281,7 +297,7 @@ fn test_crowdfund_app() {
     }
 
     // TODO: FIX VAULT BALANCES
-    // //Check vault balances
+    //Check vault balances
 
     // let balance_one: Vec<Coin> = router
     //     .wrap()
@@ -297,17 +313,17 @@ fn test_crowdfund_app() {
     // assert!(!balance_one.is_empty());
     // assert_eq!(balance_one[0], coin(148, "uandr"));
 
-    // let balance_two: Vec<Coin> = router
-    //     .wrap()
-    //     .query_wasm_smart(
-    //         vault_two_addr,
-    //         &mock_vault_get_balance(
-    //             AndrAddr::from_string(vault_two_recipient_addr.to_string()),
-    //             None,
-    //             None,
-    //         ),
-    //     )
-    //     .unwrap();
-    // assert!(!balance_two.is_empty());
-    // assert_eq!(balance_two[0], coin(148, "uandr"));
+    let balance_two: Vec<Coin> = router
+        .wrap()
+        .query_wasm_smart(
+            vault_two_addr,
+            &mock_vault_get_balance(
+                AndrAddr::from_string(vault_two_recipient_addr.to_string()),
+                None,
+                None,
+            ),
+        )
+        .unwrap();
+    assert!(!balance_two.is_empty());
+    assert_eq!(balance_two[0], coin(148, "uandr"));
 }

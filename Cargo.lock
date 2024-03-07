@@ -64,9 +64,8 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-multi-test",
- "cw-storage-plus 1.2.0",
- "cw2 1.1.2",
- "enum-repr",
+ "cw-storage-plus 1.1.0",
+ "cw2 1.1.0",
  "prost 0.9.0",
  "semver",
 ]
@@ -272,9 +271,8 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-multi-test",
- "cw-storage-plus 1.2.0",
- "cw2 1.1.2",
- "enum-repr",
+ "cw-storage-plus 1.1.0",
+ "cw2 1.1.0",
  "hex",
  "itertools 0.10.5",
  "osmosis-std",
@@ -468,7 +466,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-std"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "andromeda-macros",
  "cosmwasm-schema",
@@ -481,6 +479,7 @@ dependencies = [
  "cw20-base",
  "cw721 0.18.0",
  "cw721-base 0.18.0",
+ "enum-repr",
  "hex",
  "lazy_static",
  "regex",

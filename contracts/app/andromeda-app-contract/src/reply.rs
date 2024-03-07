@@ -2,18 +2,9 @@ use andromeda_std::{
     ado_contract::ADOContract, common::response::get_reply_address, error::ContractError,
 };
 use cosmwasm_std::{DepsMut, Reply, Response};
-use enum_repr::EnumRepr;
 
 use crate::execute;
 use crate::state::{ADO_ADDRESSES, ADO_DESCRIPTORS};
-
-#[EnumRepr(type = "u64")]
-pub enum ReplyId {
-    ClaimOwnership = 101,
-    AssignApp = 102,
-    RegisterPath = 103,
-    CrossChainCreate = 104,
-}
 
 pub fn on_component_instantiation(deps: DepsMut, msg: Reply) -> Result<Response, ContractError> {
     let id = msg.id.to_string();

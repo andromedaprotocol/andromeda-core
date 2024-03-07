@@ -55,9 +55,12 @@ fn test_auction_app() {
     let mut router = mock_app();
     let andr = mock_andromeda(&mut router, owner.clone());
     // Store contract codes
-    andr.store_ado(&mut router, mock_andromeda_cw721(), "cw721");
-    andr.store_ado(&mut router, mock_andromeda_auction(), "auction");
-    andr.store_ado(&mut router, mock_andromeda_app(), "app");
+    let cw721_code_id = router.store_code(mock_andromeda_cw721());
+    let auction_code_id = router.store_code(mock_andromeda_auction());
+    let app_code_id = router.store_code(mock_andromeda_app());
+    andr.store_code_id(&mut router, "cw721", cw721_code_id);
+    andr.store_code_id(&mut router, "auction", auction_code_id);
+    andr.store_code_id(&mut router, "app-contract", app_code_id);
 
     // Generate App Components
     let cw721_init_msg = mock_cw721_instantiate_msg(

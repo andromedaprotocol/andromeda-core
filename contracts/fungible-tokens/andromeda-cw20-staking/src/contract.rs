@@ -212,7 +212,12 @@ fn execute_add_reward_token(
         ContractError::Unauthorized {}
     );
     let mut config = CONFIG.load(deps.storage)?;
-    config.number_of_reward_tokens += 1;
+
+    let new_number = config.number_of_reward_tokens.checked_add(1);
+    match new_number {
+        Some(new_number) => config.number_of_reward_tokens = new_number,
+        None => return Err(ContractError::Overflow {}),
+    }
     ensure!(
         config.number_of_reward_tokens <= MAX_REWARD_TOKENS,
         ContractError::MaxRewardTokensExceeded {
@@ -304,8 +309,8 @@ fn execute_stake_tokens(
         amount.multiply_ratio(state.total_share, total_balance)
     };
 
-    staker.share += share;
-    state.total_share += share;
+    staker.share = staker.share.checked_add(share)?;
+    state.total_share = state.total_share.checked_add(share)?;
 
     STATE.save(deps.storage, &state)?;
     STAKERS.save(deps.storage, &sender, &staker)?;
@@ -367,9 +372,8 @@ fn execute_unstake_tokens(
             info: staking_token,
             amount: withdraw_amount,
         };
-
-        staker.share -= withdraw_share;
-        state.total_share -= withdraw_share;
+        staker.share = staker.share.checked_sub(withdraw_share)?;
+        state.total_share = state.total_share.checked_sub(withdraw_share)?;
 
         STATE.save(deps.storage, &state)?;
         STAKERS.save(deps.storage, sender, &staker)?;

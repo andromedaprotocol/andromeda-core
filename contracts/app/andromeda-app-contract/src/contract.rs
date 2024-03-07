@@ -1,4 +1,4 @@
-use crate::reply::{on_component_instantiation, ReplyId};
+use crate::reply::on_component_instantiation;
 use crate::state::{create_cross_chain_message, get_chain_info, APP_NAME};
 use andromeda_app::app::{
     AppComponent, ComponentType, CrossChainComponent, ExecuteMsg, InstantiateMsg, MigrateMsg,
@@ -7,6 +7,7 @@ use andromeda_app::app::{
 use andromeda_std::ado_contract::ADOContract;
 use andromeda_std::amp::AndrAddr;
 use andromeda_std::common::context::ExecuteContext;
+use andromeda_std::common::reply::ReplyId;
 use andromeda_std::os::vfs::{convert_component_name, ExecuteMsg as VFSExecuteMsg};
 use andromeda_std::{
     ado_base::InstantiateMsg as BaseInstantiateMsg,
@@ -104,7 +105,7 @@ pub fn instantiate(
     }
     let vfs_address = ADOContract::default().get_vfs_address(deps.storage, &deps.querier)?;
 
-    let add_path_msg = VFSExecuteMsg::AddParentPath {
+    let add_path_msg = VFSExecuteMsg::AddChild {
         name: convert_component_name(app_name.clone()),
         parent_address: AndrAddr::from_string(sender),
     };
@@ -130,13 +131,14 @@ pub fn instantiate(
         .add_submessage(assign_app_msg);
 
     if let Some(chain_info) = msg.chain_info {
-        for chain in chain_info {
+        for chain in chain_info.clone() {
             let sub_msg = create_cross_chain_message(
                 &deps,
                 app_name.clone(),
                 msg.owner.clone().unwrap_or(info.sender.to_string()),
                 msg.app_components.clone(),
                 chain,
+                chain_info.clone(),
             )?;
             resp = resp.add_submessage(sub_msg);
         }

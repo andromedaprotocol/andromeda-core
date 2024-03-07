@@ -2,19 +2,20 @@ use crate::ado_contract::ADOContract;
 use crate::amp::addresses::AndrAddr;
 use crate::amp::messages::AMPPkt;
 use crate::common::context::ExecuteContext;
+use crate::common::reply::ReplyId;
 use crate::os::{aos_querier::AOSQuerier, economics::ExecuteMsg as EconomicsExecuteMsg};
 use crate::{
     ado_base::{AndromedaMsg, InstantiateMsg},
     error::ContractError,
 };
 use cosmwasm_std::{
-    attr, from_json, to_json_binary, Addr, Api, CosmosMsg, Deps, Env, MessageInfo, QuerierWrapper,
-    Response, Storage, SubMsg, WasmMsg,
+    attr, ensure, from_binary, to_binary, Addr, Api, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
+    QuerierWrapper, Response, Storage, SubMsg, WasmMsg,
 };
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 
-type ExecuteContextFunction<E> = fn(ExecuteContext, E) -> Result<Response, ContractError>;
+type ExecuteContextFunction<M, E = ContractError> = fn(ExecuteContext, M) -> Result<Response, E>;
 
 impl<'a> ADOContract<'a> {
     pub fn instantiate(
@@ -80,17 +81,7 @@ impl<'a> ADOContract<'a> {
                     self.validate_module_address(&ctx.deps.as_ref(), &module)?;
                     self.execute_alter_module(ctx.deps, ctx.info, module_idx, module)
                 }
-                AndromedaMsg::SetPermission {
-                    actor,
-                    action,
-                    permission,
-                } => self.execute_set_permission(ctx, actor, action, permission),
-                AndromedaMsg::RemovePermission { action, actor } => {
-                    self.execute_remove_permission(ctx, actor, action)
-                }
-                AndromedaMsg::PermissionAction { action } => {
-                    self.execute_permission_action(ctx, action)
-                }
+                AndromedaMsg::Permissioning(msg) => self.execute_permissioning(ctx, msg),
                 AndromedaMsg::AMPReceive(_) => panic!("AMP Receive should be handled separately"),
                 AndromedaMsg::Deposit { .. } => Err(ContractError::NotImplemented { msg: None }),
             },
@@ -127,7 +118,7 @@ impl<'a> ADOContract<'a> {
             }
             Err(_) => {
                 for address in addresses {
-                    address.is_addr(deps.api);
+                    ensure!(address.is_addr(deps.api), ContractError::InvalidAddress {});
                 }
                 Ok(())
             }
@@ -227,7 +218,7 @@ impl<'a> ADOContract<'a> {
                 msg: to_json_binary(&economics_msg)?,
                 funds: vec![],
             }),
-            9999,
+            ReplyId::PayFee.repr(),
         );
 
         Ok(msg)

@@ -4,6 +4,7 @@ use andromeda_std::ado_contract::ADOContract;
 
 use andromeda_std::common::context::ExecuteContext;
 use andromeda_std::common::encode_binary;
+use andromeda_std::common::reply::ReplyId;
 use andromeda_std::error::ContractError;
 
 use andromeda_std::os::kernel::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
@@ -14,7 +15,7 @@ use cw2::{get_contract_version, set_contract_version};
 use semver::Version;
 
 use crate::ibc::{IBCLifecycleComplete, SudoMsg};
-use crate::reply::{on_reply_create_ado, on_reply_ibc_hooks_packet_send, ReplyId};
+use crate::reply::{on_reply_create_ado, on_reply_ibc_hooks_packet_send};
 use crate::state::CURR_CHAIN;
 use crate::{execute, query, sudo};
 

@@ -4,6 +4,27 @@ use cosmwasm_schema::cw_serde;
 use cosmwasm_std::Env;
 use cw_utils::Expiration;
 
+use crate::{amp::AndrAddr, error::ContractError};
+
+#[cw_serde]
+pub enum PermissioningMessage {
+    SetPermission {
+        actor: AndrAddr,
+        action: String,
+        permission: Permission,
+    },
+    RemovePermission {
+        action: String,
+        actor: AndrAddr,
+    },
+    PermissionAction {
+        action: String,
+    },
+    DisableActionPermissioning {
+        action: String,
+    },
+}
+
 #[cw_serde]
 pub struct PermissionInfo {
     pub permission: Permission,
@@ -87,9 +108,16 @@ impl Permission {
         }
     }
 
-    pub fn consume_use(&mut self) {
+    pub fn consume_use(&mut self) -> Result<(), ContractError> {
         if let Self::Limited { uses, .. } = self {
-            *uses -= 1
+            if let Some(remaining_uses) = uses.checked_sub(1) {
+                *uses = remaining_uses;
+                Ok(())
+            } else {
+                Err(ContractError::Underflow {})
+            }
+        } else {
+            Ok(())
         }
     }
 }

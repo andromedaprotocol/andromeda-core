@@ -1,10 +1,13 @@
-use crate::reply::ReplyId;
+use crate::state::ADO_DESCRIPTORS;
 
 use super::{contract::*, state::ADO_ADDRESSES};
 use andromeda_app::app::{AppComponent, ComponentType, ExecuteMsg, InstantiateMsg};
 use andromeda_std::amp::AndrAddr;
+use andromeda_std::common::reply::ReplyId;
 use andromeda_std::os::vfs::{convert_component_name, ExecuteMsg as VFSExecuteMsg};
-use andromeda_std::testing::mock_querier::{mock_dependencies_custom, MOCK_KERNEL_CONTRACT};
+use andromeda_std::testing::mock_querier::{
+    mock_dependencies_custom, MOCK_ANCHOR_CONTRACT, MOCK_CW20_CONTRACT, MOCK_KERNEL_CONTRACT,
+};
 
 use andromeda_std::{ado_base::AndromedaMsg, error::ContractError};
 
@@ -13,6 +16,7 @@ use cosmwasm_std::{
     testing::{mock_env, mock_info},
     to_json_binary, Addr, CosmosMsg, Empty, ReplyOn, Response, StdError, SubMsg, WasmMsg,
 };
+use cosmwasm_std::{Binary, Event, Reply, SubMsgResponse, SubMsgResult};
 
 #[test]
 fn test_empty_instantiation() {
@@ -68,7 +72,7 @@ fn test_instantiation() {
         id: ReplyId::RegisterPath.repr(),
         msg: CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: "vfs_contract".to_string(),
-            msg: to_json_binary(&VFSExecuteMsg::AddParentPath {
+            msg: to_binary(&VFSExecuteMsg::AddChild {
                 name: convert_component_name("Some App".to_string()),
                 parent_address: AndrAddr::from_string(format!("{sender}")),
             })
@@ -327,44 +331,43 @@ fn test_claim_ownership_empty() {
     assert_eq!(0, res.messages.len());
 }
 
-//TODO: Fix this test
-// #[test]
-// fn test_claim_ownership_all() {
-//     let mut deps = mock_dependencies_custom(&[]);
-//     let env = mock_env();
-//     let info = mock_info("creator", &[]);
-//     let inst_msg = InstantiateMsg {
-//         app_components: vec![],
-//         name: String::from("Some App"),
-//         owner: None,
-//         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
-//         chain_info: None,
-//     };
+#[test]
+fn test_claim_ownership_all() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let env = mock_env();
+    let info = mock_info("creator", &[]);
+    let inst_msg = InstantiateMsg {
+        app_components: vec![],
+        name: String::from("Some App"),
+        owner: None,
+        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+        chain_info: None,
+    };
 
-//     instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
-//     ADO_ADDRESSES
-//         .save(
-//             deps.as_mut().storage,
-//             "token",
-//             &Addr::unchecked("tokenaddress".to_string()),
-//         )
-//         .unwrap();
-//     ADO_ADDRESSES
-//         .save(
-//             deps.as_mut().storage,
-//             "anchor",
-//             &Addr::unchecked("anchoraddress".to_string()),
-//         )
-//         .unwrap();
+    instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
+    ADO_ADDRESSES
+        .save(
+            deps.as_mut().storage,
+            "token",
+            &Addr::unchecked(MOCK_CW20_CONTRACT),
+        )
+        .unwrap();
+    ADO_ADDRESSES
+        .save(
+            deps.as_mut().storage,
+            "anchor",
+            &Addr::unchecked(MOCK_ANCHOR_CONTRACT),
+        )
+        .unwrap();
 
-//     let msg = ExecuteMsg::ClaimOwnership {
-//         name: None,
-//         new_owner: None,
-//     };
+    let msg = ExecuteMsg::ClaimOwnership {
+        name: None,
+        new_owner: None,
+    };
 
-//     let res = execute(deps.as_mut(), env, info, msg).unwrap();
-//     assert_eq!(2, res.messages.len());
-// }
+    let res = execute(deps.as_mut(), env, info, msg).unwrap();
+    assert_eq!(2, res.messages.len());
+}
 
 #[test]
 fn test_claim_ownership() {
@@ -404,7 +407,7 @@ fn test_claim_ownership() {
     assert_eq!(1, res.messages.len());
 
     let exec_submsg: SubMsg<Empty> = SubMsg {
-        id: 101,
+        id: 200,
         msg: CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: "tokenaddress".to_string(),
             msg: to_json_binary(&AndromedaMsg::UpdateOwner {
@@ -613,68 +616,86 @@ fn test_update_address() {
     assert_eq!(Addr::unchecked("newtokenaddress"), addr)
 }
 
-// TODO: UPDATE WITH 1.2 CHANGES
-// #[test]
-// fn test_reply_assign_app() {
-//     let mut deps = mock_dependencies_custom(&[]);
-//     let env = mock_env();
-//     let mock_app_component = AppComponent {
-//         ado_type: "cw721".to_string(),
-//         name: "token".to_string(),
-//         instantiate_msg: to_json_binary(&true).unwrap(),
-//     };
-//     let component_idx = 1;
-//     ADO_DESCRIPTORS
-//         .save(
-//             deps.as_mut().storage,
-//             &component_idx.to_string(),
-//             &mock_app_component,
-//         )
-//         .unwrap();
+#[test]
+fn test_reply_assign_app() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let env = mock_env();
+    let mock_app_component = AppComponent {
+        ado_type: "cw721".to_string(),
+        name: "token".to_string(),
+        component_type: ComponentType::New(to_binary(&true).unwrap()),
+    };
+    let component_idx = 1;
+    ADO_DESCRIPTORS
+        .save(
+            deps.as_mut().storage,
+            &component_idx.to_string(),
+            &mock_app_component,
+        )
+        .unwrap();
 
-//     let mock_reply_event = Event::new("instantiate")
-//         .add_attribute("contract_address".to_string(), "tokenaddress".to_string());
+    let mock_reply_event = Event::new("instantiate").add_attribute(
+        "contract_address".to_string(),
+        "cosmos2contract".to_string(),
+    );
 
-//     let instantiate_reply = MsgInstantiateContractResponse {
-//         contract_address: "tokenaddress".to_string(),
-//         data: vec![],
-//     };
-//     let mut encoded_instantiate_reply = Vec::<u8>::with_capacity(instantiate_reply.encoded_len());
+    // let instantiate_reply = MsgInstantiateContractResponse {
+    //     contract_address: "tokenaddress".to_string(),
+    //     data: vec![],
+    // };
+    // let mut encoded_instantiate_reply = Vec::<u8>::with_capacity(instantiate_reply.encoded_len());
 
-//     instantiate_reply
-//         .encode(&mut encoded_instantiate_reply)
-//         .unwrap();
+    // instantiate_reply
+    //     .encode(&mut encoded_instantiate_reply)
+    //     .unwrap();
 
-//     let mock_reply = Reply {
-//         id: component_idx,
-//         result: SubMsgResult::Ok(SubMsgResponse {
-//             data: Some(encoded_instantiate_reply.into()),
-//             events: vec![mock_reply_event],
-//         }),
-//     };
+    let reply_resp = "Cg9jb3Ntb3MyY29udHJhY3QSAA==";
+    let mock_reply = Reply {
+        id: component_idx,
+        result: SubMsgResult::Ok(SubMsgResponse {
+            data: Some(Binary::from_base64(reply_resp).unwrap()),
+            events: vec![mock_reply_event],
+        }),
+    };
 
-//     let res = reply(deps.as_mut(), env.clone(), mock_reply).unwrap();
-//     assert_eq!(1, res.messages.len());
+    let res = reply(deps.as_mut(), env.clone(), mock_reply).unwrap();
+    assert_eq!(1, res.messages.len());
 
-//     let exec_submsg: SubMsg<Empty> = SubMsg {
-//         id: 103,
-//         msg: CosmosMsg::Wasm(WasmMsg::Execute {
-//             contract_addr: "tokenaddress".to_string(),
-//             msg: to_json_binary(&ExecuteMsg::AndrReceive(AndromedaMsg::UpdateAppContract {
-//                 address: env.contract.address.to_string(),
-//             }))
-//             .unwrap(),
-//             funds: vec![],
-//         }),
-//         reply_on: ReplyOn::Error,
-//         gas_limit: None,
-//     };
-//     let expected = Response::new().add_submessage(exec_submsg);
+    // let exec_submsg: SubMsg<Empty> = SubMsg {
+    //     id: 103,
+    //     msg: CosmosMsg::Wasm(WasmMsg::Execute {
+    //         contract_addr: "tokenaddress".to_string(),
+    //         msg: to_binary(&AndromedaMsg::UpdateAppContract {
+    //             address: env.contract.address.to_string(),
+    //         })
+    //         .unwrap(),
+    //         funds: vec![],
+    //     }),
+    //     reply_on: ReplyOn::Error,
+    //     gas_limit: None,
+    // };
+    let new_exec_submsg: SubMsg<Empty> = SubMsg {
+        id: 202,
+        msg: CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: "vfs_contract".to_string(),
+            msg: to_binary(&VFSExecuteMsg::AddPath {
+                address: env.contract.address,
+                name: "token".to_string(),
+                parent_address: None,
+            })
+            .unwrap(),
+            funds: vec![],
+        }),
+        reply_on: ReplyOn::Error,
+        gas_limit: None,
+    };
+    // let expected = Response::new().add_submessage(exec_submsg);
+    let new_expected = Response::new().add_submessage(new_exec_submsg);
 
-//     assert_eq!(expected, res);
+    assert_eq!(new_expected, res);
 
-//     assert_eq!(
-//         Addr::unchecked("tokenaddress"),
-//         ADO_ADDRESSES.load(deps.as_ref().storage, "token").unwrap()
-//     );
-// }
+    assert_eq!(
+        Addr::unchecked("cosmos2contract"),
+        ADO_ADDRESSES.load(deps.as_ref().storage, "token").unwrap()
+    );
+}

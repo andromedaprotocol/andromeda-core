@@ -9,11 +9,17 @@ use crate::state::{
 
 pub fn resolve_path(deps: Deps, path: AndrAddr) -> Result<Addr, ContractError> {
     validate_path_name(path.to_string())?;
-    resolve_pathname(deps.storage, deps.api, path)
+    resolve_pathname(deps.storage, deps.api, path, &mut vec![])
 }
-pub fn subdir(deps: Deps, path: AndrAddr) -> Result<Vec<PathInfo>, ContractError> {
+pub fn subdir(
+    deps: Deps,
+    path: AndrAddr,
+    min: Option<(Addr, String)>,
+    max: Option<(Addr, String)>,
+    limit: Option<u32>,
+) -> Result<Vec<PathInfo>, ContractError> {
     validate_path_name(path.to_string())?;
-    get_subdir(deps.storage, deps.api, path)
+    get_subdir(deps.storage, deps.api, path, min, max, limit)
 }
 
 pub fn paths(deps: Deps, addr: Addr) -> Result<Vec<String>, ContractError> {

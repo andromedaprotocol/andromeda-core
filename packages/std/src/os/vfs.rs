@@ -11,14 +11,19 @@ use cosmwasm_std::{ensure, Addr, QuerierWrapper};
 use regex::Regex;
 
 pub const COMPONENT_NAME_REGEX: &str = r"^[A-Za-z0-9\.\-_]{1,40}$";
-pub const USERNAME_REGEX: &str = r"^[a-z0-9]+$";
-pub const PATH_REGEX: &str = r"^((([A-Za-z0-9]+://)?([A-Za-z0-9\.\-_]{1,40})?(/)?(home|lib)/)|(~(/)?))([A-Za-z0-9\.\-_]{1,40}(/)?)+$";
-
+pub const USERNAME_REGEX: &str = r"^[a-z0-9]{1, 40}$";
+pub const PATH_REGEX: &str = r"^((([A-Za-z0-9]+://)?([A-Za-z0-9\.\-_]{1,40})?(/)?(home|lib)/)|(~(/)?)|(\./))([A-Za-z0-9\.\-_]{1,40}(/)?)+$";
 pub fn convert_component_name(path: String) -> String {
     path.replace(' ', "_")
 }
 
 pub fn validate_component_name(path: String) -> Result<bool, ContractError> {
+    ensure!(
+        path.chars().any(|c| c.is_alphanumeric()),
+        ContractError::InvalidPathname {
+            error: Some("Pathname must contain at least one alphanumeric character".to_string())
+        }
+    );
     let re = Regex::new(COMPONENT_NAME_REGEX).unwrap();
 
     ensure!(
@@ -96,7 +101,8 @@ pub enum ExecuteMsg {
         symlink: AndrAddr,
         parent_address: Option<AndrAddr>,
     },
-    AddParentPath {
+    // Registers a child, currently only accessible by an App Contract
+    AddChild {
         name: String,
         parent_address: AndrAddr,
     },
@@ -124,7 +130,12 @@ pub enum QueryMsg {
     #[returns(Addr)]
     ResolvePath { path: AndrAddr },
     #[returns(Vec<PathDetails>)]
-    SubDir { path: AndrAddr },
+    SubDir {
+        path: AndrAddr,
+        min: Option<(Addr, String)>,
+        max: Option<(Addr, String)>,
+        limit: Option<u32>,
+    },
     #[returns(Vec<String>)]
     Paths { addr: Addr },
     #[returns(String)]
@@ -192,6 +203,14 @@ mod test {
         let res = validate_component_name(empty_name.to_string());
         assert!(res.is_err());
 
+        let dot_name = ".";
+        let res = validate_component_name(dot_name.to_string());
+        assert!(res.is_err());
+
+        let dot_name = "..";
+        let res = validate_component_name(dot_name.to_string());
+        assert!(res.is_err());
+
         let invalid_name = "/ /";
         let res = validate_component_name(invalid_name.to_string());
         assert!(res.is_err());
@@ -208,6 +227,9 @@ mod test {
 
     #[test]
     fn test_validate_path_name() {
+        let valid_path = "./username/app";
+        validate_path_name(valid_path.to_string()).unwrap();
+
         let valid_path = "/home/username";
         validate_path_name(valid_path.to_string()).unwrap();
 

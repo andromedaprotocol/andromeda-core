@@ -74,10 +74,10 @@ pub fn execute(
         ExecuteMsg::RegisterUser { username, address } => {
             execute::register_user(execute_env, username, address)
         }
-        ExecuteMsg::AddParentPath {
+        ExecuteMsg::AddChild {
             name,
             parent_address,
-        } => execute::add_parent_path(execute_env, name, parent_address),
+        } => execute::add_child(execute_env, name, parent_address),
         ExecuteMsg::RegisterLibrary {
             lib_name,
             lib_address,
@@ -125,7 +125,12 @@ fn from_semver(err: semver::Error) -> StdError {
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::ResolvePath { path } => encode_binary(&query::resolve_path(deps, path)?),
-        QueryMsg::SubDir { path } => encode_binary(&query::subdir(deps, path)?),
+        QueryMsg::SubDir {
+            path,
+            min,
+            max,
+            limit,
+        } => encode_binary(&query::subdir(deps, path, min, max, limit)?),
         QueryMsg::Paths { addr } => encode_binary(&query::paths(deps, addr)?),
         QueryMsg::GetUsername { address } => encode_binary(&query::get_username(deps, address)?),
         QueryMsg::GetLibrary { address } => encode_binary(&query::get_library_name(deps, address)?),

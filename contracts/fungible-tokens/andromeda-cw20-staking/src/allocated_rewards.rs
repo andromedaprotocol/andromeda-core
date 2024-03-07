@@ -38,18 +38,24 @@ pub(crate) fn update_allocated_index(
                 config.cycle_duration,
             ),
         );
-        rewards_to_distribute += rewards_distributed_for_cycle(
-            Decimal::from_ratio(state.current_cycle_rewards, config.cycle_duration),
-            std::cmp::max(state.last_distributed, config.init_timestamp),
-            std::cmp::min(cur_timestamp, last_distribution_next_timestamp),
-        );
+        rewards_to_distribute =
+            rewards_to_distribute.checked_add(rewards_distributed_for_cycle(
+                Decimal::from_ratio(state.current_cycle_rewards, config.cycle_duration),
+                std::cmp::max(state.last_distributed, config.init_timestamp),
+                std::cmp::min(cur_timestamp, last_distribution_next_timestamp),
+            ))?;
         state.current_cycle_rewards = calculate_cycle_rewards(
             state.current_cycle_rewards,
             config.reward_increase.unwrap_or_else(Decimal::zero),
             state.current_cycle == last_distribution_cycle,
         );
         state.last_distributed = std::cmp::min(cur_timestamp, last_distribution_next_timestamp);
-        last_distribution_cycle += 1;
+
+        let new_cycle = last_distribution_cycle.checked_add(1);
+        match new_cycle {
+            Some(new_cycle) => last_distribution_cycle = new_cycle,
+            None => return Err(ContractError::Overflow {}),
+        }
     }
 
     if state.last_distributed == config.till_timestamp {

@@ -36,6 +36,13 @@ pub fn mock_publish(
     }
 }
 
+pub fn mock_unpublish(ado_type: impl Into<String>, version: impl Into<String>) -> ExecuteMsg {
+    ExecuteMsg::Unpublish {
+        ado_type: ado_type.into(),
+        version: version.into(),
+    }
+}
+
 /// Used to generate a Code ID query message
 pub fn mock_get_code_id_msg(code_id_key: String) -> QueryMsg {
     QueryMsg::CodeId { key: code_id_key }

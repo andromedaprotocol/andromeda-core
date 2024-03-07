@@ -1,5 +1,5 @@
 use crate::{
-    ado_base::permissioning::{Permission, PermissionInfo},
+    ado_base::permissioning::{Permission, PermissionInfo, PermissioningMessage},
     amp::{messages::AMPPkt, AndrAddr},
     common::context::ExecuteContext,
     error::ContractError,
@@ -37,6 +37,28 @@ pub fn permissions<'a>() -> IndexedMap<'a, &'a str, PermissionInfo, PermissionsI
 }
 
 impl<'a> ADOContract<'a> {
+    pub fn execute_permissioning(
+        &self,
+        ctx: ExecuteContext,
+        msg: PermissioningMessage,
+    ) -> Result<Response, ContractError> {
+        match msg {
+            PermissioningMessage::SetPermission {
+                actor,
+                action,
+                permission,
+            } => self.execute_set_permission(ctx, actor, action, permission),
+            PermissioningMessage::RemovePermission { action, actor } => {
+                self.execute_remove_permission(ctx, actor, action)
+            }
+            PermissioningMessage::PermissionAction { action } => {
+                self.execute_permission_action(ctx, action)
+            }
+            PermissioningMessage::DisableActionPermissioning { action } => {
+                self.execute_disable_action_permission(ctx, action)
+            }
+        }
+    }
     /// Determines if the provided actor is authorised to perform the given action
     ///
     /// Returns an error if the given action is not permissioned for the given actor
@@ -69,7 +91,7 @@ impl<'a> ADOContract<'a> {
 
                 // Consume a use for a limited permission
                 if let Permission::Limited { .. } = permission {
-                    permission.consume_use();
+                    permission.consume_use()?;
                     permissions().save(
                         store,
                         (action_string.clone() + actor_string.as_str()).as_str(),
@@ -120,7 +142,7 @@ impl<'a> ADOContract<'a> {
 
                 // Consume a use for a limited permission
                 if let Permission::Limited { .. } = permission {
-                    permission.consume_use();
+                    permission.consume_use()?;
                     permissions().save(
                         store,
                         (action_string.clone() + actor_string.as_str()).as_str(),
@@ -193,7 +215,6 @@ impl<'a> ADOContract<'a> {
     ///
     /// **Whitelisted/Limited permissions will only work for permissioned actions**
     ///
-    /// TODO: Add permission for execute context
     pub fn execute_set_permission(
         &self,
         ctx: ExecuteContext,
@@ -201,7 +222,10 @@ impl<'a> ADOContract<'a> {
         action: impl Into<String>,
         permission: Permission,
     ) -> Result<Response, ContractError> {
-        Self::is_contract_owner(self, ctx.deps.storage, ctx.info.sender.as_str())?;
+        ensure!(
+            Self::is_contract_owner(self, ctx.deps.storage, ctx.info.sender.as_str())?,
+            ContractError::Unauthorized {}
+        );
         let actor_addr = actor.get_raw_address(&ctx.deps.as_ref())?;
         let action = action.into();
         Self::set_permission(
@@ -220,14 +244,16 @@ impl<'a> ADOContract<'a> {
     }
 
     /// Execute handler for setting permission
-    /// TODO: Add permission for execute context
     pub fn execute_remove_permission(
         &self,
         ctx: ExecuteContext,
         actor: AndrAddr,
         action: impl Into<String>,
     ) -> Result<Response, ContractError> {
-        Self::is_contract_owner(self, ctx.deps.storage, ctx.info.sender.as_str())?;
+        ensure!(
+            Self::is_contract_owner(self, ctx.deps.storage, ctx.info.sender.as_str())?,
+            ContractError::Unauthorized {}
+        );
         let actor_addr = actor.get_raw_address(&ctx.deps.as_ref())?;
         let action = action.into();
         Self::remove_permission(ctx.deps.storage, action.clone(), actor_addr.clone())?;
@@ -261,7 +287,10 @@ impl<'a> ADOContract<'a> {
         action: impl Into<String>,
     ) -> Result<Response, ContractError> {
         let action_string: String = action.into();
-        Self::is_contract_owner(self, ctx.deps.storage, ctx.info.sender.as_str())?;
+        ensure!(
+            Self::is_contract_owner(self, ctx.deps.storage, ctx.info.sender.as_str())?,
+            ContractError::Unauthorized {}
+        );
         self.permission_action(action_string.clone(), ctx.deps.storage)?;
         Ok(Response::default().add_attributes(vec![
             ("action", "permission_action"),
@@ -275,7 +304,10 @@ impl<'a> ADOContract<'a> {
         action: impl Into<String>,
     ) -> Result<Response, ContractError> {
         let action_string: String = action.into();
-        Self::is_contract_owner(self, ctx.deps.storage, ctx.info.sender.as_str())?;
+        ensure!(
+            Self::is_contract_owner(self, ctx.deps.storage, ctx.info.sender.as_str())?,
+            ContractError::Unauthorized {}
+        );
         Self::disable_action_permission(self, action_string.clone(), ctx.deps.storage);
         Ok(Response::default().add_attributes(vec![
             ("action", "disable_action_permission"),
@@ -397,7 +429,7 @@ mod tests {
     };
     use cw_utils::Expiration;
 
-    use crate::amp::messages::AMPPkt;
+    use crate::{ado_base::AndromedaMsg, amp::messages::AMPPkt};
 
     use super::*;
 
@@ -522,6 +554,85 @@ mod tests {
 
         let res = contract.is_permissioned(deps.as_mut().storage, env, action, actor);
         assert!(res.is_ok());
+    }
+
+    #[test]
+    fn test_set_permission_unauthorized() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let contract = ADOContract::default();
+        contract
+            .owner
+            .save(deps.as_mut().storage, &Addr::unchecked("owner"))
+            .unwrap();
+        let msg = AndromedaMsg::Permissioning(PermissioningMessage::SetPermission {
+            actor: AndrAddr::from_string("actor"),
+            action: "action".to_string(),
+            permission: Permission::Whitelisted(None),
+        });
+        let ctx = ExecuteContext::new(deps.as_mut(), mock_info("attacker", &[]), env);
+        let res = contract.execute(ctx, msg);
+
+        assert!(res.is_err());
+        assert_eq!(res.unwrap_err(), ContractError::Unauthorized {});
+    }
+
+    #[test]
+    fn test_permission_action_unauthorized() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let contract = ADOContract::default();
+        contract
+            .owner
+            .save(deps.as_mut().storage, &Addr::unchecked("owner"))
+            .unwrap();
+        let msg = AndromedaMsg::Permissioning(PermissioningMessage::PermissionAction {
+            action: "action".to_string(),
+        });
+        let ctx = ExecuteContext::new(deps.as_mut(), mock_info("attacker", &[]), env);
+        let res = contract.execute(ctx, msg);
+
+        assert!(res.is_err());
+        assert_eq!(res.unwrap_err(), ContractError::Unauthorized {});
+    }
+
+    #[test]
+    fn test_disable_permissioning_unauthorized() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let contract = ADOContract::default();
+        contract
+            .owner
+            .save(deps.as_mut().storage, &Addr::unchecked("owner"))
+            .unwrap();
+        let msg = AndromedaMsg::Permissioning(PermissioningMessage::DisableActionPermissioning {
+            action: "action".to_string(),
+        });
+        let ctx = ExecuteContext::new(deps.as_mut(), mock_info("attacker", &[]), env);
+        let res = contract.execute(ctx, msg);
+
+        assert!(res.is_err());
+        assert_eq!(res.unwrap_err(), ContractError::Unauthorized {});
+    }
+
+    #[test]
+    fn test_remove_permission_unauthorized() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let contract = ADOContract::default();
+        contract
+            .owner
+            .save(deps.as_mut().storage, &Addr::unchecked("owner"))
+            .unwrap();
+        let msg = AndromedaMsg::Permissioning(PermissioningMessage::RemovePermission {
+            action: "action".to_string(),
+            actor: AndrAddr::from_string("actor"),
+        });
+        let ctx = ExecuteContext::new(deps.as_mut(), mock_info("attacker", &[]), env);
+        let res = contract.execute(ctx, msg);
+
+        assert!(res.is_err());
+        assert_eq!(res.unwrap_err(), ContractError::Unauthorized {});
     }
 
     #[test]

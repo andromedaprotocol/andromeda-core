@@ -43,6 +43,11 @@ impl AndrAddr {
         AndrAddr(addr.into())
     }
 
+    #[inline]
+    pub fn to_lowercase(&self) -> AndrAddr {
+        AndrAddr(self.0.to_lowercase())
+    }
+
     /// Validates an `AndrAddr`, to be valid the given address must either be a human readable address or a valid VFS path.
     ///
     /// **The existence of the provided path is not validated.**
@@ -88,7 +93,14 @@ impl AndrAddr {
                 let valid_vfs_path =
                     self.local_path_to_vfs_path(deps.storage, &deps.querier, vfs_contract.clone())?;
                 let vfs_addr = Addr::unchecked(vfs_contract);
-                vfs_resolve_path(valid_vfs_path, vfs_addr, &deps.querier)
+                vfs_resolve_path(valid_vfs_path.clone(), vfs_addr, &deps.querier)
+                    .ok()
+                    .ok_or(ContractError::InvalidPathname {
+                        error: Some(format!(
+                            "{:?} does not exist in the file system",
+                            valid_vfs_path.0
+                        )),
+                    })
             }
         }
     }
@@ -292,6 +304,9 @@ mod tests {
     #[test]
     fn test_is_vfs() {
         let addr = AndrAddr("/home/user/app/component".to_string());
+        assert!(addr.is_vfs_path());
+
+        let addr = AndrAddr("./user/app/component".to_string());
         assert!(addr.is_vfs_path());
 
         let addr = AndrAddr("ibc://chain/home/user/app/component".to_string());

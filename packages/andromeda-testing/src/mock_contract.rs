@@ -6,6 +6,7 @@ use cw_multi_test::{App, AppResponse, Executor};
 use serde::{de::DeserializeOwned, Serialize};
 
 pub use anyhow::Result as AnyResult;
+pub struct MockContract(Addr);
 
 pub type ExecuteResult = AnyResult<AppResponse>;
 

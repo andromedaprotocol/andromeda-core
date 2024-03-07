@@ -26,6 +26,12 @@ pub enum ContractError {
     #[error("Unauthorized")]
     Unauthorized {},
 
+    #[error("UnpublishedCodeID")]
+    UnpublishedCodeID {},
+
+    #[error("UnpublishedVersion")]
+    UnpublishedVersion {},
+
     #[error("ContractLocked")]
     ContractLocked {},
 
@@ -61,6 +67,9 @@ pub enum ContractError {
 
     #[error("invalid IBC channel version - got ({actual}), expected ({expected})")]
     InvalidVersion { actual: String, expected: String },
+
+    #[error("CrossChainComponentsCurrentlyDisabled")]
+    CrossChainComponentsCurrentlyDisabled {},
 
     #[error("tokenId list has different length than tokenUri list")]
     TokenInfoLenMissmatch {},
@@ -281,6 +290,9 @@ pub enum ContractError {
     #[error("Overflow")]
     Overflow {},
 
+    #[error("Underflow")]
+    Underflow {},
+
     #[error("CannotWithdrawHighestBid")]
     CannotWithdrawHighestBid {},
 
@@ -310,6 +322,12 @@ pub enum ContractError {
 
     #[error("InvalidADOVersion: {msg:?}")]
     InvalidADOVersion { msg: Option<String> },
+
+    #[error("InvalidCodeID: {msg:?}")]
+    InvalidCodeID { msg: Option<String> },
+
+    #[error("InvalidADOType: {msg:?}")]
+    InvalidADOType { msg: Option<String> },
 
     #[error("AuctionRewardAlreadyClaimed")]
     AuctionAlreadyClaimed {},

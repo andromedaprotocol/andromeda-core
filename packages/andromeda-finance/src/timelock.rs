@@ -112,7 +112,7 @@ impl Escrow {
     ///
     /// Returns nothing as it is done in place.
     pub fn add_funds(&mut self, coins_to_add: Vec<Coin>) {
-        merge_coins(&mut self.coins, coins_to_add);
+        self.coins = merge_coins(self.coins.to_vec(), coins_to_add);
     }
 }
 
