@@ -1,4 +1,6 @@
 use andromeda_std::{
+    ado_base::version::VersionResponse,
+    ado_contract::ADOContract,
     amp::ADO_DB_KEY,
     error::ContractError,
     os::{aos_querier::AOSQuerier, kernel::ChannelInfoResponse},
@@ -45,4 +47,12 @@ pub fn recoveries(deps: Deps, addr: Addr) -> Result<Vec<Coin>, ContractError> {
     Ok(IBC_FUND_RECOVERY
         .may_load(deps.storage, &addr)?
         .unwrap_or_default())
+}
+
+pub fn version(deps: Deps) -> Result<VersionResponse, ContractError> {
+    // let contract_version = get_contract_version(deps.storage)?;
+    // Ok(VersionResponse {
+    //     version: contract_version.version,
+    // })
+    ADOContract::default().query_version(deps)
 }

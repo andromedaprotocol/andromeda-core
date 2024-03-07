@@ -136,8 +136,6 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
     let stored = get_contract_version(deps.storage)?;
     let storage_version: Version = stored.version.parse().map_err(from_semver)?;
 
-    let contract = ADOContract::default();
-
     ensure!(
         stored.contract == CONTRACT_NAME,
         ContractError::CannotMigrate {
@@ -155,9 +153,6 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    // Update the ADOContract's version
-    contract.execute_update_version(deps)?;
-
     Ok(Response::default())
 }
 
@@ -174,5 +169,6 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractErr
         }
         QueryMsg::ChannelInfo { chain } => encode_binary(&query::channel_info(deps, chain)?),
         QueryMsg::Recoveries { addr } => encode_binary(&query::recoveries(deps, addr)?),
+        QueryMsg::Version {} => encode_binary(&query::version(deps)?),
     }
 }

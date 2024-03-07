@@ -13,6 +13,7 @@ use crate::{
     error::ContractError,
 };
 use cosmwasm_std::{from_json, to_json_binary, Binary, Deps, Env, Order};
+use cw2::get_contract_version;
 use serde::Serialize;
 
 impl<'a> ADOContract<'a> {
@@ -126,7 +127,9 @@ impl<'a> ADOContract<'a> {
 
     #[inline]
     pub fn query_version(&self, deps: Deps) -> Result<VersionResponse, ContractError> {
-        let version = self.version.load(deps.storage)?;
-        Ok(VersionResponse { version })
+        let contract_version = get_contract_version(deps.storage)?;
+        Ok(VersionResponse {
+            version: contract_version.version,
+        })
     }
 }

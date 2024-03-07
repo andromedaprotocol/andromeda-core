@@ -1,3 +1,4 @@
+use crate::ado_base::version::VersionResponse;
 use crate::amp::messages::AMPMsg;
 use crate::amp::messages::AMPPkt;
 use crate::amp::AndrAddr;
@@ -85,6 +86,8 @@ pub enum QueryMsg {
     ChannelInfo { chain: String },
     #[returns(Vec<::cosmwasm_std::Coin>)]
     Recoveries { addr: Addr },
+    #[returns(VersionResponse)]
+    Version {},
 }
 
 #[cw_serde]

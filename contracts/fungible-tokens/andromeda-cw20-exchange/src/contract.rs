@@ -431,8 +431,6 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
     let stored = get_contract_version(deps.storage)?;
     let storage_version: Version = stored.version.parse().map_err(from_semver)?;
 
-    let contract = ADOContract::default();
-
     ensure!(
         stored.contract == CONTRACT_NAME,
         ContractError::CannotMigrate {
@@ -449,9 +447,6 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
     );
 
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-
-    // Update the ADOContract's version
-    contract.execute_update_version(deps)?;
 
     Ok(Response::default())
 }

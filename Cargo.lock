@@ -476,6 +476,7 @@ dependencies = [
  "cw-asset",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
+ "cw2 1.1.2",
  "cw20",
  "cw20-base",
  "cw721 0.18.0",
