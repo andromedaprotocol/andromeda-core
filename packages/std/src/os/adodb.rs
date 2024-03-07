@@ -3,6 +3,11 @@ use cosmwasm_std::{Addr, Uint128};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+use crate::ado_base::{
+    kernel_address::KernelAddressResponse, ownership::ContractOwnerResponse,
+    version::VersionResponse,
+};
+
 #[cw_serde]
 pub struct InstantiateMsg {
     pub kernel_address: String,
@@ -97,6 +102,13 @@ pub enum QueryMsg {
     ActionFee { ado_type: String, action: String },
     #[returns(Option<ActionFee>)]
     ActionFeeByCodeId { code_id: u64, action: String },
+    // Base queries
+    #[returns(VersionResponse)]
+    Version {},
+    #[returns(ContractOwnerResponse)]
+    Owner {},
+    #[returns(KernelAddressResponse)]
+    KernelAddress {},
 }
 
 #[derive(
