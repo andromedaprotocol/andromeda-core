@@ -4,8 +4,8 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::ado_base::{
-    kernel_address::KernelAddressResponse, ownership::ContractOwnerResponse,
-    version::VersionResponse,
+    ado_type::TypeResponse, kernel_address::KernelAddressResponse,
+    ownership::ContractOwnerResponse, version::VersionResponse,
 };
 
 #[cw_serde]
@@ -105,6 +105,8 @@ pub enum QueryMsg {
     // Base queries
     #[returns(VersionResponse)]
     Version {},
+    #[returns(TypeResponse)]
+    Type {},
     #[returns(ContractOwnerResponse)]
     Owner {},
     #[returns(KernelAddressResponse)]

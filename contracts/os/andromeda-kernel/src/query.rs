@@ -48,11 +48,3 @@ pub fn recoveries(deps: Deps, addr: Addr) -> Result<Vec<Coin>, ContractError> {
         .may_load(deps.storage, &addr)?
         .unwrap_or_default())
 }
-
-pub fn version(deps: Deps) -> Result<VersionResponse, ContractError> {
-    ADOContract::default().query_version(deps)
-}
-
-pub fn owner(deps: Deps) -> Result<ContractOwnerResponse, ContractError> {
-    ADOContract::default().query_contract_owner(deps)
-}

@@ -2,7 +2,13 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Addr, Uint128};
 use cw20::Cw20ReceiveMsg;
 
-use crate::amp::AndrAddr;
+use crate::{
+    ado_base::{
+        ado_type::TypeResponse, kernel_address::KernelAddressResponse,
+        ownership::ContractOwnerResponse, version::VersionResponse,
+    },
+    amp::AndrAddr,
+};
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -66,6 +72,15 @@ pub enum QueryMsg {
     /// Returns a `Uint128` representing the current balance
     #[returns(Uint128)]
     Balance { asset: String, address: AndrAddr },
+    // Base queries
+    #[returns(VersionResponse)]
+    Version {},
+    #[returns(TypeResponse)]
+    Type {},
+    #[returns(ContractOwnerResponse)]
+    Owner {},
+    #[returns(KernelAddressResponse)]
+    KernelAddress {},
 }
 
 #[cfg(test)]

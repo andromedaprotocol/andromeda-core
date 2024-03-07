@@ -1,8 +1,10 @@
 use crate::state::BALANCES;
+use andromeda_std::ado_base::os_querriers::{ado_type, kernel_address, owner, version};
 use andromeda_std::ado_base::{AndromedaQuery, InstantiateMsg as BaseInstantiateMsg};
 use andromeda_std::ado_contract::ADOContract;
 use andromeda_std::amp::AndrAddr;
 
+use andromeda_std::common::encode_binary;
 use andromeda_std::error::{from_semver, ContractError};
 use andromeda_std::os::aos_querier::AOSQuerier;
 use andromeda_std::os::economics::{Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
@@ -424,11 +426,16 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(_deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
+pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::Balance { address, asset } => {
-            Ok(to_json_binary(&query_balance(_deps, address, asset)?)?)
+            Ok(to_json_binary(&query_balance(deps, address, asset)?)?)
         }
+        // Base queries
+        QueryMsg::Version {} => encode_binary(&version(deps)?),
+        QueryMsg::Type {} => encode_binary(&ado_type(deps)?),
+        QueryMsg::Owner {} => encode_binary(&owner(deps)?),
+        QueryMsg::KernelAddress {} => encode_binary(&kernel_address(deps)?),
     }
 }
 

@@ -2,7 +2,7 @@ use crate::state::{
     read_code_id, read_latest_code_id, store_code_id, ACTION_FEES, ADO_TYPE, CODE_ID,
     LATEST_VERSION, PUBLISHER,
 };
-use andromeda_std::ado_base::os_querriers::{kernel_address, owner, version};
+use andromeda_std::ado_base::os_querriers::{ado_type, kernel_address, owner, version};
 use andromeda_std::ado_base::InstantiateMsg as BaseInstantiateMsg;
 use andromeda_std::ado_contract::ADOContract;
 use andromeda_std::common::encode_binary;
@@ -319,6 +319,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractErr
         }
         // Base queries
         QueryMsg::Version {} => encode_binary(&version(deps)?),
+        QueryMsg::Type {} => encode_binary(&ado_type(deps)?),
         QueryMsg::Owner {} => encode_binary(&owner(deps)?),
         QueryMsg::KernelAddress {} => encode_binary(&kernel_address(deps)?),
     }

@@ -1,3 +1,4 @@
+use crate::ado_base::ado_type::TypeResponse;
 use crate::ado_base::ownership::ContractOwnerResponse;
 use crate::ado_base::version::VersionResponse;
 use crate::amp::messages::AMPMsg;
@@ -90,6 +91,8 @@ pub enum QueryMsg {
     // Base queries
     #[returns(VersionResponse)]
     Version {},
+    #[returns(TypeResponse)]
+    Type {},
     #[returns(ContractOwnerResponse)]
     Owner {},
 }

@@ -1,3 +1,4 @@
+use andromeda_std::ado_base::os_querriers::{ado_type, owner, version};
 use andromeda_std::ado_base::InstantiateMsg as BaseInstantiateMsg;
 use andromeda_std::ado_contract::ADOContract;
 
@@ -170,7 +171,8 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractErr
         QueryMsg::ChannelInfo { chain } => encode_binary(&query::channel_info(deps, chain)?),
         QueryMsg::Recoveries { addr } => encode_binary(&query::recoveries(deps, addr)?),
         // Base queries
-        QueryMsg::Version {} => encode_binary(&query::version(deps)?),
-        QueryMsg::Owner {} => encode_binary(&query::owner(deps)?),
+        QueryMsg::Version {} => encode_binary(&version(deps)?),
+        QueryMsg::Type {} => encode_binary(&ado_type(deps)?),
+        QueryMsg::Owner {} => encode_binary(&owner(deps)?),
     }
 }
