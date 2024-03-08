@@ -15,11 +15,12 @@ impl MockAddressList {
         code_id: u64,
         sender: Addr,
         app: &mut App,
-        is_inclusive: bool,
         kernel_address: impl Into<String>,
         owner: Option<String>,
+        actor: Addr,
+        permission: Permission,
     ) -> MockAddressList {
-        let msg = mock_address_list_instantiate_msg(is_inclusive, kernel_address, owner);
+        let msg = mock_address_list_instantiate_msg(kernel_address, owner, actor, permission);
         let addr = app
             .instantiate_contract(
                 code_id,
@@ -31,15 +32,6 @@ impl MockAddressList {
             )
             .unwrap();
         MockAddressList(Addr::unchecked(addr))
-    }
-
-    pub fn execute_add_address(
-        &self,
-        app: &mut App,
-        sender: Addr,
-        address: impl Into<String>,
-    ) -> ExecuteResult {
-        self.execute(app, &mock_add_address_msg(address), sender, &[])
     }
 
     pub fn execute_actor_permission(
@@ -56,10 +48,6 @@ impl MockAddressList {
             &[],
         )
     }
-
-    pub fn query_includes_address(&self, app: &App, address: impl Into<String>) -> bool {
-        self.query::<bool>(app, mock_includes_address_msg(address))
-    }
 }
 
 pub fn mock_andromeda_address_list() -> Box<dyn Contract<Empty>> {
@@ -68,29 +56,19 @@ pub fn mock_andromeda_address_list() -> Box<dyn Contract<Empty>> {
 }
 
 pub fn mock_address_list_instantiate_msg(
-    is_inclusive: bool,
     kernel_address: impl Into<String>,
     owner: Option<String>,
+    actor: Addr,
+    permission: Permission,
 ) -> InstantiateMsg {
     InstantiateMsg {
-        is_inclusive,
         kernel_address: kernel_address.into(),
         owner,
-    }
-}
-
-pub fn mock_add_address_msg(address: impl Into<String>) -> ExecuteMsg {
-    ExecuteMsg::AddAddress {
-        address: address.into(),
+        actor,
+        permission,
     }
 }
 
 pub fn mock_add_actor_permission_msg(actor: Addr, permission: Permission) -> ExecuteMsg {
     ExecuteMsg::AddActorPermission { actor, permission }
-}
-
-pub fn mock_includes_address_msg(address: impl Into<String>) -> QueryMsg {
-    QueryMsg::IncludesAddress {
-        address: address.into(),
-    }
 }

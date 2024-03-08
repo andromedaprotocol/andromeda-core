@@ -96,9 +96,11 @@ fn test_marketplace_app() {
         None,
     );
     let rates_component = AppComponent::new("2", "rates", to_json_binary(&rates_init_msg).unwrap());
-
+    // Instantiate the address list contract, we initially blacklist the actor.
+    let actor = Addr::unchecked("actor");
+    let permission = Permission::blacklisted(None);
     let address_list_init_msg =
-        mock_address_list_instantiate_msg(true, andr.kernel.addr().to_string(), None);
+        mock_address_list_instantiate_msg(andr.kernel.addr().to_string(), None, actor, permission);
     let address_list_component = AppComponent::new(
         "3",
         "address-list",
@@ -188,25 +190,11 @@ fn test_marketplace_app() {
         .execute_set_rate(&mut router, owner.clone(), "marketplace", external_rate)
         .unwrap();
 
-    // Whitelist
-    address_list
-        .execute_add_address(&mut router, owner.clone(), cw721.addr())
-        .unwrap();
-    address_list
-        .execute_add_address(&mut router, owner.clone(), buyer.to_string())
-        .unwrap();
-
-    // Add permission to address list contract
-    let actor = Addr::unchecked("actor");
-    let action = "SendNft".to_string();
-    let permission = Permission::blacklisted(None);
-    address_list
-        .execute_actor_permission(&mut router, owner.clone(), actor, permission)
-        .unwrap();
-
     // Add contract permission to cw721 contract. The address is that of the address_list.
     let contract_permission = Permission::contract(address_list.addr().to_owned());
     let actor = AndrAddr::from_string("actor");
+    let action = "SendNft".to_string();
+
     cw721
         .execute_add_actor_permission(
             &mut router,
@@ -221,6 +209,7 @@ fn test_marketplace_app() {
 
     // Send actor Token to Marketplace using blacklisted actor.
     // If it wasn't for the blacklist permission, this wouldn't return an error.
+    // The blacklist was set during instantiation
     let err: ContractError = cw721
         .execute_send_nft(
             &mut router,
