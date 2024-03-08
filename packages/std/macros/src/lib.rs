@@ -125,7 +125,6 @@ fn andr_exec_derive(input: DeriveInput) -> DeriveInput {
 /// Includes:
 /// 1. Kernel Address for interacting with aOS
 /// 2. Owner of the ADO (optional, assumed to be sender otherwise)
-/// 3. Modules (optional, requires `modules` feature)
 #[proc_macro_attribute]
 pub fn andr_instantiate(_args: TokenStream, input: TokenStream) -> TokenStream {
     let mut ast = parse_macro_input!(input as DeriveInput);
