@@ -2,7 +2,8 @@ use crate::contract::{execute, instantiate, query};
 use crate::state::PERMISSIONS;
 use crate::testing::mock_querier::{mock_dependencies_custom, MOCK_KERNEL_CONTRACT};
 use andromeda_modules::address_list::{
-    ActorPermissionResponse, ExecuteMsg, IncludesActorResponse, InstantiateMsg, QueryMsg,
+    ActorPermission, ActorPermissionResponse, ExecuteMsg, IncludesActorResponse, InstantiateMsg,
+    QueryMsg,
 };
 use andromeda_std::ado_base::permissioning::Permission;
 use andromeda_std::ado_contract::ADOContract;
@@ -23,8 +24,10 @@ fn init(deps: DepsMut, info: MessageInfo) {
         InstantiateMsg {
             kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
             owner: None,
-            actor: Addr::unchecked("actor"),
-            permission: Permission::whitelisted(None),
+            actor_permission: Some(ActorPermission {
+                actor: Addr::unchecked("actor"),
+                permission: Permission::whitelisted(None),
+            }),
         },
     )
     .unwrap();
@@ -50,8 +53,10 @@ fn test_instantiate_contract_permission() {
         InstantiateMsg {
             kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
             owner: None,
-            actor: Addr::unchecked("actor"),
-            permission: Permission::contract(Addr::unchecked("contract")),
+            actor_permission: Some(ActorPermission {
+                actor: Addr::unchecked("actor"),
+                permission: Permission::contract(Addr::unchecked("contract")),
+            }),
         },
     )
     .unwrap_err();

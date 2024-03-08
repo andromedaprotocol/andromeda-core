@@ -28,16 +28,23 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    let verified_address: Addr = deps.api.addr_validate(msg.actor.as_str())?;
-    // Contract permissions aren't allowed in the address list contract
-    ensure!(
-        !matches!(&msg.permission, Permission::Contract(_)),
-        ContractError::InvalidPermission {
-            msg: "Contract permissions aren't allowed in the address list contract".to_string()
-        }
-    );
+    // If the user provided an actor and permission, save them.
+    if let Some(actor_permission) = msg.actor_permission {
+        let verified_address: Addr = deps.api.addr_validate(actor_permission.actor.as_str())?;
+        // Permissions of type "Contract" aren't allowed in the address list contract
+        ensure!(
+            !matches!(&actor_permission.permission, Permission::Contract(_)),
+            ContractError::InvalidPermission {
+                msg: "Contract permissions aren't allowed in the address list contract".to_string()
+            }
+        );
+        add_actor_permission(
+            deps.storage,
+            &verified_address,
+            &actor_permission.permission,
+        )?;
+    }
 
-    add_actor_permission(deps.storage, &verified_address, &msg.permission)?;
     let inst_resp = ADOContract::default().instantiate(
         deps.storage,
         env,

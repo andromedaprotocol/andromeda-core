@@ -1,7 +1,7 @@
 #![cfg(all(not(target_arch = "wasm32"), feature = "testing"))]
 
 use crate::contract::{execute, instantiate, query};
-use andromeda_modules::address_list::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use andromeda_modules::address_list::{ActorPermission, ExecuteMsg, InstantiateMsg, QueryMsg};
 use andromeda_std::ado_base::permissioning::Permission;
 use andromeda_testing::{mock_ado, mock_contract::ExecuteResult, MockADO, MockContract};
 use cosmwasm_std::{Addr, Empty};
@@ -17,10 +17,9 @@ impl MockAddressList {
         app: &mut App,
         kernel_address: impl Into<String>,
         owner: Option<String>,
-        actor: Addr,
-        permission: Permission,
+        actor_permission: Option<ActorPermission>,
     ) -> MockAddressList {
-        let msg = mock_address_list_instantiate_msg(kernel_address, owner, actor, permission);
+        let msg = mock_address_list_instantiate_msg(kernel_address, owner, actor_permission);
         let addr = app
             .instantiate_contract(
                 code_id,
@@ -58,14 +57,12 @@ pub fn mock_andromeda_address_list() -> Box<dyn Contract<Empty>> {
 pub fn mock_address_list_instantiate_msg(
     kernel_address: impl Into<String>,
     owner: Option<String>,
-    actor: Addr,
-    permission: Permission,
+    actor_permission: Option<ActorPermission>,
 ) -> InstantiateMsg {
     InstantiateMsg {
         kernel_address: kernel_address.into(),
         owner,
-        actor,
-        permission,
+        actor_permission,
     }
 }
 

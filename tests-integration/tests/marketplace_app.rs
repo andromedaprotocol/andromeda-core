@@ -11,6 +11,7 @@ use andromeda_marketplace::mock::{
     mock_receive_packet, mock_start_sale, MockMarketplace,
 };
 
+use andromeda_modules::address_list::ActorPermission;
 use andromeda_non_fungible_tokens::cw721::TokenExtension;
 use andromeda_rates::mock::{mock_andromeda_rates, mock_rates_instantiate_msg, MockRates};
 use andromeda_std::ado_base::permissioning::Permission;
@@ -99,8 +100,12 @@ fn test_marketplace_app() {
     // Instantiate the address list contract, we initially blacklist the actor.
     let actor = Addr::unchecked("actor");
     let permission = Permission::blacklisted(None);
-    let address_list_init_msg =
-        mock_address_list_instantiate_msg(andr.kernel.addr().to_string(), None, actor, permission);
+    let actor_permission = ActorPermission { actor, permission };
+    let address_list_init_msg = mock_address_list_instantiate_msg(
+        andr.kernel.addr().to_string(),
+        None,
+        Some(actor_permission),
+    );
     let address_list_component = AppComponent::new(
         "3",
         "address-list",

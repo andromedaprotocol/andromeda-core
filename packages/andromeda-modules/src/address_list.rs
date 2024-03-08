@@ -5,6 +5,11 @@ use cosmwasm_std::Addr;
 #[andr_instantiate]
 #[cw_serde]
 pub struct InstantiateMsg {
+    pub actor_permission: Option<ActorPermission>,
+}
+// Struct used to bundle actor and permission
+#[cw_serde]
+pub struct ActorPermission {
     pub actor: Addr,
     pub permission: Permission,
 }
