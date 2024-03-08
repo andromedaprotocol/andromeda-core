@@ -5,7 +5,6 @@ pub mod hooks;
 pub mod kernel_address;
 pub mod modules;
 pub mod operators;
-pub mod os_querrier;
 pub mod ownership;
 pub mod permissioning;
 pub mod version;
