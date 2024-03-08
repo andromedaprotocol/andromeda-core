@@ -43,6 +43,9 @@ impl<'a> ADOContract<'a> {
                     encode_binary(&self.query_kernel_address(deps)?)
                 }
                 AndromedaQuery::Version {} => encode_binary(&self.query_version(deps)?),
+                AndromedaQuery::OwnershipRequest {} => {
+                    encode_binary(&self.ownership_request(deps.storage)?)
+                }
                 #[cfg(feature = "modules")]
                 AndromedaQuery::Module { id } => encode_binary(&self.query_module(deps, id)?),
                 #[cfg(feature = "modules")]

@@ -104,6 +104,8 @@ pub enum AndromedaQuery {
     Version {},
     #[returns(Option<::cosmwasm_std::Addr>)]
     AppContract {},
+    #[returns(Option<::cosmwasm_std::Addr>)]
+    OwnershipRequest {},
     #[cfg(feature = "modules")]
     #[returns(Module)]
     Module { id: Uint64 },
