@@ -9,6 +9,7 @@ use andromeda_non_fungible_tokens::auction::{
 use andromeda_std::{
     ado_base::InstantiateMsg as BaseInstantiateMsg,
     common::{
+        call_action::get_action_name,
         encode_binary,
         expiration::{expiration_from_milliseconds, MILLISECONDS_TO_NANOSECONDS_RATIO},
         rates::get_tax_amount,
@@ -76,6 +77,7 @@ pub fn execute(
 }
 
 pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+    let action = get_action_name(CONTRACT_NAME, msg.as_ref());
     match msg {
         ExecuteMsg::ReceiveNft(msg) => handle_receive_cw721(ctx, msg),
         ExecuteMsg::UpdateAuction {
@@ -107,7 +109,7 @@ pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
         ExecuteMsg::Claim {
             token_id,
             token_address,
-        } => execute_claim(ctx, token_id, token_address),
+        } => execute_claim(ctx, token_id, token_address, action),
         _ => ADOContract::default().execute(ctx, msg),
     }
 }
@@ -424,6 +426,7 @@ fn execute_claim(
     ctx: ExecuteContext,
     token_id: String,
     token_address: String,
+    action: String,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
         deps, info, env, ..
@@ -470,7 +473,8 @@ fn execute_claim(
     }
 
     // Calculate the funds to be received after tax
-    let after_tax_payment = purchase_token(deps.as_ref(), &info, token_auction_state.clone())?;
+    let after_tax_payment =
+        purchase_token(deps.as_ref(), &info, token_auction_state.clone(), action)?;
     let mut resp = Response::new();
     match after_tax_payment {
         Some(after_tax_payment) => resp = resp.add_submessages(after_tax_payment.1),
@@ -507,12 +511,13 @@ fn purchase_token(
     deps: Deps,
     _info: &MessageInfo,
     state: TokenAuctionState,
+    action: String,
 ) -> Result<Option<(Coin, Vec<SubMsg>)>, ContractError> {
     let total_cost = Coin::new(state.high_bidder_amount.u128(), state.coin_denom.clone());
 
     let transfer_response = ADOContract::default().query_deducted_funds(
         deps,
-        "auction".to_string(),
+        action,
         Funds::Native(total_cost.clone()),
     )?;
     match transfer_response {

@@ -2,7 +2,11 @@ use andromeda_fungible_tokens::cw20::{ExecuteMsg, InstantiateMsg, MigrateMsg, Qu
 use andromeda_std::{
     ado_base::{AndromedaMsg, AndromedaQuery, InstantiateMsg as BaseInstantiateMsg},
     ado_contract::ADOContract,
-    common::{call_action::call_action, context::ExecuteContext, encode_binary, Funds},
+    common::{
+        call_action::{call_action, get_action_name},
+        context::ExecuteContext,
+        encode_binary, Funds,
+    },
     error::{from_semver, ContractError},
 };
 use cosmwasm_std::{
@@ -72,6 +76,8 @@ pub fn execute(
 }
 
 pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+    let action = get_action_name(CONTRACT_NAME, msg.as_ref());
+
     call_action(
         &mut ctx.deps,
         &ctx.info,
@@ -80,13 +86,15 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
         msg.as_ref(),
     )?;
     match msg {
-        ExecuteMsg::Transfer { recipient, amount } => execute_transfer(ctx, recipient, amount),
+        ExecuteMsg::Transfer { recipient, amount } => {
+            execute_transfer(ctx, recipient, amount, action)
+        }
         ExecuteMsg::Burn { amount } => execute_burn(ctx, amount),
         ExecuteMsg::Send {
             contract,
             amount,
             msg,
-        } => execute_send(ctx, contract, amount, msg),
+        } => execute_send(ctx, contract, amount, msg, action),
         ExecuteMsg::Mint { recipient, amount } => execute_mint(ctx, recipient, amount),
         _ => {
             let serialized = encode_binary(&msg)?;
@@ -102,6 +110,7 @@ fn execute_transfer(
     ctx: ExecuteContext,
     recipient: String,
     amount: Uint128,
+    action: String,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
         deps, info, env, ..
@@ -109,7 +118,7 @@ fn execute_transfer(
 
     let transfer_response = ADOContract::default().query_deducted_funds(
         deps.as_ref(),
-        "cw20",
+        action,
         Funds::Cw20(Cw20Coin {
             address: env.contract.address.to_string(),
             amount,
@@ -177,6 +186,7 @@ fn execute_send(
     contract: String,
     amount: Uint128,
     msg: Binary,
+    action: String,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
         deps, info, env, ..
@@ -184,7 +194,7 @@ fn execute_send(
 
     let rates_response = ADOContract::default().query_deducted_funds(
         deps.as_ref(),
-        "cw20",
+        action,
         Funds::Cw20(Cw20Coin {
             address: env.contract.address.to_string(),
             amount,

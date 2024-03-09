@@ -98,7 +98,7 @@ fn test_transfer() {
 
     // Set rates
     ADOContract::default()
-        .set_rates(deps.as_mut().storage, "cw20", rate)
+        .set_rates(deps.as_mut().storage, "Cw20Transfer", rate)
         .unwrap();
 
     // The expected events for the royalty
@@ -201,7 +201,7 @@ fn test_send() {
 
     // Set rates
     ADOContract::default()
-        .set_rates(deps.as_mut().storage, "cw20", rate)
+        .set_rates(deps.as_mut().storage, "Cw20Send", rate)
         .unwrap();
 
     let msg = ExecuteMsg::Send {

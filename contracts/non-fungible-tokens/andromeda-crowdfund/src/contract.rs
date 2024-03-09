@@ -10,7 +10,7 @@ use andromeda_non_fungible_tokens::{
 };
 use andromeda_std::{
     ado_contract::ADOContract,
-    common::{context::ExecuteContext, merge_sub_msgs},
+    common::{call_action::get_action_name, context::ExecuteContext, merge_sub_msgs},
 };
 use andromeda_std::{
     amp::{messages::AMPPkt, recipient::Recipient},
@@ -106,6 +106,7 @@ pub fn execute(
 
 pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     let _contract = ADOContract::default();
+    let action = get_action_name(CONTRACT_NAME, msg.as_ref());
 
     match msg {
         ExecuteMsg::Mint(mint_msgs) => execute_mint(ctx, mint_msgs),
@@ -123,8 +124,12 @@ pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
             max_amount_per_wallet,
             recipient,
         ),
-        ExecuteMsg::Purchase { number_of_tokens } => execute_purchase(ctx, number_of_tokens),
-        ExecuteMsg::PurchaseByTokenId { token_id } => execute_purchase_by_token_id(ctx, token_id),
+        ExecuteMsg::Purchase { number_of_tokens } => {
+            execute_purchase(ctx, number_of_tokens, action)
+        }
+        ExecuteMsg::PurchaseByTokenId { token_id } => {
+            execute_purchase_by_token_id(ctx, token_id, action)
+        }
         ExecuteMsg::ClaimRefund {} => execute_claim_refund(ctx),
         ExecuteMsg::EndSale { limit } => execute_end_sale(ctx, limit),
         _ => ADOContract::default().execute(ctx, msg),
@@ -283,6 +288,7 @@ fn execute_start_sale(
 fn execute_purchase_by_token_id(
     ctx: ExecuteContext,
     token_id: String,
+    action: String,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
         mut deps,
@@ -322,6 +328,7 @@ fn execute_purchase_by_token_id(
         &info,
         &mut state,
         &mut purchases,
+        action,
     )?;
 
     STATE.save(deps.storage, &state)?;
@@ -335,6 +342,7 @@ fn execute_purchase_by_token_id(
 fn execute_purchase(
     ctx: ExecuteContext,
     number_of_tokens: Option<u32>,
+    action: String,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
         mut deps,
@@ -371,8 +379,14 @@ fn execute_purchase(
 
     let number_of_tokens_purchased = token_ids.len();
 
-    let required_payment =
-        purchase_tokens(&mut deps, token_ids, &info, &mut state, &mut purchases)?;
+    let required_payment = purchase_tokens(
+        &mut deps,
+        token_ids,
+        &info,
+        &mut state,
+        &mut purchases,
+        action,
+    )?;
 
     PURCHASES.save(deps.storage, &sender, &purchases)?;
     STATE.save(deps.storage, &state)?;
@@ -410,6 +424,7 @@ fn purchase_tokens(
     info: &MessageInfo,
     state: &mut State,
     purchases: &mut Vec<Purchase>,
+    action: String,
 ) -> Result<Coin, ContractError> {
     // CHECK :: There are any tokens left to purchase.
     ensure!(!token_ids.is_empty(), ContractError::AllTokensPurchased {});
@@ -431,7 +446,7 @@ fn purchase_tokens(
     // This is the same for each token, so we only need to do it once.
     let transfer_response = ADOContract::default().query_deducted_funds(
         deps.as_ref(),
-        "crowdfund",
+        action,
         Funds::Native(state.price.clone()),
     )?;
     let mut current_number = NUMBER_OF_TOKENS_AVAILABLE.load(deps.storage)?;

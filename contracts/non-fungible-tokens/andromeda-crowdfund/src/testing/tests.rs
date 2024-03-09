@@ -712,7 +712,7 @@ fn test_purchase_not_enough_for_tax() {
 
     // Set rates
     ADOContract::default()
-        .set_rates(deps.as_mut().storage, "crowdfund", rate)
+        .set_rates(deps.as_mut().storage, "CrowdfundPurchase", rate)
         .unwrap();
 
     let msg = ExecuteMsg::Purchase {
@@ -730,6 +730,21 @@ fn test_purchase_not_enough_for_tax() {
         .save(deps.as_mut().storage, &Uint128::new(1))
         .unwrap();
 
+    let rate = Rate::Local(LocalRate {
+        rate_type: LocalRateType::Additive,
+        recipients: vec![Recipient {
+            address: AndrAddr::from_string("owner".to_string()),
+            msg: None,
+            ibc_recovery_address: None,
+        }],
+        value: LocalRateValue::Flat(coin(10_u128, "uusd")),
+        description: None,
+    });
+
+    // Set rates for purchase by token id
+    ADOContract::default()
+        .set_rates(deps.as_mut().storage, "CrowdfundPurchaseByTokenId", rate)
+        .unwrap();
     let msg = ExecuteMsg::PurchaseByTokenId {
         token_id: MOCK_TOKENS_FOR_SALE[0].to_owned(),
     };
@@ -762,7 +777,22 @@ fn test_purchase_by_token_id_not_available() {
         .unwrap();
 
     let info = mock_info("sender", &coins(150, "uusd"));
+    // Set rates for purchase by token id
+    let rate = Rate::Local(LocalRate {
+        rate_type: LocalRateType::Additive,
+        recipients: vec![Recipient {
+            address: AndrAddr::from_string("owner".to_string()),
+            msg: None,
+            ibc_recovery_address: None,
+        }],
+        value: LocalRateValue::Flat(coin(10_u128, "uusd")),
+        description: None,
+    });
 
+    // Set rates
+    ADOContract::default()
+        .set_rates(deps.as_mut().storage, "CrowdfundPurchaseByTokenId", rate)
+        .unwrap();
     let msg = ExecuteMsg::PurchaseByTokenId {
         token_id: MOCK_TOKENS_FOR_SALE[1].to_owned(),
     };
@@ -809,7 +839,7 @@ fn test_purchase_by_token_id() {
 
     // Set rates
     ADOContract::default()
-        .set_rates(deps.as_mut().storage, "crowdfund", rate)
+        .set_rates(deps.as_mut().storage, "CrowdfundPurchaseByTokenId", rate)
         .unwrap();
 
     // Purchase a token.
@@ -907,7 +937,7 @@ fn test_multiple_purchases() {
     });
 
     ADOContract::default()
-        .set_rates(deps.as_mut().storage, "crowdfund", rate)
+        .set_rates(deps.as_mut().storage, "CrowdfundPurchase", rate)
         .unwrap();
 
     let mut state = State {
@@ -1097,7 +1127,7 @@ fn test_purchase_more_than_allowed_per_wallet() {
 
     // Set rates
     ADOContract::default()
-        .set_rates(deps.as_mut().storage, "crowdfund", rate)
+        .set_rates(deps.as_mut().storage, "CrowdfundPurchase", rate)
         .unwrap();
 
     let info = mock_info("sender", &coins(600, "uusd"));
@@ -1189,7 +1219,7 @@ fn test_integration_conditions_not_met() {
     });
 
     ADOContract::default()
-        .set_rates(deps.as_mut().storage, "crowdfund", rate)
+        .set_rates(deps.as_mut().storage, "CrowdfundPurchase", rate)
         .unwrap();
 
     let msg = ExecuteMsg::StartSale {
@@ -1375,7 +1405,7 @@ fn test_integration_conditions_met() {
     });
 
     ADOContract::default()
-        .set_rates(deps.as_mut().storage, "crowdfund", rate)
+        .set_rates(deps.as_mut().storage, "CrowdfundPurchase", rate)
         .unwrap();
 
     // Mint all tokens.

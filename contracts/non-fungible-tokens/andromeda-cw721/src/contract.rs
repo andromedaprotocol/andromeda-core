@@ -1,4 +1,4 @@
-use andromeda_std::common::call_action::call_action;
+use andromeda_std::common::call_action::{call_action, get_action_name};
 #[cfg(not(feature = "imported"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
@@ -96,6 +96,7 @@ pub fn execute(
 
 fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
+    let action = get_action_name(CONTRACT_NAME, msg.as_ref());
     // checks permissioning, will conduct other checks in the future
     call_action(
         &mut ctx.deps,
@@ -138,7 +139,7 @@ fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
         ExecuteMsg::TransferNft {
             recipient,
             token_id,
-        } => execute_transfer(ctx, recipient, token_id),
+        } => execute_transfer(ctx, recipient, token_id, &action),
         ExecuteMsg::TransferAgreement {
             token_id,
             agreement,
@@ -270,6 +271,7 @@ fn execute_transfer(
     env: ExecuteContext,
     recipient: String,
     token_id: String,
+    action: &str,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
         deps, info, env, ..
@@ -290,10 +292,9 @@ fn execute_transfer(
         &TRANSFER_AGREEMENTS.may_load(deps.storage, &token_id)?
     {
         let agreement_amount = get_transfer_agreement_amount(deps.api, &deps.querier, agreement)?;
-
         let transfer_response = base_contract.query_deducted_funds(
             deps.as_ref(),
-            "cw721",
+            action,
             Funds::Native(agreement_amount.clone()),
         )?;
 

@@ -10,6 +10,7 @@ use andromeda_non_fungible_tokens::marketplace::{
 };
 use andromeda_std::ado_contract::ADOContract;
 
+use andromeda_std::common::call_action::get_action_name;
 use andromeda_std::common::context::ExecuteContext;
 use andromeda_std::common::expiration::{
     expiration_from_milliseconds, MILLISECONDS_TO_NANOSECONDS_RATIO,
@@ -82,6 +83,8 @@ pub fn execute(
 }
 
 pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+    let action = get_action_name(CONTRACT_NAME, msg.as_ref());
+
     match msg {
         ExecuteMsg::ReceiveNft(msg) => handle_receive_cw721(ctx, msg),
         ExecuteMsg::UpdateSale {
@@ -93,7 +96,7 @@ pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
         ExecuteMsg::Buy {
             token_id,
             token_address,
-        } => execute_buy(ctx, token_id, token_address),
+        } => execute_buy(ctx, token_id, token_address, action),
         ExecuteMsg::CancelSale {
             token_id,
             token_address,
@@ -246,6 +249,7 @@ fn execute_buy(
     ctx: ExecuteContext,
     token_id: String,
     token_address: String,
+    action: String,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
         mut deps,
@@ -326,7 +330,7 @@ fn execute_buy(
     TOKEN_SALE_STATE.save(deps.storage, key, &token_sale_state)?;
 
     // Calculate the funds to be received after tax
-    let after_tax_payment = purchase_token(&mut deps, &info, token_sale_state.clone())?;
+    let after_tax_payment = purchase_token(&mut deps, &info, token_sale_state.clone(), action)?;
 
     let mut resp = Response::new();
 
@@ -422,6 +426,7 @@ fn purchase_token(
     deps: &mut DepsMut,
     info: &MessageInfo,
     state: TokenSaleState,
+    action: String,
 ) -> Result<Option<(Coin, Vec<SubMsg>)>, ContractError> {
     let total_cost = Coin::new(state.price.u128(), state.coin_denom.clone());
 
@@ -429,7 +434,7 @@ fn purchase_token(
 
     let transfer_response = ADOContract::default().query_deducted_funds(
         deps.as_ref(),
-        "marketplace",
+        action,
         Funds::Native(total_cost),
     )?;
     match transfer_response {

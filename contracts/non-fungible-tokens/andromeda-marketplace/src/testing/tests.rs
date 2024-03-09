@@ -467,7 +467,7 @@ fn test_execute_buy_with_tax_and_royalty_insufficient_funds() {
 
     // Set rates
     ADOContract::default()
-        .set_rates(deps.as_mut().storage, "marketplace", rate)
+        .set_rates(deps.as_mut().storage, "MarketplaceBuy", rate)
         .unwrap();
 
     let msg = ExecuteMsg::Buy {
@@ -509,7 +509,7 @@ fn test_execute_buy_with_tax_and_royalty_works() {
 
     // Set rates
     ADOContract::default()
-        .set_rates(deps.as_mut().storage, "marketplace", rate)
+        .set_rates(deps.as_mut().storage, "MarketplaceBuy", rate)
         .unwrap();
 
     let info = mock_info("someone", &coins(150, "uusd".to_string()));

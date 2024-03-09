@@ -91,7 +91,7 @@ fn test_marketplace_app() {
         description: None,
     };
     let rates_init_msg = mock_rates_instantiate_msg(
-        "marketplace".to_string(),
+        "MarketplaceBuy".to_string(),
         rate,
         andr.kernel.addr().to_string(),
         None,
@@ -183,7 +183,12 @@ fn test_marketplace_app() {
         description: None,
     };
     marketplace
-        .execute_set_rate(&mut router, owner.clone(), "marketplace", Rate::Local(rate))
+        .execute_set_rate(
+            &mut router,
+            owner.clone(),
+            "MarketplaceBuy",
+            Rate::Local(rate),
+        )
         .unwrap();
 
     // Implement an external rate to the marketplace ADO
@@ -192,7 +197,7 @@ fn test_marketplace_app() {
 
     //NOTE: Comment out the 3 lines below to test Local Rates
     marketplace
-        .execute_set_rate(&mut router, owner.clone(), "marketplace", external_rate)
+        .execute_set_rate(&mut router, owner.clone(), "MarketplaceBuy", external_rate)
         .unwrap();
 
     // Add contract permission to cw721 contract. The address is that of the address_list.
