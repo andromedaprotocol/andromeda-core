@@ -3,6 +3,7 @@
 use andromeda_app::app::AppComponent;
 use andromeda_app_contract::mock::{mock_andromeda_app, MockApp};
 
+use andromeda_std::amp::AndrAddr;
 use andromeda_validator_staking::mock::{
     mock_andromeda_validator_staking, mock_validator_staking_instantiate_msg, MockValidatorStaking,
 };
@@ -72,6 +73,7 @@ fn mock_andromeda(app: &mut App, admin_address: Addr) -> MockAndromeda {
 #[test]
 fn test_validator_stake() {
     let owner = Addr::unchecked("owner");
+    let recipient = AndrAddr::from_string(owner.to_string());
     let validator_1 = Addr::unchecked("validator_1");
 
     let mut router = mock_app();
@@ -131,7 +133,7 @@ fn test_validator_stake() {
             &mut router,
             owner.clone(),
             Some(validator_1.clone()),
-            Some(owner.clone()),
+            Some(recipient.clone()),
         )
         .unwrap_err();
     let err = err.root_cause().downcast_ref::<ContractError>().unwrap();
@@ -154,7 +156,7 @@ fn test_validator_stake() {
             &mut router,
             Addr::unchecked("some_address"),
             Some(validator_1.clone()),
-            Some(owner.clone()),
+            Some(AndrAddr::from_string(owner.clone())),
         )
         .unwrap_err();
     let err = err.root_cause().downcast_ref::<ContractError>().unwrap();
@@ -167,7 +169,7 @@ fn test_validator_stake() {
             &mut router,
             owner.clone(),
             Some(validator_1.clone()),
-            Some(Addr::unchecked("some_address")),
+            Some(AndrAddr::from_string("some_address")),
         )
         .unwrap_err();
     let err = err.root_cause().downcast_ref::<ContractError>().unwrap();
@@ -179,7 +181,7 @@ fn test_validator_stake() {
             &mut router,
             owner.clone(),
             Some(validator_1),
-            Some(owner.clone()),
+            Some(recipient),
         )
         .unwrap();
 
