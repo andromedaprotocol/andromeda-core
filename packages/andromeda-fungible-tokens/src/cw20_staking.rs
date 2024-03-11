@@ -103,8 +103,7 @@ impl RewardTokenUnchecked {
         block_info: &BlockInfo,
         api: &dyn Api,
     ) -> Result<RewardToken, ContractError> {
-        //TODO replace unwrap() with ? once cw-asset is integrated in error.rs
-        let checked_asset_info = self.asset_info.check(api, None).unwrap();
+        let checked_asset_info = self.asset_info.check(api, None)?;
         let reward_type = match self.allocation_config {
             None => RewardType::NonAllocated {
                 previous_reward_balance: Uint128::zero(),
