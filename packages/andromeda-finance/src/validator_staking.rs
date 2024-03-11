@@ -1,4 +1,4 @@
-use andromeda_std::{andr_exec, andr_instantiate, andr_query, error::ContractError};
+use andromeda_std::{amp::AndrAddr, andr_exec, andr_instantiate, andr_query, error::ContractError};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Addr, DepsMut, FullDelegation};
 
@@ -19,7 +19,7 @@ pub enum ExecuteMsg {
     },
     Claim {
         validator: Option<Addr>,
-        recipient: Option<Addr>,
+        recipient: Option<AndrAddr>,
     },
 }
 

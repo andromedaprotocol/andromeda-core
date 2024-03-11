@@ -10,6 +10,7 @@ use andromeda_finance::validator_staking::{is_validator, ExecuteMsg, Instantiate
 use andromeda_std::{
     ado_base::InstantiateMsg as BaseInstantiateMsg,
     ado_contract::ADOContract,
+    amp::AndrAddr,
     common::{context::ExecuteContext, encode_binary},
     error::ContractError,
 };
@@ -55,12 +56,22 @@ pub fn execute(
     let ctx = ExecuteContext::new(deps, info, env);
 
     match msg {
+        ExecuteMsg::AMPReceive(pkt) => {
+            ADOContract::default().execute_amp_receive(ctx, pkt, handle_execute)
+        }
+        _ => handle_execute(ctx, msg),
+    }
+}
+
+pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+    match msg {
         ExecuteMsg::Stake { validator } => execute_stake(ctx, validator),
         ExecuteMsg::Unstake { validator } => execute_unstake(ctx, validator),
         ExecuteMsg::Claim {
             validator,
             recipient,
         } => execute_claim(ctx, validator, recipient),
+
         _ => ADOContract::default().execute(ctx, msg),
     }
 }
@@ -157,7 +168,7 @@ fn execute_unstake(
 fn execute_claim(
     ctx: ExecuteContext,
     validator: Option<Addr>,
-    recipient: Option<Addr>,
+    recipient: Option<AndrAddr>,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
         deps, info, env, ..
@@ -174,7 +185,12 @@ fn execute_claim(
 
     // Check if the validator is valid before unstaking
     is_validator(&deps, &validator)?;
-    let recipient = recipient.unwrap_or(info.sender);
+
+    let recipient = if let Some(recipient) = recipient {
+        recipient.get_raw_address(&deps.as_ref())?
+    } else {
+        info.sender
+    };
 
     // Ensure recipient is the contract owner
     ensure!(
