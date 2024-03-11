@@ -3,7 +3,9 @@ use crate::{
     testing::mock_querier::{mock_dependencies_custom, DEFAULT_VALIDATOR, VALID_VALIDATOR},
 };
 
-use andromeda_std::{error::ContractError, testing::mock_querier::MOCK_KERNEL_CONTRACT};
+use andromeda_std::{
+    amp::AndrAddr, error::ContractError, testing::mock_querier::MOCK_KERNEL_CONTRACT,
+};
 use cosmwasm_std::{
     coin,
     testing::{mock_env, mock_info},
@@ -122,4 +124,62 @@ fn test_stake_with_invalid_validator() {
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
 
     assert_eq!(res, ContractError::InvalidValidator {});
+}
+
+#[test]
+fn test_unauthorized_unstake() {
+    let mut deps = mock_dependencies_custom();
+    let default_validator = Addr::unchecked(DEFAULT_VALIDATOR);
+    let valid_validator = Addr::unchecked(VALID_VALIDATOR);
+    init(deps.as_mut(), default_validator).unwrap();
+
+    let msg = ExecuteMsg::Stake {
+        validator: Some(valid_validator.clone()),
+    };
+
+    let info = mock_info(OWNER, &[coin(100, "uandr")]);
+
+    execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    let msg = ExecuteMsg::Unstake {
+        validator: Some(valid_validator),
+    };
+
+    let info = mock_info("other", &[coin(100, "uandr")]);
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
+    assert_eq!(res, ContractError::Unauthorized {});
+}
+
+#[test]
+fn test_unauthorized_claim() {
+    let mut deps = mock_dependencies_custom();
+    let default_validator = Addr::unchecked(DEFAULT_VALIDATOR);
+    let valid_validator = Addr::unchecked(VALID_VALIDATOR);
+    init(deps.as_mut(), default_validator).unwrap();
+
+    let msg = ExecuteMsg::Stake {
+        validator: Some(valid_validator.clone()),
+    };
+
+    let info = mock_info(OWNER, &[coin(100, "uandr")]);
+
+    execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    let msg = ExecuteMsg::Claim {
+        validator: Some(valid_validator.clone()),
+        recipient: Some(AndrAddr::from_string("other")),
+    };
+
+    let info = mock_info(OWNER, &[coin(100, "uandr")]);
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
+    assert_eq!(res, ContractError::Unauthorized {});
+
+    let msg = ExecuteMsg::Claim {
+        validator: Some(valid_validator),
+        recipient: Some(AndrAddr::from_string(OWNER)),
+    };
+
+    let info = mock_info("other", &[coin(100, "uandr")]);
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
+    assert_eq!(res, ContractError::Unauthorized {});
 }
