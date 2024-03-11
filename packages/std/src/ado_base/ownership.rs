@@ -8,6 +8,11 @@ pub struct ContractOwnerResponse {
 }
 
 #[cw_serde]
+pub struct ContractPotentialOwnerResponse {
+    pub potential_owner: Option<Addr>,
+}
+
+#[cw_serde]
 pub struct PublisherResponse {
     pub original_publisher: String,
 }
