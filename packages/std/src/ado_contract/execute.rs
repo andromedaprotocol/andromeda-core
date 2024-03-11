@@ -9,7 +9,7 @@ use crate::{
     error::ContractError,
 };
 use cosmwasm_std::{
-    attr, ensure, from_binary, to_binary, Addr, Api, CosmosMsg, Deps, Env, MessageInfo,
+    attr, ensure, from_binary, to_binary, Addr, Api, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
     QuerierWrapper, Response, Storage, SubMsg, WasmMsg,
 };
 use serde::de::DeserializeOwned;
