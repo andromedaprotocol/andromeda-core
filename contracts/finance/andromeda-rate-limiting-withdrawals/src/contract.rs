@@ -1,10 +1,10 @@
 use crate::state::{ACCOUNTS, ALLOWED_COIN};
-
 use andromeda_finance::rate_limiting_withdrawals::{
     AccountDetails, CoinAllowance, ExecuteMsg, InstantiateMsg, MigrateMsg, MinimumFrequency,
     QueryMsg,
 };
 use andromeda_std::ado_contract::ADOContract;
+use andromeda_std::common::call_action::call_action;
 use andromeda_std::common::context::ExecuteContext;
 use andromeda_std::{
     ado_base::InstantiateMsg as BaseInstantiateMsg,
@@ -102,7 +102,14 @@ pub fn execute(
     }
 }
 
-pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+    call_action(
+        &mut ctx.deps,
+        &ctx.info,
+        &ctx.env,
+        &ctx.amp_ctx,
+        msg.as_ref(),
+    )?;
     match msg {
         ExecuteMsg::Deposits { recipient } => execute_deposit(ctx, recipient),
         ExecuteMsg::Withdraws { amount } => execute_withdraw(ctx, amount),

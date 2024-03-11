@@ -3,7 +3,7 @@ use andromeda_finance::splitter::{
     validate_recipient_list, AddressPercent, ExecuteMsg, GetSplitterConfigResponse, InstantiateMsg,
     MigrateMsg, QueryMsg, Splitter,
 };
-
+use andromeda_std::common::call_action::call_action;
 use andromeda_std::{
     ado_base::InstantiateMsg as BaseInstantiateMsg,
     amp::messages::AMPPkt,
@@ -114,7 +114,14 @@ pub fn execute(
     }
 }
 
-pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+    call_action(
+        &mut ctx.deps,
+        &ctx.info,
+        &ctx.env,
+        &ctx.amp_ctx,
+        msg.as_ref(),
+    )?;
     match msg {
         ExecuteMsg::UpdateRecipients { recipients } => execute_update_recipients(ctx, recipients),
         ExecuteMsg::UpdateLock { lock_time } => execute_update_lock(ctx, lock_time),

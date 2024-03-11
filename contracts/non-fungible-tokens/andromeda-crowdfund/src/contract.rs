@@ -8,6 +8,7 @@ use andromeda_non_fungible_tokens::{
     },
     cw721::{ExecuteMsg as Cw721ExecuteMsg, MintMsg, QueryMsg as Cw721QueryMsg},
 };
+use andromeda_std::common::call_action::call_action;
 use andromeda_std::{
     ado_contract::ADOContract,
     common::{call_action::get_action_name, context::ExecuteContext, merge_sub_msgs},
@@ -104,9 +105,16 @@ pub fn execute(
     }
 }
 
-pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     let _contract = ADOContract::default();
     let action = get_action_name(CONTRACT_NAME, msg.as_ref());
+    call_action(
+        &mut ctx.deps,
+        &ctx.info,
+        &ctx.env,
+        &ctx.amp_ctx,
+        msg.as_ref(),
+    )?;
 
     match msg {
         ExecuteMsg::Mint(mint_msgs) => execute_mint(ctx, mint_msgs),

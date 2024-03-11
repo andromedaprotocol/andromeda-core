@@ -1,8 +1,8 @@
-use std::vec;
-
 use crate::state::{
     read_sale_infos, sale_infos, SaleInfo, TokenSaleState, NEXT_SALE_ID, TOKEN_SALE_STATE,
 };
+use andromeda_std::common::call_action::call_action;
+use std::vec;
 
 use andromeda_non_fungible_tokens::marketplace::{
     Cw721HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, SaleIdsResponse,
@@ -82,8 +82,15 @@ pub fn execute(
     }
 }
 
-pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     let action = get_action_name(CONTRACT_NAME, msg.as_ref());
+    call_action(
+        &mut ctx.deps,
+        &ctx.info,
+        &ctx.env,
+        &ctx.amp_ctx,
+        msg.as_ref(),
+    )?;
 
     match msg {
         ExecuteMsg::ReceiveNft(msg) => handle_receive_cw721(ctx, msg),

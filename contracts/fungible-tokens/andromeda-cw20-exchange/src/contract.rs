@@ -2,6 +2,7 @@ use andromeda_fungible_tokens::cw20_exchange::{
     Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, Sale, SaleAssetsResponse,
     SaleResponse, TokenAddressResponse,
 };
+use andromeda_std::common::call_action::call_action;
 use andromeda_std::{
     ado_base::InstantiateMsg as BaseInstantiateMsg,
     ado_contract::ADOContract,
@@ -92,7 +93,14 @@ pub fn execute(
     }
 }
 
-pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+    call_action(
+        &mut ctx.deps,
+        &ctx.info,
+        &ctx.env,
+        &ctx.amp_ctx,
+        msg.as_ref(),
+    )?;
     match msg {
         ExecuteMsg::CancelSale { asset } => execute_cancel_sale(ctx, asset),
         ExecuteMsg::Purchase { recipient } => execute_purchase_native(ctx, recipient),

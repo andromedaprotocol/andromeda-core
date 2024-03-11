@@ -3,9 +3,8 @@ use andromeda_ecosystem::vault::{
     StrategyType, BALANCES, STRATEGY_CONTRACT_ADDRESSES,
 };
 use andromeda_std::ado_contract::ADOContract;
-
 use andromeda_std::amp::{AndrAddr, Recipient};
-
+use andromeda_std::common::call_action::call_action;
 use andromeda_std::common::context::ExecuteContext;
 use andromeda_std::{
     ado_base::withdraw::{Withdrawal, WithdrawalType},
@@ -81,7 +80,14 @@ pub fn execute(
     }
 }
 
-pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+    call_action(
+        &mut ctx.deps,
+        &ctx.info,
+        &ctx.env,
+        &ctx.amp_ctx,
+        msg.as_ref(),
+    )?;
     match msg {
         ExecuteMsg::Deposit { recipient, msg } => execute_deposit(ctx, recipient, msg),
         ExecuteMsg::WithdrawVault {

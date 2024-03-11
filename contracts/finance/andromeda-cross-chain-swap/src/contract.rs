@@ -1,7 +1,7 @@
 use andromeda_finance::cross_chain_swap::{
     ExecuteMsg, InstantiateMsg, MigrateMsg, OsmosisSwapResponse, QueryMsg,
 };
-
+use andromeda_std::common::call_action::call_action;
 use andromeda_std::{
     ado_base::InstantiateMsg as BaseInstantiateMsg,
     amp::{
@@ -139,8 +139,15 @@ pub fn execute(
     }
 }
 
-pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     let _contract = ADOContract::default();
+    call_action(
+        &mut ctx.deps,
+        &ctx.info,
+        &ctx.env,
+        &ctx.amp_ctx,
+        msg.as_ref(),
+    )?;
     match msg {
         ExecuteMsg::SwapAndForward {
             dex,

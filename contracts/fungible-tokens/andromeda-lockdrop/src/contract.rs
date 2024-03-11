@@ -5,6 +5,7 @@ use andromeda_fungible_tokens::lockdrop::{
     ConfigResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, StateResponse,
     UserInfoResponse,
 };
+use andromeda_std::common::call_action::call_action;
 use andromeda_std::{
     ado_base::InstantiateMsg as BaseInstantiateMsg,
     ado_contract::ADOContract,
@@ -104,9 +105,15 @@ pub fn execute(
     }
 }
 
-pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     let _contract = ADOContract::default();
-
+    call_action(
+        &mut ctx.deps,
+        &ctx.info,
+        &ctx.env,
+        &ctx.amp_ctx,
+        msg.as_ref(),
+    )?;
     match msg {
         ExecuteMsg::Receive(msg) => receive_cw20(ctx, msg),
         ExecuteMsg::DepositNative {} => execute_deposit_native(ctx),

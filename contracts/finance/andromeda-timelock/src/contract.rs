@@ -2,7 +2,7 @@ use andromeda_finance::timelock::{
     Escrow, EscrowCondition, ExecuteMsg, GetLockedFundsForRecipientResponse,
     GetLockedFundsResponse, InstantiateMsg, MigrateMsg, QueryMsg,
 };
-
+use andromeda_std::common::call_action::call_action;
 use andromeda_std::{
     ado_base::InstantiateMsg as BaseInstantiateMsg,
     amp::Recipient,
@@ -67,7 +67,14 @@ pub fn execute(
     }
 }
 
-pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+    call_action(
+        &mut ctx.deps,
+        &ctx.info,
+        &ctx.env,
+        &ctx.amp_ctx,
+        msg.as_ref(),
+    )?;
     match msg {
         ExecuteMsg::HoldFunds {
             condition,
