@@ -21,6 +21,9 @@ pub enum ExecuteMsg {
         validator: Option<Addr>,
         recipient: Option<AndrAddr>,
     },
+    WithdrawFund {
+        validator: Option<Addr>,
+    },
 }
 
 #[andr_query]

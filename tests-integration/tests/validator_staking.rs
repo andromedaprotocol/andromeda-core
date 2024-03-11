@@ -217,26 +217,20 @@ fn test_validator_stake() {
     assert_eq!(err, &expected_err);
 
     validator_staking
-        .execute_unstake(&mut router, owner.clone(), None)
+        .execute_unstake(&mut router, owner, None)
         .unwrap();
     router.set_block(BlockInfo {
         height: router.block_info().height,
-        time: router
-            .block_info()
-            .time
-            .plus_seconds(60),
+        time: router.block_info().time.plus_seconds(60),
         chain_id: router.block_info().chain_id,
     });
 
     router.set_block(BlockInfo {
         height: router.block_info().height,
-        time: router
-            .block_info()
-            .time
-            .plus_seconds(5),
+        time: router.block_info().time.plus_seconds(5),
         chain_id: router.block_info().chain_id,
     });
-    
+
     let err = validator_staking
         .query_staked_tokens(&router, None)
         .unwrap_err();
@@ -247,6 +241,9 @@ fn test_validator_stake() {
         })
     );
 
-    let owner_balance = router.wrap().query_balance(Addr::unchecked("contract5"), "TOKEN").unwrap();
+    let owner_balance = router
+        .wrap()
+        .query_balance(Addr::unchecked("contract5"), "TOKEN")
+        .unwrap();
     assert_eq!(owner_balance, coin(1000, "TOKEN"));
 }
