@@ -3,7 +3,9 @@ use crate::{
     testing::mock_querier::{mock_dependencies_custom, DEFAULT_VALIDATOR, VALID_VALIDATOR},
 };
 
-use andromeda_std::{error::ContractError, testing::mock_querier::MOCK_KERNEL_CONTRACT};
+use andromeda_std::{
+    amp::AndrAddr, error::ContractError, testing::mock_querier::MOCK_KERNEL_CONTRACT,
+};
 use cosmwasm_std::{
     coin,
     testing::{mock_env, mock_info},
@@ -12,7 +14,7 @@ use cosmwasm_std::{
 
 use andromeda_finance::validator_staking::{ExecuteMsg, InstantiateMsg};
 
-const OWNER: &str = "creator";
+const OWNER: &str = "owner";
 
 fn init(deps: DepsMut, default_validator: Addr) -> Result<Response, ContractError> {
     let msg = InstantiateMsg {
@@ -21,7 +23,7 @@ fn init(deps: DepsMut, default_validator: Addr) -> Result<Response, ContractErro
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
     };
 
-    let info = mock_info("owner", &[]);
+    let info = mock_info(OWNER, &[]);
     instantiate(deps, mock_env(), info, msg)
 }
 
@@ -45,7 +47,8 @@ fn test_stake_with_invalid_funds() {
     init(deps.as_mut(), default_validator).unwrap();
 
     let msg = ExecuteMsg::Stake { validator: None };
-    let info = mock_info("owner", &[coin(100, "uandr"), coin(100, "usdc")]);
+
+    let info = mock_info(OWNER, &[coin(100, "uandr"), coin(100, "usdc")]);
 
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
 
@@ -59,7 +62,8 @@ fn test_stake_with_default_validator() {
     init(deps.as_mut(), default_validator).unwrap();
 
     let msg = ExecuteMsg::Stake { validator: None };
-    let info = mock_info("owner", &[coin(100, "uandr")]);
+
+    let info = mock_info(OWNER, &[coin(100, "uandr")]);
 
     let res = execute(deps.as_mut(), mock_env(), info, msg);
 
@@ -69,7 +73,7 @@ fn test_stake_with_default_validator() {
             amount: coin(100, "uandr"),
         })
         .add_attribute("action", "validator-stake")
-        .add_attribute("from", "owner".to_string())
+        .add_attribute("from", OWNER.to_string())
         .add_attribute("to", DEFAULT_VALIDATOR.to_string())
         .add_attribute("amount", "100".to_string());
 
@@ -86,7 +90,8 @@ fn test_stake_with_validator() {
     let msg = ExecuteMsg::Stake {
         validator: Some(valid_validator),
     };
-    let info = mock_info("owner", &[coin(100, "uandr")]);
+
+    let info = mock_info(OWNER, &[coin(100, "uandr")]);
 
     let res = execute(deps.as_mut(), mock_env(), info, msg);
 
@@ -96,7 +101,7 @@ fn test_stake_with_validator() {
             amount: coin(100, "uandr"),
         })
         .add_attribute("action", "validator-stake")
-        .add_attribute("from", "owner".to_string())
+        .add_attribute("from", OWNER.to_string())
         .add_attribute("to", VALID_VALIDATOR.to_string())
         .add_attribute("amount", "100".to_string());
 
@@ -113,9 +118,68 @@ fn test_stake_with_invalid_validator() {
     let msg = ExecuteMsg::Stake {
         validator: Some(fake_validator),
     };
-    let info = mock_info("owner", &[coin(100, "uandr")]);
+
+    let info = mock_info(OWNER, &[coin(100, "uandr")]);
 
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
 
     assert_eq!(res, ContractError::InvalidValidator {});
+}
+
+#[test]
+fn test_unauthorized_unstake() {
+    let mut deps = mock_dependencies_custom();
+    let default_validator = Addr::unchecked(DEFAULT_VALIDATOR);
+    let valid_validator = Addr::unchecked(VALID_VALIDATOR);
+    init(deps.as_mut(), default_validator).unwrap();
+
+    let msg = ExecuteMsg::Stake {
+        validator: Some(valid_validator.clone()),
+    };
+
+    let info = mock_info(OWNER, &[coin(100, "uandr")]);
+
+    execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    let msg = ExecuteMsg::Unstake {
+        validator: Some(valid_validator),
+    };
+
+    let info = mock_info("other", &[coin(100, "uandr")]);
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
+    assert_eq!(res, ContractError::Unauthorized {});
+}
+
+#[test]
+fn test_unauthorized_claim() {
+    let mut deps = mock_dependencies_custom();
+    let default_validator = Addr::unchecked(DEFAULT_VALIDATOR);
+    let valid_validator = Addr::unchecked(VALID_VALIDATOR);
+    init(deps.as_mut(), default_validator).unwrap();
+
+    let msg = ExecuteMsg::Stake {
+        validator: Some(valid_validator.clone()),
+    };
+
+    let info = mock_info(OWNER, &[coin(100, "uandr")]);
+
+    execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    let msg = ExecuteMsg::Claim {
+        validator: Some(valid_validator.clone()),
+        recipient: Some(AndrAddr::from_string("other")),
+    };
+
+    let info = mock_info(OWNER, &[coin(100, "uandr")]);
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
+    assert_eq!(res, ContractError::Unauthorized {});
+
+    let msg = ExecuteMsg::Claim {
+        validator: Some(valid_validator),
+        recipient: Some(AndrAddr::from_string(OWNER)),
+    };
+
+    let info = mock_info("other", &[coin(100, "uandr")]);
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
+    assert_eq!(res, ContractError::Unauthorized {});
 }

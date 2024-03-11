@@ -1,7 +1,7 @@
 use crate::state::DEFAULT_VALIDATOR;
 use cosmwasm_std::{
-    ensure, entry_point, Addr, Binary, Deps, DepsMut, Env, FullDelegation, MessageInfo, Response,
-    StakingMsg,
+    ensure, entry_point, Addr, Binary, Deps, DepsMut, DistributionMsg, Env, FullDelegation,
+    MessageInfo, Response, StakingMsg,
 };
 use cw2::set_contract_version;
 
@@ -10,6 +10,7 @@ use andromeda_finance::validator_staking::{is_validator, ExecuteMsg, Instantiate
 use andromeda_std::{
     ado_base::InstantiateMsg as BaseInstantiateMsg,
     ado_contract::ADOContract,
+    amp::AndrAddr,
     common::{context::ExecuteContext, encode_binary},
     error::ContractError,
 };
@@ -55,7 +56,22 @@ pub fn execute(
     let ctx = ExecuteContext::new(deps, info, env);
 
     match msg {
+        ExecuteMsg::AMPReceive(pkt) => {
+            ADOContract::default().execute_amp_receive(ctx, pkt, handle_execute)
+        }
+        _ => handle_execute(ctx, msg),
+    }
+}
+
+pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+    match msg {
         ExecuteMsg::Stake { validator } => execute_stake(ctx, validator),
+        ExecuteMsg::Unstake { validator } => execute_unstake(ctx, validator),
+        ExecuteMsg::Claim {
+            validator,
+            recipient,
+        } => execute_claim(ctx, validator, recipient),
+
         _ => ADOContract::default().execute(ctx, msg),
     }
 }
@@ -100,6 +116,109 @@ fn execute_stake(ctx: ExecuteContext, validator: Option<Addr>) -> Result<Respons
         .add_attribute("from", info.sender)
         .add_attribute("to", validator.to_string())
         .add_attribute("amount", funds.amount);
+
+    Ok(res)
+}
+
+fn execute_unstake(
+    ctx: ExecuteContext,
+    validator: Option<Addr>,
+) -> Result<Response, ContractError> {
+    let ExecuteContext {
+        deps, info, env, ..
+    } = ctx;
+
+    let delegator = env.contract.address;
+    // Ensure sender is the contract owner
+    ensure!(
+        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {}
+    );
+
+    let default_validator = DEFAULT_VALIDATOR.load(deps.storage)?;
+    let validator = validator.unwrap_or(default_validator);
+
+    // Check if the validator is valid before unstaking
+    is_validator(&deps, &validator)?;
+
+    let Some(res) = deps.querier.query_delegation(delegator.to_string(), validator.to_string())? else {
+        return Err(ContractError::InvalidValidatorOperation { operation: "Unstake".to_string(), validator: validator.to_string() });
+    };
+
+    ensure!(
+        !res.amount.amount.is_zero(),
+        ContractError::InvalidValidatorOperation {
+            operation: "Unstake".to_string(),
+            validator: validator.to_string(),
+        }
+    );
+
+    let res = Response::new()
+        .add_message(StakingMsg::Undelegate {
+            validator: validator.to_string(),
+            amount: res.amount,
+        })
+        .add_attribute("action", "validator-unstake")
+        .add_attribute("from", info.sender)
+        .add_attribute("to", validator.to_string());
+
+    Ok(res)
+}
+
+fn execute_claim(
+    ctx: ExecuteContext,
+    validator: Option<Addr>,
+    recipient: Option<AndrAddr>,
+) -> Result<Response, ContractError> {
+    let ExecuteContext {
+        deps, info, env, ..
+    } = ctx;
+
+    // Ensure sender is the contract owner
+    ensure!(
+        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {}
+    );
+
+    let default_validator = DEFAULT_VALIDATOR.load(deps.storage)?;
+    let validator = validator.unwrap_or(default_validator);
+
+    // Check if the validator is valid before unstaking
+    is_validator(&deps, &validator)?;
+
+    let recipient = if let Some(recipient) = recipient {
+        recipient.get_raw_address(&deps.as_ref())?
+    } else {
+        info.sender
+    };
+
+    // Ensure recipient is the contract owner
+    ensure!(
+        ADOContract::default().is_contract_owner(deps.storage, recipient.as_str())?,
+        ContractError::Unauthorized {}
+    );
+
+    let delegator = env.contract.address;
+    let Some(res) = deps.querier.query_delegation(delegator.to_string(), validator.to_string())? else {
+        return Err(ContractError::InvalidValidatorOperation { operation: "Claim".to_string(), validator: validator.to_string() });
+    };
+
+    // No reward to claim exist
+    ensure!(
+        !res.accumulated_rewards.is_empty(),
+        ContractError::InvalidClaim {}
+    );
+
+    let res = Response::new()
+        .add_message(DistributionMsg::SetWithdrawAddress {
+            address: recipient.to_string(),
+        })
+        .add_message(DistributionMsg::WithdrawDelegatorReward {
+            validator: validator.to_string(),
+        })
+        .add_attribute("action", "validator-claim-reward")
+        .add_attribute("recipient", recipient)
+        .add_attribute("validator", validator.to_string());
 
     Ok(res)
 }
