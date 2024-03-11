@@ -42,13 +42,13 @@ impl MockContract {
             .owner
     }
 
-    pub fn accept_ownership(&self, app: &mut App, sender: Addr) {
+    pub fn accept_ownership(&self, app: &mut App, sender: Addr) -> AnyResult<AppResponse> {
         self.execute(
             app,
             AndromedaMsg::Ownership(OwnershipMessage::AcceptOwnership {}),
             sender,
             &[],
-        );
+        )
     }
 }
 

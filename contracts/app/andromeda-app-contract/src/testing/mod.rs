@@ -684,6 +684,7 @@ fn test_add_app_component_limit() {
 //             &mock_app_component,
 //         )
 //         .unwrap();
+#[test]
 fn test_reply_assign_app() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();

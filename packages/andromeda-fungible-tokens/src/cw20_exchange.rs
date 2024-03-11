@@ -6,7 +6,6 @@ use cosmwasm_std::Uint128;
 use cw20::Cw20ReceiveMsg;
 use cw_asset::AssetInfo;
 use cw_utils::Expiration;
-use serde::{Deserialize, Serialize};
 
 #[andr_instantiate]
 #[andr_instantiate_modules]

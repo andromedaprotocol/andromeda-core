@@ -138,7 +138,9 @@ fn kernel() {
     let attr = inst_event.attributes.get(attr_key).unwrap();
     let addr: Addr = Addr::unchecked(attr.value.clone());
     let splitter = MockContract::from(addr.to_string());
-    splitter.accept_ownership(&mut router, owner.clone());
+    splitter
+        .accept_ownership(&mut router, owner.clone())
+        .unwrap();
     let splitter_owner = splitter.query_owner(&router);
 
     assert_eq!(splitter_owner, owner.to_string());

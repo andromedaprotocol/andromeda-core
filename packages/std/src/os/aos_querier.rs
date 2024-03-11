@@ -2,7 +2,7 @@ use crate::amp::{ADO_DB_KEY, VFS_KEY};
 use crate::error::ContractError;
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{from_slice, Addr, QuerierWrapper};
-use cw_storage_plus::{Endian, Path};
+use cw_storage_plus::Path;
 use lazy_static::__Deref;
 use serde::de::DeserializeOwned;
 use std::str::from_utf8;
