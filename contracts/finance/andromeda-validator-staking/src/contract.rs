@@ -1,7 +1,7 @@
-use crate::state::DEFAULT_VALIDATOR;
+use crate::state::{Unstaking, DEFAULT_VALIDATOR, UNSTAKING_QUEUE};
 use cosmwasm_std::{
-    ensure, entry_point, Addr, Binary, Deps, DepsMut, DistributionMsg, Env, FullDelegation,
-    MessageInfo, Response, StakingMsg,
+    ensure, entry_point, Addr, BankMsg, Binary, Coin, Deps, DepsMut, DistributionMsg, Env,
+    FullDelegation, MessageInfo, Response, StakingMsg,
 };
 use cw2::set_contract_version;
 
@@ -71,6 +71,7 @@ pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
             validator,
             recipient,
         } => execute_claim(ctx, validator, recipient),
+        ExecuteMsg::WithdrawFund {} => execute_withdraw_fund(ctx),
 
         _ => ADOContract::default().execute(ctx, msg),
     }
@@ -153,6 +154,14 @@ fn execute_unstake(
         }
     );
 
+    UNSTAKING_QUEUE.push_back(
+        deps.storage,
+        &Unstaking {
+            fund: res.amount.clone(),
+            payout_at: env.block.time.plus_days(21),
+        },
+    )?;
+
     let res = Response::new()
         .add_message(StakingMsg::Undelegate {
             validator: validator.to_string(),
@@ -219,6 +228,49 @@ fn execute_claim(
         .add_attribute("action", "validator-claim-reward")
         .add_attribute("recipient", recipient)
         .add_attribute("validator", validator.to_string());
+
+    Ok(res)
+}
+
+fn execute_withdraw_fund(ctx: ExecuteContext) -> Result<Response, ContractError> {
+    let ExecuteContext {
+        deps, info, env, ..
+    } = ctx;
+
+    // Ensure sender is the contract owner
+    ensure!(
+        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {}
+    );
+
+    // let res = Response::new();
+    let mut funds = Vec::<Coin>::new();
+    loop {
+        match UNSTAKING_QUEUE.front(deps.storage).unwrap() {
+            Some(Unstaking { payout_at, .. }) if payout_at <= env.block.time => {
+                if let Some(Unstaking { fund, .. }) = UNSTAKING_QUEUE.pop_front(deps.storage)? {
+                    funds.push(fund)
+                }
+            }
+            _ => break,
+        }
+    }
+
+    ensure!(
+        !funds.is_empty(),
+        ContractError::InvalidWithdrawal {
+            msg: Some("No unstaked funds to withdraw".to_string())
+        }
+    );
+
+    let res = Response::new()
+        .add_message(BankMsg::Send {
+            to_address: info.sender.to_string(),
+            amount: funds,
+        })
+        .add_attribute("action", "withdraw-funds")
+        .add_attribute("from", env.contract.address)
+        .add_attribute("to", info.sender.into_string());
 
     Ok(res)
 }

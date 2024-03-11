@@ -46,6 +46,11 @@ impl MockValidatorStaking {
         self.execute(app, &msg, sender, &[])
     }
 
+    pub fn execute_withdraw_fund(&self, app: &mut App, sender: Addr) -> ExecuteResult {
+        let msg = mock_execute_withdraw_fund();
+        self.execute(app, &msg, sender, &[])
+    }
+
     pub fn query_staked_tokens(
         &self,
         app: &App,
@@ -91,6 +96,10 @@ pub fn mock_execute_claim_reward(
         validator,
         recipient,
     }
+}
+
+pub fn mock_execute_withdraw_fund() -> ExecuteMsg {
+    ExecuteMsg::WithdrawFund {}
 }
 
 pub fn mock_get_staked_tokens(validator: Option<Addr>) -> QueryMsg {

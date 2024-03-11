@@ -217,20 +217,10 @@ fn test_validator_stake() {
     assert_eq!(err, &expected_err);
 
     validator_staking
-        .execute_unstake(&mut router, owner, None)
+        .execute_unstake(&mut router, owner.clone(), None)
         .unwrap();
-    router.set_block(BlockInfo {
-        height: router.block_info().height,
-        time: router.block_info().time.plus_seconds(60),
-        chain_id: router.block_info().chain_id,
-    });
 
-    router.set_block(BlockInfo {
-        height: router.block_info().height,
-        time: router.block_info().time.plus_seconds(5),
-        chain_id: router.block_info().chain_id,
-    });
-
+    // Test staked token query from undelegated validator
     let err = validator_staking
         .query_staked_tokens(&router, None)
         .unwrap_err();
@@ -241,9 +231,33 @@ fn test_validator_stake() {
         })
     );
 
-    let owner_balance = router
-        .wrap()
-        .query_balance(Addr::unchecked("contract5"), "TOKEN")
+    // Test withdraw before payout period
+    let err = validator_staking
+        .execute_withdraw_fund(&mut router, owner.clone())
+        .unwrap_err();
+    let err = err.root_cause().downcast_ref::<ContractError>().unwrap();
+    let expected_err = ContractError::InvalidWithdrawal {
+        msg: Some("No unstaked funds to withdraw".to_string()),
+    };
+    assert_eq!(err, &expected_err);
+
+    // Update block to payout period
+    router.set_block(BlockInfo {
+        height: router.block_info().height,
+        time: router.block_info().time.plus_days(21),
+        chain_id: router.block_info().chain_id,
+    });
+
+    router.set_block(BlockInfo {
+        height: router.block_info().height,
+        time: router.block_info().time.plus_seconds(1),
+        chain_id: router.block_info().chain_id,
+    });
+
+    validator_staking
+        .execute_withdraw_fund(&mut router, owner.clone())
         .unwrap();
-    assert_eq!(owner_balance, coin(1000, "TOKEN"));
+    // execute_withdraw_fund
+    let owner_balance = router.wrap().query_balance(owner, "TOKEN").unwrap();
+    assert_eq!(owner_balance, coin(1050, "TOKEN"));
 }
