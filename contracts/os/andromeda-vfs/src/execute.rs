@@ -28,6 +28,7 @@ pub fn add_path(
     address: Addr,
     parent_address: Option<AndrAddr>,
 ) -> Result<Response, ContractError> {
+    let name = name.to_lowercase();
     let kernel_address = ADOContract::default().get_kernel_address(env.deps.storage)?;
     ensure!(
         parent_address.is_none()
@@ -64,6 +65,8 @@ pub fn add_symlink(
     symlink: AndrAddr,
     parent_address: Option<AndrAddr>,
 ) -> Result<Response, ContractError> {
+    let name = name.to_lowercase();
+    let symlink = symlink.to_lowercase();
     let kernel_address = ADOContract::default().get_kernel_address(env.deps.storage)?;
     ensure!(
         parent_address.is_none()
@@ -101,6 +104,7 @@ pub fn add_child(
     parent_address: AndrAddr,
 ) -> Result<Response, ContractError> {
     let ExecuteEnv { deps, info, .. } = env;
+    let name = name.to_lowercase();
 
     let sender_code_id_res = deps.querier.query_wasm_contract_info(info.sender.clone());
     // Sender must be a contract
@@ -140,6 +144,7 @@ pub fn register_user(
     username: String,
     address: Option<Addr>,
 ) -> Result<Response, ContractError> {
+    let username = username.to_lowercase();
     let kernel = &ADOContract::default().get_kernel_address(env.deps.storage)?;
     let curr_chain = AOSQuerier::get_current_chain(&env.deps.querier, kernel)?;
     // Can only register username directly on Andromeda chain

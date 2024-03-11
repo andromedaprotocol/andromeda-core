@@ -1,4 +1,11 @@
-use crate::{amp::AndrAddr, error::ContractError};
+use crate::{
+    ado_base::{
+        ado_type::TypeResponse, kernel_address::KernelAddressResponse,
+        ownership::ContractOwnerResponse, version::VersionResponse,
+    },
+    amp::AndrAddr,
+    error::ContractError,
+};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{ensure, Addr, QuerierWrapper};
 use regex::Regex;
@@ -123,7 +130,12 @@ pub enum QueryMsg {
     #[returns(Addr)]
     ResolvePath { path: AndrAddr },
     #[returns(Vec<PathDetails>)]
-    SubDir { path: AndrAddr },
+    SubDir {
+        path: AndrAddr,
+        min: Option<(Addr, String)>,
+        max: Option<(Addr, String)>,
+        limit: Option<u32>,
+    },
     #[returns(Vec<String>)]
     Paths { addr: Addr },
     #[returns(String)]
@@ -132,6 +144,15 @@ pub enum QueryMsg {
     GetLibrary { address: Addr },
     #[returns(AndrAddr)]
     ResolveSymlink { path: AndrAddr },
+    // Base queries
+    #[returns(VersionResponse)]
+    Version {},
+    #[returns(TypeResponse)]
+    Type {},
+    #[returns(ContractOwnerResponse)]
+    Owner {},
+    #[returns(KernelAddressResponse)]
+    KernelAddress {},
 }
 
 /// Queries the provided VFS contract address to resolve the given path

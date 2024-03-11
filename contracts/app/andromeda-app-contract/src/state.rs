@@ -5,6 +5,7 @@ use andromeda_std::{
     ado_base::{ownership::OwnershipMessage, AndromedaMsg},
     ado_contract::ADOContract,
     amp::AndrAddr,
+    common::reply::ReplyId,
     error::ContractError,
     os::aos_querier::AOSQuerier,
     os::kernel::ExecuteMsg as KernelExecuteMsg,
@@ -13,8 +14,6 @@ use cosmwasm_std::{
     ensure, to_binary, Addr, Coin, CosmosMsg, DepsMut, Order, ReplyOn, Storage, SubMsg, WasmMsg,
 };
 use cw_storage_plus::{Bound, Item, Map};
-
-use crate::reply::ReplyId;
 
 /// Used to store the addresses of each ADO within the app
 pub const ADO_ADDRESSES: Map<&str, Addr> = Map::new("ado_addresses");

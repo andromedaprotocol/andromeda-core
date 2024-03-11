@@ -1,9 +1,10 @@
-use crate::{execute::MsgHandler, reply::ReplyId, state::KERNEL_ADDRESSES};
+use crate::{execute::MsgHandler, state::KERNEL_ADDRESSES};
 use andromeda_std::{
     amp::{
         messages::{AMPCtx, AMPMsg, AMPPkt},
         ADO_DB_KEY,
     },
+    common::reply::ReplyId,
     error::ContractError,
     testing::mock_querier::{
         mock_dependencies_custom, FAKE_VFS_PATH, INVALID_CONTRACT, MOCK_ADODB_CONTRACT,

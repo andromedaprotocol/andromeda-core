@@ -1,10 +1,10 @@
-use crate::reply::ReplyId;
 use crate::state::ADO_DESCRIPTORS;
 
 use super::{contract::*, state::ADO_ADDRESSES};
 use andromeda_app::app::{AppComponent, ComponentType, ExecuteMsg, InstantiateMsg};
 use andromeda_std::ado_base::ownership::OwnershipMessage;
 use andromeda_std::amp::AndrAddr;
+use andromeda_std::common::reply::ReplyId;
 use andromeda_std::os::vfs::{convert_component_name, ExecuteMsg as VFSExecuteMsg};
 use andromeda_std::testing::mock_querier::{
     mock_dependencies_custom, MOCK_ANCHOR_CONTRACT, MOCK_CW20_CONTRACT, MOCK_KERNEL_CONTRACT,
@@ -413,7 +413,7 @@ fn test_claim_ownership() {
     assert_eq!(1, res.messages.len());
 
     let exec_submsg: SubMsg<Empty> = SubMsg {
-        id: 101,
+        id: 200,
         msg: CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: "tokenaddress".to_string(),
             msg: to_binary(&AndromedaMsg::Ownership(OwnershipMessage::UpdateOwner {
@@ -743,7 +743,7 @@ fn test_reply_assign_app() {
     //     gas_limit: None,
     // };
     let new_exec_submsg: SubMsg<Empty> = SubMsg {
-        id: 103,
+        id: 202,
         msg: CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: "vfs_contract".to_string(),
             msg: to_binary(&VFSExecuteMsg::AddPath {

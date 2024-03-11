@@ -1,6 +1,6 @@
 [package]
 name = "andromeda-std"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 rust-version = "1.65.0"
 description = "The standard library for creating an Andromeda Digital Object"
@@ -26,6 +26,7 @@ cw20 = { version = "1.0.1" }
 cw20-base = { workspace = true, features = ["library"] }
 cw721-base = { workspace = true }
 cw-utils = { workspace = true }
+cw2 = { workspace = true }
 cw-asset = { version = "3.0.0" }
 thiserror = { version = "1.0.21" }
 lazy_static = "1"
@@ -35,3 +36,4 @@ andromeda-macros = { workspace = true }
 strum_macros = { workspace = true }
 cw721 = { workspace = true }
 serde-json-wasm = "0.5.0"
+enum-repr = { workspace = true }

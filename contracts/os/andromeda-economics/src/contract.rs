@@ -1,6 +1,7 @@
-use crate::reply::ReplyId;
 use andromeda_std::ado_base::InstantiateMsg as BaseInstantiateMsg;
 use andromeda_std::ado_contract::ADOContract;
+use andromeda_std::common::encode_binary;
+use andromeda_std::common::reply::ReplyId;
 use andromeda_std::error::{from_semver, ContractError};
 use andromeda_std::os::economics::{Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 #[allow(unused_imports)]
@@ -44,11 +45,11 @@ pub fn instantiate(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
-    // if msg.result.is_err() {
-    //     return Err(ContractError::Std(StdError::generic_err(
-    //         msg.result.unwrap_err(),
-    //     )));
-    // }
+    if msg.result.is_err() {
+        return Err(ContractError::Std(StdError::generic_err(
+            msg.result.unwrap_err(),
+        )));
+    }
 
     match ReplyId::from_repr(msg.id) {
         Some(ReplyId::Cw20WithdrawMsg) => Err(ContractError::Std(StdError::generic_err(
@@ -106,8 +107,6 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
     let stored = get_contract_version(deps.storage)?;
     let storage_version: Version = stored.version.parse().map_err(from_semver)?;
 
-    let contract = ADOContract::default();
-
     ensure!(
         stored.contract == CONTRACT_NAME,
         ContractError::CannotMigrate {
@@ -125,17 +124,21 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    // Update the ADOContract's version
-    contract.execute_update_version(deps)?;
-
     Ok(Response::default())
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(_deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
+pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::Balance { address, asset } => {
-            Ok(to_binary(&query::balance(_deps, address, asset)?)?)
+            Ok(to_binary(&query::balance(deps, address, asset)?)?)
+        }
+        // Base queries
+        QueryMsg::Version {} => encode_binary(&ADOContract::default().query_version(deps)?),
+        QueryMsg::Type {} => encode_binary(&ADOContract::default().query_type(deps)?),
+        QueryMsg::Owner {} => encode_binary(&ADOContract::default().query_contract_owner(deps)?),
+        QueryMsg::KernelAddress {} => {
+            encode_binary(&ADOContract::default().query_kernel_address(deps)?)
         }
     }
 }

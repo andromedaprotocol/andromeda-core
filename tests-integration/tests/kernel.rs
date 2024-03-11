@@ -197,7 +197,7 @@ fn kernel() {
             owner: Some(AndrAddr::from_string("~/am".to_string())),
             chain: None,
         },
-        owner.clone(),
+        owner,
         &[],
     );
     assert!(res.is_err());

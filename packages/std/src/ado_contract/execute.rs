@@ -2,13 +2,14 @@ use crate::ado_contract::ADOContract;
 use crate::amp::addresses::AndrAddr;
 use crate::amp::messages::AMPPkt;
 use crate::common::context::ExecuteContext;
+use crate::common::reply::ReplyId;
 use crate::os::{aos_querier::AOSQuerier, economics::ExecuteMsg as EconomicsExecuteMsg};
 use crate::{
     ado_base::{AndromedaMsg, InstantiateMsg},
     error::ContractError,
 };
 use cosmwasm_std::{
-    attr, ensure, from_binary, to_binary, Addr, Api, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
+    attr, ensure, from_binary, to_binary, Addr, Api, CosmosMsg, Deps, Env, MessageInfo,
     QuerierWrapper, Response, Storage, SubMsg, WasmMsg,
 };
 use serde::de::DeserializeOwned;
@@ -32,7 +33,6 @@ impl<'a> ADOContract<'a> {
         self.original_publisher.save(storage, &info.sender)?;
         self.block_height.save(storage, &env.block.height)?;
         self.ado_type.save(storage, &msg.ado_type)?;
-        self.version.save(storage, &msg.ado_version)?;
         self.kernel_address
             .save(storage, &api.addr_validate(&msg.kernel_address)?)?;
         let attributes = [attr("method", "instantiate"), attr("type", &msg.ado_type)];
@@ -168,16 +168,6 @@ impl<'a> ADOContract<'a> {
         AOSQuerier::adodb_address_getter(querier, &kernel_address)
     }
 
-    #[inline]
-    /// Updates the current version of the contract.
-    pub fn execute_update_version(&self, deps: DepsMut) -> Result<Response, ContractError> {
-        self.version
-            .save(deps.storage, &env!("CARGO_PKG_VERSION").to_string())?;
-        Ok(Response::new()
-            .add_attribute("action", "update_version")
-            .add_attribute("version", env!("CARGO_PKG_VERSION").to_string()))
-    }
-
     /// Handles receiving and verifies an AMPPkt from the Kernel before executing the appropriate messages.
     ///
     /// Calls the provided handler with the AMP packet attached within the context.
@@ -227,7 +217,7 @@ impl<'a> ADOContract<'a> {
                 msg: to_binary(&economics_msg)?,
                 funds: vec![],
             }),
-            9999,
+            ReplyId::PayFee.repr(),
         );
 
         Ok(msg)
