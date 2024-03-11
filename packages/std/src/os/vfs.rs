@@ -7,12 +7,12 @@ use crate::{
     error::ContractError,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{ensure, Addr, QuerierWrapper};
+use cosmwasm_std::{ensure, Addr, Api, QuerierWrapper};
 use regex::Regex;
 
 pub const COMPONENT_NAME_REGEX: &str = r"^[A-Za-z0-9\.\-_]{1,40}$";
 pub const USERNAME_REGEX: &str = r"^[a-z0-9]{1, 40}$";
-pub const PATH_REGEX: &str = r"^((([A-Za-z0-9]+://)?([A-Za-z0-9\.\-_]{1,40})?(/)?(home|lib)/)|(~(/)?)|(\./))([A-Za-z0-9\.\-_]{1,40}(/)?)+$";
+pub const PATH_REGEX: &str = r"^((([A-Za-z0-9]+://)?([A-Za-z0-9\.\-_]{1,40}/)?((home|lib))/)|(~(/)?)|(\./))([A-Za-z0-9\.\-]{1,40}(/)?)+$";
 pub fn convert_component_name(path: String) -> String {
     path.replace(' ', "_")
 }
@@ -32,6 +32,7 @@ pub fn validate_component_name(path: String) -> Result<bool, ContractError> {
             error: Some("Pathname includes an invalid character".to_string())
         }
     );
+
     Ok(true)
 }
 
@@ -55,16 +56,102 @@ pub fn validate_username(username: String) -> Result<bool, ContractError> {
     Ok(true)
 }
 
-pub fn validate_path_name(path: String) -> Result<bool, ContractError> {
+pub fn validate_path_name(api: &dyn Api, path: String) -> Result<bool, ContractError> {
     let re = Regex::new(PATH_REGEX).unwrap();
 
-    ensure!(
-        re.is_match(&path),
-        ContractError::InvalidPathname {
-            error: Some("Pathname includes an invalid character".to_string())
-        }
-    );
-    Ok(true)
+    let is_path_reference = path.contains('/');
+    let starts_with_tilde = path.starts_with('~');
+
+    // Path is of the form ~/home/...
+    if starts_with_tilde && is_path_reference {
+        ensure!(
+            re.is_match(&path),
+            ContractError::InvalidPathname {
+                error: Some("Pathname includes an invalid character".to_string())
+            }
+        );
+        ensure!(
+            path.chars().next().unwrap().is_alphanumeric()
+                || path.starts_with('/')
+                || path.starts_with('~'),
+            ContractError::InvalidPathname {
+                error: Some(
+                    "First character in a path must be either '/', '~' or alphanumeric".to_string()
+                )
+            }
+        );
+
+        let mut components = path.split('/');
+        let first_component = components.nth(1).unwrap();
+        ensure!(
+           (first_component == "home" || first_component == "lib"),
+            ContractError::InvalidPathname {
+                error: Some(
+                    "Paths beginning with ~ must directly reference a username: ~username or root directory: ~/home/username ~/lib/library"
+                        .to_string()
+                )
+            }
+        );
+
+        return Ok(true);
+    }
+
+    // Path is of the form /home/... or /lib/...
+    if is_path_reference && !starts_with_tilde {
+        ensure!(
+            re.is_match(&path),
+            ContractError::InvalidPathname {
+                error: Some("Pathname includes an invalid character".to_string())
+            }
+        );
+        ensure!(
+            path.chars().next().unwrap().is_alphanumeric() || path.starts_with('/'),
+            ContractError::InvalidPathname {
+                error: Some(
+                    "First character in a path must be either '/', '~' or alphanumeric".to_string()
+                )
+            }
+        );
+
+        return Ok(true);
+    }
+
+    //Path is of the form ~username or ~address
+    if !is_path_reference && starts_with_tilde {
+        let username = &path[1..path.len()];
+        let is_username = validate_username(username.to_string());
+        let is_address = api.addr_validate(&path);
+
+        ensure!(
+            is_address.is_ok() || is_username.is_ok(),
+            ContractError::InvalidPathname {
+                error: Some(
+                    "Provided address is neither a valid username nor a valid address".to_string()
+                )
+            }
+        );
+
+        return Ok(true);
+    }
+
+    if !is_path_reference {
+        let is_address = api.addr_validate(&path);
+        let is_username = validate_username(path);
+
+        ensure!(
+            is_address.is_ok() || is_username.is_ok(),
+            ContractError::InvalidPathname {
+                error: Some(
+                    "Provided address is neither a valid username nor a valid address".to_string()
+                )
+            }
+        );
+
+        return Ok(true);
+    }
+
+    // Does not fit any forms
+    Ok(false)
 }
 
 #[cw_serde]
@@ -186,6 +273,8 @@ pub fn vfs_resolve_symlink(
 
 #[cfg(test)]
 mod test {
+    use cosmwasm_std::testing::mock_dependencies;
+
     use super::*;
 
     #[test]
@@ -228,60 +317,108 @@ mod test {
         assert!(res.is_err());
     }
 
+    struct ValidatePathNameTestCase {
+        name: &'static str,
+        path: &'static str,
+        should_err: bool,
+    }
+
     #[test]
     fn test_validate_path_name() {
-        let valid_path = "./username/app";
-        validate_path_name(valid_path.to_string()).unwrap();
+        let test_cases: Vec<ValidatePathNameTestCase> = vec![
+            ValidatePathNameTestCase {
+                name: "Simple app path",
+                path: "./username/app",
+                should_err: true,
+            },
+            ValidatePathNameTestCase {
+                name: "Root path",
+                path: "/",
+                should_err: true,
+            },
+            ValidatePathNameTestCase {
+                name: "Relative path with parent directory",
+                path: "../username/app",
+                should_err: true,
+            },
+            ValidatePathNameTestCase {
+                name: "Tilde username reference",
+                // Username must be short to circumvent it being mistaken as an address
+                path: "~un",
+                should_err: false,
+            },
+            ValidatePathNameTestCase {
+                name: "Tilde address reference",
+                path: "~cosmos1abcde",
+                should_err: false,
+            },
+            ValidatePathNameTestCase {
+                name: "Invalid tilde username reference",
+                path: "~/un",
+                should_err: true,
+            },
+            ValidatePathNameTestCase {
+                name: "Absolute path with tilde",
+                path: "~/home/username",
+                should_err: false,
+            },
+            ValidatePathNameTestCase {
+                name: "Complex valid path",
+                path: "/home/username/dir1/../dir2/./file",
+                should_err: true,
+            },
+            ValidatePathNameTestCase {
+                name: "Path with invalid characters",
+                path: "/home/username/dir1/|file",
+                should_err: true,
+            },
+            ValidatePathNameTestCase {
+                name: "Path with space",
+                path: "/home/ username/dir1/file",
+                should_err: true,
+            },
+            ValidatePathNameTestCase {
+                name: "Empty path",
+                path: "",
+                should_err: true,
+            },
+            ValidatePathNameTestCase {
+                name: "Path with only special characters",
+                path: "///",
+                should_err: true,
+            },
+            ValidatePathNameTestCase {
+                name: "Path with only special characters and spaces",
+                path: "/// /  /// //",
+                should_err: true,
+            },
+            ValidatePathNameTestCase {
+                name: "Valid ibc protocol path",
+                path: "ibc://chain/home/username/dir1/file",
+                should_err: false,
+            },
+            ValidatePathNameTestCase {
+                name: "Invalid ibc protocol path",
+                path: "ibc:///home/username/dir1/file",
+                should_err: true,
+            },
+            ValidatePathNameTestCase {
+                name: "Standard address",
+                path: "cosmos1abcde",
+                should_err: false,
+            },
+            ValidatePathNameTestCase {
+                name: "Only periods",
+                path: "/../../../..",
+                should_err: true,
+            },
+        ];
 
-        let valid_path = "/home/username";
-        validate_path_name(valid_path.to_string()).unwrap();
-
-        let valid_path = "~username";
-        validate_path_name(valid_path.to_string()).unwrap();
-
-        let valid_path = "~/username";
-        validate_path_name(valid_path.to_string()).unwrap();
-
-        let valid_path = "/home/username/dir1/file";
-        validate_path_name(valid_path.to_string()).unwrap();
-
-        let valid_path = "/home/username/dir1/file/";
-        validate_path_name(valid_path.to_string()).unwrap();
-
-        let valid_path = "vfs://chain/home/username/dir1/file/";
-        validate_path_name(valid_path.to_string()).unwrap();
-
-        let empty_path = "";
-        let res = validate_path_name(empty_path.to_string());
-        assert!(res.is_err());
-
-        let invalid_path = "//// ///";
-        let res = validate_path_name(invalid_path.to_string());
-        assert!(res.is_err());
-
-        let invalid_path = "vfs:/username/dir1/f!le";
-        let res = validate_path_name(invalid_path.to_string());
-        assert!(res.is_err());
-
-        let invalid_path = "vfs://home/username/dir1/f!le";
-        let res = validate_path_name(invalid_path.to_string());
-        assert!(res.is_err());
-
-        let invalid_path = "vfs://chain1//username/dir1/f!le";
-        let res = validate_path_name(invalid_path.to_string());
-        assert!(res.is_err());
-
-        let invalid_path = "vfs://username/dir1/f!le";
-        let res = validate_path_name(invalid_path.to_string());
-        assert!(res.is_err());
-
-        let invalid_path = "vfs://~username/dir1/f!le";
-        let res = validate_path_name(invalid_path.to_string());
-        assert!(res.is_err());
-
-        let invalid_path = "vfs://~/username/dir1/f!le";
-        let res = validate_path_name(invalid_path.to_string());
-        assert!(res.is_err());
+        for test in test_cases {
+            let deps = mock_dependencies();
+            let res = validate_path_name(&deps.api, test.path.to_string());
+            assert_eq!(res.is_err(), test.should_err, "Test case: {}", test.name);
+        }
     }
 
     #[test]
