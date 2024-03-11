@@ -502,6 +502,9 @@ pub enum ContractError {
     #[error("Invalid Query")]
     InvalidQuery {},
 
+    #[error("Unexpected Item Found in: {item}")]
+    UnexpectedItem { item: String },
+
     #[error("Invalid Withdrawal: {msg:?}")]
     InvalidWithdrawal { msg: Option<String> },
 

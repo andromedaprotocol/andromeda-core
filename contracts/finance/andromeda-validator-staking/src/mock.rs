@@ -1,4 +1,4 @@
-use andromeda_finance::validator_staking::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use andromeda_finance::validator_staking::{ExecuteMsg, InstantiateMsg, QueryMsg, Unstaking};
 use cosmwasm_std::{Addr, Coin, Delegation, Empty};
 
 use crate::contract::{execute, instantiate, query};
@@ -61,6 +61,12 @@ impl MockValidatorStaking {
             .wrap()
             .query_wasm_smart::<Delegation>(self.addr().clone(), &msg)?)
     }
+    pub fn query_unstaked_tokens(&self, app: &App) -> Result<Vec<Unstaking>, ContractError> {
+        let msg = mock_get_unstaked_tokens();
+        Ok(app
+            .wrap()
+            .query_wasm_smart::<Vec<Unstaking>>(self.addr().clone(), &msg)?)
+    }
 }
 
 pub fn mock_andromeda_validator_staking() -> Box<dyn Contract<Empty>> {
@@ -104,4 +110,8 @@ pub fn mock_execute_withdraw_fund() -> ExecuteMsg {
 
 pub fn mock_get_staked_tokens(validator: Option<Addr>) -> QueryMsg {
     QueryMsg::StakedTokens { validator }
+}
+
+pub fn mock_get_unstaked_tokens() -> QueryMsg {
+    QueryMsg::UnstakedTokens {}
 }

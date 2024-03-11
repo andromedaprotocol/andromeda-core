@@ -247,6 +247,7 @@ dependencies = [
  "cw-utils 1.0.3",
  "cw721 0.18.0",
  "cw721-base 0.18.0",
+ "schemars",
  "serde",
 ]
 
@@ -522,7 +523,6 @@ dependencies = [
  "cw-multi-test",
  "cw-storage-plus 1.2.0",
  "cw2 1.1.2",
- "schemars",
  "serde",
 ]
 

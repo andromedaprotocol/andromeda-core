@@ -19,7 +19,6 @@ cosmwasm-std = { workspace = true, features = ["staking"]  }
 cosmwasm-schema = { workspace = true }
 cw-storage-plus = { workspace = true }
 cw2 = { workspace = true }
-schemars = { version = "0.8.10" }
 serde = { version = "1.0.127", default-features = false, features = ["derive"] }
 
 andromeda-std = { workspace = true }

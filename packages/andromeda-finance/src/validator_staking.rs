@@ -1,6 +1,8 @@
 use andromeda_std::{amp::AndrAddr, andr_exec, andr_instantiate, andr_query, error::ContractError};
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Addr, DepsMut, FullDelegation};
+use cosmwasm_std::{Addr, Coin, DepsMut, FullDelegation, Timestamp};
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 
 #[andr_instantiate]
 #[cw_serde]
@@ -24,12 +26,21 @@ pub enum ExecuteMsg {
     WithdrawFund {},
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct Unstaking {
+    pub fund: Coin,
+    pub payout_at: Timestamp,
+}
+
 #[andr_query]
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
     #[returns(Option<FullDelegation>)]
     StakedTokens { validator: Option<Addr> },
+
+    #[returns(Option<Vec<Unstaking>>)]
+    UnstakedTokens {},
 }
 
 impl InstantiateMsg {

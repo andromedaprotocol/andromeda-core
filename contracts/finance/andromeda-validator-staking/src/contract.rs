@@ -1,11 +1,13 @@
-use crate::state::{Unstaking, DEFAULT_VALIDATOR, UNSTAKING_QUEUE};
+use crate::state::{DEFAULT_VALIDATOR, UNSTAKING_QUEUE};
 use cosmwasm_std::{
     ensure, entry_point, Addr, BankMsg, Binary, Coin, Deps, DepsMut, DistributionMsg, Env,
     FullDelegation, MessageInfo, Response, StakingMsg,
 };
 use cw2::set_contract_version;
 
-use andromeda_finance::validator_staking::{is_validator, ExecuteMsg, InstantiateMsg, QueryMsg};
+use andromeda_finance::validator_staking::{
+    is_validator, ExecuteMsg, InstantiateMsg, QueryMsg, Unstaking,
+};
 
 use andromeda_std::{
     ado_base::InstantiateMsg as BaseInstantiateMsg,
@@ -83,6 +85,8 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
         QueryMsg::StakedTokens { validator } => {
             encode_binary(&query_staked_tokens(deps, env.contract.address, validator)?)
         }
+        QueryMsg::UnstakedTokens {} => encode_binary(&query_unstaked_tokens(deps)?),
+
         _ => ADOContract::default().query(deps, env, msg),
     }
 }
@@ -288,5 +292,15 @@ fn query_staked_tokens(
     let Some(res) = deps.querier.query_delegation(delegator.to_string(), validator.to_string())? else {
         return Err(ContractError::InvalidDelegation {});
     };
+    Ok(res)
+}
+
+fn query_unstaked_tokens(deps: Deps) -> Result<Vec<Unstaking>, ContractError> {
+    let iter = UNSTAKING_QUEUE.iter(deps.storage).unwrap();
+    let mut res = Vec::<Unstaking>::new();
+
+    for data in iter {
+        res.push(data.unwrap());
+    }
     Ok(res)
 }
