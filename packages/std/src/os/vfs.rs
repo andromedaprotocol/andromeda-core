@@ -13,7 +13,7 @@ use regex::Regex;
 pub const COMPONENT_NAME_REGEX: &str = r"^[A-Za-z0-9\.\-_]{1,40}$";
 pub const USERNAME_REGEX: &str = r"^[a-z0-9]{1, 40}$";
 
-pub const PATH_REGEX: &str = r"^((/(home|lib)/)|(\./)|(~/))([A-Za-z0-9\.\-]{1,40}(/)?)+$";
+pub const PATH_REGEX: &str = r"^(((~)?/(home|lib)/)|(\./)|(~))([A-Za-z0-9\.\-]{1,40}(/)?)+$";
 pub const PROTOCOL_PATH_REGEX: &str = r"^((([A-Za-z0-9]+://)?([A-Za-z0-9\.\-_]{1,40}/)?((home|lib))/)|(~(/)?)|(\./))([A-Za-z0-9\.\-]{1,40}(/)?)+$";
 
 pub fn convert_component_name(path: &str) -> String {
@@ -70,7 +70,7 @@ pub fn validate_path_name(api: &dyn Api, path: String) -> Result<bool, ContractE
     let starts_with_tilde = path.starts_with('~');
     let includes_protocol = andr_addr.get_protocol().is_some();
 
-    // Path is of the form ~/home/...
+    // Path is of the form ~/home/... or ~username/directory
     if is_path_reference && starts_with_tilde {
         let re = Regex::new(PATH_REGEX).unwrap();
         ensure!(
@@ -80,17 +80,17 @@ pub fn validate_path_name(api: &dyn Api, path: String) -> Result<bool, ContractE
             }
         );
 
-        let mut components = path.split('/');
-        let first_component = components.nth(1).unwrap();
-        ensure!(
-           (first_component == "home" || first_component == "lib"),
-            ContractError::InvalidPathname {
-                error: Some(
-                    "Paths beginning with ~ must directly reference a username: ~username or root directory: ~/home/username ~/lib/library"
-                        .to_string()
-                )
-            }
-        );
+        // let mut components = path.split('/');
+        // let first_component = components.nth(1).unwrap();
+        // ensure!(
+        //    (first_component == "home" || first_component == "lib"),
+        //     ContractError::InvalidPathname {
+        //         error: Some(
+        //             "Paths beginning with ~ must directly reference a username: ~username or root directory: ~/home/username ~/lib/library"
+        //                 .to_string()
+        //         )
+        //     }
+        // );
 
         return Ok(true);
     }
@@ -124,7 +124,7 @@ pub fn validate_path_name(api: &dyn Api, path: String) -> Result<bool, ContractE
         );
 
         for component in split.filter(|s| !s.is_empty()) {
-            validate_component_name(component.to_string())?;
+            validate_component_name(component.to_string().replace('~', ""))?;
         }
 
         return Ok(true);
@@ -397,6 +397,11 @@ mod test {
             ValidatePathNameTestCase {
                 name: "Tilde address reference",
                 path: "~cosmos1abcde",
+                should_err: false,
+            },
+            ValidatePathNameTestCase {
+                name: "Tilde username reference with directory",
+                path: "~un/app/5",
                 should_err: false,
             },
             ValidatePathNameTestCase {
