@@ -9,7 +9,7 @@ get_version_filename (){
     local BUILD_VERSION=$(cargo pkgid $CONTRACT | cut -d# -f2 | cut -d: -f2)
     local BUILD_TARGET=${CONTRACT//-/_}
 
-    echo "$BUILD_TARGET+$BUILD_VERSION";
+    echo "$BUILD_TARGET@$BUILD_VERSION";
 }
 
 copy_schema () {
@@ -27,6 +27,10 @@ copy_schema () {
     done
 
 }
+
+if [ ! -d "./artifacts" ]; then
+    mkdir artifacts;
+fi;
 
 for directory in contracts/*/; do
     for contract in $directory/*/; do
