@@ -74,7 +74,7 @@ fn test_instantiation() {
         msg: CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: "vfs_contract".to_string(),
             msg: to_binary(&VFSExecuteMsg::AddChild {
-                name: convert_component_name("Some App".to_string()),
+                name: convert_component_name("Some App"),
                 parent_address: AndrAddr::from_string(format!("{sender}")),
             })
             .unwrap(),

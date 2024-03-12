@@ -106,7 +106,7 @@ pub fn instantiate(
     let vfs_address = ADOContract::default().get_vfs_address(deps.storage, &deps.querier)?;
 
     let add_path_msg = VFSExecuteMsg::AddChild {
-        name: convert_component_name(app_name.clone()),
+        name: convert_component_name(&app_name),
         parent_address: AndrAddr::from_string(sender),
     };
     let cosmos_msg: CosmosMsg<Empty> = CosmosMsg::Wasm(WasmMsg::Execute {

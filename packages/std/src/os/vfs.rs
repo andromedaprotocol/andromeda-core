@@ -12,9 +12,17 @@ use regex::Regex;
 
 pub const COMPONENT_NAME_REGEX: &str = r"^[A-Za-z0-9\.\-_]{1,40}$";
 pub const USERNAME_REGEX: &str = r"^[a-z0-9]{1, 40}$";
-pub const PATH_REGEX: &str = r"^((([A-Za-z0-9]+://)?([A-Za-z0-9\.\-_]{1,40}/)?((home|lib))/)|(~(/)?)|(\./))([A-Za-z0-9\.\-]{1,40}(/)?)+$";
-pub fn convert_component_name(path: String) -> String {
-    path.replace(' ', "_")
+
+pub const PATH_REGEX: &str = r"^((/(home|lib)/)|(\./)|(~/))([A-Za-z0-9\.\-]{1,40}(/)?)+$";
+pub const PROTOCOL_PATH_REGEX: &str = r"^((([A-Za-z0-9]+://)?([A-Za-z0-9\.\-_]{1,40}/)?((home|lib))/)|(~(/)?)|(\./))([A-Za-z0-9\.\-]{1,40}(/)?)+$";
+
+pub fn convert_component_name(path: &str) -> String {
+    path.trim()
+        .replace(' ', "_")
+        .chars()
+        .filter(|c| c.is_alphanumeric() || *c == '.' || *c == '-' || *c == '_')
+        .collect::<String>()
+        .to_lowercase()
 }
 
 pub fn validate_component_name(path: String) -> Result<bool, ContractError> {
@@ -57,27 +65,18 @@ pub fn validate_username(username: String) -> Result<bool, ContractError> {
 }
 
 pub fn validate_path_name(api: &dyn Api, path: String) -> Result<bool, ContractError> {
-    let re = Regex::new(PATH_REGEX).unwrap();
-
+    let andr_addr = AndrAddr::from_string(path.clone());
     let is_path_reference = path.contains('/');
     let starts_with_tilde = path.starts_with('~');
+    let includes_protocol = andr_addr.get_protocol().is_some();
 
     // Path is of the form ~/home/...
-    if starts_with_tilde && is_path_reference {
+    if is_path_reference && starts_with_tilde {
+        let re = Regex::new(PATH_REGEX).unwrap();
         ensure!(
             re.is_match(&path),
             ContractError::InvalidPathname {
                 error: Some("Pathname includes an invalid character".to_string())
-            }
-        );
-        ensure!(
-            path.chars().next().unwrap().is_alphanumeric()
-                || path.starts_with('/')
-                || path.starts_with('~'),
-            ContractError::InvalidPathname {
-                error: Some(
-                    "First character in a path must be either '/', '~' or alphanumeric".to_string()
-                )
             }
         );
 
@@ -96,22 +95,37 @@ pub fn validate_path_name(api: &dyn Api, path: String) -> Result<bool, ContractE
         return Ok(true);
     }
 
-    // Path is of the form /home/... or /lib/...
+    // Path is of the form /home/... or /lib/... or prot://...
     if is_path_reference && !starts_with_tilde {
+        // Alter regex if path includes a protocol
+        let regex_str = if includes_protocol {
+            PROTOCOL_PATH_REGEX
+        } else {
+            PATH_REGEX
+        };
+
+        let re = Regex::new(regex_str).unwrap();
         ensure!(
             re.is_match(&path),
             ContractError::InvalidPathname {
                 error: Some("Pathname includes an invalid character".to_string())
             }
         );
+
+        // Strip any protocols before checking components
+        let raw_path = andr_addr.get_raw_path();
+        let split = raw_path.split('/');
+
         ensure!(
-            path.chars().next().unwrap().is_alphanumeric() || path.starts_with('/'),
+            split.clone().filter(|s| s.is_empty()).count() == 1,
             ContractError::InvalidPathname {
-                error: Some(
-                    "First character in a path must be either '/', '~' or alphanumeric".to_string()
-                )
+                error: Some("Pathname includes too many trailing slashes".to_string())
             }
         );
+
+        for component in split.filter(|s| !s.is_empty()) {
+            validate_component_name(component.to_string())?;
+        }
 
         return Ok(true);
     }
@@ -134,6 +148,7 @@ pub fn validate_path_name(api: &dyn Api, path: String) -> Result<bool, ContractE
         return Ok(true);
     }
 
+    // Path is either a username or address
     if !is_path_reference {
         let is_address = api.addr_validate(&path);
         let is_username = validate_username(path);
@@ -150,7 +165,7 @@ pub fn validate_path_name(api: &dyn Api, path: String) -> Result<bool, ContractE
         return Ok(true);
     }
 
-    // Does not fit any forms
+    // Does not fit any valid conditions
     Ok(false)
 }
 
@@ -363,6 +378,21 @@ mod test {
                 should_err: false,
             },
             ValidatePathNameTestCase {
+                name: "Valid home path",
+                path: "/home/un",
+                should_err: false,
+            },
+            ValidatePathNameTestCase {
+                name: "Valid home path (address)",
+                path: "/home/cosmos1abcde",
+                should_err: false,
+            },
+            ValidatePathNameTestCase {
+                name: "Valid lib path",
+                path: "/lib/library",
+                should_err: false,
+            },
+            ValidatePathNameTestCase {
                 name: "Complex valid path",
                 path: "/home/username/dir1/../dir2/./file",
                 should_err: true,
@@ -421,11 +451,64 @@ mod test {
         }
     }
 
+    struct ConvertComponentNameTestCase {
+        name: &'static str,
+        input: &'static str,
+        expected: &'static str,
+    }
+
     #[test]
     fn test_convert_component_name() {
-        let pre_convert = "Some Component Name";
-        let converted = convert_component_name(pre_convert.to_string());
+        let test_cases: Vec<ConvertComponentNameTestCase> = vec![
+            ConvertComponentNameTestCase {
+                name: "Standard name with spaces",
+                input: "Some Component Name",
+                expected: "some_component_name",
+            },
+            ConvertComponentNameTestCase {
+                name: "Name with hyphens",
+                input: "Some-Component-Name",
+                expected: "some-component-name",
+            },
+            ConvertComponentNameTestCase {
+                name: "Name with uppercase letters",
+                input: "SomeCOMPONENTName",
+                expected: "somecomponentname",
+            },
+            ConvertComponentNameTestCase {
+                name: "Name with numbers",
+                input: "Component123",
+                expected: "component123",
+            },
+            ConvertComponentNameTestCase {
+                name: "Name with special characters",
+                input: "Component!@#",
+                expected: "component",
+            },
+            ConvertComponentNameTestCase {
+                name: "Empty name",
+                input: "",
+                expected: "",
+            },
+            ConvertComponentNameTestCase {
+                name: "Name with leading and trailing spaces",
+                input: "  Some Component Name  ",
+                expected: "some_component_name",
+            },
+            ConvertComponentNameTestCase {
+                name: "Name with multiple spaces",
+                input: "Some    Component    Name",
+                expected: "some____component____name",
+            },
+        ];
 
-        assert_eq!("Some_Component_Name", converted)
+        for test in test_cases {
+            assert_eq!(
+                convert_component_name(test.input),
+                test.expected,
+                "Test case: {}",
+                test.name
+            )
+        }
     }
 }
