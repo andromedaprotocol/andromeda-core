@@ -129,7 +129,7 @@ impl<'a> ADOContract<'a> {
         storage: &dyn Storage,
         addr: &str,
     ) -> Result<bool, ContractError> {
-        Ok(self.is_contract_owner(storage, addr)?)
+        self.is_contract_owner(storage, addr)
     }
 }
 
