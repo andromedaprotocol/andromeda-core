@@ -23,11 +23,11 @@ pub enum ExecuteMsg {
         validator: Option<Addr>,
         recipient: Option<AndrAddr>,
     },
-    WithdrawFund {},
+    WithdrawFunds {},
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct Unstaking {
+pub struct UnstakingTokens {
     pub fund: Coin,
     pub payout_at: Timestamp,
 }
@@ -39,7 +39,7 @@ pub enum QueryMsg {
     #[returns(Option<FullDelegation>)]
     StakedTokens { validator: Option<Addr> },
 
-    #[returns(Option<Vec<Unstaking>>)]
+    #[returns(Option<Vec<UnstakingTokens>>)]
     UnstakedTokens {},
 }
 

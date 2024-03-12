@@ -3,7 +3,7 @@
 use andromeda_app::app::AppComponent;
 use andromeda_app_contract::mock::{mock_andromeda_app, MockApp};
 
-use andromeda_finance::validator_staking::Unstaking;
+use andromeda_finance::validator_staking::UnstakingTokens;
 use andromeda_std::amp::AndrAddr;
 use andromeda_validator_staking::mock::{
     mock_andromeda_validator_staking, mock_validator_staking_instantiate_msg, MockValidatorStaking,
@@ -244,7 +244,7 @@ fn test_validator_stake() {
 
     // Test unstaked tokens query
     let unstaked_tokens = validator_staking.query_unstaked_tokens(&router).unwrap();
-    let expected_unstaked_tokens = vec![Unstaking {
+    let expected_unstaked_tokens = vec![UnstakingTokens {
         fund: coin(1000, "TOKEN"),
         payout_at: router.block_info().time.plus_days(21),
     }];

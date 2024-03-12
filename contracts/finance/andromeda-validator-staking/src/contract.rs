@@ -6,7 +6,7 @@ use cosmwasm_std::{
 use cw2::set_contract_version;
 
 use andromeda_finance::validator_staking::{
-    is_validator, ExecuteMsg, InstantiateMsg, QueryMsg, Unstaking,
+    is_validator, ExecuteMsg, InstantiateMsg, QueryMsg, UnstakingTokens,
 };
 
 use andromeda_std::{
@@ -73,7 +73,7 @@ pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
             validator,
             recipient,
         } => execute_claim(ctx, validator, recipient),
-        ExecuteMsg::WithdrawFund {} => execute_withdraw_fund(ctx),
+        ExecuteMsg::WithdrawFunds {} => execute_withdraw_fund(ctx),
 
         _ => ADOContract::default().execute(ctx, msg),
     }
@@ -160,7 +160,7 @@ fn execute_unstake(
 
     UNSTAKING_QUEUE.push_back(
         deps.storage,
-        &Unstaking {
+        &UnstakingTokens {
             fund: res.amount.clone(),
             payout_at: env.block.time.plus_days(21),
         },
@@ -247,12 +247,13 @@ fn execute_withdraw_fund(ctx: ExecuteContext) -> Result<Response, ContractError>
         ContractError::Unauthorized {}
     );
 
-    // let res = Response::new();
     let mut funds = Vec::<Coin>::new();
     loop {
         match UNSTAKING_QUEUE.front(deps.storage).unwrap() {
-            Some(Unstaking { payout_at, .. }) if payout_at <= env.block.time => {
-                if let Some(Unstaking { fund, .. }) = UNSTAKING_QUEUE.pop_front(deps.storage)? {
+            Some(UnstakingTokens { payout_at, .. }) if payout_at <= env.block.time => {
+                if let Some(UnstakingTokens { fund, .. }) =
+                    UNSTAKING_QUEUE.pop_front(deps.storage)?
+                {
                     funds.push(fund)
                 }
             }
@@ -295,9 +296,9 @@ fn query_staked_tokens(
     Ok(res)
 }
 
-fn query_unstaked_tokens(deps: Deps) -> Result<Vec<Unstaking>, ContractError> {
+fn query_unstaked_tokens(deps: Deps) -> Result<Vec<UnstakingTokens>, ContractError> {
     let iter = UNSTAKING_QUEUE.iter(deps.storage).unwrap();
-    let mut res = Vec::<Unstaking>::new();
+    let mut res = Vec::<UnstakingTokens>::new();
 
     for data in iter {
         res.push(data.unwrap());
