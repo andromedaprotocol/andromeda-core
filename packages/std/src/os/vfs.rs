@@ -10,11 +10,11 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{ensure, Addr, Api, QuerierWrapper};
 use regex::Regex;
 
-pub const COMPONENT_NAME_REGEX: &str = r"^[A-Za-z0-9\.\-_]{1,40}$";
+pub const COMPONENT_NAME_REGEX: &str = r"^[A-Za-z0-9.-_]{1,40}$";
 pub const USERNAME_REGEX: &str = r"^[a-z0-9]{1, 40}$";
 
 pub const PATH_REGEX: &str = r"^(((~)?/(home|lib)/)|(\./)|(~))([A-Za-z0-9\.\-]{1,40}(/)?)+$";
-pub const PROTOCOL_PATH_REGEX: &str = r"^((([A-Za-z0-9]+://)?([A-Za-z0-9\.\-_]{1,40}/)?((home|lib))/)|(~(/)?)|(\./))([A-Za-z0-9\.\-]{1,40}(/)?)+$";
+pub const PROTOCOL_PATH_REGEX: &str = r"^((([A-Za-z0-9]+://)?([A-Za-z0-9\.\-_]{1,40}/)?((home|lib))/)|(~(/)?)|(\./))([A-Za-z0-9.-]{1,40}(/)?)+$";
 
 pub fn convert_component_name(path: &str) -> String {
     path.trim()
@@ -64,7 +64,7 @@ pub fn validate_username(username: String) -> Result<bool, ContractError> {
     Ok(true)
 }
 
-pub fn validate_path_name(api: &dyn Api, path: String) -> Result<bool, ContractError> {
+pub fn validate_path_name(api: &dyn Api, path: String) -> Result<(), ContractError> {
     let andr_addr = AndrAddr::from_string(path.clone());
     let is_path_reference = path.contains('/');
     let starts_with_tilde = path.starts_with('~');
@@ -80,19 +80,7 @@ pub fn validate_path_name(api: &dyn Api, path: String) -> Result<bool, ContractE
             }
         );
 
-        // let mut components = path.split('/');
-        // let first_component = components.nth(1).unwrap();
-        // ensure!(
-        //    (first_component == "home" || first_component == "lib"),
-        //     ContractError::InvalidPathname {
-        //         error: Some(
-        //             "Paths beginning with ~ must directly reference a username: ~username or root directory: ~/home/username ~/lib/library"
-        //                 .to_string()
-        //         )
-        //     }
-        // );
-
-        return Ok(true);
+        return Ok(());
     }
 
     // Path is of the form /home/... or /lib/... or prot://...
@@ -127,46 +115,54 @@ pub fn validate_path_name(api: &dyn Api, path: String) -> Result<bool, ContractE
             validate_component_name(component.to_string().replace('~', ""))?;
         }
 
-        return Ok(true);
+        return Ok(());
     }
 
     //Path is of the form ~username or ~address
     if !is_path_reference && starts_with_tilde {
+        let is_address = api.addr_validate(&path).is_ok();
+
+        if is_address {
+            return Ok(());
+        }
+
         let username = &path[1..path.len()];
-        let is_username = validate_username(username.to_string());
-        let is_address = api.addr_validate(&path);
+        let is_username = validate_username(username.to_string()).is_ok();
 
-        ensure!(
-            is_address.is_ok() || is_username.is_ok(),
-            ContractError::InvalidPathname {
-                error: Some(
-                    "Provided address is neither a valid username nor a valid address".to_string()
-                )
-            }
-        );
+        if is_username {
+            return Ok(());
+        }
 
-        return Ok(true);
+        return Err(ContractError::InvalidPathname {
+            error: Some(
+                "Provided address is neither a valid username nor a valid address".to_string(),
+            ),
+        });
     }
 
     // Path is either a username or address
     if !is_path_reference {
-        let is_address = api.addr_validate(&path);
-        let is_username = validate_username(path);
+        let is_address = api.addr_validate(&path).is_ok();
 
-        ensure!(
-            is_address.is_ok() || is_username.is_ok(),
-            ContractError::InvalidPathname {
-                error: Some(
-                    "Provided address is neither a valid username nor a valid address".to_string()
-                )
-            }
-        );
+        if is_address {
+            return Ok(());
+        }
 
-        return Ok(true);
+        let is_username = validate_username(path).is_ok();
+
+        if is_username {
+            return Ok(());
+        }
+
+        return Err(ContractError::InvalidPathname {
+            error: Some(
+                "Provided address is neither a valid username nor a valid address".to_string(),
+            ),
+        });
     }
 
     // Does not fit any valid conditions
-    Ok(false)
+    Err(ContractError::InvalidPathname { error: None })
 }
 
 #[cw_serde]
@@ -355,6 +351,31 @@ mod test {
                 name: "component name with only numbers",
                 input: "123456",
                 should_err: false,
+            },
+            ValidateComponentNameTestCase {
+                name: "component name one letter",
+                input: "a",
+                should_err: false,
+            },
+            ValidateComponentNameTestCase {
+                name: "component with hyphen at the start",
+                input: "-component-2",
+                should_err: false,
+            },
+            ValidateComponentNameTestCase {
+                name: "component with forward slash",
+                input: "component-2/",
+                should_err: true,
+            },
+            ValidateComponentNameTestCase {
+                name: "component with backward slash",
+                input: r"component-2\",
+                should_err: true,
+            },
+            ValidateComponentNameTestCase {
+                name: "component name with upper case letters",
+                input: "ComponentName",
+                should_err: false,
             }
         ];
 
@@ -479,6 +500,12 @@ mod test {
                 path: "/../../../..",
                 should_err: true,
             },
+            // This case should fail but due to the restriction of mock dependencies we cannot validate it correctly!
+            // ValidatePathNameTestCase {
+            //     name: "Standard address with backslash",
+            //     path: r"\cosmos\1abcde\",
+            //     should_err: true,
+            // },
         ];
 
         for test in test_cases {
