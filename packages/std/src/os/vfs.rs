@@ -10,7 +10,7 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{ensure, Addr, Api, QuerierWrapper};
 use regex::Regex;
 
-pub const COMPONENT_NAME_REGEX: &str = r"^[A-Za-z0-9.-_]{1,40}$";
+pub const COMPONENT_NAME_REGEX: &str = r"^[A-Za-z0-9\.\-_]{1,40}$";
 pub const USERNAME_REGEX: &str = r"^[a-z0-9]{1, 40}$";
 
 pub const PATH_REGEX: &str = r"^(((~)?/(home|lib)/)|(\./)|(~))([A-Za-z0-9\.\-]{1,40}(/)?)+$";
