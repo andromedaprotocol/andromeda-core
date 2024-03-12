@@ -220,16 +220,11 @@ mod tests {
     #[test]
     fn test_execute_withdraw_cw20() {
         let mut deps = mock_dependencies_custom(&[]);
-        let operator = "operator";
         ADOContract::default()
             .owner
             .save(deps.as_mut().storage, &Addr::unchecked("owner"))
             .unwrap();
-        ADOContract::default()
-            .operators
-            .save(deps.as_mut().storage, operator, &true)
-            .unwrap();
-        let info = mock_info(operator, &[]);
+        let info = mock_info("owner", &[]);
         ADOContract::default()
             .withdrawable_tokens
             .save(

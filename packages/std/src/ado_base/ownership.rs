@@ -21,7 +21,4 @@ pub enum OwnershipMessage {
     RevokeOwnershipOffer,
     AcceptOwnership,
     Disown,
-    UpdateOperators {
-        new_operators: Vec<Addr>,
-    },
 }
