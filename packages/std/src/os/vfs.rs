@@ -292,44 +292,76 @@ mod test {
 
     use super::*;
 
+    struct ValidateComponentNameTestCase {
+        name: &'static str,
+        input: &'static str,
+        should_err: bool,
+    }
+
     #[test]
     fn test_validate_component_name() {
-        let valid_name = "component1";
-        validate_component_name(valid_name.to_string()).unwrap();
+        let test_cases: Vec<ValidateComponentNameTestCase> = vec![
+            ValidateComponentNameTestCase {
+                name: "standard component name",
+                input: "component1",
+                should_err: false
+            },
+            ValidateComponentNameTestCase {
+                name: "component with hyphen",
+                input: "component-2",
+                should_err: false,
+            },
+            ValidateComponentNameTestCase {
+                name: "component with underscore",
+                input: "component_2",
+                should_err: false,
+            },
+            ValidateComponentNameTestCase {
+                name: "component with period",
+                input: ".component2",
+                should_err: false,
+            },
+            ValidateComponentNameTestCase {
+                name: "component with invalid character",
+                input: "component$2",
+                should_err: true,
+            },
+            ValidateComponentNameTestCase {
+                name: "component with spaces",
+                input: "component 2",
+                should_err: true,
+            },
+            ValidateComponentNameTestCase {
+                name: "empty component name",
+                input: "",
+                should_err: true,
+            },
+            ValidateComponentNameTestCase {
+                name: "component name too long",
+                input: "somereallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallylongname",
+                should_err: true,
+            },
+            ValidateComponentNameTestCase {
+                name: "component name with only special characters",
+                input: "!@#$%^&*()",
+                should_err: true,
+            },
+            ValidateComponentNameTestCase {
+                name: "component name with leading and trailing spaces",
+                input: "  component2  ",
+                should_err: true,
+            },
+            ValidateComponentNameTestCase {
+                name: "component name with only numbers",
+                input: "123456",
+                should_err: false,
+            }
+        ];
 
-        let valid_name = "component-1";
-        validate_component_name(valid_name.to_string()).unwrap();
-
-        let valid_name = "component_1";
-        validate_component_name(valid_name.to_string()).unwrap();
-
-        let valid_name = ".component-1";
-        validate_component_name(valid_name.to_string()).unwrap();
-
-        let empty_name = "";
-        let res = validate_component_name(empty_name.to_string());
-        assert!(res.is_err());
-
-        let dot_name = ".";
-        let res = validate_component_name(dot_name.to_string());
-        assert!(res.is_err());
-
-        let dot_name = "..";
-        let res = validate_component_name(dot_name.to_string());
-        assert!(res.is_err());
-
-        let invalid_name = "/ /";
-        let res = validate_component_name(invalid_name.to_string());
-        assert!(res.is_err());
-
-        let invalid_name = " ";
-        let res = validate_component_name(invalid_name.to_string());
-        assert!(res.is_err());
-
-        let invalid_name =
-            "somereallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallylongname";
-        let res = validate_component_name(invalid_name.to_string());
-        assert!(res.is_err());
+        for test in test_cases {
+            let res = validate_component_name(test.input.to_string());
+            assert_eq!(res.is_err(), test.should_err, "Test case: {}", test.name);
+        }
     }
 
     struct ValidatePathNameTestCase {
