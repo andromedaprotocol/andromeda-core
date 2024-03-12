@@ -5,7 +5,7 @@
 # Builds "andromeda-contract" contract and "some-category" category
 
 # LOG all the contracts compiled with there compressed file size
-local FILE_LOG=""
+FILE_LOG=""
 
 get_version_filename (){
     local CONTRACT=$1
@@ -13,7 +13,7 @@ get_version_filename (){
     local BUILD_VERSION=$(cargo pkgid $CONTRACT | cut -d# -f2 | cut -d: -f2)
     local BUILD_TARGET=${CONTRACT//-/_}
 
-    echo "$BUILD_TARGET@$BUILD_VERSION";
+    echo "$BUILD_TARGET+$BUILD_VERSION";
 }
 
 build_contract () {

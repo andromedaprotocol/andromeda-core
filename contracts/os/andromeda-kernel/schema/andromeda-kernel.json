@@ -537,6 +537,45 @@
           }
         },
         "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "version"
+        ],
+        "properties": {
+          "version": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "owner"
+        ],
+        "properties": {
+          "owner": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
       }
     ],
     "definitions": {
@@ -600,6 +639,20 @@
       "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
       "type": "string"
     },
+    "owner": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ContractOwnerResponse",
+      "type": "object",
+      "required": [
+        "owner"
+      ],
+      "properties": {
+        "owner": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
     "recoveries": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Array_of_Coin",
@@ -629,10 +682,38 @@
         }
       }
     },
+    "type": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "TypeResponse",
+      "type": "object",
+      "required": [
+        "ado_type"
+      ],
+      "properties": {
+        "ado_type": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
     "verify_address": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Boolean",
       "type": "boolean"
+    },
+    "version": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "VersionResponse",
+      "type": "object",
+      "required": [
+        "version"
+      ],
+      "properties": {
+        "version": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
     }
   }
 }
