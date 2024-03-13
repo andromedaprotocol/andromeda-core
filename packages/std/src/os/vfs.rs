@@ -506,6 +506,56 @@ mod test {
                 path: "/../../../..",
                 should_err: true,
             },
+            ValidatePathNameTestCase {
+                name: "Path with newline character",
+                path: "/home/username/dir1\n/file",
+                should_err: true,
+            },
+            ValidatePathNameTestCase {
+                name: "Path with tab character",
+                path: "/home/username/dir1\t/dir2",
+                should_err: true,
+            },
+            ValidatePathNameTestCase {
+                name: "Path with null character",
+                path: "/home/username\0/dir1",
+                should_err: true,
+            },
+            ValidatePathNameTestCase {
+                name: "Path with emoji",
+                path: "/home/username/😊",
+                should_err: true,
+            },
+            ValidatePathNameTestCase {
+                name: "Path with Cyrillic characters",
+                path: "/home/пользователь/dir1",
+                should_err: true,
+            },
+            ValidatePathNameTestCase {
+                name: "Path with Arabic characters",
+                path: "/home/مستخدم/dir1",
+                should_err: true,
+            },
+            ValidatePathNameTestCase {
+                name: "Path with Chinese characters",
+                path: "/home/用户/dir1",
+                should_err: true,
+            },
+            ValidatePathNameTestCase {
+                name: "Path with very long name",
+                path: "/home/username/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                should_err: true,
+            },
+            ValidatePathNameTestCase {
+                name: "Valid path with multiple subdirectories",
+                path: "/home/username/dir1/dir2/dir3/dir4",
+                should_err: false,
+            },
+            ValidatePathNameTestCase {
+                name: "Path with unprintable ASCII character",
+                path: "/home/username/\x07file",
+                should_err: true,
+            },
             // This case should fail but due to the restriction of mock dependencies we cannot validate it correctly! It is partially validated in test_validate_username
             // ValidatePathNameTestCase {
             //     name: "Really long username",
