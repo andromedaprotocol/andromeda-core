@@ -1,7 +1,7 @@
 use andromeda_std::andr_instantiate_modules;
 use andromeda_std::{andr_exec, andr_instantiate, andr_query};
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::Uint128;
+use cosmwasm_std::{Decimal, Uint128};
 use cw20::Cw20ReceiveMsg;
 
 #[andr_instantiate]
@@ -65,7 +65,7 @@ pub enum QueryMsg {
     UserInfo { address: String },
     /// Gets the withdrawal percent allowed given the timestamp, or the current time if not
     /// specified.
-    #[returns(::cosmwasm_std::Decimal)]
+    #[returns(Decimal)]
     WithdrawalPercentAllowed { timestamp: Option<u64> },
 }
 

@@ -234,7 +234,7 @@ pub enum QueryMsg {
         limit: Option<u32>,
     },
     /// If the token is archived
-    #[returns(bool)]
+    #[returns(IsArchivedResponse)]
     IsArchived { token_id: String },
     /// The transfer agreement for the token
     #[returns(Option<TransferAgreement>)]
@@ -259,6 +259,10 @@ pub enum QueryMsg {
         token_id: String,
         include_expired: Option<bool>,
     },
+}
+#[cw_serde]
+pub struct IsArchivedResponse {
+    pub is_archived: bool,
 }
 
 impl From<QueryMsg> for Cw721QueryMsg<QueryMsg> {

@@ -79,12 +79,17 @@ pub struct ChannelInfoResponse {
 pub enum QueryMsg {
     #[returns(cosmwasm_std::Addr)]
     KeyAddress { key: String },
-    #[returns(bool)]
+    #[returns(VerifyAddressResponse)]
     VerifyAddress { address: String },
     #[returns(Option<ChannelInfoResponse>)]
     ChannelInfo { chain: String },
     #[returns(Vec<::cosmwasm_std::Coin>)]
     Recoveries { addr: Addr },
+}
+
+#[cw_serde]
+pub struct VerifyAddressResponse {
+    pub verify_address: bool,
 }
 
 #[cw_serde]

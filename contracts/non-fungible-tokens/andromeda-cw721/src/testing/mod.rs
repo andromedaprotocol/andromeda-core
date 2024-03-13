@@ -10,7 +10,8 @@ use andromeda_std::{ado_contract::ADOContract, amp::addresses::AndrAddr};
 
 use crate::{contract::*, state::TRANSFER_AGREEMENTS};
 use andromeda_non_fungible_tokens::cw721::{
-    ExecuteMsg, InstantiateMsg, MintMsg, QueryMsg, TokenExtension, TransferAgreement,
+    ExecuteMsg, InstantiateMsg, IsArchivedResponse, MintMsg, QueryMsg, TokenExtension,
+    TransferAgreement,
 };
 use andromeda_std::testing::mock_querier::{
     mock_dependencies_custom, MOCK_ADDRESS_LIST_CONTRACT, MOCK_KERNEL_CONTRACT,
@@ -258,8 +259,8 @@ fn test_archive() {
 
     let query_msg = QueryMsg::IsArchived { token_id };
     let query_resp = query(deps.as_ref(), env, query_msg).unwrap();
-    let resp: bool = from_json(query_resp).unwrap();
-    assert!(resp)
+    let resp: IsArchivedResponse = from_json(query_resp).unwrap();
+    assert!(resp.is_archived)
 }
 
 #[test]

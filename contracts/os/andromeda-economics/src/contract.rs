@@ -5,7 +5,9 @@ use andromeda_std::amp::AndrAddr;
 
 use andromeda_std::error::{from_semver, ContractError};
 use andromeda_std::os::aos_querier::AOSQuerier;
-use andromeda_std::os::economics::{Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
+use andromeda_std::os::economics::{
+    BalanceResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
+};
 #[allow(unused_imports)]
 use cosmwasm_std::{
     attr, coin, ensure, entry_point, from_json, to_json_binary, Addr, BankMsg, Binary, CosmosMsg,
@@ -437,10 +439,14 @@ pub fn query(_deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractEr
     }
 }
 
-fn query_balance(deps: Deps, address: AndrAddr, asset: String) -> Result<Uint128, ContractError> {
+fn query_balance(
+    deps: Deps,
+    address: AndrAddr,
+    asset: String,
+) -> Result<BalanceResponse, ContractError> {
     let addr = address.get_raw_address(&deps)?;
     let balance = BALANCES
         .load(deps.storage, (addr, asset))
         .unwrap_or_default();
-    Ok(balance)
+    Ok(BalanceResponse { balance })
 }
