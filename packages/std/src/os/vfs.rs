@@ -11,10 +11,10 @@ use cosmwasm_std::{ensure, Addr, Api, QuerierWrapper};
 use regex::Regex;
 
 pub const COMPONENT_NAME_REGEX: &str = r"^[A-Za-z0-9\.\-_]{1,40}$";
-pub const USERNAME_REGEX: &str = r"^[a-z0-9]{1, 40}$";
+pub const USERNAME_REGEX: &str = r"^[a-z0-9]{1,40}$";
 
 pub const PATH_REGEX: &str = r"^(((~)?/(home|lib)/)|(\./)|(~))([A-Za-z0-9\.\-]{1,40}(/)?)+$";
-pub const PROTOCOL_PATH_REGEX: &str = r"^((([A-Za-z0-9]+://)?([A-Za-z0-9\.\-_]{1,40}/)?((home|lib))/)|(~(/)?)|(\./))([A-Za-z0-9.-]{1,40}(/)?)+$";
+pub const PROTOCOL_PATH_REGEX: &str = r"^((([A-Za-z0-9]+://)?([A-Za-z0-9\.\-_]{1,40}/)?((home|lib))/)|(~(/)?)|(\./))([A-Za-z0-9\.\-]{1,40}(/)?)+$";
 
 pub fn convert_component_name(path: &str) -> String {
     path.trim()
@@ -49,6 +49,12 @@ pub fn validate_username(username: String) -> Result<bool, ContractError> {
         !username.is_empty(),
         ContractError::InvalidUsername {
             error: Some("Username cannot be empty.".to_string())
+        }
+    );
+    ensure!(
+        username.len() <= 40,
+        ContractError::InvalidUsername {
+            error: Some("Username must be at most 40 characters long".to_string())
         }
     );
     let re = Regex::new(USERNAME_REGEX).unwrap();
@@ -126,8 +132,8 @@ pub fn validate_path_name(api: &dyn Api, path: String) -> Result<(), ContractErr
             return Ok(());
         }
 
-        let username = &path[1..path.len()];
-        let is_username = validate_username(username.to_string()).is_ok();
+        let username = &path[1..];
+        let is_username = validate_username(username.to_string())?;
 
         if is_username {
             return Ok(());
@@ -502,6 +508,12 @@ mod test {
             },
             // This case should fail but due to the restriction of mock dependencies we cannot validate it correctly!
             // ValidatePathNameTestCase {
+            //     name: "Really long username",
+            //     path: "~somereallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallylongname",
+            //     should_err: true,
+            // },
+            // This case should fail but due to the restriction of mock dependencies we cannot validate it correctly!
+            // ValidatePathNameTestCase {
             //     name: "Standard address with backslash",
             //     path: r"\cosmos\1abcde\",
             //     should_err: true,
@@ -570,6 +582,72 @@ mod test {
             assert_eq!(
                 convert_component_name(test.input),
                 test.expected,
+                "Test case: {}",
+                test.name
+            )
+        }
+    }
+
+    struct ValidateUsernameTestCase {
+        name: &'static str,
+        username: &'static str,
+        should_err: bool,
+    }
+
+    #[test]
+    fn test_validate_username() {
+        let test_cases: Vec<ValidateUsernameTestCase> = vec![
+            ValidateUsernameTestCase {
+                name: "Valid lowercase username",
+                username: "validusername",
+                should_err: false,
+            },
+            ValidateUsernameTestCase {
+                name: "Valid numeric username",
+                username: "123456",
+                should_err: false,
+            },
+            ValidateUsernameTestCase {
+                name: "Username with uppercase letters",
+                username: "InvalidUsername",
+                should_err: true,
+            },
+            ValidateUsernameTestCase {
+                name: "Username with special characters",
+                username: "user!@#",
+                should_err: true,
+            },
+            ValidateUsernameTestCase {
+                name: "Empty username",
+                username: "",
+                should_err: true,
+            },
+            ValidateUsernameTestCase {
+                name: "Username too long",
+                username: "thisisaverylongusernamethatisdefinitelymorethan40characters",
+                should_err: true,
+            },
+            ValidateUsernameTestCase {
+                name: "Username with underscore",
+                username: "valid_username",
+                should_err: true,
+            },
+            ValidateUsernameTestCase {
+                name: "Username with hyphen",
+                username: "valid-username",
+                should_err: true,
+            },
+            ValidateUsernameTestCase {
+                name: "Username with period",
+                username: "valid.username",
+                should_err: true,
+            },
+        ];
+
+        for test in test_cases {
+            assert_eq!(
+                validate_username(test.username.to_string()).is_err(),
+                test.should_err,
                 "Test case: {}",
                 test.name
             )
