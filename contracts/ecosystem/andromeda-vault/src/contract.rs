@@ -10,8 +10,7 @@ use andromeda_std::common::context::ExecuteContext;
 use andromeda_std::{
     ado_base::withdraw::{Withdrawal, WithdrawalType},
     ado_base::{
-        operators::IsOperatorResponse, AndromedaMsg, AndromedaQuery,
-        InstantiateMsg as BaseInstantiateMsg,
+        operators::IsOperatorResponse, AndromedaQuery, InstantiateMsg as BaseInstantiateMsg,
     },
     error::{from_semver, ContractError},
 };
@@ -315,7 +314,7 @@ pub fn withdraw_strategy(
     }
 
     let addr = addr_opt.unwrap();
-    let withdraw_exec = to_binary(&AndromedaMsg::Withdraw {
+    let withdraw_exec = to_binary(&ExecuteMsg::Withdraw {
         recipient: Some(recipient),
         tokens_to_withdraw: Some(withdrawals),
     })?;

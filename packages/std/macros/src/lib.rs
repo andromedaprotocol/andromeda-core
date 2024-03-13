@@ -77,26 +77,6 @@ pub fn andr_exec(_args: TokenStream, input: TokenStream) -> TokenStream {
             .into(),
         )
     }
-
-    #[cfg(feature = "withdraw")]
-    {
-        merged = merge_variants(
-            merged,
-            quote! {
-                enum Right {
-                    Deposit {
-                        recipient: Option<::andromeda_std::amp::AndrAddr>,
-                        msg: Option<::cosmwasm_std::Binary>,
-                    },
-                    Withdraw {
-                        recipient: Option<::andromeda_std::amp::Recipient>,
-                        tokens_to_withdraw: Option<Vec<::andromeda_std::common::withdraw::Withdrawal>>,
-                    },
-                }
-            }
-            .into(),
-        )
-    }
     let input = parse_macro_input!(merged);
     TokenStream::from(andr_exec_derive(input).into_token_stream())
 }

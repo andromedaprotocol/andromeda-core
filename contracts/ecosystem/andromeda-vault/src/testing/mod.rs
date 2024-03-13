@@ -737,7 +737,7 @@ fn test_withdraw_single_strategy() {
     };
 
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
-    let withdraw_exec = to_binary(&AndromedaMsg::Withdraw {
+    let withdraw_exec = to_binary(&ExecuteMsg::Withdraw {
         recipient: Some(Recipient::from_string("depositor")),
         tokens_to_withdraw: Some(withdrawals),
     })

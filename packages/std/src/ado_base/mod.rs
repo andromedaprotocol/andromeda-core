@@ -10,13 +10,9 @@ pub mod permissioning;
 pub mod version;
 
 pub mod withdraw;
-#[cfg(feature = "withdraw")]
-use crate::ado_base::withdraw::Withdrawal;
-#[cfg(feature = "withdraw")]
-use crate::amp::recipient::Recipient;
 use crate::amp::{messages::AMPPkt, AndrAddr};
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Addr, Binary};
+use cosmwasm_std::Addr;
 pub use modules::Module;
 
 #[cfg(feature = "modules")]
@@ -43,11 +39,6 @@ pub enum AndromedaMsg {
     UpdateKernelAddress {
         address: Addr,
     },
-    #[cfg(feature = "withdraw")]
-    Withdraw {
-        recipient: Option<Recipient>,
-        tokens_to_withdraw: Option<Vec<Withdrawal>>,
-    },
     #[cfg(feature = "modules")]
     RegisterModule {
         module: Module,
@@ -60,10 +51,6 @@ pub enum AndromedaMsg {
     AlterModule {
         module_idx: Uint64,
         module: Module,
-    },
-    Deposit {
-        recipient: Option<AndrAddr>,
-        msg: Option<Binary>,
     },
     #[serde(rename = "amp_receive")]
     AMPReceive(AMPPkt),
