@@ -506,7 +506,7 @@ mod test {
                 path: "/../../../..",
                 should_err: true,
             },
-            // This case should fail but due to the restriction of mock dependencies we cannot validate it correctly!
+            // This case should fail but due to the restriction of mock dependencies we cannot validate it correctly! It is partially validated in test_validate_username
             // ValidatePathNameTestCase {
             //     name: "Really long username",
             //     path: "~somereallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallylongname",
