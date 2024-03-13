@@ -79,6 +79,10 @@ pub fn execute(
             execute::withdraw_cw20(deps, info, amount, asset)
         }
         ExecuteMsg::Receive(cw20msg) => cw20_receive(deps, env, info, cw20msg),
+        // Base message
+        ExecuteMsg::Ownership(ownership_message) => {
+            ADOContract::default().execute_ownership(deps, env, info, ownership_message)
+        }
     }
 }
 
