@@ -1,8 +1,6 @@
 #[cfg(feature = "modules")]
 use crate::ado_base::modules::Module;
 use cosmwasm_std::Addr;
-#[cfg(feature = "withdraw")]
-use cw_asset::AssetInfo;
 use cw_storage_plus::{Item, Map};
 
 pub struct ADOContract<'a> {
@@ -18,8 +16,6 @@ pub struct ADOContract<'a> {
     pub(crate) module_info: Map<'a, &'a str, Module>,
     #[cfg(feature = "modules")]
     pub(crate) module_idx: Item<'a, u64>,
-    #[cfg(feature = "withdraw")]
-    pub withdrawable_tokens: Map<'a, &'a str, AssetInfo>,
 }
 
 impl<'a> Default for ADOContract<'a> {
@@ -37,8 +33,6 @@ impl<'a> Default for ADOContract<'a> {
             module_info: Map::new("andr_modules"),
             #[cfg(feature = "modules")]
             module_idx: Item::new("andr_module_idx"),
-            #[cfg(feature = "withdraw")]
-            withdrawable_tokens: Map::new("withdrawable_tokens"),
         }
     }
 }

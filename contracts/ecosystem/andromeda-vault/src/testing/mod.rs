@@ -11,7 +11,6 @@ use andromeda_std::amp::{AndrAddr, Recipient};
 use andromeda_std::testing::mock_querier::MOCK_KERNEL_CONTRACT;
 use andromeda_std::{
     ado_base::withdraw::{Withdrawal, WithdrawalType},
-    ado_base::AndromedaMsg,
     error::ContractError,
 };
 use cosmwasm_std::attr;

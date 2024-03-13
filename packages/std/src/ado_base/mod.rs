@@ -84,7 +84,6 @@ pub enum AndromedaQuery {
     #[cfg(feature = "modules")]
     #[returns(Vec<String>)]
     ModuleIds {},
-    #[cfg(feature = "withdraw")]
     #[returns(::cosmwasm_std::BalanceResponse)]
     Balance { address: AndrAddr },
     #[returns(Vec<self::permissioning::PermissionInfo>)]
