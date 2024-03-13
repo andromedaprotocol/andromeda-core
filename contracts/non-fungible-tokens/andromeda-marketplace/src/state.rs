@@ -59,6 +59,8 @@ impl From<TokenSaleState> for SaleStateResponse {
             sale_id: token_sale_state.sale_id,
             status: token_sale_state.status,
             price: token_sale_state.price,
+            start_time: token_sale_state.start_time,
+            end_time: token_sale_state.end_time,
         }
     }
 }

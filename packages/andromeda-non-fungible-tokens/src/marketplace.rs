@@ -1,7 +1,7 @@
 use andromeda_std::{andr_exec, andr_instantiate, andr_instantiate_modules, andr_query};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
-use cw721::Cw721ReceiveMsg;
+use cw721::{Cw721ReceiveMsg, Expiration};
 use std::fmt::{Display, Formatter, Result};
 
 #[andr_instantiate]
@@ -103,6 +103,8 @@ pub struct SaleStateResponse {
     pub coin_denom: String,
     pub price: Uint128,
     pub status: Status,
+    pub start_time: Expiration,
+    pub end_time: Expiration,
 }
 
 #[cw_serde]
