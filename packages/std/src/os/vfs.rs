@@ -642,6 +642,41 @@ mod test {
                 username: "valid.username",
                 should_err: true,
             },
+            ValidateUsernameTestCase {
+                name: "Username with leading numbers",
+                username: "123validusername",
+                should_err: false,
+            },
+            ValidateUsernameTestCase {
+                name: "Username with only one character",
+                username: "v",
+                should_err: false,
+            },
+            ValidateUsernameTestCase {
+                name: "Username with whitespace",
+                username: "valid username",
+                should_err: true,
+            },
+            ValidateUsernameTestCase {
+                name: "Username with leading whitespace",
+                username: " validusername",
+                should_err: true,
+            },
+            ValidateUsernameTestCase {
+                name: "Username with trailing whitespace",
+                username: "validusername ",
+                should_err: true,
+            },
+            ValidateUsernameTestCase {
+                name: "Username with mixed case letters",
+                username: "ValidUserName",
+                should_err: true,
+            },
+            ValidateUsernameTestCase {
+                name: "Username with all uppercase letters",
+                username: "VALIDUSERNAME",
+                should_err: true,
+            },
         ];
 
         for test in test_cases {
