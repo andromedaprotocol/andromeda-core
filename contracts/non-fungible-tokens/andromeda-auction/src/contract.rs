@@ -673,14 +673,14 @@ fn query_is_closed(
     let token_auction_state =
         get_existing_token_auction_state(deps.storage, &token_id, &token_address)?;
 
-    if query_is_claimed(deps, env.clone(), token_id.clone(), token_address.clone())?.is_claimed
-        || query_is_cancelled(deps, token_id, token_address)?.is_cancelled
-        || token_auction_state.end_time.is_expired(&env.block)
-    {
-        Ok(IsClosedResponse { is_closed: true })
-    } else {
-        Ok(IsClosedResponse { is_closed: false })
-    }
+    let is_claimed =
+        query_is_claimed(deps, env.clone(), token_id.clone(), token_address.clone())?.is_claimed;
+    let is_cancelled = query_is_cancelled(deps, token_id, token_address)?.is_cancelled;
+    let is_expired = token_auction_state.end_time.is_expired(&env.block);
+
+    // Considers the auction closed if one or more of those 3 variables are true. Otherwise it isn't closed.
+    let is_closed = is_claimed || is_cancelled || is_expired;
+    Ok(IsClosedResponse { is_closed })
 }
 
 fn query_auction_ids(
