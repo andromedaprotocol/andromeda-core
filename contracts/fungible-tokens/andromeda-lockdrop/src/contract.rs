@@ -137,7 +137,7 @@ pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
         ExecuteMsg::EnableClaims {} => execute_enable_claims(ctx),
         ExecuteMsg::ClaimRewards {} => execute_claim_rewards(ctx),
         // ExecuteMsg::WithdrawProceeds { recipient } => execute_withdraw_proceeds(ctx, recipient),
-        _ => handle_execute(ctx, msg),
+        _ => ADOContract::default().execute(ctx, msg),
     }
 }
 
