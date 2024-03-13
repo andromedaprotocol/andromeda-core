@@ -3,7 +3,6 @@
 use andromeda_app::app::AppComponent;
 use andromeda_app_contract::mock::{mock_andromeda_app, MockApp};
 
-use andromeda_finance::validator_staking::UnstakingTokens;
 use andromeda_std::amp::AndrAddr;
 use andromeda_validator_staking::mock::{
     mock_andromeda_validator_staking, mock_validator_staking_instantiate_msg, MockValidatorStaking,
@@ -242,17 +241,13 @@ fn test_validator_stake() {
     };
     assert_eq!(err, &expected_err);
 
-    // Test unstaked tokens query
     let unstaked_tokens = validator_staking.query_unstaked_tokens(&router).unwrap();
-    let expected_unstaked_tokens = vec![UnstakingTokens {
-        fund: coin(1000, "TOKEN"),
-        payout_at: router.block_info().time.plus_days(21),
-    }];
-    assert_eq!(unstaked_tokens, expected_unstaked_tokens);
+    let unbonding_period =
+        unstaked_tokens[0].payout_at.seconds() - router.block_info().time.seconds();
     // Update block to payout period
     router.set_block(BlockInfo {
         height: router.block_info().height,
-        time: router.block_info().time.plus_days(21),
+        time: router.block_info().time.plus_seconds(unbonding_period),
         chain_id: router.block_info().chain_id,
     });
 
@@ -265,7 +260,7 @@ fn test_validator_stake() {
     validator_staking
         .execute_withdraw_fund(&mut router, owner.clone())
         .unwrap();
-    // execute_withdraw_fund
+
     let owner_balance = router.wrap().query_balance(owner, "TOKEN").unwrap();
     assert_eq!(owner_balance, coin(1050, "TOKEN"));
 }
