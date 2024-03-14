@@ -335,6 +335,40 @@ fn test_execute_buy_works() {
 }
 
 #[test]
+fn test_start_sale_in_past() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let env = mock_env();
+
+    let _res = init(deps.as_mut(), None);
+
+    let current_time = env.block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO;
+    let hook_msg = Cw721HookMsg::StartSale {
+        coin_denom: "uusd".to_string(),
+        price: Uint128::new(100),
+        // Set start time to one second in the past
+        start_time: Some(env.block.time.minus_seconds(1).seconds()),
+        duration: Some(360),
+    };
+    let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
+        sender: MOCK_TOKEN_OWNER.to_owned(),
+        token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
+        msg: encode_binary(&hook_msg).unwrap(),
+    });
+    let env = mock_env();
+
+    let info = mock_info(MOCK_TOKEN_ADDR, &[]);
+    let err = execute(deps.as_mut(), env.clone(), info, msg).unwrap_err();
+
+    assert_eq!(
+        err,
+        ContractError::StartTimeInThePast {
+            current_time,
+            current_block: env.block.height
+        }
+    )
+}
+
+#[test]
 fn test_execute_buy_future_start() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
@@ -372,6 +406,32 @@ fn test_execute_buy_sale_expired() {
     let info = mock_info("someone", &coins(100, "uusd".to_string()));
     // Forward block time so that the end time expires
     env.block.time = env.block.time.plus_days(100);
+
+    let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
+    assert_eq!(err, ContractError::SaleExpired {})
+}
+
+#[test]
+fn test_execute_buy_sale_expired_from_the_start() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let env = mock_env();
+
+    let _res = init(deps.as_mut(), None);
+
+    start_sale_future_start_with_duration(deps.as_mut(), mock_env());
+
+    let msg = ExecuteMsg::Buy {
+        token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
+        token_address: MOCK_TOKEN_ADDR.to_string(),
+    };
+
+    let info = mock_info("someone", &coins(100, "uusd".to_string()));
+    // Set status as expired
+    let mut state = TOKEN_SALE_STATE.load(deps.as_mut().storage, 1).unwrap();
+    state.status = Status::Expired;
+    TOKEN_SALE_STATE
+        .save(deps.as_mut().storage, 1, &state)
+        .unwrap();
 
     let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
     assert_eq!(err, ContractError::SaleExpired {})
