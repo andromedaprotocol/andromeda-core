@@ -84,7 +84,7 @@ fn test_marketplace_app() {
         None,
     );
     let cw721_component = AppComponent::new(
-        "1".to_string(),
+        "tokens".to_string(),
         "cw721".to_string(),
         to_binary(&cw721_init_msg).unwrap(),
     );
@@ -96,12 +96,12 @@ fn test_marketplace_app() {
         recipients: vec![Recipient::from_string(rates_receiver.to_string())],
     }];
     let rates_init_msg = mock_rates_instantiate_msg(rates, andr.kernel_address.to_string(), None);
-    let rates_component = AppComponent::new("2", "rates", to_binary(&rates_init_msg).unwrap());
+    let rates_component = AppComponent::new("rates", "rates", to_binary(&rates_init_msg).unwrap());
 
     let address_list_init_msg =
         mock_address_list_instantiate_msg(true, andr.kernel_address.to_string(), None);
     let address_list_component = AppComponent::new(
-        "3",
+        "address-list",
         "address-list",
         to_binary(&address_list_init_msg).unwrap(),
     );
@@ -117,7 +117,7 @@ fn test_marketplace_app() {
     let marketplace_init_msg =
         mock_marketplace_instantiate_msg(andr.kernel_address.to_string(), Some(modules), None);
     let marketplace_component = AppComponent::new(
-        "4".to_string(),
+        "marketplace".to_string(),
         "marketplace".to_string(),
         to_binary(&marketplace_init_msg).unwrap(),
     );

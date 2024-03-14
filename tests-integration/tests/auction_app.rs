@@ -84,7 +84,7 @@ fn test_auction_app() {
         None,
     );
     let cw721_component = AppComponent::new(
-        "1".to_string(),
+        "cw721".to_string(),
         "cw721".to_string(),
         to_binary(&cw721_init_msg).unwrap(),
     );
@@ -92,13 +92,13 @@ fn test_auction_app() {
     let auction_init_msg =
         mock_auction_instantiate_msg(None, andr.kernel_address.to_string(), None, None);
     let auction_component = AppComponent::new(
-        "2".to_string(),
+        "auction".to_string(),
         "auction".to_string(),
         to_binary(&auction_init_msg).unwrap(),
     );
 
     // Create App
-    let app_components = vec![cw721_component.clone(), auction_component];
+    let app_components = vec![cw721_component.clone(), auction_component.clone()];
     let app_init_msg = mock_app_instantiate_msg(
         "AuctionApp".to_string(),
         app_components.clone(),
@@ -155,7 +155,10 @@ fn test_auction_app() {
     // Send Token to Auction
     let auction_addr: String = router
         .wrap()
-        .query_wasm_smart(app_addr, &mock_get_address_msg("2".to_string()))
+        .query_wasm_smart(
+            app_addr,
+            &mock_get_address_msg(auction_component.name.to_string()),
+        )
         .unwrap();
     andr.accept_ownership(&mut router, auction_addr.clone(), owner.clone());
     router

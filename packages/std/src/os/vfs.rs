@@ -433,7 +433,7 @@ mod test {
             },
             ValidatePathNameTestCase {
                 name: "Tilde username reference with directory",
-                path: "~un/app/ab",
+                path: "~un/app/splitter",
                 should_err: false,
             },
             ValidatePathNameTestCase {
