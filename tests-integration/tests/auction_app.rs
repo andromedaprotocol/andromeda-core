@@ -155,10 +155,7 @@ fn test_auction_app() {
     // Send Token to Auction
     let auction_addr: String = router
         .wrap()
-        .query_wasm_smart(
-            app_addr,
-            &mock_get_address_msg(auction_component.name.to_string()),
-        )
+        .query_wasm_smart(app_addr, &mock_get_address_msg(auction_component.name))
         .unwrap();
     andr.accept_ownership(&mut router, auction_addr.clone(), owner.clone());
     router
