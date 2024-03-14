@@ -1698,7 +1698,7 @@ fn test_end_sale_some_tokens_sold_threshold_not_met() {
 
     let info = mock_info("owner", &[]);
     // Minimum sold is 2, actual sold is 0
-    let err = execute(deps.as_mut(), mock_env(), info, msg.clone()).unwrap_err();
+    let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
     assert_eq!(err, ContractError::SaleNotEnded {});
 }
 
