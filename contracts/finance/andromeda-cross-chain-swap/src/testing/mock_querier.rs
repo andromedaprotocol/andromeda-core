@@ -36,7 +36,7 @@ pub fn mock_dependencies_custom(
             InstantiateMsg {
                 ado_type: "splitter".to_string(),
                 ado_version: "test".to_string(),
-                operators: None,
+
                 kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
                 owner: None,
             },

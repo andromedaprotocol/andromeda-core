@@ -23,9 +23,6 @@ impl<'a> ADOContract<'a> {
             OwnershipMessage::RevokeOwnershipOffer => self.revoke_ownership_offer(deps, info),
             OwnershipMessage::AcceptOwnership => self.accept_ownership(deps, env, info),
             OwnershipMessage::Disown => self.disown(deps, info),
-            OwnershipMessage::UpdateOperators { new_operators } => {
-                self.update_operators(deps, info, new_operators)
-            }
         }
     }
 
@@ -112,32 +109,6 @@ impl<'a> ADOContract<'a> {
         Ok(Response::new().add_attributes(vec![attr("action", "disown")]))
     }
 
-    /// Updates the current contract operators. **Only executable by the current contract owner.**
-    pub fn update_operators(
-        &self,
-        deps: DepsMut,
-        info: MessageInfo,
-        operators: Vec<Addr>,
-    ) -> Result<Response, ContractError> {
-        ensure!(
-            self.is_contract_owner(deps.storage, info.sender.as_str())?,
-            ContractError::Unauthorized {}
-        );
-        self.operators.clear(deps.storage);
-        for op in operators.iter() {
-            self.operators.save(deps.storage, op.as_str(), &true)?;
-        }
-
-        Ok(Response::new().add_attributes(vec![attr("action", "update_operators")]))
-    }
-
-    /// Helper function to query if a given address is a operator.
-    ///
-    /// Returns a boolean value indicating if the given address is a operator.
-    pub fn is_operator(&self, storage: &dyn Storage, addr: &str) -> bool {
-        self.operators.has(storage, addr)
-    }
-
     /// Helper function to query if a given address is the current contract owner.
     ///
     /// Returns a boolean value indicating if the given address is the contract owner.
@@ -158,7 +129,7 @@ impl<'a> ADOContract<'a> {
         storage: &dyn Storage,
         addr: &str,
     ) -> Result<bool, ContractError> {
-        Ok(self.is_contract_owner(storage, addr)? || self.is_operator(storage, addr))
+        self.is_contract_owner(storage, addr)
     }
 }
 
@@ -270,27 +241,5 @@ mod test {
         assert!(res.is_ok());
         let saved_owner = contract.owner.load(deps.as_ref().storage).unwrap();
         assert_eq!(saved_owner, Addr::unchecked("null"));
-    }
-
-    #[test]
-    fn test_update_operators() {
-        let mut deps = mock_dependencies();
-        let contract = ADOContract::default();
-        let new_operators = vec![Addr::unchecked("new_operator")];
-        init(deps.as_mut(), "owner");
-
-        let res = contract.update_operators(
-            deps.as_mut(),
-            mock_info("owner", &[]),
-            new_operators.clone(),
-        );
-        assert!(res.is_ok());
-        for op in new_operators {
-            let is_operator = contract
-                .operators
-                .load(deps.as_ref().storage, op.as_str())
-                .unwrap();
-            assert!(is_operator);
-        }
     }
 }

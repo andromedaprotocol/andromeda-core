@@ -1,7 +1,8 @@
+use andromeda_std::ado_base::ownership::ContractOwnerResponse;
 //use andromeda_ecosystem::anchor_earn::PositionResponse;
 use andromeda_std::testing::mock_querier::MockAndromedaQuerier;
 use andromeda_std::{
-    ado_base::{operators::IsOperatorResponse, AndromedaQuery, InstantiateMsg},
+    ado_base::{AndromedaQuery, InstantiateMsg},
     ado_contract::ADOContract,
     amp::Recipient,
     testing::mock_querier::MOCK_KERNEL_CONTRACT,
@@ -48,7 +49,6 @@ pub fn mock_dependencies_custom(
             InstantiateMsg {
                 ado_type: "vault".to_string(),
                 ado_version: "test".to_string(),
-                operators: None,
                 kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
                 owner: None,
             },
@@ -98,9 +98,9 @@ impl WasmMockQuerier {
                 };
                 SystemResult::Ok(ContractResult::Ok(to_binary(&msg_response).unwrap()))
             }
-            AndromedaQuery::IsOperator { address } => {
-                let msg_response = IsOperatorResponse {
-                    is_operator: address == MOCK_VAULT_CONTRACT,
+            AndromedaQuery::Owner {} => {
+                let msg_response = ContractOwnerResponse {
+                    owner: MOCK_VAULT_CONTRACT.to_owned(),
                 };
                 SystemResult::Ok(ContractResult::Ok(to_binary(&msg_response).unwrap()))
             }

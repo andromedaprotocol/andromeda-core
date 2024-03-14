@@ -2,6 +2,7 @@ use andromeda_ecosystem::vault::{
     DepositMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, StrategyAddressResponse,
     StrategyType, BALANCES, STRATEGY_CONTRACT_ADDRESSES,
 };
+use andromeda_std::ado_base::ownership::ContractOwnerResponse;
 use andromeda_std::ado_contract::ADOContract;
 
 use andromeda_std::amp::{AndrAddr, Recipient};
@@ -9,10 +10,7 @@ use andromeda_std::amp::{AndrAddr, Recipient};
 use andromeda_std::common::context::ExecuteContext;
 use andromeda_std::{
     ado_base::withdraw::{Withdrawal, WithdrawalType},
-    ado_base::{
-        operators::IsOperatorResponse, AndromedaMsg, AndromedaQuery,
-        InstantiateMsg as BaseInstantiateMsg,
-    },
+    ado_base::{AndromedaMsg, AndromedaQuery, InstantiateMsg as BaseInstantiateMsg},
     error::{from_semver, ContractError},
 };
 
@@ -46,7 +44,7 @@ pub fn instantiate(
         BaseInstantiateMsg {
             ado_type: "vault".to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
-            operators: None,
+
             owner: msg.owner,
             kernel_address: msg.kernel_address,
         },
@@ -356,14 +354,21 @@ fn execute_update_strategy(
     //     strategy_addr.clone(),
     //     &deps.querier,
     // )?;
-    let strategy_is_operator: IsOperatorResponse = deps.querier.query_wasm_smart(
-        strategy_addr.clone(),
-        &QueryMsg::IsOperator {
-            address: env.contract.address.to_string(),
-        },
-    )?;
+
+    // Replaced operator with owner check
+    // let strategy_is_operator: IsOperatorResponse = deps.querier.query_wasm_smart(
+    //     strategy_addr.clone(),
+    //     &QueryMsg::IsOperator {
+    //         address: env.contract.address.to_string(),
+    //     },
+    // )?;
+
+    let strategy_owner: ContractOwnerResponse = deps
+        .querier
+        .query_wasm_smart(strategy_addr.clone(), &QueryMsg::Owner {})?;
+
     ensure!(
-        strategy_is_operator.is_operator,
+        strategy_owner.owner == env.contract.address,
         ContractError::NotAssignedOperator {
             msg: Some("Vault contract is not an operator for the given address".to_string()),
         }
