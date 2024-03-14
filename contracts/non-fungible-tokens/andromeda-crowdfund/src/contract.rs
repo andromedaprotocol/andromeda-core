@@ -570,13 +570,14 @@ fn execute_end_sale(ctx: ExecuteContext, limit: Option<u32>) -> Result<Response,
     let number_of_tokens_available = NUMBER_OF_TOKENS_AVAILABLE.load(deps.storage)?;
     // In case the minimum sold tokens threshold is met, it has to be the owner who calls the function
     let contract = ADOContract::default();
-    let minimum_and_owner = state.min_tokens_sold <= state.amount_sold
-        && contract.is_contract_owner(deps.storage, info.sender.as_str())?;
+    let has_minimum_sold = state.min_tokens_sold <= state.amount_sold;
+    let is_owner = contract.is_contract_owner(deps.storage, info.sender.as_str())?;
+
     ensure!(
         // If all tokens have been sold the sale can be ended too.
         state.expiration.is_expired(&env.block)
             || number_of_tokens_available.is_zero()
-            || minimum_and_owner,
+            || (has_minimum_sold && is_owner),
         ContractError::SaleNotEnded {}
     );
     if state.amount_sold < state.min_tokens_sold {
