@@ -10,7 +10,7 @@ use andromeda_std::amp::{AndrAddr, Recipient};
 use andromeda_std::common::context::ExecuteContext;
 use andromeda_std::{
     ado_base::withdraw::{Withdrawal, WithdrawalType},
-    ado_base::{AndromedaMsg, AndromedaQuery, InstantiateMsg as BaseInstantiateMsg},
+    ado_base::{AndromedaQuery, InstantiateMsg as BaseInstantiateMsg},
     error::{from_semver, ContractError},
 };
 
