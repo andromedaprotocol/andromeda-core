@@ -3,7 +3,7 @@ use andromeda_std::{
     error::ContractError, testing::mock_querier::MOCK_KERNEL_CONTRACT,
 };
 use cosmwasm_std::{
-    coins, from_binary,
+    coin, coins, from_binary,
     testing::{mock_dependencies, mock_env, mock_info, MOCK_CONTRACT_ADDR},
     to_binary, Addr, BankMsg, Decimal, Decimal256, DepsMut, Response, Uint128, Uint256, WasmMsg,
 };
@@ -514,7 +514,7 @@ fn test_stake_invalid_token() {
 
 #[test]
 fn test_update_global_indexes() {
-    let mut deps = mock_dependencies_custom(&coins(40, "uusd"));
+    let mut deps = mock_dependencies_custom(&[coin(40, "uusd"), coin(40, "uandr")]);
     let current_timestamp = mock_env().block.time.seconds();
     init(
         deps.as_mut(),
@@ -523,6 +523,11 @@ fn test_update_global_indexes() {
                 asset_info: AssetInfoUnchecked::native("uusd"),
                 allocation_config: None,
                 init_timestamp: current_timestamp,
+            },
+            RewardTokenUnchecked {
+                asset_info: AssetInfoUnchecked::native("uandr"),
+                allocation_config: None,
+                init_timestamp: current_timestamp + 1,
             },
             RewardTokenUnchecked {
                 asset_info: AssetInfoUnchecked::cw20(MOCK_INCENTIVE_TOKEN),
@@ -556,12 +561,13 @@ fn test_update_global_indexes() {
     let msg = ExecuteMsg::UpdateGlobalIndexes { asset_infos: None };
 
     let info = mock_info("owner", &[]);
-    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+    let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
     assert_eq!(
         Response::new()
             .add_attribute("action", "update_global_indexes")
             .add_attribute("cw20:incentive_token", "0.2")
+            .add_attribute("native:uandr", "0")
             .add_attribute("native:uusd", "0.4"),
         res
     );
@@ -582,6 +588,20 @@ fn test_update_global_indexes() {
 
     assert_eq!(
         RewardToken {
+            index: Decimal256::zero(),
+            asset_info: AssetInfo::native("uandr"),
+            reward_type: RewardType::NonAllocated {
+                previous_reward_balance: Uint128::zero(),
+                init_timestamp: current_timestamp + 1,
+            },
+        },
+        REWARD_TOKENS
+            .load(deps.as_ref().storage, "native:uandr")
+            .unwrap()
+    );
+
+    assert_eq!(
+        RewardToken {
             index: Decimal256::from_ratio(Uint256::from(20u128), Uint256::from(100u128)),
             asset_info: AssetInfo::cw20(Addr::unchecked(MOCK_INCENTIVE_TOKEN)),
             reward_type: RewardType::NonAllocated {
@@ -591,6 +611,35 @@ fn test_update_global_indexes() {
         },
         REWARD_TOKENS
             .load(deps.as_ref().storage, "cw20:incentive_token")
+            .unwrap()
+    );
+
+    // Check unallocate updates after init timestamp
+    let msg = ExecuteMsg::UpdateGlobalIndexes { asset_infos: None };
+    let mut new_env = mock_env();
+    new_env.block.time = new_env.block.time.plus_seconds(2);
+    let res = execute(deps.as_mut(), new_env, info, msg).unwrap();
+
+    assert_eq!(
+        Response::new()
+            .add_attribute("action", "update_global_indexes")
+            .add_attribute("cw20:incentive_token", "0.2")
+            .add_attribute("native:uandr", "0.4")
+            .add_attribute("native:uusd", "0.4"),
+        res
+    );
+
+    assert_eq!(
+        RewardToken {
+            index: Decimal256::from_ratio(Uint256::from(40u128), Uint256::from(100u128)),
+            asset_info: AssetInfo::native("uandr"),
+            reward_type: RewardType::NonAllocated {
+                previous_reward_balance: Uint128::new(40),
+                init_timestamp: current_timestamp + 1,
+            },
+        },
+        REWARD_TOKENS
+            .load(deps.as_ref().storage, "native:uandr")
             .unwrap()
     );
 }
