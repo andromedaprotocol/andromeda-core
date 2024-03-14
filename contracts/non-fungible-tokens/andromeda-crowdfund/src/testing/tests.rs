@@ -1598,6 +1598,111 @@ fn test_end_sale_all_tokens_sold() {
 }
 
 #[test]
+fn test_end_sale_some_tokens_sold_threshold_met() {
+    let mut deps = mock_dependencies_custom(&[]);
+    init(deps.as_mut(), None);
+
+    STATE
+        .save(
+            deps.as_mut().storage,
+            &State {
+                // Sale has not expired yet.
+                expiration: Expiration::AtHeight(mock_env().block.height + 1),
+                price: coin(100, "uusd"),
+                min_tokens_sold: Uint128::from(1u128),
+                max_amount_per_wallet: 5,
+                amount_sold: Uint128::from(2u128),
+                amount_to_send: Uint128::from(100u128),
+                amount_transferred: Uint128::zero(),
+                recipient: Recipient::from_string("recipient"),
+            },
+        )
+        .unwrap();
+
+    PURCHASES
+        .save(
+            deps.as_mut().storage,
+            "A",
+            &vec![Purchase {
+                token_id: MOCK_TOKENS_FOR_SALE[0].to_owned(),
+                purchaser: "A".to_string(),
+                tax_amount: Uint128::zero(),
+                msgs: vec![],
+            }],
+        )
+        .unwrap();
+
+    NUMBER_OF_TOKENS_AVAILABLE
+        .save(deps.as_mut().storage, &Uint128::one())
+        .unwrap();
+
+    let msg = ExecuteMsg::EndSale { limit: None };
+    // Only the owner can end the sale if only the minimum token threshold is met.
+    // Anyone can end the sale if it's expired or the remaining number of tokens available is zero.
+    let info = mock_info("anyone", &[]);
+    let err = execute(deps.as_mut(), mock_env(), info, msg.clone()).unwrap_err();
+    assert_eq!(err, ContractError::SaleNotEnded {});
+
+    let info = mock_info("owner", &[]);
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    assert_eq!(
+        Response::new()
+            .add_attribute("action", "transfer_tokens_and_send_funds")
+            // Burn tokens that were not purchased
+            .add_message(get_transfer_message(MOCK_TOKENS_FOR_SALE[0], "A")),
+        res
+    );
+}
+
+#[test]
+fn test_end_sale_some_tokens_sold_threshold_not_met() {
+    let mut deps = mock_dependencies_custom(&[]);
+    init(deps.as_mut(), None);
+
+    STATE
+        .save(
+            deps.as_mut().storage,
+            &State {
+                // Sale has not expired yet.
+                expiration: Expiration::AtHeight(mock_env().block.height + 1),
+                price: coin(100, "uusd"),
+                min_tokens_sold: Uint128::from(2u128),
+                max_amount_per_wallet: 5,
+                amount_sold: Uint128::from(0u128),
+                amount_to_send: Uint128::from(100u128),
+                amount_transferred: Uint128::zero(),
+                recipient: Recipient::from_string("recipient"),
+            },
+        )
+        .unwrap();
+
+    PURCHASES
+        .save(
+            deps.as_mut().storage,
+            "A",
+            &vec![Purchase {
+                token_id: MOCK_TOKENS_FOR_SALE[0].to_owned(),
+                purchaser: "A".to_string(),
+                tax_amount: Uint128::zero(),
+                msgs: vec![],
+            }],
+        )
+        .unwrap();
+
+    NUMBER_OF_TOKENS_AVAILABLE
+        .save(deps.as_mut().storage, &Uint128::new(2))
+        .unwrap();
+
+    let msg = ExecuteMsg::EndSale { limit: None };
+
+    let info = mock_info("owner", &[]);
+    // Minimum sold is 2, actual sold is 0
+    let err = execute(deps.as_mut(), mock_env(), info, msg.clone()).unwrap_err();
+    assert_eq!(err, ContractError::SaleNotEnded {});
+}
+
+#[test]
 fn test_end_sale_limit_zero() {
     let mut deps = mock_dependencies_custom(&[]);
     init(deps.as_mut(), None);
