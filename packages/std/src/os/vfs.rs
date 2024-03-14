@@ -10,11 +10,11 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{ensure, Addr, Api, QuerierWrapper};
 use regex::Regex;
 
-pub const COMPONENT_NAME_REGEX: &str = r"^[A-Za-z0-9\.\-_]{1,40}$";
-pub const USERNAME_REGEX: &str = r"^[a-z0-9]{1,40}$";
+pub const COMPONENT_NAME_REGEX: &str = r"^[A-Za-z0-9\.\-_]{2,40}$";
+pub const USERNAME_REGEX: &str = r"^[a-z0-9]{2,40}$";
 
-pub const PATH_REGEX: &str = r"^(((~)?/(home|lib)/)|(\./)|(~))([A-Za-z0-9\.\-]{1,40}(/)?)+$";
-pub const PROTOCOL_PATH_REGEX: &str = r"^((([A-Za-z0-9]+://)?([A-Za-z0-9\.\-_]{1,40}/)?((home|lib))/)|(~(/)?)|(\./))([A-Za-z0-9\.\-]{1,40}(/)?)+$";
+pub const PATH_REGEX: &str = r"^(((~)?/(home|lib)/)|(\./)|(~))([A-Za-z0-9\.\-]{2,40}(/)?)+$";
+pub const PROTOCOL_PATH_REGEX: &str = r"^((([A-Za-z0-9]+://)?([A-Za-z0-9\.\-_]{2,40}/)?((home|lib))/)|(~(/)?)|(\./))([A-Za-z0-9\.\-]{2,40}(/)?)+$";
 
 pub fn convert_component_name(path: &str) -> String {
     path.trim()
@@ -361,6 +361,11 @@ mod test {
             ValidateComponentNameTestCase {
                 name: "component name one letter",
                 input: "a",
+                should_err: true,
+            },
+            ValidateComponentNameTestCase {
+                name: "component name two letters",
+                input: "ab",
                 should_err: false,
             },
             ValidateComponentNameTestCase {
@@ -428,7 +433,7 @@ mod test {
             },
             ValidatePathNameTestCase {
                 name: "Tilde username reference with directory",
-                path: "~un/app/5",
+                path: "~un/app/ab",
                 should_err: false,
             },
             ValidatePathNameTestCase {
@@ -698,9 +703,14 @@ mod test {
                 should_err: false,
             },
             ValidateUsernameTestCase {
-                name: "Username with only one character",
-                username: "v",
+                name: "Username with only two characters",
+                username: "un",
                 should_err: false,
+            },
+            ValidateUsernameTestCase {
+                name: "Username with only one character",
+                username: "a",
+                should_err: true,
             },
             ValidateUsernameTestCase {
                 name: "Username with whitespace",
