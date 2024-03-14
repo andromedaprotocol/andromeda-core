@@ -4,7 +4,6 @@ pub mod block_height;
 pub mod hooks;
 pub mod kernel_address;
 pub mod modules;
-pub mod operators;
 pub mod ownership;
 pub mod permissioning;
 pub mod version;
@@ -25,7 +24,6 @@ use self::permissioning::PermissioningMessage;
 pub struct InstantiateMsg {
     pub ado_type: String,
     pub ado_version: String,
-    pub operators: Option<Vec<String>>,
     pub kernel_address: String,
     pub owner: Option<String>,
 }
@@ -62,8 +60,6 @@ pub enum AndromedaMsg {
 pub enum AndromedaQuery {
     #[returns(self::ownership::ContractOwnerResponse)]
     Owner {},
-    #[returns(self::operators::OperatorsResponse)]
-    Operators {},
     #[returns(self::ado_type::TypeResponse)]
     Type {},
     #[returns(self::kernel_address::KernelAddressResponse)]
@@ -72,8 +68,6 @@ pub enum AndromedaQuery {
     OriginalPublisher {},
     #[returns(self::block_height::BlockHeightResponse)]
     BlockHeightUponCreation {},
-    #[returns(self::operators::IsOperatorResponse)]
-    IsOperator { address: String },
     #[returns(self::version::VersionResponse)]
     Version {},
     #[returns(Option<::cosmwasm_std::Addr>)]

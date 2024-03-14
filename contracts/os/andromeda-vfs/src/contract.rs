@@ -31,7 +31,7 @@ pub fn instantiate(
         BaseInstantiateMsg {
             ado_type: "vfs".to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
-            operators: None,
+
             kernel_address: msg.kernel_address,
             owner: msg.owner,
         },
@@ -83,6 +83,13 @@ pub fn execute(
         ExecuteMsg::RegisterUserCrossChain { chain, address } => {
             execute::register_user_cross_chain(execute_env, chain, address)
         }
+        // Base message
+        ExecuteMsg::Ownership(ownership_message) => ADOContract::default().execute_ownership(
+            execute_env.deps,
+            execute_env.env,
+            execute_env.info,
+            ownership_message,
+        ),
     }
 }
 

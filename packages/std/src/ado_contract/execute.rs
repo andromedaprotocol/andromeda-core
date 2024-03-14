@@ -267,7 +267,7 @@ mod tests {
                 info.clone(),
                 InstantiateMsg {
                     ado_type: "type".to_string(),
-                    operators: None,
+
                     ado_version: "version".to_string(),
                     kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
                     owner: None,
@@ -305,7 +305,7 @@ mod tests {
                 InstantiateMsg {
                     ado_type: "type".to_string(),
                     ado_version: "version".to_string(),
-                    operators: None,
+
                     kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
                     owner: None,
                 },
@@ -351,7 +351,7 @@ mod tests {
                 InstantiateMsg {
                     ado_type: "type".to_string(),
                     ado_version: "version".to_string(),
-                    operators: None,
+
                     kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
                     owner: None,
                 },
@@ -394,7 +394,7 @@ mod tests {
                     ado_type: "type".to_string(),
                     ado_version: "version".to_string(),
                     owner: None,
-                    operators: None,
+
                     kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
                 },
             )
@@ -425,7 +425,7 @@ mod tests {
                     ado_type: "type".to_string(),
                     ado_version: "version".to_string(),
                     owner: None,
-                    operators: None,
+
                     kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
                 },
             )

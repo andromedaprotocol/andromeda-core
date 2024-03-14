@@ -31,7 +31,7 @@ pub fn instantiate(
         BaseInstantiateMsg {
             ado_type: "adodb".to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
-            operators: None,
+
             kernel_address: msg.kernel_address,
             owner: msg.owner,
         },
@@ -89,6 +89,10 @@ pub fn execute(
             ado_type,
             publisher,
         } => execute::update_publisher(deps, info, &ADOVersion::from_string(ado_type), publisher),
+        // Base message
+        ExecuteMsg::Ownership(ownership_message) => {
+            ADOContract::default().execute_ownership(deps, env, info, ownership_message)
+        }
     }
 }
 

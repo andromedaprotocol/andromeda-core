@@ -36,7 +36,7 @@ pub fn instantiate(
         BaseInstantiateMsg {
             ado_type: "economics".to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
-            operators: None,
+
             kernel_address: msg.kernel_address,
             owner: msg.owner,
         },
@@ -79,6 +79,10 @@ pub fn execute(
             execute::withdraw_cw20(deps, info, amount, asset)
         }
         ExecuteMsg::Receive(cw20msg) => cw20_receive(deps, env, info, cw20msg),
+        // Base message
+        ExecuteMsg::Ownership(ownership_message) => {
+            ADOContract::default().execute_ownership(deps, env, info, ownership_message)
+        }
     }
 }
 

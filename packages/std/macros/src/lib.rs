@@ -163,8 +163,6 @@ pub fn andr_query(_metadata: TokenStream, input: TokenStream) -> TokenStream {
             enum Right {
                 #[returns(andromeda_std::ado_base::ownership::ContractOwnerResponse)]
                 Owner {},
-                #[returns(andromeda_std::ado_base::operators::OperatorsResponse)]
-                Operators {},
                 #[returns(andromeda_std::ado_base::ado_type::TypeResponse)]
                 Type {},
                 #[returns(andromeda_std::ado_base::kernel_address::KernelAddressResponse)]
@@ -173,8 +171,6 @@ pub fn andr_query(_metadata: TokenStream, input: TokenStream) -> TokenStream {
                 OriginalPublisher {},
                 #[returns(andromeda_std::ado_base::block_height::BlockHeightResponse)]
                 BlockHeightUponCreation {},
-                #[returns(andromeda_std::ado_base::operators::IsOperatorResponse)]
-                IsOperator { address: String },
                 #[returns(andromeda_std::ado_base::version::VersionResponse)]
                 Version {},
                 #[returns(::cosmwasm_std::BalanceResponse)]

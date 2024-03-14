@@ -4,7 +4,6 @@ use crate::{
         ado_type::TypeResponse,
         block_height::BlockHeightResponse,
         kernel_address::KernelAddressResponse,
-        operators::{IsOperatorResponse, OperatorsResponse},
         ownership::{ContractOwnerResponse, PublisherResponse},
         version::VersionResponse,
         AndromedaQuery,
@@ -12,7 +11,7 @@ use crate::{
     common::encode_binary,
     error::ContractError,
 };
-use cosmwasm_std::{from_binary, to_binary, Binary, Deps, Env, Order};
+use cosmwasm_std::{from_binary, to_binary, Binary, Deps, Env};
 use cw2::get_contract_version;
 use serde::Serialize;
 
@@ -29,16 +28,12 @@ impl<'a> ADOContract<'a> {
         match from_binary::<AndromedaQuery>(&msg) {
             Ok(msg) => match msg {
                 AndromedaQuery::Owner {} => encode_binary(&self.query_contract_owner(deps)?),
-                AndromedaQuery::Operators {} => encode_binary(&self.query_operators(deps)?),
                 AndromedaQuery::OriginalPublisher {} => {
                     encode_binary(&self.query_original_publisher(deps)?)
                 }
                 AndromedaQuery::Type {} => encode_binary(&self.query_type(deps)?),
                 AndromedaQuery::BlockHeightUponCreation {} => {
                     encode_binary(&self.query_block_height_upon_creation(deps)?)
-                }
-                AndromedaQuery::IsOperator { address } => {
-                    encode_binary(&self.query_is_operator(deps, &address)?)
                 }
                 AndromedaQuery::KernelAddress {} => {
                     encode_binary(&self.query_kernel_address(deps)?)
@@ -77,31 +72,9 @@ impl<'a> ADOContract<'a> {
     }
 
     #[inline]
-    pub fn query_is_operator(
-        &self,
-        deps: Deps,
-        addr: &str,
-    ) -> Result<IsOperatorResponse, ContractError> {
-        Ok(IsOperatorResponse {
-            is_operator: self.operators.has(deps.storage, addr),
-        })
-    }
-
-    #[inline]
     pub fn query_kernel_address(&self, deps: Deps) -> Result<KernelAddressResponse, ContractError> {
         let kernel_address = self.kernel_address.load(deps.storage)?;
         Ok(KernelAddressResponse { kernel_address })
-    }
-
-    #[inline]
-    pub fn query_operators(&self, deps: Deps) -> Result<OperatorsResponse, ContractError> {
-        let operators: Result<Vec<String>, _> = self
-            .operators
-            .keys(deps.storage, None, None, Order::Ascending)
-            .collect();
-        Ok(OperatorsResponse {
-            operators: operators?,
-        })
     }
 
     #[inline]

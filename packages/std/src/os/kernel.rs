@@ -1,5 +1,6 @@
 use crate::ado_base::ado_type::TypeResponse;
 use crate::ado_base::ownership::ContractOwnerResponse;
+use crate::ado_base::ownership::OwnershipMessage;
 use crate::ado_base::version::VersionResponse;
 use crate::amp::messages::AMPMsg;
 use crate::amp::messages::AMPPkt;
@@ -65,6 +66,8 @@ pub enum ExecuteMsg {
     Recover {},
     // Only accessible to key contracts
     Internal(InternalMsg),
+    // Base message
+    Ownership(OwnershipMessage),
 }
 
 #[cw_serde]

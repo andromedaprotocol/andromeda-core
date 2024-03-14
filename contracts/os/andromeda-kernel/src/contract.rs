@@ -40,7 +40,7 @@ pub fn instantiate(
         BaseInstantiateMsg {
             ado_type: "kernel".to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
-            operators: None,
+
             kernel_address: env.contract.address.to_string(),
             owner: msg.owner,
         },
@@ -109,6 +109,13 @@ pub fn execute(
         ),
         ExecuteMsg::Recover {} => execute::recover(execute_env),
         ExecuteMsg::Internal(msg) => execute::internal(execute_env, msg),
+        // Base message
+        ExecuteMsg::Ownership(ownership_message) => ADOContract::default().execute_ownership(
+            execute_env.deps,
+            execute_env.env,
+            execute_env.info,
+            ownership_message,
+        ),
     }
 }
 

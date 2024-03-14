@@ -8,8 +8,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     ado_base::{
-        ado_type::TypeResponse, kernel_address::KernelAddressResponse,
-        ownership::ContractOwnerResponse, version::VersionResponse,
+        ado_type::TypeResponse,
+        kernel_address::KernelAddressResponse,
+        ownership::{ContractOwnerResponse, OwnershipMessage},
+        version::VersionResponse,
     },
     error::ContractError,
 };
@@ -45,6 +47,8 @@ pub enum ExecuteMsg {
         ado_type: String,
         publisher: String,
     },
+    // Base message
+    Ownership(OwnershipMessage),
 }
 
 #[cw_serde]

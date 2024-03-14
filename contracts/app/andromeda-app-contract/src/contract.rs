@@ -54,7 +54,7 @@ pub fn instantiate(
             BaseInstantiateMsg {
                 ado_type: "app-contract".to_string(),
                 ado_version: CONTRACT_VERSION.to_string(),
-                operators: None,
+
                 kernel_address: msg.kernel_address.clone(),
                 owner: msg.owner.clone(),
             },
