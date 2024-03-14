@@ -166,7 +166,7 @@ fn test_authorize_and_deauthorize_token_contract() {
         addr: token_contract.clone(),
     };
     let info = mock_info("owner", &[]);
-    let _res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
+    let _res = execute(deps.as_mut(), env, info, msg).unwrap();
     let permission =
         ADOContract::get_permission(deps.as_mut().storage, "SEND_NFT", token_contract).unwrap();
     assert!(permission.is_none());
