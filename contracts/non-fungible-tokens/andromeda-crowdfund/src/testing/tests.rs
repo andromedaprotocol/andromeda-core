@@ -1201,11 +1201,71 @@ fn test_integration_conditions_not_met() {
     );
 
     let mut env = mock_env();
+
+    // User B tries to claim their own refund before the sale expires.
+    let msg = ExecuteMsg::ClaimRefund {};
+    let info = mock_info("B", &[]);
+    let err = execute(deps.as_mut(), env.clone(), info, msg).unwrap_err();
+    assert_eq!(err, ContractError::SaleNotEnded {});
+
+    // Minimum tokens sold met
+    let state = State {
+        expiration: Expiration::AtHeight(mock_env().block.height + 1),
+        price: coin(100, "uusd"),
+        min_tokens_sold: Uint128::from(4u128),
+        max_amount_per_wallet: 2,
+        amount_sold: Uint128::from(4u128),
+        amount_to_send: Uint128::from(360u128),
+        amount_transferred: Uint128::zero(),
+        recipient: Recipient::from_string("recipient"),
+    };
+
+    STATE.save(deps.as_mut().storage, &state).unwrap();
+
+    let msg = ExecuteMsg::ClaimRefund {};
+    let info = mock_info("B", &[]);
     env.block.height += 1;
+    let err = execute(deps.as_mut(), env.clone(), info, msg).unwrap_err();
+    assert_eq!(err, ContractError::MinSalesExceeded {});
+
+    // Minimum tokens sold exceeded
+    let state = State {
+        expiration: Expiration::AtHeight(mock_env().block.height + 1),
+        price: coin(100, "uusd"),
+        min_tokens_sold: Uint128::from(4u128),
+        max_amount_per_wallet: 2,
+        amount_sold: Uint128::from(5u128),
+        amount_to_send: Uint128::from(360u128),
+        amount_transferred: Uint128::zero(),
+        recipient: Recipient::from_string("recipient"),
+    };
+
+    STATE.save(deps.as_mut().storage, &state).unwrap();
+
+    let msg = ExecuteMsg::ClaimRefund {};
+    let info = mock_info("B", &[]);
+    env.block.height += 1;
+    let err = execute(deps.as_mut(), env.clone(), info, msg).unwrap_err();
+    assert_eq!(err, ContractError::MinSalesExceeded {});
+
+    // Set back to the previous state
+    let state = State {
+        expiration: Expiration::AtHeight(mock_env().block.height + 1),
+        price: coin(100, "uusd"),
+        min_tokens_sold: Uint128::from(5u128),
+        max_amount_per_wallet: 2,
+        amount_sold: Uint128::from(4u128),
+        amount_to_send: Uint128::from(360u128),
+        amount_transferred: Uint128::zero(),
+        recipient: Recipient::from_string("recipient"),
+    };
+
+    STATE.save(deps.as_mut().storage, &state).unwrap();
 
     // User B claims their own refund.
     let msg = ExecuteMsg::ClaimRefund {};
     let info = mock_info("B", &[]);
+    env.block.height += 1;
     let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
     assert_eq!(
         Response::new()
