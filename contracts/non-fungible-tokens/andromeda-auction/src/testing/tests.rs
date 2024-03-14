@@ -13,7 +13,8 @@ use andromeda_non_fungible_tokens::{
     cw721::ExecuteMsg as Cw721ExecuteMsg,
 };
 use andromeda_std::{
-    ado_base::modules::Module,
+    ado_base::{modules::Module, permissioning::Permission},
+    ado_contract::ADOContract,
     amp::AndrAddr,
     common::{encode_binary, expiration::MILLISECONDS_TO_NANOSECONDS_RATIO},
     error::ContractError,
@@ -109,6 +110,66 @@ fn test_auction_instantiate() {
     let mut deps = mock_dependencies();
     let res = init(deps.as_mut(), None);
     assert_eq!(0, res.messages.len());
+}
+
+#[test]
+fn test_authorize_and_deauthorize_token_contract() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let env = mock_env();
+    let _res = init(deps.as_mut(), None);
+    let token_contract = AndrAddr::from_string("adr");
+
+    let msg = ExecuteMsg::AuthorizeTokenContract {
+        addr: token_contract.clone(),
+        expiration: None,
+    };
+
+    let info = mock_info("not_owner", &[]);
+    // Unauthorized
+    let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
+    assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
+
+    // Works
+    let info = mock_info("owner", &[]);
+    let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+    let permission =
+        ADOContract::get_permission(deps.as_mut().storage, "SEND_NFT", token_contract).unwrap();
+    let expected_permission = Some(Permission::whitelisted(None));
+    assert_eq!(permission, expected_permission);
+
+    // Work with set expiration
+    let token_contract = AndrAddr::from_string("ada");
+    let expiration = Some(Expiration::AtTime(Timestamp::from_nanos(1)));
+    let msg = ExecuteMsg::AuthorizeTokenContract {
+        addr: token_contract.clone(),
+        expiration,
+    };
+    let _res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
+    let permission =
+        ADOContract::get_permission(deps.as_mut().storage, "SEND_NFT", token_contract).unwrap();
+    let expected_permission = Some(Permission::whitelisted(expiration));
+    assert_eq!(permission, expected_permission);
+
+    // Deauthorize
+    let token_contract = AndrAddr::from_string("adr");
+    let msg = ExecuteMsg::DeauthorizeTokenContract {
+        addr: token_contract.clone(),
+    };
+    let info = mock_info("not_owner", &[]);
+    // Unauthorized
+    let res = execute(deps.as_mut(), env.clone(), info, msg);
+    assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
+
+    // Works
+    let msg = ExecuteMsg::DeauthorizeTokenContract {
+        addr: token_contract.clone(),
+    };
+    let info = mock_info("owner", &[]);
+    let _res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
+    let permission =
+        ADOContract::get_permission(deps.as_mut().storage, "SEND_NFT", token_contract).unwrap();
+    assert!(permission.is_none());
 }
 
 #[test]
