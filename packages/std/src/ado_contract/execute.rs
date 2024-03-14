@@ -57,11 +57,6 @@ impl<'a> ADOContract<'a> {
                 AndromedaMsg::UpdateKernelAddress { address } => {
                     self.update_kernel_address(ctx.deps, ctx.info, address)
                 }
-                #[cfg(feature = "withdraw")]
-                AndromedaMsg::Withdraw {
-                    recipient,
-                    tokens_to_withdraw,
-                } => self.execute_withdraw(ctx, recipient, tokens_to_withdraw),
                 #[cfg(feature = "modules")]
                 AndromedaMsg::RegisterModule { module } => {
                     self.validate_module_address(&ctx.deps.as_ref(), &module)?;
@@ -83,7 +78,6 @@ impl<'a> ADOContract<'a> {
                 }
                 AndromedaMsg::Permissioning(msg) => self.execute_permissioning(ctx, msg),
                 AndromedaMsg::AMPReceive(_) => panic!("AMP Receive should be handled separately"),
-                AndromedaMsg::Deposit { .. } => Err(ContractError::NotImplemented { msg: None }),
             },
             _ => Err(ContractError::NotImplemented { msg: None }),
         }

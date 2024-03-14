@@ -11,7 +11,6 @@ use andromeda_std::amp::{AndrAddr, Recipient};
 use andromeda_std::testing::mock_querier::MOCK_KERNEL_CONTRACT;
 use andromeda_std::{
     ado_base::withdraw::{Withdrawal, WithdrawalType},
-    ado_base::AndromedaMsg,
     error::ContractError,
 };
 use cosmwasm_std::attr;
@@ -737,7 +736,7 @@ fn test_withdraw_single_strategy() {
     };
 
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
-    let withdraw_exec = to_binary(&AndromedaMsg::Withdraw {
+    let withdraw_exec = to_binary(&ExecuteMsg::Withdraw {
         recipient: Some(Recipient::from_string("depositor")),
         tokens_to_withdraw: Some(withdrawals),
     })
