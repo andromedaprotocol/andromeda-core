@@ -1,7 +1,9 @@
 use crate::{
     ado_base::{
-        ado_type::TypeResponse, kernel_address::KernelAddressResponse,
-        ownership::ContractOwnerResponse, version::VersionResponse,
+        ado_type::TypeResponse,
+        kernel_address::KernelAddressResponse,
+        ownership::{ContractOwnerResponse, OwnershipMessage},
+        version::VersionResponse,
     },
     amp::AndrAddr,
     error::ContractError,
@@ -119,6 +121,8 @@ pub enum ExecuteMsg {
         chain: String,
         address: String,
     },
+    // Base message
+    Ownership(OwnershipMessage),
 }
 
 #[cw_serde]

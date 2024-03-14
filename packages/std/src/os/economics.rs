@@ -4,8 +4,10 @@ use cw20::Cw20ReceiveMsg;
 
 use crate::{
     ado_base::{
-        ado_type::TypeResponse, kernel_address::KernelAddressResponse,
-        ownership::ContractOwnerResponse, version::VersionResponse,
+        ado_type::TypeResponse,
+        kernel_address::KernelAddressResponse,
+        ownership::{ContractOwnerResponse, OwnershipMessage},
+        version::VersionResponse,
     },
     amp::AndrAddr,
 };
@@ -51,6 +53,8 @@ pub enum ExecuteMsg {
         asset: String,
     },
     Receive(Cw20ReceiveMsg),
+    // Base message
+    Ownership(OwnershipMessage),
 }
 
 #[cw_serde]

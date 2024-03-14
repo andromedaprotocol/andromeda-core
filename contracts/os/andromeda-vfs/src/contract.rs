@@ -83,6 +83,13 @@ pub fn execute(
         ExecuteMsg::RegisterUserCrossChain { chain, address } => {
             execute::register_user_cross_chain(execute_env, chain, address)
         }
+        // Base message
+        ExecuteMsg::Ownership(ownership_message) => ADOContract::default().execute_ownership(
+            execute_env.deps,
+            execute_env.env,
+            execute_env.info,
+            ownership_message,
+        ),
     }
 }
 

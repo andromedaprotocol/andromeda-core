@@ -89,6 +89,10 @@ pub fn execute(
             ado_type,
             publisher,
         } => execute::update_publisher(deps, info, &ADOVersion::from_string(ado_type), publisher),
+        // Base message
+        ExecuteMsg::Ownership(ownership_message) => {
+            ADOContract::default().execute_ownership(deps, env, info, ownership_message)
+        }
     }
 }
 
