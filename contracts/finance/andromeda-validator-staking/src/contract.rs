@@ -1,7 +1,9 @@
+use std::str::FromStr;
+
 use crate::state::{DEFAULT_VALIDATOR, UNSTAKING_QUEUE};
 use cosmwasm_std::{
-    ensure, entry_point, Addr, BankMsg, Binary, Coin, Deps, DepsMut, DistributionMsg, Env,
-    FullDelegation, MessageInfo, Response, StakingMsg,
+    ensure, entry_point, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, DistributionMsg,
+    Env, FullDelegation, MessageInfo, Reply, Response, StakingMsg, StdError, SubMsg, Timestamp,
 };
 use cw2::set_contract_version;
 
@@ -16,9 +18,17 @@ use andromeda_std::{
     common::{context::ExecuteContext, encode_binary},
     error::ContractError,
 };
+use enum_repr::EnumRepr;
+
+use chrono::DateTime;
 
 const CONTRACT_NAME: &str = "crates.io:andromeda-validator-staking";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
+
+#[EnumRepr(type = "u64")]
+pub enum ReplyId {
+    ValidatorUnstake = 201,
+}
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -158,19 +168,14 @@ fn execute_unstake(
         }
     );
 
-    UNSTAKING_QUEUE.push_back(
-        deps.storage,
-        &UnstakingTokens {
-            fund: res.amount.clone(),
-            payout_at: env.block.time.plus_days(21),
-        },
-    )?;
+    let undelegate_msg = CosmosMsg::Staking(StakingMsg::Undelegate {
+        validator: validator.to_string(),
+        amount: res.amount,
+    });
+    let undelegate_msg = SubMsg::reply_on_success(undelegate_msg, ReplyId::ValidatorUnstake.repr());
 
     let res = Response::new()
-        .add_message(StakingMsg::Undelegate {
-            validator: validator.to_string(),
-            amount: res.amount,
-        })
+        .add_submessage(undelegate_msg)
         .add_attribute("action", "validator-unstake")
         .add_attribute("from", info.sender)
         .add_attribute("to", validator.to_string());
@@ -304,4 +309,37 @@ fn query_unstaked_tokens(deps: Deps) -> Result<Vec<UnstakingTokens>, ContractErr
         res.push(data.unwrap());
     }
     Ok(res)
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
+    if msg.result.is_err() {
+        return Err(ContractError::Std(StdError::generic_err(
+            msg.result.unwrap_err(),
+        )));
+    }
+    match ReplyId::from_repr(msg.id) {
+        Some(ReplyId::ValidatorUnstake) => on_validator_unstake(deps, msg),
+        _ => Ok(Response::default()),
+    }
+}
+
+pub fn on_validator_unstake(deps: DepsMut, msg: Reply) -> Result<Response, ContractError> {
+    let attributes = &msg.result.unwrap().events[0].attributes;
+    let mut fund = Coin::default();
+    let mut payout_at = Timestamp::default();
+    for attr in attributes {
+        if attr.key == "amount" {
+            fund = Coin::from_str(&attr.value).unwrap();
+        } else if attr.key == "completion_time" {
+            let completion_time = DateTime::parse_from_rfc3339(&attr.value).unwrap();
+            let seconds = completion_time.timestamp() as u64;
+            let nanos = completion_time.timestamp_subsec_nanos() as u64;
+            payout_at = Timestamp::from_seconds(seconds);
+            payout_at = payout_at.plus_nanos(nanos);
+        }
+    }
+    UNSTAKING_QUEUE.push_back(deps.storage, &UnstakingTokens { fund, payout_at })?;
+
+    Ok(Response::default())
 }

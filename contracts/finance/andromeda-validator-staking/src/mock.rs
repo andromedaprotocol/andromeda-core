@@ -1,7 +1,7 @@
 use andromeda_finance::validator_staking::{ExecuteMsg, InstantiateMsg, QueryMsg, UnstakingTokens};
 use cosmwasm_std::{Addr, Coin, Delegation, Empty};
 
-use crate::contract::{execute, instantiate, query};
+use crate::contract::{execute, instantiate, query, reply};
 use andromeda_testing::{
     mock_ado,
     mock_contract::{ExecuteResult, MockADO, MockContract},
@@ -70,7 +70,7 @@ impl MockValidatorStaking {
 }
 
 pub fn mock_andromeda_validator_staking() -> Box<dyn Contract<Empty>> {
-    let contract = ContractWrapper::new_with_empty(execute, instantiate, query);
+    let contract = ContractWrapper::new_with_empty(execute, instantiate, query).with_reply(reply);
     Box::new(contract)
 }
 
