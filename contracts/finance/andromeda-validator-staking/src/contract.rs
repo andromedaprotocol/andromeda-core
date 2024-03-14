@@ -332,8 +332,7 @@ pub fn on_validator_unstake(deps: DepsMut, msg: Reply) -> Result<Response, Contr
         if attr.key == "amount" {
             fund = Coin::from_str(&attr.value).unwrap();
         } else if attr.key == "completion_time" {
-            let completion_time =
-                DateTime::parse_from_str(&attr.value, "%Y-%m-%dT%H:%M:%S%z").unwrap();
+            let completion_time = DateTime::parse_from_rfc3339(&attr.value).unwrap();
             let seconds = completion_time.timestamp() as u64;
             let nanos = completion_time.timestamp_subsec_nanos() as u64;
             payout_at = Timestamp::from_seconds(seconds);
