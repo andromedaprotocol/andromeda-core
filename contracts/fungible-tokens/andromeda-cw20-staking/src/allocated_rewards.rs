@@ -13,6 +13,7 @@ pub(crate) fn update_allocated_index(
     config: AllocationConfig,
     mut state: AllocationState,
     cur_timestamp: u64,
+    init_timestamp: u64,
 ) -> Result<(), ContractError> {
     // If the reward distribution period is over
     if state.last_distributed == config.till_timestamp {
@@ -22,7 +23,7 @@ pub(crate) fn update_allocated_index(
     let mut last_distribution_cycle = state.current_cycle;
     state.current_cycle = calculate_cycles_elapsed(
         cur_timestamp,
-        config.init_timestamp,
+        init_timestamp,
         config.cycle_duration,
         config.till_timestamp,
     );
@@ -33,14 +34,14 @@ pub(crate) fn update_allocated_index(
         last_distribution_next_timestamp = std::cmp::min(
             config.till_timestamp,
             calculate_init_timestamp_for_cycle(
-                config.init_timestamp,
+                init_timestamp,
                 last_distribution_cycle + 1,
                 config.cycle_duration,
             ),
         );
         rewards_to_distribute += rewards_distributed_for_cycle(
             Decimal::from_ratio(state.current_cycle_rewards, config.cycle_duration),
-            std::cmp::max(state.last_distributed, config.init_timestamp),
+            std::cmp::max(state.last_distributed, init_timestamp),
             std::cmp::min(cur_timestamp, last_distribution_next_timestamp),
         );
         state.current_cycle_rewards = calculate_cycle_rewards(
@@ -56,7 +57,7 @@ pub(crate) fn update_allocated_index(
         state.current_cycle_rewards = Uint128::zero();
     }
 
-    if total_share == Uint128::zero() || config.init_timestamp > cur_timestamp {
+    if total_share == Uint128::zero() || init_timestamp > cur_timestamp {
         return Ok(());
     }
 
@@ -64,6 +65,7 @@ pub(crate) fn update_allocated_index(
     reward_token.reward_type = RewardType::Allocated {
         allocation_config: config,
         allocation_state: state,
+        init_timestamp,
     };
 
     Ok(())
