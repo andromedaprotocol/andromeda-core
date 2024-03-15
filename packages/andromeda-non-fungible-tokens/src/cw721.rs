@@ -224,8 +224,6 @@ pub enum QueryMsg {
     /// The current config of the contract
     #[returns(cw721::ContractInfoResponse)]
     ContractInfo {},
-    #[returns(TokenExtension)]
-    Extension { msg: Box<QueryMsg> },
     #[returns(cw721_base::MinterResponse)]
     Minter {},
     #[returns(cw721::ApprovalResponse)]
