@@ -100,7 +100,6 @@ pub fn instantiate(
         BaseInstantiateMsg {
             ado_type: "cw20-staking".to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
-
             kernel_address: msg.kernel_address,
             owner: msg.owner,
         },
@@ -174,7 +173,6 @@ pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
         },
         ExecuteMsg::UnstakeTokens { amount } => execute_unstake_tokens(ctx, amount),
         ExecuteMsg::ClaimRewards {} => execute_claim_rewards(ctx),
-        // _ => ADOContract::default().execute(ctx, msg),
         _ => ADOContract::default().execute(ctx, msg),
     }
 }

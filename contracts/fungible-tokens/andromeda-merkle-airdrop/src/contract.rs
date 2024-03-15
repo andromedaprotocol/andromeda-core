@@ -60,7 +60,6 @@ pub fn instantiate(
         BaseInstantiateMsg {
             ado_type: "merkle-airdrop".to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
-
             kernel_address: msg.kernel_address,
             owner: msg.owner,
         },
