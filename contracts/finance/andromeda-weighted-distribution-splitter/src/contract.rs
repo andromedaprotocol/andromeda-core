@@ -112,9 +112,7 @@ pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
         ExecuteMsg::AddRecipient { recipient } => execute_add_recipient(ctx, recipient),
         ExecuteMsg::RemoveRecipient { recipient } => execute_remove_recipient(ctx, recipient),
         ExecuteMsg::UpdateLock { lock_time } => execute_update_lock(ctx, lock_time),
-
         ExecuteMsg::Send {} => execute_send(ctx),
-
         _ => ADOContract::default().execute(ctx, msg),
     }
 }
