@@ -44,7 +44,6 @@ pub fn instantiate(
         BaseInstantiateMsg {
             ado_type: "vault".to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
-
             owner: msg.owner,
             kernel_address: msg.kernel_address,
         },
