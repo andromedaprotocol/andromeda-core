@@ -173,7 +173,6 @@ pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
         },
         ExecuteMsg::UnstakeTokens { amount } => execute_unstake_tokens(ctx, amount),
         ExecuteMsg::ClaimRewards {} => execute_claim_rewards(ctx),
-        // _ => ADOContract::default().execute(ctx, msg),
         _ => ADOContract::default().execute(ctx, msg),
     }
 }
