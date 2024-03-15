@@ -286,7 +286,6 @@ impl From<QueryMsg> for Cw721QueryMsg<QueryMsg> {
             QueryMsg::AllTokens { start_after, limit } => {
                 Cw721QueryMsg::AllTokens { start_after, limit }
             }
-            QueryMsg::Extension { msg } => Cw721QueryMsg::Extension { msg: *msg },
             QueryMsg::Minter {} => Cw721QueryMsg::Minter {},
             QueryMsg::Approval {
                 token_id,
