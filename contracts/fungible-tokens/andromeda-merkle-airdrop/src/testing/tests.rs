@@ -70,6 +70,19 @@ fn register_merkle_root() {
 
     // register new merkle root
     let env = mock_env();
+
+    // Unauthorized
+    let info = mock_info("not_owner", &[]);
+    let msg = ExecuteMsg::RegisterMerkleRoot {
+        merkle_root: "634de21cde1044f41d90373733b0f0fb1c1c71f9652b905cdf159e73c4cf0d37".to_string(),
+        expiration: None,
+
+        total_amount: None,
+    };
+
+    let err = execute(deps.as_mut(), env.clone(), info, msg).unwrap_err();
+    assert_eq!(err, ContractError::Unauthorized {});
+
     let info = mock_info("owner0000", &[]);
     let msg = ExecuteMsg::RegisterMerkleRoot {
         merkle_root: "634de21cde1044f41d90373733b0f0fb1c1c71f9652b905cdf159e73c4cf0d37".to_string(),
