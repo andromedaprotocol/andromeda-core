@@ -114,7 +114,7 @@ pub enum AndromedaQuery {
     ModuleIds {},
     #[cfg(feature = "withdraw")]
     #[returns(::cosmwasm_std::BalanceResponse)]
-    Balance { address: AndrAddr },
+    WithdrawableBalance { address: AndrAddr },
     #[returns(Vec<self::permissioning::PermissionInfo>)]
     Permissions {
         actor: AndrAddr,

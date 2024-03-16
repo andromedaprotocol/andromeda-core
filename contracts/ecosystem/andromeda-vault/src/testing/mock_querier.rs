@@ -91,7 +91,7 @@ impl WasmMockQuerier {
 
     fn handle_anchor_balance_query(&self, msg: &Binary) -> QuerierResult {
         match from_binary(msg).unwrap() {
-            AndromedaQuery::Balance { address } => {
+            AndromedaQuery::WithdrawableBalance { address } => {
                 let msg_response = PositionResponse {
                     recipient: Recipient::from_string(address),
                     aust_amount: Uint128::from(10u128),
