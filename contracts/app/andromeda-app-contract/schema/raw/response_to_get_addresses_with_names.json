@@ -26,7 +26,8 @@
           "$ref": "#/definitions/ComponentType"
         },
         "name": {
-          "type": "string"
+          "type": "string",
+          "pattern": "^[A-Za-z0-9\\.\\-_]{2,40}$"
         }
       },
       "additionalProperties": false
