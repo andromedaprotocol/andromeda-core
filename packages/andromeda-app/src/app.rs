@@ -50,7 +50,6 @@ impl ComponentType {
 
 #[cw_serde]
 pub struct AppComponent {
-    #[schemars(regex = "andromeda_std::os::vfs::COMPONENT_NAME_REGEX")]
     pub name: String,
     pub ado_type: String,
     pub component_type: ComponentType,
@@ -91,7 +90,6 @@ pub struct ChainInfo {
 #[cw_serde]
 pub struct InstantiateMsg {
     pub app_components: Vec<AppComponent>,
-    #[schemars(regex = "andromeda_std::os::vfs::COMPONENT_NAME_REGEX")]
     pub name: String,
     pub chain_info: Option<Vec<ChainInfo>>,
 }

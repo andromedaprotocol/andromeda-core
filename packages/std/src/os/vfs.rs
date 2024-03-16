@@ -15,7 +15,7 @@ pub const USERNAME_REGEX: &str = r"^[a-z0-9]{2,40}$";
 
 pub const PATH_REGEX: &str = r"^(((~)?/(home|lib)/)|(\./)|(~))([A-Za-z0-9\.\-]{2,40}(/)?)+$";
 pub const PROTOCOL_PATH_REGEX: &str = r"^((([A-Za-z0-9]+://)?([A-Za-z0-9\.\-_]{2,40}/)?((home|lib))/)|(~(/)?)|(\./))([A-Za-z0-9\.\-]{2,40}(/)?)+$";
-pub const COMPLETE_PATH_REGEX: &str = r"(((([A-Za-z0-9]+://)?([A-Za-z0-9\.\-_]{2,40}/)?((home|lib))/)|(~(/)?)|(\./))([A-Za-z0-9\.\-]{2,40}(/)?))|(((~)?/(home|lib)/)|(\./)|(~))([A-Za-z0-9\.\-]{2,40}(/)?)+$";
+pub const COMPLETE_PATH_REGEX: &str = r"^(((([A-Za-z0-9]+://)?([A-Za-z0-9\.\-_]{2,40}/)?((home|lib))/)|(~(/)?)|(\./))([A-Za-z0-9\.\-]{2,40}(/)?))|(((~)?/(home|lib)/)|(\./)|(~))([A-Za-z0-9\.\-]{2,40}(/)?)+$";
 
 pub fn convert_component_name(path: &str) -> String {
     path.trim()
