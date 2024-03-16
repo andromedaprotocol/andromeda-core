@@ -214,6 +214,7 @@ pub enum ExecuteMsg {
         parent_address: AndrAddr,
     },
     RegisterUser {
+        #[schemars(regex = "USERNAME_REGEX")]
         username: String,
         address: Option<Addr>,
     },
