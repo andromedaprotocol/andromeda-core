@@ -100,6 +100,7 @@ cosmwasm-schema = { workspace = true }
 cw721-base = { workspace = true }
 cw721 = { workspace = true }
 cw20 = { workspace = true }
+cw-asset = { workspace = true }
 # cw20-base = { workspace = true }
 # cw-cii = { git = "https://github.com/public-awesome/ics721.git" }
 # cw-pause-once = { git = "https://github.com/public-awesome/ics721.git" }

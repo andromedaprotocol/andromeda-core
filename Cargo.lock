@@ -1655,6 +1655,7 @@ dependencies = [
  "andromeda-vfs",
  "cosmwasm-schema",
  "cosmwasm-std",
+ "cw-asset",
  "cw-multi-test",
  "cw20",
  "cw721 0.18.0",
