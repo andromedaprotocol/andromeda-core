@@ -3,9 +3,8 @@ use std::fmt::{Display, Formatter, Result as FMTResult};
 use crate::error::ContractError;
 use crate::os::vfs::vfs_resolve_symlink;
 use crate::{ado_contract::ADOContract, os::vfs::vfs_resolve_path};
+use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Api, Deps, QuerierWrapper, Storage};
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
 /// An address that can be used within the Andromeda ecosystem.
 /// Inspired by the cosmwasm-std `Addr` type. https://github.com/CosmWasm/cosmwasm/blob/2a1c698520a1aacedfe3f4803b0d7d653892217a/packages/std/src/addresses.rs#L33
@@ -17,10 +16,8 @@ use serde::{Deserialize, Serialize};
 /// VFS paths can be local in the case of an app and can be done by referencing `./component` they can also contain protocols for cross chain communication. A VFS path is usually structured as so:
 ///
 /// `<protocol>://<chain (required if ibc used)>/<path>` or `ibc://cosmoshub-4/user/app/component`
-#[derive(
-    Serialize, Deserialize, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, JsonSchema,
-)]
-pub struct AndrAddr(String);
+#[cw_serde]
+pub struct AndrAddr(#[schemars(regex = "crate::os::vfs::COMPLETE_PATH_REGEX")] String);
 
 impl AndrAddr {
     #[inline]
