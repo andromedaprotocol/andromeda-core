@@ -13,8 +13,8 @@ use regex::Regex;
 pub const COMPONENT_NAME_REGEX: &str = r"^[A-Za-z0-9.\-_]{2,40}$";
 pub const USERNAME_OR_ADDRESS_REGEX: &str = r"^[a-z0-9]{2,}$";
 
-pub const PATH_REGEX: &str = r"^(~|/(lib|usr)/)([A-Za-z0-9.\-_]{2,40}(/)?)+$";
-pub const PROTOCOL_PATH_REGEX: &str = r"^((([A-Za-z0-9]+://)?([A-Za-z0-9.\-_]{2,40}/)))?(~[a-z0-9]{2,40}|(lib|usr)/)([A-Za-z0-9.\-_]{2,40}(/)?)+$";
+pub const PATH_REGEX: &str = r"^(~[a-z0-9]{2,}|/(lib|usr))(/[A-Za-z0-9.\-_]{2,40}?)*(/)?$";
+pub const PROTOCOL_PATH_REGEX: &str = r"^((([A-Za-z0-9]+://)?([A-Za-z0-9.\-_]{2,40}/)))?((~[a-z0-9]{2,}|(lib|usr))(/[A-Za-z0-9.\-_]{2,40}?)*(/)?)$";
 
 pub fn convert_component_name(path: &str) -> String {
     path.trim()
@@ -529,11 +529,11 @@ mod test {
                 path: "/usr/用户/dir1",
                 should_err: true,
             },
-            // ValidatePathNameTestCase {
-            //     name: "Path with very long name",
-            //     path: "/usr/username/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-            //     should_err: true,
-            // },
+            ValidatePathNameTestCase {
+                name: "Path with very long name",
+                path: "/usr/username/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                should_err: true,
+            },
             ValidatePathNameTestCase {
                 name: "Valid path with multiple subdirectories",
                 path: "/usr/username/dir1/dir2/dir3/dir4",

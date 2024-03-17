@@ -588,7 +588,7 @@ fn test_override_add_child() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
 
-    let user_address = Addr::unchecked("user_one");
+    let user_address = Addr::unchecked("userone");
     let component_name = "identifier";
     let info = mock_info(MOCK_APP_CONTRACT, &[]);
     let msg = ExecuteMsg::AddChild {
