@@ -10,12 +10,11 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{ensure, Addr, Api, QuerierWrapper};
 use regex::Regex;
 
-pub const COMPONENT_NAME_REGEX: &str = r"^[A-Za-z0-9\.\-_]{2,40}$";
-pub const USERNAME_REGEX: &str = r"^[a-z0-9]{2,40}$";
+pub const COMPONENT_NAME_REGEX: &str = r"^[A-Za-z0-9.-_]{2,40}$";
+pub const USERNAME_OR_ADDRESS_REGEX: &str = r"^[a-z0-9]{3,}$";
 
-pub const PATH_REGEX: &str = r"^(((~)?/(home|lib)/)|(\./)|(~))([A-Za-z0-9\.\-]{2,40}(/)?)+$";
-pub const PROTOCOL_PATH_REGEX: &str = r"^((([A-Za-z0-9]+://)?([A-Za-z0-9\.\-_]{2,40}/)?((home|lib))/)|(~(/)?)|(\./))([A-Za-z0-9\.\-]{2,40}(/)?)+$";
-pub const COMPLETE_PATH_REGEX: &str = r"^(((([A-Za-z0-9]+://)?([A-Za-z0-9\.\-_]{2,40}/)?((home|lib))/)|(~(/)?)|(\./))([A-Za-z0-9\.\-]{2,40}(/)?))|(((~)?/(home|lib)/)|(\./)|(~))([A-Za-z0-9\.\-]{2,40}(/)?)+$";
+pub const PATH_REGEX: &str = "^(~|/(lib|usr)/)([A-Za-z0-9.-_]{2,40}(/)?)+$";
+pub const PROTOCOL_PATH_REGEX: &str = r"^((([A-Za-z0-9]+://)?([A-Za-z0-9.-_]{2,40}/)))?(~[a-z0-9]{2,40}|(lib|usr)/)([A-Za-z0-9.-_]{2,40}(/)?)+$";
 
 pub fn convert_component_name(path: &str) -> String {
     path.trim()
@@ -45,20 +44,41 @@ pub fn validate_component_name(path: String) -> Result<bool, ContractError> {
     Ok(true)
 }
 
+/// Validates a username against specific criteria.
+///
+/// This function checks if a given username meets the following conditions:
+/// - It must contain at least three characters
+/// - It must only contain alphanumeric characters
+///
+/// # Arguments
+///
+/// * `username` - A `String` representing the username to be validated.
+///
+/// # Returns
+///
+/// * `Result<bool, ContractError>` - Returns `Ok(true)` if the username is valid, otherwise returns an `Err` with a `ContractError` detailing the reason for invalidity.
+///
+/// # Examples
+///
+/// ```
+/// let valid_username = validate_username("validuser123".to_string()).unwrap();
+/// assert_eq!(valid_username, true);
+///
+/// let invalid_username = validate_username("".to_string()).is_err();
+/// assert!(invalid_username);
+/// ```
 pub fn validate_username(username: String) -> Result<bool, ContractError> {
+    // Ensure the username is not empty.
     ensure!(
         !username.is_empty(),
         ContractError::InvalidUsername {
             error: Some("Username cannot be empty.".to_string())
         }
     );
-    ensure!(
-        username.len() <= 40,
-        ContractError::InvalidUsername {
-            error: Some("Username must be at most 40 characters long".to_string())
-        }
-    );
-    let re = Regex::new(USERNAME_REGEX).unwrap();
+
+    // Compile the regex for validating alphanumeric characters.
+    let re = Regex::new(USERNAME_OR_ADDRESS_REGEX).unwrap();
+    // Ensure the username matches the alphanumeric regex pattern.
     ensure!(
         re.is_match(&username),
         ContractError::InvalidPathname {
@@ -68,30 +88,17 @@ pub fn validate_username(username: String) -> Result<bool, ContractError> {
             )
         }
     );
+    // Return true if all validations pass.
     Ok(true)
 }
 
 pub fn validate_path_name(api: &dyn Api, path: String) -> Result<(), ContractError> {
     let andr_addr = AndrAddr::from_string(path.clone());
     let is_path_reference = path.contains('/');
-    let starts_with_tilde = path.starts_with('~');
     let includes_protocol = andr_addr.get_protocol().is_some();
 
-    // Path is of the form ~/home/... or ~username/directory
-    if is_path_reference && starts_with_tilde {
-        let re = Regex::new(PATH_REGEX).unwrap();
-        ensure!(
-            re.is_match(&path),
-            ContractError::InvalidPathname {
-                error: Some("Pathname includes an invalid character".to_string())
-            }
-        );
-
-        return Ok(());
-    }
-
-    // Path is of the form /home/... or /lib/... or prot://...
-    if is_path_reference && !starts_with_tilde {
+    // Path is of the form /user/... or /lib/... or prot://...
+    if is_path_reference {
         // Alter regex if path includes a protocol
         let regex_str = if includes_protocol {
             PROTOCOL_PATH_REGEX
@@ -107,55 +114,19 @@ pub fn validate_path_name(api: &dyn Api, path: String) -> Result<(), ContractErr
             }
         );
 
-        // Strip any protocols before checking components
-        let raw_path = andr_addr.get_raw_path();
-        let split = raw_path.split('/');
-
-        ensure!(
-            split.clone().filter(|s| s.is_empty()).count() == 1,
-            ContractError::InvalidPathname {
-                error: Some("Pathname includes too many trailing slashes".to_string())
-            }
-        );
-
-        for component in split.filter(|s| !s.is_empty()) {
-            validate_component_name(component.to_string().replace('~', ""))?;
-        }
-
         return Ok(());
-    }
-
-    //Path is of the form ~username or ~address
-    if !is_path_reference && starts_with_tilde {
-        let is_address = api.addr_validate(&path).is_ok();
-
-        if is_address {
-            return Ok(());
-        }
-
-        let username = &path[1..];
-        let is_username = validate_username(username.to_string())?;
-
-        if is_username {
-            return Ok(());
-        }
-
-        return Err(ContractError::InvalidPathname {
-            error: Some(
-                "Provided address is neither a valid username nor a valid address".to_string(),
-            ),
-        });
     }
 
     // Path is either a username or address
     if !is_path_reference {
-        let is_address = api.addr_validate(&path).is_ok();
+        let path = path.strip_prefix('~').unwrap_or(&path);
+        let is_address = api.addr_validate(path).is_ok();
 
         if is_address {
             return Ok(());
         }
 
-        let is_username = validate_username(path).is_ok();
+        let is_username = validate_username(path.to_string()).is_ok();
 
         if is_username {
             return Ok(());
@@ -199,13 +170,11 @@ pub enum ExecuteMsg {
     AddPath {
         name: String,
         address: Addr,
-        #[schemars(regex = "COMPLETE_PATH_REGEX")]
         parent_address: Option<AndrAddr>,
     },
     AddSymlink {
         name: String,
         symlink: AndrAddr,
-        #[schemars(regex = "COMPLETE_PATH_REGEX")]
         parent_address: Option<AndrAddr>,
     },
     // Registers a child, currently only accessible by an App Contract
@@ -214,7 +183,7 @@ pub enum ExecuteMsg {
         parent_address: AndrAddr,
     },
     RegisterUser {
-        #[schemars(regex = "USERNAME_REGEX")]
+        #[schemars(regex = "USERNAME_OR_ADDRESS_REGEX", length(min = 3, max = 30))]
         username: String,
         address: Option<Addr>,
     },
@@ -448,16 +417,26 @@ mod test {
             ValidatePathNameTestCase {
                 name: "Absolute path with tilde",
                 path: "~/home/username",
+                should_err: true,
+            },
+            ValidatePathNameTestCase {
+                name: "Invalid user path",
+                path: "/user/un",
+                should_err: true,
+            },
+            ValidatePathNameTestCase {
+                name: "Valid user path",
+                path: "/usr/un",
                 should_err: false,
             },
             ValidatePathNameTestCase {
-                name: "Valid home path",
-                path: "/home/un",
-                should_err: false,
+                name: "Invalid home path (address)",
+                path: "/user/cosmos1abcde",
+                should_err: true,
             },
             ValidatePathNameTestCase {
                 name: "Valid home path (address)",
-                path: "/home/cosmos1abcde",
+                path: "/usr/cosmos1abcde",
                 should_err: false,
             },
             ValidatePathNameTestCase {
@@ -466,18 +445,18 @@ mod test {
                 should_err: false,
             },
             ValidatePathNameTestCase {
-                name: "Complex valid path",
-                path: "/home/username/dir1/../dir2/./file",
+                name: "Complex invalid path",
+                path: "/usr/username/dir1/../dir2/./file",
                 should_err: true,
             },
             ValidatePathNameTestCase {
                 name: "Path with invalid characters",
-                path: "/home/username/dir1/|file",
+                path: "/usr/username/dir1/|file",
                 should_err: true,
             },
             ValidatePathNameTestCase {
                 name: "Path with space",
-                path: "/home/ username/dir1/file",
+                path: "/usr/ username/dir1/file",
                 should_err: true,
             },
             ValidatePathNameTestCase {
@@ -497,12 +476,12 @@ mod test {
             },
             ValidatePathNameTestCase {
                 name: "Valid ibc protocol path",
-                path: "ibc://chain/home/username/dir1/file",
+                path: "ibc://chain/usr/username/dir1/file",
                 should_err: false,
             },
             ValidatePathNameTestCase {
                 name: "Invalid ibc protocol path",
-                path: "ibc:///home/username/dir1/file",
+                path: "ibc:///usr/username/dir1/file",
                 should_err: true,
             },
             ValidatePathNameTestCase {
@@ -557,12 +536,12 @@ mod test {
             },
             ValidatePathNameTestCase {
                 name: "Valid path with multiple subdirectories",
-                path: "/home/username/dir1/dir2/dir3/dir4",
+                path: "/usr/username/dir1/dir2/dir3/dir4",
                 should_err: false,
             },
             ValidatePathNameTestCase {
                 name: "Path with unprintable ASCII character",
-                path: "/home/username/\x07file",
+                path: "/usr/username/\x07file",
                 should_err: true,
             },
             // This case should fail but due to the restriction of mock dependencies we cannot validate it correctly! It is partially validated in test_validate_username

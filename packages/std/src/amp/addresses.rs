@@ -17,7 +17,7 @@ use cosmwasm_std::{Addr, Api, Deps, QuerierWrapper, Storage};
 ///
 /// `<protocol>://<chain (required if ibc used)>/<path>` or `ibc://cosmoshub-4/user/app/component`
 #[cw_serde]
-pub struct AndrAddr(#[schemars(regex = "crate::os::vfs::COMPLETE_PATH_REGEX")] String);
+pub struct AndrAddr(#[schemars(regex = "crate::os::vfs::PROTOCOL_PATH_REGEX")] String);
 
 impl AndrAddr {
     #[inline]
