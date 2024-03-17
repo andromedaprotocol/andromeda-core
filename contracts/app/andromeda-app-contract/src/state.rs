@@ -177,7 +177,7 @@ pub fn create_cross_chain_message(
                         name: name.clone(),
                         ado_type: component.ado_type,
                         component_type: ComponentType::Symlink(AndrAddr::from_string(format!(
-                            "ibc://{chain}/home/{owner}/{app_name}/{name}"
+                            "ibc://{chain}/usr/{owner}/{app_name}/{name}"
                         ))),
                     }
                 }
@@ -187,7 +187,7 @@ pub fn create_cross_chain_message(
                 name: name.clone(),
                 ado_type: component.ado_type,
                 component_type: ComponentType::Symlink(AndrAddr::from_string(format!(
-                    "ibc://{curr_chain}/home/{owner}/{app_name}/{name}"
+                    "ibc://{curr_chain}/usr/{owner}/{app_name}/{name}"
                 ))),
             },
         };
@@ -278,7 +278,7 @@ mod test {
                 name: "test_component".to_string(),
                 ado_type: "test_ado".to_string(),
                 component_type: ComponentType::Symlink(AndrAddr::from_string(format!(
-                    "ibc://{}/home/{}/test_app/test_component",
+                    "ibc://{}/usr/{}/test_app/test_component",
                     second_chain_info.chain_name, second_chain_info.owner
                 ))),
             },
@@ -286,7 +286,7 @@ mod test {
                 name: "test_component".to_string(),
                 ado_type: "test_ado".to_string(),
                 component_type: ComponentType::Symlink(AndrAddr::from_string(format!(
-                    "ibc://andromeda/home/{}/test_app/test_component",
+                    "ibc://andromeda/usr/{}/test_app/test_component",
                     target_owner
                 ))),
             },

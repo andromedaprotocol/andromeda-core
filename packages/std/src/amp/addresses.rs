@@ -11,7 +11,7 @@ use cosmwasm_std::{Addr, Api, Deps, QuerierWrapper, Storage};
 ///
 /// This address can be one of two things:
 /// 1. A valid human readable address e.g. `cosmos1...`
-/// 2. A valid Andromeda VFS path e.g. `/home/user/app/component`
+/// 2. A valid Andromeda VFS path e.g. `/usr/user/app/component`
 ///
 /// VFS paths can be local in the case of an app and can be done by referencing `./component` they can also contain protocols for cross chain communication. A VFS path is usually structured as so:
 ///
@@ -116,7 +116,7 @@ impl AndrAddr {
                     None => Err(ContractError::AppContractNotSpecified {}),
                     Some(app_contract) => {
                         let replaced =
-                            AndrAddr(self.0.replace("./", &format!("/home/{app_contract}/")));
+                            AndrAddr(self.0.replace("./", &format!("/usr/{app_contract}/")));
                         vfs_resolve_symlink(replaced, vfs_contract, querier)
                     }
                 }
@@ -204,7 +204,7 @@ impl AndrAddr {
 
     /// Gets the root directory for a given AndrAddr
     ///
-    /// E.g. `/home/user/app/component` would return `home`
+    /// E.g. `/usr/user/app/component` would return `home`
     ///
     /// Returns the human readable address if the address is not a VFS path or the local path if the address is a local reference
     pub fn get_root_dir(&self) -> &str {
@@ -215,7 +215,7 @@ impl AndrAddr {
                 false => {
                     let raw_path = self.get_raw_path();
                     if raw_path.starts_with('~') {
-                        return "home";
+                        return "usr";
                     }
                     raw_path.split('/').nth(1).unwrap()
                 }
@@ -285,10 +285,10 @@ mod tests {
         let addr = AndrAddr("cosmos1...".to_string());
         assert!(addr.validate(&deps.api).is_ok());
 
-        let addr = AndrAddr("ibc://cosmoshub-4/home/user/app/component".to_string());
+        let addr = AndrAddr("ibc://cosmoshub-4/usr/user/app/component".to_string());
         assert!(addr.validate(&deps.api).is_ok());
 
-        let addr = AndrAddr("/home/user/app/component".to_string());
+        let addr = AndrAddr("/usr/user/app/component".to_string());
         assert!(addr.validate(&deps.api).is_ok());
 
         let addr = AndrAddr("./user/app/component".to_string());
@@ -300,13 +300,13 @@ mod tests {
 
     #[test]
     fn test_is_vfs() {
-        let addr = AndrAddr("/home/user/app/component".to_string());
+        let addr = AndrAddr("/usr/user/app/component".to_string());
         assert!(addr.is_vfs_path());
 
         let addr = AndrAddr("./user/app/component".to_string());
         assert!(addr.is_vfs_path());
 
-        let addr = AndrAddr("ibc://chain/home/user/app/component".to_string());
+        let addr = AndrAddr("ibc://chain/usr/user/app/component".to_string());
         assert!(addr.is_vfs_path());
 
         let addr = AndrAddr("cosmos1...".to_string());
@@ -333,7 +333,7 @@ mod tests {
         let addr = AndrAddr("cosmos1...".to_string());
         assert!(addr.get_protocol().is_none());
 
-        let addr = AndrAddr("ibc://chain/home/user/app/component".to_string());
+        let addr = AndrAddr("ibc://chain/usr/user/app/component".to_string());
         assert_eq!(addr.get_protocol().unwrap(), "ibc");
     }
 
@@ -342,10 +342,10 @@ mod tests {
         let addr = AndrAddr("cosmos1...".to_string());
         assert!(addr.get_chain().is_none());
 
-        let addr = AndrAddr("ibc://chain/home/user/app/component".to_string());
+        let addr = AndrAddr("ibc://chain/usr/user/app/component".to_string());
         assert_eq!(addr.get_chain().unwrap(), "chain");
 
-        let addr = AndrAddr("/home/user/app/component".to_string());
+        let addr = AndrAddr("/usr/user/app/component".to_string());
         assert!(addr.get_chain().is_none());
     }
 
@@ -354,31 +354,31 @@ mod tests {
         let addr = AndrAddr("cosmos1...".to_string());
         assert_eq!(addr.get_raw_path(), "cosmos1...");
 
-        let addr = AndrAddr("ibc://chain/user/app/component".to_string());
-        assert_eq!(addr.get_raw_path(), "/user/app/component");
+        let addr = AndrAddr("ibc://chain/usr/app/component".to_string());
+        assert_eq!(addr.get_raw_path(), "/usr/app/component");
 
-        let addr = AndrAddr("/chain/user/app/component".to_string());
-        assert_eq!(addr.get_raw_path(), "/chain/user/app/component");
+        let addr = AndrAddr("/chain/usr/app/component".to_string());
+        assert_eq!(addr.get_raw_path(), "/chain/usr/app/component");
     }
 
     #[test]
     fn test_get_root_dir() {
-        let addr = AndrAddr("/home/user1".to_string());
-        assert_eq!(addr.get_root_dir(), "home");
+        let addr = AndrAddr("/usr/user1".to_string());
+        assert_eq!(addr.get_root_dir(), "usr");
 
         let addr = AndrAddr("~user1".to_string());
-        assert_eq!(addr.get_root_dir(), "home");
+        assert_eq!(addr.get_root_dir(), "usr");
 
         let addr = AndrAddr("~/user1".to_string());
-        assert_eq!(addr.get_root_dir(), "home");
+        assert_eq!(addr.get_root_dir(), "usr");
 
-        let addr = AndrAddr("ibc://chain/home/user1".to_string());
-        assert_eq!(addr.get_root_dir(), "home");
+        let addr = AndrAddr("ibc://chain/usr/user1".to_string());
+        assert_eq!(addr.get_root_dir(), "usr");
 
         let addr = AndrAddr("cosmos1...".to_string());
         assert_eq!(addr.get_root_dir(), "cosmos1...");
 
-        let addr = AndrAddr("./home/user1".to_string());
-        assert_eq!(addr.get_root_dir(), "./home/user1");
+        let addr = AndrAddr("./usr/user1".to_string());
+        assert_eq!(addr.get_root_dir(), "./usr/user1");
     }
 }

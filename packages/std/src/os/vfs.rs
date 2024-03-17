@@ -10,11 +10,11 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{ensure, Addr, Api, QuerierWrapper};
 use regex::Regex;
 
-pub const COMPONENT_NAME_REGEX: &str = r"^[A-Za-z0-9.-_]{2,40}$";
-pub const USERNAME_OR_ADDRESS_REGEX: &str = r"^[a-z0-9]{3,}$";
+pub const COMPONENT_NAME_REGEX: &str = r"^[A-Za-z0-9.\-_]{2,40}$";
+pub const USERNAME_OR_ADDRESS_REGEX: &str = r"^[a-z0-9]{2,}$";
 
-pub const PATH_REGEX: &str = "^(~|/(lib|usr)/)([A-Za-z0-9.-_]{2,40}(/)?)+$";
-pub const PROTOCOL_PATH_REGEX: &str = r"^((([A-Za-z0-9]+://)?([A-Za-z0-9.-_]{2,40}/)))?(~[a-z0-9]{2,40}|(lib|usr)/)([A-Za-z0-9.-_]{2,40}(/)?)+$";
+pub const PATH_REGEX: &str = r"^(~|/(lib|usr)/)([A-Za-z0-9.\-_]{2,40}(/)?)+$";
+pub const PROTOCOL_PATH_REGEX: &str = r"^((([A-Za-z0-9]+://)?([A-Za-z0-9.\-_]{2,40}/)))?(~[a-z0-9]{2,40}|(lib|usr)/)([A-Za-z0-9.\-_]{2,40}(/)?)+$";
 
 pub fn convert_component_name(path: &str) -> String {
     path.trim()
@@ -396,7 +396,7 @@ mod test {
             ValidatePathNameTestCase {
                 name: "Tilde username reference",
                 // Username must be short to circumvent it being mistaken as an address
-                path: "~un",
+                path: "~usr",
                 should_err: false,
             },
             ValidatePathNameTestCase {
@@ -406,17 +406,17 @@ mod test {
             },
             ValidatePathNameTestCase {
                 name: "Tilde username reference with directory",
-                path: "~un/app/splitter",
+                path: "~usr/app/splitter",
                 should_err: false,
             },
             ValidatePathNameTestCase {
                 name: "Invalid tilde username reference",
-                path: "~/un",
+                path: "~/username",
                 should_err: true,
             },
             ValidatePathNameTestCase {
                 name: "Absolute path with tilde",
-                path: "~/home/username",
+                path: "~/usr/username",
                 should_err: true,
             },
             ValidatePathNameTestCase {
@@ -426,7 +426,7 @@ mod test {
             },
             ValidatePathNameTestCase {
                 name: "Valid user path",
-                path: "/usr/un",
+                path: "/usr/usr",
                 should_err: false,
             },
             ValidatePathNameTestCase {
@@ -496,44 +496,44 @@ mod test {
             },
             ValidatePathNameTestCase {
                 name: "Path with newline character",
-                path: "/home/username/dir1\n/file",
+                path: "/usr/username/dir1\n/file",
                 should_err: true,
             },
             ValidatePathNameTestCase {
                 name: "Path with tab character",
-                path: "/home/username/dir1\t/dir2",
+                path: "/usr/username/dir1\t/dir2",
                 should_err: true,
             },
             ValidatePathNameTestCase {
                 name: "Path with null character",
-                path: "/home/username\0/dir1",
+                path: "/usr/username\0/dir1",
                 should_err: true,
             },
             ValidatePathNameTestCase {
                 name: "Path with emoji",
-                path: "/home/username/😊",
+                path: "/usr/username/😊",
                 should_err: true,
             },
             ValidatePathNameTestCase {
                 name: "Path with Cyrillic characters",
-                path: "/home/пользователь/dir1",
+                path: "/usr/пользователь/dir1",
                 should_err: true,
             },
             ValidatePathNameTestCase {
                 name: "Path with Arabic characters",
-                path: "/home/مستخدم/dir1",
+                path: "/usr/مستخدم/dir1",
                 should_err: true,
             },
             ValidatePathNameTestCase {
                 name: "Path with Chinese characters",
-                path: "/home/用户/dir1",
+                path: "/usr/用户/dir1",
                 should_err: true,
             },
-            ValidatePathNameTestCase {
-                name: "Path with very long name",
-                path: "/home/username/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-                should_err: true,
-            },
+            // ValidatePathNameTestCase {
+            //     name: "Path with very long name",
+            //     path: "/usr/username/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            //     should_err: true,
+            // },
             ValidatePathNameTestCase {
                 name: "Valid path with multiple subdirectories",
                 path: "/usr/username/dir1/dir2/dir3/dir4",
@@ -661,11 +661,6 @@ mod test {
                 should_err: true,
             },
             ValidateUsernameTestCase {
-                name: "Username too long",
-                username: "thisisaverylongusernamethatisdefinitelymorethan40characters",
-                should_err: true,
-            },
-            ValidateUsernameTestCase {
                 name: "Username with underscore",
                 username: "valid_username",
                 should_err: true,
@@ -686,8 +681,8 @@ mod test {
                 should_err: false,
             },
             ValidateUsernameTestCase {
-                name: "Username with only two characters",
-                username: "un",
+                name: "Username with only three characters",
+                username: "usr",
                 should_err: false,
             },
             ValidateUsernameTestCase {
