@@ -1,4 +1,5 @@
 pub mod ado_type;
+pub mod app_contract;
 pub mod block_height;
 #[cfg(any(feature = "module_hooks", feature = "modules"))]
 pub mod hooks;
@@ -70,7 +71,7 @@ pub enum AndromedaQuery {
     BlockHeightUponCreation {},
     #[returns(self::version::VersionResponse)]
     Version {},
-    #[returns(Option<::cosmwasm_std::Addr>)]
+    #[returns(self::app_contract::AppContractResponse)]
     AppContract {},
     #[cfg(feature = "modules")]
     #[returns(Module)]
