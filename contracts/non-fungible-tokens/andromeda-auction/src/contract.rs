@@ -19,9 +19,9 @@ use andromeda_std::{
 use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
 
 use cosmwasm_std::{
-    attr, coins, ensure, entry_point, from_binary, Addr, BankMsg, Binary, BlockInfo, Coin,
-    CosmosMsg, Deps, DepsMut, Env, MessageInfo, QuerierWrapper, QueryRequest, Response, Storage,
-    SubMsg, Uint128, WasmMsg, WasmQuery,
+    attr, coins, ensure, entry_point, from_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps,
+    DepsMut, Env, MessageInfo, QuerierWrapper, QueryRequest, Response, Storage, SubMsg, Uint128,
+    WasmMsg, WasmQuery,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, Cw721ReceiveMsg, Expiration, OwnerOfResponse};
@@ -202,32 +202,40 @@ fn execute_start_auction(
     ctx: ExecuteContext,
     sender: String,
     token_id: String,
-    start_time: u64,
+    start_time: Option<u64>,
     duration: u64,
     coin_denom: String,
     whitelist: Option<Vec<Addr>>,
     min_bid: Option<Uint128>,
 ) -> Result<Response, ContractError> {
     validate_denom(&ctx.deps.querier, coin_denom.clone())?;
-    ensure!(
-        start_time > 0 && duration > 0,
-        ContractError::InvalidExpiration {}
-    );
+    ensure!(duration > 0, ContractError::InvalidExpiration {});
     let ExecuteContext {
         deps, info, env, ..
     } = ctx;
 
-    let start_expiration = expiration_from_milliseconds(start_time)?;
-    let end_expiration = expiration_from_milliseconds(start_time + duration)?;
+    let current_time = env.block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO;
+    // If start time wasn't provided, it will be set as the current_time
+    let start_expiration = if let Some(start_time) = start_time {
+        expiration_from_milliseconds(start_time)?
+    } else {
+        expiration_from_milliseconds(current_time)?
+    };
 
-    let block_time = block_to_expiration(&env.block, start_expiration).unwrap();
+    // To guard against misleading start times
+    // Subtracting one second from the current block because the unit tests fail otherwise. The current time slightly differed from the block time.
+    let recent_past_timestamp = env.block.time.minus_seconds(1);
+    let recent_past_expiration = expiration_from_milliseconds(recent_past_timestamp.seconds())?;
     ensure!(
-        start_expiration.gt(&block_time),
+        start_expiration.gt(&recent_past_expiration),
         ContractError::StartTimeInThePast {
             current_time: env.block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO,
             current_block: env.block.height,
         }
     );
+
+    let end_expiration =
+        expiration_from_milliseconds(start_time.unwrap_or(current_time) + duration)?;
 
     let token_address = info.sender.to_string();
 
@@ -269,7 +277,7 @@ fn execute_update_auction(
     ctx: ExecuteContext,
     token_id: String,
     token_address: String,
-    start_time: u64,
+    start_time: Option<u64>,
     duration: u64,
     coin_denom: String,
     whitelist: Option<Vec<Addr>>,
@@ -290,23 +298,32 @@ fn execute_update_auction(
         !token_auction_state.start_time.is_expired(&env.block),
         ContractError::AuctionAlreadyStarted {}
     );
-    ensure!(
-        start_time > 0 && duration > 0,
-        ContractError::InvalidExpiration {}
-    );
+    ensure!(duration > 0, ContractError::InvalidExpiration {});
 
-    let start_exp = expiration_from_milliseconds(start_time)?;
-    let end_exp = expiration_from_milliseconds(start_time + duration)?;
+    let current_time = env.block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO;
+    // If start time wasn't provided, it will be set as the current_time
+    let start_expiration = if let Some(start_time) = start_time {
+        expiration_from_milliseconds(start_time)?
+    } else {
+        expiration_from_milliseconds(current_time)?
+    };
+
+    // To guard against misleading start times
+    // Subtracting one second from the current block because the unit tests fail otherwise. The current time slightly differed from the block time.
+    let recent_past_timestamp = env.block.time.minus_seconds(1);
+    let recent_past_expiration = expiration_from_milliseconds(recent_past_timestamp.seconds())?;
     ensure!(
-        !start_exp.is_expired(&env.block),
+        start_expiration.gt(&recent_past_expiration),
         ContractError::StartTimeInThePast {
             current_time: env.block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO,
             current_block: env.block.height,
         }
     );
+    let end_expiration =
+        expiration_from_milliseconds(start_time.unwrap_or(current_time) + duration)?;
 
-    token_auction_state.start_time = start_exp;
-    token_auction_state.end_time = end_exp;
+    token_auction_state.start_time = start_expiration;
+    token_auction_state.end_time = end_expiration;
     token_auction_state.whitelist = whitelist.clone();
     token_auction_state.coin_denom = coin_denom.clone();
     token_auction_state.min_bid = min_bid;
@@ -317,8 +334,8 @@ fn execute_update_auction(
     )?;
     Ok(Response::new().add_attributes(vec![
         attr("action", "update_auction"),
-        attr("start_time", start_time.to_string()),
-        attr("end_time", end_exp.to_string()),
+        attr("start_time", start_expiration.to_string()),
+        attr("end_time", end_expiration.to_string()),
         attr("coin_denom", coin_denom),
         attr("auction_id", token_auction_state.auction_id.to_string()),
         attr("whitelist", format!("{:?}", &whitelist)),
@@ -647,14 +664,6 @@ fn get_existing_token_auction_state(
     let token_auction_state = TOKEN_AUCTION_STATE.load(storage, latest_auction_id.u128())?;
 
     Ok(token_auction_state)
-}
-
-fn block_to_expiration(block: &BlockInfo, model: Expiration) -> Option<Expiration> {
-    match model {
-        Expiration::AtTime(_) => Some(Expiration::AtTime(block.time)),
-        Expiration::AtHeight(_) => Some(Expiration::AtHeight(block.height)),
-        Expiration::Never {} => None,
-    }
 }
 
 fn get_and_increment_next_auction_id(

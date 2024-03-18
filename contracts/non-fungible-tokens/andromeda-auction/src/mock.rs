@@ -28,7 +28,7 @@ pub fn mock_auction_instantiate_msg(
 }
 
 pub fn mock_start_auction(
-    start_time: u64,
+    start_time: Option<u64>,
     duration: u64,
     coin_denom: String,
     min_bid: Option<Uint128>,

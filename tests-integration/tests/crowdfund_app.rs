@@ -23,7 +23,7 @@ use std::str::FromStr;
 
 use andromeda_testing::mock::MockAndromeda;
 use cosmwasm_std::{coin, to_binary, Addr, BlockInfo, Decimal, Uint128};
-use cw721::{Expiration, OwnerOfResponse};
+use cw721::OwnerOfResponse;
 use cw_multi_test::{App, Executor};
 
 fn mock_app() -> App {
@@ -233,7 +233,8 @@ fn test_crowdfund_app() {
     let sale_recipient = Recipient::from_string(format!("~am/app/{}", splitter_app_component.name))
         .with_msg(mock_splitter_send_msg());
     let start_msg = mock_start_crowdfund_msg(
-        Expiration::AtHeight(router.block_info().height + 5),
+        None,
+        1,
         token_price.clone(),
         Uint128::from(3u128),
         Some(1),

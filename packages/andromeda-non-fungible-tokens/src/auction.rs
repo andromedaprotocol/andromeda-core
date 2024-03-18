@@ -31,7 +31,7 @@ pub enum ExecuteMsg {
     UpdateAuction {
         token_id: String,
         token_address: String,
-        start_time: u64,
+        start_time: Option<u64>,
         duration: u64,
         coin_denom: String,
         whitelist: Option<Vec<Addr>>,
@@ -58,7 +58,7 @@ pub enum Cw721HookMsg {
     /// has started but is immutable after that.
     StartAuction {
         /// Start time in milliseconds since epoch
-        start_time: u64,
+        start_time: Option<u64>,
         /// Duration in milliseconds
         duration: u64,
         coin_denom: String,
