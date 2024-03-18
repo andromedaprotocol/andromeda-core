@@ -167,6 +167,8 @@ pub fn andr_query(_metadata: TokenStream, input: TokenStream) -> TokenStream {
                 Type {},
                 #[returns(andromeda_std::ado_base::kernel_address::KernelAddressResponse)]
                 KernelAddress {},
+                #[returns(andromeda_std::ado_base::app_contract::AppContractResponse)]
+                AppContract {},
                 #[returns(andromeda_std::ado_base::ownership::PublisherResponse)]
                 OriginalPublisher {},
                 #[returns(andromeda_std::ado_base::block_height::BlockHeightResponse)]
