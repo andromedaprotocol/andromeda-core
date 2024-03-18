@@ -3,14 +3,36 @@
   "title": "QueryMsg",
   "oneOf": [
     {
-      "description": "The current config of the Splitter contract",
+      "description": "Provides the allowed coin and limits for withdrawal size and frequency",
       "type": "object",
       "required": [
-        "get_splitter_config"
+        "coin_allowance_details"
       ],
       "properties": {
-        "get_splitter_config": {
+        "coin_allowance_details": {
           "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Shows the balance and latest withdrawal time",
+      "type": "object",
+      "required": [
+        "account_details"
+      ],
+      "properties": {
+        "account_details": {
+          "type": "object",
+          "required": [
+            "account"
+          ],
+          "properties": {
+            "account": {
+              "type": "string"
+            }
+          },
           "additionalProperties": false
         }
       },
@@ -23,19 +45,6 @@
       ],
       "properties": {
         "owner": {
-          "type": "object",
-          "additionalProperties": false
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "type": "object",
-      "required": [
-        "operators"
-      ],
-      "properties": {
-        "operators": {
           "type": "object",
           "additionalProperties": false
         }
@@ -89,27 +98,6 @@
       "properties": {
         "block_height_upon_creation": {
           "type": "object",
-          "additionalProperties": false
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "type": "object",
-      "required": [
-        "is_operator"
-      ],
-      "properties": {
-        "is_operator": {
-          "type": "object",
-          "required": [
-            "address"
-          ],
-          "properties": {
-            "address": {
-              "type": "string"
-            }
-          },
           "additionalProperties": false
         }
       },
