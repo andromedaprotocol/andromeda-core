@@ -290,7 +290,7 @@ fn execute_update_auction(
     let (start_expiration, current_time) = get_and_validate_start_time(&env, start_time)?;
 
     let end_expiration =
-        expiration_from_milliseconds(start_time.unwrap_or(current_time) + duration)?;
+        expiration_from_milliseconds(start_time.unwrap_or(current_time + 1) + duration)?;
 
     token_auction_state.start_time = start_expiration;
     token_auction_state.end_time = end_expiration;

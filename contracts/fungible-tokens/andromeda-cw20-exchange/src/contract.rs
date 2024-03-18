@@ -206,8 +206,9 @@ pub fn execute_start_sale(
     );
 
     let end_expiration = if let Some(duration) = duration {
-        // If there's no start time, consider it as now
-        expiration_from_milliseconds(start_time.unwrap_or(current_time) + duration)?
+        // If there's no start time, consider it as now + 1
+        ensure!(duration > 0, ContractError::InvalidExpiration {});
+        expiration_from_milliseconds(start_time.unwrap_or(current_time + 1) + duration)?
     } else {
         Expiration::Never {}
     };

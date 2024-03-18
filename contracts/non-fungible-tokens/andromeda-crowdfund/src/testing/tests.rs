@@ -457,7 +457,7 @@ fn test_start_sale_max_default() {
 
     let msg = ExecuteMsg::StartSale {
         start_time: None,
-        duration: 2,
+        duration: 1,
         price: coin(100, "uusd"),
         min_tokens_sold: Uint128::from(1u128),
         max_amount_per_wallet: None,
@@ -509,7 +509,7 @@ fn test_start_sale_max_modified() {
 
     let msg = ExecuteMsg::StartSale {
         start_time: None,
-        duration: 2,
+        duration: 1,
         price: coin(100, "uusd"),
         min_tokens_sold: Uint128::from(1u128),
         max_amount_per_wallet: Some(5),
@@ -1173,7 +1173,7 @@ fn test_integration_conditions_not_met() {
 
     let msg = ExecuteMsg::StartSale {
         start_time: None,
-        duration: 2,
+        duration: 1,
         price: coin(100, "uusd"),
         min_tokens_sold: Uint128::from(5u128),
         max_amount_per_wallet: Some(2),
@@ -1349,7 +1349,7 @@ fn test_integration_conditions_met() {
 
     let msg = ExecuteMsg::StartSale {
         start_time: None,
-        duration: 2,
+        duration: 1,
         price: coin(100, "uusd"),
         min_tokens_sold: Uint128::from(3u128),
         max_amount_per_wallet: Some(2),

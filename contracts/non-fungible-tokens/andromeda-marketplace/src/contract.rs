@@ -164,7 +164,8 @@ fn execute_start_sale(
 
     // If no duration is provided, the exipration will be set as Never
     let end_expiration = if let Some(duration) = duration {
-        expiration_from_milliseconds(start_time.unwrap_or(current_time) + duration)?
+        ensure!(duration > 0, ContractError::InvalidExpiration {});
+        expiration_from_milliseconds(start_time.unwrap_or(current_time + 1) + duration)?
     } else {
         Expiration::Never {}
     };

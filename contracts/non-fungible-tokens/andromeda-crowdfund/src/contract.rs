@@ -297,9 +297,9 @@ fn execute_start_sale(
     let (start_expiration, current_time) = get_and_validate_start_time(&env, start_time)?;
 
     // Ensures that end_time is always greater than start_time
-    ensure!(duration > 1, ContractError::InvalidExpiration {});
+    ensure!(duration > 0, ContractError::InvalidExpiration {});
     let end_expiration =
-        expiration_from_milliseconds(start_time.unwrap_or(current_time) + duration)?;
+        expiration_from_milliseconds(start_time.unwrap_or(current_time + 1) + duration)?;
 
     // ensure!(
     //     !matches!(expiration, Expiration::Never {}),
