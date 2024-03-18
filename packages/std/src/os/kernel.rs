@@ -64,6 +64,10 @@ pub enum ExecuteMsg {
     },
     /// Recovers funds from failed IBC messages
     Recover {},
+    /// Update Current Chain
+    UpdateChainName {
+        chain_name: String,
+    },
     // Only accessible to key contracts
     Internal(InternalMsg),
     // Base message
@@ -102,6 +106,8 @@ pub enum QueryMsg {
     ChannelInfo { chain: String },
     #[returns(Vec<::cosmwasm_std::Coin>)]
     Recoveries { addr: Addr },
+    #[returns(String)]
+    GetChainName {},
     // Base queries
     #[returns(VersionResponse)]
     Version {},
