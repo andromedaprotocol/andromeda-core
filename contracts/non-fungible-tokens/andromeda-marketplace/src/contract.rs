@@ -11,7 +11,7 @@ use andromeda_std::ado_contract::ADOContract;
 
 use andromeda_std::common::context::ExecuteContext;
 use andromeda_std::common::expiration::{
-    expiration_from_milliseconds, MILLISECONDS_TO_NANOSECONDS_RATIO,
+    block_to_expiration, expiration_from_milliseconds, MILLISECONDS_TO_NANOSECONDS_RATIO
 };
 use andromeda_std::{
     ado_base::{hooks::AndromedaHook, InstantiateMsg as BaseInstantiateMsg},
@@ -164,7 +164,7 @@ fn execute_start_sale(
     let start_expiration = if let Some(start_time) = start_time {
         expiration_from_milliseconds(start_time)?
     } else {
-        expiration_from_milliseconds(current_time)?
+        expiration_from_milliseconds(current_time + 1)?
     };
 
     // If no duration is provided, the exipration will be set as Never
@@ -174,14 +174,12 @@ fn execute_start_sale(
         Expiration::Never {}
     };
 
-    // To guard against misleading start times
-    // Subtracting one second from the current block because the unit tests fail otherwise. The current time slightly differed from the block time.
-    let recent_past_timestamp = env.block.time.minus_seconds(1);
-    let recent_past_expiration = expiration_from_milliseconds(recent_past_timestamp.seconds())?;
+    // Validate start time
+    let block_time = block_to_expiration(&env.block, start_expiration).unwrap();
     ensure!(
-        start_expiration.gt(&recent_past_expiration),
+        start_expiration.gt(&block_time),
         ContractError::StartTimeInThePast {
-            current_time: env.block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO,
+            current_time,
             current_block: env.block.height,
         }
     );

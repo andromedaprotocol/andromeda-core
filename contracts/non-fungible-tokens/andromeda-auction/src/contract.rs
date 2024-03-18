@@ -11,9 +11,14 @@ use andromeda_std::{
         InstantiateMsg as BaseInstantiateMsg,
     },
     amp::AndrAddr,
-    common::Funds,
-    common::{encode_binary, expiration::expiration_from_milliseconds, OrderBy},
-    common::{expiration::MILLISECONDS_TO_NANOSECONDS_RATIO, rates::get_tax_amount},
+    common::{
+        encode_binary,
+        expiration::{
+            block_to_expiration, expiration_from_milliseconds, MILLISECONDS_TO_NANOSECONDS_RATIO,
+        },
+        rates::get_tax_amount,
+        Funds, OrderBy,
+    },
     error::{from_semver, ContractError},
 };
 use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
@@ -305,20 +310,20 @@ fn execute_update_auction(
     let start_expiration = if let Some(start_time) = start_time {
         expiration_from_milliseconds(start_time)?
     } else {
-        expiration_from_milliseconds(current_time)?
+        // Set as current time + 1 so that it isn't expired from the very start
+        expiration_from_milliseconds(current_time + 1)?
     };
 
-    // To guard against misleading start times
-    // Subtracting one second from the current block because the unit tests fail otherwise. The current time slightly differed from the block time.
-    let recent_past_timestamp = env.block.time.minus_seconds(1);
-    let recent_past_expiration = expiration_from_milliseconds(recent_past_timestamp.seconds())?;
+    // Validate start time
+    let block_time = block_to_expiration(&env.block, start_expiration).unwrap();
     ensure!(
-        start_expiration.gt(&recent_past_expiration),
+        start_expiration.gt(&block_time),
         ContractError::StartTimeInThePast {
-            current_time: env.block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO,
+            current_time,
             current_block: env.block.height,
         }
     );
+
     let end_expiration =
         expiration_from_milliseconds(start_time.unwrap_or(current_time) + duration)?;
 

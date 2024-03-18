@@ -776,7 +776,7 @@ fn execute_update_auction() {
     let msg = ExecuteMsg::UpdateAuction {
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
         token_address: MOCK_TOKEN_ADDR.to_string(),
-        start_time: Some(1571883819),
+        start_time: Some(1571711019879 + 1),
         duration: 100000,
         coin_denom: "uluna".to_string(),
         whitelist: Some(vec![Addr::unchecked("user")]),
@@ -790,8 +790,8 @@ fn execute_update_auction() {
     let _res = execute(deps.as_mut(), env, info, msg).unwrap();
     assert_eq!(
         TokenAuctionState {
-            start_time: Expiration::AtTime(Timestamp::from_nanos(1571883819000000)),
-            end_time: Expiration::AtTime(Timestamp::from_nanos(1571983819000000)),
+            start_time: Expiration::AtTime(Timestamp::from_nanos(1571711019880000000)),
+            end_time: Expiration::AtTime(Timestamp::from_nanos(1571711119880000000)),
             high_bidder_addr: Addr::unchecked(""),
             high_bidder_amount: Uint128::zero(),
             coin_denom: "uluna".to_string(),

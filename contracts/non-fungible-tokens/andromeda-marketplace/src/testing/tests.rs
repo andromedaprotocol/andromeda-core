@@ -100,7 +100,7 @@ fn init(deps: DepsMut, modules: Option<Vec<Module>>) -> Response {
 
 fn assert_sale_created(deps: Deps, env: Env) {
     let current_time = env.block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO;
-    let start_time_expiration = expiration_from_milliseconds(current_time).unwrap();
+    let start_time_expiration = expiration_from_milliseconds(current_time + 1).unwrap();
     assert_eq!(
         TokenSaleState {
             coin_denom: "uusd".to_string(),
@@ -200,7 +200,7 @@ fn test_execute_buy_non_existing_sale() {
 #[test]
 fn test_execute_buy_sale_not_open_already_bought() {
     let mut deps = mock_dependencies_custom(&[]);
-    let env = mock_env();
+    let mut env = mock_env();
     let _res = init(deps.as_mut(), None);
 
     start_sale(deps.as_mut());
@@ -212,6 +212,8 @@ fn test_execute_buy_sale_not_open_already_bought() {
     };
 
     let info = mock_info("sender", &coins(100, "uusd".to_string()));
+    // Add one second so that the start_time expires
+    env.block.time = env.block.time.plus_seconds(1);
     let _res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
     let msg = ExecuteMsg::Buy {
@@ -254,7 +256,7 @@ fn test_execute_buy_sale_not_open_cancelled() {
 #[test]
 fn test_execute_buy_token_owner_cannot_buy() {
     let mut deps = mock_dependencies_custom(&[]);
-    let env = mock_env();
+    let mut env = mock_env();
 
     let _res = init(deps.as_mut(), None);
 
@@ -265,6 +267,8 @@ fn test_execute_buy_token_owner_cannot_buy() {
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
         token_address: MOCK_TOKEN_ADDR.to_string(),
     };
+    // Add one second so that the start_time expires
+    env.block.time = env.block.time.plus_seconds(1);
 
     let info = mock_info(MOCK_TOKEN_OWNER, &coins(100, "uusd".to_string()));
     let res = execute(deps.as_mut(), env, info, msg);
@@ -274,7 +278,7 @@ fn test_execute_buy_token_owner_cannot_buy() {
 #[test]
 fn test_execute_buy_invalid_coins_sent() {
     let mut deps = mock_dependencies_custom(&[]);
-    let env = mock_env();
+    let mut env = mock_env();
 
     let _res = init(deps.as_mut(), None);
 
@@ -291,6 +295,8 @@ fn test_execute_buy_invalid_coins_sent() {
 
     // No coins sent
     let info = mock_info("sender", &[]);
+    // Add one second so that the start_time expires
+    env.block.time = env.block.time.plus_seconds(1);
     let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
     assert_eq!(error, res.unwrap_err());
 
@@ -318,7 +324,7 @@ fn test_execute_buy_invalid_coins_sent() {
 #[test]
 fn test_execute_buy_works() {
     let mut deps = mock_dependencies_custom(&[]);
-    let env = mock_env();
+    let mut env = mock_env();
 
     let _res = init(deps.as_mut(), None);
 
@@ -331,6 +337,8 @@ fn test_execute_buy_works() {
     };
 
     let info = mock_info("someone", &coins(100, "uusd".to_string()));
+    // Add one second so that the start_time expires
+    env.block.time = env.block.time.plus_seconds(1);
     let _res = execute(deps.as_mut(), env, info, msg).unwrap();
 }
 
@@ -461,9 +469,11 @@ fn test_execute_buy_with_tax_and_royalty_insufficient_funds() {
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
         token_address: MOCK_TOKEN_ADDR.to_string(),
     };
-
+    let mut env = mock_env();
+    // Add one second so that the start_time expires
+    env.block.time = env.block.time.plus_seconds(1);
     let info = mock_info("someone", &coins(100, "uusd".to_string()));
-    let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
+    let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
     assert!(matches!(err, ContractError::InvalidFunds { .. }));
 }
 
@@ -484,9 +494,12 @@ fn execute_buy_with_tax_and_royalty_too_many_funds() {
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
         token_address: MOCK_TOKEN_ADDR.to_string(),
     };
+    let mut env = mock_env();
+    // Add one second so that the start_time expires
+    env.block.time = env.block.time.plus_seconds(1);
 
     let info = mock_info("someone", &coins(200, "uusd".to_string()));
-    let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
+    let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
     assert!(matches!(err, ContractError::InvalidFunds { .. }));
 }
 
@@ -509,7 +522,11 @@ fn test_execute_buy_with_tax_and_royalty_works() {
     };
 
     let info = mock_info("someone", &coins(150, "uusd".to_string()));
-    let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+    let mut env = mock_env();
+    // Add one second so that the start_time expires
+    env.block.time = env.block.time.plus_seconds(1);
+
+    let res = execute(deps.as_mut(), env, info.clone(), msg).unwrap();
     let expected: Vec<SubMsg<_>> = vec![
         SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
             to_address: "royalty_recipient".to_string(),
