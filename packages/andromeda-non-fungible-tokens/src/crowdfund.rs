@@ -20,8 +20,10 @@ pub enum ExecuteMsg {
     Mint(Vec<CrowdfundMintMsg>),
     /// Starts the sale if one is not already ongoing.
     StartSale {
+        /// When the sale start. Defaults to current time.
+        start_time: Option<u64>,
         /// When the sale ends.
-        expiration: Expiration,
+        duration: u64,
         /// The price per token.
         price: Coin,
         /// The minimum amount of tokens sold to go through with the sale.

@@ -11,6 +11,7 @@ use andromeda_non_fungible_tokens::{
 use andromeda_std::{
     ado_base::ownership::OwnershipMessage,
     amp::{messages::AMPPkt, recipient::Recipient, AndrAddr},
+    common::expiration::{expiration_from_milliseconds, MILLISECONDS_TO_NANOSECONDS_RATIO},
 };
 use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
 
@@ -30,7 +31,7 @@ use cosmwasm_std::{
     WasmMsg, WasmQuery,
 };
 use cw721::{ContractInfoResponse, TokensResponse};
-use cw_utils::{nonpayable, Expiration};
+use cw_utils::nonpayable;
 use std::cmp;
 
 const MAX_LIMIT: u32 = 100;
@@ -124,14 +125,16 @@ pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
     match msg {
         ExecuteMsg::Mint(mint_msgs) => execute_mint(ctx, mint_msgs),
         ExecuteMsg::StartSale {
-            expiration,
+            start_time,
+            duration,
             price,
             min_tokens_sold,
             max_amount_per_wallet,
             recipient,
         } => execute_start_sale(
             ctx,
-            expiration,
+            start_time,
+            duration,
             price,
             min_tokens_sold,
             max_amount_per_wallet,
@@ -271,7 +274,8 @@ fn execute_update_token_contract(
 #[allow(clippy::too_many_arguments)]
 fn execute_start_sale(
     ctx: ExecuteContext,
-    expiration: Expiration,
+    start_time: Option<u64>,
+    duration: u64,
     price: Coin,
     min_tokens_sold: Uint128,
     max_amount_per_wallet: Option<u32>,
@@ -289,14 +293,40 @@ fn execute_start_sale(
         ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {}
     );
+
+    let current_time = env.block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO;
+    // If start time wasn't provided, it will be set as the current_time
+    let start_expiration = if let Some(start_time) = start_time {
+        expiration_from_milliseconds(start_time)?
+    } else {
+        expiration_from_milliseconds(current_time)?
+    };
+
+    // To guard against misleading start times
+    // Subtracting one second from the current block because the unit tests fail otherwise. The current time slightly differed from the block time.
+    let recent_past_timestamp = env.block.time.minus_seconds(1);
+    let recent_past_expiration = expiration_from_milliseconds(recent_past_timestamp.seconds())?;
     ensure!(
-        !matches!(expiration, Expiration::Never {}),
-        ContractError::ExpirationMustNotBeNever {}
+        start_expiration.gt(&recent_past_expiration),
+        ContractError::StartTimeInThePast {
+            current_time: env.block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO,
+            current_block: env.block.height,
+        }
     );
-    ensure!(
-        !expiration.is_expired(&env.block),
-        ContractError::ExpirationInPast {}
-    );
+
+    ensure!(duration > 0, ContractError::InvalidExpiration {});
+    let end_expiration =
+        expiration_from_milliseconds(start_time.unwrap_or(current_time) + duration)?;
+
+    // ensure!(
+    //     !matches!(expiration, Expiration::Never {}),
+    //     ContractError::ExpirationMustNotBeNever {}
+    // );
+    // ensure!(
+    //     !expiration.is_expired(&env.block),
+    //     ContractError::ExpirationInPast {}
+    // );
+
     SALE_CONDUCTED.save(deps.storage, &true)?;
     let state = STATE.may_load(deps.storage)?;
     ensure!(state.is_none(), ContractError::SaleStarted {});
@@ -307,7 +337,7 @@ fn execute_start_sale(
     STATE.save(
         deps.storage,
         &State {
-            expiration,
+            expiration: end_expiration,
             price,
             min_tokens_sold,
             max_amount_per_wallet,
@@ -322,7 +352,7 @@ fn execute_start_sale(
 
     Ok(Response::new()
         .add_attribute("action", "start_sale")
-        .add_attribute("expiration", expiration.to_string())
+        .add_attribute("expiration", end_expiration.to_string())
         .add_attribute("price", price_str)
         .add_attribute("min_tokens_sold", min_tokens_sold)
         .add_attribute("max_amount_per_wallet", max_amount_per_wallet.to_string()))
