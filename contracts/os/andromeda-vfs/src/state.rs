@@ -84,7 +84,7 @@ pub fn resolve_pathname(
 
     if pathname.is_vfs_path() {
         match pathname.get_root_dir() {
-            "usr" => resolve_home_path(storage, api, pathname, resolved_paths),
+            "home" => resolve_home_path(storage, api, pathname, resolved_paths),
             "lib" => resolve_lib_path(storage, api, pathname, resolved_paths),
             &_ => Err(ContractError::InvalidAddress {}),
         }
@@ -379,7 +379,7 @@ mod test {
         let res = resolve_home_path(
             deps.as_ref().storage,
             deps.as_ref().api,
-            AndrAddr::from_string(format!("/usr/{username}")),
+            AndrAddr::from_string(format!("/home/{username}")),
             &mut vec![],
         )
         .unwrap();
@@ -418,7 +418,7 @@ mod test {
         let res = resolve_home_path(
             deps.as_ref().storage,
             deps.as_ref().api,
-            AndrAddr::from_string(format!("/usr/{username}/{first_directory}")),
+            AndrAddr::from_string(format!("/home/{username}/{first_directory}")),
             &mut vec![],
         )
         .unwrap();
@@ -452,7 +452,7 @@ mod test {
             deps.as_ref().storage,
             deps.as_ref().api,
             AndrAddr::from_string(format!(
-                "/usr/{username}/{first_directory}/{second_directory}"
+                "/home/{username}/{first_directory}/{second_directory}"
             )),
             &mut vec![],
         )
@@ -476,7 +476,7 @@ mod test {
             deps.as_ref().storage,
             deps.as_ref().api,
             AndrAddr::from_string(format!(
-                "/usr/{username}/{first_directory}/{second_directory}/{file}"
+                "/home/{username}/{first_directory}/{second_directory}/{file}"
             )),
             &mut vec![],
         )
@@ -613,7 +613,7 @@ mod test {
         let res = resolve_home_path(
             deps.as_ref().storage,
             deps.as_ref().api,
-            AndrAddr::from_string(format!("/usr/{username}/{first_directory}")),
+            AndrAddr::from_string(format!("/home/{username}/{first_directory}")),
             &mut vec![],
         )
         .unwrap();
@@ -621,7 +621,7 @@ mod test {
 
         let symlink_parent = Addr::unchecked("parentaddress");
         let symlink_name = "symlink";
-        let symlink = AndrAddr::from_string(format!("/usr/{username}/{first_directory}"));
+        let symlink = AndrAddr::from_string(format!("/home/{username}/{first_directory}"));
         let DepsMut { api, storage, .. } = deps.as_mut();
         add_path_symlink(
             storage,
@@ -635,7 +635,7 @@ mod test {
         let res = resolve_home_path(
             deps.as_ref().storage,
             deps.as_ref().api,
-            AndrAddr::from_string(format!("/usr/{symlink_parent}/{symlink_name}")),
+            AndrAddr::from_string(format!("/home/{symlink_parent}/{symlink_name}")),
             &mut vec![],
         )
         .unwrap();
@@ -644,7 +644,7 @@ mod test {
         let res = resolve_symlink(
             deps.as_ref().storage,
             deps.as_ref().api,
-            AndrAddr::from_string(format!("/usr/{symlink_parent}/{symlink_name}")),
+            AndrAddr::from_string(format!("/home/{symlink_parent}/{symlink_name}")),
         )
         .unwrap();
 
@@ -653,25 +653,25 @@ mod test {
         let res = resolve_symlink(
             deps.as_ref().storage,
             deps.as_ref().api,
-            AndrAddr::from_string(format!("/usr/{username}/{first_directory}")),
+            AndrAddr::from_string(format!("/home/{username}/{first_directory}")),
         )
         .unwrap();
 
         assert_eq!(
             res,
-            AndrAddr::from_string(format!("/usr/{username}/{first_directory}"))
+            AndrAddr::from_string(format!("/home/{username}/{first_directory}"))
         );
 
         let res = resolve_symlink(
             deps.as_ref().storage,
             deps.as_ref().api,
-            AndrAddr::from_string(format!("ibc://chain/usr/{symlink_parent}/{symlink}")),
+            AndrAddr::from_string(format!("ibc://chain/home/{symlink_parent}/{symlink}")),
         )
         .unwrap();
 
         assert_eq!(
             res,
-            AndrAddr::from_string(format!("ibc://chain/usr/{symlink_parent}/{symlink}"))
+            AndrAddr::from_string(format!("ibc://chain/home/{symlink_parent}/{symlink}"))
         );
 
         let res = resolve_symlink(
@@ -686,11 +686,11 @@ mod test {
         let res = resolve_symlink(
             deps.as_ref().storage,
             deps.as_ref().api,
-            AndrAddr::from_string("/usr/someuser"),
+            AndrAddr::from_string("/home/someuser"),
         )
         .unwrap();
 
-        assert_eq!(res, AndrAddr::from_string("/usr/someuser"));
+        assert_eq!(res, AndrAddr::from_string("/home/someuser"));
     }
 
     #[test]
@@ -825,7 +825,7 @@ mod test {
             api,
             first_directory_address,
             username.to_string(),
-            AndrAddr::from_string(format!("/usr/{username}/{first_directory}/{username}")),
+            AndrAddr::from_string(format!("/home/{username}/{first_directory}/{username}")),
         );
         assert!(res.is_err());
         assert_eq!(

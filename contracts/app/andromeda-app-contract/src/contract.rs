@@ -81,7 +81,7 @@ pub fn instantiate(
                     name: name.clone(),
                     ado_type: component.ado_type,
                     component_type: ComponentType::Symlink(AndrAddr::from_string(format!(
-                        "ibc://{chain}/usr/{owner_addr}/{app_name}/{name}"
+                        "ibc://{chain}/home/{owner_addr}/{app_name}/{name}"
                     ))),
                 };
                 let comp_resp = execute::handle_add_app_component(

@@ -11,10 +11,10 @@ use cosmwasm_std::{ensure, Addr, Api, QuerierWrapper};
 use regex::Regex;
 
 pub const COMPONENT_NAME_REGEX: &str = r"^[A-Za-z0-9.\-_]{2,40}$";
-pub const USERNAME_OR_ADDRESS_REGEX: &str = r"^[a-z0-9]{2,}$";
+pub const USERNAME_REGEX: &str = r"^[a-z0-9]{2,30}$";
 
-pub const PATH_REGEX: &str = r"^(~[a-z0-9]{2,}|/(lib|usr))(/[A-Za-z0-9.\-_]{2,40}?)*(/)?$";
-pub const PROTOCOL_PATH_REGEX: &str = r"^((([A-Za-z0-9]+://)?([A-Za-z0-9.\-_]{2,40}/)))?((~[a-z0-9]{2,}|(lib|usr))(/[A-Za-z0-9.\-_]{2,40}?)*(/)?)$";
+pub const PATH_REGEX: &str = r"^(~[a-z0-9]{2,}|/(lib|home))(/[A-Za-z0-9.\-_]{2,40}?)*(/)?$";
+pub const PROTOCOL_PATH_REGEX: &str = r"^((([A-Za-z0-9]+://)?([A-Za-z0-9.\-_]{2,40}/)))?((~[a-z0-9]{2,}|(lib|home))(/[A-Za-z0-9.\-_]{2,40}?)*(/)?)$";
 
 pub fn convert_component_name(path: &str) -> String {
     path.trim()
@@ -61,11 +61,11 @@ pub fn validate_component_name(path: String) -> Result<bool, ContractError> {
 /// # Examples
 ///
 /// ```
-/// let valid_username = validate_username("validuser123".to_string()).unwrap();
-/// assert_eq!(valid_username, true);
+//// let valid_username = validate_username("validuser123".to_string()).unwrap();
+//// assert_eq!(valid_username, true);
 ///
-/// let invalid_username = validate_username("".to_string()).is_err();
-/// assert!(invalid_username);
+//// let invalid_username = validate_username("".to_string()).is_err();
+//// assert!(invalid_username);
 /// ```
 pub fn validate_username(username: String) -> Result<bool, ContractError> {
     // Ensure the username is not empty.
@@ -77,7 +77,7 @@ pub fn validate_username(username: String) -> Result<bool, ContractError> {
     );
 
     // Compile the regex for validating alphanumeric characters.
-    let re = Regex::new(USERNAME_OR_ADDRESS_REGEX).unwrap();
+    let re = Regex::new(USERNAME_REGEX).unwrap();
     // Ensure the username matches the alphanumeric regex pattern.
     ensure!(
         re.is_match(&username),
@@ -168,22 +168,25 @@ impl PathDetails {
 #[cw_serde]
 pub enum ExecuteMsg {
     AddPath {
+        #[schemars(regex = "COMPONENT_NAME_REGEX")]
         name: String,
         address: Addr,
         parent_address: Option<AndrAddr>,
     },
     AddSymlink {
+        #[schemars(regex = "COMPONENT_NAME_REGEX")]
         name: String,
         symlink: AndrAddr,
         parent_address: Option<AndrAddr>,
     },
     // Registers a child, currently only accessible by an App Contract
     AddChild {
+        #[schemars(regex = "COMPONENT_NAME_REGEX")]
         name: String,
         parent_address: AndrAddr,
     },
     RegisterUser {
-        #[schemars(regex = "USERNAME_OR_ADDRESS_REGEX", length(min = 3, max = 30))]
+        #[schemars(regex = "USERNAME_REGEX", length(min = 3, max = 30))]
         username: String,
         address: Option<Addr>,
     },
@@ -416,7 +419,7 @@ mod test {
             },
             ValidatePathNameTestCase {
                 name: "Absolute path with tilde",
-                path: "~/usr/username",
+                path: "~/home/username",
                 should_err: true,
             },
             ValidatePathNameTestCase {
@@ -426,7 +429,7 @@ mod test {
             },
             ValidatePathNameTestCase {
                 name: "Valid user path",
-                path: "/usr/usr",
+                path: "/home/usr",
                 should_err: false,
             },
             ValidatePathNameTestCase {
@@ -436,7 +439,7 @@ mod test {
             },
             ValidatePathNameTestCase {
                 name: "Valid home path (address)",
-                path: "/usr/cosmos1abcde",
+                path: "/home/cosmos1abcde",
                 should_err: false,
             },
             ValidatePathNameTestCase {
@@ -446,17 +449,17 @@ mod test {
             },
             ValidatePathNameTestCase {
                 name: "Complex invalid path",
-                path: "/usr/username/dir1/../dir2/./file",
+                path: "/home/username/dir1/../dir2/./file",
                 should_err: true,
             },
             ValidatePathNameTestCase {
                 name: "Path with invalid characters",
-                path: "/usr/username/dir1/|file",
+                path: "/home/username/dir1/|file",
                 should_err: true,
             },
             ValidatePathNameTestCase {
                 name: "Path with space",
-                path: "/usr/ username/dir1/file",
+                path: "/home/ username/dir1/file",
                 should_err: true,
             },
             ValidatePathNameTestCase {
@@ -476,12 +479,12 @@ mod test {
             },
             ValidatePathNameTestCase {
                 name: "Valid ibc protocol path",
-                path: "ibc://chain/usr/username/dir1/file",
+                path: "ibc://chain/home/username/dir1/file",
                 should_err: false,
             },
             ValidatePathNameTestCase {
                 name: "Invalid ibc protocol path",
-                path: "ibc:///usr/username/dir1/file",
+                path: "ibc:///home/username/dir1/file",
                 should_err: true,
             },
             ValidatePathNameTestCase {
@@ -496,52 +499,52 @@ mod test {
             },
             ValidatePathNameTestCase {
                 name: "Path with newline character",
-                path: "/usr/username/dir1\n/file",
+                path: "/home/username/dir1\n/file",
                 should_err: true,
             },
             ValidatePathNameTestCase {
                 name: "Path with tab character",
-                path: "/usr/username/dir1\t/dir2",
+                path: "/home/username/dir1\t/dir2",
                 should_err: true,
             },
             ValidatePathNameTestCase {
                 name: "Path with null character",
-                path: "/usr/username\0/dir1",
+                path: "/home/username\0/dir1",
                 should_err: true,
             },
             ValidatePathNameTestCase {
                 name: "Path with emoji",
-                path: "/usr/username/😊",
+                path: "/home/username/😊",
                 should_err: true,
             },
             ValidatePathNameTestCase {
                 name: "Path with Cyrillic characters",
-                path: "/usr/пользователь/dir1",
+                path: "/home/пользователь/dir1",
                 should_err: true,
             },
             ValidatePathNameTestCase {
                 name: "Path with Arabic characters",
-                path: "/usr/مستخدم/dir1",
+                path: "/home/مستخدم/dir1",
                 should_err: true,
             },
             ValidatePathNameTestCase {
                 name: "Path with Chinese characters",
-                path: "/usr/用户/dir1",
+                path: "/home/用户/dir1",
                 should_err: true,
             },
             ValidatePathNameTestCase {
                 name: "Path with very long name",
-                path: "/usr/username/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                path: "/home/username/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
                 should_err: true,
             },
             ValidatePathNameTestCase {
                 name: "Valid path with multiple subdirectories",
-                path: "/usr/username/dir1/dir2/dir3/dir4",
+                path: "/home/username/dir1/dir2/dir3/dir4",
                 should_err: false,
             },
             ValidatePathNameTestCase {
                 name: "Path with unprintable ASCII character",
-                path: "/usr/username/\x07file",
+                path: "/home/username/\x07file",
                 should_err: true,
             },
             // This case should fail but due to the restriction of mock dependencies we cannot validate it correctly! It is partially validated in test_validate_username

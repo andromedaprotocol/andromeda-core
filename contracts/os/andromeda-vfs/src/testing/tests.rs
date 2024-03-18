@@ -345,7 +345,7 @@ fn test_add_path() {
         .save(deps.as_mut().storage, username, &Addr::unchecked(sender))
         .unwrap();
 
-    let path = format!("/usr/{username}/{component_name}");
+    let path = format!("/home/{username}/{component_name}");
 
     let resolved_addr = resolve_pathname(
         deps.as_ref().storage,
@@ -367,7 +367,7 @@ fn test_add_path() {
 
     execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
-    let path = format!("/usr/{username}/{component_name}/{component_name_two}");
+    let path = format!("/home/{username}/{component_name}/{component_name_two}");
 
     let resolved_addr = resolve_pathname(
         deps.as_ref().storage,
@@ -415,7 +415,7 @@ fn test_add_symlink() {
         .save(deps.as_mut().storage, username, &Addr::unchecked(sender))
         .unwrap();
 
-    let path = format!("/usr/{username}/{component_name}");
+    let path = format!("/home/{username}/{component_name}");
 
     let resolved_addr = resolve_pathname(
         deps.as_ref().storage,
@@ -430,13 +430,13 @@ fn test_add_symlink() {
     let symlink_name = "symlink";
     let msg = ExecuteMsg::AddSymlink {
         name: symlink_name.to_string(),
-        symlink: AndrAddr::from_string(format!("/usr/{username}/{component_name}")),
+        symlink: AndrAddr::from_string(format!("/home/{username}/{component_name}")),
         parent_address: None,
     };
 
     execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
-    let path = format!("/usr/{username}/{symlink_name}");
+    let path = format!("/home/{username}/{symlink_name}");
 
     let resolved_addr = resolve_pathname(
         deps.as_ref().storage,
@@ -451,13 +451,13 @@ fn test_add_symlink() {
     let symlink_two_name = "symlink_two";
     let msg = ExecuteMsg::AddSymlink {
         name: symlink_two_name.to_string(),
-        symlink: AndrAddr::from_string(format!("ibc://chain/usr/{username}/{component_name}")),
+        symlink: AndrAddr::from_string(format!("ibc://chain/home/{username}/{component_name}")),
         parent_address: None,
     };
 
     execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
-    let path = format!("/usr/{username}/{symlink_two_name}");
+    let path = format!("/home/{username}/{symlink_two_name}");
 
     let err = resolve_pathname(
         deps.as_ref().storage,
@@ -477,13 +477,13 @@ fn test_add_symlink() {
     let symlink_three_name = "symlink_three";
     let msg = ExecuteMsg::AddSymlink {
         name: symlink_three_name.to_string(),
-        symlink: AndrAddr::from_string(format!("/usr/{username}/{symlink_name}")),
+        symlink: AndrAddr::from_string(format!("/home/{username}/{symlink_name}")),
         parent_address: None,
     };
 
     execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
-    let path = format!("/usr/{username}/{symlink_three_name}");
+    let path = format!("/home/{username}/{symlink_three_name}");
 
     let resolved_addr = resolve_pathname(
         deps.as_ref().storage,
@@ -498,15 +498,15 @@ fn test_add_symlink() {
     let symlink_four_name = "symlink_four";
     let msg = ExecuteMsg::AddSymlink {
         name: symlink_four_name.to_string(),
-        symlink: AndrAddr::from_string(format!("/usr/{username}/{component_name}")),
+        symlink: AndrAddr::from_string(format!("/home/{username}/{component_name}")),
         parent_address: Some(AndrAddr::from_string(format!(
-            "/usr/{username}/{component_name}/"
+            "/home/{username}/{component_name}/"
         ))),
     };
 
     execute(deps.as_mut(), env, info, msg).unwrap();
 
-    let path = format!("/usr/{username}/{component_name}/{symlink_four_name}");
+    let path = format!("/home/{username}/{component_name}/{symlink_four_name}");
 
     let err = resolve_pathname(
         deps.as_ref().storage,
@@ -535,7 +535,7 @@ fn test_add_child() {
     let env = mock_env();
     let msg = ExecuteMsg::AddChild {
         name: component_name.to_string(),
-        parent_address: AndrAddr::from_string(format!("/usr/{user_address}")),
+        parent_address: AndrAddr::from_string(format!("/home/{user_address}")),
     };
 
     execute(deps.as_mut(), env, info, msg).unwrap();
@@ -544,7 +544,7 @@ fn test_add_child() {
         .save(deps.as_mut().storage, username, &user_address)
         .unwrap();
 
-    let path = format!("/usr/{username}/{component_name}");
+    let path = format!("/home/{username}/{component_name}");
 
     let resolved_addr = resolve_pathname(
         deps.as_ref().storage,
@@ -567,7 +567,7 @@ fn test_add_child_not_app_contract() {
     let env = mock_env();
     let msg = ExecuteMsg::AddChild {
         name: component_name.to_string(),
-        parent_address: AndrAddr::from_string(format!("/usr/{user_address}")),
+        parent_address: AndrAddr::from_string(format!("/home/{user_address}")),
     };
 
     let res = execute(deps.as_mut(), env, info, msg);
@@ -593,7 +593,7 @@ fn test_override_add_child() {
     let info = mock_info(MOCK_APP_CONTRACT, &[]);
     let msg = ExecuteMsg::AddChild {
         name: component_name.to_string(),
-        parent_address: AndrAddr::from_string(format!("/usr/{user_address}")),
+        parent_address: AndrAddr::from_string(format!("/home/{user_address}")),
     };
 
     execute(deps.as_mut(), env.clone(), info, msg).unwrap();
@@ -602,7 +602,7 @@ fn test_override_add_child() {
     let info = mock_info("user_two", &[]);
     let msg = ExecuteMsg::AddChild {
         name: component_name.to_string(),
-        parent_address: AndrAddr::from_string(format!("/usr/{user_address}")),
+        parent_address: AndrAddr::from_string(format!("/home/{user_address}")),
     };
 
     // This will error, user_two is trying to add his address as identifier for /user_one/identifier vfs path
@@ -751,7 +751,7 @@ fn test_get_subdir() {
 
     let subdir = &root_paths[0].name;
     let query_msg = QueryMsg::SubDir {
-        path: AndrAddr::from_string(format!("/usr/{username}/{subdir}")),
+        path: AndrAddr::from_string(format!("/home/{username}/{subdir}")),
         min: None,
         max: None,
         limit: None,
@@ -822,7 +822,7 @@ fn test_get_paths() {
     }
 
     for path in root_paths {
-        let path_name = format!("/usr/{username}/{name}", name = path.name);
+        let path_name = format!("/home/{username}/{name}", name = path.name);
         let resolved_addr = resolve_pathname(
             deps.as_ref().storage,
             deps.as_ref().api,
