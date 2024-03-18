@@ -38,8 +38,23 @@ pub enum ContractError {
     #[error("InvalidOrigin")]
     InvalidOrigin {},
 
+    #[error("Invalid {operation} Operation with {validator}")]
+    InvalidValidatorOperation {
+        operation: String,
+        validator: String,
+    },
+
+    #[error("No Staking Reward")]
+    InvalidClaim {},
+
     #[error("InvalidSender")]
     InvalidSender {},
+
+    #[error("InvalidValidator")]
+    InvalidValidator {},
+
+    #[error("InvalidDelegation")]
+    InvalidDelegation {},
 
     #[error("RewardTooLow")]
     RewardTooLow {},
@@ -486,6 +501,9 @@ pub enum ContractError {
 
     #[error("Invalid Query")]
     InvalidQuery {},
+
+    #[error("Unexpected Item Found in: {item}")]
+    UnexpectedItem { item: String },
 
     #[error("Invalid Withdrawal: {msg:?}")]
     InvalidWithdrawal { msg: Option<String> },

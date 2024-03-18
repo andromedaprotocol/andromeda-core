@@ -63,6 +63,11 @@ andromeda-splitter = { path = "../contracts/finance/andromeda-splitter", feature
     "testing",
 ] }
 
+andromeda-validator-staking = { path = "../contracts/finance/andromeda-validator-staking", features = [
+    "testing",
+] }
+
+
 # Data Storage
 andromeda-data-storage = { workspace = true }
 andromeda-primitive = { path = "../contracts/data-storage/andromeda-primitive", features = [
@@ -91,7 +96,7 @@ andromeda-vfs = { path = "../contracts/os/andromeda-vfs", features = [
 andromeda-testing = { workspace = true }
 
 #Cosmwasm Crates
-cosmwasm-std = { workspace = true }
+cosmwasm-std = { workspace = true, features = ["staking"] }
 cosmwasm-schema = { workspace = true }
 cw721-base = { workspace = true }
 cw721 = { workspace = true }
@@ -121,6 +126,9 @@ name = "marketplace_app"
 
 [[test]]
 name = "splitter"
+
+[[test]]
+name = "validator_staking"
 
 [[test]]
 name = "shunting"
