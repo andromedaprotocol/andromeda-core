@@ -23,7 +23,7 @@ use andromeda_std::ado_base::modules::Module;
 use andromeda_std::amp::messages::{AMPMsg, AMPPkt};
 use andromeda_std::amp::Recipient;
 use andromeda_testing::mock::MockAndromeda;
-use cosmwasm_std::{coin, to_binary, Addr, Uint128};
+use cosmwasm_std::{coin, to_binary, Addr, BlockInfo, Uint128};
 use cw721::OwnerOfResponse;
 use cw_multi_test::{App, Executor};
 
@@ -244,6 +244,14 @@ fn test_marketplace_app() {
         vec![amp_msg],
     );
     let receive_packet_msg = mock_receive_packet(packet);
+
+    let block_info = router.block_info();
+    router.set_block(BlockInfo {
+        height: block_info.height,
+        time: block_info.time.plus_minutes(1),
+        chain_id: block_info.chain_id,
+    });
+
     router
         .execute_contract(
             buyer.clone(),
