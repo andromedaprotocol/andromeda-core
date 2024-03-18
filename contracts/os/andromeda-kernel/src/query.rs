@@ -1,7 +1,10 @@
 use andromeda_std::{
     amp::ADO_DB_KEY,
     error::ContractError,
-    os::{aos_querier::AOSQuerier, kernel::ChannelInfoResponse},
+    os::{
+        aos_querier::AOSQuerier,
+        kernel::{ChannelInfoResponse, VerifyAddressResponse},
+    },
 };
 use cosmwasm_std::{Addr, Coin, Deps};
 
@@ -11,15 +14,19 @@ pub fn key_address(deps: Deps, key: String) -> Result<Addr, ContractError> {
     Ok(KERNEL_ADDRESSES.load(deps.storage, &key)?)
 }
 
-pub fn verify_address(deps: Deps, address: String) -> Result<bool, ContractError> {
+pub fn verify_address(deps: Deps, address: String) -> Result<VerifyAddressResponse, ContractError> {
     let db_address = KERNEL_ADDRESSES.load(deps.storage, ADO_DB_KEY)?;
     let contract_info_res = deps.querier.query_wasm_contract_info(address);
     if let Ok(contract_info) = contract_info_res {
         let ado_type =
             AOSQuerier::ado_type_getter_smart(&deps.querier, &db_address, contract_info.code_id)?;
-        Ok(ado_type.is_some())
+        Ok(VerifyAddressResponse {
+            verify_address: ado_type.is_some(),
+        })
     } else {
-        Ok(false)
+        Ok(VerifyAddressResponse {
+            verify_address: false,
+        })
     }
 }
 

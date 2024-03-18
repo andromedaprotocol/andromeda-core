@@ -20,4 +20,3 @@ cw721 = { workspace = true }
 cw721-base = { workspace = true }
 
 andromeda-std = { workspace = true, features=["module_hooks"] }
-

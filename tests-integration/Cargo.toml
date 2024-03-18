@@ -75,6 +75,11 @@ andromeda-primitive = { path = "../contracts/data-storage/andromeda-primitive", 
 ] }
 
 # #OS
+
+andromeda-shunting = { path = "../contracts/modules/andromeda-shunting", features = [
+    "testing",
+] }
+
 andromeda-kernel = { path = "../contracts/os/andromeda-kernel", features = [
     "testing",
 ] }
@@ -124,6 +129,9 @@ name = "splitter"
 
 [[test]]
 name = "validator_staking"
+
+[[test]]
+name = "shunting"
 
 # [[test]]
 # name = "cw20_staking_app"

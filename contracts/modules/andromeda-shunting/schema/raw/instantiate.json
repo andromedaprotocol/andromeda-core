@@ -1,0 +1,27 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "InstantiateMsg",
+  "type": "object",
+  "required": [
+    "expressions",
+    "kernel_address"
+  ],
+  "properties": {
+    "expressions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "kernel_address": {
+      "type": "string"
+    },
+    "owner": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "additionalProperties": false
+}

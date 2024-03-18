@@ -1783,18 +1783,45 @@
     },
     "is_cancelled": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Boolean",
-      "type": "boolean"
+      "title": "IsCancelledResponse",
+      "type": "object",
+      "required": [
+        "is_cancelled"
+      ],
+      "properties": {
+        "is_cancelled": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
     },
     "is_claimed": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Boolean",
-      "type": "boolean"
+      "title": "IsClaimedResponse",
+      "type": "object",
+      "required": [
+        "is_claimed"
+      ],
+      "properties": {
+        "is_claimed": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
     },
     "is_closed": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Boolean",
-      "type": "boolean"
+      "title": "IsClosedResponse",
+      "type": "object",
+      "required": [
+        "is_closed"
+      ],
+      "properties": {
+        "is_closed": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
     },
     "is_operator": {
       "$schema": "http://json-schema.org/draft-07/schema#",

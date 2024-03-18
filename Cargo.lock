@@ -447,6 +447,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "andromeda-shunting"
+version = "0.1.0"
+dependencies = [
+ "andromeda-app",
+ "andromeda-modules",
+ "andromeda-std",
+ "andromeda-testing",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-json",
+ "cw-multi-test",
+ "cw-storage-plus 1.2.0",
+ "cw-utils 1.0.3",
+ "cw2 1.1.2",
+ "serde-cw-value",
+ "simple-shunting",
+]
+
+[[package]]
 name = "andromeda-splitter"
 version = "0.2.3"
 dependencies = [
@@ -865,6 +884,18 @@ dependencies = [
  "cw-storage-plus 1.2.0",
  "cw20",
  "thiserror",
+]
+
+[[package]]
+name = "cw-json"
+version = "0.1.0"
+source = "git+https://github.com/SlayerAnsh/cw-json.git#9c815f222f8caa43e6e9775249c76f59837c6bbf"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "serde",
+ "serde-cw-value",
+ "serde-json-wasm 1.0.1",
 ]
 
 [[package]]
@@ -1337,10 +1368,22 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 
 [[package]]
+name = "lexers"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "82de9bb5d9e8ff5e13532a45583ea972e220b8a6efef755daad1f285333a8afa"
+
+[[package]]
 name = "libc"
 version = "0.2.153"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9c198f91728a82281a64e1f4f9eeb25d82cb32a5de251c6bd1b5154d63a8e7bd"
+
+[[package]]
+name = "libm"
+version = "0.2.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4ec2a862134d2a7d32d7983ddcdd1c4923530833c9f2ea1a44fc5fa473989058"
 
 [[package]]
 name = "memchr"
@@ -1740,9 +1783,9 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.114"
+version = "1.0.113"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c5f09b1bd632ef549eaa9f60a1f8de742bdbc698e6cee2095fc84dde5f549ae0"
+checksum = "69801b70b1c3dac963ecb03a364ba0ceda9cf60c71cfe475e99864759c8b8a79"
 dependencies = [
  "itoa",
  "ryu",
@@ -1794,6 +1837,16 @@ checksum = "77549399552de45a898a580c1b41d445bf730df867cc44e6c0233bbc4b8329de"
 dependencies = [
  "digest 0.10.7",
  "rand_core 0.6.4",
+]
+
+[[package]]
+name = "simple-shunting"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fb80ab4e2a505c887de71a93d97f71b38ff9f56c75dab1db4f175b235fca3e9a"
+dependencies = [
+ "lexers",
+ "libm",
 ]
 
 [[package]]
@@ -1873,6 +1926,7 @@ dependencies = [
  "andromeda-non-fungible-tokens",
  "andromeda-primitive",
  "andromeda-rates",
+ "andromeda-shunting",
  "andromeda-splitter",
  "andromeda-std",
  "andromeda-testing",

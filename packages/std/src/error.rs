@@ -622,6 +622,9 @@ pub enum ContractError {
     #[error("Invalid Denom Trace Path: {path} - {denom}")]
     InvalidDenomTracePath { path: String, denom: String },
 
+    #[error("Invalid Expression: {msg}")]
+    InvalidExpression { msg: String },
+
     #[error("Invalid Transfer Port: {port}")]
     InvalidTransferPort { port: String },
 }
