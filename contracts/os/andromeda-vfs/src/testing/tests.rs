@@ -467,7 +467,12 @@ fn test_add_symlink() {
     )
     .unwrap_err();
 
-    assert_eq!(err, ContractError::InvalidAddress {});
+    assert_eq!(
+        err,
+        ContractError::InvalidPathname {
+            error: Some("Cannot resolve paths with protocols at this time".to_string())
+        }
+    );
 
     let symlink_three_name = "symlink_three";
     let msg = ExecuteMsg::AddSymlink {
@@ -583,7 +588,7 @@ fn test_override_add_child() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
 
-    let user_address = Addr::unchecked("user_one");
+    let user_address = Addr::unchecked("userone");
     let component_name = "identifier";
     let info = mock_info(MOCK_APP_CONTRACT, &[]);
     let msg = ExecuteMsg::AddChild {
@@ -675,13 +680,13 @@ fn test_get_subdir() {
     let env = mock_env();
     let root_paths = vec![
         PathInfo {
-            name: "f1".to_string(),
+            name: "fi1".to_string(),
             address: Addr::unchecked("f1addr"),
             parent_address: sender.clone(),
             symlink: None,
         },
         PathInfo {
-            name: "f2".to_string(),
+            name: "fi2".to_string(),
             address: Addr::unchecked("f2addr"),
             parent_address: sender.clone(),
             symlink: None,
@@ -723,7 +728,7 @@ fn test_get_subdir() {
     }
 
     for path in root_paths.clone() {
-        let path_name = format!("/home/{username}/{name}", name = path.name);
+        let path_name = format!("~{username}/{name}", name = path.name);
         let resolved_addr = resolve_pathname(
             deps.as_ref().storage,
             deps.as_ref().api,
@@ -735,7 +740,7 @@ fn test_get_subdir() {
     }
 
     let query_msg = QueryMsg::SubDir {
-        path: AndrAddr::from_string(format!("/home/{username}")),
+        path: AndrAddr::from_string(format!("~{username}")),
         min: None,
         max: None,
         limit: None,

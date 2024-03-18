@@ -5,7 +5,7 @@
 # Builds "andromeda-contract" contract and "some-category" category
 
 # LOG all the contracts compiled with there compressed file size
-local FILE_LOG=""
+FILE_LOG=""
 
 get_version_filename (){
     local CONTRACT=$1

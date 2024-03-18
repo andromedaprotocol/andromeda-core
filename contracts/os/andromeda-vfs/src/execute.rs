@@ -139,11 +139,21 @@ pub fn add_child(
     Ok(Response::default())
 }
 
+const MAX_USERNAME_LENGTH: u64 = 30;
+
 pub fn register_user(
     env: ExecuteEnv,
     username: String,
     address: Option<Addr>,
 ) -> Result<Response, ContractError> {
+    ensure!(
+        username.len() as u64 <= MAX_USERNAME_LENGTH,
+        ContractError::InvalidUsername {
+            error: Some(format!(
+                "Username must be less than {MAX_USERNAME_LENGTH} characters"
+            ))
+        }
+    );
     let username = username.to_lowercase();
     let kernel = &ADOContract::default().get_kernel_address(env.deps.storage)?;
     let curr_chain = AOSQuerier::get_current_chain(&env.deps.querier, kernel)?;

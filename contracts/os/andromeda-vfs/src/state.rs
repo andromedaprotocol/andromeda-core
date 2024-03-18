@@ -1,4 +1,4 @@
-use andromeda_std::{amp::AndrAddr, error::ContractError};
+use andromeda_std::{amp::AndrAddr, error::ContractError, os::vfs::validate_path_name};
 use cosmwasm_std::{ensure, Addr, Api, Storage};
 use cw_storage_plus::{Bound, Index, IndexList, IndexedMap, Map, MultiIndex};
 use serde::{Deserialize, Serialize};
@@ -77,7 +77,9 @@ pub fn resolve_pathname(
     // As cross-chain queries are not currently possible we need to ensure the pathname being resolved is local
     ensure!(
         pathname.get_protocol().is_none(),
-        ContractError::InvalidAddress {}
+        ContractError::InvalidPathname {
+            error: Some("Cannot resolve paths with protocols at this time".to_string())
+        }
     );
 
     if pathname.is_vfs_path() {
@@ -105,23 +107,21 @@ fn resolve_home_path(
     path: AndrAddr,
     resolved_paths: &mut Vec<(Addr, String)>,
 ) -> Result<Addr, ContractError> {
-    let mut parts = split_pathname(path.to_string());
+    validate_path_name(api, path.to_string())?;
+    let parts = split_pathname(path.to_string());
 
-    let mut amount_to_skip = 1;
-    let username_or_address = if parts[0].starts_with('~') && !parts[0].eq("~") {
-        parts[0].remove(0);
-        parts[0].as_str()
-    } else {
-        amount_to_skip = 2;
-        parts[1].as_str()
-    };
+    let amount_to_skip = if parts[0].starts_with('~') { 0 } else { 1 };
+    let username_or_address = parts[amount_to_skip]
+        .strip_prefix('~')
+        .unwrap_or(&parts[amount_to_skip]);
     let user_address = match api.addr_validate(username_or_address) {
         Ok(addr) => addr,
         Err(_e) => USERS.load(storage, username_or_address)?,
     };
 
     let mut remaining_parts = parts.to_vec();
-    remaining_parts.drain(0..amount_to_skip);
+
+    remaining_parts.drain(0..amount_to_skip + 1);
     resolve_path(storage, api, remaining_parts, user_address, resolved_paths)
 }
 
@@ -298,7 +298,7 @@ pub fn add_path_symlink(
     )?;
     if symlink.get_protocol().is_none() {
         // Ensure that the symlink resolves to a valid address
-        let pathname = AndrAddr::from_string(format!("~/{}/{}", parent_addr, name));
+        let pathname = AndrAddr::from_string(format!("~{}/{}", parent_addr, name));
         resolve_pathname(storage, api, pathname, &mut vec![])?;
     }
 
@@ -332,7 +332,6 @@ pub fn resolve_symlink(
 
 #[cfg(test)]
 mod test {
-    use andromeda_std::os::vfs::validate_username;
     use cosmwasm_std::{testing::mock_dependencies, DepsMut};
 
     use super::*;
@@ -345,25 +344,6 @@ mod test {
         let expected = vec!["username", "dir1", "dir2", "file"];
 
         assert_eq!(res, expected)
-    }
-
-    #[test]
-    fn test_validate_username() {
-        let valid_user = "username1980";
-        validate_username(valid_user.to_string()).unwrap();
-
-        let empty_user = "";
-        let res = validate_username(empty_user.to_string());
-        assert!(res.is_err());
-
-        let invalid_user = "///////";
-        let res = validate_username(invalid_user.to_string());
-        assert!(res.is_err());
-
-        let invalid_user =
-            "reallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallylongusername";
-        let res = validate_username(invalid_user.to_string());
-        assert!(res.is_err());
     }
 
     #[test]
@@ -419,9 +399,8 @@ mod test {
             deps.as_ref().api,
             AndrAddr::from_string(format!("~/{username}")),
             &mut vec![],
-        )
-        .unwrap();
-        assert_eq!(res, username_address);
+        );
+        assert!(res.is_err());
 
         paths()
             .save(
@@ -717,7 +696,7 @@ mod test {
     #[test]
     fn test_resolve_path_too_long() {
         let mut deps = mock_dependencies();
-        let mut path = "~/u1".to_owned();
+        let mut path = "~u1".to_owned();
 
         for i in 0..MAX_DEPTH + 1 {
             path.push_str(format!("/d{}", i).as_str());
@@ -762,7 +741,7 @@ mod test {
     #[test]
     fn test_resolve_path_loop() {
         let mut deps = mock_dependencies();
-        let path = "~/u1/d0".to_owned();
+        let path = "~u1/d0".to_owned();
 
         USERS
             .save(deps.as_mut().storage, "u1", &Addr::unchecked("u1"))

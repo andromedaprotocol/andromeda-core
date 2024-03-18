@@ -8,7 +8,7 @@ use crate::state::{
 };
 
 pub fn resolve_path(deps: Deps, path: AndrAddr) -> Result<Addr, ContractError> {
-    validate_path_name(path.to_string())?;
+    validate_path_name(deps.api, path.to_string())?;
     resolve_pathname(deps.storage, deps.api, path, &mut vec![])
 }
 pub fn subdir(
@@ -18,7 +18,7 @@ pub fn subdir(
     max: Option<(Addr, String)>,
     limit: Option<u32>,
 ) -> Result<Vec<PathInfo>, ContractError> {
-    validate_path_name(path.to_string())?;
+    validate_path_name(deps.api, path.to_string())?;
     get_subdir(deps.storage, deps.api, path, min, max, limit)
 }
 

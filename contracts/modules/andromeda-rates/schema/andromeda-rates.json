@@ -31,7 +31,8 @@
     "definitions": {
       "AndrAddr": {
         "description": "An address that can be used within the Andromeda ecosystem. Inspired by the cosmwasm-std `Addr` type. https://github.com/CosmWasm/cosmwasm/blob/2a1c698520a1aacedfe3f4803b0d7d653892217a/packages/std/src/addresses.rs#L33\n\nThis address can be one of two things: 1. A valid human readable address e.g. `cosmos1...` 2. A valid Andromeda VFS path e.g. `/home/user/app/component`\n\nVFS paths can be local in the case of an app and can be done by referencing `./component` they can also contain protocols for cross chain communication. A VFS path is usually structured as so:\n\n`<protocol>://<chain (required if ibc used)>/<path>` or `ibc://cosmoshub-4/user/app/component`",
-        "type": "string"
+        "type": "string",
+        "pattern": "(^((([A-Za-z0-9]+://)?([A-Za-z0-9.\\-_]{2,40}/)))?((~[a-z0-9]{2,}|(lib|home))(/[A-Za-z0-9.\\-_]{2,40}?)*(/)?)$)|(^(~[a-z0-9]{2,}|/(lib|home))(/[A-Za-z0-9.\\-_]{2,40}?)*(/)?$)|(^[a-z0-9]{2,}$)|(^\\.(/[A-Za-z0-9.\\-_]{2,40}?)*(/)?$)"
       },
       "Binary": {
         "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
@@ -425,7 +426,8 @@
       },
       "AndrAddr": {
         "description": "An address that can be used within the Andromeda ecosystem. Inspired by the cosmwasm-std `Addr` type. https://github.com/CosmWasm/cosmwasm/blob/2a1c698520a1aacedfe3f4803b0d7d653892217a/packages/std/src/addresses.rs#L33\n\nThis address can be one of two things: 1. A valid human readable address e.g. `cosmos1...` 2. A valid Andromeda VFS path e.g. `/home/user/app/component`\n\nVFS paths can be local in the case of an app and can be done by referencing `./component` they can also contain protocols for cross chain communication. A VFS path is usually structured as so:\n\n`<protocol>://<chain (required if ibc used)>/<path>` or `ibc://cosmoshub-4/user/app/component`",
-        "type": "string"
+        "type": "string",
+        "pattern": "(^((([A-Za-z0-9]+://)?([A-Za-z0-9.\\-_]{2,40}/)))?((~[a-z0-9]{2,}|(lib|home))(/[A-Za-z0-9.\\-_]{2,40}?)*(/)?)$)|(^(~[a-z0-9]{2,}|/(lib|home))(/[A-Za-z0-9.\\-_]{2,40}?)*(/)?$)|(^[a-z0-9]{2,}$)|(^\\.(/[A-Za-z0-9.\\-_]{2,40}?)*(/)?$)"
       },
       "Binary": {
         "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
@@ -1126,7 +1128,8 @@
     "definitions": {
       "AndrAddr": {
         "description": "An address that can be used within the Andromeda ecosystem. Inspired by the cosmwasm-std `Addr` type. https://github.com/CosmWasm/cosmwasm/blob/2a1c698520a1aacedfe3f4803b0d7d653892217a/packages/std/src/addresses.rs#L33\n\nThis address can be one of two things: 1. A valid human readable address e.g. `cosmos1...` 2. A valid Andromeda VFS path e.g. `/home/user/app/component`\n\nVFS paths can be local in the case of an app and can be done by referencing `./component` they can also contain protocols for cross chain communication. A VFS path is usually structured as so:\n\n`<protocol>://<chain (required if ibc used)>/<path>` or `ibc://cosmoshub-4/user/app/component`",
-        "type": "string"
+        "type": "string",
+        "pattern": "(^((([A-Za-z0-9]+://)?([A-Za-z0-9.\\-_]{2,40}/)))?((~[a-z0-9]{2,}|(lib|home))(/[A-Za-z0-9.\\-_]{2,40}?)*(/)?)$)|(^(~[a-z0-9]{2,}|/(lib|home))(/[A-Za-z0-9.\\-_]{2,40}?)*(/)?$)|(^[a-z0-9]{2,}$)|(^\\.(/[A-Za-z0-9.\\-_]{2,40}?)*(/)?$)"
       },
       "AndromedaHook": {
         "oneOf": [
@@ -1446,7 +1449,8 @@
       "definitions": {
         "AndrAddr": {
           "description": "An address that can be used within the Andromeda ecosystem. Inspired by the cosmwasm-std `Addr` type. https://github.com/CosmWasm/cosmwasm/blob/2a1c698520a1aacedfe3f4803b0d7d653892217a/packages/std/src/addresses.rs#L33\n\nThis address can be one of two things: 1. A valid human readable address e.g. `cosmos1...` 2. A valid Andromeda VFS path e.g. `/home/user/app/component`\n\nVFS paths can be local in the case of an app and can be done by referencing `./component` they can also contain protocols for cross chain communication. A VFS path is usually structured as so:\n\n`<protocol>://<chain (required if ibc used)>/<path>` or `ibc://cosmoshub-4/user/app/component`",
-          "type": "string"
+          "type": "string",
+          "pattern": "(^((([A-Za-z0-9]+://)?([A-Za-z0-9.\\-_]{2,40}/)))?((~[a-z0-9]{2,}|(lib|home))(/[A-Za-z0-9.\\-_]{2,40}?)*(/)?)$)|(^(~[a-z0-9]{2,}|/(lib|home))(/[A-Za-z0-9.\\-_]{2,40}?)*(/)?$)|(^[a-z0-9]{2,}$)|(^\\.(/[A-Za-z0-9.\\-_]{2,40}?)*(/)?$)"
         },
         "Binary": {
           "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",

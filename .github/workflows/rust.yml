@@ -107,3 +107,9 @@ jobs:
         run: |
           chmod +x "${GITHUB_WORKSPACE}/build_schema.sh"
           "${GITHUB_WORKSPACE}/build_schema.sh"
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: schema
+          path: ./artifacts/
+          if-no-files-found: error

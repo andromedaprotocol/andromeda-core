@@ -28,6 +28,10 @@ copy_schema () {
 
 }
 
+if [ ! -d "./artifacts" ]; then
+    mkdir artifacts;
+fi;
+
 for directory in contracts/*/; do
     for contract in $directory/*/; do
         ( cd $contract && cargo schema )

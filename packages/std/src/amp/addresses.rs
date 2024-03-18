@@ -1,11 +1,26 @@
 use std::fmt::{Display, Formatter, Result as FMTResult};
 
 use crate::error::ContractError;
-use crate::os::vfs::vfs_resolve_symlink;
+use crate::os::vfs::{vfs_resolve_symlink, PATH_REGEX, PROTOCOL_PATH_REGEX};
 use crate::{ado_contract::ADOContract, os::vfs::vfs_resolve_path};
+use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Api, Deps, QuerierWrapper, Storage};
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
+use lazy_static::lazy_static;
+
+lazy_static! {
+    static ref ANDR_ADDR_REGEX: String = format!(
+        // Combine all valid regex for ANDR_ADDR schema validations
+        "({re1})|({re2})|({re3})|({re4})",
+        // Protocol regex
+        re1 = PROTOCOL_PATH_REGEX,
+        // Path regex
+        re2 = PATH_REGEX,
+        // Raw address
+        re3 = r"^[a-z0-9]{2,}$",
+        // Local path
+        re4 = r"^\.(/[A-Za-z0-9.\-_]{2,40}?)*(/)?$",
+    );
+}
 
 /// An address that can be used within the Andromeda ecosystem.
 /// Inspired by the cosmwasm-std `Addr` type. https://github.com/CosmWasm/cosmwasm/blob/2a1c698520a1aacedfe3f4803b0d7d653892217a/packages/std/src/addresses.rs#L33
@@ -17,10 +32,8 @@ use serde::{Deserialize, Serialize};
 /// VFS paths can be local in the case of an app and can be done by referencing `./component` they can also contain protocols for cross chain communication. A VFS path is usually structured as so:
 ///
 /// `<protocol>://<chain (required if ibc used)>/<path>` or `ibc://cosmoshub-4/user/app/component`
-#[derive(
-    Serialize, Deserialize, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, JsonSchema,
-)]
-pub struct AndrAddr(String);
+#[cw_serde]
+pub struct AndrAddr(#[schemars(regex = "ANDR_ADDR_REGEX")] String);
 
 impl AndrAddr {
     #[inline]
@@ -279,8 +292,14 @@ impl From<&AndrAddr> for String {
 #[cfg(test)]
 mod tests {
     use cosmwasm_std::testing::mock_dependencies;
+    use regex::Regex;
 
     use super::*;
+    struct ValidateRegexTestCase {
+        name: &'static str,
+        input: &'static str,
+        should_err: bool,
+    }
 
     #[test]
     fn test_validate() {
@@ -357,11 +376,11 @@ mod tests {
         let addr = AndrAddr("cosmos1...".to_string());
         assert_eq!(addr.get_raw_path(), "cosmos1...");
 
-        let addr = AndrAddr("ibc://chain/user/app/component".to_string());
-        assert_eq!(addr.get_raw_path(), "/user/app/component");
+        let addr = AndrAddr("ibc://chain/home/app/component".to_string());
+        assert_eq!(addr.get_raw_path(), "/home/app/component");
 
-        let addr = AndrAddr("/chain/user/app/component".to_string());
-        assert_eq!(addr.get_raw_path(), "/chain/user/app/component");
+        let addr = AndrAddr("/chain/home/app/component".to_string());
+        assert_eq!(addr.get_raw_path(), "/chain/home/app/component");
     }
 
     #[test]
@@ -383,5 +402,56 @@ mod tests {
 
         let addr = AndrAddr("./home/user1".to_string());
         assert_eq!(addr.get_root_dir(), "./home/user1");
+    }
+
+    #[test]
+    fn test_schemars_regex() {
+        let test_cases: Vec<ValidateRegexTestCase> = vec![
+            ValidateRegexTestCase {
+                name: "Normal Path",
+                input: "/home/user",
+                should_err: false,
+            },
+            ValidateRegexTestCase {
+                name: "Path with tilde",
+                input: "~user/dir",
+                should_err: false,
+            },
+            ValidateRegexTestCase {
+                name: "Wrong path with tilde",
+                input: "~/user/dir",
+                should_err: true,
+            },
+            ValidateRegexTestCase {
+                name: "Valid protocol",
+                input: "ibc://chain/home/user/dir",
+                should_err: false,
+            },
+            ValidateRegexTestCase {
+                name: "Valid protocol with tilde",
+                input: "ibc://chain/~user/dir",
+                should_err: false,
+            },
+            ValidateRegexTestCase {
+                name: "Valid Raw Address",
+                input: "cosmos1234567",
+                should_err: false,
+            },
+            ValidateRegexTestCase {
+                name: "Valid Local",
+                input: "./dir/file",
+                should_err: false,
+            },
+            ValidateRegexTestCase {
+                name: "Invalid Local",
+                input: "../dir/file",
+                should_err: true,
+            },
+        ];
+        let re = Regex::new(&ANDR_ADDR_REGEX).unwrap();
+        for test in test_cases {
+            let res = re.is_match(test.input);
+            assert_eq!(!res, test.should_err, "Test case: {}", test.name);
+        }
     }
 }
