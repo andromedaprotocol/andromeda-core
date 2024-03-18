@@ -13,9 +13,7 @@ use andromeda_std::{
     amp::AndrAddr,
     common::{
         encode_binary,
-        expiration::{
-            block_to_expiration, expiration_from_milliseconds, MILLISECONDS_TO_NANOSECONDS_RATIO,
-        },
+        expiration::{expiration_from_milliseconds, get_and_validate_start_time},
         rates::get_tax_amount,
         Funds, OrderBy,
     },
@@ -219,25 +217,8 @@ fn execute_start_auction(
         deps, info, env, ..
     } = ctx;
 
-    let current_time = env.block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO;
     // If start time wasn't provided, it will be set as the current_time
-    let start_expiration = if let Some(start_time) = start_time {
-        expiration_from_milliseconds(start_time)?
-    } else {
-        expiration_from_milliseconds(current_time)?
-    };
-
-    // To guard against misleading start times
-    // Subtracting one second from the current block because the unit tests fail otherwise. The current time slightly differed from the block time.
-    let recent_past_timestamp = env.block.time.minus_seconds(1);
-    let recent_past_expiration = expiration_from_milliseconds(recent_past_timestamp.seconds())?;
-    ensure!(
-        start_expiration.gt(&recent_past_expiration),
-        ContractError::StartTimeInThePast {
-            current_time: env.block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO,
-            current_block: env.block.height,
-        }
-    );
+    let (start_expiration, current_time) = get_and_validate_start_time(&env, start_time)?;
 
     let end_expiration =
         expiration_from_milliseconds(start_time.unwrap_or(current_time) + duration)?;
@@ -305,24 +286,8 @@ fn execute_update_auction(
     );
     ensure!(duration > 0, ContractError::InvalidExpiration {});
 
-    let current_time = env.block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO;
     // If start time wasn't provided, it will be set as the current_time
-    let start_expiration = if let Some(start_time) = start_time {
-        expiration_from_milliseconds(start_time)?
-    } else {
-        // Set as current time + 1 so that it isn't expired from the very start
-        expiration_from_milliseconds(current_time + 1)?
-    };
-
-    // Validate start time
-    let block_time = block_to_expiration(&env.block, start_expiration).unwrap();
-    ensure!(
-        start_expiration.gt(&block_time),
-        ContractError::StartTimeInThePast {
-            current_time,
-            current_block: env.block.height,
-        }
-    );
+    let (start_expiration, current_time) = get_and_validate_start_time(&env, start_time)?;
 
     let end_expiration =
         expiration_from_milliseconds(start_time.unwrap_or(current_time) + duration)?;

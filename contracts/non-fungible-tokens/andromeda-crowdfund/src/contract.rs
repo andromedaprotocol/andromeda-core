@@ -11,9 +11,7 @@ use andromeda_non_fungible_tokens::{
 use andromeda_std::{
     ado_base::ownership::OwnershipMessage,
     amp::{messages::AMPPkt, recipient::Recipient, AndrAddr},
-    common::expiration::{
-        block_to_expiration, expiration_from_milliseconds, MILLISECONDS_TO_NANOSECONDS_RATIO,
-    },
+    common::expiration::{expiration_from_milliseconds, get_and_validate_start_time},
 };
 use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
 
@@ -295,27 +293,11 @@ fn execute_start_sale(
         ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {}
     );
-
-    let current_time = env.block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO;
     // If start time wasn't provided, it will be set as the current_time
-    let start_expiration = if let Some(start_time) = start_time {
-        expiration_from_milliseconds(start_time)?
-    } else {
-        // Set as current time + 1 so that it isn't expired from the very start
-        expiration_from_milliseconds(current_time + 1)?
-    };
+    let (start_expiration, current_time) = get_and_validate_start_time(&env, start_time)?;
 
-    // Validate start time
-    let block_time = block_to_expiration(&env.block, start_expiration).unwrap();
-    ensure!(
-        start_expiration.gt(&block_time),
-        ContractError::StartTimeInThePast {
-            current_time,
-            current_block: env.block.height,
-        }
-    );
-
-    ensure!(duration > 0, ContractError::InvalidExpiration {});
+    // Ensures that end_time is always greater than start_time
+    ensure!(duration > 1, ContractError::InvalidExpiration {});
     let end_expiration =
         expiration_from_milliseconds(start_time.unwrap_or(current_time) + duration)?;
 
@@ -353,7 +335,8 @@ fn execute_start_sale(
 
     Ok(Response::new()
         .add_attribute("action", "start_sale")
-        .add_attribute("expiration", end_expiration.to_string())
+        .add_attribute("start_time", start_expiration.to_string())
+        .add_attribute("end_time", end_expiration.to_string())
         .add_attribute("price", price_str)
         .add_attribute("min_tokens_sold", min_tokens_sold)
         .add_attribute("max_amount_per_wallet", max_amount_per_wallet.to_string()))

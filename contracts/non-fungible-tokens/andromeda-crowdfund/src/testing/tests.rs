@@ -180,7 +180,7 @@ fn test_mint_sale_started() {
 
     let msg = ExecuteMsg::StartSale {
         start_time: None,
-        duration: 1,
+        duration: 2,
         price: coin(100, "uusd"),
         min_tokens_sold: Uint128::from(1u128),
         max_amount_per_wallet: Some(5),
@@ -438,7 +438,7 @@ fn test_start_sale_start_time_in_future() {
         env.block.time.plus_minutes(1).nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO;
     let msg = ExecuteMsg::StartSale {
         start_time: Some(one_minute_in_future),
-        duration: 1,
+        duration: 2,
         price: coin(100, "uusd"),
         min_tokens_sold: Uint128::from(1u128),
         max_amount_per_wallet: None,
@@ -457,7 +457,7 @@ fn test_start_sale_max_default() {
 
     let msg = ExecuteMsg::StartSale {
         start_time: None,
-        duration: 1,
+        duration: 2,
         price: coin(100, "uusd"),
         min_tokens_sold: Uint128::from(1u128),
         max_amount_per_wallet: None,
@@ -468,11 +468,14 @@ fn test_start_sale_max_default() {
     let res = execute(deps.as_mut(), mock_env(), info.clone(), msg.clone()).unwrap();
     // Using current time since start time wasn't provided
     let current_time = mock_env().block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO;
-    let end_expiration = expiration_from_milliseconds(current_time + 1).unwrap();
+    let start_expiration = expiration_from_milliseconds(current_time + 1).unwrap();
+    let end_expiration = expiration_from_milliseconds(current_time + 2).unwrap();
+
     assert_eq!(
         Response::new()
             .add_attribute("action", "start_sale")
-            .add_attribute("expiration", end_expiration.to_string())
+            .add_attribute("start_time", start_expiration.to_string())
+            .add_attribute("end_time", end_expiration.to_string())
             .add_attribute("price", "100uusd")
             .add_attribute("min_tokens_sold", "1")
             .add_attribute("max_amount_per_wallet", "1"),
@@ -506,7 +509,7 @@ fn test_start_sale_max_modified() {
 
     let msg = ExecuteMsg::StartSale {
         start_time: None,
-        duration: 1,
+        duration: 2,
         price: coin(100, "uusd"),
         min_tokens_sold: Uint128::from(1u128),
         max_amount_per_wallet: Some(5),
@@ -514,14 +517,16 @@ fn test_start_sale_max_modified() {
     };
     // Using current time since start time wasn't provided
     let current_time = mock_env().block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO;
-    let end_expiration = expiration_from_milliseconds(current_time + 1).unwrap();
+    let start_expiration = expiration_from_milliseconds(current_time + 1).unwrap();
+    let end_expiration = expiration_from_milliseconds(current_time + 2).unwrap();
 
     let info = mock_info("owner", &[]);
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
     assert_eq!(
         Response::new()
             .add_attribute("action", "start_sale")
-            .add_attribute("expiration", end_expiration.to_string())
+            .add_attribute("start_time", start_expiration.to_string())
+            .add_attribute("end_time", end_expiration.to_string())
             .add_attribute("price", "100uusd")
             .add_attribute("min_tokens_sold", "1")
             .add_attribute("max_amount_per_wallet", "5"),
@@ -1168,7 +1173,7 @@ fn test_integration_conditions_not_met() {
 
     let msg = ExecuteMsg::StartSale {
         start_time: None,
-        duration: 1,
+        duration: 2,
         price: coin(100, "uusd"),
         min_tokens_sold: Uint128::from(5u128),
         max_amount_per_wallet: Some(2),
@@ -1207,7 +1212,7 @@ fn test_integration_conditions_not_met() {
 
     // Using current time since start time wasn't provided
     let current_time = mock_env().block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO;
-    let end_expiration = expiration_from_milliseconds(current_time + 1).unwrap();
+    let end_expiration = expiration_from_milliseconds(current_time + 2).unwrap();
 
     let state = State {
         expiration: end_expiration,
@@ -1344,7 +1349,7 @@ fn test_integration_conditions_met() {
 
     let msg = ExecuteMsg::StartSale {
         start_time: None,
-        duration: 1,
+        duration: 2,
         price: coin(100, "uusd"),
         min_tokens_sold: Uint128::from(3u128),
         max_amount_per_wallet: Some(2),
@@ -1384,7 +1389,7 @@ fn test_integration_conditions_met() {
     let _res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
     // Using current time since start time wasn't provided
     let current_time = env.block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO;
-    let end_expiration = expiration_from_milliseconds(current_time + 1).unwrap();
+    let end_expiration = expiration_from_milliseconds(current_time + 2).unwrap();
     let mut state = State {
         expiration: end_expiration,
         price: coin(100, "uusd"),

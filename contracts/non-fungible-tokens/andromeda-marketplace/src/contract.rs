@@ -11,7 +11,7 @@ use andromeda_std::ado_contract::ADOContract;
 
 use andromeda_std::common::context::ExecuteContext;
 use andromeda_std::common::expiration::{
-    block_to_expiration, expiration_from_milliseconds, MILLISECONDS_TO_NANOSECONDS_RATIO
+    expiration_from_milliseconds, get_and_validate_start_time,
 };
 use andromeda_std::{
     ado_base::{hooks::AndromedaHook, InstantiateMsg as BaseInstantiateMsg},
@@ -159,13 +159,8 @@ fn execute_start_sale(
 ) -> Result<Response, ContractError> {
     // Price can't be zero
     ensure!(price > Uint128::zero(), ContractError::InvalidZeroAmount {});
-    let current_time = env.block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO;
     // If start time wasn't provided, it will be set as the current_time
-    let start_expiration = if let Some(start_time) = start_time {
-        expiration_from_milliseconds(start_time)?
-    } else {
-        expiration_from_milliseconds(current_time + 1)?
-    };
+    let (start_expiration, current_time) = get_and_validate_start_time(&env, start_time)?;
 
     // If no duration is provided, the exipration will be set as Never
     let end_expiration = if let Some(duration) = duration {
@@ -173,16 +168,6 @@ fn execute_start_sale(
     } else {
         Expiration::Never {}
     };
-
-    // Validate start time
-    let block_time = block_to_expiration(&env.block, start_expiration).unwrap();
-    ensure!(
-        start_expiration.gt(&block_time),
-        ContractError::StartTimeInThePast {
-            current_time,
-            current_block: env.block.height,
-        }
-    );
 
     let sale_id = get_and_increment_next_sale_id(deps.storage, &token_id, &token_address)?;
 
