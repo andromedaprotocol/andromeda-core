@@ -6,7 +6,13 @@ use schemars::JsonSchema;
 use semver::Version;
 use serde::{Deserialize, Serialize};
 
-use crate::error::ContractError;
+use crate::{
+    ado_base::{
+        ado_type::TypeResponse, kernel_address::KernelAddressResponse,
+        ownership::ContractOwnerResponse, version::VersionResponse,
+    },
+    error::ContractError,
+};
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -101,6 +107,12 @@ impl ActionFee {
     ///
     /// i.e. **cw20:address** would return **"address"** or native:denom would return **"denom"**
     pub fn get_asset_string(&self) -> Result<&str, ContractError> {
+        ensure!(
+            self.asset.contains(':'),
+            ContractError::InvalidAsset {
+                asset: self.asset.clone()
+            }
+        );
         match self.asset.split(':').last() {
             Some(asset) => Ok(asset),
             None => Err(ContractError::InvalidAsset {
@@ -154,6 +166,15 @@ pub enum QueryMsg {
     ActionFee { ado_type: String, action: String },
     #[returns(Option<ActionFee>)]
     ActionFeeByCodeId { code_id: u64, action: String },
+    // Base queries
+    #[returns(VersionResponse)]
+    Version {},
+    #[returns(TypeResponse)]
+    Type {},
+    #[returns(ContractOwnerResponse)]
+    Owner {},
+    #[returns(KernelAddressResponse)]
+    KernelAddress {},
 }
 
 #[cw_serde]

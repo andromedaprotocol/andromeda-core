@@ -1,10 +1,10 @@
 use crate::ack::{make_ack_fail, make_ack_success};
 use crate::execute;
 use crate::proto::{DenomTrace, MsgTransfer, QueryDenomTraceRequest};
-use crate::reply::ReplyId;
 use crate::state::{CHANNEL_TO_CHAIN, KERNEL_ADDRESSES};
 use andromeda_std::amp::VFS_KEY;
 use andromeda_std::common::context::ExecuteContext;
+use andromeda_std::common::reply::ReplyId;
 use andromeda_std::error::{ContractError, Never};
 use andromeda_std::{
     amp::{messages::AMPMsg, AndrAddr},

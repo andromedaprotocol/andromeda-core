@@ -43,6 +43,11 @@ impl AndrAddr {
         AndrAddr(addr.into())
     }
 
+    #[inline]
+    pub fn to_lowercase(&self) -> AndrAddr {
+        AndrAddr(self.0.to_lowercase())
+    }
+
     /// Validates an `AndrAddr`, to be valid the given address must either be a human readable address or a valid VFS path.
     ///
     /// **The existence of the provided path is not validated.**

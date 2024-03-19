@@ -14,7 +14,7 @@ pub const UNPUBLISHED_VERSIONS: Map<(&str, &str), bool> = Map::new("unpublished_
 /// Stores the latest version for a given ADO
 pub const LATEST_VERSION: Map<&str, (String, u64)> = Map::new("latest_version");
 /// Stores a mapping from code ID to ADO
-pub const ADO_TYPE: Map<u64, String> = Map::new("ado_type");
+pub const ADO_TYPE: Map<u64, ADOVersion> = Map::new("ado_type");
 /// Stores a mapping from ADO to its publisher
 pub const PUBLISHER: Map<&str, String> = Map::new("publisher");
 /// Stores a mapping from an (ADO,Action) to its action fees
@@ -27,12 +27,10 @@ pub fn store_code_id(
 ) -> Result<(), ContractError> {
     let curr_type = ADO_TYPE.may_load(storage, code_id)?;
     ensure!(
-        curr_type.is_none() || curr_type.unwrap() == ado_version.get_type(),
+        curr_type.is_none() || &curr_type.unwrap() == ado_version,
         ContractError::Unauthorized {}
     );
-    ADO_TYPE
-        .save(storage, code_id, &ado_version.get_type())
-        .unwrap();
+    ADO_TYPE.save(storage, code_id, ado_version).unwrap();
     LATEST_VERSION
         .save(
             storage,
@@ -44,16 +42,6 @@ pub fn store_code_id(
         .save(storage, ado_version.as_str(), &code_id)
         .unwrap();
 
-    // Check if there is any default ado set for this ado type. Defaults do not have versions appended to them.
-    let default_ado = ADOVersion::from_type(ado_version.get_type());
-    let default_code_id = read_code_id(storage, &default_ado);
-
-    // There is no default, add one default for this
-    if default_code_id.is_err() {
-        CODE_ID
-            .save(storage, default_ado.as_str(), &code_id)
-            .unwrap();
-    }
     Ok(())
 }
 
@@ -64,7 +52,7 @@ pub fn remove_code_id(
 ) -> Result<(), ContractError> {
     let curr_type = ADO_TYPE.may_load(storage, code_id)?;
     ensure!(
-        curr_type.is_none() || curr_type.unwrap() == ado_version.get_type(),
+        curr_type.is_none() || &curr_type.unwrap() == ado_version,
         ContractError::Unauthorized {}
     );
     ADO_TYPE.remove(storage, code_id);

@@ -242,6 +242,7 @@ impl MockAndromedaQuerier {
             VFSQueryMsg::GetLibrary { address } => {
                 SystemResult::Ok(ContractResult::Ok(to_binary(&address).unwrap()))
             }
+            _ => todo!(),
         }
     }
 

@@ -1,6 +1,6 @@
-use crate::reply::ReplyId;
 use andromeda_std::{
-    ado_contract::ADOContract, amp::AndrAddr, error::ContractError, os::aos_querier::AOSQuerier,
+    ado_contract::ADOContract, amp::AndrAddr, common::reply::ReplyId, error::ContractError,
+    os::aos_querier::AOSQuerier,
 };
 use cosmwasm_std::{
     attr, coin, ensure, to_binary, Addr, BankMsg, CosmosMsg, DepsMut, Empty, Env, MessageInfo,

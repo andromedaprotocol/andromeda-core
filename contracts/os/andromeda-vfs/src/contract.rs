@@ -1,5 +1,4 @@
 use andromeda_std::ado_contract::ADOContract;
-
 use andromeda_std::os::vfs::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use andromeda_std::{
     ado_base::InstantiateMsg as BaseInstantiateMsg, common::encode_binary, error::ContractError,
@@ -96,8 +95,6 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
     let stored = get_contract_version(deps.storage)?;
     let storage_version: Version = stored.version.parse().map_err(from_semver)?;
 
-    let contract = ADOContract::default();
-
     ensure!(
         stored.contract == CONTRACT_NAME,
         ContractError::CannotMigrate {
@@ -114,9 +111,6 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
     );
 
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-
-    // Update the ADOContract's version
-    contract.execute_update_version(deps)?;
 
     Ok(Response::default())
 }
@@ -139,5 +133,12 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractErr
         QueryMsg::GetUsername { address } => encode_binary(&query::get_username(deps, address)?),
         QueryMsg::GetLibrary { address } => encode_binary(&query::get_library_name(deps, address)?),
         QueryMsg::ResolveSymlink { path } => encode_binary(&query::get_symlink(deps, path)?),
+        // Base queries
+        QueryMsg::Version {} => encode_binary(&ADOContract::default().query_version(deps)?),
+        QueryMsg::Type {} => encode_binary(&ADOContract::default().query_type(deps)?),
+        QueryMsg::Owner {} => encode_binary(&ADOContract::default().query_contract_owner(deps)?),
+        QueryMsg::KernelAddress {} => {
+            encode_binary(&ADOContract::default().query_kernel_address(deps)?)
+        }
     }
 }

@@ -6,24 +6,15 @@ use crate::{
     },
 };
 use andromeda_std::{
-    ado_base::AndromedaMsg, common::response::get_reply_address, error::ContractError,
+    ado_base::AndromedaMsg,
+    common::{reply::ReplyId, response::get_reply_address},
+    error::ContractError,
     os::aos_querier::AOSQuerier,
 };
 use cosmwasm_std::{
     ensure, wasm_execute, Addr, DepsMut, Empty, Env, Reply, Response, SubMsg, SubMsgResponse,
     SubMsgResult,
 };
-use enum_repr::EnumRepr;
-
-#[EnumRepr(type = "u64")]
-pub enum ReplyId {
-    AMPMsg = 1,
-    CreateADO = 2,
-    UpdateOwnership = 3,
-    IBCHooksPacketSend = 4,
-    Recovery = 5,
-    RegisterUsername = 6,
-}
 
 /// Handles the reply from an ADO creation
 ///

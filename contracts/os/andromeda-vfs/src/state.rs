@@ -73,6 +73,7 @@ pub fn resolve_pathname(
     pathname: AndrAddr,
     resolved_paths: &mut Vec<(Addr, String)>,
 ) -> Result<Addr, ContractError> {
+    let pathname = pathname.to_lowercase();
     // As cross-chain queries are not currently possible we need to ensure the pathname being resolved is local
     ensure!(
         pathname.get_protocol().is_none(),

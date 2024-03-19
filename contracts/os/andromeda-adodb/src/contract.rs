@@ -101,8 +101,6 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
     let stored = get_contract_version(deps.storage)?;
     let storage_version: Version = stored.version.parse().map_err(from_semver)?;
 
-    let contract = ADOContract::default();
-
     ensure!(
         stored.contract == CONTRACT_NAME,
         ContractError::CannotMigrate {
@@ -119,9 +117,6 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
     );
 
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-
-    // Update the ADOContract's version
-    contract.execute_update_version(deps)?;
 
     Ok(Response::default())
 }
@@ -157,6 +152,13 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractErr
         }
         QueryMsg::ActionFeeByCodeId { code_id, action } => {
             encode_binary(&query::action_fee_by_code_id(deps, code_id, action)?)
+        }
+        // Base queries
+        QueryMsg::Version {} => encode_binary(&ADOContract::default().query_version(deps)?),
+        QueryMsg::Type {} => encode_binary(&ADOContract::default().query_type(deps)?),
+        QueryMsg::Owner {} => encode_binary(&ADOContract::default().query_contract_owner(deps)?),
+        QueryMsg::KernelAddress {} => {
+            encode_binary(&ADOContract::default().query_kernel_address(deps)?)
         }
     }
 }

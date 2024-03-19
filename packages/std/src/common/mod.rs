@@ -2,6 +2,7 @@ pub mod context;
 pub mod expiration;
 pub mod queries;
 pub mod rates;
+pub mod reply;
 pub mod response;
 pub mod withdraw;
 

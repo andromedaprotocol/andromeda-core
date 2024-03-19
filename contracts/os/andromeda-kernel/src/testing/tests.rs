@@ -170,7 +170,7 @@ fn test_assign_channels() {
         chain: chain.to_string(),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
     };
-    execute(deps.as_mut(), env, info, msg).unwrap();
+    execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
     let channel_info = CHAIN_TO_CHANNEL.load(deps.as_ref().storage, chain).unwrap();
     assert_eq!(
@@ -200,6 +200,31 @@ fn test_assign_channels() {
         )
         .unwrap();
     assert_eq!(direct_channel_chain, chain.to_string());
+
+    // Check that old direct channel was removed
+    let direct_channel_chain = CHANNEL_TO_CHAIN
+        .may_load(deps.as_ref().storage, "2")
+        .unwrap();
+    assert!(direct_channel_chain.is_none());
+
+    let msg = ExecuteMsg::AssignChannels {
+        ics20_channel_id: Some("10".to_string()),
+        direct_channel_id: None,
+        chain: chain.to_string(),
+        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+    };
+    execute(deps.as_mut(), env, info, msg).unwrap();
+
+    // The previous ics20 channel was "1"
+    let previous_ics20_channel_chain = CHANNEL_TO_CHAIN
+        .may_load(deps.as_ref().storage, "1")
+        .unwrap();
+    assert!(previous_ics20_channel_chain.is_none());
+
+    let ics20_channel_chain = CHANNEL_TO_CHAIN
+        .may_load(deps.as_ref().storage, "10")
+        .unwrap();
+    assert_eq!(ics20_channel_chain.unwrap(), chain.to_string());
 }
 
 #[test]
