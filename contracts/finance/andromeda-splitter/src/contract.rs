@@ -7,7 +7,7 @@ use andromeda_finance::splitter::{
 use andromeda_std::{
     ado_base::InstantiateMsg as BaseInstantiateMsg,
     amp::messages::AMPPkt,
-    common::encode_binary,
+    common::{actions::call_action, encode_binary},
     error::{from_semver, ContractError},
 };
 use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
@@ -113,7 +113,14 @@ pub fn execute(
     }
 }
 
-pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+    call_action(
+        &mut ctx.deps,
+        &ctx.info,
+        &ctx.env,
+        &ctx.amp_ctx,
+        msg.as_ref(),
+    )?;
     match msg {
         ExecuteMsg::UpdateRecipients { recipients } => execute_update_recipients(ctx, recipients),
         ExecuteMsg::UpdateLock { lock_time } => execute_update_lock(ctx, lock_time),
