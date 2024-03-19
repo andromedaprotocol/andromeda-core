@@ -3,7 +3,8 @@ use crate::{
     state::{CONFIG, STATE},
 };
 use andromeda_std::{
-    common::expiration::MILLISECONDS_TO_NANOSECONDS_RATIO, error::ContractError,
+    common::{expiration::MILLISECONDS_TO_NANOSECONDS_RATIO, Milliseconds},
+    error::ContractError,
     testing::mock_querier::MOCK_KERNEL_CONTRACT,
 };
 use cosmwasm_std::{
@@ -31,9 +32,9 @@ fn init(deps: DepsMut) -> Result<Response, ContractError> {
 
     let msg = InstantiateMsg {
         // bootstrap_contract: None,
-        init_timestamp: env.block.time.seconds(),
-        deposit_window: DEPOSIT_WINDOW,
-        withdrawal_window: WITHDRAWAL_WINDOW,
+        init_timestamp: Milliseconds::from_seconds(env.block.time.seconds()),
+        deposit_window: Milliseconds::from_seconds(DEPOSIT_WINDOW),
+        withdrawal_window: Milliseconds::from_seconds(WITHDRAWAL_WINDOW),
         incentive_token: MOCK_INCENTIVE_TOKEN.to_owned(),
         native_denom: "uusd".to_string(),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
@@ -64,9 +65,9 @@ fn test_instantiate() {
     assert_eq!(
         ConfigResponse {
             // bootstrap_contract_address: None,
-            init_timestamp: mock_env().block.time.seconds(),
-            deposit_window: DEPOSIT_WINDOW,
-            withdrawal_window: WITHDRAWAL_WINDOW,
+            init_timestamp: Milliseconds::from_seconds(mock_env().block.time.seconds()),
+            deposit_window: Milliseconds::from_seconds(DEPOSIT_WINDOW),
+            withdrawal_window: Milliseconds::from_seconds(WITHDRAWAL_WINDOW),
             lockdrop_incentives: Uint128::zero(),
             incentive_token: MOCK_INCENTIVE_TOKEN.to_owned(),
             native_denom: "uusd".to_string()
@@ -95,9 +96,9 @@ fn test_instantiate_init_timestamp_past() {
 
     let msg = InstantiateMsg {
         // bootstrap_contract: None,
-        init_timestamp: env.block.time.seconds() - 1,
-        deposit_window: 5,
-        withdrawal_window: 2,
+        init_timestamp: Milliseconds::from_seconds(env.block.time.seconds() - 1),
+        deposit_window: Milliseconds::from_seconds(5),
+        withdrawal_window: Milliseconds::from_seconds(2),
         incentive_token: MOCK_INCENTIVE_TOKEN.to_owned(),
         native_denom: "uusd".to_string(),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
@@ -124,9 +125,9 @@ fn test_instantiate_init_deposit_window_zero() {
 
     let msg = InstantiateMsg {
         // bootstrap_contract: None,
-        init_timestamp: env.block.time.seconds() + 1,
-        deposit_window: 0,
-        withdrawal_window: 2,
+        init_timestamp: Milliseconds::from_seconds(env.block.time.seconds() + 1),
+        deposit_window: Milliseconds::from_seconds(0),
+        withdrawal_window: Milliseconds::from_seconds(2),
         incentive_token: MOCK_INCENTIVE_TOKEN.to_owned(),
         native_denom: "uusd".to_string(),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
@@ -147,9 +148,9 @@ fn test_instantiate_init_withdrawal_window_zero() {
 
     let msg = InstantiateMsg {
         // bootstrap_contract: None,
-        init_timestamp: env.block.time.seconds() + 1,
-        deposit_window: 5,
-        withdrawal_window: 0,
+        init_timestamp: Milliseconds::from_seconds(env.block.time.seconds() + 1),
+        deposit_window: Milliseconds::from_seconds(5),
+        withdrawal_window: Milliseconds::from_seconds(0),
         incentive_token: MOCK_INCENTIVE_TOKEN.to_owned(),
         native_denom: "uusd".to_string(),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
@@ -170,9 +171,9 @@ fn test_instantiate_init_deposit_window_less_than_withdrawal_window() {
 
     let msg = InstantiateMsg {
         // bootstrap_contract: None,
-        init_timestamp: env.block.time.seconds() + 1,
-        deposit_window: 2,
-        withdrawal_window: 5,
+        init_timestamp: Milliseconds::from_seconds(env.block.time.seconds() + 1),
+        deposit_window: Milliseconds::from_seconds(2),
+        withdrawal_window: Milliseconds::from_seconds(5),
         incentive_token: MOCK_INCENTIVE_TOKEN.to_owned(),
         native_denom: "uusd".to_string(),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
@@ -964,7 +965,9 @@ fn test_query_withdrawable_percent() {
 
     assert_eq!(Decimal::one(), res);
 
-    let msg = QueryMsg::WithdrawalPercentAllowed { timestamp: Some(0) };
+    let msg = QueryMsg::WithdrawalPercentAllowed {
+        timestamp: Some(Milliseconds::zero()),
+    };
     let err = query(deps.as_ref(), mock_env(), msg).unwrap_err();
     assert_eq!(
         err,
@@ -975,7 +978,7 @@ fn test_query_withdrawable_percent() {
 
     let timestamp = mock_env().block.time.plus_seconds(DEPOSIT_WINDOW + 1);
     let msg = QueryMsg::WithdrawalPercentAllowed {
-        timestamp: Some(timestamp.seconds()),
+        timestamp: Some(Milliseconds::from_seconds(timestamp.seconds())),
     };
     let res: Decimal = from_binary(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
 
@@ -986,7 +989,7 @@ fn test_query_withdrawable_percent() {
         .time
         .plus_seconds(DEPOSIT_WINDOW + WITHDRAWAL_WINDOW);
     let msg = QueryMsg::WithdrawalPercentAllowed {
-        timestamp: Some(timestamp.seconds()),
+        timestamp: Some(Milliseconds::from_seconds(timestamp.seconds())),
     };
     let res: Decimal = from_binary(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
 

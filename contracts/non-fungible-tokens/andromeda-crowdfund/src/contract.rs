@@ -304,7 +304,7 @@ fn execute_start_sale(
     STATE.save(
         deps.storage,
         &State {
-            expiration: expiration.clone(),
+            expiration,
             price,
             min_tokens_sold,
             max_amount_per_wallet,

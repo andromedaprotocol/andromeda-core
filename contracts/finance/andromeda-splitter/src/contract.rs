@@ -279,7 +279,7 @@ fn execute_update_lock(
     // Set new lock time
     let new_expiration = current_time.plus_milliseconds(lock_time);
 
-    splitter.lock = new_expiration.clone();
+    splitter.lock = new_expiration;
 
     SPLITTER.save(deps.storage, &splitter)?;
 

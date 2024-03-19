@@ -3,7 +3,7 @@ use cosmwasm_std::{BlockInfo, Timestamp};
 use cw20::Expiration;
 
 #[cw_serde]
-#[derive(Default, Eq)]
+#[derive(Default, Eq, PartialOrd, Copy)]
 /// Represents time in milliseconds.
 pub struct Milliseconds(pub u64);
 
@@ -11,6 +11,21 @@ impl Milliseconds {
     pub fn is_expired(&self, block: &BlockInfo) -> bool {
         let time = block.time.seconds() * 1000;
         self.0 <= time
+    }
+
+    pub fn is_in_past(&self, block: &BlockInfo) -> bool {
+        let time = block.time.seconds() * 1000;
+        self.0 < time
+    }
+
+    #[inline]
+    pub fn zero() -> Milliseconds {
+        Milliseconds(0)
+    }
+
+    #[inline]
+    pub fn is_zero(&self) -> bool {
+        self.0 == 0
     }
 
     #[inline]
@@ -49,8 +64,16 @@ impl Milliseconds {
         self.0 += milliseconds.0;
     }
 
+    pub fn subtract_milliseconds(&mut self, milliseconds: Milliseconds) {
+        self.0 -= milliseconds.0;
+    }
+
     pub fn plus_milliseconds(self, milliseconds: Milliseconds) -> Milliseconds {
         Milliseconds(self.0 + milliseconds.0)
+    }
+
+    pub fn minus_milliseconds(self, milliseconds: Milliseconds) -> Milliseconds {
+        Milliseconds(self.0 - milliseconds.0)
     }
 
     pub fn add_seconds(&mut self, seconds: u64) {
