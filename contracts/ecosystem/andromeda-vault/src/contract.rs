@@ -438,7 +438,7 @@ fn query_balance(
         // DEV NOTE: Why does this ensure! a generic type when not using custom query?
         let query: QueryRequest<Empty> = QueryRequest::Wasm(WasmQuery::Smart {
             contract_addr: strategy_addr,
-            msg: to_binary(&AndromedaQuery::Balance { address })?,
+            msg: to_binary(&AndromedaQuery::WithdrawableBalance { address })?,
         });
         match deps.querier.raw_query(&to_binary(&query)?) {
             SystemResult::Ok(ContractResult::Ok(value)) => Ok(value),

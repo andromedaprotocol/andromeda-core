@@ -570,16 +570,18 @@ fn execute_authorize_token_contract(
         contract.is_contract_owner(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {}
     );
+    let permission = Permission::Whitelisted(expiration);
     ADOContract::set_permission(
         deps.storage,
         SEND_NFT_ACTION,
         addr.to_string(),
-        Permission::Whitelisted(expiration),
+        permission.clone(),
     )?;
 
     Ok(Response::default().add_attributes(vec![
         attr("action", "authorize_token_contract"),
         attr("token_address", addr),
+        attr("permission", permission.to_string()),
     ]))
 }
 

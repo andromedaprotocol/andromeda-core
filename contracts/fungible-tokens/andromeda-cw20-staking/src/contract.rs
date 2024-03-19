@@ -435,6 +435,7 @@ fn execute_claim_rewards(ctx: ExecuteContext) -> Result<Response, ContractError>
                 // Reduce reward balance if is non-allocated token.
                 if let RewardType::NonAllocated {
                     previous_reward_balance,
+                    ..
                 } = &mut token.reward_type
                 {
                     *previous_reward_balance = previous_reward_balance.checked_sub(rewards)?;
@@ -518,6 +519,7 @@ fn update_global_index(
     match &reward_token.reward_type {
         RewardType::NonAllocated {
             previous_reward_balance,
+            init_timestamp,
         } => {
             update_nonallocated_index(
                 state,
@@ -525,11 +527,14 @@ fn update_global_index(
                 reward_token,
                 *previous_reward_balance,
                 contract_address,
+                current_timestamp,
+                *init_timestamp,
             )?;
         }
         RewardType::Allocated {
             allocation_config,
             allocation_state,
+            init_timestamp,
         } => {
             update_allocated_index(
                 state.total_share,
@@ -537,6 +542,7 @@ fn update_global_index(
                 allocation_config.clone(),
                 allocation_state.clone(),
                 current_timestamp,
+                *init_timestamp,
             )?;
         }
     }
@@ -552,7 +558,12 @@ fn update_nonallocated_index(
     reward_token: &mut RewardToken,
     previous_reward_balance: Uint128,
     contract_address: Addr,
+    curr_timestamp: u64,
+    init_timestamp: u64,
 ) -> Result<(), ContractError> {
+    if curr_timestamp < init_timestamp {
+        return Ok(());
+    }
     let reward_balance = reward_token
         .asset_info
         .query_balance(querier, contract_address)?;
@@ -562,6 +573,7 @@ fn update_nonallocated_index(
 
     reward_token.reward_type = RewardType::NonAllocated {
         previous_reward_balance: reward_balance,
+        init_timestamp,
     };
 
     Ok(())

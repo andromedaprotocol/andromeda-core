@@ -92,6 +92,7 @@ pub struct State {
 #[cw_serde]
 pub struct RewardTokenUnchecked {
     pub asset_info: AssetInfoUnchecked,
+    pub init_timestamp: u64,
     pub allocation_config: Option<AllocationConfig>,
 }
 
@@ -107,9 +108,10 @@ impl RewardTokenUnchecked {
         let reward_type = match self.allocation_config {
             None => RewardType::NonAllocated {
                 previous_reward_balance: Uint128::zero(),
+                init_timestamp: self.init_timestamp,
             },
             Some(allocation_config) => {
-                let init_timestamp = allocation_config.init_timestamp;
+                let init_timestamp = self.init_timestamp;
                 let till_timestamp = allocation_config.till_timestamp;
                 let cycle_duration = allocation_config.cycle_duration;
                 let cycle_rewards = allocation_config.cycle_rewards;
@@ -144,6 +146,7 @@ impl RewardTokenUnchecked {
                         current_cycle_rewards: cycle_rewards,
                         last_distributed: init_timestamp,
                     },
+                    init_timestamp: self.init_timestamp,
                 }
             }
         };
@@ -161,9 +164,11 @@ pub enum RewardType {
     Allocated {
         allocation_config: AllocationConfig,
         allocation_state: AllocationState,
+        init_timestamp: u64,
     },
     NonAllocated {
         previous_reward_balance: Uint128,
+        init_timestamp: u64,
     },
 }
 
@@ -190,8 +195,6 @@ pub struct AllocationInfo {
 
 #[cw_serde]
 pub struct AllocationConfig {
-    /// Timestamp from which Rewards will start getting accrued against the staked LP tokens
-    pub init_timestamp: u64,
     /// Timestamp till which Rewards will be accrued. No staking rewards are accrued beyond this timestamp
     pub till_timestamp: u64,
     /// Rewards distributed during the 1st cycle.

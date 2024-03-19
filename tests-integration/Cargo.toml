@@ -17,6 +17,7 @@ andromeda-app-contract = { path = "../contracts/app/andromeda-app-contract", fea
 
 #Non-Fungible Tokens
 andromeda-non-fungible-tokens = { workspace = true }
+andromeda-fungible-tokens = { workspace = true }
 andromeda-cw721 = { path = "../contracts/non-fungible-tokens/andromeda-cw721", features = [
     "testing",
 ] }
@@ -40,6 +41,9 @@ andromeda-marketplace = { path = "../contracts/non-fungible-tokens/andromeda-mar
 #Fungible Tokens
 # andromeda-fungible-tokens = { path = "../packages/andromeda-fungible-tokens" }
 andromeda-cw20 = { path = "../contracts/fungible-tokens/andromeda-cw20", features = [
+    "testing",
+] }
+andromeda-cw20-staking = { path = "../contracts/fungible-tokens/andromeda-cw20-staking", features = [
     "testing",
 ] }
 andromeda-lockdrop = { path = "../contracts/fungible-tokens/andromeda-lockdrop", features = [
@@ -96,6 +100,7 @@ cosmwasm-schema = { workspace = true }
 cw721-base = { workspace = true }
 cw721 = { workspace = true }
 cw20 = { workspace = true }
+cw-asset = { workspace = true }
 # cw20-base = { workspace = true }
 # cw-cii = { git = "https://github.com/public-awesome/ics721.git" }
 # cw-pause-once = { git = "https://github.com/public-awesome/ics721.git" }
@@ -119,8 +124,8 @@ name = "auction_app"
 [[test]]
 name = "marketplace_app"
 
-# [[test]]
-# name = "cw20_staking_app"
+[[test]]
+name = "cw20_staking"
 
 # [[test]]
 # name = "wrapped_cw721_app"
