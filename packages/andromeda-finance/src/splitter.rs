@@ -42,12 +42,6 @@ impl InstantiateMsg {
     }
 }
 
-// #[cw_serde]
-// pub struct ReplyGasExit {
-//     pub reply_on: Option<ReplyOn>,
-//     pub gas_limit: Option<u64>,
-//     pub exit_at_error: Option<bool>,
-// }
 #[andr_exec]
 #[cw_serde]
 pub enum ExecuteMsg {
