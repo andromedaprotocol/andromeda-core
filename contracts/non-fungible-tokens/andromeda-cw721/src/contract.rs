@@ -17,7 +17,7 @@ use andromeda_std::{
         permissioning::{is_context_permissioned, is_context_permissioned_strict},
         ADOContract,
     },
-    common::context::ExecuteContext,
+    common::{actions::call_action, context::ExecuteContext},
 };
 use cw2::{get_contract_version, set_contract_version};
 use semver::Version;
@@ -99,19 +99,15 @@ pub fn execute(
     }
 }
 
-fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
-    ensure!(
-        is_context_permissioned(
-            ctx.deps.storage,
-            &ctx.info,
-            &ctx.env,
-            &ctx.amp_ctx,
-            msg.as_ref()
-        )?,
-        ContractError::Unauthorized {}
-    );
-
+    call_action(
+        &mut ctx.deps,
+        &ctx.info,
+        &ctx.env,
+        &ctx.amp_ctx,
+        msg.as_ref(),
+    )?;
     let payee = if let Some(amp_ctx) = ctx.amp_ctx.clone() {
         ctx.deps
             .api

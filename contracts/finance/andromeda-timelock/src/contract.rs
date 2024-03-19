@@ -6,7 +6,7 @@ use andromeda_finance::timelock::{
 use andromeda_std::{
     ado_base::InstantiateMsg as BaseInstantiateMsg,
     amp::Recipient,
-    common::encode_binary,
+    common::{actions::call_action, encode_binary},
     error::{from_semver, ContractError},
 };
 use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
@@ -66,7 +66,14 @@ pub fn execute(
     }
 }
 
-pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+    call_action(
+        &mut ctx.deps,
+        &ctx.info,
+        &ctx.env,
+        &ctx.amp_ctx,
+        msg.as_ref(),
+    )?;
     match msg {
         ExecuteMsg::HoldFunds {
             condition,

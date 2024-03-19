@@ -10,8 +10,10 @@ use andromeda_std::{
         hooks::AndromedaHook, ownership::OwnershipMessage, InstantiateMsg as BaseInstantiateMsg,
     },
     ado_contract::ADOContract,
-    common::expiration::MILLISECONDS_TO_NANOSECONDS_RATIO,
-    common::{context::ExecuteContext, encode_binary},
+    common::{
+        actions::call_action, context::ExecuteContext, encode_binary,
+        expiration::MILLISECONDS_TO_NANOSECONDS_RATIO,
+    },
     error::{from_semver, ContractError},
 };
 use cosmwasm_std::{
@@ -111,9 +113,15 @@ pub fn execute(
     }
 }
 
-pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
-
+    call_action(
+        &mut ctx.deps,
+        &ctx.info,
+        &ctx.env,
+        &ctx.amp_ctx,
+        msg.as_ref(),
+    )?;
     if !matches!(msg, ExecuteMsg::UpdateAppContract { .. })
         && !matches!(
             msg,

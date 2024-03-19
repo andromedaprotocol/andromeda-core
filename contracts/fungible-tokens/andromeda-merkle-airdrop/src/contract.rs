@@ -24,7 +24,7 @@ use andromeda_fungible_tokens::airdrop::{
 use andromeda_std::{
     ado_base::InstantiateMsg as BaseInstantiateMsg,
     ado_contract::ADOContract,
-    common::{context::ExecuteContext, encode_binary},
+    common::{actions::call_action, context::ExecuteContext, encode_binary},
     error::{from_semver, ContractError},
 };
 
@@ -85,7 +85,14 @@ pub fn execute(
     }
 }
 
-pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+    call_action(
+        &mut ctx.deps,
+        &ctx.info,
+        &ctx.env,
+        &ctx.amp_ctx,
+        msg.as_ref(),
+    )?;
     match msg {
         ExecuteMsg::RegisterMerkleRoot {
             merkle_root,

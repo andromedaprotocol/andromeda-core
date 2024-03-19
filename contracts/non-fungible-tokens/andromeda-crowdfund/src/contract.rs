@@ -11,6 +11,7 @@ use andromeda_non_fungible_tokens::{
 use andromeda_std::{
     ado_base::ownership::OwnershipMessage,
     amp::{messages::AMPPkt, recipient::Recipient, AndrAddr},
+    common::actions::call_action,
 };
 use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
 
@@ -104,9 +105,15 @@ pub fn execute(
     }
 }
 
-pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
-
+    call_action(
+        &mut ctx.deps,
+        &ctx.info,
+        &ctx.env,
+        &ctx.amp_ctx,
+        msg.as_ref(),
+    )?;
     if !matches!(msg, ExecuteMsg::UpdateAppContract { .. })
         && !matches!(
             msg,
