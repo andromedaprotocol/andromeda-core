@@ -96,6 +96,11 @@ pub struct ChannelInfoResponse {
 }
 
 #[cw_serde]
+pub struct ChainNameResponse {
+    pub chain_name: String,
+}
+
+#[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
     #[returns(cosmwasm_std::Addr)]
@@ -106,8 +111,8 @@ pub enum QueryMsg {
     ChannelInfo { chain: String },
     #[returns(Vec<::cosmwasm_std::Coin>)]
     Recoveries { addr: Addr },
-    #[returns(String)]
-    GetChainName {},
+    #[returns(ChainNameResponse)]
+    ChainName {},
     // Base queries
     #[returns(VersionResponse)]
     Version {},

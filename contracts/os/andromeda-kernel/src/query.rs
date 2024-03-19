@@ -1,7 +1,10 @@
 use andromeda_std::{
     amp::ADO_DB_KEY,
     error::ContractError,
-    os::{aos_querier::AOSQuerier, kernel::ChannelInfoResponse},
+    os::{
+        aos_querier::AOSQuerier,
+        kernel::{ChainNameResponse, ChannelInfoResponse},
+    },
 };
 use cosmwasm_std::{Addr, Coin, Deps};
 
@@ -49,6 +52,8 @@ pub fn recoveries(deps: Deps, addr: Addr) -> Result<Vec<Coin>, ContractError> {
         .unwrap_or_default())
 }
 
-pub fn get_chain_name(deps: Deps) -> Result<String, ContractError> {
-    Ok(CURR_CHAIN.may_load(deps.storage)?.unwrap_or_default())
+pub fn get_chain_name(deps: Deps) -> Result<ChainNameResponse, ContractError> {
+    Ok(ChainNameResponse {
+        chain_name: CURR_CHAIN.may_load(deps.storage)?.unwrap_or_default(),
+    })
 }
