@@ -291,7 +291,7 @@ fn execute_start_sale(
         ContractError::Unauthorized {}
     );
     ensure!(
-        !expiration.is_expired(&env.block),
+        !expiration.is_in_past(&env.block),
         ContractError::ExpirationInPast {}
     );
     SALE_CONDUCTED.save(deps.storage, &true)?;
