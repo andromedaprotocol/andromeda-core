@@ -13,10 +13,7 @@ use andromeda_non_fungible_tokens::cw721::{
 };
 use andromeda_std::{
     ado_base::{AndromedaMsg, AndromedaQuery},
-    ado_contract::{
-        permissioning::{is_context_permissioned, is_context_permissioned_strict},
-        ADOContract,
-    },
+    ado_contract::{permissioning::is_context_permissioned_strict, ADOContract},
     common::{actions::call_action, context::ExecuteContext},
 };
 use cw2::{get_contract_version, set_contract_version};
