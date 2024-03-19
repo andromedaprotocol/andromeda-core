@@ -3,9 +3,9 @@ use cosmwasm_std::{BlockInfo, Timestamp};
 use cw20::Expiration;
 
 #[cw_serde]
-#[derive(Default)]
+#[derive(Default, Eq)]
 /// Represents time in milliseconds.
-pub struct Milliseconds(u64);
+pub struct Milliseconds(pub u64);
 
 impl Milliseconds {
     pub fn is_expired(&self, block: &BlockInfo) -> bool {
@@ -28,6 +28,11 @@ impl Milliseconds {
     }
 
     #[inline]
+    pub fn milliseconds(&self) -> u64 {
+        self.0
+    }
+
+    #[inline]
     pub fn seconds(&self) -> u64 {
         self.0 / 1000
     }
@@ -38,6 +43,22 @@ impl Milliseconds {
             panic!("Overflow: Cannot convert milliseconds time to nanoseconds")
         }
         self.0 * 1000000
+    }
+
+    pub fn add_milliseconds(&mut self, milliseconds: Milliseconds) {
+        self.0 += milliseconds.0;
+    }
+
+    pub fn plus_milliseconds(self, milliseconds: Milliseconds) -> Milliseconds {
+        Milliseconds(self.0 + milliseconds.0)
+    }
+
+    pub fn add_seconds(&mut self, seconds: u64) {
+        self.0 += seconds * 1000;
+    }
+
+    pub fn plus_seconds(self, seconds: u64) -> Milliseconds {
+        Milliseconds(self.0 + seconds * 1000)
     }
 }
 
