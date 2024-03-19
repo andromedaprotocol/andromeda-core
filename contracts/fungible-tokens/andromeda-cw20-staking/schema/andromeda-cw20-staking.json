@@ -55,15 +55,16 @@
         "required": [
           "cycle_duration",
           "cycle_rewards",
-          "init_timestamp",
           "till_timestamp"
         ],
         "properties": {
           "cycle_duration": {
             "description": "Cycle duration in timestamps",
-            "type": "integer",
-            "format": "uint64",
-            "minimum": 0.0
+            "allOf": [
+              {
+                "$ref": "#/definitions/Milliseconds"
+              }
+            ]
           },
           "cycle_rewards": {
             "description": "Rewards distributed during the 1st cycle.",
@@ -72,12 +73,6 @@
                 "$ref": "#/definitions/Uint128"
               }
             ]
-          },
-          "init_timestamp": {
-            "description": "Timestamp from which Rewards will start getting accrued against the staked LP tokens",
-            "type": "integer",
-            "format": "uint64",
-            "minimum": 0.0
           },
           "reward_increase": {
             "description": "Percent increase in Rewards per cycle",
@@ -92,9 +87,11 @@
           },
           "till_timestamp": {
             "description": "Timestamp till which Rewards will be accrued. No staking rewards are accrued beyond this timestamp",
-            "type": "integer",
-            "format": "uint64",
-            "minimum": 0.0
+            "allOf": [
+              {
+                "$ref": "#/definitions/Milliseconds"
+              }
+            ]
           }
         },
         "additionalProperties": false
@@ -137,6 +134,12 @@
         "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 (which is (2^128 - 1) / 10^18)",
         "type": "string"
       },
+      "Milliseconds": {
+        "description": "Represents time in milliseconds.",
+        "type": "integer",
+        "format": "uint64",
+        "minimum": 0.0
+      },
       "Module": {
         "description": "A struct describing a token module, provided with the instantiation message this struct is used to record the info about the module and how/if it should be instantiated",
         "type": "object",
@@ -163,7 +166,8 @@
       "RewardTokenUnchecked": {
         "type": "object",
         "required": [
-          "asset_info"
+          "asset_info",
+          "init_timestamp"
         ],
         "properties": {
           "allocation_config": {
@@ -178,6 +182,9 @@
           },
           "asset_info": {
             "$ref": "#/definitions/AssetInfoBase_for_String"
+          },
+          "init_timestamp": {
+            "$ref": "#/definitions/Milliseconds"
           }
         },
         "additionalProperties": false
@@ -591,15 +598,16 @@
         "required": [
           "cycle_duration",
           "cycle_rewards",
-          "init_timestamp",
           "till_timestamp"
         ],
         "properties": {
           "cycle_duration": {
             "description": "Cycle duration in timestamps",
-            "type": "integer",
-            "format": "uint64",
-            "minimum": 0.0
+            "allOf": [
+              {
+                "$ref": "#/definitions/Milliseconds"
+              }
+            ]
           },
           "cycle_rewards": {
             "description": "Rewards distributed during the 1st cycle.",
@@ -608,12 +616,6 @@
                 "$ref": "#/definitions/Uint128"
               }
             ]
-          },
-          "init_timestamp": {
-            "description": "Timestamp from which Rewards will start getting accrued against the staked LP tokens",
-            "type": "integer",
-            "format": "uint64",
-            "minimum": 0.0
           },
           "reward_increase": {
             "description": "Percent increase in Rewards per cycle",
@@ -628,9 +630,11 @@
           },
           "till_timestamp": {
             "description": "Timestamp till which Rewards will be accrued. No staking rewards are accrued beyond this timestamp",
-            "type": "integer",
-            "format": "uint64",
-            "minimum": 0.0
+            "allOf": [
+              {
+                "$ref": "#/definitions/Milliseconds"
+              }
+            ]
           }
         },
         "additionalProperties": false
@@ -775,6 +779,12 @@
           }
         },
         "additionalProperties": false
+      },
+      "Milliseconds": {
+        "description": "Represents time in milliseconds.",
+        "type": "integer",
+        "format": "uint64",
+        "minimum": 0.0
       },
       "Module": {
         "description": "A struct describing a token module, provided with the instantiation message this struct is used to record the info about the module and how/if it should be instantiated",
@@ -1054,7 +1064,8 @@
       "RewardTokenUnchecked": {
         "type": "object",
         "required": [
-          "asset_info"
+          "asset_info",
+          "init_timestamp"
         ],
         "properties": {
           "allocation_config": {
@@ -1069,6 +1080,9 @@
           },
           "asset_info": {
             "$ref": "#/definitions/AssetInfoBase_for_String"
+          },
+          "init_timestamp": {
+            "$ref": "#/definitions/Milliseconds"
           }
         },
         "additionalProperties": false
@@ -1196,6 +1210,19 @@
         ],
         "properties": {
           "owner": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "ownership_request"
+        ],
+        "properties": {
+          "ownership_request": {
             "type": "object",
             "additionalProperties": false
           }
@@ -1594,6 +1621,30 @@
         }
       },
       "additionalProperties": false
+    },
+    "ownership_request": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ContractPotentialOwnerResponse",
+      "type": "object",
+      "properties": {
+        "potential_owner": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Addr"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "definitions": {
+        "Addr": {
+          "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+          "type": "string"
+        }
+      }
     },
     "permissioned_actions": {
       "$schema": "http://json-schema.org/draft-07/schema#",

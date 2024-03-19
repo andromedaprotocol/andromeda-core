@@ -83,6 +83,19 @@
     {
       "type": "object",
       "required": [
+        "ownership_request"
+      ],
+      "properties": {
+        "ownership_request": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
         "type"
       ],
       "properties": {

@@ -364,7 +364,7 @@
           ],
           "properties": {
             "expiration": {
-              "$ref": "#/definitions/Expiration"
+              "$ref": "#/definitions/Milliseconds"
             }
           },
           "additionalProperties": false
@@ -449,6 +449,12 @@
         }
       },
       "additionalProperties": false
+    },
+    "Milliseconds": {
+      "description": "Represents time in milliseconds.",
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
     },
     "OwnershipMessage": {
       "oneOf": [
