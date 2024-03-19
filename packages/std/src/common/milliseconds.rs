@@ -83,6 +83,10 @@ impl Milliseconds {
     pub fn plus_seconds(self, seconds: u64) -> Milliseconds {
         Milliseconds(self.0 + seconds * 1000)
     }
+
+    pub fn minus_seconds(self, seconds: u64) -> Milliseconds {
+        Milliseconds(self.0 - seconds * 1000)
+    }
 }
 
 impl From<Milliseconds> for String {
