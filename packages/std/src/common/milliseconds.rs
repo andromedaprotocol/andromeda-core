@@ -1,14 +1,15 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Env, Timestamp};
+use cosmwasm_std::{BlockInfo, Timestamp};
 use cw20::Expiration;
 
 #[cw_serde]
+#[derive(Default)]
 /// Represents time in milliseconds.
 pub struct Milliseconds(u64);
 
 impl Milliseconds {
-    pub fn is_block_expired(&self, env: &Env) -> bool {
-        let time = env.block.time.seconds() * 1000;
+    pub fn is_expired(&self, block: &BlockInfo) -> bool {
+        let time = block.time.seconds() * 1000;
         self.0 <= time
     }
 
@@ -58,6 +59,12 @@ impl From<Milliseconds> for Expiration {
     }
 }
 
+impl std::fmt::Display for Milliseconds {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
 #[cfg(test)]
 mod test {
     use cosmwasm_std::testing::mock_env;
@@ -100,7 +107,7 @@ mod test {
             let mut env = mock_env();
             env.block.time = curr_time.into();
 
-            let output = input.is_block_expired(&env);
+            let output = input.is_expired(&env.block);
 
             assert_eq!(test.is_expired, output, "Test failed: {}", test.name)
         }

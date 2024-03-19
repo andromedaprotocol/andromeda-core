@@ -11,6 +11,7 @@ use andromeda_non_fungible_tokens::{
 use andromeda_std::{
     ado_base::ownership::OwnershipMessage,
     amp::{messages::AMPPkt, recipient::Recipient, AndrAddr},
+    common::Milliseconds,
 };
 use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
 
@@ -30,7 +31,7 @@ use cosmwasm_std::{
     WasmMsg, WasmQuery,
 };
 use cw721::{ContractInfoResponse, TokensResponse};
-use cw_utils::{nonpayable, Expiration};
+use cw_utils::nonpayable;
 use std::cmp;
 
 const MAX_LIMIT: u32 = 100;
@@ -271,7 +272,7 @@ fn execute_update_token_contract(
 #[allow(clippy::too_many_arguments)]
 fn execute_start_sale(
     ctx: ExecuteContext,
-    expiration: Expiration,
+    expiration: Milliseconds,
     price: Coin,
     min_tokens_sold: Uint128,
     max_amount_per_wallet: Option<u32>,
@@ -290,10 +291,6 @@ fn execute_start_sale(
         ContractError::Unauthorized {}
     );
     ensure!(
-        !matches!(expiration, Expiration::Never {}),
-        ContractError::ExpirationMustNotBeNever {}
-    );
-    ensure!(
         !expiration.is_expired(&env.block),
         ContractError::ExpirationInPast {}
     );
@@ -307,7 +304,7 @@ fn execute_start_sale(
     STATE.save(
         deps.storage,
         &State {
-            expiration,
+            expiration: expiration.clone(),
             price,
             min_tokens_sold,
             max_amount_per_wallet,

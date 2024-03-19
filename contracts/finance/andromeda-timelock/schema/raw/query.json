@@ -80,19 +80,6 @@
     {
       "type": "object",
       "required": [
-        "operators"
-      ],
-      "properties": {
-        "operators": {
-          "type": "object",
-          "additionalProperties": false
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "type": "object",
-      "required": [
         "type"
       ],
       "properties": {
@@ -110,6 +97,19 @@
       ],
       "properties": {
         "kernel_address": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "app_contract"
+      ],
+      "properties": {
+        "app_contract": {
           "type": "object",
           "additionalProperties": false
         }
@@ -137,27 +137,6 @@
       "properties": {
         "block_height_upon_creation": {
           "type": "object",
-          "additionalProperties": false
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "type": "object",
-      "required": [
-        "is_operator"
-      ],
-      "properties": {
-        "is_operator": {
-          "type": "object",
-          "required": [
-            "address"
-          ],
-          "properties": {
-            "address": {
-              "type": "string"
-            }
-          },
           "additionalProperties": false
         }
       },
