@@ -61,6 +61,8 @@ pub enum AndromedaMsg {
 pub enum AndromedaQuery {
     #[returns(self::ownership::ContractOwnerResponse)]
     Owner {},
+    #[returns(self::ownership::ContractPotentialOwnerResponse)]
+    OwnershipRequest {},
     #[returns(self::ado_type::TypeResponse)]
     Type {},
     #[returns(self::kernel_address::KernelAddressResponse)]
@@ -80,7 +82,7 @@ pub enum AndromedaQuery {
     #[returns(Vec<String>)]
     ModuleIds {},
     #[returns(::cosmwasm_std::BalanceResponse)]
-    Balance { address: AndrAddr },
+    WithdrawableBalance { address: AndrAddr },
     #[returns(Vec<self::permissioning::PermissionInfo>)]
     Permissions {
         actor: AndrAddr,

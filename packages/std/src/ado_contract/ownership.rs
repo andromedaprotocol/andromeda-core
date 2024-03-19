@@ -4,8 +4,8 @@ use cosmwasm_std::{attr, ensure, Addr, DepsMut, Env, MessageInfo, Response, Stor
 use cw_storage_plus::Item;
 use cw_utils::Expiration;
 
-const NEW_OWNER: Item<Addr> = Item::new("andr_new_owner");
-const NEW_OWNER_EXPIRATION: Item<Expiration> = Item::new("andr_new_owner_expiration");
+const POTENTIAL_OWNER: Item<Addr> = Item::new("andr_potential_owner");
+const POTENTIAL_OWNER_EXPIRATION: Item<Expiration> = Item::new("andr_potential_owner_expiration");
 
 impl<'a> ADOContract<'a> {
     pub fn execute_ownership(
@@ -43,13 +43,13 @@ impl<'a> ADOContract<'a> {
             ContractError::Unauthorized {}
         );
         let new_owner_addr = deps.api.addr_validate(new_owner.as_ref())?;
-        NEW_OWNER.save(deps.storage, &new_owner_addr)?;
+        POTENTIAL_OWNER.save(deps.storage, &new_owner_addr)?;
 
         if let Some(exp) = expiration {
-            NEW_OWNER_EXPIRATION.save(deps.storage, &exp)?;
+            POTENTIAL_OWNER_EXPIRATION.save(deps.storage, &exp)?;
         } else {
             // In case an offer is already pending
-            NEW_OWNER_EXPIRATION.remove(deps.storage);
+            POTENTIAL_OWNER_EXPIRATION.remove(deps.storage);
         }
 
         Ok(Response::new().add_attributes(vec![
@@ -68,8 +68,8 @@ impl<'a> ADOContract<'a> {
             self.is_contract_owner(deps.storage, info.sender.as_str())?,
             ContractError::Unauthorized {}
         );
-        NEW_OWNER.remove(deps.storage);
-        NEW_OWNER_EXPIRATION.remove(deps.storage);
+        POTENTIAL_OWNER.remove(deps.storage);
+        POTENTIAL_OWNER_EXPIRATION.remove(deps.storage);
         Ok(Response::new().add_attributes(vec![attr("action", "revoke_ownership_offer")]))
     }
 
@@ -80,19 +80,19 @@ impl<'a> ADOContract<'a> {
         env: Env,
         info: MessageInfo,
     ) -> Result<Response, ContractError> {
-        let new_owner_addr = NEW_OWNER.load(deps.storage)?;
+        let new_owner_addr = POTENTIAL_OWNER.load(deps.storage)?;
         ensure!(
             info.sender == new_owner_addr,
             ContractError::Unauthorized {}
         );
-        let expiration = NEW_OWNER_EXPIRATION.may_load(deps.storage)?;
+        let expiration = POTENTIAL_OWNER_EXPIRATION.may_load(deps.storage)?;
         if let Some(exp) = expiration {
             ensure!(!exp.is_expired(&env.block), ContractError::Unauthorized {});
         }
 
         self.owner.save(deps.storage, &new_owner_addr)?;
-        NEW_OWNER.remove(deps.storage);
-        NEW_OWNER_EXPIRATION.remove(deps.storage);
+        POTENTIAL_OWNER.remove(deps.storage);
+        POTENTIAL_OWNER_EXPIRATION.remove(deps.storage);
         Ok(Response::new().add_attributes(vec![
             attr("action", "accept_ownership"),
             attr("value", new_owner_addr.to_string()),
@@ -131,6 +131,11 @@ impl<'a> ADOContract<'a> {
     ) -> Result<bool, ContractError> {
         self.is_contract_owner(storage, addr)
     }
+
+    pub fn ownership_request(&self, storage: &dyn Storage) -> Result<Option<Addr>, ContractError> {
+        let potential_owner = POTENTIAL_OWNER.may_load(storage)?;
+        Ok(potential_owner)
+    }
 }
 
 #[cfg(test)]
@@ -142,7 +147,7 @@ mod test {
     use cw_utils::Expiration;
 
     use crate::ado_contract::{
-        ownership::{NEW_OWNER, NEW_OWNER_EXPIRATION},
+        ownership::{POTENTIAL_OWNER, POTENTIAL_OWNER_EXPIRATION},
         ADOContract,
     };
 
@@ -167,7 +172,7 @@ mod test {
             None,
         );
         assert!(res.is_ok());
-        let saved_new_owner = NEW_OWNER.load(deps.as_ref().storage).unwrap();
+        let saved_new_owner = POTENTIAL_OWNER.load(deps.as_ref().storage).unwrap();
         assert_eq!(saved_new_owner, new_owner);
 
         let res = contract.update_owner(
@@ -190,7 +195,7 @@ mod test {
 
         let res = contract.revoke_ownership_offer(deps.as_mut(), mock_info("owner", &[]));
         assert!(res.is_ok());
-        let saved_new_owner = NEW_OWNER.may_load(deps.as_ref().storage).unwrap();
+        let saved_new_owner = POTENTIAL_OWNER.may_load(deps.as_ref().storage).unwrap();
         assert!(saved_new_owner.is_none());
     }
 
@@ -200,7 +205,9 @@ mod test {
         let contract = ADOContract::default();
         let new_owner = Addr::unchecked("new_owner");
         init(deps.as_mut(), "owner");
-        NEW_OWNER.save(deps.as_mut().storage, &new_owner).unwrap();
+        POTENTIAL_OWNER
+            .save(deps.as_mut().storage, &new_owner)
+            .unwrap();
 
         let res = contract.accept_ownership(deps.as_mut(), mock_env(), mock_info("owner", &[]));
         assert!(res.is_err());
@@ -208,7 +215,7 @@ mod test {
         assert!(res.is_ok());
         let saved_owner = contract.owner.load(deps.as_ref().storage).unwrap();
         assert_eq!(saved_owner, new_owner);
-        let saved_new_owner = NEW_OWNER.may_load(deps.as_ref().storage).unwrap();
+        let saved_new_owner = POTENTIAL_OWNER.may_load(deps.as_ref().storage).unwrap();
         assert!(saved_new_owner.is_none());
     }
 
@@ -218,8 +225,10 @@ mod test {
         let contract = ADOContract::default();
         let new_owner = Addr::unchecked("new_owner");
         init(deps.as_mut(), "owner");
-        NEW_OWNER.save(deps.as_mut().storage, &new_owner).unwrap();
-        NEW_OWNER_EXPIRATION
+        POTENTIAL_OWNER
+            .save(deps.as_mut().storage, &new_owner)
+            .unwrap();
+        POTENTIAL_OWNER_EXPIRATION
             .save(deps.as_mut().storage, &Expiration::AtHeight(1))
             .unwrap();
 

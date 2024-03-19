@@ -163,6 +163,8 @@ pub fn andr_query(_metadata: TokenStream, input: TokenStream) -> TokenStream {
             enum Right {
                 #[returns(andromeda_std::ado_base::ownership::ContractOwnerResponse)]
                 Owner {},
+                #[returns(andromeda_std::ado_base::ownership::ContractPotentialOwnerResponse)]
+                OwnershipRequest {},
                 #[returns(andromeda_std::ado_base::ado_type::TypeResponse)]
                 Type {},
                 #[returns(andromeda_std::ado_base::kernel_address::KernelAddressResponse)]
