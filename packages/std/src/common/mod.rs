@@ -1,19 +1,20 @@
 pub mod context;
 pub mod expiration;
-pub mod queries;
+pub mod milliseconds;
 pub mod rates;
 pub mod reply;
 pub mod response;
 pub mod withdraw;
 
+pub use milliseconds::*;
+
 use crate::error::ContractError;
 use cosmwasm_std::{
-    ensure, from_binary, has_coins, to_binary, BankMsg, Binary, Coin, CosmosMsg, QuerierWrapper,
-    SubMsg, Uint128,
+    ensure, has_coins, to_binary, BankMsg, Binary, Coin, CosmosMsg, SubMsg, Uint128,
 };
 use cw20::Cw20Coin;
 
-use serde::{de::DeserializeOwned, Serialize};
+use serde::Serialize;
 use std::collections::BTreeMap;
 
 use cosmwasm_schema::cw_serde;
@@ -21,24 +22,6 @@ use cosmwasm_schema::cw_serde;
 pub enum OrderBy {
     Asc,
     Desc,
-}
-
-pub fn parse_struct<T>(val: &Binary) -> Result<T, ContractError>
-where
-    T: DeserializeOwned,
-{
-    let data_res = from_binary(val);
-    match data_res {
-        Ok(data) => Ok(data),
-        Err(err) => Err(ContractError::ParsingError {
-            err: err.to_string(),
-        }),
-    }
-}
-
-pub fn parse_message<T: DeserializeOwned>(data: &Option<Binary>) -> Result<T, ContractError> {
-    let data = unwrap_or_err(data, ContractError::MissingRequiredMessageData {})?;
-    parse_struct::<T>(data)
 }
 
 pub fn encode_binary<T>(val: &T) -> Result<Binary, ContractError>
@@ -49,24 +32,6 @@ where
         Ok(encoded_val) => Ok(encoded_val),
         Err(err) => Err(err.into()),
     }
-}
-
-pub fn unwrap_or_err<T>(val_opt: &Option<T>, err: ContractError) -> Result<&T, ContractError> {
-    match val_opt {
-        Some(val) => Ok(val),
-        None => Err(err),
-    }
-}
-
-pub fn query_primitive<T>(
-    _querier: QuerierWrapper,
-    _contract_address: String,
-    _key: Option<String>,
-) -> Result<T, ContractError>
-where
-    T: DeserializeOwned,
-{
-    todo!()
 }
 
 #[cw_serde]
@@ -214,7 +179,7 @@ pub fn deduct_funds(coins: &mut [Coin], funds: &Coin) -> Result<(), ContractErro
 
 #[cfg(test)]
 mod test {
-    use cosmwasm_std::{coin, to_binary, Uint128, WasmMsg};
+    use cosmwasm_std::{coin, Uint128, WasmMsg};
     use cw20::Expiration;
 
     use super::*;
@@ -223,23 +188,6 @@ mod test {
     struct TestStruct {
         name: String,
         expiration: Expiration,
-    }
-
-    #[test]
-    fn test_parse_struct() {
-        let valid_json = to_binary(&TestStruct {
-            name: "John Doe".to_string(),
-            expiration: Expiration::AtHeight(123),
-        })
-        .unwrap();
-
-        let test_struct: TestStruct = parse_struct(&valid_json).unwrap();
-        assert_eq!(test_struct.name, "John Doe");
-        assert_eq!(test_struct.expiration, Expiration::AtHeight(123));
-
-        let invalid_json = to_binary("notavalidteststruct").unwrap();
-
-        assert!(parse_struct::<TestStruct>(&invalid_json).is_err())
     }
 
     #[test]
