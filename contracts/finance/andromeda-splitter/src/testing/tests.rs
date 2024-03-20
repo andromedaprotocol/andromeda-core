@@ -110,11 +110,11 @@ fn test_execute_update_recipients() {
         },
     ];
     let msg = ExecuteMsg::UpdateRecipients {
-        recipients: duplicate_recipients.clone(),
+        recipients: duplicate_recipients,
     };
 
     let info = mock_info(OWNER, &[]);
-    let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
+    let res = execute(deps.as_mut(), env.clone(), info, msg);
     assert_eq!(ContractError::DuplicateRecipient {}, res.unwrap_err());
 
     let recipients = vec![
