@@ -102,7 +102,7 @@ pub fn validate_recipient_list(
     let mut percent_sum: Decimal = Decimal::zero();
     let mut recipient_address_set = HashSet::new();
 
-    for rec in recipients.clone() {
+    for rec in recipients {
         percent_sum = percent_sum.checked_add(rec.percent)?;
 
         let recipient_address = rec.recipient.address.get_raw_address(&deps)?;
