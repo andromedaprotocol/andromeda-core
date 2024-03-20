@@ -16,7 +16,7 @@ testing = ["cw-multi-test"]
 
 
 [dependencies]
-cosmwasm-std = { workspace = true }
+cosmwasm-std = { workspace = true, features=["cosmwasm_1_3"] }
 cosmwasm-schema = { workspace = true }
 cw-storage-plus = { workspace = true }
 cw-utils = { workspace = true}
