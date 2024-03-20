@@ -14,7 +14,7 @@ use andromeda_std::{
 use cosmwasm_std::{
     coin,
     testing::{mock_env, mock_info},
-    to_binary, Addr, BankMsg, Binary, SubMsg,
+    to_json_binary, Addr, BankMsg, Binary, SubMsg,
 };
 
 struct TestHandleLocalCase {
@@ -32,14 +32,14 @@ fn test_handle_local() {
         TestHandleLocalCase {
             name: "Valid message to ADO (no funds/context)",
             sender: "sender",
-            msg: AMPMsg::new(MOCK_APP_CONTRACT, to_binary(&true).unwrap(), None),
+            msg: AMPMsg::new(MOCK_APP_CONTRACT, to_json_binary(&true).unwrap(), None),
             ctx: None,
             expected_submessage: AMPPkt::new(
                 "sender",
                 "sender",
                 vec![AMPMsg::new(
                     MOCK_APP_CONTRACT,
-                    to_binary(&true).unwrap(),
+                    to_json_binary(&true).unwrap(),
                     None,
                 )],
             )
@@ -50,14 +50,14 @@ fn test_handle_local() {
         TestHandleLocalCase {
             name: "Valid message to ADO (no funds)",
             sender: "sender",
-            msg: AMPMsg::new(MOCK_APP_CONTRACT, to_binary(&true).unwrap(), None),
+            msg: AMPMsg::new(MOCK_APP_CONTRACT, to_json_binary(&true).unwrap(), None),
             ctx: Some(AMPCtx::new("origin", MOCK_APP_CONTRACT, 1, None)),
             expected_submessage: AMPPkt::new(
                 "origin",
                 "sender",
                 vec![AMPMsg::new(
                     MOCK_APP_CONTRACT,
-                    to_binary(&true).unwrap(),
+                    to_json_binary(&true).unwrap(),
                     None,
                 )],
             )
@@ -70,7 +70,7 @@ fn test_handle_local() {
             sender: "sender",
             msg: AMPMsg::new(
                 MOCK_APP_CONTRACT,
-                to_binary(&true).unwrap(),
+                to_json_binary(&true).unwrap(),
                 Some(vec![coin(100, "denom"), coin(200, "denom_two")]),
             ),
             ctx: Some(AMPCtx::new("origin", MOCK_APP_CONTRACT, 1, None)),
@@ -79,7 +79,7 @@ fn test_handle_local() {
                 "sender",
                 vec![AMPMsg::new(
                     MOCK_APP_CONTRACT,
-                    to_binary(&true).unwrap(),
+                    to_json_binary(&true).unwrap(),
                     Some(vec![coin(100, "denom"), coin(200, "denom_two")]),
                 )],
             )
@@ -94,10 +94,14 @@ fn test_handle_local() {
         TestHandleLocalCase {
             name: "Valid message direct to Non-ADO (no funds)",
             sender: "sender",
-            msg: AMPMsg::new(INVALID_CONTRACT, to_binary(&true).unwrap(), None),
+            msg: AMPMsg::new(INVALID_CONTRACT, to_json_binary(&true).unwrap(), None),
             ctx: None,
-            expected_submessage: AMPMsg::new(INVALID_CONTRACT, to_binary(&true).unwrap(), None)
-                .generate_sub_msg_direct(Addr::unchecked(INVALID_CONTRACT), ReplyId::AMPMsg.repr()),
+            expected_submessage: AMPMsg::new(
+                INVALID_CONTRACT,
+                to_json_binary(&true).unwrap(),
+                None,
+            )
+            .generate_sub_msg_direct(Addr::unchecked(INVALID_CONTRACT), ReplyId::AMPMsg.repr()),
             expected_error: None,
         },
         TestHandleLocalCase {
@@ -105,13 +109,13 @@ fn test_handle_local() {
             sender: "sender",
             msg: AMPMsg::new(
                 INVALID_CONTRACT,
-                to_binary(&true).unwrap(),
+                to_json_binary(&true).unwrap(),
                 Some(vec![coin(100, "denom"), coin(200, "denom_two")]),
             ),
             ctx: None,
             expected_submessage: AMPMsg::new(
                 INVALID_CONTRACT,
-                to_binary(&true).unwrap(),
+                to_json_binary(&true).unwrap(),
                 Some(vec![coin(100, "denom"), coin(200, "denom_two")]),
             )
             .generate_sub_msg_direct(Addr::unchecked(INVALID_CONTRACT), ReplyId::AMPMsg.repr()),
@@ -122,13 +126,13 @@ fn test_handle_local() {
             sender: "sender",
             msg: AMPMsg::new(
                 MOCK_WALLET,
-                to_binary(&true).unwrap(),
+                to_json_binary(&true).unwrap(),
                 Some(vec![coin(100, "denom"), coin(200, "denom_two")]),
             ),
             ctx: None,
             expected_submessage: AMPMsg::new(
                 INVALID_CONTRACT,
-                to_binary(&true).unwrap(),
+                to_json_binary(&true).unwrap(),
                 Some(vec![coin(100, "denom"), coin(200, "denom_two")]),
             )
             .generate_sub_msg_direct(Addr::unchecked(INVALID_CONTRACT), ReplyId::AMPMsg.repr()),
@@ -141,13 +145,13 @@ fn test_handle_local() {
             sender: "sender",
             msg: AMPMsg::new(
                 FAKE_VFS_PATH,
-                to_binary(&true).unwrap(),
+                to_json_binary(&true).unwrap(),
                 Some(vec![coin(100, "denom"), coin(200, "denom_two")]),
             ),
             ctx: None,
             expected_submessage: AMPMsg::new(
                 FAKE_VFS_PATH,
-                to_binary(&true).unwrap(),
+                to_json_binary(&true).unwrap(),
                 Some(vec![coin(100, "denom"), coin(200, "denom_two")]),
             )
             .generate_sub_msg_direct(Addr::unchecked(INVALID_CONTRACT), ReplyId::AMPMsg.repr()),

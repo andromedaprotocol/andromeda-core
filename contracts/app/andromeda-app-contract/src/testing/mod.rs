@@ -15,7 +15,7 @@ use andromeda_std::{ado_base::AndromedaMsg, error::ContractError};
 use cosmwasm_std::{
     attr,
     testing::{mock_env, mock_info},
-    to_binary, Addr, CosmosMsg, Empty, ReplyOn, Response, StdError, SubMsg, WasmMsg,
+    to_json_binary, Addr, CosmosMsg, Empty, ReplyOn, Response, StdError, SubMsg, WasmMsg,
 };
 use cosmwasm_std::{Binary, Event, Reply, SubMsgResponse, SubMsgResult};
 
@@ -45,7 +45,7 @@ fn test_instantiation() {
         app_components: vec![AppComponent {
             name: "token".to_string(),
             ado_type: "cw721".to_string(),
-            component_type: ComponentType::New(to_binary(&true).unwrap()),
+            component_type: ComponentType::New(to_json_binary(&true).unwrap()),
         }],
         name: String::from("Some App"),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
@@ -60,7 +60,7 @@ fn test_instantiation() {
         id: 1,
         msg: CosmosMsg::Wasm(WasmMsg::Instantiate {
             code_id: 1,
-            msg: to_binary(&true).unwrap(),
+            msg: to_json_binary(&true).unwrap(),
             funds: vec![],
             label: "Instantiate: cw721".to_string(),
             admin: Some("creator".to_string()),
@@ -73,7 +73,7 @@ fn test_instantiation() {
         id: ReplyId::RegisterPath.repr(),
         msg: CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: "vfs_contract".to_string(),
-            msg: to_binary(&VFSExecuteMsg::AddChild {
+            msg: to_json_binary(&VFSExecuteMsg::AddChild {
                 name: convert_component_name("Some App"),
                 parent_address: AndrAddr::from_string(format!("{sender}")),
             })
@@ -87,7 +87,7 @@ fn test_instantiation() {
         id: ReplyId::AssignApp.repr(),
         msg: CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: "cosmos2contract".to_string(),
-            msg: to_binary(&ExecuteMsg::AssignAppToComponents {}).unwrap(),
+            msg: to_json_binary(&ExecuteMsg::AssignAppToComponents {}).unwrap(),
             funds: vec![],
         }),
         reply_on: ReplyOn::Error,
@@ -121,12 +121,12 @@ fn test_instantiation_duplicate_components() {
             AppComponent {
                 name: "component".to_string(),
                 ado_type: "cw721".to_string(),
-                component_type: ComponentType::New(to_binary(&true).unwrap()),
+                component_type: ComponentType::New(to_json_binary(&true).unwrap()),
             },
             AppComponent {
                 name: "component".to_string(),
                 ado_type: "cw20".to_string(),
-                component_type: ComponentType::New(to_binary(&true).unwrap()),
+                component_type: ComponentType::New(to_json_binary(&true).unwrap()),
             },
         ],
         name: String::from("Some App"),
@@ -160,7 +160,7 @@ fn test_add_app_component_unauthorized() {
         component: AppComponent {
             name: "token".to_string(),
             ado_type: "cw721".to_string(),
-            component_type: ComponentType::New(to_binary(&true).unwrap()),
+            component_type: ComponentType::New(to_json_binary(&true).unwrap()),
         },
     };
 
@@ -177,7 +177,7 @@ fn test_add_app_component_duplicate_name() {
         app_components: vec![AppComponent {
             name: "token".to_string(),
             ado_type: "cw721".to_string(),
-            component_type: ComponentType::New(to_binary(&true).unwrap()),
+            component_type: ComponentType::New(to_json_binary(&true).unwrap()),
         }],
         name: String::from("Some App"),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
@@ -198,7 +198,7 @@ fn test_add_app_component_duplicate_name() {
         component: AppComponent {
             name: "token".to_string(),
             ado_type: "cw721".to_string(),
-            component_type: ComponentType::New(to_binary(&true).unwrap()),
+            component_type: ComponentType::New(to_json_binary(&true).unwrap()),
         },
     };
 
@@ -225,7 +225,7 @@ fn test_add_app_component() {
         component: AppComponent {
             name: "token".to_string(),
             ado_type: "cw721".to_string(),
-            component_type: ComponentType::New(to_binary(&true).unwrap()),
+            component_type: ComponentType::New(to_json_binary(&true).unwrap()),
         },
     };
 
@@ -235,7 +235,7 @@ fn test_add_app_component() {
         id: 1,
         msg: CosmosMsg::Wasm(WasmMsg::Instantiate {
             code_id: 1,
-            msg: to_binary(&true).unwrap(),
+            msg: to_json_binary(&true).unwrap(),
             funds: vec![],
             label: "Instantiate: cw721".to_string(),
             admin: Some("creator".to_string()),
@@ -307,7 +307,7 @@ fn test_claim_ownership_not_found() {
     let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
     assert_eq!(
         ContractError::Std(StdError::NotFound {
-            kind: "cosmwasm_std::addresses::Addr".to_string()
+            kind: "type: cosmwasm_std::addresses::Addr; key: [00, 0D, 61, 64, 6F, 5F, 61, 64, 64, 72, 65, 73, 73, 65, 73, 74, 6F, 6B, 65, 6E]".to_string()
         }),
         err
     );
@@ -416,7 +416,7 @@ fn test_claim_ownership() {
         id: 200,
         msg: CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: "tokenaddress".to_string(),
-            msg: to_binary(&AndromedaMsg::Ownership(OwnershipMessage::UpdateOwner {
+            msg: to_json_binary(&AndromedaMsg::Ownership(OwnershipMessage::UpdateOwner {
                 new_owner: Addr::unchecked("creator"),
                 expiration: None,
             }))
@@ -451,7 +451,7 @@ fn test_proxy_message_unauth() {
     let unauth_info = mock_info("anyone", &[]);
     let msg = ExecuteMsg::ProxyMessage {
         name: "token".to_string(),
-        msg: to_binary(&true).unwrap(),
+        msg: to_json_binary(&true).unwrap(),
     };
 
     let err = execute(deps.as_mut(), env, unauth_info, msg).unwrap_err();
@@ -475,13 +475,13 @@ fn test_proxy_message_not_found() {
 
     let msg = ExecuteMsg::ProxyMessage {
         name: "token".to_string(),
-        msg: to_binary(&true).unwrap(),
+        msg: to_json_binary(&true).unwrap(),
     };
 
     let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
     assert_eq!(
         ContractError::Std(StdError::NotFound {
-            kind: "cosmwasm_std::addresses::Addr".to_string()
+            kind: "type: cosmwasm_std::addresses::Addr; key: [00, 0D, 61, 64, 6F, 5F, 61, 64, 64, 72, 65, 73, 73, 65, 73, 74, 6F, 6B, 65, 6E]".to_string()
         }),
         err
     );
@@ -510,7 +510,7 @@ fn test_proxy_message() {
 
     let msg = ExecuteMsg::ProxyMessage {
         name: "token".to_string(),
-        msg: to_binary(&true).unwrap(),
+        msg: to_json_binary(&true).unwrap(),
     };
 
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
@@ -519,7 +519,7 @@ fn test_proxy_message() {
         id: 102,
         msg: CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: "tokenaddress".to_string(),
-            msg: to_binary(&true).unwrap(),
+            msg: to_json_binary(&true).unwrap(),
             funds: vec![],
         }),
         reply_on: ReplyOn::Error,
@@ -590,7 +590,7 @@ fn test_update_address_not_found() {
     let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
     assert_eq!(
         ContractError::Std(StdError::NotFound {
-            kind: "cosmwasm_std::addresses::Addr".to_string()
+            kind: "type: cosmwasm_std::addresses::Addr; key: [00, 0D, 61, 64, 6F, 5F, 61, 64, 64, 72, 65, 73, 73, 65, 73, 74, 6F, 6B, 65, 6E]".to_string()
         }),
         err
     );
@@ -658,7 +658,7 @@ fn test_add_app_component_limit() {
         component: AppComponent {
             name: "token".to_string(),
             ado_type: "cw721".to_string(),
-            component_type: ComponentType::New(to_binary(&true).unwrap()),
+            component_type: ComponentType::New(to_json_binary(&true).unwrap()),
         },
     };
 
@@ -674,7 +674,7 @@ fn test_add_app_component_limit() {
 //     let mock_app_component = AppComponent {
 //         ado_type: "cw721".to_string(),
 //         name: "token".to_string(),
-//         instantiate_msg: to_binary(&true).unwrap(),
+//         instantiate_msg: to_json_binary(&true).unwrap(),
 //     };
 //     let component_idx = 1;
 //     ADO_DESCRIPTORS
@@ -691,7 +691,7 @@ fn test_reply_assign_app() {
     let mock_app_component = AppComponent {
         ado_type: "cw721".to_string(),
         name: "token".to_string(),
-        component_type: ComponentType::New(to_binary(&true).unwrap()),
+        component_type: ComponentType::New(to_json_binary(&true).unwrap()),
     };
     let component_idx = 1;
     ADO_DESCRIPTORS
@@ -733,7 +733,7 @@ fn test_reply_assign_app() {
     //     id: 103,
     //     msg: CosmosMsg::Wasm(WasmMsg::Execute {
     //         contract_addr: "tokenaddress".to_string(),
-    //         msg: to_binary(&AndromedaMsg::UpdateAppContract {
+    //         msg: to_json_binary(&AndromedaMsg::UpdateAppContract {
     //             address: env.contract.address.to_string(),
     //         })
     //         .unwrap(),
@@ -746,7 +746,7 @@ fn test_reply_assign_app() {
         id: 202,
         msg: CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: "vfs_contract".to_string(),
-            msg: to_binary(&VFSExecuteMsg::AddPath {
+            msg: to_json_binary(&VFSExecuteMsg::AddPath {
                 address: env.contract.address,
                 name: "token".to_string(),
                 parent_address: None,

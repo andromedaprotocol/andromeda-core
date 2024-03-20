@@ -4,7 +4,7 @@ use andromeda_std::{
     error::ContractError, os::aos_querier::AOSQuerier,
 };
 use cosmwasm_std::{
-    from_binary, wasm_execute, Coin, Decimal, Reply, StdError, SubMsg, SubMsgResponse, SubMsgResult,
+    from_json, wasm_execute, Coin, Decimal, Reply, StdError, SubMsg, SubMsgResponse, SubMsgResult,
 };
 use serde::de::DeserializeOwned;
 
@@ -23,7 +23,7 @@ pub(crate) fn parse_swap_reply<T: DeserializeOwned>(msg: Reply) -> Result<T, Con
     let parsed = cw_utils::parse_execute_response_data(&b).map_err(|_e| {
         ContractError::Std(StdError::generic_err("failed to parse swaprouter response"))
     })?;
-    let swap_response: T = from_binary(&parsed.data.unwrap_or_default())?;
+    let swap_response: T = from_json(parsed.data.unwrap_or_default())?;
     Ok(swap_response)
 }
 

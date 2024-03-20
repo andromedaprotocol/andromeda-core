@@ -1,8 +1,8 @@
 #[cfg(not(feature = "imported"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, ensure, from_binary, has_coins, to_binary, Api, BankMsg, Binary, Coin, CosmosMsg, Deps,
-    DepsMut, Empty, Env, MessageInfo, QuerierWrapper, Response, SubMsg, Uint128,
+    attr, ensure, from_json, has_coins, to_json_binary, Api, BankMsg, Binary, Coin, CosmosMsg,
+    Deps, DepsMut, Empty, Env, MessageInfo, QuerierWrapper, Response, SubMsg, Uint128,
 };
 
 use crate::state::{
@@ -158,9 +158,9 @@ fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Cont
             msg,
         } => execute_send_nft(ctx, token_id, contract, msg),
         _ => {
-            let serialized = to_binary(&msg)?;
+            let serialized = to_json_binary(&msg)?;
 
-            match from_binary::<AndromedaMsg>(&serialized) {
+            match from_json::<AndromedaMsg>(&serialized) {
                 Ok(msg) => contract.execute(ctx, msg),
                 Err(_) => execute_cw721(ctx, msg.into()),
             }
@@ -495,14 +495,16 @@ fn execute_send_nft(
 #[cfg_attr(not(feature = "imported"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
-        QueryMsg::IsArchived { token_id } => Ok(to_binary(&is_archived(deps.storage, &token_id)?)?),
-        QueryMsg::TransferAgreement { token_id } => {
-            Ok(to_binary(&query_transfer_agreement(deps, token_id)?)?)
+        QueryMsg::IsArchived { token_id } => {
+            Ok(to_json_binary(&is_archived(deps.storage, &token_id)?)?)
         }
-        QueryMsg::Minter {} => Ok(to_binary(&query_minter(deps)?)?),
+        QueryMsg::TransferAgreement { token_id } => {
+            Ok(to_json_binary(&query_transfer_agreement(deps, token_id)?)?)
+        }
+        QueryMsg::Minter {} => Ok(to_json_binary(&query_minter(deps)?)?),
         _ => {
-            let serialized = to_binary(&msg)?;
-            match from_binary::<AndromedaQuery>(&serialized) {
+            let serialized = to_json_binary(&msg)?;
+            match from_json::<AndromedaQuery>(&serialized) {
                 Ok(msg) => ADOContract::default().query(deps, env, msg),
                 _ => Ok(AndrCW721Contract::default().query(deps, env, msg.into())?),
             }

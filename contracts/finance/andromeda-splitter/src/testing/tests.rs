@@ -7,9 +7,9 @@ use andromeda_std::{
 };
 
 use cosmwasm_std::{
-    attr, from_binary,
+    attr, from_json,
     testing::{mock_env, mock_info, MOCK_CONTRACT_ADDR},
-    to_binary, BankMsg, Coin, CosmosMsg, Decimal, DepsMut, Response, SubMsg, Timestamp,
+    to_json_binary, BankMsg, Coin, CosmosMsg, Decimal, DepsMut, Response, SubMsg, Timestamp,
 };
 use cw_utils::Expiration;
 pub const OWNER: &str = "creator";
@@ -318,7 +318,7 @@ fn test_handle_packet_exit_with_error_true() {
         "cosmos2contract",
         vec![AMPMsg::new(
             recip_address1,
-            to_binary(&ExecuteMsg::Send {}).unwrap(),
+            to_json_binary(&ExecuteMsg::Send {}).unwrap(),
             Some(vec![Coin::new(0, "uluna")]),
         )],
     );
@@ -354,7 +354,7 @@ fn test_query_splitter() {
 
     let query_msg = QueryMsg::GetSplitterConfig {};
     let res = query(deps.as_ref(), env, query_msg).unwrap();
-    let val: GetSplitterConfigResponse = from_binary(&res).unwrap();
+    let val: GetSplitterConfigResponse = from_json(res).unwrap();
 
     assert_eq!(val.config, splitter);
 }

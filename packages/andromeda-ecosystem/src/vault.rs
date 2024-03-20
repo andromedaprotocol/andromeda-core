@@ -4,7 +4,7 @@ use andromeda_std::{ado_base::withdraw::Withdrawal, error::ContractError};
 use andromeda_std::{andr_exec, andr_instantiate, andr_query};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{
-    to_binary, wasm_execute, Binary, Coin, CosmosMsg, ReplyOn, Storage, SubMsg, Uint128,
+    to_json_binary, wasm_execute, Binary, Coin, CosmosMsg, ReplyOn, Storage, SubMsg, Uint128,
 };
 use cw_storage_plus::Map;
 
@@ -79,8 +79,8 @@ pub struct DepositMsg {
 }
 
 impl DepositMsg {
-    pub fn to_binary(&self) -> Result<Binary, ContractError> {
-        Ok(to_binary(self)?)
+    pub fn to_json_binary(&self) -> Result<Binary, ContractError> {
+        Ok(to_json_binary(self)?)
     }
 
     pub fn with_amount(&mut self, amount: Coin) -> &mut Self {

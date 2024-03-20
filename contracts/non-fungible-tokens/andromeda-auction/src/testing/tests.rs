@@ -20,7 +20,7 @@ use andromeda_std::{
     testing::mock_querier::MOCK_KERNEL_CONTRACT,
 };
 use cosmwasm_std::{
-    attr, coin, coins, from_binary,
+    attr, coin, coins, from_json,
     testing::{mock_dependencies, mock_env, mock_info},
     Addr, BankMsg, CosmosMsg, Deps, DepsMut, Env, Response, Timestamp, Uint128, WasmMsg,
 };
@@ -47,7 +47,7 @@ fn query_latest_auction_state_helper(deps: Deps, env: Env) -> AuctionStateRespon
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
         token_address: MOCK_TOKEN_ADDR.to_owned(),
     };
-    from_binary(&query(deps, env, query_msg).unwrap()).unwrap()
+    from_json(query(deps, env, query_msg).unwrap()).unwrap()
 }
 
 fn start_auction(deps: DepsMut, whitelist: Option<Vec<Addr>>, min_bid: Option<Uint128>) {

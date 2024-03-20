@@ -11,8 +11,8 @@ use andromeda_std::{
 };
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    ensure, from_binary, to_binary, Addr, Api, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
-    Response, StdResult, Storage, SubMsg, Uint128, WasmMsg,
+    ensure, from_json, to_json_binary, Addr, Api, Binary, CosmosMsg, Deps, DepsMut, Env,
+    MessageInfo, Response, StdResult, Storage, SubMsg, Uint128, WasmMsg,
 };
 
 use cw2::{get_contract_version, set_contract_version};
@@ -105,7 +105,7 @@ pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
         ExecuteMsg::Mint { recipient, amount } => execute_mint(ctx, recipient, amount),
         _ => {
             let serialized = encode_binary(&msg)?;
-            match from_binary::<AndromedaMsg>(&serialized) {
+            match from_json::<AndromedaMsg>(&serialized) {
                 Ok(msg) => ADOContract::default().execute(ctx, msg),
                 _ => Ok(execute_cw20(ctx.deps, ctx.env, ctx.info, msg.into())?),
             }
@@ -129,7 +129,7 @@ fn execute_transfer(
             address: env.contract.address.to_string(),
             amount,
         }),
-        to_binary(&ExecuteMsg::Transfer {
+        to_json_binary(&ExecuteMsg::Transfer {
             amount,
             recipient: recipient.clone(),
         })?,
@@ -209,7 +209,7 @@ fn execute_send(
             address: env.contract.address.to_string(),
             amount,
         }),
-        to_binary(&ExecuteMsg::Send {
+        to_json_binary(&ExecuteMsg::Send {
             amount,
             contract: contract.clone(),
             msg: msg.clone(),
@@ -271,7 +271,7 @@ fn filter_out_cw20_messages(
         if let CosmosMsg::Wasm(WasmMsg::Execute { msg: exec_msg, .. }) = sub_msg.msg.clone() {
             // If binary deserializes to a Cw20ExecuteMsg check the message type
             if let Ok(Cw20ExecuteMsg::Transfer { recipient, amount }) =
-                from_binary::<Cw20ExecuteMsg>(&exec_msg)
+                from_json::<Cw20ExecuteMsg>(&exec_msg)
             {
                 transfer_tokens(storage, sender, &api.addr_validate(&recipient)?, amount)?;
             } else {
@@ -315,8 +315,8 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
-    let serialized = to_binary(&msg)?;
-    match from_binary::<AndromedaQuery>(&serialized) {
+    let serialized = to_json_binary(&msg)?;
+    match from_json::<AndromedaQuery>(&serialized) {
         Ok(msg) => ADOContract::default().query(deps, env, msg),
         _ => Ok(cw20_query(deps, env, msg.into())?),
     }

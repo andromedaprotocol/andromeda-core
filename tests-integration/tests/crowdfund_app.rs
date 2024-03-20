@@ -22,7 +22,7 @@ use andromeda_std::ado_base::modules::Module;
 use std::str::FromStr;
 
 use andromeda_testing::mock::MockAndromeda;
-use cosmwasm_std::{coin, to_binary, Addr, BlockInfo, Decimal, Uint128};
+use cosmwasm_std::{coin, to_json_binary, Addr, BlockInfo, Decimal, Uint128};
 use cw721::{Expiration, OwnerOfResponse};
 use cw_multi_test::{App, Executor};
 
@@ -128,7 +128,7 @@ fn test_crowdfund_app() {
     let crowdfund_app_component = AppComponent {
         name: "crowdfund".to_string(),
         ado_type: "crowdfund".to_string(),
-        component_type: ComponentType::New(to_binary(&crowdfund_init_msg).unwrap()),
+        component_type: ComponentType::New(to_json_binary(&crowdfund_init_msg).unwrap()),
     };
 
     let cw721_init_msg = mock_cw721_instantiate_msg(

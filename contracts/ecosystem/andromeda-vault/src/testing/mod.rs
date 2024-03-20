@@ -15,9 +15,9 @@ use andromeda_std::{
 };
 use cosmwasm_std::attr;
 use cosmwasm_std::{
-    coin, from_binary,
+    coin, from_json,
     testing::{mock_env, mock_info},
-    to_binary, Addr, BankMsg, Coin, CosmosMsg, Decimal, DepsMut, Env, MessageInfo, ReplyOn,
+    to_json_binary, Addr, BankMsg, Coin, CosmosMsg, Decimal, DepsMut, Env, MessageInfo, ReplyOn,
     Response, SubMsg, Uint128, WasmMsg,
 };
 
@@ -150,7 +150,7 @@ fn test_deposit_insufficient_funds() {
         msg: Some(
             DepositMsg::default()
                 .with_amount(coin(0u128, "uusd"))
-                .to_binary()
+                .to_json_binary()
                 .unwrap(),
         ),
     };
@@ -163,7 +163,7 @@ fn test_deposit_insufficient_funds() {
         msg: Some(
             DepositMsg::default()
                 .with_amount(coin(150u128, "uusd"))
-                .to_binary()
+                .to_json_binary()
                 .unwrap(),
         ),
     };
@@ -206,7 +206,7 @@ fn test_deposit_strategy() {
         msg: Some(
             DepositMsg::default()
                 .with_strategy(yield_strategy.strategy_type.clone())
-                .to_binary()
+                .to_json_binary()
                 .unwrap(),
         ),
     };
@@ -274,7 +274,7 @@ fn test_deposit_strategy_partial_amount() {
             DepositMsg::default()
                 .with_amount(coin(100, sent_funds.denom.clone()))
                 .with_strategy(yield_strategy.strategy_type.clone())
-                .to_binary()
+                .to_json_binary()
                 .unwrap(),
         ),
     };
@@ -317,7 +317,7 @@ fn test_deposit_strategy_empty_funds_non_empty_amount() {
         msg: Some(
             DepositMsg::default()
                 .with_amount(coin(100, "uusd"))
-                .to_binary()
+                .to_json_binary()
                 .unwrap(),
         ),
     };
@@ -361,7 +361,7 @@ fn test_deposit_strategy_insufficient_partial_amount() {
             DepositMsg::default()
                 .with_amount(coin(100, sent_funds.denom.clone()))
                 .with_strategy(yield_strategy.strategy_type)
-                .to_binary()
+                .to_json_binary()
                 .unwrap(),
         ),
     };
@@ -736,7 +736,7 @@ fn test_withdraw_single_strategy() {
     };
 
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
-    let withdraw_exec = to_binary(&ExecuteMsg::Withdraw {
+    let withdraw_exec = to_json_binary(&ExecuteMsg::Withdraw {
         recipient: Some(Recipient::from_string("depositor")),
         tokens_to_withdraw: Some(withdrawals),
     })
@@ -811,7 +811,7 @@ fn test_query_local_balance() {
     };
 
     let resp = query(deps.as_ref(), env.clone(), single_query).unwrap();
-    let balance: Vec<Coin> = from_binary(&resp).unwrap();
+    let balance: Vec<Coin> = from_json(resp).unwrap();
     assert_eq!(1, balance.len());
     assert_eq!(balance_one, balance[0]);
 
@@ -822,7 +822,7 @@ fn test_query_local_balance() {
     };
 
     let resp = query(deps.as_ref(), env, multi_query).unwrap();
-    let balance: Vec<Coin> = from_binary(&resp).unwrap();
+    let balance: Vec<Coin> = from_json(resp).unwrap();
     assert_eq!(2, balance.len());
     assert_eq!(balance_one, balance[0]);
     assert_eq!(balance_two, balance[1]);
@@ -849,7 +849,7 @@ fn test_query_strategy_balance() {
     };
 
     let resp = query(deps.as_ref(), env, single_query).unwrap();
-    let balance: PositionResponse = from_binary(&resp).unwrap();
+    let balance: PositionResponse = from_json(resp).unwrap();
     assert_eq!(Uint128::from(10u128), balance.aust_amount);
     assert_eq!(
         "depositor".to_string(),
@@ -879,7 +879,7 @@ fn test_query_strategy_address() {
     };
 
     let resp = query(deps.as_ref(), env, single_query).unwrap();
-    let addr_resp: StrategyAddressResponse = from_binary(&resp).unwrap();
+    let addr_resp: StrategyAddressResponse = from_json(resp).unwrap();
     assert_eq!(
         AndrAddr::from_string(MOCK_ANCHOR_CONTRACT),
         addr_resp.address

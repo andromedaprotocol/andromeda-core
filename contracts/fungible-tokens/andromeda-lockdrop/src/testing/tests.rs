@@ -7,9 +7,9 @@ use andromeda_std::{
     testing::mock_querier::MOCK_KERNEL_CONTRACT,
 };
 use cosmwasm_std::{
-    coin, coins, from_binary,
+    coin, coins, from_json,
     testing::{mock_env, mock_info},
-    to_binary, Addr, BankMsg, Decimal, DepsMut, Response, Uint128, WasmMsg,
+    to_json_binary, Addr, BankMsg, Decimal, DepsMut, Response, Uint128, WasmMsg,
 };
 
 use crate::state::{State, UserInfo, USER_INFO};
@@ -59,7 +59,7 @@ fn test_instantiate() {
 
     let msg = QueryMsg::Config {};
     let config_res: ConfigResponse =
-        from_binary(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
+        from_json(query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
 
     assert_eq!(
         ConfigResponse {
@@ -76,7 +76,7 @@ fn test_instantiate() {
 
     let msg = QueryMsg::State {};
     let state_res: StateResponse =
-        from_binary(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
+        from_json(query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
 
     assert_eq!(
         StateResponse {
@@ -194,7 +194,7 @@ fn test_increase_incentives() {
     let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
         sender: "owner".to_string(),
         amount: Uint128::new(100),
-        msg: to_binary(&Cw20HookMsg::IncreaseIncentives {}).unwrap(),
+        msg: to_json_binary(&Cw20HookMsg::IncreaseIncentives {}).unwrap(),
     });
 
     let info = mock_info(MOCK_INCENTIVE_TOKEN, &[]);
@@ -225,7 +225,7 @@ fn test_increase_incentives_invalid_token() {
     let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
         sender: "owner".to_string(),
         amount: Uint128::new(100),
-        msg: to_binary(&Cw20HookMsg::IncreaseIncentives {}).unwrap(),
+        msg: to_json_binary(&Cw20HookMsg::IncreaseIncentives {}).unwrap(),
     });
 
     let info = mock_info("invalid_token", &[]);
@@ -248,7 +248,7 @@ fn test_increase_incentives_after_phase_ends() {
     let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
         sender: "owner".to_string(),
         amount: Uint128::new(100),
-        msg: to_binary(&Cw20HookMsg::IncreaseIncentives {}).unwrap(),
+        msg: to_json_binary(&Cw20HookMsg::IncreaseIncentives {}).unwrap(),
     });
 
     env.block.time = env
@@ -272,7 +272,7 @@ fn test_increase_incentives_zero_amount() {
     let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
         sender: "owner".to_string(),
         amount: Uint128::zero(),
-        msg: to_binary(&Cw20HookMsg::IncreaseIncentives {}).unwrap(),
+        msg: to_json_binary(&Cw20HookMsg::IncreaseIncentives {}).unwrap(),
     });
 
     let info = mock_info(MOCK_INCENTIVE_TOKEN, &[]);
@@ -795,7 +795,7 @@ fn test_claim_rewards() {
     let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
         sender: "owner".to_string(),
         amount: Uint128::new(100),
-        msg: to_binary(&Cw20HookMsg::IncreaseIncentives {}).unwrap(),
+        msg: to_json_binary(&Cw20HookMsg::IncreaseIncentives {}).unwrap(),
     });
 
     let info = mock_info(MOCK_INCENTIVE_TOKEN, &[]);
@@ -848,7 +848,7 @@ fn test_claim_rewards() {
             .add_message(WasmMsg::Execute {
                 contract_addr: MOCK_INCENTIVE_TOKEN.to_owned(),
                 funds: vec![],
-                msg: to_binary(&Cw20ExecuteMsg::Transfer {
+                msg: to_json_binary(&Cw20ExecuteMsg::Transfer {
                     recipient: "user1".to_string(),
                     amount: Uint128::new(75)
                 })
@@ -861,7 +861,7 @@ fn test_claim_rewards() {
         address: "user1".to_string(),
     };
     let user_res: UserInfoResponse =
-        from_binary(&query(deps.as_ref(), env.clone(), msg).unwrap()).unwrap();
+        from_json(query(deps.as_ref(), env.clone(), msg).unwrap()).unwrap();
 
     assert_eq!(
         UserInfoResponse {
@@ -886,7 +886,7 @@ fn test_claim_rewards() {
             .add_message(WasmMsg::Execute {
                 contract_addr: MOCK_INCENTIVE_TOKEN.to_owned(),
                 funds: vec![],
-                msg: to_binary(&Cw20ExecuteMsg::Transfer {
+                msg: to_json_binary(&Cw20ExecuteMsg::Transfer {
                     recipient: "user2".to_string(),
                     amount: Uint128::new(25)
                 })
@@ -899,7 +899,7 @@ fn test_claim_rewards() {
         address: "user2".to_string(),
     };
     let user_res: UserInfoResponse =
-        from_binary(&query(deps.as_ref(), env.clone(), msg).unwrap()).unwrap();
+        from_json(query(deps.as_ref(), env.clone(), msg).unwrap()).unwrap();
 
     assert_eq!(
         UserInfoResponse {
@@ -935,7 +935,7 @@ fn test_claim_rewards_not_available() {
     let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
         sender: "owner".to_string(),
         amount: Uint128::new(100),
-        msg: to_binary(&Cw20HookMsg::IncreaseIncentives {}).unwrap(),
+        msg: to_json_binary(&Cw20HookMsg::IncreaseIncentives {}).unwrap(),
     });
 
     let info = mock_info(MOCK_INCENTIVE_TOKEN, &[]);
@@ -960,7 +960,7 @@ fn test_query_withdrawable_percent() {
     init(deps.as_mut()).unwrap();
 
     let msg = QueryMsg::WithdrawalPercentAllowed { timestamp: None };
-    let res: Decimal = from_binary(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
+    let res: Decimal = from_json(query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
 
     assert_eq!(Decimal::one(), res);
 
@@ -977,7 +977,7 @@ fn test_query_withdrawable_percent() {
     let msg = QueryMsg::WithdrawalPercentAllowed {
         timestamp: Some(timestamp.seconds()),
     };
-    let res: Decimal = from_binary(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
+    let res: Decimal = from_json(query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
 
     assert_eq!(Decimal::percent(50), res);
 
@@ -988,7 +988,7 @@ fn test_query_withdrawable_percent() {
     let msg = QueryMsg::WithdrawalPercentAllowed {
         timestamp: Some(timestamp.seconds()),
     };
-    let res: Decimal = from_binary(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
+    let res: Decimal = from_json(query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
 
     assert_eq!(Decimal::zero(), res);
 }

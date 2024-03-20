@@ -6,7 +6,7 @@ use andromeda_std::error::{from_semver, ContractError};
 use andromeda_std::os::economics::{Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 #[allow(unused_imports)]
 use cosmwasm_std::{
-    attr, coin, ensure, entry_point, from_binary, to_binary, Addr, BankMsg, Binary, CosmosMsg,
+    attr, coin, ensure, entry_point, from_json, to_json_binary, Addr, BankMsg, Binary, CosmosMsg,
     Deps, DepsMut, Empty, Env, MessageInfo, Response, Storage, SubMsg, Uint128, WasmMsg,
 };
 use cosmwasm_std::{Reply, StdError};
@@ -94,7 +94,7 @@ pub fn cw20_receive(
     let sender = deps.api.addr_validate(&msg.sender)?;
     let amount = msg.amount;
 
-    match from_binary::<Cw20HookMsg>(&msg.msg)? {
+    match from_json::<Cw20HookMsg>(&msg.msg)? {
         Cw20HookMsg::Deposit { address } => {
             execute::cw20_deposit(deps, info, sender, amount, address)
         }
@@ -134,7 +134,7 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::Balance { address, asset } => {
-            Ok(to_binary(&query::balance(deps, address, asset)?)?)
+            Ok(to_json_binary(&query::balance(deps, address, asset)?)?)
         }
         // Base queries
         QueryMsg::Version {} => encode_binary(&ADOContract::default().query_version(deps)?),

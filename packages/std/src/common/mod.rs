@@ -8,7 +8,7 @@ pub mod withdraw;
 
 use crate::error::ContractError;
 use cosmwasm_std::{
-    ensure, from_binary, has_coins, to_binary, BankMsg, Binary, Coin, CosmosMsg, QuerierWrapper,
+    ensure, from_json, has_coins, to_json_binary, BankMsg, Binary, Coin, CosmosMsg, QuerierWrapper,
     SubMsg, Uint128,
 };
 use cw20::Cw20Coin;
@@ -27,7 +27,7 @@ pub fn parse_struct<T>(val: &Binary) -> Result<T, ContractError>
 where
     T: DeserializeOwned,
 {
-    let data_res = from_binary(val);
+    let data_res = from_json(val);
     match data_res {
         Ok(data) => Ok(data),
         Err(err) => Err(ContractError::ParsingError {
@@ -45,7 +45,7 @@ pub fn encode_binary<T>(val: &T) -> Result<Binary, ContractError>
 where
     T: Serialize,
 {
-    match to_binary(val) {
+    match to_json_binary(val) {
         Ok(encoded_val) => Ok(encoded_val),
         Err(err) => Err(err.into()),
     }
@@ -214,7 +214,7 @@ pub fn deduct_funds(coins: &mut [Coin], funds: &Coin) -> Result<(), ContractErro
 
 #[cfg(test)]
 mod test {
-    use cosmwasm_std::{coin, to_binary, Uint128, WasmMsg};
+    use cosmwasm_std::{coin, to_json_binary, Uint128, WasmMsg};
     use cw20::Expiration;
 
     use super::*;
@@ -227,7 +227,7 @@ mod test {
 
     #[test]
     fn test_parse_struct() {
-        let valid_json = to_binary(&TestStruct {
+        let valid_json = to_json_binary(&TestStruct {
             name: "John Doe".to_string(),
             expiration: Expiration::AtHeight(123),
         })
@@ -237,7 +237,7 @@ mod test {
         assert_eq!(test_struct.name, "John Doe");
         assert_eq!(test_struct.expiration, Expiration::AtHeight(123));
 
-        let invalid_json = to_binary("notavalidteststruct").unwrap();
+        let invalid_json = to_json_binary("notavalidteststruct").unwrap();
 
         assert!(parse_struct::<TestStruct>(&invalid_json).is_err())
     }

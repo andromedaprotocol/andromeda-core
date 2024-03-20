@@ -5,9 +5,9 @@ use andromeda_std::testing::mock_querier::MockAndromedaQuerier;
 use cosmwasm_std::testing::mock_info;
 use cosmwasm_std::Response;
 use cosmwasm_std::{
-    from_binary, from_slice,
+    from_json,
     testing::{mock_env, MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
-    to_binary, Binary, Coin, ContractResult, OwnedDeps, Querier, QuerierResult, QueryRequest,
+    to_json_binary, Binary, Coin, ContractResult, OwnedDeps, Querier, QuerierResult, QueryRequest,
     SystemError, SystemResult, WasmQuery,
 };
 
@@ -55,7 +55,7 @@ pub struct WasmMockQuerier {
 impl Querier for WasmMockQuerier {
     fn raw_query(&self, bin_request: &[u8]) -> QuerierResult {
         // MockQuerier doesn't support Custom, so we ignore it completely here
-        let request: QueryRequest<cosmwasm_std::Empty> = match from_slice(bin_request) {
+        let request: QueryRequest<cosmwasm_std::Empty> = match from_json(bin_request) {
             Ok(v) => v,
             Err(e) => {
                 return SystemResult::Err(SystemError::InvalidRequest {
@@ -82,18 +82,20 @@ impl WasmMockQuerier {
     }
 
     fn handle_addresslist_query(&self, msg: &Binary) -> QuerierResult {
-        match from_binary(msg).unwrap() {
+        match from_json(msg).unwrap() {
             HookMsg::AndrHook(hook_msg) => match hook_msg {
                 AndromedaHook::OnExecute { sender, payload: _ } => {
                     let whitelisted_addresses = ["sender"];
                     let response: Response = Response::default();
                     if whitelisted_addresses.contains(&sender.as_str()) {
-                        SystemResult::Ok(ContractResult::Ok(to_binary(&response).unwrap()))
+                        SystemResult::Ok(ContractResult::Ok(to_json_binary(&response).unwrap()))
                     } else {
                         SystemResult::Ok(ContractResult::Err("InvalidAddress".to_string()))
                     }
                 }
-                _ => SystemResult::Ok(ContractResult::Ok(to_binary(&None::<Response>).unwrap())),
+                _ => SystemResult::Ok(ContractResult::Ok(
+                    to_json_binary(&None::<Response>).unwrap(),
+                )),
             },
         }
     }

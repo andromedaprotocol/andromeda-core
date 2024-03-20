@@ -272,7 +272,7 @@ mod tests {
     use crate::testing::mock_querier::{mock_dependencies_custom, MOCK_APP_CONTRACT};
     use cosmwasm_std::{
         testing::{mock_dependencies, mock_info},
-        to_binary, Addr, Coin,
+        to_json_binary, Addr, Coin,
     };
 
     #[test]
@@ -624,7 +624,7 @@ mod tests {
             .module_hook(
                 &deps.as_ref(),
                 AndromedaHook::OnFundsTransfer {
-                    payload: to_binary(&true).unwrap(),
+                    payload: to_json_binary(&true).unwrap(),
                     sender: "sender".to_string(),
                     amount: Funds::Native(Coin::new(100u128, "uandr")),
                 },

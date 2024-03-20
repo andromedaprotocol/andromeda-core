@@ -3,9 +3,10 @@ use andromeda_std::{
     error::ContractError, testing::mock_querier::MOCK_KERNEL_CONTRACT,
 };
 use cosmwasm_std::{
-    coin, coins, from_binary,
+    coin, coins, from_json,
     testing::{mock_dependencies, mock_env, mock_info, MOCK_CONTRACT_ADDR},
-    to_binary, Addr, BankMsg, Decimal, Decimal256, DepsMut, Response, Uint128, Uint256, WasmMsg,
+    to_json_binary, Addr, BankMsg, Decimal, Decimal256, DepsMut, Response, Uint128, Uint256,
+    WasmMsg,
 };
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 
@@ -299,7 +300,7 @@ fn test_receive_cw20_zero_amount() {
     let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
         sender: "sender".to_string(),
         amount: Uint128::zero(),
-        msg: to_binary(&"").unwrap(),
+        msg: to_json_binary(&"").unwrap(),
     });
 
     let info = mock_info(MOCK_STAKING_TOKEN, &[]);
@@ -327,7 +328,7 @@ fn test_stake_unstake_tokens() {
     let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
         sender: "sender".to_string(),
         amount: Uint128::new(100),
-        msg: to_binary(&Cw20HookMsg::StakeTokens {}).unwrap(),
+        msg: to_json_binary(&Cw20HookMsg::StakeTokens {}).unwrap(),
     });
 
     let info = mock_info(MOCK_STAKING_TOKEN, &[]);
@@ -365,7 +366,7 @@ fn test_stake_unstake_tokens() {
     let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
         sender: "other_sender".to_string(),
         amount: Uint128::new(100),
-        msg: to_binary(&Cw20HookMsg::StakeTokens {}).unwrap(),
+        msg: to_json_binary(&Cw20HookMsg::StakeTokens {}).unwrap(),
     });
 
     let info = mock_info(MOCK_STAKING_TOKEN, &[]);
@@ -423,7 +424,7 @@ fn test_stake_unstake_tokens() {
             .add_message(WasmMsg::Execute {
                 contract_addr: MOCK_STAKING_TOKEN.to_owned(),
                 funds: vec![],
-                msg: to_binary(&Cw20ExecuteMsg::Transfer {
+                msg: to_json_binary(&Cw20ExecuteMsg::Transfer {
                     recipient: "sender".to_string(),
                     amount: Uint128::new(200)
                 })
@@ -466,7 +467,7 @@ fn test_stake_unstake_tokens() {
             .add_message(WasmMsg::Execute {
                 contract_addr: MOCK_STAKING_TOKEN.to_owned(),
                 funds: vec![],
-                msg: to_binary(&Cw20ExecuteMsg::Transfer {
+                msg: to_json_binary(&Cw20ExecuteMsg::Transfer {
                     recipient: "other_sender".to_string(),
                     amount: Uint128::new(100)
                 })
@@ -498,7 +499,7 @@ fn test_stake_invalid_token() {
     let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
         sender: "sender".to_string(),
         amount: Uint128::new(100),
-        msg: to_binary(&Cw20HookMsg::StakeTokens {}).unwrap(),
+        msg: to_json_binary(&Cw20HookMsg::StakeTokens {}).unwrap(),
     });
 
     let info = mock_info("invalid_token", &[]);
@@ -817,7 +818,7 @@ fn test_update_global_indexes_cw20_deposit() {
     let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
         sender: "owner".to_string(),
         amount: Uint128::new(20),
-        msg: to_binary(&Cw20HookMsg::UpdateGlobalIndex {}).unwrap(),
+        msg: to_json_binary(&Cw20HookMsg::UpdateGlobalIndex {}).unwrap(),
     });
 
     let info = mock_info(MOCK_INCENTIVE_TOKEN, &[]);
@@ -881,7 +882,7 @@ fn test_claim_rewards() {
     let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
         sender: "user1".to_string(),
         amount: Uint128::new(100),
-        msg: to_binary(&Cw20HookMsg::StakeTokens {}).unwrap(),
+        msg: to_json_binary(&Cw20HookMsg::StakeTokens {}).unwrap(),
     });
 
     let info = mock_info(MOCK_STAKING_TOKEN, &[]);
@@ -895,7 +896,7 @@ fn test_claim_rewards() {
     let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
         sender: "user2".to_string(),
         amount: Uint128::new(100),
-        msg: to_binary(&Cw20HookMsg::StakeTokens {}).unwrap(),
+        msg: to_json_binary(&Cw20HookMsg::StakeTokens {}).unwrap(),
     });
 
     let info = mock_info(MOCK_STAKING_TOKEN, &[]);
@@ -953,7 +954,7 @@ fn test_claim_rewards() {
         limit: None,
     };
     let res: Vec<StakerResponse> =
-        from_binary(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
+        from_json(query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
 
     assert_eq!(
         vec![
@@ -1064,7 +1065,7 @@ fn test_claim_rewards() {
         limit: None,
     };
     let res: Vec<StakerResponse> =
-        from_binary(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
+        from_json(query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
 
     assert_eq!(
         vec![
@@ -1120,7 +1121,7 @@ fn test_claim_rewards_allocated() {
     let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
         sender: "user1".to_string(),
         amount: Uint128::new(100),
-        msg: to_binary(&Cw20HookMsg::StakeTokens {}).unwrap(),
+        msg: to_json_binary(&Cw20HookMsg::StakeTokens {}).unwrap(),
     });
 
     let info = mock_info(MOCK_STAKING_TOKEN, &[]);
@@ -1151,7 +1152,7 @@ fn test_claim_rewards_allocated() {
     let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
         sender: "user2".to_string(),
         amount: Uint128::new(100),
-        msg: to_binary(&Cw20HookMsg::StakeTokens {}).unwrap(),
+        msg: to_json_binary(&Cw20HookMsg::StakeTokens {}).unwrap(),
     });
 
     let info = mock_info(MOCK_STAKING_TOKEN, &[]);
@@ -1185,7 +1186,7 @@ fn test_claim_rewards_allocated() {
             .add_message(WasmMsg::Execute {
                 contract_addr: MOCK_ALLOCATED_TOKEN.to_owned(),
                 funds: vec![],
-                msg: to_binary(&Cw20ExecuteMsg::Transfer {
+                msg: to_json_binary(&Cw20ExecuteMsg::Transfer {
                     recipient: "user1".to_string(),
                     amount: Uint128::new(25)
                 })
@@ -1239,7 +1240,7 @@ fn test_claim_rewards_allocated() {
             .add_message(WasmMsg::Execute {
                 contract_addr: MOCK_ALLOCATED_TOKEN.to_owned(),
                 funds: vec![],
-                msg: to_binary(&Cw20ExecuteMsg::Transfer {
+                msg: to_json_binary(&Cw20ExecuteMsg::Transfer {
                     recipient: "user2".to_string(),
                     amount: Uint128::new(25)
                 })
@@ -1294,7 +1295,7 @@ fn test_claim_rewards_allocated_init_timestamp_in_future() {
     let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
         sender: "user1".to_string(),
         amount: Uint128::new(100),
-        msg: to_binary(&Cw20HookMsg::StakeTokens {}).unwrap(),
+        msg: to_json_binary(&Cw20HookMsg::StakeTokens {}).unwrap(),
     });
 
     let info = mock_info(MOCK_STAKING_TOKEN, &[]);
@@ -1325,7 +1326,7 @@ fn test_claim_rewards_allocated_init_timestamp_in_future() {
     let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
         sender: "user2".to_string(),
         amount: Uint128::new(100),
-        msg: to_binary(&Cw20HookMsg::StakeTokens {}).unwrap(),
+        msg: to_json_binary(&Cw20HookMsg::StakeTokens {}).unwrap(),
     });
 
     let info = mock_info(MOCK_STAKING_TOKEN, &[]);
@@ -1360,7 +1361,7 @@ fn test_claim_rewards_allocated_init_timestamp_in_future() {
             .add_message(WasmMsg::Execute {
                 contract_addr: MOCK_ALLOCATED_TOKEN.to_owned(),
                 funds: vec![],
-                msg: to_binary(&Cw20ExecuteMsg::Transfer {
+                msg: to_json_binary(&Cw20ExecuteMsg::Transfer {
                     recipient: "user1".to_string(),
                     amount: Uint128::new(25)
                 })
@@ -1414,7 +1415,7 @@ fn test_claim_rewards_allocated_init_timestamp_in_future() {
             .add_message(WasmMsg::Execute {
                 contract_addr: MOCK_ALLOCATED_TOKEN.to_owned(),
                 funds: vec![],
-                msg: to_binary(&Cw20ExecuteMsg::Transfer {
+                msg: to_json_binary(&Cw20ExecuteMsg::Transfer {
                     recipient: "user2".to_string(),
                     amount: Uint128::new(25)
                 })
@@ -1481,7 +1482,7 @@ fn test_stake_rewards_update() {
     let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
         sender: "user1".to_string(),
         amount: Uint128::new(100),
-        msg: to_binary(&Cw20HookMsg::StakeTokens {}).unwrap(),
+        msg: to_json_binary(&Cw20HookMsg::StakeTokens {}).unwrap(),
     });
 
     let info = mock_info(MOCK_STAKING_TOKEN, &[]);
@@ -1518,8 +1519,7 @@ fn test_stake_rewards_update() {
     let mut env = mock_env();
     env.block.time = env.block.time.plus_seconds(50);
 
-    let res: StakerResponse =
-        from_binary(&query(deps.as_ref(), env.clone(), msg).unwrap()).unwrap();
+    let res: StakerResponse = from_json(query(deps.as_ref(), env.clone(), msg).unwrap()).unwrap();
 
     assert_eq!(
         StakerResponse {
@@ -1556,7 +1556,7 @@ fn test_stake_rewards_update() {
     let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
         sender: "user1".to_string(),
         amount: Uint128::new(50),
-        msg: to_binary(&Cw20HookMsg::StakeTokens {}).unwrap(),
+        msg: to_json_binary(&Cw20HookMsg::StakeTokens {}).unwrap(),
     });
 
     let info = mock_info(MOCK_STAKING_TOKEN, &[]);
@@ -1664,7 +1664,7 @@ fn test_unstake_rewards_update() {
     let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
         sender: "user1".to_string(),
         amount: Uint128::new(100),
-        msg: to_binary(&Cw20HookMsg::StakeTokens {}).unwrap(),
+        msg: to_json_binary(&Cw20HookMsg::StakeTokens {}).unwrap(),
     });
 
     let info = mock_info(MOCK_STAKING_TOKEN, &[]);

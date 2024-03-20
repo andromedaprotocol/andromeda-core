@@ -5,7 +5,7 @@ use crate::os::aos_querier::AOSQuerier;
 use crate::os::{kernel::ExecuteMsg as KernelExecuteMsg, kernel::QueryMsg as KernelQueryMsg};
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
-    to_binary, wasm_execute, Addr, Binary, Coin, ContractInfoResponse, CosmosMsg, Deps, Empty,
+    to_json_binary, wasm_execute, Addr, Binary, Coin, ContractInfoResponse, CosmosMsg, Deps, Empty,
     MessageInfo, QueryRequest, ReplyOn, SubMsg, WasmMsg, WasmQuery,
 };
 
@@ -137,7 +137,7 @@ impl AMPMsg {
     ) -> Result<SubMsg, ContractError> {
         let contract_addr = self.recipient.get_raw_address(deps)?;
         let pkt = AMPPkt::new(origin, previous_sender, vec![self.clone()]);
-        let msg = to_binary(&ExecuteMsg::AMPReceive(pkt))?;
+        let msg = to_json_binary(&ExecuteMsg::AMPReceive(pkt))?;
         Ok(SubMsg {
             id,
             reply_on: self.config.reply_on.clone(),
@@ -309,7 +309,7 @@ impl AMPPkt {
             let adodb_address: Addr =
                 deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
                     contract_addr: kernel_address.to_string(),
-                    msg: to_binary(&KernelQueryMsg::KeyAddress {
+                    msg: to_json_binary(&KernelQueryMsg::KeyAddress {
                         key: ADO_DB_KEY.to_string(),
                     })?,
                 }))?;
@@ -442,7 +442,7 @@ mod tests {
             sub_msg.msg,
             CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: "test".to_string(),
-                msg: to_binary(&expected_msg).unwrap(),
+                msg: to_json_binary(&expected_msg).unwrap(),
                 funds: vec![],
             })
         );
@@ -526,7 +526,7 @@ mod tests {
             sub_msg.msg,
             CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: "kernel".to_string(),
-                msg: to_binary(&expected_msg).unwrap(),
+                msg: to_json_binary(&expected_msg).unwrap(),
                 funds: vec![],
             })
         );

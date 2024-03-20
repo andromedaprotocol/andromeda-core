@@ -19,9 +19,9 @@ use andromeda_std::{
 use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
 
 use cosmwasm_std::{
-    attr, coins, ensure, entry_point, from_binary, Addr, BankMsg, Binary, BlockInfo, Coin,
-    CosmosMsg, Deps, DepsMut, Env, MessageInfo, QuerierWrapper, QueryRequest, Response, Storage,
-    SubMsg, Uint128, WasmMsg, WasmQuery,
+    attr, coins, ensure, entry_point, from_json, Addr, BankMsg, Binary, BlockInfo, Coin, CosmosMsg,
+    Deps, DepsMut, Env, MessageInfo, QuerierWrapper, QueryRequest, Response, Storage, SubMsg,
+    Uint128, WasmMsg, WasmQuery,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, Cw721ReceiveMsg, Expiration, OwnerOfResponse};
@@ -161,7 +161,7 @@ fn handle_receive_cw721(
         SEND_NFT_ACTION,
         ctx.info.sender.clone(),
     )?;
-    match from_binary(&msg.msg)? {
+    match from_json(&msg.msg)? {
         Cw721HookMsg::StartAuction {
             start_time,
             duration,

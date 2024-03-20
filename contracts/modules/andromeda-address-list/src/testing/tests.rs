@@ -9,7 +9,7 @@ use andromeda_std::ado_base::hooks::AndromedaHook;
 use andromeda_std::common::encode_binary;
 use andromeda_std::error::ContractError;
 
-use cosmwasm_std::{attr, from_binary, DepsMut, MessageInfo, StdError};
+use cosmwasm_std::{attr, from_json, DepsMut, MessageInfo, StdError};
 use cosmwasm_std::{
     testing::{mock_env, mock_info},
     Response,
@@ -196,8 +196,7 @@ fn test_execute_hook_whitelist() {
         payload: encode_binary(&"".to_string()).unwrap(),
     });
 
-    let res: Option<Response> =
-        from_binary(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
+    let res: Option<Response> = from_json(query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
     assert_eq!(None, res);
 
     let msg = QueryMsg::AndrHook(AndromedaHook::OnExecute {
@@ -233,8 +232,7 @@ fn test_execute_hook_blacklist() {
         payload: encode_binary(&"".to_string()).unwrap(),
     });
 
-    let res: Option<Response> =
-        from_binary(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
+    let res: Option<Response> = from_json(query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
     assert_eq!(None, res);
 
     let msg = QueryMsg::AndrHook(AndromedaHook::OnExecute {
@@ -261,7 +259,7 @@ fn test_andr_get_query() {
     };
 
     let res: IncludesAddressResponse =
-        from_binary(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
+        from_json(query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
 
     assert_eq!(IncludesAddressResponse { included: true }, res);
 }

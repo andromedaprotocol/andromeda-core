@@ -11,7 +11,8 @@ use andromeda_std::{
     os::kernel::ExecuteMsg as KernelExecuteMsg,
 };
 use cosmwasm_std::{
-    ensure, to_binary, Addr, Coin, CosmosMsg, DepsMut, Order, ReplyOn, Storage, SubMsg, WasmMsg,
+    ensure, to_json_binary, Addr, Coin, CosmosMsg, DepsMut, Order, ReplyOn, Storage, SubMsg,
+    WasmMsg,
 };
 use cw_storage_plus::{Bound, Item, Map};
 
@@ -80,7 +81,7 @@ pub fn load_component_descriptors(
 }
 
 pub fn generate_ownership_message(addr: Addr, owner: &str) -> Result<SubMsg, ContractError> {
-    let msg = to_binary(&AndromedaMsg::Ownership(OwnershipMessage::UpdateOwner {
+    let msg = to_json_binary(&AndromedaMsg::Ownership(OwnershipMessage::UpdateOwner {
         new_owner: Addr::unchecked(owner),
         expiration: None,
     }))?;
@@ -97,7 +98,7 @@ pub fn generate_ownership_message(addr: Addr, owner: &str) -> Result<SubMsg, Con
 }
 
 pub fn generate_assign_app_message(addr: &Addr, app_addr: &str) -> Result<SubMsg, ContractError> {
-    let msg = to_binary(&AndromedaMsg::UpdateAppContract {
+    let msg = to_json_binary(&AndromedaMsg::UpdateAppContract {
         address: app_addr.to_string(),
     })?;
     Ok(SubMsg {
@@ -203,14 +204,14 @@ pub fn create_cross_chain_message(
 
     let kernel_msg = KernelExecuteMsg::Create {
         ado_type: "app-contract".to_string(),
-        msg: to_binary(&msg)?,
+        msg: to_json_binary(&msg)?,
         owner: Some(AndrAddr::from_string(target_chain_info.owner)),
         chain: Some(target_chain_info.chain_name),
     };
 
     let cosmos_msg = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: kernel_address.to_string(),
-        msg: to_binary(&kernel_msg)?,
+        msg: to_json_binary(&kernel_msg)?,
         funds: vec![],
     });
     let sub_msg = SubMsg {
@@ -226,7 +227,7 @@ pub fn create_cross_chain_message(
 #[cfg(test)]
 mod test {
     use andromeda_std::testing::mock_querier::mock_dependencies_custom;
-    use cosmwasm_std::from_binary;
+    use cosmwasm_std::from_json;
 
     use super::*;
 
@@ -251,7 +252,7 @@ mod test {
                 ado_type: "test_ado".to_string(),
                 component_type: ComponentType::CrossChain(CrossChainComponent {
                     chain: target_chain.clone(),
-                    instantiate_msg: to_binary(&"test_instantiate").unwrap(),
+                    instantiate_msg: to_json_binary(&"test_instantiate").unwrap(),
                 }),
             },
             AppComponent {
@@ -259,20 +260,20 @@ mod test {
                 ado_type: "test_ado".to_string(),
                 component_type: ComponentType::CrossChain(CrossChainComponent {
                     chain: second_chain_info.chain_name.clone(),
-                    instantiate_msg: to_binary(&"test_instantiate").unwrap(),
+                    instantiate_msg: to_json_binary(&"test_instantiate").unwrap(),
                 }),
             },
             AppComponent {
                 name: "test_component".to_string(),
                 ado_type: "test_ado".to_string(),
-                component_type: ComponentType::New(to_binary(&"test_instantiate").unwrap()),
+                component_type: ComponentType::New(to_json_binary(&"test_instantiate").unwrap()),
             },
         ];
         let expected_components = vec![
             AppComponent {
                 name: "test_component".to_string(),
                 ado_type: "test_ado".to_string(),
-                component_type: ComponentType::New(to_binary(&"test_instantiate").unwrap()),
+                component_type: ComponentType::New(to_json_binary(&"test_instantiate").unwrap()),
             },
             AppComponent {
                 name: "test_component".to_string(),
@@ -308,7 +309,7 @@ mod test {
             CosmosMsg::Wasm(WasmMsg::Execute { msg, .. }) => msg,
             _ => panic!("Wrong message type"),
         };
-        match from_binary(&msg).unwrap() {
+        match from_json(msg).unwrap() {
             KernelExecuteMsg::Create {
                 ado_type,
                 msg,
@@ -318,7 +319,7 @@ mod test {
                 assert_eq!(ado_type, "app-contract");
                 assert_eq!(owner, Some(AndrAddr::from_string(target_owner.clone())));
                 assert_eq!(chain, Some(target_chain));
-                let msg: InstantiateMsg = from_binary(&msg).unwrap();
+                let msg: InstantiateMsg = from_json(msg).unwrap();
                 assert_eq!(msg.name, app_name);
                 assert_eq!(msg.owner, Some(target_owner));
                 assert_eq!(msg.chain_info, None);
