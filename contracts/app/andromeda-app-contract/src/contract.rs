@@ -17,8 +17,8 @@ use andromeda_std::{
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    ensure, to_json_binary, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Reply, Response,
-    StdError, SubMsg, WasmMsg,
+    ensure, to_json_binary, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Reply,
+    Response, StdError, SubMsg, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
 
