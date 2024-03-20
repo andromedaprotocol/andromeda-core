@@ -80,6 +80,14 @@ impl Milliseconds {
         self.0 += seconds * 1000;
     }
 
+    pub fn subtract_seconds(&mut self, seconds: u64) {
+        if seconds > self.0 / 1000 {
+            panic!("Overflow: Cannot subtract seconds from milliseconds")
+        }
+
+        self.0 -= seconds * 1000;
+    }
+
     pub fn plus_seconds(self, seconds: u64) -> Milliseconds {
         Milliseconds(self.0 + seconds * 1000)
     }
