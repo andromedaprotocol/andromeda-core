@@ -104,6 +104,10 @@ pub fn validate_recipient_list(
 
     for rec in recipients {
         percent_sum = percent_sum.checked_add(rec.percent)?;
+        ensure!(
+            percent_sum <= Decimal::one(),
+            ContractError::AmountExceededHundredPrecent {}
+        );
 
         let recipient_address = rec.recipient.address.get_raw_address(&deps)?;
         ensure!(
@@ -112,11 +116,6 @@ pub fn validate_recipient_list(
         );
         recipient_address_set.insert(recipient_address);
     }
-
-    ensure!(
-        percent_sum <= Decimal::one(),
-        ContractError::AmountExceededHundredPrecent {}
-    );
 
     Ok(())
 }
