@@ -1,8 +1,10 @@
+use std::collections::HashSet;
+
 use andromeda_std::{
     amp::recipient::Recipient, andr_exec, andr_instantiate, andr_query, error::ContractError,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{ensure, Decimal, ReplyOn};
+use cosmwasm_std::{ensure, Decimal, Deps, ReplyOn};
 use cw_utils::Expiration;
 
 #[cw_serde]
@@ -36,9 +38,8 @@ pub struct InstantiateMsg {
 }
 
 impl InstantiateMsg {
-    pub fn validate(&self) -> Result<bool, ContractError> {
-        validate_recipient_list(self.recipients.clone())?;
-        Ok(true)
+    pub fn validate(&self, deps: Deps) -> Result<(), ContractError> {
+        validate_recipient_list(deps, self.recipients.clone())
     }
 }
 
@@ -81,55 +82,98 @@ pub struct GetSplitterConfigResponse {
 /// Ensures that a given list of recipients for a `splitter` contract is valid:
 ///
 /// * Must include at least one recipient
+/// * The number of recipients must not exceed 100
 /// * The combined percentage of the recipients must not exceed 100
-pub fn validate_recipient_list(recipients: Vec<AddressPercent>) -> Result<bool, ContractError> {
+/// * The recipient addresses must be unique
+pub fn validate_recipient_list(
+    deps: Deps,
+    recipients: Vec<AddressPercent>,
+) -> Result<(), ContractError> {
     ensure!(
         !recipients.is_empty(),
         ContractError::EmptyRecipientsList {}
     );
 
-    let mut percent_sum: Decimal = Decimal::zero();
-    for rec in recipients {
-        percent_sum = percent_sum.checked_add(rec.percent)?;
-    }
-
     ensure!(
-        percent_sum <= Decimal::one(),
-        ContractError::AmountExceededHundredPrecent {}
+        recipients.len() <= 100,
+        ContractError::ReachedRecipientLimit {}
     );
 
-    Ok(true)
+    let mut percent_sum: Decimal = Decimal::zero();
+    let mut recipient_address_set = HashSet::new();
+
+    for rec in recipients {
+        percent_sum = percent_sum.checked_add(rec.percent)?;
+        ensure!(
+            percent_sum <= Decimal::one(),
+            ContractError::AmountExceededHundredPrecent {}
+        );
+
+        let recipient_address = rec.recipient.address.get_raw_address(&deps)?;
+        ensure!(
+            !recipient_address_set.contains(&recipient_address),
+            ContractError::DuplicateRecipient {}
+        );
+        recipient_address_set.insert(recipient_address);
+    }
+
+    Ok(())
 }
 
 #[cfg(test)]
 mod tests {
+    use cosmwasm_std::testing::mock_dependencies;
+
     use super::*;
 
     #[test]
     fn test_validate_recipient_list() {
+        let deps = mock_dependencies();
         let empty_recipients = vec![];
-        let res = validate_recipient_list(empty_recipients).unwrap_err();
+        let res = validate_recipient_list(deps.as_ref(), empty_recipients).unwrap_err();
         assert_eq!(res, ContractError::EmptyRecipientsList {});
 
         let inadequate_recipients = vec![AddressPercent {
-            recipient: Recipient::from_string(String::from("Some Address")),
+            recipient: Recipient::from_string(String::from("abc")),
             percent: Decimal::percent(150),
         }];
-        let res = validate_recipient_list(inadequate_recipients).unwrap_err();
+        let res = validate_recipient_list(deps.as_ref(), inadequate_recipients).unwrap_err();
         assert_eq!(res, ContractError::AmountExceededHundredPrecent {});
 
-        let valid_recipients = vec![
+        let duplicate_recipients = vec![
             AddressPercent {
-                recipient: Recipient::from_string(String::from("Some Address")),
+                recipient: Recipient::from_string(String::from("abc")),
                 percent: Decimal::percent(50),
             },
             AddressPercent {
-                recipient: Recipient::from_string(String::from("Some Address")),
+                recipient: Recipient::from_string(String::from("abc")),
                 percent: Decimal::percent(50),
             },
         ];
 
-        let res = validate_recipient_list(valid_recipients).unwrap();
-        assert!(res);
+        let err = validate_recipient_list(deps.as_ref(), duplicate_recipients).unwrap_err();
+        assert_eq!(err, ContractError::DuplicateRecipient {});
+
+        let valid_recipients = vec![
+            AddressPercent {
+                recipient: Recipient::from_string(String::from("abc")),
+                percent: Decimal::percent(50),
+            },
+            AddressPercent {
+                recipient: Recipient::from_string(String::from("xyz")),
+                percent: Decimal::percent(50),
+            },
+        ];
+
+        let res = validate_recipient_list(deps.as_ref(), valid_recipients);
+        assert!(res.is_ok());
+
+        let one_valid_recipient = vec![AddressPercent {
+            recipient: Recipient::from_string(String::from("abc")),
+            percent: Decimal::percent(50),
+        }];
+
+        let res = validate_recipient_list(deps.as_ref(), one_valid_recipient);
+        assert!(res.is_ok());
     }
 }
