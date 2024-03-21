@@ -1,22 +1,22 @@
+use crate::state::{State, UserInfo, USER_INFO};
+use crate::testing::mock_querier::mock_dependencies_custom;
 use crate::{
     contract::{execute, instantiate, query},
     state::{CONFIG, STATE},
+};
+use andromeda_fungible_tokens::lockdrop::{
+    ConfigResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg, StateResponse,
+    UserInfoResponse,
 };
 use andromeda_std::{
     common::expiration::MILLISECONDS_TO_NANOSECONDS_RATIO, error::ContractError,
     testing::mock_querier::MOCK_KERNEL_CONTRACT,
 };
+use andromeda_testing::economics_msg::generate_economics_message;
 use cosmwasm_std::{
     coin, coins, from_binary,
     testing::{mock_env, mock_info},
     to_binary, Addr, BankMsg, Decimal, DepsMut, Response, Uint128, WasmMsg,
-};
-
-use crate::state::{State, UserInfo, USER_INFO};
-use crate::testing::mock_querier::mock_dependencies_custom;
-use andromeda_fungible_tokens::lockdrop::{
-    ConfigResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg, StateResponse,
-    UserInfoResponse,
 };
 
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
@@ -203,7 +203,8 @@ fn test_increase_incentives() {
     assert_eq!(
         Response::new()
             .add_attribute("action", "incentives_increased")
-            .add_attribute("amount", "100"),
+            .add_attribute("amount", "100")
+            .add_submessage(generate_economics_message(MOCK_INCENTIVE_TOKEN, "Receive")),
         res
     );
 
@@ -300,7 +301,8 @@ fn test_deposit_native() {
         Response::new()
             .add_attribute("action", "lock_native")
             .add_attribute("user", "sender")
-            .add_attribute("ust_deposited", "100"),
+            .add_attribute("ust_deposited", "100")
+            .add_submessage(generate_economics_message("sender", "DepositNative")),
         res
     );
 
@@ -417,7 +419,8 @@ fn test_withdraw_native() {
             })
             .add_attribute("action", "withdraw_native")
             .add_attribute("user", "sender")
-            .add_attribute("amount", "100"),
+            .add_attribute("amount", "100")
+            .add_submessage(generate_economics_message("sender", "WithdrawNative")),
         res
     );
 
@@ -698,7 +701,9 @@ fn test_enable_claims_no_bootstrap_specified() {
     let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
 
     assert_eq!(
-        Response::new().add_attribute("action", "enable_claims"),
+        Response::new()
+            .add_attribute("action", "enable_claims")
+            .add_submessage(generate_economics_message("sender", "EnableClaims")),
         res
     );
 
@@ -853,7 +858,8 @@ fn test_claim_rewards() {
                     amount: Uint128::new(75)
                 })
                 .unwrap()
-            }),
+            })
+            .add_submessage(generate_economics_message("user1", "ClaimRewards")),
         res
     );
 
@@ -891,7 +897,8 @@ fn test_claim_rewards() {
                     amount: Uint128::new(25)
                 })
                 .unwrap()
-            }),
+            })
+            .add_submessage(generate_economics_message("user2", "ClaimRewards")),
         res
     );
 

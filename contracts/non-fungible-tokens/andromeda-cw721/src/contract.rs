@@ -13,11 +13,8 @@ use andromeda_non_fungible_tokens::cw721::{
 };
 use andromeda_std::{
     ado_base::{AndromedaMsg, AndromedaQuery},
-    ado_contract::{
-        permissioning::{is_context_permissioned, is_context_permissioned_strict},
-        ADOContract,
-    },
-    common::context::ExecuteContext,
+    ado_contract::{permissioning::is_context_permissioned_strict, ADOContract},
+    common::{actions::call_action, context::ExecuteContext},
 };
 use cw2::{get_contract_version, set_contract_version};
 use semver::Version;
@@ -99,32 +96,14 @@ pub fn execute(
     }
 }
 
-fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
-    ensure!(
-        is_context_permissioned(
-            ctx.deps.storage,
-            &ctx.info,
-            &ctx.env,
-            &ctx.amp_ctx,
-            msg.as_ref()
-        )?,
-        ContractError::Unauthorized {}
-    );
-
-    let payee = if let Some(amp_ctx) = ctx.amp_ctx.clone() {
-        ctx.deps
-            .api
-            .addr_validate(amp_ctx.ctx.get_origin().as_str())?
-    } else {
-        ctx.info.sender.clone()
-    };
-
-    let fee_msg = ADOContract::default().pay_fee(
-        ctx.deps.storage,
-        &ctx.deps.querier,
-        msg.as_ref().to_string(),
-        payee,
+    let action_response = call_action(
+        &mut ctx.deps,
+        &ctx.info,
+        &ctx.env,
+        &ctx.amp_ctx,
+        msg.as_ref(),
     )?;
 
     if let ExecuteMsg::Approve { token_id, .. } = &msg {
@@ -166,7 +145,10 @@ fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Cont
             }
         }
     }?;
-    Ok(res.add_submessage(fee_msg))
+    Ok(res
+        .add_submessages(action_response.messages)
+        .add_attributes(action_response.attributes)
+        .add_events(action_response.events))
 }
 
 fn execute_cw721(

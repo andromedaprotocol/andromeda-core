@@ -7,13 +7,15 @@ use andromeda_std::{
     common::{
         encode_binary,
         expiration::{expiration_from_milliseconds, MILLISECONDS_TO_NANOSECONDS_RATIO},
+        reply::ReplyId,
     },
     error::ContractError,
+    os::economics::ExecuteMsg as EconomicsExecuteMsg,
 };
 use cosmwasm_std::{
     coin, coins,
     testing::{mock_env, mock_info},
-    BankMsg, CosmosMsg, Deps, DepsMut, Env, Response, SubMsg, Uint128, WasmMsg,
+    to_binary, Addr, BankMsg, CosmosMsg, Deps, DepsMut, Env, Response, SubMsg, Uint128, WasmMsg,
 };
 use cw721::{Cw721ExecuteMsg, Cw721ReceiveMsg};
 use cw_utils::Expiration;
@@ -532,6 +534,18 @@ fn test_execute_buy_with_tax_and_royalty_works() {
             .unwrap(),
             funds: vec![],
         })),
+        SubMsg::reply_on_error(
+            CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: "economics_contract".to_string(),
+                msg: to_binary(&EconomicsExecuteMsg::PayFee {
+                    payee: Addr::unchecked("someone"),
+                    action: "Buy".to_string(),
+                })
+                .unwrap(),
+                funds: vec![],
+            }),
+            ReplyId::PayFee.repr(),
+        ),
     ];
     assert_eq!(res.messages, expected)
 }
