@@ -54,7 +54,7 @@ fn start_auction(deps: DepsMut, whitelist: Option<Vec<Addr>>, min_bid: Option<Ui
     let hook_msg = Cw721HookMsg::StartAuction {
         start_time: 100000,
         duration: 100000,
-        coin_denom: "native:uusd".to_string(),
+        coin_denom: "uusd".to_string(),
         whitelist,
         min_bid,
     };
