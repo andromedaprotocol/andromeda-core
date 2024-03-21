@@ -1,14 +1,3 @@
-use andromeda_std::{
-    amp::Recipient, common::reply::ReplyId, error::ContractError,
-    os::economics::ExecuteMsg as EconomicsExecuteMsg,
-};
-use cosmwasm_std::{
-    attr, coin, coins, from_binary,
-    testing::{mock_env, mock_info},
-    to_binary, Addr, BankMsg, Coin, CosmosMsg, Response, SubMsg, Timestamp, WasmMsg,
-};
-use cw_utils::Expiration;
-
 use crate::{
     contract::{execute, query},
     testing::mock_querier::mock_dependencies_custom,
@@ -16,21 +5,14 @@ use crate::{
 use andromeda_finance::timelock::{
     Escrow, EscrowCondition, ExecuteMsg, GetLockedFundsResponse, QueryMsg,
 };
-
-fn generate_economics_message(payee: &str, action: &str) -> SubMsg {
-    SubMsg::reply_on_error(
-        CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: "economics_contract".to_string(),
-            msg: to_binary(&EconomicsExecuteMsg::PayFee {
-                payee: Addr::unchecked(payee),
-                action: action.to_string(),
-            })
-            .unwrap(),
-            funds: vec![],
-        }),
-        ReplyId::PayFee.repr(),
-    )
-}
+use andromeda_std::{amp::Recipient, error::ContractError};
+use andromeda_testing::economics_msg::generate_economics_message;
+use cosmwasm_std::{
+    attr, coin, coins, from_binary,
+    testing::{mock_env, mock_info},
+    BankMsg, Coin, Response, Timestamp,
+};
+use cw_utils::Expiration;
 
 #[test]
 fn test_execute_hold_funds() {

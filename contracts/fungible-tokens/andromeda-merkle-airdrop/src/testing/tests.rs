@@ -3,9 +3,9 @@ use andromeda_fungible_tokens::airdrop::{
     MerkleRootResponse, QueryMsg, TotalClaimedResponse,
 };
 use andromeda_std::{
-    ado_contract::ADOContract, common::reply::ReplyId, error::ContractError,
-    os::economics::ExecuteMsg as EconomicsExecuteMsg, testing::mock_querier::MOCK_KERNEL_CONTRACT,
+    ado_contract::ADOContract, error::ContractError, testing::mock_querier::MOCK_KERNEL_CONTRACT,
 };
+use andromeda_testing::economics_msg::generate_economics_message;
 use cosmwasm_schema::{cw_serde, serde::Deserialize};
 use cosmwasm_std::{
     attr, from_binary, from_slice,
@@ -20,21 +20,6 @@ use crate::{
     contract::{execute, instantiate, query},
     testing::mock_querier::mock_dependencies_custom,
 };
-
-fn generate_economics_message(payee: &str, action: &str) -> SubMsg {
-    SubMsg::reply_on_error(
-        CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: "economics_contract".to_string(),
-            msg: to_binary(&EconomicsExecuteMsg::PayFee {
-                payee: Addr::unchecked(payee),
-                action: action.to_string(),
-            })
-            .unwrap(),
-            funds: vec![],
-        }),
-        ReplyId::PayFee.repr(),
-    )
-}
 
 #[test]
 fn proper_instantiation() {

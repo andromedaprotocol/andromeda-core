@@ -1,24 +1,22 @@
+use crate::state::{State, UserInfo, USER_INFO};
+use crate::testing::mock_querier::mock_dependencies_custom;
 use crate::{
     contract::{execute, instantiate, query},
     state::{CONFIG, STATE},
 };
-use andromeda_std::{
-    common::{expiration::MILLISECONDS_TO_NANOSECONDS_RATIO, reply::ReplyId},
-    error::ContractError,
-    os::economics::ExecuteMsg as EconomicsExecuteMsg,
-    testing::mock_querier::MOCK_KERNEL_CONTRACT,
-};
-use cosmwasm_std::{
-    coin, coins, from_binary,
-    testing::{mock_env, mock_info},
-    to_binary, Addr, BankMsg, CosmosMsg, Decimal, DepsMut, Response, SubMsg, Uint128, WasmMsg,
-};
-
-use crate::state::{State, UserInfo, USER_INFO};
-use crate::testing::mock_querier::mock_dependencies_custom;
 use andromeda_fungible_tokens::lockdrop::{
     ConfigResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg, StateResponse,
     UserInfoResponse,
+};
+use andromeda_std::{
+    common::expiration::MILLISECONDS_TO_NANOSECONDS_RATIO, error::ContractError,
+    testing::mock_querier::MOCK_KERNEL_CONTRACT,
+};
+use andromeda_testing::economics_msg::generate_economics_message;
+use cosmwasm_std::{
+    coin, coins, from_binary,
+    testing::{mock_env, mock_info},
+    to_binary, Addr, BankMsg, Decimal, DepsMut, Response, Uint128, WasmMsg,
 };
 
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
@@ -44,21 +42,6 @@ fn init(deps: DepsMut) -> Result<Response, ContractError> {
     };
 
     instantiate(deps, env, info, msg)
-}
-
-fn generate_economics_message(payee: &str, action: &str) -> SubMsg {
-    SubMsg::reply_on_error(
-        CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: "economics_contract".to_string(),
-            msg: to_binary(&EconomicsExecuteMsg::PayFee {
-                payee: Addr::unchecked(payee),
-                action: action.to_string(),
-            })
-            .unwrap(),
-            funds: vec![],
-        }),
-        ReplyId::PayFee.repr(),
-    )
 }
 
 #[test]

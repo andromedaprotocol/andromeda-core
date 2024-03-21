@@ -1,15 +1,11 @@
 use andromeda_std::{
-    amp::addresses::AndrAddr,
-    common::{expiration::MILLISECONDS_TO_NANOSECONDS_RATIO, reply::ReplyId},
-    error::ContractError,
-    os::economics::ExecuteMsg as EconomicsExecuteMsg,
-    testing::mock_querier::MOCK_KERNEL_CONTRACT,
+    amp::addresses::AndrAddr, common::expiration::MILLISECONDS_TO_NANOSECONDS_RATIO,
+    error::ContractError, testing::mock_querier::MOCK_KERNEL_CONTRACT,
 };
 use cosmwasm_std::{
     coin, coins, from_binary,
     testing::{mock_dependencies, mock_env, mock_info, MOCK_CONTRACT_ADDR},
-    to_binary, Addr, BankMsg, CosmosMsg, Decimal, Decimal256, DepsMut, Response, SubMsg, Uint128,
-    Uint256, WasmMsg,
+    to_binary, Addr, BankMsg, Decimal, Decimal256, DepsMut, Response, Uint128, Uint256, WasmMsg,
 };
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 
@@ -25,6 +21,7 @@ use andromeda_fungible_tokens::cw20_staking::{
     AllocationConfig, AllocationState, Config, Cw20HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg,
     RewardToken, RewardTokenUnchecked, RewardType, StakerResponse, State,
 };
+use andromeda_testing::economics_msg::generate_economics_message;
 use cw_asset::{AssetInfo, AssetInfoUnchecked};
 
 const MOCK_STAKING_TOKEN: &str = "staking_token";
@@ -46,21 +43,6 @@ fn init(
     };
 
     instantiate(deps, mock_env(), info, msg)
-}
-
-fn generate_economics_message(payee: &str, action: &str) -> SubMsg {
-    SubMsg::reply_on_error(
-        CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: "economics_contract".to_string(),
-            msg: to_binary(&EconomicsExecuteMsg::PayFee {
-                payee: Addr::unchecked(payee),
-                action: action.to_string(),
-            })
-            .unwrap(),
-            funds: vec![],
-        }),
-        ReplyId::PayFee.repr(),
-    )
 }
 
 #[test]

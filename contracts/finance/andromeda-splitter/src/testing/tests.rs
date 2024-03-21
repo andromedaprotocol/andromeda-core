@@ -3,16 +3,13 @@ use andromeda_std::{
         messages::{AMPMsg, AMPPkt},
         recipient::Recipient,
     },
-    common::reply::ReplyId,
     error::ContractError,
-    os::economics::ExecuteMsg as EconomicsExecuteMsg,
 };
-
+use andromeda_testing::economics_msg::generate_economics_message;
 use cosmwasm_std::{
     attr, from_binary,
     testing::{mock_env, mock_info, MOCK_CONTRACT_ADDR},
-    to_binary, Addr, BankMsg, Coin, CosmosMsg, Decimal, DepsMut, Response, SubMsg, Timestamp,
-    WasmMsg,
+    to_binary, BankMsg, Coin, CosmosMsg, Decimal, DepsMut, Response, SubMsg, Timestamp,
 };
 use cw_utils::Expiration;
 pub const OWNER: &str = "creator";
@@ -27,21 +24,6 @@ use crate::{
 use andromeda_finance::splitter::{
     AddressPercent, ExecuteMsg, GetSplitterConfigResponse, InstantiateMsg, QueryMsg, Splitter,
 };
-
-fn generate_economics_message(payee: &str, action: &str) -> SubMsg {
-    SubMsg::reply_on_error(
-        CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: "economics_contract".to_string(),
-            msg: to_binary(&EconomicsExecuteMsg::PayFee {
-                payee: Addr::unchecked(payee),
-                action: action.to_string(),
-            })
-            .unwrap(),
-            funds: vec![],
-        }),
-        ReplyId::PayFee.repr(),
-    )
-}
 
 fn init(deps: DepsMut) -> Response {
     let mock_recipient: Vec<AddressPercent> = vec![AddressPercent {

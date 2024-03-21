@@ -17,15 +17,14 @@ use andromeda_non_fungible_tokens::{
 use andromeda_std::{
     ado_base::modules::Module,
     amp::{addresses::AndrAddr, recipient::Recipient},
-    common::{encode_binary, reply::ReplyId},
+    common::encode_binary,
     error::ContractError,
-    os::economics::ExecuteMsg as EconomicsExecuteMsg,
 };
+use andromeda_testing::economics_msg::generate_economics_message;
 use cosmwasm_std::{
     coin, coins, from_binary,
     testing::{mock_env, mock_info},
-    to_binary, Addr, BankMsg, Coin, CosmosMsg, DepsMut, Response, StdError, SubMsg, Uint128,
-    WasmMsg,
+    Addr, BankMsg, Coin, CosmosMsg, DepsMut, Response, StdError, SubMsg, Uint128, WasmMsg,
 };
 use cw_utils::Expiration;
 
@@ -41,21 +40,6 @@ fn get_purchase(token_id: impl Into<String>, purchaser: impl Into<String>) -> Pu
         tax_amount: Uint128::from(50u128),
         msgs: get_rates_messages(),
     }
-}
-
-fn generate_economics_message(payee: &str, action: &str) -> SubMsg {
-    SubMsg::reply_on_error(
-        CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: "economics_contract".to_string(),
-            msg: to_binary(&EconomicsExecuteMsg::PayFee {
-                payee: Addr::unchecked(payee),
-                action: action.to_string(),
-            })
-            .unwrap(),
-            funds: vec![],
-        }),
-        ReplyId::PayFee.repr(),
-    )
 }
 
 fn get_rates_messages() -> Vec<SubMsg> {
