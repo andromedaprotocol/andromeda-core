@@ -98,26 +98,12 @@ pub fn execute(
 
 fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
-    call_action(
+    let action_response = call_action(
         &mut ctx.deps,
         &ctx.info,
         &ctx.env,
         &ctx.amp_ctx,
         msg.as_ref(),
-    )?;
-    let payee = if let Some(amp_ctx) = ctx.amp_ctx.clone() {
-        ctx.deps
-            .api
-            .addr_validate(amp_ctx.ctx.get_origin().as_str())?
-    } else {
-        ctx.info.sender.clone()
-    };
-
-    let fee_msg = ADOContract::default().pay_fee(
-        ctx.deps.storage,
-        &ctx.deps.querier,
-        msg.as_ref().to_string(),
-        payee,
     )?;
 
     if let ExecuteMsg::Approve { token_id, .. } = &msg {
@@ -159,7 +145,10 @@ fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
             }
         }
     }?;
-    Ok(res.add_submessage(fee_msg))
+    Ok(res
+        .add_submessages(action_response.messages)
+        .add_attributes(action_response.attributes)
+        .add_events(action_response.events))
 }
 
 fn execute_cw721(

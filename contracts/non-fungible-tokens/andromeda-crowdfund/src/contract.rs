@@ -107,7 +107,7 @@ pub fn execute(
 
 pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
-    call_action(
+    let action_response = call_action(
         &mut ctx.deps,
         &ctx.info,
         &ctx.env,
@@ -128,7 +128,7 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
             },
         )?;
     }
-    match msg {
+    let res = match msg {
         ExecuteMsg::Mint(mint_msgs) => execute_mint(ctx, mint_msgs),
         ExecuteMsg::StartSale {
             expiration,
@@ -150,7 +150,11 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
         ExecuteMsg::EndSale { limit } => execute_end_sale(ctx, limit),
         ExecuteMsg::UpdateTokenContract { address } => execute_update_token_contract(ctx, address),
         _ => ADOContract::default().execute(ctx, msg),
-    }
+    }?;
+    Ok(res
+        .add_submessages(action_response.messages)
+        .add_attributes(action_response.attributes)
+        .add_events(action_response.events))
 }
 
 fn execute_mint(

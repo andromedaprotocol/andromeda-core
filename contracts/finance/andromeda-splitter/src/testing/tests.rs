@@ -3,13 +3,16 @@ use andromeda_std::{
         messages::{AMPMsg, AMPPkt},
         recipient::Recipient,
     },
+    common::reply::ReplyId,
     error::ContractError,
+    os::economics::ExecuteMsg as EconomicsExecuteMsg,
 };
 
 use cosmwasm_std::{
     attr, from_binary,
     testing::{mock_env, mock_info, MOCK_CONTRACT_ADDR},
-    to_binary, BankMsg, Coin, CosmosMsg, Decimal, DepsMut, Response, SubMsg, Timestamp,
+    to_binary, Addr, BankMsg, Coin, CosmosMsg, Decimal, DepsMut, Response, SubMsg, Timestamp,
+    WasmMsg,
 };
 use cw_utils::Expiration;
 pub const OWNER: &str = "creator";
@@ -24,6 +27,21 @@ use crate::{
 use andromeda_finance::splitter::{
     AddressPercent, ExecuteMsg, GetSplitterConfigResponse, InstantiateMsg, QueryMsg, Splitter,
 };
+
+fn generate_economics_message(payee: &str, action: &str) -> SubMsg {
+    SubMsg::reply_on_error(
+        CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: "economics_contract".to_string(),
+            msg: to_binary(&EconomicsExecuteMsg::PayFee {
+                payee: Addr::unchecked(payee),
+                action: action.to_string(),
+            })
+            .unwrap(),
+            funds: vec![],
+        }),
+        ReplyId::PayFee.repr(),
+    )
+}
 
 fn init(deps: DepsMut) -> Response {
     let mock_recipient: Vec<AddressPercent> = vec![AddressPercent {
@@ -72,10 +90,12 @@ fn test_execute_update_lock() {
     let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
     let new_lock = Expiration::AtTime(Timestamp::from_seconds(current_time + lock_time));
     assert_eq!(
-        Response::default().add_attributes(vec![
-            attr("action", "update_lock"),
-            attr("locked", new_lock.to_string())
-        ]),
+        Response::default()
+            .add_attributes(vec![
+                attr("action", "update_lock"),
+                attr("locked", new_lock.to_string())
+            ])
+            .add_submessage(generate_economics_message(OWNER, "UpdateLock")),
         res
     );
 
@@ -119,7 +139,9 @@ fn test_execute_update_recipients() {
     let info = mock_info(OWNER, &[]);
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
     assert_eq!(
-        Response::default().add_attributes(vec![attr("action", "update_recipients")]),
+        Response::default()
+            .add_attributes(vec![attr("action", "update_recipients")])
+            .add_submessage(generate_economics_message(OWNER, "UpdateRecipients")),
         res
     );
 
@@ -194,7 +216,8 @@ fn test_execute_send() {
             ),
             amp_msg,
         ])
-        .add_attributes(vec![attr("action", "send"), attr("sender", "creator")]);
+        .add_attributes(vec![attr("action", "send"), attr("sender", "creator")])
+        .add_submessage(generate_economics_message(OWNER, "Send"));
 
     assert_eq!(res, expected_res);
 }
@@ -265,7 +288,8 @@ fn test_execute_send_ado_recipient() {
             amp_msg,
         ])
         .add_attribute("action", "send")
-        .add_attribute("sender", "creator");
+        .add_attribute("sender", "creator")
+        .add_submessage(generate_economics_message(OWNER, "Send"));
 
     assert_eq!(res, expected_res);
 }
@@ -409,7 +433,8 @@ fn test_update_app_contract() {
     assert_eq!(
         Response::new()
             .add_attribute("action", "update_app_contract")
-            .add_attribute("address", "app_contract"),
+            .add_attribute("address", "app_contract")
+            .add_submessage(generate_economics_message(OWNER, "UpdateAppContract")),
         res
     );
 }

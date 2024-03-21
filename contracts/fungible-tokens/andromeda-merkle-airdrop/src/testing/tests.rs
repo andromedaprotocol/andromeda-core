@@ -3,7 +3,8 @@ use andromeda_fungible_tokens::airdrop::{
     MerkleRootResponse, QueryMsg, TotalClaimedResponse,
 };
 use andromeda_std::{
-    ado_contract::ADOContract, error::ContractError, testing::mock_querier::MOCK_KERNEL_CONTRACT,
+    ado_contract::ADOContract, common::reply::ReplyId, error::ContractError,
+    os::economics::ExecuteMsg as EconomicsExecuteMsg, testing::mock_querier::MOCK_KERNEL_CONTRACT,
 };
 use cosmwasm_schema::{cw_serde, serde::Deserialize};
 use cosmwasm_std::{
@@ -19,6 +20,21 @@ use crate::{
     contract::{execute, instantiate, query},
     testing::mock_querier::mock_dependencies_custom,
 };
+
+fn generate_economics_message(payee: &str, action: &str) -> SubMsg {
+    SubMsg::reply_on_error(
+        CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: "economics_contract".to_string(),
+            msg: to_binary(&EconomicsExecuteMsg::PayFee {
+                payee: Addr::unchecked(payee),
+                action: action.to_string(),
+            })
+            .unwrap(),
+            funds: vec![],
+        }),
+        ReplyId::PayFee.repr(),
+    )
+}
 
 #[test]
 fn proper_instantiation() {
@@ -123,7 +139,7 @@ struct Encoded {
 }
 
 #[test]
-fn claim() {
+fn test_claim() {
     // Run test 1
     let mut deps = mock_dependencies_custom(&[]);
     let test_data: Encoded = from_slice(TEST_DATA_1).unwrap();
@@ -167,7 +183,13 @@ fn claim() {
         })
         .unwrap(),
     }));
-    assert_eq!(res.messages, vec![expected]);
+    assert_eq!(
+        res.messages,
+        vec![
+            expected,
+            generate_economics_message(test_data.account.as_str(), "Claim")
+        ]
+    );
 
     assert_eq!(
         res.attributes,
@@ -248,7 +270,13 @@ fn claim() {
         })
         .unwrap(),
     }));
-    assert_eq!(res.messages, vec![expected]);
+    assert_eq!(
+        res.messages,
+        vec![
+            expected,
+            generate_economics_message(test_data.account.as_str(), "Claim")
+        ]
+    );
 
     assert_eq!(
         res.attributes,
@@ -288,7 +316,7 @@ struct MultipleData {
 }
 
 #[test]
-fn claim_native() {
+fn test_claim_native() {
     let mut deps = mock_dependencies_custom(&[]);
     let test_data: Encoded = from_slice(TEST_DATA_1).unwrap();
 
@@ -328,7 +356,13 @@ fn claim_native() {
             denom: "uusd".to_string(),
         }],
     }));
-    assert_eq!(res.messages, vec![expected]);
+    assert_eq!(
+        res.messages,
+        vec![
+            expected,
+            generate_economics_message(test_data.account.as_str(), "Claim")
+        ]
+    );
 
     assert_eq!(
         res.attributes,
@@ -374,7 +408,7 @@ fn claim_native() {
 }
 
 #[test]
-fn multiple_claim() {
+fn test_multiple_claim() {
     // Run test 1
     let mut deps = mock_dependencies_custom(&[]);
     let test_data: MultipleData = from_slice(TEST_DATA_1_MULTI).unwrap();
@@ -419,7 +453,13 @@ fn multiple_claim() {
             })
             .unwrap(),
         }));
-        assert_eq!(res.messages, vec![expected]);
+        assert_eq!(
+            res.messages,
+            vec![
+                expected,
+                generate_economics_message(account.account.as_str(), "Claim")
+            ]
+        );
 
         assert_eq!(
             res.attributes,
@@ -528,7 +568,7 @@ fn cant_burn() {
 }
 
 #[test]
-fn can_burn() {
+fn test_can_burn() {
     let mut deps = mock_dependencies_custom(&[]);
     let test_data: Encoded = from_slice(TEST_DATA_1).unwrap();
 
@@ -570,7 +610,13 @@ fn can_burn() {
         })
         .unwrap(),
     }));
-    assert_eq!(res.messages, vec![expected]);
+    assert_eq!(
+        res.messages,
+        vec![
+            expected,
+            generate_economics_message(test_data.account.as_str(), "Claim")
+        ]
+    );
 
     assert_eq!(
         res.attributes,
@@ -599,7 +645,10 @@ fn can_burn() {
         })
         .unwrap(),
     }));
-    assert_eq!(res.messages, vec![expected]);
+    assert_eq!(
+        res.messages,
+        vec![expected, generate_economics_message("owner0000", "Burn")]
+    );
 
     assert_eq!(
         res.attributes,
@@ -613,7 +662,7 @@ fn can_burn() {
 }
 
 #[test]
-fn can_burn_native() {
+fn test_can_burn_native() {
     let mut deps = mock_dependencies_custom(&[]);
     let test_data: Encoded = from_slice(TEST_DATA_1).unwrap();
 
@@ -662,7 +711,10 @@ fn can_burn_native() {
             denom: "uusd".to_string(),
         }],
     }));
-    assert_eq!(res.messages, vec![expected]);
+    assert_eq!(
+        res.messages,
+        vec![expected, generate_economics_message("owner0000", "Burn")]
+    );
 
     assert_eq!(
         res.attributes,

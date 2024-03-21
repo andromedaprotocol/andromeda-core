@@ -1,11 +1,15 @@
 use andromeda_std::{
-    amp::addresses::AndrAddr, common::expiration::MILLISECONDS_TO_NANOSECONDS_RATIO,
-    error::ContractError, testing::mock_querier::MOCK_KERNEL_CONTRACT,
+    amp::addresses::AndrAddr,
+    common::{expiration::MILLISECONDS_TO_NANOSECONDS_RATIO, reply::ReplyId},
+    error::ContractError,
+    os::economics::ExecuteMsg as EconomicsExecuteMsg,
+    testing::mock_querier::MOCK_KERNEL_CONTRACT,
 };
 use cosmwasm_std::{
     coin, coins, from_binary,
     testing::{mock_dependencies, mock_env, mock_info, MOCK_CONTRACT_ADDR},
-    to_binary, Addr, BankMsg, Decimal, Decimal256, DepsMut, Response, Uint128, Uint256, WasmMsg,
+    to_binary, Addr, BankMsg, CosmosMsg, Decimal, Decimal256, DepsMut, Response, SubMsg, Uint128,
+    Uint256, WasmMsg,
 };
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 
@@ -42,6 +46,21 @@ fn init(
     };
 
     instantiate(deps, mock_env(), info, msg)
+}
+
+fn generate_economics_message(payee: &str, action: &str) -> SubMsg {
+    SubMsg::reply_on_error(
+        CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: "economics_contract".to_string(),
+            msg: to_binary(&EconomicsExecuteMsg::PayFee {
+                payee: Addr::unchecked(payee),
+                action: action.to_string(),
+            })
+            .unwrap(),
+            funds: vec![],
+        }),
+        ReplyId::PayFee.repr(),
+    )
 }
 
 #[test]
@@ -338,7 +357,8 @@ fn test_stake_unstake_tokens() {
             .add_attribute("action", "stake_tokens")
             .add_attribute("sender", "sender")
             .add_attribute("share", "100")
-            .add_attribute("amount", "100"),
+            .add_attribute("amount", "100")
+            .add_submessage(generate_economics_message(MOCK_STAKING_TOKEN, "Receive")),
         res
     );
 
@@ -376,7 +396,8 @@ fn test_stake_unstake_tokens() {
             .add_attribute("action", "stake_tokens")
             .add_attribute("sender", "other_sender")
             .add_attribute("share", "50")
-            .add_attribute("amount", "100"),
+            .add_attribute("amount", "100")
+            .add_submessage(generate_economics_message(MOCK_STAKING_TOKEN, "Receive")),
         res
     );
 
@@ -428,7 +449,8 @@ fn test_stake_unstake_tokens() {
                     amount: Uint128::new(200)
                 })
                 .unwrap()
-            }),
+            })
+            .add_submessage(generate_economics_message("sender", "UnstakeTokens")),
         res
     );
 
@@ -471,7 +493,8 @@ fn test_stake_unstake_tokens() {
                     amount: Uint128::new(100)
                 })
                 .unwrap()
-            }),
+            })
+            .add_submessage(generate_economics_message("other_sender", "UnstakeTokens")),
         res
     );
 
@@ -568,7 +591,8 @@ fn test_update_global_indexes() {
             .add_attribute("action", "update_global_indexes")
             .add_attribute("cw20:incentive_token", "0.2")
             .add_attribute("native:uandr", "0")
-            .add_attribute("native:uusd", "0.4"),
+            .add_attribute("native:uusd", "0.4")
+            .add_submessage(generate_economics_message("owner", "UpdateGlobalIndexes")),
         res
     );
 
@@ -625,7 +649,8 @@ fn test_update_global_indexes() {
             .add_attribute("action", "update_global_indexes")
             .add_attribute("cw20:incentive_token", "0.2")
             .add_attribute("native:uandr", "0.4")
-            .add_attribute("native:uusd", "0.4"),
+            .add_attribute("native:uusd", "0.4")
+            .add_submessage(generate_economics_message("owner", "UpdateGlobalIndexes")),
         res
     );
 
@@ -695,7 +720,8 @@ fn test_update_global_indexes_selective() {
     assert_eq!(
         Response::new()
             .add_attribute("action", "update_global_indexes")
-            .add_attribute("native:uusd", "0.4"),
+            .add_attribute("native:uusd", "0.4")
+            .add_submessage(generate_economics_message("owner", "UpdateGlobalIndexes")),
         res
     );
 
@@ -826,7 +852,8 @@ fn test_update_global_indexes_cw20_deposit() {
     assert_eq!(
         Response::new()
             .add_attribute("action", "update_global_indexes")
-            .add_attribute("cw20:incentive_token", "0.2"),
+            .add_attribute("cw20:incentive_token", "0.2")
+            .add_submessage(generate_economics_message(MOCK_INCENTIVE_TOKEN, "Receive")),
         res
     );
 
@@ -1007,7 +1034,8 @@ fn test_claim_rewards() {
             .add_message(BankMsg::Send {
                 to_address: "user1".to_string(),
                 amount: coins(66, "uusd")
-            }),
+            })
+            .add_submessage(generate_economics_message("user1", "ClaimRewards")),
         res
     );
 
@@ -1025,7 +1053,8 @@ fn test_claim_rewards() {
             .add_message(BankMsg::Send {
                 to_address: "user2".to_string(),
                 amount: coins(33, "uusd")
-            }),
+            })
+            .add_submessage(generate_economics_message("user2", "ClaimRewards")),
         res
     );
 
@@ -1190,7 +1219,8 @@ fn test_claim_rewards_allocated() {
                     amount: Uint128::new(25)
                 })
                 .unwrap(),
-            }),
+            })
+            .add_submessage(generate_economics_message("user1", "ClaimRewards")),
         res
     );
 
@@ -1244,7 +1274,8 @@ fn test_claim_rewards_allocated() {
                     amount: Uint128::new(25)
                 })
                 .unwrap(),
-            }),
+            })
+            .add_submessage(generate_economics_message("user2", "ClaimRewards")),
         res
     );
 
@@ -1365,7 +1396,8 @@ fn test_claim_rewards_allocated_init_timestamp_in_future() {
                     amount: Uint128::new(25)
                 })
                 .unwrap(),
-            }),
+            })
+            .add_submessage(generate_economics_message("user1", "ClaimRewards")),
         res
     );
 
@@ -1419,7 +1451,8 @@ fn test_claim_rewards_allocated_init_timestamp_in_future() {
                     amount: Uint128::new(25)
                 })
                 .unwrap(),
-            }),
+            })
+            .add_submessage(generate_economics_message("user2", "ClaimRewards")),
         res
     );
 
@@ -1808,7 +1841,8 @@ fn test_add_reward_token() {
     assert_eq!(
         Response::new()
             .add_attribute("action", "add_reward_token")
-            .add_attribute("added_token", "cw20:incentive_token"),
+            .add_attribute("added_token", "cw20:incentive_token")
+            .add_submessage(generate_economics_message("owner", "AddRewardToken")),
         res
     );
 

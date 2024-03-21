@@ -131,7 +131,7 @@ pub fn execute(
 
 pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
-    call_action(
+    let action_response = call_action(
         &mut ctx.deps,
         &ctx.info,
         &ctx.env,
@@ -152,7 +152,7 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
             },
         )?;
     }
-    match msg {
+    let res = match msg {
         ExecuteMsg::Receive(msg) => receive_cw20(ctx, msg),
         ExecuteMsg::AddRewardToken { reward_token } => execute_add_reward_token(ctx, reward_token),
         ExecuteMsg::UpdateGlobalIndexes { asset_infos } => match asset_infos {
@@ -180,7 +180,11 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
         ExecuteMsg::UnstakeTokens { amount } => execute_unstake_tokens(ctx, amount),
         ExecuteMsg::ClaimRewards {} => execute_claim_rewards(ctx),
         _ => ADOContract::default().execute(ctx, msg),
-    }
+    }?;
+    Ok(res
+        .add_submessages(action_response.messages)
+        .add_attributes(action_response.attributes)
+        .add_events(action_response.events))
 }
 
 fn receive_cw20(ctx: ExecuteContext, msg: Cw20ReceiveMsg) -> Result<Response, ContractError> {

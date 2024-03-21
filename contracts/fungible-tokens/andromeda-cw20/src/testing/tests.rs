@@ -1,15 +1,17 @@
 use crate::contract::{execute, instantiate, query};
 use crate::testing::mock_querier::mock_dependencies_custom;
 use andromeda_fungible_tokens::cw20::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use andromeda_std::common::reply::ReplyId;
 use andromeda_std::testing::mock_querier::MOCK_ADDRESS_LIST_CONTRACT;
 use andromeda_std::{
     ado_base::Module, amp::addresses::AndrAddr, error::ContractError,
-    testing::mock_querier::MOCK_KERNEL_CONTRACT,
+    os::economics::ExecuteMsg as EconomicsExecuteMsg, testing::mock_querier::MOCK_KERNEL_CONTRACT,
 };
 use cosmwasm_std::{
     testing::{mock_env, mock_info},
     to_binary, Addr, DepsMut, Response, StdError, Uint128,
 };
+use cosmwasm_std::{CosmosMsg, SubMsg, WasmMsg};
 use cw20::{Cw20Coin, Cw20ReceiveMsg};
 use cw20_base::state::BALANCES;
 
@@ -33,6 +35,21 @@ fn init(deps: DepsMut, modules: Option<Vec<Module>>) -> Response {
 
     let info = mock_info("owner", &[]);
     instantiate(deps, mock_env(), info, msg).unwrap()
+}
+
+fn generate_economics_message(payee: &str, action: &str) -> SubMsg {
+    SubMsg::reply_on_error(
+        CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: "economics_contract".to_string(),
+            msg: to_binary(&EconomicsExecuteMsg::PayFee {
+                payee: Addr::unchecked(payee),
+                action: action.to_string(),
+            })
+            .unwrap(),
+            funds: vec![],
+        }),
+        ReplyId::PayFee.repr(),
+    )
 }
 
 #[test]
@@ -96,7 +113,8 @@ fn test_transfer() {
             .add_attribute("action", "transfer")
             .add_attribute("from", "sender")
             .add_attribute("to", "other")
-            .add_attribute("amount", "100"),
+            .add_attribute("amount", "100")
+            .add_submessage(generate_economics_message("sender", "Transfer")),
         res
     );
 
@@ -168,7 +186,8 @@ fn test_send() {
                 }
                 .into_cosmos_msg("contract")
                 .unwrap(),
-            ),
+            )
+            .add_submessage(generate_economics_message("sender", "Send")),
         res
     );
 

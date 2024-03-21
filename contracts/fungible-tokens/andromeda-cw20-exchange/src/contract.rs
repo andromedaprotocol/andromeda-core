@@ -93,19 +93,23 @@ pub fn execute(
 }
 
 pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
-    call_action(
+    let action_response = call_action(
         &mut ctx.deps,
         &ctx.info,
         &ctx.env,
         &ctx.amp_ctx,
         msg.as_ref(),
     )?;
-    match msg {
+    let res = match msg {
         ExecuteMsg::CancelSale { asset } => execute_cancel_sale(ctx, asset),
         ExecuteMsg::Purchase { recipient } => execute_purchase_native(ctx, recipient),
         ExecuteMsg::Receive(cw20_msg) => execute_receive(ctx, cw20_msg),
         _ => ADOContract::default().execute(ctx, msg),
-    }
+    }?;
+    Ok(res
+        .add_submessages(action_response.messages)
+        .add_attributes(action_response.attributes)
+        .add_events(action_response.events))
 }
 
 pub fn execute_receive(
