@@ -93,7 +93,15 @@ fn test_execute_update_recipients() {
     let env = mock_env();
     let _res = init(deps.as_mut());
 
-    let recipient = vec![
+    let splitter = Splitter {
+        recipients: vec![],
+        lock: Milliseconds::from_seconds(0),
+    };
+
+    SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
+
+    // Duplicate recipients
+    let duplicate_recipients = vec![
         AddressPercent {
             recipient: Recipient::from_string(String::from("addr1")),
             percent: Decimal::percent(40),
@@ -104,15 +112,26 @@ fn test_execute_update_recipients() {
         },
     ];
     let msg = ExecuteMsg::UpdateRecipients {
-        recipients: recipient.clone(),
+        recipients: duplicate_recipients,
     };
 
-    let splitter = Splitter {
-        recipients: vec![],
-        lock: Milliseconds::default(),
-    };
+    let info = mock_info(OWNER, &[]);
+    let res = execute(deps.as_mut(), env.clone(), info, msg);
+    assert_eq!(ContractError::DuplicateRecipient {}, res.unwrap_err());
 
-    SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
+    let recipients = vec![
+        AddressPercent {
+            recipient: Recipient::from_string(String::from("addr1")),
+            percent: Decimal::percent(40),
+        },
+        AddressPercent {
+            recipient: Recipient::from_string(String::from("addr2")),
+            percent: Decimal::percent(60),
+        },
+    ];
+    let msg = ExecuteMsg::UpdateRecipients {
+        recipients: recipients.clone(),
+    };
 
     let info = mock_info("incorrect_owner", &[]);
     let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
@@ -127,7 +146,7 @@ fn test_execute_update_recipients() {
 
     //check result
     let splitter = SPLITTER.load(deps.as_ref().storage).unwrap();
-    assert_eq!(splitter.recipients, recipient);
+    assert_eq!(splitter.recipients, recipients);
 }
 
 #[test]

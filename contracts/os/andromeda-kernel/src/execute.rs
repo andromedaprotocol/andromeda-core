@@ -19,8 +19,8 @@ use cosmwasm_std::{
 use crate::ibc::{generate_transfer_message, PACKET_LIFETIME};
 use crate::query;
 use crate::state::{
-    IBCHooksPacketSendState, ADO_OWNER, CHAIN_TO_CHANNEL, CHANNEL_TO_CHAIN, IBC_FUND_RECOVERY,
-    KERNEL_ADDRESSES, OUTGOING_IBC_HOOKS_PACKETS,
+    IBCHooksPacketSendState, ADO_OWNER, CHAIN_TO_CHANNEL, CHANNEL_TO_CHAIN, CURR_CHAIN,
+    IBC_FUND_RECOVERY, KERNEL_ADDRESSES, OUTGOING_IBC_HOOKS_PACKETS,
 };
 
 pub fn send(ctx: ExecuteContext, message: AMPMsg) -> Result<Response, ContractError> {
@@ -320,6 +320,26 @@ pub fn recover(execute_env: ExecuteContext) -> Result<Response, ContractError> {
     Ok(Response::default()
         .add_attribute("action", "recover")
         .add_submessage(sub_msg))
+}
+
+pub fn update_chain_name(
+    execute_env: ExecuteContext,
+    chain_name: String,
+) -> Result<Response, ContractError> {
+    // Only owner can update CURR_CHAIN
+    let contract = ADOContract::default();
+    ensure!(
+        contract.is_contract_owner(execute_env.deps.storage, execute_env.info.sender.as_str())?,
+        ContractError::Unauthorized {}
+    );
+
+    // Update CURR_CHAIN
+    CURR_CHAIN.save(execute_env.deps.storage, &chain_name)?;
+
+    Ok(Response::default()
+        .add_attribute("action", "update_chain_name")
+        .add_attribute("sender", execute_env.info.sender.as_str())
+        .add_attribute("chain_name", chain_name))
 }
 
 /// Handles a given AMP message and returns a response

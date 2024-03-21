@@ -34,14 +34,8 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    msg.validate()?;
+    msg.validate(deps.as_ref())?;
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-
-    // Max 100 recipients
-    ensure!(
-        msg.recipients.len() <= 100,
-        ContractError::ReachedRecipientLimit {}
-    );
 
     let current_time = Milliseconds::from_seconds(env.block.time.seconds());
     let splitter = match msg.lock_time {
@@ -217,7 +211,7 @@ fn execute_update_recipients(
         ContractError::Unauthorized {}
     );
 
-    validate_recipient_list(recipients.clone())?;
+    validate_recipient_list(deps.as_ref(), recipients.clone())?;
 
     let mut splitter = SPLITTER.load(deps.storage)?;
     // Can't call this function while the lock isn't expired

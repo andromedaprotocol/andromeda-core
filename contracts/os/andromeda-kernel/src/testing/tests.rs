@@ -1,7 +1,7 @@
 use crate::{
     contract::{execute, instantiate},
     ibc::PACKET_LIFETIME,
-    state::{ADO_OWNER, CHAIN_TO_CHANNEL, CHANNEL_TO_CHAIN, KERNEL_ADDRESSES},
+    state::{ADO_OWNER, CHAIN_TO_CHANNEL, CHANNEL_TO_CHAIN, CURR_CHAIN, KERNEL_ADDRESSES},
 };
 use andromeda_std::{
     amp::{
@@ -32,6 +32,42 @@ fn proper_initialization() {
 
     let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
     assert_eq!(0, res.messages.len());
+}
+
+#[test]
+fn test_update_chain_name() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let info = mock_info("creator", &[]);
+    let env = mock_env();
+    instantiate(
+        deps.as_mut(),
+        env.clone(),
+        info.clone(),
+        InstantiateMsg {
+            owner: None,
+            chain_name: "test".to_string(),
+        },
+    )
+    .unwrap();
+
+    let chain_name = "other".to_string();
+    let update_chain_name_msg = ExecuteMsg::UpdateChainName {
+        chain_name: chain_name.clone(),
+    };
+
+    let fake_info = mock_info("fake", &[]);
+
+    let err = execute(
+        deps.as_mut(),
+        env.clone(),
+        fake_info,
+        update_chain_name_msg.clone(),
+    )
+    .unwrap_err();
+    assert_eq!(err, ContractError::Unauthorized {});
+
+    execute(deps.as_mut(), env, info, update_chain_name_msg).unwrap();
+    assert_eq!(CURR_CHAIN.load(deps.as_ref().storage).unwrap(), chain_name);
 }
 
 #[test]
