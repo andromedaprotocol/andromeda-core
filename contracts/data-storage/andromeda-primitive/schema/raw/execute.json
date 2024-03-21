@@ -432,30 +432,6 @@
             }
           },
           "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "update_operators"
-          ],
-          "properties": {
-            "update_operators": {
-              "type": "object",
-              "required": [
-                "new_operators"
-              ],
-              "properties": {
-                "new_operators": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/definitions/Addr"
-                  }
-                }
-              },
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
         }
       ]
     },
