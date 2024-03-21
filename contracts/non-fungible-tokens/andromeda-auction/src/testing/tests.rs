@@ -5,6 +5,7 @@ use crate::{
         mock_dependencies_custom, MOCK_TOKEN_ADDR, MOCK_TOKEN_OWNER, MOCK_UNCLAIMED_TOKEN,
     },
 };
+
 use andromeda_non_fungible_tokens::{
     auction::{
         AuctionInfo, AuctionStateResponse, Cw721HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg,
@@ -15,14 +16,16 @@ use andromeda_non_fungible_tokens::{
 use andromeda_std::{
     ado_base::modules::Module,
     amp::AndrAddr,
-    common::{encode_binary, expiration::MILLISECONDS_TO_NANOSECONDS_RATIO},
+    common::{encode_binary, expiration::MILLISECONDS_TO_NANOSECONDS_RATIO, reply::ReplyId},
     error::ContractError,
+    os::economics::ExecuteMsg as EconomicsExecuteMsg,
     testing::mock_querier::MOCK_KERNEL_CONTRACT,
 };
 use cosmwasm_std::{
     attr, coin, coins, from_json,
     testing::{mock_dependencies, mock_env, mock_info},
-    Addr, BankMsg, CosmosMsg, Deps, DepsMut, Env, Response, Timestamp, Uint128, WasmMsg,
+    to_json_binary, Addr, BankMsg, CosmosMsg, Deps, DepsMut, Env, Response, SubMsg, Timestamp,
+    Uint128, WasmMsg,
 };
 use cw721::Cw721ReceiveMsg;
 use cw_utils::Expiration;
@@ -77,7 +80,7 @@ fn assert_auction_created(deps: Deps, whitelist: Option<Vec<Addr>>, min_bid: Opt
             end_time: Expiration::AtTime(Timestamp::from_seconds(200)),
             high_bidder_addr: Addr::unchecked(""),
             high_bidder_amount: Uint128::zero(),
-            coin_denom: "native:uusd".to_string(),
+            coin_denom: "uusd".to_string(),
             auction_id: 1u128.into(),
             whitelist,
             owner: MOCK_TOKEN_OWNER.to_string(),
@@ -121,7 +124,7 @@ fn test_execute_place_bid_non_existing_auction() {
         token_id: MOCK_UNCLAIMED_TOKEN.to_string(),
         token_address: MOCK_TOKEN_ADDR.to_string(),
     };
-    let info = mock_info("bidder", &coins(100, "native:uusd"));
+    let info = mock_info("bidder", &coins(100, "uusd"));
     let res = execute(deps.as_mut(), env, info, msg);
     assert_eq!(ContractError::AuctionDoesNotExist {}, res.unwrap_err());
 }
@@ -142,7 +145,7 @@ fn execute_place_bid_auction_not_started() {
 
     env.block.time = Timestamp::from_seconds(50u64);
 
-    let info = mock_info("sender", &coins(100, "native:uusd".to_string()));
+    let info = mock_info("sender", &coins(100, "uusd".to_string()));
     let res = execute(deps.as_mut(), env, info, msg);
     assert_eq!(ContractError::AuctionNotStarted {}, res.unwrap_err());
 }
@@ -163,7 +166,7 @@ fn execute_place_bid_auction_ended() {
 
     env.block.time = Timestamp::from_seconds(300);
 
-    let info = mock_info("sender", &coins(100, "native:uusd".to_string()));
+    let info = mock_info("sender", &coins(100, "uusd".to_string()));
     let res = execute(deps.as_mut(), env, info, msg);
     assert_eq!(ContractError::AuctionEnded {}, res.unwrap_err());
 }
@@ -184,7 +187,7 @@ fn execute_place_bid_token_owner_cannot_bid() {
 
     env.block.time = Timestamp::from_seconds(150);
 
-    let info = mock_info(MOCK_TOKEN_OWNER, &coins(100, "native:uusd".to_string()));
+    let info = mock_info(MOCK_TOKEN_OWNER, &coins(100, "uusd".to_string()));
     let res = execute(deps.as_mut(), env, info, msg);
     assert_eq!(ContractError::TokenOwnerCannotBid {}, res.unwrap_err());
 }
@@ -204,11 +207,11 @@ fn execute_place_bid_whitelist() {
     };
 
     env.block.time = Timestamp::from_seconds(150);
-    let info = mock_info("not_sender", &coins(100, "native:uusd".to_string()));
+    let info = mock_info("not_sender", &coins(100, "uusd".to_string()));
     let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
     assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
 
-    let info = mock_info("sender", &coins(100, "native:uusd".to_string()));
+    let info = mock_info("sender", &coins(100, "uusd".to_string()));
     let _res = execute(deps.as_mut(), env, info, msg).unwrap();
 }
 
@@ -227,11 +230,11 @@ fn execute_place_bid_highest_bidder_cannot_outbid() {
     };
 
     env.block.time = Timestamp::from_seconds(150);
-    let info = mock_info("sender", &coins(100, "native:uusd".to_string()));
+    let info = mock_info("sender", &coins(100, "uusd".to_string()));
     let _res = execute(deps.as_mut(), env.clone(), info, msg.clone()).unwrap();
 
     env.block.time = Timestamp::from_seconds(160);
-    let info = mock_info("sender", &coins(200, "native:uusd".to_string()));
+    let info = mock_info("sender", &coins(200, "uusd".to_string()));
     let res = execute(deps.as_mut(), env, info, msg);
     assert_eq!(
         ContractError::HighestBidderCannotOutBid {},
@@ -254,11 +257,11 @@ fn execute_place_bid_bid_smaller_than_highest_bid() {
     };
 
     env.block.time = Timestamp::from_seconds(150);
-    let info = mock_info("sender", &coins(100, "native:uusd".to_string()));
+    let info = mock_info("sender", &coins(100, "uusd".to_string()));
     let _res = execute(deps.as_mut(), env.clone(), info, msg.clone()).unwrap();
 
     env.block.time = Timestamp::from_seconds(160);
-    let info = mock_info("other", &coins(50, "native:uusd".to_string()));
+    let info = mock_info("other", &coins(50, "uusd".to_string()));
     let res = execute(deps.as_mut(), env, info, msg);
     assert_eq!(ContractError::BidSmallerThanHighestBid {}, res.unwrap_err());
 }
@@ -288,12 +291,12 @@ fn execute_place_bid_invalid_coins_sent() {
     assert_eq!(error, res.unwrap_err());
 
     // Multiple coins sent
-    let info = mock_info("sender", &[coin(100, "native:uusd"), coin(100, "uluna")]);
+    let info = mock_info("sender", &[coin(100, "uusd"), coin(100, "uluna")]);
     let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
     assert_eq!(error, res.unwrap_err());
 
     let error = ContractError::InvalidFunds {
-        msg: "No native:uusd assets are provided to auction".to_string(),
+        msg: "No uusd assets are provided to auction".to_string(),
     };
 
     // Invalid denom sent
@@ -302,7 +305,7 @@ fn execute_place_bid_invalid_coins_sent() {
     assert_eq!(error, res.unwrap_err());
 
     // Correct denom but empty
-    let info = mock_info("sender", &[coin(0, "native:uusd")]);
+    let info = mock_info("sender", &[coin(0, "uusd")]);
     let res = execute(deps.as_mut(), env, info, msg);
     assert_eq!(error, res.unwrap_err());
 }
@@ -323,16 +326,30 @@ fn execute_place_bid_multiple_bids() {
 
     env.block.time = Timestamp::from_seconds(150);
 
-    let info = mock_info("sender", &coins(100, "native:uusd".to_string()));
+    let info = mock_info("sender", &coins(100, "uusd".to_string()));
     let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
 
     assert_eq!(
-        Response::new().add_attributes(vec![
-            attr("action", "bid"),
-            attr("token_id", MOCK_UNCLAIMED_TOKEN),
-            attr("bider", info.sender),
-            attr("amount", "100"),
-        ]),
+        Response::new()
+            .add_attributes(vec![
+                attr("action", "bid"),
+                attr("token_id", MOCK_UNCLAIMED_TOKEN),
+                attr("bider", info.sender),
+                attr("amount", "100"),
+            ])
+            // Economics message
+            .add_submessage(SubMsg::reply_on_error(
+                CosmosMsg::Wasm(WasmMsg::Execute {
+                    contract_addr: "economics_contract".to_string(),
+                    msg: to_json_binary(&EconomicsExecuteMsg::PayFee {
+                        payee: Addr::unchecked("sender"),
+                        action: "PlaceBid".to_string()
+                    })
+                    .unwrap(),
+                    funds: vec![],
+                }),
+                ReplyId::PayFee.repr(),
+            )),
         res
     );
     let mut expected_response = AuctionStateResponse {
@@ -341,7 +358,7 @@ fn execute_place_bid_multiple_bids() {
         high_bidder_addr: "sender".to_string(),
         high_bidder_amount: Uint128::from(100u128),
         auction_id: Uint128::from(1u128),
-        coin_denom: "native:uusd".to_string(),
+        coin_denom: "uusd".to_string(),
         whitelist: None,
         is_cancelled: false,
         min_bid: None,
@@ -351,20 +368,33 @@ fn execute_place_bid_multiple_bids() {
     assert_eq!(expected_response, res);
 
     env.block.time = Timestamp::from_seconds(160);
-    let info = mock_info("other", &coins(200, "native:uusd".to_string()));
+    let info = mock_info("other", &coins(200, "uusd".to_string()));
     let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
     assert_eq!(
         Response::new()
             .add_message(CosmosMsg::Bank(BankMsg::Send {
                 to_address: "sender".to_string(),
-                amount: coins(100, "native:uusd")
+                amount: coins(100, "uusd")
             }))
             .add_attributes(vec![
                 attr("action", "bid"),
                 attr("token_id", MOCK_UNCLAIMED_TOKEN),
                 attr("bider", info.sender),
                 attr("amount", "200"),
-            ]),
+            ])
+            // Economics message
+            .add_submessage(SubMsg::reply_on_error(
+                CosmosMsg::Wasm(WasmMsg::Execute {
+                    contract_addr: "economics_contract".to_string(),
+                    msg: to_json_binary(&EconomicsExecuteMsg::PayFee {
+                        payee: Addr::unchecked("other"),
+                        action: "PlaceBid".to_string()
+                    })
+                    .unwrap(),
+                    funds: vec![],
+                }),
+                ReplyId::PayFee.repr(),
+            )),
         res
     );
 
@@ -374,21 +404,34 @@ fn execute_place_bid_multiple_bids() {
     assert_eq!(expected_response, res);
 
     env.block.time = Timestamp::from_seconds(170);
-    let info = mock_info("sender", &coins(250, "native:uusd".to_string()));
+    let info = mock_info("sender", &coins(250, "uusd".to_string()));
     let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
     assert_eq!(
         Response::new()
             .add_message(CosmosMsg::Bank(BankMsg::Send {
                 to_address: "other".to_string(),
-                amount: coins(200, "native:uusd")
+                amount: coins(200, "uusd")
             }))
             .add_attributes(vec![
                 attr("action", "bid"),
                 attr("token_id", MOCK_UNCLAIMED_TOKEN),
                 attr("bider", info.sender),
                 attr("amount", "250"),
-            ]),
+            ])
+            // Economics message
+            .add_submessage(SubMsg::reply_on_error(
+                CosmosMsg::Wasm(WasmMsg::Execute {
+                    contract_addr: "economics_contract".to_string(),
+                    msg: to_json_binary(&EconomicsExecuteMsg::PayFee {
+                        payee: Addr::unchecked("sender"),
+                        action: "PlaceBid".to_string()
+                    })
+                    .unwrap(),
+                    funds: vec![],
+                }),
+                ReplyId::PayFee.repr(),
+            )),
         res
     );
 
@@ -421,7 +464,7 @@ fn execute_place_bid_auction_cancelled() {
         token_address: MOCK_TOKEN_ADDR.to_string(),
     };
 
-    let info = mock_info("sender", &coins(100, "native:uusd".to_string()));
+    let info = mock_info("sender", &coins(100, "uusd".to_string()));
     let res = execute(deps.as_mut(), env, info, msg);
     assert_eq!(ContractError::AuctionCancelled {}, res.unwrap_err());
 }
@@ -434,7 +477,7 @@ fn test_execute_start_auction() {
     let hook_msg = Cw721HookMsg::StartAuction {
         start_time: 100000,
         duration: 100000,
-        coin_denom: "native:uusd".to_string(),
+        coin_denom: "uusd".to_string(),
         whitelist: None,
         min_bid: None,
     };
@@ -451,14 +494,28 @@ fn test_execute_start_auction() {
 
     assert_eq!(
         res,
-        Response::new().add_attributes(vec![
-            attr("action", "start_auction"),
-            attr("start_time", "expiration time: 100.000000000"),
-            attr("end_time", "expiration time: 200.000000000"),
-            attr("coin_denom", "native:uusd"),
-            attr("auction_id", "1"),
-            attr("whitelist", "None"),
-        ]),
+        Response::new()
+            .add_attributes(vec![
+                attr("action", "start_auction"),
+                attr("start_time", "expiration time: 100.000000000"),
+                attr("end_time", "expiration time: 200.000000000"),
+                attr("coin_denom", "uusd"),
+                attr("auction_id", "1"),
+                attr("whitelist", "None"),
+            ])
+            // Economics message
+            .add_submessage(SubMsg::reply_on_error(
+                CosmosMsg::Wasm(WasmMsg::Execute {
+                    contract_addr: "economics_contract".to_string(),
+                    msg: to_json_binary(&EconomicsExecuteMsg::PayFee {
+                        payee: Addr::unchecked(MOCK_TOKEN_ADDR),
+                        action: "ReceiveNft".to_string()
+                    })
+                    .unwrap(),
+                    funds: vec![],
+                }),
+                ReplyId::PayFee.repr(),
+            )),
     );
     assert_auction_created(deps.as_ref(), None, None);
 }
@@ -474,7 +531,7 @@ fn test_execute_start_auction() {
 //     let hook_msg = Cw721HookMsg::StartAuction {
 //         start_time: Expiration::AtHeight(100),
 //         end_time: Expiration::AtHeight(200),
-//         coin_denom: "native:uusd".to_string(),
+//         coin_denom: "uusd".to_string(),
 //         whitelist: None,
 //         min_bid: None,
 //     };
@@ -495,7 +552,7 @@ fn test_execute_start_auction() {
 //             attr("action", "start_auction"),
 //             attr("start_time", "expiration height: 100"),
 //             attr("end_time", "expiration height: 200"),
-//             attr("coin_denom", "native:uusd"),
+//             attr("coin_denom", "uusd"),
 //             attr("auction_id", "1"),
 //             attr("whitelist", "None"),
 //         ]),
@@ -513,7 +570,7 @@ fn test_execute_start_auction() {
 //     let hook_msg = Cw721HookMsg::StartAuction {
 //         start_time: Expiration::AtHeight(100),
 //         end_time: Expiration::AtTime(Timestamp::from_seconds(200)),
-//         coin_denom: "native:uusd".to_string(),
+//         coin_denom: "uusd".to_string(),
 //         whitelist: None,
 //         min_bid: None,
 //     };
@@ -542,7 +599,7 @@ fn execute_start_auction_start_time_in_past() {
     let hook_msg = Cw721HookMsg::StartAuction {
         start_time: 100000,
         duration: 100000,
-        coin_denom: "native:uusd".to_string(),
+        coin_denom: "uusd".to_string(),
         whitelist: None,
         min_bid: None,
     };
@@ -574,7 +631,7 @@ fn execute_start_auction_zero_start_time() {
     let hook_msg = Cw721HookMsg::StartAuction {
         start_time: 0,
         duration: 1,
-        coin_denom: "native:uusd".to_string(),
+        coin_denom: "uusd".to_string(),
         whitelist: None,
         min_bid: None,
     };
@@ -600,7 +657,7 @@ fn execute_start_auction_zero_duration() {
     let hook_msg = Cw721HookMsg::StartAuction {
         start_time: 100,
         duration: 0,
-        coin_denom: "native:uusd".to_string(),
+        coin_denom: "uusd".to_string(),
         whitelist: None,
         min_bid: None,
     };
@@ -629,7 +686,7 @@ fn execute_start_auction_zero_duration() {
 //     let hook_msg = Cw721HookMsg::StartAuction {
 //         end_time: Expiration::Never {},
 //         start_time: Expiration::AtTime(Timestamp::from_seconds(200)),
-//         coin_denom: "native:uusd".to_string(),
+//         coin_denom: "uusd".to_string(),
 //         whitelist: None,
 //         min_bid: None,
 //     };
@@ -659,7 +716,7 @@ fn execute_update_auction_zero_start() {
         token_address: MOCK_TOKEN_ADDR.to_string(),
         start_time: 0,
         duration: 1,
-        coin_denom: "native:uusd".to_string(),
+        coin_denom: "uusd".to_string(),
         whitelist: None,
         min_bid: None,
     };
@@ -685,7 +742,7 @@ fn execute_update_auction_start_time_in_past() {
         token_address: MOCK_TOKEN_ADDR.to_string(),
         start_time: 1,
         duration: 1,
-        coin_denom: "native:uusd".to_string(),
+        coin_denom: "uusd".to_string(),
         whitelist: None,
         min_bid: None,
     };
@@ -717,7 +774,7 @@ fn execute_update_auction_zero_duration() {
         token_address: MOCK_TOKEN_ADDR.to_string(),
         start_time: 100000,
         duration: 0,
-        coin_denom: "native:uusd".to_string(),
+        coin_denom: "uusd".to_string(),
         whitelist: None,
         min_bid: None,
     };
@@ -834,7 +891,7 @@ fn execute_start_auction_after_previous_finished() {
     let hook_msg = Cw721HookMsg::StartAuction {
         start_time: 300000,
         duration: 100000,
-        coin_denom: "native:uusd".to_string(),
+        coin_denom: "uusd".to_string(),
         whitelist: None,
         min_bid: None,
     };
@@ -849,14 +906,28 @@ fn execute_start_auction_after_previous_finished() {
     let info = mock_info(MOCK_TOKEN_ADDR, &[]);
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
     assert_eq!(
-        Response::new().add_attributes(vec![
-            attr("action", "start_auction"),
-            attr("start_time", "expiration time: 300.000000000"),
-            attr("end_time", "expiration time: 400.000000000"),
-            attr("coin_denom", "native:uusd"),
-            attr("auction_id", "2"),
-            attr("whitelist", "None"),
-        ]),
+        Response::new()
+            .add_attributes(vec![
+                attr("action", "start_auction"),
+                attr("start_time", "expiration time: 300.000000000"),
+                attr("end_time", "expiration time: 400.000000000"),
+                attr("coin_denom", "uusd"),
+                attr("auction_id", "2"),
+                attr("whitelist", "None"),
+            ])
+            // Economics message
+            .add_submessage(SubMsg::reply_on_error(
+                CosmosMsg::Wasm(WasmMsg::Execute {
+                    contract_addr: "economics_contract".to_string(),
+                    msg: to_json_binary(&EconomicsExecuteMsg::PayFee {
+                        payee: Addr::unchecked(MOCK_TOKEN_ADDR),
+                        action: "ReceiveNft".to_string()
+                    })
+                    .unwrap(),
+                    funds: vec![],
+                }),
+                ReplyId::PayFee.repr(),
+            )),
         res
     );
 }
@@ -894,7 +965,20 @@ fn execute_claim_no_bids() {
             .add_attribute("token_contract", MOCK_TOKEN_ADDR)
             .add_attribute("recipient", MOCK_TOKEN_OWNER)
             .add_attribute("winning_bid_amount", Uint128::zero())
-            .add_attribute("auction_id", "1"),
+            .add_attribute("auction_id", "1")
+            // Economics message
+            .add_submessage(SubMsg::reply_on_error(
+                CosmosMsg::Wasm(WasmMsg::Execute {
+                    contract_addr: "economics_contract".to_string(),
+                    msg: to_json_binary(&EconomicsExecuteMsg::PayFee {
+                        payee: Addr::unchecked("any_user"),
+                        action: "Claim".to_string()
+                    })
+                    .unwrap(),
+                    funds: vec![],
+                }),
+                ReplyId::PayFee.repr(),
+            )),
         res
     );
 }
@@ -914,7 +998,7 @@ fn execute_claim() {
 
     env.block.time = Timestamp::from_seconds(150);
 
-    let info = mock_info("sender", &coins(100, "native:uusd".to_string()));
+    let info = mock_info("sender", &coins(100, "uusd".to_string()));
     let _res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
     env.block.time = Timestamp::from_seconds(250);
@@ -934,7 +1018,7 @@ fn execute_claim() {
         Response::new()
             .add_message(CosmosMsg::Bank(BankMsg::Send {
                 to_address: MOCK_TOKEN_OWNER.to_owned(),
-                amount: coins(100, "native:uusd"),
+                amount: coins(100, "uusd"),
             }))
             .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: MOCK_TOKEN_ADDR.to_string(),
@@ -946,7 +1030,20 @@ fn execute_claim() {
             .add_attribute("token_contract", MOCK_TOKEN_ADDR)
             .add_attribute("recipient", "sender")
             .add_attribute("winning_bid_amount", Uint128::from(100u128))
-            .add_attribute("auction_id", "1"),
+            .add_attribute("auction_id", "1")
+            // Economics message
+            .add_submessage(SubMsg::reply_on_error(
+                CosmosMsg::Wasm(WasmMsg::Execute {
+                    contract_addr: "economics_contract".to_string(),
+                    msg: to_json_binary(&EconomicsExecuteMsg::PayFee {
+                        payee: Addr::unchecked("any_user"),
+                        action: "Claim".to_string()
+                    })
+                    .unwrap(),
+                    funds: vec![],
+                }),
+                ReplyId::PayFee.repr(),
+            )),
         res
     );
 }
@@ -966,7 +1063,7 @@ fn execute_claim_auction_not_ended() {
 
     env.block.time = Timestamp::from_seconds(150);
 
-    let info = mock_info("sender", &coins(100, "native:uusd".to_string()));
+    let info = mock_info("sender", &coins(100, "uusd".to_string()));
     let _res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
     let msg = ExecuteMsg::Claim {
@@ -987,7 +1084,7 @@ fn execute_claim_auction_already_claimed() {
     let hook_msg = Cw721HookMsg::StartAuction {
         start_time: 100000,
         duration: 100000,
-        coin_denom: "native:uusd".to_string(),
+        coin_denom: "uusd".to_string(),
         whitelist: None,
         min_bid: None,
     };
@@ -1035,15 +1132,29 @@ fn execute_cancel_no_bids() {
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
 
     assert_eq!(
-        Response::new().add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: MOCK_TOKEN_ADDR.to_owned(),
-            msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
-                recipient: MOCK_TOKEN_OWNER.to_owned(),
-                token_id: MOCK_UNCLAIMED_TOKEN.to_owned()
-            })
-            .unwrap(),
-            funds: vec![],
-        })),
+        Response::new()
+            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: MOCK_TOKEN_ADDR.to_owned(),
+                msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
+                    recipient: MOCK_TOKEN_OWNER.to_owned(),
+                    token_id: MOCK_UNCLAIMED_TOKEN.to_owned()
+                })
+                .unwrap(),
+                funds: vec![],
+            }))
+            // Economics message
+            .add_submessage(SubMsg::reply_on_error(
+                CosmosMsg::Wasm(WasmMsg::Execute {
+                    contract_addr: "economics_contract".to_string(),
+                    msg: to_json_binary(&EconomicsExecuteMsg::PayFee {
+                        payee: Addr::unchecked("owner"),
+                        action: "CancelAuction".to_string()
+                    })
+                    .unwrap(),
+                    funds: vec![],
+                }),
+                ReplyId::PayFee.repr(),
+            )),
         res
     );
 
@@ -1070,7 +1181,7 @@ fn execute_cancel_with_bids() {
     // Auction start and end are 100 and 200.
     env.block.time = Timestamp::from_seconds(150);
 
-    let info = mock_info("bidder", &coins(100, "native:uusd"));
+    let info = mock_info("bidder", &coins(100, "uusd"));
     let _res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
     let msg = ExecuteMsg::CancelAuction {
@@ -1094,8 +1205,21 @@ fn execute_cancel_with_bids() {
             }))
             .add_message(CosmosMsg::Bank(BankMsg::Send {
                 to_address: "bidder".to_string(),
-                amount: coins(100, "native:uusd")
-            })),
+                amount: coins(100, "uusd")
+            }))
+            // Economics message
+            .add_submessage(SubMsg::reply_on_error(
+                CosmosMsg::Wasm(WasmMsg::Execute {
+                    contract_addr: "economics_contract".to_string(),
+                    msg: to_json_binary(&EconomicsExecuteMsg::PayFee {
+                        payee: Addr::unchecked("owner"),
+                        action: "CancelAuction".to_string()
+                    })
+                    .unwrap(),
+                    funds: vec![],
+                }),
+                ReplyId::PayFee.repr(),
+            )),
         res
     );
 
@@ -1164,17 +1288,17 @@ fn execute_bid_below_min_price() {
     // Auction start and end are 100 and 200.
     env.block.time = Timestamp::from_seconds(150);
 
-    let info = mock_info("bidder", &coins(10, "native:uusd"));
+    let info = mock_info("bidder", &coins(10, "uusd"));
     let res = execute(deps.as_mut(), env.clone(), info, msg.clone()).unwrap_err();
 
     assert_eq!(
         res,
         ContractError::InvalidFunds {
-            msg: "Must provide at least 100 native:uusd to bid".to_string()
+            msg: "Must provide at least 100 uusd to bid".to_string()
         }
     );
 
-    let info = mock_info("bidder", &coins(100, "native:uusd"));
+    let info = mock_info("bidder", &coins(100, "uusd"));
     //Will error if invalid
     execute(deps.as_mut(), env, info, msg).unwrap();
 }

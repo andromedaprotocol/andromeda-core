@@ -10,7 +10,7 @@ use cosmwasm_std::{
     to_json_binary, Binary, Coin, ContractResult, OwnedDeps, Querier, QuerierResult, QueryRequest,
     SystemError, SystemResult, WasmQuery,
 };
-use cosmwasm_std::{BankMsg, CosmosMsg, DenomMetadata, Response, SubMsg};
+use cosmwasm_std::{BankMsg, CosmosMsg, DenomMetadata, DenomUnit, Response, SubMsg};
 use cw721::{Cw721QueryMsg, OwnerOfResponse, TokensResponse};
 
 pub use andromeda_std::testing::mock_querier::{
@@ -97,7 +97,21 @@ impl WasmMockQuerier {
                 }
             }
             QueryRequest::Bank(_) => SystemResult::Ok(ContractResult::Ok(
-                to_json_binary(&None::<Response>).unwrap(),
+                to_json_binary(&DenomMetadata {
+                    description: "description".to_string(),
+                    denom_units: vec![DenomUnit {
+                        denom: "uusd".to_string(),
+                        exponent: 1,
+                        aliases: vec!["alias".to_string()],
+                    }],
+                    base: "base".to_string(),
+                    display: "display".to_string(),
+                    name: "name".to_string(),
+                    symbol: "uusd".to_string(),
+                    uri: "uri".to_string(),
+                    uri_hash: "uri_hash".to_string(),
+                })
+                .unwrap(),
             )),
             _ => MockAndromedaQuerier::default().handle_query(&self.base, request),
         }
