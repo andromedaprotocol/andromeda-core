@@ -3,6 +3,8 @@ use andromeda_std::ado_base::InstantiateMsg;
 use andromeda_std::ado_contract::ADOContract;
 use andromeda_std::common::Funds;
 use andromeda_std::testing::mock_querier::MockAndromedaQuerier;
+use cosmwasm_schema::cw_serde;
+
 use cosmwasm_std::testing::mock_info;
 use cosmwasm_std::{
     from_json,
@@ -84,6 +86,16 @@ impl Querier for WasmMockQuerier {
     }
 }
 
+// NOTE: It's impossible to construct a non_exhaustive struct from another another crate, so I copied the struct
+// https://rust-lang.github.io/rfcs/2008-non-exhaustive.html#functional-record-updates
+#[cw_serde(Serialize, Serialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+#[non_exhaustive]
+pub struct DenomMetadataResponse {
+    /// The metadata for the queried denom.
+    pub metadata: DenomMetadata,
+}
+
 impl WasmMockQuerier {
     pub fn handle_query(&self, request: &QueryRequest<cosmwasm_std::Empty>) -> QuerierResult {
         match &request {
@@ -96,8 +108,8 @@ impl WasmMockQuerier {
                     _ => MockAndromedaQuerier::default().handle_query(&self.base, request),
                 }
             }
-            QueryRequest::Bank(_) => SystemResult::Ok(ContractResult::Ok(
-                to_json_binary(&DenomMetadata {
+            QueryRequest::Bank(_) => {
+                let denom_metadata = DenomMetadata {
                     description: "description".to_string(),
                     denom_units: vec![DenomUnit {
                         denom: "uusd".to_string(),
@@ -110,9 +122,14 @@ impl WasmMockQuerier {
                     symbol: "uusd".to_string(),
                     uri: "uri".to_string(),
                     uri_hash: "uri_hash".to_string(),
-                })
-                .unwrap(),
-            )),
+                };
+
+                let response = DenomMetadataResponse {
+                    metadata: denom_metadata,
+                };
+
+                SystemResult::Ok(ContractResult::Ok(to_json_binary(&response).unwrap()))
+            }
             _ => MockAndromedaQuerier::default().handle_query(&self.base, request),
         }
     }
