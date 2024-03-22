@@ -133,7 +133,7 @@ fn kernel() {
     let attr_key = inst_event
         .attributes
         .iter()
-        .position(|attr| attr.key == "_contract_addr")
+        .position(|attr| attr.key == "_contract_address")
         .unwrap();
     let attr = inst_event.attributes.get(attr_key).unwrap();
     let addr: Addr = Addr::unchecked(attr.value.clone());
