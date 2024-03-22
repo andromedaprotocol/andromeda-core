@@ -8,7 +8,7 @@ use andromeda_app_contract::mock::{
 use andromeda_auction::mock::{
     mock_andromeda_auction, mock_auction_instantiate_msg, mock_authorize_token_address,
     mock_claim_auction, mock_get_auction_ids, mock_get_auction_state, mock_get_bids,
-    mock_place_bid, mock_receive_packet, mock_start_auction,
+    mock_place_bid, mock_set_permission, mock_start_auction,
 };
 use andromeda_cw721::mock::{
     mock_andromeda_cw721, mock_cw721_instantiate_msg, mock_cw721_owner_of, mock_quick_mint_msg,
@@ -17,8 +17,10 @@ use andromeda_cw721::mock::{
 use andromeda_non_fungible_tokens::auction::{
     AuctionIdsResponse, AuctionStateResponse, BidsResponse,
 };
-use andromeda_std::amp::messages::{AMPMsg, AMPPkt};
+use andromeda_std::ado_base::permissioning::Permission;
+use andromeda_std::amp::AndrAddr;
 use andromeda_std::common::expiration::MILLISECONDS_TO_NANOSECONDS_RATIO;
+use andromeda_std::error::ContractError;
 use andromeda_testing::mock::MockAndromeda;
 use cosmwasm_std::{coin, to_json_binary, Addr, BlockInfo, Timestamp, Uint128};
 use cw721::OwnerOfResponse;
@@ -210,28 +212,82 @@ fn test_auction_app() {
     assert_eq!(auction_state.coin_denom, "uandr".to_string());
 
     // Place Bid One
+    // Blacklist bidder now
+    let actor = AndrAddr::from_string(buyer_one.clone());
+    let action = "PlaceBid".to_string();
+    let permission = Permission::blacklisted(None);
+    let permissioning_message = mock_set_permission(actor, action, permission);
+
+    router
+        .execute_contract(
+            owner.clone(),
+            Addr::unchecked(auction_addr.clone()),
+            &permissioning_message,
+            &[],
+        )
+        .unwrap();
+
     let bid_msg = mock_place_bid("0".to_string(), cw721_addr.clone());
-    let amp_msg = AMPMsg::new(
-        auction_addr.clone(),
-        to_json_binary(&bid_msg).unwrap(),
-        Some(vec![coin(50, "uandr")]),
-    );
+    // let amp_msg = AMPMsg::new(
+    //     auction_addr.clone(),
+    //     to_binary(&bid_msg).unwrap(),
+    //     Some(vec![coin(50, "uandr")]),
+    // );
 
-    let packet = AMPPkt::new(
-        buyer_one.clone(),
-        andr.kernel_address.to_string(),
-        vec![amp_msg],
-    );
-    let receive_packet_msg = mock_receive_packet(packet);
+    // Bid should be rejected because we blacklisted bidder one
+    let err: ContractError = router
+        .execute_contract(
+            buyer_one.clone(),
+            Addr::unchecked(auction_addr.clone()),
+            &bid_msg,
+            &[coin(50, "uandr")],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(err, ContractError::Unauthorized {});
 
+    // Now whitelist bidder one
+
+    let actor = AndrAddr::from_string(buyer_one.clone());
+    let action = "PlaceBid".to_string();
+    let permission = Permission::whitelisted(None);
+    let permissioning_message = mock_set_permission(actor, action, permission);
+
+    router
+        .execute_contract(
+            owner.clone(),
+            Addr::unchecked(auction_addr.clone()),
+            &permissioning_message,
+            &[],
+        )
+        .unwrap();
+
+    // Try bidding again
     router
         .execute_contract(
             buyer_one.clone(),
             Addr::unchecked(auction_addr.clone()),
-            &receive_packet_msg,
+            &bid_msg,
             &[coin(50, "uandr")],
         )
         .unwrap();
+
+    // let packet = AMPPkt::new(
+    //     buyer_one.clone(),
+    //     andr.kernel_address.to_string(),
+    //     vec![amp_msg],
+    // );
+    // let receive_packet_msg = mock_receive_packet(packet);
+
+    // router
+    //     .execute_contract(
+    //         buyer_one.clone(),
+    //         Addr::unchecked(auction_addr.clone()),
+    //         &receive_packet_msg,
+    //         &[coin(50, "uandr")],
+    //     )
+    //     .unwrap();
 
     // Check Bid Status One
     let bids_resp: BidsResponse = router

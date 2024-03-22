@@ -1,6 +1,6 @@
 [package]
 name = "andromeda-cw20-staking"
-version = "0.2.16"
+version = "1.0.0-rc.1"
 edition = "2021"
 rust-version = "1.65.0"
 
@@ -34,3 +34,4 @@ cw-multi-test = { version = "1.0.0", optional = true }
 
 [dev-dependencies]
 andromeda-app = { version = "0.1.0", path = "../../../packages/andromeda-app" }
+andromeda-testing = { version = "0.1.0", path = "../../../packages/andromeda-testing" }

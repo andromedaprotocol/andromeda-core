@@ -401,7 +401,6 @@
       "required": [
         "cycle_duration",
         "cycle_rewards",
-        "init_timestamp",
         "till_timestamp"
       ],
       "properties": {
@@ -418,12 +417,6 @@
               "$ref": "#/definitions/Uint128"
             }
           ]
-        },
-        "init_timestamp": {
-          "description": "Timestamp from which Rewards will start getting accrued against the staked LP tokens",
-          "type": "integer",
-          "format": "uint64",
-          "minimum": 0.0
         },
         "reward_increase": {
           "description": "Percent increase in Rewards per cycle",
@@ -649,30 +642,6 @@
             }
           },
           "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "update_operators"
-          ],
-          "properties": {
-            "update_operators": {
-              "type": "object",
-              "required": [
-                "new_operators"
-              ],
-              "properties": {
-                "new_operators": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/definitions/Addr"
-                  }
-                }
-              },
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
         }
       ]
     },
@@ -888,7 +857,8 @@
     "RewardTokenUnchecked": {
       "type": "object",
       "required": [
-        "asset_info"
+        "asset_info",
+        "init_timestamp"
       ],
       "properties": {
         "allocation_config": {
@@ -903,6 +873,11 @@
         },
         "asset_info": {
           "$ref": "#/definitions/AssetInfoBase_for_String"
+        },
+        "init_timestamp": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
         }
       },
       "additionalProperties": false

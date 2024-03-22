@@ -74,6 +74,75 @@
     {
       "type": "object",
       "required": [
+        "withdraw"
+      ],
+      "properties": {
+        "withdraw": {
+          "type": "object",
+          "properties": {
+            "recipient": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Recipient"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "tokens_to_withdraw": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "$ref": "#/definitions/Withdrawal"
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "deposit"
+      ],
+      "properties": {
+        "deposit": {
+          "type": "object",
+          "properties": {
+            "msg": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Binary"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "recipient": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/AndrAddr"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
         "amp_receive"
       ],
       "properties": {
@@ -145,75 +214,6 @@
       "properties": {
         "permissioning": {
           "$ref": "#/definitions/PermissioningMessage"
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "type": "object",
-      "required": [
-        "deposit"
-      ],
-      "properties": {
-        "deposit": {
-          "type": "object",
-          "properties": {
-            "msg": {
-              "anyOf": [
-                {
-                  "$ref": "#/definitions/Binary"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "recipient": {
-              "anyOf": [
-                {
-                  "$ref": "#/definitions/AndrAddr"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            }
-          },
-          "additionalProperties": false
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "type": "object",
-      "required": [
-        "withdraw"
-      ],
-      "properties": {
-        "withdraw": {
-          "type": "object",
-          "properties": {
-            "recipient": {
-              "anyOf": [
-                {
-                  "$ref": "#/definitions/Recipient"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "tokens_to_withdraw": {
-              "type": [
-                "array",
-                "null"
-              ],
-              "items": {
-                "$ref": "#/definitions/Withdrawal"
-              }
-            }
-          },
-          "additionalProperties": false
         }
       },
       "additionalProperties": false
@@ -493,30 +493,6 @@
                 },
                 "new_owner": {
                   "$ref": "#/definitions/Addr"
-                }
-              },
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "update_operators"
-          ],
-          "properties": {
-            "update_operators": {
-              "type": "object",
-              "required": [
-                "new_operators"
-              ],
-              "properties": {
-                "new_operators": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/definitions/Addr"
-                  }
                 }
               },
               "additionalProperties": false

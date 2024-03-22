@@ -11,9 +11,13 @@ use andromeda_std::{
         InstantiateMsg as BaseInstantiateMsg,
     },
     amp::AndrAddr,
-    common::Funds,
-    common::{encode_binary, expiration::expiration_from_milliseconds, OrderBy},
-    common::{expiration::MILLISECONDS_TO_NANOSECONDS_RATIO, rates::get_tax_amount},
+    common::{
+        actions::call_action,
+        encode_binary,
+        expiration::{expiration_from_milliseconds, MILLISECONDS_TO_NANOSECONDS_RATIO},
+        rates::get_tax_amount,
+        Funds, OrderBy,
+    },
     error::{from_semver, ContractError},
 };
 use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
@@ -92,8 +96,15 @@ pub fn execute(
     }
 }
 
-pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
+    let action_response = call_action(
+        &mut ctx.deps,
+        &ctx.info,
+        &ctx.env,
+        &ctx.amp_ctx,
+        msg.as_ref(),
+    )?;
 
     if !matches!(msg, ExecuteMsg::UpdateAppContract { .. })
         && !matches!(
@@ -109,7 +120,7 @@ pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
             },
         )?;
     }
-    match msg {
+    let res = match msg {
         ExecuteMsg::ReceiveNft(msg) => handle_receive_cw721(ctx, msg),
         ExecuteMsg::UpdateAuction {
             token_id,
@@ -148,7 +159,11 @@ pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
             execute_deauthorize_token_contract(ctx.deps, ctx.info, addr)
         }
         _ => ADOContract::default().execute(ctx, msg),
-    }
+    }?;
+    Ok(res
+        .add_submessages(action_response.messages)
+        .add_attributes(action_response.attributes)
+        .add_events(action_response.events))
 }
 
 fn handle_receive_cw721(
