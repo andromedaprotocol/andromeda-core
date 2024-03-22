@@ -230,7 +230,7 @@ fn test_auction_app() {
     let bid_msg = mock_place_bid("0".to_string(), cw721_addr.clone());
     // let amp_msg = AMPMsg::new(
     //     auction_addr.clone(),
-    //     to_binary(&bid_msg).unwrap(),
+    //     to_json_binary(&bid_msg).unwrap(),
     //     Some(vec![coin(50, "uandr")]),
     // );
 

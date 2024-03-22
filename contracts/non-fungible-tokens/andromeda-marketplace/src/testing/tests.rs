@@ -15,7 +15,8 @@ use andromeda_std::{
 use cosmwasm_std::{
     coin, coins,
     testing::{mock_env, mock_info},
-    to_binary, Addr, BankMsg, CosmosMsg, Deps, DepsMut, Env, Response, SubMsg, Uint128, WasmMsg,
+    to_json_binary, Addr, BankMsg, CosmosMsg, Deps, DepsMut, Env, Response, SubMsg, Uint128,
+    WasmMsg,
 };
 use cw721::{Cw721ExecuteMsg, Cw721ReceiveMsg};
 use cw_utils::Expiration;
@@ -537,7 +538,7 @@ fn test_execute_buy_with_tax_and_royalty_works() {
         SubMsg::reply_on_error(
             CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: "economics_contract".to_string(),
-                msg: to_binary(&EconomicsExecuteMsg::PayFee {
+                msg: to_json_binary(&EconomicsExecuteMsg::PayFee {
                     payee: Addr::unchecked("someone"),
                     action: "Buy".to_string(),
                 })

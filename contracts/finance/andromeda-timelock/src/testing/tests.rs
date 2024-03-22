@@ -8,7 +8,7 @@ use andromeda_finance::timelock::{
 use andromeda_std::{amp::Recipient, error::ContractError};
 use andromeda_testing::economics_msg::generate_economics_message;
 use cosmwasm_std::{
-    attr, coin, coins, from_binary,
+    attr, coin, coins, from_json,
     testing::{mock_env, mock_info},
     BankMsg, Coin, Response, Timestamp,
 };
