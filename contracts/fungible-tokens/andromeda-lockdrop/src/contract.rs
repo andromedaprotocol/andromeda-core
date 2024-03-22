@@ -11,8 +11,8 @@ use andromeda_std::{
     },
     ado_contract::ADOContract,
     common::{
-        context::ExecuteContext, encode_binary, expiration::MILLISECONDS_TO_NANOSECONDS_RATIO,
-        Milliseconds,
+        actions::call_action, context::ExecuteContext, encode_binary,
+        expiration::MILLISECONDS_TO_NANOSECONDS_RATIO, Milliseconds,
     },
     error::{from_semver, ContractError},
 };
@@ -113,9 +113,15 @@ pub fn execute(
     }
 }
 
-pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
-
+    let action_response = call_action(
+        &mut ctx.deps,
+        &ctx.info,
+        &ctx.env,
+        &ctx.amp_ctx,
+        msg.as_ref(),
+    )?;
     if !matches!(msg, ExecuteMsg::UpdateAppContract { .. })
         && !matches!(
             msg,
@@ -131,7 +137,7 @@ pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
         )?;
     }
 
-    match msg {
+    let res = match msg {
         ExecuteMsg::Receive(msg) => receive_cw20(ctx, msg),
         ExecuteMsg::DepositNative {} => execute_deposit_native(ctx),
         ExecuteMsg::WithdrawNative { amount } => execute_withdraw_native(ctx, amount),
@@ -139,7 +145,11 @@ pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
         ExecuteMsg::ClaimRewards {} => execute_claim_rewards(ctx),
         // ExecuteMsg::WithdrawProceeds { recipient } => execute_withdraw_proceeds(ctx, recipient),
         _ => ADOContract::default().execute(ctx, msg),
-    }
+    }?;
+    Ok(res
+        .add_submessages(action_response.messages)
+        .add_attributes(action_response.attributes)
+        .add_events(action_response.events))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

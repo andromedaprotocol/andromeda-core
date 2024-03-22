@@ -6,7 +6,7 @@ use andromeda_std::{
     common::Milliseconds,
     error::ContractError,
 };
-
+use andromeda_testing::economics_msg::generate_economics_message;
 use cosmwasm_std::{
     attr, from_binary,
     testing::{mock_env, mock_info, MOCK_CONTRACT_ADDR},
@@ -74,10 +74,12 @@ fn test_execute_update_lock() {
     let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
     let new_lock = Milliseconds::from_seconds(current_time + lock_time);
     assert_eq!(
-        Response::default().add_attributes(vec![
-            attr("action", "update_lock"),
-            attr("locked", new_lock.to_string())
-        ]),
+        Response::default()
+            .add_attributes(vec![
+                attr("action", "update_lock"),
+                attr("locked", new_lock.to_string())
+            ])
+            .add_submessage(generate_economics_message(OWNER, "UpdateLock")),
         res
     );
 
@@ -140,7 +142,9 @@ fn test_execute_update_recipients() {
     let info = mock_info(OWNER, &[]);
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
     assert_eq!(
-        Response::default().add_attributes(vec![attr("action", "update_recipients")]),
+        Response::default()
+            .add_attributes(vec![attr("action", "update_recipients")])
+            .add_submessage(generate_economics_message(OWNER, "UpdateRecipients")),
         res
     );
 
@@ -215,7 +219,8 @@ fn test_execute_send() {
             ),
             amp_msg,
         ])
-        .add_attributes(vec![attr("action", "send"), attr("sender", "creator")]);
+        .add_attributes(vec![attr("action", "send"), attr("sender", "creator")])
+        .add_submessage(generate_economics_message(OWNER, "Send"));
 
     assert_eq!(res, expected_res);
 }
@@ -286,7 +291,8 @@ fn test_execute_send_ado_recipient() {
             amp_msg,
         ])
         .add_attribute("action", "send")
-        .add_attribute("sender", "creator");
+        .add_attribute("sender", "creator")
+        .add_submessage(generate_economics_message(OWNER, "Send"));
 
     assert_eq!(res, expected_res);
 }
@@ -430,7 +436,8 @@ fn test_update_app_contract() {
     assert_eq!(
         Response::new()
             .add_attribute("action", "update_app_contract")
-            .add_attribute("address", "app_contract"),
+            .add_attribute("address", "app_contract")
+            .add_submessage(generate_economics_message(OWNER, "UpdateAppContract")),
         res
     );
 }

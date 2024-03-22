@@ -6,7 +6,7 @@ use andromeda_finance::timelock::{
 use andromeda_std::{
     ado_base::InstantiateMsg as BaseInstantiateMsg,
     amp::Recipient,
-    common::encode_binary,
+    common::{actions::call_action, encode_binary},
     error::{from_semver, ContractError},
 };
 use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
@@ -66,8 +66,15 @@ pub fn execute(
     }
 }
 
-pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
-    match msg {
+pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+    let action_response = call_action(
+        &mut ctx.deps,
+        &ctx.info,
+        &ctx.env,
+        &ctx.amp_ctx,
+        msg.as_ref(),
+    )?;
+    let res = match msg {
         ExecuteMsg::HoldFunds {
             condition,
             recipient,
@@ -83,7 +90,11 @@ pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
         } => execute_release_specific_funds(ctx, owner, recipient_addr),
 
         _ => ADOContract::default().execute(ctx, msg),
-    }
+    }?;
+    Ok(res
+        .add_submessages(action_response.messages)
+        .add_attributes(action_response.attributes)
+        .add_events(action_response.events))
 }
 
 fn execute_hold_funds(

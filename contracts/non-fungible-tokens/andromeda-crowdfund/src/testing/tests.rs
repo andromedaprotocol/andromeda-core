@@ -20,6 +20,7 @@ use andromeda_std::{
     common::{encode_binary, Milliseconds},
     error::ContractError,
 };
+use andromeda_testing::economics_msg::generate_economics_message;
 use cosmwasm_std::{
     coin, coins, from_binary,
     testing::{mock_env, mock_info},
@@ -249,7 +250,8 @@ fn test_mint_successful() {
                 contract_addr: MOCK_TOKEN_CONTRACT.to_owned(),
                 msg: encode_binary(&mint_msg).unwrap(),
                 funds: vec![],
-            }),
+            })
+            .add_submessage(generate_economics_message("owner", "Mint")),
         res
     );
 
@@ -312,7 +314,8 @@ fn test_mint_multiple_successful() {
                 })
                 .unwrap(),
                 funds: vec![],
-            }),
+            })
+            .add_submessage(generate_economics_message("owner", "Mint")),
         res
     );
 
@@ -415,7 +418,8 @@ fn test_start_sale_max_default() {
             .add_attribute("expiration", "1571797420000")
             .add_attribute("price", "100uusd")
             .add_attribute("min_tokens_sold", "1")
-            .add_attribute("max_amount_per_wallet", "1"),
+            .add_attribute("max_amount_per_wallet", "1")
+            .add_submessage(generate_economics_message("owner", "StartSale")),
         res
     );
 
@@ -460,7 +464,8 @@ fn test_start_sale_max_modified() {
             .add_attribute("expiration", "1571797420000")
             .add_attribute("price", "100uusd")
             .add_attribute("min_tokens_sold", "1")
-            .add_attribute("max_amount_per_wallet", "5"),
+            .add_attribute("max_amount_per_wallet", "5")
+            .add_submessage(generate_economics_message("owner", "StartSale")),
         res
     );
 
@@ -785,7 +790,8 @@ fn test_purchase_by_token_id() {
     assert_eq!(
         Response::new()
             .add_attribute("action", "purchase")
-            .add_attribute("token_id", MOCK_TOKENS_FOR_SALE[0]),
+            .add_attribute("token_id", MOCK_TOKENS_FOR_SALE[0])
+            .add_submessage(generate_economics_message("sender", "PurchaseByTokenId")),
         res
     );
 
@@ -880,7 +886,8 @@ fn test_multiple_purchases() {
         Response::new()
             .add_attribute("action", "purchase")
             .add_attribute("number_of_tokens_wanted", "2")
-            .add_attribute("number_of_tokens_purchased", "2"),
+            .add_attribute("number_of_tokens_purchased", "2")
+            .add_submessage(generate_economics_message("sender", "Purchase")),
         res
     );
 
@@ -916,7 +923,8 @@ fn test_multiple_purchases() {
             })
             .add_attribute("action", "purchase")
             .add_attribute("number_of_tokens_wanted", "1")
-            .add_attribute("number_of_tokens_purchased", "1"),
+            .add_attribute("number_of_tokens_purchased", "1")
+            .add_submessage(generate_economics_message("sender", "Purchase")),
         res
     );
 
@@ -960,7 +968,8 @@ fn test_multiple_purchases() {
             })
             .add_attribute("action", "purchase")
             .add_attribute("number_of_tokens_wanted", "2")
-            .add_attribute("number_of_tokens_purchased", "1"),
+            .add_attribute("number_of_tokens_purchased", "1")
+            .add_submessage(generate_economics_message("user2", "Purchase")),
         res
     );
 
@@ -1036,7 +1045,8 @@ fn test_purchase_more_than_allowed_per_wallet() {
             .add_attribute("action", "purchase")
             // Number got truncated to 3 which is the max possible.
             .add_attribute("number_of_tokens_wanted", "3")
-            .add_attribute("number_of_tokens_purchased", "3"),
+            .add_attribute("number_of_tokens_purchased", "3")
+            .add_submessage(generate_economics_message("sender", "Purchase")),
         res
     );
 }
@@ -1194,7 +1204,8 @@ fn test_integration_conditions_not_met() {
             .add_message(CosmosMsg::Bank(BankMsg::Send {
                 to_address: "B".to_string(),
                 amount: coins(150, "uusd"),
-            })),
+            }))
+            .add_submessage(generate_economics_message("B", "ClaimRefund")),
         res
     );
 
@@ -1231,7 +1242,8 @@ fn test_integration_conditions_not_met() {
         Response::new()
             .add_attribute("action", "issue_refunds_and_burn_tokens")
             .add_messages(refund_msgs)
-            .add_messages(burn_msgs),
+            .add_messages(burn_msgs)
+            .add_submessage(generate_economics_message("anyone", "EndSale")),
         res
     );
 
@@ -1362,7 +1374,8 @@ fn test_integration_conditions_met() {
         Response::new()
             .add_attribute("action", "transfer_tokens_and_send_funds")
             .add_message(get_transfer_message(MOCK_TOKENS_FOR_SALE[0], "A"))
-            .add_submessages(get_rates_messages()),
+            .add_submessages(get_rates_messages())
+            .add_submessage(generate_economics_message("anyone", "EndSale")),
         res
     );
 
@@ -1397,7 +1410,8 @@ fn test_integration_conditions_met() {
                     amount: Uint128::from(100u128),
                     denom: "uusd".to_string(),
                 }],
-            })),
+            }))
+            .add_submessage(generate_economics_message("anyone", "EndSale")),
         res
     );
 
@@ -1435,7 +1449,8 @@ fn test_integration_conditions_met() {
                     amount: Uint128::from(100u128),
                     denom: "uusd".to_string(),
                 }],
-            })),
+            }))
+            .add_submessage(generate_economics_message("anyone", "EndSale")),
         res
     );
 
@@ -1444,8 +1459,8 @@ fn test_integration_conditions_met() {
 
     let msg = ExecuteMsg::EndSale { limit: None };
     let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
-
-    assert_eq!(3, res.messages.len());
+    // Added one for economics message
+    assert_eq!(3 + 1, res.messages.len());
 
     // assert_eq!(
     //     Response::new()
@@ -1521,7 +1536,8 @@ fn test_end_sale_single_purchase() {
         Response::new()
             .add_attribute("action", "transfer_tokens_and_send_funds")
             // Burn tokens that were not purchased
-            .add_message(get_transfer_message(MOCK_TOKENS_FOR_SALE[0], "A")),
+            .add_message(get_transfer_message(MOCK_TOKENS_FOR_SALE[0], "A"))
+            .add_submessage(generate_economics_message("anyone", "EndSale")),
         res
     );
 }
@@ -1573,7 +1589,8 @@ fn test_end_sale_all_tokens_sold() {
         Response::new()
             .add_attribute("action", "transfer_tokens_and_send_funds")
             // Burn tokens that were not purchased
-            .add_message(get_transfer_message(MOCK_TOKENS_FOR_SALE[0], "A")),
+            .add_message(get_transfer_message(MOCK_TOKENS_FOR_SALE[0], "A"))
+            .add_submessage(generate_economics_message("anyone", "EndSale")),
         res
     );
 }
@@ -1631,7 +1648,8 @@ fn test_end_sale_some_tokens_sold_threshold_met() {
         Response::new()
             .add_attribute("action", "transfer_tokens_and_send_funds")
             // Burn tokens that were not purchased
-            .add_message(get_transfer_message(MOCK_TOKENS_FOR_SALE[0], "A")),
+            .add_message(get_transfer_message(MOCK_TOKENS_FOR_SALE[0], "A"))
+            .add_submessage(generate_economics_message("owner", "EndSale")),
         res
     );
 }
@@ -1750,7 +1768,8 @@ fn test_validate_andr_addresses_regular_address() {
     assert_eq!(
         Response::new()
             .add_attribute("action", "update_app_contract")
-            .add_attribute("address", MOCK_APP_CONTRACT),
+            .add_attribute("address", MOCK_APP_CONTRACT)
+            .add_submessage(generate_economics_message("owner", "UpdateAppContract")),
         res
     );
 }

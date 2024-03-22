@@ -1,6 +1,6 @@
 {
   "contract_name": "andromeda-address-list",
-  "contract_version": "0.2.16",
+  "contract_version": "1.0.0-rc.1",
   "idl_version": "1.0.0",
   "instantiate": {
     "$schema": "http://json-schema.org/draft-07/schema#",

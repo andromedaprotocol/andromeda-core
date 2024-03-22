@@ -158,6 +158,28 @@
       "additionalProperties": false
     },
     {
+      "description": "Update Current Chain",
+      "type": "object",
+      "required": [
+        "update_chain_name"
+      ],
+      "properties": {
+        "update_chain_name": {
+          "type": "object",
+          "required": [
+            "chain_name"
+          ],
+          "properties": {
+            "chain_name": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
       "type": "object",
       "required": [
         "internal"

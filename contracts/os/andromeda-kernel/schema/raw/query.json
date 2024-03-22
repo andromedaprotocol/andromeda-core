@@ -89,6 +89,19 @@
     {
       "type": "object",
       "required": [
+        "chain_name"
+      ],
+      "properties": {
+        "chain_name": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
         "version"
       ],
       "properties": {
