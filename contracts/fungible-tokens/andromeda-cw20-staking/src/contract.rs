@@ -5,7 +5,7 @@ use andromeda_std::{
         hooks::AndromedaHook, ownership::OwnershipMessage, InstantiateMsg as BaseInstantiateMsg,
     },
     ado_contract::ADOContract,
-    common::{actions::call_action, context::ExecuteContext, encode_binary},
+    common::{actions::call_action, context::ExecuteContext, encode_binary, Milliseconds},
     error::{from_semver, ContractError},
 };
 use cosmwasm_std::{
@@ -159,7 +159,7 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
             None => update_global_indexes(
                 ctx.deps.storage,
                 &ctx.deps.querier,
-                ctx.env.block.time.seconds(),
+                Milliseconds::from_seconds(ctx.env.block.time.seconds()),
                 ctx.env.contract.address,
                 None,
             ),
@@ -171,7 +171,7 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
                 update_global_indexes(
                     ctx.deps.storage,
                     &ctx.deps.querier,
-                    ctx.env.block.time.seconds(),
+                    Milliseconds::from_seconds(ctx.env.block.time.seconds()),
                     ctx.env.contract.address,
                     Some(asset_infos?),
                 )
@@ -205,7 +205,7 @@ fn receive_cw20(ctx: ExecuteContext, msg: Cw20ReceiveMsg) -> Result<Response, Co
         Cw20HookMsg::UpdateGlobalIndex {} => update_global_indexes(
             deps.storage,
             &deps.querier,
-            env.block.time.seconds(),
+            Milliseconds::from_seconds(env.block.time.seconds()),
             env.contract.address,
             Some(vec![AssetInfo::cw20(info.sender)]),
         ),
@@ -260,7 +260,7 @@ fn execute_add_reward_token(
     let state = STATE.load(deps.storage)?;
     update_global_index(
         &deps.querier,
-        env.block.time.seconds(),
+        Milliseconds::from_seconds(env.block.time.seconds()),
         env.contract.address,
         &state,
         &mut reward_token,
@@ -300,7 +300,7 @@ fn execute_stake_tokens(
     update_global_indexes(
         deps.storage,
         &deps.querier,
-        env.block.time.seconds(),
+        Milliseconds::from_seconds(env.block.time.seconds()),
         env.contract.address.clone(),
         None,
     )?;
@@ -354,7 +354,7 @@ fn execute_unstake_tokens(
         update_global_indexes(
             deps.storage,
             &deps.querier,
-            env.block.time.seconds(),
+            Milliseconds::from_seconds(env.block.time.seconds()),
             env.contract.address,
             None,
         )?;
@@ -410,7 +410,7 @@ fn execute_claim_rewards(ctx: ExecuteContext) -> Result<Response, ContractError>
         update_global_indexes(
             deps.storage,
             &deps.querier,
-            env.block.time.seconds(),
+            Milliseconds::from_seconds(env.block.time.seconds()),
             env.contract.address,
             None,
         )?;
@@ -473,7 +473,7 @@ fn execute_claim_rewards(ctx: ExecuteContext) -> Result<Response, ContractError>
 fn update_global_indexes(
     storage: &mut dyn Storage,
     querier: &QuerierWrapper,
-    current_timestamp: u64,
+    current_timestamp: Milliseconds,
     contract_address: Addr,
     asset_infos: Option<Vec<AssetInfo>>,
 ) -> Result<Response, ContractError> {
@@ -516,7 +516,7 @@ fn update_global_indexes(
 
 fn update_global_index(
     querier: &QuerierWrapper,
-    current_timestamp: u64,
+    current_timestamp: Milliseconds,
     contract_address: Addr,
     state: &State,
     reward_token: &mut RewardToken,
@@ -568,8 +568,8 @@ fn update_nonallocated_index(
     reward_token: &mut RewardToken,
     previous_reward_balance: Uint128,
     contract_address: Addr,
-    curr_timestamp: u64,
-    init_timestamp: u64,
+    curr_timestamp: Milliseconds,
+    init_timestamp: Milliseconds,
 ) -> Result<(), ContractError> {
     if curr_timestamp < init_timestamp {
         return Ok(());
@@ -696,7 +696,7 @@ pub(crate) fn get_pending_rewards(
     let reward_tokens: Vec<RewardToken> = get_reward_tokens(storage)?;
     let mut pending_rewards = vec![];
     let state = STATE.load(storage)?;
-    let current_timestamp = env.block.time.seconds();
+    let current_timestamp = Milliseconds::from_seconds(env.block.time.seconds());
     for mut token in reward_tokens {
         let token_string = token.to_string();
         let mut staker_reward_info = STAKER_REWARD_INFOS

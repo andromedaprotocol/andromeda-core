@@ -1,16 +1,17 @@
 use andromeda_std::{
-    amp::recipient::Recipient, andr_exec, andr_instantiate, andr_instantiate_modules, andr_query,
-    common::merge_coins, error::ContractError,
+    amp::recipient::Recipient,
+    andr_exec, andr_instantiate, andr_instantiate_modules, andr_query,
+    common::{merge_coins, Milliseconds},
+    error::ContractError,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{ensure, Api, BlockInfo, Coin};
-use cw_utils::Expiration;
 
 #[cw_serde]
 /// Enum used to specify the condition which must be met in order for the Escrow to unlock.
 pub enum EscrowCondition {
     /// Requires a given time or block height to be reached.
-    Expiration(Expiration),
+    Expiration(Milliseconds),
     /// Requires a minimum amount of funds to be deposited.
     MinimumFunds(Vec<Coin>),
 }
@@ -79,11 +80,7 @@ impl Escrow {
         match &self.condition {
             None => Ok(false),
             Some(condition) => match condition {
-                EscrowCondition::Expiration(expiration) => match expiration {
-                    Expiration::AtTime(t) => Ok(t > &block.time),
-                    Expiration::AtHeight(h) => Ok(h > &block.height),
-                    _ => Err(ContractError::ExpirationNotSpecified {}),
-                },
+                EscrowCondition::Expiration(expiration) => Ok(!expiration.is_in_past(block)),
                 EscrowCondition::MinimumFunds(funds) => {
                     Ok(!self.min_funds_deposited(funds.clone()))
                 }
@@ -182,7 +179,7 @@ mod tests {
     #[test]
     fn test_validate() {
         let deps = mock_dependencies();
-        let condition = EscrowCondition::Expiration(Expiration::AtHeight(1500));
+        let condition = EscrowCondition::Expiration(Milliseconds::from_seconds(101));
         let coins = vec![coin(100u128, "uluna")];
         let recipient = Recipient::from_string("owner");
 
@@ -194,7 +191,7 @@ mod tests {
         };
         let block = BlockInfo {
             height: 1000,
-            time: Timestamp::from_seconds(4444),
+            time: Timestamp::from_seconds(100),
             chain_id: "foo".to_string(),
         };
         valid_escrow.validate(deps.as_ref().api, &block).unwrap();
@@ -241,43 +238,16 @@ mod tests {
             resp
         );
 
-        let invalid_condition_escrow = Escrow {
-            recipient: recipient.clone(),
-            coins: coins.clone(),
-            condition: Some(EscrowCondition::Expiration(Expiration::Never {})),
-            recipient_addr: "owner".to_string(),
-        };
-
-        let resp = invalid_condition_escrow
-            .validate(deps.as_ref().api, &block)
-            .unwrap_err();
-        assert_eq!(ContractError::ExpirationNotSpecified {}, resp);
-
         let invalid_time_escrow = Escrow {
-            recipient: recipient.clone(),
-            coins: coins.clone(),
-            condition: Some(EscrowCondition::Expiration(Expiration::AtHeight(10))),
+            recipient,
+            coins,
+            condition: Some(EscrowCondition::Expiration(Milliseconds::from_seconds(0))),
             recipient_addr: "owner".to_string(),
         };
         let block = BlockInfo {
             height: 1000,
-            time: Timestamp::from_seconds(4444),
+            time: Timestamp::from_seconds(1),
             chain_id: "foo".to_string(),
-        };
-        assert_eq!(
-            ContractError::ExpirationInPast {},
-            invalid_time_escrow
-                .validate(deps.as_ref().api, &block)
-                .unwrap_err()
-        );
-
-        let invalid_time_escrow = Escrow {
-            recipient,
-            coins,
-            condition: Some(EscrowCondition::Expiration(Expiration::AtTime(
-                Timestamp::from_seconds(100),
-            ))),
-            recipient_addr: "owner".to_string(),
         };
         assert_eq!(
             ContractError::ExpirationInPast {},

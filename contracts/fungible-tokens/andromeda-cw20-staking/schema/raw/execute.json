@@ -406,9 +406,11 @@
       "properties": {
         "cycle_duration": {
           "description": "Cycle duration in timestamps",
-          "type": "integer",
-          "format": "uint64",
-          "minimum": 0.0
+          "allOf": [
+            {
+              "$ref": "#/definitions/Milliseconds"
+            }
+          ]
         },
         "cycle_rewards": {
           "description": "Rewards distributed during the 1st cycle.",
@@ -431,9 +433,11 @@
         },
         "till_timestamp": {
           "description": "Timestamp till which Rewards will be accrued. No staking rewards are accrued beyond this timestamp",
-          "type": "integer",
-          "format": "uint64",
-          "minimum": 0.0
+          "allOf": [
+            {
+              "$ref": "#/definitions/Milliseconds"
+            }
+          ]
         }
       },
       "additionalProperties": false
@@ -578,6 +582,12 @@
         }
       },
       "additionalProperties": false
+    },
+    "Milliseconds": {
+      "description": "Represents time in milliseconds.",
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
     },
     "Module": {
       "description": "A struct describing a token module, provided with the instantiation message this struct is used to record the info about the module and how/if it should be instantiated",
@@ -875,9 +885,7 @@
           "$ref": "#/definitions/AssetInfoBase_for_String"
         },
         "init_timestamp": {
-          "type": "integer",
-          "format": "uint64",
-          "minimum": 0.0
+          "$ref": "#/definitions/Milliseconds"
         }
       },
       "additionalProperties": false

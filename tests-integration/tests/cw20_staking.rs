@@ -13,6 +13,9 @@ use andromeda_cw20_staking::mock::{
     mock_cw20_staking_update_global_indexes,
 };
 use andromeda_fungible_tokens::cw20_staking::{AllocationConfig, StakerResponse};
+
+use andromeda_std::common::Milliseconds;
+
 use andromeda_std::ado_base::version::VersionResponse;
 use andromeda_testing::mock::MockAndromeda;
 use cosmwasm_std::{coin, to_binary, Addr, BlockInfo, Timestamp, Uint128};
@@ -288,7 +291,7 @@ fn test_cw20_staking_app_delayed() {
     let reward_token = AssetInfoUnchecked::native("uandr");
     let add_reward_msg = mock_cw20_staking_add_reward_tokens(
         reward_token,
-        router.block_info().time.seconds() + 1,
+        Milliseconds::from_seconds(router.block_info().time.seconds() + 1),
         None,
     );
     router
@@ -303,11 +306,11 @@ fn test_cw20_staking_app_delayed() {
     let reward_token_two = AssetInfoUnchecked::native("uusd");
     let add_reward_msg = mock_cw20_staking_add_reward_tokens(
         reward_token_two,
-        router.block_info().time.seconds() + 1,
+        Milliseconds::from_seconds(router.block_info().time.seconds() + 1),
         Some(AllocationConfig {
-            till_timestamp: router.block_info().time.seconds() + 101,
+            till_timestamp: Milliseconds::from_seconds(router.block_info().time.seconds() + 101),
             cycle_rewards: Uint128::from(3u128),
-            cycle_duration: 1,
+            cycle_duration: Milliseconds::from_seconds(1),
             reward_increase: None,
         }),
     );

@@ -181,6 +181,73 @@
         }
       },
       "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "register_module"
+      ],
+      "properties": {
+        "register_module": {
+          "type": "object",
+          "required": [
+            "module"
+          ],
+          "properties": {
+            "module": {
+              "$ref": "#/definitions/Module"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "deregister_module"
+      ],
+      "properties": {
+        "deregister_module": {
+          "type": "object",
+          "required": [
+            "module_idx"
+          ],
+          "properties": {
+            "module_idx": {
+              "$ref": "#/definitions/Uint64"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "alter_module"
+      ],
+      "properties": {
+        "alter_module": {
+          "type": "object",
+          "required": [
+            "module",
+            "module_idx"
+          ],
+          "properties": {
+            "module": {
+              "$ref": "#/definitions/Module"
+            },
+            "module_idx": {
+              "$ref": "#/definitions/Uint64"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
     }
   ],
   "definitions": {
@@ -414,6 +481,29 @@
             {
               "type": "null"
             }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "Module": {
+      "description": "A struct describing a token module, provided with the instantiation message this struct is used to record the info about the module and how/if it should be instantiated",
+      "type": "object",
+      "required": [
+        "address",
+        "is_mutable"
+      ],
+      "properties": {
+        "address": {
+          "$ref": "#/definitions/AndrAddr"
+        },
+        "is_mutable": {
+          "type": "boolean"
+        },
+        "name": {
+          "type": [
+            "string",
+            "null"
           ]
         }
       },

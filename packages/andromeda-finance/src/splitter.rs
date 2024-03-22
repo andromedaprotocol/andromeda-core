@@ -1,11 +1,11 @@
 use std::collections::HashSet;
 
 use andromeda_std::{
-    amp::recipient::Recipient, andr_exec, andr_instantiate, andr_query, error::ContractError,
+    amp::recipient::Recipient, andr_exec, andr_instantiate, andr_query, common::Milliseconds,
+    error::ContractError,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{ensure, Decimal, Deps, ReplyOn};
-use cw_utils::Expiration;
+use cosmwasm_std::{ensure, Decimal, Deps};
 
 #[cw_serde]
 pub struct AddressPercent {
@@ -25,7 +25,7 @@ pub struct Splitter {
     /// The vector of recipients for the contract. Anytime a `Send` execute message is sent the amount sent will be divided amongst these recipients depending on their assigned percentage.
     pub recipients: Vec<AddressPercent>,
     /// Whether or not the contract is currently locked. This restricts updating any config related fields.
-    pub lock: Expiration,
+    pub lock: Milliseconds,
 }
 
 #[andr_instantiate]
@@ -34,7 +34,7 @@ pub struct InstantiateMsg {
     /// The vector of recipients for the contract. Anytime a `Send` execute message is
     /// sent the amount sent will be divided amongst these recipients depending on their assigned percentage.
     pub recipients: Vec<AddressPercent>,
-    pub lock_time: Option<u64>,
+    pub lock_time: Option<Milliseconds>,
 }
 
 impl InstantiateMsg {
@@ -43,20 +43,16 @@ impl InstantiateMsg {
     }
 }
 
-#[cw_serde]
-pub struct ReplyGasExit {
-    pub reply_on: Option<ReplyOn>,
-    pub gas_limit: Option<u64>,
-    pub exit_at_error: Option<bool>,
-}
-
 #[andr_exec]
 #[cw_serde]
 pub enum ExecuteMsg {
     /// Update the recipients list. Only executable by the contract owner when the contract is not locked.
     UpdateRecipients { recipients: Vec<AddressPercent> },
     /// Used to lock/unlock the contract allowing the config to be updated.
-    UpdateLock { lock_time: u64 },
+    UpdateLock {
+        // Milliseconds from current time
+        lock_time: Milliseconds,
+    },
     /// Divides any attached funds to the message amongst the recipients list.
     Send {},
 }

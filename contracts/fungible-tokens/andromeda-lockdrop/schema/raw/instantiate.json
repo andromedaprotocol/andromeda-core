@@ -12,10 +12,12 @@
   ],
   "properties": {
     "deposit_window": {
-      "description": "Number of seconds for which lockup deposits will be accepted",
-      "type": "integer",
-      "format": "uint64",
-      "minimum": 0.0
+      "description": "Number of milliseconds for which lockup deposits will be accepted",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Milliseconds"
+        }
+      ]
     },
     "incentive_token": {
       "description": "The token being given as incentive.",
@@ -23,9 +25,11 @@
     },
     "init_timestamp": {
       "description": "The bootsrap contract to be used in the second phase. Timestamp till when deposits can be made",
-      "type": "integer",
-      "format": "uint64",
-      "minimum": 0.0
+      "allOf": [
+        {
+          "$ref": "#/definitions/Milliseconds"
+        }
+      ]
     },
     "kernel_address": {
       "type": "string"
@@ -50,10 +54,12 @@
       ]
     },
     "withdrawal_window": {
-      "description": "Number of seconds for which lockup withdrawals will be allowed",
-      "type": "integer",
-      "format": "uint64",
-      "minimum": 0.0
+      "description": "Number of milliseconds for which lockup withdrawals will be allowed",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Milliseconds"
+        }
+      ]
     }
   },
   "additionalProperties": false,
@@ -62,6 +68,12 @@
       "description": "An address that can be used within the Andromeda ecosystem. Inspired by the cosmwasm-std `Addr` type. https://github.com/CosmWasm/cosmwasm/blob/2a1c698520a1aacedfe3f4803b0d7d653892217a/packages/std/src/addresses.rs#L33\n\nThis address can be one of two things: 1. A valid human readable address e.g. `cosmos1...` 2. A valid Andromeda VFS path e.g. `/home/user/app/component`\n\nVFS paths can be local in the case of an app and can be done by referencing `./component` they can also contain protocols for cross chain communication. A VFS path is usually structured as so:\n\n`<protocol>://<chain (required if ibc used)>/<path>` or `ibc://cosmoshub-4/user/app/component`",
       "type": "string",
       "pattern": "(^((([A-Za-z0-9]+://)?([A-Za-z0-9.\\-_]{2,40}/)))?((~[a-z0-9]{2,}|(lib|home))(/[A-Za-z0-9.\\-_]{2,40}?)*(/)?)$)|(^(~[a-z0-9]{2,}|/(lib|home))(/[A-Za-z0-9.\\-_]{2,40}?)*(/)?$)|(^[a-z0-9]{2,}$)|(^\\.(/[A-Za-z0-9.\\-_]{2,40}?)*(/)?$)"
+    },
+    "Milliseconds": {
+      "description": "Represents time in milliseconds.",
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
     },
     "Module": {
       "description": "A struct describing a token module, provided with the instantiation message this struct is used to record the info about the module and how/if it should be instantiated",

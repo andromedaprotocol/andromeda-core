@@ -11,7 +11,10 @@ use andromeda_cw721::mock::{
     mock_andromeda_cw721, mock_cw721_instantiate_msg, mock_cw721_owner_of,
 };
 use andromeda_finance::splitter::AddressPercent;
-use andromeda_std::amp::{AndrAddr, Recipient};
+use andromeda_std::{
+    amp::{AndrAddr, Recipient},
+    common::Milliseconds,
+};
 
 use andromeda_modules::rates::{Rate, RateInfo};
 use andromeda_rates::mock::{mock_andromeda_rates, mock_rates_instantiate_msg};
@@ -23,7 +26,7 @@ use std::str::FromStr;
 
 use andromeda_testing::mock::MockAndromeda;
 use cosmwasm_std::{coin, to_binary, Addr, BlockInfo, Decimal, Uint128};
-use cw721::{Expiration, OwnerOfResponse};
+use cw721::OwnerOfResponse;
 use cw_multi_test::{App, Executor};
 
 fn mock_app() -> App {
@@ -233,7 +236,7 @@ fn test_crowdfund_app() {
     let sale_recipient = Recipient::from_string(format!("~am/app/{}", splitter_app_component.name))
         .with_msg(mock_splitter_send_msg());
     let start_msg = mock_start_crowdfund_msg(
-        Expiration::AtHeight(router.block_info().height + 5),
+        Milliseconds::from_seconds(router.block_info().time.seconds() + 5),
         token_price.clone(),
         Uint128::from(3u128),
         Some(1),
@@ -269,8 +272,8 @@ fn test_crowdfund_app() {
     // End Sale
     let block_info = router.block_info();
     router.set_block(BlockInfo {
-        height: block_info.height + 5,
-        time: block_info.time,
+        height: block_info.height,
+        time: Milliseconds::from_seconds(5).into(),
         chain_id: block_info.chain_id,
     });
     let end_sale_msg = mock_end_crowdfund_msg(None);
