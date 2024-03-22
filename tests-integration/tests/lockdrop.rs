@@ -5,7 +5,7 @@ use andromeda_lockdrop::mock::{
 };
 use andromeda_std::common::Milliseconds;
 use andromeda_testing::mock::MockAndromeda;
-use cosmwasm_std::{coin, to_binary, Addr, BlockInfo, Uint128};
+use cosmwasm_std::{coin, to_json_binary, Addr, BlockInfo, Uint128};
 use cw20::Cw20Coin;
 use cw_multi_test::{App, Executor};
 
@@ -119,7 +119,7 @@ fn test_lockdrop() {
     let msg = mock_cw20_send(
         lockdrop_addr.to_string(),
         100u128.into(),
-        to_binary(&mock_cw20_hook_increase_incentives()).unwrap(),
+        to_json_binary(&mock_cw20_hook_increase_incentives()).unwrap(),
     );
 
     app.execute_contract(Addr::unchecked("owner"), cw20_incentives_address, &msg, &[])

@@ -8,7 +8,7 @@ use andromeda_finance::timelock::{
 use andromeda_std::{amp::Recipient, common::Milliseconds, error::ContractError};
 use andromeda_testing::economics_msg::generate_economics_message;
 use cosmwasm_std::{
-    attr, coin, coins, from_binary,
+    attr, coin, coins, from_json,
     testing::{mock_env, mock_info},
     BankMsg, Coin, Response, Timestamp,
 };
@@ -48,7 +48,7 @@ fn test_execute_hold_funds() {
     };
 
     let res = query(deps.as_ref(), env, query_msg).unwrap();
-    let val: GetLockedFundsResponse = from_binary(&res).unwrap();
+    let val: GetLockedFundsResponse = from_json(res).unwrap();
     let expected = Escrow {
         coins: funds,
         condition: Some(condition),
@@ -96,7 +96,7 @@ fn test_execute_hold_funds_escrow_updated() {
     };
 
     let res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
-    let val: GetLockedFundsResponse = from_binary(&res).unwrap();
+    let val: GetLockedFundsResponse = from_json(res).unwrap();
     let expected = Escrow {
         // Coins get merged.
         coins: vec![coin(200, "uusd"), coin(100, "uluna")],

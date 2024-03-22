@@ -3,8 +3,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, ensure, to_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Empty, Env,
-    MessageInfo, Response, StdResult, Uint128, WasmMsg,
+    attr, ensure, to_json_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Empty,
+    Env, MessageInfo, Response, StdResult, Uint128, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw20::Cw20ExecuteMsg;
@@ -217,7 +217,7 @@ pub fn execute_claim(
         AssetInfoBase::Cw20(address) => CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: address.to_string(),
             funds: vec![],
-            msg: to_binary(&Cw20ExecuteMsg::Transfer {
+            msg: to_json_binary(&Cw20ExecuteMsg::Transfer {
                 recipient: info.sender.to_string(),
                 amount,
             })?,
@@ -276,7 +276,7 @@ pub fn execute_burn(ctx: ExecuteContext, stage: u8) -> Result<Response, Contract
         AssetInfoBase::Cw20(address) => CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: address.to_string(),
             funds: vec![],
-            msg: to_binary(&Cw20ExecuteMsg::Burn {
+            msg: to_json_binary(&Cw20ExecuteMsg::Burn {
                 amount: balance_to_burn,
             })?,
         }),

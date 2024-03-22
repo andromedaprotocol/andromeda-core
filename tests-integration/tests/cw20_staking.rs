@@ -18,7 +18,7 @@ use andromeda_std::common::Milliseconds;
 
 use andromeda_std::ado_base::version::VersionResponse;
 use andromeda_testing::mock::MockAndromeda;
-use cosmwasm_std::{coin, to_binary, Addr, BlockInfo, Timestamp, Uint128};
+use cosmwasm_std::{coin, to_json_binary, Addr, BlockInfo, Timestamp, Uint128};
 use cw20::{BalanceResponse, Cw20Coin};
 use cw_asset::AssetInfoUnchecked;
 use cw_multi_test::{App, Executor};
@@ -106,7 +106,7 @@ fn setup_app(andr: &MockAndromeda, router: &mut App) -> Addr {
     let cw20_component = AppComponent::new(
         "cw20".to_string(),
         "cw20".to_string(),
-        to_binary(&cw20_init_msg).unwrap(),
+        to_json_binary(&cw20_init_msg).unwrap(),
     );
 
     let cw20_staking_init_msg = mock_cw20_staking_instantiate_msg(
@@ -118,7 +118,7 @@ fn setup_app(andr: &MockAndromeda, router: &mut App) -> Addr {
     let cw20_staking_component = AppComponent::new(
         "cw20staking".to_string(),
         "cw20-staking".to_string(),
-        to_binary(&cw20_staking_init_msg).unwrap(),
+        to_json_binary(&cw20_staking_init_msg).unwrap(),
     );
 
     // Create App
@@ -215,7 +215,7 @@ fn test_cw20_staking_app() {
     let staking_msg_one = mock_cw20_send(
         cw20_staking_addr.clone(),
         Uint128::from(1000u128),
-        to_binary(&mock_cw20_stake()).unwrap(),
+        to_json_binary(&mock_cw20_stake()).unwrap(),
     );
     router
         .execute_contract(
@@ -229,7 +229,7 @@ fn test_cw20_staking_app() {
     let staking_msg_two = mock_cw20_send(
         cw20_staking_addr.clone(),
         Uint128::from(2000u128),
-        to_binary(&mock_cw20_stake()).unwrap(),
+        to_json_binary(&mock_cw20_stake()).unwrap(),
     );
     router
         .execute_contract(
@@ -359,7 +359,7 @@ fn test_cw20_staking_app_delayed() {
     let staking_msg_one = mock_cw20_send(
         cw20_staking_addr.clone(),
         Uint128::from(1000u128),
-        to_binary(&mock_cw20_stake()).unwrap(),
+        to_json_binary(&mock_cw20_stake()).unwrap(),
     );
     router
         .execute_contract(
@@ -373,7 +373,7 @@ fn test_cw20_staking_app_delayed() {
     let staking_msg_two = mock_cw20_send(
         cw20_staking_addr.clone(),
         Uint128::from(2000u128),
-        to_binary(&mock_cw20_stake()).unwrap(),
+        to_json_binary(&mock_cw20_stake()).unwrap(),
     );
     router
         .execute_contract(

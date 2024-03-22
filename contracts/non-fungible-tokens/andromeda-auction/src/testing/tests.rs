@@ -22,10 +22,10 @@ use andromeda_std::{
     testing::mock_querier::MOCK_KERNEL_CONTRACT,
 };
 use cosmwasm_std::{
-    attr, coin, coins, from_binary,
+    attr, coin, coins, from_json,
     testing::{mock_dependencies, mock_env, mock_info},
-    to_binary, Addr, BankMsg, CosmosMsg, Deps, DepsMut, Env, Response, SubMsg, Timestamp, Uint128,
-    WasmMsg,
+    to_json_binary, Addr, BankMsg, CosmosMsg, Deps, DepsMut, Env, Response, SubMsg, Timestamp,
+    Uint128, WasmMsg,
 };
 use cw721::Cw721ReceiveMsg;
 use cw_utils::Expiration;
@@ -50,7 +50,7 @@ fn query_latest_auction_state_helper(deps: Deps, env: Env) -> AuctionStateRespon
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
         token_address: MOCK_TOKEN_ADDR.to_owned(),
     };
-    from_binary(&query(deps, env, query_msg).unwrap()).unwrap()
+    from_json(query(deps, env, query_msg).unwrap()).unwrap()
 }
 
 fn start_auction(deps: DepsMut, whitelist: Option<Vec<Addr>>, min_bid: Option<Uint128>) {
@@ -341,7 +341,7 @@ fn execute_place_bid_multiple_bids() {
             .add_submessage(SubMsg::reply_on_error(
                 CosmosMsg::Wasm(WasmMsg::Execute {
                     contract_addr: "economics_contract".to_string(),
-                    msg: to_binary(&EconomicsExecuteMsg::PayFee {
+                    msg: to_json_binary(&EconomicsExecuteMsg::PayFee {
                         payee: Addr::unchecked("sender"),
                         action: "PlaceBid".to_string()
                     })
@@ -386,7 +386,7 @@ fn execute_place_bid_multiple_bids() {
             .add_submessage(SubMsg::reply_on_error(
                 CosmosMsg::Wasm(WasmMsg::Execute {
                     contract_addr: "economics_contract".to_string(),
-                    msg: to_binary(&EconomicsExecuteMsg::PayFee {
+                    msg: to_json_binary(&EconomicsExecuteMsg::PayFee {
                         payee: Addr::unchecked("other"),
                         action: "PlaceBid".to_string()
                     })
@@ -423,7 +423,7 @@ fn execute_place_bid_multiple_bids() {
             .add_submessage(SubMsg::reply_on_error(
                 CosmosMsg::Wasm(WasmMsg::Execute {
                     contract_addr: "economics_contract".to_string(),
-                    msg: to_binary(&EconomicsExecuteMsg::PayFee {
+                    msg: to_json_binary(&EconomicsExecuteMsg::PayFee {
                         payee: Addr::unchecked("sender"),
                         action: "PlaceBid".to_string()
                     })
@@ -507,7 +507,7 @@ fn test_execute_start_auction() {
             .add_submessage(SubMsg::reply_on_error(
                 CosmosMsg::Wasm(WasmMsg::Execute {
                     contract_addr: "economics_contract".to_string(),
-                    msg: to_binary(&EconomicsExecuteMsg::PayFee {
+                    msg: to_json_binary(&EconomicsExecuteMsg::PayFee {
                         payee: Addr::unchecked(MOCK_TOKEN_ADDR),
                         action: "ReceiveNft".to_string()
                     })
@@ -919,7 +919,7 @@ fn execute_start_auction_after_previous_finished() {
             .add_submessage(SubMsg::reply_on_error(
                 CosmosMsg::Wasm(WasmMsg::Execute {
                     contract_addr: "economics_contract".to_string(),
-                    msg: to_binary(&EconomicsExecuteMsg::PayFee {
+                    msg: to_json_binary(&EconomicsExecuteMsg::PayFee {
                         payee: Addr::unchecked(MOCK_TOKEN_ADDR),
                         action: "ReceiveNft".to_string()
                     })
@@ -970,7 +970,7 @@ fn execute_claim_no_bids() {
             .add_submessage(SubMsg::reply_on_error(
                 CosmosMsg::Wasm(WasmMsg::Execute {
                     contract_addr: "economics_contract".to_string(),
-                    msg: to_binary(&EconomicsExecuteMsg::PayFee {
+                    msg: to_json_binary(&EconomicsExecuteMsg::PayFee {
                         payee: Addr::unchecked("any_user"),
                         action: "Claim".to_string()
                     })
@@ -1035,7 +1035,7 @@ fn execute_claim() {
             .add_submessage(SubMsg::reply_on_error(
                 CosmosMsg::Wasm(WasmMsg::Execute {
                     contract_addr: "economics_contract".to_string(),
-                    msg: to_binary(&EconomicsExecuteMsg::PayFee {
+                    msg: to_json_binary(&EconomicsExecuteMsg::PayFee {
                         payee: Addr::unchecked("any_user"),
                         action: "Claim".to_string()
                     })
@@ -1146,7 +1146,7 @@ fn execute_cancel_no_bids() {
             .add_submessage(SubMsg::reply_on_error(
                 CosmosMsg::Wasm(WasmMsg::Execute {
                     contract_addr: "economics_contract".to_string(),
-                    msg: to_binary(&EconomicsExecuteMsg::PayFee {
+                    msg: to_json_binary(&EconomicsExecuteMsg::PayFee {
                         payee: Addr::unchecked("owner"),
                         action: "CancelAuction".to_string()
                     })
@@ -1211,7 +1211,7 @@ fn execute_cancel_with_bids() {
             .add_submessage(SubMsg::reply_on_error(
                 CosmosMsg::Wasm(WasmMsg::Execute {
                     contract_addr: "economics_contract".to_string(),
-                    msg: to_binary(&EconomicsExecuteMsg::PayFee {
+                    msg: to_json_binary(&EconomicsExecuteMsg::PayFee {
                         payee: Addr::unchecked("owner"),
                         action: "CancelAuction".to_string()
                     })

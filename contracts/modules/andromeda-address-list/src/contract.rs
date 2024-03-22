@@ -9,7 +9,7 @@ use andromeda_std::{
 };
 
 use cosmwasm_std::{attr, ensure, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError};
-use cosmwasm_std::{entry_point, to_binary};
+use cosmwasm_std::{entry_point, to_json_binary};
 use cw2::{get_contract_version, set_contract_version};
 use cw_utils::nonpayable;
 use semver::Version;
@@ -186,10 +186,10 @@ fn handle_andr_hook(deps: Deps, msg: AndromedaHook) -> Result<Binary, ContractEr
             if is_included != is_inclusive {
                 Err(ContractError::Unauthorized {})
             } else {
-                Ok(to_binary(&None::<Response>)?)
+                Ok(to_json_binary(&None::<Response>)?)
             }
         }
-        _ => Ok(to_binary(&None::<Response>)?),
+        _ => Ok(to_json_binary(&None::<Response>)?),
     }
 }
 

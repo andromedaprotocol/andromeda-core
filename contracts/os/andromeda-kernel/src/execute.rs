@@ -12,8 +12,8 @@ use andromeda_std::os::kernel::{ChannelInfo, IbcExecuteMsg, InternalMsg};
 
 use andromeda_std::os::vfs::vfs_resolve_symlink;
 use cosmwasm_std::{
-    attr, ensure, to_binary, Addr, BankMsg, Binary, Coin, ContractInfoResponse, CosmosMsg, DepsMut,
-    Env, IbcMsg, MessageInfo, Response, StdError, SubMsg, WasmMsg,
+    attr, ensure, to_json_binary, Addr, BankMsg, Binary, Coin, ContractInfoResponse, CosmosMsg,
+    DepsMut, Env, IbcMsg, MessageInfo, Response, StdError, SubMsg, WasmMsg,
 };
 
 use crate::ibc::{generate_transfer_message, PACKET_LIFETIME};
@@ -143,7 +143,7 @@ pub fn create(
         // };
         // let ibc_msg = IbcMsg::SendPacket {
         //     channel_id: channel_info.direct_channel_id.clone().unwrap(),
-        //     data: to_binary(&kernel_msg)?,
+        //     data: to_json_binary(&kernel_msg)?,
         //     timeout: execute_env
         //         .env
         //         .block
@@ -231,7 +231,7 @@ pub fn register_user_cross_chain(
     }?;
     let ibc_msg = IbcMsg::SendPacket {
         channel_id,
-        data: to_binary(&kernel_msg)?,
+        data: to_json_binary(&kernel_msg)?,
         timeout: execute_env
             .env
             .block
@@ -557,7 +557,7 @@ impl MsgHandler {
         };
         let msg = IbcMsg::SendPacket {
             channel_id: channel.clone(),
-            data: to_binary(&kernel_msg)?,
+            data: to_json_binary(&kernel_msg)?,
             timeout: env.block.time.plus_seconds(PACKET_LIFETIME).into(),
         };
 

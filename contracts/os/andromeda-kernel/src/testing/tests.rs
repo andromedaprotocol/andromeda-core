@@ -17,7 +17,7 @@ use andromeda_std::{
 };
 use cosmwasm_std::{
     testing::{mock_dependencies, mock_env, mock_info},
-    to_binary, Addr, Binary, CosmosMsg, IbcMsg,
+    to_json_binary, Addr, Binary, CosmosMsg, IbcMsg,
 };
 
 #[test]
@@ -158,7 +158,7 @@ fn test_register_user_cross_chain() {
 
     let expected = IbcMsg::SendPacket {
         channel_id: channel_info.direct_channel_id.unwrap(),
-        data: to_binary(&IbcExecuteMsg::RegisterUsername {
+        data: to_json_binary(&IbcExecuteMsg::RegisterUsername {
             username: username.to_string(),
             address: address.to_string(),
         })
@@ -379,7 +379,11 @@ fn test_handle_ibc_direct() {
         key: "key".to_string(),
         value: "value".to_string(),
     };
-    let amp_msg = AMPMsg::new("ibc://andromeda/..", to_binary(&dummy_msg).unwrap(), None);
+    let amp_msg = AMPMsg::new(
+        "ibc://andromeda/..",
+        to_json_binary(&dummy_msg).unwrap(),
+        None,
+    );
     let packet = AMPPkt::new("user", "user", vec![amp_msg]);
     let msg = ExecuteMsg::AMPReceive(packet);
     let res = execute(deps.as_mut(), env, info, msg);

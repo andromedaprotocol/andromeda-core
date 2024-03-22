@@ -13,7 +13,7 @@ use andromeda_message_bridge::mock::{
 use andromeda_os::messages::AMPMsg;
 use andromeda_testing::mock::MockAndromeda;
 use andromeda_vfs::mock::mock_resolve_path_query;
-use cosmwasm_std::{coin, coins, to_binary, Addr};
+use cosmwasm_std::{coin, coins, to_json_binary, Addr};
 use cw_multi_test::{App, Executor};
 
 fn mock_app() -> App {
@@ -61,8 +61,11 @@ fn kernel() {
     // Generate Counter Contract
 
     let counter_init_msg = mock_counter_instantiate_msg(andr.kernel_address.to_string());
-    let counter_app_component =
-        AppComponent::new("counter", "counter", to_binary(&counter_init_msg).unwrap());
+    let counter_app_component = AppComponent::new(
+        "counter",
+        "counter",
+        to_json_binary(&counter_init_msg).unwrap(),
+    );
 
     let app_components: Vec<AppComponent> = vec![counter_app_component];
 
@@ -130,7 +133,7 @@ fn kernel() {
 
     // Create a direct AMP message
     let recipient = "ibc://juno/user_1/app2/counter";
-    let message = to_binary(&CounterExecuteMsg::IncrementOne {}).unwrap();
+    let message = to_json_binary(&CounterExecuteMsg::IncrementOne {}).unwrap();
     let _send_msg = mock_amp_direct(recipient, message.clone(), None, None, None);
     let amp_msg = vec![AMPMsg::new(
         recipient,

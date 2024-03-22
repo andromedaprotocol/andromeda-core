@@ -16,9 +16,7 @@ use andromeda_std::{
     },
     error::{from_semver, ContractError},
 };
-use cosmwasm_std::{
-    ensure, from_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, Uint128,
-};
+use cosmwasm_std::{ensure, from_json, Binary, Deps, DepsMut, Env, MessageInfo, Response, Uint128};
 use cosmwasm_std::{entry_point, Decimal};
 use cw_asset::Asset;
 
@@ -193,7 +191,7 @@ pub fn receive_cw20(
         }
     );
 
-    match from_binary(&cw20_msg.msg)? {
+    match from_json(&cw20_msg.msg)? {
         Cw20HookMsg::IncreaseIncentives {} => execute_increase_incentives(ctx, cw20_msg.amount),
     }
 }

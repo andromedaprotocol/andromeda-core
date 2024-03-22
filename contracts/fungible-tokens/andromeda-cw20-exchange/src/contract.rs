@@ -13,7 +13,7 @@ use andromeda_std::{
     error::{from_semver, ContractError},
 };
 use cosmwasm_std::{
-    attr, coin, ensure, entry_point, from_binary, to_binary, wasm_execute, BankMsg, Binary,
+    attr, coin, ensure, entry_point, from_json, to_json_binary, wasm_execute, BankMsg, Binary,
     BlockInfo, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError, SubMsg,
     Uint128,
 };
@@ -130,7 +130,7 @@ pub fn execute_receive(
         }
     );
 
-    match from_binary(&receive_msg.msg)? {
+    match from_json(&receive_msg.msg)? {
         Cw20HookMsg::StartSale {
             asset,
             exchange_rate,
@@ -483,13 +483,13 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
 fn query_sale(deps: Deps, asset: impl ToString) -> Result<Binary, ContractError> {
     let sale = SALE.may_load(deps.storage, &asset.to_string())?;
 
-    Ok(to_binary(&SaleResponse { sale })?)
+    Ok(to_json_binary(&SaleResponse { sale })?)
 }
 
 fn query_token_address(deps: Deps) -> Result<Binary, ContractError> {
     let address = TOKEN_ADDRESS.load(deps.storage)?.get_raw_address(&deps)?;
 
-    Ok(to_binary(&TokenAddressResponse {
+    Ok(to_json_binary(&TokenAddressResponse {
         address: address.to_string(),
     })?)
 }
@@ -510,5 +510,5 @@ fn query_sale_assets(
         .take(limit)
         .collect::<Result<Vec<String>, StdError>>()?;
 
-    Ok(to_binary(&SaleAssetsResponse { assets })?)
+    Ok(to_json_binary(&SaleAssetsResponse { assets })?)
 }

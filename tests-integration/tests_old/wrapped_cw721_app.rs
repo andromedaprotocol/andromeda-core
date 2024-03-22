@@ -14,7 +14,7 @@ use andromeda_wrapped_cw721::mock::{
     mock_wrap_nft_msg, mock_wrapped_cw721_instantiate_msg,
 };
 use common::primitive::Value;
-use cosmwasm_std::{coin, to_binary, Addr};
+use cosmwasm_std::{coin, to_json_binary, Addr};
 use cw721::OwnerOfResponse;
 use cw_multi_test::{App, Executor};
 
@@ -70,7 +70,7 @@ fn test_wrapped_cw721_app() {
     let cw721_component = AppComponent::new(
         "1".to_string(),
         "cw721".to_string(),
-        to_binary(&cw721_init_msg).unwrap(),
+        to_json_binary(&cw721_init_msg).unwrap(),
     );
 
     let wrapped_cw721_init_msg = mock_wrapped_cw721_instantiate_msg(
@@ -86,7 +86,7 @@ fn test_wrapped_cw721_app() {
     let wrapped_cw721_component = AppComponent::new(
         "2".to_string(),
         "wrapped-cw721".to_string(),
-        to_binary(&wrapped_cw721_init_msg).unwrap(),
+        to_json_binary(&wrapped_cw721_init_msg).unwrap(),
     );
 
     let app_components = vec![cw721_component.clone(), wrapped_cw721_component.clone()];
@@ -152,7 +152,7 @@ fn test_wrapped_cw721_app() {
     let send_msg = mock_send_nft(
         wrapped_cw721_addr.clone(),
         token_id.to_string(),
-        to_binary(&mock_wrap_nft_msg(Some(token_id.to_string()))).unwrap(),
+        to_json_binary(&mock_wrap_nft_msg(Some(token_id.to_string()))).unwrap(),
     );
     router
         .execute_contract(
@@ -196,7 +196,7 @@ fn test_wrapped_cw721_app() {
     let unwrap_msg = mock_send_nft(
         wrapped_cw721_addr,
         token_id.to_string(),
-        to_binary(&mock_unwrap_nft_msg()).unwrap(),
+        to_json_binary(&mock_unwrap_nft_msg()).unwrap(),
     );
     router
         .execute_contract(

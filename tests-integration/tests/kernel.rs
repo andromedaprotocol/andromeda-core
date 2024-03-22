@@ -10,7 +10,7 @@ use andromeda_std::{
 };
 use andromeda_testing::{mock::MockAndromeda, mock_contract::MockContract};
 
-use cosmwasm_std::{coin, to_binary, Addr, Decimal};
+use cosmwasm_std::{coin, to_json_binary, Addr, Decimal};
 
 use cw_multi_test::{App, Executor};
 
@@ -85,7 +85,7 @@ fn kernel() {
             KernelExecuteMsg::Send {
                 message: AMPMsg::new(
                     splitter_addr,
-                    to_binary(&mock_splitter_send_msg()).unwrap(),
+                    to_json_binary(&mock_splitter_send_msg()).unwrap(),
                     Some(vec![coin(100, "uandr")]),
                 ),
             },
@@ -115,7 +115,7 @@ fn kernel() {
             &mut router,
             KernelExecuteMsg::Create {
                 ado_type: "splitter".to_string(),
-                msg: to_binary(&splitter_msg).unwrap(),
+                msg: to_json_binary(&splitter_msg).unwrap(),
                 owner: Some(AndrAddr::from_string("~am".to_string())),
                 chain: None,
             },
@@ -133,7 +133,7 @@ fn kernel() {
     let attr_key = inst_event
         .attributes
         .iter()
-        .position(|attr| attr.key == "_contract_addr")
+        .position(|attr| attr.key == "_contract_address")
         .unwrap();
     let attr = inst_event.attributes.get(attr_key).unwrap();
     let addr: Addr = Addr::unchecked(attr.value.clone());
@@ -152,7 +152,7 @@ fn kernel() {
             KernelExecuteMsg::Send {
                 message: AMPMsg::new(
                     format!("~{}", splitter.addr()),
-                    to_binary(&mock_splitter_send_msg()).unwrap(),
+                    to_json_binary(&mock_splitter_send_msg()).unwrap(),
                     Some(vec![coin(100, "uandr")]),
                 ),
             },
@@ -193,7 +193,7 @@ fn kernel() {
         &mut router,
         KernelExecuteMsg::Create {
             ado_type: "splitter".to_string(),
-            msg: to_binary(&splitter_msg).unwrap(),
+            msg: to_json_binary(&splitter_msg).unwrap(),
             owner: Some(AndrAddr::from_string("~am".to_string())),
             chain: None,
         },

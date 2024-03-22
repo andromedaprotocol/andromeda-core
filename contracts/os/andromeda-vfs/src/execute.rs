@@ -8,7 +8,7 @@ use andromeda_std::os::{
     vfs::{validate_component_name, validate_username},
 };
 use cosmwasm_std::{
-    attr, ensure, to_binary, Addr, DepsMut, Env, MessageInfo, Response, SubMsg, WasmMsg,
+    attr, ensure, to_json_binary, Addr, DepsMut, Env, MessageInfo, Response, SubMsg, WasmMsg,
 };
 
 use crate::state::{
@@ -257,7 +257,7 @@ pub fn register_user_cross_chain(
     let sub_msg = SubMsg::reply_on_error(
         WasmMsg::Execute {
             contract_addr: kernel.to_string(),
-            msg: to_binary(&msg)?,
+            msg: to_json_binary(&msg)?,
             funds: vec![],
         },
         1,

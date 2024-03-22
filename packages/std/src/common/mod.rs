@@ -11,7 +11,7 @@ pub use milliseconds::*;
 
 use crate::error::ContractError;
 use cosmwasm_std::{
-    ensure, has_coins, to_binary, BankMsg, Binary, Coin, CosmosMsg, SubMsg, Uint128,
+    ensure, has_coins, to_json_binary, BankMsg, Binary, Coin, CosmosMsg, SubMsg, Uint128,
 };
 use cw20::Cw20Coin;
 
@@ -29,7 +29,7 @@ pub fn encode_binary<T>(val: &T) -> Result<Binary, ContractError>
 where
     T: Serialize,
 {
-    match to_binary(val) {
+    match to_json_binary(val) {
         Ok(encoded_val) => Ok(encoded_val),
         Err(err) => Err(err.into()),
     }

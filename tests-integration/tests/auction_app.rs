@@ -22,7 +22,7 @@ use andromeda_std::amp::AndrAddr;
 use andromeda_std::common::expiration::MILLISECONDS_TO_NANOSECONDS_RATIO;
 use andromeda_std::error::ContractError;
 use andromeda_testing::mock::MockAndromeda;
-use cosmwasm_std::{coin, to_binary, Addr, BlockInfo, Timestamp, Uint128};
+use cosmwasm_std::{coin, to_json_binary, Addr, BlockInfo, Timestamp, Uint128};
 use cw721::OwnerOfResponse;
 use cw_multi_test::{App, Executor};
 
@@ -88,7 +88,7 @@ fn test_auction_app() {
     let cw721_component = AppComponent::new(
         "cw721".to_string(),
         "cw721".to_string(),
-        to_binary(&cw721_init_msg).unwrap(),
+        to_json_binary(&cw721_init_msg).unwrap(),
     );
 
     let auction_init_msg =
@@ -96,7 +96,7 @@ fn test_auction_app() {
     let auction_component = AppComponent::new(
         "auction".to_string(),
         "auction".to_string(),
-        to_binary(&auction_init_msg).unwrap(),
+        to_json_binary(&auction_init_msg).unwrap(),
     );
 
     // Create App
@@ -174,7 +174,7 @@ fn test_auction_app() {
     let send_msg = mock_send_nft(
         auction_addr.clone(),
         "0".to_string(),
-        to_binary(&receive_msg).unwrap(),
+        to_json_binary(&receive_msg).unwrap(),
     );
 
     router
@@ -230,7 +230,7 @@ fn test_auction_app() {
     let bid_msg = mock_place_bid("0".to_string(), cw721_addr.clone());
     // let amp_msg = AMPMsg::new(
     //     auction_addr.clone(),
-    //     to_binary(&bid_msg).unwrap(),
+    //     to_json_binary(&bid_msg).unwrap(),
     //     Some(vec![coin(50, "uandr")]),
     // );
 
