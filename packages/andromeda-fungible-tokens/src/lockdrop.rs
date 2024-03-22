@@ -1,4 +1,5 @@
 use andromeda_std::andr_instantiate_modules;
+use andromeda_std::common::Milliseconds;
 use andromeda_std::{andr_exec, andr_instantiate, andr_query};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
@@ -11,11 +12,11 @@ pub struct InstantiateMsg {
     /// The bootsrap contract to be used in the second phase.
     // pub bootstrap_contract: Option<AndrAddress>,
     /// Timestamp till when deposits can be made
-    pub init_timestamp: u64,
-    /// Number of seconds for which lockup deposits will be accepted
-    pub deposit_window: u64,
-    /// Number of seconds for which lockup withdrawals will be allowed
-    pub withdrawal_window: u64,
+    pub init_timestamp: Milliseconds,
+    /// Number of milliseconds for which lockup deposits will be accepted
+    pub deposit_window: Milliseconds,
+    /// Number of milliseconds for which lockup withdrawals will be allowed
+    pub withdrawal_window: Milliseconds,
     /// The token being given as incentive.
     pub incentive_token: String,
     /// The native token being deposited.
@@ -66,7 +67,7 @@ pub enum QueryMsg {
     /// Gets the withdrawal percent allowed given the timestamp, or the current time if not
     /// specified. Timestamp is in seconds.
     #[returns(::cosmwasm_std::Decimal)]
-    WithdrawalPercentAllowed { timestamp: Option<u64> },
+    WithdrawalPercentAllowed { timestamp: Option<Milliseconds> },
 }
 
 #[cw_serde]
@@ -74,11 +75,11 @@ pub struct ConfigResponse {
     /// Bootstrap Contract address to which tokens can be delegated to for bootstrapping TOKEN-NATIVE Pool.
     // pub bootstrap_contract_address: Option<String>,
     /// Timestamp till when deposits can be made.
-    pub init_timestamp: u64,
+    pub init_timestamp: Milliseconds,
     /// Number of seconds for which lockup deposits will be accepted.
-    pub deposit_window: u64,
+    pub deposit_window: Milliseconds,
     /// Number of seconds for which lockup withdrawals will be allowed.
-    pub withdrawal_window: u64,
+    pub withdrawal_window: Milliseconds,
     /// Total token lockdrop incentives to be distributed among the users.
     pub lockdrop_incentives: Uint128,
     /// The token being given as incentive.

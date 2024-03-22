@@ -1,9 +1,9 @@
 use crate::cw721::TokenExtension;
 use andromeda_std::amp::{addresses::AndrAddr, recipient::Recipient};
+use andromeda_std::common::Milliseconds;
 use andromeda_std::{andr_exec, andr_instantiate, andr_instantiate_modules, andr_query};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Coin, Uint128};
-use cw_utils::Expiration;
 
 #[andr_instantiate]
 #[andr_instantiate_modules]
@@ -21,7 +21,7 @@ pub enum ExecuteMsg {
     /// Starts the sale if one is not already ongoing.
     StartSale {
         /// When the sale ends.
-        expiration: Expiration,
+        expiration: Milliseconds,
         /// The price per token.
         price: Coin,
         /// The minimum amount of tokens sold to go through with the sale.
@@ -73,7 +73,7 @@ pub struct Config {
 #[cw_serde]
 pub struct State {
     /// The expiration denoting when the sale ends.
-    pub expiration: Expiration,
+    pub expiration: Milliseconds,
     /// The price of each token.
     pub price: Coin,
     /// The minimum number of tokens sold for the sale to go through.

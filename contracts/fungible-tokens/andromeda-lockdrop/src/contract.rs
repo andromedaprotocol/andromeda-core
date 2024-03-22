@@ -12,13 +12,11 @@ use andromeda_std::{
     ado_contract::ADOContract,
     common::{
         actions::call_action, context::ExecuteContext, encode_binary,
-        expiration::MILLISECONDS_TO_NANOSECONDS_RATIO,
+        expiration::MILLISECONDS_TO_NANOSECONDS_RATIO, Milliseconds,
     },
     error::{from_semver, ContractError},
 };
-use cosmwasm_std::{
-    ensure, from_json, Binary, Deps, DepsMut, Env, MessageInfo, Response, Timestamp, Uint128,
-};
+use cosmwasm_std::{ensure, from_json, Binary, Deps, DepsMut, Env, MessageInfo, Response, Uint128};
 use cosmwasm_std::{entry_point, Decimal};
 use cw_asset::Asset;
 
@@ -48,7 +46,7 @@ pub fn instantiate(
 
     // CHECK :: init_timestamp needs to be valid
     ensure!(
-        msg.init_timestamp >= env.block.time.seconds(),
+        !msg.init_timestamp.is_in_past(&env.block),
         ContractError::StartTimeInThePast {
             current_time: env.block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO,
             current_block: env.block.height,
@@ -57,8 +55,8 @@ pub fn instantiate(
 
     // CHECK :: deposit_window,withdrawal_window need to be valid (withdrawal_window < deposit_window)
     ensure!(
-        msg.deposit_window > 0
-            && msg.withdrawal_window > 0
+        !msg.deposit_window.is_zero()
+            && !msg.withdrawal_window.is_zero()
             && msg.withdrawal_window < msg.deposit_window,
         ContractError::InvalidWindow {}
     );
@@ -234,7 +232,10 @@ pub fn execute_increase_incentives(
     );
 
     ensure!(
-        env.block.time.seconds() < config.init_timestamp + config.deposit_window,
+        !config
+            .init_timestamp
+            .plus_milliseconds(config.deposit_window)
+            .is_expired(&env.block),
         ContractError::TokenAlreadyBeingDistributed {}
     );
 
@@ -257,7 +258,10 @@ pub fn execute_deposit_native(ctx: ExecuteContext) -> Result<Response, ContractE
 
     // CHECK :: Lockdrop deposit window open
     ensure!(
-        is_deposit_open(env.block.time.seconds(), &config),
+        is_deposit_open(
+            Milliseconds::from_seconds(env.block.time.seconds()),
+            &config
+        ),
         ContractError::DepositWindowClosed {}
     );
 
@@ -325,7 +329,10 @@ pub fn execute_withdraw_native(
 
     // CHECK :: Lockdrop withdrawal window open
     ensure!(
-        is_withdraw_open(env.block.time.seconds(), &config),
+        is_withdraw_open(
+            Milliseconds::from_seconds(env.block.time.seconds()),
+            &config
+        ),
         ContractError::InvalidWithdrawal {
             msg: Some("Withdrawals not available".to_string()),
         }
@@ -346,7 +353,11 @@ pub fn execute_withdraw_native(
     );
 
     // Update withdrawal flag after the deposit window
-    if env.block.time.seconds() > config.init_timestamp + config.deposit_window {
+    if config
+        .init_timestamp
+        .plus_milliseconds(config.deposit_window)
+        .is_expired(&env.block)
+    {
         // CHECK :: Max 1 withdrawal allowed
         ensure!(
             !user_info.withdrawal_flag,
@@ -405,7 +416,10 @@ pub fn execute_enable_claims(ctx: ExecuteContext) -> Result<Response, ContractEr
 
     // CHECK :: Claims can only be enabled after the deposit / withdrawal windows are closed
     ensure!(
-        is_phase_over(env.block.time.seconds(), &config),
+        is_phase_over(
+            Milliseconds::from_seconds(env.block.time.seconds()),
+            &config
+        ),
         ContractError::PhaseOngoing {}
     );
 
@@ -575,20 +589,23 @@ pub fn query_user_info(
 pub fn query_max_withdrawable_percent(
     deps: Deps,
     env: Env,
-    timestamp: Option<u64>,
+    timestamp: Option<Milliseconds>,
 ) -> Result<Decimal, ContractError> {
     let config = CONFIG.load(deps.storage)?;
     Ok(match timestamp {
         Some(timestamp) => {
             ensure!(
-                Timestamp::from_seconds(timestamp) >= env.block.time,
+                !timestamp.is_in_past(&env.block),
                 ContractError::InvalidTimestamp {
                     msg: "Provided timestamp is in past".to_string()
                 }
             );
             allowed_withdrawal_percent(timestamp, &config)
         }
-        None => allowed_withdrawal_percent(env.block.time.seconds(), &config),
+        None => allowed_withdrawal_percent(
+            Milliseconds::from_seconds(env.block.time.seconds()),
+            &config,
+        ),
     })
 }
 
@@ -597,18 +614,22 @@ pub fn query_max_withdrawable_percent(
 //----------------------------------------------------------------------------------------
 
 /// @dev Returns true if deposits are allowed
-fn is_deposit_open(current_timestamp: u64, config: &Config) -> bool {
-    let deposits_opened_till = config.init_timestamp + config.deposit_window;
+fn is_deposit_open(current_timestamp: Milliseconds, config: &Config) -> bool {
+    let deposits_opened_till = config
+        .init_timestamp
+        .plus_milliseconds(config.deposit_window);
     (current_timestamp >= config.init_timestamp) && (deposits_opened_till >= current_timestamp)
 }
 
 /// @dev Returns true if withdrawals are allowed
-fn is_withdraw_open(current_timestamp: u64, config: &Config) -> bool {
+fn is_withdraw_open(current_timestamp: Milliseconds, config: &Config) -> bool {
     current_timestamp >= config.init_timestamp
 }
 
-fn is_phase_over(current_timestamp: u64, config: &Config) -> bool {
-    let deposits_opened_till = config.init_timestamp + config.deposit_window;
+fn is_phase_over(current_timestamp: Milliseconds, config: &Config) -> bool {
+    let deposits_opened_till = config
+        .init_timestamp
+        .plus_milliseconds(config.deposit_window);
     // let withdrawals_opened_till = deposits_opened_till + config.withdrawal_window;
     deposits_opened_till <= current_timestamp
 }
@@ -616,29 +637,34 @@ fn is_phase_over(current_timestamp: u64, config: &Config) -> bool {
 /// @dev Helper function to calculate maximum % of NATIVE deposited that can be withdrawn
 /// @params current_timestamp : Current block timestamp
 /// @params config : Contract configuration
-pub fn allowed_withdrawal_percent(current_timestamp: u64, config: &Config) -> Decimal {
-    let withdrawal_cutoff_init_point = config.init_timestamp + config.deposit_window;
+pub fn allowed_withdrawal_percent(current_timestamp: Milliseconds, config: &Config) -> Decimal {
+    let withdrawal_cutoff_init_point = config
+        .init_timestamp
+        .plus_milliseconds(config.deposit_window);
 
     // Deposit window :: 100% withdrawals allowed
     if current_timestamp < withdrawal_cutoff_init_point {
         return Decimal::percent(100);
     }
 
-    let withdrawal_cutoff_second_point =
-        withdrawal_cutoff_init_point + (config.withdrawal_window / 2u64);
+    let withdrawal_cutoff_second_point = withdrawal_cutoff_init_point
+        .plus_milliseconds(Milliseconds(config.withdrawal_window.milliseconds() / 2u64));
     // Deposit window closed, 1st half of withdrawal window :: 50% withdrawals allowed
     if current_timestamp <= withdrawal_cutoff_second_point {
         return Decimal::percent(50);
     }
 
     // max withdrawal allowed decreasing linearly from 50% to 0% vs time elapsed
-    let withdrawal_cutoff_final = withdrawal_cutoff_init_point + config.withdrawal_window;
+    let withdrawal_cutoff_final =
+        withdrawal_cutoff_init_point.plus_milliseconds(config.withdrawal_window);
     //  Deposit window closed, 2nd half of withdrawal window :: max withdrawal allowed decreases linearly from 50% to 0% vs time elapsed
     if current_timestamp < withdrawal_cutoff_final {
-        let time_left = withdrawal_cutoff_final - current_timestamp;
+        let time_left = withdrawal_cutoff_final.minus_milliseconds(current_timestamp);
         Decimal::from_ratio(
-            50u64 * time_left,
-            100u64 * (withdrawal_cutoff_final - withdrawal_cutoff_second_point),
+            50u64 * time_left.milliseconds(),
+            100u64
+                * (withdrawal_cutoff_final.minus_milliseconds(withdrawal_cutoff_second_point))
+                    .milliseconds(),
         )
     }
     // Withdrawals not allowed

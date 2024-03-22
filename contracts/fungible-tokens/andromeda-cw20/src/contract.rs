@@ -28,12 +28,11 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
-    deps: DepsMut,
+    mut deps: DepsMut,
     env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     let contract = ADOContract::default();
     let resp = contract.instantiate(
         deps.storage,
@@ -43,7 +42,6 @@ pub fn instantiate(
         BaseInstantiateMsg {
             ado_type: "cw20".to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
-
             kernel_address: msg.clone().kernel_address,
             owner: msg.clone().owner,
         },
@@ -51,7 +49,8 @@ pub fn instantiate(
     let modules_resp =
         contract.register_modules(info.sender.as_str(), deps.storage, msg.clone().modules)?;
 
-    let cw20_resp = cw20_instantiate(deps, env, info, msg.into())?;
+    let cw20_resp = cw20_instantiate(deps.branch(), env, info, msg.into())?;
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     Ok(resp
         .add_submessages(modules_resp.messages)
