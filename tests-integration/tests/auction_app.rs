@@ -22,7 +22,7 @@ use andromeda_std::amp::AndrAddr;
 use andromeda_std::common::expiration::MILLISECONDS_TO_NANOSECONDS_RATIO;
 use andromeda_std::error::ContractError;
 use andromeda_testing::mock::MockAndromeda;
-use cosmwasm_std::{coin, coins, to_json_binary, Addr, BlockInfo, Timestamp, Uint128};
+use cosmwasm_std::{coin, to_json_binary, Addr, BlockInfo, Timestamp, Uint128};
 use cw721::OwnerOfResponse;
 use cw_multi_test::{
     App, AppBuilder, BankKeeper, Executor, MockAddressGenerator, MockApiBech32, WasmKeeper,
@@ -38,23 +38,7 @@ fn mock_app() -> App<BankKeeper, MockApiBech32> {
                 .init_balance(
                     storage,
                     &Addr::unchecked("owner"),
-                    [coin(999999, "uandr")].to_vec(),
-                )
-                .unwrap();
-            router
-                .bank
-                .init_balance(
-                    storage,
-                    &Addr::unchecked("buyer_one"),
-                    [coin(100, "uandr")].to_vec(),
-                )
-                .unwrap();
-            router
-                .bank
-                .init_balance(
-                    storage,
-                    &Addr::unchecked("buyer_two"),
-                    [coin(100, "uandr")].to_vec(),
+                    [coin(9999999, "uandr")].to_vec(),
                 )
                 .unwrap();
         })

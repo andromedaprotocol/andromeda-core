@@ -12,11 +12,11 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{ensure, Addr, Api, QuerierWrapper};
 use regex::Regex;
 
-pub const COMPONENT_NAME_REGEX: &str = r"^[A-Za-z0-9.\-_]{2,40}$";
+pub const COMPONENT_NAME_REGEX: &str = r"^[A-Za-z0-9.\-_]{2,80}$";
 pub const USERNAME_REGEX: &str = r"^[a-z0-9]{2,30}$";
 
-pub const PATH_REGEX: &str = r"^(~[a-z0-9]{2,}|/(lib|home))(/[A-Za-z0-9.\-_]{2,40}?)*(/)?$";
-pub const PROTOCOL_PATH_REGEX: &str = r"^((([A-Za-z0-9]+://)?([A-Za-z0-9.\-_]{2,40}/)))?((~[a-z0-9]{2,}|(lib|home))(/[A-Za-z0-9.\-_]{2,40}?)*(/)?)$";
+pub const PATH_REGEX: &str = r"^(~[a-z0-9]{2,}|/(lib|home))(/[A-Za-z0-9.\-_]{2,80}?)*(/)?$";
+pub const PROTOCOL_PATH_REGEX: &str = r"^((([A-Za-z0-9]+://)?([A-Za-z0-9.\-_]{2,80}/)))?((~[a-z0-9]{2,}|(lib|home))(/[A-Za-z0-9.\-_]{2,80}?)*(/)?)$";
 
 pub fn convert_component_name(path: &str) -> String {
     path.trim()
@@ -538,7 +538,7 @@ mod test {
             },
             ValidatePathNameTestCase {
                 name: "Path with very long name",
-                path: "/home/username/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                path: "/home/username/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
                 should_err: true,
             },
             ValidatePathNameTestCase {

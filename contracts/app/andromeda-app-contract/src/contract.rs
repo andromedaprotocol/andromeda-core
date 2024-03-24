@@ -82,6 +82,10 @@ pub fn instantiate(
             vec![],
         )?;
         let register_submsg = SubMsg::reply_always(register_msg, ReplyId::RegisterPath.repr());
+        ensure!(
+            !ADO_ADDRESSES.has(deps.storage, &component.name),
+            ContractError::NameAlreadyTaken {}
+        );
         ADO_ADDRESSES.save(deps.storage, &component.name, &new_addr)?;
         msgs.push(register_submsg);
     }

@@ -94,10 +94,11 @@ impl AppComponent {
         let salt = self.get_salt(parent_addr.clone());
         let creator = api.addr_canonicalize(parent_addr.as_str())?;
         let new_addr = instantiate2_address(&checksum, &creator, &salt).unwrap();
-        api.debug(&new_addr.to_string());
+
         Ok(api.addr_humanize(&new_addr)?)
     }
 
+    #[inline]
     pub fn get_msg_binary(&self) -> Result<Binary, ContractError> {
         match self.component_type.clone() {
             ComponentType::New(msg) => Ok(msg),
@@ -178,7 +179,6 @@ pub struct ComponentAddress {
 #[cfg(test)]
 mod tests {
     use andromeda_std::testing::mock_querier::MOCK_APP_CONTRACT;
-    use cosmwasm_std::testing::MockApi;
     use cw_multi_test::MockApiBech32;
 
     use super::*;

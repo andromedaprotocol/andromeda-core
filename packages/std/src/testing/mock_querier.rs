@@ -14,8 +14,9 @@ use cosmwasm_std::SubMsg;
 use cosmwasm_std::{
     from_json,
     testing::{MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
-    to_json_binary, Addr, Binary, Coin, ContractInfoResponse, ContractResult, OwnedDeps, Querier,
-    QuerierResult, QueryRequest, SystemError, SystemResult, Uint128, WasmQuery,
+    to_json_binary, Addr, Binary, CodeInfoResponse, Coin, ContractInfoResponse, ContractResult,
+    HexBinary, OwnedDeps, Querier, QuerierResult, QueryRequest, SystemError, SystemResult, Uint128,
+    WasmQuery,
 };
 #[cfg(feature = "primitive")]
 use cosmwasm_std::{Decimal, Uint128};
@@ -59,6 +60,8 @@ pub const FAKE_ADODB_KEY: &str = "fake_adodb_key";
 pub const MOCK_ACTION: &str = "action";
 pub const UNWHITELISTED_ADDRESS: &str = "unwhitelisted_address";
 pub const RATES_EXCLUDED_ADDRESS: &str = "rates_excluded_address";
+
+pub const MOCK_CHECKSUM: &str = "9af782a3a1bcbcd22dbb6a45c751551d9af782a3a1bcbcd22dbb6a45c751551d";
 
 pub const MOCK_WALLET: &str = "mock_wallet";
 
@@ -179,6 +182,14 @@ impl MockAndromedaQuerier {
                     INVALID_CONTRACT => 2,
                     _ => 1,
                 };
+                SystemResult::Ok(ContractResult::Ok(to_json_binary(&resp).unwrap()))
+            }
+            QueryRequest::Wasm(WasmQuery::CodeInfo { code_id }) => {
+                if *code_id == 2u64 {
+                    return SystemResult::Ok(ContractResult::Err("Invalid Code ID".to_string()));
+                }
+                let mut resp = CodeInfoResponse::default();
+                resp.checksum = HexBinary::from_hex(MOCK_CHECKSUM).unwrap();
                 SystemResult::Ok(ContractResult::Ok(to_json_binary(&resp).unwrap()))
             }
             _ => querier.handle_query(request),
