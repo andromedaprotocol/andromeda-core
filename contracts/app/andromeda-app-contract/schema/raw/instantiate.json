@@ -108,36 +108,8 @@
             }
           },
           "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "cross_chain"
-          ],
-          "properties": {
-            "cross_chain": {
-              "$ref": "#/definitions/CrossChainComponent"
-            }
-          },
-          "additionalProperties": false
         }
       ]
-    },
-    "CrossChainComponent": {
-      "type": "object",
-      "required": [
-        "chain",
-        "instantiate_msg"
-      ],
-      "properties": {
-        "chain": {
-          "type": "string"
-        },
-        "instantiate_msg": {
-          "$ref": "#/definitions/Binary"
-        }
-      },
-      "additionalProperties": false
     }
   }
 }
