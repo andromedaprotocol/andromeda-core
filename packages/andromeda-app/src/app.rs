@@ -1,6 +1,6 @@
 use andromeda_std::{amp::AndrAddr, andr_exec, andr_instantiate, andr_query, error::ContractError};
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{to_json_binary, Binary, Deps};
+use cosmwasm_std::{instantiate2_address, to_json_binary, Addr, Api, Binary, Deps, HexBinary};
 use serde::Serialize;
 
 #[cw_serde]
@@ -79,6 +79,33 @@ impl AppComponent {
         self.component_type.verify()?;
         Ok(())
     }
+
+    #[inline]
+    pub fn get_salt(&self, _parent_addr: Addr) -> Binary {
+        Binary::from(self.name.as_bytes())
+    }
+
+    pub fn get_new_addr(
+        &self,
+        checksum: HexBinary,
+        parent_addr: Addr,
+        api: &dyn Api,
+    ) -> Result<Addr, ContractError> {
+        let salt = self.get_salt(parent_addr.clone());
+        let creator = api.addr_canonicalize(parent_addr.as_str())?;
+        let new_addr = instantiate2_address(&checksum, &creator, &salt).unwrap();
+        api.debug(&new_addr.to_string());
+        Ok(api.addr_humanize(&new_addr)?)
+    }
+
+    pub fn get_msg_binary(&self) -> Result<Binary, ContractError> {
+        match self.component_type.clone() {
+            ComponentType::New(msg) => Ok(msg),
+            _ => Err(ContractError::InvalidComponent {
+                name: self.name.clone(),
+            }),
+        }
+    }
 }
 
 #[cw_serde]
@@ -150,5 +177,28 @@ pub struct ComponentAddress {
 
 #[cfg(test)]
 mod tests {
-    // use super::*;
+    use andromeda_std::testing::mock_querier::MOCK_APP_CONTRACT;
+    use cosmwasm_std::testing::MockApi;
+    use cw_multi_test::MockApiBech32;
+
+    use super::*;
+
+    #[test]
+    fn test_get_new_addr() {
+        let api = MockApiBech32::new("andr");
+        let component = AppComponent {
+            name: "test".to_string(),
+            ado_type: "app-contract".to_string(),
+            component_type: ComponentType::New(Binary::from("0".as_bytes())),
+        };
+        let checksum =
+            HexBinary::from_hex("9af782a3a1bcbcd22dbb6a45c751551d9af782a3a1bcbcd22dbb6a45c751551d")
+                .unwrap();
+
+        let new_addr = component
+            .get_new_addr(checksum, api.addr_make(MOCK_APP_CONTRACT), &api)
+            .unwrap();
+
+        println!("{:?}", new_addr);
+    }
 }

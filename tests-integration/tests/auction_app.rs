@@ -22,50 +22,70 @@ use andromeda_std::amp::AndrAddr;
 use andromeda_std::common::expiration::MILLISECONDS_TO_NANOSECONDS_RATIO;
 use andromeda_std::error::ContractError;
 use andromeda_testing::mock::MockAndromeda;
-use cosmwasm_std::{coin, to_json_binary, Addr, BlockInfo, Timestamp, Uint128};
+use cosmwasm_std::{coin, coins, to_json_binary, Addr, BlockInfo, Timestamp, Uint128};
 use cw721::OwnerOfResponse;
-use cw_multi_test::{App, Executor};
+use cw_multi_test::{
+    App, AppBuilder, BankKeeper, Executor, MockAddressGenerator, MockApiBech32, WasmKeeper,
+};
 
-fn mock_app() -> App {
-    App::new(|router, _api, storage| {
-        router
-            .bank
-            .init_balance(
-                storage,
-                &Addr::unchecked("owner"),
-                [coin(999999, "uandr")].to_vec(),
-            )
-            .unwrap();
-        router
-            .bank
-            .init_balance(
-                storage,
-                &Addr::unchecked("buyer_one"),
-                [coin(100, "uandr")].to_vec(),
-            )
-            .unwrap();
-        router
-            .bank
-            .init_balance(
-                storage,
-                &Addr::unchecked("buyer_two"),
-                [coin(100, "uandr")].to_vec(),
-            )
-            .unwrap();
-    })
+fn mock_app() -> App<BankKeeper, MockApiBech32> {
+    AppBuilder::new()
+        .with_api(MockApiBech32::new("andr"))
+        .with_wasm(WasmKeeper::new().with_address_generator(MockAddressGenerator))
+        .build(|router, _api, storage| {
+            router
+                .bank
+                .init_balance(
+                    storage,
+                    &Addr::unchecked("owner"),
+                    [coin(999999, "uandr")].to_vec(),
+                )
+                .unwrap();
+            router
+                .bank
+                .init_balance(
+                    storage,
+                    &Addr::unchecked("buyer_one"),
+                    [coin(100, "uandr")].to_vec(),
+                )
+                .unwrap();
+            router
+                .bank
+                .init_balance(
+                    storage,
+                    &Addr::unchecked("buyer_two"),
+                    [coin(100, "uandr")].to_vec(),
+                )
+                .unwrap();
+        })
 }
 
-fn mock_andromeda(app: &mut App, admin_address: Addr) -> MockAndromeda {
+fn mock_andromeda(app: &mut App<BankKeeper, MockApiBech32>, admin_address: Addr) -> MockAndromeda {
     MockAndromeda::new(app, &admin_address)
 }
 
 #[test]
 fn test_auction_app() {
-    let owner = Addr::unchecked("owner");
-    let buyer_one = Addr::unchecked("buyer_one");
-    let buyer_two = Addr::unchecked("buyer_two");
-
     let mut router = mock_app();
+    let owner = router.api().addr_make("owner");
+    let buyer_one = router.api().addr_make("buyer_one");
+    let buyer_two = router.api().addr_make("buyer_two");
+
+    router
+        .send_tokens(
+            Addr::unchecked("owner"),
+            buyer_one.clone(),
+            &[coin(1000, "uandr")],
+        )
+        .unwrap();
+    router
+        .send_tokens(
+            Addr::unchecked("owner"),
+            buyer_two.clone(),
+            &[coin(1000, "uandr")],
+        )
+        .unwrap();
+
     let andr = mock_andromeda(&mut router, owner.clone());
 
     // Store contract codes

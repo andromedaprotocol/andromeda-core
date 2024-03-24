@@ -1,5 +1,5 @@
 use crate::reply::on_component_instantiation;
-use crate::state::{create_cross_chain_message, get_chain_info, APP_NAME};
+use crate::state::{create_cross_chain_message, get_chain_info, ADO_ADDRESSES, APP_NAME};
 use andromeda_app::app::{
     AppComponent, ComponentType, CrossChainComponent, ExecuteMsg, InstantiateMsg, MigrateMsg,
     QueryMsg,
@@ -8,6 +8,7 @@ use andromeda_std::ado_contract::ADOContract;
 use andromeda_std::amp::AndrAddr;
 use andromeda_std::common::context::ExecuteContext;
 use andromeda_std::common::reply::ReplyId;
+use andromeda_std::os::aos_querier::AOSQuerier;
 use andromeda_std::os::vfs::{convert_component_name, ExecuteMsg as VFSExecuteMsg};
 use andromeda_std::{
     ado_base::InstantiateMsg as BaseInstantiateMsg,
@@ -17,8 +18,8 @@ use andromeda_std::{
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    ensure, to_json_binary, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Reply,
-    Response, StdError, SubMsg, WasmMsg,
+    ensure, to_json_binary, wasm_execute, Binary, CosmosMsg, Deps, DepsMut, Empty, Env,
+    MessageInfo, Reply, Response, StdError, SubMsg, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
 
@@ -54,7 +55,6 @@ pub fn instantiate(
             BaseInstantiateMsg {
                 ado_type: "app-contract".to_string(),
                 ado_version: CONTRACT_VERSION.to_string(),
-
                 kernel_address: msg.kernel_address.clone(),
                 owner: msg.owner.clone(),
             },
@@ -63,9 +63,30 @@ pub fn instantiate(
         .add_attribute("andr_app", msg.name.clone());
 
     let mut msgs: Vec<SubMsg> = vec![];
-    let app_name = msg.name;
+
+    let vfs_address = ADOContract::default().get_vfs_address(deps.storage, &deps.querier)?;
+    let adodb_addr = ADOContract::default().get_adodb_address(deps.storage, &deps.querier)?;
     for component in msg.app_components.clone() {
         component.verify(&deps.as_ref()).unwrap();
+        let code_id = AOSQuerier::code_id_getter(&deps.querier, &adodb_addr, &component.ado_type)?;
+        let checksum = deps.querier.query_wasm_code_info(code_id)?.checksum;
+        let new_addr =
+            component.get_new_addr(checksum.clone(), env.contract.address.clone(), deps.api)?;
+        let register_msg = wasm_execute(
+            vfs_address.clone(),
+            &VFSExecuteMsg::AddPath {
+                name: convert_component_name(&component.name),
+                address: new_addr.clone(),
+                parent_address: None,
+            },
+            vec![],
+        )?;
+        let register_submsg = SubMsg::reply_always(register_msg, ReplyId::RegisterPath.repr());
+        ADO_ADDRESSES.save(deps.storage, &component.name, &new_addr)?;
+        msgs.push(register_submsg);
+    }
+    let app_name = msg.name;
+    for component in msg.app_components.clone() {
         match component.component_type {
             ComponentType::CrossChain(CrossChainComponent { chain, .. }) => {
                 let chain_info = get_chain_info(chain.clone(), msg.chain_info.clone());
@@ -87,6 +108,7 @@ pub fn instantiate(
                 let comp_resp = execute::handle_add_app_component(
                     &deps.querier,
                     deps.storage,
+                    env.clone(),
                     &sender,
                     new_component,
                 )?;
@@ -96,6 +118,7 @@ pub fn instantiate(
                 let comp_resp = execute::handle_add_app_component(
                     &deps.querier,
                     deps.storage,
+                    env.clone(),
                     &sender,
                     component,
                 )?;
@@ -103,7 +126,6 @@ pub fn instantiate(
             }
         }
     }
-    let vfs_address = ADOContract::default().get_vfs_address(deps.storage, &deps.querier)?;
 
     let add_path_msg = VFSExecuteMsg::AddChild {
         name: convert_component_name(&app_name),
@@ -183,6 +205,7 @@ pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
         ExecuteMsg::AddAppComponent { component } => execute::handle_add_app_component(
             &ctx.deps.querier,
             ctx.deps.storage,
+            ctx.env,
             ctx.info.sender.as_str(),
             component,
         ),

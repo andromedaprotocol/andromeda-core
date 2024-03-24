@@ -12,7 +12,10 @@ backtraces = ["cosmwasm-std/backtraces"]
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-cosmwasm-std = { workspace = true }
+cosmwasm-std = { workspace = true, features = ["cosmwasm_1_2"] }
 cosmwasm-schema = { workspace = true }
 serde = { workspace = true }
 andromeda-std = { workspace = true }
+
+[dev-dependencies]
+cw-multi-test = { version = "1.0.0" }

@@ -10,13 +10,14 @@ use andromeda_std::os::vfs::ExecuteMsg as VFSExecuteMsg;
 use andromeda_std::{ado_contract::ADOContract, amp::AndrAddr};
 
 use cosmwasm_std::{
-    ensure, to_json_binary, Addr, Binary, CosmosMsg, Order, QuerierWrapper, ReplyOn, Response,
+    ensure, to_json_binary, Addr, Binary, CosmosMsg, Env, Order, QuerierWrapper, ReplyOn, Response,
     Storage, SubMsg, WasmMsg,
 };
 
 pub fn handle_add_app_component(
     querier: &QuerierWrapper,
     storage: &mut dyn Storage,
+    env: Env,
     sender: &str,
     component: AppComponent,
 ) -> Result<Response, ContractError> {
@@ -31,8 +32,7 @@ pub fn handle_add_app_component(
         .count();
     ensure!(amount < 50, ContractError::TooManyAppComponents {});
 
-    let current_addr = ADO_ADDRESSES.may_load(storage, &component.name)?;
-    ensure!(current_addr.is_none(), ContractError::NameAlreadyTaken {});
+    let adodb_addr = ADOContract::default().get_adodb_address(storage, querier)?;
 
     let idx = add_app_component(storage, &component)?;
 
@@ -41,18 +41,19 @@ pub fn handle_add_app_component(
         .add_attribute("name", component.name.clone())
         .add_attribute("type", component.ado_type.clone());
 
-    match component.component_type {
+    match component.component_type.clone() {
         ComponentType::New(instantiate_msg) => {
-            let inst_msg = generate_instantiate_msg(
-                storage,
-                querier,
-                idx,
-                instantiate_msg,
-                component.ado_type.clone(),
-                sender.to_string(),
-            )?;
-            resp = resp.add_submessage(inst_msg);
-            ADO_ADDRESSES.save(storage, &component.name, &Addr::unchecked(""))?;
+            let code_id = AOSQuerier::code_id_getter(querier, &adodb_addr, &component.ado_type)?;
+            let salt = component.get_salt(env.contract.address);
+            let inst_msg = WasmMsg::Instantiate2 {
+                admin: Some(sender.to_string()),
+                code_id,
+                label: format!("Instantiate: {}", component.ado_type),
+                msg: instantiate_msg,
+                funds: vec![],
+                salt,
+            };
+            resp = resp.add_submessage(SubMsg::reply_always(inst_msg, idx));
         }
         ComponentType::Symlink(symlink) => {
             let msg = VFSExecuteMsg::AddSymlink {
@@ -76,36 +77,6 @@ pub fn handle_add_app_component(
     }
 
     Ok(resp)
-}
-
-fn generate_instantiate_msg(
-    storage: &mut dyn Storage,
-    querier: &QuerierWrapper,
-    msg_id: u64,
-    msg: Binary,
-    ado_type: String,
-    sender: String,
-) -> Result<SubMsg, ContractError> {
-    let adodb_addr = ADOContract::default().get_adodb_address(storage, querier)?;
-    match AOSQuerier::code_id_getter(querier, &adodb_addr, &ado_type) {
-        Err(_) => Err(ContractError::InvalidModule {
-            msg: Some(String::from(
-                "ADO type provided does not have a valid Code Id",
-            )),
-        }),
-        Ok(code_id) => Ok(SubMsg {
-            id: msg_id,
-            reply_on: ReplyOn::Always,
-            msg: CosmosMsg::Wasm(WasmMsg::Instantiate {
-                admin: Some(sender),
-                code_id,
-                msg,
-                funds: vec![],
-                label: format!("Instantiate: {ado_type}"),
-            }),
-            gas_limit: None,
-        }),
-    }
 }
 
 pub fn claim_ownership(

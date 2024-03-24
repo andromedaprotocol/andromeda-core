@@ -14,7 +14,7 @@ use andromeda_vfs::mock::{
     mock_vfs_instantiate_message,
 };
 use cosmwasm_std::{Addr, Empty};
-use cw_multi_test::{App, Contract, Executor};
+use cw_multi_test::{App, BankKeeper, Contract, Executor, MockApiBech32};
 
 pub const ADMIN_USERNAME: &str = "am";
 
@@ -25,7 +25,8 @@ pub struct MockAndromeda {
 }
 
 impl MockAndromeda {
-    pub fn new(app: &mut App, admin_address: &Addr) -> MockAndromeda {
+    pub fn new(app: &mut App<BankKeeper, MockApiBech32>, admin_address: &Addr) -> MockAndromeda {
+        let admin_address = app.api().addr_make(admin_address.as_str());
         // Store contract codes
         let adodb_code_id = app.store_code(mock_andromeda_adodb());
         let kernel_code_id = app.store_code(mock_andromeda_kernel());
@@ -127,13 +128,13 @@ impl MockAndromeda {
         mock_andr.register_kernel_key_address(app, "adodb", adodb_address);
         mock_andr.register_kernel_key_address(app, "vfs", vfs_address);
         mock_andr.register_kernel_key_address(app, "economics", economics_address);
-        mock_andr.register_user(app, admin_address.clone(), ADMIN_USERNAME);
+        mock_andr.register_user(app, admin_address, ADMIN_USERNAME);
 
         mock_andr
     }
 
     /// Stores a given Code ID under the given key in the ADO DB contract
-    pub fn store_code_id(&self, app: &mut App, key: &str, code_id: u64) {
+    pub fn store_code_id(&self, app: &mut App<BankKeeper, MockApiBech32>, key: &str, code_id: u64) {
         let msg = mock_publish(code_id, key, "0.1.0", None, None);
 
         app.execute_contract(
@@ -147,7 +148,7 @@ impl MockAndromeda {
 
     pub fn store_ado(
         &self,
-        app: &mut App,
+        app: &mut App<BankKeeper, MockApiBech32>,
         contract: Box<dyn Contract<Empty>>,
         ado_type: impl Into<String>,
     ) {
@@ -156,7 +157,11 @@ impl MockAndromeda {
     }
 
     /// Gets the Code ID for a given key from the ADO DB contract
-    pub fn get_code_id(&self, app: &mut App, key: impl Into<String>) -> u64 {
+    pub fn get_code_id(
+        &self,
+        app: &mut App<BankKeeper, MockApiBech32>,
+        key: impl Into<String>,
+    ) -> u64 {
         let msg = mock_get_code_id_msg(key.into());
 
         app.wrap()
@@ -167,7 +172,7 @@ impl MockAndromeda {
     /// Registers a key address for the kernel
     pub fn register_kernel_key_address(
         &self,
-        app: &mut App,
+        app: &mut App<BankKeeper, MockApiBech32>,
         key: impl Into<String>,
         address: Addr,
     ) {
@@ -182,7 +187,12 @@ impl MockAndromeda {
     }
 
     /// Registers a user on the VFS
-    pub fn register_user(&self, app: &mut App, sender: Addr, username: impl Into<String>) {
+    pub fn register_user(
+        &self,
+        app: &mut App<BankKeeper, MockApiBech32>,
+        sender: Addr,
+        username: impl Into<String>,
+    ) {
         let vfs_address_query = mock_get_key_address("vfs");
         let vfs_address: Addr = app
             .wrap()
@@ -198,7 +208,7 @@ impl MockAndromeda {
     /// Adds a path to resolve to the VFS
     pub fn vfs_add_path(
         &self,
-        app: &mut App,
+        app: &mut App<BankKeeper, MockApiBech32>,
         sender: Addr,
         name: impl Into<String>,
         address: Addr,
@@ -214,7 +224,11 @@ impl MockAndromeda {
             .unwrap();
     }
 
-    pub fn vfs_resolve_path(&self, app: &mut App, path: impl Into<String>) -> Addr {
+    pub fn vfs_resolve_path(
+        &self,
+        app: &mut App<BankKeeper, MockApiBech32>,
+        path: impl Into<String>,
+    ) -> Addr {
         let vfs_address_query = mock_get_key_address("vfs");
         let vfs_address: Addr = app
             .wrap()
@@ -228,7 +242,7 @@ impl MockAndromeda {
     /// Accepts ownership of the given contract for the given sender
     pub fn accept_ownership(
         &self,
-        app: &mut App,
+        app: &mut App<BankKeeper, MockApiBech32>,
         address: impl Into<String>,
         sender: impl Into<String>,
     ) {
