@@ -63,6 +63,10 @@ pub fn instantiate(
         contract.register_modules(info.sender.as_str(), deps.storage, msg.modules)?;
 
     if let Some(authorized_token_addresses) = msg.authorized_token_addresses {
+        if !authorized_token_addresses.is_empty() {
+            ADOContract::default().permission_action(SEND_NFT_ACTION, deps.storage)?;
+        }
+
         for token_address in authorized_token_addresses {
             let addr = token_address.get_raw_address(&deps.as_ref())?;
             ADOContract::set_permission(
@@ -170,7 +174,7 @@ fn handle_receive_cw721(
     ctx: ExecuteContext,
     msg: Cw721ReceiveMsg,
 ) -> Result<Response, ContractError> {
-    ADOContract::default().is_permissioned_strict(
+    ADOContract::default().is_permissioned(
         ctx.deps.storage,
         ctx.env.clone(),
         SEND_NFT_ACTION,

@@ -38,7 +38,23 @@ fn init(deps: DepsMut, modules: Option<Vec<Module>>) -> Response {
         owner: None,
         modules,
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
-        authorized_token_addresses: Some(vec![AndrAddr::from_string(MOCK_TOKEN_ADDR)]),
+        authorized_token_addresses: None,
+    };
+
+    let info = mock_info("owner", &[]);
+    instantiate(deps, mock_env(), info, msg).unwrap()
+}
+
+fn init_with_authorized_token_addresses(
+    deps: DepsMut,
+    modules: Option<Vec<Module>>,
+    authorized_token_addresses: Option<Vec<AndrAddr>>,
+) -> Response {
+    let msg = InstantiateMsg {
+        owner: None,
+        modules,
+        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+        authorized_token_addresses,
     };
 
     let info = mock_info("owner", &[]);
@@ -471,9 +487,6 @@ fn execute_place_bid_auction_cancelled() {
 
 #[test]
 fn test_execute_start_auction() {
-    let mut deps = mock_dependencies_custom(&[]);
-    let _res = init(deps.as_mut(), None);
-
     let hook_msg = Cw721HookMsg::StartAuction {
         start_time: 100000,
         duration: 100000,
@@ -490,6 +503,22 @@ fn test_execute_start_auction() {
     env.block.time = Timestamp::from_seconds(0u64);
 
     let info = mock_info(MOCK_TOKEN_ADDR, &[]);
+
+    // Test when auction is permissioned
+    let mut deps = mock_dependencies_custom(&[]);
+    let authorized_token_addresses = Some(vec![AndrAddr::from_string("some_other_nft")]);
+    init_with_authorized_token_addresses(deps.as_mut(), None, authorized_token_addresses);
+    let err = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap_err();
+    assert_eq!(ContractError::Unauthorized {}, err,);
+
+    let authorized_token_addresses = Some(vec![AndrAddr::from_string(MOCK_TOKEN_ADDR)]);
+    init_with_authorized_token_addresses(deps.as_mut(), None, authorized_token_addresses);
+    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+    assert_eq!(res.messages.len(), 1);
+
+    // Unpermissioned Contract
+    let mut deps = mock_dependencies_custom(&[]);
+    let _res = init(deps.as_mut(), None);
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
 
     assert_eq!(
