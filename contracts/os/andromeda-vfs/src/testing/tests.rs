@@ -38,7 +38,7 @@ fn proper_initialization() {
     let env = mock_env();
     instantiate_contract(deps.as_mut(), env, info)
 }
-
+// TODO: RegistUsername has been temporarily disabled, uncomment code and removed TemporarilyDisabled error once it's re-enabled
 #[test]
 fn test_register_user() {
     let mut deps = mock_dependencies_custom(&[]);
@@ -52,30 +52,31 @@ fn test_register_user() {
         address: None,
     };
     instantiate_contract(deps.as_mut(), env.clone(), info.clone());
-    execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+    let err = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap_err();
+    assert_eq!(err, ContractError::TemporarilyDisabled {});
 
-    let saved = USERS.load(deps.as_ref().storage, username).unwrap();
-    assert_eq!(saved, sender);
-    let username_saved = ADDRESS_USERNAME
-        .load(deps.as_ref().storage, sender)
-        .unwrap();
-    assert_eq!(username_saved, username);
+    // let saved = USERS.load(deps.as_ref().storage, username).unwrap();
+    // assert_eq!(saved, sender);
+    // let username_saved = ADDRESS_USERNAME
+    //     .load(deps.as_ref().storage, sender)
+    //     .unwrap();
+    // assert_eq!(username_saved, username);
 
-    let new_username = "u2";
-    let msg = ExecuteMsg::RegisterUser {
-        username: new_username.to_string(),
-        address: None,
-    };
-    execute(deps.as_mut(), env, info, msg).unwrap();
+    // let new_username = "u2";
+    // let msg = ExecuteMsg::RegisterUser {
+    //     username: new_username.to_string(),
+    //     address: None,
+    // };
+    // execute(deps.as_mut(), env, info, msg).unwrap();
 
-    let saved = USERS.load(deps.as_ref().storage, new_username).unwrap();
-    assert_eq!(saved, sender);
-    let username_saved = ADDRESS_USERNAME
-        .load(deps.as_ref().storage, sender)
-        .unwrap();
-    assert_eq!(username_saved, new_username);
-    let deleted = USERS.may_load(deps.as_ref().storage, username).unwrap();
-    assert!(deleted.is_none())
+    // let saved = USERS.load(deps.as_ref().storage, new_username).unwrap();
+    // assert_eq!(saved, sender);
+    // let username_saved = ADDRESS_USERNAME
+    //     .load(deps.as_ref().storage, sender)
+    //     .unwrap();
+    // assert_eq!(username_saved, new_username);
+    // let deleted = USERS.may_load(deps.as_ref().storage, username).unwrap();
+    // assert!(deleted.is_none())
 }
 
 #[test]
@@ -91,23 +92,25 @@ fn test_register_user_duplicate() {
         address: None,
     };
     instantiate_contract(deps.as_mut(), env.clone(), info.clone());
-    execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+    // execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+    let err = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap_err();
+    assert_eq!(err, ContractError::TemporarilyDisabled {});
 
-    let saved = USERS.load(deps.as_ref().storage, username).unwrap();
-    assert_eq!(saved, sender);
-    let username_saved = ADDRESS_USERNAME
-        .load(deps.as_ref().storage, sender)
-        .unwrap();
-    assert_eq!(username_saved, username);
+    // let saved = USERS.load(deps.as_ref().storage, username).unwrap();
+    // assert_eq!(saved, sender);
+    // let username_saved = ADDRESS_USERNAME
+    //     .load(deps.as_ref().storage, sender)
+    //     .unwrap();
+    // assert_eq!(username_saved, username);
 
-    let res = execute(deps.as_mut(), env, info, msg);
-    assert!(res.is_err());
-    assert_eq!(
-        res.unwrap_err(),
-        ContractError::InvalidUsername {
-            error: Some("Username already taken".to_string())
-        }
-    )
+    // let res = execute(deps.as_mut(), env, info, msg);
+    // assert!(res.is_err());
+    // assert_eq!(
+    //     res.unwrap_err(),
+    //     ContractError::InvalidUsername {
+    //         error: Some("Username already taken".to_string())
+    //     }
+    // )
 }
 
 // Test using a username that represents a valid CosmWasm Address that IS NOT the same as the sender's address
@@ -125,45 +128,46 @@ fn test_register_user_valid_cosmwasm_address() {
     };
     instantiate_contract(deps.as_mut(), env.clone(), info.clone());
     let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
-    assert_eq!(
-        err,
-        ContractError::InvalidUsername {
-            error: Some(
-                "Usernames that are valid addresses should be the same as the sender's address"
-                    .to_string()
-            )
-        }
-    );
+    assert_eq!(err, ContractError::TemporarilyDisabled {});
+    // assert_eq!(
+    //     err,
+    //     ContractError::InvalidUsername {
+    //         error: Some(
+    //             "Usernames that are valid addresses should be the same as the sender's address"
+    //                 .to_string()
+    //         )
+    //     }
+    // );
 
-    let username = "SeNdEr";
-    let info = mock_info("attacker", &[]);
-    let env = mock_env();
-    let msg = ExecuteMsg::RegisterUser {
-        username: username.to_string(),
-        address: None,
-    };
+    // let username = "SeNdEr";
+    // let info = mock_info("attacker", &[]);
+    // let env = mock_env();
+    // let msg = ExecuteMsg::RegisterUser {
+    //     username: username.to_string(),
+    //     address: None,
+    // };
 
-    let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
-    assert_eq!(
-        err,
-        ContractError::InvalidUsername {
-            error: Some(
-                "Usernames that are valid addresses should be the same as the sender's address"
-                    .to_string()
-            )
-        }
-    );
+    // let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
+    // assert_eq!(
+    //     err,
+    //     ContractError::InvalidUsername {
+    //         error: Some(
+    //             "Usernames that are valid addresses should be the same as the sender's address"
+    //                 .to_string()
+    //         )
+    //     }
+    // );
 
-    let username = "SeNdEr";
-    let info = mock_info(sender, &[]);
-    let env = mock_env();
-    let msg = ExecuteMsg::RegisterUser {
-        username: username.to_string(),
-        address: None,
-    };
+    // let username = "SeNdEr";
+    // let info = mock_info(sender, &[]);
+    // let env = mock_env();
+    // let msg = ExecuteMsg::RegisterUser {
+    //     username: username.to_string(),
+    //     address: None,
+    // };
 
-    let res = execute(deps.as_mut(), env, info, msg);
-    assert!(res.is_ok());
+    // let res = execute(deps.as_mut(), env, info, msg);
+    // assert!(res.is_ok());
 }
 
 // Test using a username that represents a valid CosmWasm Address that IS the same as the sender's address
@@ -180,10 +184,12 @@ fn test_register_user_valid_cosmwasm_address_user() {
         address: None,
     };
     instantiate_contract(deps.as_mut(), env.clone(), info.clone());
-    execute(deps.as_mut(), env, info, msg).unwrap();
+    // execute(deps.as_mut(), env, info, msg).unwrap();
+    let err = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap_err();
+    assert_eq!(err, ContractError::TemporarilyDisabled {});
 
-    let saved = USERS.load(deps.as_ref().storage, username).unwrap();
-    assert_eq!(saved, sender)
+    // let saved = USERS.load(deps.as_ref().storage, username).unwrap();
+    // assert_eq!(saved, sender)
 }
 
 #[test]
@@ -203,13 +209,15 @@ fn test_register_user_unauthorized() {
         .save(deps.as_mut().storage, username, &Addr::unchecked(occupier))
         .unwrap();
 
-    let res = execute(deps.as_mut(), env, info, msg).unwrap_err();
-    assert_eq!(
-        res,
-        ContractError::InvalidUsername {
-            error: Some("Username already taken".to_string())
-        }
-    )
+    let err = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap_err();
+    assert_eq!(err, ContractError::TemporarilyDisabled {});
+    // let res = execute(deps.as_mut(), env, info, msg).unwrap_err();
+    // assert_eq!(
+    //     res,
+    //     ContractError::InvalidUsername {
+    //         error: Some("Username already taken".to_string())
+    //     }
+    // )
 }
 
 #[test]
@@ -231,13 +239,16 @@ fn test_register_user_already_registered() {
         .save(deps.as_mut().storage, username, &Addr::unchecked(sender))
         .unwrap();
 
-    execute(deps.as_mut(), env, info, msg).unwrap();
-    let addr = USERS.load(deps.as_ref().storage, new_username).unwrap();
-    assert_eq!(addr, sender);
-    let username = ADDRESS_USERNAME
-        .load(deps.as_ref().storage, sender)
-        .unwrap();
-    assert_eq!(username, new_username)
+    let err = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap_err();
+    assert_eq!(err, ContractError::TemporarilyDisabled {});
+
+    // execute(deps.as_mut(), env, info, msg).unwrap();
+    // let addr = USERS.load(deps.as_ref().storage, new_username).unwrap();
+    // assert_eq!(addr, sender);
+    // let username = ADDRESS_USERNAME
+    //     .load(deps.as_ref().storage, sender)
+    //     .unwrap();
+    // assert_eq!(username, new_username)
 }
 
 #[test]
@@ -260,25 +271,27 @@ fn test_register_user_foreign_chain() {
         username: username.to_string(),
         address: None,
     };
-    let err = execute(deps.as_mut(), env.clone(), info, msg).unwrap_err();
-    assert_eq!(err, ContractError::Unauthorized {});
+    let err = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap_err();
+    assert_eq!(err, ContractError::TemporarilyDisabled {});
+    // let err = execute(deps.as_mut(), env.clone(), info, msg).unwrap_err();
+    // assert_eq!(err, ContractError::Unauthorized {});
 
-    let msg = ExecuteMsg::RegisterUser {
-        username: username.to_string(),
-        address: Some(Addr::unchecked(sender)),
-    };
-    let info = mock_info(MOCK_FAKE_KERNEL_CONTRACT, &[]);
-    execute(deps.as_mut(), env.clone(), info, msg).unwrap();
-    let addr = USERS.load(deps.as_ref().storage, username).unwrap();
-    assert_eq!(addr, sender);
+    // let msg = ExecuteMsg::RegisterUser {
+    //     username: username.to_string(),
+    //     address: Some(Addr::unchecked(sender)),
+    // };
+    // let info = mock_info(MOCK_FAKE_KERNEL_CONTRACT, &[]);
+    // execute(deps.as_mut(), env.clone(), info, msg).unwrap();
+    // let addr = USERS.load(deps.as_ref().storage, username).unwrap();
+    // assert_eq!(addr, sender);
 
-    let msg = ExecuteMsg::RegisterUser {
-        username: username.to_string(),
-        address: None,
-    };
-    let info = mock_info(MOCK_FAKE_KERNEL_CONTRACT, &[]);
-    let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
-    assert_eq!(err, ContractError::Unauthorized {});
+    // let msg = ExecuteMsg::RegisterUser {
+    //     username: username.to_string(),
+    //     address: None,
+    // };
+    // let info = mock_info(MOCK_FAKE_KERNEL_CONTRACT, &[]);
+    // let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
+    // assert_eq!(err, ContractError::Unauthorized {});
 }
 
 #[test]

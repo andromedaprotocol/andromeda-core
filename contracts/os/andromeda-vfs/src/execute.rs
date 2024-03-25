@@ -146,6 +146,7 @@ pub fn register_user(
     username: String,
     address: Option<Addr>,
 ) -> Result<Response, ContractError> {
+    ensure!(false, ContractError::TemporarilyDisabled {});
     ensure!(
         username.len() as u64 <= MAX_USERNAME_LENGTH,
         ContractError::InvalidUsername {
