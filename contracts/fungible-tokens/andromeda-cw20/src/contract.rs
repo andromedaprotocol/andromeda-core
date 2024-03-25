@@ -34,24 +34,22 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
+    let cw20_resp = cw20_instantiate(deps.branch(), env.clone(), info.clone(), msg.clone().into())?;
     let resp = contract.instantiate(
         deps.storage,
-        env.clone(),
+        env,
         deps.api,
         &deps.querier,
         info.clone(),
         BaseInstantiateMsg {
-            ado_type: "cw20".to_string(),
+            ado_type: CONTRACT_NAME.to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
-            kernel_address: msg.clone().kernel_address,
+            kernel_address: msg.kernel_address.clone(),
             owner: msg.clone().owner,
         },
     )?;
     let modules_resp =
-        contract.register_modules(info.sender.as_str(), deps.storage, msg.clone().modules)?;
-
-    let cw20_resp = cw20_instantiate(deps.branch(), env, info, msg.into())?;
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+        contract.register_modules(info.sender.as_str(), deps.storage, msg.modules)?;
 
     Ok(resp
         .add_submessages(modules_resp.messages)

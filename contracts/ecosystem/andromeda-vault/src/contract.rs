@@ -43,7 +43,7 @@ pub fn instantiate(
         &deps.querier,
         info,
         BaseInstantiateMsg {
-            ado_type: "vault".to_string(),
+            ado_type: CONTRACT_NAME.to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
             owner: msg.owner,
             kernel_address: msg.kernel_address,

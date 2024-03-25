@@ -37,7 +37,7 @@ pub fn instantiate(
         &deps.querier,
         info,
         BaseInstantiateMsg {
-            ado_type: "andromeda-kernel".to_string(),
+            ado_type: CONTRACT_NAME.to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
             kernel_address: env.contract.address.to_string(),
             owner: msg.owner,

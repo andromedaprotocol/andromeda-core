@@ -54,7 +54,7 @@ pub fn instantiate(
         &deps.querier,
         info.clone(),
         BaseInstantiateMsg {
-            ado_type: "auction".to_string(),
+            ado_type: CONTRACT_NAME.to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
             kernel_address: msg.kernel_address,
             owner: msg.owner,

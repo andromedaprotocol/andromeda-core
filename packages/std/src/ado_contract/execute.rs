@@ -27,14 +27,14 @@ impl<'a> ADOContract<'a> {
         info: MessageInfo,
         msg: InstantiateMsg,
     ) -> Result<Response, ContractError> {
-        // let ado_type = if msg.ado_type.starts_with("crates.io:andromeda-") {
-        //     msg.ado_type.strip_prefix("crates.io:andromeda-").unwrap()
-        // } else if msg.ado_type.starts_with("crates.io:") {
-        //     msg.ado_type.strip_prefix("crates.io:").unwrap()
-        // } else {
-        //     &msg.ado_type
-        // };
-        cw2::set_contract_version(storage, msg.ado_type.clone(), msg.ado_version)?;
+        let ado_type = if msg.ado_type.starts_with("crates.io:andromeda-") {
+            msg.ado_type.strip_prefix("crates.io:andromeda-").unwrap()
+        } else if msg.ado_type.starts_with("crates.io:") {
+            msg.ado_type.strip_prefix("crates.io:").unwrap()
+        } else {
+            &msg.ado_type
+        };
+        cw2::set_contract_version(storage, ado_type, msg.ado_version)?;
         self.owner.save(
             storage,
             &api.addr_validate(&msg.owner.unwrap_or(info.sender.to_string()))?,
@@ -44,13 +44,10 @@ impl<'a> ADOContract<'a> {
         self.ado_type.save(storage, &msg.ado_type)?;
         self.kernel_address
             .save(storage, &api.addr_validate(&msg.kernel_address)?)?;
-        let attributes = [
-            attr("method", "instantiate"),
-            attr("type", msg.ado_type.clone()),
-        ];
+        let attributes = [attr("method", "instantiate"), attr("type", ado_type)];
 
         // We do not want to store app contracts for the kernel, exit early if current contract is kernel
-        let is_kernel_contract = msg.ado_type.contains("kernel");
+        let is_kernel_contract = ado_type.contains("kernel");
         if is_kernel_contract {
             return Ok(Response::new().add_attributes(attributes));
         }
@@ -60,12 +57,12 @@ impl<'a> ADOContract<'a> {
         let is_sender_contract = maybe_contract_info.is_ok();
         if is_sender_contract {
             let ContractInfoResponse { code_id, .. } = maybe_contract_info?;
-            let ado_type = AOSQuerier::ado_type_getter(
+            let sender_ado_type = AOSQuerier::ado_type_getter(
                 querier,
                 &self.get_adodb_address(storage, querier)?,
                 code_id,
             )?;
-            let is_sender_app = Some("app-contract".to_string()) == ado_type;
+            let is_sender_app = Some("app-contract".to_string()) == sender_ado_type;
             // Automatically save app contract reference if creator is an app contract
             if is_sender_app {
                 self.app_contract
