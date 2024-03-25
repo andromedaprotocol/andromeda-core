@@ -60,6 +60,7 @@ pub fn instantiate(
         deps.storage,
         env,
         deps.api,
+        &deps.querier,
         info.clone(),
         BaseInstantiateMsg {
             ado_type: "cw721".to_string(),

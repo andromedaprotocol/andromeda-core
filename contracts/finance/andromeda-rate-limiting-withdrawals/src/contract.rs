@@ -75,6 +75,7 @@ pub fn instantiate(
         deps.storage,
         env,
         deps.api,
+        &deps.querier,
         info.clone(),
         BaseInstantiateMsg {
             ado_type: "rate-limiting-withdrawals".to_string(),

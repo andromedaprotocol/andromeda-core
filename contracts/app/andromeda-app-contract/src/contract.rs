@@ -37,7 +37,6 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     APP_NAME.save(deps.storage, &msg.name)?;
 
     ensure!(
@@ -51,9 +50,10 @@ pub fn instantiate(
             deps.storage,
             env.clone(),
             deps.api,
+            &deps.querier,
             info.clone(),
             BaseInstantiateMsg {
-                ado_type: "app-contract".to_string(),
+                ado_type: CONTRACT_NAME.to_string(),
                 ado_version: CONTRACT_VERSION.to_string(),
                 kernel_address: msg.kernel_address.clone(),
                 owner: msg.owner.clone(),
@@ -62,10 +62,11 @@ pub fn instantiate(
         .add_attribute("owner", msg.owner.clone().unwrap_or(sender.clone()))
         .add_attribute("andr_app", msg.name.clone());
 
-    let mut msgs: Vec<SubMsg> = vec![];
-
     let vfs_address = ADOContract::default().get_vfs_address(deps.storage, &deps.querier)?;
     let adodb_addr = ADOContract::default().get_adodb_address(deps.storage, &deps.querier)?;
+
+    let mut msgs: Vec<SubMsg> = vec![];
+
     for component in msg.app_components.clone() {
         component.verify(&deps.as_ref()).unwrap();
         let code_id = AOSQuerier::code_id_getter(&deps.querier, &adodb_addr, &component.ado_type)?;
@@ -142,19 +143,7 @@ pub fn instantiate(
     });
 
     let register_msg = SubMsg::reply_on_error(cosmos_msg, ReplyId::RegisterPath.repr());
-    let assign_app_msg = ExecuteMsg::AssignAppToComponents {};
-    let assign_app_msg = SubMsg::reply_on_error(
-        CosmosMsg::Wasm::<Empty>(WasmMsg::Execute {
-            contract_addr: env.contract.address.to_string(),
-            msg: to_json_binary(&assign_app_msg)?,
-            funds: vec![],
-        }),
-        ReplyId::AssignApp.repr(),
-    );
-    resp = resp
-        .add_submessage(register_msg)
-        .add_submessages(msgs)
-        .add_submessage(assign_app_msg);
+    resp = resp.add_submessage(register_msg).add_submessages(msgs);
 
     if let Some(chain_info) = msg.chain_info {
         for chain in chain_info.clone() {

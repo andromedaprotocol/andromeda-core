@@ -42,6 +42,7 @@ pub fn instantiate(
         deps.storage,
         env,
         deps.api,
+        &deps.querier,
         info,
         BaseInstantiateMsg {
             ado_type: "andromeda-cross-chain-swap".to_string(),

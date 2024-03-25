@@ -32,6 +32,7 @@ pub fn instantiate(
         deps.storage,
         env,
         deps.api,
+        &deps.querier,
         info,
         BaseInstantiateMsg {
             ado_type: "economics".to_string(),

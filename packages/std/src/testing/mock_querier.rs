@@ -166,7 +166,7 @@ impl MockAndromedaQuerier {
                     MOCK_CW20_CONTRACT => self.handle_cw20_owner_query(key),
                     MOCK_ANCHOR_CONTRACT => self.handle_anchor_owner_query(key),
 
-                    _ => panic!("Unsupported query for contract: {contract_addr}"),
+                    _ => self.handle_ado_raw_query(key, &Addr::unchecked(contract_addr)),
                 }
             }
             // Defaults to code ID 1, returns 2 for `INVALID_CONTRACT` which is considered an invalid ADODB code id
@@ -420,6 +420,19 @@ impl MockAndromedaQuerier {
             }
             _ => panic!("Unsupported Query"),
         }
+    }
+
+    pub fn handle_ado_raw_query(&self, key: &Binary, contract_addr: &Addr) -> QuerierResult {
+        let key_vec = key.as_slice();
+        let key_str = String::from_utf8(key_vec.to_vec()).unwrap();
+
+        if key_str.contains("owner") {
+            return SystemResult::Ok(ContractResult::Ok(
+                to_json_binary(&Addr::unchecked("owner".to_string())).unwrap(),
+            ));
+        }
+
+        panic!("Unsupported query for contract: {contract_addr}")
     }
 
     pub fn handle_kernel_raw_query(&self, key: &Binary, fake: bool) -> QuerierResult {

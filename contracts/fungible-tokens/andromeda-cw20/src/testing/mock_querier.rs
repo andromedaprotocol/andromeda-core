@@ -10,8 +10,8 @@ pub use andromeda_std::testing::mock_querier::{MOCK_ADDRESS_LIST_CONTRACT, MOCK_
 use cosmwasm_std::testing::{mock_env, mock_info, MockApi, MockQuerier, MockStorage};
 use cosmwasm_std::{
     from_json, to_json_binary, BankMsg, Binary, Coin, ContractResult, CosmosMsg, OwnedDeps,
-    Querier, QuerierResult, QueryRequest, Response, SubMsg, SystemError, SystemResult, Uint128,
-    WasmQuery,
+    Querier, QuerierResult, QuerierWrapper, QueryRequest, Response, SubMsg, SystemError,
+    SystemResult, Uint128, WasmQuery,
 };
 
 pub const MOCK_CW20_CONTRACT: &str = "mock_cw20_contract";
@@ -36,6 +36,7 @@ pub fn mock_dependencies_custom(
             &mut deps.storage,
             mock_env(),
             &deps.api,
+            &QuerierWrapper::new(&deps.querier),
             mock_info("sender", &[]),
             InstantiateMsg {
                 ado_type: "cw20".to_string(),

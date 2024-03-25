@@ -2,8 +2,7 @@
 
 use andromeda_app::app::AppComponent;
 use andromeda_app_contract::mock::{
-    mock_andromeda_app, mock_app_instantiate_msg, mock_claim_ownership_msg, mock_get_address_msg,
-    mock_get_components_msg,
+    mock_andromeda_app, mock_app_instantiate_msg, mock_get_address_msg, mock_get_components_msg,
 };
 use andromeda_auction::mock::{
     mock_andromeda_auction, mock_auction_instantiate_msg, mock_authorize_token_address,
@@ -95,8 +94,15 @@ fn test_auction_app() {
         to_json_binary(&cw721_init_msg).unwrap(),
     );
 
-    let auction_init_msg =
-        mock_auction_instantiate_msg(None, andr.kernel_address.to_string(), None, None);
+    let auction_init_msg = mock_auction_instantiate_msg(
+        None,
+        andr.kernel_address.to_string(),
+        None,
+        Some(vec![AndrAddr::from_string(format!(
+            "./{}",
+            cw721_component.name
+        ))]),
+    );
     let auction_component = AppComponent::new(
         "auction".to_string(),
         "auction".to_string(),
@@ -104,7 +110,7 @@ fn test_auction_app() {
     );
 
     // Create App
-    let app_components = vec![cw721_component.clone(), auction_component.clone()];
+    let app_components = vec![auction_component.clone(), cw721_component.clone()];
     let app_init_msg = mock_app_instantiate_msg(
         "AuctionApp".to_string(),
         app_components.clone(),
@@ -130,14 +136,14 @@ fn test_auction_app() {
 
     assert_eq!(components, app_components);
 
-    router
-        .execute_contract(
-            owner.clone(),
-            Addr::unchecked(app_addr.clone()),
-            &mock_claim_ownership_msg(None),
-            &[],
-        )
-        .unwrap();
+    // router
+    //     .execute_contract(
+    //         owner.clone(),
+    //         Addr::unchecked(app_addr.clone()),
+    //         &mock_claim_ownership_msg(None),
+    //         &[],
+    //     )
+    //     .unwrap();
 
     // Mint Tokens
     let cw721_addr: String = router
@@ -148,7 +154,7 @@ fn test_auction_app() {
         )
         .unwrap();
     let mint_msg = mock_quick_mint_msg(1, owner.to_string());
-    andr.accept_ownership(&mut router, cw721_addr.clone(), owner.clone());
+    // andr.accept_ownership(&mut router, cw721_addr.clone(), owner.clone());
     router
         .execute_contract(
             owner.clone(),
@@ -163,7 +169,7 @@ fn test_auction_app() {
         .wrap()
         .query_wasm_smart(app_addr, &mock_get_address_msg(auction_component.name))
         .unwrap();
-    andr.accept_ownership(&mut router, auction_addr.clone(), owner.clone());
+    // andr.accept_ownership(&mut router, auction_addr.clone(), owner.clone());
     router
         .execute_contract(
             owner.clone(),

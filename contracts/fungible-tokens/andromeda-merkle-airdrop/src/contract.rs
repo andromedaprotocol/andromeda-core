@@ -56,6 +56,7 @@ pub fn instantiate(
         deps.storage,
         env,
         deps.api,
+        &deps.querier,
         info,
         BaseInstantiateMsg {
             ado_type: "merkle-airdrop".to_string(),

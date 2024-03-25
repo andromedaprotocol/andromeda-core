@@ -38,6 +38,7 @@ pub fn instantiate(
         deps.storage,
         env.clone(),
         deps.api,
+        &deps.querier,
         info.clone(),
         BaseInstantiateMsg {
             ado_type: "cw20".to_string(),

@@ -1,7 +1,6 @@
 use andromeda_app::app::{AppComponent, ComponentType};
 use andromeda_app_contract::mock::{
-    mock_andromeda_app, mock_app_instantiate_msg, mock_claim_ownership_msg, mock_get_address_msg,
-    mock_get_components_msg,
+    mock_andromeda_app, mock_app_instantiate_msg, mock_get_address_msg, mock_get_components_msg,
 };
 use andromeda_crowdfund::mock::{
     mock_andromeda_crowdfund, mock_crowdfund_instantiate_msg, mock_crowdfund_quick_mint_msg,
@@ -173,14 +172,14 @@ fn test_crowdfund_app() {
 
     assert_eq!(components, app_components);
 
-    router
-        .execute_contract(
-            owner.clone(),
-            app_addr.clone(),
-            &mock_claim_ownership_msg(None),
-            &[],
-        )
-        .unwrap();
+    // router
+    //     .execute_contract(
+    //         owner.clone(),
+    //         app_addr.clone(),
+    //         &mock_claim_ownership_msg(None),
+    //         &[],
+    //     )
+    //     .unwrap();
 
     let crowdfund_addr: String = router
         .wrap()
@@ -192,7 +191,7 @@ fn test_crowdfund_app() {
 
     // Mint Tokens
     let mint_msg = mock_crowdfund_quick_mint_msg(5, owner.to_string());
-    andr.accept_ownership(&mut router, crowdfund_addr.clone(), owner.clone());
+    // andr.accept_ownership(&mut router, crowdfund_addr.clone(), owner.clone());
     router
         .execute_contract(
             owner.clone(),

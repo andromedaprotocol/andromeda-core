@@ -1,7 +1,6 @@
 use andromeda_app::app::AppComponent;
 use andromeda_app_contract::mock::{
-    mock_andromeda_app, mock_app_instantiate_msg, mock_claim_ownership_msg, mock_get_address_msg,
-    mock_get_components_msg,
+    mock_andromeda_app, mock_app_instantiate_msg, mock_get_components_msg,
 };
 use andromeda_cw20::mock::{
     mock_andromeda_cw20, mock_cw20_instantiate_msg, mock_cw20_send, mock_cw20_transfer,
@@ -112,15 +111,6 @@ fn setup_app(andr: &MockAndromeda, router: &mut MockApp) -> Addr {
             Some(owner.to_string()),
         )
         .unwrap();
-    let claim_ownership = mock_claim_ownership_msg(None);
-    router
-        .execute_contract(owner.clone(), app_addr.clone(), &claim_ownership, &[])
-        .unwrap();
-    let cw20_staking_addr: String = router
-        .wrap()
-        .query_wasm_smart(app_addr.to_string(), &mock_get_address_msg("cw20staking"))
-        .unwrap();
-    andr.accept_ownership(router, cw20_staking_addr, owner);
 
     let components: Vec<AppComponent> = router
         .wrap()

@@ -72,6 +72,7 @@ pub fn instantiate(
         deps.storage,
         env,
         deps.api,
+        &deps.querier,
         info,
         BaseInstantiateMsg {
             ado_type: "splitter".to_string(),

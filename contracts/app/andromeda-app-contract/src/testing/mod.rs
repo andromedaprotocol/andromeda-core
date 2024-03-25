@@ -34,7 +34,7 @@ fn test_empty_instantiation() {
 
     // we can just call .unwrap() to assert this was a success
     let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
-    assert_eq!(2, res.messages.len());
+    assert_eq!(1, res.messages.len());
 }
 
 //TODO: Fix post CosmWasm 2.0

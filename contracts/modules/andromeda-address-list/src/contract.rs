@@ -33,6 +33,7 @@ pub fn instantiate(
         deps.storage,
         env,
         deps.api,
+        &deps.querier,
         info,
         BaseInstantiateMsg {
             ado_type: "address-list".to_string(),

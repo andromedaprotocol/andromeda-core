@@ -5,8 +5,7 @@ use andromeda_address_list::mock::{
 };
 use andromeda_app::app::AppComponent;
 use andromeda_app_contract::mock::{
-    mock_andromeda_app, mock_app_instantiate_msg, mock_claim_ownership_msg, mock_get_address_msg,
-    mock_get_components_msg,
+    mock_andromeda_app, mock_app_instantiate_msg, mock_get_address_msg, mock_get_components_msg,
 };
 use andromeda_cw721::mock::{
     mock_andromeda_cw721, mock_cw721_instantiate_msg, mock_cw721_owner_of, mock_quick_mint_msg,
@@ -141,16 +140,6 @@ fn test_marketplace_app() {
 
     assert_eq!(components, app_components);
 
-    // Claim Ownership
-    router
-        .execute_contract(
-            owner.clone(),
-            app_addr.clone(),
-            &mock_claim_ownership_msg(None),
-            &[],
-        )
-        .unwrap();
-
     let cw721_addr: String = router
         .wrap()
         .query_wasm_smart(
@@ -183,7 +172,6 @@ fn test_marketplace_app() {
 
     let token_id = "0";
 
-    andr.accept_ownership(&mut router, address_list_addr.clone(), owner.clone());
     // Whitelist
     router
         .execute_contract(

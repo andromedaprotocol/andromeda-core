@@ -28,17 +28,16 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-
     CURR_CHAIN.save(deps.storage, &msg.chain_name)?;
 
     ADOContract::default().instantiate(
         deps.storage,
         env.clone(),
         deps.api,
+        &deps.querier,
         info,
         BaseInstantiateMsg {
-            ado_type: "kernel".to_string(),
+            ado_type: "andromeda-kernel".to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
             kernel_address: env.contract.address.to_string(),
             owner: msg.owner,
