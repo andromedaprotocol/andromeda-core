@@ -52,7 +52,7 @@ fn test_register_user() {
         address: None,
     };
     instantiate_contract(deps.as_mut(), env.clone(), info.clone());
-    let err = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap_err();
+    let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
     assert_eq!(err, ContractError::TemporarilyDisabled {});
 
     // let saved = USERS.load(deps.as_ref().storage, username).unwrap();
@@ -93,7 +93,7 @@ fn test_register_user_duplicate() {
     };
     instantiate_contract(deps.as_mut(), env.clone(), info.clone());
     // execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
-    let err = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap_err();
+    let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
     assert_eq!(err, ContractError::TemporarilyDisabled {});
 
     // let saved = USERS.load(deps.as_ref().storage, username).unwrap();
@@ -185,7 +185,7 @@ fn test_register_user_valid_cosmwasm_address_user() {
     };
     instantiate_contract(deps.as_mut(), env.clone(), info.clone());
     // execute(deps.as_mut(), env, info, msg).unwrap();
-    let err = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap_err();
+    let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
     assert_eq!(err, ContractError::TemporarilyDisabled {});
 
     // let saved = USERS.load(deps.as_ref().storage, username).unwrap();
@@ -209,7 +209,7 @@ fn test_register_user_unauthorized() {
         .save(deps.as_mut().storage, username, &Addr::unchecked(occupier))
         .unwrap();
 
-    let err = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap_err();
+    let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
     assert_eq!(err, ContractError::TemporarilyDisabled {});
     // let res = execute(deps.as_mut(), env, info, msg).unwrap_err();
     // assert_eq!(
@@ -239,7 +239,7 @@ fn test_register_user_already_registered() {
         .save(deps.as_mut().storage, username, &Addr::unchecked(sender))
         .unwrap();
 
-    let err = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap_err();
+    let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
     assert_eq!(err, ContractError::TemporarilyDisabled {});
 
     // execute(deps.as_mut(), env, info, msg).unwrap();
@@ -271,7 +271,7 @@ fn test_register_user_foreign_chain() {
         username: username.to_string(),
         address: None,
     };
-    let err = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap_err();
+    let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
     assert_eq!(err, ContractError::TemporarilyDisabled {});
     // let err = execute(deps.as_mut(), env.clone(), info, msg).unwrap_err();
     // assert_eq!(err, ContractError::Unauthorized {});
