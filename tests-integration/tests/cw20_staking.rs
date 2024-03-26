@@ -10,14 +10,14 @@ use andromeda_cw20::mock::{
 use andromeda_cw20_staking::mock::{
     mock_andromeda_cw20_staking, mock_cw20_get_staker, mock_cw20_stake,
     mock_cw20_staking_add_reward_tokens, mock_cw20_staking_instantiate_msg,
-    mock_cw20_staking_update_global_indexes,
+    mock_cw20_staking_update_global_indexes, MockCW20Staking,
 };
 use andromeda_fungible_tokens::cw20_staking::{AllocationConfig, StakerResponse};
 
 use andromeda_std::common::Milliseconds;
 
 use andromeda_std::ado_base::version::VersionResponse;
-use andromeda_testing::mock::MockAndromeda;
+use andromeda_testing::{mock::MockAndromeda, MockADO, MockContract};
 use cosmwasm_std::{coin, to_json_binary, Addr, BlockInfo, Timestamp, Uint128};
 use cw20::{BalanceResponse, Cw20Coin};
 use cw_asset::AssetInfoUnchecked;
@@ -101,7 +101,7 @@ fn setup_app(andr: &MockAndromeda, router: &mut App) -> Addr {
             Some(Uint128::from(1000000u128)),
         )),
         None,
-        andr.kernel_address.to_string(),
+        andr.kernel.addr().to_string(),
     );
     let cw20_component = AppComponent::new(
         "cw20".to_string(),
@@ -111,7 +111,7 @@ fn setup_app(andr: &MockAndromeda, router: &mut App) -> Addr {
 
     let cw20_staking_init_msg = mock_cw20_staking_instantiate_msg(
         format!("./{}", cw20_component.name),
-        andr.kernel_address.to_string(),
+        andr.kernel.addr().to_string(),
         None,
         None,
     );
@@ -126,7 +126,7 @@ fn setup_app(andr: &MockAndromeda, router: &mut App) -> Addr {
     let app_init_msg = mock_app_instantiate_msg(
         "Staking App".to_string(),
         app_components.clone(),
-        andr.kernel_address.clone(),
+        andr.kernel.addr().clone(),
         None,
     );
 
@@ -154,7 +154,9 @@ fn setup_app(andr: &MockAndromeda, router: &mut App) -> Addr {
         .wrap()
         .query_wasm_smart(app_addr.to_string(), &mock_get_address_msg("cw20staking"))
         .unwrap();
-    andr.accept_ownership(router, cw20_staking_addr, owner);
+
+    let cw20_staking = MockCW20Staking(Addr::unchecked(cw20_staking_addr));
+    cw20_staking.accept_ownership(router, owner).unwrap();
 
     let components: Vec<AppComponent> = router
         .wrap()

@@ -16,7 +16,7 @@ use andromeda_rates::mock::{mock_andromeda_rates, mock_rates_instantiate_msg};
 use andromeda_std::ado_base::modules::Module;
 use andromeda_std::amp::messages::{AMPMsg, AMPPkt};
 use andromeda_std::amp::Recipient;
-use andromeda_testing::{MockAndromeda, MockContract};
+use andromeda_testing::{MockADO, MockAndromeda, MockContract};
 use cosmwasm_std::{coin, to_json_binary, Addr, Uint128};
 use cw_multi_test::{App, Executor};
 
@@ -59,7 +59,7 @@ fn test_marketplace_app() {
     andr.store_ado(&mut router, mock_andromeda_marketplace(), "marketplace");
     andr.store_ado(&mut router, mock_andromeda_rates(), "rates");
     andr.store_ado(&mut router, mock_andromeda_address_list(), "address-list");
-    let app_code_id = andr.store_ado(&mut router, mock_andromeda_app(), "app");
+    let app_code_id = andr.store_ado(&mut router, mock_andromeda_app(), "app-contract");
 
     // Generate App Components
     let cw721_init_msg = mock_cw721_instantiate_msg(
@@ -83,7 +83,8 @@ fn test_marketplace_app() {
         recipients: vec![Recipient::from_string(rates_receiver.to_string())],
     }];
     let rates_init_msg = mock_rates_instantiate_msg(rates, andr.kernel.addr().to_string(), None);
-    let rates_component = AppComponent::new("2", "rates", to_json_binary(&rates_init_msg).unwrap());
+    let rates_component =
+        AppComponent::new("rates", "rates", to_json_binary(&rates_init_msg).unwrap());
 
     let address_list_init_msg =
         mock_address_list_instantiate_msg(true, andr.kernel.addr().to_string(), None);
@@ -145,7 +146,9 @@ fn test_marketplace_app() {
         .unwrap();
     let token_id = "0";
 
-    andr.accept_ownership(&mut router, address_list_addr.clone(), owner.clone());
+    address_list
+        .accept_ownership(&mut router, owner.clone())
+        .unwrap();
     // Whitelist
     address_list
         .execute_add_address(&mut router, owner.clone(), cw721.addr())

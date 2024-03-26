@@ -10,8 +10,6 @@ use serde::{de::DeserializeOwned, Serialize};
 
 pub use anyhow::Result as AnyResult;
 
-pub struct MockContract(Addr);
-
 pub type ExecuteResult = AnyResult<AppResponse>;
 
 pub trait MockContract<E: Serialize + fmt::Debug, Q: Serialize + fmt::Debug> {
@@ -44,11 +42,11 @@ pub trait MockADO<E: Serialize + fmt::Debug, Q: Serialize + fmt::Debug>:
             .owner
     }
 
-    pub fn accept_ownership(&self, app: &mut App, sender: Addr) -> AnyResult<AppResponse> {
-        self.execute(
-            app,
-            AndromedaMsg::Ownership(OwnershipMessage::AcceptOwnership {}),
+    fn accept_ownership(&self, app: &mut App, sender: Addr) -> AnyResult<AppResponse> {
+        app.execute_contract(
             sender,
+            self.addr().clone(),
+            &AndromedaMsg::Ownership(OwnershipMessage::AcceptOwnership {}),
             &[],
         )
     }

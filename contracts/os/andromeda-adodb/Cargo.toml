@@ -34,4 +34,4 @@ cw-asset = { workspace = true }
 cw-multi-test = { workspace = true, optional = true }
 
 [dev-dependencies]
-# andromeda-testing = { version = "0.1.0", path = "../../../packages/andromeda-testing" }
+andromeda-testing = { version = "0.1.0", path = "../../../packages/andromeda-testing" }

@@ -1,8 +1,8 @@
 #[cfg(not(feature = "imported"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, ensure, from_json, has_coins, to_json_binary, Api, BankMsg, Binary, Coin, CosmosMsg,
-    Deps, DepsMut, Empty, Env, MessageInfo, QuerierWrapper, Response, SubMsg, Uint128,
+    attr, ensure, from_json, has_coins, to_json_binary, Addr, Api, BankMsg, Binary, Coin,
+    CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, QuerierWrapper, Response, SubMsg, Uint128,
 };
 
 use crate::state::{
@@ -501,9 +501,9 @@ pub fn query_transfer_agreement(
     Ok(TRANSFER_AGREEMENTS.may_load(deps.storage, &token_id)?)
 }
 
-pub fn query_minter(deps: Deps) -> Result<String, ContractError> {
-    let owner = ADOContract::default().query_contract_owner(deps)?;
-    Ok(owner.owner)
+pub fn query_minter(deps: Deps) -> Result<Addr, ContractError> {
+    let minter = ANDR_MINTER.load(deps.storage)?;
+    minter.get_raw_address(&deps)
 }
 
 #[cfg_attr(not(feature = "imported"), entry_point)]

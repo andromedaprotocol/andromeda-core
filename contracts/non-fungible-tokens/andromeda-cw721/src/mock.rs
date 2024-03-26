@@ -90,6 +90,10 @@ impl MockCW721 {
     }
 }
 
+pub fn mock_cw721_minter_query() -> QueryMsg {
+    QueryMsg::Minter {}
+}
+
 pub fn mock_andromeda_cw721() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new_with_empty(execute, instantiate, query);
     Box::new(contract)

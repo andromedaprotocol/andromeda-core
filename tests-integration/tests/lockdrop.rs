@@ -4,7 +4,7 @@ use andromeda_lockdrop::mock::{
     mock_deposit_native, mock_enable_claims, mock_lockdrop_instantiate_msg, mock_withdraw_native,
 };
 use andromeda_std::common::Milliseconds;
-use andromeda_testing::mock::MockAndromeda;
+use andromeda_testing::{mock::MockAndromeda, MockContract};
 use cosmwasm_std::{coin, to_json_binary, Addr, BlockInfo, Uint128};
 use cw20::Cw20Coin;
 use cw_multi_test::{App, Executor};
@@ -53,7 +53,7 @@ fn test_lockdrop() {
         }],
         None,
         None,
-        andr.kernel_address.to_string(),
+        andr.kernel.addr().to_string(),
     );
 
     let cw20_incentives_address = app
@@ -79,7 +79,7 @@ fn test_lockdrop() {
         "uusd".to_string(),
         None,
         None,
-        andr.kernel_address.to_string(),
+        andr.kernel.addr().to_string(),
     );
 
     let lockdrop_addr = app

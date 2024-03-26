@@ -42,7 +42,7 @@ fn test_splitter() {
     let andr = mock_andromeda(&mut router, owner.clone());
 
     let app_code_id = router.store_code(mock_andromeda_app());
-    andr.store_code_id(&mut router, "app", app_code_id);
+    andr.store_code_id(&mut router, "app-contract", app_code_id);
     let splitter_code_id = router.store_code(mock_andromeda_splitter());
     andr.store_code_id(&mut router, "splitter", splitter_code_id);
 
@@ -60,7 +60,7 @@ fn test_splitter() {
     let splitter_init_msg =
         mock_splitter_instantiate_msg(splitter_recipients, andr.kernel.addr().clone(), None, None);
     let splitter_app_component = AppComponent {
-        name: "1".to_string(),
+        name: "splitter".to_string(),
         component_type: ComponentType::new(splitter_init_msg),
         ado_type: "splitter".to_string(),
     };

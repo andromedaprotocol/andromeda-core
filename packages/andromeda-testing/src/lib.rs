@@ -1,6 +1,10 @@
 pub mod economics_msg;
-pub mod reply;
-pub mod testing;
+// pub mod reply;
+// pub mod testing;
+pub mod adodb;
+pub mod economics;
+pub mod kernel;
+pub mod vfs;
 
 #[cfg(all(not(target_arch = "wasm32")))]
 pub mod mock;

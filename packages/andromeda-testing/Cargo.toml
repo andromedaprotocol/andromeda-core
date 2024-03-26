@@ -22,16 +22,16 @@ anyhow = "1.0.79"
 andromeda-non-fungible-tokens = { version = "0.1.0", path = "../andromeda-non-fungible-tokens" }
 andromeda-app = { version = "0.1.0", path = "../andromeda-app" }
 andromeda-modules = { version = "0.1.0", path = "../andromeda-modules" }
-andromeda-adodb = { version = "0.2.1", path = "../../contracts/os/andromeda-adodb", features = [
+andromeda-adodb = { version = "1.0.0-rc.1", path = "../../contracts/os/andromeda-adodb", features = [
     "testing",
 ] }
-andromeda-kernel = { version = "0.2.15", path = "../../contracts/os/andromeda-kernel", features = [
+andromeda-kernel = { version = "1.0.0-rc.1", path = "../../contracts/os/andromeda-kernel", features = [
     "testing",
 ] }
-andromeda-vfs = { version = "0.2.2", path = "../../contracts/os/andromeda-vfs", features = [
+andromeda-vfs = { version = "1.0.0-rc.1", path = "../../contracts/os/andromeda-vfs", features = [
     "testing",
 ] }
-andromeda-economics = { version = "0.2.0", path = "../../contracts/os/andromeda-economics", features = [
+andromeda-economics = { version = "1.0.0-rc.1", path = "../../contracts/os/andromeda-economics", features = [
     "testing",
     "library",
 ] }

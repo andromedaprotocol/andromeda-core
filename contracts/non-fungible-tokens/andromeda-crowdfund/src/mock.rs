@@ -5,14 +5,17 @@ use andromeda_non_fungible_tokens::{
     crowdfund::{CrowdfundMintMsg, ExecuteMsg, InstantiateMsg, QueryMsg},
     cw721::TokenExtension,
 };
-use andromeda_std::{ado_base::modules::Module, amp::AndrAddr};
+use andromeda_std::{
+    ado_base::modules::Module,
+    amp::{AndrAddr, Recipient},
+    common::Milliseconds,
+};
 use andromeda_testing::{
     mock_ado,
     mock_contract::{ExecuteResult, MockADO, MockContract},
 };
 use cosmwasm_std::{Addr, Coin, Empty, Uint128};
 use cw_multi_test::{App, Contract, ContractWrapper, Executor};
-use cw_utils::Expiration;
 
 pub struct MockCrowdfund(Addr);
 mock_ado!(MockCrowdfund, ExecuteMsg, QueryMsg);
@@ -54,7 +57,7 @@ impl MockCrowdfund {
         &self,
         sender: Addr,
         app: &mut App,
-        expiration: Expiration,
+        expiration: Milliseconds,
         price: Coin,
         min_tokens_sold: Uint128,
         max_amount_per_wallet: Option<u32>,

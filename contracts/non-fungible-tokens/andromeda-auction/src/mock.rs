@@ -5,13 +5,15 @@ use andromeda_non_fungible_tokens::auction::{
     AuctionIdsResponse, AuctionStateResponse, Bid, BidsResponse, Cw721HookMsg, ExecuteMsg,
     InstantiateMsg, QueryMsg,
 };
-use andromeda_std::ado_base::modules::Module;
+use andromeda_std::ado_base::permissioning::{Permission, PermissioningMessage};
 use andromeda_std::amp::messages::AMPPkt;
+use andromeda_std::{ado_base::modules::Module, amp::AndrAddr};
 use andromeda_testing::{
     mock_ado,
     mock_contract::{ExecuteResult, MockADO, MockContract},
 };
 use cosmwasm_std::{Addr, Coin, Empty, Uint128};
+use cw20::Expiration;
 use cw_multi_test::{App, AppResponse, Contract, ContractWrapper, Executor};
 
 pub struct MockAuction(Addr);
@@ -26,7 +28,7 @@ impl MockAuction {
         kernel_address: impl Into<String>,
         owner: Option<String>,
     ) -> MockAuction {
-        let msg = mock_auction_instantiate_msg(modules, kernel_address, owner);
+        let msg = mock_auction_instantiate_msg(modules, kernel_address, owner, None);
         let addr = app
             .instantiate_contract(
                 code_id,

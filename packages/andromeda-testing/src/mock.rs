@@ -57,8 +57,8 @@ impl MockAndromeda {
             None,
             kernel.addr().to_string(),
         );
-        vfs.execute_register_user(app, admin_address.clone(), ADMIN_USERNAME.to_string())
-            .unwrap();
+        // vfs.execute_register_user(app, admin_address.clone(), ADMIN_USERNAME.to_string())
+        //     .unwrap();
 
         // Add Code IDs
         adodb
@@ -147,17 +147,5 @@ impl MockAndromeda {
     /// Gets the Code ID for a given key from the ADO DB contract
     pub fn get_code_id(&self, app: &mut App, key: impl Into<String>) -> u64 {
         self.adodb.query_code_id(app, key)
-    }
-
-    /// Accepts ownership of the given contract for the given sender
-    pub fn accept_ownership(
-        &self,
-        app: &mut App,
-        address: impl Into<String>,
-        sender: impl Into<String>,
-    ) {
-        let msg = AndromedaMsg::Ownership(OwnershipMessage::AcceptOwnership {});
-        app.execute_contract(Addr::unchecked(sender), Addr::unchecked(address), &msg, &[])
-            .unwrap();
     }
 }

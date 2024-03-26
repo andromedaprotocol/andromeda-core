@@ -53,4 +53,5 @@ cw-asset = "3.0.0"
 cosmwasm-schema = "1.5.2"
 semver = "1.0.0"
 enum-repr = "0.2.6"
-cw-multi-test = "0.20.0"
+cw-multi-test = "1.0.0"
+serde = { version = "1.0.127" }

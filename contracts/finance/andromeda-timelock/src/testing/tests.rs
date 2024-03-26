@@ -1,11 +1,3 @@
-use andromeda_std::{amp::Recipient, error::ContractError};
-use cosmwasm_std::{
-    attr, coin, coins, from_json,
-    testing::{mock_env, mock_info},
-    BankMsg, Coin, Response, Timestamp,
-};
-use cw_utils::Expiration;
-
 use crate::{
     contract::{execute, query},
     testing::mock_querier::mock_dependencies_custom,

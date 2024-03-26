@@ -1,7 +1,7 @@
 #![cfg(not(target_arch = "wasm32"))]
 
 use andromeda_app::app::AppComponent;
-use andromeda_app_contract::mock::{mock_andromeda_app, MockApp};
+use andromeda_app_contract::mock::{mock_andromeda_app, mock_claim_ownership_msg, MockApp};
 use andromeda_auction::mock::{
     mock_andromeda_auction, mock_auction_instantiate_msg, mock_start_auction, MockAuction,
 };
@@ -11,7 +11,7 @@ use andromeda_std::common::expiration::MILLISECONDS_TO_NANOSECONDS_RATIO;
 use andromeda_testing::{mock::MockAndromeda, mock_contract::MockContract};
 use cosmwasm_std::{coin, to_json_binary, Addr, BlockInfo, Timestamp, Uint128};
 
-use cw_multi_test::App;
+use cw_multi_test::{App, Executor};
 
 fn mock_app() -> App {
     App::new(|router, _api, storage| {
@@ -57,7 +57,7 @@ fn test_auction_app() {
     // Store contract codes
     andr.store_ado(&mut router, mock_andromeda_cw721(), "cw721");
     andr.store_ado(&mut router, mock_andromeda_auction(), "auction");
-    andr.store_ado(&mut router, mock_andromeda_app(), "app");
+    andr.store_ado(&mut router, mock_andromeda_app(), "app-contract");
 
     // Generate App Components
     let cw721_init_msg = mock_cw721_instantiate_msg(
@@ -74,7 +74,8 @@ fn test_auction_app() {
         to_json_binary(&cw721_init_msg).unwrap(),
     );
 
-    let auction_init_msg = mock_auction_instantiate_msg(None, andr.kernel.addr().to_string(), None);
+    let auction_init_msg =
+        mock_auction_instantiate_msg(None, andr.kernel.addr().to_string(), None, None);
     let auction_component = AppComponent::new(
         "auction".to_string(),
         "auction".to_string(),
@@ -84,7 +85,7 @@ fn test_auction_app() {
     // Create App
     let app_components = vec![cw721_component.clone(), auction_component.clone()];
     let app = MockApp::instantiate(
-        andr.get_code_id(&mut router, "app"),
+        andr.get_code_id(&mut router, "app-contract"),
         owner.clone(),
         &mut router,
         "Auction App",
@@ -96,7 +97,7 @@ fn test_auction_app() {
     router
         .execute_contract(
             owner.clone(),
-            Addr::unchecked(app_addr.clone()),
+            Addr::unchecked(app.addr().clone()),
             &mock_claim_ownership_msg(None),
             &[],
         )

@@ -2,6 +2,7 @@
 
 use crate::contract::{execute, instantiate, query, reply};
 use andromeda_finance::splitter::{AddressPercent, ExecuteMsg, InstantiateMsg, QueryMsg};
+use andromeda_std::common::Milliseconds;
 use andromeda_testing::{mock_ado, mock_contract::ExecuteResult, MockADO, MockContract};
 use cosmwasm_std::{Addr, Coin, Empty};
 use cw_multi_test::{App, Contract, ContractWrapper, Executor};

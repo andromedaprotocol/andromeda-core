@@ -23,11 +23,9 @@ use andromeda_std::{
 use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
 
 use cosmwasm_std::{
-    attr, attr, coins, coins, ensure, ensure, entry_point, entry_point, from_json, from_json, Addr,
-    Addr, BankMsg, BankMsg, Binary, Binary, BlockInfo, BlockInfo, Coin, Coin, CosmosMsg, CosmosMsg,
-    Deps, Deps, DepsMut, DepsMut, Env, Env, MessageInfo, MessageInfo, QuerierWrapper,
-    QuerierWrapper, QueryRequest, QueryRequest, Response, Response, Storage, Storage, SubMsg,
-    SubMsg, Uint128, Uint128, WasmMsg, WasmMsg, WasmQuery, WasmQuery,
+    attr, coins, ensure, entry_point, from_json, Addr, BankMsg, Binary, BlockInfo, Coin, CosmosMsg,
+    Deps, DepsMut, Env, MessageInfo, QuerierWrapper, QueryRequest, Response, Storage, SubMsg,
+    Uint128, WasmMsg, WasmQuery,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, Cw721ReceiveMsg, Expiration, OwnerOfResponse};
@@ -172,7 +170,7 @@ fn handle_receive_cw721(
     ctx: ExecuteContext,
     msg: Cw721ReceiveMsg,
 ) -> Result<Response, ContractError> {
-    ADOContract::default().is_permissioned_strict(
+    ADOContract::default().is_permissioned(
         ctx.deps.storage,
         ctx.env.clone(),
         SEND_NFT_ACTION,

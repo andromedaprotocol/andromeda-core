@@ -1,5 +1,5 @@
 use cosmwasm_std::{
-    attr, attr, coin, coin, coins, coins, from_json, from_json,
+    attr, coin, coins, from_json,
     testing::{mock_env, mock_info},
     Addr, Coin, DepsMut, Env, Response, StdError, Uint128,
 };
