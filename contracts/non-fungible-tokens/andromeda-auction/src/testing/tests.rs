@@ -70,10 +70,14 @@ fn start_auction(deps: DepsMut, whitelist: Option<Vec<Addr>>, min_bid: Option<Ui
 }
 
 fn assert_auction_created(deps: Deps, whitelist: Option<Vec<Addr>>, min_bid: Option<Uint128>) {
+    let current_time = mock_env().block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO;
+    let duration = 10_000;
     assert_eq!(
         TokenAuctionState {
-            start_time: Expiration::AtTime(Timestamp::from_nanos(1571797419880000000)),
-            end_time: Expiration::AtTime(Timestamp::from_nanos(1571797429879000000)),
+            start_time: Expiration::AtTime(Timestamp::from_nanos((current_time + 1) * 1_000_000)),
+            end_time: Expiration::AtTime(Timestamp::from_nanos(
+                (current_time + duration) * 1_000_000
+            )),
             high_bidder_addr: Addr::unchecked(""),
             high_bidder_amount: Uint128::zero(),
             coin_denom: "uusd".to_string(),
