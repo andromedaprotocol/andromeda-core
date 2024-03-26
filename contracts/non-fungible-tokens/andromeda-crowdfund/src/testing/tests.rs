@@ -26,7 +26,8 @@ use andromeda_std::{
 use cosmwasm_std::{
     coin, coins, from_binary,
     testing::{mock_env, mock_info},
-    Addr, BankMsg, Coin, CosmosMsg, DepsMut, Response, StdError, SubMsg, Uint128, WasmMsg,
+    Addr, BankMsg, Coin, CosmosMsg, DepsMut, Response, StdError, SubMsg, Timestamp, Uint128,
+    WasmMsg,
 };
 use cw_utils::Expiration;
 
@@ -177,10 +178,11 @@ fn test_mint_owner_not_crowdfund() {
 fn test_mint_sale_started() {
     let mut deps = mock_dependencies_custom(&[]);
     init(deps.as_mut(), None);
+    let current_time = mock_env().block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO;
 
     let msg = ExecuteMsg::StartSale {
         start_time: None,
-        duration: 2,
+        expiration: Expiration::AtTime(Timestamp::from_nanos((current_time + 2) * 1_000_000)),
         price: coin(100, "uusd"),
         min_tokens_sold: Uint128::from(1u128),
         max_amount_per_wallet: Some(5),
@@ -364,13 +366,15 @@ fn test_mint_multiple_exceeds_limit() {
 }
 
 #[test]
-fn test_start_sale_zero_duration() {
+fn test_start_sale_end_time_never() {
     let mut deps = mock_dependencies_custom(&[]);
     init(deps.as_mut(), None);
+    let one_minute_in_future =
+        mock_env().block.time.plus_minutes(1).nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO;
 
     let msg = ExecuteMsg::StartSale {
-        start_time: None,
-        duration: 0,
+        start_time: Some(one_minute_in_future),
+        expiration: Expiration::Never {},
         price: coin(100, "uusd"),
         min_tokens_sold: Uint128::from(1u128),
         max_amount_per_wallet: None,
@@ -379,17 +383,18 @@ fn test_start_sale_zero_duration() {
 
     let info = mock_info("owner", &[]);
     let res = execute(deps.as_mut(), mock_env(), info, msg);
-    assert_eq!(ContractError::InvalidExpiration {}, res.unwrap_err());
+    assert_eq!(ContractError::ExpirationMustNotBeNever {}, res.unwrap_err());
 }
 
 #[test]
 fn test_start_sale_unauthorized() {
     let mut deps = mock_dependencies_custom(&[]);
     init(deps.as_mut(), None);
+    let current_time = mock_env().block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO;
 
     let msg = ExecuteMsg::StartSale {
         start_time: None,
-        duration: 1,
+        expiration: Expiration::AtTime(Timestamp::from_nanos((current_time + 1) * 1_000_000)),
         price: coin(100, "uusd"),
         min_tokens_sold: Uint128::from(1u128),
         max_amount_per_wallet: None,
@@ -406,11 +411,12 @@ fn test_start_sale_start_time_in_past() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
     init(deps.as_mut(), None);
+    let current_time = mock_env().block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO;
 
     let one_minute_in_past = env.block.time.minus_minutes(1).seconds();
     let msg = ExecuteMsg::StartSale {
         start_time: Some(one_minute_in_past),
-        duration: 1,
+        expiration: Expiration::AtTime(Timestamp::from_nanos((current_time + 2) * 1_000_000)),
         price: coin(100, "uusd"),
         min_tokens_sold: Uint128::from(1u128),
         max_amount_per_wallet: None,
@@ -438,7 +444,9 @@ fn test_start_sale_start_time_in_future() {
         env.block.time.plus_minutes(1).nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO;
     let msg = ExecuteMsg::StartSale {
         start_time: Some(one_minute_in_future),
-        duration: 2,
+        expiration: Expiration::AtTime(Timestamp::from_nanos(
+            (one_minute_in_future + 2) * 1_000_000,
+        )),
         price: coin(100, "uusd"),
         min_tokens_sold: Uint128::from(1u128),
         max_amount_per_wallet: None,
@@ -454,10 +462,11 @@ fn test_start_sale_start_time_in_future() {
 fn test_start_sale_max_default() {
     let mut deps = mock_dependencies_custom(&[]);
     init(deps.as_mut(), None);
+    let current_time = mock_env().block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO;
 
     let msg = ExecuteMsg::StartSale {
         start_time: None,
-        duration: 1,
+        expiration: Expiration::AtTime(Timestamp::from_nanos((current_time + 2) * 1_000_000)),
         price: coin(100, "uusd"),
         min_tokens_sold: Uint128::from(1u128),
         max_amount_per_wallet: None,
@@ -506,10 +515,11 @@ fn test_start_sale_max_default() {
 fn test_start_sale_max_modified() {
     let mut deps = mock_dependencies_custom(&[]);
     init(deps.as_mut(), None);
+    let current_time = mock_env().block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO;
 
     let msg = ExecuteMsg::StartSale {
         start_time: None,
-        duration: 1,
+        expiration: Expiration::AtTime(Timestamp::from_nanos((current_time + 2) * 1_000_000)),
         price: coin(100, "uusd"),
         min_tokens_sold: Uint128::from(1u128),
         max_amount_per_wallet: Some(5),
@@ -1170,10 +1180,11 @@ fn test_integration_conditions_not_met() {
             .unwrap(),
         Uint128::new(7)
     );
+    let current_time = mock_env().block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO;
 
     let msg = ExecuteMsg::StartSale {
         start_time: None,
-        duration: 1,
+        expiration: Expiration::AtTime(Timestamp::from_nanos((current_time + 2) * 1_000_000)),
         price: coin(100, "uusd"),
         min_tokens_sold: Uint128::from(5u128),
         max_amount_per_wallet: Some(2),
@@ -1346,10 +1357,11 @@ fn test_integration_conditions_met() {
         let _res = mint(deps.as_mut(), token_id).unwrap();
         assert!(AVAILABLE_TOKENS.has(deps.as_ref().storage, token_id));
     }
+    let current_time = mock_env().block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO;
 
     let msg = ExecuteMsg::StartSale {
         start_time: None,
-        duration: 1,
+        expiration: Expiration::AtTime(Timestamp::from_nanos((current_time + 2) * 1_000_000)),
         price: coin(100, "uusd"),
         min_tokens_sold: Uint128::from(3u128),
         max_amount_per_wallet: Some(2),

@@ -11,7 +11,7 @@ use andromeda_non_fungible_tokens::{
 use andromeda_std::{
     ado_base::ownership::OwnershipMessage,
     amp::{messages::AMPPkt, recipient::Recipient, AndrAddr},
-    common::expiration::{expiration_from_milliseconds, get_and_validate_start_time},
+    common::expiration::get_and_validate_start_time,
 };
 use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
 
@@ -30,7 +30,7 @@ use cosmwasm_std::{
     Order, QuerierWrapper, QueryRequest, Reply, Response, StdError, Storage, SubMsg, Uint128,
     WasmMsg, WasmQuery,
 };
-use cw721::{ContractInfoResponse, TokensResponse};
+use cw721::{ContractInfoResponse, Expiration, TokensResponse};
 use cw_utils::nonpayable;
 use std::cmp;
 
@@ -126,7 +126,7 @@ pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
         ExecuteMsg::Mint(mint_msgs) => execute_mint(ctx, mint_msgs),
         ExecuteMsg::StartSale {
             start_time,
-            duration,
+            expiration,
             price,
             min_tokens_sold,
             max_amount_per_wallet,
@@ -134,7 +134,7 @@ pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
         } => execute_start_sale(
             ctx,
             start_time,
-            duration,
+            expiration,
             price,
             min_tokens_sold,
             max_amount_per_wallet,
@@ -275,7 +275,7 @@ fn execute_update_token_contract(
 fn execute_start_sale(
     ctx: ExecuteContext,
     start_time: Option<u64>,
-    duration: u64,
+    end_time: Expiration,
     price: Coin,
     min_tokens_sold: Uint128,
     max_amount_per_wallet: Option<u32>,
@@ -294,21 +294,16 @@ fn execute_start_sale(
         ContractError::Unauthorized {}
     );
     // If start time wasn't provided, it will be set as the current_time
-    let (start_expiration, current_time) = get_and_validate_start_time(&env, start_time)?;
+    let (start_expiration, _current_time) = get_and_validate_start_time(&env, start_time)?;
 
-    // Ensures that end_time is always greater than start_time
-    ensure!(duration > 0, ContractError::InvalidExpiration {});
-    let end_expiration =
-        expiration_from_milliseconds(start_time.unwrap_or(current_time + 1) + duration)?;
-
-    // ensure!(
-    //     !matches!(expiration, Expiration::Never {}),
-    //     ContractError::ExpirationMustNotBeNever {}
-    // );
-    // ensure!(
-    //     !expiration.is_expired(&env.block),
-    //     ContractError::ExpirationInPast {}
-    // );
+    ensure!(
+        end_time > start_expiration,
+        ContractError::StartTimeAfterEndTime {}
+    );
+    ensure!(
+        !matches!(end_time, Expiration::Never {}),
+        ContractError::ExpirationMustNotBeNever {}
+    );
 
     SALE_CONDUCTED.save(deps.storage, &true)?;
     let state = STATE.may_load(deps.storage)?;
@@ -320,7 +315,7 @@ fn execute_start_sale(
     STATE.save(
         deps.storage,
         &State {
-            expiration: end_expiration,
+            expiration: end_time,
             price,
             min_tokens_sold,
             max_amount_per_wallet,
@@ -336,7 +331,7 @@ fn execute_start_sale(
     Ok(Response::new()
         .add_attribute("action", "start_sale")
         .add_attribute("start_time", start_expiration.to_string())
-        .add_attribute("end_time", end_expiration.to_string())
+        .add_attribute("end_time", end_time.to_string())
         .add_attribute("price", price_str)
         .add_attribute("min_tokens_sold", min_tokens_sold)
         .add_attribute("max_amount_per_wallet", max_amount_per_wallet.to_string()))

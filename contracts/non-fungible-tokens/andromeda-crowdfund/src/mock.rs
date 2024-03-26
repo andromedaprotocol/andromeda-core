@@ -8,6 +8,7 @@ use andromeda_non_fungible_tokens::{
 use andromeda_std::amp::Recipient;
 use andromeda_std::{ado_base::modules::Module, amp::AndrAddr};
 use cosmwasm_std::{Coin, Empty, Uint128};
+use cw721::Expiration;
 use cw_multi_test::{Contract, ContractWrapper};
 
 pub fn mock_andromeda_crowdfund() -> Box<dyn Contract<Empty>> {
@@ -33,7 +34,7 @@ pub fn mock_crowdfund_instantiate_msg(
 
 pub fn mock_start_crowdfund_msg(
     start_time: Option<u64>,
-    duration: u64,
+    end_time: Expiration,
     price: Coin,
     min_tokens_sold: Uint128,
     max_amount_per_wallet: Option<u32>,
@@ -41,7 +42,7 @@ pub fn mock_start_crowdfund_msg(
 ) -> ExecuteMsg {
     ExecuteMsg::StartSale {
         start_time,
-        duration,
+        expiration: end_time,
         price,
         min_tokens_sold,
         max_amount_per_wallet,
