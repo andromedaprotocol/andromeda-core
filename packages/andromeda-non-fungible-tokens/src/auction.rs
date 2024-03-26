@@ -93,6 +93,10 @@ pub enum QueryMsg {
         start_after: Option<String>,
         limit: Option<u64>,
     },
+    /// Gets all of the authorized addresses for the auction
+    #[returns(AuthorizedAddressesResponse)]
+    AuthorizedAddresses {},
+
     /// Gets the bids for the given auction id. Start_after starts indexing at 0.
     #[returns(BidsResponse)]
     Bids {
@@ -190,6 +194,11 @@ pub struct AuctionStateResponse {
     pub whitelist: Option<Vec<Addr>>,
     pub min_bid: Option<Uint128>,
     pub is_cancelled: bool,
+}
+
+#[cw_serde]
+pub struct AuthorizedAddressesResponse {
+    pub addresses: Vec<String>,
 }
 
 #[cw_serde]

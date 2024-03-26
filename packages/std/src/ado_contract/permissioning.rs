@@ -345,6 +345,24 @@ impl<'a> ADOContract<'a> {
             .collect::<Vec<String>>();
         Ok(actions)
     }
+
+    pub fn query_permissioned_actors(
+        &self,
+        deps: Deps,
+        action: impl Into<String>,
+    ) -> Result<Vec<String>, ContractError> {
+        let action_string: String = action.into();
+        let actors = permissions()
+            .keys(deps.storage, None, None, Order::Ascending)
+            .filter(|item| item.as_ref().unwrap().starts_with(&action_string))
+            .map(|item| {
+                let actor: String = item.unwrap_or_default()[action_string.len()..].to_string();
+                actor
+            })
+            .collect::<Vec<String>>();
+
+        Ok(actors)
+    }
 }
 
 /// Checks if the provided context is authorised to perform the provided action.
@@ -977,5 +995,37 @@ mod tests {
 
         assert_eq!(actions.len(), 1);
         assert_eq!(actions[0], "action");
+    }
+
+    #[test]
+    fn test_query_permissioned_actors() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = mock_info("owner", &[]);
+        let ctx = ExecuteContext {
+            deps: deps.as_mut(),
+            env,
+            info: info.clone(),
+            amp_ctx: None,
+        };
+
+        let contract = ADOContract::default();
+
+        contract.owner.save(ctx.deps.storage, &info.sender).unwrap();
+
+        let actor = "actor";
+        let action = "action";
+        ADOContract::default()
+            .execute_permission_action(ctx, action)
+            .unwrap();
+
+        ADOContract::set_permission(deps.as_mut().storage, action, actor, Permission::default())
+            .unwrap();
+        let actors = ADOContract::default()
+            .query_permissioned_actors(deps.as_ref(), action)
+            .unwrap();
+
+        assert_eq!(actors.len(), 1);
+        assert_eq!(actors[0], actor);
     }
 }

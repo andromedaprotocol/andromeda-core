@@ -2,8 +2,9 @@ use crate::state::{
     auction_infos, read_auction_infos, read_bids, BIDS, NEXT_AUCTION_ID, TOKEN_AUCTION_STATE,
 };
 use andromeda_non_fungible_tokens::auction::{
-    AuctionIdsResponse, AuctionInfo, AuctionStateResponse, Bid, BidsResponse, Cw721HookMsg,
-    ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, TokenAuctionState,
+    AuctionIdsResponse, AuctionInfo, AuctionStateResponse, AuthorizedAddressesResponse, Bid,
+    BidsResponse, Cw721HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
+    TokenAuctionState,
 };
 use andromeda_std::{
     ado_base::{
@@ -738,6 +739,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
             token_id,
             token_address,
         } => encode_binary(&query_is_closed(deps, env, token_id, token_address)?),
+        QueryMsg::AuthorizedAddresses {} => encode_binary(&query_authorized_addresses(deps)?),
         _ => ADOContract::default().query(deps, env, msg),
     }
 }
@@ -870,6 +872,10 @@ fn query_owner_of(
     Ok(res)
 }
 
+fn query_authorized_addresses(deps: Deps) -> Result<AuthorizedAddressesResponse, ContractError> {
+    let addresses = ADOContract::default().query_permissioned_actors(deps, SEND_NFT_ACTION)?;
+    Ok(AuthorizedAddressesResponse { addresses })
+}
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
     // New version
