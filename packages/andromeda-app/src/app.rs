@@ -1,7 +1,31 @@
-use andromeda_std::{amp::AndrAddr, andr_exec, andr_instantiate, andr_query, error::ContractError};
+use andromeda_std::{
+    amp::AndrAddr,
+    andr_exec, andr_instantiate, andr_query,
+    common::reply::ReplyId,
+    error::ContractError,
+    os::{
+        aos_querier::AOSQuerier,
+        vfs::{convert_component_name, ExecuteMsg as VFSExecuteMsg},
+    },
+};
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{instantiate2_address, to_json_binary, Addr, Api, Binary, Deps, HexBinary};
+use cosmwasm_std::{
+    ensure, instantiate2_address, to_json_binary, wasm_execute, Addr, Api, Binary,
+    CodeInfoResponse, Deps, QuerierWrapper, SubMsg, WasmMsg,
+};
 use serde::Serialize;
+
+pub fn get_chain_info(chain_name: String, chain_info: Option<Vec<ChainInfo>>) -> Option<ChainInfo> {
+    match chain_info {
+        Some(chain_info) => {
+            let idx = chain_info
+                .iter()
+                .position(|info| info.chain_name == chain_name)?;
+            Some(chain_info[idx].clone())
+        }
+        None => None,
+    }
+}
 
 #[cw_serde]
 pub struct CrossChainComponent {
@@ -87,15 +111,23 @@ impl AppComponent {
 
     pub fn get_new_addr(
         &self,
-        checksum: HexBinary,
-        parent_addr: Addr,
         api: &dyn Api,
-    ) -> Result<Addr, ContractError> {
+        adodb_addr: &Addr,
+        querier: &QuerierWrapper,
+        parent_addr: Addr,
+    ) -> Result<Option<Addr>, ContractError> {
+        if !matches!(self.component_type, ComponentType::New(..)) {
+            return Ok(None);
+        }
+
+        let code_id = AOSQuerier::code_id_getter(querier, adodb_addr, &self.ado_type)?;
+        let CodeInfoResponse { checksum, .. } = querier.query_wasm_code_info(code_id)?;
+
         let salt = self.get_salt(parent_addr.clone());
         let creator = api.addr_canonicalize(parent_addr.as_str())?;
         let new_addr = instantiate2_address(&checksum, &creator, &salt).unwrap();
 
-        Ok(api.addr_humanize(&new_addr)?)
+        Ok(Some(api.addr_humanize(&new_addr)?))
     }
 
     #[inline]
@@ -105,6 +137,99 @@ impl AppComponent {
             _ => Err(ContractError::InvalidComponent {
                 name: self.name.clone(),
             }),
+        }
+    }
+
+    pub fn generate_vfs_registration(
+        &self,
+        new_addr: Option<Addr>,
+        _app_addr: &Addr,
+        app_name: &str,
+        chain_info: Option<Vec<ChainInfo>>,
+        _adodb_addr: &Addr,
+        vfs_addr: &Addr,
+    ) -> Result<Option<SubMsg>, ContractError> {
+        if self.name.starts_with('.') {
+            return Ok(None);
+        }
+        match self.component_type.clone() {
+            ComponentType::New(_) => {
+                let new_addr = new_addr.unwrap();
+                let register_msg = wasm_execute(
+                    vfs_addr.clone(),
+                    &VFSExecuteMsg::AddPath {
+                        name: convert_component_name(&self.name),
+                        address: new_addr,
+                        parent_address: None,
+                    },
+                    vec![],
+                )?;
+                let register_submsg =
+                    SubMsg::reply_always(register_msg, ReplyId::RegisterPath.repr());
+
+                Ok(Some(register_submsg))
+            }
+            ComponentType::Symlink(symlink) => {
+                let msg = VFSExecuteMsg::AddSymlink {
+                    name: self.name.clone(),
+                    symlink,
+                    parent_address: None,
+                };
+                let cosmos_msg = wasm_execute(vfs_addr, &msg, vec![])?;
+                let sub_msg = SubMsg::reply_on_error(cosmos_msg, ReplyId::RegisterPath.repr());
+                Ok(Some(sub_msg))
+            }
+            ComponentType::CrossChain(CrossChainComponent { chain, .. }) => {
+                let curr_chain_info = get_chain_info(chain.clone(), chain_info.clone());
+                ensure!(
+                    curr_chain_info.is_some(),
+                    ContractError::InvalidComponent {
+                        name: self.name.clone()
+                    }
+                );
+                let owner_addr = curr_chain_info.unwrap().owner;
+                let name = self.name.clone();
+                let new_component = AppComponent {
+                    name: name.clone(),
+                    ado_type: self.ado_type.clone(),
+                    component_type: ComponentType::Symlink(AndrAddr::from_string(format!(
+                        "ibc://{chain}/home/{owner_addr}/{app_name}/{name}"
+                    ))),
+                };
+                new_component.generate_vfs_registration(
+                    new_addr,
+                    _app_addr,
+                    app_name,
+                    chain_info,
+                    _adodb_addr,
+                    vfs_addr,
+                )
+            }
+        }
+    }
+
+    pub fn generate_instantiation_message(
+        &self,
+        deps: &Deps,
+        adodb_addr: &Addr,
+        parent_addr: &Addr,
+        sender: &str,
+        idx: u64,
+    ) -> Result<Option<SubMsg>, ContractError> {
+        if let ComponentType::New(instantiate_msg) = self.component_type.clone() {
+            let code_id = AOSQuerier::code_id_getter(&deps.querier, adodb_addr, &self.ado_type)?;
+            let salt = self.get_salt(parent_addr.clone());
+            let inst_msg = WasmMsg::Instantiate2 {
+                admin: Some(sender.to_string()),
+                code_id,
+                label: format!("Instantiate: {}", self.ado_type),
+                msg: instantiate_msg,
+                funds: vec![],
+                salt,
+            };
+            Ok(Some(SubMsg::reply_always(inst_msg, idx)))
+        } else {
+            Ok(None)
         }
     }
 }
@@ -174,31 +299,4 @@ pub struct ConfigResponse {
 pub struct ComponentAddress {
     pub name: String,
     pub address: String,
-}
-
-#[cfg(test)]
-mod tests {
-    use andromeda_std::testing::mock_querier::MOCK_APP_CONTRACT;
-    use cw_multi_test::MockApiBech32;
-
-    use super::*;
-
-    #[test]
-    fn test_get_new_addr() {
-        let api = MockApiBech32::new("andr");
-        let component = AppComponent {
-            name: "test".to_string(),
-            ado_type: "app-contract".to_string(),
-            component_type: ComponentType::New(Binary::from("0".as_bytes())),
-        };
-        let checksum =
-            HexBinary::from_hex("9af782a3a1bcbcd22dbb6a45c751551d9af782a3a1bcbcd22dbb6a45c751551d")
-                .unwrap();
-
-        let new_addr = component
-            .get_new_addr(checksum, api.addr_make(MOCK_APP_CONTRACT), &api)
-            .unwrap();
-
-        println!("{:?}", new_addr);
-    }
 }
