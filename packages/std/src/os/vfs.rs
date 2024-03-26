@@ -209,6 +209,17 @@ pub enum ExecuteMsg {
 pub struct MigrateMsg {}
 
 #[cw_serde]
+pub struct AddressString {
+    address: Addr,
+    string: String,
+}
+impl From<AddressString> for (Addr, String) {
+    fn from(val: AddressString) -> Self {
+        (val.address, val.string)
+    }
+}
+
+#[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
     #[returns(Addr)]
@@ -216,8 +227,8 @@ pub enum QueryMsg {
     #[returns(Vec<PathDetails>)]
     SubDir {
         path: AndrAddr,
-        min: Option<(Addr, String)>,
-        max: Option<(Addr, String)>,
+        min: Option<AddressString>,
+        max: Option<AddressString>,
         limit: Option<u32>,
     },
     #[returns(Vec<String>)]

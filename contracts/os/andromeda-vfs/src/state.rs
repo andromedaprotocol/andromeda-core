@@ -1,4 +1,8 @@
-use andromeda_std::{amp::AndrAddr, error::ContractError, os::vfs::validate_path_name};
+use andromeda_std::{
+    amp::AndrAddr,
+    error::ContractError,
+    os::vfs::{validate_path_name, AddressString},
+};
 use cosmwasm_std::{ensure, Addr, Api, Storage};
 use cw_storage_plus::{Bound, Index, IndexList, IndexedMap, Map, MultiIndex};
 use serde::{Deserialize, Serialize};
@@ -210,8 +214,8 @@ pub fn get_subdir(
     storage: &dyn Storage,
     api: &dyn Api,
     pathname: AndrAddr,
-    min: Option<(Addr, String)>,
-    max: Option<(Addr, String)>,
+    min: Option<AddressString>,
+    max: Option<AddressString>,
     limit: Option<u32>,
 ) -> Result<Vec<PathInfo>, ContractError> {
     let address = resolve_pathname(storage, api, pathname, &mut vec![])?;
