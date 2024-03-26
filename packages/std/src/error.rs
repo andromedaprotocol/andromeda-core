@@ -221,6 +221,9 @@ pub enum ContractError {
     #[error("NoReceivingAddress")]
     NoReceivingAddress {},
 
+    #[error("TemporarilyDisabled")]
+    TemporarilyDisabled {},
+
     #[error("AccountNotFound")]
     AccountNotFound {},
 

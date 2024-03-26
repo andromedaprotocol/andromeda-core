@@ -116,7 +116,9 @@ fn kernel() {
             KernelExecuteMsg::Create {
                 ado_type: "splitter".to_string(),
                 msg: to_json_binary(&splitter_msg).unwrap(),
-                owner: Some(AndrAddr::from_string("~am".to_string())),
+                // owner: Some(AndrAddr::from_string("~am".to_string())),
+                // TODO: replace the below line with the above commented line once Register User in VFS is re-enabled.
+                owner: Some(AndrAddr::from_string(owner.to_string())),
                 chain: None,
             },
             owner.clone(),

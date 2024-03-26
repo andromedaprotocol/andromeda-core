@@ -127,7 +127,8 @@ impl MockAndromeda {
         mock_andr.register_kernel_key_address(app, "adodb", adodb_address);
         mock_andr.register_kernel_key_address(app, "vfs", vfs_address);
         mock_andr.register_kernel_key_address(app, "economics", economics_address);
-        mock_andr.register_user(app, admin_address.clone(), ADMIN_USERNAME);
+        // TODO: Uncomment once Register User is reenabled
+        // mock_andr.register_user(app, admin_address.clone(), ADMIN_USERNAME);
 
         mock_andr
     }
