@@ -70,7 +70,7 @@ pub fn instantiate(
     for component in msg.app_components.clone() {
         component.verify(&deps.as_ref()).unwrap();
         let component_type = component.component_type.clone();
-        if !matches!(component_type, ComponentType::New(..)) {
+        if !matches!(component_type, ComponentType::New(..)) || component.name.starts_with('.') {
             continue;
         }
         let code_id = AOSQuerier::code_id_getter(&deps.querier, &adodb_addr, &component.ado_type)?;
