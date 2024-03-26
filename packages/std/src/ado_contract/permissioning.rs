@@ -372,7 +372,9 @@ impl<'a> ADOContract<'a> {
 
         let (start, end) = match order_by {
             Some(OrderBy::Desc) => (
-                actors.len().saturating_sub(cmp::min(actors.len(), start + limit)),
+                actors
+                    .len()
+                    .saturating_sub(cmp::min(actors.len(), start + limit)),
                 actors.len().saturating_sub(cmp::min(start, actors.len())),
             ),
             // Default ordering is Ascending.
