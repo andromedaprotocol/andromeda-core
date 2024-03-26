@@ -47,7 +47,7 @@ pub struct InstantiateMsg {
 #[cw_serde]
 pub enum MinimumFrequency {
     Time { time: Milliseconds },
-    AddressAndKey { address_and_key: ContractAndKey },
+    // AddressAndKey { address_and_key: ContractAndKey },
 }
 
 #[andr_exec]
