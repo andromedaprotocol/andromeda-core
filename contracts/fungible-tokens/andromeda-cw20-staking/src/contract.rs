@@ -5,15 +5,15 @@ use andromeda_std::{
         hooks::AndromedaHook, ownership::OwnershipMessage, InstantiateMsg as BaseInstantiateMsg,
     },
     ado_contract::ADOContract,
-    common::{context::ExecuteContext, encode_binary},
+    common::{actions::call_action, context::ExecuteContext, encode_binary, Milliseconds},
     error::{from_semver, ContractError},
 };
 use cosmwasm_std::{
     attr, entry_point, Attribute, Decimal, Decimal256, Order, QuerierWrapper, Uint256,
 };
 use cosmwasm_std::{
-    ensure, from_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response,
-    Storage, Uint128,
+    ensure, from_json, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response, Storage,
+    Uint128,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw20::Cw20ReceiveMsg;
@@ -129,9 +129,15 @@ pub fn execute(
     }
 }
 
-pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
-
+    let action_response = call_action(
+        &mut ctx.deps,
+        &ctx.info,
+        &ctx.env,
+        &ctx.amp_ctx,
+        msg.as_ref(),
+    )?;
     if !matches!(msg, ExecuteMsg::UpdateAppContract { .. })
         && !matches!(
             msg,
@@ -146,14 +152,14 @@ pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
             },
         )?;
     }
-    match msg {
+    let res = match msg {
         ExecuteMsg::Receive(msg) => receive_cw20(ctx, msg),
         ExecuteMsg::AddRewardToken { reward_token } => execute_add_reward_token(ctx, reward_token),
         ExecuteMsg::UpdateGlobalIndexes { asset_infos } => match asset_infos {
             None => update_global_indexes(
                 ctx.deps.storage,
                 &ctx.deps.querier,
-                ctx.env.block.time.seconds(),
+                Milliseconds::from_seconds(ctx.env.block.time.seconds()),
                 ctx.env.contract.address,
                 None,
             ),
@@ -165,7 +171,7 @@ pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
                 update_global_indexes(
                     ctx.deps.storage,
                     &ctx.deps.querier,
-                    ctx.env.block.time.seconds(),
+                    Milliseconds::from_seconds(ctx.env.block.time.seconds()),
                     ctx.env.contract.address,
                     Some(asset_infos?),
                 )
@@ -174,7 +180,11 @@ pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
         ExecuteMsg::UnstakeTokens { amount } => execute_unstake_tokens(ctx, amount),
         ExecuteMsg::ClaimRewards {} => execute_claim_rewards(ctx),
         _ => ADOContract::default().execute(ctx, msg),
-    }
+    }?;
+    Ok(res
+        .add_submessages(action_response.messages)
+        .add_attributes(action_response.attributes)
+        .add_events(action_response.events))
 }
 
 fn receive_cw20(ctx: ExecuteContext, msg: Cw20ReceiveMsg) -> Result<Response, ContractError> {
@@ -188,14 +198,14 @@ fn receive_cw20(ctx: ExecuteContext, msg: Cw20ReceiveMsg) -> Result<Response, Co
         }
     );
 
-    match from_binary(&msg.msg)? {
+    match from_json(&msg.msg)? {
         Cw20HookMsg::StakeTokens {} => {
             execute_stake_tokens(deps, env, msg.sender, info.sender.to_string(), msg.amount)
         }
         Cw20HookMsg::UpdateGlobalIndex {} => update_global_indexes(
             deps.storage,
             &deps.querier,
-            env.block.time.seconds(),
+            Milliseconds::from_seconds(env.block.time.seconds()),
             env.contract.address,
             Some(vec![AssetInfo::cw20(info.sender)]),
         ),
@@ -250,7 +260,7 @@ fn execute_add_reward_token(
     let state = STATE.load(deps.storage)?;
     update_global_index(
         &deps.querier,
-        env.block.time.seconds(),
+        Milliseconds::from_seconds(env.block.time.seconds()),
         env.contract.address,
         &state,
         &mut reward_token,
@@ -290,7 +300,7 @@ fn execute_stake_tokens(
     update_global_indexes(
         deps.storage,
         &deps.querier,
-        env.block.time.seconds(),
+        Milliseconds::from_seconds(env.block.time.seconds()),
         env.contract.address.clone(),
         None,
     )?;
@@ -344,7 +354,7 @@ fn execute_unstake_tokens(
         update_global_indexes(
             deps.storage,
             &deps.querier,
-            env.block.time.seconds(),
+            Milliseconds::from_seconds(env.block.time.seconds()),
             env.contract.address,
             None,
         )?;
@@ -400,7 +410,7 @@ fn execute_claim_rewards(ctx: ExecuteContext) -> Result<Response, ContractError>
         update_global_indexes(
             deps.storage,
             &deps.querier,
-            env.block.time.seconds(),
+            Milliseconds::from_seconds(env.block.time.seconds()),
             env.contract.address,
             None,
         )?;
@@ -435,6 +445,7 @@ fn execute_claim_rewards(ctx: ExecuteContext) -> Result<Response, ContractError>
                 // Reduce reward balance if is non-allocated token.
                 if let RewardType::NonAllocated {
                     previous_reward_balance,
+                    ..
                 } = &mut token.reward_type
                 {
                     *previous_reward_balance = previous_reward_balance.checked_sub(rewards)?;
@@ -462,7 +473,7 @@ fn execute_claim_rewards(ctx: ExecuteContext) -> Result<Response, ContractError>
 fn update_global_indexes(
     storage: &mut dyn Storage,
     querier: &QuerierWrapper,
-    current_timestamp: u64,
+    current_timestamp: Milliseconds,
     contract_address: Addr,
     asset_infos: Option<Vec<AssetInfo>>,
 ) -> Result<Response, ContractError> {
@@ -505,7 +516,7 @@ fn update_global_indexes(
 
 fn update_global_index(
     querier: &QuerierWrapper,
-    current_timestamp: u64,
+    current_timestamp: Milliseconds,
     contract_address: Addr,
     state: &State,
     reward_token: &mut RewardToken,
@@ -518,6 +529,7 @@ fn update_global_index(
     match &reward_token.reward_type {
         RewardType::NonAllocated {
             previous_reward_balance,
+            init_timestamp,
         } => {
             update_nonallocated_index(
                 state,
@@ -525,11 +537,14 @@ fn update_global_index(
                 reward_token,
                 *previous_reward_balance,
                 contract_address,
+                current_timestamp,
+                *init_timestamp,
             )?;
         }
         RewardType::Allocated {
             allocation_config,
             allocation_state,
+            init_timestamp,
         } => {
             update_allocated_index(
                 state.total_share,
@@ -537,6 +552,7 @@ fn update_global_index(
                 allocation_config.clone(),
                 allocation_state.clone(),
                 current_timestamp,
+                *init_timestamp,
             )?;
         }
     }
@@ -552,7 +568,12 @@ fn update_nonallocated_index(
     reward_token: &mut RewardToken,
     previous_reward_balance: Uint128,
     contract_address: Addr,
+    curr_timestamp: Milliseconds,
+    init_timestamp: Milliseconds,
 ) -> Result<(), ContractError> {
+    if curr_timestamp < init_timestamp {
+        return Ok(());
+    }
     let reward_balance = reward_token
         .asset_info
         .query_balance(querier, contract_address)?;
@@ -562,6 +583,7 @@ fn update_nonallocated_index(
 
     reward_token.reward_type = RewardType::NonAllocated {
         previous_reward_balance: reward_balance,
+        init_timestamp,
     };
 
     Ok(())
@@ -674,7 +696,7 @@ pub(crate) fn get_pending_rewards(
     let reward_tokens: Vec<RewardToken> = get_reward_tokens(storage)?;
     let mut pending_rewards = vec![];
     let state = STATE.load(storage)?;
-    let current_timestamp = env.block.time.seconds();
+    let current_timestamp = Milliseconds::from_seconds(env.block.time.seconds());
     for mut token in reward_tokens {
         let token_string = token.to_string();
         let mut staker_reward_info = STAKER_REWARD_INFOS

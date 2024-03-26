@@ -1,22 +1,23 @@
+use crate::state::{State, UserInfo, USER_INFO};
+use crate::testing::mock_querier::mock_dependencies_custom;
 use crate::{
     contract::{execute, instantiate, query},
     state::{CONFIG, STATE},
 };
-use andromeda_std::{
-    common::expiration::MILLISECONDS_TO_NANOSECONDS_RATIO, error::ContractError,
-    testing::mock_querier::MOCK_KERNEL_CONTRACT,
-};
-use cosmwasm_std::{
-    coin, coins, from_binary,
-    testing::{mock_env, mock_info},
-    to_binary, Addr, BankMsg, Decimal, DepsMut, Response, Uint128, WasmMsg,
-};
-
-use crate::state::{State, UserInfo, USER_INFO};
-use crate::testing::mock_querier::mock_dependencies_custom;
 use andromeda_fungible_tokens::lockdrop::{
     ConfigResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg, StateResponse,
     UserInfoResponse,
+};
+use andromeda_std::{
+    common::{expiration::MILLISECONDS_TO_NANOSECONDS_RATIO, Milliseconds},
+    error::ContractError,
+    testing::mock_querier::MOCK_KERNEL_CONTRACT,
+};
+use andromeda_testing::economics_msg::generate_economics_message;
+use cosmwasm_std::{
+    coin, coins, from_json,
+    testing::{mock_env, mock_info},
+    to_json_binary, Addr, BankMsg, Decimal, DepsMut, Response, Uint128, WasmMsg,
 };
 
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
@@ -31,9 +32,9 @@ fn init(deps: DepsMut) -> Result<Response, ContractError> {
 
     let msg = InstantiateMsg {
         // bootstrap_contract: None,
-        init_timestamp: env.block.time.seconds(),
-        deposit_window: DEPOSIT_WINDOW,
-        withdrawal_window: WITHDRAWAL_WINDOW,
+        init_timestamp: Milliseconds::from_seconds(env.block.time.seconds()),
+        deposit_window: Milliseconds::from_seconds(DEPOSIT_WINDOW),
+        withdrawal_window: Milliseconds::from_seconds(WITHDRAWAL_WINDOW),
         incentive_token: MOCK_INCENTIVE_TOKEN.to_owned(),
         native_denom: "uusd".to_string(),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
@@ -59,14 +60,14 @@ fn test_instantiate() {
 
     let msg = QueryMsg::Config {};
     let config_res: ConfigResponse =
-        from_binary(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
+        from_json(query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
 
     assert_eq!(
         ConfigResponse {
             // bootstrap_contract_address: None,
-            init_timestamp: mock_env().block.time.seconds(),
-            deposit_window: DEPOSIT_WINDOW,
-            withdrawal_window: WITHDRAWAL_WINDOW,
+            init_timestamp: Milliseconds::from_seconds(mock_env().block.time.seconds()),
+            deposit_window: Milliseconds::from_seconds(DEPOSIT_WINDOW),
+            withdrawal_window: Milliseconds::from_seconds(WITHDRAWAL_WINDOW),
             lockdrop_incentives: Uint128::zero(),
             incentive_token: MOCK_INCENTIVE_TOKEN.to_owned(),
             native_denom: "uusd".to_string()
@@ -76,7 +77,7 @@ fn test_instantiate() {
 
     let msg = QueryMsg::State {};
     let state_res: StateResponse =
-        from_binary(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
+        from_json(query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
 
     assert_eq!(
         StateResponse {
@@ -95,9 +96,9 @@ fn test_instantiate_init_timestamp_past() {
 
     let msg = InstantiateMsg {
         // bootstrap_contract: None,
-        init_timestamp: env.block.time.seconds() - 1,
-        deposit_window: 5,
-        withdrawal_window: 2,
+        init_timestamp: Milliseconds::from_seconds(env.block.time.seconds() - 1),
+        deposit_window: Milliseconds::from_seconds(5),
+        withdrawal_window: Milliseconds::from_seconds(2),
         incentive_token: MOCK_INCENTIVE_TOKEN.to_owned(),
         native_denom: "uusd".to_string(),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
@@ -124,9 +125,9 @@ fn test_instantiate_init_deposit_window_zero() {
 
     let msg = InstantiateMsg {
         // bootstrap_contract: None,
-        init_timestamp: env.block.time.seconds() + 1,
-        deposit_window: 0,
-        withdrawal_window: 2,
+        init_timestamp: Milliseconds::from_seconds(env.block.time.seconds() + 1),
+        deposit_window: Milliseconds::from_seconds(0),
+        withdrawal_window: Milliseconds::from_seconds(2),
         incentive_token: MOCK_INCENTIVE_TOKEN.to_owned(),
         native_denom: "uusd".to_string(),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
@@ -147,9 +148,9 @@ fn test_instantiate_init_withdrawal_window_zero() {
 
     let msg = InstantiateMsg {
         // bootstrap_contract: None,
-        init_timestamp: env.block.time.seconds() + 1,
-        deposit_window: 5,
-        withdrawal_window: 0,
+        init_timestamp: Milliseconds::from_seconds(env.block.time.seconds() + 1),
+        deposit_window: Milliseconds::from_seconds(5),
+        withdrawal_window: Milliseconds::from_seconds(0),
         incentive_token: MOCK_INCENTIVE_TOKEN.to_owned(),
         native_denom: "uusd".to_string(),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
@@ -170,9 +171,9 @@ fn test_instantiate_init_deposit_window_less_than_withdrawal_window() {
 
     let msg = InstantiateMsg {
         // bootstrap_contract: None,
-        init_timestamp: env.block.time.seconds() + 1,
-        deposit_window: 2,
-        withdrawal_window: 5,
+        init_timestamp: Milliseconds::from_seconds(env.block.time.seconds() + 1),
+        deposit_window: Milliseconds::from_seconds(2),
+        withdrawal_window: Milliseconds::from_seconds(5),
         incentive_token: MOCK_INCENTIVE_TOKEN.to_owned(),
         native_denom: "uusd".to_string(),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
@@ -194,7 +195,7 @@ fn test_increase_incentives() {
     let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
         sender: "owner".to_string(),
         amount: Uint128::new(100),
-        msg: to_binary(&Cw20HookMsg::IncreaseIncentives {}).unwrap(),
+        msg: to_json_binary(&Cw20HookMsg::IncreaseIncentives {}).unwrap(),
     });
 
     let info = mock_info(MOCK_INCENTIVE_TOKEN, &[]);
@@ -203,7 +204,8 @@ fn test_increase_incentives() {
     assert_eq!(
         Response::new()
             .add_attribute("action", "incentives_increased")
-            .add_attribute("amount", "100"),
+            .add_attribute("amount", "100")
+            .add_submessage(generate_economics_message(MOCK_INCENTIVE_TOKEN, "Receive")),
         res
     );
 
@@ -225,7 +227,7 @@ fn test_increase_incentives_invalid_token() {
     let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
         sender: "owner".to_string(),
         amount: Uint128::new(100),
-        msg: to_binary(&Cw20HookMsg::IncreaseIncentives {}).unwrap(),
+        msg: to_json_binary(&Cw20HookMsg::IncreaseIncentives {}).unwrap(),
     });
 
     let info = mock_info("invalid_token", &[]);
@@ -248,7 +250,7 @@ fn test_increase_incentives_after_phase_ends() {
     let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
         sender: "owner".to_string(),
         amount: Uint128::new(100),
-        msg: to_binary(&Cw20HookMsg::IncreaseIncentives {}).unwrap(),
+        msg: to_json_binary(&Cw20HookMsg::IncreaseIncentives {}).unwrap(),
     });
 
     env.block.time = env
@@ -272,7 +274,7 @@ fn test_increase_incentives_zero_amount() {
     let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
         sender: "owner".to_string(),
         amount: Uint128::zero(),
-        msg: to_binary(&Cw20HookMsg::IncreaseIncentives {}).unwrap(),
+        msg: to_json_binary(&Cw20HookMsg::IncreaseIncentives {}).unwrap(),
     });
 
     let info = mock_info(MOCK_INCENTIVE_TOKEN, &[]);
@@ -300,7 +302,8 @@ fn test_deposit_native() {
         Response::new()
             .add_attribute("action", "lock_native")
             .add_attribute("user", "sender")
-            .add_attribute("ust_deposited", "100"),
+            .add_attribute("ust_deposited", "100")
+            .add_submessage(generate_economics_message("sender", "DepositNative")),
         res
     );
 
@@ -417,7 +420,8 @@ fn test_withdraw_native() {
             })
             .add_attribute("action", "withdraw_native")
             .add_attribute("user", "sender")
-            .add_attribute("amount", "100"),
+            .add_attribute("amount", "100")
+            .add_submessage(generate_economics_message("sender", "WithdrawNative")),
         res
     );
 
@@ -698,7 +702,9 @@ fn test_enable_claims_no_bootstrap_specified() {
     let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
 
     assert_eq!(
-        Response::new().add_attribute("action", "enable_claims"),
+        Response::new()
+            .add_attribute("action", "enable_claims")
+            .add_submessage(generate_economics_message("sender", "EnableClaims")),
         res
     );
 
@@ -795,7 +801,7 @@ fn test_claim_rewards() {
     let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
         sender: "owner".to_string(),
         amount: Uint128::new(100),
-        msg: to_binary(&Cw20HookMsg::IncreaseIncentives {}).unwrap(),
+        msg: to_json_binary(&Cw20HookMsg::IncreaseIncentives {}).unwrap(),
     });
 
     let info = mock_info(MOCK_INCENTIVE_TOKEN, &[]);
@@ -848,12 +854,13 @@ fn test_claim_rewards() {
             .add_message(WasmMsg::Execute {
                 contract_addr: MOCK_INCENTIVE_TOKEN.to_owned(),
                 funds: vec![],
-                msg: to_binary(&Cw20ExecuteMsg::Transfer {
+                msg: to_json_binary(&Cw20ExecuteMsg::Transfer {
                     recipient: "user1".to_string(),
                     amount: Uint128::new(75)
                 })
                 .unwrap()
-            }),
+            })
+            .add_submessage(generate_economics_message("user1", "ClaimRewards")),
         res
     );
 
@@ -861,7 +868,7 @@ fn test_claim_rewards() {
         address: "user1".to_string(),
     };
     let user_res: UserInfoResponse =
-        from_binary(&query(deps.as_ref(), env.clone(), msg).unwrap()).unwrap();
+        from_json(query(deps.as_ref(), env.clone(), msg).unwrap()).unwrap();
 
     assert_eq!(
         UserInfoResponse {
@@ -886,12 +893,13 @@ fn test_claim_rewards() {
             .add_message(WasmMsg::Execute {
                 contract_addr: MOCK_INCENTIVE_TOKEN.to_owned(),
                 funds: vec![],
-                msg: to_binary(&Cw20ExecuteMsg::Transfer {
+                msg: to_json_binary(&Cw20ExecuteMsg::Transfer {
                     recipient: "user2".to_string(),
                     amount: Uint128::new(25)
                 })
                 .unwrap()
-            }),
+            })
+            .add_submessage(generate_economics_message("user2", "ClaimRewards")),
         res
     );
 
@@ -899,7 +907,7 @@ fn test_claim_rewards() {
         address: "user2".to_string(),
     };
     let user_res: UserInfoResponse =
-        from_binary(&query(deps.as_ref(), env.clone(), msg).unwrap()).unwrap();
+        from_json(query(deps.as_ref(), env.clone(), msg).unwrap()).unwrap();
 
     assert_eq!(
         UserInfoResponse {
@@ -935,7 +943,7 @@ fn test_claim_rewards_not_available() {
     let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
         sender: "owner".to_string(),
         amount: Uint128::new(100),
-        msg: to_binary(&Cw20HookMsg::IncreaseIncentives {}).unwrap(),
+        msg: to_json_binary(&Cw20HookMsg::IncreaseIncentives {}).unwrap(),
     });
 
     let info = mock_info(MOCK_INCENTIVE_TOKEN, &[]);
@@ -960,11 +968,13 @@ fn test_query_withdrawable_percent() {
     init(deps.as_mut()).unwrap();
 
     let msg = QueryMsg::WithdrawalPercentAllowed { timestamp: None };
-    let res: Decimal = from_binary(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
+    let res: Decimal = from_json(query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
 
     assert_eq!(Decimal::one(), res);
 
-    let msg = QueryMsg::WithdrawalPercentAllowed { timestamp: Some(0) };
+    let msg = QueryMsg::WithdrawalPercentAllowed {
+        timestamp: Some(Milliseconds::zero()),
+    };
     let err = query(deps.as_ref(), mock_env(), msg).unwrap_err();
     assert_eq!(
         err,
@@ -975,9 +985,9 @@ fn test_query_withdrawable_percent() {
 
     let timestamp = mock_env().block.time.plus_seconds(DEPOSIT_WINDOW + 1);
     let msg = QueryMsg::WithdrawalPercentAllowed {
-        timestamp: Some(timestamp.seconds()),
+        timestamp: Some(Milliseconds::from_seconds(timestamp.seconds())),
     };
-    let res: Decimal = from_binary(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
+    let res: Decimal = from_json(query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
 
     assert_eq!(Decimal::percent(50), res);
 
@@ -986,9 +996,9 @@ fn test_query_withdrawable_percent() {
         .time
         .plus_seconds(DEPOSIT_WINDOW + WITHDRAWAL_WINDOW);
     let msg = QueryMsg::WithdrawalPercentAllowed {
-        timestamp: Some(timestamp.seconds()),
+        timestamp: Some(Milliseconds::from_seconds(timestamp.seconds())),
     };
-    let res: Decimal = from_binary(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
+    let res: Decimal = from_json(query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
 
     assert_eq!(Decimal::zero(), res);
 }

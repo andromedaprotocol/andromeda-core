@@ -3,14 +3,16 @@ use andromeda_std::ado_base::InstantiateMsg;
 use andromeda_std::ado_contract::ADOContract;
 use andromeda_std::common::Funds;
 use andromeda_std::testing::mock_querier::MockAndromedaQuerier;
+use cosmwasm_schema::cw_serde;
+
 use cosmwasm_std::testing::mock_info;
 use cosmwasm_std::{
-    from_binary, from_slice,
+    from_json,
     testing::{mock_env, MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
-    to_binary, Binary, Coin, ContractResult, OwnedDeps, Querier, QuerierResult, QueryRequest,
+    to_json_binary, Binary, Coin, ContractResult, OwnedDeps, Querier, QuerierResult, QueryRequest,
     SystemError, SystemResult, WasmQuery,
 };
-use cosmwasm_std::{BankMsg, CosmosMsg, Response, SubMsg};
+use cosmwasm_std::{BankMsg, CosmosMsg, DenomMetadata, DenomUnit, Response, SubMsg};
 use cw721::{Cw721QueryMsg, OwnerOfResponse, TokensResponse};
 
 pub use andromeda_std::testing::mock_querier::{
@@ -71,7 +73,7 @@ pub struct WasmMockQuerier {
 impl Querier for WasmMockQuerier {
     fn raw_query(&self, bin_request: &[u8]) -> QuerierResult {
         // MockQuerier doesn't support Custom, so we ignore it completely here
-        let request: QueryRequest<cosmwasm_std::Empty> = match from_slice(bin_request) {
+        let request: QueryRequest<cosmwasm_std::Empty> = match from_json(bin_request) {
             Ok(v) => v,
             Err(e) => {
                 return SystemResult::Err(SystemError::InvalidRequest {
@@ -82,6 +84,16 @@ impl Querier for WasmMockQuerier {
         };
         self.handle_query(&request)
     }
+}
+
+// NOTE: It's impossible to construct a non_exhaustive struct from another another crate, so I copied the struct
+// https://rust-lang.github.io/rfcs/2008-non-exhaustive.html#functional-record-updates
+#[cw_serde(Serialize, Serialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+#[non_exhaustive]
+pub struct DenomMetadataResponse {
+    /// The metadata for the queried denom.
+    pub metadata: DenomMetadata,
 }
 
 impl WasmMockQuerier {
@@ -96,12 +108,34 @@ impl WasmMockQuerier {
                     _ => MockAndromedaQuerier::default().handle_query(&self.base, request),
                 }
             }
+            QueryRequest::Bank(_) => {
+                let denom_metadata = DenomMetadata {
+                    description: "description".to_string(),
+                    denom_units: vec![DenomUnit {
+                        denom: "uusd".to_string(),
+                        exponent: 1,
+                        aliases: vec!["alias".to_string()],
+                    }],
+                    base: "base".to_string(),
+                    display: "display".to_string(),
+                    name: "name".to_string(),
+                    symbol: "uusd".to_string(),
+                    uri: "uri".to_string(),
+                    uri_hash: "uri_hash".to_string(),
+                };
+
+                let response = DenomMetadataResponse {
+                    metadata: denom_metadata,
+                };
+
+                SystemResult::Ok(ContractResult::Ok(to_json_binary(&response).unwrap()))
+            }
             _ => MockAndromedaQuerier::default().handle_query(&self.base, request),
         }
     }
 
     fn handle_token_query(&self, msg: &Binary) -> QuerierResult {
-        match from_binary(msg).unwrap() {
+        match from_json(msg).unwrap() {
             Cw721QueryMsg::Tokens { owner, .. } => {
                 let res = if owner == MOCK_CONDITIONS_MET_CONTRACT
                     || owner == MOCK_CONDITIONS_NOT_MET_CONTRACT
@@ -124,7 +158,7 @@ impl WasmMockQuerier {
                     }
                 };
 
-                SystemResult::Ok(ContractResult::Ok(to_binary(&res).unwrap()))
+                SystemResult::Ok(ContractResult::Ok(to_json_binary(&res).unwrap()))
             }
             Cw721QueryMsg::OwnerOf { token_id, .. } => {
                 let res = if token_id == MOCK_UNCLAIMED_TOKEN {
@@ -138,7 +172,7 @@ impl WasmMockQuerier {
                         approvals: vec![],
                     }
                 };
-                SystemResult::Ok(ContractResult::Ok(to_binary(&res).unwrap()))
+                SystemResult::Ok(ContractResult::Ok(to_json_binary(&res).unwrap()))
             }
 
             _ => panic!("Unsupported Query"),
@@ -146,7 +180,7 @@ impl WasmMockQuerier {
     }
 
     fn handle_rates_query(&self, msg: &Binary) -> QuerierResult {
-        match from_binary(msg).unwrap() {
+        match from_json(msg).unwrap() {
             HookMsg::AndrHook(hook_msg) => match hook_msg {
                 AndromedaHook::OnFundsTransfer {
                     sender: _,
@@ -189,7 +223,9 @@ impl WasmMockQuerier {
                         ),
                         Funds::Cw20(_) => {
                             let resp: Response = Response::default();
-                            return SystemResult::Ok(ContractResult::Ok(to_binary(&resp).unwrap()));
+                            return SystemResult::Ok(ContractResult::Ok(
+                                to_json_binary(&resp).unwrap(),
+                            ));
                         }
                     };
                     let response = OnFundsTransferResponse {
@@ -197,26 +233,30 @@ impl WasmMockQuerier {
                         events: vec![],
                         leftover_funds: new_funds,
                     };
-                    SystemResult::Ok(ContractResult::Ok(to_binary(&Some(response)).unwrap()))
+                    SystemResult::Ok(ContractResult::Ok(to_json_binary(&Some(response)).unwrap()))
                 }
-                _ => SystemResult::Ok(ContractResult::Ok(to_binary(&None::<Response>).unwrap())),
+                _ => SystemResult::Ok(ContractResult::Ok(
+                    to_json_binary(&None::<Response>).unwrap(),
+                )),
             },
         }
     }
 
     fn handle_addresslist_query(&self, msg: &Binary) -> QuerierResult {
-        match from_binary(msg).unwrap() {
+        match from_json(msg).unwrap() {
             HookMsg::AndrHook(hook_msg) => match hook_msg {
                 AndromedaHook::OnExecute { sender, payload: _ } => {
                     let whitelisted_addresses = ["sender"];
                     let response: Response = Response::default();
                     if whitelisted_addresses.contains(&sender.as_str()) {
-                        SystemResult::Ok(ContractResult::Ok(to_binary(&response).unwrap()))
+                        SystemResult::Ok(ContractResult::Ok(to_json_binary(&response).unwrap()))
                     } else {
                         SystemResult::Ok(ContractResult::Err("InvalidAddress".to_string()))
                     }
                 }
-                _ => SystemResult::Ok(ContractResult::Ok(to_binary(&None::<Response>).unwrap())),
+                _ => SystemResult::Ok(ContractResult::Ok(
+                    to_json_binary(&None::<Response>).unwrap(),
+                )),
             },
         }
     }

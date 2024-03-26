@@ -7,16 +7,16 @@ use andromeda_finance::splitter::{
 use andromeda_std::{
     ado_base::InstantiateMsg as BaseInstantiateMsg,
     amp::messages::AMPPkt,
-    common::encode_binary,
+    common::{actions::call_action, encode_binary, Milliseconds},
     error::{from_semver, ContractError},
 };
 use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
 use cosmwasm_std::{
     attr, ensure, entry_point, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
-    Reply, Response, StdError, SubMsg, Timestamp, Uint128,
+    Reply, Response, StdError, SubMsg, Uint128,
 };
 use cw2::{get_contract_version, set_contract_version};
-use cw_utils::{nonpayable, Expiration};
+use cw_utils::nonpayable;
 use semver::Version;
 
 // version info for migration info
@@ -34,34 +34,33 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    msg.validate()?;
+    msg.validate(deps.as_ref())?;
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    // Max 100 recipients
-    ensure!(
-        msg.recipients.len() <= 100,
-        ContractError::ReachedRecipientLimit {}
-    );
-
-    let current_time = env.block.time.seconds();
+    let current_time = Milliseconds::from_seconds(env.block.time.seconds());
     let splitter = match msg.lock_time {
         Some(lock_time) => {
             // New lock time can't be too short
-            ensure!(lock_time >= ONE_DAY, ContractError::LockTimeTooShort {});
+            ensure!(
+                lock_time.seconds() >= ONE_DAY,
+                ContractError::LockTimeTooShort {}
+            );
 
             // New lock time can't be too long
-            ensure!(lock_time <= ONE_YEAR, ContractError::LockTimeTooLong {});
-
+            ensure!(
+                lock_time.seconds() <= ONE_YEAR,
+                ContractError::LockTimeTooLong {}
+            );
             Splitter {
                 recipients: msg.recipients,
-                lock: Expiration::AtTime(Timestamp::from_seconds(lock_time + current_time)),
+                lock: current_time.plus_milliseconds(lock_time),
             }
         }
         None => {
             Splitter {
                 recipients: msg.recipients,
                 // If locking isn't desired upon instantiation, it's automatically set to 0
-                lock: Expiration::AtTime(Timestamp::from_seconds(current_time)),
+                lock: Milliseconds::default(),
             }
         }
     };
@@ -113,13 +112,24 @@ pub fn execute(
     }
 }
 
-pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
-    match msg {
+pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+    let action_response = call_action(
+        &mut ctx.deps,
+        &ctx.info,
+        &ctx.env,
+        &ctx.amp_ctx,
+        msg.as_ref(),
+    )?;
+    let res = match msg {
         ExecuteMsg::UpdateRecipients { recipients } => execute_update_recipients(ctx, recipients),
         ExecuteMsg::UpdateLock { lock_time } => execute_update_lock(ctx, lock_time),
         ExecuteMsg::Send {} => execute_send(ctx),
         _ => ADOContract::default().execute(ctx, msg),
-    }
+    }?;
+    Ok(res
+        .add_submessages(action_response.messages)
+        .add_attributes(action_response.attributes)
+        .add_events(action_response.events))
 }
 
 fn execute_send(ctx: ExecuteContext) -> Result<Response, ContractError> {
@@ -212,7 +222,7 @@ fn execute_update_recipients(
         ContractError::Unauthorized {}
     );
 
-    validate_recipient_list(recipients.clone())?;
+    validate_recipient_list(deps.as_ref(), recipients.clone())?;
 
     let mut splitter = SPLITTER.load(deps.storage)?;
     // Can't call this function while the lock isn't expired
@@ -233,7 +243,10 @@ fn execute_update_recipients(
     Ok(Response::default().add_attributes(vec![attr("action", "update_recipients")]))
 }
 
-fn execute_update_lock(ctx: ExecuteContext, lock_time: u64) -> Result<Response, ContractError> {
+fn execute_update_lock(
+    ctx: ExecuteContext,
+    lock_time: Milliseconds,
+) -> Result<Response, ContractError> {
     let ExecuteContext {
         deps, info, env, ..
     } = ctx;
@@ -254,24 +267,30 @@ fn execute_update_lock(ctx: ExecuteContext, lock_time: u64) -> Result<Response, 
         ContractError::ContractLocked {}
     );
     // Get current time
-    let current_time = env.block.time.seconds();
+    let current_time = Milliseconds::from_seconds(env.block.time.seconds());
 
     // New lock time can't be too short
-    ensure!(lock_time >= ONE_DAY, ContractError::LockTimeTooShort {});
+    ensure!(
+        lock_time.seconds() >= ONE_DAY,
+        ContractError::LockTimeTooShort {}
+    );
 
     // New lock time can't be unreasonably long
-    ensure!(lock_time <= ONE_YEAR, ContractError::LockTimeTooLong {});
+    ensure!(
+        lock_time.seconds() <= ONE_YEAR,
+        ContractError::LockTimeTooLong {}
+    );
 
     // Set new lock time
-    let new_lock = Expiration::AtTime(Timestamp::from_seconds(lock_time + current_time));
+    let new_expiration = current_time.plus_milliseconds(lock_time);
 
-    splitter.lock = new_lock;
+    splitter.lock = new_expiration;
 
     SPLITTER.save(deps.storage, &splitter)?;
 
     Ok(Response::default().add_attributes(vec![
         attr("action", "update_lock"),
-        attr("locked", new_lock.to_string()),
+        attr("locked", new_expiration.to_string()),
     ]))
 }
 

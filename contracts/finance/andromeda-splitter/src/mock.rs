@@ -2,6 +2,7 @@
 
 use crate::contract::{execute, instantiate, query, reply};
 use andromeda_finance::splitter::{AddressPercent, ExecuteMsg, InstantiateMsg};
+use andromeda_std::common::Milliseconds;
 use cosmwasm_std::Empty;
 use cw_multi_test::{Contract, ContractWrapper};
 
@@ -18,7 +19,7 @@ pub fn mock_splitter_instantiate_msg(
 ) -> InstantiateMsg {
     InstantiateMsg {
         recipients,
-        lock_time,
+        lock_time: lock_time.map(Milliseconds),
         kernel_address: kernel_address.into(),
         owner,
     }

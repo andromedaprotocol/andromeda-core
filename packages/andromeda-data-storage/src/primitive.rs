@@ -198,7 +198,7 @@ pub struct GetValueResponse {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cosmwasm_std::to_binary;
+    use cosmwasm_std::to_json_binary;
 
     #[test]
     fn test_parse_error() {
@@ -282,9 +282,9 @@ mod tests {
 
     #[test]
     fn try_get_binary() {
-        let primitive = Primitive::Binary(to_binary("data").unwrap());
+        let primitive = Primitive::Binary(to_json_binary("data").unwrap());
         assert_eq!(
-            to_binary("data").unwrap(),
+            to_json_binary("data").unwrap(),
             primitive.try_get_binary().unwrap()
         );
 

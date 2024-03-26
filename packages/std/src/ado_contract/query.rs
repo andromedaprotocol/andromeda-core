@@ -11,7 +11,7 @@ use crate::{
     common::encode_binary,
     error::ContractError,
 };
-use cosmwasm_std::{from_binary, to_binary, Binary, Deps, Env};
+use cosmwasm_std::{from_json, to_json_binary, Binary, Deps, Env};
 use cw2::get_contract_version;
 use serde::Serialize;
 
@@ -23,9 +23,9 @@ impl<'a> ADOContract<'a> {
         _env: Env,
         msg: impl Serialize,
     ) -> Result<Binary, ContractError> {
-        let msg = to_binary(&msg)?;
+        let msg = to_json_binary(&msg)?;
 
-        match from_binary::<AndromedaQuery>(&msg) {
+        match from_json::<AndromedaQuery>(&msg) {
             Ok(msg) => match msg {
                 AndromedaQuery::Owner {} => encode_binary(&self.query_contract_owner(deps)?),
                 AndromedaQuery::OriginalPublisher {} => {
@@ -39,6 +39,9 @@ impl<'a> ADOContract<'a> {
                     encode_binary(&self.query_kernel_address(deps)?)
                 }
                 AndromedaQuery::Version {} => encode_binary(&self.query_version(deps)?),
+                AndromedaQuery::OwnershipRequest {} => {
+                    encode_binary(&self.ownership_request(deps.storage)?)
+                }
                 #[cfg(feature = "modules")]
                 AndromedaQuery::Module { id } => encode_binary(&self.query_module(deps, id)?),
                 #[cfg(feature = "modules")]

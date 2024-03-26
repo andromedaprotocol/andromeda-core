@@ -11,4 +11,7 @@ mod kernel;
 mod crowdfund_app;
 
 #[cfg(test)]
+mod cw20_staking;
+
+#[cfg(test)]
 mod lockdrop;

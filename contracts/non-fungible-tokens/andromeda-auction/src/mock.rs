@@ -2,6 +2,7 @@
 
 use crate::contract::{execute, instantiate, query};
 use andromeda_non_fungible_tokens::auction::{Cw721HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg};
+use andromeda_std::ado_base::permissioning::{Permission, PermissioningMessage};
 use andromeda_std::amp::messages::AMPPkt;
 use andromeda_std::{ado_base::modules::Module, amp::AndrAddr};
 use cosmwasm_std::{Addr, Empty, Uint128};
@@ -51,6 +52,14 @@ pub fn mock_authorize_token_address(
         addr: AndrAddr::from_string(token_address.into()),
         expiration,
     }
+}
+
+pub fn mock_set_permission(actor: AndrAddr, action: String, permission: Permission) -> ExecuteMsg {
+    ExecuteMsg::Permissioning(PermissioningMessage::SetPermission {
+        actor,
+        action,
+        permission,
+    })
 }
 
 pub fn mock_get_auction_ids(token_id: String, token_address: String) -> QueryMsg {

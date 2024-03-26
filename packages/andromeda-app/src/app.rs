@@ -1,6 +1,6 @@
 use andromeda_std::{amp::AndrAddr, andr_exec, andr_instantiate, andr_query, error::ContractError};
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{to_binary, Binary, Deps};
+use cosmwasm_std::{to_json_binary, Binary, Deps};
 use serde::Serialize;
 
 #[cw_serde]
@@ -13,6 +13,7 @@ pub struct CrossChainComponent {
 pub enum ComponentType {
     New(Binary),
     Symlink(AndrAddr),
+    #[serde(skip)]
     CrossChain(CrossChainComponent),
 }
 
@@ -44,7 +45,7 @@ impl ComponentType {
     }
 
     pub fn new(msg: impl Serialize) -> ComponentType {
-        ComponentType::New(to_binary(&msg).unwrap())
+        ComponentType::New(to_json_binary(&msg).unwrap())
     }
 }
 

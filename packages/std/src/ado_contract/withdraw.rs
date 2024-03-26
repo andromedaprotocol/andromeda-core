@@ -137,7 +137,7 @@ mod tests {
     use crate::testing::mock_querier::{mock_dependencies_custom, MOCK_CW20_CONTRACT};
     use cosmwasm_std::{
         testing::{mock_dependencies, mock_env, mock_info},
-        to_binary, Addr, BankMsg, Coin, CosmosMsg, WasmMsg,
+        to_json_binary, Addr, BankMsg, Coin, CosmosMsg, WasmMsg,
     };
     use cw20::Cw20ExecuteMsg;
 
@@ -242,7 +242,7 @@ mod tests {
             .unwrap();
         let msg = SubMsg::new(WasmMsg::Execute {
             contract_addr: MOCK_CW20_CONTRACT.into(),
-            msg: to_binary(&Cw20ExecuteMsg::Transfer {
+            msg: to_json_binary(&Cw20ExecuteMsg::Transfer {
                 recipient: "address".to_string(),
                 amount: 10u128.into(),
             })

@@ -1,7 +1,7 @@
 use andromeda_fungible_tokens::cw20_staking::{
     AllocationConfig, AllocationState, RewardToken, RewardType,
 };
-use andromeda_std::error::ContractError;
+use andromeda_std::{common::Milliseconds, error::ContractError};
 
 use cosmwasm_std::{Decimal, Decimal256, Uint128};
 
@@ -12,7 +12,8 @@ pub(crate) fn update_allocated_index(
     reward_token: &mut RewardToken,
     config: AllocationConfig,
     mut state: AllocationState,
-    cur_timestamp: u64,
+    cur_timestamp: Milliseconds,
+    init_timestamp: Milliseconds,
 ) -> Result<(), ContractError> {
     // If the reward distribution period is over
     if state.last_distributed == config.till_timestamp {
@@ -22,7 +23,7 @@ pub(crate) fn update_allocated_index(
     let mut last_distribution_cycle = state.current_cycle;
     state.current_cycle = calculate_cycles_elapsed(
         cur_timestamp,
-        config.init_timestamp,
+        init_timestamp,
         config.cycle_duration,
         config.till_timestamp,
     );
@@ -31,25 +32,37 @@ pub(crate) fn update_allocated_index(
 
     while state.current_cycle >= last_distribution_cycle {
         last_distribution_next_timestamp = std::cmp::min(
-            config.till_timestamp,
+            config.till_timestamp.milliseconds(),
             calculate_init_timestamp_for_cycle(
-                config.init_timestamp,
+                init_timestamp,
                 last_distribution_cycle + 1,
                 config.cycle_duration,
+            )
+            .milliseconds(),
+        );
+        rewards_to_distribute += rewards_distributed_for_cycle(
+            Decimal::from_ratio(
+                state.current_cycle_rewards,
+                config.cycle_duration.milliseconds(),
+            ),
+            std::cmp::max(
+                state.last_distributed.milliseconds(),
+                init_timestamp.milliseconds(),
+            ),
+            std::cmp::min(
+                cur_timestamp.milliseconds(),
+                last_distribution_next_timestamp,
             ),
         );
-        rewards_to_distribute =
-            rewards_to_distribute.checked_add(rewards_distributed_for_cycle(
-                Decimal::from_ratio(state.current_cycle_rewards, config.cycle_duration),
-                std::cmp::max(state.last_distributed, config.init_timestamp),
-                std::cmp::min(cur_timestamp, last_distribution_next_timestamp),
-            ))?;
         state.current_cycle_rewards = calculate_cycle_rewards(
             state.current_cycle_rewards,
             config.reward_increase.unwrap_or_else(Decimal::zero),
             state.current_cycle == last_distribution_cycle,
         );
-        state.last_distributed = std::cmp::min(cur_timestamp, last_distribution_next_timestamp);
+        state.last_distributed = Milliseconds(std::cmp::min(
+            cur_timestamp.milliseconds(),
+            last_distribution_next_timestamp,
+        ));
 
         let new_cycle = last_distribution_cycle.checked_add(1);
         match new_cycle {
@@ -62,7 +75,7 @@ pub(crate) fn update_allocated_index(
         state.current_cycle_rewards = Uint128::zero();
     }
 
-    if total_share == Uint128::zero() || config.init_timestamp > cur_timestamp {
+    if total_share == Uint128::zero() || init_timestamp > cur_timestamp {
         return Ok(());
     }
 
@@ -70,32 +83,39 @@ pub(crate) fn update_allocated_index(
     reward_token.reward_type = RewardType::Allocated {
         allocation_config: config,
         allocation_state: state,
+        init_timestamp,
     };
 
     Ok(())
 }
 
 fn calculate_cycles_elapsed(
-    current_timestamp: u64,
-    config_init_timestamp: u64,
-    cycle_duration: u64,
-    config_till_timestamp: u64,
+    current_timestamp: Milliseconds,
+    config_init_timestamp: Milliseconds,
+    cycle_duration: Milliseconds,
+    config_till_timestamp: Milliseconds,
 ) -> u64 {
     if config_init_timestamp >= current_timestamp {
         return 0u64;
     }
-    let max_cycles = (config_till_timestamp - config_init_timestamp) / cycle_duration;
+    let max_cycles = (config_till_timestamp.minus_milliseconds(config_init_timestamp))
+        .milliseconds()
+        / cycle_duration.milliseconds();
 
-    let time_elapsed = current_timestamp - config_init_timestamp;
-    std::cmp::min(max_cycles, time_elapsed / cycle_duration)
+    let time_elapsed = current_timestamp.minus_milliseconds(config_init_timestamp);
+    std::cmp::min(
+        max_cycles,
+        time_elapsed.milliseconds() / cycle_duration.milliseconds(),
+    )
 }
 
 fn calculate_init_timestamp_for_cycle(
-    config_init_timestamp: u64,
+    config_init_timestamp: Milliseconds,
     current_cycle: u64,
-    cycle_duration: u64,
-) -> u64 {
-    config_init_timestamp + (current_cycle * cycle_duration)
+    cycle_duration: Milliseconds,
+) -> Milliseconds {
+    config_init_timestamp
+        .plus_milliseconds(Milliseconds(current_cycle * cycle_duration.milliseconds()))
 }
 
 fn rewards_distributed_for_cycle(

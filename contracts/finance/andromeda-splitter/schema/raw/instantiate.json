@@ -11,12 +11,14 @@
       "type": "string"
     },
     "lock_time": {
-      "type": [
-        "integer",
-        "null"
-      ],
-      "format": "uint64",
-      "minimum": 0.0
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Milliseconds"
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
     "owner": {
       "type": [
@@ -62,6 +64,12 @@
     "Decimal": {
       "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 (which is (2^128 - 1) / 10^18)",
       "type": "string"
+    },
+    "Milliseconds": {
+      "description": "Represents time in milliseconds.",
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
     },
     "Recipient": {
       "description": "A simple struct used for inter-contract communication. The struct can be used in two ways:\n\n1. Simply just providing an `AndrAddr` which will treat the communication as a transfer of any related funds 2. Providing an `AndrAddr` and a `Binary` message which will be sent to the contract at the resolved address\n\nThe `Binary` message can be any message that the contract at the resolved address can handle.",

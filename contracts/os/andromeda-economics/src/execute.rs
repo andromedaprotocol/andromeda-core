@@ -3,7 +3,7 @@ use andromeda_std::{
     os::aos_querier::AOSQuerier,
 };
 use cosmwasm_std::{
-    attr, coin, ensure, to_binary, Addr, BankMsg, CosmosMsg, DepsMut, Empty, Env, MessageInfo,
+    attr, coin, ensure, to_json_binary, Addr, BankMsg, CosmosMsg, DepsMut, Empty, Env, MessageInfo,
     Response, Storage, SubMsg, Uint128, WasmMsg,
 };
 use cw20::Cw20ExecuteMsg;
@@ -280,7 +280,7 @@ pub(crate) fn cw20_withdraw_msg(
     SubMsg::reply_on_error(
         CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: asset.into(),
-            msg: to_binary(&exec_msg).unwrap(),
+            msg: to_json_binary(&exec_msg).unwrap(),
             funds: vec![],
         }),
         ReplyId::Cw20WithdrawMsg.repr(),

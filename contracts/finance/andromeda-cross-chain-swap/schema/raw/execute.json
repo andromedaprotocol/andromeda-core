@@ -41,9 +41,7 @@
           ],
           "properties": {
             "lock_time": {
-              "type": "integer",
-              "format": "uint64",
-              "minimum": 0.0
+              "$ref": "#/definitions/Milliseconds"
             }
           },
           "additionalProperties": false
@@ -400,6 +398,12 @@
       },
       "additionalProperties": false
     },
+    "Milliseconds": {
+      "description": "Represents time in milliseconds.",
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    },
     "OwnershipMessage": {
       "oneOf": [
         {
@@ -434,30 +438,6 @@
                 },
                 "new_owner": {
                   "$ref": "#/definitions/Addr"
-                }
-              },
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "update_operators"
-          ],
-          "properties": {
-            "update_operators": {
-              "type": "object",
-              "required": [
-                "new_operators"
-              ],
-              "properties": {
-                "new_operators": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/definitions/Addr"
-                  }
                 }
               },
               "additionalProperties": false

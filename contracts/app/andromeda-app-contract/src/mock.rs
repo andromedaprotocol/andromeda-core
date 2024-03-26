@@ -36,6 +36,6 @@ pub fn mock_get_components_msg() -> QueryMsg {
     QueryMsg::GetComponents {}
 }
 
-pub fn mock_get_address_msg(name: String) -> QueryMsg {
-    QueryMsg::GetAddress { name }
+pub fn mock_get_address_msg(name: impl Into<String>) -> QueryMsg {
+    QueryMsg::GetAddress { name: name.into() }
 }

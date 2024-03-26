@@ -13,7 +13,7 @@ use andromeda_cw721::mock::{
 use andromeda_finance::splitter::AddressPercent;
 use andromeda_std::{
     amp::{AndrAddr, Recipient},
-    common::expiration::MILLISECONDS_TO_NANOSECONDS_RATIO,
+    common::{expiration::MILLISECONDS_TO_NANOSECONDS_RATIO, Milliseconds},
 };
 
 use andromeda_modules::rates::{Rate, RateInfo};
@@ -26,7 +26,7 @@ use cw20::Expiration;
 use std::str::FromStr;
 
 use andromeda_testing::mock::MockAndromeda;
-use cosmwasm_std::{coin, to_binary, Addr, BlockInfo, Decimal, Timestamp, Uint128};
+use cosmwasm_std::{coin, to_json_binary, Addr, BlockInfo, Decimal, Timestamp, Uint128};
 use cw721::OwnerOfResponse;
 use cw_multi_test::{App, Executor};
 
@@ -132,7 +132,7 @@ fn test_crowdfund_app() {
     let crowdfund_app_component = AppComponent {
         name: "crowdfund".to_string(),
         ado_type: "crowdfund".to_string(),
-        component_type: ComponentType::New(to_binary(&crowdfund_init_msg).unwrap()),
+        component_type: ComponentType::New(to_json_binary(&crowdfund_init_msg).unwrap()),
     };
 
     let cw721_init_msg = mock_cw721_instantiate_msg(
@@ -275,22 +275,18 @@ fn test_crowdfund_app() {
     // End Sale
     let block_info = router.block_info();
     router.set_block(BlockInfo {
-        height: block_info.height + 5,
-        time: block_info.time,
+        height: block_info.height,
+        time: Milliseconds::from_seconds(5).into(),
         chain_id: block_info.chain_id,
     });
     let end_sale_msg = mock_end_crowdfund_msg(None);
     router
-        .execute_contract(
-            owner.clone(),
-            Addr::unchecked(crowdfund_addr.clone()),
-            &end_sale_msg,
-            &[],
-        )
-        .unwrap();
-    router
         .execute_contract(owner, Addr::unchecked(crowdfund_addr), &end_sale_msg, &[])
         .unwrap();
+    // TODO: Uncomment once Register User in VFS is re-enabled.
+    // router
+    //     .execute_contract(owner, Addr::unchecked(crowdfund_addr), &end_sale_msg, &[])
+    //     .unwrap();
 
     // Check final state
     //Check token transfers

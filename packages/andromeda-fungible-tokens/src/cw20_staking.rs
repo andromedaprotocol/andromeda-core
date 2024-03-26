@@ -1,5 +1,6 @@
 use andromeda_std::amp::addresses::AndrAddr;
 use andromeda_std::common::expiration::MILLISECONDS_TO_NANOSECONDS_RATIO;
+use andromeda_std::common::Milliseconds;
 use andromeda_std::error::ContractError;
 use andromeda_std::{andr_exec, andr_instantiate, andr_instantiate_modules, andr_query};
 use cosmwasm_schema::{cw_serde, QueryResponses};
@@ -92,6 +93,7 @@ pub struct State {
 #[cw_serde]
 pub struct RewardTokenUnchecked {
     pub asset_info: AssetInfoUnchecked,
+    pub init_timestamp: Milliseconds,
     pub allocation_config: Option<AllocationConfig>,
 }
 
@@ -107,16 +109,17 @@ impl RewardTokenUnchecked {
         let reward_type = match self.allocation_config {
             None => RewardType::NonAllocated {
                 previous_reward_balance: Uint128::zero(),
+                init_timestamp: self.init_timestamp,
             },
             Some(allocation_config) => {
-                let init_timestamp = allocation_config.init_timestamp;
+                let init_timestamp = self.init_timestamp;
                 let till_timestamp = allocation_config.till_timestamp;
                 let cycle_duration = allocation_config.cycle_duration;
                 let cycle_rewards = allocation_config.cycle_rewards;
                 let reward_increase = allocation_config.reward_increase;
 
                 ensure!(
-                    init_timestamp >= block_info.time.seconds(),
+                    init_timestamp.seconds() >= block_info.time.seconds(),
                     ContractError::StartTimeInThePast {
                         current_block: block_info.height,
                         current_time: block_info.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO,
@@ -128,7 +131,10 @@ impl RewardTokenUnchecked {
                     ContractError::StartTimeAfterEndTime {}
                 );
 
-                ensure!(cycle_duration > 0, ContractError::InvalidCycleDuration {});
+                ensure!(
+                    !cycle_duration.is_zero(),
+                    ContractError::InvalidCycleDuration {}
+                );
 
                 if let Some(reward_increase) = reward_increase {
                     ensure!(
@@ -144,6 +150,7 @@ impl RewardTokenUnchecked {
                         current_cycle_rewards: cycle_rewards,
                         last_distributed: init_timestamp,
                     },
+                    init_timestamp: self.init_timestamp,
                 }
             }
         };
@@ -161,9 +168,11 @@ pub enum RewardType {
     Allocated {
         allocation_config: AllocationConfig,
         allocation_state: AllocationState,
+        init_timestamp: Milliseconds,
     },
     NonAllocated {
         previous_reward_balance: Uint128,
+        init_timestamp: Milliseconds,
     },
 }
 
@@ -190,14 +199,12 @@ pub struct AllocationInfo {
 
 #[cw_serde]
 pub struct AllocationConfig {
-    /// Timestamp from which Rewards will start getting accrued against the staked LP tokens
-    pub init_timestamp: u64,
     /// Timestamp till which Rewards will be accrued. No staking rewards are accrued beyond this timestamp
-    pub till_timestamp: u64,
+    pub till_timestamp: Milliseconds,
     /// Rewards distributed during the 1st cycle.
     pub cycle_rewards: Uint128,
     /// Cycle duration in timestamps
-    pub cycle_duration: u64,
+    pub cycle_duration: Milliseconds,
     /// Percent increase in Rewards per cycle
     pub reward_increase: Option<Decimal>,
 }
@@ -209,7 +216,7 @@ pub struct AllocationState {
     /// Number of tokens to be distributed during the current cycle
     pub current_cycle_rewards: Uint128,
     /// Timestamp at which the global_reward_index was last updated
-    pub last_distributed: u64,
+    pub last_distributed: Milliseconds,
 }
 
 #[cw_serde]

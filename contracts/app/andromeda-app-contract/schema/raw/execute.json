@@ -414,36 +414,8 @@
             }
           },
           "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "cross_chain"
-          ],
-          "properties": {
-            "cross_chain": {
-              "$ref": "#/definitions/CrossChainComponent"
-            }
-          },
-          "additionalProperties": false
         }
       ]
-    },
-    "CrossChainComponent": {
-      "type": "object",
-      "required": [
-        "chain",
-        "instantiate_msg"
-      ],
-      "properties": {
-        "chain": {
-          "type": "string"
-        },
-        "instantiate_msg": {
-          "$ref": "#/definitions/Binary"
-        }
-      },
-      "additionalProperties": false
     },
     "Expiration": {
       "description": "Expiration represents a point in time when some event happens. It can compare with a BlockInfo and will return is_expired() == true once the condition is hit (and for every block in the future)",
@@ -542,30 +514,6 @@
                 },
                 "new_owner": {
                   "$ref": "#/definitions/Addr"
-                }
-              },
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "update_operators"
-          ],
-          "properties": {
-            "update_operators": {
-              "type": "object",
-              "required": [
-                "new_operators"
-              ],
-              "properties": {
-                "new_operators": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/definitions/Addr"
-                  }
                 }
               },
               "additionalProperties": false

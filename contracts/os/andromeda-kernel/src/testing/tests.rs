@@ -1,7 +1,7 @@
 use crate::{
     contract::{execute, instantiate},
     ibc::PACKET_LIFETIME,
-    state::{ADO_OWNER, CHAIN_TO_CHANNEL, CHANNEL_TO_CHAIN, KERNEL_ADDRESSES},
+    state::{ADO_OWNER, CHAIN_TO_CHANNEL, CHANNEL_TO_CHAIN, CURR_CHAIN, KERNEL_ADDRESSES},
 };
 use andromeda_std::{
     amp::{
@@ -17,7 +17,7 @@ use andromeda_std::{
 };
 use cosmwasm_std::{
     testing::{mock_dependencies, mock_env, mock_info},
-    to_binary, Addr, Binary, CosmosMsg, IbcMsg,
+    to_json_binary, Addr, Binary, CosmosMsg, IbcMsg,
 };
 
 #[test]
@@ -32,6 +32,42 @@ fn proper_initialization() {
 
     let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
     assert_eq!(0, res.messages.len());
+}
+
+#[test]
+fn test_update_chain_name() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let info = mock_info("creator", &[]);
+    let env = mock_env();
+    instantiate(
+        deps.as_mut(),
+        env.clone(),
+        info.clone(),
+        InstantiateMsg {
+            owner: None,
+            chain_name: "test".to_string(),
+        },
+    )
+    .unwrap();
+
+    let chain_name = "other".to_string();
+    let update_chain_name_msg = ExecuteMsg::UpdateChainName {
+        chain_name: chain_name.clone(),
+    };
+
+    let fake_info = mock_info("fake", &[]);
+
+    let err = execute(
+        deps.as_mut(),
+        env.clone(),
+        fake_info,
+        update_chain_name_msg.clone(),
+    )
+    .unwrap_err();
+    assert_eq!(err, ContractError::Unauthorized {});
+
+    execute(deps.as_mut(), env, info, update_chain_name_msg).unwrap();
+    assert_eq!(CURR_CHAIN.load(deps.as_ref().storage).unwrap(), chain_name);
 }
 
 #[test]
@@ -122,7 +158,7 @@ fn test_register_user_cross_chain() {
 
     let expected = IbcMsg::SendPacket {
         channel_id: channel_info.direct_channel_id.unwrap(),
-        data: to_binary(&IbcExecuteMsg::RegisterUsername {
+        data: to_json_binary(&IbcExecuteMsg::RegisterUsername {
             username: username.to_string(),
             address: address.to_string(),
         })
@@ -343,7 +379,11 @@ fn test_handle_ibc_direct() {
         key: "key".to_string(),
         value: "value".to_string(),
     };
-    let amp_msg = AMPMsg::new("ibc://andromeda/..", to_binary(&dummy_msg).unwrap(), None);
+    let amp_msg = AMPMsg::new(
+        "ibc://andromeda/..",
+        to_json_binary(&dummy_msg).unwrap(),
+        None,
+    );
     let packet = AMPPkt::new("user", "user", vec![amp_msg]);
     let msg = ExecuteMsg::AMPReceive(packet);
     let res = execute(deps.as_mut(), env, info, msg);

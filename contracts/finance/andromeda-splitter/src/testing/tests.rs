@@ -3,15 +3,15 @@ use andromeda_std::{
         messages::{AMPMsg, AMPPkt},
         recipient::Recipient,
     },
+    common::Milliseconds,
     error::ContractError,
 };
-
+use andromeda_testing::economics_msg::generate_economics_message;
 use cosmwasm_std::{
-    attr, from_binary,
+    attr, from_json,
     testing::{mock_env, mock_info, MOCK_CONTRACT_ADDR},
-    to_binary, BankMsg, Coin, CosmosMsg, Decimal, DepsMut, Response, SubMsg, Timestamp,
+    to_json_binary, BankMsg, Coin, CosmosMsg, Decimal, DepsMut, Response, SubMsg,
 };
-use cw_utils::Expiration;
 pub const OWNER: &str = "creator";
 
 use super::mock_querier::MOCK_KERNEL_CONTRACT;
@@ -34,7 +34,7 @@ fn init(deps: DepsMut) -> Response {
         owner: Some(OWNER.to_owned()),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         recipients: mock_recipient,
-        lock_time: Some(100_000),
+        lock_time: Some(Milliseconds::from_seconds(100_000)),
     };
 
     let info = mock_info("owner", &[]);
@@ -61,21 +61,25 @@ fn test_execute_update_lock() {
     // Start off with an expiration that's behind current time (expired)
     let splitter = Splitter {
         recipients: vec![],
-        lock: Expiration::AtTime(Timestamp::from_seconds(current_time - 1)),
+        lock: Milliseconds::from_seconds(current_time - 1),
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
 
-    let msg = ExecuteMsg::UpdateLock { lock_time };
+    let msg = ExecuteMsg::UpdateLock {
+        lock_time: Milliseconds::from_seconds(lock_time),
+    };
 
     let info = mock_info(OWNER, &[]);
     let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
-    let new_lock = Expiration::AtTime(Timestamp::from_seconds(current_time + lock_time));
+    let new_lock = Milliseconds::from_seconds(current_time + lock_time);
     assert_eq!(
-        Response::default().add_attributes(vec![
-            attr("action", "update_lock"),
-            attr("locked", new_lock.to_string())
-        ]),
+        Response::default()
+            .add_attributes(vec![
+                attr("action", "update_lock"),
+                attr("locked", new_lock.to_string())
+            ])
+            .add_submessage(generate_economics_message(OWNER, "UpdateLock")),
         res
     );
 
@@ -91,7 +95,15 @@ fn test_execute_update_recipients() {
     let env = mock_env();
     let _res = init(deps.as_mut());
 
-    let recipient = vec![
+    let splitter = Splitter {
+        recipients: vec![],
+        lock: Milliseconds::from_seconds(0),
+    };
+
+    SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
+
+    // Duplicate recipients
+    let duplicate_recipients = vec![
         AddressPercent {
             recipient: Recipient::from_string(String::from("addr1")),
             percent: Decimal::percent(40),
@@ -102,15 +114,26 @@ fn test_execute_update_recipients() {
         },
     ];
     let msg = ExecuteMsg::UpdateRecipients {
-        recipients: recipient.clone(),
+        recipients: duplicate_recipients,
     };
 
-    let splitter = Splitter {
-        recipients: vec![],
-        lock: Expiration::AtTime(Timestamp::from_seconds(0)),
-    };
+    let info = mock_info(OWNER, &[]);
+    let res = execute(deps.as_mut(), env.clone(), info, msg);
+    assert_eq!(ContractError::DuplicateRecipient {}, res.unwrap_err());
 
-    SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
+    let recipients = vec![
+        AddressPercent {
+            recipient: Recipient::from_string(String::from("addr1")),
+            percent: Decimal::percent(40),
+        },
+        AddressPercent {
+            recipient: Recipient::from_string(String::from("addr2")),
+            percent: Decimal::percent(60),
+        },
+    ];
+    let msg = ExecuteMsg::UpdateRecipients {
+        recipients: recipients.clone(),
+    };
 
     let info = mock_info("incorrect_owner", &[]);
     let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
@@ -119,13 +142,15 @@ fn test_execute_update_recipients() {
     let info = mock_info(OWNER, &[]);
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
     assert_eq!(
-        Response::default().add_attributes(vec![attr("action", "update_recipients")]),
+        Response::default()
+            .add_attributes(vec![attr("action", "update_recipients")])
+            .add_submessage(generate_economics_message(OWNER, "UpdateRecipients")),
         res
     );
 
     //check result
     let splitter = SPLITTER.load(deps.as_ref().storage).unwrap();
-    assert_eq!(splitter.recipients, recipient);
+    assert_eq!(splitter.recipients, recipients);
 }
 
 #[test]
@@ -176,7 +201,7 @@ fn test_execute_send() {
 
     let splitter = Splitter {
         recipients: recipient,
-        lock: Expiration::AtTime(Timestamp::from_seconds(0)),
+        lock: Milliseconds::default(),
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -194,7 +219,8 @@ fn test_execute_send() {
             ),
             amp_msg,
         ])
-        .add_attributes(vec![attr("action", "send"), attr("sender", "creator")]);
+        .add_attributes(vec![attr("action", "send"), attr("sender", "creator")])
+        .add_submessage(generate_economics_message(OWNER, "Send"));
 
     assert_eq!(res, expected_res);
 }
@@ -246,7 +272,7 @@ fn test_execute_send_ado_recipient() {
 
     let splitter = Splitter {
         recipients: recipient,
-        lock: Expiration::AtTime(Timestamp::from_seconds(0)),
+        lock: Milliseconds::default(),
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -265,7 +291,8 @@ fn test_execute_send_ado_recipient() {
             amp_msg,
         ])
         .add_attribute("action", "send")
-        .add_attribute("sender", "creator");
+        .add_attribute("sender", "creator")
+        .add_submessage(generate_economics_message(OWNER, "Send"));
 
     assert_eq!(res, expected_res);
 }
@@ -299,7 +326,7 @@ fn test_handle_packet_exit_with_error_true() {
         "cosmos2contract",
         vec![AMPMsg::new(
             recip_address1,
-            to_binary(&ExecuteMsg::Send {}).unwrap(),
+            to_json_binary(&ExecuteMsg::Send {}).unwrap(),
             Some(vec![Coin::new(0, "uluna")]),
         )],
     );
@@ -307,7 +334,7 @@ fn test_handle_packet_exit_with_error_true() {
 
     let splitter = Splitter {
         recipients: recipient,
-        lock: Expiration::AtTime(Timestamp::from_seconds(0)),
+        lock: Milliseconds::default(),
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -328,14 +355,14 @@ fn test_query_splitter() {
     let env = mock_env();
     let splitter = Splitter {
         recipients: vec![],
-        lock: Expiration::AtTime(Timestamp::from_seconds(0)),
+        lock: Milliseconds::default(),
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
 
     let query_msg = QueryMsg::GetSplitterConfig {};
     let res = query(deps.as_ref(), env, query_msg).unwrap();
-    let val: GetSplitterConfigResponse = from_binary(&res).unwrap();
+    let val: GetSplitterConfigResponse = from_json(res).unwrap();
 
     assert_eq!(val.config, splitter);
 }
@@ -381,7 +408,7 @@ fn test_execute_send_error() {
 
     let splitter = Splitter {
         recipients: recipient,
-        lock: Expiration::AtTime(Timestamp::from_seconds(0)),
+        lock: Milliseconds::default(),
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -409,7 +436,8 @@ fn test_update_app_contract() {
     assert_eq!(
         Response::new()
             .add_attribute("action", "update_app_contract")
-            .add_attribute("address", "app_contract"),
+            .add_attribute("address", "app_contract")
+            .add_submessage(generate_economics_message(OWNER, "UpdateAppContract")),
         res
     );
 }

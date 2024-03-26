@@ -38,7 +38,7 @@
               "description": "When the sale ends.",
               "allOf": [
                 {
-                  "$ref": "#/definitions/Expiration"
+                  "$ref": "#/definitions/Milliseconds"
                 }
               ]
             },
@@ -605,6 +605,12 @@
       },
       "additionalProperties": false
     },
+    "Milliseconds": {
+      "description": "Represents time in milliseconds.",
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    },
     "Module": {
       "description": "A struct describing a token module, provided with the instantiation message this struct is used to record the info about the module and how/if it should be instantiated",
       "type": "object",
@@ -662,30 +668,6 @@
                 },
                 "new_owner": {
                   "$ref": "#/definitions/Addr"
-                }
-              },
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "update_operators"
-          ],
-          "properties": {
-            "update_operators": {
-              "type": "object",
-              "required": [
-                "new_operators"
-              ],
-              "properties": {
-                "new_operators": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/definitions/Addr"
-                  }
                 }
               },
               "additionalProperties": false

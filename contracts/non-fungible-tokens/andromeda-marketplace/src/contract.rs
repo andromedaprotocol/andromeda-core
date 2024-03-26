@@ -9,6 +9,7 @@ use andromeda_non_fungible_tokens::marketplace::{
 use andromeda_std::ado_base::ownership::OwnershipMessage;
 use andromeda_std::ado_contract::ADOContract;
 
+use andromeda_std::common::actions::call_action;
 use andromeda_std::common::context::ExecuteContext;
 use andromeda_std::common::expiration::{
     expiration_from_milliseconds, get_and_validate_start_time,
@@ -25,7 +26,7 @@ use semver::Version;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, ensure, from_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
+    attr, ensure, from_json, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
     QuerierWrapper, QueryRequest, Response, Storage, SubMsg, Uint128, WasmMsg, WasmQuery,
 };
 
@@ -96,8 +97,15 @@ pub fn execute(
     }
 }
 
-pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
-    match msg {
+pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+    let action_response = call_action(
+        &mut ctx.deps,
+        &ctx.info,
+        &ctx.env,
+        &ctx.amp_ctx,
+        msg.as_ref(),
+    )?;
+    let res = match msg {
         ExecuteMsg::ReceiveNft(msg) => handle_receive_cw721(ctx, msg),
         ExecuteMsg::UpdateSale {
             token_id,
@@ -114,7 +122,11 @@ pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
             token_address,
         } => execute_cancel(ctx, token_id, token_address),
         _ => ADOContract::default().execute(ctx, msg),
-    }
+    }?;
+    Ok(res
+        .add_submessages(action_response.messages)
+        .add_attributes(action_response.attributes)
+        .add_events(action_response.events))
 }
 
 fn handle_receive_cw721(
@@ -125,7 +137,7 @@ fn handle_receive_cw721(
         deps, info, env, ..
     } = ctx;
 
-    match from_binary(&msg.msg)? {
+    match from_json(&msg.msg)? {
         Cw721HookMsg::StartSale {
             price,
             coin_denom,

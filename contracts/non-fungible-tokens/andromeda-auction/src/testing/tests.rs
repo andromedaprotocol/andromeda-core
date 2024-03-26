@@ -5,6 +5,7 @@ use crate::{
         mock_dependencies_custom, MOCK_TOKEN_ADDR, MOCK_TOKEN_OWNER, MOCK_UNCLAIMED_TOKEN,
     },
 };
+
 use andromeda_non_fungible_tokens::{
     auction::{
         AuctionInfo, AuctionStateResponse, Cw721HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg,
@@ -15,14 +16,16 @@ use andromeda_non_fungible_tokens::{
 use andromeda_std::{
     ado_base::modules::Module,
     amp::AndrAddr,
-    common::{encode_binary, expiration::MILLISECONDS_TO_NANOSECONDS_RATIO},
+    common::{encode_binary, expiration::MILLISECONDS_TO_NANOSECONDS_RATIO, reply::ReplyId},
     error::ContractError,
+    os::economics::ExecuteMsg as EconomicsExecuteMsg,
     testing::mock_querier::MOCK_KERNEL_CONTRACT,
 };
 use cosmwasm_std::{
-    attr, coin, coins, from_binary,
+    attr, coin, coins, from_json,
     testing::{mock_dependencies, mock_env, mock_info},
-    Addr, BankMsg, CosmosMsg, Deps, DepsMut, Env, Response, Timestamp, Uint128, WasmMsg,
+    to_json_binary, Addr, BankMsg, CosmosMsg, Deps, DepsMut, Env, Response, SubMsg, Timestamp,
+    Uint128, WasmMsg,
 };
 use cw721::Cw721ReceiveMsg;
 use cw_utils::Expiration;
@@ -47,7 +50,7 @@ fn query_latest_auction_state_helper(deps: Deps, env: Env) -> AuctionStateRespon
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
         token_address: MOCK_TOKEN_ADDR.to_owned(),
     };
-    from_binary(&query(deps, env, query_msg).unwrap()).unwrap()
+    from_json(query(deps, env, query_msg).unwrap()).unwrap()
 }
 
 fn start_auction(deps: DepsMut, whitelist: Option<Vec<Addr>>, min_bid: Option<Uint128>) {
@@ -324,12 +327,26 @@ fn execute_place_bid_multiple_bids() {
     let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
 
     assert_eq!(
-        Response::new().add_attributes(vec![
-            attr("action", "bid"),
-            attr("token_id", MOCK_UNCLAIMED_TOKEN),
-            attr("bider", info.sender),
-            attr("amount", "100"),
-        ]),
+        Response::new()
+            .add_attributes(vec![
+                attr("action", "bid"),
+                attr("token_id", MOCK_UNCLAIMED_TOKEN),
+                attr("bider", info.sender),
+                attr("amount", "100"),
+            ])
+            // Economics message
+            .add_submessage(SubMsg::reply_on_error(
+                CosmosMsg::Wasm(WasmMsg::Execute {
+                    contract_addr: "economics_contract".to_string(),
+                    msg: to_json_binary(&EconomicsExecuteMsg::PayFee {
+                        payee: Addr::unchecked("sender"),
+                        action: "PlaceBid".to_string()
+                    })
+                    .unwrap(),
+                    funds: vec![],
+                }),
+                ReplyId::PayFee.repr(),
+            )),
         res
     );
     let mut expected_response = AuctionStateResponse {
@@ -361,7 +378,20 @@ fn execute_place_bid_multiple_bids() {
                 attr("token_id", MOCK_UNCLAIMED_TOKEN),
                 attr("bider", info.sender),
                 attr("amount", "200"),
-            ]),
+            ])
+            // Economics message
+            .add_submessage(SubMsg::reply_on_error(
+                CosmosMsg::Wasm(WasmMsg::Execute {
+                    contract_addr: "economics_contract".to_string(),
+                    msg: to_json_binary(&EconomicsExecuteMsg::PayFee {
+                        payee: Addr::unchecked("other"),
+                        action: "PlaceBid".to_string()
+                    })
+                    .unwrap(),
+                    funds: vec![],
+                }),
+                ReplyId::PayFee.repr(),
+            )),
         res
     );
 
@@ -385,7 +415,20 @@ fn execute_place_bid_multiple_bids() {
                 attr("token_id", MOCK_UNCLAIMED_TOKEN),
                 attr("bider", info.sender),
                 attr("amount", "250"),
-            ]),
+            ])
+            // Economics message
+            .add_submessage(SubMsg::reply_on_error(
+                CosmosMsg::Wasm(WasmMsg::Execute {
+                    contract_addr: "economics_contract".to_string(),
+                    msg: to_json_binary(&EconomicsExecuteMsg::PayFee {
+                        payee: Addr::unchecked("sender"),
+                        action: "PlaceBid".to_string()
+                    })
+                    .unwrap(),
+                    funds: vec![],
+                }),
+                ReplyId::PayFee.repr(),
+            )),
         res
     );
 
@@ -814,14 +857,27 @@ fn execute_start_auction_after_previous_finished() {
     let info = mock_info(MOCK_TOKEN_ADDR, &[]);
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
     assert_eq!(
-        Response::new().add_attributes(vec![
-            attr("action", "start_auction"),
-            attr("start_time", "expiration time: 1571883819.880000000"),
-            attr("end_time", "expiration time: 1571883919.879000000"),
-            attr("coin_denom", "uusd"),
-            attr("auction_id", "2"),
-            attr("whitelist", "None"),
-        ]),
+        Response::new()
+            .add_attributes(vec![
+                attr("action", "start_auction"),
+                attr("start_time", "expiration time: 1571883819.880000000"),
+                attr("end_time", "expiration time: 1571883919.879000000"),
+                attr("coin_denom", "uusd"),
+                attr("auction_id", "2"),
+                attr("whitelist", "None"),
+            ]) // Economics message
+            .add_submessage(SubMsg::reply_on_error(
+                CosmosMsg::Wasm(WasmMsg::Execute {
+                    contract_addr: "economics_contract".to_string(),
+                    msg: to_json_binary(&EconomicsExecuteMsg::PayFee {
+                        payee: Addr::unchecked(MOCK_TOKEN_ADDR),
+                        action: "ReceiveNft".to_string()
+                    })
+                    .unwrap(),
+                    funds: vec![],
+                }),
+                ReplyId::PayFee.repr(),
+            )),
         res
     );
 }
@@ -860,7 +916,20 @@ fn execute_claim_no_bids() {
             .add_attribute("token_contract", MOCK_TOKEN_ADDR)
             .add_attribute("recipient", MOCK_TOKEN_OWNER)
             .add_attribute("winning_bid_amount", Uint128::zero())
-            .add_attribute("auction_id", "1"),
+            .add_attribute("auction_id", "1")
+            // Economics message
+            .add_submessage(SubMsg::reply_on_error(
+                CosmosMsg::Wasm(WasmMsg::Execute {
+                    contract_addr: "economics_contract".to_string(),
+                    msg: to_json_binary(&EconomicsExecuteMsg::PayFee {
+                        payee: Addr::unchecked("any_user"),
+                        action: "Claim".to_string()
+                    })
+                    .unwrap(),
+                    funds: vec![],
+                }),
+                ReplyId::PayFee.repr(),
+            )),
         res
     );
 }
@@ -913,7 +982,20 @@ fn execute_claim() {
             .add_attribute("token_contract", MOCK_TOKEN_ADDR)
             .add_attribute("recipient", "sender")
             .add_attribute("winning_bid_amount", Uint128::from(100u128))
-            .add_attribute("auction_id", "1"),
+            .add_attribute("auction_id", "1")
+            // Economics message
+            .add_submessage(SubMsg::reply_on_error(
+                CosmosMsg::Wasm(WasmMsg::Execute {
+                    contract_addr: "economics_contract".to_string(),
+                    msg: to_json_binary(&EconomicsExecuteMsg::PayFee {
+                        payee: Addr::unchecked("any_user"),
+                        action: "Claim".to_string()
+                    })
+                    .unwrap(),
+                    funds: vec![],
+                }),
+                ReplyId::PayFee.repr(),
+            )),
         res
     );
 }
@@ -998,15 +1080,29 @@ fn execute_cancel_no_bids() {
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
 
     assert_eq!(
-        Response::new().add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: MOCK_TOKEN_ADDR.to_owned(),
-            msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
-                recipient: MOCK_TOKEN_OWNER.to_owned(),
-                token_id: MOCK_UNCLAIMED_TOKEN.to_owned()
-            })
-            .unwrap(),
-            funds: vec![],
-        })),
+        Response::new()
+            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: MOCK_TOKEN_ADDR.to_owned(),
+                msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
+                    recipient: MOCK_TOKEN_OWNER.to_owned(),
+                    token_id: MOCK_UNCLAIMED_TOKEN.to_owned()
+                })
+                .unwrap(),
+                funds: vec![],
+            }))
+            // Economics message
+            .add_submessage(SubMsg::reply_on_error(
+                CosmosMsg::Wasm(WasmMsg::Execute {
+                    contract_addr: "economics_contract".to_string(),
+                    msg: to_json_binary(&EconomicsExecuteMsg::PayFee {
+                        payee: Addr::unchecked("owner"),
+                        action: "CancelAuction".to_string()
+                    })
+                    .unwrap(),
+                    funds: vec![],
+                }),
+                ReplyId::PayFee.repr(),
+            )),
         res
     );
 
@@ -1058,7 +1154,20 @@ fn execute_cancel_with_bids() {
             .add_message(CosmosMsg::Bank(BankMsg::Send {
                 to_address: "bidder".to_string(),
                 amount: coins(100, "uusd")
-            })),
+            }))
+            // Economics message
+            .add_submessage(SubMsg::reply_on_error(
+                CosmosMsg::Wasm(WasmMsg::Execute {
+                    contract_addr: "economics_contract".to_string(),
+                    msg: to_json_binary(&EconomicsExecuteMsg::PayFee {
+                        payee: Addr::unchecked("owner"),
+                        action: "CancelAuction".to_string()
+                    })
+                    .unwrap(),
+                    funds: vec![],
+                }),
+                ReplyId::PayFee.repr(),
+            )),
         res
     );
 

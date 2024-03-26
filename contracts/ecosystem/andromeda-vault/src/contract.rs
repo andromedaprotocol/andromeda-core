@@ -15,9 +15,9 @@ use andromeda_std::{
 };
 
 use cosmwasm_std::{
-    attr, coin, ensure, entry_point, from_binary, to_binary, BankMsg, Binary, Coin, ContractResult,
-    CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Order, QueryRequest, Reply, ReplyOn,
-    Response, StdError, SubMsg, SystemResult, Uint128, WasmMsg, WasmQuery,
+    attr, coin, ensure, entry_point, from_json, to_json_binary, BankMsg, Binary, Coin,
+    ContractResult, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Order, QueryRequest, Reply,
+    ReplyOn, Response, StdError, SubMsg, SystemResult, Uint128, WasmMsg, WasmQuery,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw_utils::nonpayable;
@@ -108,7 +108,7 @@ fn execute_deposit(
         deposit_msg,
     } = match msg {
         None => DepositMsg::default(),
-        Some(msg) => from_binary(&msg)?,
+        Some(msg) => from_json(msg)?,
     };
     let mut resp = Response::default();
 
@@ -312,7 +312,7 @@ pub fn withdraw_strategy(
     }
 
     let addr = addr_opt.unwrap();
-    let withdraw_exec = to_binary(&ExecuteMsg::Withdraw {
+    let withdraw_exec = to_json_binary(&ExecuteMsg::Withdraw {
         recipient: Some(recipient),
         tokens_to_withdraw: Some(withdrawals),
     })?;
@@ -347,7 +347,7 @@ fn execute_update_strategy(
     //The vault contract must be an operator for the given contract in order to enable withdrawals
     //DEV: with custom approval functionality this check can be removed
     // let strategy_is_operator: IsOperatorResponse = query_get(
-    //     Some(to_binary(&AndromedaQuery::IsOperator {
+    //     Some(to_json_binary(&AndromedaQuery::IsOperator {
     //         address: env.contract.address.to_string(),
     //     })?),
     //     strategy_addr.clone(),
@@ -438,9 +438,9 @@ fn query_balance(
         // DEV NOTE: Why does this ensure! a generic type when not using custom query?
         let query: QueryRequest<Empty> = QueryRequest::Wasm(WasmQuery::Smart {
             contract_addr: strategy_addr,
-            msg: to_binary(&AndromedaQuery::Balance { address })?,
+            msg: to_json_binary(&AndromedaQuery::WithdrawableBalance { address })?,
         });
-        match deps.querier.raw_query(&to_binary(&query)?) {
+        match deps.querier.raw_query(&to_json_binary(&query)?) {
             SystemResult::Ok(ContractResult::Ok(value)) => Ok(value),
             _ => Err(ContractError::InvalidQuery {}),
         }
@@ -449,7 +449,7 @@ fn query_balance(
             deps.storage,
             ((address.get_raw_address(&deps)?.as_str()), denom.as_str()),
         )?;
-        Ok(to_binary(&[Coin {
+        Ok(to_json_binary(&[Coin {
             denom,
             amount: balance,
         }])?)
@@ -465,7 +465,7 @@ fn query_balance(
                 })
             })
             .collect();
-        Ok(to_binary(&balances?)?)
+        Ok(to_json_binary(&balances?)?)
     }
 }
 
@@ -476,7 +476,7 @@ fn query_strategy_address(
 ) -> Result<Binary, ContractError> {
     let addr = STRATEGY_CONTRACT_ADDRESSES.may_load(deps.storage, strategy.to_string())?;
     match addr {
-        Some(addr) => Ok(to_binary(&StrategyAddressResponse {
+        Some(addr) => Ok(to_json_binary(&StrategyAddressResponse {
             address: addr,
             strategy,
         })?),

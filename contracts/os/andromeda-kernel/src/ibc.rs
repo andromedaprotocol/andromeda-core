@@ -14,7 +14,7 @@ use cosmwasm_schema::cw_serde;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    ensure, from_binary, to_binary, Addr, Binary, Coin, Deps, DepsMut, Empty, Env,
+    ensure, from_json, to_json_binary, Addr, Binary, Coin, Deps, DepsMut, Empty, Env,
     Ibc3ChannelOpenResponse, IbcBasicResponse, IbcChannel, IbcChannelCloseMsg,
     IbcChannelConnectMsg, IbcChannelOpenMsg, IbcOrder, IbcPacketAckMsg, IbcPacketReceiveMsg,
     IbcPacketTimeoutMsg, IbcReceiveResponse, MessageInfo, SubMsg, Timestamp, WasmMsg,
@@ -131,7 +131,7 @@ pub fn do_ibc_packet_receive(
         CHANNEL_TO_CHAIN.has(deps.storage, channel.as_str()),
         ContractError::Unauthorized {}
     );
-    let msg: IbcExecuteMsg = from_binary(&msg.packet.data)?;
+    let msg: IbcExecuteMsg = from_json(&msg.packet.data)?;
     let execute_env = ExecuteContext {
         env,
         deps,
@@ -191,7 +191,7 @@ pub fn ibc_register_username(
     let sub_msg: SubMsg<Empty> = SubMsg::reply_on_error(
         WasmMsg::Execute {
             contract_addr: vfs_address.to_string(),
-            msg: to_binary(&msg)?,
+            msg: to_json_binary(&msg)?,
             funds: vec![],
         },
         ReplyId::RegisterUsername.repr(),

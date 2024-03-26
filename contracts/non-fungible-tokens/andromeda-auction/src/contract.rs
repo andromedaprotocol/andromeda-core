@@ -12,6 +12,7 @@ use andromeda_std::{
     },
     amp::AndrAddr,
     common::{
+        actions::call_action,
         encode_binary,
         expiration::{expiration_from_milliseconds, get_and_validate_start_time},
         rates::get_tax_amount,
@@ -22,7 +23,7 @@ use andromeda_std::{
 use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
 
 use cosmwasm_std::{
-    attr, coins, ensure, entry_point, from_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps,
+    attr, coins, ensure, entry_point, from_json, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps,
     DepsMut, Env, MessageInfo, QuerierWrapper, QueryRequest, Response, Storage, SubMsg, Uint128,
     WasmMsg, WasmQuery,
 };
@@ -95,8 +96,15 @@ pub fn execute(
     }
 }
 
-pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
+    let action_response = call_action(
+        &mut ctx.deps,
+        &ctx.info,
+        &ctx.env,
+        &ctx.amp_ctx,
+        msg.as_ref(),
+    )?;
 
     if !matches!(msg, ExecuteMsg::UpdateAppContract { .. })
         && !matches!(
@@ -112,7 +120,7 @@ pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
             },
         )?;
     }
-    match msg {
+    let res = match msg {
         ExecuteMsg::ReceiveNft(msg) => handle_receive_cw721(ctx, msg),
         ExecuteMsg::UpdateAuction {
             token_id,
@@ -151,7 +159,11 @@ pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
             execute_deauthorize_token_contract(ctx.deps, ctx.info, addr)
         }
         _ => ADOContract::default().execute(ctx, msg),
-    }
+    }?;
+    Ok(res
+        .add_submessages(action_response.messages)
+        .add_attributes(action_response.attributes)
+        .add_events(action_response.events))
 }
 
 fn handle_receive_cw721(
@@ -164,7 +176,7 @@ fn handle_receive_cw721(
         SEND_NFT_ACTION,
         ctx.info.sender.clone(),
     )?;
-    match from_binary(&msg.msg)? {
+    match from_json(&msg.msg)? {
         Cw721HookMsg::StartAuction {
             start_time,
             duration,
@@ -184,19 +196,16 @@ fn handle_receive_cw721(
     }
 }
 
-fn validate_denom(_querier: &QuerierWrapper, denom: String) -> Result<(), ContractError> {
+fn validate_denom(querier: &QuerierWrapper, denom: String) -> Result<(), ContractError> {
     ensure!(
         !denom.is_empty(),
         ContractError::InvalidAsset { asset: denom }
     );
-    // Denom can be validated with cosmwasm 1.3
-    // let denom_metadata = querier.query_denom_metadata(denom.clone());
-    // ensure!(
-    //     denom_metadata.is_ok(),
-    //     ContractError::InvalidAsset {
-    //         asset: denom
-    //     }
-    // );
+    let denom_metadata = querier.query_denom_metadata(denom.clone());
+    ensure!(
+        denom_metadata.is_ok(),
+        ContractError::InvalidAsset { asset: denom }
+    );
     Ok(())
 }
 
@@ -557,16 +566,18 @@ fn execute_authorize_token_contract(
         contract.is_contract_owner(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {}
     );
+    let permission = Permission::Whitelisted(expiration);
     ADOContract::set_permission(
         deps.storage,
         SEND_NFT_ACTION,
         addr.to_string(),
-        Permission::Whitelisted(expiration),
+        permission.clone(),
     )?;
 
     Ok(Response::default().add_attributes(vec![
         attr("action", "authorize_token_contract"),
         attr("token_address", addr),
+        attr("permission", permission.to_string()),
     ]))
 }
 

@@ -1,4 +1,5 @@
 pub mod ado_type;
+pub mod app_contract;
 pub mod block_height;
 #[cfg(any(feature = "module_hooks", feature = "modules"))]
 pub mod hooks;
@@ -60,6 +61,8 @@ pub enum AndromedaMsg {
 pub enum AndromedaQuery {
     #[returns(self::ownership::ContractOwnerResponse)]
     Owner {},
+    #[returns(self::ownership::ContractPotentialOwnerResponse)]
+    OwnershipRequest {},
     #[returns(self::ado_type::TypeResponse)]
     Type {},
     #[returns(self::kernel_address::KernelAddressResponse)]
@@ -70,7 +73,7 @@ pub enum AndromedaQuery {
     BlockHeightUponCreation {},
     #[returns(self::version::VersionResponse)]
     Version {},
-    #[returns(Option<::cosmwasm_std::Addr>)]
+    #[returns(self::app_contract::AppContractResponse)]
     AppContract {},
     #[cfg(feature = "modules")]
     #[returns(Module)]
@@ -79,7 +82,7 @@ pub enum AndromedaQuery {
     #[returns(Vec<String>)]
     ModuleIds {},
     #[returns(::cosmwasm_std::BalanceResponse)]
-    Balance { address: AndrAddr },
+    WithdrawableBalance { address: AndrAddr },
     #[returns(Vec<self::permissioning::PermissionInfo>)]
     Permissions {
         actor: AndrAddr,

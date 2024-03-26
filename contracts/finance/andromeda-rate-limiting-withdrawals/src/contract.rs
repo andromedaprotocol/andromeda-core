@@ -6,7 +6,9 @@ use andromeda_finance::rate_limiting_withdrawals::{
 };
 use andromeda_std::ado_base::ownership::OwnershipMessage;
 use andromeda_std::ado_contract::ADOContract;
+use andromeda_std::common::actions::call_action;
 use andromeda_std::common::context::ExecuteContext;
+use andromeda_std::common::Milliseconds;
 use andromeda_std::{
     ado_base::{hooks::AndromedaHook, InstantiateMsg as BaseInstantiateMsg},
     common::encode_binary,
@@ -45,14 +47,14 @@ pub fn instantiate(
             },
         )?,
         //NOTE temporary until a replacement for primitive is implemented
-        _ => ALLOWED_COIN.save(
-            deps.storage,
-            &CoinAllowance {
-                coin: msg.allowed_coin.coin,
-                limit: msg.allowed_coin.limit,
-                minimal_withdrawal_frequency: Uint128::zero(),
-            },
-        )?,
+        // _ => ALLOWED_COIN.save(
+        //     deps.storage,
+        //     &CoinAllowance {
+        //         coin: msg.allowed_coin.coin,
+        //         limit: msg.allowed_coin.limit,
+        //         minimal_withdrawal_frequency: Milliseconds::zero(),
+        //     },
+        // )?,
         // MinimumFrequency::AddressAndKey { address_and_key } => ALLOWED_COIN.save(
         //     deps.storage,
         //     &CoinAllowance {
@@ -122,12 +124,24 @@ pub fn execute(
     }
 }
 
-pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
-    match msg {
+pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+    let action_response = call_action(
+        &mut ctx.deps,
+        &ctx.info,
+        &ctx.env,
+        &ctx.amp_ctx,
+        msg.as_ref(),
+    )?;
+
+    let res = match msg {
         ExecuteMsg::Deposits { recipient } => execute_deposit(ctx, recipient),
-        ExecuteMsg::Withdraws { amount } => execute_withdraw(ctx, amount),
+        ExecuteMsg::WithdrawFunds { amount } => execute_withdraw(ctx, amount),
         _ => ADOContract::default().execute(ctx, msg),
-    }
+    }?;
+    Ok(res
+        .add_submessages(action_response.messages)
+        .add_attributes(action_response.attributes)
+        .add_events(action_response.events))
 }
 
 fn execute_deposit(
@@ -198,9 +212,8 @@ fn execute_withdraw(ctx: ExecuteContext, amount: Uint128) -> Result<Response, Co
             let minimum_withdrawal_frequency = ALLOWED_COIN
                 .load(deps.storage)?
                 .minimal_withdrawal_frequency;
-            let current_time = Uint128::from(env.block.time.seconds());
-            let seconds_since_withdrawal =
-                current_time - Uint128::from(latest_withdrawal.seconds());
+            let current_time = Milliseconds::from_seconds(env.block.time.seconds());
+            let seconds_since_withdrawal = current_time.minus_seconds(latest_withdrawal.seconds());
 
             // make sure enough time has elapsed since the latest withdrawal
             ensure!(

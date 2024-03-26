@@ -5,14 +5,13 @@ use andromeda_std::{
         InstantiateMsg as BaseInstantiateMsg,
     },
     ado_contract::ADOContract,
-    common::Funds,
-    common::{context::ExecuteContext, encode_binary},
+    common::{actions::call_action, context::ExecuteContext, encode_binary, Funds},
     error::{from_semver, ContractError},
 };
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    ensure, from_binary, to_binary, Addr, Api, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
-    Response, StdResult, Storage, SubMsg, Uint128, WasmMsg,
+    ensure, from_json, to_json_binary, Addr, Api, Binary, CosmosMsg, Deps, DepsMut, Env,
+    MessageInfo, Response, StdResult, Storage, SubMsg, Uint128, WasmMsg,
 };
 
 use cw2::{get_contract_version, set_contract_version};
@@ -29,12 +28,11 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
-    deps: DepsMut,
+    mut deps: DepsMut,
     env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     let contract = ADOContract::default();
     let resp = contract.instantiate(
         deps.storage,
@@ -44,7 +42,6 @@ pub fn instantiate(
         BaseInstantiateMsg {
             ado_type: "cw20".to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
-
             kernel_address: msg.clone().kernel_address,
             owner: msg.clone().owner,
         },
@@ -52,7 +49,8 @@ pub fn instantiate(
     let modules_resp =
         contract.register_modules(info.sender.as_str(), deps.storage, msg.clone().modules)?;
 
-    let cw20_resp = cw20_instantiate(deps, env, info, msg.into())?;
+    let cw20_resp = cw20_instantiate(deps.branch(), env, info, msg.into())?;
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     Ok(resp
         .add_submessages(modules_resp.messages)
@@ -78,8 +76,15 @@ pub fn execute(
     }
 }
 
-pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
+    let action_response = call_action(
+        &mut ctx.deps,
+        &ctx.info,
+        &ctx.env,
+        &ctx.amp_ctx,
+        msg.as_ref(),
+    )?;
     if !matches!(msg, ExecuteMsg::UpdateAppContract { .. })
         && !matches!(
             msg,
@@ -94,7 +99,7 @@ pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
             },
         )?;
     }
-    match msg {
+    let res = match msg {
         ExecuteMsg::Transfer { recipient, amount } => execute_transfer(ctx, recipient, amount),
         ExecuteMsg::Burn { amount } => execute_burn(ctx, amount),
         ExecuteMsg::Send {
@@ -105,12 +110,16 @@ pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
         ExecuteMsg::Mint { recipient, amount } => execute_mint(ctx, recipient, amount),
         _ => {
             let serialized = encode_binary(&msg)?;
-            match from_binary::<AndromedaMsg>(&serialized) {
+            match from_json::<AndromedaMsg>(&serialized) {
                 Ok(msg) => ADOContract::default().execute(ctx, msg),
                 _ => Ok(execute_cw20(ctx.deps, ctx.env, ctx.info, msg.into())?),
             }
         }
-    }
+    }?;
+    Ok(res
+        .add_submessages(action_response.messages)
+        .add_attributes(action_response.attributes)
+        .add_events(action_response.events))
 }
 
 fn execute_transfer(
@@ -129,7 +138,7 @@ fn execute_transfer(
             address: env.contract.address.to_string(),
             amount,
         }),
-        to_binary(&ExecuteMsg::Transfer {
+        to_json_binary(&ExecuteMsg::Transfer {
             amount,
             recipient: recipient.clone(),
         })?,
@@ -209,7 +218,7 @@ fn execute_send(
             address: env.contract.address.to_string(),
             amount,
         }),
-        to_binary(&ExecuteMsg::Send {
+        to_json_binary(&ExecuteMsg::Send {
             amount,
             contract: contract.clone(),
             msg: msg.clone(),
@@ -271,7 +280,7 @@ fn filter_out_cw20_messages(
         if let CosmosMsg::Wasm(WasmMsg::Execute { msg: exec_msg, .. }) = sub_msg.msg.clone() {
             // If binary deserializes to a Cw20ExecuteMsg check the message type
             if let Ok(Cw20ExecuteMsg::Transfer { recipient, amount }) =
-                from_binary::<Cw20ExecuteMsg>(&exec_msg)
+                from_json::<Cw20ExecuteMsg>(&exec_msg)
             {
                 transfer_tokens(storage, sender, &api.addr_validate(&recipient)?, amount)?;
             } else {
@@ -315,8 +324,8 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
-    let serialized = to_binary(&msg)?;
-    match from_binary::<AndromedaQuery>(&serialized) {
+    let serialized = to_json_binary(&msg)?;
+    match from_json::<AndromedaQuery>(&serialized) {
         Ok(msg) => ADOContract::default().query(deps, env, msg),
         _ => Ok(cw20_query(deps, env, msg.into())?),
     }

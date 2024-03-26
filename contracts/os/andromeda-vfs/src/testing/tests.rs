@@ -16,9 +16,9 @@ use andromeda_std::{
 };
 use andromeda_std::{error::ContractError, os::vfs::QueryMsg};
 use cosmwasm_std::{
-    from_binary,
+    from_json,
     testing::{mock_dependencies, mock_env, mock_info},
-    to_binary, Addr, CosmosMsg, DepsMut, Env, MessageInfo, WasmMsg,
+    to_json_binary, Addr, CosmosMsg, DepsMut, Env, MessageInfo, WasmMsg,
 };
 
 fn instantiate_contract(deps: DepsMut, env: Env, info: MessageInfo) {
@@ -181,7 +181,6 @@ fn test_register_user_valid_cosmwasm_address_user() {
     };
     instantiate_contract(deps.as_mut(), env.clone(), info.clone());
     execute(deps.as_mut(), env, info, msg).unwrap();
-
     let saved = USERS.load(deps.as_ref().storage, username).unwrap();
     assert_eq!(saved, sender)
 }
@@ -260,6 +259,7 @@ fn test_register_user_foreign_chain() {
         username: username.to_string(),
         address: None,
     };
+
     let err = execute(deps.as_mut(), env.clone(), info, msg).unwrap_err();
     assert_eq!(err, ContractError::Unauthorized {});
 
@@ -316,7 +316,7 @@ fn test_register_user_cross_chain() {
         res.messages[0].msg,
         CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: MOCK_KERNEL_CONTRACT.to_string(),
-            msg: to_binary(&expected).unwrap(),
+            msg: to_json_binary(&expected).unwrap(),
             funds: vec![],
         })
     );
@@ -626,7 +626,7 @@ fn test_get_username() {
     };
 
     let res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
-    let val: String = from_binary(&res).unwrap();
+    let val: String = from_json(res).unwrap();
 
     assert_eq!(val, username);
 
@@ -636,7 +636,7 @@ fn test_get_username() {
     };
 
     let res = query(deps.as_ref(), env, query_msg).unwrap();
-    let val: String = from_binary(&res).unwrap();
+    let val: String = from_json(res).unwrap();
 
     assert_eq!(val, unregistered_addr);
 }
@@ -657,7 +657,7 @@ fn test_get_library() {
     };
 
     let res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
-    let val: String = from_binary(&res).unwrap();
+    let val: String = from_json(res).unwrap();
 
     assert_eq!(val, lib_name);
 
@@ -667,7 +667,7 @@ fn test_get_library() {
     };
 
     let res = query(deps.as_ref(), env, query_msg).unwrap();
-    let val: String = from_binary(&res).unwrap();
+    let val: String = from_json(res).unwrap();
 
     assert_eq!(val, unregistered_addr);
 }
@@ -746,7 +746,7 @@ fn test_get_subdir() {
         limit: None,
     };
     let res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
-    let val: Vec<PathInfo> = from_binary(&res).unwrap();
+    let val: Vec<PathInfo> = from_json(res).unwrap();
     assert_eq!(val, root_paths);
 
     let subdir = &root_paths[0].name;
@@ -757,7 +757,7 @@ fn test_get_subdir() {
         limit: None,
     };
     let res = query(deps.as_ref(), env, query_msg).unwrap();
-    let val: Vec<PathInfo> = from_binary(&res).unwrap();
+    let val: Vec<PathInfo> = from_json(res).unwrap();
     assert_eq!(val, sub_paths);
 }
 
@@ -837,6 +837,6 @@ fn test_get_paths() {
         addr: sub_paths[0].address.clone(),
     };
     let res = query(deps.as_ref(), env, query_msg).unwrap();
-    let val: Vec<String> = from_binary(&res).unwrap();
+    let val: Vec<String> = from_json(res).unwrap();
     assert_eq!(val.len(), 2);
 }

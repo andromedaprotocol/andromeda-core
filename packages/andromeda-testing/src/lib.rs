@@ -1,3 +1,4 @@
+pub mod economics_msg;
 pub mod reply;
 pub mod testing;
 

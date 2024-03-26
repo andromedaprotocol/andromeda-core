@@ -9,7 +9,7 @@ use crate::{
     error::ContractError,
 };
 use cosmwasm_std::{
-    attr, ensure, from_binary, to_binary, Addr, Api, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
+    attr, ensure, from_json, to_json_binary, Addr, Api, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
     QuerierWrapper, Response, Storage, SubMsg, WasmMsg,
 };
 use serde::de::DeserializeOwned;
@@ -45,8 +45,8 @@ impl<'a> ADOContract<'a> {
         ctx: ExecuteContext,
         msg: impl Serialize,
     ) -> Result<Response, ContractError> {
-        let msg = to_binary(&msg)?;
-        match from_binary::<AndromedaMsg>(&msg) {
+        let msg = to_json_binary(&msg)?;
+        match from_json::<AndromedaMsg>(&msg) {
             Ok(msg) => match msg {
                 AndromedaMsg::Ownership(msg) => {
                     self.execute_ownership(ctx.deps, ctx.env, ctx.info, msg)
@@ -165,11 +165,11 @@ impl<'a> ADOContract<'a> {
     /// Handles receiving and verifies an AMPPkt from the Kernel before executing the appropriate messages.
     ///
     /// Calls the provided handler with the AMP packet attached within the context.
-    pub fn execute_amp_receive<E: DeserializeOwned>(
+    pub fn execute_amp_receive<M: DeserializeOwned>(
         &self,
         ctx: ExecuteContext,
         mut packet: AMPPkt,
-        handler: ExecuteContextFunction<E>,
+        handler: ExecuteContextFunction<M>,
     ) -> Result<Response, ContractError> {
         packet.verify_origin(&ctx.info, &ctx.deps.as_ref())?;
         let ctx = ctx.with_ctx(packet.clone());
@@ -180,7 +180,7 @@ impl<'a> ADOContract<'a> {
             }
         );
         let msg = packet.messages.pop().unwrap();
-        let msg: E = from_binary(&msg.message)?;
+        let msg: M = from_json(msg.message)?;
         let response = handler(ctx, msg)?;
         Ok(response)
     }
@@ -208,7 +208,7 @@ impl<'a> ADOContract<'a> {
         let msg = SubMsg::reply_on_error(
             CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: economics_contract_address.to_string(),
-                msg: to_binary(&economics_msg)?,
+                msg: to_json_binary(&economics_msg)?,
                 funds: vec![],
             }),
             ReplyId::PayFee.repr(),
