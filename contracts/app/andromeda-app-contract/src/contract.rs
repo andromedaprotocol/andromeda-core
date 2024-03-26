@@ -106,7 +106,7 @@ pub fn instantiate(
 
         // Generate an instantiation message if required
         let inst_msg = component.generate_instantiation_message(
-            &deps.as_ref(),
+            &deps.querier,
             &adodb_addr,
             &env.contract.address,
             &sender,
@@ -182,6 +182,7 @@ pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
         ExecuteMsg::AddAppComponent { component } => execute::handle_add_app_component(
             &ctx.deps.querier,
             ctx.deps.storage,
+            ctx.deps.api,
             ctx.env,
             ctx.info.sender.as_str(),
             component,

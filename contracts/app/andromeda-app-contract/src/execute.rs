@@ -1,6 +1,6 @@
 use crate::state::{
     add_app_component, generate_assign_app_message, generate_ownership_message,
-    load_component_addresses, ADO_ADDRESSES,
+    load_component_addresses, ADO_ADDRESSES, APP_NAME,
 };
 use andromeda_app::app::{AppComponent, ComponentType};
 use andromeda_std::common::{context::ExecuteContext, reply::ReplyId};
@@ -10,70 +10,66 @@ use andromeda_std::os::vfs::ExecuteMsg as VFSExecuteMsg;
 use andromeda_std::{ado_contract::ADOContract, amp::AndrAddr};
 
 use cosmwasm_std::{
-    ensure, to_json_binary, Addr, Binary, CosmosMsg, Env, Order, QuerierWrapper, ReplyOn, Response,
+    ensure, to_json_binary, Addr, Api, Binary, CosmosMsg, Env, QuerierWrapper, ReplyOn, Response,
     Storage, SubMsg, WasmMsg,
 };
 
 pub fn handle_add_app_component(
     querier: &QuerierWrapper,
     storage: &mut dyn Storage,
+    api: &dyn Api,
     env: Env,
     sender: &str,
     component: AppComponent,
 ) -> Result<Response, ContractError> {
+    ensure!(
+        !matches!(component.component_type, ComponentType::CrossChain(..)),
+        ContractError::CrossChainComponentsCurrentlyDisabled {}
+    );
     let contract = ADOContract::default();
     ensure!(
         contract.is_contract_owner(storage, sender)?,
         ContractError::Unauthorized {}
     );
 
-    let amount = ADO_ADDRESSES
-        .keys(storage, None, None, Order::Ascending)
-        .count();
-    ensure!(amount < 50, ContractError::TooManyAppComponents {});
+    let idx = add_app_component(storage, &component)?;
+    ensure!(idx < 50, ContractError::TooManyAppComponents {});
 
     let adodb_addr = ADOContract::default().get_adodb_address(storage, querier)?;
-
-    let idx = add_app_component(storage, &component)?;
+    let vfs_addr = ADOContract::default().get_vfs_address(storage, querier)?;
 
     let mut resp = Response::new()
         .add_attribute("method", "add_app_component")
         .add_attribute("name", component.name.clone())
         .add_attribute("type", component.ado_type.clone());
 
-    match component.component_type.clone() {
-        ComponentType::New(instantiate_msg) => {
-            let code_id = AOSQuerier::code_id_getter(querier, &adodb_addr, &component.ado_type)?;
-            let salt = component.get_salt(env.contract.address);
-            let inst_msg = WasmMsg::Instantiate2 {
-                admin: Some(sender.to_string()),
-                code_id,
-                label: format!("Instantiate: {}", component.ado_type),
-                msg: instantiate_msg,
-                funds: vec![],
-                salt,
-            };
-            resp = resp.add_submessage(SubMsg::reply_always(inst_msg, idx));
-        }
-        ComponentType::Symlink(symlink) => {
-            let msg = VFSExecuteMsg::AddSymlink {
-                name: component.name,
-                symlink,
-                parent_address: None,
-            };
-            let cosmos_msg = CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: AOSQuerier::vfs_address_getter(
-                    querier,
-                    &contract.get_kernel_address(storage)?,
-                )?
-                .to_string(),
-                msg: to_json_binary(&msg)?,
-                funds: vec![],
-            });
-            let sub_msg = SubMsg::reply_on_error(cosmos_msg, ReplyId::RegisterPath.repr());
-            resp = resp.add_submessage(sub_msg);
-        }
-        _ => return Err(ContractError::Unauthorized {}),
+    let app_name = APP_NAME.load(storage)?;
+    let new_addr =
+        component.get_new_addr(api, &adodb_addr, querier, env.contract.address.clone())?;
+    let registration_msg = component.generate_vfs_registration(
+        new_addr,
+        &env.contract.address,
+        &app_name,
+        // TODO: Fix this in future for x-chain components
+        None,
+        &adodb_addr,
+        &vfs_addr,
+    )?;
+
+    if let Some(registration_msg) = registration_msg {
+        resp = resp.add_submessage(registration_msg);
+    }
+
+    let inst_msg = component.generate_instantiation_message(
+        querier,
+        &adodb_addr,
+        &env.contract.address,
+        sender,
+        idx,
+    )?;
+
+    if let Some(inst_msg) = inst_msg {
+        resp = resp.add_submessage(inst_msg);
     }
 
     Ok(resp)

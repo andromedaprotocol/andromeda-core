@@ -1,4 +1,4 @@
-use crate::state::ADO_DESCRIPTORS;
+use crate::state::{ADO_DESCRIPTORS, ADO_IDX};
 
 use super::{contract::*, state::ADO_ADDRESSES};
 use andromeda_app::app::{AppComponent, ComponentType, ExecuteMsg, InstantiateMsg};
@@ -655,6 +655,7 @@ fn test_add_app_component_limit() {
             .save(deps.as_mut().storage, &i.to_string(), &Addr::unchecked(""))
             .unwrap();
     }
+    ADO_IDX.save(deps.as_mut().storage, &50).unwrap();
 
     let msg = ExecuteMsg::AddAppComponent {
         component: AppComponent {

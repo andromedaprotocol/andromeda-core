@@ -210,14 +210,14 @@ impl AppComponent {
 
     pub fn generate_instantiation_message(
         &self,
-        deps: &Deps,
+        querier: &QuerierWrapper,
         adodb_addr: &Addr,
         parent_addr: &Addr,
         sender: &str,
         idx: u64,
     ) -> Result<Option<SubMsg>, ContractError> {
         if let ComponentType::New(instantiate_msg) = self.component_type.clone() {
-            let code_id = AOSQuerier::code_id_getter(&deps.querier, adodb_addr, &self.ado_type)?;
+            let code_id = AOSQuerier::code_id_getter(querier, adodb_addr, &self.ado_type)?;
             let salt = self.get_salt(parent_addr.clone());
             let inst_msg = WasmMsg::Instantiate2 {
                 admin: Some(sender.to_string()),
