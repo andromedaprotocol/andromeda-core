@@ -95,7 +95,11 @@ pub enum QueryMsg {
     },
     /// Gets all of the authorized addresses for the auction
     #[returns(AuthorizedAddressesResponse)]
-    AuthorizedAddresses {},
+    AuthorizedAddresses {
+        start_after: Option<u32>,
+        limit: Option<u32>,
+        order_by: Option<OrderBy>,
+    },
 
     /// Gets the bids for the given auction id. Start_after starts indexing at 0.
     #[returns(BidsResponse)]

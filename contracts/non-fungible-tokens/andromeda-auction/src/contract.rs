@@ -739,7 +739,16 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
             token_id,
             token_address,
         } => encode_binary(&query_is_closed(deps, env, token_id, token_address)?),
-        QueryMsg::AuthorizedAddresses {} => encode_binary(&query_authorized_addresses(deps)?),
+        QueryMsg::AuthorizedAddresses {
+            start_after,
+            limit,
+            order_by,
+        } => encode_binary(&query_authorized_addresses(
+            deps,
+            start_after,
+            limit,
+            order_by,
+        )?),
         _ => ADOContract::default().query(deps, env, msg),
     }
 }
@@ -872,8 +881,19 @@ fn query_owner_of(
     Ok(res)
 }
 
-fn query_authorized_addresses(deps: Deps) -> Result<AuthorizedAddressesResponse, ContractError> {
-    let addresses = ADOContract::default().query_permissioned_actors(deps, SEND_NFT_ACTION)?;
+fn query_authorized_addresses(
+    deps: Deps,
+    start_after: Option<u32>,
+    limit: Option<u32>,
+    order_by: Option<OrderBy>,
+) -> Result<AuthorizedAddressesResponse, ContractError> {
+    let addresses = ADOContract::default().query_permissioned_actors(
+        deps,
+        SEND_NFT_ACTION,
+        start_after,
+        limit,
+        order_by,
+    )?;
     Ok(AuthorizedAddressesResponse { addresses })
 }
 #[cfg_attr(not(feature = "library"), entry_point)]

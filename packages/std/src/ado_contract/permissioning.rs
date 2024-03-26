@@ -1,7 +1,9 @@
+use std::cmp;
+
 use crate::{
     ado_base::permissioning::{Permission, PermissionInfo, PermissioningMessage},
     amp::{messages::AMPPkt, AndrAddr},
-    common::context::ExecuteContext,
+    common::{context::ExecuteContext, OrderBy},
     error::ContractError,
 };
 use cosmwasm_std::{ensure, Deps, Env, MessageInfo, Order, Response, Storage};
@@ -350,9 +352,13 @@ impl<'a> ADOContract<'a> {
         &self,
         deps: Deps,
         action: impl Into<String>,
+        start_after: Option<u32>,
+        limit: Option<u32>,
+        order_by: Option<OrderBy>,
     ) -> Result<Vec<String>, ContractError> {
         let action_string: String = action.into();
-        let actors = permissions()
+
+        let mut actors = permissions()
             .keys(deps.storage, None, None, Order::Ascending)
             .filter(|item| item.as_ref().unwrap().starts_with(&action_string))
             .map(|item| {
@@ -361,7 +367,25 @@ impl<'a> ADOContract<'a> {
             })
             .collect::<Vec<String>>();
 
-        Ok(actors)
+        let start = start_after.unwrap_or(0) as usize;
+        let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
+
+        let (start, end) = match order_by {
+            Some(OrderBy::Desc) => (
+                actors.len().saturating_sub(cmp::min(actors.len(), start + limit)),
+                actors.len().saturating_sub(cmp::min(start, actors.len())),
+            ),
+            // Default ordering is Ascending.
+            _ => (
+                cmp::min(actors.len(), start),
+                cmp::min(start + limit, actors.len()),
+            ),
+        };
+        let slice = &mut actors[start..end];
+        if order_by == Some(OrderBy::Desc) {
+            slice.reverse();
+        }
+        Ok(slice.to_vec())
     }
 }
 
@@ -1022,7 +1046,7 @@ mod tests {
         ADOContract::set_permission(deps.as_mut().storage, action, actor, Permission::default())
             .unwrap();
         let actors = ADOContract::default()
-            .query_permissioned_actors(deps.as_ref(), action)
+            .query_permissioned_actors(deps.as_ref(), action, None, None, None)
             .unwrap();
 
         assert_eq!(actors.len(), 1);
