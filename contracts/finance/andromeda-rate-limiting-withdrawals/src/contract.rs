@@ -47,14 +47,14 @@ pub fn instantiate(
             },
         )?,
         //NOTE temporary until a replacement for primitive is implemented
-        _ => ALLOWED_COIN.save(
-            deps.storage,
-            &CoinAllowance {
-                coin: msg.allowed_coin.coin,
-                limit: msg.allowed_coin.limit,
-                minimal_withdrawal_frequency: Milliseconds::zero(),
-            },
-        )?,
+        // _ => ALLOWED_COIN.save(
+        //     deps.storage,
+        //     &CoinAllowance {
+        //         coin: msg.allowed_coin.coin,
+        //         limit: msg.allowed_coin.limit,
+        //         minimal_withdrawal_frequency: Milliseconds::zero(),
+        //     },
+        // )?,
         // MinimumFrequency::AddressAndKey { address_and_key } => ALLOWED_COIN.save(
         //     deps.storage,
         //     &CoinAllowance {

@@ -149,14 +149,15 @@ impl MockAndromeda {
 
         let mock_andr = MockAndromeda {
             adodb_address: adodb_address.clone(),
-            admin_address: admin_address.clone(),
+            admin_address,
             kernel_address,
         };
 
         mock_andr.register_kernel_key_address(app, "adodb", adodb_address);
         mock_andr.register_kernel_key_address(app, "vfs", vfs_address);
         mock_andr.register_kernel_key_address(app, "economics", economics_address);
-        mock_andr.register_user(app, admin_address, ADMIN_USERNAME);
+        // TODO: Uncomment once Register User is reenabled
+        // mock_andr.register_user(app, admin_address.clone(), ADMIN_USERNAME);
 
         mock_andr
     }

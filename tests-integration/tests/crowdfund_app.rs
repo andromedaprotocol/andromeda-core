@@ -252,18 +252,13 @@ fn test_crowdfund_app() {
     router
         .execute_contract(
             owner.clone(),
-            Addr::unchecked(crowdfund_addr.as_str()),
+            Addr::unchecked(crowdfund_addr.clone()),
             &end_sale_msg,
             &[],
         )
         .unwrap();
     router
-        .execute_contract(
-            owner,
-            Addr::unchecked(crowdfund_addr.as_str()),
-            &end_sale_msg,
-            &[],
-        )
+        .execute_contract(owner, Addr::unchecked(crowdfund_addr), &end_sale_msg, &[])
         .unwrap();
 
     // Check final state
