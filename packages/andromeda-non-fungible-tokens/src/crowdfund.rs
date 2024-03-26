@@ -23,7 +23,7 @@ pub enum ExecuteMsg {
         /// When the sale start. Defaults to current time.
         start_time: Option<u64>,
         /// When the sale ends.
-        expiration: Expiration,
+        end_time: Expiration,
         /// The price per token.
         price: Coin,
         /// The minimum amount of tokens sold to go through with the sale.
@@ -75,7 +75,7 @@ pub struct Config {
 #[cw_serde]
 pub struct State {
     /// The expiration denoting when the sale ends.
-    pub expiration: Expiration,
+    pub end_time: Expiration,
     /// The price of each token.
     pub price: Coin,
     /// The minimum number of tokens sold for the sale to go through.

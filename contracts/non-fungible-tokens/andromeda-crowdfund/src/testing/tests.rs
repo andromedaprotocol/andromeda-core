@@ -182,7 +182,7 @@ fn test_mint_sale_started() {
 
     let msg = ExecuteMsg::StartSale {
         start_time: None,
-        expiration: Expiration::AtTime(Timestamp::from_nanos((current_time + 2) * 1_000_000)),
+        end_time: Expiration::AtTime(Timestamp::from_nanos((current_time + 2) * 1_000_000)),
         price: coin(100, "uusd"),
         min_tokens_sold: Uint128::from(1u128),
         max_amount_per_wallet: Some(5),
@@ -374,7 +374,7 @@ fn test_start_sale_end_time_never() {
 
     let msg = ExecuteMsg::StartSale {
         start_time: Some(one_minute_in_future),
-        expiration: Expiration::Never {},
+        end_time: Expiration::Never {},
         price: coin(100, "uusd"),
         min_tokens_sold: Uint128::from(1u128),
         max_amount_per_wallet: None,
@@ -394,7 +394,7 @@ fn test_start_sale_unauthorized() {
 
     let msg = ExecuteMsg::StartSale {
         start_time: None,
-        expiration: Expiration::AtTime(Timestamp::from_nanos((current_time + 1) * 1_000_000)),
+        end_time: Expiration::AtTime(Timestamp::from_nanos((current_time + 1) * 1_000_000)),
         price: coin(100, "uusd"),
         min_tokens_sold: Uint128::from(1u128),
         max_amount_per_wallet: None,
@@ -416,7 +416,7 @@ fn test_start_sale_start_time_in_past() {
     let one_minute_in_past = env.block.time.minus_minutes(1).seconds();
     let msg = ExecuteMsg::StartSale {
         start_time: Some(one_minute_in_past),
-        expiration: Expiration::AtTime(Timestamp::from_nanos((current_time + 2) * 1_000_000)),
+        end_time: Expiration::AtTime(Timestamp::from_nanos((current_time + 2) * 1_000_000)),
         price: coin(100, "uusd"),
         min_tokens_sold: Uint128::from(1u128),
         max_amount_per_wallet: None,
@@ -444,7 +444,7 @@ fn test_start_sale_start_time_in_future() {
         env.block.time.plus_minutes(1).nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO;
     let msg = ExecuteMsg::StartSale {
         start_time: Some(one_minute_in_future),
-        expiration: Expiration::AtTime(Timestamp::from_nanos(
+        end_time: Expiration::AtTime(Timestamp::from_nanos(
             (one_minute_in_future + 2) * 1_000_000,
         )),
         price: coin(100, "uusd"),
@@ -466,7 +466,7 @@ fn test_start_sale_max_default() {
 
     let msg = ExecuteMsg::StartSale {
         start_time: None,
-        expiration: Expiration::AtTime(Timestamp::from_nanos((current_time + 2) * 1_000_000)),
+        end_time: Expiration::AtTime(Timestamp::from_nanos((current_time + 2) * 1_000_000)),
         price: coin(100, "uusd"),
         min_tokens_sold: Uint128::from(1u128),
         max_amount_per_wallet: None,
@@ -493,7 +493,7 @@ fn test_start_sale_max_default() {
 
     assert_eq!(
         State {
-            expiration: end_expiration,
+            end_time: end_expiration,
             price: coin(100, "uusd"),
             min_tokens_sold: Uint128::from(1u128),
             max_amount_per_wallet: 1,
@@ -519,7 +519,7 @@ fn test_start_sale_max_modified() {
 
     let msg = ExecuteMsg::StartSale {
         start_time: None,
-        expiration: Expiration::AtTime(Timestamp::from_nanos((current_time + 2) * 1_000_000)),
+        end_time: Expiration::AtTime(Timestamp::from_nanos((current_time + 2) * 1_000_000)),
         price: coin(100, "uusd"),
         min_tokens_sold: Uint128::from(1u128),
         max_amount_per_wallet: Some(5),
@@ -545,7 +545,7 @@ fn test_start_sale_max_modified() {
 
     assert_eq!(
         State {
-            expiration: end_expiration,
+            end_time: end_expiration,
             price: coin(100, "uusd"),
             min_tokens_sold: Uint128::from(1u128),
             max_amount_per_wallet: 5,
@@ -588,7 +588,7 @@ fn test_purchase_sale_not_ended() {
         .save(
             deps.as_mut().storage,
             &State {
-                expiration: Expiration::AtHeight(mock_env().block.height - 1),
+                end_time: Expiration::AtHeight(mock_env().block.height - 1),
                 price: coin(100, "uusd"),
                 min_tokens_sold: Uint128::from(1u128),
                 max_amount_per_wallet: 5,
@@ -628,7 +628,7 @@ fn test_purchase_no_funds() {
         .save(
             deps.as_mut().storage,
             &State {
-                expiration: Expiration::AtHeight(mock_env().block.height + 1),
+                end_time: Expiration::AtHeight(mock_env().block.height + 1),
                 price: coin(100, "uusd"),
                 min_tokens_sold: Uint128::from(1u128),
                 max_amount_per_wallet: 5,
@@ -666,7 +666,7 @@ fn test_purchase_wrong_denom() {
         .save(
             deps.as_mut().storage,
             &State {
-                expiration: Expiration::AtHeight(mock_env().block.height + 1),
+                end_time: Expiration::AtHeight(mock_env().block.height + 1),
                 price: coin(100, "uusd"),
                 min_tokens_sold: Uint128::from(1u128),
                 max_amount_per_wallet: 5,
@@ -709,7 +709,7 @@ fn test_purchase_not_enough_for_price() {
         .save(
             deps.as_mut().storage,
             &State {
-                expiration: Expiration::AtHeight(mock_env().block.height + 1),
+                end_time: Expiration::AtHeight(mock_env().block.height + 1),
                 price: coin(100, "uusd"),
                 min_tokens_sold: Uint128::from(1u128),
                 max_amount_per_wallet: 5,
@@ -756,7 +756,7 @@ fn test_purchase_not_enough_for_tax() {
         .save(
             deps.as_mut().storage,
             &State {
-                expiration: Expiration::AtHeight(mock_env().block.height + 1),
+                end_time: Expiration::AtHeight(mock_env().block.height + 1),
                 price: coin(100, "uusd"),
                 min_tokens_sold: Uint128::from(1u128),
                 max_amount_per_wallet: 5,
@@ -807,7 +807,7 @@ fn test_purchase_by_token_id_not_available() {
         .save(
             deps.as_mut().storage,
             &State {
-                expiration: Expiration::AtHeight(mock_env().block.height + 1),
+                end_time: Expiration::AtHeight(mock_env().block.height + 1),
                 price: coin(100, "uusd"),
                 min_tokens_sold: Uint128::from(1u128),
                 max_amount_per_wallet: 5,
@@ -842,7 +842,7 @@ fn test_purchase_by_token_id() {
     mint(deps.as_mut(), MOCK_TOKENS_FOR_SALE[1]).unwrap();
 
     let mut state = State {
-        expiration: Expiration::AtHeight(mock_env().block.height + 1),
+        end_time: Expiration::AtHeight(mock_env().block.height + 1),
         price: coin(100, "uusd"),
         min_tokens_sold: Uint128::from(1u128),
         max_amount_per_wallet: 1,
@@ -941,7 +941,7 @@ fn test_multiple_purchases() {
     };
 
     let mut state = State {
-        expiration: Expiration::AtHeight(mock_env().block.height + 1),
+        end_time: Expiration::AtHeight(mock_env().block.height + 1),
         price: coin(100, "uusd"),
         min_tokens_sold: Uint128::from(1u128),
         max_amount_per_wallet: 3,
@@ -1092,7 +1092,7 @@ fn test_purchase_more_than_allowed_per_wallet() {
     };
 
     let state = State {
-        expiration: Expiration::AtHeight(mock_env().block.height + 1),
+        end_time: Expiration::AtHeight(mock_env().block.height + 1),
         price: coin(100, "uusd"),
         min_tokens_sold: Uint128::from(1u128),
         max_amount_per_wallet: 3,
@@ -1126,7 +1126,7 @@ fn test_end_sale_not_expired() {
     init(deps.as_mut(), None);
 
     let state = State {
-        expiration: Expiration::AtHeight(mock_env().block.height + 1),
+        end_time: Expiration::AtHeight(mock_env().block.height + 1),
         price: coin(100, "uusd"),
         min_tokens_sold: Uint128::from(1u128),
         max_amount_per_wallet: 2,
@@ -1184,7 +1184,7 @@ fn test_integration_conditions_not_met() {
 
     let msg = ExecuteMsg::StartSale {
         start_time: None,
-        expiration: Expiration::AtTime(Timestamp::from_nanos((current_time + 2) * 1_000_000)),
+        end_time: Expiration::AtTime(Timestamp::from_nanos((current_time + 2) * 1_000_000)),
         price: coin(100, "uusd"),
         min_tokens_sold: Uint128::from(5u128),
         max_amount_per_wallet: Some(2),
@@ -1226,7 +1226,7 @@ fn test_integration_conditions_not_met() {
     let end_expiration = expiration_from_milliseconds(current_time + 2).unwrap();
 
     let state = State {
-        expiration: end_expiration,
+        end_time: end_expiration,
         price: coin(100, "uusd"),
         min_tokens_sold: Uint128::from(5u128),
         max_amount_per_wallet: 2,
@@ -1361,7 +1361,7 @@ fn test_integration_conditions_met() {
 
     let msg = ExecuteMsg::StartSale {
         start_time: None,
-        expiration: Expiration::AtTime(Timestamp::from_nanos((current_time + 2) * 1_000_000)),
+        end_time: Expiration::AtTime(Timestamp::from_nanos((current_time + 2) * 1_000_000)),
         price: coin(100, "uusd"),
         min_tokens_sold: Uint128::from(3u128),
         max_amount_per_wallet: Some(2),
@@ -1403,7 +1403,7 @@ fn test_integration_conditions_met() {
     let current_time = env.block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO;
     let end_expiration = expiration_from_milliseconds(current_time + 2).unwrap();
     let mut state = State {
-        expiration: end_expiration,
+        end_time: end_expiration,
         price: coin(100, "uusd"),
         min_tokens_sold: Uint128::from(3u128),
         max_amount_per_wallet: 2,
@@ -1577,7 +1577,7 @@ fn test_end_sale_single_purchase() {
         .save(
             deps.as_mut().storage,
             &State {
-                expiration: Expiration::AtHeight(mock_env().block.height - 1),
+                end_time: Expiration::AtHeight(mock_env().block.height - 1),
                 price: coin(100, "uusd"),
                 min_tokens_sold: Uint128::from(1u128),
                 max_amount_per_wallet: 5,
@@ -1625,7 +1625,7 @@ fn test_end_sale_all_tokens_sold() {
             deps.as_mut().storage,
             &State {
                 // Sale has not expired yet.
-                expiration: Expiration::AtHeight(mock_env().block.height + 1),
+                end_time: Expiration::AtHeight(mock_env().block.height + 1),
                 price: coin(100, "uusd"),
                 min_tokens_sold: Uint128::from(1u128),
                 max_amount_per_wallet: 5,
@@ -1677,7 +1677,7 @@ fn test_end_sale_some_tokens_sold_threshold_met() {
             deps.as_mut().storage,
             &State {
                 // Sale has not expired yet.
-                expiration: Expiration::AtHeight(mock_env().block.height + 1),
+                end_time: Expiration::AtHeight(mock_env().block.height + 1),
                 price: coin(100, "uusd"),
                 min_tokens_sold: Uint128::from(1u128),
                 max_amount_per_wallet: 5,
@@ -1735,7 +1735,7 @@ fn test_end_sale_some_tokens_sold_threshold_not_met() {
             deps.as_mut().storage,
             &State {
                 // Sale has not expired yet.
-                expiration: Expiration::AtHeight(mock_env().block.height + 1),
+                end_time: Expiration::AtHeight(mock_env().block.height + 1),
                 price: coin(100, "uusd"),
                 min_tokens_sold: Uint128::from(2u128),
                 max_amount_per_wallet: 5,
@@ -1781,7 +1781,7 @@ fn test_end_sale_limit_zero() {
         .save(
             deps.as_mut().storage,
             &State {
-                expiration: Expiration::AtHeight(mock_env().block.height - 1),
+                end_time: Expiration::AtHeight(mock_env().block.height - 1),
                 price: coin(100, "uusd"),
                 min_tokens_sold: Uint128::from(1u128),
                 max_amount_per_wallet: 5,

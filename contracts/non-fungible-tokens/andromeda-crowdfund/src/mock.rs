@@ -42,7 +42,7 @@ pub fn mock_start_crowdfund_msg(
 ) -> ExecuteMsg {
     ExecuteMsg::StartSale {
         start_time,
-        expiration: end_time,
+        end_time,
         price,
         min_tokens_sold,
         max_amount_per_wallet,

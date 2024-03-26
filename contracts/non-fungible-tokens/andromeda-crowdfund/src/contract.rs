@@ -126,7 +126,7 @@ pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
         ExecuteMsg::Mint(mint_msgs) => execute_mint(ctx, mint_msgs),
         ExecuteMsg::StartSale {
             start_time,
-            expiration,
+            end_time,
             price,
             min_tokens_sold,
             max_amount_per_wallet,
@@ -134,7 +134,7 @@ pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
         } => execute_start_sale(
             ctx,
             start_time,
-            expiration,
+            end_time,
             price,
             min_tokens_sold,
             max_amount_per_wallet,
@@ -315,7 +315,7 @@ fn execute_start_sale(
     STATE.save(
         deps.storage,
         &State {
-            expiration: end_time,
+            end_time,
             price,
             min_tokens_sold,
             max_amount_per_wallet,
@@ -355,7 +355,7 @@ fn execute_purchase_by_token_id(
 
     let mut state = state.unwrap();
     ensure!(
-        !state.expiration.is_expired(&env.block),
+        !state.end_time.is_expired(&env.block),
         ContractError::NoOngoingSale {}
     );
 
@@ -407,7 +407,7 @@ fn execute_purchase(
 
     let mut state = state.unwrap();
     ensure!(
-        !state.expiration.is_expired(&env.block),
+        !state.end_time.is_expired(&env.block),
         ContractError::NoOngoingSale {}
     );
 
@@ -543,7 +543,7 @@ fn execute_claim_refund(ctx: ExecuteContext) -> Result<Response, ContractError> 
     ensure!(state.is_some(), ContractError::NoOngoingSale {});
     let state = state.unwrap();
     ensure!(
-        state.expiration.is_expired(&env.block),
+        state.end_time.is_expired(&env.block),
         ContractError::SaleNotEnded {}
     );
     ensure!(
@@ -583,7 +583,7 @@ fn execute_end_sale(ctx: ExecuteContext, limit: Option<u32>) -> Result<Response,
 
     ensure!(
         // If all tokens have been sold the sale can be ended too.
-        state.expiration.is_expired(&env.block)
+        state.end_time.is_expired(&env.block)
             || number_of_tokens_available.is_zero()
             || (has_minimum_sold && is_owner),
         ContractError::SaleNotEnded {}
