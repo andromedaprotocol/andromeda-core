@@ -110,7 +110,7 @@ pub fn add_child(
     // Sender must be a contract
     ensure!(sender_code_id_res.is_ok(), ContractError::Unauthorized {});
     let sender_code_id = sender_code_id_res?.code_id;
-    let ado_type = AOSQuerier::ado_type_getter_smart(
+    let ado_type = AOSQuerier::ado_type_getter(
         &deps.querier,
         &ADOContract::default().get_adodb_address(deps.as_ref().storage, &deps.querier)?,
         sender_code_id,
