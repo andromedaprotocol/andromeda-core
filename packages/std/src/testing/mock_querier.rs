@@ -282,6 +282,7 @@ impl MockAndromedaQuerier {
     fn handle_adodb_query(&self, msg: &Binary) -> QuerierResult {
         match from_json(msg).unwrap() {
             ADODBQueryMsg::ADOType { code_id } => match code_id {
+                3 => SystemResult::Ok(ContractResult::Ok(to_json_binary(&"app-contract").unwrap())),
                 1 => SystemResult::Ok(ContractResult::Ok(to_json_binary(&"ADOType").unwrap())),
                 _ => SystemResult::Ok(ContractResult::Err("Invalid Code ID".to_string())),
             },
@@ -523,12 +524,12 @@ impl MockAndromedaQuerier {
         } else if key_str.contains("ado_type") {
             let split = key_str.split("ado_type");
             let key = split.last();
-            let app_contract_key = String::from_utf8(3u64.to_be_bytes().to_vec()).unwrap();
-            let generic_contract_key = String::from_utf8(1u64.to_be_bytes().to_vec()).unwrap();
+            // let app_contract_key = String::from_utf8(3u64.to_be_bytes().to_vec()).unwrap();
+            // let generic_contract_key = String::from_utf8(1u64.to_be_bytes().to_vec()).unwrap();
             if let Some(key) = key {
-                if key == app_contract_key {
+                if key == "3" {
                     SystemResult::Ok(ContractResult::Ok(to_json_binary("app-contract").unwrap()))
-                } else if key == generic_contract_key {
+                } else if key == "1" {
                     SystemResult::Ok(ContractResult::Ok(to_json_binary("ADOType").unwrap()))
                 } else {
                     SystemResult::Ok(ContractResult::Ok(Binary::default()))

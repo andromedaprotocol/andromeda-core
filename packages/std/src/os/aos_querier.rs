@@ -89,7 +89,7 @@ impl AOSQuerier {
         adodb_addr: &Addr,
         code_id: u64,
     ) -> Result<(), ContractError> {
-        let key = AOSQuerier::get_map_storage_key("ado_type", &[&code_id.to_be_bytes()])?;
+        let key = AOSQuerier::get_map_storage_key("ado_type", &[code_id.to_string().as_bytes()])?;
         let verify: Option<String> = AOSQuerier::query_storage(querier, adodb_addr, &key)?;
 
         if verify.is_some() {
