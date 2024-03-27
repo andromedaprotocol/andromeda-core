@@ -170,8 +170,6 @@ pub enum QueryMsg {
     ActionFee { ado_type: String, action: String },
     #[returns(Option<ActionFee>)]
     ActionFeeByCodeId { code_id: u64, action: String },
-    #[returns(Option<String>)]
-    ADOTypeRaw { code_id: u64 },
     // Base queries
     #[returns(VersionResponse)]
     Version {},
