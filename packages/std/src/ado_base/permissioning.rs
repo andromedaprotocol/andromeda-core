@@ -32,6 +32,11 @@ pub struct PermissionInfo {
     pub actor: String,
 }
 
+#[cw_serde]
+pub struct PermissionedActionsResponse {
+    pub actions: Vec<String>,
+}
+
 /// An enum to represent a user's permission for an action
 ///
 /// - **Blacklisted** - The user cannot perform the action until after the provided expiration
