@@ -5,10 +5,12 @@ use andromeda_std::ado_base::{
     AndromedaMsg, AndromedaQuery,
 };
 use cosmwasm_std::{Addr, Coin};
-use cw_multi_test::{App, AppResponse, Executor};
+use cw_multi_test::{AppResponse, Executor};
 use serde::{de::DeserializeOwned, Serialize};
 
 pub use anyhow::Result as AnyResult;
+
+use crate::mock::MockApp;
 
 pub struct MockContract(Addr);
 
@@ -23,7 +25,7 @@ impl MockContract {
 
     pub fn execute<M: Serialize + fmt::Debug>(
         &self,
-        app: &mut App,
+        app: &mut MockApp,
         msg: M,
         sender: Addr,
         funds: &[Coin],
@@ -31,18 +33,22 @@ impl MockContract {
         app.execute_contract(sender, self.addr().clone(), &msg, funds)
     }
 
-    pub fn query<M: Serialize + fmt::Debug, T: DeserializeOwned>(&self, app: &App, msg: M) -> T {
+    pub fn query<M: Serialize + fmt::Debug, T: DeserializeOwned>(
+        &self,
+        app: &MockApp,
+        msg: M,
+    ) -> T {
         app.wrap()
             .query_wasm_smart::<T>(self.addr().clone(), &msg)
             .unwrap()
     }
 
-    pub fn query_owner(&self, app: &App) -> String {
+    pub fn query_owner(&self, app: &MockApp) -> String {
         self.query::<AndromedaQuery, ContractOwnerResponse>(app, AndromedaQuery::Owner {})
             .owner
     }
 
-    pub fn accept_ownership(&self, app: &mut App, sender: Addr) -> AnyResult<AppResponse> {
+    pub fn accept_ownership(&self, app: &mut MockApp, sender: Addr) -> AnyResult<AppResponse> {
         self.execute(
             app,
             AndromedaMsg::Ownership(OwnershipMessage::AcceptOwnership {}),

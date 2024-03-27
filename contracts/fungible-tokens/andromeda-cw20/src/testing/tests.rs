@@ -63,6 +63,8 @@ fn test_transfer() {
         Response::new()
             .add_attribute("method", "instantiate")
             .add_attribute("type", "cw20")
+            .add_attribute("kernel_address", MOCK_KERNEL_CONTRACT)
+            .add_attribute("owner", "owner")
             .add_attribute("action", "register_module")
             .add_attribute("module_idx", "1"),
         res
@@ -138,7 +140,9 @@ fn test_send() {
     assert_eq!(
         Response::new()
             .add_attribute("method", "instantiate")
-            .add_attribute("type", "cw20"),
+            .add_attribute("type", "cw20")
+            .add_attribute("kernel_address", MOCK_KERNEL_CONTRACT)
+            .add_attribute("owner", "owner"),
         res
     );
 

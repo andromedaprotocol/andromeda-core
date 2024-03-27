@@ -2,8 +2,7 @@
 
 use andromeda_app::app::AppComponent;
 use andromeda_app_contract::mock::{
-    mock_andromeda_app, mock_app_instantiate_msg, mock_claim_ownership_msg, mock_get_address_msg,
-    mock_get_components_msg,
+    mock_andromeda_app, mock_app_instantiate_msg, mock_get_address_msg, mock_get_components_msg,
 };
 use andromeda_auction::mock::{
     mock_andromeda_auction, mock_auction_instantiate_msg, mock_authorize_token_address,
@@ -24,48 +23,52 @@ use andromeda_std::error::ContractError;
 use andromeda_testing::mock::MockAndromeda;
 use cosmwasm_std::{coin, to_json_binary, Addr, BlockInfo, Timestamp, Uint128};
 use cw721::OwnerOfResponse;
-use cw_multi_test::{App, Executor};
+use cw_multi_test::{
+    App, AppBuilder, BankKeeper, Executor, MockAddressGenerator, MockApiBech32, WasmKeeper,
+};
 
-fn mock_app() -> App {
-    App::new(|router, _api, storage| {
-        router
-            .bank
-            .init_balance(
-                storage,
-                &Addr::unchecked("owner"),
-                [coin(999999, "uandr")].to_vec(),
-            )
-            .unwrap();
-        router
-            .bank
-            .init_balance(
-                storage,
-                &Addr::unchecked("buyer_one"),
-                [coin(100, "uandr")].to_vec(),
-            )
-            .unwrap();
-        router
-            .bank
-            .init_balance(
-                storage,
-                &Addr::unchecked("buyer_two"),
-                [coin(100, "uandr")].to_vec(),
-            )
-            .unwrap();
-    })
+fn mock_app() -> App<BankKeeper, MockApiBech32> {
+    AppBuilder::new()
+        .with_api(MockApiBech32::new("andr"))
+        .with_wasm(WasmKeeper::new().with_address_generator(MockAddressGenerator))
+        .build(|router, _api, storage| {
+            router
+                .bank
+                .init_balance(
+                    storage,
+                    &Addr::unchecked("owner"),
+                    [coin(9999999, "uandr")].to_vec(),
+                )
+                .unwrap();
+        })
 }
 
-fn mock_andromeda(app: &mut App, admin_address: Addr) -> MockAndromeda {
+fn mock_andromeda(app: &mut App<BankKeeper, MockApiBech32>, admin_address: Addr) -> MockAndromeda {
     MockAndromeda::new(app, &admin_address)
 }
 
 #[test]
 fn test_auction_app() {
-    let owner = Addr::unchecked("owner");
-    let buyer_one = Addr::unchecked("buyer_one");
-    let buyer_two = Addr::unchecked("buyer_two");
-
     let mut router = mock_app();
+    let owner = router.api().addr_make("owner");
+    let buyer_one = router.api().addr_make("buyer_one");
+    let buyer_two = router.api().addr_make("buyer_two");
+
+    router
+        .send_tokens(
+            Addr::unchecked("owner"),
+            buyer_one.clone(),
+            &[coin(1000, "uandr")],
+        )
+        .unwrap();
+    router
+        .send_tokens(
+            Addr::unchecked("owner"),
+            buyer_two.clone(),
+            &[coin(1000, "uandr")],
+        )
+        .unwrap();
+
     let andr = mock_andromeda(&mut router, owner.clone());
 
     // Store contract codes
@@ -91,8 +94,15 @@ fn test_auction_app() {
         to_json_binary(&cw721_init_msg).unwrap(),
     );
 
-    let auction_init_msg =
-        mock_auction_instantiate_msg(None, andr.kernel_address.to_string(), None, None);
+    let auction_init_msg = mock_auction_instantiate_msg(
+        None,
+        andr.kernel_address.to_string(),
+        None,
+        Some(vec![AndrAddr::from_string(format!(
+            "./{}",
+            cw721_component.name
+        ))]),
+    );
     let auction_component = AppComponent::new(
         "auction".to_string(),
         "auction".to_string(),
@@ -100,7 +110,7 @@ fn test_auction_app() {
     );
 
     // Create App
-    let app_components = vec![cw721_component.clone(), auction_component.clone()];
+    let app_components = vec![auction_component.clone(), cw721_component.clone()];
     let app_init_msg = mock_app_instantiate_msg(
         "AuctionApp".to_string(),
         app_components.clone(),
@@ -126,14 +136,14 @@ fn test_auction_app() {
 
     assert_eq!(components, app_components);
 
-    router
-        .execute_contract(
-            owner.clone(),
-            Addr::unchecked(app_addr.clone()),
-            &mock_claim_ownership_msg(None),
-            &[],
-        )
-        .unwrap();
+    // router
+    //     .execute_contract(
+    //         owner.clone(),
+    //         Addr::unchecked(app_addr.clone()),
+    //         &mock_claim_ownership_msg(None),
+    //         &[],
+    //     )
+    //     .unwrap();
 
     // Mint Tokens
     let cw721_addr: String = router
@@ -144,7 +154,7 @@ fn test_auction_app() {
         )
         .unwrap();
     let mint_msg = mock_quick_mint_msg(1, owner.to_string());
-    andr.accept_ownership(&mut router, cw721_addr.clone(), owner.clone());
+    // andr.accept_ownership(&mut router, cw721_addr.clone(), owner.clone());
     router
         .execute_contract(
             owner.clone(),
@@ -159,7 +169,7 @@ fn test_auction_app() {
         .wrap()
         .query_wasm_smart(app_addr, &mock_get_address_msg(auction_component.name))
         .unwrap();
-    andr.accept_ownership(&mut router, auction_addr.clone(), owner.clone());
+    // andr.accept_ownership(&mut router, auction_addr.clone(), owner.clone());
     router
         .execute_contract(
             owner.clone(),

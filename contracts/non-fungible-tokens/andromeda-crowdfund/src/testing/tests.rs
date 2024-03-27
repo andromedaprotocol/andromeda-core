@@ -115,6 +115,8 @@ fn test_instantiate() {
         Response::new()
             .add_attribute("method", "instantiate")
             .add_attribute("type", "crowdfund")
+            .add_attribute("kernel_address", MOCK_KERNEL_CONTRACT)
+            .add_attribute("owner", "owner")
             .add_attribute("action", "register_module")
             .add_attribute("module_idx", "1"),
         res
@@ -1790,7 +1792,7 @@ fn test_addresslist() {
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
     };
 
-    let info = mock_info("app_contract", &[]);
+    let info = mock_info("owner", &[]);
     let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     // Not whitelisted user
@@ -1819,7 +1821,7 @@ fn test_update_token_contract() {
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
     };
 
-    let info = mock_info("app_contract", &[]);
+    let info = mock_info("owner", &[]);
     let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
     let msg = ExecuteMsg::UpdateTokenContract {
