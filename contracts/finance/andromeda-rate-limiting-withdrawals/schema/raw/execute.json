@@ -26,22 +26,17 @@
     {
       "type": "object",
       "required": [
-        "withdraws"
+        "withdraw_funds"
       ],
       "properties": {
-        "withdraws": {
+        "withdraw_funds": {
           "type": "object",
           "required": [
             "amount"
           ],
           "properties": {
-<<<<<<< HEAD
             "amount": {
               "$ref": "#/definitions/Uint128"
-=======
-            "lock_time": {
-              "$ref": "#/definitions/Milliseconds"
->>>>>>> 1.0.rc-1
             }
           },
           "additionalProperties": false
@@ -430,12 +425,6 @@
         }
       },
       "additionalProperties": false
-    },
-    "Milliseconds": {
-      "description": "Represents time in milliseconds.",
-      "type": "integer",
-      "format": "uint64",
-      "minimum": 0.0
     },
     "Module": {
       "description": "A struct describing a token module, provided with the instantiation message this struct is used to record the info about the module and how/if it should be instantiated",

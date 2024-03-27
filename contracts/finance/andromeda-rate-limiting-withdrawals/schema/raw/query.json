@@ -54,8 +54,6 @@
     {
       "type": "object",
       "required": [
-<<<<<<< HEAD
-=======
         "ownership_request"
       ],
       "properties": {
@@ -69,7 +67,6 @@
     {
       "type": "object",
       "required": [
->>>>>>> 1.0.rc-1
         "type"
       ],
       "properties": {
