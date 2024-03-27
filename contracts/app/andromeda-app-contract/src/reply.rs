@@ -1,5 +1,5 @@
 use andromeda_std::{common::response::get_reply_address, error::ContractError};
-use cosmwasm_std::{ensure_eq, DepsMut, Reply, Response, StdError};
+use cosmwasm_std::{ensure_eq, Addr, DepsMut, Reply, Response};
 
 use crate::state::{ADO_ADDRESSES, ADO_DESCRIPTORS};
 
@@ -14,10 +14,10 @@ pub fn on_component_instantiation(deps: DepsMut, msg: Reply) -> Result<Response,
     ensure_eq!(
         addr,
         saved_addr,
-        StdError::generic_err(format!(
-            "Instantiate2 addresses do not match: expected: {}, received: {}",
-            saved_addr, addr
-        ))
+        ContractError::Instantiate2AddressMismatch {
+            expected: saved_addr,
+            received: Addr::unchecked(addr_str)
+        }
     );
 
     let resp = Response::default();
