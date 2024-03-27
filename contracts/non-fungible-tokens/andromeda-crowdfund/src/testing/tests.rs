@@ -115,6 +115,8 @@ fn test_instantiate() {
         Response::new()
             .add_attribute("method", "instantiate")
             .add_attribute("type", "crowdfund")
+            .add_attribute("kernel_address", MOCK_KERNEL_CONTRACT)
+            .add_attribute("owner", "owner")
             .add_attribute("action", "register_module")
             .add_attribute("module_idx", "1"),
         res

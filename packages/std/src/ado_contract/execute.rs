@@ -78,7 +78,6 @@ impl<'a> ADOContract<'a> {
 
         self.owner.save(storage, &owner)?;
         attributes.push(attr("owner", owner));
-
         Ok(Response::new().add_attributes(attributes))
     }
 
