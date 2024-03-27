@@ -2,7 +2,7 @@ mod mock_querier;
 
 use self::mock_querier::{MOCK_ANCHOR_CONTRACT, MOCK_VAULT_CONTRACT};
 use crate::contract::*;
-use crate::testing::mock_querier::{mock_dependencies_custom, PositionResponse};
+use crate::testing::mock_querier::mock_dependencies_custom;
 use andromeda_ecosystem::vault::{
     DepositMsg, ExecuteMsg, InstantiateMsg, QueryMsg, StrategyAddressResponse, StrategyType,
     YieldStrategy, BALANCES, STRATEGY_CONTRACT_ADDRESSES,
