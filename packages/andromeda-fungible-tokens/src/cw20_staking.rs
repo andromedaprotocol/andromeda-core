@@ -71,9 +71,6 @@ pub enum QueryMsg {
         start_after: Option<String>,
         limit: Option<u32>,
     },
-    /// Queries the current timestamp.
-    #[returns(u64)]
-    Timestamp {},
 }
 
 #[cw_serde]
