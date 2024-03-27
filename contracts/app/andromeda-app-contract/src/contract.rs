@@ -55,7 +55,6 @@ pub fn instantiate(
                 owner: msg.owner.clone(),
             },
         )?
-        .add_attribute("owner", msg.owner.clone().unwrap_or(sender.clone()))
         .add_attribute("andr_app", msg.name.clone());
 
     let vfs_address = ADOContract::default().get_vfs_address(deps.storage, &deps.querier)?;

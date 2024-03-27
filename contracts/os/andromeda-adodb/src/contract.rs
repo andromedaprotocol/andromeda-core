@@ -4,6 +4,7 @@ use andromeda_std::ado_contract::ADOContract;
 use andromeda_std::common::encode_binary;
 use andromeda_std::error::{from_semver, ContractError};
 use andromeda_std::os::adodb::{ADOVersion, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
+use andromeda_std::os::aos_querier::AOSQuerier;
 use cosmwasm_std::{
     ensure, entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError,
 };
@@ -126,7 +127,7 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::CodeId { key } => encode_binary(&query::code_id(deps, key)?),
         // QueryMsg::UnpublishedCodeIds {} => encode_binary(&query::unpublished_code_ids(deps)?),
@@ -163,6 +164,12 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractErr
         QueryMsg::Owner {} => encode_binary(&ADOContract::default().query_contract_owner(deps)?),
         QueryMsg::KernelAddress {} => {
             encode_binary(&ADOContract::default().query_kernel_address(deps)?)
+        }
+        QueryMsg::ADOTypeRaw { code_id } => {
+            let ado_type =
+                AOSQuerier::ado_type_getter(&deps.querier, &env.contract.address, code_id)?;
+
+            encode_binary(&ado_type)
         }
     }
 }
