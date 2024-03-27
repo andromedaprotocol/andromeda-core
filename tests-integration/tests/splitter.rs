@@ -1,7 +1,10 @@
 use andromeda_app::app::{AppComponent, ComponentType};
-use andromeda_app_contract::mock::{mock_andromeda_app, MockApp};
+use andromeda_app_contract::mock::{mock_andromeda_app, MockAppContract};
 
-use andromeda_testing::{MockAndromeda, MockContract};
+use andromeda_testing::{
+    mock::{init_balances, mock_app, MockApp},
+    MockAndromeda, MockContract,
+};
 
 use andromeda_std::amp::Recipient;
 use cosmwasm_std::{coin, Addr, Decimal, Uint128};
@@ -13,32 +16,19 @@ use andromeda_splitter::mock::{
 
 use std::str::FromStr;
 
-use cw_multi_test::App;
-
-fn mock_app() -> App {
-    App::new(|router, _api, storage| {
-        router
-            .bank
-            .init_balance(
-                storage,
-                &Addr::unchecked("owner"),
-                [coin(10000000, "uandr")].to_vec(),
-            )
-            .unwrap();
-    })
-}
-
-fn mock_andromeda(app: &mut App, admin_address: Addr) -> MockAndromeda {
+fn mock_andromeda(app: &mut MockApp, admin_address: Addr) -> MockAndromeda {
     MockAndromeda::new(app, &admin_address)
 }
 
 #[test]
 fn test_splitter() {
-    let owner = Addr::unchecked("owner");
-    let recipient_1 = Addr::unchecked("recipient_1");
-    let recipient_2 = Addr::unchecked("recipient_2");
-
     let mut router = mock_app();
+    let owner = router.api().addr_make("owner");
+    let recipient_1 = router.api().addr_make("recipient_1");
+    let recipient_2 = router.api().addr_make("recipient_2");
+
+    init_balances(&mut router, vec![(owner.clone(), &[coin(1000, "uandr")])]);
+
     let andr = mock_andromeda(&mut router, owner.clone());
 
     let app_code_id = router.store_code(mock_andromeda_app());
@@ -66,7 +56,7 @@ fn test_splitter() {
     };
 
     let app_components = vec![splitter_app_component.clone()];
-    let app = MockApp::instantiate(
+    let app = MockAppContract::instantiate(
         app_code_id,
         owner.clone(),
         &mut router,

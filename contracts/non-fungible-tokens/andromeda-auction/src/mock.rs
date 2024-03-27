@@ -8,13 +8,14 @@ use andromeda_non_fungible_tokens::auction::{
 use andromeda_std::ado_base::permissioning::{Permission, PermissioningMessage};
 use andromeda_std::amp::messages::AMPPkt;
 use andromeda_std::{ado_base::modules::Module, amp::AndrAddr};
+use andromeda_testing::mock::MockApp;
 use andromeda_testing::{
     mock_ado,
     mock_contract::{ExecuteResult, MockADO, MockContract},
 };
 use cosmwasm_std::{Addr, Coin, Empty, Uint128};
 use cw20::Expiration;
-use cw_multi_test::{App, AppResponse, Contract, ContractWrapper, Executor};
+use cw_multi_test::{AppResponse, Contract, ContractWrapper, Executor};
 
 pub struct MockAuction(Addr);
 mock_ado!(MockAuction, ExecuteMsg, QueryMsg);
@@ -23,7 +24,7 @@ impl MockAuction {
     pub fn instantiate(
         code_id: u64,
         sender: Addr,
-        app: &mut App,
+        app: &mut MockApp,
         modules: Option<Vec<Module>>,
         kernel_address: impl Into<String>,
         owner: Option<String>,
@@ -45,7 +46,7 @@ impl MockAuction {
     #[allow(clippy::too_many_arguments)]
     pub fn execute_start_auction(
         &self,
-        app: &mut App,
+        app: &mut MockApp,
         sender: Addr,
         start_time: u64,
         duration: u64,
@@ -60,7 +61,7 @@ impl MockAuction {
 
     pub fn execute_place_bid(
         &self,
-        app: &mut App,
+        app: &mut MockApp,
         sender: Addr,
         token_id: String,
         token_address: String,
@@ -73,7 +74,7 @@ impl MockAuction {
 
     pub fn execute_claim_auction(
         &self,
-        app: &mut App,
+        app: &mut MockApp,
         sender: Addr,
         token_id: String,
         token_address: String,
@@ -84,7 +85,7 @@ impl MockAuction {
 
     pub fn query_auction_ids(
         &self,
-        app: &mut App,
+        app: &mut MockApp,
         token_id: String,
         token_address: String,
     ) -> Vec<Uint128> {
@@ -93,12 +94,16 @@ impl MockAuction {
         res.auction_ids
     }
 
-    pub fn query_auction_state(&self, app: &mut App, auction_id: Uint128) -> AuctionStateResponse {
+    pub fn query_auction_state(
+        &self,
+        app: &mut MockApp,
+        auction_id: Uint128,
+    ) -> AuctionStateResponse {
         let msg = mock_get_auction_state(auction_id);
         self.query(app, msg)
     }
 
-    pub fn query_bids(&self, app: &mut App, auction_id: Uint128) -> Vec<Bid> {
+    pub fn query_bids(&self, app: &mut MockApp, auction_id: Uint128) -> Vec<Bid> {
         let msg = mock_get_bids(auction_id);
         let res: BidsResponse = self.query(app, msg);
         res.bids

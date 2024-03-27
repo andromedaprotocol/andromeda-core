@@ -10,6 +10,8 @@ use serde::{de::DeserializeOwned, Serialize};
 
 pub use anyhow::Result as AnyResult;
 
+use crate::mock::MockApp;
+
 pub type ExecuteResult = AnyResult<AppResponse>;
 
 pub trait MockContract<E: Serialize + fmt::Debug, Q: Serialize + fmt::Debug> {
@@ -17,7 +19,7 @@ pub trait MockContract<E: Serialize + fmt::Debug, Q: Serialize + fmt::Debug> {
 
     fn execute(
         &self,
-        app: &mut App,
+        app: &mut MockApp,
         msg: &E,
         sender: Addr,
         funds: &[Coin],
@@ -25,7 +27,7 @@ pub trait MockContract<E: Serialize + fmt::Debug, Q: Serialize + fmt::Debug> {
         app.execute_contract(sender, self.addr().clone(), &msg, funds)
     }
 
-    fn query<T: DeserializeOwned>(&self, app: &App, msg: Q) -> T {
+    fn query<T: DeserializeOwned>(&self, app: &MockApp, msg: Q) -> T {
         app.wrap()
             .query_wasm_smart::<T>(self.addr().clone(), &msg)
             .unwrap()
@@ -35,14 +37,14 @@ pub trait MockContract<E: Serialize + fmt::Debug, Q: Serialize + fmt::Debug> {
 pub trait MockADO<E: Serialize + fmt::Debug, Q: Serialize + fmt::Debug>:
     MockContract<E, Q>
 {
-    fn query_owner(&self, app: &App) -> String {
+    fn query_owner(&self, app: &MockApp) -> String {
         app.wrap()
             .query_wasm_smart::<ContractOwnerResponse>(self.addr(), &AndromedaQuery::Owner {})
             .unwrap()
             .owner
     }
 
-    fn accept_ownership(&self, app: &mut App, sender: Addr) -> AnyResult<AppResponse> {
+    fn accept_ownership(&self, app: &mut MockApp, sender: Addr) -> AnyResult<AppResponse> {
         app.execute_contract(
             sender,
             self.addr().clone(),

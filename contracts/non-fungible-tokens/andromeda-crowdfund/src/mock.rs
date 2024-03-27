@@ -11,11 +11,12 @@ use andromeda_std::{
     common::Milliseconds,
 };
 use andromeda_testing::{
+    mock::MockApp,
     mock_ado,
     mock_contract::{ExecuteResult, MockADO, MockContract},
 };
 use cosmwasm_std::{Addr, Coin, Empty, Uint128};
-use cw_multi_test::{App, Contract, ContractWrapper, Executor};
+use cw_multi_test::{Contract, ContractWrapper, Executor};
 
 pub struct MockCrowdfund(Addr);
 mock_ado!(MockCrowdfund, ExecuteMsg, QueryMsg);
@@ -25,7 +26,7 @@ impl MockCrowdfund {
     pub fn instantiate(
         code_id: u64,
         sender: Addr,
-        app: &mut App,
+        app: &mut MockApp,
         token_address: AndrAddr,
         can_mint_after_sale: bool,
         modules: Option<Vec<Module>>,
@@ -56,7 +57,7 @@ impl MockCrowdfund {
     pub fn execute_start_sale(
         &self,
         sender: Addr,
-        app: &mut App,
+        app: &mut MockApp,
         expiration: Milliseconds,
         price: Coin,
         min_tokens_sold: Uint128,
@@ -76,7 +77,7 @@ impl MockCrowdfund {
     pub fn execute_end_sale(
         &self,
         sender: Addr,
-        app: &mut App,
+        app: &mut MockApp,
         limit: Option<u32>,
     ) -> ExecuteResult {
         let msg = mock_end_crowdfund_msg(limit);
@@ -86,7 +87,7 @@ impl MockCrowdfund {
     pub fn execute_mint(
         &self,
         sender: Addr,
-        app: &mut App,
+        app: &mut MockApp,
         token_id: String,
         extension: TokenExtension,
         token_uri: Option<String>,
@@ -101,7 +102,7 @@ impl MockCrowdfund {
     pub fn execute_quick_mint(
         &self,
         sender: Addr,
-        app: &mut App,
+        app: &mut MockApp,
         amount: u32,
         publisher: String,
     ) -> ExecuteResult {
@@ -112,7 +113,7 @@ impl MockCrowdfund {
     pub fn execute_purchase(
         &self,
         sender: Addr,
-        app: &mut App,
+        app: &mut MockApp,
         number_of_tokens: Option<u32>,
         funds: &[Coin],
     ) -> ExecuteResult {

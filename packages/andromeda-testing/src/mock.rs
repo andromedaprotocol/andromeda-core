@@ -1,15 +1,9 @@
 #![cfg(all(not(target_arch = "wasm32")))]
 
-use andromeda_adodb::mock::{mock_andromeda_adodb, mock_get_code_id_msg, mock_publish};
-use andromeda_economics::mock::{mock_andromeda_economics, mock_economics_instantiate_msg};
-use andromeda_kernel::mock::{
-    mock_andromeda_kernel, mock_get_key_address, mock_kernel_instantiate_message,
-    mock_upsert_key_address,
-};
-use andromeda_vfs::mock::{
-    mock_add_path, mock_andromeda_vfs, mock_register_user, mock_resolve_path_query,
-    mock_vfs_instantiate_message,
-};
+use andromeda_adodb::mock::mock_andromeda_adodb;
+use andromeda_economics::mock::mock_andromeda_economics;
+use andromeda_kernel::mock::mock_andromeda_kernel;
+use andromeda_vfs::mock::mock_andromeda_vfs;
 use cosmwasm_std::{coin, Addr, Coin, Empty};
 use cw_multi_test::{
     App, AppBuilder, BankKeeper, Contract, Executor, MockAddressGenerator, MockApiBech32,
@@ -17,8 +11,6 @@ use cw_multi_test::{
 };
 
 use crate::{mock_contract::MockContract, MockADODB, MockEconomics, MockKernel, MockVFS};
-use andromeda_std::ado_base::ownership::OwnershipMessage;
-use andromeda_std::ado_base::AndromedaMsg;
 
 pub const ADMIN_USERNAME: &str = "am";
 
@@ -65,8 +57,13 @@ impl MockAndromeda {
         let economics_code_id = app.store_code(mock_andromeda_economics());
 
         // Init Kernel
-        let kernel =
-            MockKernel::instantiate(app, kernel_code_id, admin_address.clone(), None, None);
+        let kernel = MockKernel::instantiate(
+            app,
+            kernel_code_id,
+            admin_address.clone(),
+            Some(admin_address.to_string()),
+            None,
+        );
 
         // Init ADO DB
         let adodb = MockADODB::instantiate(
@@ -94,8 +91,6 @@ impl MockAndromeda {
             None,
             kernel.addr().to_string(),
         );
-        // vfs.execute_register_user(app, admin_address.clone(), ADMIN_USERNAME.to_string())
-        //     .unwrap();
 
         // Add Code IDs
         adodb
@@ -147,7 +142,7 @@ impl MockAndromeda {
             .unwrap();
 
         MockAndromeda {
-            admin_address: admin_address.clone(),
+            admin_address,
             kernel,
             adodb,
             economics,
@@ -156,7 +151,7 @@ impl MockAndromeda {
     }
 
     /// Stores a given Code ID under the given key in the ADO DB contract
-    pub fn store_code_id(&self, app: &mut App, key: &str, code_id: u64) {
+    pub fn store_code_id(&self, app: &mut MockApp, key: &str, code_id: u64) {
         self.adodb
             .execute_publish(
                 app,
@@ -182,7 +177,7 @@ impl MockAndromeda {
     }
 
     /// Gets the Code ID for a given key from the ADO DB contract
-    pub fn get_code_id(&self, app: &mut App, key: impl Into<String>) -> u64 {
+    pub fn get_code_id(&self, app: &mut MockApp, key: impl Into<String>) -> u64 {
         self.adodb.query_code_id(app, key)
     }
 }

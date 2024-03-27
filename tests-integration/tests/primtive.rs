@@ -6,7 +6,10 @@ use andromeda_primitive::mock::{
     mock_andromeda_primitive, mock_primitive_get_value, mock_primitive_instantiate_msg,
     mock_store_value_msg,
 };
-use andromeda_testing::mock::{mock_app, MockAndromeda, MockApp};
+use andromeda_testing::{
+    mock::{mock_app, MockAndromeda, MockApp},
+    MockContract,
+};
 use cosmwasm_schema::schemars::Map;
 use cosmwasm_std::Addr;
 use cw_multi_test::Executor;

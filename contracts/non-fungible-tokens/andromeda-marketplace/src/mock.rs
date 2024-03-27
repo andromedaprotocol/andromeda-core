@@ -6,9 +6,11 @@ use andromeda_non_fungible_tokens::marketplace::{
 };
 use andromeda_std::ado_base::modules::Module;
 use andromeda_std::amp::messages::AMPPkt;
-use andromeda_testing::{mock_ado, mock_contract::ExecuteResult, MockADO, MockContract};
+use andromeda_testing::{
+    mock::MockApp, mock_ado, mock_contract::ExecuteResult, MockADO, MockContract,
+};
 use cosmwasm_std::{Addr, Empty, Uint128};
-use cw_multi_test::{App, Contract, ContractWrapper, Executor};
+use cw_multi_test::{Contract, ContractWrapper, Executor};
 
 pub struct MockMarketplace(Addr);
 mock_ado!(MockMarketplace, ExecuteMsg, QueryMsg);
@@ -17,7 +19,7 @@ impl MockMarketplace {
     pub fn instantiate(
         code_id: u64,
         sender: Addr,
-        app: &mut App,
+        app: &mut MockApp,
         kernel_address: impl Into<String>,
         modules: Option<Vec<Module>>,
         owner: Option<String>,
@@ -38,7 +40,7 @@ impl MockMarketplace {
 
     pub fn execute_buy_token(
         &self,
-        app: &mut App,
+        app: &mut MockApp,
         sender: Addr,
         token_address: impl Into<String>,
         token_id: impl Into<String>,

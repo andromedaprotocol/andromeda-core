@@ -1,37 +1,19 @@
 #![cfg(not(target_arch = "wasm32"))]
 
 use andromeda_app::app::AppComponent;
-use andromeda_app_contract::mock::{
-    mock_andromeda_app, mock_app_instantiate_msg, mock_get_address_msg, mock_get_components_msg,
-};
+use andromeda_app_contract::mock::{mock_andromeda_app, mock_claim_ownership_msg, MockAppContract};
 use andromeda_auction::mock::{
     mock_andromeda_auction, mock_auction_instantiate_msg, mock_start_auction, MockAuction,
 };
 use andromeda_cw721::mock::{mock_andromeda_cw721, mock_cw721_instantiate_msg, MockCW721};
 
 use andromeda_std::common::expiration::MILLISECONDS_TO_NANOSECONDS_RATIO;
-use andromeda_testing::{mock::MockAndromeda, mock_contract::MockContract};
-use cosmwasm_std::{coin, to_json_binary, Addr, BlockInfo, Timestamp, Uint128};
-use cw721::OwnerOfResponse;
-use cw_multi_test::{
-    App, AppBuilder, BankKeeper, Executor, MockAddressGenerator, MockApiBech32, WasmKeeper,
+use andromeda_testing::{
+    mock::{init_balances, mock_app, MockAndromeda},
+    mock_contract::MockContract,
 };
-
-fn mock_app() -> App<BankKeeper, MockApiBech32> {
-    AppBuilder::new()
-        .with_api(MockApiBech32::new("andr"))
-        .with_wasm(WasmKeeper::new().with_address_generator(MockAddressGenerator))
-        .build(|router, _api, storage| {
-            router
-                .bank
-                .init_balance(
-                    storage,
-                    &Addr::unchecked("owner"),
-                    [coin(9999999, "uandr")].to_vec(),
-                )
-                .unwrap();
-        })
-}
+use cosmwasm_std::{coin, to_json_binary, Addr, BlockInfo, Timestamp, Uint128};
+use cw_multi_test::{App, BankKeeper, Executor, MockApiBech32};
 
 fn mock_andromeda(app: &mut App<BankKeeper, MockApiBech32>, admin_address: Addr) -> MockAndromeda {
     MockAndromeda::new(app, &admin_address)
@@ -44,20 +26,13 @@ fn test_auction_app() {
     let buyer_one = router.api().addr_make("buyer_one");
     let buyer_two = router.api().addr_make("buyer_two");
 
-    router
-        .send_tokens(
-            Addr::unchecked("owner"),
-            buyer_one.clone(),
-            &[coin(1000, "uandr")],
-        )
-        .unwrap();
-    router
-        .send_tokens(
-            Addr::unchecked("owner"),
-            buyer_two.clone(),
-            &[coin(1000, "uandr")],
-        )
-        .unwrap();
+    init_balances(
+        &mut router,
+        vec![
+            (buyer_one.clone(), &[coin(1000, "uandr")]),
+            (buyer_two.clone(), &[coin(1000, "uandr")]),
+        ],
+    );
 
     let andr = mock_andromeda(&mut router, owner.clone());
     // Store contract codes
@@ -90,7 +65,7 @@ fn test_auction_app() {
 
     // Create App
     let app_components = vec![cw721_component.clone(), auction_component.clone()];
-    let app = MockApp::instantiate(
+    let app = MockAppContract::instantiate(
         andr.get_code_id(&mut router, "app-contract"),
         owner.clone(),
         &mut router,
@@ -156,22 +131,6 @@ fn test_auction_app() {
         &[coin(50, "uandr")],
     );
 
-    // let packet = AMPPkt::new(
-    //     buyer_one.clone(),
-    //     andr.kernel_address.to_string(),
-    //     vec![amp_msg],
-    // );
-    // let receive_packet_msg = mock_receive_packet(packet);
-
-    // router
-    //     .execute_contract(
-    //         buyer_one.clone(),
-    //         Addr::unchecked(auction_addr.clone()),
-    //         &receive_packet_msg,
-    //         &[coin(50, "uandr")],
-    //     )
-    //     .unwrap();
-
     // Check Bid Status One
     let bids = auction.query_bids(&mut router, *auction_id);
     assert_eq!(bids.len(), 1);
@@ -215,5 +174,5 @@ fn test_auction_app() {
     let token_owner = cw721.query_owner_of(&router, "0");
     assert_eq!(token_owner, buyer_two);
     let owner_balance = router.wrap().query_balance(owner, "uandr").unwrap();
-    assert_eq!(owner_balance.amount, Uint128::from(200u128));
+    assert_eq!(owner_balance.amount, Uint128::from(100u128));
 }

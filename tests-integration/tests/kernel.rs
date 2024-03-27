@@ -5,12 +5,8 @@ use andromeda_splitter::mock::{
 };
 use andromeda_std::amp::{messages::AMPMsg, AndrAddr, Recipient};
 use andromeda_testing::{
-    mock::MockAndromeda,
-    mock_contract::{MockADO, MockContract},
-};
-use andromeda_testing::{
     mock::{mock_app, MockAndromeda, MockApp},
-    mock_contract::MockContract,
+    mock_contract::{MockADO, MockContract},
 };
 
 use cosmwasm_std::{coin, to_json_binary, Addr, Decimal};
@@ -158,7 +154,7 @@ fn kernel() {
         .kernel
         .execute_send(
             &mut router,
-            owner,
+            owner.clone(),
             splitter.addr(),
             mock_splitter_send_msg(),
             vec![coin(100, "uandr")],
@@ -176,7 +172,7 @@ fn kernel() {
 
     let owner_balance = router
         .wrap()
-        .query_balance(owner.clone(), "uandr".to_string())
+        .query_balance(owner, "uandr".to_string())
         .unwrap();
 
     // The owner's balance should be his starting balance subtracted by the 100 he sent with the splitter execute msg

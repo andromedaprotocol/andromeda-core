@@ -1,5 +1,5 @@
 use andromeda_app::app::{AppComponent, ComponentType};
-use andromeda_app_contract::mock::{mock_andromeda_app, MockApp};
+use andromeda_app_contract::mock::{mock_andromeda_app, MockAppContract};
 use andromeda_crowdfund::mock::{
     mock_andromeda_crowdfund, mock_crowdfund_instantiate_msg, MockCrowdfund,
 };
@@ -19,12 +19,12 @@ use andromeda_std::ado_base::modules::Module;
 use std::str::FromStr;
 
 use andromeda_testing::{
-    mock::MockAndromeda,
-    mock_contract::{MockADO, MockContract},
+    mock::{init_balances, mock_app, MockAndromeda, MockApp},
+    mock_contract::MockContract,
 };
 use andromeda_vault::mock::mock_andromeda_vault;
 use cosmwasm_std::{coin, to_json_binary, Addr, BlockInfo, Decimal, Uint128};
-use cw_multi_test::{App, Executor};
+use cw_multi_test::Executor;
 
 fn mock_andromeda(app: &mut MockApp, admin_address: Addr) -> MockAndromeda {
     MockAndromeda::new(app, &admin_address)
@@ -137,7 +137,7 @@ fn test_crowdfund_app() {
         splitter_app_component.clone(),
     ];
 
-    let app = MockApp::instantiate(
+    let app = MockAppContract::instantiate(
         app_code_id,
         owner.clone(),
         &mut router,
@@ -150,9 +150,6 @@ fn test_crowdfund_app() {
     let components = app.query_components(&router);
     assert_eq!(components, app_components);
 
-    app.execute_claim_ownership(&mut router, owner.clone(), None)
-        .unwrap();
-
     let cw721_contract =
         app.query_ado_by_component_name::<MockCW721>(&router, cw721_component.name);
     let crowdfund_contract =
@@ -160,10 +157,6 @@ fn test_crowdfund_app() {
 
     let minter = cw721_contract.query_minter(&router);
     assert_eq!(minter, crowdfund_contract.addr());
-
-    crowdfund_contract
-        .accept_ownership(&mut router, owner.clone())
-        .unwrap();
 
     // Mint Tokens
     crowdfund_contract

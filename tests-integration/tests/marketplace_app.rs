@@ -4,7 +4,7 @@ use andromeda_address_list::mock::{
     mock_address_list_instantiate_msg, mock_andromeda_address_list, MockAddressList,
 };
 use andromeda_app::app::AppComponent;
-use andromeda_app_contract::mock::{mock_andromeda_app, MockApp};
+use andromeda_app_contract::mock::{mock_andromeda_app, MockAppContract};
 use andromeda_cw721::mock::{mock_andromeda_cw721, mock_cw721_instantiate_msg, MockCW721};
 use andromeda_marketplace::mock::{
     mock_andromeda_marketplace, mock_buy_token, mock_marketplace_instantiate_msg,
@@ -16,9 +16,10 @@ use andromeda_rates::mock::{mock_andromeda_rates, mock_rates_instantiate_msg};
 use andromeda_std::ado_base::modules::Module;
 use andromeda_std::amp::messages::{AMPMsg, AMPPkt};
 use andromeda_std::amp::Recipient;
-use andromeda_testing::{MockADO, MockAndromeda, MockContract};
+use andromeda_testing::mock::{mock_app, MockApp};
+use andromeda_testing::{MockAndromeda, MockContract};
 use cosmwasm_std::{coin, to_json_binary, Addr, Uint128};
-use cw_multi_test::{App, Executor};
+use cw_multi_test::Executor;
 
 fn mock_andromeda(app: &mut MockApp, admin_address: Addr) -> MockAndromeda {
     MockAndromeda::new(app, &admin_address)
@@ -103,7 +104,7 @@ fn test_marketplace_app() {
         address_list_component.clone(),
         marketplace_component.clone(),
     ];
-    let app = MockApp::instantiate(
+    let app = MockAppContract::instantiate(
         app_code_id,
         owner.clone(),
         &mut router,
@@ -115,10 +116,6 @@ fn test_marketplace_app() {
 
     let components = app.query_components(&router);
     assert_eq!(components, app_components);
-
-    // Claim Ownership
-    app.execute_claim_ownership(&mut router, owner.clone(), None)
-        .unwrap();
 
     let cw721: MockCW721 = app.query_ado_by_component_name(&router, cw721_component.name);
     let marketplace: MockMarketplace =
@@ -132,9 +129,6 @@ fn test_marketplace_app() {
         .unwrap();
     let token_id = "0";
 
-    address_list
-        .accept_ownership(&mut router, owner.clone())
-        .unwrap();
     // Whitelist
     address_list
         .execute_add_address(&mut router, owner.clone(), cw721.addr())

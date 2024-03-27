@@ -4,7 +4,10 @@ use andromeda_lockdrop::mock::{
     mock_deposit_native, mock_enable_claims, mock_lockdrop_instantiate_msg, mock_withdraw_native,
 };
 use andromeda_std::common::Milliseconds;
-use andromeda_testing::{mock::MockAndromeda, MockContract};
+use andromeda_testing::{
+    mock::{mock_app, MockAndromeda, MockApp},
+    MockContract,
+};
 use cosmwasm_std::{coin, to_json_binary, Addr, BlockInfo, Uint128};
 use cw20::Cw20Coin;
 use cw_multi_test::Executor;
