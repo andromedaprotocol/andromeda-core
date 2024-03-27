@@ -50,6 +50,8 @@ impl<'a> ADOContract<'a> {
         // We do not want to store app contracts for the kernel, exit early if current contract is kernel
         let is_kernel_contract = ado_type.contains("kernel");
         if is_kernel_contract {
+            self.owner.save(storage, &owner)?;
+            attributes.push(attr("owner", owner));
             return Ok(Response::new().add_attributes(attributes));
         }
 
@@ -76,7 +78,6 @@ impl<'a> ADOContract<'a> {
 
         self.owner.save(storage, &owner)?;
         attributes.push(attr("owner", owner));
-
         Ok(Response::new().add_attributes(attributes))
     }
 

@@ -92,7 +92,9 @@ fn test_instantiate() {
     assert_eq!(
         Response::new()
             .add_attribute("method", "instantiate")
-            .add_attribute("type", "vesting"),
+            .add_attribute("type", "vesting")
+            .add_attribute("kernel_address", MOCK_KERNEL_CONTRACT)
+            .add_attribute("owner", "owner"),
         res
     );
 
