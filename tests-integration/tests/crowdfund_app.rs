@@ -19,50 +19,50 @@ use andromeda_std::ado_base::modules::Module;
 use std::str::FromStr;
 
 use andromeda_testing::{
-    mock::{init_balances, mock_app, MockAndromeda, MockApp},
-    mock_contract::MockContract,
+    mock::mock_app, mock_builder::MockAndromedaBuilder, mock_contract::MockContract,
 };
 use andromeda_vault::mock::mock_andromeda_vault;
-use cosmwasm_std::{coin, to_json_binary, Addr, BlockInfo, Decimal, Uint128};
+use cosmwasm_std::{coin, to_json_binary, BlockInfo, Decimal, Uint128};
 use cw_multi_test::Executor;
-
-fn mock_andromeda(app: &mut MockApp, admin_address: Addr) -> MockAndromeda {
-    MockAndromeda::new(app, &admin_address)
-}
 
 // TODO: Fix to check wallet balance post sale
 #[test]
 fn test_crowdfund_app() {
-    let mut router = mock_app();
+    let mut router = mock_app(None);
+    let andr = MockAndromedaBuilder::new(&mut router, "admin")
+        .with_wallets(vec![
+            ("owner", vec![]),
+            ("vault_one_recipient", vec![]),
+            ("vault_two_recipient", vec![]),
+            ("buyer_one", vec![coin(100, "uandr")]),
+            ("buyer_two", vec![coin(100, "uandr")]),
+            ("buyer_three", vec![coin(100, "uandr")]),
+            ("rates_recipient", vec![]),
+        ])
+        .with_contracts(vec![
+            ("cw721", mock_andromeda_cw721()),
+            ("crowdfund", mock_andromeda_crowdfund()),
+            ("vault", mock_andromeda_vault()),
+            ("splitter", mock_andromeda_splitter()),
+            ("app-contract", mock_andromeda_app()),
+            ("rates", mock_andromeda_rates()),
+        ])
+        .build(&mut router);
 
-    let owner = router.api().addr_make("owner");
-    let vault_one_recipient_addr = router.api().addr_make("vault_one_recipient");
-    let vault_two_recipient_addr = router.api().addr_make("vault_two_recipient");
-    let buyer_one = router.api().addr_make("buyer_one");
-    let buyer_two = router.api().addr_make("buyer_two");
-    let buyer_three = router.api().addr_make("buyer_three");
-    init_balances(
-        &mut router,
-        vec![
-            (buyer_one.clone(), &[coin(100, "uandr")]),
-            (buyer_two.clone(), &[coin(100, "uandr")]),
-            (buyer_three.clone(), &[coin(100, "uandr")]),
-        ],
-    );
-
-    let andr = mock_andromeda(&mut router, owner.clone());
+    let owner = andr.get_wallet("owner");
+    let vault_one_recipient_addr = andr.get_wallet("vault_one_recipient");
+    let vault_two_recipient_addr = andr.get_wallet("vault_two_recipient");
+    let buyer_one = andr.get_wallet("buyer_one");
+    let buyer_two = andr.get_wallet("buyer_two");
+    let buyer_three = andr.get_wallet("buyer_three");
 
     // Store contract codes
-    andr.store_ado(&mut router, mock_andromeda_cw721(), "cw721");
-    andr.store_ado(&mut router, mock_andromeda_crowdfund(), "crowdfund");
-    andr.store_ado(&mut router, mock_andromeda_vault(), "vault");
-    andr.store_ado(&mut router, mock_andromeda_splitter(), "splitter");
-    let app_code_id = andr.store_ado(&mut router, mock_andromeda_app(), "app-contract");
-    let rates_code_id = andr.store_ado(&mut router, mock_andromeda_rates(), "rates");
+    let app_code_id = andr.get_code_id(&mut router, "app-contract");
+    let rates_code_id = andr.get_code_id(&mut router, "rates");
 
     // Generate App Components
     // App component names must be less than 3 characters or longer than 54 characters to force them to be 'invalid' as the MockApi struct used within the CosmWasm App struct only contains those two validation checks
-    let rates_recipient = router.api().addr_make("rates_recipient");
+    let rates_recipient = andr.get_wallet("rates_recipient");
     // Generate rates contract
     let rates: Vec<RateInfo> = [RateInfo {
         rate: Rate::Flat(coin(1, "uandr")),
@@ -139,7 +139,7 @@ fn test_crowdfund_app() {
 
     let app = MockAppContract::instantiate(
         app_code_id,
-        owner.clone(),
+        owner,
         &mut router,
         "app-contract",
         app_components.clone(),
@@ -186,7 +186,7 @@ fn test_crowdfund_app() {
     let buyers = vec![buyer_one, buyer_two, buyer_three];
     for buyer in buyers.clone() {
         crowdfund_contract
-            .execute_purchase(buyer, &mut router, Some(1), &[token_price.clone()])
+            .execute_purchase(buyer.clone(), &mut router, Some(1), &[token_price.clone()])
             .unwrap();
     }
     let crowdfund_balance = router
@@ -207,7 +207,7 @@ fn test_crowdfund_app() {
         .execute_end_sale(owner.clone(), &mut router, None)
         .unwrap();
     crowdfund_contract
-        .execute_end_sale(owner, &mut router, None)
+        .execute_end_sale(owner.clone(), &mut router, None)
         .unwrap();
 
     // Check final state

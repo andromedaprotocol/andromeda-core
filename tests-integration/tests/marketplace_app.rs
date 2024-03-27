@@ -16,37 +16,32 @@ use andromeda_rates::mock::{mock_andromeda_rates, mock_rates_instantiate_msg};
 use andromeda_std::ado_base::modules::Module;
 use andromeda_std::amp::messages::{AMPMsg, AMPPkt};
 use andromeda_std::amp::Recipient;
-use andromeda_testing::mock::{mock_app, MockApp};
-use andromeda_testing::{MockAndromeda, MockContract};
+use andromeda_testing::mock::mock_app;
+use andromeda_testing::mock_builder::MockAndromedaBuilder;
+use andromeda_testing::MockContract;
 use cosmwasm_std::{coin, to_json_binary, Addr, Uint128};
 use cw_multi_test::Executor;
 
-fn mock_andromeda(app: &mut MockApp, admin_address: Addr) -> MockAndromeda {
-    MockAndromeda::new(app, &admin_address)
-}
-
 #[test]
 fn test_marketplace_app() {
-    let mut router = mock_app();
-    let owner = router.api().addr_make("owner");
-    let buyer = router.api().addr_make("buyer");
-    let rates_receiver = router.api().addr_make("receiver");
-    router
-        .send_tokens(
-            Addr::unchecked("owner"),
-            buyer.clone(),
-            &[coin(200, "uandr")],
-        )
-        .unwrap();
-
-    let andr = mock_andromeda(&mut router, owner.clone());
-
-    // Store contract codes
-    andr.store_ado(&mut router, mock_andromeda_cw721(), "cw721");
-    andr.store_ado(&mut router, mock_andromeda_marketplace(), "marketplace");
-    andr.store_ado(&mut router, mock_andromeda_rates(), "rates");
-    andr.store_ado(&mut router, mock_andromeda_address_list(), "address-list");
-    let app_code_id = andr.store_ado(&mut router, mock_andromeda_app(), "app-contract");
+    let mut router = mock_app(None);
+    let andr = MockAndromedaBuilder::new(&mut router, "admin")
+        .with_wallets(vec![
+            ("owner", vec![]),
+            ("buyer", vec![coin(200, "uandr")]),
+            ("receiver", vec![]),
+        ])
+        .with_contracts(vec![
+            ("app-contract", mock_andromeda_app()),
+            ("cw721", mock_andromeda_cw721()),
+            ("marketplace", mock_andromeda_marketplace()),
+            ("rates", mock_andromeda_rates()),
+            ("address-list", mock_andromeda_address_list()),
+        ])
+        .build(&mut router);
+    let owner = andr.get_wallet("owner");
+    let buyer = andr.get_wallet("buyer");
+    let rates_receiver = andr.get_wallet("receiver");
 
     // Generate App Components
     let cw721_init_msg = mock_cw721_instantiate_msg(
@@ -104,9 +99,10 @@ fn test_marketplace_app() {
         address_list_component.clone(),
         marketplace_component.clone(),
     ];
+    let app_code_id = andr.get_code_id(&mut router, "app-contract");
     let app = MockAppContract::instantiate(
         app_code_id,
-        owner.clone(),
+        owner,
         &mut router,
         "Auction App",
         app_components.clone(),
@@ -141,7 +137,7 @@ fn test_marketplace_app() {
     cw721
         .execute_send_nft(
             &mut router,
-            owner,
+            owner.clone(),
             marketplace.addr().clone(),
             token_id,
             &mock_start_sale(Uint128::from(100u128), "uandr"),

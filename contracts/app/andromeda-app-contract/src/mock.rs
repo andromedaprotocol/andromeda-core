@@ -15,7 +15,7 @@ mock_ado!(MockAppContract, ExecuteMsg, QueryMsg);
 impl MockAppContract {
     pub fn instantiate(
         code_id: u64,
-        sender: Addr,
+        sender: &Addr,
         app: &mut MockApp,
         name: impl Into<String>,
         app_components: Vec<AppComponent>,

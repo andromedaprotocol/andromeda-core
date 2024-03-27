@@ -9,36 +9,29 @@ use andromeda_cw721::mock::{mock_andromeda_cw721, mock_cw721_instantiate_msg, Mo
 
 use andromeda_std::common::expiration::MILLISECONDS_TO_NANOSECONDS_RATIO;
 use andromeda_testing::{
-    mock::{init_balances, mock_app, MockAndromeda},
-    mock_contract::MockContract,
+    mock::mock_app, mock_builder::MockAndromedaBuilder, mock_contract::MockContract,
 };
 use cosmwasm_std::{coin, to_json_binary, Addr, BlockInfo, Timestamp, Uint128};
-use cw_multi_test::{App, BankKeeper, Executor, MockApiBech32};
-
-fn mock_andromeda(app: &mut App<BankKeeper, MockApiBech32>, admin_address: Addr) -> MockAndromeda {
-    MockAndromeda::new(app, &admin_address)
-}
+use cw_multi_test::Executor;
 
 #[test]
 fn test_auction_app() {
-    let mut router = mock_app();
-    let owner = router.api().addr_make("owner");
-    let buyer_one = router.api().addr_make("buyer_one");
-    let buyer_two = router.api().addr_make("buyer_two");
-
-    init_balances(
-        &mut router,
-        vec![
-            (buyer_one.clone(), &[coin(1000, "uandr")]),
-            (buyer_two.clone(), &[coin(1000, "uandr")]),
-        ],
-    );
-
-    let andr = mock_andromeda(&mut router, owner.clone());
-    // Store contract codes
-    andr.store_ado(&mut router, mock_andromeda_cw721(), "cw721");
-    andr.store_ado(&mut router, mock_andromeda_auction(), "auction");
-    andr.store_ado(&mut router, mock_andromeda_app(), "app-contract");
+    let mut router = mock_app(None);
+    let andr = MockAndromedaBuilder::new(&mut router, "admin")
+        .with_wallets(vec![
+            ("owner", vec![]),
+            ("buyer_one", vec![coin(1000, "uandr")]),
+            ("buyer_two", vec![coin(1000, "uandr")]),
+        ])
+        .with_contracts(vec![
+            ("cw721", mock_andromeda_cw721()),
+            ("auction", mock_andromeda_auction()),
+            ("app-contract", mock_andromeda_app()),
+        ])
+        .build(&mut router);
+    let owner = andr.get_wallet("owner");
+    let buyer_one = andr.get_wallet("buyer_one");
+    let buyer_two = andr.get_wallet("buyer_two");
 
     // Generate App Components
     let cw721_init_msg = mock_cw721_instantiate_msg(
@@ -67,7 +60,7 @@ fn test_auction_app() {
     let app_components = vec![cw721_component.clone(), auction_component.clone()];
     let app = MockAppContract::instantiate(
         andr.get_code_id(&mut router, "app-contract"),
-        owner.clone(),
+        owner,
         &mut router,
         "Auction App",
         app_components,

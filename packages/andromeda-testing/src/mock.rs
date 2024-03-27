@@ -5,6 +5,7 @@ use std::collections::HashMap;
 use andromeda_adodb::mock::mock_andromeda_adodb;
 use andromeda_economics::mock::mock_andromeda_economics;
 use andromeda_kernel::mock::mock_andromeda_kernel;
+use andromeda_std::os::adodb::ADOVersion;
 use andromeda_vfs::mock::mock_andromeda_vfs;
 use cosmwasm_std::{coin, Addr, Coin};
 use cw_multi_test::{
@@ -44,19 +45,26 @@ pub fn init_balances(app: &mut MockApp, balances: Vec<(Addr, &[Coin])>) {
     }
 }
 
-pub struct MockAndromeda<'a> {
+pub struct MockAndromeda {
     pub admin_address: Addr,
     pub kernel: MockKernel,
     pub adodb: MockADODB,
     pub economics: MockEconomics,
     pub vfs: MockVFS,
     pub wallets: HashMap<String, Addr>,
-    pub router: &'a MockApp,
 }
 
-impl<'a> MockAndromeda<'a> {
-    pub fn new(app: &'a mut MockApp, admin_address: &Addr) -> MockAndromeda<'a> {
-        let admin_address = app.api().addr_make(admin_address.as_str());
+impl MockAndromeda {
+    pub fn new(app: &mut MockApp, admin_name: &str) -> MockAndromeda {
+        let mut wallets = HashMap::new();
+        let admin_address = app.api().addr_make(admin_name);
+        wallets
+            .entry(admin_name.to_string())
+            .and_modify(|_| {
+                panic!("Wallet already exists");
+            })
+            .or_insert(admin_address.clone());
+
         // Store contract codes
         let adodb_code_id = app.store_code(mock_andromeda_adodb());
         let kernel_code_id = app.store_code(mock_andromeda_kernel());
@@ -154,25 +162,26 @@ impl<'a> MockAndromeda<'a> {
             adodb,
             economics,
             vfs,
-            wallets: HashMap::new(),
-            router: app,
+            wallets,
         }
     }
 
-    pub fn router(&self) -> &MockApp {
-        &self.router
-    }
-
     /// Stores a given Code ID under the given key in the ADO DB contract
-    pub fn store_code_id(&mut self, key: &str, code_id: u64) {
-        let mut router = self.router();
+    pub fn store_code_id(&self, router: &mut MockApp, key: &str, code_id: u64) {
+        let ado_version = ADOVersion::from_string(key);
+        let version =
+            if !ado_version.get_version().is_empty() && ado_version.get_version() != "latest" {
+                ado_version.get_version()
+            } else {
+                "0.1.0".to_string()
+            };
         self.adodb
             .execute_publish(
-                &mut router,
+                router,
                 self.admin_address.clone(),
                 code_id,
-                key,
-                "0.1.0",
+                ado_version.get_type(),
+                version,
                 Some(self.admin_address.to_string()),
                 None,
             )
@@ -184,13 +193,18 @@ impl<'a> MockAndromeda<'a> {
         self.adodb.query_code_id(app, key)
     }
 
-    pub fn add_wallet(&mut self, name: &str) {
-        let addr = self.router.api().addr_make(name);
+    pub fn add_wallet(&mut self, router: &mut MockApp, name: &str) -> Addr {
+        let addr = router.api().addr_make(name);
         self.wallets
             .entry(name.to_string())
             .and_modify(|_| {
                 panic!("Wallet already exists");
             })
-            .or_insert(addr);
+            .or_insert(addr.clone());
+        addr
+    }
+
+    pub fn get_wallet(&self, name: &str) -> &Addr {
+        self.wallets.get(name).unwrap()
     }
 }

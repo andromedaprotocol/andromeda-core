@@ -1,78 +1,62 @@
-use andromeda_std::os::adodb::ADOVersion;
 use cosmwasm_std::{Addr, Coin, Empty};
 use cw_multi_test::{Contract, Executor};
 
-use crate::{
-    mock::{mock_app, MockApp},
-    MockAndromeda,
-};
+use crate::{mock::MockApp, MockAndromeda};
 
 pub struct MockAndromedaBuilder {
-    app: MockApp,
-    contracts: Vec<(u64, ADOVersion)>,
-    admin_address: Addr,
+    contracts: Vec<(&'static str, Box<dyn Contract<Empty>>)>,
+    andr: MockAndromeda,
+    wallets: Vec<(&'static str, Vec<Coin>)>,
+    raw_balances: Vec<(Addr, Vec<Coin>)>,
 }
 
 impl MockAndromedaBuilder {
-    pub fn new(denoms: Option<Vec<&str>>) -> Self {
-        let app = mock_app(denoms.clone());
-
+    pub fn new(app: &mut MockApp, admin_wallet_name: &'static str) -> Self {
+        let andr = MockAndromeda::new(app, admin_wallet_name);
         Self {
-            app,
             contracts: vec![],
-            admin_address: Addr::unchecked("admin"),
+            andr,
+            raw_balances: vec![],
+            wallets: vec![],
         }
     }
 
-    /// **THIS WILL CREATE A NEW MOCKANDROMEDA**
-    pub fn with_app(self, app: MockApp) -> Self {
+    pub fn with_wallets(self, wallets: Vec<(&'static str, Vec<Coin>)>) -> Self {
+        Self { wallets, ..self }
+    }
+
+    pub fn with_balances(self, raw_balances: &[(Addr, Vec<Coin>)]) -> Self {
         Self {
-            app,
-            contracts: vec![],
+            raw_balances: raw_balances.to_vec(),
             ..self
         }
     }
 
-    pub fn with_balance(&mut self, addr: &Addr, amount: &[Coin]) -> &Self {
-        self.app
-            .send_tokens(Addr::unchecked("bank"), addr.clone(), amount)
-            .unwrap();
-        self
+    pub fn with_contracts(self, contracts: Vec<(&'static str, Box<dyn Contract<Empty>>)>) -> Self {
+        Self { contracts, ..self }
     }
 
-    pub fn with_balances(&mut self, balances: &[(Addr, &[Coin])]) -> &Self {
-        for (addr, amount) in balances {
-            self.with_balance(addr, amount);
-        }
-        self
-    }
-
-    pub fn with_contract(
-        &mut self,
-        contract: Box<dyn Contract<Empty>>,
-        version: ADOVersion,
-    ) -> &Self {
-        let code_id = self.app.store_code(contract);
-        self.contracts.push((code_id, version));
-        self
-    }
-
-    pub fn with_contracts(
-        &mut self,
-        contracts: Vec<(Box<dyn Contract<Empty>>, ADOVersion)>,
-    ) -> &Self {
-        for (contract, name) in contracts {
-            self.with_contract(contract, name);
-        }
-        self
-    }
-
-    pub fn build(&mut self) -> MockAndromeda {
-        let mut andr = MockAndromeda::new(&mut self.app, &self.admin_address);
-        for (code_id, version) in self.contracts.iter() {
-            andr.store_code_id(version.as_str(), *code_id);
+    pub fn build(mut self, app: &mut MockApp) -> MockAndromeda {
+        for (version, contract) in self.contracts {
+            let code_id = app.store_code(contract);
+            self.andr.store_code_id(app, version, code_id);
         }
 
-        andr
+        for (wallet, balance) in self.wallets {
+            let addr = self.andr.add_wallet(app, wallet);
+            if !balance.is_empty() {
+                app.send_tokens(Addr::unchecked("bank"), addr, &balance)
+                    .unwrap();
+            }
+        }
+
+        for (addr, balance) in self.raw_balances {
+            if !balance.is_empty() {
+                app.send_tokens(Addr::unchecked("bank"), addr, &balance)
+                    .unwrap();
+            }
+        }
+
+        self.andr
     }
 }

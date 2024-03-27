@@ -1,43 +1,34 @@
+use andromeda_app_contract::mock::mock_andromeda_app;
 use andromeda_cw20::mock::{mock_andromeda_cw20, mock_cw20_instantiate_msg, mock_cw20_send};
 use andromeda_lockdrop::mock::{
     mock_andromeda_lockdrop, mock_claim_rewards, mock_cw20_hook_increase_incentives,
     mock_deposit_native, mock_enable_claims, mock_lockdrop_instantiate_msg, mock_withdraw_native,
 };
 use andromeda_std::common::Milliseconds;
-use andromeda_testing::{
-    mock::{mock_app, MockAndromeda, MockApp},
-    MockContract,
-};
-use cosmwasm_std::{coin, to_json_binary, Addr, BlockInfo, Uint128};
+use andromeda_testing::{mock::mock_app, mock_builder::MockAndromedaBuilder, MockContract};
+use cosmwasm_std::{coin, to_json_binary, BlockInfo, Uint128};
 use cw20::Cw20Coin;
 use cw_multi_test::Executor;
-
-fn mock_andromeda(app: &mut MockApp, admin_address: Addr) -> MockAndromeda {
-    MockAndromeda::new(app, &admin_address)
-}
 
 /// Test taken from audit report
 #[test]
 fn test_lockdrop() {
-    let mut app = mock_app();
-    let owner = app.api().addr_make("owner");
-    let user1 = app.api().addr_make("user1");
-    let user2 = app.api().addr_make("user2");
-    let andr = mock_andromeda(&mut app, owner.clone());
-    let code = mock_andromeda_cw20();
-    let cw_20_code_id = app.store_code(code);
-    app.send_tokens(
-        Addr::unchecked("owner"),
-        user1.clone(),
-        &[coin(500u128, "uusd")],
-    )
-    .unwrap();
-    app.send_tokens(
-        Addr::unchecked("owner"),
-        user2.clone(),
-        &[coin(500u128, "uusd")],
-    )
-    .unwrap();
+    let mut app = mock_app(None);
+    let andr = MockAndromedaBuilder::new(&mut app, "admin")
+        .with_wallets(vec![
+            ("owner", vec![]),
+            ("user1", vec![coin(500, "uandr"), coin(500, "uusd")]),
+            ("user2", vec![coin(500, "uandr"), coin(500, "uusd")]),
+        ])
+        .with_contracts(vec![
+            ("cw20", mock_andromeda_cw20()),
+            ("app-contract", mock_andromeda_app()),
+            ("lockdrop", mock_andromeda_lockdrop()),
+        ])
+        .build(&mut app);
+    let owner = andr.get_wallet("owner");
+    let user1 = andr.get_wallet("user1");
+    let user2 = andr.get_wallet("user2");
 
     let cw20_init_msg = mock_cw20_instantiate_msg(
         None,
@@ -53,9 +44,10 @@ fn test_lockdrop() {
         andr.kernel.addr().to_string(),
     );
 
+    let cw20_code_id = andr.get_code_id(&mut app, "cw20");
     let cw20_incentives_address = app
         .instantiate_contract(
-            cw_20_code_id,
+            cw20_code_id,
             owner.clone(),
             &cw20_init_msg,
             &[],
@@ -129,7 +121,7 @@ fn test_lockdrop() {
 
     //enable claims
     let msg = mock_enable_claims();
-    app.execute_contract(owner, lockdrop_addr.clone(), &msg, &[])
+    app.execute_contract(owner.clone(), lockdrop_addr.clone(), &msg, &[])
         .unwrap();
 
     //claim
@@ -139,7 +131,7 @@ fn test_lockdrop() {
         .unwrap();
 
     let msg = mock_claim_rewards();
-    app.execute_contract(user2, lockdrop_addr.clone(), &msg, &[])
+    app.execute_contract(user2.clone(), lockdrop_addr.clone(), &msg, &[])
         .unwrap();
 
     let balance = app
