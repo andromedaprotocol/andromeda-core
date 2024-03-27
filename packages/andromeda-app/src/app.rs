@@ -10,8 +10,8 @@ use andromeda_std::{
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{
-    ensure, instantiate2_address, to_json_binary, wasm_execute, Addr, Api, Binary,
-    CodeInfoResponse, Deps, QuerierWrapper, SubMsg, WasmMsg,
+    attr, ensure, instantiate2_address, to_json_binary, wasm_execute, Addr, Api, Binary,
+    CodeInfoResponse, Deps, Event, QuerierWrapper, SubMsg, WasmMsg,
 };
 use serde::Serialize;
 
@@ -109,6 +109,9 @@ impl AppComponent {
         Binary::from(self.name.as_bytes())
     }
 
+    /// Generates an `Instantiate2` address for the component.
+    ///
+    /// Returns `None` for `Symlink` and `CrossChain` components.
     pub fn get_new_addr(
         &self,
         api: &dyn Api,
@@ -140,8 +143,10 @@ impl AppComponent {
         }
     }
 
+    /// Generates a VFS registration message for the component.
     pub fn generate_vfs_registration(
         &self,
+        // New addr is provided to prevent duplicate queries
         new_addr: Option<Addr>,
         _app_addr: &Addr,
         app_name: &str,
@@ -189,6 +194,8 @@ impl AppComponent {
                 );
                 let owner_addr = curr_chain_info.unwrap().owner;
                 let name = self.name.clone();
+
+                // Register the component as a symlink for the receiving chain
                 let new_component = AppComponent {
                     name: name.clone(),
                     ado_type: self.ado_type.clone(),
@@ -208,6 +215,9 @@ impl AppComponent {
         }
     }
 
+    /// Generates an instantiation message for the component.
+    ///
+    /// Returns `None` for `Symlink` and `CrossChain` components.
     pub fn generate_instantiation_message(
         &self,
         querier: &QuerierWrapper,
@@ -231,6 +241,31 @@ impl AppComponent {
         } else {
             Ok(None)
         }
+    }
+
+    /// Generates an event for the app component.
+    ///
+    /// Includes the name and type of the component plus the following for each type:
+    ///  - `New` - the address of the component
+    ///  - `CrossChain` - the receiving chain of the component
+    ///  - `Symlink` - the created symlink for the component
+    pub fn generate_event(&self, addr: Option<Addr>) -> Event {
+        let mut ev = Event::new("add_app_component").add_attributes(vec![
+            attr("name", self.name.clone()),
+            attr("ado_type", self.ado_type.clone()),
+        ]);
+
+        match self.component_type.clone() {
+            ComponentType::New(_) => {
+                ev = ev.add_attribute("address", addr.unwrap().to_string());
+            }
+            ComponentType::CrossChain(chain_component) => {
+                ev = ev.add_attribute("chain", chain_component.chain);
+            }
+            ComponentType::Symlink(link) => ev = ev.add_attribute("symlink", link),
+        }
+
+        ev
     }
 }
 

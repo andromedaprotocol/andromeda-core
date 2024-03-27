@@ -47,7 +47,7 @@ pub fn handle_add_app_component(
     let new_addr =
         component.get_new_addr(api, &adodb_addr, querier, env.contract.address.clone())?;
     let registration_msg = component.generate_vfs_registration(
-        new_addr,
+        new_addr.clone(),
         &env.contract.address,
         &app_name,
         // TODO: Fix this in future for x-chain components
@@ -71,6 +71,9 @@ pub fn handle_add_app_component(
     if let Some(inst_msg) = inst_msg {
         resp = resp.add_submessage(inst_msg);
     }
+
+    let event = component.generate_event(new_addr);
+    resp = resp.add_event(event);
 
     Ok(resp)
 }

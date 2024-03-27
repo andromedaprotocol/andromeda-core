@@ -61,7 +61,7 @@ pub fn instantiate(
     let vfs_address = ADOContract::default().get_vfs_address(deps.storage, &deps.querier)?;
     let adodb_addr = ADOContract::default().get_adodb_address(deps.storage, &deps.querier)?;
 
-    let mut msgs: Vec<SubMsg> = vec![];
+    let mut vfs_msgs: Vec<SubMsg> = vec![];
 
     for component in msg.app_components.clone() {
         ensure!(
@@ -86,7 +86,7 @@ pub fn instantiate(
         // Register components with VFS
         // Sub message is optional as component may be hidden (Starts with a '.')
         let register_submsg = component.generate_vfs_registration(
-            new_addr,
+            new_addr.clone(),
             &env.contract.address,
             &msg.name,
             msg.chain_info.clone(),
@@ -95,9 +95,14 @@ pub fn instantiate(
         )?;
 
         if let Some(register_submsg) = register_submsg {
-            msgs.push(register_submsg);
+            vfs_msgs.push(register_submsg);
         }
+
+        let event = component.generate_event(new_addr);
+        resp = resp.add_event(event);
     }
+
+    let mut inst_msgs = vec![];
 
     // This is done in a separate loop to ensure ordering, VFS registration first then instantiation after
     for component in msg.app_components.clone() {
@@ -114,7 +119,7 @@ pub fn instantiate(
         )?;
 
         if let Some(inst_msg) = inst_msg {
-            msgs.push(inst_msg)
+            inst_msgs.push(inst_msg)
         }
     }
 
@@ -127,7 +132,10 @@ pub fn instantiate(
     let cosmos_msg = wasm_execute(vfs_address.to_string(), &add_path_msg, vec![])?;
     let register_msg = SubMsg::reply_on_error(cosmos_msg, ReplyId::RegisterPath.repr());
 
-    resp = resp.add_submessage(register_msg).add_submessages(msgs);
+    resp = resp
+        .add_submessage(register_msg)
+        .add_submessages(vfs_msgs)
+        .add_submessages(inst_msgs);
 
     if let Some(chain_info) = msg.chain_info {
         for chain in chain_info.clone() {
