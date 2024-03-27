@@ -6,7 +6,11 @@ use andromeda_modules::shunting::{
 use andromeda_std::{
     ado_base::InstantiateMsg as BaseInstantiateMsg,
     ado_contract::ADOContract,
-    common::{context::ExecuteContext, encode_binary},
+    common::{
+        context::ExecuteContext,
+        encode_binary,
+        migrate::{migrate as do_migrate, MigrateMsg},
+    },
     error::ContractError,
 };
 use cosmwasm_std::{
@@ -93,6 +97,11 @@ fn execute_update_expression(
     EXPRESSIONS.save(deps.storage, &expressions)?;
 
     Ok(Response::new().add_attributes(vec![attr("action", "update_expression")]))
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    do_migrate(deps, CONTRACT_NAME, CONTRACT_VERSION)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

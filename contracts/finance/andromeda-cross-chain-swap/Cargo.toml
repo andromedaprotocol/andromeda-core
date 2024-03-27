@@ -23,7 +23,6 @@ cw-utils = { workspace = true }
 cw2 = { workspace = true }
 schemars = { version = "0.8.10" }
 serde = { version = "1.0.127", default-features = false, features = ["derive"] }
-semver = { workspace = true }
 
 andromeda-std = { workspace = true }
 andromeda-finance = { workspace = true }

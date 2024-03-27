@@ -10,6 +10,7 @@ use cw2::set_contract_version;
 use andromeda_finance::validator_staking::{
     is_validator, ExecuteMsg, InstantiateMsg, QueryMsg, UnstakingTokens,
 };
+use andromeda_std::common::migrate::{migrate as do_migrate, MigrateMsg};
 
 use andromeda_std::{
     ado_base::InstantiateMsg as BaseInstantiateMsg,
@@ -309,6 +310,11 @@ fn query_unstaked_tokens(deps: Deps) -> Result<Vec<UnstakingTokens>, ContractErr
         res.push(data.unwrap());
     }
     Ok(res)
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    do_migrate(deps, CONTRACT_NAME, CONTRACT_VERSION)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

@@ -1,5 +1,6 @@
 pub mod context;
 pub mod expiration;
+pub mod migrate;
 pub mod queries;
 pub mod rates;
 pub mod response;

@@ -61,9 +61,6 @@ impl ActionFee {
 }
 
 #[cw_serde]
-pub struct MigrateMsg {}
-
-#[cw_serde]
 pub struct ADOMetadata {
     pub publisher: String,
     pub latest_version: String,

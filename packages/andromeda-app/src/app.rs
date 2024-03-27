@@ -116,9 +116,6 @@ pub enum ExecuteMsg {
     AssignAppToComponents {},
 }
 
-#[cw_serde]
-pub struct MigrateMsg {}
-
 #[andr_query]
 #[cw_serde]
 #[derive(QueryResponses)]

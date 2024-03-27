@@ -206,7 +206,3 @@ pub struct IsClosedResponse {
 pub struct IsClaimedResponse {
     pub is_claimed: bool,
 }
-
-#[cw_serde]
-#[serde(rename_all = "snake_case")]
-pub struct MigrateMsg {}

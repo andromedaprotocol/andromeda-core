@@ -56,9 +56,6 @@ pub enum Cw20HookMsg {
 }
 
 #[cw_serde]
-pub struct MigrateMsg {}
-
-#[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
     /// Queries the current balance for a given AndrAddr and asset tuple

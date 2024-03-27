@@ -330,7 +330,3 @@ impl From<QueryMsg> for Cw721QueryMsg<QueryMsg> {
         }
     }
 }
-
-#[cw_serde]
-#[serde(rename_all = "snake_case")]
-pub struct MigrateMsg {}

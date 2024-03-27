@@ -224,6 +224,3 @@ pub struct StakerResponse {
     /// The staker's pending rewards represented as [(token_1, amount_1), ..., (token_n, amount_n)]
     pub pending_rewards: Vec<(String, Uint128)>,
 }
-
-#[cw_serde]
-pub enum MigrateMsg {}

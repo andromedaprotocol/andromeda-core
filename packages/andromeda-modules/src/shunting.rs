@@ -14,9 +14,6 @@ pub enum ExecuteMsg {
     UpdateExpressions { expressions: Vec<String> },
 }
 
-#[cw_serde]
-pub struct MigrateMsg {}
-
 #[andr_query]
 #[cw_serde]
 #[derive(QueryResponses)]
