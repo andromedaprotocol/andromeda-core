@@ -1,3 +1,5 @@
+use andromeda_std::ado_base::ownership::ContractOwnerResponse;
+use andromeda_std::ado_base::AndromedaQuery;
 //use andromeda_ecosystem::anchor_earn::PositionResponse;
 use andromeda_std::testing::mock_querier::MockAndromedaQuerier;
 use andromeda_std::{
@@ -11,6 +13,7 @@ use cosmwasm_std::{
     Coin, OwnedDeps, Querier, QuerierResult, QueryRequest, SystemError, SystemResult, Uint128,
     WasmQuery,
 };
+use cosmwasm_std::{to_json_binary, Binary, ContractResult};
 
 // This is here since anchor_earn is defunct now.
 #[cw_serde]
@@ -76,35 +79,34 @@ impl Querier for WasmMockQuerier {
 impl WasmMockQuerier {
     pub fn handle_query(&self, request: &QueryRequest<cosmwasm_std::Empty>) -> QuerierResult {
         match &request {
-            QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr,
-                msg: _,
-            }) => {
-                let _ = contract_addr.as_str();
-                MockAndromedaQuerier::default().handle_query(&self.base, request)
+            QueryRequest::Wasm(WasmQuery::Smart { contract_addr, msg }) => {
+                match contract_addr.as_str() {
+                    MOCK_ANCHOR_CONTRACT => self.handle_anchor_balance_query(msg),
+                    _ => MockAndromedaQuerier::default().handle_query(&self.base, request),
+                }
             }
             _ => MockAndromedaQuerier::default().handle_query(&self.base, request),
         }
     }
 
-    // fn handle_anchor_balance_query(&self, msg: &Binary) -> QuerierResult {
-    //     match from_json(msg).unwrap() {
-    //         AndromedaQuery::WithdrawableBalance { address } => {
-    //             let msg_response = PositionResponse {
-    //                 recipient: Recipient::from_string(address),
-    //                 aust_amount: Uint128::from(10u128),
-    //             };
-    //             SystemResult::Ok(ContractResult::Ok(to_json_binary(&msg_response).unwrap()))
-    //         }
-    //         AndromedaQuery::Owner {} => {
-    //             let msg_response = ContractOwnerResponse {
-    //                 owner: MOCK_VAULT_CONTRACT.to_owned(),
-    //             };
-    //             SystemResult::Ok(ContractResult::Ok(to_json_binary(&msg_response).unwrap()))
-    //         }
-    //         _ => panic!("Unsupported Query"),
-    //     }
-    // }
+    fn handle_anchor_balance_query(&self, msg: &Binary) -> QuerierResult {
+        match from_json(msg).unwrap() {
+            // AndromedaQuery::WithdrawableBalance { address } => {
+            //     let msg_response = PositionResponse {
+            //         recipient: Recipient::from_string(address),
+            //         aust_amount: Uint128::from(10u128),
+            //     };
+            //     SystemResult::Ok(ContractResult::Ok(to_json_binary(&msg_response).unwrap()))
+            // }
+            AndromedaQuery::Owner {} => {
+                let msg_response = ContractOwnerResponse {
+                    owner: MOCK_VAULT_CONTRACT.to_owned(),
+                };
+                SystemResult::Ok(ContractResult::Ok(to_json_binary(&msg_response).unwrap()))
+            }
+            _ => panic!("Unsupported Query"),
+        }
+    }
 
     pub fn new(base: MockQuerier) -> Self {
         WasmMockQuerier { base }
