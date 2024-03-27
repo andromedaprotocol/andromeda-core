@@ -20,38 +20,24 @@ use andromeda_testing::{MockADO, MockAndromeda, MockContract};
 use cosmwasm_std::{coin, to_json_binary, Addr, Uint128};
 use cw_multi_test::{App, Executor};
 
-fn mock_app() -> App {
-    App::new(|router, _api, storage| {
-        router
-            .bank
-            .init_balance(
-                storage,
-                &Addr::unchecked("owner"),
-                [coin(999999, "uandr")].to_vec(),
-            )
-            .unwrap();
-        router
-            .bank
-            .init_balance(
-                storage,
-                &Addr::unchecked("buyer"),
-                [coin(200, "uandr")].to_vec(),
-            )
-            .unwrap();
-    })
-}
-
-fn mock_andromeda(app: &mut App, admin_address: Addr) -> MockAndromeda {
+fn mock_andromeda(app: &mut MockApp, admin_address: Addr) -> MockAndromeda {
     MockAndromeda::new(app, &admin_address)
 }
 
 #[test]
 fn test_marketplace_app() {
-    let owner = Addr::unchecked("owner");
-    let buyer = Addr::unchecked("buyer");
-    let rates_receiver = Addr::unchecked("receiver");
-
     let mut router = mock_app();
+    let owner = router.api().addr_make("owner");
+    let buyer = router.api().addr_make("buyer");
+    let rates_receiver = router.api().addr_make("receiver");
+    router
+        .send_tokens(
+            Addr::unchecked("owner"),
+            buyer.clone(),
+            &[coin(200, "uandr")],
+        )
+        .unwrap();
+
     let andr = mock_andromeda(&mut router, owner.clone());
 
     // Store contract codes

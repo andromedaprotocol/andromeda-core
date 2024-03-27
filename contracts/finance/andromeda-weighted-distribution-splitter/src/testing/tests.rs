@@ -8,6 +8,7 @@ use andromeda_std::{
     amp::{recipient::Recipient, AndrAddr},
     error::ContractError,
 };
+use cosmwasm_std::QuerierWrapper;
 use cosmwasm_std::{
     attr,
     testing::{mock_env, mock_info},
@@ -35,7 +36,7 @@ fn test_update_app_contract() {
         is_mutable: false,
     }];
 
-    let info = mock_info("app_contract", &[]);
+    let info = mock_info("owner", &[]);
     let msg = InstantiateMsg {
         modules: Some(modules),
         recipients: vec![
@@ -144,12 +145,12 @@ fn test_execute_update_lock() {
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
 
     let msg = ExecuteMsg::UpdateLock { lock_time };
-    let deps_mut = deps.as_mut();
     ADOContract::default()
         .instantiate(
-            deps_mut.storage,
+            &mut deps.storage,
             mock_env(),
-            deps_mut.api,
+            &deps.api,
+            &QuerierWrapper::new(&deps.querier),
             mock_info(owner, &[]),
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
@@ -197,12 +198,12 @@ fn test_execute_update_lock_too_short() {
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
 
     let msg = ExecuteMsg::UpdateLock { lock_time };
-    let deps_mut = deps.as_mut();
     ADOContract::default()
         .instantiate(
-            deps_mut.storage,
+            &mut deps.storage,
             mock_env(),
-            deps_mut.api,
+            &deps.api,
+            &QuerierWrapper::new(&deps.querier),
             mock_info(owner, &[]),
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
@@ -244,6 +245,7 @@ fn test_execute_update_lock_too_long() {
             deps_mut.storage,
             mock_env(),
             deps_mut.api,
+            &deps_mut.querier,
             mock_info(owner, &[]),
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
@@ -285,6 +287,7 @@ fn test_execute_update_lock_already_locked() {
             deps_mut.storage,
             mock_env(),
             deps_mut.api,
+            &deps_mut.querier,
             mock_info(owner, &[]),
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
@@ -326,6 +329,7 @@ fn test_execute_update_lock_unauthorized() {
             deps_mut.storage,
             mock_env(),
             deps_mut.api,
+            &deps_mut.querier,
             mock_info(owner, &[]),
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
@@ -370,6 +374,7 @@ fn test_execute_remove_recipient() {
             deps_mut.storage,
             mock_env(),
             deps_mut.api,
+            &deps_mut.querier,
             mock_info(owner, &[]),
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
@@ -461,6 +466,7 @@ fn test_execute_remove_recipient_not_on_list() {
             deps_mut.storage,
             mock_env(),
             deps_mut.api,
+            &deps_mut.querier,
             mock_info(owner, &[]),
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
@@ -523,6 +529,7 @@ fn test_execute_remove_recipient_contract_locked() {
             deps_mut.storage,
             mock_env(),
             deps_mut.api,
+            &deps_mut.querier,
             mock_info(owner, &[]),
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
@@ -593,6 +600,7 @@ fn test_execute_remove_recipient_unauthorized() {
             deps_mut.storage,
             mock_env(),
             deps_mut.api,
+            &deps_mut.querier,
             mock_info(owner, &[]),
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
@@ -639,6 +647,7 @@ fn test_update_recipient_weight() {
             deps_mut.storage,
             mock_env(),
             deps_mut.api,
+            &deps_mut.querier,
             mock_info(owner, &[]),
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
@@ -734,6 +743,7 @@ fn test_update_recipient_weight_locked_contract() {
             deps_mut.storage,
             mock_env(),
             deps_mut.api,
+            &deps_mut.querier,
             mock_info(owner, &[]),
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
@@ -807,6 +817,7 @@ fn test_update_recipient_weight_user_not_found() {
             deps_mut.storage,
             mock_env(),
             deps_mut.api,
+            &deps_mut.querier,
             mock_info(owner, &[]),
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
@@ -878,6 +889,7 @@ fn test_update_recipient_weight_invalid_weight() {
             deps_mut.storage,
             mock_env(),
             deps_mut.api,
+            &deps_mut.querier,
             mock_info(owner, &[]),
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
@@ -945,6 +957,7 @@ fn test_execute_add_recipient() {
             deps_mut.storage,
             mock_env(),
             deps_mut.api,
+            &deps_mut.querier,
             mock_info(owner, &[]),
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
@@ -1049,6 +1062,7 @@ fn test_execute_add_recipient_duplicate_recipient() {
             deps_mut.storage,
             mock_env(),
             deps_mut.api,
+            &deps_mut.querier,
             mock_info(owner, &[]),
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
@@ -1126,6 +1140,7 @@ fn test_execute_add_recipient_invalid_weight() {
             deps_mut.storage,
             mock_env(),
             deps_mut.api,
+            &deps_mut.querier,
             mock_info(owner, &[]),
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
@@ -1195,6 +1210,7 @@ fn test_execute_add_recipient_locked_contract() {
             deps_mut.storage,
             mock_env(),
             deps_mut.api,
+            &deps_mut.querier,
             mock_info(owner, &[]),
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
@@ -1247,6 +1263,7 @@ fn test_execute_add_recipient_unauthorized() {
             deps_mut.storage,
             mock_env(),
             deps_mut.api,
+            &deps_mut.querier,
             mock_info(owner, &[]),
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
@@ -1282,6 +1299,7 @@ fn test_execute_update_recipients() {
             deps_mut.storage,
             mock_env(),
             deps_mut.api,
+            &deps_mut.querier,
             mock_info(owner, &[]),
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
@@ -1352,6 +1370,7 @@ fn test_execute_update_recipients_invalid_weight() {
             deps_mut.storage,
             mock_env(),
             deps_mut.api,
+            &deps_mut.querier,
             mock_info(owner, &[]),
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
@@ -1406,6 +1425,7 @@ fn test_execute_update_recipients_contract_locked() {
             deps_mut.storage,
             mock_env(),
             deps_mut.api,
+            &deps_mut.querier,
             mock_info(owner, &[]),
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
@@ -1458,6 +1478,7 @@ fn test_execute_update_recipients_unauthorized() {
             deps_mut.storage,
             mock_env(),
             deps_mut.api,
+            &deps_mut.querier,
             mock_info(owner, &[]),
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),

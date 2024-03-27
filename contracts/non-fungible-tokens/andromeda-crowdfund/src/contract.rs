@@ -47,7 +47,6 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     CONFIG.save(
         deps.storage,
         &Config {
@@ -61,16 +60,18 @@ pub fn instantiate(
         deps.storage,
         env,
         deps.api,
-        info.clone(),
+        &deps.querier,
+        info,
         BaseInstantiateMsg {
-            ado_type: "crowdfund".to_string(),
+            ado_type: CONTRACT_NAME.to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
             kernel_address: msg.kernel_address,
             owner: msg.owner,
         },
     )?;
+    let owner = ADOContract::default().owner(deps.storage)?;
     let mod_resp =
-        ADOContract::default().register_modules(info.sender.as_str(), deps.storage, msg.modules)?;
+        ADOContract::default().register_modules(owner.as_str(), deps.storage, msg.modules)?;
 
     Ok(inst_resp
         .add_attributes(mod_resp.attributes)

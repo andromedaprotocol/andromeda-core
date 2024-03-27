@@ -8,34 +8,61 @@ use andromeda_testing::{
     mock::MockAndromeda,
     mock_contract::{MockADO, MockContract},
 };
+use andromeda_testing::{
+    mock::{mock_app, MockAndromeda, MockApp},
+    mock_contract::MockContract,
+};
 
 use cosmwasm_std::{coin, to_json_binary, Addr, Decimal};
 
-use cw_multi_test::{App, Executor};
+use cw_multi_test::Executor;
 
-fn mock_app() -> App {
-    App::new(|router, _api, storage| {
-        router
-            .bank
-            .init_balance(
-                storage,
-                &Addr::unchecked("owner"),
-                [coin(999999, "uandr")].to_vec(),
-            )
-            .unwrap();
-    })
-}
+// fn mock_app() -> App {
+//     App::new(|router, _api, storage| {
+//         router
+//             .bank
+//             .init_balance(
+//                 storage,
+//                 &Addr::unchecked("owner"),
+//                 [coin(999999, "uandr")].to_vec(),
+//             )
+//             .unwrap();
+//         router
+//             .bank
+//             .init_balance(
+//                 storage,
+//                 &Addr::unchecked("buyer"),
+//                 [coin(1000, "uandr")].to_vec(),
+//             )
+//             .unwrap();
+//         router
+//             .bank
+//             .init_balance(
+//                 storage,
+//                 &Addr::unchecked("user1"),
+//                 [coin(1, "uandr")].to_vec(),
+//             )
+//             .unwrap();
+//     })
+// }
 
-fn mock_andromeda(app: &mut App, admin_address: Addr) -> MockAndromeda {
+fn mock_andromeda(app: &mut MockApp, admin_address: Addr) -> MockAndromeda {
     MockAndromeda::new(app, &admin_address)
 }
 
 #[test]
 fn kernel() {
-    let owner = Addr::unchecked("owner");
-    let user1 = "user1";
-
     let mut router = mock_app();
+    let owner = router.api().addr_make("owner");
+    let user1 = router.api().addr_make("user1");
+
+    router
+        .send_tokens(
+            Addr::unchecked("owner"),
+            owner.clone(),
+            &[coin(1000, "uandr")],
+        )
+        .unwrap();
     let andr = mock_andromeda(&mut router, owner.clone());
     let splitter_code_id = router.store_code(mock_andromeda_splitter());
 
@@ -51,7 +78,7 @@ fn kernel() {
     let splitter_addr = router
         .instantiate_contract(
             splitter_code_id,
-            Addr::unchecked(user1),
+            user1.clone(),
             &splitter_msg,
             &[],
             "Splitter",
@@ -138,6 +165,22 @@ fn kernel() {
             None,
         )
         .unwrap();
+
+    let user1_balance = router
+        .wrap()
+        .query_balance(user1, "uandr".to_string())
+        .unwrap();
+
+    // user1 had one coin before the splitter execute msg which is expected to increase his balance by 100uandr
+    assert_eq!(user1_balance, coin(100, "uandr"));
+
+    let owner_balance = router
+        .wrap()
+        .query_balance(owner.clone(), "uandr".to_string())
+        .unwrap();
+
+    // The owner's balance should be his starting balance subtracted by the 100 he sent with the splitter execute msg
+    assert_eq!(owner_balance, coin(900, "uandr"));
 
     assert!(res.data.is_none());
 }

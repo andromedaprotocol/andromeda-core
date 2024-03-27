@@ -1790,7 +1790,7 @@ fn test_addresslist() {
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
     };
 
-    let info = mock_info("app_contract", &[]);
+    let info = mock_info("owner", &[]);
     let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     // Not whitelisted user
@@ -1819,7 +1819,7 @@ fn test_update_token_contract() {
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
     };
 
-    let info = mock_info("app_contract", &[]);
+    let info = mock_info("owner", &[]);
     let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
     let msg = ExecuteMsg::UpdateTokenContract {

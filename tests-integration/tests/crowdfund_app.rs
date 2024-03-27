@@ -26,58 +26,30 @@ use andromeda_vault::mock::mock_andromeda_vault;
 use cosmwasm_std::{coin, to_json_binary, Addr, BlockInfo, Decimal, Uint128};
 use cw_multi_test::{App, Executor};
 
-fn mock_app() -> App {
-    App::new(|router, _api, storage| {
-        router
-            .bank
-            .init_balance(
-                storage,
-                &Addr::unchecked("owner"),
-                [coin(999999, "uandr")].to_vec(),
-            )
-            .unwrap();
-        router
-            .bank
-            .init_balance(
-                storage,
-                &Addr::unchecked("buyer_one"),
-                [coin(100, "uandr")].to_vec(),
-            )
-            .unwrap();
-        router
-            .bank
-            .init_balance(
-                storage,
-                &Addr::unchecked("buyer_two"),
-                [coin(100, "uandr")].to_vec(),
-            )
-            .unwrap();
-        router
-            .bank
-            .init_balance(
-                storage,
-                &Addr::unchecked("buyer_three"),
-                [coin(100, "uandr")].to_vec(),
-            )
-            .unwrap();
-    })
-}
-
-fn mock_andromeda(app: &mut App, admin_address: Addr) -> MockAndromeda {
+fn mock_andromeda(app: &mut MockApp, admin_address: Addr) -> MockAndromeda {
     MockAndromeda::new(app, &admin_address)
 }
 
 // TODO: Fix to check wallet balance post sale
 #[test]
 fn test_crowdfund_app() {
-    let owner = Addr::unchecked("owner");
-    let vault_one_recipient_addr = Addr::unchecked("vault_one_recipient");
-    let vault_two_recipient_addr = Addr::unchecked("vault_two_recipient");
-    let buyer_one = Addr::unchecked("buyer_one");
-    let buyer_two = Addr::unchecked("buyer_two");
-    let buyer_three = Addr::unchecked("buyer_three");
-
     let mut router = mock_app();
+
+    let owner = router.api().addr_make("owner");
+    let vault_one_recipient_addr = router.api().addr_make("vault_one_recipient");
+    let vault_two_recipient_addr = router.api().addr_make("vault_two_recipient");
+    let buyer_one = router.api().addr_make("buyer_one");
+    let buyer_two = router.api().addr_make("buyer_two");
+    let buyer_three = router.api().addr_make("buyer_three");
+    init_balances(
+        &mut router,
+        vec![
+            (buyer_one.clone(), &[coin(100, "uandr")]),
+            (buyer_two.clone(), &[coin(100, "uandr")]),
+            (buyer_three.clone(), &[coin(100, "uandr")]),
+        ],
+    );
+
     let andr = mock_andromeda(&mut router, owner.clone());
 
     // Store contract codes
@@ -90,7 +62,7 @@ fn test_crowdfund_app() {
 
     // Generate App Components
     // App component names must be less than 3 characters or longer than 54 characters to force them to be 'invalid' as the MockApi struct used within the CosmWasm App struct only contains those two validation checks
-    let rates_recipient = "rates_recipient";
+    let rates_recipient = router.api().addr_make("rates_recipient");
     // Generate rates contract
     let rates: Vec<RateInfo> = [RateInfo {
         rate: Rate::Flat(coin(1, "uandr")),
@@ -244,10 +216,6 @@ fn test_crowdfund_app() {
     crowdfund_contract
         .execute_end_sale(owner, &mut router, None)
         .unwrap();
-    // TODO: Uncomment once Register User in VFS is re-enabled.
-    // router
-    //     .execute_contract(owner, Addr::unchecked(crowdfund_addr), &end_sale_msg, &[])
-    //     .unwrap();
 
     // Check final state
     //Check token transfers

@@ -5,7 +5,7 @@ use andromeda_std::ado_base::{
     AndromedaMsg, AndromedaQuery,
 };
 use cosmwasm_std::{Addr, Coin};
-use cw_multi_test::{App, AppResponse, Executor};
+use cw_multi_test::{AppResponse, Executor};
 use serde::{de::DeserializeOwned, Serialize};
 
 pub use anyhow::Result as AnyResult;

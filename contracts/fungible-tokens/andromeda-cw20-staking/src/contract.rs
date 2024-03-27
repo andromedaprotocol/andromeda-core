@@ -96,9 +96,10 @@ pub fn instantiate(
         deps.storage,
         env,
         deps.api,
+        &deps.querier,
         info.clone(),
         BaseInstantiateMsg {
-            ado_type: "cw20-staking".to_string(),
+            ado_type: CONTRACT_NAME.to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
             kernel_address: msg.kernel_address,
             owner: msg.owner,

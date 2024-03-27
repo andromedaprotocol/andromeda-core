@@ -12,7 +12,9 @@ use cosmwasm_std::{
     to_json_binary, Binary, Coin, ContractResult, OwnedDeps, Querier, QuerierResult, QueryRequest,
     SystemError, SystemResult, WasmQuery,
 };
-use cosmwasm_std::{BankMsg, CosmosMsg, DenomMetadata, DenomUnit, Response, SubMsg};
+use cosmwasm_std::{
+    BankMsg, CosmosMsg, DenomMetadata, DenomUnit, QuerierWrapper, Response, SubMsg,
+};
 use cw721::{Cw721QueryMsg, OwnerOfResponse, TokensResponse};
 
 pub use andromeda_std::testing::mock_querier::{
@@ -51,6 +53,7 @@ pub fn mock_dependencies_custom(
             &mut deps.storage,
             mock_env(),
             &deps.api,
+            &QuerierWrapper::new(&deps.querier),
             mock_info("sender", &[]),
             InstantiateMsg {
                 ado_type: "crowdfund".to_string(),
