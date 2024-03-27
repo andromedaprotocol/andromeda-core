@@ -35,16 +35,17 @@ impl<'a> ADOContract<'a> {
             &msg.ado_type
         };
         cw2::set_contract_version(storage, ado_type, msg.ado_version)?;
-        self.owner.save(
-            storage,
-            &api.addr_validate(&msg.owner.unwrap_or(info.sender.to_string()))?,
-        )?;
+        let mut owner = api.addr_validate(&msg.owner.unwrap_or(info.sender.to_string()))?;
         self.original_publisher.save(storage, &info.sender)?;
         self.block_height.save(storage, &env.block.height)?;
         self.ado_type.save(storage, &msg.ado_type)?;
         self.kernel_address
             .save(storage, &api.addr_validate(&msg.kernel_address)?)?;
-        let attributes = [attr("method", "instantiate"), attr("type", ado_type)];
+        let mut attributes = vec![
+            attr("method", "instantiate"),
+            attr("type", ado_type),
+            attr("kernel_address", msg.kernel_address),
+        ];
 
         // We do not want to store app contracts for the kernel, exit early if current contract is kernel
         let is_kernel_contract = ado_type.contains("kernel");
@@ -68,9 +69,14 @@ impl<'a> ADOContract<'a> {
                 self.app_contract
                     .save(storage, &Addr::unchecked(info.sender.to_string()))?;
                 let app_owner = AOSQuerier::ado_owner_getter(querier, &info.sender)?;
-                self.owner.save(storage, &app_owner)?;
+                owner = app_owner;
+                attributes.push(attr("app_contract", info.sender.to_string()));
             }
         }
+
+        self.owner.save(storage, &owner)?;
+        attributes.push(attr("owner", owner));
+
         Ok(Response::new().add_attributes(attributes))
     }
 
