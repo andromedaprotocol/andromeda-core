@@ -4,6 +4,7 @@ pub mod economics_msg;
 pub mod adodb;
 pub mod economics;
 pub mod kernel;
+pub mod mock_builder;
 pub mod vfs;
 
 #[cfg(all(not(target_arch = "wasm32")))]
