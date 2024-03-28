@@ -14,6 +14,7 @@ use andromeda_non_fungible_tokens::cw721::{
 use andromeda_std::{
     ado_base::{AndromedaMsg, AndromedaQuery},
     ado_contract::{permissioning::is_context_permissioned_strict, ADOContract},
+    amp::AndrAddr,
     common::{actions::call_action, context::ExecuteContext},
 };
 use cw2::{get_contract_version, set_contract_version};
@@ -463,7 +464,7 @@ fn execute_burn(env: ExecuteContext, token_id: String) -> Result<Response, Contr
 fn execute_send_nft(
     ctx: ExecuteContext,
     token_id: String,
-    contract_addr: String,
+    contract_addr: AndrAddr,
     msg: Binary,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
@@ -472,7 +473,7 @@ fn execute_send_nft(
     let contract = AndrCW721Contract::default();
     TRANSFER_AGREEMENTS.remove(deps.storage, &token_id);
 
-    Ok(contract.send_nft(deps, env, info, contract_addr, token_id, msg)?)
+    Ok(contract.send_nft(deps, env, info, contract_addr.to_string(), token_id, msg)?)
 }
 
 #[cfg_attr(not(feature = "imported"), entry_point)]

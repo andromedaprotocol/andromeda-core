@@ -188,7 +188,7 @@ fn test_auction_app() {
         None,
     );
     let send_msg = mock_send_nft(
-        auction_addr.clone(),
+        AndrAddr::from_string(auction_addr.clone()),
         "0".to_string(),
         to_json_binary(&receive_msg).unwrap(),
     );
