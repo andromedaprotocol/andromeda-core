@@ -1,7 +1,9 @@
+use std::cmp;
+
 use crate::{
     ado_base::permissioning::{Permission, PermissionInfo, PermissioningMessage},
     amp::{messages::AMPPkt, AndrAddr},
-    common::context::ExecuteContext,
+    common::{context::ExecuteContext, OrderBy},
     error::ContractError,
 };
 use cosmwasm_std::{ensure, Deps, Env, MessageInfo, Order, Response, Storage};
@@ -344,6 +346,48 @@ impl<'a> ADOContract<'a> {
             .map(|p| p.unwrap())
             .collect::<Vec<String>>();
         Ok(actions)
+    }
+
+    pub fn query_permissioned_actors(
+        &self,
+        deps: Deps,
+        action: impl Into<String>,
+        start_after: Option<u32>,
+        limit: Option<u32>,
+        order_by: Option<OrderBy>,
+    ) -> Result<Vec<String>, ContractError> {
+        let action_string: String = action.into();
+
+        let mut actors = permissions()
+            .keys(deps.storage, None, None, Order::Ascending)
+            .filter(|item| item.as_ref().unwrap().starts_with(&action_string))
+            .map(|item| {
+                let actor: String = item.unwrap_or_default()[action_string.len()..].to_string();
+                actor
+            })
+            .collect::<Vec<String>>();
+
+        let start = start_after.unwrap_or(0) as usize;
+        let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
+
+        let (start, end) = match order_by {
+            Some(OrderBy::Desc) => (
+                actors
+                    .len()
+                    .saturating_sub(cmp::min(actors.len(), start + limit)),
+                actors.len().saturating_sub(cmp::min(start, actors.len())),
+            ),
+            // Default ordering is Ascending.
+            _ => (
+                cmp::min(actors.len(), start),
+                cmp::min(start + limit, actors.len()),
+            ),
+        };
+        let slice = &mut actors[start..end];
+        if order_by == Some(OrderBy::Desc) {
+            slice.reverse();
+        }
+        Ok(slice.to_vec())
     }
 }
 
@@ -977,5 +1021,37 @@ mod tests {
 
         assert_eq!(actions.len(), 1);
         assert_eq!(actions[0], "action");
+    }
+
+    #[test]
+    fn test_query_permissioned_actors() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = mock_info("owner", &[]);
+        let ctx = ExecuteContext {
+            deps: deps.as_mut(),
+            env,
+            info: info.clone(),
+            amp_ctx: None,
+        };
+
+        let contract = ADOContract::default();
+
+        contract.owner.save(ctx.deps.storage, &info.sender).unwrap();
+
+        let actor = "actor";
+        let action = "action";
+        ADOContract::default()
+            .execute_permission_action(ctx, action)
+            .unwrap();
+
+        ADOContract::set_permission(deps.as_mut().storage, action, actor, Permission::default())
+            .unwrap();
+        let actors = ADOContract::default()
+            .query_permissioned_actors(deps.as_ref(), action, None, None, None)
+            .unwrap();
+
+        assert_eq!(actors.len(), 1);
+        assert_eq!(actors[0], actor);
     }
 }
