@@ -116,6 +116,9 @@ cw-multi-test = { version = "1.0.0", features = [
 ] }
 
 
+[[test]]
+name = "app"
+
 # [[test]]
 # name = "cw721"
 
