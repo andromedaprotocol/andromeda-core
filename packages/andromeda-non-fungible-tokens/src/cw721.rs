@@ -87,7 +87,7 @@ pub enum ExecuteMsg {
     TransferNft { recipient: String, token_id: String },
     /// Sends a token to another contract
     SendNft {
-        contract: String,
+        contract: AndrAddr,
         token_id: String,
         msg: Binary,
     },
@@ -135,7 +135,7 @@ impl From<ExecuteMsg> for Cw721ExecuteMsg<TokenExtension, ExecuteMsg> {
                 token_id,
                 msg,
             } => Cw721ExecuteMsg::SendNft {
-                contract,
+                contract: contract.to_string(),
                 token_id,
                 msg,
             },

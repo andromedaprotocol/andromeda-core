@@ -20,7 +20,7 @@ use andromeda_modules::rates::{Rate, RateInfo};
 use andromeda_rates::mock::{mock_andromeda_rates, mock_rates_instantiate_msg};
 use andromeda_std::ado_base::modules::Module;
 use andromeda_std::amp::messages::{AMPMsg, AMPPkt};
-use andromeda_std::amp::Recipient;
+use andromeda_std::amp::{AndrAddr, Recipient};
 use andromeda_testing::mock::{mock_app, MockAndromeda, MockApp};
 use cosmwasm_std::{coin, to_json_binary, Addr, BlockInfo, Uint128};
 use cw721::OwnerOfResponse;
@@ -192,7 +192,7 @@ fn test_marketplace_app() {
 
     // Send Token to Marketplace
     let send_nft_msg = mock_send_nft(
-        marketplace_addr.clone(),
+        AndrAddr::from_string(marketplace_addr.clone()),
         token_id.to_string(),
         to_json_binary(&mock_start_sale(Uint128::from(100u128), "uandr")).unwrap(),
     );

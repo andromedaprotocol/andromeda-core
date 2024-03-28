@@ -5,6 +5,7 @@ use andromeda_std::{
         InstantiateMsg as BaseInstantiateMsg,
     },
     ado_contract::ADOContract,
+    amp::AndrAddr,
     common::{actions::call_action, context::ExecuteContext, encode_binary, Funds},
     error::{from_semver, ContractError},
 };
@@ -202,7 +203,7 @@ fn execute_burn(ctx: ExecuteContext, amount: Uint128) -> Result<Response, Contra
 
 fn execute_send(
     ctx: ExecuteContext,
-    contract: String,
+    contract: AndrAddr,
     amount: Uint128,
     msg: Binary,
 ) -> Result<Response, ContractError> {
@@ -231,6 +232,7 @@ fn execute_send(
 
     let mut resp = filter_out_cw20_messages(msgs, deps.storage, deps.api, &info.sender)?;
 
+    let contract = contract.get_raw_address(&deps.as_ref())?.into_string();
     let cw20_resp = execute_cw20(
         deps,
         env,
