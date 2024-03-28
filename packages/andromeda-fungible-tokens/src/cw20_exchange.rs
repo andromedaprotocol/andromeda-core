@@ -1,5 +1,6 @@
 use andromeda_std::{
     amp::AndrAddr, andr_exec, andr_instantiate, andr_instantiate_modules, andr_query,
+    common::Milliseconds,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
@@ -54,8 +55,8 @@ pub enum Cw20HookMsg {
         /// The recipient of the sale proceeds
         /// Sender is used if `None` provided
         recipient: Option<String>,
-        start_time: Option<u64>,
-        duration: Option<u64>,
+        start_time: Option<Milliseconds>,
+        duration: Option<Milliseconds>,
     },
     /// Purchases tokens
     Purchase {

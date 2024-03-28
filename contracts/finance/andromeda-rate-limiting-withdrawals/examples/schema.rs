@@ -1,4 +1,4 @@
-use andromeda_finance::splitter::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use andromeda_finance::rate_limiting_withdrawals::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use cosmwasm_schema::write_api;
 
 fn main() {

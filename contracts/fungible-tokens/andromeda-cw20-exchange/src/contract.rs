@@ -8,14 +8,14 @@ use andromeda_std::{
     common::{
         actions::call_action,
         context::ExecuteContext,
-        expiration::{expiration_from_milliseconds, MILLISECONDS_TO_NANOSECONDS_RATIO},
+        expiration::{expiration_from_milliseconds, get_and_validate_start_time},
+        Milliseconds,
     },
     error::{from_semver, ContractError},
 };
 use cosmwasm_std::{
     attr, coin, ensure, entry_point, from_json, to_json_binary, wasm_execute, BankMsg, Binary,
-    BlockInfo, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError, SubMsg,
-    Uint128,
+    CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError, SubMsg, Uint128,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
@@ -168,10 +168,12 @@ pub fn execute_start_sale(
     sender: String,
     // The recipient of the sale proceeds
     recipient: Option<String>,
-    start_time: Option<u64>,
-    duration: Option<u64>,
+    start_time: Option<Milliseconds>,
+    duration: Option<Milliseconds>,
 ) -> Result<Response, ContractError> {
-    let ExecuteContext { deps, info, .. } = ctx;
+    let ExecuteContext {
+        deps, env, info, ..
+    } = ctx;
 
     let token_addr = TOKEN_ADDRESS
         .load(deps.storage)?
@@ -199,28 +201,17 @@ pub fn execute_start_sale(
         }
     );
 
-    let current_time = ctx.env.block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO;
-
-    let start_expiration = if let Some(start_time) = start_time {
-        expiration_from_milliseconds(start_time)?
-    } else {
-        // Set as current time + 1 so that it isn't expired from the very start
-        expiration_from_milliseconds(current_time + 1)?
-    };
-
-    // Validate start time
-    let block_time = block_to_expiration(&ctx.env.block, start_expiration).unwrap();
-    ensure!(
-        start_expiration.gt(&block_time),
-        ContractError::StartTimeInThePast {
-            current_time,
-            current_block: ctx.env.block.height,
-        }
-    );
+    // If start time wasn't provided, it will be set as the current_time
+    let (start_expiration, current_time) = get_and_validate_start_time(&env, start_time)?;
 
     let end_expiration = if let Some(duration) = duration {
-        // If there's no start time, consider it as now
-        expiration_from_milliseconds(start_time.unwrap_or(current_time) + duration)?
+        // If there's no start time, consider it as now + 1
+        ensure!(!duration.is_zero(), ContractError::InvalidExpiration {});
+        expiration_from_milliseconds(
+            start_time
+                .unwrap_or(current_time.plus_seconds(1))
+                .plus_milliseconds(duration),
+        )?
     } else {
         Expiration::Never {}
     };
@@ -430,14 +421,6 @@ pub fn execute_cancel_sale(
         attr("action", "cancel_sale"),
         attr("asset", asset.to_string()),
     ]))
-}
-
-fn block_to_expiration(block: &BlockInfo, model: Expiration) -> Option<Expiration> {
-    match model {
-        Expiration::AtTime(_) => Some(Expiration::AtTime(block.time)),
-        Expiration::AtHeight(_) => Some(Expiration::AtHeight(block.height)),
-        Expiration::Never {} => None,
-    }
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

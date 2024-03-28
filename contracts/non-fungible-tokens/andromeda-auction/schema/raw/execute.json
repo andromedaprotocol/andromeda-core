@@ -77,7 +77,6 @@
           "required": [
             "coin_denom",
             "duration",
-            "start_time",
             "token_address",
             "token_id"
           ],
@@ -101,7 +100,10 @@
               ]
             },
             "start_time": {
-              "type": "integer",
+              "type": [
+                "integer",
+                "null"
+              ],
               "format": "uint64",
               "minimum": 0.0
             },

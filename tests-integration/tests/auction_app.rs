@@ -16,10 +16,10 @@ use andromeda_cw721::mock::{
 use andromeda_non_fungible_tokens::auction::{
     AuctionIdsResponse, AuctionStateResponse, BidsResponse,
 };
-use andromeda_std::ado_base::permissioning::Permission;
 use andromeda_std::amp::AndrAddr;
 use andromeda_std::common::expiration::MILLISECONDS_TO_NANOSECONDS_RATIO;
 use andromeda_std::error::ContractError;
+use andromeda_std::{ado_base::permissioning::Permission, common::Milliseconds};
 use andromeda_testing::mock::MockAndromeda;
 use cosmwasm_std::{coin, to_json_binary, Addr, BlockInfo, Timestamp, Uint128};
 use cw721::OwnerOfResponse;
@@ -180,7 +180,13 @@ fn test_auction_app() {
         .unwrap();
 
     let start_time = router.block_info().time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO + 100;
-    let receive_msg = mock_start_auction(start_time, 1000, "uandr".to_string(), None, None);
+    let receive_msg = mock_start_auction(
+        Some(Milliseconds(start_time)),
+        Milliseconds(1000),
+        "uandr".to_string(),
+        None,
+        None,
+    );
     let send_msg = mock_send_nft(
         auction_addr.clone(),
         "0".to_string(),

@@ -11,7 +11,7 @@ use andromeda_non_fungible_tokens::{
 use andromeda_std::{
     ado_base::ownership::OwnershipMessage,
     amp::{messages::AMPPkt, recipient::Recipient, AndrAddr},
-    common::{actions::call_action, Milliseconds},
+    common::{actions::call_action, expiration::get_and_validate_start_time, Milliseconds},
 };
 use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
 
@@ -30,7 +30,7 @@ use cosmwasm_std::{
     Order, QuerierWrapper, QueryRequest, Reply, Response, StdError, Storage, SubMsg, Uint128,
     WasmMsg, WasmQuery,
 };
-use cw721::{ContractInfoResponse, TokensResponse};
+use cw721::{ContractInfoResponse, Expiration, TokensResponse};
 use cw_utils::nonpayable;
 use std::cmp;
 
@@ -132,14 +132,16 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
     let res = match msg {
         ExecuteMsg::Mint(mint_msgs) => execute_mint(ctx, mint_msgs),
         ExecuteMsg::StartSale {
-            expiration,
+            start_time,
+            end_time,
             price,
             min_tokens_sold,
             max_amount_per_wallet,
             recipient,
         } => execute_start_sale(
             ctx,
-            expiration,
+            start_time,
+            end_time,
             price,
             min_tokens_sold,
             max_amount_per_wallet,
@@ -283,7 +285,8 @@ fn execute_update_token_contract(
 #[allow(clippy::too_many_arguments)]
 fn execute_start_sale(
     ctx: ExecuteContext,
-    expiration: Milliseconds,
+    start_time: Option<Milliseconds>,
+    end_time: Expiration,
     price: Coin,
     min_tokens_sold: Uint128,
     max_amount_per_wallet: Option<u32>,
@@ -301,10 +304,18 @@ fn execute_start_sale(
         ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {}
     );
+    // If start time wasn't provided, it will be set as the current_time
+    let (start_expiration, _current_time) = get_and_validate_start_time(&env, start_time)?;
+
     ensure!(
-        !expiration.is_in_past(&env.block),
-        ContractError::ExpirationInPast {}
+        end_time > start_expiration,
+        ContractError::StartTimeAfterEndTime {}
     );
+    ensure!(
+        !matches!(end_time, Expiration::Never {}),
+        ContractError::ExpirationMustNotBeNever {}
+    );
+
     SALE_CONDUCTED.save(deps.storage, &true)?;
     let state = STATE.may_load(deps.storage)?;
     ensure!(state.is_none(), ContractError::SaleStarted {});
@@ -315,7 +326,7 @@ fn execute_start_sale(
     STATE.save(
         deps.storage,
         &State {
-            expiration,
+            end_time,
             price,
             min_tokens_sold,
             max_amount_per_wallet,
@@ -330,7 +341,8 @@ fn execute_start_sale(
 
     Ok(Response::new()
         .add_attribute("action", "start_sale")
-        .add_attribute("expiration", expiration.to_string())
+        .add_attribute("start_time", start_expiration.to_string())
+        .add_attribute("end_time", end_time.to_string())
         .add_attribute("price", price_str)
         .add_attribute("min_tokens_sold", min_tokens_sold)
         .add_attribute("max_amount_per_wallet", max_amount_per_wallet.to_string()))
@@ -354,7 +366,7 @@ fn execute_purchase_by_token_id(
 
     let mut state = state.unwrap();
     ensure!(
-        !state.expiration.is_expired(&env.block),
+        !state.end_time.is_expired(&env.block),
         ContractError::NoOngoingSale {}
     );
 
@@ -406,7 +418,7 @@ fn execute_purchase(
 
     let mut state = state.unwrap();
     ensure!(
-        !state.expiration.is_expired(&env.block),
+        !state.end_time.is_expired(&env.block),
         ContractError::NoOngoingSale {}
     );
 
@@ -542,7 +554,7 @@ fn execute_claim_refund(ctx: ExecuteContext) -> Result<Response, ContractError> 
     ensure!(state.is_some(), ContractError::NoOngoingSale {});
     let state = state.unwrap();
     ensure!(
-        state.expiration.is_expired(&env.block),
+        state.end_time.is_expired(&env.block),
         ContractError::SaleNotEnded {}
     );
     ensure!(
@@ -582,7 +594,7 @@ fn execute_end_sale(ctx: ExecuteContext, limit: Option<u32>) -> Result<Response,
 
     ensure!(
         // If all tokens have been sold the sale can be ended too.
-        state.expiration.is_expired(&env.block)
+        state.end_time.is_expired(&env.block)
             || number_of_tokens_available.is_zero()
             || (has_minimum_sold && is_owner),
         ContractError::SaleNotEnded {}

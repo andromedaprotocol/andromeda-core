@@ -28,17 +28,17 @@
         "start_sale": {
           "type": "object",
           "required": [
-            "expiration",
+            "end_time",
             "min_tokens_sold",
             "price",
             "recipient"
           ],
           "properties": {
-            "expiration": {
+            "end_time": {
               "description": "When the sale ends.",
               "allOf": [
                 {
-                  "$ref": "#/definitions/Milliseconds"
+                  "$ref": "#/definitions/Expiration"
                 }
               ]
             },
@@ -74,6 +74,15 @@
                   "$ref": "#/definitions/Recipient"
                 }
               ]
+            },
+            "start_time": {
+              "description": "When the sale start. Defaults to current time.",
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint64",
+              "minimum": 0.0
             }
           },
           "additionalProperties": false
@@ -604,12 +613,6 @@
         }
       },
       "additionalProperties": false
-    },
-    "Milliseconds": {
-      "description": "Represents time in milliseconds.",
-      "type": "integer",
-      "format": "uint64",
-      "minimum": 0.0
     },
     "Module": {
       "description": "A struct describing a token module, provided with the instantiation message this struct is used to record the info about the module and how/if it should be instantiated",

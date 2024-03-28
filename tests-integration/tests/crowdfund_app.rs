@@ -12,7 +12,7 @@ use andromeda_cw721::mock::{
 use andromeda_finance::splitter::AddressPercent;
 use andromeda_std::{
     amp::{AndrAddr, Recipient},
-    common::Milliseconds,
+    common::{expiration::MILLISECONDS_TO_NANOSECONDS_RATIO, Milliseconds},
 };
 
 use andromeda_modules::rates::{Rate, RateInfo};
@@ -21,10 +21,11 @@ use andromeda_splitter::mock::{
     mock_andromeda_splitter, mock_splitter_instantiate_msg, mock_splitter_send_msg,
 };
 use andromeda_std::ado_base::modules::Module;
+use cw20::Expiration;
 use std::str::FromStr;
 
 use andromeda_testing::mock::{init_balances, mock_app, MockAndromeda, MockApp};
-use cosmwasm_std::{coin, to_json_binary, Addr, BlockInfo, Decimal, Uint128};
+use cosmwasm_std::{coin, to_json_binary, Addr, BlockInfo, Decimal, Timestamp, Uint128};
 use cw721::OwnerOfResponse;
 use cw_multi_test::Executor;
 
@@ -207,8 +208,11 @@ fn test_crowdfund_app() {
     let sale_recipient =
         Recipient::from_string(format!("/home/{owner}/app/{}", splitter_app_component.name))
             .with_msg(mock_splitter_send_msg());
+    let current_time = router.block_info().time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO;
+
     let start_msg = mock_start_crowdfund_msg(
-        Milliseconds::from_seconds(router.block_info().time.seconds() + 5),
+        None,
+        Expiration::AtTime(Timestamp::from_nanos((current_time + 2) * 1_000_000)),
         token_price.clone(),
         Uint128::from(3u128),
         Some(1),

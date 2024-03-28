@@ -1,5 +1,5 @@
 use andromeda_std::amp::AndrAddr;
-use andromeda_std::common::OrderBy;
+use andromeda_std::common::{Milliseconds, OrderBy};
 use andromeda_std::{andr_exec, andr_instantiate, andr_instantiate_modules, andr_query};
 
 use cosmwasm_schema::{cw_serde, QueryResponses};
@@ -31,8 +31,8 @@ pub enum ExecuteMsg {
     UpdateAuction {
         token_id: String,
         token_address: String,
-        start_time: u64,
-        duration: u64,
+        start_time: Option<Milliseconds>,
+        duration: Milliseconds,
         coin_denom: String,
         whitelist: Option<Vec<Addr>>,
         min_bid: Option<Uint128>,
@@ -58,9 +58,9 @@ pub enum Cw721HookMsg {
     /// has started but is immutable after that.
     StartAuction {
         /// Start time in milliseconds since epoch
-        start_time: u64,
+        start_time: Option<Milliseconds>,
         /// Duration in milliseconds
-        duration: u64,
+        duration: Milliseconds,
         coin_denom: String,
         min_bid: Option<Uint128>,
         whitelist: Option<Vec<Addr>>,

@@ -3,23 +3,19 @@
   "title": "ExecuteMsg",
   "oneOf": [
     {
-      "description": "Update the recipients list. Only executable by the contract owner when the contract is not locked.",
       "type": "object",
       "required": [
-        "update_recipients"
+        "deposits"
       ],
       "properties": {
-        "update_recipients": {
+        "deposits": {
           "type": "object",
-          "required": [
-            "recipients"
-          ],
           "properties": {
-            "recipients": {
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/AddressPercent"
-              }
+            "recipient": {
+              "type": [
+                "string",
+                "null"
+              ]
             }
           },
           "additionalProperties": false
@@ -28,36 +24,21 @@
       "additionalProperties": false
     },
     {
-      "description": "Used to lock/unlock the contract allowing the config to be updated.",
       "type": "object",
       "required": [
-        "update_lock"
+        "withdraw_funds"
       ],
       "properties": {
-        "update_lock": {
+        "withdraw_funds": {
           "type": "object",
           "required": [
-            "lock_time"
+            "amount"
           ],
           "properties": {
-            "lock_time": {
-              "$ref": "#/definitions/Milliseconds"
+            "amount": {
+              "$ref": "#/definitions/Uint128"
             }
           },
-          "additionalProperties": false
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "description": "Divides any attached funds to the message amongst the recipients list.",
-      "type": "object",
-      "required": [
-        "send"
-      ],
-      "properties": {
-        "send": {
-          "type": "object",
           "additionalProperties": false
         }
       },
@@ -358,22 +339,6 @@
       "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
       "type": "string"
     },
-    "AddressPercent": {
-      "type": "object",
-      "required": [
-        "percent",
-        "recipient"
-      ],
-      "properties": {
-        "percent": {
-          "$ref": "#/definitions/Decimal"
-        },
-        "recipient": {
-          "$ref": "#/definitions/Recipient"
-        }
-      },
-      "additionalProperties": false
-    },
     "AndrAddr": {
       "description": "An address that can be used within the Andromeda ecosystem. Inspired by the cosmwasm-std `Addr` type. https://github.com/CosmWasm/cosmwasm/blob/2a1c698520a1aacedfe3f4803b0d7d653892217a/packages/std/src/addresses.rs#L33\n\nThis address can be one of two things: 1. A valid human readable address e.g. `cosmos1...` 2. A valid Andromeda VFS path e.g. `/home/user/app/component`\n\nVFS paths can be local in the case of an app and can be done by referencing `./component` they can also contain protocols for cross chain communication. A VFS path is usually structured as so:\n\n`<protocol>://<chain (required if ibc used)>/<path>` or `ibc://cosmoshub-4/user/app/component`",
       "type": "string",
@@ -397,10 +362,6 @@
           "type": "string"
         }
       }
-    },
-    "Decimal": {
-      "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 (which is (2^128 - 1) / 10^18)",
-      "type": "string"
     },
     "Expiration": {
       "description": "Expiration represents a point in time when some event happens. It can compare with a BlockInfo and will return is_expired() == true once the condition is hit (and for every block in the future)",
@@ -464,12 +425,6 @@
         }
       },
       "additionalProperties": false
-    },
-    "Milliseconds": {
-      "description": "Represents time in milliseconds.",
-      "type": "integer",
-      "format": "uint64",
-      "minimum": 0.0
     },
     "Module": {
       "description": "A struct describing a token module, provided with the instantiation message this struct is used to record the info about the module and how/if it should be instantiated",
@@ -712,39 +667,6 @@
           "additionalProperties": false
         }
       ]
-    },
-    "Recipient": {
-      "description": "A simple struct used for inter-contract communication. The struct can be used in two ways:\n\n1. Simply just providing an `AndrAddr` which will treat the communication as a transfer of any related funds 2. Providing an `AndrAddr` and a `Binary` message which will be sent to the contract at the resolved address\n\nThe `Binary` message can be any message that the contract at the resolved address can handle.",
-      "type": "object",
-      "required": [
-        "address"
-      ],
-      "properties": {
-        "address": {
-          "$ref": "#/definitions/AndrAddr"
-        },
-        "ibc_recovery_address": {
-          "anyOf": [
-            {
-              "$ref": "#/definitions/AndrAddr"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "msg": {
-          "anyOf": [
-            {
-              "$ref": "#/definitions/Binary"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        }
-      },
-      "additionalProperties": false
     },
     "ReplyOn": {
       "description": "Use this to define when the contract gets a response callback. If you only need it for errors or success you can select just those in order to save gas.",

@@ -13,8 +13,7 @@
           "type": "object",
           "required": [
             "coin_denom",
-            "duration",
-            "start_time"
+            "duration"
           ],
           "properties": {
             "coin_denom": {
@@ -38,7 +37,10 @@
             },
             "start_time": {
               "description": "Start time in milliseconds since epoch",
-              "type": "integer",
+              "type": [
+                "integer",
+                "null"
+              ],
               "format": "uint64",
               "minimum": 0.0
             },
