@@ -93,11 +93,12 @@ fn test_app() {
         .unwrap();
     assert_eq!(component_addresses.len(), components.len());
 
+    let owner_str = owner.to_string();
     let cw721_component_with_symlink = AppComponent {
         name: "cw721-ref".to_string(),
         ado_type: "cw721".to_string(),
         component_type: andromeda_app::app::ComponentType::Symlink(AndrAddr::from_string(
-            "./SimpleApp/cw721",
+            format!("~{owner_str}/simpleapp/cw721")
         )),
     };
     router
