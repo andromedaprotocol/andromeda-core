@@ -16,7 +16,7 @@ use andromeda_std::{
         encode_binary,
         expiration::{expiration_from_milliseconds, get_and_validate_start_time},
         rates::get_tax_amount,
-        Funds, OrderBy,
+        Funds, Milliseconds, OrderBy,
     },
     error::{from_semver, ContractError},
 };
@@ -214,14 +214,14 @@ fn execute_start_auction(
     ctx: ExecuteContext,
     sender: String,
     token_id: String,
-    start_time: Option<u64>,
-    duration: u64,
+    start_time: Option<Milliseconds>,
+    duration: Milliseconds,
     coin_denom: String,
     whitelist: Option<Vec<Addr>>,
     min_bid: Option<Uint128>,
 ) -> Result<Response, ContractError> {
     validate_denom(&ctx.deps.querier, coin_denom.clone())?;
-    ensure!(duration > 0, ContractError::InvalidExpiration {});
+    ensure!(!duration.is_zero(), ContractError::InvalidExpiration {});
     let ExecuteContext {
         deps, info, env, ..
     } = ctx;
@@ -229,8 +229,11 @@ fn execute_start_auction(
     // If start time wasn't provided, it will be set as the current_time
     let (start_expiration, current_time) = get_and_validate_start_time(&env, start_time)?;
 
-    let end_expiration =
-        expiration_from_milliseconds(start_time.unwrap_or(current_time) + duration)?;
+    let end_expiration = expiration_from_milliseconds(
+        start_time
+            .unwrap_or(current_time)
+            .plus_milliseconds(duration),
+    )?;
 
     let token_address = info.sender.to_string();
 
@@ -272,8 +275,8 @@ fn execute_update_auction(
     ctx: ExecuteContext,
     token_id: String,
     token_address: String,
-    start_time: Option<u64>,
-    duration: u64,
+    start_time: Option<Milliseconds>,
+    duration: Milliseconds,
     coin_denom: String,
     whitelist: Option<Vec<Addr>>,
     min_bid: Option<Uint128>,
@@ -293,13 +296,19 @@ fn execute_update_auction(
         !token_auction_state.start_time.is_expired(&env.block),
         ContractError::AuctionAlreadyStarted {}
     );
-    ensure!(duration > 0, ContractError::InvalidExpiration {});
+    ensure!(
+        duration > Milliseconds::zero(),
+        ContractError::InvalidExpiration {}
+    );
 
     // If start time wasn't provided, it will be set as the current_time
     let (start_expiration, current_time) = get_and_validate_start_time(&env, start_time)?;
 
-    let end_expiration =
-        expiration_from_milliseconds(start_time.unwrap_or(current_time + 1) + duration)?;
+    let end_expiration = expiration_from_milliseconds(
+        start_time
+            .unwrap_or(current_time)
+            .plus_milliseconds(duration),
+    )?;
 
     token_auction_state.start_time = start_expiration;
     token_auction_state.end_time = end_expiration;

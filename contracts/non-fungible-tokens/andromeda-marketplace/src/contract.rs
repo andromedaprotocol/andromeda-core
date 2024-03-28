@@ -14,6 +14,7 @@ use andromeda_std::common::context::ExecuteContext;
 use andromeda_std::common::expiration::{
     expiration_from_milliseconds, get_and_validate_start_time,
 };
+use andromeda_std::common::Milliseconds;
 use andromeda_std::{
     ado_base::{hooks::AndromedaHook, InstantiateMsg as BaseInstantiateMsg},
     common::{encode_binary, rates::get_tax_amount, Funds},
@@ -166,8 +167,8 @@ fn execute_start_sale(
     token_address: String,
     price: Uint128,
     coin_denom: String,
-    start_time: Option<u64>,
-    duration: Option<u64>,
+    start_time: Option<Milliseconds>,
+    duration: Option<Milliseconds>,
 ) -> Result<Response, ContractError> {
     // Price can't be zero
     ensure!(price > Uint128::zero(), ContractError::InvalidZeroAmount {});
@@ -176,8 +177,12 @@ fn execute_start_sale(
 
     // If no duration is provided, the exipration will be set as Never
     let end_expiration = if let Some(duration) = duration {
-        ensure!(duration > 0, ContractError::InvalidExpiration {});
-        expiration_from_milliseconds(start_time.unwrap_or(current_time + 1) + duration)?
+        ensure!(!duration.is_zero(), ContractError::InvalidExpiration {});
+        expiration_from_milliseconds(
+            start_time
+                .unwrap_or(current_time.plus_seconds(1))
+                .plus_milliseconds(duration),
+        )?
     } else {
         Expiration::Never {}
     };

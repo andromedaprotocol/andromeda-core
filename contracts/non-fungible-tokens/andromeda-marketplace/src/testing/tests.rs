@@ -8,6 +8,7 @@ use andromeda_std::{
         encode_binary,
         expiration::{expiration_from_milliseconds, MILLISECONDS_TO_NANOSECONDS_RATIO},
         reply::ReplyId,
+        Milliseconds,
     },
     error::ContractError,
     os::economics::ExecuteMsg as EconomicsExecuteMsg,
@@ -55,7 +56,7 @@ fn start_sale_future_start(deps: DepsMut, env: Env) {
         coin_denom: "uusd".to_string(),
         price: Uint128::new(100),
         // Add one to the current time to have it set in the future
-        start_time: Some(current_time + 1),
+        start_time: Some(Milliseconds(current_time + 1)),
         duration: None,
     };
     let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
@@ -75,9 +76,9 @@ fn start_sale_future_start_with_duration(deps: DepsMut, env: Env) {
         coin_denom: "uusd".to_string(),
         price: Uint128::new(100),
         // Add one to the current time to have it set in the future
-        start_time: Some(current_time + 1),
+        start_time: Some(Milliseconds(current_time + 1)),
         // Add duration, the end time's expiration will be current time + duration
-        duration: Some(1),
+        duration: Some(Milliseconds(1)),
     };
     let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
         sender: MOCK_TOKEN_OWNER.to_owned(),
@@ -103,7 +104,8 @@ fn init(deps: DepsMut, modules: Option<Vec<Module>>) -> Response {
 
 fn assert_sale_created(deps: Deps, env: Env) {
     let current_time = env.block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO;
-    let start_time_expiration = expiration_from_milliseconds(current_time + 1).unwrap();
+    let start_time_expiration =
+        expiration_from_milliseconds(Milliseconds(current_time + 1)).unwrap();
     assert_eq!(
         TokenSaleState {
             coin_denom: "uusd".to_string(),
@@ -138,7 +140,8 @@ fn assert_sale_created(deps: Deps, env: Env) {
 fn assert_sale_created_future_start(deps: Deps, env: Env) {
     let current_time = env.block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO;
     // Add one to the current time to have it set in the future
-    let start_time_expiration = expiration_from_milliseconds(current_time + 1).unwrap();
+    let start_time_expiration =
+        expiration_from_milliseconds(Milliseconds(current_time + 1)).unwrap();
     assert_eq!(
         TokenSaleState {
             coin_denom: "uusd".to_string(),

@@ -20,6 +20,7 @@ use andromeda_std::{
     common::{
         encode_binary,
         expiration::{expiration_from_milliseconds, MILLISECONDS_TO_NANOSECONDS_RATIO},
+        Milliseconds,
     },
     error::ContractError,
 };
@@ -376,7 +377,7 @@ fn test_start_sale_end_time_never() {
         mock_env().block.time.plus_minutes(1).nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO;
 
     let msg = ExecuteMsg::StartSale {
-        start_time: Some(one_minute_in_future),
+        start_time: Some(Milliseconds(one_minute_in_future)),
         end_time: Expiration::Never {},
         price: coin(100, "uusd"),
         min_tokens_sold: Uint128::from(1u128),
@@ -418,7 +419,7 @@ fn test_start_sale_start_time_in_past() {
 
     let one_minute_in_past = env.block.time.minus_minutes(1).seconds();
     let msg = ExecuteMsg::StartSale {
-        start_time: Some(one_minute_in_past),
+        start_time: Some(Milliseconds(one_minute_in_past)),
         end_time: Expiration::AtTime(Timestamp::from_nanos((current_time + 2) * 1_000_000)),
         price: coin(100, "uusd"),
         min_tokens_sold: Uint128::from(1u128),
@@ -446,7 +447,7 @@ fn test_start_sale_start_time_in_future() {
     let one_minute_in_future =
         env.block.time.plus_minutes(1).nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO;
     let msg = ExecuteMsg::StartSale {
-        start_time: Some(one_minute_in_future),
+        start_time: Some(Milliseconds(one_minute_in_future)),
         end_time: Expiration::AtTime(Timestamp::from_nanos(
             (one_minute_in_future + 2) * 1_000_000,
         )),
@@ -480,8 +481,8 @@ fn test_start_sale_max_default() {
     let res = execute(deps.as_mut(), mock_env(), info.clone(), msg.clone()).unwrap();
     // Using current time since start time wasn't provided
     let current_time = mock_env().block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO;
-    let start_expiration = expiration_from_milliseconds(current_time + 1).unwrap();
-    let end_expiration = expiration_from_milliseconds(current_time + 2).unwrap();
+    let start_expiration = expiration_from_milliseconds(Milliseconds(current_time + 1)).unwrap();
+    let end_expiration = expiration_from_milliseconds(Milliseconds(current_time + 2)).unwrap();
 
     assert_eq!(
         Response::new()
@@ -531,8 +532,8 @@ fn test_start_sale_max_modified() {
     };
     // Using current time since start time wasn't provided
     let current_time = mock_env().block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO;
-    let start_expiration = expiration_from_milliseconds(current_time + 1).unwrap();
-    let end_expiration = expiration_from_milliseconds(current_time + 2).unwrap();
+    let start_expiration = expiration_from_milliseconds(Milliseconds(current_time + 1)).unwrap();
+    let end_expiration = expiration_from_milliseconds(Milliseconds(current_time + 2)).unwrap();
 
     let info = mock_info("owner", &[]);
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
@@ -1233,7 +1234,7 @@ fn test_integration_conditions_not_met() {
 
     // Using current time since start time wasn't provided
     let current_time = mock_env().block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO;
-    let end_expiration = expiration_from_milliseconds(current_time + 2).unwrap();
+    let end_expiration = expiration_from_milliseconds(Milliseconds(current_time + 2)).unwrap();
 
     let state = State {
         end_time: end_expiration,
@@ -1413,7 +1414,7 @@ fn test_integration_conditions_met() {
     let _res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
     // Using current time since start time wasn't provided
     let current_time = env.block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO;
-    let end_expiration = expiration_from_milliseconds(current_time + 2).unwrap();
+    let end_expiration = expiration_from_milliseconds(Milliseconds(current_time + 2)).unwrap();
     let mut state = State {
         end_time: end_expiration,
         price: coin(100, "uusd"),

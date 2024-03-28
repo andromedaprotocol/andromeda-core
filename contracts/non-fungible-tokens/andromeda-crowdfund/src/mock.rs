@@ -5,8 +5,8 @@ use andromeda_non_fungible_tokens::{
     crowdfund::{CrowdfundMintMsg, ExecuteMsg, InstantiateMsg},
     cw721::TokenExtension,
 };
-use andromeda_std::amp::Recipient;
 use andromeda_std::{ado_base::modules::Module, amp::AndrAddr};
+use andromeda_std::{amp::Recipient, common::Milliseconds};
 use cosmwasm_std::{Coin, Empty, Uint128};
 use cw721::Expiration;
 use cw_multi_test::{Contract, ContractWrapper};
@@ -33,7 +33,7 @@ pub fn mock_crowdfund_instantiate_msg(
 }
 
 pub fn mock_start_crowdfund_msg(
-    start_time: Option<u64>,
+    start_time: Option<Milliseconds>,
     end_time: Expiration,
     price: Coin,
     min_tokens_sold: Uint128,

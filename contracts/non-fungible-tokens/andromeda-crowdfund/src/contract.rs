@@ -11,7 +11,7 @@ use andromeda_non_fungible_tokens::{
 use andromeda_std::{
     ado_base::ownership::OwnershipMessage,
     amp::{messages::AMPPkt, recipient::Recipient, AndrAddr},
-    common::{actions::call_action, expiration::get_and_validate_start_time},
+    common::{actions::call_action, expiration::get_and_validate_start_time, Milliseconds},
 };
 use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
 
@@ -284,7 +284,7 @@ fn execute_update_token_contract(
 #[allow(clippy::too_many_arguments)]
 fn execute_start_sale(
     ctx: ExecuteContext,
-    start_time: Option<u64>,
+    start_time: Option<Milliseconds>,
     end_time: Expiration,
     price: Coin,
     min_tokens_sold: Uint128,
