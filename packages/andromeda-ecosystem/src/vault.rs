@@ -141,6 +141,3 @@ pub struct StrategyAddressResponse {
     pub strategy: StrategyType,
     pub address: String,
 }
-
-#[cw_serde]
-pub struct MigrateMsg {}

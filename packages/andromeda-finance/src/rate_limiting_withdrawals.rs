@@ -58,10 +58,6 @@ pub enum ExecuteMsg {
     WithdrawFunds { amount: Uint128 },
 }
 
-#[cw_serde]
-#[serde(rename_all = "snake_case")]
-pub struct MigrateMsg {}
-
 #[andr_query]
 #[cw_serde]
 #[derive(QueryResponses)]

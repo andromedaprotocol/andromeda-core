@@ -1,18 +1,21 @@
 use andromeda_modules::address_list::IncludesAddressResponse;
 #[cfg(not(feature = "library"))]
-use andromeda_modules::address_list::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
+use andromeda_modules::address_list::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use andromeda_std::{
     ado_base::{hooks::AndromedaHook, InstantiateMsg as BaseInstantiateMsg},
     ado_contract::ADOContract,
-    common::{context::ExecuteContext, encode_binary},
-    error::{from_semver, ContractError},
+    common::{
+        context::ExecuteContext,
+        encode_binary,
+        migrate::{migrate as do_migrate, MigrateMsg},
+    },
+    error::ContractError,
 };
 
 use cosmwasm_std::{attr, ensure, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError};
 use cosmwasm_std::{entry_point, to_json_binary};
-use cw2::{get_contract_version, set_contract_version};
+use cw2::set_contract_version;
 use cw_utils::nonpayable;
-use semver::Version;
 
 use crate::state::{add_address, includes_address, remove_address, IS_INCLUSIVE};
 // version info for migration info
@@ -142,31 +145,7 @@ fn execute_add_addresses(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-    // New version
-    let version: Version = CONTRACT_VERSION.parse().map_err(from_semver)?;
-
-    // Old version
-    let stored = get_contract_version(deps.storage)?;
-    let storage_version: Version = stored.version.parse().map_err(from_semver)?;
-
-    ensure!(
-        stored.contract == CONTRACT_NAME,
-        ContractError::CannotMigrate {
-            previous_contract: stored.contract,
-        }
-    );
-
-    // New version has to be newer/greater than the old version
-    ensure!(
-        storage_version < version,
-        ContractError::CannotMigrate {
-            previous_contract: stored.version,
-        }
-    );
-
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-
-    Ok(Response::default())
+    do_migrate(deps, CONTRACT_NAME, CONTRACT_VERSION)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

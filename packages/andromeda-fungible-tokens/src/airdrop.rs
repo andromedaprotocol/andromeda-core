@@ -76,6 +76,3 @@ pub struct IsClaimedResponse {
 pub struct TotalClaimedResponse {
     pub total_claimed: Uint128,
 }
-
-#[cw_serde]
-pub struct MigrateMsg {}

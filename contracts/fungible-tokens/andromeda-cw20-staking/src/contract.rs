@@ -5,8 +5,14 @@ use andromeda_std::{
         hooks::AndromedaHook, ownership::OwnershipMessage, InstantiateMsg as BaseInstantiateMsg,
     },
     ado_contract::ADOContract,
-    common::{actions::call_action, context::ExecuteContext, encode_binary, Milliseconds},
-    error::{from_semver, ContractError},
+    common::{
+        actions::call_action,
+        context::ExecuteContext,
+        encode_binary,
+        migrate::{migrate as do_migrate, MigrateMsg},
+        Milliseconds,
+    },
+    error::ContractError,
 };
 use cosmwasm_std::{
     attr, entry_point, Attribute, Decimal, Decimal256, Order, QuerierWrapper, Uint256,
@@ -15,7 +21,7 @@ use cosmwasm_std::{
     ensure, from_json, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response, Storage,
     Uint128,
 };
-use cw2::{get_contract_version, set_contract_version};
+use cw2::set_contract_version;
 use cw20::Cw20ReceiveMsg;
 use cw_asset::{Asset, AssetInfo, AssetInfoUnchecked};
 
@@ -28,12 +34,11 @@ use crate::{
 };
 
 use andromeda_fungible_tokens::cw20_staking::{
-    Config, Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, RewardToken,
-    RewardTokenUnchecked, RewardType, StakerResponse, State,
+    Config, Cw20HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg, RewardToken, RewardTokenUnchecked,
+    RewardType, StakerResponse, State,
 };
 
 use cw_utils::nonpayable;
-use semver::Version;
 
 // Version info, for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-cw20-staking";
@@ -731,29 +736,5 @@ fn query_stakers(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-    // New version
-    let version: Version = CONTRACT_VERSION.parse().map_err(from_semver)?;
-
-    // Old version
-    let stored = get_contract_version(deps.storage)?;
-    let storage_version: Version = stored.version.parse().map_err(from_semver)?;
-
-    ensure!(
-        stored.contract == CONTRACT_NAME,
-        ContractError::CannotMigrate {
-            previous_contract: stored.contract,
-        }
-    );
-
-    // New version has to be newer/greater than the old version
-    ensure!(
-        storage_version < version,
-        ContractError::CannotMigrate {
-            previous_contract: stored.version,
-        }
-    );
-
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-
-    Ok(Response::default())
+    do_migrate(deps, CONTRACT_NAME, CONTRACT_VERSION)
 }

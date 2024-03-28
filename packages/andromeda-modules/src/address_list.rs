@@ -18,9 +18,6 @@ pub enum ExecuteMsg {
     AddAddresses { addresses: Vec<String> },
 }
 
-#[cw_serde]
-pub struct MigrateMsg {}
-
 #[andr_query]
 #[cw_serde]
 #[derive(QueryResponses)]

@@ -85,9 +85,6 @@ pub enum InternalMsg {
 }
 
 #[cw_serde]
-pub struct MigrateMsg {}
-
-#[cw_serde]
 pub struct ChannelInfoResponse {
     pub ics20: Option<String>,
     pub direct: Option<String>,

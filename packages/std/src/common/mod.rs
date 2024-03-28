@@ -1,6 +1,7 @@
 pub mod actions;
 pub mod context;
 pub mod expiration;
+pub mod migrate;
 pub mod milliseconds;
 pub mod rates;
 pub mod reply;
