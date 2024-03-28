@@ -41,7 +41,7 @@ pub fn load_component_addresses(
     storage: &dyn Storage,
     min: Option<&str>,
 ) -> Result<Vec<Addr>, ContractError> {
-    let min = Some(Bound::inclusive(min.unwrap_or("1")));
+    let min = Some(Bound::inclusive(min.unwrap_or("0")));
     let addresses: Vec<Addr> = ADO_ADDRESSES
         .range(storage, min, None, Order::Ascending)
         .flatten()

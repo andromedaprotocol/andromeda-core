@@ -47,14 +47,14 @@ pub fn instantiate(
             },
         )?,
         //NOTE temporary until a replacement for primitive is implemented
-        _ => ALLOWED_COIN.save(
-            deps.storage,
-            &CoinAllowance {
-                coin: msg.allowed_coin.coin,
-                limit: msg.allowed_coin.limit,
-                minimal_withdrawal_frequency: Milliseconds::zero(),
-            },
-        )?,
+        // _ => ALLOWED_COIN.save(
+        //     deps.storage,
+        //     &CoinAllowance {
+        //         coin: msg.allowed_coin.coin,
+        //         limit: msg.allowed_coin.limit,
+        //         minimal_withdrawal_frequency: Milliseconds::zero(),
+        //     },
+        // )?,
         // MinimumFrequency::AddressAndKey { address_and_key } => ALLOWED_COIN.save(
         //     deps.storage,
         //     &CoinAllowance {
@@ -75,9 +75,10 @@ pub fn instantiate(
         deps.storage,
         env,
         deps.api,
+        &deps.querier,
         info.clone(),
         BaseInstantiateMsg {
-            ado_type: "rate-limiting-withdrawals".to_string(),
+            ado_type: CONTRACT_NAME.to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
             kernel_address: msg.kernel_address,
             owner: msg.owner,

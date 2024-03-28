@@ -1,7 +1,6 @@
 use andromeda_app::app::{AppComponent, ComponentType};
 use andromeda_app_contract::mock::{
-    mock_andromeda_app, mock_app_instantiate_msg, mock_claim_ownership_msg, mock_get_address_msg,
-    mock_get_components_msg,
+    mock_andromeda_app, mock_app_instantiate_msg, mock_get_address_msg, mock_get_components_msg,
 };
 use andromeda_crowdfund::mock::{
     mock_andromeda_crowdfund, mock_crowdfund_instantiate_msg, mock_crowdfund_quick_mint_msg,
@@ -13,7 +12,7 @@ use andromeda_cw721::mock::{
 use andromeda_finance::splitter::AddressPercent;
 use andromeda_std::{
     amp::{AndrAddr, Recipient},
-    common::Milliseconds,
+    common::{expiration::MILLISECONDS_TO_NANOSECONDS_RATIO, Milliseconds},
 };
 
 use andromeda_modules::rates::{Rate, RateInfo};
@@ -22,65 +21,38 @@ use andromeda_splitter::mock::{
     mock_andromeda_splitter, mock_splitter_instantiate_msg, mock_splitter_send_msg,
 };
 use andromeda_std::ado_base::modules::Module;
+use cw20::Expiration;
 use std::str::FromStr;
 
-use andromeda_testing::mock::MockAndromeda;
-use cosmwasm_std::{coin, to_json_binary, Addr, BlockInfo, Decimal, Uint128};
+use andromeda_testing::mock::{init_balances, mock_app, MockAndromeda, MockApp};
+use cosmwasm_std::{coin, to_json_binary, Addr, BlockInfo, Decimal, Timestamp, Uint128};
 use cw721::OwnerOfResponse;
-use cw_multi_test::{App, Executor};
+use cw_multi_test::Executor;
 
-fn mock_app() -> App {
-    App::new(|router, _api, storage| {
-        router
-            .bank
-            .init_balance(
-                storage,
-                &Addr::unchecked("owner"),
-                [coin(999999, "uandr")].to_vec(),
-            )
-            .unwrap();
-        router
-            .bank
-            .init_balance(
-                storage,
-                &Addr::unchecked("buyer_one"),
-                [coin(100, "uandr")].to_vec(),
-            )
-            .unwrap();
-        router
-            .bank
-            .init_balance(
-                storage,
-                &Addr::unchecked("buyer_two"),
-                [coin(100, "uandr")].to_vec(),
-            )
-            .unwrap();
-        router
-            .bank
-            .init_balance(
-                storage,
-                &Addr::unchecked("buyer_three"),
-                [coin(100, "uandr")].to_vec(),
-            )
-            .unwrap();
-    })
-}
-
-fn mock_andromeda(app: &mut App, admin_address: Addr) -> MockAndromeda {
+fn mock_andromeda(app: &mut MockApp, admin_address: Addr) -> MockAndromeda {
     MockAndromeda::new(app, &admin_address)
 }
 
 // TODO: Fix to check wallet balance post sale
 #[test]
 fn test_crowdfund_app() {
-    let owner = Addr::unchecked("owner");
-    let vault_one_recipient_addr = Addr::unchecked("vault_one_recipient");
-    let vault_two_recipient_addr = Addr::unchecked("vault_two_recipient");
-    let buyer_one = Addr::unchecked("buyer_one");
-    let buyer_two = Addr::unchecked("buyer_two");
-    let buyer_three = Addr::unchecked("buyer_three");
-
     let mut router = mock_app();
+
+    let owner = router.api().addr_make("owner");
+    let vault_one_recipient_addr = router.api().addr_make("vault_one_recipient");
+    let vault_two_recipient_addr = router.api().addr_make("vault_two_recipient");
+    let buyer_one = router.api().addr_make("buyer_one");
+    let buyer_two = router.api().addr_make("buyer_two");
+    let buyer_three = router.api().addr_make("buyer_three");
+    init_balances(
+        &mut router,
+        vec![
+            (buyer_one.clone(), &[coin(100, "uandr")]),
+            (buyer_two.clone(), &[coin(100, "uandr")]),
+            (buyer_three.clone(), &[coin(100, "uandr")]),
+        ],
+    );
+
     let andr = mock_andromeda(&mut router, owner.clone());
 
     // Store contract codes
@@ -98,7 +70,7 @@ fn test_crowdfund_app() {
 
     // Generate App Components
     // App component names must be less than 3 characters or longer than 54 characters to force them to be 'invalid' as the MockApi struct used within the CosmWasm App struct only contains those two validation checks
-    let rates_recipient = "rates_recipient";
+    let rates_recipient = router.api().addr_make("rates_recipient");
     // Generate rates contract
     let rates: Vec<RateInfo> = [RateInfo {
         rate: Rate::Flat(coin(1, "uandr")),
@@ -201,14 +173,14 @@ fn test_crowdfund_app() {
 
     assert_eq!(components, app_components);
 
-    router
-        .execute_contract(
-            owner.clone(),
-            app_addr.clone(),
-            &mock_claim_ownership_msg(None),
-            &[],
-        )
-        .unwrap();
+    // router
+    //     .execute_contract(
+    //         owner.clone(),
+    //         app_addr.clone(),
+    //         &mock_claim_ownership_msg(None),
+    //         &[],
+    //     )
+    //     .unwrap();
 
     let crowdfund_addr: String = router
         .wrap()
@@ -220,11 +192,11 @@ fn test_crowdfund_app() {
 
     // Mint Tokens
     let mint_msg = mock_crowdfund_quick_mint_msg(5, owner.to_string());
-    andr.accept_ownership(&mut router, crowdfund_addr.clone(), owner.clone());
+    // andr.accept_ownership(&mut router, crowdfund_addr.clone(), owner.clone());
     router
         .execute_contract(
             owner.clone(),
-            Addr::unchecked(crowdfund_addr.clone()),
+            Addr::unchecked(crowdfund_addr.as_str()),
             &mint_msg,
             &[],
         )
@@ -233,10 +205,14 @@ fn test_crowdfund_app() {
     // Start Sale
     let token_price = coin(100, "uandr");
 
-    let sale_recipient = Recipient::from_string(format!("~am/app/{}", splitter_app_component.name))
-        .with_msg(mock_splitter_send_msg());
+    let sale_recipient =
+        Recipient::from_string(format!("/home/{owner}/app/{}", splitter_app_component.name))
+            .with_msg(mock_splitter_send_msg());
+    let current_time = router.block_info().time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO;
+
     let start_msg = mock_start_crowdfund_msg(
-        Milliseconds::from_seconds(router.block_info().time.seconds() + 5),
+        None,
+        Expiration::AtTime(Timestamp::from_nanos((current_time + 2) * 1_000_000)),
         token_price.clone(),
         Uint128::from(3u128),
         Some(1),
@@ -245,7 +221,7 @@ fn test_crowdfund_app() {
     router
         .execute_contract(
             owner.clone(),
-            Addr::unchecked(crowdfund_addr.clone()),
+            Addr::unchecked(crowdfund_addr.as_str()),
             &start_msg,
             &[],
         )
@@ -258,7 +234,7 @@ fn test_crowdfund_app() {
         router
             .execute_contract(
                 buyer,
-                Addr::unchecked(crowdfund_addr.clone()),
+                Addr::unchecked(crowdfund_addr.as_str()),
                 &purchase_msg,
                 &[token_price.clone()],
             )

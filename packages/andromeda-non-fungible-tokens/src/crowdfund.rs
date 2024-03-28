@@ -4,6 +4,7 @@ use andromeda_std::common::Milliseconds;
 use andromeda_std::{andr_exec, andr_instantiate, andr_instantiate_modules, andr_query};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Coin, Uint128};
+use cw721::Expiration;
 
 #[andr_instantiate]
 #[andr_instantiate_modules]
@@ -20,8 +21,10 @@ pub enum ExecuteMsg {
     Mint(Vec<CrowdfundMintMsg>),
     /// Starts the sale if one is not already ongoing.
     StartSale {
+        /// When the sale start. Defaults to current time.
+        start_time: Option<Milliseconds>,
         /// When the sale ends.
-        expiration: Milliseconds,
+        end_time: Expiration,
         /// The price per token.
         price: Coin,
         /// The minimum amount of tokens sold to go through with the sale.
@@ -73,7 +76,7 @@ pub struct Config {
 #[cw_serde]
 pub struct State {
     /// The expiration denoting when the sale ends.
-    pub expiration: Milliseconds,
+    pub end_time: Expiration,
     /// The price of each token.
     pub price: Coin,
     /// The minimum number of tokens sold for the sale to go through.

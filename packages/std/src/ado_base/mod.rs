@@ -81,14 +81,12 @@ pub enum AndromedaQuery {
     #[cfg(feature = "modules")]
     #[returns(Vec<String>)]
     ModuleIds {},
-    #[returns(::cosmwasm_std::BalanceResponse)]
-    WithdrawableBalance { address: AndrAddr },
     #[returns(Vec<self::permissioning::PermissionInfo>)]
     Permissions {
         actor: AndrAddr,
         limit: Option<u32>,
         start_after: Option<String>,
     },
-    #[returns(Vec<String>)]
+    #[returns(Vec<self::permissioning::PermissionedActionsResponse>)]
     PermissionedActions {},
 }

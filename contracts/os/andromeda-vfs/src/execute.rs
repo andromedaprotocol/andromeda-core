@@ -117,7 +117,7 @@ pub fn add_child(
     )?;
     // Sender must be an app contract
     ensure!(
-        ado_type.is_some() && ado_type.unwrap() == "app-contract",
+        ado_type.is_some() && ado_type.unwrap().contains("app-contract"),
         ContractError::Unauthorized {}
     );
 
@@ -146,6 +146,8 @@ pub fn register_user(
     username: String,
     address: Option<Addr>,
 ) -> Result<Response, ContractError> {
+    #[cfg(not(test))]
+    ensure!(false, ContractError::TemporarilyDisabled {});
     ensure!(
         username.len() as u64 <= MAX_USERNAME_LENGTH,
         ContractError::InvalidUsername {

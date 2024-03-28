@@ -16,7 +16,7 @@ use semver::Version;
 
 use crate::state::{add_address, includes_address, remove_address, IS_INCLUSIVE};
 // version info for migration info
-const CONTRACT_NAME: &str = "crates.io:andromeda-addresslist";
+const CONTRACT_NAME: &str = "crates.io:andromeda-address-list";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -33,9 +33,10 @@ pub fn instantiate(
         deps.storage,
         env,
         deps.api,
+        &deps.querier,
         info,
         BaseInstantiateMsg {
-            ado_type: "address-list".to_string(),
+            ado_type: CONTRACT_NAME.to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
             kernel_address: msg.kernel_address,
             owner: msg.owner,

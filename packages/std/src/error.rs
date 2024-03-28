@@ -1,4 +1,4 @@
-use cosmwasm_std::{OverflowError, StdError};
+use cosmwasm_std::{Addr, OverflowError, StdError};
 use cw20_base::ContractError as Cw20ContractError;
 use cw721_base::ContractError as Cw721ContractError;
 use cw_asset::AssetError;
@@ -221,6 +221,9 @@ pub enum ContractError {
     #[error("NoReceivingAddress")]
     NoReceivingAddress {},
 
+    #[error("TemporarilyDisabled")]
+    TemporarilyDisabled {},
+
     #[error("AccountNotFound")]
     AccountNotFound {},
 
@@ -401,6 +404,9 @@ pub enum ContractError {
 
     #[error("Invalid png header")]
     InvalidPngHeader {},
+
+    #[error("Instantiate2 Address Mistmatch: expected: {expected}, received: {received}")]
+    Instantiate2AddressMismatch { expected: Addr, received: Addr },
 
     #[error("Duplicate initial balance addresses")]
     DuplicateInitialBalanceAddresses {},

@@ -14,8 +14,9 @@ use cosmwasm_std::SubMsg;
 use cosmwasm_std::{
     from_json,
     testing::{MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
-    to_json_binary, Addr, Binary, Coin, ContractInfoResponse, ContractResult, OwnedDeps, Querier,
-    QuerierResult, QueryRequest, SystemError, SystemResult, Uint128, WasmQuery,
+    to_json_binary, Addr, Binary, CodeInfoResponse, Coin, ContractInfoResponse, ContractResult,
+    HexBinary, OwnedDeps, Querier, QuerierResult, QueryRequest, SystemError, SystemResult, Uint128,
+    WasmQuery,
 };
 #[cfg(feature = "primitive")]
 use cosmwasm_std::{Decimal, Uint128};
@@ -59,6 +60,8 @@ pub const FAKE_ADODB_KEY: &str = "fake_adodb_key";
 pub const MOCK_ACTION: &str = "action";
 pub const UNWHITELISTED_ADDRESS: &str = "unwhitelisted_address";
 pub const RATES_EXCLUDED_ADDRESS: &str = "rates_excluded_address";
+
+pub const MOCK_CHECKSUM: &str = "9af782a3a1bcbcd22dbb6a45c751551d9af782a3a1bcbcd22dbb6a45c751551d";
 
 pub const MOCK_WALLET: &str = "mock_wallet";
 
@@ -163,7 +166,7 @@ impl MockAndromedaQuerier {
                     MOCK_CW20_CONTRACT => self.handle_cw20_owner_query(key),
                     MOCK_ANCHOR_CONTRACT => self.handle_anchor_owner_query(key),
 
-                    _ => panic!("Unsupported query for contract: {contract_addr}"),
+                    _ => self.handle_ado_raw_query(key, &Addr::unchecked(contract_addr)),
                 }
             }
             // Defaults to code ID 1, returns 2 for `INVALID_CONTRACT` which is considered an invalid ADODB code id
@@ -179,6 +182,14 @@ impl MockAndromedaQuerier {
                     INVALID_CONTRACT => 2,
                     _ => 1,
                 };
+                SystemResult::Ok(ContractResult::Ok(to_json_binary(&resp).unwrap()))
+            }
+            QueryRequest::Wasm(WasmQuery::CodeInfo { code_id }) => {
+                if *code_id == 2u64 {
+                    return SystemResult::Ok(ContractResult::Err("Invalid Code ID".to_string()));
+                }
+                let mut resp = CodeInfoResponse::default();
+                resp.checksum = HexBinary::from_hex(MOCK_CHECKSUM).unwrap();
                 SystemResult::Ok(ContractResult::Ok(to_json_binary(&resp).unwrap()))
             }
             _ => querier.handle_query(request),
@@ -271,6 +282,7 @@ impl MockAndromedaQuerier {
     fn handle_adodb_query(&self, msg: &Binary) -> QuerierResult {
         match from_json(msg).unwrap() {
             ADODBQueryMsg::ADOType { code_id } => match code_id {
+                3 => SystemResult::Ok(ContractResult::Ok(to_json_binary(&"app-contract").unwrap())),
                 1 => SystemResult::Ok(ContractResult::Ok(to_json_binary(&"ADOType").unwrap())),
                 _ => SystemResult::Ok(ContractResult::Err("Invalid Code ID".to_string())),
             },
@@ -411,6 +423,19 @@ impl MockAndromedaQuerier {
         }
     }
 
+    pub fn handle_ado_raw_query(&self, key: &Binary, contract_addr: &Addr) -> QuerierResult {
+        let key_vec = key.as_slice();
+        let key_str = String::from_utf8(key_vec.to_vec()).unwrap();
+
+        if key_str.contains("owner") {
+            return SystemResult::Ok(ContractResult::Ok(
+                to_json_binary(&Addr::unchecked("owner".to_string())).unwrap(),
+            ));
+        }
+
+        panic!("Unsupported query for contract: {contract_addr}")
+    }
+
     pub fn handle_kernel_raw_query(&self, key: &Binary, fake: bool) -> QuerierResult {
         let key_vec = key.as_slice();
         let key_str = String::from_utf8(key_vec.to_vec()).unwrap();
@@ -499,12 +524,12 @@ impl MockAndromedaQuerier {
         } else if key_str.contains("ado_type") {
             let split = key_str.split("ado_type");
             let key = split.last();
-            let app_contract_key = String::from_utf8(3u64.to_be_bytes().to_vec()).unwrap();
-            let generic_contract_key = String::from_utf8(1u64.to_be_bytes().to_vec()).unwrap();
+            // let app_contract_key = String::from_utf8(3u64.to_be_bytes().to_vec()).unwrap();
+            // let generic_contract_key = String::from_utf8(1u64.to_be_bytes().to_vec()).unwrap();
             if let Some(key) = key {
-                if key == app_contract_key {
+                if key == "3" {
                     SystemResult::Ok(ContractResult::Ok(to_json_binary("app-contract").unwrap()))
-                } else if key == generic_contract_key {
+                } else if key == "1" {
                     SystemResult::Ok(ContractResult::Ok(to_json_binary("ADOType").unwrap()))
                 } else {
                     SystemResult::Ok(ContractResult::Ok(Binary::default()))

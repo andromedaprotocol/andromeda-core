@@ -1,4 +1,6 @@
-use andromeda_std::{andr_exec, andr_instantiate, andr_instantiate_modules, andr_query};
+use andromeda_std::{
+    andr_exec, andr_instantiate, andr_instantiate_modules, andr_query, common::Milliseconds,
+};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
 use cw721::{Cw721ReceiveMsg, Expiration};
@@ -39,8 +41,8 @@ pub enum Cw721HookMsg {
     StartSale {
         price: Uint128,
         coin_denom: String,
-        start_time: Option<u64>,
-        duration: Option<u64>,
+        start_time: Option<Milliseconds>,
+        duration: Option<Milliseconds>,
     },
 }
 #[cw_serde]

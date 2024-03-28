@@ -112,6 +112,14 @@ impl<'a> ADOContract<'a> {
     /// Helper function to query if a given address is the current contract owner.
     ///
     /// Returns a boolean value indicating if the given address is the contract owner.
+    pub fn owner(&self, storage: &dyn Storage) -> Result<Addr, ContractError> {
+        let owner = self.owner.load(storage)?;
+        Ok(owner)
+    }
+
+    /// Helper function to query if a given address is the current contract owner.
+    ///
+    /// Returns a boolean value indicating if the given address is the contract owner.
     pub fn is_contract_owner(
         &self,
         storage: &dyn Storage,

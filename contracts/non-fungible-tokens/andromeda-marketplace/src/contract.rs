@@ -12,8 +12,9 @@ use andromeda_std::ado_contract::ADOContract;
 use andromeda_std::common::actions::call_action;
 use andromeda_std::common::context::ExecuteContext;
 use andromeda_std::common::expiration::{
-    expiration_from_milliseconds, MILLISECONDS_TO_NANOSECONDS_RATIO,
+    expiration_from_milliseconds, get_and_validate_start_time,
 };
+use andromeda_std::common::Milliseconds;
 use andromeda_std::{
     ado_base::{hooks::AndromedaHook, InstantiateMsg as BaseInstantiateMsg},
     common::{encode_binary, rates::get_tax_amount, Funds},
@@ -42,22 +43,23 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     NEXT_SALE_ID.save(deps.storage, &Uint128::from(1u128))?;
     let inst_resp = ADOContract::default().instantiate(
         deps.storage,
         env,
         deps.api,
-        info.clone(),
+        &deps.querier,
+        info,
         BaseInstantiateMsg {
-            ado_type: "marketplace".to_string(),
+            ado_type: CONTRACT_NAME.to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
             kernel_address: msg.kernel_address,
             owner: msg.owner,
         },
     )?;
+    let owner = ADOContract::default().owner(deps.storage)?;
     let mod_resp =
-        ADOContract::default().register_modules(info.sender.as_str(), deps.storage, msg.modules)?;
+        ADOContract::default().register_modules(owner.as_str(), deps.storage, msg.modules)?;
 
     Ok(inst_resp
         .add_attributes(mod_resp.attributes)
@@ -166,37 +168,25 @@ fn execute_start_sale(
     token_address: String,
     price: Uint128,
     coin_denom: String,
-    start_time: Option<u64>,
-    duration: Option<u64>,
+    start_time: Option<Milliseconds>,
+    duration: Option<Milliseconds>,
 ) -> Result<Response, ContractError> {
     // Price can't be zero
     ensure!(price > Uint128::zero(), ContractError::InvalidZeroAmount {});
-    let current_time = env.block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO;
     // If start time wasn't provided, it will be set as the current_time
-    let start_expiration = if let Some(start_time) = start_time {
-        expiration_from_milliseconds(start_time)?
-    } else {
-        expiration_from_milliseconds(current_time)?
-    };
+    let (start_expiration, current_time) = get_and_validate_start_time(&env, start_time)?;
 
     // If no duration is provided, the exipration will be set as Never
     let end_expiration = if let Some(duration) = duration {
-        expiration_from_milliseconds(start_time.unwrap_or(current_time) + duration)?
+        ensure!(!duration.is_zero(), ContractError::InvalidExpiration {});
+        expiration_from_milliseconds(
+            start_time
+                .unwrap_or(current_time.plus_seconds(1))
+                .plus_milliseconds(duration),
+        )?
     } else {
         Expiration::Never {}
     };
-
-    // To guard against misleading start times
-    // Subtracting one second from the current block because the unit tests fail otherwise. The current time slightly differed from the block time.
-    let recent_past_timestamp = env.block.time.minus_seconds(1);
-    let recent_past_expiration = expiration_from_milliseconds(recent_past_timestamp.seconds())?;
-    ensure!(
-        start_expiration.gt(&recent_past_expiration),
-        ContractError::StartTimeInThePast {
-            current_time: env.block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO,
-            current_block: env.block.height,
-        }
-    );
 
     let sale_id = get_and_increment_next_sale_id(deps.storage, &token_id, &token_address)?;
 

@@ -181,7 +181,6 @@ fn test_register_user_valid_cosmwasm_address_user() {
     };
     instantiate_contract(deps.as_mut(), env.clone(), info.clone());
     execute(deps.as_mut(), env, info, msg).unwrap();
-
     let saved = USERS.load(deps.as_ref().storage, username).unwrap();
     assert_eq!(saved, sender)
 }
@@ -260,6 +259,7 @@ fn test_register_user_foreign_chain() {
         username: username.to_string(),
         address: None,
     };
+
     let err = execute(deps.as_mut(), env.clone(), info, msg).unwrap_err();
     assert_eq!(err, ContractError::Unauthorized {});
 

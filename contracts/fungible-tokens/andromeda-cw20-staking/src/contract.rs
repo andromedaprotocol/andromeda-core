@@ -96,9 +96,10 @@ pub fn instantiate(
         deps.storage,
         env,
         deps.api,
+        &deps.querier,
         info.clone(),
         BaseInstantiateMsg {
-            ado_type: "cw20-staking".to_string(),
+            ado_type: CONTRACT_NAME.to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
             kernel_address: msg.kernel_address,
             owner: msg.owner,
@@ -653,7 +654,6 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
         QueryMsg::Stakers { start_after, limit } => {
             encode_binary(&query_stakers(deps, env, start_after, limit)?)
         }
-        QueryMsg::Timestamp {} => encode_binary(&query_timestamp(env)),
         _ => ADOContract::default().query(deps, env, msg),
     }
 }
@@ -727,10 +727,6 @@ fn query_stakers(
 ) -> Result<Vec<StakerResponse>, ContractError> {
     let start = start_after.as_deref();
     get_stakers(deps, &deps.querier, deps.api, &env, start, limit)
-}
-
-fn query_timestamp(env: Env) -> u64 {
-    env.block.time.seconds()
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

@@ -131,8 +131,7 @@ impl AndrAddr {
                 match app_contract {
                     None => Err(ContractError::AppContractNotSpecified {}),
                     Some(app_contract) => {
-                        let replaced =
-                            AndrAddr(self.0.replace("./", &format!("/home/{app_contract}/")));
+                        let replaced = AndrAddr(self.0.replace("./", &format!("~{app_contract}/")));
                         vfs_resolve_symlink(replaced, vfs_contract, querier)
                     }
                 }

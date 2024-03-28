@@ -12,11 +12,11 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{ensure, Addr, Api, QuerierWrapper};
 use regex::Regex;
 
-pub const COMPONENT_NAME_REGEX: &str = r"^[A-Za-z0-9.\-_]{2,40}$";
+pub const COMPONENT_NAME_REGEX: &str = r"^[A-Za-z0-9.\-_]{2,80}$";
 pub const USERNAME_REGEX: &str = r"^[a-z0-9]{2,30}$";
 
-pub const PATH_REGEX: &str = r"^(~[a-z0-9]{2,}|/(lib|home))(/[A-Za-z0-9.\-_]{2,40}?)*(/)?$";
-pub const PROTOCOL_PATH_REGEX: &str = r"^((([A-Za-z0-9]+://)?([A-Za-z0-9.\-_]{2,40}/)))?((~[a-z0-9]{2,}|(lib|home))(/[A-Za-z0-9.\-_]{2,40}?)*(/)?)$";
+pub const PATH_REGEX: &str = r"^(~[a-z0-9]{2,}|/(lib|home))(/[A-Za-z0-9.\-_]{2,80}?)*(/)?$";
+pub const PROTOCOL_PATH_REGEX: &str = r"^((([A-Za-z0-9]+://)?([A-Za-z0-9.\-_]{2,80}/)))?((~[a-z0-9]{2,}|(lib|home))(/[A-Za-z0-9.\-_]{2,80}?)*(/)?)$";
 
 pub fn convert_component_name(path: &str) -> String {
     path.trim()
@@ -209,6 +209,17 @@ pub enum ExecuteMsg {
 pub struct MigrateMsg {}
 
 #[cw_serde]
+pub struct SubDirBound {
+    address: Addr,
+    name: String,
+}
+impl From<SubDirBound> for (Addr, String) {
+    fn from(val: SubDirBound) -> Self {
+        (val.address, val.name)
+    }
+}
+
+#[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
     #[returns(Addr)]
@@ -216,8 +227,8 @@ pub enum QueryMsg {
     #[returns(Vec<PathDetails>)]
     SubDir {
         path: AndrAddr,
-        min: Option<(Addr, String)>,
-        max: Option<(Addr, String)>,
+        min: Option<SubDirBound>,
+        max: Option<SubDirBound>,
         limit: Option<u32>,
     },
     #[returns(Vec<String>)]
@@ -538,7 +549,7 @@ mod test {
             },
             ValidatePathNameTestCase {
                 name: "Path with very long name",
-                path: "/home/username/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                path: "/home/username/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
                 should_err: true,
             },
             ValidatePathNameTestCase {

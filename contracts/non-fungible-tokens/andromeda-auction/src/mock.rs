@@ -4,6 +4,7 @@ use crate::contract::{execute, instantiate, query};
 use andromeda_non_fungible_tokens::auction::{Cw721HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg};
 use andromeda_std::ado_base::permissioning::{Permission, PermissioningMessage};
 use andromeda_std::amp::messages::AMPPkt;
+use andromeda_std::common::Milliseconds;
 use andromeda_std::{ado_base::modules::Module, amp::AndrAddr};
 use cosmwasm_std::{Addr, Empty, Uint128};
 use cw_multi_test::{Contract, ContractWrapper};
@@ -29,8 +30,8 @@ pub fn mock_auction_instantiate_msg(
 }
 
 pub fn mock_start_auction(
-    start_time: u64,
-    duration: u64,
+    start_time: Option<Milliseconds>,
+    duration: Milliseconds,
     coin_denom: String,
     min_bid: Option<Uint128>,
     whitelist: Option<Vec<Addr>>,
