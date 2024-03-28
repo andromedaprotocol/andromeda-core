@@ -10,42 +10,46 @@ use andromeda_std::os::vfs::ExecuteMsg as VFSExecuteMsg;
 use andromeda_std::{ado_contract::ADOContract, amp::AndrAddr};
 
 use cosmwasm_std::{
-    ensure, to_json_binary, Addr, Api, Binary, CosmosMsg, Env, QuerierWrapper, ReplyOn, Response,
-    Storage, SubMsg, WasmMsg,
+    ensure, to_json_binary, Addr, Binary, CosmosMsg, QuerierWrapper, ReplyOn, Response, Storage,
+    SubMsg, WasmMsg,
 };
 
 pub fn handle_add_app_component(
-    querier: &QuerierWrapper,
-    storage: &mut dyn Storage,
-    api: &dyn Api,
-    env: Env,
-    sender: &str,
+    ctx: ExecuteContext,
     component: AppComponent,
 ) -> Result<Response, ContractError> {
+    let querier = &ctx.deps.querier;
+    let env = ctx.env;
+    let sender = ctx.info.sender.as_str();
+
     ensure!(
         !matches!(component.component_type, ComponentType::CrossChain(..)),
         ContractError::CrossChainComponentsCurrentlyDisabled {}
     );
     let contract = ADOContract::default();
     ensure!(
-        contract.is_contract_owner(storage, sender)?,
+        contract.is_contract_owner(ctx.deps.storage, sender)?,
         ContractError::Unauthorized {}
     );
 
-    let idx = add_app_component(storage, &component)?;
+    let idx = add_app_component(ctx.deps.storage, &component)?;
     ensure!(idx < 50, ContractError::TooManyAppComponents {});
 
-    let adodb_addr = ADOContract::default().get_adodb_address(storage, querier)?;
-    let vfs_addr = ADOContract::default().get_vfs_address(storage, querier)?;
+    let adodb_addr = ADOContract::default().get_adodb_address(ctx.deps.storage, querier)?;
+    let vfs_addr = ADOContract::default().get_vfs_address(ctx.deps.storage, querier)?;
 
     let mut resp = Response::new()
         .add_attribute("method", "add_app_component")
         .add_attribute("name", component.name.clone())
         .add_attribute("type", component.ado_type.clone());
 
-    let app_name = APP_NAME.load(storage)?;
-    let new_addr =
-        component.get_new_addr(api, &adodb_addr, querier, env.contract.address.clone())?;
+    let app_name = APP_NAME.load(ctx.deps.storage)?;
+    let new_addr = component.get_new_addr(
+        ctx.deps.api,
+        &adodb_addr,
+        querier,
+        env.contract.address.clone(),
+    )?;
     let registration_msg = component.generate_vfs_registration(
         new_addr.clone(),
         &env.contract.address,
@@ -70,6 +74,11 @@ pub fn handle_add_app_component(
 
     if let Some(inst_msg) = inst_msg {
         resp = resp.add_submessage(inst_msg);
+    }
+
+    if let ComponentType::Symlink(ref val) = component.component_type {
+        let component_address: Addr = val.get_raw_address(&ctx.deps.as_ref())?;
+        ADO_ADDRESSES.save(ctx.deps.storage, &component.name, &component_address)?;
     }
 
     let event = component.generate_event(new_addr);
