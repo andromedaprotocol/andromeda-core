@@ -10,7 +10,8 @@ use cosmwasm_std::{
     from_json,
     testing::{mock_env, mock_info, MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
     to_json_binary, BankMsg, Binary, Coin, ContractResult, CosmosMsg, OwnedDeps, Querier,
-    QuerierResult, QueryRequest, Response, SubMsg, SystemError, SystemResult, Uint128, WasmQuery,
+    QuerierResult, QuerierWrapper, QueryRequest, Response, SubMsg, SystemError, SystemResult,
+    Uint128, WasmQuery,
 };
 use cw721::{Cw721QueryMsg, OwnerOfResponse};
 
@@ -46,6 +47,7 @@ pub fn mock_dependencies_custom(
             &mut deps.storage,
             mock_env(),
             &deps.api,
+            &QuerierWrapper::new(&deps.querier),
             mock_info("sender", &[]),
             InstantiateMsg {
                 ado_type: "crowdfund".to_string(),

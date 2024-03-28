@@ -1,7 +1,6 @@
 use andromeda_app::app::AppComponent;
 use andromeda_app_contract::mock::{
-    mock_andromeda_app, mock_app_instantiate_msg, mock_claim_ownership_msg, mock_get_address_msg,
-    mock_get_components_msg,
+    mock_andromeda_app, mock_app_instantiate_msg, mock_get_components_msg,
 };
 use andromeda_cw20::mock::{
     mock_andromeda_cw20, mock_cw20_instantiate_msg, mock_cw20_send, mock_cw20_transfer,
@@ -17,46 +16,17 @@ use andromeda_fungible_tokens::cw20_staking::{AllocationConfig, StakerResponse};
 use andromeda_std::common::Milliseconds;
 
 use andromeda_std::ado_base::version::VersionResponse;
-use andromeda_testing::mock::MockAndromeda;
+use andromeda_testing::mock::{mock_app, MockAndromeda, MockApp};
 use cosmwasm_std::{coin, to_json_binary, Addr, BlockInfo, Timestamp, Uint128};
 use cw20::{BalanceResponse, Cw20Coin};
 use cw_asset::AssetInfoUnchecked;
-use cw_multi_test::{App, Executor};
+use cw_multi_test::Executor;
 
-fn mock_app() -> App {
-    App::new(|router, _api, storage| {
-        router
-            .bank
-            .init_balance(
-                storage,
-                &Addr::unchecked("owner"),
-                [coin(999999, "uandr"), coin(99999, "uusd")].to_vec(),
-            )
-            .unwrap();
-        router
-            .bank
-            .init_balance(
-                storage,
-                &Addr::unchecked("staker_one"),
-                [coin(100, "uandr")].to_vec(),
-            )
-            .unwrap();
-        router
-            .bank
-            .init_balance(
-                storage,
-                &Addr::unchecked("staker_two"),
-                [coin(100, "uandr")].to_vec(),
-            )
-            .unwrap();
-    })
-}
-
-fn mock_andromeda(app: &mut App, admin_address: Addr) -> MockAndromeda {
+fn mock_andromeda(app: &mut MockApp, admin_address: Addr) -> MockAndromeda {
     MockAndromeda::new(app, &admin_address)
 }
 
-fn setup_andr(router: &mut App, owner: &Addr) -> MockAndromeda {
+fn setup_andr(router: &mut MockApp, owner: &Addr) -> MockAndromeda {
     let andr = mock_andromeda(router, owner.clone());
 
     // Store contract codes
@@ -70,10 +40,10 @@ fn setup_andr(router: &mut App, owner: &Addr) -> MockAndromeda {
     andr
 }
 
-fn setup_app(andr: &MockAndromeda, router: &mut App) -> Addr {
-    let owner = Addr::unchecked("owner");
-    let staker_one = Addr::unchecked("staker_one");
-    let staker_two = Addr::unchecked("staker_two");
+fn setup_app(andr: &MockAndromeda, router: &mut MockApp) -> Addr {
+    let owner = router.api().addr_make("owner");
+    let staker_one = router.api().addr_make("staker_one");
+    let staker_two = router.api().addr_make("staker_two");
 
     // Create App Components
     let initial_balances = vec![
@@ -97,7 +67,7 @@ fn setup_app(andr: &MockAndromeda, router: &mut App) -> Addr {
         6,
         initial_balances,
         Some(mock_minter(
-            "owner".to_string(),
+            owner.to_string(),
             Some(Uint128::from(1000000u128)),
         )),
         None,
@@ -141,20 +111,6 @@ fn setup_app(andr: &MockAndromeda, router: &mut App) -> Addr {
             Some(owner.to_string()),
         )
         .unwrap();
-    let claim_ownership = mock_claim_ownership_msg(None);
-    router
-        .execute_contract(
-            owner.clone(),
-            Addr::unchecked(app_addr.clone()),
-            &claim_ownership,
-            &[],
-        )
-        .unwrap();
-    let cw20_staking_addr: String = router
-        .wrap()
-        .query_wasm_smart(app_addr.to_string(), &mock_get_address_msg("cw20staking"))
-        .unwrap();
-    andr.accept_ownership(router, cw20_staking_addr, owner);
 
     let components: Vec<AppComponent> = router
         .wrap()
@@ -168,23 +124,18 @@ fn setup_app(andr: &MockAndromeda, router: &mut App) -> Addr {
 
 #[test]
 fn test_cw20_staking_app() {
-    let owner = Addr::unchecked("owner");
-    let staker_one = Addr::unchecked("staker_one");
-    let staker_two = Addr::unchecked("staker_two");
-
     let mut router = mock_app();
+    let owner = router.api().addr_make("owner");
+    let staker_one = router.api().addr_make("staker_one");
+    let staker_two = router.api().addr_make("staker_two");
+
     let andr = setup_andr(&mut router, &owner);
     let app_addr = setup_app(&andr, &mut router);
 
     // Component Addresses
-    let cw20_addr: String = router
-        .wrap()
-        .query_wasm_smart(app_addr.to_string(), &mock_get_address_msg("cw20"))
-        .unwrap();
-    let cw20_staking_addr: String = router
-        .wrap()
-        .query_wasm_smart(app_addr.to_string(), &mock_get_address_msg("cw20staking"))
-        .unwrap();
+    let cw20_addr = andr.vfs_resolve_path(&mut router, format!("/home/{app_addr}/cw20"));
+    let cw20_staking_addr =
+        andr.vfs_resolve_path(&mut router, format!("/home/{app_addr}/cw20staking"));
 
     // Check Balances
     let balance_one: BalanceResponse = router
@@ -213,37 +164,27 @@ fn test_cw20_staking_app() {
 
     // Stake Tokens
     let staking_msg_one = mock_cw20_send(
-        cw20_staking_addr.clone(),
+        cw20_staking_addr.to_string(),
         Uint128::from(1000u128),
         to_json_binary(&mock_cw20_stake()).unwrap(),
     );
     router
-        .execute_contract(
-            staker_one.clone(),
-            Addr::unchecked(cw20_addr.clone()),
-            &staking_msg_one,
-            &[],
-        )
+        .execute_contract(staker_one.clone(), cw20_addr.clone(), &staking_msg_one, &[])
         .unwrap();
 
     let staking_msg_two = mock_cw20_send(
-        cw20_staking_addr.clone(),
+        cw20_staking_addr.to_string(),
         Uint128::from(2000u128),
         to_json_binary(&mock_cw20_stake()).unwrap(),
     );
     router
-        .execute_contract(
-            staker_two.clone(),
-            Addr::unchecked(cw20_addr.clone()),
-            &staking_msg_two,
-            &[],
-        )
+        .execute_contract(staker_two.clone(), cw20_addr.clone(), &staking_msg_two, &[])
         .unwrap();
 
     // Transfer Tokens for Reward
-    let transfer_msg = mock_cw20_transfer(cw20_staking_addr.clone(), Uint128::from(3000u128));
+    let transfer_msg = mock_cw20_transfer(cw20_staking_addr.to_string(), Uint128::from(3000u128));
     router
-        .execute_contract(owner, Addr::unchecked(cw20_addr), &transfer_msg, &[])
+        .execute_contract(owner, cw20_addr, &transfer_msg, &[])
         .unwrap();
 
     // Check staking status
@@ -270,23 +211,25 @@ fn test_cw20_staking_app() {
 
 #[test]
 fn test_cw20_staking_app_delayed() {
-    let owner = Addr::unchecked("owner");
-    let staker_one = Addr::unchecked("staker_one");
-    let staker_two = Addr::unchecked("staker_two");
-
     let mut router = mock_app();
+    let owner = router.api().addr_make("owner");
+    let staker_one = router.api().addr_make("staker_one");
+    let staker_two = router.api().addr_make("staker_two");
+    router
+        .send_tokens(
+            Addr::unchecked("owner"),
+            owner.clone(),
+            &[coin(1000u128, "uandr"), coin(1000u128, "uusd")],
+        )
+        .unwrap();
+
     let andr = setup_andr(&mut router, &owner);
     let app_addr = setup_app(&andr, &mut router);
 
     // Component Addresses
-    let cw20_addr: String = router
-        .wrap()
-        .query_wasm_smart(app_addr.to_string(), &mock_get_address_msg("cw20"))
-        .unwrap();
-    let cw20_staking_addr: String = router
-        .wrap()
-        .query_wasm_smart(app_addr.to_string(), &mock_get_address_msg("cw20staking"))
-        .unwrap();
+    let cw20_addr = andr.vfs_resolve_path(&mut router, format!("/home/{app_addr}/cw20"));
+    let cw20_staking_addr =
+        andr.vfs_resolve_path(&mut router, format!("/home/{app_addr}/cw20staking"));
 
     let reward_token = AssetInfoUnchecked::native("uandr");
     let add_reward_msg = mock_cw20_staking_add_reward_tokens(
@@ -297,7 +240,7 @@ fn test_cw20_staking_app_delayed() {
     router
         .execute_contract(
             owner.clone(),
-            Addr::unchecked(cw20_staking_addr.clone()),
+            cw20_staking_addr.clone(),
             &add_reward_msg,
             &[],
         )
@@ -317,7 +260,7 @@ fn test_cw20_staking_app_delayed() {
     router
         .execute_contract(
             owner.clone(),
-            Addr::unchecked(cw20_staking_addr.clone()),
+            cw20_staking_addr.clone(),
             &add_reward_msg,
             &[],
         )
@@ -326,14 +269,14 @@ fn test_cw20_staking_app_delayed() {
     router
         .send_tokens(
             owner.clone(),
-            Addr::unchecked(cw20_staking_addr.clone()),
+            cw20_staking_addr.clone(),
             &[coin(60u128, "uandr")],
         )
         .unwrap();
     router
         .send_tokens(
             owner.clone(),
-            Addr::unchecked(cw20_staking_addr.clone()),
+            cw20_staking_addr.clone(),
             &[coin(300u128, "uusd")],
         )
         .unwrap();
@@ -357,42 +300,27 @@ fn test_cw20_staking_app_delayed() {
 
     // Stake Tokens
     let staking_msg_one = mock_cw20_send(
-        cw20_staking_addr.clone(),
+        cw20_staking_addr.to_string(),
         Uint128::from(1000u128),
         to_json_binary(&mock_cw20_stake()).unwrap(),
     );
     router
-        .execute_contract(
-            staker_one.clone(),
-            Addr::unchecked(cw20_addr.clone()),
-            &staking_msg_one,
-            &[],
-        )
+        .execute_contract(staker_one.clone(), cw20_addr.clone(), &staking_msg_one, &[])
         .unwrap();
 
     let staking_msg_two = mock_cw20_send(
-        cw20_staking_addr.clone(),
+        cw20_staking_addr.to_string(),
         Uint128::from(2000u128),
         to_json_binary(&mock_cw20_stake()).unwrap(),
     );
     router
-        .execute_contract(
-            staker_two.clone(),
-            Addr::unchecked(cw20_addr.clone()),
-            &staking_msg_two,
-            &[],
-        )
+        .execute_contract(staker_two.clone(), cw20_addr.clone(), &staking_msg_two, &[])
         .unwrap();
 
     // Transfer Tokens for Reward
-    let transfer_msg = mock_cw20_transfer(cw20_staking_addr.clone(), Uint128::from(3000u128));
+    let transfer_msg = mock_cw20_transfer(cw20_staking_addr.to_string(), Uint128::from(3000u128));
     router
-        .execute_contract(
-            owner.clone(),
-            Addr::unchecked(cw20_addr),
-            &transfer_msg,
-            &[],
-        )
+        .execute_contract(owner.clone(), cw20_addr, &transfer_msg, &[])
         .unwrap();
 
     // Check staking status
@@ -436,7 +364,7 @@ fn test_cw20_staking_app_delayed() {
     router
         .execute_contract(
             owner,
-            Addr::unchecked(cw20_staking_addr.clone()),
+            cw20_staking_addr.clone(),
             &update_global_indexes,
             &[],
         )

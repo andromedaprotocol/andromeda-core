@@ -13,10 +13,38 @@ use andromeda_vfs::mock::{
     mock_add_path, mock_andromeda_vfs, mock_register_user, mock_resolve_path_query,
     mock_vfs_instantiate_message,
 };
-use cosmwasm_std::{Addr, Empty};
-use cw_multi_test::{App, Contract, Executor};
+use cosmwasm_std::{coin, Addr, Coin, Empty};
+use cw_multi_test::{
+    App, AppBuilder, BankKeeper, Contract, Executor, MockAddressGenerator, MockApiBech32,
+    WasmKeeper,
+};
 
 pub const ADMIN_USERNAME: &str = "am";
+
+pub type MockApp = App<BankKeeper, MockApiBech32>;
+
+pub fn mock_app() -> MockApp {
+    AppBuilder::new()
+        .with_api(MockApiBech32::new("andr"))
+        .with_wasm(WasmKeeper::new().with_address_generator(MockAddressGenerator))
+        .build(|router, _api, storage| {
+            router
+                .bank
+                .init_balance(
+                    storage,
+                    &Addr::unchecked("owner"),
+                    [coin(9999999, "uandr"), coin(999999, "uusd")].to_vec(),
+                )
+                .unwrap();
+        })
+}
+
+pub fn init_balances(app: &mut MockApp, balances: Vec<(Addr, &[Coin])>) {
+    for (addr, coins) in balances {
+        app.send_tokens(Addr::unchecked("owner"), addr, coins)
+            .unwrap();
+    }
+}
 
 pub struct MockAndromeda {
     pub admin_address: Addr,
@@ -25,7 +53,8 @@ pub struct MockAndromeda {
 }
 
 impl MockAndromeda {
-    pub fn new(app: &mut App, admin_address: &Addr) -> MockAndromeda {
+    pub fn new(app: &mut MockApp, admin_address: &Addr) -> MockAndromeda {
+        let admin_address = app.api().addr_make(admin_address.as_str());
         // Store contract codes
         let adodb_code_id = app.store_code(mock_andromeda_adodb());
         let kernel_code_id = app.store_code(mock_andromeda_kernel());
@@ -120,7 +149,7 @@ impl MockAndromeda {
 
         let mock_andr = MockAndromeda {
             adodb_address: adodb_address.clone(),
-            admin_address: admin_address.clone(),
+            admin_address,
             kernel_address,
         };
 
@@ -134,7 +163,7 @@ impl MockAndromeda {
     }
 
     /// Stores a given Code ID under the given key in the ADO DB contract
-    pub fn store_code_id(&self, app: &mut App, key: &str, code_id: u64) {
+    pub fn store_code_id(&self, app: &mut MockApp, key: &str, code_id: u64) {
         let msg = mock_publish(code_id, key, "0.1.0", None, None);
 
         app.execute_contract(
@@ -148,7 +177,7 @@ impl MockAndromeda {
 
     pub fn store_ado(
         &self,
-        app: &mut App,
+        app: &mut MockApp,
         contract: Box<dyn Contract<Empty>>,
         ado_type: impl Into<String>,
     ) {
@@ -157,7 +186,7 @@ impl MockAndromeda {
     }
 
     /// Gets the Code ID for a given key from the ADO DB contract
-    pub fn get_code_id(&self, app: &mut App, key: impl Into<String>) -> u64 {
+    pub fn get_code_id(&self, app: &mut MockApp, key: impl Into<String>) -> u64 {
         let msg = mock_get_code_id_msg(key.into());
 
         app.wrap()
@@ -168,7 +197,7 @@ impl MockAndromeda {
     /// Registers a key address for the kernel
     pub fn register_kernel_key_address(
         &self,
-        app: &mut App,
+        app: &mut MockApp,
         key: impl Into<String>,
         address: Addr,
     ) {
@@ -183,7 +212,7 @@ impl MockAndromeda {
     }
 
     /// Registers a user on the VFS
-    pub fn register_user(&self, app: &mut App, sender: Addr, username: impl Into<String>) {
+    pub fn register_user(&self, app: &mut MockApp, sender: Addr, username: impl Into<String>) {
         let vfs_address_query = mock_get_key_address("vfs");
         let vfs_address: Addr = app
             .wrap()
@@ -199,7 +228,7 @@ impl MockAndromeda {
     /// Adds a path to resolve to the VFS
     pub fn vfs_add_path(
         &self,
-        app: &mut App,
+        app: &mut MockApp,
         sender: Addr,
         name: impl Into<String>,
         address: Addr,
@@ -215,7 +244,7 @@ impl MockAndromeda {
             .unwrap();
     }
 
-    pub fn vfs_resolve_path(&self, app: &mut App, path: impl Into<String>) -> Addr {
+    pub fn vfs_resolve_path(&self, app: &mut MockApp, path: impl Into<String>) -> Addr {
         let vfs_address_query = mock_get_key_address("vfs");
         let vfs_address: Addr = app
             .wrap()
@@ -229,7 +258,7 @@ impl MockAndromeda {
     /// Accepts ownership of the given contract for the given sender
     pub fn accept_ownership(
         &self,
-        app: &mut App,
+        app: &mut MockApp,
         address: impl Into<String>,
         sender: impl Into<String>,
     ) {

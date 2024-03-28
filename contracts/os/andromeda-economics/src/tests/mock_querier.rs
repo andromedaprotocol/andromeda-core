@@ -44,6 +44,7 @@ pub fn mock_dependencies_custom(
             &mut deps.storage,
             mock_env(),
             &deps.api,
+            &deps.querier,
             mock_info("sender", &[]),
             InstantiateMsg {
                 ado_type: "vault".to_string(),

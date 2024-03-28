@@ -43,22 +43,23 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     NEXT_SALE_ID.save(deps.storage, &Uint128::from(1u128))?;
     let inst_resp = ADOContract::default().instantiate(
         deps.storage,
         env,
         deps.api,
-        info.clone(),
+        &deps.querier,
+        info,
         BaseInstantiateMsg {
-            ado_type: "marketplace".to_string(),
+            ado_type: CONTRACT_NAME.to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
             kernel_address: msg.kernel_address,
             owner: msg.owner,
         },
     )?;
+    let owner = ADOContract::default().owner(deps.storage)?;
     let mod_resp =
-        ADOContract::default().register_modules(info.sender.as_str(), deps.storage, msg.modules)?;
+        ADOContract::default().register_modules(owner.as_str(), deps.storage, msg.modules)?;
 
     Ok(inst_resp
         .add_attributes(mod_resp.attributes)

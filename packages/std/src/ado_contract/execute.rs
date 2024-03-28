@@ -9,8 +9,8 @@ use crate::{
     error::ContractError,
 };
 use cosmwasm_std::{
-    attr, ensure, from_json, to_json_binary, Addr, Api, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
-    QuerierWrapper, Response, Storage, SubMsg, WasmMsg,
+    attr, ensure, from_json, to_json_binary, Addr, Api, ContractInfoResponse, CosmosMsg, Deps,
+    DepsMut, Env, MessageInfo, QuerierWrapper, Response, Storage, SubMsg, WasmMsg,
 };
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -23,19 +23,61 @@ impl<'a> ADOContract<'a> {
         storage: &mut dyn Storage,
         env: Env,
         api: &dyn Api,
+        querier: &QuerierWrapper,
         info: MessageInfo,
         msg: InstantiateMsg,
     ) -> Result<Response, ContractError> {
-        self.owner.save(
-            storage,
-            &api.addr_validate(&msg.owner.unwrap_or(info.sender.to_string()))?,
-        )?;
+        let ado_type = if msg.ado_type.starts_with("crates.io:andromeda-") {
+            msg.ado_type.strip_prefix("crates.io:andromeda-").unwrap()
+        } else if msg.ado_type.starts_with("crates.io:") {
+            msg.ado_type.strip_prefix("crates.io:").unwrap()
+        } else {
+            &msg.ado_type
+        };
+        cw2::set_contract_version(storage, ado_type, msg.ado_version)?;
+        let mut owner = api.addr_validate(&msg.owner.unwrap_or(info.sender.to_string()))?;
         self.original_publisher.save(storage, &info.sender)?;
         self.block_height.save(storage, &env.block.height)?;
-        self.ado_type.save(storage, &msg.ado_type)?;
+        self.ado_type.save(storage, &ado_type.to_string())?;
         self.kernel_address
             .save(storage, &api.addr_validate(&msg.kernel_address)?)?;
-        let attributes = [attr("method", "instantiate"), attr("type", &msg.ado_type)];
+        let mut attributes = vec![
+            attr("method", "instantiate"),
+            attr("type", ado_type),
+            attr("kernel_address", msg.kernel_address),
+        ];
+
+        // We do not want to store app contracts for the kernel, exit early if current contract is kernel
+        let is_kernel_contract = ado_type.contains("kernel");
+        if is_kernel_contract {
+            self.owner.save(storage, &owner)?;
+            attributes.push(attr("owner", owner));
+            return Ok(Response::new().add_attributes(attributes));
+        }
+
+        // Check if the sender is an app contract to allow for automatic storage of app contrcat reference
+        let maybe_contract_info = querier.query_wasm_contract_info(info.sender.clone());
+        let is_sender_contract = maybe_contract_info.is_ok();
+        if is_sender_contract {
+            let ContractInfoResponse { code_id, .. } = maybe_contract_info?;
+            let sender_ado_type = AOSQuerier::ado_type_getter(
+                querier,
+                &self.get_adodb_address(storage, querier)?,
+                code_id,
+            )?;
+            let is_sender_app = Some("app-contract".to_string()) == sender_ado_type;
+            // Automatically save app contract reference if creator is an app contract
+            if is_sender_app {
+                self.app_contract
+                    .save(storage, &Addr::unchecked(info.sender.to_string()))?;
+                let app_owner = AOSQuerier::ado_owner_getter(querier, &info.sender)?;
+                owner = app_owner;
+                attributes.push(attr("app_contract", info.sender.to_string()));
+            }
+        }
+
+        self.owner.save(storage, &owner)?;
+        attributes.push(attr("owner", owner));
         Ok(Response::new().add_attributes(attributes))
     }
 
@@ -264,6 +306,7 @@ mod tests {
                 deps_mut.storage,
                 mock_env(),
                 deps_mut.api,
+                &deps_mut.querier,
                 info.clone(),
                 InstantiateMsg {
                     ado_type: "type".to_string(),
@@ -301,6 +344,7 @@ mod tests {
                 deps_mut.storage,
                 mock_env(),
                 deps_mut.api,
+                &deps_mut.querier,
                 info.clone(),
                 InstantiateMsg {
                     ado_type: "type".to_string(),
@@ -347,6 +391,7 @@ mod tests {
                 deps_mut.storage,
                 mock_env(),
                 deps_mut.api,
+                &deps_mut.querier,
                 info.clone(),
                 InstantiateMsg {
                     ado_type: "type".to_string(),
@@ -389,6 +434,7 @@ mod tests {
                 deps_mut.storage,
                 mock_env(),
                 deps_mut.api,
+                &deps_mut.querier,
                 info.clone(),
                 InstantiateMsg {
                     ado_type: "type".to_string(),
@@ -420,6 +466,7 @@ mod tests {
                 deps_mut.storage,
                 mock_env(),
                 deps_mut.api,
+                &deps_mut.querier,
                 info.clone(),
                 InstantiateMsg {
                     ado_type: "type".to_string(),

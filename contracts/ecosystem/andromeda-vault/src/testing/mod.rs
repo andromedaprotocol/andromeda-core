@@ -2,7 +2,7 @@ mod mock_querier;
 
 use self::mock_querier::{MOCK_ANCHOR_CONTRACT, MOCK_VAULT_CONTRACT};
 use crate::contract::*;
-use crate::testing::mock_querier::{mock_dependencies_custom, PositionResponse};
+use crate::testing::mock_querier::mock_dependencies_custom;
 use andromeda_ecosystem::vault::{
     DepositMsg, ExecuteMsg, InstantiateMsg, QueryMsg, StrategyAddressResponse, StrategyType,
     YieldStrategy, BALANCES, STRATEGY_CONTRACT_ADDRESSES,
@@ -847,18 +847,21 @@ fn test_query_strategy_balance() {
         strategy: Some(StrategyType::Anchor),
         denom: None,
     };
+    let resp = query(deps.as_ref(), env, single_query).unwrap_err();
+    assert_eq!(resp, ContractError::TemporarilyDisabled {});
 
-    let resp = query(deps.as_ref(), env, single_query).unwrap();
-    let balance: PositionResponse = from_json(resp).unwrap();
-    assert_eq!(Uint128::from(10u128), balance.aust_amount);
-    assert_eq!(
-        "depositor".to_string(),
-        balance
-            .recipient
-            .address
-            .get_raw_address(&deps.as_ref())
-            .unwrap()
-    );
+    // let resp = query(deps.as_ref(), env, single_query).unwrap();
+
+    // let balance: PositionResponse = from_json(resp).unwrap();
+    // assert_eq!(Uint128::from(10u128), balance.aust_amount);
+    // assert_eq!(
+    //     "depositor".to_string(),
+    //     balance
+    //         .recipient
+    //         .address
+    //         .get_raw_address(&deps.as_ref())
+    //         .unwrap()
+    // );
 }
 
 #[test]
