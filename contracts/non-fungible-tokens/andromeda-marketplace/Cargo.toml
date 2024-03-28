@@ -22,7 +22,6 @@ cw-storage-plus = { workspace = true }
 cw-utils = { workspace = true}
 cw721 = { workspace = true }
 cw2 = { workspace = true }
-semver = { workspace = true }
 
 andromeda-std = { workspace = true, features = ["modules"] }
 andromeda-non-fungible-tokens = { workspace = true }

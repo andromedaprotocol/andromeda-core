@@ -97,6 +97,3 @@ pub struct TokenAddressResponse {
     /// The address of the token being sold
     pub address: String,
 }
-
-#[cw_serde]
-pub struct MigrateMsg {}

@@ -2,15 +2,14 @@ use andromeda_std::ado_base::InstantiateMsg as BaseInstantiateMsg;
 use andromeda_std::ado_contract::ADOContract;
 use andromeda_std::common::context::ExecuteContext;
 use andromeda_std::common::encode_binary;
+use andromeda_std::common::migrate::{migrate as do_migrate, MigrateMsg};
 use andromeda_std::common::reply::ReplyId;
 use andromeda_std::error::ContractError;
 
-use andromeda_std::os::kernel::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
+use andromeda_std::os::kernel::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use cosmwasm_std::{
-    ensure, entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError,
+    entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError,
 };
-use cw2::{get_contract_version, set_contract_version};
-use semver::Version;
 
 use crate::ibc::{IBCLifecycleComplete, SudoMsg};
 use crate::reply::{on_reply_create_ado, on_reply_ibc_hooks_packet_send};
@@ -137,35 +136,7 @@ pub fn sudo(deps: DepsMut, _env: Env, msg: SudoMsg) -> Result<Response, Contract
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-    // New version
-    let version: Version = CONTRACT_VERSION.parse().map_err(from_semver)?;
-
-    // Old version
-    let stored = get_contract_version(deps.storage)?;
-    let storage_version: Version = stored.version.parse().map_err(from_semver)?;
-
-    ensure!(
-        stored.contract == CONTRACT_NAME,
-        ContractError::CannotMigrate {
-            previous_contract: stored.contract,
-        }
-    );
-
-    // New version has to be newer/greater than the old version
-    ensure!(
-        storage_version < version,
-        ContractError::CannotMigrate {
-            previous_contract: stored.version,
-        }
-    );
-
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-
-    Ok(Response::default())
-}
-
-fn from_semver(err: semver::Error) -> StdError {
-    StdError::generic_err(format!("Semver: {err}"))
+    do_migrate(deps, CONTRACT_NAME, CONTRACT_VERSION)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
