@@ -32,7 +32,7 @@ use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, Cw721ReceiveMsg, Expiration, OwnerOf
 use cw_utils::nonpayable;
 use semver::Version;
 
-const CONTRACT_NAME: &str = "crates.io:andromeda_auction";
+const CONTRACT_NAME: &str = "crates.io:andromeda-auction";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 const SEND_NFT_ACTION: &str = "SEND_NFT";
