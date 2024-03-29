@@ -77,12 +77,14 @@
             },
             "start_time": {
               "description": "When the sale start. Defaults to current time.",
-              "type": [
-                "integer",
-                "null"
-              ],
-              "format": "uint64",
-              "minimum": 0.0
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Milliseconds"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           },
           "additionalProperties": false
@@ -613,6 +615,12 @@
         }
       },
       "additionalProperties": false
+    },
+    "Milliseconds": {
+      "description": "Represents time in milliseconds.",
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
     },
     "Module": {
       "description": "A struct describing a token module, provided with the instantiation message this struct is used to record the info about the module and how/if it should be instantiated",

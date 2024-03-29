@@ -1,5 +1,8 @@
 use crate::error::ContractError;
-use crate::{ado_base::ownership::OwnershipMessage, ado_contract::ADOContract};
+use crate::{
+    ado_base::ownership::{ContractPotentialOwnerResponse, OwnershipMessage},
+    ado_contract::ADOContract,
+};
 use cosmwasm_std::{attr, ensure, Addr, DepsMut, Env, MessageInfo, Response, Storage};
 use cw_storage_plus::Item;
 use cw_utils::Expiration;
@@ -140,9 +143,12 @@ impl<'a> ADOContract<'a> {
         self.is_contract_owner(storage, addr)
     }
 
-    pub fn ownership_request(&self, storage: &dyn Storage) -> Result<Option<Addr>, ContractError> {
+    pub fn ownership_request(
+        &self,
+        storage: &dyn Storage,
+    ) -> Result<ContractPotentialOwnerResponse, ContractError> {
         let potential_owner = POTENTIAL_OWNER.may_load(storage)?;
-        Ok(potential_owner)
+        Ok(ContractPotentialOwnerResponse { potential_owner })
     }
 }
 
