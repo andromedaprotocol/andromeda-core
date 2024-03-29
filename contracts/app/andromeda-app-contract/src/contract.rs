@@ -186,14 +186,9 @@ pub fn execute(
 
 pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::AddAppComponent { component } => execute::handle_add_app_component(
-            &ctx.deps.querier,
-            ctx.deps.storage,
-            ctx.deps.api,
-            ctx.env,
-            ctx.info.sender.as_str(),
-            component,
-        ),
+        ExecuteMsg::AddAppComponent { component } => {
+            execute::handle_add_app_component(ctx, component)
+        }
         ExecuteMsg::ClaimOwnership { name, new_owner } => {
             execute::claim_ownership(ctx, name, new_owner)
         }
