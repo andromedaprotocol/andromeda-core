@@ -2,7 +2,7 @@
 
 use crate::contract::{execute, instantiate, query};
 use andromeda_fungible_tokens::cw20::{ExecuteMsg, InstantiateMsg, QueryMsg};
-use andromeda_std::{ado_base::modules::Module, amp::AndrAddr};
+use andromeda_std::ado_base::modules::Module;
 use cosmwasm_std::{Binary, Empty, Uint128};
 use cw20::MinterResponse;
 use cw_multi_test::{Contract, ContractWrapper};
@@ -41,8 +41,9 @@ pub fn mock_cw20_instantiate_msg(
 }
 
 pub fn mock_get_cw20_balance(address: impl Into<String>) -> QueryMsg {
-    let address = AndrAddr::from_string(address.into());
-    QueryMsg::Balance { address }
+    QueryMsg::Balance {
+        address: address.into(),
+    }
 }
 pub fn mock_get_version() -> QueryMsg {
     QueryMsg::Version {}
