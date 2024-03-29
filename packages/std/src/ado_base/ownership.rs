@@ -10,6 +10,7 @@ pub struct ContractOwnerResponse {
 #[cw_serde]
 pub struct ContractPotentialOwnerResponse {
     pub potential_owner: Option<Addr>,
+    pub expiration: Option<Expiration>,
 }
 
 #[cw_serde]

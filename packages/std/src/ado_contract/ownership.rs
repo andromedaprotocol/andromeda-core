@@ -148,7 +148,11 @@ impl<'a> ADOContract<'a> {
         storage: &dyn Storage,
     ) -> Result<ContractPotentialOwnerResponse, ContractError> {
         let potential_owner = POTENTIAL_OWNER.may_load(storage)?;
-        Ok(ContractPotentialOwnerResponse { potential_owner })
+        let expiration = POTENTIAL_OWNER_EXPIRATION.may_load(storage)?;
+        Ok(ContractPotentialOwnerResponse {
+            potential_owner,
+            expiration,
+        })
     }
 }
 
