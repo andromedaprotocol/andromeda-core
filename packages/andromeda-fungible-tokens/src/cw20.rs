@@ -225,14 +225,14 @@ pub enum QueryMsg {
     /// Return type: DownloadLogoResponse.
     #[returns(cw20::DownloadLogoResponse)]
     DownloadLogo {},
+    #[returns(cw20::BalanceResponse)]
+    Balance { address: String },
 }
 
 impl From<QueryMsg> for Cw20QueryMsg {
     fn from(msg: QueryMsg) -> Self {
         match msg {
-            QueryMsg::Balance { address } => Cw20QueryMsg::Balance {
-                address: address.to_string(),
-            },
+            QueryMsg::Balance { address } => Cw20QueryMsg::Balance { address },
             QueryMsg::TokenInfo {} => Cw20QueryMsg::TokenInfo {},
             QueryMsg::Minter {} => Cw20QueryMsg::Minter {},
             QueryMsg::Allowance { owner, spender } => Cw20QueryMsg::Allowance { owner, spender },
