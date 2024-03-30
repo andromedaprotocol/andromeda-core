@@ -7,13 +7,13 @@ use cosmwasm_schema::cw_serde;
 
 use cosmwasm_std::testing::mock_info;
 use cosmwasm_std::{
+    coin, BankMsg, CosmosMsg, DenomMetadata, DenomUnit, QuerierWrapper, Response, SubMsg,
+};
+use cosmwasm_std::{
     from_json,
     testing::{mock_env, MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
     to_json_binary, Binary, Coin, ContractResult, OwnedDeps, Querier, QuerierResult, QueryRequest,
     SystemError, SystemResult, WasmQuery,
-};
-use cosmwasm_std::{
-    BankMsg, CosmosMsg, DenomMetadata, DenomUnit, QuerierWrapper, Response, SubMsg,
 };
 use cw721::{Cw721QueryMsg, OwnerOfResponse, TokensResponse};
 
@@ -99,6 +99,24 @@ pub struct DenomMetadataResponse {
     pub metadata: DenomMetadata,
 }
 
+#[cw_serde(
+    Serialize,
+    Deserialize,
+    Clone,
+    Debug,
+    Default,
+    PartialEq,
+    Eq,
+    JsonSchema
+)]
+#[serde(rename_all = "snake_case")]
+#[non_exhaustive]
+pub struct SupplyResponse {
+    /// Always returns a Coin with the requested denom.
+    /// This will be of zero amount if the denom does not exist.
+    pub amount: Coin,
+}
+
 impl WasmMockQuerier {
     pub fn handle_query(&self, request: &QueryRequest<cosmwasm_std::Empty>) -> QuerierResult {
         match &request {
@@ -112,23 +130,29 @@ impl WasmMockQuerier {
                 }
             }
             QueryRequest::Bank(_) => {
-                let denom_metadata = DenomMetadata {
-                    description: "description".to_string(),
-                    denom_units: vec![DenomUnit {
-                        denom: "uusd".to_string(),
-                        exponent: 1,
-                        aliases: vec!["alias".to_string()],
-                    }],
-                    base: "base".to_string(),
-                    display: "display".to_string(),
-                    name: "name".to_string(),
-                    symbol: "uusd".to_string(),
-                    uri: "uri".to_string(),
-                    uri_hash: "uri_hash".to_string(),
-                };
+                // let denom_metadata = DenomMetadata {
+                //     description: "description".to_string(),
+                //     denom_units: vec![DenomUnit {
+                //         denom: "uusd".to_string(),
+                //         exponent: 1,
+                //         aliases: vec!["alias".to_string()],
+                //     }],
+                //     base: "base".to_string(),
+                //     display: "display".to_string(),
+                //     name: "name".to_string(),
+                //     symbol: "uusd".to_string(),
+                //     uri: "uri".to_string(),
+                //     uri_hash: "uri_hash".to_string(),
+                // };
 
-                let response = DenomMetadataResponse {
-                    metadata: denom_metadata,
+                // let response = DenomMetadataResponse {
+                //     metadata: denom_metadata,
+                // };
+
+                // SystemResult::Ok(ContractResult::Ok(to_json_binary(&response).unwrap()))
+
+                let response = SupplyResponse {
+                    amount: coin(1_000_000, "uandr"),
                 };
 
                 SystemResult::Ok(ContractResult::Ok(to_json_binary(&response).unwrap()))
