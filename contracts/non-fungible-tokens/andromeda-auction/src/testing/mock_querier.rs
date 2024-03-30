@@ -6,9 +6,7 @@ use andromeda_std::testing::mock_querier::MockAndromedaQuerier;
 use cosmwasm_schema::cw_serde;
 
 use cosmwasm_std::testing::mock_info;
-use cosmwasm_std::{
-    coin, BankMsg, CosmosMsg, DenomMetadata, DenomUnit, QuerierWrapper, Response, SubMsg,
-};
+use cosmwasm_std::{coin, BankMsg, CosmosMsg, DenomMetadata, QuerierWrapper, Response, SubMsg};
 use cosmwasm_std::{
     from_json,
     testing::{mock_env, MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
