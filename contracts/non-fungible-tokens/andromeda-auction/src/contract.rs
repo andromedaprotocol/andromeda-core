@@ -202,9 +202,9 @@ fn validate_denom(querier: &QuerierWrapper, denom: String) -> Result<(), Contrac
         !denom.is_empty(),
         ContractError::InvalidAsset { asset: denom }
     );
-    let denom_metadata = querier.query_denom_metadata(denom.clone());
+    let potential_supply = querier.query_supply(denom.clone())?;
     ensure!(
-        denom_metadata.is_ok(),
+        !potential_supply.amount.is_zero(),
         ContractError::InvalidAsset { asset: denom }
     );
     Ok(())
