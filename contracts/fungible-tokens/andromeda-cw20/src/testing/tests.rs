@@ -154,7 +154,7 @@ fn test_send() {
     );
 
     let msg = ExecuteMsg::Send {
-        contract: "contract".into(),
+        contract: AndrAddr::from_string("contract".to_string()),
         amount: 100u128.into(),
         msg: to_json_binary(&"msg").unwrap(),
     };

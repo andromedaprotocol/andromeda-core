@@ -13,7 +13,7 @@ use andromeda_cw20_staking::mock::{
 };
 use andromeda_fungible_tokens::cw20_staking::{AllocationConfig, StakerResponse};
 
-use andromeda_std::common::Milliseconds;
+use andromeda_std::{amp::AndrAddr, common::Milliseconds};
 
 use andromeda_std::ado_base::version::VersionResponse;
 use andromeda_testing::mock::{mock_app, MockAndromeda, MockApp};
@@ -164,7 +164,7 @@ fn test_cw20_staking_app() {
 
     // Stake Tokens
     let staking_msg_one = mock_cw20_send(
-        cw20_staking_addr.to_string(),
+        AndrAddr::from_string(cw20_staking_addr.to_string()),
         Uint128::from(1000u128),
         to_json_binary(&mock_cw20_stake()).unwrap(),
     );
@@ -173,7 +173,7 @@ fn test_cw20_staking_app() {
         .unwrap();
 
     let staking_msg_two = mock_cw20_send(
-        cw20_staking_addr.to_string(),
+        AndrAddr::from_string(cw20_staking_addr.to_string()),
         Uint128::from(2000u128),
         to_json_binary(&mock_cw20_stake()).unwrap(),
     );
@@ -300,7 +300,7 @@ fn test_cw20_staking_app_delayed() {
 
     // Stake Tokens
     let staking_msg_one = mock_cw20_send(
-        cw20_staking_addr.to_string(),
+        AndrAddr::from_string(cw20_staking_addr.to_string()),
         Uint128::from(1000u128),
         to_json_binary(&mock_cw20_stake()).unwrap(),
     );
@@ -309,7 +309,7 @@ fn test_cw20_staking_app_delayed() {
         .unwrap();
 
     let staking_msg_two = mock_cw20_send(
-        cw20_staking_addr.to_string(),
+        AndrAddr::from_string(cw20_staking_addr.to_string()),
         Uint128::from(2000u128),
         to_json_binary(&mock_cw20_stake()).unwrap(),
     );
