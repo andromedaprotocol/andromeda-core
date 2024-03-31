@@ -170,7 +170,7 @@
             ],
             "properties": {
               "contract": {
-                "type": "string"
+                "$ref": "#/definitions/AndrAddr"
               },
               "msg": {
                 "$ref": "#/definitions/Binary"

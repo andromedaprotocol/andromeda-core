@@ -316,7 +316,7 @@
                 "$ref": "#/definitions/Uint128"
               },
               "contract": {
-                "type": "string"
+                "$ref": "#/definitions/AndrAddr"
               },
               "msg": {
                 "$ref": "#/definitions/Binary"

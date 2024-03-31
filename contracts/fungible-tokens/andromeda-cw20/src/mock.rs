@@ -2,7 +2,7 @@
 
 use crate::contract::{execute, instantiate, query};
 use andromeda_fungible_tokens::cw20::{ExecuteMsg, InstantiateMsg, QueryMsg};
-use andromeda_std::ado_base::modules::Module;
+use andromeda_std::{ado_base::modules::Module, amp::AndrAddr};
 use cosmwasm_std::{Binary, Empty, Uint128};
 use cw20::MinterResponse;
 use cw_multi_test::{Contract, ContractWrapper};
