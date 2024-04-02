@@ -1,5 +1,6 @@
 use crate::state::{
     auction_infos, read_auction_infos, read_bids, BIDS, NEXT_AUCTION_ID, TOKEN_AUCTION_STATE,
+    VALID_CW20_CONTRACT,
 };
 use andromeda_non_fungible_tokens::auction::{
     AuctionIdsResponse, AuctionInfo, AuctionStateResponse, Bid, BidsResponse, Cw721HookMsg,
@@ -197,16 +198,30 @@ fn handle_receive_cw721(
     }
 }
 
-fn validate_denom(querier: &QuerierWrapper, denom: String) -> Result<(), ContractError> {
-    ensure!(
-        !denom.is_empty(),
-        ContractError::InvalidAsset { asset: denom }
-    );
-    let potential_supply = querier.query_supply(denom.clone())?;
-    ensure!(
-        !potential_supply.amount.is_zero(),
-        ContractError::InvalidAsset { asset: denom }
-    );
+fn validate_denom(deps: &Deps, denom: String) -> Result<(), ContractError> {
+    let valid_cw20 = VALID_CW20_CONTRACT.may_load(deps.storage)?;
+    if let Some(valid_cw20) = valid_cw20 {
+        let valid_address = valid_cw20.get_raw_address(deps)?;
+        let denom_address = Addr::unchecked(denom.clone());
+        if denom_address != valid_address {
+            let potential_supply = deps.querier.query_supply(denom.clone())?;
+            let non_empty_denom = !denom.is_empty();
+            let non_zero_supply = !potential_supply.amount.is_zero();
+            ensure!(
+                non_empty_denom && non_zero_supply,
+                ContractError::InvalidAsset { asset: denom }
+            );
+        }
+    } else {
+        let potential_supply = deps.querier.query_supply(denom.clone())?;
+        let non_empty_denom = !denom.is_empty();
+        let non_zero_supply = !potential_supply.amount.is_zero();
+        ensure!(
+            non_empty_denom && non_zero_supply,
+            ContractError::InvalidAsset { asset: denom }
+        );
+    }
+
     Ok(())
 }
 
@@ -221,7 +236,7 @@ fn execute_start_auction(
     whitelist: Option<Vec<Addr>>,
     min_bid: Option<Uint128>,
 ) -> Result<Response, ContractError> {
-    validate_denom(&ctx.deps.querier, coin_denom.clone())?;
+    validate_denom(&ctx.deps.as_ref(), coin_denom.clone())?;
     ensure!(!duration.is_zero(), ContractError::InvalidExpiration {});
     let ExecuteContext {
         deps, info, env, ..
@@ -286,7 +301,7 @@ fn execute_update_auction(
         deps, info, env, ..
     } = ctx;
     nonpayable(&info)?;
-    validate_denom(&deps.querier, coin_denom.clone())?;
+    validate_denom(&deps.as_ref(), coin_denom.clone())?;
     let mut token_auction_state =
         get_existing_token_auction_state(deps.storage, &token_id, &token_address)?;
     ensure!(

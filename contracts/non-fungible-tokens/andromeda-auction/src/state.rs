@@ -1,5 +1,5 @@
 use andromeda_non_fungible_tokens::auction::{AuctionInfo, Bid, TokenAuctionState};
-use andromeda_std::{common::OrderBy, error::ContractError};
+use andromeda_std::{amp::AndrAddr, common::OrderBy, error::ContractError};
 use cosmwasm_std::{Addr, Order, StdResult, Storage, Uint128};
 
 use cw_storage_plus::{Bound, Index, IndexList, IndexedMap, Item, Map, MultiIndex};
@@ -16,6 +16,8 @@ pub const BIDS: Map<u128, Vec<Bid>> = Map::new("bids"); // auction_id -> [bids]
 pub const TOKEN_AUCTION_STATE: Map<u128, TokenAuctionState> = Map::new("auction_token_state");
 
 pub const VALID_TOKEN_CONTRACTS: Map<Addr, bool> = Map::new("valid_token_contracts");
+
+pub const VALID_CW20_CONTRACT: Item<AndrAddr> = Item::new("valid_cw20_contract");
 
 pub struct AuctionIdIndices<'a> {
     /// PK: token_id + token_address
