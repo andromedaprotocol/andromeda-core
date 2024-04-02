@@ -117,7 +117,7 @@ pub fn add_child(
     )?;
     // Sender must be an app contract
     ensure!(
-        ado_type.is_some() && ado_type.unwrap() == "app-contract",
+        ado_type.is_some() && ado_type.unwrap().contains("app-contract"),
         ContractError::Unauthorized {}
     );
 

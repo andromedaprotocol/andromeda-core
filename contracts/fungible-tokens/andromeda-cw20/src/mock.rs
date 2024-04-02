@@ -41,14 +41,15 @@ pub fn mock_cw20_instantiate_msg(
 }
 
 pub fn mock_get_cw20_balance(address: impl Into<String>) -> QueryMsg {
-    let address = AndrAddr::from_string(address.into());
-    QueryMsg::Balance { address }
+    QueryMsg::Balance {
+        address: address.into(),
+    }
 }
 pub fn mock_get_version() -> QueryMsg {
     QueryMsg::Version {}
 }
 
-pub fn mock_cw20_send(contract: String, amount: Uint128, msg: Binary) -> ExecuteMsg {
+pub fn mock_cw20_send(contract: AndrAddr, amount: Uint128, msg: Binary) -> ExecuteMsg {
     ExecuteMsg::Send {
         contract,
         amount,

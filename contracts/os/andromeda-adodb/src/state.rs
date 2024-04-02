@@ -14,7 +14,7 @@ pub const UNPUBLISHED_VERSIONS: Map<(&str, &str), bool> = Map::new("unpublished_
 /// Stores the latest version for a given ADO
 pub const LATEST_VERSION: Map<&str, (String, u64)> = Map::new("latest_version");
 /// Stores a mapping from code ID to ADO
-pub const ADO_TYPE: Map<u64, ADOVersion> = Map::new("ado_type");
+pub const ADO_TYPE: Map<&str, ADOVersion> = Map::new("ado_type");
 /// Stores a mapping from ADO to its publisher
 pub const PUBLISHER: Map<&str, String> = Map::new("publisher");
 /// Stores a mapping from an (ADO,Action) to its action fees
@@ -25,12 +25,14 @@ pub fn store_code_id(
     ado_version: &ADOVersion,
     code_id: u64,
 ) -> Result<(), ContractError> {
-    let curr_type = ADO_TYPE.may_load(storage, code_id)?;
+    let curr_type = ADO_TYPE.may_load(storage, &code_id.to_string())?;
     ensure!(
         curr_type.is_none() || &curr_type.unwrap() == ado_version,
         ContractError::Unauthorized {}
     );
-    ADO_TYPE.save(storage, code_id, ado_version).unwrap();
+    ADO_TYPE
+        .save(storage, &code_id.to_string(), ado_version)
+        .unwrap();
     LATEST_VERSION
         .save(
             storage,
@@ -50,12 +52,12 @@ pub fn remove_code_id(
     ado_version: &ADOVersion,
     code_id: u64,
 ) -> Result<(), ContractError> {
-    let curr_type = ADO_TYPE.may_load(storage, code_id)?;
+    let curr_type = ADO_TYPE.may_load(storage, &code_id.to_string())?;
     ensure!(
         curr_type.is_none() || &curr_type.unwrap() == ado_version,
         ContractError::Unauthorized {}
     );
-    ADO_TYPE.remove(storage, code_id);
+    ADO_TYPE.remove(storage, &code_id.to_string());
     let version_code = LATEST_VERSION.may_load(storage, &ado_version.get_type())?;
     if let Some(version_code) = version_code {
         // This means that the code_id we're trying to unpublish is also the latest

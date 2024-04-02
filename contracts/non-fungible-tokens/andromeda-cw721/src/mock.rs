@@ -153,7 +153,7 @@ pub fn mock_quick_mint_msg(amount: u32, owner: String) -> ExecuteMsg {
     ExecuteMsg::BatchMint { tokens: mint_msgs }
 }
 
-pub fn mock_send_nft(contract: String, token_id: String, msg: Binary) -> ExecuteMsg {
+pub fn mock_send_nft(contract: AndrAddr, token_id: String, msg: Binary) -> ExecuteMsg {
     ExecuteMsg::SendNft {
         contract,
         token_id,

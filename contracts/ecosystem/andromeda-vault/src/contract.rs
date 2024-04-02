@@ -10,7 +10,7 @@ use andromeda_std::amp::{AndrAddr, Recipient};
 use andromeda_std::common::context::ExecuteContext;
 use andromeda_std::{
     ado_base::withdraw::{Withdrawal, WithdrawalType},
-    ado_base::{AndromedaQuery, InstantiateMsg as BaseInstantiateMsg},
+    ado_base::InstantiateMsg as BaseInstantiateMsg,
     error::{from_semver, ContractError},
 };
 
@@ -436,10 +436,16 @@ fn query_balance(
 ) -> Result<Binary, ContractError> {
     if let Some(strategy) = strategy {
         let strategy_addr = STRATEGY_CONTRACT_ADDRESSES.load(deps.storage, strategy.to_string())?;
+        ensure!(false, ContractError::TemporarilyDisabled {});
         // DEV NOTE: Why does this ensure! a generic type when not using custom query?
+        // let query: QueryRequest<Empty> = QueryRequest::Wasm(WasmQuery::Smart {
+        //     contract_addr: strategy_addr,
+        //     msg: to_json_binary(&AndromedaQuery::WithdrawableBalance { address })?,
+        // });
+        // TODO: Below code to be replaced with above code once WithdrawableBalance is re-enabled
         let query: QueryRequest<Empty> = QueryRequest::Wasm(WasmQuery::Smart {
             contract_addr: strategy_addr,
-            msg: to_json_binary(&AndromedaQuery::WithdrawableBalance { address })?,
+            msg: to_json_binary(&Binary::default())?,
         });
         match deps.querier.raw_query(&to_json_binary(&query)?) {
             SystemResult::Ok(ContractResult::Ok(value)) => Ok(value),

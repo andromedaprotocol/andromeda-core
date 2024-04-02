@@ -7,7 +7,7 @@ use andromeda_cw721::mock::{mock_andromeda_cw721, mock_cw721_instantiate_msg, Mo
 use andromeda_finance::splitter::AddressPercent;
 use andromeda_std::{
     amp::{AndrAddr, Recipient},
-    common::Milliseconds,
+    common::{expiration::MILLISECONDS_TO_NANOSECONDS_RATIO, Milliseconds},
 };
 
 use andromeda_modules::rates::{Rate, RateInfo};

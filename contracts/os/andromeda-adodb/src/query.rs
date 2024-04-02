@@ -36,7 +36,7 @@ pub fn is_unpublished_code_id(
 }
 
 pub fn ado_type(deps: Deps, code_id: u64) -> Result<Option<ADOVersion>, ContractError> {
-    let ado_version = ADO_TYPE.may_load(deps.storage, code_id)?;
+    let ado_version = ADO_TYPE.may_load(deps.storage, &code_id.to_string())?;
     Ok(ado_version)
 }
 
@@ -124,6 +124,6 @@ pub fn action_fee_by_code_id(
     code_id: u64,
     action: String,
 ) -> Result<Option<ActionFee>, ContractError> {
-    let ado_version = ADO_TYPE.load(deps.storage, code_id)?;
+    let ado_version = ADO_TYPE.load(deps.storage, &code_id.to_string())?;
     Ok(ACTION_FEES.may_load(deps.storage, &(ado_version.get_type(), action))?)
 }

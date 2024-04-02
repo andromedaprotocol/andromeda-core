@@ -54,7 +54,7 @@ impl AOSQuerier {
         adodb_addr: &Addr,
         code_id: u64,
     ) -> Result<Option<String>, ContractError> {
-        let key = AOSQuerier::get_map_storage_key("ado_type", &[&code_id.to_be_bytes()])?;
+        let key = AOSQuerier::get_map_storage_key("ado_type", &[code_id.to_string().as_bytes()])?;
         let ado_type: Option<ADOVersion> = AOSQuerier::query_storage(querier, adodb_addr, &key)?;
         Ok(ado_type.map(|v| v.get_type()))
     }
@@ -65,8 +65,8 @@ impl AOSQuerier {
         code_id: u64,
     ) -> Result<Option<String>, ContractError> {
         let query = ADODBQueryMsg::ADOType { code_id };
-        let ado_type: Option<String> = querier.query_wasm_smart(adodb_addr, &query)?;
-        Ok(ado_type)
+        let ado_type: Option<ADOVersion> = querier.query_wasm_smart(adodb_addr, &query)?;
+        Ok(ado_type.map(|v| v.get_type()))
     }
 
     pub fn ado_publisher_getter(
@@ -89,7 +89,7 @@ impl AOSQuerier {
         adodb_addr: &Addr,
         code_id: u64,
     ) -> Result<(), ContractError> {
-        let key = AOSQuerier::get_map_storage_key("ado_type", &[&code_id.to_be_bytes()])?;
+        let key = AOSQuerier::get_map_storage_key("ado_type", &[code_id.to_string().as_bytes()])?;
         let verify: Option<String> = AOSQuerier::query_storage(querier, adodb_addr, &key)?;
 
         if verify.is_some() {

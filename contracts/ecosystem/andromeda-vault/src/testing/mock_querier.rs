@@ -1,10 +1,9 @@
 use andromeda_std::ado_base::ownership::ContractOwnerResponse;
+use andromeda_std::ado_base::AndromedaQuery;
 //use andromeda_ecosystem::anchor_earn::PositionResponse;
 use andromeda_std::testing::mock_querier::MockAndromedaQuerier;
 use andromeda_std::{
-    ado_base::{AndromedaQuery, InstantiateMsg},
-    ado_contract::ADOContract,
-    amp::Recipient,
+    ado_base::InstantiateMsg, ado_contract::ADOContract, amp::Recipient,
     testing::mock_querier::MOCK_KERNEL_CONTRACT,
 };
 use cosmwasm_schema::cw_serde;
@@ -12,9 +11,10 @@ use cosmwasm_std::QuerierWrapper;
 use cosmwasm_std::{
     from_json,
     testing::{mock_env, mock_info, MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
-    to_json_binary, Binary, Coin, ContractResult, OwnedDeps, Querier, QuerierResult, QueryRequest,
-    SystemError, SystemResult, Uint128, WasmQuery,
+    Coin, OwnedDeps, Querier, QuerierResult, QueryRequest, SystemError, SystemResult, Uint128,
+    WasmQuery,
 };
+use cosmwasm_std::{to_json_binary, Binary, ContractResult};
 
 // This is here since anchor_earn is defunct now.
 #[cw_serde]
@@ -93,13 +93,13 @@ impl WasmMockQuerier {
 
     fn handle_anchor_balance_query(&self, msg: &Binary) -> QuerierResult {
         match from_json(msg).unwrap() {
-            AndromedaQuery::WithdrawableBalance { address } => {
-                let msg_response = PositionResponse {
-                    recipient: Recipient::from_string(address),
-                    aust_amount: Uint128::from(10u128),
-                };
-                SystemResult::Ok(ContractResult::Ok(to_json_binary(&msg_response).unwrap()))
-            }
+            // AndromedaQuery::WithdrawableBalance { address } => {
+            //     let msg_response = PositionResponse {
+            //         recipient: Recipient::from_string(address),
+            //         aust_amount: Uint128::from(10u128),
+            //     };
+            //     SystemResult::Ok(ContractResult::Ok(to_json_binary(&msg_response).unwrap()))
+            // }
             AndromedaQuery::Owner {} => {
                 let msg_response = ContractOwnerResponse {
                     owner: MOCK_VAULT_CONTRACT.to_owned(),

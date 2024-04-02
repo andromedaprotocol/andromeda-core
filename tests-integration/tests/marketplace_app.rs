@@ -154,6 +154,14 @@ fn test_marketplace_app() {
 
     let packet = AMPPkt::new(buyer.clone(), andr.kernel.addr().to_string(), vec![amp_msg]);
     let receive_packet_msg = mock_receive_packet(packet);
+
+    let block_info = router.block_info();
+    router.set_block(BlockInfo {
+        height: block_info.height,
+        time: block_info.time.plus_minutes(1),
+        chain_id: block_info.chain_id,
+    });
+
     router
         .execute_contract(
             buyer.clone(),

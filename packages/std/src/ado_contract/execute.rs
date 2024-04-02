@@ -38,7 +38,7 @@ impl<'a> ADOContract<'a> {
         let mut owner = api.addr_validate(&msg.owner.unwrap_or(info.sender.to_string()))?;
         self.original_publisher.save(storage, &info.sender)?;
         self.block_height.save(storage, &env.block.height)?;
-        self.ado_type.save(storage, &msg.ado_type)?;
+        self.ado_type.save(storage, &ado_type.to_string())?;
         self.kernel_address
             .save(storage, &api.addr_validate(&msg.kernel_address)?)?;
         let mut attributes = vec![

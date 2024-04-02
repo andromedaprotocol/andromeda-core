@@ -110,11 +110,14 @@ andromeda-std = { workspace = true }
 
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-cw-multi-test = { workspace = true, features = [
+cw-multi-test = { version = "1.0.0", features = [
     "cosmwasm_1_3",
     "cosmwasm_1_2",
 ] }
 
+
+[[test]]
+name = "app"
 
 # [[test]]
 # name = "cw721"

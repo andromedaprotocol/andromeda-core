@@ -1,4 +1,6 @@
-use andromeda_std::{andr_exec, andr_instantiate, andr_instantiate_modules, andr_query};
+use andromeda_std::{
+    amp::AndrAddr, andr_exec, andr_instantiate, andr_instantiate_modules, andr_query,
+};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Binary, Uint128};
 use cw20::{Cw20Coin, Logo, MinterResponse};
@@ -43,7 +45,7 @@ pub enum ExecuteMsg {
     /// Send is a base message to transfer tokens to a contract and trigger an action
     /// on the receiving contract.
     Send {
-        contract: String,
+        contract: AndrAddr,
         amount: Uint128,
         msg: Binary,
     },
@@ -110,7 +112,7 @@ impl From<ExecuteMsg> for Cw20ExecuteMsg {
                 amount,
                 msg,
             } => Cw20ExecuteMsg::Send {
-                contract,
+                contract: contract.to_string(),
                 amount,
                 msg,
             },
@@ -225,14 +227,14 @@ pub enum QueryMsg {
     /// Return type: DownloadLogoResponse.
     #[returns(cw20::DownloadLogoResponse)]
     DownloadLogo {},
+    #[returns(cw20::BalanceResponse)]
+    Balance { address: String },
 }
 
 impl From<QueryMsg> for Cw20QueryMsg {
     fn from(msg: QueryMsg) -> Self {
         match msg {
-            QueryMsg::Balance { address } => Cw20QueryMsg::Balance {
-                address: address.to_string(),
-            },
+            QueryMsg::Balance { address } => Cw20QueryMsg::Balance { address },
             QueryMsg::TokenInfo {} => Cw20QueryMsg::TokenInfo {},
             QueryMsg::Minter {} => Cw20QueryMsg::Minter {},
             QueryMsg::Allowance { owner, spender } => Cw20QueryMsg::Allowance { owner, spender },

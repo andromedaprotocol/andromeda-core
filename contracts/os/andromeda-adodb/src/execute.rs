@@ -142,7 +142,7 @@ pub fn unpublish(
 
     // Verify Code ID exists
     ADO_TYPE
-        .load(deps.storage, code_id)
+        .load(deps.storage, &code_id.to_string())
         .ok()
         .ok_or(ContractError::InvalidCodeID {
             msg: Some("Code ID not already published".to_string()),

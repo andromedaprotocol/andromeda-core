@@ -88,6 +88,7 @@ fn kernel() {
 
     // user1 had one coin before the splitter execute msg which is expected to increase his balance by 100uandr
     assert_eq!(user1_balance, coin(100, "uandr"));
+    assert_eq!(user1_balance, coin(100, "uandr"));
 
     let owner_balance = router
         .wrap()
@@ -95,6 +96,7 @@ fn kernel() {
         .unwrap();
 
     // The owner's balance should be his starting balance subtracted by the 100 he sent with the splitter execute msg
+    assert_eq!(owner_balance, coin(900, "uandr"));
     assert_eq!(owner_balance, coin(900, "uandr"));
 
     assert!(res.data.is_none());

@@ -11,7 +11,7 @@ use andromeda_cw20_staking::mock::{
 };
 use andromeda_fungible_tokens::cw20_staking::{AllocationConfig, StakerResponse};
 
-use andromeda_std::common::Milliseconds;
+use andromeda_std::{amp::AndrAddr, common::Milliseconds};
 
 use andromeda_std::ado_base::version::VersionResponse;
 use andromeda_testing::{
@@ -22,6 +22,7 @@ use andromeda_testing::{
 use cosmwasm_std::{coin, to_json_binary, BlockInfo, Timestamp, Uint128};
 use cw20::{BalanceResponse, Cw20Coin};
 use cw_asset::AssetInfoUnchecked;
+use cw_multi_test::Executor;
 use cw_multi_test::Executor;
 
 fn setup_andr(router: &mut MockApp) -> MockAndromeda {
@@ -66,6 +67,7 @@ fn setup_app(andr: &MockAndromeda, router: &mut MockApp) -> MockAppContract {
         6,
         initial_balances,
         Some(mock_minter(
+            owner.to_string(),
             owner.to_string(),
             Some(Uint128::from(1000000u128)),
         )),
@@ -164,6 +166,7 @@ fn test_cw20_staking_app() {
     );
     router
         .execute_contract(staker_one.clone(), cw20_addr.clone(), &staking_msg_one, &[])
+        .execute_contract(staker_one.clone(), cw20_addr.clone(), &staking_msg_one, &[])
         .unwrap();
 
     let staking_msg_two = mock_cw20_send(
@@ -173,9 +176,11 @@ fn test_cw20_staking_app() {
     );
     router
         .execute_contract(staker_two.clone(), cw20_addr.clone(), &staking_msg_two, &[])
+        .execute_contract(staker_two.clone(), cw20_addr.clone(), &staking_msg_two, &[])
         .unwrap();
 
     // Transfer Tokens for Reward
+    let transfer_msg = mock_cw20_transfer(cw20_staking_addr.to_string(), Uint128::from(3000u128));
     let transfer_msg = mock_cw20_transfer(cw20_staking_addr.to_string(), Uint128::from(3000u128));
     router
         .execute_contract(owner.clone(), cw20_addr, &transfer_msg, &[])
@@ -230,6 +235,7 @@ fn test_cw20_staking_app_delayed() {
         .execute_contract(
             owner.clone(),
             cw20_staking_addr.clone(),
+            cw20_staking_addr.clone(),
             &add_reward_msg,
             &[],
         )
@@ -250,6 +256,7 @@ fn test_cw20_staking_app_delayed() {
         .execute_contract(
             owner.clone(),
             cw20_staking_addr.clone(),
+            cw20_staking_addr.clone(),
             &add_reward_msg,
             &[],
         )
@@ -259,12 +266,14 @@ fn test_cw20_staking_app_delayed() {
         .send_tokens(
             owner.clone(),
             cw20_staking_addr.clone(),
+            cw20_staking_addr.clone(),
             &[coin(60u128, "uandr")],
         )
         .unwrap();
     router
         .send_tokens(
             owner.clone(),
+            cw20_staking_addr.clone(),
             cw20_staking_addr.clone(),
             &[coin(300u128, "uusd")],
         )
@@ -295,6 +304,7 @@ fn test_cw20_staking_app_delayed() {
     );
     router
         .execute_contract(staker_one.clone(), cw20_addr.clone(), &staking_msg_one, &[])
+        .execute_contract(staker_one.clone(), cw20_addr.clone(), &staking_msg_one, &[])
         .unwrap();
 
     let staking_msg_two = mock_cw20_send(
@@ -304,11 +314,14 @@ fn test_cw20_staking_app_delayed() {
     );
     router
         .execute_contract(staker_two.clone(), cw20_addr.clone(), &staking_msg_two, &[])
+        .execute_contract(staker_two.clone(), cw20_addr.clone(), &staking_msg_two, &[])
         .unwrap();
 
     // Transfer Tokens for Reward
     let transfer_msg = mock_cw20_transfer(cw20_staking_addr.to_string(), Uint128::from(3000u128));
+    let transfer_msg = mock_cw20_transfer(cw20_staking_addr.to_string(), Uint128::from(3000u128));
     router
+        .execute_contract(owner.clone(), cw20_addr, &transfer_msg, &[])
         .execute_contract(owner.clone(), cw20_addr, &transfer_msg, &[])
         .unwrap();
 

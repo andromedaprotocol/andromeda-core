@@ -89,8 +89,16 @@ pub fn mock_claim_ownership_msg(component_name: Option<String>) -> ExecuteMsg {
     }
 }
 
+pub fn mock_add_app_component_msg(component: AppComponent) -> ExecuteMsg {
+    ExecuteMsg::AddAppComponent { component }
+}
+
 pub fn mock_get_components_msg() -> QueryMsg {
     QueryMsg::GetComponents {}
+}
+
+pub fn mock_get_adresses_with_names_msg() -> QueryMsg {
+    QueryMsg::GetAddressesWithNames {}
 }
 
 pub fn mock_get_address_msg(name: impl Into<String>) -> QueryMsg {

@@ -16,7 +16,9 @@ use andromeda_non_fungible_tokens::{
 use andromeda_std::{
     ado_base::modules::Module,
     amp::AndrAddr,
-    common::{encode_binary, expiration::MILLISECONDS_TO_NANOSECONDS_RATIO, reply::ReplyId},
+    common::{
+        encode_binary, expiration::MILLISECONDS_TO_NANOSECONDS_RATIO, reply::ReplyId, Milliseconds,
+    },
     error::ContractError,
     os::economics::ExecuteMsg as EconomicsExecuteMsg,
     testing::mock_querier::MOCK_KERNEL_CONTRACT,
@@ -29,9 +31,6 @@ use cosmwasm_std::{
 };
 use cw721::Cw721ReceiveMsg;
 use cw_utils::Expiration;
-
-// const ADDRESS_LIST: &str = "addresslist";
-// const RATES: &str = "rates";
 
 fn init(deps: DepsMut, modules: Option<Vec<Module>>) -> Response {
     let msg = InstantiateMsg {
@@ -53,10 +52,14 @@ fn query_latest_auction_state_helper(deps: Deps, env: Env) -> AuctionStateRespon
     from_json(query(deps, env, query_msg).unwrap()).unwrap()
 }
 
+fn current_time() -> u64 {
+    mock_env().block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO
+}
+
 fn start_auction(deps: DepsMut, whitelist: Option<Vec<Addr>>, min_bid: Option<Uint128>) {
     let hook_msg = Cw721HookMsg::StartAuction {
-        start_time: 100000,
-        duration: 100000,
+        start_time: None,
+        end_time: Milliseconds::from_nanos((current_time() + 20_000_000) * 1_000_000),
         coin_denom: "uusd".to_string(),
         whitelist,
         min_bid,
@@ -66,18 +69,21 @@ fn start_auction(deps: DepsMut, whitelist: Option<Vec<Addr>>, min_bid: Option<Ui
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
         msg: encode_binary(&hook_msg).unwrap(),
     });
-    let mut env = mock_env();
-    env.block.time = Timestamp::from_seconds(0u64);
+    let env = mock_env();
 
     let info = mock_info(MOCK_TOKEN_ADDR, &[]);
     let _res = execute(deps, env, info, msg).unwrap();
 }
 
 fn assert_auction_created(deps: Deps, whitelist: Option<Vec<Addr>>, min_bid: Option<Uint128>) {
+    let current_time = mock_env().block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO;
+    let duration = 20_000_000;
     assert_eq!(
         TokenAuctionState {
-            start_time: Expiration::AtTime(Timestamp::from_seconds(100)),
-            end_time: Expiration::AtTime(Timestamp::from_seconds(200)),
+            start_time: Expiration::AtTime(Timestamp::from_nanos((current_time + 1) * 1_000_000)),
+            end_time: Expiration::AtTime(Timestamp::from_nanos(
+                (current_time + duration) * 1_000_000
+            )),
             high_bidder_addr: Addr::unchecked(""),
             high_bidder_amount: Uint128::zero(),
             coin_denom: "uusd".to_string(),
@@ -164,7 +170,7 @@ fn execute_place_bid_auction_ended() {
         token_address: MOCK_TOKEN_ADDR.to_string(),
     };
 
-    env.block.time = Timestamp::from_seconds(300);
+    env.block.time = env.block.time.plus_days(1);
 
     let info = mock_info("sender", &coins(100, "uusd".to_string()));
     let res = execute(deps.as_mut(), env, info, msg);
@@ -184,9 +190,7 @@ fn execute_place_bid_token_owner_cannot_bid() {
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
         token_address: MOCK_TOKEN_ADDR.to_string(),
     };
-
-    env.block.time = Timestamp::from_seconds(150);
-
+    env.block.time = env.block.time.plus_seconds(1);
     let info = mock_info(MOCK_TOKEN_OWNER, &coins(100, "uusd".to_string()));
     let res = execute(deps.as_mut(), env, info, msg);
     assert_eq!(ContractError::TokenOwnerCannotBid {}, res.unwrap_err());
@@ -206,8 +210,8 @@ fn execute_place_bid_whitelist() {
         token_address: MOCK_TOKEN_ADDR.to_string(),
     };
 
-    env.block.time = Timestamp::from_seconds(150);
     let info = mock_info("not_sender", &coins(100, "uusd".to_string()));
+    env.block.time = env.block.time.plus_seconds(1);
     let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
     assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
 
@@ -229,11 +233,10 @@ fn execute_place_bid_highest_bidder_cannot_outbid() {
         token_address: MOCK_TOKEN_ADDR.to_string(),
     };
 
-    env.block.time = Timestamp::from_seconds(150);
+    env.block.time = env.block.time.plus_seconds(1);
     let info = mock_info("sender", &coins(100, "uusd".to_string()));
     let _res = execute(deps.as_mut(), env.clone(), info, msg.clone()).unwrap();
-
-    env.block.time = Timestamp::from_seconds(160);
+    env.block.time = env.block.time.plus_seconds(2);
     let info = mock_info("sender", &coins(200, "uusd".to_string()));
     let res = execute(deps.as_mut(), env, info, msg);
     assert_eq!(
@@ -256,11 +259,11 @@ fn execute_place_bid_bid_smaller_than_highest_bid() {
         token_address: MOCK_TOKEN_ADDR.to_string(),
     };
 
-    env.block.time = Timestamp::from_seconds(150);
+    env.block.time = env.block.time.plus_seconds(1);
     let info = mock_info("sender", &coins(100, "uusd".to_string()));
     let _res = execute(deps.as_mut(), env.clone(), info, msg.clone()).unwrap();
 
-    env.block.time = Timestamp::from_seconds(160);
+    env.block.time = env.block.time.plus_seconds(2);
     let info = mock_info("other", &coins(50, "uusd".to_string()));
     let res = execute(deps.as_mut(), env, info, msg);
     assert_eq!(ContractError::BidSmallerThanHighestBid {}, res.unwrap_err());
@@ -275,8 +278,6 @@ fn execute_place_bid_invalid_coins_sent() {
     start_auction(deps.as_mut(), None, None);
     assert_auction_created(deps.as_ref(), None, None);
 
-    env.block.time = Timestamp::from_seconds(150);
-
     let error = ContractError::InvalidFunds {
         msg: "Auctions ensure! exactly one coin to be sent.".to_string(),
     };
@@ -284,6 +285,7 @@ fn execute_place_bid_invalid_coins_sent() {
         token_id: MOCK_UNCLAIMED_TOKEN.to_string(),
         token_address: MOCK_TOKEN_ADDR.to_string(),
     };
+    env.block.time = env.block.time.plus_seconds(1);
 
     // No coins sent
     let info = mock_info("sender", &[]);
@@ -323,9 +325,7 @@ fn execute_place_bid_multiple_bids() {
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
         token_address: MOCK_TOKEN_ADDR.to_string(),
     };
-
-    env.block.time = Timestamp::from_seconds(150);
-
+    env.block.time = env.block.time.plus_seconds(1);
     let info = mock_info("sender", &coins(100, "uusd".to_string()));
     let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
 
@@ -353,8 +353,8 @@ fn execute_place_bid_multiple_bids() {
         res
     );
     let mut expected_response = AuctionStateResponse {
-        start_time: Expiration::AtTime(Timestamp::from_seconds(100)),
-        end_time: Expiration::AtTime(Timestamp::from_seconds(200)),
+        start_time: Expiration::AtTime(Timestamp::from_nanos(1571797419880000000)),
+        end_time: Expiration::AtTime(Timestamp::from_nanos(1571817419879000000)),
         high_bidder_addr: "sender".to_string(),
         high_bidder_amount: Uint128::from(100u128),
         auction_id: Uint128::from(1u128),
@@ -368,7 +368,7 @@ fn execute_place_bid_multiple_bids() {
     let res = query_latest_auction_state_helper(deps.as_ref(), env.clone());
     assert_eq!(expected_response, res);
 
-    env.block.time = Timestamp::from_seconds(160);
+    env.block.time = env.block.time.plus_seconds(2);
     let info = mock_info("other", &coins(200, "uusd".to_string()));
     let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
     assert_eq!(
@@ -404,7 +404,7 @@ fn execute_place_bid_multiple_bids() {
     let res = query_latest_auction_state_helper(deps.as_ref(), env.clone());
     assert_eq!(expected_response, res);
 
-    env.block.time = Timestamp::from_seconds(170);
+    env.block.time = env.block.time.plus_seconds(3);
     let info = mock_info("sender", &coins(250, "uusd".to_string()));
     let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
@@ -445,7 +445,7 @@ fn execute_place_bid_multiple_bids() {
 #[test]
 fn execute_place_bid_auction_cancelled() {
     let mut deps = mock_dependencies_custom(&[]);
-    let mut env = mock_env();
+    let env = mock_env();
     let _res = init(deps.as_mut(), None);
 
     start_auction(deps.as_mut(), None, None);
@@ -456,7 +456,6 @@ fn execute_place_bid_auction_cancelled() {
         token_address: MOCK_TOKEN_ADDR.to_string(),
     };
 
-    env.block.time = Timestamp::from_seconds(150);
     let info = mock_info(MOCK_TOKEN_OWNER, &[]);
     let _res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
@@ -474,50 +473,7 @@ fn execute_place_bid_auction_cancelled() {
 fn test_execute_start_auction() {
     let mut deps = mock_dependencies_custom(&[]);
     let _res = init(deps.as_mut(), None);
-
-    let hook_msg = Cw721HookMsg::StartAuction {
-        start_time: 100000,
-        duration: 100000,
-        coin_denom: "uusd".to_string(),
-        whitelist: None,
-        min_bid: None,
-    };
-    let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
-        sender: MOCK_TOKEN_OWNER.to_owned(),
-        token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
-        msg: encode_binary(&hook_msg).unwrap(),
-    });
-    let mut env = mock_env();
-    env.block.time = Timestamp::from_seconds(0u64);
-
-    let info = mock_info(MOCK_TOKEN_ADDR, &[]);
-    let res = execute(deps.as_mut(), env, info, msg).unwrap();
-
-    assert_eq!(
-        res,
-        Response::new()
-            .add_attributes(vec![
-                attr("action", "start_auction"),
-                attr("start_time", "expiration time: 100.000000000"),
-                attr("end_time", "expiration time: 200.000000000"),
-                attr("coin_denom", "uusd"),
-                attr("auction_id", "1"),
-                attr("whitelist", "None"),
-            ])
-            // Economics message
-            .add_submessage(SubMsg::reply_on_error(
-                CosmosMsg::Wasm(WasmMsg::Execute {
-                    contract_addr: "economics_contract".to_string(),
-                    msg: to_json_binary(&EconomicsExecuteMsg::PayFee {
-                        payee: Addr::unchecked(MOCK_TOKEN_ADDR),
-                        action: "ReceiveNft".to_string()
-                    })
-                    .unwrap(),
-                    funds: vec![],
-                }),
-                ReplyId::PayFee.repr(),
-            )),
-    );
+    start_auction(deps.as_mut(), None, None);
     assert_auction_created(deps.as_ref(), None, None);
 }
 
@@ -598,8 +554,8 @@ fn execute_start_auction_start_time_in_past() {
     let _res = init(deps.as_mut(), None);
 
     let hook_msg = Cw721HookMsg::StartAuction {
-        start_time: 100000,
-        duration: 100000,
+        start_time: Some(Milliseconds(100000)),
+        end_time: Milliseconds(100000),
         coin_denom: "uusd".to_string(),
         whitelist: None,
         min_bid: None,
@@ -609,8 +565,7 @@ fn execute_start_auction_start_time_in_past() {
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
         msg: encode_binary(&hook_msg).unwrap(),
     });
-    let mut env = mock_env();
-    env.block.time = Timestamp::from_seconds(150);
+    let env = mock_env();
 
     let info = mock_info(MOCK_TOKEN_ADDR, &[]);
     let res = execute(deps.as_mut(), env.clone(), info, msg);
@@ -630,8 +585,8 @@ fn execute_start_auction_zero_start_time() {
     let _res = init(deps.as_mut(), None);
 
     let hook_msg = Cw721HookMsg::StartAuction {
-        start_time: 0,
-        duration: 1,
+        start_time: Some(Milliseconds::zero()),
+        end_time: Milliseconds(1),
         coin_denom: "uusd".to_string(),
         whitelist: None,
         min_bid: None,
@@ -641,13 +596,40 @@ fn execute_start_auction_zero_start_time() {
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
         msg: encode_binary(&hook_msg).unwrap(),
     });
-    let mut env = mock_env();
-    env.block.time = Timestamp::from_seconds(0);
 
     let info = mock_info(MOCK_TOKEN_ADDR, &[]);
-    let res = execute(deps.as_mut(), env, info, msg);
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
 
-    assert_eq!(ContractError::InvalidExpiration {}, res.unwrap_err());
+    assert_eq!(
+        ContractError::StartTimeInThePast {
+            current_time: 1571797419879,
+            current_block: 12345
+        },
+        res.unwrap_err()
+    );
+}
+
+#[test]
+fn execute_start_auction_start_time_not_provided() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let _res = init(deps.as_mut(), None);
+
+    let hook_msg = Cw721HookMsg::StartAuction {
+        start_time: None,
+        end_time: Milliseconds::from_nanos((current_time() + 20_000_000) * 1_000_000),
+        coin_denom: "uusd".to_string(),
+        whitelist: None,
+        min_bid: None,
+    };
+    let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
+        sender: MOCK_TOKEN_OWNER.to_owned(),
+        token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
+        msg: encode_binary(&hook_msg).unwrap(),
+    });
+
+    let info = mock_info(MOCK_TOKEN_ADDR, &[]);
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
+    assert!(res.is_ok())
 }
 
 #[test]
@@ -656,8 +638,8 @@ fn execute_start_auction_zero_duration() {
     let _res = init(deps.as_mut(), None);
 
     let hook_msg = Cw721HookMsg::StartAuction {
-        start_time: 100,
-        duration: 0,
+        start_time: Some(Milliseconds(100)),
+        end_time: Milliseconds::zero(),
         coin_denom: "uusd".to_string(),
         whitelist: None,
         min_bid: None,
@@ -673,7 +655,7 @@ fn execute_start_auction_zero_duration() {
     let info = mock_info(MOCK_TOKEN_ADDR, &[]);
     let res = execute(deps.as_mut(), env, info, msg);
 
-    assert_eq!(ContractError::InvalidExpiration {}, res.unwrap_err());
+    assert_eq!(ContractError::StartTimeAfterEndTime {}, res.unwrap_err());
 }
 
 // #[test]
@@ -715,49 +697,22 @@ fn execute_update_auction_zero_start() {
     let msg = ExecuteMsg::UpdateAuction {
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
         token_address: MOCK_TOKEN_ADDR.to_string(),
-        start_time: 0,
-        duration: 1,
+        start_time: Some(Milliseconds::zero()),
+        end_time: Milliseconds(1),
         coin_denom: "uusd".to_string(),
         whitelist: None,
         min_bid: None,
     };
     let mut env = mock_env();
-    env.block.height = 0;
-    env.block.time = Timestamp::from_seconds(0);
+    env.block.time = env.block.time.minus_days(1);
 
     let info = mock_info(MOCK_TOKEN_OWNER, &[]);
     let res = execute(deps.as_mut(), env, info, msg);
 
-    assert_eq!(ContractError::InvalidExpiration {}, res.unwrap_err());
-}
-
-#[test]
-fn execute_update_auction_start_time_in_past() {
-    let mut deps = mock_dependencies_custom(&[]);
-    let _res = init(deps.as_mut(), None);
-
-    start_auction(deps.as_mut(), None, None);
-
-    let msg = ExecuteMsg::UpdateAuction {
-        token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
-        token_address: MOCK_TOKEN_ADDR.to_string(),
-        start_time: 1,
-        duration: 1,
-        coin_denom: "uusd".to_string(),
-        whitelist: None,
-        min_bid: None,
-    };
-    let mut env = mock_env();
-    env.block.height = 150;
-    env.block.time = Timestamp::from_seconds(10);
-
-    let info = mock_info(MOCK_TOKEN_OWNER, &[]);
-    let res = execute(deps.as_mut(), env.clone(), info, msg);
-
     assert_eq!(
         ContractError::StartTimeInThePast {
-            current_time: env.block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO,
-            current_block: env.block.height,
+            current_time: 1571711019879,
+            current_block: 12345
         },
         res.unwrap_err()
     );
@@ -773,8 +728,8 @@ fn execute_update_auction_zero_duration() {
     let msg = ExecuteMsg::UpdateAuction {
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
         token_address: MOCK_TOKEN_ADDR.to_string(),
-        start_time: 100000,
-        duration: 0,
+        start_time: Some(Milliseconds(100000)),
+        end_time: Milliseconds::zero(),
         coin_denom: "uusd".to_string(),
         whitelist: None,
         min_bid: None,
@@ -798,15 +753,13 @@ fn execute_update_auction_unauthorized() {
     let msg = ExecuteMsg::UpdateAuction {
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
         token_address: MOCK_TOKEN_ADDR.to_string(),
-        start_time: 100000,
-        duration: 100,
+        start_time: Some(Milliseconds(100000)),
+        end_time: Milliseconds(100),
         coin_denom: "uluna".to_string(),
         whitelist: Some(vec![Addr::unchecked("user")]),
         min_bid: None,
     };
-    let mut env = mock_env();
-    env.block.time = Timestamp::from_seconds(150);
-    env.block.height = 0;
+    let env = mock_env();
 
     let info = mock_info("not_owner", &[]);
     let res = execute(deps.as_mut(), env, info, msg);
@@ -823,17 +776,17 @@ fn execute_update_auction_auction_started() {
     let msg = ExecuteMsg::UpdateAuction {
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
         token_address: MOCK_TOKEN_ADDR.to_string(),
-        start_time: 100000,
-        duration: 100,
+        start_time: Some(Milliseconds(100000)),
+        end_time: Milliseconds(100),
         coin_denom: "uluna".to_string(),
         whitelist: Some(vec![Addr::unchecked("user")]),
         min_bid: None,
     };
     let mut env = mock_env();
-    env.block.time = Timestamp::from_seconds(150);
-    env.block.height = 0;
 
     let info = mock_info(MOCK_TOKEN_OWNER, &[]);
+    env.block.time = env.block.time.plus_days(1);
+
     let res = execute(deps.as_mut(), env, info, msg);
     assert_eq!(ContractError::AuctionAlreadyStarted {}, res.unwrap_err());
 }
@@ -848,22 +801,22 @@ fn execute_update_auction() {
     let msg = ExecuteMsg::UpdateAuction {
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
         token_address: MOCK_TOKEN_ADDR.to_string(),
-        start_time: 100000,
-        duration: 100000,
+        start_time: Some(Milliseconds(1571711019879 + 1)),
+        end_time: Milliseconds(1571711019879 + 2),
         coin_denom: "uluna".to_string(),
         whitelist: Some(vec![Addr::unchecked("user")]),
         min_bid: None,
     };
     let mut env = mock_env();
-    env.block.time = Timestamp::from_seconds(0);
-    env.block.height = 0;
+
+    env.block.time = env.block.time.minus_days(1);
 
     let info = mock_info(MOCK_TOKEN_OWNER, &[]);
     let _res = execute(deps.as_mut(), env, info, msg).unwrap();
     assert_eq!(
         TokenAuctionState {
-            start_time: Expiration::AtTime(Timestamp::from_seconds(100)),
-            end_time: Expiration::AtTime(Timestamp::from_seconds(200)),
+            start_time: Expiration::AtTime(Timestamp::from_nanos(1571711019880000000)),
+            end_time: Expiration::AtTime(Timestamp::from_nanos(1571711019881000000)),
             high_bidder_addr: Addr::unchecked(""),
             high_bidder_amount: Uint128::zero(),
             coin_denom: "uluna".to_string(),
@@ -890,8 +843,8 @@ fn execute_start_auction_after_previous_finished() {
     start_auction(deps.as_mut(), None, None);
 
     let hook_msg = Cw721HookMsg::StartAuction {
-        start_time: 300000,
-        duration: 100000,
+        start_time: None,
+        end_time: Milliseconds::from_nanos((current_time() + 20_000_000) * 1_000_000),
         coin_denom: "uusd".to_string(),
         whitelist: None,
         min_bid: None,
@@ -902,7 +855,8 @@ fn execute_start_auction_after_previous_finished() {
         msg: encode_binary(&hook_msg).unwrap(),
     });
     let mut env = mock_env();
-    env.block.time = Timestamp::from_seconds(250);
+    // Auction ended by that time
+    env.block.time = env.block.time.plus_hours(1);
 
     let info = mock_info(MOCK_TOKEN_ADDR, &[]);
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
@@ -910,13 +864,12 @@ fn execute_start_auction_after_previous_finished() {
         Response::new()
             .add_attributes(vec![
                 attr("action", "start_auction"),
-                attr("start_time", "expiration time: 300.000000000"),
-                attr("end_time", "expiration time: 400.000000000"),
+                attr("start_time", "expiration time: 1571801019.880000000"),
+                attr("end_time", "expiration time: 1571817419.879000000"),
                 attr("coin_denom", "uusd"),
                 attr("auction_id", "2"),
                 attr("whitelist", "None"),
-            ])
-            // Economics message
+            ]) // Economics message
             .add_submessage(SubMsg::reply_on_error(
                 CosmosMsg::Wasm(WasmMsg::Execute {
                     contract_addr: "economics_contract".to_string(),
@@ -941,7 +894,8 @@ fn execute_claim_no_bids() {
 
     start_auction(deps.as_mut(), None, None);
 
-    env.block.time = Timestamp::from_seconds(250);
+    // Auction ended by that time
+    env.block.time = env.block.time.plus_days(1);
 
     let msg = ExecuteMsg::Claim {
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
@@ -997,12 +951,13 @@ fn execute_claim() {
         token_address: MOCK_TOKEN_ADDR.to_string(),
     };
 
-    env.block.time = Timestamp::from_seconds(150);
-
     let info = mock_info("sender", &coins(100, "uusd".to_string()));
+    env.block.time = env.block.time.plus_seconds(1);
+
     let _res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
-    env.block.time = Timestamp::from_seconds(250);
+    // Auction ended by that time
+    env.block.time = env.block.time.plus_days(1);
 
     let msg = ExecuteMsg::Claim {
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
@@ -1062,9 +1017,9 @@ fn execute_claim_auction_not_ended() {
         token_address: MOCK_TOKEN_ADDR.to_string(),
     };
 
-    env.block.time = Timestamp::from_seconds(150);
-
     let info = mock_info("sender", &coins(100, "uusd".to_string()));
+    env.block.time = env.block.time.plus_seconds(1);
+
     let _res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
     let msg = ExecuteMsg::Claim {
@@ -1083,8 +1038,8 @@ fn execute_claim_auction_already_claimed() {
     let _res = init(deps.as_mut(), None);
 
     let hook_msg = Cw721HookMsg::StartAuction {
-        start_time: 100000,
-        duration: 100000,
+        start_time: None,
+        end_time: Milliseconds::from_nanos((current_time() + 20_000_000) * 1_000_000),
         coin_denom: "uusd".to_string(),
         whitelist: None,
         min_bid: None,
@@ -1095,13 +1050,12 @@ fn execute_claim_auction_already_claimed() {
         msg: encode_binary(&hook_msg).unwrap(),
     });
     let mut env = mock_env();
-    env.block.time = Timestamp::from_seconds(0u64);
 
     let info = mock_info(MOCK_TOKEN_ADDR, &[]);
     let _res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
     // Auction is over.
-    env.block.time = Timestamp::from_seconds(300);
+    env.block.time = env.block.time.plus_days(1);
 
     let msg = ExecuteMsg::Claim {
         token_id: "claimed_token".to_string(),
@@ -1116,7 +1070,7 @@ fn execute_claim_auction_already_claimed() {
 #[test]
 fn execute_cancel_no_bids() {
     let mut deps = mock_dependencies_custom(&[]);
-    let mut env = mock_env();
+    let env = mock_env();
     let _res = init(deps.as_mut(), None);
 
     start_auction(deps.as_mut(), None, None);
@@ -1125,9 +1079,6 @@ fn execute_cancel_no_bids() {
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
         token_address: MOCK_TOKEN_ADDR.to_string(),
     };
-
-    // Auction start and end are 100 and 200.
-    env.block.time = Timestamp::from_seconds(150);
 
     let info = mock_info(MOCK_TOKEN_OWNER, &[]);
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
@@ -1179,10 +1130,10 @@ fn execute_cancel_with_bids() {
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
         token_address: MOCK_TOKEN_ADDR.to_string(),
     };
-    // Auction start and end are 100 and 200.
-    env.block.time = Timestamp::from_seconds(150);
 
     let info = mock_info("bidder", &coins(100, "uusd"));
+    env.block.time = env.block.time.plus_seconds(1);
+
     let _res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
     let msg = ExecuteMsg::CancelAuction {
@@ -1235,7 +1186,7 @@ fn execute_cancel_with_bids() {
 #[test]
 fn execute_cancel_not_token_owner() {
     let mut deps = mock_dependencies_custom(&[]);
-    let mut env = mock_env();
+    let env = mock_env();
     let _res = init(deps.as_mut(), None);
 
     start_auction(deps.as_mut(), None, None);
@@ -1244,9 +1195,6 @@ fn execute_cancel_not_token_owner() {
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
         token_address: MOCK_TOKEN_ADDR.to_string(),
     };
-
-    // Auction start and end are 100 and 200.
-    env.block.time = Timestamp::from_seconds(150);
 
     let info = mock_info("anyone", &[]);
     let res = execute(deps.as_mut(), env, info, msg);
@@ -1266,8 +1214,7 @@ fn execute_cancel_auction_ended() {
         token_address: MOCK_TOKEN_ADDR.to_string(),
     };
 
-    // Auction start and end are 100 and 200.
-    env.block.time = Timestamp::from_seconds(300);
+    env.block.time = env.block.time.plus_days(1);
 
     let info = mock_info(MOCK_TOKEN_OWNER, &[]);
     let res = execute(deps.as_mut(), env, info, msg);
@@ -1286,10 +1233,9 @@ fn execute_bid_below_min_price() {
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
         token_address: MOCK_TOKEN_ADDR.to_string(),
     };
-    // Auction start and end are 100 and 200.
-    env.block.time = Timestamp::from_seconds(150);
 
     let info = mock_info("bidder", &coins(10, "uusd"));
+    env.block.time = env.block.time.plus_seconds(1);
     let res = execute(deps.as_mut(), env.clone(), info, msg.clone()).unwrap_err();
 
     assert_eq!(

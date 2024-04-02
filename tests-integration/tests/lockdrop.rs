@@ -38,6 +38,7 @@ fn test_lockdrop() {
         vec![Cw20Coin {
             amount: 100u128.into(),
             address: owner.to_string(),
+            address: owner.to_string(),
         }],
         None,
         None,
@@ -75,6 +76,7 @@ fn test_lockdrop() {
         .instantiate_contract(
             lockdrop_code_id,
             owner.clone(),
+            owner.clone(),
             &init_msg,
             &[],
             "staking",
@@ -90,6 +92,7 @@ fn test_lockdrop() {
     let msg = mock_deposit_native();
     app.execute_contract(
         user1.clone(),
+        user1.clone(),
         lockdrop_addr.clone(),
         &msg,
         &[coin(500, "uusd")],
@@ -99,6 +102,7 @@ fn test_lockdrop() {
     let msg = mock_deposit_native();
     app.execute_contract(
         user2.clone(),
+        user2.clone(),
         lockdrop_addr.clone(),
         &msg,
         &[coin(500, "uusd")],
@@ -106,11 +110,12 @@ fn test_lockdrop() {
     .unwrap();
 
     let msg = mock_cw20_send(
-        lockdrop_addr.to_string(),
+        AndrAddr::from_string(lockdrop_addr.to_string()),
         100u128.into(),
         to_json_binary(&mock_cw20_hook_increase_incentives()).unwrap(),
     );
 
+    app.execute_contract(owner.clone(), cw20_incentives_address, &msg, &[])
     app.execute_contract(owner.clone(), cw20_incentives_address, &msg, &[])
         .unwrap();
 
@@ -128,6 +133,7 @@ fn test_lockdrop() {
 
     let msg = mock_claim_rewards();
     app.execute_contract(user1.clone(), lockdrop_addr.clone(), &msg, &[])
+    app.execute_contract(user1.clone(), lockdrop_addr.clone(), &msg, &[])
         .unwrap();
 
     let msg = mock_claim_rewards();
@@ -137,6 +143,7 @@ fn test_lockdrop() {
     let balance = app
         .wrap()
         .query_balance(user1.clone(), "uusd".to_string())
+        .query_balance(user1.clone(), "uusd".to_string())
         .unwrap();
 
     assert_eq!(balance.amount, Uint128::zero());
@@ -144,10 +151,12 @@ fn test_lockdrop() {
     let msg = mock_withdraw_native(None);
 
     app.execute_contract(user1.clone(), lockdrop_addr, &msg, &[])
+    app.execute_contract(user1.clone(), lockdrop_addr, &msg, &[])
         .unwrap();
 
     let balance = app
         .wrap()
+        .query_balance(user1.to_string(), "uusd".to_string())
         .query_balance(user1.to_string(), "uusd".to_string())
         .unwrap();
 
