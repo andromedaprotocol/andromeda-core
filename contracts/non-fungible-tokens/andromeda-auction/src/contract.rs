@@ -2,8 +2,9 @@ use crate::state::{
     auction_infos, read_auction_infos, read_bids, BIDS, NEXT_AUCTION_ID, TOKEN_AUCTION_STATE,
 };
 use andromeda_non_fungible_tokens::auction::{
-    AuctionIdsResponse, AuctionInfo, AuctionStateResponse, Bid, BidsResponse, Cw721HookMsg,
-    ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, TokenAuctionState,
+    AuctionIdsResponse, AuctionInfo, AuctionStateResponse, AuthorizedAddressesResponse, Bid,
+    BidsResponse, Cw721HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
+    TokenAuctionState,
 };
 use andromeda_std::{
     ado_base::{
@@ -64,6 +65,10 @@ pub fn instantiate(
         contract.register_modules(info.sender.as_str(), deps.storage, msg.modules)?;
 
     if let Some(authorized_token_addresses) = msg.authorized_token_addresses {
+        if !authorized_token_addresses.is_empty() {
+            ADOContract::default().permission_action(SEND_NFT_ACTION, deps.storage)?;
+        }
+
         for token_address in authorized_token_addresses {
             let addr = token_address.get_raw_address(&deps.as_ref())?;
             ADOContract::set_permission(
@@ -171,7 +176,7 @@ fn handle_receive_cw721(
     ctx: ExecuteContext,
     msg: Cw721ReceiveMsg,
 ) -> Result<Response, ContractError> {
-    ADOContract::default().is_permissioned_strict(
+    ADOContract::default().is_permissioned(
         ctx.deps.storage,
         ctx.env.clone(),
         SEND_NFT_ACTION,
@@ -716,6 +721,16 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
             token_id,
             token_address,
         } => encode_binary(&query_is_closed(deps, env, token_id, token_address)?),
+        QueryMsg::AuthorizedAddresses {
+            start_after,
+            limit,
+            order_by,
+        } => encode_binary(&query_authorized_addresses(
+            deps,
+            start_after,
+            limit,
+            order_by,
+        )?),
         _ => ADOContract::default().query(deps, env, msg),
     }
 }
@@ -848,6 +863,21 @@ fn query_owner_of(
     Ok(res)
 }
 
+fn query_authorized_addresses(
+    deps: Deps,
+    start_after: Option<String>,
+    limit: Option<u32>,
+    order_by: Option<OrderBy>,
+) -> Result<AuthorizedAddressesResponse, ContractError> {
+    let addresses = ADOContract::default().query_permissioned_actors(
+        deps,
+        SEND_NFT_ACTION,
+        start_after,
+        limit,
+        order_by,
+    )?;
+    Ok(AuthorizedAddressesResponse { addresses })
+}
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
     // New version
