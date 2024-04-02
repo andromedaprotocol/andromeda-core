@@ -96,7 +96,7 @@ pub enum QueryMsg {
     /// Gets all of the authorized addresses for the auction
     #[returns(AuthorizedAddressesResponse)]
     AuthorizedAddresses {
-        start_after: Option<u32>,
+        start_after: Option<String>,
         limit: Option<u32>,
         order_by: Option<OrderBy>,
     },

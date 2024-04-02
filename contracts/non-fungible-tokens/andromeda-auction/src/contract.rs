@@ -869,7 +869,7 @@ fn query_owner_of(
 
 fn query_authorized_addresses(
     deps: Deps,
-    start_after: Option<u32>,
+    start_after: Option<String>,
     limit: Option<u32>,
     order_by: Option<OrderBy>,
 ) -> Result<AuthorizedAddressesResponse, ContractError> {
