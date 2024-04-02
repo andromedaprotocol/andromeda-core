@@ -577,7 +577,7 @@ fn execute_place_bid_cw20(
                     recipient: token_auction_state.high_bidder_addr.to_string(),
                     amount: token_auction_state.high_bidder_amount,
                 };
-                let wasm_msg = wasm_execute(token_address, &transfer_msg, vec![])?;
+                let wasm_msg = wasm_execute(cw20_address, &transfer_msg, vec![])?;
                 cw20_transfer.push(wasm_msg);
             }
 
@@ -715,13 +715,9 @@ fn execute_claim(
     // Calculate the funds to be received after tax
     let after_tax_payment = purchase_token(deps.as_ref(), &info, token_auction_state.clone())?;
 
-    Ok(Response::new()
-        .add_submessages(after_tax_payment.1)
-        // Send funds to the original owner.
-        .add_message(CosmosMsg::Bank(BankMsg::Send {
-            to_address: token_auction_state.owner,
-            amount: vec![after_tax_payment.0],
-        }))
+    let valid_cw20_contract = VALID_CW20_CONTRACT.may_load(deps.storage)?;
+    let resp: Response = Response::new()
+        .add_submessages(after_tax_payment.clone().1)
         // Send NFT to auction winner.
         .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: token_auction_state.token_address.clone(),
@@ -736,7 +732,36 @@ fn execute_claim(
         .add_attribute("token_contract", token_auction_state.token_address)
         .add_attribute("recipient", &token_auction_state.high_bidder_addr)
         .add_attribute("winning_bid_amount", token_auction_state.high_bidder_amount)
-        .add_attribute("auction_id", token_auction_state.auction_id))
+        .add_attribute("auction_id", token_auction_state.auction_id);
+
+    if let Some(valid_cw20_contract) = valid_cw20_contract {
+        let cw20_address = valid_cw20_contract.get_raw_address(&deps.as_ref())?;
+
+        let denom_addr = Addr::unchecked(after_tax_payment.clone().0.denom);
+        if denom_addr == cw20_address {
+            // Send back previous bid unless there was no previous bid.
+            let transfer_msg = Cw20ExecuteMsg::Transfer {
+                recipient: token_auction_state.owner,
+                amount: after_tax_payment.0.amount,
+            };
+            let wasm_msg = wasm_execute(cw20_address, &transfer_msg, vec![])?;
+            Ok(resp.add_message(wasm_msg))
+        } else {
+            Ok(resp
+                // Send funds to the original owner.
+                .add_message(CosmosMsg::Bank(BankMsg::Send {
+                    to_address: token_auction_state.owner,
+                    amount: vec![after_tax_payment.0],
+                })))
+        }
+    } else {
+        Ok(resp
+            // Send funds to the original owner.
+            .add_message(CosmosMsg::Bank(BankMsg::Send {
+                to_address: token_auction_state.owner,
+                amount: vec![after_tax_payment.0],
+            })))
+    }
 }
 
 fn execute_authorize_token_contract(
