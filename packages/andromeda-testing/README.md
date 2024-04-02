@@ -37,7 +37,7 @@ let andr = mock_andromeda();
 andr.store_ado(&mut router, mock_andromeda_app(), "app");
 ```
 
-Here the second parameter is a `cw-multi-test` [mock contract](https://docs.rs/cw-multi-test/latest/cw_multi_test/trait.Contract.html) and the third is a name for the ADO. This can be used to access the code id by calling `andr.get_code_id(&router, "app")`. Repeat this process for any ADOs you wish to add (including your own). 
+Here the second parameter is a `cw-multi-test` [mock contract](https://docs.rs/cw-multi-test/latest/cw_multi_test/trait.Contract.html) and the third is a name for the ADO. This can be used to access the code id by calling `andr.get_code_id(&router, "app")`. Repeat this process for any ADOs you wish to add (including your own).
 
 ## Creating a Mock Contract
 
@@ -63,3 +63,62 @@ Once this is done you can either create the contract directly or you can create 
 ```
 
 Mock structs have been provided for most ADOs however they are still a work in progress.
+
+## Test Scaffolding
+
+To help with setting up a testing environment using aOS we can use the `MockAndromedaBuilder` struct. This allows definition of what wallets and contracts you would like to use while testing:
+
+```rust
+use andromeda_testing::{mock::mock_app, mock_builder::MockAndromedaBuilder};
+
+let mut router = mock_app(None);
+let andr = MockAndromedaBuilder::new(&mut router, "admin")
+    .with_wallets(vec![
+        ("owner", vec![coin(1000, "uandr")]),
+        ("user1", vec![]),
+    ])
+    .with_contracts(vec![
+        ("cw721", mock_andromeda_cw721()),
+        ("app-contract", mock_andromeda_app()),
+    ])
+    .build(&mut router);
+```
+
+In the above example we specify a few things:
+
+```rust
+MockAndromedaBuilder::new(&mut router, "admin")
+```
+
+Here we set the wallet **name** that has admin privileges over the aOS, in this case `"admin"`. Next up we define a few extra wallets:
+
+```rust
+.with_wallets(vec![
+  ("owner", vec![coin(1000, "uandr")]),
+  ("user1", vec![]),
+])
+```
+
+This generates two wallets (`"owner"` and `"user1"`) and assigns 1000 uandr to the `"owner"` wallet. Here the provided names **are not addresses** but are simply names. These can be accessed using:
+
+```rust
+let owner = andr.get_wallet("owner");
+let user1 = andr.get_wallet("user1");
+```
+
+Next we include the contracts we would like to use:
+
+```rust
+.with_contracts(vec![
+    ("cw721", mock_andromeda_cw721()),
+    ("app-contract", mock_andromeda_app()),
+])
+```
+
+In this case we would like to use the CW721 contract and the App contract, the provided names can also be version (e.g. `"cw721@0.1.0"`). The stored code IDs for these can be accessed via their names like so:
+
+```rust
+let app_code_id = andr.get_code_id("cw721");
+```
+
+The rest of the integration test should continue as usual.
