@@ -2,7 +2,7 @@
 
 use crate::contract::{execute, instantiate, query};
 use andromeda_fungible_tokens::lockdrop::{Cw20HookMsg, ExecuteMsg, InstantiateMsg};
-use andromeda_std::{ado_base::modules::Module, common::Milliseconds};
+use andromeda_std::{ado_base::modules::Module, common::Milliseconds, amp::AndrAddr};
 use cosmwasm_std::{Empty, Uint128};
 use cw_multi_test::{Contract, ContractWrapper};
 
@@ -16,7 +16,7 @@ pub fn mock_lockdrop_instantiate_msg(
     init_timestamp: Milliseconds,
     deposit_window: Milliseconds,
     withdrawal_window: Milliseconds,
-    incentive_token: String,
+    incentive_token: AndrAddr,
     native_denom: String,
     owner: Option<String>,
     modules: Option<Vec<Module>>,

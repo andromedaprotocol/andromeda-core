@@ -8,6 +8,7 @@ use andromeda_fungible_tokens::lockdrop::{
     ConfigResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg, StateResponse,
     UserInfoResponse,
 };
+use andromeda_std::amp::AndrAddr;
 use andromeda_std::{
     common::{expiration::MILLISECONDS_TO_NANOSECONDS_RATIO, Milliseconds},
     error::ContractError,
@@ -35,7 +36,7 @@ fn init(deps: DepsMut) -> Result<Response, ContractError> {
         init_timestamp: Milliseconds::from_seconds(env.block.time.seconds()),
         deposit_window: Milliseconds::from_seconds(DEPOSIT_WINDOW),
         withdrawal_window: Milliseconds::from_seconds(WITHDRAWAL_WINDOW),
-        incentive_token: MOCK_INCENTIVE_TOKEN.to_owned(),
+        incentive_token: AndrAddr::from_string(MOCK_INCENTIVE_TOKEN),
         native_denom: "uusd".to_string(),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
@@ -71,7 +72,7 @@ fn test_instantiate() {
             deposit_window: Milliseconds::from_seconds(DEPOSIT_WINDOW),
             withdrawal_window: Milliseconds::from_seconds(WITHDRAWAL_WINDOW),
             lockdrop_incentives: Uint128::zero(),
-            incentive_token: MOCK_INCENTIVE_TOKEN.to_owned(),
+            incentive_token: Addr::unchecked(MOCK_INCENTIVE_TOKEN),
             native_denom: "uusd".to_string()
         },
         config_res
@@ -101,7 +102,7 @@ fn test_instantiate_init_timestamp_past() {
         init_timestamp: Milliseconds::from_seconds(env.block.time.seconds() - 1),
         deposit_window: Milliseconds::from_seconds(5),
         withdrawal_window: Milliseconds::from_seconds(2),
-        incentive_token: MOCK_INCENTIVE_TOKEN.to_owned(),
+        incentive_token: AndrAddr::from_string(MOCK_INCENTIVE_TOKEN),
         native_denom: "uusd".to_string(),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
@@ -130,7 +131,7 @@ fn test_instantiate_init_deposit_window_zero() {
         init_timestamp: Milliseconds::from_seconds(env.block.time.seconds() + 1),
         deposit_window: Milliseconds::from_seconds(0),
         withdrawal_window: Milliseconds::from_seconds(2),
-        incentive_token: MOCK_INCENTIVE_TOKEN.to_owned(),
+        incentive_token: AndrAddr::from_string(MOCK_INCENTIVE_TOKEN),
         native_denom: "uusd".to_string(),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
@@ -153,7 +154,7 @@ fn test_instantiate_init_withdrawal_window_zero() {
         init_timestamp: Milliseconds::from_seconds(env.block.time.seconds() + 1),
         deposit_window: Milliseconds::from_seconds(5),
         withdrawal_window: Milliseconds::from_seconds(0),
-        incentive_token: MOCK_INCENTIVE_TOKEN.to_owned(),
+        incentive_token: AndrAddr::from_string(MOCK_INCENTIVE_TOKEN),
         native_denom: "uusd".to_string(),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
@@ -176,7 +177,7 @@ fn test_instantiate_init_deposit_window_less_than_withdrawal_window() {
         init_timestamp: Milliseconds::from_seconds(env.block.time.seconds() + 1),
         deposit_window: Milliseconds::from_seconds(2),
         withdrawal_window: Milliseconds::from_seconds(5),
-        incentive_token: MOCK_INCENTIVE_TOKEN.to_owned(),
+        incentive_token: AndrAddr::from_string(MOCK_INCENTIVE_TOKEN),
         native_denom: "uusd".to_string(),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
@@ -735,7 +736,7 @@ fn test_enable_claims_no_bootstrap_specified() {
 //         init_timestamp: mock_env().block.time.seconds(),
 //         deposit_window: DEPOSIT_WINDOW,
 //         withdrawal_window: WITHDRAWAL_WINDOW,
-//         incentive_token: MOCK_INCENTIVE_TOKEN.to_owned(),
+//         incentive_token: AndrAddr::from_string(MOCK_INCENTIVE_TOKEN),
 //         native_denom: "uusd".to_string(),
 //     };
 
@@ -854,7 +855,7 @@ fn test_claim_rewards() {
             .add_attribute("action", "claim_rewards")
             .add_attribute("amount", "75")
             .add_message(WasmMsg::Execute {
-                contract_addr: MOCK_INCENTIVE_TOKEN.to_owned(),
+                contract_addr: MOCK_INCENTIVE_TOKEN.to_string(),
                 funds: vec![],
                 msg: to_json_binary(&Cw20ExecuteMsg::Transfer {
                     recipient: "user1".to_string(),
@@ -893,7 +894,7 @@ fn test_claim_rewards() {
             .add_attribute("action", "claim_rewards")
             .add_attribute("amount", "25")
             .add_message(WasmMsg::Execute {
-                contract_addr: MOCK_INCENTIVE_TOKEN.to_owned(),
+                contract_addr: MOCK_INCENTIVE_TOKEN.to_string(),
                 funds: vec![],
                 msg: to_json_binary(&Cw20ExecuteMsg::Transfer {
                     recipient: "user2".to_string(),

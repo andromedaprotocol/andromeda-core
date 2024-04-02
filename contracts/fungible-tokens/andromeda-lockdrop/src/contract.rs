@@ -67,7 +67,7 @@ pub fn instantiate(
         deposit_window: msg.deposit_window,
         withdrawal_window: msg.withdrawal_window,
         lockdrop_incentives: Uint128::zero(),
-        incentive_token: msg.incentive_token,
+        incentive_token: msg.incentive_token.get_raw_address(&deps.as_ref())?,
         native_denom: msg.native_denom,
     };
 
@@ -462,7 +462,7 @@ pub fn execute_claim_rewards(ctx: ExecuteContext) -> Result<Response, ContractEr
 
     let amount_to_transfer = total_incentives - user_info.delegated_incentives;
     let token = Asset::cw20(
-        deps.api.addr_validate(&config.incentive_token)?,
+        deps.api.addr_validate(&config.incentive_token.to_string())?,
         amount_to_transfer,
     );
     let transfer_msg = token.transfer_msg(user_address.clone())?;

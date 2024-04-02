@@ -69,7 +69,7 @@ fn test_lockdrop() {
         Milliseconds::from_seconds(current_timestamp),
         Milliseconds::from_seconds(100u64),
         Milliseconds::from_seconds(50u64),
-        cw20_incentives_address.to_string(),
+        AndrAddr::from_string(cw20_incentives_address.to_string()),
         "uusd".to_string(),
         None,
         None,
