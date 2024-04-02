@@ -21,13 +21,11 @@ use andromeda_splitter::mock::{
     mock_andromeda_splitter, mock_splitter_instantiate_msg, mock_splitter_send_msg,
 };
 use andromeda_std::ado_base::modules::Module;
-use cw20::Expiration;
-use std::str::FromStr;
-
 use andromeda_testing::mock::{init_balances, mock_app, MockAndromeda, MockApp};
-use cosmwasm_std::{coin, to_json_binary, Addr, BlockInfo, Decimal, Timestamp, Uint128};
+use cosmwasm_std::{coin, to_json_binary, Addr, BlockInfo, Decimal, Uint128};
 use cw721::OwnerOfResponse;
 use cw_multi_test::Executor;
+use std::str::FromStr;
 
 fn mock_andromeda(app: &mut MockApp, admin_address: Addr) -> MockAndromeda {
     MockAndromeda::new(app, &admin_address)
@@ -212,7 +210,7 @@ fn test_crowdfund_app() {
 
     let start_msg = mock_start_crowdfund_msg(
         None,
-        Expiration::AtTime(Timestamp::from_nanos((current_time + 2) * 1_000_000)),
+        Milliseconds::from_nanos((current_time + 2) * 1_000_000),
         token_price.clone(),
         Uint128::from(3u128),
         Some(1),

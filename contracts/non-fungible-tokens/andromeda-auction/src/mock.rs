@@ -31,14 +31,14 @@ pub fn mock_auction_instantiate_msg(
 
 pub fn mock_start_auction(
     start_time: Option<Milliseconds>,
-    duration: Milliseconds,
+    end_time: Milliseconds,
     coin_denom: String,
     min_bid: Option<Uint128>,
     whitelist: Option<Vec<Addr>>,
 ) -> Cw721HookMsg {
     Cw721HookMsg::StartAuction {
         start_time,
-        duration,
+        end_time,
         coin_denom,
         min_bid,
         whitelist,

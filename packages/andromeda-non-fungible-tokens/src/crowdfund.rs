@@ -24,7 +24,7 @@ pub enum ExecuteMsg {
         /// When the sale start. Defaults to current time.
         start_time: Option<Milliseconds>,
         /// When the sale ends.
-        end_time: Expiration,
+        end_time: Milliseconds,
         /// The price per token.
         price: Coin,
         /// The minimum amount of tokens sold to go through with the sale.

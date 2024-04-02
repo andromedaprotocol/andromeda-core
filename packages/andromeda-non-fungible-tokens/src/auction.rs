@@ -32,7 +32,7 @@ pub enum ExecuteMsg {
         token_id: String,
         token_address: String,
         start_time: Option<Milliseconds>,
-        duration: Milliseconds,
+        end_time: Milliseconds,
         coin_denom: String,
         whitelist: Option<Vec<Addr>>,
         min_bid: Option<Uint128>,
@@ -60,7 +60,7 @@ pub enum Cw721HookMsg {
         /// Start time in milliseconds since epoch
         start_time: Option<Milliseconds>,
         /// Duration in milliseconds
-        duration: Milliseconds,
+        end_time: Milliseconds,
         coin_denom: String,
         min_bid: Option<Uint128>,
         whitelist: Option<Vec<Addr>>,

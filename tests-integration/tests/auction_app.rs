@@ -182,7 +182,7 @@ fn test_auction_app() {
     let start_time = router.block_info().time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO + 100;
     let receive_msg = mock_start_auction(
         Some(Milliseconds(start_time)),
-        Milliseconds(1000),
+        Milliseconds(start_time + 2),
         "uandr".to_string(),
         None,
         None,

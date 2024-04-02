@@ -11,7 +11,11 @@ use andromeda_non_fungible_tokens::{
 use andromeda_std::{
     ado_base::ownership::OwnershipMessage,
     amp::{messages::AMPPkt, recipient::Recipient, AndrAddr},
-    common::{actions::call_action, expiration::get_and_validate_start_time, Milliseconds},
+    common::{
+        actions::call_action,
+        expiration::{expiration_from_milliseconds, get_and_validate_start_time},
+        Milliseconds,
+    },
 };
 use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
 
@@ -30,7 +34,7 @@ use cosmwasm_std::{
     Order, QuerierWrapper, QueryRequest, Reply, Response, StdError, Storage, SubMsg, Uint128,
     WasmMsg, WasmQuery,
 };
-use cw721::{ContractInfoResponse, Expiration, TokensResponse};
+use cw721::{ContractInfoResponse, TokensResponse};
 use cw_utils::nonpayable;
 use std::cmp;
 
@@ -286,7 +290,7 @@ fn execute_update_token_contract(
 fn execute_start_sale(
     ctx: ExecuteContext,
     start_time: Option<Milliseconds>,
-    end_time: Expiration,
+    end_time: Milliseconds,
     price: Coin,
     min_tokens_sold: Uint128,
     max_amount_per_wallet: Option<u32>,
@@ -307,13 +311,11 @@ fn execute_start_sale(
     // If start time wasn't provided, it will be set as the current_time
     let (start_expiration, _current_time) = get_and_validate_start_time(&env, start_time)?;
 
+    let end_expiration = expiration_from_milliseconds(end_time)?;
+
     ensure!(
-        end_time > start_expiration,
+        end_expiration > start_expiration,
         ContractError::StartTimeAfterEndTime {}
-    );
-    ensure!(
-        !matches!(end_time, Expiration::Never {}),
-        ContractError::ExpirationMustNotBeNever {}
     );
 
     SALE_CONDUCTED.save(deps.storage, &true)?;
@@ -326,7 +328,7 @@ fn execute_start_sale(
     STATE.save(
         deps.storage,
         &State {
-            end_time,
+            end_time: end_expiration,
             price,
             min_tokens_sold,
             max_amount_per_wallet,
@@ -342,7 +344,7 @@ fn execute_start_sale(
     Ok(Response::new()
         .add_attribute("action", "start_sale")
         .add_attribute("start_time", start_expiration.to_string())
-        .add_attribute("end_time", end_time.to_string())
+        .add_attribute("end_time", end_expiration.to_string())
         .add_attribute("price", price_str)
         .add_attribute("min_tokens_sold", min_tokens_sold)
         .add_attribute("max_amount_per_wallet", max_amount_per_wallet.to_string()))
