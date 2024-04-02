@@ -45,6 +45,15 @@ impl MockAppContract {
         self.execute(app, &mock_claim_ownership_msg(component_name), sender, &[])
     }
 
+    pub fn execute_add_app_component(
+        &self,
+        app: &mut MockApp,
+        sender: Addr,
+        component: AppComponent,
+    ) -> AnyResult<AppResponse> {
+        self.execute(app, &mock_add_app_component_msg(component), sender, &[])
+    }
+
     pub fn query_components(&self, app: &MockApp) -> Vec<AppComponent> {
         self.query::<Vec<AppComponent>>(app, mock_get_components_msg())
     }
