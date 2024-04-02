@@ -127,7 +127,7 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
             token_id,
             token_address,
             start_time,
-            duration,
+            end_time,
             coin_denom,
             whitelist,
             min_bid,
@@ -136,7 +136,7 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
             token_id,
             token_address,
             start_time,
-            duration,
+            end_time,
             coin_denom,
             whitelist,
             min_bid,
@@ -180,7 +180,7 @@ fn handle_receive_cw721(
     match from_json(&msg.msg)? {
         Cw721HookMsg::StartAuction {
             start_time,
-            duration,
+            end_time,
             coin_denom,
             whitelist,
             min_bid,
@@ -189,7 +189,7 @@ fn handle_receive_cw721(
             msg.sender,
             msg.token_id,
             start_time,
-            duration,
+            end_time,
             coin_denom,
             whitelist,
             min_bid,
@@ -216,25 +216,24 @@ fn execute_start_auction(
     sender: String,
     token_id: String,
     start_time: Option<Milliseconds>,
-    duration: Milliseconds,
+    end_time: Milliseconds,
     coin_denom: String,
     whitelist: Option<Vec<Addr>>,
     min_bid: Option<Uint128>,
 ) -> Result<Response, ContractError> {
     validate_denom(&ctx.deps.querier, coin_denom.clone())?;
-    ensure!(!duration.is_zero(), ContractError::InvalidExpiration {});
     let ExecuteContext {
         deps, info, env, ..
     } = ctx;
 
     // If start time wasn't provided, it will be set as the current_time
-    let (start_expiration, current_time) = get_and_validate_start_time(&env, start_time)?;
+    let (start_expiration, _current_time) = get_and_validate_start_time(&env, start_time)?;
+    let end_expiration = expiration_from_milliseconds(end_time)?;
 
-    let end_expiration = expiration_from_milliseconds(
-        start_time
-            .unwrap_or(current_time)
-            .plus_milliseconds(duration),
-    )?;
+    ensure!(
+        end_expiration > start_expiration,
+        ContractError::StartTimeAfterEndTime {}
+    );
 
     let token_address = info.sender.to_string();
 
@@ -277,7 +276,7 @@ fn execute_update_auction(
     token_id: String,
     token_address: String,
     start_time: Option<Milliseconds>,
-    duration: Milliseconds,
+    end_time: Milliseconds,
     coin_denom: String,
     whitelist: Option<Vec<Addr>>,
     min_bid: Option<Uint128>,
@@ -297,19 +296,16 @@ fn execute_update_auction(
         !token_auction_state.start_time.is_expired(&env.block),
         ContractError::AuctionAlreadyStarted {}
     );
-    ensure!(
-        duration > Milliseconds::zero(),
-        ContractError::InvalidExpiration {}
-    );
+    ensure!(!end_time.is_zero(), ContractError::InvalidExpiration {});
 
     // If start time wasn't provided, it will be set as the current_time
-    let (start_expiration, current_time) = get_and_validate_start_time(&env, start_time)?;
+    let (start_expiration, _current_time) = get_and_validate_start_time(&env, start_time)?;
+    let end_expiration = expiration_from_milliseconds(end_time)?;
 
-    let end_expiration = expiration_from_milliseconds(
-        start_time
-            .unwrap_or(current_time)
-            .plus_milliseconds(duration),
-    )?;
+    ensure!(
+        end_expiration > start_expiration,
+        ContractError::StartTimeAfterEndTime {}
+    );
 
     token_auction_state.start_time = start_expiration;
     token_auction_state.end_time = end_expiration;
