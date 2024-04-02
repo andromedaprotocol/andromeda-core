@@ -1,5 +1,3 @@
-use std::cmp;
-
 use crate::{
     ado_base::permissioning::{Permission, PermissionInfo, PermissioningMessage},
     amp::{messages::AMPPkt, AndrAddr},
@@ -18,12 +16,13 @@ pub struct PermissionsIndices<'a> {
     /// PK: action + actor
     ///
     /// Secondary key: actor
-    pub permissions: MultiIndex<'a, String, PermissionInfo, String>,
+    pub actor: MultiIndex<'a, String, PermissionInfo, String>,
+    pub action: MultiIndex<'a, String, PermissionInfo, String>,
 }
 
 impl<'a> IndexList<PermissionInfo> for PermissionsIndices<'a> {
     fn get_indexes(&'_ self) -> Box<dyn Iterator<Item = &'_ dyn Index<PermissionInfo>> + '_> {
-        let v: Vec<&dyn Index<PermissionInfo>> = vec![&self.permissions];
+        let v: Vec<&dyn Index<PermissionInfo>> = vec![&self.action, &self.actor];
         Box::new(v.into_iter())
     }
 }
@@ -33,7 +32,12 @@ impl<'a> IndexList<PermissionInfo> for PermissionsIndices<'a> {
 /// Permissions are stored in a multi-indexed map with the primary key being the action and actor
 pub fn permissions<'a>() -> IndexedMap<'a, &'a str, PermissionInfo, PermissionsIndices<'a>> {
     let indexes = PermissionsIndices {
-        permissions: MultiIndex::new(|_pk: &[u8], r| r.actor.clone(), "andr_permissions", "actor"),
+        actor: MultiIndex::new(|_pk: &[u8], r| r.actor.clone(), "andr_permissions", "actor"),
+        action: MultiIndex::new(
+            |_pk: &[u8], r| r.action.clone(),
+            "andr_permissions",
+            "action",
+        ),
     };
     IndexedMap::new("andr_permissions", indexes)
 }
@@ -330,7 +334,7 @@ impl<'a> ADOContract<'a> {
         let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
         let permissions = permissions()
             .idx
-            .permissions
+            .actor
             .prefix(actor)
             .range(deps.storage, min, None, Order::Ascending)
             .take(limit)
@@ -352,7 +356,7 @@ impl<'a> ADOContract<'a> {
         &self,
         deps: Deps,
         action: impl Into<String>,
-        start_after: Option<u32>,
+        start_after: Option<String>,
         limit: Option<u32>,
         order_by: Option<OrderBy>,
     ) -> Result<Vec<String>, ContractError> {
@@ -362,24 +366,26 @@ impl<'a> ADOContract<'a> {
             _ => Order::Ascending,
         };
 
-        let mut actors = permissions()
-            .keys(deps.storage, None, None, order_by)
-            .filter(|item| item.as_ref().unwrap().starts_with(&action_string))
-            .map(|item| {
-                let actor: String = item.unwrap_or_default()[action_string.len()..].to_string();
-                actor
+        let actors = permissions()
+            .idx
+            .action
+            .prefix(action_string.clone())
+            .keys(
+                deps.storage,
+                start_after.map(Bound::inclusive),
+                None,
+                order_by,
+            )
+            .take((limit).unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize)
+            .map(|p| {
+                p.unwrap()
+                    .strip_prefix(action_string.as_str())
+                    .unwrap()
+                    .to_string()
             })
             .collect::<Vec<String>>();
 
-        let start = start_after.unwrap_or(0) as usize;
-        let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
-
-        let (start, end) = (
-            cmp::min(start, actors.len()),
-            cmp::min(start + limit, actors.len()),
-        );
-        let slice = &mut actors[start..end];
-        Ok(slice.to_vec())
+        Ok(actors)
     }
 }
 
