@@ -19,7 +19,7 @@ use andromeda_std::amp::Recipient;
 use andromeda_testing::mock::mock_app;
 use andromeda_testing::mock_builder::MockAndromedaBuilder;
 use andromeda_testing::MockContract;
-use cosmwasm_std::{coin, to_json_binary, Addr, Uint128};
+use cosmwasm_std::{coin, to_json_binary, Addr, BlockInfo, Uint128};
 use cw_multi_test::Executor;
 
 #[test]

@@ -7,7 +7,7 @@ use andromeda_cw721::mock::{mock_andromeda_cw721, mock_cw721_instantiate_msg, Mo
 use andromeda_finance::splitter::AddressPercent;
 use andromeda_std::{
     amp::{AndrAddr, Recipient},
-    common::{expiration::MILLISECONDS_TO_NANOSECONDS_RATIO, Milliseconds},
+    common::Milliseconds,
 };
 
 use andromeda_modules::rates::{Rate, RateInfo};
@@ -169,12 +169,14 @@ fn test_crowdfund_app() {
     let sale_recipient =
         Recipient::from_string(format!("~{}/{}", app.addr(), splitter_app_component.name))
             .with_msg(mock_splitter_send_msg());
-    let expiration = Milliseconds::from_seconds(router.block_info().time.seconds() + 5);
+    let start_time = Milliseconds::from_seconds(router.block_info().time.seconds()).plus_seconds(1);
+    let end_time = start_time.plus_seconds(5);
     crowdfund_contract
         .execute_start_sale(
             owner.clone(),
             &mut router,
-            expiration,
+            Some(start_time),
+            end_time,
             token_price.clone(),
             Uint128::from(3u128),
             Some(1),
@@ -199,7 +201,7 @@ fn test_crowdfund_app() {
     let block_info = router.block_info();
     router.set_block(BlockInfo {
         height: block_info.height,
-        time: Milliseconds::from_seconds(5).into(),
+        time: end_time.plus_seconds(1).into(),
         chain_id: block_info.chain_id,
     });
 
@@ -217,34 +219,15 @@ fn test_crowdfund_app() {
         assert_eq!(owner, buyer.to_string());
     }
 
-    // TODO: FIX VAULT BALANCES
-    // //Check vault balances
+    let balance_one = router
+        .wrap()
+        .query_balance(vault_one_recipient_addr, "uandr")
+        .unwrap();
+    assert_eq!(balance_one.amount, Uint128::from(148u128));
 
-    // let balance_one: Vec<Coin> = router
-    //     .wrap()
-    //     .query_wasm_smart(
-    //         vault_one_addr,
-    //         &mock_vault_get_balance(
-    //             AndrAddr::from_string(vault_one_recipient_addr.to_string()),
-    //             None,
-    //             None,
-    //         ),
-    //     )
-    //     .unwrap();
-    // assert!(!balance_one.is_empty());
-    // assert_eq!(balance_one[0], coin(148, "uandr"));
-
-    // let balance_two: Vec<Coin> = router
-    //     .wrap()
-    //     .query_wasm_smart(
-    //         vault_two_addr,
-    //         &mock_vault_get_balance(
-    //             AndrAddr::from_string(vault_two_recipient_addr.to_string()),
-    //             None,
-    //             None,
-    //         ),
-    //     )
-    //     .unwrap();
-    // assert!(!balance_two.is_empty());
-    // assert_eq!(balance_two[0], coin(148, "uandr"));
+    let balance_two = router
+        .wrap()
+        .query_balance(vault_two_recipient_addr, "uandr")
+        .unwrap();
+    assert_eq!(balance_two.amount, Uint128::from(148u128));
 }

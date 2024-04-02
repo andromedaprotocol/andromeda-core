@@ -49,9 +49,9 @@ pub fn mock_get_version() -> QueryMsg {
     QueryMsg::Version {}
 }
 
-pub fn mock_cw20_send(contract: AndrAddr, amount: Uint128, msg: Binary) -> ExecuteMsg {
+pub fn mock_cw20_send(contract: impl Into<String>, amount: Uint128, msg: Binary) -> ExecuteMsg {
     ExecuteMsg::Send {
-        contract,
+        contract: AndrAddr::from_string(contract.into()),
         amount,
         msg,
     }

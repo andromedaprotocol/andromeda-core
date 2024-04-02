@@ -7,7 +7,7 @@ use andromeda_app_contract::mock::{
 };
 use andromeda_cw721::mock::{mock_andromeda_cw721, mock_cw721_instantiate_msg};
 use andromeda_std::amp::AndrAddr;
-use andromeda_testing::mock::MockAndromeda;
+use andromeda_testing::{mock::MockAndromeda, MockContract};
 use cosmwasm_std::{coin, to_json_binary, Addr};
 use cw_multi_test::{
     App, AppBuilder, BankKeeper, Executor, MockAddressGenerator, MockApiBech32, WasmKeeper,
@@ -30,7 +30,7 @@ fn mock_app() -> App<BankKeeper, MockApiBech32> {
 }
 
 fn mock_andromeda(app: &mut App<BankKeeper, MockApiBech32>, admin_address: Addr) -> MockAndromeda {
-    MockAndromeda::new(app, &admin_address)
+    MockAndromeda::new(app, admin_address.as_str())
 }
 
 #[test]
@@ -52,7 +52,7 @@ fn test_app() {
         "TT".to_string(),
         owner.to_string(),
         None,
-        andr.kernel_address.to_string(),
+        andr.kernel.addr().to_string(),
         None,
     );
     let cw721_component = AppComponent::new(
@@ -66,7 +66,7 @@ fn test_app() {
     let app_init_msg = mock_app_instantiate_msg(
         "SimpleApp".to_string(),
         app_components.clone(),
-        andr.kernel_address.clone(),
+        andr.kernel.addr().clone(),
         None,
     );
 

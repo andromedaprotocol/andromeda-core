@@ -49,13 +49,13 @@ impl MockAuction {
         &self,
         app: &mut MockApp,
         sender: Addr,
-        start_time: u64,
-        duration: u64,
+        start_time: Option<Milliseconds>,
+        end_time: Milliseconds,
         coin_denom: String,
         min_bid: Option<Uint128>,
         whitelist: Option<Vec<Addr>>,
     ) -> AppResponse {
-        let msg = mock_start_auction(start_time, duration, coin_denom, min_bid, whitelist);
+        let msg = mock_start_auction(start_time, end_time, coin_denom, min_bid, whitelist);
         app.execute_contract(sender, self.addr().clone(), &msg, &[])
             .unwrap()
     }

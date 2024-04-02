@@ -7,11 +7,11 @@ use andromeda_auction::mock::{
 };
 use andromeda_cw721::mock::{mock_andromeda_cw721, mock_cw721_instantiate_msg, MockCW721};
 
-use andromeda_std::common::expiration::MILLISECONDS_TO_NANOSECONDS_RATIO;
+use andromeda_std::common::Milliseconds;
 use andromeda_testing::{
     mock::mock_app, mock_builder::MockAndromedaBuilder, mock_contract::MockContract,
 };
-use cosmwasm_std::{coin, to_json_binary, Addr, BlockInfo, Timestamp, Uint128};
+use cosmwasm_std::{coin, to_json_binary, Addr, BlockInfo, Uint128};
 use cw_multi_test::Executor;
 
 #[test]
@@ -85,8 +85,15 @@ fn test_auction_app() {
 
     // Send Token to Auction
     let auction: MockAuction = app.query_ado_by_component_name(&router, auction_component.name);
-    let start_time = router.block_info().time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO + 100;
-    let receive_msg = mock_start_auction(start_time, 1000, "uandr".to_string(), None, None);
+    let start_time = Milliseconds::from_nanos(router.block_info().time.nanos())
+        .plus_milliseconds(Milliseconds(100));
+    let receive_msg = mock_start_auction(
+        Some(start_time),
+        start_time.plus_milliseconds(Milliseconds(1000)),
+        "uandr".to_string(),
+        None,
+        None,
+    );
     cw721
         .execute_send_nft(
             &mut router,
@@ -99,7 +106,7 @@ fn test_auction_app() {
 
     router.set_block(BlockInfo {
         height: router.block_info().height,
-        time: Timestamp::from_nanos(start_time * MILLISECONDS_TO_NANOSECONDS_RATIO),
+        time: start_time.into(),
         chain_id: router.block_info().chain_id,
     });
 
@@ -151,7 +158,7 @@ fn test_auction_app() {
     // End Auction
     router.set_block(BlockInfo {
         height: router.block_info().height,
-        time: Timestamp::from_nanos((start_time + 1001) * MILLISECONDS_TO_NANOSECONDS_RATIO),
+        time: start_time.plus_milliseconds(Milliseconds(1000)).into(),
         chain_id: router.block_info().chain_id,
     });
     auction

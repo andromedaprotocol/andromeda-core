@@ -58,14 +58,16 @@ impl MockCrowdfund {
         &self,
         sender: Addr,
         app: &mut MockApp,
-        expiration: Milliseconds,
+        start_time: Option<Milliseconds>,
+        end_time: Milliseconds,
         price: Coin,
         min_tokens_sold: Uint128,
         max_amount_per_wallet: Option<u32>,
         recipient: Recipient,
     ) -> ExecuteResult {
         let msg = mock_start_crowdfund_msg(
-            expiration,
+            start_time,
+            end_time,
             price,
             min_tokens_sold,
             max_amount_per_wallet,

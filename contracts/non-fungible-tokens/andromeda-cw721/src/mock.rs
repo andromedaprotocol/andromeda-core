@@ -72,7 +72,7 @@ impl MockCW721 {
         msg: &impl Serialize,
     ) -> ExecuteResult {
         let msg = mock_send_nft(
-            contract.into(),
+            AndrAddr::from_string(contract.into()),
             token_id.into(),
             to_json_binary(msg).unwrap(),
         );

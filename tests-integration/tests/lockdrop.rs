@@ -4,7 +4,7 @@ use andromeda_lockdrop::mock::{
     mock_andromeda_lockdrop, mock_claim_rewards, mock_cw20_hook_increase_incentives,
     mock_deposit_native, mock_enable_claims, mock_lockdrop_instantiate_msg, mock_withdraw_native,
 };
-use andromeda_std::common::Milliseconds;
+use andromeda_std::{amp::AndrAddr, common::Milliseconds};
 use andromeda_testing::{mock::mock_app, mock_builder::MockAndromedaBuilder, MockContract};
 use cosmwasm_std::{coin, to_json_binary, BlockInfo, Uint128};
 use cw20::Cw20Coin;
@@ -37,7 +37,6 @@ fn test_lockdrop() {
         18u8,
         vec![Cw20Coin {
             amount: 100u128.into(),
-            address: owner.to_string(),
             address: owner.to_string(),
         }],
         None,
@@ -76,7 +75,6 @@ fn test_lockdrop() {
         .instantiate_contract(
             lockdrop_code_id,
             owner.clone(),
-            owner.clone(),
             &init_msg,
             &[],
             "staking",
@@ -92,7 +90,6 @@ fn test_lockdrop() {
     let msg = mock_deposit_native();
     app.execute_contract(
         user1.clone(),
-        user1.clone(),
         lockdrop_addr.clone(),
         &msg,
         &[coin(500, "uusd")],
@@ -101,7 +98,6 @@ fn test_lockdrop() {
 
     let msg = mock_deposit_native();
     app.execute_contract(
-        user2.clone(),
         user2.clone(),
         lockdrop_addr.clone(),
         &msg,
@@ -115,7 +111,6 @@ fn test_lockdrop() {
         to_json_binary(&mock_cw20_hook_increase_incentives()).unwrap(),
     );
 
-    app.execute_contract(owner.clone(), cw20_incentives_address, &msg, &[])
     app.execute_contract(owner.clone(), cw20_incentives_address, &msg, &[])
         .unwrap();
 
@@ -133,7 +128,6 @@ fn test_lockdrop() {
 
     let msg = mock_claim_rewards();
     app.execute_contract(user1.clone(), lockdrop_addr.clone(), &msg, &[])
-    app.execute_contract(user1.clone(), lockdrop_addr.clone(), &msg, &[])
         .unwrap();
 
     let msg = mock_claim_rewards();
@@ -143,7 +137,6 @@ fn test_lockdrop() {
     let balance = app
         .wrap()
         .query_balance(user1.clone(), "uusd".to_string())
-        .query_balance(user1.clone(), "uusd".to_string())
         .unwrap();
 
     assert_eq!(balance.amount, Uint128::zero());
@@ -151,12 +144,10 @@ fn test_lockdrop() {
     let msg = mock_withdraw_native(None);
 
     app.execute_contract(user1.clone(), lockdrop_addr, &msg, &[])
-    app.execute_contract(user1.clone(), lockdrop_addr, &msg, &[])
         .unwrap();
 
     let balance = app
         .wrap()
-        .query_balance(user1.to_string(), "uusd".to_string())
         .query_balance(user1.to_string(), "uusd".to_string())
         .unwrap();
 
