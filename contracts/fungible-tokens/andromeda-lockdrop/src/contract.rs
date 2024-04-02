@@ -67,7 +67,7 @@ pub fn instantiate(
         deposit_window: msg.deposit_window,
         withdrawal_window: msg.withdrawal_window,
         lockdrop_incentives: Uint128::zero(),
-        incentive_token: msg.incentive_token.get_raw_address(&deps.as_ref())?,
+        incentive_token: msg.incentive_token,
         native_denom: msg.native_denom,
     };
 
@@ -226,7 +226,7 @@ pub fn execute_increase_incentives(
     let mut config = CONFIG.load(deps.storage)?;
 
     ensure!(
-        info.sender == config.incentive_token,
+        info.sender == config.incentive_token.get_raw_address(&deps.as_ref())?,
         ContractError::InvalidFunds {
             msg: "Only incentive tokens are valid".to_string(),
         }

@@ -3,7 +3,7 @@ use andromeda_std::andr_instantiate_modules;
 use andromeda_std::common::Milliseconds;
 use andromeda_std::{andr_exec, andr_instantiate, andr_query};
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Addr, Uint128};
+use cosmwasm_std::Uint128;
 use cw20::Cw20ReceiveMsg;
 
 #[andr_instantiate]
@@ -84,7 +84,7 @@ pub struct ConfigResponse {
     /// Total token lockdrop incentives to be distributed among the users.
     pub lockdrop_incentives: Uint128,
     /// The token being given as incentive.
-    pub incentive_token: Addr,
+    pub incentive_token: AndrAddr,
     /// The native token being deposited.
     pub native_denom: String,
 }

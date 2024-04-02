@@ -1,4 +1,4 @@
-use andromeda_std::common::Milliseconds;
+use andromeda_std::{amp::AndrAddr, common::Milliseconds};
 use cosmwasm_std::{Addr, Uint128};
 use cw_storage_plus::{Item, Map};
 
@@ -26,7 +26,7 @@ pub struct Config {
     /// Total Token lockdrop incentives to be distributed among the users
     pub lockdrop_incentives: Uint128,
     /// The token being given as incentive.
-    pub incentive_token: Addr,
+    pub incentive_token: AndrAddr,
     /// The native token being deposited.
     pub native_denom: String,
 }

@@ -72,7 +72,7 @@ fn test_instantiate() {
             deposit_window: Milliseconds::from_seconds(DEPOSIT_WINDOW),
             withdrawal_window: Milliseconds::from_seconds(WITHDRAWAL_WINDOW),
             lockdrop_incentives: Uint128::zero(),
-            incentive_token: Addr::unchecked(MOCK_INCENTIVE_TOKEN),
+            incentive_token: AndrAddr::from_string(MOCK_INCENTIVE_TOKEN),
             native_denom: "uusd".to_string()
         },
         config_res
