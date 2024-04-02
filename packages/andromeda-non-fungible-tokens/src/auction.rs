@@ -4,6 +4,7 @@ use andromeda_std::{andr_exec, andr_instantiate, andr_instantiate_modules, andr_
 
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Addr, Timestamp, Uint128};
+use cw20::Cw20ReceiveMsg;
 use cw721::{Cw721ReceiveMsg, Expiration};
 
 #[andr_instantiate]
@@ -17,6 +18,7 @@ pub struct InstantiateMsg {
 #[cw_serde]
 pub enum ExecuteMsg {
     ReceiveNft(Cw721ReceiveMsg),
+    ReceiveCw20(Cw20ReceiveMsg),
     /// Places a bid on the current auction for the given token_id. The previous largest bid gets
     /// automatically sent back to the bidder when they are outbid.
     PlaceBid {
@@ -66,6 +68,15 @@ pub enum Cw721HookMsg {
         whitelist: Option<Vec<Addr>>,
     },
 }
+#[cw_serde]
+pub enum Cw20HookMsg {
+    /// Purchases tokens
+    Purchase {
+        token_id: String,
+        token_address: String,
+    },
+}
+
 #[andr_query]
 #[cw_serde]
 #[derive(QueryResponses)]

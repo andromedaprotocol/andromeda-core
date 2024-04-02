@@ -3,8 +3,8 @@ use crate::state::{
     VALID_CW20_CONTRACT,
 };
 use andromeda_non_fungible_tokens::auction::{
-    AuctionIdsResponse, AuctionInfo, AuctionStateResponse, Bid, BidsResponse, Cw721HookMsg,
-    ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, TokenAuctionState,
+    AuctionIdsResponse, AuctionInfo, AuctionStateResponse, Bid, BidsResponse, Cw20HookMsg,
+    Cw721HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, TokenAuctionState,
 };
 use andromeda_std::{
     ado_base::{
@@ -24,12 +24,14 @@ use andromeda_std::{
 use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
 
 use cosmwasm_std::{
-    attr, coins, ensure, entry_point, from_json, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps,
-    DepsMut, Env, MessageInfo, QuerierWrapper, QueryRequest, Response, Storage, SubMsg, Uint128,
-    WasmMsg, WasmQuery,
+    attr, coins, ensure, entry_point, from_json, wasm_execute, Addr, BankMsg, Binary, Coin,
+    CosmosMsg, Deps, DepsMut, Env, MessageInfo, QuerierWrapper, QueryRequest, Response, Storage,
+    SubMsg, Uint128, WasmMsg, WasmQuery,
 };
 use cw2::{get_contract_version, set_contract_version};
+use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, Cw721ReceiveMsg, Expiration, OwnerOfResponse};
+use cw_asset::{AssetInfo, AssetInfoBase};
 use cw_utils::nonpayable;
 use semver::Version;
 
@@ -124,6 +126,7 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
     }
     let res = match msg {
         ExecuteMsg::ReceiveNft(msg) => handle_receive_cw721(ctx, msg),
+        ExecuteMsg::ReceiveCw20(msg) => handle_receive_cw20(ctx, msg),
         ExecuteMsg::UpdateAuction {
             token_id,
             token_address,
@@ -194,6 +197,39 @@ fn handle_receive_cw721(
             coin_denom,
             whitelist,
             min_bid,
+        ),
+    }
+}
+
+pub fn handle_receive_cw20(
+    ctx: ExecuteContext,
+    receive_msg: Cw20ReceiveMsg,
+) -> Result<Response, ContractError> {
+    let ExecuteContext { ref info, .. } = ctx;
+    nonpayable(info)?;
+
+    let asset_sent = AssetInfo::Cw20(info.sender.clone());
+    let amount_sent = receive_msg.amount;
+    let sender = receive_msg.sender;
+
+    ensure!(
+        !amount_sent.is_zero(),
+        ContractError::InvalidFunds {
+            msg: "Cannot send a 0 amount".to_string()
+        }
+    );
+
+    match from_json(&receive_msg.msg)? {
+        Cw20HookMsg::Purchase {
+            token_id,
+            token_address,
+        } => execute_place_bid_cw20(
+            ctx,
+            token_id,
+            token_address,
+            amount_sent,
+            asset_sent,
+            &sender,
         ),
     }
 }
@@ -451,6 +487,130 @@ fn execute_place_bid(
         attr("bider", info.sender.to_string()),
         attr("amount", payment.amount.to_string()),
     ]))
+}
+
+fn execute_place_bid_cw20(
+    ctx: ExecuteContext,
+    token_id: String,
+    token_address: String,
+    amount_sent: Uint128,
+    asset_sent: AssetInfo,
+    sender: &str,
+) -> Result<Response, ContractError> {
+    let ExecuteContext {
+        deps, info, env, ..
+    } = ctx;
+    let mut token_auction_state =
+        get_existing_token_auction_state(deps.storage, &token_id, &token_address)?;
+
+    ensure!(
+        !token_auction_state.is_cancelled,
+        ContractError::AuctionCancelled {}
+    );
+
+    ensure!(
+        token_auction_state.start_time.is_expired(&env.block),
+        ContractError::AuctionNotStarted {}
+    );
+    ensure!(
+        !token_auction_state.end_time.is_expired(&env.block),
+        ContractError::AuctionEnded {}
+    );
+
+    ensure!(
+        token_auction_state.owner != sender,
+        ContractError::TokenOwnerCannotBid {}
+    );
+
+    let sender_addr = deps.api.addr_validate(sender)?;
+
+    if let Some(ref whitelist) = token_auction_state.whitelist {
+        ensure!(
+            whitelist.iter().any(|x| x == sender_addr),
+            ContractError::Unauthorized {}
+        );
+    }
+    ensure!(
+        token_auction_state.high_bidder_addr != sender_addr,
+        ContractError::HighestBidderCannotOutBid {}
+    );
+
+    let valid_cw20_contract = VALID_CW20_CONTRACT.may_load(deps.storage)?;
+    if let Some(valid_cw20_contract) = valid_cw20_contract {
+        let cw20_address = valid_cw20_contract.get_raw_address(&deps.as_ref())?;
+        if let AssetInfoBase::Cw20(asset) = asset_sent {
+            ensure!(
+                // Sent asset must be the same as the valid cw20 address
+                asset == cw20_address,
+                ContractError::InvalidAsset {
+                    asset: asset.into_string()
+                }
+            );
+            ensure!(
+                amount_sent > Uint128::zero(),
+                ContractError::InvalidFunds {
+                    msg: format!(
+                        "No {} assets are provided to auction",
+                        token_auction_state.coin_denom
+                    ),
+                }
+            );
+            let min_bid = token_auction_state.min_bid.unwrap_or(Uint128::zero());
+            ensure!(
+                amount_sent >= min_bid,
+                ContractError::InvalidFunds {
+                    msg: format!(
+                        "Must provide at least {min_bid} {} to bid",
+                        token_auction_state.coin_denom
+                    )
+                }
+            );
+            ensure!(
+                token_auction_state.high_bidder_amount < amount_sent,
+                ContractError::BidSmallerThanHighestBid {}
+            );
+
+            let mut cw20_transfer: Vec<WasmMsg> = vec![];
+            // Send back previous bid unless there was no previous bid.
+            if token_auction_state.high_bidder_amount > Uint128::zero() {
+                let transfer_msg = Cw20ExecuteMsg::Transfer {
+                    recipient: token_auction_state.high_bidder_addr.to_string(),
+                    amount: token_auction_state.high_bidder_amount,
+                };
+                let wasm_msg = wasm_execute(token_address, &transfer_msg, vec![])?;
+                cw20_transfer.push(wasm_msg);
+            }
+
+            token_auction_state.high_bidder_addr = sender_addr.clone();
+            token_auction_state.high_bidder_amount = amount_sent;
+
+            let key = token_auction_state.auction_id.u128();
+            TOKEN_AUCTION_STATE.save(deps.storage, key, &token_auction_state)?;
+            let mut bids_for_auction = BIDS.load(deps.storage, key)?;
+            bids_for_auction.push(Bid {
+                bidder: info.sender.to_string(),
+                amount: amount_sent,
+                timestamp: env.block.time,
+            });
+            BIDS.save(deps.storage, key, &bids_for_auction)?;
+            Ok(Response::new()
+                .add_messages(cw20_transfer)
+                .add_attributes(vec![
+                    attr("action", "bid"),
+                    attr("token_id", token_id),
+                    attr("bider", sender_addr.to_string()),
+                    attr("amount", amount_sent.to_string()),
+                ]))
+        } else {
+            Err(ContractError::InvalidAsset {
+                asset: asset_sent.to_string(),
+            })
+        }
+    } else {
+        Err(ContractError::InvalidAsset {
+            asset: asset_sent.to_string(),
+        })
+    }
 }
 
 fn execute_cancel(
