@@ -306,7 +306,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-macros"
-version = "0.1.0"
+version = "1.0.0-rc1"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -448,7 +448,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-std"
-version = "0.1.2"
+version = "1.0.0-rc1"
 dependencies = [
  "andromeda-macros",
  "cosmwasm-schema",
