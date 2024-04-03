@@ -102,6 +102,7 @@ fn test_auction_app() {
             "./{}",
             cw721_component.name
         ))]),
+        None,
     );
     let auction_component = AppComponent::new(
         "auction".to_string(),

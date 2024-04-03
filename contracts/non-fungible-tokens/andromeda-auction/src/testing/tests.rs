@@ -38,6 +38,7 @@ fn init(deps: DepsMut, modules: Option<Vec<Module>>) -> Response {
         modules,
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         authorized_token_addresses: Some(vec![AndrAddr::from_string(MOCK_TOKEN_ADDR)]),
+        authorized_cw20_address: None,
     };
 
     let info = mock_info("owner", &[]);

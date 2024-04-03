@@ -20,12 +20,14 @@ pub fn mock_auction_instantiate_msg(
     kernel_address: impl Into<String>,
     owner: Option<String>,
     authorized_token_addresses: Option<Vec<AndrAddr>>,
+    authorized_cw20_address: Option<AndrAddr>,
 ) -> InstantiateMsg {
     InstantiateMsg {
         modules,
         kernel_address: kernel_address.into(),
         owner,
         authorized_token_addresses,
+        authorized_cw20_address,
     }
 }
 
