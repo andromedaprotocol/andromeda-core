@@ -36,6 +36,7 @@ pub fn mock_start_auction(
     start_time: Option<Milliseconds>,
     end_time: Milliseconds,
     coin_denom: String,
+    uses_cw20: bool,
     min_bid: Option<Uint128>,
     whitelist: Option<Vec<Addr>>,
 ) -> Cw721HookMsg {
@@ -43,6 +44,7 @@ pub fn mock_start_auction(
         start_time,
         end_time,
         coin_denom,
+        uses_cw20,
         min_bid,
         whitelist,
     }

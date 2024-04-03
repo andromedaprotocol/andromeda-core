@@ -148,6 +148,7 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
             start_time,
             end_time,
             coin_denom,
+            uses_cw20,
             whitelist,
             min_bid,
         } => execute_update_auction(
@@ -157,6 +158,7 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
             start_time,
             end_time,
             coin_denom,
+            uses_cw20,
             whitelist,
             min_bid,
         ),
@@ -201,6 +203,7 @@ fn handle_receive_cw721(
             start_time,
             end_time,
             coin_denom,
+            uses_cw20,
             whitelist,
             min_bid,
         } => execute_start_auction(
@@ -210,6 +213,7 @@ fn handle_receive_cw721(
             start_time,
             end_time,
             coin_denom,
+            uses_cw20,
             whitelist,
             min_bid,
         ),
@@ -263,6 +267,7 @@ fn execute_start_auction(
     start_time: Option<Milliseconds>,
     end_time: Milliseconds,
     coin_denom: String,
+    uses_cw20: bool,
     whitelist: Option<Vec<Addr>>,
     min_bid: Option<Uint128>,
 ) -> Result<Response, ContractError> {
@@ -300,6 +305,7 @@ fn execute_start_auction(
             high_bidder_addr: Addr::unchecked(""),
             high_bidder_amount: Uint128::zero(),
             coin_denom: coin_denom.clone(),
+            uses_cw20,
             auction_id,
             whitelist,
             min_bid,
@@ -327,6 +333,7 @@ fn execute_update_auction(
     start_time: Option<Milliseconds>,
     end_time: Milliseconds,
     coin_denom: String,
+    uses_cw20: bool,
     whitelist: Option<Vec<Addr>>,
     min_bid: Option<Uint128>,
 ) -> Result<Response, ContractError> {
@@ -363,6 +370,7 @@ fn execute_update_auction(
     token_auction_state.end_time = end_expiration;
     token_auction_state.whitelist = whitelist.clone();
     token_auction_state.coin_denom = coin_denom.clone();
+    token_auction_state.uses_cw20 = uses_cw20;
     token_auction_state.min_bid = min_bid;
     TOKEN_AUCTION_STATE.save(
         deps.storage,
@@ -374,6 +382,7 @@ fn execute_update_auction(
         attr("start_time", start_expiration.to_string()),
         attr("end_time", end_expiration.to_string()),
         attr("coin_denom", coin_denom),
+        attr("uses_cw20", uses_cw20.to_string()),
         attr("auction_id", token_auction_state.auction_id.to_string()),
         attr("whitelist", format!("{:?}", &whitelist)),
         attr("min_bid", format!("{:?}", &min_bid)),
@@ -426,6 +435,13 @@ fn execute_place_bid(
     ensure!(
         token_auction_state.high_bidder_addr != info.sender,
         ContractError::HighestBidderCannotOutBid {}
+    );
+
+    ensure!(
+        !token_auction_state.uses_cw20,
+        ContractError::InvalidFunds {
+            msg: "Native funds were sent to an auction that only accepts cw20".to_string()
+        }
     );
 
     let payment: &Coin = &info.funds[0];
@@ -532,7 +548,7 @@ fn execute_place_bid_cw20(
     );
 
     let auction_currency = token_auction_state.clone().coin_denom;
-    let is_cw20_auction = ADOContract::default()
+    let valid_cw20_auction = ADOContract::default()
         .is_permissioned_strict(
             deps.storage,
             env.clone(),
@@ -541,67 +557,75 @@ fn execute_place_bid_cw20(
         )
         .is_ok();
 
-    if is_cw20_auction {
-        ensure!(
-            amount_sent > Uint128::zero(),
-            ContractError::InvalidFunds {
-                msg: format!(
-                    "No {} assets are provided to auction",
-                    token_auction_state.coin_denom
-                ),
-            }
-        );
-        let min_bid = token_auction_state.min_bid.unwrap_or(Uint128::zero());
-        ensure!(
-            amount_sent >= min_bid,
-            ContractError::InvalidFunds {
-                msg: format!(
-                    "Must provide at least {min_bid} {} to bid",
-                    token_auction_state.coin_denom
-                )
-            }
-        );
-        ensure!(
-            token_auction_state.high_bidder_amount < amount_sent,
-            ContractError::BidSmallerThanHighestBid {}
-        );
-
-        let mut cw20_transfer: Vec<WasmMsg> = vec![];
-        // Send back previous bid unless there was no previous bid.
-        if token_auction_state.high_bidder_amount > Uint128::zero() {
-            let transfer_msg = Cw20ExecuteMsg::Transfer {
-                recipient: token_auction_state.high_bidder_addr.to_string(),
-                amount: token_auction_state.high_bidder_amount,
-            };
-            let wasm_msg = wasm_execute(auction_currency, &transfer_msg, vec![])?;
-            cw20_transfer.push(wasm_msg);
-        }
-
-        token_auction_state.high_bidder_addr = sender_addr.clone();
-        token_auction_state.high_bidder_amount = amount_sent;
-
-        let key = token_auction_state.auction_id.u128();
-        TOKEN_AUCTION_STATE.save(deps.storage, key, &token_auction_state)?;
-        let mut bids_for_auction = BIDS.load(deps.storage, key)?;
-        bids_for_auction.push(Bid {
-            bidder: sender.to_string(),
-            amount: amount_sent,
-            timestamp: env.block.time,
-        });
-        BIDS.save(deps.storage, key, &bids_for_auction)?;
-        Ok(Response::new()
-            .add_messages(cw20_transfer)
-            .add_attributes(vec![
-                attr("action", "bid"),
-                attr("token_id", token_id),
-                attr("bider", sender_addr.to_string()),
-                attr("amount", amount_sent.to_string()),
-            ]))
-    } else {
-        Err(ContractError::InvalidAsset {
+    ensure!(
+        valid_cw20_auction,
+        ContractError::InvalidAsset {
             asset: asset_sent.to_string(),
-        })
+        }
+    );
+
+    ensure!(
+        token_auction_state.uses_cw20,
+        ContractError::InvalidFunds {
+            msg: "CW20 funds were sent to an auction that only accepts native funds".to_string()
+        }
+    );
+
+    ensure!(
+        amount_sent > Uint128::zero(),
+        ContractError::InvalidFunds {
+            msg: format!(
+                "No {} assets are provided to auction",
+                token_auction_state.coin_denom
+            ),
+        }
+    );
+    let min_bid = token_auction_state.min_bid.unwrap_or(Uint128::zero());
+    ensure!(
+        amount_sent >= min_bid,
+        ContractError::InvalidFunds {
+            msg: format!(
+                "Must provide at least {min_bid} {} to bid",
+                token_auction_state.coin_denom
+            )
+        }
+    );
+    ensure!(
+        token_auction_state.high_bidder_amount < amount_sent,
+        ContractError::BidSmallerThanHighestBid {}
+    );
+
+    let mut cw20_transfer: Vec<WasmMsg> = vec![];
+    // Send back previous bid unless there was no previous bid.
+    if token_auction_state.high_bidder_amount > Uint128::zero() {
+        let transfer_msg = Cw20ExecuteMsg::Transfer {
+            recipient: token_auction_state.high_bidder_addr.to_string(),
+            amount: token_auction_state.high_bidder_amount,
+        };
+        let wasm_msg = wasm_execute(auction_currency, &transfer_msg, vec![])?;
+        cw20_transfer.push(wasm_msg);
     }
+
+    token_auction_state.high_bidder_addr = sender_addr.clone();
+    token_auction_state.high_bidder_amount = amount_sent;
+
+    let key = token_auction_state.auction_id.u128();
+    TOKEN_AUCTION_STATE.save(deps.storage, key, &token_auction_state)?;
+    let mut bids_for_auction = BIDS.load(deps.storage, key)?;
+    bids_for_auction.push(Bid {
+        bidder: sender.to_string(),
+        amount: amount_sent,
+        timestamp: env.block.time,
+    });
+    BIDS.save(deps.storage, key, &bids_for_auction)?;
+    Ok(Response::new()
+        .add_messages(cw20_transfer)
+        .add_attributes(vec![
+            attr("action", "bid"),
+            attr("token_id", token_id),
+            attr("bider", sender_addr.to_string()),
+            attr("amount", amount_sent.to_string()),
+        ]))
 }
 
 fn execute_cancel(
@@ -635,16 +659,23 @@ fn execute_cancel(
 
     // Refund highest bid, if it exists.
     if !token_auction_state.high_bidder_amount.is_zero() {
-        let auction_currency = token_auction_state.clone().coin_denom;
-        let is_cw20_auction = ADOContract::default()
-            .is_permissioned_strict(
-                deps.storage,
-                env,
-                SEND_CW20_ACTION,
-                auction_currency.clone(),
-            )
-            .is_ok();
+        let is_cw20_auction = token_auction_state.uses_cw20;
         if is_cw20_auction {
+            let auction_currency = token_auction_state.clone().coin_denom;
+            let valid_cw20_auction = ADOContract::default()
+                .is_permissioned_strict(
+                    deps.storage,
+                    env,
+                    SEND_CW20_ACTION,
+                    auction_currency.clone(),
+                )
+                .is_ok();
+            ensure!(
+                valid_cw20_auction,
+                ContractError::InvalidFunds {
+                    msg: "Coin denom isn't permissioned".to_string()
+                }
+            );
             let transfer_msg = Cw20ExecuteMsg::Transfer {
                 recipient: token_auction_state.high_bidder_addr.clone().into_string(),
                 amount: token_auction_state.high_bidder_amount,
@@ -732,17 +763,23 @@ fn execute_claim(
         .add_attribute("winning_bid_amount", token_auction_state.high_bidder_amount)
         .add_attribute("auction_id", token_auction_state.auction_id);
 
-    let auction_currency = token_auction_state.coin_denom;
-    let is_cw20_auction = ADOContract::default()
-        .is_permissioned_strict(
-            deps.storage,
-            env,
-            SEND_CW20_ACTION,
-            auction_currency.clone(),
-        )
-        .is_ok();
+    let is_cw20_auction = token_auction_state.uses_cw20;
     if is_cw20_auction {
-        // Send back previous bid unless there was no previous bid.
+        let auction_currency = token_auction_state.coin_denom;
+        let valid_cw20_auction = ADOContract::default()
+            .is_permissioned_strict(
+                deps.storage,
+                env,
+                SEND_CW20_ACTION,
+                auction_currency.clone(),
+            )
+            .is_ok();
+        ensure!(
+            valid_cw20_auction,
+            ContractError::InvalidFunds {
+                msg: "Coin denom isn't permissioned".to_string()
+            }
+        ); // Send back previous bid unless there was no previous bid.
         let transfer_msg = Cw20ExecuteMsg::Transfer {
             recipient: token_auction_state.owner,
             amount: after_tax_payment.0.amount,

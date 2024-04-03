@@ -190,6 +190,7 @@ fn test_auction_app() {
         Some(Milliseconds(start_time)),
         Milliseconds(start_time + 2),
         "uandr".to_string(),
+        false,
         None,
         None,
     );
@@ -560,6 +561,7 @@ fn test_auction_app_cw20() {
         Some(Milliseconds(start_time)),
         Milliseconds(start_time + 2),
         cw20_addr.clone(),
+        true,
         None,
         None,
     );

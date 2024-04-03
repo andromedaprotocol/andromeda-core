@@ -38,6 +38,7 @@ pub enum ExecuteMsg {
         start_time: Option<Milliseconds>,
         end_time: Milliseconds,
         coin_denom: String,
+        uses_cw20: bool,
         whitelist: Option<Vec<Addr>>,
         min_bid: Option<Uint128>,
     },
@@ -66,6 +67,7 @@ pub enum Cw721HookMsg {
         /// Duration in milliseconds
         end_time: Milliseconds,
         coin_denom: String,
+        uses_cw20: bool,
         min_bid: Option<Uint128>,
         whitelist: Option<Vec<Addr>>,
     },
@@ -168,6 +170,7 @@ impl From<TokenAuctionState> for AuctionStateResponse {
             high_bidder_addr: token_auction_state.high_bidder_addr.to_string(),
             high_bidder_amount: token_auction_state.high_bidder_amount,
             coin_denom: token_auction_state.coin_denom,
+            uses_cw20: token_auction_state.uses_cw20,
             auction_id: token_auction_state.auction_id,
             whitelist: token_auction_state.whitelist,
             is_cancelled: token_auction_state.is_cancelled,
@@ -190,6 +193,7 @@ pub struct TokenAuctionState {
     pub token_id: String,
     pub token_address: String,
     pub is_cancelled: bool,
+    pub uses_cw20: bool,
 }
 
 #[cw_serde]
@@ -207,6 +211,7 @@ pub struct AuctionStateResponse {
     pub high_bidder_amount: Uint128,
     pub auction_id: Uint128,
     pub coin_denom: String,
+    pub uses_cw20: bool,
     pub whitelist: Option<Vec<Addr>>,
     pub min_bid: Option<Uint128>,
     pub is_cancelled: bool,
