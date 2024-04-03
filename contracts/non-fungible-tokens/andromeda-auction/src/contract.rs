@@ -236,7 +236,7 @@ pub fn handle_receive_cw20(
     );
 
     match from_json(&receive_msg.msg)? {
-        Cw20HookMsg::Purchase {
+        Cw20HookMsg::PlaceBid {
             token_id,
             token_address,
         } => execute_place_bid_cw20(

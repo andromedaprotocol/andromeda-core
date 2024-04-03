@@ -71,8 +71,7 @@ pub enum Cw721HookMsg {
 }
 #[cw_serde]
 pub enum Cw20HookMsg {
-    /// Purchases tokens
-    Purchase {
+    PlaceBid {
         token_id: String,
         token_address: String,
     },

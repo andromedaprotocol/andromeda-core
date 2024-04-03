@@ -304,7 +304,7 @@ fn execute_place_bid_whitelist_cw20() {
     start_auction_cw20(deps.as_mut(), Some(vec![Addr::unchecked("sender")]), None);
     assert_auction_created_cw20(deps.as_ref(), Some(vec![Addr::unchecked("sender")]), None);
 
-    let hook_msg = Cw20HookMsg::Purchase {
+    let hook_msg = Cw20HookMsg::PlaceBid {
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
         token_address: MOCK_TOKEN_ADDR.to_string(),
     };
@@ -1175,7 +1175,7 @@ fn execute_claim_cw20() {
 
     start_auction_cw20(deps.as_mut(), None, None);
 
-    let hook_msg = Cw20HookMsg::Purchase {
+    let hook_msg = Cw20HookMsg::PlaceBid {
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
         token_address: MOCK_TOKEN_ADDR.to_string(),
     };
@@ -1486,7 +1486,7 @@ fn execute_cancel_with_bids_cw20() {
     //     token_address: MOCK_TOKEN_ADDR.to_string(),
     // };
 
-    let hook_msg = Cw20HookMsg::Purchase {
+    let hook_msg = Cw20HookMsg::PlaceBid {
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
         token_address: MOCK_TOKEN_ADDR.to_string(),
     };
