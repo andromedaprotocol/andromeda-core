@@ -2,8 +2,9 @@ use crate::state::{
     auction_infos, read_auction_infos, read_bids, BIDS, NEXT_AUCTION_ID, TOKEN_AUCTION_STATE,
 };
 use andromeda_non_fungible_tokens::auction::{
-    AuctionIdsResponse, AuctionInfo, AuctionStateResponse, Bid, BidsResponse, Cw20HookMsg,
-    Cw721HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, TokenAuctionState,
+    AuctionIdsResponse, AuctionInfo, AuctionStateResponse, AuthorizedAddressesResponse, Bid,
+    BidsResponse, Cw20HookMsg, Cw721HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
+    TokenAuctionState,
 };
 use andromeda_std::{
     ado_base::{
@@ -67,6 +68,10 @@ pub fn instantiate(
         contract.register_modules(info.sender.as_str(), deps.storage, msg.modules)?;
 
     if let Some(authorized_token_addresses) = msg.authorized_token_addresses {
+        if !authorized_token_addresses.is_empty() {
+            ADOContract::default().permission_action(SEND_NFT_ACTION, deps.storage)?;
+        }
+
         for token_address in authorized_token_addresses {
             let addr = token_address.get_raw_address(&deps.as_ref())?;
             ADOContract::set_permission(
@@ -141,7 +146,7 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
             token_id,
             token_address,
             start_time,
-            duration,
+            end_time,
             coin_denom,
             whitelist,
             min_bid,
@@ -150,7 +155,7 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
             token_id,
             token_address,
             start_time,
-            duration,
+            end_time,
             coin_denom,
             whitelist,
             min_bid,
@@ -185,7 +190,7 @@ fn handle_receive_cw721(
     ctx: ExecuteContext,
     msg: Cw721ReceiveMsg,
 ) -> Result<Response, ContractError> {
-    ADOContract::default().is_permissioned_strict(
+    ADOContract::default().is_permissioned(
         ctx.deps.storage,
         ctx.env.clone(),
         SEND_NFT_ACTION,
@@ -194,7 +199,7 @@ fn handle_receive_cw721(
     match from_json(&msg.msg)? {
         Cw721HookMsg::StartAuction {
             start_time,
-            duration,
+            end_time,
             coin_denom,
             whitelist,
             min_bid,
@@ -203,7 +208,7 @@ fn handle_receive_cw721(
             msg.sender,
             msg.token_id,
             start_time,
-            duration,
+            end_time,
             coin_denom,
             whitelist,
             min_bid,
@@ -271,7 +276,7 @@ fn execute_start_auction(
     sender: String,
     token_id: String,
     start_time: Option<Milliseconds>,
-    duration: Milliseconds,
+    end_time: Milliseconds,
     coin_denom: String,
     whitelist: Option<Vec<Addr>>,
     min_bid: Option<Uint128>,
@@ -283,16 +288,16 @@ fn execute_start_auction(
         ..
     } = ctx;
     validate_denom(deps.branch(), env.clone(), coin_denom.clone())?;
-    ensure!(!duration.is_zero(), ContractError::InvalidExpiration {});
+    ensure!(!end_time.is_zero(), ContractError::InvalidExpiration {});
 
     // If start time wasn't provided, it will be set as the current_time
-    let (start_expiration, current_time) = get_and_validate_start_time(&env, start_time)?;
+    let (start_expiration, _current_time) = get_and_validate_start_time(&env, start_time)?;
+    let end_expiration = expiration_from_milliseconds(end_time)?;
 
-    let end_expiration = expiration_from_milliseconds(
-        start_time
-            .unwrap_or(current_time)
-            .plus_milliseconds(duration),
-    )?;
+    ensure!(
+        end_expiration > start_expiration,
+        ContractError::StartTimeAfterEndTime {}
+    );
 
     let token_address = info.sender.to_string();
 
@@ -335,7 +340,7 @@ fn execute_update_auction(
     token_id: String,
     token_address: String,
     start_time: Option<Milliseconds>,
-    duration: Milliseconds,
+    end_time: Milliseconds,
     coin_denom: String,
     whitelist: Option<Vec<Addr>>,
     min_bid: Option<Uint128>,
@@ -358,19 +363,16 @@ fn execute_update_auction(
         !token_auction_state.start_time.is_expired(&env.block),
         ContractError::AuctionAlreadyStarted {}
     );
-    ensure!(
-        duration > Milliseconds::zero(),
-        ContractError::InvalidExpiration {}
-    );
+    ensure!(!end_time.is_zero(), ContractError::InvalidExpiration {});
 
     // If start time wasn't provided, it will be set as the current_time
-    let (start_expiration, current_time) = get_and_validate_start_time(&env, start_time)?;
+    let (start_expiration, _current_time) = get_and_validate_start_time(&env, start_time)?;
+    let end_expiration = expiration_from_milliseconds(end_time)?;
 
-    let end_expiration = expiration_from_milliseconds(
-        start_time
-            .unwrap_or(current_time)
-            .plus_milliseconds(duration),
-    )?;
+    ensure!(
+        end_expiration > start_expiration,
+        ContractError::StartTimeAfterEndTime {}
+    );
 
     token_auction_state.start_time = start_expiration;
     token_auction_state.end_time = end_expiration;
@@ -950,6 +952,16 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
             token_id,
             token_address,
         } => encode_binary(&query_is_closed(deps, env, token_id, token_address)?),
+        QueryMsg::AuthorizedAddresses {
+            start_after,
+            limit,
+            order_by,
+        } => encode_binary(&query_authorized_addresses(
+            deps,
+            start_after,
+            limit,
+            order_by,
+        )?),
         _ => ADOContract::default().query(deps, env, msg),
     }
 }
@@ -1082,6 +1094,21 @@ fn query_owner_of(
     Ok(res)
 }
 
+fn query_authorized_addresses(
+    deps: Deps,
+    start_after: Option<String>,
+    limit: Option<u32>,
+    order_by: Option<OrderBy>,
+) -> Result<AuthorizedAddressesResponse, ContractError> {
+    let addresses = ADOContract::default().query_permissioned_actors(
+        deps,
+        SEND_NFT_ACTION,
+        start_after,
+        limit,
+        order_by,
+    )?;
+    Ok(AuthorizedAddressesResponse { addresses })
+}
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
     // New version

@@ -1,7 +1,7 @@
 use crate::{
     ado_base::permissioning::{Permission, PermissionInfo, PermissioningMessage},
     amp::{messages::AMPPkt, AndrAddr},
-    common::context::ExecuteContext,
+    common::{context::ExecuteContext, OrderBy},
     error::ContractError,
 };
 use cosmwasm_std::{ensure, Deps, Env, MessageInfo, Order, Response, Storage};
@@ -16,12 +16,13 @@ pub struct PermissionsIndices<'a> {
     /// PK: action + actor
     ///
     /// Secondary key: actor
-    pub permissions: MultiIndex<'a, String, PermissionInfo, String>,
+    pub actor: MultiIndex<'a, String, PermissionInfo, String>,
+    pub action: MultiIndex<'a, String, PermissionInfo, String>,
 }
 
 impl<'a> IndexList<PermissionInfo> for PermissionsIndices<'a> {
     fn get_indexes(&'_ self) -> Box<dyn Iterator<Item = &'_ dyn Index<PermissionInfo>> + '_> {
-        let v: Vec<&dyn Index<PermissionInfo>> = vec![&self.permissions];
+        let v: Vec<&dyn Index<PermissionInfo>> = vec![&self.action, &self.actor];
         Box::new(v.into_iter())
     }
 }
@@ -31,7 +32,12 @@ impl<'a> IndexList<PermissionInfo> for PermissionsIndices<'a> {
 /// Permissions are stored in a multi-indexed map with the primary key being the action and actor
 pub fn permissions<'a>() -> IndexedMap<'a, &'a str, PermissionInfo, PermissionsIndices<'a>> {
     let indexes = PermissionsIndices {
-        permissions: MultiIndex::new(|_pk: &[u8], r| r.actor.clone(), "andr_permissions", "actor"),
+        actor: MultiIndex::new(|_pk: &[u8], r| r.actor.clone(), "andr_permissions", "actor"),
+        action: MultiIndex::new(
+            |_pk: &[u8], r| r.action.clone(),
+            "andr_permissions",
+            "action",
+        ),
     };
     IndexedMap::new("andr_permissions", indexes)
 }
@@ -328,7 +334,7 @@ impl<'a> ADOContract<'a> {
         let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
         let permissions = permissions()
             .idx
-            .permissions
+            .actor
             .prefix(actor)
             .range(deps.storage, min, None, Order::Ascending)
             .take(limit)
@@ -344,6 +350,42 @@ impl<'a> ADOContract<'a> {
             .map(|p| p.unwrap())
             .collect::<Vec<String>>();
         Ok(actions)
+    }
+
+    pub fn query_permissioned_actors(
+        &self,
+        deps: Deps,
+        action: impl Into<String>,
+        start_after: Option<String>,
+        limit: Option<u32>,
+        order_by: Option<OrderBy>,
+    ) -> Result<Vec<String>, ContractError> {
+        let action_string: String = action.into();
+        let order_by = match order_by {
+            Some(OrderBy::Desc) => Order::Descending,
+            _ => Order::Ascending,
+        };
+
+        let actors = permissions()
+            .idx
+            .action
+            .prefix(action_string.clone())
+            .keys(
+                deps.storage,
+                start_after.map(Bound::inclusive),
+                None,
+                order_by,
+            )
+            .take((limit).unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize)
+            .map(|p| {
+                p.unwrap()
+                    .strip_prefix(action_string.as_str())
+                    .unwrap()
+                    .to_string()
+            })
+            .collect::<Vec<String>>();
+
+        Ok(actors)
     }
 }
 
@@ -977,5 +1019,37 @@ mod tests {
 
         assert_eq!(actions.len(), 1);
         assert_eq!(actions[0], "action");
+    }
+
+    #[test]
+    fn test_query_permissioned_actors() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = mock_info("owner", &[]);
+        let ctx = ExecuteContext {
+            deps: deps.as_mut(),
+            env,
+            info: info.clone(),
+            amp_ctx: None,
+        };
+
+        let contract = ADOContract::default();
+
+        contract.owner.save(ctx.deps.storage, &info.sender).unwrap();
+
+        let actor = "actor";
+        let action = "action";
+        ADOContract::default()
+            .execute_permission_action(ctx, action)
+            .unwrap();
+
+        ADOContract::set_permission(deps.as_mut().storage, action, actor, Permission::default())
+            .unwrap();
+        let actors = ADOContract::default()
+            .query_permissioned_actors(deps.as_ref(), action, None, None, None)
+            .unwrap();
+
+        assert_eq!(actors.len(), 1);
+        assert_eq!(actors[0], actor);
     }
 }
