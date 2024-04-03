@@ -22,6 +22,8 @@ fn test_app() {
         .build(&mut router);
     let owner = andr.get_wallet("owner");
 
+    let app_name = "Simple App";
+
     // Generate App Components
     let cw721_init_msg = mock_cw721_instantiate_msg(
         "Test Tokens".to_string(),
@@ -37,10 +39,20 @@ fn test_app() {
         to_json_binary(&cw721_init_msg).unwrap(),
     );
 
+    let owner_str = owner.to_string();
+    let cw721_component_with_symlink = AppComponent {
+        name: "cw721-ref".to_string(),
+        ado_type: "cw721".to_string(),
+        component_type: andromeda_app::app::ComponentType::Symlink(AndrAddr::from_string(format!(
+            "~{owner_str}/{0}/cw721",
+            convert_component_name(app_name)
+        ))),
+    };
+
     // Create App
-    let app_components = vec![cw721_component];
+    let app_components = vec![cw721_component, cw721_component_with_symlink];
     let app_init_msg = mock_app_instantiate_msg(
-        "Simple App".to_string(),
+        app_name.to_string(),
         app_components.clone(),
         andr.kernel.addr().clone(),
         None,
@@ -60,9 +72,8 @@ fn test_app() {
     let components = app.query_components(&router);
     assert_eq!(components, app_components);
 
-    let owner_str = owner.to_string();
     let cw721_component_with_symlink = AppComponent {
-        name: "cw721-ref".to_string(),
+        name: "cw721-ref-2".to_string(),
         ado_type: "cw721".to_string(),
         component_type: andromeda_app::app::ComponentType::Symlink(AndrAddr::from_string(format!(
             "~{owner_str}/{0}/cw721",
@@ -74,4 +85,15 @@ fn test_app() {
 
     let component_addresses = app.query_components(&router);
     assert_eq!(component_addresses.len(), components.len() + 1);
+
+    let cw721_component2 = AppComponent::new(
+        "cw721-2".to_string(),
+        "cw721".to_string(),
+        to_json_binary(&cw721_init_msg).unwrap(),
+    );
+    app.execute_add_app_component(&mut router, owner.clone(), cw721_component2)
+        .unwrap();
+
+    let component_addresses = app.query_components(&router);
+    assert_eq!(component_addresses.len(), components.len() + 2);
 }

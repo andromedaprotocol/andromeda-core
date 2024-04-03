@@ -22,6 +22,14 @@ pub fn handle_add_app_component(
     let env = ctx.env;
     let sender = ctx.info.sender.as_str();
 
+    let maybe_app_component = ADO_ADDRESSES.may_load(ctx.deps.storage, &component.name)?;
+    ensure!(
+        maybe_app_component.is_none(),
+        ContractError::InvalidComponent {
+            name: "Component name already taken".to_string()
+        }
+    );
+
     ensure!(
         !matches!(component.component_type, ComponentType::CrossChain(..)),
         ContractError::CrossChainComponentsCurrentlyDisabled {}
@@ -79,6 +87,18 @@ pub fn handle_add_app_component(
     if let ComponentType::Symlink(ref val) = component.component_type {
         let component_address: Addr = val.get_raw_address(&ctx.deps.as_ref())?;
         ADO_ADDRESSES.save(ctx.deps.storage, &component.name, &component_address)?;
+    } else if let ComponentType::New(_) = component.component_type {
+        ensure!(
+            new_addr.is_some(),
+            ContractError::InvalidComponent {
+                name: "Could not generate address for new component".to_string()
+            }
+        );
+        ADO_ADDRESSES.save(
+            ctx.deps.storage,
+            &component.name,
+            &new_addr.clone().unwrap(),
+        )?;
     }
 
     let event = component.generate_event(new_addr);
