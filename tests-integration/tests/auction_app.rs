@@ -432,15 +432,17 @@ fn test_auction_app_cw20() {
         to_json_binary(&cw721_init_msg).unwrap(),
     );
 
+    let buyer_one_original_balance = Uint128::new(1_000);
+    let buyer_two_original_balance = Uint128::new(2_000);
     let owner_original_balance = Uint128::new(10_000);
     let initial_balances = vec![
         Cw20Coin {
             address: buyer_one.to_string(),
-            amount: Uint128::from(1000u128),
+            amount: buyer_one_original_balance,
         },
         Cw20Coin {
             address: buyer_two.to_string(),
-            amount: Uint128::from(2000u128),
+            amount: buyer_two_original_balance,
         },
         Cw20Coin {
             address: owner.to_string(),
@@ -680,7 +682,7 @@ fn test_auction_app_cw20() {
     assert_eq!(bid.bidder, buyer_one.to_string());
     assert_eq!(bid.amount, Uint128::from(50u128));
 
-    // Second bid
+    // Second bid by buyer_two
     let bid_msg = mock_cw20_send(
         AndrAddr::from_string(auction_addr.clone()),
         Uint128::new(100),
@@ -695,14 +697,6 @@ fn test_auction_app_cw20() {
             &[],
         )
         .unwrap();
-    // router
-    //     .execute_contract(
-    //         buyer_two.clone(),
-    //         Addr::unchecked(auction_addr.clone()),
-    //         &bid_msg,
-    //         &[coin(100, "uandr")],
-    //     )
-    //     .unwrap();
 
     // Check Bid Status One
     let bids_resp: BidsResponse = router
@@ -739,10 +733,11 @@ fn test_auction_app_cw20() {
         .unwrap();
     assert_eq!(owner_resp.owner, buyer_two);
 
+    // The auction's owner sold the NFT for 100, so the balance should increase by 100
     let cw20_balance_query = mock_get_cw20_balance(owner);
     let cw20_balance_response: BalanceResponse = router
         .wrap()
-        .query_wasm_smart(cw20_addr, &cw20_balance_query)
+        .query_wasm_smart(cw20_addr.clone(), &cw20_balance_query)
         .unwrap();
     assert_eq!(
         cw20_balance_response.balance,
@@ -750,4 +745,25 @@ fn test_auction_app_cw20() {
             .checked_add(Uint128::new(100))
             .unwrap()
     );
+
+    // Buyer two won the auction with a bid of 100, the balance should be 100 less than the original balance
+    let cw20_balance_query = mock_get_cw20_balance(buyer_two);
+    let cw20_balance_response: BalanceResponse = router
+        .wrap()
+        .query_wasm_smart(cw20_addr.clone(), &cw20_balance_query)
+        .unwrap();
+    assert_eq!(
+        cw20_balance_response.balance,
+        buyer_two_original_balance
+            .checked_sub(Uint128::new(100))
+            .unwrap()
+    );
+
+    // Buyer one was outbid, so the balance should remain unchanged
+    let cw20_balance_query = mock_get_cw20_balance(buyer_one);
+    let cw20_balance_response: BalanceResponse = router
+        .wrap()
+        .query_wasm_smart(cw20_addr, &cw20_balance_query)
+        .unwrap();
+    assert_eq!(cw20_balance_response.balance, buyer_one_original_balance);
 }
