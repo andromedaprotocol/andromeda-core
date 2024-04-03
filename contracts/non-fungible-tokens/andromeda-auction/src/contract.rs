@@ -717,19 +717,9 @@ fn execute_claim(
 
     let valid_cw20_contract = VALID_CW20_CONTRACT.may_load(deps.storage)?;
     let resp: Response = Response::new()
-        .add_submessages(after_tax_payment.clone().1)
-        // Send NFT to auction winner.
-        .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: token_auction_state.token_address.clone(),
-            msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
-                recipient: token_auction_state.high_bidder_addr.to_string(),
-                token_id: token_id.clone(),
-            })?,
-            funds: vec![],
-        }))
         .add_attribute("action", "claim")
-        .add_attribute("token_id", token_id)
-        .add_attribute("token_contract", token_auction_state.token_address)
+        .add_attribute("token_id", token_id.clone())
+        .add_attribute("token_contract", token_auction_state.clone().token_address)
         .add_attribute("recipient", &token_auction_state.high_bidder_addr)
         .add_attribute("winning_bid_amount", token_auction_state.high_bidder_amount)
         .add_attribute("auction_id", token_auction_state.auction_id);
@@ -745,21 +735,53 @@ fn execute_claim(
                 amount: after_tax_payment.0.amount,
             };
             let wasm_msg = wasm_execute(cw20_address, &transfer_msg, vec![])?;
-            Ok(resp.add_message(wasm_msg))
+            Ok(resp
+                .add_submessages(after_tax_payment.1)
+                // Send NFT to auction winner.
+                // Send funds to the original owner.
+                .add_message(wasm_msg)
+                .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                    contract_addr: token_auction_state.token_address.clone(),
+                    msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
+                        recipient: token_auction_state.high_bidder_addr.to_string(),
+                        token_id,
+                    })?,
+                    funds: vec![],
+                })))
         } else {
             Ok(resp
+                .add_submessages(after_tax_payment.clone().1)
+                // Send NFT to auction winner.
                 // Send funds to the original owner.
                 .add_message(CosmosMsg::Bank(BankMsg::Send {
                     to_address: token_auction_state.owner,
                     amount: vec![after_tax_payment.0],
+                }))
+                .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                    contract_addr: token_auction_state.token_address.clone(),
+                    msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
+                        recipient: token_auction_state.high_bidder_addr.to_string(),
+                        token_id,
+                    })?,
+                    funds: vec![],
                 })))
         }
     } else {
         Ok(resp
+            .add_submessages(after_tax_payment.clone().1)
+            // Send NFT to auction winner.
             // Send funds to the original owner.
             .add_message(CosmosMsg::Bank(BankMsg::Send {
                 to_address: token_auction_state.owner,
                 amount: vec![after_tax_payment.0],
+            }))
+            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: token_auction_state.token_address.clone(),
+                msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
+                    recipient: token_auction_state.high_bidder_addr.to_string(),
+                    token_id,
+                })?,
+                funds: vec![],
             })))
     }
 }
