@@ -308,7 +308,7 @@ fn execute_place_bid_whitelist_cw20() {
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
         token_address: MOCK_TOKEN_ADDR.to_string(),
     };
-    let msg = ExecuteMsg::ReceiveCw20(Cw20ReceiveMsg {
+    let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
         sender: "sender".to_string(),
         amount: Uint128::new(100),
         msg: encode_binary(&hook_msg).unwrap(),
@@ -1179,7 +1179,7 @@ fn execute_claim_cw20() {
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
         token_address: MOCK_TOKEN_ADDR.to_string(),
     };
-    let msg = ExecuteMsg::ReceiveCw20(Cw20ReceiveMsg {
+    let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
         sender: "sender".to_string(),
         amount: Uint128::new(100),
         msg: encode_binary(&hook_msg).unwrap(),
@@ -1490,7 +1490,7 @@ fn execute_cancel_with_bids_cw20() {
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
         token_address: MOCK_TOKEN_ADDR.to_string(),
     };
-    let msg = ExecuteMsg::ReceiveCw20(Cw20ReceiveMsg {
+    let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
         sender: "bidder".to_string(),
         amount: Uint128::new(100),
         msg: encode_binary(&hook_msg).unwrap(),

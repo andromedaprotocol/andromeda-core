@@ -136,7 +136,7 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
     }
     let res = match msg {
         ExecuteMsg::ReceiveNft(msg) => handle_receive_cw721(ctx, msg),
-        ExecuteMsg::ReceiveCw20(msg) => handle_receive_cw20(ctx, msg),
+        ExecuteMsg::Receive(msg) => handle_receive_cw20(ctx, msg),
         ExecuteMsg::UpdateAuction {
             token_id,
             token_address,

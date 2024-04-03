@@ -7,6 +7,7 @@ use andromeda_std::amp::messages::AMPPkt;
 use andromeda_std::common::Milliseconds;
 use andromeda_std::{ado_base::modules::Module, amp::AndrAddr};
 use cosmwasm_std::{Addr, Empty, Uint128};
+use cw20::Cw20ReceiveMsg;
 use cw_multi_test::{Contract, ContractWrapper};
 use cw_utils::Expiration;
 
@@ -45,6 +46,10 @@ pub fn mock_start_auction(
         min_bid,
         whitelist,
     }
+}
+
+pub fn mock_auction_cw20_receive(msg: Cw20ReceiveMsg) -> ExecuteMsg {
+    ExecuteMsg::Receive(msg)
 }
 
 pub fn mock_authorize_token_address(

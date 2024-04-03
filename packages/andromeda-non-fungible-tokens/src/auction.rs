@@ -19,7 +19,8 @@ pub struct InstantiateMsg {
 #[cw_serde]
 pub enum ExecuteMsg {
     ReceiveNft(Cw721ReceiveMsg),
-    ReceiveCw20(Cw20ReceiveMsg),
+    // for cw20
+    Receive(Cw20ReceiveMsg),
     /// Places a bid on the current auction for the given token_id. The previous largest bid gets
     /// automatically sent back to the bidder when they are outbid.
     PlaceBid {
