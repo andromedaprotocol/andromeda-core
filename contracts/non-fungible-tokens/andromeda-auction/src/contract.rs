@@ -3,13 +3,12 @@ use crate::state::{
 };
 use andromeda_non_fungible_tokens::auction::{
     AuctionIdsResponse, AuctionInfo, AuctionStateResponse, AuthorizedAddressesResponse, Bid,
-    BidsResponse, Cw721HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
-    TokenAuctionState,
+    BidsResponse, Cw721HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg, TokenAuctionState,
 };
 use andromeda_std::{
     ado_base::{
         hooks::AndromedaHook, ownership::OwnershipMessage, permissioning::Permission,
-        InstantiateMsg as BaseInstantiateMsg,
+        InstantiateMsg as BaseInstantiateMsg, MigrateMsg,
     },
     amp::AndrAddr,
     common::{
@@ -19,7 +18,7 @@ use andromeda_std::{
         rates::get_tax_amount,
         Funds, Milliseconds, OrderBy,
     },
-    error::{from_semver, ContractError},
+    error::ContractError,
 };
 use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
 
@@ -28,10 +27,9 @@ use cosmwasm_std::{
     DepsMut, Env, MessageInfo, QuerierWrapper, QueryRequest, Response, Storage, SubMsg, Uint128,
     WasmMsg, WasmQuery,
 };
-use cw2::{get_contract_version, set_contract_version};
+use cw2::set_contract_version;
 use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, Cw721ReceiveMsg, Expiration, OwnerOfResponse};
 use cw_utils::nonpayable;
-use semver::Version;
 
 const CONTRACT_NAME: &str = "crates.io:andromeda-auction";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -880,29 +878,5 @@ fn query_authorized_addresses(
 }
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-    // New version
-    let version: Version = CONTRACT_VERSION.parse().map_err(from_semver)?;
-
-    // Old version
-    let stored = get_contract_version(deps.storage)?;
-    let storage_version: Version = stored.version.parse().map_err(from_semver)?;
-
-    ensure!(
-        stored.contract == CONTRACT_NAME,
-        ContractError::CannotMigrate {
-            previous_contract: stored.contract,
-        }
-    );
-
-    // New version has to be newer/greater than the old version
-    ensure!(
-        storage_version < version,
-        ContractError::CannotMigrate {
-            previous_contract: stored.version,
-        }
-    );
-
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-
-    Ok(Response::default())
+    ADOContract::default().migrate(deps, CONTRACT_NAME, CONTRACT_VERSION)
 }

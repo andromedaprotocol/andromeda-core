@@ -21,7 +21,6 @@ cosmwasm-schema = { workspace = true }
 cw-storage-plus = { workspace = true }
 cw-utils = { workspace = true}
 cw2 = { workspace = true }
-semver = { workspace = true }
 
 andromeda-std = { workspace = true }
 andromeda-finance = { workspace = true }

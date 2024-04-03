@@ -3,9 +3,7 @@ use crate::state::{
     PURCHASES, SALE_CONDUCTED, STATE,
 };
 use andromeda_non_fungible_tokens::{
-    crowdfund::{
-        Config, CrowdfundMintMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, State,
-    },
+    crowdfund::{Config, CrowdfundMintMsg, ExecuteMsg, InstantiateMsg, QueryMsg, State},
     cw721::{ExecuteMsg as Cw721ExecuteMsg, MintMsg, QueryMsg as Cw721QueryMsg},
 };
 use andromeda_std::{
@@ -20,12 +18,10 @@ use andromeda_std::{
 use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
 
 use andromeda_std::{
-    ado_base::{hooks::AndromedaHook, InstantiateMsg as BaseInstantiateMsg},
+    ado_base::{hooks::AndromedaHook, InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     common::{deduct_funds, encode_binary, merge_sub_msgs, rates::get_tax_amount, Funds},
-    error::{from_semver, ContractError},
+    error::ContractError,
 };
-use cw2::{get_contract_version, set_contract_version};
-use semver::Version;
 
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
@@ -915,29 +911,5 @@ fn query_is_token_available(deps: Deps, id: String) -> bool {
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-    // New version
-    let version: Version = CONTRACT_VERSION.parse().map_err(from_semver)?;
-
-    // Old version
-    let stored = get_contract_version(deps.storage)?;
-    let storage_version: Version = stored.version.parse().map_err(from_semver)?;
-
-    ensure!(
-        stored.contract == CONTRACT_NAME,
-        ContractError::CannotMigrate {
-            previous_contract: stored.contract,
-        }
-    );
-
-    // New version has to be newer/greater than the old version
-    ensure!(
-        storage_version < version,
-        ContractError::CannotMigrate {
-            previous_contract: stored.version,
-        }
-    );
-
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-
-    Ok(Response::default())
+    ADOContract::default().migrate(deps, CONTRACT_NAME, CONTRACT_VERSION)
 }
