@@ -387,7 +387,7 @@ fn execute_place_bid_invalid_coins_sent() {
     assert_auction_created(deps.as_ref(), None, None);
 
     let error = ContractError::InvalidFunds {
-        msg: "Auctions ensure! exactly one coin to be sent.".to_string(),
+        msg: "One coin should be sent.".to_string(),
     };
     let msg = ExecuteMsg::PlaceBid {
         token_id: MOCK_UNCLAIMED_TOKEN.to_string(),
