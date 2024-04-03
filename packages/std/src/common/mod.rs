@@ -1,5 +1,6 @@
 pub mod actions;
 pub mod context;
+pub mod denom;
 pub mod expiration;
 pub mod milliseconds;
 pub mod rates;
