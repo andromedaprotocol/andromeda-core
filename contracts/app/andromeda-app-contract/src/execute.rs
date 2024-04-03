@@ -79,6 +79,12 @@ pub fn handle_add_app_component(
     if let ComponentType::Symlink(ref val) = component.component_type {
         let component_address: Addr = val.get_raw_address(&ctx.deps.as_ref())?;
         ADO_ADDRESSES.save(ctx.deps.storage, &component.name, &component_address)?;
+    } else {
+        ADO_ADDRESSES.save(
+            ctx.deps.storage,
+            &component.name,
+            &new_addr.clone().unwrap(),
+        )?;
     }
 
     let event = component.generate_event(new_addr);

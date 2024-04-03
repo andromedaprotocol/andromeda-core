@@ -62,10 +62,10 @@ fn test_app() {
     );
 
     // Create App
-    let app_components = vec![cw721_component];
+    let app_components = vec![cw721_component.clone()];
     let app_init_msg = mock_app_instantiate_msg(
         "SimpleApp".to_string(),
-        app_components.clone(),
+        vec![],
         andr.kernel_address.clone(),
         None,
     );
@@ -78,6 +78,15 @@ fn test_app() {
             &[],
             "Simple App",
             Some(owner.to_string()),
+        )
+        .unwrap();
+
+    router
+        .execute_contract(
+            owner.clone(),
+            app_addr.clone(),
+            &mock_add_app_component_msg(cw721_component),
+            &[],
         )
         .unwrap();
 
