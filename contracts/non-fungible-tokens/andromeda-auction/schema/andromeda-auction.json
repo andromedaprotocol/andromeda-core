@@ -10,6 +10,16 @@
       "kernel_address"
     ],
     "properties": {
+      "authorized_cw20_address": {
+        "anyOf": [
+          {
+            "$ref": "#/definitions/AndrAddr"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
       "authorized_token_addresses": {
         "type": [
           "array",
@@ -82,6 +92,18 @@
         "properties": {
           "receive_nft": {
             "$ref": "#/definitions/Cw721ReceiveMsg"
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "receive_cw20"
+        ],
+        "properties": {
+          "receive_cw20": {
+            "$ref": "#/definitions/Cw20ReceiveMsg"
           }
         },
         "additionalProperties": false
@@ -597,6 +619,27 @@
             "type": "string"
           }
         }
+      },
+      "Cw20ReceiveMsg": {
+        "description": "Cw20ReceiveMsg should be de/serialized under `Receive()` variant in a ExecuteMsg",
+        "type": "object",
+        "required": [
+          "amount",
+          "msg",
+          "sender"
+        ],
+        "properties": {
+          "amount": {
+            "$ref": "#/definitions/Uint128"
+          },
+          "msg": {
+            "$ref": "#/definitions/Binary"
+          },
+          "sender": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
       },
       "Cw721ReceiveMsg": {
         "description": "Cw721ReceiveMsg should be de/serialized under `Receive()` variant in a ExecuteMsg",
