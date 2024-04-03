@@ -428,7 +428,7 @@ fn execute_place_bid(
     ensure!(
         info.funds.len() == 1,
         ContractError::InvalidFunds {
-            msg: "Auctions ensure! exactly one coin to be sent.".to_string(),
+            msg: "One coin should be sent.".to_string(),
         }
     );
     if let Some(ref whitelist) = token_auction_state.whitelist {
