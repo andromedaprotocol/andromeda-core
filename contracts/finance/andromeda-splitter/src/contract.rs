@@ -34,9 +34,6 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    msg.validate(deps.as_ref())?;
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-
     let current_time = Milliseconds::from_seconds(env.block.time.seconds());
     let splitter = match msg.lock_time {
         Some(lock_time) => {
@@ -52,13 +49,13 @@ pub fn instantiate(
                 ContractError::LockTimeTooLong {}
             );
             Splitter {
-                recipients: msg.recipients,
+                recipients: msg.recipients.clone(),
                 lock: current_time.plus_milliseconds(lock_time),
             }
         }
         None => {
             Splitter {
-                recipients: msg.recipients,
+                recipients: msg.recipients.clone(),
                 // If locking isn't desired upon instantiation, it's automatically set to 0
                 lock: Milliseconds::default(),
             }
@@ -77,10 +74,12 @@ pub fn instantiate(
         BaseInstantiateMsg {
             ado_type: CONTRACT_NAME.to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
-            kernel_address: msg.kernel_address,
-            owner: msg.owner,
+            kernel_address: msg.kernel_address.clone(),
+            owner: msg.owner.clone(),
         },
     )?;
+
+    msg.validate(deps.as_ref())?;
 
     Ok(inst_resp)
 }

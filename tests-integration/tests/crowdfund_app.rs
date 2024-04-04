@@ -123,7 +123,7 @@ fn test_crowdfund_app() {
     // Eventhough it shows in execute_send's response in the splitter that both messages are being sent.
     let splitter_recipients = vec![
         AddressPercent {
-            recipient: Recipient::from_string(vault_one_recipient_addr),
+            recipient: Recipient::from_string(format!("~{vault_one_recipient_addr}")),
             percent: Decimal::from_str("0.5").unwrap(),
         },
         AddressPercent {
