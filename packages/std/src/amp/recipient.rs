@@ -27,6 +27,20 @@ impl Recipient {
         }
     }
 
+    /// Validates a recipient by validating its address and recovery address (if it is provided)
+    pub fn validate(&self, deps: &Deps) -> Result<(), ContractError> {
+        self.address.validate(deps.api)?;
+        self.address.get_raw_address(deps)?;
+
+        // Validate the recovery address if it is providedReci
+        if let Some(ibc_recovery_address) = self.ibc_recovery_address.clone() {
+            ibc_recovery_address.validate(deps.api)?;
+            ibc_recovery_address.get_raw_address(deps)?;
+        }
+
+        Ok(())
+    }
+
     /// Creates a Recipient from the given string with no attached message
     pub fn from_string(addr: impl Into<String>) -> Recipient {
         Recipient {

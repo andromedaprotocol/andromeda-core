@@ -299,6 +299,7 @@ fn execute_start_sale(
     let ExecuteContext {
         deps, info, env, ..
     } = ctx;
+    recipient.validate(&deps.as_ref())?;
     nonpayable(&info)?;
     let ado_contract = ADOContract::default();
 

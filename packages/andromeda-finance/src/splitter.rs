@@ -99,6 +99,7 @@ pub fn validate_recipient_list(
     let mut recipient_address_set = HashSet::new();
 
     for rec in recipients {
+        rec.recipient.validate(&deps)?;
         percent_sum = percent_sum.checked_add(rec.percent)?;
         ensure!(
             percent_sum <= Decimal::one(),
