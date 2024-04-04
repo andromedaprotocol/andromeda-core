@@ -541,14 +541,41 @@ fn execute_buy_cw20(
         Some(amount_sent),
         token_sale_state.clone(),
     )?;
+
     let transfer_msg = Cw20ExecuteMsg::Transfer {
-        recipient: token_sale_state.owner,
+        recipient: token_sale_state.clone().owner,
         amount: after_tax_payment.0.amount,
     };
-    let wasm_msg = wasm_execute(sale_currency, &transfer_msg, vec![])?;
+    let wasm_msg = wasm_execute(sale_currency.clone(), &transfer_msg, vec![])?;
+
+    // After tax payment is returned in Native, we need to change it to cw20
+    let (tax_recipient, tax_amount) = match after_tax_payment.1.first().map(|msg| {
+        if let CosmosMsg::Bank(BankMsg::Send { to_address, amount }) = &msg.msg {
+            (
+                Some(to_address.clone()),
+                amount.get(0).map(|coin| coin.amount),
+            )
+        } else {
+            (None, None)
+        }
+    }) {
+        Some(result) => result,
+        None => (None, None),
+    };
+
+    // Ensure tax_recipient and tax_amount are not None
+    let tax_transfer_msg = match (tax_recipient.clone(), tax_amount) {
+        (Some(recipient), Some(amount)) => Cw20ExecuteMsg::Transfer { recipient, amount },
+        _ => Cw20ExecuteMsg::Transfer {
+            recipient: tax_recipient.unwrap_or(token_sale_state.owner),
+            amount: Uint128::zero(),
+        },
+    };
+
+    let tax_wasm_msg = wasm_execute(sale_currency, &tax_transfer_msg, vec![])?;
 
     Ok(Response::new()
-        .add_submessages(after_tax_payment.1)
+        .add_message(tax_wasm_msg)
         // Send funds to the original owner.
         .add_message(wasm_msg)
         // Send NFT to buyer.
@@ -624,7 +651,6 @@ fn purchase_token(
     let total_cost = Coin::new(state.price.u128(), state.coin_denom.clone());
 
     let mut total_tax_amount = Uint128::zero();
-
     let (msgs, _events, remainder) = ADOContract::default().on_funds_transfer(
         &deps.as_ref(),
         info.sender.to_string(),
@@ -671,6 +697,7 @@ fn purchase_token(
         denom: state.coin_denom,
         amount: remaining_amount.amount,
     };
+
     Ok((after_tax_payment, msgs))
 }
 
