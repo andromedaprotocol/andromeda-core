@@ -140,7 +140,13 @@ impl<'a> ADOContract<'a> {
         // Old version
         let stored = get_contract_version(deps.storage)?;
         let storage_version: Version = stored.version.parse().map_err(from_semver)?;
-
+        let contract_name = if contract_name.starts_with("crates.io:andromeda-") {
+            contract_name.strip_prefix("crates.io:andromeda-").unwrap()
+        } else if contract_name.starts_with("crates.io:") {
+            contract_name.strip_prefix("crates.io:").unwrap()
+        } else {
+            &contract_name
+        };
         ensure!(
             stored.contract == contract_name,
             ContractError::CannotMigrate {
