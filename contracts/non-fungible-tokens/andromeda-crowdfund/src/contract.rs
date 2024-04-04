@@ -299,6 +299,7 @@ fn execute_start_sale(
     let ExecuteContext {
         deps, info, env, ..
     } = ctx;
+    recipient.validate(&deps.as_ref())?;
     nonpayable(&info)?;
     let ado_contract = ADOContract::default();
 
@@ -687,7 +688,10 @@ fn transfer_tokens_and_send_funds(
                     );
                 }
                 Some(_) => {
-                    let amp_message = state.recipient.generate_amp_msg(Some(funds));
+                    let amp_message = state
+                        .recipient
+                        .generate_amp_msg(&deps.as_ref(), Some(funds))
+                        .unwrap();
                     pkt = pkt.add_message(amp_message);
                     let kernel_address = ADOContract::default().get_kernel_address(deps.storage)?;
                     let sub_msg = pkt.to_sub_msg(
