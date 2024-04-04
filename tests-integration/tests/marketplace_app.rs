@@ -194,7 +194,7 @@ fn test_marketplace_app() {
     let send_nft_msg = mock_send_nft(
         AndrAddr::from_string(marketplace_addr.clone()),
         token_id.to_string(),
-        to_json_binary(&mock_start_sale(Uint128::from(100u128), "uandr")).unwrap(),
+        to_json_binary(&mock_start_sale(Uint128::from(100u128), "uandr", false)).unwrap(),
     );
     router
         .execute_contract(

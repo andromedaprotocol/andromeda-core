@@ -20,6 +20,7 @@ pub struct TokenSaleState {
     pub status: Status,
     pub start_time: Expiration,
     pub end_time: Expiration,
+    pub uses_cw20: bool,
 }
 
 #[cw_serde]

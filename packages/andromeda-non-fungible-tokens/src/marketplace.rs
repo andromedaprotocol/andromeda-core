@@ -3,6 +3,7 @@ use andromeda_std::{
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
+use cw20::Cw20ReceiveMsg;
 use cw721::{Cw721ReceiveMsg, Expiration};
 use std::fmt::{Display, Formatter, Result};
 
@@ -16,6 +17,7 @@ pub struct InstantiateMsg {}
 #[cw_serde]
 pub enum ExecuteMsg {
     ReceiveNft(Cw721ReceiveMsg),
+    Receive(Cw20ReceiveMsg),
     /// Transfers NFT to buyer and sends funds to seller
     Buy {
         token_id: String,
@@ -27,6 +29,7 @@ pub enum ExecuteMsg {
         token_address: String,
         price: Uint128,
         coin_denom: String,
+        uses_cw20: bool,
     },
     CancelSale {
         token_id: String,
@@ -43,8 +46,18 @@ pub enum Cw721HookMsg {
         coin_denom: String,
         start_time: Option<Milliseconds>,
         duration: Option<Milliseconds>,
+        uses_cw20: bool,
     },
 }
+
+#[cw_serde]
+pub enum Cw20HookMsg {
+    Buy {
+        token_id: String,
+        token_address: String,
+    },
+}
+
 #[cw_serde]
 pub enum Status {
     Open,

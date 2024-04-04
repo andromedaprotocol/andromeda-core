@@ -24,12 +24,17 @@ pub fn mock_marketplace_instantiate_msg(
     }
 }
 
-pub fn mock_start_sale(price: Uint128, coin_denom: impl Into<String>) -> Cw721HookMsg {
+pub fn mock_start_sale(
+    price: Uint128,
+    coin_denom: impl Into<String>,
+    uses_cw20: bool,
+) -> Cw721HookMsg {
     Cw721HookMsg::StartSale {
         price,
         coin_denom: coin_denom.into(),
         start_time: None,
         duration: None,
+        uses_cw20,
     }
 }
 
