@@ -100,8 +100,12 @@ fn test_marketplace_app() {
             false,
         ),
     ];
-    let marketplace_init_msg =
-        mock_marketplace_instantiate_msg(andr.kernel_address.to_string(), Some(modules), None);
+    let marketplace_init_msg = mock_marketplace_instantiate_msg(
+        andr.kernel_address.to_string(),
+        Some(modules),
+        None,
+        None,
+    );
     let marketplace_component = AppComponent::new(
         "marketplace".to_string(),
         "marketplace".to_string(),

@@ -1,5 +1,6 @@
 use andromeda_std::{
-    andr_exec, andr_instantiate, andr_instantiate_modules, andr_query, common::Milliseconds,
+    amp::AndrAddr, andr_exec, andr_instantiate, andr_instantiate_modules, andr_query,
+    common::Milliseconds,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
@@ -11,7 +12,9 @@ use std::fmt::{Display, Formatter, Result};
 #[andr_instantiate_modules]
 #[cw_serde]
 #[serde(rename_all = "snake_case")]
-pub struct InstantiateMsg {}
+pub struct InstantiateMsg {
+    pub authorized_cw20_address: Option<AndrAddr>,
+}
 
 #[andr_exec]
 #[cw_serde]

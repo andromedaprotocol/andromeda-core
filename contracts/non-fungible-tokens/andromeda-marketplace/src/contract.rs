@@ -7,6 +7,7 @@ use andromeda_non_fungible_tokens::marketplace::{
     SaleStateResponse, Status,
 };
 use andromeda_std::ado_base::ownership::OwnershipMessage;
+use andromeda_std::ado_base::permissioning::Permission;
 use andromeda_std::ado_contract::ADOContract;
 
 use andromeda_std::common::actions::call_action;
@@ -63,6 +64,16 @@ pub fn instantiate(
     let owner = ADOContract::default().owner(deps.storage)?;
     let mod_resp =
         ADOContract::default().register_modules(owner.as_str(), deps.storage, msg.modules)?;
+
+    if let Some(authorized_cw20_address) = msg.authorized_cw20_address {
+        let addr = authorized_cw20_address.get_raw_address(&deps.as_ref())?;
+        ADOContract::set_permission(
+            deps.storage,
+            SEND_CW20_ACTION,
+            addr,
+            Permission::Whitelisted(None),
+        )?;
+    }
 
     Ok(inst_resp
         .add_attributes(mod_resp.attributes)
@@ -405,7 +416,7 @@ fn execute_buy(
     TOKEN_SALE_STATE.save(deps.storage, key, &token_sale_state)?;
 
     // Calculate the funds to be received after tax
-    let after_tax_payment = purchase_token(&mut deps, &info, token_sale_state.clone())?;
+    let after_tax_payment = purchase_token(&mut deps, &info, None, token_sale_state.clone())?;
 
     Ok(Response::new()
         .add_submessages(after_tax_payment.1)
@@ -524,7 +535,12 @@ fn execute_buy_cw20(
     TOKEN_SALE_STATE.save(deps.storage, key, &token_sale_state)?;
 
     // Calculate the funds to be received after tax
-    let after_tax_payment = purchase_token(&mut deps, &info, token_sale_state.clone())?;
+    let after_tax_payment = purchase_token(
+        &mut deps,
+        &info,
+        Some(amount_sent),
+        token_sale_state.clone(),
+    )?;
     let transfer_msg = Cw20ExecuteMsg::Transfer {
         recipient: token_sale_state.owner,
         amount: after_tax_payment.0.amount,
@@ -602,6 +618,7 @@ fn execute_cancel(
 fn purchase_token(
     deps: &mut DepsMut,
     info: &MessageInfo,
+    amount_sent: Option<Uint128>,
     state: TokenSaleState,
 ) -> Result<(Coin, Vec<SubMsg>), ContractError> {
     let total_cost = Coin::new(state.price.u128(), state.coin_denom.clone());
@@ -626,16 +643,29 @@ fn purchase_token(
         denom: state.coin_denom.clone(),
         amount: state.price + total_tax_amount,
     };
-    ensure!(
-        // has_coins(&info.funds, &required_payment),
-        info.funds[0].amount.eq(&required_payment.amount),
-        ContractError::InvalidFunds {
-            msg: format!(
-                "Invalid funds provided, expected: {}, received: {}",
-                required_payment, info.funds[0]
-            )
-        }
-    );
+    if !state.uses_cw20 {
+        ensure!(
+            // has_coins(&info.funds, &required_payment),
+            info.funds[0].amount.eq(&required_payment.amount),
+            ContractError::InvalidFunds {
+                msg: format!(
+                    "Invalid funds provided, expected: {}, received: {}",
+                    required_payment, info.funds[0]
+                )
+            }
+        );
+    } else {
+        let amount_sent = amount_sent.unwrap_or(Uint128::zero());
+        ensure!(
+            amount_sent.eq(&required_payment.amount),
+            ContractError::InvalidFunds {
+                msg: format!(
+                    "Invalid funds provided, expected: {}, received: {}",
+                    required_payment, amount_sent
+                )
+            }
+        );
+    }
 
     let after_tax_payment = Coin {
         denom: state.coin_denom,
