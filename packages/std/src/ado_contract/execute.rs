@@ -145,7 +145,7 @@ impl<'a> ADOContract<'a> {
         } else if contract_name.starts_with("crates.io:") {
             contract_name.strip_prefix("crates.io:").unwrap()
         } else {
-            &contract_name
+            contract_name
         };
         ensure!(
             stored.contract == contract_name,
