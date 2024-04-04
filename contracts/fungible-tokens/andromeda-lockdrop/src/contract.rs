@@ -462,7 +462,7 @@ pub fn execute_claim_rewards(ctx: ExecuteContext) -> Result<Response, ContractEr
 
     let amount_to_transfer = total_incentives - user_info.delegated_incentives;
     let token = Asset::cw20(
-        deps.api.addr_validate(config.incentive_token.as_ref())?,
+        config.incentive_token.get_raw_address(&deps.as_ref())?,
         amount_to_transfer,
     );
     let transfer_msg = token.transfer_msg(user_address.clone())?;
