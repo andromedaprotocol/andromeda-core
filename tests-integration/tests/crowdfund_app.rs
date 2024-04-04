@@ -31,7 +31,6 @@ fn mock_andromeda(app: &mut MockApp, admin_address: Addr) -> MockAndromeda {
     MockAndromeda::new(app, &admin_address)
 }
 
-// TODO: Fix to check wallet balance post sale
 #[test]
 fn test_crowdfund_app() {
     let mut router = mock_app();
@@ -203,9 +202,8 @@ fn test_crowdfund_app() {
     // Start Sale
     let token_price = coin(100, "uandr");
 
-    let sale_recipient =
-        Recipient::from_string(format!("/home/{owner}/app/{}", splitter_app_component.name))
-            .with_msg(mock_splitter_send_msg());
+    let sale_recipient = Recipient::from_string(format!("./{}", splitter_app_component.name))
+        .with_msg(mock_splitter_send_msg());
     let current_time = router.block_info().time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO;
 
     let start_msg = mock_start_crowdfund_msg(

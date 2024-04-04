@@ -182,7 +182,9 @@ fn execute_send(ctx: ExecuteContext) -> Result<Response, ContractError> {
         // let direct_message = recipient_addr
         //     .recipient
         //     .generate_direct_msg(&deps.as_ref(), vec_coin)?;
-        let amp_msg = recipient_addr.recipient.generate_amp_msg(Some(vec_coin));
+        let amp_msg = recipient_addr
+            .recipient
+            .generate_amp_msg(&deps.as_ref(), Some(vec_coin))?;
         pkt = pkt.add_message(amp_msg);
     }
     remainder_funds.retain(|x| x.amount > Uint128::zero());
