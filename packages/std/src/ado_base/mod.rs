@@ -30,6 +30,10 @@ pub struct InstantiateMsg {
 }
 
 #[cw_serde]
+#[serde(rename_all = "snake_case")]
+pub struct MigrateMsg {}
+
+#[cw_serde]
 pub enum AndromedaMsg {
     Ownership(OwnershipMessage),
     UpdateAppContract {

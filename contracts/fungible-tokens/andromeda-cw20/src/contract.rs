@@ -1,27 +1,25 @@
-use andromeda_fungible_tokens::cw20::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
+use andromeda_fungible_tokens::cw20::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use andromeda_std::{
     ado_base::{
         hooks::AndromedaHook, ownership::OwnershipMessage, AndromedaMsg, AndromedaQuery,
-        InstantiateMsg as BaseInstantiateMsg,
+        InstantiateMsg as BaseInstantiateMsg, MigrateMsg,
     },
     ado_contract::ADOContract,
     amp::AndrAddr,
     common::{actions::call_action, context::ExecuteContext, encode_binary, Funds},
-    error::{from_semver, ContractError},
+    error::ContractError,
 };
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    ensure, from_json, to_json_binary, Addr, Api, Binary, CosmosMsg, Deps, DepsMut, Env,
-    MessageInfo, Response, StdResult, Storage, SubMsg, Uint128, WasmMsg,
+    from_json, to_json_binary, Addr, Api, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
+    Response, StdResult, Storage, SubMsg, Uint128, WasmMsg,
 };
 
-use cw2::{get_contract_version, set_contract_version};
 use cw20::{Cw20Coin, Cw20ExecuteMsg};
 use cw20_base::{
     contract::{execute as execute_cw20, instantiate as cw20_instantiate, query as cw20_query},
     state::BALANCES,
 };
-use semver::Version;
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-cw20";
@@ -107,6 +105,34 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
             amount,
             msg,
         } => execute_send(ctx, contract, amount, msg),
+        ExecuteMsg::SendFrom {
+            owner,
+            contract,
+            amount,
+            msg,
+        } => {
+            let contract = contract.get_raw_address(&ctx.deps.as_ref())?.into_string();
+            let msg = Cw20ExecuteMsg::SendFrom {
+                owner,
+                contract,
+                amount,
+                msg,
+            };
+            Ok(execute_cw20(ctx.deps, ctx.env, ctx.info, msg)?)
+        }
+        ExecuteMsg::TransferFrom {
+            owner,
+            recipient,
+            amount,
+        } => {
+            let recipient = recipient.get_raw_address(&ctx.deps.as_ref())?.into_string();
+            let msg = Cw20ExecuteMsg::TransferFrom {
+                owner,
+                recipient,
+                amount,
+            };
+            Ok(execute_cw20(ctx.deps, ctx.env, ctx.info, msg)?)
+        }
         ExecuteMsg::Mint { recipient, amount } => execute_mint(ctx, recipient, amount),
         _ => {
             let serialized = encode_binary(&msg)?;
@@ -124,7 +150,7 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
 
 fn execute_transfer(
     ctx: ExecuteContext,
-    recipient: String,
+    recipient: AndrAddr,
     amount: Uint128,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
@@ -151,6 +177,7 @@ fn execute_transfer(
 
     let mut resp = filter_out_cw20_messages(msgs, deps.storage, deps.api, &info.sender)?;
 
+    let recipient = recipient.get_raw_address(&deps.as_ref())?.into_string();
     // Continue with standard cw20 operation
     let cw20_resp = execute_cw20(
         deps,
@@ -296,31 +323,7 @@ fn filter_out_cw20_messages(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-    // New version
-    let version: Version = CONTRACT_VERSION.parse().map_err(from_semver)?;
-
-    // Old version
-    let stored = get_contract_version(deps.storage)?;
-    let storage_version: Version = stored.version.parse().map_err(from_semver)?;
-
-    ensure!(
-        stored.contract == CONTRACT_NAME,
-        ContractError::CannotMigrate {
-            previous_contract: stored.contract,
-        }
-    );
-
-    // New version has to be newer/greater than the old version
-    ensure!(
-        storage_version < version,
-        ContractError::CannotMigrate {
-            previous_contract: stored.version,
-        }
-    );
-
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-
-    Ok(Response::default())
+    ADOContract::default().migrate(deps, CONTRACT_NAME, CONTRACT_VERSION)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

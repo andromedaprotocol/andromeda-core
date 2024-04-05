@@ -84,7 +84,10 @@ pub enum ExecuteMsg {
         extension: TokenExtension,
     },
     /// Transfers ownership of a token
-    TransferNft { recipient: String, token_id: String },
+    TransferNft {
+        recipient: AndrAddr,
+        token_id: String,
+    },
     /// Sends a token to another contract
     SendNft {
         contract: AndrAddr,
@@ -127,7 +130,7 @@ impl From<ExecuteMsg> for Cw721ExecuteMsg<TokenExtension, ExecuteMsg> {
                 recipient,
                 token_id,
             } => Cw721ExecuteMsg::TransferNft {
-                recipient,
+                recipient: recipient.to_string(),
                 token_id,
             },
             ExecuteMsg::SendNft {
@@ -305,7 +308,3 @@ impl From<QueryMsg> for Cw721QueryMsg<QueryMsg> {
         }
     }
 }
-
-#[cw_serde]
-#[serde(rename_all = "snake_case")]
-pub struct MigrateMsg {}

@@ -57,6 +57,6 @@ pub fn mock_cw20_send(contract: AndrAddr, amount: Uint128, msg: Binary) -> Execu
     }
 }
 
-pub fn mock_cw20_transfer(recipient: String, amount: Uint128) -> ExecuteMsg {
+pub fn mock_cw20_transfer(recipient: AndrAddr, amount: Uint128) -> ExecuteMsg {
     ExecuteMsg::Transfer { recipient, amount }
 }

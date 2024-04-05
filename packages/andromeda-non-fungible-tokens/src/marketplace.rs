@@ -129,7 +129,3 @@ pub struct SaleStateResponse {
 pub struct SaleIdsResponse {
     pub sale_ids: Vec<Uint128>,
 }
-
-#[cw_serde]
-#[serde(rename_all = "snake_case")]
-pub struct MigrateMsg {}

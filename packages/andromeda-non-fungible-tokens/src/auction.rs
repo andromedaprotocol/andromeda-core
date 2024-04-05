@@ -231,7 +231,3 @@ pub struct AuctionIdsResponse {
 pub struct BidsResponse {
     pub bids: Vec<Bid>,
 }
-
-#[cw_serde]
-#[serde(rename_all = "snake_case")]
-pub struct MigrateMsg {}

@@ -1040,7 +1040,7 @@ fn execute_claim_no_bids() {
             .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: MOCK_TOKEN_ADDR.to_owned(),
                 msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
-                    recipient: MOCK_TOKEN_OWNER.to_owned(),
+                    recipient: AndrAddr::from_string(MOCK_TOKEN_OWNER.to_owned()),
                     token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
                 })
                 .unwrap(),
@@ -1092,7 +1092,7 @@ fn execute_claim_no_bids_cw20() {
             .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: MOCK_TOKEN_ADDR.to_owned(),
                 msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
-                    recipient: MOCK_TOKEN_OWNER.to_owned(),
+                    recipient: AndrAddr::from_string(MOCK_TOKEN_OWNER.to_owned()),
                     token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
                 })
                 .unwrap(),
@@ -1150,7 +1150,7 @@ fn execute_claim() {
     let info = mock_info("any_user", &[]);
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
     let transfer_nft_msg = Cw721ExecuteMsg::TransferNft {
-        recipient: "sender".to_string(),
+        recipient: AndrAddr::from_string("sender".to_string()),
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
     };
     assert_eq!(
@@ -1221,7 +1221,7 @@ fn execute_claim_cw20() {
     let info = mock_info("any_user", &[]);
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
     let transfer_nft_msg = Cw721ExecuteMsg::TransferNft {
-        recipient: "sender".to_string(),
+        recipient: AndrAddr::from_string("sender".to_string()),
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
     };
     assert_eq!(
@@ -1348,7 +1348,7 @@ fn execute_cancel_no_bids() {
             .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: MOCK_TOKEN_ADDR.to_owned(),
                 msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
-                    recipient: MOCK_TOKEN_OWNER.to_owned(),
+                    recipient: AndrAddr::from_string(MOCK_TOKEN_OWNER.to_owned()),
                     token_id: MOCK_UNCLAIMED_TOKEN.to_owned()
                 })
                 .unwrap(),
@@ -1399,7 +1399,7 @@ fn execute_cancel_no_bids_cw20() {
             .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: MOCK_TOKEN_ADDR.to_owned(),
                 msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
-                    recipient: MOCK_TOKEN_OWNER.to_owned(),
+                    recipient: AndrAddr::from_string(MOCK_TOKEN_OWNER.to_owned()),
                     token_id: MOCK_UNCLAIMED_TOKEN.to_owned()
                 })
                 .unwrap(),
@@ -1460,7 +1460,7 @@ fn execute_cancel_with_bids() {
             .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: MOCK_TOKEN_ADDR.to_owned(),
                 msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
-                    recipient: MOCK_TOKEN_OWNER.to_owned(),
+                    recipient: AndrAddr::from_string(MOCK_TOKEN_OWNER.to_owned()),
                     token_id: MOCK_UNCLAIMED_TOKEN.to_owned()
                 })
                 .unwrap(),
@@ -1535,7 +1535,7 @@ fn execute_cancel_with_bids_cw20() {
             .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: MOCK_TOKEN_ADDR.to_owned(),
                 msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
-                    recipient: MOCK_TOKEN_OWNER.to_owned(),
+                    recipient: AndrAddr::from_string(MOCK_TOKEN_OWNER.to_owned()),
                     token_id: MOCK_UNCLAIMED_TOKEN.to_owned()
                 })
                 .unwrap(),
