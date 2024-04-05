@@ -362,6 +362,7 @@ fn execute_place_bid_multiple_bids() {
         whitelist: None,
         is_cancelled: false,
         min_bid: None,
+        owner: "owner".to_string(),
     };
 
     let res = query_latest_auction_state_helper(deps.as_ref(), env.clone());

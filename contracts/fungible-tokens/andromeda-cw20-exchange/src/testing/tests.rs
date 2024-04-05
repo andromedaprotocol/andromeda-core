@@ -1207,7 +1207,7 @@ fn test_andr_query() {
     //     to_json_binary(&exchange_asset.to_string()).unwrap(),
     // )));
     // let key_response: SaleResponse =
-    //     from_json(query(deps.as_ref(), env, key_msg).unwrap()).unwrap();
+    //     from_json(&query(deps.as_ref(), env, key_msg).unwrap()).unwrap();
 
     // assert_eq!(key_response.sale, Some(sale));
 }

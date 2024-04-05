@@ -13,7 +13,6 @@ use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
 use cosmwasm_std::{
     attr, ensure, entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Response, SubMsg,
 };
-use cw2::set_contract_version;
 
 use crate::state::{escrows, get_key, get_keys_for_recipient};
 
@@ -28,8 +27,6 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-
     let contract = ADOContract::default();
     let resp = contract.instantiate(
         deps.storage,

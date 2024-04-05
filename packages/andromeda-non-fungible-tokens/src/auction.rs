@@ -160,6 +160,7 @@ impl From<TokenAuctionState> for AuctionStateResponse {
             whitelist: token_auction_state.whitelist,
             is_cancelled: token_auction_state.is_cancelled,
             min_bid: token_auction_state.min_bid,
+            owner: token_auction_state.owner,
         }
     }
 }
@@ -198,6 +199,7 @@ pub struct AuctionStateResponse {
     pub whitelist: Option<Vec<Addr>>,
     pub min_bid: Option<Uint128>,
     pub is_cancelled: bool,
+    pub owner: String,
 }
 
 #[cw_serde]

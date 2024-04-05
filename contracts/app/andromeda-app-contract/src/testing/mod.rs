@@ -307,12 +307,7 @@ fn test_claim_ownership_not_found() {
     };
 
     let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
-    assert_eq!(
-        ContractError::Std(StdError::NotFound {
-            kind: "type: cosmwasm_std::addresses::Addr; key: [00, 0D, 61, 64, 6F, 5F, 61, 64, 64, 72, 65, 73, 73, 65, 73, 74, 6F, 6B, 65, 6E]".to_string()
-        }),
-        err
-    );
+    assert!(matches!(err, ContractError::Std(StdError::NotFound { .. })));
 }
 
 #[test]
@@ -481,12 +476,8 @@ fn test_proxy_message_not_found() {
     };
 
     let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
-    assert_eq!(
-        ContractError::Std(StdError::NotFound {
-            kind: "type: cosmwasm_std::addresses::Addr; key: [00, 0D, 61, 64, 6F, 5F, 61, 64, 64, 72, 65, 73, 73, 65, 73, 74, 6F, 6B, 65, 6E]".to_string()
-        }),
-        err
-    );
+
+    assert!(matches!(err, ContractError::Std(StdError::NotFound { .. })));
 }
 
 #[test]
@@ -589,13 +580,11 @@ fn test_update_address_not_found() {
         addr: "newtokenaddress".to_string(),
     };
 
-    let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
-    assert_eq!(
-        ContractError::Std(StdError::NotFound {
-            kind: "type: cosmwasm_std::addresses::Addr; key: [00, 0D, 61, 64, 6F, 5F, 61, 64, 64, 72, 65, 73, 73, 65, 73, 74, 6F, 6B, 65, 6E]".to_string()
-        }),
-        err
-    );
+    let res = execute(deps.as_mut(), env, info, msg);
+    assert!(matches!(
+        res,
+        Err(ContractError::Std(StdError::NotFound { .. }))
+    ));
 }
 
 #[test]

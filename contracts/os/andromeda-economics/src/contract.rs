@@ -10,7 +10,6 @@ use cosmwasm_std::{
     Deps, DepsMut, Empty, Env, MessageInfo, Response, Storage, SubMsg, Uint128, WasmMsg,
 };
 use cosmwasm_std::{Reply, StdError};
-use cw2::set_contract_version;
 use cw20::Cw20ReceiveMsg;
 
 use crate::{execute, query};
@@ -26,7 +25,6 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     ADOContract::default().instantiate(
         deps.storage,
         env,

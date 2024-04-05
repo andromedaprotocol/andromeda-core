@@ -1,13 +1,4 @@
-use crate::{
-    ado_base::{
-        ado_type::TypeResponse,
-        kernel_address::KernelAddressResponse,
-        ownership::{ContractOwnerResponse, OwnershipMessage},
-        version::VersionResponse,
-    },
-    amp::AndrAddr,
-    error::ContractError,
-};
+use crate::{ado_base::ownership::OwnershipMessage, amp::AndrAddr, error::ContractError};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{ensure, Addr, Api, QuerierWrapper};
 use regex::Regex;
@@ -237,13 +228,13 @@ pub enum QueryMsg {
     #[returns(AndrAddr)]
     ResolveSymlink { path: AndrAddr },
     // Base queries
-    #[returns(VersionResponse)]
+    #[returns(crate::ado_base::version::VersionResponse)]
     Version {},
-    #[returns(TypeResponse)]
+    #[returns(crate::ado_base::ado_type::TypeResponse)]
     Type {},
-    #[returns(ContractOwnerResponse)]
+    #[returns(crate::ado_base::ownership::ContractOwnerResponse)]
     Owner {},
-    #[returns(KernelAddressResponse)]
+    #[returns(crate::ado_base::kernel_address::KernelAddressResponse)]
     KernelAddress {},
 }
 

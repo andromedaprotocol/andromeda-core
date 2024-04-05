@@ -93,6 +93,18 @@ impl AppComponent {
         }
     }
 
+    pub fn symlink(
+        name: impl Into<String>,
+        ado_type: impl Into<String>,
+        symlink: impl Into<String>,
+    ) -> AppComponent {
+        AppComponent {
+            ado_type: ado_type.into(),
+            name: name.into(),
+            component_type: ComponentType::Symlink(AndrAddr::from_string(symlink.into())),
+        }
+    }
+
     pub fn verify(&self, _deps: &Deps) -> Result<(), ContractError> {
         if self.name.is_empty() {
             panic!("name cannot be empty");

@@ -12,54 +12,63 @@ pub use anyhow::Result as AnyResult;
 
 use crate::mock::MockApp;
 
-pub struct MockContract(Addr);
+pub type ExecuteResult = AnyResult<AppResponse>;
 
-impl MockContract {
-    pub fn new(addr: Addr) -> Self {
-        Self(addr)
-    }
+pub trait MockContract<E: Serialize + fmt::Debug, Q: Serialize + fmt::Debug> {
+    fn addr(&self) -> &Addr;
 
-    pub fn addr(&self) -> &Addr {
-        &self.0
-    }
-
-    pub fn execute<M: Serialize + fmt::Debug>(
+    fn execute(
         &self,
         app: &mut MockApp,
-        msg: M,
+        msg: &E,
         sender: Addr,
         funds: &[Coin],
     ) -> AnyResult<AppResponse> {
         app.execute_contract(sender, self.addr().clone(), &msg, funds)
     }
 
-    pub fn query<M: Serialize + fmt::Debug, T: DeserializeOwned>(
-        &self,
-        app: &MockApp,
-        msg: M,
-    ) -> T {
+    fn query<T: DeserializeOwned>(&self, app: &MockApp, msg: Q) -> T {
         app.wrap()
             .query_wasm_smart::<T>(self.addr().clone(), &msg)
             .unwrap()
     }
+}
 
-    pub fn query_owner(&self, app: &MockApp) -> String {
-        self.query::<AndromedaQuery, ContractOwnerResponse>(app, AndromedaQuery::Owner {})
+pub trait MockADO<E: Serialize + fmt::Debug, Q: Serialize + fmt::Debug>:
+    MockContract<E, Q>
+{
+    fn query_owner(&self, app: &MockApp) -> String {
+        app.wrap()
+            .query_wasm_smart::<ContractOwnerResponse>(self.addr(), &AndromedaQuery::Owner {})
+            .unwrap()
             .owner
     }
 
-    pub fn accept_ownership(&self, app: &mut MockApp, sender: Addr) -> AnyResult<AppResponse> {
-        self.execute(
-            app,
-            AndromedaMsg::Ownership(OwnershipMessage::AcceptOwnership {}),
+    fn accept_ownership(&self, app: &mut MockApp, sender: Addr) -> AnyResult<AppResponse> {
+        app.execute_contract(
             sender,
+            self.addr().clone(),
+            &AndromedaMsg::Ownership(OwnershipMessage::AcceptOwnership {}),
             &[],
         )
     }
 }
 
-impl From<String> for MockContract {
-    fn from(addr: String) -> Self {
-        Self(Addr::unchecked(addr))
-    }
+#[macro_export]
+macro_rules! mock_ado {
+    ($t:ident, $e:ident, $q:ident) => {
+        impl MockContract<$e, $q> for $t {
+            fn addr(&self) -> &Addr {
+                &self.0
+            }
+        }
+
+        impl From<Addr> for $t {
+            fn from(addr: Addr) -> Self {
+                Self(addr)
+            }
+        }
+
+        impl MockADO<$e, $q> for $t {}
+    };
 }

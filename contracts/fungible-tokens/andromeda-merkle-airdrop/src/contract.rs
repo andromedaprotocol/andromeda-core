@@ -6,7 +6,6 @@ use cosmwasm_std::{
     attr, ensure, to_json_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Empty,
     Env, MessageInfo, Response, StdResult, Uint128, WasmMsg,
 };
-use cw2::set_contract_version;
 use cw20::Cw20ExecuteMsg;
 use cw_asset::AssetInfoBase;
 use cw_utils::{nonpayable, Expiration};
@@ -39,8 +38,6 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-
     let config = Config {
         asset_info: msg.asset_info.check(deps.api, None)?,
     };

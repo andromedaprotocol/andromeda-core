@@ -5,10 +5,14 @@ use andromeda_fungible_tokens::cw20_staking::{
     AllocationConfig, Cw20HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg, RewardTokenUnchecked,
 };
 use andromeda_std::{ado_base::Module, amp::AndrAddr, common::Milliseconds};
-use cosmwasm_std::Empty;
+use andromeda_testing::{mock_ado, MockADO, MockContract};
+use cosmwasm_std::{Addr, Empty};
 
 use cw_asset::AssetInfoUnchecked;
 use cw_multi_test::{Contract, ContractWrapper};
+
+pub struct MockCW20Staking(pub Addr);
+mock_ado!(MockCW20Staking, ExecuteMsg, QueryMsg);
 
 pub fn mock_andromeda_cw20_staking() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new_with_empty(execute, instantiate, query);

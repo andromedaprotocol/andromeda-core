@@ -18,7 +18,6 @@ use cosmwasm_std::{
 
 use cw_utils::{nonpayable, Expiration};
 
-use cw2::set_contract_version;
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-weighted-distribution-splitter";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -35,7 +34,6 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     let _app_contract = ADOContract::default().get_app_contract(deps.storage)?;
     // Max 100 recipients
     ensure!(
