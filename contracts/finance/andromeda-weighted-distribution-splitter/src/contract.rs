@@ -229,7 +229,7 @@ fn execute_send(ctx: ExecuteContext) -> Result<Response, ContractError> {
     ensure!(
         !&info.funds.is_empty(),
         ContractError::InvalidFunds {
-            msg: "ensure! at least one coin to be sent".to_string(),
+            msg: "At least one coin should be sent".to_string(),
         }
     );
     // Can't send more than 5 types of coins

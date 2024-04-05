@@ -367,7 +367,7 @@ fn test_execute_buy_invalid_coins_sent() {
     assert_sale_created(deps.as_ref(), env.clone(), "uusd".to_string(), false);
 
     let error = ContractError::InvalidFunds {
-        msg: "Sales ensure! exactly one coin to be sent.".to_string(),
+        msg: "One coin should be sent.".to_string(),
     };
     let msg = ExecuteMsg::Buy {
         token_id: MOCK_UNCLAIMED_TOKEN.to_string(),

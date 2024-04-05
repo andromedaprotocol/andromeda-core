@@ -376,7 +376,7 @@ fn execute_buy(
     ensure!(
         info.funds.len() == 1,
         ContractError::InvalidFunds {
-            msg: "Sales ensure! exactly one coin to be sent.".to_string(),
+            msg: "One coin should be sent.".to_string(),
         }
     );
 
