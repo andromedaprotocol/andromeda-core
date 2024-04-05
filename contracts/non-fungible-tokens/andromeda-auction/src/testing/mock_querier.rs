@@ -137,12 +137,6 @@ impl WasmMockQuerier {
                 BankQuery::AllBalances { address: _ } => {
                     panic!("Unsupported Query")
                 }
-                BankQuery::DenomMetadata { denom: _ } => {
-                    panic!("Unsupported Query")
-                }
-                BankQuery::AllDenomMetadata { pagination: _ } => {
-                    panic!("Unsupported Query")
-                }
                 _ => panic!("Unsupported Query"),
             },
             _ => MockAndromedaQuerier::default().handle_query(&self.base, request),

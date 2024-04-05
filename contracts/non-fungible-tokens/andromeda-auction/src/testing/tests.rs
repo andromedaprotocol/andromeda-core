@@ -126,12 +126,12 @@ fn assert_auction_created(deps: Deps, whitelist: Option<Vec<Addr>>, min_bid: Opt
             coin_denom: "uusd".to_string(),
             uses_cw20: false,
             auction_id: 1u128.into(),
-            whitelist,
             owner: MOCK_TOKEN_OWNER.to_string(),
             token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
             token_address: MOCK_TOKEN_ADDR.to_owned(),
             is_cancelled: false,
             min_bid,
+            whitelist: whitelist.is_some()
         },
         TOKEN_AUCTION_STATE.load(deps.storage, 1u128).unwrap()
     );
@@ -165,12 +165,12 @@ fn assert_auction_created_cw20(deps: Deps, whitelist: Option<Vec<Addr>>, min_bid
             coin_denom: MOCK_CW20_ADDR.to_string(),
             uses_cw20: true,
             auction_id: 1u128.into(),
-            whitelist,
             owner: MOCK_TOKEN_OWNER.to_string(),
             token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
             token_address: MOCK_TOKEN_ADDR.to_owned(),
             is_cancelled: false,
             min_bid,
+            whitelist: whitelist.is_some()
         },
         TOKEN_AUCTION_STATE.load(deps.storage, 1u128).unwrap()
     );
@@ -472,9 +472,9 @@ fn execute_place_bid_multiple_bids() {
         auction_id: Uint128::from(1u128),
         coin_denom: "uusd".to_string(),
         uses_cw20: false,
-        whitelist: None,
         is_cancelled: false,
         min_bid: None,
+        whitelist: false,
     };
 
     let res = query_latest_auction_state_helper(deps.as_ref(), env.clone());
@@ -951,12 +951,12 @@ fn execute_update_auction() {
             coin_denom: "uluna".to_string(),
             uses_cw20: false,
             auction_id: 1u128.into(),
-            whitelist: Some(vec![Addr::unchecked("user")]),
             owner: MOCK_TOKEN_OWNER.to_string(),
             token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
             token_address: MOCK_TOKEN_ADDR.to_owned(),
             is_cancelled: false,
             min_bid: None,
+            whitelist: false
         },
         TOKEN_AUCTION_STATE
             .load(deps.as_ref().storage, 1u128)

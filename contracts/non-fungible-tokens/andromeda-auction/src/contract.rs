@@ -293,6 +293,20 @@ fn execute_start_auction(
     let auction_id = get_and_increment_next_auction_id(deps.storage, &token_id, &token_address)?;
     BIDS.save(deps.storage, auction_id.u128(), &vec![])?;
 
+    let uses_whitelist = if let Some(ref whitelist) = whitelist {
+        for whitelisted_address in whitelist {
+            ADOContract::set_permission(
+                deps.storage,
+                auction_id.to_string(),
+                whitelisted_address,
+                Permission::Whitelisted(None),
+            )?;
+        }
+        true
+    } else {
+        false
+    };
+
     let whitelist_str = format!("{:?}", &whitelist);
 
     TOKEN_AUCTION_STATE.save(
@@ -306,7 +320,7 @@ fn execute_start_auction(
             coin_denom: coin_denom.clone(),
             uses_cw20,
             auction_id,
-            whitelist,
+            whitelist: uses_whitelist,
             min_bid,
             owner: sender,
             token_id,
@@ -367,7 +381,6 @@ fn execute_update_auction(
 
     token_auction_state.start_time = start_expiration;
     token_auction_state.end_time = end_expiration;
-    token_auction_state.whitelist = whitelist.clone();
     token_auction_state.coin_denom = coin_denom.clone();
     token_auction_state.uses_cw20 = uses_cw20;
     token_auction_state.min_bid = min_bid;
@@ -399,6 +412,17 @@ fn execute_place_bid(
     let mut token_auction_state =
         get_existing_token_auction_state(deps.storage, &token_id, &token_address)?;
 
+    let uses_whitelist = token_auction_state.whitelist;
+
+    if uses_whitelist {
+        ADOContract::default().is_permissioned_strict(
+            deps.storage,
+            env.clone(),
+            token_auction_state.auction_id,
+            info.sender.clone(),
+        )?;
+    };
+
     ensure!(
         !token_auction_state.is_cancelled,
         ContractError::AuctionCancelled {}
@@ -424,12 +448,6 @@ fn execute_place_bid(
             msg: "One coin should be sent.".to_string(),
         }
     );
-    if let Some(ref whitelist) = token_auction_state.whitelist {
-        ensure!(
-            whitelist.iter().any(|x| x == info.sender),
-            ContractError::Unauthorized {}
-        );
-    }
 
     ensure!(
         token_auction_state.high_bidder_addr != info.sender,
@@ -514,6 +532,16 @@ fn execute_place_bid_cw20(
     let mut token_auction_state =
         get_existing_token_auction_state(deps.storage, &token_id, &token_address)?;
 
+    let uses_whitelist = token_auction_state.whitelist;
+    if uses_whitelist {
+        ADOContract::default().is_permissioned_strict(
+            deps.storage,
+            env.clone(),
+            token_auction_state.auction_id,
+            sender,
+        )?;
+    };
+
     ensure!(
         !token_auction_state.is_cancelled,
         ContractError::AuctionCancelled {}
@@ -535,12 +563,6 @@ fn execute_place_bid_cw20(
 
     let sender_addr = deps.api.addr_validate(sender)?;
 
-    if let Some(ref whitelist) = token_auction_state.whitelist {
-        ensure!(
-            whitelist.iter().any(|x| x == sender_addr),
-            ContractError::Unauthorized {}
-        );
-    }
     ensure!(
         token_auction_state.high_bidder_addr != sender_addr,
         ContractError::HighestBidderCannotOutBid {}
