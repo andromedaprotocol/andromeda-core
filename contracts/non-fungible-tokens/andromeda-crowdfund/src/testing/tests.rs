@@ -79,11 +79,11 @@ fn get_burn_message(token_id: impl Into<String>) -> CosmosMsg {
     })
 }
 
-fn get_transfer_message(token_id: impl Into<String>, recipient: impl Into<String>) -> CosmosMsg {
+fn get_transfer_message(token_id: impl Into<String>, recipient: AndrAddr) -> CosmosMsg {
     CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: MOCK_TOKEN_CONTRACT.to_owned(),
         msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
-            recipient: recipient.into(),
+            recipient,
             token_id: token_id.into(),
         })
         .unwrap(),
@@ -1462,7 +1462,10 @@ fn test_integration_conditions_met() {
     assert_eq!(
         Response::new()
             .add_attribute("action", "transfer_tokens_and_send_funds")
-            .add_message(get_transfer_message(MOCK_TOKENS_FOR_SALE[0], "A"))
+            .add_message(get_transfer_message(
+                MOCK_TOKENS_FOR_SALE[0],
+                AndrAddr::from_string("A")
+            ))
             .add_submessages(get_rates_messages())
             .add_submessage(generate_economics_message("anyone", "EndSale")),
         res
@@ -1482,8 +1485,14 @@ fn test_integration_conditions_met() {
     assert_eq!(
         Response::new()
             .add_attribute("action", "transfer_tokens_and_send_funds")
-            .add_message(get_transfer_message(MOCK_TOKENS_FOR_SALE[1], "A"))
-            .add_message(get_transfer_message(MOCK_TOKENS_FOR_SALE[2], "B"))
+            .add_message(get_transfer_message(
+                MOCK_TOKENS_FOR_SALE[1],
+                AndrAddr::from_string("A")
+            ))
+            .add_message(get_transfer_message(
+                MOCK_TOKENS_FOR_SALE[2],
+                AndrAddr::from_string("B")
+            ))
             .add_message(CosmosMsg::Bank(BankMsg::Send {
                 to_address: MOCK_ROYALTY_RECIPIENT.to_owned(),
                 amount: vec![Coin {
@@ -1521,8 +1530,14 @@ fn test_integration_conditions_met() {
     assert_eq!(
         Response::new()
             .add_attribute("action", "transfer_tokens_and_send_funds")
-            .add_message(get_transfer_message(MOCK_TOKENS_FOR_SALE[3], "C"))
-            .add_message(get_transfer_message(MOCK_TOKENS_FOR_SALE[4], "D"))
+            .add_message(get_transfer_message(
+                MOCK_TOKENS_FOR_SALE[3],
+                AndrAddr::from_string("C")
+            ))
+            .add_message(get_transfer_message(
+                MOCK_TOKENS_FOR_SALE[4],
+                AndrAddr::from_string("D")
+            ))
             .add_message(CosmosMsg::Bank(BankMsg::Send {
                 to_address: MOCK_ROYALTY_RECIPIENT.to_owned(),
                 amount: vec![Coin {
@@ -1625,7 +1640,10 @@ fn test_end_sale_single_purchase() {
         Response::new()
             .add_attribute("action", "transfer_tokens_and_send_funds")
             // Burn tokens that were not purchased
-            .add_message(get_transfer_message(MOCK_TOKENS_FOR_SALE[0], "A"))
+            .add_message(get_transfer_message(
+                MOCK_TOKENS_FOR_SALE[0],
+                AndrAddr::from_string("A")
+            ))
             .add_submessage(generate_economics_message("anyone", "EndSale")),
         res
     );
@@ -1678,7 +1696,10 @@ fn test_end_sale_all_tokens_sold() {
         Response::new()
             .add_attribute("action", "transfer_tokens_and_send_funds")
             // Burn tokens that were not purchased
-            .add_message(get_transfer_message(MOCK_TOKENS_FOR_SALE[0], "A"))
+            .add_message(get_transfer_message(
+                MOCK_TOKENS_FOR_SALE[0],
+                AndrAddr::from_string("A")
+            ))
             .add_submessage(generate_economics_message("anyone", "EndSale")),
         res
     );
@@ -1737,7 +1758,10 @@ fn test_end_sale_some_tokens_sold_threshold_met() {
         Response::new()
             .add_attribute("action", "transfer_tokens_and_send_funds")
             // Burn tokens that were not purchased
-            .add_message(get_transfer_message(MOCK_TOKENS_FOR_SALE[0], "A"))
+            .add_message(get_transfer_message(
+                MOCK_TOKENS_FOR_SALE[0],
+                AndrAddr::from_string("A")
+            ))
             .add_submessage(generate_economics_message("owner", "EndSale")),
         res
     );

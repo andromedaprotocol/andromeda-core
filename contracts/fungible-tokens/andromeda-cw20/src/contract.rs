@@ -105,6 +105,34 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
             amount,
             msg,
         } => execute_send(ctx, contract, amount, msg),
+        ExecuteMsg::SendFrom {
+            owner,
+            contract,
+            amount,
+            msg,
+        } => {
+            let contract = contract.get_raw_address(&ctx.deps.as_ref())?.into_string();
+            let msg = Cw20ExecuteMsg::SendFrom {
+                owner,
+                contract,
+                amount,
+                msg,
+            };
+            Ok(execute_cw20(ctx.deps, ctx.env, ctx.info, msg)?)
+        }
+        ExecuteMsg::TransferFrom {
+            owner,
+            recipient,
+            amount,
+        } => {
+            let recipient = recipient.get_raw_address(&ctx.deps.as_ref())?.into_string();
+            let msg = Cw20ExecuteMsg::TransferFrom {
+                owner,
+                recipient,
+                amount,
+            };
+            Ok(execute_cw20(ctx.deps, ctx.env, ctx.info, msg)?)
+        }
         ExecuteMsg::Mint { recipient, amount } => execute_mint(ctx, recipient, amount),
         _ => {
             let serialized = encode_binary(&msg)?;
@@ -122,7 +150,7 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
 
 fn execute_transfer(
     ctx: ExecuteContext,
-    recipient: String,
+    recipient: AndrAddr,
     amount: Uint128,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
@@ -149,6 +177,7 @@ fn execute_transfer(
 
     let mut resp = filter_out_cw20_messages(msgs, deps.storage, deps.api, &info.sender)?;
 
+    let recipient = recipient.get_raw_address(&deps.as_ref())?.into_string();
     // Continue with standard cw20 operation
     let cw20_resp = execute_cw20(
         deps,

@@ -78,7 +78,7 @@ fn test_transfer() {
     );
 
     let msg = ExecuteMsg::Transfer {
-        recipient: "other".into(),
+        recipient: AndrAddr::from_string("other"),
         amount: 100u128.into(),
     };
 

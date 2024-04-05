@@ -768,7 +768,7 @@ fn transfer_tokens_and_send_funds(
         transfer_msgs.push(CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: token_contract_address.to_string(),
             msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
-                recipient: purchaser,
+                recipient: AndrAddr::from_string(purchaser),
                 token_id: purchase.token_id,
             })?,
             funds: vec![],
