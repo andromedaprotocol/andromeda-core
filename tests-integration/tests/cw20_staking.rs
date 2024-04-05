@@ -164,7 +164,7 @@ fn test_cw20_staking_app() {
 
     // Stake Tokens
     let staking_msg_one = mock_cw20_send(
-        AndrAddr::from_string(cw20_staking_addr.to_string()),
+        AndrAddr::from_string("./cw20staking"),
         Uint128::from(1000u128),
         to_json_binary(&mock_cw20_stake()).unwrap(),
     );
@@ -303,7 +303,7 @@ fn test_cw20_staking_app_delayed() {
 
     // Stake Tokens
     let staking_msg_one = mock_cw20_send(
-        AndrAddr::from_string(cw20_staking_addr.to_string()),
+        AndrAddr::from_string("./cw20staking"),
         Uint128::from(1000u128),
         to_json_binary(&mock_cw20_stake()).unwrap(),
     );
