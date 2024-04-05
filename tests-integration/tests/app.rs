@@ -1,9 +1,9 @@
 #![cfg(not(target_arch = "wasm32"))]
 
 use andromeda_app::app::AppComponent;
-use andromeda_app_contract::mock::{mock_andromeda_app, mock_app_instantiate_msg, MockAppContract};
+use andromeda_app_contract::mock::{mock_andromeda_app, MockAppContract};
 use andromeda_cw721::mock::{mock_andromeda_cw721, mock_cw721_instantiate_msg};
-use andromeda_std::{amp::AndrAddr, os::vfs::convert_component_name};
+use andromeda_std::os::vfs::convert_component_name;
 use andromeda_testing::{mock::mock_app, mock_builder::MockAndromedaBuilder, MockContract};
 use cosmwasm_std::{coin, to_json_binary};
 
@@ -38,73 +38,20 @@ fn test_app() {
         "cw721".to_string(),
         to_json_binary(&cw721_init_msg).unwrap(),
     );
-
-    // Create App
-    let app_components = vec![cw721_component.clone()];
-    let app_init_msg = mock_app_instantiate_msg(
-        "SimpleApp".to_string(),
-        vec![],
-        andr.kernel_address.clone(),
-        None,
+    let cw721_component_ref = AppComponent::new(
+        "cw721-ref".to_string(),
+        "cw721".to_string(),
+        to_json_binary(&cw721_init_msg).unwrap(),
     );
 
-    let app_addr = router
-        .instantiate_contract(
-            app_code_id,
-            owner.clone(),
-            &app_init_msg,
-            &[],
-            "Simple App",
-            Some(owner.to_string()),
-        )
-        .unwrap();
-
-    router
-        .execute_contract(
-            owner.clone(),
-            app_addr.clone(),
-            &mock_add_app_component_msg(cw721_component),
-            &[],
-        )
-        .unwrap();
-
-    let components: Vec<AppComponent> = router
-        .wrap()
-        .query_wasm_smart(app_addr.clone(), &mock_get_components_msg())
-        .unwrap();
-    assert_eq!(components, app_components);
-
-    let component_addresses: Vec<ComponentAddress> = router
-        .wrap()
-        .query_wasm_smart(app_addr.clone(), &mock_get_adresses_with_names_msg())
-        .unwrap();
-    assert_eq!(component_addresses.len(), components.len());
-
-    let owner_str = owner.to_string();
-    let cw721_component_with_symlink = AppComponent {
-        name: "cw721-ref".to_string(),
-        ado_type: "cw721".to_string(),
-        component_type: andromeda_app::app::ComponentType::Symlink(AndrAddr::from_string(format!(
-            "~{owner_str}/{0}/cw721",
-            convert_component_name(app_name)
-        ))),
-    };
-
     // Create App
-    let app_components = vec![cw721_component, cw721_component_with_symlink];
-    let app_init_msg = mock_app_instantiate_msg(
-        app_name.to_string(),
-        app_components.clone(),
-        andr.kernel.addr().clone(),
-        None,
-    );
-
+    let app_components = vec![cw721_component, cw721_component_ref];
     let app_code_id = andr.get_code_id(&mut router, "app-contract");
     let app = MockAppContract::instantiate(
         app_code_id,
         owner,
         &mut router,
-        "Simple App",
+        app_name,
         app_components.clone(),
         andr.kernel.addr(),
         None,
@@ -113,14 +60,12 @@ fn test_app() {
     let components = app.query_components(&router);
     assert_eq!(components, app_components);
 
-    let cw721_component_with_symlink = AppComponent {
-        name: "cw721-ref-2".to_string(),
-        ado_type: "cw721".to_string(),
-        component_type: andromeda_app::app::ComponentType::Symlink(AndrAddr::from_string(format!(
-            "~{owner_str}/{0}/cw721",
-            convert_component_name(app_init_msg.name.as_str())
-        ))),
-    };
+    let owner_str = owner.to_string();
+    let cw721_component_with_symlink = AppComponent::symlink(
+        "cw721-ref-2",
+        "cw721",
+        format!("~{owner_str}/{0}/cw721", convert_component_name(app_name)),
+    );
     app.execute_add_app_component(&mut router, owner.clone(), cw721_component_with_symlink)
         .unwrap();
 

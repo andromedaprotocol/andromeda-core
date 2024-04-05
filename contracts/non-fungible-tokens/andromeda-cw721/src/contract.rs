@@ -17,7 +17,6 @@ use andromeda_std::{
     amp::AndrAddr,
     common::{actions::call_action, context::ExecuteContext},
 };
-use cw2::set_contract_version;
 
 use andromeda_std::{
     ado_base::{hooks::AndromedaHook, InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
@@ -40,8 +39,6 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-
     let contract_info = ContractInfoResponse {
         name: msg.name,
         symbol: msg.symbol,

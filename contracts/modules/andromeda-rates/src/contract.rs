@@ -18,7 +18,6 @@ use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     attr, coin, ensure, Binary, Coin, Deps, DepsMut, Env, Event, MessageInfo, Response, SubMsg,
 };
-use cw2::set_contract_version;
 use cw20::Cw20Coin;
 use cw_utils::nonpayable;
 // version info for migration info
@@ -32,7 +31,6 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     let config = Config { rates: msg.rates };
     CONFIG.save(deps.storage, &config)?;
 

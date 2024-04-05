@@ -41,7 +41,6 @@ dependencies = [
  "cw-multi-test",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
- "cw2 1.1.2",
 ]
 
 [[package]]
@@ -54,7 +53,6 @@ dependencies = [
  "cw-asset",
  "cw-multi-test",
  "cw-storage-plus 1.2.0",
- "cw2 1.1.2",
  "semver",
 ]
 
@@ -80,7 +78,6 @@ dependencies = [
  "cosmwasm-std",
  "cw-multi-test",
  "cw-storage-plus 1.2.0",
- "cw2 1.1.2",
  "enum-repr",
  "prost 0.9.0",
 ]
@@ -98,7 +95,6 @@ dependencies = [
  "cw-multi-test",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
- "cw2 1.1.2",
  "cw20",
  "cw721 0.18.0",
 ]
@@ -115,8 +111,8 @@ dependencies = [
  "cw-multi-test",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
- "cw2 1.1.2",
  "schemars",
+ "semver",
  "serde",
 ]
 
@@ -166,7 +162,6 @@ dependencies = [
  "cw-multi-test",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
- "cw2 1.1.2",
  "cw20",
 ]
 
@@ -184,7 +179,6 @@ dependencies = [
  "cw-multi-test",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
- "cw2 1.1.2",
  "cw20",
  "cw20-base",
 ]
@@ -200,7 +194,6 @@ dependencies = [
  "cosmwasm-std",
  "cw-multi-test",
  "cw-storage-plus 1.2.0",
- "cw2 1.1.2",
  "cw721 0.18.0",
  "cw721-base 0.18.0",
 ]
@@ -225,7 +218,6 @@ dependencies = [
  "cosmwasm-std",
  "cw-multi-test",
  "cw-storage-plus 1.2.0",
- "cw2 1.1.2",
  "cw20",
 ]
 
@@ -279,7 +271,6 @@ dependencies = [
  "cosmwasm-std",
  "cw-multi-test",
  "cw-storage-plus 1.2.0",
- "cw2 1.1.2",
  "hex",
  "itertools 0.10.5",
  "osmosis-std",
@@ -306,7 +297,6 @@ dependencies = [
  "cw-multi-test",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
- "cw2 1.1.2",
  "cw20",
 ]
 
@@ -349,7 +339,6 @@ dependencies = [
  "cw-multi-test",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
- "cw2 1.1.2",
  "cw20",
  "hex",
  "serde",
@@ -393,7 +382,6 @@ dependencies = [
  "cw-multi-test",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
- "cw2 1.1.2",
  "cw20",
 ]
 
@@ -410,7 +398,6 @@ dependencies = [
  "cw-multi-test",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
- "cw2 1.1.2",
  "cw20",
 ]
 
@@ -426,7 +413,6 @@ dependencies = [
  "cw-multi-test",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
- "cw2 1.1.2",
  "cw20",
 ]
 
@@ -443,7 +429,6 @@ dependencies = [
  "cw-multi-test",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
- "cw2 1.1.2",
 ]
 
 [[package]]
@@ -509,7 +494,6 @@ dependencies = [
  "cw-multi-test",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
- "cw2 1.1.2",
 ]
 
 [[package]]
@@ -523,7 +507,6 @@ dependencies = [
  "cw-multi-test",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
- "cw2 1.1.2",
 ]
 
 [[package]]
@@ -539,7 +522,6 @@ dependencies = [
  "cw-multi-test",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
- "cw2 1.1.2",
 ]
 
 [[package]]
@@ -551,7 +533,6 @@ dependencies = [
  "cosmwasm-std",
  "cw-multi-test",
  "cw-storage-plus 1.2.0",
- "cw2 1.1.2",
  "serde",
 ]
 
@@ -567,7 +548,6 @@ dependencies = [
  "cw-multi-test",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
- "cw2 1.1.2",
 ]
 
 [[package]]

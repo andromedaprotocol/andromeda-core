@@ -1,7 +1,6 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response};
-use cw2::set_contract_version;
 
 use andromeda_data_storage::primitive::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use andromeda_std::{
@@ -28,7 +27,6 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     let resp = ADOContract::default().instantiate(
         deps.storage,
         env,

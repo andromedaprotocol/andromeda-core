@@ -7,7 +7,6 @@ use andromeda_std::os::adodb::{ADOVersion, ExecuteMsg, InstantiateMsg, QueryMsg}
 use cosmwasm_std::{
     entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError,
 };
-use cw2::set_contract_version;
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-adodb";
@@ -20,7 +19,6 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     ADOContract::default().instantiate(
         deps.storage,
         env,

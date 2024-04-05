@@ -10,7 +10,6 @@ use andromeda_std::{
 
 use cosmwasm_std::{attr, ensure, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError};
 use cosmwasm_std::{entry_point, to_json_binary};
-use cw2::set_contract_version;
 use cw_utils::nonpayable;
 
 use crate::state::{add_address, includes_address, remove_address, IS_INCLUSIVE};
@@ -25,7 +24,6 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     IS_INCLUSIVE.save(deps.storage, &msg.is_inclusive)?;
 
     let inst_resp = ADOContract::default().instantiate(

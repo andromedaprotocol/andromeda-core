@@ -27,7 +27,6 @@ use cosmwasm_std::{
     DepsMut, Env, MessageInfo, QuerierWrapper, QueryRequest, Response, Storage, SubMsg, Uint128,
     WasmMsg, WasmQuery,
 };
-use cw2::set_contract_version;
 use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, Cw721ReceiveMsg, Expiration, OwnerOfResponse};
 use cw_utils::nonpayable;
 
@@ -43,7 +42,6 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     NEXT_AUCTION_ID.save(deps.storage, &Uint128::from(1u128))?;
     let contract = ADOContract::default();
     let resp = contract.instantiate(

@@ -9,7 +9,6 @@ use cosmwasm_std::{
     ensure, Binary, Coin, CosmosMsg, Deps, DepsMut, DistributionMsg, Env, GovMsg, MessageInfo,
     QuerierWrapper, Response, StakingMsg, Uint128, VoteOption,
 };
-use cw2::set_contract_version;
 use cw_asset::AssetInfo;
 
 use cw_utils::nonpayable;
@@ -35,8 +34,6 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-
     let config = Config {
         is_multi_batch_enabled: msg.is_multi_batch_enabled,
         recipient: msg.recipient,

@@ -18,7 +18,6 @@ use cosmwasm_std::{
     ensure, entry_point, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
     Response, Uint128,
 };
-use cw2::set_contract_version;
 
 use cw_utils::{nonpayable, one_coin};
 
@@ -33,8 +32,6 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-
     match msg.minimal_withdrawal_frequency {
         MinimumFrequency::Time { time } => ALLOWED_COIN.save(
             deps.storage,

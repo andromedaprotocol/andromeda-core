@@ -13,7 +13,7 @@ crate-type = ["cdylib", "rlib"]
 cosmwasm-std = { workspace = true }
 cosmwasm-schema = { workspace = true }
 cw-storage-plus = { workspace = true }
-cw2 = { workspace = true }
+
 cw-utils = { workspace = true }
 
 andromeda-ecosystem = { workspace = true }
