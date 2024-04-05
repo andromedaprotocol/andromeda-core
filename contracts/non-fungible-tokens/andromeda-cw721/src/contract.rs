@@ -394,11 +394,11 @@ fn check_can_send(
 }
 
 fn execute_update_transfer_agreement(
-    env: ExecuteContext,
+    ctx: ExecuteContext,
     token_id: String,
     agreement: Option<TransferAgreement>,
 ) -> Result<Response, ContractError> {
-    let ExecuteContext { deps, info, .. } = env;
+    let ExecuteContext { deps, info, .. } = ctx;
     let contract = AndrCW721Contract::default();
     let token = contract.tokens.load(deps.storage, &token_id)?;
     ensure!(token.owner == info.sender, ContractError::Unauthorized {});
@@ -422,8 +422,8 @@ fn execute_update_transfer_agreement(
     Ok(Response::default())
 }
 
-fn execute_archive(env: ExecuteContext, token_id: String) -> Result<Response, ContractError> {
-    let ExecuteContext { deps, info, .. } = env;
+fn execute_archive(ctx: ExecuteContext, token_id: String) -> Result<Response, ContractError> {
+    let ExecuteContext { deps, info, .. } = ctx;
     ensure!(
         !is_archived(deps.storage, &token_id)?,
         ContractError::TokenIsArchived {}
@@ -439,8 +439,8 @@ fn execute_archive(env: ExecuteContext, token_id: String) -> Result<Response, Co
     Ok(Response::default())
 }
 
-fn execute_burn(env: ExecuteContext, token_id: String) -> Result<Response, ContractError> {
-    let ExecuteContext { deps, info, .. } = env;
+fn execute_burn(ctx: ExecuteContext, token_id: String) -> Result<Response, ContractError> {
+    let ExecuteContext { deps, info, .. } = ctx;
     let contract = AndrCW721Contract::default();
     let token = contract.tokens.load(deps.storage, &token_id)?;
     ensure!(token.owner == info.sender, ContractError::Unauthorized {});
