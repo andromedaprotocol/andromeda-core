@@ -258,20 +258,21 @@ fn execute_batch_mint(
 }
 
 fn execute_transfer(
-    env: ExecuteContext,
-    recipient: String,
+    ctx: ExecuteContext,
+    recipient: AndrAddr,
     token_id: String,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
         deps, info, env, ..
-    } = env;
+    } = ctx;
     let base_contract = ADOContract::default();
+    let recipient_address = recipient.get_raw_address(&deps.as_ref())?.into_string();
     let responses = base_contract.module_hook::<Response>(
         &deps.as_ref(),
         AndromedaHook::OnTokenTransfer {
             token_id: token_id.clone(),
             sender: info.sender.to_string(),
-            recipient: recipient.clone(),
+            recipient: recipient_address.clone(),
         },
     )?;
     // Reduce all responses into one.
@@ -301,7 +302,7 @@ fn execute_transfer(
             Funds::Native(agreement_amount.clone()),
             encode_binary(&ExecuteMsg::TransferNft {
                 token_id: token_id.clone(),
-                recipient: recipient.clone(),
+                recipient,
             })?,
         )?;
         let remaining_amount = remainder.try_get_coin()?;
@@ -317,13 +318,13 @@ fn execute_transfer(
     };
 
     check_can_send(deps.as_ref(), env, info, &token_id, &token, tax_amount)?;
-    token.owner = deps.api.addr_validate(&recipient)?;
+    token.owner = deps.api.addr_validate(&recipient_address)?;
     token.approvals.clear();
     TRANSFER_AGREEMENTS.remove(deps.storage, &token_id);
     contract.tokens.save(deps.storage, &token_id, &token)?;
     Ok(resp
         .add_attribute("action", "transfer")
-        .add_attribute("recipient", recipient))
+        .add_attribute("recipient", recipient_address))
 }
 
 fn get_transfer_agreement_amount(
