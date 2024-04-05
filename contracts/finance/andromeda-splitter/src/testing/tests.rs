@@ -184,8 +184,12 @@ fn test_execute_send() {
     ];
     let msg = ExecuteMsg::Send {};
 
-    let amp_msg_1 = recip1.generate_amp_msg(Some(vec![Coin::new(1000, "uluna")]));
-    let amp_msg_2 = recip2.generate_amp_msg(Some(vec![Coin::new(2000, "uluna")]));
+    let amp_msg_1 = recip1
+        .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(1000, "uluna")]))
+        .unwrap();
+    let amp_msg_2 = recip2
+        .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(2000, "uluna")]))
+        .unwrap();
     let amp_pkt = AMPPkt::new(
         MOCK_CONTRACT_ADDR.to_string(),
         MOCK_CONTRACT_ADDR.to_string(),
@@ -255,8 +259,12 @@ fn test_execute_send_ado_recipient() {
     ];
     let msg = ExecuteMsg::Send {};
 
-    let amp_msg_1 = recip1.generate_amp_msg(Some(vec![Coin::new(1000, "uluna")]));
-    let amp_msg_2 = recip2.generate_amp_msg(Some(vec![Coin::new(2000, "uluna")]));
+    let amp_msg_1 = recip1
+        .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(1000, "uluna")]))
+        .unwrap();
+    let amp_msg_2 = recip2
+        .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(2000, "uluna")]))
+        .unwrap();
     let amp_pkt = AMPPkt::new(
         MOCK_CONTRACT_ADDR.to_string(),
         MOCK_CONTRACT_ADDR.to_string(),

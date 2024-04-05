@@ -39,6 +39,47 @@ fn test_app() {
         to_json_binary(&cw721_init_msg).unwrap(),
     );
 
+    // Create App
+    let app_components = vec![cw721_component.clone()];
+    let app_init_msg = mock_app_instantiate_msg(
+        "SimpleApp".to_string(),
+        vec![],
+        andr.kernel_address.clone(),
+        None,
+    );
+
+    let app_addr = router
+        .instantiate_contract(
+            app_code_id,
+            owner.clone(),
+            &app_init_msg,
+            &[],
+            "Simple App",
+            Some(owner.to_string()),
+        )
+        .unwrap();
+
+    router
+        .execute_contract(
+            owner.clone(),
+            app_addr.clone(),
+            &mock_add_app_component_msg(cw721_component),
+            &[],
+        )
+        .unwrap();
+
+    let components: Vec<AppComponent> = router
+        .wrap()
+        .query_wasm_smart(app_addr.clone(), &mock_get_components_msg())
+        .unwrap();
+    assert_eq!(components, app_components);
+
+    let component_addresses: Vec<ComponentAddress> = router
+        .wrap()
+        .query_wasm_smart(app_addr.clone(), &mock_get_adresses_with_names_msg())
+        .unwrap();
+    assert_eq!(component_addresses.len(), components.len());
+
     let owner_str = owner.to_string();
     let cw721_component_with_symlink = AppComponent {
         name: "cw721-ref".to_string(),

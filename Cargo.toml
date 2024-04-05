@@ -28,8 +28,8 @@ panic = 'abort'
 strip = true
 
 [workspace.dependencies]
-andromeda-std = { version = "0.1.0", path = "./packages/std" }
-andromeda-macros = { path = "./packages/std/macros", version = "0.1.0" }
+andromeda-std = { path = "./packages/std" }
+andromeda-macros = { path = "./packages/std/macros", version = "1.0.0-rc1" }
 andromeda-non-fungible-tokens = { path = "./packages/andromeda-non-fungible-tokens" }
 andromeda-fungible-tokens = { path = "./packages/andromeda-fungible-tokens" }
 andromeda-finance = { path = "./packages/andromeda-finance" }

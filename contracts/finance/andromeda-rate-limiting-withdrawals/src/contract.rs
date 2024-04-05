@@ -1,8 +1,7 @@
 use crate::state::{ACCOUNTS, ALLOWED_COIN};
 
 use andromeda_finance::rate_limiting_withdrawals::{
-    AccountDetails, CoinAllowance, ExecuteMsg, InstantiateMsg, MigrateMsg, MinimumFrequency,
-    QueryMsg,
+    AccountDetails, CoinAllowance, ExecuteMsg, InstantiateMsg, MinimumFrequency, QueryMsg,
 };
 use andromeda_std::ado_base::ownership::OwnershipMessage;
 use andromeda_std::ado_contract::ADOContract;
@@ -10,19 +9,18 @@ use andromeda_std::common::actions::call_action;
 use andromeda_std::common::context::ExecuteContext;
 use andromeda_std::common::Milliseconds;
 use andromeda_std::{
-    ado_base::{hooks::AndromedaHook, InstantiateMsg as BaseInstantiateMsg},
+    ado_base::{hooks::AndromedaHook, InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     common::encode_binary,
-    error::{from_semver, ContractError},
+    error::ContractError,
 };
 
 use cosmwasm_std::{
     ensure, entry_point, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
     Response, Uint128,
 };
-use cw2::{get_contract_version, set_contract_version};
+use cw2::set_contract_version;
 
 use cw_utils::{nonpayable, one_coin};
-use semver::Version;
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-rate-limiting-withdrawals";
@@ -294,31 +292,7 @@ fn execute_withdraw(ctx: ExecuteContext, amount: Uint128) -> Result<Response, Co
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-    // New version
-    let version: Version = CONTRACT_VERSION.parse().map_err(from_semver)?;
-
-    // Old version
-    let stored = get_contract_version(deps.storage)?;
-    let storage_version: Version = stored.version.parse().map_err(from_semver)?;
-
-    ensure!(
-        stored.contract == CONTRACT_NAME,
-        ContractError::CannotMigrate {
-            previous_contract: stored.contract,
-        }
-    );
-
-    // New version has to be newer/greater than the old version
-    ensure!(
-        storage_version < version,
-        ContractError::CannotMigrate {
-            previous_contract: stored.version,
-        }
-    );
-
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-
-    Ok(Response::default())
+    ADOContract::default().migrate(deps, CONTRACT_NAME, CONTRACT_VERSION)
 }
 
 #[entry_point]

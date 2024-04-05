@@ -13,8 +13,6 @@ crate-type = ["cdylib", "rlib"]
 cosmwasm-std = { workspace = true }
 cosmwasm-schema = { workspace = true }
 cw-storage-plus = { workspace = true }
-cw2 = { workspace = true }
-semver = { workspace = true }
 andromeda-app = { path = "../../../packages/andromeda-app" }
 andromeda-std = { workspace = true }
 enum-repr = { workspace = true }

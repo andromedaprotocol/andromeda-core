@@ -164,7 +164,7 @@ pub fn do_ibc_packet_receive(
 }
 
 pub fn ibc_create_ado(
-    _execute_env: ExecuteContext,
+    _execute_ctx: ExecuteContext,
     _owner: AndrAddr,
     _ado_type: String,
     _msg: Binary,
@@ -179,14 +179,14 @@ pub fn ibc_create_ado(
 }
 
 pub fn ibc_register_username(
-    execute_env: ExecuteContext,
+    execute_ctx: ExecuteContext,
     username: String,
     addr: String,
 ) -> Result<IbcReceiveResponse, ContractError> {
-    let vfs_address = KERNEL_ADDRESSES.load(execute_env.deps.storage, VFS_KEY)?;
+    let vfs_address = KERNEL_ADDRESSES.load(execute_ctx.deps.storage, VFS_KEY)?;
     let msg = VFSExecuteMsg::RegisterUser {
         username,
-        address: Some(execute_env.deps.api.addr_validate(&addr)?),
+        address: Some(execute_ctx.deps.api.addr_validate(&addr)?),
     };
     let sub_msg: SubMsg<Empty> = SubMsg::reply_on_error(
         WasmMsg::Execute {

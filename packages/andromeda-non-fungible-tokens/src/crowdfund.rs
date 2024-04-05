@@ -107,7 +107,3 @@ pub struct CrowdfundMintMsg {
     /// Any custom extension used by this contract
     pub extension: TokenExtension,
 }
-
-#[cw_serde]
-#[serde(rename_all = "snake_case")]
-pub struct MigrateMsg {}

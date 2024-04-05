@@ -66,7 +66,7 @@ fn test_transfer_nft() {
     );
 
     let transfer_msg = ExecuteMsg::TransferNft {
-        recipient: Addr::unchecked("recipient").to_string(),
+        recipient: AndrAddr::from_string(Addr::unchecked("recipient").to_string()),
         token_id: token_id.clone(),
     };
 
@@ -148,7 +148,7 @@ fn test_agreed_transfer_nft() {
     .unwrap();
 
     let transfer_msg = ExecuteMsg::TransferNft {
-        recipient: Addr::unchecked("recipient").to_string(),
+        recipient: AndrAddr::from_string(Addr::unchecked("recipient").to_string()),
         token_id: token_id.clone(),
     };
 
@@ -210,7 +210,7 @@ fn test_agreed_transfer_nft_wildcard() {
 
     // Transfer the nft
     let transfer_msg = ExecuteMsg::TransferNft {
-        recipient: Addr::unchecked("recipient").to_string(),
+        recipient: AndrAddr::from_string(Addr::unchecked("recipient").to_string()),
         token_id: token_id.clone(),
     };
 

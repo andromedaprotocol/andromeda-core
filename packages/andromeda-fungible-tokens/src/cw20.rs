@@ -39,7 +39,10 @@ impl From<InstantiateMsg> for Cw20InstantiateMsg {
 #[cw_serde]
 pub enum ExecuteMsg {
     /// Transfer is a base message to move tokens to another account without triggering actions
-    Transfer { recipient: String, amount: Uint128 },
+    Transfer {
+        recipient: AndrAddr,
+        amount: Uint128,
+    },
     /// Burn is a base message to destroy tokens forever
     Burn { amount: Uint128 },
     /// Send is a base message to transfer tokens to a contract and trigger an action
@@ -69,14 +72,14 @@ pub enum ExecuteMsg {
     /// if `env.sender` has sufficient pre-approval.
     TransferFrom {
         owner: String,
-        recipient: String,
+        recipient: AndrAddr,
         amount: Uint128,
     },
     /// Only with "approval" extension. Sends amount tokens from owner -> contract
     /// if `env.sender` has sufficient pre-approval.
     SendFrom {
         owner: String,
-        contract: String,
+        contract: AndrAddr,
         amount: Uint128,
         msg: Binary,
     },
@@ -103,9 +106,10 @@ pub enum ExecuteMsg {
 impl From<ExecuteMsg> for Cw20ExecuteMsg {
     fn from(msg: ExecuteMsg) -> Self {
         match msg {
-            ExecuteMsg::Transfer { recipient, amount } => {
-                Cw20ExecuteMsg::Transfer { recipient, amount }
-            }
+            ExecuteMsg::Transfer { recipient, amount } => Cw20ExecuteMsg::Transfer {
+                recipient: recipient.to_string(),
+                amount,
+            },
             ExecuteMsg::Burn { amount } => Cw20ExecuteMsg::Burn { amount },
             ExecuteMsg::Send {
                 contract,
@@ -140,7 +144,7 @@ impl From<ExecuteMsg> for Cw20ExecuteMsg {
                 amount,
             } => Cw20ExecuteMsg::TransferFrom {
                 owner,
-                recipient,
+                recipient: recipient.to_string(),
                 amount,
             },
             ExecuteMsg::SendFrom {
@@ -150,7 +154,7 @@ impl From<ExecuteMsg> for Cw20ExecuteMsg {
                 msg,
             } => Cw20ExecuteMsg::SendFrom {
                 owner,
-                contract,
+                contract: contract.to_string(),
                 amount,
                 msg,
             },
@@ -170,10 +174,6 @@ impl From<ExecuteMsg> for Cw20ExecuteMsg {
         }
     }
 }
-
-#[cw_serde]
-#[serde(rename_all = "snake_case")]
-pub struct MigrateMsg {}
 
 #[andr_query]
 #[cw_serde]

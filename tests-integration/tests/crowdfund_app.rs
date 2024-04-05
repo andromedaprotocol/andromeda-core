@@ -25,7 +25,6 @@ use andromeda_vault::mock::mock_andromeda_vault;
 use cosmwasm_std::{coin, to_json_binary, BlockInfo, Decimal, Uint128};
 use cw_multi_test::Executor;
 
-// TODO: Fix to check wallet balance post sale
 #[test]
 fn test_crowdfund_app() {
     let mut router = mock_app(None);
@@ -114,7 +113,7 @@ fn test_crowdfund_app() {
 
     let splitter_recipients = vec![
         AddressPercent {
-            recipient: Recipient::from_string(vault_one_recipient_addr),
+            recipient: Recipient::from_string(format!("~{vault_one_recipient_addr}")),
             percent: Decimal::from_str("0.5").unwrap(),
         },
         AddressPercent {

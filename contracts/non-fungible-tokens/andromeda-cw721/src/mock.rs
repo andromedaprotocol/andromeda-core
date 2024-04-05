@@ -161,7 +161,7 @@ pub fn mock_send_nft(contract: AndrAddr, token_id: String, msg: Binary) -> Execu
     }
 }
 
-pub fn mock_transfer_nft(recipient: String, token_id: String) -> ExecuteMsg {
+pub fn mock_transfer_nft(recipient: AndrAddr, token_id: String) -> ExecuteMsg {
     ExecuteMsg::TransferNft {
         recipient,
         token_id,

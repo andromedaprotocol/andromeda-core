@@ -1,3 +1,4 @@
+use andromeda_std::amp::AndrAddr;
 use andromeda_std::andr_instantiate_modules;
 use andromeda_std::common::Milliseconds;
 use andromeda_std::{andr_exec, andr_instantiate, andr_query};
@@ -18,7 +19,7 @@ pub struct InstantiateMsg {
     /// Number of milliseconds for which lockup withdrawals will be allowed
     pub withdrawal_window: Milliseconds,
     /// The token being given as incentive.
-    pub incentive_token: String,
+    pub incentive_token: AndrAddr,
     /// The native token being deposited.
     pub native_denom: String,
 }
@@ -83,7 +84,7 @@ pub struct ConfigResponse {
     /// Total token lockdrop incentives to be distributed among the users.
     pub lockdrop_incentives: Uint128,
     /// The token being given as incentive.
-    pub incentive_token: String,
+    pub incentive_token: AndrAddr,
     /// The native token being deposited.
     pub native_denom: String,
 }
@@ -103,6 +104,3 @@ pub struct UserInfoResponse {
     pub is_lockdrop_claimed: bool,
     pub withdrawal_flag: bool,
 }
-
-#[cw_serde]
-pub struct MigrateMsg {}

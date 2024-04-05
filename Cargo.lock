@@ -42,7 +42,6 @@ dependencies = [
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
  "cw2 1.1.2",
- "semver",
 ]
 
 [[package]]
@@ -84,7 +83,6 @@ dependencies = [
  "cw2 1.1.2",
  "enum-repr",
  "prost 0.9.0",
- "semver",
 ]
 
 [[package]]
@@ -103,7 +101,6 @@ dependencies = [
  "cw2 1.1.2",
  "cw20",
  "cw721 0.18.0",
- "semver",
 ]
 
 [[package]]
@@ -120,7 +117,6 @@ dependencies = [
  "cw-utils 1.0.3",
  "cw2 1.1.2",
  "schemars",
- "semver",
  "serde",
 ]
 
@@ -137,9 +133,7 @@ dependencies = [
  "cw-multi-test",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
- "cw2 1.1.2",
  "cw721 0.18.0",
- "semver",
 ]
 
 [[package]]
@@ -155,10 +149,8 @@ dependencies = [
  "cw-multi-test",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
- "cw2 1.1.2",
  "cw20",
  "cw20-base",
- "semver",
 ]
 
 [[package]]
@@ -176,7 +168,6 @@ dependencies = [
  "cw-utils 1.0.3",
  "cw2 1.1.2",
  "cw20",
- "semver",
 ]
 
 [[package]]
@@ -196,7 +187,6 @@ dependencies = [
  "cw2 1.1.2",
  "cw20",
  "cw20-base",
- "semver",
 ]
 
 [[package]]
@@ -213,7 +203,6 @@ dependencies = [
  "cw2 1.1.2",
  "cw721 0.18.0",
  "cw721-base 0.18.0",
- "semver",
 ]
 
 [[package]]
@@ -238,7 +227,6 @@ dependencies = [
  "cw-storage-plus 1.2.0",
  "cw2 1.1.2",
  "cw20",
- "semver",
 ]
 
 [[package]]
@@ -298,7 +286,6 @@ dependencies = [
  "osmosis-std-derive 0.15.3",
  "prost 0.11.9",
  "schemars",
- "semver",
  "serde",
  "serde-cw-value",
  "serde-json-wasm 1.0.1",
@@ -321,12 +308,11 @@ dependencies = [
  "cw-utils 1.0.3",
  "cw2 1.1.2",
  "cw20",
- "semver",
 ]
 
 [[package]]
 name = "andromeda-macros"
-version = "0.1.0"
+version = "1.0.0-rc1"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -346,9 +332,7 @@ dependencies = [
  "cw-multi-test",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
- "cw2 1.1.2",
  "cw721 0.18.0",
- "semver",
 ]
 
 [[package]]
@@ -368,7 +352,6 @@ dependencies = [
  "cw2 1.1.2",
  "cw20",
  "hex",
- "semver",
  "serde",
  "sha2 0.10.8",
 ]
@@ -412,7 +395,6 @@ dependencies = [
  "cw-utils 1.0.3",
  "cw2 1.1.2",
  "cw20",
- "semver",
 ]
 
 [[package]]
@@ -430,7 +412,6 @@ dependencies = [
  "cw-utils 1.0.3",
  "cw2 1.1.2",
  "cw20",
- "semver",
 ]
 
 [[package]]
@@ -447,7 +428,6 @@ dependencies = [
  "cw-utils 1.0.3",
  "cw2 1.1.2",
  "cw20",
- "semver",
 ]
 
 [[package]]
@@ -464,12 +444,11 @@ dependencies = [
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
  "cw2 1.1.2",
- "semver",
 ]
 
 [[package]]
 name = "andromeda-std"
-version = "0.1.2"
+version = "1.0.0-rc1"
 dependencies = [
  "andromeda-macros",
  "cosmwasm-schema",
@@ -531,7 +510,6 @@ dependencies = [
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
  "cw2 1.1.2",
- "semver",
 ]
 
 [[package]]
@@ -546,7 +524,6 @@ dependencies = [
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
  "cw2 1.1.2",
- "semver",
 ]
 
 [[package]]
@@ -563,7 +540,6 @@ dependencies = [
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
  "cw2 1.1.2",
- "semver",
 ]
 
 [[package]]
@@ -576,7 +552,6 @@ dependencies = [
  "cw-multi-test",
  "cw-storage-plus 1.2.0",
  "cw2 1.1.2",
- "semver",
  "serde",
 ]
 
@@ -593,7 +568,6 @@ dependencies = [
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
  "cw2 1.1.2",
- "semver",
 ]
 
 [[package]]

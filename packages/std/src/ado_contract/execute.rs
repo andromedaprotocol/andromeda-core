@@ -3,6 +3,7 @@ use crate::amp::addresses::AndrAddr;
 use crate::amp::messages::AMPPkt;
 use crate::common::context::ExecuteContext;
 use crate::common::reply::ReplyId;
+use crate::error::from_semver;
 use crate::os::{aos_querier::AOSQuerier, economics::ExecuteMsg as EconomicsExecuteMsg};
 use crate::{
     ado_base::{AndromedaMsg, InstantiateMsg},
@@ -12,6 +13,8 @@ use cosmwasm_std::{
     attr, ensure, from_json, to_json_binary, Addr, Api, ContractInfoResponse, CosmosMsg, Deps,
     DepsMut, Env, MessageInfo, QuerierWrapper, Response, Storage, SubMsg, WasmMsg,
 };
+use cw2::{get_contract_version, set_contract_version};
+use semver::Version;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 
@@ -125,6 +128,43 @@ impl<'a> ADOContract<'a> {
         }
     }
 
+    pub fn migrate(
+        &self,
+        deps: DepsMut,
+        contract_name: &str,
+        contract_version: &str,
+    ) -> Result<Response, ContractError> {
+        // New version
+        let version: Version = contract_version.parse().map_err(from_semver)?;
+
+        // Old version
+        let stored = get_contract_version(deps.storage)?;
+        let storage_version: Version = stored.version.parse().map_err(from_semver)?;
+        let contract_name = if contract_name.starts_with("crates.io:andromeda-") {
+            contract_name.strip_prefix("crates.io:andromeda-").unwrap()
+        } else if contract_name.starts_with("crates.io:") {
+            contract_name.strip_prefix("crates.io:").unwrap()
+        } else {
+            contract_name
+        };
+        ensure!(
+            stored.contract == contract_name,
+            ContractError::CannotMigrate {
+                previous_contract: stored.contract,
+            }
+        );
+
+        // New version has to be newer/greater than the old version
+        ensure!(
+            storage_version < version,
+            ContractError::CannotMigrate {
+                previous_contract: stored.version,
+            }
+        );
+
+        set_contract_version(deps.storage, contract_name, contract_version)?;
+        Ok(Response::default())
+    }
     /// Validates all provided `AndrAddr` addresses.
     ///
     /// Requires the VFS address to be set if any address is a VFS path.

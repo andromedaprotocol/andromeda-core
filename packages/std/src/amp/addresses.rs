@@ -119,7 +119,7 @@ impl AndrAddr {
     }
 
     /// Converts a local path to a valid VFS path by replacing `./` with the app contract address
-    fn local_path_to_vfs_path(
+    pub fn local_path_to_vfs_path(
         &self,
         storage: &dyn Storage,
         querier: &QuerierWrapper,
