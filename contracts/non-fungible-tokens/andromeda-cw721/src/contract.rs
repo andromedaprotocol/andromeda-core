@@ -9,7 +9,7 @@ use crate::state::{
     is_archived, ANDR_MINTER, ARCHIVED, BATCH_MINT_ACTION, MINT_ACTION, TRANSFER_AGREEMENTS,
 };
 use andromeda_non_fungible_tokens::cw721::{
-    ExecuteMsg, InstantiateMsg, MigrateMsg, MintMsg, QueryMsg, TokenExtension, TransferAgreement,
+    ExecuteMsg, InstantiateMsg, MintMsg, QueryMsg, TokenExtension, TransferAgreement,
 };
 use andromeda_std::{
     ado_base::{AndromedaMsg, AndromedaQuery},
@@ -17,15 +17,14 @@ use andromeda_std::{
     amp::AndrAddr,
     common::{actions::call_action, context::ExecuteContext},
 };
-use cw2::{get_contract_version, set_contract_version};
-use semver::Version;
+use cw2::set_contract_version;
 
 use andromeda_std::{
-    ado_base::{hooks::AndromedaHook, InstantiateMsg as BaseInstantiateMsg},
+    ado_base::{hooks::AndromedaHook, InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     common::encode_binary,
     common::rates::get_tax_amount,
     common::Funds,
-    error::{from_semver, ContractError},
+    error::ContractError,
 };
 use cw721::{ContractInfoResponse, Cw721Execute};
 use cw721_base::{state::TokenInfo, Cw721Contract, ExecuteMsg as Cw721ExecuteMsg};
@@ -511,29 +510,5 @@ pub fn query_minter(deps: Deps) -> Result<String, ContractError> {
 
 #[cfg_attr(not(feature = "imported"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-    // New version
-    let version: Version = CONTRACT_VERSION.parse().map_err(from_semver)?;
-
-    // Old version
-    let stored = get_contract_version(deps.storage)?;
-    let storage_version: Version = stored.version.parse().map_err(from_semver)?;
-
-    ensure!(
-        stored.contract == CONTRACT_NAME,
-        ContractError::CannotMigrate {
-            previous_contract: stored.contract,
-        }
-    );
-
-    // New version has to be newer/greater than the old version
-    ensure!(
-        storage_version < version,
-        ContractError::CannotMigrate {
-            previous_contract: stored.version,
-        }
-    );
-
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-
-    Ok(Response::default())
+    ADOContract::default().migrate(deps, CONTRACT_NAME, CONTRACT_VERSION)
 }

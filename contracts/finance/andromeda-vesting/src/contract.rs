@@ -9,22 +9,20 @@ use cosmwasm_std::{
     ensure, Binary, Coin, CosmosMsg, Deps, DepsMut, DistributionMsg, Env, GovMsg, MessageInfo,
     QuerierWrapper, Response, StakingMsg, Uint128, VoteOption,
 };
-use cw2::{get_contract_version, set_contract_version};
+use cw2::set_contract_version;
 use cw_asset::AssetInfo;
 
 use cw_utils::nonpayable;
-use semver::Version;
 use std::cmp;
 
 use crate::state::{
     batches, get_all_batches_with_ids, get_claimable_batches_with_ids, save_new_batch, Batch,
     CONFIG,
 };
-use andromeda_finance::vesting::{
-    BatchResponse, Config, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
-};
+use andromeda_finance::vesting::{BatchResponse, Config, ExecuteMsg, InstantiateMsg, QueryMsg};
 use andromeda_std::{
-    ado_base::InstantiateMsg as BaseInstantiateMsg, common::encode_binary, error::from_semver,
+    ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
+    common::encode_binary,
 };
 
 const CONTRACT_NAME: &str = "crates.io:andromeda-vesting";
@@ -542,31 +540,7 @@ fn get_set_withdraw_address_msg(address: String) -> CosmosMsg {
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-    // New version
-    let version: Version = CONTRACT_VERSION.parse().map_err(from_semver)?;
-
-    // Old version
-    let stored = get_contract_version(deps.storage)?;
-    let storage_version: Version = stored.version.parse().map_err(from_semver)?;
-
-    ensure!(
-        stored.contract == CONTRACT_NAME,
-        ContractError::CannotMigrate {
-            previous_contract: stored.contract,
-        }
-    );
-
-    // New version has to be newer/greater than the old version
-    ensure!(
-        storage_version < version,
-        ContractError::CannotMigrate {
-            previous_contract: stored.version,
-        }
-    );
-
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-
-    Ok(Response::default())
+    ADOContract::default().migrate(deps, CONTRACT_NAME, CONTRACT_VERSION)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

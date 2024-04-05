@@ -104,6 +104,3 @@ pub struct UserInfoResponse {
     pub is_lockdrop_claimed: bool,
     pub withdrawal_flag: bool,
 }
-
-#[cw_serde]
-pub struct MigrateMsg {}

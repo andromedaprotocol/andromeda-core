@@ -1,27 +1,26 @@
 #[cfg(not(feature = "library"))]
 use crate::state::{Config, CONFIG};
 use andromeda_modules::rates::{
-    calculate_fee, ExecuteMsg, InstantiateMsg, MigrateMsg, PaymentAttribute, PaymentsResponse,
-    QueryMsg, RateInfo,
+    calculate_fee, ExecuteMsg, InstantiateMsg, PaymentAttribute, PaymentsResponse, QueryMsg,
+    RateInfo,
 };
 use andromeda_std::{
     ado_base::{
         hooks::{AndromedaHook, OnFundsTransferResponse},
-        InstantiateMsg as BaseInstantiateMsg,
+        InstantiateMsg as BaseInstantiateMsg, MigrateMsg,
     },
     ado_contract::ADOContract,
     common::{context::ExecuteContext, deduct_funds, encode_binary, Funds},
-    error::{from_semver, ContractError},
+    error::ContractError,
 };
 
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     attr, coin, ensure, Binary, Coin, Deps, DepsMut, Env, Event, MessageInfo, Response, SubMsg,
 };
-use cw2::{get_contract_version, set_contract_version};
+use cw2::set_contract_version;
 use cw20::Cw20Coin;
 use cw_utils::nonpayable;
-use semver::Version;
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-rates";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -98,31 +97,7 @@ fn execute_update_rates(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-    // New version
-    let version: Version = CONTRACT_VERSION.parse().map_err(from_semver)?;
-
-    // Old version
-    let stored = get_contract_version(deps.storage)?;
-    let storage_version: Version = stored.version.parse().map_err(from_semver)?;
-
-    ensure!(
-        stored.contract == CONTRACT_NAME,
-        ContractError::CannotMigrate {
-            previous_contract: stored.contract,
-        }
-    );
-
-    // New version has to be newer/greater than the old version
-    ensure!(
-        storage_version < version,
-        ContractError::CannotMigrate {
-            previous_contract: stored.version,
-        }
-    );
-
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-
-    Ok(Response::default())
+    ADOContract::default().migrate(deps, CONTRACT_NAME, CONTRACT_VERSION)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

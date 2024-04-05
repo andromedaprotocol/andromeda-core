@@ -25,10 +25,6 @@ pub enum ExecuteMsg {
     },
 }
 
-#[cw_serde]
-#[serde(rename_all = "snake_case")]
-pub struct MigrateMsg {}
-
 #[andr_query]
 #[cw_serde]
 #[derive(QueryResponses)]
