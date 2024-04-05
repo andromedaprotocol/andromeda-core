@@ -559,23 +559,11 @@ fn execute_buy_cw20(
             (None, None)
         }
     }) {
-        Some(result) => result,
+        Some((tax_recipient, tax_amount)) => (tax_recipient, tax_amount),
         None => (None, None),
     };
 
-    // Ensure tax_recipient and tax_amount are not None
-    let tax_transfer_msg = match (tax_recipient.clone(), tax_amount) {
-        (Some(recipient), Some(amount)) => Cw20ExecuteMsg::Transfer { recipient, amount },
-        _ => Cw20ExecuteMsg::Transfer {
-            recipient: tax_recipient.unwrap_or(token_sale_state.owner),
-            amount: Uint128::zero(),
-        },
-    };
-
-    let tax_wasm_msg = wasm_execute(sale_currency, &tax_transfer_msg, vec![])?;
-
-    Ok(Response::new()
-        .add_message(tax_wasm_msg)
+    let resp: Response = Response::new()
         // Send funds to the original owner.
         .add_message(wasm_msg)
         // Send NFT to buyer.
@@ -591,7 +579,18 @@ fn execute_buy_cw20(
         .add_attribute("token_id", token_id)
         .add_attribute("token_contract", token_sale_state.token_address)
         .add_attribute("recipient", sender.to_string())
-        .add_attribute("sale_id", token_sale_state.sale_id))
+        .add_attribute("sale_id", token_sale_state.sale_id);
+
+    match (tax_recipient, tax_amount) {
+        (Some(recipient), Some(amount)) => {
+            let tax_transfer_msg = Cw20ExecuteMsg::Transfer { recipient, amount };
+            let tax_wasm_msg = wasm_execute(sale_currency, &tax_transfer_msg, vec![])?;
+            // Add tax message in case there's a tax recipient and amount
+            Ok(resp.add_message(tax_wasm_msg))
+        }
+
+        _ => Ok(resp),
+    }
 }
 
 fn execute_cancel(
