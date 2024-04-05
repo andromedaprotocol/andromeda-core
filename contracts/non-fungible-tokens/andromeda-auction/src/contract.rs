@@ -379,11 +379,26 @@ fn execute_update_auction(
         ContractError::StartTimeAfterEndTime {}
     );
 
+    let uses_whitelist = if let Some(ref whitelist) = whitelist {
+        for whitelisted_address in whitelist {
+            ADOContract::set_permission(
+                deps.storage,
+                token_auction_state.auction_id.to_string(),
+                whitelisted_address,
+                Permission::Whitelisted(None),
+            )?;
+        }
+        true
+    } else {
+        false
+    };
+
     token_auction_state.start_time = start_expiration;
     token_auction_state.end_time = end_expiration;
     token_auction_state.coin_denom = coin_denom.clone();
     token_auction_state.uses_cw20 = uses_cw20;
     token_auction_state.min_bid = min_bid;
+    token_auction_state.whitelist = uses_whitelist;
     TOKEN_AUCTION_STATE.save(
         deps.storage,
         token_auction_state.auction_id.u128(),

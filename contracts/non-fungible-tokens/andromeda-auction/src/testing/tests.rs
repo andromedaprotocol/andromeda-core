@@ -956,7 +956,7 @@ fn execute_update_auction() {
             token_address: MOCK_TOKEN_ADDR.to_owned(),
             is_cancelled: false,
             min_bid: None,
-            whitelist: false
+            whitelist: true
         },
         TOKEN_AUCTION_STATE
             .load(deps.as_ref().storage, 1u128)
