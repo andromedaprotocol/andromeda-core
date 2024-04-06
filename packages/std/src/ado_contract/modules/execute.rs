@@ -22,10 +22,14 @@ impl<'a> ADOContract<'a> {
     pub(crate) fn execute_register_module(
         &self,
         storage: &mut dyn Storage,
-        _sender: &str,
+        sender: &str,
         module: Module,
         should_validate: bool,
     ) -> Result<Response, ContractError> {
+        ensure!(
+            self.is_owner_or_operator(storage, sender)?,
+            ContractError::Unauthorized {}
+        );
         let resp = Response::default();
         let idx = self.register_module(storage, &module)?;
         if should_validate {

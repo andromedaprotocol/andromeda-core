@@ -48,7 +48,7 @@ pub fn instantiate(
         env,
         deps.api,
         &deps.querier,
-        info.clone(),
+        info,
         BaseInstantiateMsg {
             ado_type: CONTRACT_NAME.to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
@@ -57,8 +57,8 @@ pub fn instantiate(
         },
     )?;
 
-    let modules_resp =
-        contract.register_modules(info.sender.as_str(), deps.storage, msg.modules)?;
+    let owner = ADOContract::default().owner(deps.storage)?;
+    let modules_resp = contract.register_modules(owner.as_str(), deps.storage, msg.modules)?;
 
     if let Some(authorized_token_addresses) = msg.authorized_token_addresses {
         if !authorized_token_addresses.is_empty() {
