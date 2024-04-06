@@ -7,11 +7,17 @@ use andromeda_auction::mock::{
 };
 use andromeda_cw721::mock::{mock_andromeda_cw721, mock_cw721_instantiate_msg, MockCW721};
 
-use andromeda_std::common::Milliseconds;
+use andromeda_finance::splitter::AddressPercent;
+use andromeda_modules::rates::{PercentRate, Rate, RateInfo};
+use andromeda_rates::mock::{mock_andromeda_rates, mock_rates_instantiate_msg};
+use andromeda_splitter::mock::{
+    mock_andromeda_splitter, mock_splitter_instantiate_msg, mock_splitter_send_msg,
+};
+use andromeda_std::{ado_base::Module, amp::Recipient, common::Milliseconds};
 use andromeda_testing::{
     mock::mock_app, mock_builder::MockAndromedaBuilder, mock_contract::MockContract,
 };
-use cosmwasm_std::{coin, to_json_binary, Addr, BlockInfo, Uint128};
+use cosmwasm_std::{coin, to_json_binary, Addr, BlockInfo, Decimal, Uint128};
 use cw_multi_test::Executor;
 
 #[test]
@@ -22,16 +28,22 @@ fn test_auction_app() {
             ("owner", vec![]),
             ("buyer_one", vec![coin(1000, "uandr")]),
             ("buyer_two", vec![coin(1000, "uandr")]),
+            ("recipient_one", vec![]),
+            ("recipient_two", vec![]),
         ])
         .with_contracts(vec![
             ("cw721", mock_andromeda_cw721()),
             ("auction", mock_andromeda_auction()),
             ("app-contract", mock_andromeda_app()),
+            ("rates", mock_andromeda_rates()),
+            ("splitter", mock_andromeda_splitter()),
         ])
         .build(&mut router);
     let owner = andr.get_wallet("owner");
     let buyer_one = andr.get_wallet("buyer_one");
     let buyer_two = andr.get_wallet("buyer_two");
+    let recipient_one = andr.get_wallet("recipient_one");
+    let recipient_two = andr.get_wallet("recipient_two");
 
     // Generate App Components
     let cw721_init_msg = mock_cw721_instantiate_msg(
@@ -48,8 +60,50 @@ fn test_auction_app() {
         to_json_binary(&cw721_init_msg).unwrap(),
     );
 
-    let auction_init_msg =
-        mock_auction_instantiate_msg(None, andr.kernel.addr().to_string(), None, None);
+    let rates_init_msg = mock_rates_instantiate_msg(
+        vec![RateInfo {
+            is_additive: false,
+            description: None,
+            rate: Rate::Percent(PercentRate {
+                percent: Decimal::one(),
+            }),
+            recipients: vec![
+                Recipient::from_string("./splitter").with_msg(mock_splitter_send_msg())
+            ],
+        }],
+        andr.kernel.addr(),
+        None,
+    );
+    let rates_component =
+        AppComponent::new("rates", "rates", to_json_binary(&rates_init_msg).unwrap());
+
+    let splitter_init_msg = mock_splitter_instantiate_msg(
+        vec![
+            AddressPercent::new(
+                Recipient::from_string(format!("{recipient_one}")),
+                Decimal::from_ratio(1u8, 2u8),
+            ),
+            AddressPercent::new(
+                Recipient::from_string(format!("{recipient_two}")),
+                Decimal::from_ratio(1u8, 2u8),
+            ),
+        ],
+        andr.kernel.addr(),
+        None,
+        None,
+    );
+    let splitter_component = AppComponent::new(
+        "splitter",
+        "splitter",
+        to_json_binary(&splitter_init_msg).unwrap(),
+    );
+
+    let auction_init_msg = mock_auction_instantiate_msg(
+        Some(vec![Module::new("rates", "./rates", false)]),
+        andr.kernel.addr().to_string(),
+        None,
+        None,
+    );
     let auction_component = AppComponent::new(
         "auction".to_string(),
         "auction".to_string(),
@@ -57,7 +111,12 @@ fn test_auction_app() {
     );
 
     // Create App
-    let app_components = vec![cw721_component.clone(), auction_component.clone()];
+    let app_components = vec![
+        cw721_component.clone(),
+        auction_component.clone(),
+        rates_component,
+        splitter_component,
+    ];
     let app = MockAppContract::instantiate(
         andr.get_code_id(&mut router, "app-contract"),
         owner,
@@ -174,5 +233,9 @@ fn test_auction_app() {
     let token_owner = cw721.query_owner_of(&router, "0");
     assert_eq!(token_owner, buyer_two);
     let owner_balance = router.wrap().query_balance(owner, "uandr").unwrap();
-    assert_eq!(owner_balance.amount, Uint128::from(100u128));
+    assert_eq!(owner_balance.amount, Uint128::zero());
+    let recipient_one_balance = router.wrap().query_balance(recipient_one, "uandr").unwrap();
+    assert_eq!(recipient_one_balance.amount, Uint128::from(50u128));
+    let recipient_two_balance = router.wrap().query_balance(recipient_two, "uandr").unwrap();
+    assert_eq!(recipient_two_balance.amount, Uint128::from(50u128));
 }

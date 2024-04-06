@@ -15,7 +15,6 @@ use andromeda_std::{
         actions::call_action,
         encode_binary,
         expiration::{expiration_from_milliseconds, get_and_validate_start_time},
-        rates::get_tax_amount,
         Funds, Milliseconds, OrderBy,
     },
     error::ContractError,
@@ -57,6 +56,7 @@ pub fn instantiate(
             owner: msg.owner,
         },
     )?;
+
     let modules_resp =
         contract.register_modules(info.sender.as_str(), deps.storage, msg.modules)?;
 
@@ -537,13 +537,8 @@ fn execute_claim(
     // Calculate the funds to be received after tax
     let after_tax_payment = purchase_token(deps.as_ref(), &info, token_auction_state.clone())?;
 
-    Ok(Response::new()
+    let mut response = Response::new()
         .add_submessages(after_tax_payment.1)
-        // Send funds to the original owner.
-        .add_message(CosmosMsg::Bank(BankMsg::Send {
-            to_address: token_auction_state.owner,
-            amount: vec![after_tax_payment.0],
-        }))
         // Send NFT to auction winner.
         .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: token_auction_state.token_address.clone(),
@@ -558,7 +553,17 @@ fn execute_claim(
         .add_attribute("token_contract", token_auction_state.token_address)
         .add_attribute("recipient", &token_auction_state.high_bidder_addr)
         .add_attribute("winning_bid_amount", token_auction_state.high_bidder_amount)
-        .add_attribute("auction_id", token_auction_state.auction_id))
+        .add_attribute("auction_id", token_auction_state.auction_id);
+
+    if !after_tax_payment.0.amount.is_zero() {
+        // Send funds to the original owner.
+        response = response.add_message(CosmosMsg::Bank(BankMsg::Send {
+            to_address: token_auction_state.owner,
+            amount: vec![after_tax_payment.0],
+        }))
+    }
+
+    Ok(response)
 }
 
 fn execute_authorize_token_contract(
@@ -615,8 +620,6 @@ fn purchase_token(
 ) -> Result<(Coin, Vec<SubMsg>), ContractError> {
     let total_cost = Coin::new(state.high_bidder_amount.u128(), state.coin_denom.clone());
 
-    let mut total_tax_amount = Uint128::zero();
-
     let (msgs, _events, remainder) = ADOContract::default().on_funds_transfer(
         &deps,
         info.sender.to_string(),
@@ -626,11 +629,8 @@ fn purchase_token(
 
     let remaining_amount = remainder.try_get_coin()?;
 
-    let tax_amount = get_tax_amount(&msgs, state.high_bidder_amount, remaining_amount.amount);
-
     // Calculate total tax
     // total_tax_amount = total_tax_amount.checked_add(tax_amount)?;
-    total_tax_amount += tax_amount;
 
     let after_tax_payment = Coin {
         denom: state.coin_denom,

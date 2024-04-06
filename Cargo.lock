@@ -69,7 +69,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-auction"
-version = "1.0.0-rc.1"
+version = "1.0.0-rc.2"
 dependencies = [
  "andromeda-app",
  "andromeda-non-fungible-tokens",
@@ -296,7 +296,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-marketplace"
-version = "1.0.0-rc.1"
+version = "1.0.0-rc.2"
 dependencies = [
  "andromeda-app",
  "andromeda-non-fungible-tokens",

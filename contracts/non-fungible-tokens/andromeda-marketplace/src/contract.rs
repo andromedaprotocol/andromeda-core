@@ -337,14 +337,8 @@ fn execute_buy(
 
     // Calculate the funds to be received after tax
     let after_tax_payment = purchase_token(&mut deps, &info, token_sale_state.clone())?;
-
-    Ok(Response::new()
+    let mut resp = Response::new()
         .add_submessages(after_tax_payment.1)
-        // Send funds to the original owner.
-        .add_message(CosmosMsg::Bank(BankMsg::Send {
-            to_address: token_sale_state.owner,
-            amount: vec![after_tax_payment.0],
-        }))
         // Send NFT to buyer.
         .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: token_sale_state.token_address.clone(),
@@ -358,7 +352,15 @@ fn execute_buy(
         .add_attribute("token_id", token_id)
         .add_attribute("token_contract", token_sale_state.token_address)
         .add_attribute("recipient", info.sender.to_string())
-        .add_attribute("sale_id", token_sale_state.sale_id))
+        .add_attribute("sale_id", token_sale_state.sale_id);
+    if !after_tax_payment.0.amount.is_zero() {
+        resp = resp.add_message(CosmosMsg::Bank(BankMsg::Send {
+            to_address: token_sale_state.owner,
+            amount: vec![after_tax_payment.0],
+        }))
+    }
+
+    Ok(resp)
 }
 
 fn execute_cancel(
