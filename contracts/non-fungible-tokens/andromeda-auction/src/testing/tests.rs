@@ -63,6 +63,7 @@ fn start_auction(deps: DepsMut, whitelist: Option<Vec<Addr>>, min_bid: Option<Ui
         coin_denom: "uusd".to_string(),
         whitelist,
         min_bid,
+        recipient: None,
     };
     let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
         sender: MOCK_TOKEN_OWNER.to_owned(),
@@ -94,6 +95,7 @@ fn assert_auction_created(deps: Deps, whitelist: Option<Vec<Addr>>, min_bid: Opt
             token_address: MOCK_TOKEN_ADDR.to_owned(),
             is_cancelled: false,
             min_bid,
+            recipient: None,
         },
         TOKEN_AUCTION_STATE.load(deps.storage, 1u128).unwrap()
     );
@@ -559,6 +561,7 @@ fn execute_start_auction_start_time_in_past() {
         coin_denom: "uusd".to_string(),
         whitelist: None,
         min_bid: None,
+        recipient: None,
     };
     let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
         sender: MOCK_TOKEN_OWNER.to_owned(),
@@ -590,6 +593,7 @@ fn execute_start_auction_zero_start_time() {
         coin_denom: "uusd".to_string(),
         whitelist: None,
         min_bid: None,
+        recipient: None,
     };
     let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
         sender: MOCK_TOKEN_OWNER.to_owned(),
@@ -620,6 +624,7 @@ fn execute_start_auction_start_time_not_provided() {
         coin_denom: "uusd".to_string(),
         whitelist: None,
         min_bid: None,
+        recipient: None,
     };
     let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
         sender: MOCK_TOKEN_OWNER.to_owned(),
@@ -643,6 +648,7 @@ fn execute_start_auction_zero_duration() {
         coin_denom: "uusd".to_string(),
         whitelist: None,
         min_bid: None,
+        recipient: None,
     };
     let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
         sender: MOCK_TOKEN_OWNER.to_owned(),
@@ -702,6 +708,7 @@ fn execute_update_auction_zero_start() {
         coin_denom: "uusd".to_string(),
         whitelist: None,
         min_bid: None,
+        recipient: None,
     };
     let mut env = mock_env();
     env.block.time = env.block.time.minus_days(1);
@@ -733,6 +740,7 @@ fn execute_update_auction_zero_duration() {
         coin_denom: "uusd".to_string(),
         whitelist: None,
         min_bid: None,
+        recipient: None,
     };
     let mut env = mock_env();
     env.block.time = Timestamp::from_seconds(0);
@@ -758,6 +766,7 @@ fn execute_update_auction_unauthorized() {
         coin_denom: "uluna".to_string(),
         whitelist: Some(vec![Addr::unchecked("user")]),
         min_bid: None,
+        recipient: None,
     };
     let env = mock_env();
 
@@ -781,6 +790,7 @@ fn execute_update_auction_auction_started() {
         coin_denom: "uluna".to_string(),
         whitelist: Some(vec![Addr::unchecked("user")]),
         min_bid: None,
+        recipient: None,
     };
     let mut env = mock_env();
 
@@ -806,6 +816,7 @@ fn execute_update_auction() {
         coin_denom: "uluna".to_string(),
         whitelist: Some(vec![Addr::unchecked("user")]),
         min_bid: None,
+        recipient: None,
     };
     let mut env = mock_env();
 
@@ -827,6 +838,7 @@ fn execute_update_auction() {
             token_address: MOCK_TOKEN_ADDR.to_owned(),
             is_cancelled: false,
             min_bid: None,
+            recipient: None,
         },
         TOKEN_AUCTION_STATE
             .load(deps.as_ref().storage, 1u128)
@@ -848,6 +860,7 @@ fn execute_start_auction_after_previous_finished() {
         coin_denom: "uusd".to_string(),
         whitelist: None,
         min_bid: None,
+        recipient: None,
     };
     let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
         sender: MOCK_TOKEN_OWNER.to_owned(),
@@ -972,14 +985,14 @@ fn execute_claim() {
     };
     assert_eq!(
         Response::new()
-            .add_message(CosmosMsg::Bank(BankMsg::Send {
-                to_address: MOCK_TOKEN_OWNER.to_owned(),
-                amount: coins(100, "uusd"),
-            }))
             .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: MOCK_TOKEN_ADDR.to_string(),
                 msg: encode_binary(&transfer_nft_msg).unwrap(),
                 funds: vec![],
+            }))
+            .add_message(CosmosMsg::Bank(BankMsg::Send {
+                to_address: MOCK_TOKEN_OWNER.to_owned(),
+                amount: coins(100, "uusd"),
             }))
             .add_attribute("action", "claim")
             .add_attribute("token_id", MOCK_UNCLAIMED_TOKEN)
@@ -1043,6 +1056,7 @@ fn execute_claim_auction_already_claimed() {
         coin_denom: "uusd".to_string(),
         whitelist: None,
         min_bid: None,
+        recipient: None,
     };
     let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
         sender: MOCK_TOKEN_OWNER.to_owned(),

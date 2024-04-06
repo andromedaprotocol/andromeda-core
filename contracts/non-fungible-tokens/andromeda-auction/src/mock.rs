@@ -7,6 +7,7 @@ use andromeda_non_fungible_tokens::auction::{
 };
 use andromeda_std::ado_base::permissioning::{Permission, PermissioningMessage};
 use andromeda_std::amp::messages::AMPPkt;
+use andromeda_std::amp::Recipient;
 use andromeda_std::common::Milliseconds;
 use andromeda_std::{ado_base::modules::Module, amp::AndrAddr};
 use andromeda_testing::mock::MockApp;
@@ -54,8 +55,11 @@ impl MockAuction {
         coin_denom: String,
         min_bid: Option<Uint128>,
         whitelist: Option<Vec<Addr>>,
+        recipient: Option<Recipient>,
     ) -> AppResponse {
-        let msg = mock_start_auction(start_time, end_time, coin_denom, min_bid, whitelist);
+        let msg = mock_start_auction(
+            start_time, end_time, coin_denom, min_bid, whitelist, recipient,
+        );
         app.execute_contract(sender, self.addr().clone(), &msg, &[])
             .unwrap()
     }
@@ -136,6 +140,7 @@ pub fn mock_start_auction(
     coin_denom: String,
     min_bid: Option<Uint128>,
     whitelist: Option<Vec<Addr>>,
+    recipient: Option<Recipient>,
 ) -> Cw721HookMsg {
     Cw721HookMsg::StartAuction {
         start_time,
@@ -143,6 +148,7 @@ pub fn mock_start_auction(
         coin_denom,
         min_bid,
         whitelist,
+        recipient,
     }
 }
 

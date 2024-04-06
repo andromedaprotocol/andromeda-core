@@ -1,5 +1,6 @@
 use andromeda_std::{
-    andr_exec, andr_instantiate, andr_instantiate_modules, andr_query, common::Milliseconds,
+    amp::Recipient, andr_exec, andr_instantiate, andr_instantiate_modules, andr_query,
+    common::Milliseconds,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
@@ -27,6 +28,7 @@ pub enum ExecuteMsg {
         token_address: String,
         price: Uint128,
         coin_denom: String,
+        recipient: Option<Recipient>,
     },
     CancelSale {
         token_id: String,
@@ -43,6 +45,7 @@ pub enum Cw721HookMsg {
         coin_denom: String,
         start_time: Option<Milliseconds>,
         duration: Option<Milliseconds>,
+        recipient: Option<Recipient>,
     },
 }
 #[cw_serde]
