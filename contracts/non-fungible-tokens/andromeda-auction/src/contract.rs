@@ -132,6 +132,7 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
             coin_denom,
             whitelist,
             min_bid,
+            recipient,
         } => execute_update_auction(
             ctx,
             token_id,
@@ -141,6 +142,7 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
             coin_denom,
             whitelist,
             min_bid,
+            recipient,
         ),
         ExecuteMsg::PlaceBid {
             token_id,
@@ -153,8 +155,7 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
         ExecuteMsg::Claim {
             token_id,
             token_address,
-            recipient,
-        } => execute_claim(ctx, token_id, token_address, recipient),
+        } => execute_claim(ctx, token_id, token_address),
         ExecuteMsg::AuthorizeTokenContract { addr, expiration } => {
             execute_authorize_token_contract(ctx.deps, ctx.info, addr, expiration)
         }
@@ -186,6 +187,7 @@ fn handle_receive_cw721(
             coin_denom,
             whitelist,
             min_bid,
+            recipient,
         } => execute_start_auction(
             ctx,
             msg.sender,
@@ -195,6 +197,7 @@ fn handle_receive_cw721(
             coin_denom,
             whitelist,
             min_bid,
+            recipient,
         ),
     }
 }
@@ -222,6 +225,7 @@ fn execute_start_auction(
     coin_denom: String,
     whitelist: Option<Vec<Addr>>,
     min_bid: Option<Uint128>,
+    recipient: Option<Recipient>,
 ) -> Result<Response, ContractError> {
     validate_denom(&ctx.deps.querier, coin_denom.clone())?;
     let ExecuteContext {
@@ -260,6 +264,7 @@ fn execute_start_auction(
             token_id,
             token_address,
             is_cancelled: false,
+            recipient,
         },
     )?;
     Ok(Response::new().add_attributes(vec![
@@ -282,6 +287,7 @@ fn execute_update_auction(
     coin_denom: String,
     whitelist: Option<Vec<Addr>>,
     min_bid: Option<Uint128>,
+    recipient: Option<Recipient>,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
         deps, info, env, ..
@@ -314,6 +320,7 @@ fn execute_update_auction(
     token_auction_state.whitelist = whitelist.clone();
     token_auction_state.coin_denom = coin_denom.clone();
     token_auction_state.min_bid = min_bid;
+    token_auction_state.recipient = recipient;
     TOKEN_AUCTION_STATE.save(
         deps.storage,
         token_auction_state.auction_id.u128(),
@@ -490,7 +497,6 @@ fn execute_claim(
     ctx: ExecuteContext,
     token_id: String,
     token_address: String,
-    recipient: Option<Recipient>,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
         deps, info, env, ..
@@ -558,7 +564,9 @@ fn execute_claim(
         .add_attribute("auction_id", token_auction_state.auction_id);
 
     if !after_tax_payment.0.amount.is_zero() {
-        let recipient = recipient.unwrap_or(Recipient::from_string(info.sender));
+        let recipient = token_auction_state
+            .recipient
+            .unwrap_or(Recipient::from_string(info.sender));
         let msg = recipient.generate_direct_msg(&deps.as_ref(), vec![after_tax_payment.0])?;
         // Send funds to the specified recipient
         response = response.add_submessage(msg);

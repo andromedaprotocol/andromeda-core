@@ -27,7 +27,6 @@ pub enum ExecuteMsg {
     Claim {
         token_id: String,
         token_address: String,
-        recipient: Option<Recipient>,
     },
     UpdateAuction {
         token_id: String,
@@ -37,6 +36,7 @@ pub enum ExecuteMsg {
         coin_denom: String,
         whitelist: Option<Vec<Addr>>,
         min_bid: Option<Uint128>,
+        recipient: Option<Recipient>,
     },
     CancelAuction {
         token_id: String,
@@ -65,6 +65,7 @@ pub enum Cw721HookMsg {
         coin_denom: String,
         min_bid: Option<Uint128>,
         whitelist: Option<Vec<Addr>>,
+        recipient: Option<Recipient>,
     },
 }
 #[andr_query]
@@ -180,6 +181,7 @@ pub struct TokenAuctionState {
     pub token_id: String,
     pub token_address: String,
     pub is_cancelled: bool,
+    pub recipient: Option<Recipient>,
 }
 
 #[cw_serde]

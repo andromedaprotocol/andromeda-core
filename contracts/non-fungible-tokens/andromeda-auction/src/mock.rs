@@ -55,8 +55,11 @@ impl MockAuction {
         coin_denom: String,
         min_bid: Option<Uint128>,
         whitelist: Option<Vec<Addr>>,
+        recipient: Option<Recipient>,
     ) -> AppResponse {
-        let msg = mock_start_auction(start_time, end_time, coin_denom, min_bid, whitelist);
+        let msg = mock_start_auction(
+            start_time, end_time, coin_denom, min_bid, whitelist, recipient,
+        );
         app.execute_contract(sender, self.addr().clone(), &msg, &[])
             .unwrap()
     }
@@ -80,9 +83,8 @@ impl MockAuction {
         sender: Addr,
         token_id: String,
         token_address: String,
-        recipient: Option<Recipient>,
     ) -> ExecuteResult {
-        let msg = mock_claim_auction(token_id, token_address, recipient);
+        let msg = mock_claim_auction(token_id, token_address);
         self.execute(app, &msg, sender, &[])
     }
 
@@ -138,6 +140,7 @@ pub fn mock_start_auction(
     coin_denom: String,
     min_bid: Option<Uint128>,
     whitelist: Option<Vec<Addr>>,
+    recipient: Option<Recipient>,
 ) -> Cw721HookMsg {
     Cw721HookMsg::StartAuction {
         start_time,
@@ -145,6 +148,7 @@ pub fn mock_start_auction(
         coin_denom,
         min_bid,
         whitelist,
+        recipient,
     }
 }
 
@@ -193,15 +197,10 @@ pub fn mock_get_bids(auction_id: Uint128) -> QueryMsg {
     }
 }
 
-pub fn mock_claim_auction(
-    token_id: String,
-    token_address: String,
-    recipient: Option<Recipient>,
-) -> ExecuteMsg {
+pub fn mock_claim_auction(token_id: String, token_address: String) -> ExecuteMsg {
     ExecuteMsg::Claim {
         token_id,
         token_address,
-        recipient,
     }
 }
 

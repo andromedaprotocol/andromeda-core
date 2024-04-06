@@ -152,6 +152,7 @@ fn test_auction_app_modules() {
         "uandr".to_string(),
         None,
         None,
+        None,
     );
     cw721
         .execute_send_nft(
@@ -226,7 +227,6 @@ fn test_auction_app_modules() {
             buyer_two.clone(),
             "0".to_string(),
             cw721.addr().to_string(),
-            None,
         )
         .unwrap();
 
@@ -350,6 +350,7 @@ fn test_auction_app_recipient() {
         "uandr".to_string(),
         None,
         None,
+        Some(Recipient::from_string("./splitter").with_msg(mock_splitter_send_msg())),
     );
     cw721
         .execute_send_nft(
@@ -424,7 +425,6 @@ fn test_auction_app_recipient() {
             buyer_two.clone(),
             "0".to_string(),
             cw721.addr().to_string(),
-            Some(Recipient::from_string("./splitter").with_msg(mock_splitter_send_msg())),
         )
         .unwrap();
 
