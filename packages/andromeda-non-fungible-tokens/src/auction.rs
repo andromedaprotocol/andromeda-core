@@ -1,4 +1,4 @@
-use andromeda_std::amp::AndrAddr;
+use andromeda_std::amp::{AndrAddr, Recipient};
 use andromeda_std::common::{Milliseconds, OrderBy};
 use andromeda_std::{andr_exec, andr_instantiate, andr_instantiate_modules, andr_query};
 
@@ -27,6 +27,7 @@ pub enum ExecuteMsg {
     Claim {
         token_id: String,
         token_address: String,
+        recipient: Option<Recipient>,
     },
     UpdateAuction {
         token_id: String,

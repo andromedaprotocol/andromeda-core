@@ -10,7 +10,7 @@ use andromeda_std::{
         hooks::AndromedaHook, ownership::OwnershipMessage, permissioning::Permission,
         InstantiateMsg as BaseInstantiateMsg, MigrateMsg,
     },
-    amp::AndrAddr,
+    amp::{AndrAddr, Recipient},
     common::{
         actions::call_action,
         encode_binary,
@@ -153,7 +153,8 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
         ExecuteMsg::Claim {
             token_id,
             token_address,
-        } => execute_claim(ctx, token_id, token_address),
+            recipient,
+        } => execute_claim(ctx, token_id, token_address, recipient),
         ExecuteMsg::AuthorizeTokenContract { addr, expiration } => {
             execute_authorize_token_contract(ctx.deps, ctx.info, addr, expiration)
         }
@@ -489,6 +490,7 @@ fn execute_claim(
     ctx: ExecuteContext,
     token_id: String,
     token_address: String,
+    recipient: Option<Recipient>,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
         deps, info, env, ..
@@ -556,11 +558,10 @@ fn execute_claim(
         .add_attribute("auction_id", token_auction_state.auction_id);
 
     if !after_tax_payment.0.amount.is_zero() {
-        // Send funds to the original owner.
-        response = response.add_message(CosmosMsg::Bank(BankMsg::Send {
-            to_address: token_auction_state.owner,
-            amount: vec![after_tax_payment.0],
-        }))
+        let recipient = recipient.unwrap_or(Recipient::from_string(info.sender));
+        let msg = recipient.generate_direct_msg(&deps.as_ref(), vec![after_tax_payment.0])?;
+        // Send funds to the specified recipient
+        response = response.add_submessage(msg);
     }
 
     Ok(response)

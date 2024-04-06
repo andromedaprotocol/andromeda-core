@@ -7,6 +7,7 @@ use andromeda_non_fungible_tokens::auction::{
 };
 use andromeda_std::ado_base::permissioning::{Permission, PermissioningMessage};
 use andromeda_std::amp::messages::AMPPkt;
+use andromeda_std::amp::Recipient;
 use andromeda_std::common::Milliseconds;
 use andromeda_std::{ado_base::modules::Module, amp::AndrAddr};
 use andromeda_testing::mock::MockApp;
@@ -79,8 +80,9 @@ impl MockAuction {
         sender: Addr,
         token_id: String,
         token_address: String,
+        recipient: Option<Recipient>,
     ) -> ExecuteResult {
-        let msg = mock_claim_auction(token_id, token_address);
+        let msg = mock_claim_auction(token_id, token_address, recipient);
         self.execute(app, &msg, sender, &[])
     }
 
@@ -191,10 +193,15 @@ pub fn mock_get_bids(auction_id: Uint128) -> QueryMsg {
     }
 }
 
-pub fn mock_claim_auction(token_id: String, token_address: String) -> ExecuteMsg {
+pub fn mock_claim_auction(
+    token_id: String,
+    token_address: String,
+    recipient: Option<Recipient>,
+) -> ExecuteMsg {
     ExecuteMsg::Claim {
         token_id,
         token_address,
+        recipient,
     }
 }
 

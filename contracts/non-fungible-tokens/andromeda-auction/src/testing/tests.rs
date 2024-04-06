@@ -900,6 +900,7 @@ fn execute_claim_no_bids() {
     let msg = ExecuteMsg::Claim {
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
         token_address: MOCK_TOKEN_ADDR.to_string(),
+        recipient: None,
     };
 
     let info = mock_info("any_user", &[]);
@@ -962,6 +963,7 @@ fn execute_claim() {
     let msg = ExecuteMsg::Claim {
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
         token_address: MOCK_TOKEN_ADDR.to_string(),
+        recipient: None,
     };
 
     let info = mock_info("any_user", &[]);
@@ -1025,6 +1027,7 @@ fn execute_claim_auction_not_ended() {
     let msg = ExecuteMsg::Claim {
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
         token_address: MOCK_TOKEN_ADDR.to_string(),
+        recipient: None,
     };
 
     let info = mock_info("any_user", &[]);
@@ -1060,6 +1063,7 @@ fn execute_claim_auction_already_claimed() {
     let msg = ExecuteMsg::Claim {
         token_id: "claimed_token".to_string(),
         token_address: MOCK_TOKEN_ADDR.to_string(),
+        recipient: None,
     };
 
     let info = mock_info("any_user", &[]);
