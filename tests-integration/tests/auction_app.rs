@@ -65,7 +65,7 @@ fn test_auction_app_modules() {
             is_additive: false,
             description: None,
             rate: Rate::Percent(PercentRate {
-                percent: Decimal::one(),
+                percent: Decimal::from_ratio(1u32, 2u32),
             }),
             recipients: vec![
                 Recipient::from_string("./splitter").with_msg(mock_splitter_send_msg())
@@ -234,11 +234,11 @@ fn test_auction_app_modules() {
     let token_owner = cw721.query_owner_of(&router, "0");
     assert_eq!(token_owner, buyer_two);
     let owner_balance = router.wrap().query_balance(owner, "uandr").unwrap();
-    assert_eq!(owner_balance.amount, Uint128::zero());
+    assert_eq!(owner_balance.amount, Uint128::from(50u128));
     let recipient_one_balance = router.wrap().query_balance(recipient_one, "uandr").unwrap();
-    assert_eq!(recipient_one_balance.amount, Uint128::from(50u128));
+    assert_eq!(recipient_one_balance.amount, Uint128::from(25u128));
     let recipient_two_balance = router.wrap().query_balance(recipient_two, "uandr").unwrap();
-    assert_eq!(recipient_two_balance.amount, Uint128::from(50u128));
+    assert_eq!(recipient_two_balance.amount, Uint128::from(25u128));
 }
 
 #[test]
