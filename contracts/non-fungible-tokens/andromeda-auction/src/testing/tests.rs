@@ -985,14 +985,14 @@ fn execute_claim() {
     };
     assert_eq!(
         Response::new()
-            .add_message(CosmosMsg::Bank(BankMsg::Send {
-                to_address: MOCK_TOKEN_OWNER.to_owned(),
-                amount: coins(100, "uusd"),
-            }))
             .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: MOCK_TOKEN_ADDR.to_string(),
                 msg: encode_binary(&transfer_nft_msg).unwrap(),
                 funds: vec![],
+            }))
+            .add_message(CosmosMsg::Bank(BankMsg::Send {
+                to_address: MOCK_TOKEN_OWNER.to_owned(),
+                amount: coins(100, "uusd"),
             }))
             .add_attribute("action", "claim")
             .add_attribute("token_id", MOCK_UNCLAIMED_TOKEN)

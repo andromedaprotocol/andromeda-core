@@ -364,7 +364,7 @@ fn execute_buy(
     if !after_tax_payment.0.amount.is_zero() {
         let recipient = token_sale_state
             .recipient
-            .unwrap_or(Recipient::from_string(info.sender));
+            .unwrap_or(Recipient::from_string(token_sale_state.owner));
         resp = resp.add_submessage(
             recipient.generate_direct_msg(&deps.as_ref(), vec![after_tax_payment.0])?,
         )

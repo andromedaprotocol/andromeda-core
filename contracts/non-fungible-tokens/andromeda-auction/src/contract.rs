@@ -566,7 +566,7 @@ fn execute_claim(
     if !after_tax_payment.0.amount.is_zero() {
         let recipient = token_auction_state
             .recipient
-            .unwrap_or(Recipient::from_string(info.sender));
+            .unwrap_or(Recipient::from_string(token_auction_state.owner));
         let msg = recipient.generate_direct_msg(&deps.as_ref(), vec![after_tax_payment.0])?;
         // Send funds to the specified recipient
         response = response.add_submessage(msg);
