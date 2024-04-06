@@ -8,6 +8,7 @@ use andromeda_non_fungible_tokens::marketplace::{
 use andromeda_std::ado_base::ownership::OwnershipMessage;
 use andromeda_std::ado_contract::ADOContract;
 
+use andromeda_std::amp::Recipient;
 use andromeda_std::common::actions::call_action;
 use andromeda_std::common::context::ExecuteContext;
 use andromeda_std::common::expiration::{
@@ -24,7 +25,7 @@ use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, Cw721ReceiveMsg, OwnerOfResponse};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, ensure, from_json, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
+    attr, ensure, from_json, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
     QuerierWrapper, QueryRequest, Response, Storage, SubMsg, Uint128, WasmMsg, WasmQuery,
 };
 
@@ -111,7 +112,8 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
             token_address,
             coin_denom,
             price,
-        } => execute_update_sale(ctx, token_id, token_address, price, coin_denom),
+            recipient,
+        } => execute_update_sale(ctx, token_id, token_address, price, coin_denom, recipient),
         ExecuteMsg::Buy {
             token_id,
             token_address,
@@ -142,6 +144,7 @@ fn handle_receive_cw721(
             coin_denom,
             start_time,
             duration,
+            recipient,
         } => execute_start_sale(
             deps,
             env,
@@ -152,6 +155,7 @@ fn handle_receive_cw721(
             coin_denom,
             start_time,
             duration,
+            recipient,
         ),
     }
 }
@@ -167,6 +171,7 @@ fn execute_start_sale(
     coin_denom: String,
     start_time: Option<Milliseconds>,
     duration: Option<Milliseconds>,
+    recipient: Option<Recipient>,
 ) -> Result<Response, ContractError> {
     // Price can't be zero
     ensure!(price > Uint128::zero(), ContractError::InvalidZeroAmount {});
@@ -200,6 +205,7 @@ fn execute_start_sale(
             status: Status::Open,
             start_time: start_expiration,
             end_time: end_expiration,
+            recipient,
         },
     )?;
     Ok(Response::new().add_attributes(vec![
@@ -222,6 +228,7 @@ fn execute_update_sale(
     token_address: String,
     price: Uint128,
     coin_denom: String,
+    recipient: Option<Recipient>,
 ) -> Result<Response, ContractError> {
     let ExecuteContext { deps, info, .. } = ctx;
 
@@ -241,6 +248,7 @@ fn execute_update_sale(
 
     token_sale_state.price = price;
     token_sale_state.coin_denom = coin_denom.clone();
+    token_sale_state.recipient = recipient;
     TOKEN_SALE_STATE.save(
         deps.storage,
         token_sale_state.sale_id.u128(),
@@ -354,10 +362,12 @@ fn execute_buy(
         .add_attribute("recipient", info.sender.to_string())
         .add_attribute("sale_id", token_sale_state.sale_id);
     if !after_tax_payment.0.amount.is_zero() {
-        resp = resp.add_message(CosmosMsg::Bank(BankMsg::Send {
-            to_address: token_sale_state.owner,
-            amount: vec![after_tax_payment.0],
-        }))
+        let recipient = token_sale_state
+            .recipient
+            .unwrap_or(Recipient::from_string(info.sender));
+        resp = resp.add_submessage(
+            recipient.generate_direct_msg(&deps.as_ref(), vec![after_tax_payment.0])?,
+        )
     }
 
     Ok(resp)

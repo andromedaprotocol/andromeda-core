@@ -38,6 +38,7 @@ fn start_sale(deps: DepsMut) {
         price: Uint128::new(100),
         start_time: None,
         duration: None,
+        recipient: None,
     };
     let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
         sender: MOCK_TOKEN_OWNER.to_owned(),
@@ -58,6 +59,7 @@ fn start_sale_future_start(deps: DepsMut, env: Env) {
         // Add one to the current time to have it set in the future
         start_time: Some(Milliseconds(current_time + 1)),
         duration: None,
+        recipient: None,
     };
     let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
         sender: MOCK_TOKEN_OWNER.to_owned(),
@@ -79,6 +81,7 @@ fn start_sale_future_start_with_duration(deps: DepsMut, env: Env) {
         start_time: Some(Milliseconds(current_time + 1)),
         // Add duration, the end time's expiration will be current time + duration
         duration: Some(Milliseconds(1)),
+        recipient: None,
     };
     let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
         sender: MOCK_TOKEN_OWNER.to_owned(),
@@ -117,7 +120,8 @@ fn assert_sale_created(deps: Deps, env: Env) {
             price: Uint128::new(100),
             // start sale function has start_time set as None, so it defaults to the current time
             start_time: start_time_expiration,
-            end_time: Expiration::Never {}
+            end_time: Expiration::Never {},
+            recipient: None,
         },
         TOKEN_SALE_STATE.load(deps.storage, 1u128).unwrap()
     );
@@ -152,7 +156,8 @@ fn assert_sale_created_future_start(deps: Deps, env: Env) {
             status: Status::Open,
             price: Uint128::new(100),
             start_time: start_time_expiration,
-            end_time: Expiration::Never {}
+            end_time: Expiration::Never {},
+            recipient: None,
         },
         TOKEN_SALE_STATE.load(deps.storage, 1u128).unwrap()
     );
@@ -406,6 +411,7 @@ fn test_execute_update_sale_unauthorized() {
         token_address: MOCK_TOKEN_ADDR.to_string(),
         price: Uint128::new(11),
         coin_denom: "juno".to_string(),
+        recipient: None,
     };
 
     let info = mock_info("someone", &[]);
@@ -428,6 +434,7 @@ fn test_execute_update_sale_invalid_price() {
         token_address: MOCK_TOKEN_ADDR.to_string(),
         price: Uint128::zero(),
         coin_denom: "juno".to_string(),
+        recipient: None,
     };
 
     let info = mock_info("owner", &[]);
@@ -445,6 +452,7 @@ fn test_execute_start_sale_invalid_price() {
         price: Uint128::zero(),
         start_time: None,
         duration: None,
+        recipient: None,
     };
     let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
         sender: MOCK_TOKEN_OWNER.to_owned(),
