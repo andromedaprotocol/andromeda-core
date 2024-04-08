@@ -600,7 +600,6 @@ fn execute_buy_cw20(
             // Add tax message in case there's a tax recipient and amount
             Ok(resp.add_message(tax_wasm_msg))
         }
-
         _ => Ok(resp),
     }
 }
