@@ -1,5 +1,6 @@
 use andromeda_std::{
-    amp::{AndrAddr,Recipient}, andr_exec, andr_instantiate, andr_instantiate_modules, andr_query,
+    amp::{AndrAddr, Recipient},
+    andr_exec, andr_instantiate, andr_instantiate_modules, andr_query,
     common::Milliseconds,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
