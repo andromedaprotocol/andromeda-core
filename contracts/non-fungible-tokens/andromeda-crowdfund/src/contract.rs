@@ -294,12 +294,9 @@ fn execute_start_sale(
     recipient: Recipient,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
-        mut deps,
-        info,
-        env,
-        ..
+        deps, info, env, ..
     } = ctx;
-    validate_denom(deps.branch(), env.clone(), price.denom.clone())?;
+    validate_denom(deps.as_ref(), price.denom.clone())?;
     recipient.validate(&deps.as_ref())?;
     nonpayable(&info)?;
     let ado_contract = ADOContract::default();

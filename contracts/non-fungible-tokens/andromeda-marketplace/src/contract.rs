@@ -22,7 +22,6 @@ use andromeda_std::{
     common::{encode_binary, rates::get_tax_amount, Funds},
     error::ContractError,
 };
-use cw2::set_contract_version;
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, Cw721ReceiveMsg, OwnerOfResponse};
 
@@ -46,7 +45,6 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     NEXT_SALE_ID.save(deps.storage, &Uint128::from(1u128))?;
     let inst_resp = ADOContract::default().instantiate(
         deps.storage,
@@ -66,6 +64,7 @@ pub fn instantiate(
         ADOContract::default().register_modules(owner.as_str(), deps.storage, msg.modules)?;
 
     if let Some(authorized_cw20_address) = msg.authorized_cw20_address {
+        ADOContract::default().permission_action(SEND_CW20_ACTION, deps.storage)?;
         let addr = authorized_cw20_address.get_raw_address(&deps.as_ref())?;
         ADOContract::set_permission(
             deps.storage,
@@ -181,7 +180,7 @@ pub fn handle_receive_cw20(
     ctx: ExecuteContext,
     receive_msg: Cw20ReceiveMsg,
 ) -> Result<Response, ContractError> {
-    ADOContract::default().is_permissioned_strict(
+    ADOContract::default().is_permissioned(
         ctx.deps.storage,
         ctx.env.clone(),
         SEND_CW20_ACTION,
@@ -218,7 +217,7 @@ pub fn handle_receive_cw20(
 
 #[allow(clippy::too_many_arguments)]
 fn execute_start_sale(
-    mut deps: DepsMut,
+    deps: DepsMut,
     env: Env,
     sender: String,
     token_id: String,
@@ -229,7 +228,24 @@ fn execute_start_sale(
     duration: Option<Milliseconds>,
     uses_cw20: bool,
 ) -> Result<Response, ContractError> {
-    validate_denom(deps.branch(), env.clone(), coin_denom.clone())?;
+    if !uses_cw20 {
+        validate_denom(deps.as_ref(), coin_denom.clone())?;
+    } else {
+        let valid_cw20_auction = ADOContract::default()
+            .is_permissioned(
+                deps.storage,
+                env.clone(),
+                SEND_CW20_ACTION,
+                coin_denom.clone(),
+            )
+            .is_ok();
+        ensure!(
+            valid_cw20_auction,
+            ContractError::InvalidFunds {
+                msg: "Non-permissioned CW20 asset sent".to_string()
+            }
+        );
+    }
 
     // Price can't be zero
     ensure!(price > Uint128::zero(), ContractError::InvalidZeroAmount {});
@@ -289,14 +305,10 @@ fn execute_update_sale(
     coin_denom: String,
     uses_cw20: bool,
 ) -> Result<Response, ContractError> {
-    let ExecuteContext {
-        mut deps,
-        env,
-        info,
-        ..
-    } = ctx;
-    validate_denom(deps.branch(), env, coin_denom.clone())?;
-
+    let ExecuteContext { deps, info, .. } = ctx;
+    if !uses_cw20 {
+        validate_denom(deps.as_ref(), coin_denom.clone())?;
+    }
     nonpayable(&info)?;
 
     let mut token_sale_state =

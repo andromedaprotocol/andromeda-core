@@ -15,7 +15,6 @@ use cosmwasm_std::{
     attr, ensure, entry_point, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
     Reply, Response, StdError, SubMsg, Uint128,
 };
-use cw2::set_contract_version;
 use cw_utils::nonpayable;
 
 // version info for migration info
@@ -33,7 +32,6 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     let current_time = Milliseconds::from_seconds(env.block.time.seconds());
     let splitter = match msg.lock_time {
         Some(lock_time) => {

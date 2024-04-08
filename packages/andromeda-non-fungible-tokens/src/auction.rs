@@ -187,7 +187,7 @@ pub struct TokenAuctionState {
     pub high_bidder_amount: Uint128,
     pub coin_denom: String,
     pub auction_id: Uint128,
-    pub whitelist: bool,
+    pub whitelist: Option<Vec<Addr>>,
     pub min_bid: Option<Uint128>,
     pub owner: String,
     pub token_id: String,
@@ -212,7 +212,7 @@ pub struct AuctionStateResponse {
     pub auction_id: Uint128,
     pub coin_denom: String,
     pub uses_cw20: bool,
-    pub whitelist: bool,
+    pub whitelist: Option<Vec<Addr>>,
     pub min_bid: Option<Uint128>,
     pub is_cancelled: bool,
 }

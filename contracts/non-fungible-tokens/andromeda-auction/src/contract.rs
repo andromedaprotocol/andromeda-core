@@ -32,7 +32,6 @@ use cosmwasm_std::{
 use cw2::set_contract_version;
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, Cw721ReceiveMsg, Expiration, OwnerOfResponse};
-use cw_asset::AssetInfo;
 use cw_utils::nonpayable;
 
 const CONTRACT_NAME: &str = "crates.io:andromeda-auction";
@@ -84,6 +83,7 @@ pub fn instantiate(
 
     if let Some(authorized_cw20_address) = msg.authorized_cw20_address {
         let addr = authorized_cw20_address.get_raw_address(&deps.as_ref())?;
+        ADOContract::default().permission_action(SEND_CW20_ACTION, deps.storage)?;
         ADOContract::set_permission(
             deps.storage,
             SEND_CW20_ACTION,
@@ -223,16 +223,26 @@ pub fn handle_receive_cw20(
     ctx: ExecuteContext,
     receive_msg: Cw20ReceiveMsg,
 ) -> Result<Response, ContractError> {
-    ADOContract::default().is_permissioned_strict(
-        ctx.deps.storage,
-        ctx.env.clone(),
-        SEND_CW20_ACTION,
-        ctx.info.sender.clone(),
-    )?;
+    let is_valid_cw20 = ADOContract::default()
+        .is_permissioned(
+            ctx.deps.storage,
+            ctx.env.clone(),
+            SEND_CW20_ACTION,
+            ctx.info.sender.clone(),
+        )
+        .is_ok();
+
+    ensure!(
+        is_valid_cw20,
+        ContractError::InvalidAsset {
+            asset: ctx.info.sender.into_string()
+        }
+    );
+
     let ExecuteContext { ref info, .. } = ctx;
     nonpayable(info)?;
 
-    let asset_sent = AssetInfo::Cw20(info.sender.clone());
+    let asset_sent = info.sender.clone().into_string();
     let amount_sent = receive_msg.amount;
     let sender = receive_msg.sender;
 
@@ -271,12 +281,26 @@ fn execute_start_auction(
     min_bid: Option<Uint128>,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
-        mut deps,
-        info,
-        env,
-        ..
+        deps, info, env, ..
     } = ctx;
-    validate_denom(deps.branch(), env.clone(), coin_denom.clone())?;
+    if uses_cw20 {
+        let valid_cw20_auction = ADOContract::default()
+            .is_permissioned(
+                deps.storage,
+                env.clone(),
+                SEND_CW20_ACTION,
+                coin_denom.clone(),
+            )
+            .is_ok();
+        ensure!(
+            valid_cw20_auction,
+            ContractError::InvalidFunds {
+                msg: "Non-permissioned CW20 asset sent".to_string()
+            }
+        );
+    } else {
+        validate_denom(deps.as_ref(), coin_denom.clone())?;
+    }
     ensure!(!end_time.is_zero(), ContractError::InvalidExpiration {});
 
     // If start time wasn't provided, it will be set as the current_time
@@ -293,7 +317,9 @@ fn execute_start_auction(
     let auction_id = get_and_increment_next_auction_id(deps.storage, &token_id, &token_address)?;
     BIDS.save(deps.storage, auction_id.u128(), &vec![])?;
 
-    let uses_whitelist = if let Some(ref whitelist) = whitelist {
+    if let Some(ref whitelist) = whitelist {
+        ADOContract::default().permission_action(auction_id.to_string(), deps.storage)?;
+
         for whitelisted_address in whitelist {
             ADOContract::set_permission(
                 deps.storage,
@@ -302,9 +328,6 @@ fn execute_start_auction(
                 Permission::Whitelisted(None),
             )?;
         }
-        true
-    } else {
-        false
     };
 
     let whitelist_str = format!("{:?}", &whitelist);
@@ -320,7 +343,7 @@ fn execute_start_auction(
             coin_denom: coin_denom.clone(),
             uses_cw20,
             auction_id,
-            whitelist: uses_whitelist,
+            whitelist,
             min_bid,
             owner: sender,
             token_id,
@@ -351,13 +374,10 @@ fn execute_update_auction(
     min_bid: Option<Uint128>,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
-        mut deps,
-        info,
-        env,
-        ..
+        deps, info, env, ..
     } = ctx;
     nonpayable(&info)?;
-    validate_denom(deps.branch(), env.clone(), coin_denom.clone())?;
+    validate_denom(deps.as_ref(), coin_denom.clone())?;
     let mut token_auction_state =
         get_existing_token_auction_state(deps.storage, &token_id, &token_address)?;
     ensure!(
@@ -379,7 +399,10 @@ fn execute_update_auction(
         ContractError::StartTimeAfterEndTime {}
     );
 
-    let uses_whitelist = if let Some(ref whitelist) = whitelist {
+    if let Some(ref whitelist) = whitelist {
+        ADOContract::default()
+            .permission_action(token_auction_state.auction_id.to_string(), deps.storage)?;
+
         for whitelisted_address in whitelist {
             ADOContract::set_permission(
                 deps.storage,
@@ -388,17 +411,16 @@ fn execute_update_auction(
                 Permission::Whitelisted(None),
             )?;
         }
-        true
-    } else {
-        false
     };
+
+    let whitelist_str = format!("{:?}", &whitelist);
 
     token_auction_state.start_time = start_expiration;
     token_auction_state.end_time = end_expiration;
     token_auction_state.coin_denom = coin_denom.clone();
     token_auction_state.uses_cw20 = uses_cw20;
     token_auction_state.min_bid = min_bid;
-    token_auction_state.whitelist = uses_whitelist;
+    token_auction_state.whitelist = whitelist;
     TOKEN_AUCTION_STATE.save(
         deps.storage,
         token_auction_state.auction_id.u128(),
@@ -411,7 +433,7 @@ fn execute_update_auction(
         attr("coin_denom", coin_denom),
         attr("uses_cw20", uses_cw20.to_string()),
         attr("auction_id", token_auction_state.auction_id.to_string()),
-        attr("whitelist", format!("{:?}", &whitelist)),
+        attr("whitelist", format!("{:?}", whitelist_str)),
         attr("min_bid", format!("{:?}", &min_bid)),
     ]))
 }
@@ -427,16 +449,12 @@ fn execute_place_bid(
     let mut token_auction_state =
         get_existing_token_auction_state(deps.storage, &token_id, &token_address)?;
 
-    let uses_whitelist = token_auction_state.whitelist;
-
-    if uses_whitelist {
-        ADOContract::default().is_permissioned_strict(
-            deps.storage,
-            env.clone(),
-            token_auction_state.auction_id,
-            info.sender.clone(),
-        )?;
-    };
+    ADOContract::default().is_permissioned(
+        deps.storage,
+        env.clone(),
+        token_auction_state.auction_id,
+        info.sender.clone(),
+    )?;
 
     ensure!(
         !token_auction_state.is_cancelled,
@@ -539,7 +557,7 @@ fn execute_place_bid_cw20(
     token_id: String,
     token_address: String,
     amount_sent: Uint128,
-    asset_sent: AssetInfo,
+    asset_sent: String,
     // The user who sent the cw20
     sender: &str,
 ) -> Result<Response, ContractError> {
@@ -547,15 +565,12 @@ fn execute_place_bid_cw20(
     let mut token_auction_state =
         get_existing_token_auction_state(deps.storage, &token_id, &token_address)?;
 
-    let uses_whitelist = token_auction_state.whitelist;
-    if uses_whitelist {
-        ADOContract::default().is_permissioned_strict(
-            deps.storage,
-            env.clone(),
-            token_auction_state.auction_id,
-            sender,
-        )?;
-    };
+    ADOContract::default().is_permissioned(
+        deps.storage,
+        env.clone(),
+        token_auction_state.auction_id,
+        sender,
+    )?;
 
     ensure!(
         !token_auction_state.is_cancelled,
@@ -584,19 +599,16 @@ fn execute_place_bid_cw20(
     );
 
     let auction_currency = token_auction_state.clone().coin_denom;
-    let valid_cw20_auction = ADOContract::default()
-        .is_permissioned_strict(
-            deps.storage,
-            env.clone(),
-            SEND_CW20_ACTION,
-            auction_currency.clone(),
-        )
-        .is_ok();
-
     ensure!(
-        valid_cw20_auction,
-        ContractError::InvalidAsset {
-            asset: asset_sent.to_string(),
+        auction_currency == asset_sent,
+        ContractError::InvalidAsset { asset: asset_sent }
+    );
+
+    let permissioned_actions = ADOContract::default().query_permissioned_actions(deps.as_ref())?;
+    ensure!(
+        permissioned_actions.contains(&SEND_CW20_ACTION.to_string()),
+        ContractError::InvalidFunds {
+            msg: "CW20 isn't permissioned".to_string()
         }
     );
 
