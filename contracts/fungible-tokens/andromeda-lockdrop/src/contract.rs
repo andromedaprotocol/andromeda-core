@@ -22,7 +22,6 @@ use cosmwasm_std::{entry_point, Decimal};
 use cw_asset::Asset;
 
 use crate::state::{Config, State, CONFIG, STATE, USER_INFO};
-use cw2::set_contract_version;
 use cw20::Cw20ReceiveMsg;
 
 use cw_utils::nonpayable;
@@ -42,8 +41,6 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-
     // CHECK :: init_timestamp needs to be valid
     ensure!(
         !msg.init_timestamp.is_in_past(&env.block),

@@ -13,15 +13,14 @@ crate-type = ["cdylib", "rlib"]
 cosmwasm-std = { workspace = true }
 cosmwasm-schema = { workspace = true }
 cw-storage-plus = { workspace = true }
-cw2 = { workspace = true }
+
 cw-utils = { workspace = true }
 
-andromeda-ecosystem = { workspace = true  }
+andromeda-ecosystem = { workspace = true }
 andromeda-std = { workspace = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-cw-multi-test = { version = "1.0.0", optional = true }
+cw-multi-test = { workspace = true, optional = true }
 
 [features]
 testing = ["cw-multi-test"]
-

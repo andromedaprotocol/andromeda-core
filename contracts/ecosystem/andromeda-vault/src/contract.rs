@@ -19,7 +19,6 @@ use cosmwasm_std::{
     ContractResult, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Order, QueryRequest, Reply,
     ReplyOn, Response, StdError, SubMsg, SystemResult, Uint128, WasmMsg, WasmQuery,
 };
-use cw2::set_contract_version;
 use cw_utils::nonpayable;
 
 // version info for migration info
@@ -33,8 +32,6 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-
     ADOContract::default().instantiate(
         deps.storage,
         env,

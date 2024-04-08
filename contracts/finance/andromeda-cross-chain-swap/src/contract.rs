@@ -15,7 +15,6 @@ use cosmwasm_std::{
     attr, entry_point, Binary, Coin, Decimal, Deps, DepsMut, Env, MessageInfo, Reply, Response,
     StdError, SubMsg,
 };
-use cw2::set_contract_version;
 
 use cw_utils::one_coin;
 
@@ -35,8 +34,6 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-
     let inst_resp = ADOContract::default().instantiate(
         deps.storage,
         env,

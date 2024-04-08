@@ -1,9 +1,52 @@
 #![cfg(all(not(target_arch = "wasm32"), feature = "testing"))]
 
 use crate::contract::{execute, instantiate, query};
-use andromeda_modules::address_list::{ExecuteMsg, InstantiateMsg};
-use cosmwasm_std::Empty;
-use cw_multi_test::{Contract, ContractWrapper};
+use andromeda_modules::address_list::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use andromeda_testing::{
+    mock::MockApp, mock_ado, mock_contract::ExecuteResult, MockADO, MockContract,
+};
+use cosmwasm_std::{Addr, Empty};
+use cw_multi_test::{Contract, ContractWrapper, Executor};
+
+pub struct MockAddressList(Addr);
+mock_ado!(MockAddressList, ExecuteMsg, QueryMsg);
+
+impl MockAddressList {
+    pub fn instantiate(
+        code_id: u64,
+        sender: Addr,
+        app: &mut MockApp,
+        is_inclusive: bool,
+        kernel_address: impl Into<String>,
+        owner: Option<String>,
+    ) -> MockAddressList {
+        let msg = mock_address_list_instantiate_msg(is_inclusive, kernel_address, owner);
+        let addr = app
+            .instantiate_contract(
+                code_id,
+                sender.clone(),
+                &msg,
+                &[],
+                "Address List Contract",
+                Some(sender.to_string()),
+            )
+            .unwrap();
+        MockAddressList(Addr::unchecked(addr))
+    }
+
+    pub fn execute_add_address(
+        &self,
+        app: &mut MockApp,
+        sender: Addr,
+        address: impl Into<String>,
+    ) -> ExecuteResult {
+        self.execute(app, &mock_add_address_msg(address), sender, &[])
+    }
+
+    pub fn query_includes_address(&self, app: &MockApp, address: impl Into<String>) -> bool {
+        self.query::<bool>(app, mock_includes_address_msg(address))
+    }
+}
 
 pub fn mock_andromeda_address_list() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new_with_empty(execute, instantiate, query);
@@ -24,6 +67,12 @@ pub fn mock_address_list_instantiate_msg(
 
 pub fn mock_add_address_msg(address: impl Into<String>) -> ExecuteMsg {
     ExecuteMsg::AddAddress {
+        address: address.into(),
+    }
+}
+
+pub fn mock_includes_address_msg(address: impl Into<String>) -> QueryMsg {
+    QueryMsg::IncludesAddress {
         address: address.into(),
     }
 }

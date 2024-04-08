@@ -11,13 +11,12 @@ use andromeda_std::{
         hooks::AndromedaHook, ownership::OwnershipMessage, permissioning::Permission,
         InstantiateMsg as BaseInstantiateMsg, MigrateMsg,
     },
-    amp::AndrAddr,
+    amp::{AndrAddr, Recipient},
     common::{
         actions::call_action,
         denom::{validate_denom, SEND_CW20_ACTION},
         encode_binary,
         expiration::{expiration_from_milliseconds, get_and_validate_start_time},
-        rates::get_tax_amount,
         Funds, Milliseconds, OrderBy,
     },
     error::ContractError,
@@ -29,7 +28,6 @@ use cosmwasm_std::{
     CosmosMsg, Deps, DepsMut, Env, MessageInfo, QuerierWrapper, QueryRequest, Response, Storage,
     SubMsg, Uint128, WasmMsg, WasmQuery,
 };
-use cw2::set_contract_version;
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, Cw721ReceiveMsg, Expiration, OwnerOfResponse};
 use cw_utils::nonpayable;
@@ -46,7 +44,6 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     NEXT_AUCTION_ID.save(deps.storage, &Uint128::from(1u128))?;
     let contract = ADOContract::default();
     let resp = contract.instantiate(
@@ -54,7 +51,7 @@ pub fn instantiate(
         env,
         deps.api,
         &deps.querier,
-        info.clone(),
+        info,
         BaseInstantiateMsg {
             ado_type: CONTRACT_NAME.to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
@@ -62,8 +59,9 @@ pub fn instantiate(
             owner: msg.owner,
         },
     )?;
-    let modules_resp =
-        contract.register_modules(info.sender.as_str(), deps.storage, msg.modules)?;
+
+    let owner = ADOContract::default().owner(deps.storage)?;
+    let modules_resp = contract.register_modules(owner.as_str(), deps.storage, msg.modules)?;
 
     if let Some(authorized_token_addresses) = msg.authorized_token_addresses {
         if !authorized_token_addresses.is_empty() {
@@ -80,7 +78,6 @@ pub fn instantiate(
             )?;
         }
     }
-
     if let Some(authorized_cw20_address) = msg.authorized_cw20_address {
         let addr = authorized_cw20_address.get_raw_address(&deps.as_ref())?;
         ADOContract::default().permission_action(SEND_CW20_ACTION, deps.storage)?;
@@ -150,6 +147,7 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
             uses_cw20,
             whitelist,
             min_bid,
+            recipient,
         } => execute_update_auction(
             ctx,
             token_id,
@@ -160,6 +158,7 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
             uses_cw20,
             whitelist,
             min_bid,
+            recipient,
         ),
         ExecuteMsg::PlaceBid {
             token_id,
@@ -205,6 +204,7 @@ fn handle_receive_cw721(
             uses_cw20,
             whitelist,
             min_bid,
+            recipient,
         } => execute_start_auction(
             ctx,
             msg.sender,
@@ -215,6 +215,7 @@ fn handle_receive_cw721(
             uses_cw20,
             whitelist,
             min_bid,
+            recipient,
         ),
     }
 }
@@ -279,6 +280,7 @@ fn execute_start_auction(
     uses_cw20: bool,
     whitelist: Option<Vec<Addr>>,
     min_bid: Option<Uint128>,
+    recipient: Option<Recipient>,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
         deps, info, env, ..
@@ -349,6 +351,7 @@ fn execute_start_auction(
             token_id,
             token_address,
             is_cancelled: false,
+            recipient,
         },
     )?;
     Ok(Response::new().add_attributes(vec![
@@ -372,6 +375,7 @@ fn execute_update_auction(
     uses_cw20: bool,
     whitelist: Option<Vec<Addr>>,
     min_bid: Option<Uint128>,
+    recipient: Option<Recipient>,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
         deps, info, env, ..
@@ -421,6 +425,7 @@ fn execute_update_auction(
     token_auction_state.uses_cw20 = uses_cw20;
     token_auction_state.min_bid = min_bid;
     token_auction_state.whitelist = whitelist;
+    token_auction_state.recipient = recipient;
     TOKEN_AUCTION_STATE.save(
         deps.storage,
         token_auction_state.auction_id.u128(),
@@ -813,7 +818,7 @@ fn execute_claim(
 
     let is_cw20_auction = token_auction_state.uses_cw20;
     if is_cw20_auction {
-        let auction_currency = token_auction_state.coin_denom;
+        let auction_currency = token_auction_state.clone().coin_denom;
         let valid_cw20_auction = ADOContract::default()
             .is_permissioned_strict(
                 deps.storage,
@@ -828,6 +833,7 @@ fn execute_claim(
                 msg: "Coin denom isn't permissioned".to_string()
             }
         ); // Send back previous bid unless there was no previous bid.
+
         let transfer_msg = Cw20ExecuteMsg::Transfer {
             recipient: token_auction_state.owner,
             amount: after_tax_payment.0.amount,
@@ -881,14 +887,19 @@ fn execute_claim(
                 }))),
         }
     } else {
+        let recipient = token_auction_state
+            .clone()
+            .recipient
+            .unwrap_or(Recipient::from_string(token_auction_state.clone().owner));
+
+        let msg =
+            recipient.generate_direct_msg(&deps.as_ref(), vec![after_tax_payment.clone().0])?;
+
         Ok(resp
-            .add_submessages(after_tax_payment.clone().1)
+            .add_submessages(after_tax_payment.1)
             // Send NFT to auction winner.
             // Send funds to the original owner.
-            .add_message(CosmosMsg::Bank(BankMsg::Send {
-                to_address: token_auction_state.owner,
-                amount: vec![after_tax_payment.0],
-            }))
+            .add_submessage(msg)
             .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: token_auction_state.token_address.clone(),
                 msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
@@ -954,8 +965,6 @@ fn purchase_token(
 ) -> Result<(Coin, Vec<SubMsg>), ContractError> {
     let total_cost = Coin::new(state.high_bidder_amount.u128(), state.coin_denom.clone());
 
-    let mut total_tax_amount = Uint128::zero();
-
     let (msgs, _events, remainder) = ADOContract::default().on_funds_transfer(
         &deps,
         info.sender.to_string(),
@@ -965,11 +974,8 @@ fn purchase_token(
 
     let remaining_amount = remainder.try_get_coin()?;
 
-    let tax_amount = get_tax_amount(&msgs, state.high_bidder_amount, remaining_amount.amount);
-
     // Calculate total tax
     // total_tax_amount = total_tax_amount.checked_add(tax_amount)?;
-    total_tax_amount += tax_amount;
 
     let after_tax_payment = Coin {
         denom: state.coin_denom,

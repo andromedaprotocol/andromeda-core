@@ -16,7 +16,6 @@ use cosmwasm_std::{
     ensure, from_json, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response, Storage,
     Uint128,
 };
-use cw2::set_contract_version;
 use cw20::Cw20ReceiveMsg;
 use cw_asset::{Asset, AssetInfo, AssetInfoUnchecked};
 
@@ -46,7 +45,6 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     let additional_reward_tokens = if let Some(additional_rewards) = msg.additional_rewards {
         ensure!(
             additional_rewards.len() <= MAX_REWARD_TOKENS as usize,

@@ -87,7 +87,7 @@ fn cw721_rates_module() {
         "TT".to_string(),
         owner.to_string(),
         Some(modules),
-        Some(andr.kernel_address.to_string()),
+        Some(andr.kernel.addr().to_string()),
     );
     let cw721_addr = router
         .instantiate_contract(

@@ -10,6 +10,7 @@ use andromeda_std::ado_base::ownership::OwnershipMessage;
 use andromeda_std::ado_base::permissioning::Permission;
 use andromeda_std::ado_contract::ADOContract;
 
+use andromeda_std::amp::Recipient;
 use andromeda_std::common::actions::call_action;
 use andromeda_std::common::context::ExecuteContext;
 use andromeda_std::common::denom::{validate_denom, SEND_CW20_ACTION};
@@ -129,7 +130,16 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
             coin_denom,
             price,
             uses_cw20,
-        } => execute_update_sale(ctx, token_id, token_address, price, coin_denom, uses_cw20),
+            recipient,
+        } => execute_update_sale(
+            ctx,
+            token_id,
+            token_address,
+            price,
+            coin_denom,
+            uses_cw20,
+            recipient,
+        ),
         ExecuteMsg::Buy {
             token_id,
             token_address,
@@ -161,6 +171,7 @@ fn handle_receive_cw721(
             start_time,
             duration,
             uses_cw20,
+            recipient,
         } => execute_start_sale(
             deps,
             env,
@@ -172,6 +183,7 @@ fn handle_receive_cw721(
             start_time,
             duration,
             uses_cw20,
+            recipient,
         ),
     }
 }
@@ -227,6 +239,7 @@ fn execute_start_sale(
     start_time: Option<Milliseconds>,
     duration: Option<Milliseconds>,
     uses_cw20: bool,
+    recipient: Option<Recipient>,
 ) -> Result<Response, ContractError> {
     if !uses_cw20 {
         validate_denom(deps.as_ref(), coin_denom.clone())?;
@@ -280,6 +293,7 @@ fn execute_start_sale(
             start_time: start_expiration,
             end_time: end_expiration,
             uses_cw20,
+            recipient,
         },
     )?;
     Ok(Response::new().add_attributes(vec![
@@ -304,6 +318,7 @@ fn execute_update_sale(
     price: Uint128,
     coin_denom: String,
     uses_cw20: bool,
+    recipient: Option<Recipient>,
 ) -> Result<Response, ContractError> {
     let ExecuteContext { deps, info, .. } = ctx;
     if !uses_cw20 {
@@ -326,6 +341,7 @@ fn execute_update_sale(
     token_sale_state.price = price;
     token_sale_state.coin_denom = coin_denom.clone();
     token_sale_state.uses_cw20 = uses_cw20;
+    token_sale_state.recipient = recipient;
     TOKEN_SALE_STATE.save(
         deps.storage,
         token_sale_state.sale_id.u128(),
@@ -429,14 +445,8 @@ fn execute_buy(
 
     // Calculate the funds to be received after tax
     let after_tax_payment = purchase_token(&mut deps, &info, None, token_sale_state.clone())?;
-
-    Ok(Response::new()
+    let mut resp = Response::new()
         .add_submessages(after_tax_payment.1)
-        // Send funds to the original owner.
-        .add_message(CosmosMsg::Bank(BankMsg::Send {
-            to_address: token_sale_state.owner,
-            amount: vec![after_tax_payment.0],
-        }))
         // Send NFT to buyer.
         .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: token_sale_state.token_address.clone(),
@@ -450,7 +460,17 @@ fn execute_buy(
         .add_attribute("token_id", token_id)
         .add_attribute("token_contract", token_sale_state.token_address)
         .add_attribute("recipient", info.sender.to_string())
-        .add_attribute("sale_id", token_sale_state.sale_id))
+        .add_attribute("sale_id", token_sale_state.sale_id);
+    if !after_tax_payment.0.amount.is_zero() {
+        let recipient = token_sale_state
+            .recipient
+            .unwrap_or(Recipient::from_string(token_sale_state.owner));
+        resp = resp.add_submessage(
+            recipient.generate_direct_msg(&deps.as_ref(), vec![after_tax_payment.0])?,
+        )
+    }
+
+    Ok(resp)
 }
 
 fn execute_buy_cw20(

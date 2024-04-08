@@ -80,6 +80,7 @@ fn start_auction(deps: DepsMut, whitelist: Option<Vec<Addr>>, min_bid: Option<Ui
         uses_cw20: false,
         whitelist,
         min_bid,
+        recipient: None,
     };
     let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
         sender: MOCK_TOKEN_OWNER.to_owned(),
@@ -100,6 +101,7 @@ fn start_auction_cw20(deps: DepsMut, whitelist: Option<Vec<Addr>>, min_bid: Opti
         uses_cw20: true,
         whitelist,
         min_bid,
+        recipient: None,
     };
     let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
         sender: MOCK_TOKEN_OWNER.to_owned(),
@@ -131,7 +133,8 @@ fn assert_auction_created(deps: Deps, whitelist: Option<Vec<Addr>>, min_bid: Opt
             token_address: MOCK_TOKEN_ADDR.to_owned(),
             is_cancelled: false,
             min_bid,
-            whitelist
+            whitelist,
+            recipient: None
         },
         TOKEN_AUCTION_STATE.load(deps.storage, 1u128).unwrap()
     );
@@ -170,7 +173,8 @@ fn assert_auction_created_cw20(deps: Deps, whitelist: Option<Vec<Addr>>, min_bid
             token_address: MOCK_TOKEN_ADDR.to_owned(),
             is_cancelled: false,
             min_bid,
-            whitelist
+            whitelist,
+            recipient: None
         },
         TOKEN_AUCTION_STATE.load(deps.storage, 1u128).unwrap()
     );
@@ -481,6 +485,7 @@ fn execute_place_bid_multiple_bids() {
         is_cancelled: false,
         min_bid: None,
         whitelist: None,
+        owner: "owner".to_string(),
     };
 
     let res = query_latest_auction_state_helper(deps.as_ref(), env.clone());
@@ -686,6 +691,7 @@ fn execute_start_auction_start_time_in_past() {
         uses_cw20: false,
         whitelist: None,
         min_bid: None,
+        recipient: None,
     };
     let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
         sender: MOCK_TOKEN_OWNER.to_owned(),
@@ -718,6 +724,7 @@ fn execute_start_auction_zero_start_time() {
         uses_cw20: false,
         whitelist: None,
         min_bid: None,
+        recipient: None,
     };
     let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
         sender: MOCK_TOKEN_OWNER.to_owned(),
@@ -749,6 +756,7 @@ fn execute_start_auction_start_time_not_provided() {
         uses_cw20: false,
         whitelist: None,
         min_bid: None,
+        recipient: None,
     };
     let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
         sender: MOCK_TOKEN_OWNER.to_owned(),
@@ -773,6 +781,7 @@ fn execute_start_auction_zero_duration() {
         uses_cw20: false,
         whitelist: None,
         min_bid: None,
+        recipient: None,
     };
     let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
         sender: MOCK_TOKEN_OWNER.to_owned(),
@@ -833,6 +842,7 @@ fn execute_update_auction_zero_start() {
         uses_cw20: false,
         whitelist: None,
         min_bid: None,
+        recipient: None,
     };
     let mut env = mock_env();
     env.block.time = env.block.time.minus_days(1);
@@ -865,6 +875,7 @@ fn execute_update_auction_zero_duration() {
         uses_cw20: false,
         whitelist: None,
         min_bid: None,
+        recipient: None,
     };
     let mut env = mock_env();
     env.block.time = Timestamp::from_seconds(0);
@@ -891,6 +902,7 @@ fn execute_update_auction_unauthorized() {
         uses_cw20: false,
         whitelist: Some(vec![Addr::unchecked("user")]),
         min_bid: None,
+        recipient: None,
     };
     let env = mock_env();
 
@@ -915,6 +927,7 @@ fn execute_update_auction_auction_started() {
         uses_cw20: false,
         whitelist: Some(vec![Addr::unchecked("user")]),
         min_bid: None,
+        recipient: None,
     };
     let mut env = mock_env();
 
@@ -941,6 +954,7 @@ fn execute_update_auction() {
         uses_cw20: false,
         whitelist: Some(vec![Addr::unchecked("user")]),
         min_bid: None,
+        recipient: None,
     };
     let mut env = mock_env();
 
@@ -962,7 +976,8 @@ fn execute_update_auction() {
             token_address: MOCK_TOKEN_ADDR.to_owned(),
             is_cancelled: false,
             min_bid: None,
-            whitelist: Some(vec![Addr::unchecked("user")])
+            whitelist: Some(vec![Addr::unchecked("user")]),
+            recipient: None,
         },
         TOKEN_AUCTION_STATE
             .load(deps.as_ref().storage, 1u128)
@@ -985,6 +1000,7 @@ fn execute_start_auction_after_previous_finished() {
         uses_cw20: false,
         whitelist: None,
         min_bid: None,
+        recipient: None,
     };
     let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
         sender: MOCK_TOKEN_OWNER.to_owned(),
@@ -1309,6 +1325,7 @@ fn execute_claim_auction_already_claimed() {
         uses_cw20: false,
         whitelist: None,
         min_bid: None,
+        recipient: None,
     };
     let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
         sender: MOCK_TOKEN_OWNER.to_owned(),

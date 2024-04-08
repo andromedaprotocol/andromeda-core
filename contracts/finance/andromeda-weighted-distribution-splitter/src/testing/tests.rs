@@ -1585,7 +1585,7 @@ fn test_execute_update_recipients_unauthorized() {
 
 //     let query_msg = QueryMsg::GetSplitterConfig {};
 //     let res = query(deps.as_ref(), env, query_msg).unwrap();
-//     let val: GetSplitterConfigResponse = from_json(res).unwrap();
+//     let val: GetSplitterConfigResponse = from_json(&res).unwrap();
 
 //     assert_eq!(val.config, splitter);
 // }
@@ -1613,7 +1613,7 @@ fn test_execute_update_recipients_unauthorized() {
 //         user: Recipient::Addr("second".to_string()),
 //     };
 //     let res = query(deps.as_ref(), env, query_msg).unwrap();
-//     let val: GetUserWeightResponse = from_json(res).unwrap();
+//     let val: GetUserWeightResponse = from_json(&res).unwrap();
 
 //     assert_eq!(val.weight, Uint128::new(10));
 //     assert_eq!(val.total_weight, Uint128::new(15));

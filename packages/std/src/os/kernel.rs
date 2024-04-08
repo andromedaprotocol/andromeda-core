@@ -1,7 +1,4 @@
-use crate::ado_base::ado_type::TypeResponse;
-use crate::ado_base::ownership::ContractOwnerResponse;
 use crate::ado_base::ownership::OwnershipMessage;
-use crate::ado_base::version::VersionResponse;
 use crate::amp::messages::AMPMsg;
 use crate::amp::messages::AMPPkt;
 use crate::amp::AndrAddr;
@@ -111,11 +108,11 @@ pub enum QueryMsg {
     #[returns(ChainNameResponse)]
     ChainName {},
     // Base queries
-    #[returns(VersionResponse)]
+    #[returns(crate::ado_base::version::VersionResponse)]
     Version {},
-    #[returns(TypeResponse)]
+    #[returns(crate::ado_base::ado_type::TypeResponse)]
     Type {},
-    #[returns(ContractOwnerResponse)]
+    #[returns(crate::ado_base::ownership::ContractOwnerResponse)]
     Owner {},
 }
 

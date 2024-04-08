@@ -1,29 +1,25 @@
-#![cfg(all(not(target_arch = "wasm32"), feature = "testing"))]
+#![cfg(all(not(target_arch = "wasm32")))]
 
-use andromeda_adodb::mock::{
-    mock_adodb_instantiate_msg, mock_andromeda_adodb, mock_get_code_id_msg, mock_publish,
-};
-use andromeda_economics::mock::{mock_andromeda_economics, mock_economics_instantiate_msg};
-use andromeda_kernel::mock::{
-    mock_andromeda_kernel, mock_get_key_address, mock_kernel_instantiate_message,
-    mock_upsert_key_address,
-};
-use andromeda_std::ado_base::{ownership::OwnershipMessage, AndromedaMsg};
-use andromeda_vfs::mock::{
-    mock_add_path, mock_andromeda_vfs, mock_register_user, mock_resolve_path_query,
-    mock_vfs_instantiate_message,
-};
-use cosmwasm_std::{coin, Addr, Coin, Empty};
+use std::collections::HashMap;
+
+use andromeda_adodb::mock::mock_andromeda_adodb;
+use andromeda_economics::mock::mock_andromeda_economics;
+use andromeda_kernel::mock::mock_andromeda_kernel;
+use andromeda_std::os::adodb::ADOVersion;
+use andromeda_vfs::mock::mock_andromeda_vfs;
+use cosmwasm_std::{coin, Addr, Coin};
 use cw_multi_test::{
-    App, AppBuilder, BankKeeper, Contract, Executor, MockAddressGenerator, MockApiBech32,
-    WasmKeeper,
+    App, AppBuilder, BankKeeper, Executor, MockAddressGenerator, MockApiBech32, WasmKeeper,
 };
+
+use crate::{mock_contract::MockContract, MockADODB, MockEconomics, MockKernel, MockVFS};
 
 pub const ADMIN_USERNAME: &str = "am";
 
 pub type MockApp = App<BankKeeper, MockApiBech32>;
 
-pub fn mock_app() -> MockApp {
+pub fn mock_app(denoms: Option<Vec<&str>>) -> MockApp {
+    let denoms = denoms.unwrap_or(vec!["uandr", "uusd"]);
     AppBuilder::new()
         .with_api(MockApiBech32::new("andr"))
         .with_wasm(WasmKeeper::new().with_address_generator(MockAddressGenerator))
@@ -32,8 +28,11 @@ pub fn mock_app() -> MockApp {
                 .bank
                 .init_balance(
                     storage,
-                    &Addr::unchecked("owner"),
-                    [coin(9999999, "uandr"), coin(999999, "uusd")].to_vec(),
+                    &Addr::unchecked("bank"),
+                    denoms
+                        .iter()
+                        .map(|d| coin(u128::MAX, *d))
+                        .collect::<Vec<Coin>>(),
                 )
                 .unwrap();
         })
@@ -41,20 +40,31 @@ pub fn mock_app() -> MockApp {
 
 pub fn init_balances(app: &mut MockApp, balances: Vec<(Addr, &[Coin])>) {
     for (addr, coins) in balances {
-        app.send_tokens(Addr::unchecked("owner"), addr, coins)
+        app.send_tokens(Addr::unchecked("bank"), addr, coins)
             .unwrap();
     }
 }
 
 pub struct MockAndromeda {
     pub admin_address: Addr,
-    pub adodb_address: Addr,
-    pub kernel_address: Addr,
+    pub kernel: MockKernel,
+    pub adodb: MockADODB,
+    pub economics: MockEconomics,
+    pub vfs: MockVFS,
+    pub wallets: HashMap<String, Addr>,
 }
 
 impl MockAndromeda {
-    pub fn new(app: &mut MockApp, admin_address: &Addr) -> MockAndromeda {
-        let admin_address = app.api().addr_make(admin_address.as_str());
+    pub fn new(app: &mut MockApp, admin_name: &str) -> MockAndromeda {
+        let mut wallets = HashMap::new();
+        let admin_address = app.api().addr_make(admin_name);
+        wallets
+            .entry(admin_name.to_string())
+            .and_modify(|_| {
+                panic!("Wallet already exists");
+            })
+            .or_insert(admin_address.clone());
+
         // Store contract codes
         let adodb_code_id = app.store_code(mock_andromeda_adodb());
         let kernel_code_id = app.store_code(mock_andromeda_kernel());
@@ -62,208 +72,139 @@ impl MockAndromeda {
         let economics_code_id = app.store_code(mock_andromeda_economics());
 
         // Init Kernel
-        let kernel_init_msg = mock_kernel_instantiate_message(None);
-        let kernel_address = app
-            .instantiate_contract(
-                kernel_code_id,
-                admin_address.clone(),
-                &kernel_init_msg,
-                &[],
-                "Kernel",
-                Some(admin_address.to_string()),
-            )
-            .unwrap();
-
-        // Init ADO DB
-        let adodb_init_msg = mock_adodb_instantiate_msg(kernel_address.clone(), None);
-        let adodb_address = app
-            .instantiate_contract(
-                adodb_code_id,
-                admin_address.clone(),
-                &adodb_init_msg,
-                &[],
-                "ADO DB",
-                Some(admin_address.to_string()),
-            )
-            .unwrap();
-
-        //Init Economics
-        let economics_init_msg = mock_economics_instantiate_msg(kernel_address.clone(), None);
-        let economics_address = app
-            .instantiate_contract(
-                economics_code_id,
-                admin_address.clone(),
-                &economics_init_msg,
-                &[],
-                "Andr Economics",
-                Some(admin_address.to_string()),
-            )
-            .unwrap();
-
-        // Init VFS
-        let vfs_init_msg = mock_vfs_instantiate_message(kernel_address.clone(), None);
-        let vfs_address = app
-            .instantiate_contract(
-                vfs_code_id,
-                admin_address.clone(),
-                &vfs_init_msg,
-                &[],
-                "VFS",
-                Some(admin_address.to_string()),
-            )
-            .unwrap();
-        // mock_publish(code_id, key, "0.1.0", None, None);
-        // Add Code IDs
-        let store_adodb_code_id_msg =
-            mock_publish(adodb_code_id, "adodb".to_string(), "0.1.0", None, None); //Dev Note: In future change this to "adodb" for the key
-        let store_kernel_code_id_msg =
-            mock_publish(kernel_code_id, "kernel".to_string(), "0.1.0", None, None);
-        let store_economics_code_id_msg = mock_publish(
-            economics_code_id,
-            "economics".to_string(),
-            "0.1.0",
-            None,
+        let kernel = MockKernel::instantiate(
+            app,
+            kernel_code_id,
+            admin_address.clone(),
+            Some(admin_address.to_string()),
             None,
         );
-        app.execute_contract(
-            admin_address.clone(),
-            adodb_address.clone(),
-            &store_adodb_code_id_msg,
-            &[],
-        )
-        .unwrap();
-        app.execute_contract(
-            admin_address.clone(),
-            adodb_address.clone(),
-            &store_kernel_code_id_msg,
-            &[],
-        )
-        .unwrap();
-        app.execute_contract(
-            admin_address.clone(),
-            adodb_address.clone(),
-            &store_economics_code_id_msg,
-            &[],
-        )
-        .unwrap();
 
-        let mock_andr = MockAndromeda {
-            adodb_address: adodb_address.clone(),
+        // Init ADO DB
+        let adodb = MockADODB::instantiate(
+            app,
+            adodb_code_id,
+            admin_address.clone(),
+            None,
+            kernel.addr().to_string(),
+        );
+
+        //Init Economics
+        let economics = MockEconomics::instantiate(
+            app,
+            economics_code_id,
+            admin_address.clone(),
+            None,
+            kernel.addr().to_string(),
+        );
+
+        // Init VFS
+        let vfs = MockVFS::instantiate(
+            app,
+            vfs_code_id,
+            admin_address.clone(),
+            None,
+            kernel.addr().to_string(),
+        );
+
+        // Add Code IDs
+        adodb
+            .execute_publish(
+                app,
+                admin_address.clone(),
+                adodb_code_id,
+                "adodb",
+                "0.1.0",
+                None,
+                None,
+            )
+            .unwrap();
+        adodb
+            .execute_publish(
+                app,
+                admin_address.clone(),
+                vfs_code_id,
+                "vfs",
+                "0.1.0",
+                None,
+                None,
+            )
+            .unwrap();
+        adodb
+            .execute_publish(
+                app,
+                admin_address.clone(),
+                kernel_code_id,
+                "kernel",
+                "0.1.0",
+                None,
+                None,
+            )
+            .unwrap();
+        kernel
+            .execute_store_key_address(app, admin_address.clone(), "adodb", adodb.addr().clone())
+            .unwrap();
+        kernel
+            .execute_store_key_address(app, admin_address.clone(), "vfs", vfs.addr().clone())
+            .unwrap();
+        kernel
+            .execute_store_key_address(
+                app,
+                admin_address.clone(),
+                "economics",
+                economics.addr().clone(),
+            )
+            .unwrap();
+
+        MockAndromeda {
             admin_address,
-            kernel_address,
-        };
-
-        mock_andr.register_kernel_key_address(app, "adodb", adodb_address);
-        mock_andr.register_kernel_key_address(app, "vfs", vfs_address);
-        mock_andr.register_kernel_key_address(app, "economics", economics_address);
-        // TODO: Uncomment once Register User is reenabled
-        // mock_andr.register_user(app, admin_address.clone(), ADMIN_USERNAME);
-
-        mock_andr
+            kernel,
+            adodb,
+            economics,
+            vfs,
+            wallets,
+        }
     }
 
     /// Stores a given Code ID under the given key in the ADO DB contract
-    pub fn store_code_id(&self, app: &mut MockApp, key: &str, code_id: u64) {
-        let msg = mock_publish(code_id, key, "0.1.0", None, None);
-
-        app.execute_contract(
-            self.admin_address.clone(),
-            self.adodb_address.clone(),
-            &msg,
-            &[],
-        )
-        .unwrap();
-    }
-
-    pub fn store_ado(
-        &self,
-        app: &mut MockApp,
-        contract: Box<dyn Contract<Empty>>,
-        ado_type: impl Into<String>,
-    ) {
-        let code_id = app.store_code(contract);
-        self.store_code_id(app, ado_type.into().as_str(), code_id);
+    pub fn store_code_id(&self, router: &mut MockApp, key: &str, code_id: u64) {
+        let ado_version = ADOVersion::from_string(key);
+        let version =
+            if !ado_version.get_version().is_empty() && ado_version.get_version() != "latest" {
+                ado_version.get_version()
+            } else {
+                "0.1.0".to_string()
+            };
+        self.adodb
+            .execute_publish(
+                router,
+                self.admin_address.clone(),
+                code_id,
+                ado_version.get_type(),
+                version,
+                Some(self.admin_address.to_string()),
+                None,
+            )
+            .unwrap();
     }
 
     /// Gets the Code ID for a given key from the ADO DB contract
     pub fn get_code_id(&self, app: &mut MockApp, key: impl Into<String>) -> u64 {
-        let msg = mock_get_code_id_msg(key.into());
-
-        app.wrap()
-            .query_wasm_smart(self.adodb_address.clone(), &msg)
-            .unwrap()
+        self.adodb.query_code_id(app, key)
     }
 
-    /// Registers a key address for the kernel
-    pub fn register_kernel_key_address(
-        &self,
-        app: &mut MockApp,
-        key: impl Into<String>,
-        address: Addr,
-    ) {
-        let msg = mock_upsert_key_address(key, address);
-        app.execute_contract(
-            self.admin_address.clone(),
-            self.kernel_address.clone(),
-            &msg,
-            &[],
-        )
-        .unwrap();
+    pub fn add_wallet(&mut self, router: &mut MockApp, name: &str) -> Addr {
+        let addr = router.api().addr_make(name);
+        self.wallets
+            .entry(name.to_string())
+            .and_modify(|_| {
+                panic!("Wallet already exists");
+            })
+            .or_insert(addr.clone());
+        addr
     }
 
-    /// Registers a user on the VFS
-    pub fn register_user(&self, app: &mut MockApp, sender: Addr, username: impl Into<String>) {
-        let vfs_address_query = mock_get_key_address("vfs");
-        let vfs_address: Addr = app
-            .wrap()
-            .query_wasm_smart(self.kernel_address.clone(), &vfs_address_query)
-            .unwrap();
-
-        let register_msg = mock_register_user(username);
-
-        app.execute_contract(sender, vfs_address, &register_msg, &[])
-            .unwrap();
-    }
-
-    /// Adds a path to resolve to the VFS
-    pub fn vfs_add_path(
-        &self,
-        app: &mut MockApp,
-        sender: Addr,
-        name: impl Into<String>,
-        address: Addr,
-    ) {
-        let vfs_address_query = mock_get_key_address("vfs");
-        let vfs_address: Addr = app
-            .wrap()
-            .query_wasm_smart(self.kernel_address.clone(), &vfs_address_query)
-            .unwrap();
-
-        let register_msg = mock_add_path(name, address);
-        app.execute_contract(sender, vfs_address, &register_msg, &[])
-            .unwrap();
-    }
-
-    pub fn vfs_resolve_path(&self, app: &mut MockApp, path: impl Into<String>) -> Addr {
-        let vfs_address_query = mock_get_key_address("vfs");
-        let vfs_address: Addr = app
-            .wrap()
-            .query_wasm_smart(self.kernel_address.clone(), &vfs_address_query)
-            .unwrap();
-
-        let query = mock_resolve_path_query(path);
-        app.wrap().query_wasm_smart(vfs_address, &query).unwrap()
-    }
-
-    /// Accepts ownership of the given contract for the given sender
-    pub fn accept_ownership(
-        &self,
-        app: &mut MockApp,
-        address: impl Into<String>,
-        sender: impl Into<String>,
-    ) {
-        let msg = AndromedaMsg::Ownership(OwnershipMessage::AcceptOwnership {});
-        app.execute_contract(Addr::unchecked(sender), Addr::unchecked(address), &msg, &[])
-            .unwrap();
+    pub fn get_wallet(&self, name: &str) -> &Addr {
+        self.wallets.get(name).unwrap()
     }
 }

@@ -1,4 +1,4 @@
-use andromeda_std::amp::AndrAddr;
+use andromeda_std::amp::{AndrAddr, Recipient};
 use andromeda_std::common::{Milliseconds, OrderBy};
 use andromeda_std::{andr_exec, andr_instantiate, andr_instantiate_modules, andr_query};
 
@@ -41,6 +41,7 @@ pub enum ExecuteMsg {
         uses_cw20: bool,
         whitelist: Option<Vec<Addr>>,
         min_bid: Option<Uint128>,
+        recipient: Option<Recipient>,
     },
     CancelAuction {
         token_id: String,
@@ -70,6 +71,7 @@ pub enum Cw721HookMsg {
         uses_cw20: bool,
         min_bid: Option<Uint128>,
         whitelist: Option<Vec<Addr>>,
+        recipient: Option<Recipient>,
     },
 }
 #[cw_serde]
@@ -175,6 +177,7 @@ impl From<TokenAuctionState> for AuctionStateResponse {
             whitelist: token_auction_state.whitelist,
             is_cancelled: token_auction_state.is_cancelled,
             min_bid: token_auction_state.min_bid,
+            owner: token_auction_state.owner,
         }
     }
 }
@@ -194,6 +197,7 @@ pub struct TokenAuctionState {
     pub token_address: String,
     pub is_cancelled: bool,
     pub uses_cw20: bool,
+    pub recipient: Option<Recipient>,
 }
 
 #[cw_serde]
@@ -215,6 +219,7 @@ pub struct AuctionStateResponse {
     pub whitelist: Option<Vec<Addr>>,
     pub min_bid: Option<Uint128>,
     pub is_cancelled: bool,
+    pub owner: String,
 }
 
 #[cw_serde]

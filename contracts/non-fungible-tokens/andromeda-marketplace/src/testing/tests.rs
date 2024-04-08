@@ -40,6 +40,7 @@ fn start_sale(deps: DepsMut, coin_denom: String, uses_cw20: bool) {
         start_time: None,
         duration: None,
         uses_cw20,
+        recipient: None,
     };
     let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
         sender: MOCK_TOKEN_OWNER.to_owned(),
@@ -61,6 +62,7 @@ fn start_sale_future_start(deps: DepsMut, env: Env, coin_denom: String, uses_cw2
         start_time: Some(Milliseconds(current_time + 1)),
         duration: None,
         uses_cw20,
+        recipient: None,
     };
     let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
         sender: MOCK_TOKEN_OWNER.to_owned(),
@@ -83,6 +85,7 @@ fn start_sale_future_start_with_duration(deps: DepsMut, env: Env, uses_cw20: boo
         // Add duration, the end time's expiration will be current time + duration
         duration: Some(Milliseconds(1)),
         uses_cw20,
+        recipient: None,
     };
     let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
         sender: MOCK_TOKEN_OWNER.to_owned(),
@@ -128,6 +131,7 @@ fn assert_sale_created(deps: Deps, env: Env, coin_denom: String, uses_cw20: bool
             start_time: start_time_expiration,
             end_time: Expiration::Never {},
             uses_cw20,
+            recipient: None,
         },
         TOKEN_SALE_STATE.load(deps.storage, 1u128).unwrap()
     );
@@ -164,6 +168,7 @@ fn assert_sale_created_future_start(deps: Deps, env: Env, coin_denom: String, us
             start_time: start_time_expiration,
             end_time: Expiration::Never {},
             uses_cw20,
+            recipient: None,
         },
         TOKEN_SALE_STATE.load(deps.storage, 1u128).unwrap()
     );
@@ -577,6 +582,7 @@ fn test_execute_update_sale_unauthorized() {
         price: Uint128::new(11),
         coin_denom: "juno".to_string(),
         uses_cw20: false,
+        recipient: None,
     };
 
     let info = mock_info("someone", &[]);
@@ -600,6 +606,7 @@ fn test_execute_update_sale_invalid_price() {
         price: Uint128::zero(),
         coin_denom: "juno".to_string(),
         uses_cw20: false,
+        recipient: None,
     };
 
     let info = mock_info("owner", &[]);
@@ -618,6 +625,7 @@ fn test_execute_start_sale_invalid_price() {
         start_time: None,
         duration: None,
         uses_cw20: false,
+        recipient: None,
     };
     let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
         sender: MOCK_TOKEN_OWNER.to_owned(),
@@ -757,10 +765,6 @@ fn test_execute_buy_with_tax_and_royalty_works() {
             to_address: "tax_recipient".to_string(),
             amount: vec![coin(50, "uusd")],
         })),
-        SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-            to_address: "owner".to_string(),
-            amount: vec![coin(90, "uusd")],
-        })),
         SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: MOCK_TOKEN_ADDR.to_string(),
             msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
@@ -769,6 +773,10 @@ fn test_execute_buy_with_tax_and_royalty_works() {
             })
             .unwrap(),
             funds: vec![],
+        })),
+        SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+            to_address: "owner".to_string(),
+            amount: vec![coin(90, "uusd")],
         })),
         SubMsg::reply_on_error(
             CosmosMsg::Wasm(WasmMsg::Execute {

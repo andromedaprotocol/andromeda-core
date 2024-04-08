@@ -17,7 +17,6 @@ use cosmwasm_std::{
     attr, coin, ensure, entry_point, from_json, to_json_binary, wasm_execute, BankMsg, Binary,
     CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError, SubMsg, Uint128,
 };
-use cw2::set_contract_version;
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use cw_asset::AssetInfo;
 use cw_storage_plus::Bound;
@@ -43,7 +42,6 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     TOKEN_ADDRESS.save(deps.storage, &msg.token_address)?;
 
     let contract = ADOContract::default();
