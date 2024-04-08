@@ -573,31 +573,7 @@ fn execute_buy_cw20(
         Some(amount_sent),
         token_sale_state.clone(),
     )?;
-
-    let transfer_msg = Cw20ExecuteMsg::Transfer {
-        recipient: token_sale_state.clone().owner,
-        amount: after_tax_payment.0.amount,
-    };
-    let wasm_msg = wasm_execute(sale_currency.clone(), &transfer_msg, vec![])?;
-
-    // After tax payment is returned in Native, we need to change it to cw20
-    let (tax_recipient, tax_amount) = match after_tax_payment.1.first().map(|msg| {
-        if let CosmosMsg::Bank(BankMsg::Send { to_address, amount }) = &msg.msg {
-            (
-                Some(to_address.clone()),
-                amount.get(0).map(|coin| coin.amount),
-            )
-        } else {
-            (None, None)
-        }
-    }) {
-        Some((tax_recipient, tax_amount)) => (tax_recipient, tax_amount),
-        None => (None, None),
-    };
-
     let resp: Response = Response::new()
-        // Send funds to the original owner.
-        .add_message(wasm_msg)
         // Send NFT to buyer.
         .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: token_sale_state.token_address.clone(),
@@ -613,14 +589,44 @@ fn execute_buy_cw20(
         .add_attribute("recipient", sender.to_string())
         .add_attribute("sale_id", token_sale_state.sale_id);
 
-    match (tax_recipient, tax_amount) {
-        (Some(recipient), Some(amount)) => {
-            let tax_transfer_msg = Cw20ExecuteMsg::Transfer { recipient, amount };
-            let tax_wasm_msg = wasm_execute(sale_currency, &tax_transfer_msg, vec![])?;
-            // Add tax message in case there's a tax recipient and amount
-            Ok(resp.add_message(tax_wasm_msg))
+    if after_tax_payment.0.amount > Uint128::zero() {
+        let transfer_msg = Cw20ExecuteMsg::Transfer {
+            recipient: token_sale_state.owner,
+            amount: after_tax_payment.0.amount,
+        };
+        let after_tax_payment_msg = wasm_execute(sale_currency.clone(), &transfer_msg, vec![])?;
+
+        // After tax payment is returned in Native, we need to change it to cw20
+        let (tax_recipient, tax_amount) = match after_tax_payment.1.first().map(|msg| {
+            if let CosmosMsg::Bank(BankMsg::Send { to_address, amount }) = &msg.msg {
+                (
+                    Some(to_address.clone()),
+                    amount.get(0).map(|coin| coin.amount),
+                )
+            } else {
+                (None, None)
+            }
+        }) {
+            Some((tax_recipient, tax_amount)) => (tax_recipient, tax_amount),
+            None => (None, None),
+        };
+
+        match (tax_recipient, tax_amount) {
+            (Some(recipient), Some(amount)) => {
+                let tax_transfer_msg = Cw20ExecuteMsg::Transfer { recipient, amount };
+                let tax_payment_msg = wasm_execute(sale_currency, &tax_transfer_msg, vec![])?;
+                Ok(resp
+                    // Send funds to the original owner.
+                    .add_message(after_tax_payment_msg)
+                    // Add tax message in case there's a tax recipient and amount
+                    .add_message(tax_payment_msg))
+            }
+            _ => Ok(resp
+                // Send funds to the original owner.
+                .add_message(after_tax_payment_msg)),
         }
-        _ => Ok(resp),
+    } else {
+        Ok(resp)
     }
 }
 
