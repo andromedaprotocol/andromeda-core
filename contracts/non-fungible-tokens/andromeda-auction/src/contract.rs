@@ -609,14 +609,6 @@ fn execute_place_bid_cw20(
         ContractError::InvalidAsset { asset: asset_sent }
     );
 
-    let permissioned_actions = ADOContract::default().query_permissioned_actions(deps.as_ref())?;
-    ensure!(
-        permissioned_actions.contains(&SEND_CW20_ACTION.to_string()),
-        ContractError::InvalidFunds {
-            msg: "CW20 isn't permissioned".to_string()
-        }
-    );
-
     ensure!(
         token_auction_state.uses_cw20,
         ContractError::InvalidFunds {
