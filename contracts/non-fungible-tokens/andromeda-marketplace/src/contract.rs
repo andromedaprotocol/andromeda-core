@@ -591,7 +591,12 @@ fn execute_buy_cw20(
 
     if after_tax_payment.0.amount > Uint128::zero() {
         let transfer_msg = Cw20ExecuteMsg::Transfer {
-            recipient: token_sale_state.owner,
+            recipient: token_sale_state
+                .recipient
+                .unwrap_or(Recipient::from_string(token_sale_state.owner))
+                .address
+                .get_raw_address(&deps.as_ref())?
+                .to_string(),
             amount: after_tax_payment.0.amount,
         };
         let after_tax_payment_msg = wasm_execute(sale_currency.clone(), &transfer_msg, vec![])?;
