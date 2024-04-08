@@ -63,6 +63,7 @@ impl From<TokenSaleState> for SaleStateResponse {
             price: token_sale_state.price,
             start_time: token_sale_state.start_time,
             end_time: token_sale_state.end_time,
+            recipient: token_sale_state.recipient,
         }
     }
 }

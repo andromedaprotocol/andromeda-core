@@ -126,6 +126,7 @@ pub struct SaleStateResponse {
     pub status: Status,
     pub start_time: Expiration,
     pub end_time: Expiration,
+    pub recipient: Option<Recipient>,
 }
 
 #[cw_serde]

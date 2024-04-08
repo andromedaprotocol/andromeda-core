@@ -178,6 +178,7 @@ impl From<TokenAuctionState> for AuctionStateResponse {
             is_cancelled: token_auction_state.is_cancelled,
             min_bid: token_auction_state.min_bid,
             owner: token_auction_state.owner,
+            recipient: token_auction_state.recipient,
         }
     }
 }
@@ -220,6 +221,7 @@ pub struct AuctionStateResponse {
     pub min_bid: Option<Uint128>,
     pub is_cancelled: bool,
     pub owner: String,
+    pub recipient: Option<Recipient>,
 }
 
 #[cw_serde]

@@ -486,6 +486,7 @@ fn execute_place_bid_multiple_bids() {
         min_bid: None,
         whitelist: None,
         owner: "owner".to_string(),
+        recipient: None,
     };
 
     let res = query_latest_auction_state_helper(deps.as_ref(), env.clone());
