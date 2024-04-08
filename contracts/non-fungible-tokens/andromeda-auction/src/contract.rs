@@ -835,7 +835,12 @@ fn execute_claim(
         ); // Send back previous bid unless there was no previous bid.
 
         let transfer_msg = Cw20ExecuteMsg::Transfer {
-            recipient: token_auction_state.owner,
+            recipient: token_auction_state
+                .recipient
+                .unwrap_or(Recipient::from_string(token_auction_state.owner))
+                .address
+                .get_raw_address(&deps.as_ref())?
+                .to_string(),
             amount: after_tax_payment.0.amount,
         };
         let wasm_msg = wasm_execute(auction_currency.clone(), &transfer_msg, vec![])?;
