@@ -113,6 +113,46 @@
       "additionalProperties": false
     },
     {
+      "description": "Gets all of the authorized addresses for the auction",
+      "type": "object",
+      "required": [
+        "authorized_addresses"
+      ],
+      "properties": {
+        "authorized_addresses": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint32",
+              "minimum": 0.0
+            },
+            "order_by": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/OrderBy"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "start_after": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
       "description": "Gets the bids for the given auction id. Start_after starts indexing at 0.",
       "type": "object",
       "required": [
