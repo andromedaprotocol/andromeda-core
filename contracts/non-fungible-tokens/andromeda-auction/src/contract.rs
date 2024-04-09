@@ -28,7 +28,7 @@ use cosmwasm_std::{
     CosmosMsg, Deps, DepsMut, Env, MessageInfo, QuerierWrapper, QueryRequest, Response, Storage,
     SubMsg, Uint128, WasmMsg, WasmQuery,
 };
-use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
+use cw20::{Cw20Coin, Cw20ExecuteMsg, Cw20ReceiveMsg};
 use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, Cw721ReceiveMsg, Expiration, OwnerOfResponse};
 use cw_utils::nonpayable;
 
@@ -826,17 +826,17 @@ fn execute_claim(
             }
         ); // Send back previous bid unless there was no previous bid.
 
-        let transfer_msg = Cw20ExecuteMsg::Transfer {
-            recipient: token_auction_state
-                .recipient
-                .unwrap_or(Recipient::from_string(token_auction_state.owner))
-                .address
-                .get_raw_address(&deps.as_ref())?
-                .to_string(),
-            amount: after_tax_payment.0.amount,
-        };
-        let wasm_msg = wasm_execute(auction_currency.clone(), &transfer_msg, vec![])?;
+        let recipient = token_auction_state
+            .recipient
+            .unwrap_or(Recipient::from_string(token_auction_state.owner));
 
+        let cw20_msg = recipient.generate_msg_cw20(
+            &deps.as_ref(),
+            Cw20Coin {
+                address: auction_currency.clone(),
+                amount: after_tax_payment.0.amount,
+            },
+        )?;
         // After tax payment is returned in Native, we need to change it to cw20
         let (tax_recipient, tax_amount) = match after_tax_payment.1.first().map(|msg| {
             if let CosmosMsg::Bank(BankMsg::Send { to_address, amount }) = &msg.msg {
@@ -860,7 +860,7 @@ fn execute_claim(
                     .add_message(tax_wasm_msg)
                     // Send NFT to auction winner.
                     // Send funds to the original owner.
-                    .add_message(wasm_msg)
+                    .add_submessage(cw20_msg)
                     .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
                         contract_addr: token_auction_state.token_address.clone(),
                         msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
@@ -873,7 +873,7 @@ fn execute_claim(
             _ => Ok(resp
                 // Send NFT to auction winner.
                 // Send funds to the original owner.
-                .add_message(wasm_msg)
+                .add_submessage(cw20_msg)
                 .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
                     contract_addr: token_auction_state.token_address.clone(),
                     msg: encode_binary(&Cw721ExecuteMsg::TransferNft {

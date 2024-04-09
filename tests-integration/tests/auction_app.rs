@@ -835,7 +835,7 @@ fn test_auction_app_cw20() {
         true,
         None,
         Some(vec![buyer_one.clone(), buyer_two.clone()]),
-        Some(Recipient::from_string(buyer_one).with_msg(mock_splitter_send_msg())),
+        Some(Recipient::from_string(buyer_one)),
     );
 
     // This time we're auctioning token id 1

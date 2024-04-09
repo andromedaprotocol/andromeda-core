@@ -23,7 +23,7 @@ use andromeda_std::{
     common::{encode_binary, rates::get_tax_amount, Funds},
     error::ContractError,
 };
-use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
+use cw20::{Cw20Coin, Cw20ExecuteMsg, Cw20ReceiveMsg};
 use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, Cw721ReceiveMsg, OwnerOfResponse};
 
 #[cfg(not(feature = "library"))]
@@ -590,16 +590,17 @@ fn execute_buy_cw20(
         .add_attribute("sale_id", token_sale_state.sale_id);
 
     if after_tax_payment.0.amount > Uint128::zero() {
-        let transfer_msg = Cw20ExecuteMsg::Transfer {
-            recipient: token_sale_state
-                .recipient
-                .unwrap_or(Recipient::from_string(token_sale_state.owner))
-                .address
-                .get_raw_address(&deps.as_ref())?
-                .to_string(),
-            amount: after_tax_payment.0.amount,
-        };
-        let after_tax_payment_msg = wasm_execute(sale_currency.clone(), &transfer_msg, vec![])?;
+        let recipient = token_sale_state
+            .recipient
+            .unwrap_or(Recipient::from_string(token_sale_state.owner));
+
+        let cw20_msg = recipient.generate_msg_cw20(
+            &deps.as_ref(),
+            Cw20Coin {
+                address: sale_currency.clone(),
+                amount: after_tax_payment.0.amount,
+            },
+        )?;
 
         // After tax payment is returned in Native, we need to change it to cw20
         let (tax_recipient, tax_amount) = match after_tax_payment.1.first().map(|msg| {
@@ -622,13 +623,13 @@ fn execute_buy_cw20(
                 let tax_payment_msg = wasm_execute(sale_currency, &tax_transfer_msg, vec![])?;
                 Ok(resp
                     // Send funds to the original owner.
-                    .add_message(after_tax_payment_msg)
+                    .add_submessage(cw20_msg)
                     // Add tax message in case there's a tax recipient and amount
                     .add_message(tax_payment_msg))
             }
             _ => Ok(resp
                 // Send funds to the original owner.
-                .add_message(after_tax_payment_msg)),
+                .add_submessage(cw20_msg)),
         }
     } else {
         Ok(resp)
