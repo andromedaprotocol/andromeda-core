@@ -118,7 +118,7 @@ The list of ADOs that have been audited and are available on our web-application
 | [andromeda-kernel](https://github.com/andromedaprotocol/andromeda-core/tree/1.0.rc-1/contracts/os/andromeda-kernel)| os | The contract responsible for handling communication between ADOs| [Gitbook](https://docs.andromedaprotocol.io/andromeda/platform-and-framework/andromeda-messaging-protocol/kernel)|
 | [andromeda-vfs](https://github.com/andromedaprotocol/andromeda-core/tree/1.0.rc-1/contracts/os/andromeda-vfs)| os| The contract responsible for managing the usernames and paths of ADOs and users in the aOs | [Gitbook](https://docs.andromedaprotocol.io/andromeda/platform-and-framework/andromeda-messaging-protocol/virtual-file-system)|
 
-**Note**: There exists many other ADOs that are scheduled for release but have still to undergo the audit process.
+**Note**: Other ADOs can be found in our repo, but they have not gone through the auditing process yet.
 
 ## Packages
 
