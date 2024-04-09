@@ -158,10 +158,11 @@ fn execute_create_batch(
         }
     );
 
-    let current_balance = deps.querier.query_balance(
-        env.contract.address,
-        funds.denom
-    ).unwrap().amount;
+    let current_balance = deps
+        .querier
+        .query_balance(env.contract.address.to_string(), funds.denom)
+        .unwrap()
+        .amount;
     let max_fund = Uint128::MAX - current_balance;
     ensure!(
         !funds.amount <= max_fund,
