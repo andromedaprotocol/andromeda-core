@@ -207,7 +207,7 @@ cargo clippy --all --all-targets -- -D warnings
 Andromeda is deployed on many of the Cosmos chains. Usually this will require you to set up an environment for each chain. Luckily, Andromeda has built the Andromeda CLI, an all in one tool to build, interact, and manage ADOs and wallets for any of the chains. The CLI documentation can be found [here](https://docs.andromedaprotocol.io/andromeda/andromeda-cli/introduction).
 
 ### Andromeda JS 
-Andromeda.js is a JavaScript SDK for writing applications that interact with ADOs on any of the blockchains that Andromeda is deployed on. More on the AndromedaJS can be found [here](https://docs.andromedaprotocol.io/andromeda.js/).
+[Andromeda.js](https://github.com/andromedaprotocol/andromeda.js) is a JavaScript SDK for writing applications that interact with ADOs on any of the blockchains that Andromeda is deployed on. More on the AndromedaJS can be found [here](https://docs.andromedaprotocol.io/andromeda.js/).
 
 ## Licensing
 
