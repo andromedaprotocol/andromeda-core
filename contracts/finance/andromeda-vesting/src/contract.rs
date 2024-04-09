@@ -158,6 +158,18 @@ fn execute_create_batch(
         }
     );
 
+    let current_balance = deps.querier.query_balance(
+        env.contract.address,
+        funds.denom
+    ).unwrap().amount;
+    let max_fund = Uint128::MAX - current_balance;
+    ensure!(
+        !funds.amount <= max_fund,
+        ContractError::InvalidFunds {
+            msg: format!("Funds can not exceed {max_fund}"),
+        }
+    );
+
     let lockup_end = if let Some(duration) = lockup_duration {
         current_time + duration
     } else {
