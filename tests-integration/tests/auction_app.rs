@@ -579,7 +579,7 @@ fn test_auction_app_cw20() {
     // Mint Tokens
     let cw721: MockCW721 = app.query_ado_by_component_name(&router, cw721_component.name);
 
-    let mint_msg = mock_quick_mint_msg(1, owner.to_string());
+    let mint_msg = mock_quick_mint_msg(2, owner.to_string());
 
     router
         .execute_contract(
@@ -815,4 +815,207 @@ fn test_auction_app_cw20() {
         .query_wasm_smart(cw20.addr(), &cw20_balance_query)
         .unwrap();
     assert_eq!(cw20_balance_response.balance, buyer_one_original_balance);
+
+    // Now try holding an auction with a recipient
+    // Send Token to Auction
+    router
+        .execute_contract(
+            owner.clone(),
+            Addr::unchecked(auction.addr().clone()),
+            &mock_authorize_token_address(cw721.addr().clone(), None),
+            &[],
+        )
+        .unwrap();
+
+    let start_time = router.block_info().time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO + 100;
+    let receive_msg = mock_start_auction(
+        Some(Milliseconds(start_time)),
+        Milliseconds(start_time + 2),
+        cw20.addr().to_string(),
+        true,
+        None,
+        None,
+        Some(Recipient::from_string(buyer_one).with_msg(mock_splitter_send_msg())),
+    );
+
+    // This time we're auctioning token id 1
+    let send_msg = mock_send_nft(
+        AndrAddr::from_string("./auction".to_string()),
+        "1".to_string(),
+        to_json_binary(&receive_msg).unwrap(),
+    );
+
+    router
+        .execute_contract(
+            owner.clone(),
+            Addr::unchecked(cw721.addr().clone()),
+            &send_msg,
+            &[],
+        )
+        .unwrap();
+
+    router.set_block(BlockInfo {
+        height: router.block_info().height,
+        time: Timestamp::from_nanos(start_time * MILLISECONDS_TO_NANOSECONDS_RATIO),
+        chain_id: router.block_info().chain_id,
+    });
+
+    // Query Auction State
+    let auction_ids_response: AuctionIdsResponse = router
+        .wrap()
+        .query_wasm_smart(
+            auction.addr().clone(),
+            &mock_get_auction_ids("1".to_string(), cw721.addr().to_string()),
+        )
+        .unwrap();
+
+    assert_eq!(auction_ids_response.auction_ids.len(), 1);
+
+    let auction_id = auction_ids_response.auction_ids.first().unwrap();
+    let auction_state: AuctionStateResponse = router
+        .wrap()
+        .query_wasm_smart(auction.addr().clone(), &mock_get_auction_state(*auction_id))
+        .unwrap();
+
+    assert_eq!(auction_state.coin_denom, cw20.addr().to_string());
+
+    // Place Bid One
+    // Now whitelist bidder one
+    let actor = AndrAddr::from_string(buyer_one.clone());
+    let action = "PlaceBid".to_string();
+    let permission = Permission::whitelisted(None);
+    let permissioning_message = mock_set_permission(actor, action, permission);
+
+    router
+        .execute_contract(
+            owner.clone(),
+            Addr::unchecked(auction.addr().clone()),
+            &permissioning_message,
+            &[],
+        )
+        .unwrap();
+
+    // Try bidding again
+    let hook_msg = Cw20HookMsg::PlaceBid {
+        token_id: "1".to_owned(),
+        token_address: cw721.addr().clone().to_string(),
+    };
+
+    let bid_msg = mock_cw20_send(
+        AndrAddr::from_string(auction.addr().clone()),
+        Uint128::new(50),
+        to_json_binary(&hook_msg).unwrap(),
+    );
+
+    router
+        .execute_contract(
+            buyer_one.clone(),
+            Addr::unchecked(cw20.addr().clone()),
+            &bid_msg,
+            &[],
+        )
+        .unwrap();
+
+    // Check Bid Status One
+    let bids_resp: BidsResponse = router
+        .wrap()
+        .query_wasm_smart(auction.addr().clone(), &mock_get_bids(*auction_id))
+        .unwrap();
+    assert_eq!(bids_resp.bids.len(), 1);
+
+    let bid = bids_resp.bids.first().unwrap();
+    assert_eq!(bid.bidder, buyer_one.to_string());
+    assert_eq!(bid.amount, Uint128::from(50u128));
+
+    // Second bid by buyer_two
+    let bid_msg = mock_cw20_send(
+        AndrAddr::from_string(auction.addr().clone()),
+        Uint128::new(100),
+        to_json_binary(&hook_msg).unwrap(),
+    );
+
+    router
+        .execute_contract(
+            buyer_two.clone(),
+            Addr::unchecked(cw20.addr().clone()),
+            &bid_msg,
+            &[],
+        )
+        .unwrap();
+
+    // Check Bid Status One
+    let bids_resp: BidsResponse = router
+        .wrap()
+        .query_wasm_smart(auction.addr().clone(), &mock_get_bids(*auction_id))
+        .unwrap();
+    assert_eq!(bids_resp.bids.len(), 2);
+
+    let bid_two = bids_resp.bids.get(1).unwrap();
+    assert_eq!(bid_two.bidder, buyer_two.to_string());
+    assert_eq!(bid_two.amount, Uint128::from(100u128));
+
+    // End Auction
+    router.set_block(BlockInfo {
+        height: router.block_info().height,
+        time: Timestamp::from_nanos((start_time + 1001) * MILLISECONDS_TO_NANOSECONDS_RATIO),
+        chain_id: router.block_info().chain_id,
+    });
+    let end_msg = mock_claim_auction("1".to_string(), cw721.addr().to_string());
+
+    router
+        .execute_contract(
+            buyer_two.clone(),
+            Addr::unchecked(auction.addr()),
+            &end_msg,
+            &[],
+        )
+        .unwrap();
+
+    // Check Final State
+    let owner_resp: OwnerOfResponse = router
+        .wrap()
+        .query_wasm_smart(cw721.addr(), &mock_cw721_owner_of("1".to_string(), None))
+        .unwrap();
+    assert_eq!(owner_resp.owner, buyer_two.to_string());
+
+    // The auction's owner sold the NFT for 100, but has buyer_one set as recipient. So the balance shouldn't change since the previous auction
+    let cw20_balance_query = mock_get_cw20_balance(owner);
+    let cw20_balance_response: BalanceResponse = router
+        .wrap()
+        .query_wasm_smart(cw20.addr().clone(), &cw20_balance_query)
+        .unwrap();
+    assert_eq!(
+        cw20_balance_response.balance,
+        owner_original_balance
+            // Funds added during previous auction
+            .checked_add(Uint128::new(100))
+            .unwrap()
+    );
+
+    // Buyer two won the auction with a bid of 100, the balance should be 100 less than the original balance
+    let cw20_balance_query = mock_get_cw20_balance(buyer_two);
+    let cw20_balance_response: BalanceResponse = router
+        .wrap()
+        .query_wasm_smart(cw20.addr().clone(), &cw20_balance_query)
+        .unwrap();
+    assert_eq!(
+        cw20_balance_response.balance,
+        buyer_two_original_balance
+            // Purchase from previous and current auction
+            .checked_sub(Uint128::new(100 + 100))
+            .unwrap()
+    );
+
+    // Buyer one was outbid, but is set as the auction's recipient, so balance should increase by 100
+    let cw20_balance_query = mock_get_cw20_balance(buyer_one);
+    let cw20_balance_response: BalanceResponse = router
+        .wrap()
+        .query_wasm_smart(cw20.addr(), &cw20_balance_query)
+        .unwrap();
+    assert_eq!(
+        cw20_balance_response.balance,
+        buyer_one_original_balance
+            .checked_add(Uint128::new(100))
+            .unwrap()
+    );
 }
