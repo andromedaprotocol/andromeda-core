@@ -834,7 +834,7 @@ fn test_auction_app_cw20() {
         cw20.addr().to_string(),
         true,
         None,
-        None,
+        Some(vec![buyer_one.clone(), buyer_two.clone()]),
         Some(Recipient::from_string(buyer_one).with_msg(mock_splitter_send_msg())),
     );
 
@@ -880,22 +880,7 @@ fn test_auction_app_cw20() {
     assert_eq!(auction_state.coin_denom, cw20.addr().to_string());
 
     // Place Bid One
-    // Now whitelist bidder one
-    let actor = AndrAddr::from_string(buyer_one.clone());
-    let action = "PlaceBid".to_string();
-    let permission = Permission::whitelisted(None);
-    let permissioning_message = mock_set_permission(actor, action, permission);
-
-    router
-        .execute_contract(
-            owner.clone(),
-            Addr::unchecked(auction.addr().clone()),
-            &permissioning_message,
-            &[],
-        )
-        .unwrap();
-
-    // Try bidding again
+    // Whitelisted buyer one at the start of the auction
     let hook_msg = Cw20HookMsg::PlaceBid {
         token_id: "1".to_owned(),
         token_address: cw721.addr().clone().to_string(),
