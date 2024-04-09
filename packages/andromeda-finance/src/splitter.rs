@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use andromeda_std::{
     amp::recipient::Recipient,
     andr_exec, andr_instantiate, andr_query,
-    common::{Milliseconds, MillisecondsDuration},
+    common::{MillisecondsDuration, MillisecondsExpiration},
     error::ContractError,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
@@ -26,8 +26,8 @@ impl AddressPercent {
 pub struct Splitter {
     /// The vector of recipients for the contract. Anytime a `Send` execute message is sent the amount sent will be divided amongst these recipients depending on their assigned percentage.
     pub recipients: Vec<AddressPercent>,
-    /// Whether or not the contract is currently locked. This restricts updating any config related fields.
-    pub lock: Milliseconds,
+    /// The lock's expiration time
+    pub lock: MillisecondsExpiration,
 }
 
 #[andr_instantiate]
