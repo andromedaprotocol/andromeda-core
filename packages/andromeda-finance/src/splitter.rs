@@ -1,7 +1,9 @@
 use std::collections::HashSet;
 
 use andromeda_std::{
-    amp::recipient::Recipient, andr_exec, andr_instantiate, andr_query, common::Milliseconds,
+    amp::recipient::Recipient,
+    andr_exec, andr_instantiate, andr_query,
+    common::{Milliseconds, MillisecondsDuration},
     error::ContractError,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
@@ -34,7 +36,7 @@ pub struct InstantiateMsg {
     /// The vector of recipients for the contract. Anytime a `Send` execute message is
     /// sent the amount sent will be divided amongst these recipients depending on their assigned percentage.
     pub recipients: Vec<AddressPercent>,
-    pub lock_time: Option<Milliseconds>,
+    pub lock_time: Option<MillisecondsDuration>,
 }
 
 impl InstantiateMsg {
@@ -51,7 +53,7 @@ pub enum ExecuteMsg {
     /// Used to lock/unlock the contract allowing the config to be updated.
     UpdateLock {
         // Milliseconds from current time
-        lock_time: Milliseconds,
+        lock_time: MillisecondsDuration,
     },
     /// Divides any attached funds to the message amongst the recipients list.
     Send {},

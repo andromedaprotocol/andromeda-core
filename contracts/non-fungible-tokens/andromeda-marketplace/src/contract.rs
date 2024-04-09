@@ -14,7 +14,7 @@ use andromeda_std::common::context::ExecuteContext;
 use andromeda_std::common::expiration::{
     expiration_from_milliseconds, get_and_validate_start_time,
 };
-use andromeda_std::common::Milliseconds;
+use andromeda_std::common::{MillisecondsDuration, MillisecondsExpiration};
 use andromeda_std::{
     ado_base::{hooks::AndromedaHook, InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     common::{encode_binary, rates::get_tax_amount, Funds},
@@ -169,8 +169,8 @@ fn execute_start_sale(
     token_address: String,
     price: Uint128,
     coin_denom: String,
-    start_time: Option<Milliseconds>,
-    duration: Option<Milliseconds>,
+    start_time: Option<MillisecondsExpiration>,
+    duration: Option<MillisecondsDuration>,
     recipient: Option<Recipient>,
 ) -> Result<Response, ContractError> {
     // Price can't be zero
