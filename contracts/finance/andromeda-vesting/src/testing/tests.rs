@@ -193,12 +193,7 @@ fn test_create_batch_valid_denom_zero_amount() {
 
     let res = execute(deps.as_mut(), mock_env(), info, msg);
 
-    assert_eq!(
-        ContractError::InvalidFunds {
-            msg: "Funds must be non-zero".to_string()
-        },
-        res.unwrap_err()
-    );
+    assert_eq!(ContractError::InvalidZeroAmount {}, res.unwrap_err());
 }
 
 #[test]
@@ -684,7 +679,7 @@ fn test_claim_batch_single_claim() {
 fn test_claim_batch_not_nice_numbers_single_release() {
     let mut deps = mock_dependencies_custom(&[]);
     init(deps.as_mut());
-    let info = mock_info("owner", &coins(7, "uusd"));
+    let info = mock_info("owner", &coins(10, "uusd"));
 
     let release_unit = 10;
 
@@ -700,7 +695,7 @@ fn test_claim_batch_not_nice_numbers_single_release() {
 
     deps.querier
         .base
-        .update_balance(MOCK_CONTRACT_ADDR, coins(7, "uusd"));
+        .update_balance(MOCK_CONTRACT_ADDR, coins(10, "uusd"));
 
     // Skip time.
     let mut env = mock_env();
@@ -719,10 +714,10 @@ fn test_claim_batch_not_nice_numbers_single_release() {
         Response::new()
             .add_message(BankMsg::Send {
                 to_address: "recipient".to_string(),
-                amount: coins(7, "uusd")
+                amount: coins(10, "uusd")
             })
             .add_attribute("action", "claim")
-            .add_attribute("amount", "7")
+            .add_attribute("amount", "10")
             .add_attribute("batch_id", "1")
             .add_attribute("amount_left", "0"),
         res
@@ -731,8 +726,8 @@ fn test_claim_batch_not_nice_numbers_single_release() {
 
     assert_eq!(
         Batch {
-            amount: Uint128::new(7),
-            amount_claimed: Uint128::new(7),
+            amount: Uint128::new(10),
+            amount_claimed: Uint128::new(10),
             lockup_end,
             release_unit: 10,
             release_amount: WithdrawalType::Amount(Uint128::new(10)),

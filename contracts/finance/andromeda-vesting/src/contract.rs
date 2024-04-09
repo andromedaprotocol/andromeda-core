@@ -152,7 +152,7 @@ fn execute_create_batch(
         WithdrawalType::Percentage(_) => Uint128::from(100u128),
     };
     ensure!(
-        !funds.amount >= min_fund,
+        funds.amount >= min_fund,
         ContractError::InvalidFunds {
             msg: format!("Funds must be at least {min_fund}"),
         }
@@ -165,7 +165,7 @@ fn execute_create_batch(
         .amount;
     let max_fund = Uint128::MAX - current_balance;
     ensure!(
-        !funds.amount <= max_fund,
+        funds.amount <= max_fund,
         ContractError::InvalidFunds {
             msg: format!("Funds can not exceed {max_fund}"),
         }
