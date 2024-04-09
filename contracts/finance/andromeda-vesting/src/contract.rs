@@ -143,15 +143,19 @@ fn execute_create_batch(
     );
 
     ensure!(
-        !funds.amount.is_zero(),
-        ContractError::InvalidFunds {
-            msg: "Funds must be non-zero".to_string(),
-        }
-    );
-
-    ensure!(
         release_unit > 0 && !release_amount.is_zero(),
         ContractError::InvalidZeroAmount {}
+    );
+
+    let min_fund = match release_amount {
+        WithdrawalType::Amount(amount) => amount,
+        WithdrawalType::Percentage(_) => Uint128::from(100u128),
+    };
+    ensure!(
+        !funds.amount >= min_fund,
+        ContractError::InvalidFunds {
+            msg: format!("Funds must be at least {min_fund}"),
+        }
     );
 
     let lockup_end = if let Some(duration) = lockup_duration {
