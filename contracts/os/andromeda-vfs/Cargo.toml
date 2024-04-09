@@ -34,4 +34,4 @@ andromeda-std = { workspace = true, features = ["modules"] }
 cw-multi-test = { workspace = true, optional = true }
 
 # [dev-dependencies]
-# andromeda-testing = { version = "0.1.0", path = "../../../packages/andromeda-testing" }
+# andromeda-testing = { workspace = true, optional = true }

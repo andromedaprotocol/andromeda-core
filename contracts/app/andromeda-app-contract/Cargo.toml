@@ -19,10 +19,10 @@ enum-repr = { workspace = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 cw-multi-test = { workspace = true, optional = true }
-andromeda-testing = { workspace = true }
+andromeda-testing = { workspace = true, optional = true }
 
 [dev-dependencies]
 prost = "0.9"
 
 [features]
-testing = ["cw-multi-test"]
+testing = ["cw-multi-test", "andromeda-testing"]
