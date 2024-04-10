@@ -695,7 +695,7 @@ fn test_claim_batch_not_nice_numbers_single_release() {
 
     deps.querier
         .base
-        .update_balance(MOCK_CONTRACT_ADDR, coins(10, "uusd"));
+        .update_balance(MOCK_CONTRACT_ADDR, coins(7, "uusd"));
 
     // Skip time.
     let mut env = mock_env();
@@ -714,12 +714,12 @@ fn test_claim_batch_not_nice_numbers_single_release() {
         Response::new()
             .add_message(BankMsg::Send {
                 to_address: "recipient".to_string(),
-                amount: coins(10, "uusd")
+                amount: coins(7, "uusd")
             })
             .add_attribute("action", "claim")
-            .add_attribute("amount", "10")
+            .add_attribute("amount", "7")
             .add_attribute("batch_id", "1")
-            .add_attribute("amount_left", "0"),
+            .add_attribute("amount_left", "3"),
         res
     );
     let lockup_end = mock_env().block.time.seconds();
@@ -727,7 +727,7 @@ fn test_claim_batch_not_nice_numbers_single_release() {
     assert_eq!(
         Batch {
             amount: Uint128::new(10),
-            amount_claimed: Uint128::new(10),
+            amount_claimed: Uint128::new(7),
             lockup_end,
             release_unit: 10,
             release_amount: WithdrawalType::Amount(Uint128::new(10)),
