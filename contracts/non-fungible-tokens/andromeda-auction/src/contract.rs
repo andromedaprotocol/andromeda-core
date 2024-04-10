@@ -297,7 +297,7 @@ fn execute_start_auction(
         ensure!(
             valid_cw20_auction,
             ContractError::InvalidFunds {
-                msg: "Non-permissioned CW20 asset sent".to_string()
+                msg: format!("Non-permissioned CW20 asset '{}' set as denom.", coin_denom)
             }
         );
     } else {
@@ -381,7 +381,25 @@ fn execute_update_auction(
         deps, info, env, ..
     } = ctx;
     nonpayable(&info)?;
-    validate_denom(deps.as_ref(), coin_denom.clone())?;
+
+    if uses_cw20 {
+        let valid_cw20_auction = ADOContract::default()
+            .is_permissioned(
+                deps.storage,
+                env.clone(),
+                SEND_CW20_ACTION,
+                coin_denom.clone(),
+            )
+            .is_ok();
+        ensure!(
+            valid_cw20_auction,
+            ContractError::InvalidFunds {
+                msg: "Non-permissioned CW20 asset sent".to_string()
+            }
+        );
+    } else {
+        validate_denom(deps.as_ref(), coin_denom.clone())?;
+    }
     let mut token_auction_state =
         get_existing_token_auction_state(deps.storage, &token_id, &token_address)?;
     ensure!(
@@ -707,20 +725,6 @@ fn execute_cancel(
         let is_cw20_auction = token_auction_state.uses_cw20;
         if is_cw20_auction {
             let auction_currency = token_auction_state.clone().coin_denom;
-            let valid_cw20_auction = ADOContract::default()
-                .is_permissioned_strict(
-                    deps.storage,
-                    env,
-                    SEND_CW20_ACTION,
-                    auction_currency.clone(),
-                )
-                .is_ok();
-            ensure!(
-                valid_cw20_auction,
-                ContractError::InvalidFunds {
-                    msg: "Coin denom isn't permissioned".to_string()
-                }
-            );
             let transfer_msg = Cw20ExecuteMsg::Transfer {
                 recipient: token_auction_state.high_bidder_addr.clone().into_string(),
                 amount: token_auction_state.high_bidder_amount,
@@ -810,21 +814,7 @@ fn execute_claim(
 
     let is_cw20_auction = token_auction_state.uses_cw20;
     if is_cw20_auction {
-        let auction_currency = token_auction_state.clone().coin_denom;
-        let valid_cw20_auction = ADOContract::default()
-            .is_permissioned_strict(
-                deps.storage,
-                env,
-                SEND_CW20_ACTION,
-                auction_currency.clone(),
-            )
-            .is_ok();
-        ensure!(
-            valid_cw20_auction,
-            ContractError::InvalidFunds {
-                msg: "Coin denom isn't permissioned".to_string()
-            }
-        ); // Send back previous bid unless there was no previous bid.
+        let auction_currency = token_auction_state.coin_denom;
 
         let recipient = token_auction_state
             .recipient
@@ -858,9 +848,9 @@ fn execute_claim(
                 // Add tax message in case there's a tax recipient and amount
                 Ok(resp
                     .add_message(tax_wasm_msg)
-                    // Send NFT to auction winner.
-                    // Send funds to the original owner.
+                    // Send cw20 funds to the original owner or recipient (if provided).
                     .add_submessage(cw20_msg)
+                    // Send NFT to auction winner.
                     .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
                         contract_addr: token_auction_state.token_address.clone(),
                         msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
@@ -871,9 +861,9 @@ fn execute_claim(
                     })))
             }
             _ => Ok(resp
-                // Send NFT to auction winner.
-                // Send funds to the original owner.
+                // Send cw20 funds to the original owner or recipient (if provided).
                 .add_submessage(cw20_msg)
+                // Send NFT to auction winner.
                 .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
                     contract_addr: token_auction_state.token_address.clone(),
                     msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
@@ -894,9 +884,9 @@ fn execute_claim(
 
         Ok(resp
             .add_submessages(after_tax_payment.1)
-            // Send NFT to auction winner.
-            // Send funds to the original owner.
+            // Send native funds to the original owner or recipient (if provided).
             .add_submessage(msg)
+            // Send NFT to auction winner.
             .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: token_auction_state.token_address.clone(),
                 msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
