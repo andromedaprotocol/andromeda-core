@@ -12,7 +12,7 @@ use andromeda_std::{
     common::{
         actions::call_action,
         expiration::{expiration_from_milliseconds, get_and_validate_start_time},
-        Milliseconds,
+        MillisecondsExpiration,
     },
 };
 use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
@@ -286,8 +286,8 @@ fn execute_update_token_contract(
 #[allow(clippy::too_many_arguments)]
 fn execute_start_sale(
     ctx: ExecuteContext,
-    start_time: Option<Milliseconds>,
-    end_time: Milliseconds,
+    start_time: Option<MillisecondsExpiration>,
+    end_time: MillisecondsExpiration,
     price: Coin,
     min_tokens_sold: Uint128,
     max_amount_per_wallet: Option<u32>,

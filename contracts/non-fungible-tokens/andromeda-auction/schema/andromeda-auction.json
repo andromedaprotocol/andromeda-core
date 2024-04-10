@@ -1,6 +1,6 @@
 {
   "contract_name": "andromeda-auction",
-  "contract_version": "1.0.0-rc.1",
+  "contract_version": "1.0.0-rc.2",
   "idl_version": "1.0.0",
   "instantiate": {
     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -170,7 +170,7 @@
             "type": "object",
             "required": [
               "coin_denom",
-              "duration",
+              "end_time",
               "token_address",
               "token_id"
             ],
@@ -178,13 +178,23 @@
               "coin_denom": {
                 "type": "string"
               },
-              "duration": {
+              "end_time": {
                 "$ref": "#/definitions/Milliseconds"
               },
               "min_bid": {
                 "anyOf": [
                   {
                     "$ref": "#/definitions/Uint128"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "recipient": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Recipient"
                   },
                   {
                     "type": "null"
@@ -973,6 +983,39 @@
           }
         ]
       },
+      "Recipient": {
+        "description": "A simple struct used for inter-contract communication. The struct can be used in two ways:\n\n1. Simply just providing an `AndrAddr` which will treat the communication as a transfer of any related funds 2. Providing an `AndrAddr` and a `Binary` message which will be sent to the contract at the resolved address\n\nThe `Binary` message can be any message that the contract at the resolved address can handle.",
+        "type": "object",
+        "required": [
+          "address"
+        ],
+        "properties": {
+          "address": {
+            "$ref": "#/definitions/AndrAddr"
+          },
+          "ibc_recovery_address": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/AndrAddr"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "msg": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Binary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
       "ReplyOn": {
         "description": "Use this to define when the contract gets a response callback. If you only need it for errors or success you can select just those in order to save gas.",
         "oneOf": [
@@ -1131,6 +1174,46 @@
               },
               "token_address": {
                 "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Gets all of the authorized addresses for the auction",
+        "type": "object",
+        "required": [
+          "authorized_addresses"
+        ],
+        "properties": {
+          "authorized_addresses": {
+            "type": "object",
+            "properties": {
+              "limit": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "uint32",
+                "minimum": 0.0
+              },
+              "order_by": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/OrderBy"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "start_after": {
+                "type": [
+                  "string",
+                  "null"
+                ]
               }
             },
             "additionalProperties": false
@@ -1555,6 +1638,7 @@
         "high_bidder_addr",
         "high_bidder_amount",
         "is_cancelled",
+        "owner",
         "start_time"
       ],
       "properties": {
@@ -1585,6 +1669,9 @@
               "type": "null"
             }
           ]
+        },
+        "owner": {
+          "type": "string"
         },
         "start_time": {
           "$ref": "#/definitions/Expiration"
@@ -1669,6 +1756,23 @@
           "type": "string"
         }
       }
+    },
+    "authorized_addresses": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "AuthorizedAddressesResponse",
+      "type": "object",
+      "required": [
+        "addresses"
+      ],
+      "properties": {
+        "addresses": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
     },
     "bids": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -1787,6 +1891,7 @@
         "high_bidder_addr",
         "high_bidder_amount",
         "is_cancelled",
+        "owner",
         "start_time"
       ],
       "properties": {
@@ -1817,6 +1922,9 @@
               "type": "null"
             }
           ]
+        },
+        "owner": {
+          "type": "string"
         },
         "start_time": {
           "$ref": "#/definitions/Expiration"

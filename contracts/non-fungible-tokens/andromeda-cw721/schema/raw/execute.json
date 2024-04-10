@@ -61,7 +61,7 @@
           ],
           "properties": {
             "recipient": {
-              "type": "string"
+              "$ref": "#/definitions/AndrAddr"
             },
             "token_id": {
               "type": "string"

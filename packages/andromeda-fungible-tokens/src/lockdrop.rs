@@ -1,6 +1,6 @@
 use andromeda_std::amp::AndrAddr;
 use andromeda_std::andr_instantiate_modules;
-use andromeda_std::common::Milliseconds;
+use andromeda_std::common::{Milliseconds, MillisecondsDuration, MillisecondsExpiration};
 use andromeda_std::{andr_exec, andr_instantiate, andr_query};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
@@ -13,11 +13,11 @@ pub struct InstantiateMsg {
     /// The bootsrap contract to be used in the second phase.
     // pub bootstrap_contract: Option<AndrAddress>,
     /// Timestamp till when deposits can be made
-    pub init_timestamp: Milliseconds,
+    pub init_timestamp: MillisecondsExpiration,
     /// Number of milliseconds for which lockup deposits will be accepted
-    pub deposit_window: Milliseconds,
+    pub deposit_window: MillisecondsDuration,
     /// Number of milliseconds for which lockup withdrawals will be allowed
-    pub withdrawal_window: Milliseconds,
+    pub withdrawal_window: MillisecondsDuration,
     /// The token being given as incentive.
     pub incentive_token: AndrAddr,
     /// The native token being deposited.
@@ -76,11 +76,11 @@ pub struct ConfigResponse {
     /// Bootstrap Contract address to which tokens can be delegated to for bootstrapping TOKEN-NATIVE Pool.
     // pub bootstrap_contract_address: Option<String>,
     /// Timestamp till when deposits can be made.
-    pub init_timestamp: Milliseconds,
+    pub init_timestamp: MillisecondsExpiration,
     /// Number of seconds for which lockup deposits will be accepted.
-    pub deposit_window: Milliseconds,
+    pub deposit_window: MillisecondsDuration,
     /// Number of seconds for which lockup withdrawals will be allowed.
-    pub withdrawal_window: Milliseconds,
+    pub withdrawal_window: MillisecondsDuration,
     /// Total token lockdrop incentives to be distributed among the users.
     pub lockdrop_incentives: Uint128,
     /// The token being given as incentive.

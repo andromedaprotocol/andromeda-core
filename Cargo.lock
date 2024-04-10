@@ -121,6 +121,7 @@ dependencies = [
 name = "andromeda-cw20"
 version = "1.0.0-rc.1"
 dependencies = [
+ "andromeda-app",
  "andromeda-fungible-tokens",
  "andromeda-std",
  "andromeda-testing",
@@ -345,7 +346,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-non-fungible-tokens"
-version = "0.1.0"
+version = "1.0.0-rc1"
 dependencies = [
  "andromeda-std",
  "cosmwasm-schema",

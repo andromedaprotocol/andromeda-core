@@ -20,7 +20,7 @@
               "$ref": "#/definitions/Uint128"
             },
             "recipient": {
-              "type": "string"
+              "$ref": "#/definitions/AndrAddr"
             }
           },
           "additionalProperties": false
@@ -174,7 +174,7 @@
               "type": "string"
             },
             "recipient": {
-              "type": "string"
+              "$ref": "#/definitions/AndrAddr"
             }
           },
           "additionalProperties": false
@@ -202,7 +202,7 @@
               "$ref": "#/definitions/Uint128"
             },
             "contract": {
-              "type": "string"
+              "$ref": "#/definitions/AndrAddr"
             },
             "msg": {
               "$ref": "#/definitions/Binary"

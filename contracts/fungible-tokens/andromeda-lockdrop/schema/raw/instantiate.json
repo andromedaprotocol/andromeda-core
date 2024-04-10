@@ -21,7 +21,11 @@
     },
     "incentive_token": {
       "description": "The token being given as incentive.",
-      "type": "string"
+      "allOf": [
+        {
+          "$ref": "#/definitions/AndrAddr"
+        }
+      ]
     },
     "init_timestamp": {
       "description": "The bootsrap contract to be used in the second phase. Timestamp till when deposits can be made",

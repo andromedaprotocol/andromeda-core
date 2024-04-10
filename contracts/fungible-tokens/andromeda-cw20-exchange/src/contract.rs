@@ -9,7 +9,7 @@ use andromeda_std::{
         actions::call_action,
         context::ExecuteContext,
         expiration::{expiration_from_milliseconds, get_and_validate_start_time},
-        Milliseconds,
+        MillisecondsDuration, MillisecondsExpiration,
     },
     error::ContractError,
 };
@@ -165,8 +165,8 @@ pub fn execute_start_sale(
     sender: String,
     // The recipient of the sale proceeds
     recipient: Option<String>,
-    start_time: Option<Milliseconds>,
-    duration: Option<Milliseconds>,
+    start_time: Option<MillisecondsExpiration>,
+    duration: Option<MillisecondsDuration>,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
         deps, env, info, ..

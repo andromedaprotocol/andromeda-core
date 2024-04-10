@@ -13,7 +13,7 @@ use andromeda_std::{
     ado_contract::ADOContract,
     common::{
         actions::call_action, context::ExecuteContext, encode_binary,
-        expiration::MILLISECONDS_TO_NANOSECONDS_RATIO, Milliseconds,
+        expiration::MILLISECONDS_TO_NANOSECONDS_RATIO, Milliseconds, MillisecondsExpiration,
     },
     error::ContractError,
 };
@@ -563,7 +563,7 @@ pub fn query_user_info(
 pub fn query_max_withdrawable_percent(
     deps: Deps,
     env: Env,
-    timestamp: Option<Milliseconds>,
+    timestamp: Option<MillisecondsExpiration>,
 ) -> Result<Decimal, ContractError> {
     let config = CONFIG.load(deps.storage)?;
     Ok(match timestamp {
@@ -588,7 +588,7 @@ pub fn query_max_withdrawable_percent(
 //----------------------------------------------------------------------------------------
 
 /// @dev Returns true if deposits are allowed
-fn is_deposit_open(current_timestamp: Milliseconds, config: &Config) -> bool {
+fn is_deposit_open(current_timestamp: MillisecondsExpiration, config: &Config) -> bool {
     let deposits_opened_till = config
         .init_timestamp
         .plus_milliseconds(config.deposit_window);
@@ -596,11 +596,11 @@ fn is_deposit_open(current_timestamp: Milliseconds, config: &Config) -> bool {
 }
 
 /// @dev Returns true if withdrawals are allowed
-fn is_withdraw_open(current_timestamp: Milliseconds, config: &Config) -> bool {
+fn is_withdraw_open(current_timestamp: MillisecondsExpiration, config: &Config) -> bool {
     current_timestamp >= config.init_timestamp
 }
 
-fn is_phase_over(current_timestamp: Milliseconds, config: &Config) -> bool {
+fn is_phase_over(current_timestamp: MillisecondsExpiration, config: &Config) -> bool {
     let deposits_opened_till = config
         .init_timestamp
         .plus_milliseconds(config.deposit_window);
@@ -611,7 +611,10 @@ fn is_phase_over(current_timestamp: Milliseconds, config: &Config) -> bool {
 /// @dev Helper function to calculate maximum % of NATIVE deposited that can be withdrawn
 /// @params current_timestamp : Current block timestamp
 /// @params config : Contract configuration
-pub fn allowed_withdrawal_percent(current_timestamp: Milliseconds, config: &Config) -> Decimal {
+pub fn allowed_withdrawal_percent(
+    current_timestamp: MillisecondsExpiration,
+    config: &Config,
+) -> Decimal {
     let withdrawal_cutoff_init_point = config
         .init_timestamp
         .plus_milliseconds(config.deposit_window);

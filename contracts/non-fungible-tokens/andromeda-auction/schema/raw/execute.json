@@ -88,7 +88,7 @@
           "type": "object",
           "required": [
             "coin_denom",
-            "duration",
+            "end_time",
             "token_address",
             "token_id"
           ],
@@ -96,13 +96,23 @@
             "coin_denom": {
               "type": "string"
             },
-            "duration": {
+            "end_time": {
               "$ref": "#/definitions/Milliseconds"
             },
             "min_bid": {
               "anyOf": [
                 {
                   "$ref": "#/definitions/Uint128"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "recipient": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Recipient"
                 },
                 {
                   "type": "null"
@@ -890,6 +900,39 @@
           "additionalProperties": false
         }
       ]
+    },
+    "Recipient": {
+      "description": "A simple struct used for inter-contract communication. The struct can be used in two ways:\n\n1. Simply just providing an `AndrAddr` which will treat the communication as a transfer of any related funds 2. Providing an `AndrAddr` and a `Binary` message which will be sent to the contract at the resolved address\n\nThe `Binary` message can be any message that the contract at the resolved address can handle.",
+      "type": "object",
+      "required": [
+        "address"
+      ],
+      "properties": {
+        "address": {
+          "$ref": "#/definitions/AndrAddr"
+        },
+        "ibc_recovery_address": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/AndrAddr"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "msg": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Binary"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
     },
     "ReplyOn": {
       "description": "Use this to define when the contract gets a response callback. If you only need it for errors or success you can select just those in order to save gas.",

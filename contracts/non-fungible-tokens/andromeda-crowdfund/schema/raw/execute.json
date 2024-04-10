@@ -38,7 +38,7 @@
               "description": "When the sale ends.",
               "allOf": [
                 {
-                  "$ref": "#/definitions/Expiration"
+                  "$ref": "#/definitions/Milliseconds"
                 }
               ]
             },
