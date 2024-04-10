@@ -6,6 +6,8 @@ use cw20::Expiration;
 #[derive(Default, Eq, PartialOrd, Copy)]
 /// Represents time in milliseconds.
 pub struct Milliseconds(pub u64);
+pub type MillisecondsDuration = Milliseconds;
+pub type MillisecondsExpiration = Milliseconds;
 
 impl Milliseconds {
     pub fn is_expired(&self, block: &BlockInfo) -> bool {

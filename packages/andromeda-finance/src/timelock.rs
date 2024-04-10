@@ -1,7 +1,7 @@
 use andromeda_std::{
     amp::recipient::Recipient,
     andr_exec, andr_instantiate, andr_instantiate_modules, andr_query,
-    common::{merge_coins, Milliseconds},
+    common::{merge_coins, MillisecondsExpiration},
     error::ContractError,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
@@ -11,7 +11,7 @@ use cosmwasm_std::{ensure, Api, BlockInfo, Coin};
 /// Enum used to specify the condition which must be met in order for the Escrow to unlock.
 pub enum EscrowCondition {
     /// Requires a given time or block height to be reached.
-    Expiration(Milliseconds),
+    Expiration(MillisecondsExpiration),
     /// Requires a minimum amount of funds to be deposited.
     MinimumFunds(Vec<Coin>),
 }
@@ -167,10 +167,10 @@ pub struct GetLockedFundsForRecipientResponse {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use andromeda_std::common::Milliseconds;
     use cosmwasm_std::testing::mock_dependencies;
     use cosmwasm_std::{coin, Timestamp};
-
-    use super::*;
 
     #[test]
     fn test_validate() {

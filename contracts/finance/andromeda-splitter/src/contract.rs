@@ -7,7 +7,7 @@ use andromeda_finance::splitter::{
 use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     amp::messages::AMPPkt,
-    common::{actions::call_action, encode_binary, Milliseconds},
+    common::{actions::call_action, encode_binary, Milliseconds, MillisecondsDuration},
     error::ContractError,
 };
 use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
@@ -245,7 +245,7 @@ fn execute_update_recipients(
 
 fn execute_update_lock(
     ctx: ExecuteContext,
-    lock_time: Milliseconds,
+    lock_time: MillisecondsDuration,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
         deps, info, env, ..

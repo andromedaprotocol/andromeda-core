@@ -1,5 +1,5 @@
 use andromeda_std::{
-    andr_exec, andr_instantiate, andr_instantiate_modules, andr_query, common::Milliseconds,
+    andr_exec, andr_instantiate, andr_instantiate_modules, andr_query, common::MillisecondsDuration,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Timestamp, Uint128};
@@ -27,7 +27,7 @@ pub struct CoinAllowance {
     /// Sets the withdrawal limit in terms of amount
     pub limit: Uint128,
     /// Sets the minimum amount of time required between withdrawals in seconds
-    pub minimal_withdrawal_frequency: Milliseconds,
+    pub minimal_withdrawal_frequency: MillisecondsDuration,
 }
 
 #[cw_serde]
@@ -46,7 +46,7 @@ pub struct InstantiateMsg {
 
 #[cw_serde]
 pub enum MinimumFrequency {
-    Time { time: Milliseconds },
+    Time { time: MillisecondsDuration },
     // AddressAndKey { address_and_key: ContractAndKey },
 }
 
