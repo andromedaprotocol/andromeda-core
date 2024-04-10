@@ -31,6 +31,11 @@ pub enum ExecuteMsg {
     RemoveRewardToken {
         reward_token: String,
     },
+    /// Replace `reward_token` as another reward token. Owner only.
+    ReplaceRewardToken {
+        origin_reward_token: String,
+        reward_token: RewardTokenUnchecked,
+    },
 
     /// Unstakes the specified amount of assets, or all if not specified. The user's pending
     /// rewards and indexes are updated for each additional reward token.

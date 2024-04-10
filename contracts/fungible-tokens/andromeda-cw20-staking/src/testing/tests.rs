@@ -2041,3 +2041,126 @@ fn test_remove_reward_token_invalid_asset() {
         res.unwrap_err()
     );
 }
+
+#[test]
+fn test_replace_reward_token() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let current_timestamp = Milliseconds::from_seconds(mock_env().block.time.seconds());
+    init(
+        deps.as_mut(),
+        Some(vec![RewardTokenUnchecked {
+            asset_info: AssetInfoUnchecked::native("uusd"),
+            allocation_config: None,
+            init_timestamp: current_timestamp,
+        }]),
+    )
+    .unwrap();
+
+    let msg = ExecuteMsg::ReplaceRewardToken {
+        origin_reward_token: "native:uusd".to_string(),
+        reward_token: RewardTokenUnchecked {
+            asset_info: AssetInfoUnchecked::cw20(MOCK_INCENTIVE_TOKEN),
+            allocation_config: None,
+            init_timestamp: current_timestamp,
+        },
+    };
+    let info = mock_info("owner", &[]);
+
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    assert_eq!(
+        Response::new()
+            .add_attribute("action", "replace_reward_token")
+            .add_attribute("origin_reward_token", "native:uusd")
+            .add_attribute("new_reward_token", format!("cw20:{MOCK_INCENTIVE_TOKEN}"))
+            .add_submessage(generate_economics_message("owner", "ReplaceRewardToken")),
+        res
+    );
+
+    assert!(!REWARD_TOKENS.has(deps.as_ref().storage, "native:uusd"));
+    assert!(REWARD_TOKENS.has(
+        deps.as_ref().storage,
+        &format!("cw20:{MOCK_INCENTIVE_TOKEN}")
+    ));
+}
+#[test]
+fn test_replace_reward_token_unauthorized() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let current_timestamp = Milliseconds::from_seconds(mock_env().block.time.seconds());
+    init(
+        deps.as_mut(),
+        Some(vec![RewardTokenUnchecked {
+            asset_info: AssetInfoUnchecked::native("uusd"),
+            allocation_config: None,
+            init_timestamp: current_timestamp,
+        }]),
+    )
+    .unwrap();
+
+    let msg = ExecuteMsg::ReplaceRewardToken {
+        origin_reward_token: "native:uusd".to_string(),
+        reward_token: RewardTokenUnchecked {
+            asset_info: AssetInfoUnchecked::cw20(MOCK_INCENTIVE_TOKEN),
+            allocation_config: None,
+            init_timestamp: current_timestamp,
+        },
+    };
+    let info = mock_info("owner1", &[]);
+
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
+
+    assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
+}
+
+#[test]
+fn test_replace_reward_token_invalid_asset() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let current_timestamp = Milliseconds::from_seconds(mock_env().block.time.seconds());
+    init(
+        deps.as_mut(),
+        Some(vec![RewardTokenUnchecked {
+            asset_info: AssetInfoUnchecked::native("uusd"),
+            allocation_config: None,
+            init_timestamp: current_timestamp,
+        }]),
+    )
+    .unwrap();
+
+    let msg = ExecuteMsg::ReplaceRewardToken {
+        origin_reward_token: "native:uusd".to_string(),
+        reward_token: RewardTokenUnchecked {
+            asset_info: AssetInfoUnchecked::native("uusd"),
+            allocation_config: None,
+            init_timestamp: current_timestamp,
+        },
+    };
+    let info = mock_info("owner", &[]);
+
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
+
+    assert_eq!(
+        ContractError::InvalidAsset {
+            asset: "native:uusd".to_string()
+        },
+        res.unwrap_err()
+    );
+
+    let msg = ExecuteMsg::ReplaceRewardToken {
+        origin_reward_token: "cw20:uusd".to_string(),
+        reward_token: RewardTokenUnchecked {
+            asset_info: AssetInfoUnchecked::cw20(MOCK_INCENTIVE_TOKEN),
+            allocation_config: None,
+            init_timestamp: current_timestamp,
+        },
+    };
+    let info = mock_info("owner", &[]);
+
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
+
+    assert_eq!(
+        ContractError::InvalidAsset {
+            asset: "cw20:uusd".to_string()
+        },
+        res.unwrap_err()
+    );
+}
