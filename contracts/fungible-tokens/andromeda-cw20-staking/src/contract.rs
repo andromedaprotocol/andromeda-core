@@ -154,6 +154,9 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
     let res = match msg {
         ExecuteMsg::Receive(msg) => receive_cw20(ctx, msg),
         ExecuteMsg::AddRewardToken { reward_token } => execute_add_reward_token(ctx, reward_token),
+        ExecuteMsg::RemoveRewardToken { reward_token } => {
+            execute_remove_reward_token(ctx, reward_token)
+        }
         ExecuteMsg::UpdateGlobalIndexes { asset_infos } => match asset_infos {
             None => update_global_indexes(
                 ctx.deps.storage,
@@ -273,6 +276,33 @@ fn execute_add_reward_token(
         .add_attribute("added_token", reward_token_string))
 }
 
+fn execute_remove_reward_token(
+    ctx: ExecuteContext,
+    reward_token: String,
+) -> Result<Response, ContractError> {
+    let ExecuteContext { deps, info, .. } = ctx;
+    let contract = ADOContract::default();
+    ensure!(
+        contract.is_owner_or_operator(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {}
+    );
+
+    ensure!(
+        REWARD_TOKENS.has(deps.storage, &reward_token),
+        ContractError::InvalidAsset {
+            asset: reward_token,
+        }
+    );
+    let mut config = CONFIG.load(deps.storage)?;
+    config.number_of_reward_tokens -= 1;
+
+    REWARD_TOKENS.remove(deps.storage, &reward_token);
+    CONFIG.save(deps.storage, &config)?;
+
+    Ok(Response::new()
+        .add_attribute("action", "remove_reward_token")
+        .add_attribute("removed_token", reward_token))
+}
 /// The foundation for this approach is inspired by Anchor's staking implementation:
 /// https://github.com/Anchor-Protocol/anchor-token-contracts/blob/15c9d6f9753bd1948831f4e1b5d2389d3cf72c93/contracts/gov/src/staking.rs#L15
 fn execute_stake_tokens(

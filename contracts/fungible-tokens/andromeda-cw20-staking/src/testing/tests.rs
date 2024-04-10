@@ -1956,3 +1956,88 @@ fn test_add_reward_token_exceeds_max() {
         res.unwrap_err()
     );
 }
+
+#[test]
+fn test_remove_reward_token() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let current_timestamp = Milliseconds::from_seconds(mock_env().block.time.seconds());
+    init(
+        deps.as_mut(),
+        Some(vec![RewardTokenUnchecked {
+            asset_info: AssetInfoUnchecked::native("uusd"),
+            allocation_config: None,
+            init_timestamp: current_timestamp,
+        }]),
+    )
+    .unwrap();
+
+    let msg = ExecuteMsg::RemoveRewardToken {
+        reward_token: "native:uusd".to_string(),
+    };
+    let info = mock_info("owner", &[]);
+
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    assert_eq!(
+        Response::new()
+            .add_attribute("action", "remove_reward_token")
+            .add_attribute("removed_token", "native:uusd")
+            .add_submessage(generate_economics_message("owner", "RemoveRewardToken")),
+        res
+    );
+
+    assert!(!REWARD_TOKENS.has(deps.as_ref().storage, "native:uusd"));
+}
+
+#[test]
+fn test_remove_reward_token_unauthorized() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let current_timestamp = Milliseconds::from_seconds(mock_env().block.time.seconds());
+    init(
+        deps.as_mut(),
+        Some(vec![RewardTokenUnchecked {
+            asset_info: AssetInfoUnchecked::native("uusd"),
+            allocation_config: None,
+            init_timestamp: current_timestamp,
+        }]),
+    )
+    .unwrap();
+
+    let msg = ExecuteMsg::RemoveRewardToken {
+        reward_token: "native:uusd".to_string(),
+    };
+    let info = mock_info("owner1", &[]);
+
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
+
+    assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
+}
+
+#[test]
+fn test_remove_reward_token_invalid_asset() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let current_timestamp = Milliseconds::from_seconds(mock_env().block.time.seconds());
+    init(
+        deps.as_mut(),
+        Some(vec![RewardTokenUnchecked {
+            asset_info: AssetInfoUnchecked::cw20(MOCK_INCENTIVE_TOKEN),
+            allocation_config: None,
+            init_timestamp: current_timestamp,
+        }]),
+    )
+    .unwrap();
+
+    let msg = ExecuteMsg::RemoveRewardToken {
+        reward_token: "native:uusd".to_string(),
+    };
+    let info = mock_info("owner", &[]);
+
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
+
+    assert_eq!(
+        ContractError::InvalidAsset {
+            asset: "native:uusd".to_string()
+        },
+        res.unwrap_err()
+    );
+}
