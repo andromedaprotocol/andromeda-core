@@ -3,14 +3,17 @@ use crate::state::{
 };
 
 use andromeda_non_fungible_tokens::marketplace::{
-    Cw721HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg, SaleIdsResponse, SaleStateResponse, Status,
+    Cw20HookMsg, Cw721HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg, SaleIdsResponse,
+    SaleStateResponse, Status,
 };
 use andromeda_std::ado_base::ownership::OwnershipMessage;
+use andromeda_std::ado_base::permissioning::Permission;
 use andromeda_std::ado_contract::ADOContract;
 
 use andromeda_std::amp::Recipient;
 use andromeda_std::common::actions::call_action;
 use andromeda_std::common::context::ExecuteContext;
+use andromeda_std::common::denom::{validate_denom, SEND_CW20_ACTION};
 use andromeda_std::common::expiration::{
     expiration_from_milliseconds, get_and_validate_start_time,
 };
@@ -20,13 +23,15 @@ use andromeda_std::{
     common::{encode_binary, rates::get_tax_amount, Funds},
     error::ContractError,
 };
+use cw20::{Cw20Coin, Cw20ExecuteMsg, Cw20ReceiveMsg};
 use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, Cw721ReceiveMsg, OwnerOfResponse};
 
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, ensure, from_json, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
-    QuerierWrapper, QueryRequest, Response, Storage, SubMsg, Uint128, WasmMsg, WasmQuery,
+    attr, coin, ensure, from_json, wasm_execute, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps,
+    DepsMut, Env, MessageInfo, QuerierWrapper, QueryRequest, Response, Storage, SubMsg, Uint128,
+    WasmMsg, WasmQuery,
 };
 
 use cw_utils::{nonpayable, Expiration};
@@ -58,6 +63,17 @@ pub fn instantiate(
     let owner = ADOContract::default().owner(deps.storage)?;
     let mod_resp =
         ADOContract::default().register_modules(owner.as_str(), deps.storage, msg.modules)?;
+
+    if let Some(authorized_cw20_address) = msg.authorized_cw20_address {
+        ADOContract::default().permission_action(SEND_CW20_ACTION, deps.storage)?;
+        let addr = authorized_cw20_address.get_raw_address(&deps.as_ref())?;
+        ADOContract::set_permission(
+            deps.storage,
+            SEND_CW20_ACTION,
+            addr,
+            Permission::Whitelisted(None),
+        )?;
+    }
 
     Ok(inst_resp
         .add_attributes(mod_resp.attributes)
@@ -107,13 +123,23 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
     )?;
     let res = match msg {
         ExecuteMsg::ReceiveNft(msg) => handle_receive_cw721(ctx, msg),
+        ExecuteMsg::Receive(msg) => handle_receive_cw20(ctx, msg),
         ExecuteMsg::UpdateSale {
             token_id,
             token_address,
             coin_denom,
             price,
+            uses_cw20,
             recipient,
-        } => execute_update_sale(ctx, token_id, token_address, price, coin_denom, recipient),
+        } => execute_update_sale(
+            ctx,
+            token_id,
+            token_address,
+            price,
+            coin_denom,
+            uses_cw20,
+            recipient,
+        ),
         ExecuteMsg::Buy {
             token_id,
             token_address,
@@ -144,6 +170,7 @@ fn handle_receive_cw721(
             coin_denom,
             start_time,
             duration,
+            uses_cw20,
             recipient,
         } => execute_start_sale(
             deps,
@@ -155,7 +182,47 @@ fn handle_receive_cw721(
             coin_denom,
             start_time,
             duration,
+            uses_cw20,
             recipient,
+        ),
+    }
+}
+
+pub fn handle_receive_cw20(
+    ctx: ExecuteContext,
+    receive_msg: Cw20ReceiveMsg,
+) -> Result<Response, ContractError> {
+    ADOContract::default().is_permissioned(
+        ctx.deps.storage,
+        ctx.env.clone(),
+        SEND_CW20_ACTION,
+        ctx.info.sender.clone(),
+    )?;
+    let ExecuteContext { ref info, .. } = ctx;
+    nonpayable(info)?;
+
+    let asset_sent = info.sender.clone();
+    let amount_sent = receive_msg.amount;
+    let sender = receive_msg.sender;
+
+    ensure!(
+        !amount_sent.is_zero(),
+        ContractError::InvalidFunds {
+            msg: "Cannot send a 0 amount".to_string()
+        }
+    );
+
+    match from_json(&receive_msg.msg)? {
+        Cw20HookMsg::Buy {
+            token_id,
+            token_address,
+        } => execute_buy_cw20(
+            ctx,
+            token_id,
+            token_address,
+            amount_sent,
+            asset_sent,
+            &sender,
         ),
     }
 }
@@ -171,8 +238,28 @@ fn execute_start_sale(
     coin_denom: String,
     start_time: Option<MillisecondsExpiration>,
     duration: Option<MillisecondsDuration>,
+    uses_cw20: bool,
     recipient: Option<Recipient>,
 ) -> Result<Response, ContractError> {
+    if !uses_cw20 {
+        validate_denom(deps.as_ref(), coin_denom.clone())?;
+    } else {
+        let valid_cw20_auction = ADOContract::default()
+            .is_permissioned(
+                deps.storage,
+                env.clone(),
+                SEND_CW20_ACTION,
+                coin_denom.clone(),
+            )
+            .is_ok();
+        ensure!(
+            valid_cw20_auction,
+            ContractError::InvalidFunds {
+                msg: "Non-permissioned CW20 asset sent".to_string()
+            }
+        );
+    }
+
     // Price can't be zero
     ensure!(price > Uint128::zero(), ContractError::InvalidZeroAmount {});
     // If start time wasn't provided, it will be set as the current_time
@@ -205,6 +292,7 @@ fn execute_start_sale(
             status: Status::Open,
             start_time: start_expiration,
             end_time: end_expiration,
+            uses_cw20,
             recipient,
         },
     )?;
@@ -218,6 +306,7 @@ fn execute_start_sale(
         attr("token_address", token_address),
         attr("start_time", start_expiration.to_string()),
         attr("end_time", end_expiration.to_string()),
+        attr("uses_cw20", uses_cw20.to_string()),
     ]))
 }
 
@@ -228,10 +317,13 @@ fn execute_update_sale(
     token_address: String,
     price: Uint128,
     coin_denom: String,
+    uses_cw20: bool,
     recipient: Option<Recipient>,
 ) -> Result<Response, ContractError> {
     let ExecuteContext { deps, info, .. } = ctx;
-
+    if !uses_cw20 {
+        validate_denom(deps.as_ref(), coin_denom.clone())?;
+    }
     nonpayable(&info)?;
 
     let mut token_sale_state =
@@ -248,6 +340,7 @@ fn execute_update_sale(
 
     token_sale_state.price = price;
     token_sale_state.coin_denom = coin_denom.clone();
+    token_sale_state.uses_cw20 = uses_cw20;
     token_sale_state.recipient = recipient;
     TOKEN_SALE_STATE.save(
         deps.storage,
@@ -258,6 +351,7 @@ fn execute_update_sale(
         attr("action", "update_sale"),
         attr("coin_denom", coin_denom),
         attr("price", price),
+        attr("uses_cw20", uses_cw20.to_string()),
         attr("sale_id", token_sale_state.sale_id.to_string()),
         attr("token_id", token_id),
         attr("token_address", token_address),
@@ -310,7 +404,7 @@ fn execute_buy(
     ensure!(
         info.funds.len() == 1,
         ContractError::InvalidFunds {
-            msg: "Sales ensure! exactly one coin to be sent.".to_string(),
+            msg: "One coin should be sent.".to_string(),
         }
     );
 
@@ -328,6 +422,12 @@ fn execute_buy(
     );
 
     let coin_denom = token_sale_state.coin_denom.clone();
+    ensure!(
+        !token_sale_state.uses_cw20,
+        ContractError::InvalidFunds {
+            msg: "Native funds were sent to a sale that only accepts cw20".to_string()
+        }
+    );
     let payment: &Coin = &info.funds[0];
 
     // Make sure funds are equal to the price and in the correct denomination
@@ -344,7 +444,7 @@ fn execute_buy(
     TOKEN_SALE_STATE.save(deps.storage, key, &token_sale_state)?;
 
     // Calculate the funds to be received after tax
-    let after_tax_payment = purchase_token(&mut deps, &info, token_sale_state.clone())?;
+    let after_tax_payment = purchase_token(&mut deps, &info, None, token_sale_state.clone())?;
     let mut resp = Response::new()
         .add_submessages(after_tax_payment.1)
         // Send NFT to buyer.
@@ -371,6 +471,169 @@ fn execute_buy(
     }
 
     Ok(resp)
+}
+
+fn execute_buy_cw20(
+    ctx: ExecuteContext,
+    token_id: String,
+    token_address: String,
+    amount_sent: Uint128,
+    asset_sent: Addr,
+    // The user who sent the cw20
+    sender: &str,
+) -> Result<Response, ContractError> {
+    let ExecuteContext {
+        mut deps,
+        info,
+        env,
+        ..
+    } = ctx;
+
+    let mut token_sale_state =
+        get_existing_token_sale_state(deps.storage, &token_id, &token_address)?;
+
+    let key = token_sale_state.sale_id.u128();
+
+    match token_sale_state.status {
+        Status::Open => {
+            // Make sure the end time isn't expired, if it is we'll return an error and change the Status to expired in case if it's set as Open or Pending
+            ensure!(
+                !token_sale_state.end_time.is_expired(&env.block),
+                ContractError::SaleExpired {}
+            );
+
+            // If start time hasn't expired, it means that the sale hasn't started yet.
+            ensure!(
+                token_sale_state.start_time.is_expired(&env.block),
+                ContractError::SaleNotOpen {}
+            );
+        }
+        Status::Expired => return Err(ContractError::SaleExpired {}),
+        Status::Executed => return Err(ContractError::SaleExecuted {}),
+        Status::Cancelled => return Err(ContractError::SaleCancelled {}),
+    }
+
+    // The owner can't buy his own NFT
+    ensure!(
+        token_sale_state.owner != sender,
+        ContractError::TokenOwnerCannotBuy {}
+    );
+
+    let token_owner = query_owner_of(
+        deps.querier,
+        token_sale_state.token_address.clone(),
+        token_id.clone(),
+    )?
+    .owner;
+    ensure!(
+        // If this is false then the token is no longer held by the contract so the token has been
+        // claimed.
+        token_owner == env.contract.address,
+        ContractError::SaleAlreadyConducted {}
+    );
+
+    let is_cw20_sale = token_sale_state.uses_cw20;
+    ensure!(
+        is_cw20_sale,
+        ContractError::InvalidFunds {
+            msg: "CW20 funds were sent to a sale that only accepts native funds".to_string()
+        }
+    );
+
+    let sale_currency = token_sale_state.coin_denom.clone();
+    let valid_cw20_sale = ADOContract::default()
+        .is_permissioned_strict(deps.storage, env, SEND_CW20_ACTION, sale_currency.clone())
+        .is_ok();
+    ensure!(
+        valid_cw20_sale,
+        ContractError::InvalidAsset {
+            asset: asset_sent.to_string()
+        }
+    );
+
+    let payment: &Coin = &coin(amount_sent.u128(), asset_sent.to_string());
+
+    // Make sure funds are equal to the price and in the correct denomination
+    ensure!(
+        payment.denom == sale_currency,
+        ContractError::InvalidFunds {
+            msg: format!("No {sale_currency} assets are provided to sale"),
+        }
+    );
+
+    // Change sale status from Open to Executed
+    token_sale_state.status = Status::Executed;
+
+    TOKEN_SALE_STATE.save(deps.storage, key, &token_sale_state)?;
+
+    // Calculate the funds to be received after tax
+    let after_tax_payment = purchase_token(
+        &mut deps,
+        &info,
+        Some(amount_sent),
+        token_sale_state.clone(),
+    )?;
+    let resp: Response = Response::new()
+        // Send NFT to buyer.
+        .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: token_sale_state.token_address.clone(),
+            msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
+                recipient: sender.to_string(),
+                token_id: token_id.clone(),
+            })?,
+            funds: vec![],
+        }))
+        .add_attribute("action", "buy")
+        .add_attribute("token_id", token_id)
+        .add_attribute("token_contract", token_sale_state.token_address)
+        .add_attribute("recipient", sender.to_string())
+        .add_attribute("sale_id", token_sale_state.sale_id);
+
+    if after_tax_payment.0.amount > Uint128::zero() {
+        let recipient = token_sale_state
+            .recipient
+            .unwrap_or(Recipient::from_string(token_sale_state.owner));
+
+        let cw20_msg = recipient.generate_msg_cw20(
+            &deps.as_ref(),
+            Cw20Coin {
+                address: sale_currency.clone(),
+                amount: after_tax_payment.0.amount,
+            },
+        )?;
+
+        // After tax payment is returned in Native, we need to change it to cw20
+        let (tax_recipient, tax_amount) = match after_tax_payment.1.first().map(|msg| {
+            if let CosmosMsg::Bank(BankMsg::Send { to_address, amount }) = &msg.msg {
+                (
+                    Some(to_address.clone()),
+                    amount.get(0).map(|coin| coin.amount),
+                )
+            } else {
+                (None, None)
+            }
+        }) {
+            Some((tax_recipient, tax_amount)) => (tax_recipient, tax_amount),
+            None => (None, None),
+        };
+
+        match (tax_recipient, tax_amount) {
+            (Some(recipient), Some(amount)) => {
+                let tax_transfer_msg = Cw20ExecuteMsg::Transfer { recipient, amount };
+                let tax_payment_msg = wasm_execute(sale_currency, &tax_transfer_msg, vec![])?;
+                Ok(resp
+                    // Send funds to the original owner.
+                    .add_submessage(cw20_msg)
+                    // Add tax message in case there's a tax recipient and amount
+                    .add_message(tax_payment_msg))
+            }
+            _ => Ok(resp
+                // Send funds to the original owner.
+                .add_submessage(cw20_msg)),
+        }
+    } else {
+        Ok(resp)
+    }
 }
 
 fn execute_cancel(
@@ -424,12 +687,12 @@ fn execute_cancel(
 fn purchase_token(
     deps: &mut DepsMut,
     info: &MessageInfo,
+    amount_sent: Option<Uint128>,
     state: TokenSaleState,
 ) -> Result<(Coin, Vec<SubMsg>), ContractError> {
     let total_cost = Coin::new(state.price.u128(), state.coin_denom.clone());
 
     let mut total_tax_amount = Uint128::zero();
-
     let (msgs, _events, remainder) = ADOContract::default().on_funds_transfer(
         &deps.as_ref(),
         info.sender.to_string(),
@@ -448,21 +711,35 @@ fn purchase_token(
         denom: state.coin_denom.clone(),
         amount: state.price + total_tax_amount,
     };
-    ensure!(
-        // has_coins(&info.funds, &required_payment),
-        info.funds[0].amount.eq(&required_payment.amount),
-        ContractError::InvalidFunds {
-            msg: format!(
-                "Invalid funds provided, expected: {}, received: {}",
-                required_payment, info.funds[0]
-            )
-        }
-    );
+    if !state.uses_cw20 {
+        ensure!(
+            // has_coins(&info.funds, &required_payment),
+            info.funds[0].amount.eq(&required_payment.amount),
+            ContractError::InvalidFunds {
+                msg: format!(
+                    "Invalid funds provided, expected: {}, received: {}",
+                    required_payment, info.funds[0]
+                )
+            }
+        );
+    } else {
+        let amount_sent = amount_sent.unwrap_or(Uint128::zero());
+        ensure!(
+            amount_sent.eq(&required_payment.amount),
+            ContractError::InvalidFunds {
+                msg: format!(
+                    "Invalid funds provided, expected: {}, received: {}",
+                    required_payment, amount_sent
+                )
+            }
+        );
+    }
 
     let after_tax_payment = Coin {
         denom: state.coin_denom,
         amount: remaining_amount.amount,
     };
+
     Ok((after_tax_payment, msgs))
 }
 

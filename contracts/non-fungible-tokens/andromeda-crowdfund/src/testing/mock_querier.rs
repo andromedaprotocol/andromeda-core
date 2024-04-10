@@ -3,14 +3,17 @@ use andromeda_std::ado_base::InstantiateMsg;
 use andromeda_std::ado_contract::ADOContract;
 use andromeda_std::common::Funds;
 use andromeda_std::testing::mock_querier::MockAndromedaQuerier;
+use cosmwasm_schema::cw_serde;
 use cosmwasm_std::testing::mock_info;
+use cosmwasm_std::{
+    coin, BankMsg, BankQuery, CosmosMsg, QuerierWrapper, Response, SubMsg, Uint128,
+};
 use cosmwasm_std::{
     from_json,
     testing::{mock_env, MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
     to_json_binary, Binary, Coin, ContractResult, OwnedDeps, Querier, QuerierResult, QueryRequest,
     SystemError, SystemResult, WasmQuery,
 };
-use cosmwasm_std::{BankMsg, CosmosMsg, QuerierWrapper, Response, SubMsg, Uint128};
 use cw721::{ContractInfoResponse, Cw721QueryMsg, TokensResponse};
 
 pub use andromeda_std::testing::mock_querier::{
@@ -84,6 +87,26 @@ impl Querier for WasmMockQuerier {
     }
 }
 
+// NOTE: It's impossible to construct a non_exhaustive struct from another another crate, so I copied the struct
+// https://rust-lang.github.io/rfcs/2008-non-exhaustive.html#functional-record-updates
+#[cw_serde(
+    Serialize,
+    Deserialize,
+    Clone,
+    Debug,
+    Default,
+    PartialEq,
+    Eq,
+    JsonSchema
+)]
+#[serde(rename_all = "snake_case")]
+#[non_exhaustive]
+pub struct SupplyResponse {
+    /// Always returns a Coin with the requested denom.
+    /// This will be of zero amount if the denom does not exist.
+    pub amount: Coin,
+}
+
 impl WasmMockQuerier {
     pub fn handle_query(&self, request: &QueryRequest<cosmwasm_std::Empty>) -> QuerierResult {
         match &request {
@@ -95,6 +118,25 @@ impl WasmMockQuerier {
                     _ => MockAndromedaQuerier::default().handle_query(&self.base, request),
                 }
             }
+            QueryRequest::Bank(bank_query) => match bank_query {
+                BankQuery::Supply { denom } => {
+                    let response = SupplyResponse {
+                        amount: coin(1_000_000, denom),
+                    };
+
+                    SystemResult::Ok(ContractResult::Ok(to_json_binary(&response).unwrap()))
+                }
+                BankQuery::Balance {
+                    address: _,
+                    denom: _,
+                } => {
+                    panic!("Unsupported Query")
+                }
+                BankQuery::AllBalances { address: _ } => {
+                    panic!("Unsupported Query")
+                }
+                _ => panic!("Unsupported Query"),
+            },
             _ => MockAndromedaQuerier::default().handle_query(&self.base, request),
         }
     }

@@ -15,6 +15,18 @@
       "additionalProperties": false
     },
     {
+      "type": "object",
+      "required": [
+        "receive"
+      ],
+      "properties": {
+        "receive": {
+          "$ref": "#/definitions/Cw20ReceiveMsg"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
       "description": "Places a bid on the current auction for the given token_id. The previous largest bid gets automatically sent back to the bidder when they are outbid.",
       "type": "object",
       "required": [
@@ -535,6 +547,27 @@
           "type": "string"
         }
       }
+    },
+    "Cw20ReceiveMsg": {
+      "description": "Cw20ReceiveMsg should be de/serialized under `Receive()` variant in a ExecuteMsg",
+      "type": "object",
+      "required": [
+        "amount",
+        "msg",
+        "sender"
+      ],
+      "properties": {
+        "amount": {
+          "$ref": "#/definitions/Uint128"
+        },
+        "msg": {
+          "$ref": "#/definitions/Binary"
+        },
+        "sender": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
     },
     "Cw721ReceiveMsg": {
       "description": "Cw721ReceiveMsg should be de/serialized under `Receive()` variant in a ExecuteMsg",

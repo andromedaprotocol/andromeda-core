@@ -19,7 +19,7 @@ testing = ["cw-multi-test", "andromeda-testing"]
 cosmwasm-std = { workspace = true, features = ["cosmwasm_1_1"] }
 cosmwasm-schema = { workspace = true }
 cw-storage-plus = { workspace = true }
-cw-utils = { workspace = true }
+cw-utils = { workspace = true}
 cw721 = { workspace = true }
 
 cw20 = { workspace = true }

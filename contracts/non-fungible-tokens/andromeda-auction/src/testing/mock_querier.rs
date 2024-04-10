@@ -22,6 +22,7 @@ pub use andromeda_std::testing::mock_querier::{
 pub const MOCK_TOKEN_CONTRACT: &str = "token_contract";
 pub const MOCK_UNCLAIMED_TOKEN: &str = "unclaimed_token";
 pub const MOCK_TOKEN_ADDR: &str = "token_addr";
+pub const MOCK_CW20_ADDR: &str = "cw20_addr";
 pub const MOCK_RATES_RECIPIENT: &str = "rates_recipient";
 pub const MOCK_TOKEN_OWNER: &str = "owner";
 pub const MOCK_TOKENS_FOR_SALE: &[&str] = &[

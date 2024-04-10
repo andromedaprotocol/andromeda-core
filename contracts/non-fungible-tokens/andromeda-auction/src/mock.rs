@@ -16,6 +16,7 @@ use andromeda_testing::{
     mock_contract::{ExecuteResult, MockADO, MockContract},
 };
 use cosmwasm_std::{Addr, Coin, Empty, Uint128};
+use cw20::Cw20ReceiveMsg;
 use cw20::Expiration;
 use cw_multi_test::{AppResponse, Contract, ContractWrapper, Executor};
 
@@ -31,7 +32,7 @@ impl MockAuction {
         kernel_address: impl Into<String>,
         owner: Option<String>,
     ) -> MockAuction {
-        let msg = mock_auction_instantiate_msg(modules, kernel_address, owner, None);
+        let msg = mock_auction_instantiate_msg(modules, kernel_address, owner, None, None);
         let addr = app
             .instantiate_contract(
                 code_id,
@@ -56,9 +57,10 @@ impl MockAuction {
         min_bid: Option<Uint128>,
         whitelist: Option<Vec<Addr>>,
         recipient: Option<Recipient>,
+        uses_cw20: bool,
     ) -> AppResponse {
         let msg = mock_start_auction(
-            start_time, end_time, coin_denom, min_bid, whitelist, recipient,
+            start_time, end_time, coin_denom, uses_cw20, min_bid, whitelist, recipient,
         );
         app.execute_contract(sender, self.addr().clone(), &msg, &[])
             .unwrap()
@@ -125,12 +127,14 @@ pub fn mock_auction_instantiate_msg(
     kernel_address: impl Into<String>,
     owner: Option<String>,
     authorized_token_addresses: Option<Vec<AndrAddr>>,
+    authorized_cw20_address: Option<AndrAddr>,
 ) -> InstantiateMsg {
     InstantiateMsg {
         modules,
         kernel_address: kernel_address.into(),
         owner,
         authorized_token_addresses,
+        authorized_cw20_address,
     }
 }
 
@@ -138,6 +142,7 @@ pub fn mock_start_auction(
     start_time: Option<Milliseconds>,
     end_time: Milliseconds,
     coin_denom: String,
+    uses_cw20: bool,
     min_bid: Option<Uint128>,
     whitelist: Option<Vec<Addr>>,
     recipient: Option<Recipient>,
@@ -146,10 +151,15 @@ pub fn mock_start_auction(
         start_time,
         end_time,
         coin_denom,
+        uses_cw20,
         min_bid,
         whitelist,
         recipient,
     }
+}
+
+pub fn mock_auction_cw20_receive(msg: Cw20ReceiveMsg) -> ExecuteMsg {
+    ExecuteMsg::Receive(msg)
 }
 
 pub fn mock_authorize_token_address(

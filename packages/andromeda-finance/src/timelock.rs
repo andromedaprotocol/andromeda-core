@@ -39,7 +39,7 @@ impl Escrow {
         ensure!(
             !self.coins.is_empty(),
             ContractError::InvalidFunds {
-                msg: "ensure! at least one coin to be sent".to_string(),
+                msg: "At least one coin should be sent".to_string(),
             }
         );
         ensure!(
@@ -229,7 +229,7 @@ mod tests {
             .unwrap_err();
         assert_eq!(
             ContractError::InvalidFunds {
-                msg: "ensure! at least one coin to be sent".to_string()
+                msg: "At least one coin should be sent".to_string()
             },
             resp
         );

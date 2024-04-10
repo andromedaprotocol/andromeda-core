@@ -17,6 +17,7 @@ use andromeda_std::{
 };
 use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
 
+use andromeda_std::common::denom::validate_denom;
 use andromeda_std::{
     ado_base::{hooks::AndromedaHook, InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     common::{deduct_funds, encode_binary, merge_sub_msgs, rates::get_tax_amount, Funds},
@@ -295,6 +296,7 @@ fn execute_start_sale(
     let ExecuteContext {
         deps, info, env, ..
     } = ctx;
+    validate_denom(deps.as_ref(), price.denom.clone())?;
     recipient.validate(&deps.as_ref())?;
     nonpayable(&info)?;
     let ado_contract = ADOContract::default();
