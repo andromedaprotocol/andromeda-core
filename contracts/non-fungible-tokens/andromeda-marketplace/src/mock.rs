@@ -95,6 +95,24 @@ pub fn mock_start_sale(
     }
 }
 
+pub fn mock_update_sale(
+    token_id: String,
+    token_address: String,
+    coin_denom: String,
+    uses_cw20: bool,
+    price: Uint128,
+    recipient: Option<Recipient>,
+) -> ExecuteMsg {
+    ExecuteMsg::UpdateSale {
+        token_id,
+        token_address,
+        price,
+        coin_denom,
+        uses_cw20,
+        recipient,
+    }
+}
+
 pub fn mock_buy_token(token_address: impl Into<String>, token_id: impl Into<String>) -> ExecuteMsg {
     ExecuteMsg::Buy {
         token_id: token_id.into(),

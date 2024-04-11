@@ -894,7 +894,7 @@ fn test_auction_app_cw20_restricted() {
     let err: ContractError = router
         .execute_contract(
             owner.clone(),
-            Addr::unchecked(auction.addr().clone()),
+            auction.addr().clone(),
             &update_auction_msg,
             &[],
         )

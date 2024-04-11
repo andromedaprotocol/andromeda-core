@@ -241,10 +241,8 @@ fn execute_start_sale(
     uses_cw20: bool,
     recipient: Option<Recipient>,
 ) -> Result<Response, ContractError> {
-    if !uses_cw20 {
-        validate_denom(deps.as_ref(), coin_denom.clone())?;
-    } else {
-        let valid_cw20_auction = ADOContract::default()
+    if uses_cw20 {
+        let valid_cw20_sale = ADOContract::default()
             .is_permissioned(
                 deps.storage,
                 env.clone(),
@@ -253,11 +251,13 @@ fn execute_start_sale(
             )
             .is_ok();
         ensure!(
-            valid_cw20_auction,
+            valid_cw20_sale,
             ContractError::InvalidFunds {
-                msg: "Non-permissioned CW20 asset sent".to_string()
+                msg: format!("Non-permissioned CW20 asset '{}' set as denom.", coin_denom)
             }
         );
+    } else {
+        validate_denom(deps.as_ref(), coin_denom.clone())?;
     }
 
     // Price can't be zero
@@ -320,16 +320,28 @@ fn execute_update_sale(
     uses_cw20: bool,
     recipient: Option<Recipient>,
 ) -> Result<Response, ContractError> {
-    let ExecuteContext { deps, info, .. } = ctx;
-    if !uses_cw20 {
+    let ExecuteContext {
+        deps, env, info, ..
+    } = ctx;
+    if uses_cw20 {
+        let valid_cw20_sale = ADOContract::default()
+            .is_permissioned(deps.storage, env, SEND_CW20_ACTION, coin_denom.clone())
+            .is_ok();
+        ensure!(
+            valid_cw20_sale,
+            ContractError::InvalidFunds {
+                msg: format!("Non-permissioned CW20 asset '{}' set as denom.", coin_denom)
+            }
+        );
+    } else {
         validate_denom(deps.as_ref(), coin_denom.clone())?;
     }
     nonpayable(&info)?;
 
     let mut token_sale_state =
         get_existing_token_sale_state(deps.storage, &token_id, &token_address)?;
-    // Only token owner is authorized to update the sale
 
+    // Only token owner is authorized to update the sale
     ensure!(
         info.sender == token_sale_state.owner,
         ContractError::Unauthorized {}
@@ -542,7 +554,7 @@ fn execute_buy_cw20(
 
     let sale_currency = token_sale_state.coin_denom.clone();
     let valid_cw20_sale = ADOContract::default()
-        .is_permissioned_strict(deps.storage, env, SEND_CW20_ACTION, sale_currency.clone())
+        .is_permissioned(deps.storage, env, SEND_CW20_ACTION, sale_currency.clone())
         .is_ok();
     ensure!(
         valid_cw20_sale,
