@@ -71,6 +71,9 @@ andromeda-finance = { workspace = true }
 andromeda-splitter = { path = "../contracts/finance/andromeda-splitter", features = [
     "testing",
 ] }
+andromeda-vesting = { path = "../contracts/finance/andromeda-vesting", features = [
+    "testing",
+] }
 
 # Data Storage
 andromeda-data-storage = { workspace = true }
