@@ -44,7 +44,7 @@ Here is a visual representation of how this system is connected.
 
 <p>&nbsp;</p>
 <p align="center">
-<img src="https://github.com/andromedaprotocol/andromeda-core/blob/daniel/add-readme-files/asset/Andromeda-IBC.png" width=800>
+<img src="https://github.com/andromedaprotocol/andromeda-core/blob/v1.x/asset/Andromeda-IBC.png" width=800>
 </p>
 
 As we can see, each of the Cosmos chains has AndromedaOS deployed . Since AndromedaOS can communicate using IBC, then users can build Applications that span accross many chains taking advantage of all the benefits that come along.
@@ -65,7 +65,7 @@ Developers can use our **Andromeda Logic Library** (ALL) which contains all our 
 
 As it stands, the ALL contains around 25 ADOs which is the tip of the iceberg. More and more ADOs are being added by the Andromeda team, and as we continue building, the ALL will eventually reach a state with thousands of ADOs where every use case imagined can be built using it.&#x20;
 
-Furthermore, developers are incentivized for their contributions and the ADOs they create. This incentive system operates through our[ economic engine](platform-and-framework/andromeda-messaging-protocol/economics-engine.md), enabling developers to set custom fees on their ADOs when it is published. Users utilizing these ADOs pay these fees, which are then returned to the developer responsible for their creation.
+Furthermore, developers are incentivized for their contributions and the ADOs they create. This incentive system operates through our[ economic engine](https://docs.andromedaprotocol.io/andromeda/platform-and-framework/andromeda-messaging-protocol/economics-engine), enabling developers to set custom fees on their ADOs when it is published. Users utilizing these ADOs pay these fees, which are then returned to the developer responsible for their creation.
 
 * **For Chains:**
 
