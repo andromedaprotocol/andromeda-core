@@ -90,6 +90,29 @@ impl MockAuction {
         self.execute(app, &msg, sender, &[])
     }
 
+    pub fn execute_authorize_token_address(
+        &self,
+        app: &mut MockApp,
+        sender: Addr,
+        token_address: impl Into<String>,
+        expiration: Option<Expiration>,
+    ) -> ExecuteResult {
+        let msg = mock_authorize_token_address(token_address, expiration);
+        self.execute(app, &msg, sender, &[])
+    }
+
+    pub fn execute_set_permission(
+        &self,
+        app: &mut MockApp,
+        sender: Addr,
+        actor: AndrAddr,
+        action: String,
+        permission: Permission,
+    ) -> ExecuteResult {
+        let msg = mock_set_permission(actor, action, permission);
+        self.execute(app, &msg, sender, &[])
+    }
+
     pub fn query_auction_ids(
         &self,
         app: &mut MockApp,
