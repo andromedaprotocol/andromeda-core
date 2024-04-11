@@ -1,6 +1,6 @@
 [package]
 name = "andromeda-cross-chain-swap"
-version = "1.0.0-rc.1"
+version = "1.0.0"
 edition = "2021"
 rust-version = "1.65.0"
 
@@ -32,4 +32,4 @@ andromeda-finance = { workspace = true }
 cw-multi-test = { workspace = true, optional = true }
 
 [dev-dependencies]
-andromeda-app = { version = "0.1.0", path = "../../../packages/andromeda-app" }
+andromeda-app = { path = "../../../packages/andromeda-app" }

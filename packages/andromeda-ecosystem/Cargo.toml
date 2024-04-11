@@ -1,6 +1,6 @@
 [package]
 name = "andromeda-ecosystem"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2021"
 rust-version = "1.65.0"
 
@@ -19,5 +19,5 @@ serde = { workspace = true }
 schemars = "0.8.10"
 #astroport = "1.0.1"
 cw20 = { workspace = true }
-cw-asset = { workspace = true  }
+cw-asset = { workspace = true }
 andromeda-std = { workspace = true }
