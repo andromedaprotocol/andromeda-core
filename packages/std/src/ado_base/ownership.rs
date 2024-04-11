@@ -1,6 +1,7 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::Addr;
-use cw_utils::Expiration;
+
+use crate::common::MillisecondsExpiration;
 
 #[cw_serde]
 pub struct ContractOwnerResponse {
@@ -10,7 +11,7 @@ pub struct ContractOwnerResponse {
 #[cw_serde]
 pub struct ContractPotentialOwnerResponse {
     pub potential_owner: Option<Addr>,
-    pub expiration: Option<Expiration>,
+    pub expiration: Option<MillisecondsExpiration>,
 }
 
 #[cw_serde]
@@ -22,7 +23,7 @@ pub struct PublisherResponse {
 pub enum OwnershipMessage {
     UpdateOwner {
         new_owner: Addr,
-        expiration: Option<Expiration>,
+        expiration: Option<MillisecondsExpiration>,
     },
     RevokeOwnershipOffer,
     AcceptOwnership,

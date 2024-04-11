@@ -50,7 +50,7 @@ pub enum ExecuteMsg {
     /// Restricted to owner
     AuthorizeTokenContract {
         addr: AndrAddr,
-        expiration: Option<Expiration>,
+        expiration: Option<MillisecondsExpiration>,
     },
     /// Restricted to owner
     DeauthorizeTokenContract {

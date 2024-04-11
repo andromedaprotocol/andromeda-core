@@ -2,9 +2,8 @@ use core::fmt;
 
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::Env;
-use cw_utils::Expiration;
 
-use crate::{amp::AndrAddr, error::ContractError};
+use crate::{amp::AndrAddr, common::MillisecondsExpiration, error::ContractError};
 
 #[cw_serde]
 pub enum PermissioningMessage {
@@ -46,12 +45,12 @@ pub struct PermissionedActionsResponse {
 /// Expiration defaults to `Never` if not provided
 #[cw_serde]
 pub enum Permission {
-    Blacklisted(Option<Expiration>),
+    Blacklisted(Option<MillisecondsExpiration>),
     Limited {
-        expiration: Option<Expiration>,
+        expiration: Option<MillisecondsExpiration>,
         uses: u32,
     },
-    Whitelisted(Option<Expiration>),
+    Whitelisted(Option<MillisecondsExpiration>),
 }
 
 impl std::default::Default for Permission {
@@ -61,15 +60,15 @@ impl std::default::Default for Permission {
 }
 
 impl Permission {
-    pub fn blacklisted(expiration: Option<Expiration>) -> Self {
+    pub fn blacklisted(expiration: Option<MillisecondsExpiration>) -> Self {
         Self::Blacklisted(expiration)
     }
 
-    pub fn whitelisted(expiration: Option<Expiration>) -> Self {
+    pub fn whitelisted(expiration: Option<MillisecondsExpiration>) -> Self {
         Self::Whitelisted(expiration)
     }
 
-    pub fn limited(expiration: Option<Expiration>, uses: u32) -> Self {
+    pub fn limited(expiration: Option<MillisecondsExpiration>, uses: u32) -> Self {
         Self::Limited { expiration, uses }
     }
 
@@ -105,7 +104,7 @@ impl Permission {
         }
     }
 
-    pub fn get_expiration(&self) -> Expiration {
+    pub fn get_expiration(&self) -> MillisecondsExpiration {
         match self {
             Self::Blacklisted(expiration) => expiration.unwrap_or_default(),
             Self::Limited { expiration, .. } => expiration.unwrap_or_default(),

@@ -1,3 +1,4 @@
+use crate::common::MillisecondsExpiration;
 use crate::error::ContractError;
 use crate::{
     ado_base::ownership::{ContractPotentialOwnerResponse, OwnershipMessage},
@@ -5,10 +6,10 @@ use crate::{
 };
 use cosmwasm_std::{attr, ensure, Addr, DepsMut, Env, MessageInfo, Response, Storage};
 use cw_storage_plus::Item;
-use cw_utils::Expiration;
 
 const POTENTIAL_OWNER: Item<Addr> = Item::new("andr_potential_owner");
-const POTENTIAL_OWNER_EXPIRATION: Item<Expiration> = Item::new("andr_potential_owner_expiration");
+const POTENTIAL_OWNER_EXPIRATION: Item<MillisecondsExpiration> =
+    Item::new("andr_potential_owner_expiration");
 
 impl<'a> ADOContract<'a> {
     pub fn execute_ownership(
@@ -35,7 +36,7 @@ impl<'a> ADOContract<'a> {
         deps: DepsMut,
         info: MessageInfo,
         new_owner: Addr,
-        expiration: Option<Expiration>,
+        expiration: Option<MillisecondsExpiration>,
     ) -> Result<Response, ContractError> {
         ensure!(
             self.is_contract_owner(deps.storage, info.sender.as_str())?,
@@ -162,11 +163,13 @@ mod test {
         testing::{mock_dependencies, mock_env, mock_info},
         Addr, DepsMut,
     };
-    use cw_utils::Expiration;
 
-    use crate::ado_contract::{
-        ownership::{POTENTIAL_OWNER, POTENTIAL_OWNER_EXPIRATION},
-        ADOContract,
+    use crate::{
+        ado_contract::{
+            ownership::{POTENTIAL_OWNER, POTENTIAL_OWNER_EXPIRATION},
+            ADOContract,
+        },
+        common::MillisecondsExpiration,
     };
 
     fn init(deps: DepsMut, owner: impl Into<String>) {
@@ -247,11 +250,14 @@ mod test {
             .save(deps.as_mut().storage, &new_owner)
             .unwrap();
         POTENTIAL_OWNER_EXPIRATION
-            .save(deps.as_mut().storage, &Expiration::AtHeight(1))
+            .save(
+                deps.as_mut().storage,
+                &MillisecondsExpiration::from_nanos(1),
+            )
             .unwrap();
 
         let mut env = mock_env();
-        env.block.height = 2;
+        env.block.time = MillisecondsExpiration::from_nanos(2).into();
         let res = contract.accept_ownership(deps.as_mut(), env, mock_info("new_owner", &[]));
         assert!(res.is_err());
         let saved_owner = contract.owner.load(deps.as_ref().storage).unwrap();

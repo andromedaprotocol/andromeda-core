@@ -8,7 +8,7 @@ use andromeda_non_fungible_tokens::auction::{
 use andromeda_std::ado_base::permissioning::{Permission, PermissioningMessage};
 use andromeda_std::amp::messages::AMPPkt;
 use andromeda_std::amp::Recipient;
-use andromeda_std::common::Milliseconds;
+use andromeda_std::common::{Milliseconds, MillisecondsExpiration};
 use andromeda_std::{ado_base::modules::Module, amp::AndrAddr};
 use andromeda_testing::mock::MockApp;
 use andromeda_testing::{
@@ -17,7 +17,6 @@ use andromeda_testing::{
 };
 use cosmwasm_std::{Addr, Coin, Empty, Uint128};
 use cw20::Cw20ReceiveMsg;
-use cw20::Expiration;
 use cw_multi_test::{AppResponse, Contract, ContractWrapper, Executor};
 
 pub struct MockAuction(Addr);
@@ -164,7 +163,7 @@ pub fn mock_auction_cw20_receive(msg: Cw20ReceiveMsg) -> ExecuteMsg {
 
 pub fn mock_authorize_token_address(
     token_address: impl Into<String>,
-    expiration: Option<Expiration>,
+    expiration: Option<MillisecondsExpiration>,
 ) -> ExecuteMsg {
     ExecuteMsg::AuthorizeTokenContract {
         addr: AndrAddr::from_string(token_address.into()),

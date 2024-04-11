@@ -29,7 +29,7 @@ use cosmwasm_std::{
     SubMsg, Uint128, WasmMsg, WasmQuery,
 };
 use cw20::{Cw20Coin, Cw20ExecuteMsg, Cw20ReceiveMsg};
-use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, Cw721ReceiveMsg, Expiration, OwnerOfResponse};
+use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, Cw721ReceiveMsg, OwnerOfResponse};
 use cw_utils::nonpayable;
 
 const CONTRACT_NAME: &str = "crates.io:andromeda-auction";
@@ -902,7 +902,7 @@ fn execute_authorize_token_contract(
     deps: DepsMut,
     info: MessageInfo,
     token_address: AndrAddr,
-    expiration: Option<Expiration>,
+    expiration: Option<MillisecondsExpiration>,
 ) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
     let addr = token_address.get_raw_address(&deps.as_ref())?;
