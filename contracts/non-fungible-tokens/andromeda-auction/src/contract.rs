@@ -394,7 +394,7 @@ fn execute_update_auction(
         ensure!(
             valid_cw20_auction,
             ContractError::InvalidFunds {
-                msg: "Non-permissioned CW20 asset sent".to_string()
+                msg: format!("Non-permissioned CW20 asset '{}' set as denom.", coin_denom)
             }
         );
     } else {

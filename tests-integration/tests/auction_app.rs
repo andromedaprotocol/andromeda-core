@@ -904,7 +904,10 @@ fn test_auction_app_cw20_restricted() {
     assert_eq!(
         err,
         ContractError::InvalidFunds {
-            msg: "Non-permissioned CW20 asset sent".to_string()
+            msg: format!(
+                "Non-permissioned CW20 asset '{}' set as denom.",
+                second_cw20.addr()
+            )
         }
     );
 
