@@ -469,9 +469,8 @@ mod tests {
         testing::{mock_dependencies, mock_env, mock_info},
         Addr,
     };
-    use cw_utils::Expiration;
 
-    use crate::{ado_base::AndromedaMsg, amp::messages::AMPPkt};
+    use crate::{ado_base::AndromedaMsg, amp::messages::AMPPkt, common::MillisecondsExpiration};
 
     use super::*;
 
@@ -685,8 +684,10 @@ mod tests {
         let action = "action";
         let actor = "actor";
         let contract = ADOContract::default();
-        let block = 100;
-        let expiration = Expiration::AtHeight(block);
+        let time = 2;
+        let expiration = MillisecondsExpiration::from_seconds(time);
+
+        env.block.time = MillisecondsExpiration::from_seconds(0).into();
         contract
             .owner
             .save(deps.as_mut().storage, &Addr::unchecked("owner"))
@@ -707,12 +708,12 @@ mod tests {
         let res = contract.is_permissioned(deps.as_mut().storage, env.clone(), action, actor);
         assert!(res.is_ok());
 
-        env.block.height = block + 1;
+        env.block.time = MillisecondsExpiration::from_seconds(time + 1).into();
 
         let res = contract.is_permissioned(deps.as_mut().storage, env.clone(), action, actor);
         assert!(res.is_err());
 
-        env.block.height = 0;
+        env.block.time = MillisecondsExpiration::from_seconds(0).into();
         // Test Blacklist
         let permission = Permission::Blacklisted(Some(expiration));
         ADOContract::set_permission(deps.as_mut().storage, action, actor, permission).unwrap();
@@ -720,7 +721,7 @@ mod tests {
         let res = contract.is_permissioned(deps.as_mut().storage, env.clone(), action, actor);
         assert!(res.is_err());
 
-        env.block.height = block + 1;
+        env.block.time = MillisecondsExpiration::from_seconds(time + 1).into();
 
         let res = contract.is_permissioned(deps.as_mut().storage, env, action, actor);
         assert!(res.is_ok());
