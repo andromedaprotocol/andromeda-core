@@ -56,6 +56,33 @@ impl MockMarketplace {
     ) -> ExecuteResult {
         self.execute(app, &mock_buy_token(token_address, token_id), sender, &[])
     }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn execute_update_sale(
+        &self,
+        app: &mut MockApp,
+        sender: Addr,
+        token_address: impl Into<String>,
+        token_id: impl Into<String>,
+        coin_denom: String,
+        uses_cw20: bool,
+        price: Uint128,
+        recipient: Option<Recipient>,
+    ) -> ExecuteResult {
+        self.execute(
+            app,
+            &mock_update_sale(
+                token_id.into(),
+                token_address.into(),
+                coin_denom,
+                uses_cw20,
+                price,
+                recipient,
+            ),
+            sender,
+            &[],
+        )
+    }
 }
 
 pub fn mock_andromeda_marketplace() -> Box<dyn Contract<Empty>> {

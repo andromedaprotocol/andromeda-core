@@ -1,23 +1,16 @@
 #![cfg(not(target_arch = "wasm32"))]
 
 use andromeda_address_list::mock::{
-    mock_add_address_msg, mock_address_list_instantiate_msg, mock_andromeda_address_list,
-    MockAddressList,
+    mock_address_list_instantiate_msg, mock_andromeda_address_list, MockAddressList,
 };
 use andromeda_app::app::AppComponent;
 use andromeda_app_contract::mock::{mock_andromeda_app, MockAppContract};
-use andromeda_cw20::mock::{
-    mock_andromeda_cw20, mock_cw20_instantiate_msg, mock_cw20_send, mock_get_cw20_balance,
-    mock_minter, MockCW20,
-};
-use andromeda_cw721::mock::{
-    mock_andromeda_cw721, mock_cw721_instantiate_msg, mock_cw721_owner_of, mock_quick_mint_msg,
-    mock_send_nft, MockCW721,
-};
+use andromeda_cw20::mock::{mock_andromeda_cw20, mock_cw20_instantiate_msg, mock_minter, MockCW20};
+use andromeda_cw721::mock::{mock_andromeda_cw721, mock_cw721_instantiate_msg, MockCW721};
 use andromeda_finance::splitter::AddressPercent;
 use andromeda_marketplace::mock::{
     mock_andromeda_marketplace, mock_buy_token, mock_marketplace_instantiate_msg,
-    mock_receive_packet, mock_start_sale, mock_update_sale, MockMarketplace,
+    mock_receive_packet, mock_start_sale, MockMarketplace,
 };
 use andromeda_modules::rates::{Rate, RateInfo};
 
@@ -34,8 +27,7 @@ use andromeda_testing::mock::mock_app;
 use andromeda_testing::mock_builder::MockAndromedaBuilder;
 use andromeda_testing::MockContract;
 use cosmwasm_std::{coin, to_json_binary, Addr, BlockInfo, Decimal, Uint128};
-use cw20::{BalanceResponse, Cw20Coin};
-use cw721::OwnerOfResponse;
+use cw20::Cw20Coin;
 use cw_multi_test::Executor;
 
 #[test]
@@ -501,94 +493,61 @@ fn test_marketplace_app_cw20_restricted() {
     let cw20: MockCW20 = app.query_ado_by_component_name(&router, cw20_component.name);
 
     // Mint Tokens
-    let mint_msg = mock_quick_mint_msg(1, owner.to_string());
-    router
-        .execute_contract(
-            owner.clone(),
-            Addr::unchecked(cw721.addr().clone()),
-            &mint_msg,
-            &[],
-        )
+    cw721
+        .execute_quick_mint(&mut router, owner.clone(), 1, owner.to_string())
         .unwrap();
 
     let token_id = "0";
 
     // Whitelist
-    router
-        .execute_contract(
-            owner.clone(),
-            Addr::unchecked(address_list.addr().clone()),
-            &mock_add_address_msg(cw721.addr().to_string()),
-            &[],
-        )
-        .unwrap();
-    router
-        .execute_contract(
-            owner.clone(),
-            Addr::unchecked(address_list.addr().clone()),
-            &mock_add_address_msg(buyer.to_string()),
-            &[],
-        )
-        .unwrap();
-    router
-        .execute_contract(
-            owner.clone(),
-            Addr::unchecked(address_list.addr()),
-            &mock_add_address_msg(cw20.addr().to_string()),
-            &[],
-        )
+    address_list
+        .execute_add_address(&mut router, owner.clone(), cw721.addr())
         .unwrap();
 
-    router
-        .execute_contract(
-            owner.clone(),
-            Addr::unchecked(address_list.addr()),
-            &mock_add_address_msg(owner.to_string()),
-            &[],
-        )
+    address_list
+        .execute_add_address(&mut router, owner.clone(), cw20.addr())
         .unwrap();
-    // Send Token to Marketplace
-    let send_nft_msg = mock_send_nft(
-        AndrAddr::from_string(marketplace.addr().clone()),
-        token_id.to_string(),
-        to_json_binary(&mock_start_sale(
-            Uint128::from(100u128),
-            cw20.addr().clone(),
-            true,
-            None,
-            None,
-            None,
-        ))
-        .unwrap(),
-    );
-    router
-        .execute_contract(
+
+    address_list
+        .execute_add_address(&mut router, owner.clone(), buyer)
+        .unwrap();
+
+    address_list
+        .execute_add_address(&mut router, owner.clone(), owner)
+        .unwrap();
+
+    cw721
+        .execute_send_nft(
+            &mut router,
             owner.clone(),
-            Addr::unchecked(cw721.addr().clone()),
-            &send_nft_msg,
-            &[],
+            marketplace.addr(),
+            token_id,
+            &mock_start_sale(
+                Uint128::from(100u128),
+                cw20.addr().clone(),
+                true,
+                None,
+                None,
+                None,
+            ),
         )
         .unwrap();
 
     // Try updating denom to another unpermissioned cw20, shouldn't work since this a restricted cw20 sale
     let second_cw20: MockCW20 =
         app.query_ado_by_component_name(&router, second_cw20_component.name);
-    let update_sale_msg = mock_update_sale(
-        token_id.to_string(),
-        cw721.addr().to_string(),
-        // This cw20 hasn't been permissioned
-        second_cw20.addr().to_string(),
-        true,
-        Uint128::new(100),
-        None,
-    );
 
-    let err: ContractError = router
-        .execute_contract(
+    let err: ContractError = marketplace
+        .execute_update_sale(
+            &mut router,
             owner.clone(),
-            marketplace.addr().clone(),
-            &update_sale_msg,
-            &[],
+            token_id.to_string(),
+            cw721.addr().to_string(),
+            // This cw20 hasn't been permissioned
+            second_cw20.addr().to_string(),
+            true,
+            Uint128::new(100),
+            None,
         )
         .unwrap_err()
         .downcast()
@@ -603,18 +562,6 @@ fn test_marketplace_app_cw20_restricted() {
         }
     );
 
-    // Buy Token
-    let hook_msg = Cw20HookMsg::Buy {
-        token_id: token_id.to_owned(),
-        token_address: cw721.addr().to_string(),
-    };
-
-    let buy_msg = mock_cw20_send(
-        AndrAddr::from_string(marketplace.addr()),
-        Uint128::new(200),
-        to_json_binary(&hook_msg).unwrap(),
-    );
-
     let block_info = router.block_info();
     router.set_block(BlockInfo {
         height: block_info.height,
@@ -622,80 +569,44 @@ fn test_marketplace_app_cw20_restricted() {
         chain_id: block_info.chain_id,
     });
 
-    router
-        .execute_contract(
-            buyer.clone(),
-            Addr::unchecked(cw20.addr().clone()),
-            &buy_msg,
-            &[],
-        )
-        .unwrap();
+    // Buy Token
+    let hook_msg = Cw20HookMsg::Buy {
+        token_id: token_id.to_owned(),
+        token_address: cw721.addr().to_string(),
+    };
+    cw20.execute_send(
+        &mut router,
+        buyer.clone(),
+        marketplace.addr(),
+        Uint128::new(200),
+        &hook_msg,
+    )
+    .unwrap();
 
-    // let amp_msg = AMPMsg::new(
-    //     Addr::unchecked(marketplace_addr.clone()),
-    //     to_json_binary(&buy_msg).unwrap(),
-    //     None,
-    // );
-
-    // let packet = AMPPkt::new(
-    //     buyer.clone(),
-    //     andr.kernel_address.to_string(),
-    //     vec![amp_msg],
-    // );
-    // let receive_packet_msg = mock_receive_packet(packet);
-
-    // router
-    //     .execute_contract(
-    //         buyer.clone(),
-    //         Addr::unchecked(marketplace_addr),
-    //         &receive_packet_msg,
-    //         &[coin(200, "uandr")],
-    //     )
-    //     .unwrap();
-
-    // Check final state
-    let owner_resp: OwnerOfResponse = router
-        .wrap()
-        .query_wasm_smart(
-            cw721.addr(),
-            &mock_cw721_owner_of(token_id.to_string(), None),
-        )
-        .unwrap();
-    assert_eq!(owner_resp.owner, buyer.to_string());
+    let owner_resp = cw721.query_owner_of(&router, token_id.to_string());
+    assert_eq!(owner_resp, buyer);
 
     // The NFT owner sold it for 200, there's also a 50% tax so the owner should receive 100
-    let cw20_balance_query = mock_get_cw20_balance(owner);
-    let cw20_balance_response: BalanceResponse = router
-        .wrap()
-        .query_wasm_smart(cw20.addr().clone(), &cw20_balance_query)
-        .unwrap();
+    let cw20_balance_response = cw20.query_balance(&router, owner);
     assert_eq!(
-        cw20_balance_response.balance,
+        cw20_balance_response,
         owner_original_balance
             .checked_add(Uint128::new(100))
             .unwrap()
     );
 
     // Buyer bought the NFT for 200, should be 200 less
-    let cw20_balance_query = mock_get_cw20_balance(buyer);
-    let cw20_balance_response: BalanceResponse = router
-        .wrap()
-        .query_wasm_smart(cw20.addr().clone(), &cw20_balance_query)
-        .unwrap();
+    let cw20_balance_response = cw20.query_balance(&router, buyer);
     assert_eq!(
-        cw20_balance_response.balance,
+        cw20_balance_response,
         buyer_original_balance
             .checked_sub(Uint128::new(200))
             .unwrap()
     );
 
     // The rates receiver should get 100 coins
-    let cw20_balance_query = mock_get_cw20_balance(rates_receiver);
-    let cw20_balance_response: BalanceResponse = router
-        .wrap()
-        .query_wasm_smart(cw20.addr(), &cw20_balance_query)
-        .unwrap();
-    assert_eq!(cw20_balance_response.balance, Uint128::new(100));
+    let cw20_balance_response = cw20.query_balance(&router, rates_receiver);
+    assert_eq!(cw20_balance_response, Uint128::new(100));
 }
 
 #[test]
@@ -853,117 +764,66 @@ fn test_marketplace_app_cw20_unrestricted() {
     let cw20: MockCW20 = app.query_ado_by_component_name(&router, cw20_component.name);
 
     // Mint Tokens
-    let mint_msg = mock_quick_mint_msg(1, owner.to_string());
-    router
-        .execute_contract(
-            owner.clone(),
-            Addr::unchecked(cw721.addr().clone()),
-            &mint_msg,
-            &[],
-        )
+    cw721
+        .execute_quick_mint(&mut router, owner.clone(), 1, owner.to_string())
         .unwrap();
 
     let token_id = "0";
 
     // Whitelist
-    router
-        .execute_contract(
-            owner.clone(),
-            Addr::unchecked(address_list.addr().clone()),
-            &mock_add_address_msg(cw721.addr().to_string()),
-            &[],
-        )
-        .unwrap();
-    router
-        .execute_contract(
-            owner.clone(),
-            Addr::unchecked(address_list.addr().clone()),
-            &mock_add_address_msg(buyer.to_string()),
-            &[],
-        )
-        .unwrap();
-    router
-        .execute_contract(
-            owner.clone(),
-            Addr::unchecked(address_list.addr()),
-            &mock_add_address_msg(cw20.addr().to_string()),
-            &[],
-        )
-        .unwrap();
-    let second_cw20: MockCW20 =
-        app.query_ado_by_component_name(&router, second_cw20_component.name);
-    router
-        .execute_contract(
-            owner.clone(),
-            Addr::unchecked(address_list.addr()),
-            &mock_add_address_msg(second_cw20.addr().to_string()),
-            &[],
-        )
+    address_list
+        .execute_add_address(&mut router, owner.clone(), cw721.addr())
         .unwrap();
 
-    router
-        .execute_contract(
-            owner.clone(),
-            Addr::unchecked(address_list.addr()),
-            &mock_add_address_msg(owner.to_string()),
-            &[],
-        )
+    address_list
+        .execute_add_address(&mut router, owner.clone(), cw20.addr())
         .unwrap();
+
+    let second_cw20: MockCW20 =
+        app.query_ado_by_component_name(&router, second_cw20_component.name);
+    address_list
+        .execute_add_address(&mut router, owner.clone(), second_cw20.addr())
+        .unwrap();
+
+    address_list
+        .execute_add_address(&mut router, owner.clone(), buyer)
+        .unwrap();
+
+    address_list
+        .execute_add_address(&mut router, owner.clone(), owner)
+        .unwrap();
+
     // Send Token to Marketplace
-    let send_nft_msg = mock_send_nft(
-        AndrAddr::from_string(marketplace.addr().clone()),
-        token_id.to_string(),
-        to_json_binary(&mock_start_sale(
-            Uint128::from(100u128),
-            cw20.addr().clone(),
-            true,
-            None,
-            None,
-            None,
-        ))
-        .unwrap(),
-    );
-    router
-        .execute_contract(
+    cw721
+        .execute_send_nft(
+            &mut router,
             owner.clone(),
-            Addr::unchecked(cw721.addr().clone()),
-            &send_nft_msg,
-            &[],
+            marketplace.addr(),
+            token_id.to_string(),
+            &mock_start_sale(
+                Uint128::from(100u128),
+                cw20.addr().clone(),
+                true,
+                None,
+                None,
+                None,
+            ),
         )
         .unwrap();
 
     // Try updating denom to another unpermissioned cw20, should work since this an unrestricted cw20 sale
-
-    let update_sale_msg = mock_update_sale(
-        token_id.to_string(),
-        cw721.addr().to_string(),
-        // This cw20 hasn't been permissioned
-        second_cw20.addr().to_string(),
-        true,
-        Uint128::new(100),
-        None,
-    );
-
-    router
-        .execute_contract(
+    marketplace
+        .execute_update_sale(
+            &mut router,
             owner.clone(),
-            marketplace.addr().clone(),
-            &update_sale_msg,
-            &[],
+            cw721.addr().to_string(),
+            token_id.to_string(),
+            second_cw20.addr().to_string(),
+            true,
+            Uint128::new(100),
+            None,
         )
         .unwrap();
-
-    // Buy Token
-    let hook_msg = Cw20HookMsg::Buy {
-        token_id: token_id.to_owned(),
-        token_address: cw721.addr().to_string(),
-    };
-
-    let buy_msg = mock_cw20_send(
-        AndrAddr::from_string(marketplace.addr()),
-        Uint128::new(200),
-        to_json_binary(&hook_msg).unwrap(),
-    );
 
     let block_info = router.block_info();
     router.set_block(BlockInfo {
@@ -972,51 +832,44 @@ fn test_marketplace_app_cw20_unrestricted() {
         chain_id: block_info.chain_id,
     });
 
-    router
-        .execute_contract(buyer.clone(), second_cw20.addr().clone(), &buy_msg, &[])
-        .unwrap();
-    println!("here1");
-    // Check final state
-    let owner_resp: OwnerOfResponse = router
-        .wrap()
-        .query_wasm_smart(
-            cw721.addr(),
-            &mock_cw721_owner_of(token_id.to_string(), None),
+    // Buy Token
+    let hook_msg = Cw20HookMsg::Buy {
+        token_id: token_id.to_owned(),
+        token_address: cw721.addr().to_string(),
+    };
+    second_cw20
+        .execute_send(
+            &mut router,
+            buyer.clone(),
+            marketplace.addr(),
+            Uint128::new(200),
+            &hook_msg,
         )
         .unwrap();
-    assert_eq!(owner_resp.owner, buyer.to_string());
+
+    // Check final state
+    let owner_of_token = cw721.query_owner_of(&router, token_id);
+    assert_eq!(owner_of_token, buyer.to_string());
 
     // The NFT owner sold it for 200, there's also a 50% tax so the owner should receive 100
-    let second_cw20_balance_query = mock_get_cw20_balance(owner);
-    let second_cw20_balance_response: BalanceResponse = router
-        .wrap()
-        .query_wasm_smart(second_cw20.addr().clone(), &second_cw20_balance_query)
-        .unwrap();
+    let second_cw20_balance_response = second_cw20.query_balance(&router, owner);
     assert_eq!(
-        second_cw20_balance_response.balance,
+        second_cw20_balance_response,
         owner_original_balance
             .checked_add(Uint128::new(100))
             .unwrap()
     );
 
     // Buyer bought the NFT for 200, should be 200 less
-    let second_cw20_balance_query = mock_get_cw20_balance(buyer);
-    let second_cw20_balance_response: BalanceResponse = router
-        .wrap()
-        .query_wasm_smart(second_cw20.addr().clone(), &second_cw20_balance_query)
-        .unwrap();
+    let second_cw20_balance_response = second_cw20.query_balance(&router, buyer);
     assert_eq!(
-        second_cw20_balance_response.balance,
+        second_cw20_balance_response,
         buyer_original_balance
             .checked_sub(Uint128::new(200))
             .unwrap()
     );
 
     // The rates receiver should get 100 coins
-    let second_cw20_balance_query = mock_get_cw20_balance(rates_receiver);
-    let second_cw20_balance_response: BalanceResponse = router
-        .wrap()
-        .query_wasm_smart(second_cw20.addr(), &second_cw20_balance_query)
-        .unwrap();
-    assert_eq!(second_cw20_balance_response.balance, Uint128::new(100));
+    let second_cw20_balance_response = second_cw20.query_balance(&router, rates_receiver);
+    assert_eq!(second_cw20_balance_response, Uint128::new(100));
 }
