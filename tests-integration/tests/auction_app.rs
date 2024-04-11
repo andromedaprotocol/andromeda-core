@@ -5,7 +5,7 @@ use andromeda_app_contract::mock::{mock_andromeda_app, mock_claim_ownership_msg,
 use andromeda_auction::mock::{
     mock_andromeda_auction, mock_auction_instantiate_msg, mock_authorize_token_address,
     mock_claim_auction, mock_get_auction_ids, mock_get_auction_state, mock_get_bids,
-    mock_place_bid, mock_set_permission, mock_start_auction, MockAuction,
+    mock_place_bid, mock_set_permission, mock_start_auction, mock_update_auction, MockAuction,
 };
 use andromeda_cw20::mock::{
     mock_andromeda_cw20, mock_cw20_instantiate_msg, mock_cw20_send, mock_get_cw20_balance,
@@ -478,6 +478,7 @@ fn test_auction_app_cw20_restricted() {
         .with_contracts(vec![
             ("cw721", mock_andromeda_cw721()),
             ("cw20", mock_andromeda_cw20()),
+            ("second-cw20", mock_andromeda_cw20()),
             ("auction", mock_andromeda_auction()),
             ("app-contract", mock_andromeda_app()),
             ("rates", mock_andromeda_rates()),
@@ -526,7 +527,7 @@ fn test_auction_app_cw20_restricted() {
         "Test Tokens".to_string(),
         "TTT".to_string(),
         6,
-        initial_balances,
+        initial_balances.clone(),
         Some(mock_minter(
             owner.to_string(),
             Some(Uint128::from(1000000u128)),
@@ -538,6 +539,25 @@ fn test_auction_app_cw20_restricted() {
         "cw20".to_string(),
         "cw20".to_string(),
         to_json_binary(&cw20_init_msg).unwrap(),
+    );
+
+    let second_cw20_init_msg = mock_cw20_instantiate_msg(
+        None,
+        "Second Test Tokens".to_string(),
+        "STTT".to_string(),
+        6,
+        initial_balances,
+        Some(mock_minter(
+            owner.to_string(),
+            Some(Uint128::from(1000000u128)),
+        )),
+        None,
+        andr.kernel.addr().to_string(),
+    );
+    let second_cw20_component = AppComponent::new(
+        "second-cw20".to_string(),
+        "cw20".to_string(),
+        to_json_binary(&second_cw20_init_msg).unwrap(),
     );
 
     let auction_init_msg = mock_auction_instantiate_msg(
@@ -561,6 +581,7 @@ fn test_auction_app_cw20_restricted() {
         auction_component.clone(),
         cw721_component.clone(),
         cw20_component.clone(),
+        second_cw20_component.clone(),
     ];
 
     let app = MockAppContract::instantiate(
@@ -853,6 +874,39 @@ fn test_auction_app_cw20_restricted() {
             &[],
         )
         .unwrap();
+
+    // Try updating denom to another unpermissioned cw20, shouldn't work since this a restricted cw20 auction
+    let second_cw20: MockCW20 =
+        app.query_ado_by_component_name(&router, second_cw20_component.name);
+    let update_auction_msg = mock_update_auction(
+        "0".to_string(),
+        cw721.addr().to_string(),
+        Some(Milliseconds(start_time)),
+        Milliseconds(start_time + 2),
+        // This cw20 hasn't been permissioned
+        second_cw20.addr().to_string(),
+        true,
+        None,
+        Some(vec![buyer_one.clone(), buyer_two.clone()]),
+        Some(Recipient::from_string(buyer_one)),
+    );
+
+    let err: ContractError = router
+        .execute_contract(
+            owner.clone(),
+            Addr::unchecked(auction.addr().clone()),
+            &update_auction_msg,
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(
+        err,
+        ContractError::InvalidFunds {
+            msg: "Non-permissioned CW20 asset sent".to_string()
+        }
+    );
 
     router.set_block(BlockInfo {
         height: router.block_info().height,

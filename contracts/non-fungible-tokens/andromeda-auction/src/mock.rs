@@ -172,6 +172,31 @@ pub fn mock_authorize_token_address(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
+pub fn mock_update_auction(
+    token_id: String,
+    token_address: String,
+    start_time: Option<Milliseconds>,
+    end_time: Milliseconds,
+    coin_denom: String,
+    uses_cw20: bool,
+    min_bid: Option<Uint128>,
+    whitelist: Option<Vec<Addr>>,
+    recipient: Option<Recipient>,
+) -> ExecuteMsg {
+    ExecuteMsg::UpdateAuction {
+        token_id,
+        token_address,
+        start_time,
+        end_time,
+        coin_denom,
+        uses_cw20,
+        whitelist,
+        min_bid,
+        recipient,
+    }
+}
+
 pub fn mock_set_permission(actor: AndrAddr, action: String, permission: Permission) -> ExecuteMsg {
     ExecuteMsg::Permissioning(PermissioningMessage::SetPermission {
         actor,

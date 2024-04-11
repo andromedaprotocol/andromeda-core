@@ -342,7 +342,7 @@ fn test_marketplace_app_recipient() {
     assert_eq!(balance.amount, Uint128::from(100u128));
 }
 #[test]
-fn test_marketplace_app_cw20() {
+fn test_marketplace_app_cw20_restricted() {
     let mut router = mock_app(None);
     let andr = MockAndromedaBuilder::new(&mut router, "admin")
         .with_wallets(vec![
