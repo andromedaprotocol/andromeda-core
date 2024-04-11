@@ -30,5 +30,5 @@ cw-multi-test = { workspace = true, optional = true }
 
 
 [dev-dependencies]
-andromeda-app = { path = "../../../packages/andromeda-app" }
+andromeda-app = { workspace = true }
 andromeda-testing = { workspace = true }

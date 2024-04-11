@@ -31,4 +31,4 @@ andromeda-fungible-tokens = { workspace = true }
 cw-multi-test = { workspace = true, optional = true }
 
 [dev-dependencies]
-andromeda-app = { path = "../../../packages/andromeda-app" }
+andromeda-app = { workspace = true }
