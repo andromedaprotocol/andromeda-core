@@ -3,6 +3,8 @@ name = "andromeda-testing"
 version = "1.0.0"
 authors = ["Connor Barr <crnbarr@gmail.com>"]
 edition = "2018"
+description = "Testing utilities for Andromeda Digital Object Contracts"
+license = "MIT"
 
 [features]
 backtraces = ["cosmwasm-std/backtraces"]
