@@ -4,7 +4,7 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     attr, ensure, to_json_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Empty,
-    Env, MessageInfo, Response, StdResult, Uint128, WasmMsg,
+    Env, MessageInfo, Response, StdResult, Timestamp, Uint128, WasmMsg,
 };
 use cw20::Cw20ExecuteMsg;
 use cw_asset::AssetInfoBase;
@@ -23,7 +23,9 @@ use andromeda_fungible_tokens::airdrop::{
 use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     ado_contract::ADOContract,
-    common::{actions::call_action, context::ExecuteContext, encode_binary},
+    common::{
+        actions::call_action, context::ExecuteContext, encode_binary, MillisecondsExpiration,
+    },
     error::ContractError,
 };
 
@@ -112,7 +114,7 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
 pub fn execute_register_merkle_root(
     ctx: ExecuteContext,
     merkle_root: String,
-    expiration: Option<Expiration>,
+    expiration: Option<MillisecondsExpiration>,
     total_amount: Option<Uint128>,
 ) -> Result<Response, ContractError> {
     let ExecuteContext { deps, info, .. } = ctx;
@@ -133,8 +135,7 @@ pub fn execute_register_merkle_root(
     LATEST_STAGE.save(deps.storage, &stage)?;
 
     // save expiration
-    let exp = expiration.unwrap_or(Expiration::Never {});
-    STAGE_EXPIRATION.save(deps.storage, stage, &exp)?;
+    STAGE_EXPIRATION.save(deps.storage, stage, &expiration)?;
 
     // save total airdropped amount
     let amount = total_amount.unwrap_or_else(Uint128::zero);
@@ -162,6 +163,11 @@ pub fn execute_claim(
 
     // not expired
     let expiration = STAGE_EXPIRATION.load(deps.storage, stage)?;
+    let expiration = if let Some(expiration) = expiration {
+        Expiration::AtTime(Timestamp::from_nanos(expiration.nanos()))
+    } else {
+        Expiration::Never {}
+    };
     ensure!(
         !expiration.is_expired(&env.block),
         ContractError::StageExpired { stage, expiration }
@@ -243,6 +249,11 @@ pub fn execute_burn(ctx: ExecuteContext, stage: u8) -> Result<Response, Contract
 
     // make sure is expired
     let expiration = STAGE_EXPIRATION.load(deps.storage, stage)?;
+    let expiration = if let Some(expiration) = expiration {
+        Expiration::AtTime(Timestamp::from_nanos(expiration.nanos()))
+    } else {
+        Expiration::Never {}
+    };
     ensure!(
         expiration.is_expired(&env.block),
         ContractError::StageNotExpired { stage, expiration }
