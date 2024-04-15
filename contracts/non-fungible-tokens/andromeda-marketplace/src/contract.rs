@@ -129,17 +129,8 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
             token_address,
             coin_denom,
             price,
-            uses_cw20,
             recipient,
-        } => execute_update_sale(
-            ctx,
-            token_id,
-            token_address,
-            price,
-            coin_denom,
-            uses_cw20,
-            recipient,
-        ),
+        } => execute_update_sale(ctx, token_id, token_address, price, coin_denom, recipient),
         ExecuteMsg::Buy {
             token_id,
             token_address,
@@ -170,7 +161,6 @@ fn handle_receive_cw721(
             coin_denom,
             start_time,
             duration,
-            uses_cw20,
             recipient,
         } => execute_start_sale(
             deps,
@@ -182,7 +172,6 @@ fn handle_receive_cw721(
             coin_denom,
             start_time,
             duration,
-            uses_cw20,
             recipient,
         ),
     }
@@ -238,10 +227,9 @@ fn execute_start_sale(
     coin_denom: Asset,
     start_time: Option<MillisecondsExpiration>,
     duration: Option<MillisecondsDuration>,
-    uses_cw20: bool,
     recipient: Option<Recipient>,
 ) -> Result<Response, ContractError> {
-    let coin_denom = coin_denom.get_verified_asset(deps.branch(), env.clone())?;
+    let (coin_denom, uses_cw20) = coin_denom.get_verified_asset(deps.branch(), env.clone())?;
 
     // Price can't be zero
     ensure!(price > Uint128::zero(), ContractError::InvalidZeroAmount {});
@@ -300,7 +288,6 @@ fn execute_update_sale(
     token_address: String,
     price: Uint128,
     coin_denom: Asset,
-    uses_cw20: bool,
     recipient: Option<Recipient>,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
@@ -309,7 +296,7 @@ fn execute_update_sale(
         info,
         ..
     } = ctx;
-    let coin_denom = coin_denom.get_verified_asset(deps.branch(), env)?;
+    let (coin_denom, uses_cw20) = coin_denom.get_verified_asset(deps.branch(), env)?;
     nonpayable(&info)?;
 
     let mut token_sale_state =

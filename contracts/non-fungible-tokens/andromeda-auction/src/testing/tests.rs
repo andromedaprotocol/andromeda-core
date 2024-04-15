@@ -78,7 +78,6 @@ fn start_auction(deps: DepsMut, whitelist: Option<Vec<Addr>>, min_bid: Option<Ui
         start_time: None,
         end_time: Milliseconds::from_nanos((current_time() + 20_000_000) * 1_000_000),
         coin_denom: Asset::NativeToken("uusd".to_string()),
-        uses_cw20: false,
         whitelist,
         min_bid,
         recipient: None,
@@ -99,7 +98,6 @@ fn start_auction_cw20(deps: DepsMut, whitelist: Option<Vec<Addr>>, min_bid: Opti
         start_time: None,
         end_time: Milliseconds::from_nanos((current_time() + 20_000_000) * 1_000_000),
         coin_denom: Asset::Cw20Token(AndrAddr::from_string(MOCK_CW20_ADDR.to_string())),
-        uses_cw20: true,
         whitelist,
         min_bid,
         recipient: None,
@@ -690,7 +688,7 @@ fn execute_start_auction_start_time_in_past() {
         start_time: Some(Milliseconds(100000)),
         end_time: Milliseconds(100000),
         coin_denom: Asset::NativeToken("uusd".to_string()),
-        uses_cw20: false,
+
         whitelist: None,
         min_bid: None,
         recipient: None,
@@ -723,7 +721,7 @@ fn execute_start_auction_zero_start_time() {
         start_time: Some(Milliseconds::zero()),
         end_time: Milliseconds(1),
         coin_denom: Asset::NativeToken("uusd".to_string()),
-        uses_cw20: false,
+
         whitelist: None,
         min_bid: None,
         recipient: None,
@@ -755,7 +753,7 @@ fn execute_start_auction_start_time_not_provided() {
         start_time: None,
         end_time: Milliseconds::from_nanos((current_time() + 20_000_000) * 1_000_000),
         coin_denom: Asset::NativeToken("uusd".to_string()),
-        uses_cw20: false,
+
         whitelist: None,
         min_bid: None,
         recipient: None,
@@ -780,7 +778,7 @@ fn execute_start_auction_zero_duration() {
         start_time: Some(Milliseconds(100)),
         end_time: Milliseconds::zero(),
         coin_denom: Asset::NativeToken("uusd".to_string()),
-        uses_cw20: false,
+
         whitelist: None,
         min_bid: None,
         recipient: None,
@@ -841,7 +839,7 @@ fn execute_update_auction_zero_start() {
         start_time: Some(Milliseconds::zero()),
         end_time: Milliseconds(1),
         coin_denom: Asset::NativeToken("uusd".to_string()),
-        uses_cw20: false,
+
         whitelist: None,
         min_bid: None,
         recipient: None,
@@ -874,7 +872,7 @@ fn execute_update_auction_zero_duration() {
         start_time: Some(Milliseconds(100000)),
         end_time: Milliseconds::zero(),
         coin_denom: Asset::NativeToken("uusd".to_string()),
-        uses_cw20: false,
+
         whitelist: None,
         min_bid: None,
         recipient: None,
@@ -901,7 +899,7 @@ fn execute_update_auction_unauthorized() {
         start_time: Some(Milliseconds(100000)),
         end_time: Milliseconds(100),
         coin_denom: Asset::NativeToken("uusd".to_string()),
-        uses_cw20: false,
+
         whitelist: Some(vec![Addr::unchecked("user")]),
         min_bid: None,
         recipient: None,
@@ -926,7 +924,7 @@ fn execute_update_auction_auction_started() {
         start_time: Some(Milliseconds(100000)),
         end_time: Milliseconds(100),
         coin_denom: Asset::NativeToken("uusd".to_string()),
-        uses_cw20: false,
+
         whitelist: Some(vec![Addr::unchecked("user")]),
         min_bid: None,
         recipient: None,
@@ -953,7 +951,7 @@ fn execute_update_auction() {
         start_time: Some(Milliseconds(1571711019879 + 1)),
         end_time: Milliseconds(1571711019879 + 2),
         coin_denom: Asset::NativeToken("uusd".to_string()),
-        uses_cw20: false,
+
         whitelist: Some(vec![Addr::unchecked("user")]),
         min_bid: None,
         recipient: None,
@@ -999,7 +997,7 @@ fn execute_start_auction_after_previous_finished() {
         start_time: None,
         end_time: Milliseconds::from_nanos((current_time() + 20_000_000) * 1_000_000),
         coin_denom: Asset::NativeToken("uusd".to_string()),
-        uses_cw20: false,
+
         whitelist: None,
         min_bid: None,
         recipient: None,
@@ -1324,7 +1322,7 @@ fn execute_claim_auction_already_claimed() {
         start_time: None,
         end_time: Milliseconds::from_nanos((current_time() + 20_000_000) * 1_000_000),
         coin_denom: Asset::NativeToken("uusd".to_string()),
-        uses_cw20: false,
+
         whitelist: None,
         min_bid: None,
         recipient: None,

@@ -9,7 +9,11 @@ pub enum Asset {
     NativeToken(String),
 }
 impl Asset {
-    pub fn get_verified_asset(&self, deps: DepsMut, env: Env) -> Result<String, ContractError> {
+    pub fn get_verified_asset(
+        &self,
+        deps: DepsMut,
+        env: Env,
+    ) -> Result<(String, bool), ContractError> {
         match self {
             Asset::Cw20Token(cw20_token) => {
                 let cw20_token = cw20_token.get_raw_address(&deps.as_ref())?;
@@ -22,11 +26,11 @@ impl Asset {
                         msg: format!("Non-permissioned CW20 asset '{}' set as denom.", cw20_token)
                     }
                 );
-                Ok(cw20_token.to_string())
+                Ok((cw20_token.to_string(), true))
             }
             Asset::NativeToken(native) => {
                 validate_denom(deps.as_ref(), native.clone())?;
-                Ok(native.to_string())
+                Ok((native.to_string(), false))
             }
         }
     }

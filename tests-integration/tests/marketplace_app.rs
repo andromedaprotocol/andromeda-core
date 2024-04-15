@@ -152,7 +152,6 @@ fn test_marketplace_app() {
             &mock_start_sale(
                 Uint128::from(100u128),
                 Asset::NativeToken("uandr".to_string()),
-                false,
                 None,
                 None,
                 None,
@@ -297,7 +296,6 @@ fn test_marketplace_app_recipient() {
             &mock_start_sale(
                 Uint128::from(100u128),
                 Asset::NativeToken("uandr".to_string()),
-                false,
                 None,
                 None,
                 Some(
@@ -532,7 +530,6 @@ fn test_marketplace_app_cw20_restricted() {
             &mock_start_sale(
                 Uint128::from(100u128),
                 Asset::Cw20Token(AndrAddr::from_string(cw20.addr().clone())),
-                true,
                 None,
                 None,
                 None,
@@ -552,7 +549,6 @@ fn test_marketplace_app_cw20_restricted() {
             cw721.addr().to_string(),
             // This cw20 hasn't been permissioned
             Asset::Cw20Token(AndrAddr::from_string(second_cw20.addr().to_string())),
-            true,
             Uint128::new(100),
             None,
         )
@@ -809,7 +805,6 @@ fn test_marketplace_app_cw20_unrestricted() {
             &mock_start_sale(
                 Uint128::from(100u128),
                 Asset::Cw20Token(AndrAddr::from_string(cw20.addr().clone())),
-                true,
                 None,
                 None,
                 None,
@@ -825,7 +820,6 @@ fn test_marketplace_app_cw20_unrestricted() {
             cw721.addr().to_string(),
             token_id.to_string(),
             Asset::Cw20Token(AndrAddr::from_string(second_cw20.addr().to_string())),
-            true,
             Uint128::new(100),
             None,
         )

@@ -144,7 +144,6 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
             start_time,
             end_time,
             coin_denom,
-            uses_cw20,
             whitelist,
             min_bid,
             recipient,
@@ -155,7 +154,6 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
             start_time,
             end_time,
             coin_denom,
-            uses_cw20,
             whitelist,
             min_bid,
             recipient,
@@ -201,7 +199,6 @@ fn handle_receive_cw721(
             start_time,
             end_time,
             coin_denom,
-            uses_cw20,
             whitelist,
             min_bid,
             recipient,
@@ -212,7 +209,6 @@ fn handle_receive_cw721(
             start_time,
             end_time,
             coin_denom,
-            uses_cw20,
             whitelist,
             min_bid,
             recipient,
@@ -277,7 +273,6 @@ fn execute_start_auction(
     start_time: Option<MillisecondsExpiration>,
     end_time: MillisecondsExpiration,
     coin_denom: Asset,
-    uses_cw20: bool,
     whitelist: Option<Vec<Addr>>,
     min_bid: Option<Uint128>,
     recipient: Option<Recipient>,
@@ -288,7 +283,7 @@ fn execute_start_auction(
         env,
         ..
     } = ctx;
-    let coin_denom = coin_denom.get_verified_asset(deps.branch(), env.clone())?;
+    let (coin_denom, uses_cw20) = coin_denom.get_verified_asset(deps.branch(), env.clone())?;
     ensure!(!end_time.is_zero(), ContractError::InvalidExpiration {});
 
     // If start time wasn't provided, it will be set as the current_time
@@ -358,7 +353,6 @@ fn execute_update_auction(
     start_time: Option<MillisecondsExpiration>,
     end_time: MillisecondsExpiration,
     coin_denom: Asset,
-    uses_cw20: bool,
     whitelist: Option<Vec<Addr>>,
     min_bid: Option<Uint128>,
     recipient: Option<Recipient>,
@@ -370,7 +364,7 @@ fn execute_update_auction(
         ..
     } = ctx;
     nonpayable(&info)?;
-    let coin_denom = coin_denom.get_verified_asset(deps.branch(), env.clone())?;
+    let (coin_denom, uses_cw20) = coin_denom.get_verified_asset(deps.branch(), env.clone())?;
 
     let mut token_auction_state =
         get_existing_token_auction_state(deps.storage, &token_id, &token_address)?;

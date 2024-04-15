@@ -39,7 +39,6 @@ pub enum ExecuteMsg {
         start_time: Option<MillisecondsExpiration>,
         end_time: MillisecondsExpiration,
         coin_denom: Asset,
-        uses_cw20: bool,
         whitelist: Option<Vec<Addr>>,
         min_bid: Option<Uint128>,
         recipient: Option<Recipient>,
@@ -69,7 +68,6 @@ pub enum Cw721HookMsg {
         /// Duration in milliseconds
         end_time: MillisecondsExpiration,
         coin_denom: Asset,
-        uses_cw20: bool,
         min_bid: Option<Uint128>,
         whitelist: Option<Vec<Addr>>,
         recipient: Option<Recipient>,

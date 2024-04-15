@@ -58,10 +58,9 @@ impl MockAuction {
         min_bid: Option<Uint128>,
         whitelist: Option<Vec<Addr>>,
         recipient: Option<Recipient>,
-        uses_cw20: bool,
     ) -> AppResponse {
         let msg = mock_start_auction(
-            start_time, end_time, coin_denom, uses_cw20, min_bid, whitelist, recipient,
+            start_time, end_time, coin_denom, min_bid, whitelist, recipient,
         );
         app.execute_contract(sender, self.addr().clone(), &msg, &[])
             .unwrap()
@@ -166,7 +165,6 @@ pub fn mock_start_auction(
     start_time: Option<Milliseconds>,
     end_time: Milliseconds,
     coin_denom: Asset,
-    uses_cw20: bool,
     min_bid: Option<Uint128>,
     whitelist: Option<Vec<Addr>>,
     recipient: Option<Recipient>,
@@ -175,7 +173,6 @@ pub fn mock_start_auction(
         start_time,
         end_time,
         coin_denom,
-        uses_cw20,
         min_bid,
         whitelist,
         recipient,
@@ -203,7 +200,6 @@ pub fn mock_update_auction(
     start_time: Option<Milliseconds>,
     end_time: Milliseconds,
     coin_denom: Asset,
-    uses_cw20: bool,
     min_bid: Option<Uint128>,
     whitelist: Option<Vec<Addr>>,
     recipient: Option<Recipient>,
@@ -214,7 +210,6 @@ pub fn mock_update_auction(
         start_time,
         end_time,
         coin_denom,
-        uses_cw20,
         whitelist,
         min_bid,
         recipient,

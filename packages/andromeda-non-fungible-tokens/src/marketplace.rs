@@ -33,7 +33,6 @@ pub enum ExecuteMsg {
         token_address: String,
         price: Uint128,
         coin_denom: Asset,
-        uses_cw20: bool,
         recipient: Option<Recipient>,
     },
     CancelSale {
@@ -51,7 +50,6 @@ pub enum Cw721HookMsg {
         coin_denom: Asset,
         start_time: Option<MillisecondsExpiration>,
         duration: Option<MillisecondsDuration>,
-        uses_cw20: bool,
         recipient: Option<Recipient>,
     },
 }

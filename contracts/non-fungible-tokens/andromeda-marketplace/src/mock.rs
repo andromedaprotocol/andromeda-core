@@ -66,7 +66,6 @@ impl MockMarketplace {
         token_address: impl Into<String>,
         token_id: impl Into<String>,
         coin_denom: Asset,
-        uses_cw20: bool,
         price: Uint128,
         recipient: Option<Recipient>,
     ) -> ExecuteResult {
@@ -76,7 +75,6 @@ impl MockMarketplace {
                 token_id.into(),
                 token_address.into(),
                 coin_denom,
-                uses_cw20,
                 price,
                 recipient,
             ),
@@ -108,7 +106,6 @@ pub fn mock_marketplace_instantiate_msg(
 pub fn mock_start_sale(
     price: Uint128,
     coin_denom: Asset,
-    uses_cw20: bool,
     duration: Option<MillisecondsDuration>,
     start_time: Option<MillisecondsExpiration>,
     recipient: Option<Recipient>,
@@ -118,7 +115,6 @@ pub fn mock_start_sale(
         coin_denom,
         start_time,
         duration,
-        uses_cw20,
         recipient,
     }
 }
@@ -127,7 +123,6 @@ pub fn mock_update_sale(
     token_id: String,
     token_address: String,
     coin_denom: Asset,
-    uses_cw20: bool,
     price: Uint128,
     recipient: Option<Recipient>,
 ) -> ExecuteMsg {
@@ -136,7 +131,6 @@ pub fn mock_update_sale(
         token_address,
         price,
         coin_denom,
-        uses_cw20,
         recipient,
     }
 }
