@@ -7,7 +7,7 @@ use andromeda_cw721::mock::{mock_andromeda_cw721, mock_cw721_instantiate_msg, Mo
 use andromeda_finance::splitter::AddressPercent;
 use andromeda_std::{
     amp::{AndrAddr, Recipient},
-    common::Milliseconds,
+    common::{expiration::Expiry, Milliseconds},
 };
 
 use andromeda_modules::rates::{Rate, RateInfo};
@@ -168,14 +168,16 @@ fn test_crowdfund_app() {
     let sale_recipient =
         Recipient::from_string(format!("~{}/{}", app.addr(), splitter_app_component.name))
             .with_msg(mock_splitter_send_msg());
-    let start_time = Milliseconds::from_seconds(router.block_info().time.seconds()).plus_seconds(1);
-    let end_time = start_time.plus_seconds(5);
+    let start_time = Expiry::AtTime(
+        Milliseconds::from_seconds(router.block_info().time.seconds()).plus_seconds(1),
+    );
+    let end_time = Expiry::AtTime(start_time.get_time(&router.block_info()).plus_seconds(5));
     crowdfund_contract
         .execute_start_sale(
             owner.clone(),
             &mut router,
             Some(start_time),
-            end_time,
+            end_time.clone(),
             token_price.clone(),
             Uint128::from(3u128),
             Some(1),
@@ -200,7 +202,10 @@ fn test_crowdfund_app() {
     let block_info = router.block_info();
     router.set_block(BlockInfo {
         height: block_info.height,
-        time: end_time.plus_seconds(1).into(),
+        time: end_time
+            .get_time(&router.block_info())
+            .plus_seconds(1)
+            .into(),
         chain_id: block_info.chain_id,
     });
 

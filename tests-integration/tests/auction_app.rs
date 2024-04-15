@@ -28,7 +28,10 @@ use andromeda_splitter::mock::{
 use andromeda_std::{
     ado_base::{permissioning::Permission, Module},
     amp::{AndrAddr, Recipient},
-    common::{expiration::MILLISECONDS_TO_NANOSECONDS_RATIO, Milliseconds},
+    common::{
+        expiration::{Expiry, MILLISECONDS_TO_NANOSECONDS_RATIO},
+        Milliseconds,
+    },
     error::ContractError,
 };
 use andromeda_testing::{
@@ -170,8 +173,8 @@ fn test_auction_app_modules() {
     let start_time = Milliseconds::from_nanos(router.block_info().time.nanos())
         .plus_milliseconds(Milliseconds(100));
     let receive_msg = mock_start_auction(
-        Some(start_time),
-        start_time.plus_milliseconds(Milliseconds(1000)),
+        Some(Expiry::AtTime(start_time)),
+        Expiry::AtTime(start_time.plus_milliseconds(Milliseconds(1000))),
         "uandr".to_string(),
         false,
         None,
@@ -369,8 +372,8 @@ fn test_auction_app_recipient() {
     let start_time = Milliseconds::from_nanos(router.block_info().time.nanos())
         .plus_milliseconds(Milliseconds(100));
     let receive_msg = mock_start_auction(
-        Some(start_time),
-        start_time.plus_milliseconds(Milliseconds(1000)),
+        Some(Expiry::AtTime(start_time)),
+        Expiry::AtTime(start_time.plus_milliseconds(Milliseconds(1000))),
         "uandr".to_string(),
         false,
         None,
@@ -604,8 +607,8 @@ fn test_auction_app_cw20() {
 
     let start_time = router.block_info().time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO + 100;
     let receive_msg = mock_start_auction(
-        Some(Milliseconds(start_time)),
-        Milliseconds(start_time + 2),
+        Some(Expiry::AtTime(Milliseconds(start_time))),
+        Expiry::AtTime(Milliseconds(start_time + 2)),
         cw20.addr().to_string(),
         true,
         None,
@@ -829,8 +832,8 @@ fn test_auction_app_cw20() {
 
     let start_time = router.block_info().time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO + 100;
     let receive_msg = mock_start_auction(
-        Some(Milliseconds(start_time)),
-        Milliseconds(start_time + 2),
+        Some(Expiry::AtTime(Milliseconds(start_time))),
+        Expiry::AtTime(Milliseconds(start_time + 2)),
         cw20.addr().to_string(),
         true,
         None,

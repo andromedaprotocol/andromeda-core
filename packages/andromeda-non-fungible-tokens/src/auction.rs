@@ -1,5 +1,6 @@
 use andromeda_std::amp::{AndrAddr, Recipient};
-use andromeda_std::common::{MillisecondsExpiration, OrderBy};
+use andromeda_std::common::expiration::Expiry;
+use andromeda_std::common::OrderBy;
 use andromeda_std::{andr_exec, andr_instantiate, andr_instantiate_modules, andr_query};
 
 use cosmwasm_schema::{cw_serde, QueryResponses};
@@ -35,8 +36,8 @@ pub enum ExecuteMsg {
     UpdateAuction {
         token_id: String,
         token_address: String,
-        start_time: Option<MillisecondsExpiration>,
-        end_time: MillisecondsExpiration,
+        start_time: Option<Expiry>,
+        end_time: Expiry,
         coin_denom: String,
         uses_cw20: bool,
         whitelist: Option<Vec<Addr>>,
@@ -50,7 +51,7 @@ pub enum ExecuteMsg {
     /// Restricted to owner
     AuthorizeTokenContract {
         addr: AndrAddr,
-        expiration: Option<MillisecondsExpiration>,
+        expiration: Option<Expiry>,
     },
     /// Restricted to owner
     DeauthorizeTokenContract {
@@ -64,9 +65,9 @@ pub enum Cw721HookMsg {
     /// has started but is immutable after that.
     StartAuction {
         /// Start time in milliseconds since epoch
-        start_time: Option<MillisecondsExpiration>,
+        start_time: Option<Expiry>,
         /// Duration in milliseconds
-        end_time: MillisecondsExpiration,
+        end_time: Expiry,
         coin_denom: String,
         uses_cw20: bool,
         min_bid: Option<Uint128>,

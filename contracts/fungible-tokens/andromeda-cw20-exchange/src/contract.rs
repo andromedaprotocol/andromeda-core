@@ -8,8 +8,8 @@ use andromeda_std::{
     common::{
         actions::call_action,
         context::ExecuteContext,
-        expiration::{expiration_from_milliseconds, get_and_validate_start_time},
-        MillisecondsDuration, MillisecondsExpiration,
+        expiration::{expiration_from_milliseconds, get_and_validate_start_time, Expiry},
+        MillisecondsDuration,
     },
     error::ContractError,
 };
@@ -165,7 +165,7 @@ pub fn execute_start_sale(
     sender: String,
     // The recipient of the sale proceeds
     recipient: Option<String>,
-    start_time: Option<MillisecondsExpiration>,
+    start_time: Option<Expiry>,
     duration: Option<MillisecondsDuration>,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
@@ -199,14 +199,15 @@ pub fn execute_start_sale(
     );
 
     // If start time wasn't provided, it will be set as the current_time
-    let (start_expiration, current_time) = get_and_validate_start_time(&env, start_time)?;
+    let (start_expiration, current_time) = get_and_validate_start_time(&env, start_time.clone())?;
 
     let end_expiration = if let Some(duration) = duration {
         // If there's no start time, consider it as now + 1
         ensure!(!duration.is_zero(), ContractError::InvalidExpiration {});
         expiration_from_milliseconds(
             start_time
-                .unwrap_or(current_time.plus_seconds(1))
+                .unwrap_or(Expiry::AtTime(current_time.plus_seconds(1)))
+                .get_time(&env.block)
                 .plus_milliseconds(duration),
         )?
     } else {

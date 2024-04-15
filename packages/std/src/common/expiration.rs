@@ -1,3 +1,4 @@
+use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{ensure, BlockInfo, Env, Timestamp};
 use cw_utils::Expiration;
 
@@ -6,6 +7,23 @@ use crate::error::ContractError;
 use super::Milliseconds;
 
 pub const MILLISECONDS_TO_NANOSECONDS_RATIO: u64 = 1_000_000;
+
+#[cw_serde]
+pub enum Expiry {
+    FromNow(Milliseconds),
+    AtTime(Milliseconds),
+}
+impl Expiry {
+    pub fn get_time(&self, block: &BlockInfo) -> Milliseconds {
+        match self {
+            Expiry::FromNow(milliseconds) => {
+                let current_time = Milliseconds::from_nanos(block.time.nanos());
+                current_time.plus_milliseconds(*milliseconds)
+            }
+            Expiry::AtTime(milliseconds) => *milliseconds,
+        }
+    }
+}
 
 /// Creates a CosmWasm Expiration struct given a time in milliseconds
 /// # Arguments
@@ -33,12 +51,12 @@ pub fn block_to_expiration(block: &BlockInfo, model: Expiration) -> Option<Expir
 
 pub fn get_and_validate_start_time(
     env: &Env,
-    start_time: Option<Milliseconds>,
+    start_time: Option<Expiry>,
 ) -> Result<(Expiration, Milliseconds), ContractError> {
     let current_time = Milliseconds::from_nanos(env.block.time.nanos()).milliseconds();
 
     let start_expiration = if let Some(start_time) = start_time {
-        expiration_from_milliseconds(start_time)?
+        expiration_from_milliseconds(start_time.get_time(&env.block))?
     } else {
         // Set as current time + 1 so that it isn't expired from the very start
         expiration_from_milliseconds(Milliseconds(current_time + 1))?

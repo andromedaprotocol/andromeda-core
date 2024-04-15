@@ -7,7 +7,8 @@ use andromeda_non_fungible_tokens::marketplace::{
 use andromeda_std::amp::messages::AMPPkt;
 
 use andromeda_std::amp::AndrAddr;
-use andromeda_std::common::{MillisecondsDuration, MillisecondsExpiration};
+use andromeda_std::common::expiration::Expiry;
+use andromeda_std::common::MillisecondsDuration;
 use andromeda_std::{ado_base::modules::Module, amp::Recipient};
 use andromeda_testing::{
     mock::MockApp, mock_ado, mock_contract::ExecuteResult, MockADO, MockContract,
@@ -82,7 +83,7 @@ pub fn mock_start_sale(
     coin_denom: impl Into<String>,
     uses_cw20: bool,
     duration: Option<MillisecondsDuration>,
-    start_time: Option<MillisecondsExpiration>,
+    start_time: Option<Expiry>,
     recipient: Option<Recipient>,
 ) -> Cw721HookMsg {
     Cw721HookMsg::StartSale {
