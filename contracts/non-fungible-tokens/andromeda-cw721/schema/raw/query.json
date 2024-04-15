@@ -439,6 +439,19 @@
     {
       "type": "object",
       "required": [
+        "a_d_o_base_version"
+      ],
+      "properties": {
+        "a_d_o_base_version": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
         "permissions"
       ],
       "properties": {
