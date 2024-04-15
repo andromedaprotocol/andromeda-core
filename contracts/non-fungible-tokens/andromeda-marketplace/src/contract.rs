@@ -13,7 +13,7 @@ use andromeda_std::ado_contract::ADOContract;
 use andromeda_std::amp::Recipient;
 use andromeda_std::common::actions::call_action;
 use andromeda_std::common::context::ExecuteContext;
-use andromeda_std::common::denom::{validate_denom, SEND_CW20_ACTION};
+use andromeda_std::common::denom::{Asset, SEND_CW20_ACTION};
 use andromeda_std::common::expiration::{
     expiration_from_milliseconds, get_and_validate_start_time,
 };
@@ -229,36 +229,19 @@ pub fn handle_receive_cw20(
 
 #[allow(clippy::too_many_arguments)]
 fn execute_start_sale(
-    deps: DepsMut,
+    mut deps: DepsMut,
     env: Env,
     sender: String,
     token_id: String,
     token_address: String,
     price: Uint128,
-    coin_denom: String,
+    coin_denom: Asset,
     start_time: Option<MillisecondsExpiration>,
     duration: Option<MillisecondsDuration>,
     uses_cw20: bool,
     recipient: Option<Recipient>,
 ) -> Result<Response, ContractError> {
-    if uses_cw20 {
-        let valid_cw20_sale = ADOContract::default()
-            .is_permissioned(
-                deps.storage,
-                env.clone(),
-                SEND_CW20_ACTION,
-                coin_denom.clone(),
-            )
-            .is_ok();
-        ensure!(
-            valid_cw20_sale,
-            ContractError::InvalidFunds {
-                msg: format!("Non-permissioned CW20 asset '{}' set as denom.", coin_denom)
-            }
-        );
-    } else {
-        validate_denom(deps.as_ref(), coin_denom.clone())?;
-    }
+    let coin_denom = coin_denom.get_verified_asset(deps.branch(), env.clone())?;
 
     // Price can't be zero
     ensure!(price > Uint128::zero(), ContractError::InvalidZeroAmount {});
@@ -316,26 +299,17 @@ fn execute_update_sale(
     token_id: String,
     token_address: String,
     price: Uint128,
-    coin_denom: String,
+    coin_denom: Asset,
     uses_cw20: bool,
     recipient: Option<Recipient>,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
-        deps, env, info, ..
+        mut deps,
+        env,
+        info,
+        ..
     } = ctx;
-    if uses_cw20 {
-        let valid_cw20_sale = ADOContract::default()
-            .is_permissioned(deps.storage, env, SEND_CW20_ACTION, coin_denom.clone())
-            .is_ok();
-        ensure!(
-            valid_cw20_sale,
-            ContractError::InvalidFunds {
-                msg: format!("Non-permissioned CW20 asset '{}' set as denom.", coin_denom)
-            }
-        );
-    } else {
-        validate_denom(deps.as_ref(), coin_denom.clone())?;
-    }
+    let coin_denom = coin_denom.get_verified_asset(deps.branch(), env)?;
     nonpayable(&info)?;
 
     let mut token_sale_state =

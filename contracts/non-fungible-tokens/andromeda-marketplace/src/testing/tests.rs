@@ -5,6 +5,7 @@ use andromeda_std::{
     ado_base::modules::Module,
     amp::addresses::AndrAddr,
     common::{
+        denom::Asset,
         encode_binary,
         expiration::{expiration_from_milliseconds, MILLISECONDS_TO_NANOSECONDS_RATIO},
         reply::ReplyId,
@@ -33,7 +34,7 @@ use crate::{
     },
 };
 
-fn start_sale(deps: DepsMut, coin_denom: String, uses_cw20: bool) {
+fn start_sale(deps: DepsMut, coin_denom: Asset, uses_cw20: bool) {
     let hook_msg = Cw721HookMsg::StartSale {
         coin_denom,
         price: Uint128::new(100),
@@ -53,7 +54,7 @@ fn start_sale(deps: DepsMut, coin_denom: String, uses_cw20: bool) {
     let _res = execute(deps, env, info, msg).unwrap();
 }
 
-fn start_sale_future_start(deps: DepsMut, env: Env, coin_denom: String, uses_cw20: bool) {
+fn start_sale_future_start(deps: DepsMut, env: Env, coin_denom: Asset, uses_cw20: bool) {
     let current_time = env.block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO;
     let hook_msg = Cw721HookMsg::StartSale {
         coin_denom,
@@ -78,7 +79,7 @@ fn start_sale_future_start(deps: DepsMut, env: Env, coin_denom: String, uses_cw2
 fn start_sale_future_start_with_duration(deps: DepsMut, env: Env, uses_cw20: bool) {
     let current_time = env.block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO;
     let hook_msg = Cw721HookMsg::StartSale {
-        coin_denom: "uusd".to_string(),
+        coin_denom: Asset::NativeToken("uusd".to_string()),
         price: Uint128::new(100),
         // Add one to the current time to have it set in the future
         start_time: Some(Milliseconds(current_time + 1)),
@@ -201,7 +202,12 @@ fn test_sale_instantiate_future_start() {
     let res = init(deps.as_mut(), None, None);
     assert_eq!(0, res.messages.len());
 
-    start_sale_future_start(deps.as_mut(), mock_env(), "uusd".to_string(), false);
+    start_sale_future_start(
+        deps.as_mut(),
+        mock_env(),
+        Asset::NativeToken("uusd".to_string()),
+        false,
+    );
     assert_sale_created_future_start(deps.as_ref(), mock_env(), "uusd".to_string(), false);
 }
 
@@ -219,7 +225,7 @@ fn test_sale_instantiate_future_start_cw20() {
     start_sale_future_start(
         deps.as_mut(),
         mock_env(),
-        MOCK_CW20_ADDR.to_string(),
+        Asset::Cw20Token(AndrAddr::from_string(MOCK_CW20_ADDR.to_string())),
         uses_cw20,
     );
     assert_sale_created_future_start(
@@ -250,7 +256,7 @@ fn test_execute_buy_sale_not_open_already_bought() {
     let mut env = mock_env();
     let _res = init(deps.as_mut(), None, None);
 
-    start_sale(deps.as_mut(), "uusd".to_string(), false);
+    start_sale(deps.as_mut(), Asset::NativeToken("uusd".to_string()), false);
     assert_sale_created(deps.as_ref(), env.clone(), "uusd".to_string(), false);
 
     let msg = ExecuteMsg::Buy {
@@ -280,7 +286,7 @@ fn test_execute_buy_sale_not_open_cancelled() {
 
     let _res = init(deps.as_mut(), None, None);
 
-    start_sale(deps.as_mut(), "uusd".to_string(), false);
+    start_sale(deps.as_mut(), Asset::NativeToken("uusd".to_string()), false);
     assert_sale_created(deps.as_ref(), env.clone(), "uusd".to_string(), false);
 
     let msg = ExecuteMsg::CancelSale {
@@ -307,7 +313,7 @@ fn test_execute_buy_token_owner_cannot_buy() {
 
     let _res = init(deps.as_mut(), None, None);
 
-    start_sale(deps.as_mut(), "uusd".to_string(), false);
+    start_sale(deps.as_mut(), Asset::NativeToken("uusd".to_string()), false);
     assert_sale_created(deps.as_ref(), env.clone(), "uusd".to_string(), false);
 
     let msg = ExecuteMsg::Buy {
@@ -334,7 +340,11 @@ fn test_execute_buy_token_owner_cannot_buy_cw20() {
     );
 
     let uses_cw20 = true;
-    start_sale(deps.as_mut(), MOCK_CW20_ADDR.to_string(), uses_cw20);
+    start_sale(
+        deps.as_mut(),
+        Asset::Cw20Token(AndrAddr::from_string(MOCK_CW20_ADDR.to_string())),
+        uses_cw20,
+    );
     assert_sale_created(
         deps.as_ref(),
         env.clone(),
@@ -368,7 +378,7 @@ fn test_execute_buy_invalid_coins_sent() {
 
     let _res = init(deps.as_mut(), None, None);
 
-    start_sale(deps.as_mut(), "uusd".to_string(), false);
+    start_sale(deps.as_mut(), Asset::NativeToken("uusd".to_string()), false);
     assert_sale_created(deps.as_ref(), env.clone(), "uusd".to_string(), false);
 
     let error = ContractError::InvalidFunds {
@@ -419,7 +429,11 @@ fn test_execute_buy_invalid_coins_sent_cw20() {
     );
 
     let uses_cw20 = true;
-    start_sale(deps.as_mut(), MOCK_CW20_ADDR.to_string(), uses_cw20);
+    start_sale(
+        deps.as_mut(),
+        Asset::Cw20Token(AndrAddr::from_string(MOCK_CW20_ADDR.to_string())),
+        uses_cw20,
+    );
     assert_sale_created(
         deps.as_ref(),
         env.clone(),
@@ -473,7 +487,7 @@ fn test_execute_buy_works() {
 
     let _res = init(deps.as_mut(), None, None);
 
-    start_sale(deps.as_mut(), "uusd".to_string(), false);
+    start_sale(deps.as_mut(), Asset::NativeToken("uusd".to_string()), false);
     assert_sale_created(deps.as_ref(), env.clone(), "uusd".to_string(), false);
 
     let msg = ExecuteMsg::Buy {
@@ -499,7 +513,11 @@ fn test_execute_buy_works_cw20() {
     );
 
     let uses_cw20 = true;
-    start_sale(deps.as_mut(), MOCK_CW20_ADDR.to_string(), uses_cw20);
+    start_sale(
+        deps.as_mut(),
+        Asset::Cw20Token(AndrAddr::from_string(MOCK_CW20_ADDR.to_string())),
+        uses_cw20,
+    );
     assert_sale_created(
         deps.as_ref(),
         env.clone(),
@@ -530,7 +548,12 @@ fn test_execute_buy_future_start() {
 
     let _res = init(deps.as_mut(), None, None);
 
-    start_sale_future_start(deps.as_mut(), mock_env(), "uusd".to_string(), false);
+    start_sale_future_start(
+        deps.as_mut(),
+        mock_env(),
+        Asset::NativeToken("uusd".to_string()),
+        false,
+    );
     assert_sale_created_future_start(deps.as_ref(), mock_env(), "uusd".to_string(), false);
 
     let msg = ExecuteMsg::Buy {
@@ -573,14 +596,14 @@ fn test_execute_update_sale_unauthorized() {
 
     let _res = init(deps.as_mut(), None, None);
 
-    start_sale(deps.as_mut(), "uusd".to_string(), false);
+    start_sale(deps.as_mut(), Asset::NativeToken("uusd".to_string()), false);
     assert_sale_created(deps.as_ref(), env.clone(), "uusd".to_string(), false);
 
     let msg = ExecuteMsg::UpdateSale {
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
         token_address: MOCK_TOKEN_ADDR.to_string(),
         price: Uint128::new(11),
-        coin_denom: "juno".to_string(),
+        coin_denom: Asset::NativeToken("juno".to_string()),
         uses_cw20: false,
         recipient: None,
     };
@@ -597,14 +620,14 @@ fn test_execute_update_sale_invalid_price() {
 
     let _res = init(deps.as_mut(), None, None);
 
-    start_sale(deps.as_mut(), "uusd".to_string(), false);
+    start_sale(deps.as_mut(), Asset::NativeToken("uusd".to_string()), false);
     assert_sale_created(deps.as_ref(), env.clone(), "uusd".to_string(), false);
 
     let msg = ExecuteMsg::UpdateSale {
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
         token_address: MOCK_TOKEN_ADDR.to_string(),
         price: Uint128::zero(),
-        coin_denom: "juno".to_string(),
+        coin_denom: Asset::NativeToken("juno".to_string()),
         uses_cw20: false,
         recipient: None,
     };
@@ -620,7 +643,7 @@ fn test_execute_start_sale_invalid_price() {
     let _res = init(deps.as_mut(), None, None);
 
     let hook_msg = Cw721HookMsg::StartSale {
-        coin_denom: "uusd".to_string(),
+        coin_denom: Asset::NativeToken("uusd".to_string()),
         price: Uint128::zero(),
         start_time: None,
         duration: None,
@@ -649,7 +672,7 @@ fn test_execute_buy_with_tax_and_royalty_insufficient_funds() {
     }];
     let _res = init(deps.as_mut(), Some(modules), None);
 
-    start_sale(deps.as_mut(), "uusd".to_string(), false);
+    start_sale(deps.as_mut(), Asset::NativeToken("uusd".to_string()), false);
     assert_sale_created(deps.as_ref(), mock_env(), "uusd".to_string(), false);
 
     let msg = ExecuteMsg::Buy {
@@ -679,7 +702,11 @@ fn test_execute_buy_with_tax_and_royalty_insufficient_funds_cw20() {
     );
 
     let uses_cw20 = true;
-    start_sale(deps.as_mut(), MOCK_CW20_ADDR.to_string(), uses_cw20);
+    start_sale(
+        deps.as_mut(),
+        Asset::Cw20Token(AndrAddr::from_string(MOCK_CW20_ADDR.to_string())),
+        uses_cw20,
+    );
     assert_sale_created(
         deps.as_ref(),
         mock_env(),
@@ -716,7 +743,7 @@ fn execute_buy_with_tax_and_royalty_too_many_funds() {
     }];
     let _res = init(deps.as_mut(), Some(modules), None);
 
-    start_sale(deps.as_mut(), "uusd".to_string(), false);
+    start_sale(deps.as_mut(), Asset::NativeToken("uusd".to_string()), false);
     assert_sale_created(deps.as_ref(), mock_env(), "uusd".to_string(), false);
 
     let msg = ExecuteMsg::Buy {
@@ -742,7 +769,7 @@ fn test_execute_buy_with_tax_and_royalty_works() {
     }];
     let _res = init(deps.as_mut(), Some(modules), None);
 
-    start_sale(deps.as_mut(), "uusd".to_string(), false);
+    start_sale(deps.as_mut(), Asset::NativeToken("uusd".to_string()), false);
     assert_sale_created(deps.as_ref(), mock_env(), "uusd".to_string(), false);
 
     let msg = ExecuteMsg::Buy {

@@ -7,6 +7,7 @@ use andromeda_non_fungible_tokens::marketplace::{
 use andromeda_std::amp::messages::AMPPkt;
 
 use andromeda_std::amp::AndrAddr;
+use andromeda_std::common::denom::Asset;
 use andromeda_std::common::{MillisecondsDuration, MillisecondsExpiration};
 use andromeda_std::{ado_base::modules::Module, amp::Recipient};
 use andromeda_testing::{
@@ -64,7 +65,7 @@ impl MockMarketplace {
         sender: Addr,
         token_address: impl Into<String>,
         token_id: impl Into<String>,
-        coin_denom: String,
+        coin_denom: Asset,
         uses_cw20: bool,
         price: Uint128,
         recipient: Option<Recipient>,
@@ -106,7 +107,7 @@ pub fn mock_marketplace_instantiate_msg(
 
 pub fn mock_start_sale(
     price: Uint128,
-    coin_denom: impl Into<String>,
+    coin_denom: Asset,
     uses_cw20: bool,
     duration: Option<MillisecondsDuration>,
     start_time: Option<MillisecondsExpiration>,
@@ -114,7 +115,7 @@ pub fn mock_start_sale(
 ) -> Cw721HookMsg {
     Cw721HookMsg::StartSale {
         price,
-        coin_denom: coin_denom.into(),
+        coin_denom,
         start_time,
         duration,
         uses_cw20,
@@ -125,7 +126,7 @@ pub fn mock_start_sale(
 pub fn mock_update_sale(
     token_id: String,
     token_address: String,
-    coin_denom: String,
+    coin_denom: Asset,
     uses_cw20: bool,
     price: Uint128,
     recipient: Option<Recipient>,

@@ -19,7 +19,7 @@ use andromeda_splitter::mock::{
 use andromeda_std::{
     ado_base::{permissioning::Permission, Module},
     amp::{AndrAddr, Recipient},
-    common::{expiration::MILLISECONDS_TO_NANOSECONDS_RATIO, Milliseconds},
+    common::{denom::Asset, expiration::MILLISECONDS_TO_NANOSECONDS_RATIO, Milliseconds},
     error::ContractError,
 };
 use andromeda_testing::{
@@ -162,7 +162,7 @@ fn test_auction_app_modules() {
     let receive_msg = mock_start_auction(
         Some(start_time),
         start_time.plus_milliseconds(Milliseconds(1000)),
-        "uandr".to_string(),
+        Asset::NativeToken("uandr".to_string()),
         false,
         None,
         None,
@@ -361,7 +361,7 @@ fn test_auction_app_recipient() {
     let receive_msg = mock_start_auction(
         Some(start_time),
         start_time.plus_milliseconds(Milliseconds(1000)),
-        "uandr".to_string(),
+        Asset::NativeToken("uandr".to_string()),
         false,
         None,
         None,
@@ -609,7 +609,7 @@ fn test_auction_app_cw20_restricted() {
             &mock_start_auction(
                 Some(Milliseconds(start_time)),
                 Milliseconds(start_time + 2),
-                cw20.addr().to_string(),
+                Asset::Cw20Token(AndrAddr::from_string(cw20.addr().to_string())),
                 true,
                 None,
                 None,
@@ -761,7 +761,7 @@ fn test_auction_app_cw20_restricted() {
             &mock_start_auction(
                 Some(Milliseconds(start_time)),
                 Milliseconds(start_time + 2),
-                cw20.addr().to_string(),
+                Asset::Cw20Token(AndrAddr::from_string(cw20.addr().to_string())),
                 true,
                 None,
                 Some(vec![buyer_one.clone(), buyer_two.clone()]),
@@ -779,7 +779,7 @@ fn test_auction_app_cw20_restricted() {
         Some(Milliseconds(start_time)),
         Milliseconds(start_time + 2),
         // This cw20 hasn't been permissioned
-        second_cw20.addr().to_string(),
+        Asset::Cw20Token(AndrAddr::from_string(second_cw20.addr().to_string())),
         true,
         None,
         Some(vec![buyer_one.clone(), buyer_two.clone()]),
@@ -1060,7 +1060,7 @@ fn test_auction_app_cw20_unrestricted() {
             &mock_start_auction(
                 Some(Milliseconds(start_time)),
                 Milliseconds(start_time + 2),
-                cw20.addr().to_string(),
+                Asset::Cw20Token(AndrAddr::from_string(cw20.addr().to_string())),
                 true,
                 None,
                 Some(vec![buyer_one.clone(), buyer_two.clone()]),
@@ -1185,7 +1185,7 @@ fn test_auction_app_cw20_unrestricted() {
             &mock_start_auction(
                 Some(Milliseconds(start_time)),
                 Milliseconds(start_time + 2),
-                second_cw20.addr().to_string(),
+                Asset::Cw20Token(AndrAddr::from_string(second_cw20.addr().to_string())),
                 true,
                 None,
                 Some(vec![buyer_one.clone(), buyer_two.clone()]),

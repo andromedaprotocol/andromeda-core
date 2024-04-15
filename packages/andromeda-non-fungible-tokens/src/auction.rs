@@ -1,4 +1,5 @@
 use andromeda_std::amp::{AndrAddr, Recipient};
+use andromeda_std::common::denom::Asset;
 use andromeda_std::common::{MillisecondsExpiration, OrderBy};
 use andromeda_std::{andr_exec, andr_instantiate, andr_instantiate_modules, andr_query};
 
@@ -37,7 +38,7 @@ pub enum ExecuteMsg {
         token_address: String,
         start_time: Option<MillisecondsExpiration>,
         end_time: MillisecondsExpiration,
-        coin_denom: String,
+        coin_denom: Asset,
         uses_cw20: bool,
         whitelist: Option<Vec<Addr>>,
         min_bid: Option<Uint128>,
@@ -67,7 +68,7 @@ pub enum Cw721HookMsg {
         start_time: Option<MillisecondsExpiration>,
         /// Duration in milliseconds
         end_time: MillisecondsExpiration,
-        coin_denom: String,
+        coin_denom: Asset,
         uses_cw20: bool,
         min_bid: Option<Uint128>,
         whitelist: Option<Vec<Addr>>,

@@ -22,6 +22,7 @@ use andromeda_splitter::mock::{
 use andromeda_std::ado_base::modules::Module;
 use andromeda_std::amp::messages::{AMPMsg, AMPPkt};
 use andromeda_std::amp::{AndrAddr, Recipient};
+use andromeda_std::common::denom::Asset;
 use andromeda_std::error::ContractError;
 use andromeda_testing::mock::mock_app;
 use andromeda_testing::mock_builder::MockAndromedaBuilder;
@@ -148,7 +149,14 @@ fn test_marketplace_app() {
             owner.clone(),
             marketplace.addr().clone(),
             token_id,
-            &mock_start_sale(Uint128::from(100u128), "uandr", false, None, None, None),
+            &mock_start_sale(
+                Uint128::from(100u128),
+                Asset::NativeToken("uandr".to_string()),
+                false,
+                None,
+                None,
+                None,
+            ),
         )
         .unwrap();
 
@@ -288,7 +296,7 @@ fn test_marketplace_app_recipient() {
             token_id,
             &mock_start_sale(
                 Uint128::from(100u128),
-                "uandr",
+                Asset::NativeToken("uandr".to_string()),
                 false,
                 None,
                 None,
@@ -523,7 +531,7 @@ fn test_marketplace_app_cw20_restricted() {
             token_id,
             &mock_start_sale(
                 Uint128::from(100u128),
-                cw20.addr().clone(),
+                Asset::Cw20Token(AndrAddr::from_string(cw20.addr().clone())),
                 true,
                 None,
                 None,
@@ -543,7 +551,7 @@ fn test_marketplace_app_cw20_restricted() {
             token_id.to_string(),
             cw721.addr().to_string(),
             // This cw20 hasn't been permissioned
-            second_cw20.addr().to_string(),
+            Asset::Cw20Token(AndrAddr::from_string(second_cw20.addr().to_string())),
             true,
             Uint128::new(100),
             None,
@@ -800,7 +808,7 @@ fn test_marketplace_app_cw20_unrestricted() {
             token_id.to_string(),
             &mock_start_sale(
                 Uint128::from(100u128),
-                cw20.addr().clone(),
+                Asset::Cw20Token(AndrAddr::from_string(cw20.addr().clone())),
                 true,
                 None,
                 None,
@@ -816,7 +824,7 @@ fn test_marketplace_app_cw20_unrestricted() {
             owner.clone(),
             cw721.addr().to_string(),
             token_id.to_string(),
-            second_cw20.addr().to_string(),
+            Asset::Cw20Token(AndrAddr::from_string(second_cw20.addr().to_string())),
             true,
             Uint128::new(100),
             None,
