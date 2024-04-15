@@ -13,7 +13,8 @@
           "type": "object",
           "required": [
             "coin_denom",
-            "end_time"
+            "end_time",
+            "uses_cw20"
           ],
           "properties": {
             "coin_denom": {
@@ -57,6 +58,9 @@
                   "type": "null"
                 }
               ]
+            },
+            "uses_cw20": {
+              "type": "boolean"
             },
             "whitelist": {
               "type": [
