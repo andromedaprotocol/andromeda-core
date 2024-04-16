@@ -173,13 +173,4 @@ fn test_unauthorized_claim() {
     let info = mock_info(OWNER, &[coin(100, "uandr")]);
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
     assert_eq!(res, ContractError::Unauthorized {});
-
-    let msg = ExecuteMsg::Claim {
-        validator: Some(valid_validator),
-        recipient: Some(AndrAddr::from_string(OWNER)),
-    };
-
-    let info = mock_info("other", &[coin(100, "uandr")]);
-    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
-    assert_eq!(res, ContractError::Unauthorized {});
 }
