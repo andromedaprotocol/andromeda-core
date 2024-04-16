@@ -1,6 +1,6 @@
 <p>&nbsp;</p>
 <p align="center">
-<img src="https://github.com/andromedaprotocol/andromeda-core/blob/development/asset/core-logo.png" width=1000>
+<img src="/asset/core-logo.png" width=1000>
 </p>
 
   AndromedaOS is a revolutionary software layer that provides a massively
@@ -44,7 +44,7 @@ Here is a visual representation of how this system is connected.
 
 <p>&nbsp;</p>
 <p align="center">
-<img src="https://github.com/andromedaprotocol/andromeda-core/blob/v1.x/asset/Andromeda-IBC.png" width=800>
+<img src="/asset/Andromeda-IBC.png" width=800>
 </p>
 
 As we can see, each of the Cosmos chains has AndromedaOS deployed . Since AndromedaOS can communicate using IBC, then users can build Applications that span accross many chains taking advantage of all the benefits that come along.
