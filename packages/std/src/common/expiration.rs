@@ -57,14 +57,6 @@ pub fn get_and_validate_start_time(
     Ok((start_expiration, Milliseconds(current_time)))
 }
 
-pub fn block_to_expiration(block: &BlockInfo, model: Expiration) -> Option<Expiration> {
-    match model {
-        Expiration::AtTime(_) => Some(Expiration::AtTime(block.time)),
-        Expiration::AtHeight(_) => Some(Expiration::AtHeight(block.height)),
-        Expiration::Never {} => None,
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

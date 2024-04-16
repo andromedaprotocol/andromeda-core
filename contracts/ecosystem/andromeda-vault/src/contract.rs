@@ -458,7 +458,7 @@ fn query_strategy_address(
 ) -> Result<StrategyAddressResponse, ContractError> {
     let addr = STRATEGY_CONTRACT_ADDRESSES.may_load(deps.storage, strategy.to_string())?;
     match addr {
-        Some(addr) => Ok(to_json_binary(&StrategyAddressResponse {
+        Some(addr) => Ok(StrategyAddressResponse {
             address: addr,
             strategy,
         }),

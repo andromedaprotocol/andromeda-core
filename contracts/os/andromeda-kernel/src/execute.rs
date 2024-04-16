@@ -40,7 +40,7 @@ pub fn amp_receive(
 ) -> Result<Response, ContractError> {
     // Only verified ADOs can access this function
     ensure!(
-        query::verify_address(deps.as_ref(), info.sender.to_string(),)?,
+        query::verify_address(deps.as_ref(), info.sender.to_string(),)?.verify_address,
         ContractError::Unauthorized {}
     );
     ensure!(

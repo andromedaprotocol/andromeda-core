@@ -3,7 +3,7 @@ use andromeda_std::{
     error::ContractError,
     os::{
         aos_querier::AOSQuerier,
-        kernel::{ChainNameResponse, ChannelInfoResponse},
+        kernel::{ChainNameResponse, ChannelInfoResponse, VerifyAddressResponse},
     },
 };
 use cosmwasm_std::{Addr, Coin, Deps};
@@ -22,7 +22,9 @@ pub fn verify_address(deps: Deps, address: String) -> Result<VerifyAddressRespon
             AOSQuerier::ado_type_getter(&deps.querier, &db_address, contract_info.code_id)
                 .ok()
                 .ok_or(ContractError::InvalidAddress {})?;
-        Ok(ado_type.is_some())
+        Ok(VerifyAddressResponse {
+            verify_address: ado_type.is_some(),
+        })
     } else {
         Ok(VerifyAddressResponse {
             verify_address: false,

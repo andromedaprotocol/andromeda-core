@@ -13,21 +13,16 @@ pub use anyhow::Result as AnyResult;
 use crate::mock::MockApp;
 
 pub type ExecuteResult = AnyResult<AppResponse>;
-pub type ExecuteResult = AnyResult<AppResponse>;
 
 pub trait MockContract<E: Serialize + fmt::Debug, Q: Serialize + fmt::Debug> {
     fn addr(&self) -> &Addr;
-pub trait MockContract<E: Serialize + fmt::Debug, Q: Serialize + fmt::Debug> {
-    fn addr(&self) -> &Addr;
 
-    fn execute(
     fn execute(
         &self,
         app: &mut MockApp,
         msg: &E,
         sender: Addr,
         funds: &[Coin],
-    ) -> AnyResult<AppResponse> {
     ) -> AnyResult<AppResponse> {
         app.execute_contract(sender, self.addr().clone(), &msg, funds)
     }

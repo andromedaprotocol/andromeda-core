@@ -17,8 +17,7 @@ use andromeda_cw721::mock::{
 use andromeda_finance::splitter::AddressPercent;
 use andromeda_marketplace::mock::{
     mock_andromeda_marketplace, mock_buy_token, mock_marketplace_instantiate_msg,
-    mock_receive_packet, mock_receive_packet, mock_start_sale, mock_start_sale, MockMarketplace,
-    MockMarketplace,
+    mock_receive_packet, mock_start_sale, MockMarketplace,
 };
 use andromeda_modules::rates::{Rate, RateInfo};
 
@@ -66,13 +65,11 @@ fn test_marketplace_app() {
         owner.to_string(),
         None,
         andr.kernel.addr().to_string(),
-        andr.kernel.addr().to_string(),
         None,
     );
     let cw721_component = AppComponent::new(
         "tokens".to_string(),
         "cw721".to_string(),
-        to_json_binary(&cw721_init_msg).unwrap(),
         to_json_binary(&cw721_init_msg).unwrap(),
     );
 
@@ -93,7 +90,6 @@ fn test_marketplace_app() {
         "address-list",
         "address-list",
         to_json_binary(&address_list_init_msg).unwrap(),
-        to_json_binary(&address_list_init_msg).unwrap(),
     );
 
     let modules: Vec<Module> = vec![
@@ -109,7 +105,6 @@ fn test_marketplace_app() {
     let marketplace_component = AppComponent::new(
         "marketplace".to_string(),
         "marketplace".to_string(),
-        to_json_binary(&marketplace_init_msg).unwrap(),
         to_json_binary(&marketplace_init_msg).unwrap(),
     );
 
@@ -127,7 +122,6 @@ fn test_marketplace_app() {
         &mut router,
         "Auction App",
         app_components.clone(),
-        andr.kernel.addr(),
         andr.kernel.addr(),
         None,
     );

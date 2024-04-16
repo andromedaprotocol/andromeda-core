@@ -2,7 +2,7 @@
 name = "andromeda-std"
 version = "1.0.0"
 edition = "2021"
-rust-version = "1.69.0"
+rust-version = "1.73.0"
 description = "The standard library for creating an Andromeda Digital Object"
 license = "MIT"
 

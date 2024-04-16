@@ -701,6 +701,12 @@
       },
       "additionalProperties": false
     },
+    "Milliseconds": {
+      "description": "Represents time in milliseconds.",
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    },
     "MintMsg": {
       "type": "object",
       "required": [
@@ -783,7 +789,7 @@
                 "expiration": {
                   "anyOf": [
                     {
-                      "$ref": "#/definitions/Expiration"
+                      "$ref": "#/definitions/Milliseconds"
                     },
                     {
                       "type": "null"
@@ -813,7 +819,7 @@
             "blacklisted": {
               "anyOf": [
                 {
-                  "$ref": "#/definitions/Expiration"
+                  "$ref": "#/definitions/Milliseconds"
                 },
                 {
                   "type": "null"
@@ -838,7 +844,7 @@
                 "expiration": {
                   "anyOf": [
                     {
-                      "$ref": "#/definitions/Expiration"
+                      "$ref": "#/definitions/Milliseconds"
                     },
                     {
                       "type": "null"
@@ -865,7 +871,7 @@
             "whitelisted": {
               "anyOf": [
                 {
-                  "$ref": "#/definitions/Expiration"
+                  "$ref": "#/definitions/Milliseconds"
                 },
                 {
                   "type": "null"

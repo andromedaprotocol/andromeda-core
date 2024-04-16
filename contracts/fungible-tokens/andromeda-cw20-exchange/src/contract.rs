@@ -420,14 +420,6 @@ pub fn execute_cancel_sale(
     ]))
 }
 
-fn block_to_expiration(block: &BlockInfo, model: Expiration) -> Option<Expiration> {
-    match model {
-        Expiration::AtTime(_) => Some(Expiration::AtTime(block.time)),
-        Expiration::AtHeight(_) => Some(Expiration::AtHeight(block.height)),
-        Expiration::Never {} => None,
-    }
-}
-
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
     ADOContract::default().migrate(deps, CONTRACT_NAME, CONTRACT_VERSION)

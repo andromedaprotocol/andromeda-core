@@ -3,8 +3,8 @@ use crate::state::{
 };
 use andromeda_non_fungible_tokens::auction::{
     AuctionIdsResponse, AuctionInfo, AuctionStateResponse, AuthorizedAddressesResponse, Bid,
-    BidsResponse, Cw20HookMsg, Cw721HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg,
-    TokenAuctionState,
+    BidsResponse, Cw20HookMsg, Cw721HookMsg, ExecuteMsg, InstantiateMsg, IsCancelledResponse,
+    IsClaimedResponse, IsClosedResponse, QueryMsg, TokenAuctionState,
 };
 use andromeda_std::{
     ado_base::{

@@ -46,11 +46,11 @@ pub fn instantiate(
         deps.storage,
         env,
         deps.api,
+        &deps.querier,
         info,
         BaseInstantiateMsg {
-            ado_type: "validator-staking".to_string(),
+            ado_type: CONTRACT_NAME.to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
-            operators: None,
             kernel_address: msg.kernel_address,
             owner: msg.owner,
         },
@@ -156,8 +156,14 @@ fn execute_unstake(
     // Check if the validator is valid before unstaking
     is_validator(&deps, &validator)?;
 
-    let Some(res) = deps.querier.query_delegation(delegator.to_string(), validator.to_string())? else {
-        return Err(ContractError::InvalidValidatorOperation { operation: "Unstake".to_string(), validator: validator.to_string() });
+    let Some(res) = deps
+        .querier
+        .query_delegation(delegator.to_string(), validator.to_string())?
+    else {
+        return Err(ContractError::InvalidValidatorOperation {
+            operation: "Unstake".to_string(),
+            validator: validator.to_string(),
+        });
     };
 
     ensure!(
@@ -192,12 +198,6 @@ fn execute_claim(
         deps, info, env, ..
     } = ctx;
 
-    // Ensure sender is the contract owner
-    ensure!(
-        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {}
-    );
-
     let default_validator = DEFAULT_VALIDATOR.load(deps.storage)?;
     let validator = validator.unwrap_or(default_validator);
 
@@ -217,8 +217,14 @@ fn execute_claim(
     );
 
     let delegator = env.contract.address;
-    let Some(res) = deps.querier.query_delegation(delegator.to_string(), validator.to_string())? else {
-        return Err(ContractError::InvalidValidatorOperation { operation: "Claim".to_string(), validator: validator.to_string() });
+    let Some(res) = deps
+        .querier
+        .query_delegation(delegator.to_string(), validator.to_string())?
+    else {
+        return Err(ContractError::InvalidValidatorOperation {
+            operation: "Claim".to_string(),
+            validator: validator.to_string(),
+        });
     };
 
     // No reward to claim exist
@@ -295,7 +301,10 @@ fn query_staked_tokens(
     // Use default validator if validator is not specified
     let validator = validator.unwrap_or(default_validator);
 
-    let Some(res) = deps.querier.query_delegation(delegator.to_string(), validator.to_string())? else {
+    let Some(res) = deps
+        .querier
+        .query_delegation(delegator.to_string(), validator.to_string())?
+    else {
         return Err(ContractError::InvalidDelegation {});
     };
     Ok(res)

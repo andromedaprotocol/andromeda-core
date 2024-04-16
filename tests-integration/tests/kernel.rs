@@ -1,8 +1,6 @@
 use andromeda_finance::splitter::AddressPercent;
 use andromeda_splitter::mock::{
-    mock_andromeda_splitter, mock_andromeda_splitter, mock_splitter_instantiate_msg,
-    mock_splitter_instantiate_msg, mock_splitter_send_msg, mock_splitter_send_msg, MockSplitter,
-    MockSplitter,
+    mock_andromeda_splitter, mock_splitter_instantiate_msg, mock_splitter_send_msg, MockSplitter,
 };
 use andromeda_std::amp::{AndrAddr, Recipient};
 use andromeda_testing::{
@@ -33,7 +31,6 @@ fn kernel() {
             Decimal::one(),
         )],
         andr.kernel.addr().clone(),
-        andr.kernel.addr().clone(),
         None,
         None,
     );
@@ -59,7 +56,6 @@ fn kernel() {
     let attr_key = inst_event
         .attributes
         .iter()
-        .position(|attr| attr.key == "_contract_address")
         .position(|attr| attr.key == "_contract_address")
         .unwrap();
     let attr = inst_event.attributes.get(attr_key).unwrap();

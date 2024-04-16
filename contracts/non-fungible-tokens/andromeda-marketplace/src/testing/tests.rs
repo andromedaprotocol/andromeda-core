@@ -22,7 +22,6 @@ use cosmwasm_std::{
 use cw20::Cw20ReceiveMsg;
 use cw721::{Cw721ExecuteMsg, Cw721ReceiveMsg};
 use cw_utils::Expiration;
-use cw_utils::Expiration;
 
 use super::mock_querier::MOCK_KERNEL_CONTRACT;
 use crate::{
@@ -247,7 +246,6 @@ fn test_execute_buy_non_existing_sale() {
 
 #[test]
 fn test_execute_buy_sale_not_open_already_bought() {
-fn test_execute_buy_sale_not_open_already_bought() {
     let mut deps = mock_dependencies_custom(&[]);
     let mut env = mock_env();
     let _res = init(deps.as_mut(), None, None);
@@ -273,11 +271,9 @@ fn test_execute_buy_sale_not_open_already_bought() {
     let info = mock_info("sender", &coins(100, "uusd".to_string()));
     let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
     assert_eq!(err, ContractError::SaleExecuted {})
-    assert_eq!(err, ContractError::SaleExecuted {})
 }
 
 #[test]
-fn test_execute_buy_sale_not_open_cancelled() {
 fn test_execute_buy_sale_not_open_cancelled() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
@@ -302,11 +298,9 @@ fn test_execute_buy_sale_not_open_cancelled() {
     let info = mock_info("sender", &coins(100, "uusd".to_string()));
     let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
     assert_eq!(err, ContractError::SaleCancelled {})
-    assert_eq!(err, ContractError::SaleCancelled {})
 }
 
 #[test]
-fn test_execute_buy_token_owner_cannot_buy() {
 fn test_execute_buy_token_owner_cannot_buy() {
     let mut deps = mock_dependencies_custom(&[]);
     let mut env = mock_env();
@@ -368,7 +362,6 @@ fn test_execute_buy_token_owner_cannot_buy_cw20() {
 }
 
 #[test]
-fn test_execute_buy_invalid_coins_sent() {
 fn test_execute_buy_invalid_coins_sent() {
     let mut deps = mock_dependencies_custom(&[]);
     let mut env = mock_env();
@@ -474,7 +467,6 @@ fn test_execute_buy_invalid_coins_sent_cw20() {
 }
 
 #[test]
-fn test_execute_buy_works() {
 fn test_execute_buy_works() {
     let mut deps = mock_dependencies_custom(&[]);
     let mut env = mock_env();
@@ -600,7 +592,6 @@ fn test_execute_update_sale_unauthorized() {
 
 #[test]
 fn test_execute_update_sale_invalid_price() {
-fn test_execute_update_sale_invalid_price() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
 
@@ -624,7 +615,6 @@ fn test_execute_update_sale_invalid_price() {
 }
 
 #[test]
-fn test_execute_start_sale_invalid_price() {
 fn test_execute_start_sale_invalid_price() {
     let mut deps = mock_dependencies_custom(&[]);
     let _res = init(deps.as_mut(), None, None);
@@ -650,7 +640,6 @@ fn test_execute_start_sale_invalid_price() {
 }
 
 #[test]
-fn test_execute_buy_with_tax_and_royalty_insufficient_funds() {
 fn test_execute_buy_with_tax_and_royalty_insufficient_funds() {
     let mut deps = mock_dependencies_custom(&[]);
     let modules = vec![Module {
@@ -744,7 +733,6 @@ fn execute_buy_with_tax_and_royalty_too_many_funds() {
 }
 
 #[test]
-fn test_execute_buy_with_tax_and_royalty_works() {
 fn test_execute_buy_with_tax_and_royalty_works() {
     let mut deps = mock_dependencies_custom(&[]);
     let modules = vec![Module {

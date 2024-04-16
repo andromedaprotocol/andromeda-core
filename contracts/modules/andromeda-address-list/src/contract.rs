@@ -1,5 +1,6 @@
 #[cfg(not(feature = "library"))]
 use andromeda_modules::address_list::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use andromeda_modules::address_list::{IncludesAddressResponse, IsInclusiveResponse};
 use andromeda_std::{
     ado_base::{hooks::AndromedaHook, InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     ado_contract::ADOContract,

@@ -1,40 +1,28 @@
 use andromeda_app::app::AppComponent;
-use andromeda_app_contract::mock::{mock_andromeda_app, MockApp};
+use andromeda_app_contract::mock::{mock_andromeda_app, MockAppContract};
 
-use andromeda_testing::{mock::MockAndromeda, mock_contract::MockContract};
+use andromeda_testing::{
+    mock::mock_app, mock_builder::MockAndromedaBuilder, mock_contract::MockContract,
+};
 
-use cosmwasm_std::{to_json_binary, Addr};
-
-use cw_multi_test::App;
+use cosmwasm_std::to_json_binary;
 
 use andromeda_modules::shunting::{EvaluateParam, EvaluateRefParam, ShuntingResponse};
 use andromeda_shunting::mock::{
     mock_andromeda_shunting, mock_shunting_evaluate, mock_shunting_instantiate_msg, MockShunting,
 };
 use andromeda_std::common::encode_binary;
-
-fn mock_app() -> App {
-    App::new(|router, _api, storage| {
-        router
-            .bank
-            .init_balance(storage, &Addr::unchecked("owner"), vec![])
-            .unwrap();
-    })
-}
-
-fn mock_andromeda(app: &mut App, admin_address: Addr) -> MockAndromeda {
-    MockAndromeda::new(app, &admin_address)
-}
-
 #[test]
 fn test_shunting() {
-    let owner = Addr::unchecked("owner");
-
-    let mut router = mock_app();
-    let andr = mock_andromeda(&mut router, owner.clone());
-
-    andr.store_ado(&mut router, mock_andromeda_shunting(), "shunting");
-    andr.store_ado(&mut router, mock_andromeda_app(), "app");
+    let mut router = mock_app(None);
+    let andr = MockAndromedaBuilder::new(&mut router, "admin")
+        .with_wallets(vec![("owner", vec![])])
+        .with_contracts(vec![
+            ("app-contract", mock_andromeda_app()),
+            ("shunting", mock_andromeda_shunting()),
+        ])
+        .build(&mut router);
+    let owner = andr.get_wallet("owner");
 
     // goal: test nested shunting by calculating the area circle
     // user story: want to get the area of the circle using formula `phi * square(r)`
@@ -51,7 +39,7 @@ fn test_shunting() {
 
     // shunting for calculating circle area
     let shunting_area_component = AppComponent::new(
-        "1".to_string(),
+        "shunting-area".to_string(),
         "shunting".to_string(),
         to_json_binary(&shunting_area_msg).unwrap(),
     );
@@ -62,7 +50,7 @@ fn test_shunting() {
 
     // square shunting component
     let shunting_square_component = AppComponent::new(
-        "2".to_string(),
+        "shunting-square".to_string(),
         "shunting".to_string(),
         to_json_binary(&shunting_square_msg).unwrap(),
     );
@@ -72,9 +60,9 @@ fn test_shunting() {
         shunting_square_component.clone(),
     ];
 
-    let app = MockApp::instantiate(
-        andr.get_code_id(&mut router, "app"),
-        owner.clone(),
+    let app = MockAppContract::instantiate(
+        andr.get_code_id(&mut router, "app-contract"),
+        owner,
         &mut router,
         "Shunting App",
         app_components,

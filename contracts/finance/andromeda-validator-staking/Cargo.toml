@@ -2,7 +2,7 @@
 name = "andromeda-validator-staking"
 version = "0.1.0"
 edition = "2021"
-rust-version = "1.65.0"
+rust-version = "1.73.0"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
@@ -15,7 +15,7 @@ library = []
 testing = ["cw-multi-test"]
 
 [dependencies]
-cosmwasm-std = { workspace = true, features = ["staking"]  }
+cosmwasm-std = { workspace = true, features = ["staking"] }
 cosmwasm-schema = { workspace = true }
 cw-storage-plus = { workspace = true }
 cw2 = { workspace = true }
