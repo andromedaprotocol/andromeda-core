@@ -9,9 +9,7 @@ use cosmwasm_std::{
     Coin, OwnedDeps, Querier, QuerierResult, QueryRequest, SystemError, SystemResult,
 };
 
-pub use andromeda_std::testing::mock_querier::{
-    MOCK_ADDRESS_LIST_CONTRACT, MOCK_APP_CONTRACT, MOCK_KERNEL_CONTRACT, MOCK_RATES_CONTRACT,
-};
+pub use andromeda_std::testing::mock_querier::MOCK_KERNEL_CONTRACT;
 
 /// Alternative to `cosmwasm_std::testing::mock_dependencies` that allows us to respond to custom queries.
 ///

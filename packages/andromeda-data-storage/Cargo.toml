@@ -2,7 +2,7 @@
 name = "andromeda-data-storage"
 version = "1.0.0"
 edition = "2018"
-rust-version = "1.73.0"
+rust-version = "1.69.0"
 description = "Utility methods and message definitions for the Andromeda Data Storage Contracts"
 license = "MIT"
 
