@@ -37,7 +37,7 @@ let andr = mock_andromeda();
 andr.store_ado(&mut router, mock_andromeda_app(), "app");
 ```
 
-Here the second parameter is a `cw-multi-test` [mock contract](https://docs.rs/cw-multi-test/latest/cw_multi_test/trait.Contract.html) and the third is a name for the ADO. This can be used to access the code id by calling `andr.get_code_id(&router, "app")`. Repeat this process for any ADOs you wish to add (including your own).
+Here the second parameter is a `cw-multi-test` [mock contract](https://docs.rs/cw-multi-test/latest/cw_multi_test/trait.Contract.html) and the third is a name for the ADO. This can be used to access the code id by calling `andr.get_code_id(&router, "app-contract")`. Repeat this process for any ADOs you wish to add (including your own).
 
 ## Creating a Mock Contract
 

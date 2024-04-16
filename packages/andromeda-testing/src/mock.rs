@@ -88,6 +88,13 @@ impl MockAndromeda {
             None,
             kernel.addr().to_string(),
         );
+        let adodb = MockADODB::instantiate(
+            app,
+            adodb_code_id,
+            admin_address.clone(),
+            None,
+            kernel.addr().to_string(),
+        );
 
         //Init Economics
         let economics = MockEconomics::instantiate(
@@ -117,8 +124,16 @@ impl MockAndromeda {
                 "0.1.0",
                 None,
                 None,
+                adodb_code_id,
+                "adodb",
+                "0.1.0",
+                None,
+                None,
             )
             .unwrap();
+        adodb
+            .execute_publish(
+                app,
         adodb
             .execute_publish(
                 app,
@@ -128,6 +143,36 @@ impl MockAndromeda {
                 "0.1.0",
                 None,
                 None,
+                vfs_code_id,
+                "vfs",
+                "0.1.0",
+                None,
+                None,
+            )
+            .unwrap();
+        adodb
+            .execute_publish(
+                app,
+                admin_address.clone(),
+                kernel_code_id,
+                "kernel",
+                "0.1.0",
+                None,
+                None,
+            )
+            .unwrap();
+        kernel
+            .execute_store_key_address(app, admin_address.clone(), "adodb", adodb.addr().clone())
+            .unwrap();
+        kernel
+            .execute_store_key_address(app, admin_address.clone(), "vfs", vfs.addr().clone())
+            .unwrap();
+        kernel
+            .execute_store_key_address(
+                app,
+                admin_address.clone(),
+                "economics",
+                economics.addr().clone(),
             )
             .unwrap();
         adodb

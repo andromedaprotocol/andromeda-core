@@ -57,6 +57,7 @@ pub fn amp_receive(
             error: Some("No messages supplied".to_string())
         }
     );
+
     for (idx, message) in packet.messages.iter().enumerate() {
         let mut handler = MsgHandler::new(message.clone());
         let msg_res = handler.handle(

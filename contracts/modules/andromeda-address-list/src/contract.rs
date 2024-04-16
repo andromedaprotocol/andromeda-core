@@ -1,4 +1,3 @@
-use andromeda_modules::address_list::IncludesAddressResponse;
 #[cfg(not(feature = "library"))]
 use andromeda_modules::address_list::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use andromeda_std::{
@@ -167,9 +166,11 @@ fn handle_andr_hook(deps: Deps, msg: AndromedaHook) -> Result<Binary, ContractEr
     }
 }
 
-fn handle_is_inclusive(deps: Deps) -> Result<bool, ContractError> {
+fn handle_is_inclusive(deps: Deps) -> Result<IsInclusiveResponse, ContractError> {
     let is_inclusive = IS_INCLUSIVE.load(deps.storage)?;
-    Ok(is_inclusive)
+    Ok(IsInclusiveResponse {
+        is_inclusive_response: is_inclusive,
+    })
 }
 
 fn query_address(deps: Deps, address: &str) -> Result<IncludesAddressResponse, ContractError> {

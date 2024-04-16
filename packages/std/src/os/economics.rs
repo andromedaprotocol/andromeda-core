@@ -63,7 +63,7 @@ pub enum QueryMsg {
     /// Queries the current balance for a given AndrAddr and asset tuple
     ///
     /// Returns a `Uint128` representing the current balance
-    #[returns(Uint128)]
+    #[returns(BalanceResponse)]
     Balance { asset: String, address: AndrAddr },
     // Base queries
     #[returns(crate::ado_base::version::VersionResponse)]
@@ -74,6 +74,11 @@ pub enum QueryMsg {
     Owner {},
     #[returns(crate::ado_base::kernel_address::KernelAddressResponse)]
     KernelAddress {},
+}
+
+#[cw_serde]
+pub struct BalanceResponse {
+    pub balance: Uint128,
 }
 
 #[cfg(test)]

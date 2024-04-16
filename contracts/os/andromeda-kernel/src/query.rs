@@ -14,7 +14,7 @@ pub fn key_address(deps: Deps, key: String) -> Result<Addr, ContractError> {
     Ok(KERNEL_ADDRESSES.load(deps.storage, &key)?)
 }
 
-pub fn verify_address(deps: Deps, address: String) -> Result<bool, ContractError> {
+pub fn verify_address(deps: Deps, address: String) -> Result<VerifyAddressResponse, ContractError> {
     let db_address = KERNEL_ADDRESSES.load(deps.storage, ADO_DB_KEY)?;
     let contract_info_res = deps.querier.query_wasm_contract_info(address);
     if let Ok(contract_info) = contract_info_res {
@@ -24,7 +24,9 @@ pub fn verify_address(deps: Deps, address: String) -> Result<bool, ContractError
                 .ok_or(ContractError::InvalidAddress {})?;
         Ok(ado_type.is_some())
     } else {
-        Ok(false)
+        Ok(VerifyAddressResponse {
+            verify_address: false,
+        })
     }
 }
 

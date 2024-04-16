@@ -296,6 +296,7 @@ fn test_auction_app_recipient() {
         owner.to_string(),
         None,
         andr.kernel.addr().to_string(),
+        andr.kernel.addr().to_string(),
         None,
     );
     let cw721_component = AppComponent::new(
@@ -330,6 +331,7 @@ fn test_auction_app_recipient() {
     let auction_component = AppComponent::new(
         "auction".to_string(),
         "auction".to_string(),
+        to_json_binary(&auction_init_msg).unwrap(),
         to_json_binary(&auction_init_msg).unwrap(),
     );
 
@@ -643,7 +645,7 @@ fn test_auction_app_cw20() {
         )
         .unwrap();
 
-    assert_eq!(auction_ids_response.auction_ids.len(), 1);
+    assert_eq!(auction_ids.len(), 1);
 
     let auction_id = auction_ids_response.auction_ids.first().unwrap();
     let auction_state: AuctionStateResponse = router
@@ -727,7 +729,7 @@ fn test_auction_app_cw20() {
         .unwrap();
     assert_eq!(bids_resp.bids.len(), 1);
 
-    let bid = bids_resp.bids.first().unwrap();
+    let bid = bids.first().unwrap();
     assert_eq!(bid.bidder, buyer_one.to_string());
     assert_eq!(bid.amount, Uint128::from(50u128));
 
@@ -754,7 +756,7 @@ fn test_auction_app_cw20() {
         .unwrap();
     assert_eq!(bids_resp.bids.len(), 2);
 
-    let bid_two = bids_resp.bids.get(1).unwrap();
+    let bid_two = bids.get(1).unwrap();
     assert_eq!(bid_two.bidder, buyer_two.to_string());
     assert_eq!(bid_two.amount, Uint128::from(100u128));
 

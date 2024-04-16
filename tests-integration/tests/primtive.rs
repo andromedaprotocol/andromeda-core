@@ -26,6 +26,7 @@ fn test_primtive() {
 
     let primitive_init_msg = mock_primitive_instantiate_msg(
         andr.kernel.addr().to_string(),
+        andr.kernel.addr().to_string(),
         None,
         andromeda_data_storage::primitive::PrimitiveRestriction::Private,
     );

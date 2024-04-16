@@ -11,7 +11,10 @@ use crate::{
     },
 };
 use andromeda_non_fungible_tokens::{
-    crowdfund::{Config, CrowdfundMintMsg, ExecuteMsg, InstantiateMsg, QueryMsg, State},
+    crowdfund::{
+        Config, CrowdfundMintMsg, ExecuteMsg, InstantiateMsg, IsTokenAvailableResponse, QueryMsg,
+        State,
+    },
     cw721::{ExecuteMsg as Cw721ExecuteMsg, TokenExtension},
 };
 use andromeda_std::{

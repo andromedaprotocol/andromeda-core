@@ -911,8 +911,10 @@ fn query_available_tokens(
     get_available_tokens(deps.storage, start_after, limit)
 }
 
-fn query_is_token_available(deps: Deps, id: String) -> bool {
-    AVAILABLE_TOKENS.has(deps.storage, &id)
+fn query_is_token_available(deps: Deps, id: String) -> IsTokenAvailableResponse {
+    IsTokenAvailableResponse {
+        is_token_available: AVAILABLE_TOKENS.has(deps.storage, &id),
+    }
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

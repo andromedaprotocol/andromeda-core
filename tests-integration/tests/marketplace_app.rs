@@ -17,7 +17,8 @@ use andromeda_cw721::mock::{
 use andromeda_finance::splitter::AddressPercent;
 use andromeda_marketplace::mock::{
     mock_andromeda_marketplace, mock_buy_token, mock_marketplace_instantiate_msg,
-    mock_receive_packet, mock_start_sale, MockMarketplace,
+    mock_receive_packet, mock_receive_packet, mock_start_sale, mock_start_sale, MockMarketplace,
+    MockMarketplace,
 };
 use andromeda_modules::rates::{Rate, RateInfo};
 
@@ -65,11 +66,13 @@ fn test_marketplace_app() {
         owner.to_string(),
         None,
         andr.kernel.addr().to_string(),
+        andr.kernel.addr().to_string(),
         None,
     );
     let cw721_component = AppComponent::new(
         "tokens".to_string(),
         "cw721".to_string(),
+        to_json_binary(&cw721_init_msg).unwrap(),
         to_json_binary(&cw721_init_msg).unwrap(),
     );
 
@@ -85,9 +88,11 @@ fn test_marketplace_app() {
 
     let address_list_init_msg =
         mock_address_list_instantiate_msg(true, andr.kernel.addr().to_string(), None);
+    mock_address_list_instantiate_msg(true, andr.kernel.addr().to_string(), None);
     let address_list_component = AppComponent::new(
         "address-list",
         "address-list",
+        to_json_binary(&address_list_init_msg).unwrap(),
         to_json_binary(&address_list_init_msg).unwrap(),
     );
 
@@ -105,6 +110,7 @@ fn test_marketplace_app() {
         "marketplace".to_string(),
         "marketplace".to_string(),
         to_json_binary(&marketplace_init_msg).unwrap(),
+        to_json_binary(&marketplace_init_msg).unwrap(),
     );
 
     // Create App
@@ -121,6 +127,7 @@ fn test_marketplace_app() {
         &mut router,
         "Auction App",
         app_components.clone(),
+        andr.kernel.addr(),
         andr.kernel.addr(),
         None,
     );
@@ -488,7 +495,6 @@ fn test_marketplace_app_cw20() {
             &[],
         )
         .unwrap();
-
     let token_id = "0";
 
     // Whitelist
