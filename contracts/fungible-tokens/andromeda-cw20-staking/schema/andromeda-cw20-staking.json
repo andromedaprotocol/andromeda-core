@@ -234,6 +234,54 @@
         "additionalProperties": false
       },
       {
+        "description": "Remove `reward_token`. Owner only.",
+        "type": "object",
+        "required": [
+          "remove_reward_token"
+        ],
+        "properties": {
+          "remove_reward_token": {
+            "type": "object",
+            "required": [
+              "reward_token"
+            ],
+            "properties": {
+              "reward_token": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Replace `reward_token` as another reward token. Owner only.",
+        "type": "object",
+        "required": [
+          "replace_reward_token"
+        ],
+        "properties": {
+          "replace_reward_token": {
+            "type": "object",
+            "required": [
+              "origin_reward_token",
+              "reward_token"
+            ],
+            "properties": {
+              "origin_reward_token": {
+                "type": "string"
+              },
+              "reward_token": {
+                "$ref": "#/definitions/RewardTokenUnchecked"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
         "description": "Unstakes the specified amount of assets, or all if not specified. The user's pending rewards and indexes are updated for each additional reward token.",
         "type": "object",
         "required": [
