@@ -2000,6 +2000,7 @@ fn test_remove_reward_token() {
     assert_eq!(
         Response::new()
             .add_attribute("action", "remove_reward_token")
+            .add_attribute("number_of_reward_tokens", "0")
             .add_attribute("removed_token", "native:uusd")
             .add_submessage(generate_economics_message("owner", "RemoveRewardToken")),
         res

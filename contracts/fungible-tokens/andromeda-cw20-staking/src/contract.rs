@@ -250,8 +250,7 @@ fn execute_add_reward_token(
     ensure!(
         !REWARD_TOKENS.has(deps.storage, &reward_token_string)
             || !REWARD_TOKENS
-                .load(deps.storage, &reward_token_string)
-                .unwrap()
+                .load(deps.storage, &reward_token_string)?
                 .is_active,
         ContractError::InvalidAsset {
             asset: reward_token_string,
@@ -329,6 +328,10 @@ fn execute_remove_reward_token(
 
     Ok(Response::new()
         .add_attribute("action", "remove_reward_token")
+        .add_attribute(
+            "number_of_reward_tokens",
+            config.number_of_reward_tokens.to_string(),
+        )
         .add_attribute("removed_token", reward_token_string))
 }
 
