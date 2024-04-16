@@ -1,3 +1,5 @@
+use std::fmt::{self, Display};
+
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{ensure, BlockInfo, Env, Timestamp};
 use cw_utils::Expiration;
@@ -21,6 +23,19 @@ impl Expiry {
                 current_time.plus_milliseconds(*milliseconds)
             }
             Expiry::AtTime(milliseconds) => *milliseconds,
+        }
+    }
+}
+impl Default for Expiry {
+    fn default() -> Self {
+        Expiry::FromNow(Milliseconds::default())
+    }
+}
+impl Display for Expiry {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Expiry::FromNow(milliseconds) => write!(f, "{} milliseconds from now", milliseconds),
+            Expiry::AtTime(milliseconds) => write!(f, "At time: {}", milliseconds),
         }
     }
 }

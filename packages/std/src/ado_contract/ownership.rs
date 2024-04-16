@@ -1,3 +1,4 @@
+use crate::common::expiration::Expiry;
 use crate::common::MillisecondsExpiration;
 use crate::error::ContractError;
 use crate::{
@@ -23,7 +24,7 @@ impl<'a> ADOContract<'a> {
             OwnershipMessage::UpdateOwner {
                 new_owner,
                 expiration,
-            } => self.update_owner(deps, info, new_owner, expiration),
+            } => self.update_owner(deps, env, info, new_owner, expiration),
             OwnershipMessage::RevokeOwnershipOffer => self.revoke_ownership_offer(deps, info),
             OwnershipMessage::AcceptOwnership => self.accept_ownership(deps, env, info),
             OwnershipMessage::Disown => self.disown(deps, info),
@@ -34,9 +35,10 @@ impl<'a> ADOContract<'a> {
     pub fn update_owner(
         &self,
         deps: DepsMut,
+        env: Env,
         info: MessageInfo,
         new_owner: Addr,
-        expiration: Option<MillisecondsExpiration>,
+        expiration: Option<Expiry>,
     ) -> Result<Response, ContractError> {
         ensure!(
             self.is_contract_owner(deps.storage, info.sender.as_str())?,
@@ -50,7 +52,7 @@ impl<'a> ADOContract<'a> {
         POTENTIAL_OWNER.save(deps.storage, &new_owner_addr)?;
 
         if let Some(exp) = expiration {
-            POTENTIAL_OWNER_EXPIRATION.save(deps.storage, &exp)?;
+            POTENTIAL_OWNER_EXPIRATION.save(deps.storage, &exp.get_time(&env.block))?;
         } else {
             // In case an offer is already pending
             POTENTIAL_OWNER_EXPIRATION.remove(deps.storage);
@@ -182,12 +184,14 @@ mod test {
     #[test]
     fn test_update_owner() {
         let mut deps = mock_dependencies();
+        let env = mock_env();
         let contract = ADOContract::default();
         let new_owner = Addr::unchecked("new_owner");
         init(deps.as_mut(), "owner");
 
         let res = contract.update_owner(
             deps.as_mut(),
+            env.clone(),
             mock_info("owner", &[]),
             new_owner.clone(),
             None,
@@ -198,13 +202,19 @@ mod test {
 
         let res = contract.update_owner(
             deps.as_mut(),
+            env.clone(),
             mock_info("owner", &[]),
             Addr::unchecked("owner"),
             None,
         );
         assert!(res.is_err());
-        let res =
-            contract.update_owner(deps.as_mut(), mock_info("new_owner", &[]), new_owner, None);
+        let res = contract.update_owner(
+            deps.as_mut(),
+            env,
+            mock_info("new_owner", &[]),
+            new_owner,
+            None,
+        );
         assert!(res.is_err());
     }
 

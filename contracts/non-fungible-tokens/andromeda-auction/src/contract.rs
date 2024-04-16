@@ -173,7 +173,7 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
             token_address,
         } => execute_claim(ctx, token_id, token_address),
         ExecuteMsg::AuthorizeTokenContract { addr, expiration } => {
-            execute_authorize_token_contract(ctx.deps, ctx.env, ctx.info, addr, expiration)
+            execute_authorize_token_contract(ctx.deps, ctx.info, addr, expiration)
         }
         ExecuteMsg::DeauthorizeTokenContract { addr } => {
             execute_deauthorize_token_contract(ctx.deps, ctx.info, addr)
@@ -906,7 +906,6 @@ fn execute_claim(
 
 fn execute_authorize_token_contract(
     deps: DepsMut,
-    env: Env,
     info: MessageInfo,
     token_address: AndrAddr,
     expiration: Option<Expiry>,
@@ -918,7 +917,7 @@ fn execute_authorize_token_contract(
         ContractError::Unauthorized {}
     );
     let permission = if let Some(expiration) = expiration {
-        Permission::whitelisted(Some(expiration.get_time(&env.block)))
+        Permission::whitelisted(Some(expiration))
     } else {
         Permission::whitelisted(None)
     };
