@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{ops::Mul, str::FromStr};
 
 use andromeda_std::{
     ado_base::{
@@ -16,6 +16,7 @@ use cosmwasm_std::{
     ensure, from_json, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response, Storage,
     Uint128,
 };
+
 use cw20::Cw20ReceiveMsg;
 use cw_asset::{Asset, AssetInfo, AssetInfoUnchecked};
 
@@ -606,9 +607,13 @@ fn execute_claim_rewards(ctx: ExecuteContext) -> Result<Response, ContractError>
                 let reward_balance = token
                     .asset_info
                     .query_balance(&deps.querier, &env.contract.address)?;
-                // Note: Due to small rounding error, the reward_balance and rewards can be unequal even if all the rewards are distributed
-                // TODO: Remove inactive reward token in case the remaining balance is below the low limit
-                if reward_balance == rewards {
+                let reward_balance = Decimal256::from_str(&format!("{0}", reward_balance))?;
+                let rewards_ceil = staker_reward_info
+                    .index
+                    .mul(Decimal256::from_str(&format!("{0}", staker.share))?)
+                    .ceil();
+                // if reward balance token is equal to the rewards, inactive reward token can be removed as it is all distributed
+                if reward_balance == rewards_ceil {
                     REWARD_TOKENS.remove(deps.storage, &token_string);
                 }
             }

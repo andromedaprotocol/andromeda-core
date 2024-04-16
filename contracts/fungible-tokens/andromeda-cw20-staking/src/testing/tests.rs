@@ -2097,12 +2097,12 @@ fn test_claim_rewards_after_remove() {
 
     deps.querier.with_token_balances(&[(
         &MOCK_STAKING_TOKEN.to_string(),
-        &[(&MOCK_CONTRACT_ADDR.to_string(), &Uint128::new(200 + 50))],
+        &[(&MOCK_CONTRACT_ADDR.to_string(), &Uint128::new(200 + 100))],
     )]);
 
     let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
         sender: "user2".to_string(),
-        amount: Uint128::new(50),
+        amount: Uint128::new(100),
         msg: to_json_binary(&Cw20HookMsg::StakeTokens {}).unwrap(),
     });
 
@@ -2117,7 +2117,7 @@ fn test_claim_rewards_after_remove() {
     );
     assert_eq!(
         Staker {
-            share: Uint128::new(25)
+            share: Uint128::new(50)
         },
         STAKERS.load(deps.as_ref().storage, "user2").unwrap()
     );
@@ -2143,7 +2143,7 @@ fn test_claim_rewards_after_remove() {
 
     assert_eq!(
         RewardToken {
-            index: Decimal256::from_ratio(Uint256::from(100u128), Uint256::from(125u128)),
+            index: Decimal256::from_ratio(Uint256::from(100u128), Uint256::from(150u128)),
             asset_info: AssetInfo::native("uusd"),
             reward_type: RewardType::NonAllocated {
                 previous_reward_balance: Uint128::new(100),
@@ -2162,7 +2162,7 @@ fn test_claim_rewards_after_remove() {
 
     assert_eq!(
         StakerRewardInfo {
-            index: Decimal256::from_ratio(Uint256::from(100u128), Uint256::from(125u128)),
+            index: Decimal256::from_ratio(Uint256::from(100u128), Uint256::from(150u128)),
             pending_rewards: Decimal256::zero(),
         },
         STAKER_REWARD_INFOS
@@ -2172,10 +2172,10 @@ fn test_claim_rewards_after_remove() {
 
     assert_eq!(
         RewardToken {
-            index: Decimal256::from_ratio(Uint256::from(100u128), Uint256::from(125u128)),
+            index: Decimal256::from_ratio(Uint256::from(100u128), Uint256::from(150u128)),
             asset_info: AssetInfo::native("uusd"),
             reward_type: RewardType::NonAllocated {
-                previous_reward_balance: Uint128::new(20),
+                previous_reward_balance: Uint128::new(34),
                 init_timestamp: current_timestamp,
             },
             is_active: true,
@@ -2190,7 +2190,7 @@ fn test_claim_rewards_after_remove() {
             .add_attribute("action", "claim_rewards")
             .add_message(BankMsg::Send {
                 to_address: "user1".to_string(),
-                amount: coins(80, "uusd")
+                amount: coins(66, "uusd")
             })
             .add_submessage(generate_economics_message("user1", "ClaimRewards")),
         res
@@ -2198,7 +2198,7 @@ fn test_claim_rewards_after_remove() {
 
     deps.querier
         .base
-        .update_balance(mock_env().contract.address, coins(20, "uusd"));
+        .update_balance(mock_env().contract.address, coins(34, "uusd"));
 
     let msg = ExecuteMsg::RemoveRewardToken {
         reward_token: "native:uusd".to_string(),
@@ -2215,7 +2215,7 @@ fn test_claim_rewards_after_remove() {
             .add_attribute("action", "claim_rewards")
             .add_message(BankMsg::Send {
                 to_address: "user2".to_string(),
-                amount: coins(20, "uusd")
+                amount: coins(33, "uusd")
             })
             .add_submessage(generate_economics_message("user2", "ClaimRewards")),
         res
@@ -2223,8 +2223,8 @@ fn test_claim_rewards_after_remove() {
 
     assert_eq!(
         StakerRewardInfo {
-            index: Decimal256::from_ratio(Uint256::from(100u128), Uint256::from(125u128)),
-            pending_rewards: Decimal256::zero(),
+            index: Decimal256::from_ratio(Uint256::from(100u128), Uint256::from(150u128)),
+            pending_rewards: Decimal256::zero()
         },
         STAKER_REWARD_INFOS
             .load(deps.as_ref().storage, ("user2", "native:uusd"))
@@ -2235,7 +2235,7 @@ fn test_claim_rewards_after_remove() {
     assert!(!REWARD_TOKENS.has(deps.as_ref().storage, "native:uusd"));
     deps.querier
         .base
-        .update_balance(mock_env().contract.address, coins(0, "uusd"));
+        .update_balance(mock_env().contract.address, coins(1, "uusd"));
 
     // Verify that the queries return the empty pending rewards.
     let msg = QueryMsg::Stakers {
@@ -2255,9 +2255,9 @@ fn test_claim_rewards_after_remove() {
             },
             StakerResponse {
                 address: "user2".to_string(),
-                share: Uint128::new(25),
+                share: Uint128::new(50),
                 pending_rewards: vec![],
-                balance: Uint128::new(50),
+                balance: Uint128::new(100),
             },
         ],
         res
