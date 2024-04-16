@@ -166,6 +166,7 @@ impl RewardTokenUnchecked {
             asset_info: checked_asset_info,
             reward_type,
             index: Decimal256::zero(),
+            is_active: true,
         })
     }
 }
@@ -188,6 +189,7 @@ pub struct RewardToken {
     pub asset_info: AssetInfo,
     pub index: Decimal256,
     pub reward_type: RewardType,
+    pub is_active: bool,
 }
 
 impl fmt::Display for RewardToken {
