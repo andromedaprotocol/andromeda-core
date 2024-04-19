@@ -161,17 +161,15 @@ pub fn execute_claim(
     } = ctx;
     nonpayable(&info)?;
 
-    // not expired
-    let expiration = STAGE_EXPIRATION.load(deps.storage, stage)?;
-    let expiration = if let Some(expiration) = expiration {
-        Expiration::AtTime(Timestamp::from_nanos(expiration.nanos()))
-    } else {
-        Expiration::Never {}
+    // Ensure that the stage expiration (if it exists) isn't expired
+    let expiration_milliseconds = STAGE_EXPIRATION.load(deps.storage, stage)?;
+    if let Some(expiration_milliseconds) = expiration_milliseconds {
+        let expiration = Expiration::AtTime(Timestamp::from_nanos(expiration_milliseconds.nanos()));
+        ensure!(
+            !expiration.is_expired(&env.block),
+            ContractError::StageExpired { stage, expiration }
+        );
     };
-    ensure!(
-        !expiration.is_expired(&env.block),
-        ContractError::StageExpired { stage, expiration }
-    );
 
     // verify not claimed
     ensure!(
