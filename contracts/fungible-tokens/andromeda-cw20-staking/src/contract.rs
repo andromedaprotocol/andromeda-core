@@ -247,11 +247,9 @@ fn execute_add_reward_token(
     let mut reward_token = reward_token.check(&env.block, deps.api)?;
     let reward_token_string = reward_token.to_string();
 
+    let reward_token_option = REWARD_TOKENS.may_load(deps.storage, &reward_token_string)?;
     ensure!(
-        !REWARD_TOKENS.has(deps.storage, &reward_token_string)
-            || !REWARD_TOKENS
-                .load(deps.storage, &reward_token_string)?
-                .is_active,
+        reward_token_option.map_or(true, |reward_token| !reward_token.is_active),
         ContractError::InvalidAsset {
             asset: reward_token_string,
         }
