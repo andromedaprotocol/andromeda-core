@@ -616,7 +616,7 @@ fn test_update_global_indexes() {
                 previous_reward_balance: Uint128::zero(),
                 init_timestamp: current_timestamp.plus_seconds(1),
             },
-            is_active: true,
+            is_active: true
         },
         REWARD_TOKENS
             .load(deps.as_ref().storage, "native:uandr")

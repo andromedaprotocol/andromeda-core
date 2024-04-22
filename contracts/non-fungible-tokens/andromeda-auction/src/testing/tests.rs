@@ -2,11 +2,9 @@ use crate::{
     contract::{execute, instantiate, query},
     state::{auction_infos, TOKEN_AUCTION_STATE},
     testing::mock_querier::{
-        mock_dependencies_custom, MOCK_CW20_ADDR, MOCK_TOKEN_ADDR, MOCK_TOKEN_OWNER,
-        MOCK_UNCLAIMED_TOKEN,
+        mock_dependencies_custom, MOCK_TOKEN_ADDR, MOCK_TOKEN_OWNER, MOCK_UNCLAIMED_TOKEN,
     },
 };
-
 use andromeda_non_fungible_tokens::{
     auction::{
         AuctionInfo, AuctionStateResponse, Cw20HookMsg, Cw721HookMsg, ExecuteMsg, InstantiateMsg,
@@ -14,10 +12,12 @@ use andromeda_non_fungible_tokens::{
     },
     cw721::ExecuteMsg as Cw721ExecuteMsg,
 };
+use andromeda_std::testing::mock_querier::MOCK_CW20_CONTRACT;
 use andromeda_std::{
     ado_base::modules::Module,
     amp::AndrAddr,
     common::{
+        denom::Asset,
         encode_binary,
         expiration::{Expiry, MILLISECONDS_TO_NANOSECONDS_RATIO},
         reply::ReplyId,
@@ -56,7 +56,7 @@ fn init_cw20(deps: DepsMut, modules: Option<Vec<Module>>) -> Response {
         modules,
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         authorized_token_addresses: Some(vec![AndrAddr::from_string(MOCK_TOKEN_ADDR)]),
-        authorized_cw20_address: Some(AndrAddr::from_string(MOCK_CW20_ADDR)),
+        authorized_cw20_address: Some(AndrAddr::from_string(MOCK_CW20_CONTRACT)),
     };
 
     let info = mock_info("owner", &[]);
@@ -79,8 +79,7 @@ fn start_auction(deps: DepsMut, whitelist: Option<Vec<Addr>>, min_bid: Option<Ui
     let hook_msg = Cw721HookMsg::StartAuction {
         start_time: None,
         end_time: Expiry::FromNow(Milliseconds(20_000_000)),
-        coin_denom: "uusd".to_string(),
-        uses_cw20: false,
+        coin_denom: Asset::NativeToken("uusd".to_string()),
         whitelist,
         min_bid,
         recipient: None,
@@ -100,8 +99,7 @@ fn start_auction_cw20(deps: DepsMut, whitelist: Option<Vec<Addr>>, min_bid: Opti
     let hook_msg = Cw721HookMsg::StartAuction {
         start_time: None,
         end_time: Expiry::FromNow(Milliseconds(20_000_000)),
-        coin_denom: MOCK_CW20_ADDR.to_string(),
-        uses_cw20: true,
+        coin_denom: Asset::Cw20Token(AndrAddr::from_string(MOCK_CW20_CONTRACT.to_string())),
         whitelist,
         min_bid,
         recipient: None,
@@ -168,7 +166,7 @@ fn assert_auction_created_cw20(deps: Deps, whitelist: Option<Vec<Addr>>, min_bid
             )),
             high_bidder_addr: Addr::unchecked(""),
             high_bidder_amount: Uint128::zero(),
-            coin_denom: MOCK_CW20_ADDR.to_string(),
+            coin_denom: MOCK_CW20_CONTRACT.to_string(),
             uses_cw20: true,
             auction_id: 1u128.into(),
             owner: MOCK_TOKEN_OWNER.to_string(),
@@ -340,7 +338,7 @@ fn execute_place_bid_whitelist_cw20() {
         res.unwrap_err()
     );
 
-    let info = mock_info(MOCK_CW20_ADDR, &[]);
+    let info = mock_info(MOCK_CW20_CONTRACT, &[]);
     let _res = execute(deps.as_mut(), env, info, msg).unwrap();
 }
 
@@ -691,8 +689,7 @@ fn execute_start_auction_start_time_in_past() {
     let hook_msg = Cw721HookMsg::StartAuction {
         start_time: Some(Expiry::AtTime(Milliseconds(100000))),
         end_time: Expiry::AtTime(Milliseconds(100000)),
-        coin_denom: "uusd".to_string(),
-        uses_cw20: false,
+        coin_denom: Asset::NativeToken("uusd".to_string()),
         whitelist: None,
         min_bid: None,
         recipient: None,
@@ -724,8 +721,7 @@ fn execute_start_auction_zero_start_time() {
     let hook_msg = Cw721HookMsg::StartAuction {
         start_time: Some(Expiry::AtTime(Milliseconds::zero())),
         end_time: Expiry::AtTime(Milliseconds(1)),
-        coin_denom: "uusd".to_string(),
-        uses_cw20: false,
+        coin_denom: Asset::NativeToken("uusd".to_string()),
         whitelist: None,
         min_bid: None,
         recipient: None,
@@ -758,8 +754,7 @@ fn execute_start_auction_start_time_not_provided() {
         end_time: Expiry::AtTime(Milliseconds::from_nanos(
             (current_time() + 20_000_000) * 1_000_000,
         )),
-        coin_denom: "uusd".to_string(),
-        uses_cw20: false,
+        coin_denom: Asset::NativeToken("uusd".to_string()),
         whitelist: None,
         min_bid: None,
         recipient: None,
@@ -783,8 +778,7 @@ fn execute_start_auction_zero_duration() {
     let hook_msg = Cw721HookMsg::StartAuction {
         start_time: Some(Expiry::AtTime(Milliseconds(100))),
         end_time: Expiry::AtTime(Milliseconds::zero()),
-        coin_denom: "uusd".to_string(),
-        uses_cw20: false,
+        coin_denom: Asset::NativeToken("uusd".to_string()),
         whitelist: None,
         min_bid: None,
         recipient: None,
@@ -844,8 +838,7 @@ fn execute_update_auction_zero_start() {
         token_address: MOCK_TOKEN_ADDR.to_string(),
         start_time: Some(Expiry::AtTime(Milliseconds::zero())),
         end_time: Expiry::AtTime(Milliseconds(1)),
-        coin_denom: "uusd".to_string(),
-        uses_cw20: false,
+        coin_denom: Asset::NativeToken("uusd".to_string()),
         whitelist: None,
         min_bid: None,
         recipient: None,
@@ -877,8 +870,7 @@ fn execute_update_auction_zero_duration() {
         token_address: MOCK_TOKEN_ADDR.to_string(),
         start_time: Some(Expiry::AtTime(Milliseconds(100000))),
         end_time: Expiry::AtTime(Milliseconds::zero()),
-        coin_denom: "uusd".to_string(),
-        uses_cw20: false,
+        coin_denom: Asset::NativeToken("uusd".to_string()),
         whitelist: None,
         min_bid: None,
         recipient: None,
@@ -904,8 +896,7 @@ fn execute_update_auction_unauthorized() {
         token_address: MOCK_TOKEN_ADDR.to_string(),
         start_time: Some(Expiry::AtTime(Milliseconds(100000))),
         end_time: Expiry::AtTime(Milliseconds(100)),
-        coin_denom: "uluna".to_string(),
-        uses_cw20: false,
+        coin_denom: Asset::NativeToken("uusd".to_string()),
         whitelist: Some(vec![Addr::unchecked("user")]),
         min_bid: None,
         recipient: None,
@@ -929,8 +920,7 @@ fn execute_update_auction_auction_started() {
         token_address: MOCK_TOKEN_ADDR.to_string(),
         start_time: Some(Expiry::AtTime(Milliseconds(100000))),
         end_time: Expiry::AtTime(Milliseconds(100)),
-        coin_denom: "uluna".to_string(),
-        uses_cw20: false,
+        coin_denom: Asset::NativeToken("uusd".to_string()),
         whitelist: Some(vec![Addr::unchecked("user")]),
         min_bid: None,
         recipient: None,
@@ -956,8 +946,7 @@ fn execute_update_auction() {
         token_address: MOCK_TOKEN_ADDR.to_string(),
         start_time: Some(Expiry::AtTime(Milliseconds(1571711019879 + 1))),
         end_time: Expiry::AtTime(Milliseconds(1571711019879 + 2)),
-        coin_denom: "uluna".to_string(),
-        uses_cw20: false,
+        coin_denom: Asset::NativeToken("uusd".to_string()),
         whitelist: Some(vec![Addr::unchecked("user")]),
         min_bid: None,
         recipient: None,
@@ -974,7 +963,7 @@ fn execute_update_auction() {
             end_time: Expiration::AtTime(Timestamp::from_nanos(1571711019881000000)),
             high_bidder_addr: Addr::unchecked(""),
             high_bidder_amount: Uint128::zero(),
-            coin_denom: "uluna".to_string(),
+            coin_denom: "uusd".to_string(),
             uses_cw20: false,
             auction_id: 1u128.into(),
             owner: MOCK_TOKEN_OWNER.to_string(),
@@ -1004,8 +993,7 @@ fn execute_start_auction_after_previous_finished() {
         end_time: Expiry::AtTime(Milliseconds::from_nanos(
             (current_time() + 20_000_000) * 1_000_000,
         )),
-        coin_denom: "uusd".to_string(),
-        uses_cw20: false,
+        coin_denom: Asset::NativeToken("uusd".to_string()),
         whitelist: None,
         min_bid: None,
         recipient: None,
@@ -1235,7 +1223,7 @@ fn execute_claim_cw20() {
         msg: encode_binary(&hook_msg).unwrap(),
     });
 
-    let info = mock_info(MOCK_CW20_ADDR, &[]);
+    let info = mock_info(MOCK_CW20_CONTRACT, &[]);
     env.block.time = env.block.time.plus_seconds(1);
 
     let _res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
@@ -1257,7 +1245,7 @@ fn execute_claim_cw20() {
     assert_eq!(
         Response::new()
             .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: MOCK_CW20_ADDR.to_string(),
+                contract_addr: MOCK_CW20_CONTRACT.to_string(),
                 msg: encode_binary(&Cw20ExecuteMsg::Transfer {
                     recipient: MOCK_TOKEN_OWNER.to_owned(),
                     amount: Uint128::new(100)
@@ -1331,8 +1319,7 @@ fn execute_claim_auction_already_claimed() {
         end_time: Expiry::AtTime(Milliseconds::from_nanos(
             (current_time() + 20_000_000) * 1_000_000,
         )),
-        coin_denom: "uusd".to_string(),
-        uses_cw20: false,
+        coin_denom: Asset::NativeToken("uusd".to_string()),
         whitelist: None,
         min_bid: None,
         recipient: None,
@@ -1550,7 +1537,7 @@ fn execute_cancel_with_bids_cw20() {
         msg: encode_binary(&hook_msg).unwrap(),
     });
 
-    let info = mock_info(MOCK_CW20_ADDR, &[]);
+    let info = mock_info(MOCK_CW20_CONTRACT, &[]);
     env.block.time = env.block.time.plus_seconds(1);
 
     let _res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
@@ -1575,7 +1562,7 @@ fn execute_cancel_with_bids_cw20() {
                 funds: vec![],
             }))
             .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: MOCK_CW20_ADDR.to_string(),
+                contract_addr: MOCK_CW20_CONTRACT.to_string(),
                 msg: encode_binary(&Cw20ExecuteMsg::Transfer {
                     recipient: "bidder".to_owned(),
                     amount: Uint128::new(100)
