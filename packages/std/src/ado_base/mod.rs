@@ -77,6 +77,8 @@ pub enum AndromedaQuery {
     BlockHeightUponCreation {},
     #[returns(self::version::VersionResponse)]
     Version {},
+    #[returns(self::version::ADOBaseVersionResponse)]
+    ADOBaseVersion {},
     #[returns(self::app_contract::AppContractResponse)]
     AppContract {},
     #[cfg(feature = "modules")]

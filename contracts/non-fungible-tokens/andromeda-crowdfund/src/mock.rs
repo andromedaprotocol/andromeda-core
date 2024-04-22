@@ -198,3 +198,11 @@ pub fn mock_crowdfund_quick_mint_msg(amount: u32, publisher: String) -> ExecuteM
 pub fn mock_purchase_msg(number_of_tokens: Option<u32>) -> ExecuteMsg {
     ExecuteMsg::Purchase { number_of_tokens }
 }
+
+pub fn mock_query_ado_base_version() -> QueryMsg {
+    QueryMsg::ADOBaseVersion {}
+}
+
+pub fn mock_query_ado_version() -> QueryMsg {
+    QueryMsg::Version {}
+}
