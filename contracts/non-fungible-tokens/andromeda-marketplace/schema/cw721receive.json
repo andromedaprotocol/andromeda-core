@@ -13,7 +13,8 @@
           "type": "object",
           "required": [
             "coin_denom",
-            "price"
+            "price",
+            "uses_cw20"
           ],
           "properties": {
             "coin_denom": {
@@ -51,6 +52,9 @@
                   "type": "null"
                 }
               ]
+            },
+            "uses_cw20": {
+              "type": "boolean"
             }
           },
           "additionalProperties": false

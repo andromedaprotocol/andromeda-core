@@ -6,3 +6,5 @@ target/
 artifacts*
 .vscode*
 ci-scripts/localrelayer/template/
+**/.idea/
+.idea/

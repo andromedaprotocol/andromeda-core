@@ -2,7 +2,7 @@
 name = "andromeda-auction"
 version = "1.0.0"
 edition = "2021"
-rust-version = "1.65.0"
+rust-version = "1.75.0"
 
 [lib]
 crate-type = ["cdylib", "rlib"]

@@ -1,5 +1,14 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Boolean",
-  "type": "boolean"
+  "title": "IsArchivedResponse",
+  "type": "object",
+  "required": [
+    "is_archived"
+  ],
+  "properties": {
+    "is_archived": {
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": false
 }

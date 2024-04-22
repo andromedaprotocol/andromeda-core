@@ -3,10 +3,7 @@
   "title": "Module",
   "description": "A struct describing a token module, provided with the instantiation message this struct is used to record the info about the module and how/if it should be instantiated",
   "type": "object",
-  "required": [
-    "address",
-    "is_mutable"
-  ],
+  "required": ["address", "is_mutable"],
   "properties": {
     "address": {
       "$ref": "#/definitions/AndrAddr"
@@ -15,10 +12,7 @@
       "type": "boolean"
     },
     "name": {
-      "type": [
-        "string",
-        "null"
-      ]
+      "type": ["string", "null"]
     }
   },
   "additionalProperties": false,

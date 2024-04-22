@@ -25,8 +25,12 @@ pub enum QueryMsg {
     /// Query if address is included
     #[returns(IncludesAddressResponse)]
     IncludesAddress { address: String },
-    #[returns(bool)]
+    #[returns(IsInclusiveResponse)]
     IsInclusive {},
+}
+#[cw_serde]
+pub struct IsInclusiveResponse {
+    pub is_inclusive_response: bool,
 }
 
 #[cw_serde]

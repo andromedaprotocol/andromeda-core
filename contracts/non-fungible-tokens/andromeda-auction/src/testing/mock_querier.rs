@@ -16,7 +16,7 @@ use cosmwasm_std::{
 use cw721::{Cw721QueryMsg, OwnerOfResponse, TokensResponse};
 
 pub use andromeda_std::testing::mock_querier::{
-    MOCK_ADDRESS_LIST_CONTRACT, MOCK_APP_CONTRACT, MOCK_KERNEL_CONTRACT, MOCK_RATES_CONTRACT,
+    MOCK_ADDRESS_LIST_CONTRACT, MOCK_KERNEL_CONTRACT, MOCK_RATES_CONTRACT,
 };
 
 pub const MOCK_TOKEN_CONTRACT: &str = "token_contract";

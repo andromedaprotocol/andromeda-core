@@ -20,7 +20,7 @@ pub(crate) fn update_allocated_index(
     init_timestamp: MillisecondsExpiration,
 ) -> Result<(), ContractError> {
     // If the reward distribution period is over
-    if state.last_distributed == config.till_timestamp.get_time(block_info) {
+    if state.last_distributed == config.till_timestamp.get_time(block_info) || !reward_token.is_active {
         return Ok(());
     }
 

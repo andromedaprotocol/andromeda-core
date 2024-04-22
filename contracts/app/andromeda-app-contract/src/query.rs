@@ -1,7 +1,7 @@
 use crate::state::{
     load_component_addresses_with_name, load_component_descriptors, ADO_ADDRESSES, APP_NAME,
 };
-use andromeda_app::app::{AppComponent, ComponentAddress, ConfigResponse};
+use andromeda_app::app::{AppComponent, ComponentAddress, ComponentExistsResponse, ConfigResponse};
 use andromeda_std::ado_contract::ADOContract;
 
 use andromeda_std::error::ContractError;
@@ -18,8 +18,10 @@ pub fn component_descriptors(deps: Deps) -> Result<Vec<AppComponent>, ContractEr
     Ok(value)
 }
 
-pub fn component_exists(deps: Deps, name: String) -> bool {
-    ADO_ADDRESSES.has(deps.storage, &name)
+pub fn component_exists(deps: Deps, name: String) -> ComponentExistsResponse {
+    ComponentExistsResponse {
+        component_exists: ADO_ADDRESSES.has(deps.storage, &name),
+    }
 }
 
 pub fn component_addresses_with_name(deps: Deps) -> Result<Vec<ComponentAddress>, ContractError> {

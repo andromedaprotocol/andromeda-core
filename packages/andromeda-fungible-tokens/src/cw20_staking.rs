@@ -27,6 +27,16 @@ pub enum ExecuteMsg {
     AddRewardToken {
         reward_token: RewardTokenUnchecked,
     },
+    /// Remove `reward_token`. Owner only.
+    RemoveRewardToken {
+        reward_token: String,
+    },
+    /// Replace `reward_token` as another reward token. Owner only.
+    ReplaceRewardToken {
+        origin_reward_token: String,
+        reward_token: RewardTokenUnchecked,
+    },
+
     /// Unstakes the specified amount of assets, or all if not specified. The user's pending
     /// rewards and indexes are updated for each additional reward token.
     UnstakeTokens {
@@ -156,6 +166,7 @@ impl RewardTokenUnchecked {
             asset_info: checked_asset_info,
             reward_type,
             index: Decimal256::zero(),
+            is_active: true,
         })
     }
 }
@@ -178,6 +189,7 @@ pub struct RewardToken {
     pub asset_info: AssetInfo,
     pub index: Decimal256,
     pub reward_type: RewardType,
+    pub is_active: bool,
 }
 
 impl fmt::Display for RewardToken {

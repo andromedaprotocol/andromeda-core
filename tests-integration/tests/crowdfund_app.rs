@@ -1,11 +1,13 @@
 use andromeda_app::app::{AppComponent, ComponentType};
 use andromeda_app_contract::mock::{mock_andromeda_app, MockAppContract};
 use andromeda_crowdfund::mock::{
-    mock_andromeda_crowdfund, mock_crowdfund_instantiate_msg, MockCrowdfund,
+    mock_andromeda_crowdfund, mock_crowdfund_instantiate_msg, mock_query_ado_base_version,
+    MockCrowdfund,
 };
 use andromeda_cw721::mock::{mock_andromeda_cw721, mock_cw721_instantiate_msg, MockCW721};
 use andromeda_finance::splitter::AddressPercent;
 use andromeda_std::{
+    ado_base::version::ADOBaseVersionResponse,
     amp::{AndrAddr, Recipient},
     common::{expiration::Expiry, Milliseconds},
 };
@@ -234,4 +236,14 @@ fn test_crowdfund_app() {
         .query_balance(vault_two_recipient_addr, "uandr")
         .unwrap();
     assert_eq!(balance_two.amount, Uint128::from(148u128));
+
+    let ado_base_version: ADOBaseVersionResponse = router
+        .wrap()
+        .query_wasm_smart(
+            crowdfund_contract.addr().clone(),
+            &mock_query_ado_base_version(),
+        )
+        .unwrap();
+
+    assert_eq!(ado_base_version.version, "1.0.0".to_string())
 }

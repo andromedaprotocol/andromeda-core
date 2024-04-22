@@ -85,6 +85,7 @@ fn test_marketplace_app() {
 
     let address_list_init_msg =
         mock_address_list_instantiate_msg(true, andr.kernel.addr().to_string(), None);
+    mock_address_list_instantiate_msg(true, andr.kernel.addr().to_string(), None);
     let address_list_component = AppComponent::new(
         "address-list",
         "address-list",
@@ -488,7 +489,6 @@ fn test_marketplace_app_cw20() {
             &[],
         )
         .unwrap();
-
     let token_id = "0";
 
     // Whitelist

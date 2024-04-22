@@ -89,7 +89,7 @@
       ],
       "properties": {
         "lock": {
-          "description": "Whether or not the contract is currently locked. This restricts updating any config related fields.",
+          "description": "The lock's expiration time",
           "allOf": [
             {
               "$ref": "#/definitions/Milliseconds"
