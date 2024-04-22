@@ -778,7 +778,6 @@ fn execute_start_auction_zero_duration() {
         start_time: Some(Milliseconds(100)),
         end_time: Milliseconds::zero(),
         coin_denom: Asset::NativeToken("uusd".to_string()),
-
         whitelist: None,
         min_bid: None,
         recipient: None,
@@ -839,7 +838,6 @@ fn execute_update_auction_zero_start() {
         start_time: Some(Milliseconds::zero()),
         end_time: Milliseconds(1),
         coin_denom: Asset::NativeToken("uusd".to_string()),
-
         whitelist: None,
         min_bid: None,
         recipient: None,
@@ -872,7 +870,6 @@ fn execute_update_auction_zero_duration() {
         start_time: Some(Milliseconds(100000)),
         end_time: Milliseconds::zero(),
         coin_denom: Asset::NativeToken("uusd".to_string()),
-
         whitelist: None,
         min_bid: None,
         recipient: None,
@@ -899,7 +896,6 @@ fn execute_update_auction_unauthorized() {
         start_time: Some(Milliseconds(100000)),
         end_time: Milliseconds(100),
         coin_denom: Asset::NativeToken("uusd".to_string()),
-
         whitelist: Some(vec![Addr::unchecked("user")]),
         min_bid: None,
         recipient: None,
@@ -924,7 +920,6 @@ fn execute_update_auction_auction_started() {
         start_time: Some(Milliseconds(100000)),
         end_time: Milliseconds(100),
         coin_denom: Asset::NativeToken("uusd".to_string()),
-
         whitelist: Some(vec![Addr::unchecked("user")]),
         min_bid: None,
         recipient: None,

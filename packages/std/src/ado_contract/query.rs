@@ -1,3 +1,4 @@
+use crate::ado_base::version::ADOBaseVersionResponse;
 use crate::ado_contract::state::ADOContract;
 use crate::{
     ado_base::{
@@ -39,6 +40,7 @@ impl<'a> ADOContract<'a> {
                     encode_binary(&self.query_kernel_address(deps)?)
                 }
                 AndromedaQuery::Version {} => encode_binary(&self.query_version(deps)?),
+                AndromedaQuery::ADOBaseVersion {} => encode_binary(&self.query_ado_base_version()?),
                 AndromedaQuery::OwnershipRequest {} => {
                     encode_binary(&self.ownership_request(deps.storage)?)
                 }
@@ -106,6 +108,14 @@ impl<'a> ADOContract<'a> {
         let contract_version = get_contract_version(deps.storage)?;
         Ok(VersionResponse {
             version: contract_version.version,
+        })
+    }
+
+    #[inline]
+    pub fn query_ado_base_version(&self) -> Result<ADOBaseVersionResponse, ContractError> {
+        let ado_base_version: &str = env!("CARGO_PKG_VERSION");
+        Ok(ADOBaseVersionResponse {
+            version: ado_base_version.to_string(),
         })
     }
 }

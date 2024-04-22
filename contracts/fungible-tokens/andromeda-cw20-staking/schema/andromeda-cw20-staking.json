@@ -234,6 +234,54 @@
         "additionalProperties": false
       },
       {
+        "description": "Remove `reward_token`. Owner only.",
+        "type": "object",
+        "required": [
+          "remove_reward_token"
+        ],
+        "properties": {
+          "remove_reward_token": {
+            "type": "object",
+            "required": [
+              "reward_token"
+            ],
+            "properties": {
+              "reward_token": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Replace `reward_token` as another reward token. Owner only.",
+        "type": "object",
+        "required": [
+          "replace_reward_token"
+        ],
+        "properties": {
+          "replace_reward_token": {
+            "type": "object",
+            "required": [
+              "origin_reward_token",
+              "reward_token"
+            ],
+            "properties": {
+              "origin_reward_token": {
+                "type": "string"
+              },
+              "reward_token": {
+                "$ref": "#/definitions/RewardTokenUnchecked"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
         "description": "Unstakes the specified amount of assets, or all if not specified. The user's pending rewards and indexes are updated for each additional reward token.",
         "type": "object",
         "required": [
@@ -1241,6 +1289,19 @@
       {
         "type": "object",
         "required": [
+          "a_d_o_base_version"
+        ],
+        "properties": {
+          "a_d_o_base_version": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
           "permissions"
         ],
         "properties": {
@@ -1331,6 +1392,20 @@
   "migrate": null,
   "sudo": null,
   "responses": {
+    "a_d_o_base_version": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ADOBaseVersionResponse",
+      "type": "object",
+      "required": [
+        "version"
+      ],
+      "properties": {
+        "version": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
     "app_contract": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "AppContractResponse",

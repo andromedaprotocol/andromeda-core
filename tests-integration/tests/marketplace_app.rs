@@ -1,7 +1,8 @@
 #![cfg(not(target_arch = "wasm32"))]
 
 use andromeda_address_list::mock::{
-    mock_address_list_instantiate_msg, mock_andromeda_address_list, MockAddressList,
+    mock_add_address_msg, mock_address_list_instantiate_msg, mock_andromeda_address_list,
+    MockAddressList,
 };
 use andromeda_app::app::AppComponent;
 use andromeda_app_contract::mock::{mock_andromeda_app, MockAppContract};

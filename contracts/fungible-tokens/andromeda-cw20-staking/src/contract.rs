@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{ops::Mul, str::FromStr};
 
 use andromeda_std::{
     ado_base::{
@@ -154,6 +154,13 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
     let res = match msg {
         ExecuteMsg::Receive(msg) => receive_cw20(ctx, msg),
         ExecuteMsg::AddRewardToken { reward_token } => execute_add_reward_token(ctx, reward_token),
+        ExecuteMsg::RemoveRewardToken { reward_token } => {
+            execute_remove_reward_token(ctx, reward_token)
+        }
+        ExecuteMsg::ReplaceRewardToken {
+            origin_reward_token,
+            reward_token,
+        } => execute_replace_reward_token(ctx, origin_reward_token, reward_token),
         ExecuteMsg::UpdateGlobalIndexes { asset_infos } => match asset_infos {
             None => update_global_indexes(
                 ctx.deps.storage,
@@ -238,8 +245,10 @@ fn execute_add_reward_token(
     );
     let mut reward_token = reward_token.check(&env.block, deps.api)?;
     let reward_token_string = reward_token.to_string();
+
+    let reward_token_option = REWARD_TOKENS.may_load(deps.storage, &reward_token_string)?;
     ensure!(
-        !REWARD_TOKENS.has(deps.storage, &reward_token_string),
+        reward_token_option.map_or(true, |reward_token| !reward_token.is_active),
         ContractError::InvalidAsset {
             asset: reward_token_string,
         }
@@ -273,6 +282,143 @@ fn execute_add_reward_token(
         .add_attribute("added_token", reward_token_string))
 }
 
+fn execute_remove_reward_token(
+    ctx: ExecuteContext,
+    reward_token_string: String,
+) -> Result<Response, ContractError> {
+    let ExecuteContext {
+        deps, info, env, ..
+    } = ctx;
+    let contract = ADOContract::default();
+    ensure!(
+        contract.is_owner_or_operator(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {}
+    );
+
+    // Set reward token as inactive
+    match REWARD_TOKENS.load(deps.storage, &reward_token_string) {
+        Ok(mut reward_token) if reward_token.is_active => {
+            // Need to save current status before setting reward token as inactive
+            // This is important in case the reward token is allocated token
+            let state = STATE.load(deps.storage)?;
+            update_global_index(
+                &deps.querier,
+                Milliseconds::from_seconds(env.block.time.seconds()),
+                env.contract.address,
+                &state,
+                &mut reward_token,
+            )?;
+
+            reward_token.is_active = false;
+            REWARD_TOKENS.save(deps.storage, &reward_token_string, &reward_token)?;
+        }
+        _ => {
+            return Err(ContractError::InvalidAsset {
+                asset: reward_token_string,
+            })
+        }
+    }
+
+    let mut config = CONFIG.load(deps.storage)?;
+    config.number_of_reward_tokens -= 1;
+    CONFIG.save(deps.storage, &config)?;
+
+    Ok(Response::new()
+        .add_attribute("action", "remove_reward_token")
+        .add_attribute(
+            "number_of_reward_tokens",
+            config.number_of_reward_tokens.to_string(),
+        )
+        .add_attribute("removed_token", reward_token_string))
+}
+
+fn execute_replace_reward_token(
+    ctx: ExecuteContext,
+    origin_reward_token_string: String,
+    reward_token: RewardTokenUnchecked,
+) -> Result<Response, ContractError> {
+    let ExecuteContext {
+        deps, info, env, ..
+    } = ctx;
+    let contract = ADOContract::default();
+
+    // Only owner can replace reward token
+    ensure!(
+        contract.is_owner_or_operator(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {}
+    );
+    let config = CONFIG.load(deps.storage)?;
+
+    // Validate token to be replaced
+    let mut reward_token = reward_token.check(&env.block, deps.api)?;
+    let reward_token_string = reward_token.to_string();
+    ensure!(
+        !REWARD_TOKENS.has(deps.storage, &reward_token_string),
+        ContractError::InvalidAsset {
+            asset: reward_token_string,
+        }
+    );
+
+    ensure!(
+        reward_token_string != origin_reward_token_string,
+        ContractError::InvalidAsset {
+            asset: reward_token_string,
+        }
+    );
+
+    let staking_token_address = config.staking_token.get_raw_address(&deps.as_ref())?;
+    let staking_token = AssetInfo::cw20(deps.api.addr_validate(staking_token_address.as_str())?);
+    ensure!(
+        staking_token != reward_token.asset_info,
+        ContractError::InvalidAsset {
+            asset: reward_token.to_string(),
+        }
+    );
+
+    // Set original token as inactive
+    match REWARD_TOKENS.load(deps.storage, &origin_reward_token_string) {
+        Ok(mut origin_reward_token) if origin_reward_token.is_active => {
+            // Need to save current status before setting reward token as inactive
+            // This is important in case the reward token is allocated token
+            let state = STATE.load(deps.storage)?;
+            update_global_index(
+                &deps.querier,
+                Milliseconds::from_seconds(env.block.time.seconds()),
+                env.contract.address.clone(),
+                &state,
+                &mut origin_reward_token,
+            )?;
+
+            origin_reward_token.is_active = false;
+            REWARD_TOKENS.save(
+                deps.storage,
+                &origin_reward_token_string,
+                &origin_reward_token,
+            )?;
+        }
+        _ => {
+            return Err(ContractError::InvalidAsset {
+                asset: origin_reward_token_string,
+            })
+        }
+    }
+
+    let state = STATE.load(deps.storage)?;
+    update_global_index(
+        &deps.querier,
+        Milliseconds::from_seconds(env.block.time.seconds()),
+        env.contract.address,
+        &state,
+        &mut reward_token,
+    )?;
+
+    REWARD_TOKENS.save(deps.storage, &reward_token_string, &reward_token)?;
+
+    Ok(Response::new()
+        .add_attribute("action", "replace_reward_token")
+        .add_attribute("origin_reward_token", origin_reward_token_string)
+        .add_attribute("new_reward_token", reward_token.to_string()))
+}
 /// The foundation for this approach is inspired by Anchor's staking implementation:
 /// https://github.com/Anchor-Protocol/anchor-token-contracts/blob/15c9d6f9753bd1948831f4e1b5d2389d3cf72c93/contracts/gov/src/staking.rs#L15
 fn execute_stake_tokens(
@@ -410,7 +556,7 @@ fn execute_claim_rewards(ctx: ExecuteContext) -> Result<Response, ContractError>
             deps.storage,
             &deps.querier,
             Milliseconds::from_seconds(env.block.time.seconds()),
-            env.contract.address,
+            env.contract.address.clone(),
             None,
         )?;
         update_staker_rewards(deps.storage, sender, &staker)?;
@@ -456,6 +602,20 @@ fn execute_claim_rewards(ctx: ExecuteContext) -> Result<Response, ContractError>
                     amount: rewards,
                 };
                 msgs.push(asset.transfer_msg(sender)?);
+            }
+            if !token.is_active {
+                let reward_balance = token
+                    .asset_info
+                    .query_balance(&deps.querier, &env.contract.address)?;
+                let reward_balance = Decimal256::from_str(&format!("{0}", reward_balance))?;
+                let rewards_ceil = staker_reward_info
+                    .index
+                    .mul(Decimal256::from_str(&format!("{0}", staker.share))?)
+                    .ceil();
+                // if reward balance token is equal to the rewards, inactive reward token can be removed as it is all distributed
+                if reward_balance == rewards_ceil {
+                    REWARD_TOKENS.remove(deps.storage, &token_string);
+                }
             }
         }
 
@@ -570,7 +730,7 @@ fn update_nonallocated_index(
     curr_timestamp: Milliseconds,
     init_timestamp: Milliseconds,
 ) -> Result<(), ContractError> {
-    if curr_timestamp < init_timestamp {
+    if curr_timestamp < init_timestamp || !reward_token.is_active {
         return Ok(());
     }
     let reward_balance = reward_token
