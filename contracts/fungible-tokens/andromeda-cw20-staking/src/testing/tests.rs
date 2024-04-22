@@ -1998,7 +1998,7 @@ fn test_remove_reward_token() {
         Some(vec![RewardTokenUnchecked {
             asset_info: AssetInfoUnchecked::native("uusd"),
             allocation_config: None,
-            init_timestamp: current_timestamp,
+            init_timestamp: Expiry::AtTime(current_timestamp),
         }]),
     )
     .unwrap();
@@ -2034,7 +2034,7 @@ fn test_remove_reward_token_unauthorized() {
         Some(vec![RewardTokenUnchecked {
             asset_info: AssetInfoUnchecked::native("uusd"),
             allocation_config: None,
-            init_timestamp: current_timestamp,
+            init_timestamp: Expiry::AtTime(current_timestamp),
         }]),
     )
     .unwrap();
@@ -2058,7 +2058,7 @@ fn test_remove_reward_token_invalid_asset() {
         Some(vec![RewardTokenUnchecked {
             asset_info: AssetInfoUnchecked::cw20(MOCK_INCENTIVE_TOKEN),
             allocation_config: None,
-            init_timestamp: current_timestamp,
+            init_timestamp: Expiry::AtTime(current_timestamp),
         }]),
     )
     .unwrap();
@@ -2089,7 +2089,7 @@ fn test_claim_rewards_after_remove() {
         Some(vec![RewardTokenUnchecked {
             asset_info: AssetInfoUnchecked::native("uusd"),
             allocation_config: None,
-            init_timestamp: current_timestamp,
+            init_timestamp: Expiry::AtTime(current_timestamp),
         }]),
     )
     .unwrap();
@@ -2286,9 +2286,9 @@ fn test_claim_rewards_allocated_after_remove() {
         deps.as_mut(),
         Some(vec![RewardTokenUnchecked {
             asset_info: AssetInfoUnchecked::cw20(MOCK_ALLOCATED_TOKEN),
-            init_timestamp: current_timestamp,
+            init_timestamp: Expiry::AtTime(current_timestamp),
             allocation_config: Some(AllocationConfig {
-                till_timestamp: current_timestamp.plus_seconds(100),
+                till_timestamp: Expiry::AtTime(current_timestamp.plus_seconds(100)),
                 cycle_rewards: Uint128::new(100),
                 cycle_duration: Milliseconds::from_seconds(100),
                 reward_increase: None,
@@ -2385,7 +2385,7 @@ fn test_claim_rewards_allocated_after_remove() {
             reward_type: RewardType::Allocated {
                 init_timestamp: current_timestamp,
                 allocation_config: AllocationConfig {
-                    till_timestamp: current_timestamp.plus_seconds(100),
+                    till_timestamp: Expiry::AtTime(current_timestamp.plus_seconds(100)),
                     cycle_rewards: Uint128::new(100),
                     cycle_duration: Milliseconds::from_seconds(100),
                     reward_increase: None,
@@ -2413,7 +2413,7 @@ fn test_replace_reward_token() {
         Some(vec![RewardTokenUnchecked {
             asset_info: AssetInfoUnchecked::native("uusd"),
             allocation_config: None,
-            init_timestamp: current_timestamp,
+            init_timestamp: Expiry::AtTime(current_timestamp),
         }]),
     )
     .unwrap();
@@ -2423,7 +2423,7 @@ fn test_replace_reward_token() {
         reward_token: RewardTokenUnchecked {
             asset_info: AssetInfoUnchecked::cw20(MOCK_INCENTIVE_TOKEN),
             allocation_config: None,
-            init_timestamp: current_timestamp,
+            init_timestamp: Expiry::AtTime(current_timestamp),
         },
     };
     let info = mock_info("owner", &[]);
@@ -2458,7 +2458,7 @@ fn test_replace_reward_token_unauthorized() {
         Some(vec![RewardTokenUnchecked {
             asset_info: AssetInfoUnchecked::native("uusd"),
             allocation_config: None,
-            init_timestamp: current_timestamp,
+            init_timestamp: Expiry::AtTime(current_timestamp),
         }]),
     )
     .unwrap();
@@ -2468,7 +2468,7 @@ fn test_replace_reward_token_unauthorized() {
         reward_token: RewardTokenUnchecked {
             asset_info: AssetInfoUnchecked::cw20(MOCK_INCENTIVE_TOKEN),
             allocation_config: None,
-            init_timestamp: current_timestamp,
+            init_timestamp: Expiry::AtTime(current_timestamp),
         },
     };
     let info = mock_info("owner1", &[]);
@@ -2487,7 +2487,7 @@ fn test_replace_reward_token_invalid_asset() {
         Some(vec![RewardTokenUnchecked {
             asset_info: AssetInfoUnchecked::native("uusd"),
             allocation_config: None,
-            init_timestamp: current_timestamp,
+            init_timestamp: Expiry::AtTime(current_timestamp),
         }]),
     )
     .unwrap();
@@ -2497,7 +2497,7 @@ fn test_replace_reward_token_invalid_asset() {
         reward_token: RewardTokenUnchecked {
             asset_info: AssetInfoUnchecked::native("uusd"),
             allocation_config: None,
-            init_timestamp: current_timestamp,
+            init_timestamp: Expiry::AtTime(current_timestamp),
         },
     };
     let info = mock_info("owner", &[]);
@@ -2516,7 +2516,7 @@ fn test_replace_reward_token_invalid_asset() {
         reward_token: RewardTokenUnchecked {
             asset_info: AssetInfoUnchecked::cw20(MOCK_INCENTIVE_TOKEN),
             allocation_config: None,
-            init_timestamp: current_timestamp,
+            init_timestamp: Expiry::AtTime(current_timestamp),
         },
     };
     let info = mock_info("owner", &[]);
