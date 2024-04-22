@@ -9,7 +9,7 @@ use andromeda_std::ado_base::permissioning::{Permission, PermissioningMessage};
 use andromeda_std::amp::messages::AMPPkt;
 use andromeda_std::amp::Recipient;
 use andromeda_std::common::denom::Asset;
-use andromeda_std::common::Milliseconds;
+use andromeda_std::common::{Milliseconds, MillisecondsExpiration};
 use andromeda_std::{ado_base::modules::Module, amp::AndrAddr};
 use andromeda_testing::mock::MockApp;
 use andromeda_testing::{
@@ -94,7 +94,7 @@ impl MockAuction {
         app: &mut MockApp,
         sender: Addr,
         token_address: impl Into<String>,
-        expiration: Option<Expiration>,
+        expiration: Option<MillisecondsExpiration>,
     ) -> ExecuteResult {
         let msg = mock_authorize_token_address(token_address, expiration);
         self.execute(app, &msg, sender, &[])
