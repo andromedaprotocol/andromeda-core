@@ -1,5 +1,5 @@
 use andromeda_std::amp::addresses::AndrAddr;
-use andromeda_std::common::expiration::MILLISECONDS_TO_NANOSECONDS_RATIO;
+use andromeda_std::common::expiration::{Expiry, MILLISECONDS_TO_NANOSECONDS_RATIO};
 use andromeda_std::common::{Milliseconds, MillisecondsDuration, MillisecondsExpiration};
 use andromeda_std::error::ContractError;
 use andromeda_std::{andr_exec, andr_instantiate, andr_instantiate_modules, andr_query};
@@ -90,7 +90,7 @@ pub struct State {
 #[cw_serde]
 pub struct RewardTokenUnchecked {
     pub asset_info: AssetInfoUnchecked,
-    pub init_timestamp: MillisecondsExpiration,
+    pub init_timestamp: Expiry,
     pub allocation_config: Option<AllocationConfig>,
 }
 
@@ -106,17 +106,17 @@ impl RewardTokenUnchecked {
         let reward_type = match self.allocation_config {
             None => RewardType::NonAllocated {
                 previous_reward_balance: Uint128::zero(),
-                init_timestamp: self.init_timestamp,
+                init_timestamp: self.init_timestamp.get_time(block_info),
             },
             Some(allocation_config) => {
-                let init_timestamp = self.init_timestamp;
-                let till_timestamp = allocation_config.till_timestamp;
+                let init_timestamp = self.init_timestamp.clone();
+                let till_timestamp = allocation_config.clone().till_timestamp;
                 let cycle_duration = allocation_config.cycle_duration;
                 let cycle_rewards = allocation_config.cycle_rewards;
                 let reward_increase = allocation_config.reward_increase;
 
                 ensure!(
-                    init_timestamp.seconds() >= block_info.time.seconds(),
+                    init_timestamp.get_time(block_info).seconds() >= block_info.time.seconds(),
                     ContractError::StartTimeInThePast {
                         current_block: block_info.height,
                         current_time: block_info.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO,
@@ -124,7 +124,7 @@ impl RewardTokenUnchecked {
                 );
 
                 ensure!(
-                    init_timestamp < till_timestamp,
+                    init_timestamp.get_time(block_info) < till_timestamp.get_time(block_info),
                     ContractError::StartTimeAfterEndTime {}
                 );
 
@@ -145,9 +145,9 @@ impl RewardTokenUnchecked {
                     allocation_state: AllocationState {
                         current_cycle: 0,
                         current_cycle_rewards: cycle_rewards,
-                        last_distributed: init_timestamp,
+                        last_distributed: init_timestamp.get_time(block_info),
                     },
-                    init_timestamp: self.init_timestamp,
+                    init_timestamp: self.init_timestamp.get_time(block_info),
                 }
             }
         };
@@ -197,7 +197,7 @@ pub struct AllocationInfo {
 #[cw_serde]
 pub struct AllocationConfig {
     /// Timestamp till which Rewards will be accrued. No staking rewards are accrued beyond this timestamp
-    pub till_timestamp: MillisecondsExpiration,
+    pub till_timestamp: Expiry,
     /// Rewards distributed during the 1st cycle.
     pub cycle_rewards: Uint128,
     /// Cycle duration in timestamps
