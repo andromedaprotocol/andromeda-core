@@ -3,10 +3,11 @@ use cosmwasm_std::{Addr, Coin, Delegation, Empty};
 
 use crate::contract::{execute, instantiate, query, reply};
 use andromeda_testing::{
+    mock::MockApp,
     mock_ado,
     mock_contract::{ExecuteResult, MockADO, MockContract},
 };
-use cw_multi_test::{App, Contract, ContractWrapper};
+use cw_multi_test::{Contract, ContractWrapper};
 
 use andromeda_std::{amp::AndrAddr, error::ContractError};
 
@@ -16,7 +17,7 @@ mock_ado!(MockValidatorStaking, ExecuteMsg, QueryMsg);
 impl MockValidatorStaking {
     pub fn execute_stake(
         &self,
-        app: &mut App,
+        app: &mut MockApp,
         sender: Addr,
         validator: Option<Addr>,
         funds: Vec<Coin>,
@@ -27,7 +28,7 @@ impl MockValidatorStaking {
 
     pub fn execute_unstake(
         &self,
-        app: &mut App,
+        app: &mut MockApp,
         sender: Addr,
         validator: Option<Addr>,
     ) -> ExecuteResult {
@@ -37,7 +38,7 @@ impl MockValidatorStaking {
 
     pub fn execute_claim_reward(
         &self,
-        app: &mut App,
+        app: &mut MockApp,
         sender: Addr,
         validator: Option<Addr>,
         recipient: Option<AndrAddr>,
@@ -46,14 +47,14 @@ impl MockValidatorStaking {
         self.execute(app, &msg, sender, &[])
     }
 
-    pub fn execute_withdraw_fund(&self, app: &mut App, sender: Addr) -> ExecuteResult {
+    pub fn execute_withdraw_fund(&self, app: &mut MockApp, sender: Addr) -> ExecuteResult {
         let msg = mock_execute_withdraw_fund();
         self.execute(app, &msg, sender, &[])
     }
 
     pub fn query_staked_tokens(
         &self,
-        app: &App,
+        app: &MockApp,
         validator: Option<Addr>,
     ) -> Result<Delegation, ContractError> {
         let msg = mock_get_staked_tokens(validator);
@@ -61,7 +62,10 @@ impl MockValidatorStaking {
             .wrap()
             .query_wasm_smart::<Delegation>(self.addr().clone(), &msg)?)
     }
-    pub fn query_unstaked_tokens(&self, app: &App) -> Result<Vec<UnstakingTokens>, ContractError> {
+    pub fn query_unstaked_tokens(
+        &self,
+        app: &MockApp,
+    ) -> Result<Vec<UnstakingTokens>, ContractError> {
         let msg = mock_get_unstaked_tokens();
         Ok(app
             .wrap()

@@ -1,9 +1,10 @@
 use crate::cw721::TokenExtension;
 use andromeda_std::amp::{addresses::AndrAddr, recipient::Recipient};
+use andromeda_std::common::MillisecondsExpiration;
 use andromeda_std::{andr_exec, andr_instantiate, andr_instantiate_modules, andr_query};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Coin, Uint128};
-use cw_utils::Expiration;
+use cw721::Expiration;
 
 #[andr_instantiate]
 #[andr_instantiate_modules]
@@ -20,8 +21,10 @@ pub enum ExecuteMsg {
     Mint(Vec<CrowdfundMintMsg>),
     /// Starts the sale if one is not already ongoing.
     StartSale {
+        /// When the sale start. Defaults to current time.
+        start_time: Option<MillisecondsExpiration>,
         /// When the sale ends.
-        expiration: Expiration,
+        end_time: MillisecondsExpiration,
         /// The price per token.
         price: Coin,
         /// The minimum amount of tokens sold to go through with the sale.
@@ -31,6 +34,9 @@ pub enum ExecuteMsg {
         /// The recipient of the funds if the sale met the minimum sold.
         recipient: Recipient,
     },
+    /// Updates the token address to a new one.
+    /// Only accessible by owner
+    UpdateTokenContract { address: AndrAddr },
     /// Puchases tokens in an ongoing sale.
     Purchase { number_of_tokens: Option<u32> },
     /// Purchases the token with the given id.
@@ -75,7 +81,7 @@ pub struct Config {
 #[cw_serde]
 pub struct State {
     /// The expiration denoting when the sale ends.
-    pub expiration: Expiration,
+    pub end_time: Expiration,
     /// The price of each token.
     pub price: Coin,
     /// The minimum number of tokens sold for the sale to go through.
@@ -106,7 +112,3 @@ pub struct CrowdfundMintMsg {
     /// Any custom extension used by this contract
     pub extension: TokenExtension,
 }
-
-#[cw_serde]
-#[serde(rename_all = "snake_case")]
-pub struct MigrateMsg {}

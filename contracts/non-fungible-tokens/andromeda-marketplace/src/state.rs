@@ -1,5 +1,5 @@
 use andromeda_non_fungible_tokens::marketplace::{SaleStateResponse, Status};
-use andromeda_std::error::ContractError;
+use andromeda_std::{amp::Recipient, error::ContractError};
 
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Order, Storage, SubMsg, Uint128};
@@ -20,6 +20,8 @@ pub struct TokenSaleState {
     pub status: Status,
     pub start_time: Expiration,
     pub end_time: Expiration,
+    pub uses_cw20: bool,
+    pub recipient: Option<Recipient>,
 }
 
 #[cw_serde]
@@ -59,6 +61,9 @@ impl From<TokenSaleState> for SaleStateResponse {
             sale_id: token_sale_state.sale_id,
             status: token_sale_state.status,
             price: token_sale_state.price,
+            start_time: token_sale_state.start_time,
+            end_time: token_sale_state.end_time,
+            recipient: token_sale_state.recipient,
         }
     }
 }

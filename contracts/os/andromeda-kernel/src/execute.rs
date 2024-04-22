@@ -1,35 +1,34 @@
 use andromeda_std::ado_contract::ADOContract;
 use andromeda_std::amp::addresses::AndrAddr;
-use andromeda_std::amp::messages::{AMPMsg, AMPPkt, IBCConfig};
+use andromeda_std::amp::messages::{AMPCtx, AMPMsg, AMPPkt, IBCConfig};
 use andromeda_std::amp::{ADO_DB_KEY, VFS_KEY};
 
 use andromeda_std::common::context::ExecuteContext;
+use andromeda_std::common::has_coins_merged;
+use andromeda_std::common::reply::ReplyId;
 use andromeda_std::error::ContractError;
 use andromeda_std::os::aos_querier::AOSQuerier;
 use andromeda_std::os::kernel::{ChannelInfo, IbcExecuteMsg, InternalMsg};
 
 use andromeda_std::os::vfs::vfs_resolve_symlink;
 use cosmwasm_std::{
-    attr, ensure, to_json_binary, Addr, BankMsg, Binary, CosmosMsg, DepsMut, Env, IbcMsg,
-    MessageInfo, Response, StdError, SubMsg, WasmMsg,
+    attr, ensure, to_json_binary, Addr, BankMsg, Binary, Coin, ContractInfoResponse, CosmosMsg,
+    DepsMut, Env, IbcMsg, MessageInfo, Response, StdError, SubMsg, WasmMsg,
 };
 
 use crate::ibc::{generate_transfer_message, PACKET_LIFETIME};
+use crate::query;
 use crate::state::{
-    IBCHooksPacketSendState, ADO_OWNER, CHAIN_TO_CHANNEL, CHANNEL_TO_CHAIN, IBC_FUND_RECOVERY,
-    KERNEL_ADDRESSES, OUTGOING_IBC_HOOKS_PACKETS,
+    IBCHooksPacketSendState, ADO_OWNER, CHAIN_TO_CHANNEL, CHANNEL_TO_CHAIN, CURR_CHAIN,
+    IBC_FUND_RECOVERY, KERNEL_ADDRESSES, OUTGOING_IBC_HOOKS_PACKETS,
 };
-use crate::{query, reply::ReplyId};
 
-pub fn send(execute_env: ExecuteContext, message: AMPMsg) -> Result<Response, ContractError> {
-    let res = MsgHandler::new(message).handle(
-        execute_env.deps,
-        execute_env.info,
-        execute_env.env,
-        execute_env.amp_ctx,
-        0,
-    )?;
-
+pub fn send(ctx: ExecuteContext, message: AMPMsg) -> Result<Response, ContractError> {
+    ensure!(
+        has_coins_merged(ctx.info.funds.as_slice(), message.funds.as_slice()),
+        ContractError::InsufficientFunds {}
+    );
+    let res = MsgHandler(message).handle(ctx.deps, ctx.info, ctx.env, ctx.amp_ctx, 0)?;
     Ok(res)
 }
 
@@ -39,9 +38,9 @@ pub fn amp_receive(
     env: Env,
     packet: AMPPkt,
 ) -> Result<Response, ContractError> {
+    // Only verified ADOs can access this function
     ensure!(
-        query::verify_address(deps.as_ref(), info.sender.to_string(),)?.verify_address
-            || packet.ctx.get_origin() == info.sender,
+        query::verify_address(deps.as_ref(), info.sender.to_string(),)?.verify_address,
         ContractError::Unauthorized {}
     );
     ensure!(
@@ -73,29 +72,39 @@ pub fn amp_receive(
         res.events.extend_from_slice(&msg_res.events);
     }
 
+    let message_funds = packet
+        .messages
+        .iter()
+        .flat_map(|m| m.funds.clone())
+        .collect::<Vec<Coin>>();
+    ensure!(
+        has_coins_merged(info.funds.as_slice(), message_funds.as_slice()),
+        ContractError::InsufficientFunds {}
+    );
+
     Ok(res.add_attribute("action", "handle_amp_packet"))
 }
 
 pub fn upsert_key_address(
-    execute_env: ExecuteContext,
+    execute_ctx: ExecuteContext,
     key: String,
     value: String,
 ) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
     ensure!(
-        contract.is_contract_owner(execute_env.deps.storage, execute_env.info.sender.as_str())?,
+        contract.is_contract_owner(execute_ctx.deps.storage, execute_ctx.info.sender.as_str())?,
         ContractError::Unauthorized {}
     );
 
     // Updates to new value
-    if KERNEL_ADDRESSES.has(execute_env.deps.storage, &key) {
-        KERNEL_ADDRESSES.remove(execute_env.deps.storage, &key)
+    if KERNEL_ADDRESSES.has(execute_ctx.deps.storage, &key) {
+        KERNEL_ADDRESSES.remove(execute_ctx.deps.storage, &key)
     }
 
     KERNEL_ADDRESSES.save(
-        execute_env.deps.storage,
+        execute_ctx.deps.storage,
         &key,
-        &execute_env.deps.api.addr_validate(&value)?,
+        &execute_ctx.deps.api.addr_validate(&value)?,
     )?;
 
     Ok(Response::default().add_attributes(vec![
@@ -106,7 +115,7 @@ pub fn upsert_key_address(
 }
 
 pub fn create(
-    execute_env: ExecuteContext,
+    execute_ctx: ExecuteContext,
     ado_type: String,
     msg: Binary,
     owner: Option<AndrAddr>,
@@ -117,50 +126,51 @@ pub fn create(
         chain.is_none() || owner.is_some(),
         ContractError::Unauthorized {}
     );
-    if let Some(chain) = chain {
-        let channel_info = if let Some(channel_info) =
-            CHAIN_TO_CHANNEL.may_load(execute_env.deps.storage, &chain)?
-        {
-            Ok::<ChannelInfo, ContractError>(channel_info)
-        } else {
-            return Err(ContractError::InvalidPacket {
-                error: Some(format!("Channel not found for chain {chain}")),
-            });
-        }?;
-        let kernel_msg = IbcExecuteMsg::CreateADO {
-            instantiation_msg: msg.clone(),
-            owner: owner.clone().unwrap(),
-            ado_type: ado_type.clone(),
-        };
-        let ibc_msg = IbcMsg::SendPacket {
-            channel_id: channel_info.direct_channel_id.clone().unwrap(),
-            data: to_json_binary(&kernel_msg)?,
-            timeout: execute_env
-                .env
-                .block
-                .time
-                .plus_seconds(PACKET_LIFETIME)
-                .into(),
-        };
-        Ok(Response::default()
-            .add_message(ibc_msg)
-            .add_attributes(vec![
-                attr("action", "execute_create"),
-                attr("ado_type", ado_type),
-                attr("owner", owner.unwrap().to_string()),
-                attr("chain", chain),
-                attr("receiving_kernel_address", channel_info.kernel_address),
-                attr("msg", msg.to_string()),
-            ]))
+    if let Some(_chain) = chain {
+        Err(ContractError::CrossChainComponentsCurrentlyDisabled {})
+        // let channel_info = if let Some(channel_info) =
+        //     CHAIN_TO_CHANNEL.may_load(execute_ctx.deps.storage, &chain)?
+        // {
+        //     Ok::<ChannelInfo, ContractError>(channel_info)
+        // } else {
+        //     return Err(ContractError::InvalidPacket {
+        //         error: Some(format!("Channel not found for chain {chain}")),
+        //     });
+        // }?;
+        // let kernel_msg = IbcExecuteMsg::CreateADO {
+        //     instantiation_msg: msg.clone(),
+        //     owner: owner.clone().unwrap(),
+        //     ado_type: ado_type.clone(),
+        // };
+        // let ibc_msg = IbcMsg::SendPacket {
+        //     channel_id: channel_info.direct_channel_id.clone().unwrap(),
+        //     data: to_json_binary(&kernel_msg)?,
+        //     timeout: execute_ctx
+        //         .env
+        //         .block
+        //         .time
+        //         .plus_seconds(PACKET_LIFETIME)
+        //         .into(),
+        // };
+        // Ok(Response::default()
+        //     .add_message(ibc_msg)
+        //     .add_attributes(vec![
+        //         attr("action", "execute_create"),
+        //         attr("ado_type", ado_type),
+        //         attr("owner", owner.unwrap().to_string()),
+        //         attr("chain", chain),
+        //         attr("receiving_kernel_address", channel_info.kernel_address),
+        //         attr("msg", msg.to_string()),
+        //     ]))
     } else {
-        let vfs_addr = KERNEL_ADDRESSES.load(execute_env.deps.storage, VFS_KEY)?;
-        let adodb_addr = KERNEL_ADDRESSES.load(execute_env.deps.storage, ADO_DB_KEY)?;
+        let vfs_addr = KERNEL_ADDRESSES.load(execute_ctx.deps.storage, VFS_KEY)?;
+        let adodb_addr = KERNEL_ADDRESSES.load(execute_ctx.deps.storage, ADO_DB_KEY)?;
 
-        let ado_owner = owner.unwrap_or(AndrAddr::from_string(execute_env.info.sender.to_string()));
+        let ado_owner = owner.unwrap_or(AndrAddr::from_string(execute_ctx.info.sender.to_string()));
         let owner_addr =
-            ado_owner.get_raw_address_from_vfs(&execute_env.deps.as_ref(), vfs_addr)?;
+            ado_owner.get_raw_address_from_vfs(&execute_ctx.deps.as_ref(), vfs_addr)?;
         let code_id =
-            AOSQuerier::code_id_getter(&execute_env.deps.querier, &adodb_addr, &ado_type)?;
+            AOSQuerier::code_id_getter(&execute_ctx.deps.querier, &adodb_addr, &ado_type)?;
         let wasm_msg = WasmMsg::Instantiate {
             admin: Some(owner_addr.to_string()),
             code_id,
@@ -170,13 +180,7 @@ pub fn create(
         };
         let sub_msg = SubMsg::reply_always(wasm_msg, ReplyId::CreateADO.repr());
 
-        // TODO: Is this check necessary?
-        // ensure!(
-        //     !ADO_OWNER.exists(execute_env.deps.storage),
-        //     ContractError::Unauthorized {}
-        // );
-
-        ADO_OWNER.save(execute_env.deps.storage, &owner_addr)?;
+        ADO_OWNER.save(execute_ctx.deps.storage, &owner_addr)?;
 
         Ok(Response::new()
             .add_submessage(sub_msg)
@@ -186,29 +190,29 @@ pub fn create(
     }
 }
 
-pub fn internal(env: ExecuteContext, msg: InternalMsg) -> Result<Response, ContractError> {
+pub fn internal(ctx: ExecuteContext, msg: InternalMsg) -> Result<Response, ContractError> {
     match msg {
         InternalMsg::RegisterUserCrossChain {
             username,
             address,
             chain,
-        } => register_user_cross_chain(env, chain, username, address),
+        } => register_user_cross_chain(ctx, chain, username, address),
     }
 }
 
 pub fn register_user_cross_chain(
-    execute_env: ExecuteContext,
+    execute_ctx: ExecuteContext,
     chain: String,
     username: String,
     address: String,
 ) -> Result<Response, ContractError> {
-    let vfs = KERNEL_ADDRESSES.load(execute_env.deps.storage, VFS_KEY)?;
+    let vfs = KERNEL_ADDRESSES.load(execute_ctx.deps.storage, VFS_KEY)?;
     ensure!(
-        execute_env.info.sender == vfs,
+        execute_ctx.info.sender == vfs,
         ContractError::Unauthorized {}
     );
     let channel_info =
-        if let Some(channel_info) = CHAIN_TO_CHANNEL.may_load(execute_env.deps.storage, &chain)? {
+        if let Some(channel_info) = CHAIN_TO_CHANNEL.may_load(execute_ctx.deps.storage, &chain)? {
             Ok::<ChannelInfo, ContractError>(channel_info)
         } else {
             return Err(ContractError::InvalidPacket {
@@ -219,10 +223,17 @@ pub fn register_user_cross_chain(
         username: username.clone(),
         address: address.clone(),
     };
+    let channel_id = if let Some(direct_channel_id) = channel_info.direct_channel_id {
+        Ok::<String, ContractError>(direct_channel_id)
+    } else {
+        return Err(ContractError::InvalidPacket {
+            error: Some(format!("Channel not found for chain {chain}")),
+        });
+    }?;
     let ibc_msg = IbcMsg::SendPacket {
-        channel_id: channel_info.direct_channel_id.clone().unwrap(),
+        channel_id,
         data: to_json_binary(&kernel_msg)?,
-        timeout: execute_env
+        timeout: execute_ctx
             .env
             .block
             .time
@@ -242,7 +253,7 @@ pub fn register_user_cross_chain(
 }
 
 pub fn assign_channels(
-    execute_env: ExecuteContext,
+    execute_ctx: ExecuteContext,
     ics20_channel_id: Option<String>,
     direct_channel_id: Option<String>,
     chain: String,
@@ -250,23 +261,31 @@ pub fn assign_channels(
 ) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
     ensure!(
-        contract.is_contract_owner(execute_env.deps.storage, execute_env.info.sender.as_str())?,
+        contract.is_contract_owner(execute_ctx.deps.storage, execute_ctx.info.sender.as_str())?,
         ContractError::Unauthorized {}
     );
 
-    let channel_info = ChannelInfo {
-        ics20_channel_id,
-        direct_channel_id,
-        kernel_address,
-        supported_modules: vec![],
-    };
-    CHAIN_TO_CHANNEL.save(execute_env.deps.storage, &chain, &channel_info)?;
-    if let Some(channel) = channel_info.direct_channel_id.clone() {
-        CHANNEL_TO_CHAIN.save(execute_env.deps.storage, &channel, &chain)?;
+    let mut channel_info = CHAIN_TO_CHANNEL
+        .load(execute_ctx.deps.storage, &chain)
+        .unwrap_or_default();
+    channel_info.kernel_address = kernel_address;
+    if let Some(channel) = direct_channel_id {
+        // Remove old direct channel to chain if it exists
+        if let Some(direct_channel_id) = channel_info.direct_channel_id {
+            CHANNEL_TO_CHAIN.remove(execute_ctx.deps.storage, &direct_channel_id);
+        }
+        CHANNEL_TO_CHAIN.save(execute_ctx.deps.storage, &channel, &chain)?;
+        channel_info.direct_channel_id = Some(channel);
     }
-    if let Some(channel) = channel_info.ics20_channel_id.clone() {
-        CHANNEL_TO_CHAIN.save(execute_env.deps.storage, &channel, &chain)?;
+    if let Some(channel) = ics20_channel_id {
+        // Remove old ics20 channel to chain if it exists
+        if let Some(ics20_channel_id) = channel_info.ics20_channel_id {
+            CHANNEL_TO_CHAIN.remove(execute_ctx.deps.storage, &ics20_channel_id);
+        }
+        CHANNEL_TO_CHAIN.save(execute_ctx.deps.storage, &channel, &chain)?;
+        channel_info.ics20_channel_id = Some(channel);
     }
+    CHAIN_TO_CHANNEL.save(execute_ctx.deps.storage, &chain, &channel_info)?;
 
     Ok(Response::default().add_attributes(vec![
         attr("action", "assign_channel"),
@@ -283,18 +302,18 @@ pub fn assign_channels(
     ]))
 }
 
-pub fn recover(execute_env: ExecuteContext) -> Result<Response, ContractError> {
+pub fn recover(execute_ctx: ExecuteContext) -> Result<Response, ContractError> {
     let recoveries = IBC_FUND_RECOVERY
-        .load(execute_env.deps.storage, &execute_env.info.sender)
+        .load(execute_ctx.deps.storage, &execute_ctx.info.sender)
         .unwrap_or_default();
-    IBC_FUND_RECOVERY.remove(execute_env.deps.storage, &execute_env.info.sender);
+    IBC_FUND_RECOVERY.remove(execute_ctx.deps.storage, &execute_ctx.info.sender);
     ensure!(
         !recoveries.is_empty(),
         ContractError::Std(StdError::generic_err("No recoveries found"))
     );
 
     let bank_msg = BankMsg::Send {
-        to_address: execute_env.info.sender.to_string(),
+        to_address: execute_ctx.info.sender.to_string(),
         amount: recoveries,
     };
     let sub_msg = SubMsg::reply_always(bank_msg, ReplyId::Recovery.repr());
@@ -304,11 +323,31 @@ pub fn recover(execute_env: ExecuteContext) -> Result<Response, ContractError> {
         .add_submessage(sub_msg))
 }
 
+pub fn update_chain_name(
+    execute_ctx: ExecuteContext,
+    chain_name: String,
+) -> Result<Response, ContractError> {
+    // Only owner can update CURR_CHAIN
+    let contract = ADOContract::default();
+    ensure!(
+        contract.is_contract_owner(execute_ctx.deps.storage, execute_ctx.info.sender.as_str())?,
+        ContractError::Unauthorized {}
+    );
+
+    // Update CURR_CHAIN
+    CURR_CHAIN.save(execute_ctx.deps.storage, &chain_name)?;
+
+    Ok(Response::default()
+        .add_attribute("action", "update_chain_name")
+        .add_attribute("sender", execute_ctx.info.sender.as_str())
+        .add_attribute("chain_name", chain_name))
+}
+
 /// Handles a given AMP message and returns a response
 ///
 /// Separated due to common functionality across multiple messages
 #[derive(Clone)]
-struct MsgHandler(AMPMsg);
+pub struct MsgHandler(AMPMsg);
 
 impl MsgHandler {
     pub fn new(msg: AMPMsg) -> Self {
@@ -348,7 +387,7 @@ impl MsgHandler {
 
         match protocol {
             Some("ibc") => self.handle_ibc(deps, info, env, ctx, sequence),
-            _ => self.handle_local(deps, info, env, ctx, sequence),
+            _ => self.handle_local(deps, info, env, ctx.map(|ctx| ctx.ctx), sequence),
         }
     }
 
@@ -359,12 +398,12 @@ impl MsgHandler {
 
     In both situations the sender can define the funds that are being attached to the message.
     */
-    fn handle_local(
+    pub fn handle_local(
         &self,
         deps: DepsMut,
         info: MessageInfo,
         _env: Env,
-        ctx: Option<AMPPkt>,
+        ctx: Option<AMPCtx>,
         sequence: u64,
     ) -> Result<Response, ContractError> {
         let mut res = Response::default();
@@ -372,9 +411,12 @@ impl MsgHandler {
             message,
             recipient,
             funds,
+            config,
             ..
         } = self.message();
         let recipient_addr = recipient.get_raw_address(&deps.as_ref())?;
+
+        let adodb_addr = KERNEL_ADDRESSES.load(deps.storage, ADO_DB_KEY)?;
 
         // A default message is a bank message
         if Binary::default() == message.clone() {
@@ -390,36 +432,57 @@ impl MsgHandler {
                 amount: funds.clone(),
             };
 
+            let mut attrs = vec![];
+            for (idx, fund) in funds.iter().enumerate() {
+                attrs.push(attr(format!("funds:{sequence}:{idx}"), fund.to_string()));
+            }
+            attrs.push(attr(format!("recipient:{sequence}"), recipient_addr));
             res = res
                 .add_submessage(SubMsg::reply_on_error(
                     CosmosMsg::Bank(sub_msg),
                     ReplyId::AMPMsg.repr(),
                 ))
-                .add_attributes(vec![
-                    attr(format!("recipient:{sequence}"), recipient_addr),
-                    attr(format!("bank_send_amount:{sequence}"), funds[0].to_string()),
-                ]);
+                .add_attributes(attrs);
         } else {
             let origin = if let Some(amp_ctx) = ctx {
-                amp_ctx.ctx.get_origin()
+                amp_ctx.get_origin()
             } else {
                 info.sender.to_string()
             };
             let previous_sender = info.sender.to_string();
 
-            let amp_msg = AMPMsg::new(
-                recipient_addr.clone(),
-                message.clone(),
-                Some(vec![funds[0].clone()]),
-            );
+            // Ensure recipient is a smart contract
+            let ContractInfoResponse {
+                code_id: recipient_code_id,
+                ..
+            } = deps
+                .querier
+                .query_wasm_contract_info(recipient_addr.clone())
+                .ok()
+                .ok_or(ContractError::InvalidPacket {
+                    error: Some("Recipient is not a contract".to_string()),
+                })?;
 
-            let new_packet = AMPPkt::new(origin, previous_sender, vec![amp_msg]);
+            let sub_msg = if config.direct
+                || AOSQuerier::ado_type_getter(&deps.querier, &adodb_addr, recipient_code_id)?
+                    .is_none()
+            {
+                // Message is direct (no AMP Ctx)
+                self.message()
+                    .generate_sub_msg_direct(recipient_addr.clone(), ReplyId::AMPMsg.repr())
+            } else {
+                let amp_msg =
+                    AMPMsg::new(recipient_addr.clone(), message.clone(), Some(funds.clone()));
 
-            let sub_msg = new_packet.to_sub_msg(
-                recipient_addr.clone(),
-                Some(vec![funds[0].clone()]),
-                ReplyId::AMPMsg.repr(),
-            )?;
+                let new_packet = AMPPkt::new(origin, previous_sender, vec![amp_msg]);
+
+                new_packet.to_sub_msg(
+                    recipient_addr.clone(),
+                    Some(funds.clone()),
+                    ReplyId::AMPMsg.repr(),
+                )?
+            };
+
             res = res
                 .add_submessage(sub_msg)
                 .add_attributes(vec![attr(format!("recipient:{sequence}"), recipient_addr)]);
@@ -475,7 +538,7 @@ impl MsgHandler {
             recipient, message, ..
         } = self.message();
         ensure!(
-            Binary::default().eq(message),
+            !Binary::default().eq(message),
             ContractError::InvalidPacket {
                 error: Some("Cannot send an empty message without funds via IBC".to_string())
             }

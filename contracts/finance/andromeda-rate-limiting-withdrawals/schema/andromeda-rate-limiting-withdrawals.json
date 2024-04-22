@@ -1,103 +1,128 @@
 {
   "contract_name": "andromeda-rate-limiting-withdrawals",
-  "contract_version": "0.2.1",
+  "contract_version": "1.0.0",
   "idl_version": "1.0.0",
   "instantiate": {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "title": "InstantiateMsg",
     "type": "object",
     "required": [
+      "allowed_coin",
       "kernel_address",
-      "recipients"
+      "minimal_withdrawal_frequency"
     ],
     "properties": {
+      "allowed_coin": {
+        "$ref": "#/definitions/CoinAndLimit"
+      },
       "kernel_address": {
         "type": "string"
       },
-      "lock_time": {
+      "minimal_withdrawal_frequency": {
+        "$ref": "#/definitions/MinimumFrequency"
+      },
+      "modules": {
         "type": [
-          "integer",
+          "array",
           "null"
         ],
-        "format": "uint64",
-        "minimum": 0.0
+        "items": {
+          "$ref": "#/definitions/Module"
+        }
       },
       "owner": {
         "type": [
           "string",
           "null"
         ]
-      },
-      "recipients": {
-        "description": "The vector of recipients for the contract. Anytime a `Send` execute message is sent the amount sent will be divided amongst these recipients depending on their assigned percentage.",
-        "type": "array",
-        "items": {
-          "$ref": "#/definitions/AddressPercent"
-        }
       }
     },
     "additionalProperties": false,
     "definitions": {
-      "AddressPercent": {
+      "AndrAddr": {
+        "description": "An address that can be used within the Andromeda ecosystem. Inspired by the cosmwasm-std `Addr` type. https://github.com/CosmWasm/cosmwasm/blob/2a1c698520a1aacedfe3f4803b0d7d653892217a/packages/std/src/addresses.rs#L33\n\nThis address can be one of two things: 1. A valid human readable address e.g. `cosmos1...` 2. A valid Andromeda VFS path e.g. `/home/user/app/component`\n\nVFS paths can be local in the case of an app and can be done by referencing `./component` they can also contain protocols for cross chain communication. A VFS path is usually structured as so:\n\n`<protocol>://<chain (required if ibc used)>/<path>` or `ibc://cosmoshub-4/user/app/component`",
+        "type": "string",
+        "pattern": "(^((([A-Za-z0-9]+://)?([A-Za-z0-9.\\-_]{2,80}/)))?((~[a-z0-9]{2,}|(lib|home))(/[A-Za-z0-9.\\-_]{2,80}?)*(/)?)$)|(^(~[a-z0-9]{2,}|/(lib|home))(/[A-Za-z0-9.\\-_]{2,80}?)*(/)?$)|(^[a-z0-9]{2,}$)|(^\\.(/[A-Za-z0-9.\\-_]{2,40}?)*(/)?$)"
+      },
+      "CoinAndLimit": {
         "type": "object",
         "required": [
-          "percent",
-          "recipient"
+          "coin",
+          "limit"
         ],
         "properties": {
-          "percent": {
-            "$ref": "#/definitions/Decimal"
+          "coin": {
+            "description": "Sets the accepted coin denom",
+            "type": "string"
           },
-          "recipient": {
-            "$ref": "#/definitions/Recipient"
+          "limit": {
+            "description": "Sets the withdrawal limit in terms of amount",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Uint128"
+              }
+            ]
           }
         },
         "additionalProperties": false
       },
-      "AndrAddr": {
-        "description": "An address that can be used within the Andromeda ecosystem. Inspired by the cosmwasm-std `Addr` type. https://github.com/CosmWasm/cosmwasm/blob/2a1c698520a1aacedfe3f4803b0d7d653892217a/packages/std/src/addresses.rs#L33\n\nThis address can be one of two things: 1. A valid human readable address e.g. `cosmos1...` 2. A valid Andromeda VFS path e.g. `/home/user/app/component`\n\nVFS paths can be local in the case of an app and can be done by referencing `./component` they can also contain protocols for cross chain communication. A VFS path is usually structured as so:\n\n`<protocol>://<chain (required if ibc used)>/<path>` or `ibc://cosmoshub-4/user/app/component`",
-        "type": "string"
+      "Milliseconds": {
+        "description": "Represents time in milliseconds.",
+        "type": "integer",
+        "format": "uint64",
+        "minimum": 0.0
       },
-      "Binary": {
-        "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
-        "type": "string"
+      "MinimumFrequency": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "time"
+            ],
+            "properties": {
+              "time": {
+                "type": "object",
+                "required": [
+                  "time"
+                ],
+                "properties": {
+                  "time": {
+                    "$ref": "#/definitions/Milliseconds"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
       },
-      "Decimal": {
-        "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 (which is (2^128 - 1) / 10^18)",
-        "type": "string"
-      },
-      "Recipient": {
-        "description": "A simple struct used for inter-contract communication. The struct can be used in two ways:\n\n1. Simply just providing an `AndrAddr` which will treat the communication as a transfer of any related funds 2. Providing an `AndrAddr` and a `Binary` message which will be sent to the contract at the resolved address\n\nThe `Binary` message can be any message that the contract at the resolved address can handle.",
+      "Module": {
+        "description": "A struct describing a token module, provided with the instantiation message this struct is used to record the info about the module and how/if it should be instantiated",
         "type": "object",
         "required": [
-          "address"
+          "address",
+          "is_mutable"
         ],
         "properties": {
           "address": {
             "$ref": "#/definitions/AndrAddr"
           },
-          "ibc_recovery_address": {
-            "anyOf": [
-              {
-                "$ref": "#/definitions/AndrAddr"
-              },
-              {
-                "type": "null"
-              }
-            ]
+          "is_mutable": {
+            "type": "boolean"
           },
-          "msg": {
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Binary"
-              },
-              {
-                "type": "null"
-              }
+          "name": {
+            "type": [
+              "string",
+              "null"
             ]
           }
         },
         "additionalProperties": false
+      },
+      "Uint128": {
+        "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
+        "type": "string"
       }
     }
   },
@@ -106,23 +131,19 @@
     "title": "ExecuteMsg",
     "oneOf": [
       {
-        "description": "Update the recipients list. Only executable by the contract owner when the contract is not locked.",
         "type": "object",
         "required": [
-          "update_recipients"
+          "deposits"
         ],
         "properties": {
-          "update_recipients": {
+          "deposits": {
             "type": "object",
-            "required": [
-              "recipients"
-            ],
             "properties": {
-              "recipients": {
-                "type": "array",
-                "items": {
-                  "$ref": "#/definitions/AddressPercent"
-                }
+              "recipient": {
+                "type": [
+                  "string",
+                  "null"
+                ]
               }
             },
             "additionalProperties": false
@@ -131,38 +152,21 @@
         "additionalProperties": false
       },
       {
-        "description": "Used to lock/unlock the contract allowing the config to be updated.",
         "type": "object",
         "required": [
-          "update_lock"
+          "withdraw_funds"
         ],
         "properties": {
-          "update_lock": {
+          "withdraw_funds": {
             "type": "object",
             "required": [
-              "lock_time"
+              "amount"
             ],
             "properties": {
-              "lock_time": {
-                "type": "integer",
-                "format": "uint64",
-                "minimum": 0.0
+              "amount": {
+                "$ref": "#/definitions/Uint128"
               }
             },
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
-      },
-      {
-        "description": "Divides any attached funds to the message amongst the recipients list.",
-        "type": "object",
-        "required": [
-          "send"
-        ],
-        "properties": {
-          "send": {
-            "type": "object",
             "additionalProperties": false
           }
         },
@@ -183,20 +187,11 @@
       {
         "type": "object",
         "required": [
-          "update_owner"
+          "ownership"
         ],
         "properties": {
-          "update_owner": {
-            "type": "object",
-            "required": [
-              "address"
-            ],
-            "properties": {
-              "address": {
-                "type": "string"
-              }
-            },
-            "additionalProperties": false
+          "ownership": {
+            "$ref": "#/definitions/OwnershipMessage"
           }
         },
         "additionalProperties": false
@@ -204,20 +199,17 @@
       {
         "type": "object",
         "required": [
-          "update_operators"
+          "update_kernel_address"
         ],
         "properties": {
-          "update_operators": {
+          "update_kernel_address": {
             "type": "object",
             "required": [
-              "operators"
+              "address"
             ],
             "properties": {
-              "operators": {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                }
+              "address": {
+                "$ref": "#/definitions/Addr"
               }
             },
             "additionalProperties": false
@@ -249,74 +241,11 @@
       {
         "type": "object",
         "required": [
-          "set_permission"
+          "permissioning"
         ],
         "properties": {
-          "set_permission": {
-            "type": "object",
-            "required": [
-              "action",
-              "actor",
-              "permission"
-            ],
-            "properties": {
-              "action": {
-                "type": "string"
-              },
-              "actor": {
-                "$ref": "#/definitions/AndrAddr"
-              },
-              "permission": {
-                "$ref": "#/definitions/Permission"
-              }
-            },
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
-      },
-      {
-        "type": "object",
-        "required": [
-          "remove_permission"
-        ],
-        "properties": {
-          "remove_permission": {
-            "type": "object",
-            "required": [
-              "action",
-              "actor"
-            ],
-            "properties": {
-              "action": {
-                "type": "string"
-              },
-              "actor": {
-                "$ref": "#/definitions/AndrAddr"
-              }
-            },
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
-      },
-      {
-        "type": "object",
-        "required": [
-          "permission_action"
-        ],
-        "properties": {
-          "permission_action": {
-            "type": "object",
-            "required": [
-              "action"
-            ],
-            "properties": {
-              "action": {
-                "type": "string"
-              }
-            },
-            "additionalProperties": false
+          "permissioning": {
+            "$ref": "#/definitions/PermissioningMessage"
           }
         },
         "additionalProperties": false
@@ -534,25 +463,14 @@
         },
         "additionalProperties": false
       },
-      "AddressPercent": {
-        "type": "object",
-        "required": [
-          "percent",
-          "recipient"
-        ],
-        "properties": {
-          "percent": {
-            "$ref": "#/definitions/Decimal"
-          },
-          "recipient": {
-            "$ref": "#/definitions/Recipient"
-          }
-        },
-        "additionalProperties": false
+      "Addr": {
+        "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+        "type": "string"
       },
       "AndrAddr": {
         "description": "An address that can be used within the Andromeda ecosystem. Inspired by the cosmwasm-std `Addr` type. https://github.com/CosmWasm/cosmwasm/blob/2a1c698520a1aacedfe3f4803b0d7d653892217a/packages/std/src/addresses.rs#L33\n\nThis address can be one of two things: 1. A valid human readable address e.g. `cosmos1...` 2. A valid Andromeda VFS path e.g. `/home/user/app/component`\n\nVFS paths can be local in the case of an app and can be done by referencing `./component` they can also contain protocols for cross chain communication. A VFS path is usually structured as so:\n\n`<protocol>://<chain (required if ibc used)>/<path>` or `ibc://cosmoshub-4/user/app/component`",
-        "type": "string"
+        "type": "string",
+        "pattern": "(^((([A-Za-z0-9]+://)?([A-Za-z0-9.\\-_]{2,80}/)))?((~[a-z0-9]{2,}|(lib|home))(/[A-Za-z0-9.\\-_]{2,80}?)*(/)?)$)|(^(~[a-z0-9]{2,}|/(lib|home))(/[A-Za-z0-9.\\-_]{2,80}?)*(/)?$)|(^[a-z0-9]{2,}$)|(^\\.(/[A-Za-z0-9.\\-_]{2,40}?)*(/)?$)"
       },
       "Binary": {
         "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
@@ -573,57 +491,6 @@
           }
         }
       },
-      "Decimal": {
-        "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 (which is (2^128 - 1) / 10^18)",
-        "type": "string"
-      },
-      "Expiration": {
-        "description": "Expiration represents a point in time when some event happens. It can compare with a BlockInfo and will return is_expired() == true once the condition is hit (and for every block in the future)",
-        "oneOf": [
-          {
-            "description": "AtHeight will expire when `env.block.height` >= height",
-            "type": "object",
-            "required": [
-              "at_height"
-            ],
-            "properties": {
-              "at_height": {
-                "type": "integer",
-                "format": "uint64",
-                "minimum": 0.0
-              }
-            },
-            "additionalProperties": false
-          },
-          {
-            "description": "AtTime will expire when `env.block.time` >= time",
-            "type": "object",
-            "required": [
-              "at_time"
-            ],
-            "properties": {
-              "at_time": {
-                "$ref": "#/definitions/Timestamp"
-              }
-            },
-            "additionalProperties": false
-          },
-          {
-            "description": "Never will never expire. Used to express the empty variant",
-            "type": "object",
-            "required": [
-              "never"
-            ],
-            "properties": {
-              "never": {
-                "type": "object",
-                "additionalProperties": false
-              }
-            },
-            "additionalProperties": false
-          }
-        ]
-      },
       "IBCConfig": {
         "type": "object",
         "properties": {
@@ -639,6 +506,12 @@
           }
         },
         "additionalProperties": false
+      },
+      "Milliseconds": {
+        "description": "Represents time in milliseconds.",
+        "type": "integer",
+        "format": "uint64",
+        "minimum": 0.0
       },
       "Module": {
         "description": "A struct describing a token module, provided with the instantiation message this struct is used to record the info about the module and how/if it should be instantiated",
@@ -663,6 +536,49 @@
         },
         "additionalProperties": false
       },
+      "OwnershipMessage": {
+        "oneOf": [
+          {
+            "type": "string",
+            "enum": [
+              "revoke_ownership_offer",
+              "accept_ownership",
+              "disown"
+            ]
+          },
+          {
+            "type": "object",
+            "required": [
+              "update_owner"
+            ],
+            "properties": {
+              "update_owner": {
+                "type": "object",
+                "required": [
+                  "new_owner"
+                ],
+                "properties": {
+                  "expiration": {
+                    "anyOf": [
+                      {
+                        "$ref": "#/definitions/Milliseconds"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "new_owner": {
+                    "$ref": "#/definitions/Addr"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      },
       "Permission": {
         "description": "An enum to represent a user's permission for an action\n\n- **Blacklisted** - The user cannot perform the action until after the provided expiration - **Limited** - The user can perform the action while uses are remaining and before the provided expiration **for a permissioned action** - **Whitelisted** - The user can perform the action until the provided expiration **for a permissioned action**\n\nExpiration defaults to `Never` if not provided",
         "oneOf": [
@@ -675,7 +591,7 @@
               "blacklisted": {
                 "anyOf": [
                   {
-                    "$ref": "#/definitions/Expiration"
+                    "$ref": "#/definitions/Milliseconds"
                   },
                   {
                     "type": "null"
@@ -700,7 +616,7 @@
                   "expiration": {
                     "anyOf": [
                       {
-                        "$ref": "#/definitions/Expiration"
+                        "$ref": "#/definitions/Milliseconds"
                       },
                       {
                         "type": "null"
@@ -727,7 +643,7 @@
               "whitelisted": {
                 "anyOf": [
                   {
-                    "$ref": "#/definitions/Expiration"
+                    "$ref": "#/definitions/Milliseconds"
                   },
                   {
                     "type": "null"
@@ -739,38 +655,105 @@
           }
         ]
       },
-      "Recipient": {
-        "description": "A simple struct used for inter-contract communication. The struct can be used in two ways:\n\n1. Simply just providing an `AndrAddr` which will treat the communication as a transfer of any related funds 2. Providing an `AndrAddr` and a `Binary` message which will be sent to the contract at the resolved address\n\nThe `Binary` message can be any message that the contract at the resolved address can handle.",
-        "type": "object",
-        "required": [
-          "address"
-        ],
-        "properties": {
-          "address": {
-            "$ref": "#/definitions/AndrAddr"
-          },
-          "ibc_recovery_address": {
-            "anyOf": [
-              {
-                "$ref": "#/definitions/AndrAddr"
-              },
-              {
-                "type": "null"
+      "PermissioningMessage": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "set_permission"
+            ],
+            "properties": {
+              "set_permission": {
+                "type": "object",
+                "required": [
+                  "action",
+                  "actor",
+                  "permission"
+                ],
+                "properties": {
+                  "action": {
+                    "type": "string"
+                  },
+                  "actor": {
+                    "$ref": "#/definitions/AndrAddr"
+                  },
+                  "permission": {
+                    "$ref": "#/definitions/Permission"
+                  }
+                },
+                "additionalProperties": false
               }
-            ]
+            },
+            "additionalProperties": false
           },
-          "msg": {
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Binary"
-              },
-              {
-                "type": "null"
+          {
+            "type": "object",
+            "required": [
+              "remove_permission"
+            ],
+            "properties": {
+              "remove_permission": {
+                "type": "object",
+                "required": [
+                  "action",
+                  "actor"
+                ],
+                "properties": {
+                  "action": {
+                    "type": "string"
+                  },
+                  "actor": {
+                    "$ref": "#/definitions/AndrAddr"
+                  }
+                },
+                "additionalProperties": false
               }
-            ]
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "permission_action"
+            ],
+            "properties": {
+              "permission_action": {
+                "type": "object",
+                "required": [
+                  "action"
+                ],
+                "properties": {
+                  "action": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "disable_action_permissioning"
+            ],
+            "properties": {
+              "disable_action_permissioning": {
+                "type": "object",
+                "required": [
+                  "action"
+                ],
+                "properties": {
+                  "action": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
           }
-        },
-        "additionalProperties": false
+        ]
       },
       "ReplyOn": {
         "description": "Use this to define when the contract gets a response callback. If you only need it for errors or success you can select just those in order to save gas.",
@@ -805,14 +788,6 @@
           }
         ]
       },
-      "Timestamp": {
-        "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202); assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1); assert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202); assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```",
-        "allOf": [
-          {
-            "$ref": "#/definitions/Uint64"
-          }
-        ]
-      },
       "Uint128": {
         "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
         "type": "string"
@@ -828,14 +803,36 @@
     "title": "QueryMsg",
     "oneOf": [
       {
-        "description": "The current config of the Splitter contract",
+        "description": "Provides the allowed coin and limits for withdrawal size and frequency",
         "type": "object",
         "required": [
-          "get_splitter_config"
+          "coin_allowance_details"
         ],
         "properties": {
-          "get_splitter_config": {
+          "coin_allowance_details": {
             "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Shows the balance and latest withdrawal time",
+        "type": "object",
+        "required": [
+          "account_details"
+        ],
+        "properties": {
+          "account_details": {
+            "type": "object",
+            "required": [
+              "account"
+            ],
+            "properties": {
+              "account": {
+                "type": "string"
+              }
+            },
             "additionalProperties": false
           }
         },
@@ -857,10 +854,10 @@
       {
         "type": "object",
         "required": [
-          "operators"
+          "ownership_request"
         ],
         "properties": {
-          "operators": {
+          "ownership_request": {
             "type": "object",
             "additionalProperties": false
           }
@@ -896,6 +893,19 @@
       {
         "type": "object",
         "required": [
+          "app_contract"
+        ],
+        "properties": {
+          "app_contract": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
           "original_publisher"
         ],
         "properties": {
@@ -922,27 +932,6 @@
       {
         "type": "object",
         "required": [
-          "is_operator"
-        ],
-        "properties": {
-          "is_operator": {
-            "type": "object",
-            "required": [
-              "address"
-            ],
-            "properties": {
-              "address": {
-                "type": "string"
-              }
-            },
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
-      },
-      {
-        "type": "object",
-        "required": [
           "version"
         ],
         "properties": {
@@ -956,19 +945,11 @@
       {
         "type": "object",
         "required": [
-          "balance"
+          "a_d_o_base_version"
         ],
         "properties": {
-          "balance": {
+          "a_d_o_base_version": {
             "type": "object",
-            "required": [
-              "address"
-            ],
-            "properties": {
-              "address": {
-                "$ref": "#/definitions/AndrAddr"
-              }
-            },
             "additionalProperties": false
           }
         },
@@ -1058,10 +1039,6 @@
       }
     ],
     "definitions": {
-      "AndrAddr": {
-        "description": "An address that can be used within the Andromeda ecosystem. Inspired by the cosmwasm-std `Addr` type. https://github.com/CosmWasm/cosmwasm/blob/2a1c698520a1aacedfe3f4803b0d7d653892217a/packages/std/src/addresses.rs#L33\n\nThis address can be one of two things: 1. A valid human readable address e.g. `cosmos1...` 2. A valid Andromeda VFS path e.g. `/home/user/app/component`\n\nVFS paths can be local in the case of an app and can be done by referencing `./component` they can also contain protocols for cross chain communication. A VFS path is usually structured as so:\n\n`<protocol>://<chain (required if ibc used)>/<path>` or `ibc://cosmoshub-4/user/app/component`",
-        "type": "string"
-      },
       "Uint64": {
         "description": "A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u64` to get the value out:\n\n``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);\n\nlet b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```",
         "type": "string"
@@ -1071,41 +1048,85 @@
   "migrate": null,
   "sudo": null,
   "responses": {
-    "balance": {
+    "a_d_o_base_version": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "BalanceResponse",
+      "title": "ADOBaseVersionResponse",
       "type": "object",
       "required": [
-        "amount"
+        "version"
       ],
       "properties": {
-        "amount": {
-          "description": "Always returns a Coin with the requested denom. This may be of 0 amount if no such funds.",
+        "version": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "account_details": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "AccountDetails",
+      "description": "Keeps track of the account's balance and time of latest withdrawal",
+      "type": "object",
+      "required": [
+        "balance"
+      ],
+      "properties": {
+        "balance": {
+          "description": "Account balance, no need for denom since only one is allowed",
           "allOf": [
             {
-              "$ref": "#/definitions/Coin"
+              "$ref": "#/definitions/Uint128"
+            }
+          ]
+        },
+        "latest_withdrawal": {
+          "description": "Timestamp of latest withdrawal",
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Timestamp"
+            },
+            {
+              "type": "null"
             }
           ]
         }
       },
+      "additionalProperties": false,
       "definitions": {
-        "Coin": {
-          "type": "object",
-          "required": [
-            "amount",
-            "denom"
-          ],
-          "properties": {
-            "amount": {
-              "$ref": "#/definitions/Uint128"
-            },
-            "denom": {
-              "type": "string"
+        "Timestamp": {
+          "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202); assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1); assert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202); assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Uint64"
             }
-          }
+          ]
         },
         "Uint128": {
           "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
+          "type": "string"
+        },
+        "Uint64": {
+          "description": "A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u64` to get the value out:\n\n``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);\n\nlet b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```",
+          "type": "string"
+        }
+      }
+    },
+    "app_contract": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "AppContractResponse",
+      "type": "object",
+      "required": [
+        "app_contract"
+      ],
+      "properties": {
+        "app_contract": {
+          "$ref": "#/definitions/Addr"
+        }
+      },
+      "additionalProperties": false,
+      "definitions": {
+        "Addr": {
+          "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
           "type": "string"
         }
       }
@@ -1126,181 +1147,50 @@
       },
       "additionalProperties": false
     },
-    "get_splitter_config": {
+    "coin_allowance_details": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "GetSplitterConfigResponse",
+      "title": "CoinAllowance",
       "type": "object",
       "required": [
-        "config"
+        "coin",
+        "limit",
+        "minimal_withdrawal_frequency"
       ],
       "properties": {
-        "config": {
-          "$ref": "#/definitions/Splitter"
+        "coin": {
+          "description": "Sets the accepted coin denom",
+          "type": "string"
+        },
+        "limit": {
+          "description": "Sets the withdrawal limit in terms of amount",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Uint128"
+            }
+          ]
+        },
+        "minimal_withdrawal_frequency": {
+          "description": "Sets the minimum amount of time required between withdrawals in seconds",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Milliseconds"
+            }
+          ]
         }
       },
       "additionalProperties": false,
       "definitions": {
-        "AddressPercent": {
-          "type": "object",
-          "required": [
-            "percent",
-            "recipient"
-          ],
-          "properties": {
-            "percent": {
-              "$ref": "#/definitions/Decimal"
-            },
-            "recipient": {
-              "$ref": "#/definitions/Recipient"
-            }
-          },
-          "additionalProperties": false
+        "Milliseconds": {
+          "description": "Represents time in milliseconds.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
         },
-        "AndrAddr": {
-          "description": "An address that can be used within the Andromeda ecosystem. Inspired by the cosmwasm-std `Addr` type. https://github.com/CosmWasm/cosmwasm/blob/2a1c698520a1aacedfe3f4803b0d7d653892217a/packages/std/src/addresses.rs#L33\n\nThis address can be one of two things: 1. A valid human readable address e.g. `cosmos1...` 2. A valid Andromeda VFS path e.g. `/home/user/app/component`\n\nVFS paths can be local in the case of an app and can be done by referencing `./component` they can also contain protocols for cross chain communication. A VFS path is usually structured as so:\n\n`<protocol>://<chain (required if ibc used)>/<path>` or `ibc://cosmoshub-4/user/app/component`",
-          "type": "string"
-        },
-        "Binary": {
-          "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
-          "type": "string"
-        },
-        "Decimal": {
-          "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 (which is (2^128 - 1) / 10^18)",
-          "type": "string"
-        },
-        "Expiration": {
-          "description": "Expiration represents a point in time when some event happens. It can compare with a BlockInfo and will return is_expired() == true once the condition is hit (and for every block in the future)",
-          "oneOf": [
-            {
-              "description": "AtHeight will expire when `env.block.height` >= height",
-              "type": "object",
-              "required": [
-                "at_height"
-              ],
-              "properties": {
-                "at_height": {
-                  "type": "integer",
-                  "format": "uint64",
-                  "minimum": 0.0
-                }
-              },
-              "additionalProperties": false
-            },
-            {
-              "description": "AtTime will expire when `env.block.time` >= time",
-              "type": "object",
-              "required": [
-                "at_time"
-              ],
-              "properties": {
-                "at_time": {
-                  "$ref": "#/definitions/Timestamp"
-                }
-              },
-              "additionalProperties": false
-            },
-            {
-              "description": "Never will never expire. Used to express the empty variant",
-              "type": "object",
-              "required": [
-                "never"
-              ],
-              "properties": {
-                "never": {
-                  "type": "object",
-                  "additionalProperties": false
-                }
-              },
-              "additionalProperties": false
-            }
-          ]
-        },
-        "Recipient": {
-          "description": "A simple struct used for inter-contract communication. The struct can be used in two ways:\n\n1. Simply just providing an `AndrAddr` which will treat the communication as a transfer of any related funds 2. Providing an `AndrAddr` and a `Binary` message which will be sent to the contract at the resolved address\n\nThe `Binary` message can be any message that the contract at the resolved address can handle.",
-          "type": "object",
-          "required": [
-            "address"
-          ],
-          "properties": {
-            "address": {
-              "$ref": "#/definitions/AndrAddr"
-            },
-            "ibc_recovery_address": {
-              "anyOf": [
-                {
-                  "$ref": "#/definitions/AndrAddr"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "msg": {
-              "anyOf": [
-                {
-                  "$ref": "#/definitions/Binary"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            }
-          },
-          "additionalProperties": false
-        },
-        "Splitter": {
-          "description": "A config struct for a `Splitter` contract.",
-          "type": "object",
-          "required": [
-            "lock",
-            "recipients"
-          ],
-          "properties": {
-            "lock": {
-              "description": "Whether or not the contract is currently locked. This restricts updating any config related fields.",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/Expiration"
-                }
-              ]
-            },
-            "recipients": {
-              "description": "The vector of recipients for the contract. Anytime a `Send` execute message is sent the amount sent will be divided amongst these recipients depending on their assigned percentage.",
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/AddressPercent"
-              }
-            }
-          },
-          "additionalProperties": false
-        },
-        "Timestamp": {
-          "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202); assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1); assert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202); assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Uint64"
-            }
-          ]
-        },
-        "Uint64": {
-          "description": "A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u64` to get the value out:\n\n``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);\n\nlet b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```",
+        "Uint128": {
+          "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
           "type": "string"
         }
       }
-    },
-    "is_operator": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "IsOperatorResponse",
-      "type": "object",
-      "required": [
-        "is_operator"
-      ],
-      "properties": {
-        "is_operator": {
-          "type": "boolean"
-        }
-      },
-      "additionalProperties": false
     },
     "kernel_address": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -1349,7 +1239,8 @@
       "definitions": {
         "AndrAddr": {
           "description": "An address that can be used within the Andromeda ecosystem. Inspired by the cosmwasm-std `Addr` type. https://github.com/CosmWasm/cosmwasm/blob/2a1c698520a1aacedfe3f4803b0d7d653892217a/packages/std/src/addresses.rs#L33\n\nThis address can be one of two things: 1. A valid human readable address e.g. `cosmos1...` 2. A valid Andromeda VFS path e.g. `/home/user/app/component`\n\nVFS paths can be local in the case of an app and can be done by referencing `./component` they can also contain protocols for cross chain communication. A VFS path is usually structured as so:\n\n`<protocol>://<chain (required if ibc used)>/<path>` or `ibc://cosmoshub-4/user/app/component`",
-          "type": "string"
+          "type": "string",
+          "pattern": "(^((([A-Za-z0-9]+://)?([A-Za-z0-9.\\-_]{2,80}/)))?((~[a-z0-9]{2,}|(lib|home))(/[A-Za-z0-9.\\-_]{2,80}?)*(/)?)$)|(^(~[a-z0-9]{2,}|/(lib|home))(/[A-Za-z0-9.\\-_]{2,80}?)*(/)?$)|(^[a-z0-9]{2,}$)|(^\\.(/[A-Za-z0-9.\\-_]{2,40}?)*(/)?$)"
         }
       }
     },
@@ -1360,23 +1251,6 @@
       "items": {
         "type": "string"
       }
-    },
-    "operators": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "OperatorsResponse",
-      "type": "object",
-      "required": [
-        "operators"
-      ],
-      "properties": {
-        "operators": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
-      },
-      "additionalProperties": false
     },
     "original_publisher": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -1406,6 +1280,46 @@
       },
       "additionalProperties": false
     },
+    "ownership_request": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ContractPotentialOwnerResponse",
+      "type": "object",
+      "properties": {
+        "expiration": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Milliseconds"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "potential_owner": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Addr"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "definitions": {
+        "Addr": {
+          "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+          "type": "string"
+        },
+        "Milliseconds": {
+          "description": "Represents time in milliseconds.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        }
+      }
+    },
     "permissioned_actions": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Array_of_String",
@@ -1422,52 +1336,11 @@
         "$ref": "#/definitions/PermissionInfo"
       },
       "definitions": {
-        "Expiration": {
-          "description": "Expiration represents a point in time when some event happens. It can compare with a BlockInfo and will return is_expired() == true once the condition is hit (and for every block in the future)",
-          "oneOf": [
-            {
-              "description": "AtHeight will expire when `env.block.height` >= height",
-              "type": "object",
-              "required": [
-                "at_height"
-              ],
-              "properties": {
-                "at_height": {
-                  "type": "integer",
-                  "format": "uint64",
-                  "minimum": 0.0
-                }
-              },
-              "additionalProperties": false
-            },
-            {
-              "description": "AtTime will expire when `env.block.time` >= time",
-              "type": "object",
-              "required": [
-                "at_time"
-              ],
-              "properties": {
-                "at_time": {
-                  "$ref": "#/definitions/Timestamp"
-                }
-              },
-              "additionalProperties": false
-            },
-            {
-              "description": "Never will never expire. Used to express the empty variant",
-              "type": "object",
-              "required": [
-                "never"
-              ],
-              "properties": {
-                "never": {
-                  "type": "object",
-                  "additionalProperties": false
-                }
-              },
-              "additionalProperties": false
-            }
-          ]
+        "Milliseconds": {
+          "description": "Represents time in milliseconds.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
         },
         "Permission": {
           "description": "An enum to represent a user's permission for an action\n\n- **Blacklisted** - The user cannot perform the action until after the provided expiration - **Limited** - The user can perform the action while uses are remaining and before the provided expiration **for a permissioned action** - **Whitelisted** - The user can perform the action until the provided expiration **for a permissioned action**\n\nExpiration defaults to `Never` if not provided",
@@ -1481,7 +1354,7 @@
                 "blacklisted": {
                   "anyOf": [
                     {
-                      "$ref": "#/definitions/Expiration"
+                      "$ref": "#/definitions/Milliseconds"
                     },
                     {
                       "type": "null"
@@ -1506,7 +1379,7 @@
                     "expiration": {
                       "anyOf": [
                         {
-                          "$ref": "#/definitions/Expiration"
+                          "$ref": "#/definitions/Milliseconds"
                         },
                         {
                           "type": "null"
@@ -1533,7 +1406,7 @@
                 "whitelisted": {
                   "anyOf": [
                     {
-                      "$ref": "#/definitions/Expiration"
+                      "$ref": "#/definitions/Milliseconds"
                     },
                     {
                       "type": "null"
@@ -1564,18 +1437,6 @@
             }
           },
           "additionalProperties": false
-        },
-        "Timestamp": {
-          "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202); assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1); assert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202); assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Uint64"
-            }
-          ]
-        },
-        "Uint64": {
-          "description": "A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u64` to get the value out:\n\n``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);\n\nlet b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```",
-          "type": "string"
         }
       }
     },

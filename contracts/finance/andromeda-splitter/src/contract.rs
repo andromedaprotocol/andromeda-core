@@ -1,23 +1,21 @@
 use crate::state::SPLITTER;
 use andromeda_finance::splitter::{
     validate_recipient_list, AddressPercent, ExecuteMsg, GetSplitterConfigResponse, InstantiateMsg,
-    MigrateMsg, QueryMsg, Splitter,
+    QueryMsg, Splitter,
 };
 
 use andromeda_std::{
-    ado_base::InstantiateMsg as BaseInstantiateMsg,
+    ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     amp::messages::AMPPkt,
-    common::encode_binary,
-    error::{from_semver, ContractError},
+    common::{actions::call_action, encode_binary, Milliseconds, MillisecondsDuration},
+    error::ContractError,
 };
 use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
 use cosmwasm_std::{
     attr, ensure, entry_point, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
-    Reply, Response, StdError, SubMsg, Timestamp, Uint128,
+    Reply, Response, StdError, SubMsg, Uint128,
 };
-use cw2::{get_contract_version, set_contract_version};
-use cw_utils::{nonpayable, Expiration};
-use semver::Version;
+use cw_utils::nonpayable;
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-splitter";
@@ -34,34 +32,30 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    msg.validate()?;
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-
-    // Max 100 recipients
-    ensure!(
-        msg.recipients.len() <= 100,
-        ContractError::ReachedRecipientLimit {}
-    );
-
-    let current_time = env.block.time.seconds();
+    let current_time = Milliseconds::from_seconds(env.block.time.seconds());
     let splitter = match msg.lock_time {
         Some(lock_time) => {
             // New lock time can't be too short
-            ensure!(lock_time >= ONE_DAY, ContractError::LockTimeTooShort {});
+            ensure!(
+                lock_time.seconds() >= ONE_DAY,
+                ContractError::LockTimeTooShort {}
+            );
 
             // New lock time can't be too long
-            ensure!(lock_time <= ONE_YEAR, ContractError::LockTimeTooLong {});
-
+            ensure!(
+                lock_time.seconds() <= ONE_YEAR,
+                ContractError::LockTimeTooLong {}
+            );
             Splitter {
-                recipients: msg.recipients,
-                lock: Expiration::AtTime(Timestamp::from_seconds(lock_time + current_time)),
+                recipients: msg.recipients.clone(),
+                lock: current_time.plus_milliseconds(lock_time),
             }
         }
         None => {
             Splitter {
-                recipients: msg.recipients,
+                recipients: msg.recipients.clone(),
                 // If locking isn't desired upon instantiation, it's automatically set to 0
-                lock: Expiration::AtTime(Timestamp::from_seconds(current_time)),
+                lock: Milliseconds::default(),
             }
         }
     };
@@ -73,15 +67,17 @@ pub fn instantiate(
         deps.storage,
         env,
         deps.api,
+        &deps.querier,
         info,
         BaseInstantiateMsg {
-            ado_type: "splitter".to_string(),
+            ado_type: CONTRACT_NAME.to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
-            operators: None,
-            kernel_address: msg.kernel_address,
-            owner: msg.owner,
+            kernel_address: msg.kernel_address.clone(),
+            owner: msg.owner.clone(),
         },
     )?;
+
+    msg.validate(deps.as_ref())?;
 
     Ok(inst_resp)
 }
@@ -114,13 +110,24 @@ pub fn execute(
     }
 }
 
-pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
-    match msg {
+pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+    let action_response = call_action(
+        &mut ctx.deps,
+        &ctx.info,
+        &ctx.env,
+        &ctx.amp_ctx,
+        msg.as_ref(),
+    )?;
+    let res = match msg {
         ExecuteMsg::UpdateRecipients { recipients } => execute_update_recipients(ctx, recipients),
         ExecuteMsg::UpdateLock { lock_time } => execute_update_lock(ctx, lock_time),
         ExecuteMsg::Send {} => execute_send(ctx),
         _ => ADOContract::default().execute(ctx, msg),
-    }
+    }?;
+    Ok(res
+        .add_submessages(action_response.messages)
+        .add_attributes(action_response.attributes)
+        .add_events(action_response.events))
 }
 
 fn execute_send(ctx: ExecuteContext) -> Result<Response, ContractError> {
@@ -164,7 +171,7 @@ fn execute_send(ctx: ExecuteContext) -> Result<Response, ContractError> {
         for (i, coin) in info.funds.clone().iter().enumerate() {
             let mut recip_coin: Coin = coin.clone();
             recip_coin.amount = coin.amount * recipient_percent;
-            remainder_funds[i].amount -= recip_coin.amount;
+            remainder_funds[i].amount = remainder_funds[i].amount.checked_sub(recip_coin.amount)?;
             vec_coin.push(recip_coin.clone());
             amp_funds.push(recip_coin);
         }
@@ -172,7 +179,9 @@ fn execute_send(ctx: ExecuteContext) -> Result<Response, ContractError> {
         // let direct_message = recipient_addr
         //     .recipient
         //     .generate_direct_msg(&deps.as_ref(), vec_coin)?;
-        let amp_msg = recipient_addr.recipient.generate_amp_msg(Some(vec_coin));
+        let amp_msg = recipient_addr
+            .recipient
+            .generate_amp_msg(&deps.as_ref(), Some(vec_coin))?;
         pkt = pkt.add_message(amp_msg);
     }
     remainder_funds.retain(|x| x.amount > Uint128::zero());
@@ -213,7 +222,7 @@ fn execute_update_recipients(
         ContractError::Unauthorized {}
     );
 
-    validate_recipient_list(recipients.clone())?;
+    validate_recipient_list(deps.as_ref(), recipients.clone())?;
 
     let mut splitter = SPLITTER.load(deps.storage)?;
     // Can't call this function while the lock isn't expired
@@ -234,7 +243,10 @@ fn execute_update_recipients(
     Ok(Response::default().add_attributes(vec![attr("action", "update_recipients")]))
 }
 
-fn execute_update_lock(ctx: ExecuteContext, lock_time: u64) -> Result<Response, ContractError> {
+fn execute_update_lock(
+    ctx: ExecuteContext,
+    lock_time: MillisecondsDuration,
+) -> Result<Response, ContractError> {
     let ExecuteContext {
         deps, info, env, ..
     } = ctx;
@@ -255,59 +267,36 @@ fn execute_update_lock(ctx: ExecuteContext, lock_time: u64) -> Result<Response, 
         ContractError::ContractLocked {}
     );
     // Get current time
-    let current_time = env.block.time.seconds();
+    let current_time = Milliseconds::from_seconds(env.block.time.seconds());
 
     // New lock time can't be too short
-    ensure!(lock_time >= ONE_DAY, ContractError::LockTimeTooShort {});
+    ensure!(
+        lock_time.seconds() >= ONE_DAY,
+        ContractError::LockTimeTooShort {}
+    );
 
     // New lock time can't be unreasonably long
-    ensure!(lock_time <= ONE_YEAR, ContractError::LockTimeTooLong {});
+    ensure!(
+        lock_time.seconds() <= ONE_YEAR,
+        ContractError::LockTimeTooLong {}
+    );
 
     // Set new lock time
-    let new_lock = Expiration::AtTime(Timestamp::from_seconds(lock_time + current_time));
+    let new_expiration = current_time.plus_milliseconds(lock_time);
 
-    splitter.lock = new_lock;
+    splitter.lock = new_expiration;
 
     SPLITTER.save(deps.storage, &splitter)?;
 
     Ok(Response::default().add_attributes(vec![
         attr("action", "update_lock"),
-        attr("locked", new_lock.to_string()),
+        attr("locked", new_expiration.to_string()),
     ]))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-    // New version
-    let version: Version = CONTRACT_VERSION.parse().map_err(from_semver)?;
-
-    // Old version
-    let stored = get_contract_version(deps.storage)?;
-    let storage_version: Version = stored.version.parse().map_err(from_semver)?;
-
-    let contract = ADOContract::default();
-
-    ensure!(
-        stored.contract == CONTRACT_NAME,
-        ContractError::CannotMigrate {
-            previous_contract: stored.contract,
-        }
-    );
-
-    // New version has to be newer/greater than the old version
-    ensure!(
-        storage_version < version,
-        ContractError::CannotMigrate {
-            previous_contract: stored.version,
-        }
-    );
-
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-
-    // Update the ADOContract's version
-    contract.execute_update_version(deps)?;
-
-    Ok(Response::default())
+    ADOContract::default().migrate(deps, CONTRACT_NAME, CONTRACT_VERSION)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

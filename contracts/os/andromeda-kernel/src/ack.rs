@@ -19,7 +19,7 @@ pub fn make_ack_fail(err: String) -> Binary {
     to_json_binary(&res).unwrap()
 }
 
-pub fn make_ack_create_ado_success() -> Binary {
-    let res = Ack::Result(b"1".into());
-    to_json_binary(&res).unwrap()
-}
+// pub fn make_ack_create_ado_success() -> Binary {
+//     let res = Ack::Result(b"1".into());
+//     to_json_binary(&res).unwrap()
+// }

@@ -1,54 +1,46 @@
 pub mod ado_type;
+pub mod app_contract;
 pub mod block_height;
 #[cfg(any(feature = "module_hooks", feature = "modules"))]
 pub mod hooks;
 pub mod kernel_address;
 pub mod modules;
-pub mod operators;
 pub mod ownership;
 pub mod permissioning;
 pub mod version;
 
 pub mod withdraw;
-#[cfg(feature = "withdraw")]
-use crate::ado_base::withdraw::Withdrawal;
-#[cfg(feature = "withdraw")]
-use crate::amp::recipient::Recipient;
-use crate::{
-    ado_base::permissioning::Permission,
-    amp::{messages::AMPPkt, AndrAddr},
-};
+use crate::amp::{messages::AMPPkt, AndrAddr};
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::Binary;
+use cosmwasm_std::Addr;
 pub use modules::Module;
 
 #[cfg(feature = "modules")]
 use cosmwasm_std::Uint64;
 
+use self::ownership::OwnershipMessage;
+use self::permissioning::PermissioningMessage;
+
 #[cw_serde]
 pub struct InstantiateMsg {
     pub ado_type: String,
     pub ado_version: String,
-    pub operators: Option<Vec<String>>,
     pub kernel_address: String,
     pub owner: Option<String>,
 }
 
 #[cw_serde]
+#[serde(rename_all = "snake_case")]
+pub struct MigrateMsg {}
+
+#[cw_serde]
 pub enum AndromedaMsg {
-    UpdateOwner {
-        address: String,
-    },
-    UpdateOperators {
-        operators: Vec<String>,
-    },
+    Ownership(OwnershipMessage),
     UpdateAppContract {
         address: String,
     },
-    #[cfg(feature = "withdraw")]
-    Withdraw {
-        recipient: Option<Recipient>,
-        tokens_to_withdraw: Option<Vec<Withdrawal>>,
+    UpdateKernelAddress {
+        address: Addr,
     },
     #[cfg(feature = "modules")]
     RegisterModule {
@@ -63,24 +55,9 @@ pub enum AndromedaMsg {
         module_idx: Uint64,
         module: Module,
     },
-    Deposit {
-        recipient: Option<AndrAddr>,
-        msg: Option<Binary>,
-    },
     #[serde(rename = "amp_receive")]
     AMPReceive(AMPPkt),
-    SetPermission {
-        actor: AndrAddr,
-        action: String,
-        permission: Permission,
-    },
-    RemovePermission {
-        action: String,
-        actor: AndrAddr,
-    },
-    PermissionAction {
-        action: String,
-    },
+    Permissioning(PermissioningMessage),
 }
 
 #[cw_serde]
@@ -88,8 +65,8 @@ pub enum AndromedaMsg {
 pub enum AndromedaQuery {
     #[returns(self::ownership::ContractOwnerResponse)]
     Owner {},
-    #[returns(self::operators::OperatorsResponse)]
-    Operators {},
+    #[returns(self::ownership::ContractPotentialOwnerResponse)]
+    OwnershipRequest {},
     #[returns(self::ado_type::TypeResponse)]
     Type {},
     #[returns(self::kernel_address::KernelAddressResponse)]
@@ -98,11 +75,11 @@ pub enum AndromedaQuery {
     OriginalPublisher {},
     #[returns(self::block_height::BlockHeightResponse)]
     BlockHeightUponCreation {},
-    #[returns(self::operators::IsOperatorResponse)]
-    IsOperator { address: String },
     #[returns(self::version::VersionResponse)]
     Version {},
-    #[returns(Option<::cosmwasm_std::Addr>)]
+    #[returns(self::version::ADOBaseVersionResponse)]
+    ADOBaseVersion {},
+    #[returns(self::app_contract::AppContractResponse)]
     AppContract {},
     #[cfg(feature = "modules")]
     #[returns(Module)]
@@ -110,15 +87,12 @@ pub enum AndromedaQuery {
     #[cfg(feature = "modules")]
     #[returns(Vec<String>)]
     ModuleIds {},
-    #[cfg(feature = "withdraw")]
-    #[returns(::cosmwasm_std::BalanceResponse)]
-    Balance { address: AndrAddr },
     #[returns(Vec<self::permissioning::PermissionInfo>)]
     Permissions {
         actor: AndrAddr,
         limit: Option<u32>,
         start_after: Option<String>,
     },
-    #[returns(Vec<String>)]
+    #[returns(Vec<self::permissioning::PermissionedActionsResponse>)]
     PermissionedActions {},
 }

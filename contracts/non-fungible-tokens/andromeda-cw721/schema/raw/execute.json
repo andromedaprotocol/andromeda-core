@@ -61,7 +61,7 @@
           ],
           "properties": {
             "recipient": {
-              "type": "string"
+              "$ref": "#/definitions/AndrAddr"
             },
             "token_id": {
               "type": "string"
@@ -88,7 +88,7 @@
           ],
           "properties": {
             "contract": {
-              "type": "string"
+              "$ref": "#/definitions/AndrAddr"
             },
             "msg": {
               "$ref": "#/definitions/Binary"
@@ -322,27 +322,6 @@
     {
       "type": "object",
       "required": [
-        "extension"
-      ],
-      "properties": {
-        "extension": {
-          "type": "object",
-          "required": [
-            "msg"
-          ],
-          "properties": {
-            "msg": {
-              "$ref": "#/definitions/ExecuteMsg"
-            }
-          },
-          "additionalProperties": false
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "type": "object",
-      "required": [
         "amp_receive"
       ],
       "properties": {
@@ -355,20 +334,11 @@
     {
       "type": "object",
       "required": [
-        "update_owner"
+        "ownership"
       ],
       "properties": {
-        "update_owner": {
-          "type": "object",
-          "required": [
-            "address"
-          ],
-          "properties": {
-            "address": {
-              "type": "string"
-            }
-          },
-          "additionalProperties": false
+        "ownership": {
+          "$ref": "#/definitions/OwnershipMessage"
         }
       },
       "additionalProperties": false
@@ -376,20 +346,17 @@
     {
       "type": "object",
       "required": [
-        "update_operators"
+        "update_kernel_address"
       ],
       "properties": {
-        "update_operators": {
+        "update_kernel_address": {
           "type": "object",
           "required": [
-            "operators"
+            "address"
           ],
           "properties": {
-            "operators": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
+            "address": {
+              "$ref": "#/definitions/Addr"
             }
           },
           "additionalProperties": false
@@ -421,74 +388,11 @@
     {
       "type": "object",
       "required": [
-        "set_permission"
+        "permissioning"
       ],
       "properties": {
-        "set_permission": {
-          "type": "object",
-          "required": [
-            "action",
-            "actor",
-            "permission"
-          ],
-          "properties": {
-            "action": {
-              "type": "string"
-            },
-            "actor": {
-              "$ref": "#/definitions/AndrAddr"
-            },
-            "permission": {
-              "$ref": "#/definitions/Permission"
-            }
-          },
-          "additionalProperties": false
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "type": "object",
-      "required": [
-        "remove_permission"
-      ],
-      "properties": {
-        "remove_permission": {
-          "type": "object",
-          "required": [
-            "action",
-            "actor"
-          ],
-          "properties": {
-            "action": {
-              "type": "string"
-            },
-            "actor": {
-              "$ref": "#/definitions/AndrAddr"
-            }
-          },
-          "additionalProperties": false
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "type": "object",
-      "required": [
-        "permission_action"
-      ],
-      "properties": {
-        "permission_action": {
-          "type": "object",
-          "required": [
-            "action"
-          ],
-          "properties": {
-            "action": {
-              "type": "string"
-            }
-          },
-          "additionalProperties": false
+        "permissioning": {
+          "$ref": "#/definitions/PermissioningMessage"
         }
       },
       "additionalProperties": false
@@ -706,9 +610,14 @@
       },
       "additionalProperties": false
     },
+    "Addr": {
+      "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+      "type": "string"
+    },
     "AndrAddr": {
       "description": "An address that can be used within the Andromeda ecosystem. Inspired by the cosmwasm-std `Addr` type. https://github.com/CosmWasm/cosmwasm/blob/2a1c698520a1aacedfe3f4803b0d7d653892217a/packages/std/src/addresses.rs#L33\n\nThis address can be one of two things: 1. A valid human readable address e.g. `cosmos1...` 2. A valid Andromeda VFS path e.g. `/home/user/app/component`\n\nVFS paths can be local in the case of an app and can be done by referencing `./component` they can also contain protocols for cross chain communication. A VFS path is usually structured as so:\n\n`<protocol>://<chain (required if ibc used)>/<path>` or `ibc://cosmoshub-4/user/app/component`",
-      "type": "string"
+      "type": "string",
+      "pattern": "(^((([A-Za-z0-9]+://)?([A-Za-z0-9.\\-_]{2,80}/)))?((~[a-z0-9]{2,}|(lib|home))(/[A-Za-z0-9.\\-_]{2,80}?)*(/)?)$)|(^(~[a-z0-9]{2,}|/(lib|home))(/[A-Za-z0-9.\\-_]{2,80}?)*(/)?$)|(^[a-z0-9]{2,}$)|(^\\.(/[A-Za-z0-9.\\-_]{2,40}?)*(/)?$)"
     },
     "Binary": {
       "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
@@ -729,357 +638,141 @@
         }
       }
     },
-    "ExecuteMsg": {
+    "Expiration": {
+      "description": "Expiration represents a point in time when some event happens. It can compare with a BlockInfo and will return is_expired() == true once the condition is hit (and for every block in the future)",
       "oneOf": [
         {
-          "description": "Mints a token",
+          "description": "AtHeight will expire when `env.block.height` >= height",
           "type": "object",
           "required": [
-            "mint"
+            "at_height"
           ],
           "properties": {
-            "mint": {
-              "type": "object",
-              "required": [
-                "extension",
-                "owner",
-                "token_id"
-              ],
-              "properties": {
-                "extension": {
-                  "description": "Any custom extension used by this contract",
-                  "allOf": [
-                    {
-                      "$ref": "#/definitions/TokenExtension"
-                    }
-                  ]
-                },
-                "owner": {
-                  "description": "The owner of the newly minter NFT",
-                  "type": "string"
-                },
-                "token_id": {
-                  "description": "Unique ID of the NFT",
-                  "type": "string"
-                },
-                "token_uri": {
-                  "description": "Universal resource identifier for this NFT Should point to a JSON file that conforms to the ERC721 Metadata JSON Schema",
-                  "type": [
-                    "string",
-                    "null"
-                  ]
-                }
-              },
-              "additionalProperties": false
+            "at_height": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
             }
           },
           "additionalProperties": false
         },
         {
-          "description": "Transfers ownership of a token",
+          "description": "AtTime will expire when `env.block.time` >= time",
           "type": "object",
           "required": [
-            "transfer_nft"
+            "at_time"
           ],
           "properties": {
-            "transfer_nft": {
-              "type": "object",
-              "required": [
-                "recipient",
-                "token_id"
-              ],
-              "properties": {
-                "recipient": {
-                  "type": "string"
-                },
-                "token_id": {
-                  "type": "string"
-                }
-              },
-              "additionalProperties": false
+            "at_time": {
+              "$ref": "#/definitions/Timestamp"
             }
           },
           "additionalProperties": false
         },
         {
-          "description": "Sends a token to another contract",
+          "description": "Never will never expire. Used to express the empty variant",
           "type": "object",
           "required": [
-            "send_nft"
+            "never"
           ],
           "properties": {
-            "send_nft": {
+            "never": {
               "type": "object",
-              "required": [
-                "contract",
-                "msg",
-                "token_id"
-              ],
-              "properties": {
-                "contract": {
-                  "type": "string"
-                },
-                "msg": {
-                  "$ref": "#/definitions/Binary"
-                },
-                "token_id": {
-                  "type": "string"
-                }
-              },
               "additionalProperties": false
             }
           },
           "additionalProperties": false
-        },
-        {
-          "description": "Allows operator to transfer / send the token from the owner's account. If expiration is set, then this allowance has a time/height limit",
-          "type": "object",
-          "required": [
-            "approve"
-          ],
-          "properties": {
-            "approve": {
-              "type": "object",
-              "required": [
-                "spender",
-                "token_id"
-              ],
-              "properties": {
-                "expires": {
-                  "anyOf": [
-                    {
-                      "$ref": "#/definitions/Expiration"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                },
-                "spender": {
-                  "type": "string"
-                },
-                "token_id": {
-                  "type": "string"
-                }
-              },
-              "additionalProperties": false
+        }
+      ]
+    },
+    "IBCConfig": {
+      "type": "object",
+      "properties": {
+        "recovery_addr": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/AndrAddr"
+            },
+            {
+              "type": "null"
             }
-          },
-          "additionalProperties": false
-        },
-        {
-          "description": "Remove previously granted Approval",
-          "type": "object",
-          "required": [
-            "revoke"
-          ],
-          "properties": {
-            "revoke": {
-              "type": "object",
-              "required": [
-                "spender",
-                "token_id"
-              ],
-              "properties": {
-                "spender": {
-                  "type": "string"
-                },
-                "token_id": {
-                  "type": "string"
-                }
-              },
-              "additionalProperties": false
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "Milliseconds": {
+      "description": "Represents time in milliseconds.",
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "MintMsg": {
+      "type": "object",
+      "required": [
+        "extension",
+        "owner",
+        "token_id"
+      ],
+      "properties": {
+        "extension": {
+          "description": "Any custom extension used by this contract",
+          "allOf": [
+            {
+              "$ref": "#/definitions/TokenExtension"
             }
-          },
-          "additionalProperties": false
+          ]
         },
-        {
-          "description": "Approves an address for all tokens owned by the sender",
-          "type": "object",
-          "required": [
-            "approve_all"
-          ],
-          "properties": {
-            "approve_all": {
-              "type": "object",
-              "required": [
-                "operator"
-              ],
-              "properties": {
-                "expires": {
-                  "anyOf": [
-                    {
-                      "$ref": "#/definitions/Expiration"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                },
-                "operator": {
-                  "type": "string"
-                }
-              },
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
+        "owner": {
+          "description": "The owner of the newly minter NFT",
+          "type": "string"
         },
-        {
-          "description": "Remove previously granted ApproveAll permission",
-          "type": "object",
-          "required": [
-            "revoke_all"
-          ],
-          "properties": {
-            "revoke_all": {
-              "type": "object",
-              "required": [
-                "operator"
-              ],
-              "properties": {
-                "operator": {
-                  "type": "string"
-                }
-              },
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
+        "token_id": {
+          "description": "Unique ID of the NFT",
+          "type": "string"
         },
-        {
-          "description": "Burns a token, removing all data related to it. The ID of the token is still reserved.",
-          "type": "object",
-          "required": [
-            "burn"
-          ],
-          "properties": {
-            "burn": {
-              "type": "object",
-              "required": [
-                "token_id"
-              ],
-              "properties": {
-                "token_id": {
-                  "type": "string"
-                }
-              },
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
+        "token_uri": {
+          "description": "Universal resource identifier for this NFT Should point to a JSON file that conforms to the ERC721 Metadata JSON Schema",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "Module": {
+      "description": "A struct describing a token module, provided with the instantiation message this struct is used to record the info about the module and how/if it should be instantiated",
+      "type": "object",
+      "required": [
+        "address",
+        "is_mutable"
+      ],
+      "properties": {
+        "address": {
+          "$ref": "#/definitions/AndrAddr"
         },
-        {
-          "description": "Archives a token, causing it to be immutable but readable",
-          "type": "object",
-          "required": [
-            "archive"
-          ],
-          "properties": {
-            "archive": {
-              "type": "object",
-              "required": [
-                "token_id"
-              ],
-              "properties": {
-                "token_id": {
-                  "type": "string"
-                }
-              },
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
+        "is_mutable": {
+          "type": "boolean"
         },
+        "name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "OwnershipMessage": {
+      "oneOf": [
         {
-          "description": "Assigns a `TransferAgreement` for a token",
-          "type": "object",
-          "required": [
-            "transfer_agreement"
-          ],
-          "properties": {
-            "transfer_agreement": {
-              "type": "object",
-              "required": [
-                "token_id"
-              ],
-              "properties": {
-                "agreement": {
-                  "anyOf": [
-                    {
-                      "$ref": "#/definitions/TransferAgreement"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                },
-                "token_id": {
-                  "type": "string"
-                }
-              },
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "description": "Mint multiple tokens at a time",
-          "type": "object",
-          "required": [
-            "batch_mint"
-          ],
-          "properties": {
-            "batch_mint": {
-              "type": "object",
-              "required": [
-                "tokens"
-              ],
-              "properties": {
-                "tokens": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/definitions/MintMsg"
-                  }
-                }
-              },
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "extension"
-          ],
-          "properties": {
-            "extension": {
-              "type": "object",
-              "required": [
-                "msg"
-              ],
-              "properties": {
-                "msg": {
-                  "$ref": "#/definitions/ExecuteMsg"
-                }
-              },
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "amp_receive"
-          ],
-          "properties": {
-            "amp_receive": {
-              "$ref": "#/definitions/AMPPkt"
-            }
-          },
-          "additionalProperties": false
+          "type": "string",
+          "enum": [
+            "revoke_ownership_offer",
+            "accept_ownership",
+            "disown"
+          ]
         },
         {
           "type": "object",
@@ -1090,11 +783,78 @@
             "update_owner": {
               "type": "object",
               "required": [
-                "address"
+                "new_owner"
               ],
               "properties": {
-                "address": {
-                  "type": "string"
+                "expiration": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/definitions/Milliseconds"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "new_owner": {
+                  "$ref": "#/definitions/Addr"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "Permission": {
+      "description": "An enum to represent a user's permission for an action\n\n- **Blacklisted** - The user cannot perform the action until after the provided expiration - **Limited** - The user can perform the action while uses are remaining and before the provided expiration **for a permissioned action** - **Whitelisted** - The user can perform the action until the provided expiration **for a permissioned action**\n\nExpiration defaults to `Never` if not provided",
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "blacklisted"
+          ],
+          "properties": {
+            "blacklisted": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Milliseconds"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "limited"
+          ],
+          "properties": {
+            "limited": {
+              "type": "object",
+              "required": [
+                "uses"
+              ],
+              "properties": {
+                "expiration": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/definitions/Milliseconds"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "uses": {
+                  "type": "integer",
+                  "format": "uint32",
+                  "minimum": 0.0
                 }
               },
               "additionalProperties": false
@@ -1105,48 +865,26 @@
         {
           "type": "object",
           "required": [
-            "update_operators"
+            "whitelisted"
           ],
           "properties": {
-            "update_operators": {
-              "type": "object",
-              "required": [
-                "operators"
-              ],
-              "properties": {
-                "operators": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
+            "whitelisted": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Milliseconds"
+                },
+                {
+                  "type": "null"
                 }
-              },
-              "additionalProperties": false
+              ]
             }
           },
           "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "update_app_contract"
-          ],
-          "properties": {
-            "update_app_contract": {
-              "type": "object",
-              "required": [
-                "address"
-              ],
-              "properties": {
-                "address": {
-                  "type": "string"
-                }
-              },
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
-        },
+        }
+      ]
+    },
+    "PermissioningMessage": {
+      "oneOf": [
         {
           "type": "object",
           "required": [
@@ -1225,262 +963,20 @@
         {
           "type": "object",
           "required": [
-            "register_module"
+            "disable_action_permissioning"
           ],
           "properties": {
-            "register_module": {
+            "disable_action_permissioning": {
               "type": "object",
               "required": [
-                "module"
+                "action"
               ],
               "properties": {
-                "module": {
-                  "$ref": "#/definitions/Module"
+                "action": {
+                  "type": "string"
                 }
               },
               "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "deregister_module"
-          ],
-          "properties": {
-            "deregister_module": {
-              "type": "object",
-              "required": [
-                "module_idx"
-              ],
-              "properties": {
-                "module_idx": {
-                  "$ref": "#/definitions/Uint64"
-                }
-              },
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "alter_module"
-          ],
-          "properties": {
-            "alter_module": {
-              "type": "object",
-              "required": [
-                "module",
-                "module_idx"
-              ],
-              "properties": {
-                "module": {
-                  "$ref": "#/definitions/Module"
-                },
-                "module_idx": {
-                  "$ref": "#/definitions/Uint64"
-                }
-              },
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
-        }
-      ]
-    },
-    "Expiration": {
-      "description": "Expiration represents a point in time when some event happens. It can compare with a BlockInfo and will return is_expired() == true once the condition is hit (and for every block in the future)",
-      "oneOf": [
-        {
-          "description": "AtHeight will expire when `env.block.height` >= height",
-          "type": "object",
-          "required": [
-            "at_height"
-          ],
-          "properties": {
-            "at_height": {
-              "type": "integer",
-              "format": "uint64",
-              "minimum": 0.0
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "description": "AtTime will expire when `env.block.time` >= time",
-          "type": "object",
-          "required": [
-            "at_time"
-          ],
-          "properties": {
-            "at_time": {
-              "$ref": "#/definitions/Timestamp"
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "description": "Never will never expire. Used to express the empty variant",
-          "type": "object",
-          "required": [
-            "never"
-          ],
-          "properties": {
-            "never": {
-              "type": "object",
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
-        }
-      ]
-    },
-    "IBCConfig": {
-      "type": "object",
-      "properties": {
-        "recovery_addr": {
-          "anyOf": [
-            {
-              "$ref": "#/definitions/AndrAddr"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        }
-      },
-      "additionalProperties": false
-    },
-    "MintMsg": {
-      "type": "object",
-      "required": [
-        "extension",
-        "owner",
-        "token_id"
-      ],
-      "properties": {
-        "extension": {
-          "description": "Any custom extension used by this contract",
-          "allOf": [
-            {
-              "$ref": "#/definitions/TokenExtension"
-            }
-          ]
-        },
-        "owner": {
-          "description": "The owner of the newly minter NFT",
-          "type": "string"
-        },
-        "token_id": {
-          "description": "Unique ID of the NFT",
-          "type": "string"
-        },
-        "token_uri": {
-          "description": "Universal resource identifier for this NFT Should point to a JSON file that conforms to the ERC721 Metadata JSON Schema",
-          "type": [
-            "string",
-            "null"
-          ]
-        }
-      },
-      "additionalProperties": false
-    },
-    "Module": {
-      "description": "A struct describing a token module, provided with the instantiation message this struct is used to record the info about the module and how/if it should be instantiated",
-      "type": "object",
-      "required": [
-        "address",
-        "is_mutable"
-      ],
-      "properties": {
-        "address": {
-          "$ref": "#/definitions/AndrAddr"
-        },
-        "is_mutable": {
-          "type": "boolean"
-        },
-        "name": {
-          "type": [
-            "string",
-            "null"
-          ]
-        }
-      },
-      "additionalProperties": false
-    },
-    "Permission": {
-      "description": "An enum to represent a user's permission for an action\n\n- **Blacklisted** - The user cannot perform the action until after the provided expiration - **Limited** - The user can perform the action while uses are remaining and before the provided expiration **for a permissioned action** - **Whitelisted** - The user can perform the action until the provided expiration **for a permissioned action**\n\nExpiration defaults to `Never` if not provided",
-      "oneOf": [
-        {
-          "type": "object",
-          "required": [
-            "blacklisted"
-          ],
-          "properties": {
-            "blacklisted": {
-              "anyOf": [
-                {
-                  "$ref": "#/definitions/Expiration"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "limited"
-          ],
-          "properties": {
-            "limited": {
-              "type": "object",
-              "required": [
-                "uses"
-              ],
-              "properties": {
-                "expiration": {
-                  "anyOf": [
-                    {
-                      "$ref": "#/definitions/Expiration"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                },
-                "uses": {
-                  "type": "integer",
-                  "format": "uint32",
-                  "minimum": 0.0
-                }
-              },
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "whitelisted"
-          ],
-          "properties": {
-            "whitelisted": {
-              "anyOf": [
-                {
-                  "$ref": "#/definitions/Expiration"
-                },
-                {
-                  "type": "null"
-                }
-              ]
             }
           },
           "additionalProperties": false

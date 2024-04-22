@@ -119,20 +119,11 @@
     {
       "type": "object",
       "required": [
-        "update_owner"
+        "ownership"
       ],
       "properties": {
-        "update_owner": {
-          "type": "object",
-          "required": [
-            "address"
-          ],
-          "properties": {
-            "address": {
-              "type": "string"
-            }
-          },
-          "additionalProperties": false
+        "ownership": {
+          "$ref": "#/definitions/OwnershipMessage"
         }
       },
       "additionalProperties": false
@@ -140,20 +131,17 @@
     {
       "type": "object",
       "required": [
-        "update_operators"
+        "update_kernel_address"
       ],
       "properties": {
-        "update_operators": {
+        "update_kernel_address": {
           "type": "object",
           "required": [
-            "operators"
+            "address"
           ],
           "properties": {
-            "operators": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
+            "address": {
+              "$ref": "#/definitions/Addr"
             }
           },
           "additionalProperties": false
@@ -185,25 +173,29 @@
     {
       "type": "object",
       "required": [
-        "set_permission"
+        "permissioning"
       ],
       "properties": {
-        "set_permission": {
+        "permissioning": {
+          "$ref": "#/definitions/PermissioningMessage"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "register_module"
+      ],
+      "properties": {
+        "register_module": {
           "type": "object",
           "required": [
-            "action",
-            "actor",
-            "permission"
+            "module"
           ],
           "properties": {
-            "action": {
-              "type": "string"
-            },
-            "actor": {
-              "$ref": "#/definitions/AndrAddr"
-            },
-            "permission": {
-              "$ref": "#/definitions/Permission"
+            "module": {
+              "$ref": "#/definitions/Module"
             }
           },
           "additionalProperties": false
@@ -214,21 +206,17 @@
     {
       "type": "object",
       "required": [
-        "remove_permission"
+        "deregister_module"
       ],
       "properties": {
-        "remove_permission": {
+        "deregister_module": {
           "type": "object",
           "required": [
-            "action",
-            "actor"
+            "module_idx"
           ],
           "properties": {
-            "action": {
-              "type": "string"
-            },
-            "actor": {
-              "$ref": "#/definitions/AndrAddr"
+            "module_idx": {
+              "$ref": "#/definitions/Uint64"
             }
           },
           "additionalProperties": false
@@ -239,17 +227,21 @@
     {
       "type": "object",
       "required": [
-        "permission_action"
+        "alter_module"
       ],
       "properties": {
-        "permission_action": {
+        "alter_module": {
           "type": "object",
           "required": [
-            "action"
+            "module",
+            "module_idx"
           ],
           "properties": {
-            "action": {
-              "type": "string"
+            "module": {
+              "$ref": "#/definitions/Module"
+            },
+            "module_idx": {
+              "$ref": "#/definitions/Uint64"
             }
           },
           "additionalProperties": false
@@ -403,9 +395,14 @@
       },
       "additionalProperties": false
     },
+    "Addr": {
+      "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+      "type": "string"
+    },
     "AndrAddr": {
       "description": "An address that can be used within the Andromeda ecosystem. Inspired by the cosmwasm-std `Addr` type. https://github.com/CosmWasm/cosmwasm/blob/2a1c698520a1aacedfe3f4803b0d7d653892217a/packages/std/src/addresses.rs#L33\n\nThis address can be one of two things: 1. A valid human readable address e.g. `cosmos1...` 2. A valid Andromeda VFS path e.g. `/home/user/app/component`\n\nVFS paths can be local in the case of an app and can be done by referencing `./component` they can also contain protocols for cross chain communication. A VFS path is usually structured as so:\n\n`<protocol>://<chain (required if ibc used)>/<path>` or `ibc://cosmoshub-4/user/app/component`",
-      "type": "string"
+      "type": "string",
+      "pattern": "(^((([A-Za-z0-9]+://)?([A-Za-z0-9.\\-_]{2,80}/)))?((~[a-z0-9]{2,}|(lib|home))(/[A-Za-z0-9.\\-_]{2,80}?)*(/)?)$)|(^(~[a-z0-9]{2,}|/(lib|home))(/[A-Za-z0-9.\\-_]{2,80}?)*(/)?$)|(^[a-z0-9]{2,}$)|(^\\.(/[A-Za-z0-9.\\-_]{2,40}?)*(/)?$)"
     },
     "Binary": {
       "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
@@ -489,6 +486,78 @@
       },
       "additionalProperties": false
     },
+    "Milliseconds": {
+      "description": "Represents time in milliseconds.",
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "Module": {
+      "description": "A struct describing a token module, provided with the instantiation message this struct is used to record the info about the module and how/if it should be instantiated",
+      "type": "object",
+      "required": [
+        "address",
+        "is_mutable"
+      ],
+      "properties": {
+        "address": {
+          "$ref": "#/definitions/AndrAddr"
+        },
+        "is_mutable": {
+          "type": "boolean"
+        },
+        "name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "OwnershipMessage": {
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": [
+            "revoke_ownership_offer",
+            "accept_ownership",
+            "disown"
+          ]
+        },
+        {
+          "type": "object",
+          "required": [
+            "update_owner"
+          ],
+          "properties": {
+            "update_owner": {
+              "type": "object",
+              "required": [
+                "new_owner"
+              ],
+              "properties": {
+                "expiration": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/definitions/Milliseconds"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "new_owner": {
+                  "$ref": "#/definitions/Addr"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
     "Permission": {
       "description": "An enum to represent a user's permission for an action\n\n- **Blacklisted** - The user cannot perform the action until after the provided expiration - **Limited** - The user can perform the action while uses are remaining and before the provided expiration **for a permissioned action** - **Whitelisted** - The user can perform the action until the provided expiration **for a permissioned action**\n\nExpiration defaults to `Never` if not provided",
       "oneOf": [
@@ -501,7 +570,7 @@
             "blacklisted": {
               "anyOf": [
                 {
-                  "$ref": "#/definitions/Expiration"
+                  "$ref": "#/definitions/Milliseconds"
                 },
                 {
                   "type": "null"
@@ -526,7 +595,7 @@
                 "expiration": {
                   "anyOf": [
                     {
-                      "$ref": "#/definitions/Expiration"
+                      "$ref": "#/definitions/Milliseconds"
                     },
                     {
                       "type": "null"
@@ -553,12 +622,112 @@
             "whitelisted": {
               "anyOf": [
                 {
-                  "$ref": "#/definitions/Expiration"
+                  "$ref": "#/definitions/Milliseconds"
                 },
                 {
                   "type": "null"
                 }
               ]
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "PermissioningMessage": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "set_permission"
+          ],
+          "properties": {
+            "set_permission": {
+              "type": "object",
+              "required": [
+                "action",
+                "actor",
+                "permission"
+              ],
+              "properties": {
+                "action": {
+                  "type": "string"
+                },
+                "actor": {
+                  "$ref": "#/definitions/AndrAddr"
+                },
+                "permission": {
+                  "$ref": "#/definitions/Permission"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "remove_permission"
+          ],
+          "properties": {
+            "remove_permission": {
+              "type": "object",
+              "required": [
+                "action",
+                "actor"
+              ],
+              "properties": {
+                "action": {
+                  "type": "string"
+                },
+                "actor": {
+                  "$ref": "#/definitions/AndrAddr"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "permission_action"
+          ],
+          "properties": {
+            "permission_action": {
+              "type": "object",
+              "required": [
+                "action"
+              ],
+              "properties": {
+                "action": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "disable_action_permissioning"
+          ],
+          "properties": {
+            "disable_action_permissioning": {
+              "type": "object",
+              "required": [
+                "action"
+              ],
+              "properties": {
+                "action": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
             }
           },
           "additionalProperties": false

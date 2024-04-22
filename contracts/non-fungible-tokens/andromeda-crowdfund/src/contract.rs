@@ -4,21 +4,28 @@ use crate::state::{
 };
 use andromeda_non_fungible_tokens::{
     crowdfund::{
-        Config, CrowdfundMintMsg, ExecuteMsg, InstantiateMsg, IsTokenAvailableResponse, MigrateMsg,
-        QueryMsg, State,
+        Config, CrowdfundMintMsg, ExecuteMsg, InstantiateMsg, IsTokenAvailableResponse, QueryMsg,
+        State,
     },
     cw721::{ExecuteMsg as Cw721ExecuteMsg, MintMsg, QueryMsg as Cw721QueryMsg},
 };
-use andromeda_std::amp::{messages::AMPPkt, recipient::Recipient};
+use andromeda_std::{
+    ado_base::ownership::OwnershipMessage,
+    amp::{messages::AMPPkt, recipient::Recipient, AndrAddr},
+    common::{
+        actions::call_action,
+        expiration::{expiration_from_milliseconds, get_and_validate_start_time},
+        MillisecondsExpiration,
+    },
+};
 use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
 
+use andromeda_std::common::denom::validate_denom;
 use andromeda_std::{
-    ado_base::{hooks::AndromedaHook, InstantiateMsg as BaseInstantiateMsg},
+    ado_base::{hooks::AndromedaHook, InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     common::{deduct_funds, encode_binary, merge_sub_msgs, rates::get_tax_amount, Funds},
-    error::{from_semver, ContractError},
+    error::ContractError,
 };
-use cw2::{get_contract_version, set_contract_version};
-use semver::Version;
 
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
@@ -27,8 +34,8 @@ use cosmwasm_std::{
     Order, QuerierWrapper, QueryRequest, Reply, Response, StdError, Storage, SubMsg, Uint128,
     WasmMsg, WasmQuery,
 };
-use cw721::TokensResponse;
-use cw_utils::{nonpayable, Expiration};
+use cw721::{ContractInfoResponse, TokensResponse};
+use cw_utils::nonpayable;
 use std::cmp;
 
 const MAX_LIMIT: u32 = 100;
@@ -44,7 +51,6 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     CONFIG.save(
         deps.storage,
         &Config {
@@ -58,17 +64,18 @@ pub fn instantiate(
         deps.storage,
         env,
         deps.api,
-        info.clone(),
+        &deps.querier,
+        info,
         BaseInstantiateMsg {
-            ado_type: "crowdfund".to_string(),
+            ado_type: CONTRACT_NAME.to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
-            operators: None,
             kernel_address: msg.kernel_address,
             owner: msg.owner,
         },
     )?;
+    let owner = ADOContract::default().owner(deps.storage)?;
     let mod_resp =
-        ADOContract::default().register_modules(info.sender.as_str(), deps.storage, msg.modules)?;
+        ADOContract::default().register_modules(owner.as_str(), deps.storage, msg.modules)?;
 
     Ok(inst_resp
         .add_attributes(mod_resp.attributes)
@@ -103,11 +110,20 @@ pub fn execute(
     }
 }
 
-pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
-
+    let action_response = call_action(
+        &mut ctx.deps,
+        &ctx.info,
+        &ctx.env,
+        &ctx.amp_ctx,
+        msg.as_ref(),
+    )?;
     if !matches!(msg, ExecuteMsg::UpdateAppContract { .. })
-        && !matches!(msg, ExecuteMsg::UpdateOwner { .. })
+        && !matches!(
+            msg,
+            ExecuteMsg::Ownership(OwnershipMessage::UpdateOwner { .. })
+        )
     {
         contract.module_hook::<Response>(
             &ctx.deps.as_ref(),
@@ -117,17 +133,19 @@ pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
             },
         )?;
     }
-    match msg {
+    let res = match msg {
         ExecuteMsg::Mint(mint_msgs) => execute_mint(ctx, mint_msgs),
         ExecuteMsg::StartSale {
-            expiration,
+            start_time,
+            end_time,
             price,
             min_tokens_sold,
             max_amount_per_wallet,
             recipient,
         } => execute_start_sale(
             ctx,
-            expiration,
+            start_time,
+            end_time,
             price,
             min_tokens_sold,
             max_amount_per_wallet,
@@ -137,8 +155,13 @@ pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
         ExecuteMsg::PurchaseByTokenId { token_id } => execute_purchase_by_token_id(ctx, token_id),
         ExecuteMsg::ClaimRefund {} => execute_claim_refund(ctx),
         ExecuteMsg::EndSale { limit } => execute_end_sale(ctx, limit),
+        ExecuteMsg::UpdateTokenContract { address } => execute_update_token_contract(ctx, address),
         _ => ADOContract::default().execute(ctx, msg),
-    }
+    }?;
+    Ok(res
+        .add_submessages(action_response.messages)
+        .add_attributes(action_response.attributes)
+        .add_events(action_response.events))
 }
 
 fn execute_mint(
@@ -230,10 +253,44 @@ fn mint(
         }))
 }
 
+fn execute_update_token_contract(
+    ctx: ExecuteContext,
+    address: AndrAddr,
+) -> Result<Response, ContractError> {
+    let ExecuteContext { deps, info, .. } = ctx;
+    nonpayable(&info)?;
+
+    let contract = ADOContract::default();
+    ensure!(
+        contract.is_contract_owner(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {}
+    );
+    // Ensure no tokens have been minted already
+    let num_tokens = NUMBER_OF_TOKENS_AVAILABLE
+        .load(deps.storage)
+        .unwrap_or(Uint128::zero());
+    ensure!(num_tokens.is_zero(), ContractError::Unauthorized {});
+
+    // Will error if not a valid path
+    let addr = address.get_raw_address(&deps.as_ref())?;
+    let query = Cw721QueryMsg::ContractInfo {};
+
+    // Check contract is a valid CW721 contract
+    let res: Result<ContractInfoResponse, StdError> = deps.querier.query_wasm_smart(addr, &query);
+    ensure!(res.is_ok(), ContractError::Unauthorized {});
+
+    CONFIG.update(deps.storage, |mut config| {
+        config.token_address = address;
+        Ok::<_, ContractError>(config)
+    })?;
+    Ok(Response::new().add_attribute("action", "update_token_contract"))
+}
+
 #[allow(clippy::too_many_arguments)]
 fn execute_start_sale(
     ctx: ExecuteContext,
-    expiration: Expiration,
+    start_time: Option<MillisecondsExpiration>,
+    end_time: MillisecondsExpiration,
     price: Coin,
     min_tokens_sold: Uint128,
     max_amount_per_wallet: Option<u32>,
@@ -242,6 +299,8 @@ fn execute_start_sale(
     let ExecuteContext {
         deps, info, env, ..
     } = ctx;
+    validate_denom(deps.as_ref(), price.denom.clone())?;
+    recipient.validate(&deps.as_ref())?;
     nonpayable(&info)?;
     let ado_contract = ADOContract::default();
 
@@ -251,14 +310,16 @@ fn execute_start_sale(
         ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {}
     );
+    // If start time wasn't provided, it will be set as the current_time
+    let (start_expiration, _current_time) = get_and_validate_start_time(&env, start_time)?;
+
+    let end_expiration = expiration_from_milliseconds(end_time)?;
+
     ensure!(
-        !matches!(expiration, Expiration::Never {}),
-        ContractError::ExpirationMustNotBeNever {}
+        end_expiration > start_expiration,
+        ContractError::StartTimeAfterEndTime {}
     );
-    ensure!(
-        !expiration.is_expired(&env.block),
-        ContractError::ExpirationInPast {}
-    );
+
     SALE_CONDUCTED.save(deps.storage, &true)?;
     let state = STATE.may_load(deps.storage)?;
     ensure!(state.is_none(), ContractError::SaleStarted {});
@@ -269,7 +330,7 @@ fn execute_start_sale(
     STATE.save(
         deps.storage,
         &State {
-            expiration,
+            end_time: end_expiration,
             price,
             min_tokens_sold,
             max_amount_per_wallet,
@@ -284,7 +345,8 @@ fn execute_start_sale(
 
     Ok(Response::new()
         .add_attribute("action", "start_sale")
-        .add_attribute("expiration", expiration.to_string())
+        .add_attribute("start_time", start_expiration.to_string())
+        .add_attribute("end_time", end_expiration.to_string())
         .add_attribute("price", price_str)
         .add_attribute("min_tokens_sold", min_tokens_sold)
         .add_attribute("max_amount_per_wallet", max_amount_per_wallet.to_string()))
@@ -308,7 +370,7 @@ fn execute_purchase_by_token_id(
 
     let mut state = state.unwrap();
     ensure!(
-        !state.expiration.is_expired(&env.block),
+        !state.end_time.is_expired(&env.block),
         ContractError::NoOngoingSale {}
     );
 
@@ -360,7 +422,7 @@ fn execute_purchase(
 
     let mut state = state.unwrap();
     ensure!(
-        !state.expiration.is_expired(&env.block),
+        !state.end_time.is_expired(&env.block),
         ContractError::NoOngoingSale {}
     );
 
@@ -458,24 +520,26 @@ fn purchase_tokens(
             msgs: msgs.clone(),
             purchaser: info.sender.to_string(),
         };
+        total_tax_amount = total_tax_amount.checked_add(tax_amount)?;
 
-        total_tax_amount += tax_amount;
-
-        state.amount_to_send += remaining_amount.amount;
-        state.amount_sold += Uint128::new(1);
+        state.amount_to_send = state.amount_to_send.checked_add(remaining_amount.amount)?;
+        state.amount_sold = state.amount_sold.checked_add(Uint128::one())?;
 
         purchases.push(purchase);
 
         AVAILABLE_TOKENS.remove(deps.storage, &token_id);
-        current_number -= Uint128::new(1);
+        current_number = current_number.checked_sub(Uint128::one())?;
     }
     NUMBER_OF_TOKENS_AVAILABLE.save(deps.storage, &current_number)?;
 
     // CHECK :: User has sent enough to cover taxes.
     let required_payment = Coin {
         denom: state.price.denom.clone(),
-        amount: state.price.amount * Uint128::from(number_of_tokens_purchased as u128)
-            + total_tax_amount,
+        amount: state
+            .price
+            .amount
+            .checked_mul(Uint128::from(number_of_tokens_purchased as u128))?
+            .checked_add(total_tax_amount)?,
     };
     ensure!(
         has_coins(&info.funds, &required_payment),
@@ -494,7 +558,7 @@ fn execute_claim_refund(ctx: ExecuteContext) -> Result<Response, ContractError> 
     ensure!(state.is_some(), ContractError::NoOngoingSale {});
     let state = state.unwrap();
     ensure!(
-        state.expiration.is_expired(&env.block),
+        state.end_time.is_expired(&env.block),
         ContractError::SaleNotEnded {}
     );
     ensure!(
@@ -527,9 +591,16 @@ fn execute_end_sale(ctx: ExecuteContext, limit: Option<u32>) -> Result<Response,
     ensure!(state.is_some(), ContractError::NoOngoingSale {});
     let state = state.unwrap();
     let number_of_tokens_available = NUMBER_OF_TOKENS_AVAILABLE.load(deps.storage)?;
+    // In case the minimum sold tokens threshold is met, it has to be the owner who calls the function
+    let contract = ADOContract::default();
+    let has_minimum_sold = state.min_tokens_sold <= state.amount_sold;
+    let is_owner = contract.is_contract_owner(deps.storage, info.sender.as_str())?;
+
     ensure!(
         // If all tokens have been sold the sale can be ended too.
-        state.expiration.is_expired(&env.block) || number_of_tokens_available.is_zero(),
+        state.end_time.is_expired(&env.block)
+            || number_of_tokens_available.is_zero()
+            || (has_minimum_sold && is_owner),
         ContractError::SaleNotEnded {}
     );
     if state.amount_sold < state.min_tokens_sold {
@@ -611,14 +682,17 @@ fn transfer_tokens_and_send_funds(
                 denom: state.price.denom.clone(),
                 amount: state.amount_to_send,
             }];
-            match state.recipient.msg.clone() {
+            match state.recipient.msg {
                 None => {
                     resp = resp.add_submessage(
                         state.recipient.generate_direct_msg(&deps.as_ref(), funds)?,
                     );
                 }
                 Some(_) => {
-                    let amp_message = state.recipient.clone().generate_amp_msg(Some(funds));
+                    let amp_message = state
+                        .recipient
+                        .generate_amp_msg(&deps.as_ref(), Some(funds))
+                        .unwrap();
                     pkt = pkt.add_message(amp_message);
                     let kernel_address = ADOContract::default().get_kernel_address(deps.storage)?;
                     let sub_msg = pkt.to_sub_msg(
@@ -699,13 +773,12 @@ fn transfer_tokens_and_send_funds(
         transfer_msgs.push(CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: token_contract_address.to_string(),
             msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
-                recipient: purchaser,
+                recipient: AndrAddr::from_string(purchaser),
                 token_id: purchase.token_id,
             })?,
             funds: vec![],
         }));
-
-        state.amount_transferred += Uint128::from(1u128);
+        state.amount_transferred = state.amount_transferred.checked_add(Uint128::one())?;
     }
     // If the last purchaser wasn't removed, remove the subset of purchases that were processed.
     if PURCHASES.has(deps.storage, &last_purchaser) {
@@ -849,34 +922,5 @@ fn query_is_token_available(deps: Deps, id: String) -> IsTokenAvailableResponse 
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-    // New version
-    let version: Version = CONTRACT_VERSION.parse().map_err(from_semver)?;
-
-    // Old version
-    let stored = get_contract_version(deps.storage)?;
-    let storage_version: Version = stored.version.parse().map_err(from_semver)?;
-
-    let contract = ADOContract::default();
-
-    ensure!(
-        stored.contract == CONTRACT_NAME,
-        ContractError::CannotMigrate {
-            previous_contract: stored.contract,
-        }
-    );
-
-    // New version has to be newer/greater than the old version
-    ensure!(
-        storage_version < version,
-        ContractError::CannotMigrate {
-            previous_contract: stored.version,
-        }
-    );
-
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-
-    // Update the ADOContract's version
-    contract.execute_update_version(deps)?;
-
-    Ok(Response::default())
+    ADOContract::default().migrate(deps, CONTRACT_NAME, CONTRACT_VERSION)
 }

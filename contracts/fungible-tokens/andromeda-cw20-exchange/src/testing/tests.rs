@@ -3,13 +3,15 @@ use andromeda_fungible_tokens::cw20_exchange::{
     TokenAddressResponse,
 };
 use andromeda_std::{
-    amp::AndrAddr, common::expiration::MILLISECONDS_TO_NANOSECONDS_RATIO, error::ContractError,
+    amp::AndrAddr,
+    common::{expiration::MILLISECONDS_TO_NANOSECONDS_RATIO, Milliseconds},
+    error::ContractError,
     testing::mock_querier::MOCK_KERNEL_CONTRACT,
 };
 use cosmwasm_std::{
     attr, coin, coins, from_json,
     testing::{mock_env, mock_info},
-    to_json_binary, wasm_execute, Addr, BankMsg, CosmosMsg, DepsMut, Empty, Response, SubMsg,
+    to_json_binary, wasm_execute, Addr, BankMsg, Coin, CosmosMsg, DepsMut, Empty, Response, SubMsg,
     Timestamp, Uint128,
 };
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
@@ -162,8 +164,8 @@ pub fn test_start_sale() {
         exchange_rate,
         recipient: None,
         // A start time ahead of the current time
-        start_time: Some(current_time + 10),
-        duration: Some(1),
+        start_time: Some(Milliseconds(current_time + 10)),
+        duration: Some(Milliseconds(1)),
     };
     let receive_msg = Cw20ReceiveMsg {
         sender: owner.to_string(),
@@ -253,7 +255,7 @@ pub fn test_start_sale_invalid_start_time() {
         asset: exchange_asset,
         exchange_rate,
         recipient: None,
-        start_time: Some(1),
+        start_time: Some(Milliseconds(1)),
         duration: None,
     };
     let receive_msg = Cw20ReceiveMsg {
@@ -892,7 +894,7 @@ pub fn test_purchase_native() {
 
     init(deps.as_mut()).unwrap();
 
-    let exchange_rate = Uint128::from(10u128);
+    let exchange_rate = Uint128::from(9u128);
     let sale_amount = Uint128::from(100u128);
     SALE.save(
         deps.as_mut().storage,
@@ -910,28 +912,36 @@ pub fn test_purchase_native() {
     .unwrap();
 
     // Purchase Tokens
-    // Purchase Tokens
     let purchase_amount = coins(100, "test");
     let msg = ExecuteMsg::Purchase { recipient: None };
     let info = mock_info("purchaser", &purchase_amount);
 
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
 
+    // Check refund
+    let msg = res.messages[0].clone();
+    let expected_wasm: CosmosMsg<Empty> = CosmosMsg::Bank(BankMsg::Send {
+        to_address: purchaser.to_string(),
+        amount: vec![Coin::new(1, "test")],
+    });
+    let expected = SubMsg::reply_on_error(expected_wasm, 1);
+    assert_eq!(msg, expected);
+
     // Check transfer
-    let msg = res.messages.first().unwrap();
+    let msg = res.messages[1].clone();
     let expected_wasm: CosmosMsg<Empty> = CosmosMsg::Wasm(
         wasm_execute(
             MOCK_TOKEN_ADDRESS.to_string(),
             &Cw20ExecuteMsg::Transfer {
                 recipient: purchaser.to_string(),
-                amount: Uint128::from(10u128),
+                amount: Uint128::from(11u128),
             },
             vec![],
         )
         .unwrap(),
     );
     let expected = SubMsg::reply_on_error(expected_wasm, 2);
-    assert_eq!(msg, &expected);
+    assert_eq!(msg, expected);
 
     // Check sale amount updated
     let sale = SALE
@@ -940,14 +950,14 @@ pub fn test_purchase_native() {
 
     assert_eq!(
         sale.amount,
-        sale_amount.checked_sub(Uint128::from(10u128)).unwrap()
+        sale_amount.checked_sub(Uint128::from(11u128)).unwrap()
     );
 
     // Check recipient received funds
-    let msg = &res.messages[1];
+    let msg = &res.messages[2];
     let expected_wasm: CosmosMsg<Empty> = CosmosMsg::Bank(BankMsg::Send {
         to_address: owner.to_string(),
-        amount: purchase_amount.to_vec(),
+        amount: vec![Coin::new(99, "test")],
     });
     let expected = SubMsg::reply_on_error(expected_wasm, 3);
 
@@ -1305,4 +1315,34 @@ fn test_query_sale_assets() {
     assert_eq!(resp.assets.len(), 2);
     assert_eq!(resp.assets[0], "cw20:testaddress");
     assert_eq!(resp.assets[1], "native:test");
+}
+
+#[test]
+fn test_start_sale_same_asset() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let token_info = mock_info("cw20", &[]);
+
+    init(deps.as_mut()).unwrap();
+
+    let cw20_msg = Cw20ReceiveMsg {
+        sender: "owner".to_string(),
+        msg: to_json_binary(&Cw20HookMsg::StartSale {
+            asset: AssetInfo::Cw20(Addr::unchecked("cw20")),
+            exchange_rate: Uint128::from(10u128),
+            recipient: None,
+            start_time: None,
+            duration: None,
+        })
+        .unwrap(),
+        amount: Uint128::from(100u128),
+    };
+    let msg = ExecuteMsg::Receive(cw20_msg);
+
+    let err = execute(deps.as_mut(), mock_env(), token_info, msg).unwrap_err();
+    assert_eq!(
+        err,
+        ContractError::InvalidAsset {
+            asset: AssetInfo::Cw20(Addr::unchecked("cw20")).to_string()
+        }
+    );
 }

@@ -1,12 +1,13 @@
 use andromeda_std::{
-    amp::AndrAddr, andr_exec, andr_instantiate, andr_instantiate_modules, andr_query,
+    amp::AndrAddr,
+    andr_exec, andr_instantiate, andr_instantiate_modules, andr_query,
+    common::{MillisecondsDuration, MillisecondsExpiration},
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
 use cw20::Cw20ReceiveMsg;
 use cw_asset::AssetInfo;
 use cw_utils::Expiration;
-use serde::{Deserialize, Serialize};
 
 #[andr_instantiate]
 #[andr_instantiate_modules]
@@ -44,7 +45,7 @@ pub struct Sale {
     pub start_amount: Uint128,
 }
 
-#[derive(Deserialize, Serialize)]
+#[cw_serde]
 pub enum Cw20HookMsg {
     /// Starts a sale
     StartSale {
@@ -55,8 +56,8 @@ pub enum Cw20HookMsg {
         /// The recipient of the sale proceeds
         /// Sender is used if `None` provided
         recipient: Option<String>,
-        start_time: Option<u64>,
-        duration: Option<u64>,
+        start_time: Option<MillisecondsExpiration>,
+        duration: Option<MillisecondsDuration>,
     },
     /// Purchases tokens
     Purchase {
@@ -98,6 +99,3 @@ pub struct TokenAddressResponse {
     /// The address of the token being sold
     pub address: String,
 }
-
-#[cw_serde]
-pub struct MigrateMsg {}

@@ -1,25 +1,23 @@
 use crate::state::{ACCOUNTS, ALLOWED_COIN};
 
 use andromeda_finance::rate_limiting_withdrawals::{
-    AccountDetails, CoinAllowance, ExecuteMsg, InstantiateMsg, MigrateMsg, MinimumFrequency,
-    QueryMsg,
+    AccountDetails, CoinAllowance, ExecuteMsg, InstantiateMsg, MinimumFrequency, QueryMsg,
 };
+use andromeda_std::ado_base::hooks::AndromedaHook;
+use andromeda_std::ado_base::ownership::OwnershipMessage;
+use andromeda_std::ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg};
 use andromeda_std::ado_contract::ADOContract;
+use andromeda_std::common::actions::call_action;
 use andromeda_std::common::context::ExecuteContext;
-use andromeda_std::{
-    ado_base::{hooks::AndromedaHook, InstantiateMsg as BaseInstantiateMsg},
-    common::encode_binary,
-    error::{from_semver, ContractError},
-};
+use andromeda_std::common::Milliseconds;
+use andromeda_std::{common::encode_binary, error::ContractError};
 
 use cosmwasm_std::{
     ensure, entry_point, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
     Response, Uint128,
 };
-use cw2::{get_contract_version, set_contract_version};
 
 use cw_utils::{nonpayable, one_coin};
-use semver::Version;
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-rate-limiting-withdrawals";
@@ -32,8 +30,6 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-
     match msg.minimal_withdrawal_frequency {
         MinimumFrequency::Time { time } => ALLOWED_COIN.save(
             deps.storage,
@@ -44,14 +40,14 @@ pub fn instantiate(
             },
         )?,
         //NOTE temporary until a replacement for primitive is implemented
-        _ => ALLOWED_COIN.save(
-            deps.storage,
-            &CoinAllowance {
-                coin: msg.allowed_coin.coin,
-                limit: msg.allowed_coin.limit,
-                minimal_withdrawal_frequency: Uint128::zero(),
-            },
-        )?,
+        // _ => ALLOWED_COIN.save(
+        //     deps.storage,
+        //     &CoinAllowance {
+        //         coin: msg.allowed_coin.coin,
+        //         limit: msg.allowed_coin.limit,
+        //         minimal_withdrawal_frequency: Milliseconds::zero(),
+        //     },
+        // )?,
         // MinimumFrequency::AddressAndKey { address_and_key } => ALLOWED_COIN.save(
         //     deps.storage,
         //     &CoinAllowance {
@@ -72,11 +68,11 @@ pub fn instantiate(
         deps.storage,
         env,
         deps.api,
+        &deps.querier,
         info.clone(),
         BaseInstantiateMsg {
-            ado_type: "rate-limiting-withdrawals".to_string(),
+            ado_type: CONTRACT_NAME.to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
-            operators: None,
             kernel_address: msg.kernel_address,
             owner: msg.owner,
         },
@@ -98,20 +94,22 @@ pub fn execute(
 ) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
 
+    let ctx = ExecuteContext::new(deps, info, env);
+
     if !matches!(msg, ExecuteMsg::UpdateAppContract { .. })
-        && !matches!(msg, ExecuteMsg::UpdateOwner { .. })
+        && !matches!(
+            msg,
+            ExecuteMsg::Ownership(OwnershipMessage::UpdateOwner { .. })
+        )
     {
         contract.module_hook::<Response>(
-            &deps.as_ref(),
+            &ctx.deps.as_ref(),
             AndromedaHook::OnExecute {
-                sender: info.sender.to_string(),
+                sender: ctx.info.sender.to_string(),
                 payload: encode_binary(&msg)?,
             },
         )?;
     }
-
-    let ctx = ExecuteContext::new(deps, info, env);
-
     match msg {
         ExecuteMsg::AMPReceive(pkt) => {
             ADOContract::default().execute_amp_receive(ctx, pkt, handle_execute)
@@ -120,12 +118,24 @@ pub fn execute(
     }
 }
 
-pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
-    match msg {
+pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+    let action_response = call_action(
+        &mut ctx.deps,
+        &ctx.info,
+        &ctx.env,
+        &ctx.amp_ctx,
+        msg.as_ref(),
+    )?;
+
+    let res = match msg {
         ExecuteMsg::Deposits { recipient } => execute_deposit(ctx, recipient),
-        ExecuteMsg::Withdraws { amount } => execute_withdraw(ctx, amount),
+        ExecuteMsg::WithdrawFunds { amount } => execute_withdraw(ctx, amount),
         _ => ADOContract::default().execute(ctx, msg),
-    }
+    }?;
+    Ok(res
+        .add_submessages(action_response.messages)
+        .add_attributes(action_response.attributes)
+        .add_events(action_response.events))
 }
 
 fn execute_deposit(
@@ -155,7 +165,7 @@ fn execute_deposit(
         // If the user does have an account in that coin
 
         // Calculate new amount of coins
-        let new_amount = account.balance + info.funds[0].amount;
+        let new_amount = account.balance.checked_add(info.funds[0].amount)?;
 
         // add new balance with updated coin
         let new_details = AccountDetails {
@@ -196,9 +206,8 @@ fn execute_withdraw(ctx: ExecuteContext, amount: Uint128) -> Result<Response, Co
             let minimum_withdrawal_frequency = ALLOWED_COIN
                 .load(deps.storage)?
                 .minimal_withdrawal_frequency;
-            let current_time = Uint128::from(env.block.time.seconds());
-            let seconds_since_withdrawal =
-                current_time - Uint128::from(latest_withdrawal.seconds());
+            let current_time = Milliseconds::from_seconds(env.block.time.seconds());
+            let seconds_since_withdrawal = current_time.minus_seconds(latest_withdrawal.seconds());
 
             // make sure enough time has elapsed since the latest withdrawal
             ensure!(
@@ -278,36 +287,7 @@ fn execute_withdraw(ctx: ExecuteContext, amount: Uint128) -> Result<Response, Co
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-    // New version
-    let version: Version = CONTRACT_VERSION.parse().map_err(from_semver)?;
-
-    // Old version
-    let stored = get_contract_version(deps.storage)?;
-    let storage_version: Version = stored.version.parse().map_err(from_semver)?;
-
-    let contract = ADOContract::default();
-
-    ensure!(
-        stored.contract == CONTRACT_NAME,
-        ContractError::CannotMigrate {
-            previous_contract: stored.contract,
-        }
-    );
-
-    // New version has to be newer/greater than the old version
-    ensure!(
-        storage_version < version,
-        ContractError::CannotMigrate {
-            previous_contract: stored.version,
-        }
-    );
-
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-
-    // Update the ADOContract's version
-    contract.execute_update_version(deps)?;
-
-    Ok(Response::default())
+    ADOContract::default().migrate(deps, CONTRACT_NAME, CONTRACT_VERSION)
 }
 
 #[entry_point]

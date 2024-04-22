@@ -1,10 +1,10 @@
-use crate::ack::{make_ack_create_ado_success, make_ack_fail, make_ack_success};
+use crate::ack::{make_ack_fail, make_ack_success};
 use crate::execute;
 use crate::proto::{DenomTrace, MsgTransfer, QueryDenomTraceRequest};
-use crate::reply::ReplyId;
 use crate::state::{CHANNEL_TO_CHAIN, KERNEL_ADDRESSES};
 use andromeda_std::amp::VFS_KEY;
 use andromeda_std::common::context::ExecuteContext;
+use andromeda_std::common::reply::ReplyId;
 use andromeda_std::error::{ContractError, Never};
 use andromeda_std::{
     amp::{messages::AMPMsg, AndrAddr},
@@ -164,28 +164,29 @@ pub fn do_ibc_packet_receive(
 }
 
 pub fn ibc_create_ado(
-    execute_env: ExecuteContext,
-    owner: AndrAddr,
-    ado_type: String,
-    msg: Binary,
+    _execute_ctx: ExecuteContext,
+    _owner: AndrAddr,
+    _ado_type: String,
+    _msg: Binary,
 ) -> Result<IbcReceiveResponse, ContractError> {
-    let res = execute::create(execute_env, ado_type, msg, Some(owner), None)?;
-    Ok(IbcReceiveResponse::new()
-        .add_attributes(res.attributes)
-        .add_events(res.events)
-        .add_submessages(res.messages)
-        .set_ack(make_ack_create_ado_success()))
+    Err(ContractError::CrossChainComponentsCurrentlyDisabled {})
+    // let res = execute::create(execute_env, ado_type, msg, Some(owner), None)?;
+    // Ok(IbcReceiveResponse::new()
+    //     .add_attributes(res.attributes)
+    //     .add_events(res.events)
+    //     .add_submessages(res.messages)
+    //     .set_ack(make_ack_create_ado_success()))
 }
 
 pub fn ibc_register_username(
-    execute_env: ExecuteContext,
+    execute_ctx: ExecuteContext,
     username: String,
     addr: String,
 ) -> Result<IbcReceiveResponse, ContractError> {
-    let vfs_address = KERNEL_ADDRESSES.load(execute_env.deps.storage, VFS_KEY)?;
+    let vfs_address = KERNEL_ADDRESSES.load(execute_ctx.deps.storage, VFS_KEY)?;
     let msg = VFSExecuteMsg::RegisterUser {
         username,
-        address: Some(execute_env.deps.api.addr_validate(&addr)?),
+        address: Some(execute_ctx.deps.api.addr_validate(&addr)?),
     };
     let sub_msg: SubMsg<Empty> = SubMsg::reply_on_error(
         WasmMsg::Execute {

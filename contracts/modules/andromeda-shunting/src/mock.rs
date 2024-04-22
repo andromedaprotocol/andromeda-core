@@ -5,9 +5,10 @@ use andromeda_modules::shunting::{
     EvaluateParam, ExecuteMsg, InstantiateMsg, QueryMsg, ShuntingResponse,
 };
 use cosmwasm_std::{Addr, Empty};
-use cw_multi_test::{App, Contract, ContractWrapper};
+use cw_multi_test::{Contract, ContractWrapper};
 
 use andromeda_testing::{
+    mock::MockApp,
     mock_ado,
     mock_contract::{MockADO, MockContract},
 };
@@ -16,7 +17,7 @@ pub struct MockShunting(Addr);
 mock_ado!(MockShunting, ExecuteMsg, QueryMsg);
 
 impl MockShunting {
-    pub fn evaluate(&self, app: &App, params: Vec<EvaluateParam>) -> ShuntingResponse {
+    pub fn evaluate(&self, app: &MockApp, params: Vec<EvaluateParam>) -> ShuntingResponse {
         let msg = mock_shunting_evaluate(params);
         let res: ShuntingResponse = self.query(app, msg);
         res

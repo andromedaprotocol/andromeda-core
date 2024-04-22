@@ -1,10 +1,18 @@
 #![cfg(all(not(target_arch = "wasm32"), feature = "testing"))]
 
 use crate::contract::{execute, instantiate, query};
-use andromeda_fungible_tokens::cw20_staking::{Cw20HookMsg, InstantiateMsg, QueryMsg};
-use cosmwasm_std::Empty;
+use andromeda_fungible_tokens::cw20_staking::{
+    AllocationConfig, Cw20HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg, RewardTokenUnchecked,
+};
+use andromeda_std::{ado_base::Module, amp::AndrAddr, common::MillisecondsExpiration};
+use andromeda_testing::{mock_ado, MockADO, MockContract};
+use cosmwasm_std::{Addr, Empty};
 
+use cw_asset::AssetInfoUnchecked;
 use cw_multi_test::{Contract, ContractWrapper};
+
+pub struct MockCW20Staking(pub Addr);
+mock_ado!(MockCW20Staking, ExecuteMsg, QueryMsg);
 
 pub fn mock_andromeda_cw20_staking() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new_with_empty(execute, instantiate, query);
@@ -12,14 +20,37 @@ pub fn mock_andromeda_cw20_staking() -> Box<dyn Contract<Empty>> {
 }
 
 pub fn mock_cw20_staking_instantiate_msg(
-    staking_token: String,
-    kernel_address: Option<String>,
+    staking_token: impl Into<String>,
+    kernel_address: impl Into<String>,
+    modules: Option<Vec<Module>>,
+    owner: Option<String>,
 ) -> InstantiateMsg {
     InstantiateMsg {
-        staking_token,
+        staking_token: AndrAddr::from_string(staking_token.into()),
         additional_rewards: None,
-        kernel_address,
+        kernel_address: kernel_address.into(),
+        modules,
+        owner,
     }
+}
+
+pub fn mock_cw20_staking_add_reward_tokens(
+    reward_token: AssetInfoUnchecked,
+    init_timestamp: MillisecondsExpiration,
+    allocation_config: Option<AllocationConfig>,
+) -> ExecuteMsg {
+    let reward_token = RewardTokenUnchecked {
+        asset_info: reward_token,
+        init_timestamp,
+        allocation_config,
+    };
+    ExecuteMsg::AddRewardToken { reward_token }
+}
+
+pub fn mock_cw20_staking_update_global_indexes(
+    asset_infos: Option<Vec<AssetInfoUnchecked>>,
+) -> ExecuteMsg {
+    ExecuteMsg::UpdateGlobalIndexes { asset_infos }
 }
 
 pub fn mock_cw20_stake() -> Cw20HookMsg {

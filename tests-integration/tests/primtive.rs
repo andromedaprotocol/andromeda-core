@@ -6,43 +6,19 @@ use andromeda_primitive::mock::{
     mock_andromeda_primitive, mock_primitive_get_value, mock_primitive_instantiate_msg,
     mock_store_value_msg,
 };
-use andromeda_testing::{MockAndromeda, MockContract};
+use andromeda_testing::{mock::mock_app, mock_builder::MockAndromedaBuilder, MockContract};
 use cosmwasm_schema::schemars::Map;
-use cosmwasm_std::{coin, Addr};
-use cw_multi_test::{App, Executor};
-
-fn mock_app() -> App {
-    App::new(|router, _api, storage| {
-        router
-            .bank
-            .init_balance(
-                storage,
-                &Addr::unchecked("owner"),
-                [coin(999999, "uandr")].to_vec(),
-            )
-            .unwrap();
-        router
-            .bank
-            .init_balance(
-                storage,
-                &Addr::unchecked("buyer"),
-                [coin(200, "uandr")].to_vec(),
-            )
-            .unwrap();
-    })
-}
-
-fn mock_andromeda(app: &mut App, admin_address: Addr) -> MockAndromeda {
-    MockAndromeda::new(app, &admin_address)
-}
+use cw_multi_test::Executor;
 
 #[test]
-fn test_primitive() {
-    let sender = Addr::unchecked("owner");
+fn test_primtive() {
+    let mut router = mock_app(None);
 
-    let mut router = mock_app();
-    let andr = mock_andromeda(&mut router, sender.clone());
-
+    let andr = MockAndromedaBuilder::new(&mut router, "admin")
+        .with_wallets(vec![("owner", vec![])])
+        .with_contracts(vec![("primitive", mock_andromeda_primitive())])
+        .build(&mut router);
+    let sender = andr.get_wallet("owner");
     // Store contract codes
     let primtive_code_id = router.store_code(mock_andromeda_primitive());
 
@@ -77,7 +53,7 @@ fn test_primitive() {
     // Claim Ownership
     router
         .execute_contract(
-            sender,
+            sender.clone(),
             primitive_addr.clone(),
             &mock_store_value_msg(Some("key".to_string()), value.clone()),
             &[],

@@ -1,5 +1,5 @@
 use super::{addresses::AndrAddr, messages::AMPMsg};
-use crate::{common::encode_binary, error::ContractError};
+use crate::{ado_contract::ADOContract, common::encode_binary, error::ContractError};
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{to_json_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, SubMsg, WasmMsg};
 use cw20::{Cw20Coin, Cw20ExecuteMsg};
@@ -25,6 +25,20 @@ impl Recipient {
             msg,
             ibc_recovery_address: None,
         }
+    }
+
+    /// Validates a recipient by validating its address and recovery address (if it is provided)
+    pub fn validate(&self, deps: &Deps) -> Result<(), ContractError> {
+        self.address.validate(deps.api)?;
+        self.address.get_raw_address(deps)?;
+
+        // Validate the recovery address if it is providedReci
+        if let Some(ibc_recovery_address) = self.ibc_recovery_address.clone() {
+            ibc_recovery_address.validate(deps.api)?;
+            ibc_recovery_address.get_raw_address(deps)?;
+        }
+
+        Ok(())
     }
 
     /// Creates a Recipient from the given string with no attached message
@@ -98,13 +112,22 @@ impl Recipient {
     /// Generates an AMP message from the given Recipient.
     ///
     /// This can be attached to an AMP Packet for execution via the aOS.
-    pub fn generate_amp_msg(&self, funds: Option<Vec<Coin>>) -> AMPMsg {
-        AMPMsg::new(
-            self.address.to_string(),
+    pub fn generate_amp_msg(
+        &self,
+        deps: &Deps,
+        funds: Option<Vec<Coin>>,
+    ) -> Result<AMPMsg, ContractError> {
+        let mut address = self.address.clone();
+        if address.is_local_path() {
+            let vfs_addr = ADOContract::default().get_vfs_address(deps.storage, &deps.querier)?;
+            address = address.local_path_to_vfs_path(deps.storage, &deps.querier, vfs_addr)?;
+        }
+        Ok(AMPMsg::new(
+            address.to_string(),
             self.msg.clone().unwrap_or_default(),
             funds,
         )
-        .with_ibc_recovery(self.ibc_recovery_address.clone())
+        .with_ibc_recovery(self.ibc_recovery_address.clone()))
     }
 
     /// Adds an IBC recovery address to the recipient
@@ -126,7 +149,9 @@ impl Recipient {
 
 #[cfg(test)]
 mod test {
-    use cosmwasm_std::{from_json, testing::mock_dependencies, Uint128};
+    use cosmwasm_std::{from_json, testing::mock_dependencies, Addr, Uint128};
+
+    use crate::testing::mock_querier::{mock_dependencies_custom, MOCK_APP_CONTRACT};
 
     use super::*;
 
@@ -229,13 +254,14 @@ mod test {
     #[test]
     fn test_generate_amp_msg() {
         let recipient = Recipient::from_string("test");
-        let msg = recipient.generate_amp_msg(None);
+        let mut deps = mock_dependencies_custom(&[]);
+        let msg = recipient.generate_amp_msg(&deps.as_ref(), None).unwrap();
         assert_eq!(msg.recipient, "test");
         assert_eq!(msg.message, Binary::default());
         assert_eq!(msg.funds, vec![] as Vec<Coin>);
 
         let recipient = Recipient::new("test", Some(Binary::from(b"test".to_vec())));
-        let msg = recipient.generate_amp_msg(None);
+        let msg = recipient.generate_amp_msg(&deps.as_ref(), None).unwrap();
         assert_eq!(msg.recipient, "test");
         assert_eq!(msg.message, Binary::from(b"test".to_vec()));
         assert_eq!(msg.funds, vec![] as Vec<Coin>);
@@ -245,8 +271,25 @@ mod test {
             amount: Uint128::from(100u128),
         }];
         let recipient = Recipient::from_string("test");
-        let msg = recipient.generate_amp_msg(Some(funds.clone()));
+        let msg = recipient
+            .generate_amp_msg(&deps.as_ref(), Some(funds.clone()))
+            .unwrap();
         assert_eq!(msg.recipient, "test");
+        assert_eq!(msg.message, Binary::default());
+        assert_eq!(msg.funds, funds);
+
+        ADOContract::default()
+            .app_contract
+            .save(deps.as_mut().storage, &Addr::unchecked(MOCK_APP_CONTRACT))
+            .unwrap();
+        let recipient = Recipient::from_string("./test");
+        let msg = recipient
+            .generate_amp_msg(&deps.as_ref(), Some(funds.clone()))
+            .unwrap();
+        assert_eq!(
+            msg.recipient.to_string(),
+            format!("~{MOCK_APP_CONTRACT}/test")
+        );
         assert_eq!(msg.message, Binary::default());
         assert_eq!(msg.funds, funds);
     }

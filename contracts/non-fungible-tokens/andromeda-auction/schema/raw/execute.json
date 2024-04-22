@@ -15,6 +15,18 @@
       "additionalProperties": false
     },
     {
+      "type": "object",
+      "required": [
+        "receive"
+      ],
+      "properties": {
+        "receive": {
+          "$ref": "#/definitions/Cw20ReceiveMsg"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
       "description": "Places a bid on the current auction for the given token_id. The previous largest bid gets automatically sent back to the bidder when they are outbid.",
       "type": "object",
       "required": [
@@ -76,19 +88,17 @@
           "type": "object",
           "required": [
             "coin_denom",
-            "duration",
-            "start_time",
+            "end_time",
             "token_address",
-            "token_id"
+            "token_id",
+            "uses_cw20"
           ],
           "properties": {
             "coin_denom": {
               "type": "string"
             },
-            "duration": {
-              "type": "integer",
-              "format": "uint64",
-              "minimum": 0.0
+            "end_time": {
+              "$ref": "#/definitions/Milliseconds"
             },
             "min_bid": {
               "anyOf": [
@@ -100,16 +110,34 @@
                 }
               ]
             },
+            "recipient": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Recipient"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
             "start_time": {
-              "type": "integer",
-              "format": "uint64",
-              "minimum": 0.0
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Milliseconds"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "token_address": {
               "type": "string"
             },
             "token_id": {
               "type": "string"
+            },
+            "uses_cw20": {
+              "type": "boolean"
             },
             "whitelist": {
               "type": [
@@ -152,6 +180,60 @@
       "additionalProperties": false
     },
     {
+      "description": "Restricted to owner",
+      "type": "object",
+      "required": [
+        "authorize_token_contract"
+      ],
+      "properties": {
+        "authorize_token_contract": {
+          "type": "object",
+          "required": [
+            "addr"
+          ],
+          "properties": {
+            "addr": {
+              "$ref": "#/definitions/AndrAddr"
+            },
+            "expiration": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Milliseconds"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Restricted to owner",
+      "type": "object",
+      "required": [
+        "deauthorize_token_contract"
+      ],
+      "properties": {
+        "deauthorize_token_contract": {
+          "type": "object",
+          "required": [
+            "addr"
+          ],
+          "properties": {
+            "addr": {
+              "$ref": "#/definitions/AndrAddr"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
       "type": "object",
       "required": [
         "amp_receive"
@@ -166,20 +248,11 @@
     {
       "type": "object",
       "required": [
-        "update_owner"
+        "ownership"
       ],
       "properties": {
-        "update_owner": {
-          "type": "object",
-          "required": [
-            "address"
-          ],
-          "properties": {
-            "address": {
-              "type": "string"
-            }
-          },
-          "additionalProperties": false
+        "ownership": {
+          "$ref": "#/definitions/OwnershipMessage"
         }
       },
       "additionalProperties": false
@@ -187,20 +260,17 @@
     {
       "type": "object",
       "required": [
-        "update_operators"
+        "update_kernel_address"
       ],
       "properties": {
-        "update_operators": {
+        "update_kernel_address": {
           "type": "object",
           "required": [
-            "operators"
+            "address"
           ],
           "properties": {
-            "operators": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
+            "address": {
+              "$ref": "#/definitions/Addr"
             }
           },
           "additionalProperties": false
@@ -232,74 +302,11 @@
     {
       "type": "object",
       "required": [
-        "set_permission"
+        "permissioning"
       ],
       "properties": {
-        "set_permission": {
-          "type": "object",
-          "required": [
-            "action",
-            "actor",
-            "permission"
-          ],
-          "properties": {
-            "action": {
-              "type": "string"
-            },
-            "actor": {
-              "$ref": "#/definitions/AndrAddr"
-            },
-            "permission": {
-              "$ref": "#/definitions/Permission"
-            }
-          },
-          "additionalProperties": false
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "type": "object",
-      "required": [
-        "remove_permission"
-      ],
-      "properties": {
-        "remove_permission": {
-          "type": "object",
-          "required": [
-            "action",
-            "actor"
-          ],
-          "properties": {
-            "action": {
-              "type": "string"
-            },
-            "actor": {
-              "$ref": "#/definitions/AndrAddr"
-            }
-          },
-          "additionalProperties": false
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "type": "object",
-      "required": [
-        "permission_action"
-      ],
-      "properties": {
-        "permission_action": {
-          "type": "object",
-          "required": [
-            "action"
-          ],
-          "properties": {
-            "action": {
-              "type": "string"
-            }
-          },
-          "additionalProperties": false
+        "permissioning": {
+          "$ref": "#/definitions/PermissioningMessage"
         }
       },
       "additionalProperties": false
@@ -523,7 +530,8 @@
     },
     "AndrAddr": {
       "description": "An address that can be used within the Andromeda ecosystem. Inspired by the cosmwasm-std `Addr` type. https://github.com/CosmWasm/cosmwasm/blob/2a1c698520a1aacedfe3f4803b0d7d653892217a/packages/std/src/addresses.rs#L33\n\nThis address can be one of two things: 1. A valid human readable address e.g. `cosmos1...` 2. A valid Andromeda VFS path e.g. `/home/user/app/component`\n\nVFS paths can be local in the case of an app and can be done by referencing `./component` they can also contain protocols for cross chain communication. A VFS path is usually structured as so:\n\n`<protocol>://<chain (required if ibc used)>/<path>` or `ibc://cosmoshub-4/user/app/component`",
-      "type": "string"
+      "type": "string",
+      "pattern": "(^((([A-Za-z0-9]+://)?([A-Za-z0-9.\\-_]{2,80}/)))?((~[a-z0-9]{2,}|(lib|home))(/[A-Za-z0-9.\\-_]{2,80}?)*(/)?)$)|(^(~[a-z0-9]{2,}|/(lib|home))(/[A-Za-z0-9.\\-_]{2,80}?)*(/)?$)|(^[a-z0-9]{2,}$)|(^\\.(/[A-Za-z0-9.\\-_]{2,40}?)*(/)?$)"
     },
     "Binary": {
       "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
@@ -543,6 +551,27 @@
           "type": "string"
         }
       }
+    },
+    "Cw20ReceiveMsg": {
+      "description": "Cw20ReceiveMsg should be de/serialized under `Receive()` variant in a ExecuteMsg",
+      "type": "object",
+      "required": [
+        "amount",
+        "msg",
+        "sender"
+      ],
+      "properties": {
+        "amount": {
+          "$ref": "#/definitions/Uint128"
+        },
+        "msg": {
+          "$ref": "#/definitions/Binary"
+        },
+        "sender": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
     },
     "Cw721ReceiveMsg": {
       "description": "Cw721ReceiveMsg should be de/serialized under `Receive()` variant in a ExecuteMsg",
@@ -565,53 +594,6 @@
       },
       "additionalProperties": false
     },
-    "Expiration": {
-      "description": "Expiration represents a point in time when some event happens. It can compare with a BlockInfo and will return is_expired() == true once the condition is hit (and for every block in the future)",
-      "oneOf": [
-        {
-          "description": "AtHeight will expire when `env.block.height` >= height",
-          "type": "object",
-          "required": [
-            "at_height"
-          ],
-          "properties": {
-            "at_height": {
-              "type": "integer",
-              "format": "uint64",
-              "minimum": 0.0
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "description": "AtTime will expire when `env.block.time` >= time",
-          "type": "object",
-          "required": [
-            "at_time"
-          ],
-          "properties": {
-            "at_time": {
-              "$ref": "#/definitions/Timestamp"
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "description": "Never will never expire. Used to express the empty variant",
-          "type": "object",
-          "required": [
-            "never"
-          ],
-          "properties": {
-            "never": {
-              "type": "object",
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
-        }
-      ]
-    },
     "IBCConfig": {
       "type": "object",
       "properties": {
@@ -627,6 +609,12 @@
         }
       },
       "additionalProperties": false
+    },
+    "Milliseconds": {
+      "description": "Represents time in milliseconds.",
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
     },
     "Module": {
       "description": "A struct describing a token module, provided with the instantiation message this struct is used to record the info about the module and how/if it should be instantiated",
@@ -651,6 +639,49 @@
       },
       "additionalProperties": false
     },
+    "OwnershipMessage": {
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": [
+            "revoke_ownership_offer",
+            "accept_ownership",
+            "disown"
+          ]
+        },
+        {
+          "type": "object",
+          "required": [
+            "update_owner"
+          ],
+          "properties": {
+            "update_owner": {
+              "type": "object",
+              "required": [
+                "new_owner"
+              ],
+              "properties": {
+                "expiration": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/definitions/Milliseconds"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "new_owner": {
+                  "$ref": "#/definitions/Addr"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
     "Permission": {
       "description": "An enum to represent a user's permission for an action\n\n- **Blacklisted** - The user cannot perform the action until after the provided expiration - **Limited** - The user can perform the action while uses are remaining and before the provided expiration **for a permissioned action** - **Whitelisted** - The user can perform the action until the provided expiration **for a permissioned action**\n\nExpiration defaults to `Never` if not provided",
       "oneOf": [
@@ -663,7 +694,7 @@
             "blacklisted": {
               "anyOf": [
                 {
-                  "$ref": "#/definitions/Expiration"
+                  "$ref": "#/definitions/Milliseconds"
                 },
                 {
                   "type": "null"
@@ -688,7 +719,7 @@
                 "expiration": {
                   "anyOf": [
                     {
-                      "$ref": "#/definitions/Expiration"
+                      "$ref": "#/definitions/Milliseconds"
                     },
                     {
                       "type": "null"
@@ -715,7 +746,7 @@
             "whitelisted": {
               "anyOf": [
                 {
-                  "$ref": "#/definitions/Expiration"
+                  "$ref": "#/definitions/Milliseconds"
                 },
                 {
                   "type": "null"
@@ -726,6 +757,139 @@
           "additionalProperties": false
         }
       ]
+    },
+    "PermissioningMessage": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "set_permission"
+          ],
+          "properties": {
+            "set_permission": {
+              "type": "object",
+              "required": [
+                "action",
+                "actor",
+                "permission"
+              ],
+              "properties": {
+                "action": {
+                  "type": "string"
+                },
+                "actor": {
+                  "$ref": "#/definitions/AndrAddr"
+                },
+                "permission": {
+                  "$ref": "#/definitions/Permission"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "remove_permission"
+          ],
+          "properties": {
+            "remove_permission": {
+              "type": "object",
+              "required": [
+                "action",
+                "actor"
+              ],
+              "properties": {
+                "action": {
+                  "type": "string"
+                },
+                "actor": {
+                  "$ref": "#/definitions/AndrAddr"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "permission_action"
+          ],
+          "properties": {
+            "permission_action": {
+              "type": "object",
+              "required": [
+                "action"
+              ],
+              "properties": {
+                "action": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "disable_action_permissioning"
+          ],
+          "properties": {
+            "disable_action_permissioning": {
+              "type": "object",
+              "required": [
+                "action"
+              ],
+              "properties": {
+                "action": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "Recipient": {
+      "description": "A simple struct used for inter-contract communication. The struct can be used in two ways:\n\n1. Simply just providing an `AndrAddr` which will treat the communication as a transfer of any related funds 2. Providing an `AndrAddr` and a `Binary` message which will be sent to the contract at the resolved address\n\nThe `Binary` message can be any message that the contract at the resolved address can handle.",
+      "type": "object",
+      "required": [
+        "address"
+      ],
+      "properties": {
+        "address": {
+          "$ref": "#/definitions/AndrAddr"
+        },
+        "ibc_recovery_address": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/AndrAddr"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "msg": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Binary"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
     },
     "ReplyOn": {
       "description": "Use this to define when the contract gets a response callback. If you only need it for errors or success you can select just those in order to save gas.",
@@ -757,14 +921,6 @@
           "enum": [
             "never"
           ]
-        }
-      ]
-    },
-    "Timestamp": {
-      "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202); assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1); assert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202); assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Uint64"
         }
       ]
     },

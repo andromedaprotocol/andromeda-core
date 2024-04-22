@@ -1,4 +1,4 @@
-use andromeda_std::{ado_base::modules::Module, error::ContractError};
+use andromeda_std::{ado_base::modules::Module, common::Milliseconds, error::ContractError};
 
 use cosmwasm_std::{
     coin,
@@ -28,7 +28,7 @@ fn init(deps: DepsMut, modules: Option<Vec<Module>>) -> Response {
             limit: Uint128::from(50_u64),
         },
         minimal_withdrawal_frequency: MinimumFrequency::Time {
-            time: Uint128::from(10_u16),
+            time: Milliseconds::from_seconds(10),
         },
     };
 
@@ -136,7 +136,7 @@ fn test_withdraw_account_not_found() {
     let _res = execute(deps.as_mut(), mock_env(), info, exec).unwrap();
 
     let info = mock_info("random", &[]);
-    let exec = ExecuteMsg::Withdraws {
+    let exec = ExecuteMsg::WithdrawFunds {
         amount: Uint128::from(19_u16),
     };
     let err = execute(deps.as_mut(), mock_env(), info, exec).unwrap_err();
@@ -157,7 +157,7 @@ fn test_withdraw_over_account_limit() {
     let _res = execute(deps.as_mut(), mock_env(), info, exec).unwrap();
 
     let info = mock_info("andromedauser", &[]);
-    let exec = ExecuteMsg::Withdraws {
+    let exec = ExecuteMsg::WithdrawFunds {
         amount: Uint128::from(31_u16),
     };
     let err = execute(deps.as_mut(), mock_env(), info, exec).unwrap_err();
@@ -178,13 +178,13 @@ fn test_withdraw_funds_locked() {
     let _res = execute(deps.as_mut(), mock_env(), info, exec).unwrap();
 
     let info = mock_info("andromedauser", &[]);
-    let exec = ExecuteMsg::Withdraws {
+    let exec = ExecuteMsg::WithdrawFunds {
         amount: Uint128::from(10_u16),
     };
     let _res = execute(deps.as_mut(), mock_env(), info, exec).unwrap();
 
     let info = mock_info("andromedauser", &[]);
-    let exec = ExecuteMsg::Withdraws {
+    let exec = ExecuteMsg::WithdrawFunds {
         amount: Uint128::from(10_u16),
     };
 
@@ -205,7 +205,7 @@ fn test_withdraw_over_allowed_limit() {
             limit: Uint128::from(20_u64),
         },
         minimal_withdrawal_frequency: MinimumFrequency::Time {
-            time: Uint128::from(10_u16),
+            time: Milliseconds::from_seconds(10),
         },
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
@@ -220,7 +220,7 @@ fn test_withdraw_over_allowed_limit() {
     let _res = execute(deps.as_mut(), mock_env(), info, exec).unwrap();
 
     let info = mock_info("andromedauser", &[]);
-    let exec = ExecuteMsg::Withdraws {
+    let exec = ExecuteMsg::WithdrawFunds {
         amount: Uint128::from(21_u16),
     };
     let err = execute(deps.as_mut(), mock_env(), info, exec).unwrap_err();
@@ -239,7 +239,7 @@ fn test_withdraw_works() {
             limit: Uint128::from(50_u64),
         },
         minimal_withdrawal_frequency: MinimumFrequency::Time {
-            time: Uint128::from(10_u16),
+            time: Milliseconds::from_seconds(10),
         },
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
@@ -254,7 +254,7 @@ fn test_withdraw_works() {
     let _res = execute(deps.as_mut(), mock_env(), info, exec).unwrap();
 
     let info = mock_info("andromedauser", &[]);
-    let exec = ExecuteMsg::Withdraws {
+    let exec = ExecuteMsg::WithdrawFunds {
         amount: Uint128::from(10_u16),
     };
     let _res = execute(deps.as_mut(), mock_env(), info, exec).unwrap();

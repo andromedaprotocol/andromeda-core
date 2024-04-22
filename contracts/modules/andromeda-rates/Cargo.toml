@@ -1,8 +1,8 @@
 [package]
 name = "andromeda-rates"
-version = "0.2.1"
+version = "1.0.0"
 edition = "2021"
-rust-version = "1.65.0"
+rust-version = "1.75.0"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
@@ -21,8 +21,7 @@ cosmwasm-schema = { workspace = true }
 cw-storage-plus = { workspace = true }
 cw-utils = { workspace = true }
 cw20 = { workspace = true }
-cw2 = { workspace = true }
-semver = { workspace = true }
+
 
 andromeda-std = { workspace = true, features = ["module_hooks"] }
 andromeda-modules = { workspace = true }
@@ -31,4 +30,4 @@ andromeda-modules = { workspace = true }
 cw-multi-test = { workspace = true, optional = true }
 
 [dev-dependencies]
-andromeda-app = { version = "0.1.0", path = "../../../packages/andromeda-app" }
+andromeda-app = { workspace = true }

@@ -1,7 +1,5 @@
 use crate::contract::{instantiate, query};
-pub use andromeda_std::testing::mock_querier::{
-    MOCK_ADDRESS_LIST_CONTRACT, MOCK_APP_CONTRACT, MOCK_KERNEL_CONTRACT, MOCK_RATES_CONTRACT,
-};
+pub use andromeda_std::testing::mock_querier::MOCK_KERNEL_CONTRACT;
 
 use andromeda_modules::shunting::{EvaluateParam, InstantiateMsg, QueryMsg, ShuntingResponse};
 use cosmwasm_std::{

@@ -5,14 +5,19 @@ use andromeda_non_fungible_tokens::auction::{
     AuctionIdsResponse, AuctionStateResponse, Bid, BidsResponse, Cw721HookMsg, ExecuteMsg,
     InstantiateMsg, QueryMsg,
 };
-use andromeda_std::ado_base::modules::Module;
+use andromeda_std::ado_base::permissioning::{Permission, PermissioningMessage};
 use andromeda_std::amp::messages::AMPPkt;
+use andromeda_std::amp::Recipient;
+use andromeda_std::common::{Milliseconds, MillisecondsExpiration};
+use andromeda_std::{ado_base::modules::Module, amp::AndrAddr};
+use andromeda_testing::mock::MockApp;
 use andromeda_testing::{
     mock_ado,
     mock_contract::{ExecuteResult, MockADO, MockContract},
 };
 use cosmwasm_std::{Addr, Coin, Empty, Uint128};
-use cw_multi_test::{App, AppResponse, Contract, ContractWrapper, Executor};
+use cw20::Cw20ReceiveMsg;
+use cw_multi_test::{AppResponse, Contract, ContractWrapper, Executor};
 
 pub struct MockAuction(Addr);
 mock_ado!(MockAuction, ExecuteMsg, QueryMsg);
@@ -21,12 +26,12 @@ impl MockAuction {
     pub fn instantiate(
         code_id: u64,
         sender: Addr,
-        app: &mut App,
+        app: &mut MockApp,
         modules: Option<Vec<Module>>,
         kernel_address: impl Into<String>,
         owner: Option<String>,
     ) -> MockAuction {
-        let msg = mock_auction_instantiate_msg(modules, kernel_address, owner);
+        let msg = mock_auction_instantiate_msg(modules, kernel_address, owner, None, None);
         let addr = app
             .instantiate_contract(
                 code_id,
@@ -43,22 +48,26 @@ impl MockAuction {
     #[allow(clippy::too_many_arguments)]
     pub fn execute_start_auction(
         &self,
-        app: &mut App,
+        app: &mut MockApp,
         sender: Addr,
-        start_time: u64,
-        duration: u64,
+        start_time: Option<Milliseconds>,
+        end_time: Milliseconds,
         coin_denom: String,
         min_bid: Option<Uint128>,
         whitelist: Option<Vec<Addr>>,
+        recipient: Option<Recipient>,
+        uses_cw20: bool,
     ) -> AppResponse {
-        let msg = mock_start_auction(start_time, duration, coin_denom, min_bid, whitelist);
+        let msg = mock_start_auction(
+            start_time, end_time, coin_denom, uses_cw20, min_bid, whitelist, recipient,
+        );
         app.execute_contract(sender, self.addr().clone(), &msg, &[])
             .unwrap()
     }
 
     pub fn execute_place_bid(
         &self,
-        app: &mut App,
+        app: &mut MockApp,
         sender: Addr,
         token_id: String,
         token_address: String,
@@ -71,7 +80,7 @@ impl MockAuction {
 
     pub fn execute_claim_auction(
         &self,
-        app: &mut App,
+        app: &mut MockApp,
         sender: Addr,
         token_id: String,
         token_address: String,
@@ -82,7 +91,7 @@ impl MockAuction {
 
     pub fn query_auction_ids(
         &self,
-        app: &mut App,
+        app: &mut MockApp,
         token_id: String,
         token_address: String,
     ) -> Vec<Uint128> {
@@ -91,12 +100,16 @@ impl MockAuction {
         res.auction_ids
     }
 
-    pub fn query_auction_state(&self, app: &mut App, auction_id: Uint128) -> AuctionStateResponse {
+    pub fn query_auction_state(
+        &self,
+        app: &mut MockApp,
+        auction_id: Uint128,
+    ) -> AuctionStateResponse {
         let msg = mock_get_auction_state(auction_id);
         self.query(app, msg)
     }
 
-    pub fn query_bids(&self, app: &mut App, auction_id: Uint128) -> Vec<Bid> {
+    pub fn query_bids(&self, app: &mut MockApp, auction_id: Uint128) -> Vec<Bid> {
         let msg = mock_get_bids(auction_id);
         let res: BidsResponse = self.query(app, msg);
         res.bids
@@ -112,28 +125,58 @@ pub fn mock_auction_instantiate_msg(
     modules: Option<Vec<Module>>,
     kernel_address: impl Into<String>,
     owner: Option<String>,
+    authorized_token_addresses: Option<Vec<AndrAddr>>,
+    authorized_cw20_address: Option<AndrAddr>,
 ) -> InstantiateMsg {
     InstantiateMsg {
         modules,
         kernel_address: kernel_address.into(),
         owner,
+        authorized_token_addresses,
+        authorized_cw20_address,
     }
 }
 
 pub fn mock_start_auction(
-    start_time: u64,
-    duration: u64,
+    start_time: Option<Milliseconds>,
+    end_time: Milliseconds,
     coin_denom: String,
+    uses_cw20: bool,
     min_bid: Option<Uint128>,
     whitelist: Option<Vec<Addr>>,
+    recipient: Option<Recipient>,
 ) -> Cw721HookMsg {
     Cw721HookMsg::StartAuction {
         start_time,
-        duration,
+        end_time,
         coin_denom,
+        uses_cw20,
         min_bid,
         whitelist,
+        recipient,
     }
+}
+
+pub fn mock_auction_cw20_receive(msg: Cw20ReceiveMsg) -> ExecuteMsg {
+    ExecuteMsg::Receive(msg)
+}
+
+pub fn mock_authorize_token_address(
+    token_address: impl Into<String>,
+    expiration: Option<MillisecondsExpiration>,
+) -> ExecuteMsg {
+    ExecuteMsg::AuthorizeTokenContract {
+        addr: AndrAddr::from_string(token_address.into()),
+        expiration,
+    }
+}
+
+pub fn mock_set_permission(actor: AndrAddr, action: String, permission: Permission) -> ExecuteMsg {
+    ExecuteMsg::Permissioning(PermissioningMessage::SetPermission {
+        actor,
+        action,
+        permission,
+    })
 }
 
 pub fn mock_get_auction_ids(token_id: String, token_address: String) -> QueryMsg {

@@ -2,9 +2,11 @@
 
 use crate::contract::{execute, instantiate, query};
 use andromeda_modules::address_list::{ExecuteMsg, InstantiateMsg, QueryMsg};
-use andromeda_testing::{mock_ado, mock_contract::ExecuteResult, MockADO, MockContract};
+use andromeda_testing::{
+    mock::MockApp, mock_ado, mock_contract::ExecuteResult, MockADO, MockContract,
+};
 use cosmwasm_std::{Addr, Empty};
-use cw_multi_test::{App, Contract, ContractWrapper, Executor};
+use cw_multi_test::{Contract, ContractWrapper, Executor};
 
 pub struct MockAddressList(Addr);
 mock_ado!(MockAddressList, ExecuteMsg, QueryMsg);
@@ -13,7 +15,7 @@ impl MockAddressList {
     pub fn instantiate(
         code_id: u64,
         sender: Addr,
-        app: &mut App,
+        app: &mut MockApp,
         is_inclusive: bool,
         kernel_address: impl Into<String>,
         owner: Option<String>,
@@ -34,14 +36,14 @@ impl MockAddressList {
 
     pub fn execute_add_address(
         &self,
-        app: &mut App,
+        app: &mut MockApp,
         sender: Addr,
         address: impl Into<String>,
     ) -> ExecuteResult {
         self.execute(app, &mock_add_address_msg(address), sender, &[])
     }
 
-    pub fn query_includes_address(&self, app: &App, address: impl Into<String>) -> bool {
+    pub fn query_includes_address(&self, app: &MockApp, address: impl Into<String>) -> bool {
         self.query::<bool>(app, mock_includes_address_msg(address))
     }
 }

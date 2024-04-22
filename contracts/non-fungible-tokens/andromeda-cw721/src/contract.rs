@@ -1,33 +1,29 @@
 #[cfg(not(feature = "imported"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, ensure, from_json, has_coins, to_json_binary, Api, BankMsg, Binary, Coin, CosmosMsg,
-    Deps, DepsMut, Empty, Env, MessageInfo, QuerierWrapper, Response, SubMsg, Uint128,
+    attr, ensure, from_json, has_coins, to_json_binary, Addr, Api, BankMsg, Binary, Coin,
+    CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, QuerierWrapper, Response, SubMsg, Uint128,
 };
 
 use crate::state::{
     is_archived, ANDR_MINTER, ARCHIVED, BATCH_MINT_ACTION, MINT_ACTION, TRANSFER_AGREEMENTS,
 };
 use andromeda_non_fungible_tokens::cw721::{
-    ExecuteMsg, InstantiateMsg, MigrateMsg, MintMsg, QueryMsg, TokenExtension, TransferAgreement,
+    ExecuteMsg, InstantiateMsg, MintMsg, QueryMsg, TokenExtension, TransferAgreement,
 };
 use andromeda_std::{
     ado_base::{AndromedaMsg, AndromedaQuery},
-    ado_contract::{
-        permissioning::{is_context_permissioned, is_context_permissioned_strict},
-        ADOContract,
-    },
-    common::context::ExecuteContext,
+    ado_contract::{permissioning::is_context_permissioned_strict, ADOContract},
+    amp::AndrAddr,
+    common::{actions::call_action, context::ExecuteContext},
 };
-use cw2::{get_contract_version, set_contract_version};
-use semver::Version;
 
 use andromeda_std::{
-    ado_base::{hooks::AndromedaHook, InstantiateMsg as BaseInstantiateMsg},
+    ado_base::{hooks::AndromedaHook, InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     common::encode_binary,
     common::rates::get_tax_amount,
     common::Funds,
-    error::{from_semver, ContractError},
+    error::ContractError,
 };
 use cw721::{ContractInfoResponse, Cw721Execute};
 use cw721_base::{state::TokenInfo, Cw721Contract, ExecuteMsg as Cw721ExecuteMsg};
@@ -43,8 +39,6 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-
     let contract_info = ContractInfoResponse {
         name: msg.name,
         symbol: msg.symbol,
@@ -63,11 +57,11 @@ pub fn instantiate(
         deps.storage,
         env,
         deps.api,
+        &deps.querier,
         info.clone(),
         BaseInstantiateMsg {
-            ado_type: "cw721".to_string(),
+            ado_type: CONTRACT_NAME.to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
-            operators: None,
             kernel_address: msg.kernel_address,
             owner: msg.owner,
         },
@@ -100,32 +94,14 @@ pub fn execute(
     }
 }
 
-fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
-    ensure!(
-        is_context_permissioned(
-            ctx.deps.storage,
-            &ctx.info,
-            &ctx.env,
-            &ctx.amp_ctx,
-            msg.as_ref()
-        )?,
-        ContractError::Unauthorized {}
-    );
-
-    let payee = if let Some(amp_ctx) = ctx.amp_ctx.clone() {
-        ctx.deps
-            .api
-            .addr_validate(amp_ctx.ctx.get_origin().as_str())?
-    } else {
-        ctx.info.sender.clone()
-    };
-
-    let fee_msg = ADOContract::default().pay_fee(
-        ctx.deps.storage,
-        &ctx.deps.querier,
-        msg.as_ref().to_string(),
-        payee,
+    let action_response = call_action(
+        &mut ctx.deps,
+        &ctx.info,
+        &ctx.env,
+        &ctx.amp_ctx,
+        msg.as_ref(),
     )?;
 
     if let ExecuteMsg::Approve { token_id, .. } = &msg {
@@ -167,7 +143,10 @@ fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Cont
             }
         }
     }?;
-    Ok(res.add_submessage(fee_msg))
+    Ok(res
+        .add_submessages(action_response.messages)
+        .add_attributes(action_response.attributes)
+        .add_events(action_response.events))
 }
 
 fn execute_cw721(
@@ -275,20 +254,21 @@ fn execute_batch_mint(
 }
 
 fn execute_transfer(
-    env: ExecuteContext,
-    recipient: String,
+    ctx: ExecuteContext,
+    recipient: AndrAddr,
     token_id: String,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
         deps, info, env, ..
-    } = env;
+    } = ctx;
     let base_contract = ADOContract::default();
+    let recipient_address = recipient.get_raw_address(&deps.as_ref())?.into_string();
     let responses = base_contract.module_hook::<Response>(
         &deps.as_ref(),
         AndromedaHook::OnTokenTransfer {
             token_id: token_id.clone(),
             sender: info.sender.to_string(),
-            recipient: recipient.clone(),
+            recipient: recipient_address.clone(),
         },
     )?;
     // Reduce all responses into one.
@@ -318,7 +298,7 @@ fn execute_transfer(
             Funds::Native(agreement_amount.clone()),
             encode_binary(&ExecuteMsg::TransferNft {
                 token_id: token_id.clone(),
-                recipient: recipient.clone(),
+                recipient,
             })?,
         )?;
         let remaining_amount = remainder.try_get_coin()?;
@@ -334,13 +314,13 @@ fn execute_transfer(
     };
 
     check_can_send(deps.as_ref(), env, info, &token_id, &token, tax_amount)?;
-    token.owner = deps.api.addr_validate(&recipient)?;
+    token.owner = deps.api.addr_validate(&recipient_address)?;
     token.approvals.clear();
     TRANSFER_AGREEMENTS.remove(deps.storage, &token_id);
     contract.tokens.save(deps.storage, &token_id, &token)?;
     Ok(resp
         .add_attribute("action", "transfer")
-        .add_attribute("recipient", recipient))
+        .add_attribute("recipient", recipient_address))
 }
 
 fn get_transfer_agreement_amount(
@@ -410,11 +390,11 @@ fn check_can_send(
 }
 
 fn execute_update_transfer_agreement(
-    env: ExecuteContext,
+    ctx: ExecuteContext,
     token_id: String,
     agreement: Option<TransferAgreement>,
 ) -> Result<Response, ContractError> {
-    let ExecuteContext { deps, info, .. } = env;
+    let ExecuteContext { deps, info, .. } = ctx;
     let contract = AndrCW721Contract::default();
     let token = contract.tokens.load(deps.storage, &token_id)?;
     ensure!(token.owner == info.sender, ContractError::Unauthorized {});
@@ -438,8 +418,8 @@ fn execute_update_transfer_agreement(
     Ok(Response::default())
 }
 
-fn execute_archive(env: ExecuteContext, token_id: String) -> Result<Response, ContractError> {
-    let ExecuteContext { deps, info, .. } = env;
+fn execute_archive(ctx: ExecuteContext, token_id: String) -> Result<Response, ContractError> {
+    let ExecuteContext { deps, info, .. } = ctx;
     ensure!(
         !is_archived(deps.storage, &token_id)?.is_archived,
         ContractError::TokenIsArchived {}
@@ -455,8 +435,8 @@ fn execute_archive(env: ExecuteContext, token_id: String) -> Result<Response, Co
     Ok(Response::default())
 }
 
-fn execute_burn(env: ExecuteContext, token_id: String) -> Result<Response, ContractError> {
-    let ExecuteContext { deps, info, .. } = env;
+fn execute_burn(ctx: ExecuteContext, token_id: String) -> Result<Response, ContractError> {
+    let ExecuteContext { deps, info, .. } = ctx;
     let contract = AndrCW721Contract::default();
     let token = contract.tokens.load(deps.storage, &token_id)?;
     ensure!(token.owner == info.sender, ContractError::Unauthorized {});
@@ -481,7 +461,7 @@ fn execute_burn(env: ExecuteContext, token_id: String) -> Result<Response, Contr
 fn execute_send_nft(
     ctx: ExecuteContext,
     token_id: String,
-    contract_addr: String,
+    contract_addr: AndrAddr,
     msg: Binary,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
@@ -489,6 +469,7 @@ fn execute_send_nft(
     } = ctx;
     let contract = AndrCW721Contract::default();
     TRANSFER_AGREEMENTS.remove(deps.storage, &token_id);
+    let contract_addr = contract_addr.get_raw_address(&deps.as_ref())?.into_string();
 
     Ok(contract.send_nft(deps, env, info, contract_addr, token_id, msg)?)
 }
@@ -520,41 +501,12 @@ pub fn query_transfer_agreement(
     Ok(TRANSFER_AGREEMENTS.may_load(deps.storage, &token_id)?)
 }
 
-pub fn query_minter(deps: Deps) -> Result<String, ContractError> {
-    let minter = ANDR_MINTER.load(deps.storage)?.get_raw_address(&deps)?;
-    Ok(minter.to_string())
+pub fn query_minter(deps: Deps) -> Result<Addr, ContractError> {
+    let minter = ANDR_MINTER.load(deps.storage)?;
+    minter.get_raw_address(&deps)
 }
 
 #[cfg_attr(not(feature = "imported"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-    // New version
-    let version: Version = CONTRACT_VERSION.parse().map_err(from_semver)?;
-
-    // Old version
-    let stored = get_contract_version(deps.storage)?;
-    let storage_version: Version = stored.version.parse().map_err(from_semver)?;
-
-    let contract = ADOContract::default();
-
-    ensure!(
-        stored.contract == CONTRACT_NAME,
-        ContractError::CannotMigrate {
-            previous_contract: stored.contract,
-        }
-    );
-
-    // New version has to be newer/greater than the old version
-    ensure!(
-        storage_version < version,
-        ContractError::CannotMigrate {
-            previous_contract: stored.version,
-        }
-    );
-
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-
-    // Update the ADOContract's version
-    contract.execute_update_version(deps)?;
-
-    Ok(Response::default())
+    ADOContract::default().migrate(deps, CONTRACT_NAME, CONTRACT_VERSION)
 }

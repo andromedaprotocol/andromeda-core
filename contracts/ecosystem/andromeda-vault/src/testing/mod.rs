@@ -2,7 +2,7 @@ mod mock_querier;
 
 use self::mock_querier::{MOCK_ANCHOR_CONTRACT, MOCK_VAULT_CONTRACT};
 use crate::contract::*;
-use crate::testing::mock_querier::{mock_dependencies_custom, PositionResponse};
+use crate::testing::mock_querier::mock_dependencies_custom;
 use andromeda_ecosystem::vault::{
     DepositMsg, ExecuteMsg, InstantiateMsg, QueryMsg, StrategyAddressResponse, StrategyType,
     YieldStrategy, BALANCES, STRATEGY_CONTRACT_ADDRESSES,
@@ -11,7 +11,6 @@ use andromeda_std::amp::{AndrAddr, Recipient};
 use andromeda_std::testing::mock_querier::MOCK_KERNEL_CONTRACT;
 use andromeda_std::{
     ado_base::withdraw::{Withdrawal, WithdrawalType},
-    ado_base::AndromedaMsg,
     error::ContractError,
 };
 use cosmwasm_std::attr;
@@ -737,7 +736,7 @@ fn test_withdraw_single_strategy() {
     };
 
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
-    let withdraw_exec = to_json_binary(&AndromedaMsg::Withdraw {
+    let withdraw_exec = to_json_binary(&ExecuteMsg::Withdraw {
         recipient: Some(Recipient::from_string("depositor")),
         tokens_to_withdraw: Some(withdrawals),
     })
@@ -848,18 +847,21 @@ fn test_query_strategy_balance() {
         strategy: Some(StrategyType::Anchor),
         denom: None,
     };
+    let resp = query(deps.as_ref(), env, single_query).unwrap_err();
+    assert_eq!(resp, ContractError::TemporarilyDisabled {});
 
-    let resp = query(deps.as_ref(), env, single_query).unwrap();
-    let balance: PositionResponse = from_json(resp).unwrap();
-    assert_eq!(Uint128::from(10u128), balance.aust_amount);
-    assert_eq!(
-        "depositor".to_string(),
-        balance
-            .recipient
-            .address
-            .get_raw_address(&deps.as_ref())
-            .unwrap()
-    );
+    // let resp = query(deps.as_ref(), env, single_query).unwrap();
+
+    // let balance: PositionResponse = from_json(resp).unwrap();
+    // assert_eq!(Uint128::from(10u128), balance.aust_amount);
+    // assert_eq!(
+    //     "depositor".to_string(),
+    //     balance
+    //         .recipient
+    //         .address
+    //         .get_raw_address(&deps.as_ref())
+    //         .unwrap()
+    // );
 }
 
 #[test]

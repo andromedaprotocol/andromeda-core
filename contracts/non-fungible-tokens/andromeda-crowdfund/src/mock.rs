@@ -5,15 +5,18 @@ use andromeda_non_fungible_tokens::{
     crowdfund::{CrowdfundMintMsg, ExecuteMsg, InstantiateMsg, QueryMsg},
     cw721::TokenExtension,
 };
-use andromeda_std::amp::Recipient;
-use andromeda_std::{ado_base::modules::Module, amp::AndrAddr};
+use andromeda_std::{
+    ado_base::modules::Module,
+    amp::{AndrAddr, Recipient},
+    common::Milliseconds,
+};
 use andromeda_testing::{
+    mock::MockApp,
     mock_ado,
     mock_contract::{ExecuteResult, MockADO, MockContract},
 };
 use cosmwasm_std::{Addr, Coin, Empty, Uint128};
-use cw_multi_test::{App, Contract, ContractWrapper, Executor};
-use cw_utils::Expiration;
+use cw_multi_test::{Contract, ContractWrapper, Executor};
 
 pub struct MockCrowdfund(Addr);
 mock_ado!(MockCrowdfund, ExecuteMsg, QueryMsg);
@@ -23,7 +26,7 @@ impl MockCrowdfund {
     pub fn instantiate(
         code_id: u64,
         sender: Addr,
-        app: &mut App,
+        app: &mut MockApp,
         token_address: AndrAddr,
         can_mint_after_sale: bool,
         modules: Option<Vec<Module>>,
@@ -54,15 +57,17 @@ impl MockCrowdfund {
     pub fn execute_start_sale(
         &self,
         sender: Addr,
-        app: &mut App,
-        expiration: Expiration,
+        app: &mut MockApp,
+        start_time: Option<Milliseconds>,
+        end_time: Milliseconds,
         price: Coin,
         min_tokens_sold: Uint128,
         max_amount_per_wallet: Option<u32>,
         recipient: Recipient,
     ) -> ExecuteResult {
         let msg = mock_start_crowdfund_msg(
-            expiration,
+            start_time,
+            end_time,
             price,
             min_tokens_sold,
             max_amount_per_wallet,
@@ -74,7 +79,7 @@ impl MockCrowdfund {
     pub fn execute_end_sale(
         &self,
         sender: Addr,
-        app: &mut App,
+        app: &mut MockApp,
         limit: Option<u32>,
     ) -> ExecuteResult {
         let msg = mock_end_crowdfund_msg(limit);
@@ -84,7 +89,7 @@ impl MockCrowdfund {
     pub fn execute_mint(
         &self,
         sender: Addr,
-        app: &mut App,
+        app: &mut MockApp,
         token_id: String,
         extension: TokenExtension,
         token_uri: Option<String>,
@@ -99,7 +104,7 @@ impl MockCrowdfund {
     pub fn execute_quick_mint(
         &self,
         sender: Addr,
-        app: &mut App,
+        app: &mut MockApp,
         amount: u32,
         publisher: String,
     ) -> ExecuteResult {
@@ -110,7 +115,7 @@ impl MockCrowdfund {
     pub fn execute_purchase(
         &self,
         sender: Addr,
-        app: &mut App,
+        app: &mut MockApp,
         number_of_tokens: Option<u32>,
         funds: &[Coin],
     ) -> ExecuteResult {
@@ -141,14 +146,16 @@ pub fn mock_crowdfund_instantiate_msg(
 }
 
 pub fn mock_start_crowdfund_msg(
-    expiration: Expiration,
+    start_time: Option<Milliseconds>,
+    end_time: Milliseconds,
     price: Coin,
     min_tokens_sold: Uint128,
     max_amount_per_wallet: Option<u32>,
     recipient: Recipient,
 ) -> ExecuteMsg {
     ExecuteMsg::StartSale {
-        expiration,
+        start_time,
+        end_time,
         price,
         min_tokens_sold,
         max_amount_per_wallet,
@@ -190,4 +197,12 @@ pub fn mock_crowdfund_quick_mint_msg(amount: u32, publisher: String) -> ExecuteM
 
 pub fn mock_purchase_msg(number_of_tokens: Option<u32>) -> ExecuteMsg {
     ExecuteMsg::Purchase { number_of_tokens }
+}
+
+pub fn mock_query_ado_base_version() -> QueryMsg {
+    QueryMsg::ADOBaseVersion {}
+}
+
+pub fn mock_query_ado_version() -> QueryMsg {
+    QueryMsg::Version {}
 }

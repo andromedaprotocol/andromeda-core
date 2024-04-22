@@ -24,7 +24,7 @@ pub mod ibc_lifecycle {
             OUTGOING_IBC_PACKETS.may_load(deps.storage, (&source_channel, sequence))?;
         let Some(inflight_packet) = sent_packet else {
             // If there isn't, continue
-            return Ok(response.add_attribute("msg", "received unexpected ack"))
+            return Ok(response.add_attribute("msg", "received unexpected ack"));
         };
         OUTGOING_IBC_PACKETS.remove(deps.storage, (&source_channel, sequence));
 
@@ -61,7 +61,7 @@ pub mod ibc_lifecycle {
             OUTGOING_IBC_PACKETS.may_load(deps.storage, (&source_channel, sequence))?;
         let Some(inflight_packet) = sent_packet else {
             // If there isn't, continue
-            return Ok(response.add_attribute("msg", "received unexpected timeout"))
+            return Ok(response.add_attribute("msg", "received unexpected timeout"));
         };
         // Remove the in-flight packet
         OUTGOING_IBC_PACKETS.remove(deps.storage, (&source_channel, sequence));

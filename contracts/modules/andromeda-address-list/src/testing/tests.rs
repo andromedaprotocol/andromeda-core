@@ -5,7 +5,6 @@ use andromeda_modules::address_list::{
     ExecuteMsg, IncludesAddressResponse, InstantiateMsg, QueryMsg,
 };
 use andromeda_std::ado_base::hooks::AndromedaHook;
-use andromeda_std::ado_contract::ADOContract;
 
 use andromeda_std::common::encode_binary;
 use andromeda_std::error::ContractError;
@@ -50,10 +49,6 @@ fn test_add_address() {
 
     init(deps.as_mut(), info.clone());
 
-    ADOContract::default()
-        .execute_update_operators(deps.as_mut(), info.clone(), vec![operator.to_owned()])
-        .unwrap();
-
     let msg = ExecuteMsg::AddAddress {
         address: address.to_string(),
     };
@@ -97,10 +92,6 @@ fn test_add_addresses() {
     let address_two = "whitlistee2";
 
     init(deps.as_mut(), info.clone());
-
-    ADOContract::default()
-        .execute_update_operators(deps.as_mut(), info.clone(), vec![operator.to_owned()])
-        .unwrap();
 
     let msg = ExecuteMsg::AddAddresses { addresses: vec![] };
 
@@ -159,11 +150,6 @@ fn test_remove_address() {
     let address = "whitelistee";
 
     init(deps.as_mut(), info.clone());
-
-    //save operator
-    ADOContract::default()
-        .execute_update_operators(deps.as_mut(), info.clone(), vec![operator.to_owned()])
-        .unwrap();
 
     let msg = ExecuteMsg::RemoveAddress {
         address: address.to_string(),
@@ -235,9 +221,6 @@ fn test_execute_hook_blacklist() {
 
     // Mark it as a blacklist.
     IS_INCLUSIVE.save(deps.as_mut().storage, &false).unwrap();
-    ADOContract::default()
-        .execute_update_operators(deps.as_mut(), info.clone(), vec![operator.to_owned()])
-        .unwrap();
 
     let msg = ExecuteMsg::AddAddress {
         address: address.to_string(),

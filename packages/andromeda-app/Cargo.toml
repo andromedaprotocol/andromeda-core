@@ -1,8 +1,10 @@
 [package]
 name = "andromeda-app"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2021"
-rust-version = "1.65.0"
+rust-version = "1.75.0"
+description = "Utility methods and message definitions for the Andromeda App Contract"
+license = "MIT"
 
 [features]
 backtraces = ["cosmwasm-std/backtraces"]
@@ -12,7 +14,10 @@ backtraces = ["cosmwasm-std/backtraces"]
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-cosmwasm-std = { workspace = true }
+cosmwasm-std = { workspace = true, features = ["cosmwasm_1_2"] }
 cosmwasm-schema = { workspace = true }
 serde = { workspace = true }
 andromeda-std = { workspace = true }
+
+[dev-dependencies]
+cw-multi-test = { version = "1.0.0" }

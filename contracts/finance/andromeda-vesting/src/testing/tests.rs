@@ -92,7 +92,9 @@ fn test_instantiate() {
     assert_eq!(
         Response::new()
             .add_attribute("method", "instantiate")
-            .add_attribute("type", "vesting"),
+            .add_attribute("type", "vesting")
+            .add_attribute("kernel_address", MOCK_KERNEL_CONTRACT)
+            .add_attribute("owner", "owner"),
         res
     );
 
@@ -191,12 +193,7 @@ fn test_create_batch_valid_denom_zero_amount() {
 
     let res = execute(deps.as_mut(), mock_env(), info, msg);
 
-    assert_eq!(
-        ContractError::InvalidFunds {
-            msg: "Funds must be non-zero".to_string()
-        },
-        res.unwrap_err()
-    );
+    assert_eq!(ContractError::InvalidZeroAmount {}, res.unwrap_err());
 }
 
 #[test]
@@ -682,7 +679,7 @@ fn test_claim_batch_single_claim() {
 fn test_claim_batch_not_nice_numbers_single_release() {
     let mut deps = mock_dependencies_custom(&[]);
     init(deps.as_mut());
-    let info = mock_info("owner", &coins(7, "uusd"));
+    let info = mock_info("owner", &coins(10, "uusd"));
 
     let release_unit = 10;
 
@@ -722,14 +719,14 @@ fn test_claim_batch_not_nice_numbers_single_release() {
             .add_attribute("action", "claim")
             .add_attribute("amount", "7")
             .add_attribute("batch_id", "1")
-            .add_attribute("amount_left", "0"),
+            .add_attribute("amount_left", "3"),
         res
     );
     let lockup_end = mock_env().block.time.seconds();
 
     assert_eq!(
         Batch {
-            amount: Uint128::new(7),
+            amount: Uint128::new(10),
             amount_claimed: Uint128::new(7),
             lockup_end,
             release_unit: 10,

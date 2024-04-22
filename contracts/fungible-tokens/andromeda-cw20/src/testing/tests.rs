@@ -6,10 +6,12 @@ use andromeda_std::{
     ado_base::Module, amp::addresses::AndrAddr, error::ContractError,
     testing::mock_querier::MOCK_KERNEL_CONTRACT,
 };
+use andromeda_testing::economics_msg::generate_economics_message;
 use cosmwasm_std::{
     testing::{mock_env, mock_info},
     to_json_binary, Addr, DepsMut, Response, StdError, Uint128,
 };
+
 use cw20::{Cw20Coin, Cw20ReceiveMsg};
 use cw20_base::state::BALANCES;
 
@@ -61,6 +63,8 @@ fn test_transfer() {
         Response::new()
             .add_attribute("method", "instantiate")
             .add_attribute("type", "cw20")
+            .add_attribute("kernel_address", MOCK_KERNEL_CONTRACT)
+            .add_attribute("owner", "owner")
             .add_attribute("action", "register_module")
             .add_attribute("module_idx", "1"),
         res
@@ -74,7 +78,7 @@ fn test_transfer() {
     );
 
     let msg = ExecuteMsg::Transfer {
-        recipient: "other".into(),
+        recipient: AndrAddr::from_string("other"),
         amount: 100u128.into(),
     };
 
@@ -96,7 +100,8 @@ fn test_transfer() {
             .add_attribute("action", "transfer")
             .add_attribute("from", "sender")
             .add_attribute("to", "other")
-            .add_attribute("amount", "100"),
+            .add_attribute("amount", "100")
+            .add_submessage(generate_economics_message("sender", "Transfer")),
         res
     );
 
@@ -135,7 +140,9 @@ fn test_send() {
     assert_eq!(
         Response::new()
             .add_attribute("method", "instantiate")
-            .add_attribute("type", "cw20"),
+            .add_attribute("type", "cw20")
+            .add_attribute("kernel_address", MOCK_KERNEL_CONTRACT)
+            .add_attribute("owner", "owner"),
         res
     );
 
@@ -147,7 +154,7 @@ fn test_send() {
     );
 
     let msg = ExecuteMsg::Send {
-        contract: "contract".into(),
+        contract: AndrAddr::from_string("contract".to_string()),
         amount: 100u128.into(),
         msg: to_json_binary(&"msg").unwrap(),
     };
@@ -168,7 +175,8 @@ fn test_send() {
                 }
                 .into_cosmos_msg("contract")
                 .unwrap(),
-            ),
+            )
+            .add_submessage(generate_economics_message("sender", "Send")),
         res
     );
 

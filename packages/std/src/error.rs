@@ -1,4 +1,4 @@
-use cosmwasm_std::{OverflowError, StdError};
+use cosmwasm_std::{Addr, OverflowError, StdError};
 use cw20_base::ContractError as Cw20ContractError;
 use cw721_base::ContractError as Cw721ContractError;
 use cw_asset::AssetError;
@@ -25,6 +25,12 @@ pub enum ContractError {
 
     #[error("Unauthorized")]
     Unauthorized {},
+
+    #[error("UnpublishedCodeID")]
+    UnpublishedCodeID {},
+
+    #[error("UnpublishedVersion")]
+    UnpublishedVersion {},
 
     #[error("ContractLocked")]
     ContractLocked {},
@@ -76,6 +82,9 @@ pub enum ContractError {
 
     #[error("invalid IBC channel version - got ({actual}), expected ({expected})")]
     InvalidVersion { actual: String, expected: String },
+
+    #[error("CrossChainComponentsCurrentlyDisabled")]
+    CrossChainComponentsCurrentlyDisabled {},
 
     #[error("tokenId list has different length than tokenUri list")]
     TokenInfoLenMissmatch {},
@@ -227,6 +236,9 @@ pub enum ContractError {
     #[error("NoReceivingAddress")]
     NoReceivingAddress {},
 
+    #[error("TemporarilyDisabled")]
+    TemporarilyDisabled {},
+
     #[error("AccountNotFound")]
     AccountNotFound {},
 
@@ -296,6 +308,9 @@ pub enum ContractError {
     #[error("Overflow")]
     Overflow {},
 
+    #[error("Underflow")]
+    Underflow {},
+
     #[error("CannotWithdrawHighestBid")]
     CannotWithdrawHighestBid {},
 
@@ -325,6 +340,12 @@ pub enum ContractError {
 
     #[error("InvalidADOVersion: {msg:?}")]
     InvalidADOVersion { msg: Option<String> },
+
+    #[error("InvalidCodeID: {msg:?}")]
+    InvalidCodeID { msg: Option<String> },
+
+    #[error("InvalidADOType: {msg:?}")]
+    InvalidADOType { msg: Option<String> },
 
     #[error("AuctionRewardAlreadyClaimed")]
     AuctionAlreadyClaimed {},
@@ -399,6 +420,9 @@ pub enum ContractError {
     #[error("Invalid png header")]
     InvalidPngHeader {},
 
+    #[error("Instantiate2 Address Mistmatch: expected: {expected}, received: {received}")]
+    Instantiate2AddressMismatch { expected: Addr, received: Addr },
+
     #[error("Duplicate initial balance addresses")]
     DuplicateInitialBalanceAddresses {},
 
@@ -459,9 +483,6 @@ pub enum ContractError {
 
     #[error("TooManyAppComponents")]
     TooManyAppComponents {},
-
-    #[error("TooManyComponents")]
-    TooManyComponents {},
 
     #[error("InvalidLtvRatio: {msg}")]
     InvalidLtvRatio { msg: String },
@@ -627,6 +648,12 @@ pub enum ContractError {
 
     #[error("Invalid Transfer Port: {port}")]
     InvalidTransferPort { port: String },
+
+    #[error("Invalid Modules: {msg}")]
+    InvalidModules { msg: String },
+
+    #[error("Invalid time: {msg}")]
+    InvalidTimestamp { msg: String },
 }
 
 impl From<Cw20ContractError> for ContractError {

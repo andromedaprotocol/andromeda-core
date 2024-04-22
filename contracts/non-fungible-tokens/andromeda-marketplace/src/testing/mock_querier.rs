@@ -6,11 +6,13 @@ use andromeda_std::{
     ado_contract::ADOContract,
     common::Funds,
 };
+use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
-    from_json,
+    coin, from_json,
     testing::{mock_env, mock_info, MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
-    to_json_binary, BankMsg, Binary, Coin, ContractResult, CosmosMsg, OwnedDeps, Querier,
-    QuerierResult, QueryRequest, Response, SubMsg, SystemError, SystemResult, Uint128, WasmQuery,
+    to_json_binary, BankMsg, BankQuery, Binary, Coin, ContractResult, CosmosMsg, OwnedDeps,
+    Querier, QuerierResult, QuerierWrapper, QueryRequest, Response, SubMsg, SystemError,
+    SystemResult, Uint128, WasmQuery,
 };
 use cw721::{Cw721QueryMsg, OwnerOfResponse};
 
@@ -19,6 +21,7 @@ pub const MOCK_ADDRESSLIST_CONTRACT: &str = "addresslist_contract";
 pub const MOCK_TOKEN_ADDR: &str = "token0001";
 pub const MOCK_TOKEN_OWNER: &str = "owner";
 pub const MOCK_UNCLAIMED_TOKEN: &str = "unclaimed_token";
+pub const MOCK_CW20_ADDR: &str = "cw20_addr";
 pub const MOCK_TAX_RECIPIENT: &str = "tax_recipient";
 pub const MOCK_ROYALTY_RECIPIENT: &str = "royalty_recipient";
 pub const MOCK_RATES_CONTRACT: &str = "rates_contract";
@@ -46,11 +49,12 @@ pub fn mock_dependencies_custom(
             &mut deps.storage,
             mock_env(),
             &deps.api,
+            &QuerierWrapper::new(&deps.querier),
             mock_info("sender", &[]),
             InstantiateMsg {
                 ado_type: "crowdfund".to_string(),
                 ado_version: "test".to_string(),
-                operators: None,
+
                 kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
                 owner: None,
             },
@@ -81,6 +85,24 @@ impl Querier for WasmMockQuerier {
     }
 }
 
+#[cw_serde(
+    Serialize,
+    Deserialize,
+    Clone,
+    Debug,
+    Default,
+    PartialEq,
+    Eq,
+    JsonSchema
+)]
+#[serde(rename_all = "snake_case")]
+#[non_exhaustive]
+pub struct SupplyResponse {
+    /// Always returns a Coin with the requested denom.
+    /// This will be of zero amount if the denom does not exist.
+    pub amount: Coin,
+}
+
 impl WasmMockQuerier {
     pub fn handle_query(&self, request: &QueryRequest<cosmwasm_std::Empty>) -> QuerierResult {
         match &request {
@@ -93,6 +115,31 @@ impl WasmMockQuerier {
                     _ => MockAndromedaQuerier::default().handle_query(&self.base, request),
                 }
             }
+            QueryRequest::Bank(bank_query) => match bank_query {
+                BankQuery::Supply { denom } => {
+                    let response = SupplyResponse {
+                        amount: coin(1_000_000, denom),
+                    };
+
+                    SystemResult::Ok(ContractResult::Ok(to_json_binary(&response).unwrap()))
+                }
+                BankQuery::Balance {
+                    address: _,
+                    denom: _,
+                } => {
+                    panic!("Unsupported Query")
+                }
+                BankQuery::AllBalances { address: _ } => {
+                    panic!("Unsupported Query")
+                }
+                // BankQuery::DenomMetadata { denom: _ } => {
+                //     panic!("Unsupported Query")
+                // }
+                // BankQuery::AllDenomMetadata { pagination: _ } => {
+                //     panic!("Unsupported Query")
+                // }
+                _ => panic!("Unsupported Query"),
+            },
             _ => MockAndromedaQuerier::default().handle_query(&self.base, request),
         }
     }

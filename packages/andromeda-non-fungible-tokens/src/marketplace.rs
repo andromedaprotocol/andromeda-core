@@ -1,19 +1,27 @@
-use andromeda_std::{andr_exec, andr_instantiate, andr_instantiate_modules, andr_query};
+use andromeda_std::{
+    amp::{AndrAddr, Recipient},
+    andr_exec, andr_instantiate, andr_instantiate_modules, andr_query,
+    common::{MillisecondsDuration, MillisecondsExpiration},
+};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
-use cw721::Cw721ReceiveMsg;
+use cw20::Cw20ReceiveMsg;
+use cw721::{Cw721ReceiveMsg, Expiration};
 use std::fmt::{Display, Formatter, Result};
 
 #[andr_instantiate]
 #[andr_instantiate_modules]
 #[cw_serde]
 #[serde(rename_all = "snake_case")]
-pub struct InstantiateMsg {}
+pub struct InstantiateMsg {
+    pub authorized_cw20_address: Option<AndrAddr>,
+}
 
 #[andr_exec]
 #[cw_serde]
 pub enum ExecuteMsg {
     ReceiveNft(Cw721ReceiveMsg),
+    Receive(Cw20ReceiveMsg),
     /// Transfers NFT to buyer and sends funds to seller
     Buy {
         token_id: String,
@@ -25,6 +33,8 @@ pub enum ExecuteMsg {
         token_address: String,
         price: Uint128,
         coin_denom: String,
+        uses_cw20: bool,
+        recipient: Option<Recipient>,
     },
     CancelSale {
         token_id: String,
@@ -39,10 +49,21 @@ pub enum Cw721HookMsg {
     StartSale {
         price: Uint128,
         coin_denom: String,
-        start_time: Option<u64>,
-        duration: Option<u64>,
+        start_time: Option<MillisecondsExpiration>,
+        duration: Option<MillisecondsDuration>,
+        uses_cw20: bool,
+        recipient: Option<Recipient>,
     },
 }
+
+#[cw_serde]
+pub enum Cw20HookMsg {
+    Buy {
+        token_id: String,
+        token_address: String,
+    },
+}
+
 #[cw_serde]
 pub enum Status {
     Open,
@@ -103,13 +124,12 @@ pub struct SaleStateResponse {
     pub coin_denom: String,
     pub price: Uint128,
     pub status: Status,
+    pub start_time: Expiration,
+    pub end_time: Expiration,
+    pub recipient: Option<Recipient>,
 }
 
 #[cw_serde]
 pub struct SaleIdsResponse {
     pub sale_ids: Vec<Uint128>,
 }
-
-#[cw_serde]
-#[serde(rename_all = "snake_case")]
-pub struct MigrateMsg {}

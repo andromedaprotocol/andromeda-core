@@ -1,8 +1,8 @@
 [package]
 name = "andromeda-cross-chain-swap"
-version = "0.2.0"
+version = "1.0.0"
 edition = "2021"
-rust-version = "1.65.0"
+rust-version = "1.75.0"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
@@ -20,7 +20,6 @@ cosmwasm-std = { workspace = true }
 cosmwasm-schema = { workspace = true }
 cw-storage-plus = { workspace = true }
 cw-utils = { workspace = true }
-cw2 = { workspace = true }
 schemars = { version = "0.8.10" }
 serde = { version = "1.0.127", default-features = false, features = ["derive"] }
 semver = { workspace = true }
@@ -32,4 +31,4 @@ andromeda-finance = { workspace = true }
 cw-multi-test = { workspace = true, optional = true }
 
 [dev-dependencies]
-andromeda-app = { version = "0.1.0", path = "../../../packages/andromeda-app" }
+andromeda-app = { workspace = true }

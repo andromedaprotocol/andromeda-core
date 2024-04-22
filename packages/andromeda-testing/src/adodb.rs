@@ -1,15 +1,15 @@
-use crate::{mock_ado, mock_contract::ExecuteResult, MockADO, MockContract};
+use crate::{mock::MockApp, mock_ado, mock_contract::ExecuteResult, MockADO, MockContract};
 use andromeda_adodb::mock::*;
 use andromeda_std::os::adodb::{ActionFee, ExecuteMsg, QueryMsg};
 use cosmwasm_std::Addr;
-use cw_multi_test::{App, Executor};
+use cw_multi_test::Executor;
 
 pub struct MockADODB(Addr);
 mock_ado!(MockADODB, ExecuteMsg, QueryMsg);
 
 impl MockADODB {
     pub fn instantiate(
-        app: &mut App,
+        app: &mut MockApp,
         code_id: u64,
         sender: Addr,
         owner: Option<String>,
@@ -31,7 +31,7 @@ impl MockADODB {
     #[allow(clippy::too_many_arguments)]
     pub fn execute_publish(
         &self,
-        app: &mut App,
+        app: &mut MockApp,
         sender: Addr,
         code_id: u64,
         ado_type: impl Into<String>,
@@ -44,7 +44,7 @@ impl MockADODB {
         self.execute(app, &msg, sender, &[])
     }
 
-    pub fn query_code_id(&self, app: &mut App, key: impl Into<String>) -> u64 {
+    pub fn query_code_id(&self, app: &mut MockApp, key: impl Into<String>) -> u64 {
         let msg = mock_get_code_id_msg(key.into());
         let res: u64 = self.query(app, msg);
 

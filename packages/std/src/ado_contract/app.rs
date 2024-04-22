@@ -31,6 +31,13 @@ impl<'a> ADOContract<'a> {
         self.app_contract
             .save(deps.storage, &deps.api.addr_validate(&address)?)?;
         self.validate_andr_addresses(&deps.as_ref(), addresses.unwrap_or_default())?;
+        #[cfg(feature = "modules")]
+        {
+            let modules = self.load_modules(deps.storage)?;
+            for module in modules {
+                self.validate_module_address(&deps.as_ref(), &module)?;
+            }
+        }
         Ok(Response::new()
             .add_attribute("action", "update_app_contract")
             .add_attribute("address", address))

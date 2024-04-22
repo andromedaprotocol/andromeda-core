@@ -3,21 +3,6 @@
 version = 3
 
 [[package]]
-name = "addr2line"
-version = "0.21.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8a30b2e23b9e17a9f90641c7ab1549cd9b44f296d3ccbf309d2863cfe398a0cb"
-dependencies = [
- "gimli",
-]
-
-[[package]]
-name = "adler"
-version = "1.0.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f26201604c87b1e01bd3d98f8d5d9a8fcbb815e8cedb41ffccbeb4bf593a35fe"
-
-[[package]]
 name = "ahash"
 version = "0.7.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -30,7 +15,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-address-list"
-version = "0.2.1"
+version = "1.0.0"
 dependencies = [
  "andromeda-app",
  "andromeda-modules",
@@ -41,13 +26,11 @@ dependencies = [
  "cw-multi-test",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
- "cw2 1.1.2",
- "semver",
 ]
 
 [[package]]
 name = "andromeda-adodb"
-version = "0.2.1"
+version = "1.0.0"
 dependencies = [
  "andromeda-std",
  "cosmwasm-schema",
@@ -55,23 +38,23 @@ dependencies = [
  "cw-asset",
  "cw-multi-test",
  "cw-storage-plus 1.2.0",
- "cw2 1.1.2",
  "semver",
 ]
 
 [[package]]
 name = "andromeda-app"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "andromeda-std",
  "cosmwasm-schema",
  "cosmwasm-std",
+ "cw-multi-test",
  "serde",
 ]
 
 [[package]]
 name = "andromeda-app-contract"
-version = "0.2.1"
+version = "1.0.0"
 dependencies = [
  "andromeda-app",
  "andromeda-std",
@@ -80,15 +63,12 @@ dependencies = [
  "cosmwasm-std",
  "cw-multi-test",
  "cw-storage-plus 1.2.0",
- "cw2 1.1.2",
  "enum-repr",
- "prost 0.9.0",
- "semver",
 ]
 
 [[package]]
 name = "andromeda-auction"
-version = "0.2.1"
+version = "1.0.0"
 dependencies = [
  "andromeda-app",
  "andromeda-non-fungible-tokens",
@@ -99,15 +79,13 @@ dependencies = [
  "cw-multi-test",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
- "cw2 1.1.2",
  "cw20",
  "cw721 0.18.0",
- "semver",
 ]
 
 [[package]]
 name = "andromeda-cross-chain-swap"
-version = "0.2.0"
+version = "1.0.0"
 dependencies = [
  "andromeda-app",
  "andromeda-finance",
@@ -117,7 +95,6 @@ dependencies = [
  "cw-multi-test",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
- "cw2 1.1.2",
  "schemars",
  "semver",
  "serde",
@@ -125,7 +102,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-crowdfund"
-version = "0.2.1"
+version = "1.0.0"
 dependencies = [
  "andromeda-app",
  "andromeda-non-fungible-tokens",
@@ -136,32 +113,29 @@ dependencies = [
  "cw-multi-test",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
- "cw2 1.1.2",
  "cw721 0.18.0",
- "semver",
 ]
 
 [[package]]
 name = "andromeda-cw20"
-version = "0.2.1"
+version = "1.0.0"
 dependencies = [
  "andromeda-app",
  "andromeda-fungible-tokens",
  "andromeda-std",
+ "andromeda-testing",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-multi-test",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
- "cw2 1.1.2",
  "cw20",
  "cw20-base",
- "semver",
 ]
 
 [[package]]
 name = "andromeda-cw20-exchange"
-version = "0.2.2"
+version = "1.0.0"
 dependencies = [
  "andromeda-app",
  "andromeda-fungible-tokens",
@@ -172,33 +146,30 @@ dependencies = [
  "cw-multi-test",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
- "cw2 1.1.2",
  "cw20",
- "semver",
 ]
 
 [[package]]
 name = "andromeda-cw20-staking"
-version = "0.2.1"
+version = "1.0.0"
 dependencies = [
  "andromeda-app",
  "andromeda-fungible-tokens",
  "andromeda-std",
+ "andromeda-testing",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-asset",
  "cw-multi-test",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
- "cw2 1.1.2",
  "cw20",
  "cw20-base",
- "semver",
 ]
 
 [[package]]
 name = "andromeda-cw721"
-version = "0.2.1"
+version = "1.0.0"
 dependencies = [
  "andromeda-non-fungible-tokens",
  "andromeda-std",
@@ -207,15 +178,13 @@ dependencies = [
  "cosmwasm-std",
  "cw-multi-test",
  "cw-storage-plus 1.2.0",
- "cw2 1.1.2",
  "cw721 0.18.0",
  "cw721-base 0.18.0",
- "semver",
 ]
 
 [[package]]
 name = "andromeda-data-storage"
-version = "0.2.0"
+version = "1.0.0"
 dependencies = [
  "andromeda-std",
  "cosmwasm-schema",
@@ -226,21 +195,19 @@ dependencies = [
 
 [[package]]
 name = "andromeda-economics"
-version = "0.2.0"
+version = "1.0.0"
 dependencies = [
  "andromeda-std",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-multi-test",
  "cw-storage-plus 1.2.0",
- "cw2 1.1.2",
  "cw20",
- "semver",
 ]
 
 [[package]]
 name = "andromeda-ecosystem"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "andromeda-std",
  "cosmwasm-schema",
@@ -254,7 +221,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-finance"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "andromeda-std",
  "cosmwasm-schema",
@@ -268,7 +235,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-fungible-tokens"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "andromeda-std",
  "cosmwasm-schema",
@@ -282,22 +249,19 @@ dependencies = [
 
 [[package]]
 name = "andromeda-kernel"
-version = "0.2.15"
+version = "1.0.0"
 dependencies = [
  "andromeda-std",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-multi-test",
  "cw-storage-plus 1.2.0",
- "cw2 1.1.2",
- "enum-repr",
  "hex",
  "itertools 0.10.5",
  "osmosis-std",
  "osmosis-std-derive 0.15.3",
  "prost 0.11.9",
  "schemars",
- "semver",
  "serde",
  "serde-cw-value",
  "serde-json-wasm 1.0.1",
@@ -306,25 +270,24 @@ dependencies = [
 
 [[package]]
 name = "andromeda-lockdrop"
-version = "0.2.1"
+version = "1.0.0"
 dependencies = [
  "andromeda-app",
  "andromeda-fungible-tokens",
  "andromeda-std",
+ "andromeda-testing",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-asset",
  "cw-multi-test",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
- "cw2 1.1.2",
  "cw20",
- "semver",
 ]
 
 [[package]]
 name = "andromeda-macros"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -333,7 +296,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-marketplace"
-version = "0.2.1"
+version = "1.0.0"
 dependencies = [
  "andromeda-app",
  "andromeda-non-fungible-tokens",
@@ -344,35 +307,33 @@ dependencies = [
  "cw-multi-test",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
- "cw2 1.1.2",
+ "cw20",
  "cw721 0.18.0",
- "semver",
 ]
 
 [[package]]
 name = "andromeda-merkle-airdrop"
-version = "0.2.1"
+version = "1.0.0"
 dependencies = [
  "andromeda-app",
  "andromeda-fungible-tokens",
  "andromeda-std",
+ "andromeda-testing",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-asset",
  "cw-multi-test",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
- "cw2 1.1.2",
  "cw20",
  "hex",
- "semver",
  "serde",
  "sha2 0.10.8",
 ]
 
 [[package]]
 name = "andromeda-modules"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "andromeda-std",
  "cosmwasm-schema",
@@ -385,12 +346,13 @@ dependencies = [
 
 [[package]]
 name = "andromeda-non-fungible-tokens"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "andromeda-std",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-utils 1.0.3",
+ "cw20",
  "cw721 0.18.0",
  "cw721-base 0.18.0",
  "serde",
@@ -398,7 +360,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-primitive"
-version = "0.2.0"
+version = "1.0.0"
 dependencies = [
  "andromeda-data-storage",
  "andromeda-std",
@@ -407,31 +369,28 @@ dependencies = [
  "cw-multi-test",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
- "cw2 1.1.2",
  "cw20",
- "semver",
 ]
 
 [[package]]
 name = "andromeda-rate-limiting-withdrawals"
-version = "0.2.1"
+version = "1.0.0"
 dependencies = [
  "andromeda-app",
  "andromeda-finance",
  "andromeda-std",
+ "andromeda-testing",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-multi-test",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
- "cw2 1.1.2",
  "cw20",
- "semver",
 ]
 
 [[package]]
 name = "andromeda-rates"
-version = "0.2.1"
+version = "1.0.0"
 dependencies = [
  "andromeda-app",
  "andromeda-modules",
@@ -441,9 +400,7 @@ dependencies = [
  "cw-multi-test",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
- "cw2 1.1.2",
  "cw20",
- "semver",
 ]
 
 [[package]]
@@ -467,7 +424,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-splitter"
-version = "0.2.3"
+version = "1.0.0"
 dependencies = [
  "andromeda-app",
  "andromeda-finance",
@@ -478,24 +435,25 @@ dependencies = [
  "cw-multi-test",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
- "cw2 1.1.2",
- "semver",
 ]
 
 [[package]]
 name = "andromeda-std"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "andromeda-macros",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-asset",
+ "cw-multi-test",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
+ "cw2 1.1.2",
  "cw20",
  "cw20-base",
  "cw721 0.18.0",
  "cw721-base 0.18.0",
+ "enum-repr",
  "hex",
  "lazy_static",
  "regex",
@@ -509,7 +467,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-testing"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "andromeda-adodb",
  "andromeda-app",
@@ -525,24 +483,22 @@ dependencies = [
  "cw-multi-test",
  "cw20",
  "cw721 0.18.0",
- "prost 0.9.0",
  "serde",
 ]
 
 [[package]]
 name = "andromeda-timelock"
-version = "0.2.1"
+version = "1.0.0"
 dependencies = [
  "andromeda-app",
  "andromeda-finance",
  "andromeda-std",
+ "andromeda-testing",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-multi-test",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
- "cw2 1.1.2",
- "semver",
 ]
 
 [[package]]
@@ -564,7 +520,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-vault"
-version = "0.2.0"
+version = "1.0.0"
 dependencies = [
  "andromeda-ecosystem",
  "andromeda-std",
@@ -573,44 +529,39 @@ dependencies = [
  "cw-multi-test",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
- "cw2 1.1.2",
- "semver",
 ]
 
 [[package]]
 name = "andromeda-vesting"
-version = "0.2.1"
+version = "1.0.0"
 dependencies = [
  "andromeda-app",
  "andromeda-finance",
  "andromeda-std",
+ "andromeda-testing",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-asset",
  "cw-multi-test",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
- "cw2 1.1.2",
- "semver",
 ]
 
 [[package]]
 name = "andromeda-vfs"
-version = "0.2.2"
+version = "1.0.0"
 dependencies = [
  "andromeda-std",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-multi-test",
  "cw-storage-plus 1.2.0",
- "cw2 1.1.2",
- "semver",
  "serde",
 ]
 
 [[package]]
 name = "andromeda-weighted-distribution-splitter"
-version = "0.2.1"
+version = "1.0.0"
 dependencies = [
  "andromeda-app",
  "andromeda-finance",
@@ -620,47 +571,19 @@ dependencies = [
  "cw-multi-test",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
- "cw2 1.1.2",
- "semver",
 ]
 
 [[package]]
 name = "anyhow"
-version = "1.0.81"
+version = "1.0.82"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0952808a6c2afd1aa8947271f3a60f1a6763c7b912d210184c5149b5cf147247"
-
-[[package]]
-name = "async-trait"
-version = "0.1.77"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c980ee35e870bd1a4d2c8294d4c04d0499e67bca1e4b5cefcc693c2fa00caea9"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.52",
-]
+checksum = "f538837af36e6f6a9be0faa67f9a314f8119e4e4b5867c6ab40ed60360142519"
 
 [[package]]
 name = "autocfg"
-version = "1.1.0"
+version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d468802bab17cbc0cc575e9b053f41e72aa36bfa6b7f55e3529ffa43161b97fa"
-
-[[package]]
-name = "backtrace"
-version = "0.3.69"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2089b7e3f35b9dd2d0ed921ead4f6d318c27680d4a5bd167b3ee120edb105837"
-dependencies = [
- "addr2line",
- "cc",
- "cfg-if",
- "libc",
- "miniz_oxide",
- "object",
- "rustc-demangle",
-]
+checksum = "f1fdabc7756949593fe60f30ec81974b613357de856987752631dea1e3394c80"
 
 [[package]]
 name = "base16ct"
@@ -685,6 +608,12 @@ name = "bech32"
 version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d86b93f97252c47b41663388e6d155714a9d0c398b99f1005cbc5f978b29f445"
+
+[[package]]
+name = "bech32"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d965446196e3b7decd44aa7ee49e31d630118f90ef12f97900f262eb915c951d"
 
 [[package]]
 name = "block-buffer"
@@ -718,15 +647,9 @@ checksum = "1fd0f2584146f6f2ef48085050886acf353beff7305ebd1ae69500e27c67f64b"
 
 [[package]]
 name = "bytes"
-version = "1.5.0"
+version = "1.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a2bd12c1caf447e69cd4528f47f94d203fd2582878ecb9e9465484c4148a8223"
-
-[[package]]
-name = "cc"
-version = "1.0.90"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8cd6604a82acf3039f1144f54b8eb34e91ffba622051189e71b781822d5ee1f5"
+checksum = "514de17de45fdb8dc022b1a7975556c53c86f9f0aa5f534b98977b171857c2c9"
 
 [[package]]
 name = "cfg-if"
@@ -804,7 +727,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ef8666e572a3a2519010dde88c04d16e9339ae751b56b2bb35081fe3f7d6be74"
 dependencies = [
  "base64",
- "bech32",
+ "bech32 0.9.1",
  "bnum",
  "cosmwasm-crypto",
  "cosmwasm-derive",
@@ -900,18 +823,18 @@ dependencies = [
 
 [[package]]
 name = "cw-multi-test"
-version = "0.20.0"
+version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "67fff029689ae89127cf6d7655809a68d712f3edbdb9686c70b018ba438b26ca"
+checksum = "f8c6c2f2ee4b29e03fd709f4278a70a11c816690f2c992a9c980303ebda574f8"
 dependencies = [
  "anyhow",
- "bech32",
+ "bech32 0.11.0",
  "cosmwasm-std",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
  "derivative",
  "itertools 0.12.1",
- "prost 0.12.3",
+ "prost 0.12.4",
  "schemars",
  "serde",
  "sha2 0.10.8",
@@ -1118,9 +1041,9 @@ dependencies = [
 
 [[package]]
 name = "der"
-version = "0.7.8"
+version = "0.7.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fffa369a668c8af7dbf8b5e56c9f744fbd399949ed171606040001947de40b1c"
+checksum = "f55bf8e7b65898637379c1b74eb1551107c8294ed26d855ceb9fd1a09cfc9bc0"
 dependencies = [
  "const-oid",
  "zeroize",
@@ -1195,9 +1118,9 @@ dependencies = [
 
 [[package]]
 name = "either"
-version = "1.10.0"
+version = "1.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "11157ac094ffbdde99aa67b23417ebdd801842852b500e395a45a9c0aac03e4a"
+checksum = "a47c1c47d2f5964e29c61246e81db715514cd532db6b5116a25ea3c03d6780a2"
 
 [[package]]
 name = "elliptic-curve"
@@ -1258,20 +1181,14 @@ dependencies = [
 
 [[package]]
 name = "getrandom"
-version = "0.2.12"
+version = "0.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "190092ea657667030ac6a35e305e62fc4dd69fd98ac98631e5d3a2b1575a12b5"
+checksum = "94b22e06ecb0110981051723910cbf0b5f5e09a2062dd7663334ee79a9d1286c"
 dependencies = [
  "cfg-if",
  "libc",
  "wasi 0.11.0+wasi-snapshot-preview1",
 ]
-
-[[package]]
-name = "gimli"
-version = "0.28.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4271d37baee1b8c7e4b708028c57d816cf9d2434acb33a549475f78c181f6253"
 
 [[package]]
 name = "group"
@@ -1325,15 +1242,6 @@ dependencies = [
 
 [[package]]
 name = "itertools"
-version = "0.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b1c173a5686ce8bfa551b3563d0c2170bf24ca44da99c7ca4bfdab5418c3fe57"
-dependencies = [
- "either",
-]
-
-[[package]]
-name = "itertools"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ba291022dbbd398a455acf126c1e341954079855bc60dfdda641363bd6922569"
@@ -1343,9 +1251,9 @@ dependencies = [
 
 [[package]]
 name = "itoa"
-version = "1.0.10"
+version = "1.0.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b1a46d1a171d865aa5f83f92695765caa047a9b4cbae2cbf37dbd613a793fd4c"
+checksum = "49f1f14873335454500d59611f1cf4a4b0f786f9ac11f4312a78e4cf2566695b"
 
 [[package]]
 name = "k256"
@@ -1386,21 +1294,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4ec2a862134d2a7d32d7983ddcdd1c4923530833c9f2ea1a44fc5fa473989058"
 
 [[package]]
-name = "memchr"
-version = "2.7.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "523dc4f511e55ab87b694dc30d0f820d60906ef06413f93d4d7a1385599cc149"
-
-[[package]]
-name = "miniz_oxide"
-version = "0.7.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9d811f3e15f28568be3407c8e7fdb6514c1cda3cb30683f15b6a1a1dc4ea14a7"
-dependencies = [
- "adler",
-]
-
-[[package]]
 name = "num"
 version = "0.1.42"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1438,15 +1331,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "da0df0e5185db44f69b44f26786fe401b6c293d1907744beaa7fa62b2e5a517a"
 dependencies = [
  "autocfg",
-]
-
-[[package]]
-name = "object"
-version = "0.32.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a6a622008b6e321afc04970976f62ee297fdbaa6f95318ca343e3eebb9648441"
-dependencies = [
- "memchr",
 ]
 
 [[package]]
@@ -1500,12 +1384,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pin-project-lite"
-version = "0.2.13"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8afb450f006bf6385ca15ef45d71d2288452bc3683ce2e2cacc0d18e4be60b58"
-
-[[package]]
 name = "pkcs8"
 version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1517,21 +1395,11 @@ dependencies = [
 
 [[package]]
 name = "proc-macro2"
-version = "1.0.79"
+version = "1.0.80"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e835ff2298f5721608eb1a980ecaee1aef2c132bf95ecc026a11b7bf3c01c02e"
+checksum = "a56dea16b0a29e94408b9aa5e2940a4eedbd128a1ba20e8f7ae60fd3d465af0e"
 dependencies = [
  "unicode-ident",
-]
-
-[[package]]
-name = "prost"
-version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "444879275cb4fd84958b1a1d5420d15e6fcf7c235fe47f053c9c2a80aceb6001"
-dependencies = [
- "bytes",
- "prost-derive 0.9.0",
 ]
 
 [[package]]
@@ -1546,25 +1414,12 @@ dependencies = [
 
 [[package]]
 name = "prost"
-version = "0.12.3"
+version = "0.12.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "146c289cda302b98a28d40c8b3b90498d6e526dd24ac2ecea73e4e491685b94a"
+checksum = "d0f5d036824e4761737860779c906171497f6d55681139d8312388f8fe398922"
 dependencies = [
  "bytes",
- "prost-derive 0.12.3",
-]
-
-[[package]]
-name = "prost-derive"
-version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f9cc1a3263e07e0bf68e96268f37665207b49560d98739662cdfaae215c720fe"
-dependencies = [
- "anyhow",
- "itertools 0.10.5",
- "proc-macro2",
- "quote",
- "syn 1.0.109",
+ "prost-derive 0.12.4",
 ]
 
 [[package]]
@@ -1582,15 +1437,15 @@ dependencies = [
 
 [[package]]
 name = "prost-derive"
-version = "0.12.3"
+version = "0.12.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "efb6c9a1dd1def8e2124d17e83a20af56f1570d6c2d2bd9e266ccb768df3840e"
+checksum = "19de2de2a00075bf566bee3bd4db014b11587e84184d3f7a791bc17f1a8e9e48"
 dependencies = [
  "anyhow",
- "itertools 0.11.0",
+ "itertools 0.12.1",
  "proc-macro2",
  "quote",
- "syn 2.0.52",
+ "syn 2.0.59",
 ]
 
 [[package]]
@@ -1604,9 +1459,9 @@ dependencies = [
 
 [[package]]
 name = "quote"
-version = "1.0.35"
+version = "1.0.36"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "291ec9ab5efd934aaf503a6466c5d5251535d108ee747472c3977cc5acc868ef"
+checksum = "0fa76aaf39101c457836aec0ce2316dbdc3ab723cdda1c6bd4e6ad4208acaca7"
 dependencies = [
  "proc-macro2",
 ]
@@ -1628,9 +1483,9 @@ dependencies = [
 
 [[package]]
 name = "regex"
-version = "1.10.3"
+version = "1.10.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b62dbe01f0b06f9d8dc7d49e05a0785f153b00b2c227856282f671e0318c9b15"
+checksum = "c117dbdfde9c8308975b6a18d71f3f385c89461f7b3fb054288ecf2a2058ba4c"
 dependencies = [
  "regex-automata",
  "regex-syntax",
@@ -1647,9 +1502,9 @@ dependencies = [
 
 [[package]]
 name = "regex-syntax"
-version = "0.8.2"
+version = "0.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c08c74e62047bb2de4ff487b251e4a92e24f48745648451635cec7d591162d9f"
+checksum = "adad44e29e4c806119491a7f06f03de4d1af22c3a680dd47f1e6e179439d1f56"
 
 [[package]]
 name = "rfc6979"
@@ -1662,16 +1517,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "rustc-demangle"
-version = "0.1.23"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d626bb9dae77e28219937af045c257c28bfd3f69333c512553507f5f9798cb76"
-
-[[package]]
 name = "rustversion"
-version = "1.0.14"
+version = "1.0.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7ffc183a10b4478d04cbbbfc96d0873219d962dd5accaff2ffbd4ceb7df837f4"
+checksum = "80af6f9131f277a45a3fba6ce8e2258037bb0477a67e610d3c1fe046ab31de47"
 
 [[package]]
 name = "ryu"
@@ -1767,7 +1616,7 @@ checksum = "7eb0b34b42edc17f6b7cac84a52a1c5f0e1bb2227e997ca9011ea3dd34e8610b"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.52",
+ "syn 2.0.59",
 ]
 
 [[package]]
@@ -1783,9 +1632,9 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.113"
+version = "1.0.116"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "69801b70b1c3dac963ecb03a364ba0ceda9cf60c71cfe475e99864759c8b8a79"
+checksum = "3e17db7126d17feb94eb3fad46bf1a96b034e8aacbc2e775fe81505f8b0b2813"
 dependencies = [
  "itoa",
  "ryu",
@@ -1818,15 +1667,12 @@ dependencies = [
 
 [[package]]
 name = "sha256"
-version = "1.5.0"
+version = "1.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "18278f6a914fa3070aa316493f7d2ddfb9ac86ebc06fa3b83bffda487e9065b0"
+checksum = "08a975c1bc0941703000eaf232c4d8ce188d8d5408d6344b6b2c8c6262772828"
 dependencies = [
- "async-trait",
- "bytes",
  "hex",
  "sha2 0.10.8",
- "tokio",
 ]
 
 [[package]]
@@ -1897,9 +1743,9 @@ dependencies = [
 
 [[package]]
 name = "syn"
-version = "2.0.52"
+version = "2.0.59"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b699d15b36d1f02c3e7c69f8ffef53de37aefae075d8488d4ba1a7788d574a07"
+checksum = "4a6531ffc7b071655e4ce2e04bd464c4830bb585a61cabb96cf808f05172615a"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1908,7 +1754,7 @@ dependencies = [
 
 [[package]]
 name = "tests-integration"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "andromeda-address-list",
  "andromeda-adodb",
@@ -1916,11 +1762,15 @@ dependencies = [
  "andromeda-app-contract",
  "andromeda-auction",
  "andromeda-crowdfund",
+ "andromeda-cw20",
+ "andromeda-cw20-staking",
  "andromeda-cw721",
  "andromeda-data-storage",
  "andromeda-ecosystem",
  "andromeda-finance",
+ "andromeda-fungible-tokens",
  "andromeda-kernel",
+ "andromeda-lockdrop",
  "andromeda-marketplace",
  "andromeda-modules",
  "andromeda-non-fungible-tokens",
@@ -1932,10 +1782,13 @@ dependencies = [
  "andromeda-testing",
  "andromeda-validator-staking",
  "andromeda-vault",
+ "andromeda-vesting",
  "andromeda-vfs",
  "cosmwasm-schema",
  "cosmwasm-std",
+ "cw-asset",
  "cw-multi-test",
+ "cw20",
  "cw721 0.18.0",
  "cw721-base 0.18.0",
 ]
@@ -1957,7 +1810,7 @@ checksum = "c61f3ba182994efc43764a46c018c347bc492c79f024e705f46567b418f6d4f7"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.52",
+ "syn 2.0.59",
 ]
 
 [[package]]
@@ -1969,17 +1822,6 @@ dependencies = [
  "libc",
  "wasi 0.10.0+wasi-snapshot-preview1",
  "winapi",
-]
-
-[[package]]
-name = "tokio"
-version = "1.36.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "61285f6515fa018fb2d1e46eb21223fff441ee8db5d0f1435e8ab4f5cdb80931"
-dependencies = [
- "backtrace",
- "bytes",
- "pin-project-lite",
 ]
 
 [[package]]

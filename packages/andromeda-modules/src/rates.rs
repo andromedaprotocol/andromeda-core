@@ -16,9 +16,6 @@ pub enum ExecuteMsg {
     UpdateRates { rates: Vec<RateInfo> },
 }
 
-#[cw_serde]
-pub struct MigrateMsg {}
-
 #[andr_query]
 #[cw_serde]
 #[derive(QueryResponses)]

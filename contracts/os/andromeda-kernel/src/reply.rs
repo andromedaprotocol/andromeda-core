@@ -6,24 +6,16 @@ use crate::{
     },
 };
 use andromeda_std::{
-    ado_base::AndromedaMsg, common::response::get_reply_address, error::ContractError,
+    ado_base::{ownership::OwnershipMessage, AndromedaMsg},
+    common::reply::ReplyId,
+    common::response::get_reply_address,
+    error::ContractError,
     os::aos_querier::AOSQuerier,
 };
 use cosmwasm_std::{
     ensure, wasm_execute, Addr, DepsMut, Empty, Env, Reply, Response, SubMsg, SubMsgResponse,
     SubMsgResult,
 };
-use enum_repr::EnumRepr;
-
-#[EnumRepr(type = "u64")]
-pub enum ReplyId {
-    AMPMsg = 1,
-    CreateADO = 2,
-    UpdateOwnership = 3,
-    IBCHooksPacketSend = 4,
-    Recovery = 5,
-    RegisterUsername = 6,
-}
 
 /// Handles the reply from an ADO creation
 ///
@@ -36,9 +28,10 @@ pub fn on_reply_create_ado(deps: DepsMut, env: Env, msg: Reply) -> Result<Respon
         AOSQuerier::ado_owner_getter(&deps.querier, &Addr::unchecked(ado_addr.clone()))?;
     let mut res = Response::default();
     if curr_owner == env.contract.address {
-        let msg = AndromedaMsg::UpdateOwner {
-            address: new_owner.to_string(),
-        };
+        let msg = AndromedaMsg::Ownership(OwnershipMessage::UpdateOwner {
+            new_owner,
+            expiration: None,
+        });
         let wasm_msg = wasm_execute(ado_addr, &msg, vec![])?;
         let sub_msg: SubMsg<Empty> =
             SubMsg::reply_on_success(wasm_msg, ReplyId::UpdateOwnership as u64);
@@ -58,7 +51,9 @@ pub fn on_reply_ibc_hooks_packet_send(
     msg: Reply,
 ) -> Result<Response, ContractError> {
     let SubMsgResult::Ok(SubMsgResponse { data: Some(b), .. }) = msg.result else {
-        return Err(ContractError::InvalidPacket { error: Some(format!("ibc hooks: failed reply: {:?}", msg.result)) })
+        return Err(ContractError::InvalidPacket {
+            error: Some(format!("ibc hooks: failed reply: {:?}", msg.result)),
+        });
     };
 
     let MsgTransferResponse { sequence } =

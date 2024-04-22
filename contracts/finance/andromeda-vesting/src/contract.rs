@@ -9,22 +9,19 @@ use cosmwasm_std::{
     ensure, Binary, Coin, CosmosMsg, Deps, DepsMut, DistributionMsg, Env, GovMsg, MessageInfo,
     QuerierWrapper, Response, StakingMsg, Uint128, VoteOption,
 };
-use cw2::{get_contract_version, set_contract_version};
 use cw_asset::AssetInfo;
 
 use cw_utils::nonpayable;
-use semver::Version;
 use std::cmp;
 
 use crate::state::{
     batches, get_all_batches_with_ids, get_claimable_batches_with_ids, save_new_batch, Batch,
     CONFIG,
 };
-use andromeda_finance::vesting::{
-    BatchResponse, Config, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
-};
+use andromeda_finance::vesting::{BatchResponse, Config, ExecuteMsg, InstantiateMsg, QueryMsg};
 use andromeda_std::{
-    ado_base::InstantiateMsg as BaseInstantiateMsg, common::encode_binary, error::from_semver,
+    ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
+    common::encode_binary,
 };
 
 const CONTRACT_NAME: &str = "crates.io:andromeda-vesting";
@@ -37,8 +34,6 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-
     let config = Config {
         is_multi_batch_enabled: msg.is_multi_batch_enabled,
         recipient: msg.recipient,
@@ -52,11 +47,11 @@ pub fn instantiate(
         deps.storage,
         env,
         deps.api,
+        &deps.querier,
         info,
         BaseInstantiateMsg {
-            ado_type: "vesting".to_string(),
+            ado_type: CONTRACT_NAME.to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
-            operators: None,
             kernel_address: msg.kernel_address,
             owner: msg.owner,
         },
@@ -148,15 +143,32 @@ fn execute_create_batch(
     );
 
     ensure!(
-        !funds.amount.is_zero(),
+        release_unit > 0 && !release_amount.is_zero(),
+        ContractError::InvalidZeroAmount {}
+    );
+
+    let min_fund = match release_amount {
+        WithdrawalType::Amount(amount) => amount,
+        WithdrawalType::Percentage(_) => Uint128::from(100u128),
+    };
+    ensure!(
+        funds.amount >= min_fund,
         ContractError::InvalidFunds {
-            msg: "Funds must be non-zero".to_string(),
+            msg: format!("Funds must be at least {min_fund}"),
         }
     );
 
+    let current_balance = deps
+        .querier
+        .query_balance(env.contract.address.to_string(), funds.denom)
+        .unwrap()
+        .amount;
+    let max_fund = Uint128::MAX - current_balance;
     ensure!(
-        release_unit > 0 && !release_amount.is_zero(),
-        ContractError::InvalidZeroAmount {}
+        funds.amount <= max_fund,
+        ContractError::InvalidFunds {
+            msg: format!("Funds can not exceed {max_fund}"),
+        }
     );
 
     let lockup_end = if let Some(duration) = lockup_duration {
@@ -282,7 +294,7 @@ fn execute_claim_all(
             Some(num_available_claims),
         )?;
 
-        total_amount_to_send += amount_to_send;
+        total_amount_to_send = total_amount_to_send.checked_add(amount_to_send)?;
 
         key.save(deps.storage, &batch)?;
     }
@@ -472,15 +484,31 @@ fn claim_batch(
         num_available_claims,
     );
 
-    let amount_to_send = amount_per_claim * Uint128::from(number_of_claims);
+    let amount_to_send = amount_per_claim.checked_mul(Uint128::from(number_of_claims))?;
     let amount_available = cmp::min(batch.amount - batch.amount_claimed, total_amount);
 
     let amount_to_send = cmp::min(amount_to_send, amount_available);
 
     // We dont want to update the last_claim_time when there are no funds to claim.
     if !amount_to_send.is_zero() {
-        batch.amount_claimed += amount_to_send;
-        batch.last_claimed_release_time += number_of_claims * batch.release_unit;
+        batch.amount_claimed = batch.amount_claimed.checked_add(amount_to_send)?;
+
+        // Safe math version
+        let claims_release_unit = number_of_claims.checked_mul(batch.release_unit);
+        if let Some(claims_release_unit) = claims_release_unit {
+            let new_claimed_release_time = batch
+                .last_claimed_release_time
+                .checked_add(claims_release_unit);
+            if let Some(new_claimed_release_time) = new_claimed_release_time {
+                batch.last_claimed_release_time = new_claimed_release_time;
+            } else {
+                return Err(ContractError::Overflow {});
+            }
+        } else {
+            return Err(ContractError::Overflow {});
+        }
+        // The unsafe version
+        // batch.last_claimed_release_time += number_of_claims * batch.release_unit;
     }
 
     Ok(amount_to_send)
@@ -526,36 +554,7 @@ fn get_set_withdraw_address_msg(address: String) -> CosmosMsg {
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-    // New version
-    let version: Version = CONTRACT_VERSION.parse().map_err(from_semver)?;
-
-    // Old version
-    let stored = get_contract_version(deps.storage)?;
-    let storage_version: Version = stored.version.parse().map_err(from_semver)?;
-
-    let contract = ADOContract::default();
-
-    ensure!(
-        stored.contract == CONTRACT_NAME,
-        ContractError::CannotMigrate {
-            previous_contract: stored.contract,
-        }
-    );
-
-    // New version has to be newer/greater than the old version
-    ensure!(
-        storage_version < version,
-        ContractError::CannotMigrate {
-            previous_contract: stored.version,
-        }
-    );
-
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-
-    // Update the ADOContract's version
-    contract.execute_update_version(deps)?;
-
-    Ok(Response::default())
+    ADOContract::default().migrate(deps, CONTRACT_NAME, CONTRACT_VERSION)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

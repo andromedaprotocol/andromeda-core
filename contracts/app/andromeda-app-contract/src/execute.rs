@@ -1,75 +1,108 @@
 use crate::state::{
     add_app_component, generate_assign_app_message, generate_ownership_message,
-    load_component_addresses, ADO_ADDRESSES,
+    load_component_addresses, ADO_ADDRESSES, APP_NAME,
 };
 use andromeda_app::app::{AppComponent, ComponentType};
-use andromeda_std::common::context::ExecuteContext;
+use andromeda_std::common::{context::ExecuteContext, reply::ReplyId};
 use andromeda_std::error::ContractError;
 use andromeda_std::os::aos_querier::AOSQuerier;
 use andromeda_std::os::vfs::ExecuteMsg as VFSExecuteMsg;
 use andromeda_std::{ado_contract::ADOContract, amp::AndrAddr};
 
-use crate::reply::ReplyId;
 use cosmwasm_std::{
     ensure, to_json_binary, Addr, Binary, CosmosMsg, QuerierWrapper, ReplyOn, Response, Storage,
     SubMsg, WasmMsg,
 };
 
 pub fn handle_add_app_component(
-    querier: &QuerierWrapper,
-    storage: &mut dyn Storage,
-    sender: &str,
+    ctx: ExecuteContext,
     component: AppComponent,
 ) -> Result<Response, ContractError> {
+    let querier = &ctx.deps.querier;
+    let env = ctx.env;
+    let sender = ctx.info.sender.as_str();
+
+    let maybe_app_component = ADO_ADDRESSES.may_load(ctx.deps.storage, &component.name)?;
+    ensure!(
+        maybe_app_component.is_none(),
+        ContractError::InvalidComponent {
+            name: "Component name already taken".to_string()
+        }
+    );
+
+    ensure!(
+        !matches!(component.component_type, ComponentType::CrossChain(..)),
+        ContractError::CrossChainComponentsCurrentlyDisabled {}
+    );
     let contract = ADOContract::default();
     ensure!(
-        contract.is_contract_owner(storage, sender)?,
+        contract.is_contract_owner(ctx.deps.storage, sender)?,
         ContractError::Unauthorized {}
     );
 
-    let current_addr = ADO_ADDRESSES.may_load(storage, &component.name)?;
-    ensure!(current_addr.is_none(), ContractError::NameAlreadyTaken {});
+    let idx = add_app_component(ctx.deps.storage, &component)?;
+    ensure!(idx < 50, ContractError::TooManyAppComponents {});
 
-    let idx = add_app_component(storage, &component)?;
+    let adodb_addr = ADOContract::default().get_adodb_address(ctx.deps.storage, querier)?;
+    let vfs_addr = ADOContract::default().get_vfs_address(ctx.deps.storage, querier)?;
 
     let mut resp = Response::new()
         .add_attribute("method", "add_app_component")
         .add_attribute("name", component.name.clone())
         .add_attribute("type", component.ado_type.clone());
 
-    match component.component_type {
-        ComponentType::New(instantiate_msg) => {
-            let inst_msg = contract.generate_instantiate_msg(
-                storage,
-                querier,
-                idx,
-                instantiate_msg,
-                component.ado_type.clone(),
-                sender.to_string(),
-            )?;
-            resp = resp.add_submessage(inst_msg);
-            ADO_ADDRESSES.save(storage, &component.name, &Addr::unchecked(""))?;
-        }
-        ComponentType::Symlink(symlink) => {
-            let msg = VFSExecuteMsg::AddSymlink {
-                name: component.name,
-                symlink,
-                parent_address: None,
-            };
-            let cosmos_msg = CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: AOSQuerier::vfs_address_getter(
-                    querier,
-                    &contract.get_kernel_address(storage)?,
-                )?
-                .to_string(),
-                msg: to_json_binary(&msg)?,
-                funds: vec![],
-            });
-            let sub_msg = SubMsg::reply_on_error(cosmos_msg, ReplyId::RegisterPath.repr());
-            resp = resp.add_submessage(sub_msg);
-        }
-        _ => return Err(ContractError::Unauthorized {}),
+    let app_name = APP_NAME.load(ctx.deps.storage)?;
+    let new_addr = component.get_new_addr(
+        ctx.deps.api,
+        &adodb_addr,
+        querier,
+        env.contract.address.clone(),
+    )?;
+    let registration_msg = component.generate_vfs_registration(
+        new_addr.clone(),
+        &env.contract.address,
+        &app_name,
+        // TODO: Fix this in future for x-chain components
+        None,
+        &adodb_addr,
+        &vfs_addr,
+    )?;
+
+    if let Some(registration_msg) = registration_msg {
+        resp = resp.add_submessage(registration_msg);
     }
+
+    let inst_msg = component.generate_instantiation_message(
+        querier,
+        &adodb_addr,
+        &env.contract.address,
+        sender,
+        idx,
+    )?;
+
+    if let Some(inst_msg) = inst_msg {
+        resp = resp.add_submessage(inst_msg);
+    }
+
+    if let ComponentType::Symlink(ref val) = component.component_type {
+        let component_address: Addr = val.get_raw_address(&ctx.deps.as_ref())?;
+        ADO_ADDRESSES.save(ctx.deps.storage, &component.name, &component_address)?;
+    } else if let ComponentType::New(_) = component.component_type {
+        ensure!(
+            new_addr.is_some(),
+            ContractError::InvalidComponent {
+                name: "Could not generate address for new component".to_string()
+            }
+        );
+        ADO_ADDRESSES.save(
+            ctx.deps.storage,
+            &component.name,
+            &new_addr.clone().unwrap(),
+        )?;
+    }
+
+    let event = component.generate_event(new_addr);
+    resp = resp.add_event(event);
 
     Ok(resp)
 }
@@ -153,6 +186,7 @@ pub fn update_address(
     name: String,
     addr: String,
 ) -> Result<Response, ContractError> {
+    ctx.deps.api.addr_validate(addr.as_str())?;
     let ExecuteContext { deps, info, .. } = ctx;
     let ado_addr = ADO_ADDRESSES.load(deps.storage, &name)?;
     ensure!(

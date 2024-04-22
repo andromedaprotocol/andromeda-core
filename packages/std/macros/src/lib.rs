@@ -44,27 +44,14 @@ pub fn andr_exec(_args: TokenStream, input: TokenStream) -> TokenStream {
             enum Right {
                 #[serde(rename="amp_receive")]
                 AMPReceive(::andromeda_std::amp::messages::AMPPkt),
-                UpdateOwner {
-                    address: String,
-                },
-                UpdateOperators {
-                    operators: Vec<String>,
+                Ownership(::andromeda_std::ado_base::ownership::OwnershipMessage),
+                UpdateKernelAddress {
+                    address: ::cosmwasm_std::Addr,
                 },
                 UpdateAppContract {
                     address: String,
                 },
-                SetPermission {
-                    actor: ::andromeda_std::amp::AndrAddr,
-                    action: String,
-                    permission: ::andromeda_std::ado_base::permissioning::Permission,
-                },
-                RemovePermission {
-                    action: String,
-                    actor: ::andromeda_std::amp::AndrAddr,
-                },
-                PermissionAction {
-                    action: String
-                },
+                Permissioning(::andromeda_std::ado_base::permissioning::PermissioningMessage),
             }
         }
         .into(),
@@ -84,26 +71,6 @@ pub fn andr_exec(_args: TokenStream, input: TokenStream) -> TokenStream {
                     AlterModule {
                         module_idx: ::cosmwasm_std::Uint64,
                         module: ::andromeda_std::ado_base::Module,
-                    },
-                }
-            }
-            .into(),
-        )
-    }
-
-    #[cfg(feature = "withdraw")]
-    {
-        merged = merge_variants(
-            merged,
-            quote! {
-                enum Right {
-                    Deposit {
-                        recipient: Option<::andromeda_std::amp::AndrAddr>,
-                        msg: Option<::cosmwasm_std::Binary>,
-                    },
-                    Withdraw {
-                        recipient: Option<::andromeda_std::amp::Recipient>,
-                        tokens_to_withdraw: Option<Vec<::andromeda_std::common::withdraw::Withdrawal>>,
                     },
                 }
             }
@@ -196,24 +163,22 @@ pub fn andr_query(_metadata: TokenStream, input: TokenStream) -> TokenStream {
             enum Right {
                 #[returns(andromeda_std::ado_base::ownership::ContractOwnerResponse)]
                 Owner {},
-                #[returns(andromeda_std::ado_base::operators::OperatorsResponse)]
-                Operators {},
+                #[returns(andromeda_std::ado_base::ownership::ContractPotentialOwnerResponse)]
+                OwnershipRequest {},
                 #[returns(andromeda_std::ado_base::ado_type::TypeResponse)]
                 Type {},
                 #[returns(andromeda_std::ado_base::kernel_address::KernelAddressResponse)]
                 KernelAddress {},
+                #[returns(andromeda_std::ado_base::app_contract::AppContractResponse)]
+                AppContract {},
                 #[returns(andromeda_std::ado_base::ownership::PublisherResponse)]
                 OriginalPublisher {},
                 #[returns(andromeda_std::ado_base::block_height::BlockHeightResponse)]
                 BlockHeightUponCreation {},
-                #[returns(andromeda_std::ado_base::operators::IsOperatorResponse)]
-                IsOperator { address: String },
                 #[returns(andromeda_std::ado_base::version::VersionResponse)]
                 Version {},
-                #[returns(::cosmwasm_std::BalanceResponse)]
-                Balance {
-                    address: ::andromeda_std::amp::AndrAddr,
-                },
+                #[returns(andromeda_std::ado_base::version::ADOBaseVersionResponse)]
+                ADOBaseVersion {},
                 #[returns(Vec<::andromeda_std::ado_base::permissioning::PermissionInfo>)]
                 Permissions { actor: String, limit: Option<u32>, start_after: Option<String> },
                 #[returns(Vec<String>)]

@@ -1,14 +1,14 @@
 use crate::state::SPLITTER;
 use andromeda_finance::weighted_splitter::{
     AddressWeight, ExecuteMsg, GetSplitterConfigResponse, GetUserWeightResponse, InstantiateMsg,
-    MigrateMsg, QueryMsg, Splitter,
+    QueryMsg, Splitter,
 };
 use andromeda_std::{
-    ado_base::InstantiateMsg as BaseInstantiateMsg,
+    ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     ado_contract::ADOContract,
     amp::Recipient,
     common::{context::ExecuteContext, encode_binary},
-    error::{from_semver, ContractError},
+    error::ContractError,
 };
 
 use cosmwasm_std::{
@@ -17,9 +17,7 @@ use cosmwasm_std::{
 };
 
 use cw_utils::{nonpayable, Expiration};
-use semver::Version;
 
-use cw2::{get_contract_version, set_contract_version};
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-weighted-distribution-splitter";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -36,7 +34,6 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     let _app_contract = ADOContract::default().get_app_contract(deps.storage)?;
     // Max 100 recipients
     ensure!(
@@ -73,11 +70,11 @@ pub fn instantiate(
         deps.storage,
         env,
         deps.api,
+        &deps.querier,
         info,
         BaseInstantiateMsg {
-            ado_type: "weighted-distribution-splitter".to_string(),
+            ado_type: CONTRACT_NAME.to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
-            operators: None,
             kernel_address: msg.kernel_address,
             owner: msg.owner,
         },
@@ -230,7 +227,7 @@ fn execute_send(ctx: ExecuteContext) -> Result<Response, ContractError> {
     ensure!(
         !&info.funds.is_empty(),
         ContractError::InvalidFunds {
-            msg: "ensure! at least one coin to be sent".to_string(),
+            msg: "At least one coin should be sent".to_string(),
         }
     );
     // Can't send more than 5 types of coins
@@ -247,7 +244,7 @@ fn execute_send(ctx: ExecuteContext) -> Result<Response, ContractError> {
     // Calculate the total weight of all recipients
     for recipient_addr in &splitter.recipients {
         let recipient_weight = recipient_addr.weight;
-        total_weight += recipient_weight;
+        total_weight = total_weight.checked_add(recipient_weight)?;
     }
 
     // Each recipient recieves the funds * (the recipient's weight / total weight of all recipients)
@@ -258,7 +255,7 @@ fn execute_send(ctx: ExecuteContext) -> Result<Response, ContractError> {
         for (i, coin) in info.funds.iter().enumerate() {
             let mut recip_coin: Coin = coin.clone();
             recip_coin.amount = coin.amount.multiply_ratio(recipient_weight, total_weight);
-            remainder_funds[i].amount -= recip_coin.amount;
+            remainder_funds[i].amount = remainder_funds[i].amount.checked_sub(recip_coin.amount)?;
             vec_coin.push(recip_coin);
         }
         // ADO receivers must use AndromedaMsg::Receive to execute their functionality
@@ -447,36 +444,7 @@ fn execute_update_lock(ctx: ExecuteContext, lock_time: u64) -> Result<Response, 
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-    // New version
-    let version: Version = CONTRACT_VERSION.parse().map_err(from_semver)?;
-
-    // Old version
-    let stored = get_contract_version(deps.storage)?;
-    let storage_version: Version = stored.version.parse().map_err(from_semver)?;
-
-    let contract = ADOContract::default();
-
-    ensure!(
-        stored.contract == CONTRACT_NAME,
-        ContractError::CannotMigrate {
-            previous_contract: stored.contract,
-        }
-    );
-
-    // New version has to be newer/greater than the old version
-    ensure!(
-        storage_version < version,
-        ContractError::CannotMigrate {
-            previous_contract: stored.version,
-        }
-    );
-
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-
-    // Update the ADOContract's version
-    contract.execute_update_version(deps)?;
-
-    Ok(Response::default())
+    ADOContract::default().migrate(deps, CONTRACT_NAME, CONTRACT_VERSION)
 }
 
 #[entry_point]
@@ -498,7 +466,7 @@ fn query_user_weight(deps: Deps, user: Recipient) -> Result<GetUserWeightRespons
     let mut total_weight = Uint128::zero();
     for recipient_addr in &recipients {
         let recipient_weight = recipient_addr.weight;
-        total_weight += recipient_weight;
+        total_weight = total_weight.checked_add(recipient_weight)?;
     }
 
     if let Some(i) = addrs {

@@ -5,8 +5,8 @@ use crate::os::aos_querier::AOSQuerier;
 use crate::os::{kernel::ExecuteMsg as KernelExecuteMsg, kernel::QueryMsg as KernelQueryMsg};
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
-    to_json_binary, Addr, Binary, Coin, ContractInfoResponse, CosmosMsg, Deps, MessageInfo,
-    QueryRequest, ReplyOn, SubMsg, WasmMsg, WasmQuery,
+    to_json_binary, wasm_execute, Addr, Binary, Coin, ContractInfoResponse, CosmosMsg, Deps, Empty,
+    MessageInfo, QueryRequest, ReplyOn, SubMsg, WasmMsg, WasmQuery,
 };
 
 use super::addresses::AndrAddr;
@@ -150,6 +150,15 @@ impl AMPMsg {
         })
     }
 
+    pub fn generate_sub_msg_direct(&self, addr: Addr, id: u64) -> SubMsg<Empty> {
+        SubMsg {
+            id,
+            reply_on: self.config.reply_on.clone(),
+            gas_limit: self.config.gas_limit,
+            msg: CosmosMsg::Wasm(wasm_execute(addr, &self.message, self.funds.to_vec()).unwrap()),
+        }
+    }
+
     pub fn to_ibc_hooks_memo(&self, contract_addr: String, callback_addr: String) -> String {
         #[derive(::serde::Serialize)]
         struct IbcHooksWasmMsg<T: ::serde::Serialize> {
@@ -276,11 +285,10 @@ impl AMPPkt {
     }
 
     /// Gets all messages for a given recipient
-    pub fn get_messages_for_recipient(&self, recipient: String) -> Vec<AMPMsg> {
+    pub fn get_messages_for_recipient(&self, recipient: String) -> Vec<&AMPMsg> {
         self.messages
             .iter()
-            .cloned()
-            .filter(|msg| msg.recipient == recipient.clone())
+            .filter(|&msg| msg.recipient == recipient.clone())
             .collect()
     }
 

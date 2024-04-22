@@ -83,10 +83,10 @@
     {
       "type": "object",
       "required": [
-        "operators"
+        "ownership_request"
       ],
       "properties": {
-        "operators": {
+        "ownership_request": {
           "type": "object",
           "additionalProperties": false
         }
@@ -122,6 +122,19 @@
     {
       "type": "object",
       "required": [
+        "app_contract"
+      ],
+      "properties": {
+        "app_contract": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
         "original_publisher"
       ],
       "properties": {
@@ -148,27 +161,6 @@
     {
       "type": "object",
       "required": [
-        "is_operator"
-      ],
-      "properties": {
-        "is_operator": {
-          "type": "object",
-          "required": [
-            "address"
-          ],
-          "properties": {
-            "address": {
-              "type": "string"
-            }
-          },
-          "additionalProperties": false
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "type": "object",
-      "required": [
         "version"
       ],
       "properties": {
@@ -182,19 +174,11 @@
     {
       "type": "object",
       "required": [
-        "balance"
+        "a_d_o_base_version"
       ],
       "properties": {
-        "balance": {
+        "a_d_o_base_version": {
           "type": "object",
-          "required": [
-            "address"
-          ],
-          "properties": {
-            "address": {
-              "$ref": "#/definitions/AndrAddr"
-            }
-          },
           "additionalProperties": false
         }
       },
@@ -252,10 +236,6 @@
   "definitions": {
     "Addr": {
       "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
-      "type": "string"
-    },
-    "AndrAddr": {
-      "description": "An address that can be used within the Andromeda ecosystem. Inspired by the cosmwasm-std `Addr` type. https://github.com/CosmWasm/cosmwasm/blob/2a1c698520a1aacedfe3f4803b0d7d653892217a/packages/std/src/addresses.rs#L33\n\nThis address can be one of two things: 1. A valid human readable address e.g. `cosmos1...` 2. A valid Andromeda VFS path e.g. `/home/user/app/component`\n\nVFS paths can be local in the case of an app and can be done by referencing `./component` they can also contain protocols for cross chain communication. A VFS path is usually structured as so:\n\n`<protocol>://<chain (required if ibc used)>/<path>` or `ibc://cosmoshub-4/user/app/component`",
       "type": "string"
     },
     "AssetInfoBase_for_Addr": {

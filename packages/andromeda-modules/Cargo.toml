@@ -1,8 +1,10 @@
 [package]
 name = "andromeda-modules"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2021"
-rust-version = "1.65.0"
+rust-version = "1.75.0"
+description = "Utility methods and message definitions for the Andromeda Module Contracts"
+license = "MIT"
 
 [features]
 backtraces = ["cosmwasm-std/backtraces"]
@@ -19,4 +21,4 @@ cw-utils = { workspace = true }
 cw721 = { workspace = true }
 cw721-base = { workspace = true }
 
-andromeda-std = { workspace = true, features=["module_hooks"] }
+andromeda-std = { workspace = true, features = ["module_hooks"] }
