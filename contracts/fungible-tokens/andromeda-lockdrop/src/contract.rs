@@ -43,7 +43,9 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     // CHECK :: init_timestamp needs to be valid
     ensure!(
-        !msg.init_timestamp.is_in_past(&env.block),
+        !msg.init_timestamp
+            .get_time(&env.block)
+            .is_in_past(&env.block),
         ContractError::StartTimeInThePast {
             current_time: env.block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO,
             current_block: env.block.height,
@@ -60,7 +62,7 @@ pub fn instantiate(
 
     let config = Config {
         // bootstrap_contract_address: msg.bootstrap_contract,
-        init_timestamp: msg.init_timestamp,
+        init_timestamp: msg.init_timestamp.get_time(&env.block),
         deposit_window: msg.deposit_window,
         withdrawal_window: msg.withdrawal_window,
         lockdrop_incentives: Uint128::zero(),
