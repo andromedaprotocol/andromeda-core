@@ -2,7 +2,7 @@
 
 use crate::contract::{execute, instantiate, query, reply};
 use andromeda_finance::splitter::{AddressPercent, ExecuteMsg, InstantiateMsg, QueryMsg};
-use andromeda_std::common::Milliseconds;
+use andromeda_std::common::expiration::Expiry;
 use andromeda_testing::{
     mock::MockApp, mock_ado, mock_contract::ExecuteResult, MockADO, MockContract,
 };
@@ -19,7 +19,7 @@ impl MockSplitter {
         sender: Addr,
         recipients: Vec<AddressPercent>,
         kernel_address: impl Into<String>,
-        lock_time: Option<u64>,
+        lock_time: Option<Expiry>,
         owner: Option<String>,
     ) -> Self {
         let msg = mock_splitter_instantiate_msg(recipients, kernel_address, lock_time, owner);
@@ -43,12 +43,12 @@ pub fn mock_andromeda_splitter() -> Box<dyn Contract<Empty>> {
 pub fn mock_splitter_instantiate_msg(
     recipients: Vec<AddressPercent>,
     kernel_address: impl Into<String>,
-    lock_time: Option<u64>,
+    lock_time: Option<Expiry>,
     owner: Option<String>,
 ) -> InstantiateMsg {
     InstantiateMsg {
         recipients,
-        lock_time: lock_time.map(Milliseconds),
+        lock_time,
         kernel_address: kernel_address.into(),
         owner,
     }

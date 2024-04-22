@@ -32,23 +32,22 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    let current_time = Milliseconds::from_seconds(env.block.time.seconds());
     let splitter = match msg.lock_time {
-        Some(lock_time) => {
+        Some(ref lock_time) => {
             // New lock time can't be too short
             ensure!(
-                lock_time.seconds() >= ONE_DAY,
+                lock_time.get_time(&env.block).seconds() >= ONE_DAY,
                 ContractError::LockTimeTooShort {}
             );
 
             // New lock time can't be too long
             ensure!(
-                lock_time.seconds() <= ONE_YEAR,
+                lock_time.get_time(&env.block).seconds() <= ONE_YEAR,
                 ContractError::LockTimeTooLong {}
             );
             Splitter {
                 recipients: msg.recipients.clone(),
-                lock: current_time.plus_milliseconds(lock_time),
+                lock: lock_time.get_time(&env.block),
             }
         }
         None => {
