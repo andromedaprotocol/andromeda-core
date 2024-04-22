@@ -8,6 +8,7 @@ use andromeda_non_fungible_tokens::auction::{
 use andromeda_std::ado_base::permissioning::{Permission, PermissioningMessage};
 use andromeda_std::amp::messages::AMPPkt;
 use andromeda_std::amp::Recipient;
+use andromeda_std::common::denom::Asset;
 use andromeda_std::common::{Milliseconds, MillisecondsExpiration};
 use andromeda_std::{ado_base::modules::Module, amp::AndrAddr};
 use andromeda_testing::mock::MockApp;
@@ -52,14 +53,13 @@ impl MockAuction {
         sender: Addr,
         start_time: Option<Milliseconds>,
         end_time: Milliseconds,
-        coin_denom: String,
+        coin_denom: Asset,
         min_bid: Option<Uint128>,
         whitelist: Option<Vec<Addr>>,
         recipient: Option<Recipient>,
-        uses_cw20: bool,
     ) -> AppResponse {
         let msg = mock_start_auction(
-            start_time, end_time, coin_denom, uses_cw20, min_bid, whitelist, recipient,
+            start_time, end_time, coin_denom, min_bid, whitelist, recipient,
         );
         app.execute_contract(sender, self.addr().clone(), &msg, &[])
             .unwrap()
@@ -163,8 +163,7 @@ pub fn mock_auction_instantiate_msg(
 pub fn mock_start_auction(
     start_time: Option<Milliseconds>,
     end_time: Milliseconds,
-    coin_denom: String,
-    uses_cw20: bool,
+    coin_denom: Asset,
     min_bid: Option<Uint128>,
     whitelist: Option<Vec<Addr>>,
     recipient: Option<Recipient>,
@@ -173,7 +172,6 @@ pub fn mock_start_auction(
         start_time,
         end_time,
         coin_denom,
-        uses_cw20,
         min_bid,
         whitelist,
         recipient,
@@ -191,6 +189,29 @@ pub fn mock_authorize_token_address(
     ExecuteMsg::AuthorizeTokenContract {
         addr: AndrAddr::from_string(token_address.into()),
         expiration,
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn mock_update_auction(
+    token_id: String,
+    token_address: String,
+    start_time: Option<Milliseconds>,
+    end_time: Milliseconds,
+    coin_denom: Asset,
+    min_bid: Option<Uint128>,
+    whitelist: Option<Vec<Addr>>,
+    recipient: Option<Recipient>,
+) -> ExecuteMsg {
+    ExecuteMsg::UpdateAuction {
+        token_id,
+        token_address,
+        start_time,
+        end_time,
+        coin_denom,
+        whitelist,
+        min_bid,
+        recipient,
     }
 }
 

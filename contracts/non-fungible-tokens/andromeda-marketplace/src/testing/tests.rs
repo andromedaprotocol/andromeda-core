@@ -74,7 +74,7 @@ fn start_sale_future_start(deps: DepsMut, env: Env, coin_denom: Asset) {
     let _res = execute(deps, env, info, msg).unwrap();
 }
 
-fn start_sale_future_start_with_duration(deps: DepsMut, env: Env, uses_cw20: bool) {
+fn start_sale_future_start_with_duration(deps: DepsMut, env: Env) {
     let current_time = env.block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO;
     let hook_msg = Cw721HookMsg::StartSale {
         coin_denom: Asset::NativeToken("uusd".to_string()),
@@ -559,7 +559,7 @@ fn test_execute_buy_sale_expired() {
 
     let _res = init(deps.as_mut(), None, None);
 
-    start_sale_future_start_with_duration(deps.as_mut(), mock_env(), false);
+    start_sale_future_start_with_duration(deps.as_mut(), mock_env());
 
     let msg = ExecuteMsg::Buy {
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),

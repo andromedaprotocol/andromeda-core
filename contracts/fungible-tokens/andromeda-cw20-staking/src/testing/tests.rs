@@ -609,6 +609,7 @@ fn test_update_global_indexes() {
                 previous_reward_balance: Uint128::zero(),
                 init_timestamp: current_timestamp.plus_seconds(1),
             },
+            is_active: true
         },
         REWARD_TOKENS
             .load(deps.as_ref().storage, "native:uandr")
@@ -654,6 +655,7 @@ fn test_update_global_indexes() {
                 previous_reward_balance: Uint128::new(40),
                 init_timestamp: current_timestamp.plus_seconds(1),
             },
+            is_active: true
         },
         REWARD_TOKENS
             .load(deps.as_ref().storage, "native:uandr")
@@ -1429,6 +1431,7 @@ fn test_claim_rewards_allocated_init_timestamp_in_future() {
                     last_distributed: current_timestamp.plus_seconds(60),
                 },
             },
+            is_active: true
         },
         REWARD_TOKENS
             .load(deps.as_ref().storage, "cw20:allocated_token")
