@@ -2,11 +2,9 @@ use crate::{
     contract::{execute, instantiate, query},
     state::{auction_infos, TOKEN_AUCTION_STATE},
     testing::mock_querier::{
-        mock_dependencies_custom, MOCK_CW20_ADDR, MOCK_TOKEN_ADDR, MOCK_TOKEN_OWNER,
-        MOCK_UNCLAIMED_TOKEN,
+        mock_dependencies_custom, MOCK_TOKEN_ADDR, MOCK_TOKEN_OWNER, MOCK_UNCLAIMED_TOKEN,
     },
 };
-
 use andromeda_non_fungible_tokens::{
     auction::{
         AuctionInfo, AuctionStateResponse, Cw20HookMsg, Cw721HookMsg, ExecuteMsg, InstantiateMsg,
@@ -14,6 +12,7 @@ use andromeda_non_fungible_tokens::{
     },
     cw721::ExecuteMsg as Cw721ExecuteMsg,
 };
+use andromeda_std::testing::mock_querier::MOCK_CW20_CONTRACT;
 use andromeda_std::{
     ado_base::modules::Module,
     amp::AndrAddr,
@@ -54,7 +53,7 @@ fn init_cw20(deps: DepsMut, modules: Option<Vec<Module>>) -> Response {
         modules,
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         authorized_token_addresses: Some(vec![AndrAddr::from_string(MOCK_TOKEN_ADDR)]),
-        authorized_cw20_address: Some(AndrAddr::from_string(MOCK_CW20_ADDR)),
+        authorized_cw20_address: Some(AndrAddr::from_string(MOCK_CW20_CONTRACT)),
     };
 
     let info = mock_info("owner", &[]);
@@ -97,7 +96,7 @@ fn start_auction_cw20(deps: DepsMut, whitelist: Option<Vec<Addr>>, min_bid: Opti
     let hook_msg = Cw721HookMsg::StartAuction {
         start_time: None,
         end_time: Milliseconds::from_nanos((current_time() + 20_000_000) * 1_000_000),
-        coin_denom: Asset::Cw20Token(AndrAddr::from_string(MOCK_CW20_ADDR.to_string())),
+        coin_denom: Asset::Cw20Token(AndrAddr::from_string(MOCK_CW20_CONTRACT.to_string())),
         whitelist,
         min_bid,
         recipient: None,
@@ -164,7 +163,7 @@ fn assert_auction_created_cw20(deps: Deps, whitelist: Option<Vec<Addr>>, min_bid
             )),
             high_bidder_addr: Addr::unchecked(""),
             high_bidder_amount: Uint128::zero(),
-            coin_denom: MOCK_CW20_ADDR.to_string(),
+            coin_denom: MOCK_CW20_CONTRACT.to_string(),
             uses_cw20: true,
             auction_id: 1u128.into(),
             owner: MOCK_TOKEN_OWNER.to_string(),
@@ -336,7 +335,7 @@ fn execute_place_bid_whitelist_cw20() {
         res.unwrap_err()
     );
 
-    let info = mock_info(MOCK_CW20_ADDR, &[]);
+    let info = mock_info(MOCK_CW20_CONTRACT, &[]);
     let _res = execute(deps.as_mut(), env, info, msg).unwrap();
 }
 
@@ -1222,7 +1221,7 @@ fn execute_claim_cw20() {
         msg: encode_binary(&hook_msg).unwrap(),
     });
 
-    let info = mock_info(MOCK_CW20_ADDR, &[]);
+    let info = mock_info(MOCK_CW20_CONTRACT, &[]);
     env.block.time = env.block.time.plus_seconds(1);
 
     let _res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
@@ -1244,7 +1243,7 @@ fn execute_claim_cw20() {
     assert_eq!(
         Response::new()
             .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: MOCK_CW20_ADDR.to_string(),
+                contract_addr: MOCK_CW20_CONTRACT.to_string(),
                 msg: encode_binary(&Cw20ExecuteMsg::Transfer {
                     recipient: MOCK_TOKEN_OWNER.to_owned(),
                     amount: Uint128::new(100)
@@ -1535,7 +1534,7 @@ fn execute_cancel_with_bids_cw20() {
         msg: encode_binary(&hook_msg).unwrap(),
     });
 
-    let info = mock_info(MOCK_CW20_ADDR, &[]);
+    let info = mock_info(MOCK_CW20_CONTRACT, &[]);
     env.block.time = env.block.time.plus_seconds(1);
 
     let _res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
@@ -1560,7 +1559,7 @@ fn execute_cancel_with_bids_cw20() {
                 funds: vec![],
             }))
             .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: MOCK_CW20_ADDR.to_string(),
+                contract_addr: MOCK_CW20_CONTRACT.to_string(),
                 msg: encode_binary(&Cw20ExecuteMsg::Transfer {
                     recipient: "bidder".to_owned(),
                     amount: Uint128::new(100)

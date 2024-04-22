@@ -13,6 +13,7 @@ use andromeda_std::{
     },
     error::ContractError,
     os::economics::ExecuteMsg as EconomicsExecuteMsg,
+    testing::mock_querier::MOCK_CW20_CONTRACT,
 };
 use cosmwasm_std::{
     coin, coins,
@@ -29,8 +30,8 @@ use crate::{
     contract::{execute, instantiate},
     state::{sale_infos, SaleInfo, TokenSaleState, TOKEN_SALE_STATE},
     testing::mock_querier::{
-        mock_dependencies_custom, MOCK_CW20_ADDR, MOCK_RATES_CONTRACT, MOCK_TOKEN_ADDR,
-        MOCK_TOKEN_OWNER, MOCK_UNCLAIMED_TOKEN, RATES,
+        mock_dependencies_custom, MOCK_RATES_CONTRACT, MOCK_TOKEN_ADDR, MOCK_TOKEN_OWNER,
+        MOCK_UNCLAIMED_TOKEN, RATES,
     },
 };
 
@@ -213,16 +214,21 @@ fn test_sale_instantiate_future_start_cw20() {
     let res = init(
         deps.as_mut(),
         None,
-        Some(AndrAddr::from_string(MOCK_CW20_ADDR)),
+        Some(AndrAddr::from_string(MOCK_CW20_CONTRACT)),
     );
     assert_eq!(0, res.messages.len());
 
     start_sale_future_start(
         deps.as_mut(),
         mock_env(),
-        Asset::Cw20Token(AndrAddr::from_string(MOCK_CW20_ADDR.to_string())),
+        Asset::Cw20Token(AndrAddr::from_string(MOCK_CW20_CONTRACT.to_string())),
     );
-    assert_sale_created_future_start(deps.as_ref(), mock_env(), MOCK_CW20_ADDR.to_string(), true);
+    assert_sale_created_future_start(
+        deps.as_ref(),
+        mock_env(),
+        MOCK_CW20_CONTRACT.to_string(),
+        true,
+    );
 }
 
 #[test]
@@ -325,18 +331,18 @@ fn test_execute_buy_token_owner_cannot_buy_cw20() {
     let _res = init(
         deps.as_mut(),
         None,
-        Some(AndrAddr::from_string(MOCK_CW20_ADDR)),
+        Some(AndrAddr::from_string(MOCK_CW20_CONTRACT)),
     );
 
     let uses_cw20 = true;
     start_sale(
         deps.as_mut(),
-        Asset::Cw20Token(AndrAddr::from_string(MOCK_CW20_ADDR.to_string())),
+        Asset::Cw20Token(AndrAddr::from_string(MOCK_CW20_CONTRACT.to_string())),
     );
     assert_sale_created(
         deps.as_ref(),
         env.clone(),
-        MOCK_CW20_ADDR.to_string(),
+        MOCK_CW20_CONTRACT.to_string(),
         uses_cw20,
     );
 
@@ -350,7 +356,7 @@ fn test_execute_buy_token_owner_cannot_buy_cw20() {
         msg: encode_binary(&hook_msg).unwrap(),
     });
 
-    let info = mock_info(MOCK_CW20_ADDR, &[]);
+    let info = mock_info(MOCK_CW20_CONTRACT, &[]);
 
     // Add one second so that the start_time expires
     env.block.time = env.block.time.plus_seconds(1);
@@ -413,18 +419,18 @@ fn test_execute_buy_invalid_coins_sent_cw20() {
     let _res = init(
         deps.as_mut(),
         None,
-        Some(AndrAddr::from_string(MOCK_CW20_ADDR)),
+        Some(AndrAddr::from_string(MOCK_CW20_CONTRACT)),
     );
 
     let uses_cw20 = true;
     start_sale(
         deps.as_mut(),
-        Asset::Cw20Token(AndrAddr::from_string(MOCK_CW20_ADDR.to_string())),
+        Asset::Cw20Token(AndrAddr::from_string(MOCK_CW20_CONTRACT.to_string())),
     );
     assert_sale_created(
         deps.as_ref(),
         env.clone(),
-        MOCK_CW20_ADDR.to_string(),
+        MOCK_CW20_CONTRACT.to_string(),
         uses_cw20,
     );
 
@@ -439,7 +445,7 @@ fn test_execute_buy_invalid_coins_sent_cw20() {
         msg: encode_binary(&hook_msg).unwrap(),
     });
 
-    let info = mock_info(MOCK_CW20_ADDR, &[]);
+    let info = mock_info(MOCK_CW20_CONTRACT, &[]);
 
     // Add one second so that the start_time expires
     env.block.time = env.block.time.plus_seconds(1);
@@ -496,18 +502,18 @@ fn test_execute_buy_works_cw20() {
     let _res = init(
         deps.as_mut(),
         None,
-        Some(AndrAddr::from_string(MOCK_CW20_ADDR)),
+        Some(AndrAddr::from_string(MOCK_CW20_CONTRACT)),
     );
 
     let uses_cw20 = true;
     start_sale(
         deps.as_mut(),
-        Asset::Cw20Token(AndrAddr::from_string(MOCK_CW20_ADDR.to_string())),
+        Asset::Cw20Token(AndrAddr::from_string(MOCK_CW20_CONTRACT.to_string())),
     );
     assert_sale_created(
         deps.as_ref(),
         env.clone(),
-        MOCK_CW20_ADDR.to_string(),
+        MOCK_CW20_CONTRACT.to_string(),
         uses_cw20,
     );
 
@@ -521,7 +527,7 @@ fn test_execute_buy_works_cw20() {
         msg: encode_binary(&hook_msg).unwrap(),
     });
 
-    let info = mock_info(MOCK_CW20_ADDR, &[]);
+    let info = mock_info(MOCK_CW20_CONTRACT, &[]);
     // Add one second so that the start_time expires
     env.block.time = env.block.time.plus_seconds(1);
     let _res = execute(deps.as_mut(), env, info, msg).unwrap();
@@ -680,18 +686,18 @@ fn test_execute_buy_with_tax_and_royalty_insufficient_funds_cw20() {
     let _res = init(
         deps.as_mut(),
         Some(modules),
-        Some(AndrAddr::from_string(MOCK_CW20_ADDR)),
+        Some(AndrAddr::from_string(MOCK_CW20_CONTRACT)),
     );
 
     let uses_cw20 = true;
     start_sale(
         deps.as_mut(),
-        Asset::Cw20Token(AndrAddr::from_string(MOCK_CW20_ADDR.to_string())),
+        Asset::Cw20Token(AndrAddr::from_string(MOCK_CW20_CONTRACT.to_string())),
     );
     assert_sale_created(
         deps.as_ref(),
         mock_env(),
-        MOCK_CW20_ADDR.to_string(),
+        MOCK_CW20_CONTRACT.to_string(),
         uses_cw20,
     );
 
@@ -705,7 +711,7 @@ fn test_execute_buy_with_tax_and_royalty_insufficient_funds_cw20() {
         msg: encode_binary(&hook_msg).unwrap(),
     });
 
-    let info = mock_info(MOCK_CW20_ADDR, &[]);
+    let info = mock_info(MOCK_CW20_CONTRACT, &[]);
 
     let mut env = mock_env();
     // Add one second so that the start_time expires
