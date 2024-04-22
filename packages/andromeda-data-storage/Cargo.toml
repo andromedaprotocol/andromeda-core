@@ -1,8 +1,10 @@
 [package]
 name = "andromeda-data-storage"
-version = "0.2.0"
+version = "1.0.0"
 edition = "2018"
-rust-version = "1.65.0"
+rust-version = "1.75.0"
+description = "Utility methods and message definitions for the Andromeda Data Storage Contracts"
+license = "MIT"
 
 [features]
 backtraces = ["cosmwasm-std/backtraces"]
@@ -17,5 +19,4 @@ cosmwasm-schema = { workspace = true }
 serde = { version = "1.0.127", default-features = false, features = ["derive"] }
 cw-utils = { workspace = true }
 
-andromeda-std = { workspace = true, features=["module_hooks"] }
-
+andromeda-std = { workspace = true, features = ["module_hooks"] }

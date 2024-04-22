@@ -11,7 +11,10 @@ use crate::{
     },
 };
 use andromeda_non_fungible_tokens::{
-    crowdfund::{Config, CrowdfundMintMsg, ExecuteMsg, InstantiateMsg, QueryMsg, State},
+    crowdfund::{
+        Config, CrowdfundMintMsg, ExecuteMsg, InstantiateMsg, IsTokenAvailableResponse, QueryMsg,
+        State,
+    },
     cw721::{ExecuteMsg as Cw721ExecuteMsg, TokenExtension},
 };
 use andromeda_std::{
@@ -931,15 +934,17 @@ fn test_multiple_purchases() {
     let msg = QueryMsg::IsTokenAvailable {
         id: MOCK_TOKENS_FOR_SALE[0].to_owned(),
     };
-    let res: bool = from_json(query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
-    assert!(res);
+    let res: IsTokenAvailableResponse =
+        from_json(query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
+    assert!(res.is_token_available);
 
     // Query if another token is available
     let msg = QueryMsg::IsTokenAvailable {
         id: MOCK_TOKENS_FOR_SALE[4].to_owned(),
     };
-    let res: bool = from_json(query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
-    assert!(!res);
+    let res: IsTokenAvailableResponse =
+        from_json(query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
+    assert!(!res.is_token_available);
 
     // Purchase 2 tokens
     let msg = ExecuteMsg::Purchase {

@@ -143,15 +143,32 @@ fn execute_create_batch(
     );
 
     ensure!(
-        !funds.amount.is_zero(),
+        release_unit > 0 && !release_amount.is_zero(),
+        ContractError::InvalidZeroAmount {}
+    );
+
+    let min_fund = match release_amount {
+        WithdrawalType::Amount(amount) => amount,
+        WithdrawalType::Percentage(_) => Uint128::from(100u128),
+    };
+    ensure!(
+        funds.amount >= min_fund,
         ContractError::InvalidFunds {
-            msg: "Funds must be non-zero".to_string(),
+            msg: format!("Funds must be at least {min_fund}"),
         }
     );
 
+    let current_balance = deps
+        .querier
+        .query_balance(env.contract.address.to_string(), funds.denom)
+        .unwrap()
+        .amount;
+    let max_fund = Uint128::MAX - current_balance;
     ensure!(
-        release_unit > 0 && !release_amount.is_zero(),
-        ContractError::InvalidZeroAmount {}
+        funds.amount <= max_fund,
+        ContractError::InvalidFunds {
+            msg: format!("Funds can not exceed {max_fund}"),
+        }
     );
 
     let lockup_end = if let Some(duration) = lockup_duration {

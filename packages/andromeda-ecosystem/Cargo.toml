@@ -1,8 +1,10 @@
 [package]
 name = "andromeda-ecosystem"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2021"
-rust-version = "1.65.0"
+rust-version = "1.75.0"
+description = "Utility methods and message definitions for the Andromeda Ecosystem Contracts"
+license = "MIT"
 
 [features]
 backtraces = ["cosmwasm-std/backtraces"]
@@ -19,5 +21,5 @@ serde = { workspace = true }
 schemars = "0.8.10"
 #astroport = "1.0.1"
 cw20 = { workspace = true }
-cw-asset = { workspace = true  }
+cw-asset = { workspace = true }
 andromeda-std = { workspace = true }

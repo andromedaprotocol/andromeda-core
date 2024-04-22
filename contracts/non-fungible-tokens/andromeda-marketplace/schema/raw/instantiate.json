@@ -6,6 +6,16 @@
     "kernel_address"
   ],
   "properties": {
+    "authorized_cw20_address": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/AndrAddr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "kernel_address": {
       "type": "string"
     },

@@ -1,5 +1,14 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Boolean",
-  "type": "boolean"
+  "title": "ComponentExistsResponse",
+  "type": "object",
+  "required": [
+    "component_exists"
+  ],
+  "properties": {
+    "component_exists": {
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": false
 }

@@ -1,5 +1,14 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Boolean",
-  "type": "boolean"
+  "title": "IsInclusiveResponse",
+  "type": "object",
+  "required": [
+    "is_inclusive_response"
+  ],
+  "properties": {
+    "is_inclusive_response": {
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": false
 }

@@ -18,7 +18,6 @@ use andromeda_testing::{
 };
 use cosmwasm_std::{Addr, Coin, Empty, Uint128};
 use cw20::Cw20ReceiveMsg;
-use cw20::Expiration;
 use cw_multi_test::{AppResponse, Contract, ContractWrapper, Executor};
 
 pub struct MockAuction(Addr);
@@ -185,7 +184,7 @@ pub fn mock_auction_cw20_receive(msg: Cw20ReceiveMsg) -> ExecuteMsg {
 
 pub fn mock_authorize_token_address(
     token_address: impl Into<String>,
-    expiration: Option<Expiration>,
+    expiration: Option<MillisecondsExpiration>,
 ) -> ExecuteMsg {
     ExecuteMsg::AuthorizeTokenContract {
         addr: AndrAddr::from_string(token_address.into()),

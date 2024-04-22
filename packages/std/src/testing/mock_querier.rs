@@ -269,6 +269,7 @@ impl MockAndromedaQuerier {
     /// Returns `"actual_address"` for `Get` queries.
     fn handle_app_query(&self, _msg: &Binary) -> QuerierResult {
         // match from_json(msg).unwrap() {
+        // match from_json(msg).unwrap() {
         //     _ => SystemResult::Ok(ContractResult::Err("Error".to_string())),
         // }
         todo!()
@@ -307,6 +308,7 @@ impl MockAndromedaQuerier {
                         value: Primitive::Decimal(Decimal::zero()),
                     },
                     Some(data) => {
+                        let key: String = from_json(&data).unwrap();
                         let key: String = from_json(&data).unwrap();
                         match key.as_str() {
                             "String" => GetValueResponse {

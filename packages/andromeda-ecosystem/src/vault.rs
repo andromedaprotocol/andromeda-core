@@ -126,13 +126,13 @@ pub enum ExecuteMsg {
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
-    #[returns(cosmwasm_std::Binary)]
+    #[returns(Binary)]
     VaultBalance {
         address: AndrAddr,
         strategy: Option<StrategyType>,
         denom: Option<String>,
     },
-    #[returns(cosmwasm_std::Binary)]
+    #[returns(StrategyAddressResponse)]
     StrategyAddress { strategy: StrategyType },
 }
 

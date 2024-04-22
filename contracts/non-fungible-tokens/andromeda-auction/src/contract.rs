@@ -3,8 +3,8 @@ use crate::state::{
 };
 use andromeda_non_fungible_tokens::auction::{
     AuctionIdsResponse, AuctionInfo, AuctionStateResponse, AuthorizedAddressesResponse, Bid,
-    BidsResponse, Cw20HookMsg, Cw721HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg,
-    TokenAuctionState,
+    BidsResponse, Cw20HookMsg, Cw721HookMsg, ExecuteMsg, InstantiateMsg, IsCancelledResponse,
+    IsClaimedResponse, IsClosedResponse, QueryMsg, TokenAuctionState,
 };
 use andromeda_std::{
     ado_base::{
@@ -29,7 +29,7 @@ use cosmwasm_std::{
     SubMsg, Uint128, WasmMsg, WasmQuery,
 };
 use cw20::{Cw20Coin, Cw20ExecuteMsg, Cw20ReceiveMsg};
-use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, Cw721ReceiveMsg, Expiration, OwnerOfResponse};
+use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, Cw721ReceiveMsg, OwnerOfResponse};
 use cw_utils::nonpayable;
 
 const CONTRACT_NAME: &str = "crates.io:andromeda-auction";
@@ -798,7 +798,7 @@ fn execute_claim(
             if let CosmosMsg::Bank(BankMsg::Send { to_address, amount }) = &msg.msg {
                 (
                     Some(to_address.clone()),
-                    amount.get(0).map(|coin| coin.amount),
+                    amount.first().map(|coin| coin.amount),
                 )
             } else {
                 (None, None)
@@ -868,7 +868,7 @@ fn execute_authorize_token_contract(
     deps: DepsMut,
     info: MessageInfo,
     token_address: AndrAddr,
-    expiration: Option<Expiration>,
+    expiration: Option<MillisecondsExpiration>,
 ) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
     let addr = token_address.get_raw_address(&deps.as_ref())?;
@@ -1033,11 +1033,13 @@ fn query_is_cancelled(
     deps: Deps,
     token_id: String,
     token_address: String,
-) -> Result<bool, ContractError> {
+) -> Result<IsCancelledResponse, ContractError> {
     let token_auction_state_result =
         get_existing_token_auction_state(deps.storage, &token_id, &token_address);
     if let Ok(token_auction_state) = token_auction_state_result {
-        return Ok(token_auction_state.is_cancelled);
+        return Ok(IsCancelledResponse {
+            is_cancelled: token_auction_state.is_cancelled,
+        });
     }
     Err(ContractError::AuctionDoesNotExist {})
 }
@@ -1047,7 +1049,7 @@ fn query_is_claimed(
     env: Env,
     token_id: String,
     token_address: String,
-) -> Result<bool, ContractError> {
+) -> Result<IsClaimedResponse, ContractError> {
     let token_auction_state =
         get_existing_token_auction_state(deps.storage, &token_id, &token_address)?;
 
@@ -1055,7 +1057,9 @@ fn query_is_claimed(
         query_owner_of(deps.querier, token_auction_state.token_address, token_id)?.owner;
 
     // if token owner isn't the contract, it means that it has been claimed. If they're equal it means that it hasn't been claimed and will return false
-    Ok(token_owner != env.contract.address)
+    Ok(IsClaimedResponse {
+        is_claimed: token_owner != env.contract.address,
+    })
 }
 
 fn query_is_closed(
@@ -1063,18 +1067,18 @@ fn query_is_closed(
     env: Env,
     token_id: String,
     token_address: String,
-) -> Result<bool, ContractError> {
+) -> Result<IsClosedResponse, ContractError> {
     let token_auction_state =
         get_existing_token_auction_state(deps.storage, &token_id, &token_address)?;
 
-    if query_is_claimed(deps, env.clone(), token_id.clone(), token_address.clone())?
-        || query_is_cancelled(deps, token_id, token_address)?
-        || token_auction_state.end_time.is_expired(&env.block)
-    {
-        Ok(true)
-    } else {
-        Ok(false)
-    }
+    let is_claimed =
+        query_is_claimed(deps, env.clone(), token_id.clone(), token_address.clone())?.is_claimed;
+    let is_cancelled = query_is_cancelled(deps, token_id, token_address)?.is_cancelled;
+    let is_expired = token_auction_state.end_time.is_expired(&env.block);
+
+    // Considers the auction closed if one or more of those 3 variables are true. Otherwise it isn't closed.
+    let is_closed = is_claimed || is_cancelled || is_expired;
+    Ok(IsClosedResponse { is_closed })
 }
 
 fn query_auction_ids(

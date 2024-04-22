@@ -50,16 +50,6 @@ pub fn validate_component_name(path: String) -> Result<bool, ContractError> {
 /// # Returns
 ///
 /// * `Result<bool, ContractError>` - Returns `Ok(true)` if the username is valid, otherwise returns an `Err` with a `ContractError` detailing the reason for invalidity.
-///
-/// # Examples
-///
-/// ```
-//// let valid_username = validate_username("validuser123".to_string()).unwrap();
-//// assert_eq!(valid_username, true);
-///
-//// let invalid_username = validate_username("".to_string()).is_err();
-//// assert!(invalid_username);
-/// ```
 pub fn validate_username(username: String) -> Result<bool, ContractError> {
     // Ensure the username is not empty.
     ensure!(

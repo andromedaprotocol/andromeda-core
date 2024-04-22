@@ -1,8 +1,10 @@
 [package]
 name = "andromeda-testing"
-version = "0.1.0"
+version = "1.0.0"
 authors = ["Connor Barr <crnbarr@gmail.com>"]
 edition = "2018"
+description = "Testing utilities for Andromeda Digital Object Contracts"
+license = "MIT"
 
 [features]
 backtraces = ["cosmwasm-std/backtraces"]
@@ -16,22 +18,21 @@ cosmwasm-std = { workspace = true }
 cosmwasm-schema = { workspace = true }
 cw721 = { workspace = true }
 cw20 = { workspace = true }
-prost = "0.9.0"
 anyhow = "1.0.79"
 
 andromeda-non-fungible-tokens = { workspace = true }
-andromeda-app = { version = "0.1.0", path = "../andromeda-app" }
-andromeda-modules = { version = "0.1.0", path = "../andromeda-modules" }
-andromeda-adodb = { version = "1.0.0-rc.1", path = "../../contracts/os/andromeda-adodb", features = [
+andromeda-app = { version = "1.0.0", path = "../andromeda-app" }
+andromeda-modules = { version = "1.0.0", path = "../andromeda-modules" }
+andromeda-adodb = { version = "1.0.0", path = "../../contracts/os/andromeda-adodb", features = [
     "testing",
 ] }
-andromeda-kernel = { version = "1.0.0-rc.1", path = "../../contracts/os/andromeda-kernel", features = [
+andromeda-kernel = { version = "1.0.0", path = "../../contracts/os/andromeda-kernel", features = [
     "testing",
 ] }
-andromeda-vfs = { version = "1.0.0-rc.1", path = "../../contracts/os/andromeda-vfs", features = [
+andromeda-vfs = { version = "1.0.0", path = "../../contracts/os/andromeda-vfs", features = [
     "testing",
 ] }
-andromeda-economics = { version = "1.0.0-rc.1", path = "../../contracts/os/andromeda-economics", features = [
+andromeda-economics = { version = "1.0.0", path = "../../contracts/os/andromeda-economics", features = [
     "testing",
     "library",
 ] }
