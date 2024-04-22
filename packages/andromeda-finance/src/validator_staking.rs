@@ -1,6 +1,6 @@
 use andromeda_std::{amp::AndrAddr, andr_exec, andr_instantiate, andr_query, error::ContractError};
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Addr, Coin, DepsMut, FullDelegation, Timestamp};
+use cosmwasm_std::{Addr, Coin, DepsMut, Timestamp};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -36,7 +36,7 @@ pub struct UnstakingTokens {
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
-    #[returns(Option<FullDelegation>)]
+    #[returns(Option<::cosmwasm_std::FullDelegation>)]
     StakedTokens { validator: Option<Addr> },
 
     #[returns(Option<Vec<UnstakingTokens>>)]
