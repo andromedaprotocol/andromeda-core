@@ -307,6 +307,7 @@ fn execute_remove_reward_token(
             // This is important in case the reward token is allocated token
             let state = STATE.load(deps.storage)?;
             update_global_index(
+                &ctx.env.block,
                 &deps.querier,
                 Milliseconds::from_seconds(env.block.time.seconds()),
                 env.contract.address,
@@ -387,6 +388,7 @@ fn execute_replace_reward_token(
             // This is important in case the reward token is allocated token
             let state = STATE.load(deps.storage)?;
             update_global_index(
+                &env.block,
                 &deps.querier,
                 Milliseconds::from_seconds(env.block.time.seconds()),
                 env.contract.address.clone(),
@@ -410,6 +412,7 @@ fn execute_replace_reward_token(
 
     let state = STATE.load(deps.storage)?;
     update_global_index(
+        &env.block,
         &deps.querier,
         Milliseconds::from_seconds(env.block.time.seconds()),
         env.contract.address,
