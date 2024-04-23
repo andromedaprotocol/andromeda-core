@@ -508,7 +508,7 @@ fn test_stage_expires() {
         res,
         ContractError::StageExpired {
             stage: 1,
-            expiration: Expiration::AtTime(Timestamp::from_nanos(100_000_000))
+            expiration: Milliseconds::from_nanos(100_000_000)
         }
     )
 }
@@ -546,7 +546,7 @@ fn test_cant_burn() {
         res,
         ContractError::StageNotExpired {
             stage: 1,
-            expiration: Expiration::AtTime(Timestamp::from_nanos(100_000_000))
+            expiration: Milliseconds::from_nanos(100_000_000)
         }
     )
 }
@@ -612,7 +612,7 @@ fn test_can_burn() {
     );
 
     // makes the stage expire
-    env.block.time = Timestamp::from_nanos(100_000_000 + 1);
+    env.block.time = Timestamp::from_nanos(100_000_000 + 2);
 
     // Can burn after expired stage
     let msg = ExecuteMsg::Burn { stage: 1u8 };

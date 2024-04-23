@@ -164,7 +164,7 @@ pub fn execute_claim(
     // Ensure that the stage expiration (if it exists) isn't expired
     let expiration_milliseconds = STAGE_EXPIRATION.load(deps.storage, stage)?;
     if let Some(expiration_milliseconds) = expiration_milliseconds {
-        let expiration = Expiration::AtTime(Timestamp::from_nanos(expiration_milliseconds.nanos()));
+        let expiration = expiration_milliseconds;
         ensure!(
             !expiration.is_expired(&env.block),
             ContractError::StageExpired { stage, expiration }
@@ -247,15 +247,12 @@ pub fn execute_burn(ctx: ExecuteContext, stage: u8) -> Result<Response, Contract
 
     // make sure is expired
     let expiration = STAGE_EXPIRATION.load(deps.storage, stage)?;
-    let expiration = if let Some(expiration) = expiration {
-        Expiration::AtTime(Timestamp::from_nanos(expiration.nanos()))
-    } else {
-        Expiration::Never {}
-    };
-    ensure!(
-        expiration.is_expired(&env.block),
-        ContractError::StageNotExpired { stage, expiration }
-    );
+    if let Some(expiration) = expiration {
+        ensure!(
+            expiration.is_expired(&env.block),
+            ContractError::StageNotExpired { stage, expiration }
+        );
+    }
 
     // Get total amount per stage and total claimed
     let total_amount = STAGE_AMOUNT.load(deps.storage, stage)?;
