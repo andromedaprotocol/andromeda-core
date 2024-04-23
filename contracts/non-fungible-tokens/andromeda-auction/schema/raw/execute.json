@@ -90,7 +90,8 @@
             "coin_denom",
             "end_time",
             "token_address",
-            "token_id"
+            "token_id",
+            "uses_cw20"
           ],
           "properties": {
             "coin_denom": {
@@ -134,6 +135,9 @@
             },
             "token_id": {
               "type": "string"
+            },
+            "uses_cw20": {
+              "type": "boolean"
             },
             "whitelist": {
               "type": [

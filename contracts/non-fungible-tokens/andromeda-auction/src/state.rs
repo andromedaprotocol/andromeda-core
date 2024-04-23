@@ -105,35 +105,35 @@ pub fn read_auction_infos(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use andromeda_std::common::Milliseconds;
     use cosmwasm_std::testing::mock_dependencies;
-    use cosmwasm_std::Timestamp;
 
     fn get_mock_bids() -> Vec<Bid> {
         vec![
             Bid {
                 bidder: "0".to_string(),
                 amount: Uint128::zero(),
-                timestamp: Timestamp::from_seconds(0),
+                timestamp: Milliseconds::from_nanos(0),
             },
             Bid {
                 bidder: "1".to_string(),
                 amount: Uint128::zero(),
-                timestamp: Timestamp::from_seconds(0),
+                timestamp: Milliseconds::from_nanos(0),
             },
             Bid {
                 bidder: "2".to_string(),
                 amount: Uint128::zero(),
-                timestamp: Timestamp::from_seconds(0),
+                timestamp: Milliseconds::from_nanos(0),
             },
             Bid {
                 bidder: "3".to_string(),
                 amount: Uint128::zero(),
-                timestamp: Timestamp::from_seconds(0),
+                timestamp: Milliseconds::from_nanos(0),
             },
             Bid {
                 bidder: "4".to_string(),
                 amount: Uint128::zero(),
-                timestamp: Timestamp::from_seconds(0),
+                timestamp: Milliseconds::from_nanos(0),
             },
         ]
     }

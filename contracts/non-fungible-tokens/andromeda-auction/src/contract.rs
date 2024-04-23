@@ -536,7 +536,7 @@ fn execute_place_bid(
     bids_for_auction.push(Bid {
         bidder: info.sender.to_string(),
         amount: payment.amount,
-        timestamp: env.block.time,
+        timestamp: Milliseconds::from_nanos(env.block.time.nanos()),
     });
     BIDS.save(deps.storage, key, &bids_for_auction)?;
     Ok(Response::new().add_messages(messages).add_attributes(vec![
@@ -650,7 +650,7 @@ fn execute_place_bid_cw20(
     bids_for_auction.push(Bid {
         bidder: sender.to_string(),
         amount: amount_sent,
-        timestamp: env.block.time,
+        timestamp: Milliseconds::from_nanos(env.block.time.nanos()),
     });
     BIDS.save(deps.storage, key, &bids_for_auction)?;
     Ok(Response::new()

@@ -8,7 +8,7 @@ use cosmwasm_std::{
 };
 use cw20::Cw20ExecuteMsg;
 use cw_asset::AssetInfoBase;
-use cw_utils::{nonpayable, Expiration};
+use cw_utils::nonpayable;
 use sha2::Digest;
 use std::convert::TryInto;
 
@@ -23,7 +23,9 @@ use andromeda_fungible_tokens::airdrop::{
 use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     ado_contract::ADOContract,
-    common::{actions::call_action, context::ExecuteContext, encode_binary},
+    common::{
+        actions::call_action, context::ExecuteContext, encode_binary, MillisecondsExpiration,
+    },
     error::ContractError,
 };
 
@@ -112,7 +114,7 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
 pub fn execute_register_merkle_root(
     ctx: ExecuteContext,
     merkle_root: String,
-    expiration: Option<Expiration>,
+    expiration: Option<MillisecondsExpiration>,
     total_amount: Option<Uint128>,
 ) -> Result<Response, ContractError> {
     let ExecuteContext { deps, info, .. } = ctx;
@@ -133,8 +135,7 @@ pub fn execute_register_merkle_root(
     LATEST_STAGE.save(deps.storage, &stage)?;
 
     // save expiration
-    let exp = expiration.unwrap_or(Expiration::Never {});
-    STAGE_EXPIRATION.save(deps.storage, stage, &exp)?;
+    STAGE_EXPIRATION.save(deps.storage, stage, &expiration)?;
 
     // save total airdropped amount
     let amount = total_amount.unwrap_or_else(Uint128::zero);
@@ -160,12 +161,15 @@ pub fn execute_claim(
     } = ctx;
     nonpayable(&info)?;
 
-    // not expired
-    let expiration = STAGE_EXPIRATION.load(deps.storage, stage)?;
-    ensure!(
-        !expiration.is_expired(&env.block),
-        ContractError::StageExpired { stage, expiration }
-    );
+    // Ensure that the stage expiration (if it exists) isn't expired
+    let expiration_milliseconds = STAGE_EXPIRATION.load(deps.storage, stage)?;
+    if let Some(expiration_milliseconds) = expiration_milliseconds {
+        let expiration = expiration_milliseconds;
+        ensure!(
+            !expiration.is_expired(&env.block),
+            ContractError::StageExpired { stage, expiration }
+        );
+    };
 
     // verify not claimed
     ensure!(
@@ -243,10 +247,12 @@ pub fn execute_burn(ctx: ExecuteContext, stage: u8) -> Result<Response, Contract
 
     // make sure is expired
     let expiration = STAGE_EXPIRATION.load(deps.storage, stage)?;
-    ensure!(
-        expiration.is_expired(&env.block),
-        ContractError::StageNotExpired { stage, expiration }
-    );
+    if let Some(expiration) = expiration {
+        ensure!(
+            expiration.is_expired(&env.block),
+            ContractError::StageNotExpired { stage, expiration }
+        );
+    }
 
     // Get total amount per stage and total claimed
     let total_amount = STAGE_AMOUNT.load(deps.storage, stage)?;
