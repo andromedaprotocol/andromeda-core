@@ -832,7 +832,7 @@ fn execute_claim(
             if let CosmosMsg::Bank(BankMsg::Send { to_address, amount }) = &msg.msg {
                 (
                     Some(to_address.clone()),
-                    amount.get(0).map(|coin| coin.amount),
+                    amount.first().map(|coin| coin.amount),
                 )
             } else {
                 (None, None)

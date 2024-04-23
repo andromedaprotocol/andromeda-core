@@ -15,7 +15,6 @@ use cosmwasm_std::{
 };
 use cw20::Cw20ExecuteMsg;
 use cw_asset::{AssetInfoBase, AssetInfoUnchecked};
-use cw_utils::Expiration;
 
 use crate::{
     contract::{execute, instantiate, query},
