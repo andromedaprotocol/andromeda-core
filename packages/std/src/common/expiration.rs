@@ -10,6 +10,11 @@ use super::Milliseconds;
 
 pub const MILLISECONDS_TO_NANOSECONDS_RATIO: u64 = 1_000_000;
 
+/// The Expiry type is used to define an expiry time using milliseconds
+///
+/// There are two types:
+/// 1. FromNow(Milliseconds) - The expiry time is relative to the current time
+/// 2. AtTime(Milliseconds) - The expiry time is absolute
 #[cw_serde]
 pub enum Expiry {
     FromNow(Milliseconds),
@@ -17,20 +22,25 @@ pub enum Expiry {
 }
 
 impl Expiry {
+    /// Gets the expected expiry time provided the given block
     pub fn get_time(&self, block: &BlockInfo) -> Milliseconds {
         match self {
             Expiry::FromNow(milliseconds) => {
+                // Get current time from block
                 let current_time = Milliseconds::from_nanos(block.time.nanos());
+                // Add the expected expiry time from now
                 current_time.plus_milliseconds(*milliseconds)
             }
+            // Given time is absolute
             Expiry::AtTime(milliseconds) => *milliseconds,
         }
     }
 }
 
+/// Expiry defaults to an absolute time of 0
 impl Default for Expiry {
     fn default() -> Self {
-        Expiry::FromNow(Milliseconds::default())
+        Expiry::AtTime(Milliseconds::default())
     }
 }
 
@@ -109,5 +119,17 @@ mod tests {
             Expiration::AtTime(Timestamp::from_nanos(100000000u64)),
             result
         )
+    }
+
+    #[test]
+    fn test_expiry_from_now() {
+        let block = BlockInfo {
+            height: 100,
+            time: Timestamp::from_nanos(100000000u64),
+            chain_id: "test-chain".to_string(),
+        };
+
+        let expiry = Expiry::FromNow(Milliseconds(100));
+        assert_eq!(expiry.get_time(&block), Milliseconds(200));
     }
 }
