@@ -21,7 +21,6 @@ pub const MOCK_ADDRESSLIST_CONTRACT: &str = "addresslist_contract";
 pub const MOCK_TOKEN_ADDR: &str = "token0001";
 pub const MOCK_TOKEN_OWNER: &str = "owner";
 pub const MOCK_UNCLAIMED_TOKEN: &str = "unclaimed_token";
-pub const MOCK_CW20_ADDR: &str = "cw20_addr";
 pub const MOCK_TAX_RECIPIENT: &str = "tax_recipient";
 pub const MOCK_ROYALTY_RECIPIENT: &str = "royalty_recipient";
 pub const MOCK_RATES_CONTRACT: &str = "rates_contract";

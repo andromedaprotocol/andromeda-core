@@ -33,3 +33,4 @@ andromeda-testing = { workspace = true, optional = true }
 
 [dev-dependencies]
 andromeda-app = { workspace = true }
+andromeda-testing = { workspace = true }

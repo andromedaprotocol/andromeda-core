@@ -11,13 +11,13 @@ pub type MillisecondsExpiration = Milliseconds;
 
 impl Milliseconds {
     pub fn is_expired(&self, block: &BlockInfo) -> bool {
-        let time = block.time.seconds() * 1000;
-        self.0 <= time
+        let time = Self::from_nanos(block.time.nanos());
+        self.0 <= time.0
     }
 
     pub fn is_in_past(&self, block: &BlockInfo) -> bool {
-        let time = block.time.seconds() * 1000;
-        self.0 < time
+        let time = Self::from_nanos(block.time.nanos());
+        self.0 < time.0
     }
 
     #[inline]

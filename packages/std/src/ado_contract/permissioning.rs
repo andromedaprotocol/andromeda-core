@@ -470,7 +470,11 @@ mod tests {
         Addr,
     };
 
-    use crate::{ado_base::AndromedaMsg, amp::messages::AMPPkt, common::MillisecondsExpiration};
+    use crate::{
+        ado_base::AndromedaMsg,
+        amp::messages::AMPPkt,
+        common::{expiration::Expiry, MillisecondsExpiration},
+    };
 
     use super::*;
 
@@ -685,7 +689,7 @@ mod tests {
         let actor = "actor";
         let contract = ADOContract::default();
         let time = 2;
-        let expiration = MillisecondsExpiration::from_seconds(time);
+        let expiration = Expiry::AtTime(MillisecondsExpiration::from_seconds(time));
 
         env.block.time = MillisecondsExpiration::from_seconds(0).into();
         contract
@@ -702,7 +706,7 @@ mod tests {
         assert!(res.is_err());
 
         // Test Whitelist
-        let permission = Permission::Whitelisted(Some(expiration));
+        let permission = Permission::Whitelisted(Some(expiration.clone()));
         ADOContract::set_permission(deps.as_mut().storage, action, actor, permission).unwrap();
 
         let res = contract.is_permissioned(deps.as_mut().storage, env.clone(), action, actor);
