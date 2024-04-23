@@ -8,3 +8,4 @@ artifacts*
 ci-scripts/localrelayer/template/
 **/.idea/
 .idea/
+**/schemas/**/*.json
