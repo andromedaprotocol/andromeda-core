@@ -15,6 +15,7 @@ pub enum Expiry {
     FromNow(Milliseconds),
     AtTime(Milliseconds),
 }
+
 impl Expiry {
     pub fn get_time(&self, block: &BlockInfo) -> Milliseconds {
         match self {
@@ -26,11 +27,13 @@ impl Expiry {
         }
     }
 }
+
 impl Default for Expiry {
     fn default() -> Self {
         Expiry::FromNow(Milliseconds::default())
     }
 }
+
 impl Display for Expiry {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
