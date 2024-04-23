@@ -23,9 +23,7 @@ use andromeda_fungible_tokens::airdrop::{
 use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     ado_contract::ADOContract,
-    common::{
-        actions::call_action, context::ExecuteContext, encode_binary, MillisecondsExpiration,
-    },
+    common::{actions::call_action, context::ExecuteContext, encode_binary, expiration::Expiry},
     error::ContractError,
 };
 
@@ -114,10 +112,12 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
 pub fn execute_register_merkle_root(
     ctx: ExecuteContext,
     merkle_root: String,
-    expiration: Option<MillisecondsExpiration>,
+    expiration: Option<Expiry>,
     total_amount: Option<Uint128>,
 ) -> Result<Response, ContractError> {
-    let ExecuteContext { deps, info, .. } = ctx;
+    let ExecuteContext {
+        deps, info, env, ..
+    } = ctx;
     nonpayable(&info)?;
 
     ensure!(
@@ -135,7 +135,11 @@ pub fn execute_register_merkle_root(
     LATEST_STAGE.save(deps.storage, &stage)?;
 
     // save expiration
-    STAGE_EXPIRATION.save(deps.storage, stage, &expiration)?;
+    STAGE_EXPIRATION.save(
+        deps.storage,
+        stage,
+        &expiration.map(|e| e.get_time(&env.block)),
+    )?;
 
     // save total airdropped amount
     let amount = total_amount.unwrap_or_else(Uint128::zero);
