@@ -1,7 +1,7 @@
 use andromeda_std::amp::{AndrAddr, Recipient};
 use andromeda_std::common::denom::Asset;
 use andromeda_std::common::expiration::Expiry;
-use andromeda_std::common::OrderBy;
+use andromeda_std::common::{MillisecondsExpiration, OrderBy};
 use andromeda_std::{andr_exec, andr_instantiate, andr_instantiate_modules, andr_query};
 
 use cosmwasm_schema::{cw_serde, QueryResponses};
