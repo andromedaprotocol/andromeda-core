@@ -8,7 +8,8 @@ use andromeda_std::amp::messages::AMPPkt;
 
 use andromeda_std::amp::AndrAddr;
 use andromeda_std::common::denom::Asset;
-use andromeda_std::common::{MillisecondsDuration, MillisecondsExpiration};
+use andromeda_std::common::expiration::Expiry;
+use andromeda_std::common::MillisecondsDuration;
 use andromeda_std::{ado_base::modules::Module, amp::Recipient};
 use andromeda_testing::{
     mock::MockApp, mock_ado, mock_contract::ExecuteResult, MockADO, MockContract,
@@ -107,7 +108,7 @@ pub fn mock_start_sale(
     price: Uint128,
     coin_denom: Asset,
     duration: Option<MillisecondsDuration>,
-    start_time: Option<MillisecondsExpiration>,
+    start_time: Option<Expiry>,
     recipient: Option<Recipient>,
 ) -> Cw721HookMsg {
     Cw721HookMsg::StartSale {

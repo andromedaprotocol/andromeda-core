@@ -17,7 +17,10 @@ use andromeda_std::{
     ado_base::modules::Module,
     amp::AndrAddr,
     common::{
-        denom::Asset, encode_binary, expiration::MILLISECONDS_TO_NANOSECONDS_RATIO, reply::ReplyId,
+        denom::Asset,
+        encode_binary,
+        expiration::{Expiry, MILLISECONDS_TO_NANOSECONDS_RATIO},
+        reply::ReplyId,
         Milliseconds,
     },
     error::ContractError,
@@ -75,7 +78,7 @@ fn current_time() -> u64 {
 fn start_auction(deps: DepsMut, whitelist: Option<Vec<Addr>>, min_bid: Option<Uint128>) {
     let hook_msg = Cw721HookMsg::StartAuction {
         start_time: None,
-        end_time: Milliseconds::from_nanos((current_time() + 20_000_000) * 1_000_000),
+        end_time: Expiry::FromNow(Milliseconds(20_000_000)),
         coin_denom: Asset::NativeToken("uusd".to_string()),
         whitelist,
         min_bid,
@@ -95,7 +98,7 @@ fn start_auction(deps: DepsMut, whitelist: Option<Vec<Addr>>, min_bid: Option<Ui
 fn start_auction_cw20(deps: DepsMut, whitelist: Option<Vec<Addr>>, min_bid: Option<Uint128>) {
     let hook_msg = Cw721HookMsg::StartAuction {
         start_time: None,
-        end_time: Milliseconds::from_nanos((current_time() + 20_000_000) * 1_000_000),
+        end_time: Expiry::FromNow(Milliseconds(20_000_000)),
         coin_denom: Asset::Cw20Token(AndrAddr::from_string(MOCK_CW20_CONTRACT.to_string())),
         whitelist,
         min_bid,
@@ -684,10 +687,9 @@ fn execute_start_auction_start_time_in_past() {
     let _res = init(deps.as_mut(), None);
 
     let hook_msg = Cw721HookMsg::StartAuction {
-        start_time: Some(Milliseconds(100000)),
-        end_time: Milliseconds(100000),
+        start_time: Some(Expiry::AtTime(Milliseconds(100000))),
+        end_time: Expiry::AtTime(Milliseconds(100000)),
         coin_denom: Asset::NativeToken("uusd".to_string()),
-
         whitelist: None,
         min_bid: None,
         recipient: None,
@@ -717,10 +719,9 @@ fn execute_start_auction_zero_start_time() {
     let _res = init(deps.as_mut(), None);
 
     let hook_msg = Cw721HookMsg::StartAuction {
-        start_time: Some(Milliseconds::zero()),
-        end_time: Milliseconds(1),
+        start_time: Some(Expiry::AtTime(Milliseconds::zero())),
+        end_time: Expiry::AtTime(Milliseconds(1)),
         coin_denom: Asset::NativeToken("uusd".to_string()),
-
         whitelist: None,
         min_bid: None,
         recipient: None,
@@ -750,9 +751,10 @@ fn execute_start_auction_start_time_not_provided() {
 
     let hook_msg = Cw721HookMsg::StartAuction {
         start_time: None,
-        end_time: Milliseconds::from_nanos((current_time() + 20_000_000) * 1_000_000),
+        end_time: Expiry::AtTime(Milliseconds::from_nanos(
+            (current_time() + 20_000_000) * 1_000_000,
+        )),
         coin_denom: Asset::NativeToken("uusd".to_string()),
-
         whitelist: None,
         min_bid: None,
         recipient: None,
@@ -774,8 +776,8 @@ fn execute_start_auction_zero_duration() {
     let _res = init(deps.as_mut(), None);
 
     let hook_msg = Cw721HookMsg::StartAuction {
-        start_time: Some(Milliseconds(100)),
-        end_time: Milliseconds::zero(),
+        start_time: Some(Expiry::AtTime(Milliseconds(100))),
+        end_time: Expiry::AtTime(Milliseconds::zero()),
         coin_denom: Asset::NativeToken("uusd".to_string()),
         whitelist: None,
         min_bid: None,
@@ -834,8 +836,8 @@ fn execute_update_auction_zero_start() {
     let msg = ExecuteMsg::UpdateAuction {
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
         token_address: MOCK_TOKEN_ADDR.to_string(),
-        start_time: Some(Milliseconds::zero()),
-        end_time: Milliseconds(1),
+        start_time: Some(Expiry::AtTime(Milliseconds::zero())),
+        end_time: Expiry::AtTime(Milliseconds(1)),
         coin_denom: Asset::NativeToken("uusd".to_string()),
         whitelist: None,
         min_bid: None,
@@ -866,8 +868,8 @@ fn execute_update_auction_zero_duration() {
     let msg = ExecuteMsg::UpdateAuction {
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
         token_address: MOCK_TOKEN_ADDR.to_string(),
-        start_time: Some(Milliseconds(100000)),
-        end_time: Milliseconds::zero(),
+        start_time: Some(Expiry::AtTime(Milliseconds(100000))),
+        end_time: Expiry::AtTime(Milliseconds::zero()),
         coin_denom: Asset::NativeToken("uusd".to_string()),
         whitelist: None,
         min_bid: None,
@@ -892,8 +894,8 @@ fn execute_update_auction_unauthorized() {
     let msg = ExecuteMsg::UpdateAuction {
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
         token_address: MOCK_TOKEN_ADDR.to_string(),
-        start_time: Some(Milliseconds(100000)),
-        end_time: Milliseconds(100),
+        start_time: Some(Expiry::AtTime(Milliseconds(100000))),
+        end_time: Expiry::AtTime(Milliseconds(100)),
         coin_denom: Asset::NativeToken("uusd".to_string()),
         whitelist: Some(vec![Addr::unchecked("user")]),
         min_bid: None,
@@ -916,8 +918,8 @@ fn execute_update_auction_auction_started() {
     let msg = ExecuteMsg::UpdateAuction {
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
         token_address: MOCK_TOKEN_ADDR.to_string(),
-        start_time: Some(Milliseconds(100000)),
-        end_time: Milliseconds(100),
+        start_time: Some(Expiry::AtTime(Milliseconds(100000))),
+        end_time: Expiry::AtTime(Milliseconds(100)),
         coin_denom: Asset::NativeToken("uusd".to_string()),
         whitelist: Some(vec![Addr::unchecked("user")]),
         min_bid: None,
@@ -942,10 +944,9 @@ fn execute_update_auction() {
     let msg = ExecuteMsg::UpdateAuction {
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
         token_address: MOCK_TOKEN_ADDR.to_string(),
-        start_time: Some(Milliseconds(1571711019879 + 1)),
-        end_time: Milliseconds(1571711019879 + 2),
+        start_time: Some(Expiry::AtTime(Milliseconds(1571711019879 + 1))),
+        end_time: Expiry::AtTime(Milliseconds(1571711019879 + 2)),
         coin_denom: Asset::NativeToken("uusd".to_string()),
-
         whitelist: Some(vec![Addr::unchecked("user")]),
         min_bid: None,
         recipient: None,
@@ -989,9 +990,10 @@ fn execute_start_auction_after_previous_finished() {
 
     let hook_msg = Cw721HookMsg::StartAuction {
         start_time: None,
-        end_time: Milliseconds::from_nanos((current_time() + 20_000_000) * 1_000_000),
+        end_time: Expiry::AtTime(Milliseconds::from_nanos(
+            (current_time() + 20_000_000) * 1_000_000,
+        )),
         coin_denom: Asset::NativeToken("uusd".to_string()),
-
         whitelist: None,
         min_bid: None,
         recipient: None,
@@ -1314,9 +1316,10 @@ fn execute_claim_auction_already_claimed() {
 
     let hook_msg = Cw721HookMsg::StartAuction {
         start_time: None,
-        end_time: Milliseconds::from_nanos((current_time() + 20_000_000) * 1_000_000),
+        end_time: Expiry::AtTime(Milliseconds::from_nanos(
+            (current_time() + 20_000_000) * 1_000_000,
+        )),
         coin_denom: Asset::NativeToken("uusd".to_string()),
-
         whitelist: None,
         min_bid: None,
         recipient: None,

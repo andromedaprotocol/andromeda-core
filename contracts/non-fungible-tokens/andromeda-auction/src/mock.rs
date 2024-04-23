@@ -9,7 +9,7 @@ use andromeda_std::ado_base::permissioning::{Permission, PermissioningMessage};
 use andromeda_std::amp::messages::AMPPkt;
 use andromeda_std::amp::Recipient;
 use andromeda_std::common::denom::Asset;
-use andromeda_std::common::{Milliseconds, MillisecondsExpiration};
+use andromeda_std::common::expiration::Expiry;
 use andromeda_std::{ado_base::modules::Module, amp::AndrAddr};
 use andromeda_testing::mock::MockApp;
 use andromeda_testing::{
@@ -51,8 +51,8 @@ impl MockAuction {
         &self,
         app: &mut MockApp,
         sender: Addr,
-        start_time: Option<Milliseconds>,
-        end_time: Milliseconds,
+        start_time: Option<Expiry>,
+        end_time: Expiry,
         coin_denom: Asset,
         min_bid: Option<Uint128>,
         whitelist: Option<Vec<Addr>>,
@@ -94,7 +94,7 @@ impl MockAuction {
         app: &mut MockApp,
         sender: Addr,
         token_address: impl Into<String>,
-        expiration: Option<MillisecondsExpiration>,
+        expiration: Option<Expiry>,
     ) -> ExecuteResult {
         let msg = mock_authorize_token_address(token_address, expiration);
         self.execute(app, &msg, sender, &[])
@@ -161,8 +161,8 @@ pub fn mock_auction_instantiate_msg(
 }
 
 pub fn mock_start_auction(
-    start_time: Option<Milliseconds>,
-    end_time: Milliseconds,
+    start_time: Option<Expiry>,
+    end_time: Expiry,
     coin_denom: Asset,
     min_bid: Option<Uint128>,
     whitelist: Option<Vec<Addr>>,
@@ -184,7 +184,7 @@ pub fn mock_auction_cw20_receive(msg: Cw20ReceiveMsg) -> ExecuteMsg {
 
 pub fn mock_authorize_token_address(
     token_address: impl Into<String>,
-    expiration: Option<MillisecondsExpiration>,
+    expiration: Option<Expiry>,
 ) -> ExecuteMsg {
     ExecuteMsg::AuthorizeTokenContract {
         addr: AndrAddr::from_string(token_address.into()),
@@ -196,8 +196,8 @@ pub fn mock_authorize_token_address(
 pub fn mock_update_auction(
     token_id: String,
     token_address: String,
-    start_time: Option<Milliseconds>,
-    end_time: Milliseconds,
+    start_time: Option<Expiry>,
+    end_time: Expiry,
     coin_denom: Asset,
     min_bid: Option<Uint128>,
     whitelist: Option<Vec<Addr>>,

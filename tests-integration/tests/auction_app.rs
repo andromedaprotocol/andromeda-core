@@ -19,7 +19,11 @@ use andromeda_splitter::mock::{
 use andromeda_std::{
     ado_base::{permissioning::Permission, Module},
     amp::{AndrAddr, Recipient},
-    common::{denom::Asset, expiration::MILLISECONDS_TO_NANOSECONDS_RATIO, Milliseconds},
+    common::{
+        denom::Asset,
+        expiration::{Expiry, MILLISECONDS_TO_NANOSECONDS_RATIO},
+        Milliseconds,
+    },
     error::ContractError,
 };
 use andromeda_testing::{
@@ -160,8 +164,8 @@ fn test_auction_app_modules() {
     let start_time = Milliseconds::from_nanos(router.block_info().time.nanos())
         .plus_milliseconds(Milliseconds(100));
     let receive_msg = mock_start_auction(
-        Some(start_time),
-        start_time.plus_milliseconds(Milliseconds(1000)),
+        Some(Expiry::AtTime(start_time)),
+        Expiry::AtTime(start_time.plus_milliseconds(Milliseconds(1000))),
         Asset::NativeToken("uandr".to_string()),
         None,
         None,
@@ -358,8 +362,8 @@ fn test_auction_app_recipient() {
     let start_time = Milliseconds::from_nanos(router.block_info().time.nanos())
         .plus_milliseconds(Milliseconds(100));
     let receive_msg = mock_start_auction(
-        Some(start_time),
-        start_time.plus_milliseconds(Milliseconds(1000)),
+        Some(Expiry::AtTime(start_time)),
+        Expiry::AtTime(start_time.plus_milliseconds(Milliseconds(1000))),
         Asset::NativeToken("uandr".to_string()),
         None,
         None,
@@ -605,8 +609,8 @@ fn test_auction_app_cw20_restricted() {
             AndrAddr::from_string("./auction".to_string()),
             "0",
             &mock_start_auction(
-                Some(Milliseconds(start_time)),
-                Milliseconds(start_time + 2),
+                Some(Expiry::AtTime(Milliseconds(start_time))),
+                Expiry::AtTime(Milliseconds(start_time + 2)),
                 Asset::Cw20Token(AndrAddr::from_string(cw20.addr().to_string())),
                 None,
                 None,
@@ -756,8 +760,8 @@ fn test_auction_app_cw20_restricted() {
             AndrAddr::from_string("./auction".to_string()),
             "1",
             &mock_start_auction(
-                Some(Milliseconds(start_time)),
-                Milliseconds(start_time + 2),
+                Some(Expiry::AtTime(Milliseconds(start_time))),
+                Expiry::AtTime(Milliseconds(start_time + 2)),
                 Asset::Cw20Token(AndrAddr::from_string(cw20.addr().to_string())),
                 None,
                 Some(vec![buyer_one.clone(), buyer_two.clone()]),
@@ -772,8 +776,8 @@ fn test_auction_app_cw20_restricted() {
     let update_auction_msg = mock_update_auction(
         "0".to_string(),
         cw721.addr().to_string(),
-        Some(Milliseconds(start_time)),
-        Milliseconds(start_time + 2),
+        Some(Expiry::AtTime(Milliseconds(start_time))),
+        Expiry::AtTime(Milliseconds(start_time + 2)),
         // This cw20 hasn't been permissioned
         Asset::Cw20Token(AndrAddr::from_string(second_cw20.addr().to_string())),
         None,
@@ -1053,8 +1057,8 @@ fn test_auction_app_cw20_unrestricted() {
             AndrAddr::from_string("./auction".to_string()),
             "0",
             &mock_start_auction(
-                Some(Milliseconds(start_time)),
-                Milliseconds(start_time + 2),
+                Some(Expiry::AtTime(Milliseconds(start_time))),
+                Expiry::AtTime(Milliseconds(start_time + 2)),
                 Asset::Cw20Token(AndrAddr::from_string(cw20.addr().to_string())),
                 None,
                 Some(vec![buyer_one.clone(), buyer_two.clone()]),
@@ -1177,8 +1181,8 @@ fn test_auction_app_cw20_unrestricted() {
             AndrAddr::from_string("./auction".to_string()),
             "1",
             &mock_start_auction(
-                Some(Milliseconds(start_time)),
-                Milliseconds(start_time + 2),
+                Some(Expiry::AtTime(Milliseconds(start_time))),
+                Expiry::AtTime(Milliseconds(start_time + 2)),
                 Asset::Cw20Token(AndrAddr::from_string(second_cw20.addr().to_string())),
                 None,
                 Some(vec![buyer_one.clone(), buyer_two.clone()]),

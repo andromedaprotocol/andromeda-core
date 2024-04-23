@@ -16,8 +16,8 @@ use andromeda_std::{
         actions::call_action,
         denom::{Asset, SEND_CW20_ACTION},
         encode_binary,
-        expiration::{expiration_from_milliseconds, get_and_validate_start_time},
-        Funds, Milliseconds, MillisecondsExpiration, OrderBy,
+        expiration::{expiration_from_milliseconds, get_and_validate_start_time, Expiry},
+        Funds, Milliseconds, OrderBy,
     },
     error::ContractError,
 };
@@ -270,8 +270,8 @@ fn execute_start_auction(
     ctx: ExecuteContext,
     sender: String,
     token_id: String,
-    start_time: Option<MillisecondsExpiration>,
-    end_time: MillisecondsExpiration,
+    start_time: Option<Expiry>,
+    end_time: Expiry,
     coin_denom: Asset,
     whitelist: Option<Vec<Addr>>,
     min_bid: Option<Uint128>,
@@ -284,11 +284,14 @@ fn execute_start_auction(
         ..
     } = ctx;
     let (coin_denom, uses_cw20) = coin_denom.get_verified_asset(deps.branch(), env.clone())?;
-    ensure!(!end_time.is_zero(), ContractError::InvalidExpiration {});
+    ensure!(
+        !end_time.get_time(&env.block).is_zero(),
+        ContractError::InvalidExpiration {}
+    );
 
     // If start time wasn't provided, it will be set as the current_time
     let (start_expiration, _current_time) = get_and_validate_start_time(&env, start_time)?;
-    let end_expiration = expiration_from_milliseconds(end_time)?;
+    let end_expiration = expiration_from_milliseconds(end_time.get_time(&env.block))?;
 
     ensure!(
         end_expiration > start_expiration,
@@ -350,8 +353,8 @@ fn execute_update_auction(
     ctx: ExecuteContext,
     token_id: String,
     token_address: String,
-    start_time: Option<MillisecondsExpiration>,
-    end_time: MillisecondsExpiration,
+    start_time: Option<Expiry>,
+    end_time: Expiry,
     coin_denom: Asset,
     whitelist: Option<Vec<Addr>>,
     min_bid: Option<Uint128>,
@@ -376,11 +379,14 @@ fn execute_update_auction(
         !token_auction_state.start_time.is_expired(&env.block),
         ContractError::AuctionAlreadyStarted {}
     );
-    ensure!(!end_time.is_zero(), ContractError::InvalidExpiration {});
+    ensure!(
+        !end_time.get_time(&env.block).is_zero(),
+        ContractError::InvalidExpiration {}
+    );
 
     // If start time wasn't provided, it will be set as the current_time
     let (start_expiration, _current_time) = get_and_validate_start_time(&env, start_time)?;
-    let end_expiration = expiration_from_milliseconds(end_time)?;
+    let end_expiration = expiration_from_milliseconds(end_time.get_time(&env.block))?;
 
     ensure!(
         end_expiration > start_expiration,
@@ -868,7 +874,7 @@ fn execute_authorize_token_contract(
     deps: DepsMut,
     info: MessageInfo,
     token_address: AndrAddr,
-    expiration: Option<MillisecondsExpiration>,
+    expiration: Option<Expiry>,
 ) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
     let addr = token_address.get_raw_address(&deps.as_ref())?;
@@ -876,7 +882,11 @@ fn execute_authorize_token_contract(
         contract.is_contract_owner(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {}
     );
-    let permission = Permission::Whitelisted(expiration);
+    let permission = if let Some(expiration) = expiration {
+        Permission::whitelisted(Some(expiration))
+    } else {
+        Permission::whitelisted(None)
+    };
     ADOContract::set_permission(
         deps.storage,
         SEND_NFT_ACTION,

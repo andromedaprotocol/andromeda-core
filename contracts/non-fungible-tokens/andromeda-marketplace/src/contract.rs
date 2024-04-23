@@ -15,9 +15,9 @@ use andromeda_std::common::actions::call_action;
 use andromeda_std::common::context::ExecuteContext;
 use andromeda_std::common::denom::{Asset, SEND_CW20_ACTION};
 use andromeda_std::common::expiration::{
-    expiration_from_milliseconds, get_and_validate_start_time,
+    expiration_from_milliseconds, get_and_validate_start_time, Expiry,
 };
-use andromeda_std::common::{MillisecondsDuration, MillisecondsExpiration};
+use andromeda_std::common::{Milliseconds, MillisecondsDuration};
 use andromeda_std::{
     ado_base::{hooks::AndromedaHook, InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     common::{encode_binary, rates::get_tax_amount, Funds},
@@ -169,8 +169,8 @@ fn handle_receive_cw721(
             msg.token_id,
             info.sender.to_string(),
             price,
-            coin_denom,
             start_time,
+            coin_denom,
             duration,
             recipient,
         ),
@@ -224,8 +224,8 @@ fn execute_start_sale(
     token_id: String,
     token_address: String,
     price: Uint128,
+    start_time: Option<Expiry>,
     coin_denom: Asset,
-    start_time: Option<MillisecondsExpiration>,
     duration: Option<MillisecondsDuration>,
     recipient: Option<Recipient>,
 ) -> Result<Response, ContractError> {
@@ -233,18 +233,21 @@ fn execute_start_sale(
 
     // Price can't be zero
     ensure!(price > Uint128::zero(), ContractError::InvalidZeroAmount {});
-    // If start time wasn't provided, it will be set as the current_time
-    let (start_expiration, current_time) = get_and_validate_start_time(&env, start_time)?;
 
-    // If no duration is provided, the exipration will be set as Never
+    // If start time wasn't provided, it will be set as the current_time
+    let (start_expiration, _current_time) = get_and_validate_start_time(&env, start_time.clone())?;
+
     let end_expiration = if let Some(duration) = duration {
         ensure!(!duration.is_zero(), ContractError::InvalidExpiration {});
         expiration_from_milliseconds(
             start_time
-                .unwrap_or(current_time.plus_seconds(1))
+                // If start time isn't provided, it is set one second in advance from the current time
+                .unwrap_or(Expiry::FromNow(Milliseconds::from_seconds(1)))
+                .get_time(&env.block)
                 .plus_milliseconds(duration),
         )?
     } else {
+        // If no duration is provided, the exipration will be set as Never
         Expiration::Never {}
     };
 

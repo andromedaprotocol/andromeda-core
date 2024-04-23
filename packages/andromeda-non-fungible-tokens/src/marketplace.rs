@@ -1,7 +1,8 @@
 use andromeda_std::{
     amp::{AndrAddr, Recipient},
     andr_exec, andr_instantiate, andr_instantiate_modules, andr_query,
-    common::{denom::Asset, MillisecondsDuration, MillisecondsExpiration},
+    common::expiration::Expiry,
+    common::{denom::Asset, MillisecondsDuration},
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
@@ -47,8 +48,8 @@ pub enum Cw721HookMsg {
     /// has started but is immutable after that.
     StartSale {
         price: Uint128,
+        start_time: Option<Expiry>,
         coin_denom: Asset,
-        start_time: Option<MillisecondsExpiration>,
         duration: Option<MillisecondsDuration>,
         recipient: Option<Recipient>,
     },

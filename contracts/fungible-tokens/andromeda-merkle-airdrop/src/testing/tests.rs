@@ -3,7 +3,9 @@ use andromeda_fungible_tokens::airdrop::{
     MerkleRootResponse, QueryMsg, TotalClaimedResponse,
 };
 use andromeda_std::{
-    ado_contract::ADOContract, common::Milliseconds, error::ContractError,
+    ado_contract::ADOContract,
+    common::{expiration::Expiry, Milliseconds},
+    error::ContractError,
     testing::mock_querier::MOCK_KERNEL_CONTRACT,
 };
 use andromeda_testing::economics_msg::generate_economics_message;
@@ -490,7 +492,7 @@ fn test_stage_expires() {
     let info = mock_info("owner0000", &[]);
     let msg = ExecuteMsg::RegisterMerkleRoot {
         merkle_root: "5d4f48f147cb6cb742b376dce5626b2a036f69faec10cd73631c791780e150fc".to_string(),
-        expiration: Some(Milliseconds::from_nanos(100_000_000)),
+        expiration: Some(Expiry::AtTime(Milliseconds::from_nanos(100_000_000))),
         total_amount: None,
     };
     execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
@@ -532,7 +534,7 @@ fn test_cant_burn() {
     let info = mock_info("owner0000", &[]);
     let msg = ExecuteMsg::RegisterMerkleRoot {
         merkle_root: "5d4f48f147cb6cb742b376dce5626b2a036f69faec10cd73631c791780e150fc".to_string(),
-        expiration: Some(Milliseconds::from_nanos(100_000_000)),
+        expiration: Some(Expiry::AtTime(Milliseconds::from_nanos(100_000_000))),
         total_amount: Some(Uint128::new(100000)),
     };
     execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
@@ -569,7 +571,7 @@ fn test_can_burn() {
     let info = mock_info("owner0000", &[]);
     let msg = ExecuteMsg::RegisterMerkleRoot {
         merkle_root: test_data.root,
-        expiration: Some(Milliseconds::from_nanos(100_000_000)),
+        expiration: Some(Expiry::AtTime(Milliseconds::from_nanos(100_000_000))),
         total_amount: Some(Uint128::new(10000)),
     };
     execute(deps.as_mut(), env.clone(), info, msg).unwrap();
@@ -662,7 +664,7 @@ fn test_can_burn_native() {
     let info = mock_info("owner0000", &[]);
     let msg = ExecuteMsg::RegisterMerkleRoot {
         merkle_root: test_data.root,
-        expiration: Some(Milliseconds::from_nanos(100_000_000)),
+        expiration: Some(Expiry::AtTime(Milliseconds::from_nanos(100_000_000))),
         total_amount: Some(Uint128::new(10000)),
     };
     execute(deps.as_mut(), env.clone(), info, msg).unwrap();
