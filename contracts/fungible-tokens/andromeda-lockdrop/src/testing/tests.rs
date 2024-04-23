@@ -34,7 +34,7 @@ fn init(deps: DepsMut) -> Result<Response, ContractError> {
 
     let msg = InstantiateMsg {
         // bootstrap_contract: None,
-        init_timestamp: Expiry::AtTime(Milliseconds::from_seconds(env.block.time.seconds())),
+        init_timestamp: Expiry::AtTime(Milliseconds::from_nanos(env.block.time.nanos())),
         deposit_window: Milliseconds::from_seconds(DEPOSIT_WINDOW),
         withdrawal_window: Milliseconds::from_seconds(WITHDRAWAL_WINDOW),
         incentive_token: AndrAddr::from_string(MOCK_INCENTIVE_TOKEN),
