@@ -17,7 +17,7 @@ use andromeda_std::{
         denom::{Asset, SEND_CW20_ACTION},
         encode_binary,
         expiration::{expiration_from_milliseconds, get_and_validate_start_time, Expiry},
-        Funds, OrderBy,
+        Funds, Milliseconds, OrderBy,
     },
     error::ContractError,
 };
