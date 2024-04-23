@@ -232,10 +232,7 @@ pub fn execute_deposit_native(ctx: ExecuteContext) -> Result<Response, ContractE
 
     // CHECK :: Lockdrop deposit window open
     ensure!(
-        is_deposit_open(
-            Milliseconds::from_seconds(env.block.time.seconds()),
-            &config
-        ),
+        is_deposit_open(Milliseconds::from_nanos(env.block.time.nanos()), &config),
         ContractError::DepositWindowClosed {}
     );
 
@@ -303,10 +300,7 @@ pub fn execute_withdraw_native(
 
     // CHECK :: Lockdrop withdrawal window open
     ensure!(
-        is_withdraw_open(
-            Milliseconds::from_seconds(env.block.time.seconds()),
-            &config
-        ),
+        is_withdraw_open(Milliseconds::from_nanos(env.block.time.nanos()), &config),
         ContractError::InvalidWithdrawal {
             msg: Some("Withdrawals not available".to_string()),
         }
@@ -390,10 +384,7 @@ pub fn execute_enable_claims(ctx: ExecuteContext) -> Result<Response, ContractEr
 
     // CHECK :: Claims can only be enabled after the deposit / withdrawal windows are closed
     ensure!(
-        is_phase_over(
-            Milliseconds::from_seconds(env.block.time.seconds()),
-            &config
-        ),
+        is_phase_over(Milliseconds::from_nanos(env.block.time.nanos()), &config),
         ContractError::PhaseOngoing {}
     );
 
@@ -576,10 +567,9 @@ pub fn query_max_withdrawable_percent(
             );
             allowed_withdrawal_percent(timestamp, &config)
         }
-        None => allowed_withdrawal_percent(
-            Milliseconds::from_seconds(env.block.time.seconds()),
-            &config,
-        ),
+        None => {
+            allowed_withdrawal_percent(Milliseconds::from_nanos(env.block.time.nanos()), &config)
+        }
     })
 }
 

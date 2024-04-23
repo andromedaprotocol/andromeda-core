@@ -4,7 +4,7 @@ use andromeda_std::common::{MillisecondsExpiration, OrderBy};
 use andromeda_std::{andr_exec, andr_instantiate, andr_instantiate_modules, andr_query};
 
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Addr, Timestamp, Uint128};
+use cosmwasm_std::{Addr, Uint128};
 use cw20::Cw20ReceiveMsg;
 use cw721::{Cw721ReceiveMsg, Expiration};
 
@@ -204,7 +204,7 @@ pub struct TokenAuctionState {
 pub struct Bid {
     pub bidder: String,
     pub amount: Uint128,
-    pub timestamp: Timestamp,
+    pub timestamp: MillisecondsExpiration,
 }
 
 #[cw_serde]

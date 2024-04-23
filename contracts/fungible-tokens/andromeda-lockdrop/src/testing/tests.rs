@@ -33,7 +33,7 @@ fn init(deps: DepsMut) -> Result<Response, ContractError> {
 
     let msg = InstantiateMsg {
         // bootstrap_contract: None,
-        init_timestamp: Milliseconds::from_seconds(env.block.time.seconds()),
+        init_timestamp: Milliseconds::from_nanos(env.block.time.nanos()),
         deposit_window: Milliseconds::from_seconds(DEPOSIT_WINDOW),
         withdrawal_window: Milliseconds::from_seconds(WITHDRAWAL_WINDOW),
         incentive_token: AndrAddr::from_string(MOCK_INCENTIVE_TOKEN),
@@ -68,7 +68,7 @@ fn test_instantiate() {
     assert_eq!(
         ConfigResponse {
             // bootstrap_contract_address: None,
-            init_timestamp: Milliseconds::from_seconds(mock_env().block.time.seconds()),
+            init_timestamp: Milliseconds::from_nanos(mock_env().block.time.nanos()),
             deposit_window: Milliseconds::from_seconds(DEPOSIT_WINDOW),
             withdrawal_window: Milliseconds::from_seconds(WITHDRAWAL_WINDOW),
             lockdrop_incentives: Uint128::zero(),
@@ -999,7 +999,7 @@ fn test_query_withdrawable_percent() {
         .time
         .plus_seconds(DEPOSIT_WINDOW + WITHDRAWAL_WINDOW);
     let msg = QueryMsg::WithdrawalPercentAllowed {
-        timestamp: Some(Milliseconds::from_seconds(timestamp.seconds())),
+        timestamp: Some(Milliseconds::from_nanos(timestamp.nanos())),
     };
     let res: Decimal = from_json(query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
 

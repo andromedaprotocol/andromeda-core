@@ -1,9 +1,9 @@
+use andromeda_std::common::MillisecondsExpiration;
 use cosmwasm_schema::cw_serde;
 
 use cosmwasm_std::{Addr, Uint128};
 use cw_asset::AssetInfo;
 use cw_storage_plus::{Item, Map};
-use cw_utils::Expiration;
 
 #[cw_serde]
 pub struct Config {
@@ -17,7 +17,8 @@ pub const LATEST_STAGE_KEY: &str = "stage";
 pub const LATEST_STAGE: Item<u8> = Item::new(LATEST_STAGE_KEY);
 
 pub const STAGE_EXPIRATION_KEY: &str = "stage_exp";
-pub const STAGE_EXPIRATION: Map<u8, Expiration> = Map::new(STAGE_EXPIRATION_KEY);
+pub const STAGE_EXPIRATION: Map<u8, Option<MillisecondsExpiration>> =
+    Map::new(STAGE_EXPIRATION_KEY);
 
 pub const STAGE_AMOUNT_KEY: &str = "stage_amount";
 pub const STAGE_AMOUNT: Map<u8, Uint128> = Map::new(STAGE_AMOUNT_KEY);
