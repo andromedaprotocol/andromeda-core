@@ -7,7 +7,7 @@ use andromeda_economics::mock::mock_andromeda_economics;
 use andromeda_kernel::mock::mock_andromeda_kernel;
 use andromeda_std::os::adodb::ADOVersion;
 use andromeda_vfs::mock::mock_andromeda_vfs;
-use cosmwasm_std::{coin, Addr, Coin};
+use cosmwasm_std::{coin, Addr, BlockInfo, Coin, Decimal, Timestamp, Validator};
 use cw_multi_test::{
     App, AppBuilder, BankKeeper, Executor, MockAddressGenerator, MockApiBech32, WasmKeeper,
 };
@@ -23,7 +23,7 @@ pub fn mock_app(denoms: Option<Vec<&str>>) -> MockApp {
     AppBuilder::new()
         .with_api(MockApiBech32::new("andr"))
         .with_wasm(WasmKeeper::new().with_address_generator(MockAddressGenerator))
-        .build(|router, _api, storage| {
+        .build(|router, api, storage| {
             router
                 .bank
                 .init_balance(
@@ -33,6 +33,48 @@ pub fn mock_app(denoms: Option<Vec<&str>>) -> MockApp {
                         .iter()
                         .map(|d| coin(u128::MAX, *d))
                         .collect::<Vec<Coin>>(),
+                )
+                .unwrap();
+
+            router
+                .staking
+                .add_validator(
+                    api,
+                    storage,
+                    &BlockInfo {
+                        height: 0,
+                        time: Timestamp::default(),
+                        chain_id: "andromeda".to_string(),
+                    },
+                    Validator {
+                        address: MockApiBech32::new("andr")
+                            .addr_make("validator1")
+                            .to_string(),
+                        commission: Decimal::zero(),
+                        max_commission: Decimal::percent(20),
+                        max_change_rate: Decimal::percent(1),
+                    },
+                )
+                .unwrap();
+
+            router
+                .staking
+                .add_validator(
+                    api,
+                    storage,
+                    &BlockInfo {
+                        height: 0,
+                        time: Timestamp::default(),
+                        chain_id: "andromeda-1".to_string(),
+                    },
+                    Validator {
+                        address: MockApiBech32::new("andr")
+                            .addr_make("validator2")
+                            .to_string(),
+                        commission: Decimal::zero(),
+                        max_commission: Decimal::percent(20),
+                        max_change_rate: Decimal::percent(1),
+                    },
                 )
                 .unwrap();
         })
@@ -80,7 +122,6 @@ impl MockAndromeda {
             None,
         );
 
-        // Init ADO DB
         let adodb = MockADODB::instantiate(
             app,
             adodb_code_id,
@@ -146,6 +187,14 @@ impl MockAndromeda {
             .unwrap();
         kernel
             .execute_store_key_address(app, admin_address.clone(), "vfs", vfs.addr().clone())
+            .unwrap();
+        kernel
+            .execute_store_key_address(
+                app,
+                admin_address.clone(),
+                "economics",
+                economics.addr().clone(),
+            )
             .unwrap();
         kernel
             .execute_store_key_address(

@@ -1,5 +1,14 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Boolean",
-  "type": "boolean"
+  "title": "IsClosedResponse",
+  "type": "object",
+  "required": [
+    "is_closed"
+  ],
+  "properties": {
+    "is_closed": {
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": false
 }

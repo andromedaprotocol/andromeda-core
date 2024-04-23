@@ -3,7 +3,7 @@ name = "andromeda-vfs"
 version = "1.0.0"
 authors = ["Connor Barr <crnbarr@gmail.com>"]
 edition = "2021"
-rust-version = "1.65.0"
+rust-version = "1.75.0"
 
 exclude = [
   # Those files are rust-optimizer artifacts. You might want to commit them for convenience but they should not be part of the source code publication.
@@ -26,7 +26,6 @@ cosmwasm-std = { workspace = true }
 cosmwasm-schema = { workspace = true }
 cw-storage-plus = { workspace = true }
 serde = { version = "1.0.127", default-features = false, features = ["derive"] }
-
 
 andromeda-std = { workspace = true, features = ["modules"] }
 

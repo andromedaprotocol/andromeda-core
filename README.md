@@ -66,7 +66,7 @@ Modules are smart contracts that can be added to other ADOs on instantiation to 
 
 ### ADO Base
 
-The pacakges also includes the [ado_base](https://github.com/andromedaprotocol/andromeda-core/tree/development/packages/ado-base). Since all our ADOs are built using the same architecture, redundency was inevitable. So we decided to bundle up all the functions/messages/structures that are used by all ADOs into the ado_base which can be referenced by any new ADOs. 
+The packages also includes the [ado_base](https://github.com/andromedaprotocol/andromeda-core/tree/development/packages/ado-base). Since all our ADOs are built using the same architecture, redundency was inevitable. So we decided to bundle up all the functions/messages/structures that are used by all ADOs into the ado_base which can be referenced by any new ADOs. 
 
 ## Development
 

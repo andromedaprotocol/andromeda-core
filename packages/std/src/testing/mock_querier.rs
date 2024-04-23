@@ -20,7 +20,7 @@ use cosmwasm_std::{
 };
 #[cfg(feature = "primitive")]
 use cosmwasm_std::{Decimal, Uint128};
-use cw20::{BalanceResponse, Cw20QueryMsg};
+use cw20::{BalanceResponse, Cw20QueryMsg, TokenInfoResponse};
 
 /// Mock CW20 Contract Address
 pub const MOCK_CW20_CONTRACT: &str = "cw20_contract";
@@ -269,6 +269,7 @@ impl MockAndromedaQuerier {
     /// Returns `"actual_address"` for `Get` queries.
     fn handle_app_query(&self, _msg: &Binary) -> QuerierResult {
         // match from_json(msg).unwrap() {
+        // match from_json(msg).unwrap() {
         //     _ => SystemResult::Ok(ContractResult::Err("Error".to_string())),
         // }
         todo!()
@@ -307,6 +308,7 @@ impl MockAndromedaQuerier {
                         value: Primitive::Decimal(Decimal::zero()),
                     },
                     Some(data) => {
+                        let key: String = from_json(&data).unwrap();
                         let key: String = from_json(&data).unwrap();
                         match key.as_str() {
                             "String" => GetValueResponse {
@@ -417,6 +419,18 @@ impl MockAndromedaQuerier {
                 };
                 SystemResult::Ok(ContractResult::Ok(
                     to_json_binary(&balance_response).unwrap(),
+                ))
+            }
+            Cw20QueryMsg::TokenInfo {} => {
+                let token_info_response = TokenInfoResponse {
+                    name: "valid-cw20".into(),
+                    symbol: "VCW".to_string(),
+                    decimals: 2,
+                    total_supply: Uint128::new(10_000_000),
+                };
+                println!("we reaching here?");
+                SystemResult::Ok(ContractResult::Ok(
+                    to_json_binary(&token_info_response).unwrap(),
                 ))
             }
             _ => panic!("Unsupported Query"),

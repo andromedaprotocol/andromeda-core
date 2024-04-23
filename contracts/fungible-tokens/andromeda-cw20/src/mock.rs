@@ -2,10 +2,14 @@
 use crate::contract::{execute, instantiate, query};
 use andromeda_fungible_tokens::cw20::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use andromeda_std::{ado_base::modules::Module, amp::AndrAddr};
+use andromeda_testing::mock_contract::ExecuteResult;
 use andromeda_testing::MockADO;
 use andromeda_testing::MockContract;
 use andromeda_testing::{mock::MockApp, mock_ado};
+use cosmwasm_schema::serde::Serialize;
+use cosmwasm_std::to_json_binary;
 use cosmwasm_std::{Addr, Binary, Empty, Uint128};
+use cw20::BalanceResponse;
 use cw20::MinterResponse;
 use cw_multi_test::Executor;
 use cw_multi_test::{Contract, ContractWrapper};
@@ -48,6 +52,27 @@ impl MockCW20 {
             )
             .unwrap();
         MockCW20(addr)
+    }
+
+    pub fn execute_send(
+        &self,
+        app: &mut MockApp,
+        sender: Addr,
+        contract: impl Into<String>,
+        amount: Uint128,
+        msg: &impl Serialize,
+    ) -> ExecuteResult {
+        self.execute(
+            app,
+            &mock_cw20_send(contract, amount, to_json_binary(msg).unwrap()),
+            sender,
+            &[],
+        )
+    }
+
+    pub fn query_balance(&self, app: &MockApp, address: impl Into<String>) -> Uint128 {
+        self.query::<BalanceResponse>(app, mock_get_cw20_balance(address))
+            .balance
     }
 }
 

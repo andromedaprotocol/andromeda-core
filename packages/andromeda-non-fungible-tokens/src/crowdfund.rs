@@ -61,8 +61,13 @@ pub enum QueryMsg {
         start_after: Option<String>,
         limit: Option<u32>,
     },
-    #[returns(bool)]
+    #[returns(IsTokenAvailableResponse)]
     IsTokenAvailable { id: String },
+}
+
+#[cw_serde]
+pub struct IsTokenAvailableResponse {
+    pub is_token_available: bool,
 }
 
 #[cw_serde]

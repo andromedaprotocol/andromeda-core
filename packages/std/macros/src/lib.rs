@@ -177,6 +177,8 @@ pub fn andr_query(_metadata: TokenStream, input: TokenStream) -> TokenStream {
                 BlockHeightUponCreation {},
                 #[returns(andromeda_std::ado_base::version::VersionResponse)]
                 Version {},
+                #[returns(andromeda_std::ado_base::version::ADOBaseVersionResponse)]
+                ADOBaseVersion {},
                 #[returns(Vec<::andromeda_std::ado_base::permissioning::PermissionInfo>)]
                 Permissions { actor: String, limit: Option<u32>, start_after: Option<String> },
                 #[returns(Vec<String>)]

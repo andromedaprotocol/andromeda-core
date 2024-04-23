@@ -5,6 +5,9 @@ use andromeda_std::common::Funds;
 use andromeda_std::testing::mock_querier::MockAndromedaQuerier;
 use cosmwasm_schema::cw_serde;
 
+pub use andromeda_std::testing::mock_querier::{
+    MOCK_ADDRESS_LIST_CONTRACT, MOCK_KERNEL_CONTRACT, MOCK_RATES_CONTRACT,
+};
 use cosmwasm_std::testing::mock_info;
 use cosmwasm_std::{coin, BankMsg, BankQuery, CosmosMsg, QuerierWrapper, Response, SubMsg};
 use cosmwasm_std::{
@@ -13,16 +16,12 @@ use cosmwasm_std::{
     to_json_binary, Binary, Coin, ContractResult, OwnedDeps, Querier, QuerierResult, QueryRequest,
     SystemError, SystemResult, WasmQuery,
 };
-use cw721::{Cw721QueryMsg, OwnerOfResponse, TokensResponse};
 
-pub use andromeda_std::testing::mock_querier::{
-    MOCK_ADDRESS_LIST_CONTRACT, MOCK_KERNEL_CONTRACT, MOCK_RATES_CONTRACT,
-};
+use cw721::{Cw721QueryMsg, OwnerOfResponse, TokensResponse};
 
 pub const MOCK_TOKEN_CONTRACT: &str = "token_contract";
 pub const MOCK_UNCLAIMED_TOKEN: &str = "unclaimed_token";
 pub const MOCK_TOKEN_ADDR: &str = "token_addr";
-pub const MOCK_CW20_ADDR: &str = "cw20_addr";
 pub const MOCK_RATES_RECIPIENT: &str = "rates_recipient";
 pub const MOCK_TOKEN_OWNER: &str = "owner";
 pub const MOCK_TOKENS_FOR_SALE: &[&str] = &[
@@ -110,6 +109,7 @@ pub struct SupplyResponse {
 
 impl WasmMockQuerier {
     pub fn handle_query(&self, request: &QueryRequest<cosmwasm_std::Empty>) -> QuerierResult {
+        println!("query request is: {:?}", request);
         match &request {
             QueryRequest::Wasm(WasmQuery::Smart { contract_addr, msg }) => {
                 match contract_addr.as_str() {

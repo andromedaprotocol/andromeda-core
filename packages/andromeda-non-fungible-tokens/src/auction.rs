@@ -1,4 +1,5 @@
 use andromeda_std::amp::{AndrAddr, Recipient};
+use andromeda_std::common::denom::Asset;
 use andromeda_std::common::{MillisecondsExpiration, OrderBy};
 use andromeda_std::{andr_exec, andr_instantiate, andr_instantiate_modules, andr_query};
 
@@ -37,8 +38,7 @@ pub enum ExecuteMsg {
         token_address: String,
         start_time: Option<MillisecondsExpiration>,
         end_time: MillisecondsExpiration,
-        coin_denom: String,
-        uses_cw20: bool,
+        coin_denom: Asset,
         whitelist: Option<Vec<Addr>>,
         min_bid: Option<Uint128>,
         recipient: Option<Recipient>,
@@ -67,8 +67,7 @@ pub enum Cw721HookMsg {
         start_time: Option<MillisecondsExpiration>,
         /// Duration in milliseconds
         end_time: MillisecondsExpiration,
-        coin_denom: String,
-        uses_cw20: bool,
+        coin_denom: Asset,
         min_bid: Option<Uint128>,
         whitelist: Option<Vec<Addr>>,
         recipient: Option<Recipient>,
@@ -126,20 +125,20 @@ pub enum QueryMsg {
         order_by: Option<OrderBy>,
     },
 
-    #[returns(bool)]
+    #[returns(IsCancelledResponse)]
     IsCancelled {
         token_id: String,
         token_address: String,
     },
 
     /// Returns true only if the auction has been cancelled, the token has been claimed, or the end time has expired
-    #[returns(bool)]
+    #[returns(IsClosedResponse)]
     IsClosed {
         token_id: String,
         token_address: String,
     },
 
-    #[returns(bool)]
+    #[returns(IsClaimedResponse)]
     IsClaimed {
         token_id: String,
         token_address: String,
@@ -238,3 +237,22 @@ pub struct AuctionIdsResponse {
 pub struct BidsResponse {
     pub bids: Vec<Bid>,
 }
+
+#[cw_serde]
+pub struct IsCancelledResponse {
+    pub is_cancelled: bool,
+}
+
+#[cw_serde]
+pub struct IsClosedResponse {
+    pub is_closed: bool,
+}
+
+#[cw_serde]
+pub struct IsClaimedResponse {
+    pub is_claimed: bool,
+}
+
+#[cw_serde]
+#[serde(rename_all = "snake_case")]
+pub struct MigrateMsg {}

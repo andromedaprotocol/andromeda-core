@@ -15,6 +15,18 @@
       "additionalProperties": false
     },
     {
+      "type": "object",
+      "required": [
+        "receive"
+      ],
+      "properties": {
+        "receive": {
+          "$ref": "#/definitions/Cw20ReceiveMsg"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
       "description": "Transfers NFT to buyer and sends funds to seller",
       "type": "object",
       "required": [
@@ -57,7 +69,7 @@
           ],
           "properties": {
             "coin_denom": {
-              "type": "string"
+              "$ref": "#/definitions/Asset"
             },
             "price": {
               "$ref": "#/definitions/Uint128"
@@ -409,6 +421,34 @@
       "type": "string",
       "pattern": "(^((([A-Za-z0-9]+://)?([A-Za-z0-9.\\-_]{2,80}/)))?((~[a-z0-9]{2,}|(lib|home))(/[A-Za-z0-9.\\-_]{2,80}?)*(/)?)$)|(^(~[a-z0-9]{2,}|/(lib|home))(/[A-Za-z0-9.\\-_]{2,80}?)*(/)?$)|(^[a-z0-9]{2,}$)|(^\\.(/[A-Za-z0-9.\\-_]{2,40}?)*(/)?$)"
     },
+    "Asset": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "cw20_token"
+          ],
+          "properties": {
+            "cw20_token": {
+              "$ref": "#/definitions/AndrAddr"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "native_token"
+          ],
+          "properties": {
+            "native_token": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
     "Binary": {
       "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
       "type": "string"
@@ -427,6 +467,27 @@
           "type": "string"
         }
       }
+    },
+    "Cw20ReceiveMsg": {
+      "description": "Cw20ReceiveMsg should be de/serialized under `Receive()` variant in a ExecuteMsg",
+      "type": "object",
+      "required": [
+        "amount",
+        "msg",
+        "sender"
+      ],
+      "properties": {
+        "amount": {
+          "$ref": "#/definitions/Uint128"
+        },
+        "msg": {
+          "$ref": "#/definitions/Binary"
+        },
+        "sender": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
     },
     "Cw721ReceiveMsg": {
       "description": "Cw721ReceiveMsg should be de/serialized under `Receive()` variant in a ExecuteMsg",
@@ -449,53 +510,6 @@
       },
       "additionalProperties": false
     },
-    "Expiration": {
-      "description": "Expiration represents a point in time when some event happens. It can compare with a BlockInfo and will return is_expired() == true once the condition is hit (and for every block in the future)",
-      "oneOf": [
-        {
-          "description": "AtHeight will expire when `env.block.height` >= height",
-          "type": "object",
-          "required": [
-            "at_height"
-          ],
-          "properties": {
-            "at_height": {
-              "type": "integer",
-              "format": "uint64",
-              "minimum": 0.0
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "description": "AtTime will expire when `env.block.time` >= time",
-          "type": "object",
-          "required": [
-            "at_time"
-          ],
-          "properties": {
-            "at_time": {
-              "$ref": "#/definitions/Timestamp"
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "description": "Never will never expire. Used to express the empty variant",
-          "type": "object",
-          "required": [
-            "never"
-          ],
-          "properties": {
-            "never": {
-              "type": "object",
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
-        }
-      ]
-    },
     "IBCConfig": {
       "type": "object",
       "properties": {
@@ -511,6 +525,12 @@
         }
       },
       "additionalProperties": false
+    },
+    "Milliseconds": {
+      "description": "Represents time in milliseconds.",
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
     },
     "Module": {
       "description": "A struct describing a token module, provided with the instantiation message this struct is used to record the info about the module and how/if it should be instantiated",
@@ -560,7 +580,7 @@
                 "expiration": {
                   "anyOf": [
                     {
-                      "$ref": "#/definitions/Expiration"
+                      "$ref": "#/definitions/Milliseconds"
                     },
                     {
                       "type": "null"
@@ -590,7 +610,7 @@
             "blacklisted": {
               "anyOf": [
                 {
-                  "$ref": "#/definitions/Expiration"
+                  "$ref": "#/definitions/Milliseconds"
                 },
                 {
                   "type": "null"
@@ -615,7 +635,7 @@
                 "expiration": {
                   "anyOf": [
                     {
-                      "$ref": "#/definitions/Expiration"
+                      "$ref": "#/definitions/Milliseconds"
                     },
                     {
                       "type": "null"
@@ -642,7 +662,7 @@
             "whitelisted": {
               "anyOf": [
                 {
-                  "$ref": "#/definitions/Expiration"
+                  "$ref": "#/definitions/Milliseconds"
                 },
                 {
                   "type": "null"
@@ -817,14 +837,6 @@
           "enum": [
             "never"
           ]
-        }
-      ]
-    },
-    "Timestamp": {
-      "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202); assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1); assert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202); assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Uint64"
         }
       ]
     },

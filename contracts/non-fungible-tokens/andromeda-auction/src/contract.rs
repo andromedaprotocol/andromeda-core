@@ -3,8 +3,8 @@ use crate::state::{
 };
 use andromeda_non_fungible_tokens::auction::{
     AuctionIdsResponse, AuctionInfo, AuctionStateResponse, AuthorizedAddressesResponse, Bid,
-    BidsResponse, Cw20HookMsg, Cw721HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg,
-    TokenAuctionState,
+    BidsResponse, Cw20HookMsg, Cw721HookMsg, ExecuteMsg, InstantiateMsg, IsCancelledResponse,
+    IsClaimedResponse, IsClosedResponse, QueryMsg, TokenAuctionState,
 };
 use andromeda_std::{
     ado_base::{
@@ -14,7 +14,7 @@ use andromeda_std::{
     amp::{AndrAddr, Recipient},
     common::{
         actions::call_action,
-        denom::{validate_denom, SEND_CW20_ACTION},
+        denom::{Asset, SEND_CW20_ACTION},
         encode_binary,
         expiration::{expiration_from_milliseconds, get_and_validate_start_time},
         Funds, Milliseconds, MillisecondsExpiration, OrderBy,
@@ -144,7 +144,6 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
             start_time,
             end_time,
             coin_denom,
-            uses_cw20,
             whitelist,
             min_bid,
             recipient,
@@ -155,7 +154,6 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
             start_time,
             end_time,
             coin_denom,
-            uses_cw20,
             whitelist,
             min_bid,
             recipient,
@@ -201,7 +199,6 @@ fn handle_receive_cw721(
             start_time,
             end_time,
             coin_denom,
-            uses_cw20,
             whitelist,
             min_bid,
             recipient,
@@ -212,7 +209,6 @@ fn handle_receive_cw721(
             start_time,
             end_time,
             coin_denom,
-            uses_cw20,
             whitelist,
             min_bid,
             recipient,
@@ -276,33 +272,18 @@ fn execute_start_auction(
     token_id: String,
     start_time: Option<MillisecondsExpiration>,
     end_time: MillisecondsExpiration,
-    coin_denom: String,
-    uses_cw20: bool,
+    coin_denom: Asset,
     whitelist: Option<Vec<Addr>>,
     min_bid: Option<Uint128>,
     recipient: Option<Recipient>,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
-        deps, info, env, ..
+        mut deps,
+        info,
+        env,
+        ..
     } = ctx;
-    if uses_cw20 {
-        let valid_cw20_auction = ADOContract::default()
-            .is_permissioned(
-                deps.storage,
-                env.clone(),
-                SEND_CW20_ACTION,
-                coin_denom.clone(),
-            )
-            .is_ok();
-        ensure!(
-            valid_cw20_auction,
-            ContractError::InvalidFunds {
-                msg: format!("Non-permissioned CW20 asset '{}' set as denom.", coin_denom)
-            }
-        );
-    } else {
-        validate_denom(deps.as_ref(), coin_denom.clone())?;
-    }
+    let (coin_denom, uses_cw20) = coin_denom.get_verified_asset(deps.branch(), env.clone())?;
     ensure!(!end_time.is_zero(), ContractError::InvalidExpiration {});
 
     // If start time wasn't provided, it will be set as the current_time
@@ -371,35 +352,20 @@ fn execute_update_auction(
     token_address: String,
     start_time: Option<MillisecondsExpiration>,
     end_time: MillisecondsExpiration,
-    coin_denom: String,
-    uses_cw20: bool,
+    coin_denom: Asset,
     whitelist: Option<Vec<Addr>>,
     min_bid: Option<Uint128>,
     recipient: Option<Recipient>,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
-        deps, info, env, ..
+        mut deps,
+        info,
+        env,
+        ..
     } = ctx;
     nonpayable(&info)?;
+    let (coin_denom, uses_cw20) = coin_denom.get_verified_asset(deps.branch(), env.clone())?;
 
-    if uses_cw20 {
-        let valid_cw20_auction = ADOContract::default()
-            .is_permissioned(
-                deps.storage,
-                env.clone(),
-                SEND_CW20_ACTION,
-                coin_denom.clone(),
-            )
-            .is_ok();
-        ensure!(
-            valid_cw20_auction,
-            ContractError::InvalidFunds {
-                msg: "Non-permissioned CW20 asset sent".to_string()
-            }
-        );
-    } else {
-        validate_denom(deps.as_ref(), coin_denom.clone())?;
-    }
     let mut token_auction_state =
         get_existing_token_auction_state(deps.storage, &token_id, &token_address)?;
     ensure!(
@@ -1067,11 +1033,13 @@ fn query_is_cancelled(
     deps: Deps,
     token_id: String,
     token_address: String,
-) -> Result<bool, ContractError> {
+) -> Result<IsCancelledResponse, ContractError> {
     let token_auction_state_result =
         get_existing_token_auction_state(deps.storage, &token_id, &token_address);
     if let Ok(token_auction_state) = token_auction_state_result {
-        return Ok(token_auction_state.is_cancelled);
+        return Ok(IsCancelledResponse {
+            is_cancelled: token_auction_state.is_cancelled,
+        });
     }
     Err(ContractError::AuctionDoesNotExist {})
 }
@@ -1081,7 +1049,7 @@ fn query_is_claimed(
     env: Env,
     token_id: String,
     token_address: String,
-) -> Result<bool, ContractError> {
+) -> Result<IsClaimedResponse, ContractError> {
     let token_auction_state =
         get_existing_token_auction_state(deps.storage, &token_id, &token_address)?;
 
@@ -1089,7 +1057,9 @@ fn query_is_claimed(
         query_owner_of(deps.querier, token_auction_state.token_address, token_id)?.owner;
 
     // if token owner isn't the contract, it means that it has been claimed. If they're equal it means that it hasn't been claimed and will return false
-    Ok(token_owner != env.contract.address)
+    Ok(IsClaimedResponse {
+        is_claimed: token_owner != env.contract.address,
+    })
 }
 
 fn query_is_closed(
@@ -1097,18 +1067,18 @@ fn query_is_closed(
     env: Env,
     token_id: String,
     token_address: String,
-) -> Result<bool, ContractError> {
+) -> Result<IsClosedResponse, ContractError> {
     let token_auction_state =
         get_existing_token_auction_state(deps.storage, &token_id, &token_address)?;
 
-    if query_is_claimed(deps, env.clone(), token_id.clone(), token_address.clone())?
-        || query_is_cancelled(deps, token_id, token_address)?
-        || token_auction_state.end_time.is_expired(&env.block)
-    {
-        Ok(true)
-    } else {
-        Ok(false)
-    }
+    let is_claimed =
+        query_is_claimed(deps, env.clone(), token_id.clone(), token_address.clone())?.is_claimed;
+    let is_cancelled = query_is_cancelled(deps, token_id, token_address)?.is_cancelled;
+    let is_expired = token_auction_state.end_time.is_expired(&env.block);
+
+    // Considers the auction closed if one or more of those 3 variables are true. Otherwise it isn't closed.
+    let is_closed = is_claimed || is_cancelled || is_expired;
+    Ok(IsClosedResponse { is_closed })
 }
 
 fn query_auction_ids(
