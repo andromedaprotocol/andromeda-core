@@ -1,7 +1,7 @@
-use crate::state::CONDITIONAL_SPLITTER;
+use crate::state::{CONDITIONAL_SPLITTER, FUNDS_DISTRIBUTED};
 use andromeda_finance::conditional_splitter::{
-    find_threshold, AddressFunds, ConditionalSplitter, ExecuteMsg,
-    GetConditionalSplitterConfigResponse, InstantiateMsg, QueryMsg,
+    find_threshold, ConditionalSplitter, ExecuteMsg, GetConditionalSplitterConfigResponse,
+    InstantiateMsg, QueryMsg,
 };
 use std::vec;
 
@@ -35,14 +35,8 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     let current_time = Milliseconds::from_seconds(env.block.time.seconds());
 
-    // Construct Address Fund, funds automatically set to 0
-    let mut address_funds: Vec<AddressFunds> = vec![];
-    for recipient in msg.recipients {
-        address_funds.push(AddressFunds::new(recipient))
-    }
-
     let mut conditional_splitter = ConditionalSplitter {
-        recipients: address_funds,
+        recipients: msg.recipients,
         thresholds: msg.thresholds.clone(),
         lock: msg.lock_time.unwrap_or_default(),
     };
@@ -69,6 +63,7 @@ pub fn instantiate(
     }
     // Save kernel address after validating it
     CONDITIONAL_SPLITTER.save(deps.storage, &conditional_splitter)?;
+    FUNDS_DISTRIBUTED.save(deps.storage, &Uint128::zero())?;
 
     let inst_resp = ADOContract::default().instantiate(
         deps.storage,
@@ -165,12 +160,14 @@ fn execute_send(ctx: ExecuteContext) -> Result<Response, ContractError> {
     let mut remainder_funds = info.funds.clone();
 
     let mut pkt = AMPPkt::from_ctx(ctx.amp_ctx, ctx.env.contract.address.to_string());
-    let mut recipients_with_new_funds: Vec<AddressFunds> = vec![];
+
+    let funds_distributed = FUNDS_DISTRIBUTED.load(deps.storage)?;
 
     for recipient_addr in &conditional_splitter.recipients {
         // Get current range
-        let threshold = find_threshold(&conditional_splitter.thresholds, recipient_addr.funds)?;
-        let recipient_percent = threshold.percentage;
+        let (_threshold, threshold_index) =
+            find_threshold(&conditional_splitter.thresholds, funds_distributed)?;
+        let recipient_percent = recipient_addr.percentages[threshold_index];
 
         let mut vec_coin: Vec<Coin> = Vec::new();
         for (i, coin) in info.funds.clone().iter().enumerate() {
@@ -185,14 +182,6 @@ fn execute_send(ctx: ExecuteContext) -> Result<Response, ContractError> {
 
             recip_coin.amount = coin.amount * recipient_percent;
 
-            // Save new funds
-            let new_funds = recipient_addr.funds + recip_coin.amount;
-            let new_address_funds = AddressFunds {
-                recipient: recipient_addr.recipient.clone(),
-                funds: new_funds,
-            };
-            recipients_with_new_funds.push(new_address_funds);
-
             remainder_funds[i].amount = remainder_funds[i].amount.checked_sub(recip_coin.amount)?;
             vec_coin.push(recip_coin.clone());
             amp_funds.push(recip_coin);
@@ -203,12 +192,8 @@ fn execute_send(ctx: ExecuteContext) -> Result<Response, ContractError> {
             .generate_amp_msg(&deps.as_ref(), Some(vec_coin))?;
         pkt = pkt.add_message(amp_msg);
     }
-    let new_conditional_splitter = ConditionalSplitter {
-        recipients: recipients_with_new_funds,
-        thresholds: conditional_splitter.thresholds,
-        lock: conditional_splitter.lock,
-    };
-    CONDITIONAL_SPLITTER.save(deps.storage, &new_conditional_splitter)?;
+    let new_funds_distributed = info.funds.first().unwrap().amount + funds_distributed;
+    FUNDS_DISTRIBUTED.save(deps.storage, &new_funds_distributed)?;
 
     remainder_funds.retain(|x| x.amount > Uint128::zero());
 

@@ -18,32 +18,28 @@ use super::mock_querier::MOCK_KERNEL_CONTRACT;
 
 use crate::{
     contract::{execute, instantiate, query},
-    state::CONDITIONAL_SPLITTER,
+    state::{CONDITIONAL_SPLITTER, FUNDS_DISTRIBUTED},
     testing::mock_querier::mock_dependencies_custom,
 };
 use andromeda_finance::conditional_splitter::{
-    AddressFunds, ConditionalSplitter, ExecuteMsg, GetConditionalSplitterConfigResponse,
+    AddressPercentages, ConditionalSplitter, ExecuteMsg, GetConditionalSplitterConfigResponse,
     InstantiateMsg, QueryMsg, Threshold,
 };
 
 fn init(deps: DepsMut) -> Response {
-    let mock_recipient: Vec<AddressFunds> = vec![AddressFunds {
-        recipient: Recipient::from_string(String::from("some_address")),
-        funds: Uint128::zero(),
-    }];
     let msg = InstantiateMsg {
         owner: Some(OWNER.to_owned()),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
-        recipients: vec![Recipient::from_string(String::from("some_address"))],
+        recipients: vec![AddressPercentages::new(
+            Recipient::from_string(String::from("some_address")),
+            vec![
+                Decimal::from_ratio(Uint128::one(), Uint128::new(2)),
+                Decimal::from_ratio(Uint128::one(), Uint128::new(2)),
+            ],
+        )],
         thresholds: vec![
-            Threshold::new(
-                Uint128::zero(),
-                Decimal::from_ratio(Uint128::one(), Uint128::new(2)),
-            ),
-            Threshold::new(
-                Uint128::new(11),
-                Decimal::from_ratio(Uint128::one(), Uint128::new(2)),
-            ),
+            Threshold::new(Uint128::zero()),
+            Threshold::new(Uint128::new(11)),
         ],
         lock_time: Some(Milliseconds::from_seconds(100_000)),
     };
@@ -75,7 +71,6 @@ fn test_execute_update_lock() {
         lock: Milliseconds::from_seconds(current_time - 1),
         thresholds: vec![Threshold {
             min: Uint128::zero(),
-            percentage: Decimal::from_ratio(Uint128::one(), Uint128::new(2)),
         }],
     };
 
@@ -182,24 +177,31 @@ fn test_execute_send() {
 
     let second_threshold = Uint128::new(11);
 
+    let recip1 = Recipient::from_string(recip_address1);
+    let recip2 = Recipient::from_string(recip_address2);
+
     let msg = InstantiateMsg {
         owner: Some(OWNER.to_owned()),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         recipients: vec![
-            Recipient::from_string(recip_address1.clone()),
-            Recipient::from_string(recip_address2.clone()),
+            AddressPercentages::new(
+                recip1,
+                vec![
+                    Decimal::from_ratio(Uint128::one(), Uint128::new(2)),
+                    Decimal::from_ratio(Uint128::one(), Uint128::new(5)),
+                ],
+            ),
+            AddressPercentages::new(
+                recip2,
+                vec![
+                    Decimal::from_ratio(Uint128::one(), Uint128::new(5)),
+                    Decimal::from_ratio(Uint128::one(), Uint128::new(10)),
+                ],
+            ),
         ],
         thresholds: vec![
-            Threshold::new(
-                Uint128::zero(),
-                // 50%
-                Decimal::from_ratio(Uint128::one(), Uint128::new(2)),
-            ),
-            Threshold::new(
-                second_threshold,
-                // 20%
-                Decimal::from_ratio(Uint128::one(), Uint128::new(5)),
-            ),
+            Threshold::new(Uint128::zero()),
+            Threshold::new(second_threshold),
         ],
         lock_time: Some(Milliseconds::from_seconds(100_000)),
     };
@@ -216,62 +218,32 @@ fn test_execute_send() {
     // Third batch will be used to test the second threshold
     let third_batch = 100u128;
 
-    let recip1 = Recipient::from_string(recip_address1);
-    let recip2 = Recipient::from_string(recip_address2);
-
     // First batch
     let info = mock_info(OWNER, &[Coin::new(first_batch, "uandr")]);
     let msg = ExecuteMsg::Send {};
     let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
-    let address_funds = CONDITIONAL_SPLITTER.load(&deps.storage).unwrap().recipients;
-    let expected_address_funds = vec![
-        AddressFunds {
-            recipient: recip1.clone(),
-            funds: Uint128::new(5),
-        },
-        AddressFunds {
-            recipient: recip2.clone(),
-            funds: Uint128::new(5),
-        },
-    ];
-    assert_eq!(address_funds, expected_address_funds);
+    let funds_distributed = FUNDS_DISTRIBUTED.load(&deps.storage).unwrap();
+    let expected_funds_distributed = Uint128::new(10);
+    assert_eq!(funds_distributed, expected_funds_distributed);
 
     // Second batch
     let info = mock_info(OWNER, &[Coin::new(second_batch, "uandr")]);
     let msg = ExecuteMsg::Send {};
     let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
-    let address_funds = CONDITIONAL_SPLITTER.load(&deps.storage).unwrap().recipients;
-    let expected_address_funds = vec![
-        AddressFunds {
-            recipient: recip1.clone(),
-            funds: Uint128::new(5 + 6),
-        },
-        AddressFunds {
-            recipient: recip2.clone(),
-            funds: Uint128::new(5 + 6),
-        },
-    ];
-    assert_eq!(address_funds, expected_address_funds);
+    let funds_distributed = FUNDS_DISTRIBUTED.load(&deps.storage).unwrap();
+    let expected_funds_distributed = Uint128::new(10 + 12);
+    assert_eq!(funds_distributed, expected_funds_distributed);
 
     // Third batch
     let info = mock_info(OWNER, &[Coin::new(third_batch, "uandr")]);
     let msg = ExecuteMsg::Send {};
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
 
-    let address_funds = CONDITIONAL_SPLITTER.load(&deps.storage).unwrap().recipients;
-    let expected_address_funds = vec![
-        AddressFunds {
-            recipient: recip1.clone(),
-            funds: Uint128::new(5 + 6 + 20),
-        },
-        AddressFunds {
-            recipient: recip2.clone(),
-            funds: Uint128::new(5 + 6 + 20),
-        },
-    ];
-    assert_eq!(address_funds, expected_address_funds);
+    let funds_distributed = FUNDS_DISTRIBUTED.load(&deps.storage).unwrap();
+    let expected_funds_distributed = Uint128::new(10 + 12 + 100);
+    assert_eq!(funds_distributed, expected_funds_distributed);
 
     // let expected_res = Response::new()
     //     .add_submessages(vec![

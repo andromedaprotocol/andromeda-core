@@ -152,6 +152,9 @@ pub enum ContractError {
     #[error("InsufficientBondedTime")]
     InsufficientBondedTime {},
 
+    #[error("ThresholdsPercentagesDiscrepancy: {msg}")]
+    ThresholdsPercentagesDiscrepancy { msg: String },
+
     #[error("LockTimeTooShort")]
     LockTimeTooShort {},
 

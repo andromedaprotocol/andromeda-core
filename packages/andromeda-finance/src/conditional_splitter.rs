@@ -12,43 +12,51 @@ use std::collections::HashSet;
 #[cw_serde]
 pub struct Threshold {
     pub min: Uint128,
-    pub percentage: Decimal,
 }
 impl Threshold {
-    pub fn new(min: Uint128, percentage: Decimal) -> Self {
-        Self { min, percentage }
+    pub fn new(min: Uint128) -> Self {
+        Self { min }
     }
     pub fn in_range(&self, num: Uint128) -> bool {
         num >= self.min
     }
 }
 
-pub fn find_threshold(thresholds: &[Threshold], num: Uint128) -> Result<Threshold, ContractError> {
-    let mut sorted_thresholds = thresholds.to_vec();
+pub fn find_threshold(
+    thresholds: &[Threshold],
+    num: Uint128,
+) -> Result<(Threshold, usize), ContractError> {
+    // Create a vector of tuples containing the original index and the threshold
+    let mut indexed_thresholds: Vec<(usize, &Threshold)> = thresholds.iter().enumerate().collect();
 
     // Sort thresholds by min values in decreasing order
-    sorted_thresholds.sort_by(|a, b| b.min.cmp(&a.min));
+    indexed_thresholds.sort_by(|a, b| b.1.min.cmp(&a.1.min));
 
-    // Return the first threshold where the number is in its range
-    for threshold in sorted_thresholds {
+    // Iterate over the sorted indexed thresholds
+    for (index, threshold) in indexed_thresholds {
         if threshold.in_range(num) {
-            return Ok(threshold);
+            // Get original index
+            let original_index = thresholds.len() - 1 - index;
+            // Return the threshold and its original index
+            return Ok((threshold.clone(), original_index));
         }
     }
     Err(ContractError::InvalidRange {})
 }
 
-/// Used to couple each recipient with the funds he's received so far
 #[cw_serde]
-pub struct AddressFunds {
+pub struct AddressPercentages {
     pub recipient: Recipient,
-    pub funds: Uint128,
+    // The sequence of the the percentages should correspond to each threshold.
+    // For example the first value in percentages should correspond to the first threshold
+    pub percentages: Vec<Decimal>,
 }
-impl AddressFunds {
-    pub fn new(recipient: Recipient) -> Self {
+
+impl AddressPercentages {
+    pub fn new(recipient: Recipient, percentages: Vec<Decimal>) -> Self {
         Self {
             recipient,
-            funds: Uint128::zero(),
+            percentages,
         }
     }
 }
@@ -57,7 +65,7 @@ impl AddressFunds {
 /// A config struct for a `Conditional Splitter` contract.
 pub struct ConditionalSplitter {
     /// The vector of recipients for the contract. Anytime a `Send` execute message is sent the amount sent will be divided amongst these recipients depending on the threshold.
-    pub recipients: Vec<AddressFunds>,
+    pub recipients: Vec<AddressPercentages>,
     /// The vector of thresholds which assign a percentage for a certain range of received funds
     pub thresholds: Vec<Threshold>,
     /// The lock's expiration time
@@ -75,7 +83,7 @@ impl ConditionalSplitter {
 pub struct InstantiateMsg {
     /// The vector of recipients for the contract. Anytime a `Send` execute message is
     /// sent the amount sent will be divided amongst these recipients depending on their assigned percentage.
-    pub recipients: Vec<Recipient>,
+    pub recipients: Vec<AddressPercentages>,
     pub thresholds: Vec<Threshold>,
     pub lock_time: Option<MillisecondsDuration>,
 }
@@ -109,13 +117,13 @@ pub struct GetConditionalSplitterConfigResponse {
 }
 
 /// Ensures that a given list of recipients for a `splitter` contract is valid:
-///
+/// * Percentages of corresponding indexes should not sum up to over 100
 /// * Must include at least one recipient
 /// * The number of recipients must not exceed 100
 /// * The recipient addresses must be unique
 pub fn validate_recipient_list(
     deps: Deps,
-    recipients: Vec<AddressFunds>,
+    recipients: Vec<AddressPercentages>,
 ) -> Result<(), ContractError> {
     ensure!(
         !recipients.is_empty(),
@@ -125,32 +133,50 @@ pub fn validate_recipient_list(
         recipients.len() <= 100,
         ContractError::ReachedRecipientLimit {}
     );
-    let mut recipient_address_set = HashSet::new();
 
-    for recipient in recipients {
-        recipient.recipient.validate(&deps)?;
-        let recipient_address = recipient.recipient.address.get_raw_address(&deps)?;
+    for i in 0..recipients[0].percentages.len() {
+        // Collect the ith percentage of each recipient
+        let mut i_percentages = Decimal::zero();
+        let mut recipient_address_set = HashSet::new();
+        for recipient in &recipients {
+            // Check for invalid percentages
+            i_percentages = i_percentages.checked_add(recipient.percentages[i])?;
+
+            // Checks for duplicate and invalid recipients
+            recipient.recipient.validate(&deps)?;
+            let recipient_address = recipient.recipient.address.get_raw_address(&deps)?;
+            ensure!(
+                !recipient_address_set.contains(&recipient_address),
+                ContractError::DuplicateRecipient {}
+            );
+            recipient_address_set.insert(recipient_address);
+        }
         ensure!(
-            !recipient_address_set.contains(&recipient_address),
-            ContractError::DuplicateRecipient {}
+            i_percentages <= Decimal::one(),
+            ContractError::AmountExceededHundredPrecent {}
         );
-        recipient_address_set.insert(recipient_address);
     }
-
     Ok(())
 }
+
 /// Makes sure the percentages don't exceed 100 and that there are no duplicate min values
 pub fn validate_thresholds(
     thresholds: &Vec<Threshold>,
-    recipients: &Vec<AddressFunds>,
+    recipients: &Vec<AddressPercentages>,
 ) -> Result<(), ContractError> {
-    let number_of_recipients = recipients.len() as u128;
+    let number_of_thresholds = thresholds.len();
 
-    for threshold in thresholds {
-        // The percentage multiplied by the number of recipients shouldn't exceed 100
+    // Check that each recipient has the same amount of percentages as thresholds
+    for recipient in recipients {
         ensure!(
-            threshold.percentage * Uint128::new(number_of_recipients) <= Uint128::new(100),
-            ContractError::AmountExceededHundredPrecent {}
+            recipient.percentages.len() == number_of_thresholds,
+            ContractError::ThresholdsPercentagesDiscrepancy {
+                msg: format!(
+                    "The number of thresholds is:  {:?}, whereas the numer of percentages is: {:?}",
+                    number_of_thresholds,
+                    recipient.percentages.len()
+                )
+            }
         );
     }
 
