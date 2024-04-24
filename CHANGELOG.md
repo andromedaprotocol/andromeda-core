@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Merkle Root: stage expiration now uses `Milliseconds`[(#417)](https://github.com/andromedaprotocol/andromeda-core/pull/417)
+- Millisecond types split in to separate structs [(#432)](https://github.com/andromedaprotocol/andromeda-core/pull/432)
 
 ### Fixed
 
