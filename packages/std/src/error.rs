@@ -44,6 +44,12 @@ pub enum ContractError {
     #[error("InvalidOrigin")]
     InvalidOrigin {},
 
+    #[error("InvalidRange")]
+    InvalidRange {},
+
+    #[error("OverlappingRanges")]
+    OverlappingRanges {},
+
     #[error("Invalid {operation} Operation with {validator}")]
     InvalidValidatorOperation {
         operation: String,
