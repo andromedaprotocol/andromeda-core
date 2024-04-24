@@ -172,87 +172,123 @@ fn test_execute_update_lock() {
 //     assert_eq!(splitter.recipients, recipients);
 // }
 
-// #[test]
-// fn test_execute_send() {
-//     let mut deps = mock_dependencies_custom(&[]);
-//     let env = mock_env();
-//     let _res: Response = init(deps.as_mut());
+#[test]
+fn test_execute_send() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let env = mock_env();
 
-//     let sender_funds_amount = 10000u128;
+    let recip_address1 = "address1".to_string();
+    let recip_address2 = "address2".to_string();
 
-//     let info = mock_info(OWNER, &[Coin::new(sender_funds_amount, "uluna")]);
+    let second_threshold = Uint128::new(11);
 
-//     let recip_address1 = "address1".to_string();
-//     let recip_percent1 = 10; // 10%
+    let msg = InstantiateMsg {
+        owner: Some(OWNER.to_owned()),
+        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+        recipients: vec![
+            Recipient::from_string(recip_address1.clone()),
+            Recipient::from_string(recip_address2.clone()),
+        ],
+        thresholds: vec![
+            Threshold::new(
+                Uint128::zero(),
+                // 50%
+                Decimal::from_ratio(Uint128::one(), Uint128::new(2)),
+            ),
+            Threshold::new(
+                second_threshold,
+                // 20%
+                Decimal::from_ratio(Uint128::one(), Uint128::new(5)),
+            ),
+        ],
+        lock_time: Some(Milliseconds::from_seconds(100_000)),
+    };
 
-//     let recip_address2 = "address2".to_string();
-//     let recip_percent2 = 20; // 20%
+    let info = mock_info("owner", &[]);
+    instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-//     let recip1 = Recipient::from_string(recip_address1);
-//     let recip2 = Recipient::from_string(recip_address2);
+    // First batch of funds which will put funds received to 5 for each recipient since the percentage is 50
+    let first_batch = 10u128;
 
-//     let recipient = vec![
-//         AddressFunds {
-//             recipient: recip1.clone(),
-//             percent: Decimal::percent(recip_percent1),
-//         },
-//         AddressFunds {
-//             recipient: recip2.clone(),
-//             percent: Decimal::percent(recip_percent2),
-//         },
-//     ];
-//     let msg = ExecuteMsg::Send {};
+    // Second batch of funds will push funds sent to 11 (5 + (12/2)) which is the min value of second batch
+    let second_batch = 12u128;
 
-//     let amp_msg_1 = recip1
-//         .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(1000, "uluna")]))
-//         .unwrap();
-//     let amp_msg_2 = recip2
-//         .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(2000, "uluna")]))
-//         .unwrap();
-//     let amp_pkt = AMPPkt::new(
-//         MOCK_CONTRACT_ADDR.to_string(),
-//         MOCK_CONTRACT_ADDR.to_string(),
-//         vec![amp_msg_1, amp_msg_2],
-//     );
-//     let amp_msg = amp_pkt
-//         .to_sub_msg(
-//             MOCK_KERNEL_CONTRACT,
-//             Some(vec![Coin::new(1000, "uluna"), Coin::new(2000, "uluna")]),
-//             1,
-//         )
-//         .unwrap();
+    // Third batch will be used to test the second threshold
+    let third_batch = 100u128;
 
-//     let splitter = ConditionalSplitter {
-//         recipients: recipient,
-//         lock: Milliseconds::default(),
-//         thresholds: vec![Threshold {
-//             range: Range::new(Uint128::zero(), Uint128::new(10)),
-//             percentage: Decimal::from_ratio(Uint128::one(), Uint128::new(2)),
-//         }],
-//     };
+    let recip1 = Recipient::from_string(recip_address1);
+    let recip2 = Recipient::from_string(recip_address2);
 
-//     CONDITIONAL_SPLITTER
-//         .save(deps.as_mut().storage, &splitter)
-//         .unwrap();
+    // First batch
+    let info = mock_info(OWNER, &[Coin::new(first_batch, "uandr")]);
+    let msg = ExecuteMsg::Send {};
+    let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
-//     let res = execute(deps.as_mut(), env, info, msg).unwrap();
+    let address_funds = CONDITIONAL_SPLITTER.load(&deps.storage).unwrap().recipients;
+    let expected_address_funds = vec![
+        AddressFunds {
+            recipient: recip1.clone(),
+            funds: Uint128::new(5),
+        },
+        AddressFunds {
+            recipient: recip2.clone(),
+            funds: Uint128::new(5),
+        },
+    ];
+    assert_eq!(address_funds, expected_address_funds);
 
-//     let expected_res = Response::new()
-//         .add_submessages(vec![
-//             SubMsg::new(
-//                 // refunds remainder to sender
-//                 CosmosMsg::Bank(BankMsg::Send {
-//                     to_address: OWNER.to_string(),
-//                     amount: vec![Coin::new(7000, "uluna")], // 10000 * 0.7   remainder
-//                 }),
-//             ),
-//             amp_msg,
-//         ])
-//         .add_attributes(vec![attr("action", "send"), attr("sender", "creator")])
-//         .add_submessage(generate_economics_message(OWNER, "Send"));
+    // Second batch
+    let info = mock_info(OWNER, &[Coin::new(second_batch, "uandr")]);
+    let msg = ExecuteMsg::Send {};
+    let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
-//     assert_eq!(res, expected_res);
-// }
+    let address_funds = CONDITIONAL_SPLITTER.load(&deps.storage).unwrap().recipients;
+    let expected_address_funds = vec![
+        AddressFunds {
+            recipient: recip1.clone(),
+            funds: Uint128::new(5 + 6),
+        },
+        AddressFunds {
+            recipient: recip2.clone(),
+            funds: Uint128::new(5 + 6),
+        },
+    ];
+    assert_eq!(address_funds, expected_address_funds);
+
+    // Third batch
+    let info = mock_info(OWNER, &[Coin::new(third_batch, "uandr")]);
+    let msg = ExecuteMsg::Send {};
+    let res = execute(deps.as_mut(), env, info, msg).unwrap();
+
+    let address_funds = CONDITIONAL_SPLITTER.load(&deps.storage).unwrap().recipients;
+    let expected_address_funds = vec![
+        AddressFunds {
+            recipient: recip1.clone(),
+            funds: Uint128::new(5 + 6 + 20),
+        },
+        AddressFunds {
+            recipient: recip2.clone(),
+            funds: Uint128::new(5 + 6 + 20),
+        },
+    ];
+    assert_eq!(address_funds, expected_address_funds);
+
+    // let expected_res = Response::new()
+    //     .add_submessages(vec![
+    //         SubMsg::new(
+    //             // refunds remainder to sender
+    //             CosmosMsg::Bank(BankMsg::Send {
+    //                 to_address: OWNER.to_string(),
+    //                 amount: vec![Coin::new(7000, "uluna")], // 10000 * 0.7   remainder
+    //             }),
+    //         ),
+    //         amp_msg,
+    //     ])
+    //     .add_attributes(vec![attr("action", "send"), attr("sender", "creator")])
+    //     .add_submessage(generate_economics_message(OWNER, "Send"));
+
+    // assert_eq!(res, expected_res);
+}
 
 // #[test]
 // fn test_execute_send_ado_recipient() {

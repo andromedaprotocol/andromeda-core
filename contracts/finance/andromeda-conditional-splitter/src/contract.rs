@@ -183,14 +183,13 @@ fn execute_send(ctx: ExecuteContext) -> Result<Response, ContractError> {
             // let funds_surpass_threshold =
             //     till_threshold.checked_div_floor(recipient_percent).unwrap();
 
-            // Save new amount sent
             recip_coin.amount = coin.amount * recipient_percent;
 
             // Save new funds
-            let new_fund = recipient_addr.funds + recip_coin.amount;
+            let new_funds = recipient_addr.funds + recip_coin.amount;
             let new_address_funds = AddressFunds {
                 recipient: recipient_addr.recipient.clone(),
-                funds: new_fund,
+                funds: new_funds,
             };
             recipients_with_new_funds.push(new_address_funds);
 
