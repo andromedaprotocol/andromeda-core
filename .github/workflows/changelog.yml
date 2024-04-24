@@ -1,4 +1,4 @@
-name: "Changelog Updates"
+name: "Documentation"
 on:
   pull_request:
     # The specific activity types are listed here to include "labeled" and "unlabeled"
@@ -6,6 +6,9 @@ on:
     # This is needed to allow skipping enforcement of the changelog in PRs with specific labels,
     # as defined in the (optional) "skipLabels" property.
     types: [opened, synchronize, reopened, ready_for_review, labeled, unlabeled]
+    branches:
+      - development
+      - main
 
 jobs:
   # Enforces the update of a changelog file on every pull request
