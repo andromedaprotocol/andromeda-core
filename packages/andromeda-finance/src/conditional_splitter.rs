@@ -35,10 +35,8 @@ pub fn find_threshold(
     // Iterate over the sorted indexed thresholds
     for (index, threshold) in indexed_thresholds {
         if threshold.in_range(num) {
-            // Get original index
-            let original_index = thresholds.len() - 1 - index;
             // Return the threshold and its original index
-            return Ok((threshold.clone(), original_index));
+            return Ok((threshold.clone(), index));
         }
     }
     Err(ContractError::InvalidRange {})
