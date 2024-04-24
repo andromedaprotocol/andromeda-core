@@ -7,7 +7,7 @@ use andromeda_finance::splitter::{
 use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     amp::messages::AMPPkt,
-    common::{actions::call_action, encode_binary, MillisecondsDuration, MillisecondsExpiration},
+    common::{actions::call_action, encode_binary, Milliseconds, MillisecondsDuration},
     error::ContractError,
 };
 use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
@@ -47,14 +47,14 @@ pub fn instantiate(
             );
             Splitter {
                 recipients: msg.recipients.clone(),
-                lock: lock_time.get_time(&env.block).into(),
+                lock: lock_time.get_time(&env.block),
             }
         }
         None => {
             Splitter {
                 recipients: msg.recipients.clone(),
                 // If locking isn't desired upon instantiation, it's automatically set to 0
-                lock: MillisecondsExpiration::default(),
+                lock: Milliseconds::default(),
             }
         }
     };
