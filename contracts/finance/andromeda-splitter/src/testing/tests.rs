@@ -3,7 +3,7 @@ use andromeda_std::{
         messages::{AMPMsg, AMPPkt},
         recipient::Recipient,
     },
-    common::{MillisecondsDuration, MillisecondsExpiration},
+    common::{expiration::Expiry, Milliseconds},
     error::ContractError,
 };
 use andromeda_testing::economics_msg::generate_economics_message;
@@ -34,7 +34,7 @@ fn init(deps: DepsMut) -> Response {
         owner: Some(OWNER.to_owned()),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         recipients: mock_recipient,
-        lock_time: Some(MillisecondsDuration::from_seconds(100_000)),
+        lock_time: Some(Expiry::AtTime(Milliseconds::from_seconds(100_000))),
     };
 
     let info = mock_info("owner", &[]);

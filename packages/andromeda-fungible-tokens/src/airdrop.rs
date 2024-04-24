@@ -1,8 +1,10 @@
-use andromeda_std::{andr_exec, andr_instantiate, andr_instantiate_modules, andr_query};
+use andromeda_std::{
+    andr_exec, andr_instantiate, andr_instantiate_modules, andr_query,
+    common::{expiration::Expiry, MillisecondsExpiration},
+};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
 use cw_asset::{AssetInfo, AssetInfoUnchecked};
-use cw_utils::Expiration;
 
 #[andr_instantiate]
 #[andr_instantiate_modules]
@@ -17,7 +19,7 @@ pub enum ExecuteMsg {
     RegisterMerkleRoot {
         /// MerkleRoot is hex-encoded merkle root.
         merkle_root: String,
-        expiration: Option<Expiration>,
+        expiration: Option<Expiry>,
         total_amount: Option<Uint128>,
     },
     /// Claim does not check if contract has enough funds, owner must ensure it.
@@ -58,7 +60,7 @@ pub struct MerkleRootResponse {
     pub stage: u8,
     /// MerkleRoot is hex-encoded merkle root.
     pub merkle_root: String,
-    pub expiration: Expiration,
+    pub expiration: Option<MillisecondsExpiration>,
     pub total_amount: Uint128,
 }
 

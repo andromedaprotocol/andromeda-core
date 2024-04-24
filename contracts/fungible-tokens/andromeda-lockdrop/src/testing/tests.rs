@@ -9,6 +9,7 @@ use andromeda_fungible_tokens::lockdrop::{
     UserInfoResponse,
 };
 use andromeda_std::amp::AndrAddr;
+use andromeda_std::common::expiration::Expiry;
 use andromeda_std::common::{MillisecondsDuration, MillisecondsExpiration};
 use andromeda_std::{
     common::{expiration::MILLISECONDS_TO_NANOSECONDS_RATIO, Milliseconds},
@@ -1000,7 +1001,7 @@ fn test_query_withdrawable_percent() {
         .time
         .plus_seconds(DEPOSIT_WINDOW + WITHDRAWAL_WINDOW);
     let msg = QueryMsg::WithdrawalPercentAllowed {
-        timestamp: Some(Milliseconds::from_seconds(timestamp.seconds())),
+        timestamp: Some(Milliseconds::from_nanos(timestamp.nanos())),
     };
     let res: Decimal = from_json(query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
 

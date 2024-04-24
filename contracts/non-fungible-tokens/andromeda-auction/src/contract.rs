@@ -14,10 +14,10 @@ use andromeda_std::{
     amp::{AndrAddr, Recipient},
     common::{
         actions::call_action,
-        denom::{validate_denom, SEND_CW20_ACTION},
+        denom::{Asset, SEND_CW20_ACTION},
         encode_binary,
-        expiration::{expiration_from_milliseconds, get_and_validate_start_time},
-        Funds, Milliseconds, MillisecondsExpiration, OrderBy,
+        expiration::{expiration_from_milliseconds, get_and_validate_start_time, Expiry},
+        Funds, Milliseconds, OrderBy,
     },
     error::ContractError,
 };
@@ -144,7 +144,6 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
             start_time,
             end_time,
             coin_denom,
-            uses_cw20,
             whitelist,
             min_bid,
             recipient,
@@ -155,7 +154,6 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
             start_time,
             end_time,
             coin_denom,
-            uses_cw20,
             whitelist,
             min_bid,
             recipient,
@@ -201,7 +199,6 @@ fn handle_receive_cw721(
             start_time,
             end_time,
             coin_denom,
-            uses_cw20,
             whitelist,
             min_bid,
             recipient,
@@ -212,7 +209,6 @@ fn handle_receive_cw721(
             start_time,
             end_time,
             coin_denom,
-            uses_cw20,
             whitelist,
             min_bid,
             recipient,
@@ -274,41 +270,28 @@ fn execute_start_auction(
     ctx: ExecuteContext,
     sender: String,
     token_id: String,
-    start_time: Option<MillisecondsExpiration>,
-    end_time: MillisecondsExpiration,
-    coin_denom: String,
-    uses_cw20: bool,
+    start_time: Option<Expiry>,
+    end_time: Expiry,
+    coin_denom: Asset,
     whitelist: Option<Vec<Addr>>,
     min_bid: Option<Uint128>,
     recipient: Option<Recipient>,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
-        deps, info, env, ..
+        mut deps,
+        info,
+        env,
+        ..
     } = ctx;
-    if uses_cw20 {
-        let valid_cw20_auction = ADOContract::default()
-            .is_permissioned(
-                deps.storage,
-                env.clone(),
-                SEND_CW20_ACTION,
-                coin_denom.clone(),
-            )
-            .is_ok();
-        ensure!(
-            valid_cw20_auction,
-            ContractError::InvalidFunds {
-                msg: format!("Non-permissioned CW20 asset '{}' set as denom.", coin_denom)
-            }
-        );
-    } else {
-        validate_denom(deps.as_ref(), coin_denom.clone())?;
-    }
-    ensure!(!end_time.is_zero(), ContractError::InvalidExpiration {});
+    let (coin_denom, uses_cw20) = coin_denom.get_verified_asset(deps.branch(), env.clone())?;
+    ensure!(
+        !end_time.get_time(&env.block).is_zero(),
+        ContractError::InvalidExpiration {}
+    );
 
     // If start time wasn't provided, it will be set as the current_time
-    let (start_expiration, _current_time) =
-        get_and_validate_start_time(&env, start_time.map(|m| m.into()))?;
-    let end_expiration = expiration_from_milliseconds(end_time.into())?;
+    let (start_expiration, _current_time) = get_and_validate_start_time(&env, start_time)?;
+    let end_expiration = expiration_from_milliseconds(end_time.get_time(&env.block))?;
 
     ensure!(
         end_expiration > start_expiration,
@@ -370,37 +353,22 @@ fn execute_update_auction(
     ctx: ExecuteContext,
     token_id: String,
     token_address: String,
-    start_time: Option<MillisecondsExpiration>,
-    end_time: MillisecondsExpiration,
-    coin_denom: String,
-    uses_cw20: bool,
+    start_time: Option<Expiry>,
+    end_time: Expiry,
+    coin_denom: Asset,
     whitelist: Option<Vec<Addr>>,
     min_bid: Option<Uint128>,
     recipient: Option<Recipient>,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
-        deps, info, env, ..
+        mut deps,
+        info,
+        env,
+        ..
     } = ctx;
     nonpayable(&info)?;
+    let (coin_denom, uses_cw20) = coin_denom.get_verified_asset(deps.branch(), env.clone())?;
 
-    if uses_cw20 {
-        let valid_cw20_auction = ADOContract::default()
-            .is_permissioned(
-                deps.storage,
-                env.clone(),
-                SEND_CW20_ACTION,
-                coin_denom.clone(),
-            )
-            .is_ok();
-        ensure!(
-            valid_cw20_auction,
-            ContractError::InvalidFunds {
-                msg: "Non-permissioned CW20 asset sent".to_string()
-            }
-        );
-    } else {
-        validate_denom(deps.as_ref(), coin_denom.clone())?;
-    }
     let mut token_auction_state =
         get_existing_token_auction_state(deps.storage, &token_id, &token_address)?;
     ensure!(
@@ -411,12 +379,14 @@ fn execute_update_auction(
         !token_auction_state.start_time.is_expired(&env.block),
         ContractError::AuctionAlreadyStarted {}
     );
-    ensure!(!end_time.is_zero(), ContractError::InvalidExpiration {});
+    ensure!(
+        !end_time.get_time(&env.block).is_zero(),
+        ContractError::InvalidExpiration {}
+    );
 
     // If start time wasn't provided, it will be set as the current_time
-    let (start_expiration, _current_time) =
-        get_and_validate_start_time(&env, start_time.map(Milliseconds::from))?;
-    let end_expiration = expiration_from_milliseconds(end_time.into())?;
+    let (start_expiration, _current_time) = get_and_validate_start_time(&env, start_time)?;
+    let end_expiration = expiration_from_milliseconds(end_time.get_time(&env.block))?;
 
     ensure!(
         end_expiration > start_expiration,
@@ -566,7 +536,7 @@ fn execute_place_bid(
     bids_for_auction.push(Bid {
         bidder: info.sender.to_string(),
         amount: payment.amount,
-        timestamp: env.block.time,
+        timestamp: Milliseconds::from_nanos(env.block.time.nanos()),
     });
     BIDS.save(deps.storage, key, &bids_for_auction)?;
     Ok(Response::new().add_messages(messages).add_attributes(vec![
@@ -680,7 +650,7 @@ fn execute_place_bid_cw20(
     bids_for_auction.push(Bid {
         bidder: sender.to_string(),
         amount: amount_sent,
-        timestamp: env.block.time,
+        timestamp: Milliseconds::from_nanos(env.block.time.nanos()),
     });
     BIDS.save(deps.storage, key, &bids_for_auction)?;
     Ok(Response::new()
@@ -904,7 +874,7 @@ fn execute_authorize_token_contract(
     deps: DepsMut,
     info: MessageInfo,
     token_address: AndrAddr,
-    expiration: Option<MillisecondsExpiration>,
+    expiration: Option<Expiry>,
 ) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
     let addr = token_address.get_raw_address(&deps.as_ref())?;
@@ -912,7 +882,11 @@ fn execute_authorize_token_contract(
         contract.is_contract_owner(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {}
     );
-    let permission = Permission::Whitelisted(expiration);
+    let permission = if let Some(expiration) = expiration {
+        Permission::whitelisted(Some(expiration))
+    } else {
+        Permission::whitelisted(None)
+    };
     ADOContract::set_permission(
         deps.storage,
         SEND_NFT_ACTION,

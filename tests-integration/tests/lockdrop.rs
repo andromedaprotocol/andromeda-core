@@ -6,7 +6,7 @@ use andromeda_lockdrop::mock::{
 };
 use andromeda_std::{
     amp::AndrAddr,
-    common::{MillisecondsDuration, MillisecondsExpiration},
+    common::{expiration::Expiry, Milliseconds},
 };
 use andromeda_testing::{mock::mock_app, mock_builder::MockAndromedaBuilder, MockContract};
 use cosmwasm_std::{coin, to_json_binary, BlockInfo, Uint128};
@@ -61,12 +61,12 @@ fn test_lockdrop() {
 
     let code = mock_andromeda_lockdrop();
     let lockdrop_code_id = app.store_code(code);
-    let current_timestamp = app.block_info().time.seconds();
+    let current_timestamp = app.block_info().time.nanos();
 
     let init_msg = mock_lockdrop_instantiate_msg(
-        MillisecondsExpiration::from_seconds(current_timestamp),
-        MillisecondsDuration::from_seconds(100u64),
-        MillisecondsDuration::from_seconds(50u64),
+        Expiry::AtTime(Milliseconds::from_nanos(current_timestamp)),
+        Milliseconds::from_seconds(100u64),
+        Milliseconds::from_seconds(50u64),
         AndrAddr::from_string(format!("~{0}", cw20_incentives_address)),
         "uusd".to_string(),
         None,

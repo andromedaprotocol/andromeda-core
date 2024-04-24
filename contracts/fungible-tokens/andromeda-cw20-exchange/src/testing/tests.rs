@@ -5,7 +5,8 @@ use andromeda_fungible_tokens::cw20_exchange::{
 use andromeda_std::{
     amp::AndrAddr,
     common::{
-        expiration::MILLISECONDS_TO_NANOSECONDS_RATIO, MillisecondsDuration, MillisecondsExpiration,
+        expiration::{Expiry, MILLISECONDS_TO_NANOSECONDS_RATIO},
+        Milliseconds,
     },
     error::ContractError,
     testing::mock_querier::MOCK_KERNEL_CONTRACT,
@@ -166,8 +167,8 @@ pub fn test_start_sale() {
         exchange_rate,
         recipient: None,
         // A start time ahead of the current time
-        start_time: Some(MillisecondsExpiration(current_time + 10)),
-        duration: Some(MillisecondsDuration(1)),
+        start_time: Some(Expiry::AtTime(Milliseconds(current_time + 10))),
+        duration: Some(Milliseconds(1)),
     };
     let receive_msg = Cw20ReceiveMsg {
         sender: owner.to_string(),
@@ -257,7 +258,7 @@ pub fn test_start_sale_invalid_start_time() {
         asset: exchange_asset,
         exchange_rate,
         recipient: None,
-        start_time: Some(MillisecondsExpiration(1)),
+        start_time: Some(Expiry::AtTime(Milliseconds(1))),
         duration: None,
     };
     let receive_msg = Cw20ReceiveMsg {

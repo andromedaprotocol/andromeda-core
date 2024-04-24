@@ -13,11 +13,11 @@ use andromeda_std::ado_contract::ADOContract;
 use andromeda_std::amp::Recipient;
 use andromeda_std::common::actions::call_action;
 use andromeda_std::common::context::ExecuteContext;
-use andromeda_std::common::denom::{validate_denom, SEND_CW20_ACTION};
+use andromeda_std::common::denom::{Asset, SEND_CW20_ACTION};
 use andromeda_std::common::expiration::{
-    expiration_from_milliseconds, get_and_validate_start_time,
+    expiration_from_milliseconds, get_and_validate_start_time, Expiry,
 };
-use andromeda_std::common::{Milliseconds, MillisecondsDuration, MillisecondsExpiration};
+use andromeda_std::common::{Milliseconds, MillisecondsDuration};
 use andromeda_std::{
     ado_base::{hooks::AndromedaHook, InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     common::{encode_binary, rates::get_tax_amount, Funds},
@@ -129,17 +129,8 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
             token_address,
             coin_denom,
             price,
-            uses_cw20,
             recipient,
-        } => execute_update_sale(
-            ctx,
-            token_id,
-            token_address,
-            price,
-            coin_denom,
-            uses_cw20,
-            recipient,
-        ),
+        } => execute_update_sale(ctx, token_id, token_address, price, coin_denom, recipient),
         ExecuteMsg::Buy {
             token_id,
             token_address,
@@ -170,7 +161,6 @@ fn handle_receive_cw721(
             coin_denom,
             start_time,
             duration,
-            uses_cw20,
             recipient,
         } => execute_start_sale(
             deps,
@@ -179,10 +169,9 @@ fn handle_receive_cw721(
             msg.token_id,
             info.sender.to_string(),
             price,
-            coin_denom,
             start_time,
+            coin_denom,
             duration,
-            uses_cw20,
             recipient,
         ),
     }
@@ -229,53 +218,36 @@ pub fn handle_receive_cw20(
 
 #[allow(clippy::too_many_arguments)]
 fn execute_start_sale(
-    deps: DepsMut,
+    mut deps: DepsMut,
     env: Env,
     sender: String,
     token_id: String,
     token_address: String,
     price: Uint128,
-    coin_denom: String,
-    start_time: Option<MillisecondsExpiration>,
+    start_time: Option<Expiry>,
+    coin_denom: Asset,
     duration: Option<MillisecondsDuration>,
-    uses_cw20: bool,
     recipient: Option<Recipient>,
 ) -> Result<Response, ContractError> {
-    if uses_cw20 {
-        let valid_cw20_sale = ADOContract::default()
-            .is_permissioned(
-                deps.storage,
-                env.clone(),
-                SEND_CW20_ACTION,
-                coin_denom.clone(),
-            )
-            .is_ok();
-        ensure!(
-            valid_cw20_sale,
-            ContractError::InvalidFunds {
-                msg: format!("Non-permissioned CW20 asset '{}' set as denom.", coin_denom)
-            }
-        );
-    } else {
-        validate_denom(deps.as_ref(), coin_denom.clone())?;
-    }
+    let (coin_denom, uses_cw20) = coin_denom.get_verified_asset(deps.branch(), env.clone())?;
 
     // Price can't be zero
     ensure!(price > Uint128::zero(), ContractError::InvalidZeroAmount {});
-    // If start time wasn't provided, it will be set as the current_time
-    let (start_expiration, current_time) =
-        get_and_validate_start_time(&env, start_time.map(Milliseconds::from))?;
 
-    // If no duration is provided, the exipration will be set as Never
+    // If start time wasn't provided, it will be set as the current_time
+    let (start_expiration, _current_time) = get_and_validate_start_time(&env, start_time.clone())?;
+
     let end_expiration = if let Some(duration) = duration {
         ensure!(!duration.is_zero(), ContractError::InvalidExpiration {});
         expiration_from_milliseconds(
             start_time
-                .unwrap_or(current_time.plus_seconds(1).into())
-                .plus_milliseconds(duration.into())
-                .into(),
+                // If start time isn't provided, it is set one second in advance from the current time
+                .unwrap_or(Expiry::FromNow(Milliseconds::from_seconds(1)))
+                .get_time(&env.block)
+                .plus_milliseconds(duration),
         )?
     } else {
+        // If no duration is provided, the exipration will be set as Never
         Expiration::Never {}
     };
 
@@ -318,26 +290,16 @@ fn execute_update_sale(
     token_id: String,
     token_address: String,
     price: Uint128,
-    coin_denom: String,
-    uses_cw20: bool,
+    coin_denom: Asset,
     recipient: Option<Recipient>,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
-        deps, env, info, ..
+        mut deps,
+        env,
+        info,
+        ..
     } = ctx;
-    if uses_cw20 {
-        let valid_cw20_sale = ADOContract::default()
-            .is_permissioned(deps.storage, env, SEND_CW20_ACTION, coin_denom.clone())
-            .is_ok();
-        ensure!(
-            valid_cw20_sale,
-            ContractError::InvalidFunds {
-                msg: format!("Non-permissioned CW20 asset '{}' set as denom.", coin_denom)
-            }
-        );
-    } else {
-        validate_denom(deps.as_ref(), coin_denom.clone())?;
-    }
+    let (coin_denom, uses_cw20) = coin_denom.get_verified_asset(deps.branch(), env)?;
     nonpayable(&info)?;
 
     let mut token_sale_state =

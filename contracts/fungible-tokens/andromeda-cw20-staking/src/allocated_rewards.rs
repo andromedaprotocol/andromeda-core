@@ -3,11 +3,12 @@ use andromeda_fungible_tokens::cw20_staking::{
 };
 use andromeda_std::{common::Milliseconds, error::ContractError};
 
-use cosmwasm_std::{Decimal, Decimal256, Uint128};
+use cosmwasm_std::{BlockInfo, Decimal, Decimal256, Uint128};
 
 /// This was taken with few changes from the MARS staking contract
 /// https://github.com/mars-protocol/mars-periphery/blob/537ab8046a4670d0e80de6cbf6e6e0492c586fb2/contracts/lp_staking/src/contract.rs#L420
 pub(crate) fn update_allocated_index(
+    block_info: &BlockInfo,
     total_share: Uint128,
     reward_token: &mut RewardToken,
     config: AllocationConfig,
@@ -16,7 +17,9 @@ pub(crate) fn update_allocated_index(
     init_timestamp: Milliseconds,
 ) -> Result<(), ContractError> {
     // If the reward distribution period is over
-    if state.last_distributed == config.till_timestamp || !reward_token.is_active {
+    if state.last_distributed == config.till_timestamp.get_time(block_info)
+        || !reward_token.is_active
+    {
         return Ok(());
     }
 
@@ -25,14 +28,14 @@ pub(crate) fn update_allocated_index(
         cur_timestamp,
         init_timestamp,
         config.cycle_duration,
-        config.till_timestamp,
+        config.till_timestamp.get_time(block_info),
     );
     let mut rewards_to_distribute = Uint128::zero();
     let mut last_distribution_next_timestamp: u64; // 0 as u64;
 
     while state.current_cycle >= last_distribution_cycle {
         last_distribution_next_timestamp = std::cmp::min(
-            config.till_timestamp.milliseconds(),
+            config.till_timestamp.get_time(block_info).milliseconds(),
             calculate_init_timestamp_for_cycle(
                 init_timestamp,
                 last_distribution_cycle + 1,
@@ -71,7 +74,7 @@ pub(crate) fn update_allocated_index(
         }
     }
 
-    if state.last_distributed == config.till_timestamp {
+    if state.last_distributed == config.till_timestamp.get_time(block_info) {
         state.current_cycle_rewards = Uint128::zero();
     }
 
