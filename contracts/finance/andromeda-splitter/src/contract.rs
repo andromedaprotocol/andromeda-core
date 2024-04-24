@@ -47,7 +47,7 @@ pub fn instantiate(
             );
             Splitter {
                 recipients: msg.recipients.clone(),
-                lock: lock_time.get_time(&env.block),
+                lock: lock_time.get_time(&env.block).into(),
             }
         }
         None => {

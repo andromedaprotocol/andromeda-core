@@ -310,8 +310,7 @@ fn execute_start_sale(
         ContractError::Unauthorized {}
     );
     // If start time wasn't provided, it will be set as the current_time
-    let (start_expiration, _current_time) =
-        get_and_validate_start_time(&env, start_time.map(Milliseconds::from))?;
+    let (start_expiration, _current_time) = get_and_validate_start_time(&env, start_time)?;
 
     let end_expiration = expiration_from_milliseconds(end_time.get_time(&env.block))?;
 

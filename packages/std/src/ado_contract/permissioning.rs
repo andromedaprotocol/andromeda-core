@@ -473,7 +473,7 @@ mod tests {
     use crate::{
         ado_base::AndromedaMsg,
         amp::messages::AMPPkt,
-        common::{expiration::Expiry, MillisecondsExpiration},
+        common::{expiration::Expiry, Milliseconds, MillisecondsExpiration},
     };
 
     use super::*;
@@ -689,7 +689,7 @@ mod tests {
         let actor = "actor";
         let contract = ADOContract::default();
         let time = 2;
-        let expiration = Expiry::AtTime(MillisecondsExpiration::from_seconds(time));
+        let expiration = Expiry::AtTime(Milliseconds::from_seconds(time));
 
         env.block.time = MillisecondsExpiration::from_seconds(0).into();
         contract

@@ -169,8 +169,8 @@ pub fn mock_start_auction(
     recipient: Option<Recipient>,
 ) -> Cw721HookMsg {
     Cw721HookMsg::StartAuction {
-        start_time: start_time.map(|t| t.into()),
-        end_time: end_time.into(),
+        start_time,
+        end_time,
         coin_denom,
         min_bid,
         whitelist,

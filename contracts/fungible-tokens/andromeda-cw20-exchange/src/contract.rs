@@ -208,7 +208,7 @@ pub fn execute_start_sale(
                 // If start time isn't provided, it is set one second in advance from the current time
                 .unwrap_or(Expiry::FromNow(Milliseconds::from_seconds(1)))
                 .get_time(&env.block)
-                .plus_milliseconds(duration),
+                .plus_milliseconds(duration.into()),
         )?
     } else {
         Expiration::Never {}

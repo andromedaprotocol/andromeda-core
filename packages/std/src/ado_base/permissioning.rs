@@ -110,15 +110,21 @@ impl Permission {
 
     pub fn get_expiration(&self, env: Env) -> MillisecondsExpiration {
         match self {
-            Self::Blacklisted(expiration) => {
-                expiration.clone().unwrap_or_default().get_time(&env.block)
-            }
-            Self::Limited { expiration, .. } => {
-                expiration.clone().unwrap_or_default().get_time(&env.block)
-            }
-            Self::Whitelisted(expiration) => {
-                expiration.clone().unwrap_or_default().get_time(&env.block)
-            }
+            Self::Blacklisted(expiration) => expiration
+                .clone()
+                .unwrap_or_default()
+                .get_time(&env.block)
+                .into(),
+            Self::Limited { expiration, .. } => expiration
+                .clone()
+                .unwrap_or_default()
+                .get_time(&env.block)
+                .into(),
+            Self::Whitelisted(expiration) => expiration
+                .clone()
+                .unwrap_or_default()
+                .get_time(&env.block)
+                .into(),
         }
     }
 

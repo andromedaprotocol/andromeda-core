@@ -154,8 +154,8 @@ pub fn mock_start_crowdfund_msg(
     recipient: Recipient,
 ) -> ExecuteMsg {
     ExecuteMsg::StartSale {
-        start_time: start_time.map(MillisecondsExpiration::from),
-        end_time: end_time.into(),
+        start_time,
+        end_time,
         price,
         min_tokens_sold,
         max_amount_per_wallet,

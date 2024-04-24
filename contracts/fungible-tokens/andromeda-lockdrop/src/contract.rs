@@ -63,8 +63,8 @@ pub fn instantiate(
     let config = Config {
         // bootstrap_contract_address: msg.bootstrap_contract,
         init_timestamp: msg.init_timestamp.get_time(&env.block),
-        deposit_window: msg.deposit_window,
-        withdrawal_window: msg.withdrawal_window,
+        deposit_window: msg.deposit_window.into(),
+        withdrawal_window: msg.withdrawal_window.into(),
         lockdrop_incentives: Uint128::zero(),
         incentive_token: msg.incentive_token,
         native_denom: msg.native_denom,

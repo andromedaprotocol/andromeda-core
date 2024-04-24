@@ -9,7 +9,7 @@ use andromeda_std::{
         encode_binary,
         expiration::{expiration_from_milliseconds, Expiry, MILLISECONDS_TO_NANOSECONDS_RATIO},
         reply::ReplyId,
-        Milliseconds, MillisecondsDuration, MillisecondsExpiration,
+        Milliseconds, MillisecondsDuration,
     },
     error::ContractError,
     os::economics::ExecuteMsg as EconomicsExecuteMsg,
@@ -83,7 +83,7 @@ fn start_sale_future_start_with_duration(deps: DepsMut, env: Env) {
         // Add one to the current time to have it set in the future
         start_time: Some(Expiry::AtTime(Milliseconds(current_time + 1))),
         // Add duration, the end time's expiration will be current time + duration
-        duration: Some(Milliseconds(1)),
+        duration: Some(MillisecondsDuration(1)),
         recipient: None,
     };
     let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {

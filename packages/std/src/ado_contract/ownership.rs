@@ -52,7 +52,7 @@ impl<'a> ADOContract<'a> {
         POTENTIAL_OWNER.save(deps.storage, &new_owner_addr)?;
 
         if let Some(exp) = expiration {
-            POTENTIAL_OWNER_EXPIRATION.save(deps.storage, &exp.get_time(&env.block))?;
+            POTENTIAL_OWNER_EXPIRATION.save(deps.storage, &exp.get_time(&env.block).into())?;
         } else {
             // In case an offer is already pending
             POTENTIAL_OWNER_EXPIRATION.remove(deps.storage);

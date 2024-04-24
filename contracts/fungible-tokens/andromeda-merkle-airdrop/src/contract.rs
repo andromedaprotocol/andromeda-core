@@ -138,7 +138,7 @@ pub fn execute_register_merkle_root(
     STAGE_EXPIRATION.save(
         deps.storage,
         stage,
-        &expiration.map(|e| e.get_time(&env.block)),
+        &expiration.map(|e| e.get_time(&env.block).into()),
     )?;
 
     // save total airdropped amount
@@ -171,7 +171,10 @@ pub fn execute_claim(
         let expiration = expiration_milliseconds;
         ensure!(
             !expiration.is_expired(&env.block),
-            ContractError::StageExpired { stage, expiration }
+            ContractError::StageExpired {
+                stage,
+                expiration: expiration.into()
+            }
         );
     };
 
@@ -254,7 +257,10 @@ pub fn execute_burn(ctx: ExecuteContext, stage: u8) -> Result<Response, Contract
     if let Some(expiration) = expiration {
         ensure!(
             expiration.is_expired(&env.block),
-            ContractError::StageNotExpired { stage, expiration }
+            ContractError::StageNotExpired {
+                stage,
+                expiration: expiration.into()
+            }
         );
     }
 

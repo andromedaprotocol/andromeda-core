@@ -3,7 +3,7 @@ use andromeda_std::{
         messages::{AMPMsg, AMPPkt},
         recipient::Recipient,
     },
-    common::{expiration::Expiry, Milliseconds},
+    common::{expiration::Expiry, Milliseconds, MillisecondsDuration, MillisecondsExpiration},
     error::ContractError,
 };
 use andromeda_testing::economics_msg::generate_economics_message;

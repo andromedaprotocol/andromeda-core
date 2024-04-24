@@ -55,13 +55,13 @@ macro_rules! milliseconds_like {
     ($t: ident) => {
         impl $t {
             pub fn is_expired(&self, block: &BlockInfo) -> bool {
-                let time = block.time.seconds() * 1000;
-                self.0 <= time
+                let time = $t::from_nanos(block.time.nanos());
+                self.0 <= time.0
             }
 
             pub fn is_in_past(&self, block: &BlockInfo) -> bool {
-                let time = block.time.seconds() * 1000;
-                self.0 < time
+                let time = $t::from_nanos(block.time.nanos());
+                self.0 < time.0
             }
 
             #[inline]

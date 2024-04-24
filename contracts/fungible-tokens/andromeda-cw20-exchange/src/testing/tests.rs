@@ -6,7 +6,7 @@ use andromeda_std::{
     amp::AndrAddr,
     common::{
         expiration::{Expiry, MILLISECONDS_TO_NANOSECONDS_RATIO},
-        Milliseconds,
+        Milliseconds, MillisecondsDuration,
     },
     error::ContractError,
     testing::mock_querier::MOCK_KERNEL_CONTRACT,
@@ -168,7 +168,7 @@ pub fn test_start_sale() {
         recipient: None,
         // A start time ahead of the current time
         start_time: Some(Expiry::AtTime(Milliseconds(current_time + 10))),
-        duration: Some(Milliseconds(1)),
+        duration: Some(MillisecondsDuration(1)),
     };
     let receive_msg = Cw20ReceiveMsg {
         sender: owner.to_string(),

@@ -124,9 +124,9 @@ fn test_execute_release_funds_block_condition() {
 
     let info = mock_info(owner, &[coin(100, "uusd")]);
     let msg = ExecuteMsg::HoldFunds {
-        condition: Some(EscrowCondition::Expiration(Milliseconds::from_nanos(
-            env.block.time.nanos(),
-        ))),
+        condition: Some(EscrowCondition::Expiration(
+            MillisecondsExpiration::from_nanos(env.block.time.nanos()),
+        )),
         recipient: None,
     };
     let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();

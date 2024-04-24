@@ -35,7 +35,7 @@ fn init(deps: DepsMut) -> Result<Response, ContractError> {
 
     let msg = InstantiateMsg {
         // bootstrap_contract: None,
-        init_timestamp: MillisecondsExpiration::from_seconds(env.block.time.seconds()),
+        init_timestamp: Expiry::AtTime(Milliseconds::from_nanos(env.block.time.nanos())),
         deposit_window: MillisecondsDuration::from_seconds(DEPOSIT_WINDOW),
         withdrawal_window: MillisecondsDuration::from_seconds(WITHDRAWAL_WINDOW),
         incentive_token: AndrAddr::from_string(MOCK_INCENTIVE_TOKEN),
@@ -70,7 +70,7 @@ fn test_instantiate() {
     assert_eq!(
         ConfigResponse {
             // bootstrap_contract_address: None,
-            init_timestamp: MillisecondsExpiration::from_seconds(mock_env().block.time.seconds()),
+            init_timestamp: MillisecondsExpiration::from_nanos(mock_env().block.time.nanos()),
             deposit_window: MillisecondsDuration::from_seconds(DEPOSIT_WINDOW),
             withdrawal_window: MillisecondsDuration::from_seconds(WITHDRAWAL_WINDOW),
             lockdrop_incentives: Uint128::zero(),
@@ -101,7 +101,7 @@ fn test_instantiate_init_timestamp_past() {
 
     let msg = InstantiateMsg {
         // bootstrap_contract: None,
-        init_timestamp: MillisecondsExpiration::from_seconds(env.block.time.seconds() - 1),
+        init_timestamp: Expiry::AtTime(Milliseconds::from_seconds(env.block.time.seconds() - 1)),
         deposit_window: MillisecondsDuration::from_seconds(5),
         withdrawal_window: MillisecondsDuration::from_seconds(2),
         incentive_token: AndrAddr::from_string(MOCK_INCENTIVE_TOKEN),
@@ -130,7 +130,7 @@ fn test_instantiate_init_deposit_window_zero() {
 
     let msg = InstantiateMsg {
         // bootstrap_contract: None,
-        init_timestamp: MillisecondsExpiration::from_seconds(env.block.time.seconds() + 1),
+        init_timestamp: Expiry::AtTime(Milliseconds::from_seconds(env.block.time.seconds() + 1)),
         deposit_window: MillisecondsDuration::from_seconds(0),
         withdrawal_window: MillisecondsDuration::from_seconds(2),
         incentive_token: AndrAddr::from_string(MOCK_INCENTIVE_TOKEN),
@@ -153,7 +153,7 @@ fn test_instantiate_init_withdrawal_window_zero() {
 
     let msg = InstantiateMsg {
         // bootstrap_contract: None,
-        init_timestamp: MillisecondsExpiration::from_seconds(env.block.time.seconds() + 1),
+        init_timestamp: Expiry::AtTime(Milliseconds::from_seconds(env.block.time.seconds() + 1)),
         deposit_window: MillisecondsDuration::from_seconds(5),
         withdrawal_window: MillisecondsDuration::from_seconds(0),
         incentive_token: AndrAddr::from_string(MOCK_INCENTIVE_TOKEN),
@@ -176,7 +176,7 @@ fn test_instantiate_init_deposit_window_less_than_withdrawal_window() {
 
     let msg = InstantiateMsg {
         // bootstrap_contract: None,
-        init_timestamp: MillisecondsExpiration::from_seconds(env.block.time.seconds() + 1),
+        init_timestamp: Expiry::AtTime(Milliseconds::from_seconds(env.block.time.seconds() + 1)),
         deposit_window: MillisecondsDuration::from_seconds(2),
         withdrawal_window: MillisecondsDuration::from_seconds(5),
         incentive_token: AndrAddr::from_string(MOCK_INCENTIVE_TOKEN),
