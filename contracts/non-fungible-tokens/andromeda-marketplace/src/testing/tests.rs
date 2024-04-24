@@ -8,7 +8,7 @@ use andromeda_std::{
         encode_binary,
         expiration::{expiration_from_milliseconds, MILLISECONDS_TO_NANOSECONDS_RATIO},
         reply::ReplyId,
-        Milliseconds,
+        Milliseconds, MillisecondsDuration, MillisecondsExpiration,
     },
     error::ContractError,
     os::economics::ExecuteMsg as EconomicsExecuteMsg,
@@ -59,7 +59,7 @@ fn start_sale_future_start(deps: DepsMut, env: Env, coin_denom: String, uses_cw2
         coin_denom,
         price: Uint128::new(100),
         // Add one to the current time to have it set in the future
-        start_time: Some(Milliseconds(current_time + 1)),
+        start_time: Some(MillisecondsExpiration(current_time + 1)),
         duration: None,
         uses_cw20,
         recipient: None,
@@ -81,9 +81,9 @@ fn start_sale_future_start_with_duration(deps: DepsMut, env: Env, uses_cw20: boo
         coin_denom: "uusd".to_string(),
         price: Uint128::new(100),
         // Add one to the current time to have it set in the future
-        start_time: Some(Milliseconds(current_time + 1)),
+        start_time: Some(MillisecondsExpiration(current_time + 1)),
         // Add duration, the end time's expiration will be current time + duration
-        duration: Some(Milliseconds(1)),
+        duration: Some(MillisecondsDuration(1)),
         uses_cw20,
         recipient: None,
     };

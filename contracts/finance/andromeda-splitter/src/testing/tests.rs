@@ -3,7 +3,7 @@ use andromeda_std::{
         messages::{AMPMsg, AMPPkt},
         recipient::Recipient,
     },
-    common::Milliseconds,
+    common::{MillisecondsDuration, MillisecondsExpiration},
     error::ContractError,
 };
 use andromeda_testing::economics_msg::generate_economics_message;
@@ -34,7 +34,7 @@ fn init(deps: DepsMut) -> Response {
         owner: Some(OWNER.to_owned()),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         recipients: mock_recipient,
-        lock_time: Some(Milliseconds::from_seconds(100_000)),
+        lock_time: Some(MillisecondsDuration::from_seconds(100_000)),
     };
 
     let info = mock_info("owner", &[]);
@@ -61,18 +61,18 @@ fn test_execute_update_lock() {
     // Start off with an expiration that's behind current time (expired)
     let splitter = Splitter {
         recipients: vec![],
-        lock: Milliseconds::from_seconds(current_time - 1),
+        lock: MillisecondsExpiration::from_seconds(current_time - 1),
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
 
     let msg = ExecuteMsg::UpdateLock {
-        lock_time: Milliseconds::from_seconds(lock_time),
+        lock_time: MillisecondsDuration::from_seconds(lock_time),
     };
 
     let info = mock_info(OWNER, &[]);
     let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
-    let new_lock = Milliseconds::from_seconds(current_time + lock_time);
+    let new_lock = MillisecondsExpiration::from_seconds(current_time + lock_time);
     assert_eq!(
         Response::default()
             .add_attributes(vec![
@@ -97,7 +97,7 @@ fn test_execute_update_recipients() {
 
     let splitter = Splitter {
         recipients: vec![],
-        lock: Milliseconds::from_seconds(0),
+        lock: MillisecondsExpiration::from_seconds(0),
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -205,7 +205,7 @@ fn test_execute_send() {
 
     let splitter = Splitter {
         recipients: recipient,
-        lock: Milliseconds::default(),
+        lock: MillisecondsExpiration::default(),
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -280,7 +280,7 @@ fn test_execute_send_ado_recipient() {
 
     let splitter = Splitter {
         recipients: recipient,
-        lock: Milliseconds::default(),
+        lock: MillisecondsExpiration::default(),
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -342,7 +342,7 @@ fn test_handle_packet_exit_with_error_true() {
 
     let splitter = Splitter {
         recipients: recipient,
-        lock: Milliseconds::default(),
+        lock: MillisecondsExpiration::default(),
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -363,7 +363,7 @@ fn test_query_splitter() {
     let env = mock_env();
     let splitter = Splitter {
         recipients: vec![],
-        lock: Milliseconds::default(),
+        lock: MillisecondsExpiration::default(),
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -416,7 +416,7 @@ fn test_execute_send_error() {
 
     let splitter = Splitter {
         recipients: recipient,
-        lock: Milliseconds::default(),
+        lock: MillisecondsExpiration::default(),
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();

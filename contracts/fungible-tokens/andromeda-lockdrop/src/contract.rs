@@ -60,9 +60,9 @@ pub fn instantiate(
 
     let config = Config {
         // bootstrap_contract_address: msg.bootstrap_contract,
-        init_timestamp: msg.init_timestamp,
-        deposit_window: msg.deposit_window,
-        withdrawal_window: msg.withdrawal_window,
+        init_timestamp: msg.init_timestamp.into(),
+        deposit_window: msg.deposit_window.into(),
+        withdrawal_window: msg.withdrawal_window.into(),
         lockdrop_incentives: Uint128::zero(),
         incentive_token: msg.incentive_token,
         native_denom: msg.native_denom,
@@ -177,7 +177,11 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
         QueryMsg::State {} => encode_binary(&query_state(deps)?),
         QueryMsg::UserInfo { address } => encode_binary(&query_user_info(deps, env, address)?),
         QueryMsg::WithdrawalPercentAllowed { timestamp } => {
-            encode_binary(&query_max_withdrawable_percent(deps, env, timestamp)?)
+            encode_binary(&query_max_withdrawable_percent(
+                deps,
+                env,
+                timestamp.map(MillisecondsExpiration::from),
+            )?)
         }
         _ => ADOContract::default().query(deps, env, msg),
     }
@@ -515,9 +519,9 @@ pub fn query_config(deps: Deps) -> Result<ConfigResponse, ContractError> {
 
     Ok(ConfigResponse {
         // bootstrap_contract_address: bootstrap_contract_address?,
-        init_timestamp: config.init_timestamp,
-        deposit_window: config.deposit_window,
-        withdrawal_window: config.withdrawal_window,
+        init_timestamp: config.init_timestamp.into(),
+        deposit_window: config.deposit_window.into(),
+        withdrawal_window: config.withdrawal_window.into(),
         lockdrop_incentives: config.lockdrop_incentives,
         incentive_token: config.incentive_token,
         native_denom: config.native_denom,
@@ -574,7 +578,7 @@ pub fn query_max_withdrawable_percent(
                     msg: "Provided timestamp is in past".to_string()
                 }
             );
-            allowed_withdrawal_percent(timestamp, &config)
+            allowed_withdrawal_percent(timestamp.into(), &config)
         }
         None => allowed_withdrawal_percent(
             Milliseconds::from_seconds(env.block.time.seconds()),
@@ -588,7 +592,7 @@ pub fn query_max_withdrawable_percent(
 //----------------------------------------------------------------------------------------
 
 /// @dev Returns true if deposits are allowed
-fn is_deposit_open(current_timestamp: MillisecondsExpiration, config: &Config) -> bool {
+fn is_deposit_open(current_timestamp: Milliseconds, config: &Config) -> bool {
     let deposits_opened_till = config
         .init_timestamp
         .plus_milliseconds(config.deposit_window);
@@ -596,11 +600,11 @@ fn is_deposit_open(current_timestamp: MillisecondsExpiration, config: &Config) -
 }
 
 /// @dev Returns true if withdrawals are allowed
-fn is_withdraw_open(current_timestamp: MillisecondsExpiration, config: &Config) -> bool {
+fn is_withdraw_open(current_timestamp: Milliseconds, config: &Config) -> bool {
     current_timestamp >= config.init_timestamp
 }
 
-fn is_phase_over(current_timestamp: MillisecondsExpiration, config: &Config) -> bool {
+fn is_phase_over(current_timestamp: Milliseconds, config: &Config) -> bool {
     let deposits_opened_till = config
         .init_timestamp
         .plus_milliseconds(config.deposit_window);
@@ -611,10 +615,7 @@ fn is_phase_over(current_timestamp: MillisecondsExpiration, config: &Config) -> 
 /// @dev Helper function to calculate maximum % of NATIVE deposited that can be withdrawn
 /// @params current_timestamp : Current block timestamp
 /// @params config : Contract configuration
-pub fn allowed_withdrawal_percent(
-    current_timestamp: MillisecondsExpiration,
-    config: &Config,
-) -> Decimal {
+pub fn allowed_withdrawal_percent(current_timestamp: Milliseconds, config: &Config) -> Decimal {
     let withdrawal_cutoff_init_point = config
         .init_timestamp
         .plus_milliseconds(config.deposit_window);

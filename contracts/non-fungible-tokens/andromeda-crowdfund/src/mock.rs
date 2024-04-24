@@ -8,7 +8,7 @@ use andromeda_non_fungible_tokens::{
 use andromeda_std::{
     ado_base::modules::Module,
     amp::{AndrAddr, Recipient},
-    common::Milliseconds,
+    common::{Milliseconds, MillisecondsExpiration},
 };
 use andromeda_testing::{
     mock::MockApp,
@@ -154,8 +154,8 @@ pub fn mock_start_crowdfund_msg(
     recipient: Recipient,
 ) -> ExecuteMsg {
     ExecuteMsg::StartSale {
-        start_time,
-        end_time,
+        start_time: start_time.map(MillisecondsExpiration::from),
+        end_time: end_time.into(),
         price,
         min_tokens_sold,
         max_amount_per_wallet,

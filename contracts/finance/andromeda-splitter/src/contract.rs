@@ -7,7 +7,7 @@ use andromeda_finance::splitter::{
 use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     amp::messages::AMPPkt,
-    common::{actions::call_action, encode_binary, Milliseconds, MillisecondsDuration},
+    common::{actions::call_action, encode_binary, MillisecondsDuration, MillisecondsExpiration},
     error::ContractError,
 };
 use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
@@ -32,7 +32,7 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    let current_time = Milliseconds::from_seconds(env.block.time.seconds());
+    let current_time = MillisecondsDuration::from_seconds(env.block.time.seconds());
     let splitter = match msg.lock_time {
         Some(lock_time) => {
             // New lock time can't be too short
@@ -48,14 +48,14 @@ pub fn instantiate(
             );
             Splitter {
                 recipients: msg.recipients.clone(),
-                lock: current_time.plus_milliseconds(lock_time),
+                lock: current_time.plus_milliseconds(lock_time).into(),
             }
         }
         None => {
             Splitter {
                 recipients: msg.recipients.clone(),
                 // If locking isn't desired upon instantiation, it's automatically set to 0
-                lock: Milliseconds::default(),
+                lock: MillisecondsExpiration::default(),
             }
         }
     };
@@ -267,7 +267,7 @@ fn execute_update_lock(
         ContractError::ContractLocked {}
     );
     // Get current time
-    let current_time = Milliseconds::from_seconds(env.block.time.seconds());
+    let current_time = MillisecondsDuration::from_seconds(env.block.time.seconds());
 
     // New lock time can't be too short
     ensure!(
@@ -284,7 +284,7 @@ fn execute_update_lock(
     // Set new lock time
     let new_expiration = current_time.plus_milliseconds(lock_time);
 
-    splitter.lock = new_expiration;
+    splitter.lock = new_expiration.into();
 
     SPLITTER.save(deps.storage, &splitter)?;
 

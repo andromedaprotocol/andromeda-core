@@ -168,14 +168,13 @@ pub struct GetLockedFundsForRecipientResponse {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use andromeda_std::common::Milliseconds;
     use cosmwasm_std::testing::mock_dependencies;
     use cosmwasm_std::{coin, Timestamp};
 
     #[test]
     fn test_validate() {
         let deps = mock_dependencies();
-        let condition = EscrowCondition::Expiration(Milliseconds::from_seconds(101));
+        let condition = EscrowCondition::Expiration(MillisecondsExpiration::from_seconds(101));
         let coins = vec![coin(100u128, "uluna")];
         let recipient = Recipient::from_string("owner");
 
@@ -237,7 +236,9 @@ mod tests {
         let invalid_time_escrow = Escrow {
             recipient,
             coins,
-            condition: Some(EscrowCondition::Expiration(Milliseconds::from_seconds(0))),
+            condition: Some(EscrowCondition::Expiration(
+                MillisecondsExpiration::from_seconds(0),
+            )),
             recipient_addr: "owner".to_string(),
         };
         let block = BlockInfo {

@@ -17,7 +17,7 @@ use andromeda_std::common::denom::{validate_denom, SEND_CW20_ACTION};
 use andromeda_std::common::expiration::{
     expiration_from_milliseconds, get_and_validate_start_time,
 };
-use andromeda_std::common::{MillisecondsDuration, MillisecondsExpiration};
+use andromeda_std::common::{Milliseconds, MillisecondsDuration, MillisecondsExpiration};
 use andromeda_std::{
     ado_base::{hooks::AndromedaHook, InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     common::{encode_binary, rates::get_tax_amount, Funds},
@@ -263,15 +263,17 @@ fn execute_start_sale(
     // Price can't be zero
     ensure!(price > Uint128::zero(), ContractError::InvalidZeroAmount {});
     // If start time wasn't provided, it will be set as the current_time
-    let (start_expiration, current_time) = get_and_validate_start_time(&env, start_time)?;
+    let (start_expiration, current_time) =
+        get_and_validate_start_time(&env, start_time.map(Milliseconds::from))?;
 
     // If no duration is provided, the exipration will be set as Never
     let end_expiration = if let Some(duration) = duration {
         ensure!(!duration.is_zero(), ContractError::InvalidExpiration {});
         expiration_from_milliseconds(
             start_time
-                .unwrap_or(current_time.plus_seconds(1))
-                .plus_milliseconds(duration),
+                .unwrap_or(current_time.plus_seconds(1).into())
+                .plus_milliseconds(duration.into())
+                .into(),
         )?
     } else {
         Expiration::Never {}

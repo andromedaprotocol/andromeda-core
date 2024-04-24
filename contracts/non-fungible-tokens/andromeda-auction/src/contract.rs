@@ -17,7 +17,7 @@ use andromeda_std::{
         denom::{validate_denom, SEND_CW20_ACTION},
         encode_binary,
         expiration::{expiration_from_milliseconds, get_and_validate_start_time},
-        Funds, MillisecondsExpiration, OrderBy,
+        Funds, Milliseconds, MillisecondsExpiration, OrderBy,
     },
     error::ContractError,
 };
@@ -306,8 +306,9 @@ fn execute_start_auction(
     ensure!(!end_time.is_zero(), ContractError::InvalidExpiration {});
 
     // If start time wasn't provided, it will be set as the current_time
-    let (start_expiration, _current_time) = get_and_validate_start_time(&env, start_time)?;
-    let end_expiration = expiration_from_milliseconds(end_time)?;
+    let (start_expiration, _current_time) =
+        get_and_validate_start_time(&env, start_time.map(|m| m.into()))?;
+    let end_expiration = expiration_from_milliseconds(end_time.into())?;
 
     ensure!(
         end_expiration > start_expiration,
@@ -413,8 +414,9 @@ fn execute_update_auction(
     ensure!(!end_time.is_zero(), ContractError::InvalidExpiration {});
 
     // If start time wasn't provided, it will be set as the current_time
-    let (start_expiration, _current_time) = get_and_validate_start_time(&env, start_time)?;
-    let end_expiration = expiration_from_milliseconds(end_time)?;
+    let (start_expiration, _current_time) =
+        get_and_validate_start_time(&env, start_time.map(Milliseconds::from))?;
+    let end_expiration = expiration_from_milliseconds(end_time.into())?;
 
     ensure!(
         end_expiration > start_expiration,

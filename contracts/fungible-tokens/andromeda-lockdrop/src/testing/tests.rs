@@ -9,6 +9,7 @@ use andromeda_fungible_tokens::lockdrop::{
     UserInfoResponse,
 };
 use andromeda_std::amp::AndrAddr;
+use andromeda_std::common::{MillisecondsDuration, MillisecondsExpiration};
 use andromeda_std::{
     common::{expiration::MILLISECONDS_TO_NANOSECONDS_RATIO, Milliseconds},
     error::ContractError,
@@ -33,9 +34,9 @@ fn init(deps: DepsMut) -> Result<Response, ContractError> {
 
     let msg = InstantiateMsg {
         // bootstrap_contract: None,
-        init_timestamp: Milliseconds::from_seconds(env.block.time.seconds()),
-        deposit_window: Milliseconds::from_seconds(DEPOSIT_WINDOW),
-        withdrawal_window: Milliseconds::from_seconds(WITHDRAWAL_WINDOW),
+        init_timestamp: MillisecondsExpiration::from_seconds(env.block.time.seconds()),
+        deposit_window: MillisecondsDuration::from_seconds(DEPOSIT_WINDOW),
+        withdrawal_window: MillisecondsDuration::from_seconds(WITHDRAWAL_WINDOW),
         incentive_token: AndrAddr::from_string(MOCK_INCENTIVE_TOKEN),
         native_denom: "uusd".to_string(),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
@@ -68,9 +69,9 @@ fn test_instantiate() {
     assert_eq!(
         ConfigResponse {
             // bootstrap_contract_address: None,
-            init_timestamp: Milliseconds::from_seconds(mock_env().block.time.seconds()),
-            deposit_window: Milliseconds::from_seconds(DEPOSIT_WINDOW),
-            withdrawal_window: Milliseconds::from_seconds(WITHDRAWAL_WINDOW),
+            init_timestamp: MillisecondsExpiration::from_seconds(mock_env().block.time.seconds()),
+            deposit_window: MillisecondsDuration::from_seconds(DEPOSIT_WINDOW),
+            withdrawal_window: MillisecondsDuration::from_seconds(WITHDRAWAL_WINDOW),
             lockdrop_incentives: Uint128::zero(),
             incentive_token: AndrAddr::from_string(MOCK_INCENTIVE_TOKEN),
             native_denom: "uusd".to_string()
@@ -99,9 +100,9 @@ fn test_instantiate_init_timestamp_past() {
 
     let msg = InstantiateMsg {
         // bootstrap_contract: None,
-        init_timestamp: Milliseconds::from_seconds(env.block.time.seconds() - 1),
-        deposit_window: Milliseconds::from_seconds(5),
-        withdrawal_window: Milliseconds::from_seconds(2),
+        init_timestamp: MillisecondsExpiration::from_seconds(env.block.time.seconds() - 1),
+        deposit_window: MillisecondsDuration::from_seconds(5),
+        withdrawal_window: MillisecondsDuration::from_seconds(2),
         incentive_token: AndrAddr::from_string(MOCK_INCENTIVE_TOKEN),
         native_denom: "uusd".to_string(),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
@@ -128,9 +129,9 @@ fn test_instantiate_init_deposit_window_zero() {
 
     let msg = InstantiateMsg {
         // bootstrap_contract: None,
-        init_timestamp: Milliseconds::from_seconds(env.block.time.seconds() + 1),
-        deposit_window: Milliseconds::from_seconds(0),
-        withdrawal_window: Milliseconds::from_seconds(2),
+        init_timestamp: MillisecondsExpiration::from_seconds(env.block.time.seconds() + 1),
+        deposit_window: MillisecondsDuration::from_seconds(0),
+        withdrawal_window: MillisecondsDuration::from_seconds(2),
         incentive_token: AndrAddr::from_string(MOCK_INCENTIVE_TOKEN),
         native_denom: "uusd".to_string(),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
@@ -151,9 +152,9 @@ fn test_instantiate_init_withdrawal_window_zero() {
 
     let msg = InstantiateMsg {
         // bootstrap_contract: None,
-        init_timestamp: Milliseconds::from_seconds(env.block.time.seconds() + 1),
-        deposit_window: Milliseconds::from_seconds(5),
-        withdrawal_window: Milliseconds::from_seconds(0),
+        init_timestamp: MillisecondsExpiration::from_seconds(env.block.time.seconds() + 1),
+        deposit_window: MillisecondsDuration::from_seconds(5),
+        withdrawal_window: MillisecondsDuration::from_seconds(0),
         incentive_token: AndrAddr::from_string(MOCK_INCENTIVE_TOKEN),
         native_denom: "uusd".to_string(),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
@@ -174,9 +175,9 @@ fn test_instantiate_init_deposit_window_less_than_withdrawal_window() {
 
     let msg = InstantiateMsg {
         // bootstrap_contract: None,
-        init_timestamp: Milliseconds::from_seconds(env.block.time.seconds() + 1),
-        deposit_window: Milliseconds::from_seconds(2),
-        withdrawal_window: Milliseconds::from_seconds(5),
+        init_timestamp: MillisecondsExpiration::from_seconds(env.block.time.seconds() + 1),
+        deposit_window: MillisecondsDuration::from_seconds(2),
+        withdrawal_window: MillisecondsDuration::from_seconds(5),
         incentive_token: AndrAddr::from_string(MOCK_INCENTIVE_TOKEN),
         native_denom: "uusd".to_string(),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),

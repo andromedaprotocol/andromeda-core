@@ -1,10 +1,7 @@
 use andromeda_fungible_tokens::cw20_staking::{
     AllocationConfig, AllocationState, RewardToken, RewardType,
 };
-use andromeda_std::{
-    common::{Milliseconds, MillisecondsDuration, MillisecondsExpiration},
-    error::ContractError,
-};
+use andromeda_std::{common::Milliseconds, error::ContractError};
 
 use cosmwasm_std::{Decimal, Decimal256, Uint128};
 
@@ -15,8 +12,8 @@ pub(crate) fn update_allocated_index(
     reward_token: &mut RewardToken,
     config: AllocationConfig,
     mut state: AllocationState,
-    cur_timestamp: MillisecondsExpiration,
-    init_timestamp: MillisecondsExpiration,
+    cur_timestamp: Milliseconds,
+    init_timestamp: Milliseconds,
 ) -> Result<(), ContractError> {
     // If the reward distribution period is over
     if state.last_distributed == config.till_timestamp || !reward_token.is_active {
@@ -93,10 +90,10 @@ pub(crate) fn update_allocated_index(
 }
 
 fn calculate_cycles_elapsed(
-    current_timestamp: MillisecondsExpiration,
-    config_init_timestamp: MillisecondsExpiration,
-    cycle_duration: MillisecondsDuration,
-    config_till_timestamp: MillisecondsExpiration,
+    current_timestamp: Milliseconds,
+    config_init_timestamp: Milliseconds,
+    cycle_duration: Milliseconds,
+    config_till_timestamp: Milliseconds,
 ) -> u64 {
     if config_init_timestamp >= current_timestamp {
         return 0u64;
@@ -113,9 +110,9 @@ fn calculate_cycles_elapsed(
 }
 
 fn calculate_init_timestamp_for_cycle(
-    config_init_timestamp: MillisecondsExpiration,
+    config_init_timestamp: Milliseconds,
     current_cycle: u64,
-    cycle_duration: MillisecondsDuration,
+    cycle_duration: Milliseconds,
 ) -> Milliseconds {
     config_init_timestamp
         .plus_milliseconds(Milliseconds(current_cycle * cycle_duration.milliseconds()))
