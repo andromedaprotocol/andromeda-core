@@ -8,54 +8,37 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{ensure, Decimal, Deps, Uint128};
 use std::collections::HashSet;
 
-#[cw_serde]
-// The range of received funds which will correspond to a certain percentage.
-pub struct Range {
-    // Lower bound of the range
-    pub min: Uint128,
-    // Upper bound of the range
-    pub max: Uint128,
-}
-impl Range {
-    pub fn new(min: Uint128, max: Uint128) -> Self {
-        Self { min, max }
-    }
-    pub fn verify_range(&self) -> Result<(), ContractError> {
-        if self.min < self.max {
-            Ok(())
-        } else {
-            Err(ContractError::InvalidRange {})
-        }
-    }
-    pub fn contains(&self, num: Uint128) -> bool {
-        num >= self.min && num <= self.max
-    }
-}
-
 // The contract owner will input a vector of Threshold
 #[cw_serde]
 pub struct Threshold {
-    pub range: Range,
+    pub min: Uint128,
     pub percentage: Decimal,
 }
 impl Threshold {
-    pub fn new(range: Range, percentage: Decimal) -> Self {
-        Self { range, percentage }
+    pub fn new(min: Uint128, percentage: Decimal) -> Self {
+        Self { min, percentage }
     }
-    pub fn contains(&self, num: Uint128) -> bool {
-        self.range.contains(num)
-    }
-}
-
-pub fn find_threshold(thresholds: &[Threshold], num: Uint128) -> Result<&Threshold, ContractError> {
-    let threshold = thresholds.iter().find(|&threshold| threshold.contains(num));
-    if let Some(threshold) = threshold {
-        Ok(threshold)
-    } else {
-        Err(ContractError::InvalidRange {})
+    pub fn in_range(&self, num: Uint128) -> bool {
+        num >= self.min
     }
 }
 
+pub fn find_threshold(thresholds: &[Threshold], num: Uint128) -> Result<Threshold, ContractError> {
+    let mut sorted_thresholds = thresholds.to_vec();
+
+    // Sort thresholds by min values in decreasing order
+    sorted_thresholds.sort_by(|a, b| b.min.cmp(&a.min));
+
+    // Return the first threshold where the number is in its range
+    for threshold in sorted_thresholds {
+        if threshold.in_range(num) {
+            return Ok(threshold);
+        }
+    }
+    Err(ContractError::InvalidRange {})
+}
+
+/// Used to couple each recipient with the funds he's received so far
 #[cw_serde]
 pub struct AddressFunds {
     pub recipient: Recipient,
@@ -156,34 +139,27 @@ pub fn validate_recipient_list(
 
     Ok(())
 }
-
+/// Makes sure the percentages don't exceed 100 and that there are no duplicate min values
 pub fn validate_thresholds(
     thresholds: &Vec<Threshold>,
     recipients: &Vec<AddressFunds>,
 ) -> Result<(), ContractError> {
     let number_of_recipients = recipients.len() as u128;
-    let mut prev_max: Option<Uint128> = None;
 
     for threshold in thresholds {
-        // Check that the range is valid (min > max)
-        threshold.range.verify_range()?;
-
         // The percentage multiplied by the number of recipients shouldn't exceed 100
         ensure!(
             threshold.percentage * Uint128::new(number_of_recipients) <= Uint128::new(100),
             ContractError::AmountExceededHundredPrecent {}
         );
-
-        // The ranges shouldn't overlap
-        if let Some(max) = prev_max {
-            if threshold.range.min <= max {
-                return Err(ContractError::OverlappingRanges {});
-            }
-        }
-
-        // Update prev_max
-        prev_max = Some(threshold.range.max);
     }
+
+    // Check that there are no duplicate minimum values
+    let min_values: HashSet<_> = thresholds.iter().map(|t| t.min.u128()).collect();
+    ensure!(
+        min_values.len() == thresholds.len(),
+        ContractError::DuplicateThresholds {}
+    );
 
     Ok(())
 }

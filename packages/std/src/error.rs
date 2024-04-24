@@ -395,6 +395,9 @@ pub enum ContractError {
     #[error("DuplicateCoinDenoms")]
     DuplicateCoinDenoms {},
 
+    #[error("DuplicateThresholds")]
+    DuplicateThresholds {},
+
     #[error("DuplicateRecipient")]
     DuplicateRecipient {},
 

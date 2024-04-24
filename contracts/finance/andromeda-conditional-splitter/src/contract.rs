@@ -1,10 +1,9 @@
-use std::{ops::Add, vec};
-
 use crate::state::CONDITIONAL_SPLITTER;
 use andromeda_finance::conditional_splitter::{
-    find_threshold, validate_recipient_list, AddressFunds, ConditionalSplitter, ExecuteMsg,
+    find_threshold, AddressFunds, ConditionalSplitter, ExecuteMsg,
     GetConditionalSplitterConfigResponse, InstantiateMsg, QueryMsg,
 };
+use std::vec;
 
 use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
@@ -177,13 +176,12 @@ fn execute_send(ctx: ExecuteContext) -> Result<Response, ContractError> {
         for (i, coin) in info.funds.clone().iter().enumerate() {
             let mut recip_coin: Coin = coin.clone();
 
-            // Difference between the range's max and current funds received
-            let till_threshold = threshold.range.max - recipient_addr.funds;
+            // Difference between the next threshold's min and current funds received
 
             // If info.funds is greater than the below number, it means that the threshold will be surpassed.
             //TODO Multiply till_threshold with the current threshold's percentage, the additional funds (info.funds - till_threshold) will use the next threshold's percentage.
-            let funds_surpass_threshold =
-                till_threshold.checked_div_floor(recipient_percent).unwrap();
+            // let funds_surpass_threshold =
+            //     till_threshold.checked_div_floor(recipient_percent).unwrap();
 
             // Save new amount sent
             recip_coin.amount = coin.amount * recipient_percent;

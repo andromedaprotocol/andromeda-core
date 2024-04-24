@@ -23,7 +23,7 @@ use crate::{
 };
 use andromeda_finance::conditional_splitter::{
     AddressFunds, ConditionalSplitter, ExecuteMsg, GetConditionalSplitterConfigResponse,
-    InstantiateMsg, QueryMsg, Range, Threshold,
+    InstantiateMsg, QueryMsg, Threshold,
 };
 
 fn init(deps: DepsMut) -> Response {
@@ -37,11 +37,11 @@ fn init(deps: DepsMut) -> Response {
         recipients: vec![Recipient::from_string(String::from("some_address"))],
         thresholds: vec![
             Threshold::new(
-                Range::new(Uint128::zero(), Uint128::new(10)),
+                Uint128::zero(),
                 Decimal::from_ratio(Uint128::one(), Uint128::new(2)),
             ),
             Threshold::new(
-                Range::new(Uint128::new(11), Uint128::new(20)),
+                Uint128::new(11),
                 Decimal::from_ratio(Uint128::one(), Uint128::new(2)),
             ),
         ],
@@ -74,7 +74,7 @@ fn test_execute_update_lock() {
         recipients: vec![],
         lock: Milliseconds::from_seconds(current_time - 1),
         thresholds: vec![Threshold {
-            range: Range::new(Uint128::zero(), Uint128::new(10)),
+            min: Uint128::zero(),
             percentage: Decimal::from_ratio(Uint128::one(), Uint128::new(2)),
         }],
     };
