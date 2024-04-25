@@ -313,7 +313,7 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
-        QueryMsg::GetSplitterConfig {} => encode_binary(&query_splitter(deps)?),
+        QueryMsg::GetConditionalSplitterConfig {} => encode_binary(&query_splitter(deps)?),
         _ => ADOContract::default().query(deps, env, msg),
     }
 }

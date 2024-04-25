@@ -106,7 +106,7 @@ pub enum ExecuteMsg {
 pub enum QueryMsg {
     /// The current config of the Splitter contract
     #[returns(GetConditionalSplitterConfigResponse)]
-    GetSplitterConfig {},
+    GetConditionalSplitterConfig {},
 }
 
 #[cw_serde]

@@ -110,6 +110,7 @@ fn test_execute_update_lock() {
 //     let splitter = ConditionalSplitter {
 //         recipients: vec![],
 //         lock: Milliseconds::from_seconds(0),
+//         thresholds: vec![Threshold::new(Uint128::zero())],
 //     };
 
 //     CONDITIONAL_SPLITTER
@@ -118,13 +119,13 @@ fn test_execute_update_lock() {
 
 //     // Duplicate recipients
 //     let duplicate_recipients = vec![
-//         AddressFunds {
+//         AddressPercentages {
 //             recipient: Recipient::from_string(String::from("addr1")),
-//             percent: Decimal::percent(40),
+//             percentages: vec![Decimal::percent(40)],
 //         },
-//         AddressFunds {
+//         AddressPercentages {
 //             recipient: Recipient::from_string(String::from("addr1")),
-//             percent: Decimal::percent(60),
+//             percentages: vec![Decimal::percent(60)],
 //         },
 //     ];
 //     let msg = ExecuteMsg::UpdateRecipients {
@@ -418,79 +419,81 @@ fn test_execute_send() {
 //     assert_eq!(res, expected_res);
 // }
 
-// #[test]
-// fn test_handle_packet_exit_with_error_true() {
-//     let mut deps = mock_dependencies_custom(&[]);
-//     let env = mock_env();
-//     let _res: Response = init(deps.as_mut());
+#[test]
+fn test_handle_packet_exit_with_error_true() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let env = mock_env();
+    let _res: Response = init(deps.as_mut());
 
-//     let sender_funds_amount = 0u128;
-//     let info = mock_info(OWNER, &[Coin::new(sender_funds_amount, "uluna")]);
+    let sender_funds_amount = 0u128;
+    let info = mock_info(OWNER, &[Coin::new(sender_funds_amount, "uluna")]);
 
-//     let recip_address1 = "address1".to_string();
-//     let recip_percent1 = 10; // 10%
+    let recip_address1 = "address1".to_string();
+    let recip_percent1 = 10; // 10%
 
-//     let recip_percent2 = 20; // 20%
+    let recip_percent2 = 20; // 20%
 
-//     let recipient = vec![
-//         AddressFunds {
-//             recipient: Recipient::from_string(recip_address1.clone()),
-//             percent: Decimal::percent(recip_percent1),
-//         },
-//         AddressFunds {
-//             recipient: Recipient::from_string(recip_address1.clone()),
-//             percent: Decimal::percent(recip_percent2),
-//         },
-//     ];
-//     let pkt = AMPPkt::new(
-//         info.clone().sender,
-//         "cosmos2contract",
-//         vec![AMPMsg::new(
-//             recip_address1,
-//             to_json_binary(&ExecuteMsg::Send {}).unwrap(),
-//             Some(vec![Coin::new(0, "uluna")]),
-//         )],
-//     );
-//     let msg = ExecuteMsg::AMPReceive(pkt);
+    let recipient = vec![
+        AddressPercentages {
+            recipient: Recipient::from_string(recip_address1.clone()),
+            percentages: vec![Decimal::percent(recip_percent1)],
+        },
+        AddressPercentages {
+            recipient: Recipient::from_string(recip_address1.clone()),
+            percentages: vec![Decimal::percent(recip_percent2)],
+        },
+    ];
+    let pkt = AMPPkt::new(
+        info.clone().sender,
+        "cosmos2contract",
+        vec![AMPMsg::new(
+            recip_address1,
+            to_json_binary(&ExecuteMsg::Send {}).unwrap(),
+            Some(vec![Coin::new(0, "uluna")]),
+        )],
+    );
+    let msg = ExecuteMsg::AMPReceive(pkt);
 
-//     let splitter = ConditionalSplitter {
-//         recipients: recipient,
-//         lock: Milliseconds::default(),
-//     };
+    let splitter = ConditionalSplitter {
+        recipients: recipient,
+        lock: Milliseconds::default(),
+        thresholds: vec![Threshold::new(Uint128::zero())],
+    };
 
-//     CONDITIONAL_SPLITTER
-//         .save(deps.as_mut().storage, &splitter)
-//         .unwrap();
+    CONDITIONAL_SPLITTER
+        .save(deps.as_mut().storage, &splitter)
+        .unwrap();
 
-//     let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
+    let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
 
-//     assert_eq!(
-//         err,
-//         ContractError::InvalidFunds {
-//             msg: "Amount must be non-zero".to_string(),
-//         }
-//     );
-// }
+    assert_eq!(
+        err,
+        ContractError::InvalidFunds {
+            msg: "Amount must be non-zero".to_string(),
+        }
+    );
+}
 
-// #[test]
-// fn test_query_splitter() {
-//     let mut deps = mock_dependencies_custom(&[]);
-//     let env = mock_env();
-//     let splitter = ConditionalSplitter {
-//         recipients: vec![],
-//         lock: Milliseconds::default(),
-//     };
+#[test]
+fn test_query_splitter() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let env = mock_env();
+    let splitter = ConditionalSplitter {
+        recipients: vec![],
+        lock: Milliseconds::default(),
+        thresholds: vec![Threshold::new(Uint128::zero())],
+    };
 
-//     CONDITIONAL_SPLITTER
-//         .save(deps.as_mut().storage, &splitter)
-//         .unwrap();
+    CONDITIONAL_SPLITTER
+        .save(deps.as_mut().storage, &splitter)
+        .unwrap();
 
-//     let query_msg = QueryMsg::GetConditionalSplitterConfig {};
-//     let res = query(deps.as_ref(), env, query_msg).unwrap();
-//     let val: GetConditionalSplitterConfigResponse = from_json(res).unwrap();
+    let query_msg = QueryMsg::GetConditionalSplitterConfig {};
+    let res = query(deps.as_ref(), env, query_msg).unwrap();
+    let val: GetConditionalSplitterConfigResponse = from_json(res).unwrap();
 
-//     assert_eq!(val.config, splitter);
-// }
+    assert_eq!(val.config, splitter);
+}
 
 // #[test]
 // fn test_execute_send_error() {
@@ -547,46 +550,46 @@ fn test_execute_send() {
 //     assert_eq!(res, expected_res);
 // }
 
-// #[test]
-// fn test_update_app_contract() {
-//     let mut deps = mock_dependencies_custom(&[]);
-//     let _res: Response = init(deps.as_mut());
+#[test]
+fn test_update_app_contract() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let _res: Response = init(deps.as_mut());
 
-//     let info = mock_info(OWNER, &[]);
+    let info = mock_info(OWNER, &[]);
 
-//     let msg = ExecuteMsg::UpdateAppContract {
-//         address: "app_contract".to_string(),
-//     };
+    let msg = ExecuteMsg::UpdateAppContract {
+        address: "app_contract".to_string(),
+    };
 
-//     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-//     assert_eq!(
-//         Response::new()
-//             .add_attribute("action", "update_app_contract")
-//             .add_attribute("address", "app_contract")
-//             .add_submessage(generate_economics_message(OWNER, "UpdateAppContract")),
-//         res
-//     );
-// }
+    assert_eq!(
+        Response::new()
+            .add_attribute("action", "update_app_contract")
+            .add_attribute("address", "app_contract")
+            .add_submessage(generate_economics_message(OWNER, "UpdateAppContract")),
+        res
+    );
+}
 
-// #[test]
-// fn test_update_app_contract_invalid_recipient() {
-//     let mut deps = mock_dependencies_custom(&[]);
-//     let _res: Response = init(deps.as_mut());
+#[test]
+fn test_update_app_contract_invalid_recipient() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let _res: Response = init(deps.as_mut());
 
-//     let info = mock_info(OWNER, &[]);
+    let info = mock_info(OWNER, &[]);
 
-//     let msg = ExecuteMsg::UpdateAppContract {
-//         address: "z".to_string(),
-//     };
+    let msg = ExecuteMsg::UpdateAppContract {
+        address: "z".to_string(),
+    };
 
-//     let res = execute(deps.as_mut(), mock_env(), info, msg);
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
 
-//     // assert_eq!(
-//     //     ContractError::InvalidComponent {
-//     //         name: "z".to_string()
-//     //     },
-//     //     res.unwrap_err()
-//     // );
-//     assert!(res.is_err())
-// }
+    // assert_eq!(
+    //     ContractError::InvalidComponent {
+    //         name: "z".to_string()
+    //     },
+    //     res.unwrap_err()
+    // );
+    assert!(res.is_err())
+}
