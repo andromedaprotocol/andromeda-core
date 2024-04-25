@@ -173,14 +173,33 @@ fn execute_send(ctx: ExecuteContext) -> Result<Response, ContractError> {
         for (i, coin) in info.funds.clone().iter().enumerate() {
             let mut recip_coin: Coin = coin.clone();
 
-            // Difference between the next threshold's min and current funds received
+            // Make sure there's a next threshold in the first place
+            if threshold_index + 1 != conditional_splitter.thresholds.len() {
+                let next_threshold = &conditional_splitter.thresholds[threshold_index + 1].min;
+                let next_threshold_recipient_percent =
+                    recipient_addr.percentages[threshold_index + 1];
 
-            // If info.funds is greater than the below number, it means that the threshold will be surpassed.
-            //TODO Multiply till_threshold with the current threshold's percentage, the additional funds (info.funds - till_threshold) will use the next threshold's percentage.
-            // let funds_surpass_threshold =
-            //     till_threshold.checked_div_floor(recipient_percent).unwrap();
+                // Check the amount remaining for the next threshold
+                let threshold_difference = next_threshold.checked_sub(funds_distributed)?;
 
-            recip_coin.amount = coin.amount * recipient_percent;
+                // If the funds received surpass the above amount, we will have to deal with crossing the threshold
+                if recip_coin.amount > threshold_difference {
+                    // In this case the amount sent covers the difference between the upcoming threshold and the funds distributed, so we multiply that number by the current threshold's percentage
+                    let first_threshold_amount = threshold_difference * recipient_percent;
+
+                    // The amount remaining after crossing the first threshold will be multiplied by the newely-crossed threshold's percentage
+                    let second_threshold_amount = (recip_coin.amount - threshold_difference)
+                        * next_threshold_recipient_percent;
+
+                    // The total amount to send will be the sum of both amounts
+                    recip_coin.amount =
+                        first_threshold_amount.checked_add(second_threshold_amount)?;
+                } else {
+                    recip_coin.amount = coin.amount * recipient_percent;
+                }
+            } else {
+                recip_coin.amount = coin.amount * recipient_percent;
+            }
 
             remainder_funds[i].amount = remainder_funds[i].amount.checked_sub(recip_coin.amount)?;
             vec_coin.push(recip_coin.clone());
@@ -197,11 +216,6 @@ fn execute_send(ctx: ExecuteContext) -> Result<Response, ContractError> {
 
     remainder_funds.retain(|x| x.amount > Uint128::zero());
 
-    // Why does the remaining funds go the the sender of the executor of the splitter?
-    // Is it considered tax(fee) or mistake?
-    // Discussion around caller of splitter function in andromedaSPLITTER smart contract.
-    // From tests, it looks like owner of smart contract (Andromeda) will recieve the rest of funds.
-    // If so, should be documented
     if !remainder_funds.is_empty() {
         msgs.push(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
             to_address: info.sender.to_string(),
