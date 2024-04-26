@@ -145,7 +145,7 @@ pub fn validate_thresholds(deps: Deps, thresholds: &Vec<Threshold>) -> Result<()
         let min_value = threshold.min.u128();
         ensure!(
             !min_value_set.contains(&min_value),
-            ContractError::DuplicateRecipient {}
+            ContractError::DuplicateThresholds {}
         );
 
         min_value_set.insert(min_value);
@@ -153,60 +153,132 @@ pub fn validate_thresholds(deps: Deps, thresholds: &Vec<Threshold>) -> Result<()
     Ok(())
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use cosmwasm_std::testing::mock_dependencies;
+#[cfg(test)]
+mod tests {
 
-//     use super::*;
+    use andromeda_std::amp::AndrAddr;
+    use cosmwasm_std::testing::mock_dependencies;
 
-//     #[test]
-//     fn test_validate_recipient_list() {
-//         let deps = mock_dependencies();
-//         let empty_recipients = vec![];
-//         let res = validate_recipient_list(deps.as_ref(), empty_recipients).unwrap_err();
-//         assert_eq!(res, ContractError::EmptyRecipientsList {});
+    use super::*;
 
-//         let inadequate_recipients = vec![AddressPercent {
-//             recipient: Recipient::from_string(String::from("abc")),
-//             percent: Decimal::percent(150),
-//         }];
-//         let res = validate_recipient_list(deps.as_ref(), inadequate_recipients).unwrap_err();
-//         assert_eq!(res, ContractError::AmountExceededHundredPrecent {});
+    struct TestThresholdValidation {
+        name: &'static str,
+        thresholds: Vec<Threshold>,
+        expected_error: Option<ContractError>,
+    }
 
-//         let duplicate_recipients = vec![
-//             AddressPercent {
-//                 recipient: Recipient::from_string(String::from("abc")),
-//                 percent: Decimal::percent(50),
-//             },
-//             AddressPercent {
-//                 recipient: Recipient::from_string(String::from("abc")),
-//                 percent: Decimal::percent(50),
-//             },
-//         ];
+    #[test]
+    fn test_validate_thresholds() {
+        let test_cases = vec![
+            TestThresholdValidation {
+                name: "Duplicate minimums between thresholds",
+                thresholds: vec![
+                    Threshold::new(
+                        Uint128::zero(),
+                        vec![AddressPercent::new(
+                            Recipient::new(AndrAddr::from_string("recipient"), None),
+                            Decimal::zero(),
+                        )],
+                    ),
+                    Threshold::new(
+                        Uint128::zero(),
+                        vec![AddressPercent::new(
+                            Recipient::new(AndrAddr::from_string("recipient"), None),
+                            Decimal::zero(),
+                        )],
+                    ),
+                ],
+                expected_error: Some(ContractError::DuplicateThresholds {}),
+            },
+            TestThresholdValidation {
+                name: "Duplicate recipients within the same threshold",
+                thresholds: vec![Threshold::new(
+                    Uint128::zero(),
+                    vec![
+                        AddressPercent::new(
+                            Recipient::new(AndrAddr::from_string("recipient"), None),
+                            Decimal::zero(),
+                        ),
+                        AddressPercent::new(
+                            Recipient::new(AndrAddr::from_string("recipient"), None),
+                            Decimal::zero(),
+                        ),
+                    ],
+                )],
+                expected_error: Some(ContractError::DuplicateRecipient {}),
+            },
+            TestThresholdValidation {
+                name: "Sum of the threshold's percentage should not exceed 100",
+                thresholds: vec![Threshold::new(
+                    Uint128::zero(),
+                    vec![
+                        AddressPercent::new(
+                            Recipient::new(AndrAddr::from_string("recipient"), None),
+                            Decimal::one(),
+                        ),
+                        AddressPercent::new(
+                            Recipient::new(AndrAddr::from_string("recipient2"), None),
+                            Decimal::one(),
+                        ),
+                    ],
+                )],
+                expected_error: Some(ContractError::AmountExceededHundredPrecent {}),
+            },
+            TestThresholdValidation {
+                name: "Threshold with no recipients",
+                thresholds: vec![Threshold::new(Uint128::zero(), vec![])],
+                expected_error: Some(ContractError::EmptyRecipientsList {}),
+            },
+            TestThresholdValidation {
+                name: "Works with one threshold",
+                thresholds: vec![Threshold::new(
+                    Uint128::zero(),
+                    vec![AddressPercent::new(
+                        Recipient::new(AndrAddr::from_string("recipient"), None),
+                        Decimal::zero(),
+                    )],
+                )],
+                expected_error: None,
+            },
+            TestThresholdValidation {
+                name: "Works with two thresholds",
+                thresholds: vec![
+                    Threshold::new(
+                        Uint128::zero(),
+                        vec![
+                            AddressPercent::new(
+                                Recipient::new(AndrAddr::from_string("recipient"), None),
+                                Decimal::zero(),
+                            ),
+                            AddressPercent::new(
+                                Recipient::new(AndrAddr::from_string("recipient2"), None),
+                                Decimal::new(Uint128::new(20)),
+                            ),
+                        ],
+                    ),
+                    Threshold::new(
+                        Uint128::one(),
+                        vec![AddressPercent::new(
+                            Recipient::new(AndrAddr::from_string("recipient"), None),
+                            Decimal::zero(),
+                        )],
+                    ),
+                ],
+                expected_error: None,
+            },
+        ];
 
-//         let err = validate_recipient_list(deps.as_ref(), duplicate_recipients).unwrap_err();
-//         assert_eq!(err, ContractError::DuplicateRecipient {});
+        for test in test_cases {
+            let deps = mock_dependencies();
 
-//         let valid_recipients = vec![
-//             AddressPercent {
-//                 recipient: Recipient::from_string(String::from("abc")),
-//                 percent: Decimal::percent(50),
-//             },
-//             AddressPercent {
-//                 recipient: Recipient::from_string(String::from("xyz")),
-//                 percent: Decimal::percent(50),
-//             },
-//         ];
+            let res = validate_thresholds(deps.as_ref(), &test.thresholds);
 
-//         let res = validate_recipient_list(deps.as_ref(), valid_recipients);
-//         assert!(res.is_ok());
-
-//         let one_valid_recipient = vec![AddressPercent {
-//             recipient: Recipient::from_string(String::from("abc")),
-//             percent: Decimal::percent(50),
-//         }];
-
-//         let res = validate_recipient_list(deps.as_ref(), one_valid_recipient);
-//         assert!(res.is_ok());
-//     }
-// }
+            if let Some(err) = test.expected_error {
+                assert_eq!(res.unwrap_err(), err, "{}", test.name);
+                continue;
+            } else {
+                assert!(res.is_ok())
+            }
+        }
+    }
+}

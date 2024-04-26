@@ -465,60 +465,59 @@ fn test_execute_send() {
 //     assert_eq!(res, expected_res);
 // }
 
-// #[test]
-// fn test_handle_packet_exit_with_error_true() {
-//     let mut deps = mock_dependencies_custom(&[]);
-//     let env = mock_env();
-//     let _res: Response = init(deps.as_mut());
+#[test]
+fn test_handle_packet_exit_with_error_true() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let env = mock_env();
+    let _res: Response = init(deps.as_mut());
 
-//     let sender_funds_amount = 0u128;
-//     let info = mock_info(OWNER, &[Coin::new(sender_funds_amount, "uluna")]);
+    let sender_funds_amount = 0u128;
+    let info = mock_info(OWNER, &[Coin::new(sender_funds_amount, "uluna")]);
 
-//     let recip_address1 = "address1".to_string();
-//     let recip_percent1 = 10; // 10%
+    let recip_address1 = "address1".to_string();
+    let recip_percent1 = 10; // 10%
 
-//     let recip_percent2 = 20; // 20%
+    let recip_percent2 = 20; // 20%
 
-//     let recipient = vec![
-//         AddressPercentages {
-//             recipient: Recipient::from_string(recip_address1.clone()),
-//             percentages: vec![Decimal::percent(recip_percent1)],
-//         },
-//         AddressPercentages {
-//             recipient: Recipient::from_string(recip_address1.clone()),
-//             percentages: vec![Decimal::percent(recip_percent2)],
-//         },
-//     ];
-//     let pkt = AMPPkt::new(
-//         info.clone().sender,
-//         "cosmos2contract",
-//         vec![AMPMsg::new(
-//             recip_address1,
-//             to_json_binary(&ExecuteMsg::Send {}).unwrap(),
-//             Some(vec![Coin::new(0, "uluna")]),
-//         )],
-//     );
-//     let msg = ExecuteMsg::AMPReceive(pkt);
+    let address_percent = vec![
+        AddressPercent {
+            recipient: Recipient::from_string(recip_address1.clone()),
+            percent: Decimal::percent(recip_percent1),
+        },
+        AddressPercent {
+            recipient: Recipient::from_string(recip_address1.clone()),
+            percent: Decimal::percent(recip_percent2),
+        },
+    ];
+    let pkt = AMPPkt::new(
+        info.clone().sender,
+        "cosmos2contract",
+        vec![AMPMsg::new(
+            recip_address1,
+            to_json_binary(&ExecuteMsg::Send {}).unwrap(),
+            Some(vec![Coin::new(0, "uluna")]),
+        )],
+    );
+    let msg = ExecuteMsg::AMPReceive(pkt);
 
-//     let splitter = ConditionalSplitter {
-//         recipients: recipient,
-//         lock: Milliseconds::default(),
-//         thresholds: vec![Threshold::new(Uint128::zero())],
-//     };
+    let splitter = ConditionalSplitter {
+        lock: Milliseconds::default(),
+        thresholds: vec![Threshold::new(Uint128::zero(), address_percent)],
+    };
 
-//     CONDITIONAL_SPLITTER
-//         .save(deps.as_mut().storage, &splitter)
-//         .unwrap();
+    CONDITIONAL_SPLITTER
+        .save(deps.as_mut().storage, &splitter)
+        .unwrap();
 
-//     let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
+    let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
 
-//     assert_eq!(
-//         err,
-//         ContractError::InvalidFunds {
-//             msg: "Amount must be non-zero".to_string(),
-//         }
-//     );
-// }
+    assert_eq!(
+        err,
+        ContractError::InvalidFunds {
+            msg: "Amount must be non-zero".to_string(),
+        }
+    );
+}
 
 #[test]
 fn test_query_splitter() {
@@ -540,60 +539,60 @@ fn test_query_splitter() {
     assert_eq!(val.config, splitter);
 }
 
-// #[test]
-// fn test_execute_send_error() {
-//     //Executes send with more than 5 tokens [ACK-04]
-//     let mut deps = mock_dependencies_custom(&[]);
-//     let env = mock_env();
-//     let _res: Response = init(deps.as_mut());
+#[test]
+fn test_execute_send_error() {
+    //Executes send with more than 5 tokens [ACK-04]
+    let mut deps = mock_dependencies_custom(&[]);
+    let env = mock_env();
+    let _res: Response = init(deps.as_mut());
 
-//     let sender_funds_amount = 10000u128;
-//     let owner = "creator";
-//     let info = mock_info(
-//         owner,
-//         &vec![
-//             Coin::new(sender_funds_amount, "uluna"),
-//             Coin::new(sender_funds_amount, "uluna"),
-//             Coin::new(sender_funds_amount, "uluna"),
-//             Coin::new(sender_funds_amount, "uluna"),
-//             Coin::new(sender_funds_amount, "uluna"),
-//             Coin::new(sender_funds_amount, "uluna"),
-//         ],
-//     );
+    let sender_funds_amount = 10000u128;
+    let owner = "creator";
+    let info = mock_info(
+        owner,
+        &vec![
+            Coin::new(sender_funds_amount, "uluna"),
+            Coin::new(sender_funds_amount, "uluna"),
+            Coin::new(sender_funds_amount, "uluna"),
+            Coin::new(sender_funds_amount, "uluna"),
+            Coin::new(sender_funds_amount, "uluna"),
+            Coin::new(sender_funds_amount, "uluna"),
+        ],
+    );
 
-//     let recip_address1 = "address1".to_string();
-//     let recip_percent1 = 10; // 10%
+    let recip_address1 = "address1".to_string();
+    let recip_percent1 = 10; // 10%
 
-//     let recip_address2 = "address2".to_string();
-//     let recip_percent2 = 20; // 20%
+    let recip_address2 = "address2".to_string();
+    let recip_percent2 = 20; // 20%
 
-//     let recipient = vec![
-//         AddressFunds {
-//             recipient: Recipient::from_string(recip_address1),
-//             percent: Decimal::percent(recip_percent1),
-//         },
-//         AddressFunds {
-//             recipient: Recipient::from_string(recip_address2),
-//             percent: Decimal::percent(recip_percent2),
-//         },
-//     ];
-//     let msg = ExecuteMsg::Send {};
+    let address_percent = vec![
+        AddressPercent {
+            recipient: Recipient::from_string(recip_address1),
+            percent: Decimal::percent(recip_percent1),
+        },
+        AddressPercent {
+            recipient: Recipient::from_string(recip_address2),
+            percent: Decimal::percent(recip_percent2),
+        },
+    ];
+    let msg = ExecuteMsg::Send {};
 
-//     let splitter = ConditionalSplitter {
-//         recipients: recipient,
-//         lock: Milliseconds::default(),
-//     };
+    let splitter = ConditionalSplitter {
+        thresholds: vec![Threshold::new(Uint128::zero(), address_percent)],
+        lock: Milliseconds::default(),
+    };
 
-//     CONDITIONAL_SPLITTER
-//         .save(deps.as_mut().storage, &splitter)
-//         .unwrap();
+    CONDITIONAL_SPLITTER
+        .save(deps.as_mut().storage, &splitter)
+        .unwrap();
 
-//     let res = execute(deps.as_mut(), env, info, msg).unwrap_err();
+    let res = execute(deps.as_mut(), env, info, msg).unwrap_err();
 
-//     let expected_res = ContractError::ExceedsMaxAllowedCoins {};
+    let expected_res = ContractError::ExceedsMaxAllowedCoins {};
 
-//     assert_eq!(res, expected_res);
-// }
+    assert_eq!(res, expected_res);
+}
 
 #[test]
 fn test_update_app_contract() {
@@ -629,12 +628,5 @@ fn test_update_app_contract_invalid_recipient() {
     };
 
     let res = execute(deps.as_mut(), mock_env(), info, msg);
-
-    // assert_eq!(
-    //     ContractError::InvalidComponent {
-    //         name: "z".to_string()
-    //     },
-    //     res.unwrap_err()
-    // );
     assert!(res.is_err())
 }
