@@ -13,8 +13,8 @@ use andromeda_std::{
 };
 use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
 use cosmwasm_std::{
-    attr, ensure, entry_point, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
-    Reply, Response, StdError, SubMsg, Uint128,
+    attr, ensure, entry_point, BankMsg, Binary, Coin, CosmosMsg, Decimal, Deps, DepsMut, Env,
+    MessageInfo, Reply, Response, StdError, SubMsg, Uint128,
 };
 use cw_utils::nonpayable;
 
@@ -36,11 +36,10 @@ pub fn instantiate(
     let current_time = Milliseconds::from_seconds(env.block.time.seconds());
 
     let mut conditional_splitter = ConditionalSplitter {
-        recipients: msg.recipients,
         thresholds: msg.thresholds.clone(),
         lock: msg.lock_time.unwrap_or_default(),
     };
-    // Validate recipient list and thresholds
+    // Validate thresholds
     conditional_splitter.validate(deps.as_ref())?;
 
     match msg.lock_time {
@@ -163,24 +162,29 @@ fn execute_send(ctx: ExecuteContext) -> Result<Response, ContractError> {
 
     let funds_distributed = FUNDS_DISTRIBUTED.load(deps.storage)?;
 
-    for recipient_addr in &conditional_splitter.recipients {
-        // Get current range
-        let (_threshold, threshold_index) =
-            find_threshold(&conditional_splitter.thresholds, funds_distributed)?;
-        let recipient_percent = recipient_addr.percentages[threshold_index];
-
+    // Find the relevant threshold
+    let (threshold, threshold_index) =
+        find_threshold(&conditional_splitter.thresholds, funds_distributed)?;
+    for address_percent in threshold.address_percent {
+        let recipient_percent = address_percent.percent;
         let mut vec_coin: Vec<Coin> = Vec::new();
         for (i, coin) in info.funds.clone().iter().enumerate() {
             let mut recip_coin: Coin = coin.clone();
 
             // Make sure there's a next threshold in the first place
             if threshold_index + 1 != conditional_splitter.thresholds.len() {
-                let next_threshold = &conditional_splitter.thresholds[threshold_index + 1].min;
-                let next_threshold_recipient_percent =
-                    recipient_addr.percentages[threshold_index + 1];
+                let next_threshold = &conditional_splitter.thresholds[threshold_index + 1];
+
+                // Find the recipient's percentage in the next threshold
+                let all_recipients = &next_threshold.address_percent;
+
+                let next_threshold_recipient_percent: Decimal = all_recipients
+                    .iter()
+                    .find(|recipient| recipient.recipient == address_percent.recipient)
+                    .map_or(Decimal::zero(), |recipient| recipient.percent);
 
                 // Check the amount remaining for the next threshold
-                let threshold_difference = next_threshold.checked_sub(funds_distributed)?;
+                let threshold_difference = next_threshold.min.checked_sub(funds_distributed)?;
 
                 // If the funds received surpass the above amount, we will have to deal with crossing the threshold
                 if recip_coin.amount > threshold_difference {
@@ -206,11 +210,59 @@ fn execute_send(ctx: ExecuteContext) -> Result<Response, ContractError> {
             amp_funds.push(recip_coin);
         }
 
-        let amp_msg = recipient_addr
+        let amp_msg = address_percent
             .recipient
             .generate_amp_msg(&deps.as_ref(), Some(vec_coin))?;
         pkt = pkt.add_message(amp_msg);
     }
+
+    // for recipient_addr in &conditional_splitter.recipients {
+    //     // Get current range
+    //     let (threshold, threshold_index) =
+    //         find_threshold(&conditional_splitter.thresholds, funds_distributed)?;
+
+    //     let mut vec_coin: Vec<Coin> = Vec::new();
+    //     for (i, coin) in info.funds.clone().iter().enumerate() {
+    //         let mut recip_coin: Coin = coin.clone();
+
+    //         // Make sure there's a next threshold in the first place
+    //         if threshold_index + 1 != conditional_splitter.thresholds.len() {
+    //             let next_threshold = &conditional_splitter.thresholds[threshold_index + 1].min;
+    //             let next_threshold_recipient_percent =
+    //                 recipient_addr.percentages[threshold_index + 1];
+
+    //             // Check the amount remaining for the next threshold
+    //             let threshold_difference = next_threshold.checked_sub(funds_distributed)?;
+
+    //             // If the funds received surpass the above amount, we will have to deal with crossing the threshold
+    //             if recip_coin.amount > threshold_difference {
+    //                 // In this case the amount sent covers the difference between the upcoming threshold and the funds distributed, so we multiply that number by the current threshold's percentage
+    //                 let first_threshold_amount = threshold_difference * recipient_percent;
+
+    //                 // The amount remaining after crossing the first threshold will be multiplied by the newely-crossed threshold's percentage
+    //                 let second_threshold_amount = (recip_coin.amount - threshold_difference)
+    //                     * next_threshold_recipient_percent;
+
+    //                 // The total amount to send will be the sum of both amounts
+    //                 recip_coin.amount =
+    //                     first_threshold_amount.checked_add(second_threshold_amount)?;
+    //             } else {
+    //                 recip_coin.amount = coin.amount * recipient_percent;
+    //             }
+    //         } else {
+    //             recip_coin.amount = coin.amount * recipient_percent;
+    //         }
+
+    //         remainder_funds[i].amount = remainder_funds[i].amount.checked_sub(recip_coin.amount)?;
+    //         vec_coin.push(recip_coin.clone());
+    //         amp_funds.push(recip_coin);
+    //     }
+
+    //     let amp_msg = recipient_addr
+    //         .recipient
+    //         .generate_amp_msg(&deps.as_ref(), Some(vec_coin))?;
+    //     pkt = pkt.add_message(amp_msg);
+    // }
     let new_funds_distributed = info.funds.first().unwrap().amount + funds_distributed;
     FUNDS_DISTRIBUTED.save(deps.storage, &new_funds_distributed)?;
 
