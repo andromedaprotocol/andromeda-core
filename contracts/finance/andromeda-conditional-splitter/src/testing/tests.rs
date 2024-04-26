@@ -23,8 +23,8 @@ use crate::{
 };
 use andromeda_finance::{
     conditional_splitter::{
-        AddressPercentages, ConditionalSplitter, ExecuteMsg, GetConditionalSplitterConfigResponse,
-        InstantiateMsg, QueryMsg, Threshold,
+        ConditionalSplitter, ExecuteMsg, GetConditionalSplitterConfigResponse, InstantiateMsg,
+        QueryMsg, Threshold,
     },
     splitter::AddressPercent,
 };
@@ -385,22 +385,6 @@ fn test_execute_send() {
         .add_submessage(generate_economics_message(OWNER, "Send"));
 
     assert_eq!(res, expected_res);
-
-    // let expected_res = Response::new()
-    //     .add_submessages(vec![
-    //         SubMsg::new(
-    //             // refunds remainder to sender
-    //             CosmosMsg::Bank(BankMsg::Send {
-    //                 to_address: OWNER.to_string(),
-    //                 amount: vec![Coin::new(7000, "uluna")], // 10000 * 0.7   remainder
-    //             }),
-    //         ),
-    //         amp_msg,
-    //     ])
-    //     .add_attributes(vec![attr("action", "send"), attr("sender", "creator")])
-    //     .add_submessage(generate_economics_message(OWNER, "Send"));
-
-    // assert_eq!(res, expected_res);
 }
 
 // #[test]
@@ -536,26 +520,25 @@ fn test_execute_send() {
 //     );
 // }
 
-// #[test]
-// fn test_query_splitter() {
-//     let mut deps = mock_dependencies_custom(&[]);
-//     let env = mock_env();
-//     let splitter = ConditionalSplitter {
-//         recipients: vec![],
-//         lock: Milliseconds::default(),
-//         thresholds: vec![Threshold::new(Uint128::zero())],
-//     };
+#[test]
+fn test_query_splitter() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let env = mock_env();
+    let splitter = ConditionalSplitter {
+        lock: Milliseconds::default(),
+        thresholds: vec![Threshold::new(Uint128::zero(), vec![])],
+    };
 
-//     CONDITIONAL_SPLITTER
-//         .save(deps.as_mut().storage, &splitter)
-//         .unwrap();
+    CONDITIONAL_SPLITTER
+        .save(deps.as_mut().storage, &splitter)
+        .unwrap();
 
-//     let query_msg = QueryMsg::GetConditionalSplitterConfig {};
-//     let res = query(deps.as_ref(), env, query_msg).unwrap();
-//     let val: GetConditionalSplitterConfigResponse = from_json(res).unwrap();
+    let query_msg = QueryMsg::GetConditionalSplitterConfig {};
+    let res = query(deps.as_ref(), env, query_msg).unwrap();
+    let val: GetConditionalSplitterConfigResponse = from_json(res).unwrap();
 
-//     assert_eq!(val.config, splitter);
-// }
+    assert_eq!(val.config, splitter);
+}
 
 // #[test]
 // fn test_execute_send_error() {

@@ -49,23 +49,6 @@ pub fn find_threshold(
 }
 
 #[cw_serde]
-pub struct AddressPercentages {
-    pub recipient: Recipient,
-    // The sequence of the the percentages should correspond to each threshold.
-    // For example the first value in percentages should correspond to the first threshold
-    pub percentages: Vec<Decimal>,
-}
-
-impl AddressPercentages {
-    pub fn new(recipient: Recipient, percentages: Vec<Decimal>) -> Self {
-        Self {
-            recipient,
-            percentages,
-        }
-    }
-}
-
-#[cw_serde]
 /// A config struct for a `Conditional Splitter` contract.
 pub struct ConditionalSplitter {
     /// The vector of thresholds which assign a percentage for a certain range of received funds
