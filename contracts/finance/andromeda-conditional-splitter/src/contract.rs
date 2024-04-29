@@ -33,33 +33,29 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    let current_time = Milliseconds::from_seconds(env.block.time.seconds());
-
     let mut conditional_splitter = ConditionalSplitter {
         thresholds: msg.thresholds.clone(),
         lock: msg.lock_time,
     };
+
+    if let Some(lock_time) = msg.lock_time {
+        // New lock time can't be too short
+        ensure!(
+            lock_time.seconds() >= ONE_DAY,
+            ContractError::LockTimeTooShort {}
+        );
+        // New lock time can't be too long
+        ensure!(
+            lock_time.seconds() <= ONE_YEAR,
+            ContractError::LockTimeTooLong {}
+        );
+        let current_time = Milliseconds::from_seconds(env.block.time.seconds());
+        conditional_splitter.lock = Some(current_time.plus_milliseconds(lock_time));
+    }
+
     // Validate thresholds
     conditional_splitter.validate(deps.as_ref())?;
 
-    match msg.lock_time {
-        Some(lock_time) => {
-            // New lock time can't be too short
-            ensure!(
-                lock_time.seconds() >= ONE_DAY,
-                ContractError::LockTimeTooShort {}
-            );
-            // New lock time can't be too long
-            ensure!(
-                lock_time.seconds() <= ONE_YEAR,
-                ContractError::LockTimeTooLong {}
-            );
-            conditional_splitter.lock = Some(current_time.plus_milliseconds(lock_time));
-        }
-        None => {
-            conditional_splitter.lock = None;
-        }
-    }
     // Save kernel address after validating it
     CONDITIONAL_SPLITTER.save(deps.storage, &conditional_splitter)?;
 
