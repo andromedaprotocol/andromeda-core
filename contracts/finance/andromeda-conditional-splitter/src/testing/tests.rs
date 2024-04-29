@@ -109,72 +109,110 @@ fn test_execute_update_lock() {
     assert_eq!(new_lock, splitter.lock.unwrap());
 }
 
-// #[test]
-// fn test_execute_update_recipients() {
-//     let mut deps = mock_dependencies_custom(&[]);
-//     let env = mock_env();
-//     let _res = init(deps.as_mut());
+#[test]
+fn test_execute_update_thresholds() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let env = mock_env();
+    let _res = init(deps.as_mut());
 
-//     let splitter = ConditionalSplitter {
-//         recipients: vec![],
-//         lock: Milliseconds::from_seconds(0),
-//         thresholds: vec![Threshold::new(Uint128::zero())],
-//     };
+    let recip_address1 = "address1".to_string();
+    let recip_address2 = "address2".to_string();
+    let recip1 = Recipient::from_string(recip_address1);
+    let recip2 = Recipient::from_string(recip_address2);
 
-//     CONDITIONAL_SPLITTER
-//         .save(deps.as_mut().storage, &splitter)
-//         .unwrap();
+    let first_thresholds = vec![Threshold::new(
+        Uint128::zero(),
+        vec![
+            AddressPercent::new(
+                recip1.clone(), // 50%
+                Decimal::from_ratio(Uint128::one(), Uint128::new(2)),
+            ),
+            AddressPercent::new(
+                recip2.clone(), // 20%
+                Decimal::from_ratio(Uint128::one(), Uint128::new(5)),
+            ),
+        ],
+    )];
+    let splitter = ConditionalSplitter {
+        lock: None,
+        thresholds: first_thresholds,
+    };
 
-//     // Duplicate recipients
-//     let duplicate_recipients = vec![
-//         AddressPercentages {
-//             recipient: Recipient::from_string(String::from("addr1")),
-//             percentages: vec![Decimal::percent(40)],
-//         },
-//         AddressPercentages {
-//             recipient: Recipient::from_string(String::from("addr1")),
-//             percentages: vec![Decimal::percent(60)],
-//         },
-//     ];
-//     let msg = ExecuteMsg::UpdateRecipients {
-//         recipients: duplicate_recipients,
-//     };
+    CONDITIONAL_SPLITTER
+        .save(deps.as_mut().storage, &splitter)
+        .unwrap();
 
-//     let info = mock_info(OWNER, &[]);
-//     let res = execute(deps.as_mut(), env.clone(), info, msg);
-//     assert_eq!(ContractError::DuplicateRecipient {}, res.unwrap_err());
+    // Duplicate recipients
+    let duplicate_recipients = vec![Threshold::new(
+        Uint128::zero(),
+        vec![
+            AddressPercent::new(
+                recip1.clone(), // 50%
+                Decimal::from_ratio(Uint128::one(), Uint128::new(2)),
+            ),
+            AddressPercent::new(
+                recip1.clone(), // 20%
+                Decimal::from_ratio(Uint128::one(), Uint128::new(5)),
+            ),
+        ],
+    )];
+    let msg = ExecuteMsg::UpdateThresholds {
+        thresholds: duplicate_recipients,
+    };
 
-//     let recipients = vec![
-//         AddressFunds {
-//             recipient: Recipient::from_string(String::from("addr1")),
-//             percent: Decimal::percent(40),
-//         },
-//         AddressFunds {
-//             recipient: Recipient::from_string(String::from("addr2")),
-//             percent: Decimal::percent(60),
-//         },
-//     ];
-//     let msg = ExecuteMsg::UpdateRecipients {
-//         recipients: recipients.clone(),
-//     };
+    let info = mock_info(OWNER, &[]);
+    let res = execute(deps.as_mut(), env.clone(), info, msg);
+    assert_eq!(ContractError::DuplicateRecipient {}, res.unwrap_err());
 
-//     let info = mock_info("incorrect_owner", &[]);
-//     let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
-//     assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
+    let new_threshold = vec![
+        Threshold::new(
+            Uint128::zero(),
+            vec![
+                AddressPercent::new(
+                    recip1.clone(), // 50%
+                    Decimal::from_ratio(Uint128::one(), Uint128::new(2)),
+                ),
+                AddressPercent::new(
+                    recip2.clone(), // 20%
+                    Decimal::from_ratio(Uint128::one(), Uint128::new(5)),
+                ),
+            ],
+        ),
+        Threshold::new(
+            Uint128::new(20),
+            vec![
+                AddressPercent::new(
+                    recip1.clone(), // 20%
+                    Decimal::from_ratio(Uint128::one(), Uint128::new(5)),
+                ),
+                AddressPercent::new(
+                    recip2.clone(), // 10%
+                    Decimal::from_ratio(Uint128::one(), Uint128::new(10)),
+                ),
+            ],
+        ),
+    ];
+    let msg = ExecuteMsg::UpdateThresholds {
+        thresholds: new_threshold.clone(),
+    };
 
-//     let info = mock_info(OWNER, &[]);
-//     let res = execute(deps.as_mut(), env, info, msg).unwrap();
-//     assert_eq!(
-//         Response::default()
-//             .add_attributes(vec![attr("action", "update_recipients")])
-//             .add_submessage(generate_economics_message(OWNER, "UpdateRecipients")),
-//         res
-//     );
+    let info = mock_info("incorrect_owner", &[]);
+    let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
+    assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
 
-//     //check result
-//     let splitter = CONDITIONAL_SPLITTER.load(deps.as_ref().storage).unwrap();
-//     assert_eq!(splitter.recipients, recipients);
-// }
+    let info = mock_info(OWNER, &[]);
+    let res = execute(deps.as_mut(), env, info, msg).unwrap();
+    assert_eq!(
+        Response::default()
+            .add_attributes(vec![attr("action", "update_thresholds")])
+            .add_submessage(generate_economics_message(OWNER, "UpdateThresholds")),
+        res
+    );
+
+    //check result
+    let splitter = CONDITIONAL_SPLITTER.load(deps.as_ref().storage).unwrap();
+    assert_eq!(splitter.thresholds, new_threshold);
+}
 
 #[test]
 fn test_execute_send() {
