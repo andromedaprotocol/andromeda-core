@@ -28,9 +28,9 @@ impl Threshold {
     }
 }
 
-pub fn find_threshold(
+pub fn get_threshold(
     thresholds: &[Threshold],
-    num: Uint128,
+    amount: Uint128,
 ) -> Result<(Threshold, usize), ContractError> {
     // Create a vector of tuples containing the original index and the threshold
     let mut indexed_thresholds: Vec<(usize, &Threshold)> = thresholds.iter().enumerate().collect();
@@ -40,7 +40,7 @@ pub fn find_threshold(
 
     // Iterate over the sorted indexed thresholds
     for (index, threshold) in indexed_thresholds {
-        if threshold.in_range(num) {
+        if threshold.in_range(amount) {
             // Return the threshold and its original index
             return Ok((threshold.clone(), index));
         }

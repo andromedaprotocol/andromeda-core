@@ -1,6 +1,6 @@
 use crate::state::{CONDITIONAL_SPLITTER, FUNDS_DISTRIBUTED};
 use andromeda_finance::conditional_splitter::{
-    find_threshold, ConditionalSplitter, ExecuteMsg, GetConditionalSplitterConfigResponse,
+    get_threshold, ConditionalSplitter, ExecuteMsg, GetConditionalSplitterConfigResponse,
     InstantiateMsg, QueryMsg,
 };
 use std::vec;
@@ -164,7 +164,7 @@ fn execute_send(ctx: ExecuteContext) -> Result<Response, ContractError> {
 
     // Find the relevant threshold
     let (threshold, threshold_index) =
-        find_threshold(&conditional_splitter.thresholds, funds_distributed)?;
+        get_threshold(&conditional_splitter.thresholds, funds_distributed)?;
     for address_percent in threshold.address_percent {
         let recipient_percent = address_percent.percent;
         let mut vec_coin: Vec<Coin> = Vec::new();
@@ -175,19 +175,19 @@ fn execute_send(ctx: ExecuteContext) -> Result<Response, ContractError> {
             if threshold_index + 1 != conditional_splitter.thresholds.len() {
                 let next_threshold = &conditional_splitter.thresholds[threshold_index + 1];
 
-                // Find the recipient's percentage in the next threshold
-                let all_recipients = &next_threshold.address_percent;
-
-                let next_threshold_recipient_percent: Decimal = all_recipients
-                    .iter()
-                    .find(|recipient| recipient.recipient == address_percent.recipient)
-                    .map_or(Decimal::zero(), |recipient| recipient.percent);
-
                 // Check the amount remaining for the next threshold
                 let threshold_difference = next_threshold.min.checked_sub(funds_distributed)?;
 
                 // If the funds received surpass the above amount, we will have to deal with crossing the threshold
                 if recip_coin.amount > threshold_difference {
+                    // Find the recipient's percentage in the next threshold
+                    let all_recipients = &next_threshold.address_percent;
+
+                    let next_threshold_recipient_percent: Decimal = all_recipients
+                        .iter()
+                        .find(|recipient| recipient.recipient == address_percent.recipient)
+                        .map_or(Decimal::zero(), |recipient| recipient.percent);
+
                     // In this case the amount sent covers the difference between the upcoming threshold and the funds distributed, so we multiply that number by the current threshold's percentage
                     let first_threshold_amount = threshold_difference * recipient_percent;
 
