@@ -1,5 +1,5 @@
 {
-  "contract_name": "andromeda-splitter",
+  "contract_name": "andromeda-conditional-splitter",
   "contract_version": "1.0.0",
   "idl_version": "1.0.0",
   "instantiate": {
@@ -8,7 +8,7 @@
     "type": "object",
     "required": [
       "kernel_address",
-      "recipients"
+      "thresholds"
     ],
     "properties": {
       "kernel_address": {
@@ -30,11 +30,11 @@
           "null"
         ]
       },
-      "recipients": {
+      "thresholds": {
         "description": "The vector of recipients for the contract. Anytime a `Send` execute message is sent the amount sent will be divided amongst these recipients depending on their assigned percentage.",
         "type": "array",
         "items": {
-          "$ref": "#/definitions/AddressPercent"
+          "$ref": "#/definitions/Threshold"
         }
       }
     },
@@ -107,6 +107,29 @@
           }
         },
         "additionalProperties": false
+      },
+      "Threshold": {
+        "type": "object",
+        "required": [
+          "address_percent",
+          "min"
+        ],
+        "properties": {
+          "address_percent": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/AddressPercent"
+            }
+          },
+          "min": {
+            "$ref": "#/definitions/Uint128"
+          }
+        },
+        "additionalProperties": false
+      },
+      "Uint128": {
+        "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
+        "type": "string"
       }
     }
   },
@@ -130,7 +153,7 @@
               "recipients": {
                 "type": "array",
                 "items": {
-                  "$ref": "#/definitions/AddressPercent"
+                  "$ref": "#/definitions/Recipient"
                 }
               }
             },
@@ -403,22 +426,6 @@
         "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
         "type": "string"
       },
-      "AddressPercent": {
-        "type": "object",
-        "required": [
-          "percent",
-          "recipient"
-        ],
-        "properties": {
-          "percent": {
-            "$ref": "#/definitions/Decimal"
-          },
-          "recipient": {
-            "$ref": "#/definitions/Recipient"
-          }
-        },
-        "additionalProperties": false
-      },
       "AndrAddr": {
         "description": "An address that can be used within the Andromeda ecosystem. Inspired by the cosmwasm-std `Addr` type. https://github.com/CosmWasm/cosmwasm/blob/2a1c698520a1aacedfe3f4803b0d7d653892217a/packages/std/src/addresses.rs#L33\n\nThis address can be one of two things: 1. A valid human readable address e.g. `cosmos1...` 2. A valid Andromeda VFS path e.g. `/home/user/app/component`\n\nVFS paths can be local in the case of an app and can be done by referencing `./component` they can also contain protocols for cross chain communication. A VFS path is usually structured as so:\n\n`<protocol>://<chain (required if ibc used)>/<path>` or `ibc://cosmoshub-4/user/app/component`",
         "type": "string",
@@ -442,10 +449,6 @@
             "type": "string"
           }
         }
-      },
-      "Decimal": {
-        "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 (which is (2^128 - 1) / 10^18)",
-        "type": "string"
       },
       "IBCConfig": {
         "type": "object",
@@ -765,13 +768,13 @@
     "title": "QueryMsg",
     "oneOf": [
       {
-        "description": "The current config of the Splitter contract",
+        "description": "The current config of the Conditional Splitter contract",
         "type": "object",
         "required": [
-          "get_splitter_config"
+          "get_conditional_splitter_config"
         ],
         "properties": {
-          "get_splitter_config": {
+          "get_conditional_splitter_config": {
             "type": "object",
             "additionalProperties": false
           }
@@ -998,16 +1001,16 @@
       },
       "additionalProperties": false
     },
-    "get_splitter_config": {
+    "get_conditional_splitter_config": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "GetSplitterConfigResponse",
+      "title": "GetConditionalSplitterConfigResponse",
       "type": "object",
       "required": [
         "config"
       ],
       "properties": {
         "config": {
-          "$ref": "#/definitions/Splitter"
+          "$ref": "#/definitions/ConditionalSplitter"
         }
       },
       "additionalProperties": false,
@@ -1036,6 +1039,32 @@
         "Binary": {
           "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
           "type": "string"
+        },
+        "ConditionalSplitter": {
+          "description": "A config struct for a `Conditional Splitter` contract.",
+          "type": "object",
+          "required": [
+            "lock",
+            "thresholds"
+          ],
+          "properties": {
+            "lock": {
+              "description": "The lock's expiration time",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Milliseconds"
+                }
+              ]
+            },
+            "thresholds": {
+              "description": "The vector of thresholds which assign a percentage for a certain range of received funds",
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/Threshold"
+              }
+            }
+          },
+          "additionalProperties": false
         },
         "Decimal": {
           "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 (which is (2^128 - 1) / 10^18)",
@@ -1080,31 +1109,28 @@
           },
           "additionalProperties": false
         },
-        "Splitter": {
-          "description": "A config struct for a `Splitter` contract.",
+        "Threshold": {
           "type": "object",
           "required": [
-            "lock",
-            "recipients"
+            "address_percent",
+            "min"
           ],
           "properties": {
-            "lock": {
-              "description": "The lock's expiration time",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/Milliseconds"
-                }
-              ]
-            },
-            "recipients": {
-              "description": "The vector of recipients for the contract. Anytime a `Send` execute message is sent the amount sent will be divided amongst these recipients depending on their assigned percentage.",
+            "address_percent": {
               "type": "array",
               "items": {
                 "$ref": "#/definitions/AddressPercent"
               }
+            },
+            "min": {
+              "$ref": "#/definitions/Uint128"
             }
           },
           "additionalProperties": false
+        },
+        "Uint128": {
+          "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
+          "type": "string"
         }
       }
     },

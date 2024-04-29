@@ -1,37 +1,13 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "InstantiateMsg",
+  "title": "GetConditionalSplitterConfigResponse",
   "type": "object",
   "required": [
-    "kernel_address",
-    "thresholds"
+    "config"
   ],
   "properties": {
-    "kernel_address": {
-      "type": "string"
-    },
-    "lock_time": {
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Milliseconds"
-        },
-        {
-          "type": "null"
-        }
-      ]
-    },
-    "owner": {
-      "type": [
-        "string",
-        "null"
-      ]
-    },
-    "thresholds": {
-      "description": "The vector of recipients for the contract. Anytime a `Send` execute message is sent the amount sent will be divided amongst these recipients depending on their assigned percentage.",
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/Threshold"
-      }
+    "config": {
+      "$ref": "#/definitions/ConditionalSplitter"
     }
   },
   "additionalProperties": false,
@@ -60,6 +36,32 @@
     "Binary": {
       "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
       "type": "string"
+    },
+    "ConditionalSplitter": {
+      "description": "A config struct for a `Conditional Splitter` contract.",
+      "type": "object",
+      "required": [
+        "lock",
+        "thresholds"
+      ],
+      "properties": {
+        "lock": {
+          "description": "The lock's expiration time",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Milliseconds"
+            }
+          ]
+        },
+        "thresholds": {
+          "description": "The vector of thresholds which assign a percentage for a certain range of received funds",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Threshold"
+          }
+        }
+      },
+      "additionalProperties": false
     },
     "Decimal": {
       "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 (which is (2^128 - 1) / 10^18)",

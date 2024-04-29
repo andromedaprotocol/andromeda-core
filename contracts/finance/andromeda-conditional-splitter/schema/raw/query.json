@@ -3,13 +3,13 @@
   "title": "QueryMsg",
   "oneOf": [
     {
-      "description": "The current config of the Splitter contract",
+      "description": "The current config of the Conditional Splitter contract",
       "type": "object",
       "required": [
-        "get_splitter_config"
+        "get_conditional_splitter_config"
       ],
       "properties": {
-        "get_splitter_config": {
+        "get_conditional_splitter_config": {
           "type": "object",
           "additionalProperties": false
         }
