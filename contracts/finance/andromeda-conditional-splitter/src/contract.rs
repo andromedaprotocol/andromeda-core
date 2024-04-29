@@ -1,4 +1,4 @@
-use crate::state::{CONDITIONAL_SPLITTER, FUNDS_DISTRIBUTED};
+use crate::state::CONDITIONAL_SPLITTER;
 use andromeda_finance::conditional_splitter::{
     get_threshold, ConditionalSplitter, ExecuteMsg, GetConditionalSplitterConfigResponse,
     InstantiateMsg, QueryMsg,
@@ -13,8 +13,8 @@ use andromeda_std::{
 };
 use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
 use cosmwasm_std::{
-    attr, ensure, entry_point, BankMsg, Binary, Coin, CosmosMsg, Decimal, Deps, DepsMut, Env,
-    MessageInfo, Reply, Response, StdError, SubMsg, Uint128,
+    attr, ensure, entry_point, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
+    Reply, Response, StdError, SubMsg, Uint128,
 };
 use cw_utils::nonpayable;
 
@@ -62,7 +62,6 @@ pub fn instantiate(
     }
     // Save kernel address after validating it
     CONDITIONAL_SPLITTER.save(deps.storage, &conditional_splitter)?;
-    FUNDS_DISTRIBUTED.save(deps.storage, &Uint128::zero())?;
 
     let inst_resp = ADOContract::default().instantiate(
         deps.storage,
@@ -160,51 +159,18 @@ fn execute_send(ctx: ExecuteContext) -> Result<Response, ContractError> {
 
     let mut pkt = AMPPkt::from_ctx(ctx.amp_ctx, ctx.env.contract.address.to_string());
 
-    let funds_distributed = FUNDS_DISTRIBUTED.load(deps.storage)?;
-
     // Find the relevant threshold
-    let (threshold, threshold_index) =
-        get_threshold(&conditional_splitter.thresholds, funds_distributed)?;
+    let threshold = get_threshold(
+        &conditional_splitter.thresholds,
+        remainder_funds.first().unwrap().amount,
+    )?;
+
     for address_percent in threshold.address_percent {
         let recipient_percent = address_percent.percent;
         let mut vec_coin: Vec<Coin> = Vec::new();
         for (i, coin) in info.funds.clone().iter().enumerate() {
             let mut recip_coin: Coin = coin.clone();
-
-            // Make sure there's a next threshold in the first place
-            if threshold_index + 1 != conditional_splitter.thresholds.len() {
-                let next_threshold = &conditional_splitter.thresholds[threshold_index + 1];
-
-                // Check the amount remaining for the next threshold
-                let threshold_difference = next_threshold.min.checked_sub(funds_distributed)?;
-
-                // If the funds received surpass the above amount, we will have to deal with crossing the threshold
-                if recip_coin.amount > threshold_difference {
-                    // Find the recipient's percentage in the next threshold
-                    let all_recipients = &next_threshold.address_percent;
-
-                    let next_threshold_recipient_percent: Decimal = all_recipients
-                        .iter()
-                        .find(|recipient| recipient.recipient == address_percent.recipient)
-                        .map_or(Decimal::zero(), |recipient| recipient.percent);
-
-                    // In this case the amount sent covers the difference between the upcoming threshold and the funds distributed, so we multiply that number by the current threshold's percentage
-                    let first_threshold_amount = threshold_difference * recipient_percent;
-
-                    // The amount remaining after crossing the first threshold will be multiplied by the newely-crossed threshold's percentage
-                    let second_threshold_amount = (recip_coin.amount - threshold_difference)
-                        * next_threshold_recipient_percent;
-
-                    // The total amount to send will be the sum of both amounts
-                    recip_coin.amount =
-                        first_threshold_amount.checked_add(second_threshold_amount)?;
-                } else {
-                    recip_coin.amount = coin.amount * recipient_percent;
-                }
-            } else {
-                recip_coin.amount = coin.amount * recipient_percent;
-            }
-
+            recip_coin.amount = coin.amount * recipient_percent;
             remainder_funds[i].amount = remainder_funds[i].amount.checked_sub(recip_coin.amount)?;
             vec_coin.push(recip_coin.clone());
             amp_funds.push(recip_coin);
@@ -215,9 +181,6 @@ fn execute_send(ctx: ExecuteContext) -> Result<Response, ContractError> {
             .generate_amp_msg(&deps.as_ref(), Some(vec_coin))?;
         pkt = pkt.add_message(amp_msg);
     }
-
-    let new_funds_distributed = info.funds.first().unwrap().amount + funds_distributed;
-    FUNDS_DISTRIBUTED.save(deps.storage, &new_funds_distributed)?;
 
     remainder_funds.retain(|x| x.amount > Uint128::zero());
 

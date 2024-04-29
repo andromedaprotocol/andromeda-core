@@ -18,7 +18,7 @@ use super::mock_querier::MOCK_KERNEL_CONTRACT;
 
 use crate::{
     contract::{execute, instantiate, query},
-    state::{CONDITIONAL_SPLITTER, FUNDS_DISTRIBUTED},
+    state::CONDITIONAL_SPLITTER,
     testing::mock_querier::mock_dependencies_custom,
 };
 use andromeda_finance::{
@@ -239,8 +239,8 @@ fn test_execute_send() {
     let info = mock_info("owner", &[]);
     instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-    // First batch of funds which will put funds received to 10 and push the next batch to the other threshold
-    let first_batch = 10u128;
+    // First batch will test first threshold
+    let first_batch = 8u128;
 
     // Second batch will be used to test the second threshold
     let second_batch = 10u128;
@@ -255,11 +255,11 @@ fn test_execute_send() {
 
     // 50 percent
     let amp_msg_1 = recip1
-        .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(5, "uandr")]))
+        .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(4, "uandr")]))
         .unwrap();
-    // 20 percent
+    // 20 percent, 1.6 which is rounded down to 1
     let amp_msg_2 = recip2
-        .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(2, "uandr")]))
+        .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(1, "uandr")]))
         .unwrap();
     let amp_pkt = AMPPkt::new(
         MOCK_CONTRACT_ADDR.to_string(),
@@ -269,7 +269,7 @@ fn test_execute_send() {
     let amp_msg = amp_pkt
         .to_sub_msg(
             MOCK_KERNEL_CONTRACT,
-            Some(vec![Coin::new(5, "uandr"), Coin::new(2, "uandr")]),
+            Some(vec![Coin::new(4, "uandr"), Coin::new(1, "uandr")]),
             1,
         )
         .unwrap();
@@ -280,7 +280,7 @@ fn test_execute_send() {
                 // refunds remainder to sender
                 CosmosMsg::Bank(BankMsg::Send {
                     to_address: OWNER.to_string(),
-                    amount: vec![Coin::new(3, "uandr")], // 10 - (0.5 * 10) - (0.2 * 10)   remainder
+                    amount: vec![Coin::new(3, "uandr")], // 8 - (0.5 * 8) - (0.2 * 8)   remainder
                 }),
             ),
             amp_msg,
@@ -290,18 +290,10 @@ fn test_execute_send() {
 
     assert_eq!(res, expected_res);
 
-    let funds_distributed = FUNDS_DISTRIBUTED.load(&deps.storage).unwrap();
-    let expected_funds_distributed = Uint128::new(10);
-    assert_eq!(funds_distributed, expected_funds_distributed);
-
     // Second batch
     let info = mock_info(OWNER, &[Coin::new(second_batch, "uandr")]);
     let msg = ExecuteMsg::Send {};
     let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
-
-    let funds_distributed = FUNDS_DISTRIBUTED.load(&deps.storage).unwrap();
-    let expected_funds_distributed = Uint128::new(10 + 10);
-    assert_eq!(funds_distributed, expected_funds_distributed);
 
     // 20 percent
     let amp_msg_1 = recip1
@@ -345,17 +337,13 @@ fn test_execute_send() {
     let msg = ExecuteMsg::Send {};
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
 
-    let funds_distributed = FUNDS_DISTRIBUTED.load(&deps.storage).unwrap();
-    let expected_funds_distributed = Uint128::new(10 + 10 + 100);
-    assert_eq!(funds_distributed, expected_funds_distributed);
-
-    // amount of 30 * 20% + 70 * 50% = 41
+    // amount 100 * 50% = 50
     let amp_msg_1 = recip1
-        .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(41, "uandr")]))
+        .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(50, "uandr")]))
         .unwrap();
-    // amount of 30 * 10% + 70 * 50% = 38
+    // amount 100 * 50% = 50
     let amp_msg_2 = recip2
-        .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(38, "uandr")]))
+        .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(50, "uandr")]))
         .unwrap();
     let amp_pkt = AMPPkt::new(
         MOCK_CONTRACT_ADDR.to_string(),
@@ -365,22 +353,14 @@ fn test_execute_send() {
     let amp_msg = amp_pkt
         .to_sub_msg(
             MOCK_KERNEL_CONTRACT,
-            Some(vec![Coin::new(41, "uandr"), Coin::new(38, "uandr")]),
+            Some(vec![Coin::new(50, "uandr"), Coin::new(50, "uandr")]),
             1,
         )
         .unwrap();
 
     let expected_res = Response::new()
-        .add_submessages(vec![
-            SubMsg::new(
-                // refunds remainder to sender
-                CosmosMsg::Bank(BankMsg::Send {
-                    to_address: OWNER.to_string(),
-                    amount: vec![Coin::new(21, "uandr")], // 100 - 41 - 38  remainder
-                }),
-            ),
-            amp_msg,
-        ])
+        // No refund for the sender since the percentages add up to 100
+        .add_submessage(amp_msg)
         .add_attributes(vec![attr("action", "send"), attr("sender", "creator")])
         .add_submessage(generate_economics_message(OWNER, "Send"));
 

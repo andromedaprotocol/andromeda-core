@@ -31,18 +31,15 @@ impl Threshold {
 pub fn get_threshold(
     thresholds: &[Threshold],
     amount: Uint128,
-) -> Result<(Threshold, usize), ContractError> {
-    // Create a vector of tuples containing the original index and the threshold
-    let mut indexed_thresholds: Vec<(usize, &Threshold)> = thresholds.iter().enumerate().collect();
+) -> Result<Threshold, ContractError> {
+    let mut sorted_thresholds = thresholds.to_vec();
+    // Sort the thresholds in decreasing order
+    sorted_thresholds.sort_by(|a, b| b.min.cmp(&a.min));
 
-    // Sort thresholds by min values in decreasing order
-    indexed_thresholds.sort_by(|a, b| b.1.min.cmp(&a.1.min));
-
-    // Iterate over the sorted indexed thresholds
-    for (index, threshold) in indexed_thresholds {
+    for threshold in sorted_thresholds.into_iter() {
+        // Return the first threshold that's in range of the given amount
         if threshold.in_range(amount) {
-            // Return the threshold and its original index
-            return Ok((threshold.clone(), index));
+            return Ok(threshold);
         }
     }
     Err(ContractError::InvalidRange {})
@@ -89,7 +86,7 @@ pub enum ExecuteMsg {
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
-    /// The current config of the Splitter contract
+    /// The current config of the Conditional Splitter contract
     #[returns(GetConditionalSplitterConfigResponse)]
     GetConditionalSplitterConfig {},
 }
@@ -99,13 +96,12 @@ pub struct GetConditionalSplitterConfigResponse {
     pub config: ConditionalSplitter,
 }
 
-/// Ensures that a given list of recipients for a `conditional splitter` contract is valid:
+/// Ensures that a given list of thresholds is valid:
 /// * Percentages of each threshold should not exceed 100
 /// * Each threshold must include at least one recipient
 /// * The number of recipients for each threshold must not exceed 100
 /// * The recipient addresses must be unique for each threshold
 /// * Make sure there are no duplicate min values between the thresholds
-
 pub fn validate_thresholds(deps: Deps, thresholds: &Vec<Threshold>) -> Result<(), ContractError> {
     let mut min_value_set = HashSet::new();
 
@@ -261,7 +257,7 @@ mod tests {
                         Uint128::one(),
                         vec![AddressPercent::new(
                             Recipient::new(AndrAddr::from_string("recipient"), None),
-                            Decimal::zero(),
+                            Decimal::one(),
                         )],
                     ),
                 ],
