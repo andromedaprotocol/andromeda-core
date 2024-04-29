@@ -1,5 +1,4 @@
 use andromeda_std::{
-    amp::recipient::Recipient,
     andr_exec, andr_instantiate, andr_query,
     common::{MillisecondsDuration, MillisecondsExpiration},
     error::ContractError,
@@ -53,7 +52,7 @@ pub struct ConditionalSplitter {
     /// The vector of thresholds which assign a percentage for a certain range of received funds
     pub thresholds: Vec<Threshold>,
     /// The lock's expiration time
-    pub lock: MillisecondsExpiration,
+    pub lock: Option<MillisecondsExpiration>,
 }
 impl ConditionalSplitter {
     pub fn validate(&self, deps: Deps) -> Result<(), ContractError> {
@@ -73,8 +72,8 @@ pub struct InstantiateMsg {
 #[andr_exec]
 #[cw_serde]
 pub enum ExecuteMsg {
-    /// Update the recipients list. Only executable by the contract owner when the contract is not locked.
-    UpdateRecipients { recipients: Vec<Recipient> },
+    /// Update the thresholds. Only executable by the contract owner when the contract is not locked.
+    UpdateThresholds { thresholds: Vec<Threshold> },
     /// Used to lock/unlock the contract allowing the config to be updated.
     UpdateLock {
         // Milliseconds from current time
@@ -154,11 +153,9 @@ pub fn validate_thresholds(deps: Deps, thresholds: &Vec<Threshold>) -> Result<()
 
 #[cfg(test)]
 mod tests {
-
-    use andromeda_std::amp::AndrAddr;
-    use cosmwasm_std::testing::mock_dependencies;
-
     use super::*;
+    use andromeda_std::amp::{AndrAddr, Recipient};
+    use cosmwasm_std::testing::mock_dependencies;
 
     struct TestThresholdValidation {
         name: &'static str,

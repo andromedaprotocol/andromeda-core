@@ -75,7 +75,7 @@ fn test_execute_update_lock() {
 
     // Start off with an expiration that's behind current time (expired)
     let splitter = ConditionalSplitter {
-        lock: Milliseconds::from_seconds(current_time - 1),
+        lock: Some(Milliseconds::from_seconds(current_time - 1)),
         thresholds: vec![Threshold {
             min: Uint128::zero(),
             address_percent: vec![],
@@ -105,8 +105,8 @@ fn test_execute_update_lock() {
 
     //check result
     let splitter = CONDITIONAL_SPLITTER.load(deps.as_ref().storage).unwrap();
-    assert!(!splitter.lock.is_expired(&env.block));
-    assert_eq!(new_lock, splitter.lock);
+    assert!(!splitter.lock.unwrap().is_expired(&env.block));
+    assert_eq!(new_lock, splitter.lock.unwrap());
 }
 
 // #[test]
@@ -543,7 +543,7 @@ fn test_handle_packet_exit_with_error_true() {
     let msg = ExecuteMsg::AMPReceive(pkt);
 
     let splitter = ConditionalSplitter {
-        lock: Milliseconds::default(),
+        lock: None,
         thresholds: vec![Threshold::new(Uint128::zero(), address_percent)],
     };
 
@@ -566,7 +566,7 @@ fn test_query_splitter() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
     let splitter = ConditionalSplitter {
-        lock: Milliseconds::default(),
+        lock: None,
         thresholds: vec![Threshold::new(Uint128::zero(), vec![])],
     };
 
@@ -622,7 +622,7 @@ fn test_execute_send_error() {
 
     let splitter = ConditionalSplitter {
         thresholds: vec![Threshold::new(Uint128::zero(), address_percent)],
-        lock: Milliseconds::default(),
+        lock: None,
     };
 
     CONDITIONAL_SPLITTER

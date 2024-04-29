@@ -1,7 +1,7 @@
 use crate::state::CONDITIONAL_SPLITTER;
 use andromeda_finance::conditional_splitter::{
     get_threshold, ConditionalSplitter, ExecuteMsg, GetConditionalSplitterConfigResponse,
-    InstantiateMsg, QueryMsg,
+    InstantiateMsg, QueryMsg, Threshold,
 };
 use std::vec;
 
@@ -37,7 +37,7 @@ pub fn instantiate(
 
     let mut conditional_splitter = ConditionalSplitter {
         thresholds: msg.thresholds.clone(),
-        lock: msg.lock_time.unwrap_or_default(),
+        lock: msg.lock_time,
     };
     // Validate thresholds
     conditional_splitter.validate(deps.as_ref())?;
@@ -54,10 +54,10 @@ pub fn instantiate(
                 lock_time.seconds() <= ONE_YEAR,
                 ContractError::LockTimeTooLong {}
             );
-            conditional_splitter.lock = current_time.plus_milliseconds(lock_time);
+            conditional_splitter.lock = Some(current_time.plus_milliseconds(lock_time));
         }
         None => {
-            conditional_splitter.lock = Milliseconds::default();
+            conditional_splitter.lock = None;
         }
     }
     // Save kernel address after validating it
@@ -117,7 +117,7 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
         msg.as_ref(),
     )?;
     let res = match msg {
-        // ExecuteMsg::UpdateRecipients { recipients } => execute_update_recipients(ctx, recipients),
+        ExecuteMsg::UpdateThresholds { thresholds } => execute_update_thresholds(ctx, thresholds),
         ExecuteMsg::UpdateLock { lock_time } => execute_update_lock(ctx, lock_time),
         ExecuteMsg::Send {} => execute_send(ctx),
         _ => ADOContract::default().execute(ctx, msg),
@@ -200,41 +200,42 @@ fn execute_send(ctx: ExecuteContext) -> Result<Response, ContractError> {
         .add_attribute("sender", info.sender.to_string()))
 }
 
-// fn execute_update_recipients(
-//     ctx: ExecuteContext,
-//     recipients: Vec<AddressPercent>,
-// ) -> Result<Response, ContractError> {
-//     let ExecuteContext {
-//         deps, info, env, ..
-//     } = ctx;
+fn execute_update_thresholds(
+    ctx: ExecuteContext,
+    thresholds: Vec<Threshold>,
+) -> Result<Response, ContractError> {
+    let ExecuteContext {
+        deps, info, env, ..
+    } = ctx;
 
-//     nonpayable(&info)?;
+    nonpayable(&info)?;
 
-//     ensure!(
-//         ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
-//         ContractError::Unauthorized {}
-//     );
+    ensure!(
+        ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {}
+    );
 
-//     validate_recipient_list(deps.as_ref(), recipients.clone())?;
+    let conditional_splitter = CONDITIONAL_SPLITTER.load(deps.storage)?;
 
-//     let mut splitter = SPLITTER.load(deps.storage)?;
-//     // Can't call this function while the lock isn't expired
+    // Can't call this function while the lock isn't expired
+    if let Some(conditional_splitter_lock) = conditional_splitter.lock {
+        ensure!(
+            conditional_splitter_lock.is_expired(&env.block),
+            ContractError::ContractLocked {}
+        );
+    }
 
-//     ensure!(
-//         splitter.lock.is_expired(&env.block),
-//         ContractError::ContractLocked {}
-//     );
-//     // Max 100 recipients
-//     ensure!(
-//         recipients.len() <= 100,
-//         ContractError::ReachedRecipientLimit {}
-//     );
+    let updated_conditional_splitter = ConditionalSplitter {
+        thresholds,
+        lock: conditional_splitter.lock,
+    };
+    // Validate the updated conditional splitter
+    updated_conditional_splitter.validate(deps.as_ref())?;
 
-//     splitter.recipients = recipients;
-//     SPLITTER.save(deps.storage, &splitter)?;
+    CONDITIONAL_SPLITTER.save(deps.storage, &updated_conditional_splitter)?;
 
-//     Ok(Response::default().add_attributes(vec![attr("action", "update_recipients")]))
-// }
+    Ok(Response::default().add_attributes(vec![attr("action", "update_thresholds")]))
+}
 
 fn execute_update_lock(
     ctx: ExecuteContext,
@@ -251,14 +252,16 @@ fn execute_update_lock(
         ContractError::Unauthorized {}
     );
 
-    let mut splitter = CONDITIONAL_SPLITTER.load(deps.storage)?;
+    let mut conditional_splitter = CONDITIONAL_SPLITTER.load(deps.storage)?;
 
     // Can't call this function while the lock isn't expired
+    if let Some(conditional_splitter_lock) = conditional_splitter.lock {
+        ensure!(
+            conditional_splitter_lock.is_expired(&env.block),
+            ContractError::ContractLocked {}
+        );
+    }
 
-    ensure!(
-        splitter.lock.is_expired(&env.block),
-        ContractError::ContractLocked {}
-    );
     // Get current time
     let current_time = Milliseconds::from_seconds(env.block.time.seconds());
 
@@ -277,9 +280,9 @@ fn execute_update_lock(
     // Set new lock time
     let new_expiration = current_time.plus_milliseconds(lock_time);
 
-    splitter.lock = new_expiration;
+    conditional_splitter.lock = Some(new_expiration);
 
-    CONDITIONAL_SPLITTER.save(deps.storage, &splitter)?;
+    CONDITIONAL_SPLITTER.save(deps.storage, &conditional_splitter)?;
 
     Ok(Response::default().add_attributes(vec![
         attr("action", "update_lock"),
