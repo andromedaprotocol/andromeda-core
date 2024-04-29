@@ -125,7 +125,12 @@ pub fn validate_thresholds(deps: Deps, thresholds: &Vec<Threshold>) -> Result<()
         let mut recipient_address_set = HashSet::new();
 
         for address_percent in &threshold.address_percent {
+            // Check for total percent exceeding 100
             total_percent = total_percent.checked_add(address_percent.percent)?;
+            ensure!(
+                total_percent <= Decimal::one(),
+                ContractError::AmountExceededHundredPrecent {}
+            );
 
             // Checks for duplicate and invalid recipients
             address_percent.recipient.validate(&deps)?;
@@ -136,10 +141,6 @@ pub fn validate_thresholds(deps: Deps, thresholds: &Vec<Threshold>) -> Result<()
             );
             recipient_address_set.insert(recipient_address);
         }
-        ensure!(
-            total_percent <= Decimal::one(),
-            ContractError::AmountExceededHundredPrecent {}
-        );
 
         // Checks for duplicate minimum values
         let min_value = threshold.min.u128();
