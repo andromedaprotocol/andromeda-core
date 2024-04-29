@@ -44,8 +44,8 @@ pub enum ContractError {
     #[error("InvalidOrigin")]
     InvalidOrigin {},
 
-    #[error("InvalidRange")]
-    InvalidRange {},
+    #[error("InvalidAmount: {msg}")]
+    InvalidAmount { msg: String },
 
     #[error("OverlappingRanges")]
     OverlappingRanges {},

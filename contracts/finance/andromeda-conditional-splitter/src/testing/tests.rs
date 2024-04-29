@@ -367,6 +367,68 @@ fn test_execute_send() {
     assert_eq!(res, expected_res);
 }
 
+#[test]
+fn test_execute_send_threshold_not_found() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let env = mock_env();
+    let recip_address1 = "address1".to_string();
+    let recip_address2 = "address2".to_string();
+    let second_threshold = Uint128::new(10);
+    let recip1 = Recipient::from_string(recip_address1);
+    let recip2 = Recipient::from_string(recip_address2);
+    let msg = InstantiateMsg {
+        owner: Some(OWNER.to_owned()),
+        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+        thresholds: vec![
+            Threshold::new(
+                Uint128::new(7),
+                vec![
+                    AddressPercent::new(
+                        recip1.clone(), // 50%
+                        Decimal::from_ratio(Uint128::one(), Uint128::new(2)),
+                    ),
+                    AddressPercent::new(
+                        recip2.clone(), // 20%
+                        Decimal::from_ratio(Uint128::one(), Uint128::new(5)),
+                    ),
+                ],
+            ),
+            Threshold::new(
+                second_threshold,
+                vec![
+                    AddressPercent::new(
+                        recip1.clone(), // 20%
+                        Decimal::from_ratio(Uint128::one(), Uint128::new(5)),
+                    ),
+                    AddressPercent::new(
+                        recip2.clone(), // 10%
+                        Decimal::from_ratio(Uint128::one(), Uint128::new(10)),
+                    ),
+                ],
+            ),
+        ],
+        lock_time: Some(Milliseconds::from_seconds(100_000)),
+    };
+
+    let info = mock_info("owner", &[]);
+    instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    // This batch is lower than the lowest threshold which is 7
+    let first_batch = 6u128;
+
+    // First batch
+    let info = mock_info(OWNER, &[Coin::new(first_batch, "uandr")]);
+    let msg = ExecuteMsg::Send {};
+    let err = execute(deps.as_mut(), env.clone(), info, msg).unwrap_err();
+
+    assert_eq!(
+        err,
+        ContractError::InvalidAmount {
+            msg: "The amount sent does not meet any threshold".to_string(),
+        }
+    );
+}
+
 // #[test]
 // fn test_execute_send_ado_recipient() {
 //     let mut deps = mock_dependencies_custom(&[]);

@@ -42,7 +42,9 @@ pub fn get_threshold(
             return Ok(threshold);
         }
     }
-    Err(ContractError::InvalidRange {})
+    Err(ContractError::InvalidAmount {
+        msg: "The amount sent does not meet any threshold".to_string(),
+    })
 }
 
 #[cw_serde]
