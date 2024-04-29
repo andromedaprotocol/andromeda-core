@@ -630,6 +630,9 @@ pub enum ContractError {
     #[error("Invalid Expiration Time")]
     InvalidExpirationTime {},
 
+    #[error("Invalid Parameter, {error:?}")]
+    InvalidParameter { error: Option<String> },
+
     #[error("Invalid Pathname, {error:?}")]
     InvalidPathname { error: Option<String> },
 
