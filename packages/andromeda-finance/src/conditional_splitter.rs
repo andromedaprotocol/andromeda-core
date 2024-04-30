@@ -9,7 +9,7 @@ use std::collections::HashSet;
 
 use crate::splitter::AddressPercent;
 
-// The contract owner will input a vector of Threshold
+// The threshold has a min value and a vector of recipients, each having a respective percentage
 #[cw_serde]
 pub struct Threshold {
     pub min: Uint128,
@@ -22,11 +22,13 @@ impl Threshold {
             address_percent,
         }
     }
+    // Checks if the funds sent are equal or greater than the min value
     pub fn in_range(&self, num: Uint128) -> bool {
         num >= self.min
     }
 }
 
+// To get the threshold that corresponds to the funds sent, we sort the thresholds by min value in decreasing order, and return first threshold where the funds and in range of its min value
 pub fn get_threshold(
     thresholds: &[Threshold],
     amount: Uint128,
@@ -52,7 +54,7 @@ pub struct ConditionalSplitter {
     /// The vector of thresholds which assign a percentage for a certain range of received funds
     pub thresholds: Vec<Threshold>,
     /// The lock's expiration time
-    pub lock: Option<MillisecondsExpiration>,
+    pub lock_time: Option<MillisecondsExpiration>,
 }
 impl ConditionalSplitter {
     pub fn validate(&self, deps: Deps) -> Result<(), ContractError> {

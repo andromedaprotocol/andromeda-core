@@ -35,7 +35,7 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     let mut conditional_splitter = ConditionalSplitter {
         thresholds: msg.thresholds.clone(),
-        lock: msg.lock_time,
+        lock_time: msg.lock_time,
     };
 
     if let Some(lock_time) = msg.lock_time {
@@ -50,7 +50,7 @@ pub fn instantiate(
             ContractError::LockTimeTooLong {}
         );
         let current_time = Milliseconds::from_seconds(env.block.time.seconds());
-        conditional_splitter.lock = Some(current_time.plus_milliseconds(lock_time));
+        conditional_splitter.lock_time = Some(current_time.plus_milliseconds(lock_time));
     }
 
     // Validate thresholds
@@ -214,7 +214,7 @@ fn execute_update_thresholds(
     let conditional_splitter = CONDITIONAL_SPLITTER.load(deps.storage)?;
 
     // Can't call this function while the lock isn't expired
-    if let Some(conditional_splitter_lock) = conditional_splitter.lock {
+    if let Some(conditional_splitter_lock) = conditional_splitter.lock_time {
         ensure!(
             conditional_splitter_lock.is_expired(&env.block),
             ContractError::ContractLocked {}
@@ -223,7 +223,7 @@ fn execute_update_thresholds(
 
     let updated_conditional_splitter = ConditionalSplitter {
         thresholds,
-        lock: conditional_splitter.lock,
+        lock_time: conditional_splitter.lock_time,
     };
     // Validate the updated conditional splitter
     updated_conditional_splitter.validate(deps.as_ref())?;
@@ -251,7 +251,7 @@ fn execute_update_lock(
     let mut conditional_splitter = CONDITIONAL_SPLITTER.load(deps.storage)?;
 
     // Can't call this function while the lock isn't expired
-    if let Some(conditional_splitter_lock) = conditional_splitter.lock {
+    if let Some(conditional_splitter_lock) = conditional_splitter.lock_time {
         ensure!(
             conditional_splitter_lock.is_expired(&env.block),
             ContractError::ContractLocked {}
@@ -276,7 +276,7 @@ fn execute_update_lock(
     // Set new lock time
     let new_expiration = current_time.plus_milliseconds(lock_time);
 
-    conditional_splitter.lock = Some(new_expiration);
+    conditional_splitter.lock_time = Some(new_expiration);
 
     CONDITIONAL_SPLITTER.save(deps.storage, &conditional_splitter)?;
 

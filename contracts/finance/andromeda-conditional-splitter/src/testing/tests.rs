@@ -75,7 +75,7 @@ fn test_execute_update_lock() {
 
     // Start off with an expiration that's behind current time (expired)
     let splitter = ConditionalSplitter {
-        lock: Some(Milliseconds::from_seconds(current_time - 1)),
+        lock_time: Some(Milliseconds::from_seconds(current_time - 1)),
         thresholds: vec![Threshold {
             min: Uint128::zero(),
             address_percent: vec![],
@@ -105,8 +105,8 @@ fn test_execute_update_lock() {
 
     //check result
     let splitter = CONDITIONAL_SPLITTER.load(deps.as_ref().storage).unwrap();
-    assert!(!splitter.lock.unwrap().is_expired(&env.block));
-    assert_eq!(new_lock, splitter.lock.unwrap());
+    assert!(!splitter.lock_time.unwrap().is_expired(&env.block));
+    assert_eq!(new_lock, splitter.lock_time.unwrap());
 }
 
 #[test]
@@ -134,7 +134,7 @@ fn test_execute_update_thresholds() {
         ],
     )];
     let splitter = ConditionalSplitter {
-        lock: None,
+        lock_time: None,
         thresholds: first_thresholds,
     };
 
@@ -280,10 +280,10 @@ fn test_execute_send() {
     // First batch will test first threshold
     let first_batch = 8u128;
 
-    // Second batch will be used to test the second threshold
+    // Second batch will test the second threshold
     let second_batch = 10u128;
 
-    // Third batch will be used to test crossing a threshold
+    // Third batch will test the third threshold
     let third_batch = 100u128;
 
     // First batch
@@ -581,7 +581,7 @@ fn test_handle_packet_exit_with_error_true() {
     let msg = ExecuteMsg::AMPReceive(pkt);
 
     let splitter = ConditionalSplitter {
-        lock: None,
+        lock_time: None,
         thresholds: vec![Threshold::new(Uint128::zero(), address_percent)],
     };
 
@@ -604,7 +604,7 @@ fn test_query_splitter() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
     let splitter = ConditionalSplitter {
-        lock: None,
+        lock_time: None,
         thresholds: vec![Threshold::new(Uint128::zero(), vec![])],
     };
 
@@ -660,7 +660,7 @@ fn test_execute_send_error() {
 
     let splitter = ConditionalSplitter {
         thresholds: vec![Threshold::new(Uint128::zero(), address_percent)],
-        lock: None,
+        lock_time: None,
     };
 
     CONDITIONAL_SPLITTER
