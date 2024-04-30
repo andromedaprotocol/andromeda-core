@@ -19,7 +19,7 @@ fn test_conditional_splitter() {
     let mut router = mock_app(None);
     let andr = MockAndromedaBuilder::new(&mut router, "admin")
         .with_wallets(vec![
-            ("owner", vec![coin(100_000, "uandr")]),
+            ("owner", vec![coin(100_000, "uandr"), coin(100_000, "uusd")]),
             ("recipient1", vec![]),
             ("recipient2", vec![]),
             ("recipient3", vec![]),
@@ -147,4 +147,30 @@ fn test_conditional_splitter() {
         balance_owner.amount,
         Uint128::from(100_000u128 - 1000u128 - 10_000u128 - 45_000u128)
     );
+
+    // Try sending 2 distinct coins
+    let uandr_token = coin(10_000, "uandr");
+    let uusd_token = coin(100, "uusd");
+
+    splitter
+        .execute_send(&mut router, owner.clone(), &[uandr_token, uusd_token])
+        .unwrap();
+
+    let uandr_balance_1 = router.wrap().query_balance(recipient_1, "uandr").unwrap();
+    let uandr_balance_2 = router.wrap().query_balance(recipient_2, "uandr").unwrap();
+
+    let uusd_balance_1 = router.wrap().query_balance(recipient_1, "uusd").unwrap();
+    let uusd_balance_2 = router.wrap().query_balance(recipient_2, "uusd").unwrap();
+
+    assert_eq!(
+        uandr_balance_1.amount,
+        Uint128::from(200u128 + 2000u128 + 10_000u128 + 2000u128)
+    );
+    assert_eq!(
+        uandr_balance_2.amount,
+        Uint128::from(800u128 + 8000u128 + 25_000u128 + 8000u128)
+    );
+
+    assert_eq!(uusd_balance_1.amount, Uint128::from(20u128));
+    assert_eq!(uusd_balance_2.amount, Uint128::from(80u128));
 }
