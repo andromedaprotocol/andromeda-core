@@ -1,21 +1,17 @@
 use andromeda_finance::timelock::{
     Escrow, EscrowCondition, ExecuteMsg, GetLockedFundsForRecipientResponse,
-    GetLockedFundsResponse, InstantiateMsg, MigrateMsg, QueryMsg,
+    GetLockedFundsResponse, InstantiateMsg, QueryMsg,
 };
-use andromeda_std::common::call_action::call_action;
 use andromeda_std::{
-    ado_base::InstantiateMsg as BaseInstantiateMsg,
+    ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     amp::Recipient,
-    common::encode_binary,
-    error::{from_semver, ContractError},
+    common::{actions::call_action, encode_binary},
+    error::ContractError,
 };
 use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
 use cosmwasm_std::{
     attr, ensure, entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Response, SubMsg,
 };
-use cw2::{get_contract_version, set_contract_version};
-
-use semver::Version;
 
 use crate::state::{escrows, get_key, get_keys_for_recipient};
 
@@ -30,18 +26,16 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-
     let contract = ADOContract::default();
     let resp = contract.instantiate(
         deps.storage,
         env,
         deps.api,
+        &deps.querier,
         info,
         BaseInstantiateMsg {
-            ado_type: "timelock".to_string(),
+            ado_type: CONTRACT_NAME.to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
-            operators: None,
             kernel_address: msg.kernel_address,
             owner: msg.owner,
         },
@@ -68,14 +62,14 @@ pub fn execute(
 }
 
 pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
-    call_action(
+    let action_response = call_action(
         &mut ctx.deps,
         &ctx.info,
         &ctx.env,
         &ctx.amp_ctx,
         msg.as_ref(),
     )?;
-    match msg {
+    let res = match msg {
         ExecuteMsg::HoldFunds {
             condition,
             recipient,
@@ -91,7 +85,11 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
         } => execute_release_specific_funds(ctx, owner, recipient_addr),
 
         _ => ADOContract::default().execute(ctx, msg),
-    }
+    }?;
+    Ok(res
+        .add_submessages(action_response.messages)
+        .add_attributes(action_response.attributes)
+        .add_events(action_response.events))
 }
 
 fn execute_hold_funds(
@@ -204,36 +202,7 @@ fn execute_release_specific_funds(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-    // New version
-    let version: Version = CONTRACT_VERSION.parse().map_err(from_semver)?;
-
-    // Old version
-    let stored = get_contract_version(deps.storage)?;
-    let storage_version: Version = stored.version.parse().map_err(from_semver)?;
-
-    let contract = ADOContract::default();
-
-    ensure!(
-        stored.contract == CONTRACT_NAME,
-        ContractError::CannotMigrate {
-            previous_contract: stored.contract,
-        }
-    );
-
-    // New version has to be newer/greater than the old version
-    ensure!(
-        storage_version < version,
-        ContractError::CannotMigrate {
-            previous_contract: stored.version,
-        }
-    );
-
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-
-    // Update the ADOContract's version
-    contract.execute_update_version(deps)?;
-
-    Ok(Response::default())
+    ADOContract::default().migrate(deps, CONTRACT_NAME, CONTRACT_VERSION)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

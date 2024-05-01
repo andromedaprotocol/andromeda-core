@@ -1,13 +1,15 @@
-use cosmwasm_std::{OverflowError, StdError};
+use cosmwasm_std::{Addr, OverflowError, StdError};
 use cw20_base::ContractError as Cw20ContractError;
 use cw721_base::ContractError as Cw721ContractError;
 use cw_asset::AssetError;
-use cw_utils::{Expiration, ParseReplyError, PaymentError};
+use cw_utils::{ParseReplyError, PaymentError};
 use hex::FromHexError;
 use std::convert::From;
 use std::str::{ParseBoolError, Utf8Error};
 use std::string::FromUtf8Error;
 use thiserror::Error;
+
+use crate::common::Milliseconds;
 
 #[derive(Error, Debug, PartialEq)]
 pub enum ContractError {
@@ -28,6 +30,11 @@ pub enum ContractError {
 
     #[error("ActionNotFound")]
     ActionNotFound {},
+    #[error("UnpublishedCodeID")]
+    UnpublishedCodeID {},
+
+    #[error("UnpublishedVersion")]
+    UnpublishedVersion {},
 
     #[error("ContractLocked")]
     ContractLocked {},
@@ -41,8 +48,23 @@ pub enum ContractError {
     #[error("InvalidOrigin")]
     InvalidOrigin {},
 
+    #[error("Invalid {operation} Operation with {validator}")]
+    InvalidValidatorOperation {
+        operation: String,
+        validator: String,
+    },
+
+    #[error("No Staking Reward")]
+    InvalidClaim {},
+
     #[error("InvalidSender")]
     InvalidSender {},
+
+    #[error("InvalidValidator")]
+    InvalidValidator {},
+
+    #[error("InvalidDelegation")]
+    InvalidDelegation {},
 
     #[error("RewardTooLow")]
     RewardTooLow {},
@@ -64,6 +86,9 @@ pub enum ContractError {
 
     #[error("invalid IBC channel version - got ({actual}), expected ({expected})")]
     InvalidVersion { actual: String, expected: String },
+
+    #[error("CrossChainComponentsCurrentlyDisabled")]
+    CrossChainComponentsCurrentlyDisabled {},
 
     #[error("tokenId list has different length than tokenUri list")]
     TokenInfoLenMissmatch {},
@@ -215,6 +240,9 @@ pub enum ContractError {
     #[error("NoReceivingAddress")]
     NoReceivingAddress {},
 
+    #[error("TemporarilyDisabled")]
+    TemporarilyDisabled {},
+
     #[error("AccountNotFound")]
     AccountNotFound {},
 
@@ -287,6 +315,9 @@ pub enum ContractError {
     #[error("Overflow")]
     Overflow {},
 
+    #[error("Underflow")]
+    Underflow {},
+
     #[error("CannotWithdrawHighestBid")]
     CannotWithdrawHighestBid {},
 
@@ -319,6 +350,12 @@ pub enum ContractError {
 
     #[error("InvalidADOVersion: {msg:?}")]
     InvalidADOVersion { msg: Option<String> },
+
+    #[error("InvalidCodeID: {msg:?}")]
+    InvalidCodeID { msg: Option<String> },
+
+    #[error("InvalidADOType: {msg:?}")]
+    InvalidADOType { msg: Option<String> },
 
     #[error("AuctionRewardAlreadyClaimed")]
     AuctionAlreadyClaimed {},
@@ -393,6 +430,9 @@ pub enum ContractError {
     #[error("Invalid png header")]
     InvalidPngHeader {},
 
+    #[error("Instantiate2 Address Mistmatch: expected: {expected}, received: {received}")]
+    Instantiate2AddressMismatch { expected: Addr, received: Addr },
+
     #[error("Duplicate initial balance addresses")]
     DuplicateInitialBalanceAddresses {},
 
@@ -454,9 +494,6 @@ pub enum ContractError {
     #[error("TooManyAppComponents")]
     TooManyAppComponents {},
 
-    #[error("TooManyComponents")]
-    TooManyComponents {},
-
     #[error("InvalidLtvRatio: {msg}")]
     InvalidLtvRatio { msg: String },
 
@@ -496,14 +533,17 @@ pub enum ContractError {
     #[error("Invalid Query")]
     InvalidQuery {},
 
+    #[error("Unexpected Item Found in: {item}")]
+    UnexpectedItem { item: String },
+
     #[error("Invalid Withdrawal: {msg:?}")]
     InvalidWithdrawal { msg: Option<String> },
 
     #[error("Airdrop stage {stage} expired at {expiration}")]
-    StageExpired { stage: u8, expiration: Expiration },
+    StageExpired { stage: u8, expiration: Milliseconds },
 
     #[error("Airdrop stage {stage} not expired yet")]
-    StageNotExpired { stage: u8, expiration: Expiration },
+    StageNotExpired { stage: u8, expiration: Milliseconds },
 
     #[error("Wrong Length")]
     WrongLength {},
@@ -613,8 +653,17 @@ pub enum ContractError {
     #[error("Invalid Denom Trace Path: {path} - {denom}")]
     InvalidDenomTracePath { path: String, denom: String },
 
+    #[error("Invalid Expression: {msg}")]
+    InvalidExpression { msg: String },
+
     #[error("Invalid Transfer Port: {port}")]
     InvalidTransferPort { port: String },
+
+    #[error("Invalid Modules: {msg}")]
+    InvalidModules { msg: String },
+
+    #[error("Invalid time: {msg}")]
+    InvalidTimestamp { msg: String },
 }
 
 impl From<Cw20ContractError> for ContractError {

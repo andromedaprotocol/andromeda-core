@@ -1,10 +1,10 @@
+use crate::ado_base::version::ADOBaseVersionResponse;
 use crate::ado_contract::state::ADOContract;
 use crate::{
     ado_base::{
         ado_type::TypeResponse,
         block_height::BlockHeightResponse,
         kernel_address::KernelAddressResponse,
-        operators::{IsOperatorResponse, OperatorsResponse},
         ownership::{ContractOwnerResponse, PublisherResponse},
         version::VersionResponse,
         AndromedaQuery,
@@ -12,7 +12,8 @@ use crate::{
     common::encode_binary,
     error::ContractError,
 };
-use cosmwasm_std::{from_json, to_json_binary, Binary, Deps, Env, Order};
+use cosmwasm_std::{from_json, to_json_binary, Binary, Deps, Env};
+use cw2::get_contract_version;
 use serde::Serialize;
 
 impl<'a> ADOContract<'a> {
@@ -28,7 +29,6 @@ impl<'a> ADOContract<'a> {
         match from_json::<AndromedaQuery>(&msg) {
             Ok(msg) => match msg {
                 AndromedaQuery::Owner {} => encode_binary(&self.query_contract_owner(deps)?),
-                AndromedaQuery::Operators {} => encode_binary(&self.query_operators(deps)?),
                 AndromedaQuery::OriginalPublisher {} => {
                     encode_binary(&self.query_original_publisher(deps)?)
                 }
@@ -36,14 +36,14 @@ impl<'a> ADOContract<'a> {
                 AndromedaQuery::BlockHeightUponCreation {} => {
                     encode_binary(&self.query_block_height_upon_creation(deps)?)
                 }
-                AndromedaQuery::IsOperator { address } => {
-                    encode_binary(&self.query_is_operator(deps, &address)?)
-                }
                 AndromedaQuery::KernelAddress {} => {
                     encode_binary(&self.query_kernel_address(deps)?)
                 }
                 AndromedaQuery::Version {} => encode_binary(&self.query_version(deps)?),
-
+                AndromedaQuery::ADOBaseVersion {} => encode_binary(&self.query_ado_base_version()?),
+                AndromedaQuery::OwnershipRequest {} => {
+                    encode_binary(&self.ownership_request(deps.storage)?)
+                }
                 AndromedaQuery::AppContract {} => {
                     encode_binary(&self.get_app_contract(deps.storage)?)
                 }
@@ -75,31 +75,9 @@ impl<'a> ADOContract<'a> {
     }
 
     #[inline]
-    pub fn query_is_operator(
-        &self,
-        deps: Deps,
-        addr: &str,
-    ) -> Result<IsOperatorResponse, ContractError> {
-        Ok(IsOperatorResponse {
-            is_operator: self.operators.has(deps.storage, addr),
-        })
-    }
-
-    #[inline]
     pub fn query_kernel_address(&self, deps: Deps) -> Result<KernelAddressResponse, ContractError> {
         let kernel_address = self.kernel_address.load(deps.storage)?;
         Ok(KernelAddressResponse { kernel_address })
-    }
-
-    #[inline]
-    pub fn query_operators(&self, deps: Deps) -> Result<OperatorsResponse, ContractError> {
-        let operators: Result<Vec<String>, _> = self
-            .operators
-            .keys(deps.storage, None, None, Order::Ascending)
-            .collect();
-        Ok(OperatorsResponse {
-            operators: operators?,
-        })
     }
 
     #[inline]
@@ -125,7 +103,17 @@ impl<'a> ADOContract<'a> {
 
     #[inline]
     pub fn query_version(&self, deps: Deps) -> Result<VersionResponse, ContractError> {
-        let version = self.version.load(deps.storage)?;
-        Ok(VersionResponse { version })
+        let contract_version = get_contract_version(deps.storage)?;
+        Ok(VersionResponse {
+            version: contract_version.version,
+        })
+    }
+
+    #[inline]
+    pub fn query_ado_base_version(&self) -> Result<ADOBaseVersionResponse, ContractError> {
+        let ado_base_version: &str = env!("CARGO_PKG_VERSION");
+        Ok(ADOBaseVersionResponse {
+            version: ado_base_version.to_string(),
+        })
     }
 }

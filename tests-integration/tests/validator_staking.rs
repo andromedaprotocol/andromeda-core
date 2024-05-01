@@ -1,0 +1,193 @@
+#![cfg(not(target_arch = "wasm32"))]
+
+use andromeda_app::app::AppComponent;
+use andromeda_app_contract::mock::{mock_andromeda_app, MockAppContract};
+
+use andromeda_std::amp::AndrAddr;
+use andromeda_testing::mock::mock_app;
+use andromeda_testing::mock_builder::MockAndromedaBuilder;
+use andromeda_validator_staking::mock::{
+    mock_andromeda_validator_staking, mock_validator_staking_instantiate_msg, MockValidatorStaking,
+};
+
+// use andromeda_std::error::ContractError;
+use andromeda_std::error::ContractError::Std;
+use andromeda_testing::MockContract;
+use cosmwasm_std::StdError::GenericErr;
+use cosmwasm_std::{coin, to_json_binary, Addr, BlockInfo};
+
+#[test]
+fn test_validator_stake() {
+    let mut router = mock_app(Some(vec!["TOKEN"]));
+
+    let andr = MockAndromedaBuilder::new(&mut router, "admin")
+        .with_wallets(vec![("owner", vec![coin(1000, "TOKEN")])])
+        .with_contracts(vec![
+            ("app-contract", mock_andromeda_app()),
+            ("validator-staking", mock_andromeda_validator_staking()),
+        ])
+        .build(&mut router);
+    let owner = andr.get_wallet("owner");
+    let recipient = AndrAddr::from_string(owner.to_string());
+    let validator_1 = router.api().addr_make("validator1");
+
+    let validator_staking_init_msg = mock_validator_staking_instantiate_msg(
+        validator_1.clone(),
+        None,
+        andr.kernel.addr().to_string(),
+    );
+
+    let validator_staking_component = AppComponent::new(
+        "staking".to_string(),
+        "validator-staking".to_string(),
+        to_json_binary(&validator_staking_init_msg).unwrap(),
+    );
+
+    let app_components = vec![validator_staking_component.clone()];
+    let app = MockAppContract::instantiate(
+        andr.get_code_id(&mut router, "app-contract"),
+        owner,
+        &mut router,
+        "Validator Staking App",
+        app_components,
+        andr.kernel.addr(),
+        Some(owner.to_string()),
+    );
+
+    let validator_staking: MockValidatorStaking =
+        app.query_ado_by_component_name(&router, validator_staking_component.name);
+
+    let funds = vec![coin(1000, "TOKEN")];
+
+    validator_staking
+        .execute_stake(&mut router, owner.clone(), None, funds)
+        .unwrap();
+
+    let stake_info = validator_staking
+        .query_staked_tokens(&router, None)
+        .unwrap();
+    assert_eq!(stake_info.validator, validator_1.to_string());
+
+    // Testing when there is no reward to claim
+    // TODO: These errors cant be downcast anymore?
+    let _err = validator_staking
+        .execute_claim_reward(
+            &mut router,
+            owner.clone(),
+            Some(validator_1.clone()),
+            Some(recipient.clone()),
+        )
+        .unwrap_err();
+    // assert_eq!(may_err.unwrap(), &expected_err);
+
+    // wait 1/2 year
+    router.set_block(BlockInfo {
+        height: router.block_info().height,
+        time: router
+            .block_info()
+            .time
+            .plus_seconds(60 * 60 * 24 * 365 / 2),
+        chain_id: router.block_info().chain_id,
+    });
+
+    // only owner can become a recipient
+    let _err = validator_staking
+        .execute_claim_reward(
+            &mut router,
+            owner.clone(),
+            Some(validator_1.clone()),
+            Some(AndrAddr::from_string("some_address")),
+        )
+        .unwrap_err();
+    // let _err = err.root_cause().downcast_ref::<ContractError>().unwrap();
+    // let expected_err = ContractError::Unauthorized {};
+    // assert_eq!(err, &expected_err);
+
+    validator_staking
+        .execute_claim_reward(
+            &mut router,
+            owner.clone(),
+            Some(validator_1),
+            Some(recipient),
+        )
+        .unwrap();
+
+    // Default APR 10% by cw-multi-test -> StakingInfo
+    // should now have 1000 * 10% / 2 - 0% commission = 50 tokens reward
+    let owner_balance = router.wrap().query_balance(owner.clone(), "TOKEN").unwrap();
+    assert_eq!(owner_balance, coin(50, "TOKEN"));
+
+    // Test unstake with invalid validator
+    let _err = validator_staking
+        .execute_unstake(
+            &mut router,
+            owner.clone(),
+            Some(Addr::unchecked("fake_validator")),
+        )
+        .unwrap_err();
+    // let _err = err.root_cause().downcast_ref::<ContractError>().unwrap();
+
+    // let expected_err = ContractError::InvalidValidator {};
+    // assert_eq!(err, &expected_err);
+
+    // Test unstake from invalid owner
+    let _err = validator_staking
+        .execute_unstake(
+            &mut router,
+            Addr::unchecked("other"),
+            Some(Addr::unchecked("fake_validator")),
+        )
+        .unwrap_err();
+    // let _err = err.root_cause().downcast_ref::<ContractError>().unwrap();
+
+    // let expected_err = ContractError::Unauthorized {};
+    // assert_eq!(err, &expected_err);
+
+    validator_staking
+        .execute_unstake(&mut router, owner.clone(), None)
+        .unwrap();
+
+    // Test staked token query from undelegated validator
+    let err = validator_staking
+        .query_staked_tokens(&router, None)
+        .unwrap_err();
+    assert_eq!(
+        err,
+        Std(GenericErr {
+            msg: "Querier contract error: InvalidDelegation".to_string()
+        })
+    );
+
+    // Test withdraw before payout period
+    let _err = validator_staking
+        .execute_withdraw_fund(&mut router, owner.clone())
+        .unwrap_err();
+    // let _err = err.root_cause().downcast_ref::<ContractError>().unwrap();
+    // let expected_err = ContractError::InvalidWithdrawal {
+    //     msg: Some("No unstaked funds to withdraw".to_string()),
+    // };
+    // assert_eq!(err, &expected_err);
+
+    let unstaked_tokens = validator_staking.query_unstaked_tokens(&router).unwrap();
+    let unbonding_period =
+        unstaked_tokens[0].payout_at.seconds() - router.block_info().time.seconds();
+    // Update block to payout period
+    router.set_block(BlockInfo {
+        height: router.block_info().height,
+        time: router.block_info().time.plus_seconds(unbonding_period),
+        chain_id: router.block_info().chain_id,
+    });
+
+    router.set_block(BlockInfo {
+        height: router.block_info().height,
+        time: router.block_info().time.plus_seconds(1),
+        chain_id: router.block_info().chain_id,
+    });
+
+    validator_staking
+        .execute_withdraw_fund(&mut router, owner.clone())
+        .unwrap();
+
+    let owner_balance = router.wrap().query_balance(owner, "TOKEN").unwrap();
+    assert_eq!(owner_balance, coin(1050, "TOKEN"));
+}

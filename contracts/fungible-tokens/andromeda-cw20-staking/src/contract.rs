@@ -1,20 +1,19 @@
-use std::str::FromStr;
+use std::{ops::Mul, str::FromStr};
 
-use andromeda_std::common::call_action::call_action;
 use andromeda_std::{
-    ado_base::InstantiateMsg as BaseInstantiateMsg,
+    ado_base::{ownership::OwnershipMessage, InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     ado_contract::ADOContract,
-    common::{context::ExecuteContext, encode_binary},
-    error::{from_semver, ContractError},
+    common::{actions::call_action, context::ExecuteContext, encode_binary, Milliseconds},
+    error::ContractError,
 };
 use cosmwasm_std::{
-    attr, entry_point, Attribute, Decimal, Decimal256, Order, QuerierWrapper, Uint256,
+    attr, entry_point, Attribute, BlockInfo, Decimal, Decimal256, Order, QuerierWrapper, Uint256,
 };
 use cosmwasm_std::{
     ensure, from_json, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response, Storage,
     Uint128,
 };
-use cw2::{get_contract_version, set_contract_version};
+
 use cw20::Cw20ReceiveMsg;
 use cw_asset::{Asset, AssetInfo, AssetInfoUnchecked};
 
@@ -27,12 +26,11 @@ use crate::{
 };
 
 use andromeda_fungible_tokens::cw20_staking::{
-    Config, Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, RewardToken,
-    RewardTokenUnchecked, RewardType, StakerResponse, State,
+    Config, Cw20HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg, RewardToken, RewardTokenUnchecked,
+    RewardType, StakerResponse, State,
 };
 
 use cw_utils::nonpayable;
-use semver::Version;
 
 // Version info, for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-cw20-staking";
@@ -45,7 +43,6 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     let additional_reward_tokens = if let Some(additional_rewards) = msg.additional_rewards {
         ensure!(
             additional_rewards.len() <= MAX_REWARD_TOKENS as usize,
@@ -95,11 +92,11 @@ pub fn instantiate(
         deps.storage,
         env,
         deps.api,
-        info,
+        &deps.querier,
+        info.clone(),
         BaseInstantiateMsg {
-            ado_type: "cw20-staking".to_string(),
+            ado_type: CONTRACT_NAME.to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
-            operators: None,
             kernel_address: msg.kernel_address,
             owner: msg.owner,
         },
@@ -126,21 +123,31 @@ pub fn execute(
 }
 
 pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
-    call_action(
+    let contract = ADOContract::default();
+    let action_response = call_action(
         &mut ctx.deps,
         &ctx.info,
         &ctx.env,
         &ctx.amp_ctx,
         msg.as_ref(),
     )?;
-    match msg {
+
+    let res = match msg {
         ExecuteMsg::Receive(msg) => receive_cw20(ctx, msg),
         ExecuteMsg::AddRewardToken { reward_token } => execute_add_reward_token(ctx, reward_token),
+        ExecuteMsg::RemoveRewardToken { reward_token } => {
+            execute_remove_reward_token(ctx, reward_token)
+        }
+        ExecuteMsg::ReplaceRewardToken {
+            origin_reward_token,
+            reward_token,
+        } => execute_replace_reward_token(ctx, origin_reward_token, reward_token),
         ExecuteMsg::UpdateGlobalIndexes { asset_infos } => match asset_infos {
             None => update_global_indexes(
                 ctx.deps.storage,
+                &ctx.env.block,
                 &ctx.deps.querier,
-                ctx.env.block.time.seconds(),
+                Milliseconds::from_seconds(ctx.env.block.time.seconds()),
                 ctx.env.contract.address,
                 None,
             ),
@@ -151,8 +158,9 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
                     .collect();
                 update_global_indexes(
                     ctx.deps.storage,
+                    &ctx.env.block,
                     &ctx.deps.querier,
-                    ctx.env.block.time.seconds(),
+                    Milliseconds::from_seconds(ctx.env.block.time.seconds()),
                     ctx.env.contract.address,
                     Some(asset_infos?),
                 )
@@ -160,9 +168,12 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
         },
         ExecuteMsg::UnstakeTokens { amount } => execute_unstake_tokens(ctx, amount),
         ExecuteMsg::ClaimRewards {} => execute_claim_rewards(ctx),
-        // _ => ADOContract::default().execute(ctx, msg),
         _ => ADOContract::default().execute(ctx, msg),
-    }
+    }?;
+    Ok(res
+        .add_submessages(action_response.messages)
+        .add_attributes(action_response.attributes)
+        .add_events(action_response.events))
 }
 
 fn receive_cw20(ctx: ExecuteContext, msg: Cw20ReceiveMsg) -> Result<Response, ContractError> {
@@ -182,8 +193,9 @@ fn receive_cw20(ctx: ExecuteContext, msg: Cw20ReceiveMsg) -> Result<Response, Co
         }
         Cw20HookMsg::UpdateGlobalIndex {} => update_global_indexes(
             deps.storage,
+            &env.block,
             &deps.querier,
-            env.block.time.seconds(),
+            Milliseconds::from_seconds(env.block.time.seconds()),
             env.contract.address,
             Some(vec![AssetInfo::cw20(info.sender)]),
         ),
@@ -203,7 +215,12 @@ fn execute_add_reward_token(
         ContractError::Unauthorized {}
     );
     let mut config = CONFIG.load(deps.storage)?;
-    config.number_of_reward_tokens += 1;
+
+    let new_number = config.number_of_reward_tokens.checked_add(1);
+    match new_number {
+        Some(new_number) => config.number_of_reward_tokens = new_number,
+        None => return Err(ContractError::Overflow {}),
+    }
     ensure!(
         config.number_of_reward_tokens <= MAX_REWARD_TOKENS,
         ContractError::MaxRewardTokensExceeded {
@@ -212,8 +229,10 @@ fn execute_add_reward_token(
     );
     let mut reward_token = reward_token.check(&env.block, deps.api)?;
     let reward_token_string = reward_token.to_string();
+
+    let reward_token_option = REWARD_TOKENS.may_load(deps.storage, &reward_token_string)?;
     ensure!(
-        !REWARD_TOKENS.has(deps.storage, &reward_token_string),
+        reward_token_option.map_or(true, |reward_token| !reward_token.is_active),
         ContractError::InvalidAsset {
             asset: reward_token_string,
         }
@@ -232,8 +251,9 @@ fn execute_add_reward_token(
 
     let state = STATE.load(deps.storage)?;
     update_global_index(
+        &env.block,
         &deps.querier,
-        env.block.time.seconds(),
+        Milliseconds::from_seconds(env.block.time.seconds()),
         env.contract.address,
         &state,
         &mut reward_token,
@@ -247,6 +267,146 @@ fn execute_add_reward_token(
         .add_attribute("added_token", reward_token_string))
 }
 
+fn execute_remove_reward_token(
+    ctx: ExecuteContext,
+    reward_token_string: String,
+) -> Result<Response, ContractError> {
+    let ExecuteContext {
+        deps, info, env, ..
+    } = ctx;
+    let contract = ADOContract::default();
+    ensure!(
+        contract.is_owner_or_operator(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {}
+    );
+
+    // Set reward token as inactive
+    match REWARD_TOKENS.load(deps.storage, &reward_token_string) {
+        Ok(mut reward_token) if reward_token.is_active => {
+            // Need to save current status before setting reward token as inactive
+            // This is important in case the reward token is allocated token
+            let state = STATE.load(deps.storage)?;
+            update_global_index(
+                &env.block,
+                &deps.querier,
+                Milliseconds::from_seconds(env.block.time.seconds()),
+                env.contract.address,
+                &state,
+                &mut reward_token,
+            )?;
+
+            reward_token.is_active = false;
+            REWARD_TOKENS.save(deps.storage, &reward_token_string, &reward_token)?;
+        }
+        _ => {
+            return Err(ContractError::InvalidAsset {
+                asset: reward_token_string,
+            })
+        }
+    }
+
+    let mut config = CONFIG.load(deps.storage)?;
+    config.number_of_reward_tokens -= 1;
+    CONFIG.save(deps.storage, &config)?;
+
+    Ok(Response::new()
+        .add_attribute("action", "remove_reward_token")
+        .add_attribute(
+            "number_of_reward_tokens",
+            config.number_of_reward_tokens.to_string(),
+        )
+        .add_attribute("removed_token", reward_token_string))
+}
+
+fn execute_replace_reward_token(
+    ctx: ExecuteContext,
+    origin_reward_token_string: String,
+    reward_token: RewardTokenUnchecked,
+) -> Result<Response, ContractError> {
+    let ExecuteContext {
+        deps, info, env, ..
+    } = ctx;
+    let contract = ADOContract::default();
+
+    // Only owner can replace reward token
+    ensure!(
+        contract.is_owner_or_operator(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {}
+    );
+    let config = CONFIG.load(deps.storage)?;
+
+    // Validate token to be replaced
+    let mut reward_token = reward_token.check(&env.block, deps.api)?;
+    let reward_token_string = reward_token.to_string();
+    ensure!(
+        !REWARD_TOKENS.has(deps.storage, &reward_token_string),
+        ContractError::InvalidAsset {
+            asset: reward_token_string,
+        }
+    );
+
+    ensure!(
+        reward_token_string != origin_reward_token_string,
+        ContractError::InvalidAsset {
+            asset: reward_token_string,
+        }
+    );
+
+    let staking_token_address = config.staking_token.get_raw_address(&deps.as_ref())?;
+    let staking_token = AssetInfo::cw20(deps.api.addr_validate(staking_token_address.as_str())?);
+    ensure!(
+        staking_token != reward_token.asset_info,
+        ContractError::InvalidAsset {
+            asset: reward_token.to_string(),
+        }
+    );
+
+    // Set original token as inactive
+    match REWARD_TOKENS.load(deps.storage, &origin_reward_token_string) {
+        Ok(mut origin_reward_token) if origin_reward_token.is_active => {
+            // Need to save current status before setting reward token as inactive
+            // This is important in case the reward token is allocated token
+            let state = STATE.load(deps.storage)?;
+            update_global_index(
+                &env.block,
+                &deps.querier,
+                Milliseconds::from_seconds(env.block.time.seconds()),
+                env.contract.address.clone(),
+                &state,
+                &mut origin_reward_token,
+            )?;
+
+            origin_reward_token.is_active = false;
+            REWARD_TOKENS.save(
+                deps.storage,
+                &origin_reward_token_string,
+                &origin_reward_token,
+            )?;
+        }
+        _ => {
+            return Err(ContractError::InvalidAsset {
+                asset: origin_reward_token_string,
+            })
+        }
+    }
+
+    let state = STATE.load(deps.storage)?;
+    update_global_index(
+        &env.block,
+        &deps.querier,
+        Milliseconds::from_seconds(env.block.time.seconds()),
+        env.contract.address,
+        &state,
+        &mut reward_token,
+    )?;
+
+    REWARD_TOKENS.save(deps.storage, &reward_token_string, &reward_token)?;
+
+    Ok(Response::new()
+        .add_attribute("action", "replace_reward_token")
+        .add_attribute("origin_reward_token", origin_reward_token_string)
+        .add_attribute("new_reward_token", reward_token.to_string()))
+}
 /// The foundation for this approach is inspired by Anchor's staking implementation:
 /// https://github.com/Anchor-Protocol/anchor-token-contracts/blob/15c9d6f9753bd1948831f4e1b5d2389d3cf72c93/contracts/gov/src/staking.rs#L15
 fn execute_stake_tokens(
@@ -256,10 +416,8 @@ fn execute_stake_tokens(
     token_address: String,
     amount: Uint128,
 ) -> Result<Response, ContractError> {
-    let contract = ADOContract::default();
     let config = CONFIG.load(deps.storage)?;
 
-    let _mission_contract = contract.get_app_contract(deps.storage)?;
     let staking_token_address = config.staking_token.get_raw_address(&deps.as_ref())?;
     ensure!(
         token_address == staking_token_address,
@@ -274,8 +432,9 @@ fn execute_stake_tokens(
     // Update indexes, important for allocated rewards.
     update_global_indexes(
         deps.storage,
+        &env.block,
         &deps.querier,
-        env.block.time.seconds(),
+        Milliseconds::from_seconds(env.block.time.seconds()),
         env.contract.address.clone(),
         None,
     )?;
@@ -295,8 +454,8 @@ fn execute_stake_tokens(
         amount.multiply_ratio(state.total_share, total_balance)
     };
 
-    staker.share += share;
-    state.total_share += share;
+    staker.share = staker.share.checked_add(share)?;
+    state.total_share = state.total_share.checked_add(share)?;
 
     STATE.save(deps.storage, &state)?;
     STAKERS.save(deps.storage, &sender, &staker)?;
@@ -328,8 +487,9 @@ fn execute_unstake_tokens(
         // Update indexes, important for allocated rewards.
         update_global_indexes(
             deps.storage,
+            &env.block,
             &deps.querier,
-            env.block.time.seconds(),
+            Milliseconds::from_seconds(env.block.time.seconds()),
             env.contract.address,
             None,
         )?;
@@ -358,9 +518,8 @@ fn execute_unstake_tokens(
             info: staking_token,
             amount: withdraw_amount,
         };
-
-        staker.share -= withdraw_share;
-        state.total_share -= withdraw_share;
+        staker.share = staker.share.checked_sub(withdraw_share)?;
+        state.total_share = state.total_share.checked_sub(withdraw_share)?;
 
         STATE.save(deps.storage, &state)?;
         STAKERS.save(deps.storage, sender, &staker)?;
@@ -385,9 +544,10 @@ fn execute_claim_rewards(ctx: ExecuteContext) -> Result<Response, ContractError>
         // Update indexes, important for allocated rewards.
         update_global_indexes(
             deps.storage,
+            &env.block,
             &deps.querier,
-            env.block.time.seconds(),
-            env.contract.address,
+            Milliseconds::from_seconds(env.block.time.seconds()),
+            env.contract.address.clone(),
             None,
         )?;
         update_staker_rewards(deps.storage, sender, &staker)?;
@@ -421,6 +581,7 @@ fn execute_claim_rewards(ctx: ExecuteContext) -> Result<Response, ContractError>
                 // Reduce reward balance if is non-allocated token.
                 if let RewardType::NonAllocated {
                     previous_reward_balance,
+                    ..
                 } = &mut token.reward_type
                 {
                     *previous_reward_balance = previous_reward_balance.checked_sub(rewards)?;
@@ -432,6 +593,20 @@ fn execute_claim_rewards(ctx: ExecuteContext) -> Result<Response, ContractError>
                     amount: rewards,
                 };
                 msgs.push(asset.transfer_msg(sender)?);
+            }
+            if !token.is_active {
+                let reward_balance = token
+                    .asset_info
+                    .query_balance(&deps.querier, &env.contract.address)?;
+                let reward_balance = Decimal256::from_str(&format!("{0}", reward_balance))?;
+                let rewards_ceil = staker_reward_info
+                    .index
+                    .mul(Decimal256::from_str(&format!("{0}", staker.share))?)
+                    .ceil();
+                // if reward balance token is equal to the rewards, inactive reward token can be removed as it is all distributed
+                if reward_balance == rewards_ceil {
+                    REWARD_TOKENS.remove(deps.storage, &token_string);
+                }
             }
         }
 
@@ -447,8 +622,9 @@ fn execute_claim_rewards(ctx: ExecuteContext) -> Result<Response, ContractError>
 
 fn update_global_indexes(
     storage: &mut dyn Storage,
+    block_info: &BlockInfo,
     querier: &QuerierWrapper,
-    current_timestamp: u64,
+    current_timestamp: Milliseconds,
     contract_address: Addr,
     asset_infos: Option<Vec<AssetInfo>>,
 ) -> Result<Response, ContractError> {
@@ -473,6 +649,7 @@ fn update_global_indexes(
             }
             Some(mut reward_token) => {
                 update_global_index(
+                    block_info,
                     querier,
                     current_timestamp,
                     contract_address.clone(),
@@ -490,8 +667,9 @@ fn update_global_indexes(
 }
 
 fn update_global_index(
+    block_info: &BlockInfo,
     querier: &QuerierWrapper,
-    current_timestamp: u64,
+    current_timestamp: Milliseconds,
     contract_address: Addr,
     state: &State,
     reward_token: &mut RewardToken,
@@ -504,6 +682,7 @@ fn update_global_index(
     match &reward_token.reward_type {
         RewardType::NonAllocated {
             previous_reward_balance,
+            init_timestamp,
         } => {
             update_nonallocated_index(
                 state,
@@ -511,18 +690,23 @@ fn update_global_index(
                 reward_token,
                 *previous_reward_balance,
                 contract_address,
+                current_timestamp,
+                *init_timestamp,
             )?;
         }
         RewardType::Allocated {
             allocation_config,
             allocation_state,
+            init_timestamp,
         } => {
             update_allocated_index(
+                block_info,
                 state.total_share,
                 reward_token,
                 allocation_config.clone(),
                 allocation_state.clone(),
                 current_timestamp,
+                *init_timestamp,
             )?;
         }
     }
@@ -538,7 +722,12 @@ fn update_nonallocated_index(
     reward_token: &mut RewardToken,
     previous_reward_balance: Uint128,
     contract_address: Addr,
+    curr_timestamp: Milliseconds,
+    init_timestamp: Milliseconds,
 ) -> Result<(), ContractError> {
+    if curr_timestamp < init_timestamp || !reward_token.is_active {
+        return Ok(());
+    }
     let reward_balance = reward_token
         .asset_info
         .query_balance(querier, contract_address)?;
@@ -548,6 +737,7 @@ fn update_nonallocated_index(
 
     reward_token.reward_type = RewardType::NonAllocated {
         previous_reward_balance: reward_balance,
+        init_timestamp,
     };
 
     Ok(())
@@ -617,7 +807,6 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
         QueryMsg::Stakers { start_after, limit } => {
             encode_binary(&query_stakers(deps, env, start_after, limit)?)
         }
-        QueryMsg::Timestamp {} => encode_binary(&query_timestamp(env)),
         _ => ADOContract::default().query(deps, env, msg),
     }
 }
@@ -660,13 +849,14 @@ pub(crate) fn get_pending_rewards(
     let reward_tokens: Vec<RewardToken> = get_reward_tokens(storage)?;
     let mut pending_rewards = vec![];
     let state = STATE.load(storage)?;
-    let current_timestamp = env.block.time.seconds();
+    let current_timestamp = Milliseconds::from_seconds(env.block.time.seconds());
     for mut token in reward_tokens {
         let token_string = token.to_string();
         let mut staker_reward_info = STAKER_REWARD_INFOS
             .may_load(storage, (address, &token_string))?
             .unwrap_or_default();
         update_global_index(
+            &env.block,
             querier,
             current_timestamp,
             env.contract.address.to_owned(),
@@ -693,40 +883,7 @@ fn query_stakers(
     get_stakers(deps, &deps.querier, deps.api, &env, start, limit)
 }
 
-fn query_timestamp(env: Env) -> u64 {
-    env.block.time.seconds()
-}
-
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-    // New version
-    let version: Version = CONTRACT_VERSION.parse().map_err(from_semver)?;
-
-    // Old version
-    let stored = get_contract_version(deps.storage)?;
-    let storage_version: Version = stored.version.parse().map_err(from_semver)?;
-
-    let contract = ADOContract::default();
-
-    ensure!(
-        stored.contract == CONTRACT_NAME,
-        ContractError::CannotMigrate {
-            previous_contract: stored.contract,
-        }
-    );
-
-    // New version has to be newer/greater than the old version
-    ensure!(
-        storage_version < version,
-        ContractError::CannotMigrate {
-            previous_contract: stored.version,
-        }
-    );
-
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-
-    // Update the ADOContract's version
-    contract.execute_update_version(deps)?;
-
-    Ok(Response::default())
+    ADOContract::default().migrate(deps, CONTRACT_NAME, CONTRACT_VERSION)
 }

@@ -2,21 +2,24 @@
 
 use crate::contract::{execute, instantiate, query, reply};
 use andromeda_finance::splitter::{AddressPercent, ExecuteMsg, InstantiateMsg, QueryMsg};
-use andromeda_testing::{mock_ado, mock_contract::ExecuteResult, MockADO, MockContract};
+use andromeda_std::common::expiration::Expiry;
+use andromeda_testing::{
+    mock::MockApp, mock_ado, mock_contract::ExecuteResult, MockADO, MockContract,
+};
 use cosmwasm_std::{Addr, Coin, Empty};
-use cw_multi_test::{App, Contract, ContractWrapper, Executor};
+use cw_multi_test::{Contract, ContractWrapper, Executor};
 
 pub struct MockSplitter(Addr);
 mock_ado!(MockSplitter, ExecuteMsg, QueryMsg);
 
 impl MockSplitter {
     pub fn instantiate(
-        app: &mut App,
+        app: &mut MockApp,
         code_id: u64,
         sender: Addr,
         recipients: Vec<AddressPercent>,
         kernel_address: impl Into<String>,
-        lock_time: Option<u64>,
+        lock_time: Option<Expiry>,
         owner: Option<String>,
     ) -> Self {
         let msg = mock_splitter_instantiate_msg(recipients, kernel_address, lock_time, owner);
@@ -25,7 +28,7 @@ impl MockSplitter {
         Self(res.unwrap())
     }
 
-    pub fn execute_send(&self, app: &mut App, sender: Addr, funds: &[Coin]) -> ExecuteResult {
+    pub fn execute_send(&self, app: &mut MockApp, sender: Addr, funds: &[Coin]) -> ExecuteResult {
         let msg = mock_splitter_send_msg();
 
         self.execute(app, &msg, sender, funds)
@@ -40,7 +43,7 @@ pub fn mock_andromeda_splitter() -> Box<dyn Contract<Empty>> {
 pub fn mock_splitter_instantiate_msg(
     recipients: Vec<AddressPercent>,
     kernel_address: impl Into<String>,
-    lock_time: Option<u64>,
+    lock_time: Option<Expiry>,
     owner: Option<String>,
 ) -> InstantiateMsg {
     InstantiateMsg {

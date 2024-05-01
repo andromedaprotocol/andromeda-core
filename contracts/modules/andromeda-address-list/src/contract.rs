@@ -1,19 +1,17 @@
 use andromeda_modules::address_list::{ActorPermissionResponse, IncludesActorResponse};
 #[cfg(not(feature = "library"))]
-use andromeda_modules::address_list::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
+use andromeda_modules::address_list::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use andromeda_std::{
     ado_base::{permissioning::Permission, InstantiateMsg as BaseInstantiateMsg},
     ado_contract::ADOContract,
     common::{context::ExecuteContext, encode_binary},
-    error::{from_semver, ContractError},
+    error::ContractError,
 };
 
 use cosmwasm_std::{
     attr, ensure, entry_point, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Response,
 };
-use cw2::{get_contract_version, set_contract_version};
 use cw_utils::nonpayable;
-use semver::Version;
 
 use crate::state::{add_actor_permission, includes_actor, PERMISSIONS};
 // version info for migration info
@@ -27,17 +25,11 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     // If the user provided an actor and permission, save them.
     if let Some(actor_permission) = msg.actor_permission {
         let verified_address: Addr = deps.api.addr_validate(actor_permission.actor.as_str())?;
         // Permissions of type "Contract" aren't allowed in the address list contract
-        ensure!(
-            !matches!(&actor_permission.permission, Permission::Contract(_)),
-            ContractError::InvalidPermission {
-                msg: "Contract permissions aren't allowed in the address list contract".to_string()
-            }
-        );
+
         add_actor_permission(
             deps.storage,
             &verified_address,
@@ -49,11 +41,11 @@ pub fn instantiate(
         deps.storage,
         env,
         deps.api,
+        &deps.querier,
         info,
         BaseInstantiateMsg {
-            ado_type: "address-list".to_string(),
+            ado_type: CONTRACT_NAME.to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
-            operators: None,
             kernel_address: msg.kernel_address,
             owner: msg.owner,
         },
@@ -101,13 +93,6 @@ fn execute_add_actor_permission(
         ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {}
     );
-    // Contract permissions aren't allowed in the address list contract
-    ensure!(
-        !matches!(permission, Permission::Contract(_)),
-        ContractError::InvalidPermission {
-            msg: "Contract permissions aren't allowed in the address list contract".to_string()
-        }
-    );
 
     add_actor_permission(deps.storage, &actor, &permission)?;
 
@@ -143,37 +128,8 @@ fn execute_remove_actor_permission(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-    // New version
-    let version: Version = CONTRACT_VERSION.parse().map_err(from_semver)?;
-
-    // Old version
-    let stored = get_contract_version(deps.storage)?;
-    let storage_version: Version = stored.version.parse().map_err(from_semver)?;
-
-    let contract = ADOContract::default();
-
-    ensure!(
-        stored.contract == CONTRACT_NAME,
-        ContractError::CannotMigrate {
-            previous_contract: stored.contract,
-        }
-    );
-
-    // New version has to be newer/greater than the old version
-    ensure!(
-        storage_version < version,
-        ContractError::CannotMigrate {
-            previous_contract: stored.version,
-        }
-    );
-
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-
-    // Update the ADOContract's version
-    contract.execute_update_version(deps)?;
-
-    Ok(Response::default())
+pub fn migrate(deps: DepsMut, _env: Env) -> Result<Response, ContractError> {
+    ADOContract::default().migrate(deps, CONTRACT_NAME, CONTRACT_VERSION)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

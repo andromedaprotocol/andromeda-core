@@ -1,28 +1,26 @@
 use andromeda_fungible_tokens::cw20_exchange::{
-    Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, Sale, SaleAssetsResponse,
-    SaleResponse, TokenAddressResponse,
+    Cw20HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg, Sale, SaleAssetsResponse, SaleResponse,
+    TokenAddressResponse,
 };
-use andromeda_std::common::call_action::call_action;
 use andromeda_std::{
-    ado_base::InstantiateMsg as BaseInstantiateMsg,
+    ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     ado_contract::ADOContract,
     common::{
+        actions::call_action,
         context::ExecuteContext,
-        expiration::{expiration_from_milliseconds, MILLISECONDS_TO_NANOSECONDS_RATIO},
+        expiration::{expiration_from_milliseconds, get_and_validate_start_time, Expiry},
+        Milliseconds, MillisecondsDuration,
     },
-    error::{from_semver, ContractError},
+    error::ContractError,
 };
 use cosmwasm_std::{
     attr, coin, ensure, entry_point, from_json, to_json_binary, wasm_execute, BankMsg, Binary,
-    BlockInfo, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError, SubMsg,
-    Uint128,
+    CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError, SubMsg, Uint128,
 };
-use cw2::{get_contract_version, set_contract_version};
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use cw_asset::AssetInfo;
 use cw_storage_plus::Bound;
 use cw_utils::{nonpayable, one_coin, Expiration};
-use semver::Version;
 
 use crate::state::{SALE, TOKEN_ADDRESS};
 
@@ -44,7 +42,6 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     TOKEN_ADDRESS.save(deps.storage, &msg.token_address)?;
 
     let contract = ADOContract::default();
@@ -52,11 +49,11 @@ pub fn instantiate(
         deps.storage,
         env,
         deps.api,
+        &deps.querier,
         info,
         BaseInstantiateMsg {
-            ado_type: "cw20-exchange".to_string(),
+            ado_type: CONTRACT_NAME.to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
-            operators: None,
             kernel_address: msg.kernel_address,
             owner: msg.owner,
         },
@@ -94,19 +91,23 @@ pub fn execute(
 }
 
 pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
-    call_action(
+    let action_response = call_action(
         &mut ctx.deps,
         &ctx.info,
         &ctx.env,
         &ctx.amp_ctx,
         msg.as_ref(),
     )?;
-    match msg {
+    let res = match msg {
         ExecuteMsg::CancelSale { asset } => execute_cancel_sale(ctx, asset),
         ExecuteMsg::Purchase { recipient } => execute_purchase_native(ctx, recipient),
         ExecuteMsg::Receive(cw20_msg) => execute_receive(ctx, cw20_msg),
         _ => ADOContract::default().execute(ctx, msg),
-    }
+    }?;
+    Ok(res
+        .add_submessages(action_response.messages)
+        .add_attributes(action_response.attributes)
+        .add_events(action_response.events))
 }
 
 pub fn execute_receive(
@@ -164,15 +165,23 @@ pub fn execute_start_sale(
     sender: String,
     // The recipient of the sale proceeds
     recipient: Option<String>,
-    start_time: Option<u64>,
-    duration: Option<u64>,
+    start_time: Option<Expiry>,
+    duration: Option<MillisecondsDuration>,
 ) -> Result<Response, ContractError> {
-    let ExecuteContext { deps, info, .. } = ctx;
+    let ExecuteContext {
+        deps, env, info, ..
+    } = ctx;
 
     let token_addr = TOKEN_ADDRESS
         .load(deps.storage)?
         .get_raw_address(&deps.as_ref())?;
 
+    ensure!(
+        asset != AssetInfo::Cw20(token_addr.clone()),
+        ContractError::InvalidAsset {
+            asset: asset.to_string()
+        }
+    );
     ensure!(
         !exchange_rate.is_zero(),
         ContractError::InvalidZeroAmount {}
@@ -189,28 +198,18 @@ pub fn execute_start_sale(
         }
     );
 
-    let current_time = ctx.env.block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO;
-
-    let start_expiration = if let Some(start_time) = start_time {
-        expiration_from_milliseconds(start_time)?
-    } else {
-        // Set as current time + 1 so that it isn't expired from the very start
-        expiration_from_milliseconds(current_time + 1)?
-    };
-
-    // Validate start time
-    let block_time = block_to_expiration(&ctx.env.block, start_expiration).unwrap();
-    ensure!(
-        start_expiration.gt(&block_time),
-        ContractError::StartTimeInThePast {
-            current_time,
-            current_block: ctx.env.block.height,
-        }
-    );
+    // If start time wasn't provided, it will be set as the current_time
+    let (start_expiration, _current_time) = get_and_validate_start_time(&env, start_time.clone())?;
 
     let end_expiration = if let Some(duration) = duration {
-        // If there's no start time, consider it as now
-        expiration_from_milliseconds(start_time.unwrap_or(current_time) + duration)?
+        ensure!(!duration.is_zero(), ContractError::InvalidExpiration {});
+        expiration_from_milliseconds(
+            start_time
+                // If start time isn't provided, it is set one second in advance from the current time
+                .unwrap_or(Expiry::FromNow(Milliseconds::from_seconds(1)))
+                .get_time(&env.block)
+                .plus_milliseconds(duration),
+        )?
     } else {
         Expiration::Never {}
     };
@@ -339,7 +338,7 @@ pub fn execute_purchase(
     // Transfer exchanged asset to recipient
     resp = resp.add_submessage(generate_transfer_message(
         asset_sent.clone(),
-        amount_sent,
+        amount_sent - remainder,
         sale.recipient.clone(),
         RECIPIENT_REPLY_ID,
     )?);
@@ -350,7 +349,7 @@ pub fn execute_purchase(
         attr("recipient", recipient),
         attr("amount", purchased),
         attr("purchase_asset", asset_sent.to_string()),
-        attr("purchase_asset_amount_send", amount_sent),
+        attr("purchase_asset_amount_send", amount_sent - remainder),
         attr("recipient", sale.recipient),
     ]))
 }
@@ -422,46 +421,9 @@ pub fn execute_cancel_sale(
     ]))
 }
 
-fn block_to_expiration(block: &BlockInfo, model: Expiration) -> Option<Expiration> {
-    match model {
-        Expiration::AtTime(_) => Some(Expiration::AtTime(block.time)),
-        Expiration::AtHeight(_) => Some(Expiration::AtHeight(block.height)),
-        Expiration::Never {} => None,
-    }
-}
-
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-    // New version
-    let version: Version = CONTRACT_VERSION.parse().map_err(from_semver)?;
-
-    // Old version
-    let stored = get_contract_version(deps.storage)?;
-    let storage_version: Version = stored.version.parse().map_err(from_semver)?;
-
-    let contract = ADOContract::default();
-
-    ensure!(
-        stored.contract == CONTRACT_NAME,
-        ContractError::CannotMigrate {
-            previous_contract: stored.contract,
-        }
-    );
-
-    // New version has to be newer/greater than the old version
-    ensure!(
-        storage_version < version,
-        ContractError::CannotMigrate {
-            previous_contract: stored.version,
-        }
-    );
-
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-
-    // Update the ADOContract's version
-    contract.execute_update_version(deps)?;
-
-    Ok(Response::default())
+    ADOContract::default().migrate(deps, CONTRACT_NAME, CONTRACT_VERSION)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

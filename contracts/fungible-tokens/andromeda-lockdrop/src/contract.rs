@@ -2,30 +2,29 @@
 // https://github.com/mars-protocol/mars-periphery/tree/main/contracts/lockdrop
 
 use andromeda_fungible_tokens::lockdrop::{
-    ConfigResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, StateResponse,
+    ConfigResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg, StateResponse,
     UserInfoResponse,
 };
-use andromeda_std::common::call_action::call_action;
 use andromeda_std::{
-    ado_base::InstantiateMsg as BaseInstantiateMsg,
+    ado_base::{ownership::OwnershipMessage, InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     ado_contract::ADOContract,
-    common::expiration::MILLISECONDS_TO_NANOSECONDS_RATIO,
-    common::{context::ExecuteContext, encode_binary},
-    error::{from_semver, ContractError},
+    common::{
+        actions::call_action, context::ExecuteContext, encode_binary,
+        expiration::MILLISECONDS_TO_NANOSECONDS_RATIO, Milliseconds, MillisecondsExpiration,
+    },
+    error::ContractError,
 };
 use cosmwasm_std::{ensure, from_json, Binary, Deps, DepsMut, Env, MessageInfo, Response, Uint128};
 use cosmwasm_std::{entry_point, Decimal};
 use cw_asset::Asset;
 
 use crate::state::{Config, State, CONFIG, STATE, USER_INFO};
-use cw2::{get_contract_version, set_contract_version};
 use cw20::Cw20ReceiveMsg;
 
 use cw_utils::nonpayable;
-use semver::Version;
 
 // version info for migration info
-const CONTRACT_NAME: &str = "andromeda-lockdrop";
+const CONTRACT_NAME: &str = "crates.io:andromeda-lockdrop";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 //----------------------------------------------------------------------------------------
@@ -39,11 +38,11 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-
     // CHECK :: init_timestamp needs to be valid
     ensure!(
-        msg.init_timestamp >= env.block.time.seconds(),
+        !msg.init_timestamp
+            .get_time(&env.block)
+            .is_in_past(&env.block),
         ContractError::StartTimeInThePast {
             current_time: env.block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO,
             current_block: env.block.height,
@@ -52,15 +51,15 @@ pub fn instantiate(
 
     // CHECK :: deposit_window,withdrawal_window need to be valid (withdrawal_window < deposit_window)
     ensure!(
-        msg.deposit_window > 0
-            && msg.withdrawal_window > 0
+        !msg.deposit_window.is_zero()
+            && !msg.withdrawal_window.is_zero()
             && msg.withdrawal_window < msg.deposit_window,
         ContractError::InvalidWindow {}
     );
 
     let config = Config {
         // bootstrap_contract_address: msg.bootstrap_contract,
-        init_timestamp: msg.init_timestamp,
+        init_timestamp: msg.init_timestamp.get_time(&env.block),
         deposit_window: msg.deposit_window,
         withdrawal_window: msg.withdrawal_window,
         lockdrop_incentives: Uint128::zero(),
@@ -75,11 +74,11 @@ pub fn instantiate(
         deps.storage,
         env,
         deps.api,
-        info,
+        &deps.querier,
+        info.clone(),
         BaseInstantiateMsg {
-            ado_type: "lockdrop".to_string(),
+            ado_type: CONTRACT_NAME.to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
-            operators: None,
             kernel_address: msg.kernel_address,
             owner: msg.owner,
         },
@@ -106,58 +105,33 @@ pub fn execute(
 }
 
 pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
-    let _contract = ADOContract::default();
-    call_action(
+    let contract = ADOContract::default();
+    let action_response = call_action(
         &mut ctx.deps,
         &ctx.info,
         &ctx.env,
         &ctx.amp_ctx,
         msg.as_ref(),
     )?;
-    match msg {
+
+    let res = match msg {
         ExecuteMsg::Receive(msg) => receive_cw20(ctx, msg),
         ExecuteMsg::DepositNative {} => execute_deposit_native(ctx),
         ExecuteMsg::WithdrawNative { amount } => execute_withdraw_native(ctx, amount),
         ExecuteMsg::EnableClaims {} => execute_enable_claims(ctx),
         ExecuteMsg::ClaimRewards {} => execute_claim_rewards(ctx),
-        ExecuteMsg::WithdrawProceeds { recipient } => execute_withdraw_proceeds(ctx, recipient),
-
-        _ => handle_execute(ctx, msg),
-    }
+        // ExecuteMsg::WithdrawProceeds { recipient } => execute_withdraw_proceeds(ctx, recipient),
+        _ => ADOContract::default().execute(ctx, msg),
+    }?;
+    Ok(res
+        .add_submessages(action_response.messages)
+        .add_attributes(action_response.attributes)
+        .add_events(action_response.events))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-    // New version
-    let version: Version = CONTRACT_VERSION.parse().map_err(from_semver)?;
-
-    // Old version
-    let stored = get_contract_version(deps.storage)?;
-    let storage_version: Version = stored.version.parse().map_err(from_semver)?;
-
-    let contract = ADOContract::default();
-
-    ensure!(
-        stored.contract == CONTRACT_NAME,
-        ContractError::CannotMigrate {
-            previous_contract: stored.contract,
-        }
-    );
-
-    // New version has to be newer/greater than the old version
-    ensure!(
-        storage_version < version,
-        ContractError::CannotMigrate {
-            previous_contract: stored.version,
-        }
-    );
-
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-
-    // Update the ADOContract's version
-    contract.execute_update_version(deps)?;
-
-    Ok(Response::default())
+    ADOContract::default().migrate(deps, CONTRACT_NAME, CONTRACT_VERSION)
 }
 
 pub fn receive_cw20(
@@ -206,18 +180,21 @@ pub fn execute_increase_incentives(
     let mut config = CONFIG.load(deps.storage)?;
 
     ensure!(
-        info.sender == config.incentive_token,
+        info.sender == config.incentive_token.get_raw_address(&deps.as_ref())?,
         ContractError::InvalidFunds {
             msg: "Only incentive tokens are valid".to_string(),
         }
     );
 
     ensure!(
-        is_withdraw_open(env.block.time.seconds(), &config),
+        !config
+            .init_timestamp
+            .plus_milliseconds(config.deposit_window)
+            .is_expired(&env.block),
         ContractError::TokenAlreadyBeingDistributed {}
     );
 
-    config.lockdrop_incentives += amount;
+    config.lockdrop_incentives = config.lockdrop_incentives.checked_add(amount)?;
     CONFIG.save(deps.storage, &config)?;
     Ok(Response::new()
         .add_attribute("action", "incentives_increased")
@@ -236,7 +213,7 @@ pub fn execute_deposit_native(ctx: ExecuteContext) -> Result<Response, ContractE
 
     // CHECK :: Lockdrop deposit window open
     ensure!(
-        is_deposit_open(env.block.time.seconds(), &config),
+        is_deposit_open(Milliseconds::from_nanos(env.block.time.nanos()), &config),
         ContractError::DepositWindowClosed {}
     );
 
@@ -269,10 +246,12 @@ pub fn execute_deposit_native(ctx: ExecuteContext) -> Result<Response, ContractE
         .may_load(deps.storage, &depositor_address)?
         .unwrap_or_default();
 
-    user_info.total_native_locked += native_token.amount;
+    user_info.total_native_locked = user_info
+        .total_native_locked
+        .checked_add(native_token.amount)?;
 
     // STATE :: UPDATE --> SAVE
-    state.total_native_locked += native_token.amount;
+    state.total_native_locked = state.total_native_locked.checked_add(native_token.amount)?;
 
     STATE.save(deps.storage, &state)?;
     USER_INFO.save(deps.storage, &depositor_address, &user_info)?;
@@ -302,14 +281,15 @@ pub fn execute_withdraw_native(
 
     // CHECK :: Lockdrop withdrawal window open
     ensure!(
-        is_withdraw_open(env.block.time.seconds(), &config),
+        is_withdraw_open(Milliseconds::from_nanos(env.block.time.nanos()), &config),
         ContractError::InvalidWithdrawal {
             msg: Some("Withdrawals not available".to_string()),
         }
     );
 
     // Check :: Amount should be within the allowed withdrawal limit bounds
-    let max_withdrawal_percent = allowed_withdrawal_percent(env.block.time.seconds(), &config);
+    // let max_withdrawal_percent = allowed_withdrawal_percent(env.block.time.seconds(), &config);
+    let max_withdrawal_percent = Decimal::one();
     let max_withdrawal_allowed = user_info.total_native_locked * max_withdrawal_percent;
     let withdraw_amount = withdraw_amount.unwrap_or(max_withdrawal_allowed);
     ensure!(
@@ -322,7 +302,11 @@ pub fn execute_withdraw_native(
     );
 
     // Update withdrawal flag after the deposit window
-    if env.block.time.seconds() > config.init_timestamp + config.deposit_window {
+    if config
+        .init_timestamp
+        .plus_milliseconds(config.deposit_window)
+        .is_expired(&env.block)
+    {
         // CHECK :: Max 1 withdrawal allowed
         ensure!(
             !user_info.withdrawal_flag,
@@ -334,12 +318,12 @@ pub fn execute_withdraw_native(
         user_info.withdrawal_flag = true;
     }
 
-    user_info.total_native_locked -= withdraw_amount;
+    user_info.total_native_locked = user_info.total_native_locked.checked_sub(withdraw_amount)?;
 
     USER_INFO.save(deps.storage, &withdrawer_address, &user_info)?;
 
     // STATE :: UPDATE --> SAVE
-    state.total_native_locked -= withdraw_amount;
+    state.total_native_locked = state.total_native_locked.checked_sub(withdraw_amount)?;
     STATE.save(deps.storage, &state)?;
 
     // COSMOS_MSG ::TRANSFER WITHDRAWN native token
@@ -381,7 +365,7 @@ pub fn execute_enable_claims(ctx: ExecuteContext) -> Result<Response, ContractEr
 
     // CHECK :: Claims can only be enabled after the deposit / withdrawal windows are closed
     ensure!(
-        !is_withdraw_open(env.block.time.seconds(), &config),
+        is_phase_over(Milliseconds::from_nanos(env.block.time.nanos()), &config),
         ContractError::PhaseOngoing {}
     );
 
@@ -423,7 +407,7 @@ pub fn execute_claim_rewards(ctx: ExecuteContext) -> Result<Response, ContractEr
 
     let amount_to_transfer = total_incentives - user_info.delegated_incentives;
     let token = Asset::cw20(
-        deps.api.addr_validate(&config.incentive_token)?,
+        config.incentive_token.get_raw_address(&deps.as_ref())?,
         amount_to_transfer,
     );
     let transfer_msg = token.transfer_msg(user_address.clone())?;
@@ -437,54 +421,54 @@ pub fn execute_claim_rewards(ctx: ExecuteContext) -> Result<Response, ContractEr
         .add_message(transfer_msg))
 }
 
-fn execute_withdraw_proceeds(
-    ctx: ExecuteContext,
-    recipient: Option<String>,
-) -> Result<Response, ContractError> {
-    let ExecuteContext {
-        deps, env, info, ..
-    } = ctx;
-    nonpayable(&info)?;
+// fn execute_withdraw_proceeds(
+//     ctx: ExecuteContext,
+//     recipient: Option<String>,
+// ) -> Result<Response, ContractError> {
+//     let ExecuteContext {
+//         deps, env, info, ..
+//     } = ctx;
+//     nonpayable(&info)?;
 
-    let recipient = recipient.unwrap_or_else(|| info.sender.to_string());
-    let config = CONFIG.load(deps.storage)?;
-    let state = STATE.load(deps.storage)?;
-    // CHECK :: Only Owner can call this function
-    ensure!(
-        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {}
-    );
+//     let recipient = recipient.unwrap_or_else(|| info.sender.to_string());
+//     let config = CONFIG.load(deps.storage)?;
+//     let state = STATE.load(deps.storage)?;
+//     // CHECK :: Only Owner can call this function
+//     ensure!(
+//         ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
+//         ContractError::Unauthorized {}
+//     );
 
-    // CHECK :: Lockdrop withdrawal window should be closed
-    let current_timestamp = env.block.time.seconds();
-    ensure!(
-        current_timestamp >= config.init_timestamp && !is_withdraw_open(current_timestamp, &config),
-        ContractError::InvalidWithdrawal {
-            msg: Some("Lockdrop withdrawals haven't concluded yet".to_string()),
-        }
-    );
+//     // CHECK :: Lockdrop withdrawal window should be closed
+//     let current_timestamp = env.block.time.seconds();
+//     ensure!(
+//         current_timestamp >= config.init_timestamp && is_phase_over(current_timestamp, &config),
+//         ContractError::InvalidWithdrawal {
+//             msg: Some("Lockdrop withdrawals haven't concluded yet".to_string()),
+//         }
+//     );
 
-    let native_token = Asset::native(config.native_denom, state.total_native_locked);
+//     let native_token = Asset::native(config.native_denom, state.total_native_locked);
 
-    let balance = native_token
-        .info
-        .query_balance(&deps.querier, env.contract.address)?;
+//     let balance = native_token
+//         .info
+//         .query_balance(&deps.querier, env.contract.address)?;
 
-    ensure!(
-        balance >= state.total_native_locked,
-        ContractError::InvalidWithdrawal {
-            msg: Some("Already withdrew funds".to_string()),
-        }
-    );
+//     ensure!(
+//         balance >= state.total_native_locked,
+//         ContractError::InvalidWithdrawal {
+//             msg: Some("Already withdrew funds".to_string()),
+//         }
+//     );
 
-    let transfer_msg = native_token.transfer_msg(recipient)?;
+//     let transfer_msg = native_token.transfer_msg(recipient)?;
 
-    Ok(Response::new()
-        .add_message(transfer_msg)
-        .add_attribute("action", "withdraw_proceeds")
-        .add_attribute("amount", state.total_native_locked)
-        .add_attribute("timestamp", env.block.time.seconds().to_string()))
-}
+//     Ok(Response::new()
+//         .add_message(transfer_msg)
+//         .add_attribute("action", "withdraw_proceeds")
+//         .add_attribute("amount", state.total_native_locked)
+//         .add_attribute("timestamp", env.block.time.seconds().to_string()))
+// }
 
 //----------------------------------------------------------------------------------------
 // Query Functions
@@ -551,13 +535,22 @@ pub fn query_user_info(
 pub fn query_max_withdrawable_percent(
     deps: Deps,
     env: Env,
-    timestamp: Option<u64>,
+    timestamp: Option<MillisecondsExpiration>,
 ) -> Result<Decimal, ContractError> {
     let config = CONFIG.load(deps.storage)?;
-
     Ok(match timestamp {
-        Some(timestamp) => allowed_withdrawal_percent(timestamp, &config),
-        None => allowed_withdrawal_percent(env.block.time.seconds(), &config),
+        Some(timestamp) => {
+            ensure!(
+                !timestamp.is_in_past(&env.block),
+                ContractError::InvalidTimestamp {
+                    msg: "Provided timestamp is in past".to_string()
+                }
+            );
+            allowed_withdrawal_percent(timestamp, &config)
+        }
+        None => {
+            allowed_withdrawal_percent(Milliseconds::from_nanos(env.block.time.nanos()), &config)
+        }
     })
 }
 
@@ -566,48 +559,64 @@ pub fn query_max_withdrawable_percent(
 //----------------------------------------------------------------------------------------
 
 /// @dev Returns true if deposits are allowed
-fn is_deposit_open(current_timestamp: u64, config: &Config) -> bool {
-    let deposits_opened_till = config.init_timestamp + config.deposit_window;
+fn is_deposit_open(current_timestamp: MillisecondsExpiration, config: &Config) -> bool {
+    let deposits_opened_till = config
+        .init_timestamp
+        .plus_milliseconds(config.deposit_window);
     (current_timestamp >= config.init_timestamp) && (deposits_opened_till >= current_timestamp)
 }
 
 /// @dev Returns true if withdrawals are allowed
-fn is_withdraw_open(current_timestamp: u64, config: &Config) -> bool {
-    let withdrawals_opened_till =
-        config.init_timestamp + config.deposit_window + config.withdrawal_window;
-    (current_timestamp >= config.init_timestamp) && (withdrawals_opened_till >= current_timestamp)
+fn is_withdraw_open(current_timestamp: MillisecondsExpiration, config: &Config) -> bool {
+    current_timestamp >= config.init_timestamp
+}
+
+fn is_phase_over(current_timestamp: MillisecondsExpiration, config: &Config) -> bool {
+    let deposits_opened_till = config
+        .init_timestamp
+        .plus_milliseconds(config.deposit_window);
+    // let withdrawals_opened_till = deposits_opened_till + config.withdrawal_window;
+    deposits_opened_till <= current_timestamp
 }
 
 /// @dev Helper function to calculate maximum % of NATIVE deposited that can be withdrawn
 /// @params current_timestamp : Current block timestamp
 /// @params config : Contract configuration
-pub fn allowed_withdrawal_percent(current_timestamp: u64, config: &Config) -> Decimal {
-    let withdrawal_cutoff_init_point = config.init_timestamp + config.deposit_window;
+pub fn allowed_withdrawal_percent(
+    current_timestamp: MillisecondsExpiration,
+    config: &Config,
+) -> Decimal {
+    let withdrawal_cutoff_init_point = config
+        .init_timestamp
+        .plus_milliseconds(config.deposit_window);
 
     // Deposit window :: 100% withdrawals allowed
     if current_timestamp < withdrawal_cutoff_init_point {
-        return Decimal::from_ratio(100u32, 100u32);
+        return Decimal::percent(100);
     }
 
-    let withdrawal_cutoff_second_point =
-        withdrawal_cutoff_init_point + (config.withdrawal_window / 2u64);
+    let withdrawal_cutoff_second_point = withdrawal_cutoff_init_point
+        .plus_milliseconds(Milliseconds(config.withdrawal_window.milliseconds() / 2u64));
     // Deposit window closed, 1st half of withdrawal window :: 50% withdrawals allowed
     if current_timestamp <= withdrawal_cutoff_second_point {
-        return Decimal::from_ratio(50u32, 100u32);
+        return Decimal::percent(50);
     }
 
     // max withdrawal allowed decreasing linearly from 50% to 0% vs time elapsed
-    let withdrawal_cutoff_final = withdrawal_cutoff_init_point + config.withdrawal_window;
+    let withdrawal_cutoff_final =
+        withdrawal_cutoff_init_point.plus_milliseconds(config.withdrawal_window);
     //  Deposit window closed, 2nd half of withdrawal window :: max withdrawal allowed decreases linearly from 50% to 0% vs time elapsed
     if current_timestamp < withdrawal_cutoff_final {
-        let time_left = withdrawal_cutoff_final - current_timestamp;
+        let time_left = withdrawal_cutoff_final.minus_milliseconds(current_timestamp);
         Decimal::from_ratio(
-            50u64 * time_left,
-            100u64 * (withdrawal_cutoff_final - withdrawal_cutoff_second_point),
+            50u64 * time_left.milliseconds(),
+            100u64
+                * (withdrawal_cutoff_final.minus_milliseconds(withdrawal_cutoff_second_point))
+                    .milliseconds(),
         )
     }
     // Withdrawals not allowed
     else {
-        Decimal::from_ratio(0u32, 100u32)
+        Decimal::zero()
     }
 }

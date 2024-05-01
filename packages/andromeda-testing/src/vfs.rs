@@ -1,15 +1,15 @@
-use crate::{mock_ado, mock_contract::ExecuteResult, MockADO, MockContract};
+use crate::{mock::MockApp, mock_ado, mock_contract::ExecuteResult, MockADO, MockContract};
 use andromeda_std::os::vfs::{ExecuteMsg, QueryMsg};
 use andromeda_vfs::mock::*;
 use cosmwasm_std::Addr;
-use cw_multi_test::{App, Executor};
+use cw_multi_test::Executor;
 
 pub struct MockVFS(Addr);
 mock_ado!(MockVFS, ExecuteMsg, QueryMsg);
 
 impl MockVFS {
     pub fn instantiate(
-        app: &mut App,
+        app: &mut MockApp,
         code_id: u64,
         sender: Addr,
         owner: Option<String>,
@@ -30,7 +30,7 @@ impl MockVFS {
 
     pub fn execute_register_user(
         &self,
-        app: &mut App,
+        app: &mut MockApp,
         sender: Addr,
         username: String,
     ) -> ExecuteResult {
@@ -41,7 +41,7 @@ impl MockVFS {
 
     pub fn execute_add_path(
         &self,
-        app: &mut App,
+        app: &mut MockApp,
         sender: Addr,
         name: impl Into<String>,
         address: Addr,
@@ -51,9 +51,9 @@ impl MockVFS {
         self.execute(app, &msg, sender, &[])
     }
 
-    pub fn query_resolve_path(&self, app: &mut App, path: String) -> String {
+    pub fn query_resolve_path(&self, app: &mut MockApp, path: String) -> Addr {
         let msg = mock_resolve_path_query(path);
-        let res: String = self.query(app, msg);
+        let res: Addr = self.query(app, msg);
 
         res
     }

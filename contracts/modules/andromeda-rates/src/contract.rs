@@ -1,6 +1,6 @@
 #[cfg(not(feature = "library"))]
 use crate::state::RATES;
-use andromeda_modules::rates::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, RateResponse};
+use andromeda_modules::rates::{ExecuteMsg, InstantiateMsg, QueryMsg, RateResponse};
 use andromeda_std::{
     ado_base::{
         rates::{calculate_fee, LocalRate, PaymentAttribute, RatesResponse},
@@ -8,17 +8,15 @@ use andromeda_std::{
     },
     ado_contract::ADOContract,
     common::{context::ExecuteContext, deduct_funds, encode_binary, Funds},
-    error::{from_semver, ContractError},
+    error::ContractError,
 };
 
 use cosmwasm_std::{
     attr, coin, ensure, Binary, Coin, Deps, DepsMut, Env, Event, MessageInfo, Response, SubMsg,
 };
 use cosmwasm_std::{entry_point, from_json};
-use cw2::{get_contract_version, set_contract_version};
 use cw20::Cw20Coin;
 use cw_utils::nonpayable;
-use semver::Version;
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-rates";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -30,7 +28,6 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     let action = msg.action;
     let rate = msg.rate;
     RATES.save(deps.storage, &action, &rate)?;
@@ -39,11 +36,11 @@ pub fn instantiate(
         deps.storage,
         env,
         deps.api,
+        &deps.querier,
         info,
         BaseInstantiateMsg {
-            ado_type: "rates".to_string(),
+            ado_type: CONTRACT_NAME.to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
-            operators: None,
             kernel_address: msg.kernel_address,
             owner: msg.owner,
         },
@@ -113,37 +110,8 @@ fn execute_remove_rate(ctx: ExecuteContext, action: String) -> Result<Response, 
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-    // New version
-    let version: Version = CONTRACT_VERSION.parse().map_err(from_semver)?;
-
-    // Old version
-    let stored = get_contract_version(deps.storage)?;
-    let storage_version: Version = stored.version.parse().map_err(from_semver)?;
-
-    let contract = ADOContract::default();
-
-    ensure!(
-        stored.contract == CONTRACT_NAME,
-        ContractError::CannotMigrate {
-            previous_contract: stored.contract,
-        }
-    );
-
-    // New version has to be newer/greater than the old version
-    ensure!(
-        storage_version < version,
-        ContractError::CannotMigrate {
-            previous_contract: stored.version,
-        }
-    );
-
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-
-    // Update the ADOContract's version
-    contract.execute_update_version(deps)?;
-
-    Ok(Response::default())
+pub fn migrate(deps: DepsMut, _env: Env) -> Result<Response, ContractError> {
+    ADOContract::default().migrate(deps, CONTRACT_NAME, CONTRACT_VERSION)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

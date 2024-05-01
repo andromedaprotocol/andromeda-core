@@ -28,6 +28,7 @@ pub fn add_path(
     address: Addr,
     parent_address: Option<AndrAddr>,
 ) -> Result<Response, ContractError> {
+    let name = name.to_lowercase();
     let kernel_address = ADOContract::default().get_kernel_address(env.deps.storage)?;
     ensure!(
         parent_address.is_none()
@@ -37,7 +38,12 @@ pub fn add_path(
         ContractError::Unauthorized {}
     );
     let parent_andr_addr = parent_address.unwrap_or(AndrAddr::from_string(env.info.sender));
-    let parent_addr = resolve_pathname(env.deps.storage, env.deps.api, parent_andr_addr)?;
+    let parent_addr = resolve_pathname(
+        env.deps.storage,
+        env.deps.api,
+        parent_andr_addr,
+        &mut vec![],
+    )?;
     validate_component_name(name.clone())?;
     add_pathname(
         env.deps.storage,
@@ -59,6 +65,8 @@ pub fn add_symlink(
     symlink: AndrAddr,
     parent_address: Option<AndrAddr>,
 ) -> Result<Response, ContractError> {
+    let name = name.to_lowercase();
+    let symlink = symlink.to_lowercase();
     let kernel_address = ADOContract::default().get_kernel_address(env.deps.storage)?;
     ensure!(
         parent_address.is_none()
@@ -68,10 +76,16 @@ pub fn add_symlink(
         ContractError::Unauthorized {}
     );
     let parent_andr_addr = parent_address.unwrap_or(AndrAddr::from_string(env.info.sender));
-    let parent_addr = resolve_pathname(env.deps.storage, env.deps.api, parent_andr_addr)?;
+    let parent_addr = resolve_pathname(
+        env.deps.storage,
+        env.deps.api,
+        parent_andr_addr,
+        &mut vec![],
+    )?;
     validate_component_name(name.clone())?;
     add_path_symlink(
         env.deps.storage,
+        env.deps.api,
         parent_addr.clone(),
         name.clone(),
         symlink.clone(),
@@ -84,37 +98,65 @@ pub fn add_symlink(
     ]))
 }
 
-pub fn add_parent_path(
+pub fn add_child(
     env: ExecuteEnv,
     name: String,
     parent_address: AndrAddr,
 ) -> Result<Response, ContractError> {
+    let ExecuteEnv { deps, info, .. } = env;
+    let name = name.to_lowercase();
+
+    let sender_code_id_res = deps.querier.query_wasm_contract_info(info.sender.clone());
+    // Sender must be a contract
+    ensure!(sender_code_id_res.is_ok(), ContractError::Unauthorized {});
+    let sender_code_id = sender_code_id_res?.code_id;
+    let ado_type = AOSQuerier::ado_type_getter(
+        &deps.querier,
+        &ADOContract::default().get_adodb_address(deps.as_ref().storage, &deps.querier)?,
+        sender_code_id,
+    )?;
+    // Sender must be an app contract
+    ensure!(
+        ado_type.is_some() && ado_type.unwrap().contains("app-contract"),
+        ContractError::Unauthorized {}
+    );
+
     validate_component_name(name.clone())?;
-    let parent_address = resolve_pathname(env.deps.storage, env.deps.api, parent_address)?;
+    let parent_address = resolve_pathname(deps.storage, deps.api, parent_address, &mut vec![])?;
     let existing = paths()
-        .load(env.deps.storage, &(parent_address.clone(), name.clone()))
+        .load(deps.storage, &(parent_address.clone(), name.clone()))
         .ok();
     // Ensure that this path is not already added or if already added it should point to same address as above. This prevent external users to override existing paths.
     // Only add path method can override existing paths as its safe because only owner of the path can execute it
     match existing {
         None => {
-            add_pathname(env.deps.storage, parent_address, name, env.info.sender)?;
+            add_pathname(deps.storage, parent_address, name, info.sender)?;
         }
         Some(path) => {
-            ensure!(
-                path.address == env.info.sender,
-                ContractError::Unauthorized {}
-            )
+            ensure!(path.address == info.sender, ContractError::Unauthorized {})
         }
     };
     Ok(Response::default())
 }
+
+const MAX_USERNAME_LENGTH: u64 = 30;
 
 pub fn register_user(
     env: ExecuteEnv,
     username: String,
     address: Option<Addr>,
 ) -> Result<Response, ContractError> {
+    #[cfg(not(test))]
+    ensure!(false, ContractError::TemporarilyDisabled {});
+    ensure!(
+        username.len() as u64 <= MAX_USERNAME_LENGTH,
+        ContractError::InvalidUsername {
+            error: Some(format!(
+                "Username must be less than {MAX_USERNAME_LENGTH} characters"
+            ))
+        }
+    );
+    let username = username.to_lowercase();
     let kernel = &ADOContract::default().get_kernel_address(env.deps.storage)?;
     let curr_chain = AOSQuerier::get_current_chain(&env.deps.querier, kernel)?;
     // Can only register username directly on Andromeda chain
@@ -134,17 +176,38 @@ pub fn register_user(
     );
     let sender = address.unwrap_or(env.info.sender.clone());
     let current_user_address = USERS.may_load(env.deps.storage, username.as_str())?;
-    if current_user_address.is_some() {
-        ensure!(
-            current_user_address.unwrap() == sender,
-            ContractError::Unauthorized {}
-        );
-    }
+    ensure!(
+        current_user_address.is_none(),
+        ContractError::InvalidUsername {
+            error: Some("Username already taken".to_string())
+        }
+    );
 
     //Remove username registration from previous username
-    USERS.remove(env.deps.storage, username.as_str());
+    let current_username = ADDRESS_USERNAME.may_load(env.deps.storage, sender.as_ref())?;
+    if let Some(current_username) = current_username {
+        USERS.remove(env.deps.storage, current_username.as_str());
+    }
 
-    validate_username(username.clone())?;
+    // If the username is a valid address, it should be equal to info.sender
+    match env.deps.api.addr_validate(&username) {
+        Ok(username) => {
+            // No need to validate the username any further if this passess
+            ensure!(
+                username == env.info.sender,
+                ContractError::InvalidUsername {
+                    error: Some(
+                        "Usernames that are valid addresses should be the same as the sender's address"
+                            .to_string()
+                    )
+                }
+            )
+        }
+        Err(_) => {
+            validate_username(username.clone())?;
+        }
+    }
+
     USERS.save(env.deps.storage, username.as_str(), &sender)?;
     //Update current address' username
     ADDRESS_USERNAME.save(env.deps.storage, sender.as_ref(), &username)?;

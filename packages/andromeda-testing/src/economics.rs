@@ -4,16 +4,16 @@ use andromeda_std::{
     os::economics::{ExecuteMsg, QueryMsg},
 };
 use cosmwasm_std::{Addr, Coin, Uint128};
-use cw_multi_test::{App, Executor};
+use cw_multi_test::Executor;
 
-use crate::{mock_ado, mock_contract::ExecuteResult, MockADO, MockContract};
+use crate::{mock::MockApp, mock_ado, mock_contract::ExecuteResult, MockADO, MockContract};
 
 pub struct MockEconomics(Addr);
 mock_ado!(MockEconomics, ExecuteMsg, QueryMsg);
 
 impl MockEconomics {
     pub fn instantiate(
-        app: &mut App,
+        app: &mut MockApp,
         code_id: u64,
         sender: Addr,
         owner: Option<String>,
@@ -34,7 +34,7 @@ impl MockEconomics {
 
     pub fn execute_deposit(
         &self,
-        app: &mut App,
+        app: &mut MockApp,
         sender: Addr,
         address: Option<AndrAddr>,
         funds: &[Coin],
@@ -46,7 +46,7 @@ impl MockEconomics {
 
     pub fn execute_withdraw(
         &self,
-        app: &mut App,
+        app: &mut MockApp,
         sender: Addr,
         asset: impl Into<String>,
         amount: Option<Uint128>,
@@ -58,7 +58,7 @@ impl MockEconomics {
 
     pub fn query_balance(
         &self,
-        app: &mut App,
+        app: &mut MockApp,
         address: AndrAddr,
         asset: impl Into<String>,
     ) -> Uint128 {

@@ -18,25 +18,36 @@ fn test_instantiation() {
 #[test]
 fn test_set_and_update_value_with_key() {
     let (mut deps, info) = proper_initialization(PrimitiveRestriction::Private);
-    let key = Some(String::from("key"));
+    let key = String::from("key");
     let value = Primitive::String("value".to_string());
-    set_value(deps.as_mut(), &key, &value, info.sender.as_ref()).unwrap();
+    set_value(
+        deps.as_mut(),
+        &Some(key.clone()),
+        &value,
+        info.sender.as_ref(),
+    )
+    .unwrap();
 
-    let query_res: GetValueResponse = query_value(deps.as_ref(), &key).unwrap();
+    let query_res: GetValueResponse = query_value(deps.as_ref(), &Some(key.clone())).unwrap();
 
     assert_eq!(
         GetValueResponse {
-            key: key.clone().unwrap_or("default".into()),
+            key: key.clone(),
             value
         },
         query_res
     );
 
     let value = Primitive::String("value2".to_string());
-    set_value(deps.as_mut(), &key, &value, info.sender.as_ref()).unwrap();
+    set_value(
+        deps.as_mut(),
+        &Some(key.clone()),
+        &value,
+        info.sender.as_ref(),
+    )
+    .unwrap();
 
-    let query_res: GetValueResponse = query_value(deps.as_ref(), &key).unwrap();
-    let key = String::from("key");
+    let query_res: GetValueResponse = query_value(deps.as_ref(), &Some(key.clone())).unwrap();
 
     assert_eq!(GetValueResponse { key, value }, query_res);
 }
@@ -65,7 +76,7 @@ fn test_set_and_update_value_without_key() {
 
     assert_eq!(
         GetValueResponse {
-            key: "default".into(),
+            key: "default".to_string(),
             value
         },
         query_res

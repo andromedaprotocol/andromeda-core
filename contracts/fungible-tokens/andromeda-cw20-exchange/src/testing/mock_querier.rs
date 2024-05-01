@@ -6,7 +6,7 @@ use cosmwasm_std::testing::{
 };
 use cosmwasm_std::{
     from_json, to_json_binary, Coin, ContractResult, Empty, OwnedDeps, Querier, QuerierResult,
-    QueryRequest, SystemError, SystemResult, Uint128, WasmQuery,
+    QuerierWrapper, QueryRequest, SystemError, SystemResult, Uint128, WasmQuery,
 };
 use cw20::{BalanceResponse as Cw20BalanceResponse, Cw20QueryMsg};
 use std::collections::HashMap;
@@ -28,11 +28,12 @@ pub fn mock_dependencies_custom(
             &mut deps.storage,
             mock_env(),
             &deps.api,
+            &QuerierWrapper::new(&deps.querier),
             mock_info("sender", &[]),
             InstantiateMsg {
                 ado_type: "cw20-staking".to_string(),
                 ado_version: "test".to_string(),
-                operators: None,
+
                 kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
                 owner: None,
             },

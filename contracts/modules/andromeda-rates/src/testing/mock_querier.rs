@@ -8,8 +8,11 @@ use cosmwasm_std::{
     testing::{mock_env, MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
     Coin, OwnedDeps, Querier, QuerierResult, QueryRequest, SystemError, SystemResult, WasmQuery,
 };
+use cosmwasm_std::{BankMsg, CosmosMsg, QuerierWrapper, Response, SubMsg, Uint128};
 
-pub use andromeda_std::testing::mock_querier::MOCK_KERNEL_CONTRACT;
+pub use andromeda_std::testing::mock_querier::{MOCK_KERNEL_CONTRACT, MOCK_RATES_CONTRACT};
+pub const MOCK_TAX_RECIPIENT: &str = "tax_recipient";
+pub const MOCK_ROYALTY_RECIPIENT: &str = "royalty_recipient";
 pub const MOCK_OWNER: &str = "owner";
 pub const MOCK_RECIPIENT1: &str = "recipient1";
 pub const _MOCK_RECIPIENT2: &str = "recipient2";
@@ -34,11 +37,12 @@ pub fn mock_dependencies_custom(
             &mut deps.storage,
             mock_env(),
             &deps.api,
+            &QuerierWrapper::new(&deps.querier),
             mock_info("sender", &[]),
             InstantiateMsg {
                 ado_type: "rates".to_string(),
                 ado_version: "test".to_string(),
-                operators: None,
+
                 kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
                 owner: None,
             },

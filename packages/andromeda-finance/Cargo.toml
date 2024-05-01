@@ -1,8 +1,10 @@
 [package]
 name = "andromeda-finance"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2021"
-rust-version = "1.65.0"
+rust-version = "1.75.0"
+description = "Utility methods and message definitions for the Andromeda Finance Contracts"
+license = "MIT"
 
 [features]
 backtraces = ["cosmwasm-std/backtraces"]
@@ -12,12 +14,12 @@ backtraces = ["cosmwasm-std/backtraces"]
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-cosmwasm-std = { workspace = true }
+cosmwasm-std = { workspace = true, features = ["staking"] }
 cosmwasm-schema = { workspace = true }
 serde = { version = "1.0.127", default-features = false, features = ["derive"] }
 cw-utils = { workspace = true }
 cw721 = { workspace = true }
 cw721-base = { workspace = true }
+schemars = { version = "0.8.10" }
 
 andromeda-std = { workspace = true }
-

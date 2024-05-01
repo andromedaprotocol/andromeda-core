@@ -2,19 +2,23 @@ use crate::ado_contract::ADOContract;
 use crate::amp::addresses::AndrAddr;
 use crate::amp::messages::AMPPkt;
 use crate::common::context::ExecuteContext;
+use crate::common::reply::ReplyId;
+use crate::error::from_semver;
 use crate::os::{aos_querier::AOSQuerier, economics::ExecuteMsg as EconomicsExecuteMsg};
 use crate::{
     ado_base::{AndromedaMsg, InstantiateMsg},
     error::ContractError,
 };
 use cosmwasm_std::{
-    attr, from_json, to_json_binary, Addr, Api, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
-    QuerierWrapper, Response, Storage, SubMsg, WasmMsg,
+    attr, ensure, from_json, to_json_binary, Addr, Api, ContractInfoResponse, CosmosMsg, Deps,
+    DepsMut, Env, MessageInfo, QuerierWrapper, Response, Storage, SubMsg, WasmMsg,
 };
+use cw2::{get_contract_version, set_contract_version};
+use semver::Version;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 
-type ExecuteContextFunction<E> = fn(ExecuteContext, E) -> Result<Response, ContractError>;
+type ExecuteContextFunction<M, E = ContractError> = fn(ExecuteContext, M) -> Result<Response, E>;
 
 impl<'a> ADOContract<'a> {
     pub fn instantiate(
@@ -22,20 +26,61 @@ impl<'a> ADOContract<'a> {
         storage: &mut dyn Storage,
         env: Env,
         api: &dyn Api,
+        querier: &QuerierWrapper,
         info: MessageInfo,
         msg: InstantiateMsg,
     ) -> Result<Response, ContractError> {
-        self.owner.save(
-            storage,
-            &api.addr_validate(&msg.owner.unwrap_or(info.sender.to_string()))?,
-        )?;
+        let ado_type = if msg.ado_type.starts_with("crates.io:andromeda-") {
+            msg.ado_type.strip_prefix("crates.io:andromeda-").unwrap()
+        } else if msg.ado_type.starts_with("crates.io:") {
+            msg.ado_type.strip_prefix("crates.io:").unwrap()
+        } else {
+            &msg.ado_type
+        };
+        cw2::set_contract_version(storage, ado_type, msg.ado_version)?;
+        let mut owner = api.addr_validate(&msg.owner.unwrap_or(info.sender.to_string()))?;
         self.original_publisher.save(storage, &info.sender)?;
         self.block_height.save(storage, &env.block.height)?;
-        self.ado_type.save(storage, &msg.ado_type)?;
-        self.version.save(storage, &msg.ado_version)?;
+        self.ado_type.save(storage, &ado_type.to_string())?;
         self.kernel_address
             .save(storage, &api.addr_validate(&msg.kernel_address)?)?;
-        let attributes = [attr("method", "instantiate"), attr("type", &msg.ado_type)];
+        let mut attributes = vec![
+            attr("method", "instantiate"),
+            attr("type", ado_type),
+            attr("kernel_address", msg.kernel_address),
+        ];
+
+        // We do not want to store app contracts for the kernel, exit early if current contract is kernel
+        let is_kernel_contract = ado_type.contains("kernel");
+        if is_kernel_contract {
+            self.owner.save(storage, &owner)?;
+            attributes.push(attr("owner", owner));
+            return Ok(Response::new().add_attributes(attributes));
+        }
+
+        // Check if the sender is an app contract to allow for automatic storage of app contrcat reference
+        let maybe_contract_info = querier.query_wasm_contract_info(info.sender.clone());
+        let is_sender_contract = maybe_contract_info.is_ok();
+        if is_sender_contract {
+            let ContractInfoResponse { code_id, .. } = maybe_contract_info?;
+            let sender_ado_type = AOSQuerier::ado_type_getter(
+                querier,
+                &self.get_adodb_address(storage, querier)?,
+                code_id,
+            )?;
+            let is_sender_app = Some("app-contract".to_string()) == sender_ado_type;
+            // Automatically save app contract reference if creator is an app contract
+            if is_sender_app {
+                self.app_contract
+                    .save(storage, &Addr::unchecked(info.sender.to_string()))?;
+                let app_owner = AOSQuerier::ado_owner_getter(querier, &info.sender)?;
+                owner = app_owner;
+                attributes.push(attr("app_contract", info.sender.to_string()));
+            }
+        }
+
+        self.owner.save(storage, &owner)?;
+        attributes.push(attr("owner", owner));
         Ok(Response::new().add_attributes(attributes))
     }
 
@@ -48,42 +93,61 @@ impl<'a> ADOContract<'a> {
         let msg = to_json_binary(&msg)?;
         match from_json::<AndromedaMsg>(&msg) {
             Ok(msg) => match msg {
-                AndromedaMsg::UpdateOwner { address } => {
-                    self.execute_update_owner(ctx.deps, ctx.info, address)
-                }
-                AndromedaMsg::UpdateOperators { operators } => {
-                    self.execute_update_operators(ctx.deps, ctx.info, operators)
+                AndromedaMsg::Ownership(msg) => {
+                    self.execute_ownership(ctx.deps, ctx.env, ctx.info, msg)
                 }
                 AndromedaMsg::UpdateAppContract { address } => {
                     self.execute_update_app_contract(ctx.deps, ctx.info, address, None)
                 }
-                #[cfg(feature = "withdraw")]
-                AndromedaMsg::Withdraw {
-                    recipient,
-                    tokens_to_withdraw,
-                } => self.execute_withdraw(ctx, recipient, tokens_to_withdraw),
-
-                AndromedaMsg::SetPermission {
-                    actor,
-                    action,
-                    permission,
-                } => self.execute_set_permission(ctx, actor, action, permission),
-                AndromedaMsg::RemovePermission { action, actor } => {
-                    self.execute_remove_permission(ctx, actor, action)
-                }
-                AndromedaMsg::PermissionAction { action } => {
-                    self.execute_permission_action(ctx, action)
-                }
                 #[cfg(feature = "rates")]
                 AndromedaMsg::Rates(rates_message) => self.execute_rates(ctx, rates_message),
-
+                AndromedaMsg::UpdateKernelAddress { address } => {
+                    self.update_kernel_address(ctx.deps, ctx.info, address)
+                }
+                AndromedaMsg::Permissioning(msg) => self.execute_permissioning(ctx, msg),
                 AndromedaMsg::AMPReceive(_) => panic!("AMP Receive should be handled separately"),
-                AndromedaMsg::Deposit { .. } => Err(ContractError::NotImplemented { msg: None }),
             },
             _ => Err(ContractError::NotImplemented { msg: None }),
         }
     }
 
+    pub fn migrate(
+        &self,
+        deps: DepsMut,
+        contract_name: &str,
+        contract_version: &str,
+    ) -> Result<Response, ContractError> {
+        // New version
+        let version: Version = contract_version.parse().map_err(from_semver)?;
+
+        // Old version
+        let stored = get_contract_version(deps.storage)?;
+        let storage_version: Version = stored.version.parse().map_err(from_semver)?;
+        let contract_name = if contract_name.starts_with("crates.io:andromeda-") {
+            contract_name.strip_prefix("crates.io:andromeda-").unwrap()
+        } else if contract_name.starts_with("crates.io:") {
+            contract_name.strip_prefix("crates.io:").unwrap()
+        } else {
+            contract_name
+        };
+        ensure!(
+            stored.contract == contract_name,
+            ContractError::CannotMigrate {
+                previous_contract: stored.contract,
+            }
+        );
+
+        // New version has to be newer/greater than the old version
+        ensure!(
+            storage_version < version,
+            ContractError::CannotMigrate {
+                previous_contract: stored.version,
+            }
+        );
+
+        set_contract_version(deps.storage, contract_name, contract_version)?;
+        Ok(Response::default())
+    }
     /// Validates all provided `AndrAddr` addresses.
     ///
     /// Requires the VFS address to be set if any address is a VFS path.
@@ -103,7 +167,7 @@ impl<'a> ADOContract<'a> {
             }
             Err(_) => {
                 for address in addresses {
-                    address.is_addr(deps.api);
+                    ensure!(address.is_addr(deps.api), ContractError::InvalidAddress {});
                 }
                 Ok(())
             }
@@ -117,7 +181,6 @@ impl<'a> ADOContract<'a> {
         address: AndrAddr,
         vfs_address: Addr,
     ) -> Result<(), ContractError> {
-        // Validate address string is valid
         address.validate(deps.api)?;
         if !address.is_addr(deps.api) {
             address.get_raw_address_from_vfs(deps, vfs_address)?;
@@ -152,16 +215,6 @@ impl<'a> ADOContract<'a> {
     ) -> Result<Addr, ContractError> {
         let kernel_address = self.get_kernel_address(storage)?;
         AOSQuerier::adodb_address_getter(querier, &kernel_address)
-    }
-
-    #[inline]
-    /// Updates the current version of the contract.
-    pub fn execute_update_version(&self, deps: DepsMut) -> Result<Response, ContractError> {
-        self.version
-            .save(deps.storage, &env!("CARGO_PKG_VERSION").to_string())?;
-        Ok(Response::new()
-            .add_attribute("action", "update_version")
-            .add_attribute("version", env!("CARGO_PKG_VERSION").to_string()))
     }
 
     /// Handles receiving and verifies an AMPPkt from the Kernel before executing the appropriate messages.
@@ -213,10 +266,28 @@ impl<'a> ADOContract<'a> {
                 msg: to_json_binary(&economics_msg)?,
                 funds: vec![],
             }),
-            9999,
+            ReplyId::PayFee.repr(),
         );
 
         Ok(msg)
+    }
+
+    /// Updates the current kernel address used by the ADO
+    /// Requires the sender to be the owner of the ADO
+    pub fn update_kernel_address(
+        &self,
+        deps: DepsMut,
+        info: MessageInfo,
+        address: Addr,
+    ) -> Result<Response, ContractError> {
+        ensure!(
+            self.is_contract_owner(deps.storage, info.sender.as_str())?,
+            ContractError::Unauthorized {}
+        );
+        self.kernel_address.save(deps.storage, &address)?;
+        Ok(Response::new()
+            .add_attribute("action", "update_kernel_address")
+            .add_attribute("address", address))
     }
 }
 
@@ -239,11 +310,12 @@ mod tests {
                 deps_mut.storage,
                 mock_env(),
                 deps_mut.api,
+                &deps_mut.querier,
                 info.clone(),
                 InstantiateMsg {
                     ado_type: "type".to_string(),
                     ado_version: "version".to_string(),
-                    operators: None,
+
                     kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
                     owner: None,
                 },

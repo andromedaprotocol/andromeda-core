@@ -1,3 +1,6 @@
+use andromeda_std::amp::AndrAddr;
+use andromeda_std::common::expiration::Expiry;
+use andromeda_std::common::{Milliseconds, MillisecondsDuration, MillisecondsExpiration};
 use andromeda_std::{andr_exec, andr_instantiate, andr_query};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
@@ -9,13 +12,13 @@ pub struct InstantiateMsg {
     /// The bootsrap contract to be used in the second phase.
     // pub bootstrap_contract: Option<AndrAddress>,
     /// Timestamp till when deposits can be made
-    pub init_timestamp: u64,
-    /// Number of seconds for which lockup deposits will be accepted
-    pub deposit_window: u64,
-    /// Number of seconds for which lockup withdrawals will be allowed
-    pub withdrawal_window: u64,
+    pub init_timestamp: Expiry,
+    /// Number of milliseconds for which lockup deposits will be accepted
+    pub deposit_window: MillisecondsDuration,
+    /// Number of milliseconds for which lockup withdrawals will be allowed
+    pub withdrawal_window: MillisecondsDuration,
     /// The token being given as incentive.
-    pub incentive_token: String,
+    pub incentive_token: AndrAddr,
     /// The native token being deposited.
     pub native_denom: String,
 }
@@ -35,11 +38,11 @@ pub enum ExecuteMsg {
     ClaimRewards {},
     /// Called by the bootstrap contract when liquidity is added to the TOKEN-NATIVE Pool to enable TOKEN withdrawals by users.
     EnableClaims {},
-    /// Called by the owner after the phase is over to withdraw all of the NATIVE token to the
-    /// given recipient, or themselves if not specified.
-    WithdrawProceeds {
-        recipient: Option<String>,
-    },
+    // Called by the owner after the phase is over to withdraw all of the NATIVE token to the
+    // given recipient, or themselves if not specified.
+    // WithdrawProceeds {
+    //     recipient: Option<String>,
+    // },
 }
 
 #[cw_serde]
@@ -62,9 +65,9 @@ pub enum QueryMsg {
     #[returns(UserInfoResponse)]
     UserInfo { address: String },
     /// Gets the withdrawal percent allowed given the timestamp, or the current time if not
-    /// specified.
+    /// specified. Timestamp is in seconds.
     #[returns(::cosmwasm_std::Decimal)]
-    WithdrawalPercentAllowed { timestamp: Option<u64> },
+    WithdrawalPercentAllowed { timestamp: Option<Milliseconds> },
 }
 
 #[cw_serde]
@@ -72,15 +75,15 @@ pub struct ConfigResponse {
     /// Bootstrap Contract address to which tokens can be delegated to for bootstrapping TOKEN-NATIVE Pool.
     // pub bootstrap_contract_address: Option<String>,
     /// Timestamp till when deposits can be made.
-    pub init_timestamp: u64,
+    pub init_timestamp: MillisecondsExpiration,
     /// Number of seconds for which lockup deposits will be accepted.
-    pub deposit_window: u64,
+    pub deposit_window: MillisecondsDuration,
     /// Number of seconds for which lockup withdrawals will be allowed.
-    pub withdrawal_window: u64,
+    pub withdrawal_window: MillisecondsDuration,
     /// Total token lockdrop incentives to be distributed among the users.
     pub lockdrop_incentives: Uint128,
     /// The token being given as incentive.
-    pub incentive_token: String,
+    pub incentive_token: AndrAddr,
     /// The native token being deposited.
     pub native_denom: String,
 }
@@ -100,6 +103,3 @@ pub struct UserInfoResponse {
     pub is_lockdrop_claimed: bool,
     pub withdrawal_flag: bool,
 }
-
-#[cw_serde]
-pub struct MigrateMsg {}

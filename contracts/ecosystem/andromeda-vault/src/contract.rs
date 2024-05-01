@@ -1,18 +1,17 @@
 use andromeda_ecosystem::vault::{
-    DepositMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, StrategyAddressResponse,
-    StrategyType, BALANCES, STRATEGY_CONTRACT_ADDRESSES,
+    DepositMsg, ExecuteMsg, InstantiateMsg, QueryMsg, StrategyAddressResponse, StrategyType,
+    BALANCES, STRATEGY_CONTRACT_ADDRESSES,
 };
+use andromeda_std::ado_base::ownership::ContractOwnerResponse;
 use andromeda_std::ado_contract::ADOContract;
 use andromeda_std::amp::{AndrAddr, Recipient};
-use andromeda_std::common::call_action::call_action;
+use andromeda_std::common::actions::call_action;
 use andromeda_std::common::context::ExecuteContext;
+use andromeda_std::common::encode_binary;
 use andromeda_std::{
     ado_base::withdraw::{Withdrawal, WithdrawalType},
-    ado_base::{
-        operators::IsOperatorResponse, AndromedaMsg, AndromedaQuery,
-        InstantiateMsg as BaseInstantiateMsg,
-    },
-    error::{from_semver, ContractError},
+    ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
+    error::ContractError,
 };
 
 use cosmwasm_std::{
@@ -20,9 +19,7 @@ use cosmwasm_std::{
     ContractResult, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Order, QueryRequest, Reply,
     ReplyOn, Response, StdError, SubMsg, SystemResult, Uint128, WasmMsg, WasmQuery,
 };
-use cw2::{get_contract_version, set_contract_version};
 use cw_utils::nonpayable;
-use semver::Version;
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-vault";
@@ -35,17 +32,15 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-
     ADOContract::default().instantiate(
         deps.storage,
         env,
         deps.api,
+        &deps.querier,
         info,
         BaseInstantiateMsg {
-            ado_type: "vault".to_string(),
+            ado_type: CONTRACT_NAME.to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
-            operators: None,
             owner: msg.owner,
             kernel_address: msg.kernel_address,
         },
@@ -321,7 +316,7 @@ pub fn withdraw_strategy(
     }
 
     let addr = addr_opt.unwrap();
-    let withdraw_exec = to_json_binary(&AndromedaMsg::Withdraw {
+    let withdraw_exec = to_json_binary(&ExecuteMsg::Withdraw {
         recipient: Some(recipient),
         tokens_to_withdraw: Some(withdrawals),
     })?;
@@ -362,14 +357,21 @@ fn execute_update_strategy(
     //     strategy_addr.clone(),
     //     &deps.querier,
     // )?;
-    let strategy_is_operator: IsOperatorResponse = deps.querier.query_wasm_smart(
-        strategy_addr.clone(),
-        &QueryMsg::IsOperator {
-            address: env.contract.address.to_string(),
-        },
-    )?;
+
+    // Replaced operator with owner check
+    // let strategy_is_operator: IsOperatorResponse = deps.querier.query_wasm_smart(
+    //     strategy_addr.clone(),
+    //     &QueryMsg::IsOperator {
+    //         address: env.contract.address.to_string(),
+    //     },
+    // )?;
+
+    let strategy_owner: ContractOwnerResponse = deps
+        .querier
+        .query_wasm_smart(strategy_addr.clone(), &QueryMsg::Owner {})?;
+
     ensure!(
-        strategy_is_operator.is_operator,
+        strategy_owner.owner == env.contract.address,
         ContractError::NotAssignedOperator {
             msg: Some("Vault contract is not an operator for the given address".to_string()),
         }
@@ -389,36 +391,7 @@ fn execute_update_strategy(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-    // New version
-    let version: Version = CONTRACT_VERSION.parse().map_err(from_semver)?;
-
-    // Old version
-    let stored = get_contract_version(deps.storage)?;
-    let storage_version: Version = stored.version.parse().map_err(from_semver)?;
-
-    let contract = ADOContract::default();
-
-    ensure!(
-        stored.contract == CONTRACT_NAME,
-        ContractError::CannotMigrate {
-            previous_contract: stored.contract,
-        }
-    );
-
-    // New version has to be newer/greater than the old version
-    ensure!(
-        storage_version < version,
-        ContractError::CannotMigrate {
-            previous_contract: stored.version,
-        }
-    );
-
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-
-    // Update the ADOContract's version
-    contract.execute_update_version(deps)?;
-
-    Ok(Response::default())
+    ADOContract::default().migrate(deps, CONTRACT_NAME, CONTRACT_VERSION)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -429,7 +402,9 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
             strategy,
             denom,
         } => query_balance(deps, address, strategy, denom),
-        QueryMsg::StrategyAddress { strategy } => query_strategy_address(deps, env, strategy),
+        QueryMsg::StrategyAddress { strategy } => {
+            encode_binary(&query_strategy_address(deps, env, strategy)?)
+        }
         _ => ADOContract::default().query(deps, env, msg),
     }
 }
@@ -442,10 +417,16 @@ fn query_balance(
 ) -> Result<Binary, ContractError> {
     if let Some(strategy) = strategy {
         let strategy_addr = STRATEGY_CONTRACT_ADDRESSES.load(deps.storage, strategy.to_string())?;
+        ensure!(false, ContractError::TemporarilyDisabled {});
         // DEV NOTE: Why does this ensure! a generic type when not using custom query?
+        // let query: QueryRequest<Empty> = QueryRequest::Wasm(WasmQuery::Smart {
+        //     contract_addr: strategy_addr,
+        //     msg: to_json_binary(&AndromedaQuery::WithdrawableBalance { address })?,
+        // });
+        // TODO: Below code to be replaced with above code once WithdrawableBalance is re-enabled
         let query: QueryRequest<Empty> = QueryRequest::Wasm(WasmQuery::Smart {
             contract_addr: strategy_addr,
-            msg: to_json_binary(&AndromedaQuery::Balance { address })?,
+            msg: to_json_binary(&Binary::default())?,
         });
         match deps.querier.raw_query(&to_json_binary(&query)?) {
             SystemResult::Ok(ContractResult::Ok(value)) => Ok(value),
@@ -480,13 +461,13 @@ fn query_strategy_address(
     deps: Deps,
     _env: Env,
     strategy: StrategyType,
-) -> Result<Binary, ContractError> {
+) -> Result<StrategyAddressResponse, ContractError> {
     let addr = STRATEGY_CONTRACT_ADDRESSES.may_load(deps.storage, strategy.to_string())?;
     match addr {
-        Some(addr) => Ok(to_json_binary(&StrategyAddressResponse {
+        Some(addr) => Ok(StrategyAddressResponse {
             address: addr,
             strategy,
-        })?),
+        }),
         None => Err(ContractError::InvalidStrategy {
             strategy: strategy.to_string(),
         }),

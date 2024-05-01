@@ -11,7 +11,7 @@ use std::str::from_utf8;
 #[cfg(feature = "rates")]
 use crate::ado_base::rates::LocalRate;
 
-use super::adodb::{ActionFee, QueryMsg as ADODBQueryMsg};
+use super::adodb::{ADOVersion, ActionFee, QueryMsg as ADODBQueryMsg};
 use super::kernel::ChannelInfo;
 
 #[cw_serde]
@@ -59,8 +59,8 @@ impl AOSQuerier {
         code_id: u64,
     ) -> Result<Option<String>, ContractError> {
         let key = AOSQuerier::get_map_storage_key("ado_type", &[code_id.to_string().as_bytes()])?;
-        let ado_type: Option<String> = AOSQuerier::query_storage(querier, adodb_addr, &key)?;
-        Ok(ado_type)
+        let ado_type: Option<ADOVersion> = AOSQuerier::query_storage(querier, adodb_addr, &key)?;
+        Ok(ado_type.map(|v| v.get_type()))
     }
 
     pub fn ado_type_getter_smart(
@@ -69,8 +69,8 @@ impl AOSQuerier {
         code_id: u64,
     ) -> Result<Option<String>, ContractError> {
         let query = ADODBQueryMsg::ADOType { code_id };
-        let ado_type: Option<String> = querier.query_wasm_smart(adodb_addr, &query)?;
-        Ok(ado_type)
+        let ado_type: Option<ADOVersion> = querier.query_wasm_smart(adodb_addr, &query)?;
+        Ok(ado_type.map(|v| v.get_type()))
     }
 
     pub fn ado_publisher_getter(

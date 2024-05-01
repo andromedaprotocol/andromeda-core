@@ -5,13 +5,20 @@ use andromeda_non_fungible_tokens::auction::{
     AuctionIdsResponse, AuctionStateResponse, Bid, BidsResponse, Cw721HookMsg, ExecuteMsg,
     InstantiateMsg, QueryMsg,
 };
+use andromeda_std::ado_base::permissioning::{Permission, PermissioningMessage};
 use andromeda_std::amp::messages::AMPPkt;
+use andromeda_std::amp::AndrAddr;
+use andromeda_std::amp::Recipient;
+use andromeda_std::common::denom::Asset;
+use andromeda_std::common::expiration::Expiry;
+use andromeda_testing::mock::MockApp;
 use andromeda_testing::{
     mock_ado,
     mock_contract::{ExecuteResult, MockADO, MockContract},
 };
 use cosmwasm_std::{Addr, Coin, Empty, Uint128};
-use cw_multi_test::{App, AppResponse, Contract, ContractWrapper, Executor};
+use cw20::Cw20ReceiveMsg;
+use cw_multi_test::{AppResponse, Contract, ContractWrapper, Executor};
 
 pub struct MockAuction(Addr);
 mock_ado!(MockAuction, ExecuteMsg, QueryMsg);
@@ -20,11 +27,12 @@ impl MockAuction {
     pub fn instantiate(
         code_id: u64,
         sender: Addr,
-        app: &mut App,
+        app: &mut MockApp,
+
         kernel_address: impl Into<String>,
         owner: Option<String>,
     ) -> MockAuction {
-        let msg = mock_auction_instantiate_msg(kernel_address, owner);
+        let msg = mock_auction_instantiate_msg(kernel_address, owner, None, None);
         let addr = app
             .instantiate_contract(
                 code_id,
@@ -41,22 +49,25 @@ impl MockAuction {
     #[allow(clippy::too_many_arguments)]
     pub fn execute_start_auction(
         &self,
-        app: &mut App,
+        app: &mut MockApp,
         sender: Addr,
-        start_time: u64,
-        duration: u64,
-        coin_denom: String,
+        start_time: Option<Expiry>,
+        end_time: Expiry,
+        coin_denom: Asset,
         min_bid: Option<Uint128>,
         whitelist: Option<Vec<Addr>>,
+        recipient: Option<Recipient>,
     ) -> AppResponse {
-        let msg = mock_start_auction(start_time, duration, coin_denom, min_bid, whitelist);
+        let msg = mock_start_auction(
+            start_time, end_time, coin_denom, min_bid, whitelist, recipient,
+        );
         app.execute_contract(sender, self.addr().clone(), &msg, &[])
             .unwrap()
     }
 
     pub fn execute_place_bid(
         &self,
-        app: &mut App,
+        app: &mut MockApp,
         sender: Addr,
         token_id: String,
         token_address: String,
@@ -69,7 +80,7 @@ impl MockAuction {
 
     pub fn execute_claim_auction(
         &self,
-        app: &mut App,
+        app: &mut MockApp,
         sender: Addr,
         token_id: String,
         token_address: String,
@@ -78,9 +89,32 @@ impl MockAuction {
         self.execute(app, &msg, sender, &[])
     }
 
+    pub fn execute_authorize_token_address(
+        &self,
+        app: &mut MockApp,
+        sender: Addr,
+        token_address: impl Into<String>,
+        expiration: Option<Expiry>,
+    ) -> ExecuteResult {
+        let msg = mock_authorize_token_address(token_address, expiration);
+        self.execute(app, &msg, sender, &[])
+    }
+
+    pub fn execute_set_permission(
+        &self,
+        app: &mut MockApp,
+        sender: Addr,
+        actor: AndrAddr,
+        action: String,
+        permission: Permission,
+    ) -> ExecuteResult {
+        let msg = mock_set_permission(actor, action, permission);
+        self.execute(app, &msg, sender, &[])
+    }
+
     pub fn query_auction_ids(
         &self,
-        app: &mut App,
+        app: &mut MockApp,
         token_id: String,
         token_address: String,
     ) -> Vec<Uint128> {
@@ -89,12 +123,16 @@ impl MockAuction {
         res.auction_ids
     }
 
-    pub fn query_auction_state(&self, app: &mut App, auction_id: Uint128) -> AuctionStateResponse {
+    pub fn query_auction_state(
+        &self,
+        app: &mut MockApp,
+        auction_id: Uint128,
+    ) -> AuctionStateResponse {
         let msg = mock_get_auction_state(auction_id);
         self.query(app, msg)
     }
 
-    pub fn query_bids(&self, app: &mut App, auction_id: Uint128) -> Vec<Bid> {
+    pub fn query_bids(&self, app: &mut MockApp, auction_id: Uint128) -> Vec<Bid> {
         let msg = mock_get_bids(auction_id);
         let res: BidsResponse = self.query(app, msg);
         res.bids
@@ -109,27 +147,78 @@ pub fn mock_andromeda_auction() -> Box<dyn Contract<Empty>> {
 pub fn mock_auction_instantiate_msg(
     kernel_address: impl Into<String>,
     owner: Option<String>,
+    authorized_token_addresses: Option<Vec<AndrAddr>>,
+    authorized_cw20_address: Option<AndrAddr>,
 ) -> InstantiateMsg {
     InstantiateMsg {
         kernel_address: kernel_address.into(),
         owner,
+        authorized_token_addresses,
+        authorized_cw20_address,
     }
 }
 
 pub fn mock_start_auction(
-    start_time: u64,
-    duration: u64,
-    coin_denom: String,
+    start_time: Option<Expiry>,
+    end_time: Expiry,
+    coin_denom: Asset,
     min_bid: Option<Uint128>,
     whitelist: Option<Vec<Addr>>,
+    recipient: Option<Recipient>,
 ) -> Cw721HookMsg {
     Cw721HookMsg::StartAuction {
         start_time,
-        duration,
+        end_time,
         coin_denom,
         min_bid,
         whitelist,
+        recipient,
     }
+}
+
+pub fn mock_auction_cw20_receive(msg: Cw20ReceiveMsg) -> ExecuteMsg {
+    ExecuteMsg::Receive(msg)
+}
+
+pub fn mock_authorize_token_address(
+    token_address: impl Into<String>,
+    expiration: Option<Expiry>,
+) -> ExecuteMsg {
+    ExecuteMsg::AuthorizeTokenContract {
+        addr: AndrAddr::from_string(token_address.into()),
+        expiration,
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn mock_update_auction(
+    token_id: String,
+    token_address: String,
+    start_time: Option<Expiry>,
+    end_time: Expiry,
+    coin_denom: Asset,
+    min_bid: Option<Uint128>,
+    whitelist: Option<Vec<Addr>>,
+    recipient: Option<Recipient>,
+) -> ExecuteMsg {
+    ExecuteMsg::UpdateAuction {
+        token_id,
+        token_address,
+        start_time,
+        end_time,
+        coin_denom,
+        whitelist,
+        min_bid,
+        recipient,
+    }
+}
+
+pub fn mock_set_permission(actor: AndrAddr, action: String, permission: Permission) -> ExecuteMsg {
+    ExecuteMsg::Permissioning(PermissioningMessage::SetPermission {
+        actor,
+        action,
+        permission,
+    })
 }
 
 pub fn mock_get_auction_ids(token_id: String, token_address: String) -> QueryMsg {

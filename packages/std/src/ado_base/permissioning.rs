@@ -1,21 +1,43 @@
 use core::fmt;
 
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{ensure, Addr, Env, QuerierWrapper};
-use cw_utils::Expiration;
+use cosmwasm_std::Env;
 
 use crate::{
-    ado_contract::ADOContract,
-    common::context::ExecuteContext,
+    amp::AndrAddr,
+    common::{expiration::Expiry, MillisecondsExpiration},
     error::ContractError,
-    os::{adodb::ADOVersion, aos_querier::AOSQuerier},
 };
+
+#[cw_serde]
+pub enum PermissioningMessage {
+    SetPermission {
+        actor: AndrAddr,
+        action: String,
+        permission: Permission,
+    },
+    RemovePermission {
+        action: String,
+        actor: AndrAddr,
+    },
+    PermissionAction {
+        action: String,
+    },
+    DisableActionPermissioning {
+        action: String,
+    },
+}
 
 #[cw_serde]
 pub struct PermissionInfo {
     pub permission: Permission,
     pub action: String,
     pub actor: String,
+}
+
+#[cw_serde]
+pub struct PermissionedActionsResponse {
+    pub actions: Vec<String>,
 }
 
 /// An enum to represent a user's permission for an action
@@ -27,13 +49,12 @@ pub struct PermissionInfo {
 /// Expiration defaults to `Never` if not provided
 #[cw_serde]
 pub enum Permission {
-    Blacklisted(Option<Expiration>),
+    Blacklisted(Option<Expiry>),
     Limited {
-        expiration: Option<Expiration>,
+        expiration: Option<Expiry>,
         uses: u32,
     },
-    Whitelisted(Option<Expiration>),
-    Contract(Addr),
+    Whitelisted(Option<Expiry>),
 }
 
 impl std::default::Default for Permission {
@@ -43,63 +64,23 @@ impl std::default::Default for Permission {
 }
 
 impl Permission {
-    pub fn blacklisted(expiration: Option<Expiration>) -> Self {
+    pub fn blacklisted(expiration: Option<Expiry>) -> Self {
         Self::Blacklisted(expiration)
     }
 
-    pub fn whitelisted(expiration: Option<Expiration>) -> Self {
+    pub fn whitelisted(expiration: Option<Expiry>) -> Self {
         Self::Whitelisted(expiration)
     }
 
-    pub fn limited(expiration: Option<Expiration>, uses: u32) -> Self {
+    pub fn limited(expiration: Option<Expiry>, uses: u32) -> Self {
         Self::Limited { expiration, uses }
     }
 
-    pub fn contract(address: Addr) -> Self {
-        Self::Contract(address)
-    }
-
-    pub fn is_contract(&self) -> bool {
-        matches!(self, Permission::Contract(_))
-    }
-
-    pub fn validate(&self, ctx: &ExecuteContext) -> Result<(), ContractError> {
-        match self {
-            // Checks if the address is an address-list contract found in the adodb
-            Permission::Contract(address) => {
-                let contract_info = ctx.deps.querier.query_wasm_contract_info(address)?;
-                let adodb_addr = ADOContract::default()
-                    .get_adodb_address(ctx.deps.storage, &ctx.deps.querier)?;
-                let ado_type = AOSQuerier::ado_type_getter_smart(
-                    &ctx.deps.querier,
-                    &adodb_addr,
-                    contract_info.code_id,
-                )?;
-
-                match ado_type {
-                    Some(ado_type) => {
-                        let ado_type = ADOVersion::from_string(ado_type).get_type();
-                        ensure!(ado_type == "address-list", ContractError::InvalidAddress {});
-                        Ok(())
-                    }
-                    None => Err(ContractError::InvalidAddress {}),
-                }
-            }
-            _ => Ok(()),
-        }
-    }
-
-    pub fn is_permissioned(
-        &self,
-        querier: &QuerierWrapper,
-        actor: &str,
-        env: &Env,
-        strict: bool,
-    ) -> bool {
+    pub fn is_permissioned(&self, env: &Env, strict: bool) -> bool {
         match self {
             Self::Blacklisted(expiration) => {
                 if let Some(expiration) = expiration {
-                    if expiration.is_expired(&env.block) {
+                    if expiration.get_time(&env.block).is_expired(&env.block) {
                         return true;
                     }
                 }
@@ -107,7 +88,7 @@ impl Permission {
             }
             Self::Limited { expiration, uses } => {
                 if let Some(expiration) = expiration {
-                    if expiration.is_expired(&env.block) {
+                    if expiration.get_time(&env.block).is_expired(&env.block) {
                         return !strict;
                     }
                 }
@@ -118,40 +99,39 @@ impl Permission {
             }
             Self::Whitelisted(expiration) => {
                 if let Some(expiration) = expiration {
-                    if expiration.is_expired(&env.block) {
+                    if expiration.get_time(&env.block).is_expired(&env.block) {
                         return !strict;
                     }
                 }
                 true
             }
-            Self::Contract(addr) => {
-                let permission = AOSQuerier::get_permission(querier, addr, actor);
-                // The address list contract doesn't allow Contract Permissions to be stored in the first place.
-                match permission {
-                    Ok(permission) => {
-                        if matches!(permission, Permission::Contract(_)) {
-                            return false;
-                        }
-                        permission.is_permissioned(querier, actor, env, strict)
-                    }
-                    Err(_) => false,
-                }
+        }
+    }
+
+    pub fn get_expiration(&self, env: Env) -> MillisecondsExpiration {
+        match self {
+            Self::Blacklisted(expiration) => {
+                expiration.clone().unwrap_or_default().get_time(&env.block)
+            }
+            Self::Limited { expiration, .. } => {
+                expiration.clone().unwrap_or_default().get_time(&env.block)
+            }
+            Self::Whitelisted(expiration) => {
+                expiration.clone().unwrap_or_default().get_time(&env.block)
             }
         }
     }
 
-    pub fn get_expiration(&self) -> Expiration {
-        match self {
-            Self::Blacklisted(expiration) => expiration.unwrap_or_default(),
-            Self::Limited { expiration, .. } => expiration.unwrap_or_default(),
-            Self::Whitelisted(expiration) => expiration.unwrap_or_default(),
-            _ => todo!(),
-        }
-    }
-
-    pub fn consume_use(&mut self) {
+    pub fn consume_use(&mut self) -> Result<(), ContractError> {
         if let Self::Limited { uses, .. } = self {
-            *uses -= 1
+            if let Some(remaining_uses) = uses.checked_sub(1) {
+                *uses = remaining_uses;
+                Ok(())
+            } else {
+                Err(ContractError::Underflow {})
+            }
+        } else {
+            Ok(())
         }
     }
 }
@@ -179,9 +159,6 @@ impl fmt::Display for Permission {
                 } else {
                     "whitelisted".to_string()
                 }
-            }
-            Self::Contract(address) => {
-                format!("contract:{address}")
             }
         };
         write!(f, "{self_as_string}")

@@ -1,24 +1,22 @@
 use andromeda_finance::cross_chain_swap::{
-    ExecuteMsg, InstantiateMsg, MigrateMsg, OsmosisSwapResponse, QueryMsg,
+    ExecuteMsg, InstantiateMsg, OsmosisSwapResponse, QueryMsg,
 };
-use andromeda_std::common::call_action::call_action;
+use andromeda_std::common::actions::call_action;
 use andromeda_std::{
-    ado_base::InstantiateMsg as BaseInstantiateMsg,
+    ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     amp::{
         messages::{AMPMsg, AMPPkt},
         AndrAddr,
     },
-    error::{from_semver, ContractError},
+    error::ContractError,
 };
 use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
 use cosmwasm_std::{
-    attr, ensure, entry_point, Binary, Coin, Decimal, Deps, DepsMut, Env, MessageInfo, Reply,
-    Response, StdError, SubMsg,
+    attr, entry_point, Binary, Coin, Decimal, Deps, DepsMut, Env, MessageInfo, Reply, Response,
+    StdError, SubMsg,
 };
-use cw2::{get_contract_version, set_contract_version};
 
 use cw_utils::one_coin;
-use semver::Version;
 
 use crate::{
     dex::{execute_swap_osmo, parse_swap_reply, MSG_FORWARD_ID, MSG_SWAP_ID},
@@ -36,17 +34,15 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-
     let inst_resp = ADOContract::default().instantiate(
         deps.storage,
         env,
         deps.api,
+        &deps.querier,
         info,
         BaseInstantiateMsg {
-            ado_type: "andromeda-cross-chain-swap".to_string(),
+            ado_type: CONTRACT_NAME.to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
-            operators: None,
             kernel_address: msg.kernel_address,
             owner: msg.owner,
         },
@@ -225,36 +221,7 @@ fn execute_swap_and_forward(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-    // New version
-    let version: Version = CONTRACT_VERSION.parse().map_err(from_semver)?;
-
-    // Old version
-    let stored = get_contract_version(deps.storage)?;
-    let storage_version: Version = stored.version.parse().map_err(from_semver)?;
-
-    let contract = ADOContract::default();
-
-    ensure!(
-        stored.contract == CONTRACT_NAME,
-        ContractError::CannotMigrate {
-            previous_contract: stored.contract,
-        }
-    );
-
-    // New version has to be newer/greater than the old version
-    ensure!(
-        storage_version < version,
-        ContractError::CannotMigrate {
-            previous_contract: stored.version,
-        }
-    );
-
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-
-    // Update the ADOContract's version
-    contract.execute_update_version(deps)?;
-
-    Ok(Response::default())
+    ADOContract::default().migrate(deps, CONTRACT_NAME, CONTRACT_VERSION)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

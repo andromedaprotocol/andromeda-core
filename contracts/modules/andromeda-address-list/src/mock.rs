@@ -3,7 +3,9 @@
 use crate::contract::{execute, instantiate, query};
 use andromeda_modules::address_list::{ActorPermission, ExecuteMsg, InstantiateMsg, QueryMsg};
 use andromeda_std::ado_base::permissioning::Permission;
-use andromeda_testing::{mock_ado, mock_contract::ExecuteResult, MockADO, MockContract};
+use andromeda_testing::{
+    mock::MockApp, mock_ado, mock_contract::ExecuteResult, MockADO, MockContract,
+};
 use cosmwasm_std::{Addr, Empty};
 use cw_multi_test::{App, Contract, ContractWrapper, Executor};
 
@@ -35,7 +37,7 @@ impl MockAddressList {
 
     pub fn execute_actor_permission(
         &self,
-        app: &mut App,
+        app: &mut MockApp,
         sender: Addr,
         actor: Addr,
         permission: Permission,

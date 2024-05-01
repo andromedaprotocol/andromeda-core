@@ -1,4 +1,4 @@
-use andromeda_std::os::vfs::validate_path_name;
+use andromeda_std::os::vfs::{validate_path_name, SubDirBound};
 use andromeda_std::{amp::AndrAddr, error::ContractError};
 use cosmwasm_std::{Addr, Deps};
 
@@ -8,12 +8,18 @@ use crate::state::{
 };
 
 pub fn resolve_path(deps: Deps, path: AndrAddr) -> Result<Addr, ContractError> {
-    validate_path_name(path.to_string())?;
-    resolve_pathname(deps.storage, deps.api, path)
+    validate_path_name(deps.api, path.to_string())?;
+    resolve_pathname(deps.storage, deps.api, path, &mut vec![])
 }
-pub fn subdir(deps: Deps, path: AndrAddr) -> Result<Vec<PathInfo>, ContractError> {
-    validate_path_name(path.to_string())?;
-    get_subdir(deps.storage, deps.api, path)
+pub fn subdir(
+    deps: Deps,
+    path: AndrAddr,
+    min: Option<SubDirBound>,
+    max: Option<SubDirBound>,
+    limit: Option<u32>,
+) -> Result<Vec<PathInfo>, ContractError> {
+    validate_path_name(deps.api, path.to_string())?;
+    get_subdir(deps.storage, deps.api, path, min, max, limit)
 }
 
 pub fn paths(deps: Deps, addr: Addr) -> Result<Vec<String>, ContractError> {

@@ -82,12 +82,12 @@ pub enum ExecuteMsg {
     },
     /// Transfers ownership of a token
     TransferNft {
-        recipient: String,
+        recipient: AndrAddr,
         token_id: String,
     },
     /// Sends a token to another contract
     SendNft {
-        contract: String,
+        contract: AndrAddr,
         token_id: String,
         msg: Binary,
     },
@@ -99,39 +99,25 @@ pub enum ExecuteMsg {
         expires: Option<Expiration>,
     },
     /// Remove previously granted Approval
-    Revoke {
-        spender: String,
-        token_id: String,
-    },
+    Revoke { spender: String, token_id: String },
     /// Approves an address for all tokens owned by the sender
     ApproveAll {
         operator: String,
         expires: Option<Expiration>,
     },
     /// Remove previously granted ApproveAll permission
-    RevokeAll {
-        operator: String,
-    },
+    RevokeAll { operator: String },
     /// Burns a token, removing all data related to it. The ID of the token is still reserved.
-    Burn {
-        token_id: String,
-    },
+    Burn { token_id: String },
     /// Archives a token, causing it to be immutable but readable
-    Archive {
-        token_id: String,
-    },
+    Archive { token_id: String },
     /// Assigns a `TransferAgreement` for a token
     TransferAgreement {
         token_id: String,
         agreement: Option<TransferAgreement>,
     },
     /// Mint multiple tokens at a time
-    BatchMint {
-        tokens: Vec<MintMsg>,
-    },
-    Extension {
-        msg: Box<ExecuteMsg>,
-    },
+    BatchMint { tokens: Vec<MintMsg> },
 }
 
 impl From<ExecuteMsg> for Cw721ExecuteMsg<TokenExtension, ExecuteMsg> {
@@ -141,7 +127,7 @@ impl From<ExecuteMsg> for Cw721ExecuteMsg<TokenExtension, ExecuteMsg> {
                 recipient,
                 token_id,
             } => Cw721ExecuteMsg::TransferNft {
-                recipient,
+                recipient: recipient.to_string(),
                 token_id,
             },
             ExecuteMsg::SendNft {
@@ -149,7 +135,7 @@ impl From<ExecuteMsg> for Cw721ExecuteMsg<TokenExtension, ExecuteMsg> {
                 token_id,
                 msg,
             } => Cw721ExecuteMsg::SendNft {
-                contract,
+                contract: contract.to_string(),
                 token_id,
                 msg,
             },
@@ -181,7 +167,6 @@ impl From<ExecuteMsg> for Cw721ExecuteMsg<TokenExtension, ExecuteMsg> {
                 owner,
             },
             ExecuteMsg::Burn { token_id } => Cw721ExecuteMsg::Burn { token_id },
-            ExecuteMsg::Extension { msg } => Cw721ExecuteMsg::Extension { msg: *msg },
             _ => panic!("Unsupported message"),
         }
     }
@@ -231,7 +216,7 @@ pub enum QueryMsg {
         limit: Option<u32>,
     },
     /// If the token is archived
-    #[returns(bool)]
+    #[returns(IsArchivedResponse)]
     IsArchived { token_id: String },
     /// The transfer agreement for the token
     #[returns(Option<TransferAgreement>)]
@@ -239,8 +224,6 @@ pub enum QueryMsg {
     /// The current config of the contract
     #[returns(cw721::ContractInfoResponse)]
     ContractInfo {},
-    #[returns(TokenExtension)]
-    Extension { msg: Box<QueryMsg> },
     #[returns(cw721_base::MinterResponse)]
     Minter {},
     #[returns(cw721::ApprovalResponse)]
@@ -256,6 +239,10 @@ pub enum QueryMsg {
         token_id: String,
         include_expired: Option<bool>,
     },
+}
+#[cw_serde]
+pub struct IsArchivedResponse {
+    pub is_archived: bool,
 }
 
 impl From<QueryMsg> for Cw721QueryMsg<QueryMsg> {
@@ -301,7 +288,6 @@ impl From<QueryMsg> for Cw721QueryMsg<QueryMsg> {
             QueryMsg::AllTokens { start_after, limit } => {
                 Cw721QueryMsg::AllTokens { start_after, limit }
             }
-            QueryMsg::Extension { msg } => Cw721QueryMsg::Extension { msg: *msg },
             QueryMsg::Minter {} => Cw721QueryMsg::Minter {},
             QueryMsg::Approval {
                 token_id,
@@ -323,7 +309,3 @@ impl From<QueryMsg> for Cw721QueryMsg<QueryMsg> {
         }
     }
 }
-
-#[cw_serde]
-#[serde(rename_all = "snake_case")]
-pub struct MigrateMsg {}

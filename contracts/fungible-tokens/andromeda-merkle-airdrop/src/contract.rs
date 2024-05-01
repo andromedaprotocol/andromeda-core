@@ -1,16 +1,14 @@
 // The majority of the code was taken unchanged from
 // https://github.com/CosmWasm/cw-tokens/blob/main/contracts/cw20-merkle-airdrop/src/contract.rs
-use andromeda_std::common::call_action::call_action;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     attr, ensure, to_json_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Empty,
     Env, MessageInfo, Response, StdResult, Uint128, WasmMsg,
 };
-use cw2::{get_contract_version, set_contract_version};
 use cw20::Cw20ExecuteMsg;
 use cw_asset::AssetInfoBase;
-use cw_utils::{nonpayable, Expiration};
+use cw_utils::nonpayable;
 use sha2::Digest;
 use std::convert::TryInto;
 
@@ -20,16 +18,14 @@ use crate::state::{
 };
 use andromeda_fungible_tokens::airdrop::{
     ConfigResponse, ExecuteMsg, InstantiateMsg, IsClaimedResponse, LatestStageResponse,
-    MerkleRootResponse, MigrateMsg, QueryMsg, TotalClaimedResponse,
+    MerkleRootResponse, QueryMsg, TotalClaimedResponse,
 };
 use andromeda_std::{
-    ado_base::InstantiateMsg as BaseInstantiateMsg,
+    ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     ado_contract::ADOContract,
-    common::{context::ExecuteContext, encode_binary},
-    error::{from_semver, ContractError},
+    common::{actions::call_action, context::ExecuteContext, encode_binary, expiration::Expiry},
+    error::ContractError,
 };
-
-use semver::Version;
 
 // Version info, for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-merkle-airdrop";
@@ -42,8 +38,6 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-
     let config = Config {
         asset_info: msg.asset_info.check(deps.api, None)?,
     };
@@ -57,11 +51,11 @@ pub fn instantiate(
         deps.storage,
         env,
         deps.api,
+        &deps.querier,
         info,
         BaseInstantiateMsg {
-            ado_type: "merkle-airdrop".to_string(),
+            ado_type: CONTRACT_NAME.to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
-            operators: None,
             kernel_address: msg.kernel_address,
             owner: msg.owner,
         },
@@ -88,14 +82,14 @@ pub fn execute(
 }
 
 pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
-    call_action(
+    let action_response = call_action(
         &mut ctx.deps,
         &ctx.info,
         &ctx.env,
         &ctx.amp_ctx,
         msg.as_ref(),
     )?;
-    match msg {
+    let res = match msg {
         ExecuteMsg::RegisterMerkleRoot {
             merkle_root,
             expiration,
@@ -108,16 +102,22 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
         } => execute_claim(ctx, stage, amount, proof),
         ExecuteMsg::Burn { stage } => execute_burn(ctx, stage),
         _ => ADOContract::default().execute(ctx, msg),
-    }
+    }?;
+    Ok(res
+        .add_submessages(action_response.messages)
+        .add_attributes(action_response.attributes)
+        .add_events(action_response.events))
 }
 
 pub fn execute_register_merkle_root(
     ctx: ExecuteContext,
     merkle_root: String,
-    expiration: Option<Expiration>,
+    expiration: Option<Expiry>,
     total_amount: Option<Uint128>,
 ) -> Result<Response, ContractError> {
-    let ExecuteContext { deps, info, .. } = ctx;
+    let ExecuteContext {
+        deps, info, env, ..
+    } = ctx;
     nonpayable(&info)?;
 
     ensure!(
@@ -135,8 +135,11 @@ pub fn execute_register_merkle_root(
     LATEST_STAGE.save(deps.storage, &stage)?;
 
     // save expiration
-    let exp = expiration.unwrap_or(Expiration::Never {});
-    STAGE_EXPIRATION.save(deps.storage, stage, &exp)?;
+    STAGE_EXPIRATION.save(
+        deps.storage,
+        stage,
+        &expiration.map(|e| e.get_time(&env.block)),
+    )?;
 
     // save total airdropped amount
     let amount = total_amount.unwrap_or_else(Uint128::zero);
@@ -162,12 +165,15 @@ pub fn execute_claim(
     } = ctx;
     nonpayable(&info)?;
 
-    // not expired
-    let expiration = STAGE_EXPIRATION.load(deps.storage, stage)?;
-    ensure!(
-        !expiration.is_expired(&env.block),
-        ContractError::StageExpired { stage, expiration }
-    );
+    // Ensure that the stage expiration (if it exists) isn't expired
+    let expiration_milliseconds = STAGE_EXPIRATION.load(deps.storage, stage)?;
+    if let Some(expiration_milliseconds) = expiration_milliseconds {
+        let expiration = expiration_milliseconds;
+        ensure!(
+            !expiration.is_expired(&env.block),
+            ContractError::StageExpired { stage, expiration }
+        );
+    };
 
     // verify not claimed
     ensure!(
@@ -204,7 +210,7 @@ pub fn execute_claim(
 
     // Update total claimed to reflect
     let mut claimed_amount = STAGE_AMOUNT_CLAIMED.load(deps.storage, stage)?;
-    claimed_amount += amount;
+    claimed_amount = claimed_amount.checked_add(amount)?;
     STAGE_AMOUNT_CLAIMED.save(deps.storage, stage, &claimed_amount)?;
 
     let transfer_msg: CosmosMsg = match config.asset_info {
@@ -245,10 +251,12 @@ pub fn execute_burn(ctx: ExecuteContext, stage: u8) -> Result<Response, Contract
 
     // make sure is expired
     let expiration = STAGE_EXPIRATION.load(deps.storage, stage)?;
-    ensure!(
-        expiration.is_expired(&env.block),
-        ContractError::StageNotExpired { stage, expiration }
-    );
+    if let Some(expiration) = expiration {
+        ensure!(
+            expiration.is_expired(&env.block),
+            ContractError::StageNotExpired { stage, expiration }
+        );
+    }
 
     // Get total amount per stage and total claimed
     let total_amount = STAGE_AMOUNT.load(deps.storage, stage)?;
@@ -355,34 +363,5 @@ pub fn query_total_claimed(deps: Deps, stage: u8) -> Result<TotalClaimedResponse
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-    // New version
-    let version: Version = CONTRACT_VERSION.parse().map_err(from_semver)?;
-
-    // Old version
-    let stored = get_contract_version(deps.storage)?;
-    let storage_version: Version = stored.version.parse().map_err(from_semver)?;
-
-    let contract = ADOContract::default();
-
-    ensure!(
-        stored.contract == CONTRACT_NAME,
-        ContractError::CannotMigrate {
-            previous_contract: stored.contract,
-        }
-    );
-
-    // New version has to be newer/greater than the old version
-    ensure!(
-        storage_version < version,
-        ContractError::CannotMigrate {
-            previous_contract: stored.version,
-        }
-    );
-
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-
-    // Update the ADOContract's version
-    contract.execute_update_version(deps)?;
-
-    Ok(Response::default())
+    ADOContract::default().migrate(deps, CONTRACT_NAME, CONTRACT_VERSION)
 }

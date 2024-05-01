@@ -1,18 +1,23 @@
+pub mod actions;
 pub mod call_action;
 pub mod context;
+pub mod denom;
 pub mod expiration;
-pub mod queries;
+pub mod milliseconds;
 pub mod rates;
+pub mod reply;
 pub mod response;
 pub mod withdraw;
 
+pub use milliseconds::*;
+
 use crate::error::ContractError;
 use cosmwasm_std::{
-    ensure, from_json, to_json_binary, BankMsg, Binary, Coin, CosmosMsg, QuerierWrapper, SubMsg,
+    ensure, has_coins, to_json_binary, BankMsg, Binary, Coin, CosmosMsg, SubMsg, Uint128,
 };
 use cw20::Cw20Coin;
 
-use serde::{de::DeserializeOwned, Serialize};
+use serde::Serialize;
 use std::collections::BTreeMap;
 
 use cosmwasm_schema::cw_serde;
@@ -20,24 +25,6 @@ use cosmwasm_schema::cw_serde;
 pub enum OrderBy {
     Asc,
     Desc,
-}
-
-pub fn parse_struct<T>(val: &Binary) -> Result<T, ContractError>
-where
-    T: DeserializeOwned,
-{
-    let data_res = from_json(val);
-    match data_res {
-        Ok(data) => Ok(data),
-        Err(err) => Err(ContractError::ParsingError {
-            err: err.to_string(),
-        }),
-    }
-}
-
-pub fn parse_message<T: DeserializeOwned>(data: &Option<Binary>) -> Result<T, ContractError> {
-    let data = unwrap_or_err(data, ContractError::MissingRequiredMessageData {})?;
-    parse_struct::<T>(data)
 }
 
 pub fn encode_binary<T>(val: &T) -> Result<Binary, ContractError>
@@ -48,24 +35,6 @@ where
         Ok(encoded_val) => Ok(encoded_val),
         Err(err) => Err(err.into()),
     }
-}
-
-pub fn unwrap_or_err<T>(val_opt: &Option<T>, err: ContractError) -> Result<&T, ContractError> {
-    match val_opt {
-        Some(val) => Ok(val),
-        None => Err(err),
-    }
-}
-
-pub fn query_primitive<T>(
-    _querier: QuerierWrapper,
-    _contract_address: String,
-    _key: Option<String>,
-) -> Result<T, ContractError>
-where
-    T: DeserializeOwned,
-{
-    todo!()
 }
 
 #[cw_serde]
@@ -103,9 +72,14 @@ pub fn merge_sub_msgs(msgs: Vec<SubMsg>) -> Vec<SubMsg> {
     for msg in msgs.into_iter() {
         match msg.msg {
             CosmosMsg::Bank(BankMsg::Send { to_address, amount }) => {
-                let current_coins = map.get_mut(&to_address);
+                let current_coins = map.get(&to_address);
                 match current_coins {
-                    Some(current_coins) => merge_coins(current_coins, amount),
+                    Some(current_coins) => {
+                        map.insert(
+                            to_address.to_owned(),
+                            merge_coins(current_coins.to_vec(), amount),
+                        );
+                    }
                     None => {
                         map.insert(to_address.to_owned(), amount);
                     }
@@ -134,21 +108,46 @@ pub fn merge_sub_msgs(msgs: Vec<SubMsg>) -> Vec<SubMsg> {
 ///                    same denom
 ///
 /// Returns nothing as it is done in place.
-pub fn merge_coins(coins: &mut Vec<Coin>, coins_to_add: Vec<Coin>) {
+pub fn merge_coins(coins: Vec<Coin>, coins_to_add: Vec<Coin>) -> Vec<Coin> {
+    let mut new_coins: Vec<Coin> = if !coins.is_empty() {
+        merge_coins(vec![], coins.to_vec())
+    } else {
+        vec![]
+    };
     // Not the most efficient algorithm (O(n * m)) but we don't expect to deal with very large arrays of Coin,
     // typically at most 2 denoms. Even in the future there are not that many Terra native coins
     // where this will be a problem.
-    for coin in coins.iter_mut() {
-        let same_denom_coin = coins_to_add.iter().find(|&c| c.denom == coin.denom);
-        if let Some(same_denom_coin) = same_denom_coin {
-            coin.amount += same_denom_coin.amount;
+
+    for coin in coins_to_add {
+        let mut same_denom_coins = new_coins.iter_mut().filter(|c| c.denom == coin.denom);
+        if let Some(same_denom_coin) = same_denom_coins.next() {
+            same_denom_coin.amount += coin.amount
+        } else {
+            new_coins.push(coin);
         }
     }
-    for coin_to_add in coins_to_add.iter() {
-        if !coins.iter().any(|c| c.denom == coin_to_add.denom) {
-            coins.push(coin_to_add.clone());
-        }
+
+    new_coins
+}
+
+/// Checks if the required funds can be covered by merging the provided coins.
+///
+/// ## Arguments
+/// * `coins` - The vector of `Coin` structs representing the available coins
+/// * `required` - The vector of `Coin` structs representing the required funds
+///
+/// Returns true if the required funds can be covered by merging the available coins, false otherwise.
+pub fn has_coins_merged(coins: &[Coin], required: &[Coin]) -> bool {
+    let merged_coins = merge_coins(vec![], coins.to_vec());
+    let merged_required = merge_coins(vec![], required.to_vec());
+
+    for required_funds in merged_required {
+        if !has_coins(&merged_coins, &required_funds) {
+            return false;
+        };
     }
+
+    true
 }
 
 /// Deducts a given amount from a vector of `Coin` structs. Alters the given vector, does not return a new vector.
@@ -156,25 +155,34 @@ pub fn merge_coins(coins: &mut Vec<Coin>, coins_to_add: Vec<Coin>) {
 /// ## Arguments
 /// * `coins` - The vector of `Coin` structs from which to deduct the given funds
 /// * `funds` - The amount to deduct
-pub fn deduct_funds(coins: &mut [Coin], funds: &Coin) -> Result<bool, ContractError> {
-    let coin_amount = coins.iter_mut().find(|c| c.denom.eq(&funds.denom));
+pub fn deduct_funds(coins: &mut [Coin], funds: &Coin) -> Result<(), ContractError> {
+    let coin_amount: Vec<&mut Coin> = coins
+        .iter_mut()
+        .filter(|c| c.denom.eq(&funds.denom))
+        .collect();
 
-    match coin_amount {
-        Some(c) => {
-            ensure!(
-                c.amount >= funds.amount,
-                ContractError::InsufficientFunds {}
-            );
-            c.amount -= funds.amount;
-            Ok(true)
+    let mut remainder = funds.amount;
+    for same_coin in coin_amount {
+        if same_coin.amount > remainder {
+            same_coin.amount = same_coin.amount.checked_sub(remainder)?;
+            return Ok(());
+        } else {
+            remainder = remainder.checked_sub(same_coin.amount)?;
+            same_coin.amount = Uint128::zero();
         }
-        None => Err(ContractError::InsufficientFunds {}),
     }
+
+    ensure!(
+        remainder == Uint128::zero(),
+        ContractError::InsufficientFunds {}
+    );
+
+    Ok(())
 }
 
 #[cfg(test)]
 mod test {
-    use cosmwasm_std::{coin, to_json_binary, Uint128, WasmMsg};
+    use cosmwasm_std::{coin, Uint128, WasmMsg};
     use cw20::Expiration;
 
     use super::*;
@@ -186,31 +194,21 @@ mod test {
     }
 
     #[test]
-    fn test_parse_struct() {
-        let valid_json = to_json_binary(&TestStruct {
-            name: "John Doe".to_string(),
-            expiration: Expiration::AtHeight(123),
-        })
-        .unwrap();
-
-        let test_struct: TestStruct = parse_struct(&valid_json).unwrap();
-        assert_eq!(test_struct.name, "John Doe");
-        assert_eq!(test_struct.expiration, Expiration::AtHeight(123));
-
-        let invalid_json = to_json_binary("notavalidteststruct").unwrap();
-
-        assert!(parse_struct::<TestStruct>(&invalid_json).is_err())
-    }
-
-    #[test]
     fn test_merge_coins() {
-        let mut coins = vec![coin(100, "uusd"), coin(100, "uluna")];
-        let funds_to_add = vec![coin(25, "uluna"), coin(50, "uusd"), coin(100, "ucad")];
+        let coins = vec![coin(100, "uusd"), coin(100, "uluna")];
+        let funds_to_add = vec![
+            coin(25, "uluna"),
+            coin(50, "uusd"),
+            coin(100, "ucad"),
+            coin(50, "uluna"),
+            coin(100, "uluna"),
+            coin(100, "ucad"),
+        ];
 
-        merge_coins(&mut coins, funds_to_add);
+        let res = merge_coins(coins, funds_to_add);
         assert_eq!(
-            vec![coin(150, "uusd"), coin(125, "uluna"), coin(100, "ucad")],
-            coins
+            vec![coin(150, "uusd"), coin(275, "uluna"), coin(200, "ucad")],
+            res
         );
     }
 
@@ -265,20 +263,45 @@ mod test {
 
     #[test]
     fn test_deduct_funds() {
-        let mut funds: Vec<Coin> = vec![coin(100, "uluna")];
+        let mut funds: Vec<Coin> = vec![coin(5, "uluna"), coin(100, "uusd"), coin(100, "uluna")];
 
         deduct_funds(&mut funds, &coin(10, "uluna")).unwrap();
 
-        assert_eq!(Uint128::from(90_u64), funds[0].amount);
+        assert_eq!(Uint128::zero(), funds[0].amount);
         assert_eq!(String::from("uluna"), funds[0].denom);
+        assert_eq!(Uint128::from(95u128), funds[2].amount);
+        assert_eq!(String::from("uluna"), funds[2].denom);
 
         let mut funds: Vec<Coin> = vec![Coin {
             denom: String::from("uluna"),
-            amount: Uint128::from(5_u64),
+            amount: Uint128::from(5u64),
         }];
 
         let e = deduct_funds(&mut funds, &coin(10, "uluna")).unwrap_err();
 
         assert_eq!(ContractError::InsufficientFunds {}, e);
+    }
+    #[test]
+    fn test_has_coins_merged() {
+        let available_coins: Vec<Coin> = vec![
+            coin(50, "uluna"),
+            coin(200, "uusd"),
+            coin(50, "ukrw"),
+            coin(25, "uluna"),
+            coin(25, "uluna"),
+        ];
+        let required_funds: Vec<Coin> = vec![
+            coin(50, "uluna"),
+            coin(100, "uusd"),
+            coin(50, "ukrw"),
+            coin(50, "uluna"),
+        ];
+
+        assert!(has_coins_merged(&available_coins, &required_funds));
+
+        let insufficient_funds: Vec<Coin> =
+            vec![coin(10, "uluna"), coin(100, "uusd"), coin(50, "ukrw")];
+
+        assert!(!has_coins_merged(&insufficient_funds, &required_funds));
     }
 }

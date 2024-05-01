@@ -2,25 +2,26 @@
 use crate::contract::{execute, instantiate, query, reply};
 use andromeda_app::app::{AppComponent, ExecuteMsg, InstantiateMsg, QueryMsg};
 use andromeda_testing::{
+    mock::MockApp,
     mock_ado,
     mock_contract::{AnyResult, MockADO, MockContract},
 };
 use cosmwasm_std::{Addr, Empty};
-use cw_multi_test::{App, AppResponse, Contract, ContractWrapper, Executor};
+use cw_multi_test::{AppResponse, Contract, ContractWrapper, Executor};
 
-pub struct MockApp(Addr);
-mock_ado!(MockApp, ExecuteMsg, QueryMsg);
+pub struct MockAppContract(Addr);
+mock_ado!(MockAppContract, ExecuteMsg, QueryMsg);
 
-impl MockApp {
+impl MockAppContract {
     pub fn instantiate(
         code_id: u64,
-        sender: Addr,
-        app: &mut App,
+        sender: &Addr,
+        app: &mut MockApp,
         name: impl Into<String>,
         app_components: Vec<AppComponent>,
         kernel_address: impl Into<String>,
         owner: Option<String>,
-    ) -> MockApp {
+    ) -> MockAppContract {
         let msg = mock_app_instantiate_msg(name, app_components, kernel_address, owner);
         let addr = app
             .instantiate_contract(
@@ -32,29 +33,38 @@ impl MockApp {
                 Some(sender.to_string()),
             )
             .unwrap();
-        MockApp(Addr::unchecked(addr))
+        MockAppContract(Addr::unchecked(addr))
     }
 
     pub fn execute_claim_ownership(
         &self,
-        app: &mut App,
+        app: &mut MockApp,
         sender: Addr,
         component_name: Option<String>,
     ) -> AnyResult<AppResponse> {
         self.execute(app, &mock_claim_ownership_msg(component_name), sender, &[])
     }
 
-    pub fn query_components(&self, app: &App) -> Vec<AppComponent> {
+    pub fn execute_add_app_component(
+        &self,
+        app: &mut MockApp,
+        sender: Addr,
+        component: AppComponent,
+    ) -> AnyResult<AppResponse> {
+        self.execute(app, &mock_add_app_component_msg(component), sender, &[])
+    }
+
+    pub fn query_components(&self, app: &MockApp) -> Vec<AppComponent> {
         self.query::<Vec<AppComponent>>(app, mock_get_components_msg())
     }
 
-    pub fn query_component_addr(&self, app: &App, name: impl Into<String>) -> Addr {
+    pub fn query_component_addr(&self, app: &MockApp, name: impl Into<String>) -> Addr {
         self.query::<Addr>(app, mock_get_address_msg(name.into()))
     }
 
     pub fn query_ado_by_component_name<C: From<Addr>>(
         &self,
-        app: &App,
+        app: &MockApp,
         name: impl Into<String>,
     ) -> C {
         C::from(self.query_component_addr(app, name))
@@ -88,10 +98,18 @@ pub fn mock_claim_ownership_msg(component_name: Option<String>) -> ExecuteMsg {
     }
 }
 
+pub fn mock_add_app_component_msg(component: AppComponent) -> ExecuteMsg {
+    ExecuteMsg::AddAppComponent { component }
+}
+
 pub fn mock_get_components_msg() -> QueryMsg {
     QueryMsg::GetComponents {}
 }
 
-pub fn mock_get_address_msg(name: String) -> QueryMsg {
-    QueryMsg::GetAddress { name }
+pub fn mock_get_adresses_with_names_msg() -> QueryMsg {
+    QueryMsg::GetAddressesWithNames {}
+}
+
+pub fn mock_get_address_msg(name: impl Into<String>) -> QueryMsg {
+    QueryMsg::GetAddress { name: name.into() }
 }

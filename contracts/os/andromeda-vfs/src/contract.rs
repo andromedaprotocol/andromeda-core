@@ -1,14 +1,13 @@
 use andromeda_std::ado_contract::ADOContract;
-
-use andromeda_std::os::vfs::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
+use andromeda_std::os::vfs::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use andromeda_std::{
-    ado_base::InstantiateMsg as BaseInstantiateMsg, common::encode_binary, error::ContractError,
+    ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
+    common::encode_binary,
+    error::ContractError,
 };
 use cosmwasm_std::{
-    ensure, entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError,
+    entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError,
 };
-use cw2::{get_contract_version, set_contract_version};
-use semver::Version;
 
 use crate::{execute, query};
 
@@ -23,16 +22,15 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     ADOContract::default().instantiate(
         deps.storage,
         env,
         deps.api,
+        &deps.querier,
         info,
         BaseInstantiateMsg {
-            ado_type: "vfs".to_string(),
+            ado_type: CONTRACT_NAME.to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
-            operators: None,
             kernel_address: msg.kernel_address,
             owner: msg.owner,
         },
@@ -73,10 +71,10 @@ pub fn execute(
         ExecuteMsg::RegisterUser { username, address } => {
             execute::register_user(execute_env, username, address)
         }
-        ExecuteMsg::AddParentPath {
+        ExecuteMsg::AddChild {
             name,
             parent_address,
-        } => execute::add_parent_path(execute_env, name, parent_address),
+        } => execute::add_child(execute_env, name, parent_address),
         ExecuteMsg::RegisterLibrary {
             lib_name,
             lib_address,
@@ -84,55 +82,41 @@ pub fn execute(
         ExecuteMsg::RegisterUserCrossChain { chain, address } => {
             execute::register_user_cross_chain(execute_env, chain, address)
         }
+        // Base message
+        ExecuteMsg::Ownership(ownership_message) => ADOContract::default().execute_ownership(
+            execute_env.deps,
+            execute_env.env,
+            execute_env.info,
+            ownership_message,
+        ),
     }
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-    // New version
-    let version: Version = CONTRACT_VERSION.parse().map_err(from_semver)?;
-
-    // Old version
-    let stored = get_contract_version(deps.storage)?;
-    let storage_version: Version = stored.version.parse().map_err(from_semver)?;
-
-    let contract = ADOContract::default();
-
-    ensure!(
-        stored.contract == CONTRACT_NAME,
-        ContractError::CannotMigrate {
-            previous_contract: stored.contract,
-        }
-    );
-
-    // New version has to be newer/greater than the old version
-    ensure!(
-        storage_version < version,
-        ContractError::CannotMigrate {
-            previous_contract: stored.version,
-        }
-    );
-
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-
-    // Update the ADOContract's version
-    contract.execute_update_version(deps)?;
-
-    Ok(Response::default())
-}
-
-fn from_semver(err: semver::Error) -> StdError {
-    StdError::generic_err(format!("Semver: {err}"))
+    ADOContract::default().migrate(deps, CONTRACT_NAME, CONTRACT_VERSION)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::ResolvePath { path } => encode_binary(&query::resolve_path(deps, path)?),
-        QueryMsg::SubDir { path } => encode_binary(&query::subdir(deps, path)?),
+        QueryMsg::SubDir {
+            path,
+            min,
+            max,
+            limit,
+        } => encode_binary(&query::subdir(deps, path, min, max, limit)?),
         QueryMsg::Paths { addr } => encode_binary(&query::paths(deps, addr)?),
         QueryMsg::GetUsername { address } => encode_binary(&query::get_username(deps, address)?),
         QueryMsg::GetLibrary { address } => encode_binary(&query::get_library_name(deps, address)?),
         QueryMsg::ResolveSymlink { path } => encode_binary(&query::get_symlink(deps, path)?),
+        // Base queries
+        QueryMsg::Version {} => encode_binary(&ADOContract::default().query_version(deps)?),
+        QueryMsg::Type {} => encode_binary(&ADOContract::default().query_type(deps)?),
+        QueryMsg::Owner {} => encode_binary(&ADOContract::default().query_contract_owner(deps)?),
+        QueryMsg::KernelAddress {} => {
+            encode_binary(&ADOContract::default().query_kernel_address(deps)?)
+        }
     }
 }

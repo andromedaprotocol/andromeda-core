@@ -1,3 +1,4 @@
+use crate::ado_base::ownership::OwnershipMessage;
 use crate::amp::messages::AMPMsg;
 use crate::amp::messages::AMPPkt;
 use crate::amp::AndrAddr;
@@ -11,6 +12,17 @@ pub struct ChannelInfo {
     pub ics20_channel_id: Option<String>,
     pub direct_channel_id: Option<String>,
     pub supported_modules: Vec<String>,
+}
+
+impl Default for ChannelInfo {
+    fn default() -> Self {
+        ChannelInfo {
+            kernel_address: "".to_string(),
+            ics20_channel_id: None,
+            direct_channel_id: None,
+            supported_modules: vec![],
+        }
+    }
 }
 
 #[cw_serde]
@@ -49,8 +61,14 @@ pub enum ExecuteMsg {
     },
     /// Recovers funds from failed IBC messages
     Recover {},
+    /// Update Current Chain
+    UpdateChainName {
+        chain_name: String,
+    },
     // Only accessible to key contracts
     Internal(InternalMsg),
+    // Base message
+    Ownership(OwnershipMessage),
 }
 
 #[cw_serde]
@@ -64,9 +82,6 @@ pub enum InternalMsg {
 }
 
 #[cw_serde]
-pub struct MigrateMsg {}
-
-#[cw_serde]
 pub struct ChannelInfoResponse {
     pub ics20: Option<String>,
     pub direct: Option<String>,
@@ -75,16 +90,35 @@ pub struct ChannelInfoResponse {
 }
 
 #[cw_serde]
+pub struct ChainNameResponse {
+    pub chain_name: String,
+}
+
+#[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
     #[returns(cosmwasm_std::Addr)]
     KeyAddress { key: String },
-    #[returns(bool)]
+    #[returns(VerifyAddressResponse)]
     VerifyAddress { address: String },
     #[returns(Option<ChannelInfoResponse>)]
     ChannelInfo { chain: String },
     #[returns(Vec<::cosmwasm_std::Coin>)]
     Recoveries { addr: Addr },
+    #[returns(ChainNameResponse)]
+    ChainName {},
+    // Base queries
+    #[returns(crate::ado_base::version::VersionResponse)]
+    Version {},
+    #[returns(crate::ado_base::ado_type::TypeResponse)]
+    Type {},
+    #[returns(crate::ado_base::ownership::ContractOwnerResponse)]
+    Owner {},
+}
+
+#[cw_serde]
+pub struct VerifyAddressResponse {
+    pub verify_address: bool,
 }
 
 #[cw_serde]

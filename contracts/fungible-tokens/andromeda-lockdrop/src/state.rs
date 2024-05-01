@@ -1,3 +1,7 @@
+use andromeda_std::{
+    amp::AndrAddr,
+    common::{MillisecondsDuration, MillisecondsExpiration},
+};
 use cosmwasm_std::{Addr, Uint128};
 use cw_storage_plus::{Item, Map};
 
@@ -17,15 +21,15 @@ pub struct Config {
     /// Bootstrap Contract address to which incentive tokens can be deposited for bootstrapping TOKEN-NATIVE Pool
     // pub bootstrap_contract_address: Option<AndrAddress>,
     /// Timestamp when Contract will start accepting deposits
-    pub init_timestamp: u64,
+    pub init_timestamp: MillisecondsExpiration,
     /// Deposit Window Length
-    pub deposit_window: u64,
+    pub deposit_window: MillisecondsDuration,
     /// Withdrawal Window Length
-    pub withdrawal_window: u64,
+    pub withdrawal_window: MillisecondsDuration,
     /// Total Token lockdrop incentives to be distributed among the users
     pub lockdrop_incentives: Uint128,
     /// The token being given as incentive.
-    pub incentive_token: String,
+    pub incentive_token: AndrAddr,
     /// The native token being deposited.
     pub native_denom: String,
 }

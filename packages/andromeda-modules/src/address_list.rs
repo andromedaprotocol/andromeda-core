@@ -23,9 +23,6 @@ pub enum ExecuteMsg {
     RemoveActorPermission { actor: Addr },
 }
 
-#[cw_serde]
-pub struct MigrateMsg {}
-
 #[andr_query]
 #[cw_serde]
 #[derive(QueryResponses)]
@@ -34,6 +31,10 @@ pub enum QueryMsg {
     IncludesActor { actor: Addr },
     #[returns(ActorPermissionResponse)]
     ActorPermission { actor: Addr },
+}
+#[cw_serde]
+pub struct IsInclusiveResponse {
+    pub is_inclusive_response: bool,
 }
 
 #[cw_serde]

@@ -6,7 +6,6 @@ use andromeda_modules::address_list::{
     QueryMsg,
 };
 use andromeda_std::ado_base::permissioning::Permission;
-use andromeda_std::ado_contract::ADOContract;
 
 use andromeda_std::error::ContractError;
 
@@ -54,8 +53,8 @@ fn test_instantiate_contract_permission() {
             kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
             owner: None,
             actor_permission: Some(ActorPermission {
-                actor: Addr::unchecked("actor"),
-                permission: Permission::contract(Addr::unchecked("contract")),
+                actor: Addr::unchecked(MOCK_KERNEL_CONTRACT),
+                permission: Permission::Whitelisted(None),
             }),
         },
     )
@@ -81,10 +80,6 @@ fn test_add_remove_actor() {
 
     init(deps.as_mut(), info.clone());
 
-    ADOContract::default()
-        .execute_update_operators(deps.as_mut(), info.clone(), vec![operator.to_owned()])
-        .unwrap();
-
     let msg = ExecuteMsg::AddActorPermission {
         actor: actor.clone(),
         permission: permission.clone(),
@@ -108,9 +103,9 @@ fn test_add_remove_actor() {
     assert_eq!(ContractError::Unauthorized {}, res);
 
     // Contract permissions aren't allowed to be saved in the address list contract
-    let contract_permission = Permission::Contract(Addr::unchecked("address_list"));
+    let contract_permission = Permission::Whitelisted(None);
     let msg = ExecuteMsg::AddActorPermission {
-        actor: actor.clone(),
+        actor: Addr::unchecked(MOCK_KERNEL_CONTRACT),
         permission: contract_permission,
     };
     let err = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap_err();

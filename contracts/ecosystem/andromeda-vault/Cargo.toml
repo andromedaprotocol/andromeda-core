@@ -1,8 +1,8 @@
 [package]
 name = "andromeda-vault"
-version = "0.2.0"
+version = "1.0.0"
 edition = "2021"
-rust-version = "1.65.0"
+rust-version = "1.75.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -13,12 +13,11 @@ crate-type = ["cdylib", "rlib"]
 cosmwasm-std = { workspace = true }
 cosmwasm-schema = { workspace = true }
 cw-storage-plus = { workspace = true }
-cw2 = { workspace = true }
-semver = { workspace = true }
+
 cw-utils = { workspace = true }
 
 andromeda-ecosystem = { workspace = true }
-andromeda-std = { workspace = true, features = ["withdraw"] }
+andromeda-std = { workspace = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 cw-multi-test = { workspace = true, optional = true }

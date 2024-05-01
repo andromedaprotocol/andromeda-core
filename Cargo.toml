@@ -28,18 +28,18 @@ panic = 'abort'
 strip = true
 
 [workspace.dependencies]
-andromeda-std = { version = "0.1.0", path = "./packages/std" }
-andromeda-macros = { path = "./packages/std/macros", version = "0.1.0" }
-andromeda-non-fungible-tokens = { path = "./packages/andromeda-non-fungible-tokens" }
-andromeda-fungible-tokens = { path = "./packages/andromeda-fungible-tokens" }
-andromeda-finance = { path = "./packages/andromeda-finance" }
-andromeda-data-storage = { path = "./packages/andromeda-data-storage" }
-andromeda-modules = { path = "./packages/andromeda-modules" }
-andromeda-app = { path = "./packages/andromeda-app" }
-andromeda-ecosystem = { path = "./packages/andromeda-ecosystem" }
-andromeda-testing = { path = "./packages/andromeda-testing" }
+andromeda-std = { path = "./packages/std", default-features = false, version = "1.0.0" }
+andromeda-macros = { path = "./packages/std/macros", default-features = false, version = "1.0.0" }
+andromeda-non-fungible-tokens = { path = "./packages/andromeda-non-fungible-tokens", version = "1.0.0" }
+andromeda-fungible-tokens = { path = "./packages/andromeda-fungible-tokens", version = "1.0.0" }
+andromeda-finance = { path = "./packages/andromeda-finance", version = "1.0.0" }
+andromeda-data-storage = { path = "./packages/andromeda-data-storage", version = "1.0.0" }
+andromeda-modules = { path = "./packages/andromeda-modules", version = "1.0.0" }
+andromeda-app = { path = "./packages/andromeda-app", version = "1.0.0" }
+andromeda-ecosystem = { path = "./packages/andromeda-ecosystem", version = "1.0.0" }
+andromeda-testing = { path = "./packages/andromeda-testing", version = "1.0.0" }
 
-serde = { version = "1.0.127", default-features = false }
+
 strum_macros = "0.24.3"
 cosmwasm-std = "1.5.2"
 cw-utils = "1.0.3"
@@ -53,4 +53,5 @@ cw-asset = "3.0.0"
 cosmwasm-schema = "1.5.2"
 semver = "1.0.0"
 enum-repr = "0.2.6"
-cw-multi-test = "0.20.0"
+cw-multi-test = { version = "1.0.0", features = ["cosmwasm_1_2"] }
+serde = { version = "1.0.127" }

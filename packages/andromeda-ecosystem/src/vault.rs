@@ -110,19 +110,29 @@ pub enum ExecuteMsg {
         strategy: StrategyType,
         address: AndrAddr,
     },
+    // Originally was an Andromeda Msg
+    Withdraw {
+        recipient: Option<Recipient>,
+        tokens_to_withdraw: Option<Vec<Withdrawal>>,
+    },
+    // Originally was an Andromeda Msg
+    Deposit {
+        recipient: Option<::andromeda_std::amp::AndrAddr>,
+        msg: Option<::cosmwasm_std::Binary>,
+    },
 }
 
 #[andr_query]
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
-    #[returns(cosmwasm_std::Binary)]
+    #[returns(Binary)]
     VaultBalance {
         address: AndrAddr,
         strategy: Option<StrategyType>,
         denom: Option<String>,
     },
-    #[returns(cosmwasm_std::Binary)]
+    #[returns(StrategyAddressResponse)]
     StrategyAddress { strategy: StrategyType },
 }
 
@@ -131,6 +141,3 @@ pub struct StrategyAddressResponse {
     pub strategy: StrategyType,
     pub address: String,
 }
-
-#[cw_serde]
-pub struct MigrateMsg {}

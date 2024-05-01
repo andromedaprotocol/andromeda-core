@@ -1,5 +1,6 @@
 use andromeda_std::amp::addresses::AndrAddr;
-use andromeda_std::common::expiration::MILLISECONDS_TO_NANOSECONDS_RATIO;
+use andromeda_std::common::expiration::{Expiry, MILLISECONDS_TO_NANOSECONDS_RATIO};
+use andromeda_std::common::{Milliseconds, MillisecondsDuration, MillisecondsExpiration};
 use andromeda_std::error::ContractError;
 use andromeda_std::{andr_exec, andr_instantiate, andr_query};
 use cosmwasm_schema::{cw_serde, QueryResponses};
@@ -25,6 +26,16 @@ pub enum ExecuteMsg {
     AddRewardToken {
         reward_token: RewardTokenUnchecked,
     },
+    /// Remove `reward_token`. Owner only.
+    RemoveRewardToken {
+        reward_token: String,
+    },
+    /// Replace `reward_token` as another reward token. Owner only.
+    ReplaceRewardToken {
+        origin_reward_token: String,
+        reward_token: RewardTokenUnchecked,
+    },
+
     /// Unstakes the specified amount of assets, or all if not specified. The user's pending
     /// rewards and indexes are updated for each additional reward token.
     UnstakeTokens {
@@ -69,9 +80,6 @@ pub enum QueryMsg {
         start_after: Option<String>,
         limit: Option<u32>,
     },
-    /// Queries the current timestamp.
-    #[returns(u64)]
-    Timestamp {},
 }
 
 #[cw_serde]
@@ -91,6 +99,7 @@ pub struct State {
 #[cw_serde]
 pub struct RewardTokenUnchecked {
     pub asset_info: AssetInfoUnchecked,
+    pub init_timestamp: Expiry,
     pub allocation_config: Option<AllocationConfig>,
 }
 
@@ -102,21 +111,21 @@ impl RewardTokenUnchecked {
         block_info: &BlockInfo,
         api: &dyn Api,
     ) -> Result<RewardToken, ContractError> {
-        //TODO replace unwrap() with ? once cw-asset is integrated in error.rs
-        let checked_asset_info = self.asset_info.check(api, None).unwrap();
+        let checked_asset_info = self.asset_info.check(api, None)?;
         let reward_type = match self.allocation_config {
             None => RewardType::NonAllocated {
                 previous_reward_balance: Uint128::zero(),
+                init_timestamp: self.init_timestamp.get_time(block_info),
             },
             Some(allocation_config) => {
-                let init_timestamp = allocation_config.init_timestamp;
-                let till_timestamp = allocation_config.till_timestamp;
+                let init_timestamp = self.init_timestamp.clone();
+                let till_timestamp = allocation_config.clone().till_timestamp;
                 let cycle_duration = allocation_config.cycle_duration;
                 let cycle_rewards = allocation_config.cycle_rewards;
                 let reward_increase = allocation_config.reward_increase;
 
                 ensure!(
-                    init_timestamp >= block_info.time.seconds(),
+                    init_timestamp.get_time(block_info).seconds() >= block_info.time.seconds(),
                     ContractError::StartTimeInThePast {
                         current_block: block_info.height,
                         current_time: block_info.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO,
@@ -124,11 +133,14 @@ impl RewardTokenUnchecked {
                 );
 
                 ensure!(
-                    init_timestamp < till_timestamp,
+                    init_timestamp.get_time(block_info) < till_timestamp.get_time(block_info),
                     ContractError::StartTimeAfterEndTime {}
                 );
 
-                ensure!(cycle_duration > 0, ContractError::InvalidCycleDuration {});
+                ensure!(
+                    !cycle_duration.is_zero(),
+                    ContractError::InvalidCycleDuration {}
+                );
 
                 if let Some(reward_increase) = reward_increase {
                     ensure!(
@@ -142,8 +154,9 @@ impl RewardTokenUnchecked {
                     allocation_state: AllocationState {
                         current_cycle: 0,
                         current_cycle_rewards: cycle_rewards,
-                        last_distributed: init_timestamp,
+                        last_distributed: init_timestamp.get_time(block_info),
                     },
+                    init_timestamp: self.init_timestamp.get_time(block_info),
                 }
             }
         };
@@ -152,6 +165,7 @@ impl RewardTokenUnchecked {
             asset_info: checked_asset_info,
             reward_type,
             index: Decimal256::zero(),
+            is_active: true,
         })
     }
 }
@@ -161,9 +175,11 @@ pub enum RewardType {
     Allocated {
         allocation_config: AllocationConfig,
         allocation_state: AllocationState,
+        init_timestamp: MillisecondsExpiration,
     },
     NonAllocated {
         previous_reward_balance: Uint128,
+        init_timestamp: MillisecondsExpiration,
     },
 }
 
@@ -172,6 +188,7 @@ pub struct RewardToken {
     pub asset_info: AssetInfo,
     pub index: Decimal256,
     pub reward_type: RewardType,
+    pub is_active: bool,
 }
 
 impl fmt::Display for RewardToken {
@@ -190,14 +207,12 @@ pub struct AllocationInfo {
 
 #[cw_serde]
 pub struct AllocationConfig {
-    /// Timestamp from which Rewards will start getting accrued against the staked LP tokens
-    pub init_timestamp: u64,
     /// Timestamp till which Rewards will be accrued. No staking rewards are accrued beyond this timestamp
-    pub till_timestamp: u64,
+    pub till_timestamp: Expiry,
     /// Rewards distributed during the 1st cycle.
     pub cycle_rewards: Uint128,
     /// Cycle duration in timestamps
-    pub cycle_duration: u64,
+    pub cycle_duration: MillisecondsDuration,
     /// Percent increase in Rewards per cycle
     pub reward_increase: Option<Decimal>,
 }
@@ -209,7 +224,7 @@ pub struct AllocationState {
     /// Number of tokens to be distributed during the current cycle
     pub current_cycle_rewards: Uint128,
     /// Timestamp at which the global_reward_index was last updated
-    pub last_distributed: u64,
+    pub last_distributed: Milliseconds,
 }
 
 #[cw_serde]
@@ -223,6 +238,3 @@ pub struct StakerResponse {
     /// The staker's pending rewards represented as [(token_1, amount_1), ..., (token_n, amount_n)]
     pub pending_rewards: Vec<(String, Uint128)>,
 }
-
-#[cw_serde]
-pub enum MigrateMsg {}

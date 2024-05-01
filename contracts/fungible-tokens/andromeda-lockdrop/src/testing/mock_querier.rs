@@ -2,19 +2,18 @@ use andromeda_std::ado_base::InstantiateMsg;
 use andromeda_std::ado_contract::ADOContract;
 
 use andromeda_std::testing::mock_querier::MockAndromedaQuerier;
+pub use andromeda_std::testing::mock_querier::{
+    MOCK_ADDRESS_LIST_CONTRACT, MOCK_APP_CONTRACT, MOCK_KERNEL_CONTRACT, MOCK_RATES_CONTRACT,
+};
 use cosmwasm_std::testing::mock_info;
 use cosmwasm_std::{
     from_json,
     testing::{mock_env, MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
     Coin, OwnedDeps, Querier, QuerierResult, QueryRequest, SystemError, SystemResult, WasmQuery,
 };
-
-pub use andromeda_std::testing::mock_querier::{
-    MOCK_ADDRESS_LIST_CONTRACT, MOCK_APP_CONTRACT, MOCK_KERNEL_CONTRACT, MOCK_RATES_CONTRACT,
-};
+use cosmwasm_std::{BankMsg, CosmosMsg, QuerierWrapper, Response, SubMsg, Uint128};
 
 pub const MOCK_TOKEN_CONTRACT: &str = "token_contract";
-
 pub const MOCK_TAX_RECIPIENT: &str = "tax_recipient";
 pub const MOCK_ROYALTY_RECIPIENT: &str = "royalty_recipient";
 pub const MOCK_TOKENS_FOR_SALE: &[&str] = &[
@@ -44,11 +43,12 @@ pub fn mock_dependencies_custom(
             &mut deps.storage,
             mock_env(),
             &deps.api,
+            &QuerierWrapper::new(&deps.querier),
             mock_info("sender", &[]),
             InstantiateMsg {
                 ado_type: "lockdrop".to_string(),
                 ado_version: "test".to_string(),
-                operators: None,
+
                 kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
                 owner: None,
             },

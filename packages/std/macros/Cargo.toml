@@ -1,8 +1,8 @@
 [package]
 name = "andromeda-macros"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2021"
-rust-version = "1.65.0"
+rust-version = "1.75.0"
 description = "Macros for Andromeda Digital Objects"
 license = "MIT"
 
@@ -14,7 +14,6 @@ withdraw = []
 rates = []
 
 [dependencies]
-syn = { version = "1.0.0", features = ["derive"]}
+syn = { version = "1.0.0", features = ["derive"] }
 proc-macro2 = "1.0"
-quote="1.0"
-
+quote = "1.0"
