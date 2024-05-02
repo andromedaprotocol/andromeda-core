@@ -109,7 +109,6 @@ pub fn execute(
 pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     let action = get_action_name(CONTRACT_NAME, msg.as_ref());
 
-    let contract = ADOContract::default();
     let action_response = call_action(
         &mut ctx.deps,
         &ctx.info,

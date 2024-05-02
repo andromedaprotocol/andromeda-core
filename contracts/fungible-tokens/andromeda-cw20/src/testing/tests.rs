@@ -70,9 +70,7 @@ fn test_transfer() {
             .add_attribute("method", "instantiate")
             .add_attribute("type", "cw20")
             .add_attribute("kernel_address", MOCK_KERNEL_CONTRACT)
-            .add_attribute("owner", "owner")
-            .add_attribute("action", "register_module")
-            .add_attribute("module_idx", "1"),
+            .add_attribute("owner", "owner"),
         res
     );
 
@@ -117,7 +115,7 @@ fn test_transfer() {
     let permission = Permission::blacklisted(None);
     let actor = AndrAddr::from_string("sender");
     let action = "Transfer";
-    let ctx = ExecuteContext::new(deps.as_mut(), mock_info("sender", &[]), mock_env());
+    let ctx = ExecuteContext::new(deps.as_mut(), mock_info("owner", &[]), mock_env());
     ADOContract::default()
         .execute_set_permission(ctx, actor, action, permission)
         .unwrap();
@@ -130,7 +128,7 @@ fn test_transfer() {
     let permission = Permission::whitelisted(None);
     let actor = AndrAddr::from_string("sender");
     let action = "Transfer";
-    let ctx = ExecuteContext::new(deps.as_mut(), mock_info("sender", &[]), mock_env());
+    let ctx = ExecuteContext::new(deps.as_mut(), mock_info("owner", &[]), mock_env());
     ADOContract::default()
         .execute_set_permission(ctx, actor, action, permission)
         .unwrap();

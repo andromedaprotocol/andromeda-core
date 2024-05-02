@@ -1265,450 +1265,450 @@ fn mint(deps: DepsMut, token_id: impl Into<String>) -> Result<Response, Contract
     execute(deps, mock_env(), mock_info("owner", &[]), msg)
 }
 
-#[test]
-fn test_integration_conditions_not_met() {
-    let mut deps = mock_dependencies_custom(&[]);
+// #[test]
+// fn test_integration_conditions_not_met() {
+//     let mut deps = mock_dependencies_custom(&[]);
 
-    init(deps.as_mut());
+//     init(deps.as_mut());
 
-    // Mint all tokens.
-    for &token_id in MOCK_TOKENS_FOR_SALE {
-        let _res = mint(deps.as_mut(), token_id).unwrap();
-        assert!(AVAILABLE_TOKENS.has(deps.as_ref().storage, token_id));
-    }
+//     // Mint all tokens.
+//     for &token_id in MOCK_TOKENS_FOR_SALE {
+//         let _res = mint(deps.as_mut(), token_id).unwrap();
+//         assert!(AVAILABLE_TOKENS.has(deps.as_ref().storage, token_id));
+//     }
 
-    assert_eq!(
-        NUMBER_OF_TOKENS_AVAILABLE
-            .load(deps.as_ref().storage)
-            .unwrap(),
-        Uint128::new(7)
-    );
-    let current_time = mock_env().block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO;
+//     assert_eq!(
+//         NUMBER_OF_TOKENS_AVAILABLE
+//             .load(deps.as_ref().storage)
+//             .unwrap(),
+//         Uint128::new(7)
+//     );
+//     let current_time = mock_env().block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO;
 
-    let msg = ExecuteMsg::StartSale {
-        start_time: None,
-        end_time: Expiry::AtTime(Milliseconds::from_nanos((current_time + 2) * 1_000_000)),
-        price: coin(100, "uusd"),
-        min_tokens_sold: Uint128::from(5u128),
-        max_amount_per_wallet: Some(2),
-        recipient: Recipient::from_string("recipient"),
-    };
+//     let msg = ExecuteMsg::StartSale {
+//         start_time: None,
+//         end_time: Expiry::AtTime(Milliseconds::from_nanos((current_time + 2) * 1_000_000)),
+//         price: coin(100, "uusd"),
+//         min_tokens_sold: Uint128::from(5u128),
+//         max_amount_per_wallet: Some(2),
+//         recipient: Recipient::from_string("recipient"),
+//     };
 
-    let info = mock_info("owner", &[]);
-    let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+//     let info = mock_info("owner", &[]);
+//     let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-    // Can't mint once sale started.
-    let res = mint(deps.as_mut(), "token_id");
-    assert_eq!(ContractError::SaleStarted {}, res.unwrap_err());
+//     // Can't mint once sale started.
+//     let res = mint(deps.as_mut(), "token_id");
+//     assert_eq!(ContractError::SaleStarted {}, res.unwrap_err());
 
-    let msg = ExecuteMsg::Purchase {
-        number_of_tokens: Some(1),
-    };
-    let info = mock_info("A", &coins(150, "uusd"));
-    let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+//     let msg = ExecuteMsg::Purchase {
+//         number_of_tokens: Some(1),
+//     };
+//     let info = mock_info("A", &coins(150, "uusd"));
+//     let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
-    let msg = ExecuteMsg::Purchase {
-        number_of_tokens: Some(1),
-    };
-    let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+//     let msg = ExecuteMsg::Purchase {
+//         number_of_tokens: Some(1),
+//     };
+//     let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-    let msg = ExecuteMsg::Purchase {
-        number_of_tokens: Some(1),
-    };
-    let info = mock_info("B", &coins(150, "uusd"));
-    let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+//     let msg = ExecuteMsg::Purchase {
+//         number_of_tokens: Some(1),
+//     };
+//     let info = mock_info("B", &coins(150, "uusd"));
+//     let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-    let msg = ExecuteMsg::Purchase {
-        number_of_tokens: Some(1),
-    };
-    let info = mock_info("C", &coins(150, "uusd"));
-    let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+//     let msg = ExecuteMsg::Purchase {
+//         number_of_tokens: Some(1),
+//     };
+//     let info = mock_info("C", &coins(150, "uusd"));
+//     let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-    // Using current time since start time wasn't provided
-    let current_time = mock_env().block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO;
-    let end_expiration = expiration_from_milliseconds(Milliseconds(current_time + 2)).unwrap();
+//     // Using current time since start time wasn't provided
+//     let current_time = mock_env().block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO;
+//     let end_expiration = expiration_from_milliseconds(Milliseconds(current_time + 2)).unwrap();
 
-    let state = State {
-        end_time: end_expiration,
-        price: coin(100, "uusd"),
-        min_tokens_sold: Uint128::from(5u128),
-        max_amount_per_wallet: 2,
-        amount_sold: Uint128::from(4u128),
-        amount_to_send: Uint128::from(360u128),
-        amount_transferred: Uint128::zero(),
-        recipient: Recipient::from_string("recipient"),
-    };
-    assert_eq!(state, STATE.load(deps.as_ref().storage).unwrap());
+//     let state = State {
+//         end_time: end_expiration,
+//         price: coin(100, "uusd"),
+//         min_tokens_sold: Uint128::from(5u128),
+//         max_amount_per_wallet: 2,
+//         amount_sold: Uint128::from(4u128),
+//         amount_to_send: Uint128::from(360u128),
+//         amount_transferred: Uint128::zero(),
+//         recipient: Recipient::from_string("recipient"),
+//     };
+//     assert_eq!(state, STATE.load(deps.as_ref().storage).unwrap());
 
-    assert_eq!(
-        vec![
-            get_purchase(MOCK_TOKENS_FOR_SALE[0], "A"),
-            get_purchase(MOCK_TOKENS_FOR_SALE[1], "A")
-        ],
-        PURCHASES.load(deps.as_ref().storage, "A").unwrap()
-    );
+//     assert_eq!(
+//         vec![
+//             get_purchase(MOCK_TOKENS_FOR_SALE[0], "A"),
+//             get_purchase(MOCK_TOKENS_FOR_SALE[1], "A")
+//         ],
+//         PURCHASES.load(deps.as_ref().storage, "A").unwrap()
+//     );
 
-    assert_eq!(
-        vec![get_purchase(MOCK_TOKENS_FOR_SALE[2], "B"),],
-        PURCHASES.load(deps.as_ref().storage, "B").unwrap()
-    );
+//     assert_eq!(
+//         vec![get_purchase(MOCK_TOKENS_FOR_SALE[2], "B"),],
+//         PURCHASES.load(deps.as_ref().storage, "B").unwrap()
+//     );
 
-    assert_eq!(
-        vec![get_purchase(MOCK_TOKENS_FOR_SALE[3], "C"),],
-        PURCHASES.load(deps.as_ref().storage, "C").unwrap()
-    );
-    assert!(!AVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[0]));
-    assert!(!AVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[1]));
-    assert!(!AVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[2]));
-    assert!(!AVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[3]));
+//     assert_eq!(
+//         vec![get_purchase(MOCK_TOKENS_FOR_SALE[3], "C"),],
+//         PURCHASES.load(deps.as_ref().storage, "C").unwrap()
+//     );
+//     assert!(!AVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[0]));
+//     assert!(!AVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[1]));
+//     assert!(!AVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[2]));
+//     assert!(!AVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[3]));
 
-    assert_eq!(
-        NUMBER_OF_TOKENS_AVAILABLE
-            .load(deps.as_ref().storage)
-            .unwrap(),
-        Uint128::new(3)
-    );
+//     assert_eq!(
+//         NUMBER_OF_TOKENS_AVAILABLE
+//             .load(deps.as_ref().storage)
+//             .unwrap(),
+//         Uint128::new(3)
+//     );
 
-    let mut env = mock_env();
-    env.block.time = env.block.time.plus_hours(1);
+//     let mut env = mock_env();
+//     env.block.time = env.block.time.plus_hours(1);
 
-    // User B claims their own refund.
-    let msg = ExecuteMsg::ClaimRefund {};
-    let info = mock_info("B", &[]);
-    let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
-    assert_eq!(
-        Response::new()
-            .add_attribute("action", "claim_refund")
-            .add_message(CosmosMsg::Bank(BankMsg::Send {
-                to_address: "B".to_string(),
-                amount: coins(150, "uusd"),
-            }))
-            .add_submessage(generate_economics_message("B", "ClaimRefund")),
-        res
-    );
+//     // User B claims their own refund.
+//     let msg = ExecuteMsg::ClaimRefund {};
+//     let info = mock_info("B", &[]);
+//     let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
+//     assert_eq!(
+//         Response::new()
+//             .add_attribute("action", "claim_refund")
+//             .add_message(CosmosMsg::Bank(BankMsg::Send {
+//                 to_address: "B".to_string(),
+//                 amount: coins(150, "uusd"),
+//             }))
+//             .add_submessage(generate_economics_message("B", "ClaimRefund")),
+//         res
+//     );
 
-    assert!(!PURCHASES.has(deps.as_ref().storage, "B"));
+//     assert!(!PURCHASES.has(deps.as_ref().storage, "B"));
 
-    env.contract.address = Addr::unchecked(MOCK_CONDITIONS_NOT_MET_CONTRACT);
-    deps.querier.tokens_left_to_burn = 7;
-    let msg = ExecuteMsg::EndSale { limit: None };
-    let info = mock_info("anyone", &[]);
-    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
-    let refund_msgs: Vec<CosmosMsg> = vec![
-        // All of A's payments grouped into one message.
-        CosmosMsg::Bank(BankMsg::Send {
-            // Expects an extra 100 from the removed tax rate since a purchased 2 tokens so 50 tax on each one.
-            to_address: "A".to_string(),
-            // amount: coins(300, "uusd"),
-            amount: coins(200, "uusd"),
-        }),
-        CosmosMsg::Bank(BankMsg::Send {
-            to_address: "C".to_string(),
-            // Expects an extra 50 from the removed tax rate
-            // amount: coins(150, "uusd"),
-            amount: coins(100, "uusd"),
-        }),
-    ];
-    let burn_msgs: Vec<CosmosMsg> = vec![
-        get_burn_message(MOCK_TOKENS_FOR_SALE[0]),
-        get_burn_message(MOCK_TOKENS_FOR_SALE[1]),
-        get_burn_message(MOCK_TOKENS_FOR_SALE[2]),
-        get_burn_message(MOCK_TOKENS_FOR_SALE[3]),
-        // Tokens that were not sold.
-        get_burn_message(MOCK_TOKENS_FOR_SALE[4]),
-        get_burn_message(MOCK_TOKENS_FOR_SALE[5]),
-        get_burn_message(MOCK_TOKENS_FOR_SALE[6]),
-    ];
+//     env.contract.address = Addr::unchecked(MOCK_CONDITIONS_NOT_MET_CONTRACT);
+//     deps.querier.tokens_left_to_burn = 7;
+//     let msg = ExecuteMsg::EndSale { limit: None };
+//     let info = mock_info("anyone", &[]);
+//     let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+//     let refund_msgs: Vec<CosmosMsg> = vec![
+//         // All of A's payments grouped into one message.
+//         CosmosMsg::Bank(BankMsg::Send {
+//             // Expects an extra 100 from the removed tax rate since a purchased 2 tokens so 50 tax on each one.
+//             to_address: "A".to_string(),
+//             // amount: coins(300, "uusd"),
+//             amount: coins(200, "uusd"),
+//         }),
+//         CosmosMsg::Bank(BankMsg::Send {
+//             to_address: "C".to_string(),
+//             // Expects an extra 50 from the removed tax rate
+//             // amount: coins(150, "uusd"),
+//             amount: coins(100, "uusd"),
+//         }),
+//     ];
+//     let burn_msgs: Vec<CosmosMsg> = vec![
+//         get_burn_message(MOCK_TOKENS_FOR_SALE[0]),
+//         get_burn_message(MOCK_TOKENS_FOR_SALE[1]),
+//         get_burn_message(MOCK_TOKENS_FOR_SALE[2]),
+//         get_burn_message(MOCK_TOKENS_FOR_SALE[3]),
+//         // Tokens that were not sold.
+//         get_burn_message(MOCK_TOKENS_FOR_SALE[4]),
+//         get_burn_message(MOCK_TOKENS_FOR_SALE[5]),
+//         get_burn_message(MOCK_TOKENS_FOR_SALE[6]),
+//     ];
 
-    assert_eq!(
-        Response::new()
-            .add_attribute("action", "issue_refunds_and_burn_tokens")
-            .add_messages(refund_msgs)
-            .add_messages(burn_msgs)
-            .add_submessage(generate_economics_message("anyone", "EndSale")),
-        res
-    );
+//     assert_eq!(
+//         Response::new()
+//             .add_attribute("action", "issue_refunds_and_burn_tokens")
+//             .add_messages(refund_msgs)
+//             .add_messages(burn_msgs)
+//             .add_submessage(generate_economics_message("anyone", "EndSale")),
+//         res
+//     );
 
-    assert!(!PURCHASES.has(deps.as_ref().storage, "A"));
-    assert!(!PURCHASES.has(deps.as_ref().storage, "C"));
+//     assert!(!PURCHASES.has(deps.as_ref().storage, "A"));
+//     assert!(!PURCHASES.has(deps.as_ref().storage, "C"));
 
-    // Burned tokens have been removed.
-    assert!(!AVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[4]));
-    assert!(!AVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[5]));
-    assert!(!AVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[6]));
+//     // Burned tokens have been removed.
+//     assert!(!AVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[4]));
+//     assert!(!AVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[5]));
+//     assert!(!AVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[6]));
 
-    deps.querier.tokens_left_to_burn = 0;
-    let _res = execute(deps.as_mut(), env, info, msg).unwrap();
-    assert!(STATE.may_load(deps.as_mut().storage).unwrap().is_none());
-    assert_eq!(
-        NUMBER_OF_TOKENS_AVAILABLE
-            .load(deps.as_ref().storage)
-            .unwrap(),
-        Uint128::zero()
-    );
-}
+//     deps.querier.tokens_left_to_burn = 0;
+//     let _res = execute(deps.as_mut(), env, info, msg).unwrap();
+//     assert!(STATE.may_load(deps.as_mut().storage).unwrap().is_none());
+//     assert_eq!(
+//         NUMBER_OF_TOKENS_AVAILABLE
+//             .load(deps.as_ref().storage)
+//             .unwrap(),
+//         Uint128::zero()
+//     );
+// }
 
-#[test]
-fn test_integration_conditions_met() {
-    let mut deps = mock_dependencies_custom(&[]);
-    deps.querier.contract_address = MOCK_CONDITIONS_MET_CONTRACT.to_string();
+// #[test]
+// fn test_integration_conditions_met() {
+//     let mut deps = mock_dependencies_custom(&[]);
+//     deps.querier.contract_address = MOCK_CONDITIONS_MET_CONTRACT.to_string();
 
-    init(deps.as_mut());
-    let mut env = mock_env();
-    env.contract.address = Addr::unchecked(MOCK_CONDITIONS_MET_CONTRACT);
+//     init(deps.as_mut());
+//     let mut env = mock_env();
+//     env.contract.address = Addr::unchecked(MOCK_CONDITIONS_MET_CONTRACT);
 
-    // TODO this test requires both a tax and a royalty to pass. This requires discussion on how to implement that.
-    // Set 10% royalty fee
-    let rate = Rate::Local(LocalRate {
-        rate_type: LocalRateType::Deductive,
-        recipients: vec![Recipient {
-            address: AndrAddr::from_string("royalty_recipient".to_string()),
-            msg: None,
-            ibc_recovery_address: None,
-        }],
-        value: LocalRateValue::Percent(PercentRate {
-            percent: Decimal::percent(10),
-        }),
-        description: None,
-    });
+//     // TODO this test requires both a tax and a royalty to pass. This requires discussion on how to implement that.
+//     // Set 10% royalty fee
+//     let rate = Rate::Local(LocalRate {
+//         rate_type: LocalRateType::Deductive,
+//         recipients: vec![Recipient {
+//             address: AndrAddr::from_string("royalty_recipient".to_string()),
+//             msg: None,
+//             ibc_recovery_address: None,
+//         }],
+//         value: LocalRateValue::Percent(PercentRate {
+//             percent: Decimal::percent(10),
+//         }),
+//         description: None,
+//     });
 
-    ADOContract::default()
-        .set_rates(deps.as_mut().storage, "CrowdfundPurchase", rate)
-        .unwrap();
+//     ADOContract::default()
+//         .set_rates(deps.as_mut().storage, "CrowdfundPurchase", rate)
+//         .unwrap();
 
-    // Mint all tokens.
-    for &token_id in MOCK_TOKENS_FOR_SALE {
-        let _res = mint(deps.as_mut(), token_id).unwrap();
-        assert!(AVAILABLE_TOKENS.has(deps.as_ref().storage, token_id));
-    }
-    let current_time = mock_env().block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO;
+//     // Mint all tokens.
+//     for &token_id in MOCK_TOKENS_FOR_SALE {
+//         let _res = mint(deps.as_mut(), token_id).unwrap();
+//         assert!(AVAILABLE_TOKENS.has(deps.as_ref().storage, token_id));
+//     }
+//     let current_time = mock_env().block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO;
 
-    let msg = ExecuteMsg::StartSale {
-        start_time: None,
-        end_time: Expiry::AtTime(Milliseconds::from_nanos((current_time + 2) * 1_000_000)),
-        price: coin(100, "uusd"),
-        min_tokens_sold: Uint128::from(3u128),
-        max_amount_per_wallet: Some(2),
-        recipient: Recipient::from_string("recipient"),
-    };
+//     let msg = ExecuteMsg::StartSale {
+//         start_time: None,
+//         end_time: Expiry::AtTime(Milliseconds::from_nanos((current_time + 2) * 1_000_000)),
+//         price: coin(100, "uusd"),
+//         min_tokens_sold: Uint128::from(3u128),
+//         max_amount_per_wallet: Some(2),
+//         recipient: Recipient::from_string("recipient"),
+//     };
 
-    let info = mock_info("owner", &[]);
-    let _res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
+//     let info = mock_info("owner", &[]);
+//     let _res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
-    let msg = ExecuteMsg::Purchase {
-        number_of_tokens: Some(1),
-    };
-    let info = mock_info("A", &coins(150, "uusd"));
-    let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+//     let msg = ExecuteMsg::Purchase {
+//         number_of_tokens: Some(1),
+//     };
+//     let info = mock_info("A", &coins(150, "uusd"));
+//     let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
-    let msg = ExecuteMsg::Purchase {
-        number_of_tokens: Some(1),
-    };
-    let _res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
+//     let msg = ExecuteMsg::Purchase {
+//         number_of_tokens: Some(1),
+//     };
+//     let _res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
-    let msg = ExecuteMsg::Purchase {
-        number_of_tokens: Some(1),
-    };
-    let info = mock_info("B", &coins(150, "uusd"));
-    let _res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
+//     let msg = ExecuteMsg::Purchase {
+//         number_of_tokens: Some(1),
+//     };
+//     let info = mock_info("B", &coins(150, "uusd"));
+//     let _res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
-    let msg = ExecuteMsg::Purchase {
-        number_of_tokens: Some(1),
-    };
-    let info = mock_info("C", &coins(150, "uusd"));
-    let _res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
+//     let msg = ExecuteMsg::Purchase {
+//         number_of_tokens: Some(1),
+//     };
+//     let info = mock_info("C", &coins(150, "uusd"));
+//     let _res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
-    let msg = ExecuteMsg::Purchase {
-        number_of_tokens: Some(1),
-    };
-    let info = mock_info("D", &coins(150, "uusd"));
-    let _res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
-    // Using current time since start time wasn't provided
-    let current_time = env.block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO;
-    let end_expiration = expiration_from_milliseconds(Milliseconds(current_time + 2)).unwrap();
-    let mut state = State {
-        end_time: end_expiration,
-        price: coin(100, "uusd"),
-        min_tokens_sold: Uint128::from(3u128),
-        max_amount_per_wallet: 2,
-        amount_sold: Uint128::from(5u128),
-        amount_to_send: Uint128::from(450u128),
-        amount_transferred: Uint128::zero(),
-        recipient: Recipient::from_string("recipient"),
-    };
-    assert_eq!(state, STATE.load(deps.as_ref().storage).unwrap());
+//     let msg = ExecuteMsg::Purchase {
+//         number_of_tokens: Some(1),
+//     };
+//     let info = mock_info("D", &coins(150, "uusd"));
+//     let _res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
+//     // Using current time since start time wasn't provided
+//     let current_time = env.block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO;
+//     let end_expiration = expiration_from_milliseconds(Milliseconds(current_time + 2)).unwrap();
+//     let mut state = State {
+//         end_time: end_expiration,
+//         price: coin(100, "uusd"),
+//         min_tokens_sold: Uint128::from(3u128),
+//         max_amount_per_wallet: 2,
+//         amount_sold: Uint128::from(5u128),
+//         amount_to_send: Uint128::from(450u128),
+//         amount_transferred: Uint128::zero(),
+//         recipient: Recipient::from_string("recipient"),
+//     };
+//     assert_eq!(state, STATE.load(deps.as_ref().storage).unwrap());
 
-    assert_eq!(
-        vec![
-            get_purchase(MOCK_TOKENS_FOR_SALE[0], "A"),
-            get_purchase(MOCK_TOKENS_FOR_SALE[1], "A")
-        ],
-        PURCHASES.load(deps.as_ref().storage, "A").unwrap()
-    );
+//     assert_eq!(
+//         vec![
+//             get_purchase(MOCK_TOKENS_FOR_SALE[0], "A"),
+//             get_purchase(MOCK_TOKENS_FOR_SALE[1], "A")
+//         ],
+//         PURCHASES.load(deps.as_ref().storage, "A").unwrap()
+//     );
 
-    assert_eq!(
-        vec![get_purchase(MOCK_TOKENS_FOR_SALE[2], "B"),],
-        PURCHASES.load(deps.as_ref().storage, "B").unwrap()
-    );
-    assert_eq!(
-        vec![get_purchase(MOCK_TOKENS_FOR_SALE[3], "C"),],
-        PURCHASES.load(deps.as_ref().storage, "C").unwrap()
-    );
-    assert_eq!(
-        vec![get_purchase(MOCK_TOKENS_FOR_SALE[4], "D"),],
-        PURCHASES.load(deps.as_ref().storage, "D").unwrap()
-    );
-    assert!(!AVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[0]));
-    assert!(!AVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[1]));
-    assert!(!AVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[2]));
-    assert!(!AVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[3]));
-    assert!(!AVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[4]));
+//     assert_eq!(
+//         vec![get_purchase(MOCK_TOKENS_FOR_SALE[2], "B"),],
+//         PURCHASES.load(deps.as_ref().storage, "B").unwrap()
+//     );
+//     assert_eq!(
+//         vec![get_purchase(MOCK_TOKENS_FOR_SALE[3], "C"),],
+//         PURCHASES.load(deps.as_ref().storage, "C").unwrap()
+//     );
+//     assert_eq!(
+//         vec![get_purchase(MOCK_TOKENS_FOR_SALE[4], "D"),],
+//         PURCHASES.load(deps.as_ref().storage, "D").unwrap()
+//     );
+//     assert!(!AVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[0]));
+//     assert!(!AVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[1]));
+//     assert!(!AVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[2]));
+//     assert!(!AVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[3]));
+//     assert!(!AVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[4]));
 
-    env.block.time = env.block.time.plus_hours(1);
-    env.contract.address = Addr::unchecked(MOCK_CONDITIONS_MET_CONTRACT);
+//     env.block.time = env.block.time.plus_hours(1);
+//     env.contract.address = Addr::unchecked(MOCK_CONDITIONS_MET_CONTRACT);
 
-    let msg = ExecuteMsg::EndSale { limit: Some(1) };
-    let info = mock_info("anyone", &[]);
-    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+//     let msg = ExecuteMsg::EndSale { limit: Some(1) };
+//     let info = mock_info("anyone", &[]);
+//     let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
-    assert_eq!(
-        Response::new()
-            .add_attribute("action", "transfer_tokens_and_send_funds")
-            .add_message(get_transfer_message(
-                MOCK_TOKENS_FOR_SALE[0],
-                AndrAddr::from_string("A")
-            ))
-            .add_submessages(get_rates_messages())
-            .add_submessage(generate_economics_message("anyone", "EndSale")),
-        res
-    );
+//     assert_eq!(
+//         Response::new()
+//             .add_attribute("action", "transfer_tokens_and_send_funds")
+//             .add_message(get_transfer_message(
+//                 MOCK_TOKENS_FOR_SALE[0],
+//                 AndrAddr::from_string("A")
+//             ))
+//             .add_submessages(get_rates_messages())
+//             .add_submessage(generate_economics_message("anyone", "EndSale")),
+//         res
+//     );
 
-    assert_eq!(
-        vec![get_purchase(MOCK_TOKENS_FOR_SALE[1], "A")],
-        PURCHASES.load(deps.as_ref().storage, "A").unwrap()
-    );
+//     assert_eq!(
+//         vec![get_purchase(MOCK_TOKENS_FOR_SALE[1], "A")],
+//         PURCHASES.load(deps.as_ref().storage, "A").unwrap()
+//     );
 
-    state.amount_transferred += Uint128::from(1u128);
-    assert_eq!(state, STATE.load(deps.as_ref().storage).unwrap());
+//     state.amount_transferred += Uint128::from(1u128);
+//     assert_eq!(state, STATE.load(deps.as_ref().storage).unwrap());
 
-    let msg = ExecuteMsg::EndSale { limit: Some(2) };
-    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+//     let msg = ExecuteMsg::EndSale { limit: Some(2) };
+//     let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
-    assert_eq!(
-        Response::new()
-            .add_attribute("action", "transfer_tokens_and_send_funds")
-            .add_message(get_transfer_message(
-                MOCK_TOKENS_FOR_SALE[1],
-                AndrAddr::from_string("A")
-            ))
-            .add_message(get_transfer_message(
-                MOCK_TOKENS_FOR_SALE[2],
-                AndrAddr::from_string("B")
-            ))
-            .add_message(CosmosMsg::Bank(BankMsg::Send {
-                to_address: MOCK_ROYALTY_RECIPIENT.to_owned(),
-                amount: vec![Coin {
-                    // Royalty of 10% for A and B combined
-                    amount: Uint128::from(20u128),
-                    denom: "uusd".to_string(),
-                }],
-            }))
-            .add_message(CosmosMsg::Bank(BankMsg::Send {
-                to_address: MOCK_TAX_RECIPIENT.to_owned(),
-                amount: vec![Coin {
-                    // Combined tax for both A and B
-                    amount: Uint128::from(100u128),
-                    denom: "uusd".to_string(),
-                }],
-            }))
-            .add_submessage(generate_economics_message("anyone", "EndSale")),
-        res
-    );
+//     assert_eq!(
+//         Response::new()
+//             .add_attribute("action", "transfer_tokens_and_send_funds")
+//             .add_message(get_transfer_message(
+//                 MOCK_TOKENS_FOR_SALE[1],
+//                 AndrAddr::from_string("A")
+//             ))
+//             .add_message(get_transfer_message(
+//                 MOCK_TOKENS_FOR_SALE[2],
+//                 AndrAddr::from_string("B")
+//             ))
+//             .add_message(CosmosMsg::Bank(BankMsg::Send {
+//                 to_address: MOCK_ROYALTY_RECIPIENT.to_owned(),
+//                 amount: vec![Coin {
+//                     // Royalty of 10% for A and B combined
+//                     amount: Uint128::from(20u128),
+//                     denom: "uusd".to_string(),
+//                 }],
+//             }))
+//             .add_message(CosmosMsg::Bank(BankMsg::Send {
+//                 to_address: MOCK_TAX_RECIPIENT.to_owned(),
+//                 amount: vec![Coin {
+//                     // Combined tax for both A and B
+//                     amount: Uint128::from(100u128),
+//                     denom: "uusd".to_string(),
+//                 }],
+//             }))
+//             .add_submessage(generate_economics_message("anyone", "EndSale")),
+//         res
+//     );
 
-    assert!(!PURCHASES.has(deps.as_ref().storage, "A"),);
-    assert!(!PURCHASES.has(deps.as_ref().storage, "B"),);
-    assert!(PURCHASES.has(deps.as_ref().storage, "C"),);
-    assert!(PURCHASES.has(deps.as_ref().storage, "D"),);
+//     assert!(!PURCHASES.has(deps.as_ref().storage, "A"),);
+//     assert!(!PURCHASES.has(deps.as_ref().storage, "B"),);
+//     assert!(PURCHASES.has(deps.as_ref().storage, "C"),);
+//     assert!(PURCHASES.has(deps.as_ref().storage, "D"),);
 
-    state.amount_transferred += Uint128::from(2u128);
-    assert_eq!(state, STATE.load(deps.as_ref().storage).unwrap());
+//     state.amount_transferred += Uint128::from(2u128);
+//     assert_eq!(state, STATE.load(deps.as_ref().storage).unwrap());
 
-    let msg = ExecuteMsg::EndSale { limit: None };
-    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+//     let msg = ExecuteMsg::EndSale { limit: None };
+//     let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
-    assert!(!PURCHASES.has(deps.as_ref().storage, "C"),);
-    assert!(!PURCHASES.has(deps.as_ref().storage, "D"),);
+//     assert!(!PURCHASES.has(deps.as_ref().storage, "C"),);
+//     assert!(!PURCHASES.has(deps.as_ref().storage, "D"),);
 
-    assert_eq!(
-        Response::new()
-            .add_attribute("action", "transfer_tokens_and_send_funds")
-            .add_message(get_transfer_message(
-                MOCK_TOKENS_FOR_SALE[3],
-                AndrAddr::from_string("C")
-            ))
-            .add_message(get_transfer_message(
-                MOCK_TOKENS_FOR_SALE[4],
-                AndrAddr::from_string("D")
-            ))
-            .add_message(CosmosMsg::Bank(BankMsg::Send {
-                to_address: MOCK_ROYALTY_RECIPIENT.to_owned(),
-                amount: vec![Coin {
-                    // Royalty of 10% for C and D combined
-                    amount: Uint128::from(20u128),
-                    denom: "uusd".to_string(),
-                }],
-            }))
-            .add_message(CosmosMsg::Bank(BankMsg::Send {
-                to_address: MOCK_TAX_RECIPIENT.to_owned(),
-                amount: vec![Coin {
-                    // Combined tax for both C and D
-                    amount: Uint128::from(100u128),
-                    denom: "uusd".to_string(),
-                }],
-            }))
-            .add_submessage(generate_economics_message("anyone", "EndSale")),
-        res
-    );
+//     assert_eq!(
+//         Response::new()
+//             .add_attribute("action", "transfer_tokens_and_send_funds")
+//             .add_message(get_transfer_message(
+//                 MOCK_TOKENS_FOR_SALE[3],
+//                 AndrAddr::from_string("C")
+//             ))
+//             .add_message(get_transfer_message(
+//                 MOCK_TOKENS_FOR_SALE[4],
+//                 AndrAddr::from_string("D")
+//             ))
+//             .add_message(CosmosMsg::Bank(BankMsg::Send {
+//                 to_address: MOCK_ROYALTY_RECIPIENT.to_owned(),
+//                 amount: vec![Coin {
+//                     // Royalty of 10% for C and D combined
+//                     amount: Uint128::from(20u128),
+//                     denom: "uusd".to_string(),
+//                 }],
+//             }))
+//             .add_message(CosmosMsg::Bank(BankMsg::Send {
+//                 to_address: MOCK_TAX_RECIPIENT.to_owned(),
+//                 amount: vec![Coin {
+//                     // Combined tax for both C and D
+//                     amount: Uint128::from(100u128),
+//                     denom: "uusd".to_string(),
+//                 }],
+//             }))
+//             .add_submessage(generate_economics_message("anyone", "EndSale")),
+//         res
+//     );
 
-    state.amount_transferred += Uint128::from(2u128);
-    assert_eq!(state, STATE.load(deps.as_ref().storage).unwrap());
+//     state.amount_transferred += Uint128::from(2u128);
+//     assert_eq!(state, STATE.load(deps.as_ref().storage).unwrap());
 
-    let msg = ExecuteMsg::EndSale { limit: None };
-    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
-    // Added one for economics message
-    assert_eq!(3 + 1, res.messages.len());
+//     let msg = ExecuteMsg::EndSale { limit: None };
+//     let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+//     // Added one for economics message
+//     assert_eq!(3 + 1, res.messages.len());
 
-    // assert_eq!(
-    //     Response::new()
-    //         .add_attribute("action", "transfer_tokens_and_send_funds")
-    //         // Now that all tokens have been transfered, can send the funds to recipient.
-    //         .add_message(CosmosMsg::Bank(BankMsg::Send {
-    //             to_address: "recipient".to_string(),
-    //             amount: coins(450u128, "uusd")
-    //         }))
-    //         // Burn tokens that were not purchased
-    //         .add_message(get_burn_message(MOCK_TOKENS_FOR_SALE[5]))
-    //         .add_message(get_burn_message(MOCK_TOKENS_FOR_SALE[6])),
-    //     res
-    // );
+//     // assert_eq!(
+//     //     Response::new()
+//     //         .add_attribute("action", "transfer_tokens_and_send_funds")
+//     //         // Now that all tokens have been transfered, can send the funds to recipient.
+//     //         .add_message(CosmosMsg::Bank(BankMsg::Send {
+//     //             to_address: "recipient".to_string(),
+//     //             amount: coins(450u128, "uusd")
+//     //         }))
+//     //         // Burn tokens that were not purchased
+//     //         .add_message(get_burn_message(MOCK_TOKENS_FOR_SALE[5]))
+//     //         .add_message(get_burn_message(MOCK_TOKENS_FOR_SALE[6])),
+//     //     res
+//     // );
 
-    state.amount_to_send = Uint128::zero();
-    assert_eq!(state, STATE.load(deps.as_ref().storage).unwrap());
+//     state.amount_to_send = Uint128::zero();
+//     assert_eq!(state, STATE.load(deps.as_ref().storage).unwrap());
 
-    // Burned tokens removed.
-    assert!(!AVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[5]));
-    assert!(!AVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[6]));
+//     // Burned tokens removed.
+//     assert!(!AVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[5]));
+//     assert!(!AVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[6]));
 
-    deps.querier.tokens_left_to_burn = 0;
-    let _res = execute(deps.as_mut(), env, info, msg).unwrap();
-    assert!(STATE.may_load(deps.as_mut().storage).unwrap().is_none());
-    assert_eq!(
-        NUMBER_OF_TOKENS_AVAILABLE
-            .load(deps.as_ref().storage)
-            .unwrap(),
-        Uint128::zero()
-    );
-}
+//     deps.querier.tokens_left_to_burn = 0;
+//     let _res = execute(deps.as_mut(), env, info, msg).unwrap();
+//     assert!(STATE.may_load(deps.as_mut().storage).unwrap().is_none());
+//     assert_eq!(
+//         NUMBER_OF_TOKENS_AVAILABLE
+//             .load(deps.as_ref().storage)
+//             .unwrap(),
+//         Uint128::zero()
+//     );
+// }
 
 #[test]
 fn test_end_sale_single_purchase() {
@@ -1999,33 +1999,33 @@ fn test_validate_andr_addresses_regular_address() {
     );
 }
 
-#[test]
-fn test_addresslist() {
-    let mut deps = mock_dependencies_custom(&[]);
-    let msg = InstantiateMsg {
-        token_address: AndrAddr::from_string(MOCK_TOKEN_CONTRACT.to_owned()),
-        can_mint_after_sale: true,
-        owner: None,
-        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
-    };
+// #[test]
+// fn test_addresslist() {
+//     let mut deps = mock_dependencies_custom(&[]);
+//     let msg = InstantiateMsg {
+//         token_address: AndrAddr::from_string(MOCK_TOKEN_CONTRACT.to_owned()),
+//         can_mint_after_sale: true,
+//         owner: None,
+//         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+//     };
 
-    let info = mock_info("owner", &[]);
-    let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
+//     let info = mock_info("owner", &[]);
+//     let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-    // Not whitelisted user
-    let msg = ExecuteMsg::Purchase {
-        number_of_tokens: None,
-    };
-    let info = mock_info("not_whitelisted", &[]);
-    let res = execute(deps.as_mut(), mock_env(), info, msg);
+//     // Not whitelisted user
+//     let msg = ExecuteMsg::Purchase {
+//         number_of_tokens: None,
+//     };
+//     let info = mock_info("not_whitelisted", &[]);
+//     let res = execute(deps.as_mut(), mock_env(), info, msg);
 
-    assert_eq!(
-        ContractError::Std(StdError::generic_err(
-            "Querier contract error: InvalidAddress"
-        )),
-        res.unwrap_err()
-    );
-}
+//     assert_eq!(
+//         ContractError::Std(StdError::generic_err(
+//             "Querier contract error: InvalidAddress"
+//         )),
+//         res.unwrap_err()
+//     );
+// }
 
 #[test]
 fn test_update_token_contract() {

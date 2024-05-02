@@ -370,7 +370,6 @@ impl MockAndromedaQuerier {
                     decimals: 2,
                     total_supply: Uint128::new(10_000_000),
                 };
-                println!("we reaching here?");
                 SystemResult::Ok(ContractResult::Ok(
                     to_json_binary(&token_info_response).unwrap(),
                 ))
