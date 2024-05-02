@@ -758,19 +758,6 @@ fn execute_claim(
     // Calculate the funds to be received after tax
     let after_tax_payment =
         purchase_token(deps.as_ref(), &info, token_auction_state.clone(), action)?;
-    let mut resp = Response::new();
-    match after_tax_payment.clone() {
-        Some(after_tax_payment) => resp = resp.add_submessages(after_tax_payment.1),
-        None => {
-            resp = resp.add_message(CosmosMsg::Bank(BankMsg::Send {
-                to_address: token_auction_state.clone().owner,
-                amount: coins(
-                    token_auction_state.high_bidder_amount.u128(),
-                    token_auction_state.clone().coin_denom,
-                ),
-            }))
-        }
-    }
 
     let resp: Response = Response::new()
         .add_attribute("action", "claim")
@@ -792,28 +779,20 @@ fn execute_claim(
             &deps.as_ref(),
             Cw20Coin {
                 address: auction_currency.clone(),
-                amount: after_tax_payment
-                    .clone()
-                    .unwrap_or((Coin::default(), vec![]))
-                    .0
-                    .amount,
+                amount: after_tax_payment.0.amount,
             },
         )?;
         // After tax payment is returned in Native, we need to change it to cw20
-        let (tax_recipient, tax_amount) = match after_tax_payment
-            .unwrap_or((Coin::default(), vec![]))
-            .1
-            .first()
-            .map(|msg| {
-                if let CosmosMsg::Bank(BankMsg::Send { to_address, amount }) = &msg.msg {
-                    (
-                        Some(to_address.clone()),
-                        amount.first().map(|coin| coin.amount),
-                    )
-                } else {
-                    (None, None)
-                }
-            }) {
+        let (tax_recipient, tax_amount) = match after_tax_payment.1.first().map(|msg| {
+            if let CosmosMsg::Bank(BankMsg::Send { to_address, amount }) = &msg.msg {
+                (
+                    Some(to_address.clone()),
+                    amount.first().map(|coin| coin.amount),
+                )
+            } else {
+                (None, None)
+            }
+        }) {
             Some((tax_recipient, tax_amount)) => (tax_recipient, tax_amount),
             None => (None, None),
         };
@@ -855,18 +834,11 @@ fn execute_claim(
             .recipient
             .unwrap_or(Recipient::from_string(token_auction_state.clone().owner));
 
-        let msg = recipient.generate_direct_msg(
-            &deps.as_ref(),
-            vec![
-                after_tax_payment
-                    .clone()
-                    .unwrap_or((Coin::default(), vec![]))
-                    .0,
-            ],
-        )?;
+        let msg =
+            recipient.generate_direct_msg(&deps.as_ref(), vec![after_tax_payment.clone().0])?;
 
         Ok(resp
-            .add_submessages(after_tax_payment.unwrap_or((Coin::default(), vec![])).1)
+            .add_submessages(after_tax_payment.1)
             // Send native funds to the original owner or recipient (if provided).
             .add_submessage(msg)
             // Send NFT to auction winner.
@@ -937,7 +909,7 @@ fn purchase_token(
     _info: &MessageInfo,
     state: TokenAuctionState,
     action: String,
-) -> Result<Option<(Coin, Vec<SubMsg>)>, ContractError> {
+) -> Result<(Coin, Vec<SubMsg>), ContractError> {
     let total_cost = Coin::new(state.high_bidder_amount.u128(), state.coin_denom.clone());
 
     let transfer_response = ADOContract::default().query_deducted_funds(
@@ -947,25 +919,31 @@ fn purchase_token(
     )?;
     match transfer_response {
         Some(transfer_response) => {
-            let mut total_tax_amount = Uint128::zero();
+            // let mut total_tax_amount = Uint128::zero();
             let remaining_amount = transfer_response.leftover_funds.try_get_coin()?;
 
-            let tax_amount = get_tax_amount(
-                &transfer_response.msgs,
-                state.high_bidder_amount,
-                remaining_amount.amount,
-            );
+            // let tax_amount = get_tax_amount(
+            //     &transfer_response.msgs,
+            //     state.high_bidder_amount,
+            //     remaining_amount.amount,
+            // );
 
-            // Calculate total tax
-            total_tax_amount += tax_amount;
+            // // Calculate total tax
+            // total_tax_amount += tax_amount;
 
+            let after_tax_payment = Coin {
+                denom: state.coin_denom,
+                amount: remaining_amount.amount,
+            };
+            Ok((after_tax_payment, transfer_response.msgs))
+        }
+        None => {
             let after_tax_payment = Coin {
                 denom: state.coin_denom,
                 amount: total_cost.amount,
             };
-            Ok(Some((after_tax_payment, transfer_response.msgs)))
+            Ok((after_tax_payment, vec![]))
         }
-        None => Ok(None),
     }
 }
 

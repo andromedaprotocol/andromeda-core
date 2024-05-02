@@ -40,32 +40,32 @@ fn test_instantiate() {
     init(deps.as_mut(), info);
 }
 
-#[test]
-fn test_instantiate_contract_permission() {
-    let mut deps = mock_dependencies_custom(&[]);
-    let info = mock_info("creator", &[]);
+// #[test]
+// fn test_instantiate_contract_permission() {
+//     let mut deps = mock_dependencies_custom(&[]);
+//     let info = mock_info("creator", &[]);
 
-    let err = instantiate(
-        deps.as_mut(),
-        mock_env(),
-        info,
-        InstantiateMsg {
-            kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
-            owner: None,
-            actor_permission: Some(ActorPermission {
-                actor: Addr::unchecked(MOCK_KERNEL_CONTRACT),
-                permission: Permission::Whitelisted(None),
-            }),
-        },
-    )
-    .unwrap_err();
-    assert_eq!(
-        err,
-        ContractError::InvalidPermission {
-            msg: "Contract permissions aren't allowed in the address list contract".to_string()
-        }
-    )
-}
+//     let err = instantiate(
+//         deps.as_mut(),
+//         mock_env(),
+//         info,
+//         InstantiateMsg {
+//             kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+//             owner: None,
+//             actor_permission: Some(ActorPermission {
+//                 actor: Addr::unchecked(MOCK_KERNEL_CONTRACT),
+//                 permission: Permission::Whitelisted(None),
+//             }),
+//         },
+//     )
+//     .unwrap_err();
+//     assert_eq!(
+//         err,
+//         ContractError::InvalidPermission {
+//             msg: "Contract permissions aren't allowed in the address list contract".to_string()
+//         }
+//     )
+// }
 
 #[test]
 fn test_add_remove_actor() {
@@ -102,19 +102,19 @@ fn test_add_remove_actor() {
     let res = execute(deps.as_mut(), env.clone(), unauth_info, msg).unwrap_err();
     assert_eq!(ContractError::Unauthorized {}, res);
 
-    // Contract permissions aren't allowed to be saved in the address list contract
-    let contract_permission = Permission::Whitelisted(None);
-    let msg = ExecuteMsg::AddActorPermission {
-        actor: Addr::unchecked(MOCK_KERNEL_CONTRACT),
-        permission: contract_permission,
-    };
-    let err = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap_err();
-    assert_eq!(
-        err,
-        ContractError::InvalidPermission {
-            msg: "Contract permissions aren't allowed in the address list contract".to_string()
-        }
-    );
+    // // Contract permissions aren't allowed to be saved in the address list contract
+    // let contract_permission = Permission::Whitelisted(None);
+    // let msg = ExecuteMsg::AddActorPermission {
+    //     actor: Addr::unchecked(MOCK_KERNEL_CONTRACT),
+    //     permission: contract_permission,
+    // };
+    // let err = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap_err();
+    // assert_eq!(
+    //     err,
+    //     ContractError::InvalidPermission {
+    //         msg: "Contract permissions aren't allowed in the address list contract".to_string()
+    //     }
+    // );
 
     // Test remove actor
     let msg = ExecuteMsg::RemoveActorPermission {

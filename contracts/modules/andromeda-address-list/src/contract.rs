@@ -29,7 +29,6 @@ pub fn instantiate(
     if let Some(actor_permission) = msg.actor_permission {
         let verified_address: Addr = deps.api.addr_validate(actor_permission.actor.as_str())?;
         // Permissions of type "Contract" aren't allowed in the address list contract
-
         add_actor_permission(
             deps.storage,
             &verified_address,
