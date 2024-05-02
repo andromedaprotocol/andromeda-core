@@ -3,7 +3,9 @@ use andromeda_std::common::denom::validate_denom;
 use andromeda_std::error::ContractError;
 use andromeda_std::{andr_exec, andr_instantiate, andr_instantiate_modules, andr_query};
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{ensure, Deps, Uint128};
+use cosmwasm_std::{ensure, Deps, Uint128, Uint64};
+
+use crate::cw721::TokenExtension;
 
 #[andr_instantiate]
 #[andr_instantiate_modules]
@@ -11,11 +13,23 @@ use cosmwasm_std::{ensure, Deps, Uint128};
 pub struct InstantiateMsg {
     /// The configuration for the campaign
     pub campaign_config: CampaignConfig,
+    /// The tiers for the campaign
+    pub tiers: Vec<Tier>,
 }
 
 #[andr_exec]
 #[cw_serde]
-pub enum ExecuteMsg {}
+pub enum ExecuteMsg {
+    /// Add a tier
+    AddTier { tier: Tier },
+    /// Update an existing tier
+    UpdateTier { tier: Tier },
+    /// Remove a tier
+    RemoveTier { level: Uint64 },
+
+    /// Start the campaign
+    StartCampaign {},
+}
 
 #[andr_query]
 #[cw_serde]
@@ -86,4 +100,48 @@ pub enum CampaignStage {
     SUCCEED,
     /// Stage when campaign failed to meet the target cap before expiration
     FAILED,
+}
+
+impl ToString for CampaignStage {
+    #[inline]
+    fn to_string(&self) -> String {
+        match self {
+            Self::READY => "READY".to_string(),
+            Self::ONGOING => "ONGOING".to_string(),
+            Self::SUCCEED => "SUCCEED".to_string(),
+            Self::FAILED => "FAILED".to_string(),
+        }
+    }
+}
+
+#[cw_serde]
+pub struct Tier {
+    pub level: Uint64,
+    pub price: Uint128,
+    pub limit: Option<Uint128>, // None for no limit
+    pub meta_data: TierMetaData,
+}
+
+impl Tier {
+    pub fn validate(&self) -> Result<(), ContractError> {
+        ensure!(
+            !self.price.is_zero(),
+            ContractError::InvalidTier {
+                operation: "all".to_string(),
+                msg: "Price can not be zero".to_string()
+            }
+        );
+        Ok(())
+    }
+}
+#[cw_serde]
+pub struct TierMetaData {
+    /// The owner of the tier
+    pub owner: Option<String>,
+    /// Universal resource identifier for the tier
+    /// Should point to a JSON file that conforms to the ERC721
+    /// Metadata JSON Schema
+    pub token_uri: Option<String>,
+    /// Any custom extension used by this contract
+    pub extension: TokenExtension,
 }

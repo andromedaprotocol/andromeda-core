@@ -2,7 +2,7 @@
 
 use crate::contract::{execute, instantiate, query, reply};
 use andromeda_non_fungible_tokens::crowdfund::{
-    CampaignConfig, ExecuteMsg, InstantiateMsg, QueryMsg,
+    CampaignConfig, ExecuteMsg, InstantiateMsg, QueryMsg, Tier,
 };
 use andromeda_std::ado_base::modules::Module;
 use andromeda_testing::{
@@ -23,11 +23,13 @@ impl MockCrowdfund {
         sender: Addr,
         app: &mut MockApp,
         campaign_config: CampaignConfig,
+        tiers: Vec<Tier>,
         modules: Option<Vec<Module>>,
         kernel_address: impl Into<String>,
         owner: Option<String>,
     ) -> MockCrowdfund {
-        let msg = mock_crowdfund_instantiate_msg(campaign_config, modules, kernel_address, owner);
+        let msg =
+            mock_crowdfund_instantiate_msg(campaign_config, tiers, modules, kernel_address, owner);
         let addr = app
             .instantiate_contract(
                 code_id,
@@ -119,12 +121,14 @@ pub fn mock_andromeda_crowdfund() -> Box<dyn Contract<Empty>> {
 
 pub fn mock_crowdfund_instantiate_msg(
     campaign_config: CampaignConfig,
+    tiers: Vec<Tier>,
     modules: Option<Vec<Module>>,
     kernel_address: impl Into<String>,
     owner: Option<String>,
 ) -> InstantiateMsg {
     InstantiateMsg {
         campaign_config,
+        tiers,
         modules,
         kernel_address: kernel_address.into(),
         owner,

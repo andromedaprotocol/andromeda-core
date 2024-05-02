@@ -9,12 +9,14 @@ use crate::{
     contract::instantiate, state::CAMPAIGN_CONFIG, testing::mock_querier::mock_dependencies_custom,
 };
 
-use super::mock_querier::mock_campaign_config;
+use super::mock_querier::{mock_campaign_config, mock_campaign_tiers};
 
 fn init(deps: DepsMut, modules: Option<Vec<Module>>) -> Response {
     let config = mock_campaign_config();
+    let tiers = mock_campaign_tiers();
     let msg = InstantiateMsg {
         campaign_config: config,
+        tiers,
         owner: None,
         modules,
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),

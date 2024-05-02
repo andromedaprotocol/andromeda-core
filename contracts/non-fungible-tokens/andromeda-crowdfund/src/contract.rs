@@ -3,7 +3,7 @@
 //     PURCHASES, SALE_CONDUCTED, STATE,
 // };
 use andromeda_non_fungible_tokens::crowdfund::{
-    CampaignConfig, ExecuteMsg, InstantiateMsg, QueryMsg,
+    CampaignStage, ExecuteMsg, InstantiateMsg, QueryMsg, Tier,
 };
 use andromeda_std::{ado_base::ownership::OwnershipMessage, common::actions::call_action};
 use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
@@ -16,9 +16,13 @@ use andromeda_std::{
 
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError};
+use cosmwasm_std::{
+    ensure, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError, Uint64,
+};
 
-use crate::state::CAMPAIGN_CONFIG;
+use crate::state::{
+    add_tier, get_current_stage, remove_tier, set_tiers, update_config, update_tier,
+};
 
 const CONTRACT_NAME: &str = "crates.io:andromeda-crowdfund";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -30,9 +34,10 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    let config: CampaignConfig = msg.campaign_config;
+    update_config(deps.storage, msg.campaign_config)?;
 
-    CAMPAIGN_CONFIG.save(deps.storage, &config)?;
+    set_tiers(deps.storage, msg.tiers)?;
+
     let inst_resp = ADOContract::default().instantiate(
         deps.storage,
         env,
@@ -111,38 +116,110 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
             },
         )?;
     }
+    let res = match msg {
+        ExecuteMsg::AddTier { tier } => execute_add_tier(ctx, tier),
+        ExecuteMsg::UpdateTier { tier } => execute_update_tier(ctx, tier),
+        ExecuteMsg::RemoveTier { level } => execute_remove_tier(ctx, level),
+        _ => ADOContract::default().execute(ctx, msg),
+    }?;
 
-    let res = ADOContract::default().execute(ctx, msg)?;
     Ok(res
         .add_submessages(action_response.messages)
         .add_attributes(action_response.attributes)
         .add_events(action_response.events))
+}
 
-    // let res = match msg {
-    //     ExecuteMsg::Mint(mint_msgs) => execute_mint(ctx, mint_msgs),
-    //     ExecuteMsg::StartSale {
-    //         start_time,
-    //         end_time,
-    //         price,
-    //         min_tokens_sold,
-    //         max_amount_per_wallet,
-    //         recipient,
-    //     } => execute_start_sale(
-    //         ctx,
-    //         start_time,
-    //         end_time,
-    //         price,
-    //         min_tokens_sold,
-    //         max_amount_per_wallet,
-    //         recipient,
-    //     ),
-    //     ExecuteMsg::Purchase { number_of_tokens } => execute_purchase(ctx, number_of_tokens),
-    //     ExecuteMsg::PurchaseByTokenId { token_id } => execute_purchase_by_token_id(ctx, token_id),
-    //     ExecuteMsg::ClaimRefund {} => execute_claim_refund(ctx),
-    //     ExecuteMsg::EndSale { limit } => execute_end_sale(ctx, limit),
-    //     ExecuteMsg::UpdateTokenContract { address } => execute_update_token_contract(ctx, address),
-    //     _ => ADOContract::default().execute(ctx, msg),
-    // }?;
+fn execute_add_tier(ctx: ExecuteContext, tier: Tier) -> Result<Response, ContractError> {
+    let ExecuteContext { deps, info, .. } = ctx;
+
+    let contract = ADOContract::default();
+    ensure!(
+        contract.is_contract_owner(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {}
+    );
+
+    tier.validate()?;
+
+    let curr_stage = get_current_stage(deps.storage);
+    ensure!(
+        curr_stage == CampaignStage::READY,
+        ContractError::InvalidCampaignOperation {
+            operation: "add_tier".to_string(),
+            stage: curr_stage.to_string()
+        }
+    );
+
+    add_tier(deps.storage, &tier)?;
+
+    let mut resp = Response::new()
+        .add_attribute("action", "add_tier")
+        .add_attribute("level", tier.level)
+        .add_attribute("price", tier.price);
+
+    if let Some(limit) = tier.limit {
+        resp = resp.add_attribute("limit", limit.to_string());
+    }
+
+    Ok(resp)
+}
+
+fn execute_update_tier(ctx: ExecuteContext, tier: Tier) -> Result<Response, ContractError> {
+    let ExecuteContext { deps, info, .. } = ctx;
+
+    let contract = ADOContract::default();
+    ensure!(
+        contract.is_contract_owner(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {}
+    );
+
+    tier.validate()?;
+
+    let curr_stage = get_current_stage(deps.storage);
+    ensure!(
+        curr_stage == CampaignStage::READY,
+        ContractError::InvalidCampaignOperation {
+            operation: "update_tier".to_string(),
+            stage: curr_stage.to_string()
+        }
+    );
+
+    update_tier(deps.storage, &tier)?;
+
+    let mut resp = Response::new()
+        .add_attribute("action", "update_tier")
+        .add_attribute("level", tier.level)
+        .add_attribute("price", tier.price);
+
+    if let Some(limit) = tier.limit {
+        resp = resp.add_attribute("limit", limit.to_string());
+    }
+
+    Ok(resp)
+}
+
+fn execute_remove_tier(ctx: ExecuteContext, level: Uint64) -> Result<Response, ContractError> {
+    let ExecuteContext { deps, info, .. } = ctx;
+
+    let contract = ADOContract::default();
+    ensure!(
+        contract.is_contract_owner(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {}
+    );
+
+    let curr_stage = get_current_stage(deps.storage);
+    ensure!(
+        curr_stage == CampaignStage::READY,
+        ContractError::InvalidCampaignOperation {
+            operation: "remove_tier".to_string(),
+            stage: curr_stage.to_string()
+        }
+    );
+
+    remove_tier(deps.storage, level.into())?;
+
+    let resp = Response::new().add_attribute("action", "remove_tier");
+
+    Ok(resp)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

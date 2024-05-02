@@ -1,13 +1,16 @@
-use andromeda_non_fungible_tokens::crowdfund::CampaignConfig;
+use andromeda_non_fungible_tokens::{
+    crowdfund::{CampaignConfig, Tier, TierMetaData},
+    cw721::TokenExtension,
+};
 use andromeda_std::{
     ado_base::InstantiateMsg,
     ado_contract::ADOContract,
     amp::AndrAddr,
-    testing::mock_querier::{WasmMockQuerier, MOCK_KERNEL_CONTRACT},
+    testing::mock_querier::{WasmMockQuerier, MOCK_ADO_PUBLISHER, MOCK_KERNEL_CONTRACT},
 };
 use cosmwasm_std::{
     testing::{mock_env, mock_info, MockApi, MockQuerier, MockStorage},
-    Coin, OwnedDeps, QuerierWrapper, Uint128,
+    Coin, OwnedDeps, QuerierWrapper, Uint128, Uint64,
 };
 
 pub const MOCK_TIER_CONTRACT: &str = "tier_contract";
@@ -25,6 +28,21 @@ pub fn mock_campaign_config() -> CampaignConfig {
         soft_cap: None,
         hard_cap: Uint128::from(5000u128),
     }
+}
+
+pub fn mock_campaign_tiers() -> Vec<Tier> {
+    vec![Tier {
+        level: Uint64::zero(),
+        limit: None,
+        price: Uint128::new(10u128),
+        meta_data: TierMetaData {
+            extension: TokenExtension {
+                publisher: MOCK_ADO_PUBLISHER.to_string(),
+            },
+            owner: None,
+            token_uri: None,
+        },
+    }]
 }
 
 /// Alternative to `cosmwasm_std::testing::mock_dependencies` that allows us to respond to custom queries.

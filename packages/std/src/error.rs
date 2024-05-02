@@ -51,6 +51,8 @@ pub enum ContractError {
         operation: String,
         validator: String,
     },
+    #[error("Invalid Campaign Operation: {operation} on {stage}")]
+    InvalidCampaignOperation { operation: String, stage: String },
 
     #[error("No Staking Reward")]
     InvalidClaim {},
@@ -659,6 +661,12 @@ pub enum ContractError {
 
     #[error("Invalid time: {msg}")]
     InvalidTimestamp { msg: String },
+
+    #[error("At least one tier should have no limit")]
+    InvalidTiers {},
+
+    #[error("Invalid tier for {operation} operation: {msg} ")]
+    InvalidTier { operation: String, msg: String },
 }
 
 impl From<Cw20ContractError> for ContractError {
