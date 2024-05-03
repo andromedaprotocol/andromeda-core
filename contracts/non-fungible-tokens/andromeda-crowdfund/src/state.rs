@@ -23,6 +23,7 @@ pub(crate) fn update_config(
 /// Only used on the instantiation
 pub(crate) fn set_tiers(storage: &mut dyn Storage, tiers: Vec<Tier>) -> Result<(), ContractError> {
     for tier in tiers {
+        tier.validate()?;
         ensure!(
             !TIERS.has(storage, tier.level.into()),
             ContractError::InvalidTier {

@@ -217,7 +217,9 @@ fn execute_remove_tier(ctx: ExecuteContext, level: Uint64) -> Result<Response, C
 
     remove_tier(deps.storage, level.into())?;
 
-    let resp = Response::new().add_attribute("action", "remove_tier");
+    let resp = Response::new()
+        .add_attribute("action", "remove_tier")
+        .add_attribute("level", level);
 
     Ok(resp)
 }

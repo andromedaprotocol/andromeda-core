@@ -1,12 +1,23 @@
-use andromeda_non_fungible_tokens::crowdfund::InstantiateMsg;
-use andromeda_std::{ado_base::Module, testing::mock_querier::MOCK_KERNEL_CONTRACT};
+use andromeda_non_fungible_tokens::{
+    crowdfund::{ExecuteMsg, InstantiateMsg, Tier, TierMetaData},
+    cw721::TokenExtension,
+};
+use andromeda_std::{
+    ado_base::Module,
+    common::reply::ReplyId,
+    error::ContractError,
+    os::economics::ExecuteMsg as EconomicsExecuteMsg,
+    testing::mock_querier::{MOCK_ADO_PUBLISHER, MOCK_KERNEL_CONTRACT},
+};
 use cosmwasm_std::{
     testing::{mock_env, mock_info},
-    DepsMut, Response,
+    to_json_binary, Addr, CosmosMsg, DepsMut, Response, SubMsg, Uint128, Uint64, WasmMsg,
 };
 
 use crate::{
-    contract::instantiate, state::CAMPAIGN_CONFIG, testing::mock_querier::mock_dependencies_custom,
+    contract::{execute, instantiate},
+    state::CAMPAIGN_CONFIG,
+    testing::mock_querier::mock_dependencies_custom,
 };
 
 use super::mock_querier::{mock_campaign_config, mock_campaign_tiers};
@@ -44,6 +55,389 @@ fn test_instantiate() {
     assert_eq!(
         mock_campaign_config(),
         CAMPAIGN_CONFIG.load(deps.as_mut().storage).unwrap()
+    );
+}
+
+#[test]
+fn test_instantiate_invalid_tiers() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let config = mock_campaign_config();
+    let mut tiers = mock_campaign_tiers();
+    tiers.push(Tier {
+        level: Uint64::new(1u64),
+        limit: Some(Uint128::new(100)),
+        price: Uint128::zero(),
+        meta_data: TierMetaData {
+            extension: TokenExtension {
+                publisher: MOCK_ADO_PUBLISHER.to_string(),
+            },
+            owner: None,
+            token_uri: None,
+        },
+    });
+    let msg = InstantiateMsg {
+        campaign_config: config,
+        tiers,
+        owner: None,
+        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+        modules: None,
+    };
+
+    let info = mock_info("owner", &[]);
+    let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap_err();
+
+    assert_eq!(
+        res,
+        ContractError::InvalidTier {
+            operation: "all".to_string(),
+            msg: "Price can not be zero".to_string()
+        }
+    );
+
+    assert_eq!(
+        mock_campaign_config(),
+        CAMPAIGN_CONFIG.load(deps.as_mut().storage).unwrap()
+    );
+}
+
+#[test]
+fn test_add_tier() {
+    let mut deps = mock_dependencies_custom(&[]);
+
+    let _ = init(deps.as_mut(), None);
+
+    let msg = ExecuteMsg::AddTier {
+        tier: Tier {
+            level: Uint64::new(1u64),
+            limit: Some(Uint128::new(100)),
+            price: Uint128::new(100),
+            meta_data: TierMetaData {
+                extension: TokenExtension {
+                    publisher: MOCK_ADO_PUBLISHER.to_string(),
+                },
+                owner: None,
+                token_uri: None,
+            },
+        },
+    };
+
+    let info = mock_info("owner", &[]);
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+    assert_eq!(
+        res,
+        Response::new()
+            .add_attribute("action", "add_tier")
+            .add_attribute("level", "1")
+            .add_attribute("price", "100")
+            .add_attribute("limit", "100")
+            // Economics message
+            .add_submessage(SubMsg::reply_on_error(
+                CosmosMsg::Wasm(WasmMsg::Execute {
+                    contract_addr: "economics_contract".to_string(),
+                    msg: to_json_binary(&EconomicsExecuteMsg::PayFee {
+                        payee: Addr::unchecked("owner"),
+                        action: "AddTier".to_string()
+                    })
+                    .unwrap(),
+                    funds: vec![],
+                }),
+                ReplyId::PayFee.repr(),
+            )),
+    );
+}
+
+#[test]
+fn test_add_tier_unauthorized() {
+    let mut deps = mock_dependencies_custom(&[]);
+
+    let _ = init(deps.as_mut(), None);
+
+    let msg = ExecuteMsg::AddTier {
+        tier: Tier {
+            level: Uint64::new(1u64),
+            limit: Some(Uint128::new(100)),
+            price: Uint128::new(100),
+            meta_data: TierMetaData {
+                extension: TokenExtension {
+                    publisher: MOCK_ADO_PUBLISHER.to_string(),
+                },
+                owner: None,
+                token_uri: None,
+            },
+        },
+    };
+
+    let info = mock_info("owner1", &[]);
+    let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
+    assert_eq!(err, ContractError::Unauthorized {});
+}
+
+#[test]
+fn test_add_tier_zero_price() {
+    let mut deps = mock_dependencies_custom(&[]);
+
+    let _ = init(deps.as_mut(), None);
+
+    let msg = ExecuteMsg::AddTier {
+        tier: Tier {
+            level: Uint64::new(1u64),
+            limit: Some(Uint128::new(100)),
+            price: Uint128::zero(),
+            meta_data: TierMetaData {
+                extension: TokenExtension {
+                    publisher: MOCK_ADO_PUBLISHER.to_string(),
+                },
+                owner: None,
+                token_uri: None,
+            },
+        },
+    };
+
+    let info = mock_info("owner", &[]);
+    let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
+    assert_eq!(
+        err,
+        ContractError::InvalidTier {
+            operation: "all".to_string(),
+            msg: "Price can not be zero".to_string()
+        }
+    );
+}
+
+#[test]
+fn test_add_tier_duplicated() {
+    let mut deps = mock_dependencies_custom(&[]);
+
+    let _ = init(deps.as_mut(), None);
+
+    let msg = ExecuteMsg::AddTier {
+        tier: Tier {
+            level: Uint64::zero(),
+            limit: Some(Uint128::new(100u128)),
+            price: Uint128::new(100u128),
+            meta_data: TierMetaData {
+                extension: TokenExtension {
+                    publisher: MOCK_ADO_PUBLISHER.to_string(),
+                },
+                owner: None,
+                token_uri: None,
+            },
+        },
+    };
+
+    let info = mock_info("owner", &[]);
+    let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
+    assert_eq!(
+        err,
+        ContractError::InvalidTier {
+            operation: "add".to_string(),
+            msg: "Tier with level 0 already exist".to_string()
+        }
+    );
+}
+
+#[test]
+fn test_update_tier() {
+    let mut deps = mock_dependencies_custom(&[]);
+
+    let _ = init(deps.as_mut(), None);
+
+    let msg = ExecuteMsg::UpdateTier {
+        tier: Tier {
+            level: Uint64::zero(),
+            limit: Some(Uint128::new(100)),
+            price: Uint128::new(100),
+            meta_data: TierMetaData {
+                extension: TokenExtension {
+                    publisher: MOCK_ADO_PUBLISHER.to_string(),
+                },
+                owner: None,
+                token_uri: None,
+            },
+        },
+    };
+
+    let info = mock_info("owner", &[]);
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+    assert_eq!(
+        res,
+        Response::new()
+            .add_attribute("action", "update_tier")
+            .add_attribute("level", "0")
+            .add_attribute("price", "100")
+            .add_attribute("limit", "100")
+            // Economics message
+            .add_submessage(SubMsg::reply_on_error(
+                CosmosMsg::Wasm(WasmMsg::Execute {
+                    contract_addr: "economics_contract".to_string(),
+                    msg: to_json_binary(&EconomicsExecuteMsg::PayFee {
+                        payee: Addr::unchecked("owner"),
+                        action: "UpdateTier".to_string()
+                    })
+                    .unwrap(),
+                    funds: vec![],
+                }),
+                ReplyId::PayFee.repr(),
+            )),
+    );
+}
+
+#[test]
+fn test_update_tier_unauthorized() {
+    let mut deps = mock_dependencies_custom(&[]);
+
+    let _ = init(deps.as_mut(), None);
+
+    let msg = ExecuteMsg::UpdateTier {
+        tier: Tier {
+            level: Uint64::zero(),
+            limit: Some(Uint128::new(100)),
+            price: Uint128::new(100),
+            meta_data: TierMetaData {
+                extension: TokenExtension {
+                    publisher: MOCK_ADO_PUBLISHER.to_string(),
+                },
+                owner: None,
+                token_uri: None,
+            },
+        },
+    };
+
+    let info = mock_info("owner1", &[]);
+    let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
+    assert_eq!(err, ContractError::Unauthorized {});
+}
+
+#[test]
+fn test_update_tier_zero_price() {
+    let mut deps = mock_dependencies_custom(&[]);
+
+    let _ = init(deps.as_mut(), None);
+
+    let msg = ExecuteMsg::UpdateTier {
+        tier: Tier {
+            level: Uint64::zero(),
+            limit: Some(Uint128::new(100)),
+            price: Uint128::zero(),
+            meta_data: TierMetaData {
+                extension: TokenExtension {
+                    publisher: MOCK_ADO_PUBLISHER.to_string(),
+                },
+                owner: None,
+                token_uri: None,
+            },
+        },
+    };
+
+    let info = mock_info("owner", &[]);
+    let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
+    assert_eq!(
+        err,
+        ContractError::InvalidTier {
+            operation: "all".to_string(),
+            msg: "Price can not be zero".to_string()
+        }
+    );
+}
+
+#[test]
+fn test_update_tier_non_exist() {
+    let mut deps = mock_dependencies_custom(&[]);
+
+    let _ = init(deps.as_mut(), None);
+
+    let msg = ExecuteMsg::UpdateTier {
+        tier: Tier {
+            level: Uint64::new(1u64),
+            limit: Some(Uint128::new(100u128)),
+            price: Uint128::new(100u128),
+            meta_data: TierMetaData {
+                extension: TokenExtension {
+                    publisher: MOCK_ADO_PUBLISHER.to_string(),
+                },
+                owner: None,
+                token_uri: None,
+            },
+        },
+    };
+
+    let info = mock_info("owner", &[]);
+    let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
+    assert_eq!(
+        err,
+        ContractError::InvalidTier {
+            operation: "update".to_string(),
+            msg: "Tier with level 1 does not exist".to_string()
+        }
+    );
+}
+
+#[test]
+fn test_remove_tier() {
+    let mut deps = mock_dependencies_custom(&[]);
+
+    let _ = init(deps.as_mut(), None);
+
+    let msg = ExecuteMsg::RemoveTier {
+        level: Uint64::zero(),
+    };
+
+    let info = mock_info("owner", &[]);
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+    assert_eq!(
+        res,
+        Response::new()
+            .add_attribute("action", "remove_tier")
+            .add_attribute("level", "0")
+            // Economics message
+            .add_submessage(SubMsg::reply_on_error(
+                CosmosMsg::Wasm(WasmMsg::Execute {
+                    contract_addr: "economics_contract".to_string(),
+                    msg: to_json_binary(&EconomicsExecuteMsg::PayFee {
+                        payee: Addr::unchecked("owner"),
+                        action: "RemoveTier".to_string()
+                    })
+                    .unwrap(),
+                    funds: vec![],
+                }),
+                ReplyId::PayFee.repr(),
+            )),
+    );
+}
+
+#[test]
+fn test_remvoe_tier_unauthorized() {
+    let mut deps = mock_dependencies_custom(&[]);
+
+    let _ = init(deps.as_mut(), None);
+
+    let msg = ExecuteMsg::RemoveTier {
+        level: Uint64::zero(),
+    };
+
+    let info = mock_info("owner1", &[]);
+    let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
+    assert_eq!(err, ContractError::Unauthorized {});
+}
+
+#[test]
+fn test_remove_tier_non_exist() {
+    let mut deps = mock_dependencies_custom(&[]);
+
+    let _ = init(deps.as_mut(), None);
+
+    let msg = ExecuteMsg::RemoveTier {
+        level: Uint64::new(1u64),
+    };
+
+    let info = mock_info("owner", &[]);
+    let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
+    assert_eq!(
+        err,
+        ContractError::InvalidTier {
+            operation: "remove".to_string(),
+            msg: "Tier with level 1 does not exist".to_string()
+        }
     );
 }
 
