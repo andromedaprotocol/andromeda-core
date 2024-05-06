@@ -38,9 +38,9 @@ pub enum QueryMsg {}
 
 #[cw_serde]
 pub struct CampaignConfig {
-    /// Title of the campaign. Maximum length is 32.
+    /// Title of the campaign. Maximum length is 64.
     pub title: String,
-    /// Short description about the campaign. Maximum length is 256.
+    /// Short description about the campaign.
     pub description: String,
     /// URL for the banner of the campaign
     pub banner: String,
@@ -67,15 +67,9 @@ impl CampaignConfig {
 
         // validate meta info
         ensure!(
-            self.title.len() <= 32,
+            self.title.len() <= 64,
             ContractError::InvalidParameter {
-                error: Some("Title length can be 32 at maximum".to_string())
-            }
-        );
-        ensure!(
-            self.description.len() <= 256,
-            ContractError::InvalidParameter {
-                error: Some("Description length can be 256 at maximum".to_string())
+                error: Some("Title length can be 64 at maximum".to_string())
             }
         );
 
