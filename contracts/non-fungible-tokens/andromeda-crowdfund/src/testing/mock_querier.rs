@@ -26,7 +26,7 @@ pub fn mock_campaign_config() -> CampaignConfig {
         tier_address: AndrAddr::from_string(MOCK_TIER_CONTRACT.to_owned()),
         withdrawal_address: AndrAddr::from_string(MOCK_WITHDRAWAL_ADDRESS.to_owned()),
         soft_cap: None,
-        hard_cap: Uint128::from(5000u128),
+        hard_cap: None,
     }
 }
 

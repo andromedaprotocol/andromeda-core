@@ -46,16 +46,16 @@ pub struct CampaignConfig {
     pub banner: String,
     /// Official website of the campaign
     pub url: String,
-    /// Withdrawal address for the funds gained by the campaign
+    /// The address of the tier contract whose tokens are being distributed
     pub tier_address: AndrAddr,
-    /// The address of the tier contract whose tokens are being distributed
+    /// The denom of the token that is being accepted by the campaign
     pub denom: String,
-    /// The minimum amount of funding to be sold for the successful fundraising
+    /// Withdrawal address for the funds gained by the campaign
     pub withdrawal_address: AndrAddr,
-    /// The address of the tier contract whose tokens are being distributed
+    /// The minimum amount of funding to be sold for the successful fundraising
     pub soft_cap: Option<Uint128>,
     /// The maximum amount of funding to be sold for the fundraising
-    pub hard_cap: Uint128,
+    pub hard_cap: Option<Uint128>,
 }
 
 impl CampaignConfig {
@@ -75,7 +75,8 @@ impl CampaignConfig {
 
         // validate target capital
         ensure!(
-            (self.soft_cap).map_or(true, |soft_cap| soft_cap < self.hard_cap),
+            (self.soft_cap).map_or(true, |soft_cap| soft_cap
+                < self.hard_cap.unwrap_or(soft_cap + Uint128::new(1))),
             ContractError::InvalidParameter {
                 error: Some("soft_cap can not exceed hard_cap".to_string())
             }
