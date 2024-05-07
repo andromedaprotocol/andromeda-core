@@ -269,7 +269,7 @@ fn execute_start_campaign(
         }
     );
 
-    // Update tier limit and update sender's order based on presale
+    // Update tier limit and update tier orders based on presale
     if let Some(presale) = presale {
         set_tier_orders(deps.storage, presale)?;
     }

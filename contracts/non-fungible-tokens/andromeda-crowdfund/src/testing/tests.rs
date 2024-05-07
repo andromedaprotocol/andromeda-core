@@ -1,7 +1,10 @@
 use andromeda_non_fungible_tokens::{
-    crowdfund::{CampaignConfig, ExecuteMsg, InstantiateMsg, Tier, TierMetaData, TierOrder},
+    crowdfund::{
+        CampaignConfig, CampaignStage, ExecuteMsg, InstantiateMsg, Tier, TierMetaData, TierOrder,
+    },
     cw721::TokenExtension,
 };
+
 use andromeda_std::{
     common::{reply::ReplyId, MillisecondsExpiration},
     error::ContractError,
@@ -16,7 +19,7 @@ use cosmwasm_std::{
 
 use crate::{
     contract::{execute, instantiate},
-    state::{CAMPAIGN_CONFIG, TIERS, TIER_ORDERS},
+    state::{CAMPAIGN_CONFIG, CAMPAIGN_STAGE, TIERS, TIER_ORDERS},
     testing::mock_querier::{mock_dependencies_custom, mock_zero_price_tier, MOCK_DEFAULT_LIMIT},
 };
 
@@ -519,6 +522,18 @@ mod test {
             assert_eq!(res, test.expected_res);
 
             if res.is_ok() {
+                assert_eq!(
+                    CAMPAIGN_CONFIG.load(&deps.storage).unwrap().start_time,
+                    test.start_time
+                );
+                assert_eq!(
+                    CAMPAIGN_CONFIG.load(&deps.storage).unwrap().end_time,
+                    test.end_time
+                );
+                assert_eq!(
+                    CAMPAIGN_STAGE.load(&deps.storage).unwrap(),
+                    CampaignStage::ONGOING
+                );
                 for order in &test.presale.unwrap() {
                     let order_amount: u128 = order.amount.into();
                     assert_eq!(
@@ -540,6 +555,13 @@ mod test {
                         );
                     }
                 }
+            } else {
+                assert_eq!(
+                    CAMPAIGN_STAGE
+                        .load(&deps.storage)
+                        .unwrap_or(CampaignStage::READY),
+                    CampaignStage::READY
+                );
             }
         }
     }
