@@ -16,7 +16,7 @@ use cosmwasm_std::{
 
 pub const MOCK_TIER_CONTRACT: &str = "tier_contract";
 pub const MOCK_WITHDRAWAL_ADDRESS: &str = "withdrawal_address";
-
+pub const MOCK_DEFAULT_LIMIT: u128 = 100000;
 pub fn mock_campaign_config() -> CampaignConfig {
     CampaignConfig {
         title: "First Crowdfund".to_string(),
@@ -50,7 +50,7 @@ pub fn mock_campaign_tiers() -> Vec<Tier> {
         Tier {
             level: Uint64::new(1u64),
             label: "Tier 1".to_string(),
-            limit: Some(Uint128::new(1000u128)),
+            limit: Some(Uint128::new(MOCK_DEFAULT_LIMIT)),
             price: Uint128::new(10u128),
             meta_data: TierMetaData {
                 extension: TokenExtension {
@@ -60,6 +60,21 @@ pub fn mock_campaign_tiers() -> Vec<Tier> {
             },
         },
     ]
+}
+
+pub fn mock_zero_price_tier(level: Uint64) -> Tier {
+    Tier {
+        level,
+        label: "Invalid Tier".to_string(),
+        limit: None,
+        price: Uint128::zero(),
+        meta_data: TierMetaData {
+            extension: TokenExtension {
+                publisher: MOCK_ADO_PUBLISHER.to_string(),
+            },
+            token_uri: None,
+        },
+    }
 }
 
 /// Alternative to `cosmwasm_std::testing::mock_dependencies` that allows us to respond to custom queries.

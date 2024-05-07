@@ -1,9 +1,8 @@
 use andromeda_non_fungible_tokens::{
-    crowdfund::{ExecuteMsg, InstantiateMsg, Tier, TierMetaData, TierOrder},
+    crowdfund::{CampaignConfig, ExecuteMsg, InstantiateMsg, Tier, TierMetaData, TierOrder},
     cw721::TokenExtension,
 };
 use andromeda_std::{
-    ado_base::Module,
     common::{reply::ReplyId, MillisecondsExpiration},
     error::ContractError,
     os::economics::ExecuteMsg as EconomicsExecuteMsg,
@@ -11,25 +10,24 @@ use andromeda_std::{
 };
 use cosmwasm_std::{
     testing::{mock_env, mock_info},
-    to_json_binary, Addr, CosmosMsg, DepsMut, Order, Response, SubMsg, Uint128, Uint64, WasmMsg,
+    to_json_binary, Addr, CosmosMsg, DepsMut, Order, Response, Storage, SubMsg, Uint128, Uint64,
+    WasmMsg,
 };
 
 use crate::{
     contract::{execute, instantiate},
     state::{CAMPAIGN_CONFIG, TIERS, TIER_ORDERS},
-    testing::mock_querier::mock_dependencies_custom,
+    testing::mock_querier::{mock_dependencies_custom, mock_zero_price_tier, MOCK_DEFAULT_LIMIT},
 };
 
 use super::mock_querier::{mock_campaign_config, mock_campaign_tiers};
 
-fn init(deps: DepsMut, modules: Option<Vec<Module>>) -> Response {
-    let config = mock_campaign_config();
-    let tiers = mock_campaign_tiers();
+fn init(deps: DepsMut, config: CampaignConfig, tiers: Vec<Tier>) -> Response {
     let msg = InstantiateMsg {
         campaign_config: config,
         tiers,
         owner: None,
-        modules,
+        modules: None,
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
     };
 
@@ -37,143 +35,107 @@ fn init(deps: DepsMut, modules: Option<Vec<Module>>) -> Response {
     instantiate(deps, mock_env(), info, msg).unwrap()
 }
 
-#[test]
-fn test_instantiate() {
-    let mut deps = mock_dependencies_custom(&[]);
+fn get_tiers(storage: &dyn Storage) -> Vec<Tier> {
+    TIERS
+        .range_raw(storage, None, None, Order::Ascending)
+        .map(|res| res.unwrap().1)
+        .collect()
+}
 
-    let res = init(deps.as_mut(), None);
+#[cfg(test)]
+mod test {
 
-    assert_eq!(
+    use super::*;
+
+    fn instantiate_response(owner: &str) -> Response {
         Response::new()
             .add_attribute("method", "instantiate")
             .add_attribute("type", "crowdfund")
             .add_attribute("kernel_address", MOCK_KERNEL_CONTRACT)
-            .add_attribute("owner", "owner"),
-        res
-    );
+            .add_attribute("owner", owner)
+    }
 
-    assert_eq!(
-        mock_campaign_config(),
-        CAMPAIGN_CONFIG.load(deps.as_mut().storage).unwrap()
-    );
-
-    let tiers: Vec<Tier> = TIERS
-        .range_raw(deps.as_ref().storage, None, None, Order::Ascending)
-        .map(|res| res.unwrap().1)
-        .collect();
-    assert_eq!(mock_campaign_tiers(), tiers);
-}
-
-#[test]
-fn test_instantiate_invalid_tiers() {
-    let mut deps = mock_dependencies_custom(&[]);
-    let config = mock_campaign_config();
-    let mut tiers = mock_campaign_tiers();
-    tiers.push(Tier {
-        level: Uint64::new(1u64),
-        label: "Tier 1".to_string(),
-        limit: Some(Uint128::new(100)),
-        price: Uint128::zero(),
-        meta_data: TierMetaData {
-            extension: TokenExtension {
-                publisher: MOCK_ADO_PUBLISHER.to_string(),
+    struct InstantiateTestCase {
+        config: CampaignConfig,
+        tiers: Vec<Tier>,
+        expected_res: Result<Response, ContractError>,
+        expected_config: Option<CampaignConfig>,
+        expected_tiers: Vec<Tier>,
+    }
+    #[test]
+    fn test_instantiate() {
+        let test_cases: Vec<InstantiateTestCase> = vec![
+            InstantiateTestCase {
+                config: mock_campaign_config(),
+                tiers: mock_campaign_tiers(),
+                expected_res: Ok(instantiate_response("owner")),
+                expected_config: Some(mock_campaign_config()),
+                expected_tiers: mock_campaign_tiers(),
             },
-            token_uri: None,
-        },
-    });
-    let msg = InstantiateMsg {
-        campaign_config: config,
-        tiers,
-        owner: None,
-        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
-        modules: None,
-    };
+            InstantiateTestCase {
+                config: mock_campaign_config(),
+                tiers: vec![mock_zero_price_tier(Uint64::zero())],
+                expected_res: Err(ContractError::InvalidTier {
+                    operation: "all".to_string(),
+                    msg: "Price can not be zero".to_string(),
+                }),
+                expected_config: Some(mock_campaign_config()),
+                expected_tiers: vec![],
+            },
+        ];
 
-    let info = mock_info("owner", &[]);
-    let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap_err();
+        for test in test_cases {
+            let mut deps = mock_dependencies_custom(&[]);
+            let info = mock_info("owner", &[]);
+            let msg = InstantiateMsg {
+                campaign_config: test.config,
+                tiers: test.tiers,
+                owner: None,
+                kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+                modules: None,
+            };
+            let res = instantiate(deps.as_mut(), mock_env(), info, msg);
 
-    assert_eq!(
-        res,
-        ContractError::InvalidTier {
-            operation: "all".to_string(),
-            msg: "Price can not be zero".to_string()
+            assert_eq!(res, test.expected_res);
+            assert_eq!(
+                CAMPAIGN_CONFIG.load(deps.as_mut().storage).unwrap(),
+                test.expected_config.unwrap()
+            );
+            assert_eq!(get_tiers(deps.as_ref().storage), test.expected_tiers);
         }
-    );
+    }
 
-    assert_eq!(
-        mock_campaign_config(),
-        CAMPAIGN_CONFIG.load(deps.as_mut().storage).unwrap()
-    );
-}
-
-#[test]
-fn test_add_tier() {
-    let mut deps = mock_dependencies_custom(&[]);
-
-    let _ = init(deps.as_mut(), None);
-
-    let tier_to_add = Tier {
-        level: Uint64::new(2u64),
-        label: "Tier 2".to_string(),
-        limit: Some(Uint128::new(100)),
-        price: Uint128::new(100),
-        meta_data: TierMetaData {
-            extension: TokenExtension {
-                publisher: MOCK_ADO_PUBLISHER.to_string(),
-            },
-            token_uri: None,
-        },
-    };
-
-    // Tier with the same level does not exist before adding.
-    assert!(!TIERS.has(deps.as_ref().storage, tier_to_add.level.into()));
-
-    let msg = ExecuteMsg::AddTier {
-        tier: tier_to_add.clone(),
-    };
-
-    let info = mock_info("owner", &[]);
-    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-    assert_eq!(
-        res,
+    fn add_tier_response(tier: &Tier, payee: &str) -> Response {
         Response::new()
             .add_attribute("action", "add_tier")
-            .add_attribute("level", tier_to_add.level.to_string())
-            .add_attribute("label", tier_to_add.label.clone())
-            .add_attribute("price", tier_to_add.price.to_string())
-            .add_attribute("limit", tier_to_add.limit.unwrap().to_string())
+            .add_attribute("level", tier.level.to_string())
+            .add_attribute("label", tier.label.clone())
+            .add_attribute("price", tier.price.to_string())
+            .add_attribute("limit", tier.limit.unwrap().to_string())
             // Economics message
             .add_submessage(SubMsg::reply_on_error(
                 CosmosMsg::Wasm(WasmMsg::Execute {
                     contract_addr: "economics_contract".to_string(),
                     msg: to_json_binary(&EconomicsExecuteMsg::PayFee {
-                        payee: Addr::unchecked("owner"),
-                        action: "AddTier".to_string()
+                        payee: Addr::unchecked(payee),
+                        action: "AddTier".to_string(),
                     })
                     .unwrap(),
                     funds: vec![],
                 }),
                 ReplyId::PayFee.repr(),
-            )),
-    );
+            ))
+    }
 
-    // Tier is saved in the state.
-    assert_eq!(
-        tier_to_add,
-        TIERS
-            .load(deps.as_ref().storage, tier_to_add.level.into())
-            .unwrap()
-    );
-}
+    struct TierTestCase {
+        tier: Tier,
+        expected_res: Result<Response, ContractError>,
+        payee: String,
+    }
 
-#[test]
-fn test_add_tier_unauthorized() {
-    let mut deps = mock_dependencies_custom(&[]);
-
-    let _ = init(deps.as_mut(), None);
-
-    let msg = ExecuteMsg::AddTier {
-        tier: Tier {
+    #[test]
+    fn test_add_tier() {
+        let valid_tier = Tier {
             level: Uint64::new(2u64),
             label: "Tier 2".to_string(),
             limit: Some(Uint128::new(100)),
@@ -184,152 +146,96 @@ fn test_add_tier_unauthorized() {
                 },
                 token_uri: None,
             },
-        },
-    };
-
-    let info = mock_info("owner1", &[]);
-    let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
-    assert_eq!(err, ContractError::Unauthorized {});
-}
-
-#[test]
-fn test_add_tier_zero_price() {
-    let mut deps = mock_dependencies_custom(&[]);
-
-    let _ = init(deps.as_mut(), None);
-
-    let msg = ExecuteMsg::AddTier {
-        tier: Tier {
-            level: Uint64::new(2u64),
+        };
+        let duplicated_tier = Tier {
+            level: Uint64::new(0u64),
             label: "Tier 2".to_string(),
             limit: Some(Uint128::new(100)),
-            price: Uint128::zero(),
+            price: Uint128::new(100),
             meta_data: TierMetaData {
                 extension: TokenExtension {
                     publisher: MOCK_ADO_PUBLISHER.to_string(),
                 },
                 token_uri: None,
             },
-        },
-    };
+        };
 
-    let info = mock_info("owner", &[]);
-    let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
-    assert_eq!(
-        err,
-        ContractError::InvalidTier {
-            operation: "all".to_string(),
-            msg: "Price can not be zero".to_string()
-        }
-    );
-}
-
-#[test]
-fn test_add_tier_duplicated() {
-    let mut deps = mock_dependencies_custom(&[]);
-
-    let _ = init(deps.as_mut(), None);
-
-    let msg = ExecuteMsg::AddTier {
-        tier: Tier {
-            level: Uint64::zero(),
-            label: "Duplicated Tier".to_string(),
-            limit: Some(Uint128::new(100u128)),
-            price: Uint128::new(100u128),
-            meta_data: TierMetaData {
-                extension: TokenExtension {
-                    publisher: MOCK_ADO_PUBLISHER.to_string(),
-                },
-                token_uri: None,
+        let test_cases: Vec<TierTestCase> = vec![
+            TierTestCase {
+                tier: valid_tier.clone(),
+                expected_res: Ok(add_tier_response(&valid_tier, "owner")),
+                payee: "owner".to_string(),
             },
-        },
-    };
-
-    let info = mock_info("owner", &[]);
-    let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
-    assert_eq!(
-        err,
-        ContractError::InvalidTier {
-            operation: "add".to_string(),
-            msg: "Tier with level 0 already exist".to_string()
-        }
-    );
-}
-
-#[test]
-fn test_update_tier() {
-    let mut deps = mock_dependencies_custom(&[]);
-
-    let _ = init(deps.as_mut(), None);
-
-    let updated_tier = Tier {
-        level: Uint64::zero(),
-        label: "Tier 0".to_string(),
-        limit: Some(Uint128::new(100)),
-        price: Uint128::new(100),
-        meta_data: TierMetaData {
-            extension: TokenExtension {
-                publisher: MOCK_ADO_PUBLISHER.to_string(),
+            TierTestCase {
+                tier: valid_tier.clone(),
+                expected_res: Err(ContractError::Unauthorized {}),
+                payee: "owner1".to_string(),
             },
-            token_uri: None,
-        },
-    };
+            TierTestCase {
+                tier: mock_zero_price_tier(Uint64::new(2)),
+                expected_res: Err(ContractError::InvalidTier {
+                    operation: "all".to_string(),
+                    msg: "Price can not be zero".to_string(),
+                }),
+                payee: "owner".to_string(),
+            },
+            TierTestCase {
+                tier: duplicated_tier,
+                expected_res: Err(ContractError::InvalidTier {
+                    operation: "add".to_string(),
+                    msg: "Tier with level 0 already exist".to_string(),
+                }),
+                payee: "owner".to_string(),
+            },
+        ];
+        for test in test_cases {
+            let mut deps = mock_dependencies_custom(&[]);
+            let _ = init(deps.as_mut(), mock_campaign_config(), mock_campaign_tiers());
 
-    // Before updating, tier with same level exists but their data is different.
-    assert_ne!(
-        updated_tier,
-        TIERS
-            .load(deps.as_ref().storage, updated_tier.level.into())
-            .unwrap()
-    );
+            let info = mock_info(&test.payee, &[]);
 
-    let msg = ExecuteMsg::UpdateTier {
-        tier: updated_tier.clone(),
-    };
+            let msg = ExecuteMsg::AddTier {
+                tier: test.tier.clone(),
+            };
 
-    let info = mock_info("owner", &[]);
-    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+            let res = execute(deps.as_mut(), mock_env(), info, msg);
+            assert_eq!(res, test.expected_res);
+            if res.is_ok() {
+                assert_eq!(
+                    test.tier,
+                    TIERS
+                        .load(deps.as_ref().storage, test.tier.level.into())
+                        .unwrap()
+                );
+            }
+        }
+    }
 
-    assert_eq!(
-        res,
+    fn update_tier_response(tier: &Tier, payee: &str) -> Response {
         Response::new()
             .add_attribute("action", "update_tier")
-            .add_attribute("level", updated_tier.level.to_string())
-            .add_attribute("label", updated_tier.label.clone())
-            .add_attribute("price", updated_tier.price.to_string())
-            .add_attribute("limit", updated_tier.limit.unwrap().to_string())
+            .add_attribute("level", tier.level.to_string())
+            .add_attribute("label", tier.label.clone())
+            .add_attribute("price", tier.price.to_string())
+            .add_attribute("limit", tier.limit.unwrap().to_string())
             // Economics message
             .add_submessage(SubMsg::reply_on_error(
                 CosmosMsg::Wasm(WasmMsg::Execute {
                     contract_addr: "economics_contract".to_string(),
                     msg: to_json_binary(&EconomicsExecuteMsg::PayFee {
-                        payee: Addr::unchecked("owner"),
-                        action: "UpdateTier".to_string()
+                        payee: Addr::unchecked(payee),
+                        action: "UpdateTier".to_string(),
                     })
                     .unwrap(),
                     funds: vec![],
                 }),
                 ReplyId::PayFee.repr(),
-            )),
-    );
+            ))
+    }
 
-    // Tier updated successfully.
-    assert_eq!(
-        updated_tier,
-        TIERS
-            .load(deps.as_ref().storage, updated_tier.level.into())
-            .unwrap()
-    );
-}
-
-#[test]
-fn test_update_tier_unauthorized() {
-    let mut deps = mock_dependencies_custom(&[]);
-
-    let _ = init(deps.as_mut(), None);
-
-    let msg = ExecuteMsg::UpdateTier {
-        tier: Tier {
+    #[test]
+    fn test_update_tier() {
+        let valid_tier = Tier {
             level: Uint64::zero(),
             label: "Tier 0".to_string(),
             limit: Some(Uint128::new(100)),
@@ -340,315 +246,303 @@ fn test_update_tier_unauthorized() {
                 },
                 token_uri: None,
             },
-        },
-    };
-
-    let info = mock_info("owner1", &[]);
-    let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
-    assert_eq!(err, ContractError::Unauthorized {});
-}
-
-#[test]
-fn test_update_tier_zero_price() {
-    let mut deps = mock_dependencies_custom(&[]);
-
-    let _ = init(deps.as_mut(), None);
-
-    let msg = ExecuteMsg::UpdateTier {
-        tier: Tier {
-            level: Uint64::zero(),
-            label: "Tier 0".to_string(),
-            limit: Some(Uint128::new(100)),
-            price: Uint128::zero(),
-            meta_data: TierMetaData {
-                extension: TokenExtension {
-                    publisher: MOCK_ADO_PUBLISHER.to_string(),
-                },
-                token_uri: None,
-            },
-        },
-    };
-
-    let info = mock_info("owner", &[]);
-    let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
-    assert_eq!(
-        err,
-        ContractError::InvalidTier {
-            operation: "all".to_string(),
-            msg: "Price can not be zero".to_string()
-        }
-    );
-}
-
-#[test]
-fn test_update_tier_non_exist() {
-    let mut deps = mock_dependencies_custom(&[]);
-
-    let _ = init(deps.as_mut(), None);
-
-    let msg = ExecuteMsg::UpdateTier {
-        tier: Tier {
+        };
+        let non_existing_tier = Tier {
             level: Uint64::new(2u64),
             label: "Tier 2".to_string(),
-            limit: Some(Uint128::new(100u128)),
-            price: Uint128::new(100u128),
+            limit: Some(Uint128::new(100)),
+            price: Uint128::new(100),
             meta_data: TierMetaData {
                 extension: TokenExtension {
                     publisher: MOCK_ADO_PUBLISHER.to_string(),
                 },
                 token_uri: None,
             },
-        },
-    };
+        };
 
-    let info = mock_info("owner", &[]);
-    let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
-    assert_eq!(
-        err,
-        ContractError::InvalidTier {
-            operation: "update".to_string(),
-            msg: "Tier with level 2 does not exist".to_string()
+        let test_cases: Vec<TierTestCase> = vec![
+            TierTestCase {
+                tier: valid_tier.clone(),
+                expected_res: Ok(update_tier_response(&valid_tier, "owner")),
+                payee: "owner".to_string(),
+            },
+            TierTestCase {
+                tier: valid_tier.clone(),
+                expected_res: Err(ContractError::Unauthorized {}),
+                payee: "owner1".to_string(),
+            },
+            TierTestCase {
+                tier: mock_zero_price_tier(Uint64::zero()),
+                expected_res: Err(ContractError::InvalidTier {
+                    operation: "all".to_string(),
+                    msg: "Price can not be zero".to_string(),
+                }),
+                payee: "owner".to_string(),
+            },
+            TierTestCase {
+                tier: non_existing_tier,
+                expected_res: Err(ContractError::InvalidTier {
+                    operation: "update".to_string(),
+                    msg: "Tier with level 2 does not exist".to_string(),
+                }),
+                payee: "owner".to_string(),
+            },
+        ];
+        for test in test_cases {
+            let mut deps = mock_dependencies_custom(&[]);
+            let _ = init(deps.as_mut(), mock_campaign_config(), mock_campaign_tiers());
+
+            let info = mock_info(&test.payee, &[]);
+
+            let msg = ExecuteMsg::UpdateTier {
+                tier: test.tier.clone(),
+            };
+
+            let res = execute(deps.as_mut(), mock_env(), info, msg);
+            assert_eq!(res, test.expected_res);
+            if res.is_ok() {
+                assert_eq!(
+                    test.tier,
+                    TIERS
+                        .load(deps.as_ref().storage, test.tier.level.into())
+                        .unwrap()
+                );
+            }
         }
-    );
-}
+    }
 
-#[test]
-fn test_remove_tier() {
-    let mut deps = mock_dependencies_custom(&[]);
-
-    let _ = init(deps.as_mut(), None);
-
-    let level_to_remove = Uint64::zero();
-
-    // The tier to be removed exists before removing
-    assert!(TIERS.has(deps.as_ref().storage, level_to_remove.into()));
-
-    let msg = ExecuteMsg::RemoveTier {
-        level: level_to_remove,
-    };
-
-    let info = mock_info("owner", &[]);
-    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-    assert_eq!(
-        res,
+    fn remove_tier_response(level: Uint64, payee: &str) -> Response {
         Response::new()
             .add_attribute("action", "remove_tier")
-            .add_attribute("level", level_to_remove.to_string())
-            // Economics message
+            .add_attribute("level", level.to_string())
             .add_submessage(SubMsg::reply_on_error(
                 CosmosMsg::Wasm(WasmMsg::Execute {
                     contract_addr: "economics_contract".to_string(),
                     msg: to_json_binary(&EconomicsExecuteMsg::PayFee {
-                        payee: Addr::unchecked("owner"),
-                        action: "RemoveTier".to_string()
+                        payee: Addr::unchecked(payee),
+                        action: "RemoveTier".to_string(),
                     })
                     .unwrap(),
                     funds: vec![],
                 }),
                 ReplyId::PayFee.repr(),
-            )),
-    );
+            ))
+    }
+    #[test]
+    fn test_remove_tier() {
+        let valid_tier = Tier {
+            level: Uint64::zero(),
+            label: "Tier 0".to_string(),
+            limit: Some(Uint128::new(100)),
+            price: Uint128::new(100),
+            meta_data: TierMetaData {
+                extension: TokenExtension {
+                    publisher: MOCK_ADO_PUBLISHER.to_string(),
+                },
+                token_uri: None,
+            },
+        };
+        let non_existing_tier = Tier {
+            level: Uint64::new(2u64),
+            label: "Tier 2".to_string(),
+            limit: Some(Uint128::new(100)),
+            price: Uint128::new(100),
+            meta_data: TierMetaData {
+                extension: TokenExtension {
+                    publisher: MOCK_ADO_PUBLISHER.to_string(),
+                },
+                token_uri: None,
+            },
+        };
 
-    // The tier removed successfully
-    assert!(!TIERS.has(deps.as_ref().storage, level_to_remove.into()));
-}
+        let test_cases: Vec<TierTestCase> = vec![
+            TierTestCase {
+                tier: valid_tier.clone(),
+                expected_res: Ok(remove_tier_response(valid_tier.level, "owner")),
+                payee: "owner".to_string(),
+            },
+            TierTestCase {
+                tier: valid_tier.clone(),
+                expected_res: Err(ContractError::Unauthorized {}),
+                payee: "owner1".to_string(),
+            },
+            TierTestCase {
+                tier: non_existing_tier,
+                expected_res: Err(ContractError::InvalidTier {
+                    operation: "remove".to_string(),
+                    msg: "Tier with level 2 does not exist".to_string(),
+                }),
+                payee: "owner".to_string(),
+            },
+        ];
+        for test in test_cases {
+            let mut deps = mock_dependencies_custom(&[]);
+            let _ = init(deps.as_mut(), mock_campaign_config(), mock_campaign_tiers());
 
-#[test]
-fn test_remove_tier_unauthorized() {
-    let mut deps = mock_dependencies_custom(&[]);
+            let info = mock_info(&test.payee, &[]);
 
-    let _ = init(deps.as_mut(), None);
+            let msg = ExecuteMsg::RemoveTier {
+                level: test.tier.level,
+            };
 
-    let msg = ExecuteMsg::RemoveTier {
-        level: Uint64::zero(),
-    };
-
-    let info = mock_info("owner1", &[]);
-    let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
-    assert_eq!(err, ContractError::Unauthorized {});
-}
-
-#[test]
-fn test_remove_tier_non_exist() {
-    let mut deps = mock_dependencies_custom(&[]);
-
-    let _ = init(deps.as_mut(), None);
-
-    let msg = ExecuteMsg::RemoveTier {
-        level: Uint64::new(2u64),
-    };
-
-    let info = mock_info("owner", &[]);
-    let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
-    assert_eq!(
-        err,
-        ContractError::InvalidTier {
-            operation: "remove".to_string(),
-            msg: "Tier with level 2 does not exist".to_string()
+            let res = execute(deps.as_mut(), mock_env(), info, msg);
+            assert_eq!(res, test.expected_res);
+            if res.is_ok() {
+                assert!(!TIERS.has(deps.as_ref().storage, test.tier.level.into()));
+            }
         }
-    );
-}
+    }
 
-#[test]
-fn test_start_campaign() {
-    let mut deps = mock_dependencies_custom(&[]);
-
-    let _ = init(deps.as_mut(), None);
-
-    let env = mock_env();
-    let initial_limit = TIERS.load(&deps.storage, 1).unwrap().limit.unwrap();
-
-    let mock_orderer = Addr::unchecked("mock_orderer".to_string());
-    let msg = ExecuteMsg::StartCampaign {
-        start_time: None,
-        end_time: MillisecondsExpiration::from_seconds(env.block.time.seconds() + 100),
-        presale: Some(vec![TierOrder {
-            amount: Uint128::new(100u128),
-            level: Uint64::new(1u64),
-            orderer: mock_orderer.clone(),
-        }]),
-    };
-
-    let info = mock_info("owner", &[]);
-    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-
-    let limit = TIERS.load(&deps.storage, 1).unwrap().limit.unwrap();
-
-    assert_eq!(
-        res,
+    fn start_campaign_response(payee: &str) -> Response {
         Response::new()
             .add_attribute("action", "start_campaign")
             .add_submessage(SubMsg::reply_on_error(
                 CosmosMsg::Wasm(WasmMsg::Execute {
                     contract_addr: "economics_contract".to_string(),
                     msg: to_json_binary(&EconomicsExecuteMsg::PayFee {
-                        payee: Addr::unchecked("owner"),
-                        action: "StartCampaign".to_string()
+                        payee: Addr::unchecked(payee),
+                        action: "StartCampaign".to_string(),
                     })
                     .unwrap(),
                     funds: vec![],
                 }),
                 ReplyId::PayFee.repr(),
-            )),
-    );
-    assert_eq!(initial_limit, limit + Uint128::new(100));
+            ))
+    }
 
-    let order = TIER_ORDERS.load(&deps.storage, (mock_orderer, 1)).unwrap();
-    assert_eq!(order, 100);
-}
+    struct StartCampaignTestCase {
+        tiers: Vec<Tier>,
+        presale: Option<Vec<TierOrder>>,
+        start_time: Option<MillisecondsExpiration>,
+        end_time: MillisecondsExpiration,
+        expected_res: Result<Response, ContractError>,
+        payee: String,
+    }
 
-#[test]
-fn test_start_campaign_unauthorized() {
-    let mut deps = mock_dependencies_custom(&[]);
+    #[test]
+    fn test_start_campaign() {
+        let mock_orderer = Addr::unchecked("mock_orderer".to_string());
+        let valid_presale = vec![TierOrder {
+            amount: Uint128::new(100u128),
+            level: Uint64::new(1u64),
+            orderer: mock_orderer.clone(),
+        }];
 
-    let _ = init(deps.as_mut(), None);
-
-    let env = mock_env();
-
-    let msg = ExecuteMsg::StartCampaign {
-        start_time: None,
-        end_time: MillisecondsExpiration::from_seconds(env.block.time.seconds() + 100),
-        presale: None,
-    };
-
-    let info = mock_info("owner1", &[]);
-    let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
-
-    assert_eq!(err, ContractError::Unauthorized {});
-}
-
-#[test]
-fn test_start_campaign_invalid_tiers() {
-    let mut deps = mock_dependencies_custom(&[]);
-
-    let _ = init(deps.as_mut(), None);
-
-    // Remove level 0 tier that has no limit
-    TIERS.remove(&mut deps.storage, 0);
-    let env = mock_env();
-
-    let msg = ExecuteMsg::StartCampaign {
-        start_time: None,
-        end_time: MillisecondsExpiration::from_seconds(env.block.time.seconds() + 100),
-        presale: None,
-    };
-
-    let info = mock_info("owner", &[]);
-    let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
-
-    assert_eq!(err, ContractError::InvalidTiers {});
-}
-
-#[test]
-fn test_start_campaign_invalid_presale() {
-    let mut deps = mock_dependencies_custom(&[]);
-
-    let _ = init(deps.as_mut(), None);
-
-    let env = mock_env();
-
-    let msg = ExecuteMsg::StartCampaign {
-        start_time: None,
-        end_time: MillisecondsExpiration::from_seconds(env.block.time.seconds() + 100),
-        presale: Some(vec![TierOrder {
+        let invalid_presale = vec![TierOrder {
             amount: Uint128::new(100u128),
             level: Uint64::new(2u64),
-            orderer: Addr::unchecked("mock_orderer"),
-        }]),
-    };
+            orderer: mock_orderer.clone(),
+        }];
 
-    let info = mock_info("owner", &[]);
-    let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
+        let invalid_tiers = vec![Tier {
+            level: Uint64::new(1u64),
+            label: "Tier 1".to_string(),
+            limit: Some(Uint128::new(1000u128)),
+            price: Uint128::new(10u128),
+            meta_data: TierMetaData {
+                extension: TokenExtension {
+                    publisher: MOCK_ADO_PUBLISHER.to_string(),
+                },
+                token_uri: None,
+            },
+        }];
 
-    assert_eq!(
-        err,
-        ContractError::InvalidTier {
-            operation: "set_tier_orders".to_string(),
-            msg: "Tier with level 2 does not exist".to_string()
+        let env = mock_env();
+        let test_cases: Vec<StartCampaignTestCase> = vec![
+            StartCampaignTestCase {
+                tiers: mock_campaign_tiers(),
+                presale: Some(valid_presale.clone()),
+                start_time: None,
+                end_time: MillisecondsExpiration::from_seconds(env.block.time.seconds() + 100),
+                payee: "owner".to_string(),
+                expected_res: Ok(start_campaign_response("owner")),
+            },
+            StartCampaignTestCase {
+                tiers: mock_campaign_tiers(),
+                presale: Some(valid_presale.clone()),
+                start_time: None,
+                end_time: MillisecondsExpiration::from_seconds(env.block.time.seconds() + 100),
+                payee: "owner1".to_string(),
+                expected_res: Err(ContractError::Unauthorized {}),
+            },
+            StartCampaignTestCase {
+                tiers: invalid_tiers,
+                presale: Some(valid_presale.clone()),
+                start_time: None,
+                end_time: MillisecondsExpiration::from_seconds(env.block.time.seconds() + 100),
+                payee: "owner".to_string(),
+                expected_res: Err(ContractError::InvalidTiers {}),
+            },
+            StartCampaignTestCase {
+                tiers: mock_campaign_tiers(),
+                presale: Some(invalid_presale.clone()),
+                start_time: None,
+                end_time: MillisecondsExpiration::from_seconds(env.block.time.seconds() + 100),
+                payee: "owner".to_string(),
+                expected_res: Err(ContractError::InvalidTier {
+                    operation: "set_tier_orders".to_string(),
+                    msg: "Tier with level 2 does not exist".to_string(),
+                }),
+            },
+            StartCampaignTestCase {
+                tiers: mock_campaign_tiers(),
+                presale: Some(valid_presale.clone()),
+                start_time: None,
+                end_time: MillisecondsExpiration::from_seconds(env.block.time.seconds() - 100),
+                payee: "owner".to_string(),
+                expected_res: Err(ContractError::StartTimeAfterEndTime {}),
+            },
+            StartCampaignTestCase {
+                tiers: mock_campaign_tiers(),
+                presale: Some(valid_presale.clone()),
+                start_time: Some(MillisecondsExpiration::from_seconds(
+                    env.block.time.seconds() + 1000,
+                )),
+                end_time: MillisecondsExpiration::from_seconds(env.block.time.seconds() + 500),
+                payee: "owner".to_string(),
+                expected_res: Err(ContractError::StartTimeAfterEndTime {}),
+            },
+        ];
+        for test in test_cases {
+            let mut deps = mock_dependencies_custom(&[]);
+            let _ = init(deps.as_mut(), mock_campaign_config(), test.tiers.clone());
+
+            let info = mock_info(&test.payee, &[]);
+
+            let msg = ExecuteMsg::StartCampaign {
+                start_time: test.start_time,
+                end_time: test.end_time,
+                presale: test.presale.clone(),
+            };
+
+            let res = execute(deps.as_mut(), env.clone(), info, msg);
+            assert_eq!(res, test.expected_res);
+
+            if res.is_ok() {
+                for order in &test.presale.unwrap() {
+                    let order_amount: u128 = order.amount.into();
+                    assert_eq!(
+                        TIER_ORDERS
+                            .load(&deps.storage, (mock_orderer.clone(), order.level.into()))
+                            .unwrap(),
+                        order_amount
+                    );
+                    let cur_limit = TIERS.load(&deps.storage, order.level.into()).unwrap().limit;
+                    if cur_limit.is_some() {
+                        assert_eq!(
+                            TIERS
+                                .load(&deps.storage, order.level.into())
+                                .unwrap()
+                                .limit
+                                .unwrap()
+                                .u128(),
+                            MOCK_DEFAULT_LIMIT - order_amount
+                        );
+                    }
+                }
+            }
         }
-    );
-}
-
-#[test]
-fn test_start_campaign_invalid_end_time() {
-    let mut deps = mock_dependencies_custom(&[]);
-
-    let _ = init(deps.as_mut(), None);
-
-    let env = mock_env();
-
-    let msg = ExecuteMsg::StartCampaign {
-        start_time: None,
-        end_time: MillisecondsExpiration::from_seconds(env.block.time.seconds() - 100),
-        presale: None,
-    };
-
-    let info = mock_info("owner", &[]);
-    let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
-
-    assert_eq!(err, ContractError::StartTimeAfterEndTime {});
-}
-
-#[test]
-fn test_start_campaign_invalid_start_time() {
-    let mut deps = mock_dependencies_custom(&[]);
-
-    let _ = init(deps.as_mut(), None);
-
-    let env = mock_env();
-
-    let msg = ExecuteMsg::StartCampaign {
-        start_time: Some(MillisecondsExpiration::from_seconds(
-            env.block.time.seconds() + 1000,
-        )),
-        end_time: MillisecondsExpiration::from_seconds(env.block.time.seconds() + 500),
-        presale: None,
-    };
-
-    let info = mock_info("owner", &[]);
-    let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
-
-    assert_eq!(err, ContractError::StartTimeAfterEndTime {});
+    }
 }
 
 // #[test]
