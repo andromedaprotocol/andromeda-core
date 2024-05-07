@@ -25,15 +25,14 @@ use andromeda_std::{
     common::{encode_binary, rates::get_tax_amount, Funds},
     error::ContractError,
 };
-use cw20::{Cw20Coin, Cw20ExecuteMsg, Cw20ReceiveMsg};
+use cw20::{Cw20Coin, Cw20ReceiveMsg};
 use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, Cw721ReceiveMsg, OwnerOfResponse};
 
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, coin, coins, ensure, from_json, has_coins, wasm_execute, Addr, BankMsg, Binary, Coin,
-    CosmosMsg, Deps, DepsMut, Env, MessageInfo, QuerierWrapper, QueryRequest, Response, Storage,
-    SubMsg, Uint128, WasmMsg, WasmQuery,
+    attr, coin, ensure, from_json, Addr, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
+    QuerierWrapper, QueryRequest, Response, Storage, SubMsg, Uint128, WasmMsg, WasmQuery,
 };
 
 use cw_utils::{nonpayable, Expiration};
@@ -410,10 +409,23 @@ fn execute_buy(
     TOKEN_SALE_STATE.save(deps.storage, key, &token_sale_state)?;
 
     // Calculate the funds to be received after tax
-    let (after_tax_payment, tax_messages) =
-        purchase_token(deps.as_ref(), &info, None, token_sale_state.clone(), action)?;
+    let (after_tax_payment, tax_messages) = purchase_token(
+        deps.as_ref(),
+        &info,
+        None,
+        token_sale_state.clone(),
+        action.clone(),
+    )?;
+    let recipient = token_sale_state
+        .recipient
+        .unwrap_or(Recipient::from_string(token_sale_state.owner));
+
     let mut resp = Response::new()
-        .add_submessages(tax_messages)
+        // Send payment to recipient
+        .add_submessage(
+            recipient
+                .generate_direct_msg(&deps.as_ref(), vec![after_tax_payment.try_get_coin()?])?,
+        )
         // Send NFT to buyer.
         .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: token_sale_state.token_address.clone(),
@@ -431,13 +443,7 @@ fn execute_buy(
     match after_tax_payment {
         Funds::Native(native_after_tax_payment) => {
             if !native_after_tax_payment.amount.is_zero() {
-                let recipient = token_sale_state
-                    .recipient
-                    .unwrap_or(Recipient::from_string(token_sale_state.owner));
-                resp = resp.add_submessage(
-                    recipient
-                        .generate_direct_msg(&deps.as_ref(), vec![native_after_tax_payment])?,
-                )
+                resp = resp.add_submessages(tax_messages)
             }
         }
         // Return an error?
@@ -546,7 +552,15 @@ fn execute_buy_cw20(
         action,
     )?;
 
+    let recipient = token_sale_state
+        .recipient
+        .unwrap_or(Recipient::from_string(token_sale_state.owner));
+
     let mut resp: Response = Response::new()
+        // Send payment to recipient
+        .add_submessage(
+            recipient.generate_msg_cw20(&deps.as_ref(), after_tax_payment.try_get_cw20_coin()?)?,
+        )
         // Send NFT to buyer.
         .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: token_sale_state.token_address.clone(),
@@ -629,17 +643,17 @@ fn purchase_token(
     state: TokenSaleState,
     action: String,
 ) -> Result<(Funds, Vec<SubMsg>), ContractError> {
-    let mut total_tax_amount = Uint128::zero();
-
     // Handle cw20 case
     if let Some(amount_sent) = amount_sent {
         let total_cost = Cw20Coin {
             address: state.coin_denom.clone(),
             amount: state.price,
         };
-        let rates_response =
-            ADOContract::default().query_deducted_funds(deps, action, Funds::Cw20(total_cost))?;
-
+        let rates_response = ADOContract::default().query_deducted_funds(
+            deps,
+            action.clone(),
+            Funds::Cw20(total_cost),
+        )?;
         match rates_response {
             Some(rates_response) => {
                 let remaining_amount = rates_response.leftover_funds.try_get_cw20_coin()?;
@@ -649,13 +663,9 @@ fn purchase_token(
 
                 let total_required_payment = remaining_amount.amount.checked_add(tax_amount)?;
 
-                println!(
-                    "the total required payment is: {}, and the amount sent is {}. The tax amount is: {}",
-                    total_required_payment, amount_sent,tax_amount
-                );
                 // Check that enough funds were sent to cover the required payment
                 ensure!(
-                    amount_sent.ge(&total_required_payment),
+                    amount_sent.eq(&total_required_payment),
                     ContractError::InvalidFunds {
                         msg: format!(
                             "Invalid funds provided, expected: {}, received: {}",
@@ -699,7 +709,7 @@ fn purchase_token(
                 // Check that enough funds were sent to cover the required payment
                 let amount_sent = info.funds[0].amount.u128();
                 ensure!(
-                    amount_sent.ge(&total_required_payment.u128()),
+                    amount_sent.eq(&total_required_payment.u128()),
                     ContractError::InvalidFunds {
                         msg: format!(
                             "Invalid funds provided, expected: {}, received: {}",

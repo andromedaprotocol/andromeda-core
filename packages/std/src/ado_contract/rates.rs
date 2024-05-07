@@ -100,6 +100,7 @@ impl<'a> ADOContract<'a> {
         let rate = self.rates.may_load(deps.storage, &action)?;
         match rate {
             Some(rate) => {
+                println!("the rate is : {:?}", rate);
                 let (coin, is_native): (Coin, bool) = match funds {
                     Funds::Native(coin) => {
                         ensure!(
@@ -131,7 +132,6 @@ impl<'a> ADOContract<'a> {
                         // Query rates contract
                         let addr = rates_address.get_raw_address(&deps)?;
                         let rate = AOSQuerier::get_rate(&deps.querier, &addr, &action)?;
-
                         rate.generate_response(deps, coin.clone(), is_native)?
                     }
                 };
