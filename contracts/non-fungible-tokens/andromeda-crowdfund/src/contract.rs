@@ -14,8 +14,7 @@ use andromeda_std::{
     amp::{messages::AMPPkt, recipient::Recipient, AndrAddr},
     common::{
         actions::call_action,
-        expiration::{expiration_from_milliseconds, get_and_validate_start_time},
-        MillisecondsExpiration,
+        expiration::{expiration_from_milliseconds, get_and_validate_start_time, Expiry},
     },
 };
 use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
@@ -289,8 +288,8 @@ fn execute_update_token_contract(
 #[allow(clippy::too_many_arguments)]
 fn execute_start_sale(
     ctx: ExecuteContext,
-    start_time: Option<MillisecondsExpiration>,
-    end_time: MillisecondsExpiration,
+    start_time: Option<Expiry>,
+    end_time: Expiry,
     price: Coin,
     min_tokens_sold: Uint128,
     max_amount_per_wallet: Option<u32>,
@@ -313,7 +312,7 @@ fn execute_start_sale(
     // If start time wasn't provided, it will be set as the current_time
     let (start_expiration, _current_time) = get_and_validate_start_time(&env, start_time)?;
 
-    let end_expiration = expiration_from_milliseconds(end_time)?;
+    let end_expiration = expiration_from_milliseconds(end_time.get_time(&env.block))?;
 
     ensure!(
         end_expiration > start_expiration,

@@ -5,7 +5,7 @@ use andromeda_fungible_tokens::lockdrop::{Cw20HookMsg, ExecuteMsg, InstantiateMs
 use andromeda_std::{
     ado_base::modules::Module,
     amp::AndrAddr,
-    common::{MillisecondsDuration, MillisecondsExpiration},
+    common::{expiration::Expiry, MillisecondsDuration},
 };
 use cosmwasm_std::{Empty, Uint128};
 use cw_multi_test::{Contract, ContractWrapper};
@@ -17,7 +17,7 @@ pub fn mock_andromeda_lockdrop() -> Box<dyn Contract<Empty>> {
 
 #[allow(clippy::too_many_arguments)]
 pub fn mock_lockdrop_instantiate_msg(
-    init_timestamp: MillisecondsExpiration,
+    init_timestamp: Expiry,
     deposit_window: MillisecondsDuration,
     withdrawal_window: MillisecondsDuration,
     incentive_token: AndrAddr,

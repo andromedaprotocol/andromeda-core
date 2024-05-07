@@ -2,12 +2,14 @@ use cosmwasm_std::{Addr, OverflowError, StdError};
 use cw20_base::ContractError as Cw20ContractError;
 use cw721_base::ContractError as Cw721ContractError;
 use cw_asset::AssetError;
-use cw_utils::{Expiration, ParseReplyError, PaymentError};
+use cw_utils::{ParseReplyError, PaymentError};
 use hex::FromHexError;
 use std::convert::From;
 use std::str::{ParseBoolError, Utf8Error};
 use std::string::FromUtf8Error;
 use thiserror::Error;
+
+use crate::common::Milliseconds;
 
 #[derive(Error, Debug, PartialEq)]
 pub enum ContractError {
@@ -542,10 +544,10 @@ pub enum ContractError {
     InvalidWithdrawal { msg: Option<String> },
 
     #[error("Airdrop stage {stage} expired at {expiration}")]
-    StageExpired { stage: u8, expiration: Expiration },
+    StageExpired { stage: u8, expiration: Milliseconds },
 
     #[error("Airdrop stage {stage} not expired yet")]
-    StageNotExpired { stage: u8, expiration: Expiration },
+    StageNotExpired { stage: u8, expiration: Milliseconds },
 
     #[error("Wrong Length")]
     WrongLength {},

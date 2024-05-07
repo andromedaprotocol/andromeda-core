@@ -10,7 +10,7 @@ use andromeda_std::{
     error::ContractError,
 };
 use cosmwasm_std::{
-    attr, entry_point, Attribute, Decimal, Decimal256, Order, QuerierWrapper, Uint256,
+    attr, entry_point, Attribute, BlockInfo, Decimal, Decimal256, Order, QuerierWrapper, Uint256,
 };
 use cosmwasm_std::{
     ensure, from_json, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response, Storage,
@@ -165,6 +165,7 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
         ExecuteMsg::UpdateGlobalIndexes { asset_infos } => match asset_infos {
             None => update_global_indexes(
                 ctx.deps.storage,
+                &ctx.env.block,
                 &ctx.deps.querier,
                 Milliseconds::from_seconds(ctx.env.block.time.seconds()),
                 ctx.env.contract.address,
@@ -177,6 +178,7 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
                     .collect();
                 update_global_indexes(
                     ctx.deps.storage,
+                    &ctx.env.block,
                     &ctx.deps.querier,
                     Milliseconds::from_seconds(ctx.env.block.time.seconds()),
                     ctx.env.contract.address,
@@ -211,6 +213,7 @@ fn receive_cw20(ctx: ExecuteContext, msg: Cw20ReceiveMsg) -> Result<Response, Co
         }
         Cw20HookMsg::UpdateGlobalIndex {} => update_global_indexes(
             deps.storage,
+            &env.block,
             &deps.querier,
             Milliseconds::from_seconds(env.block.time.seconds()),
             env.contract.address,
@@ -268,6 +271,7 @@ fn execute_add_reward_token(
 
     let state = STATE.load(deps.storage)?;
     update_global_index(
+        &env.block,
         &deps.querier,
         Milliseconds::from_seconds(env.block.time.seconds()),
         env.contract.address,
@@ -303,6 +307,7 @@ fn execute_remove_reward_token(
             // This is important in case the reward token is allocated token
             let state = STATE.load(deps.storage)?;
             update_global_index(
+                &env.block,
                 &deps.querier,
                 Milliseconds::from_seconds(env.block.time.seconds()),
                 env.contract.address,
@@ -383,6 +388,7 @@ fn execute_replace_reward_token(
             // This is important in case the reward token is allocated token
             let state = STATE.load(deps.storage)?;
             update_global_index(
+                &env.block,
                 &deps.querier,
                 Milliseconds::from_seconds(env.block.time.seconds()),
                 env.contract.address.clone(),
@@ -406,6 +412,7 @@ fn execute_replace_reward_token(
 
     let state = STATE.load(deps.storage)?;
     update_global_index(
+        &env.block,
         &deps.querier,
         Milliseconds::from_seconds(env.block.time.seconds()),
         env.contract.address,
@@ -445,6 +452,7 @@ fn execute_stake_tokens(
     // Update indexes, important for allocated rewards.
     update_global_indexes(
         deps.storage,
+        &env.block,
         &deps.querier,
         Milliseconds::from_seconds(env.block.time.seconds()),
         env.contract.address.clone(),
@@ -499,6 +507,7 @@ fn execute_unstake_tokens(
         // Update indexes, important for allocated rewards.
         update_global_indexes(
             deps.storage,
+            &env.block,
             &deps.querier,
             Milliseconds::from_seconds(env.block.time.seconds()),
             env.contract.address,
@@ -555,6 +564,7 @@ fn execute_claim_rewards(ctx: ExecuteContext) -> Result<Response, ContractError>
         // Update indexes, important for allocated rewards.
         update_global_indexes(
             deps.storage,
+            &env.block,
             &deps.querier,
             Milliseconds::from_seconds(env.block.time.seconds()),
             env.contract.address.clone(),
@@ -632,6 +642,7 @@ fn execute_claim_rewards(ctx: ExecuteContext) -> Result<Response, ContractError>
 
 fn update_global_indexes(
     storage: &mut dyn Storage,
+    block_info: &BlockInfo,
     querier: &QuerierWrapper,
     current_timestamp: Milliseconds,
     contract_address: Addr,
@@ -658,6 +669,7 @@ fn update_global_indexes(
             }
             Some(mut reward_token) => {
                 update_global_index(
+                    block_info,
                     querier,
                     current_timestamp,
                     contract_address.clone(),
@@ -675,6 +687,7 @@ fn update_global_indexes(
 }
 
 fn update_global_index(
+    block_info: &BlockInfo,
     querier: &QuerierWrapper,
     current_timestamp: Milliseconds,
     contract_address: Addr,
@@ -707,6 +720,7 @@ fn update_global_index(
             init_timestamp,
         } => {
             update_allocated_index(
+                block_info,
                 state.total_share,
                 reward_token,
                 allocation_config.clone(),
@@ -862,6 +876,7 @@ pub(crate) fn get_pending_rewards(
             .may_load(storage, (address, &token_string))?
             .unwrap_or_default();
         update_global_index(
+            &env.block,
             querier,
             current_timestamp,
             env.contract.address.to_owned(),

@@ -1,10 +1,15 @@
 pub mod economics_msg;
 // pub mod reply;
 // pub mod testing;
+#[cfg(not(target_arch = "wasm32"))]
 pub mod adodb;
+#[cfg(not(target_arch = "wasm32"))]
 pub mod economics;
+#[cfg(not(target_arch = "wasm32"))]
 pub mod kernel;
+#[cfg(not(target_arch = "wasm32"))]
 pub mod mock_builder;
+#[cfg(not(target_arch = "wasm32"))]
 pub mod vfs;
 
 #[cfg(not(target_arch = "wasm32"))]
