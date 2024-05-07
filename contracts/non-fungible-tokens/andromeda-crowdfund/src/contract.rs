@@ -161,6 +161,7 @@ fn execute_add_tier(ctx: ExecuteContext, tier: Tier) -> Result<Response, Contrac
     let mut resp = Response::new()
         .add_attribute("action", "add_tier")
         .add_attribute("level", tier.level)
+        .add_attribute("label", tier.label)
         .add_attribute("price", tier.price);
 
     if let Some(limit) = tier.limit {
@@ -195,6 +196,7 @@ fn execute_update_tier(ctx: ExecuteContext, tier: Tier) -> Result<Response, Cont
     let mut resp = Response::new()
         .add_attribute("action", "update_tier")
         .add_attribute("level", tier.level)
+        .add_attribute("label", tier.label)
         .add_attribute("price", tier.price);
 
     if let Some(limit) = tier.limit {

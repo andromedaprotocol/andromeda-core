@@ -37,6 +37,7 @@ pub fn mock_campaign_tiers() -> Vec<Tier> {
     vec![
         Tier {
             level: Uint64::zero(),
+            label: "Basic Tier".to_string(),
             limit: None,
             price: Uint128::new(10u128),
             meta_data: TierMetaData {
@@ -48,6 +49,7 @@ pub fn mock_campaign_tiers() -> Vec<Tier> {
         },
         Tier {
             level: Uint64::new(1u64),
+            label: "Tier 1".to_string(),
             limit: Some(Uint128::new(1000u128)),
             price: Uint128::new(10u128),
             meta_data: TierMetaData {

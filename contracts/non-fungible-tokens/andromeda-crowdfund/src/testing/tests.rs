@@ -71,6 +71,7 @@ fn test_instantiate_invalid_tiers() {
     let mut tiers = mock_campaign_tiers();
     tiers.push(Tier {
         level: Uint64::new(1u64),
+        label: "Tier 1".to_string(),
         limit: Some(Uint128::new(100)),
         price: Uint128::zero(),
         meta_data: TierMetaData {
@@ -113,6 +114,7 @@ fn test_add_tier() {
 
     let tier_to_add = Tier {
         level: Uint64::new(2u64),
+        label: "Tier 2".to_string(),
         limit: Some(Uint128::new(100)),
         price: Uint128::new(100),
         meta_data: TierMetaData {
@@ -136,9 +138,10 @@ fn test_add_tier() {
         res,
         Response::new()
             .add_attribute("action", "add_tier")
-            .add_attribute("level", "2")
-            .add_attribute("price", "100")
-            .add_attribute("limit", "100")
+            .add_attribute("level", tier_to_add.level.to_string())
+            .add_attribute("label", tier_to_add.label.clone())
+            .add_attribute("price", tier_to_add.price.to_string())
+            .add_attribute("limit", tier_to_add.limit.unwrap().to_string())
             // Economics message
             .add_submessage(SubMsg::reply_on_error(
                 CosmosMsg::Wasm(WasmMsg::Execute {
@@ -171,7 +174,8 @@ fn test_add_tier_unauthorized() {
 
     let msg = ExecuteMsg::AddTier {
         tier: Tier {
-            level: Uint64::new(1u64),
+            level: Uint64::new(2u64),
+            label: "Tier 2".to_string(),
             limit: Some(Uint128::new(100)),
             price: Uint128::new(100),
             meta_data: TierMetaData {
@@ -196,7 +200,8 @@ fn test_add_tier_zero_price() {
 
     let msg = ExecuteMsg::AddTier {
         tier: Tier {
-            level: Uint64::new(1u64),
+            level: Uint64::new(2u64),
+            label: "Tier 2".to_string(),
             limit: Some(Uint128::new(100)),
             price: Uint128::zero(),
             meta_data: TierMetaData {
@@ -228,6 +233,7 @@ fn test_add_tier_duplicated() {
     let msg = ExecuteMsg::AddTier {
         tier: Tier {
             level: Uint64::zero(),
+            label: "Duplicated Tier".to_string(),
             limit: Some(Uint128::new(100u128)),
             price: Uint128::new(100u128),
             meta_data: TierMetaData {
@@ -258,6 +264,7 @@ fn test_update_tier() {
 
     let updated_tier = Tier {
         level: Uint64::zero(),
+        label: "Tier 0".to_string(),
         limit: Some(Uint128::new(100)),
         price: Uint128::new(100),
         meta_data: TierMetaData {
@@ -282,13 +289,15 @@ fn test_update_tier() {
 
     let info = mock_info("owner", &[]);
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
     assert_eq!(
         res,
         Response::new()
             .add_attribute("action", "update_tier")
-            .add_attribute("level", "0")
-            .add_attribute("price", "100")
-            .add_attribute("limit", "100")
+            .add_attribute("level", updated_tier.level.to_string())
+            .add_attribute("label", updated_tier.label.clone())
+            .add_attribute("price", updated_tier.price.to_string())
+            .add_attribute("limit", updated_tier.limit.unwrap().to_string())
             // Economics message
             .add_submessage(SubMsg::reply_on_error(
                 CosmosMsg::Wasm(WasmMsg::Execute {
@@ -322,6 +331,7 @@ fn test_update_tier_unauthorized() {
     let msg = ExecuteMsg::UpdateTier {
         tier: Tier {
             level: Uint64::zero(),
+            label: "Tier 0".to_string(),
             limit: Some(Uint128::new(100)),
             price: Uint128::new(100),
             meta_data: TierMetaData {
@@ -347,6 +357,7 @@ fn test_update_tier_zero_price() {
     let msg = ExecuteMsg::UpdateTier {
         tier: Tier {
             level: Uint64::zero(),
+            label: "Tier 0".to_string(),
             limit: Some(Uint128::new(100)),
             price: Uint128::zero(),
             meta_data: TierMetaData {
@@ -378,6 +389,7 @@ fn test_update_tier_non_exist() {
     let msg = ExecuteMsg::UpdateTier {
         tier: Tier {
             level: Uint64::new(2u64),
+            label: "Tier 2".to_string(),
             limit: Some(Uint128::new(100u128)),
             price: Uint128::new(100u128),
             meta_data: TierMetaData {
@@ -421,7 +433,7 @@ fn test_remove_tier() {
         res,
         Response::new()
             .add_attribute("action", "remove_tier")
-            .add_attribute("level", "0")
+            .add_attribute("level", level_to_remove.to_string())
             // Economics message
             .add_submessage(SubMsg::reply_on_error(
                 CosmosMsg::Wasm(WasmMsg::Execute {

@@ -120,8 +120,8 @@ impl ToString for CampaignStage {
 
 #[cw_serde]
 pub struct Tier {
-    // TODO change to use string
     pub level: Uint64,
+    pub label: String,
     pub price: Uint128,
     pub limit: Option<Uint128>, // None for no limit
     pub meta_data: TierMetaData,
@@ -143,6 +143,14 @@ impl Tier {
                 msg: "Price can not be zero".to_string()
             }
         );
+        ensure!(
+            !self.label.is_empty() && self.label.len() <= 64,
+            ContractError::InvalidTier {
+                operation: "all".to_string(),
+                msg: "Label should be no-empty and its length can be 64 at maximum".to_string()
+            }
+        );
+
         Ok(())
     }
 }
