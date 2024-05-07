@@ -53,6 +53,14 @@ impl Funds {
             }),
         }
     }
+    pub fn try_get_cw20_coin(&self) -> Result<Cw20Coin, ContractError> {
+        match self {
+            Funds::Cw20(cw20_coin) => Ok(cw20_coin.clone()),
+            Funds::Native(_) => Err(ContractError::ParsingError {
+                err: "Native funds were sent while CW20 funds were expected".to_string(),
+            }),
+        }
+    }
 }
 
 /// Merges bank messages to the same recipient to a single bank message. Any sub messages

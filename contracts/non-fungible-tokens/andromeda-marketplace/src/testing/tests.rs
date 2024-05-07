@@ -1,3 +1,5 @@
+use std::vec;
+
 use andromeda_non_fungible_tokens::marketplace::{
     Cw20HookMsg, Cw721HookMsg, ExecuteMsg, InstantiateMsg, Status,
 };
@@ -677,7 +679,12 @@ fn test_execute_buy_with_tax_and_royalty_insufficient_funds() {
     env.block.time = env.block.time.plus_seconds(1);
     let info = mock_info("someone", &coins(100, "uusd".to_string()));
     let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
-    assert!(matches!(err, ContractError::InvalidFunds { .. }));
+    assert_eq!(
+        err,
+        ContractError::InvalidFunds {
+            msg: "Invalid funds provided, expected: 150, received: 100".to_string()
+        }
+    );
 }
 
 #[test]
@@ -700,6 +707,24 @@ fn test_execute_buy_with_tax_and_royalty_insufficient_funds_cw20() {
         uses_cw20,
     );
 
+    let rate = Rate::Local(LocalRate {
+        rate_type: LocalRateType::Additive,
+        recipients: vec![Recipient {
+            address: AndrAddr::from_string("tax_recipient".to_string()),
+            msg: None,
+            ibc_recovery_address: None,
+        }],
+        value: LocalRateValue::Percent(PercentRate {
+            percent: Decimal::percent(50),
+        }),
+        description: None,
+    });
+
+    // Set rates
+    ADOContract::default()
+        .set_rates(deps.as_mut().storage, "MarketplaceBuy", rate)
+        .unwrap();
+
     let hook_msg = Cw20HookMsg::Buy {
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
         token_address: MOCK_TOKEN_ADDR.to_string(),
@@ -716,7 +741,12 @@ fn test_execute_buy_with_tax_and_royalty_insufficient_funds_cw20() {
     // Add one second so that the start_time expires
     env.block.time = env.block.time.plus_seconds(1);
     let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
-    assert!(matches!(err, ContractError::InvalidFunds { .. }));
+    assert_eq!(
+        err,
+        ContractError::InvalidFunds {
+            msg: "Invalid funds provided, expected: 150, received: 100".to_string()
+        }
+    );
 }
 
 #[test]
@@ -735,7 +765,7 @@ fn execute_buy_with_tax_and_royalty_too_many_funds() {
     // Add one second so that the start_time expires
     env.block.time = env.block.time.plus_seconds(1);
 
-    let info = mock_info("someone", &coins(200, "uusd".to_string()));
+    let info = mock_info("someone", &[coin(200, "uusd"), coin(100, "uandr")]);
     let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
     assert!(matches!(err, ContractError::InvalidFunds { .. }));
 }
@@ -791,10 +821,6 @@ fn test_execute_buy_with_tax_and_royalty_works() {
         //     to_address: "owner".to_string(),
         //     amount: vec![coin(90, "uusd")],
         // })),
-        SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-            to_address: "owner".to_string(),
-            amount: vec![coin(100, "uusd")],
-        })),
         SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: MOCK_TOKEN_ADDR.to_string(),
             msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
@@ -806,7 +832,7 @@ fn test_execute_buy_with_tax_and_royalty_works() {
         })),
         SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
             to_address: "owner".to_string(),
-            amount: vec![coin(90, "uusd")],
+            amount: vec![coin(100, "uusd")],
         })),
         SubMsg::reply_on_error(
             CosmosMsg::Wasm(WasmMsg::Execute {

@@ -18,6 +18,7 @@ use andromeda_std::common::denom::{Asset, SEND_CW20_ACTION};
 use andromeda_std::common::expiration::{
     expiration_from_milliseconds, get_and_validate_start_time, Expiry,
 };
+use andromeda_std::common::rates::get_tax_amount_cw20;
 use andromeda_std::common::{Milliseconds, MillisecondsDuration};
 use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
@@ -30,9 +31,9 @@ use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, Cw721ReceiveMsg, OwnerOfResponse};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, coin, ensure, from_json, has_coins, wasm_execute, Addr, BankMsg, Binary, Coin, CosmosMsg,
-    Deps, DepsMut, Env, MessageInfo, QuerierWrapper, QueryRequest, Response, Storage, SubMsg,
-    Uint128, WasmMsg, WasmQuery,
+    attr, coin, coins, ensure, from_json, has_coins, wasm_execute, Addr, BankMsg, Binary, Coin,
+    CosmosMsg, Deps, DepsMut, Env, MessageInfo, QuerierWrapper, QueryRequest, Response, Storage,
+    SubMsg, Uint128, WasmMsg, WasmQuery,
 };
 
 use cw_utils::{nonpayable, Expiration};
@@ -194,7 +195,7 @@ pub fn handle_receive_cw20(
             amount_sent,
             asset_sent,
             &sender,
-            "MartketplaceBuy".to_string(),
+            "MarketplaceBuy".to_string(),
         ),
     }
 }
@@ -324,10 +325,7 @@ fn execute_buy(
     action: String,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
-        mut deps,
-        info,
-        env,
-        ..
+        deps, info, env, ..
     } = ctx;
 
     let mut token_sale_state =
@@ -398,40 +396,24 @@ fn execute_buy(
         }
     );
 
+    let price = token_sale_state.price;
+    ensure!(
+        payment.amount >= price,
+        ContractError::InvalidFunds {
+            msg: format!("The funds sent don't match the price {price}"),
+        }
+    );
+
     // Change sale status from Open to Executed
     token_sale_state.status = Status::Executed;
 
     TOKEN_SALE_STATE.save(deps.storage, key, &token_sale_state)?;
 
     // Calculate the funds to be received after tax
-    let after_tax_payment = purchase_token(&mut deps, &info, token_sale_state.clone(), action)?;
-
-    let mut resp = Response::new();
-
-    match after_tax_payment.clone() {
-        Some(after_tax_payment) => {
-            resp = resp
-                .add_submessages(after_tax_payment.1)
-                // Send funds to the original owner.
-                .add_message(CosmosMsg::Bank(BankMsg::Send {
-                    to_address: token_sale_state.owner.clone(),
-                    amount: vec![after_tax_payment.0],
-                }))
-        }
-        None => {
-            let after_tax_payment = Coin::new(
-                token_sale_state.price.u128(),
-                token_sale_state.coin_denom.clone(),
-            );
-            // Send funds to the original owner.
-            resp = resp.add_message(CosmosMsg::Bank(BankMsg::Send {
-                to_address: token_sale_state.clone().owner,
-                amount: vec![after_tax_payment],
-            }))
-        }
-    }
-
-    resp = resp
+    let (after_tax_payment, tax_messages) =
+        purchase_token(deps.as_ref(), &info, None, token_sale_state.clone(), action)?;
+    let mut resp = Response::new()
+        .add_submessages(tax_messages)
         // Send NFT to buyer.
         .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: token_sale_state.token_address.clone(),
@@ -446,23 +428,21 @@ fn execute_buy(
         .add_attribute("token_contract", token_sale_state.token_address)
         .add_attribute("recipient", info.sender.to_string())
         .add_attribute("sale_id", token_sale_state.sale_id);
-
-    if !after_tax_payment
-        .clone()
-        .unwrap_or((Coin::default(), vec![]))
-        .0
-        .amount
-        .is_zero()
-    {
-        let recipient = token_sale_state
-            .recipient
-            .unwrap_or(Recipient::from_string(token_sale_state.owner));
-        resp = resp.add_submessage(recipient.generate_direct_msg(
-            &deps.as_ref(),
-            vec![after_tax_payment.unwrap_or((Coin::default(), vec![])).0],
-        )?)
+    match after_tax_payment {
+        Funds::Native(native_after_tax_payment) => {
+            if !native_after_tax_payment.amount.is_zero() {
+                let recipient = token_sale_state
+                    .recipient
+                    .unwrap_or(Recipient::from_string(token_sale_state.owner));
+                resp = resp.add_submessage(
+                    recipient
+                        .generate_direct_msg(&deps.as_ref(), vec![native_after_tax_payment])?,
+                )
+            }
+        }
+        // Return an error?
+        Funds::Cw20(_) => {}
     }
-
     Ok(resp)
 }
 
@@ -477,10 +457,7 @@ fn execute_buy_cw20(
     action: String,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
-        mut deps,
-        info,
-        env,
-        ..
+        deps, info, env, ..
     } = ctx;
 
     let mut token_sale_state =
@@ -561,8 +538,15 @@ fn execute_buy_cw20(
     TOKEN_SALE_STATE.save(deps.storage, key, &token_sale_state)?;
 
     // Calculate the funds to be received after tax
-    let after_tax_payment = purchase_token(&mut deps, &info, token_sale_state.clone(), action)?;
-    let resp: Response = Response::new()
+    let (after_tax_payment, tax_messages) = purchase_token(
+        deps.as_ref(),
+        &info,
+        Some(amount_sent),
+        token_sale_state.clone(),
+        action,
+    )?;
+
+    let mut resp: Response = Response::new()
         // Send NFT to buyer.
         .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: token_sale_state.token_address.clone(),
@@ -578,65 +562,16 @@ fn execute_buy_cw20(
         .add_attribute("recipient", sender.to_string())
         .add_attribute("sale_id", token_sale_state.sale_id);
 
-    if after_tax_payment
-        .clone()
-        .unwrap_or((Coin::default(), vec![]))
-        .0
-        .amount
-        > Uint128::zero()
-    {
-        let recipient = token_sale_state
-            .recipient
-            .unwrap_or(Recipient::from_string(token_sale_state.owner));
-
-        let cw20_msg = recipient.generate_msg_cw20(
-            &deps.as_ref(),
-            Cw20Coin {
-                address: sale_currency.clone(),
-                amount: after_tax_payment
-                    .clone()
-                    .unwrap_or((Coin::default(), vec![]))
-                    .0
-                    .amount,
-            },
-        )?;
-
-        // After tax payment is returned in Native, we need to change it to cw20
-        let (tax_recipient, tax_amount) = match after_tax_payment
-            .unwrap_or((Coin::default(), vec![]))
-            .1
-            .first()
-            .map(|msg| {
-                if let CosmosMsg::Bank(BankMsg::Send { to_address, amount }) = &msg.msg {
-                    (
-                        Some(to_address.clone()),
-                        amount.first().map(|coin| coin.amount),
-                    )
-                } else {
-                    (None, None)
-                }
-            }) {
-            Some((tax_recipient, tax_amount)) => (tax_recipient, tax_amount),
-            None => (None, None),
-        };
-
-        match (tax_recipient, tax_amount) {
-            (Some(recipient), Some(amount)) => {
-                let tax_transfer_msg = Cw20ExecuteMsg::Transfer { recipient, amount };
-                let tax_payment_msg = wasm_execute(sale_currency, &tax_transfer_msg, vec![])?;
-                Ok(resp
-                    // Send funds to the original owner.
-                    .add_submessage(cw20_msg)
-                    // Add tax message in case there's a tax recipient and amount
-                    .add_message(tax_payment_msg))
+    match after_tax_payment {
+        Funds::Cw20(cw20_after_tax_payment) => {
+            if cw20_after_tax_payment.clone().amount > Uint128::zero() {
+                resp = resp.add_submessages(tax_messages);
             }
-            _ => Ok(resp
-                // Send funds to the original owner.
-                .add_submessage(cw20_msg)),
         }
-    } else {
-        Ok(resp)
+        Funds::Native(_) => {}
     }
+
+    Ok(resp)
 }
 
 fn execute_cancel(
@@ -688,49 +623,146 @@ fn execute_cancel(
 }
 
 fn purchase_token(
-    deps: &mut DepsMut,
+    deps: Deps,
     info: &MessageInfo,
+    amount_sent: Option<Uint128>,
     state: TokenSaleState,
     action: String,
-) -> Result<Option<(Coin, Vec<SubMsg>)>, ContractError> {
-    let total_cost = Coin::new(state.price.u128(), state.coin_denom.clone());
-
+) -> Result<(Funds, Vec<SubMsg>), ContractError> {
     let mut total_tax_amount = Uint128::zero();
 
-    let transfer_response = ADOContract::default().query_deducted_funds(
-        deps.as_ref(),
-        action,
-        Funds::Native(total_cost),
-    )?;
-    match transfer_response {
-        Some(transfer_response) => {
-            let remaining_amount = transfer_response.leftover_funds.try_get_coin()?;
+    // Handle cw20 case
+    if let Some(amount_sent) = amount_sent {
+        let total_cost = Cw20Coin {
+            address: state.coin_denom.clone(),
+            amount: state.price,
+        };
+        let rates_response =
+            ADOContract::default().query_deducted_funds(deps, action, Funds::Cw20(total_cost))?;
 
-            let tax_amount = get_tax_amount(
-                &transfer_response.msgs,
-                state.price,
-                remaining_amount.amount,
-            );
+        match rates_response {
+            Some(rates_response) => {
+                let remaining_amount = rates_response.leftover_funds.try_get_cw20_coin()?;
 
-            // Calculate total tax
-            total_tax_amount += tax_amount;
+                let tax_amount =
+                    get_tax_amount_cw20(&rates_response.msgs, state.price, remaining_amount.amount);
 
-            let required_payment = Coin {
-                denom: state.coin_denom.clone(),
-                amount: state.price + total_tax_amount,
-            };
-            ensure!(
-                has_coins(&info.funds, &required_payment),
-                ContractError::InsufficientFunds {}
-            );
+                let total_required_payment = remaining_amount.amount.checked_add(tax_amount)?;
 
-            let after_tax_payment = Coin {
-                denom: state.coin_denom,
-                amount: remaining_amount.amount,
-            };
-            Ok(Some((after_tax_payment, transfer_response.msgs)))
+                println!(
+                    "the total required payment is: {}, and the amount sent is {}. The tax amount is: {}",
+                    total_required_payment, amount_sent,tax_amount
+                );
+                // Check that enough funds were sent to cover the required payment
+                ensure!(
+                    amount_sent.ge(&total_required_payment),
+                    ContractError::InvalidFunds {
+                        msg: format!(
+                            "Invalid funds provided, expected: {}, received: {}",
+                            total_required_payment, amount_sent
+                        )
+                    }
+                );
+                let after_tax_payment = Cw20Coin {
+                    address: state.clone().coin_denom,
+                    amount: remaining_amount.amount,
+                };
+                Ok((Funds::Cw20(after_tax_payment), rates_response.msgs))
+            }
+            // No rates response means that there's no tax
+            None => {
+                let payment = Cw20Coin {
+                    address: state.coin_denom,
+                    amount: state.price,
+                };
+
+                Ok((Funds::Cw20(payment), vec![]))
+            }
         }
-        None => Ok(None),
+        // Handle native funds case
+    } else {
+        let total_cost = Coin::new(state.price.u128(), state.coin_denom.clone());
+        let rates_response = ADOContract::default().query_deducted_funds(
+            deps,
+            action,
+            Funds::Native(total_cost.clone()),
+        )?;
+        match rates_response {
+            Some(rates_response) => {
+                let remaining_amount = rates_response.leftover_funds.try_get_coin()?;
+
+                let tax_amount =
+                    get_tax_amount(&rates_response.msgs, state.price, remaining_amount.amount);
+
+                let total_required_payment = remaining_amount.amount.checked_add(tax_amount)?;
+
+                // Check that enough funds were sent to cover the required payment
+                let amount_sent = info.funds[0].amount.u128();
+                ensure!(
+                    amount_sent.ge(&total_required_payment.u128()),
+                    ContractError::InvalidFunds {
+                        msg: format!(
+                            "Invalid funds provided, expected: {}, received: {}",
+                            total_required_payment, amount_sent
+                        )
+                    }
+                );
+
+                let after_tax_payment = Coin {
+                    denom: state.clone().coin_denom,
+                    amount: remaining_amount.amount,
+                };
+
+                Ok((Funds::Native(after_tax_payment), rates_response.msgs))
+            }
+            None => {
+                let payment = Coin {
+                    denom: state.coin_denom,
+                    amount: state.price,
+                };
+                Ok((Funds::Native(payment), vec![]))
+            }
+        }
+
+        // let remaining_amount = remainder.try_get_coin()?;
+
+        // // Calculate total tax
+        // total_tax_amount = total_tax_amount.checked_add(tax_amount)?;
+
+        // let required_payment = Coin {
+        //     denom: state.coin_denom.clone(),
+        //     amount: state.price + total_tax_amount,
+        // };
+        // if !state.uses_cw20 {
+        //     ensure!(
+        //         // has_coins(&info.funds, &required_payment),
+        //         info.funds[0].amount.eq(&required_payment.amount),
+        //         ContractError::InvalidFunds {
+        //             msg: format!(
+        //                 "Invalid funds provided, expected: {}, received: {}",
+        //                 required_payment, info.funds[0]
+        //             )
+        //         }
+        //     );
+        // } else {
+        //     let amount_sent = amount_sent.unwrap_or(Uint128::zero());
+        //     ensure!(
+        //         amount_sent.eq(&required_payment.amount),
+        //         ContractError::InvalidFunds {
+        //             msg: format!(
+        //                 "Invalid funds provided, expected: {}, received: {}",
+        //                 required_payment, amount_sent
+        //             )
+        //         }
+        //     );
+        // }
+
+        // let after_tax_payment = Coin {
+        //     denom: state.coin_denom,
+        //     amount: remaining_amount.amount,
+        // };
+
+        // Ok((after_tax_payment, msgs))
     }
 }
 
