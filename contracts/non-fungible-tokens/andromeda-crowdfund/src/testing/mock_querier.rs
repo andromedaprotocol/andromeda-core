@@ -5,7 +5,8 @@ use andromeda_non_fungible_tokens::{
 use andromeda_std::{
     ado_base::InstantiateMsg,
     ado_contract::ADOContract,
-    amp::AndrAddr,
+    amp::{AndrAddr, Recipient},
+    common::MillisecondsExpiration,
     testing::mock_querier::{WasmMockQuerier, MOCK_ADO_PUBLISHER, MOCK_KERNEL_CONTRACT},
 };
 use cosmwasm_std::{
@@ -24,25 +25,39 @@ pub fn mock_campaign_config() -> CampaignConfig {
         url: "http://<campaign_url>".to_string(),
         denom: "uandr".to_string(),
         tier_address: AndrAddr::from_string(MOCK_TIER_CONTRACT.to_owned()),
-        withdrawal_address: AndrAddr::from_string(MOCK_WITHDRAWAL_ADDRESS.to_owned()),
+        withdrawal_recipient: Recipient::from_string(MOCK_WITHDRAWAL_ADDRESS.to_owned()),
         soft_cap: None,
         hard_cap: None,
+        start_time: None,
+        end_time: MillisecondsExpiration::zero(),
     }
 }
 
 pub fn mock_campaign_tiers() -> Vec<Tier> {
-    vec![Tier {
-        level: Uint64::zero(),
-        limit: None,
-        price: Uint128::new(10u128),
-        meta_data: TierMetaData {
-            extension: TokenExtension {
-                publisher: MOCK_ADO_PUBLISHER.to_string(),
+    vec![
+        Tier {
+            level: Uint64::zero(),
+            limit: None,
+            price: Uint128::new(10u128),
+            meta_data: TierMetaData {
+                extension: TokenExtension {
+                    publisher: MOCK_ADO_PUBLISHER.to_string(),
+                },
+                token_uri: None,
             },
-            owner: None,
-            token_uri: None,
         },
-    }]
+        Tier {
+            level: Uint64::new(1u64),
+            limit: Some(Uint128::new(1000u128)),
+            price: Uint128::new(10u128),
+            meta_data: TierMetaData {
+                extension: TokenExtension {
+                    publisher: MOCK_ADO_PUBLISHER.to_string(),
+                },
+                token_uri: None,
+            },
+        },
+    ]
 }
 
 /// Alternative to `cosmwasm_std::testing::mock_dependencies` that allows us to respond to custom queries.

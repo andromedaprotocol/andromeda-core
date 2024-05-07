@@ -3,8 +3,9 @@
 //     PURCHASES, SALE_CONDUCTED, STATE,
 // };
 use andromeda_non_fungible_tokens::crowdfund::{
-    CampaignStage, ExecuteMsg, InstantiateMsg, QueryMsg, Tier,
+    CampaignStage, ExecuteMsg, InstantiateMsg, QueryMsg, Tier, TierOrder,
 };
+use andromeda_std::common::{Milliseconds, MillisecondsExpiration};
 use andromeda_std::{ado_base::ownership::OwnershipMessage, common::actions::call_action};
 use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
 
@@ -21,7 +22,8 @@ use cosmwasm_std::{
 };
 
 use crate::state::{
-    add_tier, get_current_stage, remove_tier, set_tiers, update_config, update_tier,
+    add_tier, get_config, get_current_stage, is_valid_tiers, remove_tier, set_current_stage,
+    set_tier_orders, set_tiers, update_config, update_tier,
 };
 
 const CONTRACT_NAME: &str = "crates.io:andromeda-crowdfund";
@@ -120,6 +122,11 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
         ExecuteMsg::AddTier { tier } => execute_add_tier(ctx, tier),
         ExecuteMsg::UpdateTier { tier } => execute_update_tier(ctx, tier),
         ExecuteMsg::RemoveTier { level } => execute_remove_tier(ctx, level),
+        ExecuteMsg::StartCampaign {
+            start_time,
+            end_time,
+            presale,
+        } => execute_start_campaign(ctx, start_time, end_time, presale),
         _ => ADOContract::default().execute(ctx, msg),
     }?;
 
@@ -220,6 +227,61 @@ fn execute_remove_tier(ctx: ExecuteContext, level: Uint64) -> Result<Response, C
     let resp = Response::new()
         .add_attribute("action", "remove_tier")
         .add_attribute("level", level);
+
+    Ok(resp)
+}
+
+fn execute_start_campaign(
+    ctx: ExecuteContext,
+    start_time: Option<MillisecondsExpiration>,
+    end_time: MillisecondsExpiration,
+    presale: Option<Vec<TierOrder>>,
+) -> Result<Response, ContractError> {
+    let ExecuteContext {
+        deps, info, env, ..
+    } = ctx;
+
+    // Only owner can start the campaign
+    let contract = ADOContract::default();
+    ensure!(
+        contract.is_contract_owner(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {}
+    );
+
+    // At least one tier should have no limit to start the campaign
+    ensure!(is_valid_tiers(deps.storage), ContractError::InvalidTiers {});
+
+    // Validate parameters
+    ensure!(
+        !end_time.is_expired(&env.block) && start_time.unwrap_or(Milliseconds::zero()) < end_time,
+        ContractError::StartTimeAfterEndTime {}
+    );
+
+    // Campaign can only start on READY stage
+    let curr_stage = get_current_stage(deps.storage);
+    ensure!(
+        curr_stage == CampaignStage::READY,
+        ContractError::InvalidCampaignOperation {
+            operation: "start_campaign".to_string(),
+            stage: curr_stage.to_string()
+        }
+    );
+
+    // Update tier limit and update sender's order based on presale
+    if let Some(presale) = presale {
+        set_tier_orders(deps.storage, presale)?;
+    }
+
+    // Set start time and end time
+    let mut config = get_config(deps.storage)?;
+    config.start_time = start_time;
+    config.end_time = end_time;
+    update_config(deps.storage, config)?;
+
+    // update stage
+    set_current_stage(deps.storage, CampaignStage::ONGOING)?;
+
+    let resp = Response::new().add_attribute("action", "start_campaign");
 
     Ok(resp)
 }

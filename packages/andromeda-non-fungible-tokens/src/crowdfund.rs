@@ -1,9 +1,11 @@
 use andromeda_std::amp::addresses::AndrAddr;
+use andromeda_std::amp::Recipient;
 use andromeda_std::common::denom::validate_denom;
+use andromeda_std::common::MillisecondsExpiration;
 use andromeda_std::error::ContractError;
 use andromeda_std::{andr_exec, andr_instantiate, andr_instantiate_modules, andr_query};
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{ensure, Deps, Uint128, Uint64};
+use cosmwasm_std::{ensure, Addr, Deps, Uint128, Uint64};
 
 use crate::cw721::TokenExtension;
 
@@ -26,9 +28,12 @@ pub enum ExecuteMsg {
     UpdateTier { tier: Tier },
     /// Remove a tier
     RemoveTier { level: Uint64 },
-
     /// Start the campaign
-    StartCampaign {},
+    StartCampaign {
+        start_time: Option<MillisecondsExpiration>,
+        end_time: MillisecondsExpiration,
+        presale: Option<Vec<TierOrder>>,
+    },
 }
 
 #[andr_query]
@@ -50,19 +55,23 @@ pub struct CampaignConfig {
     pub tier_address: AndrAddr,
     /// The denom of the token that is being accepted by the campaign
     pub denom: String,
-    /// Withdrawal address for the funds gained by the campaign
-    pub withdrawal_address: AndrAddr,
+    /// Recipient that is upposed to receive the funds gained by the campaign
+    pub withdrawal_recipient: Recipient,
     /// The minimum amount of funding to be sold for the successful fundraising
     pub soft_cap: Option<Uint128>,
     /// The maximum amount of funding to be sold for the fundraising
     pub hard_cap: Option<Uint128>,
+    /// Time when campaign starts
+    pub start_time: Option<MillisecondsExpiration>,
+    /// Time when campaign ends
+    pub end_time: MillisecondsExpiration,
 }
 
 impl CampaignConfig {
     pub fn validate(&self, deps: Deps) -> Result<(), ContractError> {
         // validate addresses
         self.tier_address.validate(deps.api)?;
-        self.withdrawal_address.validate(deps.api)?;
+        self.withdrawal_recipient.validate(&deps)?;
         validate_denom(deps, self.denom.clone())?;
 
         // validate meta info
@@ -92,7 +101,7 @@ pub enum CampaignStage {
     /// Stage when campaign is being carried out
     ONGOING,
     /// Stage when campaign is finished successfully
-    SUCCEED,
+    SUCCESS,
     /// Stage when campaign failed to meet the target cap before expiration
     FAILED,
 }
@@ -103,7 +112,7 @@ impl ToString for CampaignStage {
         match self {
             Self::READY => "READY".to_string(),
             Self::ONGOING => "ONGOING".to_string(),
-            Self::SUCCEED => "SUCCEED".to_string(),
+            Self::SUCCESS => "SUCCESS".to_string(),
             Self::FAILED => "FAILED".to_string(),
         }
     }
@@ -111,10 +120,18 @@ impl ToString for CampaignStage {
 
 #[cw_serde]
 pub struct Tier {
+    // TODO change to use string
     pub level: Uint64,
     pub price: Uint128,
     pub limit: Option<Uint128>, // None for no limit
     pub meta_data: TierMetaData,
+}
+
+#[cw_serde]
+pub struct TierOrder {
+    pub orderer: Addr,
+    pub level: Uint64,
+    pub amount: Uint128,
 }
 
 impl Tier {
@@ -131,8 +148,6 @@ impl Tier {
 }
 #[cw_serde]
 pub struct TierMetaData {
-    /// The owner of the tier
-    pub owner: Option<String>,
     /// Universal resource identifier for the tier
     /// Should point to a JSON file that conforms to the ERC721
     /// Metadata JSON Schema

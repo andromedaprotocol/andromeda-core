@@ -1,6 +1,6 @@
-use andromeda_non_fungible_tokens::crowdfund::{CampaignConfig, CampaignStage, Tier};
+use andromeda_non_fungible_tokens::crowdfund::{CampaignConfig, CampaignStage, Tier, TierOrder};
 use andromeda_std::error::ContractError;
-use cosmwasm_std::{ensure, Storage, Uint128};
+use cosmwasm_std::{ensure, Addr, Order, Storage, Uint128};
 use cw_storage_plus::{Item, Map};
 
 pub const CAMPAIGN_CONFIG: Item<CampaignConfig> = Item::new("campaign_config");
@@ -11,6 +11,8 @@ pub const CURRENT_CAP: Item<Uint128> = Item::new("current_capital");
 
 pub const TIERS: Map<u64, Tier> = Map::new("tiers");
 
+pub const TIER_ORDERS: Map<(Addr, u64), u128> = Map::new("tier_orders");
+
 pub(crate) fn update_config(
     storage: &mut dyn Storage,
     config: CampaignConfig,
@@ -18,6 +20,10 @@ pub(crate) fn update_config(
     CAMPAIGN_CONFIG
         .save(storage, &config)
         .map_err(ContractError::Std)
+}
+
+pub(crate) fn get_config(storage: &dyn Storage) -> Result<CampaignConfig, ContractError> {
+    CAMPAIGN_CONFIG.load(storage).map_err(ContractError::Std)
 }
 
 /// Only used on the instantiation
@@ -75,13 +81,52 @@ pub(crate) fn remove_tier(storage: &mut dyn Storage, level: u64) -> Result<(), C
     Ok(())
 }
 
-// pub(crate) fn validate_tiers(storage: &mut dyn Storage) -> bool {
-//     !TIERS.is_empty(storage)
-//         && TIERS
-//             .range_raw(storage, None, None, Order::Ascending)
-//             .any(|res| res.unwrap().1.limit.is_none())
-// }
+pub(crate) fn is_valid_tiers(storage: &mut dyn Storage) -> bool {
+    !TIERS.is_empty(storage)
+        && TIERS
+            .range_raw(storage, None, None, Order::Ascending)
+            .any(|res| res.unwrap().1.limit.is_none())
+}
 
 pub(crate) fn get_current_stage(storage: &dyn Storage) -> CampaignStage {
     CAMPAIGN_STAGE.load(storage).unwrap_or(CampaignStage::READY)
+}
+
+pub(crate) fn set_current_stage(
+    storage: &mut dyn Storage,
+    stage: CampaignStage,
+) -> Result<(), ContractError> {
+    CAMPAIGN_STAGE
+        .save(storage, &stage)
+        .map_err(ContractError::Std)
+}
+
+pub(crate) fn set_tier_orders(
+    storage: &mut dyn Storage,
+    orders: Vec<TierOrder>,
+) -> Result<(), ContractError> {
+    for new_order in orders {
+        let mut tier = TIERS.load(storage, new_order.level.into()).map_err(|_| {
+            ContractError::InvalidTier {
+                operation: "set_tier_orders".to_string(),
+                msg: format!("Tier with level {} does not exist", new_order.level),
+            }
+        })?;
+        if let Some(mut remaining_amount) = tier.limit {
+            remaining_amount = remaining_amount.checked_sub(new_order.amount)?;
+            tier.limit = Some(remaining_amount);
+            update_tier(storage, &tier)?;
+        }
+
+        let mut order = TIER_ORDERS
+            .load(storage, (new_order.orderer.clone(), new_order.level.into()))
+            .unwrap_or(0);
+        order += new_order.amount.u128();
+        TIER_ORDERS.save(
+            storage,
+            (new_order.orderer.clone(), new_order.level.into()),
+            &order,
+        )?;
+    }
+    Ok(())
 }
