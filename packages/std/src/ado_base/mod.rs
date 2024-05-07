@@ -13,8 +13,8 @@ pub mod withdraw;
 use crate::amp::{messages::AMPPkt, AndrAddr};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Addr;
-use cosmwasm_std::Binary;
-use cosmwasm_std::Uint64;
+
+
 
 use self::ownership::OwnershipMessage;
 use self::permissioning::PermissioningMessage;

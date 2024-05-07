@@ -1,7 +1,7 @@
 use cosmwasm_std::{from_json, BankMsg, CosmosMsg, SubMsg, Uint128, WasmMsg};
 use cw20::Cw20ExecuteMsg;
 
-use crate::error::ContractError;
+
 
 /// Gets the amount of tax paid by iterating over the `msgs` and comparing it to the
 /// difference between the base amount and the amount left over after royalties.

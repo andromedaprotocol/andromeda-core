@@ -8,9 +8,9 @@ use cosmwasm_std::{
     testing::{mock_env, MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
     Coin, OwnedDeps, Querier, QuerierResult, QueryRequest, SystemError, SystemResult, WasmQuery,
 };
-use cosmwasm_std::{BankMsg, CosmosMsg, QuerierWrapper, Response, SubMsg, Uint128};
+use cosmwasm_std::{QuerierWrapper};
 
-pub use andromeda_std::testing::mock_querier::{MOCK_ADDRESS_LIST_CONTRACT, MOCK_RATES_CONTRACT};
+
 
 pub const MOCK_TAX_RECIPIENT: &str = "tax_recipient";
 pub const MOCK_ROYALTY_RECIPIENT: &str = "royalty_recipient";

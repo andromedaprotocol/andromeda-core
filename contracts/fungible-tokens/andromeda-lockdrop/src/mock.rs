@@ -3,7 +3,6 @@
 use crate::contract::{execute, instantiate, query};
 use andromeda_fungible_tokens::lockdrop::{Cw20HookMsg, ExecuteMsg, InstantiateMsg};
 use andromeda_std::{
-    ado_base::modules::Module,
     amp::AndrAddr,
     common::{expiration::Expiry, MillisecondsDuration},
 };

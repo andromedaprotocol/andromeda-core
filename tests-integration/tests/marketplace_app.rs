@@ -899,7 +899,7 @@ fn test_marketplace_app_cw20_unrestricted() {
             ),
         )
         .unwrap();
-    let local_rate2 = LocalRate {
+    let _local_rate2 = LocalRate {
         rate_type: LocalRateType::Additive,
         recipients: vec![Recipient::from_string(rates_receiver.to_string())],
         // This is the cw20's address

@@ -6,7 +6,7 @@ use andromeda_std::ado_base::rates::{LocalRate, LocalRateType, LocalRateValue, P
 use andromeda_std::ado_contract::ADOContract;
 use andromeda_std::amp::{AndrAddr, Recipient};
 use andromeda_std::common::context::ExecuteContext;
-use andromeda_std::testing::mock_querier::MOCK_ADDRESS_LIST_CONTRACT;
+
 use andromeda_std::{error::ContractError, testing::mock_querier::MOCK_KERNEL_CONTRACT};
 use andromeda_testing::economics_msg::generate_economics_message;
 use cosmwasm_std::{attr, Decimal, Event};

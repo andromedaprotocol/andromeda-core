@@ -1,19 +1,18 @@
-use crate::testing::mock_querier::MOCK_TAX_RECIPIENT;
+
 use crate::{
     contract::{execute, instantiate, query, MAX_MINT_LIMIT},
     state::{
         Purchase, AVAILABLE_TOKENS, NUMBER_OF_TOKENS_AVAILABLE, PURCHASES, SALE_CONDUCTED, STATE,
     },
     testing::mock_querier::{
-        mock_dependencies_custom, MOCK_APP_CONTRACT, MOCK_CONDITIONS_MET_CONTRACT,
-        MOCK_CONDITIONS_NOT_MET_CONTRACT, MOCK_ROYALTY_RECIPIENT, MOCK_TOKENS_FOR_SALE,
+        mock_dependencies_custom, MOCK_APP_CONTRACT, MOCK_ROYALTY_RECIPIENT, MOCK_TOKENS_FOR_SALE,
         MOCK_TOKEN_CONTRACT,
     },
 };
 
 use andromeda_non_fungible_tokens::{
     crowdfund::{
-        Config, CrowdfundMintMsg, ExecuteMsg, InstantiateMsg, IsTokenAvailableResponse, QueryMsg,
+        CrowdfundMintMsg, ExecuteMsg, InstantiateMsg, IsTokenAvailableResponse, QueryMsg,
         State,
     },
     cw721::{ExecuteMsg as Cw721ExecuteMsg, TokenExtension},
@@ -30,11 +29,10 @@ use andromeda_std::{
     error::ContractError,
 };
 use andromeda_testing::economics_msg::generate_economics_message;
-use cosmwasm_std::StdError;
+
 use cosmwasm_std::{
     coin, coins, from_json,
-    testing::{mock_env, mock_info},
-    Addr, BankMsg, Coin, CosmosMsg, Decimal, DepsMut, Response, SubMsg, Uint128, WasmMsg,
+    testing::{mock_env, mock_info}, BankMsg, Coin, CosmosMsg, Decimal, DepsMut, Response, SubMsg, Uint128, WasmMsg,
 };
 use cw_utils::Expiration;
 

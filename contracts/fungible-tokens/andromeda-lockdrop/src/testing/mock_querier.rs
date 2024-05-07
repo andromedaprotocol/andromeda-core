@@ -11,7 +11,7 @@ use cosmwasm_std::{
     testing::{mock_env, MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
     Coin, OwnedDeps, Querier, QuerierResult, QueryRequest, SystemError, SystemResult, WasmQuery,
 };
-use cosmwasm_std::{BankMsg, CosmosMsg, QuerierWrapper, Response, SubMsg, Uint128};
+use cosmwasm_std::{QuerierWrapper};
 
 pub const MOCK_TOKEN_CONTRACT: &str = "token_contract";
 pub const MOCK_TAX_RECIPIENT: &str = "tax_recipient";

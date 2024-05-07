@@ -2,7 +2,7 @@ use crate::state::{ACCOUNTS, ALLOWED_COIN};
 use andromeda_finance::rate_limiting_withdrawals::{
     AccountDetails, CoinAllowance, ExecuteMsg, InstantiateMsg, MinimumFrequency, QueryMsg,
 };
-use andromeda_std::ado_base::ownership::OwnershipMessage;
+
 use andromeda_std::ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg};
 use andromeda_std::ado_contract::ADOContract;
 use andromeda_std::common::actions::call_action;

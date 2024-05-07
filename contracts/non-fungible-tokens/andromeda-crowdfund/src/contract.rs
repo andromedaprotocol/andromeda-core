@@ -10,7 +10,6 @@ use andromeda_non_fungible_tokens::{
     cw721::{ExecuteMsg as Cw721ExecuteMsg, MintMsg, QueryMsg as Cw721QueryMsg},
 };
 use andromeda_std::{
-    ado_base::ownership::OwnershipMessage,
     amp::{messages::AMPPkt, recipient::Recipient, AndrAddr},
     common::{
         actions::call_action,

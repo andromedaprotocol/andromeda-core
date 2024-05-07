@@ -2,13 +2,13 @@ use andromeda_fungible_tokens::cw20::QueryMsg as Cw20Query;
 use andromeda_std::ado_base::InstantiateMsg;
 use andromeda_std::ado_contract::ADOContract;
 use andromeda_std::testing::mock_querier::MockAndromedaQuerier;
-pub use andromeda_std::testing::mock_querier::MOCK_ADDRESS_LIST_CONTRACT;
+
 use andromeda_std::testing::mock_querier::MOCK_KERNEL_CONTRACT;
 use cosmwasm_std::testing::{mock_env, mock_info, MockApi, MockQuerier, MockStorage};
 use cosmwasm_std::{
-    from_json, to_json_binary, BankMsg, Binary, Coin, ContractResult, CosmosMsg, OwnedDeps,
-    Querier, QuerierResult, QuerierWrapper, QueryRequest, Response, SubMsg, SystemError,
-    SystemResult, Uint128, WasmQuery,
+    from_json, to_json_binary, Binary, Coin, ContractResult, OwnedDeps,
+    Querier, QuerierResult, QuerierWrapper, QueryRequest, SystemError,
+    SystemResult, WasmQuery,
 };
 
 pub const MOCK_CW20_CONTRACT: &str = "mock_cw20_contract";

@@ -53,7 +53,7 @@ fn init(deps: DepsMut) -> Response {
     instantiate(deps, mock_env(), info, msg).unwrap()
 }
 
-fn init_cw20(deps: DepsMut, modules: Option<Vec<Module>>) -> Response {
+fn init_cw20(deps: DepsMut, _modules: Option<Vec<Module>>) -> Response {
     let msg = InstantiateMsg {
         owner: None,
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
@@ -572,7 +572,7 @@ fn execute_place_bid_multiple_bids() {
 #[test]
 fn execute_place_bid_auction_cancelled() {
     let mut deps = mock_dependencies_custom(&[]);
-    let mut env = mock_env();
+    let env = mock_env();
     let _res = init(deps.as_mut());
 
     start_auction(deps.as_mut(), None, None);
@@ -1615,7 +1615,7 @@ fn execute_cancel_with_bids_cw20() {
 #[test]
 fn execute_cancel_not_token_owner() {
     let mut deps = mock_dependencies_custom(&[]);
-    let mut env = mock_env();
+    let env = mock_env();
     let _res = init(deps.as_mut());
 
     start_auction(deps.as_mut(), None, None);

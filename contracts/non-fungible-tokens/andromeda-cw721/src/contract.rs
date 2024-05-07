@@ -109,7 +109,7 @@ fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
         ctx.info.sender.clone()
     };
 
-    let fee_msg = ADOContract::default().pay_fee(
+    let _fee_msg = ADOContract::default().pay_fee(
         ctx.deps.storage,
         &ctx.deps.querier,
         msg.as_ref().to_string(),

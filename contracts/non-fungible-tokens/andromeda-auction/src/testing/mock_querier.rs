@@ -5,10 +5,10 @@ use andromeda_std::testing::mock_querier::MockAndromedaQuerier;
 use cosmwasm_schema::cw_serde;
 
 pub use andromeda_std::testing::mock_querier::{
-    MOCK_ADDRESS_LIST_CONTRACT, MOCK_KERNEL_CONTRACT, MOCK_RATES_CONTRACT,
+    MOCK_KERNEL_CONTRACT,
 };
 use cosmwasm_std::testing::mock_info;
-use cosmwasm_std::{coin, BankMsg, BankQuery, CosmosMsg, QuerierWrapper, Response, SubMsg};
+use cosmwasm_std::{coin, BankQuery, QuerierWrapper};
 use cosmwasm_std::{
     from_json,
     testing::{mock_env, MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},

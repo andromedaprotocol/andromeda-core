@@ -6,7 +6,6 @@ use andromeda_non_fungible_tokens::{
     cw721::TokenExtension,
 };
 use andromeda_std::{
-    ado_base::modules::Module,
     amp::{AndrAddr, Recipient},
     common::expiration::Expiry,
 };

@@ -1,4 +1,4 @@
-use andromeda_std::{ado_base::modules::Module, common::Milliseconds, error::ContractError};
+use andromeda_std::{common::Milliseconds, error::ContractError};
 use cosmwasm_std::{
     coin,
     testing::{mock_env, mock_info},
