@@ -26,6 +26,14 @@ pub(crate) fn get_config(storage: &dyn Storage) -> Result<CampaignConfig, Contra
     CAMPAIGN_CONFIG.load(storage).map_err(ContractError::Std)
 }
 
+pub (crate) fn get_current_cap(storage: &mut dyn Storage) -> Uint128 {
+    CURRENT_CAP.load(storage).unwrap_or_default()
+}
+
+pub (crate) fn set_current_cap(storage: &mut dyn Storage, current_cap: Uint128) -> Result<(), ContractError> {
+    CURRENT_CAP.save(storage, &current_cap).map_err(ContractError::Std)
+}
+
 /// Only used on the instantiation
 pub(crate) fn set_tiers(storage: &mut dyn Storage, tiers: Vec<Tier>) -> Result<(), ContractError> {
     for tier in tiers {
@@ -41,6 +49,15 @@ pub(crate) fn set_tiers(storage: &mut dyn Storage, tiers: Vec<Tier>) -> Result<(
     }
 
     Ok(())
+}
+
+pub(crate) fn get_tier(storage: &mut dyn Storage, level: u64) -> Result<Tier, ContractError> {
+    TIERS.load(storage, level).map_err(
+        |_| ContractError::InvalidTier {
+            operation: "get_tier".to_string(),
+            msg: format!("Tier with level {} does not exist", level)
+        }
+    )
 }
 
 pub(crate) fn add_tier(storage: &mut dyn Storage, tier: &Tier) -> Result<(), ContractError> {

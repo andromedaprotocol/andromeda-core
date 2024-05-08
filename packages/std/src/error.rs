@@ -279,6 +279,12 @@ pub enum ContractError {
     #[error("AuctionEnded")]
     AuctionEnded {},
 
+    #[error("CampaignNotStarted")]
+    CampaignNotStarted {},
+
+    #[error("CampaignEnded")]
+    CampaignEnded {},
+
     #[error("SaleNotStarted")]
     SaleNotStarted {},
 

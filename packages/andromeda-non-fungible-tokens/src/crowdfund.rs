@@ -34,6 +34,8 @@ pub enum ExecuteMsg {
         end_time: MillisecondsExpiration,
         presale: Option<Vec<TierOrder>>,
     },
+    /// Purchase tiers
+    PurchaseTiers { orders: Vec<SimpleTierOrder> },
 }
 
 #[andr_query]
@@ -130,6 +132,13 @@ pub struct Tier {
 #[cw_serde]
 pub struct TierOrder {
     pub orderer: Addr,
+    pub level: Uint64,
+    pub amount: Uint128,
+}
+
+// Used when the orderer is defined
+#[cw_serde]
+pub struct SimpleTierOrder {
     pub level: Uint64,
     pub amount: Uint128,
 }

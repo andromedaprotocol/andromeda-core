@@ -1,9 +1,5 @@
-// use crate::state::{
-//     get_available_tokens, Purchase, AVAILABLE_TOKENS, CONFIG, NUMBER_OF_TOKENS_AVAILABLE,
-//     PURCHASES, SALE_CONDUCTED, STATE,
-// };
 use andromeda_non_fungible_tokens::crowdfund::{
-    CampaignStage, ExecuteMsg, InstantiateMsg, QueryMsg, Tier, TierOrder,
+    CampaignStage, ExecuteMsg, InstantiateMsg, QueryMsg, Tier, TierOrder, SimpleTierOrder,
 };
 use andromeda_std::common::{Milliseconds, MillisecondsExpiration};
 use andromeda_std::{ado_base::ownership::OwnershipMessage, common::actions::call_action};
@@ -18,12 +14,12 @@ use andromeda_std::{
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    ensure, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError, Uint64,
+    ensure, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError, Uint64, Coin, Uint128, coin, BankMsg,
 };
 
 use crate::state::{
     add_tier, get_config, get_current_stage, is_valid_tiers, remove_tier, set_current_stage,
-    set_tier_orders, set_tiers, update_config, update_tier,
+    set_tier_orders, set_tiers, update_config, update_tier, get_tier, get_current_cap, set_current_cap,
 };
 
 const CONTRACT_NAME: &str = "crates.io:andromeda-crowdfund";
@@ -36,6 +32,7 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
+    msg.campaign_config.validate(deps.as_ref())?;
     update_config(deps.storage, msg.campaign_config)?;
 
     set_tiers(deps.storage, msg.tiers)?;
@@ -127,6 +124,7 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
             end_time,
             presale,
         } => execute_start_campaign(ctx, start_time, end_time, presale),
+        ExecuteMsg::PurchaseTiers { orders } => execute_purchase_tiers(ctx, orders),
         _ => ADOContract::default().execute(ctx, msg),
     }?;
 
@@ -284,6 +282,85 @@ fn execute_start_campaign(
     set_current_stage(deps.storage, CampaignStage::ONGOING)?;
 
     let resp = Response::new().add_attribute("action", "start_campaign");
+
+    Ok(resp)
+}
+
+fn execute_purchase_tiers(
+    ctx: ExecuteContext,
+    orders: Vec<SimpleTierOrder>,
+) -> Result<Response, ContractError> {
+    let ExecuteContext {
+        deps, info, env, ..
+    } = ctx;
+
+    let campaign_config = get_config(deps.storage)?;
+    let mut current_cap = get_current_cap(deps.storage);
+
+    let current_stage = get_current_stage(deps.storage);
+
+
+    // Tier can be purchased on ONGOING stage
+    ensure!(
+        current_stage == CampaignStage::ONGOING,
+        ContractError::InvalidCampaignOperation { operation: "purchase_tiers".to_string(), stage: current_stage.to_string() }
+    );
+
+    // Need to wait until start_time
+    ensure!(
+        campaign_config.start_time.unwrap_or_default().is_expired(&env.block),
+        ContractError::CampaignNotStarted {}
+    );
+
+    // Campaign is expired or should be ended due to overfunding
+    ensure!(
+        !campaign_config.end_time.is_expired(&env.block) || campaign_config.hard_cap.unwrap_or(current_cap) > current_cap,
+        ContractError::CampaignEnded {}
+    );
+
+    // Ensure campaign accepting coin is received
+    let payment: &Coin = &info.funds[0];
+    ensure!(
+        info.funds.len() == 1 && payment.denom == campaign_config.denom,
+        ContractError::InvalidFunds {
+            msg: format!("Only {} is accepted by the campaign.", campaign_config.denom),
+        }
+    );
+
+    let mut full_orders = Vec::<TierOrder>::new();
+
+    // Measure the total cost for orders
+    let total_cost = orders.iter().try_fold(Uint128::zero(), |sum, order| {
+        let tier = get_tier(deps.storage, u64::from(order.level))?;
+        let uint128: Result<Uint128, ContractError> = Ok(sum + tier.price * order.amount);
+        full_orders.push(
+            TierOrder { orderer: info.sender.clone(), level: order.level, amount: order.amount }
+        );
+        uint128
+    })?;
+
+    // Ensure that enough payment is sent for the order
+    ensure!(total_cost <= payment.amount, ContractError::InsufficientFunds {});
+
+    // Update order history and tier limits
+    set_tier_orders(deps.storage, full_orders)?;
+    current_cap = current_cap.checked_add(total_cost)?;
+
+    // Update current capital 
+    set_current_cap(deps.storage, current_cap)?;
+    let mut resp = Response::new()
+        .add_attribute("action", "purchase_tiers")
+        .add_attribute("payment", format!("{0}{1}", payment.amount.to_string(), payment.denom))
+        .add_attribute("total_cost", total_cost.to_string());
+
+    if payment.amount > total_cost {
+        resp = resp
+            .add_attribute("refunded", payment.amount - total_cost)
+            .add_message(BankMsg::Send {
+                to_address: info.sender.to_string(),
+                amount: vec![coin((payment.amount - total_cost).u128(), campaign_config.denom)],
+            })
+    }
 
     Ok(resp)
 }
