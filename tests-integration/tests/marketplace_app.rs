@@ -66,9 +66,10 @@ fn test_marketplace_app() {
         "cw721".to_string(),
         to_json_binary(&cw721_init_msg).unwrap(),
     );
-
+    // Set a royalty which is worth as much as the marketplace sale price
+    // The sale recipient will not receive any funds because they're all going to the royalty recipient
     let local_rate = LocalRate {
-        rate_type: LocalRateType::Additive,
+        rate_type: LocalRateType::Deductive,
         recipients: vec![Recipient::from_string(rates_receiver.to_string())],
         value: LocalRateValue::Flat(coin(100, "uandr")),
         description: None,
@@ -203,7 +204,8 @@ fn test_marketplace_app() {
             buyer.clone(),
             Addr::unchecked(marketplace.addr()),
             &receive_packet_msg,
-            &[coin(200, "uandr")],
+            // We're sending the exact amount required, which is the price + tax
+            &[coin(100, "uandr")],
         )
         .unwrap();
 
@@ -216,6 +218,9 @@ fn test_marketplace_app() {
         .query_balance(rates_receiver, "uandr")
         .unwrap();
     assert_eq!(balance.amount, Uint128::from(100u128));
+
+    let balance = router.wrap().query_balance(owner, "uandr").unwrap();
+    assert_eq!(balance.amount, Uint128::zero());
 }
 
 #[test]

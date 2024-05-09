@@ -6,6 +6,7 @@ use andromeda_non_fungible_tokens::auction::{
     InstantiateMsg, QueryMsg,
 };
 use andromeda_std::ado_base::permissioning::{Permission, PermissioningMessage};
+use andromeda_std::ado_base::rates::{Rate, RatesMessage};
 use andromeda_std::amp::messages::AMPPkt;
 use andromeda_std::amp::AndrAddr;
 use andromeda_std::amp::Recipient;
@@ -98,6 +99,16 @@ impl MockAuction {
     ) -> ExecuteResult {
         let msg = mock_authorize_token_address(token_address, expiration);
         self.execute(app, &msg, sender, &[])
+    }
+
+    pub fn execute_add_rate(
+        &self,
+        app: &mut MockApp,
+        sender: Addr,
+        action: String,
+        rate: Rate,
+    ) -> ExecuteResult {
+        self.execute(app, &mock_set_rate_msg(action, rate), sender, &[])
     }
 
     pub fn execute_set_permission(
@@ -211,6 +222,10 @@ pub fn mock_update_auction(
         min_bid,
         recipient,
     }
+}
+
+pub fn mock_set_rate_msg(action: String, rate: Rate) -> ExecuteMsg {
+    ExecuteMsg::Rates(RatesMessage::SetRate { action, rate })
 }
 
 pub fn mock_set_permission(actor: AndrAddr, action: String, permission: Permission) -> ExecuteMsg {

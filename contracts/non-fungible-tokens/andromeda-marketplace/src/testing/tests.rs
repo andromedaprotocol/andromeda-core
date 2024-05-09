@@ -809,10 +809,6 @@ fn test_execute_buy_with_tax_and_royalty_works() {
 
     let res = execute(deps.as_mut(), env, info.clone(), msg).unwrap();
     let expected: Vec<SubMsg<_>> = vec![
-        SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-            to_address: "owner".to_string(),
-            amount: vec![coin(100, "uusd")],
-        })),
         // SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
         //     to_address: "royalty_recipient".to_string(),
         //     amount: vec![coin(10, "uusd")],
@@ -822,6 +818,10 @@ fn test_execute_buy_with_tax_and_royalty_works() {
         //     to_address: "owner".to_string(),
         //     amount: vec![coin(90, "uusd")],
         // })),
+        SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+            to_address: "tax_recipient".to_string(),
+            amount: vec![coin(50, "uusd")],
+        })),
         SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: MOCK_TOKEN_ADDR.to_string(),
             msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
@@ -832,8 +832,8 @@ fn test_execute_buy_with_tax_and_royalty_works() {
             funds: vec![],
         })),
         SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-            to_address: "tax_recipient".to_string(),
-            amount: vec![coin(50, "uusd")],
+            to_address: "owner".to_string(),
+            amount: vec![coin(100, "uusd")],
         })),
         SubMsg::reply_on_error(
             CosmosMsg::Wasm(WasmMsg::Execute {

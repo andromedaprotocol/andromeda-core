@@ -416,16 +416,10 @@ fn execute_buy(
         token_sale_state.clone(),
         action.clone(),
     )?;
-    let recipient = token_sale_state
-        .recipient
-        .unwrap_or(Recipient::from_string(token_sale_state.owner));
 
     let mut resp = Response::new()
-        // Send payment to recipient
-        .add_submessage(
-            recipient
-                .generate_direct_msg(&deps.as_ref(), vec![after_tax_payment.try_get_coin()?])?,
-        )
+        // Send tax/royalty messages
+        .add_submessages(tax_messages)
         // Send NFT to buyer.
         .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: token_sale_state.token_address.clone(),
@@ -440,14 +434,20 @@ fn execute_buy(
         .add_attribute("token_contract", token_sale_state.token_address)
         .add_attribute("recipient", info.sender.to_string())
         .add_attribute("sale_id", token_sale_state.sale_id);
-    match after_tax_payment {
-        Funds::Native(native_after_tax_payment) => {
-            if !native_after_tax_payment.amount.is_zero() {
-                resp = resp.add_submessages(tax_messages)
-            }
-        }
-        // Return an error?
-        Funds::Cw20(_) => {}
+    // Marketplace recipient's funds
+    let sale_recipient_funds = after_tax_payment.try_get_coin()?;
+
+    // It could be zero if the royalties are 100% of the sale price
+    if !sale_recipient_funds.amount.is_zero() {
+        // Get sale recipient's address
+        let recipient = token_sale_state
+            .recipient
+            .unwrap_or(Recipient::from_string(token_sale_state.owner));
+
+        // Send payment to recipient
+        resp = resp.add_submessage(
+            recipient.generate_direct_msg(&deps.as_ref(), vec![sale_recipient_funds])?,
+        )
     }
     Ok(resp)
 }
@@ -552,15 +552,9 @@ fn execute_buy_cw20(
         action,
     )?;
 
-    let recipient = token_sale_state
-        .recipient
-        .unwrap_or(Recipient::from_string(token_sale_state.owner));
-
     let mut resp: Response = Response::new()
-        // Send payment to recipient
-        .add_submessage(
-            recipient.generate_msg_cw20(&deps.as_ref(), after_tax_payment.try_get_cw20_coin()?)?,
-        )
+        // Send tax/royalty messages
+        .add_submessages(tax_messages)
         // Send NFT to buyer.
         .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: token_sale_state.token_address.clone(),
@@ -578,8 +572,15 @@ fn execute_buy_cw20(
 
     match after_tax_payment {
         Funds::Cw20(cw20_after_tax_payment) => {
-            if cw20_after_tax_payment.clone().amount > Uint128::zero() {
-                resp = resp.add_submessages(tax_messages);
+            if !cw20_after_tax_payment.amount.is_zero() {
+                // Get sale recipient's address
+                let recipient = token_sale_state
+                    .recipient
+                    .unwrap_or(Recipient::from_string(token_sale_state.owner));
+                // Send payment to recipient
+                resp = resp.add_submessage(
+                    recipient.generate_msg_cw20(&deps.as_ref(), cw20_after_tax_payment)?,
+                );
             }
         }
         Funds::Native(_) => {}
@@ -657,11 +658,9 @@ fn purchase_token(
         match rates_response {
             Some(rates_response) => {
                 let remaining_amount = rates_response.leftover_funds.try_get_cw20_coin()?;
-
                 let tax_amount =
                     get_tax_amount_cw20(&rates_response.msgs, state.price, remaining_amount.amount);
-
-                let total_required_payment = remaining_amount.amount.checked_add(tax_amount)?;
+                let total_required_payment = state.price.checked_add(tax_amount)?;
 
                 // Check that enough funds were sent to cover the required payment
                 ensure!(
@@ -700,11 +699,10 @@ fn purchase_token(
         match rates_response {
             Some(rates_response) => {
                 let remaining_amount = rates_response.leftover_funds.try_get_coin()?;
-
                 let tax_amount =
                     get_tax_amount(&rates_response.msgs, state.price, remaining_amount.amount);
 
-                let total_required_payment = remaining_amount.amount.checked_add(tax_amount)?;
+                let total_required_payment = state.price.checked_add(tax_amount)?;
 
                 // Check that enough funds were sent to cover the required payment
                 let amount_sent = info.funds[0].amount.u128();
@@ -733,46 +731,6 @@ fn purchase_token(
                 Ok((Funds::Native(payment), vec![]))
             }
         }
-
-        // let remaining_amount = remainder.try_get_coin()?;
-
-        // // Calculate total tax
-        // total_tax_amount = total_tax_amount.checked_add(tax_amount)?;
-
-        // let required_payment = Coin {
-        //     denom: state.coin_denom.clone(),
-        //     amount: state.price + total_tax_amount,
-        // };
-        // if !state.uses_cw20 {
-        //     ensure!(
-        //         // has_coins(&info.funds, &required_payment),
-        //         info.funds[0].amount.eq(&required_payment.amount),
-        //         ContractError::InvalidFunds {
-        //             msg: format!(
-        //                 "Invalid funds provided, expected: {}, received: {}",
-        //                 required_payment, info.funds[0]
-        //             )
-        //         }
-        //     );
-        // } else {
-        //     let amount_sent = amount_sent.unwrap_or(Uint128::zero());
-        //     ensure!(
-        //         amount_sent.eq(&required_payment.amount),
-        //         ContractError::InvalidFunds {
-        //             msg: format!(
-        //                 "Invalid funds provided, expected: {}, received: {}",
-        //                 required_payment, amount_sent
-        //             )
-        //         }
-        //     );
-        // }
-
-        // let after_tax_payment = Coin {
-        //     denom: state.coin_denom,
-        //     amount: remaining_amount.amount,
-        // };
-
-        // Ok((after_tax_payment, msgs))
     }
 }
 

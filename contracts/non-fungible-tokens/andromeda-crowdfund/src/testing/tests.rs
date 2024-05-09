@@ -1,4 +1,3 @@
-
 use crate::{
     contract::{execute, instantiate, query, MAX_MINT_LIMIT},
     state::{
@@ -12,8 +11,7 @@ use crate::{
 
 use andromeda_non_fungible_tokens::{
     crowdfund::{
-        CrowdfundMintMsg, ExecuteMsg, InstantiateMsg, IsTokenAvailableResponse, QueryMsg,
-        State,
+        CrowdfundMintMsg, ExecuteMsg, InstantiateMsg, IsTokenAvailableResponse, QueryMsg, State,
     },
     cw721::{ExecuteMsg as Cw721ExecuteMsg, TokenExtension},
 };
@@ -32,7 +30,8 @@ use andromeda_testing::economics_msg::generate_economics_message;
 
 use cosmwasm_std::{
     coin, coins, from_json,
-    testing::{mock_env, mock_info}, BankMsg, Coin, CosmosMsg, Decimal, DepsMut, Response, SubMsg, Uint128, WasmMsg,
+    testing::{mock_env, mock_info},
+    BankMsg, Coin, CosmosMsg, Decimal, DepsMut, Response, SubMsg, Uint128, WasmMsg,
 };
 use cw_utils::Expiration;
 
@@ -70,17 +69,6 @@ fn get_rates_messages() -> Vec<SubMsg> {
         //     }],
         // }))
     ]
-}
-
-fn get_burn_message(token_id: impl Into<String>) -> CosmosMsg {
-    CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr: MOCK_TOKEN_CONTRACT.to_owned(),
-        funds: vec![],
-        msg: encode_binary(&Cw721ExecuteMsg::Burn {
-            token_id: token_id.into(),
-        })
-        .unwrap(),
-    })
 }
 
 fn get_transfer_message(token_id: impl Into<String>, recipient: AndrAddr) -> CosmosMsg {

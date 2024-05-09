@@ -16,7 +16,10 @@ use andromeda_splitter::mock::{
     mock_andromeda_splitter, mock_splitter_instantiate_msg, mock_splitter_send_msg,
 };
 use andromeda_std::{
-    ado_base::permissioning::Permission,
+    ado_base::{
+        permissioning::Permission,
+        rates::{LocalRate, LocalRateType, LocalRateValue, PercentRate, Rate},
+    },
     amp::{AndrAddr, Recipient},
     common::{
         denom::Asset,
@@ -47,7 +50,6 @@ fn test_auction_app_modules() {
             ("cw721", mock_andromeda_cw721()),
             ("auction", mock_andromeda_auction()),
             ("app-contract", mock_andromeda_app()),
-            ("rates", mock_andromeda_rates()),
             ("splitter", mock_andromeda_splitter()),
         ])
         .build(&mut router);
@@ -108,6 +110,27 @@ fn test_auction_app_modules() {
 
     // Send Token to Auction
     let auction: MockAuction = app.query_ado_by_component_name(&router, auction_component.name);
+
+    // Set rates to auction
+    auction
+        .execute_add_rate(
+            &mut router,
+            owner.clone(),
+            "AuctionClaim".to_string(),
+            Rate::Local(LocalRate {
+                rate_type: LocalRateType::Deductive,
+                recipients: vec![
+                    Recipient::new(recipient_one, None),
+                    Recipient::new(recipient_two, None),
+                ],
+                value: LocalRateValue::Percent(PercentRate {
+                    percent: Decimal::percent(25),
+                }),
+                description: None,
+            }),
+        )
+        .unwrap();
+
     let start_time = Milliseconds::from_nanos(router.block_info().time.nanos())
         .plus_milliseconds(Milliseconds(100));
     let receive_msg = mock_start_auction(

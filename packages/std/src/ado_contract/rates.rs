@@ -100,7 +100,6 @@ impl<'a> ADOContract<'a> {
         let rate = self.rates.may_load(deps.storage, &action)?;
         match rate {
             Some(rate) => {
-                println!("the rate is : {:?}", rate);
                 let (coin, is_native): (Coin, bool) = match funds {
                     Funds::Native(coin) => {
                         ensure!(

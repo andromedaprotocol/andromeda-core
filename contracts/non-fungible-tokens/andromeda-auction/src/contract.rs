@@ -918,18 +918,7 @@ fn purchase_token(
     )?;
     match transfer_response {
         Some(transfer_response) => {
-            // let mut total_tax_amount = Uint128::zero();
             let remaining_amount = transfer_response.leftover_funds.try_get_coin()?;
-
-            // let tax_amount = get_tax_amount(
-            //     &transfer_response.msgs,
-            //     state.high_bidder_amount,
-            //     remaining_amount.amount,
-            // );
-
-            // // Calculate total tax
-            // total_tax_amount += tax_amount;
-
             let after_tax_payment = Coin {
                 denom: state.coin_denom,
                 amount: remaining_amount.amount,
