@@ -13,13 +13,13 @@ use andromeda_std::{
 };
 use cosmwasm_std::{
     testing::{mock_env, mock_info},
-    to_json_binary, Addr, CosmosMsg, DepsMut, Order, Response, Storage, SubMsg, Uint128, Uint64,
-    WasmMsg,
+    to_json_binary, Addr, CosmosMsg, DepsMut, Env, Order, Response, Storage, SubMsg, Uint128,
+    Uint64, WasmMsg,
 };
 
 use crate::{
     contract::{execute, instantiate},
-    state::{CAMPAIGN_CONFIG, CAMPAIGN_STAGE, TIERS, TIER_ORDERS},
+    state::{CAMPAIGN_CONFIG, CAMPAIGN_STAGE, CURRENT_CAP, TIERS, TIER_ORDERS},
     testing::mock_querier::{mock_dependencies_custom, mock_zero_price_tier, MOCK_DEFAULT_LIMIT},
 };
 
@@ -45,10 +45,39 @@ fn get_tiers(storage: &dyn Storage) -> Vec<Tier> {
         .collect()
 }
 
+fn mock_campaign_config_with_denom(denom: &str) -> CampaignConfig {
+    let mut config = mock_campaign_config();
+    config.denom = denom.to_string();
+    config
+}
+
+fn future_time(env: &Env) -> MillisecondsExpiration {
+    MillisecondsExpiration::from_seconds(env.block.time.seconds() + 5000)
+}
+fn past_time() -> MillisecondsExpiration {
+    MillisecondsExpiration::from_seconds(0) // Past timestamp
+}
+fn set_campaign_stage(store: &mut dyn Storage, stage: &CampaignStage) {
+    CAMPAIGN_STAGE.save(store, stage).unwrap();
+}
+fn set_current_cap(store: &mut dyn Storage, cur_cap: &Uint128) {
+    CURRENT_CAP.save(store, cur_cap).unwrap();
+}
+fn set_campaign_config(store: &mut dyn Storage, config: &CampaignConfig) {
+    CAMPAIGN_CONFIG.save(store, config).unwrap();
+}
+
 #[cfg(test)]
 mod test {
+    use andromeda_non_fungible_tokens::crowdfund::SimpleTierOrder;
+    use cosmwasm_std::{coin, coins, BankMsg, Coin};
+
+    use crate::state::{get_current_cap, set_tiers};
 
     use super::*;
+
+    const VALID_DENOM: &str = "uandr";
+    const INVALID_DENOM: &str = "other";
 
     fn instantiate_response(owner: &str) -> Response {
         Response::new()
@@ -91,7 +120,7 @@ mod test {
         ];
 
         for test in test_cases {
-            let mut deps = mock_dependencies_custom(&[]);
+            let mut deps = mock_dependencies_custom(&[coin(100000, VALID_DENOM)]);
             let info = mock_info("owner", &[]);
             let msg = InstantiateMsg {
                 campaign_config: test.config,
@@ -200,7 +229,7 @@ mod test {
             },
         ];
         for test in test_cases {
-            let mut deps = mock_dependencies_custom(&[]);
+            let mut deps = mock_dependencies_custom(&[coin(100000, VALID_DENOM)]);
             let _ = init(deps.as_mut(), mock_campaign_config(), mock_campaign_tiers());
 
             let info = mock_info(&test.payee, &[]);
@@ -304,7 +333,7 @@ mod test {
             },
         ];
         for test in test_cases {
-            let mut deps = mock_dependencies_custom(&[]);
+            let mut deps = mock_dependencies_custom(&[coin(100000, VALID_DENOM)]);
             let _ = init(deps.as_mut(), mock_campaign_config(), mock_campaign_tiers());
 
             let info = mock_info(&test.payee, &[]);
@@ -394,7 +423,7 @@ mod test {
             },
         ];
         for test in test_cases {
-            let mut deps = mock_dependencies_custom(&[]);
+            let mut deps = mock_dependencies_custom(&[coin(100000, VALID_DENOM)]);
             let _ = init(deps.as_mut(), mock_campaign_config(), mock_campaign_tiers());
 
             let info = mock_info(&test.payee, &[]);
@@ -529,9 +558,9 @@ mod test {
             },
         ];
         for test in test_cases {
-            let mut deps = mock_dependencies_custom(&[]);
-            let _ = init(deps.as_mut(), mock_campaign_config(), test.tiers.clone());
+            let mut deps = mock_dependencies_custom(&[coin(100000, VALID_DENOM)]);
 
+            let _ = init(deps.as_mut(), mock_campaign_config(), test.tiers.clone());
             let info = mock_info(&test.payee, &[]);
 
             let msg = ExecuteMsg::StartCampaign {
@@ -584,6 +613,200 @@ mod test {
                         .unwrap_or(CampaignStage::READY),
                     CampaignStage::READY
                 );
+            }
+        }
+    }
+
+    struct PurchaseTierTestCase {
+        name: String,
+        stage: CampaignStage,
+        expected_res: Result<Response, ContractError>,
+        payee: String,
+        start_time: Option<MillisecondsExpiration>,
+        end_time: MillisecondsExpiration,
+        orders: Vec<SimpleTierOrder>,
+        initial_cap: Uint128,
+        funds: Vec<Coin>,
+        denom: String,
+    }
+    #[test]
+    fn test_execute_purchase_tiers() {
+        // fixed total cost to 100 for valid purchase
+        let env = mock_env();
+        let buyer = "buyer";
+        let test_cases: Vec<PurchaseTierTestCase> = vec![
+            PurchaseTierTestCase {
+                name: "Standard purchase with valid order".to_string(),
+                stage: CampaignStage::ONGOING,
+                expected_res: Ok(Response::new()
+                    .add_attribute("action", "purchase_tiers")
+                    .add_attribute("payment", "1000uandr")
+                    .add_attribute("total_cost", "100")
+                    .add_attribute("refunded", "900")
+                    .add_message(BankMsg::Send {
+                        to_address: buyer.to_string(),
+                        // Refund sent back as they only were able to mint one.
+                        amount: coins(900, VALID_DENOM),
+                    })
+                    .add_submessage(SubMsg::reply_on_error(
+                        CosmosMsg::Wasm(WasmMsg::Execute {
+                            contract_addr: "economics_contract".to_string(),
+                            msg: to_json_binary(&EconomicsExecuteMsg::PayFee {
+                                payee: Addr::unchecked(buyer),
+                                action: "PurchaseTiers".to_string(),
+                            })
+                            .unwrap(),
+                            funds: vec![],
+                        }),
+                        ReplyId::PayFee.repr(),
+                    ))),
+                payee: buyer.to_string(),
+                start_time: Some(past_time()),
+                end_time: future_time(&env),
+                orders: vec![SimpleTierOrder {
+                    level: Uint64::one(),
+                    amount: Uint128::new(10),
+                }],
+                initial_cap: Uint128::new(500),
+                funds: vec![coin(1000, VALID_DENOM)],
+                denom: VALID_DENOM.to_string(),
+            },
+            PurchaseTierTestCase {
+                name: "Purchase with insufficient funds".to_string(),
+                stage: CampaignStage::ONGOING,
+                expected_res: Err(ContractError::InsufficientFunds {}),
+                payee: buyer.to_string(),
+                start_time: Some(past_time()),
+                end_time: future_time(&env),
+                orders: vec![SimpleTierOrder {
+                    level: Uint64::one(),
+                    amount: Uint128::new(20),
+                }],
+                initial_cap: Uint128::new(500),
+                funds: vec![coin(10, VALID_DENOM)],
+                denom: VALID_DENOM.to_string(),
+            },
+            PurchaseTierTestCase {
+                name: "Purchase in wrong campaign stage".to_string(),
+                stage: CampaignStage::READY,
+                expected_res: Err(ContractError::InvalidCampaignOperation {
+                    operation: "purchase_tiers".to_string(),
+                    stage: "READY".to_string(),
+                }),
+                payee: buyer.to_string(),
+                start_time: Some(past_time()),
+                end_time: future_time(&env),
+                orders: vec![SimpleTierOrder {
+                    level: Uint64::one(),
+                    amount: Uint128::new(10),
+                }],
+                initial_cap: Uint128::new(500),
+                funds: vec![coin(1000, VALID_DENOM)],
+                denom: VALID_DENOM.to_string(),
+            },
+            PurchaseTierTestCase {
+                name: "Purchase before campaign start".to_string(),
+                stage: CampaignStage::ONGOING,
+                expected_res: Err(ContractError::CampaignNotStarted {}),
+                payee: buyer.to_string(),
+                start_time: Some(future_time(&env)),
+                end_time: future_time(&env),
+                orders: vec![SimpleTierOrder {
+                    level: Uint64::one(),
+                    amount: Uint128::new(10),
+                }],
+                initial_cap: Uint128::new(500),
+                funds: vec![coin(1000, VALID_DENOM)],
+                denom: VALID_DENOM.to_string(),
+            },
+            PurchaseTierTestCase {
+                name: "Purchase after campaign end".to_string(),
+                stage: CampaignStage::ONGOING,
+                expected_res: Err(ContractError::CampaignEnded {}),
+                payee: buyer.to_string(),
+                start_time: Some(past_time()),
+                end_time: past_time(),
+                orders: vec![SimpleTierOrder {
+                    level: Uint64::one(),
+                    amount: Uint128::new(10),
+                }],
+                initial_cap: Uint128::new(500),
+                funds: vec![coin(1000, VALID_DENOM)],
+                denom: VALID_DENOM.to_string(),
+            },
+            PurchaseTierTestCase {
+                name: "Purchase with invalid denomination".to_string(),
+                stage: CampaignStage::ONGOING,
+                expected_res: Err(ContractError::InvalidFunds {
+                    msg: format!("Only {VALID_DENOM} is accepted by the campaign."),
+                }),
+                payee: buyer.to_string(),
+                start_time: Some(past_time()),
+                end_time: future_time(&env),
+                orders: vec![SimpleTierOrder {
+                    level: Uint64::one(),
+                    amount: Uint128::new(10),
+                }],
+                initial_cap: Uint128::new(500),
+                funds: vec![coin(1000, INVALID_DENOM)],
+                denom: VALID_DENOM.to_string(),
+            },
+        ];
+        for test in test_cases {
+            let mut deps = mock_dependencies_custom(&test.funds);
+            let info = mock_info(&test.payee, &test.funds);
+
+            // Mock necessary storage setup
+            set_campaign_stage(deps.as_mut().storage, &test.stage);
+            set_current_cap(deps.as_mut().storage, &test.initial_cap);
+            set_tiers(deps.as_mut().storage, mock_campaign_tiers()).unwrap();
+
+            let mut mock_config = mock_campaign_config_with_denom(&test.denom);
+            mock_config.start_time = test.start_time;
+            mock_config.end_time = test.end_time;
+            set_campaign_config(deps.as_mut().storage, &mock_config);
+
+            let msg = ExecuteMsg::PurchaseTiers {
+                orders: test.orders.clone(),
+            };
+
+            let res = execute(deps.as_mut(), env.clone(), info, msg);
+            assert_eq!(res, test.expected_res, "Test case: {}", test.name);
+
+            if res.is_ok() {
+                // Check current capital
+                let updated_cap = get_current_cap(deps.as_ref().storage);
+                let expected_cap = test.initial_cap + Uint128::new(100);
+                assert_eq!(updated_cap, expected_cap, "Test case: {}", test.name);
+
+                // Check tier orders
+                for order in &test.orders {
+                    let stored_order = TIER_ORDERS
+                        .load(
+                            deps.as_ref().storage,
+                            (Addr::unchecked(buyer), order.level.into()),
+                        )
+                        .unwrap();
+                    assert_eq!(
+                        stored_order,
+                        order.amount.u128(),
+                        "Test case: {}",
+                        test.name
+                    );
+                }
+
+                // Check tier limits
+                for order in &test.orders {
+                    let tier = TIERS
+                        .load(deps.as_ref().storage, order.level.into())
+                        .unwrap();
+                    assert_eq!(
+                        tier.limit.unwrap().u128(),
+                        MOCK_DEFAULT_LIMIT - order.amount.u128(),
+                        "Test case: {}",
+                        test.name
+                    );
+                }
             }
         }
     }

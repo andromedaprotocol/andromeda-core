@@ -26,7 +26,7 @@ pub(crate) fn get_config(storage: &dyn Storage) -> Result<CampaignConfig, Contra
     CAMPAIGN_CONFIG.load(storage).map_err(ContractError::Std)
 }
 
-pub(crate) fn get_current_cap(storage: &mut dyn Storage) -> Uint128 {
+pub(crate) fn get_current_cap(storage: &dyn Storage) -> Uint128 {
     CURRENT_CAP.load(storage).unwrap_or_default()
 }
 
