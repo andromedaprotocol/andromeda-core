@@ -6,6 +6,7 @@ use andromeda_non_fungible_tokens::{
     cw721::TokenExtension,
 };
 use andromeda_std::{
+    ado_base::rates::{Rate, RatesMessage},
     amp::{AndrAddr, Recipient},
     common::expiration::Expiry,
 };
@@ -119,6 +120,16 @@ impl MockCrowdfund {
         let msg = mock_purchase_msg(number_of_tokens);
         self.execute(app, &msg, sender, funds)
     }
+
+    pub fn execute_add_rate(
+        &self,
+        app: &mut MockApp,
+        sender: Addr,
+        action: String,
+        rate: Rate,
+    ) -> ExecuteResult {
+        self.execute(app, &mock_set_rate_msg(action, rate), sender, &[])
+    }
 }
 
 pub fn mock_andromeda_crowdfund() -> Box<dyn Contract<Empty>> {
@@ -192,6 +203,10 @@ pub fn mock_crowdfund_quick_mint_msg(amount: u32, publisher: String) -> ExecuteM
 
 pub fn mock_purchase_msg(number_of_tokens: Option<u32>) -> ExecuteMsg {
     ExecuteMsg::Purchase { number_of_tokens }
+}
+
+pub fn mock_set_rate_msg(action: String, rate: Rate) -> ExecuteMsg {
+    ExecuteMsg::Rates(RatesMessage::SetRate { action, rate })
 }
 
 pub fn mock_query_ado_base_version() -> QueryMsg {
