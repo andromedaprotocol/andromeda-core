@@ -6,12 +6,12 @@ pub use andromeda_std::testing::mock_querier::{
     MOCK_ADDRESS_LIST_CONTRACT, MOCK_APP_CONTRACT, MOCK_KERNEL_CONTRACT, MOCK_RATES_CONTRACT,
 };
 use cosmwasm_std::testing::mock_info;
+use cosmwasm_std::QuerierWrapper;
 use cosmwasm_std::{
     from_json,
     testing::{mock_env, MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
     Coin, OwnedDeps, Querier, QuerierResult, QueryRequest, SystemError, SystemResult, WasmQuery,
 };
-use cosmwasm_std::{QuerierWrapper};
 
 pub const MOCK_TOKEN_CONTRACT: &str = "token_contract";
 pub const MOCK_TAX_RECIPIENT: &str = "tax_recipient";

@@ -2,16 +2,14 @@ use andromeda_std::ado_base::InstantiateMsg;
 use andromeda_std::ado_contract::ADOContract;
 use andromeda_std::testing::mock_querier::MockAndromedaQuerier;
 use cosmwasm_std::testing::mock_info;
+use cosmwasm_std::QuerierWrapper;
 use cosmwasm_std::{
     from_json,
-    testing::{mock_env, MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR}, Coin, OwnedDeps, Querier, QuerierResult, QueryRequest,
-    SystemError, SystemResult, WasmQuery,
+    testing::{mock_env, MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
+    Coin, OwnedDeps, Querier, QuerierResult, QueryRequest, SystemError, SystemResult, WasmQuery,
 };
-use cosmwasm_std::{QuerierWrapper};
 
-pub use andromeda_std::testing::mock_querier::{
-    MOCK_KERNEL_CONTRACT,
-};
+pub use andromeda_std::testing::mock_querier::MOCK_KERNEL_CONTRACT;
 
 // pub const MOCK_TAX_RECIPIENT: &str = "tax_recipient";
 // pub const MOCK_ROYALTY_RECIPIENT: &str = "royalty_recipient";

@@ -4,9 +4,7 @@ use andromeda_std::ado_contract::ADOContract;
 use andromeda_std::testing::mock_querier::MockAndromedaQuerier;
 use cosmwasm_schema::cw_serde;
 
-pub use andromeda_std::testing::mock_querier::{
-    MOCK_KERNEL_CONTRACT,
-};
+pub use andromeda_std::testing::mock_querier::MOCK_KERNEL_CONTRACT;
 use cosmwasm_std::testing::mock_info;
 use cosmwasm_std::{coin, BankQuery, QuerierWrapper};
 use cosmwasm_std::{

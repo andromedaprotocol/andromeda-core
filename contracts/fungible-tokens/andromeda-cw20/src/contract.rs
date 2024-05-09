@@ -1,9 +1,6 @@
 use andromeda_fungible_tokens::cw20::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use andromeda_std::{
-    ado_base::{
-        AndromedaMsg, AndromedaQuery,
-        InstantiateMsg as BaseInstantiateMsg, MigrateMsg,
-    },
+    ado_base::{AndromedaMsg, AndromedaQuery, InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     ado_contract::ADOContract,
     amp::AndrAddr,
     common::{
