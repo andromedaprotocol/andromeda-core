@@ -59,6 +59,7 @@ mod test {
     }
 
     struct InstantiateTestCase {
+        name: String,
         config: CampaignConfig,
         tiers: Vec<Tier>,
         expected_res: Result<Response, ContractError>,
@@ -69,6 +70,7 @@ mod test {
     fn test_instantiate() {
         let test_cases: Vec<InstantiateTestCase> = vec![
             InstantiateTestCase {
+                name: "standard instantiate".to_string(),
                 config: mock_campaign_config(),
                 tiers: mock_campaign_tiers(),
                 expected_res: Ok(instantiate_response("owner")),
@@ -76,6 +78,7 @@ mod test {
                 expected_tiers: mock_campaign_tiers(),
             },
             InstantiateTestCase {
+                name: "instantiate with invalid tiers including zero price tier".to_string(),
                 config: mock_campaign_config(),
                 tiers: vec![mock_zero_price_tier(Uint64::zero())],
                 expected_res: Err(ContractError::InvalidTier {
@@ -99,7 +102,7 @@ mod test {
             };
             let res = instantiate(deps.as_mut(), mock_env(), info, msg);
 
-            assert_eq!(res, test.expected_res);
+            assert_eq!(res, test.expected_res, "Test case: {}", test.name);
             assert_eq!(
                 CAMPAIGN_CONFIG.load(deps.as_mut().storage).unwrap(),
                 test.expected_config.unwrap()
@@ -131,6 +134,7 @@ mod test {
     }
 
     struct TierTestCase {
+        name: String,
         tier: Tier,
         expected_res: Result<Response, ContractError>,
         payee: String,
@@ -165,16 +169,19 @@ mod test {
 
         let test_cases: Vec<TierTestCase> = vec![
             TierTestCase {
+                name: "standard add_tier".to_string(),
                 tier: valid_tier.clone(),
                 expected_res: Ok(add_tier_response(&valid_tier, "owner")),
                 payee: "owner".to_string(),
             },
             TierTestCase {
+                name: "add_tier with unauthorized sender".to_string(),
                 tier: valid_tier.clone(),
                 expected_res: Err(ContractError::Unauthorized {}),
                 payee: "owner1".to_string(),
             },
             TierTestCase {
+                name: "add_tier with zero price tier".to_string(),
                 tier: mock_zero_price_tier(Uint64::new(2)),
                 expected_res: Err(ContractError::InvalidTier {
                     operation: "all".to_string(),
@@ -183,6 +190,7 @@ mod test {
                 payee: "owner".to_string(),
             },
             TierTestCase {
+                name: "add_tier with duplicated tier".to_string(),
                 tier: duplicated_tier,
                 expected_res: Err(ContractError::InvalidTier {
                     operation: "add".to_string(),
@@ -202,7 +210,7 @@ mod test {
             };
 
             let res = execute(deps.as_mut(), mock_env(), info, msg);
-            assert_eq!(res, test.expected_res);
+            assert_eq!(res, test.expected_res, "Test case: {}", test.name);
             if res.is_ok() {
                 assert_eq!(
                     test.tier,
@@ -265,16 +273,19 @@ mod test {
 
         let test_cases: Vec<TierTestCase> = vec![
             TierTestCase {
+                name: "standard update_tier".to_string(),
                 tier: valid_tier.clone(),
                 expected_res: Ok(update_tier_response(&valid_tier, "owner")),
                 payee: "owner".to_string(),
             },
             TierTestCase {
+                name: "update_tier with unauthorized sender".to_string(),
                 tier: valid_tier.clone(),
                 expected_res: Err(ContractError::Unauthorized {}),
                 payee: "owner1".to_string(),
             },
             TierTestCase {
+                name: "update_tier with zero price tier".to_string(),
                 tier: mock_zero_price_tier(Uint64::zero()),
                 expected_res: Err(ContractError::InvalidTier {
                     operation: "all".to_string(),
@@ -283,6 +294,7 @@ mod test {
                 payee: "owner".to_string(),
             },
             TierTestCase {
+                name: "update_tier with non existing tier".to_string(),
                 tier: non_existing_tier,
                 expected_res: Err(ContractError::InvalidTier {
                     operation: "update".to_string(),
@@ -302,7 +314,7 @@ mod test {
             };
 
             let res = execute(deps.as_mut(), mock_env(), info, msg);
-            assert_eq!(res, test.expected_res);
+            assert_eq!(res, test.expected_res, "Test case: {}", test.name);
             if res.is_ok() {
                 assert_eq!(
                     test.tier,
@@ -360,16 +372,19 @@ mod test {
 
         let test_cases: Vec<TierTestCase> = vec![
             TierTestCase {
+                name: "standard remove_tier".to_string(),
                 tier: valid_tier.clone(),
                 expected_res: Ok(remove_tier_response(valid_tier.level, "owner")),
                 payee: "owner".to_string(),
             },
             TierTestCase {
+                name: "remove_tier with unauthorized sender".to_string(),
                 tier: valid_tier.clone(),
                 expected_res: Err(ContractError::Unauthorized {}),
                 payee: "owner1".to_string(),
             },
             TierTestCase {
+                name: "remove_tier with non existing tier level".to_string(),
                 tier: non_existing_tier,
                 expected_res: Err(ContractError::InvalidTier {
                     operation: "remove".to_string(),
@@ -389,7 +404,7 @@ mod test {
             };
 
             let res = execute(deps.as_mut(), mock_env(), info, msg);
-            assert_eq!(res, test.expected_res);
+            assert_eq!(res, test.expected_res, "Test case: {}", test.name);
             if res.is_ok() {
                 assert!(!TIERS.has(deps.as_ref().storage, test.tier.level.into()));
             }
@@ -414,6 +429,7 @@ mod test {
     }
 
     struct StartCampaignTestCase {
+        name: String,
         tiers: Vec<Tier>,
         presale: Option<Vec<TierOrder>>,
         start_time: Option<MillisecondsExpiration>,
@@ -453,6 +469,7 @@ mod test {
         let env = mock_env();
         let test_cases: Vec<StartCampaignTestCase> = vec![
             StartCampaignTestCase {
+                name: "standard start_campaign".to_string(),
                 tiers: mock_campaign_tiers(),
                 presale: Some(valid_presale.clone()),
                 start_time: None,
@@ -461,6 +478,7 @@ mod test {
                 expected_res: Ok(start_campaign_response("owner")),
             },
             StartCampaignTestCase {
+                name: "start_campaign with unauthorized sender".to_string(),
                 tiers: mock_campaign_tiers(),
                 presale: Some(valid_presale.clone()),
                 start_time: None,
@@ -469,6 +487,7 @@ mod test {
                 expected_res: Err(ContractError::Unauthorized {}),
             },
             StartCampaignTestCase {
+                name: "start_campaign with no unlimited tier".to_string(),
                 tiers: invalid_tiers,
                 presale: Some(valid_presale.clone()),
                 start_time: None,
@@ -477,6 +496,7 @@ mod test {
                 expected_res: Err(ContractError::InvalidTiers {}),
             },
             StartCampaignTestCase {
+                name: "start_campaign with invalid presales".to_string(),
                 tiers: mock_campaign_tiers(),
                 presale: Some(invalid_presale.clone()),
                 start_time: None,
@@ -488,6 +508,7 @@ mod test {
                 }),
             },
             StartCampaignTestCase {
+                name: "start_campaign with invalid end_time".to_string(),
                 tiers: mock_campaign_tiers(),
                 presale: Some(valid_presale.clone()),
                 start_time: None,
@@ -496,6 +517,7 @@ mod test {
                 expected_res: Err(ContractError::StartTimeAfterEndTime {}),
             },
             StartCampaignTestCase {
+                name: "start_campaign with invalid start_time".to_string(),
                 tiers: mock_campaign_tiers(),
                 presale: Some(valid_presale.clone()),
                 start_time: Some(MillisecondsExpiration::from_seconds(
@@ -519,7 +541,7 @@ mod test {
             };
 
             let res = execute(deps.as_mut(), env.clone(), info, msg);
-            assert_eq!(res, test.expected_res);
+            assert_eq!(res, test.expected_res, "Test case: {}", test.name);
 
             if res.is_ok() {
                 assert_eq!(
