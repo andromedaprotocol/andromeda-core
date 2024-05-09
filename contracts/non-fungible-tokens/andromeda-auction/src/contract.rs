@@ -758,7 +758,18 @@ fn execute_claim(
     let (after_tax_payment, tax_messages) =
         purchase_token(deps.as_ref(), &info, token_auction_state.clone(), action)?;
 
-    let resp: Response = Response::new()
+    let mut resp: Response = Response::new()
+        // Send NFT to auction winner.
+        .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: token_auction_state.token_address.clone(),
+            msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
+                recipient: token_auction_state.high_bidder_addr.to_string(),
+                token_id: token_id.clone(),
+            })?,
+            funds: vec![],
+        }))
+        // Send tax/royalty messages
+        .add_submessages(tax_messages)
         .add_attribute("action", "claim")
         .add_attribute("token_id", token_id.clone())
         .add_attribute("token_contract", token_auction_state.clone().token_address)
@@ -766,89 +777,22 @@ fn execute_claim(
         .add_attribute("winning_bid_amount", token_auction_state.high_bidder_amount)
         .add_attribute("auction_id", token_auction_state.auction_id);
 
-    let is_cw20_auction = token_auction_state.uses_cw20;
-    if is_cw20_auction {
-        let auction_currency = token_auction_state.coin_denom;
+    let recipient = token_auction_state
+        .recipient
+        .unwrap_or(Recipient::from_string(token_auction_state.owner));
 
-        let recipient = token_auction_state
-            .recipient
-            .unwrap_or(Recipient::from_string(token_auction_state.owner));
-
-        let cw20_msg = recipient.generate_msg_cw20(
-            &deps.as_ref(),
-            Cw20Coin {
-                address: auction_currency.clone(),
-                amount: after_tax_payment.amount,
-            },
-        )?;
-        // After tax payment is returned in Native, we need to change it to cw20
-        let (tax_recipient, tax_amount) = match tax_messages.first().map(|msg| {
-            if let CosmosMsg::Bank(BankMsg::Send { to_address, amount }) = &msg.msg {
-                (
-                    Some(to_address.clone()),
-                    amount.first().map(|coin| coin.amount),
-                )
-            } else {
-                (None, None)
-            }
-        }) {
-            Some((tax_recipient, tax_amount)) => (tax_recipient, tax_amount),
-            None => (None, None),
-        };
-        match (tax_recipient, tax_amount) {
-            (Some(recipient), Some(amount)) => {
-                let tax_transfer_msg = Cw20ExecuteMsg::Transfer { recipient, amount };
-                let tax_wasm_msg = wasm_execute(auction_currency, &tax_transfer_msg, vec![])?;
-                // Add tax message in case there's a tax recipient and amount
-                Ok(resp
-                    .add_message(tax_wasm_msg)
-                    // Send cw20 funds to the original owner or recipient (if provided).
-                    .add_submessage(cw20_msg)
-                    // Send NFT to auction winner.
-                    .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-                        contract_addr: token_auction_state.token_address.clone(),
-                        msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
-                            recipient: token_auction_state.high_bidder_addr.to_string(),
-                            token_id,
-                        })?,
-                        funds: vec![],
-                    })))
-            }
-            _ => Ok(resp
-                // Send cw20 funds to the original owner or recipient (if provided).
-                .add_submessage(cw20_msg)
-                // Send NFT to auction winner.
-                .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-                    contract_addr: token_auction_state.token_address.clone(),
-                    msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
-                        recipient: token_auction_state.high_bidder_addr.to_string(),
-                        token_id,
-                    })?,
-                    funds: vec![],
-                }))),
+    match after_tax_payment {
+        Funds::Native(native_funds) => {
+            // Send payment to recipient
+            resp = resp
+                .add_submessage(recipient.generate_direct_msg(&deps.as_ref(), vec![native_funds])?)
         }
-    } else {
-        let recipient = token_auction_state
-            .clone()
-            .recipient
-            .unwrap_or(Recipient::from_string(token_auction_state.clone().owner));
-
-        let msg = recipient.generate_direct_msg(&deps.as_ref(), vec![after_tax_payment.clone()])?;
-
-        Ok(resp
-            .add_submessages(tax_messages)
-            // Send native funds to the original owner or recipient (if provided).
-            .add_submessage(msg)
-            // Send NFT to auction winner.
-            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: token_auction_state.token_address.clone(),
-                msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
-                    recipient: token_auction_state.high_bidder_addr.to_string(),
-                    token_id,
-                })?,
-                funds: vec![],
-            })))
+        Funds::Cw20(cw20_funds) => {
+            let cw20_msg = recipient.generate_msg_cw20(&deps.as_ref(), cw20_funds)?;
+            resp = resp.add_submessage(cw20_msg)
+        }
     }
+    Ok(resp)
 }
 
 fn execute_authorize_token_contract(
@@ -907,29 +851,53 @@ fn purchase_token(
     _info: &MessageInfo,
     state: TokenAuctionState,
     action: String,
-) -> Result<(Coin, Vec<SubMsg>), ContractError> {
-    let total_cost = Coin::new(state.high_bidder_amount.u128(), state.coin_denom.clone());
-
-    let transfer_response = ADOContract::default().query_deducted_funds(
-        deps,
-        action,
-        Funds::Native(total_cost.clone()),
-    )?;
-    match transfer_response {
-        Some(transfer_response) => {
-            let remaining_amount = transfer_response.leftover_funds.try_get_coin()?;
-            let after_tax_payment = Coin {
-                denom: state.coin_denom,
-                amount: remaining_amount.amount,
-            };
-            Ok((after_tax_payment, transfer_response.msgs))
+) -> Result<(Funds, Vec<SubMsg>), ContractError> {
+    if !state.uses_cw20 {
+        let total_cost = Coin::new(state.high_bidder_amount.u128(), state.coin_denom.clone());
+        let transfer_response = ADOContract::default().query_deducted_funds(
+            deps,
+            action,
+            Funds::Native(total_cost.clone()),
+        )?;
+        match transfer_response {
+            Some(transfer_response) => {
+                let remaining_amount = transfer_response.leftover_funds.try_get_coin()?;
+                let after_tax_payment = Coin {
+                    denom: state.coin_denom,
+                    amount: remaining_amount.amount,
+                };
+                Ok((Funds::Native(after_tax_payment), transfer_response.msgs))
+            }
+            None => {
+                let after_tax_payment = Coin {
+                    denom: state.coin_denom,
+                    amount: total_cost.amount,
+                };
+                Ok((Funds::Native(after_tax_payment), vec![]))
+            }
         }
-        None => {
-            let after_tax_payment = Coin {
-                denom: state.coin_denom,
-                amount: total_cost.amount,
-            };
-            Ok((after_tax_payment, vec![]))
+    } else {
+        let total_cost = Cw20Coin {
+            address: state.coin_denom.clone(),
+            amount: state.high_bidder_amount,
+        };
+        let transfer_response = ADOContract::default().query_deducted_funds(
+            deps,
+            action,
+            Funds::Cw20(total_cost.clone()),
+        )?;
+        match transfer_response {
+            Some(transfer_response) => {
+                let remaining_amount = transfer_response.leftover_funds.try_get_cw20_coin()?;
+                Ok((Funds::Cw20(remaining_amount), transfer_response.msgs))
+            }
+            None => {
+                let after_tax_payment = Cw20Coin {
+                    address: state.coin_denom,
+                    amount: total_cost.amount,
+                };
+                Ok((Funds::Cw20(after_tax_payment), vec![]))
+            }
         }
     }
 }

@@ -1192,6 +1192,11 @@ fn execute_claim_with_tax() {
     };
     assert_eq!(
         Response::new()
+            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: MOCK_TOKEN_ADDR.to_string(),
+                msg: encode_binary(&transfer_nft_msg).unwrap(),
+                funds: vec![],
+            }))
             .add_message(CosmosMsg::Bank(BankMsg::Send {
                 to_address: tax_recipient.to_owned(),
                 amount: coins(20, "uusd"),
@@ -1199,11 +1204,6 @@ fn execute_claim_with_tax() {
             .add_message(CosmosMsg::Bank(BankMsg::Send {
                 to_address: MOCK_TOKEN_OWNER.to_owned(),
                 amount: coins(100, "uusd"),
-            }))
-            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: MOCK_TOKEN_ADDR.to_string(),
-                msg: encode_binary(&transfer_nft_msg).unwrap(),
-                funds: vec![],
             }))
             .add_attribute("action", "claim")
             .add_attribute("token_id", MOCK_UNCLAIMED_TOKEN)
@@ -1279,6 +1279,11 @@ fn execute_claim_with_royalty() {
     };
     assert_eq!(
         Response::new()
+            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: MOCK_TOKEN_ADDR.to_string(),
+                msg: encode_binary(&transfer_nft_msg).unwrap(),
+                funds: vec![],
+            }))
             .add_message(CosmosMsg::Bank(BankMsg::Send {
                 to_address: royalty_recipient.to_owned(),
                 amount: coins(20, "uusd"),
@@ -1286,11 +1291,6 @@ fn execute_claim_with_royalty() {
             .add_message(CosmosMsg::Bank(BankMsg::Send {
                 to_address: MOCK_TOKEN_OWNER.to_owned(),
                 amount: coins(80, "uusd"),
-            }))
-            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: MOCK_TOKEN_ADDR.to_string(),
-                msg: encode_binary(&transfer_nft_msg).unwrap(),
-                funds: vec![],
             }))
             .add_attribute("action", "claim")
             .add_attribute("token_id", MOCK_UNCLAIMED_TOKEN)
@@ -1355,6 +1355,11 @@ fn execute_claim_cw20() {
     assert_eq!(
         Response::new()
             .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: MOCK_TOKEN_ADDR.to_string(),
+                msg: encode_binary(&transfer_nft_msg).unwrap(),
+                funds: vec![],
+            }))
+            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: MOCK_CW20_CONTRACT.to_string(),
                 msg: encode_binary(&Cw20ExecuteMsg::Transfer {
                     recipient: MOCK_TOKEN_OWNER.to_owned(),
@@ -1362,11 +1367,6 @@ fn execute_claim_cw20() {
                 })
                 .unwrap(),
                 funds: vec![]
-            }))
-            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: MOCK_TOKEN_ADDR.to_string(),
-                msg: encode_binary(&transfer_nft_msg).unwrap(),
-                funds: vec![],
             }))
             .add_attribute("action", "claim")
             .add_attribute("token_id", MOCK_UNCLAIMED_TOKEN)
@@ -1449,6 +1449,11 @@ fn execute_claim_cw20_with_tax() {
     assert_eq!(
         Response::new()
             .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: MOCK_TOKEN_ADDR.to_string(),
+                msg: encode_binary(&transfer_nft_msg).unwrap(),
+                funds: vec![],
+            }))
+            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: MOCK_CW20_CONTRACT.to_string(),
                 msg: encode_binary(&Cw20ExecuteMsg::Transfer {
                     recipient: tax_recipient.to_owned(),
@@ -1465,11 +1470,6 @@ fn execute_claim_cw20_with_tax() {
                 })
                 .unwrap(),
                 funds: vec![]
-            }))
-            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: MOCK_TOKEN_ADDR.to_string(),
-                msg: encode_binary(&transfer_nft_msg).unwrap(),
-                funds: vec![],
             }))
             .add_attribute("action", "claim")
             .add_attribute("token_id", MOCK_UNCLAIMED_TOKEN)
