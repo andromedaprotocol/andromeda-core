@@ -755,7 +755,7 @@ fn execute_claim(
     }
 
     // Calculate the funds to be received after tax
-    let after_tax_payment =
+    let (after_tax_payment, tax_messages) =
         purchase_token(deps.as_ref(), &info, token_auction_state.clone(), action)?;
 
     let resp: Response = Response::new()
@@ -778,11 +778,11 @@ fn execute_claim(
             &deps.as_ref(),
             Cw20Coin {
                 address: auction_currency.clone(),
-                amount: after_tax_payment.0.amount,
+                amount: after_tax_payment.amount,
             },
         )?;
         // After tax payment is returned in Native, we need to change it to cw20
-        let (tax_recipient, tax_amount) = match after_tax_payment.1.first().map(|msg| {
+        let (tax_recipient, tax_amount) = match tax_messages.first().map(|msg| {
             if let CosmosMsg::Bank(BankMsg::Send { to_address, amount }) = &msg.msg {
                 (
                     Some(to_address.clone()),
@@ -833,11 +833,10 @@ fn execute_claim(
             .recipient
             .unwrap_or(Recipient::from_string(token_auction_state.clone().owner));
 
-        let msg =
-            recipient.generate_direct_msg(&deps.as_ref(), vec![after_tax_payment.clone().0])?;
+        let msg = recipient.generate_direct_msg(&deps.as_ref(), vec![after_tax_payment.clone()])?;
 
         Ok(resp
-            .add_submessages(after_tax_payment.1)
+            .add_submessages(tax_messages)
             // Send native funds to the original owner or recipient (if provided).
             .add_submessage(msg)
             // Send NFT to auction winner.

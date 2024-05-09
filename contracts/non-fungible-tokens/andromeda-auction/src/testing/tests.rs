@@ -15,7 +15,7 @@ use andromeda_non_fungible_tokens::{
 use andromeda_std::{
     ado_base::{
         modules::Module,
-        rates::{LocalRate, LocalRateType, LocalRateValue, Rate},
+        rates::{LocalRate, LocalRateType, LocalRateValue, PercentRate, Rate},
     },
     ado_contract::ADOContract,
     amp::AndrAddr,
@@ -34,8 +34,8 @@ use andromeda_std::{amp::Recipient, testing::mock_querier::MOCK_CW20_CONTRACT};
 use cosmwasm_std::{
     attr, coin, coins, from_json,
     testing::{mock_dependencies, mock_env, mock_info},
-    to_json_binary, Addr, BankMsg, CosmosMsg, Deps, DepsMut, Env, Response, SubMsg, Timestamp,
-    Uint128, WasmMsg,
+    to_json_binary, Addr, BankMsg, CosmosMsg, Decimal, Deps, DepsMut, Env, Response, SubMsg,
+    Timestamp, Uint128, WasmMsg,
 };
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use cw721::Cw721ReceiveMsg;
@@ -1142,25 +1142,26 @@ fn execute_claim_no_bids_cw20() {
 }
 
 #[test]
-fn execute_claim() {
+fn execute_claim_with_tax() {
     let mut deps = mock_dependencies_custom(&[]);
     let mut env = mock_env();
     let _res = init(deps.as_mut());
+    let tax_recipient = "tax_recipient";
 
-    let rate = Rate::Local(LocalRate {
+    let rate: Rate = Rate::Local(LocalRate {
         rate_type: LocalRateType::Additive,
         recipients: vec![Recipient {
-            address: AndrAddr::from_string("owner".to_string()),
+            address: AndrAddr::from_string(tax_recipient.to_string()),
             msg: None,
             ibc_recovery_address: None,
         }],
-        value: LocalRateValue::Flat(coin(100_u128, "uusd")),
+        value: LocalRateValue::Flat(coin(20_u128, "uusd")),
         description: None,
     });
 
     // Set rates
     ADOContract::default()
-        .set_rates(deps.as_mut().storage, "auction", rate)
+        .set_rates(deps.as_mut().storage, "AuctionClaim", rate)
         .unwrap();
 
     start_auction(deps.as_mut(), None, None);
@@ -1192,8 +1193,99 @@ fn execute_claim() {
     assert_eq!(
         Response::new()
             .add_message(CosmosMsg::Bank(BankMsg::Send {
+                to_address: tax_recipient.to_owned(),
+                amount: coins(20, "uusd"),
+            }))
+            .add_message(CosmosMsg::Bank(BankMsg::Send {
                 to_address: MOCK_TOKEN_OWNER.to_owned(),
                 amount: coins(100, "uusd"),
+            }))
+            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: MOCK_TOKEN_ADDR.to_string(),
+                msg: encode_binary(&transfer_nft_msg).unwrap(),
+                funds: vec![],
+            }))
+            .add_attribute("action", "claim")
+            .add_attribute("token_id", MOCK_UNCLAIMED_TOKEN)
+            .add_attribute("token_contract", MOCK_TOKEN_ADDR)
+            .add_attribute("recipient", "sender")
+            .add_attribute("winning_bid_amount", Uint128::from(100u128))
+            .add_attribute("auction_id", "1")
+            // Economics message
+            .add_submessage(SubMsg::reply_on_error(
+                CosmosMsg::Wasm(WasmMsg::Execute {
+                    contract_addr: "economics_contract".to_string(),
+                    msg: to_json_binary(&EconomicsExecuteMsg::PayFee {
+                        payee: Addr::unchecked("any_user"),
+                        action: "Claim".to_string()
+                    })
+                    .unwrap(),
+                    funds: vec![],
+                }),
+                ReplyId::PayFee.repr(),
+            )),
+        res
+    );
+}
+
+#[test]
+fn execute_claim_with_royalty() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let mut env = mock_env();
+    let _res = init(deps.as_mut());
+    let royalty_recipient = "royalty_recipient";
+
+    let rate: Rate = Rate::Local(LocalRate {
+        rate_type: LocalRateType::Deductive,
+        recipients: vec![Recipient {
+            address: AndrAddr::from_string(royalty_recipient.to_string()),
+            msg: None,
+            ibc_recovery_address: None,
+        }],
+        value: LocalRateValue::Flat(coin(20_u128, "uusd")),
+        description: None,
+    });
+
+    // Set rates
+    ADOContract::default()
+        .set_rates(deps.as_mut().storage, "AuctionClaim", rate)
+        .unwrap();
+
+    start_auction(deps.as_mut(), None, None);
+
+    let msg = ExecuteMsg::PlaceBid {
+        token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
+        token_address: MOCK_TOKEN_ADDR.to_string(),
+    };
+
+    let info = mock_info("sender", &coins(100, "uusd".to_string()));
+    env.block.time = env.block.time.plus_seconds(1);
+
+    let _res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
+
+    // Auction ended by that time
+    env.block.time = env.block.time.plus_days(1);
+
+    let msg = ExecuteMsg::Claim {
+        token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
+        token_address: MOCK_TOKEN_ADDR.to_string(),
+    };
+
+    let info = mock_info("any_user", &[]);
+    let res = execute(deps.as_mut(), env, info, msg).unwrap();
+    let transfer_nft_msg = Cw721ExecuteMsg::TransferNft {
+        recipient: AndrAddr::from_string("sender".to_string()),
+        token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
+    };
+    assert_eq!(
+        Response::new()
+            .add_message(CosmosMsg::Bank(BankMsg::Send {
+                to_address: royalty_recipient.to_owned(),
+                amount: coins(20, "uusd"),
+            }))
+            .add_message(CosmosMsg::Bank(BankMsg::Send {
+                to_address: MOCK_TOKEN_OWNER.to_owned(),
+                amount: coins(80, "uusd"),
             }))
             .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: MOCK_TOKEN_ADDR.to_string(),
@@ -1262,6 +1354,109 @@ fn execute_claim_cw20() {
     };
     assert_eq!(
         Response::new()
+            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: MOCK_CW20_CONTRACT.to_string(),
+                msg: encode_binary(&Cw20ExecuteMsg::Transfer {
+                    recipient: MOCK_TOKEN_OWNER.to_owned(),
+                    amount: Uint128::new(100)
+                })
+                .unwrap(),
+                funds: vec![]
+            }))
+            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: MOCK_TOKEN_ADDR.to_string(),
+                msg: encode_binary(&transfer_nft_msg).unwrap(),
+                funds: vec![],
+            }))
+            .add_attribute("action", "claim")
+            .add_attribute("token_id", MOCK_UNCLAIMED_TOKEN)
+            .add_attribute("token_contract", MOCK_TOKEN_ADDR)
+            .add_attribute("recipient", "sender")
+            .add_attribute("winning_bid_amount", Uint128::from(100u128))
+            .add_attribute("auction_id", "1")
+            // Economics message
+            .add_submessage(SubMsg::reply_on_error(
+                CosmosMsg::Wasm(WasmMsg::Execute {
+                    contract_addr: "economics_contract".to_string(),
+                    msg: to_json_binary(&EconomicsExecuteMsg::PayFee {
+                        payee: Addr::unchecked("any_user"),
+                        action: "Claim".to_string()
+                    })
+                    .unwrap(),
+                    funds: vec![],
+                }),
+                ReplyId::PayFee.repr(),
+            )),
+        res
+    );
+}
+
+#[test]
+fn execute_claim_cw20_with_tax() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let mut env = mock_env();
+    let _res = init_cw20(deps.as_mut(), None);
+    let tax_recipient = "tax_recipient";
+    let rate: Rate = Rate::Local(LocalRate {
+        rate_type: LocalRateType::Additive,
+        recipients: vec![Recipient {
+            address: AndrAddr::from_string(tax_recipient.to_string()),
+            msg: None,
+            ibc_recovery_address: None,
+        }],
+        value: LocalRateValue::Percent(PercentRate {
+            percent: Decimal::percent(20),
+        }),
+        description: None,
+    });
+
+    // Set rates
+    ADOContract::default()
+        .set_rates(deps.as_mut().storage, "AuctionClaim", rate)
+        .unwrap();
+
+    start_auction_cw20(deps.as_mut(), None, None);
+
+    let hook_msg = Cw20HookMsg::PlaceBid {
+        token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
+        token_address: MOCK_TOKEN_ADDR.to_string(),
+    };
+    let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
+        sender: "sender".to_string(),
+        amount: Uint128::new(100),
+        msg: encode_binary(&hook_msg).unwrap(),
+    });
+
+    let info = mock_info(MOCK_CW20_CONTRACT, &[]);
+    env.block.time = env.block.time.plus_seconds(1);
+
+    let _res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
+
+    // Auction ended by that time
+    env.block.time = env.block.time.plus_days(1);
+
+    let msg = ExecuteMsg::Claim {
+        token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
+        token_address: MOCK_TOKEN_ADDR.to_string(),
+    };
+
+    let info = mock_info("any_user", &[]);
+    let res = execute(deps.as_mut(), env, info, msg).unwrap();
+    let transfer_nft_msg = Cw721ExecuteMsg::TransferNft {
+        recipient: AndrAddr::from_string("sender".to_string()),
+        token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
+    };
+    assert_eq!(
+        Response::new()
+            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: MOCK_CW20_CONTRACT.to_string(),
+                msg: encode_binary(&Cw20ExecuteMsg::Transfer {
+                    recipient: tax_recipient.to_owned(),
+                    amount: Uint128::new(20)
+                })
+                .unwrap(),
+                funds: vec![]
+            }))
             .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: MOCK_CW20_CONTRACT.to_string(),
                 msg: encode_binary(&Cw20ExecuteMsg::Transfer {
