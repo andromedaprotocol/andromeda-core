@@ -175,7 +175,7 @@ impl Tier {
 #[cw_serde]
 pub struct TierMetaData {
     /// Universal resource identifier for the tier
-    /// Should point to a JSON file that conforms to the ERC721
+    /// Should point to a JSON file that conforms to the CW721
     /// Metadata JSON Schema
     pub token_uri: Option<String>,
     /// Any custom extension used by this contract
