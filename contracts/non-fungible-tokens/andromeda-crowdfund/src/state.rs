@@ -1,53 +1,132 @@
-use andromeda_non_fungible_tokens::crowdfund::{Config, State};
+use andromeda_non_fungible_tokens::crowdfund::{CampaignConfig, CampaignStage, Tier, TierOrder};
 use andromeda_std::error::ContractError;
-use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Order, Storage, SubMsg, Uint128};
-use cw_storage_plus::{Bound, Item, Map};
+use cosmwasm_std::{ensure, Addr, Order, Storage, Uint128};
+use cw_storage_plus::{Item, Map};
 
-/// The config.
-pub const CONFIG: Item<Config> = Item::new("config");
+pub const CAMPAIGN_CONFIG: Item<CampaignConfig> = Item::new("campaign_config");
 
-/// The number of tokens available for sale.
-pub const NUMBER_OF_TOKENS_AVAILABLE: Item<Uint128> = Item::new("number_of_tokens_available");
+pub const CAMPAIGN_STAGE: Item<CampaignStage> = Item::new("campaign_stage");
 
-/// Sale started if and only if STATE.may_load is Some and !duration.is_expired()
-pub const STATE: Item<State> = Item::new("state");
+pub const CURRENT_CAP: Item<Uint128> = Item::new("current_capital");
 
-/// Relates buyer address to vector of purchases.
-pub const PURCHASES: Map<&str, Vec<Purchase>> = Map::new("buyers");
+pub const TIERS: Map<u64, Tier> = Map::new("tiers");
 
-/// Contains token ids that have not been purchased.
-pub const AVAILABLE_TOKENS: Map<&str, bool> = Map::new("available_tokens");
+pub const TIER_ORDERS: Map<(Addr, u64), u128> = Map::new("tier_orders");
 
-/// Is set to true when at least one sale has been conducted. This is used to disallow minting if
-/// config.can_mint_after_sale is false.
-pub const SALE_CONDUCTED: Item<bool> = Item::new("sale_conducted");
-
-#[cw_serde]
-pub struct Purchase {
-    /// The token id being purchased.
-    pub token_id: String,
-    /// Amount of tax paid.
-    pub tax_amount: Uint128,
-    /// sub messages for sending funds for rates.
-    pub msgs: Vec<SubMsg>,
-    /// The purchaser of the token.
-    pub purchaser: String,
+pub(crate) fn update_config(
+    storage: &mut dyn Storage,
+    config: CampaignConfig,
+) -> Result<(), ContractError> {
+    CAMPAIGN_CONFIG
+        .save(storage, &config)
+        .map_err(ContractError::Std)
 }
 
-const MAX_LIMIT: u32 = 50;
-const DEFAULT_LIMIT: u32 = 20;
-pub(crate) fn get_available_tokens(
-    storage: &dyn Storage,
-    start_after: Option<String>,
-    limit: Option<u32>,
-) -> Result<Vec<String>, ContractError> {
-    let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
-    let start = start_after.as_deref().map(Bound::exclusive);
-    let tokens: Result<Vec<String>, ContractError> = AVAILABLE_TOKENS
-        .keys(storage, start, None, Order::Ascending)
-        .take(limit)
-        .map(|token| Ok(token?))
-        .collect();
-    tokens
+pub(crate) fn get_config(storage: &dyn Storage) -> Result<CampaignConfig, ContractError> {
+    CAMPAIGN_CONFIG.load(storage).map_err(ContractError::Std)
+}
+
+/// Only used on the instantiation
+pub(crate) fn set_tiers(storage: &mut dyn Storage, tiers: Vec<Tier>) -> Result<(), ContractError> {
+    for tier in tiers {
+        tier.validate()?;
+        ensure!(
+            !TIERS.has(storage, tier.level.into()),
+            ContractError::InvalidTier {
+                operation: "instantiate".to_string(),
+                msg: format!("Tier with level {} already defined", tier.level)
+            }
+        );
+        TIERS.save(storage, tier.level.into(), &tier)?;
+    }
+
+    Ok(())
+}
+
+pub(crate) fn add_tier(storage: &mut dyn Storage, tier: &Tier) -> Result<(), ContractError> {
+    ensure!(
+        !TIERS.has(storage, tier.level.into()),
+        ContractError::InvalidTier {
+            operation: "add".to_string(),
+            msg: format!("Tier with level {} already exist", tier.level)
+        }
+    );
+    TIERS.save(storage, tier.level.into(), tier)?;
+    Ok(())
+}
+
+pub(crate) fn update_tier(storage: &mut dyn Storage, tier: &Tier) -> Result<(), ContractError> {
+    ensure!(
+        TIERS.has(storage, tier.level.into()),
+        ContractError::InvalidTier {
+            operation: "update".to_string(),
+            msg: format!("Tier with level {} does not exist", tier.level),
+        }
+    );
+
+    TIERS.save(storage, tier.level.into(), tier)?;
+    Ok(())
+}
+
+pub(crate) fn remove_tier(storage: &mut dyn Storage, level: u64) -> Result<(), ContractError> {
+    ensure!(
+        TIERS.has(storage, level),
+        ContractError::InvalidTier {
+            operation: "remove".to_string(),
+            msg: format!("Tier with level {} does not exist", level)
+        }
+    );
+
+    TIERS.remove(storage, level);
+    Ok(())
+}
+
+pub(crate) fn is_valid_tiers(storage: &mut dyn Storage) -> bool {
+    !TIERS.is_empty(storage)
+        && TIERS
+            .range_raw(storage, None, None, Order::Ascending)
+            .any(|res| res.unwrap().1.limit.is_none())
+}
+
+pub(crate) fn get_current_stage(storage: &dyn Storage) -> CampaignStage {
+    CAMPAIGN_STAGE.load(storage).unwrap_or(CampaignStage::READY)
+}
+
+pub(crate) fn set_current_stage(
+    storage: &mut dyn Storage,
+    stage: CampaignStage,
+) -> Result<(), ContractError> {
+    CAMPAIGN_STAGE
+        .save(storage, &stage)
+        .map_err(ContractError::Std)
+}
+
+pub(crate) fn set_tier_orders(
+    storage: &mut dyn Storage,
+    orders: Vec<TierOrder>,
+) -> Result<(), ContractError> {
+    for new_order in orders {
+        let mut tier = TIERS.load(storage, new_order.level.into()).map_err(|_| {
+            ContractError::InvalidTier {
+                operation: "set_tier_orders".to_string(),
+                msg: format!("Tier with level {} does not exist", new_order.level),
+            }
+        })?;
+        if let Some(mut remaining_amount) = tier.limit {
+            remaining_amount = remaining_amount.checked_sub(new_order.amount)?;
+            tier.limit = Some(remaining_amount);
+            update_tier(storage, &tier)?;
+        }
+
+        let mut order = TIER_ORDERS
+            .load(storage, (new_order.orderer.clone(), new_order.level.into()))
+            .unwrap_or(0);
+        order += new_order.amount.u128();
+        TIER_ORDERS.save(
+            storage,
+            (new_order.orderer.clone(), new_order.level.into()),
+            &order,
+        )?;
+    }
+    Ok(())
 }
