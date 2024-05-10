@@ -6,7 +6,7 @@ use andromeda_non_fungible_tokens::{
 };
 
 use andromeda_std::{
-    common::{reply::ReplyId, MillisecondsExpiration},
+    common::{denom::Asset, reply::ReplyId, MillisecondsExpiration},
     error::ContractError,
     os::economics::ExecuteMsg as EconomicsExecuteMsg,
     testing::mock_querier::{MOCK_ADO_PUBLISHER, MOCK_KERNEL_CONTRACT},
@@ -45,9 +45,9 @@ fn get_tiers(storage: &dyn Storage) -> Vec<Tier> {
         .collect()
 }
 
-fn mock_campaign_config_with_denom(denom: &str) -> CampaignConfig {
+fn mock_campaign_config_with_denom(denom: &Asset) -> CampaignConfig {
     let mut config = mock_campaign_config();
-    config.denom = denom.to_string();
+    config.denom = denom.clone();
     config
 }
 
@@ -70,14 +70,15 @@ fn set_campaign_config(store: &mut dyn Storage, config: &CampaignConfig) {
 #[cfg(test)]
 mod test {
     use andromeda_non_fungible_tokens::crowdfund::SimpleTierOrder;
+    use andromeda_std::common::denom::Asset;
     use cosmwasm_std::{coin, coins, BankMsg, Coin};
 
     use crate::state::{get_current_cap, set_tiers};
 
     use super::*;
 
-    const VALID_DENOM: &str = "uandr";
-    const INVALID_DENOM: &str = "other";
+    const MOCK_NATIVE_DENOM: &str = "uandr";
+    const INVA1LID_DENOM: &str = "other";
 
     fn instantiate_response(owner: &str) -> Response {
         Response::new()
@@ -120,7 +121,7 @@ mod test {
         ];
 
         for test in test_cases {
-            let mut deps = mock_dependencies_custom(&[coin(100000, VALID_DENOM)]);
+            let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
             let info = mock_info("owner", &[]);
             let msg = InstantiateMsg {
                 campaign_config: test.config,
@@ -229,7 +230,7 @@ mod test {
             },
         ];
         for test in test_cases {
-            let mut deps = mock_dependencies_custom(&[coin(100000, VALID_DENOM)]);
+            let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
             let _ = init(deps.as_mut(), mock_campaign_config(), mock_campaign_tiers());
 
             let info = mock_info(&test.payee, &[]);
@@ -333,7 +334,7 @@ mod test {
             },
         ];
         for test in test_cases {
-            let mut deps = mock_dependencies_custom(&[coin(100000, VALID_DENOM)]);
+            let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
             let _ = init(deps.as_mut(), mock_campaign_config(), mock_campaign_tiers());
 
             let info = mock_info(&test.payee, &[]);
@@ -423,7 +424,7 @@ mod test {
             },
         ];
         for test in test_cases {
-            let mut deps = mock_dependencies_custom(&[coin(100000, VALID_DENOM)]);
+            let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
             let _ = init(deps.as_mut(), mock_campaign_config(), mock_campaign_tiers());
 
             let info = mock_info(&test.payee, &[]);
@@ -558,7 +559,7 @@ mod test {
             },
         ];
         for test in test_cases {
-            let mut deps = mock_dependencies_custom(&[coin(100000, VALID_DENOM)]);
+            let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
 
             let _ = init(deps.as_mut(), mock_campaign_config(), test.tiers.clone());
             let info = mock_info(&test.payee, &[]);
@@ -627,7 +628,7 @@ mod test {
         orders: Vec<SimpleTierOrder>,
         initial_cap: Uint128,
         funds: Vec<Coin>,
-        denom: String,
+        denom: Asset,
     }
     #[test]
     fn test_execute_purchase_tiers() {
@@ -640,13 +641,13 @@ mod test {
                 stage: CampaignStage::ONGOING,
                 expected_res: Ok(Response::new()
                     .add_attribute("action", "purchase_tiers")
-                    .add_attribute("payment", "1000uandr")
+                    .add_attribute("payment", "1000native:uandr")
                     .add_attribute("total_cost", "100")
                     .add_attribute("refunded", "900")
                     .add_message(BankMsg::Send {
                         to_address: buyer.to_string(),
                         // Refund sent back as they only were able to mint one.
-                        amount: coins(900, VALID_DENOM),
+                        amount: coins(900, MOCK_NATIVE_DENOM),
                     })
                     .add_submessage(SubMsg::reply_on_error(
                         CosmosMsg::Wasm(WasmMsg::Execute {
@@ -668,8 +669,8 @@ mod test {
                     amount: Uint128::new(10),
                 }],
                 initial_cap: Uint128::new(500),
-                funds: vec![coin(1000, VALID_DENOM)],
-                denom: VALID_DENOM.to_string(),
+                funds: vec![coin(1000, MOCK_NATIVE_DENOM)],
+                denom: Asset::NativeToken(MOCK_NATIVE_DENOM.to_string()),
             },
             PurchaseTierTestCase {
                 name: "Purchase with insufficient funds".to_string(),
@@ -683,8 +684,8 @@ mod test {
                     amount: Uint128::new(20),
                 }],
                 initial_cap: Uint128::new(500),
-                funds: vec![coin(10, VALID_DENOM)],
-                denom: VALID_DENOM.to_string(),
+                funds: vec![coin(10, MOCK_NATIVE_DENOM)],
+                denom: Asset::NativeToken(MOCK_NATIVE_DENOM.to_string()),
             },
             PurchaseTierTestCase {
                 name: "Purchase in wrong campaign stage".to_string(),
@@ -701,8 +702,8 @@ mod test {
                     amount: Uint128::new(10),
                 }],
                 initial_cap: Uint128::new(500),
-                funds: vec![coin(1000, VALID_DENOM)],
-                denom: VALID_DENOM.to_string(),
+                funds: vec![coin(1000, MOCK_NATIVE_DENOM)],
+                denom: Asset::NativeToken(MOCK_NATIVE_DENOM.to_string()),
             },
             PurchaseTierTestCase {
                 name: "Purchase before campaign start".to_string(),
@@ -716,8 +717,8 @@ mod test {
                     amount: Uint128::new(10),
                 }],
                 initial_cap: Uint128::new(500),
-                funds: vec![coin(1000, VALID_DENOM)],
-                denom: VALID_DENOM.to_string(),
+                funds: vec![coin(1000, MOCK_NATIVE_DENOM)],
+                denom: Asset::NativeToken(MOCK_NATIVE_DENOM.to_string()),
             },
             PurchaseTierTestCase {
                 name: "Purchase after campaign end".to_string(),
@@ -731,14 +732,14 @@ mod test {
                     amount: Uint128::new(10),
                 }],
                 initial_cap: Uint128::new(500),
-                funds: vec![coin(1000, VALID_DENOM)],
-                denom: VALID_DENOM.to_string(),
+                funds: vec![coin(1000, MOCK_NATIVE_DENOM)],
+                denom: Asset::NativeToken(MOCK_NATIVE_DENOM.to_string()),
             },
             PurchaseTierTestCase {
                 name: "Purchase with invalid denomination".to_string(),
                 stage: CampaignStage::ONGOING,
                 expected_res: Err(ContractError::InvalidFunds {
-                    msg: format!("Only {VALID_DENOM} is accepted by the campaign."),
+                    msg: format!("Only native:{MOCK_NATIVE_DENOM} is accepted by the campaign."),
                 }),
                 payee: buyer.to_string(),
                 start_time: Some(past_time()),
@@ -748,8 +749,8 @@ mod test {
                     amount: Uint128::new(10),
                 }],
                 initial_cap: Uint128::new(500),
-                funds: vec![coin(1000, INVALID_DENOM)],
-                denom: VALID_DENOM.to_string(),
+                funds: vec![coin(1000, INVA1LID_DENOM)],
+                denom: Asset::NativeToken(MOCK_NATIVE_DENOM.to_string()),
             },
         ];
         for test in test_cases {

@@ -1,6 +1,10 @@
 use andromeda_non_fungible_tokens::crowdfund::{
-    CampaignStage, ExecuteMsg, InstantiateMsg, QueryMsg, SimpleTierOrder, Tier, TierOrder,
+    CampaignStage, Cw20HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg, SimpleTierOrder, Tier,
+    TierOrder,
 };
+
+use andromeda_std::amp::AndrAddr;
+use andromeda_std::common::denom::Asset;
 use andromeda_std::common::{Milliseconds, MillisecondsExpiration};
 use andromeda_std::{ado_base::ownership::OwnershipMessage, common::actions::call_action};
 use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
@@ -14,9 +18,11 @@ use andromeda_std::{
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    coin, ensure, BankMsg, Binary, Coin, Deps, DepsMut, Env, MessageInfo, Reply, Response,
-    StdError, Uint128, Uint64,
+    coin, ensure, from_json, wasm_execute, BankMsg, Binary, Coin, Deps, DepsMut, Env, MessageInfo,
+    Reply, Response, StdError, Uint128, Uint64,
 };
+
+use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 
 use crate::state::{
     add_tier, get_config, get_current_cap, get_current_stage, get_tier, is_valid_tiers,
@@ -34,7 +40,6 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    msg.campaign_config.validate(deps.as_ref())?;
     update_config(deps.storage, msg.campaign_config)?;
 
     set_tiers(deps.storage, msg.tiers)?;
@@ -127,6 +132,7 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
             presale,
         } => execute_start_campaign(ctx, start_time, end_time, presale),
         ExecuteMsg::PurchaseTiers { orders } => execute_purchase_tiers(ctx, orders),
+        ExecuteMsg::Receive(msg) => handle_receive_cw20(ctx, msg),
         _ => ADOContract::default().execute(ctx, msg),
     }?;
 
@@ -293,6 +299,53 @@ fn execute_purchase_tiers(
     orders: Vec<SimpleTierOrder>,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
+        ref deps, ref info, ..
+    } = ctx;
+
+    // Ensure campaign accepting coin is received
+    let payment: &Coin = &info.funds[0];
+    let campaign_config = get_config(deps.storage)?;
+
+    ensure!(
+        info.funds.len() == 1,
+        ContractError::InvalidFunds {
+            msg: format!(
+                "Only {} is accepted by the campaign.",
+                campaign_config.denom
+            ),
+        }
+    );
+
+    let sender = info.sender.to_string();
+    let denom = payment.denom.clone();
+    let amount = payment.amount;
+    purchase_tiers(ctx, Asset::NativeToken(denom), amount, sender, orders)
+}
+
+fn handle_receive_cw20(
+    ctx: ExecuteContext,
+    cw20_msg: Cw20ReceiveMsg,
+) -> Result<Response, ContractError> {
+    let ExecuteContext { ref info, .. } = ctx;
+
+    let amount = cw20_msg.amount;
+    let sender = cw20_msg.sender;
+    let denom = AndrAddr::from_string(info.sender.clone());
+    match from_json(&cw20_msg.msg)? {
+        Cw20HookMsg::PurchaseTiers { orders } => {
+            purchase_tiers(ctx, Asset::Cw20Token(denom), amount, sender, orders)
+        }
+    }
+}
+
+fn purchase_tiers(
+    ctx: ExecuteContext,
+    denom: Asset,
+    amount: Uint128,
+    sender: String,
+    orders: Vec<SimpleTierOrder>,
+) -> Result<Response, ContractError> {
+    let ExecuteContext {
         deps, info, env, ..
     } = ctx;
 
@@ -327,9 +380,8 @@ fn execute_purchase_tiers(
     );
 
     // Ensure campaign accepting coin is received
-    let payment: &Coin = &info.funds[0];
     ensure!(
-        info.funds.len() == 1 && payment.denom == campaign_config.denom,
+        denom == campaign_config.denom,
         ContractError::InvalidFunds {
             msg: format!(
                 "Only {} is accepted by the campaign.",
@@ -353,10 +405,7 @@ fn execute_purchase_tiers(
     })?;
 
     // Ensure that enough payment is sent for the order
-    ensure!(
-        total_cost <= payment.amount,
-        ContractError::InsufficientFunds {}
-    );
+    ensure!(total_cost <= amount, ContractError::InsufficientFunds {});
 
     // Update order history and tier limits
     set_tier_orders(deps.storage, full_orders)?;
@@ -366,19 +415,27 @@ fn execute_purchase_tiers(
     set_current_cap(deps.storage, current_cap)?;
     let mut resp = Response::new()
         .add_attribute("action", "purchase_tiers")
-        .add_attribute("payment", format!("{0}{1}", payment.amount, payment.denom))
+        .add_attribute("payment", format!("{0}{1}", amount, denom))
         .add_attribute("total_cost", total_cost.to_string());
 
-    if payment.amount > total_cost {
-        resp = resp
-            .add_attribute("refunded", payment.amount - total_cost)
-            .add_message(BankMsg::Send {
-                to_address: info.sender.to_string(),
-                amount: vec![coin(
-                    (payment.amount - total_cost).u128(),
-                    campaign_config.denom,
-                )],
-            })
+    if amount > total_cost {
+        resp = match denom {
+            Asset::NativeToken(denom) => resp
+                .add_attribute("refunded", amount - total_cost)
+                .add_message(BankMsg::Send {
+                    to_address: sender.to_string(),
+                    amount: vec![coin((amount - total_cost).u128(), denom)],
+                }),
+            Asset::Cw20Token(denom) => {
+                let transfer_msg = Cw20ExecuteMsg::Transfer {
+                    recipient: sender,
+                    amount: amount - total_cost,
+                };
+                let wasm_msg = wasm_execute(denom, &transfer_msg, vec![])?;
+                resp.add_attribute("refunded", amount - total_cost)
+                    .add_message(wasm_msg)
+            }
+        }
     }
 
     Ok(resp)

@@ -6,7 +6,7 @@ use andromeda_std::{
     ado_base::InstantiateMsg,
     ado_contract::ADOContract,
     amp::{AndrAddr, Recipient},
-    common::MillisecondsExpiration,
+    common::{denom::Asset, MillisecondsExpiration},
     testing::mock_querier::{WasmMockQuerier, MOCK_ADO_PUBLISHER, MOCK_KERNEL_CONTRACT},
 };
 use cosmwasm_std::{
@@ -17,13 +17,15 @@ use cosmwasm_std::{
 pub const MOCK_TIER_CONTRACT: &str = "tier_contract";
 pub const MOCK_WITHDRAWAL_ADDRESS: &str = "withdrawal_address";
 pub const MOCK_DEFAULT_LIMIT: u128 = 100000;
+const MOCK_NATIVE_DENOM: &str = "uandr";
+
 pub fn mock_campaign_config() -> CampaignConfig {
     CampaignConfig {
         title: "First Crowdfund".to_string(),
         description: "Demo campaign for testing".to_string(),
         banner: "http://<campaign_banner>".to_string(),
         url: "http://<campaign_url>".to_string(),
-        denom: "uandr".to_string(),
+        denom: Asset::NativeToken(MOCK_NATIVE_DENOM.to_string()),
         tier_address: AndrAddr::from_string(MOCK_TIER_CONTRACT.to_owned()),
         withdrawal_recipient: Recipient::from_string(MOCK_WITHDRAWAL_ADDRESS.to_owned()),
         soft_cap: None,
