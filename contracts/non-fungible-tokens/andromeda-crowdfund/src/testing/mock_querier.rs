@@ -14,6 +14,7 @@ use cosmwasm_std::{
     Coin, OwnedDeps, QuerierWrapper, Uint128, Uint64,
 };
 
+pub const MOCK_DEFAULT_OWNER: &str = "owner";
 pub const MOCK_TIER_CONTRACT: &str = "tier_contract";
 pub const MOCK_WITHDRAWAL_ADDRESS: &str = "withdrawal_address";
 pub const MOCK_DEFAULT_LIMIT: u128 = 100000;
