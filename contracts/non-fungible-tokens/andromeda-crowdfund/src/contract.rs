@@ -18,8 +18,8 @@ use andromeda_std::{
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    coin, ensure, from_json, wasm_execute, BankMsg, Binary, Coin, Deps, DepsMut, Env, MessageInfo,
-    Reply, Response, StdError, Uint128, Uint64,
+    coin, ensure, from_json, wasm_execute, Addr, BankMsg, Binary, Coin, Deps, DepsMut, Env,
+    MessageInfo, Reply, Response, StdError, Uint128, Uint64,
 };
 
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
@@ -351,9 +351,7 @@ fn purchase_tiers(
     sender: String,
     orders: Vec<SimpleTierOrder>,
 ) -> Result<Response, ContractError> {
-    let ExecuteContext {
-        deps, info, env, ..
-    } = ctx;
+    let ExecuteContext { deps, env, .. } = ctx;
 
     let campaign_config = get_config(deps.storage)?;
     let mut current_cap = get_current_cap(deps.storage);
@@ -403,7 +401,7 @@ fn purchase_tiers(
         let tier = get_tier(deps.storage, u64::from(order.level))?;
         let uint128: Result<Uint128, ContractError> = Ok(sum + tier.price * order.amount);
         full_orders.push(TierOrder {
-            orderer: info.sender.clone(),
+            orderer: Addr::unchecked(sender.clone()),
             level: order.level,
             amount: order.amount,
         });

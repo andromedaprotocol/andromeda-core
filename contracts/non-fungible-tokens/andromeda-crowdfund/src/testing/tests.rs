@@ -67,11 +67,14 @@ fn set_campaign_config(store: &mut dyn Storage, config: &CampaignConfig) {
 
 #[cfg(test)]
 mod test {
-    use andromeda_non_fungible_tokens::crowdfund::SimpleTierOrder;
+    use andromeda_non_fungible_tokens::crowdfund::{Cw20HookMsg, SimpleTierOrder};
     use andromeda_std::{
-        amp::AndrAddr, common::denom::Asset, testing::mock_querier::MOCK_CW20_CONTRACT,
+        amp::AndrAddr,
+        common::{denom::Asset, encode_binary},
+        testing::mock_querier::MOCK_CW20_CONTRACT,
     };
-    use cosmwasm_std::{coin, coins, BankMsg, Coin};
+    use cosmwasm_std::{coin, coins, wasm_execute, BankMsg, Coin};
+    use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 
     use crate::{
         state::{get_current_cap, set_tiers},
@@ -673,13 +676,13 @@ mod test {
         denom: Asset,
     }
     #[test]
-    fn test_execute_purchase_tiers() {
+    fn test_execute_purchase_tiers_native() {
         // fixed total cost to 100 for valid purchase
         let env = mock_env();
         let buyer = "buyer";
         let test_cases: Vec<PurchaseTierTestCase> = vec![
             PurchaseTierTestCase {
-                name: "Standard purchase with valid order".to_string(),
+                name: "Standard purchase with valid order using native tokens".to_string(),
                 stage: CampaignStage::ONGOING,
                 expected_res: Ok(Response::new()
                     .add_attribute("action", "purchase_tiers")
@@ -715,7 +718,7 @@ mod test {
                 denom: Asset::NativeToken(MOCK_NATIVE_DENOM.to_string()),
             },
             PurchaseTierTestCase {
-                name: "Purchase with insufficient funds".to_string(),
+                name: "Purchase with insufficient funds using native tokens".to_string(),
                 stage: CampaignStage::ONGOING,
                 expected_res: Err(ContractError::InsufficientFunds {}),
                 payee: buyer.to_string(),
@@ -730,7 +733,7 @@ mod test {
                 denom: Asset::NativeToken(MOCK_NATIVE_DENOM.to_string()),
             },
             PurchaseTierTestCase {
-                name: "Purchase in wrong campaign stage".to_string(),
+                name: "Purchase in wrong campaign stage using native tokens".to_string(),
                 stage: CampaignStage::READY,
                 expected_res: Err(ContractError::InvalidCampaignOperation {
                     operation: "purchase_tiers".to_string(),
@@ -748,7 +751,7 @@ mod test {
                 denom: Asset::NativeToken(MOCK_NATIVE_DENOM.to_string()),
             },
             PurchaseTierTestCase {
-                name: "Purchase before campaign start".to_string(),
+                name: "Purchase before campaign start using native tokens".to_string(),
                 stage: CampaignStage::ONGOING,
                 expected_res: Err(ContractError::CampaignNotStarted {}),
                 payee: buyer.to_string(),
@@ -763,7 +766,7 @@ mod test {
                 denom: Asset::NativeToken(MOCK_NATIVE_DENOM.to_string()),
             },
             PurchaseTierTestCase {
-                name: "Purchase after campaign end".to_string(),
+                name: "Purchase after campaign end using native tokens".to_string(),
                 stage: CampaignStage::ONGOING,
                 expected_res: Err(ContractError::CampaignEnded {}),
                 payee: buyer.to_string(),
@@ -778,7 +781,7 @@ mod test {
                 denom: Asset::NativeToken(MOCK_NATIVE_DENOM.to_string()),
             },
             PurchaseTierTestCase {
-                name: "Purchase with invalid denomination".to_string(),
+                name: "Purchase with invalid denomination using native tokens".to_string(),
                 stage: CampaignStage::ONGOING,
                 expected_res: Err(ContractError::InvalidFunds {
                     msg: format!("Only native:{MOCK_NATIVE_DENOM} is accepted by the campaign."),
@@ -812,6 +815,204 @@ mod test {
             let msg = ExecuteMsg::PurchaseTiers {
                 orders: test.orders.clone(),
             };
+
+            let res = execute(deps.as_mut(), env.clone(), info, msg);
+            assert_eq!(res, test.expected_res, "Test case: {}", test.name);
+
+            if res.is_ok() {
+                // Check current capital
+                let updated_cap = get_current_cap(deps.as_ref().storage);
+                let expected_cap = test.initial_cap + Uint128::new(100);
+                assert_eq!(updated_cap, expected_cap, "Test case: {}", test.name);
+
+                // Check tier orders
+                for order in &test.orders {
+                    let stored_order = TIER_ORDERS
+                        .load(
+                            deps.as_ref().storage,
+                            (Addr::unchecked(buyer), order.level.into()),
+                        )
+                        .unwrap();
+                    assert_eq!(
+                        stored_order,
+                        order.amount.u128(),
+                        "Test case: {}",
+                        test.name
+                    );
+                }
+
+                // Check tier limits
+                for order in &test.orders {
+                    let tier = TIERS
+                        .load(deps.as_ref().storage, order.level.into())
+                        .unwrap();
+                    assert_eq!(
+                        tier.limit.unwrap().u128(),
+                        MOCK_DEFAULT_LIMIT - order.amount.u128(),
+                        "Test case: {}",
+                        test.name
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_execute_purchase_tiers_cw20() {
+        // fixed total cost to 100 for valid purchase
+        let env = mock_env();
+        let buyer = "buyer";
+        let valid_denom = Asset::Cw20Token(AndrAddr::from_string(MOCK_CW20_CONTRACT.to_string()));
+        let test_cases: Vec<PurchaseTierTestCase> = vec![
+            PurchaseTierTestCase {
+                name: "Standard purchase with valid order using cw20 token".to_string(),
+                stage: CampaignStage::ONGOING,
+                expected_res: Ok(Response::new()
+                    .add_attribute("action", "purchase_tiers")
+                    .add_attribute("payment", "1000cw20:cw20_contract")
+                    .add_attribute("total_cost", "100")
+                    .add_attribute("refunded", "900")
+                    .add_message(
+                        wasm_execute(
+                            MOCK_CW20_CONTRACT.to_string(),
+                            &Cw20ExecuteMsg::Transfer {
+                                recipient: buyer.to_string(),
+                                amount: Uint128::new(900u128),
+                            },
+                            vec![],
+                        )
+                        .unwrap(),
+                    )
+                    .add_submessage(SubMsg::reply_on_error(
+                        CosmosMsg::Wasm(WasmMsg::Execute {
+                            contract_addr: "economics_contract".to_string(),
+                            msg: to_json_binary(&EconomicsExecuteMsg::PayFee {
+                                payee: Addr::unchecked(MOCK_CW20_CONTRACT),
+                                action: "Receive".to_string(),
+                            })
+                            .unwrap(),
+                            funds: vec![],
+                        }),
+                        ReplyId::PayFee.repr(),
+                    ))),
+                payee: buyer.to_string(),
+                start_time: Some(past_time()),
+                end_time: future_time(&env),
+                orders: vec![SimpleTierOrder {
+                    level: Uint64::one(),
+                    amount: Uint128::new(10),
+                }],
+                initial_cap: Uint128::new(500),
+                funds: vec![],
+                denom: valid_denom.clone(),
+            },
+            PurchaseTierTestCase {
+                name: "Purchase with insufficient funds using cw20 token".to_string(),
+                stage: CampaignStage::ONGOING,
+                expected_res: Err(ContractError::InsufficientFunds {}),
+                payee: buyer.to_string(),
+                start_time: Some(past_time()),
+                end_time: future_time(&env),
+                orders: vec![SimpleTierOrder {
+                    level: Uint64::one(),
+                    amount: Uint128::new(200000),
+                }],
+                initial_cap: Uint128::new(500),
+                funds: vec![],
+                denom: valid_denom.clone(),
+            },
+            PurchaseTierTestCase {
+                name: "Purchase in wrong campaign stage using cw20 token".to_string(),
+                stage: CampaignStage::READY,
+                expected_res: Err(ContractError::InvalidCampaignOperation {
+                    operation: "purchase_tiers".to_string(),
+                    stage: "READY".to_string(),
+                }),
+                payee: buyer.to_string(),
+                start_time: Some(past_time()),
+                end_time: future_time(&env),
+                orders: vec![SimpleTierOrder {
+                    level: Uint64::one(),
+                    amount: Uint128::new(10),
+                }],
+                initial_cap: Uint128::new(500),
+                funds: vec![],
+                denom: valid_denom.clone(),
+            },
+            PurchaseTierTestCase {
+                name: "Purchase before campaign start using cw20 token".to_string(),
+                stage: CampaignStage::ONGOING,
+                expected_res: Err(ContractError::CampaignNotStarted {}),
+                payee: buyer.to_string(),
+                start_time: Some(future_time(&env)),
+                end_time: future_time(&env),
+                orders: vec![SimpleTierOrder {
+                    level: Uint64::one(),
+                    amount: Uint128::new(10),
+                }],
+                initial_cap: Uint128::new(500),
+                funds: vec![],
+                denom: valid_denom.clone(),
+            },
+            PurchaseTierTestCase {
+                name: "Purchase after campaign end using cw20 token".to_string(),
+                stage: CampaignStage::ONGOING,
+                expected_res: Err(ContractError::CampaignEnded {}),
+                payee: buyer.to_string(),
+                start_time: Some(past_time()),
+                end_time: past_time(),
+                orders: vec![SimpleTierOrder {
+                    level: Uint64::one(),
+                    amount: Uint128::new(10),
+                }],
+                initial_cap: Uint128::new(500),
+                funds: vec![],
+                denom: valid_denom.clone(),
+            },
+            PurchaseTierTestCase {
+                name: "Purchase with invalid denomination using cw20 token".to_string(),
+                stage: CampaignStage::ONGOING,
+                expected_res: Err(ContractError::InvalidFunds {
+                    msg: format!("Only cw20:{MOCK_CW20_CONTRACT} is accepted by the campaign."),
+                }),
+                payee: buyer.to_string(),
+                start_time: Some(past_time()),
+                end_time: future_time(&env),
+                orders: vec![SimpleTierOrder {
+                    level: Uint64::one(),
+                    amount: Uint128::new(10),
+                }],
+                initial_cap: Uint128::new(500),
+                funds: vec![],
+                denom: Asset::Cw20Token(AndrAddr::from_string("cw20_contract124".to_string())),
+            },
+        ];
+
+        for test in test_cases {
+            let mut deps = mock_dependencies_custom(&test.funds);
+            let Asset::Cw20Token(ref cw20) = test.denom else {
+                todo!();
+            };
+            let info = mock_info(cw20.as_ref(), &[]);
+
+            // Mock necessary storage setup
+            set_campaign_stage(deps.as_mut().storage, &test.stage);
+            set_current_cap(deps.as_mut().storage, &test.initial_cap);
+            set_tiers(deps.as_mut().storage, mock_campaign_tiers()).unwrap();
+
+            let mut mock_config = mock_campaign_config(valid_denom.clone());
+            mock_config.start_time = test.start_time;
+            mock_config.end_time = test.end_time;
+            set_campaign_config(deps.as_mut().storage, &mock_config);
+
+            let hook_msg = Cw20HookMsg::PurchaseTiers {
+                orders: test.orders.clone(),
+            };
+            let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
+                sender: buyer.to_owned(),
+                amount: Uint128::new(1000u128),
+                msg: encode_binary(&hook_msg).unwrap(),
+            });
 
             let res = execute(deps.as_mut(), env.clone(), info, msg);
             assert_eq!(res, test.expected_res, "Test case: {}", test.name);
