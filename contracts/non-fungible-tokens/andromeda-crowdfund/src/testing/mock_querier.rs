@@ -18,15 +18,14 @@ pub const MOCK_DEFAULT_OWNER: &str = "owner";
 pub const MOCK_TIER_CONTRACT: &str = "tier_contract";
 pub const MOCK_WITHDRAWAL_ADDRESS: &str = "withdrawal_address";
 pub const MOCK_DEFAULT_LIMIT: u128 = 100000;
-const MOCK_NATIVE_DENOM: &str = "uandr";
 
-pub fn mock_campaign_config() -> CampaignConfig {
+pub fn mock_campaign_config(denom: Asset) -> CampaignConfig {
     CampaignConfig {
         title: "First Crowdfund".to_string(),
         description: "Demo campaign for testing".to_string(),
         banner: "http://<campaign_banner>".to_string(),
         url: "http://<campaign_url>".to_string(),
-        denom: Asset::NativeToken(MOCK_NATIVE_DENOM.to_string()),
+        denom,
         tier_address: AndrAddr::from_string(MOCK_TIER_CONTRACT.to_owned()),
         withdrawal_recipient: Recipient::from_string(MOCK_WITHDRAWAL_ADDRESS.to_owned()),
         soft_cap: None,

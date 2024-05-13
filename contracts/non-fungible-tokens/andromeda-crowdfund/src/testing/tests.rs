@@ -6,7 +6,7 @@ use andromeda_non_fungible_tokens::{
 };
 
 use andromeda_std::{
-    common::{denom::Asset, reply::ReplyId, MillisecondsExpiration},
+    common::{reply::ReplyId, MillisecondsExpiration},
     error::ContractError,
     os::economics::ExecuteMsg as EconomicsExecuteMsg,
     testing::mock_querier::{MOCK_ADO_PUBLISHER, MOCK_KERNEL_CONTRACT},
@@ -49,12 +49,6 @@ fn get_tiers(storage: &dyn Storage) -> Vec<Tier> {
         .collect()
 }
 
-fn mock_campaign_config_with_denom(denom: &Asset) -> CampaignConfig {
-    let mut config = mock_campaign_config();
-    config.denom = denom.clone();
-    config
-}
-
 fn future_time(env: &Env) -> MillisecondsExpiration {
     MillisecondsExpiration::from_seconds(env.block.time.seconds() + 5000)
 }
@@ -74,7 +68,9 @@ fn set_campaign_config(store: &mut dyn Storage, config: &CampaignConfig) {
 #[cfg(test)]
 mod test {
     use andromeda_non_fungible_tokens::crowdfund::SimpleTierOrder;
-    use andromeda_std::common::denom::Asset;
+    use andromeda_std::{
+        amp::AndrAddr, common::denom::Asset, testing::mock_querier::MOCK_CW20_CONTRACT,
+    };
     use cosmwasm_std::{coin, coins, BankMsg, Coin};
 
     use crate::{
@@ -97,8 +93,8 @@ mod test {
     fn test_instantiate() {
         let test_cases: Vec<InstantiateTestCase> = vec![
             InstantiateTestCase {
-                name: "standard instantiate".to_string(),
-                config: mock_campaign_config(),
+                name: "instantiate with native token".to_string(),
+                config: mock_campaign_config(Asset::NativeToken(MOCK_NATIVE_DENOM.to_string())),
                 tiers: mock_campaign_tiers(),
                 expected_res: Ok(Response::new()
                     .add_attribute("method", "instantiate")
@@ -107,8 +103,39 @@ mod test {
                     .add_attribute(MOCK_DEFAULT_OWNER, MOCK_DEFAULT_OWNER)),
             },
             InstantiateTestCase {
+                name: "instantiate with invalid native token".to_string(),
+                config: mock_campaign_config(Asset::NativeToken(INVA1LID_DENOM.to_string())),
+                tiers: mock_campaign_tiers(),
+                expected_res: Err(ContractError::InvalidAsset {
+                    asset: Asset::NativeToken(INVA1LID_DENOM.to_string()).to_string(),
+                }),
+            },
+            InstantiateTestCase {
+                name: "instantiate with cw20".to_string(),
+                config: mock_campaign_config(Asset::Cw20Token(AndrAddr::from_string(
+                    MOCK_CW20_CONTRACT.to_string(),
+                ))),
+                tiers: mock_campaign_tiers(),
+                expected_res: Ok(Response::new()
+                    .add_attribute("method", "instantiate")
+                    .add_attribute("type", "crowdfund")
+                    .add_attribute("kernel_address", MOCK_KERNEL_CONTRACT)
+                    .add_attribute(MOCK_DEFAULT_OWNER, MOCK_DEFAULT_OWNER)),
+            },
+            InstantiateTestCase {
+                name: "instantiate with invalid cw20".to_string(),
+                config: mock_campaign_config(Asset::Cw20Token(AndrAddr::from_string(
+                    "cw20_contract1".to_string(),
+                ))),
+                tiers: mock_campaign_tiers(),
+                expected_res: Err(ContractError::InvalidAsset {
+                    asset: Asset::Cw20Token(AndrAddr::from_string("cw20_contract1".to_string()))
+                        .to_string(),
+                }),
+            },
+            InstantiateTestCase {
                 name: "instantiate with invalid tiers including zero price tier".to_string(),
-                config: mock_campaign_config(),
+                config: mock_campaign_config(Asset::NativeToken(MOCK_NATIVE_DENOM.to_string())),
                 tiers: vec![mock_zero_price_tier(Uint64::zero())],
                 expected_res: Err(ContractError::InvalidTier {
                     operation: "all".to_string(),
@@ -233,7 +260,11 @@ mod test {
         ];
         for test in test_cases {
             let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
-            let _ = init(deps.as_mut(), mock_campaign_config(), mock_campaign_tiers());
+            let _ = init(
+                deps.as_mut(),
+                mock_campaign_config(Asset::NativeToken(MOCK_NATIVE_DENOM.to_string())),
+                mock_campaign_tiers(),
+            );
 
             let info = mock_info(&test.payee, &[]);
 
@@ -335,7 +366,11 @@ mod test {
         ];
         for test in test_cases {
             let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
-            let _ = init(deps.as_mut(), mock_campaign_config(), mock_campaign_tiers());
+            let _ = init(
+                deps.as_mut(),
+                mock_campaign_config(Asset::NativeToken(MOCK_NATIVE_DENOM.to_string())),
+                mock_campaign_tiers(),
+            );
 
             let info = mock_info(&test.payee, &[]);
 
@@ -424,7 +459,11 @@ mod test {
         ];
         for test in test_cases {
             let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
-            let _ = init(deps.as_mut(), mock_campaign_config(), mock_campaign_tiers());
+            let _ = init(
+                deps.as_mut(),
+                mock_campaign_config(Asset::NativeToken(MOCK_NATIVE_DENOM.to_string())),
+                mock_campaign_tiers(),
+            );
 
             let info = mock_info(&test.payee, &[]);
 
@@ -560,7 +599,11 @@ mod test {
         for test in test_cases {
             let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
 
-            let _ = init(deps.as_mut(), mock_campaign_config(), test.tiers.clone());
+            let _ = init(
+                deps.as_mut(),
+                mock_campaign_config(Asset::NativeToken(MOCK_NATIVE_DENOM.to_string())),
+                test.tiers.clone(),
+            );
             let info = mock_info(&test.payee, &[]);
 
             let msg = ExecuteMsg::StartCampaign {
@@ -761,7 +804,7 @@ mod test {
             set_current_cap(deps.as_mut().storage, &test.initial_cap);
             set_tiers(deps.as_mut().storage, mock_campaign_tiers()).unwrap();
 
-            let mut mock_config = mock_campaign_config_with_denom(&test.denom);
+            let mut mock_config = mock_campaign_config(test.denom);
             mock_config.start_time = test.start_time;
             mock_config.end_time = test.end_time;
             set_campaign_config(deps.as_mut().storage, &mock_config);

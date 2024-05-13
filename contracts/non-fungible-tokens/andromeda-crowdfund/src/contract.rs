@@ -40,6 +40,12 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
+    let branch = DepsMut {
+        storage: deps.storage,
+        api: deps.api,
+        querier: deps.querier,
+    };
+    msg.campaign_config.validate(branch, &env)?;
     update_config(deps.storage, msg.campaign_config)?;
 
     set_tiers(deps.storage, msg.tiers)?;

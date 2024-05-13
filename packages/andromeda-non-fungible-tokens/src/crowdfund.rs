@@ -78,12 +78,17 @@ pub struct CampaignConfig {
 }
 
 impl CampaignConfig {
-    pub fn validate(&self, mut deps: DepsMut, env: Env) -> Result<(), ContractError> {
+    pub fn validate(&self, deps: DepsMut, env: &Env) -> Result<(), ContractError> {
         // validate addresses
         self.tier_address.validate(deps.api)?;
         self.withdrawal_recipient.validate(&deps.as_ref())?;
         // let _ = get_verified_asset();
-        let _ = self.denom.get_verified_asset(deps.branch(), env.clone())?;
+        let _ = self
+            .denom
+            .get_verified_asset(deps, env.clone())
+            .map_err(|_| ContractError::InvalidAsset {
+                asset: self.denom.to_string(),
+            })?;
 
         // validate meta info
         ensure!(
