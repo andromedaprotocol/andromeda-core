@@ -424,22 +424,20 @@ fn purchase_tiers(
 
     if amount > total_cost {
         resp = match denom {
-            Asset::NativeToken(denom) => resp
-                .add_attribute("refunded", amount - total_cost)
-                .add_message(BankMsg::Send {
-                    to_address: sender.to_string(),
-                    amount: vec![coin((amount - total_cost).u128(), denom)],
-                }),
+            Asset::NativeToken(denom) => resp.add_message(BankMsg::Send {
+                to_address: sender.to_string(),
+                amount: vec![coin((amount - total_cost).u128(), denom)],
+            }),
             Asset::Cw20Token(denom) => {
                 let transfer_msg = Cw20ExecuteMsg::Transfer {
                     recipient: sender,
                     amount: amount - total_cost,
                 };
                 let wasm_msg = wasm_execute(denom, &transfer_msg, vec![])?;
-                resp.add_attribute("refunded", amount - total_cost)
-                    .add_message(wasm_msg)
+                resp.add_message(wasm_msg)
             }
         }
+        .add_attribute("refunded", amount - total_cost);
     }
 
     Ok(resp)
