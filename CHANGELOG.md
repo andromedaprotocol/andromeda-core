@@ -14,11 +14,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `ADOBaseVersion` query to all ADOs [(#416)](https://github.com/andromedaprotocol/andromeda-core/pull/416)
 - Staking: Added ability to remove/replace reward token [(#418)](https://github.com/andromedaprotocol/andromeda-core/pull/418)
 - Added Expiry Enum [(#419)](https://github.com/andromedaprotocol/andromeda-core/pull/419)
-- Added Module Redesign [(#452)](https://github.com/andromedaprotocol/andromeda-core/pull/452)
 
 ### Changed
 
 - Merkle Root: stage expiration now uses `Milliseconds`[(#417)](https://github.com/andromedaprotocol/andromeda-core/pull/417)
+- Module Redesign [(#452)](https://github.com/andromedaprotocol/andromeda-core/pull/452)
 
 ### Fixed
 
