@@ -161,18 +161,24 @@ fn execute_send(ctx: ExecuteContext) -> Result<Response, ContractError> {
 
         for address_percent in threshold.address_percent {
             let recipient_percent = address_percent.percent;
-            let mut vec_coin: Vec<Coin> = Vec::new();
 
-            let mut recip_coin: Coin = coin.clone();
-            recip_coin.amount = coin.amount * recipient_percent;
-            remainder_funds[i].amount = remainder_funds[i].amount.checked_sub(recip_coin.amount)?;
-            vec_coin.push(recip_coin.clone());
-            amp_funds.push(recip_coin);
+            // Non-zero checks have already been made for the incoming coins, so we check if the recipient's percentage is above zero.
+            if !recipient_percent.is_zero() {
+                let mut vec_coin: Vec<Coin> = Vec::new();
 
-            let amp_msg = address_percent
-                .recipient
-                .generate_amp_msg(&deps.as_ref(), Some(vec_coin))?;
-            pkt = pkt.add_message(amp_msg);
+                let mut recip_coin: Coin = coin.clone();
+                recip_coin.amount = coin.amount * recipient_percent;
+
+                remainder_funds[i].amount =
+                    remainder_funds[i].amount.checked_sub(recip_coin.amount)?;
+                vec_coin.push(recip_coin.clone());
+                amp_funds.push(recip_coin);
+
+                let amp_msg = address_percent
+                    .recipient
+                    .generate_amp_msg(&deps.as_ref(), Some(vec_coin))?;
+                pkt = pkt.add_message(amp_msg);
+            }
         }
     }
 

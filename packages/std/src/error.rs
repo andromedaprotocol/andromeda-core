@@ -106,7 +106,7 @@ pub enum ContractError {
     #[error("EmptyOptional")]
     EmptyOptional {},
 
-    #[error("EmptyOptional")]
+    #[error("EmptyClassId")]
     EmptyClassId {},
 
     #[error("NoTokens")]
@@ -207,6 +207,9 @@ pub enum ContractError {
 
     #[error("EmptyRecipientsList")]
     EmptyRecipientsList {},
+
+    #[error("EmptyThresholdsList")]
+    EmptyThresholdsList {},
 
     #[error("AmountExceededHundredPrecent")]
     AmountExceededHundredPrecent {},

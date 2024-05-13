@@ -100,14 +100,18 @@ pub struct GetConditionalSplitterConfigResponse {
 }
 
 /// Ensures that a given list of thresholds is valid:
+/// * The list of thresholds is not empty
 /// * Percentages of each threshold should not exceed 100
 /// * Each threshold must include at least one recipient
 /// * The number of recipients for each threshold must not exceed 100
 /// * The recipient addresses must be unique for each threshold
 /// * Make sure there are no duplicate min values between the thresholds
 pub fn validate_thresholds(deps: Deps, thresholds: &Vec<Threshold>) -> Result<(), ContractError> {
+    ensure!(
+        !thresholds.is_empty(),
+        ContractError::EmptyThresholdsList {}
+    );
     let mut min_value_set = HashSet::new();
-
     for threshold in thresholds {
         // Make sure the threshold has recipients
         ensure!(
@@ -168,6 +172,11 @@ mod tests {
     #[test]
     fn test_validate_thresholds() {
         let test_cases = vec![
+            TestThresholdValidation {
+                name: "Empty thresholds list",
+                thresholds: vec![],
+                expected_error: Some(ContractError::EmptyThresholdsList {}),
+            },
             TestThresholdValidation {
                 name: "Duplicate minimums between thresholds",
                 thresholds: vec![
@@ -256,6 +265,32 @@ mod tests {
                     ),
                     Threshold::new(
                         Uint128::one(),
+                        vec![AddressPercent::new(
+                            Recipient::new(AndrAddr::from_string("recipient"), None),
+                            Decimal::one(),
+                        )],
+                    ),
+                ],
+                expected_error: None,
+            },
+            TestThresholdValidation {
+                name: "Thresholds start above zero",
+                thresholds: vec![
+                    Threshold::new(
+                        Uint128::new(20),
+                        vec![
+                            AddressPercent::new(
+                                Recipient::new(AndrAddr::from_string("recipient"), None),
+                                Decimal::zero(),
+                            ),
+                            AddressPercent::new(
+                                Recipient::new(AndrAddr::from_string("recipient2"), None),
+                                Decimal::new(Uint128::new(20)),
+                            ),
+                        ],
+                    ),
+                    Threshold::new(
+                        Uint128::new(50),
                         vec![AddressPercent::new(
                             Recipient::new(AndrAddr::from_string("recipient"), None),
                             Decimal::one(),
