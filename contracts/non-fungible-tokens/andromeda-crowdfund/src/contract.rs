@@ -309,9 +309,7 @@ fn execute_purchase_tiers(
     } = ctx;
 
     // Ensure campaign accepting coin is received
-    let payment: &Coin = &info.funds[0];
     let campaign_config = get_config(deps.storage)?;
-
     ensure!(
         info.funds.len() == 1,
         ContractError::InvalidFunds {
@@ -321,6 +319,8 @@ fn execute_purchase_tiers(
             ),
         }
     );
+
+    let payment: &Coin = &info.funds[0];
 
     let sender = info.sender.to_string();
     let denom = payment.denom.clone();
