@@ -23,6 +23,7 @@ use cosmwasm_std::{
 };
 
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
+use cw_utils::nonpayable;
 
 use crate::state::{
     add_tier, get_config, get_current_cap, get_current_stage, get_tier, is_valid_tiers,
@@ -346,6 +347,8 @@ fn handle_receive_cw20(
 }
 
 fn execute_end_campaign(ctx: ExecuteContext) -> Result<Response, ContractError> {
+    nonpayable(&ctx.info)?;
+
     let ExecuteContext {
         deps, info, env, ..
     } = ctx;
