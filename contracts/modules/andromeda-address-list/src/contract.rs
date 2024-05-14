@@ -2,7 +2,7 @@ use andromeda_modules::address_list::{ActorPermissionResponse, IncludesActorResp
 #[cfg(not(feature = "library"))]
 use andromeda_modules::address_list::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use andromeda_std::{
-    ado_base::{permissioning::Permission, InstantiateMsg as BaseInstantiateMsg},
+    ado_base::{permissioning::Permission, InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     ado_contract::ADOContract,
     common::{context::ExecuteContext, encode_binary},
     error::ContractError,
@@ -127,7 +127,7 @@ fn execute_remove_actor_permission(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, _env: Env) -> Result<Response, ContractError> {
+pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
     ADOContract::default().migrate(deps, CONTRACT_NAME, CONTRACT_VERSION)
 }
 

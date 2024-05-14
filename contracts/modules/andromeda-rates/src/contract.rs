@@ -4,7 +4,7 @@ use andromeda_modules::rates::{ExecuteMsg, InstantiateMsg, QueryMsg, RateRespons
 use andromeda_std::{
     ado_base::{
         rates::{calculate_fee, LocalRate, PaymentAttribute, RatesResponse},
-        InstantiateMsg as BaseInstantiateMsg,
+        InstantiateMsg as BaseInstantiateMsg, MigrateMsg,
     },
     ado_contract::ADOContract,
     common::{context::ExecuteContext, deduct_funds, encode_binary, Funds},
@@ -110,7 +110,7 @@ fn execute_remove_rate(ctx: ExecuteContext, action: String) -> Result<Response, 
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, _env: Env) -> Result<Response, ContractError> {
+pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
     ADOContract::default().migrate(deps, CONTRACT_NAME, CONTRACT_VERSION)
 }
 
