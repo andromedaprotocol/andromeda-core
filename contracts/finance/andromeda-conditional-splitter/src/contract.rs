@@ -161,13 +161,13 @@ fn execute_send(ctx: ExecuteContext) -> Result<Response, ContractError> {
 
         for address_percent in threshold.address_percent {
             let recipient_percent = address_percent.percent;
+            let amount_owed = coin.amount * recipient_percent;
 
-            // Non-zero checks have already been made for the incoming coins, so we check if the recipient's percentage is above zero.
-            if !recipient_percent.is_zero() {
+            if !amount_owed.is_zero() {
                 let mut vec_coin: Vec<Coin> = Vec::new();
-
                 let mut recip_coin: Coin = coin.clone();
-                recip_coin.amount = coin.amount * recipient_percent;
+
+                recip_coin.amount = amount_owed;
 
                 remainder_funds[i].amount =
                     remainder_funds[i].amount.checked_sub(recip_coin.amount)?;
@@ -253,14 +253,6 @@ fn execute_update_lock(
     );
 
     let mut conditional_splitter = CONDITIONAL_SPLITTER.load(deps.storage)?;
-
-    // Can't call this function while the lock isn't expired
-    if let Some(conditional_splitter_lock) = conditional_splitter.lock_time {
-        ensure!(
-            conditional_splitter_lock.is_expired(&env.block),
-            ContractError::ContractLocked {}
-        );
-    }
 
     // Get current time
     let current_time = Milliseconds::from_seconds(env.block.time.seconds());
