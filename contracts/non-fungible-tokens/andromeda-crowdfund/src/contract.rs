@@ -1,10 +1,10 @@
-// use crate::state::{
-//     get_available_tokens, Purchase, AVAILABLE_TOKENS, CONFIG, NUMBER_OF_TOKENS_AVAILABLE,
-//     PURCHASES, SALE_CONDUCTED, STATE,
-// };
 use andromeda_non_fungible_tokens::crowdfund::{
-    CampaignStage, ExecuteMsg, InstantiateMsg, QueryMsg, Tier, TierOrder,
+    CampaignStage, Cw20HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg, SimpleTierOrder, Tier,
+    TierOrder,
 };
+
+use andromeda_std::amp::AndrAddr;
+use andromeda_std::common::denom::Asset;
 use andromeda_std::common::{Milliseconds, MillisecondsExpiration};
 use andromeda_std::{ado_base::ownership::OwnershipMessage, common::actions::call_action};
 use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
@@ -18,12 +18,16 @@ use andromeda_std::{
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    ensure, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError, Uint64,
+    coin, ensure, from_json, wasm_execute, Addr, BankMsg, Binary, Coin, Deps, DepsMut, Env,
+    MessageInfo, Reply, Response, StdError, SubMsg, Uint128, Uint64,
 };
 
+use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
+
 use crate::state::{
-    add_tier, get_config, get_current_stage, is_valid_tiers, remove_tier, set_current_stage,
-    set_tier_orders, set_tiers, update_config, update_tier,
+    add_tier, get_config, get_current_cap, get_current_stage, get_tier, is_valid_tiers,
+    remove_tier, set_current_cap, set_current_stage, set_tier_orders, set_tiers, update_config,
+    update_tier,
 };
 
 const CONTRACT_NAME: &str = "crates.io:andromeda-crowdfund";
@@ -36,6 +40,12 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
+    let branch = DepsMut {
+        storage: deps.storage,
+        api: deps.api,
+        querier: deps.querier,
+    };
+    msg.campaign_config.validate(branch, &env)?;
     update_config(deps.storage, msg.campaign_config)?;
 
     set_tiers(deps.storage, msg.tiers)?;
@@ -127,6 +137,9 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
             end_time,
             presale,
         } => execute_start_campaign(ctx, start_time, end_time, presale),
+        ExecuteMsg::PurchaseTiers { orders } => execute_purchase_tiers(ctx, orders),
+        ExecuteMsg::Receive(msg) => handle_receive_cw20(ctx, msg),
+        // ExecuteMsg::EndCampaign {} => execute_end_campaign(ctx),
         _ => ADOContract::default().execute(ctx, msg),
     }?;
 
@@ -269,7 +282,7 @@ fn execute_start_campaign(
         }
     );
 
-    // Update tier limit and update tier orders based on presale
+    // Update tier sold amount and update tier orders based on presale
     if let Some(presale) = presale {
         set_tier_orders(deps.storage, presale)?;
     }
@@ -286,6 +299,216 @@ fn execute_start_campaign(
     let resp = Response::new().add_attribute("action", "start_campaign");
 
     Ok(resp)
+}
+
+fn execute_purchase_tiers(
+    ctx: ExecuteContext,
+    orders: Vec<SimpleTierOrder>,
+) -> Result<Response, ContractError> {
+    let ExecuteContext {
+        ref deps, ref info, ..
+    } = ctx;
+
+    // Ensure campaign accepting coin is received
+    let campaign_config = get_config(deps.storage)?;
+    ensure!(
+        info.funds.len() == 1,
+        ContractError::InvalidFunds {
+            msg: format!(
+                "Only {} is accepted by the campaign.",
+                campaign_config.denom
+            ),
+        }
+    );
+
+    let payment: &Coin = &info.funds[0];
+
+    let sender = info.sender.to_string();
+    let denom = payment.denom.clone();
+    let amount = payment.amount;
+    purchase_tiers(ctx, Asset::NativeToken(denom), amount, sender, orders)
+}
+
+fn handle_receive_cw20(
+    ctx: ExecuteContext,
+    cw20_msg: Cw20ReceiveMsg,
+) -> Result<Response, ContractError> {
+    let ExecuteContext { ref info, .. } = ctx;
+
+    let amount = cw20_msg.amount;
+    let sender = cw20_msg.sender;
+    let denom = AndrAddr::from_string(info.sender.clone());
+    match from_json(&cw20_msg.msg)? {
+        Cw20HookMsg::PurchaseTiers { orders } => {
+            purchase_tiers(ctx, Asset::Cw20Token(denom), amount, sender, orders)
+        }
+    }
+}
+
+// fn execute_end_campaign(ctx: ExecuteContext) -> Result<Response, ContractError> {
+//     let ExecuteContext {
+//         deps, info, env, ..
+//     } = ctx;
+
+//     // Only owner can end the campaign
+//     let contract = ADOContract::default();
+//     ensure!(
+//         contract.is_contract_owner(deps.storage, info.sender.as_str())?,
+//         ContractError::Unauthorized {}
+//     );
+
+//     // Campaign is finished already or not started
+//     let curr_stage = get_current_stage(deps.storage);
+//     ensure!(
+//         curr_stage == CampaignStage::ONGOING,
+//         ContractError::InvalidCampaignOperation {
+//             operation: "end_campaign".to_string(),
+//             stage: curr_stage.to_string()
+//         }
+//     );
+
+//     let current_cap = get_current_cap(deps.storage);
+//     let campaign_config = get_config(deps.storage)?;
+//     let soft_cap = campaign_config.soft_cap.unwrap_or(Uint128::one());
+//     let end_time = campaign_config.end_time;
+
+//     // Decide the next stage
+//     let next_stage = match (current_cap >= soft_cap, end_time.is_expired(&env.block)) {
+//         (true, _) => CampaignStage::SUCCESS,
+//         (false, true) => CampaignStage::FAILED,
+//         (false, false) => {
+//             if current_cap != Uint128::zero() {
+//                 return Err(ContractError::CampaignNotExpired {});
+//             }
+//             CampaignStage::ONGOING
+//         }
+//     };
+
+//     set_current_stage(deps.storage, next_stage.clone())?;
+
+//     let mut resp = Response::new()
+//         .add_attribute("action", "end_campaign")
+//         .add_attribute("result", next_stage.to_string());
+//     if next_stage == CampaignStage::SUCCESS {
+//         let withdrawal_address = campaign_config
+//             .withdrawal_recipient
+//             .address
+//             .get_raw_address(&deps.as_ref())?;
+//         resp = resp.add_submessage(transfer_asset_msg(
+//             withdrawal_address.to_string(),
+//             current_cap,
+//             campaign_config.denom,
+//         )?);
+//     }
+//     Ok(resp)
+// }
+
+fn purchase_tiers(
+    ctx: ExecuteContext,
+    denom: Asset,
+    amount: Uint128,
+    sender: String,
+    orders: Vec<SimpleTierOrder>,
+) -> Result<Response, ContractError> {
+    let ExecuteContext { deps, env, .. } = ctx;
+
+    let campaign_config = get_config(deps.storage)?;
+    let mut current_cap = get_current_cap(deps.storage);
+
+    let current_stage = get_current_stage(deps.storage);
+
+    // Tier can be purchased on ONGOING stage
+    ensure!(
+        current_stage == CampaignStage::ONGOING,
+        ContractError::InvalidCampaignOperation {
+            operation: "purchase_tiers".to_string(),
+            stage: current_stage.to_string()
+        }
+    );
+
+    // Need to wait until start_time
+    ensure!(
+        campaign_config
+            .start_time
+            .unwrap_or_default()
+            .is_expired(&env.block),
+        ContractError::CampaignNotStarted {}
+    );
+
+    // Campaign is expired or should be ended due to overfunding
+    ensure!(
+        !campaign_config.end_time.is_expired(&env.block)
+            || campaign_config.hard_cap.unwrap_or(current_cap) > current_cap,
+        ContractError::CampaignEnded {}
+    );
+
+    // Ensure campaign accepting coin is received
+    ensure!(
+        denom == campaign_config.denom,
+        ContractError::InvalidFunds {
+            msg: format!(
+                "Only {} is accepted by the campaign.",
+                campaign_config.denom
+            ),
+        }
+    );
+
+    let mut full_orders = Vec::<TierOrder>::new();
+
+    // Measure the total cost for orders
+    let total_cost = orders.iter().try_fold(Uint128::zero(), |sum, order| {
+        let tier = get_tier(deps.storage, u64::from(order.level))?;
+        let new_sum: Result<Uint128, ContractError> = Ok(sum + tier.price * order.amount);
+        full_orders.push(TierOrder {
+            orderer: Addr::unchecked(sender.clone()),
+            level: order.level,
+            amount: order.amount,
+        });
+        new_sum
+    })?;
+
+    // Ensure that enough payment is sent for the order
+    ensure!(total_cost <= amount, ContractError::InsufficientFunds {});
+
+    // Update order history and sold amount for the tier
+    set_tier_orders(deps.storage, full_orders)?;
+    current_cap = current_cap.checked_add(total_cost)?;
+
+    // Update current capital
+    set_current_cap(deps.storage, current_cap)?;
+    let mut resp = Response::new()
+        .add_attribute("action", "purchase_tiers")
+        .add_attribute("payment", format!("{0}{1}", amount, denom))
+        .add_attribute("total_cost", total_cost.to_string());
+
+    if amount > total_cost {
+        resp = resp
+            .add_submessage(transfer_asset_msg(sender, amount - total_cost, denom)?)
+            .add_attribute("refunded", amount - total_cost);
+    }
+
+    Ok(resp)
+}
+
+fn transfer_asset_msg(
+    to_address: String,
+    amount: Uint128,
+    denom: Asset,
+) -> Result<SubMsg, ContractError> {
+    Ok(match denom {
+        Asset::NativeToken(denom) => SubMsg::new(BankMsg::Send {
+            to_address,
+            amount: vec![coin(amount.u128(), denom)],
+        }),
+        Asset::Cw20Token(denom) => {
+            let transfer_msg = Cw20ExecuteMsg::Transfer {
+                recipient: to_address,
+                amount,
+            };
+            let wasm_msg = wasm_execute(denom, &transfer_msg, vec![])?;
+            SubMsg::new(wasm_msg)
+        }
+    })
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

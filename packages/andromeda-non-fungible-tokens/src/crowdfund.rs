@@ -1,11 +1,12 @@
 use andromeda_std::amp::addresses::AndrAddr;
 use andromeda_std::amp::Recipient;
-use andromeda_std::common::denom::validate_denom;
+use andromeda_std::common::denom::Asset;
 use andromeda_std::common::MillisecondsExpiration;
 use andromeda_std::error::ContractError;
 use andromeda_std::{andr_exec, andr_instantiate, andr_instantiate_modules, andr_query};
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{ensure, Addr, Deps, Uint128, Uint64};
+use cosmwasm_std::{ensure, Addr, DepsMut, Env, Uint128, Uint64};
+use cw20::Cw20ReceiveMsg;
 
 use crate::cw721::TokenExtension;
 
@@ -34,6 +35,17 @@ pub enum ExecuteMsg {
         end_time: MillisecondsExpiration,
         presale: Option<Vec<TierOrder>>,
     },
+    /// Purchase tiers
+    PurchaseTiers { orders: Vec<SimpleTierOrder> },
+    /// Purchase tiers with cw20
+    Receive(Cw20ReceiveMsg),
+    // /// End the campaign
+    // EndCampaign {},
+}
+
+#[cw_serde]
+pub enum Cw20HookMsg {
+    PurchaseTiers { orders: Vec<SimpleTierOrder> },
 }
 
 #[andr_query]
@@ -54,7 +66,7 @@ pub struct CampaignConfig {
     /// The address of the tier contract whose tokens are being distributed
     pub tier_address: AndrAddr,
     /// The denom of the token that is being accepted by the campaign
-    pub denom: String,
+    pub denom: Asset,
     /// Recipient that is upposed to receive the funds gained by the campaign
     pub withdrawal_recipient: Recipient,
     /// The minimum amount of funding to be sold for the successful fundraising
@@ -68,11 +80,16 @@ pub struct CampaignConfig {
 }
 
 impl CampaignConfig {
-    pub fn validate(&self, deps: Deps) -> Result<(), ContractError> {
+    pub fn validate(&self, deps: DepsMut, env: &Env) -> Result<(), ContractError> {
         // validate addresses
         self.tier_address.validate(deps.api)?;
-        self.withdrawal_recipient.validate(&deps)?;
-        validate_denom(deps, self.denom.clone())?;
+        self.withdrawal_recipient.validate(&deps.as_ref())?;
+        let _ = self
+            .denom
+            .get_verified_asset(deps, env.clone())
+            .map_err(|_| ContractError::InvalidAsset {
+                asset: self.denom.to_string(),
+            })?;
 
         // validate meta info
         ensure!(
@@ -124,12 +141,20 @@ pub struct Tier {
     pub label: String,
     pub price: Uint128,
     pub limit: Option<Uint128>, // None for no limit
+    pub sold_amount: Uint128,
     pub meta_data: TierMetaData,
 }
 
 #[cw_serde]
 pub struct TierOrder {
     pub orderer: Addr,
+    pub level: Uint64,
+    pub amount: Uint128,
+}
+
+// Used when the orderer is defined
+#[cw_serde]
+pub struct SimpleTierOrder {
     pub level: Uint64,
     pub amount: Uint128,
 }
