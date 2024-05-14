@@ -139,7 +139,7 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
         } => execute_start_campaign(ctx, start_time, end_time, presale),
         ExecuteMsg::PurchaseTiers { orders } => execute_purchase_tiers(ctx, orders),
         ExecuteMsg::Receive(msg) => handle_receive_cw20(ctx, msg),
-        ExecuteMsg::EndCampaign {} => execute_end_campaign(ctx),
+        // ExecuteMsg::EndCampaign {} => execute_end_campaign(ctx),
         _ => ADOContract::default().execute(ctx, msg),
     }?;
 
@@ -282,7 +282,7 @@ fn execute_start_campaign(
         }
     );
 
-    // Update tier limit and update tier orders based on presale
+    // Update tier sold amount and update tier orders based on presale
     if let Some(presale) = presale {
         set_tier_orders(deps.storage, presale)?;
     }
@@ -345,63 +345,64 @@ fn handle_receive_cw20(
     }
 }
 
-fn execute_end_campaign(ctx: ExecuteContext) -> Result<Response, ContractError> {
-    let ExecuteContext {
-        deps, info, env, ..
-    } = ctx;
+// fn execute_end_campaign(ctx: ExecuteContext) -> Result<Response, ContractError> {
+//     let ExecuteContext {
+//         deps, info, env, ..
+//     } = ctx;
 
-    // Only owner can end the campaign
-    let contract = ADOContract::default();
-    ensure!(
-        contract.is_contract_owner(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {}
-    );
+//     // Only owner can end the campaign
+//     let contract = ADOContract::default();
+//     ensure!(
+//         contract.is_contract_owner(deps.storage, info.sender.as_str())?,
+//         ContractError::Unauthorized {}
+//     );
 
-    // Campaign is finished already or not started
-    let curr_stage = get_current_stage(deps.storage);
-    ensure!(
-        curr_stage == CampaignStage::ONGOING,
-        ContractError::InvalidCampaignOperation {
-            operation: "end_campaign".to_string(),
-            stage: curr_stage.to_string()
-        }
-    );
+//     // Campaign is finished already or not started
+//     let curr_stage = get_current_stage(deps.storage);
+//     ensure!(
+//         curr_stage == CampaignStage::ONGOING,
+//         ContractError::InvalidCampaignOperation {
+//             operation: "end_campaign".to_string(),
+//             stage: curr_stage.to_string()
+//         }
+//     );
 
-    let current_cap = get_current_cap(deps.storage);
-    let campaign_config = get_config(deps.storage)?;
-    let soft_cap = campaign_config.soft_cap.unwrap_or(Uint128::one());
-    let end_time = campaign_config.end_time;
+//     let current_cap = get_current_cap(deps.storage);
+//     let campaign_config = get_config(deps.storage)?;
+//     let soft_cap = campaign_config.soft_cap.unwrap_or(Uint128::one());
+//     let end_time = campaign_config.end_time;
 
-    // Decide the next stage
-    let next_stage = match (current_cap >= soft_cap, end_time.is_expired(&env.block)) {
-        (true, _) => CampaignStage::SUCCESS,
-        (false, true) => CampaignStage::FAILED,
-        (false, false) => {
-            if current_cap != Uint128::zero() {
-                return Err(ContractError::CampaignNotExpired {});
-            }
-            CampaignStage::ONGOING
-        }
-    };
+//     // Decide the next stage
+//     let next_stage = match (current_cap >= soft_cap, end_time.is_expired(&env.block)) {
+//         (true, _) => CampaignStage::SUCCESS,
+//         (false, true) => CampaignStage::FAILED,
+//         (false, false) => {
+//             if current_cap != Uint128::zero() {
+//                 return Err(ContractError::CampaignNotExpired {});
+//             }
+//             CampaignStage::ONGOING
+//         }
+//     };
 
-    set_current_stage(deps.storage, next_stage.clone())?;
+//     set_current_stage(deps.storage, next_stage.clone())?;
 
-    let mut resp = Response::new()
-        .add_attribute("action", "end_campaign")
-        .add_attribute("result", next_stage.to_string());
-    if next_stage == CampaignStage::SUCCESS {
-        let withdrawal_address = campaign_config
-            .withdrawal_recipient
-            .address
-            .get_raw_address(&deps.as_ref())?;
-        resp = resp.add_submessage(transfer_asset_msg(
-            withdrawal_address.to_string(),
-            current_cap,
-            campaign_config.denom,
-        )?);
-    }
-    Ok(resp)
-}
+//     let mut resp = Response::new()
+//         .add_attribute("action", "end_campaign")
+//         .add_attribute("result", next_stage.to_string());
+//     if next_stage == CampaignStage::SUCCESS {
+//         let withdrawal_address = campaign_config
+//             .withdrawal_recipient
+//             .address
+//             .get_raw_address(&deps.as_ref())?;
+//         resp = resp.add_submessage(transfer_asset_msg(
+//             withdrawal_address.to_string(),
+//             current_cap,
+//             campaign_config.denom,
+//         )?);
+//     }
+//     Ok(resp)
+// }
+
 fn purchase_tiers(
     ctx: ExecuteContext,
     denom: Asset,
@@ -457,19 +458,19 @@ fn purchase_tiers(
     // Measure the total cost for orders
     let total_cost = orders.iter().try_fold(Uint128::zero(), |sum, order| {
         let tier = get_tier(deps.storage, u64::from(order.level))?;
-        let uint128: Result<Uint128, ContractError> = Ok(sum + tier.price * order.amount);
+        let new_sum: Result<Uint128, ContractError> = Ok(sum + tier.price * order.amount);
         full_orders.push(TierOrder {
             orderer: Addr::unchecked(sender.clone()),
             level: order.level,
             amount: order.amount,
         });
-        uint128
+        new_sum
     })?;
 
     // Ensure that enough payment is sent for the order
     ensure!(total_cost <= amount, ContractError::InsufficientFunds {});
 
-    // Update order history and tier limits
+    // Update order history and sold amount for the tier
     set_tier_orders(deps.storage, full_orders)?;
     current_cap = current_cap.checked_add(total_cost)?;
 

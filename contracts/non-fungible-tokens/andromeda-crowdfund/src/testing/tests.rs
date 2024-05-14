@@ -190,6 +190,7 @@ mod test {
             level: Uint64::new(2u64),
             label: "Tier 2".to_string(),
             limit: Some(Uint128::new(100)),
+            sold_amount: Uint128::zero(),
             price: Uint128::new(100),
             meta_data: TierMetaData {
                 extension: TokenExtension {
@@ -202,6 +203,7 @@ mod test {
             level: Uint64::new(0u64),
             label: "Tier 2".to_string(),
             limit: Some(Uint128::new(100)),
+            sold_amount: Uint128::zero(),
             price: Uint128::new(100),
             meta_data: TierMetaData {
                 extension: TokenExtension {
@@ -296,6 +298,7 @@ mod test {
             level: Uint64::zero(),
             label: "Tier 0".to_string(),
             limit: Some(Uint128::new(100)),
+            sold_amount: Uint128::zero(),
             price: Uint128::new(100),
             meta_data: TierMetaData {
                 extension: TokenExtension {
@@ -308,6 +311,7 @@ mod test {
             level: Uint64::new(2u64),
             label: "Tier 2".to_string(),
             limit: Some(Uint128::new(100)),
+            sold_amount: Uint128::zero(),
             price: Uint128::new(100),
             meta_data: TierMetaData {
                 extension: TokenExtension {
@@ -403,6 +407,7 @@ mod test {
             label: "Tier 0".to_string(),
             limit: Some(Uint128::new(100)),
             price: Uint128::new(100),
+            sold_amount: Uint128::zero(),
             meta_data: TierMetaData {
                 extension: TokenExtension {
                     publisher: MOCK_ADO_PUBLISHER.to_string(),
@@ -415,6 +420,7 @@ mod test {
             label: "Tier 2".to_string(),
             limit: Some(Uint128::new(100)),
             price: Uint128::new(100),
+            sold_amount: Uint128::zero(),
             meta_data: TierMetaData {
                 extension: TokenExtension {
                     publisher: MOCK_ADO_PUBLISHER.to_string(),
@@ -515,6 +521,7 @@ mod test {
             level: Uint64::new(1u64),
             label: "Tier 1".to_string(),
             limit: Some(Uint128::new(1000u128)),
+            sold_amount: Uint128::zero(),
             price: Uint128::new(10u128),
             meta_data: TierMetaData {
                 extension: TokenExtension {
@@ -645,10 +652,9 @@ mod test {
                             TIERS
                                 .load(&deps.storage, order.level.into())
                                 .unwrap()
-                                .limit
-                                .unwrap()
+                                .sold_amount
                                 .u128(),
-                            MOCK_DEFAULT_LIMIT - order_amount
+                            order_amount
                         );
                     }
                 }
@@ -715,6 +721,21 @@ mod test {
                 }],
                 initial_cap: Uint128::new(500),
                 funds: vec![coin(1000, MOCK_NATIVE_DENOM)],
+                denom: Asset::NativeToken(MOCK_NATIVE_DENOM.to_string()),
+            },
+            PurchaseTierTestCase {
+                name: "Purchasing more than limit".to_string(),
+                stage: CampaignStage::ONGOING,
+                expected_res: Err(ContractError::PurchaseLimitReached {}),
+                payee: buyer.to_string(),
+                start_time: Some(past_time()),
+                end_time: future_time(&env),
+                orders: vec![SimpleTierOrder {
+                    level: Uint64::one(),
+                    amount: Uint128::new(MOCK_DEFAULT_LIMIT + 1),
+                }],
+                initial_cap: Uint128::new(500),
+                funds: vec![coin(10 * MOCK_DEFAULT_LIMIT + 20, MOCK_NATIVE_DENOM)],
                 denom: Asset::NativeToken(MOCK_NATIVE_DENOM.to_string()),
             },
             PurchaseTierTestCase {
@@ -847,8 +868,8 @@ mod test {
                         .load(deps.as_ref().storage, order.level.into())
                         .unwrap();
                     assert_eq!(
-                        tier.limit.unwrap().u128(),
-                        MOCK_DEFAULT_LIMIT - order.amount.u128(),
+                        tier.sold_amount.u128(),
+                        order.amount.u128(),
                         "Test case: {}",
                         test.name
                     );
@@ -1045,8 +1066,8 @@ mod test {
                         .load(deps.as_ref().storage, order.level.into())
                         .unwrap();
                     assert_eq!(
-                        tier.limit.unwrap().u128(),
-                        MOCK_DEFAULT_LIMIT - order.amount.u128(),
+                        tier.sold_amount.u128(),
+                        order.amount.u128(),
                         "Test case: {}",
                         test.name
                     );

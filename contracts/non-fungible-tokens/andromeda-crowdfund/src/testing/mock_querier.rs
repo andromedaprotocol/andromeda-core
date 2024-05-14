@@ -48,6 +48,7 @@ pub fn mock_campaign_tiers() -> Vec<Tier> {
                 },
                 token_uri: None,
             },
+            sold_amount: Uint128::zero(),
         },
         Tier {
             level: Uint64::new(1u64),
@@ -60,6 +61,7 @@ pub fn mock_campaign_tiers() -> Vec<Tier> {
                 },
                 token_uri: None,
             },
+            sold_amount: Uint128::zero(),
         },
     ]
 }
@@ -76,6 +78,7 @@ pub fn mock_zero_price_tier(level: Uint64) -> Tier {
             },
             token_uri: None,
         },
+        sold_amount: Uint128::zero(),
     }
 }
 

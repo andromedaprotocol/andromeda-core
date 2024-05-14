@@ -39,8 +39,8 @@ pub enum ExecuteMsg {
     PurchaseTiers { orders: Vec<SimpleTierOrder> },
     /// Purchase tiers with cw20
     Receive(Cw20ReceiveMsg),
-    /// End the campaign
-    EndCampaign {},
+    // /// End the campaign
+    // EndCampaign {},
 }
 
 #[cw_serde]
@@ -141,6 +141,7 @@ pub struct Tier {
     pub label: String,
     pub price: Uint128,
     pub limit: Option<Uint128>, // None for no limit
+    pub sold_amount: Uint128,
     pub meta_data: TierMetaData,
 }
 

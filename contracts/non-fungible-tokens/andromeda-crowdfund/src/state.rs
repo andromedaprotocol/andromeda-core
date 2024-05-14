@@ -134,9 +134,13 @@ pub(crate) fn set_tier_orders(
                 msg: format!("Tier with level {} does not exist", new_order.level),
             }
         })?;
-        if let Some(mut remaining_amount) = tier.limit {
-            remaining_amount = remaining_amount.checked_sub(new_order.amount)?;
-            tier.limit = Some(remaining_amount);
+        if let Some(limit) = tier.limit {
+            tier.sold_amount = tier.sold_amount.checked_add(new_order.amount)?;
+            ensure!(
+                limit >= tier.sold_amount,
+                ContractError::PurchaseLimitReached {}
+            );
+
             update_tier(storage, &tier)?;
         }
 
