@@ -139,7 +139,7 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
         } => execute_start_campaign(ctx, start_time, end_time, presale),
         ExecuteMsg::PurchaseTiers { orders } => execute_purchase_tiers(ctx, orders),
         ExecuteMsg::Receive(msg) => handle_receive_cw20(ctx, msg),
-        // ExecuteMsg::EndCampaign {} => execute_end_campaign(ctx),
+        ExecuteMsg::EndCampaign {} => execute_end_campaign(ctx),
         _ => ADOContract::default().execute(ctx, msg),
     }?;
 
@@ -345,63 +345,64 @@ fn handle_receive_cw20(
     }
 }
 
-// fn execute_end_campaign(ctx: ExecuteContext) -> Result<Response, ContractError> {
-//     let ExecuteContext {
-//         deps, info, env, ..
-//     } = ctx;
+fn execute_end_campaign(ctx: ExecuteContext) -> Result<Response, ContractError> {
+    let ExecuteContext {
+        deps, info, env, ..
+    } = ctx;
 
-//     // Only owner can end the campaign
-//     let contract = ADOContract::default();
-//     ensure!(
-//         contract.is_contract_owner(deps.storage, info.sender.as_str())?,
-//         ContractError::Unauthorized {}
-//     );
+    // Only owner can end the campaign
+    let contract = ADOContract::default();
+    ensure!(
+        contract.is_contract_owner(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {}
+    );
 
-//     // Campaign is finished already or not started
-//     let curr_stage = get_current_stage(deps.storage);
-//     ensure!(
-//         curr_stage == CampaignStage::ONGOING,
-//         ContractError::InvalidCampaignOperation {
-//             operation: "end_campaign".to_string(),
-//             stage: curr_stage.to_string()
-//         }
-//     );
+    // Campaign is finished already or not started
+    let curr_stage = get_current_stage(deps.storage);
+    ensure!(
+        curr_stage == CampaignStage::ONGOING,
+        ContractError::InvalidCampaignOperation {
+            operation: "end_campaign".to_string(),
+            stage: curr_stage.to_string()
+        }
+    );
 
-//     let current_cap = get_current_cap(deps.storage);
-//     let campaign_config = get_config(deps.storage)?;
-//     let soft_cap = campaign_config.soft_cap.unwrap_or(Uint128::one());
-//     let end_time = campaign_config.end_time;
+    let current_cap = get_current_cap(deps.storage);
+    let campaign_config = get_config(deps.storage)?;
+    let soft_cap = campaign_config.soft_cap.unwrap_or(Uint128::one());
+    let end_time = campaign_config.end_time;
 
-//     // Decide the next stage
-//     let next_stage = match (current_cap >= soft_cap, end_time.is_expired(&env.block)) {
-//         (true, _) => CampaignStage::SUCCESS,
-//         (false, true) => CampaignStage::FAILED,
-//         (false, false) => {
-//             if current_cap != Uint128::zero() {
-//                 return Err(ContractError::CampaignNotExpired {});
-//             }
-//             CampaignStage::ONGOING
-//         }
-//     };
+    // Decide the next stage
+    let next_stage = match (current_cap >= soft_cap, end_time.is_expired(&env.block)) {
+        (true, _) => CampaignStage::SUCCESS,
+        (false, true) => CampaignStage::FAILED,
+        (false, false) => {
+            if current_cap != Uint128::zero() {
+                return Err(ContractError::CampaignNotExpired {});
+            }
+            // No capital is gained and thus it can be paused and restart again
+            CampaignStage::READY
+        }
+    };
 
-//     set_current_stage(deps.storage, next_stage.clone())?;
+    set_current_stage(deps.storage, next_stage.clone())?;
 
-//     let mut resp = Response::new()
-//         .add_attribute("action", "end_campaign")
-//         .add_attribute("result", next_stage.to_string());
-//     if next_stage == CampaignStage::SUCCESS {
-//         let withdrawal_address = campaign_config
-//             .withdrawal_recipient
-//             .address
-//             .get_raw_address(&deps.as_ref())?;
-//         resp = resp.add_submessage(transfer_asset_msg(
-//             withdrawal_address.to_string(),
-//             current_cap,
-//             campaign_config.denom,
-//         )?);
-//     }
-//     Ok(resp)
-// }
+    let mut resp = Response::new()
+        .add_attribute("action", "end_campaign")
+        .add_attribute("result", next_stage.to_string());
+    if next_stage == CampaignStage::SUCCESS {
+        let withdrawal_address = campaign_config
+            .withdrawal_recipient
+            .address
+            .get_raw_address(&deps.as_ref())?;
+        resp = resp.add_submessage(transfer_asset_msg(
+            withdrawal_address.to_string(),
+            current_cap,
+            campaign_config.denom,
+        )?);
+    }
+    Ok(resp)
+}
 
 fn purchase_tiers(
     ctx: ExecuteContext,

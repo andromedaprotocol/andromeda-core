@@ -78,7 +78,7 @@ mod test {
 
     use crate::{
         state::{get_current_cap, set_tiers},
-        testing::mock_querier::MOCK_DEFAULT_OWNER,
+        testing::mock_querier::{MOCK_DEFAULT_OWNER, MOCK_WITHDRAWAL_ADDRESS},
     };
 
     use super::*;
@@ -1072,6 +1072,202 @@ mod test {
                         test.name
                     );
                 }
+            }
+        }
+    }
+
+    struct EndCampaignTestCase {
+        name: String,
+        stage: CampaignStage,
+        sender: String,
+        current_cap: Uint128,
+        soft_cap: Option<Uint128>,
+        end_time: MillisecondsExpiration,
+        expected_res: Result<Response, ContractError>,
+        denom: Asset,
+        expected_stage: CampaignStage,
+    }
+    #[test]
+    fn test_execute_end_campaign() {
+        let env = mock_env();
+        let test_cases: Vec<EndCampaignTestCase> = vec![
+            EndCampaignTestCase {
+                name: "Successful campaign using native token".to_string(),
+                stage: CampaignStage::ONGOING,
+                sender: MOCK_DEFAULT_OWNER.to_string(),
+                current_cap: Uint128::new(10000u128),
+                soft_cap: Some(Uint128::new(9000u128)),
+                end_time: MillisecondsExpiration::from_seconds(env.block.time.seconds()),
+                denom: Asset::NativeToken(MOCK_NATIVE_DENOM.to_string()),
+                expected_res: Ok(Response::new()
+                    .add_attribute("action", "end_campaign")
+                    .add_attribute("result", CampaignStage::SUCCESS.to_string())
+                    .add_message(BankMsg::Send {
+                        to_address: MOCK_WITHDRAWAL_ADDRESS.to_string(),
+                        amount: coins(10000, MOCK_NATIVE_DENOM),
+                    })
+                    .add_submessage(SubMsg::reply_on_error(
+                        CosmosMsg::Wasm(WasmMsg::Execute {
+                            contract_addr: "economics_contract".to_string(),
+                            msg: to_json_binary(&EconomicsExecuteMsg::PayFee {
+                                payee: Addr::unchecked(MOCK_DEFAULT_OWNER.to_string()),
+                                action: "EndCampaign".to_string(),
+                            })
+                            .unwrap(),
+                            funds: vec![],
+                        }),
+                        ReplyId::PayFee.repr(),
+                    ))),
+                expected_stage: CampaignStage::SUCCESS,
+            },
+            EndCampaignTestCase {
+                name: "Successful campaign using cw20".to_string(),
+                stage: CampaignStage::ONGOING,
+                sender: MOCK_DEFAULT_OWNER.to_string(),
+                current_cap: Uint128::new(10000u128),
+                soft_cap: Some(Uint128::new(9000u128)),
+                end_time: MillisecondsExpiration::from_seconds(env.block.time.seconds()),
+                denom: Asset::Cw20Token(AndrAddr::from_string(MOCK_CW20_CONTRACT.to_string())),
+                expected_res: Ok(Response::new()
+                    .add_attribute("action", "end_campaign")
+                    .add_attribute("result", CampaignStage::SUCCESS.to_string())
+                    .add_message(
+                        wasm_execute(
+                            MOCK_CW20_CONTRACT.to_string(),
+                            &Cw20ExecuteMsg::Transfer {
+                                recipient: MOCK_WITHDRAWAL_ADDRESS.to_string(),
+                                amount: Uint128::new(10000u128),
+                            },
+                            vec![],
+                        )
+                        .unwrap(),
+                    )
+                    .add_submessage(SubMsg::reply_on_error(
+                        CosmosMsg::Wasm(WasmMsg::Execute {
+                            contract_addr: "economics_contract".to_string(),
+                            msg: to_json_binary(&EconomicsExecuteMsg::PayFee {
+                                payee: Addr::unchecked(MOCK_DEFAULT_OWNER.to_string()),
+                                action: "EndCampaign".to_string(),
+                            })
+                            .unwrap(),
+                            funds: vec![],
+                        }),
+                        ReplyId::PayFee.repr(),
+                    ))),
+                expected_stage: CampaignStage::SUCCESS,
+            },
+            EndCampaignTestCase {
+                name: "Failed campaign".to_string(),
+                stage: CampaignStage::ONGOING,
+                sender: MOCK_DEFAULT_OWNER.to_string(),
+                current_cap: Uint128::new(10000u128),
+                soft_cap: Some(Uint128::new(11000u128)),
+                end_time: MillisecondsExpiration::from_seconds(env.block.time.seconds()),
+                denom: Asset::Cw20Token(AndrAddr::from_string(MOCK_CW20_CONTRACT.to_string())),
+                expected_res: Ok(Response::new()
+                    .add_attribute("action", "end_campaign")
+                    .add_attribute("result", CampaignStage::FAILED.to_string())
+                    .add_submessage(SubMsg::reply_on_error(
+                        CosmosMsg::Wasm(WasmMsg::Execute {
+                            contract_addr: "economics_contract".to_string(),
+                            msg: to_json_binary(&EconomicsExecuteMsg::PayFee {
+                                payee: Addr::unchecked(MOCK_DEFAULT_OWNER.to_string()),
+                                action: "EndCampaign".to_string(),
+                            })
+                            .unwrap(),
+                            funds: vec![],
+                        }),
+                        ReplyId::PayFee.repr(),
+                    ))),
+                expected_stage: CampaignStage::FAILED,
+            },
+            EndCampaignTestCase {
+                name: "Pause campaign".to_string(),
+                stage: CampaignStage::ONGOING,
+                sender: MOCK_DEFAULT_OWNER.to_string(),
+                current_cap: Uint128::new(0u128),
+                soft_cap: None,
+                end_time: MillisecondsExpiration::from_seconds(env.block.time.seconds() + 1000),
+                denom: Asset::Cw20Token(AndrAddr::from_string(MOCK_CW20_CONTRACT.to_string())),
+                expected_res: Ok(Response::new()
+                    .add_attribute("action", "end_campaign")
+                    .add_attribute("result", CampaignStage::READY.to_string())
+                    .add_submessage(SubMsg::reply_on_error(
+                        CosmosMsg::Wasm(WasmMsg::Execute {
+                            contract_addr: "economics_contract".to_string(),
+                            msg: to_json_binary(&EconomicsExecuteMsg::PayFee {
+                                payee: Addr::unchecked(MOCK_DEFAULT_OWNER.to_string()),
+                                action: "EndCampaign".to_string(),
+                            })
+                            .unwrap(),
+                            funds: vec![],
+                        }),
+                        ReplyId::PayFee.repr(),
+                    ))),
+                expected_stage: CampaignStage::READY,
+            },
+            EndCampaignTestCase {
+                name: "End campaign from unauthorized sender".to_string(),
+                stage: CampaignStage::ONGOING,
+                sender: "sender".to_string(),
+                current_cap: Uint128::new(10000u128),
+                soft_cap: None,
+                end_time: MillisecondsExpiration::from_seconds(env.block.time.seconds()),
+                denom: Asset::NativeToken(MOCK_NATIVE_DENOM.to_string()),
+                expected_res: Err(ContractError::Unauthorized {}),
+                expected_stage: CampaignStage::ONGOING,
+            },
+            EndCampaignTestCase {
+                name: "End campaign on invalid stage".to_string(),
+                stage: CampaignStage::READY,
+                sender: MOCK_DEFAULT_OWNER.to_string(),
+                current_cap: Uint128::new(10000u128),
+                soft_cap: None,
+                end_time: MillisecondsExpiration::from_seconds(env.block.time.seconds()),
+                denom: Asset::NativeToken(MOCK_NATIVE_DENOM.to_string()),
+                expected_res: Err(ContractError::InvalidCampaignOperation {
+                    operation: "end_campaign".to_string(),
+                    stage: CampaignStage::READY.to_string(),
+                }),
+                expected_stage: CampaignStage::READY,
+            },
+            EndCampaignTestCase {
+                name: "End unexpired campaign".to_string(),
+                stage: CampaignStage::ONGOING,
+                sender: MOCK_DEFAULT_OWNER.to_string(),
+                current_cap: Uint128::new(10000u128),
+                soft_cap: Some(Uint128::new(11000u128)),
+                end_time: MillisecondsExpiration::from_seconds(env.block.time.seconds() + 100),
+                denom: Asset::NativeToken(MOCK_NATIVE_DENOM.to_string()),
+                expected_res: Err(ContractError::CampaignNotExpired {}),
+                expected_stage: CampaignStage::ONGOING,
+            },
+        ];
+        for test in test_cases {
+            let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
+            let mut mock_config = mock_campaign_config(test.denom.clone());
+            let _ = init(deps.as_mut(), mock_config.clone(), vec![]);
+
+            let info = mock_info(&test.sender, &[]);
+            set_campaign_stage(deps.as_mut().storage, &test.stage);
+            set_current_cap(deps.as_mut().storage, &test.current_cap);
+
+            mock_config.end_time = test.end_time;
+            mock_config.soft_cap = test.soft_cap;
+            set_campaign_config(deps.as_mut().storage, &mock_config);
+            let msg = ExecuteMsg::EndCampaign {};
+
+            let res = execute(deps.as_mut(), env.clone(), info, msg);
+            assert_eq!(res, test.expected_res, "Test case: {}", test.name);
+            if res.is_ok() {
+                assert_eq!(
+                    CAMPAIGN_STAGE
+                        .load(&deps.storage)
+                        .unwrap_or(CampaignStage::SUCCESS),
+                    test.expected_stage,
+                    "Test case: {}",
+                    test.name
+                );
             }
         }
     }
