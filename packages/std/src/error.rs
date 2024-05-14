@@ -285,6 +285,9 @@ pub enum ContractError {
     #[error("CampaignEnded")]
     CampaignEnded {},
 
+    #[error("Campaign is not expired yet")]
+    CampaignNotExpired {},
+
     #[error("SaleNotStarted")]
     SaleNotStarted {},
 

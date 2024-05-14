@@ -19,7 +19,7 @@ use andromeda_std::{
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     coin, ensure, from_json, wasm_execute, Addr, BankMsg, Binary, Coin, Deps, DepsMut, Env,
-    MessageInfo, Reply, Response, StdError, Uint128, Uint64,
+    MessageInfo, Reply, Response, StdError, SubMsg, Uint128, Uint64,
 };
 
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
@@ -139,6 +139,7 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
         } => execute_start_campaign(ctx, start_time, end_time, presale),
         ExecuteMsg::PurchaseTiers { orders } => execute_purchase_tiers(ctx, orders),
         ExecuteMsg::Receive(msg) => handle_receive_cw20(ctx, msg),
+        ExecuteMsg::EndCampaign {} => execute_end_campaign(ctx),
         _ => ADOContract::default().execute(ctx, msg),
     }?;
 
@@ -344,6 +345,63 @@ fn handle_receive_cw20(
     }
 }
 
+fn execute_end_campaign(ctx: ExecuteContext) -> Result<Response, ContractError> {
+    let ExecuteContext {
+        deps, info, env, ..
+    } = ctx;
+
+    // Only owner can end the campaign
+    let contract = ADOContract::default();
+    ensure!(
+        contract.is_contract_owner(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {}
+    );
+
+    // Campaign is finished already or not started
+    let curr_stage = get_current_stage(deps.storage);
+    ensure!(
+        curr_stage == CampaignStage::ONGOING,
+        ContractError::InvalidCampaignOperation {
+            operation: "end_campaign".to_string(),
+            stage: curr_stage.to_string()
+        }
+    );
+
+    let current_cap = get_current_cap(deps.storage);
+    let campaign_config = get_config(deps.storage)?;
+    let soft_cap = campaign_config.soft_cap.unwrap_or(Uint128::one());
+    let end_time = campaign_config.end_time;
+
+    // Decide the next stage
+    let next_stage = match (current_cap >= soft_cap, end_time.is_expired(&env.block)) {
+        (true, _) => CampaignStage::SUCCESS,
+        (false, true) => CampaignStage::FAILED,
+        (false, false) => {
+            if current_cap != Uint128::zero() {
+                return Err(ContractError::CampaignNotExpired {});
+            }
+            CampaignStage::ONGOING
+        }
+    };
+
+    set_current_stage(deps.storage, next_stage.clone())?;
+
+    let mut resp = Response::new()
+        .add_attribute("action", "end_campaign")
+        .add_attribute("result", next_stage.to_string());
+    if next_stage == CampaignStage::SUCCESS {
+        let withdrawal_address = campaign_config
+            .withdrawal_recipient
+            .address
+            .get_raw_address(&deps.as_ref())?;
+        resp = resp.add_submessage(transfer_asset_msg(
+            withdrawal_address.to_string(),
+            current_cap,
+            campaign_config.denom,
+        )?);
+    }
+    Ok(resp)
+}
 fn purchase_tiers(
     ctx: ExecuteContext,
     denom: Asset,
@@ -423,24 +481,33 @@ fn purchase_tiers(
         .add_attribute("total_cost", total_cost.to_string());
 
     if amount > total_cost {
-        resp = match denom {
-            Asset::NativeToken(denom) => resp.add_message(BankMsg::Send {
-                to_address: sender.to_string(),
-                amount: vec![coin((amount - total_cost).u128(), denom)],
-            }),
-            Asset::Cw20Token(denom) => {
-                let transfer_msg = Cw20ExecuteMsg::Transfer {
-                    recipient: sender,
-                    amount: amount - total_cost,
-                };
-                let wasm_msg = wasm_execute(denom, &transfer_msg, vec![])?;
-                resp.add_message(wasm_msg)
-            }
-        }
-        .add_attribute("refunded", amount - total_cost);
+        resp = resp
+            .add_submessage(transfer_asset_msg(sender, amount - total_cost, denom)?)
+            .add_attribute("refunded", amount - total_cost);
     }
 
     Ok(resp)
+}
+
+fn transfer_asset_msg(
+    to_address: String,
+    amount: Uint128,
+    denom: Asset,
+) -> Result<SubMsg, ContractError> {
+    Ok(match denom {
+        Asset::NativeToken(denom) => SubMsg::new(BankMsg::Send {
+            to_address,
+            amount: vec![coin(amount.u128(), denom)],
+        }),
+        Asset::Cw20Token(denom) => {
+            let transfer_msg = Cw20ExecuteMsg::Transfer {
+                recipient: to_address,
+                amount,
+            };
+            let wasm_msg = wasm_execute(denom, &transfer_msg, vec![])?;
+            SubMsg::new(wasm_msg)
+        }
+    })
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
