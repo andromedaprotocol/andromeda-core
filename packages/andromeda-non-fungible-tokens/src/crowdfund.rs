@@ -82,7 +82,6 @@ impl CampaignConfig {
         // validate addresses
         self.tier_address.validate(deps.api)?;
         self.withdrawal_recipient.validate(&deps.as_ref())?;
-        // let _ = get_verified_asset();
         let _ = self
             .denom
             .get_verified_asset(deps, env.clone())
