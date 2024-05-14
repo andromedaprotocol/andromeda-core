@@ -161,7 +161,7 @@ fn execute_send(ctx: ExecuteContext) -> Result<Response, ContractError> {
 
         for address_percent in threshold.address_percent {
             let recipient_percent = address_percent.percent;
-            let amount_owed = coin.amount * recipient_percent;
+            let amount_owed = coin.amount.mul_floor(recipient_percent);
 
             if !amount_owed.is_zero() {
                 let mut vec_coin: Vec<Coin> = Vec::new();
