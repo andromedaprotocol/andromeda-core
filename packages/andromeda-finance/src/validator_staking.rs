@@ -1,4 +1,6 @@
-use andromeda_std::{amp::AndrAddr, andr_exec, andr_instantiate, andr_query, error::ContractError};
+use andromeda_std::{
+    amp::Recipient, andr_exec, andr_instantiate, andr_query, error::ContractError,
+};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Addr, Coin, DepsMut, Timestamp, Uint128};
 use schemars::JsonSchema;
@@ -22,7 +24,7 @@ pub enum ExecuteMsg {
     },
     Claim {
         validator: Option<Addr>,
-        recipient: Option<AndrAddr>,
+        recipient: Option<Recipient>,
     },
     WithdrawFunds {},
 }

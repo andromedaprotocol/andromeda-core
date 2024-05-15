@@ -4,7 +4,9 @@ use crate::{
 };
 
 use andromeda_std::{
-    amp::AndrAddr, error::ContractError, testing::mock_querier::MOCK_KERNEL_CONTRACT,
+    amp::{AndrAddr, Recipient},
+    error::ContractError,
+    testing::mock_querier::MOCK_KERNEL_CONTRACT,
 };
 use cosmwasm_std::{
     coin,
@@ -168,7 +170,7 @@ fn test_unauthorized_claim() {
 
     let msg = ExecuteMsg::Claim {
         validator: Some(valid_validator.clone()),
-        recipient: Some(AndrAddr::from_string("other")),
+        recipient: Some(Recipient::new(AndrAddr::from_string("other"), None)),
     };
 
     let info = mock_info(OWNER, &[coin(100, "uandr")]);

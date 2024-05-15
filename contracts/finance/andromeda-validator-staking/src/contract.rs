@@ -15,7 +15,7 @@ use andromeda_finance::validator_staking::{
 use andromeda_std::{
     ado_base::InstantiateMsg as BaseInstantiateMsg,
     ado_contract::ADOContract,
-    amp::AndrAddr,
+    amp::Recipient,
     common::{context::ExecuteContext, encode_binary},
     error::ContractError,
 };
@@ -199,7 +199,7 @@ fn execute_unstake(
 fn execute_claim(
     ctx: ExecuteContext,
     validator: Option<Addr>,
-    recipient: Option<AndrAddr>,
+    recipient: Option<Recipient>,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
         deps, info, env, ..
@@ -211,8 +211,14 @@ fn execute_claim(
     // Check if the validator is valid before unstaking
     is_validator(&deps, &validator)?;
 
+    let recipient_msg = if let Some(ref recipient) = recipient {
+        Some(recipient.generate_direct_msg(&deps.as_ref(), info.funds)?)
+    } else {
+        None
+    };
+
     let recipient = if let Some(recipient) = recipient {
-        recipient.get_raw_address(&deps.as_ref())?
+        recipient.address.get_raw_address(&deps.as_ref())?
     } else {
         info.sender
     };
@@ -250,6 +256,10 @@ fn execute_claim(
         .add_attribute("action", "validator-claim-reward")
         .add_attribute("recipient", recipient)
         .add_attribute("validator", validator.to_string());
+
+    if let Some(recipient_msg) = recipient_msg {
+        res.clone().add_submessage(recipient_msg);
+    }
 
     Ok(res)
 }

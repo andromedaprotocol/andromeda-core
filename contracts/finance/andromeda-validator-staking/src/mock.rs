@@ -9,7 +9,7 @@ use andromeda_testing::{
 };
 use cw_multi_test::{Contract, ContractWrapper};
 
-use andromeda_std::{amp::AndrAddr, error::ContractError};
+use andromeda_std::{amp::Recipient, error::ContractError};
 
 pub struct MockValidatorStaking(Addr);
 mock_ado!(MockValidatorStaking, ExecuteMsg, QueryMsg);
@@ -42,7 +42,7 @@ impl MockValidatorStaking {
         app: &mut MockApp,
         sender: Addr,
         validator: Option<Addr>,
-        recipient: Option<AndrAddr>,
+        recipient: Option<Recipient>,
     ) -> ExecuteResult {
         let msg = mock_execute_claim_reward(validator, recipient);
         self.execute(app, &msg, sender, &[])
@@ -101,7 +101,7 @@ pub fn mock_execute_unstake(validator: Option<Addr>, amount: Option<Uint128>) ->
 
 pub fn mock_execute_claim_reward(
     validator: Option<Addr>,
-    recipient: Option<AndrAddr>,
+    recipient: Option<Recipient>,
 ) -> ExecuteMsg {
     ExecuteMsg::Claim {
         validator,
