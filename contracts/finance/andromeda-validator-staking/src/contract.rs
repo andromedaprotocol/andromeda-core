@@ -212,7 +212,11 @@ fn execute_claim(
     is_validator(&deps, &validator)?;
 
     let recipient_msg = if let Some(ref recipient) = recipient {
-        Some(recipient.generate_direct_msg(&deps.as_ref(), info.funds)?)
+        if recipient.msg.is_some() {
+            Some(recipient.generate_direct_msg(&deps.as_ref(), info.funds)?)
+        } else {
+            None
+        }
     } else {
         None
     };
