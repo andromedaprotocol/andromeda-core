@@ -1,5 +1,5 @@
 use andromeda_finance::validator_staking::{ExecuteMsg, InstantiateMsg, QueryMsg, UnstakingTokens};
-use cosmwasm_std::{Addr, Coin, Delegation, Empty};
+use cosmwasm_std::{Addr, Coin, Delegation, Empty, Uint128};
 
 use crate::contract::{execute, instantiate, query, reply};
 use andromeda_testing::{
@@ -31,8 +31,9 @@ impl MockValidatorStaking {
         app: &mut MockApp,
         sender: Addr,
         validator: Option<Addr>,
+        amount: Option<Uint128>,
     ) -> ExecuteResult {
-        let msg = mock_execute_unstake(validator);
+        let msg = mock_execute_unstake(validator, amount);
         self.execute(app, &msg, sender, &[])
     }
 
@@ -94,8 +95,8 @@ pub fn mock_execute_stake(validator: Option<Addr>) -> ExecuteMsg {
     ExecuteMsg::Stake { validator }
 }
 
-pub fn mock_execute_unstake(validator: Option<Addr>) -> ExecuteMsg {
-    ExecuteMsg::Unstake { validator }
+pub fn mock_execute_unstake(validator: Option<Addr>, amount: Option<Uint128>) -> ExecuteMsg {
+    ExecuteMsg::Unstake { validator, amount }
 }
 
 pub fn mock_execute_claim_reward(

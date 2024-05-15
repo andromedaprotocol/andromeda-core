@@ -143,6 +143,7 @@ fn test_unauthorized_unstake() {
 
     let msg = ExecuteMsg::Unstake {
         validator: Some(valid_validator),
+        amount: None,
     };
 
     let info = mock_info("other", &[coin(100, "uandr")]);

@@ -2,8 +2,9 @@ use std::str::FromStr;
 
 use crate::state::{DEFAULT_VALIDATOR, UNSTAKING_QUEUE};
 use cosmwasm_std::{
-    ensure, entry_point, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, DistributionMsg,
-    Env, FullDelegation, MessageInfo, Reply, Response, StakingMsg, StdError, SubMsg, Timestamp,
+    coin, ensure, entry_point, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut,
+    DistributionMsg, Env, FullDelegation, MessageInfo, Reply, Response, StakingMsg, StdError,
+    SubMsg, Timestamp, Uint128,
 };
 use cw2::set_contract_version;
 
@@ -78,7 +79,7 @@ pub fn execute(
 pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::Stake { validator } => execute_stake(ctx, validator),
-        ExecuteMsg::Unstake { validator } => execute_unstake(ctx, validator),
+        ExecuteMsg::Unstake { validator, amount } => execute_unstake(ctx, validator, amount),
         ExecuteMsg::Claim {
             validator,
             recipient,
@@ -138,6 +139,7 @@ fn execute_stake(ctx: ExecuteContext, validator: Option<Addr>) -> Result<Respons
 fn execute_unstake(
     ctx: ExecuteContext,
     validator: Option<Addr>,
+    amount: Option<Uint128>,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
         deps, info, env, ..
@@ -166,8 +168,12 @@ fn execute_unstake(
         });
     };
 
+    let unstake_amount = amount.unwrap_or(res.amount.amount);
+
     ensure!(
-        !res.amount.amount.is_zero(),
+        !res.amount.amount.is_zero()
+            && !unstake_amount.is_zero()
+            && unstake_amount <= res.amount.amount,
         ContractError::InvalidValidatorOperation {
             operation: "Unstake".to_string(),
             validator: validator.to_string(),
@@ -176,13 +182,14 @@ fn execute_unstake(
 
     let undelegate_msg = CosmosMsg::Staking(StakingMsg::Undelegate {
         validator: validator.to_string(),
-        amount: res.amount,
+        amount: coin(unstake_amount.u128(), res.amount.denom),
     });
     let undelegate_msg = SubMsg::reply_on_success(undelegate_msg, ReplyId::ValidatorUnstake.repr());
 
     let res = Response::new()
         .add_submessage(undelegate_msg)
         .add_attribute("action", "validator-unstake")
+        .add_attribute("amount", unstake_amount)
         .add_attribute("from", info.sender)
         .add_attribute("to", validator.to_string());
 
