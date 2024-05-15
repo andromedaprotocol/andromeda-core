@@ -211,17 +211,7 @@ fn execute_claim(
     // Check if the validator is valid before unstaking
     is_validator(&deps, &validator)?;
 
-    let recipient_msg = if let Some(ref recipient) = recipient {
-        if recipient.msg.is_some() {
-            Some(recipient.generate_direct_msg(&deps.as_ref(), info.funds)?)
-        } else {
-            None
-        }
-    } else {
-        None
-    };
-
-    let recipient = if let Some(recipient) = recipient {
+    let recipient_address = if let Some(ref recipient) = recipient {
         recipient.address.get_raw_address(&deps.as_ref())?
     } else {
         info.sender
@@ -229,7 +219,7 @@ fn execute_claim(
 
     // Ensure recipient is the contract owner
     ensure!(
-        ADOContract::default().is_contract_owner(deps.storage, recipient.as_str())?,
+        ADOContract::default().is_contract_owner(deps.storage, recipient_address.as_str())?,
         ContractError::Unauthorized {}
     );
 
@@ -252,18 +242,21 @@ fn execute_claim(
 
     let res = Response::new()
         .add_message(DistributionMsg::SetWithdrawAddress {
-            address: recipient.to_string(),
+            address: recipient_address.to_string(),
         })
         .add_message(DistributionMsg::WithdrawDelegatorReward {
             validator: validator.to_string(),
         })
         .add_attribute("action", "validator-claim-reward")
-        .add_attribute("recipient", recipient)
+        .add_attribute("recipient", recipient_address)
         .add_attribute("validator", validator.to_string());
 
-    if let Some(recipient_msg) = recipient_msg {
-        res.clone().add_submessage(recipient_msg);
-    }
+    if let Some(recipient) = recipient {
+        if recipient.msg.is_some() {
+            res.clone()
+                .add_submessage(recipient.generate_direct_msg(&deps.as_ref(), info.funds)?);
+        }
+    };
 
     Ok(res)
 }
