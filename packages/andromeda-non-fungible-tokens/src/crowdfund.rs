@@ -33,7 +33,7 @@ pub enum ExecuteMsg {
     StartCampaign {
         start_time: Option<MillisecondsExpiration>,
         end_time: MillisecondsExpiration,
-        presale: Option<Vec<TierOrder>>,
+        presale: Option<Vec<PresaleTierOrder>>,
     },
     /// Purchase tiers
     PurchaseTiers { orders: Vec<SimpleTierOrder> },
@@ -152,6 +152,26 @@ pub struct TierOrder {
     pub orderer: Addr,
     pub level: Uint64,
     pub amount: Uint128,
+    pub is_presale: bool,
+}
+
+// Used for presale
+#[cw_serde]
+pub struct PresaleTierOrder {
+    pub level: Uint64,
+    pub amount: Uint128,
+    pub orderer: Addr,
+}
+
+impl From<PresaleTierOrder> for TierOrder {
+    fn from(val: PresaleTierOrder) -> Self {
+        TierOrder {
+            level: val.level,
+            amount: val.amount,
+            orderer: val.orderer,
+            is_presale: true,
+        }
+    }
 }
 
 // Used when the orderer is defined

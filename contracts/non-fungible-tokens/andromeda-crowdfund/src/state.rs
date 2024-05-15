@@ -1,7 +1,9 @@
-use andromeda_non_fungible_tokens::crowdfund::{CampaignConfig, CampaignStage, Tier, TierOrder, SimpleTierOrder};
+use andromeda_non_fungible_tokens::crowdfund::{
+    CampaignConfig, CampaignStage, SimpleTierOrder, Tier, TierOrder,
+};
 use andromeda_std::error::ContractError;
 use cosmwasm_std::{ensure, Addr, Order, Storage, Uint128, Uint64};
-use cw_storage_plus::{Item, Map, Bound};
+use cw_storage_plus::{Bound, Item, Map};
 
 pub const CAMPAIGN_CONFIG: Item<CampaignConfig> = Item::new("campaign_config");
 

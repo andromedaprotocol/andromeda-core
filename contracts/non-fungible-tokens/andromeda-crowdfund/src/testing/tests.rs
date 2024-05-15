@@ -1,7 +1,5 @@
 use andromeda_non_fungible_tokens::{
-    crowdfund::{
-        CampaignConfig, CampaignStage, ExecuteMsg, InstantiateMsg, Tier, TierMetaData, TierOrder,
-    },
+    crowdfund::{CampaignConfig, CampaignStage, ExecuteMsg, InstantiateMsg, Tier, TierMetaData},
     cw721::TokenExtension,
 };
 
@@ -67,7 +65,9 @@ fn set_campaign_config(store: &mut dyn Storage, config: &CampaignConfig) {
 
 #[cfg(test)]
 mod test {
-    use andromeda_non_fungible_tokens::crowdfund::{Cw20HookMsg, SimpleTierOrder};
+    use andromeda_non_fungible_tokens::crowdfund::{
+        Cw20HookMsg, PresaleTierOrder, SimpleTierOrder,
+    };
     use andromeda_std::{
         amp::AndrAddr,
         common::{denom::Asset, encode_binary},
@@ -495,7 +495,7 @@ mod test {
     struct StartCampaignTestCase {
         name: String,
         tiers: Vec<Tier>,
-        presale: Option<Vec<TierOrder>>,
+        presale: Option<Vec<PresaleTierOrder>>,
         start_time: Option<MillisecondsExpiration>,
         end_time: MillisecondsExpiration,
         expected_res: Result<Response, ContractError>,
@@ -505,13 +505,13 @@ mod test {
     #[test]
     fn test_start_campaign() {
         let mock_orderer = Addr::unchecked("mock_orderer".to_string());
-        let valid_presale = vec![TierOrder {
+        let valid_presale = vec![PresaleTierOrder {
             amount: Uint128::new(100u128),
             level: Uint64::new(1u64),
             orderer: mock_orderer.clone(),
         }];
 
-        let invalid_presale = vec![TierOrder {
+        let invalid_presale = vec![PresaleTierOrder {
             amount: Uint128::new(100u128),
             level: Uint64::new(2u64),
             orderer: mock_orderer.clone(),
