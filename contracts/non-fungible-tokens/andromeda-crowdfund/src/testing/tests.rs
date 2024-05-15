@@ -1083,8 +1083,9 @@ mod test {
         current_cap: Uint128,
         soft_cap: Option<Uint128>,
         end_time: MillisecondsExpiration,
-        expected_res: Result<Response, ContractError>,
         denom: Asset,
+        is_discard: bool,
+        expected_res: Result<Response, ContractError>,
         expected_stage: CampaignStage,
     }
     #[test]
@@ -1099,6 +1100,7 @@ mod test {
                 soft_cap: Some(Uint128::new(9000u128)),
                 end_time: MillisecondsExpiration::from_seconds(env.block.time.seconds()),
                 denom: Asset::NativeToken(MOCK_NATIVE_DENOM.to_string()),
+                is_discard: false,
                 expected_res: Ok(Response::new()
                     .add_attribute("action", "end_campaign")
                     .add_attribute("result", CampaignStage::SUCCESS.to_string())
@@ -1128,6 +1130,7 @@ mod test {
                 soft_cap: Some(Uint128::new(9000u128)),
                 end_time: MillisecondsExpiration::from_seconds(env.block.time.seconds()),
                 denom: Asset::Cw20Token(AndrAddr::from_string(MOCK_CW20_CONTRACT.to_string())),
+                is_discard: false,
                 expected_res: Ok(Response::new()
                     .add_attribute("action", "end_campaign")
                     .add_attribute("result", CampaignStage::SUCCESS.to_string())
@@ -1164,6 +1167,33 @@ mod test {
                 soft_cap: Some(Uint128::new(11000u128)),
                 end_time: MillisecondsExpiration::from_seconds(env.block.time.seconds()),
                 denom: Asset::Cw20Token(AndrAddr::from_string(MOCK_CW20_CONTRACT.to_string())),
+                is_discard: true,
+                expected_res: Ok(Response::new()
+                    .add_attribute("action", "end_campaign")
+                    .add_attribute("result", CampaignStage::FAILED.to_string())
+                    .add_submessage(SubMsg::reply_on_error(
+                        CosmosMsg::Wasm(WasmMsg::Execute {
+                            contract_addr: "economics_contract".to_string(),
+                            msg: to_json_binary(&EconomicsExecuteMsg::PayFee {
+                                payee: Addr::unchecked(MOCK_DEFAULT_OWNER.to_string()),
+                                action: "EndCampaign".to_string(),
+                            })
+                            .unwrap(),
+                            funds: vec![],
+                        }),
+                        ReplyId::PayFee.repr(),
+                    ))),
+                expected_stage: CampaignStage::FAILED,
+            },
+            EndCampaignTestCase {
+                name: "Discard campaign using native token".to_string(),
+                stage: CampaignStage::ONGOING,
+                sender: MOCK_DEFAULT_OWNER.to_string(),
+                current_cap: Uint128::new(10000u128),
+                soft_cap: Some(Uint128::new(9000u128)),
+                end_time: MillisecondsExpiration::from_seconds(env.block.time.seconds()),
+                denom: Asset::NativeToken(MOCK_NATIVE_DENOM.to_string()),
+                is_discard: true,
                 expected_res: Ok(Response::new()
                     .add_attribute("action", "end_campaign")
                     .add_attribute("result", CampaignStage::FAILED.to_string())
@@ -1189,6 +1219,7 @@ mod test {
                 soft_cap: None,
                 end_time: MillisecondsExpiration::from_seconds(env.block.time.seconds() + 1000),
                 denom: Asset::Cw20Token(AndrAddr::from_string(MOCK_CW20_CONTRACT.to_string())),
+                is_discard: false,
                 expected_res: Ok(Response::new()
                     .add_attribute("action", "end_campaign")
                     .add_attribute("result", CampaignStage::READY.to_string())
@@ -1214,6 +1245,7 @@ mod test {
                 soft_cap: None,
                 end_time: MillisecondsExpiration::from_seconds(env.block.time.seconds()),
                 denom: Asset::NativeToken(MOCK_NATIVE_DENOM.to_string()),
+                is_discard: false,
                 expected_res: Err(ContractError::Unauthorized {}),
                 expected_stage: CampaignStage::ONGOING,
             },
@@ -1225,6 +1257,7 @@ mod test {
                 soft_cap: None,
                 end_time: MillisecondsExpiration::from_seconds(env.block.time.seconds()),
                 denom: Asset::NativeToken(MOCK_NATIVE_DENOM.to_string()),
+                is_discard: false,
                 expected_res: Err(ContractError::InvalidCampaignOperation {
                     operation: "end_campaign".to_string(),
                     stage: CampaignStage::READY.to_string(),
@@ -1239,6 +1272,7 @@ mod test {
                 soft_cap: Some(Uint128::new(11000u128)),
                 end_time: MillisecondsExpiration::from_seconds(env.block.time.seconds() + 100),
                 denom: Asset::NativeToken(MOCK_NATIVE_DENOM.to_string()),
+                is_discard: false,
                 expected_res: Err(ContractError::CampaignNotExpired {}),
                 expected_stage: CampaignStage::ONGOING,
             },
@@ -1255,7 +1289,9 @@ mod test {
             mock_config.end_time = test.end_time;
             mock_config.soft_cap = test.soft_cap;
             set_campaign_config(deps.as_mut().storage, &mock_config);
-            let msg = ExecuteMsg::EndCampaign {};
+            let msg = ExecuteMsg::EndCampaign {
+                is_discard: test.is_discard,
+            };
 
             let res = execute(deps.as_mut(), env.clone(), info, msg);
             assert_eq!(res, test.expected_res, "Test case: {}", test.name);
