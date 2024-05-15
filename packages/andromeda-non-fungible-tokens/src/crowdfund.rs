@@ -41,6 +41,8 @@ pub enum ExecuteMsg {
     Receive(Cw20ReceiveMsg),
     /// End the campaign
     EndCampaign {},
+    /// Claim tiers or get refunded based on the campaign result
+    Claim {},
 }
 
 #[cw_serde]

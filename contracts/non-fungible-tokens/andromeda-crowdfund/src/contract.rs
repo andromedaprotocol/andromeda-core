@@ -1,8 +1,9 @@
 use andromeda_non_fungible_tokens::crowdfund::{
     CampaignStage, Cw20HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg, SimpleTierOrder, Tier,
-    TierOrder,
+    TierOrder, TierMetaData,
 };
 
+use andromeda_non_fungible_tokens::cw721::{MintMsg, ExecuteMsg as Cw721ExecuteMsg};
 use andromeda_std::amp::AndrAddr;
 use andromeda_std::common::denom::Asset;
 use andromeda_std::common::{Milliseconds, MillisecondsExpiration};
@@ -19,7 +20,7 @@ use andromeda_std::{
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     coin, ensure, from_json, wasm_execute, Addr, BankMsg, Binary, Coin, Deps, DepsMut, Env,
-    MessageInfo, Reply, Response, StdError, SubMsg, Uint128, Uint64,
+    MessageInfo, Reply, Response, StdError, SubMsg, Uint128, Uint64, Storage, WasmMsg,
 };
 
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
@@ -28,7 +29,7 @@ use cw_utils::nonpayable;
 use crate::state::{
     add_tier, get_config, get_current_cap, get_current_stage, get_tier, is_valid_tiers,
     remove_tier, set_current_cap, set_current_stage, set_tier_orders, set_tiers, update_config,
-    update_tier,
+    update_tier, get_user_orders, get_and_increase_tier_token_id,
 };
 
 const CONTRACT_NAME: &str = "crates.io:andromeda-crowdfund";
@@ -141,6 +142,7 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
         ExecuteMsg::PurchaseTiers { orders } => execute_purchase_tiers(ctx, orders),
         ExecuteMsg::Receive(msg) => handle_receive_cw20(ctx, msg),
         ExecuteMsg::EndCampaign {} => execute_end_campaign(ctx),
+        ExecuteMsg::Claim {} => execute_claim(ctx),
         _ => ADOContract::default().execute(ctx, msg),
     }?;
 
@@ -513,6 +515,88 @@ fn transfer_asset_msg(
             SubMsg::new(wasm_msg)
         }
     })
+}
+
+fn execute_claim(ctx: ExecuteContext) -> Result<Response, ContractError> {
+    let ExecuteContext {
+        deps, info, env, ..
+    } = ctx;
+
+    // Ensure campaign is finished
+    let curr_stage = get_current_stage(deps.storage);
+    ensure!(
+        curr_stage == CampaignStage::SUCCESS || curr_stage == CampaignStage::FAILED,
+        ContractError::InvalidCampaignOperation {
+            operation: "claim".to_string(),
+            stage: curr_stage.to_string()
+        }
+    );
+
+    let orders =  get_user_orders(deps.storage, info.sender, None, None)?;
+    let campaign_config = get_config(deps.storage)?;
+    let mut resp = Response::new()
+        .add_attribute("action", "claim");
+
+    resp = match curr_stage {
+        CampaignStage::SUCCESS => {
+            // TODO mint tier token to the owner
+            let tier_address = campaign_config.tier_address.get_raw_address(&deps.as_ref())?;
+            for order in orders {
+                let meta_data = get_tier(deps.storage, order.level.into())?.meta_data;
+                let mint_resp = mint(deps.storage, tier_address.to_string(), meta_data, info.sender)?;
+                resp = resp
+                    .add_attributes(mint_resp.attributes)
+                    .add_submessages(mint_resp.messages);
+            }
+
+            resp
+        }
+        CampaignStage::FAILED => {
+            // refund
+            let total_cost = orders.iter().try_fold(Uint128::zero(), |sum, order| {
+                let tier = get_tier(deps.storage, u64::from(order.level))?;
+                let new_sum: Result<Uint128, ContractError> = Ok(sum + tier.price * order.amount);
+                new_sum
+            })?;
+            let sub_msg = transfer_asset_msg(
+                info.sender.to_string(),
+                total_cost,
+                campaign_config.denom,
+            )?;
+            resp.add_submessage(sub_msg)
+        }
+        _ => return Err(
+            ContractError::InvalidCampaignOperation {
+                operation: "claim".to_string(),
+                stage: curr_stage.to_string()
+            }
+        )
+    };
+
+
+    Ok(resp)
+}
+
+fn mint(
+    storage: &mut dyn Storage,
+    tier_contract: String,
+    tier_meta_data: TierMetaData,
+    owner: String,
+) -> Result<Response, ContractError> {
+    let token_id = get_and_increase_tier_token_id(storage)?.to_string();
+
+    Ok(Response::new()
+        .add_attribute("action", "mint")
+        .add_message(WasmMsg::Execute {
+            contract_addr: tier_contract,
+            msg: encode_binary(&Cw721ExecuteMsg::Mint {
+                token_id,
+                owner,
+                token_uri: tier_meta_data.token_uri,
+                extension: tier_meta_data.extension,
+            })?,
+            funds: vec![],
+        }))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
