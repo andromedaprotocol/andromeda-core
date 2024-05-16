@@ -364,11 +364,17 @@ fn execute_end_campaign(ctx: ExecuteContext, is_discard: bool) -> Result<Respons
     // Campaign is finished already successfully
     // NOTE: ending failed campaign has no effect and is ignored
     let curr_stage = get_current_stage(deps.storage);
+    let action = if is_discard {
+        "discard_campaign"
+    } else {
+        "end_campaign"
+    };
+
     ensure!(
         curr_stage == CampaignStage::ONGOING
             || (is_discard && curr_stage != CampaignStage::SUCCESS),
         ContractError::InvalidCampaignOperation {
-            operation: "end_campaign".to_string(),
+            operation: action.to_string(),
             stage: curr_stage.to_string()
         }
     );
@@ -403,11 +409,6 @@ fn execute_end_campaign(ctx: ExecuteContext, is_discard: bool) -> Result<Respons
 
     set_current_stage(deps.storage, next_stage.clone())?;
 
-    let action = if is_discard {
-        "discard_campaign"
-    } else {
-        "end_campaign"
-    };
     let mut resp = Response::new()
         .add_attribute("action", action)
         .add_attribute("result", next_stage.to_string());
