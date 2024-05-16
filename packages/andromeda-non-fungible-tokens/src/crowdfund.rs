@@ -40,7 +40,9 @@ pub enum ExecuteMsg {
     /// Purchase tiers with cw20
     Receive(Cw20ReceiveMsg),
     /// End the campaign
-    EndCampaign { is_discard: bool },
+    EndCampaign {},
+    /// End the campaign
+    DiscardCampaign {},
 }
 
 #[cw_serde]

@@ -140,7 +140,8 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
         } => execute_start_campaign(ctx, start_time, end_time, presale),
         ExecuteMsg::PurchaseTiers { orders } => execute_purchase_tiers(ctx, orders),
         ExecuteMsg::Receive(msg) => handle_receive_cw20(ctx, msg),
-        ExecuteMsg::EndCampaign { is_discard } => execute_end_campaign(ctx, is_discard),
+        ExecuteMsg::EndCampaign {} => execute_end_campaign(ctx, false),
+        ExecuteMsg::DiscardCampaign {} => execute_end_campaign(ctx, true),
         _ => ADOContract::default().execute(ctx, msg),
     }?;
 
@@ -402,8 +403,13 @@ fn execute_end_campaign(ctx: ExecuteContext, is_discard: bool) -> Result<Respons
 
     set_current_stage(deps.storage, next_stage.clone())?;
 
+    let action = if is_discard {
+        "discard_campaign"
+    } else {
+        "end_campaign"
+    };
     let mut resp = Response::new()
-        .add_attribute("action", "end_campaign")
+        .add_attribute("action", action)
         .add_attribute("result", next_stage.to_string());
     if next_stage == CampaignStage::SUCCESS {
         let withdrawal_address = campaign_config

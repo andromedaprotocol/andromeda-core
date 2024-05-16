@@ -1167,7 +1167,7 @@ mod test {
                 soft_cap: Some(Uint128::new(11000u128)),
                 end_time: MillisecondsExpiration::from_seconds(env.block.time.seconds()),
                 denom: Asset::Cw20Token(AndrAddr::from_string(MOCK_CW20_CONTRACT.to_string())),
-                is_discard: true,
+                is_discard: false,
                 expected_res: Ok(Response::new()
                     .add_attribute("action", "end_campaign")
                     .add_attribute("result", CampaignStage::FAILED.to_string())
@@ -1195,14 +1195,14 @@ mod test {
                 denom: Asset::NativeToken(MOCK_NATIVE_DENOM.to_string()),
                 is_discard: true,
                 expected_res: Ok(Response::new()
-                    .add_attribute("action", "end_campaign")
+                    .add_attribute("action", "discard_campaign")
                     .add_attribute("result", CampaignStage::FAILED.to_string())
                     .add_submessage(SubMsg::reply_on_error(
                         CosmosMsg::Wasm(WasmMsg::Execute {
                             contract_addr: "economics_contract".to_string(),
                             msg: to_json_binary(&EconomicsExecuteMsg::PayFee {
                                 payee: Addr::unchecked(MOCK_DEFAULT_OWNER.to_string()),
-                                action: "EndCampaign".to_string(),
+                                action: "DiscardCampaign".to_string(),
                             })
                             .unwrap(),
                             funds: vec![],
@@ -1289,8 +1289,10 @@ mod test {
             mock_config.end_time = test.end_time;
             mock_config.soft_cap = test.soft_cap;
             set_campaign_config(deps.as_mut().storage, &mock_config);
-            let msg = ExecuteMsg::EndCampaign {
-                is_discard: test.is_discard,
+            let msg = if test.is_discard {
+                ExecuteMsg::DiscardCampaign {}
+            } else {
+                ExecuteMsg::EndCampaign {}
             };
 
             let res = execute(deps.as_mut(), env.clone(), info, msg);
