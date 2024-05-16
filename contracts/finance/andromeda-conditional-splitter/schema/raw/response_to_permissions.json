@@ -6,6 +6,35 @@
     "$ref": "#/definitions/PermissionInfo"
   },
   "definitions": {
+    "Expiry": {
+      "description": "The Expiry type is used to define an expiry time using milliseconds\n\nThere are two types: 1. FromNow(Milliseconds) - The expiry time is relative to the current time 2. AtTime(Milliseconds) - The expiry time is absolute",
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "from_now"
+          ],
+          "properties": {
+            "from_now": {
+              "$ref": "#/definitions/Milliseconds"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "at_time"
+          ],
+          "properties": {
+            "at_time": {
+              "$ref": "#/definitions/Milliseconds"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
     "Milliseconds": {
       "description": "Represents time in milliseconds.",
       "type": "integer",
@@ -24,7 +53,7 @@
             "blacklisted": {
               "anyOf": [
                 {
-                  "$ref": "#/definitions/Milliseconds"
+                  "$ref": "#/definitions/Expiry"
                 },
                 {
                   "type": "null"
@@ -49,7 +78,7 @@
                 "expiration": {
                   "anyOf": [
                     {
-                      "$ref": "#/definitions/Milliseconds"
+                      "$ref": "#/definitions/Expiry"
                     },
                     {
                       "type": "null"
@@ -76,7 +105,7 @@
             "whitelisted": {
               "anyOf": [
                 {
-                  "$ref": "#/definitions/Milliseconds"
+                  "$ref": "#/definitions/Expiry"
                 },
                 {
                   "type": "null"

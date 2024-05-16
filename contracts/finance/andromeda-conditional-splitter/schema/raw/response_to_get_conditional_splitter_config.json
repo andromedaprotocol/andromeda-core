@@ -41,15 +41,17 @@
       "description": "A config struct for a `Conditional Splitter` contract.",
       "type": "object",
       "required": [
-        "lock",
         "thresholds"
       ],
       "properties": {
-        "lock": {
+        "lock_time": {
           "description": "The lock's expiration time",
-          "allOf": [
+          "anyOf": [
             {
               "$ref": "#/definitions/Milliseconds"
+            },
+            {
+              "type": "null"
             }
           ]
         },
