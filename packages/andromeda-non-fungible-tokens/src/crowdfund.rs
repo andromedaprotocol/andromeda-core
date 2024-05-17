@@ -43,6 +43,8 @@ pub enum ExecuteMsg {
     EndCampaign {},
     /// Claim tiers or get refunded based on the campaign result
     Claim {},
+    /// Discard the campaign
+    DiscardCampaign {},
 }
 
 #[cw_serde]

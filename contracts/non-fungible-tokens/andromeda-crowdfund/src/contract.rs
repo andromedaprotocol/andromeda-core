@@ -141,7 +141,8 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
         } => execute_start_campaign(ctx, start_time, end_time, presale),
         ExecuteMsg::PurchaseTiers { orders } => execute_purchase_tiers(ctx, orders),
         ExecuteMsg::Receive(msg) => handle_receive_cw20(ctx, msg),
-        ExecuteMsg::EndCampaign {} => execute_end_campaign(ctx),
+        ExecuteMsg::EndCampaign {} => execute_end_campaign(ctx, false),
+        ExecuteMsg::DiscardCampaign {} => execute_end_campaign(ctx, true),
         ExecuteMsg::Claim {} => execute_claim(ctx),
         _ => ADOContract::default().execute(ctx, msg),
     }?;
@@ -349,7 +350,7 @@ fn handle_receive_cw20(
     }
 }
 
-fn execute_end_campaign(ctx: ExecuteContext) -> Result<Response, ContractError> {
+fn execute_end_campaign(ctx: ExecuteContext, is_discard: bool) -> Result<Response, ContractError> {
     nonpayable(&ctx.info)?;
 
     let ExecuteContext {
@@ -363,12 +364,20 @@ fn execute_end_campaign(ctx: ExecuteContext) -> Result<Response, ContractError> 
         ContractError::Unauthorized {}
     );
 
-    // Campaign is finished already or not started
+    // Campaign is finished already successfully
+    // NOTE: ending failed campaign has no effect and is ignored
     let curr_stage = get_current_stage(deps.storage);
+    let action = if is_discard {
+        "discard_campaign"
+    } else {
+        "end_campaign"
+    };
+
     ensure!(
-        curr_stage == CampaignStage::ONGOING,
+        curr_stage == CampaignStage::ONGOING
+            || (is_discard && curr_stage != CampaignStage::SUCCESS),
         ContractError::InvalidCampaignOperation {
-            operation: "end_campaign".to_string(),
+            operation: action.to_string(),
             stage: curr_stage.to_string()
         }
     );
@@ -379,11 +388,21 @@ fn execute_end_campaign(ctx: ExecuteContext) -> Result<Response, ContractError> 
     let end_time = campaign_config.end_time;
 
     // Decide the next stage
-    let next_stage = match (current_cap >= soft_cap, end_time.is_expired(&env.block)) {
-        (true, _) => CampaignStage::SUCCESS,
-        (false, true) => CampaignStage::FAILED,
-        (false, false) => {
+    let next_stage = match (
+        is_discard,
+        current_cap >= soft_cap,
+        end_time.is_expired(&env.block),
+    ) {
+        // discard the campaign as there are some unexpected issues
+        (true, _, _) => CampaignStage::FAILED,
+        // Capital hit the target capital and thus campaign is successful
+        (false, true, _) => CampaignStage::SUCCESS,
+        // Capital did hit the target capital and is expired, failed
+        (false, false, true) => CampaignStage::FAILED,
+        // Capital did not hit the target capital and campaign is not expired
+        (false, false, false) => {
             if current_cap != Uint128::zero() {
+                // Need to wait until campaign expires
                 return Err(ContractError::CampaignNotExpired {});
             }
             // No capital is gained and thus it can be paused and restart again
@@ -394,7 +413,7 @@ fn execute_end_campaign(ctx: ExecuteContext) -> Result<Response, ContractError> 
     set_current_stage(deps.storage, next_stage.clone())?;
 
     let mut resp = Response::new()
-        .add_attribute("action", "end_campaign")
+        .add_attribute("action", action)
         .add_attribute("result", next_stage.to_string());
     if next_stage == CampaignStage::SUCCESS {
         let withdrawal_address = campaign_config
