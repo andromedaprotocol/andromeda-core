@@ -39,8 +39,10 @@ pub enum ExecuteMsg {
     PurchaseTiers { orders: Vec<SimpleTierOrder> },
     /// Purchase tiers with cw20
     Receive(Cw20ReceiveMsg),
-    // /// End the campaign
-    // EndCampaign {},
+    /// End the campaign
+    EndCampaign {},
+    /// Discard the campaign
+    DiscardCampaign {},
 }
 
 #[cw_serde]
