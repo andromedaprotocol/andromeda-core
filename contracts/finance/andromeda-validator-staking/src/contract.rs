@@ -171,9 +171,7 @@ fn execute_unstake(
     let unstake_amount = amount.unwrap_or(res.amount.amount);
 
     ensure!(
-        !res.amount.amount.is_zero()
-            && !unstake_amount.is_zero()
-            && unstake_amount <= res.amount.amount,
+        !unstake_amount.is_zero() && unstake_amount <= res.amount.amount,
         ContractError::InvalidValidatorOperation {
             operation: "Unstake".to_string(),
             validator: validator.to_string(),
