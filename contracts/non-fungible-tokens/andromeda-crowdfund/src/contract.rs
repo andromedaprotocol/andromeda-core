@@ -27,9 +27,9 @@ use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use cw_utils::nonpayable;
 
 use crate::state::{
-    add_tier, get_and_increase_tier_token_id, get_config, get_current_cap, get_current_stage,
-    get_tier, get_user_orders, is_valid_tiers, remove_tier, set_current_cap, set_current_stage,
-    set_tier_orders, set_tiers, update_config, update_tier,
+    add_tier, clear_user_orders, get_and_increase_tier_token_id, get_config, get_current_cap,
+    get_current_stage, get_tier, get_user_orders, is_valid_tiers, remove_tier, set_current_cap,
+    set_current_stage, set_tier_orders, set_tiers, update_config, update_tier,
 };
 
 const CONTRACT_NAME: &str = "crates.io:andromeda-crowdfund";
@@ -543,32 +543,38 @@ fn execute_claim(ctx: ExecuteContext) -> Result<Response, ContractError> {
 
     // Ensure campaign is finished
     let curr_stage = get_current_stage(deps.storage);
-
-    let orders = get_user_orders(deps.storage, info.sender.clone(), None, None)?;
     let campaign_config = get_config(deps.storage)?;
     let mut resp = Response::new().add_attribute("action", "claim");
 
     resp = match curr_stage {
         CampaignStage::SUCCESS => {
+            let orders = get_user_orders(deps.storage, info.sender.clone(), None, None, true)?;
+            ensure!(!orders.is_empty(), ContractError::NoPurchases {});
+
             // mint tier token to the owner
             let tier_address = campaign_config
                 .tier_address
                 .get_raw_address(&deps.as_ref())?;
             for order in orders {
                 let meta_data = get_tier(deps.storage, order.level.into())?.meta_data;
-                let mint_resp = mint(
-                    deps.storage,
-                    tier_address.to_string(),
-                    meta_data,
-                    info.sender.to_string(),
-                )?;
-                resp = resp
-                    .add_attributes(mint_resp.attributes)
-                    .add_submessages(mint_resp.messages);
+                for _ in 0..order.amount.into() {
+                    let mint_resp = mint(
+                        deps.storage,
+                        tier_address.to_string(),
+                        meta_data.clone(),
+                        info.sender.to_string(),
+                    )?;
+                    resp = resp
+                        .add_attributes(mint_resp.attributes)
+                        .add_submessages(mint_resp.messages);
+                }
             }
             resp
         }
         CampaignStage::FAILED => {
+            let orders = get_user_orders(deps.storage, info.sender.clone(), None, None, false)?;
+            ensure!(!orders.is_empty(), ContractError::NoPurchases {});
+
             // refund
             let total_cost = orders.iter().try_fold(Uint128::zero(), |sum, order| {
                 let tier = get_tier(deps.storage, u64::from(order.level))?;
@@ -581,11 +587,12 @@ fn execute_claim(ctx: ExecuteContext) -> Result<Response, ContractError> {
         }
         _ => {
             return Err(ContractError::InvalidCampaignOperation {
-                operation: "claim".to_string(),
+                operation: "Claim".to_string(),
                 stage: curr_stage.to_string(),
             })
         }
     };
+    clear_user_orders(deps.storage, info.sender)?;
 
     Ok(resp)
 }
@@ -598,18 +605,16 @@ fn mint(
 ) -> Result<Response, ContractError> {
     let token_id = get_and_increase_tier_token_id(storage)?.to_string();
 
-    Ok(Response::new()
-        .add_attribute("action", "mint")
-        .add_message(WasmMsg::Execute {
-            contract_addr: tier_contract,
-            msg: encode_binary(&Cw721ExecuteMsg::Mint {
-                token_id,
-                owner,
-                token_uri: tier_meta_data.token_uri,
-                extension: tier_meta_data.extension,
-            })?,
-            funds: vec![],
-        }))
+    Ok(Response::new().add_message(WasmMsg::Execute {
+        contract_addr: tier_contract,
+        msg: encode_binary(&Cw721ExecuteMsg::Mint {
+            token_id,
+            owner,
+            token_uri: tier_meta_data.token_uri,
+            extension: tier_meta_data.extension,
+        })?,
+        funds: vec![],
+    }))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

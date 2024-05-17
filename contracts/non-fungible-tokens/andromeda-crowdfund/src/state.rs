@@ -2,6 +2,7 @@ use andromeda_non_fungible_tokens::crowdfund::{
     CampaignConfig, CampaignStage, SimpleTierOrder, Tier, TierOrder,
 };
 use andromeda_std::error::ContractError;
+use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{ensure, Addr, Order, Storage, Uint128, Uint64};
 use cw_storage_plus::{Bound, Item, Map};
 
@@ -13,9 +14,22 @@ pub const CURRENT_CAP: Item<Uint128> = Item::new("current_capital");
 
 pub const TIERS: Map<u64, Tier> = Map::new("tiers");
 
-pub const TIER_ORDERS: Map<(Addr, u64), u128> = Map::new("tier_orders");
+pub const TIER_ORDERS: Map<(Addr, u64), OrderInfo> = Map::new("tier_orders");
 
 pub const TIER_TOKEN_ID: Item<Uint128> = Item::new("tier_token_id");
+
+#[cw_serde]
+#[derive(Default)]
+pub struct OrderInfo {
+    pub ordered: u128,
+    pub preordered: u128,
+}
+
+impl OrderInfo {
+    pub fn amount(self) -> Option<u128> {
+        self.ordered.checked_add(self.preordered)
+    }
+}
 
 pub(crate) fn update_config(
     storage: &mut dyn Storage,
@@ -150,8 +164,14 @@ pub(crate) fn set_tier_orders(
 
         let mut order = TIER_ORDERS
             .load(storage, (new_order.orderer.clone(), new_order.level.into()))
-            .unwrap_or(0);
-        order += new_order.amount.u128();
+            .unwrap_or_default();
+
+        if new_order.is_presale {
+            order.preordered += new_order.amount.u128();
+        } else {
+            order.ordered += new_order.amount.u128();
+        }
+
         TIER_ORDERS.save(
             storage,
             (new_order.orderer.clone(), new_order.level.into()),
@@ -166,6 +186,7 @@ pub(crate) fn get_user_orders(
     user: Addr,
     start_after: Option<u64>,
     limit: Option<u32>,
+    include_presale: bool,
 ) -> Result<Vec<SimpleTierOrder>, ContractError> {
     let limit = limit.unwrap_or(u32::MAX) as usize;
     let start = start_after.map(Bound::exclusive);
@@ -175,7 +196,12 @@ pub(crate) fn get_user_orders(
         .range(storage, start, None, Order::Ascending)
         .take(limit)
         .map(|v| {
-            let (level, amount) = v?;
+            let (level, order_info) = v?;
+            let amount = if include_presale {
+                order_info.amount().unwrap()
+            } else {
+                order_info.ordered
+            };
             Ok(SimpleTierOrder {
                 level: Uint64::new(level),
                 amount: Uint128::new(amount),
@@ -184,10 +210,26 @@ pub(crate) fn get_user_orders(
         .collect()
 }
 
+pub(crate) fn clear_user_orders(
+    storage: &mut dyn Storage,
+    user: Addr,
+) -> Result<(), ContractError> {
+    let levels: Vec<u64> = TIER_ORDERS
+        .prefix(user.clone())
+        .range(storage, None, None, Order::Ascending)
+        .map(|v| v.unwrap().0)
+        .collect();
+
+    for level in levels {
+        TIER_ORDERS.remove(storage, (user.clone(), level));
+    }
+    Ok(())
+}
+
 pub(crate) fn get_and_increase_tier_token_id(
     storage: &mut dyn Storage,
 ) -> Result<Uint128, ContractError> {
-    let tier_token_id = TIER_TOKEN_ID.load(storage)?;
+    let tier_token_id = TIER_TOKEN_ID.load(storage).unwrap_or_default();
     let next_tier_token_id = tier_token_id.checked_add(Uint128::from(1u128))?;
     TIER_TOKEN_ID.save(storage, &next_tier_token_id)?;
     Ok(tier_token_id)
