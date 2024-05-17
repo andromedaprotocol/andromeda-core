@@ -41,7 +41,7 @@ pub enum ExecuteMsg {
     Receive(Cw20ReceiveMsg),
     /// End the campaign
     EndCampaign {},
-    /// End the campaign
+    /// Discard the campaign
     DiscardCampaign {},
 }
 
