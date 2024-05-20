@@ -9,20 +9,21 @@ use andromeda_non_fungible_tokens::{
     },
     cw721::{ExecuteMsg as Cw721ExecuteMsg, MintMsg, QueryMsg as Cw721QueryMsg},
 };
+use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
 use andromeda_std::{
-    ado_base::ownership::OwnershipMessage,
     amp::{messages::AMPPkt, recipient::Recipient, AndrAddr},
     common::{
         actions::call_action,
+        call_action::get_action_name,
         expiration::{expiration_from_milliseconds, get_and_validate_start_time, Expiry},
+        rates::get_tax_amount,
     },
 };
-use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
 
 use andromeda_std::common::denom::validate_denom;
 use andromeda_std::{
-    ado_base::{hooks::AndromedaHook, InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
-    common::{deduct_funds, encode_binary, merge_sub_msgs, rates::get_tax_amount, Funds},
+    ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
+    common::{deduct_funds, encode_binary, merge_sub_msgs, Funds},
     error::ContractError,
 };
 
@@ -72,13 +73,8 @@ pub fn instantiate(
             owner: msg.owner,
         },
     )?;
-    let owner = ADOContract::default().owner(deps.storage)?;
-    let mod_resp =
-        ADOContract::default().register_modules(owner.as_str(), deps.storage, msg.modules)?;
 
-    Ok(inst_resp
-        .add_attributes(mod_resp.attributes)
-        .add_submessages(mod_resp.messages))
+    Ok(inst_resp)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -110,7 +106,8 @@ pub fn execute(
 }
 
 pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
-    let contract = ADOContract::default();
+    let action = get_action_name(CONTRACT_NAME, msg.as_ref());
+
     let action_response = call_action(
         &mut ctx.deps,
         &ctx.info,
@@ -118,20 +115,7 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
         &ctx.amp_ctx,
         msg.as_ref(),
     )?;
-    if !matches!(msg, ExecuteMsg::UpdateAppContract { .. })
-        && !matches!(
-            msg,
-            ExecuteMsg::Ownership(OwnershipMessage::UpdateOwner { .. })
-        )
-    {
-        contract.module_hook::<Response>(
-            &ctx.deps.as_ref(),
-            AndromedaHook::OnExecute {
-                sender: ctx.info.sender.to_string(),
-                payload: encode_binary(&msg)?,
-            },
-        )?;
-    }
+
     let res = match msg {
         ExecuteMsg::Mint(mint_msgs) => execute_mint(ctx, mint_msgs),
         ExecuteMsg::StartSale {
@@ -150,8 +134,12 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
             max_amount_per_wallet,
             recipient,
         ),
-        ExecuteMsg::Purchase { number_of_tokens } => execute_purchase(ctx, number_of_tokens),
-        ExecuteMsg::PurchaseByTokenId { token_id } => execute_purchase_by_token_id(ctx, token_id),
+        ExecuteMsg::Purchase { number_of_tokens } => {
+            execute_purchase(ctx, number_of_tokens, action)
+        }
+        ExecuteMsg::PurchaseByTokenId { token_id } => {
+            execute_purchase_by_token_id(ctx, token_id, action)
+        }
         ExecuteMsg::ClaimRefund {} => execute_claim_refund(ctx),
         ExecuteMsg::EndSale { limit } => execute_end_sale(ctx, limit),
         ExecuteMsg::UpdateTokenContract { address } => execute_update_token_contract(ctx, address),
@@ -354,6 +342,7 @@ fn execute_start_sale(
 fn execute_purchase_by_token_id(
     ctx: ExecuteContext,
     token_id: String,
+    action: String,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
         mut deps,
@@ -393,6 +382,7 @@ fn execute_purchase_by_token_id(
         &info,
         &mut state,
         &mut purchases,
+        action,
     )?;
 
     STATE.save(deps.storage, &state)?;
@@ -406,6 +396,7 @@ fn execute_purchase_by_token_id(
 fn execute_purchase(
     ctx: ExecuteContext,
     number_of_tokens: Option<u32>,
+    action: String,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
         mut deps,
@@ -442,8 +433,14 @@ fn execute_purchase(
 
     let number_of_tokens_purchased = token_ids.len();
 
-    let required_payment =
-        purchase_tokens(&mut deps, token_ids, &info, &mut state, &mut purchases)?;
+    let required_payment = purchase_tokens(
+        &mut deps,
+        token_ids,
+        &info,
+        &mut state,
+        &mut purchases,
+        action,
+    )?;
 
     PURCHASES.save(deps.storage, &sender, &purchases)?;
     STATE.save(deps.storage, &state)?;
@@ -481,6 +478,7 @@ fn purchase_tokens(
     info: &MessageInfo,
     state: &mut State,
     purchases: &mut Vec<Purchase>,
+    action: String,
 ) -> Result<Coin, ContractError> {
     // CHECK :: There are any tokens left to purchase.
     ensure!(!token_ids.is_empty(), ContractError::AllTokensPurchased {});
@@ -500,51 +498,73 @@ fn purchase_tokens(
     let mut total_tax_amount = Uint128::zero();
 
     // This is the same for each token, so we only need to do it once.
-    let (msgs, _events, remainder) = ADOContract::default().on_funds_transfer(
-        &deps.as_ref(),
-        info.sender.to_string(),
+    let transfer_response = ADOContract::default().query_deducted_funds(
+        deps.as_ref(),
+        action,
         Funds::Native(state.price.clone()),
-        encode_binary(&"")?,
     )?;
-
     let mut current_number = NUMBER_OF_TOKENS_AVAILABLE.load(deps.storage)?;
-    for token_id in token_ids {
-        let remaining_amount = remainder.try_get_coin()?;
 
-        let tax_amount = get_tax_amount(&msgs, state.price.amount, remaining_amount.amount);
+    match transfer_response {
+        Some(transfer_response) => {
+            for token_id in token_ids {
+                let remaining_amount = transfer_response.leftover_funds.try_get_coin()?;
+                let tax_amount = get_tax_amount(
+                    &transfer_response.msgs,
+                    state.price.amount,
+                    remaining_amount.amount,
+                );
 
-        let purchase = Purchase {
-            token_id: token_id.clone(),
-            tax_amount,
-            msgs: msgs.clone(),
-            purchaser: info.sender.to_string(),
-        };
-        total_tax_amount = total_tax_amount.checked_add(tax_amount)?;
+                let purchase = Purchase {
+                    token_id: token_id.clone(),
+                    tax_amount,
+                    msgs: transfer_response.msgs.clone(),
+                    purchaser: info.sender.to_string(),
+                };
 
-        state.amount_to_send = state.amount_to_send.checked_add(remaining_amount.amount)?;
-        state.amount_sold = state.amount_sold.checked_add(Uint128::one())?;
+                total_tax_amount += tax_amount;
 
-        purchases.push(purchase);
+                state.amount_to_send += remaining_amount.amount;
+                state.amount_sold += Uint128::new(1);
 
-        AVAILABLE_TOKENS.remove(deps.storage, &token_id);
-        current_number = current_number.checked_sub(Uint128::one())?;
+                purchases.push(purchase);
+
+                AVAILABLE_TOKENS.remove(deps.storage, &token_id);
+                current_number -= Uint128::new(1);
+            }
+            NUMBER_OF_TOKENS_AVAILABLE.save(deps.storage, &current_number)?;
+
+            // CHECK :: User has sent enough to cover taxes.
+            let required_payment = Coin {
+                denom: state.price.denom.clone(),
+                amount: state.price.amount * Uint128::from(number_of_tokens_purchased as u128)
+                    + total_tax_amount,
+            };
+            ensure!(
+                has_coins(&info.funds, &required_payment),
+                ContractError::InsufficientFunds {}
+            );
+            Ok(required_payment)
+        }
+        None => {
+            for token_id in token_ids {
+                let purchase = Purchase {
+                    token_id: token_id.clone(),
+                    // Zero in this case
+                    tax_amount: total_tax_amount,
+                    msgs: vec![],
+                    purchaser: info.sender.to_string(),
+                };
+                state.amount_to_send += total_cost.amount;
+                state.amount_sold += Uint128::new(1);
+                purchases.push(purchase);
+                AVAILABLE_TOKENS.remove(deps.storage, &token_id);
+                current_number -= Uint128::new(1);
+            }
+            NUMBER_OF_TOKENS_AVAILABLE.save(deps.storage, &current_number)?;
+            Ok(total_cost)
+        }
     }
-    NUMBER_OF_TOKENS_AVAILABLE.save(deps.storage, &current_number)?;
-
-    // CHECK :: User has sent enough to cover taxes.
-    let required_payment = Coin {
-        denom: state.price.denom.clone(),
-        amount: state
-            .price
-            .amount
-            .checked_mul(Uint128::from(number_of_tokens_purchased as u128))?
-            .checked_add(total_tax_amount)?,
-    };
-    ensure!(
-        has_coins(&info.funds, &required_payment),
-        ContractError::InsufficientFunds {}
-    );
-    Ok(required_payment)
 }
 
 fn execute_claim_refund(ctx: ExecuteContext) -> Result<Response, ContractError> {

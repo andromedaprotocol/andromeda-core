@@ -28,6 +28,8 @@ pub enum ContractError {
     #[error("Unauthorized")]
     Unauthorized {},
 
+    #[error("ActionNotFound")]
+    ActionNotFound {},
     #[error("UnpublishedCodeID")]
     UnpublishedCodeID {},
 
@@ -256,6 +258,9 @@ pub enum ContractError {
     #[error("AccountNotFound")]
     AccountNotFound {},
 
+    #[error("ActorNotFound")]
+    ActorNotFound {},
+
     #[error("ModuleDiscriptionTooLong: {msg}")]
     ModuleDiscriptionTooLong { msg: String },
 
@@ -351,6 +356,9 @@ pub enum ContractError {
 
     #[error("InvalidFunds: {msg}")]
     InvalidFunds { msg: String },
+
+    #[error("InvalidPermission: {msg}")]
+    InvalidPermission { msg: String },
 
     #[error("InvalidADOVersion: {msg:?}")]
     InvalidADOVersion { msg: Option<String> },

@@ -29,7 +29,6 @@ fn init(deps: DepsMut) -> Response {
         unbonding_duration: Duration::Height(UNBONDING_BLOCK_DURATION),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
-        modules: None,
     };
 
     let info = mock_info("owner", &[]);
@@ -368,7 +367,6 @@ fn test_create_batch_multi_batch_not_supported() {
         unbonding_duration: Duration::Height(0u64),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
-        modules: None,
     };
 
     let info = mock_info("owner", &[]);

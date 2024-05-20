@@ -10,8 +10,8 @@ license = "MIT"
 proc-macro = true
 
 [features]
-modules = []
-module_hooks = []
+withdraw = []
+rates = []
 
 [dependencies]
 syn = { version = "1.0.0", features = ["derive"] }

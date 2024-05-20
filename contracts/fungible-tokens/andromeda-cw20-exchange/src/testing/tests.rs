@@ -34,7 +34,7 @@ fn init(deps: DepsMut) -> Result<Response, ContractError> {
     let msg = InstantiateMsg {
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
-        modules: None,
+
         token_address: AndrAddr::from_string("cw20"),
     };
 

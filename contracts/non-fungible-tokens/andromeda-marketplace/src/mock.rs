@@ -4,13 +4,15 @@ use crate::contract::{execute, instantiate, query};
 use andromeda_non_fungible_tokens::marketplace::{
     Cw721HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg,
 };
+use andromeda_std::ado_base::rates::Rate;
+use andromeda_std::ado_base::rates::RatesMessage;
 use andromeda_std::amp::messages::AMPPkt;
 
 use andromeda_std::amp::AndrAddr;
+use andromeda_std::amp::Recipient;
 use andromeda_std::common::denom::Asset;
 use andromeda_std::common::expiration::Expiry;
 use andromeda_std::common::MillisecondsDuration;
-use andromeda_std::{ado_base::modules::Module, amp::Recipient};
 use andromeda_testing::{
     mock::MockApp, mock_ado, mock_contract::ExecuteResult, MockADO, MockContract,
 };
@@ -26,16 +28,11 @@ impl MockMarketplace {
         sender: Addr,
         app: &mut MockApp,
         kernel_address: impl Into<String>,
-        modules: Option<Vec<Module>>,
         owner: Option<String>,
         authorized_cw20_address: Option<AndrAddr>,
     ) -> MockMarketplace {
-        let msg = mock_marketplace_instantiate_msg(
-            kernel_address.into(),
-            modules,
-            owner,
-            authorized_cw20_address,
-        );
+        let msg =
+            mock_marketplace_instantiate_msg(kernel_address.into(), owner, authorized_cw20_address);
         let addr = app
             .instantiate_contract(
                 code_id,
@@ -57,6 +54,16 @@ impl MockMarketplace {
         token_id: impl Into<String>,
     ) -> ExecuteResult {
         self.execute(app, &mock_buy_token(token_address, token_id), sender, &[])
+    }
+
+    pub fn execute_set_rate(
+        &self,
+        app: &mut MockApp,
+        sender: Addr,
+        action: impl Into<String>,
+        rate: Rate,
+    ) -> ExecuteResult {
+        self.execute(app, &mock_set_rates(action, rate), sender, &[])
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -92,12 +99,10 @@ pub fn mock_andromeda_marketplace() -> Box<dyn Contract<Empty>> {
 
 pub fn mock_marketplace_instantiate_msg(
     kernel_address: String,
-    modules: Option<Vec<Module>>,
     owner: Option<String>,
     authorized_cw20_address: Option<AndrAddr>,
 ) -> InstantiateMsg {
     InstantiateMsg {
-        modules,
         kernel_address,
         owner,
         authorized_cw20_address,
@@ -141,6 +146,13 @@ pub fn mock_buy_token(token_address: impl Into<String>, token_id: impl Into<Stri
         token_id: token_id.into(),
         token_address: token_address.into(),
     }
+}
+
+pub fn mock_set_rates(action: impl Into<String>, rate: Rate) -> ExecuteMsg {
+    ExecuteMsg::Rates(RatesMessage::SetRate {
+        action: action.into(),
+        rate,
+    })
 }
 
 pub fn mock_receive_packet(packet: AMPPkt) -> ExecuteMsg {

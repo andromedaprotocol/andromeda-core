@@ -56,22 +56,14 @@ pub fn andr_exec(_args: TokenStream, input: TokenStream) -> TokenStream {
         }
         .into(),
     );
-    #[cfg(feature = "modules")]
+
+    #[cfg(feature = "rates")]
     {
         merged = merge_variants(
             merged,
             quote! {
                 enum Right {
-                    RegisterModule {
-                        module: ::andromeda_std::ado_base::Module,
-                    },
-                    DeregisterModule {
-                        module_idx: ::cosmwasm_std::Uint64,
-                    },
-                    AlterModule {
-                        module_idx: ::cosmwasm_std::Uint64,
-                        module: ::andromeda_std::ado_base::Module,
-                    },
+                    Rates(::andromeda_std::ado_base::rates::RatesMessage)
                 }
             }
             .into(),
@@ -100,7 +92,6 @@ fn andr_exec_derive(input: DeriveInput) -> DeriveInput {
 /// Includes:
 /// 1. Kernel Address for interacting with aOS
 /// 2. Owner of the ADO (optional, assumed to be sender otherwise)
-/// 3. Modules (optional, requires `modules` feature)
 #[proc_macro_attribute]
 pub fn andr_instantiate(_args: TokenStream, input: TokenStream) -> TokenStream {
     let mut ast = parse_macro_input!(input as DeriveInput);
@@ -119,29 +110,6 @@ pub fn andr_instantiate(_args: TokenStream, input: TokenStream) -> TokenStream {
                 );
             }
 
-            quote! {
-                #ast
-            }
-            .into()
-        }
-        _ => panic!("Macro only works with structs"),
-    }
-}
-
-#[proc_macro_attribute]
-pub fn andr_instantiate_modules(_args: TokenStream, input: TokenStream) -> TokenStream {
-    let mut ast = parse_macro_input!(input as DeriveInput);
-    match &mut ast.data {
-        syn::Data::Struct(ref mut struct_data) => {
-            if let syn::Fields::Named(fields) = &mut struct_data.fields {
-                fields.named.push(
-                    syn::Field::parse_named
-                        .parse2(
-                            quote! { pub modules: Option<Vec<::andromeda_std::ado_base::Module>> },
-                        )
-                        .unwrap(),
-                );
-            }
             quote! {
                 #ast
             }
@@ -183,39 +151,24 @@ pub fn andr_query(_metadata: TokenStream, input: TokenStream) -> TokenStream {
                 Permissions { actor: String, limit: Option<u32>, start_after: Option<String> },
                 #[returns(Vec<String>)]
                 PermissionedActions { },
+
             }
         }
         .into(),
     );
 
-    #[cfg(feature = "modules")]
+    #[cfg(feature = "rates")]
     {
         merged = merge_variants(
             merged,
             quote! {
                 enum Right {
-                    #[returns(andromeda_std::ado_base::Module)]
-                    Module { id: ::cosmwasm_std::Uint64 },
-                    #[returns(Vec<String>)]
-                    ModuleIds {},
+                    #[returns(Option<::andromeda_std::ado_base::rates::Rate>)]
+                    Rates(::andromeda_std::ado_base::rates::RatesQueryMessage)
                 }
             }
             .into(),
         );
     }
-    #[cfg(feature = "module_hooks")]
-    {
-        merged = merge_variants(
-            merged,
-            quote! {
-                enum Right {
-                    #[returns(::cosmwasm_std::Binary)]
-                    AndrHook(::andromeda_std::ado_base::hooks::AndromedaHook),
-                }
-            }
-            .into(),
-        );
-    }
-
     merged
 }

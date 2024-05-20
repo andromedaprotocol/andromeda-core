@@ -1,5 +1,5 @@
-#[cfg(feature = "modules")]
-use crate::ado_base::modules::Module;
+#[cfg(feature = "rates")]
+use crate::ado_base::rates::Rate;
 use cosmwasm_std::Addr;
 use cw_storage_plus::{Item, Map};
 
@@ -11,10 +11,9 @@ pub struct ADOContract<'a> {
     pub(crate) app_contract: Item<'a, Addr>,
     pub(crate) kernel_address: Item<'a, Addr>,
     pub(crate) permissioned_actions: Map<'a, String, bool>,
-    #[cfg(feature = "modules")]
-    pub(crate) module_info: Map<'a, &'a str, Module>,
-    #[cfg(feature = "modules")]
-    pub(crate) module_idx: Item<'a, u64>,
+    #[cfg(feature = "rates")]
+    /// Mapping of action to rate
+    pub rates: Map<'a, &'a str, Rate>,
 }
 
 impl<'a> Default for ADOContract<'a> {
@@ -27,10 +26,8 @@ impl<'a> Default for ADOContract<'a> {
             app_contract: Item::new("app_contract"),
             kernel_address: Item::new("kernel_address"),
             permissioned_actions: Map::new("andr_permissioned_actions"),
-            #[cfg(feature = "modules")]
-            module_info: Map::new("andr_modules"),
-            #[cfg(feature = "modules")]
-            module_idx: Item::new("andr_module_idx"),
+            #[cfg(feature = "rates")]
+            rates: Map::new("rates"),
         }
     }
 }

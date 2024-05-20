@@ -1,6 +1,4 @@
-use andromeda_std::{
-    andr_exec, andr_instantiate, andr_instantiate_modules, andr_query, common::MillisecondsDuration,
-};
+use andromeda_std::{andr_exec, andr_instantiate, andr_query, common::MillisecondsDuration};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Timestamp, Uint128};
 
@@ -37,7 +35,6 @@ pub struct ContractAndKey {
 }
 
 #[andr_instantiate]
-#[andr_instantiate_modules]
 #[cw_serde]
 pub struct InstantiateMsg {
     pub allowed_coin: CoinAndLimit,

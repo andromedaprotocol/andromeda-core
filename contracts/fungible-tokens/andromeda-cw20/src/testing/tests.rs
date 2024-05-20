@@ -1,15 +1,18 @@
 use crate::contract::{execute, instantiate, query};
 use crate::testing::mock_querier::mock_dependencies_custom;
 use andromeda_fungible_tokens::cw20::{ExecuteMsg, InstantiateMsg, QueryMsg};
-use andromeda_std::testing::mock_querier::MOCK_ADDRESS_LIST_CONTRACT;
-use andromeda_std::{
-    ado_base::Module, amp::addresses::AndrAddr, error::ContractError,
-    testing::mock_querier::MOCK_KERNEL_CONTRACT,
-};
+use andromeda_std::ado_base::permissioning::Permission;
+use andromeda_std::ado_base::rates::{LocalRate, LocalRateType, LocalRateValue, PercentRate, Rate};
+use andromeda_std::ado_contract::ADOContract;
+use andromeda_std::amp::{AndrAddr, Recipient};
+use andromeda_std::common::context::ExecuteContext;
+
+use andromeda_std::{error::ContractError, testing::mock_querier::MOCK_KERNEL_CONTRACT};
 use andromeda_testing::economics_msg::generate_economics_message;
+use cosmwasm_std::{attr, Decimal, Event};
 use cosmwasm_std::{
     testing::{mock_env, mock_info},
-    to_json_binary, Addr, DepsMut, Response, StdError, Uint128,
+    to_json_binary, Addr, DepsMut, Response, Uint128,
 };
 
 use cw20::{Cw20Coin, Cw20ReceiveMsg};
@@ -17,18 +20,28 @@ use cw20_base::state::BALANCES;
 
 use super::mock_querier::MOCK_CW20_CONTRACT;
 
-fn init(deps: DepsMut, modules: Option<Vec<Module>>) -> Response {
+fn init(deps: DepsMut) -> Response {
     let msg = InstantiateMsg {
         name: MOCK_CW20_CONTRACT.into(),
         symbol: "Symbol".into(),
         decimals: 6,
-        initial_balances: vec![Cw20Coin {
-            amount: 1000u128.into(),
-            address: "sender".to_string(),
-        }],
+        initial_balances: vec![
+            Cw20Coin {
+                amount: 1000u128.into(),
+                address: "sender".to_string(),
+            },
+            Cw20Coin {
+                amount: 1u128.into(),
+                address: "rates_recipient".to_string(),
+            },
+            Cw20Coin {
+                amount: 1u128.into(),
+                address: "royalty_recipient".to_string(),
+            },
+        ],
         mint: None,
         marketing: None,
-        modules,
+
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
     };
@@ -40,7 +53,7 @@ fn init(deps: DepsMut, modules: Option<Vec<Module>>) -> Response {
 #[test]
 fn test_andr_query() {
     let mut deps = mock_dependencies_custom(&[]);
-    let _res = init(deps.as_mut(), None);
+    let _res = init(deps.as_mut());
 
     let msg = QueryMsg::Owner {};
     let res = query(deps.as_ref(), mock_env(), msg);
@@ -50,23 +63,14 @@ fn test_andr_query() {
 
 #[test]
 fn test_transfer() {
-    let modules: Vec<Module> = vec![Module {
-        name: Some(MOCK_ADDRESS_LIST_CONTRACT.to_owned()),
-        address: AndrAddr::from_string(MOCK_ADDRESS_LIST_CONTRACT.to_owned()),
-
-        is_mutable: false,
-    }];
-
     let mut deps = mock_dependencies_custom(&[]);
-    let res = init(deps.as_mut(), Some(modules));
+    let res = init(deps.as_mut());
     assert_eq!(
         Response::new()
             .add_attribute("method", "instantiate")
             .add_attribute("type", "cw20")
             .add_attribute("kernel_address", MOCK_KERNEL_CONTRACT)
-            .add_attribute("owner", "owner")
-            .add_attribute("action", "register_module")
-            .add_attribute("module_idx", "1"),
+            .add_attribute("owner", "owner"),
         res
     );
 
@@ -82,25 +86,61 @@ fn test_transfer() {
         amount: 100u128.into(),
     };
 
-    let not_whitelisted_info = mock_info("not_whitelisted", &[]);
-    let res = execute(deps.as_mut(), mock_env(), not_whitelisted_info, msg.clone());
-    assert_eq!(
-        ContractError::Std(StdError::generic_err(
-            "Querier contract error: InvalidAddress"
-        )),
-        res.unwrap_err()
-    );
+    // Set a royalty of 10% to be paid to royalty_recipient
+    let rate = Rate::Local(LocalRate {
+        rate_type: LocalRateType::Deductive,
+        recipients: vec![Recipient {
+            address: AndrAddr::from_string("royalty_recipient".to_string()),
+            msg: None,
+            ibc_recovery_address: None,
+        }],
+        value: LocalRateValue::Percent(PercentRate {
+            percent: Decimal::percent(10),
+        }),
+        description: None,
+    });
+
+    // Set rates
+    ADOContract::default()
+        .set_rates(deps.as_mut().storage, "Cw20Transfer", rate)
+        .unwrap();
+
+    // The expected events for the royalty
+    let expected_event = Event::new("royalty").add_attributes(vec![
+        attr("deducted", "10cosmos2contract"),
+        attr("payment", "royalty_recipient<10cosmos2contract"),
+    ]);
+
+    // Blacklist the sender who otherwise would have been able to call the function successfully
+    let permission = Permission::blacklisted(None);
+    let actor = AndrAddr::from_string("sender");
+    let action = "Transfer";
+    let ctx = ExecuteContext::new(deps.as_mut(), mock_info("owner", &[]), mock_env());
+    ADOContract::default()
+        .execute_set_permission(ctx, actor, action, permission)
+        .unwrap();
     let info = mock_info("sender", &[]);
+    let err = execute(deps.as_mut(), mock_env(), info.clone(), msg.clone()).unwrap_err();
+
+    assert_eq!(err, ContractError::Unauthorized {});
+
+    // Now whitelist the sender, that should allow him to call the function successfully
+    let permission = Permission::whitelisted(None);
+    let actor = AndrAddr::from_string("sender");
+    let action = "Transfer";
+    let ctx = ExecuteContext::new(deps.as_mut(), mock_info("owner", &[]), mock_env());
+    ADOContract::default()
+        .execute_set_permission(ctx, actor, action, permission)
+        .unwrap();
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     assert_eq!(
         Response::new()
-            // .add_event(Event::new("Royalty"))
-            // .add_event(Event::new("Tax"))
+            .add_event(expected_event)
             .add_attribute("action", "transfer")
             .add_attribute("from", "sender")
             .add_attribute("to", "other")
-            .add_attribute("amount", "100")
+            .add_attribute("amount", "90")
             .add_submessage(generate_economics_message("sender", "Transfer")),
         res
     );
@@ -113,21 +153,21 @@ fn test_transfer() {
             .unwrap()
     );
 
-    // Funds given to the receiver.
+    // Funds given to the receiver. Remove 10 for the royalty
     assert_eq!(
-        Uint128::from(100u128),
+        Uint128::from(100u128 - 10u128),
         BALANCES
             .load(deps.as_ref().storage, &Addr::unchecked("other"))
             .unwrap()
     );
 
-    // Royalty given to rates_recipient
-    // assert_eq!(
-    //     Uint128::from(0u128),
-    //     BALANCES
-    //         .load(deps.as_ref().storage, &Addr::unchecked("rates_recipient"))
-    //         .unwrap()
-    // );
+    // Royalty given to royalty_recipient
+    assert_eq!(
+        Uint128::from(1u128 + 10u128),
+        BALANCES
+            .load(deps.as_ref().storage, &Addr::unchecked("royalty_recipient"))
+            .unwrap()
+    );
 }
 
 #[test]
@@ -135,7 +175,7 @@ fn test_send() {
     let mut deps = mock_dependencies_custom(&[]);
     let info = mock_info("sender", &[]);
 
-    let res = init(deps.as_mut(), None);
+    let res = init(deps.as_mut());
 
     assert_eq!(
         Response::new()
@@ -153,6 +193,24 @@ fn test_send() {
             .unwrap()
     );
 
+    let rate = Rate::Local(LocalRate {
+        rate_type: LocalRateType::Additive,
+        recipients: vec![Recipient {
+            address: AndrAddr::from_string("rates_recipient".to_string()),
+            msg: None,
+            ibc_recovery_address: None,
+        }],
+        value: LocalRateValue::Percent(PercentRate {
+            percent: Decimal::percent(10),
+        }),
+        description: None,
+    });
+
+    // Set rates
+    ADOContract::default()
+        .set_rates(deps.as_mut().storage, "Cw20Send", rate)
+        .unwrap();
+
     let msg = ExecuteMsg::Send {
         contract: AndrAddr::from_string("contract".to_string()),
         amount: 100u128.into(),
@@ -160,6 +218,8 @@ fn test_send() {
     };
 
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+    let expected_event = Event::new("tax")
+        .add_attributes(vec![attr("payment", "rates_recipient<10cosmos2contract")]);
 
     assert_eq!(
         Response::new()
@@ -176,13 +236,14 @@ fn test_send() {
                 .into_cosmos_msg("contract")
                 .unwrap(),
             )
+            .add_event(expected_event)
             .add_submessage(generate_economics_message("sender", "Send")),
         res
     );
 
     // Funds deducted from the sender (100 for send, 10 for tax).
     assert_eq!(
-        Uint128::from(900u128),
+        Uint128::from(1_000u128 - 100u128 - 10u128),
         BALANCES
             .load(deps.as_ref().storage, &Addr::unchecked("sender"))
             .unwrap()
@@ -193,6 +254,14 @@ fn test_send() {
         Uint128::from(100u128),
         BALANCES
             .load(deps.as_ref().storage, &Addr::unchecked("contract"))
+            .unwrap()
+    );
+
+    // The rates recipient started with a balance of 1, and received 10 from the tax
+    assert_eq!(
+        Uint128::from(1u128 + 10u128),
+        BALANCES
+            .load(deps.as_ref().storage, &Addr::unchecked("rates_recipient"))
             .unwrap()
     );
 }

@@ -6,7 +6,7 @@ use andromeda_non_fungible_tokens::{
     cw721::TokenExtension,
 };
 use andromeda_std::{
-    ado_base::modules::Module,
+    ado_base::rates::{Rate, RatesMessage},
     amp::{AndrAddr, Recipient},
     common::expiration::Expiry,
 };
@@ -29,14 +29,12 @@ impl MockCrowdfund {
         app: &mut MockApp,
         token_address: AndrAddr,
         can_mint_after_sale: bool,
-        modules: Option<Vec<Module>>,
         kernel_address: impl Into<String>,
         owner: Option<String>,
     ) -> MockCrowdfund {
         let msg = mock_crowdfund_instantiate_msg(
             token_address,
             can_mint_after_sale,
-            modules,
             kernel_address,
             owner,
         );
@@ -122,6 +120,16 @@ impl MockCrowdfund {
         let msg = mock_purchase_msg(number_of_tokens);
         self.execute(app, &msg, sender, funds)
     }
+
+    pub fn execute_add_rate(
+        &self,
+        app: &mut MockApp,
+        sender: Addr,
+        action: String,
+        rate: Rate,
+    ) -> ExecuteResult {
+        self.execute(app, &mock_set_rate_msg(action, rate), sender, &[])
+    }
 }
 
 pub fn mock_andromeda_crowdfund() -> Box<dyn Contract<Empty>> {
@@ -132,14 +140,12 @@ pub fn mock_andromeda_crowdfund() -> Box<dyn Contract<Empty>> {
 pub fn mock_crowdfund_instantiate_msg(
     token_address: AndrAddr,
     can_mint_after_sale: bool,
-    modules: Option<Vec<Module>>,
     kernel_address: impl Into<String>,
     owner: Option<String>,
 ) -> InstantiateMsg {
     InstantiateMsg {
         token_address,
         can_mint_after_sale,
-        modules,
         kernel_address: kernel_address.into(),
         owner,
     }
@@ -197,6 +203,10 @@ pub fn mock_crowdfund_quick_mint_msg(amount: u32, publisher: String) -> ExecuteM
 
 pub fn mock_purchase_msg(number_of_tokens: Option<u32>) -> ExecuteMsg {
     ExecuteMsg::Purchase { number_of_tokens }
+}
+
+pub fn mock_set_rate_msg(action: String, rate: Rate) -> ExecuteMsg {
+    ExecuteMsg::Rates(RatesMessage::SetRate { action, rate })
 }
 
 pub fn mock_query_ado_base_version() -> QueryMsg {

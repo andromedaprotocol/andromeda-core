@@ -19,7 +19,7 @@ pub fn mock_splitter_instantiate_msg(
     InstantiateMsg {
         recipients,
         lock_time,
-        modules: None,
+
         kernel_address: Some(kernel_address.into()),
     }
 }

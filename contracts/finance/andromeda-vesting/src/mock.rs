@@ -1,7 +1,7 @@
 #![cfg(all(not(target_arch = "wasm32"), feature = "testing"))]
 use crate::contract::{execute, instantiate, query};
 use andromeda_finance::vesting::{ExecuteMsg, InstantiateMsg, QueryMsg};
-use andromeda_std::{ado_base::Module, amp::Recipient};
+use andromeda_std::amp::Recipient;
 use andromeda_testing::{
     mock::MockApp,
     mock_ado,
@@ -24,7 +24,6 @@ impl MockVestingContract {
         unbonding_duration: Duration,
         recipient: Recipient,
         denom: String,
-        modules: Option<Vec<Module>>,
         kernel_address: impl Into<String>,
         owner: Option<String>,
     ) -> MockVestingContract {
@@ -33,7 +32,6 @@ impl MockVestingContract {
             unbonding_duration,
             recipient,
             denom,
-            modules,
             kernel_address,
             owner,
         );
@@ -61,7 +59,6 @@ pub fn mock_vesting_instantiate_msg(
     unbonding_duration: Duration,
     recipient: Recipient,
     denom: String,
-    modules: Option<Vec<Module>>,
     kernel_address: impl Into<String>,
     owner: Option<String>,
 ) -> InstantiateMsg {
@@ -70,7 +67,6 @@ pub fn mock_vesting_instantiate_msg(
         unbonding_duration,
         recipient,
         denom,
-        modules,
         kernel_address: kernel_address.into(),
         owner,
     }

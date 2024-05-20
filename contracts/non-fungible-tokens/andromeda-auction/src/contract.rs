@@ -7,13 +7,11 @@ use andromeda_non_fungible_tokens::auction::{
     IsClaimedResponse, IsClosedResponse, QueryMsg, TokenAuctionState,
 };
 use andromeda_std::{
-    ado_base::{
-        hooks::AndromedaHook, ownership::OwnershipMessage, permissioning::Permission,
-        InstantiateMsg as BaseInstantiateMsg, MigrateMsg,
-    },
+    ado_base::{permissioning::Permission, InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     amp::{AndrAddr, Recipient},
     common::{
         actions::call_action,
+        call_action::get_action_name,
         denom::{Asset, SEND_CW20_ACTION},
         encode_binary,
         expiration::{expiration_from_milliseconds, get_and_validate_start_time, Expiry},
@@ -60,9 +58,6 @@ pub fn instantiate(
         },
     )?;
 
-    let owner = ADOContract::default().owner(deps.storage)?;
-    let modules_resp = contract.register_modules(owner.as_str(), deps.storage, msg.modules)?;
-
     if let Some(authorized_token_addresses) = msg.authorized_token_addresses {
         if !authorized_token_addresses.is_empty() {
             ADOContract::default().permission_action(SEND_NFT_ACTION, deps.storage)?;
@@ -89,9 +84,7 @@ pub fn instantiate(
         )?;
     }
 
-    Ok(resp
-        .add_submessages(modules_resp.messages)
-        .add_attributes(modules_resp.attributes))
+    Ok(resp)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -112,7 +105,8 @@ pub fn execute(
 }
 
 pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
-    let contract = ADOContract::default();
+    let action = get_action_name(CONTRACT_NAME, msg.as_ref());
+
     let action_response = call_action(
         &mut ctx.deps,
         &ctx.info,
@@ -121,20 +115,6 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
         msg.as_ref(),
     )?;
 
-    if !matches!(msg, ExecuteMsg::UpdateAppContract { .. })
-        && !matches!(
-            msg,
-            ExecuteMsg::Ownership(OwnershipMessage::UpdateOwner { .. })
-        )
-    {
-        contract.module_hook::<Response>(
-            &ctx.deps.as_ref(),
-            AndromedaHook::OnExecute {
-                sender: ctx.info.sender.to_string(),
-                payload: encode_binary(&msg)?,
-            },
-        )?;
-    }
     let res = match msg {
         ExecuteMsg::ReceiveNft(msg) => handle_receive_cw721(ctx, msg),
         ExecuteMsg::Receive(msg) => handle_receive_cw20(ctx, msg),
@@ -169,7 +149,7 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
         ExecuteMsg::Claim {
             token_id,
             token_address,
-        } => execute_claim(ctx, token_id, token_address),
+        } => execute_claim(ctx, token_id, token_address, action),
         ExecuteMsg::AuthorizeTokenContract { addr, expiration } => {
             execute_authorize_token_contract(ctx.deps, ctx.info, addr, expiration)
         }
@@ -728,6 +708,7 @@ fn execute_claim(
     ctx: ExecuteContext,
     token_id: String,
     token_address: String,
+    action: String,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
         deps, info, env, ..
@@ -774,9 +755,21 @@ fn execute_claim(
     }
 
     // Calculate the funds to be received after tax
-    let after_tax_payment = purchase_token(deps.as_ref(), &info, token_auction_state.clone())?;
+    let (after_tax_payment, tax_messages) =
+        purchase_token(deps.as_ref(), &info, token_auction_state.clone(), action)?;
 
-    let resp: Response = Response::new()
+    let mut resp: Response = Response::new()
+        // Send NFT to auction winner.
+        .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: token_auction_state.token_address.clone(),
+            msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
+                recipient: token_auction_state.high_bidder_addr.to_string(),
+                token_id: token_id.clone(),
+            })?,
+            funds: vec![],
+        }))
+        // Send tax/royalty messages
+        .add_submessages(tax_messages)
         .add_attribute("action", "claim")
         .add_attribute("token_id", token_id.clone())
         .add_attribute("token_contract", token_auction_state.clone().token_address)
@@ -784,90 +777,22 @@ fn execute_claim(
         .add_attribute("winning_bid_amount", token_auction_state.high_bidder_amount)
         .add_attribute("auction_id", token_auction_state.auction_id);
 
-    let is_cw20_auction = token_auction_state.uses_cw20;
-    if is_cw20_auction {
-        let auction_currency = token_auction_state.coin_denom;
+    let recipient = token_auction_state
+        .recipient
+        .unwrap_or(Recipient::from_string(token_auction_state.owner));
 
-        let recipient = token_auction_state
-            .recipient
-            .unwrap_or(Recipient::from_string(token_auction_state.owner));
-
-        let cw20_msg = recipient.generate_msg_cw20(
-            &deps.as_ref(),
-            Cw20Coin {
-                address: auction_currency.clone(),
-                amount: after_tax_payment.0.amount,
-            },
-        )?;
-        // After tax payment is returned in Native, we need to change it to cw20
-        let (tax_recipient, tax_amount) = match after_tax_payment.1.first().map(|msg| {
-            if let CosmosMsg::Bank(BankMsg::Send { to_address, amount }) = &msg.msg {
-                (
-                    Some(to_address.clone()),
-                    amount.first().map(|coin| coin.amount),
-                )
-            } else {
-                (None, None)
-            }
-        }) {
-            Some((tax_recipient, tax_amount)) => (tax_recipient, tax_amount),
-            None => (None, None),
-        };
-        match (tax_recipient, tax_amount) {
-            (Some(recipient), Some(amount)) => {
-                let tax_transfer_msg = Cw20ExecuteMsg::Transfer { recipient, amount };
-                let tax_wasm_msg = wasm_execute(auction_currency, &tax_transfer_msg, vec![])?;
-                // Add tax message in case there's a tax recipient and amount
-                Ok(resp
-                    .add_message(tax_wasm_msg)
-                    // Send cw20 funds to the original owner or recipient (if provided).
-                    .add_submessage(cw20_msg)
-                    // Send NFT to auction winner.
-                    .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-                        contract_addr: token_auction_state.token_address.clone(),
-                        msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
-                            recipient: token_auction_state.high_bidder_addr.to_string(),
-                            token_id,
-                        })?,
-                        funds: vec![],
-                    })))
-            }
-            _ => Ok(resp
-                // Send cw20 funds to the original owner or recipient (if provided).
-                .add_submessage(cw20_msg)
-                // Send NFT to auction winner.
-                .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-                    contract_addr: token_auction_state.token_address.clone(),
-                    msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
-                        recipient: token_auction_state.high_bidder_addr.to_string(),
-                        token_id,
-                    })?,
-                    funds: vec![],
-                }))),
+    match after_tax_payment {
+        Funds::Native(native_funds) => {
+            // Send payment to recipient
+            resp = resp
+                .add_submessage(recipient.generate_direct_msg(&deps.as_ref(), vec![native_funds])?)
         }
-    } else {
-        let recipient = token_auction_state
-            .clone()
-            .recipient
-            .unwrap_or(Recipient::from_string(token_auction_state.clone().owner));
-
-        let msg =
-            recipient.generate_direct_msg(&deps.as_ref(), vec![after_tax_payment.clone().0])?;
-
-        Ok(resp
-            .add_submessages(after_tax_payment.1)
-            // Send native funds to the original owner or recipient (if provided).
-            .add_submessage(msg)
-            // Send NFT to auction winner.
-            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: token_auction_state.token_address.clone(),
-                msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
-                    recipient: token_auction_state.high_bidder_addr.to_string(),
-                    token_id,
-                })?,
-                funds: vec![],
-            })))
+        Funds::Cw20(cw20_funds) => {
+            let cw20_msg = recipient.generate_msg_cw20(&deps.as_ref(), cw20_funds)?;
+            resp = resp.add_submessage(cw20_msg)
+        }
     }
+    Ok(resp)
 }
 
 fn execute_authorize_token_contract(
@@ -923,28 +848,58 @@ fn execute_deauthorize_token_contract(
 
 fn purchase_token(
     deps: Deps,
-    info: &MessageInfo,
+    _info: &MessageInfo,
     state: TokenAuctionState,
-) -> Result<(Coin, Vec<SubMsg>), ContractError> {
-    let total_cost = Coin::new(state.high_bidder_amount.u128(), state.coin_denom.clone());
-
-    let (msgs, _events, remainder) = ADOContract::default().on_funds_transfer(
-        &deps,
-        info.sender.to_string(),
-        Funds::Native(total_cost),
-        encode_binary(&"")?,
-    )?;
-
-    let remaining_amount = remainder.try_get_coin()?;
-
-    // Calculate total tax
-    // total_tax_amount = total_tax_amount.checked_add(tax_amount)?;
-
-    let after_tax_payment = Coin {
-        denom: state.coin_denom,
-        amount: remaining_amount.amount,
-    };
-    Ok((after_tax_payment, msgs))
+    action: String,
+) -> Result<(Funds, Vec<SubMsg>), ContractError> {
+    if !state.uses_cw20 {
+        let total_cost = Coin::new(state.high_bidder_amount.u128(), state.coin_denom.clone());
+        let transfer_response = ADOContract::default().query_deducted_funds(
+            deps,
+            action,
+            Funds::Native(total_cost.clone()),
+        )?;
+        match transfer_response {
+            Some(transfer_response) => {
+                let remaining_amount = transfer_response.leftover_funds.try_get_coin()?;
+                let after_tax_payment = Coin {
+                    denom: state.coin_denom,
+                    amount: remaining_amount.amount,
+                };
+                Ok((Funds::Native(after_tax_payment), transfer_response.msgs))
+            }
+            None => {
+                let after_tax_payment = Coin {
+                    denom: state.coin_denom,
+                    amount: total_cost.amount,
+                };
+                Ok((Funds::Native(after_tax_payment), vec![]))
+            }
+        }
+    } else {
+        let total_cost = Cw20Coin {
+            address: state.coin_denom.clone(),
+            amount: state.high_bidder_amount,
+        };
+        let transfer_response = ADOContract::default().query_deducted_funds(
+            deps,
+            action,
+            Funds::Cw20(total_cost.clone()),
+        )?;
+        match transfer_response {
+            Some(transfer_response) => {
+                let remaining_amount = transfer_response.leftover_funds.try_get_cw20_coin()?;
+                Ok((Funds::Cw20(remaining_amount), transfer_response.msgs))
+            }
+            None => {
+                let after_tax_payment = Cw20Coin {
+                    address: state.coin_denom,
+                    amount: total_cost.amount,
+                };
+                Ok((Funds::Cw20(after_tax_payment), vec![]))
+            }
+        }
+    }
 }
 
 fn get_existing_token_auction_state(

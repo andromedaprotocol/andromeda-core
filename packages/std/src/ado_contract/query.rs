@@ -44,10 +44,6 @@ impl<'a> ADOContract<'a> {
                 AndromedaQuery::OwnershipRequest {} => {
                     encode_binary(&self.ownership_request(deps.storage)?)
                 }
-                #[cfg(feature = "modules")]
-                AndromedaQuery::Module { id } => encode_binary(&self.query_module(deps, id)?),
-                #[cfg(feature = "modules")]
-                AndromedaQuery::ModuleIds {} => encode_binary(&self.query_module_ids(deps)?),
                 AndromedaQuery::AppContract {} => {
                     encode_binary(&self.get_app_contract(deps.storage)?)
                 }
@@ -59,6 +55,8 @@ impl<'a> ADOContract<'a> {
                 AndromedaQuery::PermissionedActions {} => {
                     encode_binary(&self.query_permissioned_actions(deps)?)
                 }
+                #[cfg(feature = "rates")]
+                AndromedaQuery::GetRate { action } => encode_binary(&self.get_rates(deps, action)?),
                 _ => Err(ContractError::UnsupportedOperation {}),
             },
             Err(_) => Err(ContractError::UnsupportedOperation {}),
