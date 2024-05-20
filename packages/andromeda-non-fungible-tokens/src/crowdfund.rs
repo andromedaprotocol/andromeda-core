@@ -1,13 +1,12 @@
 use crate::cw721::TokenExtension;
 use andromeda_std::amp::{addresses::AndrAddr, recipient::Recipient};
 use andromeda_std::common::expiration::Expiry;
-use andromeda_std::{andr_exec, andr_instantiate, andr_instantiate_modules, andr_query};
+use andromeda_std::{andr_exec, andr_instantiate, andr_query};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Coin, Uint128};
 use cw721::Expiration;
 
 #[andr_instantiate]
-#[andr_instantiate_modules]
 #[cw_serde]
 pub struct InstantiateMsg {
     pub token_address: AndrAddr,

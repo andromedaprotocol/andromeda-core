@@ -28,6 +28,8 @@ pub enum ContractError {
     #[error("Unauthorized")]
     Unauthorized {},
 
+    #[error("ActionNotFound")]
+    ActionNotFound {},
     #[error("UnpublishedCodeID")]
     UnpublishedCodeID {},
 
@@ -45,6 +47,12 @@ pub enum ContractError {
 
     #[error("InvalidOrigin")]
     InvalidOrigin {},
+
+    #[error("InvalidAmount: {msg}")]
+    InvalidAmount { msg: String },
+
+    #[error("OverlappingRanges")]
+    OverlappingRanges {},
 
     #[error("Invalid {operation} Operation with {validator}")]
     InvalidValidatorOperation {
@@ -100,7 +108,7 @@ pub enum ContractError {
     #[error("EmptyOptional")]
     EmptyOptional {},
 
-    #[error("EmptyOptional")]
+    #[error("EmptyClassId")]
     EmptyClassId {},
 
     #[error("NoTokens")]
@@ -147,6 +155,9 @@ pub enum ContractError {
 
     #[error("InsufficientBondedTime")]
     InsufficientBondedTime {},
+
+    #[error("ThresholdsPercentagesDiscrepancy: {msg}")]
+    ThresholdsPercentagesDiscrepancy { msg: String },
 
     #[error("LockTimeTooShort")]
     LockTimeTooShort {},
@@ -199,6 +210,9 @@ pub enum ContractError {
     #[error("EmptyRecipientsList")]
     EmptyRecipientsList {},
 
+    #[error("EmptyThresholdsList")]
+    EmptyThresholdsList {},
+
     #[error("AmountExceededHundredPrecent")]
     AmountExceededHundredPrecent {},
 
@@ -243,6 +257,9 @@ pub enum ContractError {
 
     #[error("AccountNotFound")]
     AccountNotFound {},
+
+    #[error("ActorNotFound")]
+    ActorNotFound {},
 
     #[error("ModuleDiscriptionTooLong: {msg}")]
     ModuleDiscriptionTooLong { msg: String },
@@ -340,6 +357,9 @@ pub enum ContractError {
     #[error("InvalidFunds: {msg}")]
     InvalidFunds { msg: String },
 
+    #[error("InvalidPermission: {msg}")]
+    InvalidPermission { msg: String },
+
     #[error("InvalidADOVersion: {msg:?}")]
     InvalidADOVersion { msg: Option<String> },
 
@@ -390,6 +410,9 @@ pub enum ContractError {
 
     #[error("DuplicateCoinDenoms")]
     DuplicateCoinDenoms {},
+
+    #[error("DuplicateThresholds")]
+    DuplicateThresholds {},
 
     #[error("DuplicateRecipient")]
     DuplicateRecipient {},

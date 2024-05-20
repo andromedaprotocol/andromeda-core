@@ -1,10 +1,7 @@
 use std::{ops::Mul, str::FromStr};
 
 use andromeda_std::{
-    ado_base::{
-        hooks::AndromedaHook, ownership::OwnershipMessage, InstantiateMsg as BaseInstantiateMsg,
-        MigrateMsg,
-    },
+    ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     ado_contract::ADOContract,
     common::{actions::call_action, context::ExecuteContext, encode_binary, Milliseconds},
     error::ContractError,
@@ -104,12 +101,8 @@ pub fn instantiate(
             owner: msg.owner,
         },
     )?;
-    let modules_resp =
-        contract.register_modules(info.sender.as_str(), deps.storage, msg.modules)?;
 
-    Ok(resp
-        .add_submessages(modules_resp.messages)
-        .add_attributes(modules_resp.attributes))
+    Ok(resp)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -130,7 +123,7 @@ pub fn execute(
 }
 
 pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
-    let contract = ADOContract::default();
+    let _contract = ADOContract::default();
     let action_response = call_action(
         &mut ctx.deps,
         &ctx.info,
@@ -138,20 +131,7 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
         &ctx.amp_ctx,
         msg.as_ref(),
     )?;
-    if !matches!(msg, ExecuteMsg::UpdateAppContract { .. })
-        && !matches!(
-            msg,
-            ExecuteMsg::Ownership(OwnershipMessage::UpdateOwner { .. })
-        )
-    {
-        contract.module_hook::<Response>(
-            &ctx.deps.as_ref(),
-            AndromedaHook::OnExecute {
-                sender: ctx.info.sender.to_string(),
-                payload: encode_binary(&msg)?,
-            },
-        )?;
-    }
+
     let res = match msg {
         ExecuteMsg::Receive(msg) => receive_cw20(ctx, msg),
         ExecuteMsg::AddRewardToken { reward_token } => execute_add_reward_token(ctx, reward_token),

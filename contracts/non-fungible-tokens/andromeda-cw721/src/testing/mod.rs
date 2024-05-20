@@ -1,36 +1,32 @@
-use cosmwasm_std::{
-    attr, coin, coins, from_json,
-    testing::{mock_env, mock_info},
-    Addr, Coin, DepsMut, Env, Response, StdError, Uint128,
-};
-
-use andromeda_std::error::ContractError;
-use andromeda_std::{ado_base::modules::Module, testing::mock_querier::FAKE_VFS_PATH};
-use andromeda_std::{ado_contract::ADOContract, amp::addresses::AndrAddr};
-
 use crate::{contract::*, state::TRANSFER_AGREEMENTS};
 use andromeda_non_fungible_tokens::cw721::{
     ExecuteMsg, InstantiateMsg, IsArchivedResponse, MintMsg, QueryMsg, TokenExtension,
     TransferAgreement,
 };
-use andromeda_std::testing::mock_querier::{
-    mock_dependencies_custom, MOCK_ADDRESS_LIST_CONTRACT, MOCK_KERNEL_CONTRACT,
+use andromeda_std::error::ContractError;
+use andromeda_std::testing::mock_querier::FAKE_VFS_PATH;
+use andromeda_std::testing::mock_querier::{mock_dependencies_custom, MOCK_KERNEL_CONTRACT};
+use andromeda_std::{ado_contract::ADOContract, amp::addresses::AndrAddr};
+use cosmwasm_std::{
+    attr, coin, from_json,
+    testing::{mock_env, mock_info},
+    Addr, Coin, DepsMut, Env, Response, StdError, Uint128,
 };
 use cw721::{AllNftInfoResponse, OwnerOfResponse};
 
 const MINTER: &str = "minter";
 const SYMBOL: &str = "TT";
 const NAME: &str = "TestToken";
-const ADDRESS_LIST: &str = "addresslist";
+const _ADDRESS_LIST: &str = "addresslist";
 // const RATES: &str = "rates";
 
-fn init_setup(deps: DepsMut, env: Env, modules: Option<Vec<Module>>) {
+fn init_setup(deps: DepsMut, env: Env) {
     let info = mock_info(MINTER, &[]);
     let inst_msg = InstantiateMsg {
         name: NAME.to_string(),
         symbol: SYMBOL.to_string(),
         minter: AndrAddr::from_string(MINTER.to_string()),
-        modules,
+
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
     };
@@ -55,7 +51,7 @@ fn test_transfer_nft() {
     let creator = String::from("creator");
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
-    init_setup(deps.as_mut(), env.clone(), None);
+    init_setup(deps.as_mut(), env.clone());
     mint_token(
         deps.as_mut(),
         env.clone(),
@@ -124,7 +120,7 @@ fn test_agreed_transfer_nft() {
         amount: Uint128::from(100u64),
     };
     let purchaser = "purchaser";
-    init_setup(deps.as_mut(), env.clone(), None);
+    init_setup(deps.as_mut(), env.clone());
     mint_token(
         deps.as_mut(),
         env.clone(),
@@ -188,7 +184,7 @@ fn test_agreed_transfer_nft_wildcard() {
         amount: Uint128::from(100u64),
     };
     let purchaser = "*";
-    init_setup(deps.as_mut(), env.clone(), None);
+    init_setup(deps.as_mut(), env.clone());
     mint_token(
         deps.as_mut(),
         env.clone(),
@@ -233,7 +229,7 @@ fn test_archive() {
     let creator = String::from("creator");
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
-    init_setup(deps.as_mut(), env.clone(), None);
+    init_setup(deps.as_mut(), env.clone());
     mint_token(
         deps.as_mut(),
         env.clone(),
@@ -269,7 +265,7 @@ fn test_burn() {
     let creator = String::from("creator");
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
-    init_setup(deps.as_mut(), env.clone(), None);
+    init_setup(deps.as_mut(), env.clone());
     mint_token(
         deps.as_mut(),
         env.clone(),
@@ -332,7 +328,7 @@ fn test_archived_check() {
     let valid_info = mock_info(creator.as_str(), &[]);
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
-    init_setup(deps.as_mut(), env.clone(), None);
+    init_setup(deps.as_mut(), env.clone());
     mint_token(
         deps.as_mut(),
         env.clone(),
@@ -370,7 +366,7 @@ fn test_transfer_agreement() {
             denom: "uluna".to_string(),
         },
     };
-    init_setup(deps.as_mut(), env.clone(), None);
+    init_setup(deps.as_mut(), env.clone());
     mint_token(
         deps.as_mut(),
         env.clone(),
@@ -402,104 +398,118 @@ fn test_transfer_agreement() {
     assert_eq!(resp, Some(agreement))
 }
 
-#[test]
-fn test_modules() {
-    let modules: Vec<Module> = vec![
-        // Module::new(RATES, MOCK_RATES_CONTRACT, false),
-        Module::new(ADDRESS_LIST, MOCK_ADDRESS_LIST_CONTRACT, false),
-    ];
+// #[test]
+// fn test_modules() {
+//     let mut deps = mock_dependencies_custom(&coins(100, "uusd"));
 
-    let mut deps = mock_dependencies_custom(&coins(100, "uusd"));
+//     let token_id = String::from("testtoken");
+//     let creator = String::from("creator");
+//     let env = mock_env();
+//     let agreement = TransferAgreement {
+//         purchaser: String::from("purchaser"),
+//         amount: Coin {
+//             amount: Uint128::from(100u64),
+//             denom: "uusd".to_string(),
+//         },
+//     };
+//     init_setup(deps.as_mut(), env.clone());
+//     mint_token(
+//         deps.as_mut(),
+//         env,
+//         token_id.clone(),
+//         creator.clone(),
+//         TokenExtension {
+//             publisher: creator.clone(),
+//         },
+//     );
 
-    let token_id = String::from("testtoken");
-    let creator = String::from("creator");
-    let env = mock_env();
-    let _agreement = TransferAgreement {
-        purchaser: String::from("purchaser"),
-        amount: Coin {
-            amount: Uint128::from(100u64),
-            denom: "uusd".to_string(),
-        },
-    };
-    init_setup(deps.as_mut(), env.clone(), Some(modules));
-    mint_token(
-        deps.as_mut(),
-        env,
-        token_id,
-        creator.clone(),
-        TokenExtension { publisher: creator },
-    );
+//     let rate = Rate::Local(LocalRate {
+//         rate_type: LocalRateType::Deductive,
+//         recipients: vec![Recipient {
+//             address: AndrAddr::from_string("mrc".to_string()),
+//             msg: None,
+//             ibc_recovery_address: None,
+//         }],
+//         value: LocalRateValue::Flat(coin(10_u128, "uusd")),
+//         description: None,
+//     });
 
-    // let msg = ExecuteMsg::TransferAgreement {
-    //     token_id: token_id.clone(),
-    //     agreement: Some(agreement),
-    // };
+//     // Set rates
+//     ADOContract::default()
+//         .set_rates(deps.as_mut().storage, "cw721", rate)
+//         .unwrap();
 
-    // let not_whitelisted_info = mock_info("not_whitelisted", &[]);
-    // let res = execute(deps.as_mut(), mock_env(), not_whitelisted_info, msg.clone());
-    // assert_eq!(
-    //     ContractError::Std(StdError::generic_err(
-    //         "Querier contract error: InvalidAddress"
-    //     )),
-    //     res.unwrap_err()
-    // );
+//     let msg = ExecuteMsg::TransferAgreement {
+//         token_id: token_id.clone(),
+//         agreement: Some(agreement),
+//     };
 
-    // let info = mock_info("creator", &[]);
-    // let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+//     //TODO when address list is implemented
+//     // let not_whitelisted_info = mock_info("not_whitelisted", &[]);
+//     // let res = execute(deps.as_mut(), mock_env(), not_whitelisted_info, msg.clone());
+//     // assert_eq!(
+//     //     ContractError::Std(StdError::generic_err(
+//     //         "Querier contract error: InvalidAddress"
+//     //     )),
+//     //     res.unwrap_err()
+//     // );
 
-    // let msg = ExecuteMsg::TransferNft {
-    //     token_id: token_id.clone(),
-    //     recipient: "purchaser".into(),
-    // };
+//     let info = mock_info("creator", &[]);
+//     let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-    // // Tax not added by sender, remember that the contract holds 100 uusd which is enough to cover
-    // // the taxes in this case.
-    // let purchaser = mock_info("purchaser", &coins(100, "uusd"));
-    // let res = execute(deps.as_mut(), mock_env(), purchaser, msg.clone());
-    // assert_eq!(ContractError::InsufficientFunds {}, res.unwrap_err());
+//     let msg = ExecuteMsg::TransferNft {
+//         token_id: token_id.clone(),
+//         recipient: "purchaser".into(),
+//     };
 
-    // // Add 10 for tax.
-    // let purchaser = mock_info("purchaser", &coins(100 + 10, "uusd"));
-    // let res = execute(deps.as_mut(), mock_env(), purchaser, msg).unwrap();
+//     // Tax not added by sender, remember that the contract holds 100 uusd which is enough to cover
+//     // the taxes in this case.
+//     let purchaser = mock_info("purchaser", &coins(100, "uusd"));
+//     let res = execute(deps.as_mut(), mock_env(), purchaser, msg.clone());
+//     assert_eq!(ContractError::InsufficientFunds {}, res.unwrap_err());
 
-    // let sub_msgs: Vec<SubMsg> = vec![
-    //     // For royalty.
-    //     bank_sub_msg(MOCK_RATES_RECIPIENT, vec![coin(10, "uusd")]),
-    //     // For tax.
-    //     bank_sub_msg(MOCK_RATES_RECIPIENT, vec![coin(10, "uusd")]),
-    //     bank_sub_msg(&creator, vec![coin(80, "uusd")]),
-    // ];
+//     // Add 10 for tax.
+//     let purchaser = mock_info("purchaser", &coins(100 + 10, "uusd"));
+//     let res = execute(deps.as_mut(), mock_env(), purchaser, msg).unwrap();
 
-    // assert_eq!(
-    //     Response::new()
-    //         .add_attribute("action", "transfer")
-    //         .add_attribute("recipient", "purchaser")
-    //         .add_submessages(sub_msgs)
-    //         .add_event(Event::new("Royalty"))
-    //         .add_event(Event::new("Tax")),
-    //     res
-    // );
+//     let sub_msgs: Vec<SubMsg> = vec![
+//         // For royalty.
+//         // bank_sub_msg("MOCK_RATES_RECIPIENT", vec![coin(10, "uusd")]),
+//         // For tax.
+//         bank_sub_msg("mrc", vec![coin(10, "uusd")]),
+//         bank_sub_msg(&creator, vec![coin(80, "uusd")]),
+//     ];
 
-    // // Test the hook.
-    // let msg = QueryMsg::AndrHook(AndromedaHook::OnFundsTransfer {
-    //     sender: "sender".to_string(),
-    //     payload: to_json_binary(&token_id).unwrap(),
-    //     amount: Funds::Native(coin(100, "uusd")),
-    // });
+//     assert_eq!(
+//         Response::new()
+//             .add_attribute("action", "transfer")
+//             .add_attribute("recipient", "purchaser")
+//             .add_submessages(sub_msgs)
+//             .add_event(Event::new("Royalty"))
+//             .add_event(Event::new("Tax")),
+//         res
+//     );
 
-    // let res: OnFundsTransferResponse =
-    //     from_json(query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
+//     // Test the hook.
+//     let msg = QueryMsg::AndrHook(AndromedaHook::OnFundsTransfer {
+//         sender: "sender".to_string(),
+//         payload: to_json_binary(&token_id).unwrap(),
+//         amount: Funds::Native(coin(100, "uusd")),
+//     });
 
-    // let expected_response = OnFundsTransferResponse {
-    //     msgs: vec![
-    //         bank_sub_msg(MOCK_RATES_RECIPIENT, vec![coin(10, "uusd")]),
-    //         bank_sub_msg(MOCK_RATES_RECIPIENT, vec![coin(10, "uusd")]),
-    //     ],
-    //     leftover_funds: Funds::Native(coin(90, "uusd")),
-    //     events: vec![Event::new("Royalty"), Event::new("Tax")],
-    // };
-    // assert_eq!(expected_response, res);
-}
+//     let res: RatesResponse =
+//         from_json(query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
+
+//     let expected_response = RatesResponse {
+//         msgs: vec![
+//             bank_sub_msg("MOCK_RATES_RECIPIENT", vec![coin(10, "uusd")]),
+//             bank_sub_msg("MOCK_RATES_RECIPIENT", vec![coin(10, "uusd")]),
+//         ],
+//         leftover_funds: Funds::Native(coin(90, "uusd")),
+//         events: vec![Event::new("Royalty"), Event::new("Tax")],
+//     };
+//     assert_eq!(expected_response, res);
+// }
 
 // TODO: IMPLEMENT
 // #[test]
@@ -560,7 +570,7 @@ fn test_update_app_contract_invalid_minter() {
         name: NAME.to_string(),
         symbol: SYMBOL.to_string(),
         minter: AndrAddr::from_string(FAKE_VFS_PATH),
-        modules: None,
+
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: Some("owner".to_string()),
     };
@@ -588,7 +598,7 @@ fn test_batch_mint() {
         name: NAME.to_string(),
         symbol: SYMBOL.to_string(),
         minter: AndrAddr::from_string(MINTER),
-        modules: None,
+
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
     };

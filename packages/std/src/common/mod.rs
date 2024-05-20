@@ -1,4 +1,5 @@
 pub mod actions;
+pub mod call_action;
 pub mod context;
 pub mod denom;
 pub mod expiration;
@@ -49,6 +50,14 @@ impl Funds {
             Funds::Native(coin) => Ok(coin.clone()),
             Funds::Cw20(_) => Err(ContractError::ParsingError {
                 err: "Funds is not of type Native".to_string(),
+            }),
+        }
+    }
+    pub fn try_get_cw20_coin(&self) -> Result<Cw20Coin, ContractError> {
+        match self {
+            Funds::Cw20(cw20_coin) => Ok(cw20_coin.clone()),
+            Funds::Native(_) => Err(ContractError::ParsingError {
+                err: "Native funds were sent while CW20 funds were expected".to_string(),
             }),
         }
     }

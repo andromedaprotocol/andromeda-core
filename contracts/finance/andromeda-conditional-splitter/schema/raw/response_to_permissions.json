@@ -1,0 +1,141 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Array_of_PermissionInfo",
+  "type": "array",
+  "items": {
+    "$ref": "#/definitions/PermissionInfo"
+  },
+  "definitions": {
+    "Expiry": {
+      "description": "The Expiry type is used to define an expiry time using milliseconds\n\nThere are two types: 1. FromNow(Milliseconds) - The expiry time is relative to the current time 2. AtTime(Milliseconds) - The expiry time is absolute",
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "from_now"
+          ],
+          "properties": {
+            "from_now": {
+              "$ref": "#/definitions/Milliseconds"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "at_time"
+          ],
+          "properties": {
+            "at_time": {
+              "$ref": "#/definitions/Milliseconds"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "Milliseconds": {
+      "description": "Represents time in milliseconds.",
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "Permission": {
+      "description": "An enum to represent a user's permission for an action\n\n- **Blacklisted** - The user cannot perform the action until after the provided expiration - **Limited** - The user can perform the action while uses are remaining and before the provided expiration **for a permissioned action** - **Whitelisted** - The user can perform the action until the provided expiration **for a permissioned action**\n\nExpiration defaults to `Never` if not provided",
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "blacklisted"
+          ],
+          "properties": {
+            "blacklisted": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Expiry"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "limited"
+          ],
+          "properties": {
+            "limited": {
+              "type": "object",
+              "required": [
+                "uses"
+              ],
+              "properties": {
+                "expiration": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/definitions/Expiry"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "uses": {
+                  "type": "integer",
+                  "format": "uint32",
+                  "minimum": 0.0
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "whitelisted"
+          ],
+          "properties": {
+            "whitelisted": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Expiry"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "PermissionInfo": {
+      "type": "object",
+      "required": [
+        "action",
+        "actor",
+        "permission"
+      ],
+      "properties": {
+        "action": {
+          "type": "string"
+        },
+        "actor": {
+          "type": "string"
+        },
+        "permission": {
+          "$ref": "#/definitions/Permission"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

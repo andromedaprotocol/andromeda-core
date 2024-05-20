@@ -1,6 +1,8 @@
 use andromeda_data_storage::primitive::{ExecuteMsg, Primitive, PrimitiveRestriction};
 use andromeda_std::{
-    ado_contract::ADOContract, common::context::ExecuteContext, error::ContractError,
+    ado_contract::ADOContract,
+    common::{actions::call_action, context::ExecuteContext},
+    error::ContractError,
 };
 use cosmwasm_std::{ensure, Response, StdError};
 use cw_utils::nonpayable;
@@ -10,7 +12,14 @@ use crate::{
     state::{DATA, KEY_OWNER, RESTRICTION},
 };
 
-pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+    call_action(
+        &mut ctx.deps,
+        &ctx.info,
+        &ctx.env,
+        &ctx.amp_ctx,
+        msg.as_ref(),
+    )?;
     match msg {
         ExecuteMsg::UpdateRestriction { restriction } => update_restriction(ctx, restriction),
         ExecuteMsg::SetValue { key, value } => set_value(ctx, key, value),

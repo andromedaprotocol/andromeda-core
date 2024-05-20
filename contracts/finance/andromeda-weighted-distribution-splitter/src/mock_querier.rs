@@ -1,8 +1,5 @@
 use andromeda_app::app::QueryMsg as AppQueryMsg;
-use common::{
-    ado_base::hooks::{AndromedaHook, HookMsg, OnFundsTransferResponse},
-    Funds,
-};
+use common::{ado_base::hooks::RatesResponse, Funds};
 use cosmwasm_std::{
     from_json,
     testing::{mock_env, MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
@@ -134,7 +131,7 @@ impl WasmMockQuerier {
                             ))
                         }
                     };
-                    let response = OnFundsTransferResponse {
+                    let response = RatesResponse {
                         msgs,
                         events: vec![],
                         leftover_funds: new_funds,

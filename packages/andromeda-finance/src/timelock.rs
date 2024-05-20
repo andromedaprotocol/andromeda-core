@@ -1,6 +1,6 @@
 use andromeda_std::{
     amp::recipient::Recipient,
-    andr_exec, andr_instantiate, andr_instantiate_modules, andr_query,
+    andr_exec, andr_instantiate, andr_query,
     common::{merge_coins, MillisecondsExpiration},
     error::ContractError,
 };
@@ -114,7 +114,6 @@ impl Escrow {
 }
 
 #[andr_instantiate]
-#[andr_instantiate_modules]
 #[cw_serde]
 pub struct InstantiateMsg {}
 

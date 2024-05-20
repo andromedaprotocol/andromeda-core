@@ -1,5 +1,5 @@
 use andromeda_std::{
-    andr_exec, andr_instantiate, andr_instantiate_modules, andr_query,
+    andr_exec, andr_instantiate, andr_query,
     common::{expiration::Expiry, MillisecondsExpiration},
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
@@ -7,7 +7,6 @@ use cosmwasm_std::Uint128;
 use cw_asset::{AssetInfo, AssetInfoUnchecked};
 
 #[andr_instantiate]
-#[andr_instantiate_modules]
 #[cw_serde]
 pub struct InstantiateMsg {
     pub asset_info: AssetInfoUnchecked,

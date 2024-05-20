@@ -43,7 +43,6 @@ fn test_lockdrop() {
             address: owner.to_string(),
         }],
         None,
-        None,
         andr.kernel.addr().to_string(),
     );
 
@@ -69,7 +68,6 @@ fn test_lockdrop() {
         Milliseconds::from_seconds(50u64),
         AndrAddr::from_string(format!("~{0}", cw20_incentives_address)),
         "uusd".to_string(),
-        None,
         None,
         andr.kernel.addr().to_string(),
     );

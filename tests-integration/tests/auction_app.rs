@@ -10,14 +10,16 @@ use andromeda_cw20::mock::{mock_andromeda_cw20, mock_cw20_instantiate_msg, mock_
 use andromeda_cw721::mock::{mock_andromeda_cw721, mock_cw721_instantiate_msg, MockCW721};
 
 use andromeda_finance::splitter::AddressPercent;
-use andromeda_modules::rates::{PercentRate, Rate, RateInfo};
 use andromeda_non_fungible_tokens::auction::{AuctionStateResponse, Cw20HookMsg};
-use andromeda_rates::mock::{mock_andromeda_rates, mock_rates_instantiate_msg};
+use andromeda_rates::mock::mock_andromeda_rates;
 use andromeda_splitter::mock::{
     mock_andromeda_splitter, mock_splitter_instantiate_msg, mock_splitter_send_msg,
 };
 use andromeda_std::{
-    ado_base::{permissioning::Permission, Module},
+    ado_base::{
+        permissioning::Permission,
+        rates::{LocalRate, LocalRateType, LocalRateValue, PercentRate, Rate},
+    },
     amp::{AndrAddr, Recipient},
     common::{
         denom::Asset,
@@ -48,7 +50,6 @@ fn test_auction_app_modules() {
             ("cw721", mock_andromeda_cw721()),
             ("auction", mock_andromeda_auction()),
             ("app-contract", mock_andromeda_app()),
-            ("rates", mock_andromeda_rates()),
             ("splitter", mock_andromeda_splitter()),
         ])
         .build(&mut router);
@@ -63,7 +64,6 @@ fn test_auction_app_modules() {
         "Test Tokens".to_string(),
         "TT".to_string(),
         owner.to_string(),
-        None,
         andr.kernel.addr().to_string(),
         None,
     );
@@ -73,54 +73,8 @@ fn test_auction_app_modules() {
         to_json_binary(&cw721_init_msg).unwrap(),
     );
 
-    let rates_init_msg = mock_rates_instantiate_msg(
-        vec![RateInfo {
-            is_additive: false,
-            description: None,
-            rate: Rate::Percent(PercentRate {
-                percent: Decimal::from_ratio(1u32, 2u32),
-            }),
-            recipients: vec![
-                Recipient::from_string("./splitter").with_msg(mock_splitter_send_msg())
-            ],
-        }],
-        andr.kernel.addr(),
-        None,
-    );
-    let rates_component =
-        AppComponent::new("rates", "rates", to_json_binary(&rates_init_msg).unwrap());
-
-    let splitter_init_msg = mock_splitter_instantiate_msg(
-        vec![
-            AddressPercent::new(
-                Recipient::from_string(format!("{recipient_one}")),
-                Decimal::from_ratio(1u8, 2u8),
-            ),
-            AddressPercent::new(
-                Recipient::from_string(format!("{recipient_two}")),
-                Decimal::from_ratio(1u8, 2u8),
-            ),
-        ],
-        andr.kernel.addr(),
-        None,
-        None,
-    );
-    let splitter_component = AppComponent::new(
-        "splitter",
-        "splitter",
-        to_json_binary(&splitter_init_msg).unwrap(),
-    );
-
-    let auction_init_msg = mock_auction_instantiate_msg(
-        Some(vec![Module::new("rates", "./rates", false)]),
-        andr.kernel.addr().to_string(),
-        None,
-        Some(vec![AndrAddr::from_string(format!(
-            "./{}",
-            cw721_component.name
-        ))]),
-        None,
-    );
+    let auction_init_msg =
+        mock_auction_instantiate_msg(andr.kernel.addr().to_string(), None, None, None);
     let auction_component = AppComponent::new(
         "auction".to_string(),
         "auction".to_string(),
@@ -128,12 +82,7 @@ fn test_auction_app_modules() {
     );
 
     // Create App
-    let app_components = vec![
-        cw721_component.clone(),
-        auction_component.clone(),
-        rates_component,
-        splitter_component,
-    ];
+    let app_components = vec![cw721_component.clone(), auction_component.clone()];
     let app = MockAppContract::instantiate(
         andr.get_code_id(&mut router, "app-contract"),
         owner,
@@ -161,6 +110,27 @@ fn test_auction_app_modules() {
 
     // Send Token to Auction
     let auction: MockAuction = app.query_ado_by_component_name(&router, auction_component.name);
+
+    // Set rates to auction
+    auction
+        .execute_add_rate(
+            &mut router,
+            owner.clone(),
+            "AuctionClaim".to_string(),
+            Rate::Local(LocalRate {
+                rate_type: LocalRateType::Deductive,
+                recipients: vec![
+                    Recipient::new(recipient_one, None),
+                    Recipient::new(recipient_two, None),
+                ],
+                value: LocalRateValue::Percent(PercentRate {
+                    percent: Decimal::percent(25),
+                }),
+                description: None,
+            }),
+        )
+        .unwrap();
+
     let start_time = Milliseconds::from_nanos(router.block_info().time.nanos())
         .plus_milliseconds(Milliseconds(100));
     let receive_msg = mock_start_auction(
@@ -287,7 +257,6 @@ fn test_auction_app_recipient() {
         "Test Tokens".to_string(),
         "TT".to_string(),
         owner.to_string(),
-        None,
         andr.kernel.addr().to_string(),
         None,
     );
@@ -319,7 +288,7 @@ fn test_auction_app_recipient() {
     );
 
     let auction_init_msg =
-        mock_auction_instantiate_msg(None, andr.kernel.addr().to_string(), None, None, None);
+        mock_auction_instantiate_msg(andr.kernel.addr().to_string(), None, None, None);
     let auction_component = AppComponent::new(
         "auction".to_string(),
         "auction".to_string(),
@@ -485,7 +454,6 @@ fn test_auction_app_cw20_restricted() {
         "Test Tokens".to_string(),
         "TT".to_string(),
         owner.to_string(),
-        None,
         andr.kernel.addr().to_string(),
         None,
     );
@@ -523,7 +491,6 @@ fn test_auction_app_cw20_restricted() {
             owner.to_string(),
             Some(Uint128::from(1000000u128)),
         )),
-        None,
         andr.kernel.addr().to_string(),
     );
     let cw20_component = AppComponent::new(
@@ -542,7 +509,6 @@ fn test_auction_app_cw20_restricted() {
             owner.to_string(),
             Some(Uint128::from(1000000u128)),
         )),
-        None,
         andr.kernel.addr().to_string(),
     );
     let second_cw20_component = AppComponent::new(
@@ -552,7 +518,6 @@ fn test_auction_app_cw20_restricted() {
     );
 
     let auction_init_msg = mock_auction_instantiate_msg(
-        None,
         andr.kernel.addr().to_string(),
         None,
         Some(vec![AndrAddr::from_string(format!(
@@ -938,7 +903,6 @@ fn test_auction_app_cw20_unrestricted() {
         "Test Tokens".to_string(),
         "TT".to_string(),
         owner.to_string(),
-        None,
         andr.kernel.addr().to_string(),
         None,
     );
@@ -976,7 +940,6 @@ fn test_auction_app_cw20_unrestricted() {
             owner.to_string(),
             Some(Uint128::from(1000000u128)),
         )),
-        None,
         andr.kernel.addr().to_string(),
     );
     let cw20_component = AppComponent::new(
@@ -995,7 +958,6 @@ fn test_auction_app_cw20_unrestricted() {
             owner.to_string(),
             Some(Uint128::from(1000000u128)),
         )),
-        None,
         andr.kernel.addr().to_string(),
     );
     let second_cw20_component = AppComponent::new(
@@ -1005,7 +967,6 @@ fn test_auction_app_cw20_unrestricted() {
     );
 
     let auction_init_msg = mock_auction_instantiate_msg(
-        None,
         andr.kernel.addr().to_string(),
         None,
         Some(vec![AndrAddr::from_string(format!(

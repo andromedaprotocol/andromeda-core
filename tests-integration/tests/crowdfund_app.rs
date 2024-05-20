@@ -7,17 +7,17 @@ use andromeda_crowdfund::mock::{
 use andromeda_cw721::mock::{mock_andromeda_cw721, mock_cw721_instantiate_msg, MockCW721};
 use andromeda_finance::splitter::AddressPercent;
 use andromeda_std::{
-    ado_base::version::ADOBaseVersionResponse,
+    ado_base::{
+        rates::{LocalRate, LocalRateType, LocalRateValue, Rate},
+        version::ADOBaseVersionResponse,
+    },
     amp::{AndrAddr, Recipient},
     common::{expiration::Expiry, Milliseconds},
 };
 
-use andromeda_modules::rates::{Rate, RateInfo};
-use andromeda_rates::mock::{mock_andromeda_rates, mock_rates_instantiate_msg};
 use andromeda_splitter::mock::{
     mock_andromeda_splitter, mock_splitter_instantiate_msg, mock_splitter_send_msg,
 };
-use andromeda_std::ado_base::modules::Module;
 use std::str::FromStr;
 
 use andromeda_testing::{
@@ -25,7 +25,6 @@ use andromeda_testing::{
 };
 use andromeda_vault::mock::mock_andromeda_vault;
 use cosmwasm_std::{coin, to_json_binary, BlockInfo, Decimal, Uint128};
-use cw_multi_test::Executor;
 
 #[test]
 fn test_crowdfund_app() {
@@ -46,7 +45,6 @@ fn test_crowdfund_app() {
             ("vault", mock_andromeda_vault()),
             ("splitter", mock_andromeda_splitter()),
             ("app-contract", mock_andromeda_app()),
-            ("rates", mock_andromeda_rates()),
         ])
         .build(&mut router);
 
@@ -59,32 +57,10 @@ fn test_crowdfund_app() {
 
     // Store contract codes
     let app_code_id = andr.get_code_id(&mut router, "app-contract");
-    let rates_code_id = andr.get_code_id(&mut router, "rates");
 
     // Generate App Components
     // App component names must be less than 3 characters or longer than 54 characters to force them to be 'invalid' as the MockApi struct used within the CosmWasm App struct only contains those two validation checks
     let rates_recipient = andr.get_wallet("rates_recipient");
-    // Generate rates contract
-    let rates: Vec<RateInfo> = [RateInfo {
-        rate: Rate::Flat(coin(1, "uandr")),
-        is_additive: false,
-        recipients: [Recipient::from_string(rates_recipient.to_string())].to_vec(),
-        description: Some("Some test rate".to_string()),
-    }]
-    .to_vec();
-    let rates_init_msg = mock_rates_instantiate_msg(rates, andr.kernel.addr().to_string(), None);
-    let rates_addr = router
-        .instantiate_contract(
-            rates_code_id,
-            owner.clone(),
-            &rates_init_msg,
-            &[],
-            "rates",
-            None,
-        )
-        .unwrap();
-
-    let modules: Vec<Module> = vec![Module::new("rates", rates_addr.to_string(), false)];
 
     let crowdfund_app_component = AppComponent {
         name: "crowdfund".to_string(),
@@ -93,7 +69,6 @@ fn test_crowdfund_app() {
             to_json_binary(&mock_crowdfund_instantiate_msg(
                 AndrAddr::from_string("./tokens"),
                 false,
-                Some(modules),
                 andr.kernel.addr().to_string(),
                 None,
             ))
@@ -107,7 +82,6 @@ fn test_crowdfund_app() {
             "Test Tokens".to_string(),
             "TT".to_string(),
             format!("./{}", crowdfund_app_component.name), // Crowdfund must be minter
-            None,
             andr.kernel.addr().to_string(),
             None,
         )),
@@ -155,6 +129,22 @@ fn test_crowdfund_app() {
         app.query_ado_by_component_name::<MockCW721>(&router, cw721_component.name);
     let crowdfund_contract =
         app.query_ado_by_component_name::<MockCrowdfund>(&router, crowdfund_app_component.name);
+
+    let local_rate = LocalRate {
+        rate_type: LocalRateType::Deductive,
+        recipients: vec![Recipient::from_string(rates_recipient.to_string())],
+        value: LocalRateValue::Flat(coin(1, "uandr")),
+        description: Some("Some test rate".to_string()),
+    };
+    // Set rates
+    crowdfund_contract
+        .execute_add_rate(
+            &mut router,
+            owner.clone(),
+            "CrowdfundPurchase".to_string(),
+            Rate::Local(local_rate),
+        )
+        .unwrap();
 
     let minter = cw721_contract.query_minter(&router);
     assert_eq!(minter, crowdfund_contract.addr());

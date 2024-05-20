@@ -1,17 +1,15 @@
-use andromeda_std::ado_base::hooks::{AndromedaHook, HookMsg};
 use andromeda_std::ado_base::InstantiateMsg;
 use andromeda_std::ado_contract::ADOContract;
 use andromeda_std::testing::mock_querier::MockAndromedaQuerier;
 use cosmwasm_std::testing::mock_info;
+use cosmwasm_std::QuerierWrapper;
 use cosmwasm_std::{
     from_json,
     testing::{mock_env, MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
-    to_json_binary, Binary, Coin, ContractResult, OwnedDeps, Querier, QuerierResult, QueryRequest,
-    SystemError, SystemResult, WasmQuery,
+    Coin, OwnedDeps, Querier, QuerierResult, QueryRequest, SystemError, SystemResult, WasmQuery,
 };
-use cosmwasm_std::{QuerierWrapper, Response};
 
-pub use andromeda_std::testing::mock_querier::{MOCK_ADDRESS_LIST_CONTRACT, MOCK_KERNEL_CONTRACT};
+pub use andromeda_std::testing::mock_querier::MOCK_KERNEL_CONTRACT;
 
 /// Alternative to `cosmwasm_std::testing::mock_dependencies` that allows us to respond to custom queries.
 ///
@@ -71,32 +69,14 @@ impl Querier for WasmMockQuerier {
 impl WasmMockQuerier {
     pub fn handle_query(&self, request: &QueryRequest<cosmwasm_std::Empty>) -> QuerierResult {
         match &request {
-            QueryRequest::Wasm(WasmQuery::Smart { contract_addr, msg }) => {
-                match contract_addr.as_str() {
-                    MOCK_ADDRESS_LIST_CONTRACT => self.handle_addresslist_query(msg),
-                    _ => MockAndromedaQuerier::default().handle_query(&self.base, request),
-                }
+            QueryRequest::Wasm(WasmQuery::Smart {
+                contract_addr,
+                msg: _,
+            }) => {
+                let _ = contract_addr.as_str();
+                MockAndromedaQuerier::default().handle_query(&self.base, request)
             }
             _ => MockAndromedaQuerier::default().handle_query(&self.base, request),
-        }
-    }
-
-    fn handle_addresslist_query(&self, msg: &Binary) -> QuerierResult {
-        match from_json(msg).unwrap() {
-            HookMsg::AndrHook(hook_msg) => match hook_msg {
-                AndromedaHook::OnExecute { sender, payload: _ } => {
-                    let whitelisted_addresses = ["sender"];
-                    let response: Response = Response::default();
-                    if whitelisted_addresses.contains(&sender.as_str()) {
-                        SystemResult::Ok(ContractResult::Ok(to_json_binary(&response).unwrap()))
-                    } else {
-                        SystemResult::Ok(ContractResult::Err("InvalidAddress".to_string()))
-                    }
-                }
-                _ => SystemResult::Ok(ContractResult::Ok(
-                    to_json_binary(&None::<Response>).unwrap(),
-                )),
-            },
         }
     }
 

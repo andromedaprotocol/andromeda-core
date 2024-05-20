@@ -1,7 +1,7 @@
 #![cfg(all(not(target_arch = "wasm32"), feature = "testing"))]
 use crate::contract::{execute, instantiate, query};
 use andromeda_fungible_tokens::cw20::{ExecuteMsg, InstantiateMsg, QueryMsg};
-use andromeda_std::{ado_base::modules::Module, amp::AndrAddr};
+use andromeda_std::amp::AndrAddr;
 use andromeda_testing::mock_contract::ExecuteResult;
 use andromeda_testing::MockADO;
 use andromeda_testing::MockContract;
@@ -28,7 +28,6 @@ impl MockCW20 {
         decimals: u8,
         initial_balances: Vec<cw20::Cw20Coin>,
         mint: Option<MinterResponse>,
-        modules: Option<Vec<Module>>,
         kernel_address: String,
     ) -> MockCW20 {
         let msg = mock_cw20_instantiate_msg(
@@ -38,7 +37,6 @@ impl MockCW20 {
             decimals,
             initial_balances,
             mint,
-            modules,
             kernel_address,
         );
         let addr = app
@@ -93,7 +91,6 @@ pub fn mock_cw20_instantiate_msg(
     decimals: u8,
     initial_balances: Vec<cw20::Cw20Coin>,
     mint: Option<MinterResponse>,
-    modules: Option<Vec<Module>>,
     kernel_address: String,
 ) -> InstantiateMsg {
     InstantiateMsg {
@@ -103,7 +100,6 @@ pub fn mock_cw20_instantiate_msg(
         initial_balances,
         mint,
         marketing: None,
-        modules,
         kernel_address,
         owner,
     }

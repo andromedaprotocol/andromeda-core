@@ -6,11 +6,12 @@ use andromeda_non_fungible_tokens::auction::{
     InstantiateMsg, QueryMsg,
 };
 use andromeda_std::ado_base::permissioning::{Permission, PermissioningMessage};
+use andromeda_std::ado_base::rates::{Rate, RatesMessage};
 use andromeda_std::amp::messages::AMPPkt;
+use andromeda_std::amp::AndrAddr;
 use andromeda_std::amp::Recipient;
 use andromeda_std::common::denom::Asset;
 use andromeda_std::common::expiration::Expiry;
-use andromeda_std::{ado_base::modules::Module, amp::AndrAddr};
 use andromeda_testing::mock::MockApp;
 use andromeda_testing::{
     mock_ado,
@@ -28,11 +29,11 @@ impl MockAuction {
         code_id: u64,
         sender: Addr,
         app: &mut MockApp,
-        modules: Option<Vec<Module>>,
+
         kernel_address: impl Into<String>,
         owner: Option<String>,
     ) -> MockAuction {
-        let msg = mock_auction_instantiate_msg(modules, kernel_address, owner, None, None);
+        let msg = mock_auction_instantiate_msg(kernel_address, owner, None, None);
         let addr = app
             .instantiate_contract(
                 code_id,
@@ -100,6 +101,16 @@ impl MockAuction {
         self.execute(app, &msg, sender, &[])
     }
 
+    pub fn execute_add_rate(
+        &self,
+        app: &mut MockApp,
+        sender: Addr,
+        action: String,
+        rate: Rate,
+    ) -> ExecuteResult {
+        self.execute(app, &mock_set_rate_msg(action, rate), sender, &[])
+    }
+
     pub fn execute_set_permission(
         &self,
         app: &mut MockApp,
@@ -145,14 +156,12 @@ pub fn mock_andromeda_auction() -> Box<dyn Contract<Empty>> {
 }
 
 pub fn mock_auction_instantiate_msg(
-    modules: Option<Vec<Module>>,
     kernel_address: impl Into<String>,
     owner: Option<String>,
     authorized_token_addresses: Option<Vec<AndrAddr>>,
     authorized_cw20_address: Option<AndrAddr>,
 ) -> InstantiateMsg {
     InstantiateMsg {
-        modules,
         kernel_address: kernel_address.into(),
         owner,
         authorized_token_addresses,
@@ -213,6 +222,10 @@ pub fn mock_update_auction(
         min_bid,
         recipient,
     }
+}
+
+pub fn mock_set_rate_msg(action: String, rate: Rate) -> ExecuteMsg {
+    ExecuteMsg::Rates(RatesMessage::SetRate { action, rate })
 }
 
 pub fn mock_set_permission(actor: AndrAddr, action: String, permission: Permission) -> ExecuteMsg {
