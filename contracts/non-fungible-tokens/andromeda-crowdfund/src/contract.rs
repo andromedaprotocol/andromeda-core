@@ -541,7 +541,6 @@ fn transfer_asset_msg(
 fn execute_claim(ctx: ExecuteContext) -> Result<Response, ContractError> {
     let ExecuteContext { deps, info, .. } = ctx;
 
-    // Ensure campaign is finished
     let curr_stage = get_current_stage(deps.storage);
     let campaign_config = get_config(deps.storage)?;
     let mut resp = Response::new().add_attribute("action", "claim");
