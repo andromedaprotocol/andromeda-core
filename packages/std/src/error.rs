@@ -46,6 +46,12 @@ pub enum ContractError {
     #[error("InvalidOrigin")]
     InvalidOrigin {},
 
+    #[error("InvalidAmount: {msg}")]
+    InvalidAmount { msg: String },
+
+    #[error("OverlappingRanges")]
+    OverlappingRanges {},
+
     #[error("Invalid {operation} Operation with {validator}")]
     InvalidValidatorOperation {
         operation: String,
@@ -100,7 +106,7 @@ pub enum ContractError {
     #[error("EmptyOptional")]
     EmptyOptional {},
 
-    #[error("EmptyOptional")]
+    #[error("EmptyClassId")]
     EmptyClassId {},
 
     #[error("NoTokens")]
@@ -147,6 +153,9 @@ pub enum ContractError {
 
     #[error("InsufficientBondedTime")]
     InsufficientBondedTime {},
+
+    #[error("ThresholdsPercentagesDiscrepancy: {msg}")]
+    ThresholdsPercentagesDiscrepancy { msg: String },
 
     #[error("LockTimeTooShort")]
     LockTimeTooShort {},
@@ -198,6 +207,9 @@ pub enum ContractError {
 
     #[error("EmptyRecipientsList")]
     EmptyRecipientsList {},
+
+    #[error("EmptyThresholdsList")]
+    EmptyThresholdsList {},
 
     #[error("AmountExceededHundredPrecent")]
     AmountExceededHundredPrecent {},
@@ -390,6 +402,9 @@ pub enum ContractError {
 
     #[error("DuplicateCoinDenoms")]
     DuplicateCoinDenoms {},
+
+    #[error("DuplicateThresholds")]
+    DuplicateThresholds {},
 
     #[error("DuplicateRecipient")]
     DuplicateRecipient {},
