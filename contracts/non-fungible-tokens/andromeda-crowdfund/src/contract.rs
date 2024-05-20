@@ -539,51 +539,14 @@ fn transfer_asset_msg(
 }
 
 fn execute_claim(ctx: ExecuteContext) -> Result<Response, ContractError> {
-    let ExecuteContext { deps, info, .. } = ctx;
+    let ExecuteContext { mut deps, info, .. } = ctx;
 
     let curr_stage = get_current_stage(deps.storage);
-    let campaign_config = get_config(deps.storage)?;
     let mut resp = Response::new().add_attribute("action", "claim");
 
-    resp = match curr_stage {
-        CampaignStage::SUCCESS => {
-            let orders = get_user_orders(deps.storage, info.sender.clone(), None, None, true)?;
-            ensure!(!orders.is_empty(), ContractError::NoPurchases {});
-
-            // mint tier token to the owner
-            let tier_address = campaign_config
-                .tier_address
-                .get_raw_address(&deps.as_ref())?;
-            for order in orders {
-                let meta_data = get_tier(deps.storage, order.level.into())?.meta_data;
-                for _ in 0..order.amount.into() {
-                    let mint_resp = mint(
-                        deps.storage,
-                        tier_address.to_string(),
-                        meta_data.clone(),
-                        info.sender.to_string(),
-                    )?;
-                    resp = resp
-                        .add_attributes(mint_resp.attributes)
-                        .add_submessages(mint_resp.messages);
-                }
-            }
-            resp
-        }
-        CampaignStage::FAILED => {
-            let orders = get_user_orders(deps.storage, info.sender.clone(), None, None, false)?;
-            ensure!(!orders.is_empty(), ContractError::NoPurchases {});
-
-            // refund
-            let total_cost = orders.iter().try_fold(Uint128::zero(), |sum, order| {
-                let tier = get_tier(deps.storage, u64::from(order.level))?;
-                let new_sum: Result<Uint128, ContractError> = Ok(sum + tier.price * order.amount);
-                new_sum
-            })?;
-            let sub_msg =
-                transfer_asset_msg(info.sender.to_string(), total_cost, campaign_config.denom)?;
-            resp.add_submessage(sub_msg)
-        }
+    let sub_response = match curr_stage {
+        CampaignStage::SUCCESS => handle_successful_claim(deps.branch(), &info.sender)?,
+        CampaignStage::FAILED => handle_failed_claim(deps.branch(), &info.sender)?,
         _ => {
             return Err(ContractError::InvalidCampaignOperation {
                 operation: "Claim".to_string(),
@@ -591,7 +554,59 @@ fn execute_claim(ctx: ExecuteContext) -> Result<Response, ContractError> {
             })
         }
     };
+    resp = resp
+        .add_attributes(sub_response.attributes)
+        .add_submessages(sub_response.messages);
+
     clear_user_orders(deps.storage, info.sender)?;
+
+    Ok(resp)
+}
+
+fn handle_successful_claim(deps: DepsMut, sender: &Addr) -> Result<Response, ContractError> {
+    let campaign_config = get_config(deps.storage)?;
+
+    let orders = get_user_orders(deps.storage, sender.clone(), None, None, true)?;
+    ensure!(!orders.is_empty(), ContractError::NoPurchases {});
+
+    // mint tier token to the owner
+    let tier_address = campaign_config
+        .tier_address
+        .get_raw_address(&deps.as_ref())?;
+
+    let mut resp = Response::new();
+    for order in orders {
+        let meta_data = get_tier(deps.storage, order.level.into())?.meta_data;
+        for _ in 0..order.amount.into() {
+            let mint_resp = mint(
+                deps.storage,
+                tier_address.to_string(),
+                meta_data.clone(),
+                sender.to_string(),
+            )?;
+            resp = resp
+                .add_attributes(mint_resp.attributes)
+                .add_submessages(mint_resp.messages);
+        }
+    }
+    Ok(resp)
+}
+
+fn handle_failed_claim(deps: DepsMut, sender: &Addr) -> Result<Response, ContractError> {
+    let campaign_config = get_config(deps.storage)?;
+
+    let orders = get_user_orders(deps.storage, sender.clone(), None, None, false)?;
+    ensure!(!orders.is_empty(), ContractError::NoPurchases {});
+
+    // refund
+    let total_cost = orders.iter().try_fold(Uint128::zero(), |sum, order| {
+        let tier = get_tier(deps.storage, u64::from(order.level))?;
+        let new_sum: Result<Uint128, ContractError> = Ok(sum + tier.price * order.amount);
+        new_sum
+    })?;
+    let mut resp = Response::new();
+    let sub_msg = transfer_asset_msg(sender.to_string(), total_cost, campaign_config.denom)?;
+    resp = resp.add_submessage(sub_msg);
 
     Ok(resp)
 }

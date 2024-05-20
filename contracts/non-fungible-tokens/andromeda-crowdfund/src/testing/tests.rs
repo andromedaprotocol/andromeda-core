@@ -78,14 +78,11 @@ fn get_user_orders(
     TIER_ORDERS
         .prefix(user)
         .range(storage, None, None, Order::Ascending)
-        .map(|v| {
-            let (level, order_info) = v?;
-
-            let amount = order_info.amount().unwrap();
-            Ok(SimpleTierOrder {
+        .map(|res| {
+            Ok(res.map(|(level, order_info)| SimpleTierOrder {
                 level: Uint64::new(level),
-                amount: Uint128::new(amount),
-            })
+                amount: Uint128::new(order_info.amount().unwrap()),
+            })?)
         })
         .collect()
 }
