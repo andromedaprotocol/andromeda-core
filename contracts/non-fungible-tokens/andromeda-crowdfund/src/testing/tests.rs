@@ -1447,7 +1447,7 @@ mod test {
                     ))),
             },
             ClaimTestCase {
-                name: "Claim when ccw20 accpeting campaign failed ".to_string(),
+                name: "Claim when cw20 accpeting campaign failed ".to_string(),
                 stage: CampaignStage::FAILED,
                 orders: vec![
                     TierOrder {
