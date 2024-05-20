@@ -43,7 +43,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-app"
-version = "1.0.0"
+version = "1.0.1"
 dependencies = [
  "andromeda-std",
  "cosmwasm-schema",
@@ -54,7 +54,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-app-contract"
-version = "1.0.0"
+version = "1.0.1"
 dependencies = [
  "andromeda-app",
  "andromeda-std",

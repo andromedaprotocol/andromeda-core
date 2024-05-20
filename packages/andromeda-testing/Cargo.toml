@@ -22,7 +22,7 @@ prost = "0.9.0"
 anyhow = "1.0.79"
 
 andromeda-non-fungible-tokens = { workspace = true }
-andromeda-app = { version = "1.0.0", path = "../andromeda-app" }
+andromeda-app = { version = "1.0.1", path = "../andromeda-app" }
 andromeda-modules = { version = "1.0.0", path = "../andromeda-modules" }
 andromeda-adodb = { version = "1.0.0", path = "../../contracts/os/andromeda-adodb", features = [
     "testing",
