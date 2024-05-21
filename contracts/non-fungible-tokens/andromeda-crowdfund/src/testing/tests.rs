@@ -215,7 +215,7 @@ mod test {
             limit: Some(Uint128::new(100)),
             sold_amount: Uint128::zero(),
             price: Uint128::new(100),
-            meta_data: TierMetaData {
+            metadata: TierMetaData {
                 extension: TokenExtension {
                     publisher: MOCK_ADO_PUBLISHER.to_string(),
                 },
@@ -228,7 +228,7 @@ mod test {
             limit: Some(Uint128::new(100)),
             sold_amount: Uint128::zero(),
             price: Uint128::new(100),
-            meta_data: TierMetaData {
+            metadata: TierMetaData {
                 extension: TokenExtension {
                     publisher: MOCK_ADO_PUBLISHER.to_string(),
                 },
@@ -323,7 +323,7 @@ mod test {
             limit: Some(Uint128::new(100)),
             sold_amount: Uint128::zero(),
             price: Uint128::new(100),
-            meta_data: TierMetaData {
+            metadata: TierMetaData {
                 extension: TokenExtension {
                     publisher: MOCK_ADO_PUBLISHER.to_string(),
                 },
@@ -336,7 +336,7 @@ mod test {
             limit: Some(Uint128::new(100)),
             sold_amount: Uint128::zero(),
             price: Uint128::new(100),
-            meta_data: TierMetaData {
+            metadata: TierMetaData {
                 extension: TokenExtension {
                     publisher: MOCK_ADO_PUBLISHER.to_string(),
                 },
@@ -431,7 +431,7 @@ mod test {
             limit: Some(Uint128::new(100)),
             price: Uint128::new(100),
             sold_amount: Uint128::zero(),
-            meta_data: TierMetaData {
+            metadata: TierMetaData {
                 extension: TokenExtension {
                     publisher: MOCK_ADO_PUBLISHER.to_string(),
                 },
@@ -444,7 +444,7 @@ mod test {
             limit: Some(Uint128::new(100)),
             price: Uint128::new(100),
             sold_amount: Uint128::zero(),
-            meta_data: TierMetaData {
+            metadata: TierMetaData {
                 extension: TokenExtension {
                     publisher: MOCK_ADO_PUBLISHER.to_string(),
                 },
@@ -546,7 +546,7 @@ mod test {
             limit: Some(Uint128::new(1000u128)),
             sold_amount: Uint128::zero(),
             price: Uint128::new(10u128),
-            meta_data: TierMetaData {
+            metadata: TierMetaData {
                 extension: TokenExtension {
                     publisher: MOCK_ADO_PUBLISHER.to_string(),
                 },
@@ -1407,7 +1407,7 @@ mod test {
                     ))),
             },
             ClaimTestCase {
-                name: "Claim when native token accpeting campaign failed ".to_string(),
+                name: "Claim when native token accepting campaign failed ".to_string(),
                 stage: CampaignStage::FAILED,
                 orders: vec![
                     TierOrder {
@@ -1444,7 +1444,7 @@ mod test {
                     ))),
             },
             ClaimTestCase {
-                name: "Claim when cw20 accpeting campaign failed ".to_string(),
+                name: "Claim when cw20 accepting campaign failed ".to_string(),
                 stage: CampaignStage::FAILED,
                 orders: vec![
                     TierOrder {
