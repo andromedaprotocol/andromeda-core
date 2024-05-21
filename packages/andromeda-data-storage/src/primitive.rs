@@ -1,5 +1,5 @@
 use andromeda_std::{amp::AndrAddr, andr_exec, andr_instantiate, andr_query};
-use cosmwasm_schema::{cw_serde, schemars::Map, QueryResponses};
+use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Addr, Binary, Coin, Decimal, StdError, Uint128};
 
 #[andr_instantiate]
@@ -45,9 +45,7 @@ pub enum Primitive {
     Addr(Addr),
     String(String),
     Bool(bool),
-    Vec(Vec<Primitive>),
     Binary(Binary),
-    Object(Map<String, Primitive>),
 }
 
 #[cw_serde]
@@ -100,21 +98,9 @@ impl From<Addr> for Primitive {
     }
 }
 
-impl From<Vec<Primitive>> for Primitive {
-    fn from(value: Vec<Primitive>) -> Self {
-        Primitive::Vec(value)
-    }
-}
-
 impl From<Binary> for Primitive {
     fn from(value: Binary) -> Self {
         Primitive::Binary(value)
-    }
-}
-
-impl From<Map<String, Primitive>> for Primitive {
-    fn from(value: Map<String, Primitive>) -> Self {
-        Primitive::Object(value)
     }
 }
 
@@ -149,13 +135,6 @@ impl Primitive {
         }
     }
 
-    pub fn try_get_vec(&self) -> Result<Vec<Primitive>, StdError> {
-        match self {
-            Primitive::Vec(vector) => Ok(vector.to_vec()),
-            _ => Err(parse_error(String::from("Vec"))),
-        }
-    }
-
     pub fn try_get_coin(&self) -> Result<Coin, StdError> {
         match self {
             Primitive::Coin(coin) => Ok(coin.clone()),
@@ -173,13 +152,6 @@ impl Primitive {
     pub fn try_get_binary(&self) -> Result<Binary, StdError> {
         match self {
             Primitive::Binary(value) => Ok(value.clone()),
-            _ => Err(parse_error(String::from("Binary"))),
-        }
-    }
-
-    pub fn try_get_object(&self) -> Result<Map<String, Primitive>, StdError> {
-        match self {
-            Primitive::Object(value) => Ok(value.clone()),
             _ => Err(parse_error(String::from("Binary"))),
         }
     }
@@ -244,27 +216,6 @@ mod tests {
     }
 
     #[test]
-    fn try_get_vec() {
-        let primitive = Primitive::Vec(vec![Primitive::Bool(true)]);
-        assert_eq!(
-            vec![Primitive::Bool(true)],
-            primitive.try_get_vec().unwrap()
-        );
-
-        let primitive = Primitive::Vec(vec![Primitive::Vec(vec![Primitive::Bool(true)])]);
-        assert_eq!(
-            vec![Primitive::Vec(vec![Primitive::Bool(true)])],
-            primitive.try_get_vec().unwrap()
-        );
-
-        let primitive = Primitive::String("String".to_string());
-        assert_eq!(
-            parse_error("Vec".to_string()),
-            primitive.try_get_vec().unwrap_err()
-        );
-    }
-
-    #[test]
     fn try_get_decimal() {
         let primitive = Primitive::Decimal(Decimal::zero());
         assert_eq!(Decimal::zero(), primitive.try_get_decimal().unwrap());
@@ -289,13 +240,5 @@ mod tests {
             parse_error("Binary".to_string()),
             primitive.try_get_binary().unwrap_err()
         );
-    }
-
-    #[test]
-    fn try_get_object() {
-        let mut map = Map::new();
-        map.insert("key".to_string(), Primitive::Bool(true));
-        let primitive = Primitive::Object(map.clone());
-        assert_eq!(map.clone(), primitive.try_get_object().unwrap());
     }
 }

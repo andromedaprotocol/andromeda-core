@@ -1,10 +1,8 @@
-use cosmwasm_schema::schemars::Map;
-use cosmwasm_std::{from_json, testing::mock_env};
-
-use crate::{contract::query, state::DEFAULT_KEY};
+use crate::contract::query;
 use andromeda_data_storage::primitive::{
     GetValueResponse, Primitive, PrimitiveRestriction, QueryMsg,
 };
+use cosmwasm_std::{from_json, testing::mock_env};
 
 use andromeda_std::amp::AndrAddr;
 
@@ -275,30 +273,4 @@ fn test_query_owner_keys() {
     )
     .unwrap();
     assert!(res.len() == 2, "assertion failed {res:?}", res = res);
-}
-
-#[test]
-fn test_set_object() {
-    let (mut deps, info) = proper_initialization(PrimitiveRestriction::Private);
-
-    let mut map = Map::new();
-    map.insert("key".to_string(), Primitive::Bool(true));
-
-    set_value(
-        deps.as_mut(),
-        &None,
-        &Primitive::Object(map.clone()),
-        info.sender.as_ref(),
-    )
-    .unwrap();
-
-    let query_res: GetValueResponse = query_value(deps.as_ref(), &None).unwrap();
-
-    assert_eq!(
-        GetValueResponse {
-            key: DEFAULT_KEY.to_string(),
-            value: Primitive::Object(map.clone())
-        },
-        query_res
-    );
 }
