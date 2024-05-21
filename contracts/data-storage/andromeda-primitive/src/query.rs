@@ -62,6 +62,6 @@ pub fn get_type(
     key: Option<String>,
 ) -> Result<GetTypeResponse, ContractError> {
     let key = get_key_or_default(&key);
-    let value_type = DATA.load(storage, key)?;
+    let value_type = DATA.load(storage, key)?.from_string();
     Ok(GetTypeResponse { value_type })
 }

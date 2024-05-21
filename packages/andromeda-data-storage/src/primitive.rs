@@ -50,6 +50,20 @@ pub enum Primitive {
     Binary(Binary),
 }
 
+impl Primitive {
+    pub fn from_string(&self) -> String {
+        match self {
+            Primitive::Uint128(_) => "Uint128".to_string(),
+            Primitive::Decimal(_) => "Decimal".to_string(),
+            Primitive::Coin(_) => "Coin".to_string(),
+            Primitive::Addr(_) => "Addr".to_string(),
+            Primitive::String(_) => "String".to_string(),
+            Primitive::Bool(_) => "Bool".to_string(),
+            Primitive::Binary(_) => "Binary".to_string(),
+        }
+    }
+}
+
 #[cw_serde]
 pub enum PrimitiveRestriction {
     Private,
@@ -167,13 +181,51 @@ pub struct GetValueResponse {
 
 #[cw_serde]
 pub struct GetTypeResponse {
-    pub value_type: Primitive,
+    pub value_type: String,
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use cosmwasm_std::to_json_binary;
+
+    #[test]
+    fn test_from_string() {
+        let cases = vec![
+            (
+                Primitive::Uint128(Uint128::from(5_u128)),
+                "Uint128".to_string(),
+            ),
+            (
+                Primitive::Decimal(Decimal::new(Uint128::one())),
+                "Decimal".to_string(),
+            ),
+            (
+                Primitive::Coin(Coin {
+                    amount: Uint128::new(100),
+                    denom: "uatom".to_string(),
+                }),
+                "Coin".to_string(),
+            ),
+            (
+                Primitive::Addr(Addr::unchecked("cosmos1...v937")),
+                "Addr".to_string(),
+            ),
+            (
+                Primitive::String("Some string".to_string()),
+                "String".to_string(),
+            ),
+            (Primitive::Bool(true), "Bool".to_string()),
+            (
+                Primitive::Binary(to_json_binary(&"data").unwrap()),
+                "Binary".to_string(),
+            ),
+        ];
+
+        for (value, expected_str) in cases.iter() {
+            assert_eq!(&value.from_string(), expected_str);
+        }
+    }
 
     #[test]
     fn test_parse_error() {

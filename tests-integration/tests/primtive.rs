@@ -67,7 +67,7 @@ fn test_primtive() {
             &mock_primitive_get_type(Some("key".to_string())),
         )
         .unwrap();
-    assert_eq!(get_type_resp.value_type, Primitive::Bool(true));
+    assert_eq!(get_type_resp.value_type, "Bool".to_string());
 }
 
 // #![cfg(not(target_arch = "wasm32"))]
