@@ -566,7 +566,7 @@ fn execute_claim(ctx: ExecuteContext) -> Result<Response, ContractError> {
 fn handle_successful_claim(deps: DepsMut, sender: &Addr) -> Result<Response, ContractError> {
     let campaign_config = get_config(deps.storage)?;
 
-    let orders = get_user_orders(deps.storage, sender.clone(), None, None, true)?;
+    let orders = get_user_orders(deps.storage, sender.clone(), None, None, true);
     ensure!(!orders.is_empty(), ContractError::NoPurchases {});
 
     // mint tier token to the owner
@@ -595,7 +595,7 @@ fn handle_successful_claim(deps: DepsMut, sender: &Addr) -> Result<Response, Con
 fn handle_failed_claim(deps: DepsMut, sender: &Addr) -> Result<Response, ContractError> {
     let campaign_config = get_config(deps.storage)?;
 
-    let orders = get_user_orders(deps.storage, sender.clone(), None, None, false)?;
+    let orders = get_user_orders(deps.storage, sender.clone(), None, None, false);
     ensure!(!orders.is_empty(), ContractError::NoPurchases {});
 
     // refund
