@@ -1,7 +1,7 @@
 use andromeda_std::amp::addresses::AndrAddr;
 use andromeda_std::amp::Recipient;
 use andromeda_std::common::denom::Asset;
-use andromeda_std::common::MillisecondsExpiration;
+use andromeda_std::common::{MillisecondsExpiration, OrderBy};
 use andromeda_std::error::ContractError;
 use andromeda_std::{andr_exec, andr_instantiate, andr_instantiate_modules, andr_query};
 use cosmwasm_schema::{cw_serde, QueryResponses};
@@ -51,11 +51,6 @@ pub enum ExecuteMsg {
 pub enum Cw20HookMsg {
     PurchaseTiers { orders: Vec<SimpleTierOrder> },
 }
-
-#[andr_query]
-#[cw_serde]
-#[derive(QueryResponses)]
-pub enum QueryMsg {}
 
 #[cw_serde]
 pub struct CampaignConfig {
@@ -211,4 +206,54 @@ pub struct TierMetaData {
     pub token_uri: Option<String>,
     /// Any custom extension used by this contract
     pub extension: TokenExtension,
+}
+
+#[andr_query]
+#[cw_serde]
+#[derive(QueryResponses)]
+pub enum QueryMsg {
+    #[returns(CampaignSummaryResponse)]
+    CampaignSummary {},
+    #[returns(TierOrdersResponse)]
+    TierOrders {
+        orderer: String,
+        start_after: Option<u64>,
+        limit: Option<u32>,
+        order_by: Option<OrderBy>,
+    },
+    #[returns(TiersResponse)]
+    Tiers {
+        start_after: Option<u64>,
+        limit: Option<u32>,
+        order_by: Option<OrderBy>,
+    },
+}
+
+#[cw_serde]
+pub struct CampaignSummaryResponse {
+    // Campaign configuration
+    pub title: String,
+    pub description: String,
+    pub banner: String,
+    pub url: String,
+    pub tier_address: AndrAddr,
+    pub denom: Asset,
+    pub withdrawal_recipient: Recipient,
+    pub soft_cap: Option<Uint128>,
+    pub hard_cap: Option<Uint128>,
+    pub start_time: Option<MillisecondsExpiration>,
+    pub end_time: MillisecondsExpiration,
+    // Current Status
+    pub current_stage: String,
+    pub current_cap: u128,
+}
+
+#[cw_serde]
+pub struct TierOrdersResponse {
+    pub orders: Vec<SimpleTierOrder>,
+}
+
+#[cw_serde]
+pub struct TiersResponse {
+    pub tiers: Vec<Tier>,
 }

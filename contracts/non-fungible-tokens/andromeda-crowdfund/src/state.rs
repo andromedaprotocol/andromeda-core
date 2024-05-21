@@ -1,7 +1,7 @@
 use andromeda_non_fungible_tokens::crowdfund::{
     CampaignConfig, CampaignStage, SimpleTierOrder, Tier, TierOrder,
 };
-use andromeda_std::error::ContractError;
+use andromeda_std::{common::OrderBy, error::ContractError};
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{ensure, Addr, Order, Storage, Uint128, Uint64};
 use cw_storage_plus::{Bound, Item, Map};
@@ -121,6 +121,26 @@ pub(crate) fn remove_tier(storage: &mut dyn Storage, level: u64) -> Result<(), C
     Ok(())
 }
 
+pub(crate) fn get_tiers(
+    storage: &dyn Storage,
+    start_after: Option<u64>,
+    limit: Option<u32>,
+    order_by: Option<OrderBy>,
+) -> Result<Vec<Tier>, ContractError> {
+    let limit = limit.unwrap_or(u32::MAX) as usize;
+    let start = start_after.map(Bound::exclusive);
+    let order_by = match order_by.unwrap_or(OrderBy::Desc) {
+        OrderBy::Desc => Order::Descending,
+        _ => Order::Ascending,
+    };
+
+    TIERS
+        .range(storage, start, None, order_by)
+        .take(limit)
+        .map(|v| Ok(v?.1))
+        .collect()
+}
+
 pub(crate) fn is_valid_tiers(storage: &mut dyn Storage) -> bool {
     !TIERS.is_empty(storage)
         && TIERS
@@ -187,13 +207,18 @@ pub(crate) fn get_user_orders(
     start_after: Option<u64>,
     limit: Option<u32>,
     include_presale: bool,
+    order_by: Option<OrderBy>,
 ) -> Result<Vec<SimpleTierOrder>, ContractError> {
     let limit = limit.unwrap_or(u32::MAX) as usize;
     let start = start_after.map(Bound::exclusive);
+    let order_by = match order_by.unwrap_or(OrderBy::Desc) {
+        OrderBy::Desc => Order::Descending,
+        _ => Order::Ascending,
+    };
 
     TIER_ORDERS
         .prefix(user)
-        .range(storage, start, None, Order::Ascending)
+        .range(storage, start, None, order_by)
         .take(limit)
         .map(|v| {
             let (level, order_info) = v?;
