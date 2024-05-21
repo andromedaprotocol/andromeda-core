@@ -10,7 +10,7 @@ use andromeda_testing::{mock::mock_app, mock_builder::MockAndromedaBuilder, Mock
 use cw_multi_test::Executor;
 
 #[test]
-fn test_primtive() {
+fn test_primitive() {
     let mut router = mock_app(None);
 
     let andr = MockAndromedaBuilder::new(&mut router, "admin")
@@ -19,9 +19,9 @@ fn test_primtive() {
         .build(&mut router);
     let sender = andr.get_wallet("owner");
     // Store contract codes
-    let primtive_code_id = router.store_code(mock_andromeda_primitive());
+    let primitive_code_id = router.store_code(mock_andromeda_primitive());
 
-    andr.store_code_id(&mut router, "primitve", primtive_code_id);
+    andr.store_code_id(&mut router, "primitve", primitive_code_id);
 
     let primitive_init_msg = mock_primitive_instantiate_msg(
         andr.kernel.addr().to_string(),
@@ -31,7 +31,7 @@ fn test_primtive() {
 
     let primitive_addr = router
         .instantiate_contract(
-            primtive_code_id,
+            primitive_code_id,
             sender.clone(),
             &primitive_init_msg,
             &[],
@@ -77,7 +77,7 @@ fn test_primtive() {
 // use cw_multi_test::Executor;
 
 // #[test]
-// fn test_primtive() {
+// fn test_primitive() {
 //     let mut router = mock_app(None);
 //     let andr = MockAndromedaBuilder::new(&mut router, "admin")
 //         .with_wallets(vec![
