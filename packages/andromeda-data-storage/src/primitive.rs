@@ -31,6 +31,8 @@ pub enum ExecuteMsg {
 pub enum QueryMsg {
     #[returns(GetValueResponse)]
     GetValue { key: Option<String> },
+    #[returns(GetTypeResponse)]
+    GetType { key: Option<String> },
     #[returns(Vec<String>)]
     AllKeys {},
     #[returns(Vec<String>)]
@@ -161,6 +163,11 @@ impl Primitive {
 pub struct GetValueResponse {
     pub key: String,
     pub value: Primitive,
+}
+
+#[cw_serde]
+pub struct GetTypeResponse {
+    pub value_type: Primitive,
 }
 
 #[cfg(test)]

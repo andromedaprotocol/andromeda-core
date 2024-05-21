@@ -1,10 +1,10 @@
 #![cfg(not(target_arch = "wasm32"))]
 
-use andromeda_data_storage::primitive::{GetValueResponse, Primitive};
+use andromeda_data_storage::primitive::{GetTypeResponse, GetValueResponse, Primitive};
 
 use andromeda_primitive::mock::{
-    mock_andromeda_primitive, mock_primitive_get_value, mock_primitive_instantiate_msg,
-    mock_store_value_msg,
+    mock_andromeda_primitive, mock_primitive_get_type, mock_primitive_get_value,
+    mock_primitive_instantiate_msg, mock_store_value_msg,
 };
 use andromeda_testing::{mock::mock_app, mock_builder::MockAndromedaBuilder, MockContract};
 use cw_multi_test::Executor;
@@ -54,11 +54,20 @@ fn test_primtive() {
     let get_value_resp: GetValueResponse = router
         .wrap()
         .query_wasm_smart(
-            primitive_addr,
+            primitive_addr.clone(),
             &mock_primitive_get_value(Some("key".to_string())),
         )
         .unwrap();
     assert_eq!(get_value_resp.value, Primitive::Bool(true));
+
+    let get_type_resp: GetTypeResponse = router
+        .wrap()
+        .query_wasm_smart(
+            primitive_addr,
+            &mock_primitive_get_type(Some("key".to_string())),
+        )
+        .unwrap();
+    assert_eq!(get_type_resp.value_type, Primitive::Bool(true));
 }
 
 // #![cfg(not(target_arch = "wasm32"))]

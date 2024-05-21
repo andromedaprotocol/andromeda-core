@@ -83,3 +83,7 @@ pub fn mock_store_address_msgs(key: String, address: Addr) -> ExecuteMsg {
 pub fn mock_primitive_get_value(key: Option<String>) -> QueryMsg {
     QueryMsg::GetValue { key }
 }
+
+pub fn mock_primitive_get_type(key: Option<String>) -> QueryMsg {
+    QueryMsg::GetType { key }
+}

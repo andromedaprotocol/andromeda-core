@@ -1,5 +1,5 @@
 use crate::state::{DATA, DEFAULT_KEY, KEY_OWNER, RESTRICTION};
-use andromeda_data_storage::primitive::{GetValueResponse, PrimitiveRestriction};
+use andromeda_data_storage::primitive::{GetTypeResponse, GetValueResponse, PrimitiveRestriction};
 use andromeda_std::{ado_contract::ADOContract, amp::AndrAddr, error::ContractError};
 use cosmwasm_std::{Addr, Deps, Storage};
 
@@ -55,4 +55,13 @@ pub fn get_value(
         key: key.to_string(),
         value,
     })
+}
+
+pub fn get_type(
+    storage: &dyn Storage,
+    key: Option<String>,
+) -> Result<GetTypeResponse, ContractError> {
+    let key = get_key_or_default(&key);
+    let value_type = DATA.load(storage, key)?;
+    Ok(GetTypeResponse { value_type })
 }
