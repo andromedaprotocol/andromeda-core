@@ -1,6 +1,6 @@
-use andromeda_std::{amp::AndrAddr, andr_exec, andr_instantiate, andr_query};
+use andromeda_std::{amp::AndrAddr, andr_exec, andr_instantiate, andr_query, error::ContractError};
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Addr, Binary, Coin, Decimal, StdError, Uint128};
+use cosmwasm_std::{ensure, Addr, Api, Binary, Coin, Decimal, StdError, Uint128};
 
 #[andr_instantiate]
 #[cw_serde]
@@ -51,8 +51,37 @@ pub enum Primitive {
 }
 
 impl Primitive {
-    pub fn from_string(&self) -> String {
+    pub fn validate(&self, api: &dyn Api) -> Result<(), ContractError> {
         match self {
+            Primitive::Uint128(number) => {
+                ensure!(
+                    !number.to_string().is_empty(),
+                    ContractError::EmptyString {}
+                );
+            }
+            Primitive::Decimal(_) => {}
+            Primitive::Coin(coin) => {
+                ensure!(!coin.amount.is_zero(), ContractError::InvalidZeroAmount {});
+                ensure!(!coin.denom.is_empty(), ContractError::InvalidDenom {});
+            }
+            Primitive::Addr(address) => {
+                api.addr_validate(address.as_str())?;
+            }
+            Primitive::String(string) => {
+                ensure!(!string.is_empty(), ContractError::EmptyString {});
+            }
+            Primitive::Bool(_) => {}
+            Primitive::Binary(binary) => {
+                ensure!(!binary.is_empty(), ContractError::EmptyString {});
+            }
+        }
+        Ok(())
+    }
+}
+
+impl From<Primitive> for String {
+    fn from(primitive: Primitive) -> Self {
+        match primitive {
             Primitive::Uint128(_) => "Uint128".to_string(),
             Primitive::Decimal(_) => "Decimal".to_string(),
             Primitive::Coin(_) => "Coin".to_string(),
@@ -61,12 +90,6 @@ impl Primitive {
             Primitive::Bool(_) => "Bool".to_string(),
             Primitive::Binary(_) => "Binary".to_string(),
         }
-    }
-}
-
-impl From<Primitive> for String {
-    fn from(primitive: Primitive) -> Self {
-        primitive.from_string()
     }
 }
 
@@ -193,7 +216,14 @@ pub struct GetTypeResponse {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use andromeda_std::testing::mock_querier::mock_dependencies_custom;
     use cosmwasm_std::to_json_binary;
+
+    struct TestValidate {
+        name: &'static str,
+        primitive: Primitive,
+        expected_error: Option<ContractError>,
+    }
 
     #[test]
     fn test_from_string() {
@@ -229,11 +259,40 @@ mod tests {
         ];
 
         for (value, expected_str) in cases.iter() {
-            assert_eq!(&value.from_string(), expected_str);
+            assert_eq!(String::from(value.to_owned()), expected_str.to_owned());
         }
 
         let decimal_primitive = Primitive::Decimal(Decimal::new(Uint128::one()));
         assert_eq!("Decimal".to_string(), String::from(decimal_primitive));
+    }
+
+    #[test]
+    fn test_validate() {
+        let test_cases = vec![
+            TestValidate {
+                name: "Empty string",
+                primitive: Primitive::String("".to_string()),
+                expected_error: Some(ContractError::EmptyString {}),
+            },
+            TestValidate {
+                name: "Valid string",
+                primitive: Primitive::String("string".to_string()),
+                expected_error: None,
+            },
+        ];
+
+        for test in test_cases {
+            let deps = mock_dependencies_custom(&[]);
+
+            let res = test.primitive.validate(&deps.api);
+
+            if let Some(err) = test.expected_error {
+                assert_eq!(res.unwrap_err(), err, "{}", test.name);
+                continue;
+            }
+
+            assert!(res.is_ok());
+        }
     }
 
     #[test]

@@ -108,6 +108,9 @@ pub enum ContractError {
     #[error("EmptyOptional")]
     EmptyOptional {},
 
+    #[error("EmptyString")]
+    EmptyString {},
+
     #[error("EmptyClassId")]
     EmptyClassId {},
 
@@ -426,6 +429,9 @@ pub enum ContractError {
 
     #[error("Invalid zero amount")]
     InvalidZeroAmount {},
+
+    #[error("Invalid Denom")]
+    InvalidDenom {},
 
     #[error("Allowance is expired")]
     Expired {},
