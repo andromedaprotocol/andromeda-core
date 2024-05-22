@@ -64,6 +64,12 @@ impl Primitive {
     }
 }
 
+impl From<Primitive> for String {
+    fn from(primitive: Primitive) -> Self {
+        primitive.from_string()
+    }
+}
+
 #[cw_serde]
 pub enum PrimitiveRestriction {
     Private,
@@ -225,6 +231,9 @@ mod tests {
         for (value, expected_str) in cases.iter() {
             assert_eq!(&value.from_string(), expected_str);
         }
+
+        let decimal_primitive = Primitive::Decimal(Decimal::new(Uint128::one()));
+        assert_eq!("Decimal".to_string(), String::from(decimal_primitive));
     }
 
     #[test]
