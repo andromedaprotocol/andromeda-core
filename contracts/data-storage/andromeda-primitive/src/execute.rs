@@ -56,6 +56,9 @@ pub fn set_value(
         has_key_permission(ctx.deps.storage, &sender, key)?,
         ContractError::Unauthorized {}
     );
+    // Validate the primitive value
+    value.validate(ctx.deps.api)?;
+
     DATA.update::<_, StdError>(ctx.deps.storage, key, |old| match old {
         Some(_) => Ok(value.clone()),
         None => Ok(value.clone()),
