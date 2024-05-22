@@ -1,3 +1,5 @@
+use std::fmt;
+
 use andromeda_std::{amp::AndrAddr, andr_exec, andr_instantiate, andr_query};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Addr, Binary, Coin, Decimal, StdError, Uint128};
@@ -61,6 +63,13 @@ impl From<Primitive> for String {
             Primitive::Bool(_) => "Bool".to_string(),
             Primitive::Binary(_) => "Binary".to_string(),
         }
+    }
+}
+
+impl fmt::Display for Primitive {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let variant_name: String = self.clone().into();
+        write!(f, "{}", variant_name)
     }
 }
 
