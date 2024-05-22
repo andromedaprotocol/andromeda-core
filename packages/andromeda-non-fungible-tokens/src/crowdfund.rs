@@ -63,7 +63,7 @@ pub struct CampaignConfig {
     /// Official website of the campaign
     pub url: String,
     /// The address of the tier contract whose tokens are being distributed
-    pub tier_address: AndrAddr,
+    pub token_address: AndrAddr,
     /// The denom of the token that is being accepted by the campaign
     pub denom: Asset,
     /// Recipient that is upposed to receive the funds gained by the campaign
@@ -81,7 +81,7 @@ pub struct CampaignConfig {
 impl CampaignConfig {
     pub fn validate(&self, deps: DepsMut, env: &Env) -> Result<(), ContractError> {
         // validate addresses
-        self.tier_address.validate(deps.api)?;
+        self.token_address.validate(deps.api)?;
         self.withdrawal_recipient.validate(&deps.as_ref())?;
         let _ = self
             .denom
@@ -141,7 +141,7 @@ pub struct Tier {
     pub price: Uint128,
     pub limit: Option<Uint128>, // None for no limit
     pub sold_amount: Uint128,
-    pub meta_data: TierMetaData,
+    pub metadata: TierMetaData,
 }
 
 #[cw_serde]
@@ -236,7 +236,7 @@ pub struct CampaignSummaryResponse {
     pub description: String,
     pub banner: String,
     pub url: String,
-    pub tier_address: AndrAddr,
+    pub token_address: AndrAddr,
     pub denom: Asset,
     pub withdrawal_recipient: Recipient,
     pub soft_cap: Option<Uint128>,

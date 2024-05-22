@@ -567,22 +567,22 @@ fn execute_claim(ctx: ExecuteContext) -> Result<Response, ContractError> {
 fn handle_successful_claim(deps: DepsMut, sender: &Addr) -> Result<Response, ContractError> {
     let campaign_config = get_config(deps.storage)?;
 
-    let orders = get_user_orders(deps.storage, sender.clone(), None, None, true, None)?;
+    let orders = get_user_orders(deps.storage, sender.clone(), None, None, true, None);
     ensure!(!orders.is_empty(), ContractError::NoPurchases {});
 
     // mint tier token to the owner
-    let tier_address = campaign_config
-        .tier_address
+    let token_address = campaign_config
+        .token_address
         .get_raw_address(&deps.as_ref())?;
 
     let mut resp = Response::new();
     for order in orders {
-        let meta_data = get_tier(deps.storage, order.level.into())?.meta_data;
+        let metadata = get_tier(deps.storage, order.level.into())?.metadata;
         for _ in 0..order.amount.into() {
             let mint_resp = mint(
                 deps.storage,
-                tier_address.to_string(),
-                meta_data.clone(),
+                token_address.to_string(),
+                metadata.clone(),
                 sender.to_string(),
             )?;
             resp = resp
@@ -596,13 +596,14 @@ fn handle_successful_claim(deps: DepsMut, sender: &Addr) -> Result<Response, Con
 fn handle_failed_claim(deps: DepsMut, sender: &Addr) -> Result<Response, ContractError> {
     let campaign_config = get_config(deps.storage)?;
 
-    let orders = get_user_orders(deps.storage, sender.clone(), None, None, false, None)?;
+    let orders = get_user_orders(deps.storage, sender.clone(), None, None, false, None);
     ensure!(!orders.is_empty(), ContractError::NoPurchases {});
 
     // refund
     let total_cost = orders.iter().try_fold(Uint128::zero(), |sum, order| {
         let tier = get_tier(deps.storage, u64::from(order.level))?;
-        let new_sum: Result<Uint128, ContractError> = Ok(sum + tier.price * order.amount);
+        let new_sum: Result<Uint128, ContractError> =
+            Ok(sum.checked_add(tier.price.checked_mul(order.amount)?)?);
         new_sum
     })?;
     let mut resp = Response::new();
@@ -615,7 +616,7 @@ fn handle_failed_claim(deps: DepsMut, sender: &Addr) -> Result<Response, Contrac
 fn mint(
     storage: &mut dyn Storage,
     tier_contract: String,
-    tier_meta_data: TierMetaData,
+    tier_metadata: TierMetaData,
     owner: String,
 ) -> Result<Response, ContractError> {
     let token_id = get_and_increase_tier_token_id(storage)?.to_string();
@@ -625,8 +626,8 @@ fn mint(
         msg: encode_binary(&Cw721ExecuteMsg::Mint {
             token_id,
             owner,
-            token_uri: tier_meta_data.token_uri,
-            extension: tier_meta_data.extension,
+            token_uri: tier_metadata.token_uri,
+            extension: tier_metadata.extension,
         })?,
         funds: vec![],
     }))
@@ -666,7 +667,7 @@ fn query_campaign_summary(deps: Deps) -> Result<CampaignSummaryResponse, Contrac
         description: config.description,
         banner: config.banner,
         url: config.url,
-        tier_address: config.tier_address,
+        token_address: config.token_address,
         denom: config.denom,
         withdrawal_recipient: config.withdrawal_recipient,
         soft_cap: config.soft_cap,
@@ -692,7 +693,7 @@ fn query_user_orders(
         limit,
         true,
         order_by,
-    )?;
+    );
     Ok(TierOrdersResponse { orders })
 }
 fn query_tiers(
