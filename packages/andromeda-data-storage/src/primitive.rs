@@ -61,7 +61,6 @@ impl Primitive {
             }
             Primitive::Decimal(_) => {}
             Primitive::Coin(coin) => {
-                ensure!(!coin.amount.is_zero(), ContractError::InvalidZeroAmount {});
                 ensure!(!coin.denom.is_empty(), ContractError::InvalidDenom {});
             }
             Primitive::Addr(address) => {
@@ -277,6 +276,36 @@ mod tests {
             TestValidate {
                 name: "Valid string",
                 primitive: Primitive::String("string".to_string()),
+                expected_error: None,
+            },
+            TestValidate {
+                name: "Empty Binary",
+                primitive: Primitive::Binary(Binary::default()),
+                expected_error: Some(ContractError::EmptyString {}),
+            },
+            TestValidate {
+                name: "Valid Binary",
+                primitive: Primitive::Binary(to_json_binary(&"binary".to_string()).unwrap()),
+                expected_error: None,
+            },
+            TestValidate {
+                name: "Invalid Coin Denom",
+                primitive: Primitive::Coin(Coin::new(0_u128, "".to_string())),
+                expected_error: Some(ContractError::InvalidDenom {}),
+            },
+            TestValidate {
+                name: "Valid Coin Denom",
+                primitive: Primitive::Coin(Coin::new(0_u128, "valid".to_string())),
+                expected_error: None,
+            },
+            TestValidate {
+                name: "Invalid Address",
+                primitive: Primitive::Addr(Addr::unchecked("wa".to_string())),
+                expected_error: Some(ContractError::Std(StdError::GenericErr { msg: "Invalid input: human address too short for this mock implementation (must be >= 3).".to_string() })),
+            },
+            TestValidate {
+                name: "Valid Address",
+                primitive: Primitive::Addr(Addr::unchecked("andr1".to_string())),
                 expected_error: None,
             },
         ];
