@@ -50,9 +50,9 @@ pub enum Primitive {
     Binary(Binary),
 }
 
-impl Primitive {
-    pub fn from_string(&self) -> String {
-        match self {
+impl From<Primitive> for String {
+    fn from(primitive: Primitive) -> Self {
+        match primitive {
             Primitive::Uint128(_) => "Uint128".to_string(),
             Primitive::Decimal(_) => "Decimal".to_string(),
             Primitive::Coin(_) => "Coin".to_string(),
@@ -61,12 +61,6 @@ impl Primitive {
             Primitive::Bool(_) => "Bool".to_string(),
             Primitive::Binary(_) => "Binary".to_string(),
         }
-    }
-}
-
-impl From<Primitive> for String {
-    fn from(primitive: Primitive) -> Self {
-        primitive.from_string()
     }
 }
 
@@ -229,7 +223,7 @@ mod tests {
         ];
 
         for (value, expected_str) in cases.iter() {
-            assert_eq!(&value.from_string(), expected_str);
+            assert_eq!(String::from(value.to_owned()), expected_str.to_owned());
         }
 
         let decimal_primitive = Primitive::Decimal(Decimal::new(Uint128::one()));
