@@ -4,9 +4,16 @@ use andromeda_data_storage::primitive::{
 };
 use cosmwasm_std::{coin, from_json, testing::mock_env, Binary};
 
-use andromeda_std::{amp::AndrAddr, error::ContractError};
+use andromeda_std::{
+    ado_base::rates::{LocalRate, LocalRateType, LocalRateValue, Rate},
+    ado_contract::ADOContract,
+    amp::{AndrAddr, Recipient},
+    error::ContractError,
+};
 
-use super::mock::{delete_value, proper_initialization, query_value, set_value};
+use super::mock::{
+    delete_value, proper_initialization, query_value, set_value, set_value_with_funds,
+};
 
 #[test]
 fn test_instantiation() {
@@ -48,6 +55,61 @@ fn test_set_and_update_value_with_key() {
     let query_res: GetValueResponse = query_value(deps.as_ref(), &Some(key.clone())).unwrap();
 
     assert_eq!(GetValueResponse { key, value }, query_res);
+}
+
+#[test]
+fn test_set_value_with_tax() {
+    let (mut deps, info) = proper_initialization(PrimitiveRestriction::Private);
+    let key = String::from("key");
+    let value = Primitive::String("value".to_string());
+    let tax_recipient = "tax_recipient";
+
+    let rate: Rate = Rate::Local(LocalRate {
+        rate_type: LocalRateType::Additive,
+        recipients: vec![Recipient {
+            address: AndrAddr::from_string(tax_recipient.to_string()),
+            msg: None,
+            ibc_recovery_address: None,
+        }],
+        value: LocalRateValue::Flat(coin(20_u128, "uandr")),
+        description: None,
+    });
+
+    // Set rates
+    ADOContract::default()
+        .set_rates(deps.as_mut().storage, "PrimitiveSetValue", rate)
+        .unwrap();
+
+    // Sent the exact amount required for tax
+    let _res = set_value_with_funds(
+        deps.as_mut(),
+        &Some(key.clone()),
+        &value,
+        info.sender.as_ref(),
+        coin(20_u128, "uandr".to_string()),
+    )
+    .unwrap();
+
+    // Sent less than amount required for tax
+    let err = set_value_with_funds(
+        deps.as_mut(),
+        &Some(key.clone()),
+        &value,
+        info.sender.as_ref(),
+        coin(19_u128, "uandr".to_string()),
+    )
+    .unwrap_err();
+    assert_eq!(err, ContractError::InsufficientFunds {});
+
+    // Sent more than required amount for tax
+    let _res = set_value_with_funds(
+        deps.as_mut(),
+        &Some(key.clone()),
+        &value,
+        info.sender.as_ref(),
+        coin(200_u128, "uandr".to_string()),
+    )
+    .unwrap();
 }
 
 #[test]
