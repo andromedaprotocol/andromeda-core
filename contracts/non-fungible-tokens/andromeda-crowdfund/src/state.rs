@@ -1,7 +1,10 @@
-use andromeda_non_fungible_tokens::crowdfund::{CampaignConfig, CampaignStage, Tier, TierOrder};
+use andromeda_non_fungible_tokens::crowdfund::{
+    CampaignConfig, CampaignStage, SimpleTierOrder, Tier, TierOrder,
+};
 use andromeda_std::error::ContractError;
-use cosmwasm_std::{ensure, Addr, Order, Storage, Uint128};
-use cw_storage_plus::{Item, Map};
+use cosmwasm_schema::cw_serde;
+use cosmwasm_std::{ensure, Addr, Order, Storage, Uint128, Uint64};
+use cw_storage_plus::{Bound, Item, Map};
 
 pub const CAMPAIGN_CONFIG: Item<CampaignConfig> = Item::new("campaign_config");
 
@@ -11,7 +14,22 @@ pub const CURRENT_CAP: Item<Uint128> = Item::new("current_capital");
 
 pub const TIERS: Map<u64, Tier> = Map::new("tiers");
 
-pub const TIER_ORDERS: Map<(Addr, u64), u128> = Map::new("tier_orders");
+pub const TIER_ORDERS: Map<(Addr, u64), OrderInfo> = Map::new("tier_orders");
+
+pub const TIER_TOKEN_ID: Item<Uint128> = Item::new("tier_token_id");
+
+#[cw_serde]
+#[derive(Default)]
+pub struct OrderInfo {
+    pub ordered: u128,
+    pub preordered: u128,
+}
+
+impl OrderInfo {
+    pub fn amount(self) -> Option<u128> {
+        self.ordered.checked_add(self.preordered)
+    }
+}
 
 pub(crate) fn update_config(
     storage: &mut dyn Storage,
@@ -146,8 +164,14 @@ pub(crate) fn set_tier_orders(
 
         let mut order = TIER_ORDERS
             .load(storage, (new_order.orderer.clone(), new_order.level.into()))
-            .unwrap_or(0);
-        order += new_order.amount.u128();
+            .unwrap_or_default();
+
+        if new_order.is_presale {
+            order.preordered += new_order.amount.u128();
+        } else {
+            order.ordered += new_order.amount.u128();
+        }
+
         TIER_ORDERS.save(
             storage,
             (new_order.orderer.clone(), new_order.level.into()),
@@ -155,4 +179,283 @@ pub(crate) fn set_tier_orders(
         )?;
     }
     Ok(())
+}
+
+pub(crate) fn get_user_orders(
+    storage: &dyn Storage,
+    user: Addr,
+    start_after: Option<u64>,
+    limit: Option<u32>,
+    include_presale: bool,
+) -> Vec<SimpleTierOrder> {
+    let limit = limit.unwrap_or(u32::MAX) as usize;
+    let start = start_after.map(Bound::exclusive);
+
+    TIER_ORDERS
+        .prefix(user)
+        .range(storage, start, None, Order::Ascending)
+        .take(limit)
+        .map(|v| {
+            let (level, order_info) = v.unwrap();
+            let amount = if include_presale {
+                order_info.amount().unwrap()
+            } else {
+                order_info.ordered
+            };
+            SimpleTierOrder {
+                level: Uint64::new(level),
+                amount: Uint128::new(amount),
+            }
+        })
+        .collect()
+}
+
+pub(crate) fn clear_user_orders(
+    storage: &mut dyn Storage,
+    user: Addr,
+) -> Result<(), ContractError> {
+    let levels: Vec<u64> = TIER_ORDERS
+        .prefix(user.clone())
+        .range(storage, None, None, Order::Ascending)
+        .map(|v| v.unwrap().0)
+        .collect();
+
+    for level in levels {
+        TIER_ORDERS.remove(storage, (user.clone(), level));
+    }
+    Ok(())
+}
+
+pub(crate) fn get_and_increase_tier_token_id(
+    storage: &mut dyn Storage,
+) -> Result<Uint128, ContractError> {
+    let tier_token_id = TIER_TOKEN_ID.load(storage).unwrap_or_default();
+    let next_tier_token_id = tier_token_id.checked_add(Uint128::from(1u128))?;
+    TIER_TOKEN_ID.save(storage, &next_tier_token_id)?;
+    Ok(tier_token_id)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use andromeda_non_fungible_tokens::{crowdfund::TierMetaData, cw721::TokenExtension};
+    use cosmwasm_std::testing::MockStorage;
+
+    fn mock_storage() -> MockStorage {
+        let mut storage = MockStorage::new();
+        // Initialize some mock data for testing
+        let tiers = vec![
+            Tier {
+                level: Uint64::one(),
+                price: Uint128::new(100),
+                limit: Some(Uint128::new(1000)),
+                sold_amount: Uint128::new(0),
+                label: "tier 1".to_string(),
+                metadata: TierMetaData {
+                    token_uri: None,
+                    extension: TokenExtension {
+                        ..Default::default()
+                    },
+                },
+            },
+            Tier {
+                level: Uint64::new(2u64),
+                price: Uint128::new(200),
+                limit: None,
+                sold_amount: Uint128::new(0),
+                label: "tier 2".to_string(),
+                metadata: TierMetaData {
+                    token_uri: None,
+                    extension: TokenExtension {
+                        ..Default::default()
+                    },
+                },
+            },
+        ];
+        set_tiers(&mut storage, tiers).unwrap();
+        let user1 = Addr::unchecked("user1");
+        let orders = vec![
+            TierOrder {
+                orderer: user1.clone(),
+                level: Uint64::one(),
+                amount: Uint128::new(50),
+                is_presale: true,
+            },
+            TierOrder {
+                orderer: user1.clone(),
+                level: Uint64::one(),
+                amount: Uint128::new(50),
+                is_presale: false,
+            },
+        ];
+        set_tier_orders(&mut storage, orders).unwrap();
+        storage
+    }
+
+    pub struct GetUserOrderTestCase {
+        name: String,
+        include_presale: bool,
+        user: Addr,
+        expected_res: Vec<SimpleTierOrder>,
+    }
+    #[test]
+    fn test_get_user_orders() {
+        let test_cases = vec![
+            GetUserOrderTestCase {
+                name: "get_user_orders including pesale".to_string(),
+                include_presale: true,
+                user: Addr::unchecked("user1"),
+                expected_res: vec![SimpleTierOrder {
+                    level: Uint64::one(),
+                    amount: Uint128::new(100),
+                }],
+            },
+            GetUserOrderTestCase {
+                name: "get_user_orders excluding pesale".to_string(),
+                include_presale: false,
+                user: Addr::unchecked("user1"),
+                expected_res: vec![SimpleTierOrder {
+                    level: Uint64::one(),
+                    amount: Uint128::new(50),
+                }],
+            },
+            GetUserOrderTestCase {
+                name: "get_user_orders for non ordered user".to_string(),
+                include_presale: false,
+                user: Addr::unchecked("user2"),
+                expected_res: vec![],
+            },
+        ];
+        let storage = mock_storage();
+
+        for test in test_cases {
+            let res = get_user_orders(
+                &storage,
+                test.user.clone(),
+                None,
+                None,
+                test.include_presale,
+            );
+            assert_eq!(res, test.expected_res, "Test case: {}", test.name);
+        }
+    }
+
+    pub struct SetOrderTestCase {
+        name: String,
+        order: TierOrder,
+        expected_res: Result<(), ContractError>,
+    }
+
+    #[test]
+    fn test_set_tier_orders() {
+        let test_cases = vec![
+            SetOrderTestCase {
+                name: "set_tier_orders with valid orders".to_string(),
+                order: TierOrder {
+                    level: Uint64::new(1),
+                    amount: Uint128::new(100),
+                    orderer: Addr::unchecked("user1"),
+                    is_presale: false,
+                },
+                expected_res: Ok(()),
+            },
+            SetOrderTestCase {
+                name: "set_tier_orders with an order exceeding limit".to_string(),
+                order: TierOrder {
+                    level: Uint64::new(1),
+                    amount: Uint128::new(1000),
+                    orderer: Addr::unchecked("user2"),
+                    is_presale: false,
+                },
+                expected_res: Err(ContractError::PurchaseLimitReached {}),
+            },
+            SetOrderTestCase {
+                name: "set_tier_orders with an order for non-existing tier".to_string(),
+                order: TierOrder {
+                    level: Uint64::new(3),
+                    amount: Uint128::new(50),
+                    orderer: Addr::unchecked("user3"),
+                    is_presale: false,
+                },
+                expected_res: Err(ContractError::InvalidTier {
+                    operation: "set_tier_orders".to_string(),
+                    msg: "Tier with level 3 does not exist".to_string(),
+                }),
+            },
+        ];
+
+        for test in test_cases {
+            let mut storage = mock_storage();
+            let level: u64 = test.order.level.into();
+            let ordered_amount = test.order.amount;
+            let orderer = test.order.orderer.clone();
+            let prev_tier = get_tier(&mut storage, level);
+            let prev_order = TIER_ORDERS.load(&storage, (orderer.clone(), level));
+            let is_presale = test.order.is_presale;
+
+            let res = set_tier_orders(&mut storage, vec![test.order]);
+            assert_eq!(res, test.expected_res, "Test case: {}", test.name);
+
+            if res.is_ok() {
+                let tier = get_tier(&mut storage, level).unwrap();
+                assert_eq!(
+                    tier.sold_amount,
+                    prev_tier.unwrap().sold_amount + ordered_amount
+                );
+                let order = TIER_ORDERS.load(&storage, (orderer, level)).unwrap();
+                let prev_order = prev_order.unwrap();
+                if is_presale {
+                    assert_eq!(
+                        order,
+                        OrderInfo {
+                            ordered: prev_order.ordered,
+                            preordered: prev_order.preordered + ordered_amount.u128(),
+                        },
+                        "Test case: {}",
+                        test.name
+                    );
+                } else {
+                    assert_eq!(
+                        order,
+                        OrderInfo {
+                            ordered: prev_order.ordered + ordered_amount.u128(),
+                            preordered: prev_order.preordered,
+                        },
+                        "Test case: {}",
+                        test.name
+                    );
+                }
+            }
+        }
+    }
+
+    // #[test]
+    // fn test_set_tier_orders() {
+    //     let mut storage = mock_storage();
+    //     let test_cases = vec![
+    //         SetOrderTestCase {
+    //             name: "Valid et order for limited tier".to_string(),
+    //             order: TierOrder {
+    //                 orderer: user3.clone(),
+    //                 level: Uint64::new(2u64),
+    //                 amount: Uint128::new(150),
+    //                 is_presale: false,
+    //             }
+    //         }
+    //     ];
+    // let user3 = Addr::unchecked("user3");
+    // let order = TierOrder {
+    //     orderer: user3.clone(),
+    //     level: Uint64::new(2u64),
+    //     amount: Uint128::new(150),
+    //     is_presale: false,
+    // };
+    // set_tier_orders(&mut storage, vec![order.clone()]).unwrap();
+    // let orders = TIER_ORDERS.load(&storage, (user3, 2)).unwrap();
+    // assert_eq!(orders.ordered, 150);
+    // assert_eq!(orders.preordered, 0);
+
+    // // Test if the sold_amount of the tier is updated correctly
+    // let tier2 = get_tier(&mut storage, 2).unwrap();
+    // assert_eq!(tier2.sold_amount, Uint128::new(250));
 }

@@ -33,7 +33,7 @@ pub enum ExecuteMsg {
     StartCampaign {
         start_time: Option<MillisecondsExpiration>,
         end_time: MillisecondsExpiration,
-        presale: Option<Vec<TierOrder>>,
+        presale: Option<Vec<PresaleTierOrder>>,
     },
     /// Purchase tiers
     PurchaseTiers { orders: Vec<SimpleTierOrder> },
@@ -41,6 +41,8 @@ pub enum ExecuteMsg {
     Receive(Cw20ReceiveMsg),
     /// End the campaign
     EndCampaign {},
+    /// Claim tiers or get refunded based on the campaign result
+    Claim {},
     /// Discard the campaign
     DiscardCampaign {},
 }
@@ -66,7 +68,7 @@ pub struct CampaignConfig {
     /// Official website of the campaign
     pub url: String,
     /// The address of the tier contract whose tokens are being distributed
-    pub tier_address: AndrAddr,
+    pub token_address: AndrAddr,
     /// The denom of the token that is being accepted by the campaign
     pub denom: Asset,
     /// Recipient that is upposed to receive the funds gained by the campaign
@@ -84,7 +86,7 @@ pub struct CampaignConfig {
 impl CampaignConfig {
     pub fn validate(&self, deps: DepsMut, env: &Env) -> Result<(), ContractError> {
         // validate addresses
-        self.tier_address.validate(deps.api)?;
+        self.token_address.validate(deps.api)?;
         self.withdrawal_recipient.validate(&deps.as_ref())?;
         let _ = self
             .denom
@@ -144,7 +146,7 @@ pub struct Tier {
     pub price: Uint128,
     pub limit: Option<Uint128>, // None for no limit
     pub sold_amount: Uint128,
-    pub meta_data: TierMetaData,
+    pub metadata: TierMetaData,
 }
 
 #[cw_serde]
@@ -152,6 +154,26 @@ pub struct TierOrder {
     pub orderer: Addr,
     pub level: Uint64,
     pub amount: Uint128,
+    pub is_presale: bool,
+}
+
+// Used for presale
+#[cw_serde]
+pub struct PresaleTierOrder {
+    pub level: Uint64,
+    pub amount: Uint128,
+    pub orderer: Addr,
+}
+
+impl From<PresaleTierOrder> for TierOrder {
+    fn from(val: PresaleTierOrder) -> Self {
+        TierOrder {
+            level: val.level,
+            amount: val.amount,
+            orderer: val.orderer,
+            is_presale: true,
+        }
+    }
 }
 
 // Used when the orderer is defined

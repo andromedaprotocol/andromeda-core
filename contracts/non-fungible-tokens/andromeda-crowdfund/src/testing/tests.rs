@@ -1,8 +1,9 @@
 use andromeda_non_fungible_tokens::{
     crowdfund::{
-        CampaignConfig, CampaignStage, ExecuteMsg, InstantiateMsg, Tier, TierMetaData, TierOrder,
+        CampaignConfig, CampaignStage, ExecuteMsg, InstantiateMsg, SimpleTierOrder, Tier,
+        TierMetaData,
     },
-    cw721::TokenExtension,
+    cw721::{ExecuteMsg as Cw721ExecuteMsg, TokenExtension},
 };
 
 use andromeda_std::{
@@ -64,10 +65,32 @@ fn set_current_cap(store: &mut dyn Storage, cur_cap: &Uint128) {
 fn set_campaign_config(store: &mut dyn Storage, config: &CampaignConfig) {
     CAMPAIGN_CONFIG.save(store, config).unwrap();
 }
+fn set_tiers(storage: &mut dyn Storage, tiers: Vec<Tier>) {
+    for tier in tiers {
+        TIERS.save(storage, tier.level.into(), &tier).unwrap();
+    }
+}
 
+fn get_user_orders(
+    storage: &dyn Storage,
+    user: Addr,
+) -> Result<Vec<SimpleTierOrder>, ContractError> {
+    TIER_ORDERS
+        .prefix(user)
+        .range(storage, None, None, Order::Ascending)
+        .map(|res| {
+            Ok(res.map(|(level, order_info)| SimpleTierOrder {
+                level: Uint64::new(level),
+                amount: Uint128::new(order_info.amount().unwrap()),
+            })?)
+        })
+        .collect()
+}
 #[cfg(test)]
 mod test {
-    use andromeda_non_fungible_tokens::crowdfund::{Cw20HookMsg, SimpleTierOrder};
+    use andromeda_non_fungible_tokens::crowdfund::{
+        Cw20HookMsg, PresaleTierOrder, SimpleTierOrder, TierOrder,
+    };
     use andromeda_std::{
         amp::AndrAddr,
         common::{denom::Asset, encode_binary},
@@ -77,7 +100,7 @@ mod test {
     use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 
     use crate::{
-        state::{get_current_cap, set_tiers},
+        state::{get_current_cap, set_current_stage, set_tier_orders},
         testing::mock_querier::{MOCK_DEFAULT_OWNER, MOCK_WITHDRAWAL_ADDRESS},
     };
 
@@ -192,7 +215,7 @@ mod test {
             limit: Some(Uint128::new(100)),
             sold_amount: Uint128::zero(),
             price: Uint128::new(100),
-            meta_data: TierMetaData {
+            metadata: TierMetaData {
                 extension: TokenExtension {
                     publisher: MOCK_ADO_PUBLISHER.to_string(),
                 },
@@ -205,7 +228,7 @@ mod test {
             limit: Some(Uint128::new(100)),
             sold_amount: Uint128::zero(),
             price: Uint128::new(100),
-            meta_data: TierMetaData {
+            metadata: TierMetaData {
                 extension: TokenExtension {
                     publisher: MOCK_ADO_PUBLISHER.to_string(),
                 },
@@ -300,7 +323,7 @@ mod test {
             limit: Some(Uint128::new(100)),
             sold_amount: Uint128::zero(),
             price: Uint128::new(100),
-            meta_data: TierMetaData {
+            metadata: TierMetaData {
                 extension: TokenExtension {
                     publisher: MOCK_ADO_PUBLISHER.to_string(),
                 },
@@ -313,7 +336,7 @@ mod test {
             limit: Some(Uint128::new(100)),
             sold_amount: Uint128::zero(),
             price: Uint128::new(100),
-            meta_data: TierMetaData {
+            metadata: TierMetaData {
                 extension: TokenExtension {
                     publisher: MOCK_ADO_PUBLISHER.to_string(),
                 },
@@ -408,7 +431,7 @@ mod test {
             limit: Some(Uint128::new(100)),
             price: Uint128::new(100),
             sold_amount: Uint128::zero(),
-            meta_data: TierMetaData {
+            metadata: TierMetaData {
                 extension: TokenExtension {
                     publisher: MOCK_ADO_PUBLISHER.to_string(),
                 },
@@ -421,7 +444,7 @@ mod test {
             limit: Some(Uint128::new(100)),
             price: Uint128::new(100),
             sold_amount: Uint128::zero(),
-            meta_data: TierMetaData {
+            metadata: TierMetaData {
                 extension: TokenExtension {
                     publisher: MOCK_ADO_PUBLISHER.to_string(),
                 },
@@ -495,7 +518,7 @@ mod test {
     struct StartCampaignTestCase {
         name: String,
         tiers: Vec<Tier>,
-        presale: Option<Vec<TierOrder>>,
+        presale: Option<Vec<PresaleTierOrder>>,
         start_time: Option<MillisecondsExpiration>,
         end_time: MillisecondsExpiration,
         expected_res: Result<Response, ContractError>,
@@ -505,13 +528,13 @@ mod test {
     #[test]
     fn test_start_campaign() {
         let mock_orderer = Addr::unchecked("mock_orderer".to_string());
-        let valid_presale = vec![TierOrder {
+        let valid_presale = vec![PresaleTierOrder {
             amount: Uint128::new(100u128),
             level: Uint64::new(1u64),
             orderer: mock_orderer.clone(),
         }];
 
-        let invalid_presale = vec![TierOrder {
+        let invalid_presale = vec![PresaleTierOrder {
             amount: Uint128::new(100u128),
             level: Uint64::new(2u64),
             orderer: mock_orderer.clone(),
@@ -523,7 +546,7 @@ mod test {
             limit: Some(Uint128::new(1000u128)),
             sold_amount: Uint128::zero(),
             price: Uint128::new(10u128),
-            meta_data: TierMetaData {
+            metadata: TierMetaData {
                 extension: TokenExtension {
                     publisher: MOCK_ADO_PUBLISHER.to_string(),
                 },
@@ -640,12 +663,13 @@ mod test {
                 );
                 for order in &test.presale.unwrap() {
                     let order_amount: u128 = order.amount.into();
-                    assert_eq!(
-                        TIER_ORDERS
-                            .load(&deps.storage, (mock_orderer.clone(), order.level.into()))
-                            .unwrap(),
-                        order_amount
-                    );
+                    let order_info = TIER_ORDERS
+                        .load(&deps.storage, (mock_orderer.clone(), order.level.into()))
+                        .unwrap();
+
+                    assert_eq!(order_info.preordered, order_amount);
+                    assert_eq!(order_info.ordered, 0u128);
+                    assert_eq!(order_info.amount().unwrap(), order_amount);
                     let cur_limit = TIERS.load(&deps.storage, order.level.into()).unwrap().limit;
                     if cur_limit.is_some() {
                         assert_eq!(
@@ -826,7 +850,7 @@ mod test {
             // Mock necessary storage setup
             set_campaign_stage(deps.as_mut().storage, &test.stage);
             set_current_cap(deps.as_mut().storage, &test.initial_cap);
-            set_tiers(deps.as_mut().storage, mock_campaign_tiers()).unwrap();
+            set_tiers(deps.as_mut().storage, mock_campaign_tiers());
 
             let mut mock_config = mock_campaign_config(test.denom);
             mock_config.start_time = test.start_time;
@@ -848,14 +872,14 @@ mod test {
 
                 // Check tier orders
                 for order in &test.orders {
-                    let stored_order = TIER_ORDERS
+                    let stored_order_info = TIER_ORDERS
                         .load(
                             deps.as_ref().storage,
                             (Addr::unchecked(buyer), order.level.into()),
                         )
                         .unwrap();
                     assert_eq!(
-                        stored_order,
+                        stored_order_info.ordered,
                         order.amount.u128(),
                         "Test case: {}",
                         test.name
@@ -1019,7 +1043,7 @@ mod test {
             // Mock necessary storage setup
             set_campaign_stage(deps.as_mut().storage, &test.stage);
             set_current_cap(deps.as_mut().storage, &test.initial_cap);
-            set_tiers(deps.as_mut().storage, mock_campaign_tiers()).unwrap();
+            set_tiers(deps.as_mut().storage, mock_campaign_tiers());
 
             let mut mock_config = mock_campaign_config(valid_denom.clone());
             mock_config.start_time = test.start_time;
@@ -1046,14 +1070,14 @@ mod test {
 
                 // Check tier orders
                 for order in &test.orders {
-                    let stored_order = TIER_ORDERS
+                    let stored_order_info = TIER_ORDERS
                         .load(
                             deps.as_ref().storage,
                             (Addr::unchecked(buyer), order.level.into()),
                         )
                         .unwrap();
                     assert_eq!(
-                        stored_order,
+                        stored_order_info.ordered,
                         order.amount.u128(),
                         "Test case: {}",
                         test.name
@@ -1306,6 +1330,206 @@ mod test {
                     "Test case: {}",
                     test.name
                 );
+            }
+        }
+    }
+
+    struct ClaimTestCase {
+        name: String,
+        stage: CampaignStage,
+        orders: Vec<TierOrder>,
+        denom: Asset,
+        expected_res: Result<Response, ContractError>,
+    }
+
+    #[test]
+    fn test_execute_claim() {
+        let orderer = Addr::unchecked("orderer");
+
+        let test_cases = vec![
+            ClaimTestCase {
+                name: "Claim when campaign is successful ".to_string(),
+                stage: CampaignStage::SUCCESS,
+                orders: vec![
+                    TierOrder {
+                        is_presale: true,
+                        amount: Uint128::one(),
+                        level: Uint64::one(),
+                        orderer: orderer.clone(),
+                    },
+                    TierOrder {
+                        is_presale: false,
+                        amount: Uint128::one(),
+                        level: Uint64::one(),
+                        orderer: orderer.clone(),
+                    },
+                ],
+                denom: Asset::NativeToken(MOCK_NATIVE_DENOM.to_string()),
+                expected_res: Ok(Response::new()
+                    .add_attribute("action", "claim")
+                    .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                        contract_addr: "tier_contract".to_string(),
+                        msg: to_json_binary(&Cw721ExecuteMsg::Mint {
+                            token_id: "0".to_string(),
+                            owner: orderer.to_string(),
+                            extension: TokenExtension {
+                                publisher: MOCK_ADO_PUBLISHER.to_string(),
+                            },
+                            token_uri: None,
+                        })
+                        .unwrap(),
+                        funds: vec![],
+                    }))
+                    .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                        contract_addr: "tier_contract".to_string(),
+                        msg: to_json_binary(&Cw721ExecuteMsg::Mint {
+                            token_id: "1".to_string(),
+                            owner: orderer.to_string(),
+                            extension: TokenExtension {
+                                publisher: MOCK_ADO_PUBLISHER.to_string(),
+                            },
+                            token_uri: None,
+                        })
+                        .unwrap(),
+                        funds: vec![],
+                    }))
+                    .add_submessage(SubMsg::reply_on_error(
+                        CosmosMsg::Wasm(WasmMsg::Execute {
+                            contract_addr: "economics_contract".to_string(),
+                            msg: to_json_binary(&EconomicsExecuteMsg::PayFee {
+                                payee: orderer.clone(),
+                                action: "Claim".to_string(),
+                            })
+                            .unwrap(),
+                            funds: vec![],
+                        }),
+                        ReplyId::PayFee.repr(),
+                    ))),
+            },
+            ClaimTestCase {
+                name: "Claim when native token accepting campaign failed ".to_string(),
+                stage: CampaignStage::FAILED,
+                orders: vec![
+                    TierOrder {
+                        is_presale: true,
+                        amount: Uint128::one(),
+                        level: Uint64::one(),
+                        orderer: orderer.clone(),
+                    },
+                    TierOrder {
+                        is_presale: false,
+                        amount: Uint128::one(),
+                        level: Uint64::one(),
+                        orderer: orderer.clone(),
+                    },
+                ],
+                denom: Asset::NativeToken(MOCK_NATIVE_DENOM.to_string()),
+                expected_res: Ok(Response::new()
+                    .add_attribute("action", "claim")
+                    .add_message(BankMsg::Send {
+                        to_address: orderer.to_string(),
+                        amount: coins(10, MOCK_NATIVE_DENOM), // only non presale order refunded
+                    })
+                    .add_submessage(SubMsg::reply_on_error(
+                        CosmosMsg::Wasm(WasmMsg::Execute {
+                            contract_addr: "economics_contract".to_string(),
+                            msg: to_json_binary(&EconomicsExecuteMsg::PayFee {
+                                payee: orderer.clone(),
+                                action: "Claim".to_string(),
+                            })
+                            .unwrap(),
+                            funds: vec![],
+                        }),
+                        ReplyId::PayFee.repr(),
+                    ))),
+            },
+            ClaimTestCase {
+                name: "Claim when cw20 accepting campaign failed ".to_string(),
+                stage: CampaignStage::FAILED,
+                orders: vec![
+                    TierOrder {
+                        is_presale: true,
+                        amount: Uint128::one(),
+                        level: Uint64::one(),
+                        orderer: orderer.clone(),
+                    },
+                    TierOrder {
+                        is_presale: false,
+                        amount: Uint128::one(),
+                        level: Uint64::one(),
+                        orderer: orderer.clone(),
+                    },
+                ],
+                denom: Asset::Cw20Token(AndrAddr::from_string(MOCK_CW20_CONTRACT.to_string())),
+                expected_res: Ok(Response::new()
+                    .add_attribute("action", "claim")
+                    .add_message(
+                        wasm_execute(
+                            MOCK_CW20_CONTRACT.to_string(),
+                            &Cw20ExecuteMsg::Transfer {
+                                recipient: orderer.to_string(),
+                                amount: Uint128::new(10u128),
+                            },
+                            vec![],
+                        )
+                        .unwrap(),
+                    )
+                    .add_submessage(SubMsg::reply_on_error(
+                        CosmosMsg::Wasm(WasmMsg::Execute {
+                            contract_addr: "economics_contract".to_string(),
+                            msg: to_json_binary(&EconomicsExecuteMsg::PayFee {
+                                payee: orderer.clone(),
+                                action: "Claim".to_string(),
+                            })
+                            .unwrap(),
+                            funds: vec![],
+                        }),
+                        ReplyId::PayFee.repr(),
+                    ))),
+            },
+            ClaimTestCase {
+                name: "Claim without purchasing in successful campaign".to_string(),
+                stage: CampaignStage::SUCCESS,
+                orders: vec![],
+                denom: Asset::NativeToken(MOCK_NATIVE_DENOM.to_string()),
+                expected_res: Err(ContractError::NoPurchases {}),
+            },
+            ClaimTestCase {
+                name: "Claim without purchasing in failed campaign".to_string(),
+                stage: CampaignStage::FAILED,
+                orders: vec![],
+                denom: Asset::NativeToken(MOCK_NATIVE_DENOM.to_string()),
+                expected_res: Err(ContractError::NoPurchases {}),
+            },
+            ClaimTestCase {
+                name: "Claim on invalid stage".to_string(),
+                stage: CampaignStage::READY,
+                orders: vec![],
+                denom: Asset::NativeToken(MOCK_NATIVE_DENOM.to_string()),
+                expected_res: Err(ContractError::InvalidCampaignOperation {
+                    operation: "Claim".to_string(),
+                    stage: CampaignStage::READY.to_string(),
+                }),
+            },
+        ];
+        for test in test_cases {
+            let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
+            let env = mock_env();
+            let mock_config = mock_campaign_config(test.denom.clone());
+            set_campaign_config(deps.as_mut().storage, &mock_config);
+            set_current_stage(deps.as_mut().storage, test.stage).unwrap();
+            set_tiers(deps.as_mut().storage, mock_campaign_tiers());
+            set_tier_orders(deps.as_mut().storage, test.orders).unwrap();
+            let msg = ExecuteMsg::Claim {};
+
+            let info = mock_info(orderer.as_ref(), &[]);
+
+            let res = execute(deps.as_mut(), env.clone(), info, msg);
+            assert_eq!(res, test.expected_res, "Test case: {}", test.name);
+            if res.is_ok() {
+                // processed orders should be cleared
+                let orders = get_user_orders(deps.as_ref().storage, orderer.clone()).unwrap();
+                assert!(orders.is_empty(), "Test case: {}", test.name);
             }
         }
     }

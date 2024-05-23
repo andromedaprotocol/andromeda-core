@@ -26,7 +26,7 @@ pub fn mock_campaign_config(denom: Asset) -> CampaignConfig {
         banner: "http://<campaign_banner>".to_string(),
         url: "http://<campaign_url>".to_string(),
         denom,
-        tier_address: AndrAddr::from_string(MOCK_TIER_CONTRACT.to_owned()),
+        token_address: AndrAddr::from_string(MOCK_TIER_CONTRACT.to_owned()),
         withdrawal_recipient: Recipient::from_string(MOCK_WITHDRAWAL_ADDRESS.to_owned()),
         soft_cap: None,
         hard_cap: None,
@@ -42,7 +42,7 @@ pub fn mock_campaign_tiers() -> Vec<Tier> {
             label: "Basic Tier".to_string(),
             limit: None,
             price: Uint128::new(10u128),
-            meta_data: TierMetaData {
+            metadata: TierMetaData {
                 extension: TokenExtension {
                     publisher: MOCK_ADO_PUBLISHER.to_string(),
                 },
@@ -55,7 +55,7 @@ pub fn mock_campaign_tiers() -> Vec<Tier> {
             label: "Tier 1".to_string(),
             limit: Some(Uint128::new(MOCK_DEFAULT_LIMIT)),
             price: Uint128::new(10u128),
-            meta_data: TierMetaData {
+            metadata: TierMetaData {
                 extension: TokenExtension {
                     publisher: MOCK_ADO_PUBLISHER.to_string(),
                 },
@@ -72,7 +72,7 @@ pub fn mock_zero_price_tier(level: Uint64) -> Tier {
         label: "Invalid Tier".to_string(),
         limit: None,
         price: Uint128::zero(),
-        meta_data: TierMetaData {
+        metadata: TierMetaData {
             extension: TokenExtension {
                 publisher: MOCK_ADO_PUBLISHER.to_string(),
             },
