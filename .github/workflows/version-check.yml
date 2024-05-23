@@ -32,11 +32,14 @@ jobs:
       - name: Fetch all branches
         run: git fetch --all
 
+      - name: Get base branch
+        id: vars
+        run: echo "::set-output name=BASE_BRANCH::${{ github.event.pull_request.base.ref }}"
+
       - name: Get changed files
         id: changes
         run: |
-          BASE_BRANCH=${{ github.base_ref }}
-          git diff --name-only origin/$BASE_BRANCH > changes.txt
+          git diff --name-only origin/${{ steps.vars.outputs.BASE_BRANCH }} > changes.txt
           cat changes.txt
 
       - name: Check for version bumps
@@ -50,15 +53,19 @@ jobs:
 
           # Loop through all crates and check for changes in the crate directory
           for crate in $crates; do
+            echo "Checking crate: $crate"
             # Check if any file within the crate directory has changed
             if grep -q "^$crate/" changes.txt; then
+              echo "Changes detected in $crate"
               # Check if the version has changed in the crate's Cargo.toml
-              if git diff origin/$BASE_BRANCH -- "$crate/Cargo.toml" | grep -E '^\+version\s*=\s*\"'; then
+              if git diff origin/${{ steps.vars.outputs.BASE_BRANCH }} -- "$crate/Cargo.toml" | grep -E '^\+version\s*=\s*\"'; then
                 echo "Version bumped for $crate"
               else
                 echo "::error::Version not bumped for $crate"
                 version_bumped="false"
               fi
+            else
+              echo "No changes detected in $crate"
             fi
           done
 
