@@ -49,20 +49,23 @@ jobs:
         run: |
           echo "Identifying crates in the workspace"
           crates=$(cargo workspaces list --json | jq -r '.[] | .name')
-          echo "Found crates:"
-          echo "$crates"
           echo "::set-output name=crates::$crates"
+
+      - name: Split crate names into an array
+        id: split-crates
+        run: echo "::set-output name=crates::$(echo \"${{ steps.identify-crates.outputs.crates }}\" | tr '\n' ',')"
 
       - name: Check for version bumps
         id: version-bump
         run: |
           echo "Getting the list of crates..."
           # Get the list of crates
-          IFS=$'\n' read -rd '' -a crates <<< "${{ steps.identify-crates.outputs.crates }}"
+          IFS=',' read -ra crates <<< "${{ steps.split-crates.outputs.crates }}"
 
           # Initialize a flag for detecting version bumps
           version_bumped="true"
-          echo "Checking for version bumps in all crates..."
+
+          echo "Checking each crate..."
           # Loop through all crates and check for changes in the crate directory
           for crate in "${crates[@]}"; do
             echo "Checking crate: $crate"
