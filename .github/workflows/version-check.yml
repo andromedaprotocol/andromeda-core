@@ -56,7 +56,6 @@ jobs:
       - name: Check for version bumps
         id: version-bump
         run: |
-          set -e
           # Get the list of crates
           IFS=$'\n' read -rd '' -a crates <<< "${{ steps.identify-crates.outputs.crates }}"
 
