@@ -56,6 +56,7 @@ jobs:
       - name: Check for version bumps
         id: version-bump
         run: |
+          echo "Getting the list of crates..."
           # Get the list of crates
           IFS=$'\n' read -rd '' -a crates <<< "${{ steps.identify-crates.outputs.crates }}"
 
@@ -65,10 +66,8 @@ jobs:
           # Loop through all crates and check for changes in the crate directory
           for crate in "${crates[@]}"; do
             echo "Checking crate: $crate"
-            # Remove leading ./ from crate path if present
-            crate=${crate#./}
             # Normalize the crate path for use in the grep command
-            crate_path="${crate//\//\\/}"
+            crate_path=$(echo "$crate" | sed 's/\//\\\//g')
             # Check if any file within the crate directory has changed
             echo "Searching for changes in crate path: $crate_path"
             if grep -qE "^$crate_path/" changes.txt; then
