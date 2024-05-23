@@ -62,7 +62,7 @@ jobs:
 
           # Initialize a flag for detecting version bumps
           version_bumped="true"
-
+          echo "Checking for version bumps in all crates..."
           # Loop through all crates and check for changes in the crate directory
           for crate in "${crates[@]}"; do
             echo "Checking crate: $crate"
