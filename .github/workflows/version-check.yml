@@ -39,7 +39,9 @@ jobs:
       - name: Get changed files
         id: changes
         run: |
+          echo "Fetching changed files..."
           git diff --name-only origin/${{ steps.vars.outputs.BASE_BRANCH }} > changes.txt
+          echo "Changed files:"
           cat changes.txt
 
       - name: Identify crates
@@ -47,12 +49,14 @@ jobs:
         run: |
           echo "Identifying crates in the workspace"
           crates=$(cargo workspaces list --json | jq -r '.[] | .name')
-          echo "Found crates: $crates"
+          echo "Found crates:"
+          echo "$crates"
           echo "::set-output name=crates::$crates"
 
       - name: Check for version bumps
         id: version-bump
         run: |
+          set -e
           # Get the list of crates
           IFS=$'\n' read -rd '' -a crates <<< "${{ steps.identify-crates.outputs.crates }}"
 
@@ -67,6 +71,7 @@ jobs:
             # Normalize the crate path for use in the grep command
             crate_path="${crate//\//\\/}"
             # Check if any file within the crate directory has changed
+            echo "Searching for changes in crate path: $crate_path"
             if grep -qE "^$crate_path/" changes.txt; then
               echo "Changes detected in $crate"
               # Check if the version has changed in the crate's Cargo.toml
@@ -83,7 +88,10 @@ jobs:
 
           # If any crate had changes and the version was not bumped, fail the job
           if [ "$version_bumped" = "false" ]; then
+            echo "Some crates did not have their versions bumped."
             exit 1
+          else
+            echo "All crates with changes have their versions bumped."
           fi
 
       - name: Success message
