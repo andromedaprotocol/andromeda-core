@@ -23,6 +23,9 @@ jobs:
         with:
           toolchain: stable
 
+      - name: Install cargo-workspaces
+        run: cargo install cargo-workspaces
+
       - name: Install jq
         run: sudo apt-get install -y jq
 
@@ -43,7 +46,7 @@ jobs:
         id: identify-crates
         run: |
           echo "Identifying crates in the workspace"
-          crates=$(find . -name 'Cargo.toml' -exec dirname {} \; | grep -v '^.$')
+          crates=$(cargo workspaces list --json | jq -r '.[] | .name')
           echo "Found crates: $crates"
           echo "::set-output name=crates::$crates"
 
@@ -59,7 +62,7 @@ jobs:
           # Loop through all crates and check for changes in the crate directory
           for crate in "${crates[@]}"; do
             echo "Checking crate: $crate"
-            # Remove leading ./ from crate path
+            # Remove leading ./ from crate path if present
             crate=${crate#./}
             # Normalize the crate path for use in the grep command
             crate_path="${crate//\//\\/}"
