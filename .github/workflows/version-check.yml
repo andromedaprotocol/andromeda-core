@@ -1,0 +1,67 @@
+name: Version Bump
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, labeled, unlabeled]
+    branches:
+      - development
+      - main
+    paths:
+      - "**/*"
+
+jobs:
+  check-version-bump:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Install cargo-workspaces
+        run: cargo install cargo-workspaces
+
+      - name: Install jq
+        run: sudo apt-get install -y jq
+
+      - name: Get changed files
+        id: changes
+        run: |
+          git fetch origin ${{ github.base_ref }}
+          git diff --name-only origin/${{ github.base_ref }}... > changes.txt
+          cat changes.txt
+
+      - name: Check for version bumps
+        id: version-bump
+        run: |
+          # Get a list of all crates in the workspace
+          crates=$(cargo workspaces list --json | jq -r '.[] | .name')
+
+          # Initialize a flag for detecting version bumps
+          version_bumped="true"
+
+          # Loop through all crates and check for changes in the crate directory
+          for crate in $crates; do
+            # Check if any file within the crate directory has changed
+            if grep -q "^$crate/" changes.txt; then
+              # Check if the version has changed in the crate's Cargo.toml
+              if git diff --unified=0 origin/${{ github.base_ref }}... -- "$crate/Cargo.toml" | grep -E '^\+version\s*=\s*\"'; then
+                echo "Version bumped for $crate"
+              else
+                echo "::error::Version not bumped for $crate"
+                version_bumped="false"
+              fi
+            fi
+          done
+
+          # If any crate had changes and the version was not bumped, fail the job
+          if [ "$version_bumped" = "false" ]; then
+            exit 1
+          fi
+
+      - name: Success message
+        if: success()
+        run: echo "All crates with changes have their versions bumped!"
