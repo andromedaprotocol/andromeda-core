@@ -58,25 +58,23 @@ jobs:
       - name: Check for version bumps
         id: version-bump
         run: |
-          echo "Getting the list of crates..."
           # Get the list of crates
           IFS=',' read -ra crates <<< "${{ steps.split-crates.outputs.crates }}"
 
           # Initialize a flag for detecting version bumps
           version_bumped="true"
 
-          echo "Checking each crate..."
-          # Loop through all crates and check for changes in the crate directory
+          # Loop through all crates
           for crate in "${crates[@]}"; do
             echo "Checking crate: $crate"
-            # Normalize the crate path for use in the grep command
-            crate_path=$(echo "$crate" | sed 's/\//\\\//g')
+            # Search for the Crate.toml file in all possible paths within the crate
+            crate_path=$(find . -type f -name Cargo.toml | grep "/$crate/Cargo.toml" | head -n 1)
             # Check if any file within the crate directory has changed
             echo "Searching for changes in crate path: $crate_path"
-            if grep -qE "$crate_path" changes.txt; then
+            if grep -qE "^$crate_path/" changes.txt; then
               echo "Changes detected in $crate"
               # Check if the version has changed in the crate's Cargo.toml
-              if git diff origin/${{ steps.vars.outputs.BASE_BRANCH }} -- "$crate/Cargo.toml" | grep -E '^\+version\s*=\s*\"'; then
+              if git diff origin/${{ steps.vars.outputs.BASE_BRANCH }} -- "$crate_path" | grep -E '^\+version\s*=\s*\"'; then
                 echo "Version bumped for $crate"
               else
                 echo "::error::Version not bumped for $crate"
