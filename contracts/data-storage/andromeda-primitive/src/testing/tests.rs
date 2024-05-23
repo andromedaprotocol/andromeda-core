@@ -2,9 +2,9 @@ use crate::contract::query;
 use andromeda_data_storage::primitive::{
     GetValueResponse, Primitive, PrimitiveRestriction, QueryMsg,
 };
-use cosmwasm_std::{from_json, testing::mock_env};
+use cosmwasm_std::{coin, from_json, testing::mock_env, Binary};
 
-use andromeda_std::amp::AndrAddr;
+use andromeda_std::{amp::AndrAddr, error::ContractError};
 
 use super::mock::{delete_value, proper_initialization, query_value, set_value};
 
@@ -79,6 +79,47 @@ fn test_set_and_update_value_without_key() {
         },
         query_res
     );
+}
+
+#[test]
+fn test_set_value_invalid() {
+    let (mut deps, info) = proper_initialization(PrimitiveRestriction::Private);
+    let key = String::from("key");
+    // Empty String should error
+    let value = Primitive::String("".to_string());
+    let err = set_value(
+        deps.as_mut(),
+        &Some(key.clone()),
+        &value,
+        info.sender.as_ref(),
+    )
+    .unwrap_err();
+
+    assert_eq!(err, ContractError::EmptyString {});
+
+    // Empty denom should error
+    let value = Primitive::Coin(coin(1_u128, "".to_string()));
+    let err = set_value(
+        deps.as_mut(),
+        &Some(key.clone()),
+        &value,
+        info.sender.as_ref(),
+    )
+    .unwrap_err();
+
+    assert_eq!(err, ContractError::InvalidDenom {});
+
+    // Empty Binary should error
+    let value = Primitive::Binary(Binary::default());
+    let err = set_value(
+        deps.as_mut(),
+        &Some(key.clone()),
+        &value,
+        info.sender.as_ref(),
+    )
+    .unwrap_err();
+
+    assert_eq!(err, ContractError::EmptyString {});
 }
 
 #[test]
