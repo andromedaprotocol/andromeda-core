@@ -1,8 +1,7 @@
-use std::fmt;
-
-use andromeda_std::{amp::AndrAddr, andr_exec, andr_instantiate, andr_query};
+use andromeda_std::{amp::AndrAddr, andr_exec, andr_instantiate, andr_query, error::ContractError};
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Addr, Binary, Coin, Decimal, StdError, Uint128};
+use cosmwasm_std::{ensure, Addr, Api, Binary, Coin, Decimal, StdError, Uint128};
+use std::fmt;
 
 #[andr_instantiate]
 #[cw_serde]
@@ -50,6 +49,34 @@ pub enum Primitive {
     String(String),
     Bool(bool),
     Binary(Binary),
+}
+
+impl Primitive {
+    pub fn validate(&self, api: &dyn Api) -> Result<(), ContractError> {
+        match self {
+            Primitive::Uint128(number) => {
+                ensure!(
+                    !number.to_string().is_empty(),
+                    ContractError::EmptyString {}
+                );
+            }
+            Primitive::Decimal(_) => {}
+            Primitive::Coin(coin) => {
+                ensure!(!coin.denom.is_empty(), ContractError::InvalidDenom {});
+            }
+            Primitive::Addr(address) => {
+                api.addr_validate(address.as_str())?;
+            }
+            Primitive::String(string) => {
+                ensure!(!string.is_empty(), ContractError::EmptyString {});
+            }
+            Primitive::Bool(_) => {}
+            Primitive::Binary(binary) => {
+                ensure!(!binary.is_empty(), ContractError::EmptyString {});
+            }
+        }
+        Ok(())
+    }
 }
 
 impl From<Primitive> for String {
@@ -196,7 +223,14 @@ pub struct GetTypeResponse {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use andromeda_std::testing::mock_querier::mock_dependencies_custom;
     use cosmwasm_std::to_json_binary;
+
+    struct TestValidate {
+        name: &'static str,
+        primitive: Primitive,
+        expected_error: Option<ContractError>,
+    }
 
     #[test]
     fn test_from_string() {
@@ -237,6 +271,65 @@ mod tests {
 
         let decimal_primitive = Primitive::Decimal(Decimal::new(Uint128::one()));
         assert_eq!("Decimal".to_string(), String::from(decimal_primitive));
+    }
+
+    #[test]
+    fn test_validate() {
+        let test_cases = vec![
+            TestValidate {
+                name: "Empty string",
+                primitive: Primitive::String("".to_string()),
+                expected_error: Some(ContractError::EmptyString {}),
+            },
+            TestValidate {
+                name: "Valid string",
+                primitive: Primitive::String("string".to_string()),
+                expected_error: None,
+            },
+            TestValidate {
+                name: "Empty Binary",
+                primitive: Primitive::Binary(Binary::default()),
+                expected_error: Some(ContractError::EmptyString {}),
+            },
+            TestValidate {
+                name: "Valid Binary",
+                primitive: Primitive::Binary(to_json_binary(&"binary".to_string()).unwrap()),
+                expected_error: None,
+            },
+            TestValidate {
+                name: "Invalid Coin Denom",
+                primitive: Primitive::Coin(Coin::new(0_u128, "".to_string())),
+                expected_error: Some(ContractError::InvalidDenom {}),
+            },
+            TestValidate {
+                name: "Valid Coin Denom",
+                primitive: Primitive::Coin(Coin::new(0_u128, "valid".to_string())),
+                expected_error: None,
+            },
+            TestValidate {
+                name: "Invalid Address",
+                primitive: Primitive::Addr(Addr::unchecked("wa".to_string())),
+                expected_error: Some(ContractError::Std(StdError::GenericErr { msg: "Invalid input: human address too short for this mock implementation (must be >= 3).".to_string() })),
+            },
+            TestValidate {
+                name: "Valid Address",
+                primitive: Primitive::Addr(Addr::unchecked("andr1".to_string())),
+                expected_error: None,
+            },
+        ];
+
+        for test in test_cases {
+            let deps = mock_dependencies_custom(&[]);
+
+            let res = test.primitive.validate(&deps.api);
+
+            if let Some(err) = test.expected_error {
+                assert_eq!(res.unwrap_err(), err, "{}", test.name);
+                continue;
+            }
+
+            assert!(res.is_ok());
+        }
     }
 
     #[test]

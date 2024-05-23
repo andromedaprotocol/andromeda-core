@@ -2,9 +2,11 @@ use crate::contract::query;
 use andromeda_data_storage::primitive::{
     GetValueResponse, Primitive, PrimitiveRestriction, QueryMsg,
 };
-use cosmwasm_std::{from_json, testing::mock_env};
+use cosmwasm_std::{coin, from_json, testing::mock_env, Binary};
 
-use andromeda_std::amp::AndrAddr;
+use andromeda_std::{
+    amp::AndrAddr, error::ContractError, testing::mock_querier::mock_dependencies_custom,
+};
 
 use super::mock::{delete_value, proper_initialization, query_value, set_value};
 
@@ -79,6 +81,46 @@ fn test_set_and_update_value_without_key() {
         },
         query_res
     );
+}
+
+struct TestHandlePrimitive {
+    name: &'static str,
+    primitive: Primitive,
+    expected_error: Option<ContractError>,
+}
+
+#[test]
+fn test_set_value_invalid() {
+    let test_cases = vec![
+        TestHandlePrimitive {
+            name: "Empty String",
+            primitive: Primitive::String("".to_string()),
+            expected_error: Some(ContractError::EmptyString {}),
+        },
+        TestHandlePrimitive {
+            name: "Empty coin denom",
+            primitive: Primitive::Coin(coin(1_u128, "".to_string())),
+            expected_error: Some(ContractError::InvalidDenom {}),
+        },
+        TestHandlePrimitive {
+            name: "Empty Binary",
+            primitive: Primitive::Binary(Binary::default()),
+            expected_error: Some(ContractError::EmptyString {}),
+        },
+    ];
+
+    for test in test_cases {
+        let deps = mock_dependencies_custom(&[]);
+
+        let res = test.primitive.validate(&deps.api);
+
+        if let Some(err) = test.expected_error {
+            assert_eq!(res.unwrap_err(), err, "{}", test.name);
+            continue;
+        }
+
+        assert!(res.is_ok())
+    }
 }
 
 #[test]
