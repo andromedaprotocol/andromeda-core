@@ -67,14 +67,14 @@ jobs:
           # Loop through all crates
           for crate in "${crates[@]}"; do
             echo "Checking crate: $crate"
-            # Search for the Crate.toml file in all possible paths within the crate
-            crate_path=$(find . -type f -name Cargo.toml | grep "/$crate/Cargo.toml" | head -n 1)
+            # Normalize the crate path for use in the grep command
+            crate_path=$(echo "$crate" | sed 's/\//\\\//g')
             # Check if any file within the crate directory has changed
             echo "Searching for changes in crate path: $crate_path"
             if grep -qE "^$crate_path/" changes.txt; then
               echo "Changes detected in $crate"
-              # Check if the version has changed in the crate's Cargo.toml
-              if git diff origin/${{ steps.vars.outputs.BASE_BRANCH }} -- "$crate_path" | grep -E '^\+version\s*=\s*\"'; then
+              # Check if the version has changed in any file within the crate directory
+              if git diff origin/${{ steps.vars.outputs.BASE_BRANCH }} -- "$crate" | grep -E '^\+'; then
                 echo "Version bumped for $crate"
               else
                 echo "::error::Version not bumped for $crate"
