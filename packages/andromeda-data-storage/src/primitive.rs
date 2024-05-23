@@ -1,3 +1,5 @@
+use std::fmt;
+
 use andromeda_std::{amp::AndrAddr, andr_exec, andr_instantiate, andr_query};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Addr, Binary, Coin, Decimal, StdError, Uint128};
@@ -31,6 +33,8 @@ pub enum ExecuteMsg {
 pub enum QueryMsg {
     #[returns(GetValueResponse)]
     GetValue { key: Option<String> },
+    #[returns(GetTypeResponse)]
+    GetType { key: Option<String> },
     #[returns(Vec<String>)]
     AllKeys {},
     #[returns(Vec<String>)]
@@ -46,6 +50,27 @@ pub enum Primitive {
     String(String),
     Bool(bool),
     Binary(Binary),
+}
+
+impl From<Primitive> for String {
+    fn from(primitive: Primitive) -> Self {
+        match primitive {
+            Primitive::Uint128(_) => "Uint128".to_string(),
+            Primitive::Decimal(_) => "Decimal".to_string(),
+            Primitive::Coin(_) => "Coin".to_string(),
+            Primitive::Addr(_) => "Addr".to_string(),
+            Primitive::String(_) => "String".to_string(),
+            Primitive::Bool(_) => "Bool".to_string(),
+            Primitive::Binary(_) => "Binary".to_string(),
+        }
+    }
+}
+
+impl fmt::Display for Primitive {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let variant_name: String = self.clone().into();
+        write!(f, "{}", variant_name)
+    }
 }
 
 #[cw_serde]
@@ -163,10 +188,56 @@ pub struct GetValueResponse {
     pub value: Primitive,
 }
 
+#[cw_serde]
+pub struct GetTypeResponse {
+    pub value_type: String,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use cosmwasm_std::to_json_binary;
+
+    #[test]
+    fn test_from_string() {
+        let cases = vec![
+            (
+                Primitive::Uint128(Uint128::from(5_u128)),
+                "Uint128".to_string(),
+            ),
+            (
+                Primitive::Decimal(Decimal::new(Uint128::one())),
+                "Decimal".to_string(),
+            ),
+            (
+                Primitive::Coin(Coin {
+                    amount: Uint128::new(100),
+                    denom: "uatom".to_string(),
+                }),
+                "Coin".to_string(),
+            ),
+            (
+                Primitive::Addr(Addr::unchecked("cosmos1...v937")),
+                "Addr".to_string(),
+            ),
+            (
+                Primitive::String("Some string".to_string()),
+                "String".to_string(),
+            ),
+            (Primitive::Bool(true), "Bool".to_string()),
+            (
+                Primitive::Binary(to_json_binary(&"data").unwrap()),
+                "Binary".to_string(),
+            ),
+        ];
+
+        for (value, expected_str) in cases.iter() {
+            assert_eq!(String::from(value.to_owned()), expected_str.to_owned());
+        }
+
+        let decimal_primitive = Primitive::Decimal(Decimal::new(Uint128::one()));
+        assert_eq!("Decimal".to_string(), String::from(decimal_primitive));
+    }
 
     #[test]
     fn test_parse_error() {
