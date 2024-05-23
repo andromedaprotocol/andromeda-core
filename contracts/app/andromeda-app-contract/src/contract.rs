@@ -31,7 +31,6 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     APP_NAME.save(deps.storage, &msg.name)?;
-    deps.api.debug("temporary, will remove");
     ensure!(
         msg.app_components.len() <= 50,
         ContractError::TooManyAppComponents {}
