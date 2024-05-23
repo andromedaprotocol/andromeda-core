@@ -73,7 +73,7 @@ jobs:
             crate_path=$(echo "$crate" | sed 's/\//\\\//g')
             # Check if any file within the crate directory has changed
             echo "Searching for changes in crate path: $crate_path"
-            if grep -qE "^$crate_path/" changes.txt; then
+            if grep -qE "$crate_path" changes.txt; then
               echo "Changes detected in $crate"
               # Check if the version has changed in the crate's Cargo.toml
               if git diff origin/${{ steps.vars.outputs.BASE_BRANCH }} -- "$crate/Cargo.toml" | grep -E '^\+version\s*=\s*\"'; then
