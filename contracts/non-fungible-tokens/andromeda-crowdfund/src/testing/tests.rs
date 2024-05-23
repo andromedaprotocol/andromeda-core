@@ -92,14 +92,17 @@ mod test {
         Cw20HookMsg, PresaleTierOrder, SimpleTierOrder, TierOrder,
     };
     use andromeda_std::{
+        ado_base::MigrateMsg,
         amp::AndrAddr,
         common::{denom::Asset, encode_binary},
         testing::mock_querier::MOCK_CW20_CONTRACT,
     };
     use cosmwasm_std::{coin, coins, wasm_execute, BankMsg, Coin};
+    use cw2::set_contract_version;
     use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 
     use crate::{
+        contract::migrate,
         state::{get_current_cap, set_current_stage, set_tier_orders},
         testing::mock_querier::{MOCK_DEFAULT_OWNER, MOCK_WITHDRAWAL_ADDRESS},
     };
@@ -1532,6 +1535,19 @@ mod test {
                 assert!(orders.is_empty(), "Test case: {}", test.name);
             }
         }
+    }
+
+    #[test]
+    fn test_invalid_migrate() {
+        let mut deps = mock_dependencies_custom(&[]);
+        set_contract_version(&mut deps.storage, "crowdfund", "1.0.0").unwrap();
+        let res = migrate(deps.as_mut(), mock_env(), MigrateMsg {}).unwrap_err();
+        assert_eq!(
+            res,
+            ContractError::InvalidMigration {
+                prev: "1.0.0".to_string()
+            }
+        )
     }
 }
 

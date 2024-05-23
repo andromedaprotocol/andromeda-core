@@ -360,7 +360,7 @@ mod tests {
                 None,
                 None,
                 test.include_presale,
-                None
+                None,
             );
             assert_eq!(res, test.expected_res, "Test case: {}", test.name);
         }

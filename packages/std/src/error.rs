@@ -427,6 +427,9 @@ pub enum ContractError {
     #[error("Logo binary data exceeds 5KB limit")]
     LogoTooBig {},
 
+    #[error("Invalid migration. Unable to migrate from version {prev}")]
+    InvalidMigration { prev: String },
+
     #[error("Invalid xml preamble for SVG")]
     InvalidXmlPreamble {},
 
