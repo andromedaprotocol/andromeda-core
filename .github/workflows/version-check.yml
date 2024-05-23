@@ -1,4 +1,4 @@
-name: Version Bump
+name: Check Version Bump
 
 on:
   pull_request:
@@ -15,6 +15,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
 
       - name: Install Rust
         uses: actions-rs/toolchain@v1
@@ -27,11 +29,14 @@ jobs:
       - name: Install jq
         run: sudo apt-get install -y jq
 
+      - name: Fetch all branches
+        run: git fetch --all
+
       - name: Get changed files
         id: changes
         run: |
-          git fetch origin ${{ github.base_ref }}
-          git diff --name-only origin/${{ github.base_ref }}... > changes.txt
+          BASE_BRANCH=${{ github.base_ref }}
+          git diff --name-only origin/$BASE_BRANCH > changes.txt
           cat changes.txt
 
       - name: Check for version bumps
@@ -48,7 +53,7 @@ jobs:
             # Check if any file within the crate directory has changed
             if grep -q "^$crate/" changes.txt; then
               # Check if the version has changed in the crate's Cargo.toml
-              if git diff --unified=0 origin/${{ github.base_ref }}... -- "$crate/Cargo.toml" | grep -E '^\+version\s*=\s*\"'; then
+              if git diff origin/$BASE_BRANCH -- "$crate/Cargo.toml" | grep -E '^\+version\s*=\s*\"'; then
                 echo "Version bumped for $crate"
               else
                 echo "::error::Version not bumped for $crate"
