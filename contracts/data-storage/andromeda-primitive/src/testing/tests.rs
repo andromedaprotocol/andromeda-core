@@ -4,7 +4,9 @@ use andromeda_data_storage::primitive::{
 };
 use cosmwasm_std::{coin, from_json, testing::mock_env, Binary};
 
-use andromeda_std::{amp::AndrAddr, error::ContractError};
+use andromeda_std::{
+    amp::AndrAddr, error::ContractError, testing::mock_querier::mock_dependencies_custom,
+};
 
 use super::mock::{delete_value, proper_initialization, query_value, set_value};
 
@@ -81,45 +83,44 @@ fn test_set_and_update_value_without_key() {
     );
 }
 
+struct TestHandlePrimitive {
+    name: &'static str,
+    primitive: Primitive,
+    expected_error: Option<ContractError>,
+}
+
 #[test]
 fn test_set_value_invalid() {
-    let (mut deps, info) = proper_initialization(PrimitiveRestriction::Private);
-    let key = String::from("key");
-    // Empty String should error
-    let value = Primitive::String("".to_string());
-    let err = set_value(
-        deps.as_mut(),
-        &Some(key.clone()),
-        &value,
-        info.sender.as_ref(),
-    )
-    .unwrap_err();
+    let test_cases = vec![
+        TestHandlePrimitive {
+            name: "Empty String",
+            primitive: Primitive::String("".to_string()),
+            expected_error: Some(ContractError::EmptyString {}),
+        },
+        TestHandlePrimitive {
+            name: "Empty coin denom",
+            primitive: Primitive::Coin(coin(1_u128, "".to_string())),
+            expected_error: Some(ContractError::InvalidDenom {}),
+        },
+        TestHandlePrimitive {
+            name: "Empty Binary",
+            primitive: Primitive::Binary(Binary::default()),
+            expected_error: Some(ContractError::EmptyString {}),
+        },
+    ];
 
-    assert_eq!(err, ContractError::EmptyString {});
+    for test in test_cases {
+        let deps = mock_dependencies_custom(&[]);
 
-    // Empty denom should error
-    let value = Primitive::Coin(coin(1_u128, "".to_string()));
-    let err = set_value(
-        deps.as_mut(),
-        &Some(key.clone()),
-        &value,
-        info.sender.as_ref(),
-    )
-    .unwrap_err();
+        let res = test.primitive.validate(&deps.api);
 
-    assert_eq!(err, ContractError::InvalidDenom {});
+        if let Some(err) = test.expected_error {
+            assert_eq!(res.unwrap_err(), err, "{}", test.name);
+            continue;
+        }
 
-    // Empty Binary should error
-    let value = Primitive::Binary(Binary::default());
-    let err = set_value(
-        deps.as_mut(),
-        &Some(key.clone()),
-        &value,
-        info.sender.as_ref(),
-    )
-    .unwrap_err();
-
-    assert_eq!(err, ContractError::EmptyString {});
+        assert!(res.is_ok())
+    }
 }
 
 #[test]
