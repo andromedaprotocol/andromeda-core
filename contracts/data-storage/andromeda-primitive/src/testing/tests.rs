@@ -2,7 +2,9 @@ use crate::contract::query;
 use andromeda_data_storage::primitive::{
     GetValueResponse, Primitive, PrimitiveRestriction, QueryMsg,
 };
-use cosmwasm_std::{coin, from_json, testing::mock_env, Binary};
+use cosmwasm_std::{
+    coin, from_json, testing::mock_env, BankMsg, Binary, CosmosMsg, Response, SubMsg,
+};
 
 use andromeda_std::{
     ado_base::rates::{LocalRate, LocalRateType, LocalRateValue, Rate},
@@ -81,7 +83,7 @@ fn test_set_value_with_tax() {
         .unwrap();
 
     // Sent the exact amount required for tax
-    let _res = set_value_with_funds(
+    let res = set_value_with_funds(
         deps.as_mut(),
         &Some(key.clone()),
         &value,
@@ -89,6 +91,18 @@ fn test_set_value_with_tax() {
         coin(20_u128, "uandr".to_string()),
     )
     .unwrap();
+    let expected_response: Response = Response::new()
+        .add_submessage(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+            to_address: tax_recipient.to_string(),
+            amount: vec![coin(20, "uandr")],
+        })))
+        .add_attributes(vec![
+            ("method", "set_value"),
+            ("sender", "creator"),
+            ("key", "key"),
+        ])
+        .add_attribute("value", format!("{value:?}"));
+    assert_eq!(expected_response, res);
 
     // Sent less than amount required for tax
     let err = set_value_with_funds(
@@ -102,7 +116,7 @@ fn test_set_value_with_tax() {
     assert_eq!(err, ContractError::InsufficientFunds {});
 
     // Sent more than required amount for tax
-    let _res = set_value_with_funds(
+    let res = set_value_with_funds(
         deps.as_mut(),
         &Some(key.clone()),
         &value,
@@ -110,6 +124,23 @@ fn test_set_value_with_tax() {
         coin(200_u128, "uandr".to_string()),
     )
     .unwrap();
+    let expected_response: Response = Response::new()
+        .add_submessage(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+            to_address: tax_recipient.to_string(),
+            amount: vec![coin(20, "uandr")],
+        })))
+        // 200 was sent, but the tax is only 20, so we send back the difference
+        .add_submessage(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+            to_address: "creator".to_string(),
+            amount: vec![coin(180, "uandr")],
+        })))
+        .add_attributes(vec![
+            ("method", "set_value"),
+            ("sender", "creator"),
+            ("key", "key"),
+        ])
+        .add_attribute("value", format!("{value:?}"));
+    assert_eq!(expected_response, res);
 }
 
 #[test]

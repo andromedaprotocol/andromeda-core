@@ -1,10 +1,15 @@
 use andromeda_data_storage::primitive::{ExecuteMsg, Primitive, PrimitiveRestriction};
 use andromeda_std::{
     ado_contract::ADOContract,
-    common::{actions::call_action, call_action::get_action_name, context::ExecuteContext, Funds},
+    common::{
+        actions::call_action, call_action::get_action_name, context::ExecuteContext,
+        rates::get_tax_amount, Funds,
+    },
     error::ContractError,
 };
-use cosmwasm_std::{coin, ensure, Coin, Deps, MessageInfo, Response, StdError, SubMsg};
+use cosmwasm_std::{
+    coin, ensure, BankMsg, Coin, CosmosMsg, Deps, MessageInfo, Response, StdError, SubMsg,
+};
 use cw_utils::nonpayable;
 
 use crate::{
@@ -73,17 +78,24 @@ pub fn set_value(
         None => Ok(sender.clone()),
     })?;
 
-    let response = Response::new()
+    let mut response = Response::new()
         .add_attribute("method", "set_value")
         .add_attribute("sender", sender)
         .add_attribute("key", key)
         .add_attribute("value", format!("{value:?}"));
 
     if let Some(tax_response) = tax_response {
-        Ok(response.add_submessages(tax_response.1))
-    } else {
-        Ok(response)
+        response = response.add_submessages(tax_response.1);
+        let refund = tax_response.0.try_get_coin()?;
+        if !refund.amount.is_zero() {
+            return Ok(response.add_message(CosmosMsg::Bank(BankMsg::Send {
+                to_address: ctx.info.sender.into_string(),
+                amount: vec![refund],
+            })));
+        }
     }
+
+    Ok(response)
 }
 
 pub fn delete_value(ctx: ExecuteContext, key: Option<String>) -> Result<Response, ContractError> {
@@ -119,9 +131,15 @@ fn tax_set_value(
 
     if let Some(transfer_response) = transfer_response {
         let remaining_funds = transfer_response.leftover_funds.try_get_coin()?;
+        let tax_amount = get_tax_amount(
+            &transfer_response.msgs,
+            sent_funds.amount,
+            remaining_funds.amount,
+        );
+        let refund = sent_funds.amount.checked_sub(tax_amount)?;
         let after_tax_payment = Coin {
             denom: remaining_funds.denom,
-            amount: remaining_funds.amount,
+            amount: refund,
         };
         Ok(Some((
             Funds::Native(after_tax_payment),
