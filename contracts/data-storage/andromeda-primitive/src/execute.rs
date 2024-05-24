@@ -1,5 +1,6 @@
 use andromeda_data_storage::primitive::{ExecuteMsg, Primitive, PrimitiveRestriction};
 use andromeda_std::{
+    ado_base::rates::{Rate, RatesMessage},
     ado_contract::ADOContract,
     common::{
         actions::call_action, call_action::get_action_name, context::ExecuteContext,
@@ -27,10 +28,22 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
         &ctx.amp_ctx,
         msg.as_ref(),
     )?;
-    match msg {
+
+    match msg.clone() {
         ExecuteMsg::UpdateRestriction { restriction } => update_restriction(ctx, restriction),
         ExecuteMsg::SetValue { key, value } => set_value(ctx, key, value, action),
         ExecuteMsg::DeleteValue { key } => delete_value(ctx, key),
+        ExecuteMsg::Rates(rates_message) => match rates_message {
+            RatesMessage::SetRate { rate, .. } => match rate {
+                Rate::Local(local_rate) => {
+                    // Percent rates aren't applicable in this case, so we enforce Flat rates
+                    ensure!(local_rate.value.is_flat(), ContractError::InvalidRate {});
+                    ADOContract::default().execute(ctx, msg)
+                }
+                Rate::Contract(_) => ADOContract::default().execute(ctx, msg),
+            },
+            RatesMessage::RemoveRate { .. } => ADOContract::default().execute(ctx, msg),
+        },
         _ => ADOContract::default().execute(ctx, msg),
     }
 }

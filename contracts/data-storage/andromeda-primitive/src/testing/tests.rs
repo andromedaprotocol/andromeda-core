@@ -1,13 +1,13 @@
-use crate::contract::query;
+use crate::contract::{execute, query};
 use andromeda_data_storage::primitive::{
-    GetValueResponse, Primitive, PrimitiveRestriction, QueryMsg,
+    ExecuteMsg, GetValueResponse, Primitive, PrimitiveRestriction, QueryMsg,
 };
 use cosmwasm_std::{
-    coin, from_json, testing::mock_env, BankMsg, Binary, CosmosMsg, Response, SubMsg,
+    coin, from_json, testing::mock_env, BankMsg, Binary, CosmosMsg, Decimal, Response, SubMsg,
 };
 
 use andromeda_std::{
-    ado_base::rates::{LocalRate, LocalRateType, LocalRateValue, Rate},
+    ado_base::rates::{LocalRate, LocalRateType, LocalRateValue, PercentRate, Rate, RatesMessage},
     ado_contract::ADOContract,
     amp::{AndrAddr, Recipient},
     error::ContractError,
@@ -66,6 +66,29 @@ fn test_set_value_with_tax() {
     let key = String::from("key");
     let value = Primitive::String("value".to_string());
     let tax_recipient = "tax_recipient";
+
+    // Set percent rates
+    let set_percent_rate_msg = ExecuteMsg::Rates(RatesMessage::SetRate {
+        action: "PrimitiveSetValue".to_string(),
+        rate: Rate::Local(LocalRate {
+            rate_type: LocalRateType::Additive,
+            recipients: vec![],
+            value: LocalRateValue::Percent(PercentRate {
+                percent: Decimal::one(),
+            }),
+            description: None,
+        }),
+    });
+
+    let err = execute(
+        deps.as_mut(),
+        mock_env(),
+        info.clone(),
+        set_percent_rate_msg,
+    )
+    .unwrap_err();
+
+    assert_eq!(err, ContractError::InvalidRate {});
 
     let rate: Rate = Rate::Local(LocalRate {
         rate_type: LocalRateType::Additive,
