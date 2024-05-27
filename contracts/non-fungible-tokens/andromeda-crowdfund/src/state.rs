@@ -454,34 +454,4 @@ mod tests {
             }
         }
     }
-
-    // #[test]
-    // fn test_set_tier_orders() {
-    //     let mut storage = mock_storage();
-    //     let test_cases = vec![
-    //         SetOrderTestCase {
-    //             name: "Valid et order for limited tier".to_string(),
-    //             order: TierOrder {
-    //                 orderer: user3.clone(),
-    //                 level: Uint64::new(2u64),
-    //                 amount: Uint128::new(150),
-    //                 is_presale: false,
-    //             }
-    //         }
-    //     ];
-    // let user3 = Addr::unchecked("user3");
-    // let order = TierOrder {
-    //     orderer: user3.clone(),
-    //     level: Uint64::new(2u64),
-    //     amount: Uint128::new(150),
-    //     is_presale: false,
-    // };
-    // set_tier_orders(&mut storage, vec![order.clone()]).unwrap();
-    // let orders = TIER_ORDERS.load(&storage, (user3, 2)).unwrap();
-    // assert_eq!(orders.ordered, 150);
-    // assert_eq!(orders.preordered, 0);
-
-    // // Test if the sold_amount of the tier is updated correctly
-    // let tier2 = get_tier(&mut storage, 2).unwrap();
-    // assert_eq!(tier2.sold_amount, Uint128::new(250));
 }

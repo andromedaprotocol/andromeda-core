@@ -2,6 +2,7 @@ pub mod actions;
 pub mod context;
 pub mod denom;
 pub mod expiration;
+pub mod migration;
 pub mod milliseconds;
 pub mod rates;
 pub mod reply;

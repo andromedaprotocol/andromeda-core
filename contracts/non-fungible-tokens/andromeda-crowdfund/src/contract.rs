@@ -7,8 +7,8 @@ use andromeda_non_fungible_tokens::crowdfund::{
 use andromeda_non_fungible_tokens::cw721::ExecuteMsg as Cw721ExecuteMsg;
 use andromeda_std::amp::AndrAddr;
 use andromeda_std::common::denom::Asset;
+use andromeda_std::common::migration::ensure_compatibility;
 use andromeda_std::common::{Milliseconds, MillisecondsExpiration, OrderBy};
-use andromeda_std::error::from_semver;
 use andromeda_std::{ado_base::ownership::OwnershipMessage, common::actions::call_action};
 use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
 
@@ -25,11 +25,8 @@ use cosmwasm_std::{
     MessageInfo, Reply, Response, StdError, Storage, SubMsg, Uint128, Uint64, WasmMsg,
 };
 
-use cw2::get_contract_version;
-
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use cw_utils::nonpayable;
-use semver::Version;
 
 use crate::state::{
     add_tier, clear_user_orders, get_and_increase_tier_token_id, get_config, get_current_cap,
@@ -92,16 +89,7 @@ pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, Contract
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-    let prev = get_contract_version(deps.storage)?;
-    let prev: Version = prev.version.parse().map_err(from_semver)?;
-    let v1: Version = "1.1.0".parse().unwrap();
-
-    ensure!(
-        prev >= v1,
-        ContractError::InvalidMigration {
-            prev: prev.to_string()
-        }
-    );
+    ensure_compatibility(&deps.as_ref(), "1.1.0")?;
     ADOContract::default().migrate(deps, CONTRACT_NAME, CONTRACT_VERSION)
 }
 
