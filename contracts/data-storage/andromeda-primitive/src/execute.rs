@@ -9,7 +9,7 @@ use andromeda_std::{
     error::ContractError,
 };
 use cosmwasm_std::{
-    coin, ensure, BankMsg, Coin, CosmosMsg, Deps, MessageInfo, Response, StdError, SubMsg,
+    coin, ensure, BankMsg, Coin, CosmosMsg, Deps, MessageInfo, Response, StdError, SubMsg, Uint128,
 };
 use cw_utils::nonpayable;
 
@@ -146,10 +146,16 @@ fn tax_set_value(
         let remaining_funds = transfer_response.leftover_funds.try_get_coin()?;
         let tax_amount = get_tax_amount(
             &transfer_response.msgs,
-            sent_funds.amount,
+            remaining_funds.amount,
             remaining_funds.amount,
         );
-        let refund = sent_funds.amount.checked_sub(tax_amount)?;
+
+        let refund = if sent_funds.amount > tax_amount {
+            sent_funds.amount.checked_sub(tax_amount)?
+        } else {
+            Uint128::zero()
+        };
+
         let after_tax_payment = Coin {
             denom: remaining_funds.denom,
             amount: refund,

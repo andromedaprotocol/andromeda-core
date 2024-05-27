@@ -1,155 +1,202 @@
 #![cfg(not(target_arch = "wasm32"))]
 
+use andromeda_app::app::AppComponent;
+use andromeda_app_contract::mock::{mock_andromeda_app, mock_claim_ownership_msg, MockAppContract};
 use andromeda_data_storage::primitive::{GetTypeResponse, GetValueResponse, Primitive};
 
 use andromeda_primitive::mock::{
-    mock_andromeda_primitive, mock_primitive_get_type, mock_primitive_get_value,
-    mock_primitive_instantiate_msg, mock_store_value_msg,
+    mock_andromeda_primitive, mock_primitive_instantiate_msg, MockPrimitive,
+};
+use andromeda_std::{
+    ado_base::rates::{LocalRate, LocalRateType, LocalRateValue, PercentRate, Rate},
+    amp::Recipient,
+    error::ContractError,
 };
 use andromeda_testing::{mock::mock_app, mock_builder::MockAndromedaBuilder, MockContract};
+use cosmwasm_std::{coin, to_json_binary, Addr, Decimal, Uint128};
 use cw_multi_test::Executor;
 
 #[test]
 fn test_primitive() {
     let mut router = mock_app(None);
-
     let andr = MockAndromedaBuilder::new(&mut router, "admin")
-        .with_wallets(vec![("owner", vec![])])
-        .with_contracts(vec![("primitive", mock_andromeda_primitive())])
+        .with_wallets(vec![
+            ("owner", vec![coin(1000, "uandr")]),
+            ("buyer_one", vec![coin(1000, "uandr")]),
+            ("recipient_one", vec![]),
+        ])
+        .with_contracts(vec![
+            ("app-contract", mock_andromeda_app()),
+            ("primitive", mock_andromeda_primitive()),
+        ])
         .build(&mut router);
-    let sender = andr.get_wallet("owner");
-    // Store contract codes
-    let primitive_code_id = router.store_code(mock_andromeda_primitive());
+    let owner = andr.get_wallet("owner");
+    let recipient_one = andr.get_wallet("recipient_one");
 
-    andr.store_code_id(&mut router, "primitve", primitive_code_id);
-
+    // Generate App Components
     let primitive_init_msg = mock_primitive_instantiate_msg(
         andr.kernel.addr().to_string(),
         None,
         andromeda_data_storage::primitive::PrimitiveRestriction::Private,
     );
+    let primitive_component = AppComponent::new(
+        "primitive".to_string(),
+        "primitive".to_string(),
+        to_json_binary(&primitive_init_msg).unwrap(),
+    );
 
-    let primitive_addr = router
-        .instantiate_contract(
-            primitive_code_id,
-            sender.clone(),
-            &primitive_init_msg,
+    // Create App
+    let app_components: Vec<AppComponent> = vec![primitive_component.clone()];
+    let app = MockAppContract::instantiate(
+        andr.get_code_id(&mut router, "app-contract"),
+        owner,
+        &mut router,
+        "Primitive App",
+        app_components,
+        andr.kernel.addr(),
+        Some(owner.to_string()),
+    );
+
+    router
+        .execute_contract(
+            owner.clone(),
+            Addr::unchecked(app.addr().clone()),
+            &mock_claim_ownership_msg(None),
             &[],
-            "Auction App",
-            Some(sender.to_string()),
         )
         .unwrap();
 
-    // Claim Ownership
-    router
-        .execute_contract(
-            sender.clone(),
-            primitive_addr.clone(),
-            &mock_store_value_msg(Some("key".to_string()), Primitive::Bool(true)),
-            &[],
+    let primitive: MockPrimitive =
+        app.query_ado_by_component_name(&router, primitive_component.name);
+
+    primitive
+        .execute_set_value(
+            &mut router,
+            owner.clone(),
+            Some("bool".to_string()),
+            Primitive::Bool(true),
+            None,
         )
         .unwrap();
 
     // Check final state
-    let get_value_resp: GetValueResponse = router
-        .wrap()
-        .query_wasm_smart(
-            primitive_addr.clone(),
-            &mock_primitive_get_value(Some("key".to_string())),
-        )
-        .unwrap();
+    let get_value_resp: GetValueResponse =
+        primitive.query_value(&mut router, Some("bool".to_string()));
     assert_eq!(get_value_resp.value, Primitive::Bool(true));
 
-    let get_type_resp: GetTypeResponse = router
-        .wrap()
-        .query_wasm_smart(
-            primitive_addr,
-            &mock_primitive_get_type(Some("key".to_string())),
+    let get_type_resp: GetTypeResponse =
+        primitive.query_type(&mut router, Some("bool".to_string()));
+    assert_eq!(get_type_resp.value_type, "Bool".to_string());
+
+    // Try adding Percentage Rate (should fail)
+    let err: ContractError = primitive
+        .execute_add_rate(
+            &mut router,
+            owner.clone(),
+            "PrimitiveSetValue".to_string(),
+            Rate::Local(LocalRate {
+                rate_type: LocalRateType::Deductive,
+                recipients: vec![Recipient::new(recipient_one, None)],
+                value: LocalRateValue::Percent(PercentRate {
+                    percent: Decimal::percent(25),
+                }),
+                description: None,
+            }),
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(err, ContractError::InvalidRate {});
+
+    // Add flat rate
+    primitive
+        .execute_add_rate(
+            &mut router,
+            owner.clone(),
+            "PrimitiveSetValue".to_string(),
+            Rate::Local(LocalRate {
+                rate_type: LocalRateType::Deductive,
+                recipients: vec![Recipient::new(recipient_one, None)],
+                value: LocalRateValue::Flat(coin(10_u128, "uandr")),
+                description: None,
+            }),
         )
         .unwrap();
-    assert_eq!(get_type_resp.value_type, "Bool".to_string());
+
+    // Try setting valuw without sending funds
+    let err: ContractError = primitive
+        .execute_set_value(
+            &mut router,
+            owner.clone(),
+            Some("bool".to_string()),
+            Primitive::Bool(true),
+            None,
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(
+        err,
+        ContractError::InvalidFunds {
+            msg: "Zero amounts are prohibited".to_string()
+        }
+    );
+
+    // Send the exact amount required
+    primitive
+        .execute_set_value(
+            &mut router,
+            owner.clone(),
+            Some("string".to_string()),
+            Primitive::String("StringPrimitive".to_string()),
+            Some(coin(10_u128, "uandr".to_string())),
+        )
+        .unwrap();
+
+    // Check final state
+    let get_value_resp: GetValueResponse =
+        primitive.query_value(&mut router, Some("string".to_string()));
+    assert_eq!(
+        get_value_resp.value,
+        Primitive::String("StringPrimitive".to_string())
+    );
+
+    let get_type_resp: GetTypeResponse =
+        primitive.query_type(&mut router, Some("string".to_string()));
+    assert_eq!(get_type_resp.value_type, "String".to_string());
+
+    let owner_balance = router.wrap().query_balance(owner, "uandr").unwrap();
+    assert_eq!(owner_balance.amount, Uint128::new(990));
+
+    let recipient_balance = router.wrap().query_balance(recipient_one, "uandr").unwrap();
+    assert_eq!(recipient_balance.amount, Uint128::new(10));
+
+    // Send more than the required amount to test refunds
+    primitive
+        .execute_set_value(
+            &mut router,
+            owner.clone(),
+            Some("string".to_string()),
+            Primitive::String("StringPrimitive".to_string()),
+            Some(coin(200_u128, "uandr".to_string())),
+        )
+        .unwrap();
+
+    // Check final state
+    let get_value_resp: GetValueResponse =
+        primitive.query_value(&mut router, Some("string".to_string()));
+    assert_eq!(
+        get_value_resp.value,
+        Primitive::String("StringPrimitive".to_string())
+    );
+
+    let get_type_resp: GetTypeResponse =
+        primitive.query_type(&mut router, Some("string".to_string()));
+    assert_eq!(get_type_resp.value_type, "String".to_string());
+
+    let owner_balance = router.wrap().query_balance(owner, "uandr").unwrap();
+    assert_eq!(owner_balance.amount, Uint128::new(980));
+
+    let recipient_balance = router.wrap().query_balance(recipient_one, "uandr").unwrap();
+    assert_eq!(recipient_balance.amount, Uint128::new(20));
 }
-
-// #![cfg(not(target_arch = "wasm32"))]
-
-// use andromeda_app::app::AppComponent;
-// use andromeda_app_contract::mock::{mock_claim_ownership_msg, MockAppContract};
-// use andromeda_data_storage::primitive::{GetValueResponse, Primitive};
-
-// use andromeda_primitive::mock::{
-//     mock_andromeda_primitive, mock_primitive_get_value, mock_primitive_instantiate_msg,
-//     mock_store_value_msg, MockPrimitive,
-// };
-// use andromeda_testing::{mock::mock_app, mock_builder::MockAndromedaBuilder, MockContract};
-// use cosmwasm_schema::schemars::Map;
-// use cosmwasm_std::{coin, to_json_binary, Addr};
-// use cw_multi_test::Executor;
-
-// #[test]
-// fn test_primitive() {
-//     let mut router = mock_app(None);
-//     let andr = MockAndromedaBuilder::new(&mut router, "admin")
-//         .with_wallets(vec![
-//             ("owner", vec![]),
-//             ("buyer_one", vec![coin(1000, "uandr")]),
-//             ("recipient_one", vec![]),
-//         ])
-//         .with_contracts(vec![("primitive", mock_andromeda_primitive())])
-//         .build(&mut router);
-//     let owner = andr.get_wallet("owner");
-
-//     // Generate App Components
-//     let primitive_init_msg = mock_primitive_instantiate_msg(
-//         andr.kernel.addr().to_string(),
-//         None,
-//         andromeda_data_storage::primitive::PrimitiveRestriction::Private,
-//     );
-//     let primitive_component = AppComponent::new(
-//         "primitive".to_string(),
-//         "primitive".to_string(),
-//         to_json_binary(&primitive_init_msg).unwrap(),
-//     );
-
-//     // Create App
-//     let app_components: Vec<AppComponent> = vec![primitive_component.clone()];
-//     let app = MockAppContract::instantiate(
-//         andr.get_code_id(&mut router, "app-contract"),
-//         owner,
-//         &mut router,
-//         "Primitive App",
-//         app_components,
-//         andr.kernel.addr(),
-//         Some(owner.to_string()),
-//     );
-
-//     // router
-//     //     .execute_contract(
-//     //         owner.clone(),
-//     //         Addr::unchecked(app.addr().clone()),
-//     //         &mock_claim_ownership_msg(None),
-//     //         &[],
-//     //     )
-//     //     .unwrap();
-
-//     // let primitive: MockPrimitive =
-//     //     app.query_ado_by_component_name(&router, primitive_component.name);
-
-//     // primitive
-//     //     .execute_set_value(
-//     //         &mut router,
-//     //         owner.clone(),
-//     //         Some("bool".to_string()),
-//     //         Primitive::Bool(true),
-//     //     )
-//     //     .unwrap();
-
-//     // // Check final state
-//     // let get_value_resp: GetValueResponse = router
-//     //     .wrap()
-//     //     .query_wasm_smart(
-//     //         primitive.addr(),
-//     //         &mock_primitive_get_value(Some("bool".to_string())),
-//     //     )
-//     //     .unwrap();
-//     // assert_eq!(get_value_resp.value, Primitive::Bool(true));
-// }
