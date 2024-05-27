@@ -132,8 +132,8 @@ name = "app"
 # [[test]]
 # name = "cw721"
 
-# [[test]]
-# name = "crowdfund_app"
+[[test]]
+name = "crowdfund_app"
 
 [[test]]
 name = "auction_app"

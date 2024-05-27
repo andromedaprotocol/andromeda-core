@@ -2,15 +2,16 @@
 
 use crate::contract::{execute, instantiate, query, reply};
 use andromeda_non_fungible_tokens::crowdfund::{
-    CampaignConfig, ExecuteMsg, InstantiateMsg, QueryMsg, Tier,
+    CampaignConfig, CampaignSummaryResponse, ExecuteMsg, InstantiateMsg, QueryMsg, Tier,
+    TierMetaData,
 };
 use andromeda_std::ado_base::modules::Module;
 use andromeda_testing::{
     mock::MockApp,
     mock_ado,
-    mock_contract::{MockADO, MockContract},
+    mock_contract::{ExecuteResult, MockADO, MockContract},
 };
-use cosmwasm_std::{Addr, Empty};
+use cosmwasm_std::{Addr, Empty, Uint128, Uint64};
 use cw_multi_test::{Contract, ContractWrapper, Executor};
 
 pub struct MockCrowdfund(Addr);
@@ -41,6 +42,24 @@ impl MockCrowdfund {
             )
             .unwrap();
         MockCrowdfund(Addr::unchecked(addr))
+    }
+
+    pub fn execute_add_tier(
+        &self,
+        sender: Addr,
+        app: &mut MockApp,
+        level: Uint64,
+        label: String,
+        price: Uint128,
+        limit: Option<Uint128>,
+        metadata: TierMetaData,
+    ) -> ExecuteResult {
+        let msg = mock_add_tier_msg(level, label, price, limit, metadata);
+        self.execute(app, &msg, sender, &[])
+    }
+    pub fn query_campaign_summary(&self, app: &mut MockApp) -> CampaignSummaryResponse {
+        let msg = QueryMsg::CampaignSummary {};
+        self.query(app, msg)
     }
 
     // #[allow(clippy::too_many_arguments)]
@@ -135,6 +154,25 @@ pub fn mock_crowdfund_instantiate_msg(
     }
 }
 
+pub fn mock_add_tier_msg(
+    level: Uint64,
+    label: String,
+    price: Uint128,
+    limit: Option<Uint128>,
+    metadata: TierMetaData,
+) -> ExecuteMsg {
+    ExecuteMsg::AddTier {
+        tier: Tier {
+            level,
+            label,
+            price,
+            limit,
+            sold_amount: Uint128::zero(),
+            metadata,
+        },
+    }
+}
+
 // pub fn mock_start_crowdfund_msg(
 //     start_time: Option<Expiry>,
 //     end_time: Expiry,
@@ -183,10 +221,6 @@ pub fn mock_crowdfund_instantiate_msg(
 //     }
 
 //     ExecuteMsg::Mint(mint_msgs)
-// }
-
-// pub fn mock_purchase_msg(number_of_tokens: Option<u32>) -> ExecuteMsg {
-//     ExecuteMsg::Purchase { number_of_tokens }
 // }
 
 // pub fn mock_query_ado_base_version() -> QueryMsg {
