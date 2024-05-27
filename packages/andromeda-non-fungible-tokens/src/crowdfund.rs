@@ -212,8 +212,15 @@ pub struct TierMetaData {
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
+    /// Query to get summary about the campaign.
     #[returns(CampaignSummaryResponse)]
     CampaignSummary {},
+    /// Query to get TierOrders for a specific orderer.
+    ///
+    /// - orderer: The address of the orderer.
+    /// - start_after: Optional parameter to indicate the starting point for pagination, based on the level of the TierOrder.
+    /// - limit: Optional parameter to limit the number of results.
+    /// - order_by: Optional parameter to specify the ordering of the results.
     #[returns(TierOrdersResponse)]
     TierOrders {
         orderer: String,
@@ -221,6 +228,11 @@ pub enum QueryMsg {
         limit: Option<u32>,
         order_by: Option<OrderBy>,
     },
+    /// Query to get Tiers used for the campaign.
+    ///
+    /// - start_after: Optional parameter to indicate the starting point for pagination, based on the level of the Tier.
+    /// - limit: Optional parameter to limit the number of results.
+    /// - order_by: Optional parameter to specify the ordering of the results.
     #[returns(TiersResponse)]
     Tiers {
         start_after: Option<u64>,
