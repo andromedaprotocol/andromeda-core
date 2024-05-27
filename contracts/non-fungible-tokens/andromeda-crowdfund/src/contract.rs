@@ -5,8 +5,9 @@ use andromeda_non_fungible_tokens::crowdfund::{
 };
 
 use andromeda_non_fungible_tokens::cw721::ExecuteMsg as Cw721ExecuteMsg;
+use andromeda_std::ado_base::permissioning::Permission;
 use andromeda_std::amp::AndrAddr;
-use andromeda_std::common::denom::Asset;
+use andromeda_std::common::denom::{Asset, SEND_CW20_ACTION};
 use andromeda_std::common::migration::ensure_compatibility;
 use andromeda_std::common::{Milliseconds, MillisecondsExpiration, OrderBy};
 use andromeda_std::{ado_base::ownership::OwnershipMessage, common::actions::call_action};
@@ -44,19 +45,9 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    let branch = DepsMut {
-        storage: deps.storage,
-        api: deps.api,
-        querier: deps.querier,
-    };
-    msg.campaign_config.validate(branch, &env)?;
-    update_config(deps.storage, msg.campaign_config)?;
-
-    set_tiers(deps.storage, msg.tiers)?;
-
     let inst_resp = ADOContract::default().instantiate(
         deps.storage,
-        env,
+        env.clone(),
         deps.api,
         &deps.querier,
         info,
@@ -67,6 +58,28 @@ pub fn instantiate(
             owner: msg.owner,
         },
     )?;
+
+    if let Asset::Cw20Token(addr) = msg.campaign_config.denom.clone() {
+        let addr = addr.get_raw_address(&deps.as_ref())?;
+        ADOContract::default().permission_action(SEND_CW20_ACTION, deps.storage)?;
+        ADOContract::set_permission(
+            deps.storage,
+            SEND_CW20_ACTION,
+            addr,
+            Permission::Whitelisted(None),
+        )?;
+    }
+
+    let branch = DepsMut {
+        storage: deps.storage,
+        api: deps.api,
+        querier: deps.querier,
+    };
+    msg.campaign_config.validate(branch, &env)?;
+    update_config(deps.storage, msg.campaign_config)?;
+
+    set_tiers(deps.storage, msg.tiers)?;
+
     let owner = ADOContract::default().owner(deps.storage)?;
     let mod_resp =
         ADOContract::default().register_modules(owner.as_str(), deps.storage, msg.modules)?;
@@ -423,10 +436,17 @@ fn execute_end_campaign(ctx: ExecuteContext, is_discard: bool) -> Result<Respons
             .withdrawal_recipient
             .address
             .get_raw_address(&deps.as_ref())?;
+        let campaign_denom = match campaign_config.denom {
+            Asset::Cw20Token(ref cw20_token) => Asset::Cw20Token(AndrAddr::from_string(
+                cw20_token.get_raw_address(&deps.as_ref())?.to_string(),
+            )),
+            denom => denom,
+        };
+
         resp = resp.add_submessage(transfer_asset_msg(
             withdrawal_address.to_string(),
             current_cap,
-            campaign_config.denom,
+            campaign_denom,
         )?);
     }
     Ok(resp)
@@ -472,8 +492,14 @@ fn purchase_tiers(
     );
 
     // Ensure campaign accepting coin is received
+    let campaign_denom = match campaign_config.denom {
+        Asset::Cw20Token(ref cw20_token) => {
+            format!("cw20:{}", cw20_token.get_raw_address(&deps.as_ref())?)
+        }
+        Asset::NativeToken(ref addr) => format!("native:{}", addr),
+    };
     ensure!(
-        denom == campaign_config.denom,
+        denom.to_string() == campaign_denom,
         ContractError::InvalidFunds {
             msg: format!(
                 "Only {} is accepted by the campaign.",
@@ -609,7 +635,15 @@ fn handle_failed_claim(deps: DepsMut, sender: &Addr) -> Result<Response, Contrac
         new_sum
     })?;
     let mut resp = Response::new();
-    let sub_msg = transfer_asset_msg(sender.to_string(), total_cost, campaign_config.denom)?;
+
+    let campaign_denom = match campaign_config.denom {
+        Asset::Cw20Token(ref cw20_token) => Asset::Cw20Token(AndrAddr::from_string(
+            cw20_token.get_raw_address(&deps.as_ref())?.to_string(),
+        )),
+        denom => denom,
+    };
+
+    let sub_msg = transfer_asset_msg(sender.to_string(), total_cost, campaign_denom)?;
     resp = resp.add_submessage(sub_msg);
 
     Ok(resp)
