@@ -1,14 +1,22 @@
-use crate::contract::query;
+use crate::contract::{execute, query};
 use andromeda_data_storage::primitive::{
-    GetValueResponse, Primitive, PrimitiveRestriction, QueryMsg,
+    ExecuteMsg, GetValueResponse, Primitive, PrimitiveRestriction, QueryMsg,
 };
-use cosmwasm_std::{coin, from_json, testing::mock_env, Binary};
+use cosmwasm_std::{
+    coin, from_json, testing::mock_env, BankMsg, Binary, CosmosMsg, Decimal, Response, SubMsg,
+};
 
 use andromeda_std::{
-    amp::AndrAddr, error::ContractError, testing::mock_querier::mock_dependencies_custom,
+    ado_base::rates::{LocalRate, LocalRateType, LocalRateValue, PercentRate, Rate, RatesMessage},
+    ado_contract::ADOContract,
+    amp::{AndrAddr, Recipient},
+    error::ContractError,
+    testing::mock_querier::mock_dependencies_custom,
 };
 
-use super::mock::{delete_value, proper_initialization, query_value, set_value};
+use super::mock::{
+    delete_value, proper_initialization, query_value, set_value, set_value_with_funds,
+};
 
 #[test]
 fn test_instantiation() {
@@ -50,6 +58,113 @@ fn test_set_and_update_value_with_key() {
     let query_res: GetValueResponse = query_value(deps.as_ref(), &Some(key.clone())).unwrap();
 
     assert_eq!(GetValueResponse { key, value }, query_res);
+}
+
+#[test]
+fn test_set_value_with_tax() {
+    let (mut deps, info) = proper_initialization(PrimitiveRestriction::Private);
+    let key = String::from("key");
+    let value = Primitive::String("value".to_string());
+    let tax_recipient = "tax_recipient";
+
+    // Set percent rates
+    let set_percent_rate_msg = ExecuteMsg::Rates(RatesMessage::SetRate {
+        action: "PrimitiveSetValue".to_string(),
+        rate: Rate::Local(LocalRate {
+            rate_type: LocalRateType::Additive,
+            recipients: vec![],
+            value: LocalRateValue::Percent(PercentRate {
+                percent: Decimal::one(),
+            }),
+            description: None,
+        }),
+    });
+
+    let err = execute(
+        deps.as_mut(),
+        mock_env(),
+        info.clone(),
+        set_percent_rate_msg,
+    )
+    .unwrap_err();
+
+    assert_eq!(err, ContractError::InvalidRate {});
+
+    let rate: Rate = Rate::Local(LocalRate {
+        rate_type: LocalRateType::Additive,
+        recipients: vec![Recipient {
+            address: AndrAddr::from_string(tax_recipient.to_string()),
+            msg: None,
+            ibc_recovery_address: None,
+        }],
+        value: LocalRateValue::Flat(coin(20_u128, "uandr")),
+        description: None,
+    });
+
+    // Set rates
+    ADOContract::default()
+        .set_rates(deps.as_mut().storage, "PrimitiveSetValue", rate)
+        .unwrap();
+
+    // Sent the exact amount required for tax
+    let res = set_value_with_funds(
+        deps.as_mut(),
+        &Some(key.clone()),
+        &value,
+        info.sender.as_ref(),
+        coin(20_u128, "uandr".to_string()),
+    )
+    .unwrap();
+    let expected_response: Response = Response::new()
+        .add_submessage(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+            to_address: tax_recipient.to_string(),
+            amount: vec![coin(20, "uandr")],
+        })))
+        .add_attributes(vec![
+            ("method", "set_value"),
+            ("sender", "creator"),
+            ("key", "key"),
+        ])
+        .add_attribute("value", format!("{value:?}"));
+    assert_eq!(expected_response, res);
+
+    // Sent less than amount required for tax
+    let err = set_value_with_funds(
+        deps.as_mut(),
+        &Some(key.clone()),
+        &value,
+        info.sender.as_ref(),
+        coin(19_u128, "uandr".to_string()),
+    )
+    .unwrap_err();
+    assert_eq!(err, ContractError::InsufficientFunds {});
+
+    // Sent more than required amount for tax
+    let res = set_value_with_funds(
+        deps.as_mut(),
+        &Some(key.clone()),
+        &value,
+        info.sender.as_ref(),
+        coin(200_u128, "uandr".to_string()),
+    )
+    .unwrap();
+    let expected_response: Response = Response::new()
+        .add_submessage(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+            to_address: tax_recipient.to_string(),
+            amount: vec![coin(20, "uandr")],
+        })))
+        // 200 was sent, but the tax is only 20, so we send back the difference
+        .add_submessage(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+            to_address: "creator".to_string(),
+            amount: vec![coin(180, "uandr")],
+        })))
+        .add_attributes(vec![
+            ("method", "set_value"),
+            ("sender", "creator"),
+            ("key", "key"),
+        ])
+        .add_attribute("value", format!("{value:?}"));
+    assert_eq!(expected_response, res);
 }
 
 #[test]

@@ -93,6 +93,12 @@ impl LocalRateValue {
         }
         Ok(())
     }
+    pub fn is_flat(&self) -> bool {
+        match self {
+            LocalRateValue::Percent(_) => false,
+            LocalRateValue::Flat(_) => true,
+        }
+    }
 }
 
 #[cw_serde]
