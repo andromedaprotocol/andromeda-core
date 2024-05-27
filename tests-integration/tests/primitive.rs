@@ -1,7 +1,7 @@
 #![cfg(not(target_arch = "wasm32"))]
 
 use andromeda_app::app::AppComponent;
-use andromeda_app_contract::mock::{mock_andromeda_app, mock_claim_ownership_msg, MockAppContract};
+use andromeda_app_contract::mock::{mock_andromeda_app, MockAppContract};
 use andromeda_data_storage::primitive::{GetTypeResponse, GetValueResponse, Primitive};
 
 use andromeda_primitive::mock::{
@@ -13,8 +13,7 @@ use andromeda_std::{
     error::ContractError,
 };
 use andromeda_testing::{mock::mock_app, mock_builder::MockAndromedaBuilder, MockContract};
-use cosmwasm_std::{coin, to_json_binary, Addr, Decimal, Uint128};
-use cw_multi_test::Executor;
+use cosmwasm_std::{coin, to_json_binary, Decimal, Uint128};
 
 #[test]
 fn test_primitive() {
@@ -56,15 +55,6 @@ fn test_primitive() {
         andr.kernel.addr(),
         Some(owner.to_string()),
     );
-
-    router
-        .execute_contract(
-            owner.clone(),
-            Addr::unchecked(app.addr().clone()),
-            &mock_claim_ownership_msg(None),
-            &[],
-        )
-        .unwrap();
 
     let primitive: MockPrimitive =
         app.query_ado_by_component_name(&router, primitive_component.name);
