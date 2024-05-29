@@ -40,7 +40,7 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
-    deps: DepsMut,
+    mut deps: DepsMut,
     env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
@@ -70,12 +70,7 @@ pub fn instantiate(
         )?;
     }
 
-    let branch = DepsMut {
-        storage: deps.storage,
-        api: deps.api,
-        querier: deps.querier,
-    };
-    msg.campaign_config.validate(branch, &env)?;
+    msg.campaign_config.validate(deps.branch(), &env)?;
     update_config(deps.storage, msg.campaign_config)?;
 
     set_tiers(deps.storage, msg.tiers)?;
