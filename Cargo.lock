@@ -375,10 +375,11 @@ dependencies = [
 
 [[package]]
 name = "andromeda-primitive"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "andromeda-data-storage",
  "andromeda-std",
+ "andromeda-testing",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-multi-test",
