@@ -6,7 +6,8 @@ use andromeda_non_fungible_tokens::crowdfund::{
 
 use andromeda_non_fungible_tokens::cw721::ExecuteMsg as Cw721ExecuteMsg;
 use andromeda_std::ado_base::permissioning::Permission;
-use andromeda_std::amp::AndrAddr;
+use andromeda_std::amp::messages::AMPPkt;
+use andromeda_std::amp::{AndrAddr, Recipient};
 use andromeda_std::common::denom::{Asset, SEND_CW20_ACTION};
 use andromeda_std::common::migration::ensure_compatibility;
 use andromeda_std::common::{Milliseconds, MillisecondsExpiration, OrderBy};
@@ -361,11 +362,17 @@ fn handle_receive_cw20(
     }
 }
 
-fn execute_end_campaign(ctx: ExecuteContext, is_discard: bool) -> Result<Response, ContractError> {
+fn execute_end_campaign(
+    mut ctx: ExecuteContext,
+    is_discard: bool,
+) -> Result<Response, ContractError> {
     nonpayable(&ctx.info)?;
 
     let ExecuteContext {
-        deps, info, env, ..
+        ref mut deps,
+        ref info,
+        ref env,
+        ..
     } = ctx;
 
     // Only owner can end the campaign
@@ -427,10 +434,6 @@ fn execute_end_campaign(ctx: ExecuteContext, is_discard: bool) -> Result<Respons
         .add_attribute("action", action)
         .add_attribute("result", next_stage.to_string());
     if next_stage == CampaignStage::SUCCESS {
-        let withdrawal_address = campaign_config
-            .withdrawal_recipient
-            .address
-            .get_raw_address(&deps.as_ref())?;
         let campaign_denom = match campaign_config.denom {
             Asset::Cw20Token(ref cw20_token) => Asset::Cw20Token(AndrAddr::from_string(
                 cw20_token.get_raw_address(&deps.as_ref())?.to_string(),
@@ -438,8 +441,9 @@ fn execute_end_campaign(ctx: ExecuteContext, is_discard: bool) -> Result<Respons
             denom => denom,
         };
 
-        resp = resp.add_submessage(transfer_asset_msg(
-            withdrawal_address.to_string(),
+        resp = resp.add_submessage(withdraw_to_recipient(
+            ctx,
+            campaign_config.withdrawal_recipient,
             current_cap,
             campaign_denom,
         )?);
@@ -560,6 +564,37 @@ fn transfer_asset_msg(
             SubMsg::new(wasm_msg)
         }
     })
+}
+
+fn withdraw_to_recipient(
+    ctx: ExecuteContext,
+    recipient: Recipient,
+    amount: Uint128,
+    denom: Asset,
+) -> Result<SubMsg, ContractError> {
+    match denom {
+        Asset::NativeToken(denom) => {
+            let kernel_address =
+                ADOContract::default().get_kernel_address(ctx.deps.as_ref().storage)?;
+
+            let mut pkt = AMPPkt::from_ctx(ctx.amp_ctx, ctx.env.contract.address.to_string());
+            let amp_msg = recipient.generate_amp_msg(
+                &ctx.deps.as_ref(),
+                Some(vec![coin(amount.u128(), denom.clone())]),
+            )?;
+
+            pkt = pkt.add_message(amp_msg);
+            pkt.to_sub_msg(kernel_address, Some(vec![coin(amount.u128(), denom)]), 1)
+        }
+        denom => transfer_asset_msg(
+            recipient
+                .address
+                .get_raw_address(&ctx.deps.as_ref())?
+                .to_string(),
+            amount,
+            denom,
+        ),
+    }
 }
 
 fn execute_claim(ctx: ExecuteContext) -> Result<Response, ContractError> {

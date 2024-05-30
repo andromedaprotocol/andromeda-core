@@ -92,11 +92,11 @@ mod test {
         Cw20HookMsg, PresaleTierOrder, SimpleTierOrder, TierOrder,
     };
     use andromeda_std::{
-        amp::AndrAddr,
+        amp::{messages::AMPPkt, AndrAddr, Recipient},
         common::{denom::Asset, encode_binary},
         testing::mock_querier::MOCK_CW20_CONTRACT,
     };
-    use cosmwasm_std::{coin, coins, wasm_execute, BankMsg, Coin};
+    use cosmwasm_std::{coin, coins, testing::MOCK_CONTRACT_ADDR, wasm_execute, BankMsg, Coin};
     use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 
     use crate::{
@@ -1115,6 +1115,24 @@ mod test {
     #[test]
     fn test_execute_end_campaign() {
         let env = mock_env();
+        let deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
+        let recipient = Recipient::from_string(MOCK_WITHDRAWAL_ADDRESS.to_owned());
+        let amp_msg = recipient
+            .generate_amp_msg(&deps.as_ref(), Some(coins(10000, MOCK_NATIVE_DENOM)))
+            .unwrap();
+        let amp_pkt = AMPPkt::new(
+            MOCK_CONTRACT_ADDR.to_string(),
+            MOCK_CONTRACT_ADDR.to_string(),
+            vec![amp_msg],
+        );
+        let amp_msg = amp_pkt
+            .to_sub_msg(
+                MOCK_KERNEL_CONTRACT,
+                Some(coins(10000, MOCK_NATIVE_DENOM)),
+                1,
+            )
+            .unwrap();
+
         let test_cases: Vec<EndCampaignTestCase> = vec![
             EndCampaignTestCase {
                 name: "Successful campaign using native token".to_string(),
@@ -1128,10 +1146,7 @@ mod test {
                 expected_res: Ok(Response::new()
                     .add_attribute("action", "end_campaign")
                     .add_attribute("result", CampaignStage::SUCCESS.to_string())
-                    .add_message(BankMsg::Send {
-                        to_address: MOCK_WITHDRAWAL_ADDRESS.to_string(),
-                        amount: coins(10000, MOCK_NATIVE_DENOM),
-                    })
+                    .add_submessage(amp_msg)
                     .add_submessage(SubMsg::reply_on_error(
                         CosmosMsg::Wasm(WasmMsg::Execute {
                             contract_addr: "economics_contract".to_string(),
