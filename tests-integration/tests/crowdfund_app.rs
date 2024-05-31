@@ -11,15 +11,16 @@ use andromeda_non_fungible_tokens::{
 };
 use andromeda_std::{
     amp::{AndrAddr, Recipient},
-    common::{denom::Asset, Milliseconds, MillisecondsExpiration},
+    common::{denom::Asset, encode_binary, Milliseconds, MillisecondsExpiration},
 };
 use andromeda_testing::{
     mock::{mock_app, MockApp},
     mock_builder::MockAndromedaBuilder,
     MockAndromeda, MockContract,
 };
-use cosmwasm_std::{coin, to_json_binary, BlockInfo, Uint128, Uint64};
+use cosmwasm_std::{coin, to_json_binary, BlockInfo, Coin, Empty, Uint128, Uint64};
 use cw20::Cw20Coin;
+use cw_multi_test::Contract;
 use rstest::{fixture, rstest};
 
 struct TestCase {
@@ -32,25 +33,41 @@ struct TestCase {
 }
 
 #[fixture]
-fn setup(#[default(true)] use_native_token: bool) -> TestCase {
+fn wallets() -> Vec<(&'static str, Vec<Coin>)> {
+    vec![
+        ("owner", vec![]),
+        ("buyer_one", vec![coin(1000000, "uandr")]),
+        ("recipient", vec![]),
+    ]
+}
+
+#[fixture]
+fn contracts() -> Vec<(&'static str, Box<dyn Contract<Empty>>)> {
+    vec![
+        ("cw20", mock_andromeda_cw20()),
+        ("cw721", mock_andromeda_cw721()),
+        ("crowdfund", mock_andromeda_crowdfund()),
+        ("app-contract", mock_andromeda_app()),
+    ]
+}
+
+#[fixture]
+fn setup(
+    #[default(true)] use_native_token: bool,
+    #[default(None)] withdrawal_recipient: Option<Recipient>,
+    wallets: Vec<(&'static str, Vec<Coin>)>,
+    contracts: Vec<(&'static str, Box<dyn Contract<Empty>>)>,
+) -> TestCase {
     let mut router = mock_app(None);
     let andr = MockAndromedaBuilder::new(&mut router, "admin")
-        .with_wallets(vec![
-            ("owner", vec![]),
-            ("buyer_one", vec![coin(1000000, "uandr")]),
-            ("recipient", vec![]),
-        ])
-        .with_contracts(vec![
-            ("cw20", mock_andromeda_cw20()),
-            ("cw721", mock_andromeda_cw721()),
-            ("crowdfund", mock_andromeda_crowdfund()),
-            ("app-contract", mock_andromeda_app()),
-        ])
+        .with_wallets(wallets)
+        .with_contracts(contracts)
         .build(&mut router);
 
     let owner = andr.get_wallet("owner");
     let buyer_one = andr.get_wallet("buyer_one");
-    let recipient = Recipient::new(andr.get_wallet("recipient"), None);
+    let recipient =
+        withdrawal_recipient.unwrap_or(Recipient::new(andr.get_wallet("recipient"), None));
 
     // Add cw721 component
     let cw721_init_msg = mock_cw721_instantiate_msg(
@@ -291,6 +308,107 @@ fn test_successful_crowdfund_app_native(setup: TestCase) {
 }
 
 #[rstest]
+fn test_crowdfund_app_native_with_ado_recipient(
+    #[with(true, Some(mock_recipient_with_invalid_msg("./cw721")))] setup: TestCase,
+) {
+    let TestCase {
+        mut router,
+        andr,
+        crowdfund,
+        presale,
+        ..
+    } = setup;
+
+    let owner = andr.get_wallet("owner");
+    let buyer_one = andr.get_wallet("buyer_one");
+
+    // Start campaign
+    let start_time = None;
+    let end_time = Milliseconds::from_nanos(router.block_info().time.plus_days(1).nanos());
+
+    let _ = crowdfund.execute_start_campaign(
+        owner.clone(),
+        &mut router,
+        start_time,
+        end_time,
+        Some(presale),
+    );
+    let summary = crowdfund.query_campaign_summary(&mut router);
+    assert_eq!(summary.current_cap, 0);
+    assert_eq!(summary.current_stage, CampaignStage::ONGOING.to_string());
+
+    // Purchase tiers
+    router.set_block(BlockInfo {
+        height: router.block_info().height,
+        time: router.block_info().time.plus_seconds(1),
+        chain_id: router.block_info().chain_id,
+    });
+
+    let orders = vec![
+        SimpleTierOrder {
+            level: Uint64::one(),
+            amount: Uint128::new(10),
+        },
+        SimpleTierOrder {
+            level: Uint64::new(2),
+            amount: Uint128::new(10),
+        },
+    ];
+    let buyer_one_original_balance = router
+        .wrap()
+        .query_balance(buyer_one.clone(), "uandr")
+        .unwrap()
+        .amount;
+    let _ = crowdfund.execute_purchase(
+        buyer_one.clone(),
+        &mut router,
+        orders,
+        vec![coin(5000, "uandr")],
+    );
+    let buyer_one_balance = router
+        .wrap()
+        .query_balance(buyer_one.clone(), "uandr")
+        .unwrap()
+        .amount;
+
+    assert_eq!(
+        buyer_one_balance,
+        buyer_one_original_balance - Uint128::new(10 * 100 + 200 * 10)
+    );
+
+    let _ = crowdfund.execute_end_campaign(owner.clone(), &mut router);
+
+    let summary = crowdfund.query_campaign_summary(&mut router);
+
+    // Campaign could not be ended due to invalid withdrawal recipient msg
+    assert_eq!(summary.current_stage, CampaignStage::ONGOING.to_string());
+
+    // Discard campaign
+    let _ = crowdfund.execute_discard_campaign(owner.clone(), &mut router);
+    let summary = crowdfund.query_campaign_summary(&mut router);
+    assert_eq!(summary.current_stage, CampaignStage::FAILED.to_string());
+
+    // Refund
+    let buyer_one_original_balance = router
+        .wrap()
+        .query_balance(buyer_one.clone(), "uandr")
+        .unwrap()
+        .amount;
+    let _ = crowdfund
+        .execute_claim(buyer_one.clone(), &mut router)
+        .unwrap();
+    let buyer_one_balance = router
+        .wrap()
+        .query_balance(buyer_one.clone(), "uandr")
+        .unwrap()
+        .amount;
+    assert_eq!(
+        buyer_one_balance,
+        buyer_one_original_balance + Uint128::new(10 * 100 + 200 * 10)
+    );
+}
+
+#[rstest]
 fn test_failed_crowdfund_app_native(setup: TestCase) {
     let TestCase {
         mut router,
@@ -363,7 +481,7 @@ fn test_failed_crowdfund_app_native(setup: TestCase) {
     assert_eq!(summary.current_cap, 5 * 100);
     assert_eq!(summary.current_stage, CampaignStage::FAILED.to_string());
 
-    // Claim tier
+    // Refund
     let buyer_one_original_balance = router
         .wrap()
         .query_balance(buyer_one.clone(), "uandr")
@@ -570,4 +688,8 @@ fn mock_campaign_config(
         start_time: None,
         end_time: MillisecondsExpiration::zero(),
     }
+}
+
+fn mock_recipient_with_invalid_msg(addr: &str) -> Recipient {
+    Recipient::new(addr, Some(encode_binary(b"invalid msg").unwrap()))
 }

@@ -86,6 +86,11 @@ impl MockCrowdfund {
         self.execute(app, &msg, sender, &[])
     }
 
+    pub fn execute_discard_campaign(&self, sender: Addr, app: &mut MockApp) -> ExecuteResult {
+        let msg = mock_discard_campaign_msg();
+        self.execute(app, &msg, sender, &[])
+    }
+
     pub fn execute_claim(&self, sender: Addr, app: &mut MockApp) -> ExecuteResult {
         let msg = mock_claim_msg();
         self.execute(app, &msg, sender, &[])
@@ -155,6 +160,10 @@ pub fn mock_purchase_msg(orders: Vec<SimpleTierOrder>) -> ExecuteMsg {
 
 pub fn mock_end_campaign_msg() -> ExecuteMsg {
     ExecuteMsg::EndCampaign {}
+}
+
+pub fn mock_discard_campaign_msg() -> ExecuteMsg {
+    ExecuteMsg::DiscardCampaign {}
 }
 
 pub fn mock_claim_msg() -> ExecuteMsg {
