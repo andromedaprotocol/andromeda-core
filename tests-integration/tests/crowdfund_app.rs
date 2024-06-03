@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use andromeda_app::app::AppComponent;
 use andromeda_app_contract::mock::{mock_andromeda_app, MockAppContract};
 use andromeda_crowdfund::mock::{
@@ -5,9 +7,13 @@ use andromeda_crowdfund::mock::{
 };
 use andromeda_cw20::mock::{mock_andromeda_cw20, mock_cw20_instantiate_msg, mock_minter, MockCW20};
 use andromeda_cw721::mock::{mock_andromeda_cw721, mock_cw721_instantiate_msg, MockCW721};
+use andromeda_finance::splitter::AddressPercent;
 use andromeda_non_fungible_tokens::{
     crowdfund::{CampaignConfig, CampaignStage, PresaleTierOrder, SimpleTierOrder, TierMetaData},
     cw721::TokenExtension,
+};
+use andromeda_splitter::mock::{
+    mock_andromeda_splitter, mock_splitter_instantiate_msg, mock_splitter_send_msg,
 };
 use andromeda_std::{
     amp::{AndrAddr, Recipient},
@@ -18,7 +24,7 @@ use andromeda_testing::{
     mock_builder::MockAndromedaBuilder,
     MockAndromeda, MockContract,
 };
-use cosmwasm_std::{coin, to_json_binary, BlockInfo, Coin, Empty, Uint128, Uint64};
+use cosmwasm_std::{coin, to_json_binary, BlockInfo, Coin, Decimal, Empty, Uint128, Uint64};
 use cw20::Cw20Coin;
 use cw_multi_test::Contract;
 use rstest::{fixture, rstest};
@@ -38,6 +44,8 @@ fn wallets() -> Vec<(&'static str, Vec<Coin>)> {
         ("owner", vec![]),
         ("buyer_one", vec![coin(1000000, "uandr")]),
         ("recipient", vec![]),
+        ("recipient1", vec![]),
+        ("recipient2", vec![]),
     ]
 }
 
@@ -47,6 +55,7 @@ fn contracts() -> Vec<(&'static str, Box<dyn Contract<Empty>>)> {
         ("cw20", mock_andromeda_cw20()),
         ("cw721", mock_andromeda_cw721()),
         ("crowdfund", mock_andromeda_crowdfund()),
+        ("splitter", mock_andromeda_splitter()),
         ("app-contract", mock_andromeda_app()),
     ]
 }
@@ -69,6 +78,27 @@ fn setup(
     let recipient =
         withdrawal_recipient.unwrap_or(Recipient::new(andr.get_wallet("recipient"), None));
 
+    // Prepare Splitter component which can be used as a withdrawal address for some test cases
+    let recipient_1 = andr.get_wallet("recipient1");
+    let recipient_2 = andr.get_wallet("recipient2");
+
+    let splitter_recipients = vec![
+        AddressPercent {
+            recipient: Recipient::from_string(recipient_1.to_string()),
+            percent: Decimal::from_str("0.2").unwrap(),
+        },
+        AddressPercent {
+            recipient: Recipient::from_string(recipient_2.to_string()),
+            percent: Decimal::from_str("0.8").unwrap(),
+        },
+    ];
+    let splitter_init_msg =
+        mock_splitter_instantiate_msg(splitter_recipients, andr.kernel.addr().clone(), None, None);
+    let splitter_component = AppComponent::new(
+        "splitter".to_string(),
+        "splitter".to_string(),
+        to_json_binary(&splitter_init_msg).unwrap(),
+    );
     // Add cw721 component
     let cw721_init_msg = mock_cw721_instantiate_msg(
         "Campaign Tier".to_string(),
@@ -85,7 +115,7 @@ fn setup(
         to_json_binary(&cw721_init_msg).unwrap(),
     );
 
-    let mut app_components = vec![cw721_component.clone()];
+    let mut app_components = vec![splitter_component, cw721_component.clone()];
 
     // Add cw20 components for test cases using cw20
     let cw20_component: Option<AppComponent> = match use_native_token {
@@ -308,8 +338,8 @@ fn test_successful_crowdfund_app_native(setup: TestCase) {
 }
 
 #[rstest]
-fn test_crowdfund_app_native_with_ado_recipient(
-    #[with(true, Some(mock_recipient_with_invalid_msg("./cw721")))] setup: TestCase,
+fn test_crowdfund_app_native_discard(
+    #[with(true, Some(mock_recipient_with_invalid_msg("./splitter")))] setup: TestCase,
 ) {
     let TestCase {
         mut router,
@@ -406,6 +436,98 @@ fn test_crowdfund_app_native_with_ado_recipient(
         buyer_one_balance,
         buyer_one_original_balance + Uint128::new(10 * 100 + 200 * 10)
     );
+}
+
+#[rstest]
+fn test_crowdfund_app_native_with_ado_recipient(
+    #[with(true, Some(mock_recipient_with_valid_msg("./splitter")))] setup: TestCase,
+) {
+    let TestCase {
+        mut router,
+        andr,
+        crowdfund,
+        presale,
+        ..
+    } = setup;
+
+    let owner = andr.get_wallet("owner");
+    let buyer_one = andr.get_wallet("buyer_one");
+    let recipient_1 = andr.get_wallet("recipient1");
+    let recipient_2 = andr.get_wallet("recipient2");
+
+    // Start campaign
+    let start_time = None;
+    let end_time = Milliseconds::from_nanos(router.block_info().time.plus_days(1).nanos());
+
+    let _ = crowdfund.execute_start_campaign(
+        owner.clone(),
+        &mut router,
+        start_time,
+        end_time,
+        Some(presale),
+    );
+    let summary = crowdfund.query_campaign_summary(&mut router);
+    assert_eq!(summary.current_cap, 0);
+    assert_eq!(summary.current_stage, CampaignStage::ONGOING.to_string());
+
+    // Purchase tiers
+    router.set_block(BlockInfo {
+        height: router.block_info().height,
+        time: router.block_info().time.plus_seconds(1),
+        chain_id: router.block_info().chain_id,
+    });
+
+    let orders = vec![
+        SimpleTierOrder {
+            level: Uint64::one(),
+            amount: Uint128::new(10),
+        },
+        SimpleTierOrder {
+            level: Uint64::new(2),
+            amount: Uint128::new(10),
+        },
+    ];
+    let buyer_one_original_balance = router
+        .wrap()
+        .query_balance(buyer_one.clone(), "uandr")
+        .unwrap()
+        .amount;
+    let _ = crowdfund.execute_purchase(
+        buyer_one.clone(),
+        &mut router,
+        orders,
+        vec![coin(5000, "uandr")],
+    );
+    let buyer_one_balance = router
+        .wrap()
+        .query_balance(buyer_one.clone(), "uandr")
+        .unwrap()
+        .amount;
+
+    assert_eq!(
+        buyer_one_balance,
+        buyer_one_original_balance - Uint128::new(10 * 100 + 200 * 10)
+    );
+
+    let _ = crowdfund.execute_end_campaign(owner.clone(), &mut router);
+
+    let summary = crowdfund.query_campaign_summary(&mut router);
+
+    // Campaign could not be ended due to invalid withdrawal recipient msg
+    assert_eq!(summary.current_stage, CampaignStage::SUCCESS.to_string());
+
+    let recipient_1_balance = router
+        .wrap()
+        .query_balance(recipient_1, "uandr")
+        .unwrap()
+        .amount;
+    let recipient_2_balance = router
+        .wrap()
+        .query_balance(recipient_2, "uandr")
+        .unwrap()
+        .amount;
+    assert_eq!(recipient_1_balance.u128(), summary.current_cap / 5);
+    assert_eq!(recipient_2_balance.u128(), summary.current_cap * 4 / 5);
 }
 
 #[rstest]
@@ -692,4 +814,11 @@ fn mock_campaign_config(
 
 fn mock_recipient_with_invalid_msg(addr: &str) -> Recipient {
     Recipient::new(addr, Some(encode_binary(b"invalid msg").unwrap()))
+}
+
+fn mock_recipient_with_valid_msg(addr: &str) -> Recipient {
+    Recipient::new(
+        addr,
+        Some(to_json_binary(&mock_splitter_send_msg()).unwrap()),
+    )
 }
