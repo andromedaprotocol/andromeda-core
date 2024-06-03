@@ -8,8 +8,8 @@ license = "MIT"
 
 [features]
 primitive = []
-modules = ["andromeda-macros/modules"]
-module_hooks = ["andromeda-macros/module_hooks"]
+instantiate = []
+rates = ["andromeda-macros/rates"]
 
 [lib]
 crate-type = ["cdylib", "rlib"]

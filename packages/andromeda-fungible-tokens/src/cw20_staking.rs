@@ -2,7 +2,7 @@ use andromeda_std::amp::addresses::AndrAddr;
 use andromeda_std::common::expiration::{Expiry, MILLISECONDS_TO_NANOSECONDS_RATIO};
 use andromeda_std::common::{Milliseconds, MillisecondsDuration, MillisecondsExpiration};
 use andromeda_std::error::ContractError;
-use andromeda_std::{andr_exec, andr_instantiate, andr_instantiate_modules, andr_query};
+use andromeda_std::{andr_exec, andr_instantiate, andr_query};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{ensure, Api, BlockInfo, Decimal, Decimal256, Uint128};
 use cw20::Cw20ReceiveMsg;
@@ -10,7 +10,6 @@ use cw_asset::{AssetInfo, AssetInfoUnchecked};
 use std::fmt;
 
 #[andr_instantiate]
-#[andr_instantiate_modules]
 #[cw_serde]
 pub struct InstantiateMsg {
     /// The cw20 token that can be staked.

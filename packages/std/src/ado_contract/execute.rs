@@ -99,27 +99,10 @@ impl<'a> ADOContract<'a> {
                 AndromedaMsg::UpdateAppContract { address } => {
                     self.execute_update_app_contract(ctx.deps, ctx.info, address, None)
                 }
+                #[cfg(feature = "rates")]
+                AndromedaMsg::Rates(rates_message) => self.execute_rates(ctx, rates_message),
                 AndromedaMsg::UpdateKernelAddress { address } => {
                     self.update_kernel_address(ctx.deps, ctx.info, address)
-                }
-                #[cfg(feature = "modules")]
-                AndromedaMsg::RegisterModule { module } => {
-                    self.validate_module_address(&ctx.deps.as_ref(), &module)?;
-                    self.execute_register_module(
-                        ctx.deps.storage,
-                        ctx.info.sender.as_str(),
-                        module,
-                        true,
-                    )
-                }
-                #[cfg(feature = "modules")]
-                AndromedaMsg::DeregisterModule { module_idx } => {
-                    self.execute_deregister_module(ctx.deps, ctx.info, module_idx)
-                }
-                #[cfg(feature = "modules")]
-                AndromedaMsg::AlterModule { module_idx, module } => {
-                    self.validate_module_address(&ctx.deps.as_ref(), &module)?;
-                    self.execute_alter_module(ctx.deps, ctx.info, module_idx, module)
                 }
                 AndromedaMsg::Permissioning(msg) => self.execute_permissioning(ctx, msg),
                 AndromedaMsg::AMPReceive(_) => panic!("AMP Receive should be handled separately"),
@@ -177,16 +160,6 @@ impl<'a> ADOContract<'a> {
         let vfs_address = self.get_vfs_address(deps.storage, &deps.querier);
         match vfs_address {
             Ok(vfs_address) => {
-                #[cfg(feature = "modules")]
-                {
-                    let mut addresses = addresses.clone();
-                    let modules = self.load_modules(deps.storage)?;
-                    if !modules.is_empty() {
-                        let andr_addresses: Vec<AndrAddr> =
-                            modules.into_iter().map(|m| m.address).collect();
-                        addresses.extend(andr_addresses);
-                    }
-                }
                 for address in addresses {
                     self.validate_andr_address(deps, address, vfs_address.clone())?;
                 }
@@ -319,105 +292,11 @@ impl<'a> ADOContract<'a> {
 }
 
 #[cfg(test)]
+
 mod tests {
     use super::*;
-    #[cfg(feature = "modules")]
-    use crate::ado_base::modules::Module;
     use crate::testing::mock_querier::MOCK_KERNEL_CONTRACT;
-    #[cfg(feature = "modules")]
-    use crate::testing::mock_querier::{mock_dependencies_custom, MOCK_APP_CONTRACT};
-    #[cfg(feature = "modules")]
-    use cosmwasm_std::Uint64;
-    use cosmwasm_std::{
-        testing::{mock_dependencies, mock_env, mock_info},
-        Addr,
-    };
-
-    #[test]
-    #[cfg(feature = "modules")]
-    fn test_register_module_invalid_identifier() {
-        let contract = ADOContract::default();
-        let mut deps = mock_dependencies_custom(&[]);
-
-        let info = mock_info("owner", &[]);
-        let deps_mut = deps.as_mut();
-        contract
-            .instantiate(
-                deps_mut.storage,
-                mock_env(),
-                deps_mut.api,
-                &deps_mut.querier,
-                info.clone(),
-                InstantiateMsg {
-                    ado_type: "type".to_string(),
-
-                    ado_version: "version".to_string(),
-                    kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
-                    owner: None,
-                },
-            )
-            .unwrap();
-
-        contract
-            .app_contract
-            .save(deps_mut.storage, &Addr::unchecked(MOCK_APP_CONTRACT))
-            .unwrap();
-
-        let module = Module::new("module".to_owned(), "z".to_string(), false);
-
-        let msg = AndromedaMsg::RegisterModule { module };
-
-        let res = contract.execute(ExecuteContext::new(deps.as_mut(), info, mock_env()), msg);
-        assert!(res.is_err())
-    }
-
-    #[test]
-    #[cfg(feature = "modules")]
-    fn test_alter_module_invalid_identifier() {
-        let contract = ADOContract::default();
-        let mut deps = mock_dependencies_custom(&[]);
-
-        let info = mock_info("owner", &[]);
-        let deps_mut = deps.as_mut();
-        contract
-            .instantiate(
-                deps_mut.storage,
-                mock_env(),
-                deps_mut.api,
-                &deps_mut.querier,
-                info.clone(),
-                InstantiateMsg {
-                    ado_type: "type".to_string(),
-                    ado_version: "version".to_string(),
-
-                    kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
-                    owner: None,
-                },
-            )
-            .unwrap();
-        contract
-            .register_modules(
-                info.sender.as_str(),
-                deps_mut.storage,
-                Some(vec![Module::new("module", "cosmos1...".to_string(), false)]),
-            )
-            .unwrap();
-
-        contract
-            .app_contract
-            .save(deps_mut.storage, &Addr::unchecked(MOCK_APP_CONTRACT))
-            .unwrap();
-
-        let module = Module::new("/m".to_owned(), "z".to_string(), false);
-
-        let msg = AndromedaMsg::AlterModule {
-            module_idx: Uint64::new(1),
-            module,
-        };
-
-        let res = contract.execute(ExecuteContext::new(deps.as_mut(), info, mock_env()), msg);
-        assert!(res.is_err())
-    }
+    use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 
     #[test]
     fn test_update_app_contract() {
@@ -459,90 +338,5 @@ mod tests {
                 .add_attribute("address", address),
             res
         );
-    }
-
-    #[test]
-    #[cfg(feature = "modules")]
-    fn test_update_app_contract_invalid_module() {
-        let contract = ADOContract::default();
-        let mut deps = mock_dependencies_custom(&[]);
-
-        let info = mock_info("owner", &[]);
-        let deps_mut = deps.as_mut();
-        contract
-            .instantiate(
-                deps_mut.storage,
-                mock_env(),
-                deps_mut.api,
-                &deps_mut.querier,
-                info.clone(),
-                InstantiateMsg {
-                    ado_type: "type".to_string(),
-                    ado_version: "version".to_string(),
-                    owner: None,
-
-                    kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
-                },
-            )
-            .unwrap();
-        contract
-            .register_modules(
-                info.sender.as_str(),
-                deps_mut.storage,
-                Some(vec![Module::new("module", "cosmos1...".to_string(), false)]),
-            )
-            .unwrap();
-    }
-
-    #[test]
-    fn test_update_kernel_address() {
-        let contract = ADOContract::default();
-        let mut deps = mock_dependencies();
-
-        let info = mock_info("owner", &[]);
-        let deps_mut = deps.as_mut();
-        contract
-            .instantiate(
-                deps_mut.storage,
-                mock_env(),
-                deps_mut.api,
-                &deps_mut.querier,
-                info.clone(),
-                InstantiateMsg {
-                    ado_type: "type".to_string(),
-                    ado_version: "version".to_string(),
-                    owner: None,
-
-                    kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
-                },
-            )
-            .unwrap();
-
-        let address = String::from("address");
-
-        let msg = AndromedaMsg::UpdateKernelAddress {
-            address: Addr::unchecked(address.clone()),
-        };
-
-        let res = contract
-            .execute(ExecuteContext::new(deps.as_mut(), info, mock_env()), msg)
-            .unwrap();
-
-        let msg = AndromedaMsg::UpdateKernelAddress {
-            address: Addr::unchecked(address.clone()),
-        };
-
-        assert_eq!(
-            Response::new()
-                .add_attribute("action", "update_kernel_address")
-                .add_attribute("address", address),
-            res
-        );
-
-        let res = contract.execute(
-            ExecuteContext::new(deps.as_mut(), mock_info("not_owner", &[]), mock_env()),
-            msg,
-        );
-        assert!(res.is_err())
     }
 }

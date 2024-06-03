@@ -31,7 +31,6 @@ fn init(deps: DepsMut, config: CampaignConfig, tiers: Vec<Tier>) -> Response {
         campaign_config: config,
         tiers,
         owner: None,
-        modules: None,
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
     };
 
@@ -178,7 +177,6 @@ mod test {
                 tiers: test.tiers.clone(),
                 owner: None,
                 kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
-                modules: None,
             };
             let res = instantiate(deps.as_mut(), mock_env(), info, msg);
 

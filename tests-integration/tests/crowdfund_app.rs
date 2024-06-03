@@ -104,7 +104,6 @@ fn setup(
         "Campaign Tier".to_string(),
         "CT".to_string(),
         "./crowdfund".to_string(),
-        None,
         andr.kernel.addr().to_string(),
         None,
     );
@@ -135,7 +134,6 @@ fn setup(
                     owner.to_string(),
                     Some(Uint128::from(1000000u128)),
                 )),
-                None,
                 andr.kernel.addr().to_string(),
             );
             let cw20_component = AppComponent::new(
@@ -168,7 +166,6 @@ fn setup(
     let crowdfund_init_msg = mock_crowdfund_instantiate_msg(
         campaign_config,
         vec![],
-        None,
         andr.kernel.addr(),
         Some(owner.to_string()),
     );

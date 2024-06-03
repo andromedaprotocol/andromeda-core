@@ -3,7 +3,6 @@ use andromeda_finance::splitter::{
     validate_recipient_list, AddressPercent, ExecuteMsg, GetSplitterConfigResponse, InstantiateMsg,
     QueryMsg, Splitter,
 };
-
 use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     amp::messages::AMPPkt,
@@ -168,20 +167,22 @@ fn execute_send(ctx: ExecuteContext) -> Result<Response, ContractError> {
         let recipient_percent = recipient_addr.percent;
         let mut vec_coin: Vec<Coin> = Vec::new();
         for (i, coin) in info.funds.clone().iter().enumerate() {
-            let mut recip_coin: Coin = coin.clone();
-            recip_coin.amount = coin.amount * recipient_percent;
-            remainder_funds[i].amount = remainder_funds[i].amount.checked_sub(recip_coin.amount)?;
-            vec_coin.push(recip_coin.clone());
-            amp_funds.push(recip_coin);
+            let amount_owed = coin.amount.mul_floor(recipient_percent);
+            if !amount_owed.is_zero() {
+                let mut recip_coin: Coin = coin.clone();
+                recip_coin.amount = amount_owed;
+                remainder_funds[i].amount =
+                    remainder_funds[i].amount.checked_sub(recip_coin.amount)?;
+                vec_coin.push(recip_coin.clone());
+                amp_funds.push(recip_coin);
+            }
         }
-
-        // let direct_message = recipient_addr
-        //     .recipient
-        //     .generate_direct_msg(&deps.as_ref(), vec_coin)?;
-        let amp_msg = recipient_addr
-            .recipient
-            .generate_amp_msg(&deps.as_ref(), Some(vec_coin))?;
-        pkt = pkt.add_message(amp_msg);
+        if !vec_coin.is_empty() {
+            let amp_msg = recipient_addr
+                .recipient
+                .generate_amp_msg(&deps.as_ref(), Some(vec_coin))?;
+            pkt = pkt.add_message(amp_msg);
+        }
     }
     remainder_funds.retain(|x| x.amount > Uint128::zero());
 
@@ -197,8 +198,11 @@ fn execute_send(ctx: ExecuteContext) -> Result<Response, ContractError> {
         })));
     }
     let kernel_address = ADOContract::default().get_kernel_address(deps.as_ref().storage)?;
-    let distro_msg = pkt.to_sub_msg(kernel_address, Some(amp_funds), 1)?;
-    msgs.push(distro_msg);
+
+    if !pkt.messages.is_empty() {
+        let distro_msg = pkt.to_sub_msg(kernel_address, Some(amp_funds), 1)?;
+        msgs.push(distro_msg);
+    }
 
     Ok(Response::new()
         .add_submessages(msgs)
@@ -259,12 +263,6 @@ fn execute_update_lock(
 
     let mut splitter = SPLITTER.load(deps.storage)?;
 
-    // Can't call this function while the lock isn't expired
-
-    ensure!(
-        splitter.lock.is_expired(&env.block),
-        ContractError::ContractLocked {}
-    );
     // Get current time
     let current_time = Milliseconds::from_seconds(env.block.time.seconds());
 

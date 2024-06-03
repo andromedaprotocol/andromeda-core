@@ -45,7 +45,6 @@ fn init(
         additional_rewards,
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
-        modules: None,
     };
 
     instantiate(deps, mock_env(), info, msg)

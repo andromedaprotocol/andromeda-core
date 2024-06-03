@@ -29,7 +29,6 @@ fn test_app() {
         "Test Tokens".to_string(),
         "TT".to_string(),
         owner.to_string(),
-        None,
         andr.kernel.addr().to_string(),
         None,
     );

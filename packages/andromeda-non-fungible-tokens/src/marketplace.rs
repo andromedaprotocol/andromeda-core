@@ -1,6 +1,6 @@
 use andromeda_std::{
     amp::{AndrAddr, Recipient},
-    andr_exec, andr_instantiate, andr_instantiate_modules, andr_query,
+    andr_exec, andr_instantiate, andr_query,
     common::expiration::Expiry,
     common::{denom::Asset, MillisecondsDuration},
 };
@@ -11,7 +11,6 @@ use cw721::{Cw721ReceiveMsg, Expiration};
 use std::fmt::{Display, Formatter, Result};
 
 #[andr_instantiate]
-#[andr_instantiate_modules]
 #[cw_serde]
 #[serde(rename_all = "snake_case")]
 pub struct InstantiateMsg {

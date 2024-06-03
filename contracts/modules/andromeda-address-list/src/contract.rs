@@ -1,18 +1,19 @@
+use andromeda_modules::address_list::{ActorPermissionResponse, IncludesActorResponse};
 #[cfg(not(feature = "library"))]
 use andromeda_modules::address_list::{ExecuteMsg, InstantiateMsg, QueryMsg};
-use andromeda_modules::address_list::{IncludesAddressResponse, IsInclusiveResponse};
 use andromeda_std::{
-    ado_base::{hooks::AndromedaHook, InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
+    ado_base::{permissioning::Permission, InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     ado_contract::ADOContract,
     common::{context::ExecuteContext, encode_binary},
     error::ContractError,
 };
 
-use cosmwasm_std::{attr, ensure, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError};
-use cosmwasm_std::{entry_point, to_json_binary};
+use cosmwasm_std::{
+    attr, ensure, entry_point, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Response,
+};
 use cw_utils::nonpayable;
 
-use crate::state::{add_address, includes_address, remove_address, IS_INCLUSIVE};
+use crate::state::{add_actor_permission, includes_actor, PERMISSIONS};
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-address-list";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -24,7 +25,16 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    IS_INCLUSIVE.save(deps.storage, &msg.is_inclusive)?;
+    // If the user provided an actor and permission, save them.
+    if let Some(actor_permission) = msg.actor_permission {
+        let verified_address: Addr = deps.api.addr_validate(actor_permission.actor.as_str())?;
+        // Permissions of type "Contract" aren't allowed in the address list contract
+        add_actor_permission(
+            deps.storage,
+            &verified_address,
+            &actor_permission.permission,
+        )?;
+    }
 
     let inst_resp = ADOContract::default().instantiate(
         deps.storage,
@@ -63,77 +73,56 @@ pub fn execute(
 
 pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::AddAddress { address } => execute_add_address(ctx, address),
-        ExecuteMsg::RemoveAddress { address } => execute_remove_address(ctx, address),
-        ExecuteMsg::AddAddresses { addresses } => execute_add_addresses(ctx, addresses),
+        ExecuteMsg::AddActorPermission { actor, permission } => {
+            execute_add_actor_permission(ctx, actor, permission)
+        }
+        ExecuteMsg::RemoveActorPermission { actor } => execute_remove_actor_permission(ctx, actor),
         _ => ADOContract::default().execute(ctx, msg),
     }
 }
 
-fn execute_add_address(ctx: ExecuteContext, address: String) -> Result<Response, ContractError> {
-    let ExecuteContext { deps, info, .. } = ctx;
-    nonpayable(&info)?;
-    ensure!(
-        ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {}
-    );
-    add_address(deps.storage, &address)?;
-
-    Ok(Response::new().add_attributes(vec![
-        attr("action", "add_address"),
-        attr("address", address),
-    ]))
-}
-
-fn execute_remove_address(ctx: ExecuteContext, address: String) -> Result<Response, ContractError> {
-    let ExecuteContext { deps, info, .. } = ctx;
-    nonpayable(&info)?;
-
-    ensure!(
-        ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {}
-    );
-
-    remove_address(deps.storage, &address);
-
-    Ok(Response::new().add_attributes(vec![
-        attr("action", "remove_address"),
-        attr("address", address),
-    ]))
-}
-
-const MAX_ADDRESSES_SIZE: usize = 100;
-
-fn execute_add_addresses(
+fn execute_add_actor_permission(
     ctx: ExecuteContext,
-    addresses: Vec<String>,
+    actor: Addr,
+    permission: Permission,
 ) -> Result<Response, ContractError> {
     let ExecuteContext { deps, info, .. } = ctx;
     nonpayable(&info)?;
-
-    ensure!(
-        !addresses.is_empty(),
-        ContractError::Std(StdError::generic_err("addresses cannot be empty"))
-    );
-    ensure!(
-        addresses.len() <= MAX_ADDRESSES_SIZE,
-        ContractError::Std(StdError::generic_err(
-            "addresses length cannot be more than 100"
-        ))
-    );
-
     ensure!(
         ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {}
     );
 
-    for address in addresses.clone() {
-        add_address(deps.storage, &address)?;
-    }
+    add_actor_permission(deps.storage, &actor, &permission)?;
 
     Ok(Response::new().add_attributes(vec![
-        attr("action", "add_addresses"),
-        attr("addresses", addresses.join(",")),
+        attr("action", "add_actor_permission"),
+        attr("actor", actor),
+        attr("permission", permission.to_string()),
+    ]))
+}
+
+fn execute_remove_actor_permission(
+    ctx: ExecuteContext,
+    actor: Addr,
+) -> Result<Response, ContractError> {
+    let ExecuteContext { deps, info, .. } = ctx;
+    nonpayable(&info)?;
+    ensure!(
+        ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {}
+    );
+    // Ensure that the actor is present in the permissions list
+    ensure!(
+        PERMISSIONS.has(deps.storage, &actor),
+        ContractError::ActorNotFound {}
+    );
+
+    PERMISSIONS.remove(deps.storage, &actor);
+
+    Ok(Response::new().add_attributes(vec![
+        attr("action", "remove_actor_permission"),
+        attr("actor", actor),
     ]))
 }
 
@@ -145,37 +134,26 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
-        QueryMsg::AndrHook(msg) => handle_andr_hook(deps, msg),
-        QueryMsg::IncludesAddress { address } => encode_binary(&query_address(deps, &address)?),
-        QueryMsg::IsInclusive {} => encode_binary(&handle_is_inclusive(deps)?),
+        QueryMsg::IncludesActor { actor } => encode_binary(&query_actor(deps, actor)?),
+        QueryMsg::ActorPermission { actor } => encode_binary(&query_actor_permission(deps, actor)?),
         _ => ADOContract::default().query(deps, env, msg),
     }
 }
 
-fn handle_andr_hook(deps: Deps, msg: AndromedaHook) -> Result<Binary, ContractError> {
-    match msg {
-        AndromedaHook::OnExecute { sender, .. } => {
-            let is_included = includes_address(deps.storage, &sender)?;
-            let is_inclusive = IS_INCLUSIVE.load(deps.storage)?;
-            if is_included != is_inclusive {
-                Err(ContractError::Unauthorized {})
-            } else {
-                Ok(to_json_binary(&None::<Response>)?)
-            }
-        }
-        _ => Ok(to_json_binary(&None::<Response>)?),
+fn query_actor(deps: Deps, actor: Addr) -> Result<IncludesActorResponse, ContractError> {
+    Ok(IncludesActorResponse {
+        included: includes_actor(deps.storage, &actor)?,
+    })
+}
+
+fn query_actor_permission(
+    deps: Deps,
+    actor: Addr,
+) -> Result<ActorPermissionResponse, ContractError> {
+    let permission = PERMISSIONS.may_load(deps.storage, &actor)?;
+    if let Some(permission) = permission {
+        Ok(ActorPermissionResponse { permission })
+    } else {
+        Err(ContractError::ActorNotFound {})
     }
-}
-
-fn handle_is_inclusive(deps: Deps) -> Result<IsInclusiveResponse, ContractError> {
-    let is_inclusive = IS_INCLUSIVE.load(deps.storage)?;
-    Ok(IsInclusiveResponse {
-        is_inclusive_response: is_inclusive,
-    })
-}
-
-fn query_address(deps: Deps, address: &str) -> Result<IncludesAddressResponse, ContractError> {
-    Ok(IncludesAddressResponse {
-        included: includes_address(deps.storage, address)?,
-    })
 }

@@ -1,5 +1,4 @@
 use andromeda_std::amp::AndrAddr;
-use andromeda_std::andr_instantiate_modules;
 use andromeda_std::common::expiration::Expiry;
 use andromeda_std::common::{Milliseconds, MillisecondsDuration, MillisecondsExpiration};
 use andromeda_std::{andr_exec, andr_instantiate, andr_query};
@@ -8,7 +7,6 @@ use cosmwasm_std::Uint128;
 use cw20::Cw20ReceiveMsg;
 
 #[andr_instantiate]
-#[andr_instantiate_modules]
 #[cw_serde]
 pub struct InstantiateMsg {
     /// The bootsrap contract to be used in the second phase.

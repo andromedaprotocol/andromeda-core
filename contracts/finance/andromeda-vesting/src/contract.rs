@@ -1,6 +1,6 @@
 use andromeda_std::{
     ado_contract::ADOContract,
-    common::{context::ExecuteContext, withdraw::WithdrawalType},
+    common::{actions::call_action, context::ExecuteContext, withdraw::WithdrawalType},
     error::ContractError,
 };
 #[cfg(not(feature = "library"))]
@@ -10,7 +10,6 @@ use cosmwasm_std::{
     QuerierWrapper, Response, StakingMsg, Uint128, VoteOption,
 };
 use cw_asset::AssetInfo;
-
 use cw_utils::nonpayable;
 use std::cmp;
 
@@ -77,7 +76,14 @@ pub fn execute(
     }
 }
 
-pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+    call_action(
+        &mut ctx.deps,
+        &ctx.info,
+        &ctx.env,
+        &ctx.amp_ctx,
+        msg.as_ref(),
+    )?;
     match msg {
         ExecuteMsg::CreateBatch {
             lockup_duration,

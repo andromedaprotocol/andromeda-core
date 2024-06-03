@@ -3,7 +3,7 @@ use andromeda_std::amp::Recipient;
 use andromeda_std::common::denom::Asset;
 use andromeda_std::common::{MillisecondsExpiration, OrderBy};
 use andromeda_std::error::ContractError;
-use andromeda_std::{andr_exec, andr_instantiate, andr_instantiate_modules, andr_query};
+use andromeda_std::{andr_exec, andr_instantiate, andr_query};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{ensure, Addr, DepsMut, Env, Uint128, Uint64};
 use cw20::Cw20ReceiveMsg;
@@ -11,7 +11,6 @@ use cw20::Cw20ReceiveMsg;
 use crate::cw721::TokenExtension;
 
 #[andr_instantiate]
-#[andr_instantiate_modules]
 #[cw_serde]
 pub struct InstantiateMsg {
     /// The configuration for the campaign

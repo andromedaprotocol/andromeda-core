@@ -31,7 +31,6 @@ fn proper_instantiation() {
         asset_info: AssetInfoUnchecked::cw20("anchor0000"),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
-        modules: None,
     };
 
     let env = mock_env();
@@ -64,7 +63,6 @@ fn register_merkle_root() {
         asset_info: AssetInfoUnchecked::cw20("anchor0000"),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
-        modules: None,
     };
 
     let env = mock_env();
@@ -135,7 +133,6 @@ fn test_claim() {
         asset_info: AssetInfoUnchecked::cw20("token0000"),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
-        modules: None,
     };
 
     let env = mock_env();
@@ -311,7 +308,6 @@ fn test_claim_native() {
         asset_info: AssetInfoUnchecked::native("uusd"),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
-        modules: None,
     };
 
     let env = mock_env();
@@ -404,7 +400,6 @@ fn test_multiple_claim() {
         asset_info: AssetInfoUnchecked::cw20("token0000"),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
-        modules: None,
     };
 
     let env = mock_env();
@@ -480,7 +475,6 @@ fn test_stage_expires() {
         asset_info: AssetInfoUnchecked::cw20("anchor0000"),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
-        modules: None,
     };
 
     let env = mock_env();
@@ -522,7 +516,6 @@ fn test_cant_burn() {
         asset_info: AssetInfoUnchecked::cw20("token0000"),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
-        modules: None,
     };
 
     let env = mock_env();
@@ -561,7 +554,6 @@ fn test_can_burn() {
         asset_info: AssetInfoUnchecked::cw20("token0000"),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
-        modules: None,
     };
 
     let mut env = mock_env();
@@ -654,7 +646,6 @@ fn test_can_burn_native() {
         asset_info: AssetInfoUnchecked::native("uusd"),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
-        modules: None,
     };
 
     let mut env = mock_env();

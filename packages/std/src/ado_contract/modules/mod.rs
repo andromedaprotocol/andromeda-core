@@ -66,7 +66,6 @@ impl<'a> ADOContract<'a> {
         &self,
         sender: &str,
         storage: &mut dyn Storage,
-        modules: Option<Vec<Module>>,
     ) -> Result<Response, ContractError> {
         let mut resp = Response::new();
         let modules = modules.unwrap_or_default();

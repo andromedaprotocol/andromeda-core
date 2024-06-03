@@ -1,6 +1,7 @@
-use andromeda_std::{amp::AndrAddr, andr_exec, andr_instantiate, andr_query};
-use cosmwasm_schema::{cw_serde, schemars::Map, QueryResponses};
-use cosmwasm_std::{Addr, Binary, Coin, Decimal, StdError, Uint128};
+use andromeda_std::{amp::AndrAddr, andr_exec, andr_instantiate, andr_query, error::ContractError};
+use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_std::{ensure, Addr, Api, Binary, Coin, Decimal, StdError, Uint128};
+use std::fmt;
 
 #[andr_instantiate]
 #[cw_serde]
@@ -31,6 +32,8 @@ pub enum ExecuteMsg {
 pub enum QueryMsg {
     #[returns(GetValueResponse)]
     GetValue { key: Option<String> },
+    #[returns(GetTypeResponse)]
+    GetType { key: Option<String> },
     #[returns(Vec<String>)]
     AllKeys {},
     #[returns(Vec<String>)]
@@ -45,9 +48,56 @@ pub enum Primitive {
     Addr(Addr),
     String(String),
     Bool(bool),
-    Vec(Vec<Primitive>),
     Binary(Binary),
-    Object(Map<String, Primitive>),
+}
+
+impl Primitive {
+    pub fn validate(&self, api: &dyn Api) -> Result<(), ContractError> {
+        match self {
+            Primitive::Uint128(number) => {
+                ensure!(
+                    !number.to_string().is_empty(),
+                    ContractError::EmptyString {}
+                );
+            }
+            Primitive::Decimal(_) => {}
+            Primitive::Coin(coin) => {
+                ensure!(!coin.denom.is_empty(), ContractError::InvalidDenom {});
+            }
+            Primitive::Addr(address) => {
+                api.addr_validate(address.as_str())?;
+            }
+            Primitive::String(string) => {
+                ensure!(!string.is_empty(), ContractError::EmptyString {});
+            }
+            Primitive::Bool(_) => {}
+            Primitive::Binary(binary) => {
+                ensure!(!binary.is_empty(), ContractError::EmptyString {});
+            }
+        }
+        Ok(())
+    }
+}
+
+impl From<Primitive> for String {
+    fn from(primitive: Primitive) -> Self {
+        match primitive {
+            Primitive::Uint128(_) => "Uint128".to_string(),
+            Primitive::Decimal(_) => "Decimal".to_string(),
+            Primitive::Coin(_) => "Coin".to_string(),
+            Primitive::Addr(_) => "Addr".to_string(),
+            Primitive::String(_) => "String".to_string(),
+            Primitive::Bool(_) => "Bool".to_string(),
+            Primitive::Binary(_) => "Binary".to_string(),
+        }
+    }
+}
+
+impl fmt::Display for Primitive {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let variant_name: String = self.clone().into();
+        write!(f, "{}", variant_name)
+    }
 }
 
 #[cw_serde]
@@ -100,21 +150,9 @@ impl From<Addr> for Primitive {
     }
 }
 
-impl From<Vec<Primitive>> for Primitive {
-    fn from(value: Vec<Primitive>) -> Self {
-        Primitive::Vec(value)
-    }
-}
-
 impl From<Binary> for Primitive {
     fn from(value: Binary) -> Self {
         Primitive::Binary(value)
-    }
-}
-
-impl From<Map<String, Primitive>> for Primitive {
-    fn from(value: Map<String, Primitive>) -> Self {
-        Primitive::Object(value)
     }
 }
 
@@ -149,13 +187,6 @@ impl Primitive {
         }
     }
 
-    pub fn try_get_vec(&self) -> Result<Vec<Primitive>, StdError> {
-        match self {
-            Primitive::Vec(vector) => Ok(vector.to_vec()),
-            _ => Err(parse_error(String::from("Vec"))),
-        }
-    }
-
     pub fn try_get_coin(&self) -> Result<Coin, StdError> {
         match self {
             Primitive::Coin(coin) => Ok(coin.clone()),
@@ -176,13 +207,6 @@ impl Primitive {
             _ => Err(parse_error(String::from("Binary"))),
         }
     }
-
-    pub fn try_get_object(&self) -> Result<Map<String, Primitive>, StdError> {
-        match self {
-            Primitive::Object(value) => Ok(value.clone()),
-            _ => Err(parse_error(String::from("Binary"))),
-        }
-    }
 }
 
 #[cw_serde]
@@ -191,10 +215,122 @@ pub struct GetValueResponse {
     pub value: Primitive,
 }
 
+#[cw_serde]
+pub struct GetTypeResponse {
+    pub value_type: String,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use andromeda_std::testing::mock_querier::mock_dependencies_custom;
     use cosmwasm_std::to_json_binary;
+
+    struct TestValidate {
+        name: &'static str,
+        primitive: Primitive,
+        expected_error: Option<ContractError>,
+    }
+
+    #[test]
+    fn test_from_string() {
+        let cases = vec![
+            (
+                Primitive::Uint128(Uint128::from(5_u128)),
+                "Uint128".to_string(),
+            ),
+            (
+                Primitive::Decimal(Decimal::new(Uint128::one())),
+                "Decimal".to_string(),
+            ),
+            (
+                Primitive::Coin(Coin {
+                    amount: Uint128::new(100),
+                    denom: "uatom".to_string(),
+                }),
+                "Coin".to_string(),
+            ),
+            (
+                Primitive::Addr(Addr::unchecked("cosmos1...v937")),
+                "Addr".to_string(),
+            ),
+            (
+                Primitive::String("Some string".to_string()),
+                "String".to_string(),
+            ),
+            (Primitive::Bool(true), "Bool".to_string()),
+            (
+                Primitive::Binary(to_json_binary(&"data").unwrap()),
+                "Binary".to_string(),
+            ),
+        ];
+
+        for (value, expected_str) in cases.iter() {
+            assert_eq!(String::from(value.to_owned()), expected_str.to_owned());
+        }
+
+        let decimal_primitive = Primitive::Decimal(Decimal::new(Uint128::one()));
+        assert_eq!("Decimal".to_string(), String::from(decimal_primitive));
+    }
+
+    #[test]
+    fn test_validate() {
+        let test_cases = vec![
+            TestValidate {
+                name: "Empty string",
+                primitive: Primitive::String("".to_string()),
+                expected_error: Some(ContractError::EmptyString {}),
+            },
+            TestValidate {
+                name: "Valid string",
+                primitive: Primitive::String("string".to_string()),
+                expected_error: None,
+            },
+            TestValidate {
+                name: "Empty Binary",
+                primitive: Primitive::Binary(Binary::default()),
+                expected_error: Some(ContractError::EmptyString {}),
+            },
+            TestValidate {
+                name: "Valid Binary",
+                primitive: Primitive::Binary(to_json_binary(&"binary".to_string()).unwrap()),
+                expected_error: None,
+            },
+            TestValidate {
+                name: "Invalid Coin Denom",
+                primitive: Primitive::Coin(Coin::new(0_u128, "".to_string())),
+                expected_error: Some(ContractError::InvalidDenom {}),
+            },
+            TestValidate {
+                name: "Valid Coin Denom",
+                primitive: Primitive::Coin(Coin::new(0_u128, "valid".to_string())),
+                expected_error: None,
+            },
+            TestValidate {
+                name: "Invalid Address",
+                primitive: Primitive::Addr(Addr::unchecked("wa".to_string())),
+                expected_error: Some(ContractError::Std(StdError::GenericErr { msg: "Invalid input: human address too short for this mock implementation (must be >= 3).".to_string() })),
+            },
+            TestValidate {
+                name: "Valid Address",
+                primitive: Primitive::Addr(Addr::unchecked("andr1".to_string())),
+                expected_error: None,
+            },
+        ];
+
+        for test in test_cases {
+            let deps = mock_dependencies_custom(&[]);
+
+            let res = test.primitive.validate(&deps.api);
+
+            if let Some(err) = test.expected_error {
+                assert_eq!(res.unwrap_err(), err, "{}", test.name);
+                continue;
+            }
+
+            assert!(res.is_ok());
+        }
+    }
 
     #[test]
     fn test_parse_error() {
@@ -244,27 +380,6 @@ mod tests {
     }
 
     #[test]
-    fn try_get_vec() {
-        let primitive = Primitive::Vec(vec![Primitive::Bool(true)]);
-        assert_eq!(
-            vec![Primitive::Bool(true)],
-            primitive.try_get_vec().unwrap()
-        );
-
-        let primitive = Primitive::Vec(vec![Primitive::Vec(vec![Primitive::Bool(true)])]);
-        assert_eq!(
-            vec![Primitive::Vec(vec![Primitive::Bool(true)])],
-            primitive.try_get_vec().unwrap()
-        );
-
-        let primitive = Primitive::String("String".to_string());
-        assert_eq!(
-            parse_error("Vec".to_string()),
-            primitive.try_get_vec().unwrap_err()
-        );
-    }
-
-    #[test]
     fn try_get_decimal() {
         let primitive = Primitive::Decimal(Decimal::zero());
         assert_eq!(Decimal::zero(), primitive.try_get_decimal().unwrap());
@@ -289,13 +404,5 @@ mod tests {
             parse_error("Binary".to_string()),
             primitive.try_get_binary().unwrap_err()
         );
-    }
-
-    #[test]
-    fn try_get_object() {
-        let mut map = Map::new();
-        map.insert("key".to_string(), Primitive::Bool(true));
-        let primitive = Primitive::Object(map.clone());
-        assert_eq!(map.clone(), primitive.try_get_object().unwrap());
     }
 }

@@ -24,7 +24,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-address-list"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "andromeda-app",
  "andromeda-modules",
@@ -90,6 +90,21 @@ dependencies = [
  "cw-utils 1.0.3",
  "cw20",
  "cw721 0.18.0",
+]
+
+[[package]]
+name = "andromeda-conditional-splitter"
+version = "1.1.0"
+dependencies = [
+ "andromeda-app",
+ "andromeda-finance",
+ "andromeda-std",
+ "andromeda-testing",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-multi-test",
+ "cw-storage-plus 1.2.0",
+ "cw-utils 1.0.3",
 ]
 
 [[package]]
@@ -370,10 +385,11 @@ dependencies = [
 
 [[package]]
 name = "andromeda-primitive"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "andromeda-data-storage",
  "andromeda-std",
+ "andromeda-testing",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-multi-test",
@@ -400,11 +416,12 @@ dependencies = [
 
 [[package]]
 name = "andromeda-rates"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "andromeda-app",
  "andromeda-modules",
  "andromeda-std",
+ "andromeda-testing",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-multi-test",
@@ -1947,6 +1964,7 @@ dependencies = [
  "andromeda-app",
  "andromeda-app-contract",
  "andromeda-auction",
+ "andromeda-conditional-splitter",
  "andromeda-crowdfund",
  "andromeda-cw20",
  "andromeda-cw20-staking",

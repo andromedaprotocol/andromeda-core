@@ -86,7 +86,6 @@ fn cw721_rates_module() {
         "Test Tokens".to_string(),
         "TT".to_string(),
         owner.to_string(),
-        Some(modules),
         Some(andr.kernel.addr().to_string()),
     );
     let cw721_addr = router

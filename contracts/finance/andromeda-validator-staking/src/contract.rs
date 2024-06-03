@@ -2,8 +2,9 @@ use std::str::FromStr;
 
 use crate::state::{DEFAULT_VALIDATOR, UNSTAKING_QUEUE};
 use cosmwasm_std::{
-    ensure, entry_point, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, DistributionMsg,
-    Env, FullDelegation, MessageInfo, Reply, Response, StakingMsg, StdError, SubMsg, Timestamp,
+    coin, ensure, entry_point, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut,
+    DistributionMsg, Env, FullDelegation, MessageInfo, Reply, Response, StakingMsg, StdError,
+    SubMsg, Timestamp, Uint128,
 };
 use cw2::set_contract_version;
 
@@ -78,7 +79,7 @@ pub fn execute(
 pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::Stake { validator } => execute_stake(ctx, validator),
-        ExecuteMsg::Unstake { validator } => execute_unstake(ctx, validator),
+        ExecuteMsg::Unstake { validator, amount } => execute_unstake(ctx, validator, amount),
         ExecuteMsg::Claim {
             validator,
             recipient,
@@ -138,6 +139,7 @@ fn execute_stake(ctx: ExecuteContext, validator: Option<Addr>) -> Result<Respons
 fn execute_unstake(
     ctx: ExecuteContext,
     validator: Option<Addr>,
+    amount: Option<Uint128>,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
         deps, info, env, ..
@@ -166,8 +168,10 @@ fn execute_unstake(
         });
     };
 
+    let unstake_amount = amount.unwrap_or(res.amount.amount);
+
     ensure!(
-        !res.amount.amount.is_zero(),
+        !unstake_amount.is_zero() && unstake_amount <= res.amount.amount,
         ContractError::InvalidValidatorOperation {
             operation: "Unstake".to_string(),
             validator: validator.to_string(),
@@ -176,13 +180,14 @@ fn execute_unstake(
 
     let undelegate_msg = CosmosMsg::Staking(StakingMsg::Undelegate {
         validator: validator.to_string(),
-        amount: res.amount,
+        amount: coin(unstake_amount.u128(), res.amount.denom),
     });
     let undelegate_msg = SubMsg::reply_on_success(undelegate_msg, ReplyId::ValidatorUnstake.repr());
 
     let res = Response::new()
         .add_submessage(undelegate_msg)
         .add_attribute("action", "validator-unstake")
+        .add_attribute("amount", unstake_amount)
         .add_attribute("from", info.sender)
         .add_attribute("to", validator.to_string());
 
@@ -204,7 +209,7 @@ fn execute_claim(
     // Check if the validator is valid before unstaking
     is_validator(&deps, &validator)?;
 
-    let recipient = if let Some(recipient) = recipient {
+    let recipient_address = if let Some(ref recipient) = recipient {
         recipient.get_raw_address(&deps.as_ref())?
     } else {
         info.sender
@@ -212,7 +217,7 @@ fn execute_claim(
 
     // Ensure recipient is the contract owner
     ensure!(
-        ADOContract::default().is_contract_owner(deps.storage, recipient.as_str())?,
+        ADOContract::default().is_contract_owner(deps.storage, recipient_address.as_str())?,
         ContractError::Unauthorized {}
     );
 
@@ -235,13 +240,13 @@ fn execute_claim(
 
     let res = Response::new()
         .add_message(DistributionMsg::SetWithdrawAddress {
-            address: recipient.to_string(),
+            address: recipient_address.to_string(),
         })
         .add_message(DistributionMsg::WithdrawDelegatorReward {
             validator: validator.to_string(),
         })
         .add_attribute("action", "validator-claim-reward")
-        .add_attribute("recipient", recipient)
+        .add_attribute("recipient", recipient_address)
         .add_attribute("validator", validator.to_string());
 
     Ok(res)

@@ -8,14 +8,14 @@ use andromeda_non_fungible_tokens::cw721::ExecuteMsg as Cw721ExecuteMsg;
 use andromeda_std::ado_base::permissioning::Permission;
 use andromeda_std::amp::messages::AMPPkt;
 use andromeda_std::amp::{AndrAddr, Recipient};
+use andromeda_std::common::actions::call_action;
 use andromeda_std::common::denom::{Asset, SEND_CW20_ACTION};
 use andromeda_std::common::migration::ensure_compatibility;
 use andromeda_std::common::{Milliseconds, MillisecondsExpiration, OrderBy};
-use andromeda_std::{ado_base::ownership::OwnershipMessage, common::actions::call_action};
 use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
 
 use andromeda_std::{
-    ado_base::{hooks::AndromedaHook, InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
+    ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     common::encode_binary,
     error::ContractError,
 };
@@ -76,13 +76,7 @@ pub fn instantiate(
 
     set_tiers(deps.storage, msg.tiers)?;
 
-    let owner = ADOContract::default().owner(deps.storage)?;
-    let mod_resp =
-        ADOContract::default().register_modules(owner.as_str(), deps.storage, msg.modules)?;
-
-    Ok(inst_resp
-        .add_attributes(mod_resp.attributes)
-        .add_submessages(mod_resp.messages))
+    Ok(inst_resp)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -120,7 +114,6 @@ pub fn execute(
 }
 
 pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
-    let contract = ADOContract::default();
     let action_response = call_action(
         &mut ctx.deps,
         &ctx.info,
@@ -128,20 +121,7 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
         &ctx.amp_ctx,
         msg.as_ref(),
     )?;
-    if !matches!(msg, ExecuteMsg::UpdateAppContract { .. })
-        && !matches!(
-            msg,
-            ExecuteMsg::Ownership(OwnershipMessage::UpdateOwner { .. })
-        )
-    {
-        contract.module_hook::<Response>(
-            &ctx.deps.as_ref(),
-            AndromedaHook::OnExecute {
-                sender: ctx.info.sender.to_string(),
-                payload: encode_binary(&msg)?,
-            },
-        )?;
-    }
+
     let res = match msg {
         ExecuteMsg::AddTier { tier } => execute_add_tier(ctx, tier),
         ExecuteMsg::UpdateTier { tier } => execute_update_tier(ctx, tier),

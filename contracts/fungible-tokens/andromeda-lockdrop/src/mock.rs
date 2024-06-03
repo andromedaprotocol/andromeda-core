@@ -3,7 +3,6 @@
 use crate::contract::{execute, instantiate, query};
 use andromeda_fungible_tokens::lockdrop::{Cw20HookMsg, ExecuteMsg, InstantiateMsg};
 use andromeda_std::{
-    ado_base::modules::Module,
     amp::AndrAddr,
     common::{expiration::Expiry, MillisecondsDuration},
 };
@@ -23,7 +22,6 @@ pub fn mock_lockdrop_instantiate_msg(
     incentive_token: AndrAddr,
     native_denom: String,
     owner: Option<String>,
-    modules: Option<Vec<Module>>,
     kernel_address: String,
 ) -> InstantiateMsg {
     InstantiateMsg {
@@ -32,7 +30,6 @@ pub fn mock_lockdrop_instantiate_msg(
         withdrawal_window,
         native_denom,
         incentive_token,
-        modules,
         kernel_address,
         owner,
     }

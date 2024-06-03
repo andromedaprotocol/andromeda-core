@@ -70,7 +70,6 @@ fn setup_app(andr: &MockAndromeda, router: &mut MockApp) -> MockAppContract {
             owner.to_string(),
             Some(Uint128::from(1000000u128)),
         )),
-        None,
         andr.kernel.addr().to_string(),
     );
     let cw20_component = AppComponent::new(
@@ -82,7 +81,6 @@ fn setup_app(andr: &MockAndromeda, router: &mut MockApp) -> MockAppContract {
     let cw20_staking_init_msg = mock_cw20_staking_instantiate_msg(
         format!("./{}", cw20_component.name),
         andr.kernel.addr().to_string(),
-        None,
         None,
     );
     let cw20_staking_component = AppComponent::new(

@@ -1,6 +1,4 @@
-use andromeda_std::{
-    amp::AndrAddr, andr_exec, andr_instantiate, andr_instantiate_modules, andr_query,
-};
+use andromeda_std::{amp::AndrAddr, andr_exec, andr_instantiate, andr_query};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Binary, Uint128};
 use cw20::{Cw20Coin, Logo, MinterResponse};
@@ -11,7 +9,6 @@ use cw20_base::msg::{
 use cw_utils::Expiration;
 
 #[andr_instantiate]
-#[andr_instantiate_modules]
 #[cw_serde]
 pub struct InstantiateMsg {
     pub name: String,

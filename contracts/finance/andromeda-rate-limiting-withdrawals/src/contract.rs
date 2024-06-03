@@ -1,10 +1,8 @@
 use crate::state::{ACCOUNTS, ALLOWED_COIN};
-
 use andromeda_finance::rate_limiting_withdrawals::{
     AccountDetails, CoinAllowance, ExecuteMsg, InstantiateMsg, MinimumFrequency, QueryMsg,
 };
-use andromeda_std::ado_base::hooks::AndromedaHook;
-use andromeda_std::ado_base::ownership::OwnershipMessage;
+
 use andromeda_std::ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg};
 use andromeda_std::ado_contract::ADOContract;
 use andromeda_std::common::actions::call_action;
@@ -77,12 +75,8 @@ pub fn instantiate(
             owner: msg.owner,
         },
     )?;
-    let mod_resp =
-        ADOContract::default().register_modules(info.sender.as_str(), deps.storage, msg.modules)?;
 
-    Ok(inst_resp
-        .add_attributes(mod_resp.attributes)
-        .add_submessages(mod_resp.messages))
+    Ok(inst_resp)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -92,24 +86,8 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
-    let contract = ADOContract::default();
-
     let ctx = ExecuteContext::new(deps, info, env);
 
-    if !matches!(msg, ExecuteMsg::UpdateAppContract { .. })
-        && !matches!(
-            msg,
-            ExecuteMsg::Ownership(OwnershipMessage::UpdateOwner { .. })
-        )
-    {
-        contract.module_hook::<Response>(
-            &ctx.deps.as_ref(),
-            AndromedaHook::OnExecute {
-                sender: ctx.info.sender.to_string(),
-                payload: encode_binary(&msg)?,
-            },
-        )?;
-    }
     match msg {
         ExecuteMsg::AMPReceive(pkt) => {
             ADOContract::default().execute_amp_receive(ctx, pkt, handle_execute)

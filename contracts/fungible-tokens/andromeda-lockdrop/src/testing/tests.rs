@@ -41,7 +41,6 @@ fn init(deps: DepsMut) -> Result<Response, ContractError> {
         native_denom: "uusd".to_string(),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
-        modules: None,
     };
 
     instantiate(deps, env, info, msg)
@@ -107,7 +106,6 @@ fn test_instantiate_init_timestamp_past() {
         native_denom: "uusd".to_string(),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
-        modules: None,
     };
 
     let res = instantiate(deps.as_mut(), env.clone(), info, msg);
@@ -136,7 +134,6 @@ fn test_instantiate_init_deposit_window_zero() {
         native_denom: "uusd".to_string(),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
-        modules: None,
     };
 
     let res = instantiate(deps.as_mut(), env, info, msg);
@@ -159,7 +156,6 @@ fn test_instantiate_init_withdrawal_window_zero() {
         native_denom: "uusd".to_string(),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
-        modules: None,
     };
 
     let res = instantiate(deps.as_mut(), env, info, msg);
@@ -182,7 +178,6 @@ fn test_instantiate_init_deposit_window_less_than_withdrawal_window() {
         native_denom: "uusd".to_string(),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
-        modules: None,
     };
 
     let res = instantiate(deps.as_mut(), env, info, msg);

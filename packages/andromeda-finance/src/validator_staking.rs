@@ -1,6 +1,6 @@
 use andromeda_std::{amp::AndrAddr, andr_exec, andr_instantiate, andr_query, error::ContractError};
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Addr, Coin, DepsMut, Timestamp};
+use cosmwasm_std::{Addr, Coin, DepsMut, Timestamp, Uint128};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -18,6 +18,7 @@ pub enum ExecuteMsg {
     },
     Unstake {
         validator: Option<Addr>,
+        amount: Option<Uint128>,
     },
     Claim {
         validator: Option<Addr>,

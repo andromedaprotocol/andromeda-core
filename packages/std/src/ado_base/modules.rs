@@ -1,9 +1,9 @@
 use crate::amp::addresses::AndrAddr;
-#[cfg(feature = "modules")]
+
 use crate::error::ContractError;
 
 use cosmwasm_schema::cw_serde;
-#[cfg(feature = "modules")]
+
 use cosmwasm_std::ensure;
 
 /// A struct describing a token module, provided with the instantiation message this struct is used to record the info about the module and how/if it should be instantiated
@@ -14,7 +14,6 @@ pub struct Module {
     pub is_mutable: bool,
 }
 
-#[cfg(feature = "modules")]
 impl Module {
     pub fn new(name: impl Into<String>, address: impl Into<String>, is_mutable: bool) -> Module {
         Module {
@@ -52,11 +51,11 @@ impl Module {
 
 #[cfg(test)]
 mod tests {
-    #[cfg(feature = "modules")]
+
     use super::*;
 
     #[test]
-    #[cfg(feature = "modules")]
+
     fn test_validate_uniqueness() {
         let module1 = Module::new("module", "addr1", false);
         let module2 = Module::new("module", "addr2", false);

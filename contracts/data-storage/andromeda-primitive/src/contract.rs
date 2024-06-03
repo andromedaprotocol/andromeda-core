@@ -12,7 +12,7 @@ use andromeda_std::{
 
 use crate::{
     execute::handle_execute,
-    query::{all_keys, get_value, owner_keys},
+    query::{all_keys, get_type, get_value, owner_keys},
     state::RESTRICTION,
 };
 
@@ -69,6 +69,7 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::GetValue { key } => encode_binary(&get_value(deps.storage, key)?),
+        QueryMsg::GetType { key } => encode_binary(&get_type(deps.storage, key)?),
         QueryMsg::AllKeys {} => encode_binary(&all_keys(deps.storage)?),
         QueryMsg::OwnerKeys { owner } => encode_binary(&owner_keys(&deps, owner)?),
         _ => ADOContract::default().query(deps, env, msg),

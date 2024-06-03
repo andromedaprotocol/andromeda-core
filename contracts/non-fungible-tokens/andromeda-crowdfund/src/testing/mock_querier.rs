@@ -107,7 +107,6 @@ pub fn mock_dependencies_custom(
             InstantiateMsg {
                 ado_type: "crowdfund".to_string(),
                 ado_version: "test".to_string(),
-
                 kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
                 owner: None,
             },

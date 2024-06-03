@@ -1,9 +1,12 @@
+use std::vec;
+
 use andromeda_non_fungible_tokens::marketplace::{
     Cw20HookMsg, Cw721HookMsg, ExecuteMsg, InstantiateMsg, Status,
 };
 use andromeda_std::{
-    ado_base::modules::Module,
-    amp::addresses::AndrAddr,
+    ado_base::rates::{LocalRate, LocalRateType, LocalRateValue, PercentRate, Rate},
+    ado_contract::ADOContract,
+    amp::{AndrAddr, Recipient},
     common::{
         denom::Asset,
         encode_binary,
@@ -18,8 +21,8 @@ use andromeda_std::{
 use cosmwasm_std::{
     coin, coins,
     testing::{mock_env, mock_info},
-    to_json_binary, Addr, BankMsg, CosmosMsg, Deps, DepsMut, Env, Response, SubMsg, Uint128,
-    WasmMsg,
+    to_json_binary, Addr, BankMsg, CosmosMsg, Decimal, Deps, DepsMut, Env, Response, SubMsg,
+    Uint128, WasmMsg,
 };
 use cw20::Cw20ReceiveMsg;
 use cw721::{Cw721ExecuteMsg, Cw721ReceiveMsg};
@@ -30,8 +33,7 @@ use crate::{
     contract::{execute, instantiate},
     state::{sale_infos, SaleInfo, TokenSaleState, TOKEN_SALE_STATE},
     testing::mock_querier::{
-        mock_dependencies_custom, MOCK_RATES_CONTRACT, MOCK_TOKEN_ADDR, MOCK_TOKEN_OWNER,
-        MOCK_UNCLAIMED_TOKEN, RATES,
+        mock_dependencies_custom, MOCK_TOKEN_ADDR, MOCK_TOKEN_OWNER, MOCK_UNCLAIMED_TOKEN,
     },
 };
 
@@ -97,14 +99,10 @@ fn start_sale_future_start_with_duration(deps: DepsMut, env: Env) {
     let _res = execute(deps, env, info, msg).unwrap();
 }
 
-fn init(
-    deps: DepsMut,
-    modules: Option<Vec<Module>>,
-    authorized_cw20_address: Option<AndrAddr>,
-) -> Response {
+fn init(deps: DepsMut, authorized_cw20_address: Option<AndrAddr>) -> Response {
     let msg = InstantiateMsg {
         owner: None,
-        modules,
+
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         authorized_cw20_address,
     };
@@ -190,14 +188,14 @@ fn assert_sale_created_future_start(deps: Deps, env: Env, coin_denom: String, us
 #[test]
 fn test_sale_instantiate() {
     let mut deps = mock_dependencies_custom(&[]);
-    let res = init(deps.as_mut(), None, None);
+    let res = init(deps.as_mut(), None);
     assert_eq!(0, res.messages.len());
 }
 
 #[test]
 fn test_sale_instantiate_future_start() {
     let mut deps = mock_dependencies_custom(&[]);
-    let res = init(deps.as_mut(), None, None);
+    let res = init(deps.as_mut(), None);
     assert_eq!(0, res.messages.len());
 
     start_sale_future_start(
@@ -213,7 +211,6 @@ fn test_sale_instantiate_future_start_cw20() {
     let mut deps = mock_dependencies_custom(&[]);
     let res = init(
         deps.as_mut(),
-        None,
         Some(AndrAddr::from_string(MOCK_CW20_CONTRACT)),
     );
     assert_eq!(0, res.messages.len());
@@ -234,7 +231,7 @@ fn test_sale_instantiate_future_start_cw20() {
 #[test]
 fn test_execute_buy_non_existing_sale() {
     let mut deps = mock_dependencies_custom(&[]);
-    let _res = init(deps.as_mut(), None, None);
+    let _res = init(deps.as_mut(), None);
     let env = mock_env();
     let msg = ExecuteMsg::Buy {
         token_id: MOCK_UNCLAIMED_TOKEN.to_string(),
@@ -249,7 +246,7 @@ fn test_execute_buy_non_existing_sale() {
 fn test_execute_buy_sale_not_open_already_bought() {
     let mut deps = mock_dependencies_custom(&[]);
     let mut env = mock_env();
-    let _res = init(deps.as_mut(), None, None);
+    let _res = init(deps.as_mut(), None);
 
     start_sale(deps.as_mut(), Asset::NativeToken("uusd".to_string()));
     assert_sale_created(deps.as_ref(), env.clone(), "uusd".to_string(), false);
@@ -279,7 +276,7 @@ fn test_execute_buy_sale_not_open_cancelled() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
 
-    let _res = init(deps.as_mut(), None, None);
+    let _res = init(deps.as_mut(), None);
 
     start_sale(deps.as_mut(), Asset::NativeToken("uusd".to_string()));
     assert_sale_created(deps.as_ref(), env.clone(), "uusd".to_string(), false);
@@ -306,7 +303,7 @@ fn test_execute_buy_token_owner_cannot_buy() {
     let mut deps = mock_dependencies_custom(&[]);
     let mut env = mock_env();
 
-    let _res = init(deps.as_mut(), None, None);
+    let _res = init(deps.as_mut(), None);
 
     start_sale(deps.as_mut(), Asset::NativeToken("uusd".to_string()));
     assert_sale_created(deps.as_ref(), env.clone(), "uusd".to_string(), false);
@@ -330,7 +327,6 @@ fn test_execute_buy_token_owner_cannot_buy_cw20() {
 
     let _res = init(
         deps.as_mut(),
-        None,
         Some(AndrAddr::from_string(MOCK_CW20_CONTRACT)),
     );
 
@@ -370,7 +366,7 @@ fn test_execute_buy_invalid_coins_sent() {
     let mut deps = mock_dependencies_custom(&[]);
     let mut env = mock_env();
 
-    let _res = init(deps.as_mut(), None, None);
+    let _res = init(deps.as_mut(), None);
 
     start_sale(deps.as_mut(), Asset::NativeToken("uusd".to_string()));
     assert_sale_created(deps.as_ref(), env.clone(), "uusd".to_string(), false);
@@ -418,7 +414,6 @@ fn test_execute_buy_invalid_coins_sent_cw20() {
 
     let _res = init(
         deps.as_mut(),
-        None,
         Some(AndrAddr::from_string(MOCK_CW20_CONTRACT)),
     );
 
@@ -478,7 +473,7 @@ fn test_execute_buy_works() {
     let mut deps = mock_dependencies_custom(&[]);
     let mut env = mock_env();
 
-    let _res = init(deps.as_mut(), None, None);
+    let _res = init(deps.as_mut(), None);
 
     start_sale(deps.as_mut(), Asset::NativeToken("uusd".to_string()));
     assert_sale_created(deps.as_ref(), env.clone(), "uusd".to_string(), false);
@@ -501,7 +496,6 @@ fn test_execute_buy_works_cw20() {
 
     let _res = init(
         deps.as_mut(),
-        None,
         Some(AndrAddr::from_string(MOCK_CW20_CONTRACT)),
     );
 
@@ -538,7 +532,7 @@ fn test_execute_buy_future_start() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
 
-    let _res = init(deps.as_mut(), None, None);
+    let _res = init(deps.as_mut(), None);
 
     start_sale_future_start(
         deps.as_mut(),
@@ -563,7 +557,7 @@ fn test_execute_buy_sale_expired() {
     let mut deps = mock_dependencies_custom(&[]);
     let mut env = mock_env();
 
-    let _res = init(deps.as_mut(), None, None);
+    let _res = init(deps.as_mut(), None);
 
     start_sale_future_start_with_duration(deps.as_mut(), mock_env());
 
@@ -585,7 +579,7 @@ fn test_execute_update_sale_unauthorized() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
 
-    let _res = init(deps.as_mut(), None, None);
+    let _res = init(deps.as_mut(), None);
 
     start_sale(deps.as_mut(), Asset::NativeToken("uusd".to_string()));
     assert_sale_created(deps.as_ref(), env.clone(), "uusd".to_string(), false);
@@ -608,7 +602,7 @@ fn test_execute_update_sale_invalid_price() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
 
-    let _res = init(deps.as_mut(), None, None);
+    let _res = init(deps.as_mut(), None);
 
     start_sale(deps.as_mut(), Asset::NativeToken("uusd".to_string()));
     assert_sale_created(deps.as_ref(), env.clone(), "uusd".to_string(), false);
@@ -629,7 +623,7 @@ fn test_execute_update_sale_invalid_price() {
 #[test]
 fn test_execute_start_sale_invalid_price() {
     let mut deps = mock_dependencies_custom(&[]);
-    let _res = init(deps.as_mut(), None, None);
+    let _res = init(deps.as_mut(), None);
 
     let hook_msg = Cw721HookMsg::StartSale {
         coin_denom: Asset::NativeToken("uusd".to_string()),
@@ -653,15 +647,28 @@ fn test_execute_start_sale_invalid_price() {
 #[test]
 fn test_execute_buy_with_tax_and_royalty_insufficient_funds() {
     let mut deps = mock_dependencies_custom(&[]);
-    let modules = vec![Module {
-        name: Some(RATES.to_owned()),
-        address: AndrAddr::from_string(MOCK_RATES_CONTRACT.to_owned()),
-        is_mutable: false,
-    }];
-    let _res = init(deps.as_mut(), Some(modules), None);
+    let _res = init(deps.as_mut(), None);
 
     start_sale(deps.as_mut(), Asset::NativeToken("uusd".to_string()));
     assert_sale_created(deps.as_ref(), mock_env(), "uusd".to_string(), false);
+
+    let rate = Rate::Local(LocalRate {
+        rate_type: LocalRateType::Additive,
+        recipients: vec![Recipient {
+            address: AndrAddr::from_string("tax_recipient".to_string()),
+            msg: None,
+            ibc_recovery_address: None,
+        }],
+        value: LocalRateValue::Percent(PercentRate {
+            percent: Decimal::percent(50),
+        }),
+        description: None,
+    });
+
+    // Set rates
+    ADOContract::default()
+        .set_rates(deps.as_mut().storage, "MarketplaceBuy", rate)
+        .unwrap();
 
     let msg = ExecuteMsg::Buy {
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
@@ -672,20 +679,19 @@ fn test_execute_buy_with_tax_and_royalty_insufficient_funds() {
     env.block.time = env.block.time.plus_seconds(1);
     let info = mock_info("someone", &coins(100, "uusd".to_string()));
     let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
-    assert!(matches!(err, ContractError::InvalidFunds { .. }));
+    assert_eq!(
+        err,
+        ContractError::InvalidFunds {
+            msg: "Invalid funds provided, expected: 150, received: 100".to_string()
+        }
+    );
 }
 
 #[test]
 fn test_execute_buy_with_tax_and_royalty_insufficient_funds_cw20() {
     let mut deps = mock_dependencies_custom(&[]);
-    let modules = vec![Module {
-        name: Some(RATES.to_owned()),
-        address: AndrAddr::from_string(MOCK_RATES_CONTRACT.to_owned()),
-        is_mutable: false,
-    }];
     let _res = init(
         deps.as_mut(),
-        Some(modules),
         Some(AndrAddr::from_string(MOCK_CW20_CONTRACT)),
     );
 
@@ -700,6 +706,24 @@ fn test_execute_buy_with_tax_and_royalty_insufficient_funds_cw20() {
         MOCK_CW20_CONTRACT.to_string(),
         uses_cw20,
     );
+
+    let rate = Rate::Local(LocalRate {
+        rate_type: LocalRateType::Additive,
+        recipients: vec![Recipient {
+            address: AndrAddr::from_string("tax_recipient".to_string()),
+            msg: None,
+            ibc_recovery_address: None,
+        }],
+        value: LocalRateValue::Percent(PercentRate {
+            percent: Decimal::percent(50),
+        }),
+        description: None,
+    });
+
+    // Set rates
+    ADOContract::default()
+        .set_rates(deps.as_mut().storage, "MarketplaceBuy", rate)
+        .unwrap();
 
     let hook_msg = Cw20HookMsg::Buy {
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
@@ -717,18 +741,18 @@ fn test_execute_buy_with_tax_and_royalty_insufficient_funds_cw20() {
     // Add one second so that the start_time expires
     env.block.time = env.block.time.plus_seconds(1);
     let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
-    assert!(matches!(err, ContractError::InvalidFunds { .. }));
+    assert_eq!(
+        err,
+        ContractError::InvalidFunds {
+            msg: "Invalid funds provided, expected: 150, received: 100".to_string()
+        }
+    );
 }
 
 #[test]
 fn execute_buy_with_tax_and_royalty_too_many_funds() {
     let mut deps = mock_dependencies_custom(&[]);
-    let modules = vec![Module {
-        name: Some(RATES.to_owned()),
-        address: AndrAddr::from_string(MOCK_RATES_CONTRACT.to_owned()),
-        is_mutable: false,
-    }];
-    let _res = init(deps.as_mut(), Some(modules), None);
+    let _res = init(deps.as_mut(), None);
 
     start_sale(deps.as_mut(), Asset::NativeToken("uusd".to_string()));
     assert_sale_created(deps.as_ref(), mock_env(), "uusd".to_string(), false);
@@ -741,20 +765,16 @@ fn execute_buy_with_tax_and_royalty_too_many_funds() {
     // Add one second so that the start_time expires
     env.block.time = env.block.time.plus_seconds(1);
 
-    let info = mock_info("someone", &coins(200, "uusd".to_string()));
+    let info = mock_info("someone", &[coin(200, "uusd"), coin(100, "uandr")]);
     let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
     assert!(matches!(err, ContractError::InvalidFunds { .. }));
 }
 
+// TODO having both tax and royalty is currently unsupported
 #[test]
 fn test_execute_buy_with_tax_and_royalty_works() {
     let mut deps = mock_dependencies_custom(&[]);
-    let modules = vec![Module {
-        name: Some(RATES.to_owned()),
-        address: AndrAddr::from_string(MOCK_RATES_CONTRACT.to_owned()),
-        is_mutable: false,
-    }];
-    let _res = init(deps.as_mut(), Some(modules), None);
+    let _res = init(deps.as_mut(), None);
 
     start_sale(deps.as_mut(), Asset::NativeToken("uusd".to_string()));
     assert_sale_created(deps.as_ref(), mock_env(), "uusd".to_string(), false);
@@ -763,6 +783,24 @@ fn test_execute_buy_with_tax_and_royalty_works() {
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
         token_address: MOCK_TOKEN_ADDR.to_string(),
     };
+
+    let rate = Rate::Local(LocalRate {
+        rate_type: LocalRateType::Additive,
+        recipients: vec![Recipient {
+            address: AndrAddr::from_string("tax_recipient".to_string()),
+            msg: None,
+            ibc_recovery_address: None,
+        }],
+        value: LocalRateValue::Percent(PercentRate {
+            percent: Decimal::percent(50),
+        }),
+        description: None,
+    });
+
+    // Set rates
+    ADOContract::default()
+        .set_rates(deps.as_mut().storage, "MarketplaceBuy", rate)
+        .unwrap();
 
     let info = mock_info("someone", &coins(150, "uusd".to_string()));
     let mut env = mock_env();
@@ -771,10 +809,15 @@ fn test_execute_buy_with_tax_and_royalty_works() {
 
     let res = execute(deps.as_mut(), env, info.clone(), msg).unwrap();
     let expected: Vec<SubMsg<_>> = vec![
-        SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-            to_address: "royalty_recipient".to_string(),
-            amount: vec![coin(10, "uusd")],
-        })),
+        // SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+        //     to_address: "royalty_recipient".to_string(),
+        //     amount: vec![coin(10, "uusd")],
+        // })),
+
+        // SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+        //     to_address: "owner".to_string(),
+        //     amount: vec![coin(90, "uusd")],
+        // })),
         SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
             to_address: "tax_recipient".to_string(),
             amount: vec![coin(50, "uusd")],
@@ -790,7 +833,7 @@ fn test_execute_buy_with_tax_and_royalty_works() {
         })),
         SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
             to_address: "owner".to_string(),
-            amount: vec![coin(90, "uusd")],
+            amount: vec![coin(100, "uusd")],
         })),
         SubMsg::reply_on_error(
             CosmosMsg::Wasm(WasmMsg::Execute {

@@ -1,6 +1,4 @@
-use andromeda_std::{
-    amp::recipient::Recipient, andr_exec, andr_instantiate, andr_instantiate_modules, andr_query,
-};
+use andromeda_std::{amp::recipient::Recipient, andr_exec, andr_instantiate, andr_query};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
 use cw_utils::Expiration;
@@ -21,7 +19,6 @@ pub struct Splitter {
 }
 
 #[andr_instantiate]
-#[andr_instantiate_modules]
 #[cw_serde]
 pub struct InstantiateMsg {
     /// The vector of recipients for the contract. Anytime a `Send` execute message is
