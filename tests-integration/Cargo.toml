@@ -132,8 +132,8 @@ name = "app"
 # [[test]]
 # name = "cw721"
 
-# [[test]]
-# name = "crowdfund_app"
+[[test]]
+name = "crowdfund_app"
 
 [[test]]
 name = "auction_app"
@@ -149,6 +149,9 @@ name = "validator_staking"
 
 [[test]]
 name = "shunting"
+
+[dependencies]
+rstest = "0.19.0"
 
 # [[test]]
 # name = "cw20_staking_app"
