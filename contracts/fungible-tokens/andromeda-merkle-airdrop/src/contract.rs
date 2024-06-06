@@ -3,11 +3,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, ensure, to_json_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Empty,
-    Env, MessageInfo, Response, StdResult, Uint128, WasmMsg,
+    attr, ensure, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
 };
-use cw20::Cw20ExecuteMsg;
-use cw_asset::AssetInfoBase;
 use cw_utils::nonpayable;
 use sha2::Digest;
 use std::convert::TryInto;
@@ -23,7 +20,7 @@ use andromeda_fungible_tokens::airdrop::{
 use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     ado_contract::ADOContract,
-    common::{actions::call_action, context::ExecuteContext, encode_binary, expiration::Expiry, denom::validate_denom},
+    common::{actions::call_action, context::ExecuteContext, encode_binary, expiration::Expiry},
     error::ContractError,
 };
 
@@ -38,8 +35,9 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-
-    let (coin_denom, uses_cw20) = msg.asset_info.get_verified_asset(deps.branch(), env)?;
+    // Validate asset_info
+    msg.asset_info
+        .get_verified_asset(deps.branch(), env.clone())?;
 
     let config = Config {
         asset_info: msg.asset_info,
@@ -217,24 +215,10 @@ pub fn execute_claim(
     claimed_amount = claimed_amount.checked_add(amount)?;
     STAGE_AMOUNT_CLAIMED.save(deps.storage, stage, &claimed_amount)?;
 
-    let transfer_msg: CosmosMsg = match config.asset_info {
-        AssetInfoBase::Native(denom) => CosmosMsg::Bank(BankMsg::Send {
-            to_address: info.sender.to_string(),
-            amount: vec![Coin { amount, denom }],
-        }),
-        AssetInfoBase::Cw20(address) => CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: address.to_string(),
-            funds: vec![],
-            msg: to_json_binary(&Cw20ExecuteMsg::Transfer {
-                recipient: info.sender.to_string(),
-                amount,
-            })?,
-        }),
-        _ => CosmosMsg::Custom(Empty {}),
-    };
+    let transfer_msg = config.asset_info.transfer(info.sender.clone(), amount)?;
 
     let res = Response::new()
-        .add_message(transfer_msg)
+        .add_submessage(transfer_msg)
         .add_attributes(vec![
             attr("action", "claim"),
             attr("stage", stage.to_string()),
@@ -276,30 +260,17 @@ pub fn execute_burn(ctx: ExecuteContext, stage: u8) -> Result<Response, Contract
     let balance_to_burn = total_amount - claimed_amount;
 
     let config = CONFIG.load(deps.storage)?;
-    let burn_msg = match config.asset_info {
-        AssetInfoBase::Native(denom) => CosmosMsg::Bank(BankMsg::Burn {
-            amount: vec![Coin {
-                amount: balance_to_burn,
-                denom,
-            }],
-        }),
-        AssetInfoBase::Cw20(address) => CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: address.to_string(),
-            funds: vec![],
-            msg: to_json_binary(&Cw20ExecuteMsg::Burn {
-                amount: balance_to_burn,
-            })?,
-        }),
-        _ => CosmosMsg::Custom(Empty {}),
-    };
+    let burn_msg = config.asset_info.burn(balance_to_burn)?;
 
     // Burn the tokens and response
-    let res = Response::new().add_message(burn_msg).add_attributes(vec![
-        attr("action", "burn"),
-        attr("stage", stage.to_string()),
-        attr("address", info.sender),
-        attr("amount", balance_to_burn),
-    ]);
+    let res = Response::new()
+        .add_submessage(burn_msg)
+        .add_attributes(vec![
+            attr("action", "burn"),
+            attr("stage", stage.to_string()),
+            attr("address", info.sender),
+            attr("amount", balance_to_burn),
+        ]);
     Ok(res)
 }
 

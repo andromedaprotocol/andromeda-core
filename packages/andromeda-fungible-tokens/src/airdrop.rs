@@ -1,6 +1,6 @@
 use andromeda_std::{
     andr_exec, andr_instantiate, andr_query,
-    common::{expiration::Expiry, denom::Asset, MillisecondsExpiration},
+    common::{denom::Asset, expiration::Expiry, MillisecondsExpiration},
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;

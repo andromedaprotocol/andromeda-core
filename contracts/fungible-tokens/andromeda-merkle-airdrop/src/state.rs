@@ -1,4 +1,4 @@
-use andromeda_std::common::{MillisecondsExpiration, denom::Asset};
+use andromeda_std::common::{denom::Asset, MillisecondsExpiration};
 use cosmwasm_schema::cw_serde;
 
 use cosmwasm_std::{Addr, Uint128};
