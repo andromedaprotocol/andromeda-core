@@ -1,4 +1,7 @@
-use andromeda_std::{ado_base::permissioning::Permission, andr_exec, andr_instantiate, andr_query};
+use andromeda_std::{
+    ado_base::permissioning::{LocalPermission, Permission},
+    andr_exec, andr_instantiate, andr_query,
+};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Addr;
 
@@ -11,14 +14,17 @@ pub struct InstantiateMsg {
 #[cw_serde]
 pub struct ActorPermission {
     pub actor: Addr,
-    pub permission: Permission,
+    pub permission: LocalPermission,
 }
 
 #[andr_exec]
 #[cw_serde]
 pub enum ExecuteMsg {
     /// Adds an actor key and a permission value
-    AddActorPermission { actor: Addr, permission: Permission },
+    AddActorPermission {
+        actor: Addr,
+        permission: LocalPermission,
+    },
     /// Removes actor alongisde his permission
     RemoveActorPermission { actor: Addr },
 }
@@ -45,5 +51,5 @@ pub struct IncludesActorResponse {
 
 #[cw_serde]
 pub struct ActorPermissionResponse {
-    pub permission: Permission,
+    pub permission: LocalPermission,
 }

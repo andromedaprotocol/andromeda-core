@@ -6,7 +6,7 @@ use crate::{
 use cosmwasm_std::{ensure, DepsMut, Env, MessageInfo, Response};
 
 pub fn call_action(
-    deps: DepsMut,
+    deps: &mut DepsMut,
     info: &MessageInfo,
     env: &Env,
     amp_ctx: &Option<AMPPkt>,

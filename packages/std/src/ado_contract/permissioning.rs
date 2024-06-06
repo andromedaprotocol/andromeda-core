@@ -81,20 +81,23 @@ impl<'a> ADOContract<'a> {
         let action_string: String = action.into();
         let actor_string: String = actor.into();
 
-        if self.is_contract_owner(deps.storage, actor_string.as_str())? {
+        if self.is_contract_owner(deps.as_ref().storage, actor_string.as_str())? {
             return Ok(());
         }
 
-        let permission =
-            Self::get_permission(deps.storage, action_string.clone(), actor_string.clone())?;
+        let permission = Self::get_permission(
+            deps.as_ref().storage,
+            action_string.clone(),
+            actor_string.clone(),
+        )?;
         let permissioned_action = self
             .permissioned_actions
             .may_load(deps.storage, action_string.clone())?
             .unwrap_or(false);
         match permission {
-            Some(mut permission) => {
-                match permission {
-                    Permission::Local(mut local_permission) => {
+            Some(mut some_permission) => {
+                match some_permission {
+                    Permission::Local(ref mut local_permission) => {
                         ensure!(
                             local_permission.is_permissioned(&env, permissioned_action),
                             ContractError::Unauthorized {}
@@ -109,7 +112,7 @@ impl<'a> ADOContract<'a> {
                                 &PermissionInfo {
                                     action: action_string,
                                     actor: actor_string,
-                                    permission,
+                                    permission: some_permission,
                                 },
                             )?;
                         }
@@ -117,50 +120,15 @@ impl<'a> ADOContract<'a> {
                     Permission::Contract(address_list) => {
                         // Query address list contract
                         let addr = address_list.get_raw_address(&deps.as_ref())?;
-                        let mut local_permission =
-                            AOSQuerier::get_permission(&deps.querier, &addr, &actor.into())?;
+                        let local_permission =
+                            AOSQuerier::get_permission(&deps.querier, &addr, &actor_string)?;
 
                         ensure!(
                             local_permission.is_permissioned(&env, permissioned_action),
                             ContractError::Unauthorized {}
                         );
-
-                        if let LocalPermission::Limited { .. } = local_permission {
-                            local_permission.consume_use()?;
-                            // TODO Save updated local_permission in address_list contract
-
-                            permissions().save(
-                                deps.storage,
-                                (action_string.clone() + actor_string.as_str()).as_str(),
-                                &PermissionInfo {
-                                    action: action_string,
-                                    actor: actor_string,
-                                    permission,
-                                },
-                            )?;
-                        }
                     }
                 };
-                // ensure!(
-                //     local_permission.is_permissioned(&env, permissioned_action),
-                //     ContractError::Unauthorized {}
-                // );
-
-                // // Consume a use for a limited permission
-                // // TODO make a case for Contract permissions
-                // if let LocalPermission::Limited { .. } = local_permission {
-                //     local_permission.consume_use()?;
-                //     permissions().save(
-                //         deps.storage,
-                //         (action_string.clone() + actor_string.as_str()).as_str(),
-                //         &PermissionInfo {
-                //             action: action_string,
-                //             actor: actor_string,
-                //             permission,
-                //         },
-                //     )?;
-                // }
-
                 Ok(())
             }
             None => {
@@ -177,7 +145,7 @@ impl<'a> ADOContract<'a> {
     /// Returns an error if the permission has expired or if no permission exists for a restricted ADO
     pub fn is_permissioned_strict(
         &self,
-        store: &mut dyn Storage,
+        deps: DepsMut,
         env: Env,
         action: impl Into<String>,
         actor: impl Into<String>,
@@ -186,15 +154,16 @@ impl<'a> ADOContract<'a> {
         let action_string: String = action.into();
         let actor_string: String = actor.into();
 
-        if self.is_contract_owner(store, actor_string.as_str())? {
+        if self.is_contract_owner(deps.storage, actor_string.as_str())? {
             return Ok(());
         }
 
-        let permission = Self::get_permission(store, action_string.clone(), actor_string.clone())?;
+        let permission =
+            Self::get_permission(deps.storage, action_string.clone(), actor_string.clone())?;
         match permission {
-            Some(mut permission) => {
-                match permission {
-                    Permission::Local(local_permission) => {
+            Some(mut some_permission) => {
+                match some_permission {
+                    Permission::Local(ref mut local_permission) => {
                         ensure!(
                             local_permission.is_permissioned(&env, true),
                             ContractError::Unauthorized {}
@@ -204,59 +173,26 @@ impl<'a> ADOContract<'a> {
                         if let LocalPermission::Limited { .. } = local_permission {
                             local_permission.consume_use()?;
                             permissions().save(
-                                store,
+                                deps.storage,
                                 (action_string.clone() + actor_string.as_str()).as_str(),
                                 &PermissionInfo {
                                     action: action_string,
                                     actor: actor_string,
-                                    permission,
+                                    permission: some_permission,
                                 },
                             )?;
                         }
                     }
-                    Permission::Contract(address_list) => {
+                    Permission::Contract(ref address_list) => {
                         let addr = address_list.get_raw_address(&deps.as_ref())?;
-                        let mut local_permission =
-                            AOSQuerier::get_permission(&deps.querier, &addr, &actor.into())?;
+                        let local_permission =
+                            AOSQuerier::get_permission(&deps.querier, &addr, &actor_string)?;
                         ensure!(
                             local_permission.is_permissioned(&env, true),
                             ContractError::Unauthorized {}
                         );
-
-                        // Consume a use for a limited permission
-                        if let LocalPermission::Limited { .. } = local_permission {
-                            local_permission.consume_use()?;
-                            permissions().save(
-                                store,
-                                (action_string.clone() + actor_string.as_str()).as_str(),
-                                &PermissionInfo {
-                                    action: action_string,
-                                    actor: actor_string,
-                                    permission,
-                                },
-                            )?;
-                        }
                     }
                 }
-                // ensure!(
-                //     permission.is_permissioned(&env, true),
-                //     ContractError::Unauthorized {}
-                // );
-
-                // // Consume a use for a limited permission
-                // if let Permission::Limited { .. } = permission {
-                //     permission.consume_use()?;
-                //     permissions().save(
-                //         store,
-                //         (action_string.clone() + actor_string.as_str()).as_str(),
-                //         &PermissionInfo {
-                //             action: action_string,
-                //             actor: actor_string,
-                //             permission,
-                //         },
-                //     )?;
-                // }
-
                 Ok(())
             }
             None => Err(ContractError::Unauthorized {}),
@@ -492,7 +428,7 @@ impl<'a> ADOContract<'a> {
 /// - The context does not contain any AMP context and the **sender** is the actor
 /// - The context contains AMP context and the **previous sender** or **origin** are considered the actor
 pub fn is_context_permissioned(
-    deps: DepsMut,
+    deps: &mut DepsMut,
     info: &MessageInfo,
     env: &Env,
     ctx: &Option<AMPPkt>,
@@ -504,13 +440,13 @@ pub fn is_context_permissioned(
         Some(amp_ctx) => {
             let action: String = action.into();
             let is_origin_permissioned = contract.is_permissioned(
-                deps,
+                deps.branch(),
                 env.clone(),
                 action.clone(),
                 amp_ctx.ctx.get_origin().as_str(),
             );
             let is_previous_sender_permissioned = contract.is_permissioned(
-                deps,
+                deps.branch(),
                 env.clone(),
                 action,
                 amp_ctx.ctx.get_previous_sender().as_str(),
@@ -518,7 +454,7 @@ pub fn is_context_permissioned(
             Ok(is_origin_permissioned.is_ok() || is_previous_sender_permissioned.is_ok())
         }
         None => Ok(contract
-            .is_permissioned(deps, env.clone(), action, info.sender.to_string())
+            .is_permissioned(deps.branch(), env.clone(), action, info.sender.to_string())
             .is_ok()),
     }
 }
@@ -529,7 +465,7 @@ pub fn is_context_permissioned(
 /// - The context does not contain any AMP context and the **sender** is the actor
 /// - The context contains AMP context and the **previous sender** or **origin** are considered the actor
 pub fn is_context_permissioned_strict(
-    storage: &mut dyn Storage,
+    deps: &mut DepsMut,
     info: &MessageInfo,
     env: &Env,
     ctx: &Option<AMPPkt>,
@@ -541,13 +477,13 @@ pub fn is_context_permissioned_strict(
         Some(amp_ctx) => {
             let action: String = action.into();
             let is_origin_permissioned = contract.is_permissioned_strict(
-                storage,
+                deps.branch(),
                 env.clone(),
                 action.clone(),
                 amp_ctx.ctx.get_origin().as_str(),
             );
             let is_previous_sender_permissioned = contract.is_permissioned_strict(
-                storage,
+                deps.branch(),
                 env.clone(),
                 action,
                 amp_ctx.ctx.get_previous_sender().as_str(),
@@ -555,7 +491,7 @@ pub fn is_context_permissioned_strict(
             Ok(is_origin_permissioned.is_ok() || is_previous_sender_permissioned.is_ok())
         }
         None => Ok(contract
-            .is_permissioned_strict(storage, env.clone(), action, info.sender.to_string())
+            .is_permissioned_strict(deps.branch(), env.clone(), action, info.sender.to_string())
             .is_ok()),
     }
 }

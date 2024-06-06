@@ -1,4 +1,4 @@
-use andromeda_std::ado_base::permissioning::{LocalPermission, Permission};
+use andromeda_std::ado_base::permissioning::LocalPermission;
 use cosmwasm_std::{Addr, StdResult, Storage};
 use cw_storage_plus::Map;
 
@@ -14,7 +14,7 @@ pub fn includes_actor(storage: &dyn Storage, actor: &Addr) -> StdResult<bool> {
 pub fn add_actor_permission(
     storage: &mut dyn Storage,
     actor: &Addr,
-    permission: &Permission,
+    permission: &LocalPermission,
 ) -> StdResult<()> {
     PERMISSIONS.save(storage, actor, permission)
 }

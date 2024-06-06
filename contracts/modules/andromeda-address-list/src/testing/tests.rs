@@ -5,7 +5,7 @@ use andromeda_modules::address_list::{
     ActorPermission, ActorPermissionResponse, ExecuteMsg, IncludesActorResponse, InstantiateMsg,
     QueryMsg,
 };
-use andromeda_std::ado_base::permissioning::Permission;
+use andromeda_std::ado_base::permissioning::LocalPermission;
 
 use andromeda_std::error::ContractError;
 
@@ -25,7 +25,7 @@ fn init(deps: DepsMut, info: MessageInfo) {
             owner: None,
             actor_permission: Some(ActorPermission {
                 actor: Addr::unchecked("actor"),
-                permission: Permission::whitelisted(None),
+                permission: LocalPermission::whitelisted(None),
             }),
         },
     )
@@ -76,7 +76,7 @@ fn test_add_remove_actor() {
     let info = mock_info(operator, &[]);
 
     let actor = Addr::unchecked("actor");
-    let permission = Permission::default();
+    let permission = LocalPermission::default();
 
     init(deps.as_mut(), info.clone());
 
@@ -145,7 +145,7 @@ fn test_includes_actor_query() {
     let actor = Addr::unchecked("actor");
     let random_actor = Addr::unchecked("random_actor");
 
-    let permission = Permission::default();
+    let permission = LocalPermission::default();
 
     PERMISSIONS
         .save(deps.as_mut().storage, &actor, &permission)
@@ -175,7 +175,7 @@ fn test_actor_permission_query() {
     let actor = Addr::unchecked("actor");
     let random_actor = Addr::unchecked("random_actor");
 
-    let permission = Permission::default();
+    let permission = LocalPermission::default();
 
     PERMISSIONS
         .save(deps.as_mut().storage, &actor, &permission)
@@ -188,7 +188,7 @@ fn test_actor_permission_query() {
 
     assert_eq!(
         ActorPermissionResponse {
-            permission: Permission::default()
+            permission: LocalPermission::default()
         },
         res
     );
