@@ -49,6 +49,7 @@ impl Asset {
     }
     pub fn transfer(
         &self,
+        deps: &Deps,
         to_address: impl Into<String>,
         amount: Uint128,
     ) -> Result<SubMsg, ContractError> {
@@ -56,10 +57,11 @@ impl Asset {
 
         Ok(match self {
             Asset::NativeToken(denom) => SubMsg::new(BankMsg::Send {
-                to_address: to_address,
+                to_address,
                 amount: vec![coin(amount.u128(), denom)],
             }),
             Asset::Cw20Token(denom) => {
+                let denom = denom.get_raw_address(deps)?;
                 let transfer_msg = Cw20ExecuteMsg::Transfer {
                     recipient: to_address,
                     amount,
@@ -70,12 +72,13 @@ impl Asset {
         })
     }
 
-    pub fn burn(&self, amount: Uint128) -> Result<SubMsg, ContractError> {
+    pub fn burn(&self, deps: &Deps, amount: Uint128) -> Result<SubMsg, ContractError> {
         Ok(match self {
             Asset::NativeToken(denom) => SubMsg::new(BankMsg::Burn {
                 amount: vec![coin(amount.u128(), denom)],
             }),
             Asset::Cw20Token(denom) => {
+                let denom = denom.get_raw_address(deps)?;
                 let burn_msg = Cw20ExecuteMsg::Burn { amount };
                 let wasm_msg = wasm_execute(denom, &burn_msg, vec![])?;
                 SubMsg::new(wasm_msg)

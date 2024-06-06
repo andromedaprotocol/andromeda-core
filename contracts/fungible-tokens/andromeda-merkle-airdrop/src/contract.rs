@@ -18,9 +18,15 @@ use andromeda_fungible_tokens::airdrop::{
     MerkleRootResponse, QueryMsg, TotalClaimedResponse,
 };
 use andromeda_std::{
-    ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
+    ado_base::{permissioning::Permission, InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     ado_contract::ADOContract,
-    common::{actions::call_action, context::ExecuteContext, encode_binary, expiration::Expiry},
+    common::{
+        actions::call_action,
+        context::ExecuteContext,
+        denom::{Asset, SEND_CW20_ACTION},
+        encode_binary,
+        expiration::Expiry,
+    },
     error::ContractError,
 };
 
@@ -35,23 +41,9 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    // Validate asset_info
-    msg.asset_info
-        .get_verified_asset(deps.branch(), env.clone())?;
-
-    let config = Config {
-        asset_info: msg.asset_info,
-    };
-
-    CONFIG.save(deps.storage, &config)?;
-
-    let stage = 0;
-    LATEST_STAGE.save(deps.storage, &stage)?;
-
-    let contract = ADOContract::default();
-    let resp = contract.instantiate(
+    let resp = ADOContract::default().instantiate(
         deps.storage,
-        env,
+        env.clone(),
         deps.api,
         &deps.querier,
         info,
@@ -62,6 +54,32 @@ pub fn instantiate(
             owner: msg.owner,
         },
     )?;
+
+    // IMPORTANT
+    // Permission must be set for Cw20 token
+    // Unless Cw20 is not identified as verified asset
+    if let Asset::Cw20Token(addr) = msg.asset_info.clone() {
+        let addr = addr.get_raw_address(&deps.as_ref())?;
+        ADOContract::default().permission_action(SEND_CW20_ACTION, deps.storage)?;
+        ADOContract::set_permission(
+            deps.storage,
+            SEND_CW20_ACTION,
+            addr,
+            Permission::Whitelisted(None),
+        )?;
+    }
+
+    // Validate asset_info
+    msg.asset_info.get_verified_asset(deps.branch(), env)?;
+
+    let config = Config {
+        asset_info: msg.asset_info,
+    };
+
+    CONFIG.save(deps.storage, &config)?;
+
+    let stage = 0;
+    LATEST_STAGE.save(deps.storage, &stage)?;
 
     Ok(resp)
 }
@@ -215,7 +233,9 @@ pub fn execute_claim(
     claimed_amount = claimed_amount.checked_add(amount)?;
     STAGE_AMOUNT_CLAIMED.save(deps.storage, stage, &claimed_amount)?;
 
-    let transfer_msg = config.asset_info.transfer(info.sender.clone(), amount)?;
+    let transfer_msg = config
+        .asset_info
+        .transfer(&deps.as_ref(), info.sender.clone(), amount)?;
 
     let res = Response::new()
         .add_submessage(transfer_msg)
@@ -260,7 +280,7 @@ pub fn execute_burn(ctx: ExecuteContext, stage: u8) -> Result<Response, Contract
     let balance_to_burn = total_amount - claimed_amount;
 
     let config = CONFIG.load(deps.storage)?;
-    let burn_msg = config.asset_info.burn(balance_to_burn)?;
+    let burn_msg = config.asset_info.burn(&deps.as_ref(), balance_to_burn)?;
 
     // Burn the tokens and response
     let res = Response::new()
