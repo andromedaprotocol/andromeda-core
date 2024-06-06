@@ -28,7 +28,7 @@ impl Asset {
                     ContractError::InvalidZeroAmount {}
                 );
                 let valid_cw20_auction = ADOContract::default()
-                    .is_permissioned(deps.storage, env, SEND_CW20_ACTION, cw20_token.clone())
+                    .is_permissioned(deps, env, SEND_CW20_ACTION, cw20_token.clone())
                     .is_ok();
                 ensure!(
                     valid_cw20_auction,

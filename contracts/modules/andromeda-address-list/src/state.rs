@@ -1,9 +1,9 @@
-use andromeda_std::ado_base::permissioning::Permission;
+use andromeda_std::ado_base::permissioning::{LocalPermission, Permission};
 use cosmwasm_std::{Addr, StdResult, Storage};
 use cw_storage_plus::Map;
 
 /// A mapping of actor to permission
-pub const PERMISSIONS: Map<&Addr, Permission> = Map::new("permissioning");
+pub const PERMISSIONS: Map<&Addr, LocalPermission> = Map::new("permissioning");
 
 /// Query if a given actor is included in the permissions list.
 pub fn includes_actor(storage: &dyn Storage, actor: &Addr) -> StdResult<bool> {

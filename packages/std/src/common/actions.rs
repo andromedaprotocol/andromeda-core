@@ -6,14 +6,14 @@ use crate::{
 use cosmwasm_std::{ensure, DepsMut, Env, MessageInfo, Response};
 
 pub fn call_action(
-    deps: &mut DepsMut,
+    deps: DepsMut,
     info: &MessageInfo,
     env: &Env,
     amp_ctx: &Option<AMPPkt>,
     action: &str,
 ) -> Result<Response, ContractError> {
     ensure!(
-        is_context_permissioned(deps.storage, info, env, amp_ctx, action)?,
+        is_context_permissioned(deps, info, env, amp_ctx, action)?,
         ContractError::Unauthorized {}
     );
 

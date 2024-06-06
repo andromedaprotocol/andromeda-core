@@ -1,4 +1,4 @@
-use crate::ado_base::permissioning::Permission;
+use crate::ado_base::permissioning::LocalPermission;
 use crate::amp::{ADO_DB_KEY, VFS_KEY};
 use crate::error::ContractError;
 use cosmwasm_schema::cw_serde;
@@ -218,9 +218,9 @@ impl AOSQuerier {
         querier: &QuerierWrapper,
         contract_addr: &Addr,
         actor: &str,
-    ) -> Result<Permission, ContractError> {
+    ) -> Result<LocalPermission, ContractError> {
         let key = AOSQuerier::get_map_storage_key("permissioning", &[actor.as_bytes()])?;
-        let permission: Option<Permission> =
+        let permission: Option<LocalPermission> =
             AOSQuerier::query_storage(querier, contract_addr, key.as_str())?;
         match permission {
             Some(permission) => Ok(permission),
