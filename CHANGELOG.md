@@ -22,6 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Merkle Root: stage expiration now uses `Milliseconds`[(#417)](https://github.com/andromedaprotocol/andromeda-core/pull/417)
 - Module Redesign [(#452)](https://github.com/andromedaprotocol/andromeda-core/pull/452)
 - Primitive Improvements [(#476)](https://github.com/andromedaprotocol/andromeda-core/pull/476)
+- Merkle Root: Andromeda Asset is used now as a `asset_info`[(#480)](https://github.com/andromedaprotocol/andromeda-core/pull/480)
+
 
 ### Fixed
 
