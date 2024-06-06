@@ -23,7 +23,7 @@ use andromeda_fungible_tokens::airdrop::{
 use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     ado_contract::ADOContract,
-    common::{actions::call_action, context::ExecuteContext, encode_binary, expiration::Expiry},
+    common::{actions::call_action, context::ExecuteContext, encode_binary, expiration::Expiry, denom::validate_denom},
     error::ContractError,
 };
 
@@ -33,14 +33,18 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
-    deps: DepsMut,
+    mut deps: DepsMut,
     env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
+
+    let (coin_denom, uses_cw20) = msg.asset_info.get_verified_asset(deps.branch(), env)?;
+
     let config = Config {
-        asset_info: msg.asset_info.check(deps.api, None)?,
+        asset_info: msg.asset_info,
     };
+
     CONFIG.save(deps.storage, &config)?;
 
     let stage = 0;

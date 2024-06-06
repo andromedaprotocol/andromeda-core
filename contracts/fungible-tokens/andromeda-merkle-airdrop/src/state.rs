@@ -1,13 +1,12 @@
-use andromeda_std::common::MillisecondsExpiration;
+use andromeda_std::common::{MillisecondsExpiration, denom::Asset};
 use cosmwasm_schema::cw_serde;
 
 use cosmwasm_std::{Addr, Uint128};
-use cw_asset::AssetInfo;
 use cw_storage_plus::{Item, Map};
 
 #[cw_serde]
 pub struct Config {
-    pub asset_info: AssetInfo,
+    pub asset_info: Asset,
 }
 
 pub const CONFIG_KEY: &str = "config";
