@@ -4,6 +4,8 @@ use crate::contract::{execute, instantiate, query};
 use andromeda_non_fungible_tokens::marketplace::{
     Cw721HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg,
 };
+use andromeda_std::ado_base::permissioning::Permission;
+use andromeda_std::ado_base::permissioning::PermissioningMessage;
 use andromeda_std::ado_base::rates::Rate;
 use andromeda_std::ado_base::rates::RatesMessage;
 use andromeda_std::amp::messages::AMPPkt;
@@ -64,6 +66,22 @@ impl MockMarketplace {
         rate: Rate,
     ) -> ExecuteResult {
         self.execute(app, &mock_set_rates(action, rate), sender, &[])
+    }
+
+    pub fn execute_set_permissions(
+        &self,
+        app: &mut MockApp,
+        sender: Addr,
+        actor: AndrAddr,
+        action: impl Into<String>,
+        permission: Permission,
+    ) -> ExecuteResult {
+        self.execute(
+            app,
+            &mock_set_permissions(actor, action, permission),
+            sender,
+            &[],
+        )
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -152,6 +170,18 @@ pub fn mock_set_rates(action: impl Into<String>, rate: Rate) -> ExecuteMsg {
     ExecuteMsg::Rates(RatesMessage::SetRate {
         action: action.into(),
         rate,
+    })
+}
+
+pub fn mock_set_permissions(
+    actor: AndrAddr,
+    action: impl Into<String>,
+    permission: Permission,
+) -> ExecuteMsg {
+    ExecuteMsg::Permissioning(PermissioningMessage::SetPermission {
+        actor,
+        action: action.into(),
+        permission,
     })
 }
 

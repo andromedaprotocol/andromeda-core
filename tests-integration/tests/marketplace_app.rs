@@ -12,7 +12,7 @@ use andromeda_marketplace::mock::{
     mock_andromeda_marketplace, mock_buy_token, mock_marketplace_instantiate_msg,
     mock_receive_packet, mock_start_sale, MockMarketplace,
 };
-use andromeda_std::ado_base::permissioning::LocalPermission;
+use andromeda_std::ado_base::permissioning::{LocalPermission, Permission};
 use andromeda_std::ado_base::rates::{LocalRateType, LocalRateValue, PercentRate, Rate};
 
 use andromeda_non_fungible_tokens::marketplace::Cw20HookMsg;
@@ -145,25 +145,6 @@ fn test_marketplace_app() {
         .unwrap();
     let token_id = "0";
 
-    // Whitelist
-    address_list
-        .execute_actor_permission(
-            &mut router,
-            owner.clone(),
-            cw721.addr().clone(),
-            LocalPermission::whitelisted(None),
-        )
-        .unwrap();
-
-    address_list
-        .execute_actor_permission(
-            &mut router,
-            owner.clone(),
-            buyer.clone(),
-            LocalPermission::whitelisted(None),
-        )
-        .unwrap();
-
     // Send Token to Marketplace
     cw721
         .execute_send_nft(
@@ -198,6 +179,41 @@ fn test_marketplace_app() {
         time: block_info.time.plus_minutes(1),
         chain_id: block_info.chain_id,
     });
+
+    // Blacklist buyer in address list
+    address_list
+        .execute_actor_permission(
+            &mut router,
+            owner.clone(),
+            buyer.clone(),
+            LocalPermission::blacklisted(None),
+        )
+        .unwrap();
+
+    // Blacklist buyer using contract permission
+    marketplace
+        .execute_set_permissions(
+            &mut router,
+            owner.clone(),
+            AndrAddr::from_string(buyer.clone()),
+            "Buy",
+            Permission::Contract(AndrAddr::from_string(address_list.addr())),
+        )
+        .unwrap();
+
+    // Should return Unauthorized error
+    let err: ContractError = router
+        .execute_contract(
+            buyer.clone(),
+            Addr::unchecked(marketplace.addr()),
+            &mock_buy_token(cw721.addr(), token_id),
+            // We're sending the exact amount required, which is the price + tax
+            &[coin(100, "uandr")],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(err, ContractError::Unauthorized {});
 
     router
         .execute_contract(
@@ -841,7 +857,6 @@ fn test_marketplace_app_cw20_unrestricted() {
 
     let second_cw20: MockCW20 =
         app.query_ado_by_component_name(&router, second_cw20_component.name);
-    println!("second_cw20 address: {}", second_cw20.addr());
 
     address_list
         .execute_actor_permission(
