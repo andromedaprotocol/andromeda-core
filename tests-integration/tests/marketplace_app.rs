@@ -12,7 +12,7 @@ use andromeda_marketplace::mock::{
     mock_andromeda_marketplace, mock_buy_token, mock_marketplace_instantiate_msg,
     mock_receive_packet, mock_start_sale, MockMarketplace,
 };
-use andromeda_std::ado_base::permissioning::Permission;
+use andromeda_std::ado_base::permissioning::LocalPermission;
 use andromeda_std::ado_base::rates::{LocalRateType, LocalRateValue, PercentRate, Rate};
 
 use andromeda_non_fungible_tokens::marketplace::Cw20HookMsg;
@@ -151,7 +151,7 @@ fn test_marketplace_app() {
             &mut router,
             owner.clone(),
             cw721.addr().clone(),
-            Permission::whitelisted(None),
+            LocalPermission::whitelisted(None),
         )
         .unwrap();
 
@@ -160,7 +160,7 @@ fn test_marketplace_app() {
             &mut router,
             owner.clone(),
             buyer.clone(),
-            Permission::whitelisted(None),
+            LocalPermission::whitelisted(None),
         )
         .unwrap();
 
@@ -544,7 +544,7 @@ fn test_marketplace_app_cw20_restricted() {
             &mut router,
             owner.clone(),
             cw721.addr().clone(),
-            Permission::whitelisted(None),
+            LocalPermission::whitelisted(None),
         )
         .unwrap();
 
@@ -553,7 +553,7 @@ fn test_marketplace_app_cw20_restricted() {
             &mut router,
             owner.clone(),
             cw20.addr().clone(),
-            Permission::whitelisted(None),
+            LocalPermission::whitelisted(None),
         )
         .unwrap();
 
@@ -562,7 +562,7 @@ fn test_marketplace_app_cw20_restricted() {
             &mut router,
             owner.clone(),
             buyer.clone(),
-            Permission::whitelisted(None),
+            LocalPermission::whitelisted(None),
         )
         .unwrap();
 
@@ -571,7 +571,7 @@ fn test_marketplace_app_cw20_restricted() {
             &mut router,
             owner.clone(),
             owner.clone(),
-            Permission::whitelisted(None),
+            LocalPermission::whitelisted(None),
         )
         .unwrap();
 
@@ -848,7 +848,7 @@ fn test_marketplace_app_cw20_unrestricted() {
             &mut router,
             owner.clone(),
             cw721.addr().clone(),
-            Permission::whitelisted(None),
+            LocalPermission::whitelisted(None),
         )
         .unwrap();
 
@@ -857,7 +857,7 @@ fn test_marketplace_app_cw20_unrestricted() {
             &mut router,
             owner.clone(),
             cw20.addr().clone(),
-            Permission::whitelisted(None),
+            LocalPermission::whitelisted(None),
         )
         .unwrap();
 
@@ -866,7 +866,7 @@ fn test_marketplace_app_cw20_unrestricted() {
             &mut router,
             owner.clone(),
             second_cw20.addr().clone(),
-            Permission::whitelisted(None),
+            LocalPermission::whitelisted(None),
         )
         .unwrap();
 
@@ -875,7 +875,7 @@ fn test_marketplace_app_cw20_unrestricted() {
             &mut router,
             owner.clone(),
             buyer.clone(),
-            Permission::whitelisted(None),
+            LocalPermission::whitelisted(None),
         )
         .unwrap();
 
@@ -884,7 +884,7 @@ fn test_marketplace_app_cw20_unrestricted() {
             &mut router,
             owner.clone(),
             owner.clone(),
-            Permission::whitelisted(None),
+            LocalPermission::whitelisted(None),
         )
         .unwrap();
 

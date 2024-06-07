@@ -465,7 +465,7 @@ pub fn is_context_permissioned(
 /// - The context does not contain any AMP context and the **sender** is the actor
 /// - The context contains AMP context and the **previous sender** or **origin** are considered the actor
 pub fn is_context_permissioned_strict(
-    deps: &mut DepsMut,
+    mut deps: DepsMut,
     info: &MessageInfo,
     env: &Env,
     ctx: &Option<AMPPkt>,

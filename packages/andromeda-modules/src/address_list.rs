@@ -1,6 +1,5 @@
 use andromeda_std::{
-    ado_base::permissioning::{LocalPermission, Permission},
-    andr_exec, andr_instantiate, andr_query,
+    ado_base::permissioning::LocalPermission, andr_exec, andr_instantiate, andr_query,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Addr;

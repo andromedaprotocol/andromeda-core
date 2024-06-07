@@ -17,7 +17,7 @@ use andromeda_splitter::mock::{
 };
 use andromeda_std::{
     ado_base::{
-        permissioning::Permission,
+        permissioning::{LocalPermission, Permission},
         rates::{LocalRate, LocalRateType, LocalRateValue, PercentRate, Rate},
     },
     amp::{AndrAddr, Recipient},
@@ -603,7 +603,7 @@ fn test_auction_app_cw20_restricted() {
     // Blacklist bidder now
     let actor = AndrAddr::from_string(buyer_one.clone());
     let action = "PlaceBid".to_string();
-    let permission = Permission::blacklisted(None);
+    let permission = Permission::Local(LocalPermission::blacklisted(None));
     auction
         .execute_set_permission(&mut router, owner.clone(), actor, action, permission)
         .unwrap();
@@ -626,7 +626,7 @@ fn test_auction_app_cw20_restricted() {
     // Now whitelist bidder one
     let actor = AndrAddr::from_string(buyer_one.clone());
     let action = "PlaceBid".to_string();
-    let permission = Permission::whitelisted(None);
+    let permission = Permission::Local(LocalPermission::whitelisted(None));
     auction
         .execute_set_permission(&mut router, owner.clone(), actor, action, permission)
         .unwrap();

@@ -7,7 +7,7 @@ use andromeda_non_fungible_tokens::marketplace::{
     Cw20HookMsg, Cw721HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg, SaleIdsResponse,
     SaleStateResponse, Status,
 };
-use andromeda_std::ado_base::permissioning::Permission;
+use andromeda_std::ado_base::permissioning::{LocalPermission, Permission};
 use andromeda_std::ado_contract::ADOContract;
 
 use andromeda_std::amp::Recipient;
@@ -69,7 +69,7 @@ pub fn instantiate(
             deps.storage,
             SEND_CW20_ACTION,
             addr,
-            Permission::Whitelisted(None),
+            Permission::Local(LocalPermission::Whitelisted(None)),
         )?;
     }
 
@@ -160,11 +160,11 @@ fn handle_receive_cw721(
 }
 
 pub fn handle_receive_cw20(
-    ctx: ExecuteContext,
+    mut ctx: ExecuteContext,
     receive_msg: Cw20ReceiveMsg,
 ) -> Result<Response, ContractError> {
     ADOContract::default().is_permissioned(
-        ctx.deps.storage,
+        ctx.deps.branch(),
         ctx.env.clone(),
         SEND_CW20_ACTION,
         ctx.info.sender.clone(),
@@ -463,7 +463,10 @@ fn execute_buy_cw20(
     action: String,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
-        deps, info, env, ..
+        mut deps,
+        info,
+        env,
+        ..
     } = ctx;
 
     let mut token_sale_state =
@@ -519,7 +522,7 @@ fn execute_buy_cw20(
 
     let sale_currency = token_sale_state.coin_denom.clone();
     let valid_cw20_sale = ADOContract::default()
-        .is_permissioned(deps.storage, env, SEND_CW20_ACTION, sale_currency.clone())
+        .is_permissioned(deps.branch(), env, SEND_CW20_ACTION, sale_currency.clone())
         .is_ok();
     ensure!(
         valid_cw20_sale,
