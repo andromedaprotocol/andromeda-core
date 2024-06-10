@@ -68,22 +68,6 @@ impl MockMarketplace {
         self.execute(app, &mock_set_rates(action, rate), sender, &[])
     }
 
-    pub fn execute_set_permissions(
-        &self,
-        app: &mut MockApp,
-        sender: Addr,
-        actor: AndrAddr,
-        action: impl Into<String>,
-        permission: Permission,
-    ) -> ExecuteResult {
-        self.execute(
-            app,
-            &mock_set_permissions(actor, action, permission),
-            sender,
-            &[],
-        )
-    }
-
     #[allow(clippy::too_many_arguments)]
     pub fn execute_update_sale(
         &self,
