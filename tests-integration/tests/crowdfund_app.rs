@@ -235,5 +235,5 @@ fn test_crowdfund_app() {
         )
         .unwrap();
 
-    assert_eq!(ado_base_version.version, "1.0.0".to_string())
+    assert_eq!(ado_base_version.version, "1.1.0".to_string())
 }
