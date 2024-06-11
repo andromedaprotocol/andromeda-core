@@ -11,9 +11,6 @@ mod auction_app;
 mod kernel;
 
 #[cfg(test)]
-mod crowdfund_app;
-
-#[cfg(test)]
 mod cw20_staking;
 
 #[cfg(test)]
