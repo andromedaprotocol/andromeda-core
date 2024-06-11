@@ -1,7 +1,7 @@
 use andromeda_non_fungible_tokens::crowdfund::{
-    CampaignStage, CampaignSummaryResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg,
-    PresaleTierOrder, QueryMsg, SimpleTierOrder, Tier, TierMetaData, TierOrder, TierOrdersResponse,
-    TiersResponse,
+    CampaignConfig, CampaignStage, CampaignSummaryResponse, Cw20HookMsg, ExecuteMsg,
+    InstantiateMsg, PresaleTierOrder, QueryMsg, RawTier, SimpleTierOrder, Tier, TierMetaData,
+    TierOrder, TierOrdersResponse, TiersResponse,
 };
 
 use andromeda_non_fungible_tokens::cw721::ExecuteMsg as Cw721ExecuteMsg;
@@ -60,7 +60,13 @@ pub fn instantiate(
         },
     )?;
 
-    if let Asset::Cw20Token(addr) = msg.campaign_config.denom.clone() {
+    let campaign_config: CampaignConfig = msg.campaign_config.into();
+    let tiers: Vec<Tier> = msg
+        .tiers
+        .into_iter()
+        .map(|raw_tier| raw_tier.into())
+        .collect();
+    if let Asset::Cw20Token(addr) = campaign_config.denom.clone() {
         let addr = addr.get_raw_address(&deps.as_ref())?;
         ADOContract::default().permission_action(SEND_CW20_ACTION, deps.storage)?;
         ADOContract::set_permission(
@@ -71,10 +77,10 @@ pub fn instantiate(
         )?;
     }
 
-    msg.campaign_config.validate(deps.branch(), &env)?;
-    update_config(deps.storage, msg.campaign_config)?;
+    campaign_config.validate(deps.branch(), &env)?;
+    update_config(deps.storage, campaign_config)?;
 
-    set_tiers(deps.storage, msg.tiers)?;
+    set_tiers(deps.storage, tiers)?;
 
     Ok(inst_resp)
 }
@@ -145,7 +151,7 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
         .add_events(action_response.events))
 }
 
-fn execute_add_tier(ctx: ExecuteContext, tier: Tier) -> Result<Response, ContractError> {
+fn execute_add_tier(ctx: ExecuteContext, tier: RawTier) -> Result<Response, ContractError> {
     let ExecuteContext { deps, info, .. } = ctx;
 
     let contract = ADOContract::default();
@@ -154,6 +160,7 @@ fn execute_add_tier(ctx: ExecuteContext, tier: Tier) -> Result<Response, Contrac
         ContractError::Unauthorized {}
     );
 
+    let tier: Tier = tier.into();
     tier.validate()?;
 
     let curr_stage = get_current_stage(deps.storage);
@@ -180,7 +187,7 @@ fn execute_add_tier(ctx: ExecuteContext, tier: Tier) -> Result<Response, Contrac
     Ok(resp)
 }
 
-fn execute_update_tier(ctx: ExecuteContext, tier: Tier) -> Result<Response, ContractError> {
+fn execute_update_tier(ctx: ExecuteContext, tier: RawTier) -> Result<Response, ContractError> {
     let ExecuteContext { deps, info, .. } = ctx;
 
     let contract = ADOContract::default();
@@ -189,6 +196,7 @@ fn execute_update_tier(ctx: ExecuteContext, tier: Tier) -> Result<Response, Cont
         ContractError::Unauthorized {}
     );
 
+    let tier: Tier = tier.into();
     tier.validate()?;
 
     let curr_stage = get_current_stage(deps.storage);
@@ -293,7 +301,13 @@ fn execute_start_campaign(
     // update stage
     set_current_stage(deps.storage, CampaignStage::ONGOING)?;
 
-    let resp = Response::new().add_attribute("action", "start_campaign");
+    let mut resp = Response::new()
+        .add_attribute("action", "start_campaign")
+        .add_attribute("end_time", end_time);
+
+    if start_time.is_some() {
+        resp = resp.add_attribute("start_time", start_time.unwrap());
+    }
 
     Ok(resp)
 }
@@ -380,7 +394,7 @@ fn execute_end_campaign(
         }
     );
 
-    let current_cap = get_current_cap(deps.storage);
+    let current_capital = get_current_cap(deps.storage);
     let campaign_config = get_config(deps.storage)?;
     let soft_cap = campaign_config.soft_cap.unwrap_or(Uint128::one());
     let end_time = campaign_config.end_time;
@@ -388,7 +402,7 @@ fn execute_end_campaign(
     // Decide the next stage
     let next_stage = match (
         is_discard,
-        current_cap >= soft_cap,
+        current_capital >= soft_cap,
         end_time.is_expired(&env.block),
     ) {
         // discard the campaign as there are some unexpected issues
@@ -399,7 +413,7 @@ fn execute_end_campaign(
         (false, false, true) => CampaignStage::FAILED,
         // Capital did not hit the target capital and campaign is not expired
         (false, false, false) => {
-            if current_cap != Uint128::zero() {
+            if current_capital != Uint128::zero() {
                 // Need to wait until campaign expires
                 return Err(ContractError::CampaignNotExpired {});
             }
@@ -424,7 +438,7 @@ fn execute_end_campaign(
         resp = resp.add_submessage(withdraw_to_recipient(
             ctx,
             campaign_config.withdrawal_recipient,
-            current_cap,
+            current_capital,
             campaign_denom,
         )?);
     }
@@ -438,10 +452,29 @@ fn purchase_tiers(
     sender: String,
     orders: Vec<SimpleTierOrder>,
 ) -> Result<Response, ContractError> {
+    ensure!(!amount.is_zero(), ContractError::InsufficientFunds {});
+
     let ExecuteContext { deps, env, .. } = ctx;
 
     let campaign_config = get_config(deps.storage)?;
-    let mut current_cap = get_current_cap(deps.storage);
+    // Ensure campaign accepting coin is received
+    let campaign_denom = match campaign_config.denom {
+        Asset::Cw20Token(ref cw20_token) => {
+            format!("cw20:{}", cw20_token.get_raw_address(&deps.as_ref())?)
+        }
+        Asset::NativeToken(ref addr) => format!("native:{}", addr),
+    };
+    ensure!(
+        denom.to_string() == campaign_denom,
+        ContractError::InvalidFunds {
+            msg: format!(
+                "Only {} is accepted by the campaign.",
+                campaign_config.denom
+            ),
+        }
+    );
+
+    let mut current_capital = get_current_cap(deps.storage);
 
     let current_stage = get_current_stage(deps.storage);
 
@@ -466,25 +499,8 @@ fn purchase_tiers(
     // Campaign is expired or should be ended due to overfunding
     ensure!(
         !campaign_config.end_time.is_expired(&env.block)
-            || campaign_config.hard_cap.unwrap_or(current_cap) > current_cap,
+            || campaign_config.hard_cap.unwrap_or(current_capital) > current_capital,
         ContractError::CampaignEnded {}
-    );
-
-    // Ensure campaign accepting coin is received
-    let campaign_denom = match campaign_config.denom {
-        Asset::Cw20Token(ref cw20_token) => {
-            format!("cw20:{}", cw20_token.get_raw_address(&deps.as_ref())?)
-        }
-        Asset::NativeToken(ref addr) => format!("native:{}", addr),
-    };
-    ensure!(
-        denom.to_string() == campaign_denom,
-        ContractError::InvalidFunds {
-            msg: format!(
-                "Only {} is accepted by the campaign.",
-                campaign_config.denom
-            ),
-        }
     );
 
     let mut full_orders = Vec::<TierOrder>::new();
@@ -507,10 +523,10 @@ fn purchase_tiers(
 
     // Update order history and sold amount for the tier
     set_tier_orders(deps.storage, full_orders)?;
-    current_cap = current_cap.checked_add(total_cost)?;
+    current_capital = current_capital.checked_add(total_cost)?;
 
     // Update current capital
-    set_current_cap(deps.storage, current_cap)?;
+    set_current_cap(deps.storage, current_capital)?;
     let mut resp = Response::new()
         .add_attribute("action", "purchase_tiers")
         .add_attribute("payment", format!("{0}{1}", amount, denom))
@@ -688,7 +704,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
             start_after,
             limit,
             order_by,
-        } => encode_binary(&query_user_orders(
+        } => encode_binary(&query_tier_orders(
             deps,
             orderer,
             start_after,
@@ -705,7 +721,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
 }
 
 fn query_campaign_summary(deps: Deps) -> Result<CampaignSummaryResponse, ContractError> {
-    let current_cap = get_current_cap(deps.storage);
+    let current_capital = get_current_cap(deps.storage);
     let current_stage = get_current_stage(deps.storage);
     let config = get_config(deps.storage)?;
     Ok(CampaignSummaryResponse {
@@ -721,11 +737,11 @@ fn query_campaign_summary(deps: Deps) -> Result<CampaignSummaryResponse, Contrac
         start_time: config.start_time,
         end_time: config.end_time,
         current_stage: current_stage.to_string(),
-        current_cap: current_cap.into(),
+        current_capital: current_capital.into(),
     })
 }
 
-fn query_user_orders(
+fn query_tier_orders(
     deps: Deps,
     orderer: String,
     start_after: Option<u64>,

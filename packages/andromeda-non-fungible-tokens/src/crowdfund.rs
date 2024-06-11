@@ -14,18 +14,18 @@ use crate::cw721::TokenExtension;
 #[cw_serde]
 pub struct InstantiateMsg {
     /// The configuration for the campaign
-    pub campaign_config: CampaignConfig,
+    pub campaign_config: InitialCampaignConfig,
     /// The tiers for the campaign
-    pub tiers: Vec<Tier>,
+    pub tiers: Vec<RawTier>,
 }
 
 #[andr_exec]
 #[cw_serde]
 pub enum ExecuteMsg {
     /// Add a tier
-    AddTier { tier: Tier },
+    AddTier { tier: RawTier },
     /// Update an existing tier
-    UpdateTier { tier: Tier },
+    UpdateTier { tier: RawTier },
     /// Remove a tier
     RemoveTier { level: Uint64 },
     /// Start the campaign
@@ -49,6 +49,29 @@ pub enum ExecuteMsg {
 #[cw_serde]
 pub enum Cw20HookMsg {
     PurchaseTiers { orders: Vec<SimpleTierOrder> },
+}
+
+/// Only used for instantiate
+#[cw_serde]
+pub struct InitialCampaignConfig {
+    /// Title of the campaign. Maximum length is 64.
+    pub title: String,
+    /// Short description about the campaign.
+    pub description: String,
+    /// URL for the banner of the campaign
+    pub banner: String,
+    /// Official website of the campaign
+    pub url: String,
+    /// The address of the tier contract whose tokens are being distributed
+    pub token_address: AndrAddr,
+    /// The denom of the token that is being accepted by the campaign
+    pub denom: Asset,
+    /// Recipient that is upposed to receive the funds gained by the campaign
+    pub withdrawal_recipient: Recipient,
+    /// The minimum amount of funding to be sold for the successful fundraising
+    pub soft_cap: Option<Uint128>,
+    /// The maximum amount of funding to be sold for the fundraising
+    pub hard_cap: Option<Uint128>,
 }
 
 #[cw_serde]
@@ -75,6 +98,24 @@ pub struct CampaignConfig {
     pub start_time: Option<MillisecondsExpiration>,
     /// Time when campaign ends
     pub end_time: MillisecondsExpiration,
+}
+
+impl From<InitialCampaignConfig> for CampaignConfig {
+    fn from(config: InitialCampaignConfig) -> CampaignConfig {
+        CampaignConfig {
+            title: config.title,
+            description: config.description,
+            banner: config.banner,
+            url: config.url,
+            token_address: config.token_address,
+            denom: config.denom,
+            withdrawal_recipient: config.withdrawal_recipient,
+            soft_cap: config.soft_cap,
+            hard_cap: config.hard_cap,
+            start_time: None,
+            end_time: MillisecondsExpiration::default(),
+        }
+    }
 }
 
 impl CampaignConfig {
@@ -133,14 +174,49 @@ impl ToString for CampaignStage {
     }
 }
 
+// Tier without sale information. Only used for tier management in READY stage
+#[cw_serde]
+pub struct RawTier {
+    pub level: Uint64,
+    pub label: String,
+    pub price: Uint128,
+    pub limit: Option<Uint128>, // None for no limit
+    pub metadata: TierMetaData,
+}
+
 #[cw_serde]
 pub struct Tier {
     pub level: Uint64,
     pub label: String,
     pub price: Uint128,
     pub limit: Option<Uint128>, // None for no limit
-    pub sold_amount: Uint128,
     pub metadata: TierMetaData,
+    pub sold_amount: Uint128,
+}
+
+impl From<RawTier> for Tier {
+    fn from(tier: RawTier) -> Tier {
+        Tier {
+            level: tier.level,
+            label: tier.label,
+            price: tier.price,
+            limit: tier.limit,
+            metadata: tier.metadata,
+            sold_amount: Uint128::zero(),
+        }
+    }
+}
+
+impl From<Tier> for RawTier {
+    fn from(tier_details: Tier) -> RawTier {
+        RawTier {
+            level: tier_details.level,
+            label: tier_details.label,
+            price: tier_details.price,
+            limit: tier_details.limit,
+            metadata: tier_details.metadata,
+        }
+    }
 }
 
 #[cw_serde]
@@ -256,7 +332,7 @@ pub struct CampaignSummaryResponse {
     pub end_time: MillisecondsExpiration,
     // Current Status
     pub current_stage: String,
-    pub current_cap: u128,
+    pub current_capital: u128,
 }
 
 #[cw_serde]

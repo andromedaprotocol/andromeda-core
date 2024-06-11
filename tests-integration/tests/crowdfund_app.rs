@@ -9,7 +9,9 @@ use andromeda_cw20::mock::{mock_andromeda_cw20, mock_cw20_instantiate_msg, mock_
 use andromeda_cw721::mock::{mock_andromeda_cw721, mock_cw721_instantiate_msg, MockCW721};
 use andromeda_finance::splitter::AddressPercent;
 use andromeda_non_fungible_tokens::{
-    crowdfund::{CampaignConfig, CampaignStage, PresaleTierOrder, SimpleTierOrder, TierMetaData},
+    crowdfund::{
+        CampaignStage, InitialCampaignConfig, PresaleTierOrder, SimpleTierOrder, TierMetaData,
+    },
     cw721::TokenExtension,
 };
 use andromeda_splitter::mock::{
@@ -17,7 +19,7 @@ use andromeda_splitter::mock::{
 };
 use andromeda_std::{
     amp::{AndrAddr, Recipient},
-    common::{denom::Asset, encode_binary, Milliseconds, MillisecondsExpiration},
+    common::{denom::Asset, encode_binary, Milliseconds},
 };
 use andromeda_testing::{
     mock::{mock_app, MockApp},
@@ -269,7 +271,7 @@ fn test_successful_crowdfund_app_native(setup: TestCase) {
         Some(presale),
     );
     let summary = crowdfund.query_campaign_summary(&mut router);
-    assert_eq!(summary.current_cap, 0);
+    assert_eq!(summary.current_capital, 0);
     assert_eq!(summary.current_stage, CampaignStage::ONGOING.to_string());
 
     // Purchase tiers
@@ -314,14 +316,14 @@ fn test_successful_crowdfund_app_native(setup: TestCase) {
     // End campaign
     let _ = crowdfund.execute_end_campaign(owner.clone(), &mut router);
     let summary = crowdfund.query_campaign_summary(&mut router);
-    assert_eq!(summary.current_cap, 10 * 100 + 200 * 10);
+    assert_eq!(summary.current_capital, 10 * 100 + 200 * 10);
     assert_eq!(summary.current_stage, CampaignStage::SUCCESS.to_string());
     let recipient_balance = router
         .wrap()
         .query_balance(recipient.clone().address, "uandr")
         .unwrap()
         .amount;
-    assert_eq!(summary.current_cap, recipient_balance.into());
+    assert_eq!(summary.current_capital, recipient_balance.into());
 
     // Claim tier
     let _ = crowdfund
@@ -361,7 +363,7 @@ fn test_crowdfund_app_native_discard(
         Some(presale),
     );
     let summary = crowdfund.query_campaign_summary(&mut router);
-    assert_eq!(summary.current_cap, 0);
+    assert_eq!(summary.current_capital, 0);
     assert_eq!(summary.current_stage, CampaignStage::ONGOING.to_string());
 
     // Purchase tiers
@@ -464,7 +466,7 @@ fn test_crowdfund_app_native_with_ado_recipient(
         Some(presale),
     );
     let summary = crowdfund.query_campaign_summary(&mut router);
-    assert_eq!(summary.current_cap, 0);
+    assert_eq!(summary.current_capital, 0);
     assert_eq!(summary.current_stage, CampaignStage::ONGOING.to_string());
 
     // Purchase tiers
@@ -523,8 +525,8 @@ fn test_crowdfund_app_native_with_ado_recipient(
         .query_balance(recipient_2, "uandr")
         .unwrap()
         .amount;
-    assert_eq!(recipient_1_balance.u128(), summary.current_cap / 5);
-    assert_eq!(recipient_2_balance.u128(), summary.current_cap * 4 / 5);
+    assert_eq!(recipient_1_balance.u128(), summary.current_capital / 5);
+    assert_eq!(recipient_2_balance.u128(), summary.current_capital * 4 / 5);
 }
 
 #[rstest]
@@ -552,7 +554,7 @@ fn test_failed_crowdfund_app_native(setup: TestCase) {
         Some(presale),
     );
     let summary = crowdfund.query_campaign_summary(&mut router);
-    assert_eq!(summary.current_cap, 0);
+    assert_eq!(summary.current_capital, 0);
     assert_eq!(summary.current_stage, CampaignStage::ONGOING.to_string());
 
     // Purchase tiers
@@ -597,7 +599,7 @@ fn test_failed_crowdfund_app_native(setup: TestCase) {
 
     let _ = crowdfund.execute_end_campaign(owner.clone(), &mut router);
     let summary = crowdfund.query_campaign_summary(&mut router);
-    assert_eq!(summary.current_cap, 5 * 100);
+    assert_eq!(summary.current_capital, 5 * 100);
     assert_eq!(summary.current_stage, CampaignStage::FAILED.to_string());
 
     // Refund
@@ -646,7 +648,7 @@ fn test_successful_crowdfund_app_cw20(#[with(false)] setup: TestCase) {
         Some(presale),
     );
     let summary = crowdfund.query_campaign_summary(&mut router);
-    assert_eq!(summary.current_cap, 0);
+    assert_eq!(summary.current_capital, 0);
     assert_eq!(summary.current_stage, CampaignStage::ONGOING.to_string());
 
     // Purchase tiers
@@ -687,10 +689,10 @@ fn test_successful_crowdfund_app_cw20(#[with(false)] setup: TestCase) {
     // End campaign
     let _ = crowdfund.execute_end_campaign(owner.clone(), &mut router);
     let summary = crowdfund.query_campaign_summary(&mut router);
-    assert_eq!(summary.current_cap, 10 * 100 + 200 * 10);
+    assert_eq!(summary.current_capital, 10 * 100 + 200 * 10);
     assert_eq!(summary.current_stage, CampaignStage::SUCCESS.to_string());
     let recipient_balance = cw20.query_balance(&router, recipient.clone().address);
-    assert_eq!(summary.current_cap, recipient_balance.into());
+    assert_eq!(summary.current_capital, recipient_balance.into());
 
     // Claim tier
     let _ = crowdfund
@@ -730,7 +732,7 @@ fn test_failed_crowdfund_app_cw20(#[with(false)] setup: TestCase) {
         Some(presale),
     );
     let summary = crowdfund.query_campaign_summary(&mut router);
-    assert_eq!(summary.current_cap, 0);
+    assert_eq!(summary.current_capital, 0);
     assert_eq!(summary.current_stage, CampaignStage::ONGOING.to_string());
 
     // Purchase tiers
@@ -773,7 +775,7 @@ fn test_failed_crowdfund_app_cw20(#[with(false)] setup: TestCase) {
 
     let _ = crowdfund.execute_end_campaign(owner.clone(), &mut router);
     let summary = crowdfund.query_campaign_summary(&mut router);
-    assert_eq!(summary.current_cap, 5 * 100);
+    assert_eq!(summary.current_capital, 5 * 100);
     assert_eq!(summary.current_stage, CampaignStage::FAILED.to_string());
 
     // Refund
@@ -793,8 +795,8 @@ fn mock_campaign_config(
     token_address: AndrAddr,
     withdrawal_recipient: Recipient,
     soft_cap: Option<Uint128>,
-) -> CampaignConfig {
-    CampaignConfig {
+) -> InitialCampaignConfig {
+    InitialCampaignConfig {
         title: "First Crowdfund".to_string(),
         description: "Demo campaign for testing".to_string(),
         banner: "http://<campaign_banner>".to_string(),
@@ -804,8 +806,6 @@ fn mock_campaign_config(
         withdrawal_recipient,
         soft_cap,
         hard_cap: None,
-        start_time: None,
-        end_time: MillisecondsExpiration::zero(),
     }
 }
 

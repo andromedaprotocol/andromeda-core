@@ -1,7 +1,7 @@
 use andromeda_non_fungible_tokens::{
     crowdfund::{
-        CampaignConfig, CampaignStage, ExecuteMsg, InstantiateMsg, SimpleTierOrder, Tier,
-        TierMetaData,
+        CampaignConfig, CampaignStage, ExecuteMsg, InitialCampaignConfig, InstantiateMsg, RawTier,
+        SimpleTierOrder, Tier, TierMetaData,
     },
     cw721::{ExecuteMsg as Cw721ExecuteMsg, TokenExtension},
 };
@@ -20,13 +20,15 @@ use cosmwasm_std::{
 
 use crate::{
     contract::{execute, instantiate},
-    state::{CAMPAIGN_CONFIG, CAMPAIGN_STAGE, CURRENT_CAP, TIERS, TIER_ORDERS},
-    testing::mock_querier::{mock_dependencies_custom, mock_zero_price_tier, MOCK_DEFAULT_LIMIT},
+    state::{CAMPAIGN_CONFIG, CAMPAIGN_STAGE, CURRENT_CAPITAL, TIERS, TIER_ORDERS},
+    testing::mock_querier::{
+        mock_dependencies_custom, mock_zero_price_raw_tier, MOCK_DEFAULT_LIMIT,
+    },
 };
 
 use super::mock_querier::{mock_campaign_config, mock_campaign_tiers, MOCK_DEFAULT_OWNER};
 
-fn init(deps: DepsMut, config: CampaignConfig, tiers: Vec<Tier>) -> Response {
+fn init(deps: DepsMut, config: InitialCampaignConfig, tiers: Vec<RawTier>) -> Response {
     let msg = InstantiateMsg {
         campaign_config: config,
         tiers,
@@ -59,14 +61,16 @@ fn set_campaign_stage(store: &mut dyn Storage, stage: &CampaignStage) {
     CAMPAIGN_STAGE.save(store, stage).unwrap();
 }
 fn set_current_cap(store: &mut dyn Storage, cur_cap: &Uint128) {
-    CURRENT_CAP.save(store, cur_cap).unwrap();
+    CURRENT_CAPITAL.save(store, cur_cap).unwrap();
 }
 fn set_campaign_config(store: &mut dyn Storage, config: &CampaignConfig) {
     CAMPAIGN_CONFIG.save(store, config).unwrap();
 }
-fn set_tiers(storage: &mut dyn Storage, tiers: Vec<Tier>) {
+fn set_tiers(storage: &mut dyn Storage, tiers: Vec<RawTier>) {
     for tier in tiers {
-        TIERS.save(storage, tier.level.into(), &tier).unwrap();
+        TIERS
+            .save(storage, tier.level.into(), &tier.into())
+            .unwrap();
     }
 }
 
@@ -110,8 +114,8 @@ mod test {
 
     struct InstantiateTestCase {
         name: String,
-        config: CampaignConfig,
-        tiers: Vec<Tier>,
+        config: InitialCampaignConfig,
+        tiers: Vec<RawTier>,
         expected_res: Result<Response, ContractError>,
     }
     #[test]
@@ -161,7 +165,7 @@ mod test {
             InstantiateTestCase {
                 name: "instantiate with invalid tiers including zero price tier".to_string(),
                 config: mock_campaign_config(Asset::NativeToken(MOCK_NATIVE_DENOM.to_string())),
-                tiers: vec![mock_zero_price_tier(Uint64::zero())],
+                tiers: vec![mock_zero_price_raw_tier(Uint64::zero())],
                 expected_res: Err(ContractError::InvalidTier {
                     operation: "all".to_string(),
                     msg: "Price can not be zero".to_string(),
@@ -184,13 +188,18 @@ mod test {
             if res.is_ok() {
                 assert_eq!(
                     get_campaign_config(&deps.storage),
-                    test.config,
+                    test.config.into(),
                     "Test case: {}",
                     test.name
                 );
+                let expected_tiers: Vec<Tier> = test
+                    .tiers
+                    .into_iter()
+                    .map(|simple_tier| simple_tier.into())
+                    .collect();
                 assert_eq!(
                     get_tiers(deps.as_ref().storage),
-                    test.tiers,
+                    expected_tiers,
                     "Test case: {}",
                     test.name
                 );
@@ -200,18 +209,17 @@ mod test {
 
     struct TierTestCase {
         name: String,
-        tier: Tier,
+        tier: RawTier,
         expected_res: Result<Response, ContractError>,
         payee: String,
     }
 
     #[test]
     fn test_add_tier() {
-        let valid_tier = Tier {
+        let valid_raw_tier = RawTier {
             level: Uint64::new(2u64),
             label: "Tier 2".to_string(),
             limit: Some(Uint128::new(100)),
-            sold_amount: Uint128::zero(),
             price: Uint128::new(100),
             metadata: TierMetaData {
                 extension: TokenExtension {
@@ -220,11 +228,10 @@ mod test {
                 token_uri: None,
             },
         };
-        let duplicated_tier = Tier {
+        let duplicated_raw_tier = RawTier {
             level: Uint64::new(0u64),
             label: "Tier 2".to_string(),
             limit: Some(Uint128::new(100)),
-            sold_amount: Uint128::zero(),
             price: Uint128::new(100),
             metadata: TierMetaData {
                 extension: TokenExtension {
@@ -237,14 +244,14 @@ mod test {
         let test_cases: Vec<TierTestCase> = vec![
             TierTestCase {
                 name: "standard add_tier".to_string(),
-                tier: valid_tier.clone(),
+                tier: valid_raw_tier.clone(),
                 payee: MOCK_DEFAULT_OWNER.to_string(),
                 expected_res: Ok(Response::new()
                     .add_attribute("action", "add_tier")
-                    .add_attribute("level", valid_tier.level.to_string())
-                    .add_attribute("label", valid_tier.label.clone())
-                    .add_attribute("price", valid_tier.price.to_string())
-                    .add_attribute("limit", valid_tier.limit.unwrap().to_string())
+                    .add_attribute("level", valid_raw_tier.level.to_string())
+                    .add_attribute("label", valid_raw_tier.label.clone())
+                    .add_attribute("price", valid_raw_tier.price.to_string())
+                    .add_attribute("limit", valid_raw_tier.limit.unwrap().to_string())
                     // Economics message
                     .add_submessage(SubMsg::reply_on_error(
                         CosmosMsg::Wasm(WasmMsg::Execute {
@@ -261,13 +268,13 @@ mod test {
             },
             TierTestCase {
                 name: "add_tier with unauthorized sender".to_string(),
-                tier: valid_tier.clone(),
+                tier: valid_raw_tier.clone(),
                 expected_res: Err(ContractError::Unauthorized {}),
                 payee: "owner1".to_string(),
             },
             TierTestCase {
                 name: "add_tier with zero price tier".to_string(),
-                tier: mock_zero_price_tier(Uint64::new(2)),
+                tier: mock_zero_price_raw_tier(Uint64::new(2)),
                 expected_res: Err(ContractError::InvalidTier {
                     operation: "all".to_string(),
                     msg: "Price can not be zero".to_string(),
@@ -276,7 +283,7 @@ mod test {
             },
             TierTestCase {
                 name: "add_tier with duplicated tier".to_string(),
-                tier: duplicated_tier,
+                tier: duplicated_raw_tier,
                 expected_res: Err(ContractError::InvalidTier {
                     operation: "add".to_string(),
                     msg: "Tier with level 0 already exist".to_string(),
@@ -305,7 +312,8 @@ mod test {
                     test.tier,
                     TIERS
                         .load(deps.as_ref().storage, test.tier.level.into())
-                        .unwrap(),
+                        .unwrap()
+                        .into(),
                     "Test case: {}",
                     test.name
                 );
@@ -315,11 +323,10 @@ mod test {
 
     #[test]
     fn test_update_tier() {
-        let valid_tier = Tier {
+        let valid_tier = RawTier {
             level: Uint64::zero(),
             label: "Tier 0".to_string(),
             limit: Some(Uint128::new(100)),
-            sold_amount: Uint128::zero(),
             price: Uint128::new(100),
             metadata: TierMetaData {
                 extension: TokenExtension {
@@ -328,11 +335,10 @@ mod test {
                 token_uri: None,
             },
         };
-        let non_existing_tier = Tier {
+        let non_existing_tier = RawTier {
             level: Uint64::new(2u64),
             label: "Tier 2".to_string(),
             limit: Some(Uint128::new(100)),
-            sold_amount: Uint128::zero(),
             price: Uint128::new(100),
             metadata: TierMetaData {
                 extension: TokenExtension {
@@ -375,7 +381,7 @@ mod test {
             },
             TierTestCase {
                 name: "update_tier with zero price tier".to_string(),
-                tier: mock_zero_price_tier(Uint64::zero()),
+                tier: mock_zero_price_raw_tier(Uint64::zero()),
                 expected_res: Err(ContractError::InvalidTier {
                     operation: "all".to_string(),
                     msg: "Price can not be zero".to_string(),
@@ -413,7 +419,8 @@ mod test {
                     test.tier,
                     TIERS
                         .load(deps.as_ref().storage, test.tier.level.into())
-                        .unwrap(),
+                        .unwrap()
+                        .into(),
                     "Test case: {}",
                     test.name
                 );
@@ -423,12 +430,11 @@ mod test {
 
     #[test]
     fn test_remove_tier() {
-        let valid_tier = Tier {
+        let valid_tier = RawTier {
             level: Uint64::zero(),
             label: "Tier 0".to_string(),
             limit: Some(Uint128::new(100)),
             price: Uint128::new(100),
-            sold_amount: Uint128::zero(),
             metadata: TierMetaData {
                 extension: TokenExtension {
                     publisher: MOCK_ADO_PUBLISHER.to_string(),
@@ -436,12 +442,11 @@ mod test {
                 token_uri: None,
             },
         };
-        let non_existing_tier = Tier {
+        let non_existing_tier = RawTier {
             level: Uint64::new(2u64),
             label: "Tier 2".to_string(),
             limit: Some(Uint128::new(100)),
             price: Uint128::new(100),
-            sold_amount: Uint128::zero(),
             metadata: TierMetaData {
                 extension: TokenExtension {
                     publisher: MOCK_ADO_PUBLISHER.to_string(),
@@ -515,7 +520,7 @@ mod test {
 
     struct StartCampaignTestCase {
         name: String,
-        tiers: Vec<Tier>,
+        tiers: Vec<RawTier>,
         presale: Option<Vec<PresaleTierOrder>>,
         start_time: Option<MillisecondsExpiration>,
         end_time: MillisecondsExpiration,
@@ -538,11 +543,10 @@ mod test {
             orderer: mock_orderer.clone(),
         }];
 
-        let invalid_tiers = vec![Tier {
+        let invalid_tiers = vec![RawTier {
             level: Uint64::new(1u64),
             label: "Tier 1".to_string(),
             limit: Some(Uint128::new(1000u128)),
-            sold_amount: Uint128::zero(),
             price: Uint128::new(10u128),
             metadata: TierMetaData {
                 extension: TokenExtension {
@@ -563,6 +567,10 @@ mod test {
                 payee: MOCK_DEFAULT_OWNER.to_string(),
                 expected_res: Ok(Response::new()
                     .add_attribute("action", "start_campaign")
+                    .add_attribute(
+                        "end_time",
+                        MillisecondsExpiration::from_seconds(env.block.time.seconds() + 100),
+                    )
                     .add_submessage(SubMsg::reply_on_error(
                         CosmosMsg::Wasm(WasmMsg::Execute {
                             contract_addr: "economics_contract".to_string(),
@@ -850,7 +858,7 @@ mod test {
             set_current_cap(deps.as_mut().storage, &test.initial_cap);
             set_tiers(deps.as_mut().storage, mock_campaign_tiers());
 
-            let mut mock_config = mock_campaign_config(test.denom);
+            let mut mock_config: CampaignConfig = mock_campaign_config(test.denom).into();
             mock_config.start_time = test.start_time;
             mock_config.end_time = test.end_time;
             set_campaign_config(deps.as_mut().storage, &mock_config);
@@ -1043,7 +1051,7 @@ mod test {
             set_current_cap(deps.as_mut().storage, &test.initial_cap);
             set_tiers(deps.as_mut().storage, mock_campaign_tiers());
 
-            let mut mock_config = mock_campaign_config(valid_denom.clone());
+            let mut mock_config: CampaignConfig = mock_campaign_config(valid_denom.clone()).into();
             mock_config.start_time = test.start_time;
             mock_config.end_time = test.end_time;
             set_campaign_config(deps.as_mut().storage, &mock_config);
@@ -1102,7 +1110,7 @@ mod test {
         name: String,
         stage: CampaignStage,
         sender: String,
-        current_cap: Uint128,
+        current_capital: Uint128,
         soft_cap: Option<Uint128>,
         end_time: MillisecondsExpiration,
         denom: Asset,
@@ -1136,7 +1144,7 @@ mod test {
                 name: "Successful campaign using native token".to_string(),
                 stage: CampaignStage::ONGOING,
                 sender: MOCK_DEFAULT_OWNER.to_string(),
-                current_cap: Uint128::new(10000u128),
+                current_capital: Uint128::new(10000u128),
                 soft_cap: Some(Uint128::new(9000u128)),
                 end_time: MillisecondsExpiration::from_seconds(env.block.time.seconds()),
                 denom: Asset::NativeToken(MOCK_NATIVE_DENOM.to_string()),
@@ -1163,7 +1171,7 @@ mod test {
                 name: "Successful campaign using cw20".to_string(),
                 stage: CampaignStage::ONGOING,
                 sender: MOCK_DEFAULT_OWNER.to_string(),
-                current_cap: Uint128::new(10000u128),
+                current_capital: Uint128::new(10000u128),
                 soft_cap: Some(Uint128::new(9000u128)),
                 end_time: MillisecondsExpiration::from_seconds(env.block.time.seconds()),
                 denom: Asset::Cw20Token(AndrAddr::from_string(MOCK_CW20_CONTRACT.to_string())),
@@ -1200,7 +1208,7 @@ mod test {
                 name: "Failed campaign".to_string(),
                 stage: CampaignStage::ONGOING,
                 sender: MOCK_DEFAULT_OWNER.to_string(),
-                current_cap: Uint128::new(10000u128),
+                current_capital: Uint128::new(10000u128),
                 soft_cap: Some(Uint128::new(11000u128)),
                 end_time: MillisecondsExpiration::from_seconds(env.block.time.seconds()),
                 denom: Asset::Cw20Token(AndrAddr::from_string(MOCK_CW20_CONTRACT.to_string())),
@@ -1226,7 +1234,7 @@ mod test {
                 name: "Discard campaign using native token".to_string(),
                 stage: CampaignStage::ONGOING,
                 sender: MOCK_DEFAULT_OWNER.to_string(),
-                current_cap: Uint128::new(10000u128),
+                current_capital: Uint128::new(10000u128),
                 soft_cap: Some(Uint128::new(9000u128)),
                 end_time: MillisecondsExpiration::from_seconds(env.block.time.seconds()),
                 denom: Asset::NativeToken(MOCK_NATIVE_DENOM.to_string()),
@@ -1252,7 +1260,7 @@ mod test {
                 name: "Pause campaign".to_string(),
                 stage: CampaignStage::ONGOING,
                 sender: MOCK_DEFAULT_OWNER.to_string(),
-                current_cap: Uint128::new(0u128),
+                current_capital: Uint128::new(0u128),
                 soft_cap: None,
                 end_time: MillisecondsExpiration::from_seconds(env.block.time.seconds() + 1000),
                 denom: Asset::Cw20Token(AndrAddr::from_string(MOCK_CW20_CONTRACT.to_string())),
@@ -1278,7 +1286,7 @@ mod test {
                 name: "End campaign from unauthorized sender".to_string(),
                 stage: CampaignStage::ONGOING,
                 sender: "sender".to_string(),
-                current_cap: Uint128::new(10000u128),
+                current_capital: Uint128::new(10000u128),
                 soft_cap: None,
                 end_time: MillisecondsExpiration::from_seconds(env.block.time.seconds()),
                 denom: Asset::NativeToken(MOCK_NATIVE_DENOM.to_string()),
@@ -1290,7 +1298,7 @@ mod test {
                 name: "End campaign on invalid stage".to_string(),
                 stage: CampaignStage::READY,
                 sender: MOCK_DEFAULT_OWNER.to_string(),
-                current_cap: Uint128::new(10000u128),
+                current_capital: Uint128::new(10000u128),
                 soft_cap: None,
                 end_time: MillisecondsExpiration::from_seconds(env.block.time.seconds()),
                 denom: Asset::NativeToken(MOCK_NATIVE_DENOM.to_string()),
@@ -1305,7 +1313,7 @@ mod test {
                 name: "End unexpired campaign".to_string(),
                 stage: CampaignStage::ONGOING,
                 sender: MOCK_DEFAULT_OWNER.to_string(),
-                current_cap: Uint128::new(10000u128),
+                current_capital: Uint128::new(10000u128),
                 soft_cap: Some(Uint128::new(11000u128)),
                 end_time: MillisecondsExpiration::from_seconds(env.block.time.seconds() + 100),
                 denom: Asset::NativeToken(MOCK_NATIVE_DENOM.to_string()),
@@ -1316,13 +1324,14 @@ mod test {
         ];
         for test in test_cases {
             let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
-            let mut mock_config = mock_campaign_config(test.denom.clone());
+            let mock_config = mock_campaign_config(test.denom.clone());
             let _ = init(deps.as_mut(), mock_config.clone(), vec![]);
 
             let info = mock_info(&test.sender, &[]);
             set_campaign_stage(deps.as_mut().storage, &test.stage);
-            set_current_cap(deps.as_mut().storage, &test.current_cap);
+            set_current_cap(deps.as_mut().storage, &test.current_capital);
 
+            let mut mock_config: CampaignConfig = mock_config.into();
             mock_config.end_time = test.end_time;
             mock_config.soft_cap = test.soft_cap;
             set_campaign_config(deps.as_mut().storage, &mock_config);
@@ -1528,7 +1537,7 @@ mod test {
         for test in test_cases {
             let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
             let env = mock_env();
-            let mock_config = mock_campaign_config(test.denom.clone());
+            let mock_config: CampaignConfig = mock_campaign_config(test.denom.clone()).into();
             set_campaign_config(deps.as_mut().storage, &mock_config);
             set_current_stage(deps.as_mut().storage, test.stage).unwrap();
             set_tiers(deps.as_mut().storage, mock_campaign_tiers());

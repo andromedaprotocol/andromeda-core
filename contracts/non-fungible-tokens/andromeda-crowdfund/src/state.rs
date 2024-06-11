@@ -10,7 +10,7 @@ pub const CAMPAIGN_CONFIG: Item<CampaignConfig> = Item::new("campaign_config");
 
 pub const CAMPAIGN_STAGE: Item<CampaignStage> = Item::new("campaign_stage");
 
-pub const CURRENT_CAP: Item<Uint128> = Item::new("current_capital");
+pub const CURRENT_CAPITAL: Item<Uint128> = Item::new("current_capital");
 
 pub const TIERS: Map<u64, Tier> = Map::new("tiers");
 
@@ -45,15 +45,15 @@ pub(crate) fn get_config(storage: &dyn Storage) -> Result<CampaignConfig, Contra
 }
 
 pub(crate) fn get_current_cap(storage: &dyn Storage) -> Uint128 {
-    CURRENT_CAP.load(storage).unwrap_or_default()
+    CURRENT_CAPITAL.load(storage).unwrap_or_default()
 }
 
 pub(crate) fn set_current_cap(
     storage: &mut dyn Storage,
-    current_cap: Uint128,
+    current_capital: Uint128,
 ) -> Result<(), ContractError> {
-    CURRENT_CAP
-        .save(storage, &current_cap)
+    CURRENT_CAPITAL
+        .save(storage, &current_capital)
         .map_err(ContractError::Std)
 }
 
@@ -255,7 +255,7 @@ pub(crate) fn get_and_increase_tier_token_id(
     storage: &mut dyn Storage,
 ) -> Result<Uint128, ContractError> {
     let tier_token_id = TIER_TOKEN_ID.load(storage).unwrap_or_default();
-    let next_tier_token_id = tier_token_id.checked_add(Uint128::from(1u128))?;
+    let next_tier_token_id = tier_token_id.checked_add(Uint128::one())?;
     TIER_TOKEN_ID.save(storage, &next_tier_token_id)?;
     Ok(tier_token_id)
 }
