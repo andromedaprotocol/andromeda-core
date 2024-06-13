@@ -107,6 +107,14 @@ fn test_execute_update_lock() {
     let splitter = CONDITIONAL_SPLITTER.load(deps.as_ref().storage).unwrap();
     assert!(!splitter.lock_time.unwrap().is_expired(&env.block));
     assert_eq!(new_lock, splitter.lock_time.unwrap());
+
+    // Shouldn't be able to update lock while current lock isn't expired
+    let msg = ExecuteMsg::UpdateLock {
+        lock_time: Milliseconds::from_seconds(lock_time),
+    };
+    let info = mock_info(OWNER, &[]);
+    let err = execute(deps.as_mut(), env.clone(), info, msg).unwrap_err();
+    assert_eq!(err, ContractError::ContractLocked {});
 }
 
 #[test]
