@@ -1,15 +1,14 @@
 use andromeda_std::{
     andr_exec, andr_instantiate, andr_query,
-    common::{expiration::Expiry, MillisecondsExpiration},
+    common::{denom::Asset, expiration::Expiry, MillisecondsExpiration},
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
-use cw_asset::{AssetInfo, AssetInfoUnchecked};
 
 #[andr_instantiate]
 #[cw_serde]
 pub struct InstantiateMsg {
-    pub asset_info: AssetInfoUnchecked,
+    pub asset_info: Asset,
 }
 
 #[andr_exec]
@@ -51,7 +50,7 @@ pub enum QueryMsg {
 #[cw_serde]
 #[serde(rename_all = "snake_case")]
 pub struct ConfigResponse {
-    pub asset_info: AssetInfo,
+    pub asset_info: Asset,
 }
 
 #[cw_serde]
