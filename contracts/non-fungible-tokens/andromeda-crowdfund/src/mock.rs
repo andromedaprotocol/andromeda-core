@@ -1,21 +1,17 @@
 #![cfg(all(not(target_arch = "wasm32"), feature = "testing"))]
 
 use crate::contract::{execute, instantiate, query, reply};
-use andromeda_non_fungible_tokens::{
-    crowdfund::{CrowdfundMintMsg, ExecuteMsg, InstantiateMsg, QueryMsg},
-    cw721::TokenExtension,
+use andromeda_non_fungible_tokens::crowdfund::{
+    CampaignConfig, CampaignSummaryResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg,
+    PresaleTierOrder, QueryMsg, SimpleTierOrder, Tier, TierMetaData,
 };
-use andromeda_std::{
-    ado_base::rates::{Rate, RatesMessage},
-    amp::{AndrAddr, Recipient},
-    common::expiration::Expiry,
-};
+use andromeda_std::common::Milliseconds;
 use andromeda_testing::{
     mock::MockApp,
     mock_ado,
     mock_contract::{ExecuteResult, MockADO, MockContract},
 };
-use cosmwasm_std::{Addr, Coin, Empty, Uint128};
+use cosmwasm_std::{Addr, Coin, Empty, Uint128, Uint64};
 use cw_multi_test::{Contract, ContractWrapper, Executor};
 
 pub struct MockCrowdfund(Addr);
@@ -27,17 +23,12 @@ impl MockCrowdfund {
         code_id: u64,
         sender: Addr,
         app: &mut MockApp,
-        token_address: AndrAddr,
-        can_mint_after_sale: bool,
+        campaign_config: CampaignConfig,
+        tiers: Vec<Tier>,
         kernel_address: impl Into<String>,
         owner: Option<String>,
     ) -> MockCrowdfund {
-        let msg = mock_crowdfund_instantiate_msg(
-            token_address,
-            can_mint_after_sale,
-            kernel_address,
-            owner,
-        );
+        let msg = mock_crowdfund_instantiate_msg(campaign_config, tiers, kernel_address, owner);
         let addr = app
             .instantiate_contract(
                 code_id,
@@ -50,63 +41,30 @@ impl MockCrowdfund {
             .unwrap();
         MockCrowdfund(Addr::unchecked(addr))
     }
-
     #[allow(clippy::too_many_arguments)]
-    pub fn execute_start_sale(
+    pub fn execute_add_tier(
         &self,
         sender: Addr,
         app: &mut MockApp,
-        start_time: Option<Expiry>,
-        end_time: Expiry,
-        price: Coin,
-        min_tokens_sold: Uint128,
-        max_amount_per_wallet: Option<u32>,
-        recipient: Recipient,
+        level: Uint64,
+        label: String,
+        price: Uint128,
+        limit: Option<Uint128>,
+        metadata: TierMetaData,
     ) -> ExecuteResult {
-        let msg = mock_start_crowdfund_msg(
-            start_time,
-            end_time,
-            price,
-            min_tokens_sold,
-            max_amount_per_wallet,
-            recipient,
-        );
+        let msg = mock_add_tier_msg(level, label, price, limit, metadata);
         self.execute(app, &msg, sender, &[])
     }
 
-    pub fn execute_end_sale(
+    pub fn execute_start_campaign(
         &self,
         sender: Addr,
         app: &mut MockApp,
-        limit: Option<u32>,
+        start_time: Option<Milliseconds>,
+        end_time: Milliseconds,
+        presale: Option<Vec<PresaleTierOrder>>,
     ) -> ExecuteResult {
-        let msg = mock_end_crowdfund_msg(limit);
-        self.execute(app, &msg, sender, &[])
-    }
-
-    pub fn execute_mint(
-        &self,
-        sender: Addr,
-        app: &mut MockApp,
-        token_id: String,
-        extension: TokenExtension,
-        token_uri: Option<String>,
-        owner: Option<String>,
-    ) -> ExecuteResult {
-        let msg = ExecuteMsg::Mint(vec![mock_crowdfund_mint_msg(
-            token_id, extension, token_uri, owner,
-        )]);
-        self.execute(app, &msg, sender, &[])
-    }
-
-    pub fn execute_quick_mint(
-        &self,
-        sender: Addr,
-        app: &mut MockApp,
-        amount: u32,
-        publisher: String,
-    ) -> ExecuteResult {
-        let msg = mock_crowdfund_quick_mint_msg(amount, publisher);
+        let msg = mock_start_campaign_msg(start_time, end_time, presale);
         self.execute(app, &msg, sender, &[])
     }
 
@@ -114,21 +72,31 @@ impl MockCrowdfund {
         &self,
         sender: Addr,
         app: &mut MockApp,
-        number_of_tokens: Option<u32>,
-        funds: &[Coin],
+        orders: Vec<SimpleTierOrder>,
+        funds: Vec<Coin>,
     ) -> ExecuteResult {
-        let msg = mock_purchase_msg(number_of_tokens);
-        self.execute(app, &msg, sender, funds)
+        let msg = mock_purchase_msg(orders);
+        self.execute(app, &msg, sender, &funds)
     }
 
-    pub fn execute_add_rate(
-        &self,
-        app: &mut MockApp,
-        sender: Addr,
-        action: String,
-        rate: Rate,
-    ) -> ExecuteResult {
-        self.execute(app, &mock_set_rate_msg(action, rate), sender, &[])
+    pub fn execute_end_campaign(&self, sender: Addr, app: &mut MockApp) -> ExecuteResult {
+        let msg = mock_end_campaign_msg();
+        self.execute(app, &msg, sender, &[])
+    }
+
+    pub fn execute_discard_campaign(&self, sender: Addr, app: &mut MockApp) -> ExecuteResult {
+        let msg = mock_discard_campaign_msg();
+        self.execute(app, &msg, sender, &[])
+    }
+
+    pub fn execute_claim(&self, sender: Addr, app: &mut MockApp) -> ExecuteResult {
+        let msg = mock_claim_msg();
+        self.execute(app, &msg, sender, &[])
+    }
+
+    pub fn query_campaign_summary(&self, app: &mut MockApp) -> CampaignSummaryResponse {
+        let msg = QueryMsg::CampaignSummary {};
+        self.query(app, msg)
     }
 }
 
@@ -138,81 +106,66 @@ pub fn mock_andromeda_crowdfund() -> Box<dyn Contract<Empty>> {
 }
 
 pub fn mock_crowdfund_instantiate_msg(
-    token_address: AndrAddr,
-    can_mint_after_sale: bool,
+    campaign_config: CampaignConfig,
+    tiers: Vec<Tier>,
     kernel_address: impl Into<String>,
     owner: Option<String>,
 ) -> InstantiateMsg {
     InstantiateMsg {
-        token_address,
-        can_mint_after_sale,
+        campaign_config,
+        tiers,
         kernel_address: kernel_address.into(),
         owner,
     }
 }
 
-pub fn mock_start_crowdfund_msg(
-    start_time: Option<Expiry>,
-    end_time: Expiry,
-    price: Coin,
-    min_tokens_sold: Uint128,
-    max_amount_per_wallet: Option<u32>,
-    recipient: Recipient,
+pub fn mock_add_tier_msg(
+    level: Uint64,
+    label: String,
+    price: Uint128,
+    limit: Option<Uint128>,
+    metadata: TierMetaData,
 ) -> ExecuteMsg {
-    ExecuteMsg::StartSale {
+    ExecuteMsg::AddTier {
+        tier: Tier {
+            level,
+            label,
+            price,
+            limit,
+            sold_amount: Uint128::zero(),
+            metadata,
+        },
+    }
+}
+
+pub fn mock_start_campaign_msg(
+    start_time: Option<Milliseconds>,
+    end_time: Milliseconds,
+    presale: Option<Vec<PresaleTierOrder>>,
+) -> ExecuteMsg {
+    ExecuteMsg::StartCampaign {
         start_time,
         end_time,
-        price,
-        min_tokens_sold,
-        max_amount_per_wallet,
-        recipient,
+        presale,
     }
 }
 
-pub fn mock_end_crowdfund_msg(limit: Option<u32>) -> ExecuteMsg {
-    ExecuteMsg::EndSale { limit }
+pub fn mock_purchase_msg(orders: Vec<SimpleTierOrder>) -> ExecuteMsg {
+    ExecuteMsg::PurchaseTiers { orders }
 }
 
-pub fn mock_crowdfund_mint_msg(
-    token_id: String,
-    extension: TokenExtension,
-    token_uri: Option<String>,
-    owner: Option<String>,
-) -> CrowdfundMintMsg {
-    CrowdfundMintMsg {
-        token_id,
-        owner,
-        token_uri,
-        extension,
-    }
+pub fn mock_end_campaign_msg() -> ExecuteMsg {
+    ExecuteMsg::EndCampaign {}
 }
 
-pub fn mock_crowdfund_quick_mint_msg(amount: u32, publisher: String) -> ExecuteMsg {
-    let mut mint_msgs: Vec<CrowdfundMintMsg> = Vec::new();
-    for i in 0..amount {
-        let extension = TokenExtension {
-            publisher: publisher.clone(),
-        };
-
-        let msg = mock_crowdfund_mint_msg(i.to_string(), extension, None, None);
-        mint_msgs.push(msg);
-    }
-
-    ExecuteMsg::Mint(mint_msgs)
+pub fn mock_discard_campaign_msg() -> ExecuteMsg {
+    ExecuteMsg::DiscardCampaign {}
 }
 
-pub fn mock_purchase_msg(number_of_tokens: Option<u32>) -> ExecuteMsg {
-    ExecuteMsg::Purchase { number_of_tokens }
+pub fn mock_claim_msg() -> ExecuteMsg {
+    ExecuteMsg::Claim {}
 }
 
-pub fn mock_set_rate_msg(action: String, rate: Rate) -> ExecuteMsg {
-    ExecuteMsg::Rates(RatesMessage::SetRate { action, rate })
-}
-
-pub fn mock_query_ado_base_version() -> QueryMsg {
-    QueryMsg::ADOBaseVersion {}
-}
-
-pub fn mock_query_ado_version() -> QueryMsg {
-    QueryMsg::Version {}
+pub fn mock_purchase_cw20_msg(orders: Vec<SimpleTierOrder>) -> Cw20HookMsg {
+    Cw20HookMsg::PurchaseTiers { orders }
 }
