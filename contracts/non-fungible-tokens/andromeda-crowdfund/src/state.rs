@@ -44,11 +44,11 @@ pub(crate) fn get_config(storage: &dyn Storage) -> Result<CampaignConfig, Contra
     CAMPAIGN_CONFIG.load(storage).map_err(ContractError::Std)
 }
 
-pub(crate) fn get_current_cap(storage: &dyn Storage) -> Uint128 {
+pub(crate) fn get_current_capital(storage: &dyn Storage) -> Uint128 {
     CURRENT_CAPITAL.load(storage).unwrap_or_default()
 }
 
-pub(crate) fn set_current_cap(
+pub(crate) fn set_current_capital(
     storage: &mut dyn Storage,
     current_capital: Uint128,
 ) -> Result<(), ContractError> {

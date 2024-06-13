@@ -31,9 +31,9 @@ use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use cw_utils::nonpayable;
 
 use crate::state::{
-    add_tier, clear_user_orders, get_and_increase_tier_token_id, get_config, get_current_cap,
+    add_tier, clear_user_orders, get_and_increase_tier_token_id, get_config, get_current_capital,
     get_current_stage, get_tier, get_tiers, get_user_orders, is_valid_tiers, remove_tier,
-    set_current_cap, set_current_stage, set_tier_orders, set_tiers, update_config, update_tier,
+    set_current_capital, set_current_stage, set_tier_orders, set_tiers, update_config, update_tier,
 };
 
 const CONTRACT_NAME: &str = "crates.io:andromeda-crowdfund";
@@ -394,7 +394,7 @@ fn execute_end_campaign(
         }
     );
 
-    let current_capital = get_current_cap(deps.storage);
+    let current_capital = get_current_capital(deps.storage);
     let campaign_config = get_config(deps.storage)?;
     let soft_cap = campaign_config.soft_cap.unwrap_or(Uint128::one());
     let end_time = campaign_config.end_time;
@@ -474,7 +474,7 @@ fn purchase_tiers(
         }
     );
 
-    let mut current_capital = get_current_cap(deps.storage);
+    let mut current_capital = get_current_capital(deps.storage);
 
     let current_stage = get_current_stage(deps.storage);
 
@@ -526,7 +526,7 @@ fn purchase_tiers(
     current_capital = current_capital.checked_add(total_cost)?;
 
     // Update current capital
-    set_current_cap(deps.storage, current_capital)?;
+    set_current_capital(deps.storage, current_capital)?;
     let mut resp = Response::new()
         .add_attribute("action", "purchase_tiers")
         .add_attribute("payment", format!("{0}{1}", amount, denom))
@@ -721,7 +721,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
 }
 
 fn query_campaign_summary(deps: Deps) -> Result<CampaignSummaryResponse, ContractError> {
-    let current_capital = get_current_cap(deps.storage);
+    let current_capital = get_current_capital(deps.storage);
     let current_stage = get_current_stage(deps.storage);
     let config = get_config(deps.storage)?;
     Ok(CampaignSummaryResponse {

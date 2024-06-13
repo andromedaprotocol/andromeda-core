@@ -60,7 +60,7 @@ fn past_time() -> MillisecondsExpiration {
 fn set_campaign_stage(store: &mut dyn Storage, stage: &CampaignStage) {
     CAMPAIGN_STAGE.save(store, stage).unwrap();
 }
-fn set_current_cap(store: &mut dyn Storage, cur_cap: &Uint128) {
+fn set_current_capital(store: &mut dyn Storage, cur_cap: &Uint128) {
     CURRENT_CAPITAL.save(store, cur_cap).unwrap();
 }
 fn set_campaign_config(store: &mut dyn Storage, config: &CampaignConfig) {
@@ -103,7 +103,7 @@ mod test {
     use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 
     use crate::{
-        state::{get_current_cap, set_current_stage, set_tier_orders},
+        state::{get_current_capital, set_current_stage, set_tier_orders},
         testing::mock_querier::{MOCK_DEFAULT_OWNER, MOCK_WITHDRAWAL_ADDRESS},
     };
 
@@ -855,7 +855,7 @@ mod test {
 
             // Mock necessary storage setup
             set_campaign_stage(deps.as_mut().storage, &test.stage);
-            set_current_cap(deps.as_mut().storage, &test.initial_cap);
+            set_current_capital(deps.as_mut().storage, &test.initial_cap);
             set_tiers(deps.as_mut().storage, mock_campaign_tiers());
 
             let mut mock_config: CampaignConfig = mock_campaign_config(test.denom).into();
@@ -872,7 +872,7 @@ mod test {
 
             if res.is_ok() {
                 // Check current capital
-                let updated_cap = get_current_cap(deps.as_ref().storage);
+                let updated_cap = get_current_capital(deps.as_ref().storage);
                 let expected_cap = test.initial_cap + Uint128::new(100);
                 assert_eq!(updated_cap, expected_cap, "Test case: {}", test.name);
 
@@ -1048,7 +1048,7 @@ mod test {
 
             // Mock necessary storage setup
             set_campaign_stage(deps.as_mut().storage, &test.stage);
-            set_current_cap(deps.as_mut().storage, &test.initial_cap);
+            set_current_capital(deps.as_mut().storage, &test.initial_cap);
             set_tiers(deps.as_mut().storage, mock_campaign_tiers());
 
             let mut mock_config: CampaignConfig = mock_campaign_config(valid_denom.clone()).into();
@@ -1070,7 +1070,7 @@ mod test {
 
             if res.is_ok() {
                 // Check current capital
-                let updated_cap = get_current_cap(deps.as_ref().storage);
+                let updated_cap = get_current_capital(deps.as_ref().storage);
                 let expected_cap = test.initial_cap + Uint128::new(100);
                 assert_eq!(updated_cap, expected_cap, "Test case: {}", test.name);
 
@@ -1329,7 +1329,7 @@ mod test {
 
             let info = mock_info(&test.sender, &[]);
             set_campaign_stage(deps.as_mut().storage, &test.stage);
-            set_current_cap(deps.as_mut().storage, &test.current_capital);
+            set_current_capital(deps.as_mut().storage, &test.current_capital);
 
             let mut mock_config: CampaignConfig = mock_config.into();
             mock_config.end_time = test.end_time;
