@@ -1,3 +1,5 @@
+use std::fmt::{Display, Formatter, Result as StdResult};
+
 use crate::{ado_contract::ADOContract, amp::AndrAddr, error::ContractError};
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
@@ -12,6 +14,16 @@ pub enum Asset {
     Cw20Token(AndrAddr),
     NativeToken(String),
 }
+
+impl Display for Asset {
+    fn fmt(&self, f: &mut Formatter) -> StdResult {
+        match self {
+            Asset::NativeToken(addr) => f.write_str(&format!("native:{addr}")),
+            Asset::Cw20Token(addr) => f.write_str(&format!("cw20:{addr}")),
+        }
+    }
+}
+
 impl Asset {
     pub fn get_verified_asset(
         &self,

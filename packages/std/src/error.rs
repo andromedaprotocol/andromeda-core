@@ -59,6 +59,8 @@ pub enum ContractError {
         operation: String,
         validator: String,
     },
+    #[error("Invalid Campaign Operation: {operation} on {stage}")]
+    InvalidCampaignOperation { operation: String, stage: String },
 
     #[error("No Staking Reward")]
     InvalidClaim {},
@@ -297,6 +299,15 @@ pub enum ContractError {
     #[error("AuctionEnded")]
     AuctionEnded {},
 
+    #[error("CampaignNotStarted")]
+    CampaignNotStarted {},
+
+    #[error("CampaignEnded")]
+    CampaignEnded {},
+
+    #[error("Campaign is not expired yet")]
+    CampaignNotExpired {},
+
     #[error("SaleNotStarted")]
     SaleNotStarted {},
 
@@ -444,6 +455,9 @@ pub enum ContractError {
 
     #[error("Logo binary data exceeds 5KB limit")]
     LogoTooBig {},
+
+    #[error("Invalid migration. Unable to migrate from version {prev}")]
+    InvalidMigration { prev: String },
 
     #[error("Invalid xml preamble for SVG")]
     InvalidXmlPreamble {},
@@ -659,6 +673,9 @@ pub enum ContractError {
     #[error("Invalid Expiration Time")]
     InvalidExpirationTime {},
 
+    #[error("Invalid Parameter, {error:?}")]
+    InvalidParameter { error: Option<String> },
+
     #[error("Invalid Pathname, {error:?}")]
     InvalidPathname { error: Option<String> },
 
@@ -685,6 +702,12 @@ pub enum ContractError {
 
     #[error("Invalid time: {msg}")]
     InvalidTimestamp { msg: String },
+
+    #[error("At least one tier should have no limit")]
+    InvalidTiers {},
+
+    #[error("Invalid tier for {operation} operation: {msg} ")]
+    InvalidTier { operation: String, msg: String },
 }
 
 impl From<Cw20ContractError> for ContractError {
