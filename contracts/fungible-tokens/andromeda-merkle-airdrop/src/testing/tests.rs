@@ -4,31 +4,33 @@ use andromeda_fungible_tokens::airdrop::{
 };
 use andromeda_std::{
     ado_contract::ADOContract,
-    common::{expiration::Expiry, Milliseconds},
+    amp::AndrAddr,
+    common::{denom::Asset, expiration::Expiry, Milliseconds},
     error::ContractError,
-    testing::mock_querier::MOCK_KERNEL_CONTRACT,
+    testing::mock_querier::{MOCK_CW20_CONTRACT, MOCK_KERNEL_CONTRACT},
 };
 use andromeda_testing::economics_msg::generate_economics_message;
 use cosmwasm_schema::{cw_serde, serde::Deserialize};
 use cosmwasm_std::{
-    attr, from_json,
+    attr, coin, from_json,
     testing::{mock_env, mock_info},
-    to_json_binary, Addr, BankMsg, Coin, CosmosMsg, SubMsg, Timestamp, Uint128, WasmMsg,
+    to_json_binary, BankMsg, Coin, CosmosMsg, SubMsg, Timestamp, Uint128, WasmMsg,
 };
 use cw20::Cw20ExecuteMsg;
-use cw_asset::{AssetInfoBase, AssetInfoUnchecked};
 
 use crate::{
     contract::{execute, instantiate, query},
     testing::mock_querier::mock_dependencies_custom,
 };
 
+const MOCK_NATIVE_DENOM: &str = "uandr";
+
 #[test]
 fn proper_instantiation() {
     let mut deps = mock_dependencies_custom(&[]);
 
     let msg = InstantiateMsg {
-        asset_info: AssetInfoUnchecked::cw20("anchor0000"),
+        asset_info: Asset::Cw20Token(AndrAddr::from_string(MOCK_CW20_CONTRACT)),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
     };
@@ -46,7 +48,7 @@ fn proper_instantiation() {
         .is_contract_owner(deps.as_ref().storage, "owner0000")
         .unwrap());
     assert_eq!(
-        AssetInfoBase::cw20(Addr::unchecked("anchor0000")),
+        Asset::Cw20Token(AndrAddr::from_string(MOCK_CW20_CONTRACT)),
         config.asset_info
     );
 
@@ -60,7 +62,7 @@ fn register_merkle_root() {
     let mut deps = mock_dependencies_custom(&[]);
 
     let msg = InstantiateMsg {
-        asset_info: AssetInfoUnchecked::cw20("anchor0000"),
+        asset_info: Asset::Cw20Token(AndrAddr::from_string(MOCK_CW20_CONTRACT)),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
     };
@@ -130,7 +132,7 @@ fn test_claim() {
     let test_data: Encoded = from_json(TEST_DATA_1).unwrap();
 
     let msg = InstantiateMsg {
-        asset_info: AssetInfoUnchecked::cw20("token0000"),
+        asset_info: Asset::Cw20Token(AndrAddr::from_string(MOCK_CW20_CONTRACT)),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
     };
@@ -159,7 +161,7 @@ fn test_claim() {
     let info = mock_info(test_data.account.as_str(), &[]);
     let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
     let expected = SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr: "token0000".to_string(),
+        contract_addr: MOCK_CW20_CONTRACT.to_string(),
         funds: vec![],
         msg: to_json_binary(&Cw20ExecuteMsg::Transfer {
             recipient: test_data.account.clone(),
@@ -246,7 +248,7 @@ fn test_claim() {
     let info = mock_info(test_data.account.as_str(), &[]);
     let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
     let expected: SubMsg<_> = SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr: "token0000".to_string(),
+        contract_addr: MOCK_CW20_CONTRACT.to_string(),
         funds: vec![],
         msg: to_json_binary(&Cw20ExecuteMsg::Transfer {
             recipient: test_data.account.clone(),
@@ -301,11 +303,11 @@ struct MultipleData {
 
 #[test]
 fn test_claim_native() {
-    let mut deps = mock_dependencies_custom(&[]);
+    let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
     let test_data: Encoded = from_json(TEST_DATA_1).unwrap();
 
     let msg = InstantiateMsg {
-        asset_info: AssetInfoUnchecked::native("uusd"),
+        asset_info: Asset::NativeToken(MOCK_NATIVE_DENOM.to_string()),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
     };
@@ -336,7 +338,7 @@ fn test_claim_native() {
         to_address: test_data.account.clone(),
         amount: vec![Coin {
             amount: test_data.amount,
-            denom: "uusd".to_string(),
+            denom: MOCK_NATIVE_DENOM.to_string(),
         }],
     }));
     assert_eq!(
@@ -397,7 +399,7 @@ fn test_multiple_claim() {
     let test_data: MultipleData = from_json(TEST_DATA_1_MULTI).unwrap();
 
     let msg = InstantiateMsg {
-        asset_info: AssetInfoUnchecked::cw20("token0000"),
+        asset_info: Asset::Cw20Token(AndrAddr::from_string(MOCK_CW20_CONTRACT)),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
     };
@@ -427,7 +429,7 @@ fn test_multiple_claim() {
         let info = mock_info(account.account.as_str(), &[]);
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
         let expected = SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: "token0000".to_string(),
+            contract_addr: MOCK_CW20_CONTRACT.to_string(),
             funds: vec![],
             msg: to_json_binary(&Cw20ExecuteMsg::Transfer {
                 recipient: account.account.clone(),
@@ -472,7 +474,7 @@ fn test_stage_expires() {
     let mut deps = mock_dependencies_custom(&[]);
 
     let msg = InstantiateMsg {
-        asset_info: AssetInfoUnchecked::cw20("anchor0000"),
+        asset_info: Asset::Cw20Token(AndrAddr::from_string(MOCK_CW20_CONTRACT)),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
     };
@@ -513,7 +515,7 @@ fn test_cant_burn() {
     let mut deps = mock_dependencies_custom(&[]);
 
     let msg = InstantiateMsg {
-        asset_info: AssetInfoUnchecked::cw20("token0000"),
+        asset_info: Asset::Cw20Token(AndrAddr::from_string(MOCK_CW20_CONTRACT)),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
     };
@@ -551,7 +553,7 @@ fn test_can_burn() {
     let test_data: Encoded = from_json(TEST_DATA_1).unwrap();
 
     let msg = InstantiateMsg {
-        asset_info: AssetInfoUnchecked::cw20("token0000"),
+        asset_info: Asset::Cw20Token(AndrAddr::from_string(MOCK_CW20_CONTRACT)),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
     };
@@ -578,7 +580,7 @@ fn test_can_burn() {
     let info = mock_info(test_data.account.as_str(), &[]);
     let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
     let expected = SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr: "token0000".to_string(),
+        contract_addr: MOCK_CW20_CONTRACT.to_string(),
         funds: vec![],
         msg: to_json_binary(&Cw20ExecuteMsg::Transfer {
             recipient: test_data.account.clone(),
@@ -614,7 +616,7 @@ fn test_can_burn() {
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
 
     let expected = SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr: "token0000".to_string(),
+        contract_addr: MOCK_CW20_CONTRACT.to_string(),
         funds: vec![],
         msg: to_json_binary(&Cw20ExecuteMsg::Burn {
             amount: Uint128::new(9900),
@@ -639,11 +641,11 @@ fn test_can_burn() {
 
 #[test]
 fn test_can_burn_native() {
-    let mut deps = mock_dependencies_custom(&[]);
+    let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
     let test_data: Encoded = from_json(TEST_DATA_1).unwrap();
 
     let msg = InstantiateMsg {
-        asset_info: AssetInfoUnchecked::native("uusd"),
+        asset_info: Asset::NativeToken(MOCK_NATIVE_DENOM.to_string()),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
     };
@@ -683,7 +685,7 @@ fn test_can_burn_native() {
     let expected = SubMsg::new(CosmosMsg::Bank(BankMsg::Burn {
         amount: vec![Coin {
             amount: Uint128::new(9900),
-            denom: "uusd".to_string(),
+            denom: MOCK_NATIVE_DENOM.to_string(),
         }],
     }));
     assert_eq!(

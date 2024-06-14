@@ -2,8 +2,11 @@ use std::fmt::{Display, Formatter, Result as StdResult};
 
 use crate::{ado_contract::ADOContract, amp::AndrAddr, error::ContractError};
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{ensure, to_json_binary, Deps, DepsMut, Env, QueryRequest, WasmQuery};
-use cw20::{Cw20QueryMsg, TokenInfoResponse};
+use cosmwasm_std::{
+    coin, ensure, to_json_binary, wasm_execute, BankMsg, Deps, DepsMut, Env, QueryRequest, SubMsg,
+    Uint128, WasmQuery,
+};
+use cw20::{Cw20ExecuteMsg, Cw20QueryMsg, TokenInfoResponse};
 pub const SEND_CW20_ACTION: &str = "SEND_CW20";
 
 #[cw_serde]
@@ -55,6 +58,44 @@ impl Asset {
                 Ok((native.to_string(), false))
             }
         }
+    }
+    pub fn transfer(
+        &self,
+        deps: &Deps,
+        to_address: impl Into<String>,
+        amount: Uint128,
+    ) -> Result<SubMsg, ContractError> {
+        let to_address: String = to_address.into();
+
+        Ok(match self {
+            Asset::NativeToken(denom) => SubMsg::new(BankMsg::Send {
+                to_address,
+                amount: vec![coin(amount.u128(), denom)],
+            }),
+            Asset::Cw20Token(denom) => {
+                let denom = denom.get_raw_address(deps)?;
+                let transfer_msg = Cw20ExecuteMsg::Transfer {
+                    recipient: to_address,
+                    amount,
+                };
+                let wasm_msg = wasm_execute(denom, &transfer_msg, vec![])?;
+                SubMsg::new(wasm_msg)
+            }
+        })
+    }
+
+    pub fn burn(&self, deps: &Deps, amount: Uint128) -> Result<SubMsg, ContractError> {
+        Ok(match self {
+            Asset::NativeToken(denom) => SubMsg::new(BankMsg::Burn {
+                amount: vec![coin(amount.u128(), denom)],
+            }),
+            Asset::Cw20Token(denom) => {
+                let denom = denom.get_raw_address(deps)?;
+                let burn_msg = Cw20ExecuteMsg::Burn { amount };
+                let wasm_msg = wasm_execute(denom, &burn_msg, vec![])?;
+                SubMsg::new(wasm_msg)
+            }
+        })
     }
 }
 
