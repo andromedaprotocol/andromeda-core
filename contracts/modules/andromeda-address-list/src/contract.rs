@@ -28,7 +28,7 @@ pub fn instantiate(
     // If the user provided an actor and permission, save them.
     if let Some(actor_permission) = msg.actor_permission {
         let verified_address: Addr = deps.api.addr_validate(actor_permission.actor.as_str())?;
-        // Permissions of type "Contract" and Limited local permissions aren't allowed in the address list contract
+        // Permissions of type Limited local permissions aren't allowed in the address list contract
         if let LocalPermission::Limited { .. } = actor_permission.permission {
             return Err(ContractError::InvalidPermission {
                 msg: "Limited permission is not supported in address list contract".to_string(),
