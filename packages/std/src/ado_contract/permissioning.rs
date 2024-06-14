@@ -117,9 +117,9 @@ impl<'a> ADOContract<'a> {
                             )?;
                         }
                     }
-                    Permission::Contract(address_list) => {
-                        // Query address list contract
-                        let addr = address_list.get_raw_address(&deps.as_ref())?;
+                    Permission::Contract(contract_address) => {
+                        // Query contract that we'll be referencing the permissions from
+                        let addr = contract_address.get_raw_address(&deps.as_ref())?;
                         let local_permission =
                             AOSQuerier::get_permission(&deps.querier, &addr, &actor_string)?;
 
@@ -183,8 +183,8 @@ impl<'a> ADOContract<'a> {
                             )?;
                         }
                     }
-                    Permission::Contract(ref address_list) => {
-                        let addr = address_list.get_raw_address(&deps.as_ref())?;
+                    Permission::Contract(ref contract_address) => {
+                        let addr = contract_address.get_raw_address(&deps.as_ref())?;
                         let local_permission =
                             AOSQuerier::get_permission(&deps.querier, &addr, &actor_string)?;
                         ensure!(
@@ -496,598 +496,616 @@ pub fn is_context_permissioned_strict(
     }
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use cosmwasm_std::{
-//         testing::{mock_dependencies, mock_env, mock_info},
-//         Addr,
-//     };
-
-//     use crate::{
-//         ado_base::AndromedaMsg,
-//         amp::messages::AMPPkt,
-//         common::{expiration::Expiry, MillisecondsExpiration},
-//     };
-
-//     use super::*;
-
-//     #[test]
-//     fn test_permissioned_action() {
-//         let mut deps = mock_dependencies();
-//         let env = mock_env();
-//         let action = "action";
-//         let actor = "actor";
-//         let contract = ADOContract::default();
-//         contract
-//             .owner
-//             .save(deps.as_mut().storage, &Addr::unchecked("owner"))
-//             .unwrap();
-
-//         ADOContract::default()
-//             .permission_action(action, deps.as_mut().storage)
-//             .unwrap();
-
-//         // Test Whitelisting
-//         let res = contract.is_permissioned(deps.as_mut().storage, env.clone(), action, actor);
-
-//         assert!(res.is_err());
-//         let permission = Permission::whitelisted(None);
-//         ADOContract::set_permission(deps.as_mut().storage, action, actor, permission).unwrap();
-
-//         let res = contract.is_permissioned(deps.as_mut().storage, env.clone(), action, actor);
-
-//         assert!(res.is_ok());
-
-//         ADOContract::remove_permission(deps.as_mut().storage, action, actor).unwrap();
-
-//         // Test Limited
-//         let res = contract.is_permissioned(deps.as_mut().storage, env.clone(), action, actor);
-
-//         assert!(res.is_err());
-//         let permission = Permission::limited(None, 1);
-//         ADOContract::set_permission(deps.as_mut().storage, action, actor, permission).unwrap();
-
-//         let res = contract.is_permissioned(deps.as_mut().storage, env.clone(), action, actor);
-
-//         assert!(res.is_ok());
-
-//         // Ensure use is consumed
-//         let res = contract.is_permissioned(deps.as_mut().storage, env.clone(), action, actor);
-//         assert!(res.is_err());
-
-//         ADOContract::remove_permission(deps.as_mut().storage, action, actor).unwrap();
-
-//         // Test Blacklisted
-//         let permission = Permission::blacklisted(None);
-//         ADOContract::set_permission(deps.as_mut().storage, action, actor, permission).unwrap();
-
-//         let res = contract.is_permissioned(deps.as_mut().storage, env, action, actor);
-
-//         assert!(res.is_err());
-//     }
-
-//     #[test]
-//     fn test_unpermissioned_action_blacklisted() {
-//         let mut deps = mock_dependencies();
-//         let env = mock_env();
-//         let action = "action";
-//         let actor = "actor";
-//         let contract = ADOContract::default();
-//         contract
-//             .owner
-//             .save(deps.as_mut().storage, &Addr::unchecked("owner"))
-//             .unwrap();
-
-//         ADOContract::default()
-//             .permission_action(action, deps.as_mut().storage)
-//             .unwrap();
-
-//         // Test Blacklisted
-//         let permission = Permission::blacklisted(None);
-//         ADOContract::set_permission(deps.as_mut().storage, action, actor, permission).unwrap();
-
-//         let res = contract.is_permissioned(deps.as_mut().storage, env, action, actor);
-
-//         assert!(res.is_err());
-//     }
-
-//     #[test]
-//     fn test_strict_permissioning() {
-//         let mut deps = mock_dependencies();
-//         let env = mock_env();
-//         let action = "action";
-//         let actor = "actor";
-//         let contract = ADOContract::default();
-//         contract
-//             .owner
-//             .save(deps.as_mut().storage, &Addr::unchecked("owner"))
-//             .unwrap();
-
-//         let res =
-//             contract.is_permissioned_strict(deps.as_mut().storage, env.clone(), action, actor);
-//         assert!(res.is_err());
-
-//         let permission = Permission::whitelisted(None);
-//         ADOContract::set_permission(deps.as_mut().storage, action, actor, permission).unwrap();
-
-//         let res = contract.is_permissioned_strict(deps.as_mut().storage, env, action, actor);
-//         assert!(res.is_ok());
-//     }
-
-//     #[test]
-//     fn test_owner_escape_clause() {
-//         let mut deps = mock_dependencies();
-//         let env = mock_env();
-//         let action = "action";
-//         let actor = "actor";
-//         let contract = ADOContract::default();
-//         contract
-//             .owner
-//             .save(deps.as_mut().storage, &Addr::unchecked(actor))
-//             .unwrap();
-
-//         let res =
-//             contract.is_permissioned_strict(deps.as_mut().storage, env.clone(), action, actor);
-//         assert!(res.is_ok());
-
-//         let res = contract.is_permissioned(deps.as_mut().storage, env, action, actor);
-//         assert!(res.is_ok());
-//     }
-
-//     #[test]
-//     fn test_set_permission_unauthorized() {
-//         let mut deps = mock_dependencies();
-//         let env = mock_env();
-//         let contract = ADOContract::default();
-//         contract
-//             .owner
-//             .save(deps.as_mut().storage, &Addr::unchecked("owner"))
-//             .unwrap();
-//         let msg = AndromedaMsg::Permissioning(PermissioningMessage::SetPermission {
-//             actor: AndrAddr::from_string("actor"),
-//             action: "action".to_string(),
-//             permission: Permission::Whitelisted(None),
-//         });
-//         let ctx = ExecuteContext::new(deps.as_mut(), mock_info("attacker", &[]), env);
-//         let res = contract.execute(ctx, msg);
-
-//         assert!(res.is_err());
-//         assert_eq!(res.unwrap_err(), ContractError::Unauthorized {});
-//     }
-
-//     #[test]
-//     fn test_permission_action_unauthorized() {
-//         let mut deps = mock_dependencies();
-//         let env = mock_env();
-//         let contract = ADOContract::default();
-//         contract
-//             .owner
-//             .save(deps.as_mut().storage, &Addr::unchecked("owner"))
-//             .unwrap();
-//         let msg = AndromedaMsg::Permissioning(PermissioningMessage::PermissionAction {
-//             action: "action".to_string(),
-//         });
-//         let ctx = ExecuteContext::new(deps.as_mut(), mock_info("attacker", &[]), env);
-//         let res = contract.execute(ctx, msg);
-
-//         assert!(res.is_err());
-//         assert_eq!(res.unwrap_err(), ContractError::Unauthorized {});
-//     }
-
-//     #[test]
-//     fn test_disable_permissioning_unauthorized() {
-//         let mut deps = mock_dependencies();
-//         let env = mock_env();
-//         let contract = ADOContract::default();
-//         contract
-//             .owner
-//             .save(deps.as_mut().storage, &Addr::unchecked("owner"))
-//             .unwrap();
-//         let msg = AndromedaMsg::Permissioning(PermissioningMessage::DisableActionPermissioning {
-//             action: "action".to_string(),
-//         });
-//         let ctx = ExecuteContext::new(deps.as_mut(), mock_info("attacker", &[]), env);
-//         let res = contract.execute(ctx, msg);
-
-//         assert!(res.is_err());
-//         assert_eq!(res.unwrap_err(), ContractError::Unauthorized {});
-//     }
-
-//     #[test]
-//     fn test_remove_permission_unauthorized() {
-//         let mut deps = mock_dependencies();
-//         let env = mock_env();
-//         let contract = ADOContract::default();
-//         contract
-//             .owner
-//             .save(deps.as_mut().storage, &Addr::unchecked("owner"))
-//             .unwrap();
-//         let msg = AndromedaMsg::Permissioning(PermissioningMessage::RemovePermission {
-//             action: "action".to_string(),
-//             actor: AndrAddr::from_string("actor"),
-//         });
-//         let ctx = ExecuteContext::new(deps.as_mut(), mock_info("attacker", &[]), env);
-//         let res = contract.execute(ctx, msg);
-
-//         assert!(res.is_err());
-//         assert_eq!(res.unwrap_err(), ContractError::Unauthorized {});
-//     }
-
-//     #[test]
-//     fn test_permission_expiration() {
-//         let mut deps = mock_dependencies();
-//         let mut env = mock_env();
-//         env.block.height = 0;
-//         let action = "action";
-//         let actor = "actor";
-//         let contract = ADOContract::default();
-//         let time = 2;
-//         let expiration = Expiry::AtTime(MillisecondsExpiration::from_seconds(time));
-
-//         env.block.time = MillisecondsExpiration::from_seconds(0).into();
-//         contract
-//             .owner
-//             .save(deps.as_mut().storage, &Addr::unchecked("owner"))
-//             .unwrap();
-
-//         ADOContract::default()
-//             .permission_action(action, deps.as_mut().storage)
-//             .unwrap();
-
-//         let res = contract.is_permissioned(deps.as_mut().storage, env.clone(), action, actor);
-
-//         assert!(res.is_err());
-
-//         // Test Whitelist
-//         let permission = Permission::Whitelisted(Some(expiration.clone()));
-//         ADOContract::set_permission(deps.as_mut().storage, action, actor, permission).unwrap();
-
-//         let res = contract.is_permissioned(deps.as_mut().storage, env.clone(), action, actor);
-//         assert!(res.is_ok());
-
-//         env.block.time = MillisecondsExpiration::from_seconds(time + 1).into();
-
-//         let res = contract.is_permissioned(deps.as_mut().storage, env.clone(), action, actor);
-//         assert!(res.is_err());
-
-//         env.block.time = MillisecondsExpiration::from_seconds(0).into();
-//         // Test Blacklist
-//         let permission = Permission::Blacklisted(Some(expiration));
-//         ADOContract::set_permission(deps.as_mut().storage, action, actor, permission).unwrap();
-
-//         let res = contract.is_permissioned(deps.as_mut().storage, env.clone(), action, actor);
-//         assert!(res.is_err());
-
-//         env.block.time = MillisecondsExpiration::from_seconds(time + 1).into();
-
-//         let res = contract.is_permissioned(deps.as_mut().storage, env, action, actor);
-//         assert!(res.is_ok());
-//     }
-
-//     #[test]
-//     fn test_context_permissions() {
-//         let mut deps = mock_dependencies();
-//         let env = mock_env();
-//         let actor = "actor";
-//         let info = mock_info(actor, &[]);
-//         let action = "action";
-
-//         let context = ExecuteContext::new(deps.as_mut(), info.clone(), env.clone());
-//         let contract = ADOContract::default();
-
-//         contract
-//             .owner
-//             .save(context.deps.storage, &Addr::unchecked("owner"))
-//             .unwrap();
-
-//         assert!(is_context_permissioned(
-//             context.deps.storage,
-//             &context.info,
-//             &context.env,
-//             &context.amp_ctx,
-//             action
-//         )
-//         .unwrap());
-
-//         let context = ExecuteContext::new(deps.as_mut(), info.clone(), env.clone());
-//         ADOContract::default()
-//             .permission_action(action, context.deps.storage)
-//             .unwrap();
-
-//         assert!(!is_context_permissioned(
-//             context.deps.storage,
-//             &context.info,
-//             &context.env,
-//             &context.amp_ctx,
-//             action
-//         )
-//         .unwrap());
-
-//         let context = ExecuteContext::new(deps.as_mut(), info, env.clone());
-//         let permission = Permission::whitelisted(None);
-//         ADOContract::set_permission(context.deps.storage, action, actor, permission).unwrap();
-
-//         assert!(is_context_permissioned(
-//             context.deps.storage,
-//             &context.info,
-//             &context.env,
-//             &context.amp_ctx,
-//             action
-//         )
-//         .unwrap());
-
-//         let unauth_info = mock_info("mock_actor", &[]);
-//         let context = ExecuteContext::new(deps.as_mut(), unauth_info.clone(), env.clone());
-
-//         assert!(!is_context_permissioned(
-//             context.deps.storage,
-//             &context.info,
-//             &context.env,
-//             &context.amp_ctx,
-//             action
-//         )
-//         .unwrap());
-
-//         let amp_ctx = AMPPkt::new("mock_actor", actor, vec![]);
-//         let context =
-//             ExecuteContext::new(deps.as_mut(), unauth_info.clone(), env.clone()).with_ctx(amp_ctx);
-
-//         assert!(is_context_permissioned(
-//             context.deps.storage,
-//             &context.info,
-//             &context.env,
-//             &context.amp_ctx,
-//             action
-//         )
-//         .unwrap());
-
-//         let amp_ctx = AMPPkt::new(actor, "mock_actor", vec![]);
-//         let context =
-//             ExecuteContext::new(deps.as_mut(), unauth_info.clone(), env.clone()).with_ctx(amp_ctx);
-
-//         assert!(is_context_permissioned(
-//             context.deps.storage,
-//             &context.info,
-//             &context.env,
-//             &context.amp_ctx,
-//             action
-//         )
-//         .unwrap());
-
-//         let amp_ctx = AMPPkt::new("mock_actor", "mock_actor", vec![]);
-//         let context =
-//             ExecuteContext::new(deps.as_mut(), unauth_info.clone(), env.clone()).with_ctx(amp_ctx);
-
-//         assert!(!is_context_permissioned(
-//             context.deps.storage,
-//             &context.info,
-//             &context.env,
-//             &context.amp_ctx,
-//             action
-//         )
-//         .unwrap());
-
-//         let amp_ctx = AMPPkt::new("owner", "mock_actor", vec![]);
-//         let context =
-//             ExecuteContext::new(deps.as_mut(), unauth_info.clone(), env.clone()).with_ctx(amp_ctx);
-
-//         assert!(is_context_permissioned(
-//             context.deps.storage,
-//             &context.info,
-//             &context.env,
-//             &context.amp_ctx,
-//             action
-//         )
-//         .unwrap());
-
-//         let amp_ctx = AMPPkt::new("mock_actor", "owner", vec![]);
-//         let context = ExecuteContext::new(deps.as_mut(), unauth_info, env).with_ctx(amp_ctx);
-
-//         assert!(is_context_permissioned(
-//             context.deps.storage,
-//             &context.info,
-//             &context.env,
-//             &context.amp_ctx,
-//             action
-//         )
-//         .unwrap());
-//     }
-
-//     #[test]
-//     fn test_context_permissions_strict() {
-//         let mut deps = mock_dependencies();
-//         let env = mock_env();
-//         let actor = "actor";
-//         let info = mock_info(actor, &[]);
-//         let action = "action";
-
-//         let context = ExecuteContext::new(deps.as_mut(), info.clone(), env.clone());
-//         let contract = ADOContract::default();
-
-//         contract
-//             .owner
-//             .save(context.deps.storage, &Addr::unchecked("owner"))
-//             .unwrap();
-
-//         assert!(!is_context_permissioned_strict(
-//             context.deps.storage,
-//             &context.info,
-//             &context.env,
-//             &context.amp_ctx,
-//             action
-//         )
-//         .unwrap());
-
-//         let context = ExecuteContext::new(deps.as_mut(), info, env.clone());
-//         let permission = Permission::whitelisted(None);
-//         ADOContract::set_permission(context.deps.storage, action, actor, permission).unwrap();
-
-//         assert!(is_context_permissioned_strict(
-//             context.deps.storage,
-//             &context.info,
-//             &context.env,
-//             &context.amp_ctx,
-//             action
-//         )
-//         .unwrap());
-
-//         let unauth_info = mock_info("mock_actor", &[]);
-//         let context = ExecuteContext::new(deps.as_mut(), unauth_info.clone(), env.clone());
-
-//         assert!(!is_context_permissioned_strict(
-//             context.deps.storage,
-//             &context.info,
-//             &context.env,
-//             &context.amp_ctx,
-//             action
-//         )
-//         .unwrap());
-
-//         let amp_ctx = AMPPkt::new("mock_actor", actor, vec![]);
-//         let context =
-//             ExecuteContext::new(deps.as_mut(), unauth_info.clone(), env.clone()).with_ctx(amp_ctx);
-
-//         assert!(is_context_permissioned_strict(
-//             context.deps.storage,
-//             &context.info,
-//             &context.env,
-//             &context.amp_ctx,
-//             action
-//         )
-//         .unwrap());
-
-//         let amp_ctx = AMPPkt::new(actor, "mock_actor", vec![]);
-//         let context =
-//             ExecuteContext::new(deps.as_mut(), unauth_info.clone(), env.clone()).with_ctx(amp_ctx);
-
-//         assert!(is_context_permissioned_strict(
-//             context.deps.storage,
-//             &context.info,
-//             &context.env,
-//             &context.amp_ctx,
-//             action
-//         )
-//         .unwrap());
-
-//         let amp_ctx = AMPPkt::new("mock_actor", "mock_actor", vec![]);
-//         let context = ExecuteContext::new(deps.as_mut(), unauth_info, env).with_ctx(amp_ctx);
-
-//         assert!(!is_context_permissioned_strict(
-//             context.deps.storage,
-//             &context.info,
-//             &context.env,
-//             &context.amp_ctx,
-//             action
-//         )
-//         .unwrap());
-//     }
-
-//     #[test]
-//     fn test_query_permissions() {
-//         let actor = "actor";
-//         let mut deps = mock_dependencies();
-
-//         let permissions = ADOContract::default()
-//             .query_permissions(deps.as_ref(), actor, None, None)
-//             .unwrap();
-
-//         assert!(permissions.is_empty());
-
-//         let permission = Permission::whitelisted(None);
-//         let action = "action";
-
-//         ADOContract::set_permission(deps.as_mut().storage, action, actor, permission.clone())
-//             .unwrap();
-
-//         let permissions = ADOContract::default()
-//             .query_permissions(deps.as_ref(), actor, None, None)
-//             .unwrap();
-
-//         assert_eq!(permissions.len(), 1);
-//         assert_eq!(permissions[0].action, action);
-//         assert_eq!(permissions[0].permission, permission);
-
-//         let multi_permissions = vec![
-//             ("action2".to_string(), Permission::blacklisted(None)),
-//             ("action3".to_string(), Permission::whitelisted(None)),
-//             ("action4".to_string(), Permission::blacklisted(None)),
-//             ("action5".to_string(), Permission::whitelisted(None)),
-//         ];
-
-//         for (action, permission) in multi_permissions {
-//             ADOContract::set_permission(deps.as_mut().storage, &action, actor, permission).unwrap();
-//         }
-
-//         let permissions = ADOContract::default()
-//             .query_permissions(deps.as_ref(), actor, None, None)
-//             .unwrap();
-
-//         assert_eq!(permissions.len(), 5);
-//     }
-
-//     #[test]
-//     fn test_query_permissioned_actions() {
-//         let mut deps = mock_dependencies();
-//         let env = mock_env();
-//         let info = mock_info("owner", &[]);
-//         let ctx = ExecuteContext {
-//             deps: deps.as_mut(),
-//             env,
-//             info: info.clone(),
-//             amp_ctx: None,
-//         };
-
-//         let contract = ADOContract::default();
-
-//         contract.owner.save(ctx.deps.storage, &info.sender).unwrap();
-
-//         let actions = ADOContract::default()
-//             .query_permissioned_actions(ctx.deps.as_ref())
-//             .unwrap();
-
-//         assert!(actions.is_empty());
-
-//         ADOContract::default()
-//             .execute_permission_action(ctx, "action")
-//             .unwrap();
-
-//         let actions = ADOContract::default()
-//             .query_permissioned_actions(deps.as_ref())
-//             .unwrap();
-
-//         assert_eq!(actions.len(), 1);
-//         assert_eq!(actions[0], "action");
-//     }
-
-//     #[test]
-//     fn test_query_permissioned_actors() {
-//         let mut deps = mock_dependencies();
-//         let env = mock_env();
-//         let info = mock_info("owner", &[]);
-//         let ctx = ExecuteContext {
-//             deps: deps.as_mut(),
-//             env,
-//             info: info.clone(),
-//             amp_ctx: None,
-//         };
-
-//         let contract = ADOContract::default();
-
-//         contract.owner.save(ctx.deps.storage, &info.sender).unwrap();
-
-//         let actor = "actor";
-//         let action = "action";
-//         ADOContract::default()
-//             .execute_permission_action(ctx, action)
-//             .unwrap();
-
-//         ADOContract::set_permission(deps.as_mut().storage, action, actor, Permission::default())
-//             .unwrap();
-//         let actors = ADOContract::default()
-//             .query_permissioned_actors(deps.as_ref(), action, None, None, None)
-//             .unwrap();
-
-//         assert_eq!(actors.len(), 1);
-//         assert_eq!(actors[0], actor);
-//     }
-// }
+#[cfg(test)]
+mod tests {
+    use cosmwasm_std::{
+        testing::{mock_dependencies, mock_env, mock_info},
+        Addr,
+    };
+
+    use crate::{
+        ado_base::AndromedaMsg,
+        amp::messages::AMPPkt,
+        common::{expiration::Expiry, MillisecondsExpiration},
+    };
+
+    use super::*;
+
+    #[test]
+    fn test_permissioned_action() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let action = "action";
+        let actor = "actor";
+        let contract = ADOContract::default();
+        contract
+            .owner
+            .save(deps.as_mut().storage, &Addr::unchecked("owner"))
+            .unwrap();
+
+        ADOContract::default()
+            .permission_action(action, deps.as_mut().storage)
+            .unwrap();
+
+        // Test Whitelisting
+        let res = contract.is_permissioned(deps.as_mut(), env.clone(), action, actor);
+
+        assert!(res.is_err());
+        let permission = Permission::Local(LocalPermission::Whitelisted(None));
+        ADOContract::set_permission(deps.as_mut().storage, action, actor, permission).unwrap();
+
+        let res = contract.is_permissioned(deps.as_mut(), env.clone(), action, actor);
+
+        assert!(res.is_ok());
+
+        ADOContract::remove_permission(deps.as_mut().storage, action, actor).unwrap();
+
+        // Test Limited
+        let res = contract.is_permissioned(deps.as_mut(), env.clone(), action, actor);
+
+        assert!(res.is_err());
+        let permission = Permission::Local(LocalPermission::Limited {
+            expiration: None,
+            uses: 1,
+        });
+        ADOContract::set_permission(deps.as_mut().storage, action, actor, permission).unwrap();
+
+        let res = contract.is_permissioned(deps.as_mut(), env.clone(), action, actor);
+
+        assert!(res.is_ok());
+
+        // Ensure use is consumed
+        let res = contract.is_permissioned(deps.as_mut(), env.clone(), action, actor);
+        assert!(res.is_err());
+
+        ADOContract::remove_permission(deps.as_mut().storage, action, actor).unwrap();
+
+        // Test Blacklisted
+        let permission = Permission::Local(LocalPermission::Blacklisted(None));
+        ADOContract::set_permission(deps.as_mut().storage, action, actor, permission).unwrap();
+
+        let res = contract.is_permissioned(deps.as_mut(), env, action, actor);
+
+        assert!(res.is_err());
+    }
+
+    #[test]
+    fn test_unpermissioned_action_blacklisted() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let action = "action";
+        let actor = "actor";
+        let contract = ADOContract::default();
+        contract
+            .owner
+            .save(deps.as_mut().storage, &Addr::unchecked("owner"))
+            .unwrap();
+
+        ADOContract::default()
+            .permission_action(action, deps.as_mut().storage)
+            .unwrap();
+
+        // Test Blacklisted
+        let permission = Permission::Local(LocalPermission::Blacklisted(None));
+        ADOContract::set_permission(deps.as_mut().storage, action, actor, permission).unwrap();
+
+        let res = contract.is_permissioned(deps.as_mut(), env, action, actor);
+
+        assert!(res.is_err());
+    }
+
+    #[test]
+    fn test_strict_permissioning() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let action = "action";
+        let actor = "actor";
+        let contract = ADOContract::default();
+        contract
+            .owner
+            .save(deps.as_mut().storage, &Addr::unchecked("owner"))
+            .unwrap();
+
+        let res = contract.is_permissioned_strict(deps.as_mut(), env.clone(), action, actor);
+        assert!(res.is_err());
+
+        let permission = Permission::Local(LocalPermission::Whitelisted(None));
+        ADOContract::set_permission(deps.as_mut().storage, action, actor, permission).unwrap();
+
+        let res = contract.is_permissioned_strict(deps.as_mut(), env, action, actor);
+        assert!(res.is_ok());
+    }
+
+    #[test]
+    fn test_owner_escape_clause() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let action = "action";
+        let actor = "actor";
+        let contract = ADOContract::default();
+        contract
+            .owner
+            .save(deps.as_mut().storage, &Addr::unchecked(actor))
+            .unwrap();
+
+        let res = contract.is_permissioned_strict(deps.as_mut(), env.clone(), action, actor);
+        assert!(res.is_ok());
+
+        let res = contract.is_permissioned(deps.as_mut(), env, action, actor);
+        assert!(res.is_ok());
+    }
+
+    #[test]
+    fn test_set_permission_unauthorized() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let contract = ADOContract::default();
+        contract
+            .owner
+            .save(deps.as_mut().storage, &Addr::unchecked("owner"))
+            .unwrap();
+        let msg = AndromedaMsg::Permissioning(PermissioningMessage::SetPermission {
+            actor: AndrAddr::from_string("actor"),
+            action: "action".to_string(),
+            permission: Permission::Local(LocalPermission::Whitelisted(None)),
+        });
+        let ctx = ExecuteContext::new(deps.as_mut(), mock_info("attacker", &[]), env);
+        let res = contract.execute(ctx, msg);
+
+        assert!(res.is_err());
+        assert_eq!(res.unwrap_err(), ContractError::Unauthorized {});
+    }
+
+    #[test]
+    fn test_permission_action_unauthorized() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let contract = ADOContract::default();
+        contract
+            .owner
+            .save(deps.as_mut().storage, &Addr::unchecked("owner"))
+            .unwrap();
+        let msg = AndromedaMsg::Permissioning(PermissioningMessage::PermissionAction {
+            action: "action".to_string(),
+        });
+        let ctx = ExecuteContext::new(deps.as_mut(), mock_info("attacker", &[]), env);
+        let res = contract.execute(ctx, msg);
+
+        assert!(res.is_err());
+        assert_eq!(res.unwrap_err(), ContractError::Unauthorized {});
+    }
+
+    #[test]
+    fn test_disable_permissioning_unauthorized() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let contract = ADOContract::default();
+        contract
+            .owner
+            .save(deps.as_mut().storage, &Addr::unchecked("owner"))
+            .unwrap();
+        let msg = AndromedaMsg::Permissioning(PermissioningMessage::DisableActionPermissioning {
+            action: "action".to_string(),
+        });
+        let ctx = ExecuteContext::new(deps.as_mut(), mock_info("attacker", &[]), env);
+        let res = contract.execute(ctx, msg);
+
+        assert!(res.is_err());
+        assert_eq!(res.unwrap_err(), ContractError::Unauthorized {});
+    }
+
+    #[test]
+    fn test_remove_permission_unauthorized() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let contract = ADOContract::default();
+        contract
+            .owner
+            .save(deps.as_mut().storage, &Addr::unchecked("owner"))
+            .unwrap();
+        let msg = AndromedaMsg::Permissioning(PermissioningMessage::RemovePermission {
+            action: "action".to_string(),
+            actor: AndrAddr::from_string("actor"),
+        });
+        let ctx = ExecuteContext::new(deps.as_mut(), mock_info("attacker", &[]), env);
+        let res = contract.execute(ctx, msg);
+
+        assert!(res.is_err());
+        assert_eq!(res.unwrap_err(), ContractError::Unauthorized {});
+    }
+
+    #[test]
+    fn test_permission_expiration() {
+        let mut deps = mock_dependencies();
+        let mut env = mock_env();
+        env.block.height = 0;
+        let action = "action";
+        let actor = "actor";
+        let contract = ADOContract::default();
+        let time = 2;
+        let expiration = Expiry::AtTime(MillisecondsExpiration::from_seconds(time));
+
+        env.block.time = MillisecondsExpiration::from_seconds(0).into();
+        contract
+            .owner
+            .save(deps.as_mut().storage, &Addr::unchecked("owner"))
+            .unwrap();
+
+        ADOContract::default()
+            .permission_action(action, deps.as_mut().storage)
+            .unwrap();
+
+        let res = contract.is_permissioned(deps.as_mut(), env.clone(), action, actor);
+
+        assert!(res.is_err());
+
+        // Test Whitelist
+        let permission = Permission::Local(LocalPermission::Whitelisted(Some(expiration.clone())));
+        ADOContract::set_permission(deps.as_mut().storage, action, actor, permission).unwrap();
+
+        let res = contract.is_permissioned(deps.as_mut(), env.clone(), action, actor);
+        assert!(res.is_ok());
+
+        env.block.time = MillisecondsExpiration::from_seconds(time + 1).into();
+
+        let res = contract.is_permissioned(deps.as_mut(), env.clone(), action, actor);
+        assert!(res.is_err());
+
+        env.block.time = MillisecondsExpiration::from_seconds(0).into();
+        // Test Blacklist
+        let permission = Permission::Local(LocalPermission::Blacklisted(Some(expiration.clone())));
+        ADOContract::set_permission(deps.as_mut().storage, action, actor, permission).unwrap();
+
+        let res = contract.is_permissioned(deps.as_mut(), env.clone(), action, actor);
+        assert!(res.is_err());
+
+        env.block.time = MillisecondsExpiration::from_seconds(time + 1).into();
+
+        let res = contract.is_permissioned(deps.as_mut(), env, action, actor);
+        assert!(res.is_ok());
+    }
+
+    #[test]
+    fn test_context_permissions() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let actor = "actor";
+        let info = mock_info(actor, &[]);
+        let action = "action";
+
+        let mut context = ExecuteContext::new(deps.as_mut(), info.clone(), env.clone());
+        let contract = ADOContract::default();
+
+        contract
+            .owner
+            .save(context.deps.storage, &Addr::unchecked("owner"))
+            .unwrap();
+
+        assert!(is_context_permissioned(
+            &mut context.deps,
+            &context.info,
+            &context.env,
+            &context.amp_ctx,
+            action
+        )
+        .unwrap());
+
+        let mut context = ExecuteContext::new(deps.as_mut(), info.clone(), env.clone());
+        ADOContract::default()
+            .permission_action(action, context.deps.storage)
+            .unwrap();
+
+        assert!(!is_context_permissioned(
+            &mut context.deps,
+            &context.info,
+            &context.env,
+            &context.amp_ctx,
+            action
+        )
+        .unwrap());
+
+        let mut context = ExecuteContext::new(deps.as_mut(), info, env.clone());
+        let permission = Permission::Local(LocalPermission::Whitelisted(None));
+        ADOContract::set_permission(context.deps.storage, action, actor, permission).unwrap();
+
+        assert!(is_context_permissioned(
+            &mut context.deps,
+            &context.info,
+            &context.env,
+            &context.amp_ctx,
+            action
+        )
+        .unwrap());
+
+        let unauth_info = mock_info("mock_actor", &[]);
+        let mut context = ExecuteContext::new(deps.as_mut(), unauth_info.clone(), env.clone());
+
+        assert!(!is_context_permissioned(
+            &mut context.deps,
+            &context.info,
+            &context.env,
+            &context.amp_ctx,
+            action
+        )
+        .unwrap());
+
+        let amp_ctx = AMPPkt::new("mock_actor", actor, vec![]);
+        let mut context =
+            ExecuteContext::new(deps.as_mut(), unauth_info.clone(), env.clone()).with_ctx(amp_ctx);
+
+        assert!(is_context_permissioned(
+            &mut context.deps,
+            &context.info,
+            &context.env,
+            &context.amp_ctx,
+            action
+        )
+        .unwrap());
+
+        let amp_ctx = AMPPkt::new(actor, "mock_actor", vec![]);
+        let mut context =
+            ExecuteContext::new(deps.as_mut(), unauth_info.clone(), env.clone()).with_ctx(amp_ctx);
+
+        assert!(is_context_permissioned(
+            &mut context.deps,
+            &context.info,
+            &context.env,
+            &context.amp_ctx,
+            action
+        )
+        .unwrap());
+
+        let amp_ctx = AMPPkt::new("mock_actor", "mock_actor", vec![]);
+        let mut context =
+            ExecuteContext::new(deps.as_mut(), unauth_info.clone(), env.clone()).with_ctx(amp_ctx);
+
+        assert!(!is_context_permissioned(
+            &mut context.deps,
+            &context.info,
+            &context.env,
+            &context.amp_ctx,
+            action
+        )
+        .unwrap());
+
+        let amp_ctx = AMPPkt::new("owner", "mock_actor", vec![]);
+        let mut context =
+            ExecuteContext::new(deps.as_mut(), unauth_info.clone(), env.clone()).with_ctx(amp_ctx);
+
+        assert!(is_context_permissioned(
+            &mut context.deps,
+            &context.info,
+            &context.env,
+            &context.amp_ctx,
+            action
+        )
+        .unwrap());
+
+        let amp_ctx = AMPPkt::new("mock_actor", "owner", vec![]);
+        let mut context = ExecuteContext::new(deps.as_mut(), unauth_info, env).with_ctx(amp_ctx);
+
+        assert!(is_context_permissioned(
+            &mut context.deps,
+            &context.info,
+            &context.env,
+            &context.amp_ctx,
+            action
+        )
+        .unwrap());
+    }
+
+    #[test]
+    fn test_context_permissions_strict() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let actor = "actor";
+        let info = mock_info(actor, &[]);
+        let action = "action";
+
+        let context = ExecuteContext::new(deps.as_mut(), info.clone(), env.clone());
+        let contract = ADOContract::default();
+
+        contract
+            .owner
+            .save(context.deps.storage, &Addr::unchecked("owner"))
+            .unwrap();
+
+        assert!(!is_context_permissioned_strict(
+            context.deps,
+            &context.info,
+            &context.env,
+            &context.amp_ctx,
+            action
+        )
+        .unwrap());
+
+        let context = ExecuteContext::new(deps.as_mut(), info, env.clone());
+        let permission = Permission::Local(LocalPermission::Whitelisted(None));
+        ADOContract::set_permission(context.deps.storage, action, actor, permission).unwrap();
+
+        assert!(is_context_permissioned_strict(
+            context.deps,
+            &context.info,
+            &context.env,
+            &context.amp_ctx,
+            action
+        )
+        .unwrap());
+
+        let unauth_info = mock_info("mock_actor", &[]);
+        let context = ExecuteContext::new(deps.as_mut(), unauth_info.clone(), env.clone());
+
+        assert!(!is_context_permissioned_strict(
+            context.deps,
+            &context.info,
+            &context.env,
+            &context.amp_ctx,
+            action
+        )
+        .unwrap());
+
+        let amp_ctx = AMPPkt::new("mock_actor", actor, vec![]);
+        let context =
+            ExecuteContext::new(deps.as_mut(), unauth_info.clone(), env.clone()).with_ctx(amp_ctx);
+
+        assert!(is_context_permissioned_strict(
+            context.deps,
+            &context.info,
+            &context.env,
+            &context.amp_ctx,
+            action
+        )
+        .unwrap());
+
+        let amp_ctx = AMPPkt::new(actor, "mock_actor", vec![]);
+        let context =
+            ExecuteContext::new(deps.as_mut(), unauth_info.clone(), env.clone()).with_ctx(amp_ctx);
+
+        assert!(is_context_permissioned_strict(
+            context.deps,
+            &context.info,
+            &context.env,
+            &context.amp_ctx,
+            action
+        )
+        .unwrap());
+
+        let amp_ctx = AMPPkt::new("mock_actor", "mock_actor", vec![]);
+        let context = ExecuteContext::new(deps.as_mut(), unauth_info, env).with_ctx(amp_ctx);
+
+        assert!(!is_context_permissioned_strict(
+            context.deps,
+            &context.info,
+            &context.env,
+            &context.amp_ctx,
+            action
+        )
+        .unwrap());
+    }
+
+    #[test]
+    fn test_query_permissions() {
+        let actor = "actor";
+        let mut deps = mock_dependencies();
+
+        let permissions = ADOContract::default()
+            .query_permissions(deps.as_ref(), actor, None, None)
+            .unwrap();
+
+        assert!(permissions.is_empty());
+
+        let permission = Permission::Local(LocalPermission::Whitelisted(None));
+        let action = "action";
+
+        ADOContract::set_permission(deps.as_mut().storage, action, actor, permission.clone())
+            .unwrap();
+
+        let permissions = ADOContract::default()
+            .query_permissions(deps.as_ref(), actor, None, None)
+            .unwrap();
+
+        assert_eq!(permissions.len(), 1);
+        assert_eq!(permissions[0].action, action);
+        assert_eq!(permissions[0].permission, permission);
+
+        let multi_permissions = vec![
+            (
+                "action2".to_string(),
+                Permission::Local(LocalPermission::Blacklisted(None)),
+            ),
+            (
+                "action3".to_string(),
+                Permission::Local(LocalPermission::Whitelisted(None)),
+            ),
+            (
+                "action4".to_string(),
+                Permission::Local(LocalPermission::Blacklisted(None)),
+            ),
+            (
+                "action5".to_string(),
+                Permission::Local(LocalPermission::Whitelisted(None)),
+            ),
+        ];
+
+        for (action, permission) in multi_permissions {
+            ADOContract::set_permission(deps.as_mut().storage, &action, actor, permission).unwrap();
+        }
+
+        let permissions = ADOContract::default()
+            .query_permissions(deps.as_ref(), actor, None, None)
+            .unwrap();
+
+        assert_eq!(permissions.len(), 5);
+    }
+
+    #[test]
+    fn test_query_permissioned_actions() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = mock_info("owner", &[]);
+        let ctx = ExecuteContext {
+            deps: deps.as_mut(),
+            env,
+            info: info.clone(),
+            amp_ctx: None,
+        };
+
+        let contract = ADOContract::default();
+
+        contract.owner.save(ctx.deps.storage, &info.sender).unwrap();
+
+        let actions = ADOContract::default()
+            .query_permissioned_actions(ctx.deps.as_ref())
+            .unwrap();
+
+        assert!(actions.is_empty());
+
+        ADOContract::default()
+            .execute_permission_action(ctx, "action")
+            .unwrap();
+
+        let actions = ADOContract::default()
+            .query_permissioned_actions(deps.as_ref())
+            .unwrap();
+
+        assert_eq!(actions.len(), 1);
+        assert_eq!(actions[0], "action");
+    }
+
+    #[test]
+    fn test_query_permissioned_actors() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = mock_info("owner", &[]);
+        let ctx = ExecuteContext {
+            deps: deps.as_mut(),
+            env,
+            info: info.clone(),
+            amp_ctx: None,
+        };
+
+        let contract = ADOContract::default();
+
+        contract.owner.save(ctx.deps.storage, &info.sender).unwrap();
+
+        let actor = "actor";
+        let action = "action";
+        ADOContract::default()
+            .execute_permission_action(ctx, action)
+            .unwrap();
+
+        ADOContract::set_permission(
+            deps.as_mut().storage,
+            action,
+            actor,
+            Permission::Local(LocalPermission::default()),
+        )
+        .unwrap();
+        let actors = ADOContract::default()
+            .query_permissioned_actors(deps.as_ref(), action, None, None, None)
+            .unwrap();
+
+        assert_eq!(actors.len(), 1);
+        assert_eq!(actors[0], actor);
+    }
+}
