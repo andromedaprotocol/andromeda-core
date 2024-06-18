@@ -1,6 +1,6 @@
 use andromeda_non_fungible_tokens::{
     crowdfund::{
-        CampaignConfig, CampaignStage, ExecuteMsg, InstantiateMsg, RawTier, SimpleTierOrder, Tier,
+        CampaignConfig, CampaignStage, ExecuteMsg, InstantiateMsg, SimpleTierOrder, Tier,
         TierMetaData,
     },
     cw721::{ExecuteMsg as Cw721ExecuteMsg, TokenExtension},
@@ -24,14 +24,12 @@ use crate::{
         Duration, CAMPAIGN_CONFIG, CAMPAIGN_DURATION, CAMPAIGN_STAGE, CURRENT_CAPITAL, TIERS,
         TIER_ORDERS,
     },
-    testing::mock_querier::{
-        mock_dependencies_custom, mock_zero_price_raw_tier, MOCK_DEFAULT_LIMIT,
-    },
+    testing::mock_querier::{mock_dependencies_custom, mock_zero_price_tier, MOCK_DEFAULT_LIMIT},
 };
 
 use super::mock_querier::{mock_campaign_config, mock_campaign_tiers, MOCK_DEFAULT_OWNER};
 
-fn init(deps: DepsMut, config: CampaignConfig, tiers: Vec<RawTier>) -> Response {
+fn init(deps: DepsMut, config: CampaignConfig, tiers: Vec<Tier>) -> Response {
     let msg = InstantiateMsg {
         campaign_config: config,
         tiers,
@@ -72,11 +70,9 @@ fn set_campaign_config(store: &mut dyn Storage, config: &CampaignConfig) {
 fn set_campaign_duration(store: &mut dyn Storage, duration: &Duration) {
     CAMPAIGN_DURATION.save(store, duration).unwrap();
 }
-fn set_tiers(storage: &mut dyn Storage, tiers: Vec<RawTier>) {
+fn set_tiers(storage: &mut dyn Storage, tiers: Vec<Tier>) {
     for tier in tiers {
-        TIERS
-            .save(storage, tier.level.into(), &tier.into())
-            .unwrap();
+        TIERS.save(storage, tier.level.into(), &tier).unwrap();
     }
 }
 
@@ -109,7 +105,7 @@ mod test {
     use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 
     use crate::{
-        state::{get_current_capital, set_current_stage, set_tier_orders},
+        state::{get_current_capital, set_current_stage, set_tier_orders, TIER_SALES},
         testing::mock_querier::{MOCK_DEFAULT_OWNER, MOCK_WITHDRAWAL_ADDRESS},
     };
 
@@ -121,7 +117,7 @@ mod test {
     struct InstantiateTestCase {
         name: String,
         config: CampaignConfig,
-        tiers: Vec<RawTier>,
+        tiers: Vec<Tier>,
         expected_res: Result<Response, ContractError>,
     }
     #[test]
@@ -171,7 +167,7 @@ mod test {
             InstantiateTestCase {
                 name: "instantiate with invalid tiers including zero price tier".to_string(),
                 config: mock_campaign_config(Asset::NativeToken(MOCK_NATIVE_DENOM.to_string())),
-                tiers: vec![mock_zero_price_raw_tier(Uint64::zero())],
+                tiers: vec![mock_zero_price_tier(Uint64::zero())],
                 expected_res: Err(ContractError::InvalidTier {
                     operation: "all".to_string(),
                     msg: "Price can not be zero".to_string(),
@@ -198,11 +194,7 @@ mod test {
                     "Test case: {}",
                     test.name
                 );
-                let expected_tiers: Vec<Tier> = test
-                    .tiers
-                    .into_iter()
-                    .map(|simple_tier| simple_tier.into())
-                    .collect();
+                let expected_tiers: Vec<Tier> = test.tiers.into_iter().collect();
                 assert_eq!(
                     get_tiers(deps.as_ref().storage),
                     expected_tiers,
@@ -215,14 +207,14 @@ mod test {
 
     struct TierTestCase {
         name: String,
-        tier: RawTier,
+        tier: Tier,
         expected_res: Result<Response, ContractError>,
         payee: String,
     }
 
     #[test]
     fn test_add_tier() {
-        let valid_raw_tier = RawTier {
+        let valid_tier = Tier {
             level: Uint64::new(2u64),
             label: "Tier 2".to_string(),
             limit: Some(Uint128::new(100)),
@@ -234,7 +226,7 @@ mod test {
                 token_uri: None,
             },
         };
-        let duplicated_raw_tier = RawTier {
+        let duplicated_tier = Tier {
             level: Uint64::new(0u64),
             label: "Tier 2".to_string(),
             limit: Some(Uint128::new(100)),
@@ -250,14 +242,14 @@ mod test {
         let test_cases: Vec<TierTestCase> = vec![
             TierTestCase {
                 name: "standard add_tier".to_string(),
-                tier: valid_raw_tier.clone(),
+                tier: valid_tier.clone(),
                 payee: MOCK_DEFAULT_OWNER.to_string(),
                 expected_res: Ok(Response::new()
                     .add_attribute("action", "add_tier")
-                    .add_attribute("level", valid_raw_tier.level.to_string())
-                    .add_attribute("label", valid_raw_tier.label.clone())
-                    .add_attribute("price", valid_raw_tier.price.to_string())
-                    .add_attribute("limit", valid_raw_tier.limit.unwrap().to_string())
+                    .add_attribute("level", valid_tier.level.to_string())
+                    .add_attribute("label", valid_tier.label.clone())
+                    .add_attribute("price", valid_tier.price.to_string())
+                    .add_attribute("limit", valid_tier.limit.unwrap().to_string())
                     // Economics message
                     .add_submessage(SubMsg::reply_on_error(
                         CosmosMsg::Wasm(WasmMsg::Execute {
@@ -274,13 +266,13 @@ mod test {
             },
             TierTestCase {
                 name: "add_tier with unauthorized sender".to_string(),
-                tier: valid_raw_tier.clone(),
+                tier: valid_tier.clone(),
                 expected_res: Err(ContractError::Unauthorized {}),
                 payee: "owner1".to_string(),
             },
             TierTestCase {
                 name: "add_tier with zero price tier".to_string(),
-                tier: mock_zero_price_raw_tier(Uint64::new(2)),
+                tier: mock_zero_price_tier(Uint64::new(2)),
                 expected_res: Err(ContractError::InvalidTier {
                     operation: "all".to_string(),
                     msg: "Price can not be zero".to_string(),
@@ -289,7 +281,7 @@ mod test {
             },
             TierTestCase {
                 name: "add_tier with duplicated tier".to_string(),
-                tier: duplicated_raw_tier,
+                tier: duplicated_tier,
                 expected_res: Err(ContractError::InvalidTier {
                     operation: "add".to_string(),
                     msg: "Tier with level 0 already exist".to_string(),
@@ -318,8 +310,7 @@ mod test {
                     test.tier,
                     TIERS
                         .load(deps.as_ref().storage, test.tier.level.into())
-                        .unwrap()
-                        .into(),
+                        .unwrap(),
                     "Test case: {}",
                     test.name
                 );
@@ -329,7 +320,7 @@ mod test {
 
     #[test]
     fn test_update_tier() {
-        let valid_tier = RawTier {
+        let valid_tier = Tier {
             level: Uint64::zero(),
             label: "Tier 0".to_string(),
             limit: Some(Uint128::new(100)),
@@ -341,7 +332,7 @@ mod test {
                 token_uri: None,
             },
         };
-        let non_existing_tier = RawTier {
+        let non_existing_tier = Tier {
             level: Uint64::new(2u64),
             label: "Tier 2".to_string(),
             limit: Some(Uint128::new(100)),
@@ -387,7 +378,7 @@ mod test {
             },
             TierTestCase {
                 name: "update_tier with zero price tier".to_string(),
-                tier: mock_zero_price_raw_tier(Uint64::zero()),
+                tier: mock_zero_price_tier(Uint64::zero()),
                 expected_res: Err(ContractError::InvalidTier {
                     operation: "all".to_string(),
                     msg: "Price can not be zero".to_string(),
@@ -425,8 +416,7 @@ mod test {
                     test.tier,
                     TIERS
                         .load(deps.as_ref().storage, test.tier.level.into())
-                        .unwrap()
-                        .into(),
+                        .unwrap(),
                     "Test case: {}",
                     test.name
                 );
@@ -436,7 +426,7 @@ mod test {
 
     #[test]
     fn test_remove_tier() {
-        let valid_tier = RawTier {
+        let valid_tier = Tier {
             level: Uint64::zero(),
             label: "Tier 0".to_string(),
             limit: Some(Uint128::new(100)),
@@ -448,7 +438,7 @@ mod test {
                 token_uri: None,
             },
         };
-        let non_existing_tier = RawTier {
+        let non_existing_tier = Tier {
             level: Uint64::new(2u64),
             label: "Tier 2".to_string(),
             limit: Some(Uint128::new(100)),
@@ -526,7 +516,7 @@ mod test {
 
     struct StartCampaignTestCase {
         name: String,
-        tiers: Vec<RawTier>,
+        tiers: Vec<Tier>,
         presale: Option<Vec<PresaleTierOrder>>,
         start_time: Option<MillisecondsExpiration>,
         end_time: MillisecondsExpiration,
@@ -549,7 +539,7 @@ mod test {
             orderer: mock_orderer.clone(),
         }];
 
-        let invalid_tiers = vec![RawTier {
+        let invalid_tiers = vec![Tier {
             level: Uint64::new(1u64),
             label: "Tier 1".to_string(),
             limit: Some(Uint128::new(1000u128)),
@@ -685,10 +675,9 @@ mod test {
                     let cur_limit = TIERS.load(&deps.storage, order.level.into()).unwrap().limit;
                     if cur_limit.is_some() {
                         assert_eq!(
-                            TIERS
+                            TIER_SALES
                                 .load(&deps.storage, order.level.into())
                                 .unwrap()
-                                .sold_amount
                                 .u128(),
                             order_amount
                         );
@@ -900,13 +889,13 @@ mod test {
                     );
                 }
 
-                // Check tier limits
+                // Check tier sales
                 for order in &test.orders {
-                    let tier = TIERS
+                    let sold_amount = TIER_SALES
                         .load(deps.as_ref().storage, order.level.into())
                         .unwrap();
                     assert_eq!(
-                        tier.sold_amount.u128(),
+                        sold_amount.u128(),
                         order.amount.u128(),
                         "Test case: {}",
                         test.name
@@ -1102,13 +1091,13 @@ mod test {
                     );
                 }
 
-                // Check tier limits
+                // Check tier sales
                 for order in &test.orders {
-                    let tier = TIERS
+                    let sold_amount = TIER_SALES
                         .load(deps.as_ref().storage, order.level.into())
                         .unwrap();
                     assert_eq!(
-                        tier.sold_amount.u128(),
+                        sold_amount.u128(),
                         order.amount.u128(),
                         "Test case: {}",
                         test.name

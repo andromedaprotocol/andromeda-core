@@ -16,16 +16,16 @@ pub struct InstantiateMsg {
     /// The configuration for the campaign
     pub campaign_config: CampaignConfig,
     /// The tiers for the campaign
-    pub tiers: Vec<RawTier>,
+    pub tiers: Vec<Tier>,
 }
 
 #[andr_exec]
 #[cw_serde]
 pub enum ExecuteMsg {
     /// Add a tier
-    AddTier { tier: RawTier },
+    AddTier { tier: Tier },
     /// Update an existing tier
-    UpdateTier { tier: RawTier },
+    UpdateTier { tier: Tier },
     /// Remove a tier
     RemoveTier { level: Uint64 },
     /// Start the campaign
@@ -129,16 +129,6 @@ impl ToString for CampaignStage {
     }
 }
 
-// Tier without sale information. Only used for tier management in READY stage
-#[cw_serde]
-pub struct RawTier {
-    pub level: Uint64,
-    pub label: String,
-    pub price: Uint128,
-    pub limit: Option<Uint128>, // None for no limit
-    pub metadata: TierMetaData,
-}
-
 #[cw_serde]
 pub struct Tier {
     pub level: Uint64,
@@ -146,32 +136,6 @@ pub struct Tier {
     pub price: Uint128,
     pub limit: Option<Uint128>, // None for no limit
     pub metadata: TierMetaData,
-    pub sold_amount: Uint128,
-}
-
-impl From<RawTier> for Tier {
-    fn from(tier: RawTier) -> Tier {
-        Tier {
-            level: tier.level,
-            label: tier.label,
-            price: tier.price,
-            limit: tier.limit,
-            metadata: tier.metadata,
-            sold_amount: Uint128::zero(),
-        }
-    }
-}
-
-impl From<Tier> for RawTier {
-    fn from(tier_details: Tier) -> RawTier {
-        RawTier {
-            level: tier_details.level,
-            label: tier_details.label,
-            price: tier_details.price,
-            limit: tier_details.limit,
-            metadata: tier_details.metadata,
-        }
-    }
 }
 
 #[cw_serde]
@@ -297,5 +261,11 @@ pub struct TierOrdersResponse {
 
 #[cw_serde]
 pub struct TiersResponse {
-    pub tiers: Vec<Tier>,
+    pub tiers: Vec<TierResponseItem>,
+}
+
+#[cw_serde]
+pub struct TierResponseItem {
+    pub tier: Tier,
+    pub sold_amount: Uint128,
 }

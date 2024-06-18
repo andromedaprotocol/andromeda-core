@@ -1,5 +1,5 @@
 use andromeda_non_fungible_tokens::crowdfund::{
-    CampaignConfig, CampaignStage, SimpleTierOrder, Tier, TierOrder,
+    CampaignConfig, CampaignStage, SimpleTierOrder, Tier, TierOrder, TierResponseItem,
 };
 use andromeda_std::{
     common::{MillisecondsExpiration, OrderBy},
@@ -25,6 +25,8 @@ pub const CAMPAIGN_STAGE: Item<CampaignStage> = Item::new("campaign_stage");
 pub const CURRENT_CAPITAL: Item<Uint128> = Item::new("current_capital");
 
 pub const TIERS: Map<u64, Tier> = Map::new("tiers");
+
+pub const TIER_SALES: Map<u64, Uint128> = Map::new("tier_sales");
 
 pub const TIER_ORDERS: Map<(Addr, u64), OrderInfo> = Map::new("tier_orders");
 
@@ -146,12 +148,21 @@ pub(crate) fn remove_tier(storage: &mut dyn Storage, level: u64) -> Result<(), C
     Ok(())
 }
 
+pub(crate) fn set_tier_sales(
+    storage: &mut dyn Storage,
+    level: u64,
+    sold_amount: Uint128,
+) -> Result<(), ContractError> {
+    TIER_SALES.save(storage, level, &sold_amount)?;
+    Ok(())
+}
+
 pub(crate) fn get_tiers(
     storage: &dyn Storage,
     start_after: Option<u64>,
     limit: Option<u32>,
     order_by: Option<OrderBy>,
-) -> Result<Vec<Tier>, ContractError> {
+) -> Result<Vec<TierResponseItem>, ContractError> {
     let limit = limit.unwrap_or(u32::MAX) as usize;
     let start = start_after.map(Bound::exclusive);
     let order_by = match order_by.unwrap_or(OrderBy::Desc) {
@@ -162,7 +173,11 @@ pub(crate) fn get_tiers(
     TIERS
         .range(storage, start, None, order_by)
         .take(limit)
-        .map(|v| Ok(v?.1))
+        .map(|v| {
+            let (level, tier) = v?;
+            let sold_amount = TIER_SALES.load(storage, level)?;
+            Ok(TierResponseItem { tier, sold_amount })
+        })
         .collect()
 }
 
@@ -191,20 +206,22 @@ pub(crate) fn set_tier_orders(
     orders: Vec<TierOrder>,
 ) -> Result<(), ContractError> {
     for new_order in orders {
-        let mut tier = TIERS.load(storage, new_order.level.into()).map_err(|_| {
+        let tier = TIERS.load(storage, new_order.level.into()).map_err(|_| {
             ContractError::InvalidTier {
                 operation: "set_tier_orders".to_string(),
                 msg: format!("Tier with level {} does not exist", new_order.level),
             }
         })?;
+
+        let mut sold_amount = TIER_SALES
+            .load(storage, new_order.level.into())
+            .unwrap_or_default();
         if let Some(limit) = tier.limit {
-            tier.sold_amount = tier.sold_amount.checked_add(new_order.amount)?;
-            ensure!(
-                limit >= tier.sold_amount,
-                ContractError::PurchaseLimitReached {}
-            );
+            sold_amount = sold_amount.checked_add(new_order.amount)?;
+            ensure!(limit >= sold_amount, ContractError::PurchaseLimitReached {});
 
             update_tier(storage, &tier)?;
+            set_tier_sales(storage, new_order.level.into(), sold_amount)?;
         }
 
         let mut order = TIER_ORDERS
@@ -299,7 +316,6 @@ mod tests {
                 level: Uint64::one(),
                 price: Uint128::new(100),
                 limit: Some(Uint128::new(1000)),
-                sold_amount: Uint128::new(0),
                 label: "tier 1".to_string(),
                 metadata: TierMetaData {
                     token_uri: None,
@@ -312,7 +328,6 @@ mod tests {
                 level: Uint64::new(2u64),
                 price: Uint128::new(200),
                 limit: None,
-                sold_amount: Uint128::new(0),
                 label: "tier 2".to_string(),
                 metadata: TierMetaData {
                     token_uri: None,
@@ -348,6 +363,10 @@ mod tests {
         user: Addr,
         expected_res: Vec<SimpleTierOrder>,
     }
+    fn get_tier_sales(storage: &mut dyn Storage, level: u64) -> Uint128 {
+        TIER_SALES.load(storage, level).unwrap_or_default()
+    }
+
     #[test]
     fn test_get_user_orders() {
         let test_cases = vec![
@@ -440,7 +459,7 @@ mod tests {
             let level: u64 = test.order.level.into();
             let ordered_amount = test.order.amount;
             let orderer = test.order.orderer.clone();
-            let prev_tier = get_tier(&mut storage, level);
+            let prev_sold_amount = get_tier_sales(&mut storage, level);
             let prev_order = TIER_ORDERS.load(&storage, (orderer.clone(), level));
             let is_presale = test.order.is_presale;
 
@@ -448,11 +467,8 @@ mod tests {
             assert_eq!(res, test.expected_res, "Test case: {}", test.name);
 
             if res.is_ok() {
-                let tier = get_tier(&mut storage, level).unwrap();
-                assert_eq!(
-                    tier.sold_amount,
-                    prev_tier.unwrap().sold_amount + ordered_amount
-                );
+                let sold_amount = get_tier_sales(&mut storage, level);
+                assert_eq!(sold_amount, prev_sold_amount + ordered_amount);
                 let order = TIER_ORDERS.load(&storage, (orderer, level)).unwrap();
                 let prev_order = prev_order.unwrap();
                 if is_presale {

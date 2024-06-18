@@ -1,5 +1,5 @@
 use andromeda_non_fungible_tokens::{
-    crowdfund::{CampaignConfig, RawTier, TierMetaData},
+    crowdfund::{CampaignConfig, Tier, TierMetaData},
     cw721::TokenExtension,
 };
 use andromeda_std::{
@@ -33,9 +33,9 @@ pub fn mock_campaign_config(denom: Asset) -> CampaignConfig {
     }
 }
 
-pub fn mock_campaign_tiers() -> Vec<RawTier> {
+pub fn mock_campaign_tiers() -> Vec<Tier> {
     vec![
-        RawTier {
+        Tier {
             level: Uint64::zero(),
             label: "Basic Tier".to_string(),
             limit: None,
@@ -47,7 +47,7 @@ pub fn mock_campaign_tiers() -> Vec<RawTier> {
                 token_uri: None,
             },
         },
-        RawTier {
+        Tier {
             level: Uint64::new(1u64),
             label: "Tier 1".to_string(),
             limit: Some(Uint128::new(MOCK_DEFAULT_LIMIT)),
@@ -62,8 +62,8 @@ pub fn mock_campaign_tiers() -> Vec<RawTier> {
     ]
 }
 
-pub fn mock_zero_price_raw_tier(level: Uint64) -> RawTier {
-    RawTier {
+pub fn mock_zero_price_tier(level: Uint64) -> Tier {
+    Tier {
         level,
         label: "Invalid Tier".to_string(),
         limit: None,

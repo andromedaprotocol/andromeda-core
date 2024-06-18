@@ -1,7 +1,7 @@
 use andromeda_non_fungible_tokens::crowdfund::{
     CampaignConfig, CampaignStage, CampaignSummaryResponse, Cw20HookMsg, ExecuteMsg,
-    InstantiateMsg, PresaleTierOrder, QueryMsg, RawTier, SimpleTierOrder, Tier, TierMetaData,
-    TierOrder, TierOrdersResponse, TiersResponse,
+    InstantiateMsg, PresaleTierOrder, QueryMsg, SimpleTierOrder, Tier, TierMetaData, TierOrder,
+    TierOrdersResponse, TiersResponse,
 };
 
 use andromeda_non_fungible_tokens::cw721::ExecuteMsg as Cw721ExecuteMsg;
@@ -33,8 +33,8 @@ use cw_utils::nonpayable;
 use crate::state::{
     add_tier, clear_user_orders, get_and_increase_tier_token_id, get_config, get_current_capital,
     get_current_stage, get_duration, get_tier, get_tiers, get_user_orders, is_valid_tiers,
-    remove_tier, set_current_capital, set_current_stage, set_duration, set_tier_orders, set_tiers,
-    set_config, update_tier, Duration,
+    remove_tier, set_config, set_current_capital, set_current_stage, set_duration, set_tier_orders,
+    set_tiers, update_tier, Duration,
 };
 
 const CONTRACT_NAME: &str = "crates.io:andromeda-crowdfund";
@@ -62,11 +62,7 @@ pub fn instantiate(
     )?;
 
     let campaign_config: CampaignConfig = msg.campaign_config;
-    let tiers: Vec<Tier> = msg
-        .tiers
-        .into_iter()
-        .map(|raw_tier| raw_tier.into())
-        .collect();
+    let tiers: Vec<Tier> = msg.tiers.into_iter().collect();
     if let Asset::Cw20Token(addr) = campaign_config.denom.clone() {
         let addr = addr.get_raw_address(&deps.as_ref())?;
         ADOContract::default().permission_action(SEND_CW20_ACTION, deps.storage)?;
@@ -152,7 +148,7 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
         .add_events(action_response.events))
 }
 
-fn execute_add_tier(ctx: ExecuteContext, tier: RawTier) -> Result<Response, ContractError> {
+fn execute_add_tier(ctx: ExecuteContext, tier: Tier) -> Result<Response, ContractError> {
     let ExecuteContext { deps, info, .. } = ctx;
 
     let contract = ADOContract::default();
@@ -161,7 +157,6 @@ fn execute_add_tier(ctx: ExecuteContext, tier: RawTier) -> Result<Response, Cont
         ContractError::Unauthorized {}
     );
 
-    let tier: Tier = tier.into();
     tier.validate()?;
 
     let curr_stage = get_current_stage(deps.storage);
@@ -188,7 +183,7 @@ fn execute_add_tier(ctx: ExecuteContext, tier: RawTier) -> Result<Response, Cont
     Ok(resp)
 }
 
-fn execute_update_tier(ctx: ExecuteContext, tier: RawTier) -> Result<Response, ContractError> {
+fn execute_update_tier(ctx: ExecuteContext, tier: Tier) -> Result<Response, ContractError> {
     let ExecuteContext { deps, info, .. } = ctx;
 
     let contract = ADOContract::default();
@@ -197,7 +192,6 @@ fn execute_update_tier(ctx: ExecuteContext, tier: RawTier) -> Result<Response, C
         ContractError::Unauthorized {}
     );
 
-    let tier: Tier = tier.into();
     tier.validate()?;
 
     let curr_stage = get_current_stage(deps.storage);
