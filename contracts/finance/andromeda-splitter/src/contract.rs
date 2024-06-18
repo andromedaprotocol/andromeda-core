@@ -263,6 +263,12 @@ fn execute_update_lock(
 
     let mut splitter = SPLITTER.load(deps.storage)?;
 
+    // Can't call this function while the lock isn't expired
+    ensure!(
+        splitter.lock.is_expired(&env.block),
+        ContractError::ContractLocked {}
+    );
+
     // Get current time
     let current_time = Milliseconds::from_seconds(env.block.time.seconds());
 
