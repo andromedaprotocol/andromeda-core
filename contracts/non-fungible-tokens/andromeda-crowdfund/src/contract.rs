@@ -32,8 +32,9 @@ use cw_utils::nonpayable;
 
 use crate::state::{
     add_tier, clear_user_orders, get_and_increase_tier_token_id, get_config, get_current_capital,
-    get_current_stage, get_tier, get_tiers, get_user_orders, is_valid_tiers, remove_tier,
-    set_current_capital, set_current_stage, set_tier_orders, set_tiers, update_config, update_tier,
+    get_current_stage, get_duration, get_tier, get_tiers, get_user_orders, is_valid_tiers,
+    remove_tier, set_current_capital, set_current_stage, set_duration, set_tier_orders, set_tiers,
+    set_config, update_tier, Duration,
 };
 
 const CONTRACT_NAME: &str = "crates.io:andromeda-crowdfund";
@@ -60,7 +61,7 @@ pub fn instantiate(
         },
     )?;
 
-    let campaign_config: CampaignConfig = msg.campaign_config.into();
+    let campaign_config: CampaignConfig = msg.campaign_config;
     let tiers: Vec<Tier> = msg
         .tiers
         .into_iter()
@@ -78,7 +79,7 @@ pub fn instantiate(
     }
 
     campaign_config.validate(deps.branch(), &env)?;
-    update_config(deps.storage, campaign_config)?;
+    set_config(deps.storage, campaign_config)?;
 
     set_tiers(deps.storage, tiers)?;
 
@@ -293,10 +294,11 @@ fn execute_start_campaign(
     }
 
     // Set start time and end time
-    let mut config = get_config(deps.storage)?;
-    config.start_time = start_time;
-    config.end_time = end_time;
-    update_config(deps.storage, config)?;
+    let duration = Duration {
+        start_time,
+        end_time,
+    };
+    set_duration(deps.storage, duration)?;
 
     // update stage
     set_current_stage(deps.storage, CampaignStage::ONGOING)?;
@@ -396,8 +398,9 @@ fn execute_end_campaign(
 
     let current_capital = get_current_capital(deps.storage);
     let campaign_config = get_config(deps.storage)?;
+    let duration = get_duration(deps.storage)?;
     let soft_cap = campaign_config.soft_cap.unwrap_or(Uint128::one());
-    let end_time = campaign_config.end_time;
+    let end_time = duration.end_time;
 
     // Decide the next stage
     let next_stage = match (
@@ -487,9 +490,11 @@ fn purchase_tiers(
         }
     );
 
+    let duration = get_duration(deps.storage)?;
+
     // Need to wait until start_time
     ensure!(
-        campaign_config
+        duration
             .start_time
             .unwrap_or_default()
             .is_expired(&env.block),
@@ -498,7 +503,7 @@ fn purchase_tiers(
 
     // Campaign is expired or should be ended due to overfunding
     ensure!(
-        !campaign_config.end_time.is_expired(&env.block)
+        !duration.end_time.is_expired(&env.block)
             || campaign_config.hard_cap.unwrap_or(current_capital) > current_capital,
         ContractError::CampaignEnded {}
     );
@@ -724,6 +729,7 @@ fn query_campaign_summary(deps: Deps) -> Result<CampaignSummaryResponse, Contrac
     let current_capital = get_current_capital(deps.storage);
     let current_stage = get_current_stage(deps.storage);
     let config = get_config(deps.storage)?;
+    let duration = get_duration(deps.storage)?;
     Ok(CampaignSummaryResponse {
         title: config.title,
         description: config.description,
@@ -734,8 +740,8 @@ fn query_campaign_summary(deps: Deps) -> Result<CampaignSummaryResponse, Contrac
         withdrawal_recipient: config.withdrawal_recipient,
         soft_cap: config.soft_cap,
         hard_cap: config.hard_cap,
-        start_time: config.start_time,
-        end_time: config.end_time,
+        start_time: duration.start_time,
+        end_time: duration.end_time,
         current_stage: current_stage.to_string(),
         current_capital: current_capital.into(),
     })

@@ -9,9 +9,7 @@ use andromeda_cw20::mock::{mock_andromeda_cw20, mock_cw20_instantiate_msg, mock_
 use andromeda_cw721::mock::{mock_andromeda_cw721, mock_cw721_instantiate_msg, MockCW721};
 use andromeda_finance::splitter::AddressPercent;
 use andromeda_non_fungible_tokens::{
-    crowdfund::{
-        CampaignStage, InitialCampaignConfig, PresaleTierOrder, SimpleTierOrder, TierMetaData,
-    },
+    crowdfund::{CampaignConfig, CampaignStage, PresaleTierOrder, SimpleTierOrder, TierMetaData},
     cw721::TokenExtension,
 };
 use andromeda_splitter::mock::{
@@ -795,8 +793,8 @@ fn mock_campaign_config(
     token_address: AndrAddr,
     withdrawal_recipient: Recipient,
     soft_cap: Option<Uint128>,
-) -> InitialCampaignConfig {
-    InitialCampaignConfig {
+) -> CampaignConfig {
+    CampaignConfig {
         title: "First Crowdfund".to_string(),
         description: "Demo campaign for testing".to_string(),
         banner: "http://<campaign_banner>".to_string(),

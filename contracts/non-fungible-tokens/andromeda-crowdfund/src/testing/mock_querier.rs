@@ -1,5 +1,5 @@
 use andromeda_non_fungible_tokens::{
-    crowdfund::{InitialCampaignConfig, RawTier, TierMetaData},
+    crowdfund::{CampaignConfig, RawTier, TierMetaData},
     cw721::TokenExtension,
 };
 use andromeda_std::{
@@ -19,8 +19,8 @@ pub const MOCK_TIER_CONTRACT: &str = "tier_contract";
 pub const MOCK_WITHDRAWAL_ADDRESS: &str = "withdrawal_address";
 pub const MOCK_DEFAULT_LIMIT: u128 = 100000;
 
-pub fn mock_campaign_config(denom: Asset) -> InitialCampaignConfig {
-    InitialCampaignConfig {
+pub fn mock_campaign_config(denom: Asset) -> CampaignConfig {
+    CampaignConfig {
         title: "First Crowdfund".to_string(),
         description: "Demo campaign for testing".to_string(),
         banner: "http://<campaign_banner>".to_string(),

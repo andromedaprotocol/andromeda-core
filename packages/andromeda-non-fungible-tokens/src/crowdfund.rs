@@ -14,7 +14,7 @@ use crate::cw721::TokenExtension;
 #[cw_serde]
 pub struct InstantiateMsg {
     /// The configuration for the campaign
-    pub campaign_config: InitialCampaignConfig,
+    pub campaign_config: CampaignConfig,
     /// The tiers for the campaign
     pub tiers: Vec<RawTier>,
 }
@@ -51,29 +51,6 @@ pub enum Cw20HookMsg {
     PurchaseTiers { orders: Vec<SimpleTierOrder> },
 }
 
-/// Only used for instantiate
-#[cw_serde]
-pub struct InitialCampaignConfig {
-    /// Title of the campaign. Maximum length is 64.
-    pub title: String,
-    /// Short description about the campaign.
-    pub description: String,
-    /// URL for the banner of the campaign
-    pub banner: String,
-    /// Official website of the campaign
-    pub url: String,
-    /// The address of the tier contract whose tokens are being distributed
-    pub token_address: AndrAddr,
-    /// The denom of the token that is being accepted by the campaign
-    pub denom: Asset,
-    /// Recipient that is upposed to receive the funds gained by the campaign
-    pub withdrawal_recipient: Recipient,
-    /// The minimum amount of funding to be sold for the successful fundraising
-    pub soft_cap: Option<Uint128>,
-    /// The maximum amount of funding to be sold for the fundraising
-    pub hard_cap: Option<Uint128>,
-}
-
 #[cw_serde]
 pub struct CampaignConfig {
     /// Title of the campaign. Maximum length is 64.
@@ -94,28 +71,6 @@ pub struct CampaignConfig {
     pub soft_cap: Option<Uint128>,
     /// The maximum amount of funding to be sold for the fundraising
     pub hard_cap: Option<Uint128>,
-    /// Time when campaign starts
-    pub start_time: Option<MillisecondsExpiration>,
-    /// Time when campaign ends
-    pub end_time: MillisecondsExpiration,
-}
-
-impl From<InitialCampaignConfig> for CampaignConfig {
-    fn from(config: InitialCampaignConfig) -> CampaignConfig {
-        CampaignConfig {
-            title: config.title,
-            description: config.description,
-            banner: config.banner,
-            url: config.url,
-            token_address: config.token_address,
-            denom: config.denom,
-            withdrawal_recipient: config.withdrawal_recipient,
-            soft_cap: config.soft_cap,
-            hard_cap: config.hard_cap,
-            start_time: None,
-            end_time: MillisecondsExpiration::default(),
-        }
-    }
 }
 
 impl CampaignConfig {

@@ -1,7 +1,7 @@
 use andromeda_non_fungible_tokens::{
     crowdfund::{
-        CampaignConfig, CampaignStage, ExecuteMsg, InitialCampaignConfig, InstantiateMsg, RawTier,
-        SimpleTierOrder, Tier, TierMetaData,
+        CampaignConfig, CampaignStage, ExecuteMsg, InstantiateMsg, RawTier, SimpleTierOrder, Tier,
+        TierMetaData,
     },
     cw721::{ExecuteMsg as Cw721ExecuteMsg, TokenExtension},
 };
@@ -20,7 +20,10 @@ use cosmwasm_std::{
 
 use crate::{
     contract::{execute, instantiate},
-    state::{CAMPAIGN_CONFIG, CAMPAIGN_STAGE, CURRENT_CAPITAL, TIERS, TIER_ORDERS},
+    state::{
+        Duration, CAMPAIGN_CONFIG, CAMPAIGN_DURATION, CAMPAIGN_STAGE, CURRENT_CAPITAL, TIERS,
+        TIER_ORDERS,
+    },
     testing::mock_querier::{
         mock_dependencies_custom, mock_zero_price_raw_tier, MOCK_DEFAULT_LIMIT,
     },
@@ -28,7 +31,7 @@ use crate::{
 
 use super::mock_querier::{mock_campaign_config, mock_campaign_tiers, MOCK_DEFAULT_OWNER};
 
-fn init(deps: DepsMut, config: InitialCampaignConfig, tiers: Vec<RawTier>) -> Response {
+fn init(deps: DepsMut, config: CampaignConfig, tiers: Vec<RawTier>) -> Response {
     let msg = InstantiateMsg {
         campaign_config: config,
         tiers,
@@ -65,6 +68,9 @@ fn set_current_capital(store: &mut dyn Storage, cur_cap: &Uint128) {
 }
 fn set_campaign_config(store: &mut dyn Storage, config: &CampaignConfig) {
     CAMPAIGN_CONFIG.save(store, config).unwrap();
+}
+fn set_campaign_duration(store: &mut dyn Storage, duration: &Duration) {
+    CAMPAIGN_DURATION.save(store, duration).unwrap();
 }
 fn set_tiers(storage: &mut dyn Storage, tiers: Vec<RawTier>) {
     for tier in tiers {
@@ -114,7 +120,7 @@ mod test {
 
     struct InstantiateTestCase {
         name: String,
-        config: InitialCampaignConfig,
+        config: CampaignConfig,
         tiers: Vec<RawTier>,
         expected_res: Result<Response, ContractError>,
     }
@@ -188,7 +194,7 @@ mod test {
             if res.is_ok() {
                 assert_eq!(
                     get_campaign_config(&deps.storage),
-                    test.config.into(),
+                    test.config,
                     "Test case: {}",
                     test.name
                 );
@@ -656,11 +662,11 @@ mod test {
 
             if res.is_ok() {
                 assert_eq!(
-                    CAMPAIGN_CONFIG.load(&deps.storage).unwrap().start_time,
+                    CAMPAIGN_DURATION.load(&deps.storage).unwrap().start_time,
                     test.start_time
                 );
                 assert_eq!(
-                    CAMPAIGN_CONFIG.load(&deps.storage).unwrap().end_time,
+                    CAMPAIGN_DURATION.load(&deps.storage).unwrap().end_time,
                     test.end_time
                 );
                 assert_eq!(
@@ -858,11 +864,13 @@ mod test {
             set_current_capital(deps.as_mut().storage, &test.initial_cap);
             set_tiers(deps.as_mut().storage, mock_campaign_tiers());
 
-            let mut mock_config: CampaignConfig = mock_campaign_config(test.denom).into();
-            mock_config.start_time = test.start_time;
-            mock_config.end_time = test.end_time;
+            let mock_config: CampaignConfig = mock_campaign_config(test.denom);
+            let duration = Duration {
+                start_time: test.start_time,
+                end_time: test.end_time,
+            };
             set_campaign_config(deps.as_mut().storage, &mock_config);
-
+            set_campaign_duration(deps.as_mut().storage, &duration);
             let msg = ExecuteMsg::PurchaseTiers {
                 orders: test.orders.clone(),
             };
@@ -1051,10 +1059,14 @@ mod test {
             set_current_capital(deps.as_mut().storage, &test.initial_cap);
             set_tiers(deps.as_mut().storage, mock_campaign_tiers());
 
-            let mut mock_config: CampaignConfig = mock_campaign_config(valid_denom.clone()).into();
-            mock_config.start_time = test.start_time;
-            mock_config.end_time = test.end_time;
+            let mock_config: CampaignConfig = mock_campaign_config(valid_denom.clone());
             set_campaign_config(deps.as_mut().storage, &mock_config);
+
+            let duration = Duration {
+                start_time: test.start_time,
+                end_time: test.end_time,
+            };
+            set_campaign_duration(deps.as_mut().storage, &duration);
 
             let hook_msg = Cw20HookMsg::PurchaseTiers {
                 orders: test.orders.clone(),
@@ -1324,17 +1336,21 @@ mod test {
         ];
         for test in test_cases {
             let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
-            let mock_config = mock_campaign_config(test.denom.clone());
+            let mut mock_config = mock_campaign_config(test.denom.clone());
             let _ = init(deps.as_mut(), mock_config.clone(), vec![]);
 
             let info = mock_info(&test.sender, &[]);
             set_campaign_stage(deps.as_mut().storage, &test.stage);
             set_current_capital(deps.as_mut().storage, &test.current_capital);
 
-            let mut mock_config: CampaignConfig = mock_config.into();
-            mock_config.end_time = test.end_time;
             mock_config.soft_cap = test.soft_cap;
+            let duration = Duration {
+                start_time: None,
+                end_time: test.end_time,
+            };
+
             set_campaign_config(deps.as_mut().storage, &mock_config);
+            set_campaign_duration(deps.as_mut().storage, &duration);
             let msg = if test.is_discard {
                 ExecuteMsg::DiscardCampaign {}
             } else {
@@ -1537,7 +1553,7 @@ mod test {
         for test in test_cases {
             let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
             let env = mock_env();
-            let mock_config: CampaignConfig = mock_campaign_config(test.denom.clone()).into();
+            let mock_config: CampaignConfig = mock_campaign_config(test.denom.clone());
             set_campaign_config(deps.as_mut().storage, &mock_config);
             set_current_stage(deps.as_mut().storage, test.stage).unwrap();
             set_tiers(deps.as_mut().storage, mock_campaign_tiers());

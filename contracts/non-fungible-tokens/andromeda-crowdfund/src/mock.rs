@@ -2,7 +2,7 @@
 
 use crate::contract::{execute, instantiate, query, reply};
 use andromeda_non_fungible_tokens::crowdfund::{
-    CampaignSummaryResponse, Cw20HookMsg, ExecuteMsg, InitialCampaignConfig, InstantiateMsg,
+    CampaignConfig, CampaignSummaryResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg,
     PresaleTierOrder, QueryMsg, RawTier, SimpleTierOrder, TierMetaData,
 };
 use andromeda_std::common::Milliseconds;
@@ -23,7 +23,7 @@ impl MockCrowdfund {
         code_id: u64,
         sender: Addr,
         app: &mut MockApp,
-        campaign_config: InitialCampaignConfig,
+        campaign_config: CampaignConfig,
         tiers: Vec<RawTier>,
         kernel_address: impl Into<String>,
         owner: Option<String>,
@@ -106,7 +106,7 @@ pub fn mock_andromeda_crowdfund() -> Box<dyn Contract<Empty>> {
 }
 
 pub fn mock_crowdfund_instantiate_msg(
-    campaign_config: InitialCampaignConfig,
+    campaign_config: CampaignConfig,
     tiers: Vec<RawTier>,
     kernel_address: impl Into<String>,
     owner: Option<String>,

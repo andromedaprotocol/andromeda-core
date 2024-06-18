@@ -1,10 +1,22 @@
 use andromeda_non_fungible_tokens::crowdfund::{
     CampaignConfig, CampaignStage, SimpleTierOrder, Tier, TierOrder,
 };
-use andromeda_std::{common::OrderBy, error::ContractError};
+use andromeda_std::{
+    common::{MillisecondsExpiration, OrderBy},
+    error::ContractError,
+};
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{ensure, Addr, Order, Storage, Uint128, Uint64};
 use cw_storage_plus::{Bound, Item, Map};
+
+#[cw_serde]
+pub struct Duration {
+    /// Time when campaign starts
+    pub start_time: Option<MillisecondsExpiration>,
+    /// Time when campaign ends
+    pub end_time: MillisecondsExpiration,
+}
+pub const CAMPAIGN_DURATION: Item<Duration> = Item::new("campaign_duration");
 
 pub const CAMPAIGN_CONFIG: Item<CampaignConfig> = Item::new("campaign_config");
 
@@ -31,7 +43,7 @@ impl OrderInfo {
     }
 }
 
-pub(crate) fn update_config(
+pub(crate) fn set_config(
     storage: &mut dyn Storage,
     config: CampaignConfig,
 ) -> Result<(), ContractError> {
@@ -42,6 +54,19 @@ pub(crate) fn update_config(
 
 pub(crate) fn get_config(storage: &dyn Storage) -> Result<CampaignConfig, ContractError> {
     CAMPAIGN_CONFIG.load(storage).map_err(ContractError::Std)
+}
+
+pub(crate) fn get_duration(storage: &dyn Storage) -> Result<Duration, ContractError> {
+    CAMPAIGN_DURATION.load(storage).map_err(ContractError::Std)
+}
+
+pub(crate) fn set_duration(
+    storage: &mut dyn Storage,
+    duration: Duration,
+) -> Result<(), ContractError> {
+    CAMPAIGN_DURATION
+        .save(storage, &duration)
+        .map_err(ContractError::Std)
 }
 
 pub(crate) fn get_current_capital(storage: &dyn Storage) -> Uint128 {
