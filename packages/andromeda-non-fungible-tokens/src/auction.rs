@@ -41,6 +41,7 @@ pub enum ExecuteMsg {
         coin_denom: Asset,
         whitelist: Option<Vec<Addr>>,
         min_bid: Option<Uint128>,
+        min_raise: Option<Uint128>,
         recipient: Option<Recipient>,
     },
     CancelAuction {

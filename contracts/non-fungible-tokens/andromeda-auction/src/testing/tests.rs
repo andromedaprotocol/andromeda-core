@@ -924,6 +924,7 @@ fn execute_update_auction_zero_start() {
         coin_denom: Asset::NativeToken("uusd".to_string()),
         whitelist: None,
         min_bid: None,
+        min_raise: None,
         recipient: None,
     };
     let mut env = mock_env();
@@ -956,6 +957,7 @@ fn execute_update_auction_zero_duration() {
         coin_denom: Asset::NativeToken("uusd".to_string()),
         whitelist: None,
         min_bid: None,
+        min_raise: None,
         recipient: None,
     };
     let mut env = mock_env();
@@ -982,6 +984,7 @@ fn execute_update_auction_unauthorized() {
         coin_denom: Asset::NativeToken("uusd".to_string()),
         whitelist: Some(vec![Addr::unchecked("user")]),
         min_bid: None,
+        min_raise: None,
         recipient: None,
     };
     let env = mock_env();
@@ -1006,6 +1009,7 @@ fn execute_update_auction_auction_started() {
         coin_denom: Asset::NativeToken("uusd".to_string()),
         whitelist: Some(vec![Addr::unchecked("user")]),
         min_bid: None,
+        min_raise: None,
         recipient: None,
     };
     let mut env = mock_env();
@@ -1032,6 +1036,7 @@ fn execute_update_auction() {
         coin_denom: Asset::NativeToken("uusd".to_string()),
         whitelist: Some(vec![Addr::unchecked("user")]),
         min_bid: None,
+        min_raise: None,
         recipient: None,
     };
     let mut env = mock_env();
