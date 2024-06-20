@@ -178,6 +178,7 @@ impl From<TokenAuctionState> for AuctionStateResponse {
             whitelist: token_auction_state.whitelist,
             is_cancelled: token_auction_state.is_cancelled,
             min_bid: token_auction_state.min_bid,
+            min_raise: token_auction_state.min_raise,
             owner: token_auction_state.owner,
             recipient: token_auction_state.recipient,
         }
@@ -221,6 +222,7 @@ pub struct AuctionStateResponse {
     pub uses_cw20: bool,
     pub whitelist: Option<Vec<Addr>>,
     pub min_bid: Option<Uint128>,
+    pub min_raise: Option<Uint128>,
     pub is_cancelled: bool,
     pub owner: String,
     pub recipient: Option<Recipient>,

@@ -564,6 +564,7 @@ fn execute_place_bid_multiple_bids() {
         uses_cw20: false,
         is_cancelled: false,
         min_bid: None,
+        min_raise: None,
         whitelist: None,
         owner: "owner".to_string(),
         recipient: None,
