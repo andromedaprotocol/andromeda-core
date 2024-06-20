@@ -547,6 +547,9 @@ pub enum ContractError {
     #[error("Min sales exceeded")]
     MinSalesExceeded {},
 
+    #[error("MinRaiseUnmet")]
+    MinRaiseUnmet {},
+
     #[error("Limit must not be zero")]
     LimitMustNotBeZero {},
 

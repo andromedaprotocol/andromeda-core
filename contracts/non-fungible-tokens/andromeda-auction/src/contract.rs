@@ -181,6 +181,7 @@ fn handle_receive_cw721(
             coin_denom,
             whitelist,
             min_bid,
+            min_raise,
             recipient,
         } => execute_start_auction(
             ctx,
@@ -191,6 +192,7 @@ fn handle_receive_cw721(
             coin_denom,
             whitelist,
             min_bid,
+            min_raise,
             recipient,
         ),
     }
@@ -255,6 +257,7 @@ fn execute_start_auction(
     coin_denom: Asset,
     whitelist: Option<Vec<Addr>>,
     min_bid: Option<Uint128>,
+    min_raise: Option<Uint128>,
     recipient: Option<Recipient>,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
@@ -311,6 +314,7 @@ fn execute_start_auction(
             auction_id,
             whitelist,
             min_bid,
+            min_raise,
             owner: sender,
             token_id,
             token_address,
@@ -492,6 +496,16 @@ fn execute_place_bid(
     ensure!(
         token_auction_state.high_bidder_amount < payment.amount,
         ContractError::BidSmallerThanHighestBid {}
+    );
+
+    // If there's a min_raise, the difference between the new bid and the highest bid should be greater or equal to it.
+    let min_raise = token_auction_state.min_raise.unwrap_or_default();
+    let bid_difference = payment
+        .amount
+        .checked_sub(token_auction_state.high_bidder_amount)?;
+    ensure!(
+        bid_difference.ge(&min_raise),
+        ContractError::MinRaiseUnmet {}
     );
 
     let mut messages: Vec<CosmosMsg> = vec![];

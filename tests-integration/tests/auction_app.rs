@@ -140,6 +140,7 @@ fn test_auction_app_modules() {
         None,
         None,
         None,
+        None,
     );
     cw721
         .execute_send_nft(
@@ -334,6 +335,7 @@ fn test_auction_app_recipient() {
         Some(Expiry::AtTime(start_time)),
         Expiry::AtTime(start_time.plus_milliseconds(Milliseconds(1000))),
         Asset::NativeToken("uandr".to_string()),
+        None,
         None,
         None,
         Some(Recipient::from_string("./splitter").with_msg(mock_splitter_send_msg())),
@@ -580,6 +582,7 @@ fn test_auction_app_cw20_restricted() {
                 None,
                 None,
                 None,
+                None,
             ),
         )
         .unwrap();
@@ -728,6 +731,7 @@ fn test_auction_app_cw20_restricted() {
                 Some(Expiry::AtTime(Milliseconds(start_time))),
                 Expiry::AtTime(Milliseconds(start_time + 2)),
                 Asset::Cw20Token(AndrAddr::from_string(cw20.addr().to_string())),
+                None,
                 None,
                 Some(vec![buyer_one.clone(), buyer_two.clone()]),
                 Some(Recipient::from_string(buyer_one)),
@@ -1022,6 +1026,7 @@ fn test_auction_app_cw20_unrestricted() {
                 Expiry::AtTime(Milliseconds(start_time + 2)),
                 Asset::Cw20Token(AndrAddr::from_string(cw20.addr().to_string())),
                 None,
+                None,
                 Some(vec![buyer_one.clone(), buyer_two.clone()]),
                 None,
             ),
@@ -1145,6 +1150,7 @@ fn test_auction_app_cw20_unrestricted() {
                 Some(Expiry::AtTime(Milliseconds(start_time))),
                 Expiry::AtTime(Milliseconds(start_time + 2)),
                 Asset::Cw20Token(AndrAddr::from_string(second_cw20.addr().to_string())),
+                None,
                 None,
                 Some(vec![buyer_one.clone(), buyer_two.clone()]),
                 None,
