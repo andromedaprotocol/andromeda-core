@@ -61,8 +61,9 @@ fn past_time() -> MillisecondsExpiration {
 fn set_campaign_stage(store: &mut dyn Storage, stage: &CampaignStage) {
     CAMPAIGN_STAGE.save(store, stage).unwrap();
 }
-fn set_current_capital(store: &mut dyn Storage, cur_cap: &Uint128) {
-    CURRENT_CAPITAL.save(store, cur_cap).unwrap();
+fn set_current_capital(store: &mut dyn Storage, current_capital: &Uint128) {
+    CURRENT_CAPITAL.save(store, current_capital).unwrap();
+}
 }
 fn set_campaign_config(store: &mut dyn Storage, config: &CampaignConfig) {
     CAMPAIGN_CONFIG.save(store, config).unwrap();
