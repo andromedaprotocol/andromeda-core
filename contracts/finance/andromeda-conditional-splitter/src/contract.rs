@@ -256,6 +256,14 @@ fn execute_update_lock(
 
     let mut conditional_splitter = CONDITIONAL_SPLITTER.load(deps.storage)?;
 
+    // Can't call this function while the lock isn't expired
+    if let Some(conditional_splitter_lock) = conditional_splitter.lock_time {
+        ensure!(
+            conditional_splitter_lock.is_expired(&env.block),
+            ContractError::ContractLocked {}
+        );
+    }
+
     // Get current time
     let current_time = Milliseconds::from_seconds(env.block.time.seconds());
 

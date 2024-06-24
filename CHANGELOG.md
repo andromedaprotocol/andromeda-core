@@ -23,8 +23,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Module Redesign [(#452)](https://github.com/andromedaprotocol/andromeda-core/pull/452)
 - Primitive Improvements [(#476)](https://github.com/andromedaprotocol/andromeda-core/pull/476)
 - Crowdfund Restructure  [(#478)](https://github.com/andromedaprotocol/andromeda-core/pull/478)
+- Conditional Splitter Internal Audit [(#479)](https://github.com/andromedaprotocol/andromeda-core/pull/479)
 - Merkle Root: Andromeda Asset is used now as a `asset_info`[(#480)](https://github.com/andromedaprotocol/andromeda-core/pull/480)
 - Reference Address List contract for Permission  [(#481)](https://github.com/andromedaprotocol/andromeda-core/pull/481)
+- Crowdfund Internal Audit [(#485)](https://github.com/andromedaprotocol/andromeda-core/pull/485)
 
 ### Fixed
 

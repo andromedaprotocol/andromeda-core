@@ -71,10 +71,6 @@ pub struct CampaignConfig {
     pub soft_cap: Option<Uint128>,
     /// The maximum amount of funding to be sold for the fundraising
     pub hard_cap: Option<Uint128>,
-    /// Time when campaign starts
-    pub start_time: Option<MillisecondsExpiration>,
-    /// Time when campaign ends
-    pub end_time: MillisecondsExpiration,
 }
 
 impl CampaignConfig {
@@ -139,7 +135,6 @@ pub struct Tier {
     pub label: String,
     pub price: Uint128,
     pub limit: Option<Uint128>, // None for no limit
-    pub sold_amount: Uint128,
     pub metadata: TierMetaData,
 }
 
@@ -256,7 +251,7 @@ pub struct CampaignSummaryResponse {
     pub end_time: MillisecondsExpiration,
     // Current Status
     pub current_stage: String,
-    pub current_cap: u128,
+    pub current_capital: u128,
 }
 
 #[cw_serde]
@@ -266,5 +261,11 @@ pub struct TierOrdersResponse {
 
 #[cw_serde]
 pub struct TiersResponse {
-    pub tiers: Vec<Tier>,
+    pub tiers: Vec<TierResponseItem>,
+}
+
+#[cw_serde]
+pub struct TierResponseItem {
+    pub tier: Tier,
+    pub sold_amount: Uint128,
 }
