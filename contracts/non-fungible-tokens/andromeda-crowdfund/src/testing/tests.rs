@@ -20,7 +20,10 @@ use cosmwasm_std::{
 
 use crate::{
     contract::{execute, instantiate},
-    state::{CAMPAIGN_CONFIG, CAMPAIGN_STAGE, CURRENT_CAP, TIERS, TIER_ORDERS},
+    state::{
+        Duration, CAMPAIGN_CONFIG, CAMPAIGN_DURATION, CAMPAIGN_STAGE, CURRENT_CAPITAL, TIERS,
+        TIER_ORDERS,
+    },
     testing::mock_querier::{mock_dependencies_custom, mock_zero_price_tier, MOCK_DEFAULT_LIMIT},
 };
 
@@ -58,11 +61,15 @@ fn past_time() -> MillisecondsExpiration {
 fn set_campaign_stage(store: &mut dyn Storage, stage: &CampaignStage) {
     CAMPAIGN_STAGE.save(store, stage).unwrap();
 }
-fn set_current_cap(store: &mut dyn Storage, cur_cap: &Uint128) {
-    CURRENT_CAP.save(store, cur_cap).unwrap();
+fn set_current_capital(store: &mut dyn Storage, current_capital: &Uint128) {
+    CURRENT_CAPITAL.save(store, current_capital).unwrap();
 }
+
 fn set_campaign_config(store: &mut dyn Storage, config: &CampaignConfig) {
     CAMPAIGN_CONFIG.save(store, config).unwrap();
+}
+fn set_campaign_duration(store: &mut dyn Storage, duration: &Duration) {
+    CAMPAIGN_DURATION.save(store, duration).unwrap();
 }
 fn set_tiers(storage: &mut dyn Storage, tiers: Vec<Tier>) {
     for tier in tiers {
@@ -99,7 +106,7 @@ mod test {
     use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 
     use crate::{
-        state::{get_current_cap, set_current_stage, set_tier_orders},
+        state::{get_current_capital, set_current_stage, set_tier_orders, TIER_SALES},
         testing::mock_querier::{MOCK_DEFAULT_OWNER, MOCK_WITHDRAWAL_ADDRESS},
     };
 
@@ -188,9 +195,10 @@ mod test {
                     "Test case: {}",
                     test.name
                 );
+                let expected_tiers: Vec<Tier> = test.tiers.into_iter().collect();
                 assert_eq!(
                     get_tiers(deps.as_ref().storage),
-                    test.tiers,
+                    expected_tiers,
                     "Test case: {}",
                     test.name
                 );
@@ -211,7 +219,6 @@ mod test {
             level: Uint64::new(2u64),
             label: "Tier 2".to_string(),
             limit: Some(Uint128::new(100)),
-            sold_amount: Uint128::zero(),
             price: Uint128::new(100),
             metadata: TierMetaData {
                 extension: TokenExtension {
@@ -224,7 +231,6 @@ mod test {
             level: Uint64::new(0u64),
             label: "Tier 2".to_string(),
             limit: Some(Uint128::new(100)),
-            sold_amount: Uint128::zero(),
             price: Uint128::new(100),
             metadata: TierMetaData {
                 extension: TokenExtension {
@@ -319,7 +325,6 @@ mod test {
             level: Uint64::zero(),
             label: "Tier 0".to_string(),
             limit: Some(Uint128::new(100)),
-            sold_amount: Uint128::zero(),
             price: Uint128::new(100),
             metadata: TierMetaData {
                 extension: TokenExtension {
@@ -332,7 +337,6 @@ mod test {
             level: Uint64::new(2u64),
             label: "Tier 2".to_string(),
             limit: Some(Uint128::new(100)),
-            sold_amount: Uint128::zero(),
             price: Uint128::new(100),
             metadata: TierMetaData {
                 extension: TokenExtension {
@@ -428,7 +432,6 @@ mod test {
             label: "Tier 0".to_string(),
             limit: Some(Uint128::new(100)),
             price: Uint128::new(100),
-            sold_amount: Uint128::zero(),
             metadata: TierMetaData {
                 extension: TokenExtension {
                     publisher: MOCK_ADO_PUBLISHER.to_string(),
@@ -441,7 +444,6 @@ mod test {
             label: "Tier 2".to_string(),
             limit: Some(Uint128::new(100)),
             price: Uint128::new(100),
-            sold_amount: Uint128::zero(),
             metadata: TierMetaData {
                 extension: TokenExtension {
                     publisher: MOCK_ADO_PUBLISHER.to_string(),
@@ -542,7 +544,6 @@ mod test {
             level: Uint64::new(1u64),
             label: "Tier 1".to_string(),
             limit: Some(Uint128::new(1000u128)),
-            sold_amount: Uint128::zero(),
             price: Uint128::new(10u128),
             metadata: TierMetaData {
                 extension: TokenExtension {
@@ -563,6 +564,10 @@ mod test {
                 payee: MOCK_DEFAULT_OWNER.to_string(),
                 expected_res: Ok(Response::new()
                     .add_attribute("action", "start_campaign")
+                    .add_attribute(
+                        "end_time",
+                        MillisecondsExpiration::from_seconds(env.block.time.seconds() + 100),
+                    )
                     .add_submessage(SubMsg::reply_on_error(
                         CosmosMsg::Wasm(WasmMsg::Execute {
                             contract_addr: "economics_contract".to_string(),
@@ -648,11 +653,11 @@ mod test {
 
             if res.is_ok() {
                 assert_eq!(
-                    CAMPAIGN_CONFIG.load(&deps.storage).unwrap().start_time,
+                    CAMPAIGN_DURATION.load(&deps.storage).unwrap().start_time,
                     test.start_time
                 );
                 assert_eq!(
-                    CAMPAIGN_CONFIG.load(&deps.storage).unwrap().end_time,
+                    CAMPAIGN_DURATION.load(&deps.storage).unwrap().end_time,
                     test.end_time
                 );
                 assert_eq!(
@@ -671,10 +676,9 @@ mod test {
                     let cur_limit = TIERS.load(&deps.storage, order.level.into()).unwrap().limit;
                     if cur_limit.is_some() {
                         assert_eq!(
-                            TIERS
+                            TIER_SALES
                                 .load(&deps.storage, order.level.into())
                                 .unwrap()
-                                .sold_amount
                                 .u128(),
                             order_amount
                         );
@@ -847,14 +851,16 @@ mod test {
 
             // Mock necessary storage setup
             set_campaign_stage(deps.as_mut().storage, &test.stage);
-            set_current_cap(deps.as_mut().storage, &test.initial_cap);
+            set_current_capital(deps.as_mut().storage, &test.initial_cap);
             set_tiers(deps.as_mut().storage, mock_campaign_tiers());
 
-            let mut mock_config = mock_campaign_config(test.denom);
-            mock_config.start_time = test.start_time;
-            mock_config.end_time = test.end_time;
+            let mock_config: CampaignConfig = mock_campaign_config(test.denom);
+            let duration = Duration {
+                start_time: test.start_time,
+                end_time: test.end_time,
+            };
             set_campaign_config(deps.as_mut().storage, &mock_config);
-
+            set_campaign_duration(deps.as_mut().storage, &duration);
             let msg = ExecuteMsg::PurchaseTiers {
                 orders: test.orders.clone(),
             };
@@ -864,7 +870,7 @@ mod test {
 
             if res.is_ok() {
                 // Check current capital
-                let updated_cap = get_current_cap(deps.as_ref().storage);
+                let updated_cap = get_current_capital(deps.as_ref().storage);
                 let expected_cap = test.initial_cap + Uint128::new(100);
                 assert_eq!(updated_cap, expected_cap, "Test case: {}", test.name);
 
@@ -884,13 +890,13 @@ mod test {
                     );
                 }
 
-                // Check tier limits
+                // Check tier sales
                 for order in &test.orders {
-                    let tier = TIERS
+                    let sold_amount = TIER_SALES
                         .load(deps.as_ref().storage, order.level.into())
                         .unwrap();
                     assert_eq!(
-                        tier.sold_amount.u128(),
+                        sold_amount.u128(),
                         order.amount.u128(),
                         "Test case: {}",
                         test.name
@@ -1040,13 +1046,17 @@ mod test {
 
             // Mock necessary storage setup
             set_campaign_stage(deps.as_mut().storage, &test.stage);
-            set_current_cap(deps.as_mut().storage, &test.initial_cap);
+            set_current_capital(deps.as_mut().storage, &test.initial_cap);
             set_tiers(deps.as_mut().storage, mock_campaign_tiers());
 
-            let mut mock_config = mock_campaign_config(valid_denom.clone());
-            mock_config.start_time = test.start_time;
-            mock_config.end_time = test.end_time;
+            let mock_config: CampaignConfig = mock_campaign_config(valid_denom.clone());
             set_campaign_config(deps.as_mut().storage, &mock_config);
+
+            let duration = Duration {
+                start_time: test.start_time,
+                end_time: test.end_time,
+            };
+            set_campaign_duration(deps.as_mut().storage, &duration);
 
             let hook_msg = Cw20HookMsg::PurchaseTiers {
                 orders: test.orders.clone(),
@@ -1062,7 +1072,7 @@ mod test {
 
             if res.is_ok() {
                 // Check current capital
-                let updated_cap = get_current_cap(deps.as_ref().storage);
+                let updated_cap = get_current_capital(deps.as_ref().storage);
                 let expected_cap = test.initial_cap + Uint128::new(100);
                 assert_eq!(updated_cap, expected_cap, "Test case: {}", test.name);
 
@@ -1082,13 +1092,13 @@ mod test {
                     );
                 }
 
-                // Check tier limits
+                // Check tier sales
                 for order in &test.orders {
-                    let tier = TIERS
+                    let sold_amount = TIER_SALES
                         .load(deps.as_ref().storage, order.level.into())
                         .unwrap();
                     assert_eq!(
-                        tier.sold_amount.u128(),
+                        sold_amount.u128(),
                         order.amount.u128(),
                         "Test case: {}",
                         test.name
@@ -1102,7 +1112,7 @@ mod test {
         name: String,
         stage: CampaignStage,
         sender: String,
-        current_cap: Uint128,
+        current_capital: Uint128,
         soft_cap: Option<Uint128>,
         end_time: MillisecondsExpiration,
         denom: Asset,
@@ -1136,7 +1146,7 @@ mod test {
                 name: "Successful campaign using native token".to_string(),
                 stage: CampaignStage::ONGOING,
                 sender: MOCK_DEFAULT_OWNER.to_string(),
-                current_cap: Uint128::new(10000u128),
+                current_capital: Uint128::new(10000u128),
                 soft_cap: Some(Uint128::new(9000u128)),
                 end_time: MillisecondsExpiration::from_seconds(env.block.time.seconds()),
                 denom: Asset::NativeToken(MOCK_NATIVE_DENOM.to_string()),
@@ -1163,7 +1173,7 @@ mod test {
                 name: "Successful campaign using cw20".to_string(),
                 stage: CampaignStage::ONGOING,
                 sender: MOCK_DEFAULT_OWNER.to_string(),
-                current_cap: Uint128::new(10000u128),
+                current_capital: Uint128::new(10000u128),
                 soft_cap: Some(Uint128::new(9000u128)),
                 end_time: MillisecondsExpiration::from_seconds(env.block.time.seconds()),
                 denom: Asset::Cw20Token(AndrAddr::from_string(MOCK_CW20_CONTRACT.to_string())),
@@ -1200,7 +1210,7 @@ mod test {
                 name: "Failed campaign".to_string(),
                 stage: CampaignStage::ONGOING,
                 sender: MOCK_DEFAULT_OWNER.to_string(),
-                current_cap: Uint128::new(10000u128),
+                current_capital: Uint128::new(10000u128),
                 soft_cap: Some(Uint128::new(11000u128)),
                 end_time: MillisecondsExpiration::from_seconds(env.block.time.seconds()),
                 denom: Asset::Cw20Token(AndrAddr::from_string(MOCK_CW20_CONTRACT.to_string())),
@@ -1226,7 +1236,7 @@ mod test {
                 name: "Discard campaign using native token".to_string(),
                 stage: CampaignStage::ONGOING,
                 sender: MOCK_DEFAULT_OWNER.to_string(),
-                current_cap: Uint128::new(10000u128),
+                current_capital: Uint128::new(10000u128),
                 soft_cap: Some(Uint128::new(9000u128)),
                 end_time: MillisecondsExpiration::from_seconds(env.block.time.seconds()),
                 denom: Asset::NativeToken(MOCK_NATIVE_DENOM.to_string()),
@@ -1252,7 +1262,7 @@ mod test {
                 name: "Pause campaign".to_string(),
                 stage: CampaignStage::ONGOING,
                 sender: MOCK_DEFAULT_OWNER.to_string(),
-                current_cap: Uint128::new(0u128),
+                current_capital: Uint128::new(0u128),
                 soft_cap: None,
                 end_time: MillisecondsExpiration::from_seconds(env.block.time.seconds() + 1000),
                 denom: Asset::Cw20Token(AndrAddr::from_string(MOCK_CW20_CONTRACT.to_string())),
@@ -1278,7 +1288,7 @@ mod test {
                 name: "End campaign from unauthorized sender".to_string(),
                 stage: CampaignStage::ONGOING,
                 sender: "sender".to_string(),
-                current_cap: Uint128::new(10000u128),
+                current_capital: Uint128::new(10000u128),
                 soft_cap: None,
                 end_time: MillisecondsExpiration::from_seconds(env.block.time.seconds()),
                 denom: Asset::NativeToken(MOCK_NATIVE_DENOM.to_string()),
@@ -1290,7 +1300,7 @@ mod test {
                 name: "End campaign on invalid stage".to_string(),
                 stage: CampaignStage::READY,
                 sender: MOCK_DEFAULT_OWNER.to_string(),
-                current_cap: Uint128::new(10000u128),
+                current_capital: Uint128::new(10000u128),
                 soft_cap: None,
                 end_time: MillisecondsExpiration::from_seconds(env.block.time.seconds()),
                 denom: Asset::NativeToken(MOCK_NATIVE_DENOM.to_string()),
@@ -1305,7 +1315,7 @@ mod test {
                 name: "End unexpired campaign".to_string(),
                 stage: CampaignStage::ONGOING,
                 sender: MOCK_DEFAULT_OWNER.to_string(),
-                current_cap: Uint128::new(10000u128),
+                current_capital: Uint128::new(10000u128),
                 soft_cap: Some(Uint128::new(11000u128)),
                 end_time: MillisecondsExpiration::from_seconds(env.block.time.seconds() + 100),
                 denom: Asset::NativeToken(MOCK_NATIVE_DENOM.to_string()),
@@ -1321,11 +1331,16 @@ mod test {
 
             let info = mock_info(&test.sender, &[]);
             set_campaign_stage(deps.as_mut().storage, &test.stage);
-            set_current_cap(deps.as_mut().storage, &test.current_cap);
+            set_current_capital(deps.as_mut().storage, &test.current_capital);
 
-            mock_config.end_time = test.end_time;
             mock_config.soft_cap = test.soft_cap;
+            let duration = Duration {
+                start_time: None,
+                end_time: test.end_time,
+            };
+
             set_campaign_config(deps.as_mut().storage, &mock_config);
+            set_campaign_duration(deps.as_mut().storage, &duration);
             let msg = if test.is_discard {
                 ExecuteMsg::DiscardCampaign {}
             } else {
@@ -1528,7 +1543,7 @@ mod test {
         for test in test_cases {
             let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
             let env = mock_env();
-            let mock_config = mock_campaign_config(test.denom.clone());
+            let mock_config: CampaignConfig = mock_campaign_config(test.denom.clone());
             set_campaign_config(deps.as_mut().storage, &mock_config);
             set_current_stage(deps.as_mut().storage, test.stage).unwrap();
             set_tiers(deps.as_mut().storage, mock_campaign_tiers());

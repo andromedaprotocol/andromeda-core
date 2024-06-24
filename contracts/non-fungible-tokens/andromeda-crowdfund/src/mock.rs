@@ -132,7 +132,6 @@ pub fn mock_add_tier_msg(
             label,
             price,
             limit,
-            sold_amount: Uint128::zero(),
             metadata,
         },
     }

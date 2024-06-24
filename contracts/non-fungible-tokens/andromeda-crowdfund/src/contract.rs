@@ -1,7 +1,7 @@
 use andromeda_non_fungible_tokens::crowdfund::{
-    CampaignStage, CampaignSummaryResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg,
-    PresaleTierOrder, QueryMsg, SimpleTierOrder, Tier, TierMetaData, TierOrder, TierOrdersResponse,
-    TiersResponse,
+    CampaignConfig, CampaignStage, CampaignSummaryResponse, Cw20HookMsg, ExecuteMsg,
+    InstantiateMsg, PresaleTierOrder, QueryMsg, SimpleTierOrder, Tier, TierMetaData, TierOrder,
+    TierOrdersResponse, TiersResponse,
 };
 
 use andromeda_non_fungible_tokens::cw721::ExecuteMsg as Cw721ExecuteMsg;
@@ -31,9 +31,10 @@ use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use cw_utils::nonpayable;
 
 use crate::state::{
-    add_tier, clear_user_orders, get_and_increase_tier_token_id, get_config, get_current_cap,
-    get_current_stage, get_tier, get_tiers, get_user_orders, is_valid_tiers, remove_tier,
-    set_current_cap, set_current_stage, set_tier_orders, set_tiers, update_config, update_tier,
+    add_tier, clear_user_orders, get_and_increase_tier_token_id, get_config, get_current_capital,
+    get_current_stage, get_duration, get_tier, get_tiers, get_user_orders, is_valid_tiers,
+    remove_tier, set_config, set_current_capital, set_current_stage, set_duration, set_tier_orders,
+    set_tiers, update_tier, Duration,
 };
 
 const CONTRACT_NAME: &str = "crates.io:andromeda-crowdfund";
@@ -60,7 +61,9 @@ pub fn instantiate(
         },
     )?;
 
-    if let Asset::Cw20Token(addr) = msg.campaign_config.denom.clone() {
+    let campaign_config: CampaignConfig = msg.campaign_config;
+    let tiers: Vec<Tier> = msg.tiers.into_iter().collect();
+    if let Asset::Cw20Token(addr) = campaign_config.denom.clone() {
         let addr = addr.get_raw_address(&deps.as_ref())?;
         ADOContract::default().permission_action(SEND_CW20_ACTION, deps.storage)?;
         ADOContract::set_permission(
@@ -71,10 +74,10 @@ pub fn instantiate(
         )?;
     }
 
-    msg.campaign_config.validate(deps.branch(), &env)?;
-    update_config(deps.storage, msg.campaign_config)?;
+    campaign_config.validate(deps.branch(), &env)?;
+    set_config(deps.storage, campaign_config)?;
 
-    set_tiers(deps.storage, msg.tiers)?;
+    set_tiers(deps.storage, tiers)?;
 
     Ok(inst_resp)
 }
@@ -285,15 +288,22 @@ fn execute_start_campaign(
     }
 
     // Set start time and end time
-    let mut config = get_config(deps.storage)?;
-    config.start_time = start_time;
-    config.end_time = end_time;
-    update_config(deps.storage, config)?;
+    let duration = Duration {
+        start_time,
+        end_time,
+    };
+    set_duration(deps.storage, duration)?;
 
     // update stage
     set_current_stage(deps.storage, CampaignStage::ONGOING)?;
 
-    let resp = Response::new().add_attribute("action", "start_campaign");
+    let mut resp = Response::new()
+        .add_attribute("action", "start_campaign")
+        .add_attribute("end_time", end_time);
+
+    if start_time.is_some() {
+        resp = resp.add_attribute("start_time", start_time.unwrap());
+    }
 
     Ok(resp)
 }
@@ -380,15 +390,16 @@ fn execute_end_campaign(
         }
     );
 
-    let current_cap = get_current_cap(deps.storage);
+    let current_capital = get_current_capital(deps.storage);
     let campaign_config = get_config(deps.storage)?;
+    let duration = get_duration(deps.storage)?;
     let soft_cap = campaign_config.soft_cap.unwrap_or(Uint128::one());
-    let end_time = campaign_config.end_time;
+    let end_time = duration.end_time;
 
     // Decide the next stage
     let next_stage = match (
         is_discard,
-        current_cap >= soft_cap,
+        current_capital >= soft_cap,
         end_time.is_expired(&env.block),
     ) {
         // discard the campaign as there are some unexpected issues
@@ -399,7 +410,7 @@ fn execute_end_campaign(
         (false, false, true) => CampaignStage::FAILED,
         // Capital did not hit the target capital and campaign is not expired
         (false, false, false) => {
-            if current_cap != Uint128::zero() {
+            if current_capital != Uint128::zero() {
                 // Need to wait until campaign expires
                 return Err(ContractError::CampaignNotExpired {});
             }
@@ -424,7 +435,7 @@ fn execute_end_campaign(
         resp = resp.add_submessage(withdraw_to_recipient(
             ctx,
             campaign_config.withdrawal_recipient,
-            current_cap,
+            current_capital,
             campaign_denom,
         )?);
     }
@@ -438,38 +449,11 @@ fn purchase_tiers(
     sender: String,
     orders: Vec<SimpleTierOrder>,
 ) -> Result<Response, ContractError> {
+    ensure!(!amount.is_zero(), ContractError::InsufficientFunds {});
+
     let ExecuteContext { deps, env, .. } = ctx;
 
     let campaign_config = get_config(deps.storage)?;
-    let mut current_cap = get_current_cap(deps.storage);
-
-    let current_stage = get_current_stage(deps.storage);
-
-    // Tier can be purchased on ONGOING stage
-    ensure!(
-        current_stage == CampaignStage::ONGOING,
-        ContractError::InvalidCampaignOperation {
-            operation: "purchase_tiers".to_string(),
-            stage: current_stage.to_string()
-        }
-    );
-
-    // Need to wait until start_time
-    ensure!(
-        campaign_config
-            .start_time
-            .unwrap_or_default()
-            .is_expired(&env.block),
-        ContractError::CampaignNotStarted {}
-    );
-
-    // Campaign is expired or should be ended due to overfunding
-    ensure!(
-        !campaign_config.end_time.is_expired(&env.block)
-            || campaign_config.hard_cap.unwrap_or(current_cap) > current_cap,
-        ContractError::CampaignEnded {}
-    );
-
     // Ensure campaign accepting coin is received
     let campaign_denom = match campaign_config.denom {
         Asset::Cw20Token(ref cw20_token) => {
@@ -485,6 +469,37 @@ fn purchase_tiers(
                 campaign_config.denom
             ),
         }
+    );
+
+    let mut current_capital = get_current_capital(deps.storage);
+
+    let current_stage = get_current_stage(deps.storage);
+
+    // Tier can be purchased on ONGOING stage
+    ensure!(
+        current_stage == CampaignStage::ONGOING,
+        ContractError::InvalidCampaignOperation {
+            operation: "purchase_tiers".to_string(),
+            stage: current_stage.to_string()
+        }
+    );
+
+    let duration = get_duration(deps.storage)?;
+
+    // Need to wait until start_time
+    ensure!(
+        duration
+            .start_time
+            .unwrap_or_default()
+            .is_expired(&env.block),
+        ContractError::CampaignNotStarted {}
+    );
+
+    // Campaign is expired or should be ended due to overfunding
+    ensure!(
+        !duration.end_time.is_expired(&env.block)
+            || campaign_config.hard_cap.unwrap_or(current_capital) > current_capital,
+        ContractError::CampaignEnded {}
     );
 
     let mut full_orders = Vec::<TierOrder>::new();
@@ -507,10 +522,10 @@ fn purchase_tiers(
 
     // Update order history and sold amount for the tier
     set_tier_orders(deps.storage, full_orders)?;
-    current_cap = current_cap.checked_add(total_cost)?;
+    current_capital = current_capital.checked_add(total_cost)?;
 
     // Update current capital
-    set_current_cap(deps.storage, current_cap)?;
+    set_current_capital(deps.storage, current_capital)?;
     let mut resp = Response::new()
         .add_attribute("action", "purchase_tiers")
         .add_attribute("payment", format!("{0}{1}", amount, denom))
@@ -688,7 +703,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
             start_after,
             limit,
             order_by,
-        } => encode_binary(&query_user_orders(
+        } => encode_binary(&query_tier_orders(
             deps,
             orderer,
             start_after,
@@ -705,9 +720,10 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
 }
 
 fn query_campaign_summary(deps: Deps) -> Result<CampaignSummaryResponse, ContractError> {
-    let current_cap = get_current_cap(deps.storage);
+    let current_capital = get_current_capital(deps.storage);
     let current_stage = get_current_stage(deps.storage);
     let config = get_config(deps.storage)?;
+    let duration = get_duration(deps.storage)?;
     Ok(CampaignSummaryResponse {
         title: config.title,
         description: config.description,
@@ -718,14 +734,14 @@ fn query_campaign_summary(deps: Deps) -> Result<CampaignSummaryResponse, Contrac
         withdrawal_recipient: config.withdrawal_recipient,
         soft_cap: config.soft_cap,
         hard_cap: config.hard_cap,
-        start_time: config.start_time,
-        end_time: config.end_time,
+        start_time: duration.start_time,
+        end_time: duration.end_time,
         current_stage: current_stage.to_string(),
-        current_cap: current_cap.into(),
+        current_capital: current_capital.into(),
     })
 }
 
-fn query_user_orders(
+fn query_tier_orders(
     deps: Deps,
     orderer: String,
     start_after: Option<u64>,
