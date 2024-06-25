@@ -48,7 +48,7 @@ pub struct PermissionedActionsResponse {
 ///
 /// Expiration defaults to `Never` if not provided
 #[cw_serde]
-pub enum Permission {
+pub enum LocalPermission {
     Blacklisted(Option<Expiry>),
     Limited {
         expiration: Option<Expiry>,
@@ -57,13 +57,13 @@ pub enum Permission {
     Whitelisted(Option<Expiry>),
 }
 
-impl std::default::Default for Permission {
+impl std::default::Default for LocalPermission {
     fn default() -> Self {
         Self::Whitelisted(None)
     }
 }
 
-impl Permission {
+impl LocalPermission {
     pub fn blacklisted(expiration: Option<Expiry>) -> Self {
         Self::Blacklisted(expiration)
     }
@@ -136,7 +136,7 @@ impl Permission {
     }
 }
 
-impl fmt::Display for Permission {
+impl fmt::Display for LocalPermission {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let self_as_string = match self {
             Self::Blacklisted(expiration) => {
@@ -160,6 +160,22 @@ impl fmt::Display for Permission {
                     "whitelisted".to_string()
                 }
             }
+        };
+        write!(f, "{self_as_string}")
+    }
+}
+
+#[cw_serde]
+pub enum Permission {
+    Local(LocalPermission),
+    Contract(AndrAddr),
+}
+
+impl fmt::Display for Permission {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let self_as_string = match self {
+            Self::Local(local_permission) => local_permission.to_string(),
+            Self::Contract(address_list) => address_list.to_string(),
         };
         write!(f, "{self_as_string}")
     }

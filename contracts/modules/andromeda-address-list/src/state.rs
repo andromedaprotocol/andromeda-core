@@ -1,9 +1,9 @@
-use andromeda_std::ado_base::permissioning::Permission;
+use andromeda_std::ado_base::permissioning::LocalPermission;
 use cosmwasm_std::{Addr, StdResult, Storage};
 use cw_storage_plus::Map;
 
-/// A mapping of actor to permission
-pub const PERMISSIONS: Map<&Addr, Permission> = Map::new("permissioning");
+/// A mapping of actor to LocalPermission. Contract Permission is not supported in this contract
+pub const PERMISSIONS: Map<&Addr, LocalPermission> = Map::new("permissioning");
 
 /// Query if a given actor is included in the permissions list.
 pub fn includes_actor(storage: &dyn Storage, actor: &Addr) -> StdResult<bool> {
@@ -14,7 +14,7 @@ pub fn includes_actor(storage: &dyn Storage, actor: &Addr) -> StdResult<bool> {
 pub fn add_actor_permission(
     storage: &mut dyn Storage,
     actor: &Addr,
-    permission: &Permission,
+    permission: &LocalPermission,
 ) -> StdResult<()> {
     PERMISSIONS.save(storage, actor, permission)
 }

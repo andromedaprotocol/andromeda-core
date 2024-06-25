@@ -170,7 +170,7 @@ fn execute_cw721(
 }
 
 fn execute_mint(
-    ctx: ExecuteContext,
+    mut ctx: ExecuteContext,
     token_id: String,
     token_uri: Option<String>,
     owner: String,
@@ -182,7 +182,7 @@ fn execute_mint(
     ensure!(
         ctx.contains_sender(minter.as_str())
             | is_context_permissioned_strict(
-                ctx.deps.storage,
+                ctx.deps.branch(),
                 &ctx.info,
                 &ctx.env,
                 &ctx.amp_ctx,
@@ -235,7 +235,7 @@ fn execute_batch_mint(
     ensure!(
         ctx.contains_sender(minter.as_str())
             | is_context_permissioned_strict(
-                ctx.deps.storage,
+                ctx.deps.branch(),
                 &ctx.info,
                 &ctx.env,
                 &ctx.amp_ctx,

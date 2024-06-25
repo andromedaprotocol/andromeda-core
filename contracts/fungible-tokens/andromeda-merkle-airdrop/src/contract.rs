@@ -18,7 +18,10 @@ use andromeda_fungible_tokens::airdrop::{
     MerkleRootResponse, QueryMsg, TotalClaimedResponse,
 };
 use andromeda_std::{
-    ado_base::{permissioning::Permission, InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
+    ado_base::{
+        permissioning::{LocalPermission, Permission},
+        InstantiateMsg as BaseInstantiateMsg, MigrateMsg,
+    },
     ado_contract::ADOContract,
     common::{
         actions::call_action,
@@ -65,7 +68,7 @@ pub fn instantiate(
             deps.storage,
             SEND_CW20_ACTION,
             addr,
-            Permission::Whitelisted(None),
+            Permission::Local(LocalPermission::whitelisted(None)),
         )?;
     }
 
