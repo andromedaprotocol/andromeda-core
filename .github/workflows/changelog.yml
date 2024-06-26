@@ -11,7 +11,7 @@ on:
       - main
 jobs:
   changelog:
-    if: "!contains(github.event.pull_request.labels.*.name, 'skip-changelog')"
+    if: "!contains(github.event.pull_request.labels.*.name, 'ci: skip-changelog')"
     runs-on: ubuntu-latest
     steps:
       - uses: dangoslen/changelog-enforcer@v3
