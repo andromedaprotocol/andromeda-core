@@ -9,10 +9,9 @@ on:
     branches:
       - development
       - main
-
 jobs:
-  # Enforces the update of a changelog file on every pull request
   changelog:
+    if: "!contains(github.event.pull_request.labels.*.name, 'ci: skip-changelog')"
     runs-on: ubuntu-latest
     steps:
       - uses: dangoslen/changelog-enforcer@v3
