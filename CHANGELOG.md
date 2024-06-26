@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Merkle Root: Andromeda Asset is used now as a `asset_info`[(#480)](https://github.com/andromedaprotocol/andromeda-core/pull/480)
 - Reference Address List contract for Permission  [(#481)](https://github.com/andromedaprotocol/andromeda-core/pull/481)
 - Crowdfund Internal Audit [(#485)](https://github.com/andromedaprotocol/andromeda-core/pull/485)
+- Auction: Minimum Raise [(#486)](https://github.com/andromedaprotocol/andromeda-core/pull/486)
 - Version Bump [(#488)](https://github.com/andromedaprotocol/andromeda-core/pull/488)
 
 ### Fixed

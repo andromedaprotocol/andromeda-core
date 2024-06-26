@@ -56,11 +56,12 @@ impl MockAuction {
         end_time: Expiry,
         coin_denom: Asset,
         min_bid: Option<Uint128>,
+        min_raise: Option<Uint128>,
         whitelist: Option<Vec<Addr>>,
         recipient: Option<Recipient>,
     ) -> AppResponse {
         let msg = mock_start_auction(
-            start_time, end_time, coin_denom, min_bid, whitelist, recipient,
+            start_time, end_time, coin_denom, min_bid, min_raise, whitelist, recipient,
         );
         app.execute_contract(sender, self.addr().clone(), &msg, &[])
             .unwrap()
@@ -174,6 +175,7 @@ pub fn mock_start_auction(
     end_time: Expiry,
     coin_denom: Asset,
     min_bid: Option<Uint128>,
+    min_raise: Option<Uint128>,
     whitelist: Option<Vec<Addr>>,
     recipient: Option<Recipient>,
 ) -> Cw721HookMsg {
@@ -182,6 +184,7 @@ pub fn mock_start_auction(
         end_time,
         coin_denom,
         min_bid,
+        min_raise,
         whitelist,
         recipient,
     }
@@ -209,6 +212,7 @@ pub fn mock_update_auction(
     end_time: Expiry,
     coin_denom: Asset,
     min_bid: Option<Uint128>,
+    min_raise: Option<Uint128>,
     whitelist: Option<Vec<Addr>>,
     recipient: Option<Recipient>,
 ) -> ExecuteMsg {
@@ -220,6 +224,7 @@ pub fn mock_update_auction(
         coin_denom,
         whitelist,
         min_bid,
+        min_raise,
         recipient,
     }
 }

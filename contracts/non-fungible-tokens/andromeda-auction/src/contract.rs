@@ -129,6 +129,7 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
             coin_denom,
             whitelist,
             min_bid,
+            min_raise,
             recipient,
         } => execute_update_auction(
             ctx,
@@ -139,6 +140,7 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
             coin_denom,
             whitelist,
             min_bid,
+            min_raise,
             recipient,
         ),
         ExecuteMsg::PlaceBid {
@@ -184,6 +186,7 @@ fn handle_receive_cw721(
             coin_denom,
             whitelist,
             min_bid,
+            min_raise,
             recipient,
         } => execute_start_auction(
             ctx,
@@ -194,6 +197,7 @@ fn handle_receive_cw721(
             coin_denom,
             whitelist,
             min_bid,
+            min_raise,
             recipient,
         ),
     }
@@ -258,6 +262,7 @@ fn execute_start_auction(
     coin_denom: Asset,
     whitelist: Option<Vec<Addr>>,
     min_bid: Option<Uint128>,
+    min_raise: Option<Uint128>,
     recipient: Option<Recipient>,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
@@ -314,6 +319,7 @@ fn execute_start_auction(
             auction_id,
             whitelist,
             min_bid,
+            min_raise,
             owner: sender,
             token_id,
             token_address,
@@ -341,6 +347,7 @@ fn execute_update_auction(
     coin_denom: Asset,
     whitelist: Option<Vec<Addr>>,
     min_bid: Option<Uint128>,
+    min_raise: Option<Uint128>,
     recipient: Option<Recipient>,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
@@ -397,6 +404,7 @@ fn execute_update_auction(
     token_auction_state.coin_denom = coin_denom.clone();
     token_auction_state.uses_cw20 = uses_cw20;
     token_auction_state.min_bid = min_bid;
+    token_auction_state.min_raise = min_raise;
     token_auction_state.whitelist = whitelist;
     token_auction_state.recipient = recipient;
     TOKEN_AUCTION_STATE.save(
@@ -413,6 +421,7 @@ fn execute_update_auction(
         attr("auction_id", token_auction_state.auction_id.to_string()),
         attr("whitelist", format!("{:?}", whitelist_str)),
         attr("min_bid", format!("{:?}", &min_bid)),
+        attr("min_raise", format!("{:?}", &min_raise)),
     ]))
 }
 
@@ -498,6 +507,16 @@ fn execute_place_bid(
     ensure!(
         token_auction_state.high_bidder_amount < payment.amount,
         ContractError::BidSmallerThanHighestBid {}
+    );
+
+    // If there's a min_raise, the difference between the new bid and the highest bid should be greater or equal to it.
+    let min_raise = token_auction_state.min_raise.unwrap_or_default();
+    let bid_difference = payment
+        .amount
+        .checked_sub(token_auction_state.high_bidder_amount)?;
+    ensure!(
+        bid_difference.ge(&min_raise),
+        ContractError::MinRaiseUnmet {}
     );
 
     let mut messages: Vec<CosmosMsg> = vec![];
@@ -614,6 +633,14 @@ fn execute_place_bid_cw20(
     ensure!(
         token_auction_state.high_bidder_amount < amount_sent,
         ContractError::BidSmallerThanHighestBid {}
+    );
+
+    // If there's a min_raise, the difference between the new bid and the highest bid should be greater or equal to it.
+    let min_raise = token_auction_state.min_raise.unwrap_or_default();
+    let bid_difference = amount_sent.checked_sub(token_auction_state.high_bidder_amount)?;
+    ensure!(
+        bid_difference.ge(&min_raise),
+        ContractError::MinRaiseUnmet {}
     );
 
     let mut cw20_transfer: Vec<WasmMsg> = vec![];
