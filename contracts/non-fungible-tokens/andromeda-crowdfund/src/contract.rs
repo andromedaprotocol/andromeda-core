@@ -15,9 +15,7 @@ use andromeda_std::common::{Milliseconds, MillisecondsExpiration, OrderBy};
 use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
 
 use andromeda_std::{
-    ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
-    common::encode_binary,
-    error::ContractError,
+    ado_base::InstantiateMsg as BaseInstantiateMsg, common::encode_binary, error::ContractError,
 };
 
 #[cfg(not(feature = "library"))]
@@ -94,7 +92,7 @@ pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, Contract
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+pub fn migrate(deps: DepsMut, _env: Env) -> Result<Response, ContractError> {
     ensure_compatibility(&deps.as_ref(), "1.1.0")?;
     ADOContract::default().migrate(deps, CONTRACT_NAME, CONTRACT_VERSION)
 }
