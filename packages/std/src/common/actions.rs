@@ -13,7 +13,7 @@ pub fn call_action(
     action: &str,
 ) -> Result<Response, ContractError> {
     ensure!(
-        is_context_permissioned(deps.storage, info, env, amp_ctx, action)?,
+        is_context_permissioned(deps, info, env, amp_ctx, action)?,
         ContractError::Unauthorized {}
     );
 

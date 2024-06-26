@@ -1,9 +1,14 @@
 use core::fmt;
 
-use andromeda_std::ado_base::{
-    ownership::{ContractOwnerResponse, OwnershipMessage},
-    AndromedaMsg, AndromedaQuery,
+use andromeda_std::{
+    ado_base::{
+        ownership::{ContractOwnerResponse, OwnershipMessage},
+        permissioning::{Permission, PermissioningMessage},
+        AndromedaMsg, AndromedaQuery,
+    },
+    amp::AndrAddr,
 };
+
 use cosmwasm_std::{Addr, Coin};
 use cw_multi_test::{AppResponse, Executor};
 use serde::{de::DeserializeOwned, Serialize};
@@ -49,6 +54,26 @@ pub trait MockADO<E: Serialize + fmt::Debug, Q: Serialize + fmt::Debug>:
             sender,
             self.addr().clone(),
             &AndromedaMsg::Ownership(OwnershipMessage::AcceptOwnership {}),
+            &[],
+        )
+    }
+
+    fn execute_set_permissions(
+        &self,
+        app: &mut MockApp,
+        sender: Addr,
+        actor: AndrAddr,
+        action: impl Into<String>,
+        permission: Permission,
+    ) -> ExecuteResult {
+        app.execute_contract(
+            sender,
+            self.addr().clone(),
+            &AndromedaMsg::Permissioning(PermissioningMessage::SetPermission {
+                actor,
+                action: action.into(),
+                permission,
+            }),
             &[],
         )
     }

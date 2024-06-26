@@ -5,7 +5,7 @@ use andromeda_non_fungible_tokens::crowdfund::{
 };
 
 use andromeda_non_fungible_tokens::cw721::ExecuteMsg as Cw721ExecuteMsg;
-use andromeda_std::ado_base::permissioning::Permission;
+use andromeda_std::ado_base::permissioning::{LocalPermission, Permission};
 use andromeda_std::amp::messages::AMPPkt;
 use andromeda_std::amp::{AndrAddr, Recipient};
 use andromeda_std::common::actions::call_action;
@@ -70,7 +70,7 @@ pub fn instantiate(
             deps.storage,
             SEND_CW20_ACTION,
             addr,
-            Permission::Whitelisted(None),
+            Permission::Local(LocalPermission::Whitelisted(None)),
         )?;
     }
 

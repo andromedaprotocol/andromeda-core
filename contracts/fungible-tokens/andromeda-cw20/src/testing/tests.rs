@@ -1,7 +1,7 @@
 use crate::contract::{execute, instantiate, query};
 use crate::testing::mock_querier::mock_dependencies_custom;
 use andromeda_fungible_tokens::cw20::{ExecuteMsg, InstantiateMsg, QueryMsg};
-use andromeda_std::ado_base::permissioning::Permission;
+use andromeda_std::ado_base::permissioning::{LocalPermission, Permission};
 use andromeda_std::ado_base::rates::{LocalRate, LocalRateType, LocalRateValue, PercentRate, Rate};
 use andromeda_std::ado_contract::ADOContract;
 use andromeda_std::amp::{AndrAddr, Recipient};
@@ -112,7 +112,7 @@ fn test_transfer() {
     ]);
 
     // Blacklist the sender who otherwise would have been able to call the function successfully
-    let permission = Permission::blacklisted(None);
+    let permission = Permission::Local(LocalPermission::blacklisted(None));
     let actor = AndrAddr::from_string("sender");
     let action = "Transfer";
     let ctx = ExecuteContext::new(deps.as_mut(), mock_info("owner", &[]), mock_env());
@@ -125,7 +125,7 @@ fn test_transfer() {
     assert_eq!(err, ContractError::Unauthorized {});
 
     // Now whitelist the sender, that should allow him to call the function successfully
-    let permission = Permission::whitelisted(None);
+    let permission = Permission::Local(LocalPermission::whitelisted(None));
     let actor = AndrAddr::from_string("sender");
     let action = "Transfer";
     let ctx = ExecuteContext::new(deps.as_mut(), mock_info("owner", &[]), mock_env());

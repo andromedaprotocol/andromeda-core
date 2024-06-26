@@ -2,7 +2,7 @@ use andromeda_modules::address_list::{ActorPermissionResponse, IncludesActorResp
 #[cfg(not(feature = "library"))]
 use andromeda_modules::address_list::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use andromeda_std::{
-    ado_base::{permissioning::Permission, InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
+    ado_base::{permissioning::LocalPermission, InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     ado_contract::ADOContract,
     common::{context::ExecuteContext, encode_binary},
     error::ContractError,
@@ -28,14 +28,18 @@ pub fn instantiate(
     // If the user provided an actor and permission, save them.
     if let Some(actor_permission) = msg.actor_permission {
         let verified_address: Addr = deps.api.addr_validate(actor_permission.actor.as_str())?;
-        // Permissions of type "Contract" aren't allowed in the address list contract
+        // Permissions of type Limited local permissions aren't allowed in the address list contract
+        if let LocalPermission::Limited { .. } = actor_permission.permission {
+            return Err(ContractError::InvalidPermission {
+                msg: "Limited permission is not supported in address list contract".to_string(),
+            });
+        }
         add_actor_permission(
             deps.storage,
             &verified_address,
             &actor_permission.permission,
         )?;
     }
-
     let inst_resp = ADOContract::default().instantiate(
         deps.storage,
         env,
@@ -84,7 +88,7 @@ pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
 fn execute_add_actor_permission(
     ctx: ExecuteContext,
     actor: Addr,
-    permission: Permission,
+    permission: LocalPermission,
 ) -> Result<Response, ContractError> {
     let ExecuteContext { deps, info, .. } = ctx;
     nonpayable(&info)?;
@@ -92,9 +96,12 @@ fn execute_add_actor_permission(
         ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {}
     );
-
+    if let LocalPermission::Limited { .. } = permission {
+        return Err(ContractError::InvalidPermission {
+            msg: "Limited permission is not supported in address list contract".to_string(),
+        });
+    }
     add_actor_permission(deps.storage, &actor, &permission)?;
-
     Ok(Response::new().add_attributes(vec![
         attr("action", "add_actor_permission"),
         attr("actor", actor),

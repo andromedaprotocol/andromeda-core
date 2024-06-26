@@ -7,7 +7,10 @@ use andromeda_non_fungible_tokens::auction::{
     IsClaimedResponse, IsClosedResponse, QueryMsg, TokenAuctionState,
 };
 use andromeda_std::{
-    ado_base::{permissioning::Permission, InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
+    ado_base::{
+        permissioning::{LocalPermission, Permission},
+        InstantiateMsg as BaseInstantiateMsg, MigrateMsg,
+    },
     amp::{AndrAddr, Recipient},
     common::{
         actions::call_action,
@@ -69,7 +72,7 @@ pub fn instantiate(
                 deps.storage,
                 SEND_NFT_ACTION,
                 addr,
-                Permission::Whitelisted(None),
+                Permission::Local(LocalPermission::Whitelisted(None)),
             )?;
         }
     }
@@ -80,7 +83,7 @@ pub fn instantiate(
             deps.storage,
             SEND_CW20_ACTION,
             addr,
-            Permission::Whitelisted(None),
+            Permission::Local(LocalPermission::Whitelisted(None)),
         )?;
     }
 
@@ -167,11 +170,11 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
 }
 
 fn handle_receive_cw721(
-    ctx: ExecuteContext,
+    mut ctx: ExecuteContext,
     msg: Cw721ReceiveMsg,
 ) -> Result<Response, ContractError> {
     ADOContract::default().is_permissioned(
-        ctx.deps.storage,
+        ctx.deps.branch(),
         ctx.env.clone(),
         SEND_NFT_ACTION,
         ctx.info.sender.clone(),
@@ -201,12 +204,12 @@ fn handle_receive_cw721(
 }
 
 pub fn handle_receive_cw20(
-    ctx: ExecuteContext,
+    mut ctx: ExecuteContext,
     receive_msg: Cw20ReceiveMsg,
 ) -> Result<Response, ContractError> {
     let is_valid_cw20 = ADOContract::default()
         .is_permissioned(
-            ctx.deps.storage,
+            ctx.deps.branch(),
             ctx.env.clone(),
             SEND_CW20_ACTION,
             ctx.info.sender.clone(),
@@ -296,7 +299,7 @@ fn execute_start_auction(
                 deps.storage,
                 auction_id.to_string(),
                 whitelisted_address,
-                Permission::Whitelisted(None),
+                Permission::Local(LocalPermission::Whitelisted(None)),
             )?;
         }
     };
@@ -389,7 +392,7 @@ fn execute_update_auction(
                 deps.storage,
                 token_auction_state.auction_id.to_string(),
                 whitelisted_address,
-                Permission::Whitelisted(None),
+                Permission::Local(LocalPermission::Whitelisted(None)),
             )?;
         }
     };
@@ -428,13 +431,16 @@ fn execute_place_bid(
     token_address: String,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
-        deps, info, env, ..
+        mut deps,
+        info,
+        env,
+        ..
     } = ctx;
     let mut token_auction_state =
         get_existing_token_auction_state(deps.storage, &token_id, &token_address)?;
 
     ADOContract::default().is_permissioned(
-        deps.storage,
+        deps.branch(),
         env.clone(),
         token_auction_state.auction_id,
         info.sender.clone(),
@@ -555,12 +561,12 @@ fn execute_place_bid_cw20(
     // The user who sent the cw20
     sender: &str,
 ) -> Result<Response, ContractError> {
-    let ExecuteContext { deps, env, .. } = ctx;
+    let ExecuteContext { mut deps, env, .. } = ctx;
     let mut token_auction_state =
         get_existing_token_auction_state(deps.storage, &token_id, &token_address)?;
 
     ADOContract::default().is_permissioned(
-        deps.storage,
+        deps.branch(),
         env.clone(),
         token_auction_state.auction_id,
         sender,
@@ -835,9 +841,9 @@ fn execute_authorize_token_contract(
         ContractError::Unauthorized {}
     );
     let permission = if let Some(expiration) = expiration {
-        Permission::whitelisted(Some(expiration))
+        Permission::Local(LocalPermission::Whitelisted(Some(expiration)))
     } else {
-        Permission::whitelisted(None)
+        Permission::Local(LocalPermission::Whitelisted(None))
     };
     ADOContract::set_permission(
         deps.storage,
