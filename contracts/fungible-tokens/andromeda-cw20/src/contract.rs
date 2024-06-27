@@ -86,6 +86,11 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
         ExecuteMsg::Transfer { recipient, amount } => {
             execute_transfer(ctx, recipient, amount, action)
         }
+        ExecuteMsg::TransferFrom {
+            owner,
+            recipient,
+            amount,
+        } => execute_transfer_from(ctx, recipient, owner, amount, action),
         ExecuteMsg::Burn { amount } => execute_burn(ctx, amount),
         ExecuteMsg::Send {
             contract,
@@ -104,19 +109,6 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
                 contract,
                 amount,
                 msg,
-            };
-            Ok(execute_cw20(ctx.deps, ctx.env, ctx.info, msg)?)
-        }
-        ExecuteMsg::TransferFrom {
-            owner,
-            recipient,
-            amount,
-        } => {
-            let recipient = recipient.get_raw_address(&ctx.deps.as_ref())?.into_string();
-            let msg = Cw20ExecuteMsg::TransferFrom {
-                owner,
-                recipient,
-                amount,
             };
             Ok(execute_cw20(ctx.deps, ctx.env, ctx.info, msg)?)
         }
@@ -197,6 +189,75 @@ fn execute_transfer(
         }
     }
 }
+fn execute_transfer_from(
+    ctx: ExecuteContext,
+    recipient: AndrAddr,
+    owner: String,
+    amount: Uint128,
+    action: String,
+) -> Result<Response, ContractError> {
+    let ExecuteContext {
+        deps, info, env, ..
+    } = ctx;
+
+    let transfer_response = ADOContract::default().query_deducted_funds(
+        deps.as_ref(),
+        action,
+        Funds::Cw20(Cw20Coin {
+            address: env.contract.address.to_string(),
+            amount,
+        }),
+    )?;
+    match transfer_response {
+        Some(transfer_response) => {
+            let remaining_amount = match transfer_response.leftover_funds {
+                Funds::Native(..) => amount, //What do we do in the case that the rates returns remaining amount as native funds?
+                Funds::Cw20(coin) => coin.amount,
+            };
+
+            let mut resp = filter_out_cw20_messages(
+                transfer_response.msgs,
+                deps.storage,
+                deps.api,
+                &info.sender,
+            )?;
+
+            let recipient = recipient.get_raw_address(&deps.as_ref())?.into_string();
+            // Continue with standard cw20 operation
+            let cw20_resp = execute_cw20(
+                deps,
+                env,
+                info,
+                Cw20ExecuteMsg::TransferFrom {
+                    recipient,
+                    owner,
+                    amount: remaining_amount,
+                },
+            )?;
+            resp = resp
+                .add_submessages(cw20_resp.messages)
+                .add_attributes(cw20_resp.attributes)
+                .add_events(transfer_response.events);
+            Ok(resp)
+        }
+        None => {
+            let recipient = recipient.get_raw_address(&deps.as_ref())?.into_string();
+            // Continue with standard cw20 operation
+            let cw20_resp = execute_cw20(
+                deps,
+                env,
+                info,
+                Cw20ExecuteMsg::TransferFrom {
+                    recipient,
+                    owner,
+                    amount,
+                },
+            )?;
+            Ok(cw20_resp)
+        }
+    }
+}
+
 fn transfer_tokens(
     storage: &mut dyn Storage,
     sender: &Addr,
