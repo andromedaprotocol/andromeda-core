@@ -102,16 +102,7 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
             contract,
             amount,
             msg,
-        } => {
-            let contract = contract.get_raw_address(&ctx.deps.as_ref())?.into_string();
-            let msg = Cw20ExecuteMsg::SendFrom {
-                owner,
-                contract,
-                amount,
-                msg,
-            };
-            Ok(execute_cw20(ctx.deps, ctx.env, ctx.info, msg)?)
-        }
+        } => execute_send_from(ctx, contract, amount, msg, action, owner),
         ExecuteMsg::Mint { recipient, amount } => execute_mint(ctx, recipient, amount),
         _ => {
             let serialized = encode_binary(&msg)?;
@@ -354,6 +345,77 @@ fn execute_send(
                     contract,
                     amount,
                     msg,
+                },
+            )?;
+
+            Ok(cw20_resp)
+        }
+    }
+}
+
+fn execute_send_from(
+    ctx: ExecuteContext,
+    contract: AndrAddr,
+    amount: Uint128,
+    msg: Binary,
+    action: String,
+    owner: String,
+) -> Result<Response, ContractError> {
+    let ExecuteContext {
+        deps, info, env, ..
+    } = ctx;
+
+    let rates_response = ADOContract::default().query_deducted_funds(
+        deps.as_ref(),
+        action,
+        Funds::Cw20(Cw20Coin {
+            address: env.contract.address.to_string(),
+            amount,
+        }),
+    )?;
+    match rates_response {
+        Some(rates_response) => {
+            let remaining_amount = match rates_response.leftover_funds {
+                Funds::Native(..) => amount, //What do we do in the case that the rates returns remaining amount as native funds?
+                Funds::Cw20(coin) => coin.amount,
+            };
+
+            let mut resp = filter_out_cw20_messages(
+                rates_response.msgs,
+                deps.storage,
+                deps.api,
+                &info.sender,
+            )?;
+            let contract = contract.get_raw_address(&deps.as_ref())?.to_string();
+            let cw20_resp = execute_cw20(
+                deps,
+                env,
+                info,
+                Cw20ExecuteMsg::SendFrom {
+                    contract,
+                    amount: remaining_amount,
+                    msg,
+                    owner,
+                },
+            )?;
+            resp = resp
+                .add_submessages(cw20_resp.messages)
+                .add_attributes(cw20_resp.attributes)
+                .add_events(rates_response.events);
+
+            Ok(resp)
+        }
+        None => {
+            let contract = contract.get_raw_address(&deps.as_ref())?.to_string();
+            let cw20_resp = execute_cw20(
+                deps,
+                env,
+                info,
+                Cw20ExecuteMsg::SendFrom {
+                    contract,
+                    amount,
+                    msg,
+                    owner,
                 },
             )?;
 
