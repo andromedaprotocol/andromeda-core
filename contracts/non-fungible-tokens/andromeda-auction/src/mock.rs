@@ -183,7 +183,6 @@ pub fn mock_start_auction(
         start_time,
         end_time,
         coin_denom,
-        uses_cw20,
         min_bid,
         min_raise,
         whitelist,

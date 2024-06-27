@@ -17,9 +17,6 @@ use cosmwasm_std::Addr;
 use self::ownership::OwnershipMessage;
 use self::permissioning::PermissioningMessage;
 
-use self::ownership::OwnershipMessage;
-use self::permissioning::PermissioningMessage;
-
 #[cw_serde]
 pub struct InstantiateMsg {
     pub ado_type: String,

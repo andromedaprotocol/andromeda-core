@@ -14,7 +14,6 @@ use andromeda_std::common::migration::ensure_compatibility;
 use andromeda_std::common::{Milliseconds, MillisecondsExpiration, OrderBy};
 use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
 
-use andromeda_std::common::denom::validate_denom;
 use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     common::encode_binary,

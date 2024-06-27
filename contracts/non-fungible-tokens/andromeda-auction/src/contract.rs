@@ -15,7 +15,7 @@ use andromeda_std::{
     common::{
         actions::call_action,
         call_action::get_action_name,
-        denom::{Asset, SEND_CW20_ACTION},
+        denom::{validate_denom, Asset, SEND_CW20_ACTION},
         encode_binary,
         expiration::{expiration_from_milliseconds, get_and_validate_start_time, Expiry},
         Funds, Milliseconds, OrderBy,
@@ -127,7 +127,6 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
             start_time,
             end_time,
             coin_denom,
-            uses_cw20,
             whitelist,
             min_bid,
             min_raise,
@@ -139,7 +138,6 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
             start_time,
             end_time,
             coin_denom,
-            uses_cw20,
             whitelist,
             min_bid,
             min_raise,
@@ -186,7 +184,6 @@ fn handle_receive_cw721(
             start_time,
             end_time,
             coin_denom,
-            uses_cw20,
             whitelist,
             min_bid,
             min_raise,
@@ -198,7 +195,6 @@ fn handle_receive_cw721(
             start_time,
             end_time,
             coin_denom,
-            uses_cw20,
             whitelist,
             min_bid,
             min_raise,
@@ -366,7 +362,7 @@ fn execute_update_auction(
     if uses_cw20 {
         let valid_cw20_auction = ADOContract::default()
             .is_permissioned(
-                deps.storage,
+                deps.branch(),
                 env.clone(),
                 SEND_CW20_ACTION,
                 coin_denom.clone(),
@@ -391,11 +387,6 @@ fn execute_update_auction(
         !token_auction_state.start_time.is_expired(&env.block),
         ContractError::AuctionAlreadyStarted {}
     );
-    ensure!(!end_time.is_zero(), ContractError::InvalidExpiration {});
-
-    // If start time wasn't provided, it will be set as the current_time
-    let (start_expiration, _current_time) = get_and_validate_start_time(&env, start_time)?;
-    let end_expiration = expiration_from_milliseconds(end_time)?;
 
     ensure!(
         !end_time.get_time(&env.block).is_zero(),

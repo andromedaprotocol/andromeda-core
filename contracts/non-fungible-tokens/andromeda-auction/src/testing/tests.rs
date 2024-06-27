@@ -2,8 +2,7 @@ use crate::{
     contract::{execute, instantiate, query},
     state::{auction_infos, TOKEN_AUCTION_STATE},
     testing::mock_querier::{
-        mock_dependencies_custom, MOCK_CW20_ADDR, MOCK_TOKEN_ADDR, MOCK_TOKEN_OWNER,
-        MOCK_UNCLAIMED_TOKEN,
+        mock_dependencies_custom, MOCK_TOKEN_ADDR, MOCK_TOKEN_OWNER, MOCK_UNCLAIMED_TOKEN,
     },
 };
 
@@ -227,13 +226,6 @@ fn assert_auction_created_cw20(
 fn test_auction_instantiate() {
     let mut deps = mock_dependencies();
     let res = init(deps.as_mut());
-    assert_eq!(0, res.messages.len());
-}
-
-#[test]
-fn test_auction_instantiate_cw20() {
-    let mut deps = mock_dependencies();
-    let res = init_cw20(deps.as_mut(), None);
     assert_eq!(0, res.messages.len());
 }
 
@@ -697,14 +689,6 @@ fn test_execute_start_auction_cw20() {
     let _res = init_cw20(deps.as_mut(), None);
     start_auction_cw20(deps.as_mut(), None, None, None);
     assert_auction_created_cw20(deps.as_ref(), None, None, None);
-}
-
-#[test]
-fn test_execute_start_auction_cw20() {
-    let mut deps = mock_dependencies_custom(&[]);
-    let _res = init_cw20(deps.as_mut(), None);
-    start_auction_cw20(deps.as_mut(), None, None);
-    assert_auction_created_cw20(deps.as_ref(), None, None);
 }
 
 // #[test]

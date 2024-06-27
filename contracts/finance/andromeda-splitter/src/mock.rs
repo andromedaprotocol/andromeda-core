@@ -48,7 +48,7 @@ pub fn mock_splitter_instantiate_msg(
 ) -> InstantiateMsg {
     InstantiateMsg {
         recipients,
-        lock_time: lock_time.map(Milliseconds),
+        lock_time,
         kernel_address: kernel_address.into(),
         owner,
     }

@@ -8,7 +8,6 @@ use cosmwasm_std::{
     testing::{mock_env, MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
     Coin, OwnedDeps, Querier, QuerierResult, QueryRequest, SystemError, SystemResult, WasmQuery,
 };
-use cosmwasm_std::{QuerierWrapper, Response};
 
 pub use andromeda_std::testing::mock_querier::MOCK_KERNEL_CONTRACT;
 

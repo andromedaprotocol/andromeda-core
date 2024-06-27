@@ -216,20 +216,6 @@ fn execute_start_sale(
 
     // Price can't be zero
     ensure!(price > Uint128::zero(), ContractError::InvalidZeroAmount {});
-    // If start time wasn't provided, it will be set as the current_time
-    let (start_expiration, current_time) = get_and_validate_start_time(&env, start_time)?;
-
-    // If no duration is provided, the exipration will be set as Never
-    let end_expiration = if let Some(duration) = duration {
-        ensure!(!duration.is_zero(), ContractError::InvalidExpiration {});
-        expiration_from_milliseconds(
-            start_time
-                .unwrap_or(current_time.plus_seconds(1))
-                .plus_milliseconds(duration),
-        )?
-    } else {
-        Expiration::Never {}
-    };
 
     // If start time wasn't provided, it will be set as the current_time
     let (start_expiration, _current_time) = get_and_validate_start_time(&env, start_time.clone())?;

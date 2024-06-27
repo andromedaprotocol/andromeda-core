@@ -71,9 +71,3 @@ pub fn mock_address_list_instantiate_msg(
 pub fn mock_add_actor_permission_msg(actor: Addr, permission: LocalPermission) -> ExecuteMsg {
     ExecuteMsg::AddActorPermission { actor, permission }
 }
-
-pub fn mock_includes_address_msg(address: impl Into<String>) -> QueryMsg {
-    QueryMsg::IncludesAddress {
-        address: address.into(),
-    }
-}

@@ -12,7 +12,6 @@ use andromeda_std::{
     os::economics::ExecuteMsg as EconomicsExecuteMsg,
     testing::mock_querier::{MOCK_ADO_PUBLISHER, MOCK_KERNEL_CONTRACT},
 };
-use andromeda_testing::economics_msg::generate_economics_message;
 use cosmwasm_std::{
     testing::{mock_env, mock_info},
     to_json_binary, Addr, CosmosMsg, DepsMut, Env, Order, Response, Storage, SubMsg, Uint128,
@@ -1562,95 +1561,4 @@ mod test {
             }
         }
     }
-}
-
-#[test]
-fn test_update_token_contract() {
-    let mut deps = mock_dependencies_custom(&[]);
-    let msg = InstantiateMsg {
-        token_address: AndrAddr::from_string(MOCK_TOKEN_CONTRACT.to_owned()),
-        modules: None,
-        can_mint_after_sale: true,
-        owner: None,
-        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
-    };
-
-    let info = mock_info("owner", &[]);
-    let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
-
-    let msg = ExecuteMsg::UpdateTokenContract {
-        address: AndrAddr::from_string(MOCK_TOKEN_CONTRACT.to_owned()),
-    };
-
-    let res = execute(deps.as_mut(), mock_env(), info, msg);
-    assert!(res.is_ok())
-}
-
-#[test]
-fn test_update_token_contract_unauthorized() {
-    let mut deps = mock_dependencies_custom(&[]);
-    let msg = InstantiateMsg {
-        token_address: AndrAddr::from_string(MOCK_TOKEN_CONTRACT.to_owned()),
-        modules: None,
-        can_mint_after_sale: true,
-        owner: None,
-        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
-    };
-
-    let info = mock_info("app_contract", &[]);
-    let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
-
-    let msg = ExecuteMsg::UpdateTokenContract {
-        address: AndrAddr::from_string(MOCK_TOKEN_CONTRACT.to_owned()),
-    };
-
-    let unauth_info = mock_info("attacker", &[]);
-    let res = execute(deps.as_mut(), mock_env(), unauth_info, msg).unwrap_err();
-    assert_eq!(ContractError::Unauthorized {}, res);
-}
-
-#[test]
-fn test_update_token_contract_post_mint() {
-    let mut deps = mock_dependencies_custom(&[]);
-    let msg = InstantiateMsg {
-        token_address: AndrAddr::from_string(MOCK_TOKEN_CONTRACT.to_owned()),
-        modules: None,
-        can_mint_after_sale: true,
-        owner: None,
-        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
-    };
-
-    let info = mock_info("owner", &[]);
-    let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
-
-    mint(deps.as_mut(), "1").unwrap();
-
-    let msg = ExecuteMsg::UpdateTokenContract {
-        address: AndrAddr::from_string(MOCK_TOKEN_CONTRACT.to_owned()),
-    };
-
-    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
-    assert_eq!(ContractError::Unauthorized {}, res);
-}
-
-#[test]
-fn test_update_token_contract_not_cw721() {
-    let mut deps = mock_dependencies_custom(&[]);
-    let msg = InstantiateMsg {
-        token_address: AndrAddr::from_string(MOCK_TOKEN_CONTRACT.to_owned()),
-        modules: None,
-        can_mint_after_sale: true,
-        owner: None,
-        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
-    };
-
-    let info = mock_info("owner", &[]);
-    let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
-
-    let msg = ExecuteMsg::UpdateTokenContract {
-        address: AndrAddr::from_string("not_a_token_contract".to_owned()),
-    };
-
-    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
-    assert_eq!(ContractError::Unauthorized {}, res);
 }
