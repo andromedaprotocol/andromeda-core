@@ -11,6 +11,7 @@ use andromeda_cw20_staking::mock::{
 };
 use andromeda_fungible_tokens::cw20_staking::{AllocationConfig, StakerResponse};
 
+use andromeda_std::common::expiration::Expiry;
 use andromeda_std::{amp::AndrAddr, common::Milliseconds};
 
 use andromeda_std::ado_base::version::VersionResponse;
@@ -69,7 +70,6 @@ fn setup_app(andr: &MockAndromeda, router: &mut MockApp) -> MockAppContract {
             owner.to_string(),
             Some(Uint128::from(1000000u128)),
         )),
-        None,
         andr.kernel.addr().to_string(),
     );
     let cw20_component = AppComponent::new(
@@ -81,7 +81,6 @@ fn setup_app(andr: &MockAndromeda, router: &mut MockApp) -> MockAppContract {
     let cw20_staking_init_msg = mock_cw20_staking_instantiate_msg(
         format!("./{}", cw20_component.name),
         andr.kernel.addr().to_string(),
-        None,
         None,
     );
     let cw20_staking_component = AppComponent::new(
@@ -144,7 +143,7 @@ fn test_cw20_staking_app() {
         .wrap()
         .query_wasm_smart(cw20_addr.clone(), &mock_get_version())
         .unwrap();
-    assert_eq!(version.version, "1.0.0");
+    assert_eq!(version.version, "2.0.0");
 
     assert_eq!(balance_one.balance, Uint128::from(1000u128));
     let balance_two: BalanceResponse = router
@@ -226,7 +225,9 @@ fn test_cw20_staking_app_delayed() {
     let reward_token = AssetInfoUnchecked::native("uandr");
     let add_reward_msg = mock_cw20_staking_add_reward_tokens(
         reward_token,
-        Milliseconds::from_seconds(router.block_info().time.seconds() + 1),
+        Expiry::AtTime(Milliseconds::from_seconds(
+            router.block_info().time.seconds() + 1,
+        )),
         None,
     );
     router
@@ -241,9 +242,13 @@ fn test_cw20_staking_app_delayed() {
     let reward_token_two = AssetInfoUnchecked::native("uusd");
     let add_reward_msg = mock_cw20_staking_add_reward_tokens(
         reward_token_two,
-        Milliseconds::from_seconds(router.block_info().time.seconds() + 1),
+        Expiry::AtTime(Milliseconds::from_seconds(
+            router.block_info().time.seconds() + 1,
+        )),
         Some(AllocationConfig {
-            till_timestamp: Milliseconds::from_seconds(router.block_info().time.seconds() + 101),
+            till_timestamp: Expiry::AtTime(Milliseconds::from_seconds(
+                router.block_info().time.seconds() + 101,
+            )),
             cycle_rewards: Uint128::from(3u128),
             cycle_duration: Milliseconds::from_seconds(1),
             reward_increase: None,

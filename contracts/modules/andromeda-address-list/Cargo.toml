@@ -1,8 +1,8 @@
 [package]
 name = "andromeda-address-list"
-version = "1.0.0"
+version = "2.0.0"
 edition = "2021"
-rust-version = "1.65.0"
+rust-version = "1.75.0"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
@@ -21,8 +21,7 @@ cosmwasm-schema = { workspace = true }
 cw-storage-plus = { workspace = true }
 cw-utils = { workspace = true }
 
-
-andromeda-std = { workspace = true, features = ["module_hooks"] }
+andromeda-std = { workspace = true, features = [] }
 andromeda-modules = { workspace = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]

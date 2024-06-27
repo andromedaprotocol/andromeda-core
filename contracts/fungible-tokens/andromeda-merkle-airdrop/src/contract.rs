@@ -3,12 +3,9 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, ensure, to_json_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Empty,
-    Env, MessageInfo, Response, StdResult, Uint128, WasmMsg,
+    attr, ensure, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
 };
-use cw20::Cw20ExecuteMsg;
-use cw_asset::AssetInfoBase;
-use cw_utils::{nonpayable, Expiration};
+use cw_utils::nonpayable;
 use sha2::Digest;
 use std::convert::TryInto;
 
@@ -21,9 +18,18 @@ use andromeda_fungible_tokens::airdrop::{
     MerkleRootResponse, QueryMsg, TotalClaimedResponse,
 };
 use andromeda_std::{
-    ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
+    ado_base::{
+        permissioning::{LocalPermission, Permission},
+        InstantiateMsg as BaseInstantiateMsg, MigrateMsg,
+    },
     ado_contract::ADOContract,
-    common::{actions::call_action, context::ExecuteContext, encode_binary},
+    common::{
+        actions::call_action,
+        context::ExecuteContext,
+        denom::{Asset, SEND_CW20_ACTION},
+        encode_binary,
+        expiration::Expiry,
+    },
     error::ContractError,
 };
 
@@ -33,23 +39,14 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
-    deps: DepsMut,
+    mut deps: DepsMut,
     env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    let config = Config {
-        asset_info: msg.asset_info.check(deps.api, None)?,
-    };
-    CONFIG.save(deps.storage, &config)?;
-
-    let stage = 0;
-    LATEST_STAGE.save(deps.storage, &stage)?;
-
-    let contract = ADOContract::default();
-    let resp = contract.instantiate(
+    let resp = ADOContract::default().instantiate(
         deps.storage,
-        env,
+        env.clone(),
         deps.api,
         &deps.querier,
         info,
@@ -60,6 +57,32 @@ pub fn instantiate(
             owner: msg.owner,
         },
     )?;
+
+    // IMPORTANT
+    // Permission must be set for Cw20 token
+    // Unless Cw20 is not identified as verified asset
+    if let Asset::Cw20Token(addr) = msg.asset_info.clone() {
+        let addr = addr.get_raw_address(&deps.as_ref())?;
+        ADOContract::default().permission_action(SEND_CW20_ACTION, deps.storage)?;
+        ADOContract::set_permission(
+            deps.storage,
+            SEND_CW20_ACTION,
+            addr,
+            Permission::Local(LocalPermission::whitelisted(None)),
+        )?;
+    }
+
+    // Validate asset_info
+    msg.asset_info.get_verified_asset(deps.branch(), env)?;
+
+    let config = Config {
+        asset_info: msg.asset_info,
+    };
+
+    CONFIG.save(deps.storage, &config)?;
+
+    let stage = 0;
+    LATEST_STAGE.save(deps.storage, &stage)?;
 
     Ok(resp)
 }
@@ -112,10 +135,12 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
 pub fn execute_register_merkle_root(
     ctx: ExecuteContext,
     merkle_root: String,
-    expiration: Option<Expiration>,
+    expiration: Option<Expiry>,
     total_amount: Option<Uint128>,
 ) -> Result<Response, ContractError> {
-    let ExecuteContext { deps, info, .. } = ctx;
+    let ExecuteContext {
+        deps, info, env, ..
+    } = ctx;
     nonpayable(&info)?;
 
     ensure!(
@@ -133,8 +158,11 @@ pub fn execute_register_merkle_root(
     LATEST_STAGE.save(deps.storage, &stage)?;
 
     // save expiration
-    let exp = expiration.unwrap_or(Expiration::Never {});
-    STAGE_EXPIRATION.save(deps.storage, stage, &exp)?;
+    STAGE_EXPIRATION.save(
+        deps.storage,
+        stage,
+        &expiration.map(|e| e.get_time(&env.block)),
+    )?;
 
     // save total airdropped amount
     let amount = total_amount.unwrap_or_else(Uint128::zero);
@@ -160,12 +188,15 @@ pub fn execute_claim(
     } = ctx;
     nonpayable(&info)?;
 
-    // not expired
-    let expiration = STAGE_EXPIRATION.load(deps.storage, stage)?;
-    ensure!(
-        !expiration.is_expired(&env.block),
-        ContractError::StageExpired { stage, expiration }
-    );
+    // Ensure that the stage expiration (if it exists) isn't expired
+    let expiration_milliseconds = STAGE_EXPIRATION.load(deps.storage, stage)?;
+    if let Some(expiration_milliseconds) = expiration_milliseconds {
+        let expiration = expiration_milliseconds;
+        ensure!(
+            !expiration.is_expired(&env.block),
+            ContractError::StageExpired { stage, expiration }
+        );
+    };
 
     // verify not claimed
     ensure!(
@@ -205,24 +236,12 @@ pub fn execute_claim(
     claimed_amount = claimed_amount.checked_add(amount)?;
     STAGE_AMOUNT_CLAIMED.save(deps.storage, stage, &claimed_amount)?;
 
-    let transfer_msg: CosmosMsg = match config.asset_info {
-        AssetInfoBase::Native(denom) => CosmosMsg::Bank(BankMsg::Send {
-            to_address: info.sender.to_string(),
-            amount: vec![Coin { amount, denom }],
-        }),
-        AssetInfoBase::Cw20(address) => CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: address.to_string(),
-            funds: vec![],
-            msg: to_json_binary(&Cw20ExecuteMsg::Transfer {
-                recipient: info.sender.to_string(),
-                amount,
-            })?,
-        }),
-        _ => CosmosMsg::Custom(Empty {}),
-    };
+    let transfer_msg = config
+        .asset_info
+        .transfer(&deps.as_ref(), info.sender.clone(), amount)?;
 
     let res = Response::new()
-        .add_message(transfer_msg)
+        .add_submessage(transfer_msg)
         .add_attributes(vec![
             attr("action", "claim"),
             attr("stage", stage.to_string()),
@@ -243,10 +262,12 @@ pub fn execute_burn(ctx: ExecuteContext, stage: u8) -> Result<Response, Contract
 
     // make sure is expired
     let expiration = STAGE_EXPIRATION.load(deps.storage, stage)?;
-    ensure!(
-        expiration.is_expired(&env.block),
-        ContractError::StageNotExpired { stage, expiration }
-    );
+    if let Some(expiration) = expiration {
+        ensure!(
+            expiration.is_expired(&env.block),
+            ContractError::StageNotExpired { stage, expiration }
+        );
+    }
 
     // Get total amount per stage and total claimed
     let total_amount = STAGE_AMOUNT.load(deps.storage, stage)?;
@@ -262,30 +283,17 @@ pub fn execute_burn(ctx: ExecuteContext, stage: u8) -> Result<Response, Contract
     let balance_to_burn = total_amount - claimed_amount;
 
     let config = CONFIG.load(deps.storage)?;
-    let burn_msg = match config.asset_info {
-        AssetInfoBase::Native(denom) => CosmosMsg::Bank(BankMsg::Burn {
-            amount: vec![Coin {
-                amount: balance_to_burn,
-                denom,
-            }],
-        }),
-        AssetInfoBase::Cw20(address) => CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: address.to_string(),
-            funds: vec![],
-            msg: to_json_binary(&Cw20ExecuteMsg::Burn {
-                amount: balance_to_burn,
-            })?,
-        }),
-        _ => CosmosMsg::Custom(Empty {}),
-    };
+    let burn_msg = config.asset_info.burn(&deps.as_ref(), balance_to_burn)?;
 
     // Burn the tokens and response
-    let res = Response::new().add_message(burn_msg).add_attributes(vec![
-        attr("action", "burn"),
-        attr("stage", stage.to_string()),
-        attr("address", info.sender),
-        attr("amount", balance_to_burn),
-    ]);
+    let res = Response::new()
+        .add_submessage(burn_msg)
+        .add_attributes(vec![
+            attr("action", "burn"),
+            attr("stage", stage.to_string()),
+            attr("address", info.sender),
+            attr("amount", balance_to_burn),
+        ]);
     Ok(res)
 }
 

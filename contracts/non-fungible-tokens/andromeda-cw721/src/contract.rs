@@ -1,3 +1,4 @@
+use andromeda_std::common::call_action::get_action_name;
 #[cfg(not(feature = "imported"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
@@ -11,6 +12,7 @@ use crate::state::{
 use andromeda_non_fungible_tokens::cw721::{
     ExecuteMsg, InstantiateMsg, MintMsg, QueryMsg, TokenExtension, TransferAgreement,
 };
+use andromeda_std::common::rates::get_tax_amount;
 use andromeda_std::{
     ado_base::{AndromedaMsg, AndromedaQuery},
     ado_contract::{permissioning::is_context_permissioned_strict, ADOContract},
@@ -19,9 +21,7 @@ use andromeda_std::{
 };
 
 use andromeda_std::{
-    ado_base::{hooks::AndromedaHook, InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
-    common::encode_binary,
-    common::rates::get_tax_amount,
+    ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     common::Funds,
     error::ContractError,
 };
@@ -66,13 +66,8 @@ pub fn instantiate(
             owner: msg.owner,
         },
     )?;
-    let modules_resp =
-        contract.register_modules(info.sender.as_str(), deps.storage, msg.modules)?;
 
-    Ok(resp
-        .add_submessages(modules_resp.messages)
-        .add_attributes(modules_resp.attributes)
-        .add_attributes(vec![attr("minter", msg.minter)]))
+    Ok(resp.add_attributes(vec![attr("minter", msg.minter)]))
 }
 
 #[cfg_attr(not(feature = "imported"), entry_point)]
@@ -96,6 +91,8 @@ pub fn execute(
 
 fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
+    let action = get_action_name(CONTRACT_NAME, msg.as_ref());
+
     let action_response = call_action(
         &mut ctx.deps,
         &ctx.info,
@@ -104,9 +101,24 @@ fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
         msg.as_ref(),
     )?;
 
+    let payee = if let Some(amp_ctx) = ctx.amp_ctx.clone() {
+        ctx.deps
+            .api
+            .addr_validate(amp_ctx.ctx.get_origin().as_str())?
+    } else {
+        ctx.info.sender.clone()
+    };
+
+    let _fee_msg = ADOContract::default().pay_fee(
+        ctx.deps.storage,
+        &ctx.deps.querier,
+        msg.as_ref().to_string(),
+        payee,
+    )?;
+
     if let ExecuteMsg::Approve { token_id, .. } = &msg {
         ensure!(
-            !is_archived(ctx.deps.storage, token_id)?,
+            !is_archived(ctx.deps.storage, token_id)?.is_archived,
             ContractError::TokenIsArchived {}
         );
     }
@@ -122,7 +134,7 @@ fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
         ExecuteMsg::TransferNft {
             recipient,
             token_id,
-        } => execute_transfer(ctx, recipient, token_id),
+        } => execute_transfer(ctx, recipient, token_id, &action),
         ExecuteMsg::TransferAgreement {
             token_id,
             agreement,
@@ -158,7 +170,7 @@ fn execute_cw721(
 }
 
 fn execute_mint(
-    ctx: ExecuteContext,
+    mut ctx: ExecuteContext,
     token_id: String,
     token_uri: Option<String>,
     owner: String,
@@ -170,7 +182,7 @@ fn execute_mint(
     ensure!(
         ctx.contains_sender(minter.as_str())
             | is_context_permissioned_strict(
-                ctx.deps.storage,
+                ctx.deps.branch(),
                 &ctx.info,
                 &ctx.env,
                 &ctx.amp_ctx,
@@ -223,7 +235,7 @@ fn execute_batch_mint(
     ensure!(
         ctx.contains_sender(minter.as_str())
             | is_context_permissioned_strict(
-                ctx.deps.storage,
+                ctx.deps.branch(),
                 &ctx.info,
                 &ctx.env,
                 &ctx.amp_ctx,
@@ -257,34 +269,19 @@ fn execute_transfer(
     ctx: ExecuteContext,
     recipient: AndrAddr,
     token_id: String,
+    action: &str,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
         deps, info, env, ..
     } = ctx;
     let base_contract = ADOContract::default();
-    let recipient_address = recipient.get_raw_address(&deps.as_ref())?.into_string();
-    let responses = base_contract.module_hook::<Response>(
-        &deps.as_ref(),
-        AndromedaHook::OnTokenTransfer {
-            token_id: token_id.clone(),
-            sender: info.sender.to_string(),
-            recipient: recipient_address.clone(),
-        },
-    )?;
     // Reduce all responses into one.
-    let mut resp = responses
-        .into_iter()
-        .reduce(|resp, r| {
-            resp.add_submessages(r.messages)
-                .add_events(r.events)
-                .add_attributes(r.attributes)
-        })
-        .unwrap_or_else(Response::new);
-
+    let mut resp = Response::new();
+    let recipient_address = recipient.get_raw_address(&deps.as_ref())?.into_string();
     let contract = AndrCW721Contract::default();
     let mut token = contract.tokens.load(deps.storage, &token_id)?;
     ensure!(
-        !is_archived(deps.storage, &token_id)?,
+        !is_archived(deps.storage, &token_id)?.is_archived,
         ContractError::TokenIsArchived {}
     );
 
@@ -292,23 +289,40 @@ fn execute_transfer(
         &TRANSFER_AGREEMENTS.may_load(deps.storage, &token_id)?
     {
         let agreement_amount = get_transfer_agreement_amount(deps.api, &deps.querier, agreement)?;
-        let (mut msgs, events, remainder) = base_contract.on_funds_transfer(
-            &deps.as_ref(),
-            info.sender.to_string(),
+        let transfer_response = base_contract.query_deducted_funds(
+            deps.as_ref(),
+            action,
             Funds::Native(agreement_amount.clone()),
-            encode_binary(&ExecuteMsg::TransferNft {
-                token_id: token_id.clone(),
-                recipient,
-            })?,
         )?;
-        let remaining_amount = remainder.try_get_coin()?;
-        let tax_amount = get_tax_amount(&msgs, agreement_amount.amount, remaining_amount.amount);
-        msgs.push(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-            to_address: token.owner.to_string(),
-            amount: vec![remaining_amount],
-        })));
-        resp = resp.add_submessages(msgs).add_events(events);
-        tax_amount
+
+        match transfer_response {
+            Some(mut transfer_response) => {
+                let remaining_amount = transfer_response.leftover_funds.try_get_coin()?;
+                let tax_amount = get_tax_amount(
+                    &transfer_response.msgs,
+                    agreement_amount.amount,
+                    remaining_amount.amount,
+                );
+                transfer_response
+                    .msgs
+                    .push(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+                        to_address: token.owner.to_string(),
+                        amount: vec![remaining_amount],
+                    })));
+                resp = resp.add_submessages(transfer_response.msgs);
+                tax_amount
+            }
+            None => {
+                let remaining_amount = Funds::Native(agreement_amount).try_get_coin()?;
+                let tax_amount = Uint128::zero();
+                let msg = SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+                    to_address: token.owner.to_string(),
+                    amount: vec![remaining_amount],
+                }));
+                resp = resp.add_submessage(msg);
+                tax_amount
+            }
+        }
     } else {
         Uint128::zero()
     };
@@ -399,7 +413,7 @@ fn execute_update_transfer_agreement(
     let token = contract.tokens.load(deps.storage, &token_id)?;
     ensure!(token.owner == info.sender, ContractError::Unauthorized {});
     ensure!(
-        !is_archived(deps.storage, &token_id)?,
+        !is_archived(deps.storage, &token_id)?.is_archived,
         ContractError::TokenIsArchived {}
     );
     if let Some(xfer_agreement) = &agreement {
@@ -421,7 +435,7 @@ fn execute_update_transfer_agreement(
 fn execute_archive(ctx: ExecuteContext, token_id: String) -> Result<Response, ContractError> {
     let ExecuteContext { deps, info, .. } = ctx;
     ensure!(
-        !is_archived(deps.storage, &token_id)?,
+        !is_archived(deps.storage, &token_id)?.is_archived,
         ContractError::TokenIsArchived {}
     );
     let contract = AndrCW721Contract::default();
@@ -441,7 +455,7 @@ fn execute_burn(ctx: ExecuteContext, token_id: String) -> Result<Response, Contr
     let token = contract.tokens.load(deps.storage, &token_id)?;
     ensure!(token.owner == info.sender, ContractError::Unauthorized {});
     ensure!(
-        !is_archived(deps.storage, &token_id)?,
+        !is_archived(deps.storage, &token_id)?.is_archived,
         ContractError::TokenIsArchived {}
     );
 

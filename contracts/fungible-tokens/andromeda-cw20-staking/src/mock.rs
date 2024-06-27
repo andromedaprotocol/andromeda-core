@@ -4,7 +4,7 @@ use crate::contract::{execute, instantiate, query};
 use andromeda_fungible_tokens::cw20_staking::{
     AllocationConfig, Cw20HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg, RewardTokenUnchecked,
 };
-use andromeda_std::{ado_base::Module, amp::AndrAddr, common::MillisecondsExpiration};
+use andromeda_std::{amp::AndrAddr, common::expiration::Expiry};
 use andromeda_testing::{mock_ado, MockADO, MockContract};
 use cosmwasm_std::{Addr, Empty};
 
@@ -22,21 +22,19 @@ pub fn mock_andromeda_cw20_staking() -> Box<dyn Contract<Empty>> {
 pub fn mock_cw20_staking_instantiate_msg(
     staking_token: impl Into<String>,
     kernel_address: impl Into<String>,
-    modules: Option<Vec<Module>>,
     owner: Option<String>,
 ) -> InstantiateMsg {
     InstantiateMsg {
         staking_token: AndrAddr::from_string(staking_token.into()),
         additional_rewards: None,
         kernel_address: kernel_address.into(),
-        modules,
         owner,
     }
 }
 
 pub fn mock_cw20_staking_add_reward_tokens(
     reward_token: AssetInfoUnchecked,
-    init_timestamp: MillisecondsExpiration,
+    init_timestamp: Expiry,
     allocation_config: Option<AllocationConfig>,
 ) -> ExecuteMsg {
     let reward_token = RewardTokenUnchecked {

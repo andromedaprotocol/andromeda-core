@@ -1,4 +1,4 @@
-use andromeda_non_fungible_tokens::cw721::TransferAgreement;
+use andromeda_non_fungible_tokens::cw721::{IsArchivedResponse, TransferAgreement};
 use andromeda_std::{amp::AndrAddr, error::ContractError};
 use cosmwasm_std::Storage;
 use cw_storage_plus::{Item, Map};
@@ -10,7 +10,12 @@ pub const ARCHIVED: Map<&str, bool> = Map::new("archived_tokens");
 pub const MINT_ACTION: &str = "can_mint";
 pub const BATCH_MINT_ACTION: &str = "can_batch_mint";
 
-pub fn is_archived(storage: &dyn Storage, token_id: &str) -> Result<bool, ContractError> {
+pub fn is_archived(
+    storage: &dyn Storage,
+    token_id: &str,
+) -> Result<IsArchivedResponse, ContractError> {
     let archived_opt = ARCHIVED.may_load(storage, token_id)?.unwrap_or(false);
-    Ok(archived_opt)
+    Ok(IsArchivedResponse {
+        is_archived: archived_opt,
+    })
 }

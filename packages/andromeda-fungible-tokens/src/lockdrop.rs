@@ -1,5 +1,5 @@
 use andromeda_std::amp::AndrAddr;
-use andromeda_std::andr_instantiate_modules;
+use andromeda_std::common::expiration::Expiry;
 use andromeda_std::common::{Milliseconds, MillisecondsDuration, MillisecondsExpiration};
 use andromeda_std::{andr_exec, andr_instantiate, andr_query};
 use cosmwasm_schema::{cw_serde, QueryResponses};
@@ -7,13 +7,12 @@ use cosmwasm_std::Uint128;
 use cw20::Cw20ReceiveMsg;
 
 #[andr_instantiate]
-#[andr_instantiate_modules]
 #[cw_serde]
 pub struct InstantiateMsg {
     /// The bootsrap contract to be used in the second phase.
     // pub bootstrap_contract: Option<AndrAddress>,
     /// Timestamp till when deposits can be made
-    pub init_timestamp: MillisecondsExpiration,
+    pub init_timestamp: Expiry,
     /// Number of milliseconds for which lockup deposits will be accepted
     pub deposit_window: MillisecondsDuration,
     /// Number of milliseconds for which lockup withdrawals will be allowed

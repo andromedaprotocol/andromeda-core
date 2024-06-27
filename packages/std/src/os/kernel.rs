@@ -99,7 +99,7 @@ pub struct ChainNameResponse {
 pub enum QueryMsg {
     #[returns(cosmwasm_std::Addr)]
     KeyAddress { key: String },
-    #[returns(bool)]
+    #[returns(VerifyAddressResponse)]
     VerifyAddress { address: String },
     #[returns(Option<ChannelInfoResponse>)]
     ChannelInfo { chain: String },
@@ -114,6 +114,11 @@ pub enum QueryMsg {
     Type {},
     #[returns(crate::ado_base::ownership::ContractOwnerResponse)]
     Owner {},
+}
+
+#[cw_serde]
+pub struct VerifyAddressResponse {
+    pub verify_address: bool,
 }
 
 #[cw_serde]

@@ -4,7 +4,7 @@ use crate::contract::{execute, instantiate, query};
 use andromeda_non_fungible_tokens::cw721::{
     ExecuteMsg, InstantiateMsg, MintMsg, QueryMsg, TokenExtension, TransferAgreement,
 };
-use andromeda_std::{ado_base::modules::Module, amp::addresses::AndrAddr};
+use andromeda_std::amp::addresses::AndrAddr;
 use andromeda_testing::{
     mock::MockApp,
     mock_ado,
@@ -27,7 +27,6 @@ impl MockCW721 {
         name: impl Into<String>,
         symbol: impl Into<String>,
         minter: impl Into<String>,
-        modules: Option<Vec<Module>>,
         kernel_address: impl Into<String>,
         owner: Option<String>,
     ) -> MockCW721 {
@@ -35,7 +34,6 @@ impl MockCW721 {
             name.into(),
             symbol.into(),
             minter.into(),
-            modules,
             kernel_address.into(),
             owner,
         );
@@ -104,7 +102,6 @@ pub fn mock_cw721_instantiate_msg(
     name: String,
     symbol: String,
     minter: impl Into<String>,
-    modules: Option<Vec<Module>>,
     kernel_address: String,
     owner: Option<String>,
 ) -> InstantiateMsg {
@@ -112,7 +109,6 @@ pub fn mock_cw721_instantiate_msg(
         name,
         symbol,
         minter: AndrAddr::from_string(minter.into()),
-        modules,
         kernel_address,
         owner,
     }

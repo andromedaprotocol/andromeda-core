@@ -1,15 +1,15 @@
 [package]
 name = "andromeda-std"
-version = "1.0.0"
+version = "1.1.0"
 edition = "2021"
-rust-version = "1.69.0"
+rust-version = "1.75.0"
 description = "The standard library for creating an Andromeda Digital Object"
 license = "MIT"
 
 [features]
 primitive = []
-modules = ["andromeda-macros/modules"]
-module_hooks = ["andromeda-macros/module_hooks"]
+instantiate = []
+rates = ["andromeda-macros/rates"]
 
 [lib]
 crate-type = ["cdylib", "rlib"]

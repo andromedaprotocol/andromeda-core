@@ -9,7 +9,7 @@ use crate::{
         kernel::ChannelInfo,
     },
 };
-#[cfg(feature = "modules")]
+
 use cosmwasm_std::SubMsg;
 use cosmwasm_std::{
     from_json,
@@ -20,7 +20,7 @@ use cosmwasm_std::{
 };
 #[cfg(feature = "primitive")]
 use cosmwasm_std::{Decimal, Uint128};
-use cw20::{BalanceResponse, Cw20QueryMsg};
+use cw20::{BalanceResponse, Cw20QueryMsg, TokenInfoResponse};
 
 /// Mock CW20 Contract Address
 pub const MOCK_CW20_CONTRACT: &str = "cw20_contract";
@@ -146,8 +146,8 @@ impl MockAndromedaQuerier {
                     MOCK_KERNEL_CONTRACT => self.handle_kernel_query(msg),
                     MOCK_VFS_CONTRACT => self.handle_vfs_query(msg),
                     MOCK_ADODB_CONTRACT => self.handle_adodb_query(msg),
-                    #[cfg(feature = "modules")]
-                    MOCK_ADDRESS_LIST_CONTRACT => self.handle_address_list_query(msg),
+
+                    // MOCK_ADDRESS_LIST_CONTRACT => self.handle_address_list_query(msg),
                     _ => match from_json::<AndromedaQuery>(msg) {
                         Ok(msg) => self.handle_ado_query(msg),
                         _ => SystemResult::Err(SystemError::InvalidRequest {
@@ -269,6 +269,7 @@ impl MockAndromedaQuerier {
     /// Returns `"actual_address"` for `Get` queries.
     fn handle_app_query(&self, _msg: &Binary) -> QuerierResult {
         // match from_json(msg).unwrap() {
+        // match from_json(msg).unwrap() {
         //     _ => SystemResult::Ok(ContractResult::Err("Error".to_string())),
         // }
         todo!()
@@ -307,6 +308,7 @@ impl MockAndromedaQuerier {
                         value: Primitive::Decimal(Decimal::zero()),
                     },
                     Some(data) => {
+                        let key: String = from_json(&data).unwrap();
                         let key: String = from_json(&data).unwrap();
                         match key.as_str() {
                             "String" => GetValueResponse {
@@ -348,64 +350,6 @@ impl MockAndromedaQuerier {
         }
     }
 
-    #[cfg(feature = "modules")]
-    /// Handles all address list queries
-    ///
-    /// Returns `true` for `OnExecute` queries for any address excluding `UNWHITELISTED_ADDRESS`.
-    fn handle_address_list_query(&self, msg: &Binary) -> QuerierResult {
-        use cosmwasm_std::Response;
-
-        use crate::ado_base::hooks::{AndromedaHook, HookMsg, OnFundsTransferResponse};
-        match from_json(msg).unwrap() {
-            HookMsg::AndrHook(hook) => match hook {
-                AndromedaHook::OnExecute { sender, .. } => match sender.as_str() {
-                    UNWHITELISTED_ADDRESS => {
-                        SystemResult::Ok(ContractResult::Err("Unwhitelisted Address".to_string()))
-                    }
-                    _ => SystemResult::Ok(ContractResult::Ok(
-                        to_json_binary::<Response>(&Response::default()).unwrap(),
-                    )),
-                },
-                AndromedaHook::OnFundsTransfer { .. } => SystemResult::Ok(ContractResult::Ok(
-                    to_json_binary(&OnFundsTransferResponse::default()).unwrap(),
-                )),
-                AndromedaHook::OnTokenTransfer { .. } => SystemResult::Ok(ContractResult::Ok(
-                    to_json_binary::<Response>(&Response::default()).unwrap(),
-                )),
-            },
-        }
-    }
-
-    #[cfg(feature = "modules")]
-    /// Handles all rates queries
-    ///
-    /// The payments required are calculated using the `calculate_mock_rates_response` method within this crate
-    /// unless the sender is assigned as `RATES_EXCLUDED_ADDRESS`.
-    fn _handle_rates_query(&self, msg: &Binary) -> QuerierResult {
-        use cosmwasm_std::Response;
-
-        use crate::ado_base::hooks::{AndromedaHook, HookMsg, OnFundsTransferResponse};
-        match from_json(msg).unwrap() {
-            HookMsg::AndrHook(hook) => match hook {
-                AndromedaHook::OnExecute { .. } => SystemResult::Ok(ContractResult::Ok(
-                    to_json_binary::<Response>(&Response::default()).unwrap(),
-                )),
-                AndromedaHook::OnFundsTransfer { sender, .. } => {
-                    if sender.as_str() == RATES_EXCLUDED_ADDRESS {
-                        return SystemResult::Ok(ContractResult::Ok(
-                            to_json_binary(&OnFundsTransferResponse::default()).unwrap(),
-                        ));
-                    }
-                    // let msgs = calculate_mock_rates_response(sender, payload, amount);
-                    todo!("Implement Rates Query")
-                }
-                AndromedaHook::OnTokenTransfer { .. } => SystemResult::Ok(ContractResult::Ok(
-                    to_json_binary::<Response>(&Response::default()).unwrap(),
-                )),
-            },
-        }
-    }
-
     /// Handles all CW20 queries.
     ///
     /// Returns a balance of 10 for any `Balance` query.
@@ -417,6 +361,17 @@ impl MockAndromedaQuerier {
                 };
                 SystemResult::Ok(ContractResult::Ok(
                     to_json_binary(&balance_response).unwrap(),
+                ))
+            }
+            Cw20QueryMsg::TokenInfo {} => {
+                let token_info_response = TokenInfoResponse {
+                    name: "valid-cw20".into(),
+                    symbol: "VCW".to_string(),
+                    decimals: 2,
+                    total_supply: Uint128::new(10_000_000),
+                };
+                SystemResult::Ok(ContractResult::Ok(
+                    to_json_binary(&token_info_response).unwrap(),
                 ))
             }
             _ => panic!("Unsupported Query"),
@@ -566,7 +521,6 @@ impl MockAndromedaQuerier {
     }
 }
 
-#[cfg(feature = "modules")]
 pub fn calculate_mock_rates_response() -> (Vec<SubMsg>, Vec<Coin>) {
     todo!("Implement after readding rates contract");
 }

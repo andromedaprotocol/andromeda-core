@@ -3,7 +3,11 @@ use core::fmt;
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::Env;
 
-use crate::{amp::AndrAddr, common::MillisecondsExpiration, error::ContractError};
+use crate::{
+    amp::AndrAddr,
+    common::{expiration::Expiry, MillisecondsExpiration},
+    error::ContractError,
+};
 
 #[cw_serde]
 pub enum PermissioningMessage {
@@ -44,31 +48,31 @@ pub struct PermissionedActionsResponse {
 ///
 /// Expiration defaults to `Never` if not provided
 #[cw_serde]
-pub enum Permission {
-    Blacklisted(Option<MillisecondsExpiration>),
+pub enum LocalPermission {
+    Blacklisted(Option<Expiry>),
     Limited {
-        expiration: Option<MillisecondsExpiration>,
+        expiration: Option<Expiry>,
         uses: u32,
     },
-    Whitelisted(Option<MillisecondsExpiration>),
+    Whitelisted(Option<Expiry>),
 }
 
-impl std::default::Default for Permission {
+impl std::default::Default for LocalPermission {
     fn default() -> Self {
         Self::Whitelisted(None)
     }
 }
 
-impl Permission {
-    pub fn blacklisted(expiration: Option<MillisecondsExpiration>) -> Self {
+impl LocalPermission {
+    pub fn blacklisted(expiration: Option<Expiry>) -> Self {
         Self::Blacklisted(expiration)
     }
 
-    pub fn whitelisted(expiration: Option<MillisecondsExpiration>) -> Self {
+    pub fn whitelisted(expiration: Option<Expiry>) -> Self {
         Self::Whitelisted(expiration)
     }
 
-    pub fn limited(expiration: Option<MillisecondsExpiration>, uses: u32) -> Self {
+    pub fn limited(expiration: Option<Expiry>, uses: u32) -> Self {
         Self::Limited { expiration, uses }
     }
 
@@ -76,7 +80,7 @@ impl Permission {
         match self {
             Self::Blacklisted(expiration) => {
                 if let Some(expiration) = expiration {
-                    if expiration.is_expired(&env.block) {
+                    if expiration.get_time(&env.block).is_expired(&env.block) {
                         return true;
                     }
                 }
@@ -84,7 +88,7 @@ impl Permission {
             }
             Self::Limited { expiration, uses } => {
                 if let Some(expiration) = expiration {
-                    if expiration.is_expired(&env.block) {
+                    if expiration.get_time(&env.block).is_expired(&env.block) {
                         return !strict;
                     }
                 }
@@ -95,7 +99,7 @@ impl Permission {
             }
             Self::Whitelisted(expiration) => {
                 if let Some(expiration) = expiration {
-                    if expiration.is_expired(&env.block) {
+                    if expiration.get_time(&env.block).is_expired(&env.block) {
                         return !strict;
                     }
                 }
@@ -104,11 +108,17 @@ impl Permission {
         }
     }
 
-    pub fn get_expiration(&self) -> MillisecondsExpiration {
+    pub fn get_expiration(&self, env: Env) -> MillisecondsExpiration {
         match self {
-            Self::Blacklisted(expiration) => expiration.unwrap_or_default(),
-            Self::Limited { expiration, .. } => expiration.unwrap_or_default(),
-            Self::Whitelisted(expiration) => expiration.unwrap_or_default(),
+            Self::Blacklisted(expiration) => {
+                expiration.clone().unwrap_or_default().get_time(&env.block)
+            }
+            Self::Limited { expiration, .. } => {
+                expiration.clone().unwrap_or_default().get_time(&env.block)
+            }
+            Self::Whitelisted(expiration) => {
+                expiration.clone().unwrap_or_default().get_time(&env.block)
+            }
         }
     }
 
@@ -126,7 +136,7 @@ impl Permission {
     }
 }
 
-impl fmt::Display for Permission {
+impl fmt::Display for LocalPermission {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let self_as_string = match self {
             Self::Blacklisted(expiration) => {
@@ -150,6 +160,22 @@ impl fmt::Display for Permission {
                     "whitelisted".to_string()
                 }
             }
+        };
+        write!(f, "{self_as_string}")
+    }
+}
+
+#[cw_serde]
+pub enum Permission {
+    Local(LocalPermission),
+    Contract(AndrAddr),
+}
+
+impl fmt::Display for Permission {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let self_as_string = match self {
+            Self::Local(local_permission) => local_permission.to_string(),
+            Self::Contract(address_list) => address_list.to_string(),
         };
         write!(f, "{self_as_string}")
     }

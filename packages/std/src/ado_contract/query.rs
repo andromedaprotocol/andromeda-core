@@ -1,3 +1,4 @@
+use crate::ado_base::version::ADOBaseVersionResponse;
 use crate::ado_contract::state::ADOContract;
 use crate::{
     ado_base::{
@@ -39,13 +40,10 @@ impl<'a> ADOContract<'a> {
                     encode_binary(&self.query_kernel_address(deps)?)
                 }
                 AndromedaQuery::Version {} => encode_binary(&self.query_version(deps)?),
+                AndromedaQuery::ADOBaseVersion {} => encode_binary(&self.query_ado_base_version()?),
                 AndromedaQuery::OwnershipRequest {} => {
                     encode_binary(&self.ownership_request(deps.storage)?)
                 }
-                #[cfg(feature = "modules")]
-                AndromedaQuery::Module { id } => encode_binary(&self.query_module(deps, id)?),
-                #[cfg(feature = "modules")]
-                AndromedaQuery::ModuleIds {} => encode_binary(&self.query_module_ids(deps)?),
                 AndromedaQuery::AppContract {} => {
                     encode_binary(&self.get_app_contract(deps.storage)?)
                 }
@@ -57,6 +55,8 @@ impl<'a> ADOContract<'a> {
                 AndromedaQuery::PermissionedActions {} => {
                     encode_binary(&self.query_permissioned_actions(deps)?)
                 }
+                #[cfg(feature = "rates")]
+                AndromedaQuery::GetRate { action } => encode_binary(&self.get_rates(deps, action)?),
                 _ => Err(ContractError::UnsupportedOperation {}),
             },
             Err(_) => Err(ContractError::UnsupportedOperation {}),
@@ -106,6 +106,14 @@ impl<'a> ADOContract<'a> {
         let contract_version = get_contract_version(deps.storage)?;
         Ok(VersionResponse {
             version: contract_version.version,
+        })
+    }
+
+    #[inline]
+    pub fn query_ado_base_version(&self) -> Result<ADOBaseVersionResponse, ContractError> {
+        let ado_base_version: &str = env!("CARGO_PKG_VERSION");
+        Ok(ADOBaseVersionResponse {
+            version: ado_base_version.to_string(),
         })
     }
 }

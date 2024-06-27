@@ -1,22 +1,21 @@
 pub mod ado_type;
 pub mod app_contract;
 pub mod block_height;
-#[cfg(any(feature = "module_hooks", feature = "modules"))]
-pub mod hooks;
 pub mod kernel_address;
 pub mod modules;
 pub mod ownership;
 pub mod permissioning;
+#[cfg(feature = "rates")]
+pub mod rates;
 pub mod version;
 
 pub mod withdraw;
 use crate::amp::{messages::AMPPkt, AndrAddr};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Addr;
-pub use modules::Module;
 
-#[cfg(feature = "modules")]
-use cosmwasm_std::Uint64;
+use self::ownership::OwnershipMessage;
+use self::permissioning::PermissioningMessage;
 
 use self::ownership::OwnershipMessage;
 use self::permissioning::PermissioningMessage;
@@ -42,19 +41,8 @@ pub enum AndromedaMsg {
     UpdateKernelAddress {
         address: Addr,
     },
-    #[cfg(feature = "modules")]
-    RegisterModule {
-        module: Module,
-    },
-    #[cfg(feature = "modules")]
-    DeregisterModule {
-        module_idx: Uint64,
-    },
-    #[cfg(feature = "modules")]
-    AlterModule {
-        module_idx: Uint64,
-        module: Module,
-    },
+    #[cfg(feature = "rates")]
+    Rates(self::rates::RatesMessage),
     #[serde(rename = "amp_receive")]
     AMPReceive(AMPPkt),
     Permissioning(PermissioningMessage),
@@ -77,14 +65,10 @@ pub enum AndromedaQuery {
     BlockHeightUponCreation {},
     #[returns(self::version::VersionResponse)]
     Version {},
+    #[returns(self::version::ADOBaseVersionResponse)]
+    ADOBaseVersion {},
     #[returns(self::app_contract::AppContractResponse)]
     AppContract {},
-    #[cfg(feature = "modules")]
-    #[returns(Module)]
-    Module { id: Uint64 },
-    #[cfg(feature = "modules")]
-    #[returns(Vec<String>)]
-    ModuleIds {},
     #[returns(Vec<self::permissioning::PermissionInfo>)]
     Permissions {
         actor: AndrAddr,
@@ -93,4 +77,8 @@ pub enum AndromedaQuery {
     },
     #[returns(Vec<self::permissioning::PermissionedActionsResponse>)]
     PermissionedActions {},
+
+    #[cfg(feature = "rates")]
+    #[returns(Option<self::rates::Rate>)]
+    GetRate { action: String },
 }

@@ -2,7 +2,7 @@
 name = "tests-integration"
 version = "1.0.0"
 edition = "2021"
-rust-version = "1.65.0"
+rust-version = "1.75.0"
 publish = false
 
 [features]
@@ -71,9 +71,17 @@ andromeda-finance = { workspace = true }
 andromeda-splitter = { path = "../contracts/finance/andromeda-splitter", features = [
     "testing",
 ] }
+andromeda-conditional-splitter = { path = "../contracts/finance/andromeda-conditional-splitter", features = [
+    "testing",
+] }
 andromeda-vesting = { path = "../contracts/finance/andromeda-vesting", features = [
     "testing",
 ] }
+
+andromeda-validator-staking = { path = "../contracts/finance/andromeda-validator-staking", features = [
+    "testing",
+] }
+
 
 # Data Storage
 andromeda-data-storage = { workspace = true }
@@ -82,6 +90,11 @@ andromeda-primitive = { path = "../contracts/data-storage/andromeda-primitive", 
 ] }
 
 # #OS
+
+andromeda-shunting = { path = "../contracts/modules/andromeda-shunting", features = [
+    "testing",
+] }
+
 andromeda-kernel = { path = "../contracts/os/andromeda-kernel", features = [
     "testing",
 ] }
@@ -98,7 +111,7 @@ andromeda-vfs = { path = "../contracts/os/andromeda-vfs", features = [
 andromeda-testing = { workspace = true }
 
 #Cosmwasm Crates
-cosmwasm-std = { workspace = true }
+cosmwasm-std = { workspace = true, features = ["staking"] }
 cosmwasm-schema = { workspace = true }
 cw721-base = { workspace = true }
 cw721 = { workspace = true }
@@ -113,10 +126,7 @@ andromeda-std = { workspace = true }
 
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-cw-multi-test = { version = "1.0.0", features = [
-    "cosmwasm_1_3",
-    "cosmwasm_1_2",
-] }
+cw-multi-test = { workspace = true }
 
 
 [[test]]
@@ -125,8 +135,8 @@ name = "app"
 # [[test]]
 # name = "cw721"
 
-# [[test]]
-# name = "crowdfund_app"
+[[test]]
+name = "crowdfund_app"
 
 [[test]]
 name = "auction_app"
@@ -135,7 +145,19 @@ name = "auction_app"
 name = "marketplace_app"
 
 [[test]]
-name = "cw20_staking"
+name = "splitter"
+
+[[test]]
+name = "validator_staking"
+
+[[test]]
+name = "shunting"
+
+[dependencies]
+rstest = "0.19.0"
+
+# [[test]]
+# name = "cw20_staking_app"
 
 # [[test]]
 # name = "wrapped_cw721_app"

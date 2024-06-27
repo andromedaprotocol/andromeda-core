@@ -4,10 +4,10 @@ use andromeda_ecosystem::vault::{
 };
 use andromeda_std::ado_base::ownership::ContractOwnerResponse;
 use andromeda_std::ado_contract::ADOContract;
-
 use andromeda_std::amp::{AndrAddr, Recipient};
-
+use andromeda_std::common::actions::call_action;
 use andromeda_std::common::context::ExecuteContext;
+use andromeda_std::common::encode_binary;
 use andromeda_std::{
     ado_base::withdraw::{Withdrawal, WithdrawalType},
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
@@ -75,7 +75,14 @@ pub fn execute(
     }
 }
 
-pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+    call_action(
+        &mut ctx.deps,
+        &ctx.info,
+        &ctx.env,
+        &ctx.amp_ctx,
+        msg.as_ref(),
+    )?;
     match msg {
         ExecuteMsg::Deposit { recipient, msg } => execute_deposit(ctx, recipient, msg),
         ExecuteMsg::WithdrawVault {
@@ -395,7 +402,9 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
             strategy,
             denom,
         } => query_balance(deps, address, strategy, denom),
-        QueryMsg::StrategyAddress { strategy } => query_strategy_address(deps, env, strategy),
+        QueryMsg::StrategyAddress { strategy } => {
+            encode_binary(&query_strategy_address(deps, env, strategy)?)
+        }
         _ => ADOContract::default().query(deps, env, msg),
     }
 }
@@ -452,13 +461,13 @@ fn query_strategy_address(
     deps: Deps,
     _env: Env,
     strategy: StrategyType,
-) -> Result<Binary, ContractError> {
+) -> Result<StrategyAddressResponse, ContractError> {
     let addr = STRATEGY_CONTRACT_ADDRESSES.may_load(deps.storage, strategy.to_string())?;
     match addr {
-        Some(addr) => Ok(to_json_binary(&StrategyAddressResponse {
+        Some(addr) => Ok(StrategyAddressResponse {
             address: addr,
             strategy,
-        })?),
+        }),
         None => Err(ContractError::InvalidStrategy {
             strategy: strategy.to_string(),
         }),

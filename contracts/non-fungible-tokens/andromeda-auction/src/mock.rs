@@ -6,10 +6,12 @@ use andromeda_non_fungible_tokens::auction::{
     InstantiateMsg, QueryMsg,
 };
 use andromeda_std::ado_base::permissioning::{Permission, PermissioningMessage};
+use andromeda_std::ado_base::rates::{Rate, RatesMessage};
 use andromeda_std::amp::messages::AMPPkt;
+use andromeda_std::amp::AndrAddr;
 use andromeda_std::amp::Recipient;
-use andromeda_std::common::{Milliseconds, MillisecondsExpiration};
-use andromeda_std::{ado_base::modules::Module, amp::AndrAddr};
+use andromeda_std::common::denom::Asset;
+use andromeda_std::common::expiration::Expiry;
 use andromeda_testing::mock::MockApp;
 use andromeda_testing::{
     mock_ado,
@@ -27,11 +29,11 @@ impl MockAuction {
         code_id: u64,
         sender: Addr,
         app: &mut MockApp,
-        modules: Option<Vec<Module>>,
+
         kernel_address: impl Into<String>,
         owner: Option<String>,
     ) -> MockAuction {
-        let msg = mock_auction_instantiate_msg(modules, kernel_address, owner, None, None);
+        let msg = mock_auction_instantiate_msg(kernel_address, owner, None, None);
         let addr = app
             .instantiate_contract(
                 code_id,
@@ -50,16 +52,16 @@ impl MockAuction {
         &self,
         app: &mut MockApp,
         sender: Addr,
-        start_time: Option<Milliseconds>,
-        end_time: Milliseconds,
-        coin_denom: String,
+        start_time: Option<Expiry>,
+        end_time: Expiry,
+        coin_denom: Asset,
         min_bid: Option<Uint128>,
+        min_raise: Option<Uint128>,
         whitelist: Option<Vec<Addr>>,
         recipient: Option<Recipient>,
-        uses_cw20: bool,
     ) -> AppResponse {
         let msg = mock_start_auction(
-            start_time, end_time, coin_denom, uses_cw20, min_bid, whitelist, recipient,
+            start_time, end_time, coin_denom, min_bid, min_raise, whitelist, recipient,
         );
         app.execute_contract(sender, self.addr().clone(), &msg, &[])
             .unwrap()
@@ -86,6 +88,39 @@ impl MockAuction {
         token_address: String,
     ) -> ExecuteResult {
         let msg = mock_claim_auction(token_id, token_address);
+        self.execute(app, &msg, sender, &[])
+    }
+
+    pub fn execute_authorize_token_address(
+        &self,
+        app: &mut MockApp,
+        sender: Addr,
+        token_address: impl Into<String>,
+        expiration: Option<Expiry>,
+    ) -> ExecuteResult {
+        let msg = mock_authorize_token_address(token_address, expiration);
+        self.execute(app, &msg, sender, &[])
+    }
+
+    pub fn execute_add_rate(
+        &self,
+        app: &mut MockApp,
+        sender: Addr,
+        action: String,
+        rate: Rate,
+    ) -> ExecuteResult {
+        self.execute(app, &mock_set_rate_msg(action, rate), sender, &[])
+    }
+
+    pub fn execute_set_permission(
+        &self,
+        app: &mut MockApp,
+        sender: Addr,
+        actor: AndrAddr,
+        action: String,
+        permission: Permission,
+    ) -> ExecuteResult {
+        let msg = mock_set_permission(actor, action, permission);
         self.execute(app, &msg, sender, &[])
     }
 
@@ -122,14 +157,12 @@ pub fn mock_andromeda_auction() -> Box<dyn Contract<Empty>> {
 }
 
 pub fn mock_auction_instantiate_msg(
-    modules: Option<Vec<Module>>,
     kernel_address: impl Into<String>,
     owner: Option<String>,
     authorized_token_addresses: Option<Vec<AndrAddr>>,
     authorized_cw20_address: Option<AndrAddr>,
 ) -> InstantiateMsg {
     InstantiateMsg {
-        modules,
         kernel_address: kernel_address.into(),
         owner,
         authorized_token_addresses,
@@ -138,11 +171,11 @@ pub fn mock_auction_instantiate_msg(
 }
 
 pub fn mock_start_auction(
-    start_time: Option<Milliseconds>,
-    end_time: Milliseconds,
-    coin_denom: String,
-    uses_cw20: bool,
+    start_time: Option<Expiry>,
+    end_time: Expiry,
+    coin_denom: Asset,
     min_bid: Option<Uint128>,
+    min_raise: Option<Uint128>,
     whitelist: Option<Vec<Addr>>,
     recipient: Option<Recipient>,
 ) -> Cw721HookMsg {
@@ -152,6 +185,7 @@ pub fn mock_start_auction(
         coin_denom,
         uses_cw20,
         min_bid,
+        min_raise,
         whitelist,
         recipient,
     }
@@ -163,12 +197,41 @@ pub fn mock_auction_cw20_receive(msg: Cw20ReceiveMsg) -> ExecuteMsg {
 
 pub fn mock_authorize_token_address(
     token_address: impl Into<String>,
-    expiration: Option<MillisecondsExpiration>,
+    expiration: Option<Expiry>,
 ) -> ExecuteMsg {
     ExecuteMsg::AuthorizeTokenContract {
         addr: AndrAddr::from_string(token_address.into()),
         expiration,
     }
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn mock_update_auction(
+    token_id: String,
+    token_address: String,
+    start_time: Option<Expiry>,
+    end_time: Expiry,
+    coin_denom: Asset,
+    min_bid: Option<Uint128>,
+    min_raise: Option<Uint128>,
+    whitelist: Option<Vec<Addr>>,
+    recipient: Option<Recipient>,
+) -> ExecuteMsg {
+    ExecuteMsg::UpdateAuction {
+        token_id,
+        token_address,
+        start_time,
+        end_time,
+        coin_denom,
+        whitelist,
+        min_bid,
+        min_raise,
+        recipient,
+    }
+}
+
+pub fn mock_set_rate_msg(action: String, rate: Rate) -> ExecuteMsg {
+    ExecuteMsg::Rates(RatesMessage::SetRate { action, rate })
 }
 
 pub fn mock_set_permission(actor: AndrAddr, action: String, permission: Permission) -> ExecuteMsg {

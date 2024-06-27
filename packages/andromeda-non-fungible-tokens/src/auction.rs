@@ -1,14 +1,15 @@
 use andromeda_std::amp::{AndrAddr, Recipient};
+use andromeda_std::common::denom::Asset;
+use andromeda_std::common::expiration::Expiry;
 use andromeda_std::common::{MillisecondsExpiration, OrderBy};
-use andromeda_std::{andr_exec, andr_instantiate, andr_instantiate_modules, andr_query};
+use andromeda_std::{andr_exec, andr_instantiate, andr_query};
 
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Addr, Timestamp, Uint128};
+use cosmwasm_std::{Addr, Uint128};
 use cw20::Cw20ReceiveMsg;
 use cw721::{Cw721ReceiveMsg, Expiration};
 
 #[andr_instantiate]
-#[andr_instantiate_modules]
 #[cw_serde]
 pub struct InstantiateMsg {
     pub authorized_token_addresses: Option<Vec<AndrAddr>>,
@@ -35,12 +36,12 @@ pub enum ExecuteMsg {
     UpdateAuction {
         token_id: String,
         token_address: String,
-        start_time: Option<MillisecondsExpiration>,
-        end_time: MillisecondsExpiration,
-        coin_denom: String,
-        uses_cw20: bool,
+        start_time: Option<Expiry>,
+        end_time: Expiry,
+        coin_denom: Asset,
         whitelist: Option<Vec<Addr>>,
         min_bid: Option<Uint128>,
+        min_raise: Option<Uint128>,
         recipient: Option<Recipient>,
     },
     CancelAuction {
@@ -50,7 +51,7 @@ pub enum ExecuteMsg {
     /// Restricted to owner
     AuthorizeTokenContract {
         addr: AndrAddr,
-        expiration: Option<MillisecondsExpiration>,
+        expiration: Option<Expiry>,
     },
     /// Restricted to owner
     DeauthorizeTokenContract {
@@ -64,12 +65,12 @@ pub enum Cw721HookMsg {
     /// has started but is immutable after that.
     StartAuction {
         /// Start time in milliseconds since epoch
-        start_time: Option<MillisecondsExpiration>,
+        start_time: Option<Expiry>,
         /// Duration in milliseconds
-        end_time: MillisecondsExpiration,
-        coin_denom: String,
-        uses_cw20: bool,
+        end_time: Expiry,
+        coin_denom: Asset,
         min_bid: Option<Uint128>,
+        min_raise: Option<Uint128>,
         whitelist: Option<Vec<Addr>>,
         recipient: Option<Recipient>,
     },
@@ -126,20 +127,20 @@ pub enum QueryMsg {
         order_by: Option<OrderBy>,
     },
 
-    #[returns(bool)]
+    #[returns(IsCancelledResponse)]
     IsCancelled {
         token_id: String,
         token_address: String,
     },
 
     /// Returns true only if the auction has been cancelled, the token has been claimed, or the end time has expired
-    #[returns(bool)]
+    #[returns(IsClosedResponse)]
     IsClosed {
         token_id: String,
         token_address: String,
     },
 
-    #[returns(bool)]
+    #[returns(IsClaimedResponse)]
     IsClaimed {
         token_id: String,
         token_address: String,
@@ -177,6 +178,7 @@ impl From<TokenAuctionState> for AuctionStateResponse {
             whitelist: token_auction_state.whitelist,
             is_cancelled: token_auction_state.is_cancelled,
             min_bid: token_auction_state.min_bid,
+            min_raise: token_auction_state.min_raise,
             owner: token_auction_state.owner,
             recipient: token_auction_state.recipient,
         }
@@ -193,6 +195,7 @@ pub struct TokenAuctionState {
     pub auction_id: Uint128,
     pub whitelist: Option<Vec<Addr>>,
     pub min_bid: Option<Uint128>,
+    pub min_raise: Option<Uint128>,
     pub owner: String,
     pub token_id: String,
     pub token_address: String,
@@ -205,7 +208,7 @@ pub struct TokenAuctionState {
 pub struct Bid {
     pub bidder: String,
     pub amount: Uint128,
-    pub timestamp: Timestamp,
+    pub timestamp: MillisecondsExpiration,
 }
 
 #[cw_serde]
@@ -219,6 +222,7 @@ pub struct AuctionStateResponse {
     pub uses_cw20: bool,
     pub whitelist: Option<Vec<Addr>>,
     pub min_bid: Option<Uint128>,
+    pub min_raise: Option<Uint128>,
     pub is_cancelled: bool,
     pub owner: String,
     pub recipient: Option<Recipient>,
@@ -238,3 +242,22 @@ pub struct AuctionIdsResponse {
 pub struct BidsResponse {
     pub bids: Vec<Bid>,
 }
+
+#[cw_serde]
+pub struct IsCancelledResponse {
+    pub is_cancelled: bool,
+}
+
+#[cw_serde]
+pub struct IsClosedResponse {
+    pub is_closed: bool,
+}
+
+#[cw_serde]
+pub struct IsClaimedResponse {
+    pub is_claimed: bool,
+}
+
+#[cw_serde]
+#[serde(rename_all = "snake_case")]
+pub struct MigrateMsg {}

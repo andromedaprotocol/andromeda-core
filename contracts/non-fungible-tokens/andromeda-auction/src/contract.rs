@@ -3,21 +3,22 @@ use crate::state::{
 };
 use andromeda_non_fungible_tokens::auction::{
     AuctionIdsResponse, AuctionInfo, AuctionStateResponse, AuthorizedAddressesResponse, Bid,
-    BidsResponse, Cw20HookMsg, Cw721HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg,
-    TokenAuctionState,
+    BidsResponse, Cw20HookMsg, Cw721HookMsg, ExecuteMsg, InstantiateMsg, IsCancelledResponse,
+    IsClaimedResponse, IsClosedResponse, QueryMsg, TokenAuctionState,
 };
 use andromeda_std::{
     ado_base::{
-        hooks::AndromedaHook, ownership::OwnershipMessage, permissioning::Permission,
+        permissioning::{LocalPermission, Permission},
         InstantiateMsg as BaseInstantiateMsg, MigrateMsg,
     },
     amp::{AndrAddr, Recipient},
     common::{
         actions::call_action,
-        denom::{validate_denom, SEND_CW20_ACTION},
+        call_action::get_action_name,
+        denom::{Asset, SEND_CW20_ACTION},
         encode_binary,
-        expiration::{expiration_from_milliseconds, get_and_validate_start_time},
-        Funds, MillisecondsExpiration, OrderBy,
+        expiration::{expiration_from_milliseconds, get_and_validate_start_time, Expiry},
+        Funds, Milliseconds, OrderBy,
     },
     error::ContractError,
 };
@@ -60,9 +61,6 @@ pub fn instantiate(
         },
     )?;
 
-    let owner = ADOContract::default().owner(deps.storage)?;
-    let modules_resp = contract.register_modules(owner.as_str(), deps.storage, msg.modules)?;
-
     if let Some(authorized_token_addresses) = msg.authorized_token_addresses {
         if !authorized_token_addresses.is_empty() {
             ADOContract::default().permission_action(SEND_NFT_ACTION, deps.storage)?;
@@ -74,7 +72,7 @@ pub fn instantiate(
                 deps.storage,
                 SEND_NFT_ACTION,
                 addr,
-                Permission::Whitelisted(None),
+                Permission::Local(LocalPermission::Whitelisted(None)),
             )?;
         }
     }
@@ -85,13 +83,11 @@ pub fn instantiate(
             deps.storage,
             SEND_CW20_ACTION,
             addr,
-            Permission::Whitelisted(None),
+            Permission::Local(LocalPermission::Whitelisted(None)),
         )?;
     }
 
-    Ok(resp
-        .add_submessages(modules_resp.messages)
-        .add_attributes(modules_resp.attributes))
+    Ok(resp)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -112,7 +108,8 @@ pub fn execute(
 }
 
 pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
-    let contract = ADOContract::default();
+    let action = get_action_name(CONTRACT_NAME, msg.as_ref());
+
     let action_response = call_action(
         &mut ctx.deps,
         &ctx.info,
@@ -121,20 +118,6 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
         msg.as_ref(),
     )?;
 
-    if !matches!(msg, ExecuteMsg::UpdateAppContract { .. })
-        && !matches!(
-            msg,
-            ExecuteMsg::Ownership(OwnershipMessage::UpdateOwner { .. })
-        )
-    {
-        contract.module_hook::<Response>(
-            &ctx.deps.as_ref(),
-            AndromedaHook::OnExecute {
-                sender: ctx.info.sender.to_string(),
-                payload: encode_binary(&msg)?,
-            },
-        )?;
-    }
     let res = match msg {
         ExecuteMsg::ReceiveNft(msg) => handle_receive_cw721(ctx, msg),
         ExecuteMsg::Receive(msg) => handle_receive_cw20(ctx, msg),
@@ -147,6 +130,7 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
             uses_cw20,
             whitelist,
             min_bid,
+            min_raise,
             recipient,
         } => execute_update_auction(
             ctx,
@@ -158,6 +142,7 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
             uses_cw20,
             whitelist,
             min_bid,
+            min_raise,
             recipient,
         ),
         ExecuteMsg::PlaceBid {
@@ -171,7 +156,7 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
         ExecuteMsg::Claim {
             token_id,
             token_address,
-        } => execute_claim(ctx, token_id, token_address),
+        } => execute_claim(ctx, token_id, token_address, action),
         ExecuteMsg::AuthorizeTokenContract { addr, expiration } => {
             execute_authorize_token_contract(ctx.deps, ctx.info, addr, expiration)
         }
@@ -187,11 +172,11 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
 }
 
 fn handle_receive_cw721(
-    ctx: ExecuteContext,
+    mut ctx: ExecuteContext,
     msg: Cw721ReceiveMsg,
 ) -> Result<Response, ContractError> {
     ADOContract::default().is_permissioned(
-        ctx.deps.storage,
+        ctx.deps.branch(),
         ctx.env.clone(),
         SEND_NFT_ACTION,
         ctx.info.sender.clone(),
@@ -204,6 +189,7 @@ fn handle_receive_cw721(
             uses_cw20,
             whitelist,
             min_bid,
+            min_raise,
             recipient,
         } => execute_start_auction(
             ctx,
@@ -215,18 +201,19 @@ fn handle_receive_cw721(
             uses_cw20,
             whitelist,
             min_bid,
+            min_raise,
             recipient,
         ),
     }
 }
 
 pub fn handle_receive_cw20(
-    ctx: ExecuteContext,
+    mut ctx: ExecuteContext,
     receive_msg: Cw20ReceiveMsg,
 ) -> Result<Response, ContractError> {
     let is_valid_cw20 = ADOContract::default()
         .is_permissioned(
-            ctx.deps.storage,
+            ctx.deps.branch(),
             ctx.env.clone(),
             SEND_CW20_ACTION,
             ctx.info.sender.clone(),
@@ -274,40 +261,29 @@ fn execute_start_auction(
     ctx: ExecuteContext,
     sender: String,
     token_id: String,
-    start_time: Option<MillisecondsExpiration>,
-    end_time: MillisecondsExpiration,
-    coin_denom: String,
-    uses_cw20: bool,
+    start_time: Option<Expiry>,
+    end_time: Expiry,
+    coin_denom: Asset,
     whitelist: Option<Vec<Addr>>,
     min_bid: Option<Uint128>,
+    min_raise: Option<Uint128>,
     recipient: Option<Recipient>,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
-        deps, info, env, ..
+        mut deps,
+        info,
+        env,
+        ..
     } = ctx;
-    if uses_cw20 {
-        let valid_cw20_auction = ADOContract::default()
-            .is_permissioned(
-                deps.storage,
-                env.clone(),
-                SEND_CW20_ACTION,
-                coin_denom.clone(),
-            )
-            .is_ok();
-        ensure!(
-            valid_cw20_auction,
-            ContractError::InvalidFunds {
-                msg: format!("Non-permissioned CW20 asset '{}' set as denom.", coin_denom)
-            }
-        );
-    } else {
-        validate_denom(deps.as_ref(), coin_denom.clone())?;
-    }
-    ensure!(!end_time.is_zero(), ContractError::InvalidExpiration {});
+    let (coin_denom, uses_cw20) = coin_denom.get_verified_asset(deps.branch(), env.clone())?;
+    ensure!(
+        !end_time.get_time(&env.block).is_zero(),
+        ContractError::InvalidExpiration {}
+    );
 
     // If start time wasn't provided, it will be set as the current_time
     let (start_expiration, _current_time) = get_and_validate_start_time(&env, start_time)?;
-    let end_expiration = expiration_from_milliseconds(end_time)?;
+    let end_expiration = expiration_from_milliseconds(end_time.get_time(&env.block))?;
 
     ensure!(
         end_expiration > start_expiration,
@@ -327,7 +303,7 @@ fn execute_start_auction(
                 deps.storage,
                 auction_id.to_string(),
                 whitelisted_address,
-                Permission::Whitelisted(None),
+                Permission::Local(LocalPermission::Whitelisted(None)),
             )?;
         }
     };
@@ -347,6 +323,7 @@ fn execute_start_auction(
             auction_id,
             whitelist,
             min_bid,
+            min_raise,
             owner: sender,
             token_id,
             token_address,
@@ -369,18 +346,22 @@ fn execute_update_auction(
     ctx: ExecuteContext,
     token_id: String,
     token_address: String,
-    start_time: Option<MillisecondsExpiration>,
-    end_time: MillisecondsExpiration,
-    coin_denom: String,
-    uses_cw20: bool,
+    start_time: Option<Expiry>,
+    end_time: Expiry,
+    coin_denom: Asset,
     whitelist: Option<Vec<Addr>>,
     min_bid: Option<Uint128>,
+    min_raise: Option<Uint128>,
     recipient: Option<Recipient>,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
-        deps, info, env, ..
+        mut deps,
+        info,
+        env,
+        ..
     } = ctx;
     nonpayable(&info)?;
+    let (coin_denom, uses_cw20) = coin_denom.get_verified_asset(deps.branch(), env.clone())?;
 
     if uses_cw20 {
         let valid_cw20_auction = ADOContract::default()
@@ -417,6 +398,15 @@ fn execute_update_auction(
     let end_expiration = expiration_from_milliseconds(end_time)?;
 
     ensure!(
+        !end_time.get_time(&env.block).is_zero(),
+        ContractError::InvalidExpiration {}
+    );
+
+    // If start time wasn't provided, it will be set as the current_time
+    let (start_expiration, _current_time) = get_and_validate_start_time(&env, start_time)?;
+    let end_expiration = expiration_from_milliseconds(end_time.get_time(&env.block))?;
+
+    ensure!(
         end_expiration > start_expiration,
         ContractError::StartTimeAfterEndTime {}
     );
@@ -430,7 +420,7 @@ fn execute_update_auction(
                 deps.storage,
                 token_auction_state.auction_id.to_string(),
                 whitelisted_address,
-                Permission::Whitelisted(None),
+                Permission::Local(LocalPermission::Whitelisted(None)),
             )?;
         }
     };
@@ -442,6 +432,7 @@ fn execute_update_auction(
     token_auction_state.coin_denom = coin_denom.clone();
     token_auction_state.uses_cw20 = uses_cw20;
     token_auction_state.min_bid = min_bid;
+    token_auction_state.min_raise = min_raise;
     token_auction_state.whitelist = whitelist;
     token_auction_state.recipient = recipient;
     TOKEN_AUCTION_STATE.save(
@@ -458,6 +449,7 @@ fn execute_update_auction(
         attr("auction_id", token_auction_state.auction_id.to_string()),
         attr("whitelist", format!("{:?}", whitelist_str)),
         attr("min_bid", format!("{:?}", &min_bid)),
+        attr("min_raise", format!("{:?}", &min_raise)),
     ]))
 }
 
@@ -467,13 +459,16 @@ fn execute_place_bid(
     token_address: String,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
-        deps, info, env, ..
+        mut deps,
+        info,
+        env,
+        ..
     } = ctx;
     let mut token_auction_state =
         get_existing_token_auction_state(deps.storage, &token_id, &token_address)?;
 
     ADOContract::default().is_permissioned(
-        deps.storage,
+        deps.branch(),
         env.clone(),
         token_auction_state.auction_id,
         info.sender.clone(),
@@ -542,6 +537,16 @@ fn execute_place_bid(
         ContractError::BidSmallerThanHighestBid {}
     );
 
+    // If there's a min_raise, the difference between the new bid and the highest bid should be greater or equal to it.
+    let min_raise = token_auction_state.min_raise.unwrap_or_default();
+    let bid_difference = payment
+        .amount
+        .checked_sub(token_auction_state.high_bidder_amount)?;
+    ensure!(
+        bid_difference.ge(&min_raise),
+        ContractError::MinRaiseUnmet {}
+    );
+
     let mut messages: Vec<CosmosMsg> = vec![];
     // Send back previous bid unless there was no previous bid.
     if token_auction_state.high_bidder_amount > Uint128::zero() {
@@ -564,7 +569,7 @@ fn execute_place_bid(
     bids_for_auction.push(Bid {
         bidder: info.sender.to_string(),
         amount: payment.amount,
-        timestamp: env.block.time,
+        timestamp: Milliseconds::from_nanos(env.block.time.nanos()),
     });
     BIDS.save(deps.storage, key, &bids_for_auction)?;
     Ok(Response::new().add_messages(messages).add_attributes(vec![
@@ -584,12 +589,12 @@ fn execute_place_bid_cw20(
     // The user who sent the cw20
     sender: &str,
 ) -> Result<Response, ContractError> {
-    let ExecuteContext { deps, env, .. } = ctx;
+    let ExecuteContext { mut deps, env, .. } = ctx;
     let mut token_auction_state =
         get_existing_token_auction_state(deps.storage, &token_id, &token_address)?;
 
     ADOContract::default().is_permissioned(
-        deps.storage,
+        deps.branch(),
         env.clone(),
         token_auction_state.auction_id,
         sender,
@@ -658,6 +663,14 @@ fn execute_place_bid_cw20(
         ContractError::BidSmallerThanHighestBid {}
     );
 
+    // If there's a min_raise, the difference between the new bid and the highest bid should be greater or equal to it.
+    let min_raise = token_auction_state.min_raise.unwrap_or_default();
+    let bid_difference = amount_sent.checked_sub(token_auction_state.high_bidder_amount)?;
+    ensure!(
+        bid_difference.ge(&min_raise),
+        ContractError::MinRaiseUnmet {}
+    );
+
     let mut cw20_transfer: Vec<WasmMsg> = vec![];
     // Send back previous bid unless there was no previous bid.
     if token_auction_state.high_bidder_amount > Uint128::zero() {
@@ -678,7 +691,7 @@ fn execute_place_bid_cw20(
     bids_for_auction.push(Bid {
         bidder: sender.to_string(),
         amount: amount_sent,
-        timestamp: env.block.time,
+        timestamp: Milliseconds::from_nanos(env.block.time.nanos()),
     });
     BIDS.save(deps.storage, key, &bids_for_auction)?;
     Ok(Response::new()
@@ -756,6 +769,7 @@ fn execute_claim(
     ctx: ExecuteContext,
     token_id: String,
     token_address: String,
+    action: String,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
         deps, info, env, ..
@@ -802,9 +816,21 @@ fn execute_claim(
     }
 
     // Calculate the funds to be received after tax
-    let after_tax_payment = purchase_token(deps.as_ref(), &info, token_auction_state.clone())?;
+    let (after_tax_payment, tax_messages) =
+        purchase_token(deps.as_ref(), &info, token_auction_state.clone(), action)?;
 
-    let resp: Response = Response::new()
+    let mut resp: Response = Response::new()
+        // Send NFT to auction winner.
+        .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: token_auction_state.token_address.clone(),
+            msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
+                recipient: token_auction_state.high_bidder_addr.to_string(),
+                token_id: token_id.clone(),
+            })?,
+            funds: vec![],
+        }))
+        // Send tax/royalty messages
+        .add_submessages(tax_messages)
         .add_attribute("action", "claim")
         .add_attribute("token_id", token_id.clone())
         .add_attribute("token_contract", token_auction_state.clone().token_address)
@@ -812,97 +838,29 @@ fn execute_claim(
         .add_attribute("winning_bid_amount", token_auction_state.high_bidder_amount)
         .add_attribute("auction_id", token_auction_state.auction_id);
 
-    let is_cw20_auction = token_auction_state.uses_cw20;
-    if is_cw20_auction {
-        let auction_currency = token_auction_state.coin_denom;
+    let recipient = token_auction_state
+        .recipient
+        .unwrap_or(Recipient::from_string(token_auction_state.owner));
 
-        let recipient = token_auction_state
-            .recipient
-            .unwrap_or(Recipient::from_string(token_auction_state.owner));
-
-        let cw20_msg = recipient.generate_msg_cw20(
-            &deps.as_ref(),
-            Cw20Coin {
-                address: auction_currency.clone(),
-                amount: after_tax_payment.0.amount,
-            },
-        )?;
-        // After tax payment is returned in Native, we need to change it to cw20
-        let (tax_recipient, tax_amount) = match after_tax_payment.1.first().map(|msg| {
-            if let CosmosMsg::Bank(BankMsg::Send { to_address, amount }) = &msg.msg {
-                (
-                    Some(to_address.clone()),
-                    amount.get(0).map(|coin| coin.amount),
-                )
-            } else {
-                (None, None)
-            }
-        }) {
-            Some((tax_recipient, tax_amount)) => (tax_recipient, tax_amount),
-            None => (None, None),
-        };
-        match (tax_recipient, tax_amount) {
-            (Some(recipient), Some(amount)) => {
-                let tax_transfer_msg = Cw20ExecuteMsg::Transfer { recipient, amount };
-                let tax_wasm_msg = wasm_execute(auction_currency, &tax_transfer_msg, vec![])?;
-                // Add tax message in case there's a tax recipient and amount
-                Ok(resp
-                    .add_message(tax_wasm_msg)
-                    // Send cw20 funds to the original owner or recipient (if provided).
-                    .add_submessage(cw20_msg)
-                    // Send NFT to auction winner.
-                    .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-                        contract_addr: token_auction_state.token_address.clone(),
-                        msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
-                            recipient: token_auction_state.high_bidder_addr.to_string(),
-                            token_id,
-                        })?,
-                        funds: vec![],
-                    })))
-            }
-            _ => Ok(resp
-                // Send cw20 funds to the original owner or recipient (if provided).
-                .add_submessage(cw20_msg)
-                // Send NFT to auction winner.
-                .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-                    contract_addr: token_auction_state.token_address.clone(),
-                    msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
-                        recipient: token_auction_state.high_bidder_addr.to_string(),
-                        token_id,
-                    })?,
-                    funds: vec![],
-                }))),
+    match after_tax_payment {
+        Funds::Native(native_funds) => {
+            // Send payment to recipient
+            resp = resp
+                .add_submessage(recipient.generate_direct_msg(&deps.as_ref(), vec![native_funds])?)
         }
-    } else {
-        let recipient = token_auction_state
-            .clone()
-            .recipient
-            .unwrap_or(Recipient::from_string(token_auction_state.clone().owner));
-
-        let msg =
-            recipient.generate_direct_msg(&deps.as_ref(), vec![after_tax_payment.clone().0])?;
-
-        Ok(resp
-            .add_submessages(after_tax_payment.1)
-            // Send native funds to the original owner or recipient (if provided).
-            .add_submessage(msg)
-            // Send NFT to auction winner.
-            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: token_auction_state.token_address.clone(),
-                msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
-                    recipient: token_auction_state.high_bidder_addr.to_string(),
-                    token_id,
-                })?,
-                funds: vec![],
-            })))
+        Funds::Cw20(cw20_funds) => {
+            let cw20_msg = recipient.generate_msg_cw20(&deps.as_ref(), cw20_funds)?;
+            resp = resp.add_submessage(cw20_msg)
+        }
     }
+    Ok(resp)
 }
 
 fn execute_authorize_token_contract(
     deps: DepsMut,
     info: MessageInfo,
     token_address: AndrAddr,
-    expiration: Option<MillisecondsExpiration>,
+    expiration: Option<Expiry>,
 ) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
     let addr = token_address.get_raw_address(&deps.as_ref())?;
@@ -910,7 +868,11 @@ fn execute_authorize_token_contract(
         contract.is_contract_owner(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {}
     );
-    let permission = Permission::Whitelisted(expiration);
+    let permission = if let Some(expiration) = expiration {
+        Permission::Local(LocalPermission::Whitelisted(Some(expiration)))
+    } else {
+        Permission::Local(LocalPermission::Whitelisted(None))
+    };
     ADOContract::set_permission(
         deps.storage,
         SEND_NFT_ACTION,
@@ -947,28 +909,58 @@ fn execute_deauthorize_token_contract(
 
 fn purchase_token(
     deps: Deps,
-    info: &MessageInfo,
+    _info: &MessageInfo,
     state: TokenAuctionState,
-) -> Result<(Coin, Vec<SubMsg>), ContractError> {
-    let total_cost = Coin::new(state.high_bidder_amount.u128(), state.coin_denom.clone());
-
-    let (msgs, _events, remainder) = ADOContract::default().on_funds_transfer(
-        &deps,
-        info.sender.to_string(),
-        Funds::Native(total_cost),
-        encode_binary(&"")?,
-    )?;
-
-    let remaining_amount = remainder.try_get_coin()?;
-
-    // Calculate total tax
-    // total_tax_amount = total_tax_amount.checked_add(tax_amount)?;
-
-    let after_tax_payment = Coin {
-        denom: state.coin_denom,
-        amount: remaining_amount.amount,
-    };
-    Ok((after_tax_payment, msgs))
+    action: String,
+) -> Result<(Funds, Vec<SubMsg>), ContractError> {
+    if !state.uses_cw20 {
+        let total_cost = Coin::new(state.high_bidder_amount.u128(), state.coin_denom.clone());
+        let transfer_response = ADOContract::default().query_deducted_funds(
+            deps,
+            action,
+            Funds::Native(total_cost.clone()),
+        )?;
+        match transfer_response {
+            Some(transfer_response) => {
+                let remaining_amount = transfer_response.leftover_funds.try_get_coin()?;
+                let after_tax_payment = Coin {
+                    denom: state.coin_denom,
+                    amount: remaining_amount.amount,
+                };
+                Ok((Funds::Native(after_tax_payment), transfer_response.msgs))
+            }
+            None => {
+                let after_tax_payment = Coin {
+                    denom: state.coin_denom,
+                    amount: total_cost.amount,
+                };
+                Ok((Funds::Native(after_tax_payment), vec![]))
+            }
+        }
+    } else {
+        let total_cost = Cw20Coin {
+            address: state.coin_denom.clone(),
+            amount: state.high_bidder_amount,
+        };
+        let transfer_response = ADOContract::default().query_deducted_funds(
+            deps,
+            action,
+            Funds::Cw20(total_cost.clone()),
+        )?;
+        match transfer_response {
+            Some(transfer_response) => {
+                let remaining_amount = transfer_response.leftover_funds.try_get_cw20_coin()?;
+                Ok((Funds::Cw20(remaining_amount), transfer_response.msgs))
+            }
+            None => {
+                let after_tax_payment = Cw20Coin {
+                    address: state.coin_denom,
+                    amount: total_cost.amount,
+                };
+                Ok((Funds::Cw20(after_tax_payment), vec![]))
+            }
+        }
+    }
 }
 
 fn get_existing_token_auction_state(
@@ -1067,11 +1059,13 @@ fn query_is_cancelled(
     deps: Deps,
     token_id: String,
     token_address: String,
-) -> Result<bool, ContractError> {
+) -> Result<IsCancelledResponse, ContractError> {
     let token_auction_state_result =
         get_existing_token_auction_state(deps.storage, &token_id, &token_address);
     if let Ok(token_auction_state) = token_auction_state_result {
-        return Ok(token_auction_state.is_cancelled);
+        return Ok(IsCancelledResponse {
+            is_cancelled: token_auction_state.is_cancelled,
+        });
     }
     Err(ContractError::AuctionDoesNotExist {})
 }
@@ -1081,7 +1075,7 @@ fn query_is_claimed(
     env: Env,
     token_id: String,
     token_address: String,
-) -> Result<bool, ContractError> {
+) -> Result<IsClaimedResponse, ContractError> {
     let token_auction_state =
         get_existing_token_auction_state(deps.storage, &token_id, &token_address)?;
 
@@ -1089,7 +1083,9 @@ fn query_is_claimed(
         query_owner_of(deps.querier, token_auction_state.token_address, token_id)?.owner;
 
     // if token owner isn't the contract, it means that it has been claimed. If they're equal it means that it hasn't been claimed and will return false
-    Ok(token_owner != env.contract.address)
+    Ok(IsClaimedResponse {
+        is_claimed: token_owner != env.contract.address,
+    })
 }
 
 fn query_is_closed(
@@ -1097,18 +1093,18 @@ fn query_is_closed(
     env: Env,
     token_id: String,
     token_address: String,
-) -> Result<bool, ContractError> {
+) -> Result<IsClosedResponse, ContractError> {
     let token_auction_state =
         get_existing_token_auction_state(deps.storage, &token_id, &token_address)?;
 
-    if query_is_claimed(deps, env.clone(), token_id.clone(), token_address.clone())?
-        || query_is_cancelled(deps, token_id, token_address)?
-        || token_auction_state.end_time.is_expired(&env.block)
-    {
-        Ok(true)
-    } else {
-        Ok(false)
-    }
+    let is_claimed =
+        query_is_claimed(deps, env.clone(), token_id.clone(), token_address.clone())?.is_claimed;
+    let is_cancelled = query_is_cancelled(deps, token_id, token_address)?.is_cancelled;
+    let is_expired = token_auction_state.end_time.is_expired(&env.block);
+
+    // Considers the auction closed if one or more of those 3 variables are true. Otherwise it isn't closed.
+    let is_closed = is_claimed || is_cancelled || is_expired;
+    Ok(IsClosedResponse { is_closed })
 }
 
 fn query_auction_ids(

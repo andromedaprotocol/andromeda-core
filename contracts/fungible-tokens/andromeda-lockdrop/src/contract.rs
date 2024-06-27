@@ -6,10 +6,7 @@ use andromeda_fungible_tokens::lockdrop::{
     UserInfoResponse,
 };
 use andromeda_std::{
-    ado_base::{
-        hooks::AndromedaHook, ownership::OwnershipMessage, InstantiateMsg as BaseInstantiateMsg,
-        MigrateMsg,
-    },
+    ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     ado_contract::ADOContract,
     common::{
         actions::call_action, context::ExecuteContext, encode_binary,
@@ -43,7 +40,9 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     // CHECK :: init_timestamp needs to be valid
     ensure!(
-        !msg.init_timestamp.is_in_past(&env.block),
+        !msg.init_timestamp
+            .get_time(&env.block)
+            .is_in_past(&env.block),
         ContractError::StartTimeInThePast {
             current_time: env.block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO,
             current_block: env.block.height,
@@ -60,7 +59,7 @@ pub fn instantiate(
 
     let config = Config {
         // bootstrap_contract_address: msg.bootstrap_contract,
-        init_timestamp: msg.init_timestamp,
+        init_timestamp: msg.init_timestamp.get_time(&env.block),
         deposit_window: msg.deposit_window,
         withdrawal_window: msg.withdrawal_window,
         lockdrop_incentives: Uint128::zero(),
@@ -84,12 +83,8 @@ pub fn instantiate(
             owner: msg.owner,
         },
     )?;
-    let mod_resp =
-        ADOContract::default().register_modules(info.sender.as_str(), deps.storage, msg.modules)?;
 
-    Ok(inst_resp
-        .add_attributes(mod_resp.attributes)
-        .add_submessages(mod_resp.messages))
+    Ok(inst_resp)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -110,7 +105,7 @@ pub fn execute(
 }
 
 pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
-    let contract = ADOContract::default();
+    let _contract = ADOContract::default();
     let action_response = call_action(
         &mut ctx.deps,
         &ctx.info,
@@ -118,20 +113,6 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
         &ctx.amp_ctx,
         msg.as_ref(),
     )?;
-    if !matches!(msg, ExecuteMsg::UpdateAppContract { .. })
-        && !matches!(
-            msg,
-            ExecuteMsg::Ownership(OwnershipMessage::UpdateOwner { .. })
-        )
-    {
-        contract.module_hook::<Response>(
-            &ctx.deps.as_ref(),
-            AndromedaHook::OnExecute {
-                sender: ctx.info.sender.to_string(),
-                payload: encode_binary(&msg)?,
-            },
-        )?;
-    }
 
     let res = match msg {
         ExecuteMsg::Receive(msg) => receive_cw20(ctx, msg),
@@ -232,10 +213,7 @@ pub fn execute_deposit_native(ctx: ExecuteContext) -> Result<Response, ContractE
 
     // CHECK :: Lockdrop deposit window open
     ensure!(
-        is_deposit_open(
-            Milliseconds::from_seconds(env.block.time.seconds()),
-            &config
-        ),
+        is_deposit_open(Milliseconds::from_nanos(env.block.time.nanos()), &config),
         ContractError::DepositWindowClosed {}
     );
 
@@ -303,10 +281,7 @@ pub fn execute_withdraw_native(
 
     // CHECK :: Lockdrop withdrawal window open
     ensure!(
-        is_withdraw_open(
-            Milliseconds::from_seconds(env.block.time.seconds()),
-            &config
-        ),
+        is_withdraw_open(Milliseconds::from_nanos(env.block.time.nanos()), &config),
         ContractError::InvalidWithdrawal {
             msg: Some("Withdrawals not available".to_string()),
         }
@@ -390,10 +365,7 @@ pub fn execute_enable_claims(ctx: ExecuteContext) -> Result<Response, ContractEr
 
     // CHECK :: Claims can only be enabled after the deposit / withdrawal windows are closed
     ensure!(
-        is_phase_over(
-            Milliseconds::from_seconds(env.block.time.seconds()),
-            &config
-        ),
+        is_phase_over(Milliseconds::from_nanos(env.block.time.nanos()), &config),
         ContractError::PhaseOngoing {}
     );
 
@@ -576,10 +548,9 @@ pub fn query_max_withdrawable_percent(
             );
             allowed_withdrawal_percent(timestamp, &config)
         }
-        None => allowed_withdrawal_percent(
-            Milliseconds::from_seconds(env.block.time.seconds()),
-            &config,
-        ),
+        None => {
+            allowed_withdrawal_percent(Milliseconds::from_nanos(env.block.time.nanos()), &config)
+        }
     })
 }
 

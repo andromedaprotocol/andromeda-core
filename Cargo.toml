@@ -34,8 +34,8 @@ andromeda-non-fungible-tokens = { path = "./packages/andromeda-non-fungible-toke
 andromeda-fungible-tokens = { path = "./packages/andromeda-fungible-tokens", version = "1.0.0" }
 andromeda-finance = { path = "./packages/andromeda-finance", version = "1.0.0" }
 andromeda-data-storage = { path = "./packages/andromeda-data-storage", version = "1.0.0" }
-andromeda-modules = { path = "./packages/andromeda-modules", version = "1.0.0" }
-andromeda-app = { path = "./packages/andromeda-app", version = "1.0.1" }
+andromeda-modules = { path = "./packages/andromeda-modules", version = "2.0.0" }
+andromeda-app = { path = "./packages/andromeda-app", version = "1.0.0" }
 andromeda-ecosystem = { path = "./packages/andromeda-ecosystem", version = "1.0.0" }
 andromeda-testing = { path = "./packages/andromeda-testing", version = "1.0.0" }
 
@@ -53,5 +53,5 @@ cw-asset = "3.0.0"
 cosmwasm-schema = "1.5.2"
 semver = "1.0.0"
 enum-repr = "0.2.6"
-cw-multi-test = "1.0.0"
+cw-multi-test = { version = "1.0.0", features = ["cosmwasm_1_2"] }
 serde = { version = "1.0.127" }

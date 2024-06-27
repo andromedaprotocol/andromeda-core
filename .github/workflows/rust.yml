@@ -19,7 +19,7 @@ jobs:
           fetch-depth: 1
       - uses: actions-rs/toolchain@v1
         with:
-          toolchain: 1.69.0
+          toolchain: 1.75.0
           components: rustfmt, clippy
           profile: minimal
           override: true
@@ -40,7 +40,7 @@ jobs:
           fetch-depth: 1
       - uses: actions-rs/toolchain@v1
         with:
-          toolchain: 1.69.0
+          toolchain: 1.75.0
           profile: minimal
       - run: cargo fetch --verbose
       - run: cargo build
@@ -56,13 +56,16 @@ jobs:
     name: Actions - build contracts and upload artifacts
     needs: [contract-tests]
     steps:
-      - run: sudo apt install binaryen
       - uses: actions-rs/toolchain@v1
         with:
-          toolchain: 1.69.0
-      - run: rustup override set 1.69.0
+          toolchain: 1.75.0
+      - run: rustup override set 1.75.0
       - run: rustup target add wasm32-unknown-unknown
       - uses: actions/checkout@v2
+      - name: Install Binaryen
+        run: |
+          chmod +x "${GITHUB_WORKSPACE}/ci-scripts/install_binaryen.sh"
+          "${GITHUB_WORKSPACE}/ci-scripts/install_binaryen.sh" all
       - name: Build
         run: |
           chmod +x "${GITHUB_WORKSPACE}/build.sh"

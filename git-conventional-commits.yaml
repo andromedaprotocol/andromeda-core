@@ -1,4 +1,3 @@
----
 convention:
   commitTypes:
     - feat
@@ -13,6 +12,7 @@ convention:
     - chore
     - merge
     - revert
+    - ci
   commitScopes: []
   releaseTagGlobPattern: v[0-9]*.[0-9]*.[0-9]*
 changelog:

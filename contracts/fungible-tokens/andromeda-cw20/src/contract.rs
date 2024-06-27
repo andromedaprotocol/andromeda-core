@@ -1,12 +1,12 @@
 use andromeda_fungible_tokens::cw20::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use andromeda_std::{
-    ado_base::{
-        hooks::AndromedaHook, ownership::OwnershipMessage, AndromedaMsg, AndromedaQuery,
-        InstantiateMsg as BaseInstantiateMsg, MigrateMsg,
-    },
+    ado_base::{AndromedaMsg, AndromedaQuery, InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     ado_contract::ADOContract,
     amp::AndrAddr,
-    common::{actions::call_action, context::ExecuteContext, encode_binary, Funds},
+    common::{
+        actions::call_action, call_action::get_action_name, context::ExecuteContext, encode_binary,
+        Funds,
+    },
     error::ContractError,
 };
 use cosmwasm_std::entry_point;
@@ -47,12 +47,8 @@ pub fn instantiate(
             owner: msg.clone().owner,
         },
     )?;
-    let modules_resp =
-        contract.register_modules(info.sender.as_str(), deps.storage, msg.modules)?;
 
     Ok(resp
-        .add_submessages(modules_resp.messages)
-        .add_attributes(modules_resp.attributes)
         .add_submessages(cw20_resp.messages)
         .add_attributes(cw20_resp.attributes))
 }
@@ -75,7 +71,9 @@ pub fn execute(
 }
 
 pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
-    let contract = ADOContract::default();
+    let action = get_action_name(CONTRACT_NAME, msg.as_ref());
+
+    let _contract = ADOContract::default();
     let action_response = call_action(
         &mut ctx.deps,
         &ctx.info,
@@ -83,28 +81,17 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
         &ctx.amp_ctx,
         msg.as_ref(),
     )?;
-    if !matches!(msg, ExecuteMsg::UpdateAppContract { .. })
-        && !matches!(
-            msg,
-            ExecuteMsg::Ownership(OwnershipMessage::UpdateOwner { .. })
-        )
-    {
-        contract.module_hook::<Response>(
-            &ctx.deps.as_ref(),
-            AndromedaHook::OnExecute {
-                sender: ctx.info.sender.to_string(),
-                payload: encode_binary(&msg)?,
-            },
-        )?;
-    }
+
     let res = match msg {
-        ExecuteMsg::Transfer { recipient, amount } => execute_transfer(ctx, recipient, amount),
+        ExecuteMsg::Transfer { recipient, amount } => {
+            execute_transfer(ctx, recipient, amount, action)
+        }
         ExecuteMsg::Burn { amount } => execute_burn(ctx, amount),
         ExecuteMsg::Send {
             contract,
             amount,
             msg,
-        } => execute_send(ctx, contract, amount, msg),
+        } => execute_send(ctx, contract, amount, msg, action),
         ExecuteMsg::SendFrom {
             owner,
             contract,
@@ -152,46 +139,64 @@ fn execute_transfer(
     ctx: ExecuteContext,
     recipient: AndrAddr,
     amount: Uint128,
+    action: String,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
         deps, info, env, ..
     } = ctx;
 
-    let (msgs, events, remainder) = ADOContract::default().on_funds_transfer(
-        &deps.as_ref(),
-        info.sender.to_string(),
+    let transfer_response = ADOContract::default().query_deducted_funds(
+        deps.as_ref(),
+        action,
         Funds::Cw20(Cw20Coin {
             address: env.contract.address.to_string(),
             amount,
         }),
-        to_json_binary(&ExecuteMsg::Transfer {
-            amount,
-            recipient: recipient.clone(),
-        })?,
     )?;
+    match transfer_response {
+        Some(transfer_response) => {
+            let remaining_amount = match transfer_response.leftover_funds {
+                Funds::Native(..) => amount, //What do we do in the case that the rates returns remaining amount as native funds?
+                Funds::Cw20(coin) => coin.amount,
+            };
 
-    let remaining_amount = match remainder {
-        Funds::Native(..) => amount, //What do we do in the case that the rates returns remaining amount as native funds?
-        Funds::Cw20(coin) => coin.amount,
-    };
+            let mut resp = filter_out_cw20_messages(
+                transfer_response.msgs,
+                deps.storage,
+                deps.api,
+                &info.sender,
+            )?;
 
-    let mut resp = filter_out_cw20_messages(msgs, deps.storage, deps.api, &info.sender)?;
-
-    let recipient = recipient.get_raw_address(&deps.as_ref())?.into_string();
-    // Continue with standard cw20 operation
-    let cw20_resp = execute_cw20(
-        deps,
-        env,
-        info,
-        Cw20ExecuteMsg::Transfer {
-            recipient,
-            amount: remaining_amount,
-        },
-    )?;
-    resp = resp.add_attributes(cw20_resp.attributes).add_events(events);
-    Ok(resp)
+            let recipient = recipient.get_raw_address(&deps.as_ref())?.into_string();
+            // Continue with standard cw20 operation
+            let cw20_resp = execute_cw20(
+                deps,
+                env,
+                info,
+                Cw20ExecuteMsg::Transfer {
+                    recipient,
+                    amount: remaining_amount,
+                },
+            )?;
+            resp = resp
+                .add_submessages(cw20_resp.messages)
+                .add_attributes(cw20_resp.attributes)
+                .add_events(transfer_response.events);
+            Ok(resp)
+        }
+        None => {
+            let recipient = recipient.get_raw_address(&deps.as_ref())?.into_string();
+            // Continue with standard cw20 operation
+            let cw20_resp = execute_cw20(
+                deps,
+                env,
+                info,
+                Cw20ExecuteMsg::Transfer { recipient, amount },
+            )?;
+            Ok(cw20_resp)
+        }
+    }
 }
-
 fn transfer_tokens(
     storage: &mut dyn Storage,
     sender: &Addr,
@@ -233,49 +238,67 @@ fn execute_send(
     contract: AndrAddr,
     amount: Uint128,
     msg: Binary,
+    action: String,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
         deps, info, env, ..
     } = ctx;
 
-    let (msgs, events, remainder) = ADOContract::default().on_funds_transfer(
-        &deps.as_ref(),
-        info.sender.to_string(),
+    let rates_response = ADOContract::default().query_deducted_funds(
+        deps.as_ref(),
+        action,
         Funds::Cw20(Cw20Coin {
             address: env.contract.address.to_string(),
             amount,
         }),
-        to_json_binary(&ExecuteMsg::Send {
-            amount,
-            contract: contract.clone(),
-            msg: msg.clone(),
-        })?,
     )?;
+    match rates_response {
+        Some(rates_response) => {
+            let remaining_amount = match rates_response.leftover_funds {
+                Funds::Native(..) => amount, //What do we do in the case that the rates returns remaining amount as native funds?
+                Funds::Cw20(coin) => coin.amount,
+            };
 
-    let remaining_amount = match remainder {
-        Funds::Native(..) => amount, //What do we do in the case that the rates returns remaining amount as native funds?
-        Funds::Cw20(coin) => coin.amount,
-    };
+            let mut resp = filter_out_cw20_messages(
+                rates_response.msgs,
+                deps.storage,
+                deps.api,
+                &info.sender,
+            )?;
+            let contract = contract.get_raw_address(&deps.as_ref())?.to_string();
+            let cw20_resp = execute_cw20(
+                deps,
+                env,
+                info,
+                Cw20ExecuteMsg::Send {
+                    contract,
+                    amount: remaining_amount,
+                    msg,
+                },
+            )?;
+            resp = resp
+                .add_submessages(cw20_resp.messages)
+                .add_attributes(cw20_resp.attributes)
+                .add_events(rates_response.events);
 
-    let mut resp = filter_out_cw20_messages(msgs, deps.storage, deps.api, &info.sender)?;
+            Ok(resp)
+        }
+        None => {
+            let contract = contract.get_raw_address(&deps.as_ref())?.to_string();
+            let cw20_resp = execute_cw20(
+                deps,
+                env,
+                info,
+                Cw20ExecuteMsg::Send {
+                    contract,
+                    amount,
+                    msg,
+                },
+            )?;
 
-    let contract = contract.get_raw_address(&deps.as_ref())?.into_string();
-    let cw20_resp = execute_cw20(
-        deps,
-        env,
-        info,
-        Cw20ExecuteMsg::Send {
-            contract,
-            amount: remaining_amount,
-            msg,
-        },
-    )?;
-    resp = resp
-        .add_attributes(cw20_resp.attributes)
-        .add_events(events)
-        .add_submessages(cw20_resp.messages);
-
-    Ok(resp)
+            Ok(cw20_resp)
+        }
+    }
 }
 
 fn execute_mint(

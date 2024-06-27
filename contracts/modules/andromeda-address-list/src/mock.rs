@@ -1,12 +1,13 @@
 #![cfg(all(not(target_arch = "wasm32"), feature = "testing"))]
 
 use crate::contract::{execute, instantiate, query};
-use andromeda_modules::address_list::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use andromeda_modules::address_list::{ActorPermission, ExecuteMsg, InstantiateMsg, QueryMsg};
+use andromeda_std::ado_base::permissioning::LocalPermission;
 use andromeda_testing::{
     mock::MockApp, mock_ado, mock_contract::ExecuteResult, MockADO, MockContract,
 };
 use cosmwasm_std::{Addr, Empty};
-use cw_multi_test::{Contract, ContractWrapper, Executor};
+use cw_multi_test::{App, Contract, ContractWrapper, Executor};
 
 pub struct MockAddressList(Addr);
 mock_ado!(MockAddressList, ExecuteMsg, QueryMsg);
@@ -15,12 +16,12 @@ impl MockAddressList {
     pub fn instantiate(
         code_id: u64,
         sender: Addr,
-        app: &mut MockApp,
-        is_inclusive: bool,
+        app: &mut App,
         kernel_address: impl Into<String>,
         owner: Option<String>,
+        actor_permission: Option<ActorPermission>,
     ) -> MockAddressList {
-        let msg = mock_address_list_instantiate_msg(is_inclusive, kernel_address, owner);
+        let msg = mock_address_list_instantiate_msg(kernel_address, owner, actor_permission);
         let addr = app
             .instantiate_contract(
                 code_id,
@@ -34,17 +35,19 @@ impl MockAddressList {
         MockAddressList(Addr::unchecked(addr))
     }
 
-    pub fn execute_add_address(
+    pub fn execute_actor_permission(
         &self,
         app: &mut MockApp,
         sender: Addr,
-        address: impl Into<String>,
+        actor: Addr,
+        permission: LocalPermission,
     ) -> ExecuteResult {
-        self.execute(app, &mock_add_address_msg(address), sender, &[])
-    }
-
-    pub fn query_includes_address(&self, app: &MockApp, address: impl Into<String>) -> bool {
-        self.query::<bool>(app, mock_includes_address_msg(address))
+        self.execute(
+            app,
+            &mock_add_actor_permission_msg(actor, permission),
+            sender,
+            &[],
+        )
     }
 }
 
@@ -54,21 +57,19 @@ pub fn mock_andromeda_address_list() -> Box<dyn Contract<Empty>> {
 }
 
 pub fn mock_address_list_instantiate_msg(
-    is_inclusive: bool,
     kernel_address: impl Into<String>,
     owner: Option<String>,
+    actor_permission: Option<ActorPermission>,
 ) -> InstantiateMsg {
     InstantiateMsg {
-        is_inclusive,
         kernel_address: kernel_address.into(),
         owner,
+        actor_permission,
     }
 }
 
-pub fn mock_add_address_msg(address: impl Into<String>) -> ExecuteMsg {
-    ExecuteMsg::AddAddress {
-        address: address.into(),
-    }
+pub fn mock_add_actor_permission_msg(actor: Addr, permission: LocalPermission) -> ExecuteMsg {
+    ExecuteMsg::AddActorPermission { actor, permission }
 }
 
 pub fn mock_includes_address_msg(address: impl Into<String>) -> QueryMsg {

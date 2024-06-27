@@ -1,7 +1,8 @@
 use andromeda_std::{
     amp::{AndrAddr, Recipient},
-    andr_exec, andr_instantiate, andr_instantiate_modules, andr_query,
-    common::{MillisecondsDuration, MillisecondsExpiration},
+    andr_exec, andr_instantiate, andr_query,
+    common::expiration::Expiry,
+    common::{denom::Asset, MillisecondsDuration},
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
@@ -10,7 +11,6 @@ use cw721::{Cw721ReceiveMsg, Expiration};
 use std::fmt::{Display, Formatter, Result};
 
 #[andr_instantiate]
-#[andr_instantiate_modules]
 #[cw_serde]
 #[serde(rename_all = "snake_case")]
 pub struct InstantiateMsg {
@@ -32,8 +32,7 @@ pub enum ExecuteMsg {
         token_id: String,
         token_address: String,
         price: Uint128,
-        coin_denom: String,
-        uses_cw20: bool,
+        coin_denom: Asset,
         recipient: Option<Recipient>,
     },
     CancelSale {
@@ -48,10 +47,9 @@ pub enum Cw721HookMsg {
     /// has started but is immutable after that.
     StartSale {
         price: Uint128,
-        coin_denom: String,
-        start_time: Option<MillisecondsExpiration>,
+        start_time: Option<Expiry>,
+        coin_denom: Asset,
         duration: Option<MillisecondsDuration>,
-        uses_cw20: bool,
         recipient: Option<Recipient>,
     },
 }

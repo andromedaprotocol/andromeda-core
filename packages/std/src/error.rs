@@ -2,12 +2,14 @@ use cosmwasm_std::{Addr, OverflowError, StdError};
 use cw20_base::ContractError as Cw20ContractError;
 use cw721_base::ContractError as Cw721ContractError;
 use cw_asset::AssetError;
-use cw_utils::{Expiration, ParseReplyError, PaymentError};
+use cw_utils::{ParseReplyError, PaymentError};
 use hex::FromHexError;
 use std::convert::From;
 use std::str::{ParseBoolError, Utf8Error};
 use std::string::FromUtf8Error;
 use thiserror::Error;
+
+use crate::common::Milliseconds;
 
 #[derive(Error, Debug, PartialEq)]
 pub enum ContractError {
@@ -26,6 +28,8 @@ pub enum ContractError {
     #[error("Unauthorized")]
     Unauthorized {},
 
+    #[error("ActionNotFound")]
+    ActionNotFound {},
     #[error("UnpublishedCodeID")]
     UnpublishedCodeID {},
 
@@ -44,8 +48,31 @@ pub enum ContractError {
     #[error("InvalidOrigin")]
     InvalidOrigin {},
 
+    #[error("InvalidAmount: {msg}")]
+    InvalidAmount { msg: String },
+
+    #[error("OverlappingRanges")]
+    OverlappingRanges {},
+
+    #[error("Invalid {operation} Operation with {validator}")]
+    InvalidValidatorOperation {
+        operation: String,
+        validator: String,
+    },
+    #[error("Invalid Campaign Operation: {operation} on {stage}")]
+    InvalidCampaignOperation { operation: String, stage: String },
+
+    #[error("No Staking Reward")]
+    InvalidClaim {},
+
     #[error("InvalidSender")]
     InvalidSender {},
+
+    #[error("InvalidValidator")]
+    InvalidValidator {},
+
+    #[error("InvalidDelegation")]
+    InvalidDelegation {},
 
     #[error("RewardTooLow")]
     RewardTooLow {},
@@ -83,7 +110,10 @@ pub enum ContractError {
     #[error("EmptyOptional")]
     EmptyOptional {},
 
-    #[error("EmptyOptional")]
+    #[error("EmptyString")]
+    EmptyString {},
+
+    #[error("EmptyClassId")]
     EmptyClassId {},
 
     #[error("NoTokens")]
@@ -130,6 +160,9 @@ pub enum ContractError {
 
     #[error("InsufficientBondedTime")]
     InsufficientBondedTime {},
+
+    #[error("ThresholdsPercentagesDiscrepancy: {msg}")]
+    ThresholdsPercentagesDiscrepancy { msg: String },
 
     #[error("LockTimeTooShort")]
     LockTimeTooShort {},
@@ -182,6 +215,9 @@ pub enum ContractError {
     #[error("EmptyRecipientsList")]
     EmptyRecipientsList {},
 
+    #[error("EmptyThresholdsList")]
+    EmptyThresholdsList {},
+
     #[error("AmountExceededHundredPrecent")]
     AmountExceededHundredPrecent {},
 
@@ -227,6 +263,9 @@ pub enum ContractError {
     #[error("AccountNotFound")]
     AccountNotFound {},
 
+    #[error("ActorNotFound")]
+    ActorNotFound {},
+
     #[error("ModuleDiscriptionTooLong: {msg}")]
     ModuleDiscriptionTooLong { msg: String },
 
@@ -259,6 +298,15 @@ pub enum ContractError {
 
     #[error("AuctionEnded")]
     AuctionEnded {},
+
+    #[error("CampaignNotStarted")]
+    CampaignNotStarted {},
+
+    #[error("CampaignEnded")]
+    CampaignEnded {},
+
+    #[error("Campaign is not expired yet")]
+    CampaignNotExpired {},
 
     #[error("SaleNotStarted")]
     SaleNotStarted {},
@@ -323,6 +371,9 @@ pub enum ContractError {
     #[error("InvalidFunds: {msg}")]
     InvalidFunds { msg: String },
 
+    #[error("InvalidPermission: {msg}")]
+    InvalidPermission { msg: String },
+
     #[error("InvalidADOVersion: {msg:?}")]
     InvalidADOVersion { msg: Option<String> },
 
@@ -374,6 +425,9 @@ pub enum ContractError {
     #[error("DuplicateCoinDenoms")]
     DuplicateCoinDenoms {},
 
+    #[error("DuplicateThresholds")]
+    DuplicateThresholds {},
+
     #[error("DuplicateRecipient")]
     DuplicateRecipient {},
 
@@ -387,6 +441,9 @@ pub enum ContractError {
     #[error("Invalid zero amount")]
     InvalidZeroAmount {},
 
+    #[error("Invalid Denom")]
+    InvalidDenom {},
+
     #[error("Allowance is expired")]
     Expired {},
 
@@ -398,6 +455,9 @@ pub enum ContractError {
 
     #[error("Logo binary data exceeds 5KB limit")]
     LogoTooBig {},
+
+    #[error("Invalid migration. Unable to migrate from version {prev}")]
+    InvalidMigration { prev: String },
 
     #[error("Invalid xml preamble for SVG")]
     InvalidXmlPreamble {},
@@ -487,6 +547,9 @@ pub enum ContractError {
     #[error("Min sales exceeded")]
     MinSalesExceeded {},
 
+    #[error("MinRaiseUnmet")]
+    MinRaiseUnmet {},
+
     #[error("Limit must not be zero")]
     LimitMustNotBeZero {},
 
@@ -508,14 +571,17 @@ pub enum ContractError {
     #[error("Invalid Query")]
     InvalidQuery {},
 
+    #[error("Unexpected Item Found in: {item}")]
+    UnexpectedItem { item: String },
+
     #[error("Invalid Withdrawal: {msg:?}")]
     InvalidWithdrawal { msg: Option<String> },
 
     #[error("Airdrop stage {stage} expired at {expiration}")]
-    StageExpired { stage: u8, expiration: Expiration },
+    StageExpired { stage: u8, expiration: Milliseconds },
 
     #[error("Airdrop stage {stage} not expired yet")]
-    StageNotExpired { stage: u8, expiration: Expiration },
+    StageNotExpired { stage: u8, expiration: Milliseconds },
 
     #[error("Wrong Length")]
     WrongLength {},
@@ -610,6 +676,9 @@ pub enum ContractError {
     #[error("Invalid Expiration Time")]
     InvalidExpirationTime {},
 
+    #[error("Invalid Parameter, {error:?}")]
+    InvalidParameter { error: Option<String> },
+
     #[error("Invalid Pathname, {error:?}")]
     InvalidPathname { error: Option<String> },
 
@@ -625,6 +694,9 @@ pub enum ContractError {
     #[error("Invalid Denom Trace Path: {path} - {denom}")]
     InvalidDenomTracePath { path: String, denom: String },
 
+    #[error("Invalid Expression: {msg}")]
+    InvalidExpression { msg: String },
+
     #[error("Invalid Transfer Port: {port}")]
     InvalidTransferPort { port: String },
 
@@ -633,6 +705,12 @@ pub enum ContractError {
 
     #[error("Invalid time: {msg}")]
     InvalidTimestamp { msg: String },
+
+    #[error("At least one tier should have no limit")]
+    InvalidTiers {},
+
+    #[error("Invalid tier for {operation} operation: {msg} ")]
+    InvalidTier { operation: String, msg: String },
 }
 
 impl From<Cw20ContractError> for ContractError {

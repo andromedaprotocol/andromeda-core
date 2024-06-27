@@ -78,7 +78,6 @@ fn test_wrapped_cw721_app() {
         InstantiateType::New(Cw721Specification {
             name: "Test Tokens 2".to_string(),
             symbol: "TT2".to_string(),
-            modules: None,
         }),
         true,
         Some(andr.kernel.addr().to_string()),
