@@ -253,65 +253,7 @@ fn execute_send(
     msg: Binary,
     action: String,
 ) -> Result<Response, ContractError> {
-    let ExecuteContext {
-        deps, info, env, ..
-    } = ctx;
-
-    let rates_response = ADOContract::default().query_deducted_funds(
-        deps.as_ref(),
-        action,
-        Funds::Cw20(Cw20Coin {
-            address: env.contract.address.to_string(),
-            amount,
-        }),
-    )?;
-    match rates_response {
-        Some(rates_response) => {
-            let remaining_amount = match rates_response.leftover_funds {
-                Funds::Native(..) => amount, //What do we do in the case that the rates returns remaining amount as native funds?
-                Funds::Cw20(coin) => coin.amount,
-            };
-
-            let mut resp = filter_out_cw20_messages(
-                rates_response.msgs,
-                deps.storage,
-                deps.api,
-                &info.sender,
-            )?;
-            let contract = contract.get_raw_address(&deps.as_ref())?.to_string();
-            let cw20_resp = execute_cw20(
-                deps,
-                env,
-                info,
-                Cw20ExecuteMsg::Send {
-                    contract,
-                    amount: remaining_amount,
-                    msg,
-                },
-            )?;
-            resp = resp
-                .add_submessages(cw20_resp.messages)
-                .add_attributes(cw20_resp.attributes)
-                .add_events(rates_response.events);
-
-            Ok(resp)
-        }
-        None => {
-            let contract = contract.get_raw_address(&deps.as_ref())?.to_string();
-            let cw20_resp = execute_cw20(
-                deps,
-                env,
-                info,
-                Cw20ExecuteMsg::Send {
-                    contract,
-                    amount,
-                    msg,
-                },
-            )?;
-
-            Ok(cw20_resp)
-        }
-    }
+    handle_send(ctx, contract, amount, msg, action, None, false)
 }
 
 fn execute_send_from(
@@ -321,6 +263,18 @@ fn execute_send_from(
     msg: Binary,
     action: String,
     owner: String,
+) -> Result<Response, ContractError> {
+    handle_send(ctx, contract, amount, msg, action, Some(owner), true)
+}
+
+fn handle_send(
+    ctx: ExecuteContext,
+    contract: AndrAddr,
+    amount: Uint128,
+    msg: Binary,
+    action: String,
+    owner: Option<String>,
+    is_send_from: bool,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
         deps, info, env, ..
@@ -337,7 +291,7 @@ fn execute_send_from(
     match rates_response {
         Some(rates_response) => {
             let remaining_amount = match rates_response.leftover_funds {
-                Funds::Native(..) => amount, //What do we do in the case that the rates returns remaining amount as native funds?
+                Funds::Native(..) => amount, // Handle the case where remaining amount is native funds
                 Funds::Cw20(coin) => coin.amount,
             };
 
@@ -348,17 +302,22 @@ fn execute_send_from(
                 &info.sender,
             )?;
             let contract = contract.get_raw_address(&deps.as_ref())?.to_string();
-            let cw20_resp = execute_cw20(
-                deps,
-                env,
-                info,
+            let cw20_msg = if is_send_from {
                 Cw20ExecuteMsg::SendFrom {
                     contract,
                     amount: remaining_amount,
                     msg,
-                    owner,
-                },
-            )?;
+                    owner: owner.expect("Owner should be provided for SendFrom"),
+                }
+            } else {
+                Cw20ExecuteMsg::Send {
+                    contract,
+                    amount: remaining_amount,
+                    msg,
+                }
+            };
+
+            let cw20_resp = execute_cw20(deps, env, info, cw20_msg)?;
             resp = resp
                 .add_submessages(cw20_resp.messages)
                 .add_attributes(cw20_resp.attributes)
@@ -368,18 +327,22 @@ fn execute_send_from(
         }
         None => {
             let contract = contract.get_raw_address(&deps.as_ref())?.to_string();
-            let cw20_resp = execute_cw20(
-                deps,
-                env,
-                info,
+            let cw20_msg = if is_send_from {
                 Cw20ExecuteMsg::SendFrom {
                     contract,
                     amount,
                     msg,
-                    owner,
-                },
-            )?;
+                    owner: owner.expect("Owner should be provided for SendFrom"),
+                }
+            } else {
+                Cw20ExecuteMsg::Send {
+                    contract,
+                    amount,
+                    msg,
+                }
+            };
 
+            let cw20_resp = execute_cw20(deps, env, info, cw20_msg)?;
             Ok(cw20_resp)
         }
     }
