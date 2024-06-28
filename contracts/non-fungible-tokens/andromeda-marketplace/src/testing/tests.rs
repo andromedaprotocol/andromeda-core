@@ -473,7 +473,10 @@ fn test_execute_buy_works() {
     let mut deps = mock_dependencies_custom(&[]);
     let mut env = mock_env();
 
-    let _res = init(deps.as_mut(), None);
+    let _res = init(
+        deps.as_mut(),
+        Some(AndrAddr::from_string(MOCK_CW20_CONTRACT)),
+    );
 
     start_sale(deps.as_mut(), Asset::NativeToken("uusd".to_string()));
     assert_sale_created(deps.as_ref(), env.clone(), "uusd".to_string(), false);

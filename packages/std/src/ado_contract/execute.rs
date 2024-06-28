@@ -220,17 +220,17 @@ impl<'a> ADOContract<'a> {
     /// Handles receiving and verifies an AMPPkt from the Kernel before executing the appropriate messages.
     ///
     /// Calls the provided handler with the AMP packet attached within the context.
-    pub fn execute_amp_receive<E: DeserializeOwned>(
+    pub fn execute_amp_receive<M: DeserializeOwned>(
         &self,
         ctx: ExecuteContext,
         mut packet: AMPPkt,
-        handler: ExecuteContextFunction<E>,
+        handler: ExecuteContextFunction<M>,
     ) -> Result<Response, ContractError> {
         packet.verify_origin(&ctx.info, &ctx.deps.as_ref())?;
         let ctx = ctx.with_ctx(packet.clone());
         let msg_opt = packet.messages.pop();
         if let Some(msg_opt) = msg_opt {
-            let msg: E = from_json(msg_opt.message)?;
+            let msg: M = from_json(msg_opt.message)?;
             let response = handler(ctx, msg)?;
             Ok(response)
         } else {
