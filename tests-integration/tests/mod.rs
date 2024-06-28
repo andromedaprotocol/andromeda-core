@@ -18,3 +18,6 @@ mod lockdrop;
 
 #[cfg(test)]
 mod validator_staking;
+
+#[cfg(test)]
+mod cw20_app;
