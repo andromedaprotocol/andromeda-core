@@ -39,7 +39,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-adodb"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "andromeda-std",
  "cosmwasm-schema",
@@ -63,7 +63,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-app-contract"
-version = "1.0.1"
+version = "1.1.1"
 dependencies = [
  "andromeda-app",
  "andromeda-std",
@@ -109,7 +109,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-cross-chain-swap"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "andromeda-app",
  "andromeda-finance",
@@ -160,7 +160,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-cw20-exchange"
-version = "1.0.0"
+version = "2.0.0"
 dependencies = [
  "andromeda-app",
  "andromeda-fungible-tokens",
@@ -176,7 +176,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-cw20-staking"
-version = "1.0.0"
+version = "2.0.0"
 dependencies = [
  "andromeda-app",
  "andromeda-fungible-tokens",
@@ -220,7 +220,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-economics"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "andromeda-std",
  "cosmwasm-schema",
@@ -274,7 +274,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-kernel"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "andromeda-std",
  "cosmwasm-schema",
@@ -295,7 +295,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-lockdrop"
-version = "1.0.0"
+version = "2.0.0"
 dependencies = [
  "andromeda-app",
  "andromeda-fungible-tokens",
@@ -338,7 +338,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-merkle-airdrop"
-version = "1.0.0"
+version = "2.0.0"
 dependencies = [
  "andromeda-app",
  "andromeda-fungible-tokens",
@@ -400,7 +400,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-rate-limiting-withdrawals"
-version = "1.0.0"
+version = "2.0.0"
 dependencies = [
  "andromeda-app",
  "andromeda-finance",
@@ -432,7 +432,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-shunting"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "andromeda-app",
  "andromeda-modules",
@@ -451,7 +451,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-splitter"
-version = "1.0.0"
+version = "2.0.0"
 dependencies = [
  "andromeda-app",
  "andromeda-finance",
@@ -515,7 +515,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-timelock"
-version = "1.0.0"
+version = "2.0.0"
 dependencies = [
  "andromeda-app",
  "andromeda-finance",
@@ -530,7 +530,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-validator-staking"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "andromeda-finance",
  "andromeda-std",
@@ -547,7 +547,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-vault"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "andromeda-ecosystem",
  "andromeda-std",
@@ -560,7 +560,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-vesting"
-version = "1.0.0"
+version = "2.0.0"
 dependencies = [
  "andromeda-app",
  "andromeda-finance",
@@ -576,7 +576,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-vfs"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "andromeda-std",
  "cosmwasm-schema",
@@ -588,7 +588,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-weighted-distribution-splitter"
-version = "1.0.0"
+version = "2.0.0"
 dependencies = [
  "andromeda-app",
  "andromeda-finance",
