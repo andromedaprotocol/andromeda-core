@@ -143,7 +143,7 @@ fn test_cw20_staking_app() {
         .wrap()
         .query_wasm_smart(cw20_addr.clone(), &mock_get_version())
         .unwrap();
-    assert_eq!(version.version, "2.0.0");
+    assert_eq!(version.version, "2.0.1");
 
     assert_eq!(balance_one.balance, Uint128::from(1000u128));
     let balance_two: BalanceResponse = router
