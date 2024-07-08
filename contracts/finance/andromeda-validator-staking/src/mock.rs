@@ -109,8 +109,11 @@ pub fn mock_execute_claim_reward(
     }
 }
 
-pub fn mock_execute_withdraw_fund( denom: Option<String>, recipient: Option<AndrAddr>) -> ExecuteMsg {
-    ExecuteMsg::WithdrawFunds {denom, recipient}
+pub fn mock_execute_withdraw_fund(
+    denom: Option<String>,
+    recipient: Option<AndrAddr>,
+) -> ExecuteMsg {
+    ExecuteMsg::WithdrawFunds { denom, recipient }
 }
 
 pub fn mock_get_staked_tokens(validator: Option<Addr>) -> QueryMsg {
