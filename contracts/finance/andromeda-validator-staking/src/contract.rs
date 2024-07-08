@@ -13,7 +13,7 @@ use andromeda_finance::validator_staking::{
 };
 
 use andromeda_std::{
-    ado_base::InstantiateMsg as BaseInstantiateMsg,
+    ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     ado_contract::ADOContract,
     amp::AndrAddr,
     common::{context::ExecuteContext, encode_binary},
