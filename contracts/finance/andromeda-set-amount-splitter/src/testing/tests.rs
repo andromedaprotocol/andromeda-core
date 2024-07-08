@@ -8,7 +8,7 @@ use andromeda_std::{
 };
 // use andromeda_testing::economics_msg::generate_economics_message;
 use cosmwasm_std::{
-    attr, coins, from_json,
+    attr, coin, coins, from_json,
     testing::{mock_env, mock_info, MOCK_CONTRACT_ADDR},
     to_json_binary, BankMsg, Coin, CosmosMsg, Decimal, DepsMut, Response, SubMsg,
 };
@@ -159,7 +159,13 @@ fn test_execute_send() {
 
     let sender_funds_amount = 10000u128;
 
-    let info = mock_info(OWNER, &[Coin::new(sender_funds_amount, "uandr")]);
+    let info = mock_info(
+        OWNER,
+        &[
+            Coin::new(sender_funds_amount, "uandr"),
+            Coin::new(50_u128, "usdc"),
+        ],
+    );
 
     let recip_address1 = "address1".to_string();
 
@@ -171,30 +177,43 @@ fn test_execute_send() {
     let recipient = vec![
         AddressAmount {
             recipient: recip1.clone(),
-            coins: coins(1_u128, "uandr"),
+            coins: vec![coin(1_u128, "uandr"), coin(30_u128, "usdc")],
         },
         AddressAmount {
             recipient: recip2.clone(),
-            coins: coins(1_u128, "uandr"),
+            coins: vec![coin(1_u128, "uandr"), coin(20_u128, "usdc")],
         },
     ];
     let msg = ExecuteMsg::Send {};
 
     let amp_msg_1 = recip1
-        .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(1000, "uandr")]))
+        .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(1, "uandr")]))
         .unwrap();
     let amp_msg_2 = recip2
-        .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(2000, "uandr")]))
+        .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(1, "uandr")]))
         .unwrap();
+
+    let amp_msg_3 = recip1
+        .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(30, "usdc")]))
+        .unwrap();
+    let amp_msg_4 = recip2
+        .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(20, "usdc")]))
+        .unwrap();
+
     let amp_pkt = AMPPkt::new(
         MOCK_CONTRACT_ADDR.to_string(),
         MOCK_CONTRACT_ADDR.to_string(),
-        vec![amp_msg_1, amp_msg_2],
+        vec![amp_msg_1, amp_msg_2, amp_msg_3, amp_msg_4],
     );
     let amp_msg = amp_pkt
         .to_sub_msg(
             MOCK_KERNEL_CONTRACT,
-            Some(vec![Coin::new(1000, "uandr"), Coin::new(2000, "uandr")]),
+            Some(vec![
+                Coin::new(1, "uandr"),
+                Coin::new(1, "uandr"),
+                Coin::new(30, "usdc"),
+                Coin::new(20, "usdc"),
+            ]),
             1,
         )
         .unwrap();
@@ -214,7 +233,7 @@ fn test_execute_send() {
                 // refunds remainder to sender
                 CosmosMsg::Bank(BankMsg::Send {
                     to_address: OWNER.to_string(),
-                    amount: vec![Coin::new(7000, "uandr")], // 10000 * 0.7   remainder
+                    amount: vec![Coin::new(9998, "uandr")],
                 }),
             ),
             amp_msg,
