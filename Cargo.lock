@@ -2004,6 +2004,7 @@ dependencies = [
  "andromeda-non-fungible-tokens",
  "andromeda-primitive",
  "andromeda-rates",
+ "andromeda-set-amount-splitter",
  "andromeda-shunting",
  "andromeda-splitter",
  "andromeda-std",

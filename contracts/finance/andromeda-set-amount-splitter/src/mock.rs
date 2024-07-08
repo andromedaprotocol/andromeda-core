@@ -1,7 +1,7 @@
 #![cfg(all(not(target_arch = "wasm32"), feature = "testing"))]
 
 use crate::contract::{execute, instantiate, query, reply};
-use andromeda_finance::splitter::{AddressPercent, ExecuteMsg, InstantiateMsg, QueryMsg};
+use andromeda_finance::set_amount_splitter::{AddressAmount, ExecuteMsg, InstantiateMsg, QueryMsg};
 use andromeda_std::common::expiration::Expiry;
 use andromeda_testing::{
     mock::MockApp, mock_ado, mock_contract::ExecuteResult, MockADO, MockContract,
@@ -17,7 +17,7 @@ impl MockSplitter {
         app: &mut MockApp,
         code_id: u64,
         sender: Addr,
-        recipients: Vec<AddressPercent>,
+        recipients: Vec<AddressAmount>,
         kernel_address: impl Into<String>,
         lock_time: Option<Expiry>,
         owner: Option<String>,
@@ -41,7 +41,7 @@ pub fn mock_andromeda_splitter() -> Box<dyn Contract<Empty>> {
 }
 
 pub fn mock_splitter_instantiate_msg(
-    recipients: Vec<AddressPercent>,
+    recipients: Vec<AddressAmount>,
     kernel_address: impl Into<String>,
     lock_time: Option<Expiry>,
     owner: Option<String>,

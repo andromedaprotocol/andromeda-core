@@ -12,7 +12,7 @@ use andromeda_std::{
 use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
 use cosmwasm_std::{
     attr, coins, ensure, entry_point, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env,
-    MessageInfo, Reply, Response, StdError, SubMsg, Uint128,
+    MessageInfo, Reply, Response, StdError, SubMsg,
 };
 use cw_utils::nonpayable;
 
@@ -168,13 +168,9 @@ fn execute_send(ctx: ExecuteContext) -> Result<Response, ContractError> {
 
             if let Some(recipient_coin) = recipient_coin {
                 // Deduct from total amount
-                remainder_funds = remainder_funds.checked_sub(recipient_coin.amount)?;
-
-                // Make sure there are enough funds to cover the transfer
-                ensure!(
-                    remainder_funds.ge(&Uint128::zero()),
-                    ContractError::InsufficientFunds {}
-                );
+                remainder_funds = remainder_funds
+                    .checked_sub(recipient_coin.amount)
+                    .map_err(|_| ContractError::InsufficientFunds {})?;
 
                 let recipient_funds =
                     cosmwasm_std::coin(recipient_coin.amount.u128(), recipient_coin.denom);
