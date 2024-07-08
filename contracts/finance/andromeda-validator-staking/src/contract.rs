@@ -84,7 +84,9 @@ pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
             validator,
             recipient,
         } => execute_claim(ctx, validator, recipient),
-        ExecuteMsg::WithdrawFunds {} => execute_withdraw_fund(ctx),
+        ExecuteMsg::WithdrawFunds { denom, recipient } => {
+            execute_withdraw_fund(ctx, denom, recipient)
+        }
 
         _ => ADOContract::default().execute(ctx, msg),
     }
@@ -252,7 +254,11 @@ fn execute_claim(
     Ok(res)
 }
 
-fn execute_withdraw_fund(ctx: ExecuteContext) -> Result<Response, ContractError> {
+fn execute_withdraw_fund(
+    ctx: ExecuteContext,
+    denom: Option<String>,
+    recipient: Option<AndrAddr>,
+) -> Result<Response, ContractError> {
     let ExecuteContext {
         deps, info, env, ..
     } = ctx;
@@ -262,36 +268,40 @@ fn execute_withdraw_fund(ctx: ExecuteContext) -> Result<Response, ContractError>
         ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {}
     );
+    // let recipient = recipient.get_raw_address(&deps.as_ref())?;
+    // let recipient = recipient.unwrap_or(AndrAddr::from_string(info.sender));
+    let recipient = recipient.map_or(Ok(info.sender), |r| r.get_raw_address(&deps.as_ref()))?;
+    let funds = denom.map_or(
+        deps.querier
+            .query_all_balances(env.contract.address.clone())?,
+        |d| {
+            deps.querier
+                .query_balance(env.contract.address.clone(), d)
+                .map(|fund| vec![fund])
+                .expect("Invalid denom")
+        },
+    );
 
-    let mut funds = Vec::<Coin>::new();
-    loop {
-        match UNSTAKING_QUEUE.front(deps.storage).unwrap() {
-            Some(UnstakingTokens { payout_at, .. }) if payout_at <= env.block.time => {
-                if let Some(UnstakingTokens { fund, .. }) =
-                    UNSTAKING_QUEUE.pop_front(deps.storage)?
-                {
-                    funds.push(fund)
-                }
-            }
-            _ => break,
-        }
-    }
+    // Remove expired unstaking requests
+    let mut unstaking_queue = UNSTAKING_QUEUE.load(deps.storage)?;
+    unstaking_queue.retain(|token| token.payout_at >= env.block.time);
+    UNSTAKING_QUEUE.save(deps.storage, &unstaking_queue)?;
 
     ensure!(
         !funds.is_empty(),
         ContractError::InvalidWithdrawal {
-            msg: Some("No unstaked funds to withdraw".to_string())
+            msg: Some("No funds to withdraw".to_string())
         }
     );
 
     let res = Response::new()
         .add_message(BankMsg::Send {
-            to_address: info.sender.to_string(),
+            to_address: recipient.to_string(),
             amount: funds,
         })
         .add_attribute("action", "withdraw-funds")
         .add_attribute("from", env.contract.address)
-        .add_attribute("to", info.sender.into_string());
+        .add_attribute("to", recipient.into_string());
 
     Ok(res)
 }
@@ -316,12 +326,7 @@ fn query_staked_tokens(
 }
 
 fn query_unstaked_tokens(deps: Deps) -> Result<Vec<UnstakingTokens>, ContractError> {
-    let iter = UNSTAKING_QUEUE.iter(deps.storage).unwrap();
-    let mut res = Vec::<UnstakingTokens>::new();
-
-    for data in iter {
-        res.push(data.unwrap());
-    }
+    let res = UNSTAKING_QUEUE.load(deps.storage)?;
     Ok(res)
 }
 
@@ -342,6 +347,7 @@ pub fn on_validator_unstake(deps: DepsMut, msg: Reply) -> Result<Response, Contr
     let attributes = &msg.result.unwrap().events[0].attributes;
     let mut fund = Coin::default();
     let mut payout_at = Timestamp::default();
+    let mut unstaking_queue = UNSTAKING_QUEUE.load(deps.storage).unwrap_or_default();
     for attr in attributes {
         if attr.key == "amount" {
             fund = Coin::from_str(&attr.value).unwrap();
@@ -353,7 +359,8 @@ pub fn on_validator_unstake(deps: DepsMut, msg: Reply) -> Result<Response, Contr
             payout_at = payout_at.plus_nanos(nanos);
         }
     }
-    UNSTAKING_QUEUE.push_back(deps.storage, &UnstakingTokens { fund, payout_at })?;
+    unstaking_queue.push(UnstakingTokens { fund, payout_at });
+    UNSTAKING_QUEUE.save(deps.storage, &unstaking_queue)?;
 
     Ok(Response::default())
 }
