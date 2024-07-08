@@ -268,8 +268,7 @@ fn execute_withdraw_fund(
         ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {}
     );
-    // let recipient = recipient.get_raw_address(&deps.as_ref())?;
-    // let recipient = recipient.unwrap_or(AndrAddr::from_string(info.sender));
+
     let recipient = recipient.map_or(Ok(info.sender), |r| r.get_raw_address(&deps.as_ref()))?;
     let funds = denom.map_or(
         deps.querier
