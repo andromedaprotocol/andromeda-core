@@ -11,8 +11,8 @@ use andromeda_std::{
 };
 use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
 use cosmwasm_std::{
-    attr, ensure, entry_point, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
-    Reply, Response, StdError, SubMsg, Uint128,
+    attr, coin, coins, ensure, entry_point, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env,
+    MessageInfo, Reply, Response, StdError, SubMsg, Uint128,
 };
 use cw_utils::nonpayable;
 
@@ -131,12 +131,12 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
 fn execute_send(ctx: ExecuteContext) -> Result<Response, ContractError> {
     let ExecuteContext { deps, info, .. } = ctx;
 
+    // Maximum of two coins allowed for now
     ensure!(
-        !info.funds.is_empty(),
-        ContractError::InvalidFunds {
-            msg: "At least one coin should to be sent".to_string(),
-        }
+        info.funds.len().le(&2),
+        ContractError::ExceedsMaxAllowedCoins {}
     );
+
     for coin in info.funds.clone() {
         ensure!(
             !coin.amount.is_zero(),
@@ -149,59 +149,95 @@ fn execute_send(ctx: ExecuteContext) -> Result<Response, ContractError> {
     let splitter = SPLITTER.load(deps.storage)?;
 
     let mut msgs: Vec<SubMsg> = Vec::new();
-    let mut amp_funds: Vec<Coin> = Vec::new();
+    // let mut amp_funds: Vec<Coin> = Vec::new();
 
-    let mut remainder_funds = info.funds.clone();
+    // let mut remainder_funds = info.funds.clone();
 
-    // Maximum of two coins allowed for now
-    ensure!(
-        info.funds.len().le(&2),
-        ContractError::ExceedsMaxAllowedCoins {}
-    );
+    // let mut pkt = AMPPkt::from_ctx(ctx.amp_ctx, ctx.env.contract.address.to_string());
 
-    let mut pkt = AMPPkt::from_ctx(ctx.amp_ctx, ctx.env.contract.address.to_string());
+    // Iterate through the sent funds
+    for coin in info.funds {
+        let mut total_amount = coin.amount;
+        let denom = coin.denom;
 
-    for recipient_addr in &splitter.recipients {
-        recipient_addr.
-        let recipient_percent = recipient_addr.percent;
-        let mut vec_coin: Vec<Coin> = Vec::new();
-        for (i, coin) in info.funds.clone().iter().enumerate() {
-            let amount_owed = coin.amount.mul_floor(recipient_percent);
-            if !amount_owed.is_zero() {
-                let mut recip_coin: Coin = coin.clone();
-                recip_coin.amount = amount_owed;
-                remainder_funds[i].amount =
-                    remainder_funds[i].amount.checked_sub(recip_coin.amount)?;
-                vec_coin.push(recip_coin.clone());
-                amp_funds.push(recip_coin);
+        for recipient in &splitter.recipients {
+            // Find the recipient's corresponding denom for the current iteration of the sent funds
+            let recipient_coin = recipient
+                .coins
+                .clone()
+                .into_iter()
+                .find(|coin| coin.denom == denom);
+
+            if let Some(recipient_coin) = recipient_coin {
+                // Deduct from total amount
+                total_amount = total_amount.checked_sub(recipient_coin.amount)?;
+
+                // Make sure there are enough funds to cover the transfer
+                ensure!(
+                    total_amount.ge(&Uint128::zero()),
+                    ContractError::InsufficientFunds {}
+                );
+
+                // Creat bank send message to recipient
+                let msg = SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+                    to_address: recipient.recipient.get_addr(),
+                    amount: coins(recipient_coin.amount.u128(), recipient_coin.denom),
+                }));
+
+                msgs.push(msg);
             }
         }
-        if !vec_coin.is_empty() {
-            let amp_msg = recipient_addr
-                .recipient
-                .generate_amp_msg(&deps.as_ref(), Some(vec_coin))?;
-            pkt = pkt.add_message(amp_msg);
+
+        // Refund message for sender
+        if !total_amount.is_zero() {
+            let msg = SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+                to_address: info.sender.clone().into_string(),
+                amount: coins(total_amount.u128(), denom),
+            }));
+            msgs.push(msg);
         }
     }
-    remainder_funds.retain(|x| x.amount > Uint128::zero());
 
-    // Why does the remaining funds go the the sender of the executor of the splitter?
-    // Is it considered tax(fee) or mistake?
-    // Discussion around caller of splitter function in andromedaSPLITTER smart contract.
-    // From tests, it looks like owner of smart contract (Andromeda) will recieve the rest of funds.
-    // If so, should be documented
-    if !remainder_funds.is_empty() {
-        msgs.push(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-            to_address: info.sender.to_string(),
-            amount: remainder_funds,
-        })));
-    }
-    let kernel_address = ADOContract::default().get_kernel_address(deps.as_ref().storage)?;
+    // for recipient_addr in &splitter.recipients {
+    //     let recipient_percent = recipient_addr.percent;
+    //     let mut vec_coin: Vec<Coin> = Vec::new();
+    //     for (i, coin) in info.funds.clone().iter().enumerate() {
+    //         let amount_owed = coin.amount.mul_floor(recipient_percent);
+    //         if !amount_owed.is_zero() {
+    //             let mut recip_coin: Coin = coin.clone();
+    //             recip_coin.amount = amount_owed;
+    //             remainder_funds[i].amount =
+    //                 remainder_funds[i].amount.checked_sub(recip_coin.amount)?;
+    //             vec_coin.push(recip_coin.clone());
+    //             amp_funds.push(recip_coin);
+    //         }
+    //     }
+    //     if !vec_coin.is_empty() {
+    //         let amp_msg = recipient_addr
+    //             .recipient
+    //             .generate_amp_msg(&deps.as_ref(), Some(vec_coin))?;
+    //         pkt = pkt.add_message(amp_msg);
+    //     }
+    // }
+    // remainder_funds.retain(|x| x.amount > Uint128::zero());
 
-    if !pkt.messages.is_empty() {
-        let distro_msg = pkt.to_sub_msg(kernel_address, Some(amp_funds), 1)?;
-        msgs.push(distro_msg);
-    }
+    // // Why does the remaining funds go the the sender of the executor of the splitter?
+    // // Is it considered tax(fee) or mistake?
+    // // Discussion around caller of splitter function in andromedaSPLITTER smart contract.
+    // // From tests, it looks like owner of smart contract (Andromeda) will recieve the rest of funds.
+    // // If so, should be documented
+    // if !remainder_funds.is_empty() {
+    //     msgs.push(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+    //         to_address: info.sender.to_string(),
+    //         amount: remainder_funds,
+    //     })));
+    // }
+    // let kernel_address = ADOContract::default().get_kernel_address(deps.as_ref().storage)?;
+
+    // if !pkt.messages.is_empty() {
+    //     let distro_msg = pkt.to_sub_msg(kernel_address, Some(amp_funds), 1)?;
+    //     msgs.push(distro_msg);
+    // }
 
     Ok(Response::new()
         .add_submessages(msgs)
