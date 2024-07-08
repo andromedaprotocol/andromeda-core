@@ -7,17 +7,17 @@ use andromeda_std::{
     error::ContractError,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{ensure, Deps, Uint128};
+use cosmwasm_std::{ensure, Coin, Deps};
 
 #[cw_serde]
 pub struct AddressAmount {
     pub recipient: Recipient,
-    pub amount: Uint128,
+    pub coins: Vec<Coin>,
 }
 
 impl AddressAmount {
-    pub fn new(recipient: Recipient, amount: Uint128) -> Self {
-        Self { recipient, amount }
+    pub fn new(recipient: Recipient, coins: Vec<Coin>) -> Self {
+        Self { recipient, coins }
     }
 }
 
@@ -79,6 +79,8 @@ pub struct GetSplitterConfigResponse {
 /// * The number of recipients must not exceed 100
 /// * The recipient addresses must be unique
 /// * The recipient amount must be above zero
+/// * Each recipient can't have more than two coins assigned.
+/// * No duplicate coins
 
 pub fn validate_recipient_list(
     deps: Deps,
@@ -97,7 +99,20 @@ pub fn validate_recipient_list(
     let mut recipient_address_set = HashSet::new();
 
     for rec in recipients {
-        ensure!(!rec.amount.is_zero(), ContractError::InvalidZeroAmount {});
+        ensure!(
+            rec.coins.len().le(&2),
+            ContractError::ExceedsMaxAllowedCoins {}
+        );
+
+        let mut denom_set = HashSet::new();
+        for coin in rec.coins {
+            ensure!(!coin.amount.is_zero(), ContractError::InvalidZeroAmount {});
+            ensure!(
+                !denom_set.contains(&coin.denom),
+                ContractError::DuplicateCoinDenoms {}
+            );
+            denom_set.insert(coin.denom);
+        }
 
         rec.recipient.validate(&deps)?;
 
@@ -114,7 +129,7 @@ pub fn validate_recipient_list(
 
 #[cfg(test)]
 mod tests {
-    use cosmwasm_std::testing::mock_dependencies;
+    use cosmwasm_std::{coin, coins, testing::mock_dependencies};
 
     use super::*;
 
@@ -128,24 +143,54 @@ mod tests {
         let recipients_zero_amount = vec![
             AddressAmount {
                 recipient: Recipient::from_string(String::from("xyz")),
-                amount: Uint128::one(),
+                coins: coins(1_u128, "uandr"),
             },
             AddressAmount {
                 recipient: Recipient::from_string(String::from("abc")),
-                amount: Uint128::zero(),
+                coins: coins(0_u128, "usdc"),
             },
         ];
         let err = validate_recipient_list(deps.as_ref(), recipients_zero_amount).unwrap_err();
         assert_eq!(err, ContractError::InvalidZeroAmount {});
 
-        let duplicate_recipients = vec![
+        let recipients_zero_amount = vec![
             AddressAmount {
-                recipient: Recipient::from_string(String::from("abc")),
-                amount: Uint128::one(),
+                recipient: Recipient::from_string(String::from("xyz")),
+                coins: coins(1_u128, "uandr"),
             },
             AddressAmount {
                 recipient: Recipient::from_string(String::from("abc")),
-                amount: Uint128::one(),
+                coins: vec![
+                    coin(1_u128, "uandr"),
+                    coin(12_u128, "usdc"),
+                    coin(13_u128, "usdt"),
+                ],
+            },
+        ];
+        let err = validate_recipient_list(deps.as_ref(), recipients_zero_amount).unwrap_err();
+        assert_eq!(err, ContractError::ExceedsMaxAllowedCoins {});
+
+        let recipients_zero_amount = vec![
+            AddressAmount {
+                recipient: Recipient::from_string(String::from("xyz")),
+                coins: coins(1_u128, "uandr"),
+            },
+            AddressAmount {
+                recipient: Recipient::from_string(String::from("abc")),
+                coins: vec![coin(1_u128, "uandr"), coin(12_u128, "uandr")],
+            },
+        ];
+        let err = validate_recipient_list(deps.as_ref(), recipients_zero_amount).unwrap_err();
+        assert_eq!(err, ContractError::DuplicateCoinDenoms {});
+
+        let duplicate_recipients = vec![
+            AddressAmount {
+                recipient: Recipient::from_string(String::from("abc")),
+                coins: coins(1_u128, "denom"),
+            },
+            AddressAmount {
+                recipient: Recipient::from_string(String::from("abc")),
+                coins: coins(1_u128, "uandr"),
             },
         ];
 
@@ -155,11 +200,11 @@ mod tests {
         let valid_recipients = vec![
             AddressAmount {
                 recipient: Recipient::from_string(String::from("abc")),
-                amount: Uint128::one(),
+                coins: coins(1_u128, "uandr"),
             },
             AddressAmount {
                 recipient: Recipient::from_string(String::from("xyz")),
-                amount: Uint128::one(),
+                coins: coins(1_u128, "denom"),
             },
         ];
 
@@ -168,7 +213,7 @@ mod tests {
 
         let one_valid_recipient = vec![AddressAmount {
             recipient: Recipient::from_string(String::from("abc")),
-            amount: Uint128::one(),
+            coins: coins(1_u128, "denom"),
         }];
 
         let res = validate_recipient_list(deps.as_ref(), one_valid_recipient);

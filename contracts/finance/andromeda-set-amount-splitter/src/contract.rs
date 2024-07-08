@@ -1,6 +1,6 @@
 use crate::state::SPLITTER;
-use andromeda_finance::splitter::{
-    validate_recipient_list, AddressPercent, ExecuteMsg, GetSplitterConfigResponse, InstantiateMsg,
+use andromeda_finance::set_amount_splitter::{
+    validate_recipient_list, AddressAmount, ExecuteMsg, GetSplitterConfigResponse, InstantiateMsg,
     QueryMsg, Splitter,
 };
 use andromeda_std::{
@@ -152,18 +152,17 @@ fn execute_send(ctx: ExecuteContext) -> Result<Response, ContractError> {
     let mut amp_funds: Vec<Coin> = Vec::new();
 
     let mut remainder_funds = info.funds.clone();
-    // Looking at this nested for loop, we could find a way to reduce time/memory complexity to avoid DoS.
-    // Would like to understand more about why we loop through funds and what it exactly stored in it.
-    // From there we could look into HashMaps, or other methods to break the nested loops and avoid Denial of Service.
-    // [ACK-04] Limit number of coins sent to 5.
+
+    // Maximum of two coins allowed for now
     ensure!(
-        info.funds.len() < 5,
+        info.funds.len().le(&2),
         ContractError::ExceedsMaxAllowedCoins {}
     );
 
     let mut pkt = AMPPkt::from_ctx(ctx.amp_ctx, ctx.env.contract.address.to_string());
 
     for recipient_addr in &splitter.recipients {
+        recipient_addr.
         let recipient_percent = recipient_addr.percent;
         let mut vec_coin: Vec<Coin> = Vec::new();
         for (i, coin) in info.funds.clone().iter().enumerate() {
@@ -212,7 +211,7 @@ fn execute_send(ctx: ExecuteContext) -> Result<Response, ContractError> {
 
 fn execute_update_recipients(
     ctx: ExecuteContext,
-    recipients: Vec<AddressPercent>,
+    recipients: Vec<AddressAmount>,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
         deps, info, env, ..
