@@ -8,7 +8,8 @@ use cosmwasm_std::{coin, coins, Uint128};
 
 use andromeda_finance::set_amount_splitter::AddressAmount;
 use andromeda_set_amount_splitter::mock::{
-    mock_andromeda_splitter, mock_splitter_instantiate_msg, MockSplitter,
+    mock_andromeda_set_amount_splitter, mock_set_amount_splitter_instantiate_msg,
+    MockSetAmountSplitter,
 };
 
 #[test]
@@ -22,7 +23,7 @@ fn test_splitter() {
         ])
         .with_contracts(vec![
             ("app-contract", mock_andromeda_app()),
-            ("splitter", mock_andromeda_splitter()),
+            ("splitter", mock_andromeda_set_amount_splitter()),
         ])
         .build(&mut router);
     let owner = andr.get_wallet("owner");
@@ -42,8 +43,12 @@ fn test_splitter() {
         },
     ];
 
-    let splitter_init_msg =
-        mock_splitter_instantiate_msg(splitter_recipients, andr.kernel.addr().clone(), None, None);
+    let splitter_init_msg = mock_set_amount_splitter_instantiate_msg(
+        splitter_recipients,
+        andr.kernel.addr().clone(),
+        None,
+        None,
+    );
     let splitter_app_component = AppComponent {
         name: "splitter".to_string(),
         component_type: ComponentType::new(splitter_init_msg),
@@ -61,7 +66,7 @@ fn test_splitter() {
         None,
     );
 
-    let splitter: MockSplitter =
+    let splitter: MockSetAmountSplitter =
         app.query_ado_by_component_name(&router, splitter_app_component.name);
 
     let token = coin(1000, "uandr");
