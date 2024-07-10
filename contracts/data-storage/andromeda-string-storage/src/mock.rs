@@ -43,7 +43,6 @@ impl MockStringStorage {
         &self,
         app: &mut MockApp,
         sender: Addr,
-        key: Option<String>,
         value: StringStorage,
         funds: Option<Coin>,
     ) -> ExecuteResult {
