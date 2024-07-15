@@ -28,7 +28,7 @@ impl Default for RatesResponse {
 
 #[cw_serde]
 pub enum RatesMessage {
-    SetRate { action: String, rate: Rate },
+    SetRate { action: String, rates: Vec<Rate> },
     RemoveRate { action: String },
 }
 

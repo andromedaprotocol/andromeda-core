@@ -13,7 +13,7 @@ pub struct ADOContract<'a> {
     pub(crate) permissioned_actions: Map<'a, String, bool>,
     #[cfg(feature = "rates")]
     /// Mapping of action to rate
-    pub rates: Map<'a, &'a str, Rate>,
+    pub rates: Map<'a, &'a str, Vec<Rate>>,
 }
 
 impl<'a> Default for ADOContract<'a> {
