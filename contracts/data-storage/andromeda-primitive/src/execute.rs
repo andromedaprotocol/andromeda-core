@@ -34,14 +34,17 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
         ExecuteMsg::SetValue { key, value } => set_value(ctx, key, value, action),
         ExecuteMsg::DeleteValue { key } => delete_value(ctx, key),
         ExecuteMsg::Rates(rates_message) => match rates_message {
-            RatesMessage::SetRate { rate, .. } => match rate {
-                Rate::Local(local_rate) => {
-                    // Percent rates aren't applicable in this case, so we enforce Flat rates
-                    ensure!(local_rate.value.is_flat(), ContractError::InvalidRate {});
-                    ADOContract::default().execute(ctx, msg)
+            RatesMessage::SetRate { rates, .. } => {
+                for rate in rates {
+                    match rate {
+                        Rate::Local(local_rate) => {
+                            ensure!(local_rate.value.is_flat(), ContractError::InvalidRate {});
+                        }
+                        Rate::Contract(_) => (),
+                    }
                 }
-                Rate::Contract(_) => ADOContract::default().execute(ctx, msg),
-            },
+                ADOContract::default().execute(ctx, msg)
+            }
             RatesMessage::RemoveRate { .. } => ADOContract::default().execute(ctx, msg),
         },
         _ => ADOContract::default().execute(ctx, msg),

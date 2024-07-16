@@ -107,9 +107,9 @@ impl MockAuction {
         app: &mut MockApp,
         sender: Addr,
         action: String,
-        rate: Rate,
+        rates: Vec<Rate>,
     ) -> ExecuteResult {
-        self.execute(app, &mock_set_rate_msg(action, rate), sender, &[])
+        self.execute(app, &mock_set_rate_msg(action, rates), sender, &[])
     }
 
     pub fn execute_set_permission(
@@ -229,8 +229,8 @@ pub fn mock_update_auction(
     }
 }
 
-pub fn mock_set_rate_msg(action: String, rate: Rate) -> ExecuteMsg {
-    ExecuteMsg::Rates(RatesMessage::SetRate { action, rate })
+pub fn mock_set_rate_msg(action: String, rates: Vec<Rate>) -> ExecuteMsg {
+    ExecuteMsg::Rates(RatesMessage::SetRate { action, rates })
 }
 
 pub fn mock_set_permission(actor: AndrAddr, action: String, permission: Permission) -> ExecuteMsg {

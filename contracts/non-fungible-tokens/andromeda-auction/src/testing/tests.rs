@@ -1238,7 +1238,7 @@ fn execute_claim_with_tax() {
     let _res = init(deps.as_mut());
     let tax_recipient = "tax_recipient";
 
-    let rate: Rate = Rate::Local(LocalRate {
+    let rate = vec![Rate::Local(LocalRate {
         rate_type: LocalRateType::Additive,
         recipients: vec![Recipient {
             address: AndrAddr::from_string(tax_recipient.to_string()),
@@ -1247,7 +1247,7 @@ fn execute_claim_with_tax() {
         }],
         value: LocalRateValue::Flat(coin(20_u128, "uusd")),
         description: None,
-    });
+    })];
 
     // Set rates
     ADOContract::default()
@@ -1325,7 +1325,7 @@ fn execute_claim_with_royalty() {
     let _res = init(deps.as_mut());
     let royalty_recipient = "royalty_recipient";
 
-    let rate: Rate = Rate::Local(LocalRate {
+    let rate = vec![Rate::Local(LocalRate {
         rate_type: LocalRateType::Deductive,
         recipients: vec![Recipient {
             address: AndrAddr::from_string(royalty_recipient.to_string()),
@@ -1334,7 +1334,7 @@ fn execute_claim_with_royalty() {
         }],
         value: LocalRateValue::Flat(coin(20_u128, "uusd")),
         description: None,
-    });
+    })];
 
     // Set rates
     ADOContract::default()
@@ -1487,7 +1487,7 @@ fn execute_claim_cw20_with_tax() {
     let mut env = mock_env();
     let _res = init_cw20(deps.as_mut(), None);
     let tax_recipient = "tax_recipient";
-    let rate: Rate = Rate::Local(LocalRate {
+    let rate = vec![Rate::Local(LocalRate {
         rate_type: LocalRateType::Additive,
         recipients: vec![Recipient {
             address: AndrAddr::from_string(tax_recipient.to_string()),
@@ -1498,7 +1498,7 @@ fn execute_claim_cw20_with_tax() {
             percent: Decimal::percent(20),
         }),
         description: None,
-    });
+    })];
 
     // Set rates
     ADOContract::default()

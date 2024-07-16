@@ -63,9 +63,9 @@ impl MockMarketplace {
         app: &mut MockApp,
         sender: Addr,
         action: impl Into<String>,
-        rate: Rate,
+        rates: Vec<Rate>,
     ) -> ExecuteResult {
-        self.execute(app, &mock_set_rates(action, rate), sender, &[])
+        self.execute(app, &mock_set_rates(action, rates), sender, &[])
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -150,10 +150,10 @@ pub fn mock_buy_token(token_address: impl Into<String>, token_id: impl Into<Stri
     }
 }
 
-pub fn mock_set_rates(action: impl Into<String>, rate: Rate) -> ExecuteMsg {
+pub fn mock_set_rates(action: impl Into<String>, rates: Vec<Rate>) -> ExecuteMsg {
     ExecuteMsg::Rates(RatesMessage::SetRate {
         action: action.into(),
-        rate,
+        rates,
     })
 }
 

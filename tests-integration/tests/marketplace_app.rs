@@ -1,5 +1,7 @@
 #![cfg(not(target_arch = "wasm32"))]
 
+use std::vec;
+
 use andromeda_address_list::mock::{
     mock_address_list_instantiate_msg, mock_andromeda_address_list, MockAddressList,
 };
@@ -135,7 +137,7 @@ fn test_marketplace_app() {
             &mut router,
             owner.clone(),
             "MarketplaceBuy",
-            Rate::Contract(AndrAddr::from_string(rates.addr())),
+            vec![Rate::Contract(AndrAddr::from_string(rates.addr()))],
         )
         .unwrap();
 
@@ -563,7 +565,7 @@ fn test_marketplace_app_cw20_restricted() {
             &mut router,
             owner.clone(),
             "MarketplaceBuy",
-            Rate::Contract(AndrAddr::from_string(rates.addr())),
+            vec![Rate::Contract(AndrAddr::from_string(rates.addr()))],
         )
         .unwrap();
 
@@ -861,7 +863,7 @@ fn test_marketplace_app_cw20_unrestricted() {
             &mut router,
             owner.clone(),
             "MarketplaceBuy",
-            Rate::Contract(AndrAddr::from_string(rates.addr())),
+            vec![Rate::Contract(AndrAddr::from_string(rates.addr()))],
         )
         .unwrap();
 

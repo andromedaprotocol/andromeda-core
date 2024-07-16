@@ -655,7 +655,7 @@ fn test_execute_buy_with_tax_and_royalty_insufficient_funds() {
     start_sale(deps.as_mut(), Asset::NativeToken("uusd".to_string()));
     assert_sale_created(deps.as_ref(), mock_env(), "uusd".to_string(), false);
 
-    let rate = Rate::Local(LocalRate {
+    let rate = vec![Rate::Local(LocalRate {
         rate_type: LocalRateType::Additive,
         recipients: vec![Recipient {
             address: AndrAddr::from_string("tax_recipient".to_string()),
@@ -666,7 +666,7 @@ fn test_execute_buy_with_tax_and_royalty_insufficient_funds() {
             percent: Decimal::percent(50),
         }),
         description: None,
-    });
+    })];
 
     // Set rates
     ADOContract::default()
@@ -710,7 +710,7 @@ fn test_execute_buy_with_tax_and_royalty_insufficient_funds_cw20() {
         uses_cw20,
     );
 
-    let rate = Rate::Local(LocalRate {
+    let rate = vec![Rate::Local(LocalRate {
         rate_type: LocalRateType::Additive,
         recipients: vec![Recipient {
             address: AndrAddr::from_string("tax_recipient".to_string()),
@@ -721,7 +721,7 @@ fn test_execute_buy_with_tax_and_royalty_insufficient_funds_cw20() {
             percent: Decimal::percent(50),
         }),
         description: None,
-    });
+    })];
 
     // Set rates
     ADOContract::default()
@@ -787,7 +787,7 @@ fn test_execute_buy_with_tax_and_royalty_works() {
         token_address: MOCK_TOKEN_ADDR.to_string(),
     };
 
-    let rate = Rate::Local(LocalRate {
+    let rate = vec![Rate::Local(LocalRate {
         rate_type: LocalRateType::Additive,
         recipients: vec![Recipient {
             address: AndrAddr::from_string("tax_recipient".to_string()),
@@ -798,7 +798,7 @@ fn test_execute_buy_with_tax_and_royalty_works() {
             percent: Decimal::percent(50),
         }),
         description: None,
-    });
+    })];
 
     // Set rates
     ADOContract::default()

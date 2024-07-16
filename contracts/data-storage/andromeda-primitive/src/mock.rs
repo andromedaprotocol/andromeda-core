@@ -61,9 +61,9 @@ impl MockPrimitive {
         app: &mut MockApp,
         sender: Addr,
         action: String,
-        rate: Rate,
+        rates: Vec<Rate>,
     ) -> ExecuteResult {
-        self.execute(app, &mock_set_rate_msg(action, rate), sender, &[])
+        self.execute(app, &mock_set_rate_msg(action, rates), sender, &[])
     }
 
     pub fn query_value(&self, app: &mut MockApp, key: Option<String>) -> GetValueResponse {
@@ -109,8 +109,8 @@ pub fn mock_store_address_msgs(key: String, address: Addr) -> ExecuteMsg {
     }
 }
 
-pub fn mock_set_rate_msg(action: String, rate: Rate) -> ExecuteMsg {
-    ExecuteMsg::Rates(RatesMessage::SetRate { action, rate })
+pub fn mock_set_rate_msg(action: String, rates: Vec<Rate>) -> ExecuteMsg {
+    ExecuteMsg::Rates(RatesMessage::SetRate { action, rates })
 }
 
 pub fn mock_primitive_get_value(key: Option<String>) -> QueryMsg {

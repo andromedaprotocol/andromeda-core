@@ -99,7 +99,7 @@ fn test_cw20_with_rates() {
         &mut router,
         owner.clone(),
         "Cw20TransferFrom".to_string(),
-        Rate::Local(LocalRate {
+        vec![Rate::Local(LocalRate {
             rate_type: LocalRateType::Deductive,
             recipients: vec![
                 Recipient::new(recipient_one, None),
@@ -109,7 +109,7 @@ fn test_cw20_with_rates() {
                 percent: Decimal::percent(10),
             }),
             description: None,
-        }),
+        })],
     )
     .unwrap();
 

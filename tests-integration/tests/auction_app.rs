@@ -117,7 +117,7 @@ fn test_auction_app_modules() {
             &mut router,
             owner.clone(),
             "AuctionClaim".to_string(),
-            Rate::Local(LocalRate {
+            vec![Rate::Local(LocalRate {
                 rate_type: LocalRateType::Deductive,
                 recipients: vec![
                     Recipient::new(recipient_one, None),
@@ -127,7 +127,7 @@ fn test_auction_app_modules() {
                     percent: Decimal::percent(25),
                 }),
                 description: None,
-            }),
+            })],
         )
         .unwrap();
 

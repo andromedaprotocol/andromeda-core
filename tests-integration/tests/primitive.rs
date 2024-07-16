@@ -84,14 +84,14 @@ fn test_primitive() {
             &mut router,
             owner.clone(),
             "PrimitiveSetValue".to_string(),
-            Rate::Local(LocalRate {
+            vec![Rate::Local(LocalRate {
                 rate_type: LocalRateType::Deductive,
                 recipients: vec![Recipient::new(recipient_one, None)],
                 value: LocalRateValue::Percent(PercentRate {
                     percent: Decimal::percent(25),
                 }),
                 description: None,
-            }),
+            })],
         )
         .unwrap_err()
         .downcast()
@@ -104,12 +104,12 @@ fn test_primitive() {
             &mut router,
             owner.clone(),
             "PrimitiveSetValue".to_string(),
-            Rate::Local(LocalRate {
+            vec![Rate::Local(LocalRate {
                 rate_type: LocalRateType::Deductive,
                 recipients: vec![Recipient::new(recipient_one, None)],
                 value: LocalRateValue::Flat(coin(10_u128, "uandr")),
                 description: None,
-            }),
+            })],
         )
         .unwrap();
 
