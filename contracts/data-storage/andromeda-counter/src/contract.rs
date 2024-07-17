@@ -1,6 +1,6 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response, ensure, Storage, Addr};
+use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response, ensure, Storage, Addr, attr};
 
 use andromeda_data_storage::counter::{ExecuteMsg, InstantiateMsg, QueryMsg, CounterRestriction};
 use andromeda_data_storage::counter::{
@@ -9,16 +9,27 @@ use andromeda_data_storage::counter::{
 use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     ado_contract::ADOContract,
-    common::{context::ExecuteContext, encode_binary},
+    common::{
+        context::ExecuteContext, encode_binary,
+        actions::call_action,
+        call_action::get_action_name,
+    },
     error::ContractError,
 };
 use cw_utils::nonpayable;
 
-use crate::state::{RESTRICTION, CURRENT_AMOUNT, DEFAULT_INITIAL_AMOUNT, DEFAULT_INCREASE_AMOUNT, DEFAULT_DECREASE_AMOUNT, INITIAL_AMOUNT, INCREASE_AMOUNT, DECREASE_AMOUNT};
+use crate::state::{
+    RESTRICTION, CURRENT_AMOUNT,
+    INITIAL_AMOUNT, INCREASE_AMOUNT, DECREASE_AMOUNT
+};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-counter";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
+
+const DEFAULT_INITIAL_AMOUNT: u64 = 0;
+const DEFAULT_INCREASE_AMOUNT: u64 = 1;
+const DEFAULT_DECREASE_AMOUNT: u64 = 1;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -43,25 +54,15 @@ pub fn instantiate(
 
     RESTRICTION.save(deps.storage, &msg.restriction)?;
 
-    if let Some(initial_amount) = msg.initial_amount {
-        INITIAL_AMOUNT.save(deps.storage, &initial_amount)?;
-        CURRENT_AMOUNT.save(deps.storage, &initial_amount)?;
-    } else {
-        INITIAL_AMOUNT.save(deps.storage, &DEFAULT_INITIAL_AMOUNT)?;
-        CURRENT_AMOUNT.save(deps.storage, &DEFAULT_INITIAL_AMOUNT)?;
-    }
+    let initial_amount = msg.initial_state.initial_amount.unwrap_or(DEFAULT_INITIAL_AMOUNT);
+    INITIAL_AMOUNT.save(deps.storage, &initial_amount)?;
+    CURRENT_AMOUNT.save(deps.storage, &initial_amount)?;
 
-    if let Some(increase_amount) = msg.increase_amount {
-        INCREASE_AMOUNT.save(deps.storage, &increase_amount)?;
-    } else {
-        INCREASE_AMOUNT.save(deps.storage, &DEFAULT_INCREASE_AMOUNT)?;
-    }
+    let increase_amount = msg.initial_state.increase_amount.unwrap_or(DEFAULT_INCREASE_AMOUNT);
+    INCREASE_AMOUNT.save(deps.storage, &increase_amount)?;
 
-    if let Some(decrease_amount) = msg.decrease_amount {
-        DECREASE_AMOUNT.save(deps.storage, &decrease_amount)?;
-    } else {
-        DECREASE_AMOUNT.save(deps.storage, &DEFAULT_DECREASE_AMOUNT)?;
-    }
+    let decrease_amount = msg.initial_state.decrease_amount.unwrap_or(DEFAULT_DECREASE_AMOUNT);
+    DECREASE_AMOUNT.save(deps.storage, &decrease_amount)?;
 
     Ok(resp)
 }
@@ -82,21 +83,35 @@ pub fn execute(
     }
 }
 
-fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
 
-    match msg.clone() {
-        ExecuteMsg::Increment {} => execute_increment(ctx),
-        ExecuteMsg::Decrement {} => execute_decrement(ctx),
-        ExecuteMsg::Reset {} => execute_reset(ctx),
-        ExecuteMsg::UpdateRestriction { restriction } => execute_update_restriction(ctx, restriction),
-        ExecuteMsg::SetIncreaseAmount { increase_amount } => execute_set_increase_amount(ctx, increase_amount),
-        ExecuteMsg::SetDecreaseAmount { decrease_amount } => execute_set_decrease_amount(ctx, decrease_amount),
+    let action = get_action_name(CONTRACT_NAME, msg.as_ref());
+
+    let action_response = call_action(
+        &mut ctx.deps,
+        &ctx.info,
+        &ctx.env,
+        &ctx.amp_ctx,
+        msg.as_ref(),
+    )?;
+
+    let res = match msg {
+        ExecuteMsg::Increment {} => execute_increment(ctx, action),
+        ExecuteMsg::Decrement {} => execute_decrement(ctx, action),
+        ExecuteMsg::Reset {} => execute_reset(ctx, action),
+        ExecuteMsg::UpdateRestriction { restriction } => execute_update_restriction(ctx, restriction, action),
+        ExecuteMsg::SetIncreaseAmount { increase_amount } => execute_set_increase_amount(ctx, increase_amount, action),
+        ExecuteMsg::SetDecreaseAmount { decrease_amount } => execute_set_decrease_amount(ctx, decrease_amount, action),
         _ => ADOContract::default().execute(ctx, msg),
+    }?;
 
-    }
+    Ok(res
+        .add_submessages(action_response.messages)
+        .add_attributes(action_response.attributes)
+        .add_events(action_response.events))
 }
 
-pub fn execute_increment(ctx: ExecuteContext) -> Result<Response, ContractError> {
+pub fn execute_increment(ctx: ExecuteContext, action: String) -> Result<Response, ContractError> {
     nonpayable(&ctx.info)?;
 
     let sender = ctx.info.sender.clone();
@@ -104,19 +119,21 @@ pub fn execute_increment(ctx: ExecuteContext) -> Result<Response, ContractError>
         has_permission(ctx.deps.storage, &sender)?,
         ContractError::Unauthorized {}
     );
-    let current_amount = CURRENT_AMOUNT.load(ctx.deps.storage)?;
+
     let increase_amount = INCREASE_AMOUNT.load(ctx.deps.storage)?;
-    CURRENT_AMOUNT.save(ctx.deps.storage, &(current_amount + increase_amount))?;
+    let current_amount = CURRENT_AMOUNT.load(ctx.deps.storage)?.checked_add(increase_amount).unwrap();
+
+    CURRENT_AMOUNT.save(ctx.deps.storage, &current_amount)?;
 
     Ok(
-        Response::new()
-        .add_attribute("method", "execute_increment")
-        .add_attribute("sender", sender)
-        .add_attribute("current_amount", &CURRENT_AMOUNT.load(ctx.deps.storage)?.to_string())
-    )
+        Response::new().add_attributes(vec![
+        attr("action", action),
+        attr("sender", sender),
+        attr("current_amount", current_amount.to_string()),
+    ]))
 }
 
-pub fn execute_decrement(ctx: ExecuteContext) -> Result<Response, ContractError> {
+pub fn execute_decrement(ctx: ExecuteContext, action: String) -> Result<Response, ContractError> {
     nonpayable(&ctx.info)?;
 
     let sender = ctx.info.sender.clone();
@@ -124,24 +141,23 @@ pub fn execute_decrement(ctx: ExecuteContext) -> Result<Response, ContractError>
         has_permission(ctx.deps.storage, &sender)?,
         ContractError::Unauthorized {}
     );
-    let current_amount = CURRENT_AMOUNT.load(ctx.deps.storage)?;
+
     let decrease_amount = DECREASE_AMOUNT.load(ctx.deps.storage)?;
-    if decrease_amount > current_amount {
-        CURRENT_AMOUNT.save(ctx.deps.storage, &0)?;
-    } else {
-        CURRENT_AMOUNT.save(ctx.deps.storage, &(current_amount - decrease_amount))?;
-    }
+    let current_amount = CURRENT_AMOUNT.load(ctx.deps.storage)?.checked_sub(decrease_amount).unwrap_or(0);
+
+    CURRENT_AMOUNT.save(ctx.deps.storage, &current_amount)?;
 
     Ok(
-        Response::new()
-        .add_attribute("method", "execute_decrement")
-        .add_attribute("sender", sender)
-        .add_attribute("current_amount", &CURRENT_AMOUNT.load(ctx.deps.storage)?.to_string())
-    )
+        Response::new().add_attributes(vec![
+        attr("action", action),
+        attr("sender", sender),
+        attr("current_amount", current_amount.to_string()),
+    ]))
 }
 
 pub fn execute_reset(
     ctx: ExecuteContext,
+    action: String,
 ) -> Result<Response, ContractError> {
     let sender = ctx.info.sender.clone();
     ensure!(
@@ -153,16 +169,17 @@ pub fn execute_reset(
     CURRENT_AMOUNT.save(ctx.deps.storage, &initial_amount)?;
 
     Ok(
-        Response::new()
-        .add_attribute("method", "execute_reset")
-        .add_attribute("sender", sender)
-        .add_attribute("current_amount", initial_amount.to_string())
-    )
+        Response::new().add_attributes(vec![
+        attr("action", action),
+        attr("sender", sender),
+        attr("current_amount", initial_amount.to_string()),
+    ]))
 }
 
 pub fn execute_update_restriction(
     ctx: ExecuteContext,
     restriction: CounterRestriction,
+    action: String,
 ) -> Result<Response, ContractError> {
     nonpayable(&ctx.info)?;
     let sender = ctx.info.sender;
@@ -173,15 +190,16 @@ pub fn execute_update_restriction(
     RESTRICTION.save(ctx.deps.storage, &restriction)?;
 
     Ok(
-        Response::new()
-        .add_attribute("method", "update_restriction")
-        .add_attribute("sender", sender)
-    )
+        Response::new().add_attributes(vec![
+        attr("action", action),
+        attr("sender", sender),
+    ]))
 }
 
 pub fn execute_set_increase_amount(
     ctx: ExecuteContext,
     increase_amount: u64,
+    action: String,
 ) -> Result<Response, ContractError> {
     let sender = ctx.info.sender;
     ensure!(
@@ -192,15 +210,17 @@ pub fn execute_set_increase_amount(
     INCREASE_AMOUNT.save(ctx.deps.storage, &increase_amount)?;
 
     Ok(
-        Response::new()
-        .add_attribute("method", "execute_set_increase_amount")
-        .add_attribute("sender", sender)
-    )
+        Response::new().add_attributes(vec![
+        attr("action", action),
+        attr("sender", sender),
+        attr("increase_amount", increase_amount.to_string()),
+    ]))
 }
 
 pub fn execute_set_decrease_amount(
     ctx: ExecuteContext,
     decrease_amount: u64,
+    action: String,
 ) -> Result<Response, ContractError> {
     let sender = ctx.info.sender;
     ensure!(
@@ -211,10 +231,11 @@ pub fn execute_set_decrease_amount(
     DECREASE_AMOUNT.save(ctx.deps.storage, &decrease_amount)?;
 
     Ok(
-        Response::new()
-        .add_attribute("method", "execute_set_decrease_amount")
-        .add_attribute("sender", sender)
-    )
+        Response::new().add_attributes(vec![
+        attr("action", action),
+        attr("sender", sender),
+        attr("decrease_amount", decrease_amount.to_string()),
+    ]))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

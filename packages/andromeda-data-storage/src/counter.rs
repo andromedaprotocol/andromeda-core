@@ -5,6 +5,11 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 #[cw_serde]
 pub struct InstantiateMsg {
     pub restriction: CounterRestriction,
+    pub initial_state: State,
+}
+
+#[cw_serde]
+pub struct State {
     pub initial_amount: Option<u64>,
     pub increase_amount: Option<u64>,
     pub decrease_amount: Option<u64>,

@@ -1,6 +1,6 @@
 use andromeda_data_storage::counter::{ExecuteMsg, InstantiateMsg, QueryMsg, CounterRestriction};
 use andromeda_data_storage::counter::{
-    GetInitialAmountResponse, GetCurrentAmountResponse, GetIncreaseAmountResponse, GetDecreaseAmountResponse, GetRestrictionResponse,
+    GetInitialAmountResponse, GetCurrentAmountResponse, GetIncreaseAmountResponse, GetDecreaseAmountResponse, GetRestrictionResponse, State,
 };
 use andromeda_std::{
     error::ContractError,
@@ -18,9 +18,7 @@ pub type MockDeps = OwnedDeps<MockStorage, MockApi, WasmMockQuerier>;
 
 pub fn proper_initialization(
     restriction: CounterRestriction, 
-    initial_amount: Option<u64>, 
-    increase_amount: Option<u64>, 
-    decrease_amount: Option<u64>
+    initial_state: State,
 ) -> (MockDeps, MessageInfo) {
     let mut deps = mock_dependencies_custom(&[]);
     let info = mock_info("creator", &[]);
@@ -28,9 +26,7 @@ pub fn proper_initialization(
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
         restriction,
-        initial_amount,
-        increase_amount,
-        decrease_amount,
+        initial_state,
     };
     let env = mock_env();
     let res = instantiate(deps.as_mut(), env, info.clone(), msg).unwrap();
