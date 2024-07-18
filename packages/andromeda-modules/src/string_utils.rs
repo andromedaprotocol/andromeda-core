@@ -9,9 +9,7 @@ pub struct InstantiateMsg {}
 
 #[andr_exec]
 #[cw_serde]
-pub enum ExecuteMsg {
-    Split { input: String, delimiter: Delimiter },
-}
+pub enum ExecuteMsg {}
 
 #[cw_serde]
 pub enum Delimiter {
@@ -24,7 +22,7 @@ pub enum Delimiter {
 #[derive(QueryResponses)]
 pub enum QueryMsg {
     #[returns(GetSplitResultResponse)]
-    GetSplitResult {},
+    GetSplitResult { input: String, delimiter: Delimiter },
 }
 
 #[cw_serde]

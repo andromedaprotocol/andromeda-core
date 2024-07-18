@@ -1,6 +1,6 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response, Storage, attr};
+use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response};
 
 use andromeda_modules::string_utils::{Delimiter, ExecuteMsg, InstantiateMsg, QueryMsg};
 use andromeda_modules::string_utils::GetSplitResultResponse;
@@ -10,11 +10,9 @@ use andromeda_std::{
     common::{
         context::ExecuteContext, encode_binary,
         actions::call_action,
-        call_action::get_action_name,
     },
     error::ContractError,
 };
-use crate::state::SPLIT_RESULT;
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-string-utils";
@@ -62,8 +60,6 @@ pub fn execute(
 
 fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
 
-    let action = get_action_name(CONTRACT_NAME, msg.as_ref());
-
     let action_response = call_action(
         &mut ctx.deps,
         &ctx.info,
@@ -73,7 +69,6 @@ fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
     )?;
 
     let res = match msg {
-        ExecuteMsg::Split { input, delimiter } => execute_split(ctx, input, delimiter, action),
         _ => ADOContract::default().execute(ctx, msg),
     }?;
 
@@ -83,46 +78,28 @@ fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
         .add_events(action_response.events))
 }
 
-pub fn execute_split(
-    ctx: ExecuteContext,
-    input: String,
-    delimiter: Delimiter,
-    action: String,
-) -> Result<Response, ContractError> {
-
-    let sender = ctx.info.sender.clone();
-
-    match delimiter {
-        Delimiter::WhiteSpace => {
-            let parts: Vec<String> = input.split_whitespace().map(|part| part.to_string()).collect();
-            SPLIT_RESULT.save(ctx.deps.storage, &parts)?;
-        },
-        Delimiter::Other { limiter } => {
-            let parts: Vec<String> = input.split(&limiter).map(|part| part.to_string()).collect();
-            SPLIT_RESULT.save(ctx.deps.storage, &parts)?;
-        },
-    }
-    
-    Ok(
-        Response::new().add_attributes(vec![
-        attr("action", action),
-        attr("sender", sender),
-    ]))
-}
-
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
-        QueryMsg::GetSplitResult {} => encode_binary(&get_split_result(deps.storage)?),
+        QueryMsg::GetSplitResult { input, delimiter } => encode_binary(&get_split_result(input, delimiter)?),
         _ => ADOContract::default().query(deps, env, msg),
     }
 }
 
-pub fn get_split_result(storage: &dyn Storage) -> Result<GetSplitResultResponse, ContractError> {
-    let split_result = SPLIT_RESULT.may_load(storage)?;
-    match split_result {
-        Some(result) => Ok(GetSplitResultResponse { split_result: result }),
-        None => Ok(GetSplitResultResponse { split_result: vec!["No split result found.".to_string()] }),
+pub fn get_split_result(
+    input: String,
+    delimiter: Delimiter,
+) -> Result<GetSplitResultResponse, ContractError> {
+
+    match delimiter {
+        Delimiter::WhiteSpace => {
+            let split_result: Vec<String> = input.split_whitespace().map(|part| part.to_string()).collect();
+            Ok(GetSplitResultResponse { split_result })
+        },
+        Delimiter::Other { limiter } => {
+            let split_result: Vec<String> = input.split(&limiter).map(|part| part.to_string()).collect();
+            Ok(GetSplitResultResponse { split_result })
+        },
     }
 }
 

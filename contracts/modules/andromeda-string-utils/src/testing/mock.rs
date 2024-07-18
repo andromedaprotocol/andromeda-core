@@ -1,4 +1,4 @@
-use andromeda_modules::string_utils::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use andromeda_modules::string_utils::{InstantiateMsg, QueryMsg};
 use andromeda_modules::string_utils::{GetSplitResultResponse, Delimiter};
 use andromeda_std::{
     error::ContractError,
@@ -7,10 +7,10 @@ use andromeda_std::{
 use cosmwasm_std::{
     from_json,
     testing::{mock_env, mock_info, MockApi, MockStorage},
-    Deps, DepsMut, MessageInfo, OwnedDeps, Response,
+    Deps, MessageInfo, OwnedDeps,
 };
 
-use crate::contract::{execute, instantiate, query};
+use crate::contract::{instantiate, query};
 
 pub type MockDeps = OwnedDeps<MockStorage, MockApi, WasmMockQuerier>;
 
@@ -27,19 +27,8 @@ pub fn proper_initialization() -> (MockDeps, MessageInfo) {
     (deps, info)
 }
 
-pub fn try_split(
-    deps: DepsMut<'_>,
-    input: String,
-    delimiter: Delimiter,
-    sender: &str,
-) -> Result<Response, ContractError> {
-    let msg = ExecuteMsg::Split { input, delimiter };
-    let info = mock_info(sender, &[]);
-    execute(deps, mock_env(), info, msg)
-}
-
-pub fn query_split_result(deps: Deps) -> Result<GetSplitResultResponse, ContractError> {
-    let res = query(deps, mock_env(), QueryMsg::GetSplitResult {});
+pub fn query_split_result(deps: Deps, input: String, delimiter: Delimiter) -> Result<GetSplitResultResponse, ContractError> {
+    let res = query(deps, mock_env(), QueryMsg::GetSplitResult { input, delimiter });
     match res {
         Ok(res) => Ok(from_json(res).unwrap()),
         Err(err) => Err(err),
