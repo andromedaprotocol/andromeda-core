@@ -145,7 +145,11 @@ impl<'a> ADOContract<'a> {
                     all_events.append(&mut events);
                     all_leftover_funds.append(&mut leftover_funds);
                 }
-                let total_funds: Uint128 = all_leftover_funds.iter().map(|x| x.amount).sum();
+                let total_dedcuted_funds: Uint128 = all_leftover_funds
+                    .iter()
+                    .map(|x| coin.amount - x.amount)
+                    .sum();
+                let total_funds = coin.amount.checked_sub(total_dedcuted_funds)?;
                 Ok(Some(RatesResponse {
                     msgs: all_msgs,
                     leftover_funds: if is_native {
