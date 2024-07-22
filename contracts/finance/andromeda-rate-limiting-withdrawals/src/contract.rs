@@ -132,24 +132,30 @@ fn execute_deposit(
     let account = ACCOUNTS.may_load(deps.storage, user.clone())?;
 
     // Check if recipient already has an account
-    let new_details = if let Some(account) = account {
+    if let Some(account) = account {
+        // If the user does have an account in that coin
+
         // Calculate new amount of coins
         let new_amount = account.balance.checked_add(funds.amount)?;
 
-        AccountDetails {
+        // add new balance with updated coin
+        let new_details = AccountDetails {
             balance: new_amount,
             latest_withdrawal: account.latest_withdrawal,
-        }
-    }
-    // If user doesn't have an account at all
-    else {
-        AccountDetails {
+        };
+
+        // save changes
+        ACCOUNTS.save(deps.storage, info.sender.to_string(), &new_details)?;
+
+        // If user doesn't have an account at all
+    } else {
+        let new_account_details = AccountDetails {
             balance: funds.amount,
             latest_withdrawal: None,
-        }
-    };
-    // save changes
-    ACCOUNTS.save(deps.storage, info.sender.to_string(), &new_details)?;
+        };
+        // save changes
+        ACCOUNTS.save(deps.storage, user, &new_account_details)?;
+    }
 
     let res = Response::new()
         .add_attribute("action", "funded account")
