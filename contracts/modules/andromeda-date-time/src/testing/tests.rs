@@ -13,7 +13,7 @@ fn test_query_date_time() {
     let (deps, _) = proper_initialization();
 
     // UTC+3
-    let query_res = query_date_time(deps.as_ref(), Timezone::UtcPlus3).unwrap();
+    let query_res = query_date_time(deps.as_ref(), Some(Timezone::UtcPlus3)).unwrap();
     assert_eq!(
         query_res, 
         GetDateTimeResponse {
@@ -23,7 +23,7 @@ fn test_query_date_time() {
 
 
     // UTC-9
-    let query_res = query_date_time(deps.as_ref(), Timezone::UtcMinus9).unwrap();
+    let query_res = query_date_time(deps.as_ref(), Some(Timezone::UtcMinus9)).unwrap();
     assert_eq!(
         query_res, 
         GetDateTimeResponse {
@@ -32,7 +32,7 @@ fn test_query_date_time() {
     });
 
     // UTC
-    let query_res = query_date_time(deps.as_ref(), Timezone::Utc).unwrap();
+    let query_res = query_date_time(deps.as_ref(), None).unwrap();
     assert_eq!(
         query_res, 
         GetDateTimeResponse {
@@ -41,7 +41,7 @@ fn test_query_date_time() {
     });
 
     // UTC+14
-    let query_res = query_date_time(deps.as_ref(), Timezone::UtcPlus14).unwrap();
+    let query_res = query_date_time(deps.as_ref(), Some(Timezone::UtcPlus14)).unwrap();
     assert_eq!(
         query_res, 
         GetDateTimeResponse {

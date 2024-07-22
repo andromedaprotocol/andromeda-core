@@ -17,7 +17,7 @@ pub enum ExecuteMsg {}
 pub enum QueryMsg {
     #[returns(GetDateTimeResponse)]
     GetDateTime { 
-        timezone: Timezone,
+        timezone: Option<Timezone>,
     },
 }
 

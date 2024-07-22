@@ -27,7 +27,7 @@ pub fn proper_initialization() -> (MockDeps, MessageInfo) {
     (deps, info)
 }
 
-pub fn query_date_time(deps: Deps, timezone: Timezone) -> Result<GetDateTimeResponse, ContractError> {
+pub fn query_date_time(deps: Deps, timezone: Option<Timezone>) -> Result<GetDateTimeResponse, ContractError> {
     let res = query(deps, mock_env(), QueryMsg::GetDateTime { timezone });
     match res {
         Ok(res) => Ok(from_json(res).unwrap()),

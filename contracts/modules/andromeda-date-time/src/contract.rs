@@ -89,10 +89,10 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
 
 pub fn get_date_time(
     env: Env,
-    timezone: Timezone,
+    timezone: Option<Timezone>,
 ) -> Result<GetDateTimeResponse, ContractError> {
     let timestamp = env.block.time.seconds() as i64;
-    let timezone_i64 = timezone as i64;
+    let timezone_i64 = timezone.unwrap_or(Timezone::Utc) as i64;
     let offset = timezone_i64.checked_mul(3600).unwrap();
     let local_timestamp = timestamp.checked_add(offset).unwrap();
     let local_datetime = DateTime::from_timestamp(local_timestamp, 0).unwrap();
