@@ -115,10 +115,12 @@ fn execute_deposit(
     // The contract only supports one type of coin
     one_coin(&info)?;
 
+    let funds = &info.funds[0];
+
     // Coin has to be in the allowed list
     let coin = ALLOWED_COIN.load(deps.storage)?;
     ensure!(
-        coin.coin == info.funds[0].denom,
+        coin.coin == funds.denom,
         ContractError::InvalidFunds {
             msg: "Coin must be part of the allowed list".to_string(),
         }
@@ -130,34 +132,29 @@ fn execute_deposit(
     let account = ACCOUNTS.may_load(deps.storage, user.clone())?;
 
     // Check if recipient already has an account
-    if let Some(account) = account {
-        // If the user does have an account in that coin
-
+    let new_details = if let Some(account) = account {
         // Calculate new amount of coins
-        let new_amount = account.balance.checked_add(info.funds[0].amount)?;
+        let new_amount = account.balance.checked_add(funds.amount)?;
 
-        // add new balance with updated coin
-        let new_details = AccountDetails {
+        AccountDetails {
             balance: new_amount,
             latest_withdrawal: account.latest_withdrawal,
-        };
-
-        // save changes
-        ACCOUNTS.save(deps.storage, info.sender.to_string(), &new_details)?;
-
-        // If user doesn't have an account at all
-    } else {
-        let new_account_details = AccountDetails {
-            balance: info.funds[0].amount,
-            latest_withdrawal: None,
-        };
-        // save changes
-        ACCOUNTS.save(deps.storage, user, &new_account_details)?;
+        }
     }
+    // If user doesn't have an account at all
+    else {
+        AccountDetails {
+            balance: funds.amount,
+            latest_withdrawal: None,
+        }
+    };
+    // save changes
+    ACCOUNTS.save(deps.storage, info.sender.to_string(), &new_details)?;
 
     let res = Response::new()
         .add_attribute("action", "funded account")
-        .add_attribute("account", info.sender.to_string());
+        .add_attribute("account", info.sender.to_string())
+        .add_attribute("amount", funds.amount);
     Ok(res)
 }
 
