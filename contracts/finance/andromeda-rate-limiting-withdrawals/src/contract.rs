@@ -97,8 +97,8 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
     )?;
 
     let res = match msg {
-        ExecuteMsg::Deposits { recipient } => execute_deposit(ctx, recipient),
-        ExecuteMsg::WithdrawFunds { amount } => execute_withdraw(ctx, amount),
+        ExecuteMsg::Deposit { recipient } => execute_deposit(ctx, recipient),
+        ExecuteMsg::Withdraw { amount } => execute_withdraw(ctx, amount),
         _ => ADOContract::default().execute(ctx, msg),
     }?;
     Ok(res
