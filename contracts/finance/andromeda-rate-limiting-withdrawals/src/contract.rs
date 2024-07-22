@@ -133,7 +133,7 @@ fn execute_deposit(
         }
     );
 
-    let user = recipient.unwrap_or_else(|| info.sender.to_string());
+    let user = recipient.unwrap_or(info.sender.to_string());
 
     // Load list of accounts
     let account = ACCOUNTS.may_load(deps.storage, user.clone())?;
@@ -176,91 +176,63 @@ fn execute_withdraw(ctx: ExecuteContext, amount: Uint128) -> Result<Response, Co
     } = ctx;
 
     nonpayable(&info)?;
+
     // check if sender has an account
-    let account = ACCOUNTS.may_load(deps.storage, info.sender.to_string())?;
-    if let Some(account) = account {
-        // Calculate time since last withdrawal
-        if let Some(latest_withdrawal) = account.latest_withdrawal {
-            let minimum_withdrawal_frequency = ALLOWED_COIN
-                .load(deps.storage)?
-                .minimal_withdrawal_frequency;
-            let current_time = Milliseconds::from_seconds(env.block.time.seconds());
-            let seconds_since_withdrawal = current_time.minus_seconds(latest_withdrawal.seconds());
+    let account = ACCOUNTS
+        .load(deps.storage, info.sender.to_string())
+        .map_err(|_err| ContractError::AccountNotFound {})?;
 
-            // make sure enough time has elapsed since the latest withdrawal
-            ensure!(
-                seconds_since_withdrawal >= minimum_withdrawal_frequency,
-                ContractError::FundsAreLocked {}
-            );
+    let allowed_coin = ALLOWED_COIN.load(deps.storage)?;
 
-            // make sure the funds requested don't exceed the user's balance
-            ensure!(
-                account.balance >= amount,
-                ContractError::InsufficientFunds {}
-            );
+    // Calculate time since last withdrawal
+    if let Some(latest_withdrawal) = account.latest_withdrawal {
+        let minimum_withdrawal_frequency = allowed_coin.minimal_withdrawal_frequency;
+        let current_time = Milliseconds::from_seconds(env.block.time.seconds());
+        let seconds_since_withdrawal = current_time.minus_seconds(latest_withdrawal.seconds());
 
-            // make sure the funds don't exceed the withdrawal limit
-            let limit = ALLOWED_COIN.load(deps.storage)?;
-            ensure!(
-                limit.limit >= amount,
-                ContractError::WithdrawalLimitExceeded {}
-            );
-
-            // Update amount
-            let new_amount = account.balance - amount;
-
-            // Update account details
-            let new_details = AccountDetails {
-                balance: new_amount,
-                latest_withdrawal: Some(env.block.time),
-            };
-
-            // Save changes
-            ACCOUNTS.save(deps.storage, info.sender.to_string(), &new_details)?;
-        } else {
-            // make sure the funds requested don't exceed the user's balance
-            ensure!(
-                account.balance >= amount,
-                ContractError::InsufficientFunds {}
-            );
-
-            // make sure the funds don't exceed the withdrawal limit
-            let limit = ALLOWED_COIN.load(deps.storage)?;
-            ensure!(
-                limit.limit >= amount,
-                ContractError::WithdrawalLimitExceeded {}
-            );
-
-            // Update amount
-            let new_amount = account.balance - amount;
-
-            // Update account details
-            let new_details = AccountDetails {
-                balance: new_amount,
-                latest_withdrawal: Some(env.block.time),
-            };
-
-            // Save changes
-            ACCOUNTS.save(deps.storage, info.sender.to_string(), &new_details)?;
-        }
-
-        let coin = Coin {
-            denom: ALLOWED_COIN.load(deps.storage)?.coin,
-            amount,
-        };
-
-        // Transfer funds
-        let res = Response::new()
-            .add_message(CosmosMsg::Bank(BankMsg::Send {
-                to_address: info.sender.to_string(),
-                amount: vec![coin.clone()],
-            }))
-            .add_attribute("action", "withdrew funds")
-            .add_attribute("coin", coin.to_string());
-        Ok(res)
-    } else {
-        Err(ContractError::AccountNotFound {})
+        // make sure enough time has elapsed since the latest withdrawal
+        ensure!(
+            seconds_since_withdrawal >= minimum_withdrawal_frequency,
+            ContractError::FundsAreLocked {}
+        );
     }
+
+    // make sure the funds requested don't exceed the user's balance
+    ensure!(
+        account.balance >= amount,
+        ContractError::InsufficientFunds {}
+    );
+
+    // make sure the funds don't exceed the withdrawal limit
+    let limit = allowed_coin.limit;
+    ensure!(limit >= amount, ContractError::WithdrawalLimitExceeded {});
+
+    // Update amount
+    let new_amount = account.balance.checked_sub(amount)?;
+
+    // Update account details
+    let new_details = AccountDetails {
+        balance: new_amount,
+        latest_withdrawal: Some(env.block.time),
+    };
+
+    // Save changes
+    ACCOUNTS.save(deps.storage, info.sender.to_string(), &new_details)?;
+
+    let coin = Coin {
+        denom: allowed_coin.coin,
+        amount,
+    };
+
+    // Transfer funds
+    let res = Response::new()
+        .add_message(CosmosMsg::Bank(BankMsg::Send {
+            to_address: info.sender.to_string(),
+            amount: vec![coin.clone()],
+        }))
+        .add_attribute("action", "withdrew funds")
+        .add_attribute("coin", coin.to_string());
+    Ok(res)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
