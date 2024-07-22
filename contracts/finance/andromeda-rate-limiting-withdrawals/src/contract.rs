@@ -29,37 +29,28 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     match msg.minimal_withdrawal_frequency {
-        MinimumFrequency::Time { time } => ALLOWED_COIN.save(
-            deps.storage,
-            &CoinAllowance {
-                coin: msg.allowed_coin.coin,
-                limit: msg.allowed_coin.limit,
-                minimal_withdrawal_frequency: time,
-            },
-        )?,
-        //NOTE temporary until a replacement for primitive is implemented
-        // _ => ALLOWED_COIN.save(
-        //     deps.storage,
-        //     &CoinAllowance {
-        //         coin: msg.allowed_coin.coin,
-        //         limit: msg.allowed_coin.limit,
-        //         minimal_withdrawal_frequency: Milliseconds::zero(),
-        //     },
-        // )?,
-        // MinimumFrequency::AddressAndKey { address_and_key } => ALLOWED_COIN.save(
-        //     deps.storage,
-        //     &CoinAllowance {
-        //         coin: msg.allowed_coin.clone().coin,
-        //         limit: msg.allowed_coin.limit,
-        //         minimal_withdrawal_frequency: query_primitive::<GetValueResponse>(
-        //             deps.querier,
-        //             address_and_key.contract_address,
-        //             address_and_key.key,
-        //         )?
-        //         .value
-        //         .try_get_uint128()?,
-        //     },
-        // )?,
+        MinimumFrequency::Time { time } => {
+            ensure!(!time.is_zero(), ContractError::InvalidZeroAmount {});
+
+            ensure!(
+                !msg.allowed_coin.limit.is_zero(),
+                ContractError::InvalidZeroAmount {}
+            );
+
+            ensure!(
+                !msg.allowed_coin.coin.is_empty(),
+                ContractError::EmptyString {}
+            );
+
+            ALLOWED_COIN.save(
+                deps.storage,
+                &CoinAllowance {
+                    coin: msg.allowed_coin.coin,
+                    limit: msg.allowed_coin.limit,
+                    minimal_withdrawal_frequency: time,
+                },
+            )?
+        }
     }
 
     let inst_resp = ADOContract::default().instantiate(
