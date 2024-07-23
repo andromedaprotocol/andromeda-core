@@ -101,21 +101,6 @@ fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
         msg.as_ref(),
     )?;
 
-    let payee = if let Some(amp_ctx) = ctx.amp_ctx.clone() {
-        ctx.deps
-            .api
-            .addr_validate(amp_ctx.ctx.get_origin().as_str())?
-    } else {
-        ctx.info.sender.clone()
-    };
-
-    let _fee_msg = ADOContract::default().pay_fee(
-        ctx.deps.storage,
-        &ctx.deps.querier,
-        msg.as_ref().to_string(),
-        payee,
-    )?;
-
     if let ExecuteMsg::Approve { token_id, .. } = &msg {
         ensure!(
             !is_archived(ctx.deps.storage, token_id)?.is_archived,
