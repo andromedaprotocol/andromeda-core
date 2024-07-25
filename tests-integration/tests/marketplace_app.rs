@@ -1,4 +1,4 @@
-#![cfg(not(target_arch = "wasm32"))]
+#![cfg(all(not(target_arch = "wasm32"), feature = "testing", feature = "rates"))]
 
 use andromeda_address_list::mock::{
     mock_address_list_instantiate_msg, mock_andromeda_address_list, MockAddressList,
@@ -138,6 +138,12 @@ fn test_marketplace_app() {
             Rate::Contract(AndrAddr::from_string(rates.addr())),
         )
         .unwrap();
+
+    let rate = marketplace
+        .query_rates(&mut router, "Buy".to_string())
+        .unwrap();
+
+    assert_eq!(rate, Rate::Contract(AndrAddr::from_string(rates.addr())));
 
     // Mint Tokens
     cw721
