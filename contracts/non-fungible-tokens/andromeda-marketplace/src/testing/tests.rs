@@ -725,7 +725,7 @@ fn test_execute_buy_with_tax_and_royalty_insufficient_funds_cw20() {
 
     // Set rates
     ADOContract::default()
-        .set_rates(deps.as_mut().storage, "MarketplaceBuy", rate)
+        .set_rates(deps.as_mut().storage, "Buy", rate)
         .unwrap();
 
     let hook_msg = Cw20HookMsg::Buy {

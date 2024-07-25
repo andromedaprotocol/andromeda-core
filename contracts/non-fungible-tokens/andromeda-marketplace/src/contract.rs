@@ -195,7 +195,7 @@ pub fn handle_receive_cw20(
             amount_sent,
             asset_sent,
             &sender,
-            "MarketplaceBuy".to_string(),
+            "Buy".to_string(),
         ),
     }
 }
