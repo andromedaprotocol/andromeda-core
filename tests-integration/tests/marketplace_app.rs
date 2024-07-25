@@ -76,7 +76,7 @@ fn test_marketplace_app() {
     };
 
     let rates_init_msg = mock_rates_instantiate_msg(
-        "MarketplaceBuy".to_string(),
+        "Buy".to_string(),
         local_rate,
         andr.kernel.addr().to_string(),
         None,
@@ -134,7 +134,7 @@ fn test_marketplace_app() {
         .execute_set_rate(
             &mut router,
             owner.clone(),
-            "MarketplaceBuy",
+            "Buy",
             Rate::Contract(AndrAddr::from_string(rates.addr())),
         )
         .unwrap();

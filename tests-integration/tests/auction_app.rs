@@ -116,7 +116,7 @@ fn test_auction_app_modules() {
         .execute_add_rate(
             &mut router,
             owner.clone(),
-            "AuctionClaim".to_string(),
+            "Claim".to_string(),
             Rate::Local(LocalRate {
                 rate_type: LocalRateType::Deductive,
                 recipients: vec![

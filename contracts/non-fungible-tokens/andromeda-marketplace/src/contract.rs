@@ -7,24 +7,25 @@ use andromeda_non_fungible_tokens::marketplace::{
     Cw20HookMsg, Cw721HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg, SaleIdsResponse,
     SaleStateResponse, Status,
 };
-use andromeda_std::ado_base::permissioning::{LocalPermission, Permission};
-use andromeda_std::ado_contract::ADOContract;
-
-use andromeda_std::amp::Recipient;
-use andromeda_std::common::actions::call_action;
-use andromeda_std::common::call_action::get_action_name;
-use andromeda_std::common::context::ExecuteContext;
-use andromeda_std::common::denom::{Asset, SEND_CW20_ACTION};
-use andromeda_std::common::expiration::{
-    expiration_from_milliseconds, get_and_validate_start_time, Expiry,
-};
-use andromeda_std::common::rates::get_tax_amount_cw20;
-use andromeda_std::common::{Milliseconds, MillisecondsDuration};
 use andromeda_std::{
-    ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
-    common::{encode_binary, rates::get_tax_amount, Funds},
+    ado_base::{
+        permissioning::{LocalPermission, Permission},
+        InstantiateMsg as BaseInstantiateMsg, MigrateMsg,
+    },
+    ado_contract::ADOContract,
+    amp::Recipient,
+    common::{
+        actions::call_action,
+        context::ExecuteContext,
+        denom::{Asset, SEND_CW20_ACTION},
+        encode_binary,
+        expiration::{expiration_from_milliseconds, get_and_validate_start_time, Expiry},
+        rates::{get_tax_amount, get_tax_amount_cw20},
+        Funds, Milliseconds, MillisecondsDuration,
+    },
     error::ContractError,
 };
+
 use cw20::{Cw20Coin, Cw20ReceiveMsg};
 use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, Cw721ReceiveMsg, OwnerOfResponse};
 
@@ -94,7 +95,7 @@ pub fn execute(
 }
 
 pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
-    let action = get_action_name(CONTRACT_NAME, msg.as_ref());
+    let action = msg.as_ref().to_string();
 
     let action_response = call_action(
         &mut ctx.deps,
