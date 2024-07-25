@@ -765,7 +765,7 @@ fn execute_claim(
     let ExecuteContext {
         deps, info, env, ..
     } = ctx;
-    nonpayable(&info)?;
+
     let token_auction_state =
         get_existing_token_auction_state(deps.storage, &token_id, &token_address)?;
     ensure!(
