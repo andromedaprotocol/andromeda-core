@@ -74,7 +74,12 @@ pub enum AndromedaQuery {
     },
     #[returns(Vec<self::permissioning::PermissionedActionsResponse>)]
     PermissionedActions {},
+
     #[cfg(feature = "rates")]
     #[returns(Option<self::rates::Rate>)]
     Rates { action: String },
+
+    #[cfg(feature = "rates")]
+    #[returns(self::rates::AllRatesResponse)]
+    AllRates {},
 }

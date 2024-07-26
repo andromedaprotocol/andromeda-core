@@ -189,6 +189,10 @@ pub fn mock_get_rates(action: String) -> QueryMsg {
     QueryMsg::Rates { action }
 }
 
+pub fn mock_get_all_rates() -> QueryMsg {
+    QueryMsg::AllRates {}
+}
+
 pub fn mock_get_version() -> QueryMsg {
     QueryMsg::Version {}
 }

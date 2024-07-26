@@ -18,7 +18,7 @@ use andromeda_splitter::mock::{
     mock_andromeda_splitter, mock_splitter_instantiate_msg, mock_splitter_send_msg,
 };
 use andromeda_std::ado_base::permissioning::{LocalPermission, Permission};
-use andromeda_std::ado_base::rates::LocalRate;
+use andromeda_std::ado_base::rates::{AllRatesResponse, LocalRate};
 use andromeda_std::ado_base::rates::{LocalRateType, LocalRateValue, PercentRate, Rate};
 use andromeda_std::amp::messages::{AMPMsg, AMPPkt};
 use andromeda_std::amp::{AndrAddr, Recipient};
@@ -144,6 +144,18 @@ fn test_marketplace_app() {
         .unwrap();
 
     assert_eq!(rate, Rate::Contract(AndrAddr::from_string(rates.addr())));
+
+    let rates: AllRatesResponse = marketplace.query_all_rates(&mut router).unwrap();
+
+    assert_eq!(
+        rates,
+        AllRatesResponse {
+            all_rates: vec![(
+                "Buy".to_string(),
+                Rate::Contract(AndrAddr::from_string(rates.addr()))
+            )]
+        }
+    );
 
     // Mint Tokens
     cw721

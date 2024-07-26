@@ -153,7 +153,10 @@ pub fn andr_query(_metadata: TokenStream, input: TokenStream) -> TokenStream {
                 PermissionedActions { },
                 #[cfg(feature = "rates")]
                 #[returns(Option<::andromeda_std::ado_base::rates::Rate>)]
-                Rates {action: String}
+                Rates {action: String},
+                #[cfg(feature = "rates")]
+                #[returns(::andromeda_std::ado_base::rates::AllRatesResponse)]
+                AllRates {}
 
             }
         }
