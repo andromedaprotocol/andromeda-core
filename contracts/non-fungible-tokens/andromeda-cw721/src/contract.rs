@@ -1,4 +1,3 @@
-use andromeda_std::common::call_action::get_action_name;
 #[cfg(not(feature = "imported"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
@@ -91,7 +90,7 @@ pub fn execute(
 
 fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
-    let action = get_action_name(CONTRACT_NAME, msg.as_ref());
+    let action = msg.as_ref().to_string();
 
     let action_response = call_action(
         &mut ctx.deps,

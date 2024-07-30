@@ -1,5 +1,4 @@
 pub mod actions;
-pub mod call_action;
 pub mod context;
 pub mod denom;
 pub mod expiration;

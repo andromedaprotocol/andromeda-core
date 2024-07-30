@@ -14,7 +14,6 @@ use andromeda_std::{
     amp::{AndrAddr, Recipient},
     common::{
         actions::call_action,
-        call_action::get_action_name,
         denom::{validate_denom, Asset, SEND_CW20_ACTION},
         encode_binary,
         expiration::{expiration_from_milliseconds, get_and_validate_start_time, Expiry},
@@ -108,7 +107,7 @@ pub fn execute(
 }
 
 pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
-    let action = get_action_name(CONTRACT_NAME, msg.as_ref());
+    let action = msg.as_ref().to_string();
 
     let action_response = call_action(
         &mut ctx.deps,
