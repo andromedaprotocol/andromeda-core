@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+### Changed
+
+### Fixed
+
+### Removed
+
+
+## v1.1.0
+Note: Future versioning will be based on date rather than version due to diverging contract versions.
+
+### Added
+
 - Added Validator Staking ADO [(#330)](https://github.com/andromedaprotocol/andromeda-core/pull/330)
 - Added `Asset` enum [(#415)](https://github.com/andromedaprotocol/andromeda-core/pull/415)
 - Added `ADOBaseVersion` query to all ADOs [(#416)](https://github.com/andromedaprotocol/andromeda-core/pull/416)
