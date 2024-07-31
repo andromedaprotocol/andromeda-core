@@ -49,7 +49,7 @@ fn test_update_map_with_same_info() {
         },
         info.sender.as_ref(),
     ).unwrap_err();
-    assert_eq!(err_res, ContractError::InvalidParameter { error: Some("Map Info is same as existed one".to_string()) });
+    assert_eq!(err_res, ContractError::InvalidParameter { error: Some("Map already exists".to_string()) });
 }
 
 

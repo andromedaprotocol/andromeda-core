@@ -103,12 +103,11 @@ pub fn execute_update_map(
 
     let map = MAP_INFO
     .load(ctx.deps.storage)
-    .map_err(|_| ContractError::InvalidParameter { error: Some("Can not find existed map".to_string())})
-    .unwrap();
+    .map_err(|_| ContractError::InvalidParameter { error: Some("Can not find existed map".to_string())})?;
 
     ensure!(
         map != map_info,
-        ContractError::InvalidParameter { error: Some("Map Info is same as existed one".to_string())}
+        ContractError::InvalidParameter { error: Some("Map already exists".to_string())}
     );
 
     MAP_INFO.save(ctx.deps.storage, &map_info)?;
