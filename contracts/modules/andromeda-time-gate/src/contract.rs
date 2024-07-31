@@ -43,7 +43,7 @@ pub fn instantiate(
     )?;
 
     let gate_time = msg.gate_time;
-    gate_time.validate().unwrap();
+    gate_time.validate()?;
 
     GATE_ADDRESSES.save(deps.storage, &msg.gate_addresses)?;
     GATE_TIME.save(deps.storage, &gate_time)?;
@@ -110,7 +110,7 @@ fn execute_set_gate_time (
         ContractError::InvalidParameter { error: Some("Same as existed gate time".to_string())}
     );
 
-    gate_time.validate().unwrap();
+    gate_time.validate()?;
 
     GATE_TIME.save(deps.storage, &gate_time)?;
 
@@ -191,8 +191,8 @@ pub fn get_path(deps: Deps, storage: &dyn Storage, env: Env) -> Result<Addr, Con
     let current_time = env.block.time.nanos();
 
     match current_time >= (total_nanoseconds as u64) {
-        true => Ok(Addr::from(gate_addresses.ado_1.get_raw_address(&deps).unwrap())),
-        false => Ok(Addr::from(gate_addresses.ado_2.get_raw_address(&deps).unwrap()))
+        true => Ok(Addr::from(gate_addresses.ado_1.get_raw_address(&deps)?)),
+        false => Ok(Addr::from(gate_addresses.ado_2.get_raw_address(&deps)?))
     }
 }
 

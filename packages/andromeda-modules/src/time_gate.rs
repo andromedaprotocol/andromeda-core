@@ -81,11 +81,11 @@ impl GateTime {
         );
         ensure!(
             self.minute <= 59,
-            ContractError::InvalidParameter { error: Some("Wrong minute range".to_string())}
+            ContractError::InvalidParameter { error: Some("Minute must be less than 60".to_string())}
         );
         ensure!(
             self.second <= 59,
-            ContractError::InvalidParameter { error: Some("Wrong minute range".to_string())}
+            ContractError::InvalidParameter { error: Some("Second must be less than 60".to_string())}
         );
         
         Ok(())
