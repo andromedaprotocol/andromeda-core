@@ -103,7 +103,7 @@ fn test_set_value_with_tax() {
 
     // Set rates
     ADOContract::default()
-        .set_rates(deps.as_mut().storage, "PrimitiveSetValue", rate)
+        .set_rates(deps.as_mut().storage, "SetValue", rate)
         .unwrap();
 
     // Sent the exact amount required for tax
