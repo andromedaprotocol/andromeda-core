@@ -158,16 +158,14 @@ pub fn execute_store_coordinate(
     match allow_negative {
         true => {
             ensure!(
-                x_coordinate >= -(x_length / 2_f64)
-                    && x_coordinate <= x_length / 2_f64,
+                x_coordinate >= -(x_length / 2_f64) && x_coordinate <= x_length / 2_f64,
                 ContractError::InvalidParameter {
                     error: Some("Wrong X Coordinate Range".to_string())
                 }
             );
 
             ensure!(
-                y_coordinate >= -(y_length / 2_f64)
-                    && y_coordinate <= y_length / 2_f64,
+                y_coordinate >= -(y_length / 2_f64) && y_coordinate <= y_length / 2_f64,
                 ContractError::InvalidParameter {
                     error: Some("Wrong Y Coordinate Range".to_string())
                 }
