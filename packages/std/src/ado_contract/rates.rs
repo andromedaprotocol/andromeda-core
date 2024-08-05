@@ -1,3 +1,4 @@
+use crate::ado_base::rates::AllRatesResponse;
 use crate::ado_base::rates::Rate;
 use crate::ado_base::rates::RatesMessage;
 use crate::ado_base::rates::RatesResponse;
@@ -88,6 +89,22 @@ impl<'a> ADOContract<'a> {
     ) -> Result<Option<Rate>, ContractError> {
         let action: String = action.into();
         Ok(rates().may_load(deps.storage, &action)?)
+    }
+
+    pub fn get_all_rates(&self, deps: Deps) -> Result<AllRatesResponse, ContractError> {
+        // Initialize a vector to hold all rates
+        let mut all_rates: Vec<(String, Rate)> = Vec::new();
+
+        // Iterate over all keys and load the corresponding rate
+        rates()
+            .range(deps.storage, None, None, cosmwasm_std::Order::Ascending)
+            .for_each(|item| {
+                if let Ok((action, rate)) = item {
+                    all_rates.push((action, rate));
+                }
+            });
+
+        Ok(AllRatesResponse { all_rates })
     }
 
     pub fn query_deducted_funds(
