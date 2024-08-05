@@ -12,12 +12,8 @@ pub struct InstantiateMsg {
 #[andr_exec]
 #[cw_serde]
 pub enum ExecuteMsg {
-    SetGateTime {
-        gate_time: GateTime,
-    },
-    UpdateGateAddresses {
-        new_gate_addresses: GateAddresses,
-    },
+    SetGateTime { gate_time: GateTime },
+    UpdateGateAddresses { new_gate_addresses: GateAddresses },
 }
 
 #[andr_query]
@@ -52,11 +48,15 @@ impl GateTime {
     pub fn validate(&self) -> Result<(), ContractError> {
         ensure!(
             self.year >= 1970,
-            ContractError::InvalidParameter { error: Some("Year must be bigger than 1969".to_string())}
+            ContractError::InvalidParameter {
+                error: Some("Year must be bigger than 1969".to_string())
+            }
         );
         ensure!(
             self.month <= 12 && self.month >= 1,
-            ContractError::InvalidParameter { error: Some("Month must be between 1 and 12".to_string())}
+            ContractError::InvalidParameter {
+                error: Some("Month must be between 1 and 12".to_string())
+            }
         );
         let year = self.year;
         let month = self.month;
@@ -66,28 +66,38 @@ impl GateTime {
         if (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0) {
             ensure!(
                 self.day <= days_in_month_feb_29[(month - 1) as usize] && self.day >= 1,
-                ContractError::InvalidParameter { error: Some("Wrong days of month".to_string())}
+                ContractError::InvalidParameter {
+                    error: Some("Wrong days of month".to_string())
+                }
             );
         } else {
             ensure!(
                 self.day <= days_in_month_feb_28[(month - 1) as usize] && self.day >= 1,
-                ContractError::InvalidParameter { error: Some("Wrong days of month".to_string())}
+                ContractError::InvalidParameter {
+                    error: Some("Wrong days of month".to_string())
+                }
             );
         }
 
         ensure!(
             self.hour <= 23,
-            ContractError::InvalidParameter { error: Some("Hour must be less than 24".to_string())}
+            ContractError::InvalidParameter {
+                error: Some("Hour must be less than 24".to_string())
+            }
         );
         ensure!(
             self.minute <= 59,
-            ContractError::InvalidParameter { error: Some("Minute must be less than 60".to_string())}
+            ContractError::InvalidParameter {
+                error: Some("Minute must be less than 60".to_string())
+            }
         );
         ensure!(
             self.second <= 59,
-            ContractError::InvalidParameter { error: Some("Second must be less than 60".to_string())}
+            ContractError::InvalidParameter {
+                error: Some("Second must be less than 60".to_string())
+            }
         );
-        
+
         Ok(())
     }
 }

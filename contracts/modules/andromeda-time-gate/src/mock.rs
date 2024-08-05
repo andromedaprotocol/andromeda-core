@@ -1,7 +1,7 @@
 #![cfg(all(not(target_arch = "wasm32"), feature = "testing"))]
 use crate::contract::{execute, instantiate, query};
 use andromeda_modules::time_gate::{ExecuteMsg, InstantiateMsg, QueryMsg};
-use andromeda_modules::time_gate::{GateTime, GateAddresses};
+use andromeda_modules::time_gate::{GateAddresses, GateTime};
 use andromeda_testing::mock::MockApp;
 use andromeda_testing::{
     mock_ado,
@@ -42,7 +42,7 @@ impl MockTimeGate {
         app: &mut MockApp,
         sender: Addr,
         gate_time: GateTime,
-        funds:Option<Coin>,
+        funds: Option<Coin>,
     ) -> ExecuteResult {
         let msg = ExecuteMsg::SetGateTime { gate_time };
         if let Some(funds) = funds {
@@ -57,9 +57,11 @@ impl MockTimeGate {
         app: &mut MockApp,
         sender: Addr,
         gate_addresses: GateAddresses,
-        funds:Option<Coin>,
+        funds: Option<Coin>,
     ) -> ExecuteResult {
-        let msg = ExecuteMsg::UpdateGateAddresses { new_gate_addresses: gate_addresses };
+        let msg = ExecuteMsg::UpdateGateAddresses {
+            new_gate_addresses: gate_addresses,
+        };
         if let Some(funds) = funds {
             app.execute_contract(sender, self.addr().clone(), &msg, &[funds])
         } else {
