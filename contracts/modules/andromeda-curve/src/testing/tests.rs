@@ -98,9 +98,7 @@ fn test_query_plot_y_from_x() {
     let res = query_plot_y_from_x(deps.as_ref(), 0.5).unwrap().y_value;
     assert_eq!(2.to_string(), res);
 
-    let res = query_plot_y_from_x(deps.as_ref(), 2_f64)
-        .unwrap()
-        .y_value;
+    let res = query_plot_y_from_x(deps.as_ref(), 2_f64).unwrap().y_value;
     assert_eq!(16.to_string(), res);
 
     configure_exponential(
