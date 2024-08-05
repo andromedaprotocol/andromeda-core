@@ -260,8 +260,8 @@ pub fn query_plot_y_from_x(
     ensure!(is_configured_exp, ContractError::UnmetCondition {});
 
     let curve_id = match CURVE_ID.load(storage)? {
-        CurveId::Growth => 1 as f64,
-        CurveId::Decay => (-1) as f64,
+        CurveId::Growth => 1_f64,
+        CurveId::Decay => -1_f64,
     };
 
     let base_value = BASE_VALUE.load(storage)? as f64;
