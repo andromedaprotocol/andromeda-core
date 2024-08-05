@@ -1,7 +1,7 @@
 #![cfg(all(not(target_arch = "wasm32"), feature = "testing"))]
 use crate::contract::{execute, instantiate, query};
-use andromeda_modules::date_time::{InstantiateMsg, QueryMsg, Timezone};
 use andromeda_modules::date_time::GetDateTimeResponse;
+use andromeda_modules::date_time::{InstantiateMsg, QueryMsg, Timezone};
 use andromeda_testing::mock::MockApp;
 use andromeda_testing::{
     mock_ado,

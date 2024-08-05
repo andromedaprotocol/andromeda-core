@@ -1,5 +1,5 @@
-use andromeda_modules::date_time::{InstantiateMsg, QueryMsg};
 use andromeda_modules::date_time::{GetDateTimeResponse, Timezone};
+use andromeda_modules::date_time::{InstantiateMsg, QueryMsg};
 use andromeda_std::{
     error::ContractError,
     testing::mock_querier::{mock_dependencies_custom, WasmMockQuerier, MOCK_KERNEL_CONTRACT},
@@ -27,7 +27,10 @@ pub fn proper_initialization() -> (MockDeps, MessageInfo) {
     (deps, info)
 }
 
-pub fn query_date_time(deps: Deps, timezone: Option<Timezone>) -> Result<GetDateTimeResponse, ContractError> {
+pub fn query_date_time(
+    deps: Deps,
+    timezone: Option<Timezone>,
+) -> Result<GetDateTimeResponse, ContractError> {
     let res = query(deps, mock_env(), QueryMsg::GetDateTime { timezone });
     match res {
         Ok(res) => Ok(from_json(res).unwrap()),

@@ -2,18 +2,15 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response};
 
-use andromeda_modules::date_time::{ExecuteMsg, InstantiateMsg, QueryMsg, Timezone};
 use andromeda_modules::date_time::GetDateTimeResponse;
+use andromeda_modules::date_time::{ExecuteMsg, InstantiateMsg, QueryMsg, Timezone};
 use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     ado_contract::ADOContract,
-    common::{
-        context::ExecuteContext, encode_binary,
-        actions::call_action,
-    },
+    common::{actions::call_action, context::ExecuteContext, encode_binary},
     error::ContractError,
 };
-use chrono::{DateTime, Timelike, Weekday, Datelike};
+use chrono::{DateTime, Datelike, Timelike, Weekday};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-date-time";
@@ -54,13 +51,13 @@ pub fn execute(
     match msg {
         ExecuteMsg::AMPReceive(pkt) => {
             ADOContract::default().execute_amp_receive(ctx, pkt, handle_execute)
-        },
+        }
         _ => handle_execute(ctx, msg),
     }
 }
 
+#[allow(clippy::match_single_binding)]
 fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
-
     let action_response = call_action(
         &mut ctx.deps,
         &ctx.info,
@@ -108,9 +105,9 @@ pub fn get_date_time(
     };
 
     let date_time = format!(
-        "{:04}-{:02}-{:02} {:02}-{:02}-{:02}", 
-        local_datetime.year(), 
-        local_datetime.month(), 
+        "{:04}-{:02}-{:02} {:02}-{:02}-{:02}",
+        local_datetime.year(),
+        local_datetime.month(),
         local_datetime.day(),
         local_datetime.hour(),
         local_datetime.minute(),

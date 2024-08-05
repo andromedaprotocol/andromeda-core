@@ -1,6 +1,4 @@
-use andromeda_std::{
-    andr_exec, andr_instantiate, andr_query,
-};
+use andromeda_std::{andr_exec, andr_instantiate, andr_query};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 
 #[andr_instantiate]
@@ -16,9 +14,7 @@ pub enum ExecuteMsg {}
 #[derive(QueryResponses)]
 pub enum QueryMsg {
     #[returns(GetDateTimeResponse)]
-    GetDateTime { 
-        timezone: Option<Timezone>,
-    },
+    GetDateTime { timezone: Option<Timezone> },
 }
 
 #[cw_serde]
