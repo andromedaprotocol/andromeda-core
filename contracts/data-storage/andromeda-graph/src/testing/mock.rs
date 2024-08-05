@@ -52,7 +52,7 @@ pub fn store_coordinate(
 pub fn query_map_info(deps: Deps) -> Result<GetMapInfoResponse, ContractError> {
     let res = query(deps, mock_env(), QueryMsg::GetMapInfo {});
     match res {
-        Ok(res) => from_json(res).map_err(|e| ContractError::Std(e)),
+        Ok(res) => Ok(from_json(res)?),
         Err(err) => Err(err),
     }
 }
@@ -60,7 +60,7 @@ pub fn query_map_info(deps: Deps) -> Result<GetMapInfoResponse, ContractError> {
 pub fn query_max_point(deps: Deps) -> Result<GetMaxPointResponse, ContractError> {
     let res = query(deps, mock_env(), QueryMsg::GetMaxPoint {});
     match res {
-        Ok(res) => from_json(res).map_err(|e| ContractError::Std(e)),
+        Ok(res) => Ok(from_json(res)?),
         Err(err) => Err(err),
     }
 }
@@ -68,7 +68,7 @@ pub fn query_max_point(deps: Deps) -> Result<GetMaxPointResponse, ContractError>
 pub fn query_all_points(deps: Deps) -> Result<GetAllPointsResponse, ContractError> {
     let res = query(deps, mock_env(), QueryMsg::GetAllPoints {});
     match res {
-        Ok(res) => from_json(res).map_err(|e| ContractError::Std(e)),
+        Ok(res) => Ok(from_json(res)?),
         Err(err) => Err(err),
     }
 }
