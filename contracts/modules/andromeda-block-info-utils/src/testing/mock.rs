@@ -30,7 +30,7 @@ pub fn proper_initialization() -> (MockDeps, MessageInfo) {
 pub fn query_block_height(deps: Deps) -> Result<GetBlockHeightResponse, ContractError> {
     let res = query(deps, mock_env(), QueryMsg::GetBlockHeight {});
     match res {
-        Ok(res) => Ok(from_json(res).unwrap()),
+        Ok(res) => Ok(from_json(res)?),
         Err(err) => Err(err),
     }
 }
