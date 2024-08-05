@@ -1,5 +1,5 @@
-use andromeda_data_storage::graph::{MapInfo, CoordinateResponse};
-use cw_storage_plus::{Map, Item};
+use andromeda_data_storage::graph::{CoordinateResponse, MapInfo};
+use cw_storage_plus::{Item, Map};
 
 pub const MAP_INFO: Item<MapInfo> = Item::new("map_info");
 pub const MAP_POINT_INFO: Map<&u128, CoordinateResponse> = Map::new("map_point_info");

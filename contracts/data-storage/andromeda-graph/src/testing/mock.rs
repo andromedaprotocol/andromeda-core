@@ -1,6 +1,6 @@
-use andromeda_data_storage::graph::{ExecuteMsg, GetAllPointsResponse, GetMaxPointResponse, InstantiateMsg, QueryMsg};
+use andromeda_data_storage::graph::{Coordinate, GetMapInfoResponse, MapInfo};
 use andromeda_data_storage::graph::{
-    MapInfo, Coordinate, GetMapInfoResponse,
+    ExecuteMsg, GetAllPointsResponse, GetMaxPointResponse, InstantiateMsg, QueryMsg,
 };
 use andromeda_std::{
     error::ContractError,
@@ -16,9 +16,7 @@ use crate::contract::{execute, instantiate, query};
 
 pub type MockDeps = OwnedDeps<MockStorage, MockApi, WasmMockQuerier>;
 
-pub fn proper_initialization(
-    map_info: MapInfo,
-) -> (MockDeps, MessageInfo) {
+pub fn proper_initialization(map_info: MapInfo) -> (MockDeps, MessageInfo) {
     let mut deps = mock_dependencies_custom(&[]);
     let info = mock_info("creator", &[]);
     let msg = InstantiateMsg {

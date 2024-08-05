@@ -23,12 +23,8 @@ pub struct MapSize {
 #[andr_exec]
 #[cw_serde]
 pub enum ExecuteMsg {
-    UpdateMap {  
-        map_info: MapInfo 
-    },
-    StoreCoordinate {
-        coordinate: Coordinate,
-    },
+    UpdateMap { map_info: MapInfo },
+    StoreCoordinate { coordinate: Coordinate },
 }
 
 #[cw_serde]

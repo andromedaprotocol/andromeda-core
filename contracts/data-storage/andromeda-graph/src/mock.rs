@@ -1,9 +1,9 @@
 #![cfg(all(not(target_arch = "wasm32"), feature = "testing"))]
 use crate::contract::{execute, instantiate, query};
-use andromeda_data_storage::graph::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use andromeda_data_storage::graph::{
-    GetAllPointsResponse, GetMapInfoResponse, GetMaxPointResponse, Coordinate, MapInfo,
+    Coordinate, GetAllPointsResponse, GetMapInfoResponse, GetMaxPointResponse, MapInfo,
 };
+use andromeda_data_storage::graph::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use andromeda_testing::mock::MockApp;
 use andromeda_testing::{
     mock_ado,
@@ -43,7 +43,7 @@ impl MockGraph {
         app: &mut MockApp,
         sender: Addr,
         map_info: MapInfo,
-        funds:Option<Coin>,
+        funds: Option<Coin>,
     ) -> ExecuteResult {
         let msg = mock_execute_update_map_msg(map_info);
         if let Some(funds) = funds {
@@ -58,7 +58,7 @@ impl MockGraph {
         app: &mut MockApp,
         sender: Addr,
         coordinate: Coordinate,
-        funds:Option<Coin>,
+        funds: Option<Coin>,
     ) -> ExecuteResult {
         let msg = ExecuteMsg::StoreCoordinate { coordinate };
         if let Some(funds) = funds {

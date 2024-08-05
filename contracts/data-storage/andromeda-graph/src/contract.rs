@@ -1,21 +1,19 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response, ensure, attr, Storage};
+use cosmwasm_std::{attr, ensure, Binary, Deps, DepsMut, Env, MessageInfo, Response, Storage};
 
 use andromeda_data_storage::graph::{
-    Coordinate, ExecuteMsg, GetMapInfoResponse, GetMaxPointResponse, GetAllPointsResponse, InstantiateMsg, MapInfo, QueryMsg, CoordinateResponse,
+    Coordinate, CoordinateResponse, ExecuteMsg, GetAllPointsResponse, GetMapInfoResponse,
+    GetMaxPointResponse, InstantiateMsg, MapInfo, QueryMsg,
 };
 use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     ado_contract::ADOContract,
-    common::{
-        context::ExecuteContext, encode_binary,
-        actions::call_action,
-    },
+    common::{actions::call_action, context::ExecuteContext, encode_binary},
     error::ContractError,
 };
 
-use crate::state::{MAP_INFO, POINT, MAP_POINT_INFO};
+use crate::state::{MAP_INFO, MAP_POINT_INFO, POINT};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-graph";
@@ -59,13 +57,12 @@ pub fn execute(
     match msg {
         ExecuteMsg::AMPReceive(pkt) => {
             ADOContract::default().execute_amp_receive(ctx, pkt, handle_execute)
-        },
+        }
         _ => handle_execute(ctx, msg),
     }
 }
 
 fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
-
     let action = msg.as_ref().to_string();
 
     let action_response = call_action(
@@ -78,7 +75,9 @@ fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
 
     let res = match msg {
         ExecuteMsg::UpdateMap { map_info } => execute_update_map(ctx, map_info, action),
-        ExecuteMsg::StoreCoordinate { coordinate } => execute_store_coordinate(ctx, coordinate, action),
+        ExecuteMsg::StoreCoordinate { coordinate } => {
+            execute_store_coordinate(ctx, coordinate, action)
+        }
         _ => ADOContract::default().execute(ctx, msg),
     }?;
 
@@ -93,7 +92,6 @@ pub fn execute_update_map(
     map_info: MapInfo,
     action: String,
 ) -> Result<Response, ContractError> {
-
     let sender = ctx.info.sender;
     ensure!(
         ADOContract::default().is_owner_or_operator(ctx.deps.storage, sender.as_ref())?,
@@ -101,34 +99,34 @@ pub fn execute_update_map(
     );
 
     let map = MAP_INFO
-    .load(ctx.deps.storage)
-    .map_err(|_| ContractError::InvalidParameter { error: Some("Can not find existed map".to_string())})?;
+        .load(ctx.deps.storage)
+        .map_err(|_| ContractError::InvalidParameter {
+            error: Some("Can not find existed map".to_string()),
+        })?;
 
     ensure!(
         map != map_info,
-        ContractError::InvalidParameter { error: Some("Map already exists".to_string())}
+        ContractError::InvalidParameter {
+            error: Some("Map already exists".to_string())
+        }
     );
 
     MAP_INFO.save(ctx.deps.storage, &map_info)?;
 
     let max_point = POINT.load(ctx.deps.storage)?;
 
-    for point in 1 ..= max_point {
+    for point in 1..=max_point {
         MAP_POINT_INFO.remove(ctx.deps.storage, &point);
     }
 
     POINT.save(ctx.deps.storage, &0)?;
 
-    Ok(
-        Response::new().add_attributes(vec![
-        attr("action", action),
-        attr("sender", sender),
-    ]))
+    Ok(Response::new().add_attributes(vec![attr("action", action), attr("sender", sender)]))
 }
 
 pub fn execute_store_coordinate(
     ctx: ExecuteContext,
-    coordinate: Coordinate, 
+    coordinate: Coordinate,
     action: String,
 ) -> Result<Response, ContractError> {
     let sender = ctx.info.sender;
@@ -138,56 +136,73 @@ pub fn execute_store_coordinate(
     );
 
     let map = MAP_INFO
-    .load(ctx.deps.storage)
-    .map_err(|_| ContractError::InvalidParameter { error: Some("Can not find existed map".to_string())})
-    .unwrap();
+        .load(ctx.deps.storage)
+        .map_err(|_| ContractError::InvalidParameter {
+            error: Some("Can not find existed map".to_string()),
+        })
+        .unwrap();
 
-    let MapInfo { map_size, allow_negative, map_decimal } = map;
+    let MapInfo {
+        map_size,
+        allow_negative,
+        map_decimal,
+    } = map;
     let x_length = map_size.x_length as f64;
     let y_length = map_size.y_length as f64;
 
-    let x_coordinate = ((coordinate.x_coordinate * 10_f64.powf(map_decimal as f64)) as i64) as f64 / 10_f64.powf(map_decimal as f64) as f64;
-    let y_coordinate = ((coordinate.y_coordinate * 10_f64.powf(map_decimal as f64)) as i64) as f64 / 10_f64.powf(map_decimal as f64) as f64;
+    let x_coordinate = ((coordinate.x_coordinate * 10_f64.powf(map_decimal as f64)) as i64) as f64
+        / 10_f64.powf(map_decimal as f64) as f64;
+    let y_coordinate = ((coordinate.y_coordinate * 10_f64.powf(map_decimal as f64)) as i64) as f64
+        / 10_f64.powf(map_decimal as f64) as f64;
 
     match allow_negative {
         true => {
             ensure!(
-                x_coordinate >= -((x_length / 2_f64) as f64) && x_coordinate <= (x_length / 2_f64) as f64,
-                ContractError::InvalidParameter { error: Some("Wrong X Coordinate Range".to_string())}
+                x_coordinate >= -((x_length / 2_f64) as f64)
+                    && x_coordinate <= (x_length / 2_f64) as f64,
+                ContractError::InvalidParameter {
+                    error: Some("Wrong X Coordinate Range".to_string())
+                }
             );
 
             ensure!(
-                y_coordinate >= -((y_length / 2_f64) as f64) && y_coordinate <= (y_length / 2_f64) as f64,
-                ContractError::InvalidParameter { error: Some("Wrong Y Coordinate Range".to_string())}
+                y_coordinate >= -((y_length / 2_f64) as f64)
+                    && y_coordinate <= (y_length / 2_f64) as f64,
+                ContractError::InvalidParameter {
+                    error: Some("Wrong Y Coordinate Range".to_string())
+                }
             );
-        },
+        }
         false => {
             ensure!(
                 x_coordinate >= 0_f64 && x_coordinate <= x_length,
-                ContractError::InvalidParameter { error: Some("Wrong X Coordinate Range".to_string())}
+                ContractError::InvalidParameter {
+                    error: Some("Wrong X Coordinate Range".to_string())
+                }
             );
 
             ensure!(
                 y_coordinate >= 0_f64 && y_coordinate <= y_length,
-                ContractError::InvalidParameter { error: Some("Wrong Y Coordinate Range".to_string())}
+                ContractError::InvalidParameter {
+                    error: Some("Wrong Y Coordinate Range".to_string())
+                }
             );
-        },
+        }
     };
 
     let point = POINT.load(ctx.deps.storage)?.checked_add(1).unwrap();
 
     MAP_POINT_INFO.save(
-        ctx.deps.storage, 
-        &point, 
-        &CoordinateResponse { x: x_coordinate.to_string(), y: y_coordinate.to_string() },
+        ctx.deps.storage,
+        &point,
+        &CoordinateResponse {
+            x: x_coordinate.to_string(),
+            y: y_coordinate.to_string(),
+        },
     )?;
     POINT.save(ctx.deps.storage, &point)?;
 
-    Ok(
-        Response::new().add_attributes(vec![
-        attr("action", action),
-        attr("sender", sender),
-    ]))
+    Ok(Response::new().add_attributes(vec![attr("action", action), attr("sender", sender)]))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -201,7 +216,11 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
 }
 
 pub fn get_map_info(storage: &dyn Storage) -> Result<GetMapInfoResponse, ContractError> {
-    let map_info = MAP_INFO.load(storage).map_err(|_| ContractError::InvalidParameter { error: Some("Not existed map".to_string())});
+    let map_info = MAP_INFO
+        .load(storage)
+        .map_err(|_| ContractError::InvalidParameter {
+            error: Some("Not existed map".to_string()),
+        });
     match map_info {
         Ok(map_info) => Ok(GetMapInfoResponse { map_info }),
         Err(err) => Err(err),
@@ -217,8 +236,8 @@ pub fn get_all_points(storage: &dyn Storage) -> Result<GetAllPointsResponse, Con
     let max_point = POINT.load(storage)?;
 
     let mut res: Vec<CoordinateResponse> = Vec::new();
-    
-    for point in 1 ..= max_point {
+
+    for point in 1..=max_point {
         let coordinate = MAP_POINT_INFO.load(storage, &point)?;
         res.push(coordinate);
     }
