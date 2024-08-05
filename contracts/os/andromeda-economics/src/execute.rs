@@ -1,10 +1,13 @@
 use andromeda_std::{
-    ado_contract::ADOContract, amp::AndrAddr, common::reply::ReplyId, error::ContractError,
+    ado_contract::ADOContract,
+    amp::{AndrAddr, Recipient},
+    common::reply::ReplyId,
+    error::ContractError,
     os::aos_querier::AOSQuerier,
 };
 use cosmwasm_std::{
-    attr, coin, ensure, to_json_binary, Addr, BankMsg, CosmosMsg, DepsMut, Empty, Env, MessageInfo,
-    Response, Storage, SubMsg, Uint128, WasmMsg,
+    attr, coin, coins, ensure, to_json_binary, Addr, BankMsg, CosmosMsg, DepsMut, Empty, Env,
+    MessageInfo, Response, Storage, SubMsg, Uint128, WasmMsg,
 };
 use cw20::Cw20ExecuteMsg;
 
@@ -198,25 +201,34 @@ pub fn pay_fee(
                         &adodb_addr,
                         ado_type.as_str(),
                     )?;
-                    deps.api.addr_validate(&publisher)?
+                    let publisher_addr = deps.api.addr_validate(&publisher)?;
+                    Recipient::new(publisher_addr.into_string(), None)
                 };
+                let recipient_addr = recipient.address.get_raw_address(&deps.as_ref())?;
 
                 let receiver_balance = BALANCES
                     .load(
                         deps.as_ref().storage,
-                        (recipient.clone(), asset.to_string()),
+                        (recipient_addr.clone(), asset.to_string()),
                     )
                     .unwrap_or_default();
                 BALANCES.save(
                     deps.storage,
-                    (recipient.clone(), asset.to_string()),
+                    (recipient_addr.clone(), asset.to_string()),
                     &(receiver_balance + fee.amount),
                 )?;
 
                 resp = resp
                     .add_attribute("paid_fee", format!("{}{}", fee.amount, fee.asset))
-                    .add_attribute("fee_recipient", recipient.to_string());
-                Ok(resp)
+                    .add_attribute("fee_recipient", recipient_addr.to_string());
+
+                if recipient.get_message().is_some() {
+                    let recipient_msg = recipient
+                        .generate_direct_msg(&deps.as_ref(), coins(fee.amount.u128(), fee.asset))?;
+                    Ok(resp.add_submessage(recipient_msg))
+                } else {
+                    Ok(resp)
+                }
             }
         }
     } else {

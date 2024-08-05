@@ -1,12 +1,12 @@
 use std::str::FromStr;
 
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{ensure, Addr, Api, Uint128};
+use cosmwasm_std::{ensure, Api, Uint128};
 use schemars::JsonSchema;
 use semver::Version;
 use serde::{Deserialize, Serialize};
 
-use crate::{ado_base::ownership::OwnershipMessage, error::ContractError};
+use crate::{ado_base::ownership::OwnershipMessage, amp::Recipient, error::ContractError};
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -48,7 +48,7 @@ pub struct ActionFee {
     pub action: String,
     pub asset: String,
     pub amount: Uint128,
-    pub receiver: Option<Addr>,
+    pub receiver: Option<Recipient>,
 }
 
 impl ActionFee {
@@ -61,7 +61,7 @@ impl ActionFee {
         }
     }
 
-    pub fn with_receive(&self, receiver: Addr) -> Self {
+    pub fn with_receive(&self, receiver: Recipient) -> Self {
         Self {
             action: self.action.clone(),
             asset: self.asset.clone(),
