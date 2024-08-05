@@ -1,9 +1,8 @@
 #![cfg(all(not(target_arch = "wasm32"), feature = "testing"))]
 use crate::contract::{execute, instantiate, query};
 use andromeda_modules::curve::{
-    ExecuteMsg, InstantiateMsg, QueryMsg, 
-    CurveRestriction, CurveType, CurveId, 
-    GetCurveTypeResponse, GetConfigurationExpResponse, GetRestrictionResponse, GetPlotYFromXResponse,
+    CurveId, CurveRestriction, CurveType, ExecuteMsg, GetConfigurationExpResponse,
+    GetCurveTypeResponse, GetPlotYFromXResponse, GetRestrictionResponse, InstantiateMsg, QueryMsg,
 };
 use andromeda_std::ado_base::rates::{Rate, RatesMessage};
 use andromeda_testing::mock::MockApp;
@@ -42,11 +41,11 @@ impl MockCurve {
     }
 
     pub fn execute_update_curve_type(
-        &self, 
+        &self,
         app: &mut MockApp,
         sender: Addr,
         curve_type: CurveType,
-        funds:Option<Coin>,
+        funds: Option<Coin>,
     ) -> ExecuteResult {
         let msg = mock_execute_update_curve_type_msg(curve_type);
         if let Some(funds) = funds {
@@ -61,7 +60,7 @@ impl MockCurve {
         app: &mut MockApp,
         sender: Addr,
         restriction: CurveRestriction,
-        funds:Option<Coin>,
+        funds: Option<Coin>,
     ) -> ExecuteResult {
         let msg = mock_execute_update_restriction_msg(restriction);
         if let Some(funds) = funds {
@@ -75,13 +74,18 @@ impl MockCurve {
         &self,
         app: &mut MockApp,
         sender: Addr,
-        curve_id: CurveId, 
-        base_value: u64, 
-        multiple_variable_value: Option<u64>, 
+        curve_id: CurveId,
+        base_value: u64,
+        multiple_variable_value: Option<u64>,
         constant_value: Option<u64>,
-        funds:Option<Coin>,
+        funds: Option<Coin>,
     ) -> ExecuteResult {
-        let msg = mock_execute_configure_exponential_msg(curve_id, base_value, multiple_variable_value, constant_value);
+        let msg = mock_execute_configure_exponential_msg(
+            curve_id,
+            base_value,
+            multiple_variable_value,
+            constant_value,
+        );
         if let Some(funds) = funds {
             app.execute_contract(sender, self.addr().clone(), &msg, &[funds])
         } else {
@@ -93,7 +97,7 @@ impl MockCurve {
         &self,
         app: &mut MockApp,
         sender: Addr,
-        funds:Option<Coin>,
+        funds: Option<Coin>,
     ) -> ExecuteResult {
         let msg = ExecuteMsg::Reset {};
         if let Some(funds) = funds {
@@ -156,10 +160,15 @@ pub fn mock_execute_update_restriction_msg(restriction: CurveRestriction) -> Exe
 }
 
 pub fn mock_execute_configure_exponential_msg(
-    curve_id: CurveId, 
-    base_value: u64, 
-    multiple_variable_value: Option<u64>, 
+    curve_id: CurveId,
+    base_value: u64,
+    multiple_variable_value: Option<u64>,
     constant_value: Option<u64>,
 ) -> ExecuteMsg {
-    ExecuteMsg::ConfigureExponential { curve_id, base_value, multiple_variable_value, constant_value }
+    ExecuteMsg::ConfigureExponential {
+        curve_id,
+        base_value,
+        multiple_variable_value,
+        constant_value,
+    }
 }

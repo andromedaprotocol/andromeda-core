@@ -1,4 +1,4 @@
-use andromeda_modules::curve::{CurveRestriction, CurveType, CurveId};
+use andromeda_modules::curve::{CurveId, CurveRestriction, CurveType};
 use cw_storage_plus::Item;
 
 pub const CURVE_TYPE: Item<CurveType> = Item::new("curve_type");
@@ -11,6 +11,3 @@ pub const IS_CONFIGURED_EXP: Item<bool> = Item::new("is_configured_exp");
 
 pub const DEFAULT_MULTIPLE_VARIABLE_VALUE: u64 = 1;
 pub const DEFAULT_CONSTANT_VALUE: u64 = 1;
-
-
-

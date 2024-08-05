@@ -1,7 +1,6 @@
 use andromeda_modules::curve::{
-    ExecuteMsg, InstantiateMsg, QueryMsg, 
-    CurveRestriction, CurveType, CurveId, 
-    GetCurveTypeResponse, GetConfigurationExpResponse, GetRestrictionResponse, GetPlotYFromXResponse,
+    CurveId, CurveRestriction, CurveType, ExecuteMsg, GetConfigurationExpResponse,
+    GetCurveTypeResponse, GetPlotYFromXResponse, GetRestrictionResponse, InstantiateMsg, QueryMsg,
 };
 use andromeda_std::{
     error::ContractError,
@@ -19,7 +18,7 @@ pub type MockDeps = OwnedDeps<MockStorage, MockApi, WasmMockQuerier>;
 
 pub fn proper_initialization(
     curve_type: CurveType,
-    restriction: CurveRestriction, 
+    restriction: CurveRestriction,
 ) -> (MockDeps, MessageInfo) {
     let mut deps = mock_dependencies_custom(&[]);
     let info = mock_info("creator", &[]);
@@ -45,10 +44,7 @@ pub fn update_curve_type(
     execute(deps, mock_env(), info, msg)
 }
 
-pub fn reset(
-    deps: DepsMut<'_>,
-    sender: &str,
-) -> Result<Response, ContractError> {
+pub fn reset(deps: DepsMut<'_>, sender: &str) -> Result<Response, ContractError> {
     let msg = ExecuteMsg::Reset {};
     let info = mock_info(sender, &[]);
     execute(deps, mock_env(), info, msg)
@@ -72,11 +68,11 @@ pub fn configure_exponential(
     constant_value: Option<u64>,
     sender: &str,
 ) -> Result<Response, ContractError> {
-    let msg = ExecuteMsg::ConfigureExponential { 
-        curve_id, 
-        base_value, 
-        multiple_variable_value, 
-        constant_value, 
+    let msg = ExecuteMsg::ConfigureExponential {
+        curve_id,
+        base_value,
+        multiple_variable_value,
+        constant_value,
     };
     let info = mock_info(sender, &[]);
     execute(deps, mock_env(), info, msg)
@@ -106,7 +102,10 @@ pub fn query_configuration_exp(deps: Deps) -> Result<GetConfigurationExpResponse
     }
 }
 
-pub fn query_plot_y_from_x(deps: Deps, x_value: f64) -> Result<GetPlotYFromXResponse, ContractError> {
+pub fn query_plot_y_from_x(
+    deps: Deps,
+    x_value: f64,
+) -> Result<GetPlotYFromXResponse, ContractError> {
     let res = query(deps, mock_env(), QueryMsg::GetPlotYFromX { x_value });
     match res {
         Ok(res) => Ok(from_json(res).unwrap()),

@@ -37,9 +37,7 @@ pub enum QueryMsg {
     #[returns(GetRestrictionResponse)]
     GetRestriction {},
     #[returns(GetPlotYFromXResponse)]
-    GetPlotYFromX {
-        x_value: f64,
-    },
+    GetPlotYFromX { x_value: f64 },
 }
 
 #[cw_serde]

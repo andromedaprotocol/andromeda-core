@@ -1,22 +1,21 @@
 #[cfg(not(feature = "library"))]
 use crate::state::{
-    RESTRICTION, CURVE_TYPE, CURVE_ID, BASE_VALUE, MULTIPLE_VARIABLE_VALUE, CONSTANT_VALUE, 
-    DEFAULT_MULTIPLE_VARIABLE_VALUE, DEFAULT_CONSTANT_VALUE, IS_CONFIGURED_EXP,
+    BASE_VALUE, CONSTANT_VALUE, CURVE_ID, CURVE_TYPE, DEFAULT_CONSTANT_VALUE,
+    DEFAULT_MULTIPLE_VARIABLE_VALUE, IS_CONFIGURED_EXP, MULTIPLE_VARIABLE_VALUE, RESTRICTION,
 };
 use andromeda_modules::curve::{
-    ExecuteMsg, InstantiateMsg, QueryMsg, 
-    CurveRestriction, CurveType, CurveId, 
-    GetCurveTypeResponse, GetConfigurationExpResponse, GetRestrictionResponse, GetPlotYFromXResponse,
+    CurveId, CurveRestriction, CurveType, ExecuteMsg, GetConfigurationExpResponse,
+    GetCurveTypeResponse, GetPlotYFromXResponse, GetRestrictionResponse, InstantiateMsg, QueryMsg,
 };
 use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     ado_contract::ADOContract,
-    common::{context::ExecuteContext, encode_binary},
+    common::{actions::call_action, context::ExecuteContext, encode_binary},
     error::ContractError,
 };
 
 use cosmwasm_std::{
-    entry_point, ensure, Binary, Deps, DepsMut, Env, MessageInfo, Response, Addr, Storage,
+    ensure, entry_point, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Response, Storage,
 };
 
 // version info for migration info
@@ -67,26 +66,52 @@ pub fn execute(
     }
 }
 
-fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
-    match msg.clone() {
-        ExecuteMsg::UpdateCurveType { curve_type } => execute_update_curve_type(ctx, curve_type),
-        ExecuteMsg::UpdateRestriction { restriction } => execute_update_restriction(ctx, restriction),
-        ExecuteMsg::ConfigureExponential { 
-            curve_id, 
-            base_value, 
-            multiple_variable_value, 
-            constant_value 
-        } => execute_configure_exponential(ctx, curve_id, base_value, multiple_variable_value, constant_value),
-        ExecuteMsg::Reset {} => execute_reset(ctx),
+fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+    let action = msg.as_ref().to_string();
+
+    let action_response = call_action(
+        &mut ctx.deps,
+        &ctx.info,
+        &ctx.env,
+        &ctx.amp_ctx,
+        msg.as_ref(),
+    )?;
+
+    let res = match msg.clone() {
+        ExecuteMsg::UpdateCurveType { curve_type } => {
+            execute_update_curve_type(ctx, curve_type, action)
+        }
+        ExecuteMsg::UpdateRestriction { restriction } => {
+            execute_update_restriction(ctx, restriction, action)
+        }
+        ExecuteMsg::ConfigureExponential {
+            curve_id,
+            base_value,
+            multiple_variable_value,
+            constant_value,
+        } => execute_configure_exponential(
+            ctx,
+            curve_id,
+            base_value,
+            multiple_variable_value,
+            constant_value,
+            action,
+        ),
+        ExecuteMsg::Reset {} => execute_reset(ctx, action),
         _ => ADOContract::default().execute(ctx, msg),
-    }
+    }?;
+
+    Ok(res
+        .add_submessages(action_response.messages)
+        .add_attributes(action_response.attributes)
+        .add_events(action_response.events))
 }
 
 pub fn execute_update_curve_type(
     ctx: ExecuteContext,
     curve_type: CurveType,
+    action: String,
 ) -> Result<Response, ContractError> {
-
     let sender = ctx.info.sender.clone();
     ensure!(
         has_permission(ctx.deps.storage, &sender)?,
@@ -100,18 +125,16 @@ pub fn execute_update_curve_type(
     CONSTANT_VALUE.remove(ctx.deps.storage);
     IS_CONFIGURED_EXP.save(ctx.deps.storage, &false)?;
 
-    Ok(
-        Response::new()
-        .add_attribute("method", "update_curve_type")
-        .add_attribute("sender", sender)
-    )
+    Ok(Response::new()
+        .add_attribute("action", action)
+        .add_attribute("sender", sender))
 }
 
 pub fn execute_update_restriction(
     ctx: ExecuteContext,
     restriction: CurveRestriction,
+    action: String,
 ) -> Result<Response, ContractError> {
-    
     let sender = ctx.info.sender;
     ensure!(
         ADOContract::default().is_owner_or_operator(ctx.deps.storage, sender.as_ref())?,
@@ -119,26 +142,25 @@ pub fn execute_update_restriction(
     );
     RESTRICTION.save(ctx.deps.storage, &restriction)?;
 
-    Ok(
-        Response::new()
-        .add_attribute("method", "update_restriction")
-        .add_attribute("sender", sender)
-    )
+    Ok(Response::new()
+        .add_attribute("action", action)
+        .add_attribute("sender", sender))
 }
 
 pub fn execute_configure_exponential(
-    ctx: ExecuteContext, 
-    curve_id: CurveId, 
-    base_value: u64, 
-    multiple_variable_value: Option<u64>, 
-    constant_value: Option<u64>
+    ctx: ExecuteContext,
+    curve_id: CurveId,
+    base_value: u64,
+    multiple_variable_value: Option<u64>,
+    constant_value: Option<u64>,
+    action: String,
 ) -> Result<Response, ContractError> {
     let sender = ctx.info.sender.clone();
     ensure!(
         has_permission(ctx.deps.storage, &sender)?,
         ContractError::Unauthorized {}
     );
-    
+
     CURVE_ID.save(ctx.deps.storage, &curve_id)?;
     BASE_VALUE.save(ctx.deps.storage, &base_value)?;
 
@@ -156,15 +178,12 @@ pub fn execute_configure_exponential(
 
     IS_CONFIGURED_EXP.save(ctx.deps.storage, &true)?;
 
-    Ok(
-        Response::new()
-        .add_attribute("method", "configure_exponential")
-        .add_attribute("sender", sender)
-    )
+    Ok(Response::new()
+        .add_attribute("action", action)
+        .add_attribute("sender", sender))
 }
 
-pub fn execute_reset(ctx: ExecuteContext) -> Result<Response, ContractError> {
-
+pub fn execute_reset(ctx: ExecuteContext, action: String) -> Result<Response, ContractError> {
     let sender = ctx.info.sender.clone();
     ensure!(
         has_permission(ctx.deps.storage, &sender)?,
@@ -172,27 +191,18 @@ pub fn execute_reset(ctx: ExecuteContext) -> Result<Response, ContractError> {
     );
 
     let is_configured_exp: bool = IS_CONFIGURED_EXP.load(ctx.deps.storage)?;
-    ensure!(
-        is_configured_exp,
-        ContractError::UnmetCondition {}
-    );
+    ensure!(is_configured_exp, ContractError::UnmetCondition {});
 
     CURVE_ID.remove(ctx.deps.storage);
     BASE_VALUE.remove(ctx.deps.storage);
     MULTIPLE_VARIABLE_VALUE.remove(ctx.deps.storage);
     CONSTANT_VALUE.remove(ctx.deps.storage);
     IS_CONFIGURED_EXP.save(ctx.deps.storage, &false)?;
-    
-    Ok(
-        Response::new()
-        .add_attribute("method", "reset")
-    )
+
+    Ok(Response::new().add_attribute("action", action))
 }
 
-pub fn has_permission(
-    storage: &dyn Storage,
-    addr: &Addr,
-) -> Result<bool, ContractError> {
+pub fn has_permission(storage: &dyn Storage, addr: &Addr) -> Result<bool, ContractError> {
     let is_operator = ADOContract::default().is_owner_or_operator(storage, addr.as_str())?;
     let allowed = match RESTRICTION.load(storage)? {
         CurveRestriction::Private => is_operator,
@@ -207,7 +217,9 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
         QueryMsg::GetCurveType {} => encode_binary(&query_curve_type(deps.storage)?),
         QueryMsg::GetConfigurationExp {} => encode_binary(&query_configuration_exp(deps.storage)?),
         QueryMsg::GetRestriction {} => encode_binary(&query_restriction(deps.storage)?),
-        QueryMsg::GetPlotYFromX { x_value } => encode_binary(&query_plot_y_from_x(deps.storage, x_value)?),
+        QueryMsg::GetPlotYFromX { x_value } => {
+            encode_binary(&query_plot_y_from_x(deps.storage, x_value)?)
+        }
         _ => ADOContract::default().query(deps, env, msg),
     }
 }
@@ -217,13 +229,11 @@ pub fn query_curve_type(storage: &dyn Storage) -> Result<GetCurveTypeResponse, C
     Ok(GetCurveTypeResponse { curve_type })
 }
 
-pub fn query_configuration_exp(storage: &dyn Storage) -> Result<GetConfigurationExpResponse, ContractError> {
-
+pub fn query_configuration_exp(
+    storage: &dyn Storage,
+) -> Result<GetConfigurationExpResponse, ContractError> {
     let is_configured_exp: bool = IS_CONFIGURED_EXP.load(storage)?;
-    ensure!(
-        is_configured_exp,
-        ContractError::UnmetCondition {}
-    );
+    ensure!(is_configured_exp, ContractError::UnmetCondition {});
 
     let curve_id = CURVE_ID.load(storage)?;
     let base_value = BASE_VALUE.load(storage)?;
@@ -233,7 +243,7 @@ pub fn query_configuration_exp(storage: &dyn Storage) -> Result<GetConfiguration
         curve_id,
         base_value,
         multiple_variable_value,
-        constant_value
+        constant_value,
     })
 }
 
@@ -247,10 +257,7 @@ pub fn query_plot_y_from_x(
     x_value: f64,
 ) -> Result<GetPlotYFromXResponse, ContractError> {
     let is_configured_exp: bool = IS_CONFIGURED_EXP.load(storage)?;
-    ensure!(
-        is_configured_exp,
-        ContractError::UnmetCondition {}
-    );
+    ensure!(is_configured_exp, ContractError::UnmetCondition {});
 
     let curve_id = match CURVE_ID.load(storage)? {
         CurveId::Growth => 1 as f64,
@@ -261,11 +268,10 @@ pub fn query_plot_y_from_x(
     let constant_value = CONSTANT_VALUE.load(storage)? as f64;
     let multiple_variable_value = MULTIPLE_VARIABLE_VALUE.load(storage)? as f64;
 
-    let y_value = (constant_value * base_value.powf(curve_id * multiple_variable_value * x_value)).to_string();
+    let y_value = (constant_value * base_value.powf(curve_id * multiple_variable_value * x_value))
+        .to_string();
 
-    Ok(GetPlotYFromXResponse {
-        y_value,
-    })
+    Ok(GetPlotYFromXResponse { y_value })
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
