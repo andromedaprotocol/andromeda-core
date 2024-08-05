@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added Expiry Enum [(#419)](https://github.com/andromedaprotocol/andromeda-core/pull/419)
 - Added Conditional Splitter [(#441)](https://github.com/andromedaprotocol/andromeda-core/pull/441)
 - Validator Staking: Added the option to set an amount while unstaking [(#458)](https://github.com/andromedaprotocol/andromeda-core/pull/458)
+- Added Graph ADO [(#526)](https://github.com/andromedaprotocol/andromeda-core/pull/526)
 
 ### Changed
 
