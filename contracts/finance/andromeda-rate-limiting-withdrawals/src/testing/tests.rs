@@ -47,7 +47,7 @@ fn test_deposit_zero_funds() {
     let info = mock_info("creator", &[]);
     let _res = init(deps.as_mut());
 
-    let exec = ExecuteMsg::Deposits { recipient: None };
+    let exec = ExecuteMsg::Deposit { recipient: None };
     let _err = execute(deps.as_mut(), mock_env(), info, exec).unwrap_err();
 }
 
@@ -56,7 +56,7 @@ fn test_deposit_invalid_funds() {
     let mut deps = mock_dependencies_custom(&[]);
     let _res = init(deps.as_mut());
 
-    let exec = ExecuteMsg::Deposits {
+    let exec = ExecuteMsg::Deposit {
         recipient: Some("me".to_string()),
     };
 
@@ -76,7 +76,7 @@ fn test_deposit_new_account_works() {
     let mut deps = mock_dependencies_custom(&[]);
     let _res = init(deps.as_mut());
 
-    let exec = ExecuteMsg::Deposits {
+    let exec = ExecuteMsg::Deposit {
         recipient: Some("andromedauser".to_string()),
     };
 
@@ -98,14 +98,14 @@ fn test_deposit_existing_account_works() {
     let mut deps = mock_dependencies_custom(&[]);
     let _res = init(deps.as_mut());
 
-    let exec = ExecuteMsg::Deposits {
+    let exec = ExecuteMsg::Deposit {
         recipient: Some("andromedauser".to_string()),
     };
 
     let info = mock_info("creator", &[coin(30, "junox")]);
 
     let _res = execute(deps.as_mut(), mock_env(), info, exec).unwrap();
-    let exec = ExecuteMsg::Deposits { recipient: None };
+    let exec = ExecuteMsg::Deposit { recipient: None };
 
     let info = mock_info("andromedauser", &[coin(70, "junox")]);
 
@@ -125,7 +125,7 @@ fn test_withdraw_account_not_found() {
     let mut deps = mock_dependencies_custom(&[]);
     let _res = init(deps.as_mut());
 
-    let exec = ExecuteMsg::Deposits {
+    let exec = ExecuteMsg::Deposit {
         recipient: Some("andromedauser".to_string()),
     };
 
@@ -134,7 +134,7 @@ fn test_withdraw_account_not_found() {
     let _res = execute(deps.as_mut(), mock_env(), info, exec).unwrap();
 
     let info = mock_info("random", &[]);
-    let exec = ExecuteMsg::WithdrawFunds {
+    let exec = ExecuteMsg::Withdraw {
         amount: Uint128::from(19_u16),
     };
     let err = execute(deps.as_mut(), mock_env(), info, exec).unwrap_err();
@@ -146,7 +146,7 @@ fn test_withdraw_over_account_limit() {
     let mut deps = mock_dependencies_custom(&[]);
     let _res = init(deps.as_mut());
 
-    let exec = ExecuteMsg::Deposits {
+    let exec = ExecuteMsg::Deposit {
         recipient: Some("andromedauser".to_string()),
     };
 
@@ -155,7 +155,7 @@ fn test_withdraw_over_account_limit() {
     let _res = execute(deps.as_mut(), mock_env(), info, exec).unwrap();
 
     let info = mock_info("andromedauser", &[]);
-    let exec = ExecuteMsg::WithdrawFunds {
+    let exec = ExecuteMsg::Withdraw {
         amount: Uint128::from(31_u16),
     };
     let err = execute(deps.as_mut(), mock_env(), info, exec).unwrap_err();
@@ -167,7 +167,7 @@ fn test_withdraw_funds_locked() {
     let mut deps = mock_dependencies_custom(&[]);
     let _res = init(deps.as_mut());
 
-    let exec = ExecuteMsg::Deposits {
+    let exec = ExecuteMsg::Deposit {
         recipient: Some("andromedauser".to_string()),
     };
 
@@ -176,13 +176,13 @@ fn test_withdraw_funds_locked() {
     let _res = execute(deps.as_mut(), mock_env(), info, exec).unwrap();
 
     let info = mock_info("andromedauser", &[]);
-    let exec = ExecuteMsg::WithdrawFunds {
+    let exec = ExecuteMsg::Withdraw {
         amount: Uint128::from(10_u16),
     };
     let _res = execute(deps.as_mut(), mock_env(), info, exec).unwrap();
 
     let info = mock_info("andromedauser", &[]);
-    let exec = ExecuteMsg::WithdrawFunds {
+    let exec = ExecuteMsg::Withdraw {
         amount: Uint128::from(10_u16),
     };
 
@@ -208,7 +208,7 @@ fn test_withdraw_over_allowed_limit() {
         owner: None,
     };
     let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
-    let exec = ExecuteMsg::Deposits {
+    let exec = ExecuteMsg::Deposit {
         recipient: Some("andromedauser".to_string()),
     };
 
@@ -217,7 +217,7 @@ fn test_withdraw_over_allowed_limit() {
     let _res = execute(deps.as_mut(), mock_env(), info, exec).unwrap();
 
     let info = mock_info("andromedauser", &[]);
-    let exec = ExecuteMsg::WithdrawFunds {
+    let exec = ExecuteMsg::Withdraw {
         amount: Uint128::from(21_u16),
     };
     let err = execute(deps.as_mut(), mock_env(), info, exec).unwrap_err();
@@ -241,7 +241,7 @@ fn test_withdraw_works() {
         owner: None,
     };
     let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
-    let exec = ExecuteMsg::Deposits {
+    let exec = ExecuteMsg::Deposit {
         recipient: Some("andromedauser".to_string()),
     };
 
@@ -250,7 +250,7 @@ fn test_withdraw_works() {
     let _res = execute(deps.as_mut(), mock_env(), info, exec).unwrap();
 
     let info = mock_info("andromedauser", &[]);
-    let exec = ExecuteMsg::WithdrawFunds {
+    let exec = ExecuteMsg::Withdraw {
         amount: Uint128::from(10_u16),
     };
     let _res = execute(deps.as_mut(), mock_env(), info, exec).unwrap();
