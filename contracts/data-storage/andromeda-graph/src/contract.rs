@@ -151,23 +151,23 @@ pub fn execute_store_coordinate(
     let y_length = map_size.y_length as f64;
 
     let x_coordinate = ((coordinate.x_coordinate * 10_f64.powf(map_decimal as f64)) as i64) as f64
-        / 10_f64.powf(map_decimal as f64) as f64;
+        / 10_f64.powf(map_decimal as f64);
     let y_coordinate = ((coordinate.y_coordinate * 10_f64.powf(map_decimal as f64)) as i64) as f64
-        / 10_f64.powf(map_decimal as f64) as f64;
+        / 10_f64.powf(map_decimal as f64);
 
     match allow_negative {
         true => {
             ensure!(
-                x_coordinate >= -((x_length / 2_f64) as f64)
-                    && x_coordinate <= (x_length / 2_f64) as f64,
+                x_coordinate >= -(x_length / 2_f64)
+                    && x_coordinate <= x_length / 2_f64,
                 ContractError::InvalidParameter {
                     error: Some("Wrong X Coordinate Range".to_string())
                 }
             );
 
             ensure!(
-                y_coordinate >= -((y_length / 2_f64) as f64)
-                    && y_coordinate <= (y_length / 2_f64) as f64,
+                y_coordinate >= -(y_length / 2_f64)
+                    && y_coordinate <= y_length / 2_f64,
                 ContractError::InvalidParameter {
                     error: Some("Wrong Y Coordinate Range".to_string())
                 }
