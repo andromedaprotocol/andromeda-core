@@ -101,7 +101,7 @@ pub fn execute_update_map(
     let map = MAP_INFO
         .load(ctx.deps.storage)
         .map_err(|_| ContractError::InvalidParameter {
-            error: Some("Can not find existed map".to_string()),
+            error: Some("Map not found".to_string()),
         })?;
 
     ensure!(
@@ -138,7 +138,7 @@ pub fn execute_store_coordinate(
     let map = MAP_INFO
         .load(ctx.deps.storage)
         .map_err(|_| ContractError::InvalidParameter {
-            error: Some("Can not find existed map".to_string()),
+            error: Some("Map not found".to_string()),
         })
         .unwrap();
 
@@ -217,7 +217,7 @@ pub fn get_map_info(storage: &dyn Storage) -> Result<GetMapInfoResponse, Contrac
     let map_info = MAP_INFO
         .load(storage)
         .map_err(|_| ContractError::InvalidParameter {
-            error: Some("Not existed map".to_string()),
+            error: Some("Map not found".to_string()),
         });
     match map_info {
         Ok(map_info) => Ok(GetMapInfoResponse { map_info }),

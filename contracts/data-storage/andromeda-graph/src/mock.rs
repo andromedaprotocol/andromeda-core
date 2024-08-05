@@ -34,7 +34,7 @@ impl MockGraph {
                 "Graph Contract",
                 Some(sender.to_string()),
             )
-            .unwrap();
+            .map_err(|e| ContractError::Std(e.into()))?;
         MockGraph(Addr::unchecked(addr))
     }
 
