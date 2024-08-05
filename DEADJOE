@@ -1,0 +1,20 @@
+
+*** These modified files were found in JOE when it aborted on Mon Aug  5 07:59:10 2024
+*** JOE was aborted by UNIX signal 1
+
+*** File '(Unnamed)'
+/home/paperspace/WorkSpace/rust/perf/andromeda-time-gate/.git/MERGE_MSG
+
+*** File '/home/paperspace/WorkSpace/rust/perf/andromeda-time-gate/.git/MERGE_MSG'
+Merge branch 'mdjakovic/time-gate' of https://github.com/mdjakovic0920/andromeda-core into mdjakovic/time-gate
+# Please enter a commit message to explain why this merge is necessary,
+# especially if it merges an updated upstream into a topic branch.
+#
+# Lines starting with '#' will be ignored, and an empty message aborts
+# the commit.
+
+*** File '* Startup Log *'
+Processing '/etc/joe/editorrc'...
+Processing '/etc/joe/ftyperc'...
+Finished processing /etc/joe/ftyperc
+Finished processing /etc/joe/editorrc

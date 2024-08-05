@@ -56,7 +56,11 @@ impl<'a> ADOContract<'a> {
                     encode_binary(&self.query_permissioned_actions(deps)?)
                 }
                 #[cfg(feature = "rates")]
-                AndromedaQuery::GetRate { action } => encode_binary(&self.get_rates(deps, action)?),
+                AndromedaQuery::Rates { action } => encode_binary(&self.get_rates(deps, action)?),
+
+                #[cfg(feature = "rates")]
+                AndromedaQuery::AllRates {} => encode_binary(&self.get_all_rates(deps)?),
+
                 _ => Err(ContractError::UnsupportedOperation {}),
             },
             Err(_) => Err(ContractError::UnsupportedOperation {}),
