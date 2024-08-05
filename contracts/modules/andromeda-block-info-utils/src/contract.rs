@@ -58,6 +58,7 @@ pub fn execute(
     }
 }
 
+#[allow(clippy::match_single_binding)]
 fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
 
     let action_response = call_action(
