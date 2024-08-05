@@ -3,10 +3,7 @@ use andromeda_std::{
     ado_base::{AndromedaMsg, AndromedaQuery, InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     ado_contract::ADOContract,
     amp::AndrAddr,
-    common::{
-        actions::call_action, call_action::get_action_name, context::ExecuteContext, encode_binary,
-        Funds,
-    },
+    common::{actions::call_action, context::ExecuteContext, encode_binary, Funds},
     error::ContractError,
 };
 use cosmwasm_std::entry_point;
@@ -71,7 +68,7 @@ pub fn execute(
 }
 
 pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
-    let action = get_action_name(CONTRACT_NAME, msg.as_ref());
+    let action = msg.as_ref().to_string();
 
     let _contract = ADOContract::default();
     let action_response = call_action(
