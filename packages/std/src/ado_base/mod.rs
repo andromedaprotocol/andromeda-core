@@ -77,5 +77,9 @@ pub enum AndromedaQuery {
 
     #[cfg(feature = "rates")]
     #[returns(Option<self::rates::Rate>)]
-    GetRate { action: String },
+    Rates { action: String },
+
+    #[cfg(feature = "rates")]
+    #[returns(self::rates::AllRatesResponse)]
+    AllRates {},
 }

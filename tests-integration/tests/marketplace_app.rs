@@ -1,4 +1,4 @@
-#![cfg(not(target_arch = "wasm32"))]
+#![cfg(all(not(target_arch = "wasm32"), feature = "testing", feature = "rates"))]
 
 use andromeda_address_list::mock::{
     mock_address_list_instantiate_msg, mock_andromeda_address_list, MockAddressList,
@@ -18,7 +18,7 @@ use andromeda_splitter::mock::{
     mock_andromeda_splitter, mock_splitter_instantiate_msg, mock_splitter_send_msg,
 };
 use andromeda_std::ado_base::permissioning::{LocalPermission, Permission};
-use andromeda_std::ado_base::rates::LocalRate;
+use andromeda_std::ado_base::rates::{AllRatesResponse, LocalRate};
 use andromeda_std::ado_base::rates::{LocalRateType, LocalRateValue, PercentRate, Rate};
 use andromeda_std::amp::messages::{AMPMsg, AMPPkt};
 use andromeda_std::amp::{AndrAddr, Recipient};
@@ -76,7 +76,7 @@ fn test_marketplace_app() {
     };
 
     let rates_init_msg = mock_rates_instantiate_msg(
-        "MarketplaceBuy".to_string(),
+        "Buy".to_string(),
         local_rate,
         andr.kernel.addr().to_string(),
         None,
@@ -134,10 +134,28 @@ fn test_marketplace_app() {
         .execute_set_rate(
             &mut router,
             owner.clone(),
-            "MarketplaceBuy",
+            "Buy",
             Rate::Contract(AndrAddr::from_string(rates.addr())),
         )
         .unwrap();
+
+    let rate = marketplace
+        .query_rates(&mut router, "Buy".to_string())
+        .unwrap();
+
+    assert_eq!(rate, Rate::Contract(AndrAddr::from_string(rates.addr())));
+
+    let rates: AllRatesResponse = marketplace.query_all_rates(&mut router).unwrap();
+
+    assert_eq!(
+        rates,
+        AllRatesResponse {
+            all_rates: vec![(
+                "Buy".to_string(),
+                Rate::Contract(AndrAddr::from_string(rates.addr()))
+            )]
+        }
+    );
 
     // Mint Tokens
     cw721
@@ -497,7 +515,7 @@ fn test_marketplace_app_cw20_restricted() {
     };
 
     let rates_init_msg = mock_rates_instantiate_msg(
-        "MarketplaceBuy".to_string(),
+        "Buy".to_string(),
         local_rate,
         andr.kernel.addr().to_string(),
         None,
@@ -562,7 +580,7 @@ fn test_marketplace_app_cw20_restricted() {
         .execute_set_rate(
             &mut router,
             owner.clone(),
-            "MarketplaceBuy",
+            "Buy",
             Rate::Contract(AndrAddr::from_string(rates.addr())),
         )
         .unwrap();
@@ -797,7 +815,7 @@ fn test_marketplace_app_cw20_unrestricted() {
     };
 
     let rates_init_msg = mock_rates_instantiate_msg(
-        "MarketplaceBuy".to_string(),
+        "Buy".to_string(),
         local_rate,
         andr.kernel.addr().to_string(),
         None,
@@ -860,7 +878,7 @@ fn test_marketplace_app_cw20_unrestricted() {
         .execute_set_rate(
             &mut router,
             owner.clone(),
-            "MarketplaceBuy",
+            "Buy",
             Rate::Contract(AndrAddr::from_string(rates.addr())),
         )
         .unwrap();
