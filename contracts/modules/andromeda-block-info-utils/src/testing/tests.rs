@@ -1,6 +1,4 @@
-use super::mock::{
-    proper_initialization, query_block_height,
-};
+use super::mock::{proper_initialization, query_block_height};
 use cosmwasm_std::testing::mock_env;
 
 #[test]

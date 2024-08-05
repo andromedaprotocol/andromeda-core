@@ -1,5 +1,5 @@
-use andromeda_modules::block_info_utils::{InstantiateMsg, QueryMsg};
 use andromeda_modules::block_info_utils::GetBlockHeightResponse;
+use andromeda_modules::block_info_utils::{InstantiateMsg, QueryMsg};
 use andromeda_std::{
     error::ContractError,
     testing::mock_querier::{mock_dependencies_custom, WasmMockQuerier, MOCK_KERNEL_CONTRACT},

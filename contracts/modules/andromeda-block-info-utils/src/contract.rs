@@ -2,15 +2,12 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response};
 
-use andromeda_modules::block_info_utils::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use andromeda_modules::block_info_utils::GetBlockHeightResponse;
+use andromeda_modules::block_info_utils::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     ado_contract::ADOContract,
-    common::{
-        context::ExecuteContext, encode_binary,
-        actions::call_action,
-    },
+    common::{actions::call_action, context::ExecuteContext, encode_binary},
     error::ContractError,
 };
 
@@ -53,14 +50,13 @@ pub fn execute(
     match msg {
         ExecuteMsg::AMPReceive(pkt) => {
             ADOContract::default().execute_amp_receive(ctx, pkt, handle_execute)
-        },
+        }
         _ => handle_execute(ctx, msg),
     }
 }
 
 #[allow(clippy::match_single_binding)]
 fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
-
     let action_response = call_action(
         &mut ctx.deps,
         &ctx.info,
@@ -87,9 +83,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
     }
 }
 
-pub fn get_block_height(
-    env: Env,
-) -> Result<GetBlockHeightResponse, ContractError> {
+pub fn get_block_height(env: Env) -> Result<GetBlockHeightResponse, ContractError> {
     let block_height = env.block.height;
     Ok(GetBlockHeightResponse { block_height })
 }
