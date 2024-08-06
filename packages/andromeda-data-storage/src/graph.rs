@@ -16,8 +16,9 @@ pub struct MapInfo {
 
 #[cw_serde]
 pub struct MapSize {
-    pub x_length: u64,
-    pub y_length: u64,
+    pub x_width: u64,
+    pub y_width: u64,
+    pub z_width: Option<u64>,
 }
 
 #[andr_exec]
@@ -31,6 +32,7 @@ pub enum ExecuteMsg {
 pub struct Coordinate {
     pub x_coordinate: f64,
     pub y_coordinate: f64,
+    pub z_coordinate: Option<f64>,
 }
 
 #[andr_query]
@@ -64,4 +66,5 @@ pub struct GetAllPointsResponse {
 pub struct CoordinateResponse {
     pub x: String,
     pub y: String,
+    pub z: Option<String>,
 }

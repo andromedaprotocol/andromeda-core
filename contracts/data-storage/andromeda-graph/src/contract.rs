@@ -147,13 +147,47 @@ pub fn execute_store_coordinate(
         allow_negative,
         map_decimal,
     } = map;
-    let x_length = map_size.x_length as f64;
-    let y_length = map_size.y_length as f64;
+    let x_length = map_size.x_width as f64;
+    let y_length = map_size.y_width as f64;
+    let z_length = match map_size.z_width {
+        Some(z) => Some(z as f64),
+        None => None,
+    };
+
+    let is_z_allowed = match z_length {
+        Some(_) => true,
+        None => false,
+    };
 
     let x_coordinate = ((coordinate.x_coordinate * 10_f64.powf(map_decimal as f64)) as i64) as f64
         / 10_f64.powf(map_decimal as f64);
     let y_coordinate = ((coordinate.y_coordinate * 10_f64.powf(map_decimal as f64)) as i64) as f64
         / 10_f64.powf(map_decimal as f64);
+    let z_coordinate = match coordinate.z_coordinate {
+        Some(z) => Some(
+            ((z * 10_f64.powf(map_decimal as f64)) as i64) as f64 / 10_f64.powf(map_decimal as f64),
+        ),
+        None => None,
+    };
+
+    match z_coordinate {
+        Some(_) => {
+            ensure!(
+                is_z_allowed == true,
+                ContractError::InvalidParameter {
+                    error: Some("Z-axis is not allowed".to_string())
+                }
+            );
+        }
+        None => {
+            ensure!(
+                is_z_allowed == false,
+                ContractError::InvalidParameter {
+                    error: Some("Z-axis is allowed".to_string())
+                }
+            );
+        }
+    }
 
     match allow_negative {
         true => {
@@ -170,6 +204,18 @@ pub fn execute_store_coordinate(
                     error: Some("Wrong Y Coordinate Range".to_string())
                 }
             );
+
+            if is_z_allowed == true {
+                if let Some(z_coordinate) = z_coordinate {
+                    ensure!(
+                        z_coordinate >= -(z_length.unwrap() / 2_f64)
+                            && z_coordinate <= z_length.unwrap() / 2_f64,
+                        ContractError::InvalidParameter {
+                            error: Some("Wrong Z Coordinate Range".to_string())
+                        }
+                    );
+                }
+            }
         }
         false => {
             ensure!(
@@ -185,6 +231,17 @@ pub fn execute_store_coordinate(
                     error: Some("Wrong Y Coordinate Range".to_string())
                 }
             );
+
+            if is_z_allowed == true {
+                if let Some(z_coordinate) = z_coordinate {
+                    ensure!(
+                        z_coordinate >= 0_f64 && z_coordinate <= z_length.unwrap(),
+                        ContractError::InvalidParameter {
+                            error: Some("Wrong Z Coordinate Range".to_string())
+                        }
+                    );
+                }
+            }
         }
     };
 
@@ -196,6 +253,10 @@ pub fn execute_store_coordinate(
         &CoordinateResponse {
             x: x_coordinate.to_string(),
             y: y_coordinate.to_string(),
+            z: match z_coordinate {
+                Some(z_coordinate) => Some(z_coordinate.to_string()),
+                None => None,
+            },
         },
     )?;
     POINT.save(ctx.deps.storage, &point)?;

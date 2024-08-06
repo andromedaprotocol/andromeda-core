@@ -8,11 +8,12 @@ use super::mock::{
 };
 
 #[test]
-fn test_instantiation() {
+fn test_instantiation_z_allowed() {
     let (deps, _) = proper_initialization(MapInfo {
         map_size: MapSize {
-            x_length: 10,
-            y_length: 10,
+            x_width: 10,
+            y_width: 10,
+            z_width: Some(10),
         },
         allow_negative: false,
         map_decimal: 5,
@@ -24,8 +25,38 @@ fn test_instantiation() {
         GetMapInfoResponse {
             map_info: MapInfo {
                 map_size: MapSize {
-                    x_length: 10,
-                    y_length: 10
+                    x_width: 10,
+                    y_width: 10,
+                    z_width: Some(10),
+                },
+                allow_negative: false,
+                map_decimal: 5,
+            }
+        }
+    );
+}
+
+#[test]
+fn test_instantiation_z_not_allowed() {
+    let (deps, _) = proper_initialization(MapInfo {
+        map_size: MapSize {
+            x_width: 10,
+            y_width: 10,
+            z_width: None,
+        },
+        allow_negative: false,
+        map_decimal: 5,
+    });
+
+    let res = query_map_info(deps.as_ref()).unwrap();
+    assert_eq!(
+        res,
+        GetMapInfoResponse {
+            map_info: MapInfo {
+                map_size: MapSize {
+                    x_width: 10,
+                    y_width: 10,
+                    z_width: None,
                 },
                 allow_negative: false,
                 map_decimal: 5,
@@ -38,8 +69,9 @@ fn test_instantiation() {
 fn test_update_map_with_same_info() {
     let (mut deps, info) = proper_initialization(MapInfo {
         map_size: MapSize {
-            x_length: 10,
-            y_length: 10,
+            x_width: 10,
+            y_width: 10,
+            z_width: None,
         },
         allow_negative: false,
         map_decimal: 5,
@@ -48,8 +80,9 @@ fn test_update_map_with_same_info() {
         deps.as_mut(),
         MapInfo {
             map_size: MapSize {
-                x_length: 10,
-                y_length: 10,
+                x_width: 10,
+                y_width: 10,
+                z_width: None,
             },
             allow_negative: false,
             map_decimal: 5,
@@ -66,11 +99,72 @@ fn test_update_map_with_same_info() {
 }
 
 #[test]
-fn test_store_coordinate_with_wrong_range_disallow_negative() {
+fn test_store_coordinate_with_z_not_allowed() {
     let (mut deps, info) = proper_initialization(MapInfo {
         map_size: MapSize {
-            x_length: 10,
-            y_length: 10,
+            x_width: 10,
+            y_width: 10,
+            z_width: None,
+        },
+        allow_negative: false,
+        map_decimal: 5,
+    });
+
+    let err_res = store_coordinate(
+        deps.as_mut(),
+        Coordinate {
+            x_coordinate: 9.12345_f64,
+            y_coordinate: 2.12345_f64,
+            z_coordinate: Some(4.12345_f64),
+        },
+        info.sender.as_ref(),
+    )
+    .unwrap_err();
+    assert_eq!(
+        err_res,
+        ContractError::InvalidParameter {
+            error: Some("Z-axis is not allowed".to_string())
+        }
+    );
+}
+
+#[test]
+fn test_store_coordinate_with_z_allowed() {
+    let (mut deps, info) = proper_initialization(MapInfo {
+        map_size: MapSize {
+            x_width: 10,
+            y_width: 10,
+            z_width: Some(10),
+        },
+        allow_negative: false,
+        map_decimal: 5,
+    });
+
+    let err_res = store_coordinate(
+        deps.as_mut(),
+        Coordinate {
+            x_coordinate: 9.12345_f64,
+            y_coordinate: 2.12345_f64,
+            z_coordinate: None,
+        },
+        info.sender.as_ref(),
+    )
+    .unwrap_err();
+    assert_eq!(
+        err_res,
+        ContractError::InvalidParameter {
+            error: Some("Z-axis is allowed".to_string())
+        }
+    );
+}
+
+#[test]
+fn test_store_coordinate_with_wrong_range_disallow_negative_z_not_allowed() {
+    let (mut deps, info) = proper_initialization(MapInfo {
+        map_size: MapSize {
+            x_width: 10,
+            y_width: 10,
+            z_width: None,
         },
         allow_negative: false,
         map_decimal: 5,
@@ -81,6 +175,7 @@ fn test_store_coordinate_with_wrong_range_disallow_negative() {
         Coordinate {
             x_coordinate: 9.12345_f64,
             y_coordinate: 12.12345_f64,
+            z_coordinate: None,
         },
         info.sender.as_ref(),
     )
@@ -94,11 +189,42 @@ fn test_store_coordinate_with_wrong_range_disallow_negative() {
 }
 
 #[test]
-fn test_store_coordinate_with_wrong_range_allow_negative() {
+fn test_store_coordinate_with_wrong_range_disallow_negative_z_allowed() {
     let (mut deps, info) = proper_initialization(MapInfo {
         map_size: MapSize {
-            x_length: 10,
-            y_length: 10,
+            x_width: 10,
+            y_width: 10,
+            z_width: Some(10),
+        },
+        allow_negative: false,
+        map_decimal: 5,
+    });
+
+    let err_res = store_coordinate(
+        deps.as_mut(),
+        Coordinate {
+            x_coordinate: 9.12345_f64,
+            y_coordinate: 9.12345_f64,
+            z_coordinate: Some(12.12345_f64),
+        },
+        info.sender.as_ref(),
+    )
+    .unwrap_err();
+    assert_eq!(
+        err_res,
+        ContractError::InvalidParameter {
+            error: Some("Wrong Z Coordinate Range".to_string())
+        }
+    );
+}
+
+#[test]
+fn test_store_coordinate_with_wrong_range_allow_negative_z_not_allowed() {
+    let (mut deps, info) = proper_initialization(MapInfo {
+        map_size: MapSize {
+            x_width: 10,
+            y_width: 10,
+            z_width: None,
         },
         allow_negative: true,
         map_decimal: 5,
@@ -109,6 +235,7 @@ fn test_store_coordinate_with_wrong_range_allow_negative() {
         Coordinate {
             x_coordinate: -4.12345_f64,
             y_coordinate: 5.12345_f64,
+            z_coordinate: None,
         },
         info.sender.as_ref(),
     )
@@ -122,11 +249,42 @@ fn test_store_coordinate_with_wrong_range_allow_negative() {
 }
 
 #[test]
+fn test_store_coordinate_with_wrong_range_allow_negative_z_allowed() {
+    let (mut deps, info) = proper_initialization(MapInfo {
+        map_size: MapSize {
+            x_width: 10,
+            y_width: 10,
+            z_width: Some(10),
+        },
+        allow_negative: true,
+        map_decimal: 5,
+    });
+
+    let err_res = store_coordinate(
+        deps.as_mut(),
+        Coordinate {
+            x_coordinate: -4.12345_f64,
+            y_coordinate: 4.12345_f64,
+            z_coordinate: Some(-12.12345_f64),
+        },
+        info.sender.as_ref(),
+    )
+    .unwrap_err();
+    assert_eq!(
+        err_res,
+        ContractError::InvalidParameter {
+            error: Some("Wrong Z Coordinate Range".to_string())
+        }
+    );
+}
+
+#[test]
 fn test_store_coordinate_disallow_negative_and_update_map() {
     let (mut deps, info) = proper_initialization(MapInfo {
         map_size: MapSize {
-            x_length: 10,
-            y_length: 10,
+            x_width: 10,
+            y_width: 10,
+            z_width: None,
         },
         allow_negative: false,
         map_decimal: 5,
@@ -137,6 +295,7 @@ fn test_store_coordinate_disallow_negative_and_update_map() {
         Coordinate {
             x_coordinate: 9.123456_f64,
             y_coordinate: 8.12345_f64,
+            z_coordinate: None,
         },
         info.sender.as_ref(),
     )
@@ -147,6 +306,7 @@ fn test_store_coordinate_disallow_negative_and_update_map() {
         Coordinate {
             x_coordinate: 8.12345_f64,
             y_coordinate: 8.123458_f64,
+            z_coordinate: None,
         },
         info.sender.as_ref(),
     )
@@ -161,11 +321,13 @@ fn test_store_coordinate_disallow_negative_and_update_map() {
         vec![
             CoordinateResponse {
                 x: "9.12345".to_string(),
-                y: "8.12345".to_string()
+                y: "8.12345".to_string(),
+                z: None,
             },
             CoordinateResponse {
                 x: "8.12345".to_string(),
-                y: "8.12345".to_string()
+                y: "8.12345".to_string(),
+                z: None,
             },
         ]
     );
@@ -174,8 +336,9 @@ fn test_store_coordinate_disallow_negative_and_update_map() {
         deps.as_mut(),
         MapInfo {
             map_size: MapSize {
-                x_length: 100,
-                y_length: 100,
+                x_width: 100,
+                y_width: 100,
+                z_width: Some(100),
             },
             allow_negative: false,
             map_decimal: 5,
