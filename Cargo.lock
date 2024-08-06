@@ -220,7 +220,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-economics"
-version = "1.1.0"
+version = "1.2.0"
 dependencies = [
  "andromeda-std",
  "cosmwasm-schema",
@@ -466,7 +466,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-std"
-version = "1.1.0"
+version = "1.2.0"
 dependencies = [
  "andromeda-macros",
  "cosmwasm-schema",
