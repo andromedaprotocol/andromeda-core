@@ -1,4 +1,4 @@
-#![cfg(all(not(target_arch = "wasm32"), feature = "testing"))]
+#![cfg(all(not(target_arch = "wasm32"), feature = "testing", feature = "rates"))]
 
 use crate::contract::{execute, instantiate, query};
 use andromeda_non_fungible_tokens::marketplace::{
@@ -8,6 +8,8 @@ use andromeda_std::ado_base::permissioning::Permission;
 use andromeda_std::ado_base::permissioning::PermissioningMessage;
 use andromeda_std::ado_base::rates::Rate;
 use andromeda_std::ado_base::rates::RatesMessage;
+use andromeda_std::ado_base::rates::RatesQueryMessage;
+use andromeda_std::ado_base::version::VersionResponse;
 use andromeda_std::amp::messages::AMPPkt;
 
 use andromeda_std::amp::AndrAddr;
@@ -92,6 +94,16 @@ impl MockMarketplace {
             &[],
         )
     }
+
+    pub fn query_rates(&self, app: &mut MockApp, action: String) -> Option<Rate> {
+        let msg = mock_get_rates(action);
+        self.query(app, msg)
+    }
+
+    pub fn query_version(&self, app: &mut MockApp) -> VersionResponse {
+        let msg = mock_get_version();
+        self.query(app, msg)
+    }
 }
 
 pub fn mock_andromeda_marketplace() -> Box<dyn Contract<Empty>> {
@@ -171,4 +183,16 @@ pub fn mock_set_permissions(
 
 pub fn mock_receive_packet(packet: AMPPkt) -> ExecuteMsg {
     ExecuteMsg::AMPReceive(packet)
+}
+
+pub fn mock_get_rates(action: String) -> QueryMsg {
+    QueryMsg::Rates { action }
+}
+
+pub fn mock_get_all_rates() -> QueryMsg {
+    QueryMsg::AllRates {}
+}
+
+pub fn mock_get_version() -> QueryMsg {
+    QueryMsg::Version {}
 }
