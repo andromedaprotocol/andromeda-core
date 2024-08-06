@@ -134,7 +134,7 @@ pub fn execute_increment(ctx: ExecuteContext, action: String) -> Result<Response
     let current_amount = CURRENT_AMOUNT
         .load(ctx.deps.storage)?
         .checked_add(increase_amount)
-        .unwrap();
+        .ok_or(ContractError::Overflow {})?;
 
     CURRENT_AMOUNT.save(ctx.deps.storage, &current_amount)?;
 
@@ -157,8 +157,7 @@ pub fn execute_decrement(ctx: ExecuteContext, action: String) -> Result<Response
     let decrease_amount = DECREASE_AMOUNT.load(ctx.deps.storage)?;
     let current_amount = CURRENT_AMOUNT
         .load(ctx.deps.storage)?
-        .checked_sub(decrease_amount)
-        .unwrap_or(0);
+        .saturating_sub(decrease_amount);
 
     CURRENT_AMOUNT.save(ctx.deps.storage, &current_amount)?;
 
