@@ -1,6 +1,7 @@
-use andromeda_data_storage::counter::{ExecuteMsg, InstantiateMsg, QueryMsg, CounterRestriction};
+use andromeda_data_storage::counter::{CounterRestriction, ExecuteMsg, InstantiateMsg, QueryMsg};
 use andromeda_data_storage::counter::{
-    GetInitialAmountResponse, GetCurrentAmountResponse, GetIncreaseAmountResponse, GetDecreaseAmountResponse, GetRestrictionResponse, State,
+    GetCurrentAmountResponse, GetDecreaseAmountResponse, GetIncreaseAmountResponse,
+    GetInitialAmountResponse, GetRestrictionResponse, State,
 };
 use andromeda_std::{
     error::ContractError,
@@ -17,7 +18,7 @@ use crate::contract::{execute, instantiate, query};
 pub type MockDeps = OwnedDeps<MockStorage, MockApi, WasmMockQuerier>;
 
 pub fn proper_initialization(
-    restriction: CounterRestriction, 
+    restriction: CounterRestriction,
     initial_state: State,
 ) -> (MockDeps, MessageInfo) {
     let mut deps = mock_dependencies_custom(&[]);
@@ -34,28 +35,19 @@ pub fn proper_initialization(
     (deps, info)
 }
 
-pub fn increment(
-    deps: DepsMut<'_>,
-    sender: &str,
-) -> Result<Response, ContractError> {
+pub fn increment(deps: DepsMut<'_>, sender: &str) -> Result<Response, ContractError> {
     let msg = ExecuteMsg::Increment {};
     let info = mock_info(sender, &[]);
     execute(deps, mock_env(), info, msg)
 }
 
-pub fn decrement(
-    deps: DepsMut<'_>,
-    sender: &str,
-) -> Result<Response, ContractError> {
+pub fn decrement(deps: DepsMut<'_>, sender: &str) -> Result<Response, ContractError> {
     let msg = ExecuteMsg::Decrement {};
     let info = mock_info(sender, &[]);
     execute(deps, mock_env(), info, msg)
 }
 
-pub fn reset(
-    deps: DepsMut<'_>,
-    sender: &str,
-) -> Result<Response, ContractError> {
+pub fn reset(deps: DepsMut<'_>, sender: &str) -> Result<Response, ContractError> {
     let msg = ExecuteMsg::Reset {};
     let info = mock_info(sender, &[]);
     execute(deps, mock_env(), info, msg)

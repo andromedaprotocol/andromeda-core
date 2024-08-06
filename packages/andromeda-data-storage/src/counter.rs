@@ -21,15 +21,9 @@ pub enum ExecuteMsg {
     Increment {},
     Decrement {},
     Reset {},
-    UpdateRestriction {
-        restriction: CounterRestriction,
-    },
-    SetIncreaseAmount {
-        increase_amount: u64,
-    },
-    SetDecreaseAmount {
-        decrease_amount: u64,
-    },
+    UpdateRestriction { restriction: CounterRestriction },
+    SetIncreaseAmount { increase_amount: u64 },
+    SetDecreaseAmount { decrease_amount: u64 },
 }
 
 #[andr_query]

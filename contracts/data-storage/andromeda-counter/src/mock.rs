@@ -1,8 +1,9 @@
 #![cfg(all(not(target_arch = "wasm32"), feature = "testing"))]
 use crate::contract::{execute, instantiate, query};
-use andromeda_data_storage::counter::{ExecuteMsg, InstantiateMsg, QueryMsg, CounterRestriction};
+use andromeda_data_storage::counter::{CounterRestriction, ExecuteMsg, InstantiateMsg, QueryMsg};
 use andromeda_data_storage::counter::{
-    GetInitialAmountResponse, GetCurrentAmountResponse, GetIncreaseAmountResponse, GetDecreaseAmountResponse, GetRestrictionResponse,
+    GetCurrentAmountResponse, GetDecreaseAmountResponse, GetIncreaseAmountResponse,
+    GetInitialAmountResponse, GetRestrictionResponse,
 };
 use andromeda_std::ado_base::rates::{Rate, RatesMessage};
 use andromeda_testing::mock::MockApp;
@@ -28,7 +29,14 @@ impl MockCounter {
         increase_amount: Option<u64>,
         decrease_amount: Option<u64>,
     ) -> MockCounter {
-        let msg = mock_counter_instantiate_msg(kernel_address, owner, restriction, initial_amount, increase_amount, decrease_amount);
+        let msg = mock_counter_instantiate_msg(
+            kernel_address,
+            owner,
+            restriction,
+            initial_amount,
+            increase_amount,
+            decrease_amount,
+        );
         let addr = app
             .instantiate_contract(
                 code_id,
@@ -46,7 +54,7 @@ impl MockCounter {
         &self,
         app: &mut MockApp,
         sender: Addr,
-        funds:Option<Coin>,
+        funds: Option<Coin>,
     ) -> ExecuteResult {
         let msg = mock_execute_increment_msg();
         if let Some(funds) = funds {
@@ -60,7 +68,7 @@ impl MockCounter {
         &self,
         app: &mut MockApp,
         sender: Addr,
-        funds:Option<Coin>,
+        funds: Option<Coin>,
     ) -> ExecuteResult {
         let msg = mock_execute_increment_msg();
         if let Some(funds) = funds {
@@ -74,7 +82,7 @@ impl MockCounter {
         &self,
         app: &mut MockApp,
         sender: Addr,
-        funds:Option<Coin>,
+        funds: Option<Coin>,
     ) -> ExecuteResult {
         let msg = mock_execute_reset_msg();
         if let Some(funds) = funds {
@@ -89,7 +97,7 @@ impl MockCounter {
         app: &mut MockApp,
         sender: Addr,
         restriction: CounterRestriction,
-        funds:Option<Coin>,
+        funds: Option<Coin>,
     ) -> ExecuteResult {
         let msg = mock_execute_update_restriction_msg(restriction);
         if let Some(funds) = funds {
@@ -104,7 +112,7 @@ impl MockCounter {
         app: &mut MockApp,
         sender: Addr,
         increase_amount: u64,
-        funds:Option<Coin>,
+        funds: Option<Coin>,
     ) -> ExecuteResult {
         let msg = mock_execute_set_increase_amount_msg(increase_amount);
         if let Some(funds) = funds {
@@ -119,7 +127,7 @@ impl MockCounter {
         app: &mut MockApp,
         sender: Addr,
         decrease_amount: u64,
-        funds:Option<Coin>,
+        funds: Option<Coin>,
     ) -> ExecuteResult {
         let msg = mock_execute_set_decrease_amount_msg(decrease_amount);
         if let Some(funds) = funds {
