@@ -139,8 +139,7 @@ pub fn execute_store_coordinate(
         .load(ctx.deps.storage)
         .map_err(|_| ContractError::InvalidParameter {
             error: Some("Map not found".to_string()),
-        })
-        .unwrap();
+        })?;
 
     let MapInfo {
         map_size,
@@ -149,31 +148,22 @@ pub fn execute_store_coordinate(
     } = map;
     let x_length = map_size.x_width as f64;
     let y_length = map_size.y_width as f64;
-    let z_length = match map_size.z_width {
-        Some(z) => Some(z as f64),
-        None => None,
-    };
+    let z_length = map_size.z_width.map(|z| z as f64);
 
-    let is_z_allowed = match z_length {
-        Some(_) => true,
-        None => false,
-    };
+    let is_z_allowed = z_length.is_some();
 
     let x_coordinate = ((coordinate.x_coordinate * 10_f64.powf(map_decimal as f64)) as i64) as f64
         / 10_f64.powf(map_decimal as f64);
     let y_coordinate = ((coordinate.y_coordinate * 10_f64.powf(map_decimal as f64)) as i64) as f64
         / 10_f64.powf(map_decimal as f64);
-    let z_coordinate = match coordinate.z_coordinate {
-        Some(z) => Some(
-            ((z * 10_f64.powf(map_decimal as f64)) as i64) as f64 / 10_f64.powf(map_decimal as f64),
-        ),
-        None => None,
-    };
+    let z_coordinate = coordinate.z_coordinate.map(|z| {
+        ((z * 10_f64.powf(map_decimal as f64)) as i64) as f64 / 10_f64.powf(map_decimal as f64)
+    });
 
     match z_coordinate {
         Some(_) => {
             ensure!(
-                is_z_allowed == true,
+                is_z_allowed,
                 ContractError::InvalidParameter {
                     error: Some("Z-axis is not allowed".to_string())
                 }
@@ -181,7 +171,7 @@ pub fn execute_store_coordinate(
         }
         None => {
             ensure!(
-                is_z_allowed == false,
+                !is_z_allowed,
                 ContractError::InvalidParameter {
                     error: Some("Z-axis is allowed".to_string())
                 }
@@ -205,7 +195,7 @@ pub fn execute_store_coordinate(
                 }
             );
 
-            if is_z_allowed == true {
+            if is_z_allowed {
                 if let Some(z_coordinate) = z_coordinate {
                     ensure!(
                         z_coordinate >= -(z_length.unwrap() / 2_f64)
@@ -232,7 +222,7 @@ pub fn execute_store_coordinate(
                 }
             );
 
-            if is_z_allowed == true {
+            if is_z_allowed {
                 if let Some(z_coordinate) = z_coordinate {
                     ensure!(
                         z_coordinate >= 0_f64 && z_coordinate <= z_length.unwrap(),
@@ -253,10 +243,7 @@ pub fn execute_store_coordinate(
         &CoordinateResponse {
             x: x_coordinate.to_string(),
             y: y_coordinate.to_string(),
-            z: match z_coordinate {
-                Some(z_coordinate) => Some(z_coordinate.to_string()),
-                None => None,
-            },
+            z: z_coordinate.map(|z_coordinate| z_coordinate.to_string()),
         },
     )?;
     POINT.save(ctx.deps.storage, &point)?;
