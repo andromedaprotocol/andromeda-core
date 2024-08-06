@@ -1,9 +1,7 @@
 #![cfg(all(not(target_arch = "wasm32"), feature = "testing"))]
 use crate::contract::{execute, instantiate, query};
+use andromeda_modules::string_utils::{Delimiter, GetSplitResultResponse};
 use andromeda_modules::string_utils::{InstantiateMsg, QueryMsg};
-use andromeda_modules::string_utils::{
-    GetSplitResultResponse, Delimiter,
-};
 use andromeda_testing::mock::MockApp;
 use andromeda_testing::{
     mock_ado,
@@ -37,7 +35,12 @@ impl MockStringUtils {
         MockStringUtils(Addr::unchecked(addr))
     }
 
-    pub fn query_split_result(&self, app: &mut MockApp, input: String, delimiter: Delimiter) -> GetSplitResultResponse {
+    pub fn query_split_result(
+        &self,
+        app: &mut MockApp,
+        input: String,
+        delimiter: Delimiter,
+    ) -> GetSplitResultResponse {
         let msg = QueryMsg::GetSplitResult { input, delimiter };
         let res: GetSplitResultResponse = self.query(app, msg);
         res

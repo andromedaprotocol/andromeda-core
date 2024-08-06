@@ -2,15 +2,12 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response};
 
-use andromeda_modules::string_utils::{Delimiter, ExecuteMsg, InstantiateMsg, QueryMsg};
 use andromeda_modules::string_utils::GetSplitResultResponse;
+use andromeda_modules::string_utils::{Delimiter, ExecuteMsg, InstantiateMsg, QueryMsg};
 use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     ado_contract::ADOContract,
-    common::{
-        context::ExecuteContext, encode_binary,
-        actions::call_action,
-    },
+    common::{actions::call_action, context::ExecuteContext, encode_binary},
     error::ContractError,
 };
 
@@ -53,13 +50,13 @@ pub fn execute(
     match msg {
         ExecuteMsg::AMPReceive(pkt) => {
             ADOContract::default().execute_amp_receive(ctx, pkt, handle_execute)
-        },
+        }
         _ => handle_execute(ctx, msg),
     }
 }
 
+#[allow(clippy::match_single_binding)]
 fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
-
     let action_response = call_action(
         &mut ctx.deps,
         &ctx.info,
@@ -81,7 +78,9 @@ fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
-        QueryMsg::GetSplitResult { input, delimiter } => encode_binary(&get_split_result(input, delimiter)?),
+        QueryMsg::GetSplitResult { input, delimiter } => {
+            encode_binary(&get_split_result(input, delimiter)?)
+        }
         _ => ADOContract::default().query(deps, env, msg),
     }
 }
@@ -90,16 +89,19 @@ pub fn get_split_result(
     input: String,
     delimiter: Delimiter,
 ) -> Result<GetSplitResultResponse, ContractError> {
-
     match delimiter {
         Delimiter::WhiteSpace => {
-            let split_result: Vec<String> = input.split_whitespace().map(|part| part.to_string()).collect();
+            let split_result: Vec<String> = input
+                .split_whitespace()
+                .map(|part| part.to_string())
+                .collect();
             Ok(GetSplitResultResponse { split_result })
-        },
+        }
         Delimiter::Other { limiter } => {
-            let split_result: Vec<String> = input.split(&limiter).map(|part| part.to_string()).collect();
+            let split_result: Vec<String> =
+                input.split(&limiter).map(|part| part.to_string()).collect();
             Ok(GetSplitResultResponse { split_result })
-        },
+        }
     }
 }
 

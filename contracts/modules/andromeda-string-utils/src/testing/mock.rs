@@ -1,5 +1,5 @@
+use andromeda_modules::string_utils::{Delimiter, GetSplitResultResponse};
 use andromeda_modules::string_utils::{InstantiateMsg, QueryMsg};
-use andromeda_modules::string_utils::{GetSplitResultResponse, Delimiter};
 use andromeda_std::{
     error::ContractError,
     testing::mock_querier::{mock_dependencies_custom, WasmMockQuerier, MOCK_KERNEL_CONTRACT},
@@ -27,8 +27,16 @@ pub fn proper_initialization() -> (MockDeps, MessageInfo) {
     (deps, info)
 }
 
-pub fn query_split_result(deps: Deps, input: String, delimiter: Delimiter) -> Result<GetSplitResultResponse, ContractError> {
-    let res = query(deps, mock_env(), QueryMsg::GetSplitResult { input, delimiter });
+pub fn query_split_result(
+    deps: Deps,
+    input: String,
+    delimiter: Delimiter,
+) -> Result<GetSplitResultResponse, ContractError> {
+    let res = query(
+        deps,
+        mock_env(),
+        QueryMsg::GetSplitResult { input, delimiter },
+    );
     match res {
         Ok(res) => Ok(from_json(res).unwrap()),
         Err(err) => Err(err),
