@@ -44,15 +44,13 @@ pub struct InstantiateMsg {
 #[cw_serde]
 pub enum MinimumFrequency {
     Time { time: MillisecondsDuration },
-    // AddressAndKey { address_and_key: ContractAndKey },
 }
 
 #[andr_exec]
 #[cw_serde]
-//NOTE can't name Deposit and Withdraw while implementing andr_exec
 pub enum ExecuteMsg {
-    Deposits { recipient: Option<String> },
-    WithdrawFunds { amount: Uint128 },
+    Deposit { recipient: Option<String> },
+    Withdraw { amount: Uint128 },
 }
 
 #[andr_query]
