@@ -69,6 +69,7 @@ pub enum Cw721HookMsg {
         /// Duration in milliseconds
         end_time: Expiry,
         coin_denom: Asset,
+        buy_now_price: Option<Uint128>,
         min_bid: Option<Uint128>,
         min_raise: Option<Uint128>,
         whitelist: Option<Vec<Addr>>,
@@ -191,6 +192,7 @@ pub struct TokenAuctionState {
     pub end_time: Expiration,
     pub high_bidder_addr: Addr,
     pub high_bidder_amount: Uint128,
+    pub buy_now_price: Option<Uint128>,
     pub coin_denom: String,
     pub auction_id: Uint128,
     pub whitelist: Option<Vec<Addr>>,
@@ -200,6 +202,7 @@ pub struct TokenAuctionState {
     pub token_id: String,
     pub token_address: String,
     pub is_cancelled: bool,
+    pub is_bought: bool,
     pub uses_cw20: bool,
     pub recipient: Option<Recipient>,
 }
