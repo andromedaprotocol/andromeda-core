@@ -1,7 +1,9 @@
 use crate::ado_base::rates::AllRatesResponse;
+use crate::ado_base::rates::LocalRate;
 use crate::ado_base::rates::Rate;
 use crate::ado_base::rates::RatesMessage;
 use crate::ado_base::rates::RatesResponse;
+use crate::amp::Recipient;
 use crate::common::context::ExecuteContext;
 use crate::common::Funds;
 use crate::error::ContractError;
@@ -42,7 +44,7 @@ impl<'a> ADOContract<'a> {
         &self,
         ctx: ExecuteContext,
         action: impl Into<String>,
-        rate: Rate,
+        mut rate: Rate,
     ) -> Result<Response, ContractError> {
         ensure!(
             Self::is_contract_owner(self, ctx.deps.storage, ctx.info.sender.as_str())?,
@@ -51,6 +53,18 @@ impl<'a> ADOContract<'a> {
         let action: String = action.into();
         // Validate rates
         rate.validate_rate(ctx.deps.as_ref())?;
+
+        let rate = match rate {
+            Rate::Local(ref mut local_rate) => {
+                if local_rate.recipients.is_empty() {
+                    local_rate.recipients = vec![Recipient::new(ctx.info.sender, None)];
+                    Rate::Local(local_rate.clone())
+                } else {
+                    rate
+                }
+            }
+            Rate::Contract(_) => rate,
+        };
         self.set_rates(ctx.deps.storage, action, rate)?;
 
         Ok(Response::default().add_attributes(vec![("action", "set_rates")]))
