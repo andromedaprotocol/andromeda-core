@@ -1411,6 +1411,14 @@ fn execute_buy_now() {
             )),
         res
     );
+
+    let msg = ExecuteMsg::PlaceBid {
+        token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
+        token_address: MOCK_TOKEN_ADDR.to_string(),
+    };
+    let info = mock_info("sender", &coins(100, "uusd".to_string()));
+    let err = execute(deps.as_mut(), env.clone(), info, msg).unwrap_err();
+    assert_eq!(err, ContractError::AuctionBought {})
 }
 
 #[test]
