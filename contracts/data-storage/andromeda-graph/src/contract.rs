@@ -3,8 +3,8 @@ use cosmwasm_std::entry_point;
 use cosmwasm_std::{attr, ensure, Binary, Deps, DepsMut, Env, MessageInfo, Response, Storage};
 
 use andromeda_data_storage::graph::{
-    Coordinate, CoordinateResponse, ExecuteMsg, GetAllPointsResponse, GetMapInfoResponse,
-    GetMaxPointResponse, InstantiateMsg, MapInfo, QueryMsg,
+    Coordinate, CoordinateInfo, ExecuteMsg, GetAllPointsResponse, GetMapInfoResponse,
+    GetMaxPointResponse, InstantiateMsg, MapInfo, QueryMsg, StoredDate,
 };
 use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
@@ -75,9 +75,10 @@ fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
 
     let res = match msg {
         ExecuteMsg::UpdateMap { map_info } => execute_update_map(ctx, map_info, action),
-        ExecuteMsg::StoreCoordinate { coordinate } => {
-            execute_store_coordinate(ctx, coordinate, action)
-        }
+        ExecuteMsg::StoreCoordinate {
+            coordinate,
+            is_timestamp_allowed,
+        } => execute_store_coordinate(ctx, coordinate, is_timestamp_allowed, action),
         _ => ADOContract::default().execute(ctx, msg),
     }?;
 
@@ -127,6 +128,7 @@ pub fn execute_update_map(
 pub fn execute_store_coordinate(
     ctx: ExecuteContext,
     coordinate: Coordinate,
+    is_timestamp_allowed: bool,
     action: String,
 ) -> Result<Response, ContractError> {
     let sender = ctx.info.sender;
@@ -236,15 +238,22 @@ pub fn execute_store_coordinate(
     };
 
     let point = POINT.load(ctx.deps.storage)?.checked_add(1).unwrap();
+    let timestamp = match is_timestamp_allowed {
+        true => Some(ctx.env.block.time.nanos()),
+        false => None,
+    };
 
     MAP_POINT_INFO.save(
         ctx.deps.storage,
         &point,
-        &CoordinateResponse {
-            x: x_coordinate.to_string(),
-            y: y_coordinate.to_string(),
-            z: z_coordinate.map(|z_coordinate| z_coordinate.to_string()),
-        },
+        &(
+            CoordinateInfo {
+                x: x_coordinate.to_string(),
+                y: y_coordinate.to_string(),
+                z: z_coordinate.map(|z_coordinate| z_coordinate.to_string()),
+            },
+            StoredDate { timestamp },
+        ),
     )?;
     POINT.save(ctx.deps.storage, &point)?;
 
@@ -281,7 +290,7 @@ pub fn get_max_point(storage: &dyn Storage) -> Result<GetMaxPointResponse, Contr
 pub fn get_all_points(storage: &dyn Storage) -> Result<GetAllPointsResponse, ContractError> {
     let max_point = POINT.load(storage)?;
 
-    let mut res: Vec<CoordinateResponse> = Vec::new();
+    let mut res: Vec<(CoordinateInfo, StoredDate)> = Vec::new();
 
     for point in 1..=max_point {
         let coordinate = MAP_POINT_INFO.load(storage, &point)?;

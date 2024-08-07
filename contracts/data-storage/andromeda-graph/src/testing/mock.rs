@@ -42,9 +42,13 @@ pub fn update_map(
 pub fn store_coordinate(
     deps: DepsMut<'_>,
     coordinate: Coordinate,
+    is_timestamp_allowed: bool,
     sender: &str,
 ) -> Result<Response, ContractError> {
-    let msg = ExecuteMsg::StoreCoordinate { coordinate };
+    let msg = ExecuteMsg::StoreCoordinate {
+        coordinate,
+        is_timestamp_allowed,
+    };
     let info = mock_info(sender, &[]);
     execute(deps, mock_env(), info, msg)
 }

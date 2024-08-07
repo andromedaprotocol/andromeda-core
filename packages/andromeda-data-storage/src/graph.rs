@@ -24,8 +24,13 @@ pub struct MapSize {
 #[andr_exec]
 #[cw_serde]
 pub enum ExecuteMsg {
-    UpdateMap { map_info: MapInfo },
-    StoreCoordinate { coordinate: Coordinate },
+    UpdateMap {
+        map_info: MapInfo,
+    },
+    StoreCoordinate {
+        coordinate: Coordinate,
+        is_timestamp_allowed: bool,
+    },
 }
 
 #[cw_serde]
@@ -59,12 +64,17 @@ pub struct GetMaxPointResponse {
 
 #[cw_serde]
 pub struct GetAllPointsResponse {
-    pub points: Vec<CoordinateResponse>,
+    pub points: Vec<(CoordinateInfo, StoredDate)>,
 }
 
 #[cw_serde]
-pub struct CoordinateResponse {
+pub struct CoordinateInfo {
     pub x: String,
     pub y: String,
     pub z: Option<String>,
+}
+
+#[cw_serde]
+pub struct StoredDate {
+    pub timestamp: Option<u64>,
 }

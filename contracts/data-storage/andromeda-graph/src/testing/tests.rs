@@ -1,5 +1,5 @@
-use andromeda_data_storage::graph::{Coordinate, MapInfo, MapSize};
-use andromeda_data_storage::graph::{CoordinateResponse, GetMapInfoResponse};
+use andromeda_data_storage::graph::{Coordinate, MapInfo, MapSize, StoredDate};
+use andromeda_data_storage::graph::{CoordinateInfo, GetMapInfoResponse};
 use andromeda_std::error::ContractError;
 
 use super::mock::{
@@ -117,6 +117,7 @@ fn test_store_coordinate_with_z_not_allowed() {
             y_coordinate: 2.12345_f64,
             z_coordinate: Some(4.12345_f64),
         },
+        false,
         info.sender.as_ref(),
     )
     .unwrap_err();
@@ -147,6 +148,7 @@ fn test_store_coordinate_with_z_allowed() {
             y_coordinate: 2.12345_f64,
             z_coordinate: None,
         },
+        false,
         info.sender.as_ref(),
     )
     .unwrap_err();
@@ -177,6 +179,7 @@ fn test_store_coordinate_with_wrong_range_disallow_negative_z_not_allowed() {
             y_coordinate: 12.12345_f64,
             z_coordinate: None,
         },
+        false,
         info.sender.as_ref(),
     )
     .unwrap_err();
@@ -207,6 +210,7 @@ fn test_store_coordinate_with_wrong_range_disallow_negative_z_allowed() {
             y_coordinate: 9.12345_f64,
             z_coordinate: Some(12.12345_f64),
         },
+        false,
         info.sender.as_ref(),
     )
     .unwrap_err();
@@ -237,6 +241,7 @@ fn test_store_coordinate_with_wrong_range_allow_negative_z_not_allowed() {
             y_coordinate: 5.12345_f64,
             z_coordinate: None,
         },
+        false,
         info.sender.as_ref(),
     )
     .unwrap_err();
@@ -267,6 +272,7 @@ fn test_store_coordinate_with_wrong_range_allow_negative_z_allowed() {
             y_coordinate: 4.12345_f64,
             z_coordinate: Some(-12.12345_f64),
         },
+        false,
         info.sender.as_ref(),
     )
     .unwrap_err();
@@ -279,7 +285,7 @@ fn test_store_coordinate_with_wrong_range_allow_negative_z_allowed() {
 }
 
 #[test]
-fn test_store_coordinate_disallow_negative_and_update_map() {
+fn test_store_coordinate_disallow_negative_and_update_map_timestamp_not_allowed() {
     let (mut deps, info) = proper_initialization(MapInfo {
         map_size: MapSize {
             x_width: 10,
@@ -297,6 +303,7 @@ fn test_store_coordinate_disallow_negative_and_update_map() {
             y_coordinate: 8.12345_f64,
             z_coordinate: None,
         },
+        false,
         info.sender.as_ref(),
     )
     .unwrap();
@@ -308,6 +315,7 @@ fn test_store_coordinate_disallow_negative_and_update_map() {
             y_coordinate: 8.123458_f64,
             z_coordinate: None,
         },
+        false,
         info.sender.as_ref(),
     )
     .unwrap();
@@ -319,16 +327,22 @@ fn test_store_coordinate_disallow_negative_and_update_map() {
     assert_eq!(
         all_points,
         vec![
-            CoordinateResponse {
-                x: "9.12345".to_string(),
-                y: "8.12345".to_string(),
-                z: None,
-            },
-            CoordinateResponse {
-                x: "8.12345".to_string(),
-                y: "8.12345".to_string(),
-                z: None,
-            },
+            (
+                CoordinateInfo {
+                    x: "9.12345".to_string(),
+                    y: "8.12345".to_string(),
+                    z: None,
+                },
+                StoredDate { timestamp: None }
+            ),
+            (
+                CoordinateInfo {
+                    x: "8.12345".to_string(),
+                    y: "8.12345".to_string(),
+                    z: None,
+                },
+                StoredDate { timestamp: None }
+            ),
         ]
     );
 
@@ -352,4 +366,93 @@ fn test_store_coordinate_disallow_negative_and_update_map() {
 
     let max_point = query_max_point(deps.as_ref()).unwrap().max_point;
     assert_eq!(max_point, 0);
+}
+
+#[test]
+fn test_store_coordinate_disallow_negative_timestamp_allowed() {
+    let (mut deps, info) = proper_initialization(MapInfo {
+        map_size: MapSize {
+            x_width: 10,
+            y_width: 10,
+            z_width: None,
+        },
+        allow_negative: false,
+        map_decimal: 5,
+    });
+
+    store_coordinate(
+        deps.as_mut(),
+        Coordinate {
+            x_coordinate: 9.123456_f64,
+            y_coordinate: 8.12345_f64,
+            z_coordinate: None,
+        },
+        true,
+        info.sender.as_ref(),
+    )
+    .unwrap();
+
+    store_coordinate(
+        deps.as_mut(),
+        Coordinate {
+            x_coordinate: 8.12345_f64,
+            y_coordinate: 8.123458_f64,
+            z_coordinate: None,
+        },
+        true,
+        info.sender.as_ref(),
+    )
+    .unwrap();
+
+    store_coordinate(
+        deps.as_mut(),
+        Coordinate {
+            x_coordinate: 5_f64,
+            y_coordinate: 8_f64,
+            z_coordinate: None,
+        },
+        true,
+        info.sender.as_ref(),
+    )
+    .unwrap();
+
+    let max_point = query_max_point(deps.as_ref()).unwrap().max_point;
+    assert_eq!(max_point, 3);
+
+    let all_points = query_all_points(deps.as_ref()).unwrap().points;
+    assert_eq!(
+        all_points,
+        vec![
+            (
+                CoordinateInfo {
+                    x: "9.12345".to_string(),
+                    y: "8.12345".to_string(),
+                    z: None,
+                },
+                StoredDate {
+                    timestamp: Some(1_571_797_419_879_305_533),
+                }
+            ),
+            (
+                CoordinateInfo {
+                    x: "8.12345".to_string(),
+                    y: "8.12345".to_string(),
+                    z: None,
+                },
+                StoredDate {
+                    timestamp: Some(1_571_797_419_879_305_533),
+                }
+            ),
+            (
+                CoordinateInfo {
+                    x: "5".to_string(),
+                    y: "8".to_string(),
+                    z: None,
+                },
+                StoredDate {
+                    timestamp: Some(1_571_797_419_879_305_533),
+                }
+            ),
+        ]
+    );
 }
