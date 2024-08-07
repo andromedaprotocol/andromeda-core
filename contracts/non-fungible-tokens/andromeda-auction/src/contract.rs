@@ -254,6 +254,18 @@ pub fn handle_receive_cw20(
             asset_sent,
             &sender,
         ),
+        Cw20HookMsg::BuyNow {
+            token_id,
+            token_address,
+        } => execute_buy_now_cw20(
+            ctx,
+            token_id,
+            token_address,
+            "BuyNow".to_string(),
+            amount_sent,
+            asset_sent,
+            &sender,
+        ),
     }
 }
 
@@ -859,6 +871,144 @@ fn execute_place_bid_cw20(
             attr("bidder", sender_addr.to_string()),
             attr("amount", amount_sent.to_string()),
         ]))
+}
+
+fn execute_buy_now_cw20(
+    ctx: ExecuteContext,
+    token_id: String,
+    token_address: String,
+    action: String,
+    amount_sent: Uint128,
+    asset_sent: String,
+    // The user who sent the cw20
+    sender: &str,
+) -> Result<Response, ContractError> {
+    let ExecuteContext {
+        mut deps,
+        info,
+        env,
+        ..
+    } = ctx;
+    let mut token_auction_state =
+        get_existing_token_auction_state(deps.storage, &token_id, &token_address)?;
+
+    // Make sure the auction has a Buy Now option
+    ensure!(
+        token_auction_state.buy_now_price.is_some(),
+        ContractError::NoBuyNowOption {}
+    );
+    // Make sure token hasn't been bought
+    ensure!(
+        !token_auction_state.is_bought,
+        ContractError::AuctionBought {}
+    );
+
+    ADOContract::default().is_permissioned(
+        deps.branch(),
+        env.clone(),
+        token_auction_state.auction_id,
+        info.sender.clone(),
+    )?;
+
+    ensure!(
+        !token_auction_state.is_cancelled,
+        ContractError::AuctionCancelled {}
+    );
+
+    ensure!(
+        token_auction_state.start_time.is_expired(&env.block),
+        ContractError::AuctionNotStarted {}
+    );
+    ensure!(
+        !token_auction_state.end_time.is_expired(&env.block),
+        ContractError::AuctionEnded {}
+    );
+
+    ensure!(
+        token_auction_state.owner != sender,
+        ContractError::TokenOwnerCannotBid {}
+    );
+
+    let sender_addr = deps.api.addr_validate(sender)?;
+
+    ensure!(
+        token_auction_state.uses_cw20,
+        ContractError::InvalidFunds {
+            msg: "Native funds were sent to an auction that only accepts cw20".to_string()
+        }
+    );
+    let auction_currency = token_auction_state.clone().coin_denom;
+    ensure!(
+        asset_sent == auction_currency && amount_sent == token_auction_state.buy_now_price.unwrap(),
+        ContractError::InvalidFunds {
+            msg: format!("No {} assets are provided to auction", auction_currency),
+        }
+    );
+
+    let mut cw20_transfer: Vec<WasmMsg> = vec![];
+    // Send back previous bid unless there was no previous bid.
+    if token_auction_state.high_bidder_amount > Uint128::zero() {
+        let transfer_msg = Cw20ExecuteMsg::Transfer {
+            recipient: token_auction_state.high_bidder_addr.to_string(),
+            amount: token_auction_state.high_bidder_amount,
+        };
+        let wasm_msg = wasm_execute(auction_currency, &transfer_msg, vec![])?;
+        cw20_transfer.push(wasm_msg);
+    }
+    token_auction_state.high_bidder_addr = sender_addr;
+    token_auction_state.high_bidder_amount = amount_sent;
+    // Set auction as bought
+    token_auction_state.is_bought = true;
+
+    let key = token_auction_state.auction_id.u128();
+    TOKEN_AUCTION_STATE.save(deps.storage, key, &token_auction_state)?;
+
+    // Calculate the funds to be received after tax
+    let (after_tax_payment, tax_messages) = purchase_token(
+        deps.as_ref(),
+        &info,
+        token_auction_state.clone(),
+        action,
+        amount_sent,
+    )?;
+
+    let mut resp: Response = Response::new()
+        // Send NFT to auction winner.
+        .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: token_auction_state.token_address.clone(),
+            msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
+                recipient: token_auction_state.high_bidder_addr.to_string(),
+                token_id: token_id.clone(),
+            })?,
+            funds: vec![],
+        }))
+        // Refund to highest bidder
+        .add_messages(cw20_transfer)
+        // Send tax/royalty messages
+        .add_submessages(tax_messages)
+        .add_attribute("action", "buy_now")
+        .add_attribute("token_id", token_id.clone())
+        .add_attribute("token_contract", token_auction_state.clone().token_address)
+        .add_attribute("recipient", &token_auction_state.high_bidder_addr)
+        .add_attribute("bought_at", token_auction_state.buy_now_price.unwrap())
+        .add_attribute("auction_id", token_auction_state.auction_id);
+
+    let recipient = token_auction_state
+        .recipient
+        .unwrap_or(Recipient::from_string(token_auction_state.owner));
+
+    match after_tax_payment {
+        Funds::Native(native_funds) => {
+            // Send payment to recipient
+            resp = resp
+                .add_submessage(recipient.generate_direct_msg(&deps.as_ref(), vec![native_funds])?)
+        }
+        Funds::Cw20(cw20_funds) => {
+            let cw20_msg = recipient.generate_msg_cw20(&deps.as_ref(), cw20_funds)?;
+            resp = resp.add_submessage(cw20_msg)
+        }
+    }
+    Ok(resp)
 }
 
 fn execute_cancel(
