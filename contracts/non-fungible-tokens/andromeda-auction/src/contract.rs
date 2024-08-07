@@ -146,6 +146,10 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
             token_id,
             token_address,
         } => execute_place_bid(ctx, token_id, token_address),
+        ExecuteMsg::BuyNow {
+            token_id,
+            token_address,
+        } => execute_buy_now(ctx, token_id, token_address, action),
         ExecuteMsg::CancelAuction {
             token_id,
             token_address,
@@ -600,6 +604,7 @@ fn execute_buy_now(
         token_auction_state.buy_now_price.is_some(),
         ContractError::NoBuyNowOption {}
     );
+    // Make sure token hasn't been bought
     ensure!(
         !token_auction_state.is_bought,
         ContractError::AuctionBought {}
@@ -680,8 +685,13 @@ fn execute_buy_now(
     TOKEN_AUCTION_STATE.save(deps.storage, key, &token_auction_state)?;
 
     // Calculate the funds to be received after tax
-    let (after_tax_payment, tax_messages) =
-        purchase_token(deps.as_ref(), &info, token_auction_state.clone(), action)?;
+    let (after_tax_payment, tax_messages) = purchase_token(
+        deps.as_ref(),
+        &info,
+        token_auction_state.clone(),
+        action,
+        payment.amount,
+    )?;
 
     let mut resp: Response = Response::new()
         // Send NFT to auction winner.
@@ -967,8 +977,13 @@ fn execute_claim(
     }
 
     // Calculate the funds to be received after tax
-    let (after_tax_payment, tax_messages) =
-        purchase_token(deps.as_ref(), &info, token_auction_state.clone(), action)?;
+    let (after_tax_payment, tax_messages) = purchase_token(
+        deps.as_ref(),
+        &info,
+        token_auction_state.clone(),
+        action,
+        token_auction_state.high_bidder_amount,
+    )?;
 
     let mut resp: Response = Response::new()
         // Send NFT to auction winner.
@@ -1063,9 +1078,10 @@ fn purchase_token(
     _info: &MessageInfo,
     state: TokenAuctionState,
     action: String,
+    amount: Uint128,
 ) -> Result<(Funds, Vec<SubMsg>), ContractError> {
     if !state.uses_cw20 {
-        let total_cost = Coin::new(state.high_bidder_amount.u128(), state.coin_denom.clone());
+        let total_cost = Coin::new(amount.u128(), state.coin_denom.clone());
         let transfer_response = ADOContract::default().query_deducted_funds(
             deps,
             action,
@@ -1091,7 +1107,7 @@ fn purchase_token(
     } else {
         let total_cost = Cw20Coin {
             address: state.coin_denom.clone(),
-            amount: state.high_bidder_amount,
+            amount,
         };
         let transfer_response = ADOContract::default().query_deducted_funds(
             deps,

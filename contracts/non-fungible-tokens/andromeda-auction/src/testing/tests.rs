@@ -1338,6 +1338,82 @@ fn execute_claim_with_tax() {
 }
 
 #[test]
+fn execute_buy_now() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let mut env = mock_env();
+    let _res = init(deps.as_mut());
+
+    start_auction(deps.as_mut(), None, None, None, Some(Uint128::new(500)));
+
+    let msg = ExecuteMsg::PlaceBid {
+        token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
+        token_address: MOCK_TOKEN_ADDR.to_string(),
+    };
+
+    let info = mock_info("sender", &coins(100, "uusd".to_string()));
+    env.block.time = env.block.time.plus_seconds(1);
+
+    let _res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
+
+    let msg = ExecuteMsg::BuyNow {
+        token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
+        token_address: MOCK_TOKEN_ADDR.to_string(),
+    };
+
+    let info = mock_info("sender_2", &coins(500, "uusd".to_string()));
+    env.block.time = env.block.time.plus_seconds(1);
+
+    let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
+
+    let transfer_nft_msg = Cw721ExecuteMsg::TransferNft {
+        recipient: AndrAddr::from_string("sender_2".to_string()),
+        token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
+    };
+    assert_eq!(
+        Response::new()
+            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: MOCK_TOKEN_ADDR.to_string(),
+                msg: encode_binary(&transfer_nft_msg).unwrap(),
+                funds: vec![],
+            }))
+            // .add_message(CosmosMsg::Bank(BankMsg::Send {
+            //     to_address: tax_recipient.to_owned(),
+            //     amount: coins(20, "uusd"),
+            // }))
+            // Refund highest bidder
+            .add_message(CosmosMsg::Bank(BankMsg::Send {
+                to_address: "sender".to_owned(),
+                amount: coins(100, "uusd"),
+            }))
+            // Send 500 to seller
+            .add_message(CosmosMsg::Bank(BankMsg::Send {
+                to_address: MOCK_TOKEN_OWNER.to_owned(),
+                amount: coins(500, "uusd"),
+            }))
+            .add_attribute("action", "buy_now")
+            .add_attribute("token_id", MOCK_UNCLAIMED_TOKEN)
+            .add_attribute("token_contract", MOCK_TOKEN_ADDR)
+            .add_attribute("recipient", "sender_2")
+            .add_attribute("bought_at", Uint128::from(500u128))
+            .add_attribute("auction_id", "1")
+            // Economics message
+            .add_submessage(SubMsg::reply_on_error(
+                CosmosMsg::Wasm(WasmMsg::Execute {
+                    contract_addr: "economics_contract".to_string(),
+                    msg: to_json_binary(&EconomicsExecuteMsg::PayFee {
+                        payee: Addr::unchecked("sender_2"),
+                        action: "BuyNow".to_string()
+                    })
+                    .unwrap(),
+                    funds: vec![],
+                }),
+                ReplyId::PayFee.repr(),
+            )),
+        res
+    );
+}
+
+#[test]
 fn execute_claim_with_royalty() {
     let mut deps = mock_dependencies_custom(&[]);
     let mut env = mock_env();

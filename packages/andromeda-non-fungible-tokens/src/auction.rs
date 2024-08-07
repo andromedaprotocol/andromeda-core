@@ -28,6 +28,10 @@ pub enum ExecuteMsg {
         token_id: String,
         token_address: String,
     },
+    BuyNow {
+        token_id: String,
+        token_address: String,
+    },
     /// Transfers the given token to the auction winner's address once the auction is over.
     Claim {
         token_id: String,
