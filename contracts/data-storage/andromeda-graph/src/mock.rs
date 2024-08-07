@@ -4,6 +4,7 @@ use andromeda_data_storage::graph::{
     Coordinate, GetAllPointsResponse, GetMapInfoResponse, GetMaxPointResponse, MapInfo,
 };
 use andromeda_data_storage::graph::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use andromeda_std::error::ContractError;
 use andromeda_testing::mock::MockApp;
 use andromeda_testing::{
     mock_ado,
@@ -58,9 +59,13 @@ impl MockGraph {
         app: &mut MockApp,
         sender: Addr,
         coordinate: Coordinate,
+        is_timestamp_allowed: bool,
         funds: Option<Coin>,
     ) -> ExecuteResult {
-        let msg = ExecuteMsg::StoreCoordinate { coordinate };
+        let msg = ExecuteMsg::StoreCoordinate {
+            coordinate,
+            is_timestamp_allowed,
+        };
         if let Some(funds) = funds {
             app.execute_contract(sender, self.addr().clone(), &msg, &[funds])
         } else {
