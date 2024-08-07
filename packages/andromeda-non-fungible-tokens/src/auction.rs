@@ -86,6 +86,10 @@ pub enum Cw20HookMsg {
         token_id: String,
         token_address: String,
     },
+    BuyNow {
+        token_id: String,
+        token_address: String,
+    },
 }
 
 #[andr_query]
