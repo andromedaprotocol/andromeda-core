@@ -119,6 +119,9 @@ pub enum ContractError {
     #[error("NoTokens")]
     NoTokens {},
 
+    #[error("NoBuyNowOption")]
+    NoBuyNowOption {},
+
     #[error("UnrecognisedReplyId")]
     UnrecognisedReplyId {},
 
@@ -298,6 +301,9 @@ pub enum ContractError {
 
     #[error("AuctionEnded")]
     AuctionEnded {},
+
+    #[error("AuctionBought")]
+    AuctionBought {},
 
     #[error("CampaignNotStarted")]
     CampaignNotStarted {},
