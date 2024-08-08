@@ -7,6 +7,7 @@ use andromeda_std::{
         InstantiateMsg as BaseInstantiateMsg, MigrateMsg,
     },
     ado_contract::ADOContract,
+    amp::Recipient,
     common::{context::ExecuteContext, deduct_funds, encode_binary, Funds},
     error::ContractError,
 };
@@ -77,7 +78,7 @@ pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
 fn execute_set_rate(
     ctx: ExecuteContext,
     action: String,
-    rate: LocalRate,
+    mut rate: LocalRate,
 ) -> Result<Response, ContractError> {
     let ExecuteContext { deps, info, .. } = ctx;
     nonpayable(&info)?;
@@ -88,6 +89,12 @@ fn execute_set_rate(
     );
     // Validate the local rate's value
     rate.value.validate()?;
+
+    // Set the sender as the recipient in case no recipients were provided
+    if rate.recipients.is_empty() {
+        rate.recipients = vec![Recipient::new(info.sender, None)];
+    };
+
     RATES.save(deps.storage, &action, &rate)?;
 
     Ok(Response::new().add_attributes(vec![attr("action", "set_rate")]))
