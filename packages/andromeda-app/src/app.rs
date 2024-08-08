@@ -142,6 +142,19 @@ impl AppComponent {
         let creator = api.addr_canonicalize(parent_addr.as_str())?;
         let new_addr = instantiate2_address(&checksum, &creator, &salt).unwrap();
 
+        // Instantiate 2 impl uses default cannonical address of 32 bytes (SHA 256). But as mentioned here -
+        // https://github.com/cosmos/cosmos-sdk/blob/v0.45.8/docs/architecture/adr-028-public-key-addresses.md
+        // chains can use different length for cannonical address, eg, injective uses 20 (eth based).
+        // Instead of having fallback for each chain we can use parent address, which itself is a contract.
+        // Slice the default 32 bytes canonical address to size of parent cannonical address
+
+        let cannonical_parent_addr = api.addr_canonicalize(parent_addr.as_str())?;
+        let new_addr = new_addr
+            .as_slice()
+            .split_at(cannonical_parent_addr.len())
+            .0
+            .into();
+
         Ok(Some(api.addr_humanize(&new_addr)?))
     }
 

@@ -21,7 +21,9 @@ build_contract () {
 
     local CONTRACT=`basename $CONTRACT_PATH`;
     echo "Building contract $CONTRACT..."
-    cargo wasm -p $CONTRACT -q
+    if ! cargo wasm -p $CONTRACT -q; then
+        exit 1
+    fi
 
     local BUILD_TARGET=${CONTRACT//-/_}
     local VERSION_FILENAME=$(get_version_filename $CONTRACT);
@@ -84,6 +86,7 @@ rm -rf ./target
 rm -rf ./artifacts
 mkdir artifacts
 
+set -e
 for target in "$@"; do
     if [[ "$target" = "all" ]]; then
         build_all

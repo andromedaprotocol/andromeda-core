@@ -15,7 +15,7 @@ use andromeda_std::{
     common::{
         actions::call_action,
         call_action::get_action_name,
-        denom::{Asset, SEND_CW20_ACTION},
+        denom::{validate_denom, Asset, SEND_CW20_ACTION},
         encode_binary,
         expiration::{expiration_from_milliseconds, get_and_validate_start_time, Expiry},
         Funds, Milliseconds, OrderBy,
@@ -359,6 +359,24 @@ fn execute_update_auction(
     nonpayable(&info)?;
     let (coin_denom, uses_cw20) = coin_denom.get_verified_asset(deps.branch(), env.clone())?;
 
+    if uses_cw20 {
+        let valid_cw20_auction = ADOContract::default()
+            .is_permissioned(
+                deps.branch(),
+                env.clone(),
+                SEND_CW20_ACTION,
+                coin_denom.clone(),
+            )
+            .is_ok();
+        ensure!(
+            valid_cw20_auction,
+            ContractError::InvalidFunds {
+                msg: "Non-permissioned CW20 asset sent".to_string()
+            }
+        );
+    } else {
+        validate_denom(deps.as_ref(), coin_denom.clone())?;
+    }
     let mut token_auction_state =
         get_existing_token_auction_state(deps.storage, &token_id, &token_address)?;
     ensure!(
@@ -369,6 +387,7 @@ fn execute_update_auction(
         !token_auction_state.start_time.is_expired(&env.block),
         ContractError::AuctionAlreadyStarted {}
     );
+
     ensure!(
         !end_time.get_time(&env.block).is_zero(),
         ContractError::InvalidExpiration {}

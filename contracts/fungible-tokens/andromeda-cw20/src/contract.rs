@@ -86,6 +86,11 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
         ExecuteMsg::Transfer { recipient, amount } => {
             execute_transfer(ctx, recipient, amount, action)
         }
+        ExecuteMsg::TransferFrom {
+            owner,
+            recipient,
+            amount,
+        } => execute_transfer_from(ctx, recipient, owner, amount, action),
         ExecuteMsg::Burn { amount } => execute_burn(ctx, amount),
         ExecuteMsg::Send {
             contract,
@@ -97,29 +102,7 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
             contract,
             amount,
             msg,
-        } => {
-            let contract = contract.get_raw_address(&ctx.deps.as_ref())?.into_string();
-            let msg = Cw20ExecuteMsg::SendFrom {
-                owner,
-                contract,
-                amount,
-                msg,
-            };
-            Ok(execute_cw20(ctx.deps, ctx.env, ctx.info, msg)?)
-        }
-        ExecuteMsg::TransferFrom {
-            owner,
-            recipient,
-            amount,
-        } => {
-            let recipient = recipient.get_raw_address(&ctx.deps.as_ref())?.into_string();
-            let msg = Cw20ExecuteMsg::TransferFrom {
-                owner,
-                recipient,
-                amount,
-            };
-            Ok(execute_cw20(ctx.deps, ctx.env, ctx.info, msg)?)
-        }
+        } => execute_send_from(ctx, contract, amount, msg, action, owner),
         ExecuteMsg::Mint { recipient, amount } => execute_mint(ctx, recipient, amount),
         _ => {
             let serialized = encode_binary(&msg)?;
@@ -141,6 +124,27 @@ fn execute_transfer(
     amount: Uint128,
     action: String,
 ) -> Result<Response, ContractError> {
+    handle_transfer(ctx, recipient, None, amount, action, false)
+}
+
+fn execute_transfer_from(
+    ctx: ExecuteContext,
+    recipient: AndrAddr,
+    owner: String,
+    amount: Uint128,
+    action: String,
+) -> Result<Response, ContractError> {
+    handle_transfer(ctx, recipient, Some(owner), amount, action, true)
+}
+
+fn handle_transfer(
+    ctx: ExecuteContext,
+    recipient: AndrAddr,
+    owner: Option<String>,
+    amount: Uint128,
+    action: String,
+    is_transfer_from: bool,
+) -> Result<Response, ContractError> {
     let ExecuteContext {
         deps, info, env, ..
     } = ctx;
@@ -156,7 +160,7 @@ fn execute_transfer(
     match transfer_response {
         Some(transfer_response) => {
             let remaining_amount = match transfer_response.leftover_funds {
-                Funds::Native(..) => amount, //What do we do in the case that the rates returns remaining amount as native funds?
+                Funds::Native(..) => amount, // Handle the case where remaining amount is native funds
                 Funds::Cw20(coin) => coin.amount,
             };
 
@@ -168,16 +172,20 @@ fn execute_transfer(
             )?;
 
             let recipient = recipient.get_raw_address(&deps.as_ref())?.into_string();
-            // Continue with standard cw20 operation
-            let cw20_resp = execute_cw20(
-                deps,
-                env,
-                info,
+            let cw20_msg = if is_transfer_from {
+                Cw20ExecuteMsg::TransferFrom {
+                    recipient,
+                    owner: owner.expect("Owner should be provided for TransferFrom"),
+                    amount: remaining_amount,
+                }
+            } else {
                 Cw20ExecuteMsg::Transfer {
                     recipient,
                     amount: remaining_amount,
-                },
-            )?;
+                }
+            };
+
+            let cw20_resp = execute_cw20(deps, env, info, cw20_msg)?;
             resp = resp
                 .add_submessages(cw20_resp.messages)
                 .add_attributes(cw20_resp.attributes)
@@ -186,17 +194,22 @@ fn execute_transfer(
         }
         None => {
             let recipient = recipient.get_raw_address(&deps.as_ref())?.into_string();
-            // Continue with standard cw20 operation
-            let cw20_resp = execute_cw20(
-                deps,
-                env,
-                info,
-                Cw20ExecuteMsg::Transfer { recipient, amount },
-            )?;
+            let cw20_msg = if is_transfer_from {
+                Cw20ExecuteMsg::TransferFrom {
+                    recipient,
+                    owner: owner.expect("Owner should be provided for TransferFrom"),
+                    amount,
+                }
+            } else {
+                Cw20ExecuteMsg::Transfer { recipient, amount }
+            };
+
+            let cw20_resp = execute_cw20(deps, env, info, cw20_msg)?;
             Ok(cw20_resp)
         }
     }
 }
+
 fn transfer_tokens(
     storage: &mut dyn Storage,
     sender: &Addr,
@@ -240,6 +253,29 @@ fn execute_send(
     msg: Binary,
     action: String,
 ) -> Result<Response, ContractError> {
+    handle_send(ctx, contract, amount, msg, action, None, false)
+}
+
+fn execute_send_from(
+    ctx: ExecuteContext,
+    contract: AndrAddr,
+    amount: Uint128,
+    msg: Binary,
+    action: String,
+    owner: String,
+) -> Result<Response, ContractError> {
+    handle_send(ctx, contract, amount, msg, action, Some(owner), true)
+}
+
+fn handle_send(
+    ctx: ExecuteContext,
+    contract: AndrAddr,
+    amount: Uint128,
+    msg: Binary,
+    action: String,
+    owner: Option<String>,
+    is_send_from: bool,
+) -> Result<Response, ContractError> {
     let ExecuteContext {
         deps, info, env, ..
     } = ctx;
@@ -255,7 +291,7 @@ fn execute_send(
     match rates_response {
         Some(rates_response) => {
             let remaining_amount = match rates_response.leftover_funds {
-                Funds::Native(..) => amount, //What do we do in the case that the rates returns remaining amount as native funds?
+                Funds::Native(..) => amount, // Handle the case where remaining amount is native funds
                 Funds::Cw20(coin) => coin.amount,
             };
 
@@ -266,16 +302,22 @@ fn execute_send(
                 &info.sender,
             )?;
             let contract = contract.get_raw_address(&deps.as_ref())?.to_string();
-            let cw20_resp = execute_cw20(
-                deps,
-                env,
-                info,
+            let cw20_msg = if is_send_from {
+                Cw20ExecuteMsg::SendFrom {
+                    contract,
+                    amount: remaining_amount,
+                    msg,
+                    owner: owner.expect("Owner should be provided for SendFrom"),
+                }
+            } else {
                 Cw20ExecuteMsg::Send {
                     contract,
                     amount: remaining_amount,
                     msg,
-                },
-            )?;
+                }
+            };
+
+            let cw20_resp = execute_cw20(deps, env, info, cw20_msg)?;
             resp = resp
                 .add_submessages(cw20_resp.messages)
                 .add_attributes(cw20_resp.attributes)
@@ -285,17 +327,22 @@ fn execute_send(
         }
         None => {
             let contract = contract.get_raw_address(&deps.as_ref())?.to_string();
-            let cw20_resp = execute_cw20(
-                deps,
-                env,
-                info,
+            let cw20_msg = if is_send_from {
+                Cw20ExecuteMsg::SendFrom {
+                    contract,
+                    amount,
+                    msg,
+                    owner: owner.expect("Owner should be provided for SendFrom"),
+                }
+            } else {
                 Cw20ExecuteMsg::Send {
                     contract,
                     amount,
                     msg,
-                },
-            )?;
+                }
+            };
 
+            let cw20_resp = execute_cw20(deps, env, info, cw20_msg)?;
             Ok(cw20_resp)
         }
     }
