@@ -1,11 +1,6 @@
-use crate::ado_base::rates::AllRatesResponse;
-use crate::ado_base::rates::LocalRate;
-use crate::ado_base::rates::Rate;
-use crate::ado_base::rates::RatesMessage;
-use crate::ado_base::rates::RatesResponse;
+use crate::ado_base::rates::{AllRatesResponse, Rate, RatesMessage, RatesResponse};
 use crate::amp::Recipient;
-use crate::common::context::ExecuteContext;
-use crate::common::Funds;
+use crate::common::{context::ExecuteContext, Funds};
 use crate::error::ContractError;
 use crate::os::aos_querier::AOSQuerier;
 use cosmwasm_std::{coin as create_coin, ensure, Coin, Deps, Response, Storage};
