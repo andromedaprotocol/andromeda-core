@@ -30,7 +30,12 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     let action = msg.action;
-    let rate = msg.rate;
+    let mut rate = msg.rate;
+
+    if rate.recipients.is_empty() {
+        rate.recipients = vec![Recipient::new(info.sender.clone(), None)];
+    };
+
     RATES.save(deps.storage, &action, &rate)?;
 
     let inst_resp = ADOContract::default().instantiate(
