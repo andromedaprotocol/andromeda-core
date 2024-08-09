@@ -178,6 +178,7 @@ pub fn mock_auction_instantiate_msg(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn mock_start_auction(
     start_time: Option<Expiry>,
     end_time: Expiry,
