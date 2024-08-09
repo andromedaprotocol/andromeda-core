@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use crate::state::SPLITTER;
 use andromeda_finance::set_amount_splitter::{
     validate_recipient_list, AddressAmount, ExecuteMsg, GetSplitterConfigResponse, InstantiateMsg,
@@ -131,12 +133,15 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
 fn execute_send(ctx: ExecuteContext) -> Result<Response, ContractError> {
     let ExecuteContext { deps, info, .. } = ctx;
 
-    // Maximum of two coins allowed for now
     ensure!(
-        info.funds.len().le(&2),
-        ContractError::ExceedsMaxAllowedCoins {}
+        &info.funds.len() == &1 || &info.funds.len() == &2,
+        ContractError::InvalidFunds {
+            msg: "A minimim of 1 and a maximum of 2 coins are allowed".to_string(),
+        }
     );
 
+    // Check against zero amounts and duplicate denoms
+    let mut denom_set = HashSet::new();
     for coin in info.funds.clone() {
         ensure!(
             !coin.amount.is_zero(),
@@ -144,6 +149,11 @@ fn execute_send(ctx: ExecuteContext) -> Result<Response, ContractError> {
                 msg: "Amount must be non-zero".to_string(),
             }
         );
+        ensure!(
+            !denom_set.contains(&coin.denom),
+            ContractError::DuplicateCoinDenoms {}
+        );
+        denom_set.insert(coin.denom);
     }
 
     let splitter = SPLITTER.load(deps.storage)?;
