@@ -433,7 +433,9 @@ fn test_execute_send_error() {
 
     let res = execute(deps.as_mut(), env.clone(), info, msg.clone()).unwrap_err();
 
-    let expected_res = ContractError::ExceedsMaxAllowedCoins {};
+    let expected_res = ContractError::InvalidFunds {
+        msg: "A minimim of 1 and a maximum of 2 coins are allowed".to_string(),
+    };
 
     assert_eq!(res, expected_res);
 
