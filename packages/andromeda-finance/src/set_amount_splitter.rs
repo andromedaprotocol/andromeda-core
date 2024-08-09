@@ -170,7 +170,33 @@ mod tests {
             },
         ];
         let err = validate_recipient_list(deps.as_ref(), recipients_zero_amount).unwrap_err();
-        assert_eq!(err, ContractError::ExceedsMaxAllowedCoins {});
+        assert_eq!(
+            err,
+            ContractError::InvalidFunds {
+                msg: "A minimim of 1 and a maximum of 2 coins are allowed".to_string(),
+            }
+        );
+        let recipients_zero_amount = vec![
+            AddressAmount {
+                recipient: Recipient::from_string(String::from("xyz")),
+                coins: vec![],
+            },
+            AddressAmount {
+                recipient: Recipient::from_string(String::from("abc")),
+                coins: vec![
+                    coin(1_u128, "uandr"),
+                    coin(12_u128, "usdc"),
+                    coin(13_u128, "usdt"),
+                ],
+            },
+        ];
+        let err = validate_recipient_list(deps.as_ref(), recipients_zero_amount).unwrap_err();
+        assert_eq!(
+            err,
+            ContractError::InvalidFunds {
+                msg: "A minimim of 1 and a maximum of 2 coins are allowed".to_string(),
+            }
+        );
 
         let recipients_zero_amount = vec![
             AddressAmount {
