@@ -1,3 +1,6 @@
+#[cfg(feature = "e2e")]
+pub mod faucet;
+
 pub mod economics_msg;
 // pub mod reply;
 // pub mod testing;

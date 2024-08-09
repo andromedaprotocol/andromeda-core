@@ -12,12 +12,28 @@ use cw_multi_test::{
     App, AppBuilder, BankKeeper, Executor, MockAddressGenerator, MockApiBech32, WasmKeeper,
 };
 
+#[cfg(feature = "e2e")]
+use crate::faucet::fund;
 use crate::{mock_contract::MockContract, MockADODB, MockEconomics, MockKernel, MockVFS};
+#[cfg(feature = "e2e")]
+use cw_orch::prelude::*;
+#[cfg(feature = "e2e")]
+use cw_orch_daemon::{Daemon, DaemonBase, Wallet};
 
 pub const ADMIN_USERNAME: &str = "am";
 
 pub type MockApp = App<BankKeeper, MockApiBech32>;
 
+#[cfg(feature = "e2e")]
+pub fn mock_app(chain: ChainInfo, mnemonic: &str) -> DaemonBase<Wallet> {
+    let daemon = Daemon::builder(chain.clone()) // set the network to use
+        .mnemonic(mnemonic)
+        .build()
+        .unwrap();
+    fund(daemon.sender_addr().to_string(), &chain);
+    daemon
+}
+#[cfg(not(feature = "e2e"))]
 pub fn mock_app(denoms: Option<Vec<&str>>) -> MockApp {
     let denoms = denoms.unwrap_or(vec!["uandr", "uusd"]);
     AppBuilder::new()

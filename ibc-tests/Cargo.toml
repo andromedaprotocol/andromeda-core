@@ -1,0 +1,52 @@
+[package]
+name = "ibc-tests"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.75.0"
+publish = false
+
+[dev-dependencies]
+cw-orch = "0.24.1"
+andromeda-testing = { workspace = true, default-features = false, features = ["e2e"]}
+cw-orch-daemon = "0.24.2"
+
+andromeda-kernel = { path = "../contracts/os/andromeda-kernel", features = [
+    "testing",
+] }
+
+andromeda-adodb = { path = "../contracts/os/andromeda-adodb", features = [
+    "testing",
+] }
+
+andromeda-vfs = { path = "../contracts/os/andromeda-vfs", features = [
+    "testing",
+] }
+
+andromeda-economics = { path = "../contracts/os/andromeda-economics", features = [
+    "testing",
+] }
+
+andromeda-app-contract = { path = "../contracts/app/andromeda-app-contract", features = [
+    "testing",
+] }
+
+andromeda-validator-staking = { path = "../contracts/finance/andromeda-validator-staking", features = [
+    "testing",
+] }
+
+andromeda-finance = { workspace = true }
+andromeda-std = { workspace = true }
+andromeda-app = { workspace = true }
+cosmwasm-std = { workspace = true, features = ["staking"] }
+
+[[test]]
+name = "validator_staking"
+
+[dependencies]
+bitcoin = "0.32.2"
+cosmrs = "0.17.0"
+flate2 = "1.0.30"
+reqwest = { version = "0.12.5", features = ["json"] }
+secp256k1 = "0.29.0"
+serde.workspace = true
+tokio = "1.39.1"
