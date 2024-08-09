@@ -100,7 +100,7 @@ pub fn validate_recipient_list(
 
     for rec in recipients {
         ensure!(
-            &rec.coins.len() == &1 || &rec.coins.len() == &2,
+            rec.coins.len() == 1 || rec.coins.len() == 2,
             ContractError::InvalidFunds {
                 msg: "A minimim of 1 and a maximum of 2 coins are allowed".to_string(),
             }

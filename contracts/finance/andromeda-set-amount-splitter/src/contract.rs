@@ -134,7 +134,7 @@ fn execute_send(ctx: ExecuteContext) -> Result<Response, ContractError> {
     let ExecuteContext { deps, info, .. } = ctx;
 
     ensure!(
-        &info.funds.len() == &1 || &info.funds.len() == &2,
+        info.funds.len() == 1 || info.funds.len() == 2,
         ContractError::InvalidFunds {
             msg: "A minimim of 1 and a maximum of 2 coins are allowed".to_string(),
         }
