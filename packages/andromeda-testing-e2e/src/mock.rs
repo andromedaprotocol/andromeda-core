@@ -9,8 +9,6 @@ pub fn mock_app(chain: ChainInfo, mnemonic: &str) -> DaemonBase<Wallet> {
         .build()
     .unwrap();
     fund(daemon.sender_addr().to_string(), &chain);
-
-
     daemon
 }
 

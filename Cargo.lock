@@ -688,12 +688,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b3d1d046238990b9cf5bcde22a3fb3584ee5cf65fb2765f454ed428c7a0063da"
 
 [[package]]
-name = "arrayvec"
-version = "0.7.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "96d30a06541fbafbc7f82ed10c06164cfbd2c401138f6addd8404629c4b16711"
-
-[[package]]
 name = "async-recursion"
 version = "1.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -822,16 +816,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4c7f02d4ea65f2c1853089ffd8d2787bdbc63de2f0d29dedbcf8ccdfa0ccd4cf"
 
 [[package]]
-name = "base58ck"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2c8d66485a3a2ea485c1913c4572ce0256067a5377ac8c75c4960e1cda98605f"
-dependencies = [
- "bitcoin-internals",
- "bitcoin_hashes 0.14.0",
-]
-
-[[package]]
 name = "base64"
 version = "0.21.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -885,39 +869,10 @@ checksum = "1945a5048598e4189e239d3f809b19bdad4845c4b2ba400d304d2dcf26d2c462"
 dependencies = [
  "bech32 0.9.1",
  "bitcoin-private",
- "bitcoin_hashes 0.12.0",
+ "bitcoin_hashes",
  "hex_lit",
  "secp256k1 0.27.0",
 ]
-
-[[package]]
-name = "bitcoin"
-version = "0.32.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ea507acc1cd80fc084ace38544bbcf7ced7c2aa65b653b102de0ce718df668f6"
-dependencies = [
- "base58ck",
- "bech32 0.11.0",
- "bitcoin-internals",
- "bitcoin-io",
- "bitcoin-units",
- "bitcoin_hashes 0.14.0",
- "hex-conservative",
- "hex_lit",
- "secp256k1 0.29.0",
-]
-
-[[package]]
-name = "bitcoin-internals"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "30bdbe14aa07b06e6cfeffc529a1f099e5fbe249524f8125358604df99a4bed2"
-
-[[package]]
-name = "bitcoin-io"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "340e09e8399c7bd8912f495af6aa58bea0c9214773417ffaa8f6460f93aaee56"
 
 [[package]]
 name = "bitcoin-private"
@@ -926,31 +881,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "73290177011694f38ec25e165d0387ab7ea749a4b81cd4c80dae5988229f7a57"
 
 [[package]]
-name = "bitcoin-units"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5285c8bcaa25876d07f37e3d30c303f2609179716e11d688f51e8f1fe70063e2"
-dependencies = [
- "bitcoin-internals",
-]
-
-[[package]]
 name = "bitcoin_hashes"
 version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5d7066118b13d4b20b23645932dfb3a81ce7e29f95726c2036fa33cd7b092501"
 dependencies = [
  "bitcoin-private",
-]
-
-[[package]]
-name = "bitcoin_hashes"
-version = "0.14.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bb18c03d0db0247e147a21a6faafd5a7eb851c743db062de72018b6b7e8e4d16"
-dependencies = [
- "bitcoin-io",
- "hex-conservative",
 ]
 
 [[package]]
@@ -1110,17 +1046,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cosmos-sdk-proto"
-version = "0.22.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "57d1a42d9ef55bb4e84b48ce29860f55859e52e0088ebdb1371cedd62f2b78cc"
-dependencies = [
- "prost 0.12.6",
- "prost-types 0.12.6",
- "tendermint-proto 0.37.0",
-]
-
-[[package]]
 name = "cosmrs"
 version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1136,30 +1061,10 @@ dependencies = [
  "serde_json",
  "signature",
  "subtle-encoding",
- "tendermint 0.34.1",
+ "tendermint",
  "tendermint-rpc",
  "thiserror",
  "tokio",
-]
-
-[[package]]
-name = "cosmrs"
-version = "0.17.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "85efbd5a3487e52ccd77897ef8f97b077a015953b46623fabc939f39d9c501fc"
-dependencies = [
- "bip32",
- "cosmos-sdk-proto 0.22.0",
- "ecdsa",
- "eyre",
- "k256",
- "rand_core 0.6.4",
- "serde",
- "serde_json",
- "signature",
- "subtle-encoding",
- "tendermint 0.37.0",
- "thiserror",
 ]
 
 [[package]]
@@ -1456,9 +1361,9 @@ dependencies = [
  "async-recursion",
  "base16",
  "base64 0.22.1",
- "bitcoin 0.30.2",
+ "bitcoin",
  "chrono 0.4.38",
- "cosmrs 0.15.0",
+ "cosmrs",
  "cosmwasm-std",
  "cw-orch-core",
  "cw-orch-networks",
@@ -2272,15 +2177,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
 
 [[package]]
-name = "hex-conservative"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5313b072ce3c597065a808dbf612c4c8e8590bdbf8b579508bf7a762c5eae6cd"
-dependencies = [
- "arrayvec",
-]
-
-[[package]]
 name = "hex_lit"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2541,26 +2437,16 @@ dependencies = [
 name = "ibc-tests"
 version = "0.1.0"
 dependencies = [
- "andromeda-adodb",
  "andromeda-app",
  "andromeda-app-contract",
- "andromeda-economics",
  "andromeda-finance",
- "andromeda-kernel",
  "andromeda-std",
  "andromeda-testing-e2e",
  "andromeda-validator-staking",
- "andromeda-vfs",
- "bitcoin 0.32.2",
- "cosmrs 0.17.0",
  "cosmwasm-std",
  "cw-orch",
  "cw-orch-daemon",
- "flate2",
- "reqwest 0.12.5",
- "secp256k1 0.29.0",
  "serde",
- "tokio",
 ]
 
 [[package]]
@@ -3608,7 +3494,7 @@ version = "0.27.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "25996b82292a7a57ed3508f052cfff8640d38d32018784acd714758b43da9c8f"
 dependencies = [
- "bitcoin_hashes 0.12.0",
+ "bitcoin_hashes",
  "secp256k1-sys 0.8.1",
 ]
 
@@ -3618,7 +3504,6 @@ version = "0.29.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0e0cc0f1cf93f4969faf3ea1c7d8a9faed25918d96affa959720823dfe86d4f3"
 dependencies = [
- "bitcoin_hashes 0.12.0",
  "secp256k1-sys 0.10.0",
 ]
 
@@ -4014,37 +3899,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "tendermint"
-version = "0.37.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "954496fbc9716eb4446cdd6d00c071a3e2f22578d62aa03b40c7e5b4fda3ed42"
-dependencies = [
- "bytes",
- "digest 0.10.7",
- "ed25519",
- "ed25519-consensus",
- "flex-error",
- "futures",
- "k256",
- "num-traits",
- "once_cell",
- "prost 0.12.6",
- "prost-types 0.12.6",
- "ripemd",
- "serde",
- "serde_bytes",
- "serde_json",
- "serde_repr",
- "sha2 0.10.8",
- "signature",
- "subtle",
- "subtle-encoding",
- "tendermint-proto 0.37.0",
- "time 0.3.36",
- "zeroize",
-]
-
-[[package]]
 name = "tendermint-config"
 version = "0.34.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4053,7 +3907,7 @@ dependencies = [
  "flex-error",
  "serde",
  "serde_json",
- "tendermint 0.34.1",
+ "tendermint",
  "toml",
  "url",
 ]
@@ -4095,22 +3949,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "tendermint-proto"
-version = "0.37.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dc87024548c7f3da479885201e3da20ef29e85a3b13d04606b380ac4c7120d87"
-dependencies = [
- "bytes",
- "flex-error",
- "prost 0.12.6",
- "prost-types 0.12.6",
- "serde",
- "serde_bytes",
- "subtle-encoding",
- "time 0.3.36",
-]
-
-[[package]]
 name = "tendermint-rpc"
 version = "0.34.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4131,7 +3969,7 @@ dependencies = [
  "serde_json",
  "subtle",
  "subtle-encoding",
- "tendermint 0.34.1",
+ "tendermint",
  "tendermint-config",
  "tendermint-proto 0.34.1",
  "thiserror",
