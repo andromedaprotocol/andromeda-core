@@ -1,7 +1,9 @@
 use super::{addresses::AndrAddr, messages::AMPMsg};
 use crate::{ado_contract::ADOContract, common::encode_binary, error::ContractError};
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{to_json_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, SubMsg, WasmMsg};
+use cosmwasm_std::{
+    to_json_binary, BankMsg, Binary, Coin, CosmosMsg, CustomQuery, Deps, SubMsg, WasmMsg,
+};
 use cw20::{Cw20Coin, Cw20ExecuteMsg};
 use serde::Serialize;
 
@@ -28,7 +30,7 @@ impl Recipient {
     }
 
     /// Validates a recipient by validating its address and recovery address (if it is provided)
-    pub fn validate(&self, deps: &Deps) -> Result<(), ContractError> {
+    pub fn validate<C: CustomQuery>(&self, deps: &Deps<C>) -> Result<(), ContractError> {
         self.address.validate(deps.api)?;
         self.address.get_raw_address(deps)?;
 
@@ -59,9 +61,9 @@ impl Recipient {
     }
 
     /// Generates a direct sub message for the given recipient.
-    pub fn generate_direct_msg(
+    pub fn generate_direct_msg<C: CustomQuery>(
         &self,
-        deps: &Deps,
+        deps: &Deps<C>,
         funds: Vec<Coin>,
     ) -> Result<SubMsg, ContractError> {
         let resolved_addr = self.address.get_raw_address(deps)?;
@@ -82,9 +84,9 @@ impl Recipient {
     /// Generates a message to send a CW20 token to the recipient with the attached message.
     ///
     /// **Assumes the attached message is a valid CW20 Hook message for the receiving address**.
-    pub fn generate_msg_cw20(
+    pub fn generate_msg_cw20<C: CustomQuery>(
         &self,
-        deps: &Deps,
+        deps: &Deps<C>,
         cw20_coin: Cw20Coin,
     ) -> Result<SubMsg, ContractError> {
         let resolved_addr = self.address.get_raw_address(deps)?;
@@ -112,9 +114,9 @@ impl Recipient {
     /// Generates an AMP message from the given Recipient.
     ///
     /// This can be attached to an AMP Packet for execution via the aOS.
-    pub fn generate_amp_msg(
+    pub fn generate_amp_msg<C: CustomQuery>(
         &self,
-        deps: &Deps,
+        deps: &Deps<C>,
         funds: Option<Vec<Coin>>,
     ) -> Result<AMPMsg, ContractError> {
         let mut address = self.address.clone();

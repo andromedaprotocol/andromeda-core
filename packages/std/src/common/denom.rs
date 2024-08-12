@@ -3,8 +3,8 @@ use std::fmt::{Display, Formatter, Result as StdResult};
 use crate::{ado_contract::ADOContract, amp::AndrAddr, error::ContractError};
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
-    coin, ensure, to_json_binary, wasm_execute, BankMsg, Deps, DepsMut, Env, QueryRequest, SubMsg,
-    Uint128, WasmQuery,
+    coin, ensure, to_json_binary, wasm_execute, BankMsg, CustomQuery, Deps, DepsMut, Env,
+    QueryRequest, SubMsg, Uint128, WasmQuery,
 };
 use cw20::{Cw20ExecuteMsg, Cw20QueryMsg, TokenInfoResponse};
 pub const SEND_CW20_ACTION: &str = "SEND_CW20";
@@ -25,9 +25,9 @@ impl Display for Asset {
 }
 
 impl Asset {
-    pub fn get_verified_asset(
+    pub fn get_verified_asset<C: CustomQuery>(
         &self,
-        deps: DepsMut,
+        deps: DepsMut<C>,
         env: Env,
     ) -> Result<(String, bool), ContractError> {
         match self {
@@ -59,9 +59,9 @@ impl Asset {
             }
         }
     }
-    pub fn transfer(
+    pub fn transfer<C: CustomQuery>(
         &self,
-        deps: &Deps,
+        deps: &Deps<C>,
         to_address: impl Into<String>,
         amount: Uint128,
     ) -> Result<SubMsg, ContractError> {
@@ -84,7 +84,11 @@ impl Asset {
         })
     }
 
-    pub fn burn(&self, deps: &Deps, amount: Uint128) -> Result<SubMsg, ContractError> {
+    pub fn burn<C: CustomQuery>(
+        &self,
+        deps: &Deps<C>,
+        amount: Uint128,
+    ) -> Result<SubMsg, ContractError> {
         Ok(match self {
             Asset::NativeToken(denom) => SubMsg::new(BankMsg::Burn {
                 amount: vec![coin(amount.u128(), denom)],
@@ -99,7 +103,7 @@ impl Asset {
     }
 }
 
-pub fn validate_denom(deps: Deps, denom: String) -> Result<(), ContractError> {
+pub fn validate_denom<C: CustomQuery>(deps: Deps<C>, denom: String) -> Result<(), ContractError> {
     let potential_supply = deps.querier.query_supply(denom.clone())?;
     let non_empty_denom = !denom.is_empty();
     let non_zero_supply = !potential_supply.amount.is_zero();

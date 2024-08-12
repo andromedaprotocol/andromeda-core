@@ -2,7 +2,7 @@ use crate::ado_base::permissioning::LocalPermission;
 use crate::amp::{ADO_DB_KEY, VFS_KEY};
 use crate::error::ContractError;
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{from_json, Addr, QuerierWrapper};
+use cosmwasm_std::{from_json, Addr, CustomQuery, QuerierWrapper};
 use cw_storage_plus::Path;
 use lazy_static::__Deref;
 use serde::de::DeserializeOwned;
@@ -34,8 +34,8 @@ impl AOSQuerier {
     // To find the key value in storage, we need to construct a path to the key
     // For Map storage this key is generated with get_map_storage_key
     // For Item storage this key is the namespace value
-    pub fn query_storage<T>(
-        querier: &QuerierWrapper,
+    pub fn query_storage<T, C: CustomQuery>(
+        querier: &QuerierWrapper<C>,
         addr: &Addr,
         key: &str,
     ) -> Result<Option<T>, ContractError>
@@ -53,8 +53,8 @@ impl AOSQuerier {
         }
     }
 
-    pub fn ado_type_getter(
-        querier: &QuerierWrapper,
+    pub fn ado_type_getter<C: CustomQuery>(
+        querier: &QuerierWrapper<C>,
         adodb_addr: &Addr,
         code_id: u64,
     ) -> Result<Option<String>, ContractError> {
@@ -63,8 +63,8 @@ impl AOSQuerier {
         Ok(ado_type.map(|v| v.get_type()))
     }
 
-    pub fn ado_type_getter_smart(
-        querier: &QuerierWrapper,
+    pub fn ado_type_getter_smart<C: CustomQuery>(
+        querier: &QuerierWrapper<C>,
         adodb_addr: &Addr,
         code_id: u64,
     ) -> Result<Option<String>, ContractError> {
@@ -88,8 +88,8 @@ impl AOSQuerier {
     }
 
     /// Checks if the code id exists in the ADODB by querying its raw storage for the code id's ado type
-    pub fn verify_code_id(
-        querier: &QuerierWrapper,
+    pub fn verify_code_id<C: CustomQuery>(
+        querier: &QuerierWrapper<C>,
         adodb_addr: &Addr,
         code_id: u64,
     ) -> Result<(), ContractError> {
@@ -117,8 +117,8 @@ impl AOSQuerier {
         }
     }
 
-    pub fn code_id_getter(
-        querier: &QuerierWrapper,
+    pub fn code_id_getter<C: CustomQuery>(
+        querier: &QuerierWrapper<C>,
         adodb_addr: &Addr,
         ado_type: &str,
     ) -> Result<u64, ContractError> {
@@ -130,24 +130,24 @@ impl AOSQuerier {
     }
 
     /// Queries the kernel's raw storage for the VFS's address
-    pub fn vfs_address_getter(
-        querier: &QuerierWrapper,
+    pub fn vfs_address_getter<C: CustomQuery>(
+        querier: &QuerierWrapper<C>,
         kernel_addr: &Addr,
     ) -> Result<Addr, ContractError> {
         AOSQuerier::kernel_address_getter(querier, kernel_addr, VFS_KEY)
     }
 
     /// Queries the kernel's raw storage for the ADODB's address
-    pub fn adodb_address_getter(
-        querier: &QuerierWrapper,
+    pub fn adodb_address_getter<C: CustomQuery>(
+        querier: &QuerierWrapper<C>,
         kernel_addr: &Addr,
     ) -> Result<Addr, ContractError> {
         AOSQuerier::kernel_address_getter(querier, kernel_addr, ADO_DB_KEY)
     }
 
     /// Queries the kernel's raw storage for the VFS's address
-    pub fn kernel_address_getter(
-        querier: &QuerierWrapper,
+    pub fn kernel_address_getter<C: CustomQuery>(
+        querier: &QuerierWrapper<C>,
         kernel_addr: &Addr,
         key: &str,
     ) -> Result<Addr, ContractError> {
@@ -175,8 +175,8 @@ impl AOSQuerier {
     }
 
     /// Queries the kernel's raw storage for the VFS's address
-    pub fn ado_owner_getter(
-        querier: &QuerierWrapper,
+    pub fn ado_owner_getter<C: CustomQuery>(
+        querier: &QuerierWrapper<C>,
         ado_addr: &Addr,
     ) -> Result<Addr, ContractError> {
         let verify: Option<Addr> = AOSQuerier::query_storage(querier, ado_addr, "owner")?;
@@ -214,8 +214,8 @@ impl AOSQuerier {
         }
     }
     /// Queries an actor's permission from the address list contract
-    pub fn get_permission(
-        querier: &QuerierWrapper,
+    pub fn get_permission<C: CustomQuery>(
+        querier: &QuerierWrapper<C>,
         contract_addr: &Addr,
         actor: &str,
     ) -> Result<LocalPermission, ContractError> {
@@ -230,8 +230,8 @@ impl AOSQuerier {
 
     #[cfg(feature = "rates")]
     /// Queries the rates contract
-    pub fn get_rate(
-        querier: &QuerierWrapper,
+    pub fn get_rate<C: CustomQuery>(
+        querier: &QuerierWrapper<C>,
         addr: &Addr,
         action: &str,
     ) -> Result<LocalRate, ContractError> {

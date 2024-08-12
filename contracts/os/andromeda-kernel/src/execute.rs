@@ -13,7 +13,7 @@ use andromeda_std::os::kernel::{ChannelInfo, IbcExecuteMsg, InternalMsg};
 use andromeda_std::os::vfs::vfs_resolve_symlink;
 use cosmwasm_std::{
     attr, ensure, to_json_binary, Addr, BankMsg, Binary, Coin, ContractInfoResponse, CosmosMsg,
-    DepsMut, Env, IbcMsg, MessageInfo, Response, StdError, SubMsg, WasmMsg,
+    CustomQuery, DepsMut, Env, IbcMsg, MessageInfo, Response, StdError, SubMsg, WasmMsg,
 };
 
 use crate::ibc::{generate_transfer_message, PACKET_LIFETIME};
@@ -23,7 +23,10 @@ use crate::state::{
     IBC_FUND_RECOVERY, KERNEL_ADDRESSES, OUTGOING_IBC_HOOKS_PACKETS,
 };
 
-pub fn send(ctx: ExecuteContext, message: AMPMsg) -> Result<Response, ContractError> {
+pub fn send<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
+    message: AMPMsg,
+) -> Result<Response, ContractError> {
     ensure!(
         has_coins_merged(ctx.info.funds.as_slice(), message.funds.as_slice()),
         ContractError::InsufficientFunds {}
@@ -85,8 +88,8 @@ pub fn amp_receive(
     Ok(res.add_attribute("action", "handle_amp_packet"))
 }
 
-pub fn upsert_key_address(
-    execute_ctx: ExecuteContext,
+pub fn upsert_key_address<C: CustomQuery>(
+    execute_ctx: ExecuteContext<C>,
     key: String,
     value: String,
 ) -> Result<Response, ContractError> {
@@ -114,8 +117,8 @@ pub fn upsert_key_address(
     ]))
 }
 
-pub fn create(
-    execute_ctx: ExecuteContext,
+pub fn create<C: CustomQuery>(
+    execute_ctx: ExecuteContext<C>,
     ado_type: String,
     msg: Binary,
     owner: Option<AndrAddr>,
@@ -190,7 +193,10 @@ pub fn create(
     }
 }
 
-pub fn internal(ctx: ExecuteContext, msg: InternalMsg) -> Result<Response, ContractError> {
+pub fn internal<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
+    msg: InternalMsg,
+) -> Result<Response, ContractError> {
     match msg {
         InternalMsg::RegisterUserCrossChain {
             username,
@@ -200,8 +206,8 @@ pub fn internal(ctx: ExecuteContext, msg: InternalMsg) -> Result<Response, Contr
     }
 }
 
-pub fn register_user_cross_chain(
-    execute_ctx: ExecuteContext,
+pub fn register_user_cross_chain<C: CustomQuery>(
+    execute_ctx: ExecuteContext<C>,
     chain: String,
     username: String,
     address: String,
@@ -252,8 +258,8 @@ pub fn register_user_cross_chain(
         .add_message(ibc_msg))
 }
 
-pub fn assign_channels(
-    execute_ctx: ExecuteContext,
+pub fn assign_channels<C: CustomQuery>(
+    execute_ctx: ExecuteContext<C>,
     ics20_channel_id: Option<String>,
     direct_channel_id: Option<String>,
     chain: String,
@@ -302,7 +308,7 @@ pub fn assign_channels(
     ]))
 }
 
-pub fn recover(execute_ctx: ExecuteContext) -> Result<Response, ContractError> {
+pub fn recover<C: CustomQuery>(execute_ctx: ExecuteContext<C>) -> Result<Response, ContractError> {
     let recoveries = IBC_FUND_RECOVERY
         .load(execute_ctx.deps.storage, &execute_ctx.info.sender)
         .unwrap_or_default();
@@ -323,8 +329,8 @@ pub fn recover(execute_ctx: ExecuteContext) -> Result<Response, ContractError> {
         .add_submessage(sub_msg))
 }
 
-pub fn update_chain_name(
-    execute_ctx: ExecuteContext,
+pub fn update_chain_name<C: CustomQuery>(
+    execute_ctx: ExecuteContext<C>,
     chain_name: String,
 ) -> Result<Response, ContractError> {
     // Only owner can update CURR_CHAIN
@@ -364,9 +370,9 @@ impl MsgHandler {
     }
 
     #[inline]
-    pub fn handle(
+    pub fn handle<C: CustomQuery>(
         &mut self,
-        deps: DepsMut,
+        deps: DepsMut<C>,
         info: MessageInfo,
         env: Env,
         ctx: Option<AMPPkt>,
@@ -398,9 +404,9 @@ impl MsgHandler {
 
     In both situations the sender can define the funds that are being attached to the message.
     */
-    pub fn handle_local(
+    pub fn handle_local<C: CustomQuery>(
         &self,
-        deps: DepsMut,
+        deps: DepsMut<C>,
         info: MessageInfo,
         _env: Env,
         ctx: Option<AMPCtx>,
@@ -496,9 +502,9 @@ impl MsgHandler {
 
     The VFS path has its protocol stripped and the message is passed via ibc-hooks to the kernel on the receiving chain. The kernel on the receiving chain will receive the message as if it was sent from the local chain and will act accordingly.
     */
-    fn handle_ibc(
+    fn handle_ibc<C: CustomQuery>(
         &self,
-        deps: DepsMut,
+        deps: DepsMut<C>,
         info: MessageInfo,
         env: Env,
         ctx: Option<AMPPkt>,
@@ -525,9 +531,9 @@ impl MsgHandler {
         }
     }
 
-    fn handle_ibc_direct(
+    fn handle_ibc_direct<C: CustomQuery>(
         &self,
-        _deps: DepsMut,
+        _deps: DepsMut<C>,
         _info: MessageInfo,
         env: Env,
         _ctx: Option<AMPPkt>,
@@ -570,9 +576,9 @@ impl MsgHandler {
             .add_message(msg))
     }
 
-    fn handle_ibc_hooks(
+    fn handle_ibc_hooks<C: CustomQuery>(
         &self,
-        deps: DepsMut,
+        deps: DepsMut<C>,
         info: MessageInfo,
         env: Env,
         ctx: Option<AMPPkt>,

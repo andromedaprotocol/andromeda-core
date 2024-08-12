@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use crate::state::{DEFAULT_VALIDATOR, UNSTAKING_QUEUE};
 use cosmwasm_std::{
-    coin, ensure, entry_point, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut,
+    coin, ensure, entry_point, Addr, BankMsg, Binary, Coin, CosmosMsg, CustomQuery, Deps, DepsMut,
     DistributionMsg, Env, FullDelegation, MessageInfo, Reply, Response, StakingMsg, StdError,
     SubMsg, Timestamp, Uint128,
 };
@@ -76,7 +76,10 @@ pub fn execute(
     }
 }
 
-pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+pub fn handle_execute<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
+    msg: ExecuteMsg,
+) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::Stake { validator } => execute_stake(ctx, validator),
         ExecuteMsg::Unstake { validator, amount } => execute_unstake(ctx, validator, amount),
@@ -107,7 +110,10 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
     }
 }
 
-fn execute_stake(ctx: ExecuteContext, validator: Option<Addr>) -> Result<Response, ContractError> {
+fn execute_stake<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
+    validator: Option<Addr>,
+) -> Result<Response, ContractError> {
     let ExecuteContext { deps, info, .. } = ctx;
 
     // Ensure only one type of coin is received
@@ -141,8 +147,8 @@ fn execute_stake(ctx: ExecuteContext, validator: Option<Addr>) -> Result<Respons
     Ok(res)
 }
 
-fn execute_unstake(
-    ctx: ExecuteContext,
+fn execute_unstake<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
     validator: Option<Addr>,
     amount: Option<Uint128>,
 ) -> Result<Response, ContractError> {
@@ -199,8 +205,8 @@ fn execute_unstake(
     Ok(res)
 }
 
-fn execute_claim(
-    ctx: ExecuteContext,
+fn execute_claim<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
     validator: Option<Addr>,
     recipient: Option<AndrAddr>,
 ) -> Result<Response, ContractError> {
@@ -257,7 +263,9 @@ fn execute_claim(
     Ok(res)
 }
 
-fn execute_withdraw_fund(ctx: ExecuteContext) -> Result<Response, ContractError> {
+fn execute_withdraw_fund<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
+) -> Result<Response, ContractError> {
     let ExecuteContext {
         deps, info, env, ..
     } = ctx;

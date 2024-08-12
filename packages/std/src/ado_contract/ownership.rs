@@ -5,7 +5,7 @@ use crate::{
     ado_base::ownership::{ContractPotentialOwnerResponse, OwnershipMessage},
     ado_contract::ADOContract,
 };
-use cosmwasm_std::{attr, ensure, Addr, DepsMut, Env, MessageInfo, Response, Storage};
+use cosmwasm_std::{attr, ensure, Addr, CustomQuery, DepsMut, Env, MessageInfo, Response, Storage};
 use cw_storage_plus::Item;
 
 const POTENTIAL_OWNER: Item<Addr> = Item::new("andr_potential_owner");
@@ -13,9 +13,9 @@ const POTENTIAL_OWNER_EXPIRATION: Item<MillisecondsExpiration> =
     Item::new("andr_potential_owner_expiration");
 
 impl<'a> ADOContract<'a> {
-    pub fn execute_ownership(
+    pub fn execute_ownership<C: cosmwasm_std::CustomQuery>(
         &self,
-        deps: DepsMut,
+        deps: DepsMut<'a, C>,
         env: Env,
         info: MessageInfo,
         msg: OwnershipMessage,
@@ -32,9 +32,9 @@ impl<'a> ADOContract<'a> {
     }
 
     /// Updates the current contract owner. **Only executable by the current contract owner.**
-    pub fn update_owner(
+    pub fn update_owner<C: CustomQuery>(
         &self,
-        deps: DepsMut,
+        deps: DepsMut<C>,
         env: Env,
         info: MessageInfo,
         new_owner: Addr,
@@ -65,9 +65,9 @@ impl<'a> ADOContract<'a> {
     }
 
     /// Revokes the ownership offer. **Only executable by the current contract owner.**
-    pub fn revoke_ownership_offer(
+    pub fn revoke_ownership_offer<C: CustomQuery>(
         &self,
-        deps: DepsMut,
+        deps: DepsMut<C>,
         info: MessageInfo,
     ) -> Result<Response, ContractError> {
         ensure!(
@@ -80,9 +80,9 @@ impl<'a> ADOContract<'a> {
     }
 
     /// Accepts the ownership of the contract. **Only executable by the new contract owner.**
-    pub fn accept_ownership(
+    pub fn accept_ownership<C: CustomQuery>(
         &self,
-        deps: DepsMut,
+        deps: DepsMut<C>,
         env: Env,
         info: MessageInfo,
     ) -> Result<Response, ContractError> {
@@ -106,7 +106,11 @@ impl<'a> ADOContract<'a> {
     }
 
     /// Disowns the contract. **Only executable by the current contract owner.**
-    pub fn disown(&self, deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError> {
+    pub fn disown<C: CustomQuery>(
+        &self,
+        deps: DepsMut<C>,
+        info: MessageInfo,
+    ) -> Result<Response, ContractError> {
         ensure!(
             self.is_contract_owner(deps.storage, info.sender.as_str())?,
             ContractError::Unauthorized {}

@@ -13,8 +13,8 @@ use andromeda_std::{
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    ensure, wasm_execute, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError,
-    SubMsg,
+    ensure, wasm_execute, Addr, Binary, CustomQuery, Deps, DepsMut, Env, MessageInfo, Reply,
+    Response, StdError, SubMsg,
 };
 
 use crate::{execute, query};
@@ -181,7 +181,10 @@ pub fn execute(
     }
 }
 
-pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+pub fn handle_execute<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
+    msg: ExecuteMsg,
+) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::AddAppComponent { component } => {
             execute::handle_add_app_component(ctx, component)

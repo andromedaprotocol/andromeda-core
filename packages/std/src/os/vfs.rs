@@ -1,6 +1,6 @@
 use crate::{ado_base::ownership::OwnershipMessage, amp::AndrAddr, error::ContractError};
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{ensure, Addr, Api, QuerierWrapper};
+use cosmwasm_std::{ensure, Addr, Api, CustomQuery, QuerierWrapper};
 use regex::Regex;
 
 pub const COMPONENT_NAME_REGEX: &str = r"^[A-Za-z0-9.\-_]{2,80}$";
@@ -229,10 +229,10 @@ pub enum QueryMsg {
 }
 
 /// Queries the provided VFS contract address to resolve the given path
-pub fn vfs_resolve_path(
+pub fn vfs_resolve_path<C: CustomQuery>(
     path: impl Into<String>,
     vfs_contract: impl Into<String>,
-    querier: &QuerierWrapper,
+    querier: &QuerierWrapper<C>,
 ) -> Result<Addr, ContractError> {
     let query = QueryMsg::ResolvePath {
         path: AndrAddr::from_string(path.into()),
@@ -245,10 +245,10 @@ pub fn vfs_resolve_path(
 }
 
 /// Queries the provided VFS contract address to resolve the given path
-pub fn vfs_resolve_symlink(
+pub fn vfs_resolve_symlink<C: CustomQuery>(
     path: impl Into<String>,
     vfs_contract: impl Into<String>,
-    querier: &QuerierWrapper,
+    querier: &QuerierWrapper<C>,
 ) -> Result<AndrAddr, ContractError> {
     let query = QueryMsg::ResolveSymlink {
         path: AndrAddr::from_string(path.into()),

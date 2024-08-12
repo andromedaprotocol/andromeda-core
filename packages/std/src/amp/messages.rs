@@ -5,8 +5,8 @@ use crate::os::aos_querier::AOSQuerier;
 use crate::os::{kernel::ExecuteMsg as KernelExecuteMsg, kernel::QueryMsg as KernelQueryMsg};
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
-    to_json_binary, wasm_execute, Addr, Binary, Coin, ContractInfoResponse, CosmosMsg, Deps, Empty,
-    MessageInfo, QueryRequest, ReplyOn, SubMsg, WasmMsg, WasmQuery,
+    to_json_binary, wasm_execute, Addr, Binary, Coin, ContractInfoResponse, CosmosMsg, CustomQuery,
+    Deps, Empty, MessageInfo, QueryRequest, ReplyOn, SubMsg, WasmMsg, WasmQuery,
 };
 
 use super::addresses::AndrAddr;
@@ -301,7 +301,11 @@ impl AMPPkt {
     /// 3. The sender has a code ID stored within the ADODB (and as such is a valid ADO)
     ///
     /// If the sender is not valid, an error is returned
-    pub fn verify_origin(&self, info: &MessageInfo, deps: &Deps) -> Result<(), ContractError> {
+    pub fn verify_origin<C: CustomQuery>(
+        &self,
+        info: &MessageInfo,
+        deps: &Deps<C>,
+    ) -> Result<(), ContractError> {
         let kernel_address = ADOContract::default().get_kernel_address(deps.storage)?;
         if info.sender == self.ctx.origin || info.sender == kernel_address {
             Ok(())

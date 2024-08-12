@@ -25,8 +25,8 @@ use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
 
 use cosmwasm_std::{
     attr, coins, ensure, entry_point, from_json, wasm_execute, Addr, BankMsg, Binary, Coin,
-    CosmosMsg, Deps, DepsMut, Env, MessageInfo, QuerierWrapper, QueryRequest, Response, Storage,
-    SubMsg, Uint128, WasmMsg, WasmQuery,
+    CosmosMsg, CustomQuery, Deps, DepsMut, Env, MessageInfo, QuerierWrapper, QueryRequest,
+    Response, Storage, SubMsg, Uint128, WasmMsg, WasmQuery,
 };
 use cw20::{Cw20Coin, Cw20ExecuteMsg, Cw20ReceiveMsg};
 use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, Cw721ReceiveMsg, OwnerOfResponse};
@@ -106,7 +106,10 @@ pub fn execute(
     }
 }
 
-pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+pub fn handle_execute<C: CustomQuery>(
+    mut ctx: ExecuteContext<C>,
+    msg: ExecuteMsg,
+) -> Result<Response, ContractError> {
     let action = msg.as_ref().to_string();
 
     let action_response = call_action(
@@ -168,8 +171,8 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
         .add_events(action_response.events))
 }
 
-fn handle_receive_cw721(
-    mut ctx: ExecuteContext,
+fn handle_receive_cw721<C: CustomQuery>(
+    mut ctx: ExecuteContext<C>,
     msg: Cw721ReceiveMsg,
 ) -> Result<Response, ContractError> {
     ADOContract::default().is_permissioned(
@@ -202,8 +205,8 @@ fn handle_receive_cw721(
     }
 }
 
-pub fn handle_receive_cw20(
-    mut ctx: ExecuteContext,
+pub fn handle_receive_cw20<C: CustomQuery>(
+    mut ctx: ExecuteContext<C>,
     receive_msg: Cw20ReceiveMsg,
 ) -> Result<Response, ContractError> {
     let is_valid_cw20 = ADOContract::default()
@@ -252,8 +255,8 @@ pub fn handle_receive_cw20(
 }
 
 #[allow(clippy::too_many_arguments)]
-fn execute_start_auction(
-    ctx: ExecuteContext,
+fn execute_start_auction<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
     sender: String,
     token_id: String,
     start_time: Option<Expiry>,
@@ -337,8 +340,8 @@ fn execute_start_auction(
 }
 
 #[allow(clippy::too_many_arguments)]
-fn execute_update_auction(
-    ctx: ExecuteContext,
+fn execute_update_auction<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
     token_id: String,
     token_address: String,
     start_time: Option<Expiry>,
@@ -443,8 +446,8 @@ fn execute_update_auction(
     ]))
 }
 
-fn execute_place_bid(
-    ctx: ExecuteContext,
+fn execute_place_bid<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
     token_id: String,
     token_address: String,
 ) -> Result<Response, ContractError> {
@@ -570,8 +573,8 @@ fn execute_place_bid(
     ]))
 }
 
-fn execute_place_bid_cw20(
-    ctx: ExecuteContext,
+fn execute_place_bid_cw20<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
     token_id: String,
     token_address: String,
     amount_sent: Uint128,
@@ -694,8 +697,8 @@ fn execute_place_bid_cw20(
         ]))
 }
 
-fn execute_cancel(
-    ctx: ExecuteContext,
+fn execute_cancel<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
     token_id: String,
     token_address: String,
 ) -> Result<Response, ContractError> {
@@ -755,8 +758,8 @@ fn execute_cancel(
     Ok(Response::new().add_messages(messages))
 }
 
-fn execute_claim(
-    ctx: ExecuteContext,
+fn execute_claim<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
     token_id: String,
     token_address: String,
     action: String,
@@ -846,8 +849,8 @@ fn execute_claim(
     Ok(resp)
 }
 
-fn execute_authorize_token_contract(
-    deps: DepsMut,
+fn execute_authorize_token_contract<C: CustomQuery>(
+    deps: DepsMut<C>,
     info: MessageInfo,
     token_address: AndrAddr,
     expiration: Option<Expiry>,
@@ -877,8 +880,8 @@ fn execute_authorize_token_contract(
     ]))
 }
 
-fn execute_deauthorize_token_contract(
-    deps: DepsMut,
+fn execute_deauthorize_token_contract<C: CustomQuery>(
+    deps: DepsMut<C>,
     info: MessageInfo,
     token_address: AndrAddr,
 ) -> Result<Response, ContractError> {
@@ -897,8 +900,8 @@ fn execute_deauthorize_token_contract(
     ]))
 }
 
-fn purchase_token(
-    deps: Deps,
+fn purchase_token<C: CustomQuery>(
+    deps: Deps<C>,
     _info: &MessageInfo,
     state: TokenAuctionState,
     action: String,
@@ -1161,8 +1164,8 @@ fn query_auction_state(
     Ok(token_auction_state.into())
 }
 
-fn query_owner_of(
-    querier: QuerierWrapper,
+fn query_owner_of<C: CustomQuery>(
+    querier: QuerierWrapper<C>,
     token_addr: String,
     token_id: String,
 ) -> Result<OwnerOfResponse, ContractError> {

@@ -88,7 +88,10 @@ pub fn execute(
     }
 }
 
-fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+fn handle_execute(
+    mut ctx: ExecuteContext<Empty>,
+    msg: ExecuteMsg,
+) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
     let action = msg.as_ref().to_string();
 
@@ -146,7 +149,7 @@ fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
 }
 
 fn execute_cw721(
-    ctx: ExecuteContext,
+    ctx: ExecuteContext<Empty>,
     msg: Cw721ExecuteMsg<TokenExtension, ExecuteMsg>,
 ) -> Result<Response, ContractError> {
     let contract = AndrCW721Contract::default();
@@ -154,7 +157,7 @@ fn execute_cw721(
 }
 
 fn execute_mint(
-    mut ctx: ExecuteContext,
+    mut ctx: ExecuteContext<Empty>,
     token_id: String,
     token_uri: Option<String>,
     owner: String,
@@ -178,7 +181,7 @@ fn execute_mint(
 }
 
 fn mint(
-    ctx: ExecuteContext,
+    ctx: ExecuteContext<Empty>,
     token_id: String,
     token_uri: Option<String>,
     owner: String,
@@ -209,7 +212,7 @@ fn mint(
 }
 
 fn execute_batch_mint(
-    mut ctx: ExecuteContext,
+    mut ctx: ExecuteContext<Empty>,
     tokens_to_mint: Vec<MintMsg>,
 ) -> Result<Response, ContractError> {
     let mut resp = Response::default();
@@ -250,7 +253,7 @@ fn execute_batch_mint(
 }
 
 fn execute_transfer(
-    ctx: ExecuteContext,
+    ctx: ExecuteContext<Empty>,
     recipient: AndrAddr,
     token_id: String,
     action: &str,
@@ -388,7 +391,7 @@ fn check_can_send(
 }
 
 fn execute_update_transfer_agreement(
-    ctx: ExecuteContext,
+    ctx: ExecuteContext<Empty>,
     token_id: String,
     agreement: Option<TransferAgreement>,
 ) -> Result<Response, ContractError> {
@@ -416,7 +419,10 @@ fn execute_update_transfer_agreement(
     Ok(Response::default())
 }
 
-fn execute_archive(ctx: ExecuteContext, token_id: String) -> Result<Response, ContractError> {
+fn execute_archive(
+    ctx: ExecuteContext<Empty>,
+    token_id: String,
+) -> Result<Response, ContractError> {
     let ExecuteContext { deps, info, .. } = ctx;
     ensure!(
         !is_archived(deps.storage, &token_id)?.is_archived,
@@ -433,7 +439,7 @@ fn execute_archive(ctx: ExecuteContext, token_id: String) -> Result<Response, Co
     Ok(Response::default())
 }
 
-fn execute_burn(ctx: ExecuteContext, token_id: String) -> Result<Response, ContractError> {
+fn execute_burn(ctx: ExecuteContext<Empty>, token_id: String) -> Result<Response, ContractError> {
     let ExecuteContext { deps, info, .. } = ctx;
     let contract = AndrCW721Contract::default();
     let token = contract.tokens.load(deps.storage, &token_id)?;
@@ -457,7 +463,7 @@ fn execute_burn(ctx: ExecuteContext, token_id: String) -> Result<Response, Contr
 }
 
 fn execute_send_nft(
-    ctx: ExecuteContext,
+    ctx: ExecuteContext<Empty>,
     token_id: String,
     contract_addr: AndrAddr,
     msg: Binary,

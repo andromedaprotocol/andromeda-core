@@ -9,7 +9,7 @@ use andromeda_std::{
 };
 
 use cosmwasm_std::{
-    attr, ensure, entry_point, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Response,
+    attr, ensure, entry_point, Addr, Binary, CustomQuery, Deps, DepsMut, Env, MessageInfo, Response,
 };
 use cw_utils::nonpayable;
 
@@ -75,7 +75,10 @@ pub fn execute(
     }
 }
 
-pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+pub fn handle_execute<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
+    msg: ExecuteMsg,
+) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::AddActorPermission { actor, permission } => {
             execute_add_actor_permission(ctx, actor, permission)
@@ -85,8 +88,8 @@ pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
     }
 }
 
-fn execute_add_actor_permission(
-    ctx: ExecuteContext,
+fn execute_add_actor_permission<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
     actor: Addr,
     permission: LocalPermission,
 ) -> Result<Response, ContractError> {
@@ -109,8 +112,8 @@ fn execute_add_actor_permission(
     ]))
 }
 
-fn execute_remove_actor_permission(
-    ctx: ExecuteContext,
+fn execute_remove_actor_permission<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
     actor: Addr,
 ) -> Result<Response, ContractError> {
     let ExecuteContext { deps, info, .. } = ctx;

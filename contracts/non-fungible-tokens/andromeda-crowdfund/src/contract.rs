@@ -23,8 +23,8 @@ use andromeda_std::{
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    coin, ensure, from_json, wasm_execute, Addr, BankMsg, Binary, Coin, Deps, DepsMut, Env,
-    MessageInfo, Reply, Response, StdError, Storage, SubMsg, Uint128, Uint64, WasmMsg,
+    coin, ensure, from_json, wasm_execute, Addr, BankMsg, Binary, Coin, CustomQuery, Deps, DepsMut,
+    Env, MessageInfo, Reply, Response, StdError, Storage, SubMsg, Uint128, Uint64, WasmMsg,
 };
 
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
@@ -116,7 +116,10 @@ pub fn execute(
     }
 }
 
-pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+pub fn handle_execute<C: CustomQuery>(
+    mut ctx: ExecuteContext<C>,
+    msg: ExecuteMsg,
+) -> Result<Response, ContractError> {
     let action_response = call_action(
         &mut ctx.deps,
         &ctx.info,
@@ -148,7 +151,10 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
         .add_events(action_response.events))
 }
 
-fn execute_add_tier(ctx: ExecuteContext, tier: Tier) -> Result<Response, ContractError> {
+fn execute_add_tier<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
+    tier: Tier,
+) -> Result<Response, ContractError> {
     let ExecuteContext { deps, info, .. } = ctx;
 
     let contract = ADOContract::default();
@@ -183,7 +189,10 @@ fn execute_add_tier(ctx: ExecuteContext, tier: Tier) -> Result<Response, Contrac
     Ok(resp)
 }
 
-fn execute_update_tier(ctx: ExecuteContext, tier: Tier) -> Result<Response, ContractError> {
+fn execute_update_tier<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
+    tier: Tier,
+) -> Result<Response, ContractError> {
     let ExecuteContext { deps, info, .. } = ctx;
 
     let contract = ADOContract::default();
@@ -218,7 +227,10 @@ fn execute_update_tier(ctx: ExecuteContext, tier: Tier) -> Result<Response, Cont
     Ok(resp)
 }
 
-fn execute_remove_tier(ctx: ExecuteContext, level: Uint64) -> Result<Response, ContractError> {
+fn execute_remove_tier<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
+    level: Uint64,
+) -> Result<Response, ContractError> {
     let ExecuteContext { deps, info, .. } = ctx;
 
     let contract = ADOContract::default();
@@ -245,8 +257,8 @@ fn execute_remove_tier(ctx: ExecuteContext, level: Uint64) -> Result<Response, C
     Ok(resp)
 }
 
-fn execute_start_campaign(
-    ctx: ExecuteContext,
+fn execute_start_campaign<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
     start_time: Option<MillisecondsExpiration>,
     end_time: MillisecondsExpiration,
     presale: Option<Vec<PresaleTierOrder>>,
@@ -308,8 +320,8 @@ fn execute_start_campaign(
     Ok(resp)
 }
 
-fn execute_purchase_tiers(
-    ctx: ExecuteContext,
+fn execute_purchase_tiers<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
     orders: Vec<SimpleTierOrder>,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
@@ -336,8 +348,8 @@ fn execute_purchase_tiers(
     purchase_tiers(ctx, Asset::NativeToken(denom), amount, sender, orders)
 }
 
-fn handle_receive_cw20(
-    ctx: ExecuteContext,
+fn handle_receive_cw20<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
     cw20_msg: Cw20ReceiveMsg,
 ) -> Result<Response, ContractError> {
     let ExecuteContext { ref info, .. } = ctx;
@@ -352,8 +364,8 @@ fn handle_receive_cw20(
     }
 }
 
-fn execute_end_campaign(
-    mut ctx: ExecuteContext,
+fn execute_end_campaign<C: CustomQuery>(
+    mut ctx: ExecuteContext<C>,
     is_discard: bool,
 ) -> Result<Response, ContractError> {
     nonpayable(&ctx.info)?;
@@ -442,8 +454,8 @@ fn execute_end_campaign(
     Ok(resp)
 }
 
-fn purchase_tiers(
-    ctx: ExecuteContext,
+fn purchase_tiers<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
     denom: Asset,
     amount: Uint128,
     sender: String,
@@ -561,8 +573,8 @@ fn transfer_asset_msg(
     })
 }
 
-fn withdraw_to_recipient(
-    ctx: ExecuteContext,
+fn withdraw_to_recipient<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
     recipient: Recipient,
     amount: Uint128,
     denom: Asset,
@@ -592,7 +604,7 @@ fn withdraw_to_recipient(
     }
 }
 
-fn execute_claim(ctx: ExecuteContext) -> Result<Response, ContractError> {
+fn execute_claim<C: CustomQuery>(ctx: ExecuteContext<C>) -> Result<Response, ContractError> {
     let ExecuteContext { mut deps, info, .. } = ctx;
 
     let curr_stage = get_current_stage(deps.storage);
@@ -617,7 +629,10 @@ fn execute_claim(ctx: ExecuteContext) -> Result<Response, ContractError> {
     Ok(resp)
 }
 
-fn handle_successful_claim(deps: DepsMut, sender: &Addr) -> Result<Response, ContractError> {
+fn handle_successful_claim<C: CustomQuery>(
+    deps: DepsMut<C>,
+    sender: &Addr,
+) -> Result<Response, ContractError> {
     let campaign_config = get_config(deps.storage)?;
 
     let orders = get_user_orders(deps.storage, sender.clone(), None, None, true, None);
@@ -646,7 +661,10 @@ fn handle_successful_claim(deps: DepsMut, sender: &Addr) -> Result<Response, Con
     Ok(resp)
 }
 
-fn handle_failed_claim(deps: DepsMut, sender: &Addr) -> Result<Response, ContractError> {
+fn handle_failed_claim<C: CustomQuery>(
+    deps: DepsMut<C>,
+    sender: &Addr,
+) -> Result<Response, ContractError> {
     let campaign_config = get_config(deps.storage)?;
 
     let orders = get_user_orders(deps.storage, sender.clone(), None, None, false, None);

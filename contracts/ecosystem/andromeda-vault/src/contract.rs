@@ -16,8 +16,9 @@ use andromeda_std::{
 
 use cosmwasm_std::{
     attr, coin, ensure, entry_point, from_json, to_json_binary, BankMsg, Binary, Coin,
-    ContractResult, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Order, QueryRequest, Reply,
-    ReplyOn, Response, StdError, SubMsg, SystemResult, Uint128, WasmMsg, WasmQuery,
+    ContractResult, CosmosMsg, CustomQuery, Deps, DepsMut, Empty, Env, MessageInfo, Order,
+    QueryRequest, Reply, ReplyOn, Response, StdError, SubMsg, SystemResult, Uint128, WasmMsg,
+    WasmQuery,
 };
 use cw_utils::nonpayable;
 
@@ -75,7 +76,10 @@ pub fn execute(
     }
 }
 
-pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+pub fn handle_execute<C: CustomQuery>(
+    mut ctx: ExecuteContext<C>,
+    msg: ExecuteMsg,
+) -> Result<Response, ContractError> {
     call_action(
         &mut ctx.deps,
         &ctx.info,
@@ -100,8 +104,8 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
     }
 }
 
-fn execute_deposit(
-    ctx: ExecuteContext,
+fn execute_deposit<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
     recipient: Option<AndrAddr>,
     msg: Option<Binary>,
 ) -> Result<Response, ContractError> {
@@ -209,8 +213,8 @@ fn execute_deposit(
     ]))
 }
 
-pub fn execute_withdraw(
-    ctx: ExecuteContext,
+pub fn execute_withdraw<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
     recipient: Option<Recipient>,
     withdrawals: Vec<Withdrawal>,
     strategy: Option<StrategyType>,
@@ -230,8 +234,8 @@ pub fn execute_withdraw(
     }
 }
 
-pub fn withdraw_vault(
-    deps: DepsMut,
+pub fn withdraw_vault<C: CustomQuery>(
+    deps: DepsMut<C>,
     info: MessageInfo,
     recipient: Option<Recipient>,
     withdrawals: Vec<Withdrawal>,
@@ -300,8 +304,8 @@ pub fn withdraw_vault(
     Ok(res.add_message(withdrawal_msg))
 }
 
-pub fn withdraw_strategy(
-    deps: DepsMut,
+pub fn withdraw_strategy<C: CustomQuery>(
+    deps: DepsMut<C>,
     info: MessageInfo,
     strategy: StrategyType,
     withdrawals: Vec<Withdrawal>,
@@ -334,8 +338,8 @@ pub fn withdraw_strategy(
     Ok(res.add_submessage(withdraw_submsg))
 }
 
-fn execute_update_strategy(
-    ctx: ExecuteContext,
+fn execute_update_strategy<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
     strategy: StrategyType,
     address: AndrAddr,
 ) -> Result<Response, ContractError> {

@@ -1,6 +1,6 @@
 use andromeda_std::{amp::AndrAddr, andr_exec, andr_instantiate, andr_query, error::ContractError};
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Addr, Coin, DepsMut, Timestamp, Uint128};
+use cosmwasm_std::{Addr, Coin, CustomQuery, DepsMut, Timestamp, Uint128};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -50,7 +50,10 @@ impl InstantiateMsg {
     }
 }
 
-pub fn is_validator(deps: &DepsMut, validator: &Addr) -> Result<bool, ContractError> {
+pub fn is_validator<C: CustomQuery>(
+    deps: &DepsMut<C>,
+    validator: &Addr,
+) -> Result<bool, ContractError> {
     let validator = deps.querier.query_validator(validator)?;
     if validator.is_none() {
         return Err(ContractError::InvalidValidator {});

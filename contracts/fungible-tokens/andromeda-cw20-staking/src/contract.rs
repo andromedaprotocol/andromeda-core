@@ -7,7 +7,8 @@ use andromeda_std::{
     error::ContractError,
 };
 use cosmwasm_std::{
-    attr, entry_point, Attribute, BlockInfo, Decimal, Decimal256, Order, QuerierWrapper, Uint256,
+    attr, entry_point, Attribute, BlockInfo, CustomQuery, Decimal, Decimal256, Empty, Order,
+    QuerierWrapper, Uint256,
 };
 use cosmwasm_std::{
     ensure, from_json, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response, Storage,
@@ -121,7 +122,10 @@ pub fn execute(
     }
 }
 
-pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+pub fn handle_execute(
+    mut ctx: ExecuteContext<Empty>,
+    msg: ExecuteMsg,
+) -> Result<Response, ContractError> {
     let _contract = ADOContract::default();
     let action_response = call_action(
         &mut ctx.deps,
@@ -174,7 +178,10 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
         .add_events(action_response.events))
 }
 
-fn receive_cw20(ctx: ExecuteContext, msg: Cw20ReceiveMsg) -> Result<Response, ContractError> {
+fn receive_cw20(
+    ctx: ExecuteContext<Empty>,
+    msg: Cw20ReceiveMsg,
+) -> Result<Response, ContractError> {
     let ExecuteContext {
         deps, info, env, ..
     } = ctx;
@@ -201,7 +208,7 @@ fn receive_cw20(ctx: ExecuteContext, msg: Cw20ReceiveMsg) -> Result<Response, Co
 }
 
 fn execute_add_reward_token(
-    ctx: ExecuteContext,
+    ctx: ExecuteContext<Empty>,
     reward_token: RewardTokenUnchecked,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
@@ -266,7 +273,7 @@ fn execute_add_reward_token(
 }
 
 fn execute_remove_reward_token(
-    ctx: ExecuteContext,
+    ctx: ExecuteContext<Empty>,
     reward_token_string: String,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
@@ -317,7 +324,7 @@ fn execute_remove_reward_token(
 }
 
 fn execute_replace_reward_token(
-    ctx: ExecuteContext,
+    ctx: ExecuteContext<Empty>,
     origin_reward_token_string: String,
     reward_token: RewardTokenUnchecked,
 ) -> Result<Response, ContractError> {
@@ -408,7 +415,7 @@ fn execute_replace_reward_token(
 /// The foundation for this approach is inspired by Anchor's staking implementation:
 /// https://github.com/Anchor-Protocol/anchor-token-contracts/blob/15c9d6f9753bd1948831f4e1b5d2389d3cf72c93/contracts/gov/src/staking.rs#L15
 fn execute_stake_tokens(
-    deps: DepsMut,
+    deps: DepsMut<Empty>,
     env: Env,
     sender: String,
     token_address: String,
@@ -466,7 +473,7 @@ fn execute_stake_tokens(
 }
 
 fn execute_unstake_tokens(
-    ctx: ExecuteContext,
+    ctx: ExecuteContext<Empty>,
     amount: Option<Uint128>,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
@@ -533,7 +540,7 @@ fn execute_unstake_tokens(
     }
 }
 
-fn execute_claim_rewards(ctx: ExecuteContext) -> Result<Response, ContractError> {
+fn execute_claim_rewards(ctx: ExecuteContext<Empty>) -> Result<Response, ContractError> {
     let ExecuteContext {
         deps, info, env, ..
     } = ctx;
@@ -621,7 +628,7 @@ fn execute_claim_rewards(ctx: ExecuteContext) -> Result<Response, ContractError>
 fn update_global_indexes(
     storage: &mut dyn Storage,
     block_info: &BlockInfo,
-    querier: &QuerierWrapper,
+    querier: &QuerierWrapper<Empty>,
     current_timestamp: Milliseconds,
     contract_address: Addr,
     asset_infos: Option<Vec<AssetInfo>>,
@@ -666,7 +673,7 @@ fn update_global_indexes(
 
 fn update_global_index(
     block_info: &BlockInfo,
-    querier: &QuerierWrapper,
+    querier: &QuerierWrapper<Empty>,
     current_timestamp: Milliseconds,
     contract_address: Addr,
     state: &State,
@@ -716,7 +723,7 @@ fn update_global_index(
 /// https://github.com/lidofinance/lido-terra-contracts/tree/d7026b9142d718f9b5b6be03b1af33040499553c/contracts/lido_terra_reward/src
 fn update_nonallocated_index(
     state: &State,
-    querier: &QuerierWrapper,
+    querier: &QuerierWrapper<Empty>,
     reward_token: &mut RewardToken,
     previous_reward_balance: Uint128,
     contract_address: Addr,
@@ -784,7 +791,7 @@ fn update_staker_reward_info(
     staker_reward_info.pending_rewards += Decimal256::from_ratio(rewards, 1u128);
 }
 
-pub(crate) fn get_staking_token(deps: Deps) -> Result<AssetInfo, ContractError> {
+pub(crate) fn get_staking_token<C: CustomQuery>(deps: Deps<C>) -> Result<AssetInfo, ContractError> {
     let _contract = ADOContract::default();
     let config = CONFIG.load(deps.storage)?;
 

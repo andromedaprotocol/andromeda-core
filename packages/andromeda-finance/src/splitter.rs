@@ -7,7 +7,7 @@ use andromeda_std::{
     error::ContractError,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{ensure, Decimal, Deps};
+use cosmwasm_std::{ensure, CustomQuery, Decimal, Deps};
 
 #[cw_serde]
 pub struct AddressPercent {
@@ -79,8 +79,8 @@ pub struct GetSplitterConfigResponse {
 /// * The number of recipients must not exceed 100
 /// * The combined percentage of the recipients must not exceed 100
 /// * The recipient addresses must be unique
-pub fn validate_recipient_list(
-    deps: Deps,
+pub fn validate_recipient_list<C: CustomQuery>(
+    deps: Deps<C>,
     recipients: Vec<AddressPercent>,
 ) -> Result<(), ContractError> {
     ensure!(

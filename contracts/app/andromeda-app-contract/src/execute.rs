@@ -10,12 +10,12 @@ use andromeda_std::os::vfs::ExecuteMsg as VFSExecuteMsg;
 use andromeda_std::{ado_contract::ADOContract, amp::AndrAddr};
 
 use cosmwasm_std::{
-    ensure, to_json_binary, Addr, Binary, CosmosMsg, QuerierWrapper, ReplyOn, Response, Storage,
-    SubMsg, WasmMsg,
+    ensure, to_json_binary, Addr, Binary, CosmosMsg, CustomQuery, QuerierWrapper, ReplyOn,
+    Response, Storage, SubMsg, WasmMsg,
 };
 
-pub fn handle_add_app_component(
-    ctx: ExecuteContext,
+pub fn handle_add_app_component<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
     component: AppComponent,
 ) -> Result<Response, ContractError> {
     let querier = &ctx.deps.querier;
@@ -107,8 +107,8 @@ pub fn handle_add_app_component(
     Ok(resp)
 }
 
-pub fn claim_ownership(
-    ctx: ExecuteContext,
+pub fn claim_ownership<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
     name_opt: Option<String>,
     new_owner: Option<AndrAddr>,
 ) -> Result<Response, ContractError> {
@@ -147,7 +147,11 @@ pub fn claim_ownership(
         .add_attribute("method", "claim_ownership"))
 }
 
-pub fn message(ctx: ExecuteContext, name: String, msg: Binary) -> Result<Response, ContractError> {
+pub fn message<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
+    name: String,
+    msg: Binary,
+) -> Result<Response, ContractError> {
     let ExecuteContext { info, deps, .. } = ctx;
     //Temporary until message sender attached to Andromeda Comms
     ensure!(
@@ -181,8 +185,8 @@ pub fn has_update_address_privilege(
     Ok(ADOContract::default().is_contract_owner(storage, sender)? || sender == current_addr)
 }
 
-pub fn update_address(
-    ctx: ExecuteContext,
+pub fn update_address<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
     name: String,
     addr: String,
 ) -> Result<Response, ContractError> {
@@ -217,9 +221,9 @@ pub fn update_address(
     Ok(resp)
 }
 
-pub fn register_component_path(
+pub fn register_component_path<C: CustomQuery>(
     kernel_address: Addr,
-    querier: &QuerierWrapper,
+    querier: &QuerierWrapper<C>,
     name: impl Into<String>,
     address: Addr,
 ) -> Result<SubMsg, ContractError> {
@@ -242,7 +246,9 @@ pub fn register_component_path(
     ))
 }
 
-pub fn assign_app_to_components(ctx: ExecuteContext) -> Result<Response, ContractError> {
+pub fn assign_app_to_components<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
+) -> Result<Response, ContractError> {
     let ExecuteContext {
         deps, env, info, ..
     } = ctx;

@@ -12,8 +12,8 @@ use andromeda_std::{
 };
 
 use cosmwasm_std::{
-    attr, ensure, entry_point, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
-    Response, SubMsg, Timestamp, Uint128,
+    attr, ensure, entry_point, BankMsg, Binary, Coin, CosmosMsg, CustomQuery, Deps, DepsMut, Env,
+    MessageInfo, Response, SubMsg, Timestamp, Uint128,
 };
 
 use cw_utils::{nonpayable, Expiration};
@@ -100,7 +100,10 @@ pub fn execute(
     }
 }
 
-pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+pub fn handle_execute<C: CustomQuery>(
+    mut ctx: ExecuteContext<C>,
+    msg: ExecuteMsg,
+) -> Result<Response, ContractError> {
     call_action(
         &mut ctx.deps,
         &ctx.info,
@@ -123,8 +126,8 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
     }
 }
 
-pub fn execute_update_recipient_weight(
-    ctx: ExecuteContext,
+pub fn execute_update_recipient_weight<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
     recipient: AddressWeight,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
@@ -170,8 +173,8 @@ pub fn execute_update_recipient_weight(
     Ok(Response::default().add_attribute("action", "updated_recipient_weight"))
 }
 
-pub fn execute_add_recipient(
-    ctx: ExecuteContext,
+pub fn execute_add_recipient<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
     recipient: AddressWeight,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
@@ -228,7 +231,7 @@ pub fn execute_add_recipient(
     Ok(Response::default().add_attributes(vec![attr("action", "added_recipient")]))
 }
 
-fn execute_send(ctx: ExecuteContext) -> Result<Response, ContractError> {
+fn execute_send<C: CustomQuery>(ctx: ExecuteContext<C>) -> Result<Response, ContractError> {
     let ExecuteContext { deps, info, .. } = ctx;
     // Amount of coins sent should be at least 1
     ensure!(
@@ -313,8 +316,8 @@ fn execute_send(ctx: ExecuteContext) -> Result<Response, ContractError> {
         .add_attributes(vec![attr("action", "send"), attr("sender", info.sender)]))
 }
 
-fn execute_update_recipients(
-    ctx: ExecuteContext,
+fn execute_update_recipients<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
     recipients: Vec<AddressWeight>,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
@@ -360,8 +363,8 @@ fn execute_update_recipients(
     Ok(Response::default().add_attributes(vec![attr("action", "update_recipients")]))
 }
 
-fn execute_remove_recipient(
-    ctx: ExecuteContext,
+fn execute_remove_recipient<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
     recipient: Recipient,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
@@ -407,7 +410,10 @@ fn execute_remove_recipient(
     Ok(Response::default().add_attributes(vec![attr("action", "removed_recipient")]))
 }
 
-fn execute_update_lock(ctx: ExecuteContext, lock_time: u64) -> Result<Response, ContractError> {
+fn execute_update_lock<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
+    lock_time: u64,
+) -> Result<Response, ContractError> {
     let ExecuteContext {
         deps, info, env, ..
     } = ctx;

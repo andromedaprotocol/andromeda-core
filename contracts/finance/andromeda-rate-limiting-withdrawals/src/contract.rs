@@ -11,8 +11,8 @@ use andromeda_std::common::Milliseconds;
 use andromeda_std::{common::encode_binary, error::ContractError};
 
 use cosmwasm_std::{
-    ensure, entry_point, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
-    Response, Uint128,
+    ensure, entry_point, BankMsg, Binary, Coin, CosmosMsg, CustomQuery, Deps, DepsMut, Env,
+    MessageInfo, Response, Uint128,
 };
 
 use cw_utils::{nonpayable, one_coin};
@@ -87,7 +87,10 @@ pub fn execute(
     }
 }
 
-pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+pub fn handle_execute<C: CustomQuery>(
+    mut ctx: ExecuteContext<C>,
+    msg: ExecuteMsg,
+) -> Result<Response, ContractError> {
     let action_response = call_action(
         &mut ctx.deps,
         &ctx.info,
@@ -107,8 +110,8 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
         .add_events(action_response.events))
 }
 
-fn execute_deposit(
-    ctx: ExecuteContext,
+fn execute_deposit<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
     recipient: Option<String>,
 ) -> Result<Response, ContractError> {
     let ExecuteContext { deps, info, .. } = ctx;
@@ -164,7 +167,10 @@ fn execute_deposit(
     Ok(res)
 }
 
-fn execute_withdraw(ctx: ExecuteContext, amount: Uint128) -> Result<Response, ContractError> {
+fn execute_withdraw<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
+    amount: Uint128,
+) -> Result<Response, ContractError> {
     let ExecuteContext {
         deps, info, env, ..
     } = ctx;

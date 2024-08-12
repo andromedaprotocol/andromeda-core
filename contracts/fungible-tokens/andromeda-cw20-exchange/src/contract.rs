@@ -15,7 +15,8 @@ use andromeda_std::{
 };
 use cosmwasm_std::{
     attr, coin, ensure, entry_point, from_json, to_json_binary, wasm_execute, BankMsg, Binary,
-    CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError, SubMsg, Uint128,
+    CosmosMsg, CustomQuery, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError, SubMsg,
+    Uint128,
 };
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use cw_asset::AssetInfo;
@@ -90,7 +91,10 @@ pub fn execute(
     }
 }
 
-pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+pub fn handle_execute<C: CustomQuery>(
+    mut ctx: ExecuteContext<C>,
+    msg: ExecuteMsg,
+) -> Result<Response, ContractError> {
     let action_response = call_action(
         &mut ctx.deps,
         &ctx.info,
@@ -110,8 +114,8 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
         .add_events(action_response.events))
 }
 
-pub fn execute_receive(
-    ctx: ExecuteContext,
+pub fn execute_receive<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
     receive_msg: Cw20ReceiveMsg,
 ) -> Result<Response, ContractError> {
     let ExecuteContext { ref info, .. } = ctx;
@@ -156,8 +160,8 @@ pub fn execute_receive(
 }
 
 #[allow(clippy::too_many_arguments)]
-pub fn execute_start_sale(
-    ctx: ExecuteContext,
+pub fn execute_start_sale<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
     amount: Uint128,
     asset: AssetInfo,
     exchange_rate: Uint128,
@@ -267,8 +271,8 @@ fn generate_transfer_message(
     }
 }
 
-pub fn execute_purchase(
-    ctx: ExecuteContext,
+pub fn execute_purchase<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
     amount_sent: Uint128,
     asset_sent: AssetInfo,
     recipient: &str,
@@ -354,8 +358,8 @@ pub fn execute_purchase(
     ]))
 }
 
-pub fn execute_purchase_native(
-    ctx: ExecuteContext,
+pub fn execute_purchase_native<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
     recipient: Option<String>,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
@@ -377,8 +381,8 @@ pub fn execute_purchase_native(
     execute_purchase(ctx, amount, asset, &recipient, &sender)
 }
 
-pub fn execute_cancel_sale(
-    ctx: ExecuteContext,
+pub fn execute_cancel_sale<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
     asset: AssetInfo,
 ) -> Result<Response, ContractError> {
     let ExecuteContext { deps, info, .. } = ctx;

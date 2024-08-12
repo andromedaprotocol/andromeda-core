@@ -4,7 +4,7 @@ use crate::error::ContractError;
 use crate::os::vfs::{vfs_resolve_symlink, PATH_REGEX, PROTOCOL_PATH_REGEX};
 use crate::{ado_contract::ADOContract, os::vfs::vfs_resolve_path};
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Api, Deps, QuerierWrapper, Storage};
+use cosmwasm_std::{Addr, Api, CustomQuery, Deps, QuerierWrapper, Storage};
 use lazy_static::lazy_static;
 
 lazy_static! {
@@ -78,7 +78,7 @@ impl AndrAddr {
     /// If the address is a valid human readable address then that is returned, otherwise it is assumed to be a Andromeda VFS path and is resolved accordingly.
     ///
     /// If the address is assumed to be a VFS path and no VFS contract address is provided then an appropriate error is returned.
-    pub fn get_raw_address(&self, deps: &Deps) -> Result<Addr, ContractError> {
+    pub fn get_raw_address<C: CustomQuery>(&self, deps: &Deps<C>) -> Result<Addr, ContractError> {
         if !self.is_vfs_path() {
             return Ok(deps.api.addr_validate(&self.0)?);
         }
@@ -93,9 +93,9 @@ impl AndrAddr {
     /// If the address is a valid human readable address then that is returned, otherwise it is assumed to be a Andromeda VFS path and is resolved accordingly.
     ///
     /// If the address is assumed to be a VFS path and no VFS contract address is provided then an appropriate error is returned.
-    pub fn get_raw_address_from_vfs(
+    pub fn get_raw_address_from_vfs<C: CustomQuery>(
         &self,
-        deps: &Deps,
+        deps: &Deps<C>,
         vfs_contract: impl Into<String>,
     ) -> Result<Addr, ContractError> {
         match self.is_vfs_path() {
@@ -119,10 +119,10 @@ impl AndrAddr {
     }
 
     /// Converts a local path to a valid VFS path by replacing `./` with the app contract address
-    pub fn local_path_to_vfs_path(
+    pub fn local_path_to_vfs_path<C: CustomQuery>(
         &self,
         storage: &dyn Storage,
-        querier: &QuerierWrapper,
+        querier: &QuerierWrapper<C>,
         vfs_contract: impl Into<String>,
     ) -> Result<AndrAddr, ContractError> {
         match self.is_local_path() {
