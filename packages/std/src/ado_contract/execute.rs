@@ -19,7 +19,7 @@ use semver::Version;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 
-type ExecuteContextFunction<M, C: CustomQuery, E = ContractError> =
+type ExecuteContextFunction<M, C, E = ContractError> =
     fn(ExecuteContext<C>, M) -> Result<Response, E>;
 
 impl<'a> ADOContract<'a> {

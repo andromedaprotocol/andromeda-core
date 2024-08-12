@@ -6,8 +6,8 @@ use andromeda_std::{
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    ensure, Binary, Coin, CosmosMsg, CustomQuery, Deps, DepsMut, DistributionMsg, Env, GovMsg,
-    MessageInfo, QuerierWrapper, Response, StakingMsg, Uint128, VoteOption,
+    ensure, Binary, Coin, CosmosMsg, CustomQuery, Deps, DepsMut, DistributionMsg, Empty, Env,
+    GovMsg, MessageInfo, QuerierWrapper, Response, StakingMsg, Uint128, VoteOption,
 };
 use cw_asset::AssetInfo;
 use cw_utils::nonpayable;
@@ -76,8 +76,8 @@ pub fn execute(
     }
 }
 
-pub fn handle_execute<C: CustomQuery>(
-    mut ctx: ExecuteContext<C>,
+pub fn handle_execute(
+    mut ctx: ExecuteContext<Empty>,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     call_action(
@@ -117,8 +117,8 @@ pub fn handle_execute<C: CustomQuery>(
     }
 }
 
-fn execute_create_batch<C: CustomQuery>(
-    ctx: ExecuteContext<C>,
+fn execute_create_batch(
+    ctx: ExecuteContext<Empty>,
     lockup_duration: Option<u64>,
     release_unit: u64,
     release_amount: WithdrawalType,
@@ -217,8 +217,8 @@ fn execute_create_batch<C: CustomQuery>(
     Ok(response)
 }
 
-fn execute_claim<C: CustomQuery>(
-    ctx: ExecuteContext<C>,
+fn execute_claim(
+    ctx: ExecuteContext<Empty>,
     number_of_claims: Option<u64>,
     batch_id: u64,
 ) -> Result<Response, ContractError> {
@@ -260,8 +260,8 @@ fn execute_claim<C: CustomQuery>(
         .add_attribute("amount_left", batch.amount - batch.amount_claimed))
 }
 
-fn execute_claim_all<C: CustomQuery>(
-    ctx: ExecuteContext<C>,
+fn execute_claim_all(
+    ctx: ExecuteContext<Empty>,
     limit: Option<u32>,
     up_to_time: Option<u64>,
 ) -> Result<Response, ContractError> {
@@ -324,8 +324,8 @@ fn execute_claim_all<C: CustomQuery>(
         .add_attribute("last_batch_id_processed", last_batch_id))
 }
 
-fn execute_delegate<C: CustomQuery>(
-    deps: DepsMut<C>,
+fn execute_delegate(
+    deps: DepsMut<Empty>,
     env: Env,
     info: MessageInfo,
     amount: Option<Uint128>,
@@ -470,8 +470,8 @@ fn execute_withdraw_rewards<C: CustomQuery>(
         .add_messages(withdraw_rewards_msgs))
 }
 
-fn claim_batch<C: CustomQuery>(
-    querier: &QuerierWrapper<C>,
+fn claim_batch(
+    querier: &QuerierWrapper<Empty>,
     env: &Env,
     batch: &mut Batch,
     config: &Config,

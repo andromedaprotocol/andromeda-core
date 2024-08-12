@@ -122,8 +122,8 @@ pub fn execute(
     }
 }
 
-pub fn handle_execute<C: CustomQuery>(
-    mut ctx: ExecuteContext<C>,
+pub fn handle_execute(
+    mut ctx: ExecuteContext<Empty>,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     let _contract = ADOContract::default();
@@ -178,8 +178,8 @@ pub fn handle_execute<C: CustomQuery>(
         .add_events(action_response.events))
 }
 
-fn receive_cw20<C: CustomQuery>(
-    ctx: ExecuteContext<C>,
+fn receive_cw20(
+    ctx: ExecuteContext<Empty>,
     msg: Cw20ReceiveMsg,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
@@ -207,8 +207,8 @@ fn receive_cw20<C: CustomQuery>(
     }
 }
 
-fn execute_add_reward_token<C: CustomQuery>(
-    ctx: ExecuteContext<C>,
+fn execute_add_reward_token(
+    ctx: ExecuteContext<Empty>,
     reward_token: RewardTokenUnchecked,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
@@ -272,8 +272,8 @@ fn execute_add_reward_token<C: CustomQuery>(
         .add_attribute("added_token", reward_token_string))
 }
 
-fn execute_remove_reward_token<C: CustomQuery>(
-    ctx: ExecuteContext<C>,
+fn execute_remove_reward_token(
+    ctx: ExecuteContext<Empty>,
     reward_token_string: String,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
@@ -323,8 +323,8 @@ fn execute_remove_reward_token<C: CustomQuery>(
         .add_attribute("removed_token", reward_token_string))
 }
 
-fn execute_replace_reward_token<C: CustomQuery>(
-    ctx: ExecuteContext<C>,
+fn execute_replace_reward_token(
+    ctx: ExecuteContext<Empty>,
     origin_reward_token_string: String,
     reward_token: RewardTokenUnchecked,
 ) -> Result<Response, ContractError> {
@@ -414,7 +414,7 @@ fn execute_replace_reward_token<C: CustomQuery>(
 }
 /// The foundation for this approach is inspired by Anchor's staking implementation:
 /// https://github.com/Anchor-Protocol/anchor-token-contracts/blob/15c9d6f9753bd1948831f4e1b5d2389d3cf72c93/contracts/gov/src/staking.rs#L15
-fn execute_stake_tokens<C: CustomQuery>(
+fn execute_stake_tokens(
     deps: DepsMut<Empty>,
     env: Env,
     sender: String,
@@ -472,7 +472,7 @@ fn execute_stake_tokens<C: CustomQuery>(
         .add_attribute("amount", amount))
 }
 
-fn execute_unstake_tokens<C: CustomQuery>(
+fn execute_unstake_tokens(
     ctx: ExecuteContext<Empty>,
     amount: Option<Uint128>,
 ) -> Result<Response, ContractError> {
@@ -540,9 +540,7 @@ fn execute_unstake_tokens<C: CustomQuery>(
     }
 }
 
-fn execute_claim_rewards<C: CustomQuery>(
-    ctx: ExecuteContext<Empty>,
-) -> Result<Response, ContractError> {
+fn execute_claim_rewards(ctx: ExecuteContext<Empty>) -> Result<Response, ContractError> {
     let ExecuteContext {
         deps, info, env, ..
     } = ctx;
@@ -627,7 +625,7 @@ fn execute_claim_rewards<C: CustomQuery>(
     }
 }
 
-fn update_global_indexes<C: CustomQuery>(
+fn update_global_indexes(
     storage: &mut dyn Storage,
     block_info: &BlockInfo,
     querier: &QuerierWrapper<Empty>,
@@ -673,7 +671,7 @@ fn update_global_indexes<C: CustomQuery>(
     Ok(Response::new().add_attributes(attributes))
 }
 
-fn update_global_index<C: CustomQuery>(
+fn update_global_index(
     block_info: &BlockInfo,
     querier: &QuerierWrapper<Empty>,
     current_timestamp: Milliseconds,

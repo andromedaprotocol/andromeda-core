@@ -6,7 +6,7 @@ use andromeda_std::{
     common::{actions::call_action, context::ExecuteContext, encode_binary, Funds},
     error::ContractError,
 };
-use cosmwasm_std::{entry_point, CustomQuery, Empty};
+use cosmwasm_std::{entry_point, Empty};
 use cosmwasm_std::{
     from_json, to_json_binary, Addr, Api, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
     Response, StdResult, Storage, SubMsg, Uint128, WasmMsg,
@@ -67,7 +67,7 @@ pub fn execute(
     }
 }
 
-pub fn handle_execute<C: CustomQuery>(
+pub fn handle_execute(
     mut ctx: ExecuteContext<Empty>,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
@@ -137,7 +137,7 @@ fn execute_transfer_from(
     handle_transfer(ctx, recipient, Some(owner), amount, action, true)
 }
 
-fn handle_transfer<C: CustomQuery>(
+fn handle_transfer(
     ctx: ExecuteContext<Empty>,
     recipient: AndrAddr,
     owner: Option<String>,
