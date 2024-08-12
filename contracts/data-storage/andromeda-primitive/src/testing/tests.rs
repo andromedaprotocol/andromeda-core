@@ -90,6 +90,33 @@ fn test_set_value_with_tax() {
 
     assert_eq!(err, ContractError::InvalidRate {});
 
+    // Make sure sender is set as recipient when the recipients vector is empty
+    let rates = vec![Rate::Local(LocalRate {
+        rate_type: LocalRateType::Additive,
+        recipients: vec![],
+        value: LocalRateValue::Flat(coin(20_u128, "uandr")),
+        description: None,
+    })];
+
+    let msg = ExecuteMsg::Rates(RatesMessage::SetRate {
+        action: "SetValue".to_string(),
+        rates,
+    });
+    execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+    let queried_rates = ADOContract::default()
+        .get_rates(deps.as_ref(), "SetValue".to_string())
+        .unwrap();
+    assert_eq!(
+        queried_rates.unwrap(),
+        vec![Rate::Local(LocalRate {
+            rate_type: LocalRateType::Additive,
+            recipients: vec![Recipient::new(AndrAddr::from_string("creator"), None)],
+            value: LocalRateValue::Flat(coin(20_u128, "uandr")),
+            description: None,
+        })]
+    );
+
     let rate = vec![Rate::Local(LocalRate {
         rate_type: LocalRateType::Additive,
         recipients: vec![Recipient {
@@ -103,7 +130,7 @@ fn test_set_value_with_tax() {
 
     // Set rates
     ADOContract::default()
-        .set_rates(deps.as_mut().storage, "PrimitiveSetValue", rate)
+        .set_rates(deps.as_mut().storage, "SetValue", rate)
         .unwrap();
 
     // Sent the exact amount required for tax

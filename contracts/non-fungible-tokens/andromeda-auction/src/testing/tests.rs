@@ -1251,7 +1251,7 @@ fn execute_claim_with_tax() {
 
     // Set rates
     ADOContract::default()
-        .set_rates(deps.as_mut().storage, "AuctionClaim", rate)
+        .set_rates(deps.as_mut().storage, "Claim", rate)
         .unwrap();
 
     start_auction(deps.as_mut(), None, None, None);
@@ -1338,7 +1338,7 @@ fn execute_claim_with_royalty() {
 
     // Set rates
     ADOContract::default()
-        .set_rates(deps.as_mut().storage, "AuctionClaim", rate)
+        .set_rates(deps.as_mut().storage, "Claim", rate)
         .unwrap();
 
     start_auction(deps.as_mut(), None, None, None);
@@ -1502,7 +1502,7 @@ fn execute_claim_cw20_with_tax() {
 
     // Set rates
     ADOContract::default()
-        .set_rates(deps.as_mut().storage, "AuctionClaim", rate)
+        .set_rates(deps.as_mut().storage, "Claim", rate)
         .unwrap();
 
     start_auction_cw20(deps.as_mut(), None, None, None);

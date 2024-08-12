@@ -116,20 +116,21 @@ fn test_auction_app_modules() {
         .execute_add_rate(
             &mut router,
             owner.clone(),
-            "AuctionClaim".to_string(),
+            "Claim".to_string(),
             vec![
                 Rate::Local(LocalRate {
+                    description: None,
                     rate_type: LocalRateType::Deductive,
                     recipients: vec![
-                        Recipient::new(recipient_one, None),
-                        Recipient::new(recipient_two, None),
+                        Recipient::new(recipient_one.clone(), None),
+                        Recipient::new(recipient_two.clone(), None),
                     ],
                     value: LocalRateValue::Percent(PercentRate {
                         percent: Decimal::percent(25),
                     }),
-                    description: None,
                 }),
                 Rate::Local(LocalRate {
+                    description: None,
                     rate_type: LocalRateType::Deductive,
                     recipients: vec![
                         Recipient::new(recipient_one, None),
@@ -138,7 +139,6 @@ fn test_auction_app_modules() {
                     value: LocalRateValue::Percent(PercentRate {
                         percent: Decimal::percent(10),
                     }),
-                    description: None,
                 }),
             ],
         )

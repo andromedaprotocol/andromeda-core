@@ -245,3 +245,8 @@ pub fn calculate_fee(fee_rate: LocalRateValue, payment: &Coin) -> Result<Coin, C
         } // Rate::External(_) => Err(ContractError::UnexpectedExternalRate {}),
     }
 }
+
+#[cw_serde]
+pub struct AllRatesResponse {
+    pub all_rates: Vec<(String, Vec<Rate>)>,
+}

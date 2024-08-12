@@ -103,7 +103,7 @@ fn test_primitive() {
         .execute_add_rate(
             &mut router,
             owner.clone(),
-            "PrimitiveSetValue".to_string(),
+            "SetValue".to_string(),
             vec![Rate::Local(LocalRate {
                 rate_type: LocalRateType::Deductive,
                 recipients: vec![Recipient::new(recipient_one, None)],

@@ -1,8 +1,6 @@
-use crate::ado_base::rates::Rate;
-use crate::ado_base::rates::RatesMessage;
-use crate::ado_base::rates::RatesResponse;
-use crate::common::context::ExecuteContext;
-use crate::common::Funds;
+use crate::ado_base::rates::{AllRatesResponse, Rate, RatesResponse};
+use crate::amp::Recipient;
+use crate::common::{context::ExecuteContext, Funds};
 use crate::error::ContractError;
 use crate::os::aos_querier::AOSQuerier;
 use cosmwasm_std::Uint128;
@@ -28,35 +26,42 @@ impl<'a> ADOContract<'a> {
         self.rates.save(store, &action, &rates)?;
         Ok(())
     }
-    pub fn execute_rates(
-        &self,
-        ctx: ExecuteContext,
-        rates_message: RatesMessage,
-    ) -> Result<Response, ContractError> {
-        match rates_message {
-            RatesMessage::SetRate { action, rates } => self.execute_set_rates(ctx, action, rates),
-            RatesMessage::RemoveRate { action } => self.execute_remove_rates(ctx, action),
-        }
-    }
+
     pub fn execute_set_rates(
         &self,
         ctx: ExecuteContext,
         action: impl Into<String>,
-        rates: Vec<Rate>,
+        mut rates: Vec<Rate>,
     ) -> Result<Response, ContractError> {
+        // Ensure the sender is the contract owner
         ensure!(
             Self::is_contract_owner(self, ctx.deps.storage, ctx.info.sender.as_str())?,
             ContractError::Unauthorized {}
         );
-        let action: String = action.into();
-        // Validate rates
-        for rate in &rates {
+
+        let action = action.into();
+
+        // Iterate over the rates, validating and updating as needed
+        for rate in &mut rates {
+            // Validate rates
             rate.validate_rate(ctx.deps.as_ref())?;
+
+            // Update local rates if recipients are empty
+            if let Rate::Local(ref mut local_rate) = rate {
+                if local_rate.recipients.is_empty() {
+                    local_rate
+                        .recipients
+                        .push(Recipient::new(ctx.info.sender.clone(), None));
+                }
+            }
         }
+
+        // Save the updated rates
         self.set_rates(ctx.deps.storage, action, rates)?;
 
         Ok(Response::default().add_attributes(vec![("action", "set_rates")]))
     }
+
     pub fn remove_rates(
         &self,
         store: &mut dyn Storage,
@@ -91,6 +96,22 @@ impl<'a> ADOContract<'a> {
     ) -> Result<Option<Vec<Rate>>, ContractError> {
         let action: String = action.into();
         Ok(rates().may_load(deps.storage, &action)?)
+    }
+
+    pub fn get_all_rates(&self, deps: Deps) -> Result<AllRatesResponse, ContractError> {
+        // Initialize a vector to hold all rates
+        let mut all_rates: Vec<(String, Vec<Rate>)> = Vec::new();
+
+        // Iterate over all keys and load the corresponding rate
+        rates()
+            .range(deps.storage, None, None, cosmwasm_std::Order::Ascending)
+            .for_each(|item| {
+                if let Ok((action, rate)) = item {
+                    all_rates.push((action, rate));
+                }
+            });
+
+        Ok(AllRatesResponse { all_rates })
     }
 
     pub fn query_deducted_funds(
