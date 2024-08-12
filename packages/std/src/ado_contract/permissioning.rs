@@ -6,7 +6,9 @@ use crate::{
     common::{context::ExecuteContext, OrderBy},
     error::ContractError,
 };
-use cosmwasm_std::{ensure, Deps, DepsMut, Env, MessageInfo, Order, Response, Storage};
+use cosmwasm_std::{
+    ensure, CustomQuery, Deps, DepsMut, Env, MessageInfo, Order, Response, Storage,
+};
 use cw_storage_plus::{Bound, Index, IndexList, IndexedMap, MultiIndex};
 
 use super::ADOContract;
@@ -45,9 +47,9 @@ pub fn permissions<'a>() -> IndexedMap<'a, &'a str, PermissionInfo, PermissionsI
 }
 
 impl<'a> ADOContract<'a> {
-    pub fn execute_permissioning(
+    pub fn execute_permissioning<C: CustomQuery>(
         &self,
-        ctx: ExecuteContext,
+        ctx: ExecuteContext<C>,
         msg: PermissioningMessage,
     ) -> Result<Response, ContractError> {
         match msg {
@@ -70,9 +72,9 @@ impl<'a> ADOContract<'a> {
     /// Determines if the provided actor is authorised to perform the given action
     ///
     /// Returns an error if the given action is not permissioned for the given actor
-    pub fn is_permissioned(
+    pub fn is_permissioned<C: CustomQuery>(
         &self,
-        deps: DepsMut,
+        deps: DepsMut<C>,
         env: Env,
         action: impl Into<String>,
         actor: impl Into<String>,
@@ -143,9 +145,9 @@ impl<'a> ADOContract<'a> {
     /// **Ignores the `PERMISSIONED_ACTIONS` map**
     ///
     /// Returns an error if the permission has expired or if no permission exists for a restricted ADO
-    pub fn is_permissioned_strict(
+    pub fn is_permissioned_strict<C: CustomQuery>(
         &self,
-        deps: DepsMut,
+        deps: DepsMut<C>,
         env: Env,
         action: impl Into<String>,
         actor: impl Into<String>,
@@ -254,9 +256,9 @@ impl<'a> ADOContract<'a> {
     ///
     /// **Whitelisted/Limited permissions will only work for permissioned actions**
     ///
-    pub fn execute_set_permission(
+    pub fn execute_set_permission<C: CustomQuery>(
         &self,
-        ctx: ExecuteContext,
+        ctx: ExecuteContext<C>,
         actor: AndrAddr,
         action: impl Into<String>,
         permission: Permission,
@@ -283,9 +285,9 @@ impl<'a> ADOContract<'a> {
     }
 
     /// Execute handler for setting permission
-    pub fn execute_remove_permission(
+    pub fn execute_remove_permission<C: CustomQuery>(
         &self,
-        ctx: ExecuteContext,
+        ctx: ExecuteContext<C>,
         actor: AndrAddr,
         action: impl Into<String>,
     ) -> Result<Response, ContractError> {
@@ -320,9 +322,9 @@ impl<'a> ADOContract<'a> {
         self.permissioned_actions.remove(store, action.into());
     }
 
-    pub fn execute_permission_action(
+    pub fn execute_permission_action<C: CustomQuery>(
         &self,
-        ctx: ExecuteContext,
+        ctx: ExecuteContext<C>,
         action: impl Into<String>,
     ) -> Result<Response, ContractError> {
         let action_string: String = action.into();
@@ -337,9 +339,9 @@ impl<'a> ADOContract<'a> {
         ]))
     }
 
-    pub fn execute_disable_action_permission(
+    pub fn execute_disable_action_permission<C: CustomQuery>(
         &self,
-        ctx: ExecuteContext,
+        ctx: ExecuteContext<C>,
         action: impl Into<String>,
     ) -> Result<Response, ContractError> {
         let action_string: String = action.into();
@@ -427,8 +429,8 @@ impl<'a> ADOContract<'a> {
 /// Two scenarios exist:
 /// - The context does not contain any AMP context and the **sender** is the actor
 /// - The context contains AMP context and the **previous sender** or **origin** are considered the actor
-pub fn is_context_permissioned(
-    deps: &mut DepsMut,
+pub fn is_context_permissioned<C: CustomQuery>(
+    deps: &mut DepsMut<C>,
     info: &MessageInfo,
     env: &Env,
     ctx: &Option<AMPPkt>,
@@ -464,8 +466,8 @@ pub fn is_context_permissioned(
 /// Two scenarios exist:
 /// - The context does not contain any AMP context and the **sender** is the actor
 /// - The context contains AMP context and the **previous sender** or **origin** are considered the actor
-pub fn is_context_permissioned_strict(
-    mut deps: DepsMut,
+pub fn is_context_permissioned_strict<C: CustomQuery>(
+    mut deps: DepsMut<C>,
     info: &MessageInfo,
     env: &Env,
     ctx: &Option<AMPPkt>,

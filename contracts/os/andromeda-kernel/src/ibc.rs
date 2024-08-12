@@ -14,7 +14,7 @@ use cosmwasm_schema::cw_serde;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    ensure, from_json, to_json_binary, Addr, Binary, Coin, Deps, DepsMut, Empty, Env,
+    ensure, from_json, to_json_binary, Addr, Binary, Coin, CustomQuery, Deps, DepsMut, Empty, Env,
     Ibc3ChannelOpenResponse, IbcBasicResponse, IbcChannel, IbcChannelCloseMsg,
     IbcChannelConnectMsg, IbcChannelOpenMsg, IbcOrder, IbcPacketAckMsg, IbcPacketReceiveMsg,
     IbcPacketTimeoutMsg, IbcReceiveResponse, MessageInfo, SubMsg, Timestamp, WasmMsg,
@@ -163,8 +163,8 @@ pub fn do_ibc_packet_receive(
     }
 }
 
-pub fn ibc_create_ado(
-    _execute_ctx: ExecuteContext,
+pub fn ibc_create_ado<C: CustomQuery>(
+    _execute_ctx: ExecuteContext<C>,
     _owner: AndrAddr,
     _ado_type: String,
     _msg: Binary,
@@ -178,8 +178,8 @@ pub fn ibc_create_ado(
     //     .set_ack(make_ack_create_ado_success()))
 }
 
-pub fn ibc_register_username(
-    execute_ctx: ExecuteContext,
+pub fn ibc_register_username<C: CustomQuery>(
+    execute_ctx: ExecuteContext<C>,
     username: String,
     addr: String,
 ) -> Result<IbcReceiveResponse, ContractError> {
@@ -252,8 +252,8 @@ fn generate_ibc_denom(channel: String, denom: String) -> String {
 }
 
 #[allow(clippy::too_many_arguments)]
-pub fn generate_transfer_message(
-    deps: &Deps,
+pub fn generate_transfer_message<C: CustomQuery>(
+    deps: &Deps<C>,
     recipient: AndrAddr,
     message: Binary,
     funds: Coin,
@@ -308,7 +308,10 @@ pub fn hash_denom_trace(unwrapped: &str) -> String {
     format!("ibc/{}", sha256::digest(unwrapped))
 }
 
-pub fn unwrap_denom_path(deps: &Deps, denom: &str) -> Result<Vec<MultiHopDenom>, ContractError> {
+pub fn unwrap_denom_path<C: CustomQuery>(
+    deps: &Deps<C>,
+    denom: &str,
+) -> Result<Vec<MultiHopDenom>, ContractError> {
     // Check that the denom is an IBC denom
     if !denom.starts_with("ibc/") {
         return Ok(vec![MultiHopDenom {

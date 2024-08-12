@@ -10,7 +10,8 @@ use andromeda_std::{
 };
 use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
 use cosmwasm_std::{
-    attr, ensure, entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Response, SubMsg,
+    attr, ensure, entry_point, Binary, CustomQuery, Deps, DepsMut, Env, MessageInfo, Response,
+    SubMsg,
 };
 
 use crate::state::{escrows, get_key, get_keys_for_recipient};
@@ -61,7 +62,10 @@ pub fn execute(
     }
 }
 
-pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+pub fn handle_execute<C: CustomQuery>(
+    mut ctx: ExecuteContext<C>,
+    msg: ExecuteMsg,
+) -> Result<Response, ContractError> {
     let action_response = call_action(
         &mut ctx.deps,
         &ctx.info,
@@ -92,8 +96,8 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
         .add_events(action_response.events))
 }
 
-fn execute_hold_funds(
-    ctx: ExecuteContext,
+fn execute_hold_funds<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
     condition: Option<EscrowCondition>,
     recipient: Option<Recipient>,
 ) -> Result<Response, ContractError> {
@@ -135,8 +139,8 @@ fn execute_hold_funds(
     ]))
 }
 
-fn execute_release_funds(
-    ctx: ExecuteContext,
+fn execute_release_funds<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
     recipient_addr: Option<String>,
     start_after: Option<String>,
     limit: Option<u32>,
@@ -170,8 +174,8 @@ fn execute_release_funds(
     ]))
 }
 
-fn execute_release_specific_funds(
-    ctx: ExecuteContext,
+fn execute_release_specific_funds<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
     owner: String,
     recipient: Option<String>,
 ) -> Result<Response, ContractError> {

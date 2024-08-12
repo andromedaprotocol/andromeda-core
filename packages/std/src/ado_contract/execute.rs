@@ -10,15 +10,17 @@ use crate::{
     error::ContractError,
 };
 use cosmwasm_std::{
-    attr, ensure, from_json, to_json_binary, Addr, Api, ContractInfoResponse, CosmosMsg, Deps,
-    DepsMut, Env, MessageInfo, QuerierWrapper, Response, Storage, SubMsg, WasmMsg,
+    attr, ensure, from_json, to_json_binary, Addr, Api, ContractInfoResponse, CosmosMsg,
+    CustomQuery, Deps, DepsMut, Env, MessageInfo, QuerierWrapper, Response, Storage, SubMsg,
+    WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
 use semver::Version;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 
-type ExecuteContextFunction<M, E = ContractError> = fn(ExecuteContext, M) -> Result<Response, E>;
+type ExecuteContextFunction<M, C: CustomQuery, E = ContractError> =
+    fn(ExecuteContext<C>, M) -> Result<Response, E>;
 
 impl<'a> ADOContract<'a> {
     pub fn instantiate(
@@ -85,9 +87,9 @@ impl<'a> ADOContract<'a> {
     }
 
     /// Handles execution of ADO specific messages.
-    pub fn execute(
+    pub fn execute<C: CustomQuery>(
         &self,
-        ctx: ExecuteContext,
+        ctx: ExecuteContext<'a, C>,
         msg: impl Serialize,
     ) -> Result<Response, ContractError> {
         let msg = to_json_binary(&msg)?;
@@ -152,9 +154,9 @@ impl<'a> ADOContract<'a> {
     ///
     /// Requires the VFS address to be set if any address is a VFS path.
     /// Automatically validates all stored modules.
-    pub fn validate_andr_addresses(
+    pub fn validate_andr_addresses<C: CustomQuery>(
         &self,
-        deps: &Deps,
+        deps: &Deps<C>,
         addresses: Vec<AndrAddr>,
     ) -> Result<(), ContractError> {
         let vfs_address = self.get_vfs_address(deps.storage, &deps.querier);
@@ -175,9 +177,9 @@ impl<'a> ADOContract<'a> {
     }
 
     /// Validates the given `AndrAddr` address.
-    pub(crate) fn validate_andr_address(
+    pub(crate) fn validate_andr_address<C: CustomQuery>(
         &self,
-        deps: &Deps,
+        deps: &Deps<C>,
         address: AndrAddr,
         vfs_address: Addr,
     ) -> Result<(), ContractError> {
@@ -197,10 +199,10 @@ impl<'a> ADOContract<'a> {
 
     #[inline]
     /// Gets the current address for the VFS contract.
-    pub fn get_vfs_address(
+    pub fn get_vfs_address<C: CustomQuery>(
         &self,
         storage: &dyn Storage,
-        querier: &QuerierWrapper,
+        querier: &QuerierWrapper<C>,
     ) -> Result<Addr, ContractError> {
         let kernel_address = self.get_kernel_address(storage)?;
         AOSQuerier::vfs_address_getter(querier, &kernel_address)
@@ -208,10 +210,10 @@ impl<'a> ADOContract<'a> {
 
     #[inline]
     /// Gets the current address for the VFS contract.
-    pub fn get_adodb_address(
+    pub fn get_adodb_address<C: CustomQuery>(
         &self,
         storage: &dyn Storage,
-        querier: &QuerierWrapper,
+        querier: &QuerierWrapper<C>,
     ) -> Result<Addr, ContractError> {
         let kernel_address = self.get_kernel_address(storage)?;
         AOSQuerier::adodb_address_getter(querier, &kernel_address)
@@ -220,11 +222,11 @@ impl<'a> ADOContract<'a> {
     /// Handles receiving and verifies an AMPPkt from the Kernel before executing the appropriate messages.
     ///
     /// Calls the provided handler with the AMP packet attached within the context.
-    pub fn execute_amp_receive<M: DeserializeOwned>(
+    pub fn execute_amp_receive<M: DeserializeOwned, C: CustomQuery>(
         &self,
-        ctx: ExecuteContext,
+        ctx: ExecuteContext<C>,
         mut packet: AMPPkt,
-        handler: ExecuteContextFunction<M>,
+        handler: ExecuteContextFunction<M, C>,
     ) -> Result<Response, ContractError> {
         packet.verify_origin(&ctx.info, &ctx.deps.as_ref())?;
         let ctx = ctx.with_ctx(packet.clone());
@@ -249,10 +251,10 @@ impl<'a> ADOContract<'a> {
     ///
     /// If any of the above cannot pay the fee the remainder is paid by the next in the list until no remainder remains.
     /// If there is still a remainder after all 3 payments then the fee cannot be paid and the message will error.
-    pub fn pay_fee(
+    pub fn pay_fee<C: CustomQuery>(
         &self,
         storage: &dyn Storage,
-        querier: &QuerierWrapper,
+        querier: &QuerierWrapper<C>,
         action: String,
         payee: Addr,
     ) -> Result<SubMsg, ContractError> {
@@ -274,9 +276,9 @@ impl<'a> ADOContract<'a> {
 
     /// Updates the current kernel address used by the ADO
     /// Requires the sender to be the owner of the ADO
-    pub fn update_kernel_address(
+    pub fn update_kernel_address<C: CustomQuery>(
         &self,
-        deps: DepsMut,
+        deps: DepsMut<C>,
         info: MessageInfo,
         address: Addr,
     ) -> Result<Response, ContractError> {

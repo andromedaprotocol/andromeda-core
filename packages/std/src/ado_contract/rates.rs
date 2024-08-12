@@ -3,7 +3,7 @@ use crate::amp::Recipient;
 use crate::common::{context::ExecuteContext, Funds};
 use crate::error::ContractError;
 use crate::os::aos_querier::AOSQuerier;
-use cosmwasm_std::{coin as create_coin, ensure, Coin, Deps, Response, Storage};
+use cosmwasm_std::{coin as create_coin, ensure, Coin, CustomQuery, Deps, Response, Storage};
 use cw20::Cw20Coin;
 use cw_storage_plus::Map;
 
@@ -25,9 +25,9 @@ impl<'a> ADOContract<'a> {
         self.rates.save(store, &action, &rate)?;
         Ok(())
     }
-    pub fn execute_rates(
+    pub fn execute_rates<C: CustomQuery>(
         &self,
-        ctx: ExecuteContext,
+        ctx: ExecuteContext<C>,
         rates_message: RatesMessage,
     ) -> Result<Response, ContractError> {
         match rates_message {
@@ -35,9 +35,9 @@ impl<'a> ADOContract<'a> {
             RatesMessage::RemoveRate { action } => self.execute_remove_rates(ctx, action),
         }
     }
-    pub fn execute_set_rates(
+    pub fn execute_set_rates<C: CustomQuery>(
         &self,
-        ctx: ExecuteContext,
+        ctx: ExecuteContext<C>,
         action: impl Into<String>,
         mut rate: Rate,
     ) -> Result<Response, ContractError> {
@@ -73,9 +73,9 @@ impl<'a> ADOContract<'a> {
         self.rates.remove(store, &action);
         Ok(())
     }
-    pub fn execute_remove_rates(
+    pub fn execute_remove_rates<C: CustomQuery>(
         &self,
-        ctx: ExecuteContext,
+        ctx: ExecuteContext<C>,
         action: impl Into<String>,
     ) -> Result<Response, ContractError> {
         ensure!(
@@ -116,9 +116,9 @@ impl<'a> ADOContract<'a> {
         Ok(AllRatesResponse { all_rates })
     }
 
-    pub fn query_deducted_funds(
+    pub fn query_deducted_funds<C: CustomQuery>(
         self,
-        deps: Deps,
+        deps: Deps<C>,
         action: impl Into<String>,
         funds: Funds,
     ) -> Result<Option<RatesResponse>, ContractError> {

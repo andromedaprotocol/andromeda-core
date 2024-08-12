@@ -4,7 +4,7 @@ use andromeda_std::{
     error::ContractError,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{ensure, Decimal, Deps, Uint128};
+use cosmwasm_std::{ensure, CustomQuery, Decimal, Deps, Uint128};
 use std::collections::HashSet;
 
 use crate::splitter::AddressPercent;
@@ -57,7 +57,7 @@ pub struct ConditionalSplitter {
     pub lock_time: Option<MillisecondsExpiration>,
 }
 impl ConditionalSplitter {
-    pub fn validate(&self, deps: Deps) -> Result<(), ContractError> {
+    pub fn validate<C: CustomQuery>(&self, deps: Deps<C>) -> Result<(), ContractError> {
         validate_thresholds(deps, &self.thresholds)
     }
 }
@@ -106,7 +106,10 @@ pub struct GetConditionalSplitterConfigResponse {
 /// * The number of recipients for each threshold must not exceed 100
 /// * The recipient addresses must be unique for each threshold
 /// * Make sure there are no duplicate min values between the thresholds
-pub fn validate_thresholds(deps: Deps, thresholds: &Vec<Threshold>) -> Result<(), ContractError> {
+pub fn validate_thresholds<C: CustomQuery>(
+    deps: Deps<C>,
+    thresholds: &Vec<Threshold>,
+) -> Result<(), ContractError> {
     ensure!(
         !thresholds.is_empty(),
         ContractError::EmptyThresholdsList {}

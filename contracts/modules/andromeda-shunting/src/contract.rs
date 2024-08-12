@@ -10,7 +10,8 @@ use andromeda_std::{
     error::ContractError,
 };
 use cosmwasm_std::{
-    attr, ensure, entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Response, WasmQuery,
+    attr, ensure, entry_point, Binary, CustomQuery, Deps, DepsMut, Env, MessageInfo, Response,
+    WasmQuery,
 };
 use cw2::set_contract_version;
 use cw_utils::nonpayable;
@@ -69,7 +70,10 @@ pub fn execute(
     }
 }
 
-pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+pub fn handle_execute<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
+    msg: ExecuteMsg,
+) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::UpdateExpressions { expressions } => {
             execute_update_expression(ctx, expressions)
@@ -78,8 +82,8 @@ pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
     }
 }
 
-fn execute_update_expression(
-    ctx: ExecuteContext,
+fn execute_update_expression<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
     expressions: Vec<String>,
 ) -> Result<Response, ContractError> {
     let ExecuteContext { deps, info, .. } = ctx;

@@ -12,8 +12,8 @@ use andromeda_std::{
 };
 use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
 use cosmwasm_std::{
-    attr, entry_point, Binary, Coin, Decimal, Deps, DepsMut, Env, MessageInfo, Reply, Response,
-    StdError, SubMsg,
+    attr, entry_point, Binary, Coin, CustomQuery, Decimal, Deps, DepsMut, Env, MessageInfo, Reply,
+    Response, StdError, SubMsg,
 };
 
 use cw_utils::one_coin;
@@ -135,7 +135,10 @@ pub fn execute(
     }
 }
 
-pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+pub fn handle_execute<C: CustomQuery>(
+    mut ctx: ExecuteContext<C>,
+    msg: ExecuteMsg,
+) -> Result<Response, ContractError> {
     let _contract = ADOContract::default();
     call_action(
         &mut ctx.deps,
@@ -165,8 +168,8 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
     }
 }
 
-fn execute_swap_and_forward(
-    ctx: ExecuteContext,
+fn execute_swap_and_forward<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
     dex: String,
     to_denom: String,
     forward_addr: AndrAddr,

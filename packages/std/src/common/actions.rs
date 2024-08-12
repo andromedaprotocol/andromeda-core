@@ -3,10 +3,10 @@ use crate::{
     amp::messages::AMPPkt,
     error::ContractError,
 };
-use cosmwasm_std::{ensure, DepsMut, Env, MessageInfo, Response};
+use cosmwasm_std::{ensure, CustomQuery, DepsMut, Env, MessageInfo, Response};
 
-pub fn call_action(
-    deps: &mut DepsMut,
+pub fn call_action<C: CustomQuery>(
+    deps: &mut DepsMut<C>,
     info: &MessageInfo,
     env: &Env,
     amp_ctx: &Option<AMPPkt>,

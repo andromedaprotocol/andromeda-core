@@ -14,7 +14,9 @@ use andromeda_std::{
     },
     error::ContractError,
 };
-use cosmwasm_std::{ensure, from_json, Binary, Deps, DepsMut, Env, MessageInfo, Response, Uint128};
+use cosmwasm_std::{
+    ensure, from_json, Binary, CustomQuery, Deps, DepsMut, Env, MessageInfo, Response, Uint128,
+};
 use cosmwasm_std::{entry_point, Decimal};
 use cw_asset::Asset;
 
@@ -104,7 +106,10 @@ pub fn execute(
     }
 }
 
-pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+pub fn handle_execute<C: CustomQuery>(
+    mut ctx: ExecuteContext<C>,
+    msg: ExecuteMsg,
+) -> Result<Response, ContractError> {
     let _contract = ADOContract::default();
     let action_response = call_action(
         &mut ctx.deps,
@@ -134,8 +139,8 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
     ADOContract::default().migrate(deps, CONTRACT_NAME, CONTRACT_VERSION)
 }
 
-pub fn receive_cw20(
-    ctx: ExecuteContext,
+pub fn receive_cw20<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
     cw20_msg: Cw20ReceiveMsg,
 ) -> Result<Response, ContractError> {
     // CHECK :: Tokens sent > 0
@@ -170,8 +175,8 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
 
 /// @dev Facilitates increasing token incentives that are to be distributed as Lockdrop participation reward
 /// @params amount : Number of tokens which are to be added to current incentives
-pub fn execute_increase_incentives(
-    ctx: ExecuteContext,
+pub fn execute_increase_incentives<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
     amount: Uint128,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
@@ -202,7 +207,9 @@ pub fn execute_increase_incentives(
 }
 
 /// @dev Facilitates NATIVE deposits.
-pub fn execute_deposit_native(ctx: ExecuteContext) -> Result<Response, ContractError> {
+pub fn execute_deposit_native<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
+) -> Result<Response, ContractError> {
     let ExecuteContext {
         deps, env, info, ..
     } = ctx;
@@ -264,8 +271,8 @@ pub fn execute_deposit_native(ctx: ExecuteContext) -> Result<Response, ContractE
 
 /// @dev Facilitates NATIVE withdrawal from an existing Lockup position. Can only be called when deposit / withdrawal window is open
 /// @param withdraw_amount : NATIVE amount to be withdrawn
-pub fn execute_withdraw_native(
-    ctx: ExecuteContext,
+pub fn execute_withdraw_native<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
     withdraw_amount: Option<Uint128>,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
@@ -340,7 +347,9 @@ pub fn execute_withdraw_native(
 /// Function callable only by Bootstrap contract (if it is specified) to enable TOKEN Claims by users.
 /// Called along-with Bootstrap contract's LP Pool provide liquidity tx. If it is not
 /// specified then anyone can execute this when the phase has ended.
-pub fn execute_enable_claims(ctx: ExecuteContext) -> Result<Response, ContractError> {
+pub fn execute_enable_claims<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
+) -> Result<Response, ContractError> {
     let ExecuteContext {
         deps, env, info, ..
     } = ctx;
@@ -381,7 +390,9 @@ pub fn execute_enable_claims(ctx: ExecuteContext) -> Result<Response, ContractEr
 }
 
 /// @dev Function to claim Rewards from lockdrop.
-pub fn execute_claim_rewards(ctx: ExecuteContext) -> Result<Response, ContractError> {
+pub fn execute_claim_rewards<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
+) -> Result<Response, ContractError> {
     let ExecuteContext { deps, info, .. } = ctx;
     let config = CONFIG.load(deps.storage)?;
     let state = STATE.load(deps.storage)?;

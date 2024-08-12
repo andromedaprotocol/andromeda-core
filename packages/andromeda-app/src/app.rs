@@ -11,7 +11,7 @@ use andromeda_std::{
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{
     attr, ensure, instantiate2_address, to_json_binary, wasm_execute, Addr, Api, Binary,
-    CodeInfoResponse, Deps, Event, QuerierWrapper, SubMsg, WasmMsg,
+    CodeInfoResponse, CustomQuery, Deps, Event, QuerierWrapper, SubMsg, WasmMsg,
 };
 use serde::Serialize;
 
@@ -124,11 +124,11 @@ impl AppComponent {
     /// Generates an `Instantiate2` address for the component.
     ///
     /// Returns `None` for `Symlink` and `CrossChain` components.
-    pub fn get_new_addr(
+    pub fn get_new_addr<C: CustomQuery>(
         &self,
         api: &dyn Api,
         adodb_addr: &Addr,
-        querier: &QuerierWrapper,
+        querier: &QuerierWrapper<C>,
         parent_addr: Addr,
     ) -> Result<Option<Addr>, ContractError> {
         if !matches!(self.component_type, ComponentType::New(..)) {
@@ -243,9 +243,9 @@ impl AppComponent {
     /// Generates an instantiation message for the component.
     ///
     /// Returns `None` for `Symlink` and `CrossChain` components.
-    pub fn generate_instantiation_message(
+    pub fn generate_instantiation_message<C: CustomQuery>(
         &self,
-        querier: &QuerierWrapper,
+        querier: &QuerierWrapper<C>,
         adodb_addr: &Addr,
         parent_addr: &Addr,
         sender: &str,

@@ -4,7 +4,8 @@ use andromeda_std::{
     error::ContractError, os::aos_querier::AOSQuerier,
 };
 use cosmwasm_std::{
-    from_json, wasm_execute, Coin, Decimal, Reply, StdError, SubMsg, SubMsgResponse, SubMsgResult,
+    from_json, wasm_execute, Coin, CustomQuery, Decimal, Reply, StdError, SubMsg, SubMsgResponse,
+    SubMsgResult,
 };
 use serde::de::DeserializeOwned;
 
@@ -27,8 +28,8 @@ pub(crate) fn parse_swap_reply<T: DeserializeOwned>(msg: Reply) -> Result<T, Con
     Ok(swap_response)
 }
 
-pub(crate) fn execute_swap_osmo(
-    ctx: ExecuteContext,
+pub(crate) fn execute_swap_osmo<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
     input_coin: Coin,
     to_denom: String,
     slippage_percentage: Decimal,

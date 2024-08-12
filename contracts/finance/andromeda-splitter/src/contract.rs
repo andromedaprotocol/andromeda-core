@@ -11,8 +11,8 @@ use andromeda_std::{
 };
 use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
 use cosmwasm_std::{
-    attr, ensure, entry_point, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
-    Reply, Response, StdError, SubMsg, Uint128,
+    attr, ensure, entry_point, BankMsg, Binary, Coin, CosmosMsg, CustomQuery, Deps, DepsMut, Env,
+    MessageInfo, Reply, Response, StdError, SubMsg, Uint128,
 };
 use cw_utils::nonpayable;
 
@@ -108,7 +108,10 @@ pub fn execute(
     }
 }
 
-pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+pub fn handle_execute<C: CustomQuery>(
+    mut ctx: ExecuteContext<C>,
+    msg: ExecuteMsg,
+) -> Result<Response, ContractError> {
     let action_response = call_action(
         &mut ctx.deps,
         &ctx.info,
@@ -128,7 +131,7 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
         .add_events(action_response.events))
 }
 
-fn execute_send(ctx: ExecuteContext) -> Result<Response, ContractError> {
+fn execute_send<C: CustomQuery>(ctx: ExecuteContext<C>) -> Result<Response, ContractError> {
     let ExecuteContext { deps, info, .. } = ctx;
 
     ensure!(
@@ -210,8 +213,8 @@ fn execute_send(ctx: ExecuteContext) -> Result<Response, ContractError> {
         .add_attribute("sender", info.sender.to_string()))
 }
 
-fn execute_update_recipients(
-    ctx: ExecuteContext,
+fn execute_update_recipients<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
     recipients: Vec<AddressPercent>,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
@@ -246,8 +249,8 @@ fn execute_update_recipients(
     Ok(Response::default().add_attributes(vec![attr("action", "update_recipients")]))
 }
 
-fn execute_update_lock(
-    ctx: ExecuteContext,
+fn execute_update_lock<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
     lock_time: MillisecondsDuration,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {

@@ -1,5 +1,5 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{ensure, Addr, DepsMut, MessageInfo, Response, Storage};
+use cosmwasm_std::{ensure, Addr, CustomQuery, DepsMut, MessageInfo, Response, Storage};
 
 use crate::ado_contract::ADOContract;
 use crate::amp::addresses::AndrAddr;
@@ -17,9 +17,9 @@ impl<'a> ADOContract<'a> {
         Ok(self.app_contract.may_load(storage)?)
     }
 
-    pub fn execute_update_app_contract(
+    pub fn execute_update_app_contract<C: CustomQuery>(
         &self,
-        deps: DepsMut,
+        deps: DepsMut<C>,
         info: MessageInfo,
         address: String,
         addresses: Option<Vec<AndrAddr>>,

@@ -1,16 +1,16 @@
 use crate::amp::messages::AMPPkt;
-use cosmwasm_std::{DepsMut, Env, MessageInfo};
+use cosmwasm_std::{CustomQuery, DepsMut, Env, MessageInfo};
 
-pub struct ExecuteContext<'a> {
-    pub deps: DepsMut<'a>,
+pub struct ExecuteContext<'a, C: CustomQuery> {
+    pub deps: DepsMut<'a, C>,
     pub info: MessageInfo,
     pub env: Env,
     pub amp_ctx: Option<AMPPkt>,
 }
 
-impl<'a> ExecuteContext<'a> {
+impl<'a, C: CustomQuery> ExecuteContext<'a, C> {
     #[inline]
-    pub fn new(deps: DepsMut, info: MessageInfo, env: Env) -> ExecuteContext {
+    pub fn new(deps: DepsMut<C>, info: MessageInfo, env: Env) -> ExecuteContext<C> {
         ExecuteContext {
             deps,
             info,

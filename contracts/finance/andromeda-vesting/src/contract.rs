@@ -6,8 +6,8 @@ use andromeda_std::{
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    ensure, Binary, Coin, CosmosMsg, Deps, DepsMut, DistributionMsg, Env, GovMsg, MessageInfo,
-    QuerierWrapper, Response, StakingMsg, Uint128, VoteOption,
+    ensure, Binary, Coin, CosmosMsg, CustomQuery, Deps, DepsMut, DistributionMsg, Env, GovMsg,
+    MessageInfo, QuerierWrapper, Response, StakingMsg, Uint128, VoteOption,
 };
 use cw_asset::AssetInfo;
 use cw_utils::nonpayable;
@@ -76,7 +76,10 @@ pub fn execute(
     }
 }
 
-pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+pub fn handle_execute<C: CustomQuery>(
+    mut ctx: ExecuteContext<C>,
+    msg: ExecuteMsg,
+) -> Result<Response, ContractError> {
     call_action(
         &mut ctx.deps,
         &ctx.info,
@@ -114,8 +117,8 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
     }
 }
 
-fn execute_create_batch(
-    ctx: ExecuteContext,
+fn execute_create_batch<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
     lockup_duration: Option<u64>,
     release_unit: u64,
     release_amount: WithdrawalType,
@@ -214,8 +217,8 @@ fn execute_create_batch(
     Ok(response)
 }
 
-fn execute_claim(
-    ctx: ExecuteContext,
+fn execute_claim<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
     number_of_claims: Option<u64>,
     batch_id: u64,
 ) -> Result<Response, ContractError> {
@@ -257,8 +260,8 @@ fn execute_claim(
         .add_attribute("amount_left", batch.amount - batch.amount_claimed))
 }
 
-fn execute_claim_all(
-    ctx: ExecuteContext,
+fn execute_claim_all<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
     limit: Option<u32>,
     up_to_time: Option<u64>,
 ) -> Result<Response, ContractError> {
@@ -321,8 +324,8 @@ fn execute_claim_all(
         .add_attribute("last_batch_id_processed", last_batch_id))
 }
 
-fn execute_delegate(
-    deps: DepsMut,
+fn execute_delegate<C: CustomQuery>(
+    deps: DepsMut<C>,
     env: Env,
     info: MessageInfo,
     amount: Option<Uint128>,
@@ -356,8 +359,8 @@ fn execute_delegate(
         .add_attribute("amount", amount))
 }
 
-fn execute_redelegate(
-    ctx: ExecuteContext,
+fn execute_redelegate<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
     amount: Option<Uint128>,
     from: String,
     to: String,
@@ -398,8 +401,8 @@ fn execute_redelegate(
         .add_attribute("amount", amount))
 }
 
-fn execute_undelegate(
-    ctx: ExecuteContext,
+fn execute_undelegate<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
     amount: Option<Uint128>,
     validator: String,
 ) -> Result<Response, ContractError> {
@@ -437,7 +440,9 @@ fn execute_undelegate(
         .add_attribute("amount", amount))
 }
 
-fn execute_withdraw_rewards(ctx: ExecuteContext) -> Result<Response, ContractError> {
+fn execute_withdraw_rewards<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
+) -> Result<Response, ContractError> {
     let ExecuteContext {
         deps, info, env, ..
     } = ctx;
@@ -465,8 +470,8 @@ fn execute_withdraw_rewards(ctx: ExecuteContext) -> Result<Response, ContractErr
         .add_messages(withdraw_rewards_msgs))
 }
 
-fn claim_batch(
-    querier: &QuerierWrapper,
+fn claim_batch<C: CustomQuery>(
+    querier: &QuerierWrapper<C>,
     env: &Env,
     batch: &mut Batch,
     config: &Config,
@@ -520,8 +525,8 @@ fn claim_batch(
     Ok(amount_to_send)
 }
 
-fn execute_vote(
-    ctx: ExecuteContext,
+fn execute_vote<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
     proposal_id: u64,
     vote: VoteOption,
 ) -> Result<Response, ContractError> {
@@ -542,8 +547,8 @@ fn execute_vote(
         .add_attribute("vote", format!("{vote:?}")))
 }
 
-fn get_amount_delegated(
-    querier: &QuerierWrapper,
+fn get_amount_delegated<C: CustomQuery>(
+    querier: &QuerierWrapper<C>,
     delegator: String,
     validator: String,
 ) -> Result<Uint128, ContractError> {

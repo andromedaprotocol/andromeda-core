@@ -6,7 +6,8 @@ use andromeda_std::{
     error::ContractError,
 };
 use cosmwasm_std::{
-    coin, ensure, BankMsg, Coin, CosmosMsg, Deps, MessageInfo, Response, StdError, SubMsg, Uint128,
+    coin, ensure, BankMsg, Coin, CosmosMsg, CustomQuery, Deps, MessageInfo, Response, StdError,
+    SubMsg, Uint128,
 };
 use cw_utils::nonpayable;
 
@@ -15,7 +16,10 @@ use crate::{
     state::{DATA, KEY_OWNER, RESTRICTION},
 };
 
-pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+pub fn handle_execute<C: CustomQuery>(
+    mut ctx: ExecuteContext<C>,
+    msg: ExecuteMsg,
+) -> Result<Response, ContractError> {
     let action = msg.as_ref().to_string();
     call_action(
         &mut ctx.deps,
@@ -44,8 +48,8 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
     }
 }
 
-pub fn update_restriction(
-    ctx: ExecuteContext,
+pub fn update_restriction<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
     restriction: PrimitiveRestriction,
 ) -> Result<Response, ContractError> {
     nonpayable(&ctx.info)?;
@@ -60,8 +64,8 @@ pub fn update_restriction(
         .add_attribute("sender", sender))
 }
 
-pub fn set_value(
-    ctx: ExecuteContext,
+pub fn set_value<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
     key: Option<String>,
     value: Primitive,
     action: String,
@@ -107,7 +111,10 @@ pub fn set_value(
     Ok(response)
 }
 
-pub fn delete_value(ctx: ExecuteContext, key: Option<String>) -> Result<Response, ContractError> {
+pub fn delete_value<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
+    key: Option<String>,
+) -> Result<Response, ContractError> {
     nonpayable(&ctx.info)?;
     let sender = ctx.info.sender;
 
@@ -124,8 +131,8 @@ pub fn delete_value(ctx: ExecuteContext, key: Option<String>) -> Result<Response
         .add_attribute("key", key))
 }
 
-fn tax_set_value(
-    deps: Deps,
+fn tax_set_value<C: CustomQuery>(
+    deps: Deps<C>,
     info: &MessageInfo,
     action: String,
 ) -> Result<Option<(Funds, Vec<SubMsg>)>, ContractError> {

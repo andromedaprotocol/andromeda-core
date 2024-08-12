@@ -13,7 +13,8 @@ use andromeda_std::{
 };
 
 use cosmwasm_std::{
-    attr, coin, ensure, Binary, Coin, Deps, DepsMut, Env, Event, MessageInfo, Response, SubMsg,
+    attr, coin, ensure, Binary, Coin, CustomQuery, Deps, DepsMut, Env, Event, MessageInfo,
+    Response, SubMsg,
 };
 use cosmwasm_std::{entry_point, from_json};
 use cw20::Cw20Coin;
@@ -72,7 +73,10 @@ pub fn execute(
     }
 }
 
-pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+pub fn handle_execute<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
+    msg: ExecuteMsg,
+) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::SetRate { action, rate } => execute_set_rate(ctx, action, rate),
         ExecuteMsg::RemoveRate { action } => execute_remove_rate(ctx, action),
@@ -80,8 +84,8 @@ pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
     }
 }
 
-fn execute_set_rate(
-    ctx: ExecuteContext,
+fn execute_set_rate<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
     action: String,
     mut rate: LocalRate,
 ) -> Result<Response, ContractError> {
@@ -105,7 +109,10 @@ fn execute_set_rate(
     Ok(Response::new().add_attributes(vec![attr("action", "set_rate")]))
 }
 
-fn execute_remove_rate(ctx: ExecuteContext, action: String) -> Result<Response, ContractError> {
+fn execute_remove_rate<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
+    action: String,
+) -> Result<Response, ContractError> {
     let ExecuteContext { deps, info, .. } = ctx;
     nonpayable(&info)?;
 

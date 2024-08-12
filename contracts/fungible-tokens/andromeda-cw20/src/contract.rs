@@ -6,7 +6,7 @@ use andromeda_std::{
     common::{actions::call_action, context::ExecuteContext, encode_binary, Funds},
     error::ContractError,
 };
-use cosmwasm_std::entry_point;
+use cosmwasm_std::{entry_point, CustomQuery, Empty};
 use cosmwasm_std::{
     from_json, to_json_binary, Addr, Api, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
     Response, StdResult, Storage, SubMsg, Uint128, WasmMsg,
@@ -52,7 +52,7 @@ pub fn instantiate(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
-    deps: DepsMut,
+    deps: DepsMut<Empty>,
     env: Env,
     info: MessageInfo,
     msg: ExecuteMsg,
@@ -67,7 +67,10 @@ pub fn execute(
     }
 }
 
-pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+pub fn handle_execute<C: CustomQuery>(
+    mut ctx: ExecuteContext<Empty>,
+    msg: ExecuteMsg,
+) -> Result<Response, ContractError> {
     let action = msg.as_ref().to_string();
 
     let _contract = ADOContract::default();
@@ -116,7 +119,7 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
 }
 
 fn execute_transfer(
-    ctx: ExecuteContext,
+    ctx: ExecuteContext<Empty>,
     recipient: AndrAddr,
     amount: Uint128,
     action: String,
@@ -125,7 +128,7 @@ fn execute_transfer(
 }
 
 fn execute_transfer_from(
-    ctx: ExecuteContext,
+    ctx: ExecuteContext<Empty>,
     recipient: AndrAddr,
     owner: String,
     amount: Uint128,
@@ -134,8 +137,8 @@ fn execute_transfer_from(
     handle_transfer(ctx, recipient, Some(owner), amount, action, true)
 }
 
-fn handle_transfer(
-    ctx: ExecuteContext,
+fn handle_transfer<C: CustomQuery>(
+    ctx: ExecuteContext<Empty>,
     recipient: AndrAddr,
     owner: Option<String>,
     amount: Uint128,
@@ -230,7 +233,7 @@ fn transfer_tokens(
     Ok(())
 }
 
-fn execute_burn(ctx: ExecuteContext, amount: Uint128) -> Result<Response, ContractError> {
+fn execute_burn(ctx: ExecuteContext<Empty>, amount: Uint128) -> Result<Response, ContractError> {
     let ExecuteContext {
         deps, info, env, ..
     } = ctx;
@@ -244,7 +247,7 @@ fn execute_burn(ctx: ExecuteContext, amount: Uint128) -> Result<Response, Contra
 }
 
 fn execute_send(
-    ctx: ExecuteContext,
+    ctx: ExecuteContext<Empty>,
     contract: AndrAddr,
     amount: Uint128,
     msg: Binary,
@@ -254,7 +257,7 @@ fn execute_send(
 }
 
 fn execute_send_from(
-    ctx: ExecuteContext,
+    ctx: ExecuteContext<Empty>,
     contract: AndrAddr,
     amount: Uint128,
     msg: Binary,
@@ -265,7 +268,7 @@ fn execute_send_from(
 }
 
 fn handle_send(
-    ctx: ExecuteContext,
+    ctx: ExecuteContext<Empty>,
     contract: AndrAddr,
     amount: Uint128,
     msg: Binary,
@@ -346,7 +349,7 @@ fn handle_send(
 }
 
 fn execute_mint(
-    ctx: ExecuteContext,
+    ctx: ExecuteContext<Empty>,
     recipient: String,
     amount: Uint128,
 ) -> Result<Response, ContractError> {

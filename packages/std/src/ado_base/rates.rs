@@ -6,7 +6,7 @@ use crate::{
     os::{adodb::ADOVersion, aos_querier::AOSQuerier},
 };
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{ensure, has_coins, Coin, Decimal, Deps, Event, Fraction, SubMsg};
+use cosmwasm_std::{ensure, has_coins, Coin, CustomQuery, Decimal, Deps, Event, Fraction, SubMsg};
 use cw20::Cw20Coin;
 
 #[cw_serde]
@@ -112,9 +112,9 @@ pub struct LocalRate {
 type LocalRateResponse = (Vec<SubMsg>, Vec<Event>, Vec<Coin>);
 
 impl LocalRate {
-    pub fn generate_response(
+    pub fn generate_response<C: CustomQuery>(
         &self,
-        deps: Deps,
+        deps: Deps<C>,
         coin: Coin,
         is_native: bool,
     ) -> Result<LocalRateResponse, ContractError> {
@@ -168,7 +168,7 @@ pub enum Rate {
 
 impl Rate {
     // Makes sure that the contract address is that of a Rates contract verified by the ADODB and validates the local rate value
-    pub fn validate_rate(&self, deps: Deps) -> Result<(), ContractError> {
+    pub fn validate_rate<C: CustomQuery>(&self, deps: Deps<C>) -> Result<(), ContractError> {
         match self {
             Rate::Contract(address) => {
                 let raw_address = address.get_raw_address(&deps)?;

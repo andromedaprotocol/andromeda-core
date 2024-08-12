@@ -32,8 +32,9 @@ use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, Cw721ReceiveMsg, OwnerOfResponse};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, coin, ensure, from_json, Addr, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
-    QuerierWrapper, QueryRequest, Response, Storage, SubMsg, Uint128, WasmMsg, WasmQuery,
+    attr, coin, ensure, from_json, Addr, Binary, Coin, CosmosMsg, CustomQuery, Deps, DepsMut, Env,
+    MessageInfo, QuerierWrapper, QueryRequest, Response, Storage, SubMsg, Uint128, WasmMsg,
+    WasmQuery,
 };
 
 use cw_utils::{nonpayable, Expiration};
@@ -94,7 +95,10 @@ pub fn execute(
     }
 }
 
-pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+pub fn handle_execute<C: CustomQuery>(
+    mut ctx: ExecuteContext<C>,
+    msg: ExecuteMsg,
+) -> Result<Response, ContractError> {
     let action = msg.as_ref().to_string();
 
     let action_response = call_action(
@@ -130,8 +134,8 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
         .add_events(action_response.events))
 }
 
-fn handle_receive_cw721(
-    ctx: ExecuteContext,
+fn handle_receive_cw721<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
     msg: Cw721ReceiveMsg,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
@@ -160,8 +164,8 @@ fn handle_receive_cw721(
     }
 }
 
-pub fn handle_receive_cw20(
-    mut ctx: ExecuteContext,
+pub fn handle_receive_cw20<C: CustomQuery>(
+    mut ctx: ExecuteContext<C>,
     receive_msg: Cw20ReceiveMsg,
 ) -> Result<Response, ContractError> {
     ADOContract::default().is_permissioned(
@@ -201,8 +205,8 @@ pub fn handle_receive_cw20(
 }
 
 #[allow(clippy::too_many_arguments)]
-fn execute_start_sale(
-    mut deps: DepsMut,
+fn execute_start_sale<C: CustomQuery>(
+    mut deps: DepsMut<C>,
     env: Env,
     sender: String,
     token_id: String,
@@ -269,8 +273,8 @@ fn execute_start_sale(
 }
 
 #[allow(clippy::too_many_arguments)]
-fn execute_update_sale(
-    ctx: ExecuteContext,
+fn execute_update_sale<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
     token_id: String,
     token_address: String,
     price: Uint128,
@@ -318,8 +322,8 @@ fn execute_update_sale(
     ]))
 }
 
-fn execute_buy(
-    ctx: ExecuteContext,
+fn execute_buy<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
     token_id: String,
     token_address: String,
     action: String,
@@ -453,8 +457,8 @@ fn execute_buy(
     Ok(resp)
 }
 
-fn execute_buy_cw20(
-    ctx: ExecuteContext,
+fn execute_buy_cw20<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
     token_id: String,
     token_address: String,
     amount_sent: Uint128,
@@ -593,8 +597,8 @@ fn execute_buy_cw20(
     Ok(resp)
 }
 
-fn execute_cancel(
-    ctx: ExecuteContext,
+fn execute_cancel<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
     token_id: String,
     token_address: String,
 ) -> Result<Response, ContractError> {
@@ -641,8 +645,8 @@ fn execute_cancel(
         .add_attribute("recipient", info.sender))
 }
 
-fn purchase_token(
-    deps: Deps,
+fn purchase_token<C: CustomQuery>(
+    deps: Deps<C>,
     info: &MessageInfo,
     amount_sent: Option<Uint128>,
     state: TokenSaleState,
@@ -842,8 +846,8 @@ fn query_sale_state(deps: Deps, sale_id: Uint128) -> Result<SaleStateResponse, C
     Ok(token_sale_state.into())
 }
 
-fn query_owner_of(
-    querier: QuerierWrapper,
+fn query_owner_of<C: CustomQuery>(
+    querier: QuerierWrapper<C>,
     token_addr: String,
     token_id: String,
 ) -> Result<OwnerOfResponse, ContractError> {

@@ -3,7 +3,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, ensure, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
+    attr, ensure, Addr, Binary, CustomQuery, Deps, DepsMut, Env, MessageInfo, Response, StdResult,
+    Uint128,
 };
 use cw_utils::nonpayable;
 use sha2::Digest;
@@ -104,7 +105,10 @@ pub fn execute(
     }
 }
 
-pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+pub fn handle_execute<C: CustomQuery>(
+    mut ctx: ExecuteContext<C>,
+    msg: ExecuteMsg,
+) -> Result<Response, ContractError> {
     let action_response = call_action(
         &mut ctx.deps,
         &ctx.info,
@@ -132,8 +136,8 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
         .add_events(action_response.events))
 }
 
-pub fn execute_register_merkle_root(
-    ctx: ExecuteContext,
+pub fn execute_register_merkle_root<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
     merkle_root: String,
     expiration: Option<Expiry>,
     total_amount: Option<Uint128>,
@@ -177,8 +181,8 @@ pub fn execute_register_merkle_root(
     ]))
 }
 
-pub fn execute_claim(
-    ctx: ExecuteContext,
+pub fn execute_claim<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
     stage: u8,
     amount: Uint128,
     proof: Vec<String>,
@@ -251,7 +255,10 @@ pub fn execute_claim(
     Ok(res)
 }
 
-pub fn execute_burn(ctx: ExecuteContext, stage: u8) -> Result<Response, ContractError> {
+pub fn execute_burn<C: CustomQuery>(
+    ctx: ExecuteContext<C>,
+    stage: u8,
+) -> Result<Response, ContractError> {
     let ExecuteContext {
         deps, info, env, ..
     } = ctx;
