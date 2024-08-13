@@ -1,4 +1,4 @@
-use crate::ado_base::rates::{AllRatesResponse, Rate, RatesResponse};
+use crate::ado_base::rates::{AllRatesResponse, Rate, RatesMessage, RatesResponse};
 use crate::amp::Recipient;
 use crate::common::{context::ExecuteContext, Funds};
 use crate::error::ContractError;
@@ -15,6 +15,16 @@ pub fn rates<'a>() -> Map<'a, &'a str, Vec<Rate>> {
 }
 
 impl<'a> ADOContract<'a> {
+    pub fn execute_rates(
+        &self,
+        ctx: ExecuteContext,
+        rates_message: RatesMessage,
+    ) -> Result<Response, ContractError> {
+        match rates_message {
+            RatesMessage::SetRate { action, rates } => self.execute_set_rates(ctx, action, rates),
+            RatesMessage::RemoveRate { action } => self.execute_remove_rates(ctx, action),
+        }
+    }
     /// Sets rates
     pub fn set_rates(
         &self,

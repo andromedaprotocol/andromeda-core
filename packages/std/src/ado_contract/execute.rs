@@ -101,12 +101,7 @@ impl<'a> ADOContract<'a> {
                     self.execute_update_app_contract(ctx.deps, ctx.info, address, None)
                 }
                 #[cfg(feature = "rates")]
-                AndromedaMsg::Rates(rates_message) => match rates_message {
-                    RatesMessage::SetRate { action, rates } => {
-                        self.execute_set_rates(ctx, action, rates)
-                    }
-                    RatesMessage::RemoveRate { action } => self.execute_remove_rates(ctx, action),
-                },
+                AndromedaMsg::Rates(rates_message) => self.execute_rates(ctx, rates_message),
                 AndromedaMsg::UpdateKernelAddress { address } => {
                     self.update_kernel_address(ctx.deps, ctx.info, address)
                 }
