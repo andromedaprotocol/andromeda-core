@@ -1,4 +1,3 @@
-use crate::ado_base::rates::RatesMessage;
 use crate::ado_contract::ADOContract;
 use crate::amp::addresses::AndrAddr;
 use crate::amp::messages::AMPPkt;
