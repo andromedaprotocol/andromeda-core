@@ -98,7 +98,7 @@ fn test_cw20_with_rates() {
     cw20.execute_add_rate(
         &mut router,
         owner.clone(),
-        "Cw20TransferFrom".to_string(),
+        "TransferFrom".to_string(),
         Rate::Local(LocalRate {
             rate_type: LocalRateType::Deductive,
             recipients: vec![
