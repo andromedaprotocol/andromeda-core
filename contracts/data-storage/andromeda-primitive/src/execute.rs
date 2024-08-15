@@ -2,10 +2,7 @@ use andromeda_data_storage::primitive::{ExecuteMsg, Primitive, PrimitiveRestrict
 use andromeda_std::{
     ado_base::rates::{Rate, RatesMessage},
     ado_contract::ADOContract,
-    common::{
-        actions::call_action, call_action::get_action_name, context::ExecuteContext,
-        rates::get_tax_amount, Funds,
-    },
+    common::{actions::call_action, context::ExecuteContext, rates::get_tax_amount, Funds},
     error::ContractError,
 };
 use cosmwasm_std::{
@@ -17,10 +14,9 @@ use crate::{
     query::{get_key_or_default, has_key_permission},
     state::{DATA, KEY_OWNER, RESTRICTION},
 };
-const CONTRACT_NAME: &str = "crates.io:andromeda-primitive";
 
 pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
-    let action = get_action_name(CONTRACT_NAME, msg.as_ref());
+    let action = msg.as_ref().to_string();
     call_action(
         &mut ctx.deps,
         &ctx.info,
