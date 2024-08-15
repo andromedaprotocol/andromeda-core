@@ -28,6 +28,10 @@ pub enum ContractError {
     #[error("Unauthorized")]
     Unauthorized {},
 
+    /// Used by external developers in case they don't find their desired error message
+    #[error("CustomError: {msg}")]
+    CustomError { msg: String },
+
     #[error("ActionNotFound")]
     ActionNotFound {},
     #[error("UnpublishedCodeID")]
