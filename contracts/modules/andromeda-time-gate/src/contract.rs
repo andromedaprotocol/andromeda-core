@@ -252,8 +252,9 @@ pub fn get_current_ado_path(deps: Deps, env: Env) -> Result<Addr, ContractError>
         .checked_rem(gate_length)
         .unwrap() as usize;
     let current_ado_path = &gate_addresses[index];
+    let result = current_ado_path.get_raw_address(&deps)?;
 
-    Ok(current_ado_path.get_raw_address(&deps)?)
+    Ok(result)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
