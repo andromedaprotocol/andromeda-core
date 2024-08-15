@@ -119,6 +119,11 @@ fn test_update_cycle_start_time() {
             second: 0,
         }
     );
+
+    update_time_interval(deps.as_mut(), 7200, info.sender.as_ref()).unwrap();
+
+    let res = query_time_interval(deps.as_ref()).unwrap();
+    assert_eq!(res, "7200".to_string(),);
 }
 
 #[test]
