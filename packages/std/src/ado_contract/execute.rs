@@ -11,14 +11,14 @@ use crate::{
 };
 use cosmwasm_std::{
     attr, ensure, from_json, to_json_binary, Addr, Api, ContractInfoResponse, CosmosMsg, Deps,
-    DepsMut, Env, MessageInfo, QuerierWrapper, Response, Storage, SubMsg, WasmMsg,
+    DepsMut, Env, MessageInfo, QuerierWrapper, Response, StdError, Storage, SubMsg, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
 use semver::Version;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 
-type ExecuteContextFunction<M, E = ContractError> = fn(ExecuteContext, M) -> Result<Response, E>;
+type ExecuteContextFunction<M, E> = fn(ExecuteContext, M) -> Result<Response, E>;
 
 impl<'a> ADOContract<'a> {
     pub fn instantiate(
@@ -220,12 +220,15 @@ impl<'a> ADOContract<'a> {
     /// Handles receiving and verifies an AMPPkt from the Kernel before executing the appropriate messages.
     ///
     /// Calls the provided handler with the AMP packet attached within the context.
-    pub fn execute_amp_receive<M: DeserializeOwned>(
+    pub fn execute_amp_receive<M: DeserializeOwned, E>(
         &self,
         ctx: ExecuteContext,
         mut packet: AMPPkt,
-        handler: ExecuteContextFunction<M>,
-    ) -> Result<Response, ContractError> {
+        handler: ExecuteContextFunction<M, E>,
+    ) -> Result<Response, E>
+    where
+        E: From<ContractError> + From<StdError>,
+    {
         packet.verify_origin(&ctx.info, &ctx.deps.as_ref())?;
         let ctx = ctx.with_ctx(packet.clone());
         let msg_opt = packet.messages.pop();
@@ -236,7 +239,8 @@ impl<'a> ADOContract<'a> {
         } else {
             Err(ContractError::InvalidPacket {
                 error: Some("AMP Packet received with no messages".to_string()),
-            })
+            }
+            .into())
         }
     }
 
