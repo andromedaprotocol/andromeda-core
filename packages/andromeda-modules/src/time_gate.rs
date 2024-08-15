@@ -1,35 +1,39 @@
 use andromeda_std::{amp::AndrAddr, andr_exec, andr_instantiate, andr_query, error::ContractError};
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::ensure;
+use cosmwasm_std::{Addr, ensure};
 
 #[andr_instantiate]
 #[cw_serde]
 pub struct InstantiateMsg {
-    pub gate_addresses: GateAddresses,
-    pub gate_time: GateTime,
+    pub gate_addresses: Vec<AndrAddr>,
+    pub cycle_start_time: CycleStartTime,
+    pub time_interval: Option<u64>,
 }
 
 #[andr_exec]
 #[cw_serde]
 pub enum ExecuteMsg {
-    SetGateTime { gate_time: GateTime },
-    UpdateGateAddresses { new_gate_addresses: GateAddresses },
+    UpdateCycleStartTime { cycle_start_time: CycleStartTime },
+    UpdateGateAddresses { new_gate_addresses: Vec<AndrAddr> },
+    UpdateTimeInterval { time_interval: u64 },
 }
 
 #[andr_query]
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
-    #[returns(cosmwasm_std::Addr)]
-    GetPathByCurrentTime {},
-    #[returns(GateTime)]
-    GetGateTime {},
-    #[returns(GateAddresses)]
+    #[returns(Addr)]
+    GetCurrentAdoPath {},
+    #[returns(CycleStartTime)]
+    GetCycleStartTime {},
+    #[returns(Vec<AndrAddr>)]
     GetGateAddresses {},
+    #[returns(String)]
+    GetTimeInterval {},
 }
 
 #[cw_serde]
-pub struct GateTime {
+pub struct CycleStartTime {
     pub year: i32,
     pub month: u32,
     pub day: u32,
@@ -38,13 +42,7 @@ pub struct GateTime {
     pub second: u32,
 }
 
-#[cw_serde]
-pub struct GateAddresses {
-    pub ado_1: AndrAddr,
-    pub ado_2: AndrAddr,
-}
-
-impl GateTime {
+impl CycleStartTime {
     pub fn validate(&self) -> Result<(), ContractError> {
         ensure!(
             self.year >= 1970,

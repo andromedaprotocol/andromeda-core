@@ -1,7 +1,8 @@
 #![cfg(all(not(target_arch = "wasm32"), feature = "testing"))]
 use crate::contract::{execute, instantiate, query};
+use andromeda_modules::time_gate::CycleStartTime;
 use andromeda_modules::time_gate::{ExecuteMsg, InstantiateMsg, QueryMsg};
-use andromeda_modules::time_gate::{GateAddresses, GateTime};
+use andromeda_std::amp::AndrAddr;
 use andromeda_testing::mock::MockApp;
 use andromeda_testing::{
     mock_ado,
@@ -14,16 +15,23 @@ pub struct MockTimeGate(Addr);
 mock_ado!(MockTimeGate, ExecuteMsg, QueryMsg);
 
 impl MockTimeGate {
-    pub fn instantiate(
+    pub fn mock_instantiate(
         code_id: u64,
         sender: Addr,
         app: &mut MockApp,
         kernel_address: String,
         owner: Option<String>,
-        gate_time: GateTime,
-        gate_addresses: GateAddresses,
+        cycle_start_time: CycleStartTime,
+        time_interval: Option<u64>,
+        gate_addresses: Vec<AndrAddr>,
     ) -> MockTimeGate {
-        let msg = mock_time_gate_instantiate_msg(kernel_address, owner, gate_addresses, gate_time);
+        let msg = mock_time_gate_instantiate_msg(
+            kernel_address,
+            owner,
+            gate_addresses,
+            cycle_start_time,
+            time_interval,
+        );
         let addr = app
             .instantiate_contract(
                 code_id,
@@ -37,14 +45,14 @@ impl MockTimeGate {
         MockTimeGate(Addr::unchecked(addr))
     }
 
-    pub fn execute_set_gate_time(
+    pub fn mock_execute_update_cycle_start_time(
         &self,
         app: &mut MockApp,
         sender: Addr,
-        gate_time: GateTime,
+        cycle_start_time: CycleStartTime,
         funds: Option<Coin>,
     ) -> ExecuteResult {
-        let msg = ExecuteMsg::SetGateTime { gate_time };
+        let msg = ExecuteMsg::UpdateCycleStartTime { cycle_start_time };
         if let Some(funds) = funds {
             app.execute_contract(sender, self.addr().clone(), &msg, &[funds])
         } else {
@@ -52,11 +60,11 @@ impl MockTimeGate {
         }
     }
 
-    pub fn execute_update_gate_addresses(
+    pub fn mock_execute_update_gate_addresses(
         &self,
         app: &mut MockApp,
         sender: Addr,
-        gate_addresses: GateAddresses,
+        gate_addresses: Vec<AndrAddr>,
         funds: Option<Coin>,
     ) -> ExecuteResult {
         let msg = ExecuteMsg::UpdateGateAddresses {
@@ -69,21 +77,42 @@ impl MockTimeGate {
         }
     }
 
-    pub fn query_gate_time(&self, app: &mut MockApp) -> GateTime {
-        let msg = QueryMsg::GetGateTime {};
-        let res: GateTime = self.query(app, msg);
+    pub fn mock_execute_update_time_interval(
+        &self,
+        app: &mut MockApp,
+        sender: Addr,
+        time_interval: Option<u64>,
+        funds: Option<Coin>,
+    ) -> ExecuteResult {
+        let msg = ExecuteMsg::UpdateTimeInterval { time_interval };
+        if let Some(funds) = funds {
+            app.execute_contract(sender, self.addr().clone(), &msg, &[funds])
+        } else {
+            app.execute_contract(sender, self.addr().clone(), &msg, &[])
+        }
+    }
+
+    pub fn mock_query_cycle_start_time(&self, app: &mut MockApp) -> CycleStartTime {
+        let msg = QueryMsg::GetCycleStartTime {};
+        let res: CycleStartTime = self.query(app, msg);
         res
     }
 
-    pub fn query_gate_addresses(&self, app: &mut MockApp) -> GateAddresses {
+    pub fn mock_query_gate_addresses(&self, app: &mut MockApp) -> Vec<AndrAddr> {
         let msg = QueryMsg::GetGateAddresses {};
-        let res: GateAddresses = self.query(app, msg);
+        let res: Vec<AndrAddr> = self.query(app, msg);
         res
     }
 
-    pub fn query_path(&self, app: &mut MockApp) -> Addr {
-        let msg = QueryMsg::GetPathByCurrentTime {};
+    pub fn mock_query_current_ado_path(&self, app: &mut MockApp) -> Addr {
+        let msg = QueryMsg::GetCurrentAdoPath {};
         let res: Addr = self.query(app, msg);
+        res
+    }
+
+    pub fn mock_query_time_interval(&self, app: &mut MockApp) -> String {
+        let msg = QueryMsg::GetTimeInterval {};
+        let res: String = self.query(app, msg);
         res
     }
 }
@@ -96,13 +125,15 @@ pub fn mock_andromeda_time_gate() -> Box<dyn Contract<Empty>> {
 pub fn mock_time_gate_instantiate_msg(
     kernel_address: String,
     owner: Option<String>,
-    gate_addresses: GateAddresses,
-    gate_time: GateTime,
+    gate_addresses: Vec<AndrAddr>,
+    cycle_start_time: CycleStartTime,
+    time_interval: Option<u64>,
 ) -> InstantiateMsg {
     InstantiateMsg {
         kernel_address,
         owner,
         gate_addresses,
-        gate_time,
+        cycle_start_time,
+        time_interval,
     }
 }
