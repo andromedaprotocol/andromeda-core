@@ -88,7 +88,7 @@ fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
             execute_update_cycle_start_time(ctx, cycle_start_time, action)
         }
         ExecuteMsg::UpdateGateAddresses { new_gate_addresses } => {
-            execute_update_gate_addressess(ctx, new_gate_addresses, action)
+            execute_update_gate_addresses(ctx, new_gate_addresses, action)
         }
         ExecuteMsg::UpdateTimeInterval { time_interval } => {
             execute_update_time_interval(ctx, time_interval, action)
@@ -130,7 +130,7 @@ fn execute_update_cycle_start_time(
     Ok(Response::new().add_attributes(vec![attr("action", action), attr("sender", info.sender)]))
 }
 
-fn execute_update_gate_addressess(
+fn execute_update_gate_addresses(
     ctx: ExecuteContext,
     new_gate_addresses: Vec<AndrAddr>,
     action: String,
