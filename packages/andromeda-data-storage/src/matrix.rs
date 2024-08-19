@@ -45,7 +45,7 @@ pub struct Matrix(pub Vec<Vec<i64>>);
 
 impl Matrix {
     pub fn validate_matrix(&self) -> Result<(), ContractError> {
-        let row_length = self.0.get(0).map_or(0, |row| row.len());
+        let row_length = self.0.first().map_or(0, |row| row.len());
         if !self.0.iter().all(|row| row.len() == row_length) {
             return Err(ContractError::CustomError {
                 msg: "All rows in the matrix must have the same number of columns".to_string(),
@@ -110,6 +110,7 @@ impl Matrix {
         Ok(Matrix(matrix_data))
     }
 
+    #[allow(clippy::needless_range_loop)]
     pub fn mul(&self, other: &Matrix) -> Result<Matrix, ContractError> {
         self.validate_mul(other)?;
 
