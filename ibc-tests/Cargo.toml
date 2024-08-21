@@ -27,3 +27,4 @@ name = "validator_staking"
 
 [dependencies]
 serde.workspace = true
+tokio = "1.39.3"

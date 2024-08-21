@@ -1,30 +1,14 @@
+use cosmwasm_std::coins;
 use cw_orch::prelude::ChainInfo;
-use serde::{Deserialize, Serialize};
-use tokio::runtime::Runtime;
+use cw_orch_daemon::{DaemonBase, Wallet};
+const FAUCET_MNEMONIC: &str = "increase bread alpha rigid glide amused approve oblige print asset idea enact lawn proof unfold jeans rabbit audit return chuckle valve rather cactus great";
 
-#[derive(Serialize, Deserialize, Debug)]
-pub struct AirdropRequest {
-    /// Address of the address asking for funds
-    pub address: String,
-    /// Denom asked for
-    pub denom: String,
-}
-async fn airdrop(addr: String, chain: &ChainInfo) {
-    let client = reqwest::Client::new();
-    let url = chain.fcd_url.unwrap_or("http://localhost:8001");
-    let url = format!("{}/credit", url);
-    client
-        .post(url)
-        .json(&AirdropRequest {
-            address: addr.to_string(),
-            denom: chain.gas_denom.to_string(),
-        })
-        .send()
-        .await
-        .unwrap();
-}
+pub fn fund(daemon: &DaemonBase<Wallet>, chain_info: &ChainInfo,  amount: u128) {
+    let target_addr = daemon.sender().pub_addr_str();
 
-pub fn fund(addr: String, chain_info: &ChainInfo) {
-    let rt_handle = Runtime::new().unwrap();
-    rt_handle.block_on(airdrop(addr, chain_info));
+    let faucet_daemon = daemon.rebuild().mnemonic(FAUCET_MNEMONIC).build().unwrap();
+    let rt = faucet_daemon.rt_handle.clone();
+    let wallet = faucet_daemon.sender();
+
+    rt.block_on(wallet.bank_send(&target_addr, coins(amount, chain_info.gas_denom.to_string()))).unwrap();
 }
