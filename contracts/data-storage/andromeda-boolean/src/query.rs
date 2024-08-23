@@ -17,7 +17,7 @@ pub fn has_permission(storage: &dyn Storage, addr: &Addr) -> Result<bool, Contra
 }
 
 pub fn get_value(storage: &dyn Storage) -> Result<GetValueResponse, ContractError> {
-    let value = DATA.load(storage)?.into();
+    let value = DATA.load(storage)?;
     Ok(GetValueResponse { value })
 }
 
