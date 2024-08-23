@@ -39,10 +39,7 @@ impl StringStorage {
     pub fn validate(&self) -> Result<(), ContractError> {
         match self {
             StringStorage::String(value) => {
-                ensure!(
-                    !value.to_string().is_empty(),
-                    ContractError::EmptyString {}
-                );
+                ensure!(!value.to_string().is_empty(), ContractError::EmptyString {});
             }
         }
         Ok(())
@@ -100,12 +97,10 @@ mod tests {
 
     #[test]
     fn test_from_string() {
-        let cases = vec![
-            (
-                StringStorage::String("Some string".to_string()),
-                "String".to_string(),
-            ),
-        ];
+        let cases = vec![(
+            StringStorage::String("Some string".to_string()),
+            "String".to_string(),
+        )];
 
         for (value, expected_str) in cases.iter() {
             assert_eq!(String::from(value.to_owned()), expected_str.to_owned());
@@ -114,13 +109,11 @@ mod tests {
 
     #[test]
     fn test_validate() {
-        let test_cases = vec![
-            TestValidate {
-                name: "Empty string",
-                string_storage: StringStorage::String("".to_string()),
-                expected_error: Some(ContractError::EmptyString {}),
-            },
-        ];
+        let test_cases = vec![TestValidate {
+            name: "Empty string",
+            string_storage: StringStorage::String("".to_string()),
+            expected_error: Some(ContractError::EmptyString {}),
+        }];
 
         for test in test_cases {
             let res = test.string_storage.validate();
@@ -137,6 +130,9 @@ mod tests {
     #[test]
     fn try_get_string() {
         let string_storage = StringStorage::String("String".to_string());
-        assert_eq!("String".to_string(), string_storage.try_get_value().unwrap());
+        assert_eq!(
+            "String".to_string(),
+            string_storage.try_get_value().unwrap()
+        );
     }
 }

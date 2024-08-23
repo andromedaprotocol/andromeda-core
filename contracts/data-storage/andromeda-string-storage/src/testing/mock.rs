@@ -1,5 +1,5 @@
 use andromeda_data_storage::string_storage::{
-    ExecuteMsg, GetValueResponse, InstantiateMsg, StringStorage, StringStorageRestriction, QueryMsg,
+    ExecuteMsg, GetValueResponse, InstantiateMsg, QueryMsg, StringStorage, StringStorageRestriction,
 };
 use andromeda_std::{
     error::ContractError,
@@ -61,10 +61,7 @@ pub fn set_value_with_funds(
     execute(deps, mock_env(), info, msg)
 }
 
-pub fn delete_value(
-    deps: DepsMut<'_>,
-    sender: &str,
-) -> Result<Response, ContractError> {
+pub fn delete_value(deps: DepsMut<'_>, sender: &str) -> Result<Response, ContractError> {
     let msg = ExecuteMsg::DeleteValue {};
     let info = mock_info(sender, &[]);
     execute(deps, mock_env(), info, msg)

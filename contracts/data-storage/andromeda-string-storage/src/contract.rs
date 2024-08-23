@@ -2,17 +2,17 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response};
 
+use crate::{
+    execute::handle_execute,
+    query::{get_data_owner, get_value},
+    state::RESTRICTION,
+};
 use andromeda_data_storage::string_storage::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     ado_contract::ADOContract,
     common::{context::ExecuteContext, encode_binary},
     error::ContractError,
-};
-use crate::{
-    execute::handle_execute,
-    query::{get_value, get_data_owner},
-    state::RESTRICTION,
 };
 
 // version info for migration info
@@ -54,7 +54,7 @@ pub fn execute(
     match msg {
         ExecuteMsg::AMPReceive(pkt) => {
             ADOContract::default().execute_amp_receive(ctx, pkt, handle_execute)
-        },
+        }
         _ => handle_execute(ctx, msg),
     }
 }
@@ -62,8 +62,8 @@ pub fn execute(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
-        QueryMsg::GetValue { } => encode_binary(&get_value(deps.storage)?),
-        QueryMsg::GetDataOwner { } => encode_binary(&get_data_owner(deps.storage)?),
+        QueryMsg::GetValue {} => encode_binary(&get_value(deps.storage)?),
+        QueryMsg::GetDataOwner {} => encode_binary(&get_data_owner(deps.storage)?),
         _ => ADOContract::default().query(deps, env, msg),
     }
 }
