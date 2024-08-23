@@ -32,7 +32,7 @@ fn test_set_and_update_value() {
 
     assert_eq!(
         GetValueResponse {
-            value: value.into()
+            value,
         },
         query_res
     );
@@ -44,7 +44,7 @@ fn test_set_and_update_value() {
 
     assert_eq!(
         GetValueResponse {
-            value: value.into()
+            value,
         },
         query_res
     );

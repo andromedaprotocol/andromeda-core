@@ -37,7 +37,7 @@ pub fn query_value(deps: Deps) -> Result<GetValueResponse, ContractError> {
 
 pub fn set_value(deps: DepsMut<'_>, value: &bool, sender: &str) -> Result<Response, ContractError> {
     let msg = ExecuteMsg::SetValue {
-        value: value.clone(),
+        value: *value,
     };
     let info = mock_info(sender, &[]);
     execute(deps, mock_env(), info, msg)
@@ -50,7 +50,7 @@ pub fn set_value_with_funds(
     coin: Coin,
 ) -> Result<Response, ContractError> {
     let msg = ExecuteMsg::SetValue {
-        value: value.clone(),
+        value: *value,
     };
     let info = mock_info(sender, &[coin]);
     execute(deps, mock_env(), info, msg)
