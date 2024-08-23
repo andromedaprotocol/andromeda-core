@@ -1,6 +1,6 @@
 use crate::contract::{execute, query};
 use andromeda_data_storage::boolean::{
-    Boolean, BooleanRestriction, ExecuteMsg, GetDataOwnerResponse, GetValueResponse, QueryMsg,
+    BooleanRestriction, ExecuteMsg, GetDataOwnerResponse, GetValueResponse, QueryMsg,
 };
 use cosmwasm_std::{
     coin, from_json, testing::mock_env, BankMsg, CosmosMsg, Decimal, Response, SubMsg,
@@ -25,7 +25,7 @@ fn test_instantiation() {
 #[test]
 fn test_set_and_update_value() {
     let (mut deps, info) = proper_initialization(BooleanRestriction::Private);
-    let value = Boolean(true);
+    let value = true;
     set_value(deps.as_mut(), &value, info.sender.as_ref()).unwrap();
 
     let query_res: GetValueResponse = query_value(deps.as_ref()).unwrap();
@@ -37,7 +37,7 @@ fn test_set_and_update_value() {
         query_res
     );
 
-    let value = Boolean(true);
+    let value = true;
     set_value(deps.as_mut(), &value, info.sender.as_ref()).unwrap();
 
     let query_res: GetValueResponse = query_value(deps.as_ref()).unwrap();
@@ -53,7 +53,7 @@ fn test_set_and_update_value() {
 #[test]
 fn test_set_value_with_tax() {
     let (mut deps, info) = proper_initialization(BooleanRestriction::Private);
-    let value = Boolean(true);
+    let value = true;
     let tax_recipient = "tax_recipient";
 
     // Set percent rates
@@ -148,7 +148,7 @@ fn test_set_value_with_tax() {
 #[test]
 fn test_delete_value() {
     let (mut deps, info) = proper_initialization(BooleanRestriction::Private);
-    let value = Boolean(true);
+    let value = true;
     set_value(deps.as_mut(), &value, info.sender.as_ref()).unwrap();
     delete_value(deps.as_mut(), info.sender.as_ref()).unwrap();
     query_value(deps.as_ref()).unwrap_err();
@@ -158,7 +158,7 @@ fn test_delete_value() {
 fn test_restriction_private() {
     let (mut deps, info) = proper_initialization(BooleanRestriction::Private);
 
-    let value = Boolean(true);
+    let value = true;
     let external_user = "external".to_string();
 
     // Set Value as owner
@@ -183,7 +183,7 @@ fn test_restriction_private() {
 fn test_restriction_public() {
     let (mut deps, info) = proper_initialization(BooleanRestriction::Public);
 
-    let value = Boolean(true);
+    let value = true;
     let external_user = "external".to_string();
 
     // Set Value as owner
@@ -210,8 +210,8 @@ fn test_restriction_public() {
 fn test_restriction_restricted() {
     let (mut deps, info) = proper_initialization(BooleanRestriction::Restricted);
 
-    let value = Boolean(true);
-    let value2 = Boolean(false);
+    let value = true;
+    let value2 = false;
     let external_user = "external".to_string();
     let external_user2 = "external2".to_string();
 
@@ -256,7 +256,7 @@ fn test_query_data_owner() {
     let (mut deps, _) = proper_initialization(BooleanRestriction::Restricted);
     let external_user = "external".to_string();
     let external_user2 = "external2".to_string();
-    let value = Boolean::from_bool(true);
+    let value = true;
     set_value(deps.as_mut(), &value, &external_user.clone()).unwrap();
 
     let res: GetDataOwnerResponse =

@@ -1,11 +1,8 @@
-use andromeda_data_storage::boolean::{Boolean, BooleanRestriction, ExecuteMsg};
+use andromeda_data_storage::boolean::{BooleanRestriction, ExecuteMsg};
 use andromeda_std::{
     ado_base::rates::{Rate, RatesMessage},
     ado_contract::ADOContract,
-    common::{
-        actions::call_action, context::ExecuteContext,
-        rates::get_tax_amount, Funds,
-    },
+    common::{actions::call_action, context::ExecuteContext, rates::get_tax_amount, Funds},
     error::ContractError,
 };
 use cosmwasm_std::{
@@ -65,7 +62,7 @@ pub fn update_restriction(
 
 pub fn set_value(
     ctx: ExecuteContext,
-    value: Boolean,
+    value: bool,
     action: String,
 ) -> Result<Response, ContractError> {
     let sender = ctx.info.sender.clone();

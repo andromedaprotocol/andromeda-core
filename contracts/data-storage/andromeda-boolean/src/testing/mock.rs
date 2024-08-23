@@ -1,6 +1,6 @@
 use crate::contract::{execute, instantiate, query};
 use andromeda_data_storage::boolean::{
-    Boolean, BooleanRestriction, ExecuteMsg, GetValueResponse, InstantiateMsg, QueryMsg,
+    BooleanRestriction, ExecuteMsg, GetValueResponse, InstantiateMsg, QueryMsg,
 };
 use andromeda_std::{
     error::ContractError,
@@ -35,11 +35,7 @@ pub fn query_value(deps: Deps) -> Result<GetValueResponse, ContractError> {
     }
 }
 
-pub fn set_value(
-    deps: DepsMut<'_>,
-    value: &Boolean,
-    sender: &str,
-) -> Result<Response, ContractError> {
+pub fn set_value(deps: DepsMut<'_>, value: &bool, sender: &str) -> Result<Response, ContractError> {
     let msg = ExecuteMsg::SetValue {
         value: value.clone(),
     };
@@ -49,7 +45,7 @@ pub fn set_value(
 
 pub fn set_value_with_funds(
     deps: DepsMut<'_>,
-    value: &Boolean,
+    value: &bool,
     sender: &str,
     coin: Coin,
 ) -> Result<Response, ContractError> {
