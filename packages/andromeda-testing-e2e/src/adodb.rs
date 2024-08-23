@@ -1,7 +1,7 @@
 use crate::contract_interface;
+use andromeda_std::ado_base::MigrateMsg;
 use cw_orch::interface;
 use cw_orch::prelude::*;
-use andromeda_std::ado_base::MigrateMsg;
 
 use andromeda_std::os::adodb;
 use cw_orch_daemon::DaemonBase;
@@ -35,6 +35,5 @@ impl AdodbContract<DaemonBase<Wallet>> {
             None,
         )
         .unwrap();
-
     }
 }

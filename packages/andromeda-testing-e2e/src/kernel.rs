@@ -1,7 +1,7 @@
 use crate::contract_interface;
+use andromeda_std::ado_base::MigrateMsg;
 use cw_orch::interface;
 use cw_orch::prelude::*;
-use andromeda_std::ado_base::MigrateMsg;
 
 use andromeda_std::os::kernel;
 use cw_orch_daemon::DaemonBase;
@@ -25,13 +25,7 @@ impl KernelContract<DaemonBase<Wallet>> {
     }
 
     pub fn execute_store_key_address(self, key: String, value: String) {
-        self.execute(
-            &kernel::ExecuteMsg::UpsertKeyAddress {
-                key,
-                value,
-            },
-            None,
-        )
-        .unwrap();
+        self.execute(&kernel::ExecuteMsg::UpsertKeyAddress { key, value }, None)
+            .unwrap();
     }
 }

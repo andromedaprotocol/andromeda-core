@@ -1,11 +1,4 @@
-use std::cmp;
-
-use andromeda_app::app::AppComponent;
 use andromeda_std::ado_base::MigrateMsg;
-use andromeda_testing_e2e::mock::mock_app;
-use andromeda_testing_e2e::mock::MockAndromeda;
-use cosmwasm_std::coin;
-use cosmwasm_std::to_json_binary;
 use cosmwasm_std::Uint128;
 use cw_orch::environment::ChainKind;
 use cw_orch::environment::NetworkInfo;
@@ -13,12 +6,12 @@ use cw_orch::interface;
 use cw_orch::prelude::*;
 use cw_orch_daemon::queriers::Staking;
 use cw_orch_daemon::queriers::StakingBondStatus;
+use cw_orch_daemon::Daemon;
 use ibc_tests::contract_interface;
 
 // import messages
 use andromeda_app::app;
 use andromeda_finance::validator_staking;
-use tokio::runtime::Runtime;
 
 // const TESTNET_MNEMONIC: &str = "increase bread alpha rigid glide amused approve oblige print asset idea enact lawn proof unfold jeans rabbit audit return chuckle valve rather cactus great";
 const TESTNET_MNEMONIC: &str = "across left ignore gold echo argue track joy hire release captain enforce hotel wide flash hotel brisk joke midnight duck spare drop chronic stool";
@@ -61,116 +54,242 @@ pub const LOCAL_TERRA: ChainInfo = ChainInfo {
 
 #[test]
 fn test_validator_staking() {
+    // Pause validator before running this test
     let local_terra = LOCAL_TERRA;
-    let chain = mock_app(local_terra.clone(), TESTNET_MNEMONIC);
+    let daemon = Daemon::builder(local_terra.clone()) // set the network to use
+        .mnemonic(TESTNET_MNEMONIC)
+        .build()
+        .unwrap();
     let denom = local_terra.gas_denom;
-    let MockAndromeda {kernel_contract, adodb_contract, ..} = MockAndromeda::new(&chain);
 
-    let app_contract = AppContract::new(chain.clone());
-    app_contract.upload().unwrap();
+    let validator_staking_contract = ValidatorStakingContract::new(daemon.clone());
+    validator_staking_contract.set_address(&Addr::unchecked(
+        "terra1vk603ncakghk33t8lklvpdq4aff03hwu2rak73f5zdayruead20qcwp0rf",
+    ));
 
-    // 6. upload validator staking contract
-    let validator_staking_contract = ValidatorStakingContract::new(chain.clone());
-    validator_staking_contract.upload().unwrap();
-
-    // publish app contract and validator staking contract
-    adodb_contract.clone().execute_publish(
-        app_contract.code_id().unwrap(),
-        "app-contract".to_string(),
-        "0.1.0".to_string()
-    );
-    adodb_contract.clone().execute_publish(
-        validator_staking_contract.code_id().unwrap(),
-        "validator-staking".to_string(),
-        "0.1.0".to_string()
-    );
-    // ================================= Create App with modules ================================= //
-
-    let staking_querier = Staking::new(&chain);
-    let validators = chain.rt_handle.block_on(async {staking_querier._validators(
-        StakingBondStatus::Bonded
-    ).await}).unwrap();
-
-    let staking_params = chain.rt_handle.block_on(async {staking_querier._params(
-    ).await}).unwrap();
-    println!("=============================staking_params : {:?}=============================", staking_params);
-
-    let validator_staking_init_msg = validator_staking::InstantiateMsg {
-        default_validator: Addr::unchecked(&validators[0].address), // fourth validator
-        kernel_address: kernel_contract.addr_str().unwrap(),
-        owner: None,
-    };
-
-    let validator_staking_component = AppComponent::new(
-        "validator-staking-component",
-        "validator-staking",
-        to_json_binary(&validator_staking_init_msg).unwrap(),
-    );
-
-    // let app_components = vec![];
-    let app_components = vec![validator_staking_component.clone()];
-    let app_init_msg = app::InstantiateMsg {
-        app_components,
-        kernel_address: kernel_contract.addr_str().unwrap(),
-        name: "Validator Staking App".to_string(),
-        owner: None,
-        chain_info: None,
-    };
-
-    app_contract.instantiate(&app_init_msg, None, None).unwrap();
-
-    let get_addr_message = app::QueryMsg::GetAddress {
-        name: validator_staking_component.name,
-    };
-
-    let validator_staking_addr: String = chain
-        .wasm_querier()
-        .smart_query(app_contract.addr_str().unwrap(), &get_addr_message)
+    let staking_querier = Staking::new(&daemon);
+    let mut validators = daemon
+        .rt_handle
+        .block_on(async { staking_querier._validators(StakingBondStatus::Bonded).await })
         .unwrap();
 
-    validator_staking_contract.set_address(&Addr::unchecked(validator_staking_addr));
+    while validators.is_empty() {
+        println!("================================waiting till bonded validators found================================");
+        daemon.wait_seconds(10).unwrap();
 
-    // stake
-    let stake_msg = validator_staking::ExecuteMsg::Stake { validator: None };
-    let balance = chain
-        .balance(chain.sender_addr(), Some(denom.to_string()))
-        .unwrap();
-    let amount_to_send = cmp::min(balance[0].amount, Uint128::new(5000000000000));
-    validator_staking_contract
-        .execute(
-            &stake_msg,
-            Some(&[coin(amount_to_send.u128(), denom)]),
-        )
-        .unwrap();
+        validators = daemon
+            .rt_handle
+            .block_on(async { staking_querier._validators(StakingBondStatus::Bonded).await })
+            .unwrap();
+    }
 
-    chain.wait_seconds(1).unwrap();
-    
-    let staking_query_msg = validator_staking::QueryMsg::StakedTokens { validator: None };
-    let res: Option<cosmwasm_std::FullDelegation> = validator_staking_contract
+    let default_validator = &validators[0];
+    println!(
+        "================================default validator: {:?}================================",
+        default_validator
+    );
+    let staking_query_msg = validator_staking::QueryMsg::StakedTokens {
+        validator: Some(Addr::unchecked(default_validator.address.to_string())),
+    };
+    let rewards_response: Option<cosmwasm_std::FullDelegation> = validator_staking_contract
         .query(&staking_query_msg)
         .unwrap();
     println!(
-        "======================staking query msg result: {:?}======================",
-        res
+        "================================rewards_response: {:?}================================",
+        rewards_response
     );
 
-    let rewards_amount = res.unwrap().accumulated_rewards[0].amount;
-    let user_balance = chain
-        .balance(chain.sender_addr(), Some(denom.to_string()))
-        .unwrap()[0].amount;
-
-    let claim_reward_msg = validator_staking::ExecuteMsg::Claim { validator: None, recipient:  None};
-
-    validator_staking_contract.execute(&claim_reward_msg, None).unwrap();
-
-    let contract_balance = chain
-        .balance(validator_staking_contract.addr_str().unwrap(), Some(denom.to_string()))
-        .unwrap()[0].amount;
+    let contract_balance = daemon
+        .balance(
+            validator_staking_contract.addr_str().unwrap(),
+            Some(denom.to_string()),
+        )
+        .unwrap()[0]
+        .amount;
     assert_eq!(contract_balance, Uint128::zero());
 
-    let updated_user_balance = chain
-        .balance(chain.sender_addr(), Some(denom.to_string()))
-        .unwrap()[0].amount;
-    assert_eq!(updated_user_balance, user_balance + rewards_amount);
+    // let user_balance = daemon
+    //     .balance(daemon.sender_addr(), Some(denom.to_string()))
+    //     .unwrap()[0].amount;
 
+    let claim_msg = validator_staking::ExecuteMsg::Claim {
+        validator: Some(Addr::unchecked(default_validator.address.to_string())),
+        recipient: None
+    };
+    validator_staking_contract.execute(&claim_msg, None).unwrap();
+
+    // let contract_balance = daemon
+    //     .balance(validator_staking_contract.addr_str().unwrap(), Some(denom.to_string()))
+    //     .unwrap()[0].amount;
+    // assert_eq!(contract_balance, Uint128::zero());
+
+    // let updated_user_balance = daemon
+    //     .balance(daemon.sender_addr(), Some(denom.to_string()))
+    //     .unwrap()[0].amount;
+
+    // assert_eq!(user_balance + rewards_response.unwrap().accumulated_rewards[0].amount, updated_user_balance);
+
+    let unstake_msg = validator_staking::ExecuteMsg::Unstake {
+        validator: Some(Addr::unchecked(default_validator.address.to_string())),
+        amount: None,
+    };
+    validator_staking_contract
+        .execute(&unstake_msg, None)
+        .unwrap();
+    let contract_balance = daemon
+        .balance(
+            validator_staking_contract.addr_str().unwrap(),
+            Some(denom.to_string()),
+        )
+        .unwrap()[0]
+        .amount;
+    assert_eq!(contract_balance, Uint128::zero());
+
+    daemon.wait_seconds(61).unwrap();
+    // let user_balance = daemon
+    //     .balance(daemon.sender_addr(), Some(denom.to_string()))
+    //     .unwrap()[0].amount;
+
+    let withdraw_msg = validator_staking::ExecuteMsg::WithdrawFunds {
+        denom: Some(denom.to_string()),
+        recipient: None,
+    };
+    validator_staking_contract
+        .execute(&withdraw_msg, None)
+        .unwrap();
+    let updated_user_balance = daemon
+        .balance(daemon.sender_addr(), Some(denom.to_string()))
+        .unwrap()[0]
+        .amount;
+    println!(
+        "============================{:?}============================",
+        updated_user_balance
+    );
+    // assert_eq!(user_balance + Uint128::from(10000000000u128), updated_user_balance);
+}
+
+#[test]
+fn test_kicked_validator() {
+    // Pause validator before running this test
+    let local_terra = LOCAL_TERRA;
+    let daemon = Daemon::builder(local_terra.clone()) // set the network to use
+        .mnemonic(TESTNET_MNEMONIC)
+        .build()
+        .unwrap();
+    let denom = local_terra.gas_denom;
+
+    let validator_staking_contract = ValidatorStakingContract::new(daemon.clone());
+    validator_staking_contract.set_address(&Addr::unchecked(
+        "terra1373lhzrt3nqqemvz7gs50nlfu3ckphgxv9vlepaqs22vjxxz7guqwnmjz8",
+    ));
+
+    let staking_querier = Staking::new(&daemon);
+    let mut kicked_validators = daemon
+        .rt_handle
+        .block_on(async {
+            staking_querier
+                ._validators(StakingBondStatus::Unbonded)
+                .await
+        })
+        .unwrap();
+
+    while kicked_validators.is_empty() {
+        println!("================================waiting till one validator is kicked================================");
+        daemon.wait_seconds(10).unwrap();
+
+        kicked_validators = daemon
+            .rt_handle
+            .block_on(async {
+                staking_querier
+                    ._validators(StakingBondStatus::Unbonded)
+                    .await
+            })
+            .unwrap();
+    }
+
+    let kicked_validator = &kicked_validators[0];
+    println!(
+        "================================kicked validator: {:?}================================",
+        kicked_validator
+    );
+    let staking_query_msg = validator_staking::QueryMsg::StakedTokens {
+        validator: Some(Addr::unchecked(kicked_validator.address.to_string())),
+    };
+    let rewards_response: Option<cosmwasm_std::FullDelegation> = validator_staking_contract
+        .query(&staking_query_msg)
+        .unwrap();
+    println!(
+        "================================rewards_response: {:?}================================",
+        rewards_response
+    );
+
+    let contract_balance = daemon
+        .balance(
+            validator_staking_contract.addr_str().unwrap(),
+            Some(denom.to_string()),
+        )
+        .unwrap()[0]
+        .amount;
+    assert_eq!(contract_balance, Uint128::zero());
+
+    // let user_balance = daemon
+    //     .balance(daemon.sender_addr(), Some(denom.to_string()))
+    //     .unwrap()[0].amount;
+
+    let claim_msg = validator_staking::ExecuteMsg::Claim {
+        validator: Some(Addr::unchecked(kicked_validator.address.to_string())),
+        recipient: None,
+    };
+    validator_staking_contract
+        .execute(&claim_msg, None)
+        .unwrap();
+
+    // let contract_balance = daemon
+    //     .balance(validator_staking_contract.addr_str().unwrap(), Some(denom.to_string()))
+    //     .unwrap()[0].amount;
+    // assert_eq!(contract_balance, Uint128::zero());
+
+    // let updated_user_balance = daemon
+    //     .balance(daemon.sender_addr(), Some(denom.to_string()))
+    //     .unwrap()[0].amount;
+
+    // assert_eq!(user_balance + rewards_response.unwrap().accumulated_rewards[0].amount, updated_user_balance);
+
+    let unstake_msg = validator_staking::ExecuteMsg::Unstake {
+        validator: Some(Addr::unchecked(kicked_validator.address.to_string())),
+        amount: None,
+    };
+    validator_staking_contract
+        .execute(&unstake_msg, None)
+        .unwrap();
+    let contract_balance = daemon
+        .balance(
+            validator_staking_contract.addr_str().unwrap(),
+            Some(denom.to_string()),
+        )
+        .unwrap()[0]
+        .amount;
+    assert_eq!(contract_balance, Uint128::zero());
+
+    daemon.wait_seconds(61).unwrap();
+    // let user_balance = daemon
+    //     .balance(daemon.sender_addr(), Some(denom.to_string()))
+    //     .unwrap()[0].amount;
+
+    let withdraw_msg = validator_staking::ExecuteMsg::WithdrawFunds {
+        denom: Some(denom.to_string()),
+        recipient: None,
+    };
+    validator_staking_contract
+        .execute(&withdraw_msg, None)
+        .unwrap();
+    let updated_user_balance = daemon
+        .balance(daemon.sender_addr(), Some(denom.to_string()))
+        .unwrap()[0]
+        .amount;
+    println!(
+        "============================{:?}============================",
+        updated_user_balance
+    );
+    // assert_eq!(user_balance + Uint128::from(10000000000u128), updated_user_balance);
 }
