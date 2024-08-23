@@ -30,24 +30,14 @@ fn test_set_and_update_value() {
 
     let query_res: GetValueResponse = query_value(deps.as_ref()).unwrap();
 
-    assert_eq!(
-        GetValueResponse {
-            value,
-        },
-        query_res
-    );
+    assert_eq!(GetValueResponse { value }, query_res);
 
     let value = true;
     set_value(deps.as_mut(), &value, info.sender.as_ref()).unwrap();
 
     let query_res: GetValueResponse = query_value(deps.as_ref()).unwrap();
 
-    assert_eq!(
-        GetValueResponse {
-            value,
-        },
-        query_res
-    );
+    assert_eq!(GetValueResponse { value }, query_res);
 }
 
 #[test]
