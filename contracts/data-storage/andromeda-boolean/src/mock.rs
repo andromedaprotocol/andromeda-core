@@ -1,8 +1,8 @@
 #![cfg(all(not(target_arch = "wasm32"), feature = "testing"))]
 use crate::contract::{execute, instantiate, query};
 use andromeda_data_storage::boolean::{
-    ExecuteMsg, GetDataOwnerResponse, GetValueResponse, InstantiateMsg, Boolean, BooleanRestriction,
-    QueryMsg,
+    Boolean, BooleanRestriction, ExecuteMsg, GetDataOwnerResponse, GetValueResponse,
+    InstantiateMsg, QueryMsg,
 };
 use andromeda_std::ado_base::rates::{Rate, RatesMessage};
 use andromeda_testing::mock::MockApp;

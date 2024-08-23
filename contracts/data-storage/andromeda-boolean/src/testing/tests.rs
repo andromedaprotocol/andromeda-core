@@ -1,6 +1,6 @@
 use crate::contract::{execute, query};
 use andromeda_data_storage::boolean::{
-    ExecuteMsg, GetValueResponse, Boolean, BooleanRestriction, QueryMsg, GetDataOwnerResponse,
+    Boolean, BooleanRestriction, ExecuteMsg, GetDataOwnerResponse, GetValueResponse, QueryMsg,
 };
 use cosmwasm_std::{
     coin, from_json, testing::mock_env, BankMsg, CosmosMsg, Decimal, Response, SubMsg,
@@ -26,12 +26,7 @@ fn test_instantiation() {
 fn test_set_and_update_value() {
     let (mut deps, info) = proper_initialization(BooleanRestriction::Private);
     let value = Boolean(true);
-    set_value(
-        deps.as_mut(),
-        &value,
-        info.sender.as_ref(),
-    )
-    .unwrap();
+    set_value(deps.as_mut(), &value, info.sender.as_ref()).unwrap();
 
     let query_res: GetValueResponse = query_value(deps.as_ref()).unwrap();
 
@@ -43,16 +38,16 @@ fn test_set_and_update_value() {
     );
 
     let value = Boolean(true);
-    set_value(
-        deps.as_mut(),
-        &value,
-        info.sender.as_ref(),
-    )
-    .unwrap();
+    set_value(deps.as_mut(), &value, info.sender.as_ref()).unwrap();
 
     let query_res: GetValueResponse = query_value(deps.as_ref()).unwrap();
 
-    assert_eq!(GetValueResponse { value: value.into() }, query_res);
+    assert_eq!(
+        GetValueResponse {
+            value: value.into()
+        },
+        query_res
+    );
 }
 
 #[test]
@@ -97,7 +92,7 @@ fn test_set_value_with_tax() {
 
     // Set rates
     ADOContract::default()
-        .set_rates(deps.as_mut().storage, "BooleanSetValue", rate)
+        .set_rates(deps.as_mut().storage, "SetValue", rate)
         .unwrap();
 
     // Sent the exact amount required for tax
@@ -113,10 +108,7 @@ fn test_set_value_with_tax() {
             to_address: tax_recipient.to_string(),
             amount: vec![coin(20, "uandr")],
         })))
-        .add_attributes(vec![
-            ("method", "set_value"),
-            ("sender", "creator"),
-        ])
+        .add_attributes(vec![("method", "set_value"), ("sender", "creator")])
         .add_attribute("value", format!("{value:?}"));
     assert_eq!(expected_response, res);
 
@@ -148,10 +140,7 @@ fn test_set_value_with_tax() {
             to_address: "creator".to_string(),
             amount: vec![coin(180, "uandr")],
         })))
-        .add_attributes(vec![
-            ("method", "set_value"),
-            ("sender", "creator"),
-        ])
+        .add_attributes(vec![("method", "set_value"), ("sender", "creator")])
         .add_attribute("value", format!("{value:?}"));
     assert_eq!(expected_response, res);
 }
@@ -244,21 +233,21 @@ fn test_restriction_restricted() {
     set_value(deps.as_mut(), &value2, &external_user).unwrap_err();
     // Delete the value as external user, this should error
     delete_value(deps.as_mut(), &external_user).unwrap_err();
-    
+
     query_value(deps.as_ref()).unwrap();
 
     // Set Value as external user and try to delete as owner
     set_value(deps.as_mut(), &value, info.sender.as_ref()).unwrap();
     // Delete the value as external user, this will success as owner has permission to do anything
     delete_value(deps.as_mut(), info.sender.as_ref()).unwrap();
-    
+
     query_value(deps.as_ref()).unwrap_err();
 
     // Set Value as external user 1 and try to delete as external user 2
     set_value(deps.as_mut(), &value, &external_user).unwrap();
     // Delete the value as external user, this will error
     delete_value(deps.as_mut(), &external_user2).unwrap_err();
-    
+
     query_value(deps.as_ref()).unwrap();
 }
 
@@ -270,9 +259,15 @@ fn test_query_data_owner() {
     let value = Boolean::from_bool(true);
     set_value(deps.as_mut(), &value, &external_user.clone()).unwrap();
 
-    let res: GetDataOwnerResponse = from_json(query(deps.as_ref(), mock_env(), QueryMsg::GetDataOwner {}).unwrap()).unwrap();
+    let res: GetDataOwnerResponse =
+        from_json(query(deps.as_ref(), mock_env(), QueryMsg::GetDataOwner {}).unwrap()).unwrap();
 
-    assert_eq!(res, GetDataOwnerResponse{owner: AndrAddr::from_string(external_user.clone())});
+    assert_eq!(
+        res,
+        GetDataOwnerResponse {
+            owner: AndrAddr::from_string(external_user.clone())
+        }
+    );
 
     let res = delete_value(deps.as_mut(), &external_user2).unwrap_err();
     assert_eq!(res, ContractError::Unauthorized {});

@@ -1,12 +1,9 @@
-use crate::state::{DATA, RESTRICTION, DATA_OWNER};
-use andromeda_data_storage::boolean::{GetDataOwnerResponse, GetValueResponse, BooleanRestriction};
+use crate::state::{DATA, DATA_OWNER, RESTRICTION};
+use andromeda_data_storage::boolean::{BooleanRestriction, GetDataOwnerResponse, GetValueResponse};
 use andromeda_std::{ado_contract::ADOContract, amp::AndrAddr, error::ContractError};
 use cosmwasm_std::{Addr, Storage};
 
-pub fn has_permission(
-    storage: &dyn Storage,
-    addr: &Addr,
-) -> Result<bool, ContractError> {
+pub fn has_permission(storage: &dyn Storage, addr: &Addr) -> Result<bool, ContractError> {
     let is_operator = ADOContract::default().is_owner_or_operator(storage, addr.as_str())?;
     let allowed = match RESTRICTION.load(storage)? {
         BooleanRestriction::Private => is_operator,
@@ -21,9 +18,7 @@ pub fn has_permission(
 
 pub fn get_value(storage: &dyn Storage) -> Result<GetValueResponse, ContractError> {
     let value = DATA.load(storage)?.into();
-    Ok(GetValueResponse {
-        value,
-    })
+    Ok(GetValueResponse { value })
 }
 
 pub fn get_data_owner(storage: &dyn Storage) -> Result<GetDataOwnerResponse, ContractError> {

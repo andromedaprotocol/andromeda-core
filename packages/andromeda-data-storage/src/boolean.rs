@@ -1,6 +1,6 @@
-use andromeda_std::{amp::AndrAddr, andr_exec, andr_instantiate, andr_query, error::ContractError};
+use andromeda_std::{amp::AndrAddr, andr_exec, andr_instantiate, andr_query};
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{ensure, Addr, Api, Binary, Coin, Decimal, StdError, Uint128};
+use cosmwasm_std::StdError;
 use std::fmt::{Display, Formatter, Result as FMTResult};
 
 #[andr_instantiate]
@@ -12,13 +12,9 @@ pub struct InstantiateMsg {
 #[andr_exec]
 #[cw_serde]
 pub enum ExecuteMsg {
-    SetValue{
-        value: Boolean,
-    },
+    SetValue { value: Boolean },
     DeleteValue {},
-    UpdateRestriction {
-        restriction: BooleanRestriction,
-    },
+    UpdateRestriction { restriction: BooleanRestriction },
 }
 
 #[andr_query]
@@ -99,12 +95,7 @@ mod tests {
 
     #[test]
     fn test_from_bool() {
-        let cases = vec![
-            (
-                Boolean::from_bool(true),
-                Boolean(true),
-            ),
-        ];
+        let cases = vec![(Boolean::from_bool(true), Boolean(true))];
 
         for (value, expected) in cases.iter() {
             assert_eq!(value, expected);

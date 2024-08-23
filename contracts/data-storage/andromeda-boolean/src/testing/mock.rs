@@ -1,5 +1,6 @@
+use crate::contract::{execute, instantiate, query};
 use andromeda_data_storage::boolean::{
-    ExecuteMsg, GetValueResponse, InstantiateMsg, Boolean, BooleanRestriction, QueryMsg,
+    Boolean, BooleanRestriction, ExecuteMsg, GetValueResponse, InstantiateMsg, QueryMsg,
 };
 use andromeda_std::{
     error::ContractError,
@@ -10,7 +11,6 @@ use cosmwasm_std::{
     testing::{mock_env, mock_info, MockApi, MockStorage},
     Coin, Deps, DepsMut, MessageInfo, OwnedDeps, Response,
 };
-use crate::contract::{execute, instantiate, query};
 
 pub type MockDeps = OwnedDeps<MockStorage, MockApi, WasmMockQuerier>;
 
@@ -60,10 +60,7 @@ pub fn set_value_with_funds(
     execute(deps, mock_env(), info, msg)
 }
 
-pub fn delete_value(
-    deps: DepsMut<'_>,
-    sender: &str,
-) -> Result<Response, ContractError> {
+pub fn delete_value(deps: DepsMut<'_>, sender: &str) -> Result<Response, ContractError> {
     let msg = ExecuteMsg::DeleteValue {};
     let info = mock_info(sender, &[]);
     execute(deps, mock_env(), info, msg)

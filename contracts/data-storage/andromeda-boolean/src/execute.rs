@@ -1,9 +1,9 @@
-use andromeda_data_storage::boolean::{ExecuteMsg, Boolean, BooleanRestriction};
+use andromeda_data_storage::boolean::{Boolean, BooleanRestriction, ExecuteMsg};
 use andromeda_std::{
     ado_base::rates::{Rate, RatesMessage},
     ado_contract::ADOContract,
     common::{
-        actions::call_action, call_action::get_action_name, context::ExecuteContext,
+        actions::call_action, context::ExecuteContext,
         rates::get_tax_amount, Funds,
     },
     error::ContractError,
@@ -17,10 +17,9 @@ use crate::{
     query::has_permission,
     state::{DATA, DATA_OWNER, RESTRICTION},
 };
-const CONTRACT_NAME: &str = "crates.io:andromeda-boolean";
 
 pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
-    let action = get_action_name(CONTRACT_NAME, msg.as_ref());
+    let action = msg.as_ref().to_string();
     call_action(
         &mut ctx.deps,
         &ctx.info,
@@ -32,7 +31,7 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
     match msg.clone() {
         ExecuteMsg::UpdateRestriction { restriction } => update_restriction(ctx, restriction),
         ExecuteMsg::SetValue { value } => set_value(ctx, value, action),
-        ExecuteMsg::DeleteValue { } => delete_value(ctx),
+        ExecuteMsg::DeleteValue {} => delete_value(ctx),
         ExecuteMsg::Rates(rates_message) => match rates_message {
             RatesMessage::SetRate { rate, .. } => match rate {
                 Rate::Local(local_rate) => {
@@ -110,8 +109,7 @@ pub fn delete_value(ctx: ExecuteContext) -> Result<Response, ContractError> {
     DATA_OWNER.remove(ctx.deps.storage);
     Ok(Response::new()
         .add_attribute("method", "delete_value")
-        .add_attribute("sender", sender)
-    )
+        .add_attribute("sender", sender))
 }
 
 fn tax_set_value(
