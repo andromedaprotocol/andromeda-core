@@ -11,7 +11,7 @@ use cosmwasm_std::{
 use cw_utils::nonpayable;
 
 use crate::{
-    query::has_permission,
+    contract::SET_DELETE_VALUE_ACTION,
     state::{DATA, DATA_OWNER, RESTRICTION},
 };
 
@@ -61,15 +61,31 @@ pub fn update_restriction(
 }
 
 pub fn set_value(
-    ctx: ExecuteContext,
+    mut ctx: ExecuteContext,
     value: bool,
     action: String,
 ) -> Result<Response, ContractError> {
     let sender = ctx.info.sender.clone();
-    ensure!(
-        has_permission(ctx.deps.storage, &sender)?,
-        ContractError::Unauthorized {}
-    );
+    let restriction = RESTRICTION.load(ctx.deps.storage)?;
+    if restriction == BooleanRestriction::Private {
+        let has_permission = ADOContract::default()
+            .is_permissioned(
+                ctx.deps.branch(),
+                ctx.env.clone(),
+                SET_DELETE_VALUE_ACTION,
+                ctx.info.sender.clone(),
+            )
+            .is_ok();
+        ensure!(has_permission, ContractError::Unauthorized {});
+    } else if restriction == BooleanRestriction::Restricted {
+        let addr = sender.as_str();
+        let is_operator = ADOContract::default().is_owner_or_operator(ctx.deps.storage, addr)?;
+        let allowed = match DATA_OWNER.load(ctx.deps.storage).ok() {
+            Some(owner) => addr == owner,
+            None => true,
+        };
+        ensure!(is_operator || allowed, ContractError::Unauthorized {});
+    }
 
     let tax_response = tax_set_value(ctx.deps.as_ref(), &ctx.info, action)?;
 
@@ -95,13 +111,30 @@ pub fn set_value(
     Ok(response)
 }
 
-pub fn delete_value(ctx: ExecuteContext) -> Result<Response, ContractError> {
+pub fn delete_value(mut ctx: ExecuteContext) -> Result<Response, ContractError> {
     nonpayable(&ctx.info)?;
-    let sender = ctx.info.sender;
-    ensure!(
-        has_permission(ctx.deps.storage, &sender)?,
-        ContractError::Unauthorized {}
-    );
+    let sender = ctx.info.sender.clone();
+    let restriction = RESTRICTION.load(ctx.deps.storage)?;
+    if restriction == BooleanRestriction::Private {
+        let has_permission = ADOContract::default()
+            .is_permissioned(
+                ctx.deps.branch(),
+                ctx.env.clone(),
+                SET_DELETE_VALUE_ACTION,
+                ctx.info.sender.clone(),
+            )
+            .is_ok();
+        ensure!(has_permission, ContractError::Unauthorized {});
+    } else if restriction == BooleanRestriction::Restricted {
+        let addr = sender.as_str();
+        let is_operator = ADOContract::default().is_owner_or_operator(ctx.deps.storage, addr)?;
+        let allowed = match DATA_OWNER.load(ctx.deps.storage).ok() {
+            Some(owner) => addr == owner,
+            None => true,
+        };
+        ensure!(is_operator || allowed, ContractError::Unauthorized {});
+    }
+
     DATA.remove(ctx.deps.storage);
     DATA_OWNER.remove(ctx.deps.storage);
     Ok(Response::new()
