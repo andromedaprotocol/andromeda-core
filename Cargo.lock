@@ -493,6 +493,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "andromeda-string-storage"
+version = "1.0.0"
+dependencies = [
+ "andromeda-data-storage",
+ "andromeda-std",
+ "andromeda-testing",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-multi-test",
+ "cw-storage-plus 1.2.0",
+ "cw-utils 1.0.3",
+ "cw20",
+]
+
+[[package]]
 name = "andromeda-testing"
 version = "1.0.0"
 dependencies = [
