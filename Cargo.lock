@@ -108,6 +108,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "andromeda-counter"
+version = "1.0.0"
+dependencies = [
+ "andromeda-data-storage",
+ "andromeda-std",
+ "andromeda-testing",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-multi-test",
+ "cw-storage-plus 1.2.0",
+ "cw-utils 1.0.3",
+ "cw20",
+]
+
+[[package]]
 name = "andromeda-cross-chain-swap"
 version = "1.1.0"
 dependencies = [
