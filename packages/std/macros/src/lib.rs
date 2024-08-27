@@ -151,12 +151,10 @@ pub fn andr_query(_metadata: TokenStream, input: TokenStream) -> TokenStream {
                 Permissions { actor: String, limit: Option<u32>, start_after: Option<String> },
                 #[returns(Vec<String>)]
                 PermissionedActions { },
-
             }
         }
         .into(),
     );
-
     #[cfg(feature = "rates")]
     {
         merged = merge_variants(
@@ -164,11 +162,13 @@ pub fn andr_query(_metadata: TokenStream, input: TokenStream) -> TokenStream {
             quote! {
                 enum Right {
                     #[returns(Option<::andromeda_std::ado_base::rates::Rate>)]
-                    Rates(::andromeda_std::ado_base::rates::RatesQueryMessage)
+                    Rates {action: String},
+                    #[returns(::andromeda_std::ado_base::rates::AllRatesResponse)]
+                    AllRates {}
                 }
             }
             .into(),
-        );
+        )
     }
     merged
 }
