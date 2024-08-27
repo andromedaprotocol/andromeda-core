@@ -28,7 +28,7 @@ impl Default for RatesResponse {
 
 #[cw_serde]
 pub enum RatesMessage {
-    SetRate { action: String, rate: Rate },
+    SetRate { action: String, rates: Vec<Rate> },
     RemoveRate { action: String },
 }
 
@@ -248,5 +248,5 @@ pub fn calculate_fee(fee_rate: LocalRateValue, payment: &Coin) -> Result<Coin, C
 
 #[cw_serde]
 pub struct AllRatesResponse {
-    pub all_rates: Vec<(String, Rate)>,
+    pub all_rates: Vec<(String, Vec<Rate>)>,
 }

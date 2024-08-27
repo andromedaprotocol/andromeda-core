@@ -3,67 +3,75 @@ use crate::amp::Recipient;
 use crate::common::{context::ExecuteContext, Funds};
 use crate::error::ContractError;
 use crate::os::aos_querier::AOSQuerier;
+use cosmwasm_std::Uint128;
 use cosmwasm_std::{coin as create_coin, ensure, Coin, Deps, Response, Storage};
 use cw20::Cw20Coin;
 use cw_storage_plus::Map;
 
 use super::ADOContract;
 
-pub fn rates<'a>() -> Map<'a, &'a str, Rate> {
+pub fn rates<'a>() -> Map<'a, &'a str, Vec<Rate>> {
     Map::new("rates")
 }
 
 impl<'a> ADOContract<'a> {
-    /// Sets rates
-    pub fn set_rates(
-        &self,
-        store: &mut dyn Storage,
-        action: impl Into<String>,
-        rate: Rate,
-    ) -> Result<(), ContractError> {
-        let action: String = action.into();
-        self.rates.save(store, &action, &rate)?;
-        Ok(())
-    }
     pub fn execute_rates(
         &self,
         ctx: ExecuteContext,
         rates_message: RatesMessage,
     ) -> Result<Response, ContractError> {
         match rates_message {
-            RatesMessage::SetRate { action, rate } => self.execute_set_rates(ctx, action, rate),
+            RatesMessage::SetRate { action, rates } => self.execute_set_rates(ctx, action, rates),
             RatesMessage::RemoveRate { action } => self.execute_remove_rates(ctx, action),
         }
     }
+    /// Sets rates
+    pub fn set_rates(
+        &self,
+        store: &mut dyn Storage,
+        action: impl Into<String>,
+        rates: Vec<Rate>,
+    ) -> Result<(), ContractError> {
+        let action: String = action.into();
+        self.rates.save(store, &action, &rates)?;
+        Ok(())
+    }
+
     pub fn execute_set_rates(
         &self,
         ctx: ExecuteContext,
         action: impl Into<String>,
-        mut rate: Rate,
+        mut rates: Vec<Rate>,
     ) -> Result<Response, ContractError> {
+        // Ensure the sender is the contract owner
         ensure!(
             Self::is_contract_owner(self, ctx.deps.storage, ctx.info.sender.as_str())?,
             ContractError::Unauthorized {}
         );
-        let action: String = action.into();
-        // Validate rates
-        rate.validate_rate(ctx.deps.as_ref())?;
 
-        let rate = match rate {
-            Rate::Local(ref mut local_rate) => {
+        let action = action.into();
+
+        // Iterate over the rates, validating and updating as needed
+        for rate in &mut rates {
+            // Validate rates
+            rate.validate_rate(ctx.deps.as_ref())?;
+
+            // Update local rates if recipients are empty
+            if let Rate::Local(ref mut local_rate) = rate {
                 if local_rate.recipients.is_empty() {
-                    local_rate.recipients = vec![Recipient::new(ctx.info.sender, None)];
-                    Rate::Local(local_rate.clone())
-                } else {
-                    rate
+                    local_rate
+                        .recipients
+                        .push(Recipient::new(ctx.info.sender.clone(), None));
                 }
             }
-            Rate::Contract(_) => rate,
-        };
-        self.set_rates(ctx.deps.storage, action, rate)?;
+        }
+
+        // Save the updated rates
+        self.set_rates(ctx.deps.storage, action, rates)?;
 
         Ok(Response::default().add_attributes(vec![("action", "set_rates")]))
     }
+
     pub fn remove_rates(
         &self,
         store: &mut dyn Storage,
@@ -95,14 +103,14 @@ impl<'a> ADOContract<'a> {
         &self,
         deps: Deps,
         action: impl Into<String>,
-    ) -> Result<Option<Rate>, ContractError> {
+    ) -> Result<Option<Vec<Rate>>, ContractError> {
         let action: String = action.into();
         Ok(rates().may_load(deps.storage, &action)?)
     }
 
     pub fn get_all_rates(&self, deps: Deps) -> Result<AllRatesResponse, ContractError> {
         // Initialize a vector to hold all rates
-        let mut all_rates: Vec<(String, Rate)> = Vec::new();
+        let mut all_rates: Vec<(String, Vec<Rate>)> = Vec::new();
 
         // Iterate over all keys and load the corresponding rate
         rates()
@@ -125,7 +133,7 @@ impl<'a> ADOContract<'a> {
         let action: String = action.into();
         let rate = self.rates.may_load(deps.storage, &action)?;
         match rate {
-            Some(rate) => {
+            Some(rates) => {
                 let (coin, is_native): (Coin, bool) = match funds {
                     Funds::Native(coin) => {
                         ensure!(
@@ -149,29 +157,44 @@ impl<'a> ADOContract<'a> {
                         )
                     }
                 };
-                let (msgs, events, leftover_funds) = match rate {
-                    Rate::Local(local_rate) => {
-                        local_rate.generate_response(deps, coin.clone(), is_native)?
-                    }
-                    Rate::Contract(rates_address) => {
-                        // Query rates contract
-                        let addr = rates_address.get_raw_address(&deps)?;
-                        let rate = AOSQuerier::get_rate(&deps.querier, &addr, &action)?;
-                        rate.generate_response(deps, coin.clone(), is_native)?
-                    }
-                };
-
+                let mut all_msgs = vec![];
+                let mut all_events = vec![];
+                let mut all_leftover_funds = vec![];
+                for rate in rates {
+                    let (mut msgs, mut events, mut leftover_funds) = match rate {
+                        Rate::Local(local_rate) => {
+                            local_rate.generate_response(deps, coin.clone(), is_native)?
+                        }
+                        Rate::Contract(rates_address) => {
+                            // Query rates contract
+                            let addr = rates_address.get_raw_address(&deps)?;
+                            let rate = AOSQuerier::get_rate(&deps.querier, &addr, &action)?;
+                            rate.generate_response(deps, coin.clone(), is_native)?
+                        }
+                    };
+                    all_msgs.append(&mut msgs);
+                    all_events.append(&mut events);
+                    all_leftover_funds.append(&mut leftover_funds);
+                }
+                let total_dedcuted_funds: Uint128 = all_leftover_funds
+                    .iter()
+                    .map(|x| coin.amount - x.amount)
+                    .sum();
+                let total_funds = coin.amount.checked_sub(total_dedcuted_funds)?;
                 Ok(Some(RatesResponse {
-                    msgs,
+                    msgs: all_msgs,
                     leftover_funds: if is_native {
-                        Funds::Native(leftover_funds[0].clone())
+                        Funds::Native(Coin {
+                            denom: coin.denom,
+                            amount: total_funds,
+                        })
                     } else {
                         Funds::Cw20(Cw20Coin {
-                            amount: leftover_funds[0].amount,
+                            amount: total_funds,
                             address: coin.denom,
                         })
                     },
-                    events,
+                    events: all_events,
                 }))
             }
             None => Ok(None),
@@ -205,7 +228,7 @@ mod tests {
             .save(deps.as_mut().storage, &Addr::unchecked("owner"))
             .unwrap();
 
-        let expected_rate = Rate::Local(LocalRate {
+        let expected_rate = vec![Rate::Local(LocalRate {
             rate_type: LocalRateType::Additive,
             recipients: vec![Recipient {
                 address: AndrAddr::from_string("owner".to_string()),
@@ -214,7 +237,7 @@ mod tests {
             }],
             value: LocalRateValue::Flat(coin(100_u128, "uandr")),
             description: None,
-        });
+        })];
 
         let action = "deposit";
         // set rates

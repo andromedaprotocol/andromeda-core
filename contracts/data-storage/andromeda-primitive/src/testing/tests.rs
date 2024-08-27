@@ -70,14 +70,14 @@ fn test_set_value_with_tax() {
     // Set percent rates
     let set_percent_rate_msg = ExecuteMsg::Rates(RatesMessage::SetRate {
         action: "PrimitiveSetValue".to_string(),
-        rate: Rate::Local(LocalRate {
+        rates: vec![Rate::Local(LocalRate {
             rate_type: LocalRateType::Additive,
             recipients: vec![],
             value: LocalRateValue::Percent(PercentRate {
                 percent: Decimal::one(),
             }),
             description: None,
-        }),
+        })],
     });
 
     let err = execute(
@@ -91,16 +91,16 @@ fn test_set_value_with_tax() {
     assert_eq!(err, ContractError::InvalidRate {});
 
     // Make sure sender is set as recipient when the recipients vector is empty
-    let rate: Rate = Rate::Local(LocalRate {
+    let rates = vec![Rate::Local(LocalRate {
         rate_type: LocalRateType::Additive,
         recipients: vec![],
         value: LocalRateValue::Flat(coin(20_u128, "uandr")),
         description: None,
-    });
+    })];
 
     let msg = ExecuteMsg::Rates(RatesMessage::SetRate {
         action: "SetValue".to_string(),
-        rate,
+        rates,
     });
     execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
@@ -109,15 +109,15 @@ fn test_set_value_with_tax() {
         .unwrap();
     assert_eq!(
         queried_rates.unwrap(),
-        Rate::Local(LocalRate {
+        vec![Rate::Local(LocalRate {
             rate_type: LocalRateType::Additive,
             recipients: vec![Recipient::new(AndrAddr::from_string("creator"), None)],
             value: LocalRateValue::Flat(coin(20_u128, "uandr")),
             description: None,
-        })
+        })]
     );
 
-    let rate: Rate = Rate::Local(LocalRate {
+    let rate = vec![Rate::Local(LocalRate {
         rate_type: LocalRateType::Additive,
         recipients: vec![Recipient {
             address: AndrAddr::from_string(tax_recipient.to_string()),
@@ -126,7 +126,7 @@ fn test_set_value_with_tax() {
         }],
         value: LocalRateValue::Flat(coin(20_u128, "uandr")),
         description: None,
-    });
+    })];
 
     // Set rates
     ADOContract::default()

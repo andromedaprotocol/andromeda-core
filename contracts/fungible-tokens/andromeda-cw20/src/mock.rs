@@ -123,9 +123,9 @@ impl MockCW20 {
         app: &mut MockApp,
         sender: Addr,
         action: String,
-        rate: Rate,
+        rates: Vec<Rate>,
     ) -> ExecuteResult {
-        self.execute(app, &mock_set_rate_msg(action, rate), sender, &[])
+        self.execute(app, &mock_set_rate_msg(action, rates), sender, &[])
     }
 
     pub fn query_balance(&self, app: &MockApp, address: impl Into<String>) -> Uint128 {
@@ -220,6 +220,6 @@ pub fn mock_cw20_increase_allowance(spender: String, amount: Uint128) -> Execute
     }
 }
 
-pub fn mock_set_rate_msg(action: String, rate: Rate) -> ExecuteMsg {
-    ExecuteMsg::Rates(RatesMessage::SetRate { action, rate })
+pub fn mock_set_rate_msg(action: String, rates: Vec<Rate>) -> ExecuteMsg {
+    ExecuteMsg::Rates(RatesMessage::SetRate { action, rates })
 }
