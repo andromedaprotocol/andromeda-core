@@ -90,7 +90,7 @@ pub fn get_date_time(
 ) -> Result<GetDateTimeResponse, ContractError> {
     let timestamp = env.block.time.seconds() as i64;
     let timezone_i64 = timezone.unwrap_or(Timezone::Utc) as i64;
-    let offset = match timezone_i64.checked_mul(3600) {
+    let offset = match timezone_i64.checked_mul(36) {
         Some(offset) => offset,
         None => return Err(ContractError::Std(StdError::generic_err("Overflow error"))),
     };
