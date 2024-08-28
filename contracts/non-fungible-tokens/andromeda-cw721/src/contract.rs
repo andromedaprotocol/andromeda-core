@@ -5,9 +5,7 @@ use cosmwasm_std::{
     CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, QuerierWrapper, Response, SubMsg, Uint128,
 };
 
-use crate::state::{
-    is_archived, ANDR_MINTER, ARCHIVED, TRANSFER_AGREEMENTS,
-};
+use crate::state::{is_archived, ANDR_MINTER, ARCHIVED, TRANSFER_AGREEMENTS};
 use andromeda_non_fungible_tokens::cw721::{
     ExecuteMsg, InstantiateMsg, MintMsg, QueryMsg, TokenExtension, TransferAgreement,
 };
@@ -159,7 +157,7 @@ fn execute_mint(
     token_uri: Option<String>,
     owner: String,
     extension: TokenExtension,
-    action: String
+    action: String,
 ) -> Result<Response, ContractError> {
     let minter = ANDR_MINTER
         .load(ctx.deps.storage)?
@@ -212,7 +210,7 @@ fn mint(
 fn execute_batch_mint(
     mut ctx: ExecuteContext,
     tokens_to_mint: Vec<MintMsg>,
-    action: String
+    action: String,
 ) -> Result<Response, ContractError> {
     let mut resp = Response::default();
     let minter = ANDR_MINTER
