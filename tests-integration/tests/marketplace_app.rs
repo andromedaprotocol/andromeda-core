@@ -1,5 +1,4 @@
 #![cfg(all(not(target_arch = "wasm32"), feature = "testing", feature = "rates"))]
-
 use andromeda_address_list::mock::{
     mock_address_list_instantiate_msg, mock_andromeda_address_list, MockAddressList,
 };
@@ -536,6 +535,7 @@ fn test_marketplace_app_cw20_restricted() {
         andr.kernel.addr().to_string(),
         None,
         Some(AndrAddr::from_string(format!("./{}", cw20_component.name))),
+        None,
     );
     let marketplace_component = AppComponent::new(
         "marketplace".to_string(),
