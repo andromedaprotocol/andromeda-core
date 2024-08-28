@@ -18,7 +18,7 @@ pub enum PermissioningMessage {
     },
     RemovePermission {
         action: String,
-        actor: AndrAddr,
+        actors: Vec<AndrAddr>,
     },
     PermissionAction {
         action: String,
