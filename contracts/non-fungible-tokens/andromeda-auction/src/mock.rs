@@ -233,7 +233,11 @@ pub fn mock_set_rate_msg(action: String, rate: Rate) -> ExecuteMsg {
     ExecuteMsg::Rates(RatesMessage::SetRate { action, rate })
 }
 
-pub fn mock_set_permission(actors: Vec<AndrAddr>, action: String, permission: Permission) -> ExecuteMsg {
+pub fn mock_set_permission(
+    actors: Vec<AndrAddr>,
+    action: String,
+    permission: Permission,
+) -> ExecuteMsg {
     ExecuteMsg::Permissioning(PermissioningMessage::SetPermission {
         actors,
         action,

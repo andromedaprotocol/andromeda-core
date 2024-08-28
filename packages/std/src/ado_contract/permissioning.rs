@@ -266,7 +266,7 @@ impl<'a> ADOContract<'a> {
             ContractError::Unauthorized {}
         );
         let action = action.into();
-        
+
         let mut actor_addrs = Vec::new();
 
         ensure!(!actors.is_empty(), ContractError::NoActorsProvided {});
@@ -284,7 +284,11 @@ impl<'a> ADOContract<'a> {
             )?;
         }
 
-        let actor_strs = actor_addrs.iter().map(|addr| addr.as_str()).collect::<Vec<_>>().join(", ");
+        let actor_strs = actor_addrs
+            .iter()
+            .map(|addr| addr.as_str())
+            .collect::<Vec<_>>()
+            .join(", ");
 
         Ok(Response::default().add_attributes(vec![
             ("action", "set_permission"),
