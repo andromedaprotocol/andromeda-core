@@ -3,7 +3,7 @@ use andromeda_std::{
         messages::{AMPMsg, AMPPkt},
         recipient::Recipient,
     },
-    common::Milliseconds,
+    common::{expiration::Expiry, Milliseconds},
     error::ContractError,
 };
 use andromeda_testing::economics_msg::generate_economics_message;
@@ -49,7 +49,7 @@ fn init(deps: DepsMut) -> Response {
                 )],
             ),
         ],
-        lock_time: Some(Milliseconds::from_seconds(100_000)),
+        lock_time: Some(Expiry::FromNow(Milliseconds::from_seconds(100_000))),
     };
 
     let info = mock_info("owner", &[]);
@@ -71,11 +71,11 @@ fn test_execute_update_lock() {
     let env = mock_env();
 
     let current_time = env.block.time.seconds();
-    let lock_time = 100_000;
+    let lock_time = 100_000_000;
 
     // Start off with an expiration that's behind current time (expired)
     let splitter = ConditionalSplitter {
-        lock_time: Some(Milliseconds::from_seconds(current_time - 1)),
+        lock_time: Milliseconds::zero(),
         thresholds: vec![Threshold {
             min: Uint128::zero(),
             address_percent: vec![],
@@ -105,8 +105,8 @@ fn test_execute_update_lock() {
 
     //check result
     let splitter = CONDITIONAL_SPLITTER.load(deps.as_ref().storage).unwrap();
-    assert!(!splitter.lock_time.unwrap().is_expired(&env.block));
-    assert_eq!(new_lock, splitter.lock_time.unwrap());
+    assert!(!splitter.lock_time.is_expired(&env.block));
+    assert_eq!(new_lock, splitter.lock_time);
 
     // Shouldn't be able to update lock while current lock isn't expired
     let msg = ExecuteMsg::UpdateLock {
@@ -142,7 +142,7 @@ fn test_execute_update_thresholds() {
         ],
     )];
     let splitter = ConditionalSplitter {
-        lock_time: None,
+        lock_time: Milliseconds::zero(),
         thresholds: first_thresholds,
     };
 
@@ -279,7 +279,7 @@ fn test_execute_send() {
                 ],
             ),
         ],
-        lock_time: Some(Milliseconds::from_seconds(100_000)),
+        lock_time: Some(Expiry::FromNow(Milliseconds::from_seconds(100_000))),
     };
 
     let info = mock_info("owner", &[]);
@@ -453,7 +453,7 @@ fn test_execute_send_threshold_not_found() {
                 ],
             ),
         ],
-        lock_time: Some(Milliseconds::from_seconds(100_000)),
+        lock_time: Some(Expiry::FromNow(Milliseconds::from_seconds(100_000))),
     };
 
     let info = mock_info("owner", &[]);
@@ -589,7 +589,7 @@ fn test_handle_packet_exit_with_error_true() {
     let msg = ExecuteMsg::AMPReceive(pkt);
 
     let splitter = ConditionalSplitter {
-        lock_time: None,
+        lock_time: Milliseconds::zero(),
         thresholds: vec![Threshold::new(Uint128::zero(), address_percent)],
     };
 
@@ -612,7 +612,7 @@ fn test_query_splitter() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
     let splitter = ConditionalSplitter {
-        lock_time: None,
+        lock_time: Milliseconds::zero(),
         thresholds: vec![Threshold::new(Uint128::zero(), vec![])],
     };
 
@@ -668,7 +668,7 @@ fn test_execute_send_error() {
 
     let splitter = ConditionalSplitter {
         thresholds: vec![Threshold::new(Uint128::zero(), address_percent)],
-        lock_time: None,
+        lock_time: Milliseconds::zero(),
     };
 
     CONDITIONAL_SPLITTER

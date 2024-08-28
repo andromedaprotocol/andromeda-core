@@ -34,7 +34,7 @@ fn init(deps: DepsMut) -> Response {
         owner: Some(OWNER.to_owned()),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         recipients: mock_recipient,
-        lock_time: Some(Expiry::AtTime(Milliseconds::from_seconds(100_000))),
+        lock_time: Some(Expiry::FromNow(Milliseconds(86400000))),
     };
 
     let info = mock_info("owner", &[]);
@@ -56,7 +56,8 @@ fn test_execute_update_lock() {
     let env = mock_env();
 
     let current_time = env.block.time.seconds();
-    let lock_time = 100_000;
+    // 2 days in milliseconds
+    let lock_time = 172800000;
 
     // Start off with an expiration that's behind current time (expired)
     let splitter = Splitter {
