@@ -6,7 +6,7 @@ use cosmwasm_std::{
 };
 
 use crate::state::{
-    is_archived, ANDR_MINTER, ARCHIVED, BATCH_MINT_ACTION, MINT_ACTION, TRANSFER_AGREEMENTS,
+    is_archived, ANDR_MINTER, ARCHIVED, TRANSFER_AGREEMENTS,
 };
 use andromeda_non_fungible_tokens::cw721::{
     ExecuteMsg, InstantiateMsg, MintMsg, QueryMsg, TokenExtension, TransferAgreement,
@@ -113,8 +113,8 @@ fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
             token_uri,
             owner,
             extension,
-        } => execute_mint(ctx, token_id, token_uri, owner, extension),
-        ExecuteMsg::BatchMint { tokens } => execute_batch_mint(ctx, tokens),
+        } => execute_mint(ctx, token_id, token_uri, owner, extension, action),
+        ExecuteMsg::BatchMint { tokens } => execute_batch_mint(ctx, tokens, action),
         ExecuteMsg::TransferNft {
             recipient,
             token_id,
@@ -159,6 +159,7 @@ fn execute_mint(
     token_uri: Option<String>,
     owner: String,
     extension: TokenExtension,
+    action: String
 ) -> Result<Response, ContractError> {
     let minter = ANDR_MINTER
         .load(ctx.deps.storage)?
@@ -170,7 +171,7 @@ fn execute_mint(
                 &ctx.info,
                 &ctx.env,
                 &ctx.amp_ctx,
-                MINT_ACTION
+                action
             )?,
         ContractError::Unauthorized {}
     );
@@ -211,6 +212,7 @@ fn mint(
 fn execute_batch_mint(
     mut ctx: ExecuteContext,
     tokens_to_mint: Vec<MintMsg>,
+    action: String
 ) -> Result<Response, ContractError> {
     let mut resp = Response::default();
     let minter = ANDR_MINTER
@@ -223,7 +225,7 @@ fn execute_batch_mint(
                 &ctx.info,
                 &ctx.env,
                 &ctx.amp_ctx,
-                BATCH_MINT_ACTION
+                action
             )?,
         ContractError::Unauthorized {}
     );
