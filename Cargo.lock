@@ -854,9 +854,9 @@ dependencies = [
 
 [[package]]
 name = "cw-asset"
-version = "3.1.1"
+version = "3.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c999a12f8cd8736f6f86e9a4ede5905530cb23cfdef946b9da1c506ad1b70799"
+checksum = "64e2cf17accdcafe71859a683b6ed3f18311634a769550aacf4829b50151b221"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",

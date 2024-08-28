@@ -75,6 +75,9 @@ pub enum ContractError {
     #[error("InvalidValidator")]
     InvalidValidator {},
 
+    #[error("NoActorsProvided")]
+    NoActorsProvided {},
+
     #[error("InvalidDelegation")]
     InvalidDelegation {},
 

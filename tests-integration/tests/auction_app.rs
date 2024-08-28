@@ -604,11 +604,11 @@ fn test_auction_app_cw20_restricted() {
 
     // Place Bid One
     // Blacklist bidder now
-    let actor = AndrAddr::from_string(buyer_one.clone());
+    let actors = vec![AndrAddr::from_string(buyer_one.clone())];
     let action = "PlaceBid".to_string();
     let permission = Permission::Local(LocalPermission::blacklisted(None));
     auction
-        .execute_set_permission(&mut router, owner.clone(), actor, action, permission)
+        .execute_set_permission(&mut router, owner.clone(), actors, action, permission)
         .unwrap();
 
     let bid_msg = mock_place_bid("0".to_string(), cw721.addr().to_string());
@@ -627,11 +627,11 @@ fn test_auction_app_cw20_restricted() {
     assert_eq!(err, ContractError::Unauthorized {});
 
     // Now whitelist bidder one
-    let actor = AndrAddr::from_string(buyer_one.clone());
+    let actors = vec![AndrAddr::from_string(buyer_one.clone())];
     let action = "PlaceBid".to_string();
     let permission = Permission::Local(LocalPermission::whitelisted(None));
     auction
-        .execute_set_permission(&mut router, owner.clone(), actor, action, permission)
+        .execute_set_permission(&mut router, owner.clone(), actors, action, permission)
         .unwrap();
 
     // Try bidding again
