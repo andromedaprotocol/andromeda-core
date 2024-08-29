@@ -18,7 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Validator Staking: Added the option to set an amount while unstaking [(#458)](https://github.com/andromedaprotocol/andromeda-core/pull/458)
 - Added String Storage ADO [(#512)](https://github.com/andromedaprotocol/andromeda-core/pull/512)
 - Added Counter ADO [(#514)](https://github.com/andromedaprotocol/andromeda-core/pull/514)
-
+- Added Authorized CW721 Addresses to Marketplace [(#542)](https://github.com/andromedaprotocol/andromeda-core/pull/542)
 
 ### Changed
 
