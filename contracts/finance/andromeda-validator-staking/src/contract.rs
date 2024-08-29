@@ -1,10 +1,9 @@
-use std::str::FromStr;
-
 use crate::state::{DEFAULT_VALIDATOR, UNSTAKING_QUEUE};
+use cosmrs::proto::{cosmos::staking::v1beta1::MsgUndelegateResponse, prost::Message};
 use cosmwasm_std::{
-    coin, ensure, entry_point, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut,
-    DistributionMsg, Env, FullDelegation, MessageInfo, Reply, Response, StakingMsg, StdError,
-    SubMsg, Timestamp, Uint128,
+    coin, ensure, entry_point, Addr, BankMsg, Binary, CosmosMsg, Deps, DepsMut, DistributionMsg,
+    Env, FullDelegation, MessageInfo, Reply, Response, StakingMsg, StdError, SubMsg, Timestamp,
+    Uint128,
 };
 use cw2::set_contract_version;
 
@@ -185,10 +184,18 @@ fn execute_unstake(
         }
     );
 
+    let fund = coin(unstake_amount.u128(), res.amount.denom);
     let undelegate_msg = CosmosMsg::Staking(StakingMsg::Undelegate {
         validator: validator.to_string(),
-        amount: coin(unstake_amount.u128(), res.amount.denom),
+        amount: fund.clone(),
     });
+
+    let mut unstaking_queue = UNSTAKING_QUEUE.load(deps.storage).unwrap_or_default();
+    unstaking_queue.push(UnstakingTokens {
+        fund,
+        payout_at: Timestamp::default(),
+    });
+
     let undelegate_msg = SubMsg::reply_on_success(undelegate_msg, ReplyId::ValidatorUnstake.repr());
 
     let res = Response::new()
@@ -348,22 +355,32 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
 }
 
 pub fn on_validator_unstake(deps: DepsMut, msg: Reply) -> Result<Response, ContractError> {
-    let attributes = &msg.result.unwrap().events[0].attributes;
-    let mut fund = Coin::default();
-    let mut payout_at = Timestamp::default();
+    let res = msg.result.unwrap();
     let mut unstaking_queue = UNSTAKING_QUEUE.load(deps.storage).unwrap_or_default();
-    for attr in attributes {
-        if attr.key == "amount" {
-            fund = Coin::from_str(&attr.value).unwrap();
-        } else if attr.key == "completion_time" {
-            let completion_time = DateTime::parse_from_rfc3339(&attr.value).unwrap();
-            let seconds = completion_time.timestamp() as u64;
-            let nanos = completion_time.timestamp_subsec_nanos() as u64;
-            payout_at = Timestamp::from_seconds(seconds);
-            payout_at = payout_at.plus_nanos(nanos);
+    let payout_at = if res.data.is_some() {
+        let data = res.data.unwrap();
+        let response: MsgUndelegateResponse = MsgUndelegateResponse::decode(&*data).unwrap();
+        let completion_time = response.completion_time.unwrap();
+        let payout_at = Timestamp::from_seconds(completion_time.seconds as u64);
+        payout_at.plus_nanos(completion_time.nanos as u64)
+    } else {
+        let attributes = &res.events[0].attributes;
+        let mut payout_at = Timestamp::default();
+        for attr in attributes {
+            if attr.key == "completion_time" {
+                let completion_time = DateTime::parse_from_rfc3339(&attr.value).unwrap();
+                let seconds = completion_time.timestamp() as u64;
+                let nanos = completion_time.timestamp_subsec_nanos() as u64;
+                payout_at = Timestamp::from_seconds(seconds);
+                payout_at = payout_at.plus_nanos(nanos);
+            }
         }
-    }
-    unstaking_queue.push(UnstakingTokens { fund, payout_at });
+        payout_at
+    };
+    let mut unstake_req = unstaking_queue.pop().unwrap();
+    unstake_req.payout_at = payout_at;
+
+    unstaking_queue.push(unstake_req);
     UNSTAKING_QUEUE.save(deps.storage, &unstaking_queue)?;
 
     Ok(Response::default())

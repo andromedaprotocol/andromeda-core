@@ -114,9 +114,11 @@ fn test_validator_staking() {
 
     let claim_msg = validator_staking::ExecuteMsg::Claim {
         validator: Some(Addr::unchecked(default_validator.address.to_string())),
-        recipient: None
+        recipient: None,
     };
-    validator_staking_contract.execute(&claim_msg, None).unwrap();
+    validator_staking_contract
+        .execute(&claim_msg, None)
+        .unwrap();
 
     // let contract_balance = daemon
     //     .balance(validator_staking_contract.addr_str().unwrap(), Some(denom.to_string()))

@@ -618,6 +618,7 @@ dependencies = [
  "andromeda-std",
  "andromeda-testing",
  "chrono 0.3.0",
+ "cosmrs 0.19.0",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-multi-test",
