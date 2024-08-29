@@ -616,7 +616,10 @@ fn test_auction_app_cw20_restricted() {
 
     // Place Bid One
     // Blacklist bidder now and blacklist bidder three just to test permissioning multiple actors at the same time
-    let actors = vec![AndrAddr::from_string(buyer_one.clone()), AndrAddr::from_string(buyer_three.clone())];
+    let actors = vec![
+        AndrAddr::from_string(buyer_one.clone()),
+        AndrAddr::from_string(buyer_three.clone()),
+    ];
     let action = "PlaceBid".to_string();
     let permission = Permission::Local(LocalPermission::blacklisted(None));
     auction
