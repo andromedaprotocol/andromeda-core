@@ -603,6 +603,17 @@ fn test_auction_app_cw20_restricted() {
     let auction_state: AuctionStateResponse = auction.query_auction_state(&mut router, *auction_id);
     assert_eq!(auction_state.coin_denom, cw20.addr().to_string());
 
+    // Try to set permission with an empty vector of actors
+    let actors = vec![];
+    let action = "PlaceBid".to_string();
+    let permission = Permission::Local(LocalPermission::blacklisted(None));
+    let err: ContractError = auction
+        .execute_set_permission(&mut router, owner.clone(), actors, action, permission)
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(err, ContractError::NoActorsProvided {});
+
     // Place Bid One
     // Blacklist bidder now and blacklist bidder three just to test permissioning multiple actors at the same time
     let actors = vec![AndrAddr::from_string(buyer_one.clone()), AndrAddr::from_string(buyer_three.clone())];
