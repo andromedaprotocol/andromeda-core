@@ -446,6 +446,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "andromeda-set-amount-splitter"
+version = "1.0.0"
+dependencies = [
+ "andromeda-app",
+ "andromeda-finance",
+ "andromeda-std",
+ "andromeda-testing",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-multi-test",
+ "cw-storage-plus 1.2.0",
+ "cw-utils 1.0.3",
+]
+
+[[package]]
 name = "andromeda-shunting"
 version = "0.2.0"
 dependencies = [
@@ -2019,6 +2034,7 @@ dependencies = [
  "andromeda-non-fungible-tokens",
  "andromeda-primitive",
  "andromeda-rates",
+ "andromeda-set-amount-splitter",
  "andromeda-shunting",
  "andromeda-splitter",
  "andromeda-std",
