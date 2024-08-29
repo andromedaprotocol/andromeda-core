@@ -67,10 +67,7 @@ fn test_different_lock_times() {
     let info = mock_info(OWNER, &[]);
     let err = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap_err();
 
-    assert_eq!(
-        err,
-        ContractError::LockTimeTooShort {}
-    );
+    assert_eq!(err, ContractError::LockTimeTooShort {});
 
     // Set a lock time that's more than 1 year in milliseconds
     lock_time = Expiry::FromNow(Milliseconds(31_708_800_000));
@@ -84,10 +81,7 @@ fn test_different_lock_times() {
 
     let err = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap_err();
 
-    assert_eq!(
-        err,
-        ContractError::LockTimeTooLong {}
-    );
+    assert_eq!(err, ContractError::LockTimeTooLong {});
 
     // Set a lock time for 20 days in milliseconds
     lock_time = Expiry::FromNow(Milliseconds(1728000000));
@@ -119,10 +113,7 @@ fn test_different_lock_times() {
 
     let info = mock_info(OWNER, &[]);
     let err = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap_err();
-    assert_eq!(
-        err,
-        ContractError::LockTimeTooShort {}
-    );
+    assert_eq!(err, ContractError::LockTimeTooShort {});
 
     // Set a lock time that's more than 1 year from current time in milliseconds
     lock_time = Expiry::AtTime(Milliseconds(1788006977000));
@@ -136,10 +127,7 @@ fn test_different_lock_times() {
 
     let info = mock_info(OWNER, &[]);
     let err = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap_err();
-    assert_eq!(
-        err,
-        ContractError::LockTimeTooLong {}
-    );
+    assert_eq!(err, ContractError::LockTimeTooLong {});
 
     // Set a valid lock time
     lock_time = Expiry::AtTime(Milliseconds(1725021377000));
@@ -157,8 +145,7 @@ fn test_different_lock_times() {
     let info = mock_info(OWNER, &[]);
     let res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
     assert_eq!(0, res.messages.len());
-}   
-
+}
 
 #[test]
 fn test_execute_update_lock() {
