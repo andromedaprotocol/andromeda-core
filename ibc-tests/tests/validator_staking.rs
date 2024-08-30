@@ -122,7 +122,7 @@ fn test_validator_staking() {
         .amount;
     assert_eq!(contract_balance, Uint128::zero());
 
-    daemon.wait_seconds(10).unwrap();
+    daemon.wait_seconds(61).unwrap();
 
     let withdraw_msg = validator_staking::ExecuteMsg::WithdrawFunds {
         denom: Some(denom.to_string()),
@@ -131,6 +131,15 @@ fn test_validator_staking() {
     validator_staking_contract
         .execute(&withdraw_msg, None)
         .unwrap();
+    
+    let contract_balance = daemon
+        .balance(
+            validator_staking_contract.addr_str().unwrap(),
+            Some(denom.to_string()),
+        )
+        .unwrap()[0]
+        .amount;
+    assert_eq!(contract_balance, Uint128::zero());
 }
 
 #[test]
