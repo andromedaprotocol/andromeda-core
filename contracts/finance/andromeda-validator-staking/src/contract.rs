@@ -1,5 +1,7 @@
-use crate::state::{DEFAULT_VALIDATOR, UNSTAKING_QUEUE};
-use cosmrs::proto::{cosmos::staking::v1beta1::MsgUndelegateResponse, prost::Message};
+use crate::{
+    state::{DEFAULT_VALIDATOR, UNSTAKING_QUEUE},
+    util::decode_unstaking_response_data,
+};
 use cosmwasm_std::{
     coin, ensure, entry_point, Addr, BankMsg, Binary, CosmosMsg, Deps, DepsMut, DistributionMsg,
     Env, FullDelegation, MessageInfo, Reply, Response, StakingMsg, StdError, SubMsg, Timestamp,
@@ -196,6 +198,8 @@ fn execute_unstake(
         payout_at: Timestamp::default(),
     });
 
+    UNSTAKING_QUEUE.save(deps.storage, &unstaking_queue)?;
+
     let undelegate_msg = SubMsg::reply_on_success(undelegate_msg, ReplyId::ValidatorUnstake.repr());
 
     let res = Response::new()
@@ -358,11 +362,10 @@ pub fn on_validator_unstake(deps: DepsMut, msg: Reply) -> Result<Response, Contr
     let res = msg.result.unwrap();
     let mut unstaking_queue = UNSTAKING_QUEUE.load(deps.storage).unwrap_or_default();
     let payout_at = if res.data.is_some() {
-        let data = res.data.unwrap();
-        let response: MsgUndelegateResponse = MsgUndelegateResponse::decode(&*data).unwrap();
-        let completion_time = response.completion_time.unwrap();
-        let payout_at = Timestamp::from_seconds(completion_time.seconds as u64);
-        payout_at.plus_nanos(completion_time.nanos as u64)
+        let data = res.data;
+        let (seconds, nanos) = decode_unstaking_response_data(data.unwrap());
+        let payout_at = Timestamp::from_seconds(seconds);
+        payout_at.plus_nanos(nanos)
     } else {
         let attributes = &res.events[0].attributes;
         let mut payout_at = Timestamp::default();

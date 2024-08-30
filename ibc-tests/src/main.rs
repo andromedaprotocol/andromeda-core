@@ -124,7 +124,7 @@ fn prepare_validator_staking(
     println!("//============================================================================================//");
 
     println!("//===========================Initialize app with Validator Staking============================//");
-    let staking_querier = Staking::new(&daemon);
+    let staking_querier = Staking::new(daemon);
     let validators = daemon
         .rt_handle
         .block_on(async { staking_querier._validators(StakingBondStatus::Bonded).await })

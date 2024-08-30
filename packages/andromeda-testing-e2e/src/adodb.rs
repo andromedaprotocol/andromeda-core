@@ -26,7 +26,7 @@ impl AdodbContract<DaemonBase<Wallet>> {
     pub fn execute_publish(self, code_id: u64, ado_type: String, version: String) {
         self.execute(
             &adodb::ExecuteMsg::Publish {
-                code_id: code_id,
+                code_id,
                 ado_type,
                 action_fees: None,
                 version,
