@@ -132,7 +132,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-auction"
-version = "2.0.0"
+version = "2.0.1"
 dependencies = [
  "andromeda-app",
  "andromeda-non-fungible-tokens",
@@ -163,6 +163,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "andromeda-counter"
+version = "1.0.0"
+dependencies = [
+ "andromeda-data-storage",
+ "andromeda-std",
+ "andromeda-testing",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-multi-test",
+ "cw-storage-plus 1.2.0",
+ "cw-utils 1.0.3",
+ "cw20",
+]
+
+[[package]]
 name = "andromeda-cross-chain-swap"
 version = "1.1.0"
 dependencies = [
@@ -181,7 +196,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-crowdfund"
-version = "2.0.0"
+version = "2.0.1"
 dependencies = [
  "andromeda-app",
  "andromeda-non-fungible-tokens",
@@ -198,7 +213,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-cw20"
-version = "2.0.1"
+version = "2.0.2"
 dependencies = [
  "andromeda-app",
  "andromeda-fungible-tokens",
@@ -249,7 +264,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-cw721"
-version = "2.0.0"
+version = "2.0.1"
 dependencies = [
  "andromeda-non-fungible-tokens",
  "andromeda-std",
@@ -376,7 +391,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-marketplace"
-version = "2.0.0"
+version = "2.0.1"
 dependencies = [
  "andromeda-app",
  "andromeda-non-fungible-tokens",
@@ -440,7 +455,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-primitive"
-version = "2.0.0"
+version = "2.0.1"
 dependencies = [
  "andromeda-data-storage",
  "andromeda-std",
@@ -455,7 +470,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-rate-limiting-withdrawals"
-version = "2.0.0"
+version = "2.0.1"
 dependencies = [
  "andromeda-app",
  "andromeda-finance",
@@ -471,7 +486,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-rates"
-version = "2.0.0"
+version = "2.0.1"
 dependencies = [
  "andromeda-app",
  "andromeda-modules",
@@ -483,6 +498,21 @@ dependencies = [
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
  "cw20",
+]
+
+[[package]]
+name = "andromeda-set-amount-splitter"
+version = "1.0.0"
+dependencies = [
+ "andromeda-app",
+ "andromeda-finance",
+ "andromeda-std",
+ "andromeda-testing",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-multi-test",
+ "cw-storage-plus 1.2.0",
+ "cw-utils 1.0.3",
 ]
 
 [[package]]
@@ -521,7 +551,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-std"
-version = "1.1.0"
+version = "1.1.1"
 dependencies = [
  "andromeda-macros",
  "cosmwasm-schema",
@@ -545,6 +575,21 @@ dependencies = [
  "serde-json-wasm 0.5.2",
  "strum_macros",
  "thiserror",
+]
+
+[[package]]
+name = "andromeda-string-storage"
+version = "1.0.0"
+dependencies = [
+ "andromeda-data-storage",
+ "andromeda-std",
+ "andromeda-testing",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-multi-test",
+ "cw-storage-plus 1.2.0",
+ "cw-utils 1.0.3",
+ "cw20",
 ]
 
 [[package]]
@@ -4195,6 +4240,7 @@ dependencies = [
  "andromeda-non-fungible-tokens",
  "andromeda-primitive",
  "andromeda-rates",
+ "andromeda-set-amount-splitter",
  "andromeda-shunting",
  "andromeda-splitter",
  "andromeda-std",

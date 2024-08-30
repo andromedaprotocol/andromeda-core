@@ -71,6 +71,9 @@ andromeda-finance = { workspace = true }
 andromeda-splitter = { path = "../contracts/finance/andromeda-splitter", features = [
     "testing",
 ] }
+andromeda-set-amount-splitter = { path = "../contracts/finance/andromeda-set-amount-splitter", features = [
+    "testing",
+] }
 andromeda-conditional-splitter = { path = "../contracts/finance/andromeda-conditional-splitter", features = [
     "testing",
 ] }

@@ -1,4 +1,3 @@
-use andromeda_std::common::call_action::get_action_name;
 #[cfg(not(feature = "imported"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
@@ -91,7 +90,7 @@ pub fn execute(
 
 fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
-    let action = get_action_name(CONTRACT_NAME, msg.as_ref());
+    let action = msg.as_ref().to_string();
 
     let action_response = call_action(
         &mut ctx.deps,
@@ -99,21 +98,6 @@ fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
         &ctx.env,
         &ctx.amp_ctx,
         msg.as_ref(),
-    )?;
-
-    let payee = if let Some(amp_ctx) = ctx.amp_ctx.clone() {
-        ctx.deps
-            .api
-            .addr_validate(amp_ctx.ctx.get_origin().as_str())?
-    } else {
-        ctx.info.sender.clone()
-    };
-
-    let _fee_msg = ADOContract::default().pay_fee(
-        ctx.deps.storage,
-        &ctx.deps.querier,
-        msg.as_ref().to_string(),
-        payee,
     )?;
 
     if let ExecuteMsg::Approve { token_id, .. } = &msg {

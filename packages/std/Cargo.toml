@@ -1,6 +1,6 @@
 [package]
 name = "andromeda-std"
-version = "1.1.0"
+version = "1.1.1"
 edition = "2021"
 rust-version = "1.75.0"
 description = "The standard library for creating an Andromeda Digital Object"
