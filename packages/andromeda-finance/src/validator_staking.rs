@@ -28,6 +28,9 @@ pub enum ExecuteMsg {
         denom: Option<String>,
         recipient: Option<AndrAddr>,
     },
+    UpdateDefaultValidator {
+        validator: Addr,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

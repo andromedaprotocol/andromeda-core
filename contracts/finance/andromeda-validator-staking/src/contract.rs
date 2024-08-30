@@ -88,6 +88,9 @@ pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
         ExecuteMsg::WithdrawFunds { denom, recipient } => {
             execute_withdraw_fund(ctx, denom, recipient)
         }
+        ExecuteMsg::UpdateDefaultValidator { validator } => {
+            execute_update_default_validator(ctx, validator)
+        }
 
         _ => ADOContract::default().execute(ctx, msg),
     }
@@ -317,6 +320,29 @@ fn execute_withdraw_fund(
         .add_attribute("action", "withdraw-funds")
         .add_attribute("from", env.contract.address)
         .add_attribute("to", recipient.into_string());
+
+    Ok(res)
+}
+
+fn execute_update_default_validator(
+    ctx: ExecuteContext,
+    validator: Addr,
+) -> Result<Response, ContractError> {
+    let ExecuteContext { deps, info, .. } = ctx;
+
+    ensure!(
+        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {}
+    );
+
+    // Check if the validator is valid before setting to default validator
+    is_validator(&deps, &validator)?;
+
+    DEFAULT_VALIDATOR.save(deps.storage, &validator)?;
+
+    let res = Response::new()
+        .add_attribute("action", "update-default-validator")
+        .add_attribute("default_validator", validator.into_string());
 
     Ok(res)
 }
