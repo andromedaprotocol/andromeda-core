@@ -131,7 +131,7 @@ fn test_validator_staking() {
     validator_staking_contract
         .execute(&withdraw_msg, None)
         .unwrap();
-    
+
     let contract_balance = daemon
         .balance(
             validator_staking_contract.addr_str().unwrap(),
