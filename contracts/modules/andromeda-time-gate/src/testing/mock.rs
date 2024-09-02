@@ -1,15 +1,16 @@
-use andromeda_modules::time_gate::CycleStartTime;
 use andromeda_modules::time_gate::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use andromeda_std::{
     amp::AndrAddr,
+    common::{expiration::Expiry, Milliseconds},
     error::ContractError,
     testing::mock_querier::{mock_dependencies_custom, WasmMockQuerier, MOCK_KERNEL_CONTRACT},
 };
 use cosmwasm_std::{
     from_json,
     testing::{mock_env, mock_info, MockApi, MockStorage},
-    Addr, Deps, DepsMut, Env, MessageInfo, OwnedDeps, Response,
+    Addr, BlockInfo, Deps, DepsMut, Env, MessageInfo, OwnedDeps, Response, Timestamp,
 };
+use cw_utils::Expiration;
 
 use crate::contract::{execute, instantiate, query};
 
@@ -17,7 +18,7 @@ pub type MockDeps = OwnedDeps<MockStorage, MockApi, WasmMockQuerier>;
 
 pub fn proper_initialization(
     gate_addresses: Vec<AndrAddr>,
-    cycle_start_time: CycleStartTime,
+    cycle_start_time: Option<Expiry>,
     time_interval: Option<u64>,
 ) -> (MockDeps, MessageInfo) {
     let mut deps = mock_dependencies_custom(&[]);
@@ -29,7 +30,12 @@ pub fn proper_initialization(
         cycle_start_time,
         time_interval,
     };
-    let env = mock_env();
+    let mut env = mock_env();
+    env.block = BlockInfo {
+        height: 100,
+        time: Timestamp::from_nanos(100000000000u64),
+        chain_id: "test-chain".to_string(),
+    };
     let res = instantiate(deps.as_mut(), env, info.clone(), msg).unwrap();
     assert_eq!(0, res.messages.len());
     (deps, info)
@@ -37,12 +43,18 @@ pub fn proper_initialization(
 
 pub fn update_cycle_start_time(
     deps: DepsMut<'_>,
-    cycle_start_time: CycleStartTime,
+    cycle_start_time: Option<Expiry>,
     sender: &str,
 ) -> Result<Response, ContractError> {
     let msg = ExecuteMsg::UpdateCycleStartTime { cycle_start_time };
     let info = mock_info(sender, &[]);
-    execute(deps, mock_env(), info, msg)
+    let mut env = mock_env();
+    env.block = BlockInfo {
+        height: 100,
+        time: Timestamp::from_nanos(100000000000u64),
+        chain_id: "test-chain".to_string(),
+    };
+    execute(deps, env, info, msg)
 }
 
 pub fn update_gate_addresses(
@@ -67,8 +79,14 @@ pub fn update_time_interval(
     execute(deps, mock_env(), info, msg)
 }
 
-pub fn query_cycle_start_time(deps: Deps) -> Result<CycleStartTime, ContractError> {
-    let res = query(deps, mock_env(), QueryMsg::GetCycleStartTime {});
+pub fn query_cycle_start_time(deps: Deps) -> Result<(Expiration, Milliseconds), ContractError> {
+    let mut env = mock_env();
+    env.block = BlockInfo {
+        height: 100,
+        time: Timestamp::from_nanos(100000000000u64),
+        chain_id: "test-chain".to_string(),
+    };
+    let res = query(deps, env, QueryMsg::GetCycleStartTime {});
     match res {
         Ok(res) => Ok(from_json(res).unwrap()),
         Err(err) => Err(err),
@@ -76,7 +94,13 @@ pub fn query_cycle_start_time(deps: Deps) -> Result<CycleStartTime, ContractErro
 }
 
 pub fn query_gate_addresses(deps: Deps) -> Result<Vec<AndrAddr>, ContractError> {
-    let res = query(deps, mock_env(), QueryMsg::GetGateAddresses {});
+    let mut env = mock_env();
+    env.block = BlockInfo {
+        height: 100,
+        time: Timestamp::from_nanos(100000000000u64),
+        chain_id: "test-chain".to_string(),
+    };
+    let res = query(deps, env, QueryMsg::GetGateAddresses {});
     match res {
         Ok(res) => Ok(from_json(res).unwrap()),
         Err(err) => Err(err),
@@ -84,7 +108,13 @@ pub fn query_gate_addresses(deps: Deps) -> Result<Vec<AndrAddr>, ContractError> 
 }
 
 pub fn query_time_interval(deps: Deps) -> Result<String, ContractError> {
-    let res = query(deps, mock_env(), QueryMsg::GetTimeInterval {});
+    let mut env = mock_env();
+    env.block = BlockInfo {
+        height: 100,
+        time: Timestamp::from_nanos(100000000000u64),
+        chain_id: "test-chain".to_string(),
+    };
+    let res = query(deps, env, QueryMsg::GetTimeInterval {});
     match res {
         Ok(res) => Ok(from_json(res).unwrap()),
         Err(err) => Err(err),

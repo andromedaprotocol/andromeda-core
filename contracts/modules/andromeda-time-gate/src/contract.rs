@@ -3,19 +3,23 @@ use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     attr, ensure, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Response, Storage,
 };
+use cw_utils::Expiration;
 
 use crate::state::{CYCLE_START_TIME, GATE_ADDRESSES, TIME_INTERVAL};
-use andromeda_modules::time_gate::CycleStartTime;
 use andromeda_modules::time_gate::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     ado_contract::ADOContract,
     amp::AndrAddr,
-    common::{actions::call_action, context::ExecuteContext, encode_binary},
+    common::{
+        actions::call_action,
+        context::ExecuteContext,
+        encode_binary,
+        expiration::{get_and_validate_start_time, Expiry},
+        Milliseconds,
+    },
     error::ContractError,
 };
-
-use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-time-gate";
@@ -32,7 +36,7 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     let resp = ADOContract::default().instantiate(
         deps.storage,
-        env,
+        env.clone(),
         deps.api,
         &deps.querier,
         info,
@@ -44,13 +48,20 @@ pub fn instantiate(
         },
     )?;
 
-    let cycle_start_time = msg.cycle_start_time;
-    cycle_start_time.validate()?;
+    let cycle_start_time_millisecons = match msg.cycle_start_time.clone() {
+        None => Milliseconds::from_nanos(env.block.time.nanos()),
+        Some(start_time) => start_time.get_time(&env.block),
+    };
+
+    let (cycle_start_time, _) = get_and_validate_start_time(&env, msg.cycle_start_time)?;
 
     let time_interval_seconds = msg.time_interval.unwrap_or(DEFAULT_TIME_INTERVAL);
 
     GATE_ADDRESSES.save(deps.storage, &msg.gate_addresses)?;
-    CYCLE_START_TIME.save(deps.storage, &cycle_start_time)?;
+    CYCLE_START_TIME.save(
+        deps.storage,
+        &(cycle_start_time, cycle_start_time_millisecons),
+    )?;
     TIME_INTERVAL.save(deps.storage, &time_interval_seconds)?;
 
     Ok(resp)
@@ -104,7 +115,7 @@ fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
 
 fn execute_update_cycle_start_time(
     ctx: ExecuteContext,
-    cycle_start_time: CycleStartTime,
+    cycle_start_time: Option<Expiry>,
     action: String,
 ) -> Result<Response, ContractError> {
     let ExecuteContext { deps, info, .. } = ctx;
@@ -114,18 +125,26 @@ fn execute_update_cycle_start_time(
         ContractError::Unauthorized {}
     );
 
-    let old_cycle_start_time = CYCLE_START_TIME.load(deps.storage)?;
+    let (new_cycle_start_time, _) =
+        get_and_validate_start_time(&ctx.env, cycle_start_time.clone())?;
+    let new_cycle_start_time_millisecons = match cycle_start_time.clone() {
+        None => Milliseconds::from_nanos(ctx.env.block.time.nanos()),
+        Some(start_time) => start_time.get_time(&ctx.env.block),
+    };
+
+    let (old_cycle_start_time, _) = CYCLE_START_TIME.load(deps.storage)?;
 
     ensure!(
-        old_cycle_start_time != cycle_start_time,
+        old_cycle_start_time != new_cycle_start_time,
         ContractError::InvalidParameter {
             error: Some("Same as an existed cycle start time".to_string())
         }
     );
 
-    cycle_start_time.validate()?;
-
-    CYCLE_START_TIME.save(deps.storage, &cycle_start_time)?;
+    CYCLE_START_TIME.save(
+        deps.storage,
+        &(new_cycle_start_time, new_cycle_start_time_millisecons),
+    )?;
 
     Ok(Response::new().add_attributes(vec![attr("action", action), attr("sender", info.sender)]))
 }
@@ -198,9 +217,11 @@ pub fn get_gate_addresses(storage: &dyn Storage) -> Result<Vec<AndrAddr>, Contra
     Ok(gate_addresses)
 }
 
-pub fn get_cycle_start_time(storage: &dyn Storage) -> Result<CycleStartTime, ContractError> {
-    let cycle_start_time = CYCLE_START_TIME.load(storage)?;
-    Ok(cycle_start_time)
+pub fn get_cycle_start_time(
+    storage: &dyn Storage,
+) -> Result<(Expiration, Milliseconds), ContractError> {
+    let (cycle_start_time, cycle_start_time_milliseconds) = CYCLE_START_TIME.load(storage)?;
+    Ok((cycle_start_time, cycle_start_time_milliseconds))
 }
 
 pub fn get_time_interval(storage: &dyn Storage) -> Result<String, ContractError> {
@@ -210,38 +231,19 @@ pub fn get_time_interval(storage: &dyn Storage) -> Result<String, ContractError>
 
 pub fn get_current_ado_path(deps: Deps, env: Env) -> Result<Addr, ContractError> {
     let storage = deps.storage;
-    let cycle_start_time = CYCLE_START_TIME.load(storage)?;
+    let (cycle_start_time, cycle_start_time_milliseconds) = CYCLE_START_TIME.load(storage)?;
     let gate_addresses = GATE_ADDRESSES.load(storage)?;
     let time_interval = TIME_INTERVAL.load(storage)?;
 
-    let CycleStartTime {
-        year,
-        month,
-        day,
-        hour,
-        minute,
-        second,
-    } = cycle_start_time;
-
-    let date = NaiveDate::from_ymd_opt(year, month, day).unwrap();
-    let time = NaiveTime::from_hms_nano_opt(hour, minute, second, 0).unwrap();
-    let datetime = NaiveDateTime::new(date, time);
-
-    let duration = datetime.signed_duration_since(NaiveDateTime::new(
-        NaiveDate::from_ymd_opt(1970, 1, 1).unwrap(),
-        NaiveTime::from_hms_nano_opt(0, 0, 0, 0).unwrap(),
-    ));
-
-    let cycle_start_nanos = duration.num_nanoseconds().unwrap() as u64;
-
-    let current_time_nanos = env.block.time.nanos();
-
     ensure!(
-        current_time_nanos >= cycle_start_nanos,
+        cycle_start_time.is_expired(&env.block),
         ContractError::CustomError {
             msg: "Cycle is not started yet".to_string()
         }
     );
+
+    let current_time_nanos = env.block.time.nanos();
+    let cycle_start_nanos = cycle_start_time_milliseconds.nanos();
 
     let time_interval_nanos = time_interval.checked_mul(1_000_000_000).unwrap();
     let gate_length = gate_addresses.len() as u64;

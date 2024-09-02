@@ -2,10 +2,13 @@ use super::mock::{
     proper_initialization, query_current_ado_path, query_cycle_start_time, query_gate_addresses,
     query_time_interval, update_cycle_start_time, update_gate_addresses, update_time_interval,
 };
-use andromeda_modules::time_gate::CycleStartTime;
-use andromeda_std::amp::AndrAddr;
 use andromeda_std::error::ContractError;
-use cosmwasm_std::testing::mock_env;
+use andromeda_std::{
+    amp::AndrAddr,
+    common::{expiration::Expiry, Milliseconds},
+};
+use cosmwasm_std::{testing::mock_env, BlockInfo, Timestamp};
+use cw_utils::Expiration;
 
 #[test]
 fn test_instantiation() {
@@ -15,14 +18,7 @@ fn test_instantiation() {
             AndrAddr::from_string("mock_ado_2".to_string()),
             AndrAddr::from_string("mock_ado_3".to_string()),
         ],
-        CycleStartTime {
-            year: 2022,
-            month: 2,
-            day: 28,
-            hour: 0,
-            minute: 0,
-            second: 0,
-        },
+        Some(Expiry::FromNow(Milliseconds(5000000000))),
         None,
     );
 
@@ -39,14 +35,10 @@ fn test_instantiation() {
     let res = query_cycle_start_time(deps.as_ref()).unwrap();
     assert_eq!(
         res,
-        CycleStartTime {
-            year: 2022,
-            month: 2,
-            day: 28,
-            hour: 0,
-            minute: 0,
-            second: 0,
-        }
+        (
+            Expiration::AtTime(Timestamp::from_nanos(5000100000000000)),
+            Milliseconds::from_seconds(5000100)
+        )
     );
 
     let res = query_time_interval(deps.as_ref()).unwrap();
@@ -61,27 +53,13 @@ fn test_update_cycle_start_time() {
             AndrAddr::from_string("mock_ado_2".to_string()),
             AndrAddr::from_string("mock_ado_3".to_string()),
         ],
-        CycleStartTime {
-            year: 2022,
-            month: 2,
-            day: 28,
-            hour: 0,
-            minute: 0,
-            second: 0,
-        },
+        Some(Expiry::FromNow(Milliseconds(5000000000))),
         None,
     );
 
     let err_res = update_cycle_start_time(
         deps.as_mut(),
-        CycleStartTime {
-            year: 2022,
-            month: 2,
-            day: 28,
-            hour: 0,
-            minute: 0,
-            second: 0,
-        },
+        Some(Expiry::FromNow(Milliseconds(5000000000))),
         info.sender.as_ref(),
     )
     .unwrap_err();
@@ -95,14 +73,7 @@ fn test_update_cycle_start_time() {
 
     update_cycle_start_time(
         deps.as_mut(),
-        CycleStartTime {
-            year: 2023,
-            month: 1,
-            day: 1,
-            hour: 0,
-            minute: 0,
-            second: 0,
-        },
+        Some(Expiry::FromNow(Milliseconds(4000000000))),
         info.sender.as_ref(),
     )
     .unwrap();
@@ -110,14 +81,10 @@ fn test_update_cycle_start_time() {
     let res = query_cycle_start_time(deps.as_ref()).unwrap();
     assert_eq!(
         res,
-        CycleStartTime {
-            year: 2023,
-            month: 1,
-            day: 1,
-            hour: 0,
-            minute: 0,
-            second: 0,
-        }
+        (
+            Expiration::AtTime(Timestamp::from_nanos(4000100000000000)),
+            Milliseconds::from_seconds(4000100)
+        )
     );
 
     update_time_interval(deps.as_mut(), 7200, info.sender.as_ref()).unwrap();
@@ -134,14 +101,7 @@ fn test_update_gate_addresses() {
             AndrAddr::from_string("mock_ado_2".to_string()),
             AndrAddr::from_string("mock_ado_3".to_string()),
         ],
-        CycleStartTime {
-            year: 2024,
-            month: 1,
-            day: 1,
-            hour: 0,
-            minute: 0,
-            second: 0,
-        },
+        Some(Expiry::FromNow(Milliseconds(5000000000))),
         None,
     );
 
@@ -195,18 +155,17 @@ fn test_query_current_ado_path_not_started_yet() {
             AndrAddr::from_string("mock_ado_2".to_string()),
             AndrAddr::from_string("mock_ado_3".to_string()),
         ],
-        CycleStartTime {
-            year: 2024,
-            month: 1,
-            day: 1,
-            hour: 0,
-            minute: 0,
-            second: 0,
-        },
+        Some(Expiry::FromNow(Milliseconds(5000000000))),
         None,
     );
 
-    let env = mock_env();
+    let mut env = mock_env();
+    env.block = BlockInfo {
+        height: 100,
+        time: Timestamp::from_nanos(100000000000u64),
+        chain_id: "test-chain".to_string(),
+    };
+
     let res = query_current_ado_path(deps.as_ref(), env).unwrap_err();
     assert_eq!(
         res,
@@ -226,22 +185,22 @@ fn test_query_current_ado_path() {
             AndrAddr::from_string("mock_ado_4".to_string()),
             AndrAddr::from_string("mock_ado_5".to_string()),
         ],
-        CycleStartTime {
-            year: 2019,
-            month: 10,
-            day: 23,
-            hour: 1,
-            minute: 30,
-            second: 0,
-        },
+        Some(Expiry::FromNow(Milliseconds(5000000000))),
         None,
     );
 
     let mut env = mock_env();
+    env.block = BlockInfo {
+        height: 100,
+        time: Timestamp::from_nanos(100000000000u64),
+        chain_id: "test-chain".to_string(),
+    };
+
+    env.block.time = env.block.time.plus_seconds(5000100);
     let res = query_current_ado_path(deps.as_ref(), env.clone()).unwrap();
     assert_eq!(res, "mock_ado_1".to_string());
 
-    env.block.time = env.block.time.plus_seconds(3600);
+    env.block.time = env.block.time.plus_seconds(6000);
     let res = query_current_ado_path(deps.as_ref(), env.clone()).unwrap();
     assert_eq!(res, "mock_ado_2".to_string());
 
