@@ -1,6 +1,6 @@
 use andromeda_modules::curve::{
-    CurveId, CurveRestriction, CurveType, ExecuteMsg, GetConfigurationExpResponse,
-    GetCurveTypeResponse, GetPlotYFromXResponse, GetRestrictionResponse, InstantiateMsg, QueryMsg,
+    CurveConfig, CurveRestriction, ExecuteMsg, GetCurveConfigResponse, GetPlotYFromXResponse,
+    GetRestrictionResponse, InstantiateMsg, QueryMsg,
 };
 use andromeda_std::{
     error::ContractError,
@@ -17,7 +17,7 @@ use crate::contract::{execute, instantiate, query};
 pub type MockDeps = OwnedDeps<MockStorage, MockApi, WasmMockQuerier>;
 
 pub fn proper_initialization(
-    curve_type: CurveType,
+    curve_config: CurveConfig,
     restriction: CurveRestriction,
 ) -> (MockDeps, MessageInfo) {
     let mut deps = mock_dependencies_custom(&[]);
@@ -25,7 +25,7 @@ pub fn proper_initialization(
     let msg = InstantiateMsg {
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
-        curve_type,
+        curve_config,
         restriction,
     };
     let env = mock_env();
@@ -34,12 +34,12 @@ pub fn proper_initialization(
     (deps, info)
 }
 
-pub fn update_curve_type(
+pub fn update_curve_config(
     deps: DepsMut<'_>,
-    curve_type: CurveType,
+    curve_config: CurveConfig,
     sender: &str,
 ) -> Result<Response, ContractError> {
-    let msg = ExecuteMsg::UpdateCurveType { curve_type };
+    let msg = ExecuteMsg::UpdateCurveConfig { curve_config };
     let info = mock_info(sender, &[]);
     execute(deps, mock_env(), info, msg)
 }
@@ -60,24 +60,6 @@ pub fn update_restriction(
     execute(deps, mock_env(), info, msg)
 }
 
-pub fn configure_exponential(
-    deps: DepsMut<'_>,
-    curve_id: CurveId,
-    base_value: u64,
-    multiple_variable_value: Option<u64>,
-    constant_value: Option<u64>,
-    sender: &str,
-) -> Result<Response, ContractError> {
-    let msg = ExecuteMsg::ConfigureExponential {
-        curve_id,
-        base_value,
-        multiple_variable_value,
-        constant_value,
-    };
-    let info = mock_info(sender, &[]);
-    execute(deps, mock_env(), info, msg)
-}
-
 pub fn query_restriction(deps: Deps) -> Result<GetRestrictionResponse, ContractError> {
     let res = query(deps, mock_env(), QueryMsg::GetRestriction {});
     match res {
@@ -86,16 +68,8 @@ pub fn query_restriction(deps: Deps) -> Result<GetRestrictionResponse, ContractE
     }
 }
 
-pub fn query_curve_type(deps: Deps) -> Result<GetCurveTypeResponse, ContractError> {
-    let res = query(deps, mock_env(), QueryMsg::GetCurveType {});
-    match res {
-        Ok(res) => Ok(from_json(res).unwrap()),
-        Err(err) => Err(err),
-    }
-}
-
-pub fn query_configuration_exp(deps: Deps) -> Result<GetConfigurationExpResponse, ContractError> {
-    let res = query(deps, mock_env(), QueryMsg::GetConfigurationExp {});
+pub fn query_curve_config(deps: Deps) -> Result<GetCurveConfigResponse, ContractError> {
+    let res = query(deps, mock_env(), QueryMsg::GetCurveConfig {});
     match res {
         Ok(res) => Ok(from_json(res).unwrap()),
         Err(err) => Err(err),

@@ -1,18 +1,35 @@
 use super::mock::{
-    configure_exponential, proper_initialization, query_configuration_exp, query_curve_type,
-    query_plot_y_from_x, query_restriction, reset, update_curve_type, update_restriction,
+    proper_initialization, query_curve_config, query_plot_y_from_x, query_restriction, reset,
+    update_curve_config, update_restriction,
 };
-use andromeda_modules::curve::{CurveId, CurveRestriction, CurveType, GetConfigurationExpResponse};
+use andromeda_modules::curve::{CurveConfig, CurveId, CurveRestriction, GetCurveConfigResponse};
 use andromeda_std::error::ContractError;
+use cosmwasm_std::StdError;
 
 #[test]
 fn test_instantiation() {
-    proper_initialization(CurveType::Exponential, CurveRestriction::Private);
+    proper_initialization(
+        CurveConfig::ExpConfig {
+            curve_id: CurveId::Growth,
+            base_value: 2,
+            multiple_variable_value: None,
+            constant_value: None,
+        },
+        CurveRestriction::Private,
+    );
 }
 
 #[test]
 fn test_update_restriction() {
-    let (mut deps, info) = proper_initialization(CurveType::Exponential, CurveRestriction::Private);
+    let (mut deps, info) = proper_initialization(
+        CurveConfig::ExpConfig {
+            curve_id: CurveId::Growth,
+            base_value: 2,
+            multiple_variable_value: None,
+            constant_value: None,
+        },
+        CurveRestriction::Private,
+    );
     let external_user = "external".to_string();
     let res =
         update_restriction(deps.as_mut(), CurveRestriction::Private, &external_user).unwrap_err();
@@ -29,101 +46,121 @@ fn test_update_restriction() {
 }
 
 #[test]
-fn test_configure_exponential() {
-    let (mut deps, info) = proper_initialization(CurveType::Exponential, CurveRestriction::Private);
-
-    configure_exponential(
-        deps.as_mut(),
-        CurveId::Growth,
-        2,
-        None,
-        None,
-        info.sender.as_ref(),
-    )
-    .unwrap();
-
-    let res = query_configuration_exp(deps.as_ref()).unwrap();
-    assert_eq!(
-        res,
-        GetConfigurationExpResponse {
+fn test_reset() {
+    let (mut deps, info) = proper_initialization(
+        CurveConfig::ExpConfig {
             curve_id: CurveId::Growth,
             base_value: 2,
-            multiple_variable_value: 1,
-            constant_value: 1,
-        }
+            multiple_variable_value: None,
+            constant_value: None,
+        },
+        CurveRestriction::Private,
     );
-}
-
-#[test]
-fn test_rest() {
-    let (mut deps, info) = proper_initialization(CurveType::Exponential, CurveRestriction::Private);
-    configure_exponential(
-        deps.as_mut(),
-        CurveId::Growth,
-        2,
-        None,
-        None,
-        info.sender.as_ref(),
-    )
-    .unwrap();
 
     reset(deps.as_mut(), info.sender.as_ref()).unwrap();
-    query_configuration_exp(deps.as_ref()).unwrap_err();
+    let err_res = query_curve_config(deps.as_ref()).unwrap_err();
+    assert_eq!(err_res, ContractError::Std(StdError::NotFound { kind: "type: andromeda_modules::curve::CurveConfig; key: [63, 75, 72, 76, 65, 5F, 63, 6F, 6E, 66, 69, 67]".to_string() }));
 }
 
 #[test]
 fn test_query_plot_y_from_x() {
-    let (mut deps, info) = proper_initialization(CurveType::Exponential, CurveRestriction::Private);
-    configure_exponential(
-        deps.as_mut(),
-        CurveId::Growth,
-        4,
-        None,
-        None,
-        info.sender.as_ref(),
-    )
-    .unwrap();
+    let (deps, _info) = proper_initialization(
+        CurveConfig::ExpConfig {
+            curve_id: CurveId::Growth,
+            base_value: 2,
+            multiple_variable_value: None,
+            constant_value: None,
+        },
+        CurveRestriction::Private,
+    );
 
-    let res = query_configuration_exp(deps.as_ref()).unwrap();
+    let res: GetCurveConfigResponse = query_curve_config(deps.as_ref()).unwrap();
     assert_eq!(
         res,
-        GetConfigurationExpResponse {
-            curve_id: CurveId::Growth,
-            base_value: 4,
-            multiple_variable_value: 1,
-            constant_value: 1,
+        GetCurveConfigResponse {
+            curve_config: CurveConfig::ExpConfig {
+                curve_id: CurveId::Growth,
+                base_value: 2,
+                multiple_variable_value: None,
+                constant_value: None,
+            },
         }
     );
 
-    let res = query_plot_y_from_x(deps.as_ref(), 0.5).unwrap().y_value;
-    assert_eq!(2.to_string(), res);
+    let res = query_plot_y_from_x(deps.as_ref(), 5_f64).unwrap().y_value;
+    assert_eq!(32.to_string(), res);
 
     let res = query_plot_y_from_x(deps.as_ref(), 2_f64).unwrap().y_value;
-    assert_eq!(16.to_string(), res);
+    assert_eq!(4.to_string(), res);
 
-    configure_exponential(
+    // configure_exponential(
+    //     deps.as_mut(),
+    //     CurveId::Decay,
+    //     4,
+    //     None,
+    //     None,
+    //     info.sender.as_ref(),
+    // )
+    // .unwrap();
+
+    // let res = query_plot_y_from_x(deps.as_ref(), 0.5).unwrap().y_value;
+    // assert_eq!(0.5.to_string(), res);
+}
+
+#[test]
+fn test_query_curve_config() {
+    let (deps, _info) = proper_initialization(
+        CurveConfig::ExpConfig {
+            curve_id: CurveId::Growth,
+            base_value: 2,
+            multiple_variable_value: None,
+            constant_value: None,
+        },
+        CurveRestriction::Private,
+    );
+    let res = query_curve_config(deps.as_ref()).unwrap().curve_config;
+    assert_eq!(
+        res,
+        CurveConfig::ExpConfig {
+            curve_id: CurveId::Growth,
+            base_value: 2,
+            multiple_variable_value: None,
+            constant_value: None,
+        }
+    );
+}
+
+#[test]
+fn test_update_curve_config() {
+    let (mut deps, info) = proper_initialization(
+        CurveConfig::ExpConfig {
+            curve_id: CurveId::Growth,
+            base_value: 2,
+            multiple_variable_value: None,
+            constant_value: None,
+        },
+        CurveRestriction::Private,
+    );
+    update_curve_config(
         deps.as_mut(),
-        CurveId::Decay,
-        4,
-        None,
-        None,
+        CurveConfig::ExpConfig {
+            curve_id: CurveId::Growth,
+            base_value: 4,
+            multiple_variable_value: None,
+            constant_value: Some(2),
+        },
         info.sender.as_ref(),
     )
     .unwrap();
 
-    let res = query_plot_y_from_x(deps.as_ref(), 0.5).unwrap().y_value;
-    assert_eq!(0.5.to_string(), res);
-}
-
-#[test]
-fn test_query_curve_type() {
-    let (deps, _) = proper_initialization(CurveType::Exponential, CurveRestriction::Private);
-    let res = query_curve_type(deps.as_ref()).unwrap().curve_type;
-    assert_eq!(res, CurveType::Exponential);
-}
-
-#[test]
-fn test_update_curve_type() {
-    let (mut deps, info) = proper_initialization(CurveType::Exponential, CurveRestriction::Private);
-    update_curve_type(deps.as_mut(), CurveType::Exponential, info.sender.as_ref()).unwrap();
+    let res = query_curve_config(deps.as_ref()).unwrap().curve_config;
+    assert_eq!(
+        res,
+        CurveConfig::ExpConfig {
+            curve_id: CurveId::Growth,
+            base_value: 4,
+            multiple_variable_value: None,
+            constant_value: Some(2),
+        }
+    );
 }

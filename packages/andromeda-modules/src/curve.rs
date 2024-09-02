@@ -4,45 +4,8 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 #[andr_instantiate]
 #[cw_serde]
 pub struct InstantiateMsg {
-    pub curve_type: CurveType,
+    pub curve_config: CurveConfig,
     pub restriction: CurveRestriction,
-}
-
-#[andr_exec]
-#[cw_serde]
-pub enum ExecuteMsg {
-    UpdateCurveType {
-        curve_type: CurveType,
-    },
-    UpdateRestriction {
-        restriction: CurveRestriction,
-    },
-    ConfigureExponential {
-        curve_id: CurveId,
-        base_value: u64,
-        multiple_variable_value: Option<u64>,
-        constant_value: Option<u64>,
-    },
-    Reset {},
-}
-
-#[andr_query]
-#[cw_serde]
-#[derive(QueryResponses)]
-pub enum QueryMsg {
-    #[returns(GetCurveTypeResponse)]
-    GetCurveType {},
-    #[returns(GetConfigurationExpResponse)]
-    GetConfigurationExp {},
-    #[returns(GetRestrictionResponse)]
-    GetRestriction {},
-    #[returns(GetPlotYFromXResponse)]
-    GetPlotYFromX { x_value: f64 },
-}
-
-#[cw_serde]
-pub enum CurveType {
-    Exponential,
 }
 
 #[cw_serde]
@@ -58,16 +21,38 @@ pub enum CurveId {
 }
 
 #[cw_serde]
-pub struct GetCurveTypeResponse {
-    pub curve_type: CurveType,
+pub enum CurveConfig {
+    ExpConfig {
+        curve_id: CurveId,
+        base_value: u64,
+        multiple_variable_value: Option<u64>,
+        constant_value: Option<u64>,
+    },
+}
+
+#[andr_exec]
+#[cw_serde]
+pub enum ExecuteMsg {
+    UpdateCurveConfig { curve_config: CurveConfig },
+    UpdateRestriction { restriction: CurveRestriction },
+    Reset {},
+}
+
+#[andr_query]
+#[cw_serde]
+#[derive(QueryResponses)]
+pub enum QueryMsg {
+    #[returns(GetCurveConfigResponse)]
+    GetCurveConfig {},
+    #[returns(GetRestrictionResponse)]
+    GetRestriction {},
+    #[returns(GetPlotYFromXResponse)]
+    GetPlotYFromX { x_value: f64 },
 }
 
 #[cw_serde]
-pub struct GetConfigurationExpResponse {
-    pub curve_id: CurveId,
-    pub base_value: u64,
-    pub multiple_variable_value: u64,
-    pub constant_value: u64,
+pub struct GetCurveConfigResponse {
+    pub curve_config: CurveConfig,
 }
 
 #[cw_serde]

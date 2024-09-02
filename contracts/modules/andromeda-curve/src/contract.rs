@@ -1,11 +1,10 @@
 #[cfg(not(feature = "library"))]
 use crate::state::{
-    BASE_VALUE, CONSTANT_VALUE, CURVE_ID, CURVE_TYPE, DEFAULT_CONSTANT_VALUE,
-    DEFAULT_MULTIPLE_VARIABLE_VALUE, IS_CONFIGURED_EXP, MULTIPLE_VARIABLE_VALUE, RESTRICTION,
+    CURVE_CONFIG, DEFAULT_CONSTANT_VALUE, DEFAULT_MULTIPLE_VARIABLE_VALUE, RESTRICTION,
 };
 use andromeda_modules::curve::{
-    CurveId, CurveRestriction, CurveType, ExecuteMsg, GetConfigurationExpResponse,
-    GetCurveTypeResponse, GetPlotYFromXResponse, GetRestrictionResponse, InstantiateMsg, QueryMsg,
+    CurveConfig, CurveId, CurveRestriction, ExecuteMsg, GetCurveConfigResponse,
+    GetPlotYFromXResponse, GetRestrictionResponse, InstantiateMsg, QueryMsg,
 };
 use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
@@ -43,9 +42,7 @@ pub fn instantiate(
         },
     )?;
     RESTRICTION.save(deps.storage, &msg.restriction)?;
-    CURVE_TYPE.save(deps.storage, &msg.curve_type)?;
-
-    IS_CONFIGURED_EXP.save(deps.storage, &false)?;
+    CURVE_CONFIG.save(deps.storage, &msg.curve_config)?;
 
     Ok(resp)
 }
@@ -78,25 +75,25 @@ fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
     )?;
 
     let res = match msg.clone() {
-        ExecuteMsg::UpdateCurveType { curve_type } => {
-            execute_update_curve_type(ctx, curve_type, action)
+        ExecuteMsg::UpdateCurveConfig { curve_config } => {
+            execute_update_curve_config(ctx, curve_config, action)
         }
         ExecuteMsg::UpdateRestriction { restriction } => {
             execute_update_restriction(ctx, restriction, action)
         }
-        ExecuteMsg::ConfigureExponential {
-            curve_id,
-            base_value,
-            multiple_variable_value,
-            constant_value,
-        } => execute_configure_exponential(
-            ctx,
-            curve_id,
-            base_value,
-            multiple_variable_value,
-            constant_value,
-            action,
-        ),
+        // ExecuteMsg::ConfigureExponential {
+        //     curve_id,
+        //     base_value,
+        //     multiple_variable_value,
+        //     constant_value,
+        // } => execute_configure_exponential(
+        //     ctx,
+        //     curve_id,
+        //     base_value,
+        //     multiple_variable_value,
+        //     constant_value,
+        //     action,
+        // ),
         ExecuteMsg::Reset {} => execute_reset(ctx, action),
         _ => ADOContract::default().execute(ctx, msg),
     }?;
@@ -107,9 +104,9 @@ fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
         .add_events(action_response.events))
 }
 
-pub fn execute_update_curve_type(
+pub fn execute_update_curve_config(
     ctx: ExecuteContext,
-    curve_type: CurveType,
+    curve_config: CurveConfig,
     action: String,
 ) -> Result<Response, ContractError> {
     let sender = ctx.info.sender.clone();
@@ -117,13 +114,9 @@ pub fn execute_update_curve_type(
         has_permission(ctx.deps.storage, &sender)?,
         ContractError::Unauthorized {}
     );
-    CURVE_TYPE.save(ctx.deps.storage, &curve_type)?;
-
-    CURVE_ID.remove(ctx.deps.storage);
-    BASE_VALUE.remove(ctx.deps.storage);
-    MULTIPLE_VARIABLE_VALUE.remove(ctx.deps.storage);
-    CONSTANT_VALUE.remove(ctx.deps.storage);
-    IS_CONFIGURED_EXP.save(ctx.deps.storage, &false)?;
+    CURVE_CONFIG.update(ctx.deps.storage, |_| {
+        Ok::<CurveConfig, ContractError>(curve_config)
+    })?;
 
     Ok(Response::new()
         .add_attribute("action", action)
@@ -147,41 +140,41 @@ pub fn execute_update_restriction(
         .add_attribute("sender", sender))
 }
 
-pub fn execute_configure_exponential(
-    ctx: ExecuteContext,
-    curve_id: CurveId,
-    base_value: u64,
-    multiple_variable_value: Option<u64>,
-    constant_value: Option<u64>,
-    action: String,
-) -> Result<Response, ContractError> {
-    let sender = ctx.info.sender.clone();
-    ensure!(
-        has_permission(ctx.deps.storage, &sender)?,
-        ContractError::Unauthorized {}
-    );
+// pub fn execute_configure_exponential(
+//     ctx: ExecuteContext,
+//     curve_id: CurveId,
+//     base_value: u64,
+//     multiple_variable_value: Option<u64>,
+//     constant_value: Option<u64>,
+//     action: String,
+// ) -> Result<Response, ContractError> {
+//     let sender = ctx.info.sender.clone();
+//     ensure!(
+//         has_permission(ctx.deps.storage, &sender)?,
+//         ContractError::Unauthorized {}
+//     );
 
-    CURVE_ID.save(ctx.deps.storage, &curve_id)?;
-    BASE_VALUE.save(ctx.deps.storage, &base_value)?;
+//     CURVE_ID.save(ctx.deps.storage, &curve_id)?;
+//     BASE_VALUE.save(ctx.deps.storage, &base_value)?;
 
-    if let Some(value) = multiple_variable_value {
-        MULTIPLE_VARIABLE_VALUE.save(ctx.deps.storage, &value)?;
-    } else {
-        MULTIPLE_VARIABLE_VALUE.save(ctx.deps.storage, &DEFAULT_MULTIPLE_VARIABLE_VALUE)?;
-    }
+//     if let Some(value) = multiple_variable_value {
+//         MULTIPLE_VARIABLE_VALUE.save(ctx.deps.storage, &value)?;
+//     } else {
+//         MULTIPLE_VARIABLE_VALUE.save(ctx.deps.storage, &DEFAULT_MULTIPLE_VARIABLE_VALUE)?;
+//     }
 
-    if let Some(value) = constant_value {
-        CONSTANT_VALUE.save(ctx.deps.storage, &value)?;
-    } else {
-        CONSTANT_VALUE.save(ctx.deps.storage, &DEFAULT_CONSTANT_VALUE)?;
-    }
+//     if let Some(value) = constant_value {
+//         CONSTANT_VALUE.save(ctx.deps.storage, &value)?;
+//     } else {
+//         CONSTANT_VALUE.save(ctx.deps.storage, &DEFAULT_CONSTANT_VALUE)?;
+//     }
 
-    IS_CONFIGURED_EXP.save(ctx.deps.storage, &true)?;
+//     IS_CONFIGURED_EXP.save(ctx.deps.storage, &true)?;
 
-    Ok(Response::new()
-        .add_attribute("action", action)
-        .add_attribute("sender", sender))
-}
+//     Ok(Response::new()
+//         .add_attribute("action", action)
+//         .add_attribute("sender", sender))
+// }
 
 pub fn execute_reset(ctx: ExecuteContext, action: String) -> Result<Response, ContractError> {
     let sender = ctx.info.sender.clone();
@@ -190,14 +183,16 @@ pub fn execute_reset(ctx: ExecuteContext, action: String) -> Result<Response, Co
         ContractError::Unauthorized {}
     );
 
-    let is_configured_exp: bool = IS_CONFIGURED_EXP.load(ctx.deps.storage)?;
-    ensure!(is_configured_exp, ContractError::UnmetCondition {});
+    CURVE_CONFIG.remove(ctx.deps.storage);
 
-    CURVE_ID.remove(ctx.deps.storage);
-    BASE_VALUE.remove(ctx.deps.storage);
-    MULTIPLE_VARIABLE_VALUE.remove(ctx.deps.storage);
-    CONSTANT_VALUE.remove(ctx.deps.storage);
-    IS_CONFIGURED_EXP.save(ctx.deps.storage, &false)?;
+    // let is_configured_exp: bool = IS_CONFIGURED_EXP.load(ctx.deps.storage)?;
+    // ensure!(is_configured_exp, ContractError::UnmetCondition {});
+
+    // CURVE_ID.remove(ctx.deps.storage);
+    // BASE_VALUE.remove(ctx.deps.storage);
+    // MULTIPLE_VARIABLE_VALUE.remove(ctx.deps.storage);
+    // CONSTANT_VALUE.remove(ctx.deps.storage);
+    // IS_CONFIGURED_EXP.save(ctx.deps.storage, &false)?;
 
     Ok(Response::new().add_attribute("action", action))
 }
@@ -214,8 +209,8 @@ pub fn has_permission(storage: &dyn Storage, addr: &Addr) -> Result<bool, Contra
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
-        QueryMsg::GetCurveType {} => encode_binary(&query_curve_type(deps.storage)?),
-        QueryMsg::GetConfigurationExp {} => encode_binary(&query_configuration_exp(deps.storage)?),
+        QueryMsg::GetCurveConfig {} => encode_binary(&query_curve_config(deps.storage)?),
+        // QueryMsg::GetConfigurationExp {} => encode_binary(&query_configuration_exp(deps.storage)?),
         QueryMsg::GetRestriction {} => encode_binary(&query_restriction(deps.storage)?),
         QueryMsg::GetPlotYFromX { x_value } => {
             encode_binary(&query_plot_y_from_x(deps.storage, x_value)?)
@@ -224,28 +219,28 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
     }
 }
 
-pub fn query_curve_type(storage: &dyn Storage) -> Result<GetCurveTypeResponse, ContractError> {
-    let curve_type = CURVE_TYPE.load(storage)?;
-    Ok(GetCurveTypeResponse { curve_type })
+pub fn query_curve_config(storage: &dyn Storage) -> Result<GetCurveConfigResponse, ContractError> {
+    let curve_config = CURVE_CONFIG.load(storage)?;
+    Ok(GetCurveConfigResponse { curve_config })
 }
 
-pub fn query_configuration_exp(
-    storage: &dyn Storage,
-) -> Result<GetConfigurationExpResponse, ContractError> {
-    let is_configured_exp: bool = IS_CONFIGURED_EXP.load(storage)?;
-    ensure!(is_configured_exp, ContractError::UnmetCondition {});
+// pub fn query_configuration_exp(
+//     storage: &dyn Storage,
+// ) -> Result<GetConfigurationExpResponse, ContractError> {
+//     let is_configured_exp: bool = IS_CONFIGURED_EXP.load(storage)?;
+//     ensure!(is_configured_exp, ContractError::UnmetCondition {});
 
-    let curve_id = CURVE_ID.load(storage)?;
-    let base_value = BASE_VALUE.load(storage)?;
-    let constant_value = CONSTANT_VALUE.load(storage)?;
-    let multiple_variable_value = MULTIPLE_VARIABLE_VALUE.load(storage)?;
-    Ok(GetConfigurationExpResponse {
-        curve_id,
-        base_value,
-        multiple_variable_value,
-        constant_value,
-    })
-}
+//     let curve_id = CURVE_ID.load(storage)?;
+//     let base_value = BASE_VALUE.load(storage)?;
+//     let constant_value = CONSTANT_VALUE.load(storage)?;
+//     let multiple_variable_value = MULTIPLE_VARIABLE_VALUE.load(storage)?;
+//     Ok(GetConfigurationExpResponse {
+//         curve_id,
+//         base_value,
+//         multiple_variable_value,
+//         constant_value,
+//     })
+// }
 
 pub fn query_restriction(storage: &dyn Storage) -> Result<GetRestrictionResponse, ContractError> {
     let restriction = RESTRICTION.load(storage)?;
@@ -256,20 +251,44 @@ pub fn query_plot_y_from_x(
     storage: &dyn Storage,
     x_value: f64,
 ) -> Result<GetPlotYFromXResponse, ContractError> {
-    let is_configured_exp: bool = IS_CONFIGURED_EXP.load(storage)?;
-    ensure!(is_configured_exp, ContractError::UnmetCondition {});
+    // let is_configured_exp: bool = IS_CONFIGURED_EXP.load(storage)?;
+    // ensure!(is_configured_exp, ContractError::UnmetCondition {});
 
-    let curve_id = match CURVE_ID.load(storage)? {
-        CurveId::Growth => 1_f64,
-        CurveId::Decay => -1_f64,
+    let curve_config = CURVE_CONFIG.load(storage)?;
+
+    let y_value = match curve_config {
+        CurveConfig::ExpConfig {
+            curve_id,
+            base_value,
+            multiple_variable_value,
+            constant_value,
+        } => {
+            let curve_id_f64 = match curve_id {
+                CurveId::Growth => 1_f64,
+                CurveId::Decay => -1_f64,
+            };
+            let base_value_f64 = base_value as f64;
+            let constant_value_f64 = constant_value.unwrap_or(DEFAULT_CONSTANT_VALUE) as f64;
+            let multiple_variable_value_f64 =
+                multiple_variable_value.unwrap_or(DEFAULT_MULTIPLE_VARIABLE_VALUE) as f64;
+
+            (constant_value_f64
+                * base_value_f64.powf(curve_id_f64 * multiple_variable_value_f64 * x_value))
+            .to_string()
+        }
     };
 
-    let base_value = BASE_VALUE.load(storage)? as f64;
-    let constant_value = CONSTANT_VALUE.load(storage)? as f64;
-    let multiple_variable_value = MULTIPLE_VARIABLE_VALUE.load(storage)? as f64;
+    // let curve_id = match curve_config..load(storage)? {
+    //     CurveId::Growth => 1_f64,
+    //     CurveId::Decay => -1_f64,
+    // };
 
-    let y_value = (constant_value * base_value.powf(curve_id * multiple_variable_value * x_value))
-        .to_string();
+    // let base_value = BASE_VALUE.load(storage)? as f64;
+    // let constant_value = CONSTANT_VALUE.load(storage)? as f64;
+    // let multiple_variable_value = MULTIPLE_VARIABLE_VALUE.load(storage)? as f64;
+
+    // let y_value = (constant_value * base_value.powf(curve_id * multiple_variable_value * x_value))
+    //     .to_string();
 
     Ok(GetPlotYFromXResponse { y_value })
 }
