@@ -7,9 +7,6 @@ pub const ANDR_MINTER: Item<AndrAddr> = Item::new("minter");
 pub const TRANSFER_AGREEMENTS: Map<&str, TransferAgreement> = Map::new("transfer_agreements");
 pub const ARCHIVED: Map<&str, bool> = Map::new("archived_tokens");
 
-pub const MINT_ACTION: &str = "can_mint";
-pub const BATCH_MINT_ACTION: &str = "can_batch_mint";
-
 pub fn is_archived(
     storage: &dyn Storage,
     token_id: &str,

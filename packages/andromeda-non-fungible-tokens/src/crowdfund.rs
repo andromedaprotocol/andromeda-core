@@ -54,13 +54,13 @@ pub enum Cw20HookMsg {
 #[cw_serde]
 pub struct CampaignConfig {
     /// Title of the campaign. Maximum length is 64.
-    pub title: String,
+    pub title: Option<String>,
     /// Short description about the campaign.
-    pub description: String,
+    pub description: Option<String>,
     /// URL for the banner of the campaign
-    pub banner: String,
+    pub banner: Option<String>,
     /// Official website of the campaign
-    pub url: String,
+    pub url: Option<String>,
     /// The address of the tier contract whose tokens are being distributed
     pub token_address: AndrAddr,
     /// The denom of the token that is being accepted by the campaign
@@ -87,7 +87,7 @@ impl CampaignConfig {
 
         // validate meta info
         ensure!(
-            self.title.len() <= 64,
+            self.title.clone().unwrap_or_default().len() <= 64,
             ContractError::InvalidParameter {
                 error: Some("Title length can be 64 at maximum".to_string())
             }
@@ -238,10 +238,10 @@ pub enum QueryMsg {
 #[cw_serde]
 pub struct CampaignSummaryResponse {
     // Campaign configuration
-    pub title: String,
-    pub description: String,
-    pub banner: String,
-    pub url: String,
+    pub title: Option<String>,
+    pub description: Option<String>,
+    pub banner: Option<String>,
+    pub url: Option<String>,
     pub token_address: AndrAddr,
     pub denom: Asset,
     pub withdrawal_recipient: Recipient,
