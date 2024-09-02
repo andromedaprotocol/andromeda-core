@@ -795,10 +795,10 @@ fn mock_campaign_config(
     soft_cap: Option<Uint128>,
 ) -> CampaignConfig {
     CampaignConfig {
-        title: "First Crowdfund".to_string(),
-        description: "Demo campaign for testing".to_string(),
-        banner: "http://<campaign_banner>".to_string(),
-        url: "http://<campaign_url>".to_string(),
+        title: Some("First Crowdfund".to_string()),
+        description: Some("Demo campaign for testing".to_string()),
+        banner: Some("http://<campaign_banner>".to_string()),
+        url: Some("http://<campaign_url>".to_string()),
         denom,
         token_address,
         withdrawal_recipient,
