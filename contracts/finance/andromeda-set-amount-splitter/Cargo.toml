@@ -1,17 +1,8 @@
 [package]
-name = "andromeda-cw721"
-version = "2.0.2"
-authors = ["Connor Barr <crnbarr@gmail.com>"]
+name = "andromeda-set-amount-splitter"
+version = "1.0.0"
 edition = "2021"
 rust-version = "1.75.0"
-
-exclude = [
-  # Those files are rust-optimizer artifacts. You might want to commit them for convenience but they should not be part of the source code publication.
-  "contract.wasm",
-  "hash.txt",
-]
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [lib]
 crate-type = ["cdylib", "rlib"]
@@ -23,17 +14,19 @@ backtraces = ["cosmwasm-std/backtraces"]
 library = []
 testing = ["cw-multi-test", "andromeda-testing"]
 
+
 [dependencies]
 cosmwasm-std = { workspace = true }
 cosmwasm-schema = { workspace = true }
 cw-storage-plus = { workspace = true }
-cw721-base = { workspace = true }
-cw721 = { workspace = true }
+cw-utils = { workspace = true }
 
-
-andromeda-non-fungible-tokens = { workspace = true }
-andromeda-std = { workspace = true, features = ["rates"] }
+andromeda-std = { workspace = true }
+andromeda-finance = { workspace = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 cw-multi-test = { workspace = true, optional = true }
 andromeda-testing = { workspace = true, optional = true }
+
+[dev-dependencies]
+andromeda-app = { workspace = true }

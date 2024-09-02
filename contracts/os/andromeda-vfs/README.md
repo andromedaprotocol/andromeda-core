@@ -1,3 +1,6 @@
-# Andromeda Factory
+# Overview
 
-A repository containing the NFT contract for Andromeda Protocol on Terra. This contract's primary purpose is to initialise and register ADO collections. Registration is done by a mapping between the ADO collection's symbol and the contract address for the given ADO collection. Documentation can be found [here](https://app.gitbook.com/@andromedaprotocol/s/andromeda/contracts/andromeda-factory).
+The Virtual File System (VFS) is a part of the Andromeda Messaging System (AMP) which was heavily inspired by the linux file system. Users can register their address to a username. They can also register ADOs to paths. These paths can then be used and referenced in our ADO systems.
+When an Andromeda App is made, it will register all paths for its child components and also register itself as a child of the instantiating address. Each component under the App is registered by its name, and the App itself is registered under its assigned name.
+
+[VFS Full Documentation](https://docs.andromedaprotocol.io/andromeda/platform-and-framework/andromeda-messaging-protocol/virtual-file-system)
