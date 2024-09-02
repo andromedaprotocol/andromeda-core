@@ -108,6 +108,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "andromeda-boolean"
+version = "2.0.0"
+dependencies = [
+ "andromeda-data-storage",
+ "andromeda-std",
+ "andromeda-testing",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-multi-test",
+ "cw-storage-plus 1.2.0",
+ "cw-utils 1.0.3",
+ "cw20",
+]
+
+[[package]]
 name = "andromeda-conditional-splitter"
 version = "1.1.0"
 dependencies = [
@@ -224,7 +239,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-cw721"
-version = "2.0.1"
+version = "2.0.2"
 dependencies = [
  "andromeda-non-fungible-tokens",
  "andromeda-std",
@@ -932,9 +947,9 @@ dependencies = [
 
 [[package]]
 name = "cw-asset"
-version = "3.1.1"
+version = "3.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c999a12f8cd8736f6f86e9a4ede5905530cb23cfdef946b9da1c506ad1b70799"
+checksum = "64e2cf17accdcafe71859a683b6ed3f18311634a769550aacf4829b50151b221"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
