@@ -16,9 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added Expiry Enum [(#419)](https://github.com/andromedaprotocol/andromeda-core/pull/419)
 - Added Conditional Splitter [(#441)](https://github.com/andromedaprotocol/andromeda-core/pull/441)
 - Validator Staking: Added the option to set an amount while unstaking [(#458)](https://github.com/andromedaprotocol/andromeda-core/pull/458)
+- Set Amount Splitter [(#507)](https://github.com/andromedaprotocol/andromeda-core/pull/507)
 - Added String Storage ADO [(#512)](https://github.com/andromedaprotocol/andromeda-core/pull/512)
 - Added Counter ADO [(#514)](https://github.com/andromedaprotocol/andromeda-core/pull/514)
-
 
 ### Changed
 
@@ -34,6 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Version Bump [(#488)](https://github.com/andromedaprotocol/andromeda-core/pull/488)
 - Made Some CampaignConfig Fields Optional [(#541)](https://github.com/andromedaprotocol/andromeda-core/pull/541)
 - Permissioning: Allow multiple actors to be set and removed at once [(#548)](https://github.com/andromedaprotocol/andromeda-core/pull/548)
+- Make Action Names in CW721 Conform to Standard  [(#545)](https://github.com/andromedaprotocol/andromeda-core/pull/545)
 
 ### Fixed
 
