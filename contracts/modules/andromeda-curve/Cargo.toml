@@ -20,6 +20,7 @@ cosmwasm-std = { workspace = true }
 cosmwasm-schema = { workspace = true }
 cw-storage-plus = { workspace = true }
 cw-utils = { workspace = true }
+rstest = { workspace = true }
 
 andromeda-std = { workspace = true, features = [] }
 andromeda-modules = { workspace = true }
