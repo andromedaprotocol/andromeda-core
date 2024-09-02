@@ -1,6 +1,6 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError};
+use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response};
 
 use andromeda_modules::date_time::GetDateTimeResponse;
 use andromeda_modules::date_time::{ExecuteMsg, InstantiateMsg, QueryMsg, Timezone};
@@ -90,22 +90,9 @@ pub fn get_date_time(
 ) -> Result<GetDateTimeResponse, ContractError> {
     let timestamp = env.block.time.seconds() as i64;
     let timezone_i64 = timezone.unwrap_or(Timezone::Utc) as i64;
-    let offset = match timezone_i64.checked_mul(36) {
-        Some(offset) => offset,
-        None => return Err(ContractError::Std(StdError::generic_err("Overflow error"))),
-    };
-    let local_timestamp = match timestamp.checked_add(offset) {
-        Some(local_timestamp) => local_timestamp,
-        None => return Err(ContractError::Std(StdError::generic_err("Overflow error"))),
-    };
-    let local_datetime = match DateTime::from_timestamp(local_timestamp, 0) {
-        Some(local_datetime) => local_datetime,
-        None => {
-            return Err(ContractError::Std(StdError::generic_err(
-                "Timestamp conversion error",
-            )))
-        }
-    };
+    let offset = timezone_i64.checked_mul(36).unwrap();
+    let local_timestamp = timestamp.checked_add(offset).unwrap();
+    let local_datetime = DateTime::from_timestamp(local_timestamp, 0).unwrap();
 
     let day_of_week = match local_datetime.weekday() {
         Weekday::Mon => "Mon",

@@ -21,7 +21,7 @@ cosmwasm-schema = { workspace = true }
 cw-storage-plus = { workspace = true }
 cw-utils = { workspace = true }
 
-andromeda-std = { workspace = true, features = [] }
+andromeda-std = { workspace = true }
 andromeda-modules = { workspace = true }
 
 chrono = "0.4.38"
