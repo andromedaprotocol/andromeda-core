@@ -105,16 +105,19 @@ impl<'a> ADOContract<'a> {
 
                         // Consume a use for a limited permission
                         if let LocalPermission::Limited { .. } = local_permission {
-                            local_permission.consume_use()?;
-                            permissions().save(
-                                deps.storage,
-                                (action_string.clone() + actor_string.as_str()).as_str(),
-                                &PermissionInfo {
-                                    action: action_string,
-                                    actor: actor_string,
-                                    permission: some_permission,
-                                },
-                            )?;
+                            // Only consume a use if the action is permissioned
+                            if permissioned_action {
+                                local_permission.consume_use()?;
+                                permissions().save(
+                                    deps.storage,
+                                    (action_string.clone() + actor_string.as_str()).as_str(),
+                                    &PermissionInfo {
+                                        action: action_string,
+                                        actor: actor_string,
+                                        permission: some_permission,
+                                    },
+                                )?;
+                            }
                         }
                     }
                     Permission::Contract(contract_address) => {

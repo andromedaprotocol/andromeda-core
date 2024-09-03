@@ -124,15 +124,10 @@ impl LocalPermission {
 
     pub fn consume_use(&mut self) -> Result<(), ContractError> {
         if let Self::Limited { uses, .. } = self {
-            if let Some(remaining_uses) = uses.checked_sub(1) {
-                *uses = remaining_uses;
-                Ok(())
-            } else {
-                Err(ContractError::Underflow {})
-            }
-        } else {
-            Ok(())
+            *uses = uses.saturating_sub(1);
         }
+
+        Ok(())
     }
 }
 
