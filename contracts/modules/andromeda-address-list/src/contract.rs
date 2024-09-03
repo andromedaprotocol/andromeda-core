@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use andromeda_modules::address_list::{ActorPermissionResponse, IncludesActorResponse};
 #[cfg(not(feature = "library"))]
 use andromeda_modules::address_list::{ExecuteMsg, InstantiateMsg, QueryMsg};
@@ -37,14 +39,16 @@ pub fn instantiate(
             !actor_permission.actors.is_empty(),
             ContractError::NoActorsProvided {}
         );
-        for actor in actor_permission.actors {
-            let verified_address: Addr = deps.api.addr_validate(actor.as_str())?;
-            add_actors_permission(
-                deps.storage,
-                vec![verified_address],
-                &actor_permission.permission,
-            )?;
-        }
+
+        let verified_actors: Vec<Addr> = actor_permission
+            .actors
+            .into_iter()
+            .map(|actor| deps.api.addr_validate(actor.as_str()))
+            .collect::<Result<HashSet<_>, _>>()?
+            .into_iter()
+            .collect();
+
+        add_actors_permission(deps.storage, verified_actors, &actor_permission.permission)?;
     }
     let inst_resp = ADOContract::default().instantiate(
         deps.storage,
