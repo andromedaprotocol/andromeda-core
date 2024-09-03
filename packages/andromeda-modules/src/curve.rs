@@ -110,6 +110,6 @@ mod test {
             multiple_variable_value: None,
             constant_value: None,
         };
-        assert!(!curve_config.validate().is_ok());
+        assert!(curve_config.validate().is_err());
     }
 }
