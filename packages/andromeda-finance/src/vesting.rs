@@ -2,7 +2,7 @@ use andromeda_std::{
     amp::Recipient, andr_exec, andr_instantiate, andr_query, common::withdraw::WithdrawalType,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Uint128, VoteOption};
+use cosmwasm_std::Uint128;
 use cw_utils::Duration;
 
 #[andr_instantiate]
@@ -43,30 +43,7 @@ pub enum ExecuteMsg {
         /// Specifies how much is to be released after each `release_unit`. If
         /// it is a percentage, it would be the percentage of the original amount.
         release_amount: WithdrawalType,
-        /// The validator to delegate to. If specified, funds will be delegated to it.
-        validator_to_delegate_to: Option<String>,
     },
-    /// Delegates the given amount of tokens, or all if not specified.
-    Delegate {
-        amount: Option<Uint128>,
-        validator: String,
-    },
-    /// Redelegates the given amount of tokens, or all from the `from` validator to the `to`
-    /// validator.
-    Redelegate {
-        amount: Option<Uint128>,
-        from: String,
-        to: String,
-    },
-    /// Undelegates the given amount of tokens, or all if not specified.
-    Undelegate {
-        amount: Option<Uint128>,
-        validator: String,
-    },
-    /// Withdraws rewards from all delegations to the sender.
-    WithdrawRewards {},
-    /// Votes on the specified proposal with the specified vote.
-    Vote { proposal_id: u64, vote: VoteOption },
 }
 
 #[andr_query]
@@ -95,8 +72,6 @@ pub struct Config {
     pub is_multi_batch_enabled: bool,
     /// The denom of the coin being vested.
     pub denom: String,
-    /// The unbonding duration of the native staking module.
-    pub unbonding_duration: Duration,
 }
 
 #[cw_serde]
