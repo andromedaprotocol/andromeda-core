@@ -77,10 +77,10 @@ fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
     let res = match msg.clone() {
         ExecuteMsg::UpdateCurveConfig { curve_config } => {
             execute_update_curve_config(ctx, curve_config, action)
-        },
+        }
         ExecuteMsg::UpdateRestriction { restriction } => {
             execute_update_restriction(ctx, restriction, action)
-        },
+        }
         ExecuteMsg::Reset {} => execute_reset(ctx, action),
         _ => ADOContract::default().execute(ctx, msg),
     }?;
@@ -174,7 +174,6 @@ pub fn query_plot_y_from_x(
     storage: &dyn Storage,
     x_value: f64,
 ) -> Result<GetPlotYFromXResponse, ContractError> {
-
     let curve_config = CURVE_CONFIG.load(storage)?;
 
     let y_value = match curve_config {

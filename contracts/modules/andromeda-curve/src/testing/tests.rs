@@ -2,9 +2,10 @@ use super::mock::{
     proper_initialization, query_curve_config, query_plot_y_from_x, query_restriction, reset,
     update_curve_config, update_restriction,
 };
-use andromeda_modules::curve::{CurveConfig, CurveId, CurveRestriction, GetCurveConfigResponse};
+use andromeda_modules::curve::{CurveConfig, CurveId, CurveRestriction};
 use andromeda_std::error::ContractError;
 use cosmwasm_std::StdError;
+use test_case::test_case;
 
 #[test]
 fn test_instantiation() {
@@ -63,74 +64,6 @@ fn test_reset() {
 }
 
 #[test]
-fn test_query_plot_y_from_x() {
-    let (deps, _info) = proper_initialization(
-        CurveConfig::ExpConfig {
-            curve_id: CurveId::Growth,
-            base_value: 2,
-            multiple_variable_value: None,
-            constant_value: None,
-        },
-        CurveRestriction::Private,
-    );
-
-    let res: GetCurveConfigResponse = query_curve_config(deps.as_ref()).unwrap();
-    assert_eq!(
-        res,
-        GetCurveConfigResponse {
-            curve_config: CurveConfig::ExpConfig {
-                curve_id: CurveId::Growth,
-                base_value: 2,
-                multiple_variable_value: None,
-                constant_value: None,
-            },
-        }
-    );
-
-    let res = query_plot_y_from_x(deps.as_ref(), 5_f64).unwrap().y_value;
-    assert_eq!(32.to_string(), res);
-
-    let res = query_plot_y_from_x(deps.as_ref(), 2_f64).unwrap().y_value;
-    assert_eq!(4.to_string(), res);
-
-    // configure_exponential(
-    //     deps.as_mut(),
-    //     CurveId::Decay,
-    //     4,
-    //     None,
-    //     None,
-    //     info.sender.as_ref(),
-    // )
-    // .unwrap();
-
-    // let res = query_plot_y_from_x(deps.as_ref(), 0.5).unwrap().y_value;
-    // assert_eq!(0.5.to_string(), res);
-}
-
-#[test]
-fn test_query_curve_config() {
-    let (deps, _info) = proper_initialization(
-        CurveConfig::ExpConfig {
-            curve_id: CurveId::Growth,
-            base_value: 2,
-            multiple_variable_value: None,
-            constant_value: None,
-        },
-        CurveRestriction::Private,
-    );
-    let res = query_curve_config(deps.as_ref()).unwrap().curve_config;
-    assert_eq!(
-        res,
-        CurveConfig::ExpConfig {
-            curve_id: CurveId::Growth,
-            base_value: 2,
-            multiple_variable_value: None,
-            constant_value: None,
-        }
-    );
-}
-
-#[test]
 fn test_update_curve_config() {
     let (mut deps, info) = proper_initialization(
         CurveConfig::ExpConfig {
@@ -163,4 +96,81 @@ fn test_update_curve_config() {
             constant_value: Some(2),
         }
     );
+}
+
+#[test]
+fn test_query_curve_config() {
+    let (deps, _info) = proper_initialization(
+        CurveConfig::ExpConfig {
+            curve_id: CurveId::Growth,
+            base_value: 2,
+            multiple_variable_value: None,
+            constant_value: None,
+        },
+        CurveRestriction::Private,
+    );
+    let res = query_curve_config(deps.as_ref()).unwrap().curve_config;
+    assert_eq!(
+        res,
+        CurveConfig::ExpConfig {
+            curve_id: CurveId::Growth,
+            base_value: 2,
+            multiple_variable_value: None,
+            constant_value: None,
+        }
+    );
+}
+
+#[test_case(2_f64, "4".to_string() ; "exp(2, 2)")]
+#[test_case(3_f64, "8".to_string() ; "exp(2, 3)")]
+#[test_case(4_f64, "16".to_string() ; "exp(2, 4)")]
+fn test_query_plot_y_from_x_base_2_growth(input_x: f64, expected_y: String) {
+    let (deps, _info) = proper_initialization(
+        CurveConfig::ExpConfig {
+            curve_id: CurveId::Growth,
+            base_value: 2,
+            multiple_variable_value: None,
+            constant_value: None,
+        },
+        CurveRestriction::Private,
+    );
+
+    let res = query_plot_y_from_x(deps.as_ref(), input_x).unwrap().y_value;
+    assert_eq!(res, expected_y);
+}
+
+#[test_case(2_f64, "9".to_string() ; "exp(3, 2)")]
+#[test_case(3_f64, "27".to_string() ; "exp(3, 3)")]
+#[test_case(4_f64, "81".to_string() ; "exp(3, 4)")]
+fn test_query_plot_y_from_x_base_3_growth(input_x: f64, expected_y: String) {
+    let (deps, _info) = proper_initialization(
+        CurveConfig::ExpConfig {
+            curve_id: CurveId::Growth,
+            base_value: 3,
+            multiple_variable_value: None,
+            constant_value: None,
+        },
+        CurveRestriction::Private,
+    );
+
+    let res = query_plot_y_from_x(deps.as_ref(), input_x).unwrap().y_value;
+    assert_eq!(res, expected_y);
+}
+
+#[test_case(2_f64, "0.25".to_string() ; "exp(1/2, 2)")]
+#[test_case(3_f64, "0.125".to_string() ; "exp(1/2, 3)")]
+#[test_case(4_f64, "0.0625".to_string() ; "exp(1/2, 4)")]
+fn test_query_plot_y_from_x_base_2_decay(input_x: f64, expected_y: String) {
+    let (deps, _info) = proper_initialization(
+        CurveConfig::ExpConfig {
+            curve_id: CurveId::Decay,
+            base_value: 2,
+            multiple_variable_value: None,
+            constant_value: None,
+        },
+        CurveRestriction::Private,
+    );
+
+    let res = query_plot_y_from_x(deps.as_ref(), input_x).unwrap().y_value;
+    assert_eq!(res, expected_y);
 }
