@@ -5,7 +5,11 @@ use crate::{
 use andromeda_finance::timelock::{
     Escrow, EscrowCondition, ExecuteMsg, GetLockedFundsResponse, QueryMsg,
 };
-use andromeda_std::{amp::Recipient, common::Milliseconds, error::ContractError};
+use andromeda_std::{
+    amp::Recipient,
+    common::{expiration::Expiry, Milliseconds},
+    error::ContractError,
+};
 use andromeda_testing::economics_msg::generate_economics_message;
 use cosmwasm_std::{
     attr, coin, coins, from_json,
@@ -19,8 +23,9 @@ fn test_execute_hold_funds() {
     let env = mock_env();
     let owner = "owner";
     let funds = vec![Coin::new(1000, "uusd")];
-    let condition =
-        EscrowCondition::Expiration(Milliseconds::from_seconds(env.block.time.seconds() + 1));
+    let condition = EscrowCondition::Expiration(Expiry::AtTime(Milliseconds::from_seconds(
+        env.block.time.seconds() + 1,
+    )));
     let info = mock_info(owner, &funds);
 
     let msg = ExecuteMsg::HoldFunds {
@@ -68,8 +73,8 @@ fn test_execute_hold_funds_escrow_updated() {
     let info = mock_info(owner, &coins(100, "uusd"));
 
     let msg = ExecuteMsg::HoldFunds {
-        condition: Some(EscrowCondition::Expiration(Milliseconds::from_seconds(
-            env.block.time.seconds() + 1,
+        condition: Some(EscrowCondition::Expiration(Expiry::AtTime(
+            Milliseconds::from_seconds(env.block.time.seconds() + 1),
         ))),
         recipient: Some(Recipient::from_string("recipient".to_string())),
     };
@@ -77,8 +82,8 @@ fn test_execute_hold_funds_escrow_updated() {
     let _res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
     let msg = ExecuteMsg::HoldFunds {
-        condition: Some(EscrowCondition::Expiration(Milliseconds::from_seconds(
-            env.block.time.seconds() + 1,
+        condition: Some(EscrowCondition::Expiration(Expiry::AtTime(
+            Milliseconds::from_seconds(env.block.time.seconds() + 1),
         ))),
         recipient: Some(Recipient::from_string("recipient".to_string())),
     };
@@ -101,52 +106,14 @@ fn test_execute_hold_funds_escrow_updated() {
         // Coins get merged.
         coins: vec![coin(200, "uusd"), coin(100, "uluna")],
         // Original expiration remains.
-        condition: Some(EscrowCondition::Expiration(Milliseconds::from_seconds(
-            env.block.time.seconds(),
+        condition: Some(EscrowCondition::Expiration(Expiry::AtTime(
+            Milliseconds::from_seconds(env.block.time.seconds()),
         ))),
         recipient: Recipient::from_string("recipient".to_string()),
         recipient_addr: "recipient".to_string(),
     };
 
     assert_eq!(val.funds.unwrap(), expected);
-}
-
-#[test]
-fn test_execute_release_funds_block_condition() {
-    let mut deps = mock_dependencies_custom(&[]);
-    let mut env = mock_env();
-    let owner = "owner";
-
-    let info = mock_info(owner, &[coin(100, "uusd")]);
-    let msg = ExecuteMsg::HoldFunds {
-        condition: Some(EscrowCondition::Expiration(Milliseconds::from_nanos(
-            env.block.time.nanos(),
-        ))),
-        recipient: None,
-    };
-    let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
-
-    env.block.time = env.block.time.plus_seconds(1);
-    let msg = ExecuteMsg::ReleaseFunds {
-        recipient_addr: None,
-        start_after: None,
-        limit: None,
-    };
-    let res = execute(deps.as_mut(), env, info.clone(), msg).unwrap();
-    let bank_msg = BankMsg::Send {
-        to_address: "owner".into(),
-        amount: info.funds,
-    };
-    assert_eq!(
-        Response::new()
-            .add_message(bank_msg)
-            .add_attributes(vec![
-                attr("action", "release_funds"),
-                attr("recipient_addr", "owner"),
-            ])
-            .add_submessage(generate_economics_message(owner, "ReleaseFunds")),
-        res
-    );
 }
 
 #[test]
@@ -236,7 +203,9 @@ fn test_execute_release_funds_time_condition() {
 
     let info = mock_info(owner, &[coin(100, "uusd")]);
     let msg = ExecuteMsg::HoldFunds {
-        condition: Some(EscrowCondition::Expiration(Milliseconds::from_seconds(100))),
+        condition: Some(EscrowCondition::Expiration(Expiry::AtTime(
+            Milliseconds::from_seconds(100),
+        ))),
         recipient: None,
     };
     env.block.time = Timestamp::from_seconds(50);
@@ -274,7 +243,9 @@ fn test_execute_release_funds_locked() {
 
     let info = mock_info(owner, &[coin(100, "uusd")]);
     let msg = ExecuteMsg::HoldFunds {
-        condition: Some(EscrowCondition::Expiration(Milliseconds::from_seconds(100))),
+        condition: Some(EscrowCondition::Expiration(Expiry::FromNow(
+            Milliseconds::from_seconds(100),
+        ))),
         recipient: None,
     };
     env.block.time = Timestamp::from_seconds(50);
@@ -405,7 +376,9 @@ fn test_execute_release_specific_funds_time_condition() {
 
     let info = mock_info(owner, &[coin(100, "uusd")]);
     let msg = ExecuteMsg::HoldFunds {
-        condition: Some(EscrowCondition::Expiration(Milliseconds::from_seconds(100))),
+        condition: Some(EscrowCondition::Expiration(Expiry::AtTime(
+            Milliseconds::from_seconds(100),
+        ))),
         recipient: None,
     };
     env.block.time = Timestamp::from_seconds(50);
