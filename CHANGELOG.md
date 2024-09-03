@@ -28,17 +28,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Merkle Root: stage expiration now uses `Milliseconds`[(#417)](https://github.com/andromedaprotocol/andromeda-core/pull/417)
 - Module Redesign [(#452)](https://github.com/andromedaprotocol/andromeda-core/pull/452)
 - Primitive Improvements [(#476)](https://github.com/andromedaprotocol/andromeda-core/pull/476)
-- Crowdfund Restructure  [(#478)](https://github.com/andromedaprotocol/andromeda-core/pull/478)
+- Crowdfund Restructure [(#478)](https://github.com/andromedaprotocol/andromeda-core/pull/478)
 - Conditional Splitter Internal Audit [(#479)](https://github.com/andromedaprotocol/andromeda-core/pull/479)
 - Merkle Root: Andromeda Asset is used now as a `asset_info`[(#480)](https://github.com/andromedaprotocol/andromeda-core/pull/480)
-- Reference Address List contract for Permission  [(#481)](https://github.com/andromedaprotocol/andromeda-core/pull/481)
+- Reference Address List contract for Permission [(#481)](https://github.com/andromedaprotocol/andromeda-core/pull/481)
 - Crowdfund Internal Audit [(#485)](https://github.com/andromedaprotocol/andromeda-core/pull/485)
 - Auction: Minimum Raise [(#486)](https://github.com/andromedaprotocol/andromeda-core/pull/486)
 - Version Bump [(#488)](https://github.com/andromedaprotocol/andromeda-core/pull/488)
 - Made Some CampaignConfig Fields Optional [(#541)](https://github.com/andromedaprotocol/andromeda-core/pull/541)
 - Permissioning: Allow multiple actors to be set and removed at once [(#548)](https://github.com/andromedaprotocol/andromeda-core/pull/548)
-- Make Action Names in CW721 Conform to Standard  [(#545)](https://github.com/andromedaprotocol/andromeda-core/pull/545)
+- Make Action Names in CW721 Conform to Standard [(#545)](https://github.com/andromedaprotocol/andromeda-core/pull/545)
 - Timelock ADO: Replace MillisecondsExpiration with Expiry [(#550)](https://github.com/andromedaprotocol/andromeda-core/pull/550)
+- Removed staking from vesting contract [(#554)](https://github.com/andromedaprotocol/andromeda-core/pull/554)
 
 ### Fixed
 
