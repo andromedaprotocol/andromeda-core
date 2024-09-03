@@ -174,6 +174,7 @@ impl<'a> ADOContract<'a> {
 
                         // Consume a use for a limited permission
                         if let LocalPermission::Limited { .. } = local_permission {
+                            // Always consume a use due to strict setting
                             local_permission.consume_use()?;
                             permissions().save(
                                 deps.storage,
@@ -590,8 +591,17 @@ mod tests {
         let res = contract.is_permissioned(deps.as_mut(), env.clone(), action, actor);
         assert!(res.is_err());
 
+        ADOContract::default().disable_action_permission(action, deps.as_mut().storage);
+
+        // Ensure limited use does not interfere with non-permissioned action
+        let res = contract.is_permissioned(deps.as_mut(), env.clone(), action, actor);
+        assert!(res.is_ok());
+
         ADOContract::remove_permission(deps.as_mut().storage, action, actor).unwrap();
 
+        ADOContract::default()
+            .permission_action(action, deps.as_mut().storage)
+            .unwrap();
         // Test Blacklisted
         let permission = Permission::Local(LocalPermission::Blacklisted(None));
         ADOContract::set_permission(deps.as_mut().storage, action, actor, permission).unwrap();
