@@ -6,7 +6,8 @@ use andromeda_std::{
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    ensure, Binary, Coin, Deps, DepsMut, Env, MessageInfo, QuerierWrapper, Response, Uint128,
+    ensure, Binary, Coin, Decimal, Deps, DepsMut, Env, MessageInfo, QuerierWrapper, Response,
+    Uint128,
 };
 use cw_asset::AssetInfo;
 use cw_utils::nonpayable;
@@ -133,6 +134,10 @@ fn execute_create_batch(
 
     ensure!(
         release_unit > 0 && !release_amount.is_zero(),
+        ContractError::InvalidZeroAmount {}
+    );
+    ensure!(
+        !release_amount.get_amount(funds.amount)?.is_zero(),
         ContractError::InvalidZeroAmount {}
     );
 
@@ -306,8 +311,6 @@ fn claim_batch(
         batch.lockup_end <= current_time,
         ContractError::FundsAreLocked {}
     );
-    let amount_per_claim = batch.release_amount.get_amount(batch.amount)?;
-
     let total_amount = AssetInfo::native(config.denom.to_owned())
         .query_balance(querier, env.contract.address.to_owned())?;
 
@@ -319,7 +322,11 @@ fn claim_batch(
         num_available_claims,
     );
 
-    let amount_to_send = amount_per_claim.checked_mul(Uint128::from(number_of_claims))?;
+    let amount_per_claim = batch.release_amount.get_amount(batch.amount)?;
+
+    let amount_to_send = amount_per_claim
+        .checked_mul(Decimal::from_ratio(number_of_claims, Uint128::one()))?
+        .to_uint_floor();
     let amount_available = cmp::min(batch.amount - batch.amount_claimed, total_amount);
 
     let amount_to_send = cmp::min(amount_to_send, amount_available);
@@ -410,7 +417,10 @@ fn get_batch_response(
         Uint128::zero()
     };
     let amount_per_release = batch.release_amount.get_amount(batch.amount)?;
-    let number_of_available_claims = amount_available_to_claim / amount_per_release;
+    let number_of_available_claims = Decimal::from_ratio(amount_available_to_claim, Uint128::one())
+        .checked_div(amount_per_release)
+        .unwrap()
+        .to_uint_floor();
     let res = BatchResponse {
         id: batch_id,
         amount: batch.amount,
