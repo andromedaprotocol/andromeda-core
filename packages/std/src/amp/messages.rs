@@ -2,7 +2,7 @@ use crate::ado_contract::ADOContract;
 use crate::common::encode_binary;
 use crate::error::ContractError;
 use crate::os::aos_querier::AOSQuerier;
-use crate::os::{kernel::ExecuteMsg as KernelExecuteMsg, kernel::QueryMsg as KernelQueryMsg};
+use crate::os::kernel::ExecuteMsg as KernelExecuteMsg;
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
     to_json_binary, wasm_execute, Addr, Binary, Coin, ContractInfoResponse, CosmosMsg, Deps, Empty,
@@ -303,16 +303,13 @@ impl AMPPkt {
     /// If the sender is not valid, an error is returned
     pub fn verify_origin(&self, info: &MessageInfo, deps: &Deps) -> Result<(), ContractError> {
         let kernel_address = ADOContract::default().get_kernel_address(deps.storage)?;
-        if info.sender == self.ctx.origin || info.sender == kernel_address {
+        if (info.sender == self.ctx.origin && info.sender == self.ctx.previous_sender)
+            || info.sender == kernel_address
+        {
             Ok(())
         } else {
             let adodb_address: Addr =
-                deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
-                    contract_addr: kernel_address.to_string(),
-                    msg: to_json_binary(&KernelQueryMsg::KeyAddress {
-                        key: ADO_DB_KEY.to_string(),
-                    })?,
-                }))?;
+                AOSQuerier::kernel_address_getter(&deps.querier, &kernel_address, ADO_DB_KEY)?;
 
             // Get the sender's Code ID
             let contract_info: ContractInfoResponse =
@@ -504,9 +501,15 @@ mod tests {
         let res = pkt.verify_origin(&info, &deps.as_ref());
         assert!(res.is_err());
 
-        let offchain_pkt = AMPPkt::new(INVALID_CONTRACT, INVALID_CONTRACT, vec![msg]);
-        let res = offchain_pkt.verify_origin(&info, &deps.as_ref());
+        // Previous sender and origin set correctly
+        let direct_pkt_valid = AMPPkt::new(INVALID_CONTRACT, INVALID_CONTRACT, vec![msg.clone()]);
+        let res = direct_pkt_valid.verify_origin(&info, &deps.as_ref());
         assert!(res.is_ok());
+
+        // Previous sender and origin set incorrectly
+        let direct_pkt_invalid = AMPPkt::new(INVALID_CONTRACT, "notvalid", vec![msg]);
+        let res = direct_pkt_invalid.verify_origin(&info, &deps.as_ref());
+        assert!(res.is_err());
     }
 
     #[test]
