@@ -7,6 +7,7 @@ use andromeda_modules::address_list::{
 };
 use andromeda_std::ado_base::permissioning::LocalPermission;
 
+use andromeda_std::amp::AndrAddr;
 use andromeda_std::error::ContractError;
 
 use cosmwasm_std::{attr, from_json, Addr, DepsMut, MessageInfo};
@@ -24,7 +25,7 @@ fn init(deps: DepsMut, info: MessageInfo) {
             kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
             owner: None,
             actor_permission: Some(ActorPermission {
-                actors: vec![Addr::unchecked("actor")],
+                actors: vec![AndrAddr::from_string("actor")],
                 permission: LocalPermission::whitelisted(None),
             }),
         },
@@ -81,7 +82,7 @@ fn test_add_remove_actor() {
     init(deps.as_mut(), info.clone());
 
     let msg = ExecuteMsg::AddActorPermission {
-        actors: vec![actor.clone()],
+        actors: vec![AndrAddr::from_string(actor.clone())],
         permission: permission.clone(),
     };
 
@@ -118,7 +119,7 @@ fn test_add_remove_actor() {
 
     // Test remove actor
     let msg = ExecuteMsg::RemoveActorPermission {
-        actors: vec![actor.clone()],
+        actors: vec![AndrAddr::from_string(actor.clone())],
     };
     let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
     let permission = PERMISSIONS.may_load(deps.as_ref().storage, &actor).unwrap();
@@ -132,7 +133,7 @@ fn test_add_remove_actor() {
     // Try removing an actor that isn't included in permissions
     let random_actor = Addr::unchecked("random_actor");
     let msg = ExecuteMsg::RemoveActorPermission {
-        actors: vec![random_actor],
+        actors: vec![AndrAddr::from_string(random_actor)],
     };
     let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
     assert_eq!(err, ContractError::ActorNotFound {})
@@ -146,7 +147,10 @@ fn test_add_remove_multiple_actors() {
     let operator = "creator";
     let info = mock_info(operator, &[]);
 
-    let actors = vec![Addr::unchecked("actor1"), Addr::unchecked("actor2")];
+    let actors = vec![
+        AndrAddr::from_string("actor1"),
+        AndrAddr::from_string("actor2"),
+    ];
     let permission = LocalPermission::default();
 
     init(deps.as_mut(), info.clone());
@@ -165,9 +169,19 @@ fn test_add_remove_multiple_actors() {
     assert_eq!(expected, res);
 
     // Check that the actor and permission have been saved.
-    let new_permission = PERMISSIONS.load(deps.as_ref().storage, &actors[0]).unwrap();
+    let new_permission = PERMISSIONS
+        .load(
+            deps.as_ref().storage,
+            &actors[0].get_raw_address(&deps.as_ref()).unwrap(),
+        )
+        .unwrap();
     assert_eq!(new_permission, permission);
-    let new_permission = PERMISSIONS.load(deps.as_ref().storage, &actors[1]).unwrap();
+    let new_permission = PERMISSIONS
+        .load(
+            deps.as_ref().storage,
+            &actors[1].get_raw_address(&deps.as_ref()).unwrap(),
+        )
+        .unwrap();
     assert_eq!(new_permission, permission);
 
     // Try with unauthorized address
@@ -195,11 +209,17 @@ fn test_add_remove_multiple_actors() {
     };
     let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
     let permission = PERMISSIONS
-        .may_load(deps.as_ref().storage, &actors[0])
+        .may_load(
+            deps.as_ref().storage,
+            &actors[0].get_raw_address(&deps.as_ref()).unwrap(),
+        )
         .unwrap();
     assert!(permission.is_none());
     let permission = PERMISSIONS
-        .may_load(deps.as_ref().storage, &actors[1])
+        .may_load(
+            deps.as_ref().storage,
+            &actors[1].get_raw_address(&deps.as_ref()).unwrap(),
+        )
         .unwrap();
     assert!(permission.is_none());
 
@@ -211,7 +231,7 @@ fn test_add_remove_multiple_actors() {
     // Try removing an actor that isn't included in permissions
     let random_actor = Addr::unchecked("random_actor");
     let msg = ExecuteMsg::RemoveActorPermission {
-        actors: vec![random_actor],
+        actors: vec![AndrAddr::from_string(random_actor)],
     };
     let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
     assert_eq!(err, ContractError::ActorNotFound {})

@@ -1,5 +1,6 @@
 use andromeda_std::{
-    ado_base::permissioning::LocalPermission, andr_exec, andr_instantiate, andr_query,
+    ado_base::permissioning::LocalPermission, amp::AndrAddr, andr_exec, andr_instantiate,
+    andr_query,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Addr;
@@ -12,7 +13,7 @@ pub struct InstantiateMsg {
 // Struct used to bundle actor and permission
 #[cw_serde]
 pub struct ActorPermission {
-    pub actors: Vec<Addr>,
+    pub actors: Vec<AndrAddr>,
     pub permission: LocalPermission,
 }
 
@@ -21,11 +22,11 @@ pub struct ActorPermission {
 pub enum ExecuteMsg {
     /// Adds an actor key and a permission value
     AddActorPermission {
-        actors: Vec<Addr>,
+        actors: Vec<AndrAddr>,
         permission: LocalPermission,
     },
     /// Removes actor alongisde his permission
-    RemoveActorPermission { actors: Vec<Addr> },
+    RemoveActorPermission { actors: Vec<AndrAddr> },
 }
 
 #[andr_query]

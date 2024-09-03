@@ -6,6 +6,7 @@ use andromeda_modules::address_list::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use andromeda_std::{
     ado_base::{permissioning::LocalPermission, InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     ado_contract::ADOContract,
+    amp::AndrAddr,
     common::{context::ExecuteContext, encode_binary},
     error::ContractError,
 };
@@ -43,12 +44,14 @@ pub fn instantiate(
         let verified_actors: Vec<Addr> = actor_permission
             .actors
             .into_iter()
-            .map(|actor| deps.api.addr_validate(actor.as_str()))
+            .map(|actor| actor.get_raw_address(&deps.as_ref()))
             .collect::<Result<HashSet<_>, _>>()?
             .into_iter()
             .collect();
 
-        add_actors_permission(deps.storage, verified_actors, &actor_permission.permission)?;
+        for verified_actor in verified_actors {
+            add_actors_permission(deps.storage, verified_actor, &actor_permission.permission)?;
+        }
     }
     let inst_resp = ADOContract::default().instantiate(
         deps.storage,
@@ -99,7 +102,7 @@ pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
 
 fn execute_add_actor_permission(
     ctx: ExecuteContext,
-    actors: Vec<Addr>,
+    actors: Vec<AndrAddr>,
     permission: LocalPermission,
 ) -> Result<Response, ContractError> {
     let ExecuteContext { deps, info, .. } = ctx;
@@ -114,7 +117,10 @@ fn execute_add_actor_permission(
         });
     }
     ensure!(!actors.is_empty(), ContractError::NoActorsProvided {});
-    add_actors_permission(deps.storage, actors.clone(), &permission)?;
+    for actor in actors.clone() {
+        let verified_actor = actor.get_raw_address(&deps.as_ref())?;
+        add_actors_permission(deps.storage, verified_actor, &permission)?;
+    }
     let actors_str = actors
         .iter()
         .map(|actor| actor.to_string())
@@ -129,7 +135,7 @@ fn execute_add_actor_permission(
 
 fn execute_remove_actor_permission(
     ctx: ExecuteContext,
-    actors: Vec<Addr>,
+    actors: Vec<AndrAddr>,
 ) -> Result<Response, ContractError> {
     let ExecuteContext { deps, info, .. } = ctx;
     nonpayable(&info)?;
@@ -140,18 +146,20 @@ fn execute_remove_actor_permission(
     ensure!(!actors.is_empty(), ContractError::NoActorsProvided {});
 
     for actor in actors.clone() {
+        let verified_actor = actor.get_raw_address(&deps.as_ref())?;
         // Ensure that the actor is present in the permissions list
         ensure!(
-            PERMISSIONS.has(deps.storage, &actor),
+            PERMISSIONS.has(deps.storage, &verified_actor),
             ContractError::ActorNotFound {}
         );
-        PERMISSIONS.remove(deps.storage, &actor);
+        PERMISSIONS.remove(deps.storage, &verified_actor);
     }
     let actors_str = actors
         .iter()
         .map(|actor| actor.to_string())
         .collect::<Vec<String>>()
         .join(", ");
+    
     Ok(Response::new().add_attributes(vec![
         attr("action", "remove_actor_permission"),
         attr("actor", actors_str),
