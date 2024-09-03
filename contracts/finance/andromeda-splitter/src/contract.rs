@@ -19,10 +19,10 @@ use cw_utils::nonpayable;
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-splitter";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
-// 1 day in seconds
-const ONE_DAY: u64 = 86_400;
-// 1 year in seconds
-const ONE_YEAR: u64 = 31_536_000;
+// 1 day in milliseconds
+const ONE_DAY: u64 = 86_400_000;
+// 1 year in milliseconds
+const ONE_YEAR: u64 = 31_536_000_000;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -33,20 +33,23 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     let splitter = match msg.lock_time {
         Some(ref lock_time) => {
+            let time = lock_time.get_time(&env.block);
             // New lock time can't be too short
             ensure!(
-                lock_time.get_time(&env.block).seconds() >= ONE_DAY,
+                time >= Milliseconds::from_seconds(env.block.time.seconds())
+                    .plus_milliseconds(Milliseconds(ONE_DAY)),
                 ContractError::LockTimeTooShort {}
             );
 
             // New lock time can't be too long
             ensure!(
-                lock_time.get_time(&env.block).seconds() <= ONE_YEAR,
+                time <= Milliseconds::from_seconds(env.block.time.seconds())
+                    .plus_milliseconds(Milliseconds(ONE_YEAR)),
                 ContractError::LockTimeTooLong {}
             );
             Splitter {
                 recipients: msg.recipients.clone(),
-                lock: lock_time.get_time(&env.block),
+                lock: time,
             }
         }
         None => {

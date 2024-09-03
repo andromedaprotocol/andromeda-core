@@ -52,12 +52,12 @@ impl<'a> ADOContract<'a> {
     ) -> Result<Response, ContractError> {
         match msg {
             PermissioningMessage::SetPermission {
-                actor,
+                actors,
                 action,
                 permission,
-            } => self.execute_set_permission(ctx, actor, action, permission),
-            PermissioningMessage::RemovePermission { action, actor } => {
-                self.execute_remove_permission(ctx, actor, action)
+            } => self.execute_set_permission(ctx, actors, action, permission),
+            PermissioningMessage::RemovePermission { action, actors } => {
+                self.execute_remove_permission(ctx, actors, action)
             }
             PermissioningMessage::PermissionAction { action } => {
                 self.execute_permission_action(ctx, action)
@@ -257,7 +257,7 @@ impl<'a> ADOContract<'a> {
     pub fn execute_set_permission(
         &self,
         ctx: ExecuteContext,
-        actor: AndrAddr,
+        actors: Vec<AndrAddr>,
         action: impl Into<String>,
         permission: Permission,
     ) -> Result<Response, ContractError> {
@@ -265,18 +265,34 @@ impl<'a> ADOContract<'a> {
             Self::is_contract_owner(self, ctx.deps.storage, ctx.info.sender.as_str())?,
             ContractError::Unauthorized {}
         );
-        let actor_addr = actor.get_raw_address(&ctx.deps.as_ref())?;
+        ensure!(!actors.is_empty(), ContractError::NoActorsProvided {});
         let action = action.into();
-        Self::set_permission(
-            ctx.deps.storage,
-            action.clone(),
-            actor_addr.clone(),
-            permission.clone(),
-        )?;
+
+        let mut actor_addrs = Vec::new();
+
+        for actor in actors {
+            let actor_addr = actor.get_raw_address(&ctx.deps.as_ref())?;
+            actor_addrs.push(actor_addr);
+        }
+
+        for actor_addr in actor_addrs.clone() {
+            Self::set_permission(
+                ctx.deps.storage,
+                action.clone(),
+                actor_addr.clone(),
+                permission.clone(),
+            )?;
+        }
+
+        let actor_strs = actor_addrs
+            .iter()
+            .map(|addr| addr.as_str())
+            .collect::<Vec<_>>()
+            .join(", ");
 
         Ok(Response::default().add_attributes(vec![
             ("action", "set_permission"),
-            ("actor", actor_addr.as_str()),
+            ("actors", &actor_strs),
             ("action", action.as_str()),
             ("permission", permission.to_string().as_str()),
         ]))
@@ -286,20 +302,33 @@ impl<'a> ADOContract<'a> {
     pub fn execute_remove_permission(
         &self,
         ctx: ExecuteContext,
-        actor: AndrAddr,
+        actors: Vec<AndrAddr>,
         action: impl Into<String>,
     ) -> Result<Response, ContractError> {
         ensure!(
             Self::is_contract_owner(self, ctx.deps.storage, ctx.info.sender.as_str())?,
             ContractError::Unauthorized {}
         );
-        let actor_addr = actor.get_raw_address(&ctx.deps.as_ref())?;
+        ensure!(!actors.is_empty(), ContractError::NoActorsProvided {});
+
         let action = action.into();
-        Self::remove_permission(ctx.deps.storage, action.clone(), actor_addr.clone())?;
+        let mut actor_addrs = Vec::new();
+
+        for actor in actors {
+            let actor_addr = actor.get_raw_address(&ctx.deps.as_ref())?;
+            actor_addrs.push(actor_addr.clone());
+            Self::remove_permission(ctx.deps.storage, action.clone(), actor_addr)?;
+        }
+
+        let actor_strs = actor_addrs
+            .iter()
+            .map(|addr| addr.as_str())
+            .collect::<Vec<_>>()
+            .join(", ");
 
         Ok(Response::default().add_attributes(vec![
             ("action", "remove_permission"),
-            ("actor", actor_addr.as_str()),
+            ("actors", &actor_strs),
             ("action", action.as_str()),
         ]))
     }
@@ -645,7 +674,7 @@ mod tests {
             .save(deps.as_mut().storage, &Addr::unchecked("owner"))
             .unwrap();
         let msg = AndromedaMsg::Permissioning(PermissioningMessage::SetPermission {
-            actor: AndrAddr::from_string("actor"),
+            actors: vec![AndrAddr::from_string("actor")],
             action: "action".to_string(),
             permission: Permission::Local(LocalPermission::Whitelisted(None)),
         });
@@ -705,7 +734,7 @@ mod tests {
             .unwrap();
         let msg = AndromedaMsg::Permissioning(PermissioningMessage::RemovePermission {
             action: "action".to_string(),
-            actor: AndrAddr::from_string("actor"),
+            actors: vec![AndrAddr::from_string("actor")],
         });
         let ctx = ExecuteContext::new(deps.as_mut(), mock_info("attacker", &[]), env);
         let res = contract.execute(ctx, msg);

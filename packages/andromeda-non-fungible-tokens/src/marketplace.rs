@@ -15,6 +15,7 @@ use std::fmt::{Display, Formatter, Result};
 #[serde(rename_all = "snake_case")]
 pub struct InstantiateMsg {
     pub authorized_cw20_address: Option<AndrAddr>,
+    pub authorized_token_addresses: Option<Vec<AndrAddr>>,
 }
 
 #[andr_exec]
