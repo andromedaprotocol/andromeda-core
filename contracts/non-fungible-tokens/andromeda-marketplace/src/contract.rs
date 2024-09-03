@@ -17,7 +17,7 @@ use andromeda_std::{
     common::{
         actions::call_action,
         context::ExecuteContext,
-        denom::{Asset, SEND_CW20_ACTION},
+        denom::{Asset, SEND_CW20_ACTION, SEND_NFT_ACTION},
         encode_binary,
         expiration::{expiration_from_milliseconds, get_and_validate_start_time, Expiry},
         rates::{get_tax_amount, get_tax_amount_cw20},
@@ -62,6 +62,22 @@ pub fn instantiate(
             owner: msg.owner,
         },
     )?;
+
+    if let Some(authorized_token_addresses) = msg.authorized_token_addresses {
+        if !authorized_token_addresses.is_empty() {
+            ADOContract::default().permission_action(SEND_NFT_ACTION, deps.storage)?;
+        }
+
+        for token_address in authorized_token_addresses {
+            let addr = token_address.get_raw_address(&deps.as_ref())?;
+            ADOContract::set_permission(
+                deps.storage,
+                SEND_NFT_ACTION,
+                addr,
+                Permission::Local(LocalPermission::Whitelisted(None)),
+            )?;
+        }
+    }
 
     if let Some(authorized_cw20_address) = msg.authorized_cw20_address {
         ADOContract::default().permission_action(SEND_CW20_ACTION, deps.storage)?;
@@ -131,12 +147,15 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
 }
 
 fn handle_receive_cw721(
-    ctx: ExecuteContext,
+    mut ctx: ExecuteContext,
     msg: Cw721ReceiveMsg,
 ) -> Result<Response, ContractError> {
-    let ExecuteContext {
-        deps, info, env, ..
-    } = ctx;
+    ADOContract::default().is_permissioned(
+        ctx.deps.branch(),
+        ctx.env.clone(),
+        SEND_NFT_ACTION,
+        ctx.info.sender.clone(),
+    )?;
 
     match from_json(&msg.msg)? {
         Cw721HookMsg::StartSale {
@@ -146,11 +165,11 @@ fn handle_receive_cw721(
             duration,
             recipient,
         } => execute_start_sale(
-            deps,
-            env,
+            ctx.deps,
+            ctx.env,
             msg.sender,
             msg.token_id,
-            info.sender.to_string(),
+            ctx.info.sender.to_string(),
             price,
             start_time,
             coin_denom,
