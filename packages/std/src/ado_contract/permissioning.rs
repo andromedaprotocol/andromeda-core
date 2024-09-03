@@ -478,13 +478,16 @@ pub fn is_context_permissioned(
                 action.clone(),
                 amp_ctx.ctx.get_origin().as_str(),
             );
+            if is_origin_permissioned.is_ok() {
+                return Ok(true);
+            }
             let is_previous_sender_permissioned = contract.is_permissioned(
                 deps.branch(),
                 env.clone(),
                 action,
                 amp_ctx.ctx.get_previous_sender().as_str(),
             );
-            Ok(is_origin_permissioned.is_ok() || is_previous_sender_permissioned.is_ok())
+            Ok(is_previous_sender_permissioned.is_ok())
         }
         None => Ok(contract
             .is_permissioned(deps.branch(), env.clone(), action, info.sender.to_string())
@@ -853,7 +856,7 @@ mod tests {
         )
         .unwrap());
 
-        let mut context = ExecuteContext::new(deps.as_mut(), info, env.clone());
+        let mut context = ExecuteContext::new(deps.as_mut(), info.clone(), env.clone());
         let permission = Permission::Local(LocalPermission::Whitelisted(None));
         ADOContract::set_permission(context.deps.storage, action, actor, permission).unwrap();
 
@@ -931,7 +934,8 @@ mod tests {
         .unwrap());
 
         let amp_ctx = AMPPkt::new("mock_actor", "owner", vec![]);
-        let mut context = ExecuteContext::new(deps.as_mut(), unauth_info, env).with_ctx(amp_ctx);
+        let mut context =
+            ExecuteContext::new(deps.as_mut(), unauth_info, env.clone()).with_ctx(amp_ctx);
 
         assert!(is_context_permissioned(
             &mut context.deps,
@@ -941,6 +945,39 @@ mod tests {
             action
         )
         .unwrap());
+
+        let previous_sender = "previous_sender";
+        let mut context = ExecuteContext::new(deps.as_mut(), info.clone(), env.clone())
+            .with_ctx(AMPPkt::new(info.sender, previous_sender, vec![]));
+        let permission = Permission::Local(LocalPermission::limited(None, 1));
+        ADOContract::set_permission(context.deps.storage, action, actor, permission.clone())
+            .unwrap();
+        ADOContract::set_permission(
+            context.deps.storage,
+            action,
+            previous_sender,
+            permission.clone(),
+        )
+        .unwrap();
+
+        assert!(is_context_permissioned(
+            &mut context.deps,
+            &context.info,
+            &context.env,
+            &context.amp_ctx,
+            action
+        )
+        .unwrap());
+
+        let actor_permission =
+            ADOContract::get_permission(context.deps.storage, action, actor).unwrap();
+        let previous_sender_permission =
+            ADOContract::get_permission(context.deps.storage, action, previous_sender).unwrap();
+        assert_eq!(previous_sender_permission, Some(permission));
+        assert_eq!(
+            actor_permission,
+            Some(Permission::Local(LocalPermission::limited(None, 0)))
+        );
     }
 
     #[test]
