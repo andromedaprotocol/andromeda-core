@@ -803,6 +803,13 @@ mod tests {
 
         env.block.time = MillisecondsExpiration::from_seconds(time + 1).into();
 
+        let res = contract.is_permissioned(deps.as_mut(), env.clone(), action, actor);
+        //Action is still permissioned so this should error
+        assert!(res.is_err());
+
+        ADOContract::default().disable_action_permission(action, deps.as_mut().storage);
+
+        // Action is no longer permissioned so this should pass
         let res = contract.is_permissioned(deps.as_mut(), env, action, actor);
         assert!(res.is_ok());
     }

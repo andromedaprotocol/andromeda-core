@@ -81,7 +81,7 @@ impl LocalPermission {
             Self::Blacklisted(expiration) => {
                 if let Some(expiration) = expiration {
                     if expiration.get_time(&env.block).is_expired(&env.block) {
-                        return true;
+                        return !strict;
                     }
                 }
                 false
