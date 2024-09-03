@@ -109,7 +109,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-conditional-splitter"
-version = "1.1.0"
+version = "1.2.0"
 dependencies = [
  "andromeda-app",
  "andromeda-finance",
@@ -496,7 +496,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-splitter"
-version = "2.0.0"
+version = "2.1.0"
 dependencies = [
  "andromeda-app",
  "andromeda-finance",

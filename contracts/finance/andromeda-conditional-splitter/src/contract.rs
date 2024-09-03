@@ -8,7 +8,10 @@ use std::vec;
 use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     amp::messages::AMPPkt,
-    common::{actions::call_action, encode_binary, Milliseconds, MillisecondsDuration},
+    common::{
+        actions::call_action, encode_binary, Milliseconds, MillisecondsDuration,
+        MillisecondsExpiration,
+    },
     error::ContractError,
 };
 use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
@@ -21,10 +24,10 @@ use cw_utils::nonpayable;
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-conditional-splitter";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
-// 1 day in seconds
-const ONE_DAY: u64 = 86_400;
-// 1 year in seconds
-const ONE_YEAR: u64 = 31_536_000;
+// 1 day in milliseconds
+const ONE_DAY: u64 = 86_400_000;
+// 1 year in milliseconds
+const ONE_YEAR: u64 = 31_536_000_000;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -35,22 +38,26 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     let mut conditional_splitter = ConditionalSplitter {
         thresholds: msg.thresholds.clone(),
-        lock_time: msg.lock_time,
+        lock_time: MillisecondsExpiration::zero(),
     };
 
     if let Some(lock_time) = msg.lock_time {
+        let time = lock_time.get_time(&env.block);
         // New lock time can't be too short
         ensure!(
-            lock_time.seconds() >= ONE_DAY,
+            time >= Milliseconds::from_seconds(env.block.time.seconds())
+                .plus_milliseconds(Milliseconds(ONE_DAY)),
             ContractError::LockTimeTooShort {}
         );
+
         // New lock time can't be too long
         ensure!(
-            lock_time.seconds() <= ONE_YEAR,
+            time <= Milliseconds::from_seconds(env.block.time.seconds())
+                .plus_milliseconds(Milliseconds(ONE_YEAR)),
             ContractError::LockTimeTooLong {}
         );
-        let current_time = Milliseconds::from_seconds(env.block.time.seconds());
-        conditional_splitter.lock_time = Some(current_time.plus_milliseconds(lock_time));
+
+        conditional_splitter.lock_time = time;
     }
 
     // Validate thresholds
@@ -220,12 +227,10 @@ fn execute_update_thresholds(
     let conditional_splitter = CONDITIONAL_SPLITTER.load(deps.storage)?;
 
     // Can't call this function while the lock isn't expired
-    if let Some(conditional_splitter_lock) = conditional_splitter.lock_time {
-        ensure!(
-            conditional_splitter_lock.is_expired(&env.block),
-            ContractError::ContractLocked {}
-        );
-    }
+    ensure!(
+        conditional_splitter.lock_time.is_expired(&env.block),
+        ContractError::ContractLocked {}
+    );
 
     let updated_conditional_splitter = ConditionalSplitter {
         thresholds,
@@ -257,12 +262,10 @@ fn execute_update_lock(
     let mut conditional_splitter = CONDITIONAL_SPLITTER.load(deps.storage)?;
 
     // Can't call this function while the lock isn't expired
-    if let Some(conditional_splitter_lock) = conditional_splitter.lock_time {
-        ensure!(
-            conditional_splitter_lock.is_expired(&env.block),
-            ContractError::ContractLocked {}
-        );
-    }
+    ensure!(
+        conditional_splitter.lock_time.is_expired(&env.block),
+        ContractError::ContractLocked {}
+    );
 
     // Get current time
     let current_time = Milliseconds::from_seconds(env.block.time.seconds());
@@ -282,7 +285,7 @@ fn execute_update_lock(
     // Set new lock time
     let new_expiration = current_time.plus_milliseconds(lock_time);
 
-    conditional_splitter.lock_time = Some(new_expiration);
+    conditional_splitter.lock_time = new_expiration;
 
     CONDITIONAL_SPLITTER.save(deps.storage, &conditional_splitter)?;
 
