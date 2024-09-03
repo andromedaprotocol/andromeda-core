@@ -34,6 +34,23 @@ pub fn proper_initialization(
     (deps, info)
 }
 
+pub fn error_initialization(
+    curve_config: CurveConfig,
+    restriction: CurveRestriction,
+) -> ContractError {
+    let mut deps = mock_dependencies_custom(&[]);
+    let info = mock_info("creator", &[]);
+    let msg = InstantiateMsg {
+        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+        owner: None,
+        curve_config,
+        restriction,
+    };
+    let env = mock_env();
+    let res = instantiate(deps.as_mut(), env, info.clone(), msg).unwrap_err();
+    res
+}
+
 pub fn update_curve_config(
     deps: DepsMut<'_>,
     curve_config: CurveConfig,

@@ -41,6 +41,9 @@ pub fn instantiate(
             owner: msg.owner,
         },
     )?;
+
+    msg.curve_config.validate()?;
+
     RESTRICTION.save(deps.storage, &msg.restriction)?;
     CURVE_CONFIG.save(deps.storage, &msg.curve_config)?;
 
@@ -101,6 +104,8 @@ pub fn execute_update_curve_config(
         has_permission(ctx.deps.storage, &sender)?,
         ContractError::Unauthorized {}
     );
+
+    curve_config.validate()?;
     CURVE_CONFIG.update(ctx.deps.storage, |_| {
         Ok::<CurveConfig, ContractError>(curve_config)
     })?;

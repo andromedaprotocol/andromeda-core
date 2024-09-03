@@ -1,6 +1,6 @@
 use super::mock::{
-    proper_initialization, query_curve_config, query_plot_y_from_x, query_restriction, reset,
-    update_curve_config, update_restriction,
+    error_initialization, proper_initialization, query_curve_config, query_plot_y_from_x,
+    query_restriction, reset, update_curve_config, update_restriction,
 };
 use andromeda_modules::curve::{CurveConfig, CurveId, CurveRestriction};
 use andromeda_std::error::ContractError;
@@ -117,6 +117,25 @@ fn test_query_curve_config() {
             base_value: 2,
             multiple_variable_value: None,
             constant_value: None,
+        }
+    );
+}
+
+#[test]
+fn test_query_curve_config_base_is_0() {
+    let err_res = error_initialization(
+        CurveConfig::ExpConfig {
+            curve_id: CurveId::Growth,
+            base_value: 0,
+            multiple_variable_value: None,
+            constant_value: None,
+        },
+        CurveRestriction::Private,
+    );
+    assert_eq!(
+        err_res,
+        ContractError::CustomError {
+            msg: "Base Value must be bigger than Zero".to_string()
         }
     );
 }
