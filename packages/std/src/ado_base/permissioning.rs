@@ -12,13 +12,13 @@ use crate::{
 #[cw_serde]
 pub enum PermissioningMessage {
     SetPermission {
-        actor: AndrAddr,
+        actors: Vec<AndrAddr>,
         action: String,
         permission: Permission,
     },
     RemovePermission {
         action: String,
-        actor: AndrAddr,
+        actors: Vec<AndrAddr>,
     },
     PermissionAction {
         action: String,
