@@ -12,13 +12,13 @@ use crate::{
 #[cw_serde]
 pub enum PermissioningMessage {
     SetPermission {
-        actor: AndrAddr,
+        actors: Vec<AndrAddr>,
         action: String,
         permission: Permission,
     },
     RemovePermission {
         action: String,
-        actor: AndrAddr,
+        actors: Vec<AndrAddr>,
     },
     PermissionAction {
         action: String,
@@ -81,7 +81,7 @@ impl LocalPermission {
             Self::Blacklisted(expiration) => {
                 if let Some(expiration) = expiration {
                     if expiration.get_time(&env.block).is_expired(&env.block) {
-                        return true;
+                        return !strict;
                     }
                 }
                 false
@@ -124,15 +124,10 @@ impl LocalPermission {
 
     pub fn consume_use(&mut self) -> Result<(), ContractError> {
         if let Self::Limited { uses, .. } = self {
-            if let Some(remaining_uses) = uses.checked_sub(1) {
-                *uses = remaining_uses;
-                Ok(())
-            } else {
-                Err(ContractError::Underflow {})
-            }
-        } else {
-            Ok(())
+            *uses = uses.saturating_sub(1);
         }
+
+        Ok(())
     }
 }
 

@@ -2,7 +2,7 @@
 
 use crate::contract::{execute, instantiate, query, reply};
 use andromeda_finance::conditional_splitter::{ExecuteMsg, InstantiateMsg, QueryMsg, Threshold};
-use andromeda_std::common::Milliseconds;
+use andromeda_std::common::expiration::Expiry;
 use andromeda_testing::{
     mock::MockApp, mock_ado, mock_contract::ExecuteResult, MockADO, MockContract,
 };
@@ -19,7 +19,7 @@ impl MockConditionalSplitter {
         sender: Addr,
         thresholds: Vec<Threshold>,
         kernel_address: impl Into<String>,
-        lock_time: Option<u64>,
+        lock_time: Option<Expiry>,
         owner: Option<String>,
     ) -> Self {
         let msg =
@@ -51,12 +51,12 @@ pub fn mock_andromeda_conditional_splitter() -> Box<dyn Contract<Empty>> {
 pub fn mock_conditional_splitter_instantiate_msg(
     thresholds: Vec<Threshold>,
     kernel_address: impl Into<String>,
-    lock_time: Option<u64>,
+    lock_time: Option<Expiry>,
     owner: Option<String>,
 ) -> InstantiateMsg {
     InstantiateMsg {
         thresholds,
-        lock_time: lock_time.map(Milliseconds),
+        lock_time,
         kernel_address: kernel_address.into(),
         owner,
     }

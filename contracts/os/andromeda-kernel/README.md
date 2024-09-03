@@ -1,3 +1,10 @@
-# Andromeda Factory
+# Overview
+The Andromeda Kernel acts as the core of the operating system. It receives and handles packets from ADOs to be relayed to a specified recipient. The Kernel keeps track of the original sender of the message. It also verifies that the packet is sent by an Andromeda certified ADO before relaying the message. 
+The Kernel is also responsible for:
 
-A repository containing the NFT contract for Andromeda Protocol on Terra. This contract's primary purpose is to initialise and register ADO collections. Registration is done by a mapping between the ADO collection's symbol and the contract address for the given ADO collection. Documentation can be found [here](https://app.gitbook.com/@andromedaprotocol/s/andromeda/contracts/andromeda-factory).
+- Relaying any IBC messages across any two chains that have an Andromeda Kernel deployed and a channel set up.
+- Keeping track of the other AMP ADOs such as the ADODB, VFS, and Economics.
+
+All of our ADOs have an AMPReceive execute message to handle receiving packets from the Kernel.
+
+[Kernel Full Documentation](https://docs.andromedaprotocol.io/andromeda/platform-and-framework/andromeda-messaging-protocol/kernel)
