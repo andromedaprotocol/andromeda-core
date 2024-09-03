@@ -38,7 +38,7 @@ pub fn instantiate(
             ContractError::NoActorsProvided {}
         );
         for actor in actor_permission.actors {
-            let verified_address: Addr = deps.api.addr_validate(&actor.into_string().as_str())?;
+            let verified_address: Addr = deps.api.addr_validate(actor.as_str())?;
             add_actors_permission(
                 deps.storage,
                 vec![verified_address],
