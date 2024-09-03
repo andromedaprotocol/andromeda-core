@@ -12,7 +12,7 @@ pub struct InstantiateMsg {
 // Struct used to bundle actor and permission
 #[cw_serde]
 pub struct ActorPermission {
-    pub actor: Addr,
+    pub actors: Vec<Addr>,
     pub permission: LocalPermission,
 }
 
@@ -21,11 +21,11 @@ pub struct ActorPermission {
 pub enum ExecuteMsg {
     /// Adds an actor key and a permission value
     AddActorPermission {
-        actor: Addr,
+        actors: Vec<Addr>,
         permission: LocalPermission,
     },
     /// Removes actor alongisde his permission
-    RemoveActorPermission { actor: Addr },
+    RemoveActorPermission { actors: Vec<Addr> },
 }
 
 #[andr_query]

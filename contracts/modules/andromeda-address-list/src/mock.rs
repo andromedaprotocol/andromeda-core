@@ -39,12 +39,12 @@ impl MockAddressList {
         &self,
         app: &mut MockApp,
         sender: Addr,
-        actor: Addr,
+        actors: Vec<Addr>,
         permission: LocalPermission,
     ) -> ExecuteResult {
         self.execute(
             app,
-            &mock_add_actor_permission_msg(actor, permission),
+            &mock_add_actor_permission_msg(actors, permission),
             sender,
             &[],
         )
@@ -68,6 +68,6 @@ pub fn mock_address_list_instantiate_msg(
     }
 }
 
-pub fn mock_add_actor_permission_msg(actor: Addr, permission: LocalPermission) -> ExecuteMsg {
-    ExecuteMsg::AddActorPermission { actor, permission }
+pub fn mock_add_actor_permission_msg(actors: Vec<Addr>, permission: LocalPermission) -> ExecuteMsg {
+    ExecuteMsg::AddActorPermission { actors, permission }
 }
