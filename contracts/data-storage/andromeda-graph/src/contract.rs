@@ -162,24 +162,16 @@ pub fn execute_store_coordinate(
         ((z * 10_f64.powf(map_decimal as f64)) as i64) as f64 / 10_f64.powf(map_decimal as f64)
     });
 
-    match z_coordinate {
-        Some(_) => {
-            ensure!(
-                is_z_allowed,
-                ContractError::InvalidParameter {
-                    error: Some("Z-axis is not allowed".to_string())
-                }
-            );
+    ensure!(
+        z_coordinate.is_some() == is_z_allowed,
+        ContractError::InvalidParameter {
+            error: Some(if is_z_allowed {
+                "Z-axis is allowed".to_string()
+            } else {
+                "Z-axis is not allowed".to_string()
+            })
         }
-        None => {
-            ensure!(
-                !is_z_allowed,
-                ContractError::InvalidParameter {
-                    error: Some("Z-axis is allowed".to_string())
-                }
-            );
-        }
-    }
+    );
 
     match allow_negative {
         true => {
