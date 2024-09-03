@@ -10,7 +10,7 @@ use andromeda_testing::economics_msg::generate_economics_message;
 use cosmwasm_std::{
     attr, from_json,
     testing::{mock_env, mock_info, MOCK_CONTRACT_ADDR},
-    to_json_binary, BankMsg, Coin, CosmosMsg, Decimal, DepsMut, Response, SubMsg,
+    to_json_binary, BankMsg, Coin, CosmosMsg, Decimal, DepsMut, Response, SubMsg, Timestamp,
 };
 pub const OWNER: &str = "creator";
 
@@ -34,7 +34,7 @@ fn init(deps: DepsMut) -> Response {
         owner: Some(OWNER.to_owned()),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         recipients: mock_recipient,
-        lock_time: Some(Expiry::AtTime(Milliseconds::from_seconds(100_000))),
+        lock_time: Some(Expiry::FromNow(Milliseconds(86400000))),
     };
 
     let info = mock_info("owner", &[]);
@@ -49,6 +49,105 @@ fn test_instantiate() {
 }
 
 #[test]
+fn test_different_lock_times() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let mut env = mock_env();
+    // Current time
+    env.block.time = Timestamp::from_seconds(1724920577);
+    // Set a lock time that's less than 1 day in milliseconds
+    let mut lock_time = Expiry::FromNow(Milliseconds(60_000));
+
+    let msg = InstantiateMsg {
+        owner: Some(OWNER.to_owned()),
+        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+        recipients: vec![],
+        lock_time: Some(lock_time),
+    };
+
+    let info = mock_info(OWNER, &[]);
+    let err = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap_err();
+
+    assert_eq!(err, ContractError::LockTimeTooShort {});
+
+    // Set a lock time that's more than 1 year in milliseconds
+    lock_time = Expiry::FromNow(Milliseconds(31_708_800_000));
+
+    let msg = InstantiateMsg {
+        owner: Some(OWNER.to_owned()),
+        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+        recipients: vec![],
+        lock_time: Some(lock_time),
+    };
+
+    let err = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap_err();
+
+    assert_eq!(err, ContractError::LockTimeTooLong {});
+
+    // Set a lock time for 20 days in milliseconds
+    lock_time = Expiry::FromNow(Milliseconds(1728000000));
+
+    let msg = InstantiateMsg {
+        owner: Some(OWNER.to_owned()),
+        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+        recipients: vec![AddressPercent {
+            recipient: Recipient::from_string(String::from("some_address")),
+            percent: Decimal::percent(100),
+        }],
+        lock_time: Some(lock_time),
+    };
+
+    let info = mock_info(OWNER, &[]);
+    let res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+    assert_eq!(0, res.messages.len());
+
+    // Here we begin testing Expiry::AtTime
+    // Set a lock time that's less than 1 day from current time
+    lock_time = Expiry::AtTime(Milliseconds(1724934977000));
+
+    let msg = InstantiateMsg {
+        owner: Some(OWNER.to_owned()),
+        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+        recipients: vec![],
+        lock_time: Some(lock_time),
+    };
+
+    let info = mock_info(OWNER, &[]);
+    let err = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap_err();
+    assert_eq!(err, ContractError::LockTimeTooShort {});
+
+    // Set a lock time that's more than 1 year from current time in milliseconds
+    lock_time = Expiry::AtTime(Milliseconds(1788006977000));
+
+    let msg = InstantiateMsg {
+        owner: Some(OWNER.to_owned()),
+        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+        recipients: vec![],
+        lock_time: Some(lock_time),
+    };
+
+    let info = mock_info(OWNER, &[]);
+    let err = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap_err();
+    assert_eq!(err, ContractError::LockTimeTooLong {});
+
+    // Set a valid lock time
+    lock_time = Expiry::AtTime(Milliseconds(1725021377000));
+
+    let msg = InstantiateMsg {
+        owner: Some(OWNER.to_owned()),
+        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+        recipients: vec![AddressPercent {
+            recipient: Recipient::from_string(String::from("some_address")),
+            percent: Decimal::percent(100),
+        }],
+        lock_time: Some(lock_time),
+    };
+
+    let info = mock_info(OWNER, &[]);
+    let res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+    assert_eq!(0, res.messages.len());
+}
+
+#[test]
 fn test_execute_update_lock() {
     let mut deps = mock_dependencies_custom(&[]);
     let _res = init(deps.as_mut());
@@ -56,7 +155,8 @@ fn test_execute_update_lock() {
     let env = mock_env();
 
     let current_time = env.block.time.seconds();
-    let lock_time = 100_000;
+    // 2 days in milliseconds
+    let lock_time = 172800000;
 
     // Start off with an expiration that's behind current time (expired)
     let splitter = Splitter {

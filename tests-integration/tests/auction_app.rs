@@ -435,6 +435,7 @@ fn test_auction_app_cw20_restricted() {
             ("owner", vec![]),
             ("buyer_one", vec![coin(1000, "uandr")]),
             ("buyer_two", vec![coin(1000, "uandr")]),
+            ("buyer_three", vec![coin(1000, "uandr")]),
             ("recipient_one", vec![]),
             ("recipient_two", vec![]),
         ])
@@ -450,7 +451,7 @@ fn test_auction_app_cw20_restricted() {
     let owner = andr.get_wallet("owner");
     let buyer_one = andr.get_wallet("buyer_one");
     let buyer_two = andr.get_wallet("buyer_two");
-
+    let buyer_three = andr.get_wallet("buyer_three");
     // Generate App Components
     let cw721_init_msg = mock_cw721_instantiate_msg(
         "Test Tokens".to_string(),
@@ -602,13 +603,27 @@ fn test_auction_app_cw20_restricted() {
     let auction_state: AuctionStateResponse = auction.query_auction_state(&mut router, *auction_id);
     assert_eq!(auction_state.coin_denom, cw20.addr().to_string());
 
+    // Try to set permission with an empty vector of actors
+    let actors = vec![];
+    let action = "PlaceBid".to_string();
+    let permission = Permission::Local(LocalPermission::blacklisted(None));
+    let err: ContractError = auction
+        .execute_set_permission(&mut router, owner.clone(), actors, action, permission)
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(err, ContractError::NoActorsProvided {});
+
     // Place Bid One
-    // Blacklist bidder now
-    let actor = AndrAddr::from_string(buyer_one.clone());
+    // Blacklist bidder now and blacklist bidder three just to test permissioning multiple actors at the same time
+    let actors = vec![
+        AndrAddr::from_string(buyer_one.clone()),
+        AndrAddr::from_string(buyer_three.clone()),
+    ];
     let action = "PlaceBid".to_string();
     let permission = Permission::Local(LocalPermission::blacklisted(None));
     auction
-        .execute_set_permission(&mut router, owner.clone(), actor, action, permission)
+        .execute_set_permission(&mut router, owner.clone(), actors, action, permission)
         .unwrap();
 
     let bid_msg = mock_place_bid("0".to_string(), cw721.addr().to_string());
@@ -626,12 +641,25 @@ fn test_auction_app_cw20_restricted() {
         .unwrap();
     assert_eq!(err, ContractError::Unauthorized {});
 
+    // Bid should be rejected because we blacklisted bidder three
+    let err: ContractError = router
+        .execute_contract(
+            buyer_three.clone(),
+            Addr::unchecked(auction.addr().clone()),
+            &bid_msg,
+            &[coin(50, "uandr")],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(err, ContractError::Unauthorized {});
+
     // Now whitelist bidder one
-    let actor = AndrAddr::from_string(buyer_one.clone());
+    let actors = vec![AndrAddr::from_string(buyer_one.clone())];
     let action = "PlaceBid".to_string();
     let permission = Permission::Local(LocalPermission::whitelisted(None));
     auction
-        .execute_set_permission(&mut router, owner.clone(), actor, action, permission)
+        .execute_set_permission(&mut router, owner.clone(), actors, action, permission)
         .unwrap();
 
     // Try bidding again

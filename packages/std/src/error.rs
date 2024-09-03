@@ -75,6 +75,9 @@ pub enum ContractError {
     #[error("InvalidValidator")]
     InvalidValidator {},
 
+    #[error("NoActorsProvided")]
+    NoActorsProvided {},
+
     #[error("InvalidDelegation")]
     InvalidDelegation {},
 
@@ -95,6 +98,9 @@ pub enum ContractError {
 
     #[error("only unordered channels are supported")]
     OrderedChannel {},
+
+    #[error("Invalid Expiration Time")]
+    InvalidExpirationTime {},
 
     #[error("invalid IBC channel version - got ({actual}), expected ({expected})")]
     InvalidVersion { actual: String, expected: String },
@@ -676,9 +682,6 @@ pub enum ContractError {
 
     #[error("Not an assigned operator, {msg:?}")]
     NotAssignedOperator { msg: Option<String> },
-
-    #[error("Invalid Expiration Time")]
-    InvalidExpirationTime {},
 
     #[error("Invalid Parameter, {error:?}")]
     InvalidParameter { error: Option<String> },

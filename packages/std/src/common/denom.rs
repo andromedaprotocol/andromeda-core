@@ -8,6 +8,7 @@ use cosmwasm_std::{
 };
 use cw20::{Cw20ExecuteMsg, Cw20QueryMsg, TokenInfoResponse};
 pub const SEND_CW20_ACTION: &str = "SEND_CW20";
+pub const SEND_NFT_ACTION: &str = "SEND_NFT";
 
 #[cw_serde]
 pub enum Asset {
