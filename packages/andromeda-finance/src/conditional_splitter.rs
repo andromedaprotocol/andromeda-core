@@ -1,6 +1,6 @@
 use andromeda_std::{
     andr_exec, andr_instantiate, andr_query,
-    common::{MillisecondsDuration, MillisecondsExpiration},
+    common::{expiration::Expiry, MillisecondsDuration, MillisecondsExpiration},
     error::ContractError,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
@@ -54,7 +54,7 @@ pub struct ConditionalSplitter {
     /// The vector of thresholds which assign a percentage for a certain range of received funds
     pub thresholds: Vec<Threshold>,
     /// The lock's expiration time
-    pub lock_time: Option<MillisecondsExpiration>,
+    pub lock_time: MillisecondsExpiration,
 }
 impl ConditionalSplitter {
     pub fn validate(&self, deps: Deps) -> Result<(), ContractError> {
@@ -68,7 +68,7 @@ pub struct InstantiateMsg {
     /// The vector of recipients for the contract. Anytime a `Send` execute message is
     /// sent the amount sent will be divided amongst these recipients depending on their assigned percentage.
     pub thresholds: Vec<Threshold>,
-    pub lock_time: Option<MillisecondsDuration>,
+    pub lock_time: Option<Expiry>,
 }
 
 #[andr_exec]

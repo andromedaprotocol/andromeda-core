@@ -62,7 +62,7 @@ pub trait MockADO<E: Serialize + fmt::Debug, Q: Serialize + fmt::Debug>:
         &self,
         app: &mut MockApp,
         sender: Addr,
-        actor: AndrAddr,
+        actors: Vec<AndrAddr>,
         action: impl Into<String>,
         permission: Permission,
     ) -> ExecuteResult {
@@ -70,7 +70,7 @@ pub trait MockADO<E: Serialize + fmt::Debug, Q: Serialize + fmt::Debug>:
             sender,
             self.addr().clone(),
             &AndromedaMsg::Permissioning(PermissioningMessage::SetPermission {
-                actor,
+                actors,
                 action: action.into(),
                 permission,
             }),
