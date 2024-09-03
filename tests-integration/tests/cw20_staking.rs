@@ -1,3 +1,5 @@
+use std::fs;
+
 use andromeda_app::app::AppComponent;
 use andromeda_app_contract::mock::{mock_andromeda_app, mock_app_instantiate_msg, MockAppContract};
 use andromeda_cw20::mock::{
@@ -24,6 +26,7 @@ use cosmwasm_std::{coin, to_json_binary, BlockInfo, Timestamp, Uint128};
 use cw20::{BalanceResponse, Cw20Coin};
 use cw_asset::AssetInfoUnchecked;
 use cw_multi_test::Executor;
+use toml::Value;
 
 fn setup_andr(router: &mut MockApp) -> MockAndromeda {
     MockAndromedaBuilder::new(router, "admin")
@@ -112,6 +115,25 @@ fn setup_app(andr: &MockAndromeda, router: &mut MockApp) -> MockAppContract {
     app
 }
 
+fn get_cw20_contract_version() -> Result<String, Box<dyn std::error::Error>> {
+    // Read the Cargo.toml file
+    let content = fs::read_to_string("../contracts/fungible-tokens/andromeda-cw20/Cargo.toml")?;
+
+    // Parse the Cargo.toml content
+    let parsed_toml = content.parse::<Value>()?;
+
+    // Extract the version string
+    if let Some(version) = parsed_toml
+        .get("package")
+        .and_then(|pkg| pkg.get("version"))
+        .and_then(|v| v.as_str())
+    {
+        Ok(version.to_string())
+    } else {
+        Err("Version not found in Cargo.toml".into())
+    }
+}
+
 #[test]
 fn test_cw20_staking_app() {
     let mut router = mock_app(None);
@@ -143,7 +165,7 @@ fn test_cw20_staking_app() {
         .wrap()
         .query_wasm_smart(cw20_addr.clone(), &mock_get_version())
         .unwrap();
-    assert_eq!(version.version, "2.0.2");
+    assert_eq!(version.version, get_cw20_contract_version().unwrap());
 
     assert_eq!(balance_one.balance, Uint128::from(1000u128));
     let balance_two: BalanceResponse = router
