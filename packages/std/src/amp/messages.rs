@@ -2,7 +2,7 @@ use crate::ado_contract::ADOContract;
 use crate::common::encode_binary;
 use crate::error::ContractError;
 use crate::os::aos_querier::AOSQuerier;
-use crate::os::{kernel::ExecuteMsg as KernelExecuteMsg, kernel::QueryMsg as KernelQueryMsg};
+use crate::os::kernel::ExecuteMsg as KernelExecuteMsg;
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
     to_json_binary, wasm_execute, Addr, Binary, Coin, ContractInfoResponse, CosmosMsg, Deps, Empty,
