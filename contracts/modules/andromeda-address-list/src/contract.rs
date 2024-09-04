@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 use andromeda_modules::address_list::{ActorPermissionResponse, IncludesActorResponse};
 #[cfg(not(feature = "library"))]
 use andromeda_modules::address_list::{ExecuteMsg, InstantiateMsg, QueryMsg};
