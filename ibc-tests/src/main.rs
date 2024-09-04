@@ -1,77 +1,40 @@
 use std::cmp;
 
+use ibc_tests::chains::ALL_CHAINS;
+use ibc_tests::chains::LOCAL_OSMO;
+
 use andromeda_std::ado_base::MigrateMsg;
 use andromeda_testing_e2e::mock::{mock_app, MockAndromeda};
 use cosmwasm_std::{coin, to_json_binary, Uint128};
 use cw_orch::interface;
 use cw_orch::prelude::*;
-use cw_orch::{
-    environment::{ChainKind, NetworkInfo},
-    prelude::ChainInfo,
-};
+
 use cw_orch_daemon::{
     queriers::{Staking, StakingBondStatus},
     DaemonBase, Wallet,
 };
+use ibc_tests::config::Config;
 use ibc_tests::contract_interface;
 
 use andromeda_app::app::{self, AppComponent};
 use andromeda_finance::validator_staking;
 
 const TESTNET_MNEMONIC: &str = "across left ignore gold echo argue track joy hire release captain enforce hotel wide flash hotel brisk joke midnight duck spare drop chronic stool";
-pub const TERRA_NETWORK: NetworkInfo = NetworkInfo {
-    chain_name: "terra",
-    pub_address_prefix: "terra",
-    coin_type: 330u32,
-};
-
-pub const LOCAL_TERRA: ChainInfo = ChainInfo {
-    kind: ChainKind::Local,
-    chain_id: "localterraa-1",
-    gas_denom: "uluna",
-    gas_price: 0.15,
-    grpc_urls: &["http://localhost:20331"],
-    network_info: TERRA_NETWORK,
-    lcd_url: None,
-    fcd_url: None,
-};
 
 contract_interface!(
     AppContract,
     andromeda_app_contract,
     app,
     "andromeda_app_contract",
-    "app_contract"
+    "andromeda_app_contract@1.1.1"
 );
 
-fn main() {
-    println!("//=============================Prereparing test environment===================================//");
+fn install_os(chain: &ChainInfo) -> Addr {
+    println!("Installing OS on {}", chain.network_info.chain_name);
+    let daemon = mock_app(chain.clone(), TESTNET_MNEMONIC);
+    let mock_andromeda = MockAndromeda::install(&daemon);
+    let MockAndromeda { adodb_contract, .. } = &mock_andromeda;
 
-    let local_terra = LOCAL_TERRA;
-    println!("//===============================Prereparing Andromeda OS=====================================//");
-    let daemon = mock_app(local_terra.clone(), TESTNET_MNEMONIC);
-    let mock_andromeda = MockAndromeda::new(&daemon);
-    let MockAndromeda {
-        kernel_contract,
-        adodb_contract,
-        ..
-    } = &mock_andromeda;
-
-    println!("//================================Andromeda OS Setup Completed================================//");
-    println!(
-        "kernel_contract->code_id:  {:?}, kernel_contract-> address  {:?}",
-        kernel_contract.code_id(),
-        kernel_contract.addr_str()
-    );
-    println!(
-        "adodb_contract->code_id:  {:?}, adodb_contract-> address  {:?}",
-        adodb_contract.code_id(),
-        adodb_contract.addr_str()
-    );
-    println!("//============================================================================================//");
-
-    println!("Preparing App component");
-    println!("//=======================================Preparing App=======================================//");
     let app_contract = AppContract::new(daemon.clone());
     app_contract.upload().unwrap();
 
@@ -80,10 +43,23 @@ fn main() {
         "app-contract".to_string(),
         "0.1.0".to_string(),
     );
-    println!("app_contract->code_id:  {:?}", app_contract.code_id());
-    println!("//==============================Base Test Environment Ready=================================//");
+    println!("Installed OS on {}", chain.network_info.chain_name);
 
-    prepare_validator_staking(&daemon, &mock_andromeda, &app_contract);
+    mock_andromeda.kernel_contract.address().unwrap()
+}
+
+fn main() {
+    env_logger::init();
+
+    let mut config: Config = Config::default();
+    for chain in ALL_CHAINS {
+        config
+            .installations
+            .insert(chain.network_info.chain_name.to_string(), install_os(chain));
+    }
+    println!("Installed OS on all chains");
+
+    config.save();
 }
 
 contract_interface!(
@@ -99,7 +75,7 @@ fn prepare_validator_staking(
     mock_andromeda: &MockAndromeda,
     app_contract: &AppContract<DaemonBase<Wallet>>,
 ) {
-    let denom = LOCAL_TERRA.gas_denom;
+    let denom = LOCAL_OSMO.gas_denom;
 
     println!("//===============================Preparing Validator Staking=================================//");
     let validator_staking_contract = ValidatorStakingContract::new(daemon.clone());

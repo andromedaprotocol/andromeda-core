@@ -9,3 +9,6 @@ ci-scripts/localrelayer/template/
 **/.idea/
 .idea/
 **/schema/**/*.json
+/ibc-tests/config.yml 
+/ibc-tests/*.cache.json
+/ibc-tests/relayer.log.txt

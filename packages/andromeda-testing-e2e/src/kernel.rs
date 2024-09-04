@@ -12,7 +12,7 @@ contract_interface!(
     andromeda_kernel,
     kernel,
     "kernel_contract",
-    "kernel"
+    "andromeda_kernel@1.1.1"
 );
 
 impl KernelContract<DaemonBase<Wallet>> {

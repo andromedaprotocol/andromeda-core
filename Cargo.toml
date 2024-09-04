@@ -12,7 +12,8 @@ members = [
     "contracts/os/*",
 
     #Internal
-    "tests-integration", "ibc-tests",
+    "tests-integration",
+    "ibc-tests",
 ]
 resolver = "2"
 

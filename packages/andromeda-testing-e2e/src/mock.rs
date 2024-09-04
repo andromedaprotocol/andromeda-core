@@ -1,3 +1,4 @@
+use andromeda_std::os::kernel::QueryMsg;
 use cw_orch::prelude::*;
 use cw_orch_daemon::{Daemon, DaemonBase, Wallet};
 
@@ -25,7 +26,7 @@ pub struct MockAndromeda {
 }
 
 impl MockAndromeda {
-    pub fn new(daemon: &DaemonBase<Wallet>) -> MockAndromeda {
+    pub fn install(daemon: &DaemonBase<Wallet>) -> MockAndromeda {
         let chain_name: String = daemon.chain_info().network_info.chain_name.to_string();
 
         // Upload and instantiate os ADOs
@@ -81,6 +82,42 @@ impl MockAndromeda {
             "economics".to_string(),
             economics_contract.addr_str().unwrap(),
         );
+
+        MockAndromeda {
+            kernel_contract,
+            adodb_contract,
+            vfs_contract,
+            economics_contract,
+        }
+    }
+
+    pub fn new(daemon: &DaemonBase<Wallet>, kernel_address: impl Into<String>) -> MockAndromeda {
+        let kernel_contract = KernelContract::new(daemon.clone());
+        kernel_contract.set_address(&Addr::unchecked(kernel_address));
+
+        let adodb_address: String = kernel_contract
+            .query(&QueryMsg::KeyAddress {
+                key: "adodb".to_string(),
+            })
+            .unwrap();
+        let adodb_contract = AdodbContract::new(daemon.clone());
+        adodb_contract.set_address(&Addr::unchecked(adodb_address));
+
+        let vfs_address: String = kernel_contract
+            .query(&QueryMsg::KeyAddress {
+                key: "vfs".to_string(),
+            })
+            .unwrap();
+        let vfs_contract = VfsContract::new(daemon.clone());
+        vfs_contract.set_address(&Addr::unchecked(vfs_address));
+
+        let economics_address: String = kernel_contract
+            .query(&QueryMsg::KeyAddress {
+                key: "economics".to_string(),
+            })
+            .unwrap();
+        let economics_contract = EconomicsContract::new(daemon.clone());
+        economics_contract.set_address(&Addr::unchecked(economics_address));
 
         MockAndromeda {
             kernel_contract,

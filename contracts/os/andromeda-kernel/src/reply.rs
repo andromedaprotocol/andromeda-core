@@ -93,3 +93,20 @@ pub fn on_reply_ibc_hooks_packet_send(
         .add_attribute("sequence", sequence.to_string())
         .add_attribute("recovery_addr", recovery_addr))
 }
+
+pub fn on_reply_ics20_packet_send(_deps: DepsMut, msg: Reply) -> Result<Response, ContractError> {
+    let SubMsgResult::Ok(SubMsgResponse { data: Some(b), .. }) = msg.result else {
+        return Err(ContractError::InvalidPacket {
+            error: Some(format!("ibc hooks: failed reply: {:?}", msg.result)),
+        });
+    };
+
+    let MsgTransferResponse { sequence } =
+        MsgTransferResponse::decode(&b[..]).map_err(|_e| ContractError::InvalidPacket {
+            error: Some(format!("ics20 send: could not decode response: {b}")),
+        })?;
+
+    Ok(Response::default()
+        .add_attribute("action", "ibc_hooks_packet_send")
+        .add_attribute("sequence", sequence.to_string()))
+}

@@ -567,7 +567,7 @@ impl MsgHandler {
             .add_attribute(format!("channel:{sequence}"), channel)
             .add_attribute("receiving_kernel_address:{}", channel_info.kernel_address)
             .add_attribute("chain:{}", chain)
-            .add_message(msg))
+            .add_submessage(SubMsg::reply_always(msg, ReplyId::ICS20PacketSend.repr())))
     }
 
     fn handle_ibc_hooks(
