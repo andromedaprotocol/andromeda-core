@@ -1,5 +1,4 @@
 #![cfg(not(target_arch = "wasm32"))]
-
 use std::collections::HashMap;
 
 use andromeda_adodb::mock::mock_andromeda_adodb;
@@ -95,7 +94,6 @@ pub struct MockAndromeda {
     pub vfs: MockVFS,
     pub wallets: HashMap<String, Addr>,
 }
-
 impl MockAndromeda {
     pub fn new(app: &mut MockApp, admin_name: &str) -> MockAndromeda {
         let mut wallets = HashMap::new();

@@ -1,10 +1,11 @@
-use std::str::FromStr;
-
-use crate::state::{DEFAULT_VALIDATOR, UNSTAKING_QUEUE};
+use crate::{
+    state::{DEFAULT_VALIDATOR, UNSTAKING_QUEUE},
+    util::decode_unstaking_response_data,
+};
 use cosmwasm_std::{
-    coin, ensure, entry_point, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut,
-    DistributionMsg, Env, FullDelegation, MessageInfo, Reply, Response, StakingMsg, StdError,
-    SubMsg, Timestamp, Uint128,
+    coin, ensure, entry_point, Addr, BankMsg, Binary, CosmosMsg, Deps, DepsMut, DistributionMsg,
+    Env, FullDelegation, MessageInfo, Reply, Response, StakingMsg, StdError, SubMsg, Timestamp,
+    Uint128,
 };
 use cw2::set_contract_version;
 
@@ -84,7 +85,9 @@ pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
             validator,
             recipient,
         } => execute_claim(ctx, validator, recipient),
-        ExecuteMsg::WithdrawFunds {} => execute_withdraw_fund(ctx),
+        ExecuteMsg::WithdrawFunds { denom, recipient } => {
+            execute_withdraw_fund(ctx, denom, recipient)
+        }
 
         _ => ADOContract::default().execute(ctx, msg),
     }
@@ -183,10 +186,20 @@ fn execute_unstake(
         }
     );
 
+    let fund = coin(unstake_amount.u128(), res.amount.denom);
     let undelegate_msg = CosmosMsg::Staking(StakingMsg::Undelegate {
         validator: validator.to_string(),
-        amount: coin(unstake_amount.u128(), res.amount.denom),
+        amount: fund.clone(),
     });
+
+    let mut unstaking_queue = UNSTAKING_QUEUE.load(deps.storage).unwrap_or_default();
+    unstaking_queue.push(UnstakingTokens {
+        fund,
+        payout_at: Timestamp::default(),
+    });
+
+    UNSTAKING_QUEUE.save(deps.storage, &unstaking_queue)?;
+
     let undelegate_msg = SubMsg::reply_on_success(undelegate_msg, ReplyId::ValidatorUnstake.repr());
 
     let res = Response::new()
@@ -257,7 +270,11 @@ fn execute_claim(
     Ok(res)
 }
 
-fn execute_withdraw_fund(ctx: ExecuteContext) -> Result<Response, ContractError> {
+fn execute_withdraw_fund(
+    ctx: ExecuteContext,
+    denom: Option<String>,
+    recipient: Option<AndrAddr>,
+) -> Result<Response, ContractError> {
     let ExecuteContext {
         deps, info, env, ..
     } = ctx;
@@ -268,35 +285,38 @@ fn execute_withdraw_fund(ctx: ExecuteContext) -> Result<Response, ContractError>
         ContractError::Unauthorized {}
     );
 
-    let mut funds = Vec::<Coin>::new();
-    loop {
-        match UNSTAKING_QUEUE.front(deps.storage).unwrap() {
-            Some(UnstakingTokens { payout_at, .. }) if payout_at <= env.block.time => {
-                if let Some(UnstakingTokens { fund, .. }) =
-                    UNSTAKING_QUEUE.pop_front(deps.storage)?
-                {
-                    funds.push(fund)
-                }
-            }
-            _ => break,
-        }
-    }
+    let recipient = recipient.map_or(Ok(info.sender), |r| r.get_raw_address(&deps.as_ref()))?;
+    let funds = denom.map_or(
+        deps.querier
+            .query_all_balances(env.contract.address.clone())?,
+        |d| {
+            deps.querier
+                .query_balance(env.contract.address.clone(), d)
+                .map(|fund| vec![fund])
+                .expect("Invalid denom")
+        },
+    );
+
+    // Remove expired unstaking requests
+    let mut unstaking_queue = UNSTAKING_QUEUE.load(deps.storage)?;
+    unstaking_queue.retain(|token| token.payout_at >= env.block.time);
+    UNSTAKING_QUEUE.save(deps.storage, &unstaking_queue)?;
 
     ensure!(
         !funds.is_empty(),
         ContractError::InvalidWithdrawal {
-            msg: Some("No unstaked funds to withdraw".to_string())
+            msg: Some("No funds to withdraw".to_string())
         }
     );
 
     let res = Response::new()
         .add_message(BankMsg::Send {
-            to_address: info.sender.to_string(),
+            to_address: recipient.to_string(),
             amount: funds,
         })
         .add_attribute("action", "withdraw-funds")
         .add_attribute("from", env.contract.address)
-        .add_attribute("to", info.sender.into_string());
+        .add_attribute("to", recipient.into_string());
 
     Ok(res)
 }
@@ -321,12 +341,7 @@ fn query_staked_tokens(
 }
 
 fn query_unstaked_tokens(deps: Deps) -> Result<Vec<UnstakingTokens>, ContractError> {
-    let iter = UNSTAKING_QUEUE.iter(deps.storage).unwrap();
-    let mut res = Vec::<UnstakingTokens>::new();
-
-    for data in iter {
-        res.push(data.unwrap());
-    }
+    let res = UNSTAKING_QUEUE.load(deps.storage)?;
     Ok(res)
 }
 
@@ -344,21 +359,32 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
 }
 
 pub fn on_validator_unstake(deps: DepsMut, msg: Reply) -> Result<Response, ContractError> {
-    let attributes = &msg.result.unwrap().events[0].attributes;
-    let mut fund = Coin::default();
-    let mut payout_at = Timestamp::default();
-    for attr in attributes {
-        if attr.key == "amount" {
-            fund = Coin::from_str(&attr.value).unwrap();
-        } else if attr.key == "completion_time" {
-            let completion_time = DateTime::parse_from_rfc3339(&attr.value).unwrap();
-            let seconds = completion_time.timestamp() as u64;
-            let nanos = completion_time.timestamp_subsec_nanos() as u64;
-            payout_at = Timestamp::from_seconds(seconds);
-            payout_at = payout_at.plus_nanos(nanos);
+    let res = msg.result.unwrap();
+    let mut unstaking_queue = UNSTAKING_QUEUE.load(deps.storage).unwrap_or_default();
+    let payout_at = if res.data.is_some() {
+        let data = res.data;
+        let (seconds, nanos) = decode_unstaking_response_data(data.unwrap());
+        let payout_at = Timestamp::from_seconds(seconds);
+        payout_at.plus_nanos(nanos)
+    } else {
+        let attributes = &res.events[0].attributes;
+        let mut payout_at = Timestamp::default();
+        for attr in attributes {
+            if attr.key == "completion_time" {
+                let completion_time = DateTime::parse_from_rfc3339(&attr.value).unwrap();
+                let seconds = completion_time.timestamp() as u64;
+                let nanos = completion_time.timestamp_subsec_nanos() as u64;
+                payout_at = Timestamp::from_seconds(seconds);
+                payout_at = payout_at.plus_nanos(nanos);
+            }
         }
-    }
-    UNSTAKING_QUEUE.push_back(deps.storage, &UnstakingTokens { fund, payout_at })?;
+        payout_at
+    };
+    let mut unstake_req = unstaking_queue.pop().unwrap();
+    unstake_req.payout_at = payout_at;
+
+    unstaking_queue.push(unstake_req);
+    UNSTAKING_QUEUE.save(deps.storage, &unstaking_queue)?;
 
     Ok(Response::default())
 }
