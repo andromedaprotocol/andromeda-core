@@ -41,15 +41,8 @@ pub fn instantiate(
             ContractError::NoActorsProvided {}
         );
 
-        let verified_actors: Vec<Addr> = actor_permission
-            .actors
-            .into_iter()
-            .map(|actor| actor.get_raw_address(&deps.as_ref()))
-            .collect::<Result<HashSet<_>, _>>()?
-            .into_iter()
-            .collect();
-
-        for verified_actor in verified_actors {
+        for actor in actor_permission.actors {
+            let verified_actor = actor.get_raw_address(&deps.as_ref())?;
             add_actors_permission(deps.storage, verified_actor, &actor_permission.permission)?;
         }
     }
@@ -159,7 +152,7 @@ fn execute_remove_actor_permission(
         .map(|actor| actor.to_string())
         .collect::<Vec<String>>()
         .join(", ");
-    
+
     Ok(Response::new().add_attributes(vec![
         attr("action", "remove_actor_permission"),
         attr("actor", actors_str),
