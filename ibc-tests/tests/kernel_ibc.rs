@@ -1,11 +1,11 @@
 use andromeda_std::ado_base::MigrateMsg;
 use andromeda_std::os::kernel;
 use andromeda_std::os::kernel::ExecuteMsg;
+use andromeda_testing_e2e::chains::LOCAL_OSMO;
 use andromeda_testing_e2e::mock::mock_app;
 use andromeda_testing_e2e::mock::MockAndromeda;
 use cw_orch::interface;
 use cw_orch::prelude::*;
-use ibc_tests::chains::LOCAL_OSMO;
 use ibc_tests::config::Config;
 use ibc_tests::constants::TESTNET_MNEMONIC;
 use ibc_tests::contract_interface;

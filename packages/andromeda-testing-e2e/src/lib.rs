@@ -18,3 +18,6 @@ pub mod vfs;
 
 #[cfg(not(target_arch = "wasm32"))]
 pub mod economics;
+
+#[cfg(not(target_arch = "wasm32"))]
+pub mod chains;

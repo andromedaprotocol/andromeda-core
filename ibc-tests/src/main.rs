@@ -1,13 +1,13 @@
 use std::cmp;
 
-use ibc_tests::chains::ALL_CHAINS;
-use ibc_tests::chains::LOCAL_OSMO;
+use andromeda_testing_e2e::chains::{ALL_CHAINS, LOCAL_OSMO};
 
 use andromeda_std::ado_base::MigrateMsg;
 use andromeda_testing_e2e::mock::{mock_app, MockAndromeda};
 use cosmwasm_std::{coin, to_json_binary, Uint128};
 use cw_orch::interface;
 use cw_orch::prelude::*;
+use cw_orch_interchain::prelude::*;
 
 use cw_orch_daemon::{
     queriers::{Staking, StakingBondStatus},

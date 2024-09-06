@@ -34,4 +34,21 @@ pub const LOCAL_OSMO: ChainInfo = ChainInfo {
     fcd_url: None,
 };
 
-pub const ALL_CHAINS: &[ChainInfo] = &[LOCAL_OSMO];
+pub const ANDR_NETWORK: NetworkInfo = NetworkInfo {
+    chain_name: "andr",
+    pub_address_prefix: "andr",
+    coin_type: 118u32,
+};
+
+pub const LOCAL_ANDR: ChainInfo = ChainInfo {
+    kind: ChainKind::Local,
+    chain_id: "localandromedaa-1",
+    gas_denom: "uandr",
+    gas_price: 0.15,
+    grpc_urls: &["http://localhost:20321"],
+    network_info: ANDR_NETWORK,
+    lcd_url: Some("http://localhost:20221"),
+    fcd_url: None,
+};
+
+pub const ALL_CHAINS: &[ChainInfo] = &[LOCAL_OSMO, LOCAL_ANDR];
