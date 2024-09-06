@@ -81,10 +81,10 @@ pub fn execute(
 
 pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::AddActorPermission { actors, permission } => {
+        ExecuteMsg::PermissionActors { actors, permission } => {
             execute_add_actor_permission(ctx, actors, permission)
         }
-        ExecuteMsg::RemoveActorPermission { actors } => {
+        ExecuteMsg::RemovePermissions { actors } => {
             execute_remove_actor_permission(ctx, actors)
         }
         _ => ADOContract::default().execute(ctx, msg),

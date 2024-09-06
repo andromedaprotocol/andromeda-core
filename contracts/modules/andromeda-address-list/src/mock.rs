@@ -72,5 +72,5 @@ pub fn mock_add_actor_permission_msg(
     actors: Vec<AndrAddr>,
     permission: LocalPermission,
 ) -> ExecuteMsg {
-    ExecuteMsg::AddActorPermission { actors, permission }
+    ExecuteMsg::PermissionActors { actors, permission }
 }

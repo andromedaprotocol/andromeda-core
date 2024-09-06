@@ -21,12 +21,12 @@ pub struct ActorPermission {
 #[cw_serde]
 pub enum ExecuteMsg {
     /// Adds an actor key and a permission value
-    AddActorPermission {
+    PermissionActors {
         actors: Vec<AndrAddr>,
         permission: LocalPermission,
     },
     /// Removes actor alongisde his permission
-    RemoveActorPermission { actors: Vec<AndrAddr> },
+    RemovePermissions { actors: Vec<AndrAddr> },
 }
 
 #[andr_query]

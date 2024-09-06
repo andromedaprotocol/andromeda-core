@@ -81,7 +81,7 @@ fn test_add_remove_actor() {
 
     init(deps.as_mut(), info.clone());
 
-    let msg = ExecuteMsg::AddActorPermission {
+    let msg = ExecuteMsg::PermissionActors {
         actors: vec![AndrAddr::from_string(actor.clone())],
         permission: permission.clone(),
     };
@@ -105,7 +105,7 @@ fn test_add_remove_actor() {
 
     // // Contract permissions aren't allowed to be saved in the address list contract
     // let contract_permission = Permission::Whitelisted(None);
-    // let msg = ExecuteMsg::AddActorPermission {
+    // let msg = ExecuteMsg::PermissionActors {
     //     actor: Addr::unchecked(MOCK_KERNEL_CONTRACT),
     //     permission: contract_permission,
     // };
@@ -118,7 +118,7 @@ fn test_add_remove_actor() {
     // );
 
     // Test remove actor
-    let msg = ExecuteMsg::RemoveActorPermission {
+    let msg = ExecuteMsg::RemovePermissions {
         actors: vec![AndrAddr::from_string(actor.clone())],
     };
     let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
@@ -132,7 +132,7 @@ fn test_add_remove_actor() {
 
     // Try removing an actor that isn't included in permissions
     let random_actor = Addr::unchecked("random_actor");
-    let msg = ExecuteMsg::RemoveActorPermission {
+    let msg = ExecuteMsg::RemovePermissions {
         actors: vec![AndrAddr::from_string(random_actor)],
     };
     let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
@@ -155,7 +155,7 @@ fn test_add_remove_multiple_actors() {
 
     init(deps.as_mut(), info.clone());
 
-    let msg = ExecuteMsg::AddActorPermission {
+    let msg = ExecuteMsg::PermissionActors {
         actors: actors.clone(),
         permission: permission.clone(),
     };
@@ -191,7 +191,7 @@ fn test_add_remove_multiple_actors() {
 
     // // Contract permissions aren't allowed to be saved in the address list contract
     // let contract_permission = Permission::Whitelisted(None);
-    // let msg = ExecuteMsg::AddActorPermission {
+    // let msg = ExecuteMsg::PermissionActors {
     //     actor: Addr::unchecked(MOCK_KERNEL_CONTRACT),
     //     permission: contract_permission,
     // };
@@ -204,7 +204,7 @@ fn test_add_remove_multiple_actors() {
     // );
 
     // Test remove actor
-    let msg = ExecuteMsg::RemoveActorPermission {
+    let msg = ExecuteMsg::RemovePermissions {
         actors: actors.clone(),
     };
     let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
@@ -230,7 +230,7 @@ fn test_add_remove_multiple_actors() {
 
     // Try removing an actor that isn't included in permissions
     let random_actor = Addr::unchecked("random_actor");
-    let msg = ExecuteMsg::RemoveActorPermission {
+    let msg = ExecuteMsg::RemovePermissions {
         actors: vec![AndrAddr::from_string(random_actor)],
     };
     let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
