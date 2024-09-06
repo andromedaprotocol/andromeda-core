@@ -30,6 +30,7 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 #[EnumRepr(type = "u64")]
 pub enum ReplyId {
     ValidatorUnstake = 201,
+    SetWithdrawAddress = 202,
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -256,10 +257,15 @@ fn execute_claim(
         ContractError::InvalidClaim {}
     );
 
-    let res = Response::new()
-        .add_message(DistributionMsg::SetWithdrawAddress {
+    let set_withdraw_addr_msg = SubMsg::reply_on_error(
+        DistributionMsg::SetWithdrawAddress {
             address: recipient_address.to_string(),
-        })
+        },
+        ReplyId::SetWithdrawAddress.repr(),
+    );
+
+    let res = Response::new()
+        .add_submessage(set_withdraw_addr_msg)
         .add_message(DistributionMsg::WithdrawDelegatorReward {
             validator: validator.to_string(),
         })
@@ -348,9 +354,12 @@ fn query_unstaked_tokens(deps: Deps) -> Result<Vec<UnstakingTokens>, ContractErr
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
     if msg.result.is_err() {
-        return Err(ContractError::Std(StdError::generic_err(
-            msg.result.unwrap_err(),
-        )));
+        return match ReplyId::from_repr(msg.id) {
+            Some(ReplyId::SetWithdrawAddress) => Ok(Response::default()),
+            _ => Err(ContractError::Std(StdError::generic_err(
+                msg.result.unwrap_err(),
+            ))),
+        };
     }
     match ReplyId::from_repr(msg.id) {
         Some(ReplyId::ValidatorUnstake) => on_validator_unstake(deps, msg),
