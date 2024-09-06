@@ -39,7 +39,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-address-list"
-version = "2.0.1"
+version = "2.0.2"
 dependencies = [
  "andromeda-app",
  "andromeda-modules",
