@@ -82,16 +82,16 @@ pub fn execute(
 pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::PermissionActors { actors, permission } => {
-            execute_add_actor_permission(ctx, actors, permission)
+            execute_permission_actors(ctx, actors, permission)
         }
         ExecuteMsg::RemovePermissions { actors } => {
-            execute_remove_actor_permission(ctx, actors)
+            execute_remove_permissions(ctx, actors)
         }
         _ => ADOContract::default().execute(ctx, msg),
     }
 }
 
-fn execute_add_actor_permission(
+fn execute_permission_actors(
     ctx: ExecuteContext,
     actors: Vec<AndrAddr>,
     permission: LocalPermission,
@@ -124,7 +124,7 @@ fn execute_add_actor_permission(
     ]))
 }
 
-fn execute_remove_actor_permission(
+fn execute_remove_permissions(
     ctx: ExecuteContext,
     actors: Vec<AndrAddr>,
 ) -> Result<Response, ContractError> {
