@@ -5,7 +5,7 @@ use andromeda_std::{
 use cosmwasm_std::{
     coins, from_json,
     testing::{mock_env, mock_info, MOCK_CONTRACT_ADDR},
-    BankMsg, DepsMut, Response, Uint128,
+    BankMsg, Decimal, DepsMut, Response, Uint128,
 };
 use cw_utils::Duration;
 
@@ -546,22 +546,25 @@ fn test_claim_batch_not_nice_numbers_single_release() {
 fn test_claim_batch_not_nice_numbers_multiple_releases() {
     let mut deps = mock_dependencies_custom(&[]);
     init(deps.as_mut());
-    let info = mock_info("owner", &coins(14, "uusd"));
+    let vesting_amount = 1_000_000_000_000_000_000u128;
+    let info = mock_info("owner", &coins(vesting_amount, "uusd"));
 
-    let release_unit = 10;
+    let release_unit = 1; // 1 second
+    let duration: u64 = 60 * 60 * 24 * 365 * 5; // 5 years
+    let percent_release = Decimal::from_ratio(Uint128::one(), Uint128::from(duration));
 
     // Create batch.
     let msg = ExecuteMsg::CreateBatch {
         lockup_duration: None,
         release_unit,
-        release_amount: WithdrawalType::Amount(Uint128::new(10)),
+        release_amount: WithdrawalType::Percentage(percent_release),
     };
 
     let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
     deps.querier
         .base
-        .update_balance(MOCK_CONTRACT_ADDR, coins(14, "uusd"));
+        .update_balance(MOCK_CONTRACT_ADDR, coins(vesting_amount, "uusd"));
 
     // Skip time.
     let mut env = mock_env();
@@ -574,30 +577,58 @@ fn test_claim_batch_not_nice_numbers_multiple_releases() {
         batch_id: 1,
     };
 
-    let res = execute(deps.as_mut(), env, info, msg).unwrap();
+    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
 
     assert_eq!(
         Response::new()
             .add_message(BankMsg::Send {
                 to_address: "recipient".to_string(),
-                amount: coins(14, "uusd")
+                amount: coins(12683916792, "uusd")
             })
             .add_attribute("action", "claim")
-            .add_attribute("amount", "14")
+            .add_attribute("amount", "12683916792")
             .add_attribute("batch_id", "1")
-            .add_attribute("amount_left", "0"),
+            .add_attribute("amount_left", (vesting_amount - 12683916792).to_string()),
         res
     );
     let lockup_end = mock_env().block.time.seconds();
 
     assert_eq!(
         Batch {
-            amount: Uint128::new(14),
-            amount_claimed: Uint128::new(14),
+            amount: Uint128::new(vesting_amount),
+            amount_claimed: Uint128::new(12683916792),
             lockup_end,
-            release_unit: 10,
-            release_amount: WithdrawalType::Amount(Uint128::new(10)),
+            release_unit: 1,
+            release_amount: WithdrawalType::Percentage(percent_release),
             last_claimed_release_time: lockup_end + 2 * release_unit,
+        },
+        batches().load(deps.as_ref().storage, 1u64).unwrap()
+    );
+
+    env.block.time = env.block.time.plus_seconds(duration);
+
+    let res = execute(deps.as_mut(), env, info, msg).unwrap();
+    assert_eq!(
+        Response::new()
+            .add_message(BankMsg::Send {
+                to_address: "recipient".to_string(),
+                amount: coins(vesting_amount - 12683916792, "uusd")
+            })
+            .add_attribute("action", "claim")
+            .add_attribute("amount", (vesting_amount - 12683916792).to_string())
+            .add_attribute("batch_id", "1")
+            .add_attribute("amount_left", "0"),
+        res
+    );
+
+    assert_eq!(
+        Batch {
+            amount: Uint128::new(vesting_amount),
+            amount_claimed: Uint128::from(vesting_amount),
+            lockup_end,
+            release_unit: 1,
+            release_amount: WithdrawalType::Percentage(percent_release),
+            last_claimed_release_time: lockup_end + duration + 2,
         },
         batches().load(deps.as_ref().storage, 1u64).unwrap()
     );
