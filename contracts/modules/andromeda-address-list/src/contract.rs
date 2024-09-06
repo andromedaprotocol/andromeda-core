@@ -84,9 +84,7 @@ pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
         ExecuteMsg::PermissionActors { actors, permission } => {
             execute_permission_actors(ctx, actors, permission)
         }
-        ExecuteMsg::RemovePermissions { actors } => {
-            execute_remove_permissions(ctx, actors)
-        }
+        ExecuteMsg::RemovePermissions { actors } => execute_remove_permissions(ctx, actors),
         _ => ADOContract::default().execute(ctx, msg),
     }
 }
