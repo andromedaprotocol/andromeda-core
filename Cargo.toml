@@ -41,6 +41,10 @@ andromeda-ecosystem = { path = "./packages/andromeda-ecosystem", version = "1.0.
 andromeda-testing = { path = "./packages/andromeda-testing", version = "1.0.0" }
 andromeda-testing-e2e = { path = "./packages/andromeda-testing-e2e", version = "1.0.0" }
 
+cw-orch = { version = "0.24.1", features = ["daemon"] }
+cw-orch-daemon = "0.24.3"
+cw-orch-interchain = { version = "0.3.1", features = ["daemon"] }
+
 
 strum_macros = "0.24.3"
 cosmwasm-std = "1.5.2"

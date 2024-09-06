@@ -76,7 +76,6 @@ pub fn execute(
         info,
         amp_ctx: None,
     };
-
     match msg {
         ExecuteMsg::AMPReceive(packet) => execute::amp_receive(
             &mut execute_env.deps,

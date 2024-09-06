@@ -13,10 +13,11 @@ use andromeda_std::os::kernel::{ChannelInfo, IbcExecuteMsg, InternalMsg};
 use andromeda_std::os::vfs::vfs_resolve_symlink;
 use cosmwasm_std::{
     attr, ensure, to_json_binary, Addr, BankMsg, Binary, Coin, ContractInfoResponse, CosmosMsg,
-    DepsMut, Env, IbcMsg, MessageInfo, Response, StdError, SubMsg, WasmMsg,
+    DepsMut, Env, IbcChannel, IbcChannelOpenMsg, IbcEndpoint, IbcMsg, MessageInfo, Response,
+    StdError, SubMsg, WasmMsg,
 };
 
-use crate::ibc::{generate_transfer_message, PACKET_LIFETIME};
+use crate::ibc::{generate_transfer_message, IBC_VERSION, PACKET_LIFETIME};
 use crate::query;
 use crate::state::{
     IBCHooksPacketSendState, ADO_OWNER, CHAIN_TO_CHANNEL, CHANNEL_TO_CHAIN, CURR_CHAIN,
@@ -553,7 +554,7 @@ impl MsgHandler {
         }?;
 
         let kernel_msg = IbcExecuteMsg::SendMessage {
-            recipient: AndrAddr::from_string(recipient.get_raw_path()),
+            recipient: AndrAddr::from_string(format!("/home{}", recipient.get_raw_path())),
             message: message.clone(),
         };
         let msg = IbcMsg::SendPacket {

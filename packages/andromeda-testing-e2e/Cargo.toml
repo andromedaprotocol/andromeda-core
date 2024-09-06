@@ -47,4 +47,5 @@ anyhow = "1.0.79"
 reqwest = { version = "0.12.5", features = ["json"] }
 tokio = "1.39.2"
 cw-orch-daemon = "0.24.3"
-cw-orch = "0.24.1"
+cw-orch = { version = "0.24.1", features = ["daemon"] }
+cw-orch-interchain = { version = "0.3.1", features = ["daemon"] }

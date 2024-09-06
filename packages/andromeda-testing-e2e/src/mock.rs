@@ -1,11 +1,24 @@
 use andromeda_std::os::kernel::QueryMsg;
 use cw_orch::prelude::*;
 use cw_orch_daemon::{Daemon, DaemonBase, Wallet};
+use cw_orch_interchain::prelude::*;
 
 use crate::{
-    adodb::AdodbContract, economics::EconomicsContract, faucet::fund, kernel::KernelContract,
+    adodb::AdodbContract,
+    chains::{ALL_CHAINS, TESTNET_MNEMONIC},
+    economics::EconomicsContract,
+    faucet::fund,
+    kernel::KernelContract,
     vfs::VfsContract,
 };
+
+pub fn setup_interchain_env() -> DaemonInterchainEnv<ChannelCreationValidator> {
+    let interchain_info: Vec<(ChainInfo, Option<String>)> = ALL_CHAINS
+        .iter()
+        .map(|chain| (chain.clone(), Some(TESTNET_MNEMONIC.to_string())))
+        .collect();
+    DaemonInterchainEnv::new(interchain_info, &ChannelCreationValidator).unwrap()
+}
 
 pub fn mock_app(chain: ChainInfo, mnemonic: &str) -> DaemonBase<Wallet> {
     let daemon = Daemon::builder(chain.clone()) // set the network to use

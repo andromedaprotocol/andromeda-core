@@ -10,18 +10,86 @@ use cosmwasm_std::{coin, Addr, BlockInfo, Coin, Decimal, Timestamp, Validator};
 use cw_multi_test::{
     App, AppBuilder, BankKeeper, Executor, MockAddressGenerator, MockApiBech32, WasmKeeper,
 };
+use cw_orch::mock::cw_multi_test::{
+    App as OrchApp, AppBuilder as OrchAppBuilder, BankKeeper as OrchBankKeeper,
+    MockAddressGenerator as OrchMockAddressGenerator, MockApiBech32 as OrchMockApiBech32,
+    WasmKeeper as OrchWasmKeeper,
+};
 
 use crate::{mock_contract::MockContract, MockADODB, MockEconomics, MockKernel, MockVFS};
 
 pub const ADMIN_USERNAME: &str = "am";
 
 pub type MockApp = App<BankKeeper, MockApiBech32>;
+pub type OrchMockApp = OrchApp<OrchBankKeeper, OrchMockApiBech32>;
 
 pub fn mock_app(denoms: Option<Vec<&str>>) -> MockApp {
     let denoms = denoms.unwrap_or(vec!["uandr", "uusd"]);
     AppBuilder::new()
         .with_api(MockApiBech32::new("andr"))
         .with_wasm(WasmKeeper::new().with_address_generator(MockAddressGenerator))
+        .build(|router, api, storage| {
+            router
+                .bank
+                .init_balance(
+                    storage,
+                    &Addr::unchecked("bank"),
+                    denoms
+                        .iter()
+                        .map(|d| coin(u128::MAX, *d))
+                        .collect::<Vec<Coin>>(),
+                )
+                .unwrap();
+
+            router
+                .staking
+                .add_validator(
+                    api,
+                    storage,
+                    &BlockInfo {
+                        height: 0,
+                        time: Timestamp::default(),
+                        chain_id: "andromeda".to_string(),
+                    },
+                    Validator {
+                        address: MockApiBech32::new("andr")
+                            .addr_make("validator1")
+                            .to_string(),
+                        commission: Decimal::zero(),
+                        max_commission: Decimal::percent(20),
+                        max_change_rate: Decimal::percent(1),
+                    },
+                )
+                .unwrap();
+
+            router
+                .staking
+                .add_validator(
+                    api,
+                    storage,
+                    &BlockInfo {
+                        height: 0,
+                        time: Timestamp::default(),
+                        chain_id: "andromeda-1".to_string(),
+                    },
+                    Validator {
+                        address: MockApiBech32::new("andr")
+                            .addr_make("validator2")
+                            .to_string(),
+                        commission: Decimal::zero(),
+                        max_commission: Decimal::percent(20),
+                        max_change_rate: Decimal::percent(1),
+                    },
+                )
+                .unwrap();
+        })
+}
+
+pub fn mock_app_bech32(denoms: Option<Vec<&str>>, api: OrchMockApiBech32) -> OrchMockApp {
+    let denoms = denoms.unwrap_or(vec!["uandr", "uusd"]);
+    OrchAppBuilder::new()
+        .with_api(api)
+        .with_wasm(OrchWasmKeeper::new().with_address_generator(OrchMockAddressGenerator))
         .build(|router, api, storage| {
             router
                 .bank

@@ -107,6 +107,6 @@ pub fn on_reply_ics20_packet_send(_deps: DepsMut, msg: Reply) -> Result<Response
         })?;
 
     Ok(Response::default()
-        .add_attribute("action", "ibc_hooks_packet_send")
+        .add_attribute("action", "ibc_ics20_packet_send")
         .add_attribute("sequence", sequence.to_string()))
 }
