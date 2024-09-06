@@ -1,9 +1,10 @@
 use std::cmp;
 
-use andromeda_testing_e2e::chains::{ALL_CHAINS, LOCAL_OSMO};
+use andromeda_testing_e2e::chains::ALL_CHAINS;
 
 use andromeda_std::ado_base::MigrateMsg;
-use andromeda_testing_e2e::mock::{mock_app, MockAndromeda};
+use andromeda_testing_e2e::chains::{LOCAL_OSMO, TESTNET_MNEMONIC};
+use andromeda_testing_e2e::mock::MockAndromeda;
 use cosmwasm_std::{coin, to_json_binary, Uint128};
 use cw_orch::interface;
 use cw_orch::prelude::*;
@@ -19,8 +20,6 @@ use ibc_tests::contract_interface;
 use andromeda_app::app::{self, AppComponent};
 use andromeda_finance::validator_staking;
 
-const TESTNET_MNEMONIC: &str = "across left ignore gold echo argue track joy hire release captain enforce hotel wide flash hotel brisk joke midnight duck spare drop chronic stool";
-
 contract_interface!(
     AppContract,
     andromeda_app_contract,
@@ -29,10 +28,8 @@ contract_interface!(
     "andromeda_app_contract@1.1.1"
 );
 
-fn install_os(chain: &ChainInfo) -> Addr {
-    println!("Installing OS on {}", chain.network_info.chain_name);
-    let daemon = mock_app(chain.clone(), TESTNET_MNEMONIC);
-    let mock_andromeda = MockAndromeda::install(&daemon);
+fn install_os(daemon: &DaemonBase<Wallet>) -> Addr {
+    let mock_andromeda = MockAndromeda::install(daemon);
     let MockAndromeda { adodb_contract, .. } = &mock_andromeda;
 
     let app_contract = AppContract::new(daemon.clone());
@@ -43,19 +40,24 @@ fn install_os(chain: &ChainInfo) -> Addr {
         "app-contract".to_string(),
         "0.1.0".to_string(),
     );
-    println!("Installed OS on {}", chain.network_info.chain_name);
 
     mock_andromeda.kernel_contract.address().unwrap()
 }
 
 fn main() {
     env_logger::init();
-
+    let interchain_info: Vec<(ChainInfo, Option<String>)> = ALL_CHAINS
+        .iter()
+        .map(|chain| (chain.clone(), Some(TESTNET_MNEMONIC.to_string())))
+        .collect();
+    let interchain = DaemonInterchainEnv::new(interchain_info, &ChannelCreationValidator).unwrap();
     let mut config: Config = Config::default();
     for chain in ALL_CHAINS {
+        let daemon = interchain.get_chain(chain.chain_id.to_string()).unwrap();
+        let kernel_address = install_os(&daemon);
         config
             .installations
-            .insert(chain.network_info.chain_name.to_string(), install_os(chain));
+            .insert(chain.network_info.chain_name.to_string(), kernel_address);
     }
     println!("Installed OS on all chains");
 
@@ -164,7 +166,7 @@ fn prepare_validator_staking(
             validator: Some(Addr::unchecked(validator.address.to_string())),
         };
         let balance = daemon
-            .balance(daemon.sender_addr(), Some(denom.to_string()))
+            .balance(&daemon.sender_addr(), Some(denom.to_string()))
             .unwrap();
         let amount_to_send = cmp::min(balance[0].amount, Uint128::new(10000000000));
         validator_staking_contract
