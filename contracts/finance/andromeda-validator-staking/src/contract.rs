@@ -302,7 +302,7 @@ fn execute_withdraw_fund(
 
     // Remove expired unstaking requests
     let mut unstaking_queue = UNSTAKING_QUEUE.load(deps.storage)?;
-    unstaking_queue.retain(|token| token.payout_at >= env.block.time);
+    unstaking_queue.retain(|token| token.payout_at > env.block.time);
     UNSTAKING_QUEUE.save(deps.storage, &unstaking_queue)?;
 
     ensure!(
