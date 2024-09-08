@@ -33,13 +33,17 @@ pub fn store_code_id(
     ADO_TYPE
         .save(storage, &code_id.to_string(), ado_version)
         .unwrap();
-    LATEST_VERSION
-        .save(
-            storage,
-            &ado_version.get_type(),
-            &(ado_version.get_version(), code_id),
-        )
-        .unwrap();
+    let version = semver::Version::parse(&ado_version.get_version()).unwrap();
+    let prerelease = version.pre.parse::<String>().unwrap_or_default();
+    if prerelease.is_empty() {
+        LATEST_VERSION
+            .save(
+                storage,
+                &ado_version.get_type(),
+                &(ado_version.get_version(), code_id),
+            )
+            .unwrap();
+    }
     CODE_ID
         .save(storage, ado_version.as_str(), &code_id)
         .unwrap();
