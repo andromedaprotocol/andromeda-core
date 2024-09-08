@@ -33,7 +33,9 @@ pub fn store_code_id(
     ADO_TYPE
         .save(storage, &code_id.to_string(), ado_version)
         .unwrap();
-    let version = semver::Version::parse(&ado_version.get_version()).unwrap();
+    let version = semver::Version::parse(&ado_version.get_version())
+        .ok()
+        .ok_or(ContractError::InvalidADOVersion { msg: None })?;
     let prerelease = version.pre.parse::<String>().unwrap_or_default();
     if prerelease.is_empty() {
         LATEST_VERSION
