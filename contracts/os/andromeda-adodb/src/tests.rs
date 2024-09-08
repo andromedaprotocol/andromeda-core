@@ -152,7 +152,7 @@ fn test_publish() {
     }
 
     // Test prelease
-    let ado_version = ADOVersion::from_type("ado_type_with_beta").with_version("0.1.0-beta.1");
+    let ado_version = ADOVersion::from_type("ado_type_with_beta").with_version("0.1.0-");
     let code_id = 3;
     let msg = ExecuteMsg::Publish {
         ado_type: ado_version.get_type(),
@@ -165,7 +165,6 @@ fn test_publish() {
     let resp = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
     assert!(resp.is_ok());
 
-    // assert!(resp.is_ok());
     let publisher = PUBLISHER
         .load(deps.as_ref().storage, ado_version.as_str())
         .unwrap();
