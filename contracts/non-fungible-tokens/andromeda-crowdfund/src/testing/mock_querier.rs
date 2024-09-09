@@ -21,10 +21,10 @@ pub const MOCK_DEFAULT_LIMIT: u128 = 100000;
 
 pub fn mock_campaign_config(denom: Asset) -> CampaignConfig {
     CampaignConfig {
-        title: "First Crowdfund".to_string(),
-        description: "Demo campaign for testing".to_string(),
-        banner: "http://<campaign_banner>".to_string(),
-        url: "http://<campaign_url>".to_string(),
+        title: Some("First Crowdfund".to_string()),
+        description: Some("Demo campaign for testing".to_string()),
+        banner: Some("http://<campaign_banner>".to_string()),
+        url: Some("http://<campaign_url>".to_string()),
         denom,
         token_address: AndrAddr::from_string(MOCK_TIER_CONTRACT.to_owned()),
         withdrawal_recipient: Recipient::from_string(MOCK_WITHDRAWAL_ADDRESS.to_owned()),

@@ -1,7 +1,7 @@
 use andromeda_std::{
     amp::recipient::Recipient,
     andr_exec, andr_instantiate, andr_query,
-    common::{merge_coins, MillisecondsExpiration},
+    common::{expiration::Expiry, merge_coins},
     error::ContractError,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
@@ -10,8 +10,8 @@ use cosmwasm_std::{ensure, Api, BlockInfo, Coin};
 #[cw_serde]
 /// Enum used to specify the condition which must be met in order for the Escrow to unlock.
 pub enum EscrowCondition {
-    /// Requires a given time or block height to be reached.
-    Expiration(MillisecondsExpiration),
+    /// Requires a given time
+    Expiration(Expiry),
     /// Requires a minimum amount of funds to be deposited.
     MinimumFunds(Vec<Coin>),
 }
@@ -80,7 +80,9 @@ impl Escrow {
         match &self.condition {
             None => Ok(false),
             Some(condition) => match condition {
-                EscrowCondition::Expiration(expiration) => Ok(!expiration.is_in_past(block)),
+                EscrowCondition::Expiration(expiration) => {
+                    Ok(!expiration.get_time(block).is_expired(block))
+                }
                 EscrowCondition::MinimumFunds(funds) => {
                     Ok(!self.min_funds_deposited(funds.clone()))
                 }
@@ -174,7 +176,8 @@ mod tests {
     #[test]
     fn test_validate() {
         let deps = mock_dependencies();
-        let condition = EscrowCondition::Expiration(Milliseconds::from_seconds(101));
+        let condition =
+            EscrowCondition::Expiration(Expiry::FromNow(Milliseconds::from_seconds(101)));
         let coins = vec![coin(100u128, "uluna")];
         let recipient = Recipient::from_string("owner");
 
@@ -236,7 +239,9 @@ mod tests {
         let invalid_time_escrow = Escrow {
             recipient,
             coins,
-            condition: Some(EscrowCondition::Expiration(Milliseconds::from_seconds(0))),
+            condition: Some(EscrowCondition::Expiration(Expiry::AtTime(
+                Milliseconds::from_seconds(0),
+            ))),
             recipient_addr: "owner".to_string(),
         };
         let block = BlockInfo {

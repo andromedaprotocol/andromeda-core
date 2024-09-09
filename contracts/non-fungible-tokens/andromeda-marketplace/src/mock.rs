@@ -34,9 +34,14 @@ impl MockMarketplace {
         kernel_address: impl Into<String>,
         owner: Option<String>,
         authorized_cw20_address: Option<AndrAddr>,
+        authorized_token_addresses: Option<Vec<AndrAddr>>,
     ) -> MockMarketplace {
-        let msg =
-            mock_marketplace_instantiate_msg(kernel_address.into(), owner, authorized_cw20_address);
+        let msg = mock_marketplace_instantiate_msg(
+            kernel_address.into(),
+            owner,
+            authorized_cw20_address,
+            authorized_token_addresses,
+        );
         let addr = app
             .instantiate_contract(
                 code_id,
