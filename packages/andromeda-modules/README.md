@@ -19,7 +19,7 @@ pub const PERMISSIONS: Map<&Addr, Permission> = Map::new("permissioning")
 ```
 Note that `Permission` of type `Contract` isn't allowed in the address-list contract.
 
-Apply `ExecuteMsg::AddActorPermission { actor, permission }` to the ADO you want. 
+Apply `ExecuteMsg::PermissionActors { actor, permission }` to the ADO you want. 
 To involve the address-list contract, set the Permission to be of type Contract, and input the address-list's contract address. `Permission::Contract(address_list_address)`.
 Make sure that the `actor` is the same as the one set in the address-list contract.
 
