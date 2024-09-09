@@ -53,6 +53,16 @@ impl MockValidatorStaking {
         self.execute(app, &msg, sender, &[])
     }
 
+    pub fn execute_update_default_validator(
+        &self,
+        app: &mut MockApp,
+        sender: Addr,
+        validator: Addr,
+    ) -> ExecuteResult {
+        let msg = mock_execute_update_default_validator(validator);
+        self.execute(app, &msg, sender, &[])
+    }
+
     pub fn query_staked_tokens(
         &self,
         app: &MockApp,
@@ -114,6 +124,10 @@ pub fn mock_execute_withdraw_fund(
     recipient: Option<AndrAddr>,
 ) -> ExecuteMsg {
     ExecuteMsg::WithdrawFunds { denom, recipient }
+}
+
+pub fn mock_execute_update_default_validator(validator: Addr) -> ExecuteMsg {
+    ExecuteMsg::UpdateDefaultValidator { validator }
 }
 
 pub fn mock_get_staked_tokens(validator: Option<Addr>) -> QueryMsg {

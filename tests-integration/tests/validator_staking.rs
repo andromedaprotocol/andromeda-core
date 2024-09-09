@@ -11,7 +11,7 @@ use andromeda_validator_staking::mock::{
 };
 
 // use andromeda_std::error::ContractError;
-use andromeda_std::error::ContractError::Std;
+use andromeda_std::error::ContractError::{self, Std};
 use andromeda_testing::MockContract;
 use cosmwasm_std::StdError::GenericErr;
 use cosmwasm_std::{coin, to_json_binary, Addr, BlockInfo, Delegation, Uint128};
@@ -368,4 +368,72 @@ fn test_validator_stake_and_unstake_specific_amount() {
 
     let owner_balance = router.wrap().query_balance(owner, "TOKEN").unwrap();
     assert_eq!(owner_balance, coin(250, "TOKEN"));
+}
+
+#[test]
+fn test_update_default_validator() {
+    let mut router = mock_app(Some(vec!["TOKEN"]));
+
+    let andr = MockAndromedaBuilder::new(&mut router, "admin")
+        .with_wallets(vec![("owner", vec![coin(1000, "TOKEN")])])
+        .with_contracts(vec![
+            ("app-contract", mock_andromeda_app()),
+            ("validator-staking", mock_andromeda_validator_staking()),
+        ])
+        .build(&mut router);
+    let owner = andr.get_wallet("owner");
+    let validator_1 = router.api().addr_make("validator1");
+    let validator_2 = router.api().addr_make("validator2");
+    let validator_3 = router.api().addr_make("validator3");
+
+    let validator_staking_init_msg = mock_validator_staking_instantiate_msg(
+        validator_1.clone(),
+        None,
+        andr.kernel.addr().to_string(),
+    );
+
+    let validator_staking_component = AppComponent::new(
+        "staking".to_string(),
+        "validator-staking".to_string(),
+        to_json_binary(&validator_staking_init_msg).unwrap(),
+    );
+
+    let app_components = vec![validator_staking_component.clone()];
+    let app = MockAppContract::instantiate(
+        andr.get_code_id(&mut router, "app-contract"),
+        owner,
+        &mut router,
+        "Validator Staking App",
+        app_components,
+        andr.kernel.addr(),
+        Some(owner.to_string()),
+    );
+
+    let validator_staking: MockValidatorStaking =
+        app.query_ado_by_component_name(&router, validator_staking_component.name);
+
+    // Update default validator with invalid validator
+    let err: ContractError = validator_staking
+        .execute_update_default_validator(&mut router, owner.clone(), validator_3.clone())
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(err, ContractError::InvalidValidator {});
+
+    // Update default validator
+    validator_staking
+        .execute_update_default_validator(&mut router, owner.clone(), validator_2.clone())
+        .unwrap();
+
+    let funds = vec![coin(1000, "TOKEN")];
+
+    // Stake with default validator
+    validator_staking
+        .execute_stake(&mut router, owner.clone(), None, funds)
+        .unwrap();
+
+    let stake_info = validator_staking
+        .query_staked_tokens(&router, None)
+        .unwrap();
+    assert_eq!(stake_info.validator, validator_2.to_string());
 }
