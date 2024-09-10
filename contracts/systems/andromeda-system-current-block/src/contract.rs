@@ -85,6 +85,7 @@ pub fn execute(
     }
 }
 
+#[allow(clippy::match_single_binding)]
 pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     match msg {
         _ => ADOContract::default().execute(ctx, msg),
