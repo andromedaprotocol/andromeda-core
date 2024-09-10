@@ -12,8 +12,8 @@ use cosmwasm_std::{
 };
 
 use crate::state::{
-    add_path_symlink, add_pathname, paths, resolve_pathname, ADDRESS_LIBRARY, ADDRESS_USERNAME,
-    LIBRARIES, USERS,
+    add_path_symlink, add_pathname, add_system_ado_path_name, paths, resolve_pathname,
+    system_ado_paths, ADDRESS_LIBRARY, ADDRESS_USERNAME, LIBRARIES, USERS,
 };
 
 pub struct ExecuteEnv<'a> {
@@ -131,6 +131,38 @@ pub fn add_child(
     match existing {
         None => {
             add_pathname(deps.storage, parent_address, name, info.sender)?;
+        }
+        Some(path) => {
+            ensure!(path.address == info.sender, ContractError::Unauthorized {})
+        }
+    };
+    Ok(Response::default())
+}
+
+pub fn add_system_ado_path(
+    env: ExecuteEnv,
+    name: String,
+    root: String,
+) -> Result<Response, ContractError> {
+    let ExecuteEnv { deps, info, .. } = env;
+    let name = name.to_lowercase();
+    let root = root.to_lowercase();
+
+    let sender_code_id_res = deps.querier.query_wasm_contract_info(info.sender.clone());
+    // Sender must be a system ADO contract
+    ensure!(sender_code_id_res.is_ok(), ContractError::Unauthorized {});
+
+    validate_component_name(name.clone())?;
+    validate_component_name(root.clone())?;
+
+    let existing = system_ado_paths()
+        .load(deps.storage, &(root.clone(), name.clone()))
+        .ok();
+    // Ensure that this path is not already added or if already added it should point to same address as above. This prevent external users to override existing paths.
+    // Only add path method can override existing paths as its safe because only owner of the path can execute it
+    match existing {
+        None => {
+            add_system_ado_path_name(deps.storage, root, name, info.sender)?;
         }
         Some(path) => {
             ensure!(path.address == info.sender, ContractError::Unauthorized {})
