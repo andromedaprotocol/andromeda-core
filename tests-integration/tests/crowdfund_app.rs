@@ -272,6 +272,9 @@ fn test_successful_crowdfund_app_native(setup: TestCase) {
     assert_eq!(summary.current_capital, 0);
     assert_eq!(summary.current_stage, CampaignStage::ONGOING.to_string());
 
+    let tiers = crowdfund.query_tiers(&mut router).tiers;
+    assert_eq!(tiers.len(), 2);
+
     // Purchase tiers
     router.set_block(BlockInfo {
         height: router.block_info().height,
@@ -327,9 +330,6 @@ fn test_successful_crowdfund_app_native(setup: TestCase) {
     let _ = crowdfund
         .execute_claim(buyer_one.clone(), &mut router)
         .unwrap();
-
-    let tiers = crowdfund.query_tiers(&mut router).unwrap().tiers;
-    assert_eq!(tiers.len(), 2);
 
     // buyer_one should own 30 tiers now (10 pre order + 20 purchased)
     let owner_resp = cw721.query_owner_of(&router, "0".to_string());
@@ -652,6 +652,9 @@ fn test_successful_crowdfund_app_cw20(#[with(false)] setup: TestCase) {
     let summary = crowdfund.query_campaign_summary(&mut router);
     assert_eq!(summary.current_capital, 0);
     assert_eq!(summary.current_stage, CampaignStage::ONGOING.to_string());
+
+    let tiers = crowdfund.query_tiers(&mut router).tiers;
+    assert_eq!(tiers.len(), 2);
 
     // Purchase tiers
     router.set_block(BlockInfo {
