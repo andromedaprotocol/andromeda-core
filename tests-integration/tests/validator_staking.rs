@@ -87,18 +87,6 @@ fn test_validator_stake() {
         chain_id: router.block_info().chain_id,
     });
 
-    // only owner can become a recipient
-    let _err = validator_staking
-        .execute_claim_reward(
-            &mut router,
-            owner.clone(),
-            Some(validator_1.clone()),
-        )
-        .unwrap_err();
-    // let _err = err.root_cause().downcast_ref::<ContractError>().unwrap();
-    // let expected_err = ContractError::Unauthorized {};
-    // assert_eq!(err, &expected_err);
-
     validator_staking
         .execute_claim_reward(
             &mut router,
@@ -109,8 +97,8 @@ fn test_validator_stake() {
 
     // Default APR 10% by cw-multi-test -> StakingInfo
     // should now have 1000 * 10% / 2 - 0% commission = 50 tokens reward
-    let owner_balance = router.wrap().query_balance(owner.clone(), "TOKEN").unwrap();
-    assert_eq!(owner_balance, coin(50, "TOKEN"));
+    let contract_balance = router.wrap().query_balance(validator_staking.addr(), "TOKEN").unwrap();
+    assert_eq!(contract_balance, coin(50, "TOKEN"));
 
     // Test unstake with invalid validator
     let _err = validator_staking
@@ -155,15 +143,6 @@ fn test_validator_stake() {
         })
     );
 
-    // Test withdraw before payout period
-    let _err = validator_staking
-        .execute_withdraw_fund(&mut router, owner.clone())
-        .unwrap_err();
-    // let _err = err.root_cause().downcast_ref::<ContractError>().unwrap();
-    // let expected_err = ContractError::InvalidWithdrawal {
-    //     msg: Some("No unstaked funds to withdraw".to_string()),
-    // };
-    // assert_eq!(err, &expected_err);
 
     let unstaked_tokens = validator_staking.query_unstaked_tokens(&router).unwrap();
     let unbonding_period =
@@ -260,15 +239,6 @@ fn test_validator_stake_and_unstake_specific_amount() {
         chain_id: router.block_info().chain_id,
     });
 
-    // only owner can become a recipient
-    let _err = validator_staking
-        .execute_claim_reward(
-            &mut router,
-            owner.clone(),
-            Some(validator_1.clone()),
-        )
-        .unwrap_err();
-
     validator_staking
         .execute_claim_reward(
             &mut router,
@@ -279,8 +249,8 @@ fn test_validator_stake_and_unstake_specific_amount() {
 
     // Default APR 10% by cw-multi-test -> StakingInfo
     // should now have 1000 * 10% / 2 - 0% commission = 50 tokens reward
-    let owner_balance = router.wrap().query_balance(owner.clone(), "TOKEN").unwrap();
-    assert_eq!(owner_balance, coin(50, "TOKEN"));
+    let contract_balance = router.wrap().query_balance(validator_staking.addr(), "TOKEN").unwrap();
+    assert_eq!(contract_balance, coin(50, "TOKEN"));
 
     // Test unstake with invalid validator
     let _err = validator_staking
@@ -332,14 +302,10 @@ fn test_validator_stake_and_unstake_specific_amount() {
         }
     );
 
-    // Test withdraw before payout period
-    let _err = validator_staking
-        .execute_withdraw_fund(&mut router, owner.clone())
-        .unwrap_err();
-
     let unstaked_tokens = validator_staking.query_unstaked_tokens(&router).unwrap();
     let unbonding_period =
         unstaked_tokens[0].payout_at.seconds() - router.block_info().time.seconds();
+
     // Update block to payout period
     router.set_block(BlockInfo {
         height: router.block_info().height,
