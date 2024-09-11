@@ -98,6 +98,11 @@ impl MockCrowdfund {
         let msg = QueryMsg::CampaignSummary {};
         self.query(app, msg)
     }
+    
+    pub fn query_tiers(&self, app: &mut MockApp) -> TiersResponse {
+        let msg = QueryMsg::Tiers {start_after: None, limit: None, order_by: None};
+        self.query(app, msg)
+    }
 }
 
 pub fn mock_andromeda_crowdfund() -> Box<dyn Contract<Empty>> {

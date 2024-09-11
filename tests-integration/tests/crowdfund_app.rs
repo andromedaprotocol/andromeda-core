@@ -327,6 +327,10 @@ fn test_successful_crowdfund_app_native(setup: TestCase) {
     let _ = crowdfund
         .execute_claim(buyer_one.clone(), &mut router)
         .unwrap();
+
+    let tiers = crowdfund.query_tiers(&mut router).unwrap().tiers;
+    assert_eq!(tiers.len(), 2);
+
     // buyer_one should own 30 tiers now (10 pre order + 20 purchased)
     let owner_resp = cw721.query_owner_of(&router, "0".to_string());
     assert_eq!(owner_resp, buyer_one.to_string());
