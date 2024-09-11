@@ -3,7 +3,6 @@
 use andromeda_app::app::AppComponent;
 use andromeda_app_contract::mock::{mock_andromeda_app, MockAppContract};
 
-use andromeda_std::amp::AndrAddr;
 use andromeda_testing::mock::mock_app;
 use andromeda_testing::mock_builder::MockAndromedaBuilder;
 use andromeda_validator_staking::mock::{
@@ -28,7 +27,6 @@ fn test_validator_stake() {
         ])
         .build(&mut router);
     let owner = andr.get_wallet("owner");
-    let recipient = AndrAddr::from_string(owner.to_string());
     let validator_1 = router.api().addr_make("validator1");
 
     let validator_staking_init_msg = mock_validator_staking_instantiate_msg(
@@ -75,7 +73,6 @@ fn test_validator_stake() {
             &mut router,
             owner.clone(),
             Some(validator_1.clone()),
-            Some(recipient.clone()),
         )
         .unwrap_err();
     // assert_eq!(may_err.unwrap(), &expected_err);
@@ -96,7 +93,6 @@ fn test_validator_stake() {
             &mut router,
             owner.clone(),
             Some(validator_1.clone()),
-            Some(AndrAddr::from_string("some_address")),
         )
         .unwrap_err();
     // let _err = err.root_cause().downcast_ref::<ContractError>().unwrap();
@@ -108,7 +104,6 @@ fn test_validator_stake() {
             &mut router,
             owner.clone(),
             Some(validator_1),
-            Some(recipient),
         )
         .unwrap();
 
@@ -206,7 +201,6 @@ fn test_validator_stake_and_unstake_specific_amount() {
         ])
         .build(&mut router);
     let owner = andr.get_wallet("owner");
-    let recipient = AndrAddr::from_string(owner.to_string());
     let validator_1 = router.api().addr_make("validator1");
 
     let validator_staking_init_msg = mock_validator_staking_instantiate_msg(
@@ -252,7 +246,6 @@ fn test_validator_stake_and_unstake_specific_amount() {
             &mut router,
             owner.clone(),
             Some(validator_1.clone()),
-            Some(recipient.clone()),
         )
         .unwrap_err();
     // assert_eq!(may_err.unwrap(), &expected_err);
@@ -273,7 +266,6 @@ fn test_validator_stake_and_unstake_specific_amount() {
             &mut router,
             owner.clone(),
             Some(validator_1.clone()),
-            Some(AndrAddr::from_string("some_address")),
         )
         .unwrap_err();
 
@@ -282,7 +274,6 @@ fn test_validator_stake_and_unstake_specific_amount() {
             &mut router,
             owner.clone(),
             Some(validator_1),
-            Some(recipient),
         )
         .unwrap();
 

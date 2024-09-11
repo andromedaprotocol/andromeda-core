@@ -42,9 +42,8 @@ impl MockValidatorStaking {
         app: &mut MockApp,
         sender: Addr,
         validator: Option<Addr>,
-        recipient: Option<AndrAddr>,
     ) -> ExecuteResult {
-        let msg = mock_execute_claim_reward(validator, recipient);
+        let msg = mock_execute_claim_reward(validator);
         self.execute(app, &msg, sender, &[])
     }
 
@@ -99,14 +98,8 @@ pub fn mock_execute_unstake(validator: Option<Addr>, amount: Option<Uint128>) ->
     ExecuteMsg::Unstake { validator, amount }
 }
 
-pub fn mock_execute_claim_reward(
-    validator: Option<Addr>,
-    recipient: Option<AndrAddr>,
-) -> ExecuteMsg {
-    ExecuteMsg::Claim {
-        validator,
-        recipient,
-    }
+pub fn mock_execute_claim_reward(validator: Option<Addr>) -> ExecuteMsg {
+    ExecuteMsg::Claim { validator }
 }
 
 pub fn mock_execute_withdraw_fund(
