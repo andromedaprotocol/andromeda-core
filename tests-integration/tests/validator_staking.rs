@@ -69,11 +69,7 @@ fn test_validator_stake() {
     // Testing when there is no reward to claim
     // TODO: These errors cant be downcast anymore?
     let _err = validator_staking
-        .execute_claim_reward(
-            &mut router,
-            owner.clone(),
-            Some(validator_1.clone()),
-        )
+        .execute_claim_reward(&mut router, owner.clone(), Some(validator_1.clone()))
         .unwrap_err();
     // assert_eq!(may_err.unwrap(), &expected_err);
 
@@ -88,16 +84,15 @@ fn test_validator_stake() {
     });
 
     validator_staking
-        .execute_claim_reward(
-            &mut router,
-            owner.clone(),
-            Some(validator_1),
-        )
+        .execute_claim_reward(&mut router, owner.clone(), Some(validator_1))
         .unwrap();
 
     // Default APR 10% by cw-multi-test -> StakingInfo
     // should now have 1000 * 10% / 2 - 0% commission = 50 tokens reward
-    let contract_balance = router.wrap().query_balance(validator_staking.addr(), "TOKEN").unwrap();
+    let contract_balance = router
+        .wrap()
+        .query_balance(validator_staking.addr(), "TOKEN")
+        .unwrap();
     assert_eq!(contract_balance, coin(50, "TOKEN"));
 
     // Test unstake with invalid validator
@@ -142,7 +137,6 @@ fn test_validator_stake() {
             msg: "Querier contract error: InvalidDelegation".to_string()
         })
     );
-
 
     let unstaked_tokens = validator_staking.query_unstaked_tokens(&router).unwrap();
     let unbonding_period =
@@ -221,11 +215,7 @@ fn test_validator_stake_and_unstake_specific_amount() {
 
     // Testing when there is no reward to claim
     let _err = validator_staking
-        .execute_claim_reward(
-            &mut router,
-            owner.clone(),
-            Some(validator_1.clone()),
-        )
+        .execute_claim_reward(&mut router, owner.clone(), Some(validator_1.clone()))
         .unwrap_err();
     // assert_eq!(may_err.unwrap(), &expected_err);
 
@@ -240,16 +230,15 @@ fn test_validator_stake_and_unstake_specific_amount() {
     });
 
     validator_staking
-        .execute_claim_reward(
-            &mut router,
-            owner.clone(),
-            Some(validator_1),
-        )
+        .execute_claim_reward(&mut router, owner.clone(), Some(validator_1))
         .unwrap();
 
     // Default APR 10% by cw-multi-test -> StakingInfo
     // should now have 1000 * 10% / 2 - 0% commission = 50 tokens reward
-    let contract_balance = router.wrap().query_balance(validator_staking.addr(), "TOKEN").unwrap();
+    let contract_balance = router
+        .wrap()
+        .query_balance(validator_staking.addr(), "TOKEN")
+        .unwrap();
     assert_eq!(contract_balance, coin(50, "TOKEN"));
 
     // Test unstake with invalid validator
