@@ -4,8 +4,7 @@ use crate::{
 };
 use cosmwasm_std::{
     coin, ensure, entry_point, Addr, BankMsg, Binary, CosmosMsg, Deps, DepsMut, DistributionMsg,
-    Env, FullDelegation, MessageInfo, Reply, Response, StakingMsg, StdError, SubMsg, Timestamp,
-    Uint128,
+    Env, FullDelegation, MessageInfo, Reply, Response, StakingMsg, SubMsg, Timestamp, Uint128,
 };
 use cw2::set_contract_version;
 
@@ -30,6 +29,7 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 #[EnumRepr(type = "u64")]
 pub enum ReplyId {
     ValidatorUnstake = 201,
+    SetWithdrawAddress = 202,
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -81,10 +81,7 @@ pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
     match msg {
         ExecuteMsg::Stake { validator } => execute_stake(ctx, validator),
         ExecuteMsg::Unstake { validator, amount } => execute_unstake(ctx, validator, amount),
-        ExecuteMsg::Claim {
-            validator,
-            recipient,
-        } => execute_claim(ctx, validator, recipient),
+        ExecuteMsg::Claim { validator } => execute_claim(ctx, validator),
         ExecuteMsg::WithdrawFunds { denom, recipient } => {
             execute_withdraw_fund(ctx, denom, recipient)
         }
@@ -215,11 +212,7 @@ fn execute_unstake(
     Ok(res)
 }
 
-fn execute_claim(
-    ctx: ExecuteContext,
-    validator: Option<Addr>,
-    recipient: Option<AndrAddr>,
-) -> Result<Response, ContractError> {
+fn execute_claim(ctx: ExecuteContext, validator: Option<Addr>) -> Result<Response, ContractError> {
     let ExecuteContext {
         deps, info, env, ..
     } = ctx;
@@ -230,15 +223,9 @@ fn execute_claim(
     // Check if the validator is valid before unstaking
     is_validator(&deps, &validator)?;
 
-    let recipient_address = if let Some(ref recipient) = recipient {
-        recipient.get_raw_address(&deps.as_ref())?
-    } else {
-        info.sender
-    };
-
-    // Ensure recipient is the contract owner
+    // Ensure msg sender is the contract owner
     ensure!(
-        ADOContract::default().is_contract_owner(deps.storage, recipient_address.as_str())?,
+        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {}
     );
 
@@ -260,14 +247,10 @@ fn execute_claim(
     );
 
     let res = Response::new()
-        .add_message(DistributionMsg::SetWithdrawAddress {
-            address: recipient_address.to_string(),
-        })
         .add_message(DistributionMsg::WithdrawDelegatorReward {
             validator: validator.to_string(),
         })
         .add_attribute("action", "validator-claim-reward")
-        .add_attribute("recipient", recipient_address)
         .add_attribute("validator", validator.to_string());
 
     Ok(res)
@@ -373,11 +356,6 @@ fn query_unstaked_tokens(deps: Deps) -> Result<Vec<UnstakingTokens>, ContractErr
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
-    if msg.result.is_err() {
-        return Err(ContractError::Std(StdError::generic_err(
-            msg.result.unwrap_err(),
-        )));
-    }
     match ReplyId::from_repr(msg.id) {
         Some(ReplyId::ValidatorUnstake) => on_validator_unstake(deps, msg),
         _ => Ok(Response::default()),

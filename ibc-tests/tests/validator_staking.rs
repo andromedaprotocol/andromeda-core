@@ -61,7 +61,7 @@ fn test_validator_staking() {
 
     let validator_staking_contract = ValidatorStakingContract::new(daemon.clone());
     validator_staking_contract.set_address(&Addr::unchecked(
-        "terra1vk603ncakghk33t8lklvpdq4aff03hwu2rak73f5zdayruead20qcwp0rf",
+        "terra18cv7jca4dnsu8vuhu2t7fkwl23dxres8kpnhggdarf7f0dh4j4ysv3qhd7",
     ));
 
     let staking_querier = Staking::new(&daemon);
@@ -89,18 +89,8 @@ fn test_validator_staking() {
         .query(&staking_query_msg)
         .unwrap();
 
-    let contract_balance = daemon
-        .balance(
-            validator_staking_contract.addr_str().unwrap(),
-            Some(denom.to_string()),
-        )
-        .unwrap()[0]
-        .amount;
-    assert_eq!(contract_balance, Uint128::zero());
-
     let claim_msg = validator_staking::ExecuteMsg::Claim {
         validator: Some(Addr::unchecked(default_validator.address.to_string())),
-        recipient: None,
     };
     validator_staking_contract
         .execute(&claim_msg, None)
@@ -113,14 +103,6 @@ fn test_validator_staking() {
     validator_staking_contract
         .execute(&unstake_msg, None)
         .unwrap();
-    let contract_balance = daemon
-        .balance(
-            validator_staking_contract.addr_str().unwrap(),
-            Some(denom.to_string()),
-        )
-        .unwrap()[0]
-        .amount;
-    assert_eq!(contract_balance, Uint128::zero());
 
     daemon.wait_seconds(61).unwrap();
 
@@ -154,7 +136,7 @@ fn test_kicked_validator() {
 
     let validator_staking_contract = ValidatorStakingContract::new(daemon.clone());
     validator_staking_contract.set_address(&Addr::unchecked(
-        "terra1cvcm3yztqxdvnx26dyk2dk856nn4paggh84x7dkccy2hy0a0xnysd3pct0",
+        "terra18cv7jca4dnsu8vuhu2t7fkwl23dxres8kpnhggdarf7f0dh4j4ysv3qhd7",
     ));
 
     let staking_querier = Staking::new(&daemon);
@@ -194,7 +176,6 @@ fn test_kicked_validator() {
 
     let claim_msg = validator_staking::ExecuteMsg::Claim {
         validator: Some(Addr::unchecked(kicked_validator.address.to_string())),
-        recipient: None,
     };
     validator_staking_contract
         .execute(&claim_msg, None)
@@ -207,14 +188,6 @@ fn test_kicked_validator() {
     validator_staking_contract
         .execute(&unstake_msg, None)
         .unwrap();
-    let contract_balance = daemon
-        .balance(
-            validator_staking_contract.addr_str().unwrap(),
-            Some(denom.to_string()),
-        )
-        .unwrap()[0]
-        .amount;
-    assert_eq!(contract_balance, Uint128::zero());
 
     daemon.wait_seconds(61).unwrap();
 

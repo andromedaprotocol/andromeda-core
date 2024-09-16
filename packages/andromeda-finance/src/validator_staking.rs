@@ -22,7 +22,6 @@ pub enum ExecuteMsg {
     },
     Claim {
         validator: Option<Addr>,
-        recipient: Option<AndrAddr>,
     },
     WithdrawFunds {
         denom: Option<String>,
