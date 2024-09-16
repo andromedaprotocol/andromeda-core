@@ -17,9 +17,9 @@ pub enum WithdrawalType {
 
 impl Withdrawal {
     /// Calculates the amount to withdraw given the withdrawal type and passed in `balance`.
-    pub fn get_amount(&self, balance: Uint128) -> Result<Uint128, ContractError> {
+    pub fn get_amount(&self, balance: Uint128) -> Result<Decimal, ContractError> {
         match self.withdrawal_type.clone() {
-            None => Ok(balance),
+            None => Ok(Decimal::from_ratio(balance, Uint128::one())),
             Some(withdrawal_type) => withdrawal_type.get_amount(balance),
         }
     }
@@ -27,13 +27,16 @@ impl Withdrawal {
 
 impl WithdrawalType {
     /// Calculates the amount to withdraw given the withdrawal type and passed in `balance`.
-    pub fn get_amount(&self, balance: Uint128) -> Result<Uint128, ContractError> {
+    pub fn get_amount(&self, balance: Uint128) -> Result<Decimal, ContractError> {
         match self {
             WithdrawalType::Percentage(percent) => {
                 ensure!(*percent <= Decimal::one(), ContractError::InvalidRate {});
-                Ok(balance * *percent)
+                Ok(Decimal::from_ratio(balance, Uint128::one()).checked_mul(*percent)?)
             }
-            WithdrawalType::Amount(amount) => Ok(cmp::min(*amount, balance)),
+            WithdrawalType::Amount(amount) => Ok(cmp::min(
+                Decimal::from_ratio(*amount, Uint128::one()),
+                Decimal::from_ratio(balance, Uint128::one()),
+            )),
         }
     }
 
@@ -57,7 +60,10 @@ mod tests {
             withdrawal_type: None,
         };
         let balance = Uint128::from(100u128);
-        assert_eq!(balance, withdrawal.get_amount(balance).unwrap());
+        assert_eq!(
+            Decimal::from_ratio(balance, Uint128::one()),
+            withdrawal.get_amount(balance).unwrap()
+        );
     }
 
     #[test]
@@ -67,7 +73,10 @@ mod tests {
             withdrawal_type: Some(WithdrawalType::Percentage(Decimal::percent(10))),
         };
         let balance = Uint128::from(100u128);
-        assert_eq!(10u128, withdrawal.get_amount(balance).unwrap().u128());
+        assert_eq!(
+            Decimal::from_ratio(Uint128::from(10u128), Uint128::one()),
+            withdrawal.get_amount(balance).unwrap()
+        );
     }
 
     #[test]
@@ -90,7 +99,10 @@ mod tests {
             withdrawal_type: Some(WithdrawalType::Amount(5u128.into())),
         };
         let balance = Uint128::from(10u128);
-        assert_eq!(5u128, withdrawal.get_amount(balance).unwrap().u128());
+        assert_eq!(
+            Decimal::from_ratio(Uint128::from(5u128), Uint128::one()),
+            withdrawal.get_amount(balance).unwrap()
+        );
     }
 
     #[test]
@@ -100,6 +112,9 @@ mod tests {
             token: "token".to_string(),
             withdrawal_type: Some(WithdrawalType::Amount(balance + Uint128::from(1u128))),
         };
-        assert_eq!(10, withdrawal.get_amount(balance).unwrap().u128());
+        assert_eq!(
+            Decimal::from_ratio(Uint128::from(10u128), Uint128::one()),
+            withdrawal.get_amount(balance).unwrap()
+        );
     }
 }
