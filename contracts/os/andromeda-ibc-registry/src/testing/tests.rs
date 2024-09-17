@@ -2,15 +2,39 @@ use andromeda_std::amp::AndrAddr;
 use andromeda_std::error::ContractError;
 use andromeda_std::os::ibc_registry::{
     AllDenomInfoResponse, DenomInfo, DenomInfoResponse, ExecuteMsg, IBCDenomInfo, InstantiateMsg,
+    QueryMsg,
 };
 use andromeda_std::testing::mock_querier::MOCK_KERNEL_CONTRACT;
 use cosmwasm_std::testing::mock_env;
 use cosmwasm_std::testing::{mock_dependencies, mock_info};
-use cosmwasm_std::Addr;
+use cosmwasm_std::{from_json, Addr, Deps};
 
-use crate::contract::{execute, instantiate};
+use crate::contract::{execute, instantiate, query};
 use crate::state::SERVICE_ADDRESS;
-use crate::testing::mock::{query_all_denom_info, query_denom_info};
+
+fn query_denom_info(deps: Deps, denom: String) -> Result<DenomInfoResponse, ContractError> {
+    let res = query(deps, mock_env(), QueryMsg::DenomInfo { denom });
+    match res {
+        Ok(res) => Ok(from_json(res).unwrap()),
+        Err(err) => Err(err),
+    }
+}
+
+fn query_all_denom_info(
+    deps: Deps,
+    limit: Option<u64>,
+    start_after: Option<u64>,
+) -> Result<AllDenomInfoResponse, ContractError> {
+    let res = query(
+        deps,
+        mock_env(),
+        QueryMsg::AllDenomInfo { limit, start_after },
+    );
+    match res {
+        Ok(res) => Ok(from_json(res).unwrap()),
+        Err(err) => Err(err),
+    }
+}
 
 #[test]
 fn proper_initialization() {
