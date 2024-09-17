@@ -102,13 +102,12 @@ pub fn execute_store_denom_info(
     for info in ibc_denom_info {
         let denom = info.denom;
 
-        // Ensure the denom is valid (you could add further validation here if needed)
+        // Ensure the denom is valid
         if denom.trim().is_empty() {
             return Err(ContractError::EmptyDenom {});
         }
 
         // Ensure that the denom is formatted correctly. It should start with "ibc/"
-
         if !denom.starts_with("ibc/") {
             return Err(ContractError::InvalidDenom {
                 msg: Some("The denom should start with 'ibc/'".to_string()),
@@ -117,7 +116,7 @@ pub fn execute_store_denom_info(
 
         // Check for duplicates
         if !seen_denoms.insert(denom.clone()) {
-            return Err(ContractError::DuplicateDenoms { denom }); // Return an error for duplicates
+            return Err(ContractError::DuplicateDenoms { denom });
         }
 
         // Store the denom info securely
@@ -156,7 +155,7 @@ pub fn get_all_denom_info(
     // Convert `start_after` into a Bound if provided
     let min = Some(Bound::inclusive(start_after.unwrap_or(0).to_string()));
 
-    // Set the limit, defaulting to 10 if none is provided
+    // Set the limit, defaulting to 100 if none is provided
     let limit = limit.unwrap_or(100) as usize;
 
     // Query the registry with pagination
