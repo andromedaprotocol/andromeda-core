@@ -335,7 +335,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-ibc-registry"
-version = "1.0.1"
+version = "1.0.0"
 dependencies = [
  "andromeda-data-storage",
  "andromeda-std",
