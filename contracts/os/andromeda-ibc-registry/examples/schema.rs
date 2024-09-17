@@ -1,4 +1,4 @@
-use andromeda_data_storage::counter::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use andromeda_std::os::ibc_registry::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use cosmwasm_schema::write_api;
 fn main() {
     write_api! {
