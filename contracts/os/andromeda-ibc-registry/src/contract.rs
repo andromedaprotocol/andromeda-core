@@ -1,4 +1,6 @@
-use crate::state::{REGISTRY, SERVICE_ADDRESS};
+use crate::state::REGISTRY;
+use andromeda_std::ado_base::permissioning::{LocalPermission, Permission};
+use andromeda_std::common::actions::call_action;
 use andromeda_std::os::ibc_registry::{
     AllDenomInfoResponse, DenomInfo, DenomInfoResponse, ExecuteMsg, IBCDenomInfo, InstantiateMsg,
     QueryMsg,
@@ -20,6 +22,7 @@ use std::collections::HashSet;
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-ibc-registry";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
+const STORE_DENOM_INFO: &str = "StoreDenomInfo";
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -47,7 +50,14 @@ pub fn instantiate(
         .service_address
         .get_raw_address(&deps.as_ref())?
         .into_string();
-    SERVICE_ADDRESS.save(deps.storage, &service_address)?;
+
+    ADOContract::default().permission_action(STORE_DENOM_INFO, deps.storage)?;
+    ADOContract::set_permission(
+        deps.storage,
+        STORE_DENOM_INFO,
+        service_address.clone(),
+        Permission::Local(LocalPermission::Whitelisted(None)),
+    )?;
 
     Ok(resp.add_attribute("service_address", service_address))
 }
@@ -68,28 +78,43 @@ pub fn execute(
     }
 }
 
-fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+    let action = msg.as_ref().to_string();
+
+    let action_response = call_action(
+        &mut ctx.deps,
+        &ctx.info,
+        &ctx.env,
+        &ctx.amp_ctx,
+        msg.as_ref(),
+    )?;
+
     let res = match msg {
         ExecuteMsg::StoreDenomInfo { ibc_denom_info } => {
-            execute_store_denom_info(ctx, ibc_denom_info)
+            execute_store_denom_info(ctx, action, ibc_denom_info)
         }
         _ => ADOContract::default().execute(ctx, msg),
     }?;
 
-    Ok(res)
+    Ok(res
+        .add_submessages(action_response.messages)
+        .add_attributes(action_response.attributes)
+        .add_events(action_response.events))
 }
 
 pub fn execute_store_denom_info(
-    ctx: ExecuteContext,
+    mut ctx: ExecuteContext,
+    action: String,
     ibc_denom_info: Vec<IBCDenomInfo>,
 ) -> Result<Response, ContractError> {
     let sender = ctx.info.sender.clone();
-    let service_address = SERVICE_ADDRESS.load(ctx.deps.storage)?;
-    // Only servie address can call this message
-    ensure!(
-        service_address == sender.clone().into_string(),
-        ContractError::Unauthorized {}
-    );
+    // Verify authority
+    ADOContract::default().is_permissioned(
+        ctx.deps.branch(),
+        ctx.env.clone(),
+        action,
+        sender.clone(),
+    )?;
 
     // Vector can't be empty
     ensure!(
@@ -98,7 +123,6 @@ pub fn execute_store_denom_info(
     );
 
     let mut seen_denoms = HashSet::new(); // To track unique denoms
-
     for info in ibc_denom_info {
         let denom = info.denom;
 

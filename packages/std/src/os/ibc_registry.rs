@@ -1,5 +1,6 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Addr;
+use strum_macros::AsRefStr;
 
 use crate::amp::{messages::AMPPkt, AndrAddr};
 
@@ -21,6 +22,7 @@ pub struct IBCDenomInfo {
 }
 
 #[cw_serde]
+#[derive(AsRefStr)]
 pub enum ExecuteMsg {
     /// Receives an AMP Packet for relaying
     #[serde(rename = "amp_receive")]

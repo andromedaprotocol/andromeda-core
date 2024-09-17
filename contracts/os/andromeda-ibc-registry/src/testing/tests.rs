@@ -10,7 +10,6 @@ use cosmwasm_std::testing::{mock_dependencies, mock_info};
 use cosmwasm_std::{from_json, Addr, Deps};
 
 use crate::contract::{execute, instantiate, query};
-use crate::state::SERVICE_ADDRESS;
 
 fn query_denom_info(deps: Deps, denom: String) -> Result<DenomInfoResponse, ContractError> {
     let res = query(deps, mock_env(), QueryMsg::DenomInfo { denom });
@@ -49,22 +48,22 @@ fn proper_initialization() {
 
     let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
     assert_eq!(0, res.messages.len());
-
-    assert_eq!(
-        SERVICE_ADDRESS.load(deps.as_ref().storage).unwrap(),
-        "service_address"
-    );
 }
 
 #[test]
 fn test_store_denom_info() {
     let mut deps = mock_dependencies();
-    let info = mock_info("not_service_address", &[]);
+    let info = mock_info("owner", &[]);
     let env = mock_env();
+    let msg = InstantiateMsg {
+        owner: None,
+        kernel_address: Addr::unchecked(MOCK_KERNEL_CONTRACT),
+        service_address: AndrAddr::from_string("service_address"),
+    };
+    instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
     // Test unauthorized sender
-    SERVICE_ADDRESS
-        .save(deps.as_mut().storage, &"service_address".to_string())
-        .unwrap();
+    let info = mock_info("not_service_address", &[]);
     let denom_info1 = DenomInfo {
         path: "path".to_string(),
         base_denom: "ibc/base_denom".to_string(),

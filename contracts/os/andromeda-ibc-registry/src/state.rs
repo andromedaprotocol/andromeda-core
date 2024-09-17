@@ -1,6 +1,4 @@
 use andromeda_std::os::ibc_registry::DenomInfo;
-use cw_storage_plus::{Item, Map};
+use cw_storage_plus::Map;
 
 pub const REGISTRY: Map<String, DenomInfo> = Map::new("registry");
-
-pub const SERVICE_ADDRESS: Item<String> = Item::new("service_address");
