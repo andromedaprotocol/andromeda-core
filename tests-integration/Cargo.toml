@@ -101,6 +101,9 @@ andromeda-shunting = { path = "../contracts/modules/andromeda-shunting", feature
 andromeda-kernel = { path = "../contracts/os/andromeda-kernel", features = [
     "testing",
 ] }
+andromeda-ibc-registry = { path = "../contracts/os/andromeda-ibc-registry", features = [
+    "testing",
+] }
 andromeda-adodb = { path = "../contracts/os/andromeda-adodb", features = [
     "testing",
 ] }

@@ -2198,6 +2198,7 @@ dependencies = [
  "andromeda-ecosystem",
  "andromeda-finance",
  "andromeda-fungible-tokens",
+ "andromeda-ibc-registry",
  "andromeda-kernel",
  "andromeda-lockdrop",
  "andromeda-marketplace",

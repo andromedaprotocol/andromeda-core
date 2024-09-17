@@ -1,11 +1,9 @@
 #![cfg(all(not(target_arch = "wasm32"), feature = "testing"))]
 use crate::contract::{execute, instantiate, query};
-use andromeda_data_storage::counter::{CounterRestriction, ExecuteMsg, InstantiateMsg, QueryMsg};
-use andromeda_data_storage::counter::{
-    GetCurrentAmountResponse, GetDecreaseAmountResponse, GetIncreaseAmountResponse,
-    GetInitialAmountResponse, GetRestrictionResponse,
+use andromeda_std::amp::AndrAddr;
+use andromeda_std::os::ibc_registry::{
+    DenomInfoResponse, ExecuteMsg, IBCDenomInfo, InstantiateMsg, QueryMsg,
 };
-use andromeda_std::ado_base::rates::{Rate, RatesMessage};
 use andromeda_testing::mock::MockApp;
 use andromeda_testing::{
     mock_ado,
@@ -14,7 +12,7 @@ use andromeda_testing::{
 use cosmwasm_std::{Addr, Coin, Empty};
 use cw_multi_test::{Contract, ContractWrapper, Executor};
 
-pub struct MockIbc(Addr);
+pub struct MockIbcRegistry(Addr);
 mock_ado!(MockIbcRegistry, ExecuteMsg, QueryMsg);
 
 impl MockIbcRegistry {
@@ -22,41 +20,32 @@ impl MockIbcRegistry {
         code_id: u64,
         sender: Addr,
         app: &mut MockApp,
-        kernel_address: String,
+        kernel_address: Addr,
         owner: Option<String>,
-        restriction: CounterRestriction,
-        initial_amount: Option<u64>,
-        increase_amount: Option<u64>,
-        decrease_amount: Option<u64>,
-    ) -> MockCounter {
-        let msg = mock_counter_instantiate_msg(
-            kernel_address,
-            owner,
-            restriction,
-            initial_amount,
-            increase_amount,
-            decrease_amount,
-        );
+        service_address: AndrAddr,
+    ) -> MockIbcRegistry {
+        let msg = mock_ibc_registry_instantiate_msg(kernel_address, owner, service_address);
         let addr = app
             .instantiate_contract(
                 code_id,
                 sender.clone(),
                 &msg,
                 &[],
-                "Counter Contract",
+                "IBC Registry Contract",
                 Some(sender.to_string()),
             )
             .unwrap();
         MockIbcRegistry(Addr::unchecked(addr))
     }
 
-    pub fn execute_increment(
+    pub fn execute_execute_store_denom_info(
         &self,
         app: &mut MockApp,
         sender: Addr,
         funds: Option<Coin>,
+        ibc_denom_info: Vec<IBCDenomInfo>,
     ) -> ExecuteResult {
-        let msg = mock_execute_increment_msg();
+        let msg = mock_execute_store_denom_info_msg(ibc_denom_info);
         if let Some(funds) = funds {
             app.execute_contract(sender, self.addr().clone(), &msg, &[funds])
         } else {
@@ -64,106 +53,20 @@ impl MockIbcRegistry {
         }
     }
 
-    pub fn execute_decrement(
-        &self,
-        app: &mut MockApp,
-        sender: Addr,
-        funds: Option<Coin>,
-    ) -> ExecuteResult {
-        let msg = mock_execute_increment_msg();
-        if let Some(funds) = funds {
-            app.execute_contract(sender, self.addr().clone(), &msg, &[funds])
-        } else {
-            app.execute_contract(sender, self.addr().clone(), &msg, &[])
-        }
-    }
-
-    pub fn execute_reset(
-        &self,
-        app: &mut MockApp,
-        sender: Addr,
-        funds: Option<Coin>,
-    ) -> ExecuteResult {
-        let msg = mock_execute_reset_msg();
-        if let Some(funds) = funds {
-            app.execute_contract(sender, self.addr().clone(), &msg, &[funds])
-        } else {
-            app.execute_contract(sender, self.addr().clone(), &msg, &[])
-        }
-    }
-
-    pub fn execute_update_restriction(
-        &self,
-        app: &mut MockApp,
-        sender: Addr,
-        restriction: CounterRestriction,
-        funds: Option<Coin>,
-    ) -> ExecuteResult {
-        let msg = mock_execute_update_restriction_msg(restriction);
-        if let Some(funds) = funds {
-            app.execute_contract(sender, self.addr().clone(), &msg, &[funds])
-        } else {
-            app.execute_contract(sender, self.addr().clone(), &msg, &[])
-        }
-    }
-
-    pub fn execute_set_increase_amount(
-        &self,
-        app: &mut MockApp,
-        sender: Addr,
-        increase_amount: u64,
-        funds: Option<Coin>,
-    ) -> ExecuteResult {
-        let msg = mock_execute_set_increase_amount_msg(increase_amount);
-        if let Some(funds) = funds {
-            app.execute_contract(sender, self.addr().clone(), &msg, &[funds])
-        } else {
-            app.execute_contract(sender, self.addr().clone(), &msg, &[])
-        }
-    }
-
-    pub fn execute_set_decrease_amount(
-        &self,
-        app: &mut MockApp,
-        sender: Addr,
-        decrease_amount: u64,
-        funds: Option<Coin>,
-    ) -> ExecuteResult {
-        let msg = mock_execute_set_decrease_amount_msg(decrease_amount);
-        if let Some(funds) = funds {
-            app.execute_contract(sender, self.addr().clone(), &msg, &[funds])
-        } else {
-            app.execute_contract(sender, self.addr().clone(), &msg, &[])
-        }
-    }
-
-    pub fn query_initial_amount(&self, app: &mut MockApp) -> GetInitialAmountResponse {
-        let msg = QueryMsg::GetInitialAmount {};
-        let res: GetInitialAmountResponse = self.query(app, msg);
+    pub fn query_denom_info(&self, app: &mut MockApp, denom: String) -> DenomInfoResponse {
+        let msg = QueryMsg::DenomInfo { denom };
+        let res: DenomInfoResponse = self.query(app, msg);
         res
     }
 
-    pub fn query_current_amount(&self, app: &mut MockApp) -> GetCurrentAmountResponse {
-        let msg = QueryMsg::GetCurrentAmount {};
-        let res: GetCurrentAmountResponse = self.query(app, msg);
-        res
-    }
-
-    pub fn query_increase_amount(&self, app: &mut MockApp) -> GetIncreaseAmountResponse {
-        let msg = QueryMsg::GetIncreaseAmount {};
-        let res: GetIncreaseAmountResponse = self.query(app, msg);
-        res
-    }
-
-    pub fn query_decrease_amount(&self, app: &mut MockApp) -> GetDecreaseAmountResponse {
-        let msg = QueryMsg::GetDecreaseAmount {};
-        let res: GetDecreaseAmountResponse = self.query(app, msg);
-        res
-    }
-
-    pub fn query_restriction(&self, app: &mut MockApp) -> GetRestrictionResponse {
-        let msg = QueryMsg::GetRestriction {};
-        let res: GetRestrictionResponse = self.query(app, msg);
+    pub fn query_all_denom_info(
+        &self,
+        app: &mut MockApp,
+        limit: Option<u64>,
+        start_after: Option<u64>,
+    ) -> DenomInfoResponse {
+        let msg = QueryMsg::AllDenomInfo { limit, start_after };
+        let res: DenomInfoResponse = self.query(app, msg);
         res
     }
 }
@@ -173,24 +76,18 @@ pub fn mock_andromeda_counter() -> Box<dyn Contract<Empty>> {
     Box::new(contract)
 }
 
-pub fn mock_counter_instantiate_msg(
-    kernel_address: String,
+pub fn mock_ibc_registry_instantiate_msg(
+    kernel_address: Addr,
     owner: Option<String>,
-    restriction: CounterRestriction,
-    initial_amount: Option<u64>,
-    increase_amount: Option<u64>,
-    decrease_amount: Option<u64>,
+    service_address: AndrAddr,
 ) -> InstantiateMsg {
     InstantiateMsg {
         kernel_address,
         owner,
-        restriction,
-        initial_amount,
-        increase_amount,
-        decrease_amount,
+        service_address,
     }
 }
 
-pub fn mock_execute_set_decrease_amount_msg(decrease_amount: u64) -> ExecuteMsg {
-    ExecuteMsg::SetDecreaseAmount { decrease_amount }
+pub fn mock_execute_store_denom_info_msg(ibc_denom_info: Vec<IBCDenomInfo>) -> ExecuteMsg {
+    ExecuteMsg::StoreDenomInfo { ibc_denom_info }
 }
