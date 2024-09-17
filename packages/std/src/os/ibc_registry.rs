@@ -36,7 +36,7 @@ pub enum ExecuteMsg {
 }
 
 /// Ensures that the denom starts with 'ibc/'
-pub fn verify_denom(denom: &String) -> Result<(), ContractError> {
+pub fn verify_denom(denom: &str) -> Result<(), ContractError> {
     // Ensure that the denom is formatted correctly. It should start with "ibc/"
     ensure!(
         denom.starts_with("ibc/"),
