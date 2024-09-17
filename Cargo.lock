@@ -339,7 +339,6 @@ version = "1.0.0"
 dependencies = [
  "andromeda-data-storage",
  "andromeda-std",
- "andromeda-testing",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-multi-test",
@@ -605,6 +604,7 @@ dependencies = [
  "andromeda-adodb",
  "andromeda-app",
  "andromeda-economics",
+ "andromeda-ibc-registry",
  "andromeda-kernel",
  "andromeda-modules",
  "andromeda-non-fungible-tokens",
