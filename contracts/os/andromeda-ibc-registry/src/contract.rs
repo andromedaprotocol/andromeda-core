@@ -109,7 +109,7 @@ pub fn execute_store_denom_info(
 ) -> Result<Response, ContractError> {
     let sender = ctx.info.sender.clone();
     // Verify authority
-    ADOContract::default().is_permissioned(
+    ADOContract::default().is_permissioned_strict(
         ctx.deps.branch(),
         ctx.env.clone(),
         action,

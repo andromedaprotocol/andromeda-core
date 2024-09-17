@@ -5,6 +5,7 @@ use andromeda_ibc_registry::mock::{
 };
 use andromeda_std::{
     amp::AndrAddr,
+    error::ContractError,
     os::ibc_registry::{AllDenomInfoResponse, DenomInfo, DenomInfoResponse, IBCDenomInfo},
 };
 use andromeda_testing::{mock::mock_app, mock_builder::MockAndromedaBuilder, MockContract};
@@ -17,6 +18,7 @@ fn test_ibc_registry() {
         .with_wallets(vec![
             ("owner", vec![coin(100_000, "uandr"), coin(100_000, "uusd")]),
             ("service_address", vec![]),
+            ("user1", vec![]),
         ])
         .with_contracts(vec![
             ("app-contract", mock_andromeda_app()),
@@ -25,6 +27,7 @@ fn test_ibc_registry() {
         .build(&mut router);
     let owner = andr.get_wallet("owner");
     let service_address = andr.get_wallet("service_address");
+    let user1 = andr.get_wallet("user1");
 
     let app_code_id = andr.get_code_id(&mut router, "app-contract");
 
@@ -116,4 +119,26 @@ fn test_ibc_registry() {
             ]
         }
     );
+
+    // Test authorization
+    let ibc_denom_info = IBCDenomInfo {
+        denom: "ibc/usdt".to_string(),
+        denom_info: DenomInfo {
+            path: "path3".to_string(),
+            base_denom: "base_denom3".to_string(),
+        },
+    };
+    let err: ContractError = ibc_registry
+        .execute_execute_store_denom_info(&mut router, user1.clone(), None, vec![ibc_denom_info])
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(err, ContractError::Unauthorized {});
+    // Owner doesn't error
+    // let err: ContractError = ibc_registry
+    //     .execute_execute_store_denom_info(&mut router, owner.clone(), None, vec![ibc_denom_info])
+    //     .unwrap_err()
+    //     .downcast()
+    //     .unwrap();
+    // assert_eq!(err, ContractError::Unauthorized {});
 }
