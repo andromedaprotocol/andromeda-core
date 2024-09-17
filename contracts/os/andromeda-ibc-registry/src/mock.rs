@@ -2,7 +2,7 @@
 use crate::contract::{execute, instantiate, query};
 use andromeda_std::amp::AndrAddr;
 use andromeda_std::os::ibc_registry::{
-    DenomInfoResponse, ExecuteMsg, IBCDenomInfo, InstantiateMsg, QueryMsg,
+    AllDenomInfoResponse, DenomInfoResponse, ExecuteMsg, IBCDenomInfo, InstantiateMsg, QueryMsg,
 };
 use andromeda_testing::mock::MockApp;
 use andromeda_testing::{
@@ -64,9 +64,9 @@ impl MockIbcRegistry {
         app: &mut MockApp,
         limit: Option<u64>,
         start_after: Option<u64>,
-    ) -> DenomInfoResponse {
+    ) -> AllDenomInfoResponse {
         let msg = QueryMsg::AllDenomInfo { limit, start_after };
-        let res: DenomInfoResponse = self.query(app, msg);
+        let res: AllDenomInfoResponse = self.query(app, msg);
         res
     }
 }

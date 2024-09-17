@@ -5,7 +5,7 @@ use andromeda_ibc_registry::mock::{
 };
 use andromeda_std::{
     amp::AndrAddr,
-    os::ibc_registry::{DenomInfo, DenomInfoResponse, IBCDenomInfo},
+    os::ibc_registry::{AllDenomInfoResponse, DenomInfo, DenomInfoResponse, IBCDenomInfo},
 };
 use andromeda_testing::{mock::mock_app, mock_builder::MockAndromedaBuilder, MockContract};
 use cosmwasm_std::coin;
@@ -80,5 +80,40 @@ fn test_ibc_registry() {
                 base_denom: "base_denom".to_string(),
             }
         }
-    )
+    );
+
+    // Store one more denom
+    let ibc_denom_info = IBCDenomInfo {
+        denom: "ibc/usdc".to_string(),
+        denom_info: DenomInfo {
+            path: "path2".to_string(),
+            base_denom: "base_denom2".to_string(),
+        },
+    };
+    ibc_registry
+        .execute_execute_store_denom_info(
+            &mut router,
+            service_address.clone(),
+            None,
+            vec![ibc_denom_info],
+        )
+        .unwrap();
+
+    // Query all denoms
+    let query_res = ibc_registry.query_all_denom_info(&mut router, None, None);
+    assert_eq!(
+        query_res,
+        AllDenomInfoResponse {
+            denom_info: vec![
+                DenomInfo {
+                    path: "path".to_string(),
+                    base_denom: "base_denom".to_string(),
+                },
+                DenomInfo {
+                    path: "path2".to_string(),
+                    base_denom: "base_denom2".to_string(),
+                },
+            ]
+        }
+    );
 }

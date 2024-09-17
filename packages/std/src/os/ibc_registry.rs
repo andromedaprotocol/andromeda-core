@@ -1,8 +1,11 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::Addr;
+use cosmwasm_std::{ensure, Addr};
 use strum_macros::AsRefStr;
 
-use crate::amp::{messages::AMPPkt, AndrAddr};
+use crate::{
+    amp::{messages::AMPPkt, AndrAddr},
+    error::ContractError,
+};
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -32,6 +35,28 @@ pub enum ExecuteMsg {
     },
 }
 
+/// Ensures that the denom starts with 'ibc/'
+pub fn verify_denom(denom: &String) -> Result<(), ContractError> {
+    // Ensure that the denom is formatted correctly. It should start with "ibc/"
+    ensure!(
+        denom.starts_with("ibc/"),
+        ContractError::InvalidDenom {
+            msg: Some("The denom should start with 'ibc/'".to_string()),
+        }
+    );
+    // Ensure that there is at least one character after "ibc/" that isn't a space
+    let suffix = &denom[4..]; // Get the part after "ibc/"
+    if suffix.trim().is_empty() {
+        return Err(ContractError::InvalidDenom {
+            msg: Some(
+                "The denom must contain at lease one non-whitespace characters after 'ibc/'"
+                    .to_string(),
+            ),
+        });
+    }
+    Ok(())
+}
+
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
@@ -52,4 +77,43 @@ pub struct DenomInfoResponse {
 #[cw_serde]
 pub struct AllDenomInfoResponse {
     pub denom_info: Vec<DenomInfo>,
+}
+
+#[cfg(test)]
+#[test]
+fn test_validate_denom() {
+    // Empty denom
+    let empty_denom = "".to_string();
+    let err = verify_denom(&empty_denom).unwrap_err();
+    assert_eq!(
+        err,
+        ContractError::InvalidDenom {
+            msg: Some("The denom should start with 'ibc/'".to_string()),
+        }
+    );
+    // Denom that doesn't start with ibc/
+    let invalid_denom = "random".to_string();
+    let err = verify_denom(&invalid_denom).unwrap_err();
+    assert_eq!(
+        err,
+        ContractError::InvalidDenom {
+            msg: Some("The denom should start with 'ibc/'".to_string()),
+        }
+    );
+    // Denom that's just ibc/
+    let empty_ibc_denom = "ibc/".to_string();
+    let err = verify_denom(&empty_ibc_denom).unwrap_err();
+    assert_eq!(
+        err,
+        ContractError::InvalidDenom {
+            msg: Some(
+                "The denom must contain at lease one non-whitespace characters after 'ibc/'"
+                    .to_string()
+            ),
+        }
+    );
+
+    // Valid denom
+    let valid_denom = "ibc/andr".to_string();
+    verify_denom(&valid_denom).unwrap()
 }

@@ -2,8 +2,8 @@ use crate::state::REGISTRY;
 use andromeda_std::ado_base::permissioning::{LocalPermission, Permission};
 use andromeda_std::common::actions::call_action;
 use andromeda_std::os::ibc_registry::{
-    AllDenomInfoResponse, DenomInfo, DenomInfoResponse, ExecuteMsg, IBCDenomInfo, InstantiateMsg,
-    QueryMsg,
+    verify_denom, AllDenomInfoResponse, DenomInfo, DenomInfoResponse, ExecuteMsg, IBCDenomInfo,
+    InstantiateMsg, QueryMsg,
 };
 use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
@@ -125,18 +125,7 @@ pub fn execute_store_denom_info(
     let mut seen_denoms = HashSet::new(); // To track unique denoms
     for info in ibc_denom_info {
         let denom = info.denom;
-
-        // Ensure the denom is valid
-        if denom.trim().is_empty() {
-            return Err(ContractError::EmptyDenom {});
-        }
-
-        // Ensure that the denom is formatted correctly. It should start with "ibc/"
-        if !denom.starts_with("ibc/") {
-            return Err(ContractError::InvalidDenom {
-                msg: Some("The denom should start with 'ibc/'".to_string()),
-            });
-        }
+        verify_denom(&denom)?;
 
         // Check for duplicates
         if !seen_denoms.insert(denom.clone()) {
