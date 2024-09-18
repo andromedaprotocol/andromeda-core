@@ -216,13 +216,12 @@ pub(crate) fn set_tier_orders(
         let mut sold_amount = TIER_SALES
             .load(storage, new_order.level.into())
             .unwrap_or_default();
+        sold_amount = sold_amount.checked_add(new_order.amount)?;
         if let Some(limit) = tier.limit {
-            sold_amount = sold_amount.checked_add(new_order.amount)?;
-            ensure!(limit >= sold_amount, ContractError::PurchaseLimitReached {});
-
-            update_tier(storage, &tier)?;
-            set_tier_sales(storage, new_order.level.into(), sold_amount)?;
+            ensure!(limit > sold_amount, ContractError::PurchaseLimitReached {});
         }
+        update_tier(storage, &tier)?;
+        set_tier_sales(storage, new_order.level.into(), sold_amount)?;
 
         let mut order = TIER_ORDERS
             .load(storage, (new_order.orderer.clone(), new_order.level.into()))
