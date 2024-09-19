@@ -94,7 +94,7 @@ fn test_set_value_with_tax() {
     let rate: Rate = Rate::Local(LocalRate {
         rate_type: LocalRateType::Additive,
         recipients: vec![],
-        value: LocalRateValue::Flat(coin(20_u128, "uandr")),
+        value: LocalRateValue::Flat(coin(20_u128, "ua")),
         description: None,
     });
 
