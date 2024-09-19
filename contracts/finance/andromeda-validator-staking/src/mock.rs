@@ -42,14 +42,23 @@ impl MockValidatorStaking {
         app: &mut MockApp,
         sender: Addr,
         validator: Option<Addr>,
-        recipient: Option<AndrAddr>,
     ) -> ExecuteResult {
-        let msg = mock_execute_claim_reward(validator, recipient);
+        let msg = mock_execute_claim_reward(validator);
         self.execute(app, &msg, sender, &[])
     }
 
     pub fn execute_withdraw_fund(&self, app: &mut MockApp, sender: Addr) -> ExecuteResult {
-        let msg = mock_execute_withdraw_fund();
+        let msg = mock_execute_withdraw_fund(None, None);
+        self.execute(app, &msg, sender, &[])
+    }
+
+    pub fn execute_update_default_validator(
+        &self,
+        app: &mut MockApp,
+        sender: Addr,
+        validator: Addr,
+    ) -> ExecuteResult {
+        let msg = mock_execute_update_default_validator(validator);
         self.execute(app, &msg, sender, &[])
     }
 
@@ -99,18 +108,19 @@ pub fn mock_execute_unstake(validator: Option<Addr>, amount: Option<Uint128>) ->
     ExecuteMsg::Unstake { validator, amount }
 }
 
-pub fn mock_execute_claim_reward(
-    validator: Option<Addr>,
-    recipient: Option<AndrAddr>,
-) -> ExecuteMsg {
-    ExecuteMsg::Claim {
-        validator,
-        recipient,
-    }
+pub fn mock_execute_claim_reward(validator: Option<Addr>) -> ExecuteMsg {
+    ExecuteMsg::Claim { validator }
 }
 
-pub fn mock_execute_withdraw_fund() -> ExecuteMsg {
-    ExecuteMsg::WithdrawFunds {}
+pub fn mock_execute_withdraw_fund(
+    denom: Option<String>,
+    recipient: Option<AndrAddr>,
+) -> ExecuteMsg {
+    ExecuteMsg::WithdrawFunds { denom, recipient }
+}
+
+pub fn mock_execute_update_default_validator(validator: Addr) -> ExecuteMsg {
+    ExecuteMsg::UpdateDefaultValidator { validator }
 }
 
 pub fn mock_get_staked_tokens(validator: Option<Addr>) -> QueryMsg {
