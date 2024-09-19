@@ -14,7 +14,7 @@ use andromeda_std::{
     amp::{AndrAddr, Recipient},
     common::{
         actions::call_action,
-        denom::{validate_denom, Asset, SEND_CW20_ACTION},
+        denom::{validate_native_denom, Asset, SEND_CW20_ACTION},
         encode_binary,
         expiration::{expiration_from_milliseconds, get_and_validate_start_time, Expiry},
         Funds, Milliseconds, OrderBy,
@@ -374,7 +374,7 @@ fn execute_update_auction(
             }
         );
     } else {
-        validate_denom(deps.as_ref(), coin_denom.clone())?;
+        validate_native_denom(deps.as_ref(), coin_denom.clone())?;
     }
     let mut token_auction_state =
         get_existing_token_auction_state(deps.storage, &token_id, &token_address)?;
