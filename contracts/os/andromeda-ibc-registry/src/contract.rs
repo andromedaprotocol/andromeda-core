@@ -124,7 +124,7 @@ pub fn execute_store_denom_info(
 
     let mut seen_denoms = HashSet::new(); // To track unique denoms
     for info in ibc_denom_info {
-        let denom = info.denom;
+        let denom = info.denom.to_lowercase();
         verify_denom(&denom)?;
 
         // Check for duplicates
@@ -132,7 +132,7 @@ pub fn execute_store_denom_info(
             return Err(ContractError::DuplicateDenoms { denom });
         }
 
-        // Store the denom info securely
+        // Store the denom info
         REGISTRY.save(ctx.deps.storage, denom, &info.denom_info)?;
     }
 

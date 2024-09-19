@@ -44,14 +44,12 @@ pub fn verify_denom(denom: &str) -> Result<(), ContractError> {
             msg: Some("The denom should start with 'ibc/'".to_string()),
         }
     );
-    // Ensure that there is at least one character after "ibc/" that isn't a space
     let suffix = &denom[4..]; // Get the part after "ibc/"
-    if suffix.trim().is_empty() {
+
+    // Ensure that there are exactly 64 characters after "ibc/"
+    if suffix.len() != 64 {
         return Err(ContractError::InvalidDenom {
-            msg: Some(
-                "The denom must contain at lease one non-whitespace characters after 'ibc/'"
-                    .to_string(),
-            ),
+            msg: Some("The denom must have exactly 64 characters after 'ibc/'".to_string()),
         });
     }
     Ok(())
@@ -106,14 +104,12 @@ fn test_validate_denom() {
     assert_eq!(
         err,
         ContractError::InvalidDenom {
-            msg: Some(
-                "The denom must contain at lease one non-whitespace characters after 'ibc/'"
-                    .to_string()
-            ),
+            msg: Some("The denom must have exactly 64 characters after 'ibc/'".to_string()),
         }
     );
 
     // Valid denom
-    let valid_denom = "ibc/andr".to_string();
+    let valid_denom =
+        "ibc/usdcusdcusdcusdcusdcusdcusdcusdcusdcusdcusdcusdcusdcusdcusdcusdc".to_string();
     verify_denom(&valid_denom).unwrap()
 }

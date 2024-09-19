@@ -31,7 +31,7 @@ fn test_ibc_registry() {
     // Test Store Denom Info
 
     let ibc_denom_info = IBCDenomInfo {
-        denom: "ibc/andr".to_string(),
+        denom: "ibc/andrandrandrandrandrandrandrandrandrandrandrandrandrandrandrandr".to_string(),
         denom_info: DenomInfo {
             path: "path".to_string(),
             base_denom: "base_denom".to_string(),
@@ -46,7 +46,10 @@ fn test_ibc_registry() {
         )
         .unwrap();
 
-    let query_res = ibc_registry.query_denom_info(&mut router, "ibc/andr".to_string());
+    let query_res = ibc_registry.query_denom_info(
+        &mut router,
+        "ibc/andrandrandrandrandrandrandrandrandrandrandrandrandrandrandrandr".to_string(),
+    );
     assert_eq!(
         query_res,
         DenomInfoResponse {
@@ -59,7 +62,7 @@ fn test_ibc_registry() {
 
     // Store one more denom
     let ibc_denom_info = IBCDenomInfo {
-        denom: "ibc/usdc".to_string(),
+        denom: "ibc/usdcusdcusdcusdcusdcusdcusdcusdcusdcusdcusdcusdcusdcusdcusdcusdc".to_string(),
         denom_info: DenomInfo {
             path: "path2".to_string(),
             base_denom: "base_denom2".to_string(),
@@ -94,7 +97,7 @@ fn test_ibc_registry() {
 
     // Test authorization
     let ibc_denom_info = IBCDenomInfo {
-        denom: "ibc/usdt".to_string(),
+        denom: "ibc/usdcusdcusdcusdcusdcusdcusdcusdcusdcusdcusdcusdcusdcusdcusdcusdt".to_string(),
         denom_info: DenomInfo {
             path: "path3".to_string(),
             base_denom: "base_denom3".to_string(),
