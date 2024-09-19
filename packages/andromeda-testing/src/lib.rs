@@ -6,6 +6,8 @@ pub mod adodb;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod economics;
 #[cfg(not(target_arch = "wasm32"))]
+pub mod ibc_registry;
+#[cfg(not(target_arch = "wasm32"))]
 pub mod kernel;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod mock_builder;

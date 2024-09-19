@@ -8,6 +8,9 @@ mod marketplace_app;
 mod auction_app;
 
 #[cfg(test)]
+mod ibc_registry;
+
+#[cfg(test)]
 mod kernel;
 
 #[cfg(test)]

@@ -374,6 +374,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "andromeda-ibc-registry"
+version = "1.0.0"
+dependencies = [
+ "andromeda-data-storage",
+ "andromeda-std",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-multi-test",
+ "cw-storage-plus 1.2.0",
+ "cw-utils 1.0.3",
+ "cw20",
+]
+
+[[package]]
 name = "andromeda-kernel"
 version = "1.1.1"
 dependencies = [
@@ -630,6 +644,7 @@ dependencies = [
  "andromeda-adodb",
  "andromeda-app",
  "andromeda-economics",
+ "andromeda-ibc-registry",
  "andromeda-kernel",
  "andromeda-modules",
  "andromeda-non-fungible-tokens",
@@ -4306,6 +4321,7 @@ dependencies = [
  "andromeda-ecosystem",
  "andromeda-finance",
  "andromeda-fungible-tokens",
+ "andromeda-ibc-registry",
  "andromeda-kernel",
  "andromeda-lockdrop",
  "andromeda-marketplace",

@@ -283,7 +283,7 @@ fn test_validator_stake_and_unstake_specific_amount() {
         delegation,
         Delegation {
             delegator: Addr::unchecked(
-                "andr12sjjp2n9epg6x8g4adaumlfp4ulaj5jvcu5rj29uk02zcdvrfkuqdfct9e"
+                "andr1n9d90kep6ujukh7f8q939w8a6lj4arqdkmxueu4xcck4pqfcr0xq9f4tmy"
             ),
             validator: "andr1qcxce9c4thzxnfmpr2dqnnlqea9ey35y7tnke37fymfcgzte0zwshp76a9"
                 .to_string(),
