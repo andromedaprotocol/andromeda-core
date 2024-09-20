@@ -11,7 +11,7 @@ use andromeda_std::{
     ado_contract::ADOContract,
     amp::{AndrAddr, Recipient},
     error::ContractError,
-    testing::mock_querier::mock_dependencies_custom,
+    testing::mock_querier::{mock_dependencies_custom, MOCK_CW20_CONTRACT},
 };
 
 use super::mock::{
@@ -94,7 +94,7 @@ fn test_set_value_with_tax() {
     let rate: Rate = Rate::Local(LocalRate {
         rate_type: LocalRateType::Additive,
         recipients: vec![],
-        value: LocalRateValue::Flat(coin(20_u128, "ua")),
+        value: LocalRateValue::Flat(coin(20_u128, MOCK_CW20_CONTRACT)),
         description: None,
     });
 
@@ -112,7 +112,7 @@ fn test_set_value_with_tax() {
         Rate::Local(LocalRate {
             rate_type: LocalRateType::Additive,
             recipients: vec![Recipient::new(AndrAddr::from_string("creator"), None)],
-            value: LocalRateValue::Flat(coin(20_u128, "uandr")),
+            value: LocalRateValue::Flat(coin(20_u128, MOCK_CW20_CONTRACT)),
             description: None,
         })
     );

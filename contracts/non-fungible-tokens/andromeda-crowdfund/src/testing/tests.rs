@@ -113,7 +113,7 @@ mod test {
     use super::*;
 
     const MOCK_NATIVE_DENOM: &str = "uandr";
-    const INVA1LID_DENOM: &str = "other";
+    const INVALID_DENOM: &str = "other";
 
     struct InstantiateTestCase {
         name: String,
@@ -136,10 +136,10 @@ mod test {
             },
             InstantiateTestCase {
                 name: "instantiate with invalid native token".to_string(),
-                config: mock_campaign_config(Asset::NativeToken(INVA1LID_DENOM.to_string())),
+                config: mock_campaign_config(Asset::NativeToken(INVALID_DENOM.to_string())),
                 tiers: mock_campaign_tiers(),
                 expected_res: Err(ContractError::InvalidAsset {
-                    asset: Asset::NativeToken(INVA1LID_DENOM.to_string()).to_string(),
+                    asset: Asset::NativeToken(INVALID_DENOM.to_string()).to_string(),
                 }),
             },
             InstantiateTestCase {
@@ -841,7 +841,7 @@ mod test {
                     amount: Uint128::new(10),
                 }],
                 initial_cap: Uint128::new(500),
-                funds: vec![coin(1000, INVA1LID_DENOM)],
+                funds: vec![coin(1000, INVALID_DENOM)],
                 denom: Asset::NativeToken(MOCK_NATIVE_DENOM.to_string()),
             },
         ];
