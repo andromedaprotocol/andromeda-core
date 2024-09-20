@@ -10,8 +10,7 @@ use andromeda_std::{
     error::ContractError,
 };
 use cosmwasm_std::{
-    attr, ensure, entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError,
-    WasmQuery,
+    attr, ensure, entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Response, WasmQuery,
 };
 use cw2::set_contract_version;
 use cw_utils::nonpayable;
