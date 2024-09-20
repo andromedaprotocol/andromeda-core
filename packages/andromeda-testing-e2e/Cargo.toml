@@ -1,9 +1,9 @@
 [package]
-name = "andromeda-testing"
+name = "andromeda-testing-e2e"
 version = "1.0.0"
-authors = ["Connor Barr <crnbarr@gmail.com>"]
+authors = ["Albert Hu <web3pirate@outlook.com>"]
 edition = "2018"
-description = "Testing utilities for Andromeda Digital Object Contracts"
+description = "E2E Testing utilities for Andromeda Digital Object Contracts"
 license = "MIT"
 
 [features]
@@ -36,13 +36,15 @@ andromeda-economics = { version = "1.0.0", path = "../../contracts/os/andromeda-
     "testing",
     "library",
 ] }
-andromeda-ibc-registry = { version = "1.0.0", path = "../../contracts/os/andromeda-ibc-registry", features = [
-    "testing",
-    "library",
-] }
 andromeda-std = { workspace = true }
 serde = { workspace = true }
+secp256k1 = "0.29.0"
+cosmrs = "0.18.0"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 cw-multi-test = { workspace = true }
 anyhow = "1.0.79"
+reqwest = { version = "0.12.5", features = ["json"] }
+tokio = "1.39.2"
+cw-orch-daemon = "0.24.3"
+cw-orch = "0.24.1"
