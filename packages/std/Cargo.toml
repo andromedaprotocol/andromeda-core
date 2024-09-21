@@ -36,6 +36,7 @@ strum_macros = { workspace = true }
 cw721 = { workspace = true }
 serde-json-wasm = "0.5.0"
 enum-repr = { workspace = true }
+sha2 = "0.10.8"
 
 [dev-dependencies]
 cw-multi-test = { version = "1.0.0" }
