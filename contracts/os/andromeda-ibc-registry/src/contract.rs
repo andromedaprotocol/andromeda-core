@@ -125,7 +125,7 @@ pub fn execute_store_denom_info(
     let mut seen_denoms = HashSet::new(); // To track unique denoms
     for info in ibc_denom_info {
         let denom = info.denom.to_lowercase();
-        verify_denom(&denom)?;
+        verify_denom(&denom, &info.denom_info)?;
 
         // Check for duplicates
         if !seen_denoms.insert(denom.clone()) {
