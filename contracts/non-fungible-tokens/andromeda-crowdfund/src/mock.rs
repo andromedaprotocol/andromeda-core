@@ -3,7 +3,7 @@
 use crate::contract::{execute, instantiate, query, reply};
 use andromeda_non_fungible_tokens::crowdfund::{
     CampaignConfig, CampaignSummaryResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg,
-    PresaleTierOrder, QueryMsg, SimpleTierOrder, Tier, TierMetaData,
+    PresaleTierOrder, QueryMsg, SimpleTierOrder, Tier, TierMetaData, TiersResponse,
 };
 use andromeda_std::common::Milliseconds;
 use andromeda_testing::{
@@ -96,6 +96,15 @@ impl MockCrowdfund {
 
     pub fn query_campaign_summary(&self, app: &mut MockApp) -> CampaignSummaryResponse {
         let msg = QueryMsg::CampaignSummary {};
+        self.query(app, msg)
+    }
+
+    pub fn query_tiers(&self, app: &mut MockApp) -> TiersResponse {
+        let msg = QueryMsg::Tiers {
+            start_after: None,
+            limit: None,
+            order_by: None,
+        };
         self.query(app, msg)
     }
 }
