@@ -52,6 +52,12 @@ pub enum ContractError {
     #[error("InvalidOrigin")]
     InvalidOrigin {},
 
+    #[error("EmptyDenom")]
+    EmptyDenom {},
+
+    #[error("NoDenomInfoProvided")]
+    NoDenomInfoProvided {},
+
     #[error("InvalidAmount: {msg}")]
     InvalidAmount { msg: String },
 
@@ -435,6 +441,9 @@ pub enum ContractError {
     #[error("DuplicateCoinDenoms")]
     DuplicateCoinDenoms {},
 
+    #[error("DuplicateDenoms: {denom}")]
+    DuplicateDenoms { denom: String },
+
     #[error("DuplicateThresholds")]
     DuplicateThresholds {},
 
@@ -452,7 +461,7 @@ pub enum ContractError {
     InvalidZeroAmount {},
 
     #[error("Invalid Denom")]
-    InvalidDenom {},
+    InvalidDenom { msg: Option<String> },
 
     #[error("Allowance is expired")]
     Expired {},

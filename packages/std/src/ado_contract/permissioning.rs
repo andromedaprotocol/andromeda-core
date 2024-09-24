@@ -518,13 +518,16 @@ pub fn is_context_permissioned_strict(
                 action.clone(),
                 amp_ctx.ctx.get_origin().as_str(),
             );
+            if is_origin_permissioned.is_ok() {
+                return Ok(true);
+            }
             let is_previous_sender_permissioned = contract.is_permissioned_strict(
                 deps.branch(),
                 env.clone(),
                 action,
                 amp_ctx.ctx.get_previous_sender().as_str(),
             );
-            Ok(is_origin_permissioned.is_ok() || is_previous_sender_permissioned.is_ok())
+            Ok(is_previous_sender_permissioned.is_ok())
         }
         None => Ok(contract
             .is_permissioned_strict(deps.branch(), env.clone(), action, info.sender.to_string())
