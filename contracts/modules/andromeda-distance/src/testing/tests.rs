@@ -7,7 +7,7 @@ fn test_instantiation() {
 }
 
 #[test]
-fn test_query_date_time() {
+fn test_query_distance() {
     let (deps, _) = proper_initialization();
 
     let query_res = query_distance(
