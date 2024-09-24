@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use andromeda_std::{
     amp::recipient::Recipient,
     andr_exec, andr_instantiate, andr_query,
-    common::{expiration::Expiry, MillisecondsDuration, MillisecondsExpiration},
+    common::{expiration::Expiry, MillisecondsExpiration},
     error::ContractError,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
@@ -53,7 +53,7 @@ pub enum ExecuteMsg {
     /// Used to lock/unlock the contract allowing the config to be updated.
     UpdateLock {
         // Milliseconds from current time
-        lock_time: MillisecondsDuration,
+        lock_time: Expiry,
     },
     /// Divides any attached funds to the message amongst the recipients list.
     Send {},
