@@ -93,14 +93,8 @@ pub fn get_distance(
 ) -> Result<String, ContractError> {
     let delta_x = (point_1.x_coordinate - point_2.x_coordinate).abs();
     let delta_y = (point_1.y_coordinate - point_2.y_coordinate).abs();
-    let z_1 = match point_1.z_coordinate {
-        Some(z_coordinate) => z_coordinate,
-        None => 0_f64,
-    };
-    let z_2 = match point_2.z_coordinate {
-        Some(z_coordinate) => z_coordinate,
-        None => 0_f64,
-    };
+    let z_1 = point_1.z_coordinate.unwrap_or(0_f64);
+    let z_2 = point_2.z_coordinate.unwrap_or(0_f64);
     let delta_z = (z_1 - z_2).abs();
 
     let distance = (delta_x.powf(2_f64) + delta_y.powf(2_f64) + delta_z.powf(2_f64)).sqrt();
