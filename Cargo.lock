@@ -320,6 +320,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "andromeda-distance"
+version = "1.0.0"
+dependencies = [
+ "andromeda-app",
+ "andromeda-modules",
+ "andromeda-std",
+ "andromeda-testing",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-multi-test",
+ "cw-storage-plus 1.2.0",
+ "cw-utils 1.0.3",
+]
+
+[[package]]
 name = "andromeda-economics"
 version = "1.1.1"
 dependencies = [
