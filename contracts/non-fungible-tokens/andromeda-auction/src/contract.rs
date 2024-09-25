@@ -612,10 +612,9 @@ fn execute_buy_now(
         get_existing_token_auction_state(deps.storage, &token_id, &token_address)?;
 
     // Make sure the auction has a Buy Now option
-    ensure!(
-        token_auction_state.buy_now_price.is_some(),
-        ContractError::NoBuyNowOption {}
-    );
+    let buy_now_price = token_auction_state
+        .buy_now_price
+        .map_or_else(|| Err(ContractError::NoBuyNowOption {}), |price| Ok(price))?;
     // Make sure token hasn't been bought
     ensure!(
         !token_auction_state.is_bought,
@@ -665,8 +664,7 @@ fn execute_buy_now(
     let payment: &Coin = &info.funds[0];
 
     ensure!(
-        payment.denom == token_auction_state.coin_denom
-            && payment.amount == token_auction_state.buy_now_price.unwrap(),
+        payment.denom == token_auction_state.coin_denom && payment.amount == buy_now_price,
         ContractError::InvalidFunds {
             msg: format!(
                 "No {} assets are provided to auction",
