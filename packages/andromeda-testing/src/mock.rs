@@ -1,18 +1,21 @@
 #![cfg(not(target_arch = "wasm32"))]
-
 use std::collections::HashMap;
 
 use andromeda_adodb::mock::mock_andromeda_adodb;
 use andromeda_economics::mock::mock_andromeda_economics;
+use andromeda_ibc_registry::mock::mock_andromeda_ibc_registry;
 use andromeda_kernel::mock::mock_andromeda_kernel;
-use andromeda_std::os::adodb::ADOVersion;
+use andromeda_std::{amp::AndrAddr, os::adodb::ADOVersion};
 use andromeda_vfs::mock::mock_andromeda_vfs;
 use cosmwasm_std::{coin, Addr, BlockInfo, Coin, Decimal, Timestamp, Validator};
 use cw_multi_test::{
     App, AppBuilder, BankKeeper, Executor, MockAddressGenerator, MockApiBech32, WasmKeeper,
 };
 
-use crate::{mock_contract::MockContract, MockADODB, MockEconomics, MockKernel, MockVFS};
+use crate::{
+    ibc_registry::MockIbcRegistry, mock_contract::MockContract, MockADODB, MockEconomics,
+    MockKernel, MockVFS,
+};
 
 pub const ADMIN_USERNAME: &str = "am";
 
@@ -93,13 +96,14 @@ pub struct MockAndromeda {
     pub adodb: MockADODB,
     pub economics: MockEconomics,
     pub vfs: MockVFS,
+    pub ibc_registry: MockIbcRegistry,
     pub wallets: HashMap<String, Addr>,
 }
-
 impl MockAndromeda {
     pub fn new(app: &mut MockApp, admin_name: &str) -> MockAndromeda {
         let mut wallets = HashMap::new();
         let admin_address = app.api().addr_make(admin_name);
+        let service_address = app.api().addr_make("service_address");
         wallets
             .entry(admin_name.to_string())
             .and_modify(|_| {
@@ -112,6 +116,7 @@ impl MockAndromeda {
         let kernel_code_id = app.store_code(mock_andromeda_kernel());
         let vfs_code_id = app.store_code(mock_andromeda_vfs());
         let economics_code_id = app.store_code(mock_andromeda_economics());
+        let ibc_registry_code_id = app.store_code(mock_andromeda_ibc_registry());
 
         // Init Kernel
         let kernel = MockKernel::instantiate(
@@ -122,6 +127,7 @@ impl MockAndromeda {
             None,
         );
 
+        // Init ADODB
         let adodb = MockADODB::instantiate(
             app,
             adodb_code_id,
@@ -130,7 +136,17 @@ impl MockAndromeda {
             kernel.addr().to_string(),
         );
 
-        //Init Economics
+        // Init IBC Registry
+        let ibc_registry = MockIbcRegistry::instantiate(
+            app,
+            ibc_registry_code_id,
+            admin_address.clone(),
+            None,
+            kernel.addr().to_string(),
+            AndrAddr::from_string(service_address),
+        );
+
+        // Init Economics
         let economics = MockEconomics::instantiate(
             app,
             economics_code_id,
@@ -155,6 +171,17 @@ impl MockAndromeda {
                 admin_address.clone(),
                 adodb_code_id,
                 "adodb",
+                "0.1.0",
+                None,
+                None,
+            )
+            .unwrap();
+        adodb
+            .execute_publish(
+                app,
+                admin_address.clone(),
+                ibc_registry_code_id,
+                "ibc-registry",
                 "0.1.0",
                 None,
                 None,
@@ -200,17 +227,17 @@ impl MockAndromeda {
             .execute_store_key_address(
                 app,
                 admin_address.clone(),
-                "economics",
-                economics.addr().clone(),
+                "ibc-registry",
+                ibc_registry.addr().clone(),
             )
             .unwrap();
-
         MockAndromeda {
             admin_address,
             kernel,
             adodb,
             economics,
             vfs,
+            ibc_registry,
             wallets,
         }
     }

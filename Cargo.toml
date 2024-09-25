@@ -13,7 +13,7 @@ members = [
     "contracts/os/*",
 
     #Internal
-    "tests-integration",
+    "tests-integration", "ibc-tests",
 ]
 resolver = "2"
 
@@ -40,6 +40,7 @@ andromeda-app = { path = "./packages/andromeda-app", version = "1.0.0" }
 andromeda-ecosystem = { path = "./packages/andromeda-ecosystem", version = "1.0.0" }
 andromeda-systems = { path = "./packages/andromeda-systems", version = "1.0.0" }
 andromeda-testing = { path = "./packages/andromeda-testing", version = "1.0.0" }
+andromeda-testing-e2e = { path = "./packages/andromeda-testing-e2e", version = "1.0.0" }
 
 
 strum_macros = "0.24.3"

@@ -22,9 +22,14 @@ pub enum ExecuteMsg {
     },
     Claim {
         validator: Option<Addr>,
+    },
+    WithdrawFunds {
+        denom: Option<String>,
         recipient: Option<AndrAddr>,
     },
-    WithdrawFunds {},
+    UpdateDefaultValidator {
+        validator: Addr,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

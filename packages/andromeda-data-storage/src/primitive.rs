@@ -62,7 +62,10 @@ impl Primitive {
             }
             Primitive::Decimal(_) => {}
             Primitive::Coin(coin) => {
-                ensure!(!coin.denom.is_empty(), ContractError::InvalidDenom {});
+                ensure!(
+                    !coin.denom.is_empty(),
+                    ContractError::InvalidDenom { msg: None }
+                );
             }
             Primitive::Addr(address) => {
                 api.addr_validate(address.as_str())?;
@@ -299,7 +302,7 @@ mod tests {
             TestValidate {
                 name: "Invalid Coin Denom",
                 primitive: Primitive::Coin(Coin::new(0_u128, "".to_string())),
-                expected_error: Some(ContractError::InvalidDenom {}),
+                expected_error: Some(ContractError::InvalidDenom {msg: None}),
             },
             TestValidate {
                 name: "Valid Coin Denom",
