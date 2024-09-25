@@ -296,6 +296,14 @@ fn execute_start_auction(
         ContractError::InvalidExpiration {}
     );
 
+    if let (Some(buy_now), Some(min)) = (buy_now_price, min_bid) {
+        if min >= buy_now {
+            return Err(ContractError::InvalidMinBid {
+                msg: Some("buy_now_price must be greater than the min_bid".to_string()),
+            });
+        }
+    }
+
     // If start time wasn't provided, it will be set as the current_time
     let (start_expiration, _current_time) = get_and_validate_start_time(&env, start_time)?;
     let end_expiration = expiration_from_milliseconds(end_time.get_time(&env.block))?;
