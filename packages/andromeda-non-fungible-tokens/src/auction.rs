@@ -2,10 +2,11 @@ use andromeda_std::amp::{AndrAddr, Recipient};
 use andromeda_std::common::denom::Asset;
 use andromeda_std::common::expiration::Expiry;
 use andromeda_std::common::{MillisecondsExpiration, OrderBy};
+use andromeda_std::error::ContractError;
 use andromeda_std::{andr_exec, andr_instantiate, andr_query};
 
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Addr, Uint128};
+use cosmwasm_std::{ensure, Addr, BlockInfo, MessageInfo, Uint128};
 use cw20::Cw20ReceiveMsg;
 use cw721::{Cw721ReceiveMsg, Expiration};
 
@@ -220,6 +221,47 @@ pub struct Bid {
     pub bidder: String,
     pub amount: Uint128,
     pub timestamp: MillisecondsExpiration,
+}
+
+/// Checks against auctions that are: cancelled, not started, already bought, and ended.
+/// Also checks for token owner bidding and funds being exactly of one denomination
+pub fn validate_auction(
+    token_auction_state: TokenAuctionState,
+    info: MessageInfo,
+    block: &BlockInfo,
+) -> Result<(), ContractError> {
+    ensure!(
+        !token_auction_state.is_cancelled,
+        ContractError::AuctionCancelled {}
+    );
+
+    ensure!(
+        !token_auction_state.is_bought,
+        ContractError::AuctionBought {}
+    );
+
+    ensure!(
+        token_auction_state.start_time.is_expired(block),
+        ContractError::AuctionNotStarted {}
+    );
+    ensure!(
+        !token_auction_state.end_time.is_expired(block),
+        ContractError::AuctionEnded {}
+    );
+
+    ensure!(
+        token_auction_state.owner != info.sender.clone().into_string(),
+        ContractError::TokenOwnerCannotBid {}
+    );
+
+    ensure!(
+        info.funds.len() == 1,
+        ContractError::InvalidFunds {
+            msg: "One coin should be sent.".to_string(),
+        }
+    );
+
+    Ok(())
 }
 
 #[cw_serde]
