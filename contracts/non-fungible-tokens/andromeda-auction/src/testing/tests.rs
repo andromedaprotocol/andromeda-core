@@ -1452,7 +1452,13 @@ fn execute_buy_now() {
     };
     let info = mock_info("sender", &coins(100, "uusd".to_string()));
     let err = execute(deps.as_mut(), env.clone(), info, msg).unwrap_err();
-    assert_eq!(err, ContractError::AuctionBought {})
+    assert_eq!(err, ContractError::AuctionBought {});
+
+    // Verify that `is_bought` is set to `true` in the auction state
+    let auction_state = TOKEN_AUCTION_STATE
+        .load(deps.as_ref().storage, 1u128)
+        .unwrap();
+    assert!(auction_state.is_bought);
 }
 
 #[test]
