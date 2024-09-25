@@ -162,13 +162,20 @@ pub fn add_system_ado_path(
     // Only add path method can override existing paths as its safe because only owner of the path can execute it
     match existing {
         None => {
-            add_system_ado_path_name(deps.storage, root, name, info.sender)?;
+            add_system_ado_path_name(deps.storage, root.clone(), name.clone(), info.sender)?;
         }
         Some(path) => {
-            ensure!(path.address == info.sender, ContractError::Unauthorized {})
+            ensure!(path.address == info.sender, ContractError::Unauthorized {});
+            return Err(ContractError::CustomError {
+                msg: "System ADO already exists".to_string(),
+            });
         }
     };
-    Ok(Response::default())
+    Ok(Response::default().add_attributes(vec![
+        attr("action", "add_system_ado_path"),
+        attr("name", name.clone()),
+        attr("root", root.clone()),
+    ]))
 }
 
 const MAX_USERNAME_LENGTH: u64 = 30;

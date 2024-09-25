@@ -626,7 +626,17 @@ fn test_add_system_ado_path() {
         root: root.to_string(),
     };
 
-    execute(deps.as_mut(), env, info, msg).unwrap();
+    execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+
+    // If the same system ADO is already exists, it returns an error
+    let err_res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap_err();
+
+    assert_eq!(
+        err_res,
+        ContractError::CustomError {
+            msg: "System ADO already exists".to_string(),
+        }
+    );
 
     let path = format!("/etc/{system_ado_name}");
 
