@@ -2,9 +2,10 @@ use crate::state::{
     auction_infos, read_auction_infos, read_bids, BIDS, NEXT_AUCTION_ID, TOKEN_AUCTION_STATE,
 };
 use andromeda_non_fungible_tokens::auction::{
-    AuctionIdsResponse, AuctionInfo, AuctionStateResponse, AuthorizedAddressesResponse, Bid,
-    BidsResponse, Cw20HookMsg, Cw721HookMsg, ExecuteMsg, InstantiateMsg, IsCancelledResponse,
-    IsClaimedResponse, IsClosedResponse, QueryMsg, TokenAuctionState,
+    validate_auction, AuctionIdsResponse, AuctionInfo, AuctionStateResponse,
+    AuthorizedAddressesResponse, Bid, BidsResponse, Cw20HookMsg, Cw721HookMsg, ExecuteMsg,
+    InstantiateMsg, IsCancelledResponse, IsClaimedResponse, IsClosedResponse, QueryMsg,
+    TokenAuctionState,
 };
 use andromeda_std::{
     ado_base::{
@@ -485,36 +486,7 @@ fn execute_place_bid(
         info.sender.clone(),
     )?;
 
-    ensure!(
-        !token_auction_state.is_cancelled,
-        ContractError::AuctionCancelled {}
-    );
-
-    ensure!(
-        !token_auction_state.is_bought,
-        ContractError::AuctionBought {}
-    );
-
-    ensure!(
-        token_auction_state.start_time.is_expired(&env.block),
-        ContractError::AuctionNotStarted {}
-    );
-    ensure!(
-        !token_auction_state.end_time.is_expired(&env.block),
-        ContractError::AuctionEnded {}
-    );
-
-    ensure!(
-        token_auction_state.owner != info.sender,
-        ContractError::TokenOwnerCannotBid {}
-    );
-
-    ensure!(
-        info.funds.len() == 1,
-        ContractError::InvalidFunds {
-            msg: "One coin should be sent.".to_string(),
-        }
-    );
+    validate_auction(token_auction_state.clone(), info.clone(), &env.block)?;
 
     ensure!(
         token_auction_state.high_bidder_addr != info.sender,
@@ -615,11 +587,6 @@ fn execute_buy_now(
     let buy_now_price = token_auction_state
         .buy_now_price
         .map_or_else(|| Err(ContractError::NoBuyNowOption {}), |price| Ok(price))?;
-    // Make sure token hasn't been bought
-    ensure!(
-        !token_auction_state.is_bought,
-        ContractError::AuctionBought {}
-    );
 
     ADOContract::default().is_permissioned(
         deps.branch(),
@@ -628,31 +595,7 @@ fn execute_buy_now(
         info.sender.clone(),
     )?;
 
-    ensure!(
-        !token_auction_state.is_cancelled,
-        ContractError::AuctionCancelled {}
-    );
-
-    ensure!(
-        token_auction_state.start_time.is_expired(&env.block),
-        ContractError::AuctionNotStarted {}
-    );
-    ensure!(
-        !token_auction_state.end_time.is_expired(&env.block),
-        ContractError::AuctionEnded {}
-    );
-
-    ensure!(
-        token_auction_state.owner != info.sender,
-        ContractError::TokenOwnerCannotBid {}
-    );
-
-    ensure!(
-        info.funds.len() == 1,
-        ContractError::InvalidFunds {
-            msg: "One coin should be sent.".to_string(),
-        }
-    );
+    validate_auction(token_auction_state.clone(), info.clone(), &env.block)?;
 
     ensure!(
         !token_auction_state.uses_cw20,
