@@ -543,13 +543,17 @@ fn execute_place_bid_invalid_coins_sent() {
     assert_eq!(error, res.unwrap_err());
 
     let error = ContractError::InvalidFunds {
-        msg: "No uusd assets are provided to auction".to_string(),
+        msg: "Invalid denomination: expected uusd, got uluna".to_string(),
     };
 
     // Invalid denom sent
     let info = mock_info("sender", &[coin(100, "uluna")]);
     let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
     assert_eq!(error, res.unwrap_err());
+
+    let error = ContractError::InvalidFunds {
+        msg: "Amount of funds should be greater than 0".to_string(),
+    };
 
     // Correct denom but empty
     let info = mock_info("sender", &[coin(0, "uusd")]);

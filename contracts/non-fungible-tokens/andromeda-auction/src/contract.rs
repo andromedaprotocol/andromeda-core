@@ -510,12 +510,18 @@ fn execute_place_bid(
 
     let payment: &Coin = &info.funds[0];
     ensure!(
-        payment.denom == token_auction_state.coin_denom && payment.amount > Uint128::zero(),
+        payment.denom == token_auction_state.coin_denom,
         ContractError::InvalidFunds {
             msg: format!(
-                "No {} assets are provided to auction",
-                token_auction_state.coin_denom
+                "Invalid denomination: expected {}, got {}",
+                token_auction_state.coin_denom, payment.denom
             ),
+        }
+    );
+    ensure!(
+        payment.amount.gt(&Uint128::zero()),
+        ContractError::InvalidFunds {
+            msg: format!("Amount of funds should be greater than 0"),
         }
     );
     let min_bid = token_auction_state.min_bid.unwrap_or(Uint128::zero());
@@ -615,11 +621,20 @@ fn execute_buy_now(
     let payment: &Coin = &info.funds[0];
 
     ensure!(
-        payment.denom == token_auction_state.coin_denom && payment.amount == buy_now_price,
+        payment.denom == token_auction_state.coin_denom,
         ContractError::InvalidFunds {
             msg: format!(
-                "No {} assets are provided to auction",
-                token_auction_state.coin_denom
+                "Invalid denomination: expected {}, got {}",
+                token_auction_state.coin_denom, payment.denom
+            ),
+        }
+    );
+    ensure!(
+        payment.amount == buy_now_price,
+        ContractError::InvalidFunds {
+            msg: format!(
+                "Incorrect amount: expected {}, got {}",
+                buy_now_price, payment.amount
             ),
         }
     );
@@ -847,10 +862,23 @@ fn execute_buy_now_cw20(
         }
     );
     let auction_currency = token_auction_state.clone().coin_denom;
+
     ensure!(
-        asset_sent == auction_currency && amount_sent == buy_now_price,
+        asset_sent == auction_currency,
         ContractError::InvalidFunds {
-            msg: format!("No {} assets are provided to auction", auction_currency),
+            msg: format!(
+                "Invalid denomination: expected {}, got {}",
+                auction_currency, asset_sent
+            ),
+        }
+    );
+    ensure!(
+        amount_sent == buy_now_price,
+        ContractError::InvalidFunds {
+            msg: format!(
+                "Incorrect amount: expected {}, got {}",
+                buy_now_price, amount_sent
+            ),
         }
     );
 
