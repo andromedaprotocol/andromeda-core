@@ -694,7 +694,12 @@ fn execute_place_bid_cw20(
     // The user who sent the cw20
     sender: &str,
 ) -> Result<Response, ContractError> {
-    let ExecuteContext { mut deps, env, .. } = ctx;
+    let ExecuteContext {
+        mut deps,
+        env,
+        info,
+        ..
+    } = ctx;
     let mut token_auction_state =
         get_existing_token_auction_state(deps.storage, &token_id, &token_address)?;
 
@@ -705,29 +710,7 @@ fn execute_place_bid_cw20(
         sender,
     )?;
 
-    ensure!(
-        !token_auction_state.is_bought,
-        ContractError::AuctionBought {}
-    );
-
-    ensure!(
-        !token_auction_state.is_cancelled,
-        ContractError::AuctionCancelled {}
-    );
-
-    ensure!(
-        token_auction_state.start_time.is_expired(&env.block),
-        ContractError::AuctionNotStarted {}
-    );
-    ensure!(
-        !token_auction_state.end_time.is_expired(&env.block),
-        ContractError::AuctionEnded {}
-    );
-
-    ensure!(
-        token_auction_state.owner != sender,
-        ContractError::TokenOwnerCannotBid {}
-    );
+    validate_auction(token_auction_state.clone(), info.clone(), &env.block)?;
 
     let sender_addr = deps.api.addr_validate(sender)?;
 
@@ -834,15 +817,11 @@ fn execute_buy_now_cw20(
         get_existing_token_auction_state(deps.storage, &token_id, &token_address)?;
 
     // Make sure the auction has a Buy Now option
-    ensure!(
-        token_auction_state.buy_now_price.is_some(),
-        ContractError::NoBuyNowOption {}
-    );
-    // Make sure token hasn't been bought
-    ensure!(
-        !token_auction_state.is_bought,
-        ContractError::AuctionBought {}
-    );
+    let buy_now_price = token_auction_state
+        .buy_now_price
+        .map_or_else(|| Err(ContractError::NoBuyNowOption {}), |price| Ok(price))?;
+
+    validate_auction(token_auction_state.clone(), info.clone(), &env.block)?;
 
     ADOContract::default().is_permissioned(
         deps.branch(),
@@ -850,25 +829,6 @@ fn execute_buy_now_cw20(
         token_auction_state.auction_id,
         info.sender.clone(),
     )?;
-
-    ensure!(
-        !token_auction_state.is_cancelled,
-        ContractError::AuctionCancelled {}
-    );
-
-    ensure!(
-        token_auction_state.start_time.is_expired(&env.block),
-        ContractError::AuctionNotStarted {}
-    );
-    ensure!(
-        !token_auction_state.end_time.is_expired(&env.block),
-        ContractError::AuctionEnded {}
-    );
-
-    ensure!(
-        token_auction_state.owner != sender,
-        ContractError::TokenOwnerCannotBid {}
-    );
 
     let sender_addr = deps.api.addr_validate(sender)?;
 
@@ -880,7 +840,7 @@ fn execute_buy_now_cw20(
     );
     let auction_currency = token_auction_state.clone().coin_denom;
     ensure!(
-        asset_sent == auction_currency && amount_sent == token_auction_state.buy_now_price.unwrap(),
+        asset_sent == auction_currency && amount_sent == buy_now_price,
         ContractError::InvalidFunds {
             msg: format!("No {} assets are provided to auction", auction_currency),
         }

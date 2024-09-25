@@ -254,12 +254,14 @@ pub fn validate_auction(
         ContractError::TokenOwnerCannotBid {}
     );
 
-    ensure!(
-        info.funds.len() == 1,
-        ContractError::InvalidFunds {
-            msg: "One coin should be sent.".to_string(),
-        }
-    );
+    if !token_auction_state.uses_cw20 {
+        ensure!(
+            info.funds.len() == 1,
+            ContractError::InvalidFunds {
+                msg: "One coin should be sent.".to_string(),
+            }
+        );
+    }
 
     Ok(())
 }
