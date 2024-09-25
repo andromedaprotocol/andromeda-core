@@ -92,7 +92,9 @@ pub fn get_distance(
     decimal: u16,
 ) -> Result<String, ContractError> {
     if decimal > 18 {
-        return Err(ContractError::InvalidParameter { error: Some("Decimal value too large".to_string()) })
+        return Err(ContractError::InvalidParameter {
+            error: Some("Decimal value too large".to_string()),
+        });
     }
     let delta_x = (point_1.x_coordinate - point_2.x_coordinate).abs();
     let delta_y = (point_1.y_coordinate - point_2.y_coordinate).abs();
@@ -101,8 +103,11 @@ pub fn get_distance(
     let delta_z = (z_1 - z_2).abs();
 
     let distance = (delta_x.powf(2_f64) + delta_y.powf(2_f64) + delta_z.powf(2_f64)).sqrt();
-    let distance_decimal =
-        (((distance * 10_f64.powf(decimal as f64)) as u64) as f64) / 10_f64.powf(decimal as f64);
+    let distance_decimal = format!("{:.*}", decimal as usize, distance)
+        .parse::<f64>()
+        .map_err(|_| ContractError::ParsingError {
+            err: "Parsing error".to_string(),
+        })?;
 
     Ok(distance_decimal.to_string())
 }
