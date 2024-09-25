@@ -521,7 +521,7 @@ fn execute_place_bid(
     ensure!(
         payment.amount.gt(&Uint128::zero()),
         ContractError::InvalidFunds {
-            msg: format!("Amount of funds should be greater than 0"),
+            msg: "Amount of funds should be greater than 0".to_string(),
         }
     );
     let min_bid = token_auction_state.min_bid.unwrap_or(Uint128::zero());
@@ -600,7 +600,7 @@ fn execute_buy_now(
     // Make sure the auction has a Buy Now option
     let buy_now_price = token_auction_state
         .buy_now_price
-        .map_or_else(|| Err(ContractError::NoBuyNowOption {}), |price| Ok(price))?;
+        .map_or_else(|| Err(ContractError::NoBuyNowOption {}), Ok)?;
 
     ADOContract::default().is_permissioned(
         deps.branch(),
@@ -842,7 +842,7 @@ fn execute_buy_now_cw20(
     // Make sure the auction has a Buy Now option
     let buy_now_price = token_auction_state
         .buy_now_price
-        .map_or_else(|| Err(ContractError::NoBuyNowOption {}), |price| Ok(price))?;
+        .map_or_else(|| Err(ContractError::NoBuyNowOption {}), Ok)?;
 
     validate_auction(token_auction_state.clone(), info.clone(), &env.block)?;
 
