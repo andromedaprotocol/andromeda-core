@@ -6,8 +6,8 @@ use andromeda_std::{
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    ensure, Binary, Coin, CosmosMsg, Deps, DepsMut, DistributionMsg, Env, GovMsg, MessageInfo,
-    QuerierWrapper, Response, StakingMsg, Uint128, VoteOption,
+    ensure, Binary, Coin, Decimal, Deps, DepsMut, Env, MessageInfo, QuerierWrapper, Response,
+    Uint128,
 };
 use cw_asset::AssetInfo;
 use cw_utils::nonpayable;
@@ -37,7 +37,6 @@ pub fn instantiate(
         is_multi_batch_enabled: msg.is_multi_batch_enabled,
         recipient: msg.recipient,
         denom: msg.denom,
-        unbonding_duration: msg.unbonding_duration,
     };
 
     CONFIG.save(deps.storage, &config)?;
@@ -89,26 +88,12 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
             lockup_duration,
             release_unit,
             release_amount,
-            validator_to_delegate_to,
-        } => execute_create_batch(
-            ctx,
-            lockup_duration,
-            release_unit,
-            release_amount,
-            validator_to_delegate_to,
-        ),
+        } => execute_create_batch(ctx, lockup_duration, release_unit, release_amount),
         ExecuteMsg::Claim {
             number_of_claims,
             batch_id,
         } => execute_claim(ctx, number_of_claims, batch_id),
         ExecuteMsg::ClaimAll { limit, up_to_time } => execute_claim_all(ctx, limit, up_to_time),
-        ExecuteMsg::Delegate { amount, validator } => {
-            execute_delegate(ctx.deps, ctx.env, ctx.info, amount, validator)
-        }
-        ExecuteMsg::Redelegate { amount, from, to } => execute_redelegate(ctx, amount, from, to),
-        ExecuteMsg::Undelegate { amount, validator } => execute_undelegate(ctx, amount, validator),
-        ExecuteMsg::WithdrawRewards {} => execute_withdraw_rewards(ctx),
-        ExecuteMsg::Vote { proposal_id, vote } => execute_vote(ctx, proposal_id, vote),
 
         _ => ADOContract::default().execute(ctx, msg),
     }
@@ -119,7 +104,6 @@ fn execute_create_batch(
     lockup_duration: Option<u64>,
     release_unit: u64,
     release_amount: WithdrawalType,
-    validator_to_delegate_to: Option<String>,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
         deps, info, env, ..
@@ -150,6 +134,10 @@ fn execute_create_batch(
 
     ensure!(
         release_unit > 0 && !release_amount.is_zero(),
+        ContractError::InvalidZeroAmount {}
+    );
+    ensure!(
+        !release_amount.get_amount(funds.amount)?.is_zero(),
         ContractError::InvalidZeroAmount {}
     );
 
@@ -196,22 +184,12 @@ fn execute_create_batch(
 
     save_new_batch(deps.storage, batch, &config)?;
 
-    let mut response = Response::new()
+    Ok(Response::new()
         .add_attribute("action", "create_batch")
         .add_attribute("amount", funds.amount)
         .add_attribute("lockup_end", lockup_end.to_string())
         .add_attribute("release_unit", release_unit.to_string())
-        .add_attribute("release_amount", release_amount_string);
-
-    if let Some(validator) = validator_to_delegate_to {
-        let delegate_response = execute_delegate(deps, env, info, Some(funds.amount), validator)?;
-        response = response
-            .add_attributes(delegate_response.attributes)
-            .add_submessages(delegate_response.messages)
-            .add_events(delegate_response.events);
-    }
-
-    Ok(response)
+        .add_attribute("release_amount", release_amount_string))
 }
 
 fn execute_claim(
@@ -321,150 +299,6 @@ fn execute_claim_all(
         .add_attribute("last_batch_id_processed", last_batch_id))
 }
 
-fn execute_delegate(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    amount: Option<Uint128>,
-    validator: String,
-) -> Result<Response, ContractError> {
-    let sender = info.sender.to_string();
-    ensure!(
-        ADOContract::default().is_contract_owner(deps.storage, &sender)?,
-        ContractError::Unauthorized {}
-    );
-    let config = CONFIG.load(deps.storage)?;
-    let asset = AssetInfo::native(config.denom.clone());
-    let max_amount = asset.query_balance(&deps.querier, env.contract.address)?;
-    let amount = cmp::min(max_amount, amount.unwrap_or(max_amount));
-
-    ensure!(!amount.is_zero(), ContractError::InvalidZeroAmount {});
-
-    let msg: CosmosMsg = CosmosMsg::Staking(StakingMsg::Delegate {
-        validator: validator.clone(),
-        amount: Coin {
-            denom: config.denom,
-            amount,
-        },
-    });
-
-    Ok(Response::new()
-        .add_message(get_set_withdraw_address_msg(sender))
-        .add_message(msg)
-        .add_attribute("action", "delegate")
-        .add_attribute("validator", validator)
-        .add_attribute("amount", amount))
-}
-
-fn execute_redelegate(
-    ctx: ExecuteContext,
-    amount: Option<Uint128>,
-    from: String,
-    to: String,
-) -> Result<Response, ContractError> {
-    let ExecuteContext {
-        deps, info, env, ..
-    } = ctx;
-    let sender = info.sender.to_string();
-    ensure!(
-        ADOContract::default().is_contract_owner(deps.storage, &sender)?,
-        ContractError::Unauthorized {}
-    );
-    let config = CONFIG.load(deps.storage)?;
-    let max_amount = get_amount_delegated(
-        &deps.querier,
-        env.contract.address.to_string(),
-        from.clone(),
-    )?;
-    let amount = cmp::min(max_amount, amount.unwrap_or(max_amount));
-
-    ensure!(!amount.is_zero(), ContractError::InvalidZeroAmount {});
-
-    let msg: CosmosMsg = CosmosMsg::Staking(StakingMsg::Redelegate {
-        src_validator: from.clone(),
-        dst_validator: to.clone(),
-        amount: Coin {
-            denom: config.denom,
-            amount,
-        },
-    });
-
-    Ok(Response::new()
-        .add_message(get_set_withdraw_address_msg(sender))
-        .add_message(msg)
-        .add_attribute("action", "redelegate")
-        .add_attribute("from", from)
-        .add_attribute("to", to)
-        .add_attribute("amount", amount))
-}
-
-fn execute_undelegate(
-    ctx: ExecuteContext,
-    amount: Option<Uint128>,
-    validator: String,
-) -> Result<Response, ContractError> {
-    let ExecuteContext {
-        deps, info, env, ..
-    } = ctx;
-    let sender = info.sender.to_string();
-    ensure!(
-        ADOContract::default().is_contract_owner(deps.storage, &sender)?,
-        ContractError::Unauthorized {}
-    );
-    let config = CONFIG.load(deps.storage)?;
-    let max_amount = get_amount_delegated(
-        &deps.querier,
-        env.contract.address.to_string(),
-        validator.clone(),
-    )?;
-    let amount = cmp::min(max_amount, amount.unwrap_or(max_amount));
-
-    ensure!(!amount.is_zero(), ContractError::InvalidZeroAmount {});
-
-    let msg: CosmosMsg = CosmosMsg::Staking(StakingMsg::Undelegate {
-        validator: validator.clone(),
-        amount: Coin {
-            denom: config.denom,
-            amount,
-        },
-    });
-
-    Ok(Response::new()
-        .add_message(get_set_withdraw_address_msg(sender))
-        .add_message(msg)
-        .add_attribute("action", "undelegate")
-        .add_attribute("validator", validator)
-        .add_attribute("amount", amount))
-}
-
-fn execute_withdraw_rewards(ctx: ExecuteContext) -> Result<Response, ContractError> {
-    let ExecuteContext {
-        deps, info, env, ..
-    } = ctx;
-    nonpayable(&info)?;
-
-    let sender = info.sender.to_string();
-    ensure!(
-        ADOContract::default().is_contract_owner(deps.storage, &sender)?,
-        ContractError::Unauthorized {}
-    );
-    let withdraw_rewards_msgs: Vec<CosmosMsg> = deps
-        .querier
-        .query_all_delegations(env.contract.address)?
-        .into_iter()
-        .map(|d| {
-            CosmosMsg::Distribution(DistributionMsg::WithdrawDelegatorReward {
-                validator: d.validator,
-            })
-        })
-        .collect();
-
-    Ok(Response::new()
-        .add_attribute("action", "withdraw_rewards")
-        .add_message(get_set_withdraw_address_msg(sender))
-        .add_messages(withdraw_rewards_msgs))
-}
-
 fn claim_batch(
     querier: &QuerierWrapper,
     env: &Env,
@@ -477,8 +311,6 @@ fn claim_batch(
         batch.lockup_end <= current_time,
         ContractError::FundsAreLocked {}
     );
-    let amount_per_claim = batch.release_amount.get_amount(batch.amount)?;
-
     let total_amount = AssetInfo::native(config.denom.to_owned())
         .query_balance(querier, env.contract.address.to_owned())?;
 
@@ -490,7 +322,11 @@ fn claim_batch(
         num_available_claims,
     );
 
-    let amount_to_send = amount_per_claim.checked_mul(Uint128::from(number_of_claims))?;
+    let amount_per_claim = batch.release_amount.get_amount(batch.amount)?;
+
+    let amount_to_send = amount_per_claim
+        .checked_mul(Decimal::from_ratio(number_of_claims, Uint128::one()))?
+        .to_uint_floor();
     let amount_available = cmp::min(batch.amount - batch.amount_claimed, total_amount);
 
     let amount_to_send = cmp::min(amount_to_send, amount_available);
@@ -518,44 +354,6 @@ fn claim_batch(
     }
 
     Ok(amount_to_send)
-}
-
-fn execute_vote(
-    ctx: ExecuteContext,
-    proposal_id: u64,
-    vote: VoteOption,
-) -> Result<Response, ContractError> {
-    let ExecuteContext { deps, info, .. } = ctx;
-    nonpayable(&info)?;
-    ensure!(
-        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {}
-    );
-    let msg: CosmosMsg = CosmosMsg::Gov(GovMsg::Vote {
-        proposal_id,
-        vote: vote.clone(),
-    });
-    Ok(Response::new()
-        .add_message(msg)
-        .add_attribute("action", "vote")
-        .add_attribute("proposal_id", proposal_id.to_string())
-        .add_attribute("vote", format!("{vote:?}")))
-}
-
-fn get_amount_delegated(
-    querier: &QuerierWrapper,
-    delegator: String,
-    validator: String,
-) -> Result<Uint128, ContractError> {
-    let res = querier.query_delegation(delegator, validator)?;
-    match res {
-        None => Ok(Uint128::zero()),
-        Some(full_delegation) => Ok(full_delegation.amount.amount),
-    }
-}
-
-fn get_set_withdraw_address_msg(address: String) -> CosmosMsg {
-    CosmosMsg::Distribution(DistributionMsg::SetWithdrawAddress { address })
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -619,7 +417,10 @@ fn get_batch_response(
         Uint128::zero()
     };
     let amount_per_release = batch.release_amount.get_amount(batch.amount)?;
-    let number_of_available_claims = amount_available_to_claim / amount_per_release;
+    let number_of_available_claims = Decimal::from_ratio(amount_available_to_claim, Uint128::one())
+        .checked_div(amount_per_release)
+        .unwrap()
+        .to_uint_floor();
     let res = BatchResponse {
         id: batch_id,
         amount: batch.amount,
