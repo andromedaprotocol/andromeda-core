@@ -355,6 +355,36 @@ fn execute_place_bid_min_raise() {
 }
 
 #[test]
+fn execute_min_bid_greater_than_buy_now() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let env = mock_env();
+    let _res = init(deps.as_mut());
+    let hook_msg = Cw721HookMsg::StartAuction {
+        start_time: None,
+        end_time: Expiry::FromNow(Milliseconds(20_000_000)),
+        coin_denom: Asset::NativeToken("uusd".to_string()),
+        whitelist: None,
+        min_bid: Some(Uint128::new(100)),
+        min_raise: None,
+        recipient: None,
+        buy_now_price: Some(Uint128::one()),
+    };
+    let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
+        sender: MOCK_TOKEN_OWNER.to_owned(),
+        token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
+        msg: encode_binary(&hook_msg).unwrap(),
+    });
+    let info = mock_info(MOCK_TOKEN_ADDR, &[]);
+    let err = execute(deps.as_mut(), env.clone(), info, msg).unwrap_err();
+    assert_eq!(
+        err,
+        ContractError::InvalidMinBid {
+            msg: Some("buy_now_price must be greater than the min_bid".to_string())
+        }
+    )
+}
+
+#[test]
 fn execute_place_bid_whitelist() {
     let mut deps = mock_dependencies_custom(&[]);
     let mut env = mock_env();
