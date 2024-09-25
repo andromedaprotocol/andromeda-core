@@ -14,7 +14,7 @@ use andromeda_std::{
     },
     testing::mock_querier::{
         mock_dependencies_custom, MOCK_APP_CONTRACT, MOCK_FAKE_KERNEL_CONTRACT,
-        MOCK_KERNEL_CONTRACT,
+        MOCK_KERNEL_CONTRACT, MOCK_SYSTEM_CONTRACT,
     },
 };
 use andromeda_std::{error::ContractError, os::vfs::QueryMsg};
@@ -617,7 +617,7 @@ fn test_override_add_child() {
 fn test_add_system_ado_path() {
     let mut deps = mock_dependencies_custom(&[]);
     let system_ado_name = "system_ado";
-    let sender = "system_contract";
+    let sender = MOCK_SYSTEM_CONTRACT;
     let root = "etc";
     let info = mock_info(sender, &[]);
     let env = mock_env();

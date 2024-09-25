@@ -149,8 +149,17 @@ pub fn add_system_ado_path(
     let root = root.to_lowercase();
 
     let sender_code_id_res = deps.querier.query_wasm_contract_info(info.sender.clone());
-    // Sender must be a system ADO contract
+    // Sender must be an ADO contract
     ensure!(sender_code_id_res.is_ok(), ContractError::Unauthorized {});
+
+    let sender_code_id = sender_code_id_res?.code_id;
+    let ado_type = AOSQuerier::ado_type_getter(
+        &deps.querier,
+        &ADOContract::default().get_adodb_address(deps.as_ref().storage, &deps.querier)?,
+        sender_code_id,
+    )?;
+    // Sender must be an System ADO contract
+    ensure!(ado_type.clone().is_some(), ContractError::Unauthorized {});
 
     validate_component_name(name.clone())?;
     validate_component_name(root.clone())?;
