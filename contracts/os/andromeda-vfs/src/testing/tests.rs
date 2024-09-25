@@ -557,7 +557,7 @@ fn test_add_child() {
     )
     .unwrap();
 
-    assert_eq!(resolved_addr, sender)
+    assert_eq!(resolved_addr, Addr::unchecked(sender))
 }
 
 #[test]
@@ -648,7 +648,7 @@ fn test_add_system_ado_path() {
     )
     .unwrap();
 
-    assert_eq!(resolved_addr, sender)
+    assert_eq!(resolved_addr, Addr::unchecked(sender))
 }
 
 #[test]
