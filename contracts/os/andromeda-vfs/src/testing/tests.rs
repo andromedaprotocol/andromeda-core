@@ -852,7 +852,14 @@ fn test_get_subsystems() {
     let res = query(deps.as_ref(), env, query_msg).unwrap();
     let val: Vec<SystemAdoPathInfo> = from_json(res).unwrap();
 
-    assert_eq!(val, sub_systems);
+    // Sort the vectors to ensure consistent ordering
+    let mut val_sorted = val.clone();
+    val_sorted.sort_by(|a, b| a.name.cmp(&b.name));
+
+    let mut sub_systems_sorted = sub_systems.clone();
+    sub_systems_sorted.sort_by(|a, b| a.name.cmp(&b.name));
+
+    assert_eq!(val_sorted, sub_systems_sorted);
 }
 
 #[test]
@@ -971,7 +978,14 @@ fn test_get_system_paths() {
     let res = query(deps.as_ref(), env, query_msg).unwrap();
     let val: Vec<String> = from_json(res).unwrap();
 
-    assert_eq!(val, system_paths);
+    // Sort the vectors to ensure consistent ordering
+    let mut val_sorted = val.clone();
+    val_sorted.sort();
+
+    let mut system_paths_sorted = system_paths.clone();
+    system_paths_sorted.sort();
+
+    assert_eq!(val_sorted, system_paths_sorted);
 
     let res1 = resolve_pathname(
         deps.as_ref().storage,
