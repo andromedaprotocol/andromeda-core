@@ -20,8 +20,17 @@ pub struct DenomInfo {
 }
 impl DenomInfo {
     pub fn get_ibc_denom(&self) -> String {
+        // Lowercase Denom Info
+        let lower_case_denom_info = DenomInfo {
+            path: self.path.to_lowercase(),
+            base_denom: self.base_denom.to_lowercase(),
+        };
+
         // Concatenate the path and base with "/"
-        let input = format!("{}/{}", self.path, self.base_denom);
+        let input = format!(
+            "{}/{}",
+            lower_case_denom_info.path, lower_case_denom_info.base_denom
+        );
 
         // Hash the concatenated string using SHA-256
         let hash = Sha256::digest(input.as_bytes());
@@ -130,8 +139,6 @@ fn test_validate_denom() {
         }
     );
 
-    // Valid denom
-    let valid_denom =
-        "ibc/usdcusdcusdcusdcusdcusdcusdcusdcusdcusdcusdcusdcusdcusdcusdcusdc".to_string();
+    let valid_denom = default_denom_info.get_ibc_denom();
     verify_denom(&valid_denom, &default_denom_info).unwrap()
 }
