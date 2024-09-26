@@ -36,6 +36,10 @@ andromeda-economics = { version = "1.0.0", path = "../../contracts/os/andromeda-
     "testing",
     "library",
 ] }
+andromeda-ibc-registry = { version = "1.0.0", path = "../../contracts/os/andromeda-ibc-registry", features = [
+    "testing",
+    "library",
+] }
 andromeda-std = { workspace = true }
 serde = { workspace = true }
 
