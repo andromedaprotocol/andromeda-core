@@ -35,7 +35,7 @@ impl DenomInfo {
         // Hash the concatenated string using SHA-256
         let hash = Sha256::digest(input.as_bytes());
         // Return the result in the format "ibc/<SHA-256 hash in hex>"
-        format!("ibc/{:X}", hash)
+        format!("ibc/{:X}", hash).to_lowercase()
     }
 }
 #[cw_serde]

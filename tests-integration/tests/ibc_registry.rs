@@ -95,6 +95,16 @@ fn test_ibc_registry() {
         }
     );
 
+    // Test real data
+    let path = "transfer/channel-12/transfer/channel-255".to_string();
+    let base_denom = "inj".to_string();
+
+    let denom_info = DenomInfo { path, base_denom };
+    assert_eq!(
+        denom_info.get_ibc_denom(),
+        "ibc/eab02686416e4b155cfee9c247171e1c4196b218c6a254f765b0958b3af59d09".to_string()
+    );
+
     // Test authorization
     let ibc_denom_info = IBCDenomInfo {
         denom: "ibc/usdcusdcusdcusdcusdcusdcusdcusdcusdcusdcusdcusdcusdcusdcusdcusdt".to_string(),
