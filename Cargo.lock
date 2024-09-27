@@ -132,7 +132,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-auction"
-version = "2.0.3"
+version = "2.1.3"
 dependencies = [
  "andromeda-app",
  "andromeda-non-fungible-tokens",
