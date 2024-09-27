@@ -618,6 +618,7 @@ dependencies = [
  "semver",
  "serde",
  "serde-json-wasm 0.5.2",
+ "sha2 0.10.8",
  "strum_macros",
  "thiserror",
 ]
