@@ -469,7 +469,7 @@ pub enum ContractError {
     #[error("Invalid zero amount")]
     InvalidZeroAmount {},
 
-    #[error("Invalid Denom")]
+    #[error("Invalid Denom {msg:?}")]
     InvalidDenom { msg: Option<String> },
 
     #[error("Allowance is expired")]
