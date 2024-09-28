@@ -20,17 +20,8 @@ pub struct DenomInfo {
 }
 impl DenomInfo {
     pub fn get_ibc_denom(&self) -> String {
-        // Lowercase Denom Info
-        let lower_case_denom_info = DenomInfo {
-            path: self.path.clone(),
-            base_denom: self.base_denom.clone(),
-        };
-
         // Concatenate the path and base with "/"
-        let input = format!(
-            "{}/{}",
-            lower_case_denom_info.path, lower_case_denom_info.base_denom
-        );
+        let input = format!("{}/{}", self.path, self.base_denom);
 
         // Hash the concatenated string using SHA-256
         let hash = Sha256::digest(input.as_bytes());
