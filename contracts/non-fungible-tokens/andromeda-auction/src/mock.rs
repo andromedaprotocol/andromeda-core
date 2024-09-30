@@ -54,6 +54,7 @@ impl MockAuction {
         sender: Addr,
         start_time: Option<Expiry>,
         end_time: Expiry,
+        buy_now_price: Option<Uint128>,
         coin_denom: Asset,
         min_bid: Option<Uint128>,
         min_raise: Option<Uint128>,
@@ -61,7 +62,14 @@ impl MockAuction {
         recipient: Option<Recipient>,
     ) -> AppResponse {
         let msg = mock_start_auction(
-            start_time, end_time, coin_denom, min_bid, min_raise, whitelist, recipient,
+            start_time,
+            end_time,
+            buy_now_price,
+            coin_denom,
+            min_bid,
+            min_raise,
+            whitelist,
+            recipient,
         );
         app.execute_contract(sender, self.addr().clone(), &msg, &[])
             .unwrap()
@@ -170,9 +178,11 @@ pub fn mock_auction_instantiate_msg(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn mock_start_auction(
     start_time: Option<Expiry>,
     end_time: Expiry,
+    buy_now_price: Option<Uint128>,
     coin_denom: Asset,
     min_bid: Option<Uint128>,
     min_raise: Option<Uint128>,
@@ -182,6 +192,7 @@ pub fn mock_start_auction(
     Cw721HookMsg::StartAuction {
         start_time,
         end_time,
+        buy_now_price,
         coin_denom,
         min_bid,
         min_raise,
