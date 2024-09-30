@@ -9,7 +9,7 @@ use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     amp::messages::AMPPkt,
     common::{
-        actions::call_action, encode_binary, Milliseconds, MillisecondsDuration,
+        actions::call_action, encode_binary, expiration::Expiry, Milliseconds,
         MillisecondsExpiration,
     },
     error::ContractError,
@@ -244,10 +244,7 @@ fn execute_update_thresholds(
     Ok(Response::default().add_attributes(vec![attr("action", "update_thresholds")]))
 }
 
-fn execute_update_lock(
-    ctx: ExecuteContext,
-    lock_time: MillisecondsDuration,
-) -> Result<Response, ContractError> {
+fn execute_update_lock(ctx: ExecuteContext, lock_time: Expiry) -> Result<Response, ContractError> {
     let ExecuteContext {
         deps, info, env, ..
     } = ctx;
@@ -267,31 +264,30 @@ fn execute_update_lock(
         ContractError::ContractLocked {}
     );
 
-    // Get current time
-    let current_time = Milliseconds::from_seconds(env.block.time.seconds());
-
+    let new_lock_time_expiration = lock_time.get_time(&env.block);
     // New lock time can't be too short
     ensure!(
-        lock_time.seconds() >= ONE_DAY,
+        new_lock_time_expiration
+            >= Milliseconds::from_seconds(env.block.time.seconds())
+                .plus_milliseconds(Milliseconds(ONE_DAY)),
         ContractError::LockTimeTooShort {}
     );
 
-    // New lock time can't be unreasonably long
+    // New lock time can't be too long
     ensure!(
-        lock_time.seconds() <= ONE_YEAR,
+        new_lock_time_expiration
+            <= Milliseconds::from_seconds(env.block.time.seconds())
+                .plus_milliseconds(Milliseconds(ONE_YEAR)),
         ContractError::LockTimeTooLong {}
     );
 
-    // Set new lock time
-    let new_expiration = current_time.plus_milliseconds(lock_time);
-
-    conditional_splitter.lock_time = new_expiration;
+    conditional_splitter.lock_time = new_lock_time_expiration;
 
     CONDITIONAL_SPLITTER.save(deps.storage, &conditional_splitter)?;
 
     Ok(Response::default().add_attributes(vec![
         attr("action", "update_lock"),
-        attr("locked", new_expiration.to_string()),
+        attr("locked", new_lock_time_expiration.to_string()),
     ]))
 }
 

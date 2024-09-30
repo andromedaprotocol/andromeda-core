@@ -164,7 +164,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-conditional-splitter"
-version = "1.2.2"
+version = "1.2.3"
 dependencies = [
  "andromeda-app",
  "andromeda-finance",
@@ -547,7 +547,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-set-amount-splitter"
-version = "1.0.2"
+version = "1.0.3"
 dependencies = [
  "andromeda-app",
  "andromeda-finance",
@@ -581,7 +581,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-splitter"
-version = "2.1.2"
+version = "2.1.4"
 dependencies = [
  "andromeda-app",
  "andromeda-finance",
@@ -762,7 +762,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-weighted-distribution-splitter"
-version = "2.0.2"
+version = "2.0.3"
 dependencies = [
  "andromeda-app",
  "andromeda-finance",
