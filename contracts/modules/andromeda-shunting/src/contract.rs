@@ -10,8 +10,7 @@ use andromeda_std::{
     error::ContractError,
 };
 use cosmwasm_std::{
-    attr, ensure, entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError,
-    WasmQuery,
+    attr, ensure, entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Response, WasmQuery,
 };
 use cw2::set_contract_version;
 use cw_utils::nonpayable;
@@ -158,12 +157,8 @@ fn parse_params(deps: Deps, params: Vec<EvaluateParam>) -> Result<Vec<String>, C
                 .into();
 
                 let raw_result: Value = deps.querier.query::<Value>(&query_msg)?;
-                let json = JSON::try_from(raw_result).map_err(|err| {
-                    ContractError::Std(StdError::GenericErr {
-                        msg: format!("{:?}", err),
-                    })
-                })?;
-                let Some(Value::String(val)) = json.get(&accessor).unwrap() else {
+                let json = JSON::from(raw_result);
+                let Value::String(val) = json.get(&accessor).unwrap() else {
                     return Err(ContractError::InvalidExpression {
                         msg: format!("Invalid Accessor {}", accessor),
                     });

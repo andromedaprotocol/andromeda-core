@@ -167,17 +167,19 @@ fn test_execute_update_lock() {
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
 
     let msg = ExecuteMsg::UpdateLock {
-        lock_time: Milliseconds::from_seconds(lock_time),
+        lock_time: Expiry::FromNow(Milliseconds(lock_time)),
     };
 
     let info = mock_info(OWNER, &[]);
     let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
-    let new_lock = Milliseconds::from_seconds(current_time + lock_time);
+    let new_lock = Milliseconds(lock_time)
+        .plus_seconds(current_time)
+        .plus_milliseconds(Milliseconds(879));
     assert_eq!(
         Response::default()
             .add_attributes(vec![
                 attr("action", "update_lock"),
-                attr("locked", new_lock.to_string())
+                attr("locked", "1571970219879".to_string())
             ])
             .add_submessage(generate_economics_message(OWNER, "UpdateLock")),
         res
