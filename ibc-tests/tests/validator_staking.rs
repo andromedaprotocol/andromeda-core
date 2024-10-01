@@ -8,21 +8,10 @@ use cw_orch_daemon::queriers::Staking;
 use cw_orch_daemon::queriers::StakingBondStatus;
 use cw_orch_daemon::Daemon;
 use ibc_tests::contract_interface;
-
 // import messages
-use andromeda_app::app;
 use andromeda_finance::validator_staking;
 
 const TESTNET_MNEMONIC: &str = "across left ignore gold echo argue track joy hire release captain enforce hotel wide flash hotel brisk joke midnight duck spare drop chronic stool";
-
-// define app contract interface
-contract_interface!(
-    AppContract,
-    andromeda_app_contract,
-    app,
-    "andromeda_app_contract",
-    "app_contract"
-);
 
 // include ados be tested
 contract_interface!(
