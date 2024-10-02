@@ -1,6 +1,6 @@
 use crate::contract_interface;
 use andromeda_non_fungible_tokens::crowdfund;
-use andromeda_non_fungible_tokens::crowdfund::CampaignSummaryResponse;
+use andromeda_non_fungible_tokens::crowdfund::{CampaignSummaryResponse, Cw20HookMsg};
 use andromeda_non_fungible_tokens::crowdfund::PresaleTierOrder;
 use andromeda_non_fungible_tokens::crowdfund::SimpleTierOrder;
 use andromeda_non_fungible_tokens::crowdfund::Tier;
@@ -84,6 +84,10 @@ impl CrowdfundContract<Chain> {
         let query_msg = crowdfund::QueryMsg::CampaignSummary {};
         self.query(&query_msg).unwrap()
     }
+}
+
+pub fn purchase_cw20_msg(orders: Vec<SimpleTierOrder>) -> Cw20HookMsg {
+    Cw20HookMsg::PurchaseTiers { orders }
 }
 
 pub fn prepare(

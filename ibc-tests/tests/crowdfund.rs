@@ -28,10 +28,10 @@ use ibc_tests::{
     },
     interfaces::{
         app_interface,
-        crowdfund_interface::{self, CrowdfundContract},
+        crowdfund_interface::{self, purchase_cw20_msg, CrowdfundContract},
         cw20_interface::{self, Cw20Contract},
         cw721_interface::{self, Cw721Contract},
-        splitter_interface,
+        splitter_interface::{self, SplitterContract},
     },
 };
 use rstest::{fixture, rstest};
@@ -41,6 +41,7 @@ struct TestCase {
     crowdfund_contract: CrowdfundContract<DaemonBase<Wallet>>,
     cw20_contract: Cw20Contract<DaemonBase<Wallet>>,
     cw721_contract: Cw721Contract<DaemonBase<Wallet>>,
+    splitter_contract: SplitterContract<DaemonBase<Wallet>>,
     presale: Vec<PresaleTierOrder>,
 }
 
@@ -54,11 +55,10 @@ fn setup(
     let mock_andromeda = MockAndromeda::new(&daemon);
 
     let app_contract = app_interface::prepare(&daemon, &mock_andromeda);
-    splitter_interface::prepare(&daemon, &mock_andromeda);
     let cw20_contract = cw20_interface::prepare(&daemon, &mock_andromeda);
     let cw721_contract = cw721_interface::prepare(&daemon, &mock_andromeda);
     let crowdfund_contract = crowdfund_interface::prepare(&daemon, &mock_andromeda);
-
+    let splitter_contract = splitter_interface::prepare(&daemon, &mock_andromeda);
     // Prepare App Components
     let recipient_1_daemon = daemon
         .rebuild()
@@ -123,7 +123,7 @@ fn setup(
 
     let mint = Some(MinterResponse {
         minter: daemon.sender().address().to_string(),
-        cap: Some(Uint128::from(1000000u128)),
+        cap: Some(Uint128::from(10000000000u128)),
     });
     let mut app_components = vec![splitter_component.clone(), cw721_component.clone()];
     let cw20_component: Option<AppComponent> = match use_native_token {
@@ -195,6 +195,9 @@ fn setup(
     let cw721_addr = app_contract.query_address_by_component_name(cw721_component.name);
     cw721_contract.set_address(&Addr::unchecked(cw721_addr));
 
+    let splitter_addr = app_contract.query_address_by_component_name(splitter_component.name);
+    splitter_contract.set_address(&Addr::unchecked(splitter_addr));
+
     if !use_native_token {
         let cw20_addr = app_contract.query_address_by_component_name(cw20_component.unwrap().name);
         cw20_contract.set_address(&Addr::unchecked(cw20_addr));
@@ -232,6 +235,7 @@ fn setup(
         crowdfund_contract,
         cw20_contract,
         cw721_contract,
+        splitter_contract,
         presale,
     }
 }
@@ -327,6 +331,97 @@ fn test_successful_crowdfund_app_native(setup: TestCase) {
 
     assert_eq!(recipient_1_change.u128(), summary.current_capital / 5);
     assert_eq!(recipient_2_change.u128(), summary.current_capital * 4 / 5);
+
+    crowdfund_contract.set_sender(purchaser_1_daemon.sender());
+    crowdfund_contract.execute_claim();
+
+    let owner_resp = cw721_contract.query_owner_of("0".to_string()).owner;
+    assert_eq!(owner_resp, purchaser_1_daemon.sender_addr().into_string());
+
+    let owner_resp = cw721_contract.query_owner_of("29".to_string()).owner;
+    assert_eq!(owner_resp, purchaser_1_daemon.sender_addr().into_string());
+}
+
+#[rstest]
+fn test_successful_crowdfund_app_cw20(#[with(false)] setup: TestCase) {
+
+    let TestCase {
+        daemon,
+        mut crowdfund_contract,
+        presale,
+        mut cw20_contract,
+        cw721_contract,
+        splitter_contract,
+        ..
+    } = setup;
+  
+
+    let start_time = None;
+    let end_time = Milliseconds::from_nanos(daemon.block_info().unwrap().time.plus_days(1).nanos());
+
+    crowdfund_contract.execute_start_campaign(start_time, end_time, Some(presale));
+
+    let summary = crowdfund_contract.query_campaign_summary();
+    assert_eq!(summary.current_capital, 0);
+    assert_eq!(summary.current_stage, CampaignStage::ONGOING.to_string());
+
+    let recipient_balance = cw20_contract
+        .query_balance(
+            splitter_contract.addr_str().unwrap(),
+        ).balance;
+
+    let orders = vec![
+        SimpleTierOrder {
+            level: Uint64::one(),
+            amount: Uint128::new(10),
+        },
+        SimpleTierOrder {
+            level: Uint64::new(2),
+            amount: Uint128::new(10),
+        },
+    ];
+
+    let hook_msg = purchase_cw20_msg(orders);
+
+    let purchaser_1_daemon = daemon
+        .rebuild()
+        .mnemonic(PURCHASER_MNEMONIC_1)
+        .build()
+        .unwrap();
+
+    let purchaser_1_balance = cw20_contract
+        .query_balance(
+            purchaser_1_daemon.sender_addr(),
+        ).balance;
+
+    cw20_contract.set_sender(purchaser_1_daemon.sender());
+    cw20_contract.execute_send(crowdfund_contract.addr_str().unwrap(), Uint128::new(500000), &hook_msg,);
+    cw20_contract.set_sender(daemon.sender());
+
+    
+    
+    let purchaser_1_change = purchaser_1_balance - cw20_contract
+        .query_balance(
+            purchaser_1_daemon.sender_addr(),
+        ).balance;
+
+    assert_eq!(
+        purchaser_1_change, Uint128::new(10 * 10000 + 20000 * 10)
+    );
+
+    crowdfund_contract.execute_end_campaign();
+
+    let summary = crowdfund_contract.query_campaign_summary();
+    assert_eq!(summary.current_capital, 10 * 10000 + 20000 * 10);
+    assert_eq!(summary.current_stage, CampaignStage::SUCCESS.to_string());
+
+    // Splitter is only working for native token, not for cw20 token
+    let recipient_change = cw20_contract
+        .query_balance(
+            splitter_contract.addr_str().unwrap(),
+        ).balance - recipient_balance;
+
+    assert_eq!(recipient_change.u128(), summary.current_capital);
 
     crowdfund_contract.set_sender(purchaser_1_daemon.sender());
     crowdfund_contract.execute_claim();
