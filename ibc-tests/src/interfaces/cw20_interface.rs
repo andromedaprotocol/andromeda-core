@@ -24,18 +24,21 @@ type Chain = DaemonBase<Wallet>;
 
 impl Cw20Contract<Chain> {
     pub fn query_balance(&self, address: impl Into<String>) -> BalanceResponse {
-        let query_msg = andr_cw20::QueryMsg::Balance { address: address.into() };
+        let query_msg = andr_cw20::QueryMsg::Balance {
+            address: address.into(),
+        };
         self.query(&query_msg).unwrap()
     }
 
     pub fn execute_send(&self, contract: impl Into<String>, amount: Uint128, msg: &impl Serialize) {
         let execute_msg = andr_cw20::ExecuteMsg::Send {
-            contract: AndrAddr::from_string(contract.into()), amount, msg: to_json_binary(msg).unwrap()
+            contract: AndrAddr::from_string(contract.into()),
+            amount,
+            msg: to_json_binary(msg).unwrap(),
         };
         self.execute(&execute_msg, None).unwrap();
     }
 }
-
 
 pub fn prepare(
     daemon: &DaemonBase<Wallet>,

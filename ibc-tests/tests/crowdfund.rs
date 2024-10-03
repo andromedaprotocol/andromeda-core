@@ -344,7 +344,6 @@ fn test_successful_crowdfund_app_native(setup: TestCase) {
 
 #[rstest]
 fn test_successful_crowdfund_app_cw20(#[with(false)] setup: TestCase) {
-
     let TestCase {
         daemon,
         mut crowdfund_contract,
@@ -354,7 +353,6 @@ fn test_successful_crowdfund_app_cw20(#[with(false)] setup: TestCase) {
         splitter_contract,
         ..
     } = setup;
-  
 
     let start_time = None;
     let end_time = Milliseconds::from_nanos(daemon.block_info().unwrap().time.plus_days(1).nanos());
@@ -366,9 +364,8 @@ fn test_successful_crowdfund_app_cw20(#[with(false)] setup: TestCase) {
     assert_eq!(summary.current_stage, CampaignStage::ONGOING.to_string());
 
     let recipient_balance = cw20_contract
-        .query_balance(
-            splitter_contract.addr_str().unwrap(),
-        ).balance;
+        .query_balance(splitter_contract.addr_str().unwrap())
+        .balance;
 
     let orders = vec![
         SimpleTierOrder {
@@ -390,24 +387,23 @@ fn test_successful_crowdfund_app_cw20(#[with(false)] setup: TestCase) {
         .unwrap();
 
     let purchaser_1_balance = cw20_contract
-        .query_balance(
-            purchaser_1_daemon.sender_addr(),
-        ).balance;
+        .query_balance(purchaser_1_daemon.sender_addr())
+        .balance;
 
     cw20_contract.set_sender(purchaser_1_daemon.sender());
-    cw20_contract.execute_send(crowdfund_contract.addr_str().unwrap(), Uint128::new(500000), &hook_msg,);
+    cw20_contract.execute_send(
+        crowdfund_contract.addr_str().unwrap(),
+        Uint128::new(500000),
+        &hook_msg,
+    );
     cw20_contract.set_sender(daemon.sender());
 
-    
-    
-    let purchaser_1_change = purchaser_1_balance - cw20_contract
-        .query_balance(
-            purchaser_1_daemon.sender_addr(),
-        ).balance;
+    let purchaser_1_change = purchaser_1_balance
+        - cw20_contract
+            .query_balance(purchaser_1_daemon.sender_addr())
+            .balance;
 
-    assert_eq!(
-        purchaser_1_change, Uint128::new(10 * 10000 + 20000 * 10)
-    );
+    assert_eq!(purchaser_1_change, Uint128::new(10 * 10000 + 20000 * 10));
 
     crowdfund_contract.execute_end_campaign();
 
@@ -417,9 +413,9 @@ fn test_successful_crowdfund_app_cw20(#[with(false)] setup: TestCase) {
 
     // Splitter is only working for native token, not for cw20 token
     let recipient_change = cw20_contract
-        .query_balance(
-            splitter_contract.addr_str().unwrap(),
-        ).balance - recipient_balance;
+        .query_balance(splitter_contract.addr_str().unwrap())
+        .balance
+        - recipient_balance;
 
     assert_eq!(recipient_change.u128(), summary.current_capital);
 
