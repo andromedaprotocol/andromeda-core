@@ -91,11 +91,13 @@ jobs:
           fetch-depth: 1
       - name: Setup localrelayer
         run: |
-          git clone --branch develop git@github.com:andromedaprotocol/localrelayer.git ./localrelayer
+          gh repo clone git@github.com:andromedaprotocol/localrelayer.git
           cd ./localrelayer
+          git checkout develop
           make start-chains CHAINS="terra-1"
           make start-validators CHAINS="terra-1"
-
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Run IBC Tests
         run: |
           cd ./ibc-tests
