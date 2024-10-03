@@ -34,8 +34,8 @@ build_contract () {
     local OUT_FILE_PACKAGE="./packages/andromeda-testing-e2e/artifacts/$BUILD_TARGET.wasm"
 
     wasm-opt -Os $IN_FILE -o $OUT_FILE
-    wasm-opt -Os $IN_FILE -o $OUT_FILE_IBC_TEST
-    wasm-opt -Os $IN_FILE -o $OUT_FILE_PACKAGE
+    cp $IN_FILE $OUT_FILE_IBC_TEST
+    cp $IN_FILE $OUT_FILE_PACKAGE
     
     # NOT SO IMPORTANT STEPS
     # Log wasm file sizes at the end of build process
