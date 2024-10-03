@@ -1,4 +1,5 @@
 use andromeda_std::{andr_exec, andr_instantiate, andr_query};
+use andromeda_std::amp::AndrAddr;
 use cosmwasm_schema::{cw_serde, QueryResponses};
 
 #[andr_instantiate]
@@ -31,6 +32,9 @@ pub enum ExecuteMsg {
         coordinate: Coordinate,
         is_timestamp_allowed: bool,
     },
+    StoreUserCoordinate {
+        user_location_paths: Vec<AndrAddr>,
+    }
 }
 
 #[cw_serde]
@@ -50,6 +54,8 @@ pub enum QueryMsg {
     GetMaxPoint {},
     #[returns(GetAllPointsResponse)]
     GetAllPoints {},
+    #[returns(CoordinateInfo)]
+    GetUserCoordinate {},
 }
 
 #[cw_serde]
