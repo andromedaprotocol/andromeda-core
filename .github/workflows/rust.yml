@@ -81,24 +81,25 @@ jobs:
           path: ./artifacts/
           if-no-files-found: error
 
-  # ibc-tests:
-  #   runs-on: ubuntu-latest
-  #   name: Post Build - IBC Tests
-  #   needs: build
-  #   steps:
-  #     - uses: actions/checkout@v2
-  #       with:
-  #         fetch-depth: 1
-  #     - name: Download Contracts
-  #       uses: actions/download-artifact@v2
-  #       with:
-  #         name: contracts
-  #         path: "./ibc-tests/contracts"
-  #     - name: Run IBC Tests
-  #       run: |
-  #         cd ./ibc-tests
-  #         npm i
-  #         npm test
+  ibc-tests:
+    runs-on: ubuntu-latest
+    name: Running E2E Test
+    needs: build
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 1
+      - name: Setup localrelayer
+        run: |
+          git clone --branch development https://github.com/andromedaprotocol/localrelayer.git ./localrelayer
+          cd ./localrelayer
+          make start-chains CHAINS="terra-1"
+          make start-validators CHAINS="terra-1"
+
+      - name: Run IBC Tests
+        run: |
+          cd ./ibc-tests
+          cargo test -- --show-output
 
   build-schemas:
     runs-on: ubuntu-latest
