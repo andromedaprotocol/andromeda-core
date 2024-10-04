@@ -7,7 +7,11 @@ use andromeda_data_storage::graph::{
     GetMaxPointResponse, InstantiateMsg, MapInfo, QueryMsg, StoredDate,
 };
 use andromeda_std::{
-    ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg}, ado_contract::ADOContract, amp::AndrAddr, common::{actions::call_action, context::ExecuteContext, encode_binary}, error::ContractError,
+    ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
+    ado_contract::ADOContract,
+    amp::AndrAddr,
+    common::{actions::call_action, context::ExecuteContext, encode_binary},
+    error::ContractError,
     os::aos_querier::AOSQuerier,
 };
 
@@ -77,7 +81,9 @@ fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
             coordinate,
             is_timestamp_allowed,
         } => execute_store_coordinate(ctx, coordinate, is_timestamp_allowed, action),
-        ExecuteMsg::StoreUserCoordinate { user_location_paths } => execute_store_user_coordinate(ctx, user_location_paths, action),
+        ExecuteMsg::StoreUserCoordinate {
+            user_location_paths,
+        } => execute_store_user_coordinate(ctx, user_location_paths, action),
         _ => ADOContract::default().execute(ctx, msg),
     }?;
 
@@ -251,7 +257,6 @@ pub fn execute_store_coordinate(
     Ok(Response::new().add_attributes(vec![attr("action", action), attr("sender", sender)]))
 }
 
-
 pub fn execute_store_user_coordinate(
     ctx: ExecuteContext,
     user_location_paths: Vec<AndrAddr>,
@@ -267,22 +272,25 @@ pub fn execute_store_user_coordinate(
         let contract_info = ctx.deps.querier.query_wasm_contract_info(address);
         if let Ok(contract_info) = contract_info {
             let code_id = contract_info.code_id;
-            let adodb_addr = ADOContract::default().get_adodb_address(ctx.deps.storage, &ctx.deps.querier)?;
+            let adodb_addr =
+                ADOContract::default().get_adodb_address(ctx.deps.storage, &ctx.deps.querier)?;
             let ado_type = AOSQuerier::ado_type_getter(&ctx.deps.querier, &adodb_addr, code_id)?;
 
             if ado_type.is_none() {
-                return Err(ContractError::InvalidADOType { msg: Some("ADO Type must be point: None".to_string())})
+                return Err(ContractError::InvalidADOType {
+                    msg: Some("ADO Type must be point: None".to_string()),
+                });
             }
             let ado_type = ado_type.unwrap();
             if ado_type == "point".to_string() {
-
             } else {
-                return Err(ContractError::InvalidADOType { msg: Some(format!("ADO Type must be point: {:?}", ado_type))})
+                return Err(ContractError::InvalidADOType {
+                    msg: Some(format!("ADO Type must be point: {:?}", ado_type)),
+                });
             }
-
         } else {
             // Not a contract
-            return Err(ContractError::InvalidAddress {})
+            return Err(ContractError::InvalidAddress {});
         }
     }
     Ok(Response::new().add_attributes(vec![attr("action", action), attr("sender", sender)]))

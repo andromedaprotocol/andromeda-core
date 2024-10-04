@@ -1,5 +1,5 @@
-use andromeda_std::{andr_exec, andr_instantiate, andr_query};
 use andromeda_std::amp::AndrAddr;
+use andromeda_std::{andr_exec, andr_instantiate, andr_query};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 
 #[andr_instantiate]
@@ -34,7 +34,7 @@ pub enum ExecuteMsg {
     },
     StoreUserCoordinate {
         user_location_paths: Vec<AndrAddr>,
-    }
+    },
 }
 
 #[cw_serde]
