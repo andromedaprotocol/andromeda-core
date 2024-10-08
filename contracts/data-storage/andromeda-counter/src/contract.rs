@@ -91,13 +91,13 @@ pub fn execute(
 fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     let action = msg.as_ref().to_string();
 
-    let action_response = call_action(
-        &mut ctx.deps,
-        &ctx.info,
-        &ctx.env,
-        &ctx.amp_ctx,
-        msg.as_ref(),
-    )?;
+    // let action_response = call_action(
+    //     &mut ctx.deps,
+    //     &ctx.info,
+    //     &ctx.env,
+    //     &ctx.amp_ctx,
+    //     msg.as_ref(),
+    // )?;
 
     let res = match msg {
         ExecuteMsg::Increment {} => execute_increment(ctx, action),
@@ -115,10 +115,11 @@ fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
         _ => ADOContract::default().execute(ctx, msg),
     }?;
 
-    Ok(res
-        .add_submessages(action_response.messages)
-        .add_attributes(action_response.attributes)
-        .add_events(action_response.events))
+    Ok(
+        res, // .add_submessages(action_response.messages)
+            // .add_attributes(action_response.attributes)
+            // .add_events(action_response.events))
+    )
 }
 
 pub fn execute_increment(ctx: ExecuteContext, action: String) -> Result<Response, ContractError> {

@@ -384,7 +384,6 @@ impl MsgHandler {
         };
         self.update_recipient(resolved_recipient);
         let protocol = self.message().recipient.get_protocol();
-
         match protocol {
             Some("ibc") => self.handle_ibc(deps, info, env, ctx, sequence),
             _ => self.handle_local(deps, info, env, ctx.map(|ctx| ctx.ctx), sequence),
@@ -415,9 +414,7 @@ impl MsgHandler {
             ..
         } = self.message();
         let recipient_addr = recipient.get_raw_address(&deps.as_ref())?;
-
         let adodb_addr = KERNEL_ADDRESSES.load(deps.storage, ADO_DB_KEY)?;
-
         // A default message is a bank message
         if Binary::default() == message.clone() {
             ensure!(
@@ -450,7 +447,6 @@ impl MsgHandler {
                 info.sender.to_string()
             };
             let previous_sender = info.sender.to_string();
-
             // Ensure recipient is a smart contract
             let ContractInfoResponse {
                 code_id: recipient_code_id,

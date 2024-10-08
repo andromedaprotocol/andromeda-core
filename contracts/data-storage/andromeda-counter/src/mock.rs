@@ -1,6 +1,8 @@
 #![cfg(all(not(target_arch = "wasm32"), feature = "testing"))]
 use crate::contract::{execute, instantiate, query};
-use andromeda_data_storage::counter::{CounterRestriction, ExecuteMsg, InstantiateMsg, QueryMsg};
+use andromeda_data_storage::counter::{
+    CounterRestriction, ExecuteMsg, InstantiateMsg, QueryMsg, State,
+};
 use andromeda_data_storage::counter::{
     GetCurrentAmountResponse, GetDecreaseAmountResponse, GetIncreaseAmountResponse,
     GetInitialAmountResponse, GetRestrictionResponse,
@@ -185,9 +187,11 @@ pub fn mock_counter_instantiate_msg(
         kernel_address,
         owner,
         restriction,
-        initial_amount,
-        increase_amount,
-        decrease_amount,
+        initial_state: State {
+            initial_amount,
+            increase_amount,
+            decrease_amount,
+        },
     }
 }
 

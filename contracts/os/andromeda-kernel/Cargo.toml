@@ -38,7 +38,7 @@ serde = { workspace = true }
 schemars = "0.8.10"
 hex = "0.4.3"
 itertools = "0.10"
-
+cw-orch = "=0.23.0"
 
 andromeda-std = { workspace = true }
 
