@@ -19,6 +19,7 @@ use andromeda_std::os::kernel::InstantiateMsg;
 use andromeda_vfs::VFSContract;
 use cosmwasm_std::to_json_binary;
 use cosmwasm_std::Addr;
+use cosmwasm_std::Uint128;
 use cw_orch::prelude::*;
 use cw_orch_interchain::prelude::*;
 use cw_orch_interchain::types::IbcPacketOutcome;
@@ -107,10 +108,11 @@ fn test_ics20_ibc() {
         // There was a decode error or the packet timed out
         // Else the packet timed-out, you may have a relayer error or something is wrong in your application
     };
-    let channel_response: ChannelResponse = ics20_osmosis
+    let channel_response: ChannelResponse = ics20_juno
         .query(&andromeda_fungible_tokens::ics20::QueryMsg::Channel {
             id: juno_channel.to_string(),
         })
         .unwrap();
-    println!("channel response is: {:?}", channel_response);
+    let amount = channel_response.total_sent[0].amount();
+    assert_eq!(amount, Uint128::new(100));
 }
