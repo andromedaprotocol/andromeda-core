@@ -13,5 +13,5 @@ pub struct ADOBaseVersionResponse {
 
 pub fn base_crate_version() -> String {
     let version = env!("CARGO_PKG_VERSION");
-    format!("ADOBase Version: {}", version)
+    format!("ADO_BASE_VERSION:{}", version)
 }
