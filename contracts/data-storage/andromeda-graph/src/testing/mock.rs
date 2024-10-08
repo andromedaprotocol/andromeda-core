@@ -1,10 +1,10 @@
 use andromeda_data_storage::graph::{Coordinate, GetMapInfoResponse, MapInfo};
 use andromeda_data_storage::graph::{
-    ExecuteMsg, GetAllPointsResponse, GetMaxPointResponse, InstantiateMsg, QueryMsg,
+    CoordinateInfo, ExecuteMsg, GetAllPointsResponse, GetMaxPointNumberResponse, InstantiateMsg,
+    QueryMsg,
 };
 use andromeda_std::{
-    error::ContractError,
-    testing::mock_querier::{mock_dependencies_custom, WasmMockQuerier, MOCK_KERNEL_CONTRACT},
+    amp::AndrAddr, error::ContractError, testing::mock_querier::MOCK_KERNEL_CONTRACT,
 };
 use cosmwasm_std::{
     from_json,
@@ -13,12 +13,13 @@ use cosmwasm_std::{
 };
 
 use crate::contract::{execute, instantiate, query};
+use crate::testing::mock_querier::{mock_dependencies_custom, WasmMockQuerier};
 
 pub type MockDeps = OwnedDeps<MockStorage, MockApi, WasmMockQuerier>;
 
 pub fn proper_initialization(map_info: MapInfo) -> (MockDeps, MessageInfo) {
     let mut deps = mock_dependencies_custom(&[]);
-    let info = mock_info("creator", &[]);
+    let info = mock_info("sender", &[]);
     let msg = InstantiateMsg {
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
@@ -53,6 +54,28 @@ pub fn store_coordinate(
     execute(deps, mock_env(), info, msg)
 }
 
+pub fn store_user_coordinate(
+    deps: DepsMut<'_>,
+    user_location_paths: Vec<AndrAddr>,
+    sender: &str,
+) -> Result<Response, ContractError> {
+    let msg = ExecuteMsg::StoreUserCoordinate {
+        user_location_paths,
+    };
+    let info = mock_info(sender, &[]);
+    execute(deps, mock_env(), info, msg)
+}
+
+pub fn delete_user_coordinate(
+    deps: DepsMut<'_>,
+    user: AndrAddr,
+    sender: &str,
+) -> Result<Response, ContractError> {
+    let msg = ExecuteMsg::DeleteUserCoordinate { user };
+    let info = mock_info(sender, &[]);
+    execute(deps, mock_env(), info, msg)
+}
+
 pub fn query_map_info(deps: Deps) -> Result<GetMapInfoResponse, ContractError> {
     let res = query(deps, mock_env(), QueryMsg::GetMapInfo {});
     match res {
@@ -61,8 +84,8 @@ pub fn query_map_info(deps: Deps) -> Result<GetMapInfoResponse, ContractError> {
     }
 }
 
-pub fn query_max_point(deps: Deps) -> Result<GetMaxPointResponse, ContractError> {
-    let res = query(deps, mock_env(), QueryMsg::GetMaxPoint {});
+pub fn query_max_point_number(deps: Deps) -> Result<GetMaxPointNumberResponse, ContractError> {
+    let res = query(deps, mock_env(), QueryMsg::GetMaxPointNumber {});
     match res {
         Ok(res) => Ok(from_json(res)?),
         Err(err) => Err(err),
@@ -71,6 +94,14 @@ pub fn query_max_point(deps: Deps) -> Result<GetMaxPointResponse, ContractError>
 
 pub fn query_all_points(deps: Deps) -> Result<GetAllPointsResponse, ContractError> {
     let res = query(deps, mock_env(), QueryMsg::GetAllPoints {});
+    match res {
+        Ok(res) => Ok(from_json(res)?),
+        Err(err) => Err(err),
+    }
+}
+
+pub fn query_user_coordinate(deps: Deps, user: AndrAddr) -> Result<CoordinateInfo, ContractError> {
+    let res = query(deps, mock_env(), QueryMsg::GetUserCoordinate { user });
     match res {
         Ok(res) => Ok(from_json(res)?),
         Err(err) => Err(err),

@@ -35,6 +35,9 @@ pub enum ExecuteMsg {
     StoreUserCoordinate {
         user_location_paths: Vec<AndrAddr>,
     },
+    DeleteUserCoordinate {
+        user: AndrAddr,
+    },
 }
 
 #[cw_serde]
@@ -50,12 +53,12 @@ pub struct Coordinate {
 pub enum QueryMsg {
     #[returns(GetMapInfoResponse)]
     GetMapInfo {},
-    #[returns(GetMaxPointResponse)]
-    GetMaxPoint {},
+    #[returns(GetMaxPointNumberResponse)]
+    GetMaxPointNumber {},
     #[returns(GetAllPointsResponse)]
     GetAllPoints {},
     #[returns(CoordinateInfo)]
-    GetUserCoordinate {},
+    GetUserCoordinate { user: AndrAddr },
 }
 
 #[cw_serde]
@@ -64,8 +67,8 @@ pub struct GetMapInfoResponse {
 }
 
 #[cw_serde]
-pub struct GetMaxPointResponse {
-    pub max_point: u128,
+pub struct GetMaxPointNumberResponse {
+    pub max_point_number: u128,
 }
 
 #[cw_serde]

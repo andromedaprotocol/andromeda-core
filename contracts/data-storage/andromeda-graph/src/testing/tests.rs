@@ -1,9 +1,12 @@
+use crate::testing::mock_querier::MOCK_POINT_CONTRACT;
 use andromeda_data_storage::graph::{Coordinate, MapInfo, MapSize, StoredDate};
 use andromeda_data_storage::graph::{CoordinateInfo, GetMapInfoResponse};
+use andromeda_std::amp::AndrAddr;
 use andromeda_std::error::ContractError;
 
 use super::mock::{
-    proper_initialization, query_all_points, query_map_info, query_max_point, store_coordinate,
+    delete_user_coordinate, proper_initialization, query_all_points, query_map_info,
+    query_max_point_number, query_user_coordinate, store_coordinate, store_user_coordinate,
     update_map,
 };
 
@@ -320,7 +323,9 @@ fn test_store_coordinate_disallow_negative_and_update_map_timestamp_not_allowed(
     )
     .unwrap();
 
-    let max_point = query_max_point(deps.as_ref()).unwrap().max_point;
+    let max_point = query_max_point_number(deps.as_ref())
+        .unwrap()
+        .max_point_number;
     assert_eq!(max_point, 2);
 
     let all_points = query_all_points(deps.as_ref()).unwrap().points;
@@ -364,7 +369,9 @@ fn test_store_coordinate_disallow_negative_and_update_map_timestamp_not_allowed(
     let all_points = query_all_points(deps.as_ref()).unwrap().points;
     assert_eq!(all_points, vec![]);
 
-    let max_point = query_max_point(deps.as_ref()).unwrap().max_point;
+    let max_point = query_max_point_number(deps.as_ref())
+        .unwrap()
+        .max_point_number;
     assert_eq!(max_point, 0);
 }
 
@@ -416,7 +423,9 @@ fn test_store_coordinate_disallow_negative_timestamp_allowed() {
     )
     .unwrap();
 
-    let max_point = query_max_point(deps.as_ref()).unwrap().max_point;
+    let max_point = query_max_point_number(deps.as_ref())
+        .unwrap()
+        .max_point_number;
     assert_eq!(max_point, 3);
 
     let all_points = query_all_points(deps.as_ref()).unwrap().points;
@@ -455,4 +464,44 @@ fn test_store_coordinate_disallow_negative_timestamp_allowed() {
             ),
         ]
     );
+}
+
+#[test]
+fn test_store_user_coordinate() {
+    let (mut deps, info) = proper_initialization(MapInfo {
+        map_size: MapSize {
+            x_width: 100,
+            y_width: 100,
+            z_width: Some(100),
+        },
+        allow_negative: false,
+        map_decimal: 5,
+    });
+
+    store_user_coordinate(
+        deps.as_mut(),
+        vec![AndrAddr::from_string(MOCK_POINT_CONTRACT.to_string())],
+        info.sender.as_ref(),
+    )
+    .unwrap();
+
+    let query_res: CoordinateInfo =
+        query_user_coordinate(deps.as_ref(), AndrAddr::from_string("sender".to_string())).unwrap();
+    assert_eq!(
+        query_res,
+        CoordinateInfo {
+            x: "10".to_string(),
+            y: "10".to_string(),
+            z: Some("10".to_string()),
+        },
+    );
+
+    delete_user_coordinate(
+        deps.as_mut(),
+        AndrAddr::from_string("sender".to_string()),
+        "sender",
+    )
+    .unwrap();
+
+    query_user_coordinate(deps.as_ref(), AndrAddr::from_string("sender".to_string())).unwrap_err();
 }

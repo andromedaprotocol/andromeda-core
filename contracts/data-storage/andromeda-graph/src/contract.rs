@@ -4,7 +4,10 @@ use cosmwasm_std::{attr, ensure, Binary, Deps, DepsMut, Env, MessageInfo, Respon
 
 use andromeda_data_storage::graph::{
     Coordinate, CoordinateInfo, ExecuteMsg, GetAllPointsResponse, GetMapInfoResponse,
-    GetMaxPointResponse, InstantiateMsg, MapInfo, QueryMsg, StoredDate,
+    GetMaxPointNumberResponse, InstantiateMsg, MapInfo, QueryMsg, StoredDate,
+};
+use andromeda_data_storage::point::{
+    GetDataOwnerResponse, PointCoordinate, QueryMsg as PointQueryMsg,
 };
 use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
@@ -15,7 +18,7 @@ use andromeda_std::{
     os::aos_querier::AOSQuerier,
 };
 
-use crate::state::{MAP_INFO, MAP_POINT_INFO, POINT};
+use crate::state::{MAP_INFO, MAP_POINT_INFO, TOTAL_POINTS_NUMBER, USER_COORDINATE};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-graph";
@@ -43,7 +46,7 @@ pub fn instantiate(
     )?;
 
     MAP_INFO.save(deps.storage, &msg.map_info)?;
-    POINT.save(deps.storage, &0)?;
+    TOTAL_POINTS_NUMBER.save(deps.storage, &0)?;
 
     Ok(resp)
 }
@@ -84,6 +87,9 @@ fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
         ExecuteMsg::StoreUserCoordinate {
             user_location_paths,
         } => execute_store_user_coordinate(ctx, user_location_paths, action),
+        ExecuteMsg::DeleteUserCoordinate { user } => {
+            execute_delete_user_coordinate(ctx, user, action)
+        }
         _ => ADOContract::default().execute(ctx, msg),
     }?;
 
@@ -119,13 +125,13 @@ pub fn execute_update_map(
 
     MAP_INFO.save(ctx.deps.storage, &map_info)?;
 
-    let max_point = POINT.load(ctx.deps.storage)?;
+    let max_point_number = TOTAL_POINTS_NUMBER.load(ctx.deps.storage)?;
 
-    for point in 1..=max_point {
+    for point in 1..=max_point_number {
         MAP_POINT_INFO.remove(ctx.deps.storage, &point);
     }
 
-    POINT.save(ctx.deps.storage, &0)?;
+    TOTAL_POINTS_NUMBER.save(ctx.deps.storage, &0)?;
 
     Ok(Response::new().add_attributes(vec![attr("action", action), attr("sender", sender)]))
 }
@@ -234,7 +240,10 @@ pub fn execute_store_coordinate(
         }
     };
 
-    let point = POINT.load(ctx.deps.storage)?.checked_add(1).unwrap();
+    let point_number = TOTAL_POINTS_NUMBER
+        .load(ctx.deps.storage)?
+        .checked_add(1)
+        .unwrap();
     let timestamp = match is_timestamp_allowed {
         true => Some(ctx.env.block.time.nanos()),
         false => None,
@@ -242,7 +251,7 @@ pub fn execute_store_coordinate(
 
     MAP_POINT_INFO.save(
         ctx.deps.storage,
-        &point,
+        &point_number,
         &(
             CoordinateInfo {
                 x: x_coordinate.to_string(),
@@ -252,7 +261,7 @@ pub fn execute_store_coordinate(
             StoredDate { timestamp },
         ),
     )?;
-    POINT.save(ctx.deps.storage, &point)?;
+    TOTAL_POINTS_NUMBER.save(ctx.deps.storage, &point_number)?;
 
     Ok(Response::new().add_attributes(vec![attr("action", action), attr("sender", sender)]))
 }
@@ -269,7 +278,7 @@ pub fn execute_store_user_coordinate(
     );
     for user_location_path in user_location_paths {
         let address = user_location_path.get_raw_address(&ctx.deps.as_ref())?;
-        let contract_info = ctx.deps.querier.query_wasm_contract_info(address);
+        let contract_info = ctx.deps.querier.query_wasm_contract_info(address.clone());
         if let Ok(contract_info) = contract_info {
             let code_id = contract_info.code_id;
             let adodb_addr =
@@ -283,6 +292,20 @@ pub fn execute_store_user_coordinate(
             }
             let ado_type = ado_type.unwrap();
             if ado_type == "point".to_string() {
+                let user_point_coordinate: PointCoordinate = ctx
+                    .deps
+                    .querier
+                    .query_wasm_smart(address.clone(), &PointQueryMsg::GetPoint {})?;
+                let user_res: GetDataOwnerResponse = ctx
+                    .deps
+                    .querier
+                    .query_wasm_smart(address.clone(), &PointQueryMsg::GetDataOwner {})?;
+                let user: AndrAddr = user_res.owner;
+                let user_addr = user.get_raw_address(&ctx.deps.as_ref())?;
+
+                user_point_coordinate.validate()?;
+
+                USER_COORDINATE.save(ctx.deps.storage, user_addr, &user_point_coordinate)?;
             } else {
                 return Err(ContractError::InvalidADOType {
                     msg: Some(format!("ADO Type must be point: {:?}", ado_type)),
@@ -296,12 +319,30 @@ pub fn execute_store_user_coordinate(
     Ok(Response::new().add_attributes(vec![attr("action", action), attr("sender", sender)]))
 }
 
+pub fn execute_delete_user_coordinate(
+    ctx: ExecuteContext,
+    user: AndrAddr,
+    action: String,
+) -> Result<Response, ContractError> {
+    let sender = ctx.info.sender;
+    ensure!(
+        ADOContract::default().is_owner_or_operator(ctx.deps.storage, sender.as_ref())?,
+        ContractError::Unauthorized {}
+    );
+    let user_addr = user.get_raw_address(&ctx.deps.as_ref())?;
+
+    USER_COORDINATE.remove(ctx.deps.storage, user_addr);
+
+    Ok(Response::new().add_attributes(vec![attr("action", action), attr("sender", sender)]))
+}
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::GetMapInfo {} => encode_binary(&get_map_info(deps.storage)?),
-        QueryMsg::GetMaxPoint {} => encode_binary(&get_max_point(deps.storage)?),
+        QueryMsg::GetMaxPointNumber {} => encode_binary(&get_max_point_number(deps.storage)?),
         QueryMsg::GetAllPoints {} => encode_binary(&get_all_points(deps.storage)?),
+        QueryMsg::GetUserCoordinate { user } => encode_binary(&get_user_coordinate(deps, user)?),
         _ => ADOContract::default().query(deps, env, msg),
     }
 }
@@ -318,21 +359,34 @@ pub fn get_map_info(storage: &dyn Storage) -> Result<GetMapInfoResponse, Contrac
     }
 }
 
-pub fn get_max_point(storage: &dyn Storage) -> Result<GetMaxPointResponse, ContractError> {
-    let max_point = POINT.load(storage)?;
-    Ok(GetMaxPointResponse { max_point })
+pub fn get_max_point_number(
+    storage: &dyn Storage,
+) -> Result<GetMaxPointNumberResponse, ContractError> {
+    let max_point_number = TOTAL_POINTS_NUMBER.load(storage)?;
+    Ok(GetMaxPointNumberResponse { max_point_number })
 }
 
 pub fn get_all_points(storage: &dyn Storage) -> Result<GetAllPointsResponse, ContractError> {
-    let max_point = POINT.load(storage)?;
+    let max_point_number = TOTAL_POINTS_NUMBER.load(storage)?;
 
     let mut res: Vec<(CoordinateInfo, StoredDate)> = Vec::new();
 
-    for point in 1..=max_point {
+    for point in 1..=max_point_number {
         let coordinate = MAP_POINT_INFO.load(storage, &point)?;
         res.push(coordinate);
     }
     Ok(GetAllPointsResponse { points: res })
+}
+
+pub fn get_user_coordinate(deps: Deps, user: AndrAddr) -> Result<CoordinateInfo, ContractError> {
+    let user_addr = user.get_raw_address(&deps)?;
+    let user_coordinate = USER_COORDINATE.load(deps.storage, user_addr)?;
+
+    Ok(CoordinateInfo {
+        x: user_coordinate.x_coordinate,
+        y: user_coordinate.y_coordinate,
+        z: user_coordinate.z_coordinate,
+    })
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
