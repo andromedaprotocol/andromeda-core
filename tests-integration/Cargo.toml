@@ -49,6 +49,9 @@ andromeda-cw20-staking = { path = "../contracts/fungible-tokens/andromeda-cw20-s
 andromeda-lockdrop = { path = "../contracts/fungible-tokens/andromeda-lockdrop", features = [
     "testing",
 ] }
+andromeda-ics20 = { path = "../contracts/fungible-tokens/andromeda-ics20", features = [
+    "testing",
+] }
 # andromeda-cw20-staking = { path = "../contracts/fungible-tokens/andromeda-cw20-staking", features = ["testing"] }
 
 # #Modules
