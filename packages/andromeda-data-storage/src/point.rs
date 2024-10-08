@@ -31,10 +31,7 @@ pub struct PointCoordinate {
 
 impl PointCoordinate {
     pub fn from_f64(x_coordinate: f64, y_coordinate: f64, z_coordinate: Option<f64>) -> Self {
-        let z_coordinate: Option<String> = match z_coordinate {
-            None => None,
-            Some(z) => Some(z.to_string()),
-        };
+        let z_coordinate: Option<String> = z_coordinate.map(|z| z.to_string());
 
         Self {
             x_coordinate: x_coordinate.to_string(),
