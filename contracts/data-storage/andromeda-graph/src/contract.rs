@@ -291,7 +291,7 @@ pub fn execute_store_user_coordinate(
                 });
             }
             let ado_type = ado_type.unwrap();
-            if ado_type == "point".to_string() {
+            if ado_type == *"point" {
                 let user_point_coordinate: PointCoordinate = ctx
                     .deps
                     .querier
