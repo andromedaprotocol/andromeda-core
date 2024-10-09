@@ -1,13 +1,16 @@
 use crate::{
     ado_contract::ADOContract,
     amp::{AndrAddr, Recipient},
-    common::{deduct_funds, Funds},
+    common::{deduct_funds, denom::validate_native_denom, Funds},
     error::ContractError,
     os::{adodb::ADOVersion, aos_querier::AOSQuerier},
 };
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{ensure, has_coins, Coin, Decimal, Deps, Event, Fraction, SubMsg};
-use cw20::Cw20Coin;
+use cosmwasm_std::{
+    ensure, has_coins, to_json_binary, Coin, Decimal, Deps, Event, Fraction, QueryRequest, SubMsg,
+    WasmQuery,
+};
+use cw20::{Cw20Coin, Cw20QueryMsg, TokenInfoResponse};
 
 #[cw_serde]
 pub struct RatesResponse {
@@ -77,11 +80,31 @@ pub enum LocalRateValue {
     Flat(Coin),
 }
 impl LocalRateValue {
-    pub fn validate(&self) -> Result<(), ContractError> {
+    pub fn validate(&self, deps: Deps) -> Result<(), ContractError> {
         match self {
             // If it's a coin, make sure it's non-zero
             LocalRateValue::Flat(coin) => {
                 ensure!(!coin.amount.is_zero(), ContractError::InvalidRate {});
+                // Extract denom
+                let denom = coin.denom.clone();
+                // Check if it's a valid address
+                let is_valid_address = deps.api.addr_validate(denom.as_str());
+                match is_valid_address {
+                    // Verify as CW20
+                    Ok(cw20_address) => {
+                        let token_info_query: TokenInfoResponse =
+                            deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+                                contract_addr: cw20_address.to_string(),
+                                msg: to_json_binary(&Cw20QueryMsg::TokenInfo {})?,
+                            }))?;
+                        ensure!(
+                            !token_info_query.total_supply.is_zero(),
+                            ContractError::InvalidZeroAmount {}
+                        );
+                    }
+                    // Verify as Native Asset
+                    Err(_) => validate_native_denom(deps, denom)?,
+                }
             }
             // If it's a percentage, make sure it's greater than zero and less than or equal to 1 of type decimal (which represents 100%)
             LocalRateValue::Percent(percent_rate) => {
@@ -191,7 +214,7 @@ impl Rate {
             }
             Rate::Local(local_rate) => {
                 // Validate the local rate value
-                local_rate.value.validate()?;
+                local_rate.value.validate(deps)?;
                 Ok(())
             }
         }

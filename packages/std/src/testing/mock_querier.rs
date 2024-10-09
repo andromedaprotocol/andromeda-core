@@ -9,14 +9,13 @@ use crate::{
         kernel::ChannelInfo,
     },
 };
-
-use cosmwasm_std::SubMsg;
+use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
     from_json,
     testing::{MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
     to_json_binary, Addr, Binary, CodeInfoResponse, Coin, ContractInfoResponse, ContractResult,
-    HexBinary, OwnedDeps, Querier, QuerierResult, QueryRequest, SystemError, SystemResult, Uint128,
-    WasmQuery,
+    HexBinary, OwnedDeps, Querier, QuerierResult, QueryRequest, SubMsg, SystemError, SystemResult,
+    Uint128, WasmQuery,
 };
 #[cfg(feature = "primitive")]
 use cosmwasm_std::{Decimal, Uint128};
@@ -64,6 +63,8 @@ pub const RATES_EXCLUDED_ADDRESS: &str = "rates_excluded_address";
 pub const MOCK_CHECKSUM: &str = "9af782a3a1bcbcd22dbb6a45c751551d9af782a3a1bcbcd22dbb6a45c751551d";
 
 pub const MOCK_WALLET: &str = "mock_wallet";
+
+pub const MOCK_UANDR: &str = "mock_uandr";
 
 pub struct WasmMockQuerier {
     pub base: MockQuerier,
@@ -127,6 +128,26 @@ impl WasmMockQuerier {
     }
 }
 
+// NOTE: It's impossible to construct a non_exhaustive struct from another another crate, so I copied the struct
+// https://rust-lang.github.io/rfcs/2008-non-exhaustive.html#functional-record-updates
+#[cw_serde(
+    Serialize,
+    Deserialize,
+    Clone,
+    Debug,
+    Default,
+    PartialEq,
+    Eq,
+    JsonSchema
+)]
+#[serde(rename_all = "snake_case")]
+#[non_exhaustive]
+pub struct SupplyResponse {
+    /// Always returns a Coin with the requested denom.
+    /// This will be of zero amount if the denom does not exist.
+    pub amount: Coin,
+}
+
 #[derive(Default)]
 pub struct MockAndromedaQuerier {}
 
@@ -146,6 +167,7 @@ impl MockAndromedaQuerier {
                     MOCK_KERNEL_CONTRACT => self.handle_kernel_query(msg),
                     MOCK_VFS_CONTRACT => self.handle_vfs_query(msg),
                     MOCK_ADODB_CONTRACT => self.handle_adodb_query(msg),
+                    MOCK_UANDR => self.handle_cw20_query(msg),
 
                     // MOCK_ADDRESS_LIST_CONTRACT => self.handle_address_list_query(msg),
                     _ => match from_json::<AndromedaQuery>(msg) {
@@ -165,6 +187,7 @@ impl MockAndromedaQuerier {
                     MOCK_ADODB_CONTRACT => self.handle_adodb_raw_query(key),
                     MOCK_CW20_CONTRACT => self.handle_cw20_owner_query(key),
                     MOCK_ANCHOR_CONTRACT => self.handle_anchor_owner_query(key),
+                    MOCK_UANDR => self.handle_cw20_owner_query(key),
 
                     _ => self.handle_ado_raw_query(key, &Addr::unchecked(contract_addr)),
                 }
