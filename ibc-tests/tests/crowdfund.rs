@@ -241,9 +241,7 @@ fn setup(
 }
 
 #[rstest]
-fn test_successful_crowdfund_app_native(
-    #[with(true, LOCAL_WASM)]setup: TestCase
-) {
+fn test_successful_crowdfund_app_native(#[with(true, LOCAL_WASM)] setup: TestCase) {
     let TestCase {
         daemon,
         mut crowdfund_contract,
