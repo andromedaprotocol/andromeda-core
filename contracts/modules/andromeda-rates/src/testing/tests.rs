@@ -7,6 +7,7 @@ use andromeda_modules::rates::{ExecuteMsg, InstantiateMsg, QueryMsg, RateRespons
 use andromeda_std::ado_base::rates::{LocalRate, LocalRateType, LocalRateValue, RatesResponse};
 use andromeda_std::amp::AndrAddr;
 use andromeda_std::common::Funds;
+use andromeda_std::testing::mock_querier::{MOCK_CW20_CONTRACT, MOCK_UANDR};
 use andromeda_std::{amp::recipient::Recipient, common::encode_binary};
 
 use cosmwasm_std::{attr, Event};
@@ -67,7 +68,7 @@ fn test_andr_receive() {
             msg: None,
             ibc_recovery_address: None,
         }],
-        value: LocalRateValue::Flat(coin(100_u128, "uandr")),
+        value: LocalRateValue::Flat(coin(100_u128, MOCK_UANDR)),
         description: None,
     };
     let msg = InstantiateMsg {
@@ -101,7 +102,7 @@ fn test_query_deducted_funds_native() {
             msg: None,
             ibc_recovery_address: None,
         }],
-        value: LocalRateValue::Flat(coin(20_u128, "uandr")),
+        value: LocalRateValue::Flat(coin(20_u128, MOCK_UANDR)),
         description: None,
     };
     let msg = InstantiateMsg {
@@ -112,12 +113,12 @@ fn test_query_deducted_funds_native() {
     };
     let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
     let res =
-        query_deducted_funds(deps.as_ref(), payload, Funds::Native(coin(100, "uandr"))).unwrap();
+        query_deducted_funds(deps.as_ref(), payload, Funds::Native(coin(100, MOCK_UANDR))).unwrap();
 
     let expected_msgs: Vec<SubMsg> = vec![
         SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
             to_address: MOCK_RECIPIENT1.into(),
-            amount: coins(20, "uandr"),
+            amount: coins(20, MOCK_UANDR),
         })),
         // SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
         //     to_address: MOCK_RECIPIENT2.into(),
@@ -128,9 +129,9 @@ fn test_query_deducted_funds_native() {
     assert_eq!(
         RatesResponse {
             msgs: expected_msgs,
-            leftover_funds: Funds::Native(coin(100, "uandr")),
+            leftover_funds: Funds::Native(coin(100, MOCK_UANDR)),
             events: vec![
-                Event::new("tax").add_attribute("payment", "recipient1<20uandr"),
+                Event::new("tax").add_attribute("payment", "recipient1<20mock_uandr"),
                 // Event::new("royalty")
                 //     .add_attribute("description", "desc1")
                 //     .add_attribute("deducted", "10uusd")
@@ -147,7 +148,6 @@ fn test_query_deducted_funds_cw20() {
     let env = mock_env();
     let owner = "owner";
     let info = mock_info(owner, &[]);
-    let cw20_address = "address";
 
     let action: String = "deposit".to_string();
     let payload = encode_binary(&action).unwrap();
@@ -158,7 +158,7 @@ fn test_query_deducted_funds_cw20() {
             msg: None,
             ibc_recovery_address: None,
         }],
-        value: LocalRateValue::Flat(coin(20_u128, cw20_address)),
+        value: LocalRateValue::Flat(coin(20_u128, MOCK_CW20_CONTRACT)),
         description: None,
     };
 
@@ -192,14 +192,14 @@ fn test_query_deducted_funds_cw20() {
         payload,
         Funds::Cw20(Cw20Coin {
             amount: 100u128.into(),
-            address: "address".into(),
+            address: MOCK_CW20_CONTRACT.to_string(),
         }),
     )
     .unwrap();
 
     let expected_msgs: Vec<SubMsg> = vec![
         SubMsg::new(WasmMsg::Execute {
-            contract_addr: cw20_address.to_string(),
+            contract_addr: MOCK_CW20_CONTRACT.to_string(),
             msg: encode_binary(&Cw20ExecuteMsg::Transfer {
                 recipient: MOCK_RECIPIENT1.to_string(),
                 amount: 20u128.into(),
@@ -222,12 +222,12 @@ fn test_query_deducted_funds_cw20() {
             msgs: expected_msgs,
             leftover_funds: Funds::Cw20(Cw20Coin {
                 amount: 100u128.into(),
-                address: cw20_address.to_string()
+                address: MOCK_CW20_CONTRACT.to_string()
             }),
             events: vec![
                 Event::new("tax")
                     // .add_attribute("description", "desc2")
-                    .add_attribute("payment", "recipient1<20address"),
+                    .add_attribute("payment", "recipient1<20cw20_contract"),
                 // Event::new("royalty")
                 //     .add_attribute("description", "desc1")
                 //     .add_attribute("deducted", "10address")

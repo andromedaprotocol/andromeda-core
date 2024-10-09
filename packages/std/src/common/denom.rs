@@ -55,7 +55,7 @@ impl Asset {
                 Ok((cw20_token.to_string(), true))
             }
             Asset::NativeToken(native) => {
-                validate_denom(deps.as_ref(), native.clone())?;
+                validate_native_denom(deps.as_ref(), native.clone())?;
                 Ok((native.to_string(), false))
             }
         }
@@ -100,7 +100,7 @@ impl Asset {
     }
 }
 
-pub fn validate_denom(deps: Deps, denom: String) -> Result<(), ContractError> {
+pub fn validate_native_denom(deps: Deps, denom: String) -> Result<(), ContractError> {
     let potential_supply = deps.querier.query_supply(denom.clone())?;
     let non_empty_denom = !denom.is_empty();
     let non_zero_supply = !potential_supply.amount.is_zero();

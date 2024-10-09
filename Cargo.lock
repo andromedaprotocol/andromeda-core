@@ -132,7 +132,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-auction"
-version = "2.1.3"
+version = "2.1.4"
 dependencies = [
  "andromeda-app",
  "andromeda-non-fungible-tokens",
@@ -149,7 +149,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-boolean"
-version = "2.0.2"
+version = "2.0.3"
 dependencies = [
  "andromeda-data-storage",
  "andromeda-std",
@@ -228,7 +228,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-cw20"
-version = "2.0.4"
+version = "2.0.5"
 dependencies = [
  "andromeda-app",
  "andromeda-fungible-tokens",
@@ -279,7 +279,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-cw721"
-version = "2.0.4"
+version = "2.0.5"
 dependencies = [
  "andromeda-non-fungible-tokens",
  "andromeda-std",
@@ -436,7 +436,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-marketplace"
-version = "2.1.3"
+version = "2.1.4"
 dependencies = [
  "andromeda-app",
  "andromeda-non-fungible-tokens",
@@ -500,7 +500,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-primitive"
-version = "2.0.3"
+version = "2.0.4"
 dependencies = [
  "andromeda-data-storage",
  "andromeda-std",
@@ -596,7 +596,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-std"
-version = "1.2.3"
+version = "1.2.4"
 dependencies = [
  "andromeda-macros",
  "cosmwasm-schema",
@@ -625,7 +625,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-string-storage"
-version = "1.0.2"
+version = "1.0.3"
 dependencies = [
  "andromeda-data-storage",
  "andromeda-std",
