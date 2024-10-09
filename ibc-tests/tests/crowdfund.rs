@@ -23,7 +23,7 @@ use cw_orch::prelude::*;
 use cw_orch_daemon::{DaemonBase, TxSender, Wallet};
 use ibc_tests::{
     constants::{
-        LOCAL_TERRA, PURCHASER_MNEMONIC_1, RECIPIENT_MNEMONIC_1, RECIPIENT_MNEMONIC_2,
+        LOCAL_TERRA, LOCAL_WASM, PURCHASER_MNEMONIC_1, RECIPIENT_MNEMONIC_1, RECIPIENT_MNEMONIC_2,
         USER_MNEMONIC,
     },
     interfaces::{
@@ -241,7 +241,9 @@ fn setup(
 }
 
 #[rstest]
-fn test_successful_crowdfund_app_native(setup: TestCase) {
+fn test_successful_crowdfund_app_native(
+    #[with(true, LOCAL_WASM)]setup: TestCase
+) {
     let TestCase {
         daemon,
         mut crowdfund_contract,
@@ -257,7 +259,7 @@ fn test_successful_crowdfund_app_native(setup: TestCase) {
     let recipient_1_balance = daemon
         .balance(
             recipient_1_daemon.sender_addr(),
-            Some(LOCAL_TERRA.gas_denom.to_string()),
+            Some(LOCAL_WASM.gas_denom.to_string()),
         )
         .unwrap()[0]
         .amount;
@@ -270,7 +272,7 @@ fn test_successful_crowdfund_app_native(setup: TestCase) {
     let recipient_2_balance = daemon
         .balance(
             recipient_2_daemon.sender_addr(),
-            Some(LOCAL_TERRA.gas_denom.to_string()),
+            Some(LOCAL_WASM.gas_denom.to_string()),
         )
         .unwrap()[0]
         .amount;
@@ -301,7 +303,7 @@ fn test_successful_crowdfund_app_native(setup: TestCase) {
         .build()
         .unwrap();
     crowdfund_contract.set_sender(purchaser_1_daemon.sender());
-    let funds = vec![coin(500000, LOCAL_TERRA.gas_denom)];
+    let funds = vec![coin(500000, LOCAL_WASM.gas_denom)];
     crowdfund_contract.execute_purchase(orders, Some(&funds));
 
     crowdfund_contract.set_sender(daemon.sender());
@@ -314,7 +316,7 @@ fn test_successful_crowdfund_app_native(setup: TestCase) {
     let recipient_1_change = daemon
         .balance(
             recipient_1_daemon.sender_addr(),
-            Some(LOCAL_TERRA.gas_denom.to_string()),
+            Some(LOCAL_WASM.gas_denom.to_string()),
         )
         .unwrap()[0]
         .amount
@@ -323,7 +325,7 @@ fn test_successful_crowdfund_app_native(setup: TestCase) {
     let recipient_2_change = daemon
         .balance(
             recipient_2_daemon.sender_addr(),
-            Some(LOCAL_TERRA.gas_denom.to_string()),
+            Some(LOCAL_WASM.gas_denom.to_string()),
         )
         .unwrap()[0]
         .amount

@@ -27,3 +27,20 @@ pub const LOCAL_TERRA: ChainInfo = ChainInfo {
     lcd_url: None,
     fcd_url: None,
 };
+
+pub const WASM_NETWORK: NetworkInfo = NetworkInfo {
+    chain_name: "wasm",
+    pub_address_prefix: "wasm",
+    coin_type: 118u32,
+};
+
+pub const LOCAL_WASM: ChainInfo = ChainInfo {
+    kind: ChainKind::Local,
+    chain_id: "localwasma-1",
+    gas_denom: "ubindo",
+    gas_price: 0.15,
+    grpc_urls: &["http://localhost:20341"],
+    network_info: WASM_NETWORK,
+    lcd_url: None,
+    fcd_url: None,
+};
