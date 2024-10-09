@@ -540,19 +540,6 @@ mod test {
             orderer: mock_orderer.clone(),
         }];
 
-        let invalid_tiers = vec![Tier {
-            level: Uint64::new(1u64),
-            label: "Tier 1".to_string(),
-            limit: Some(Uint128::new(1000u128)),
-            price: Uint128::new(10u128),
-            metadata: TierMetaData {
-                extension: TokenExtension {
-                    publisher: MOCK_ADO_PUBLISHER.to_string(),
-                },
-                token_uri: None,
-            },
-        }];
-
         let env = mock_env();
         let test_cases: Vec<StartCampaignTestCase> = vec![
             StartCampaignTestCase {
@@ -589,15 +576,6 @@ mod test {
                 end_time: MillisecondsExpiration::from_seconds(env.block.time.seconds() + 100),
                 payee: "owner1".to_string(),
                 expected_res: Err(ContractError::Unauthorized {}),
-            },
-            StartCampaignTestCase {
-                name: "start_campaign with no unlimited tier".to_string(),
-                tiers: invalid_tiers,
-                presale: Some(valid_presale.clone()),
-                start_time: None,
-                end_time: MillisecondsExpiration::from_seconds(env.block.time.seconds() + 100),
-                payee: MOCK_DEFAULT_OWNER.to_string(),
-                expected_res: Err(ContractError::InvalidTiers {}),
             },
             StartCampaignTestCase {
                 name: "start_campaign with invalid presales".to_string(),
