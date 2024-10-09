@@ -17,7 +17,7 @@ pub fn has_permission(storage: &dyn Storage, addr: &Addr) -> Result<bool, Contra
 }
 
 pub fn get_point(storage: &dyn Storage) -> Result<PointCoordinate, ContractError> {
-    let point = DATA.load(storage)?.into();
+    let point = DATA.load(storage)?;
     Ok(point)
 }
 
