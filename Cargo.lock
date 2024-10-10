@@ -4802,6 +4802,7 @@ dependencies = [
  "cw20",
  "cw721 0.18.0",
  "cw721-base 0.18.0",
+ "ibc-relayer-types",
  "rstest",
  "toml 0.7.8",
 ]

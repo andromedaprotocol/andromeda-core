@@ -1,23 +1,7 @@
 #![cfg(not(target_arch = "wasm32"))]
-use andromeda_adodb::ADODBContract;
-use andromeda_counter::CounterContract;
-use andromeda_data_storage::counter::CounterRestriction;
-use andromeda_data_storage::counter::ExecuteMsg as CounterExecuteMsg;
-use andromeda_data_storage::counter::GetCurrentAmountResponse;
-use andromeda_data_storage::counter::InstantiateMsg as CounterInstantiateMsg;
-use andromeda_data_storage::counter::State;
 use andromeda_fungible_tokens::ics20::ChannelResponse;
 use andromeda_fungible_tokens::ics20::TransferMsg;
 use andromeda_ics20::ICS20Contract;
-use andromeda_kernel::KernelContract;
-use andromeda_std::amp::messages::AMPMsg;
-use andromeda_std::amp::messages::AMPMsgConfig;
-use andromeda_std::amp::AndrAddr;
-use andromeda_std::os;
-use andromeda_std::os::kernel::ExecuteMsg;
-use andromeda_std::os::kernel::InstantiateMsg;
-use andromeda_vfs::VFSContract;
-use cosmwasm_std::to_json_binary;
 use cosmwasm_std::Addr;
 use cosmwasm_std::Uint128;
 use cw_orch::prelude::*;
@@ -101,7 +85,7 @@ fn test_ics20_ibc() {
         .unwrap();
 
     // For testing a successful outcome of the first packet sent out in the tx, you can use:
-    if let IbcPacketOutcome::Success { ack, .. } = &packet_lifetime.packets[0].outcome {
+    if let IbcPacketOutcome::Success { .. } = &packet_lifetime.packets[0].outcome {
         // Packet has been successfully acknowledged and decoded, the transaction has gone through correctly
     } else {
         panic!("packet timed out");

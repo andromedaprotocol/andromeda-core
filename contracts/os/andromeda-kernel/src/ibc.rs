@@ -100,6 +100,7 @@ pub fn ibc_packet_receive(
     env: Env,
     msg: IbcPacketReceiveMsg,
 ) -> Result<IbcReceiveResponse, Never> {
+    println!("receiving packet");
     // Regardless of if our processing of this packet works we need to
     // commit an ACK to the chain. As such, we wrap all handling logic
     // in a seprate function and on error write out an error ack.
@@ -214,7 +215,7 @@ pub fn validate_order_and_version(
         ContractError::OrderedChannel {}
     );
     ensure!(
-        channel.version == IBC_VERSION,
+        channel.version == IBC_VERSION || channel.version == "ics20-1",
         ContractError::InvalidVersion {
             actual: channel.version.to_string(),
             expected: IBC_VERSION.to_string(),
@@ -231,7 +232,7 @@ pub fn validate_order_and_version(
     // alright.
     if let Some(counterparty_version) = counterparty_version {
         ensure!(
-            counterparty_version == IBC_VERSION,
+            counterparty_version == IBC_VERSION || channel.version == "ics20-1",
             ContractError::InvalidVersion {
                 actual: counterparty_version.to_string(),
                 expected: IBC_VERSION.to_string(),

@@ -510,7 +510,8 @@ impl MsgHandler {
                     });
                 }?;
             if !self.message().funds.is_empty() {
-                self.handle_ibc_hooks(deps, info, env, ctx, sequence, channel_info)
+                // self.handle_ibc_hooks(deps, info, env, ctx, sequence, channel_info)
+                self.handle_ibc_transfer_funds(deps, info, env, ctx, sequence, channel_info)
             } else {
                 self.handle_ibc_direct(deps, info, env, ctx, sequence, channel_info)
             }
@@ -566,7 +567,70 @@ impl MsgHandler {
             .add_message(msg))
     }
 
-    fn handle_ibc_hooks(
+    fn handle_ibc_transfer_funds(
+        &self,
+        _deps: DepsMut,
+        _info: MessageInfo,
+        env: Env,
+        _ctx: Option<AMPPkt>,
+        sequence: u64,
+        channel_info: ChannelInfo,
+    ) -> Result<Response, ContractError> {
+        let AMPMsg {
+            recipient,
+            message,
+            funds,
+            ..
+        } = self.message();
+        ensure!(
+            Binary::default().eq(message),
+            ContractError::InvalidPacket {
+                error: Some("This method requires funds without a message".to_string())
+            }
+        );
+        let chain = recipient.get_chain().unwrap();
+        let channel = if let Some(ics20_channel) = channel_info.ics20_channel_id {
+            Ok::<String, ContractError>(ics20_channel)
+        } else {
+            return Err(ContractError::InvalidPacket {
+                error: Some(format!("Channel not found for chain {chain}")),
+            });
+        }?;
+
+        // let channel = if let Some(direct_channel) = channel_info.direct_channel_id {
+        //     Ok::<String, ContractError>(direct_channel)
+        // } else {
+        //     return Err(ContractError::InvalidPacket {
+        //         error: Some(format!("Channel not found for chain {chain}")),
+        //     });
+        // }?;
+
+        // let kernel_msg = IbcExecuteMsg::SendMessage {
+        //     recipient: AndrAddr::from_string(recipient.get_raw_path()),
+        //     message: message.clone(),
+        // };
+
+        // let kernel_msg = IbcExecuteMsg:: {
+        //     recipient: AndrAddr::from_string(recipient.get_raw_path()),
+        //     message: message.clone(),
+        // };
+
+        let msg_funds = funds[0].clone();
+        let msg = IbcMsg::Transfer {
+            channel_id: channel.clone(),
+            to_address: recipient.get_raw_path().to_string(),
+            amount: msg_funds,
+            timeout: env.block.time.plus_seconds(PACKET_LIFETIME).into(),
+        };
+        Ok(Response::default()
+            .add_attribute(format!("method:{sequence}"), "execute_send_message")
+            .add_attribute(format!("channel:{sequence}"), channel)
+            .add_attribute("receiving_kernel_address:{}", channel_info.kernel_address)
+            .add_attribute("chain:{}", chain)
+            .add_message(msg))
+    }
+
+    fn _handle_ibc_hooks(
         &self,
         deps: DepsMut,
         info: MessageInfo,
