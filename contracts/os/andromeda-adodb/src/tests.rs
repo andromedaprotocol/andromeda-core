@@ -121,7 +121,7 @@ fn test_publish() {
         publisher: Some(owner.clone()),
     };
 
-    let resp = execute(deps.as_mut(), env.clone(), info, msg.clone());
+    let resp = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
 
     assert!(resp.is_ok());
     let publisher = PUBLISHER
@@ -151,9 +151,38 @@ fn test_publish() {
         assert_eq!(fee, action_fee);
     }
 
+    // Test prelease
+    let ado_version = ADOVersion::from_type("ado_type_with_beta").with_version("0.1.0-beta.1");
+    let code_id = 3;
+    let msg = ExecuteMsg::Publish {
+        ado_type: ado_version.get_type(),
+        version: ado_version.get_version(),
+        code_id,
+        action_fees: None,
+        publisher: None,
+    };
+
+    let resp = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
+    assert!(resp.is_ok());
+
+    let publisher = PUBLISHER
+        .load(deps.as_ref().storage, ado_version.as_str())
+        .unwrap();
+    assert_eq!(publisher, owner);
+
+    let code_id = CODE_ID
+        .load(deps.as_ref().storage, ado_version.as_str())
+        .unwrap();
+    assert_eq!(code_id, 3u64);
+
+    let vers_code_id = LATEST_VERSION
+        .may_load(deps.as_ref().storage, &ado_version.get_type())
+        .unwrap();
+    assert!(vers_code_id.is_none());
+
     // Test unauthorised
     let unauth_info = mock_info("not_owner", &[]);
-    let resp = execute(deps.as_mut(), env, unauth_info, msg);
+    let resp = execute(deps.as_mut(), env.clone(), unauth_info, msg);
     assert!(resp.is_err());
 }
 

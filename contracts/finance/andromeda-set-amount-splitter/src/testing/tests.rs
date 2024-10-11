@@ -56,7 +56,8 @@ fn test_execute_update_lock() {
     let env = mock_env();
 
     let current_time = env.block.time.seconds();
-    let lock_time = 100_000;
+    // 2 days in milliseconds
+    let lock_time = Milliseconds(172800000);
 
     // Start off with an expiration that's behind current time (expired)
     let splitter = Splitter {
@@ -67,12 +68,14 @@ fn test_execute_update_lock() {
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
 
     let msg = ExecuteMsg::UpdateLock {
-        lock_time: Milliseconds::from_seconds(lock_time),
+        lock_time: Expiry::FromNow(lock_time),
     };
 
     let info = mock_info(OWNER, &[]);
     let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
-    let new_lock = Milliseconds::from_seconds(current_time + lock_time);
+    let new_lock = lock_time
+        .plus_seconds(current_time)
+        .plus_milliseconds(Milliseconds(879));
     assert_eq!(
         Response::default()
             .add_attributes(vec![

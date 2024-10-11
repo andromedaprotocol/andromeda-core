@@ -1,0 +1,33 @@
+[package]
+name = "ibc-tests"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.75.0"
+publish = false
+
+[[test]]
+name = "validator_staking"
+
+[dependencies]
+serde.workspace = true
+tokio = "1.39.3"
+cw-orch = "0.24.1"
+cw-orch-daemon = "0.24.2"
+
+andromeda-testing-e2e = { workspace = true }
+
+andromeda-app-contract = { path = "../contracts/app/andromeda-app-contract", features = [
+    "testing",
+] }
+
+andromeda-validator-staking = { path = "../contracts/finance/andromeda-validator-staking", features = [
+    "testing",
+] }
+
+andromeda-finance = { workspace = true }
+andromeda-std = { workspace = true }
+andromeda-app = { workspace = true }
+cosmwasm-std = { workspace = true, features = ["staking"] }
+cosmrs = "0.19.0"
+prost-types = "0.13.1"
+

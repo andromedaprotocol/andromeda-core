@@ -1,31 +1,30 @@
 use crate::state::SPLITTER;
-use andromeda_finance::weighted_splitter::{
-    AddressWeight, ExecuteMsg, GetSplitterConfigResponse, GetUserWeightResponse, InstantiateMsg,
-    QueryMsg, Splitter,
+use andromeda_finance::{
+    splitter::validate_expiry_duration,
+    weighted_splitter::{
+        AddressWeight, ExecuteMsg, GetSplitterConfigResponse, GetUserWeightResponse,
+        InstantiateMsg, QueryMsg, Splitter,
+    },
 };
 use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     ado_contract::ADOContract,
     amp::Recipient,
-    common::{actions::call_action, context::ExecuteContext, encode_binary},
+    common::{
+        actions::call_action, context::ExecuteContext, encode_binary, expiration::Expiry,
+        Milliseconds,
+    },
     error::ContractError,
 };
-
 use cosmwasm_std::{
     attr, ensure, entry_point, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
-    Response, SubMsg, Timestamp, Uint128,
+    Response, SubMsg, Uint128,
 };
-
-use cw_utils::{nonpayable, Expiration};
+use cw_utils::nonpayable;
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-weighted-distribution-splitter";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
-
-// 1 day in seconds
-const ONE_DAY: u64 = 86_400;
-// 1 year in seconds
-const ONE_YEAR: u64 = 31_536_000;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -40,26 +39,20 @@ pub fn instantiate(
         msg.recipients.len() <= 100,
         ContractError::ReachedRecipientLimit {}
     );
-
-    let current_time = env.block.time.seconds();
     let splitter = match msg.lock_time {
-        Some(lock_time) => {
-            // New lock time can't be too short
-            ensure!(lock_time >= ONE_DAY, ContractError::LockTimeTooShort {});
-
-            // New lock time can't be too long
-            ensure!(lock_time <= ONE_YEAR, ContractError::LockTimeTooLong {});
+        Some(ref lock_time) => {
+            let time = validate_expiry_duration(lock_time, &env.block)?;
 
             Splitter {
                 recipients: msg.recipients,
-                lock: Expiration::AtTime(Timestamp::from_seconds(lock_time + current_time)),
+                lock: time,
             }
         }
         None => {
             Splitter {
                 recipients: msg.recipients,
                 // If locking isn't desired upon instantiation, it's automatically set to 0
-                lock: Expiration::AtTime(Timestamp::from_seconds(current_time)),
+                lock: Milliseconds::default(),
             }
         }
     };
@@ -407,7 +400,7 @@ fn execute_remove_recipient(
     Ok(Response::default().add_attributes(vec![attr("action", "removed_recipient")]))
 }
 
-fn execute_update_lock(ctx: ExecuteContext, lock_time: u64) -> Result<Response, ContractError> {
+fn execute_update_lock(ctx: ExecuteContext, lock_time: Expiry) -> Result<Response, ContractError> {
     let ExecuteContext {
         deps, info, env, ..
     } = ctx;
@@ -427,25 +420,16 @@ fn execute_update_lock(ctx: ExecuteContext, lock_time: u64) -> Result<Response, 
         splitter.lock.is_expired(&env.block),
         ContractError::ContractLocked {}
     );
-    // Get current time
-    let current_time = env.block.time.seconds();
 
-    // New lock time can't be too short
-    ensure!(lock_time >= ONE_DAY, ContractError::LockTimeTooShort {});
+    let new_lock_time_expiration = validate_expiry_duration(&lock_time, &env.block)?;
 
-    // New lock time can't be unreasonably long
-    ensure!(lock_time <= ONE_YEAR, ContractError::LockTimeTooLong {});
-
-    // Set new lock time
-    let new_lock = Expiration::AtTime(Timestamp::from_seconds(lock_time + current_time));
-
-    splitter.lock = new_lock;
+    splitter.lock = new_lock_time_expiration;
 
     SPLITTER.save(deps.storage, &splitter)?;
 
     Ok(Response::default().add_attributes(vec![
         attr("action", "update_lock"),
-        attr("locked", new_lock.to_string()),
+        attr("locked", new_lock_time_expiration.to_string()),
     ]))
 }
 

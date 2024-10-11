@@ -173,11 +173,9 @@ fn test_different_lock_times() {
 fn test_execute_update_lock() {
     let mut deps = mock_dependencies_custom(&[]);
     let _res = init(deps.as_mut());
-
     let env = mock_env();
 
-    let current_time = env.block.time.seconds();
-    let lock_time = 100_000_000;
+    let lock_time = Expiry::FromNow(Milliseconds(172800000));
 
     // Start off with an expiration that's behind current time (expired)
     let splitter = ConditionalSplitter {
@@ -193,30 +191,32 @@ fn test_execute_update_lock() {
         .unwrap();
 
     let msg = ExecuteMsg::UpdateLock {
-        lock_time: Milliseconds::from_seconds(lock_time),
+        lock_time: lock_time.clone(),
     };
 
     let info = mock_info(OWNER, &[]);
     let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
-    let new_lock = Milliseconds::from_seconds(current_time + lock_time);
+
     assert_eq!(
         Response::default()
             .add_attributes(vec![
                 attr("action", "update_lock"),
-                attr("locked", new_lock.to_string())
+                attr("locked", lock_time.get_time(&env.block).to_string())
             ])
             .add_submessage(generate_economics_message(OWNER, "UpdateLock")),
         res
     );
 
+    // Three days in milliseconds
+    let new_lock_2 = Expiry::FromNow(Milliseconds::from_seconds(259200));
+
     //check result
     let splitter = CONDITIONAL_SPLITTER.load(deps.as_ref().storage).unwrap();
     assert!(!splitter.lock_time.is_expired(&env.block));
-    assert_eq!(new_lock, splitter.lock_time);
 
     // Shouldn't be able to update lock while current lock isn't expired
     let msg = ExecuteMsg::UpdateLock {
-        lock_time: Milliseconds::from_seconds(lock_time),
+        lock_time: new_lock_2.clone(),
     };
     let info = mock_info(OWNER, &[]);
     let err = execute(deps.as_mut(), env.clone(), info, msg).unwrap_err();

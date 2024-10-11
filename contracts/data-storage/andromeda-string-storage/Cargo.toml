@@ -1,6 +1,6 @@
 [package]
 name = "andromeda-string-storage"
-version = "1.0.1"
+version = "1.0.3"
 authors = ["Mitar Djakovic <mdjakovic0920@gmail.com>"]
 edition = "2021"
 rust-version = "1.75.0"

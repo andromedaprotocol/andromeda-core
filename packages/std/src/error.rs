@@ -52,6 +52,12 @@ pub enum ContractError {
     #[error("InvalidOrigin")]
     InvalidOrigin {},
 
+    #[error("EmptyDenom")]
+    EmptyDenom {},
+
+    #[error("NoDenomInfoProvided")]
+    NoDenomInfoProvided {},
+
     #[error("InvalidAmount: {msg}")]
     InvalidAmount { msg: String },
 
@@ -128,6 +134,9 @@ pub enum ContractError {
 
     #[error("NoTokens")]
     NoTokens {},
+
+    #[error("NoBuyNowOption")]
+    NoBuyNowOption {},
 
     #[error("UnrecognisedReplyId")]
     UnrecognisedReplyId {},
@@ -309,6 +318,9 @@ pub enum ContractError {
     #[error("AuctionEnded")]
     AuctionEnded {},
 
+    #[error("AuctionBought")]
+    AuctionBought {},
+
     #[error("CampaignNotStarted")]
     CampaignNotStarted {},
 
@@ -387,6 +399,9 @@ pub enum ContractError {
     #[error("InvalidADOVersion: {msg:?}")]
     InvalidADOVersion { msg: Option<String> },
 
+    #[error("InvalidMinBid: {msg:?}")]
+    InvalidMinBid { msg: Option<String> },
+
     #[error("InvalidCodeID: {msg:?}")]
     InvalidCodeID { msg: Option<String> },
 
@@ -435,6 +450,9 @@ pub enum ContractError {
     #[error("DuplicateCoinDenoms")]
     DuplicateCoinDenoms {},
 
+    #[error("DuplicateDenoms: {denom}")]
+    DuplicateDenoms { denom: String },
+
     #[error("DuplicateThresholds")]
     DuplicateThresholds {},
 
@@ -451,8 +469,8 @@ pub enum ContractError {
     #[error("Invalid zero amount")]
     InvalidZeroAmount {},
 
-    #[error("Invalid Denom")]
-    InvalidDenom {},
+    #[error("Invalid Denom {msg:?}")]
+    InvalidDenom { msg: Option<String> },
 
     #[error("Allowance is expired")]
     Expired {},
