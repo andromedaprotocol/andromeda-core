@@ -134,8 +134,8 @@ pub fn do_ibc_packet_receive(
         ContractError::Unauthorized {}
     );
     let msg: IbcExecuteMsg = from_json(&msg.packet.data)?;
-    let execute_env = ExecuteContext {
-        env,
+    let mut execute_env = ExecuteContext {
+        env: env.clone(),
         deps,
         info: MessageInfo {
             funds: vec![],
@@ -146,6 +146,24 @@ pub fn do_ibc_packet_receive(
     match msg {
         IbcExecuteMsg::SendMessage { recipient, message } => {
             let amp_msg = AMPMsg::new(recipient, message, None);
+            let res = execute::send(execute_env, amp_msg)?;
+
+            Ok(IbcReceiveResponse::new()
+                .set_ack(make_ack_success())
+                .add_attributes(res.attributes)
+                .add_submessages(res.messages)
+                .add_events(res.events))
+        }
+        IbcExecuteMsg::SendMessageWithFunds {
+            recipient,
+            message,
+            funds,
+        } => {
+            let amp_msg = AMPMsg::new(recipient, message, Some(vec![funds.clone()]));
+            execute_env.info = MessageInfo {
+                funds: vec![funds],
+                sender: Addr::unchecked("foreign_kernel"),
+            };
             let res = execute::send(execute_env, amp_msg)?;
 
             Ok(IbcReceiveResponse::new()

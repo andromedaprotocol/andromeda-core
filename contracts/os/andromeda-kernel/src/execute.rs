@@ -32,6 +32,102 @@ pub fn send(ctx: ExecuteContext, message: AMPMsg) -> Result<Response, ContractEr
     Ok(res)
 }
 
+pub fn transfer_reply(ctx: ExecuteContext, message: AMPMsg) -> Result<Response, ContractError> {
+    //TODO Only the authorized address to handle replies can call this function
+
+    let chain = message
+        .recipient
+        .get_chain()
+        .ok_or_else(|| ContractError::InvalidPacket {
+            error: Some("Chain not provided".to_string()),
+        })?;
+
+    let channel_info = CHAIN_TO_CHANNEL
+        .may_load(ctx.deps.storage, &chain)?
+        .ok_or_else(|| ContractError::InvalidPacket {
+            error: Some(format!("Channel not found for chain {}", chain)),
+        })?;
+
+    handle_ibc_transfer_funds_reply(
+        ctx.deps,
+        ctx.info,
+        ctx.env,
+        message,
+        ctx.amp_ctx,
+        0,
+        channel_info,
+    )
+}
+
+fn handle_ibc_transfer_funds_reply(
+    _deps: DepsMut,
+    _info: MessageInfo,
+    env: Env,
+    amp_msg: AMPMsg,
+    _ctx: Option<AMPPkt>,
+    sequence: u64,
+    channel_info: ChannelInfo,
+) -> Result<Response, ContractError> {
+    let AMPMsg {
+        recipient,
+        message,
+        funds,
+        ..
+    } = amp_msg;
+    ensure!(
+        !Binary::default().eq(&message),
+        ContractError::InvalidPacket {
+            error: Some("The transfer funds reply must contain a message".to_string())
+        }
+    );
+
+    let coin = funds
+        .first()
+        .map_or_else(
+            || {
+                Err(ContractError::InvalidPacket {
+                    error: Some(
+                        "The transfer funds reply must contain funds in the AMPMsg".to_string(),
+                    ),
+                })
+            },
+            Ok,
+        )?
+        .clone();
+
+    let chain = recipient.get_chain().unwrap();
+    let channel = if let Some(direct_channel) = channel_info.direct_channel_id {
+        Ok::<String, ContractError>(direct_channel)
+    } else {
+        return Err(ContractError::InvalidPacket {
+            error: Some(format!("Channel not found for chain {chain}")),
+        });
+    }?;
+
+    let kernel_msg = IbcExecuteMsg::SendMessageWithFunds {
+        recipient: AndrAddr::from_string(recipient.get_raw_path()),
+        message: message.clone(),
+        funds: coin,
+    };
+    let msg = IbcMsg::SendPacket {
+        channel_id: channel.clone(),
+        data: to_json_binary(&kernel_msg)?,
+        timeout: env.block.time.plus_seconds(PACKET_LIFETIME).into(),
+    };
+
+    Ok(Response::default()
+        .add_attribute(format!("method:{sequence}"), "execute_send_message")
+        .add_attribute(format!("channel:{sequence}"), channel)
+        .add_attribute("receiving_kernel_address:{}", channel_info.kernel_address)
+        .add_attribute("chain:{}", chain)
+        .add_submessage(SubMsg {
+            id: ReplyId::TransferFunds.repr(),
+            msg: CosmosMsg::Ibc(msg),
+            gas_limit: None,
+            reply_on: cosmwasm_std::ReplyOn::Always,
+        }))
+}
+
 pub fn amp_receive(
     deps: &mut DepsMut,
     info: MessageInfo,
@@ -582,6 +678,7 @@ impl MsgHandler {
             funds,
             ..
         } = self.message();
+        // TODO this check must be removed since we'll want to store the ExecuteMsg to be sent in the reply
         ensure!(
             Binary::default().eq(message),
             ContractError::InvalidPacket {
@@ -596,25 +693,6 @@ impl MsgHandler {
                 error: Some(format!("Channel not found for chain {chain}")),
             });
         }?;
-
-        // let channel = if let Some(direct_channel) = channel_info.direct_channel_id {
-        //     Ok::<String, ContractError>(direct_channel)
-        // } else {
-        //     return Err(ContractError::InvalidPacket {
-        //         error: Some(format!("Channel not found for chain {chain}")),
-        //     });
-        // }?;
-
-        // let kernel_msg = IbcExecuteMsg::SendMessage {
-        //     recipient: AndrAddr::from_string(recipient.get_raw_path()),
-        //     message: message.clone(),
-        // };
-
-        // let kernel_msg = IbcExecuteMsg:: {
-        //     recipient: AndrAddr::from_string(recipient.get_raw_path()),
-        //     message: message.clone(),
-        // };
-
         let msg_funds = funds[0].clone();
         let msg = IbcMsg::Transfer {
             channel_id: channel.clone(),
@@ -623,7 +701,7 @@ impl MsgHandler {
             timeout: env.block.time.plus_seconds(PACKET_LIFETIME).into(),
         };
         Ok(Response::default()
-            .add_attribute(format!("method:{sequence}"), "execute_send_message")
+            .add_attribute(format!("method:{sequence}"), "execute_transfer_funds")
             .add_attribute(format!("channel:{sequence}"), channel)
             .add_attribute("receiving_kernel_address:{}", channel_info.kernel_address)
             .add_attribute("chain:{}", chain)

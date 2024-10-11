@@ -93,3 +93,77 @@ pub fn on_reply_ibc_hooks_packet_send(
         .add_attribute("sequence", sequence.to_string())
         .add_attribute("recovery_addr", recovery_addr))
 }
+
+/// Handles the reply from an ICS20 funds transfer
+///
+///
+pub fn on_reply_transfer_funds(
+    deps: DepsMut,
+    env: Env,
+    msg: Reply,
+) -> Result<Response, ContractError> {
+    if let Reply {
+        id: 106,
+        result: SubMsgResult::Ok(SubMsgResponse { events, .. }),
+    } = msg
+    {
+        if let Some(send_packet_event) = events.iter().find(|e| e.ty == "send_packet") {
+            let packet_data = send_packet_event
+                .attributes
+                .iter()
+                .find(|attr| attr.key == "packet_data")
+                .map(|attr| attr.value.clone())
+                .unwrap_or_default();
+            let packet_sequence = send_packet_event
+                .attributes
+                .iter()
+                .find(|attr| attr.key == "packet_sequence")
+                .map(|attr| attr.value.clone())
+                .unwrap_or_default();
+            let src_channel = send_packet_event
+                .attributes
+                .iter()
+                .find(|attr| attr.key == "packet_src_channel")
+                .map(|attr| attr.value.clone())
+                .unwrap_or_default();
+            let dst_channel = send_packet_event
+                .attributes
+                .iter()
+                .find(|attr| attr.key == "packet_dst_channel")
+                .map(|attr| attr.value.clone())
+                .unwrap_or_default();
+
+            println!("src_channel: {:?}", src_channel);
+
+            // You can now use these extracted values as needed
+            // For example, you might want to store them or include them in the response
+            return Ok(Response::new()
+                .add_attribute("action", "transfer_funds_reply")
+                .add_attribute("packet_data", packet_data)
+                .add_attribute("packet_sequence", packet_sequence)
+                .add_attribute("src_channel", src_channel)
+                .add_attribute("dst_channel", dst_channel));
+        }
+    }
+
+    Err(ContractError::InvalidPacket { error: None })
+    // let new_owner = ADO_OWNER.load(deps.as_ref().storage)?;
+    // let ado_addr = get_reply_address(msg)?;
+
+    // let curr_owner =
+    //     AOSQuerier::ado_owner_getter(&deps.querier, &Addr::unchecked(ado_addr.clone()))?;
+    // let mut res = Response::default();
+    // if curr_owner == env.contract.address {
+    //     let msg = AndromedaMsg::Ownership(OwnershipMessage::UpdateOwner {
+    //         new_owner,
+    //         expiration: None,
+    //     });
+    //     let wasm_msg = wasm_execute(ado_addr, &msg, vec![])?;
+    //     let sub_msg: SubMsg<Empty> =
+    //         SubMsg::reply_on_success(wasm_msg, ReplyId::UpdateOwnership as u64);
+    //     res = res.add_submessage(sub_msg);
+    // }
+
+    // Ok(Response::default())
+    // .set_data(to_json_binary(&ado_addr)?)
+}

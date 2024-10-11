@@ -5,6 +5,7 @@ use crate::amp::AndrAddr;
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Addr;
 use cosmwasm_std::Binary;
+use cosmwasm_std::Coin;
 
 #[cw_serde]
 pub struct ChannelInfo {
@@ -38,6 +39,9 @@ pub enum ExecuteMsg {
     AMPReceive(AMPPkt),
     /// Constructs an AMPPkt with a given AMPMsg and sends it to the recipient
     Send {
+        message: AMPMsg,
+    },
+    TransferReply {
         message: AMPMsg,
     },
     /// Upserts a key address to the kernel, restricted to the owner of the kernel
@@ -126,6 +130,11 @@ pub enum IbcExecuteMsg {
     SendMessage {
         recipient: AndrAddr,
         message: Binary,
+    },
+    SendMessageWithFunds {
+        recipient: AndrAddr,
+        message: Binary,
+        funds: Coin,
     },
     CreateADO {
         instantiation_msg: Binary,
