@@ -136,6 +136,7 @@ fn test_auction_app_modules() {
     let receive_msg = mock_start_auction(
         Some(Expiry::AtTime(start_time)),
         Expiry::AtTime(start_time.plus_milliseconds(Milliseconds(1000))),
+        None,
         Asset::NativeToken("uandr".to_string()),
         None,
         None,
@@ -334,6 +335,7 @@ fn test_auction_app_recipient() {
     let receive_msg = mock_start_auction(
         Some(Expiry::AtTime(start_time)),
         Expiry::AtTime(start_time.plus_milliseconds(Milliseconds(1000))),
+        None,
         Asset::NativeToken("uandr".to_string()),
         None,
         None,
@@ -579,6 +581,7 @@ fn test_auction_app_cw20_restricted() {
             &mock_start_auction(
                 Some(Expiry::AtTime(Milliseconds(start_time))),
                 Expiry::AtTime(Milliseconds(start_time + 2)),
+                None,
                 Asset::Cw20Token(AndrAddr::from_string(cw20.addr().to_string())),
                 None,
                 None,
@@ -758,6 +761,7 @@ fn test_auction_app_cw20_restricted() {
             &mock_start_auction(
                 Some(Expiry::AtTime(Milliseconds(start_time))),
                 Expiry::AtTime(Milliseconds(start_time + 2)),
+                None,
                 Asset::Cw20Token(AndrAddr::from_string(cw20.addr().to_string())),
                 None,
                 None,
@@ -1053,6 +1057,7 @@ fn test_auction_app_cw20_unrestricted() {
             &mock_start_auction(
                 Some(Expiry::AtTime(Milliseconds(start_time))),
                 Expiry::AtTime(Milliseconds(start_time + 2)),
+                None,
                 Asset::Cw20Token(AndrAddr::from_string(cw20.addr().to_string())),
                 None,
                 None,
@@ -1178,6 +1183,7 @@ fn test_auction_app_cw20_unrestricted() {
             &mock_start_auction(
                 Some(Expiry::AtTime(Milliseconds(start_time))),
                 Expiry::AtTime(Milliseconds(start_time + 2)),
+                None,
                 Asset::Cw20Token(AndrAddr::from_string(second_cw20.addr().to_string())),
                 None,
                 None,

@@ -29,13 +29,14 @@ fn test_ibc_registry() {
     let ibc_registry: MockIbcRegistry = andr.ibc_registry;
 
     // Test Store Denom Info
-
+    let denom_info = DenomInfo {
+        path: "path".to_string(),
+        base_denom: "base_denom".to_string(),
+    };
+    let denom = denom_info.get_ibc_denom();
     let ibc_denom_info = IBCDenomInfo {
-        denom: "ibc/andrandrandrandrandrandrandrandrandrandrandrandrandrandrandrandr".to_string(),
-        denom_info: DenomInfo {
-            path: "path".to_string(),
-            base_denom: "base_denom".to_string(),
-        },
+        denom: denom.clone(),
+        denom_info,
     };
     ibc_registry
         .execute_execute_store_denom_info(
@@ -46,10 +47,7 @@ fn test_ibc_registry() {
         )
         .unwrap();
 
-    let query_res = ibc_registry.query_denom_info(
-        &mut router,
-        "ibc/andrandrandrandrandrandrandrandrandrandrandrandrandrandrandrandr".to_string(),
-    );
+    let query_res = ibc_registry.query_denom_info(&mut router, denom);
     assert_eq!(
         query_res,
         DenomInfoResponse {
@@ -61,12 +59,14 @@ fn test_ibc_registry() {
     );
 
     // Store one more denom
+    let denom_info = DenomInfo {
+        path: "path2".to_string(),
+        base_denom: "base_denom2".to_string(),
+    };
+    let denom = denom_info.get_ibc_denom();
     let ibc_denom_info = IBCDenomInfo {
-        denom: "ibc/usdcusdcusdcusdcusdcusdcusdcusdcusdcusdcusdcusdcusdcusdcusdcusdc".to_string(),
-        denom_info: DenomInfo {
-            path: "path2".to_string(),
-            base_denom: "base_denom2".to_string(),
-        },
+        denom: denom.clone(),
+        denom_info,
     };
     ibc_registry
         .execute_execute_store_denom_info(
@@ -93,6 +93,16 @@ fn test_ibc_registry() {
                 },
             ]
         }
+    );
+
+    // Test real data
+    let path = "transfer/channel-12/transfer/channel-255".to_string();
+    let base_denom = "inj".to_string();
+
+    let denom_info = DenomInfo { path, base_denom };
+    assert_eq!(
+        denom_info.get_ibc_denom(),
+        "ibc/eab02686416e4b155cfee9c247171e1c4196b218c6a254f765b0958b3af59d09".to_string()
     );
 
     // Test authorization

@@ -262,7 +262,6 @@ fn execute_start_campaign(
         ContractError::Unauthorized {}
     );
 
-    // At least one tier should have no limit to start the campaign
     ensure!(is_valid_tiers(deps.storage), ContractError::InvalidTiers {});
 
     // Validate parameters
