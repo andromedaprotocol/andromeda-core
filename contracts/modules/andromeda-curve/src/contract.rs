@@ -69,8 +69,6 @@ pub fn execute(
 }
 
 fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
-    let action = msg.as_ref().to_string();
-
     let action_response = call_action(
         &mut ctx.deps,
         &ctx.info,
@@ -100,6 +98,7 @@ pub fn execute_update_curve_config(
     ctx: ExecuteContext,
     curve_config: CurveConfig,
 ) -> Result<Response, ContractError> {
+    nonpayable(&ctx.info)?;
     let sender = ctx.info.sender.clone();
     ensure!(
         has_permission(ctx.deps.storage, &sender)?,
@@ -120,6 +119,7 @@ pub fn execute_update_restriction(
     ctx: ExecuteContext,
     restriction: CurveRestriction,
 ) -> Result<Response, ContractError> {
+    nonpayable(&ctx.info)?;
     let sender = ctx.info.sender;
     ensure!(
         ADOContract::default().is_owner_or_operator(ctx.deps.storage, sender.as_ref())?,
@@ -133,6 +133,7 @@ pub fn execute_update_restriction(
 }
 
 pub fn execute_reset(ctx: ExecuteContext) -> Result<Response, ContractError> {
+    nonpayable(&ctx.info)?;
     let sender = ctx.info.sender.clone();
     ensure!(
         has_permission(ctx.deps.storage, &sender)?,
