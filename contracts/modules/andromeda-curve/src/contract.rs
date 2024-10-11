@@ -17,6 +17,8 @@ use cosmwasm_std::{
     ensure, entry_point, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Response, Storage,
 };
 
+use cw_utils::nonpayable;
+
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-curve";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -84,7 +86,7 @@ fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
         ExecuteMsg::UpdateRestriction { restriction } => {
             execute_update_restriction(ctx, restriction)
         }
-        ExecuteMsg::Reset {} => execute_reset(ctx, action),
+        ExecuteMsg::Reset {} => execute_reset(ctx),
         _ => ADOContract::default().execute(ctx, msg),
     }?;
 
@@ -130,7 +132,7 @@ pub fn execute_update_restriction(
         .add_attribute("sender", sender))
 }
 
-pub fn execute_reset(ctx: ExecuteContext, action: String) -> Result<Response, ContractError> {
+pub fn execute_reset(ctx: ExecuteContext) -> Result<Response, ContractError> {
     let sender = ctx.info.sender.clone();
     ensure!(
         has_permission(ctx.deps.storage, &sender)?,
@@ -139,7 +141,7 @@ pub fn execute_reset(ctx: ExecuteContext, action: String) -> Result<Response, Co
 
     CURVE_CONFIG.remove(ctx.deps.storage);
 
-    Ok(Response::new().add_attribute("action", action))
+    Ok(Response::new().add_attribute("method", "reset"))
 }
 
 pub fn has_permission(storage: &dyn Storage, addr: &Addr) -> Result<bool, ContractError> {
