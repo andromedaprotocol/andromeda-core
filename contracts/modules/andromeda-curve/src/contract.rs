@@ -79,10 +79,10 @@ fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
 
     let res = match msg.clone() {
         ExecuteMsg::UpdateCurveConfig { curve_config } => {
-            execute_update_curve_config(ctx, curve_config, action)
+            execute_update_curve_config(ctx, curve_config)
         }
         ExecuteMsg::UpdateRestriction { restriction } => {
-            execute_update_restriction(ctx, restriction, action)
+            execute_update_restriction(ctx, restriction)
         }
         ExecuteMsg::Reset {} => execute_reset(ctx, action),
         _ => ADOContract::default().execute(ctx, msg),
@@ -97,7 +97,6 @@ fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
 pub fn execute_update_curve_config(
     ctx: ExecuteContext,
     curve_config: CurveConfig,
-    action: String,
 ) -> Result<Response, ContractError> {
     let sender = ctx.info.sender.clone();
     ensure!(
@@ -111,14 +110,13 @@ pub fn execute_update_curve_config(
     })?;
 
     Ok(Response::new()
-        .add_attribute("action", action)
+        .add_attribute("method", "update_curve_config")
         .add_attribute("sender", sender))
 }
 
 pub fn execute_update_restriction(
     ctx: ExecuteContext,
     restriction: CurveRestriction,
-    action: String,
 ) -> Result<Response, ContractError> {
     let sender = ctx.info.sender;
     ensure!(
@@ -128,7 +126,7 @@ pub fn execute_update_restriction(
     RESTRICTION.save(ctx.deps.storage, &restriction)?;
 
     Ok(Response::new()
-        .add_attribute("action", action)
+        .add_attribute("method", "update_restriction")
         .add_attribute("sender", sender))
 }
 
