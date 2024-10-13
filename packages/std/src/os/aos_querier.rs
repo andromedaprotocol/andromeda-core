@@ -386,6 +386,22 @@ fn test_get_counterparty_denom() {
     assert_eq!(new_denom_info, expected_denom_info);
     assert_eq!(counterparty_denom, expected_denom_info.get_ibc_denom());
 
+    // Test Multi Hop UnWrapping Denom
+    let (counterparty_denom, new_denom_info) = AOSQuerier::get_counterparty_denom(
+        &deps.as_ref().querier,
+        &DenomInfo {
+            path: "transfer/channel-13/transfer/channel-0".to_string(),
+            base_denom: "testdenom".to_string(),
+        },
+        MOCK_ANDR_TO_OSMO_IBC_CHANNEL,
+    )
+    .unwrap();
+
+    let expected_denom_info =
+        DenomInfo::new("testdenom".to_string(), "transfer/channel-13".to_string());
+    assert_eq!(new_denom_info, expected_denom_info);
+    assert_eq!(counterparty_denom, expected_denom_info.get_ibc_denom());
+
     // Test invalid channel
     let err = AOSQuerier::get_counterparty_denom(
         &deps.as_ref().querier,
