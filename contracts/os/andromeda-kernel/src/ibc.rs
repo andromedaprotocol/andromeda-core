@@ -8,7 +8,7 @@ use andromeda_std::common::reply::ReplyId;
 use andromeda_std::error::{ContractError, Never};
 use andromeda_std::os::aos_querier::AOSQuerier;
 use andromeda_std::os::ibc_registry::DenomInfo;
-use andromeda_std::os::TRANSFER_PORT;
+use andromeda_std::os::{IBC_VERSION, TRANSFER_PORT};
 use andromeda_std::{
     amp::{messages::AMPMsg, AndrAddr},
     os::{kernel::IbcExecuteMsg, vfs::ExecuteMsg as VFSExecuteMsg},
@@ -23,7 +23,6 @@ use cosmwasm_std::{
     IbcPacketTimeoutMsg, IbcReceiveResponse, MessageInfo, SubMsg, Timestamp, WasmMsg,
 };
 
-pub const IBC_VERSION: &str = "andr-kernel-1";
 pub const PACKET_LIFETIME: u64 = 604_800u64;
 
 #[cw_serde]

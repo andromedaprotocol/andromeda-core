@@ -4,8 +4,10 @@ use crate::{
     amp::{ADO_DB_KEY, ECONOMICS_KEY, IBC_REGISTRY_KEY, OSMOSIS_ROUTER_KEY, VFS_KEY},
     os::{
         adodb::{ActionFee, QueryMsg as ADODBQueryMsg},
+        ibc_registry::{DenomInfo, QueryMsg as IBCRegistryQueryMsg},
         kernel::{ChannelInfo, QueryMsg as KernelQueryMsg},
         vfs::QueryMsg as VFSQueryMsg,
+        IBC_VERSION, TRANSFER_PORT,
     },
 };
 use cosmwasm_schema::cw_serde;
@@ -13,8 +15,8 @@ use cosmwasm_std::{
     from_json,
     testing::{MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
     to_json_binary, Addr, Binary, CodeInfoResponse, Coin, ContractInfoResponse, ContractResult,
-    HexBinary, OwnedDeps, Querier, QuerierResult, QueryRequest, SubMsg, SystemError, SystemResult,
-    Uint128, WasmQuery,
+    HexBinary, IbcChannel, IbcEndpoint, IbcOrder, OwnedDeps, Querier, QuerierResult, QueryRequest,
+    SubMsg, SystemError, SystemResult, Uint128, WasmQuery,
 };
 #[cfg(feature = "primitive")]
 use cosmwasm_std::{Decimal, Uint128};
@@ -67,6 +69,16 @@ pub const MOCK_WALLET: &str = "mock_wallet";
 
 pub const MOCK_UANDR: &str = "mock_uandr";
 
+pub const MOCK_OSMO_IBC_DENOM_ON_ANDR: &str =
+    "ibc/ed07a3391a112b175915cd8faf43a2da8e4790ede12566649d0c2f97716b8518";
+pub const MOCK_OSMO_IBC_PATH: &str = "transfer/channel-0";
+pub const MOCK_ANDR_TO_OSMO_IBC_CHANNEL: &str = "channel-0";
+pub const MOCK_UANDR_IBC_DENOM_ON_OSMO: &str =
+    "ibc/8084e3357a8a56809fff009114e8b62b88b6f931ef7de1db44751c1ab42d51e9";
+pub const MOCK_OSMO_TO_ANDR_IBC_CHANNEL: &str = "channel-1";
+pub const MOCK_UANDR_NATIVE_DENOM: &str = "uandr";
+pub const MOCK_OSMO_NATIVE_DENOM: &str = "uosmo";
+
 pub struct WasmMockQuerier {
     pub base: MockQuerier,
 }
@@ -77,8 +89,26 @@ pub struct WasmMockQuerier {
 pub fn mock_dependencies_custom(
     contract_balance: &[Coin],
 ) -> OwnedDeps<MockStorage, MockApi, WasmMockQuerier> {
-    let custom_querier: WasmMockQuerier =
+    let mut custom_querier: WasmMockQuerier =
         WasmMockQuerier::new(MockQuerier::new(&[(MOCK_CONTRACT_ADDR, contract_balance)]));
+
+    // Add IBC Channels to mocket
+    custom_querier.base.update_ibc(
+        TRANSFER_PORT,
+        &[IbcChannel::new(
+            IbcEndpoint {
+                port_id: TRANSFER_PORT.to_string(),
+                channel_id: MOCK_ANDR_TO_OSMO_IBC_CHANNEL.to_string(),
+            },
+            IbcEndpoint {
+                port_id: TRANSFER_PORT.to_string(),
+                channel_id: MOCK_OSMO_TO_ANDR_IBC_CHANNEL.to_string(),
+            },
+            IbcOrder::Unordered,
+            IBC_VERSION.to_string(),
+            String::from("connection-0"),
+        )],
+    );
     let storage = MockStorage::default();
     let mut deps = OwnedDeps {
         storage,
@@ -168,6 +198,7 @@ impl MockAndromedaQuerier {
                     MOCK_KERNEL_CONTRACT => self.handle_kernel_query(msg),
                     MOCK_VFS_CONTRACT => self.handle_vfs_query(msg),
                     MOCK_ADODB_CONTRACT => self.handle_adodb_query(msg),
+                    MOCK_IBC_REGISTRY_CONTRACT => self.handle_ibc_registry_query(msg),
                     MOCK_UANDR => self.handle_cw20_query(msg),
 
                     // MOCK_ADDRESS_LIST_CONTRACT => self.handle_address_list_query(msg),
@@ -317,6 +348,27 @@ impl MockAndromedaQuerier {
             ADODBQueryMsg::CodeId { key } => match key.as_str() {
                 FAKE_ADODB_KEY => SystemResult::Ok(ContractResult::Err("Invalid Key".to_string())),
                 _ => SystemResult::Ok(ContractResult::Ok(to_json_binary(&1).unwrap())),
+            },
+            _ => SystemResult::Ok(ContractResult::Err("Not implemented".to_string())),
+        }
+    }
+
+    /// Handles all IBC Registry queries.
+    ///
+    /// Returns `"ADOType"` for `ADOType` queries with code ID 1 and an error otherwise.
+    ///
+    /// Returns an error for `CodeId` queries with key `FAKE_ADODB_KEY` and 1 otherwise.
+    fn handle_ibc_registry_query(&self, msg: &Binary) -> QuerierResult {
+        match from_json(msg).unwrap() {
+            IBCRegistryQueryMsg::DenomInfo { denom } => match denom.as_str() {
+                MOCK_OSMO_IBC_DENOM_ON_ANDR => SystemResult::Ok(ContractResult::Ok(
+                    to_json_binary(&DenomInfo {
+                        path: MOCK_OSMO_IBC_PATH.to_string(),
+                        base_denom: MOCK_OSMO_NATIVE_DENOM.to_string(),
+                    })
+                    .unwrap(),
+                )),
+                _ => SystemResult::Ok(ContractResult::Err("Invalid Denom".to_string())),
             },
             _ => SystemResult::Ok(ContractResult::Err("Not implemented".to_string())),
         }

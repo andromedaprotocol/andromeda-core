@@ -7,3 +7,4 @@ pub mod vfs;
 
 // IBC transfer port
 pub const TRANSFER_PORT: &str = "transfer";
+pub const IBC_VERSION: &str = "andr-kernel-1";

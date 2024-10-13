@@ -237,3 +237,10 @@ fn test_empty_path() {
     let hops = unwrap_path(path.clone()).unwrap();
     assert_eq!(hops, vec![]);
 }
+
+#[test]
+fn test_empty_hops_to_trace() {
+    let hops = vec![];
+    let trace = hops_to_trace(hops);
+    assert_eq!(trace, "");
+}
