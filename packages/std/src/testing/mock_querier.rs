@@ -1,12 +1,11 @@
 use crate::{
     ado_base::AndromedaQuery,
     ado_contract::ADOContract,
-    amp::{ADO_DB_KEY, ECONOMICS_KEY, OSMOSIS_ROUTER_KEY, VFS_KEY},
-    os::kernel::QueryMsg as KernelQueryMsg,
-    os::vfs::QueryMsg as VFSQueryMsg,
+    amp::{ADO_DB_KEY, ECONOMICS_KEY, IBC_REGISTRY_KEY, OSMOSIS_ROUTER_KEY, VFS_KEY},
     os::{
         adodb::{ActionFee, QueryMsg as ADODBQueryMsg},
-        kernel::ChannelInfo,
+        kernel::{ChannelInfo, QueryMsg as KernelQueryMsg},
+        vfs::QueryMsg as VFSQueryMsg,
     },
 };
 use cosmwasm_schema::cw_serde;
@@ -37,6 +36,8 @@ pub const MOCK_FAKE_KERNEL_CONTRACT: &str = "fake_kernel_contract";
 pub const MOCK_VFS_CONTRACT: &str = "vfs_contract";
 /// Mock ADODB Contract Address
 pub const MOCK_ADODB_CONTRACT: &str = "adodb_contract";
+/// Mock IBC Registry Contract Address
+pub const MOCK_IBC_REGISTRY_CONTRACT: &str = "ibc_registry_contract";
 // Mock ADO Publisher
 pub const MOCK_ADO_PUBLISHER: &str = "ado_publisher";
 // Mock Osmosis Router
@@ -244,6 +245,9 @@ impl MockAndromedaQuerier {
                 )),
                 ADO_DB_KEY => SystemResult::Ok(ContractResult::Ok(
                     to_json_binary(&MOCK_ADODB_CONTRACT).unwrap(),
+                )),
+                IBC_REGISTRY_KEY => SystemResult::Ok(ContractResult::Ok(
+                    to_json_binary(&MOCK_IBC_REGISTRY_CONTRACT).unwrap(),
                 )),
                 &_ => SystemResult::Ok(ContractResult::Err("Invalid Key".to_string())),
             },

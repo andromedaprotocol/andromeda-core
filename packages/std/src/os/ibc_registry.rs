@@ -19,6 +19,10 @@ pub struct DenomInfo {
     pub base_denom: String,
 }
 impl DenomInfo {
+    pub fn new(base_denom: String, path: String) -> Self {
+        Self { path, base_denom }
+    }
+
     pub fn get_ibc_denom(&self) -> String {
         // Concatenate the path and base with "/"
         let input = format!("{}/{}", self.path, self.base_denom);
@@ -77,6 +81,49 @@ pub fn verify_denom(denom: &str, denom_info: &DenomInfo) -> Result<(), ContractE
     );
 
     Ok(())
+}
+
+pub struct Hop {
+    pub port_id: String,
+    pub channel_id: String,
+}
+
+impl Hop {
+    pub fn to_trace(&self) -> String {
+        format!("{}/{}", self.port_id, self.channel_id)
+    }
+}
+
+pub fn unwrap_path(path: String) -> Result<Vec<Hop>, ContractError> {
+    let mut hops: Vec<Hop> = vec![];
+
+    let mut parts = path.split('/');
+    loop {
+        match (parts.next(), parts.next()) {
+            (None, None) => break,
+            (Some(port_id), Some(channel_id)) => {
+                hops.push(Hop {
+                    port_id: port_id.to_string(),
+                    channel_id: channel_id.to_string(),
+                });
+            }
+            _ => {
+                return Err(ContractError::InvalidDenomTracePath {
+                    path,
+                    msg: Some("Odd number of segments".to_string()),
+                })
+            }
+        }
+    }
+
+    Ok(hops)
+}
+
+pub fn hops_to_trace(hops: Vec<Hop>) -> String {
+    hops.iter()
+        .map(|h| h.to_trace())
+        .collect::<Vec<String>>()
+        .join("/")
 }
 
 #[cw_serde]
