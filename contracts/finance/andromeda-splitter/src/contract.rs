@@ -12,7 +12,7 @@ use andromeda_std::{
 use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
 use cosmwasm_std::{
     attr, ensure, entry_point, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
-    Reply, Response, StdError, SubMsg, Uint128,
+    Reply, Response, StdError, SubMsg, Uint128, WasmMsg, WasmQuery,
 };
 use cw_utils::nonpayable;
 

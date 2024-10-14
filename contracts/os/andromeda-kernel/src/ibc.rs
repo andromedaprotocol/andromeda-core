@@ -118,7 +118,6 @@ pub fn ibc_packet_ack(
     _env: Env,
     _msg: IbcPacketAckMsg,
 ) -> Result<IbcBasicResponse, ContractError> {
-    println!("ack received");
     Ok(IbcBasicResponse::new())
 }
 

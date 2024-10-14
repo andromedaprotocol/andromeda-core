@@ -96,7 +96,7 @@ fn handle_ibc_transfer_funds_reply(
             error: Some(format!("Direct channel not found for chain {}", chain)),
         })?;
     let kernel_msg = IbcExecuteMsg::SendMessageWithFunds {
-        recipient: AndrAddr::from_string(ics20_packet_info.recipient.clone()),
+        recipient: AndrAddr::from_string(ics20_packet_info.recipient.clone().get_raw_path()),
         message: ics20_packet_info.message.clone(),
         funds: ics20_packet_info.funds,
     };
@@ -107,16 +107,11 @@ fn handle_ibc_transfer_funds_reply(
     };
 
     Ok(Response::default()
+        .add_message(CosmosMsg::Ibc(msg))
         .add_attribute(format!("method:{sequence}"), "execute_send_message")
         .add_attribute(format!("channel:{sequence}"), channel)
         .add_attribute("receiving_kernel_address:{}", channel_info.kernel_address)
-        .add_attribute("chain:{}", chain)
-        .add_submessage(SubMsg {
-            id: ReplyId::TransferFunds.repr(),
-            msg: CosmosMsg::Ibc(msg),
-            gas_limit: None,
-            reply_on: cosmwasm_std::ReplyOn::Always,
-        }))
+        .add_attribute("chain:{}", chain))
 }
 
 pub fn amp_receive(
