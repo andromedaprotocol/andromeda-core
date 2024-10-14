@@ -49,6 +49,22 @@ impl MockDistance {
         let res: String = self.query(app, msg);
         res
     }
+
+    pub fn query_manhattan_distance(
+        &self,
+        app: &mut MockApp,
+        point_1: Coordinate,
+        point_2: Coordinate,
+        decimal: u16,
+    ) -> String {
+        let msg = QueryMsg::GetManhattanDistance {
+            point_1,
+            point_2,
+            decimal,
+        };
+        let res: String = self.query(app, msg);
+        res
+    }
 }
 
 pub fn mock_andromeda_distance() -> Box<dyn Contract<Empty>> {

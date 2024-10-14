@@ -19,6 +19,12 @@ pub enum QueryMsg {
         point_2: Coordinate,
         decimal: u16,
     },
+    #[returns(String)]
+    GetManhattanDistance {
+        point_1: Coordinate,
+        point_2: Coordinate,
+        decimal: u16,
+    },
 }
 
 #[cw_serde]
@@ -26,4 +32,10 @@ pub struct Coordinate {
     pub x_coordinate: f64,
     pub y_coordinate: f64,
     pub z_coordinate: Option<f64>,
+}
+
+#[cw_serde]
+pub enum DistanceType {
+    Straight,
+    Manhattan,
 }

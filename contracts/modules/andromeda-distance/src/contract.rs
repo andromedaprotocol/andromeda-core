@@ -2,7 +2,7 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response};
 
-use andromeda_modules::distance::{Coordinate, ExecuteMsg, InstantiateMsg, QueryMsg};
+use andromeda_modules::distance::{Coordinate, DistanceType, ExecuteMsg, InstantiateMsg, QueryMsg};
 use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     ado_contract::ADOContract,
@@ -82,34 +82,83 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
             point_2,
             decimal,
         } => encode_binary(&get_distance(point_1, point_2, decimal)?),
+        QueryMsg::GetManhattanDistance {
+            point_1,
+            point_2,
+            decimal,
+        } => encode_binary(&get_manhattan_distance(point_1, point_2, decimal)?),
         _ => ADOContract::default().query(deps, env, msg),
     }
 }
 
-pub fn get_distance(
+fn get_distance(
     point_1: Coordinate,
     point_2: Coordinate,
     decimal: u16,
 ) -> Result<String, ContractError> {
-    if decimal > 18 {
-        return Err(ContractError::InvalidParameter {
-            error: Some("Decimal value too large".to_string()),
-        });
-    }
+    decimal_validate(decimal)?;
+
+    let distance = calculate_distance(point_1, point_2, decimal, DistanceType::Straight)?;
+
+    Ok(distance)
+}
+
+fn get_manhattan_distance(
+    point_1: Coordinate,
+    point_2: Coordinate,
+    decimal: u16,
+) -> Result<String, ContractError> {
+    decimal_validate(decimal)?;
+
+    let manhattan_distance =
+        calculate_distance(point_1, point_2, decimal, DistanceType::Manhattan)?;
+
+    Ok(manhattan_distance)
+}
+
+fn calculate_distance(
+    point_1: Coordinate,
+    point_2: Coordinate,
+    decimal: u16,
+    distance_type: DistanceType,
+) -> Result<String, ContractError> {
     let delta_x = (point_1.x_coordinate - point_2.x_coordinate).abs();
     let delta_y = (point_1.y_coordinate - point_2.y_coordinate).abs();
     let z_1 = point_1.z_coordinate.unwrap_or(0_f64);
     let z_2 = point_2.z_coordinate.unwrap_or(0_f64);
     let delta_z = (z_1 - z_2).abs();
 
-    let distance = (delta_x.powf(2_f64) + delta_y.powf(2_f64) + delta_z.powf(2_f64)).sqrt();
-    let distance_decimal = format!("{:.*}", decimal as usize, distance)
-        .parse::<f64>()
-        .map_err(|_| ContractError::ParsingError {
-            err: "Parsing error".to_string(),
-        })?;
+    match distance_type {
+        DistanceType::Straight => {
+            let distance = (delta_x.powf(2_f64) + delta_y.powf(2_f64) + delta_z.powf(2_f64)).sqrt();
+            let distance_decimal = format!("{:.*}", decimal as usize, distance)
+                .parse::<f64>()
+                .map_err(|_| ContractError::ParsingError {
+                    err: "Parsing error".to_string(),
+                })?;
 
-    Ok(distance_decimal.to_string())
+            Ok(distance_decimal.to_string())
+        }
+        DistanceType::Manhattan => {
+            let manhattan_distance = delta_x + delta_y + delta_z;
+            let manhattan_distance_decimal = format!("{:.*}", decimal as usize, manhattan_distance)
+                .parse::<f64>()
+                .map_err(|_| ContractError::ParsingError {
+                    err: "Parsing error".to_string(),
+                })?;
+
+            Ok(manhattan_distance_decimal.to_string())
+        }
+    }
+}
+
+fn decimal_validate(decimal: u16) -> Result<(), ContractError> {
+    if decimal > 18 {
+        return Err(ContractError::InvalidParameter {
+            error: Some("Decimal value too large".to_string()),
+        });
+    }
+    Ok(())
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

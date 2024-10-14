@@ -47,3 +47,24 @@ pub fn query_distance(
         Err(err) => Err(err),
     }
 }
+
+pub fn query_manhattan_distance(
+    deps: Deps,
+    point_1: Coordinate,
+    point_2: Coordinate,
+    decimal: u16,
+) -> Result<String, ContractError> {
+    let res = query(
+        deps,
+        mock_env(),
+        QueryMsg::GetManhattanDistance {
+            point_1,
+            point_2,
+            decimal,
+        },
+    );
+    match res {
+        Ok(res) => Ok(from_json(res).unwrap()),
+        Err(err) => Err(err),
+    }
+}
