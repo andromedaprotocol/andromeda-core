@@ -116,7 +116,6 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
 
 fn execute_send(ctx: ExecuteContext) -> Result<Response, ContractError> {
     let ExecuteContext { deps, info, .. } = ctx;
-
     ensure!(
         !info.funds.is_empty(),
         ContractError::InvalidFunds {

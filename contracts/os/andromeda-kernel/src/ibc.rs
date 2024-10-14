@@ -1,3 +1,5 @@
+use std::fmt::format;
+
 use crate::ack::{make_ack_fail, make_ack_success};
 use crate::execute;
 use crate::proto::{DenomTrace, MsgTransfer, QueryDenomTraceRequest};
@@ -126,12 +128,12 @@ pub fn do_ibc_packet_receive(
     env: Env,
     msg: IbcPacketReceiveMsg,
 ) -> Result<IbcReceiveResponse, ContractError> {
-    let channel = msg.packet.dest.channel_id;
+    let channel = msg.clone().packet.dest.channel_id;
     ensure!(
         CHANNEL_TO_CHAIN.has(deps.storage, channel.as_str()),
         ContractError::Unauthorized {}
     );
-    let msg: IbcExecuteMsg = from_json(&msg.packet.data)?;
+    let packet_msg: IbcExecuteMsg = from_json(&msg.packet.data)?;
     let mut execute_env = ExecuteContext {
         env: env.clone(),
         deps,
@@ -141,7 +143,7 @@ pub fn do_ibc_packet_receive(
         },
         amp_ctx: None,
     };
-    match msg {
+    match packet_msg {
         IbcExecuteMsg::SendMessage { recipient, message } => {
             let amp_msg = AMPMsg::new(recipient, message, None);
             let res = execute::send(execute_env, amp_msg)?;
@@ -157,9 +159,21 @@ pub fn do_ibc_packet_receive(
             message,
             funds,
         } => {
-            let amp_msg = AMPMsg::new(recipient, message, Some(vec![funds.clone()]));
+            let adjusted_funds = Coin::new(
+                funds.amount.u128(),
+                hash_denom_trace(
+                    format!(
+                        "{}/{}/{}",
+                        msg.packet.dest.port_id, msg.packet.dest.channel_id, funds.denom
+                    )
+                    .as_str(),
+                ),
+            );
+
+            let amp_msg = AMPMsg::new(recipient, message, Some(vec![adjusted_funds.clone()]));
+
             execute_env.info = MessageInfo {
-                funds: vec![funds],
+                funds: vec![adjusted_funds],
                 sender: Addr::unchecked("foreign_kernel"),
             };
             let res = execute::send(execute_env, amp_msg)?;
