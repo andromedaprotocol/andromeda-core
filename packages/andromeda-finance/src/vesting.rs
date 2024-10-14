@@ -1,5 +1,7 @@
 use andromeda_std::{
-    amp::Recipient, andr_exec, andr_instantiate, andr_query, common::withdraw::WithdrawalType,
+    amp::Recipient,
+    andr_exec, andr_instantiate, andr_query,
+    common::{withdraw::WithdrawalType, Milliseconds},
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
@@ -31,15 +33,15 @@ pub enum ExecuteMsg {
     /// is specified then it will only claim up to a specific time, otherwise it
     /// it will claim to the most recent release.
     ClaimAll {
-        up_to_time: Option<u64>,
+        up_to_time: Option<Milliseconds>,
         limit: Option<u32>,
     },
     /// Creates a new batch
     CreateBatch {
         /// Specifying None would mean no lock up period and funds start vesting right away.
-        lockup_duration: Option<u64>,
+        lockup_duration: Option<Milliseconds>,
         /// How often releases occur in seconds.
-        release_unit: u64,
+        release_unit: Milliseconds,
         /// Specifies how much is to be released after each `release_unit`. If
         /// it is a percentage, it would be the percentage of the original amount.
         release_amount: WithdrawalType,
@@ -87,12 +89,12 @@ pub struct BatchResponse {
     /// The number of available claims.
     pub number_of_available_claims: Uint128,
     /// When the lockup ends.
-    pub lockup_end: u64,
+    pub lockup_end: Milliseconds,
     /// How often releases occur.
-    pub release_unit: u64,
+    pub release_unit: Milliseconds,
     /// Specifies how much is to be released after each `release_unit`. If
     /// it is a percentage, it would be the percentage of the original amount.
     pub release_amount: WithdrawalType,
     /// The time at which the last claim took place in seconds.
-    pub last_claimed_release_time: u64,
+    pub last_claimed_release_time: Milliseconds,
 }
