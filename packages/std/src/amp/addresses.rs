@@ -211,8 +211,7 @@ impl AndrAddr {
                         .find('/')
                         .unwrap_or_else(|| self.0[start..].len());
                     let raw_path = &self.0[start + end..];
-                    if raw_path.starts_with('/') {
-                        let path_without_leading_slash = &raw_path[1..];
+                    if let Some(path_without_leading_slash) = raw_path.strip_prefix('/') {
                         if path_without_leading_slash.contains('/') {
                             raw_path
                         } else {
