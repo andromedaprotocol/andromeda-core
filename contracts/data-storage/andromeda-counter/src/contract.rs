@@ -12,7 +12,7 @@ use andromeda_data_storage::counter::{
 use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     ado_contract::ADOContract,
-    common::{actions::call_action, context::ExecuteContext, encode_binary},
+    common::{context::ExecuteContext, encode_binary},
     error::ContractError,
 };
 use cw_utils::nonpayable;
@@ -88,7 +88,7 @@ pub fn execute(
     }
 }
 
-fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     let action = msg.as_ref().to_string();
 
     // let action_response = call_action(

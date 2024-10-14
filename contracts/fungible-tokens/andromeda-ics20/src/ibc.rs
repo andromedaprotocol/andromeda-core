@@ -9,7 +9,7 @@ use cosmwasm_std::{
     attr, from_json, to_json_binary, BankMsg, Binary, CosmosMsg, Deps, DepsMut, Env,
     Ibc3ChannelOpenResponse, IbcBasicResponse, IbcChannel, IbcChannelCloseMsg,
     IbcChannelConnectMsg, IbcChannelOpenMsg, IbcEndpoint, IbcOrder, IbcPacket, IbcPacketAckMsg,
-    IbcPacketReceiveMsg, IbcPacketTimeoutMsg, IbcReceiveResponse, Reply, Response, StdAck, SubMsg,
+    IbcPacketReceiveMsg, IbcPacketTimeoutMsg, IbcReceiveResponse, Reply, Response, SubMsg,
     SubMsgResult, Uint128, WasmMsg,
 };
 
@@ -75,10 +75,10 @@ pub enum Ics20Ack {
 }
 
 // create a serialized success message
-fn ack_success() -> Binary {
-    let res = Ics20Ack::Result(b"1".into());
-    to_json_binary(&res).unwrap()
-}
+// fn ack_success() -> Binary {
+//     let res = Ics20Ack::Result(b"1".into());
+//     to_json_binary(&res).unwrap()
+// }
 
 // create a serialized error message
 fn ack_fail(err: String) -> Binary {
