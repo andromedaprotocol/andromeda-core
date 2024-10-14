@@ -4,7 +4,7 @@ use andromeda_std::{
     error::ContractError,
 };
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{ensure, Order, Storage, Uint128};
+use cosmwasm_std::{Order, Storage, Uint128};
 use cw_storage_plus::{Bound, Index, IndexList, IndexedMap, Item, MultiIndex};
 
 /// The config.
@@ -61,16 +61,9 @@ pub fn batches<'a>() -> IndexedMap<'a, u64, Batch, BatchIndexes<'a>> {
     IndexedMap::new("batch", indexes)
 }
 
-pub(crate) fn save_new_batch(
-    storage: &mut dyn Storage,
-    batch: Batch,
-    config: &Config,
-) -> Result<(), ContractError> {
+pub(crate) fn save_new_batch(storage: &mut dyn Storage, batch: Batch) -> Result<(), ContractError> {
     let next_id = NEXT_ID.may_load(storage)?.unwrap_or(1);
-    ensure!(
-        next_id == 1 || config.is_multi_batch_enabled,
-        ContractError::MultiBatchNotSupported {}
-    );
+
     batches().save(storage, next_id, &batch)?;
     NEXT_ID.save(storage, &(next_id + 1))?;
 

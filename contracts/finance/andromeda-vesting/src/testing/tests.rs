@@ -24,7 +24,6 @@ const UNBONDING_BLOCK_DURATION: u64 = 5;
 fn init(deps: DepsMut) -> Response {
     let msg = InstantiateMsg {
         recipient: Recipient::from_string("recipient"),
-        is_multi_batch_enabled: true,
         denom: "uusd".to_string(),
         unbonding_duration: Duration::Height(UNBONDING_BLOCK_DURATION),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
@@ -70,7 +69,6 @@ fn test_instantiate() {
     assert_eq!(
         Config {
             recipient: Recipient::from_string("recipient"),
-            is_multi_batch_enabled: true,
             denom: "uusd".to_string(),
         },
         CONFIG.load(deps.as_ref().storage).unwrap()
@@ -272,64 +270,6 @@ fn test_create_batch() {
     );
 
     assert_eq!(3, NEXT_ID.load(deps.as_ref().storage).unwrap());
-}
-
-#[test]
-fn test_create_batch_multi_batch_not_supported() {
-    let mut deps = mock_dependencies_custom(&[]);
-    let msg = InstantiateMsg {
-        recipient: Recipient::from_string("recipient"),
-        is_multi_batch_enabled: false,
-        denom: "uusd".to_string(),
-        unbonding_duration: Duration::Height(0u64),
-        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
-        owner: None,
-    };
-
-    let info = mock_info("owner", &[]);
-    instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
-
-    let info = mock_info("owner", &coins(100, "uusd"));
-
-    let msg = ExecuteMsg::CreateBatch {
-        lockup_duration: Some(Milliseconds::from_seconds(100)),
-        release_unit: Milliseconds::from_seconds(10),
-        release_amount: WithdrawalType::Amount(Uint128::new(10)),
-    };
-
-    let res = execute(deps.as_mut(), mock_env(), info.clone(), msg.clone()).unwrap();
-    let current_time = Milliseconds::from_seconds(mock_env().block.time.seconds());
-
-    assert_eq!(
-        Response::new()
-            .add_attribute("action", "create_batch")
-            .add_attribute("amount", "100")
-            .add_attribute("lockup_end", (current_time.plus_seconds(100)).to_string())
-            .add_attribute("release_unit", Milliseconds::from_seconds(10).to_string())
-            .add_attribute("release_amount", "Amount(Uint128(10))"),
-        res
-    );
-
-    let batch = batches().load(deps.as_ref().storage, 1).unwrap();
-
-    assert_eq!(
-        Batch {
-            amount: Uint128::new(100),
-            amount_claimed: Uint128::zero(),
-            lockup_end: current_time.plus_seconds(100),
-            release_unit: Milliseconds::from_seconds(10),
-            release_amount: WithdrawalType::Amount(Uint128::new(10)),
-            last_claimed_release_time: current_time.plus_seconds(100),
-        },
-        batch
-    );
-
-    assert_eq!(2, NEXT_ID.load(deps.as_ref().storage).unwrap());
-
-    // Try to create another batch.
-    let res = execute(deps.as_mut(), mock_env(), info, msg);
-
-    assert_eq!(ContractError::MultiBatchNotSupported {}, res.unwrap_err());
 }
 
 #[test]

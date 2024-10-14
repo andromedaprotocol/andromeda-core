@@ -36,7 +36,6 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     let config = Config {
-        is_multi_batch_enabled: msg.is_multi_batch_enabled,
         recipient: msg.recipient,
         denom: msg.denom,
     };
@@ -184,7 +183,7 @@ fn execute_create_batch(
         last_claimed_release_time: lockup_end,
     };
 
-    save_new_batch(deps.storage, batch, &config)?;
+    save_new_batch(deps.storage, batch)?;
 
     Ok(Response::new()
         .add_attribute("action", "create_batch")

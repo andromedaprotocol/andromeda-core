@@ -20,7 +20,6 @@ impl MockVestingContract {
         code_id: u64,
         sender: &Addr,
         app: &mut MockApp,
-        is_multi_batch_enabled: bool,
         unbonding_duration: Duration,
         recipient: Recipient,
         denom: String,
@@ -28,7 +27,6 @@ impl MockVestingContract {
         owner: Option<String>,
     ) -> MockVestingContract {
         let msg = mock_vesting_instantiate_msg(
-            is_multi_batch_enabled,
             unbonding_duration,
             recipient,
             denom,
@@ -55,7 +53,6 @@ pub fn mock_andromeda_vesting() -> Box<dyn Contract<Empty>> {
 }
 
 pub fn mock_vesting_instantiate_msg(
-    is_multi_batch_enabled: bool,
     unbonding_duration: Duration,
     recipient: Recipient,
     denom: String,
@@ -63,7 +60,6 @@ pub fn mock_vesting_instantiate_msg(
     owner: Option<String>,
 ) -> InstantiateMsg {
     InstantiateMsg {
-        is_multi_batch_enabled,
         unbonding_duration,
         recipient,
         denom,

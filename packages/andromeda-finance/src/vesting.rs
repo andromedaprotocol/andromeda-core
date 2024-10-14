@@ -12,8 +12,6 @@ use cw_utils::Duration;
 pub struct InstantiateMsg {
     /// The recipient of all funds locked in this contract.
     pub recipient: Recipient,
-    /// Whether or not multi-batching has been enabled.
-    pub is_multi_batch_enabled: bool,
     /// The denom of the coin being vested.
     pub denom: String,
     /// The unbonding duration of the native staking module.
@@ -70,8 +68,6 @@ pub enum QueryMsg {
 pub struct Config {
     /// The recipient of each batch.
     pub recipient: Recipient,
-    /// Whether or not multiple batches are supported.
-    pub is_multi_batch_enabled: bool,
     /// The denom of the coin being vested.
     pub denom: String,
 }
