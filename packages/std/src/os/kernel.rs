@@ -41,9 +41,9 @@ pub enum ExecuteMsg {
     Send {
         message: AMPMsg,
     },
-    TransferReply {
-        message: AMPMsg,
-    },
+    // TransferReply {
+    //     message: AMPMsg,
+    // },
     /// Upserts a key address to the kernel, restricted to the owner of the kernel
     UpsertKeyAddress {
         key: String,

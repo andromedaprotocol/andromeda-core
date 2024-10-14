@@ -100,7 +100,6 @@ pub fn ibc_packet_receive(
     env: Env,
     msg: IbcPacketReceiveMsg,
 ) -> Result<IbcReceiveResponse, Never> {
-    println!("receiving packet");
     // Regardless of if our processing of this packet works we need to
     // commit an ACK to the chain. As such, we wrap all handling logic
     // in a seprate function and on error write out an error ack.

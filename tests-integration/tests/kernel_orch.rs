@@ -1,33 +1,26 @@
 #![cfg(not(target_arch = "wasm32"))]
 use andromeda_adodb::ADODBContract;
 use andromeda_counter::CounterContract;
-use andromeda_data_storage::counter::CounterRestriction;
-use andromeda_data_storage::counter::ExecuteMsg as CounterExecuteMsg;
-use andromeda_data_storage::counter::GetCurrentAmountResponse;
-use andromeda_data_storage::counter::InstantiateMsg as CounterInstantiateMsg;
-use andromeda_data_storage::counter::State;
-use andromeda_finance::splitter::{
-    AddressPercent, ExecuteMsg as SplitterExecuteMsg, InstantiateMsg as SplitterInstantiateMsg,
+use andromeda_data_storage::counter::{
+    CounterRestriction, ExecuteMsg as CounterExecuteMsg, GetCurrentAmountResponse,
+    InstantiateMsg as CounterInstantiateMsg, State,
 };
 use andromeda_kernel::KernelContract;
 use andromeda_splitter::SplitterContract;
-use andromeda_std::amp::messages::AMPMsg;
-use andromeda_std::amp::messages::AMPMsgConfig;
-use andromeda_std::amp::AndrAddr;
-use andromeda_std::amp::Recipient;
-use andromeda_std::os;
-use andromeda_std::os::kernel::ExecuteMsg;
-use andromeda_std::os::kernel::InstantiateMsg;
+use andromeda_std::{
+    amp::{
+        messages::{AMPMsg, AMPMsgConfig},
+        AndrAddr,
+    },
+    os::{
+        self,
+        kernel::{ExecuteMsg, InstantiateMsg},
+    },
+};
 use andromeda_vfs::VFSContract;
-use cosmwasm_std::to_json_binary;
-use cosmwasm_std::Addr;
-use cosmwasm_std::Binary;
-use cosmwasm_std::Decimal;
-use cosmwasm_std::Uint128;
+use cosmwasm_std::{to_json_binary, Addr, Binary, Uint128};
 use cw_orch::prelude::*;
-use cw_orch_interchain::prelude::*;
-use cw_orch_interchain::types::IbcPacketOutcome;
-use cw_orch_interchain::InterchainEnv;
+use cw_orch_interchain::{prelude::*, types::IbcPacketOutcome, InterchainEnv};
 use ibc_relayer_types::core::ics24_host::identifier::PortId;
 
 #[test]
@@ -459,66 +452,66 @@ fn test_kernel_ibc_funds_only() {
     // For testing a successful outcome of the first packet sent out in the tx, you can use:
     if let IbcPacketOutcome::Success { ack, .. } = &packet_lifetime.packets[0].outcome {
         println!("the ack is: {:?}", ack);
-        // Let's instantiate a splitter
-        splitter_osmosis
-            .instantiate(
-                &SplitterInstantiateMsg {
-                    recipients: vec![AddressPercent {
-                        recipient: Recipient {
-                            address: AndrAddr::from_string(sender),
-                            msg: None,
-                            ibc_recovery_address: None,
-                        },
-                        percent: Decimal::one(),
-                    }],
-                    lock_time: None,
-                    kernel_address: kernel_osmosis.address().unwrap().into_string(),
-                    owner: None,
-                },
-                None,
-                None,
-            )
-            .unwrap();
-        // Construct an Execute msg from the kernel on juno inteded for the splitter on osmosis
-        let kernel_juno_splitter_request = kernel_juno
-            .execute(
-                &ExecuteMsg::TransferReply {
-                    message: AMPMsg {
-                        recipient: AndrAddr::from_string(format!(
-                            "ibc://osmosis/{}",
-                            splitter_osmosis.address().unwrap()
-                        )),
-                        message: to_json_binary(&SplitterExecuteMsg::Send {}).unwrap(),
-                        funds: vec![Coin {
-                            //TODO what is the denom on osmosis after the transfer call?
-                            denom: "juno".to_string(),
-                            amount: Uint128::new(100),
-                        }],
-                        config: AMPMsgConfig {
-                            reply_on: cosmwasm_std::ReplyOn::Always,
-                            exit_at_error: false,
-                            gas_limit: None,
-                            direct: true,
-                            ibc_config: None,
-                        },
-                    },
-                },
-                None,
-            )
-            .unwrap();
+        // // Let's instantiate a splitter
+        // splitter_osmosis
+        //     .instantiate(
+        //         &SplitterInstantiateMsg {
+        //             recipients: vec![AddressPercent {
+        //                 recipient: Recipient {
+        //                     address: AndrAddr::from_string(sender),
+        //                     msg: None,
+        //                     ibc_recovery_address: None,
+        //                 },
+        //                 percent: Decimal::one(),
+        //             }],
+        //             lock_time: None,
+        //             kernel_address: kernel_osmosis.address().unwrap().into_string(),
+        //             owner: None,
+        //         },
+        //         None,
+        //         None,
+        //     )
+        //     .unwrap();
+        // // Construct an Execute msg from the kernel on juno inteded for the splitter on osmosis
+        // let kernel_juno_splitter_request = kernel_juno
+        //     .execute(
+        //         &ExecuteMsg::TransferReply {
+        //             message: AMPMsg {
+        //                 recipient: AndrAddr::from_string(format!(
+        //                     "ibc://osmosis/{}",
+        //                     splitter_osmosis.address().unwrap()
+        //                 )),
+        //                 message: to_json_binary(&SplitterExecuteMsg::Send {}).unwrap(),
+        //                 funds: vec![Coin {
+        //                     //TODO what is the denom on osmosis after the transfer call?
+        //                     denom: "juno".to_string(),
+        //                     amount: Uint128::new(100),
+        //                 }],
+        //                 config: AMPMsgConfig {
+        //                     reply_on: cosmwasm_std::ReplyOn::Always,
+        //                     exit_at_error: false,
+        //                     gas_limit: None,
+        //                     direct: true,
+        //                     ibc_config: None,
+        //                 },
+        //             },
+        //         },
+        //         None,
+        //     )
+        //     .unwrap();
 
-        let packet_lifetime = interchain
-            .wait_ibc("juno", kernel_juno_splitter_request)
-            .unwrap();
+        // let packet_lifetime = interchain
+        //     .wait_ibc("juno", kernel_juno_splitter_request)
+        //     .unwrap();
 
-        // For testing a successful outcome of the first packet sent out in the tx, you can use:
-        if let IbcPacketOutcome::Success { .. } = &packet_lifetime.packets[0].outcome {
-            // Packet has been successfully acknowledged and decoded, the transaction has gone through correctly
-        } else {
-            panic!("packet timed out");
-            // There was a decode error or the packet timed out
-            // Else the packet timed-out, you may have a relayer error or something is wrong in your application
-        };
+        // // For testing a successful outcome of the first packet sent out in the tx, you can use:
+        // if let IbcPacketOutcome::Success { .. } = &packet_lifetime.packets[0].outcome {
+        //     // Packet has been successfully acknowledged and decoded, the transaction has gone through correctly
+        // } else {
+        //     panic!("packet timed out");
+        //     // There was a decode error or the packet timed out
+        //     // Else the packet timed-out, you may have a relayer error or something is wrong in your application
+        // };
 
         // Packet has been successfully acknowledged and decoded, the transaction has gone through correctly
     } else {
