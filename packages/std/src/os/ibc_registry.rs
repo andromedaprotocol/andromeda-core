@@ -19,6 +19,10 @@ pub struct DenomInfo {
     pub base_denom: String,
 }
 impl DenomInfo {
+    pub fn new(base_denom: String, path: String) -> Self {
+        Self { path, base_denom }
+    }
+
     pub fn get_ibc_denom(&self) -> String {
         // Concatenate the path and base with "/"
         let input = format!("{}/{}", self.path, self.base_denom);
@@ -80,6 +84,53 @@ pub fn verify_denom(denom: &str, denom_info: &DenomInfo) -> Result<(), ContractE
 }
 
 #[cw_serde]
+pub struct Hop {
+    pub port_id: String,
+    pub channel_id: String,
+}
+
+impl Hop {
+    pub fn to_trace(&self) -> String {
+        format!("{}/{}", self.port_id, self.channel_id)
+    }
+}
+
+pub fn unwrap_path(path: String) -> Result<Vec<Hop>, ContractError> {
+    if path.is_empty() {
+        return Ok(vec![]);
+    }
+    let mut hops: Vec<Hop> = vec![];
+
+    let mut parts = path.split('/');
+    loop {
+        match (parts.next(), parts.next()) {
+            (None, None) => break,
+            (Some(port_id), Some(channel_id)) => {
+                hops.push(Hop {
+                    port_id: port_id.to_string(),
+                    channel_id: channel_id.to_string(),
+                });
+            }
+            _ => {
+                return Err(ContractError::InvalidDenomTracePath {
+                    path,
+                    msg: Some("Odd number of segments".to_string()),
+                })
+            }
+        }
+    }
+
+    Ok(hops)
+}
+
+pub fn hops_to_trace(hops: Vec<Hop>) -> String {
+    hops.iter()
+        .map(|h| h.to_trace())
+        .collect::<Vec<String>>()
+        .join("/")
+}
+
+#[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
     #[returns(DenomInfoResponse)]
@@ -138,4 +189,58 @@ fn test_validate_denom() {
 
     let valid_denom = default_denom_info.get_ibc_denom();
     verify_denom(&valid_denom, &default_denom_info).unwrap()
+}
+
+#[test]
+fn test_unwrap_path() {
+    let path = "transfer/channel-0/transfer/channel-1".to_string();
+    let hops = unwrap_path(path).unwrap();
+    assert_eq!(hops.len(), 2);
+    assert_eq!(hops[0].port_id, "transfer");
+    assert_eq!(hops[0].channel_id, "channel-0");
+    assert_eq!(hops[1].port_id, "transfer");
+    assert_eq!(hops[1].channel_id, "channel-1");
+}
+
+#[test]
+fn test_hops_to_trace() {
+    let hops = vec![
+        Hop {
+            port_id: "transfer".to_string(),
+            channel_id: "channel-0".to_string(),
+        },
+        Hop {
+            port_id: "transfer".to_string(),
+            channel_id: "channel-1".to_string(),
+        },
+    ];
+    let trace = hops_to_trace(hops);
+    assert_eq!(trace, "transfer/channel-0/transfer/channel-1");
+}
+
+#[test]
+fn test_unwrap_path_invalid() {
+    let path = "transfer/channel-0/transfer".to_string();
+    let err = unwrap_path(path.clone()).unwrap_err();
+    assert_eq!(
+        err,
+        ContractError::InvalidDenomTracePath {
+            path,
+            msg: Some("Odd number of segments".to_string()),
+        }
+    );
+}
+
+#[test]
+fn test_empty_path() {
+    let path = "".to_string();
+    let hops = unwrap_path(path.clone()).unwrap();
+    assert_eq!(hops, vec![]);
+}
+
+#[test]
+fn test_empty_hops_to_trace() {
+    let hops = vec![];
+    let trace = hops_to_trace(hops);
+    assert_eq!(trace, "");
 }

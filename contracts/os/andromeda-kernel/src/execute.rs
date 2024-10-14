@@ -16,7 +16,7 @@ use cosmwasm_std::{
     DepsMut, Env, IbcMsg, MessageInfo, Response, StdError, SubMsg, WasmMsg,
 };
 
-use crate::ibc::{generate_transfer_message, PACKET_LIFETIME};
+use crate::ibc::{generate_ibc_hook_transfer_message, PACKET_LIFETIME};
 use crate::query;
 use crate::state::{
     IBCHooksPacketSendState, ADO_OWNER, CHAIN_TO_CHANNEL, CHANNEL_TO_CHAIN, CURR_CHAIN,
@@ -618,7 +618,7 @@ impl MsgHandler {
         outgoing_packets.push(outgoing_state);
         OUTGOING_IBC_HOOKS_PACKETS.save(deps.storage, &outgoing_packets)?;
 
-        let msg = generate_transfer_message(
+        let msg = generate_ibc_hook_transfer_message(
             &deps.as_ref(),
             recipient.clone(),
             message.clone(),

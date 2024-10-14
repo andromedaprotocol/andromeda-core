@@ -716,8 +716,8 @@ pub enum ContractError {
     #[error("Invalid Denom Trace: {denom}")]
     InvalidDenomTrace { denom: String },
 
-    #[error("Invalid Denom Trace Path: {path} - {denom}")]
-    InvalidDenomTracePath { path: String, denom: String },
+    #[error("Invalid Denom Trace Path: {path}, msg: {msg:?}")]
+    InvalidDenomTracePath { path: String, msg: Option<String> },
 
     #[error("Invalid Expression: {msg}")]
     InvalidExpression { msg: String },
@@ -736,6 +736,12 @@ pub enum ContractError {
 
     #[error("Invalid tier for {operation} operation: {msg} ")]
     InvalidTier { operation: String, msg: String },
+}
+
+impl ContractError {
+    pub fn new(error: &str) -> Self {
+        ContractError::Std(StdError::generic_err(error))
+    }
 }
 
 impl From<Cw20ContractError> for ContractError {

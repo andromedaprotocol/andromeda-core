@@ -1,8 +1,8 @@
 use crate::ado_base::permissioning::LocalPermission;
-use crate::amp::{ADO_DB_KEY, VFS_KEY};
+use crate::amp::{ADO_DB_KEY, IBC_REGISTRY_KEY, VFS_KEY};
 use crate::error::ContractError;
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{from_json, Addr, QuerierWrapper};
+use cosmwasm_std::{from_json, Addr, ChannelResponse, IbcQuery, QuerierWrapper};
 use cw_storage_plus::Path;
 use lazy_static::__Deref;
 use serde::de::DeserializeOwned;
@@ -12,7 +12,11 @@ use std::str::from_utf8;
 use crate::ado_base::rates::LocalRate;
 
 use super::adodb::{ADOVersion, ActionFee, QueryMsg as ADODBQueryMsg};
+use super::ibc_registry::{
+    hops_to_trace, unwrap_path, DenomInfo, DenomInfoResponse, Hop, QueryMsg as IBCRegistryQueryMsg,
+};
 use super::kernel::ChannelInfo;
+use super::TRANSFER_PORT;
 
 #[cw_serde]
 pub struct AOSQuerier();
@@ -145,6 +149,14 @@ impl AOSQuerier {
         AOSQuerier::kernel_address_getter(querier, kernel_addr, ADO_DB_KEY)
     }
 
+    /// Queries the kernel's raw storage for the IBC Registry's address
+    pub fn ibc_registry_address_getter(
+        querier: &QuerierWrapper,
+        kernel_addr: &Addr,
+    ) -> Result<Addr, ContractError> {
+        AOSQuerier::kernel_address_getter(querier, kernel_addr, IBC_REGISTRY_KEY)
+    }
+
     /// Queries the kernel's raw storage for the VFS's address
     pub fn kernel_address_getter(
         querier: &QuerierWrapper,
@@ -242,4 +254,170 @@ impl AOSQuerier {
             None => Err(ContractError::InvalidAddress {}),
         }
     }
+
+    pub fn denom_trace_getter(
+        querier: &QuerierWrapper,
+        ibc_registry_addr: &Addr,
+        denom: &str,
+    ) -> Result<DenomInfo, ContractError> {
+        let query = IBCRegistryQueryMsg::DenomInfo {
+            denom: denom.to_string(),
+        };
+        let denom_info_response: DenomInfoResponse =
+            querier.query_wasm_smart(ibc_registry_addr, &query)?;
+        Ok(denom_info_response.denom_info)
+    }
+
+    // #[cfg(feature = "ibc")]
+    pub fn get_counterparty_denom(
+        querier: &QuerierWrapper,
+        denom_trace: &DenomInfo,
+        src_channel: &str,
+    ) -> Result<(String, DenomInfo), ContractError> {
+        let mut hops = unwrap_path(denom_trace.path.clone())?;
+        let last_hop = hops.last();
+        if let Some(hop) = last_hop {
+            // If the last hop was done via the port we are transferring,then we need to unwrap it
+            if hop.port_id == TRANSFER_PORT && hop.channel_id == src_channel {
+                // Remove the last hop
+                hops.pop();
+
+                let new_denom_trace = DenomInfo {
+                    path: hops_to_trace(hops),
+                    base_denom: denom_trace.base_denom.clone(),
+                };
+                let new_denom = if new_denom_trace.path.is_empty() {
+                    new_denom_trace.base_denom.clone()
+                } else {
+                    new_denom_trace.get_ibc_denom()
+                };
+                return Ok((new_denom, new_denom_trace));
+            }
+        };
+
+        // Otherwise, we need to get the counterparty port id and add it as last hop
+        let channel_info_msg = IbcQuery::Channel {
+            channel_id: src_channel.to_string(),
+            port_id: Some(TRANSFER_PORT.to_string()),
+        };
+        let channel_info: ChannelResponse =
+            querier.query(&cosmwasm_std::QueryRequest::Ibc(channel_info_msg))?;
+
+        let counterparty = channel_info
+            .channel
+            .ok_or(ContractError::InvalidDenomTracePath {
+                path: denom_trace.path.clone(),
+                msg: Some("Channel info not found".to_string()),
+            })?
+            .counterparty_endpoint;
+
+        hops.push(Hop {
+            port_id: counterparty.port_id,
+            channel_id: counterparty.channel_id,
+        });
+
+        let new_denom_trace = DenomInfo {
+            path: hops_to_trace(hops),
+            base_denom: denom_trace.base_denom.clone(),
+        };
+        Ok((new_denom_trace.get_ibc_denom(), new_denom_trace))
+    }
+}
+
+#[cfg(test)]
+#[test]
+fn test_get_counterparty_denom() {
+    use crate::testing::mock_querier::{
+        mock_dependencies_custom, MOCK_ANDR_TO_OSMO_IBC_CHANNEL, MOCK_OSMO_TO_ANDR_IBC_CHANNEL,
+    };
+
+    let deps = mock_dependencies_custom(&[]);
+
+    // Test Unwrapping Denom
+    let (counterparty_denom, new_denom_info) = AOSQuerier::get_counterparty_denom(
+        &deps.as_ref().querier,
+        &DenomInfo {
+            path: format!("transfer/{MOCK_ANDR_TO_OSMO_IBC_CHANNEL}"),
+            base_denom: "uosmo".to_string(),
+        },
+        MOCK_ANDR_TO_OSMO_IBC_CHANNEL,
+    )
+    .unwrap();
+
+    assert_eq!(counterparty_denom, "uosmo".to_string());
+
+    let expected_denom_info = DenomInfo::new("uosmo".to_string(), "".to_string());
+    assert_eq!(new_denom_info, expected_denom_info);
+    assert_eq!(counterparty_denom, "uosmo".to_string());
+
+    // Test Wrapping Denom
+    let (counterparty_denom, new_denom_info) = AOSQuerier::get_counterparty_denom(
+        &deps.as_ref().querier,
+        &DenomInfo {
+            path: "".to_string(),
+            base_denom: "uandr".to_string(),
+        },
+        MOCK_ANDR_TO_OSMO_IBC_CHANNEL,
+    )
+    .unwrap();
+
+    let expected_denom_info = DenomInfo::new(
+        "uandr".to_string(),
+        format!("transfer/{MOCK_OSMO_TO_ANDR_IBC_CHANNEL}"),
+    );
+    assert_eq!(new_denom_info, expected_denom_info);
+    assert_eq!(counterparty_denom, expected_denom_info.get_ibc_denom());
+
+    // Test Multi Hop Wrapping Denom
+    let (counterparty_denom, new_denom_info) = AOSQuerier::get_counterparty_denom(
+        &deps.as_ref().querier,
+        &DenomInfo {
+            path: "transfer/channel-13".to_string(),
+            base_denom: "testdenom".to_string(),
+        },
+        MOCK_ANDR_TO_OSMO_IBC_CHANNEL,
+    )
+    .unwrap();
+
+    let expected_denom_info = DenomInfo::new(
+        "testdenom".to_string(),
+        format!("transfer/channel-13/transfer/{MOCK_OSMO_TO_ANDR_IBC_CHANNEL}"),
+    );
+    assert_eq!(new_denom_info, expected_denom_info);
+    assert_eq!(counterparty_denom, expected_denom_info.get_ibc_denom());
+
+    // Test Multi Hop UnWrapping Denom
+    let (counterparty_denom, new_denom_info) = AOSQuerier::get_counterparty_denom(
+        &deps.as_ref().querier,
+        &DenomInfo {
+            path: "transfer/channel-13/transfer/channel-0".to_string(),
+            base_denom: "testdenom".to_string(),
+        },
+        MOCK_ANDR_TO_OSMO_IBC_CHANNEL,
+    )
+    .unwrap();
+
+    let expected_denom_info =
+        DenomInfo::new("testdenom".to_string(), "transfer/channel-13".to_string());
+    assert_eq!(new_denom_info, expected_denom_info);
+    assert_eq!(counterparty_denom, expected_denom_info.get_ibc_denom());
+
+    // Test invalid channel
+    let err = AOSQuerier::get_counterparty_denom(
+        &deps.as_ref().querier,
+        &DenomInfo {
+            path: "".to_string(),
+            base_denom: "uandr".to_string(),
+        },
+        "channel-13", // This channel does not exist
+    )
+    .unwrap_err();
+
+    assert_eq!(
+        err,
+        ContractError::InvalidDenomTracePath {
+            path: "".to_string(),
+            msg: Some("Channel info not found".to_string()),
+        }
+    );
 }
