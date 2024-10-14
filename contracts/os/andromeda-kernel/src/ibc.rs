@@ -159,18 +159,31 @@ pub fn do_ibc_packet_receive(
             message,
             funds,
         } => {
+            // TODO: This adjusted funds should be done on the sending end, we don't know if the denom is unwrapping or wrapping when being sent across chains
+            #[cfg(target_arch = "wasm32")]
             let adjusted_funds = Coin::new(
                 funds.amount.u128(),
                 hash_denom_trace(
                     format!(
                         "{}/{}/{}",
-                        msg.packet.dest.port_id, msg.packet.dest.channel_id, funds.denom
+                        "transfer", msg.packet.dest.channel_id, funds.denom
                     )
                     .as_str(),
                 ),
             );
 
-            let amp_msg = AMPMsg::new(recipient, message, Some(vec![adjusted_funds.clone()]));
+            // Funds are not correctly hashed when using cw-orchestrator so instead we construct the denom manually
+            #[cfg(not(target_arch = "wasm32"))]
+            let adjusted_funds = Coin::new(
+                funds.amount.u128(),
+                format!("ibc/{}/{}", msg.packet.dest.channel_id, funds.denom),
+            );
+
+            let amp_msg = AMPMsg::new(
+                recipient,
+                message.clone(),
+                Some(vec![adjusted_funds.clone()]),
+            );
 
             execute_env.info = MessageInfo {
                 funds: vec![adjusted_funds],

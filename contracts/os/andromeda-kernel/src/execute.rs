@@ -683,10 +683,10 @@ impl MsgHandler {
                 Ok,
             )?
             .clone();
-        let recipient_raw_path = recipient.get_raw_path().to_string();
+        // let recipient_raw_path = recipient.get_raw_path().to_string();
         let msg = IbcMsg::Transfer {
             channel_id: channel.clone(),
-            to_address: recipient_raw_path.clone(),
+            to_address: channel_info.kernel_address.clone(),
             amount: coin.clone(),
             timeout: env.block.time.plus_seconds(PACKET_LIFETIME).into(),
         };

@@ -5,6 +5,7 @@ use andromeda_data_storage::counter::{
     CounterRestriction, ExecuteMsg as CounterExecuteMsg, GetCurrentAmountResponse,
     InstantiateMsg as CounterInstantiateMsg, State,
 };
+use andromeda_economics::EconomicsContract;
 use andromeda_finance::splitter::{
     AddressPercent, ExecuteMsg as SplitterExecuteMsg, InstantiateMsg as SplitterInstantiateMsg,
 };
@@ -479,6 +480,7 @@ fn test_kernel_ibc_funds_and_execute_msg() {
     let kernel_osmosis = KernelContract::new(osmosis.clone());
     let counter_osmosis = CounterContract::new(osmosis.clone());
     let vfs_osmosis = VFSContract::new(osmosis.clone());
+    let economics_osmosis = EconomicsContract::new(osmosis.clone());
     let adodb_osmosis = ADODBContract::new(osmosis.clone());
     let splitter_osmosis = SplitterContract::new(osmosis.clone());
 
@@ -489,6 +491,7 @@ fn test_kernel_ibc_funds_and_execute_msg() {
     vfs_osmosis.upload().unwrap();
     adodb_osmosis.upload().unwrap();
     splitter_osmosis.upload().unwrap();
+    economics_osmosis.upload().unwrap();
 
     let init_msg_juno = &InstantiateMsg {
         owner: None,
@@ -564,6 +567,17 @@ fn test_kernel_ibc_funds_and_execute_msg() {
         )
         .unwrap();
 
+    economics_osmosis
+        .instantiate(
+            &os::economics::InstantiateMsg {
+                kernel_address: kernel_osmosis.address().unwrap().into_string(),
+                owner: None,
+            },
+            None,
+            None,
+        )
+        .unwrap();
+
     adodb_osmosis
         .instantiate(
             &os::adodb::InstantiateMsg {
@@ -571,6 +585,19 @@ fn test_kernel_ibc_funds_and_execute_msg() {
                 owner: None,
             },
             None,
+            None,
+        )
+        .unwrap();
+
+    adodb_osmosis
+        .execute(
+            &os::adodb::ExecuteMsg::Publish {
+                code_id: splitter_osmosis.code_id().unwrap(),
+                ado_type: "splitter".to_string(),
+                action_fees: None,
+                version: "1.0.0".to_string(),
+                publisher: None,
+            },
             None,
         )
         .unwrap();
@@ -618,6 +645,16 @@ fn test_kernel_ibc_funds_and_execute_msg() {
         )
         .unwrap();
 
+    kernel_osmosis
+        .execute(
+            &ExecuteMsg::UpsertKeyAddress {
+                key: "economics".to_string(),
+                value: economics_osmosis.address().unwrap().into_string(),
+            },
+            None,
+        )
+        .unwrap();
+
     kernel_juno
         .execute(
             &ExecuteMsg::AssignChannels {
@@ -642,13 +679,37 @@ fn test_kernel_ibc_funds_and_execute_msg() {
         )
         .unwrap();
 
+    let recipient = "osmo1qzskhrca90qy2yjjxqzq4yajy842x7c50xq33d";
+
+    // This section covers the actions that take place after a successful ack from the ICS20 transfer is received
+    // Let's instantiate a splitter
+    splitter_osmosis
+        .instantiate(
+            &SplitterInstantiateMsg {
+                recipients: vec![AddressPercent {
+                    recipient: Recipient {
+                        address: AndrAddr::from_string(recipient),
+                        msg: None,
+                        ibc_recovery_address: None,
+                    },
+                    percent: Decimal::one(),
+                }],
+                lock_time: None,
+                kernel_address: kernel_osmosis.address().unwrap().into_string(),
+                owner: None,
+            },
+            None,
+            None,
+        )
+        .unwrap();
+
     let kernel_juno_send_request = kernel_juno
         .execute(
             &ExecuteMsg::Send {
                 message: AMPMsg {
                     recipient: AndrAddr::from_string(format!(
                         "ibc://osmosis/{}",
-                        kernel_osmosis.address().unwrap()
+                        splitter_osmosis.address().unwrap()
                     )),
                     message: to_json_binary(&SplitterExecuteMsg::Send {}).unwrap(),
                     funds: vec![Coin {
@@ -677,27 +738,6 @@ fn test_kernel_ibc_funds_and_execute_msg() {
 
     // For testing a successful outcome of the first packet sent out in the tx, you can use:
     if let IbcPacketOutcome::Success { ack, .. } = &packet_lifetime.packets[0].outcome {
-        // This section covers the actions that take place after a successful ack from the ICS20 transfer is received
-        // Let's instantiate a splitter
-        splitter_osmosis
-            .instantiate(
-                &SplitterInstantiateMsg {
-                    recipients: vec![AddressPercent {
-                        recipient: Recipient {
-                            address: AndrAddr::from_string(sender),
-                            msg: None,
-                            ibc_recovery_address: None,
-                        },
-                        percent: Decimal::one(),
-                    }],
-                    lock_time: None,
-                    kernel_address: kernel_osmosis.address().unwrap().into_string(),
-                    owner: None,
-                },
-                None,
-                None,
-            )
-            .unwrap();
         // Construct an Execute msg from the kernel on juno inteded for the splitter on osmosis
         let kernel_juno_splitter_request = kernel_juno
             .execute(
@@ -707,6 +747,12 @@ fn test_kernel_ibc_funds_and_execute_msg() {
                 None,
             )
             .unwrap();
+        let balances = osmosis
+            .query_all_balances(kernel_osmosis.address().unwrap())
+            .unwrap();
+        assert_eq!(balances.len(), 1);
+        assert_eq!(balances[0].denom, "ibc/channel-0/juno");
+        assert_eq!(balances[0].amount.u128(), 100);
 
         let packet_lifetime = interchain
             .wait_ibc("juno", kernel_juno_splitter_request)
