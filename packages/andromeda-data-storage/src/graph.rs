@@ -56,7 +56,10 @@ pub enum QueryMsg {
     #[returns(GetMaxPointNumberResponse)]
     GetMaxPointNumber {},
     #[returns(GetAllPointsResponse)]
-    GetAllPoints {},
+    GetAllPoints {
+        start: Option<u128>,
+        limit: Option<u32>,
+    },
     #[returns(CoordinateInfo)]
     GetUserCoordinate { user: AndrAddr },
 }

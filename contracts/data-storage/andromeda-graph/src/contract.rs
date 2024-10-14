@@ -352,7 +352,9 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
     match msg {
         QueryMsg::GetMapInfo {} => encode_binary(&get_map_info(deps.storage)?),
         QueryMsg::GetMaxPointNumber {} => encode_binary(&get_max_point_number(deps.storage)?),
-        QueryMsg::GetAllPoints {} => encode_binary(&get_all_points(deps.storage)?),
+        QueryMsg::GetAllPoints { start, limit } => {
+            encode_binary(&get_all_points(deps.storage, start, limit)?)
+        }
         QueryMsg::GetUserCoordinate { user } => encode_binary(&get_user_coordinate(deps, user)?),
         _ => ADOContract::default().query(deps, env, msg),
     }
@@ -377,15 +379,31 @@ pub fn get_max_point_number(
     Ok(GetMaxPointNumberResponse { max_point_number })
 }
 
-pub fn get_all_points(storage: &dyn Storage) -> Result<GetAllPointsResponse, ContractError> {
+pub fn get_all_points(
+    storage: &dyn Storage,
+    start: Option<u128>,
+    limit: Option<u32>,
+) -> Result<GetAllPointsResponse, ContractError> {
     let max_point_number = TOTAL_POINTS_NUMBER.load(storage)?;
+
+    // Set default values for pagination
+    let start_point = start.unwrap_or(1); // Start from 1 if no start provided
+    let limit = limit.unwrap_or(100); // Default limit to 100 points
 
     let mut res: Vec<(CoordinateInfo, StoredDate)> = Vec::new();
 
-    for point in 1..=max_point_number {
-        let coordinate = MAP_POINT_INFO.load(storage, &point)?;
-        res.push(coordinate);
+    // Iterate with pagination
+    for point in start_point..=max_point_number {
+        if res.len() >= limit as usize {
+            break; // Stop when limit is reached
+        }
+
+        // Use `may_load` to handle cases where the point may not exist
+        if let Some(coordinate) = MAP_POINT_INFO.may_load(storage, &point)? {
+            res.push(coordinate);
+        }
     }
+
     Ok(GetAllPointsResponse { points: res })
 }
 

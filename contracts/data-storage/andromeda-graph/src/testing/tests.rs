@@ -328,7 +328,7 @@ fn test_store_coordinate_disallow_negative_and_update_map_timestamp_not_allowed(
         .max_point_number;
     assert_eq!(max_point, 2);
 
-    let all_points = query_all_points(deps.as_ref()).unwrap().points;
+    let all_points = query_all_points(deps.as_ref(), None, None).unwrap().points;
     assert_eq!(
         all_points,
         vec![
@@ -366,7 +366,7 @@ fn test_store_coordinate_disallow_negative_and_update_map_timestamp_not_allowed(
     )
     .unwrap();
 
-    let all_points = query_all_points(deps.as_ref()).unwrap().points;
+    let all_points = query_all_points(deps.as_ref(), None, None).unwrap().points;
     assert_eq!(all_points, vec![]);
 
     let max_point = query_max_point_number(deps.as_ref())
@@ -428,7 +428,7 @@ fn test_store_coordinate_disallow_negative_timestamp_allowed() {
         .max_point_number;
     assert_eq!(max_point, 3);
 
-    let all_points = query_all_points(deps.as_ref()).unwrap().points;
+    let all_points = query_all_points(deps.as_ref(), None, None).unwrap().points;
     assert_eq!(
         all_points,
         vec![

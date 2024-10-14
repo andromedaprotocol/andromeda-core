@@ -92,8 +92,12 @@ pub fn query_max_point_number(deps: Deps) -> Result<GetMaxPointNumberResponse, C
     }
 }
 
-pub fn query_all_points(deps: Deps) -> Result<GetAllPointsResponse, ContractError> {
-    let res = query(deps, mock_env(), QueryMsg::GetAllPoints {});
+pub fn query_all_points(
+    deps: Deps,
+    start: Option<u128>,
+    limit: Option<u32>,
+) -> Result<GetAllPointsResponse, ContractError> {
+    let res = query(deps, mock_env(), QueryMsg::GetAllPoints { start, limit });
     match res {
         Ok(res) => Ok(from_json(res)?),
         Err(err) => Err(err),
