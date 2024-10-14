@@ -7,7 +7,7 @@ use andromeda_data_storage::counter::{
     GetCurrentAmountResponse, GetDecreaseAmountResponse, GetIncreaseAmountResponse,
     GetInitialAmountResponse, GetRestrictionResponse,
 };
-use andromeda_std::ado_base::rates::{Rate, RatesMessage};
+// use andromeda_std::ado_base::rates::{Rate, RatesMessage};
 use andromeda_testing::mock::MockApp;
 use andromeda_testing::{
     mock_ado,
@@ -20,6 +20,7 @@ pub struct MockCounter(Addr);
 mock_ado!(MockCounter, ExecuteMsg, QueryMsg);
 
 impl MockCounter {
+    #[allow(clippy::too_many_arguments)]
     pub fn instantiate(
         code_id: u64,
         sender: Addr,
