@@ -165,12 +165,22 @@ pub fn execute_store_coordinate(
 
     let is_z_allowed = z_length.is_some();
 
-    let x_coordinate = ((coordinate.x_coordinate * 10_f64.powf(map_decimal as f64)) as i64) as f64
-        / 10_f64.powf(map_decimal as f64);
-    let y_coordinate = ((coordinate.y_coordinate * 10_f64.powf(map_decimal as f64)) as i64) as f64
-        / 10_f64.powf(map_decimal as f64);
+    let scale = 10_f64.powf(map_decimal as f64);
+    let x_coordinate = (coordinate.x_coordinate * scale)
+        .min(i64::MAX as f64) // Ensuring it doesn't exceed i64 bounds
+        .max(i64::MIN as f64); // Ensuring it doesn't underflow
+    let x_coordinate = (x_coordinate as i64) as f64 / scale;
+
+    let y_coordinate = (coordinate.y_coordinate * scale)
+        .min(i64::MAX as f64) // Ensuring it doesn't exceed i64 bounds
+        .max(i64::MIN as f64); // Ensuring it doesn't underflow
+    let y_coordinate = (y_coordinate as i64) as f64 / scale;
+
     let z_coordinate = coordinate.z_coordinate.map(|z| {
-        ((z * 10_f64.powf(map_decimal as f64)) as i64) as f64 / 10_f64.powf(map_decimal as f64)
+        let z_scaled = (z * scale)
+            .min(i64::MAX as f64) // Clamp the value to prevent overflow
+            .max(i64::MIN as f64); // Clamp the value to prevent underflow
+        (z_scaled as i64) as f64 / scale
     });
 
     ensure!(
