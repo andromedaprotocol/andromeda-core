@@ -183,9 +183,6 @@ pub(crate) fn get_tiers(
 
 pub(crate) fn is_valid_tiers(storage: &mut dyn Storage) -> bool {
     !TIERS.is_empty(storage)
-        && TIERS
-            .range_raw(storage, None, None, Order::Ascending)
-            .any(|res| res.unwrap().1.limit.is_none())
 }
 
 pub(crate) fn get_current_stage(storage: &dyn Storage) -> CampaignStage {
