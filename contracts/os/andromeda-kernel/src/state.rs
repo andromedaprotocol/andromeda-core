@@ -1,4 +1,4 @@
-use andromeda_std::os::kernel::ChannelInfo;
+use andromeda_std::os::kernel::{ChannelInfo, Ics20PacketInfo};
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Coin};
 use cw_storage_plus::{Item, Map};
@@ -37,8 +37,8 @@ pub const OUTGOING_IBC_PACKETS: Map<(&String, u64), OutgoingPacket> =
     Map::new("outgoing_ibc_packets");
 pub const IBC_FUND_RECOVERY: Map<&Addr, Vec<Coin>> = Map::new("ibc_fund_recovery");
 
-// /// Used to temporarily store the most recent ExecuteMsg to be sent in a reply for ICS20 transfer
-// pub const PENDING_EXECUTE_MSG: Item<Binary> = Item::new("pending_execute_msg");
+/// Used to temporarily store the most recent ExecuteMsg with the corresponding Coin to be sent in a reply for ICS20 transfer
+pub const PENDING_MSG_AND_FUNDS: Item<Ics20PacketInfo> = Item::new("pending_execute_msg");
 
-// /// Used to store sequence/channel against an ExecuteMsg, to be sent after an ack of ICS20
-// pub const CHANNEL_TO_EXECUTE_MSG: Map<String, Binary> = Map::new("channel_to_execute_msg");
+/// Used to store sequence/channel against an ExecuteMsg, to be sent after an ack of ICS20
+pub const CHANNEL_TO_EXECUTE_MSG: Map<String, Ics20PacketInfo> = Map::new("channel_to_execute_msg");

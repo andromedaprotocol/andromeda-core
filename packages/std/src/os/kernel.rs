@@ -41,9 +41,9 @@ pub enum ExecuteMsg {
     Send {
         message: AMPMsg,
     },
-    // TransferReply {
-    //     message: AMPMsg,
-    // },
+    TransferReply {
+        packet_sequence: String,
+    },
     /// Upserts a key address to the kernel, restricted to the owner of the kernel
     UpsertKeyAddress {
         key: String,
@@ -145,4 +145,15 @@ pub enum IbcExecuteMsg {
         username: String,
         address: String,
     },
+}
+
+#[cw_serde]
+pub struct Ics20PacketInfo {
+    // Can be used for refunds in case the first Transfer msg fails
+    pub sender: String,
+    pub recipient: AndrAddr,
+    pub message: Binary,
+    pub funds: Coin,
+    // The restricted wallet will probably already have access to this
+    pub channel: String,
 }
