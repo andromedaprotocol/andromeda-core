@@ -68,8 +68,6 @@ pub fn execute(
 }
 
 fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
-    let action = msg.as_ref().to_string();
-
     let action_response = call_action(
         &mut ctx.deps,
         &ctx.info,
@@ -79,17 +77,15 @@ fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
     )?;
 
     let res = match msg {
-        ExecuteMsg::UpdateMap { map_info } => execute_update_map(ctx, map_info, action),
+        ExecuteMsg::UpdateMap { map_info } => execute_update_map(ctx, map_info),
         ExecuteMsg::StoreCoordinate {
             coordinate,
             is_timestamp_allowed,
-        } => execute_store_coordinate(ctx, coordinate, is_timestamp_allowed, action),
+        } => execute_store_coordinate(ctx, coordinate, is_timestamp_allowed),
         ExecuteMsg::StoreUserCoordinate {
             user_location_paths,
-        } => execute_store_user_coordinate(ctx, user_location_paths, action),
-        ExecuteMsg::DeleteUserCoordinate { user } => {
-            execute_delete_user_coordinate(ctx, user, action)
-        }
+        } => execute_store_user_coordinate(ctx, user_location_paths),
+        ExecuteMsg::DeleteUserCoordinate { user } => execute_delete_user_coordinate(ctx, user),
         _ => ADOContract::default().execute(ctx, msg),
     }?;
 
@@ -102,7 +98,6 @@ fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
 pub fn execute_update_map(
     ctx: ExecuteContext,
     map_info: MapInfo,
-    action: String,
 ) -> Result<Response, ContractError> {
     let sender = ctx.info.sender;
     ensure!(
@@ -133,14 +128,13 @@ pub fn execute_update_map(
 
     TOTAL_POINTS_NUMBER.save(ctx.deps.storage, &0)?;
 
-    Ok(Response::new().add_attributes(vec![attr("action", action), attr("sender", sender)]))
+    Ok(Response::new().add_attributes(vec![attr("method", "update_map"), attr("sender", sender)]))
 }
 
 pub fn execute_store_coordinate(
     ctx: ExecuteContext,
     coordinate: Coordinate,
     is_timestamp_allowed: bool,
-    action: String,
 ) -> Result<Response, ContractError> {
     let sender = ctx.info.sender;
     ensure!(
@@ -273,13 +267,15 @@ pub fn execute_store_coordinate(
     )?;
     TOTAL_POINTS_NUMBER.save(ctx.deps.storage, &point_number)?;
 
-    Ok(Response::new().add_attributes(vec![attr("action", action), attr("sender", sender)]))
+    Ok(Response::new().add_attributes(vec![
+        attr("method", "store_coordinate"),
+        attr("sender", sender),
+    ]))
 }
 
 pub fn execute_store_user_coordinate(
     ctx: ExecuteContext,
     user_location_paths: Vec<AndrAddr>,
-    action: String,
 ) -> Result<Response, ContractError> {
     let sender = ctx.info.sender;
     ensure!(
@@ -326,13 +322,15 @@ pub fn execute_store_user_coordinate(
             return Err(ContractError::InvalidAddress {});
         }
     }
-    Ok(Response::new().add_attributes(vec![attr("action", action), attr("sender", sender)]))
+    Ok(Response::new().add_attributes(vec![
+        attr("method", "store_user_coordinate"),
+        attr("sender", sender),
+    ]))
 }
 
 pub fn execute_delete_user_coordinate(
     ctx: ExecuteContext,
     user: AndrAddr,
-    action: String,
 ) -> Result<Response, ContractError> {
     let sender = ctx.info.sender;
     ensure!(
@@ -343,7 +341,10 @@ pub fn execute_delete_user_coordinate(
 
     USER_COORDINATE.remove(ctx.deps.storage, user_addr);
 
-    Ok(Response::new().add_attributes(vec![attr("action", action), attr("sender", sender)]))
+    Ok(Response::new().add_attributes(vec![
+        attr("method", "delete_user_coordinate"),
+        attr("sender", sender),
+    ]))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
