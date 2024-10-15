@@ -15,11 +15,9 @@ pub fn validate_data(
     let data_instance = json!(JSON::from(data.as_str()));
 
     match validator_for(&schema).is_ok() {
-        false => {
-            return Err(ContractError::CustomError {
-                msg: "Schema Validation Error".to_string(),
-            })
-        }
+        false => Err(ContractError::CustomError {
+            msg: "Schema Validation Error".to_string(),
+        }),
         true => {
             let validator = jsonschema::validator_for(&schema).unwrap();
             let is_valid = validator.is_valid(&data_instance);
