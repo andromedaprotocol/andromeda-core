@@ -9,7 +9,6 @@ use cosmwasm_std::{
     testing::{mock_env, mock_info, MOCK_CONTRACT_ADDR},
     BankMsg, Decimal, DepsMut, Response, Uint128,
 };
-use cw_utils::Duration;
 
 use crate::{
     contract::{execute, instantiate, query},
@@ -19,13 +18,10 @@ use crate::{
 
 use andromeda_finance::vesting::{BatchResponse, Config, ExecuteMsg, InstantiateMsg, QueryMsg};
 
-const UNBONDING_BLOCK_DURATION: u64 = 5;
-
 fn init(deps: DepsMut) -> Response {
     let msg = InstantiateMsg {
         recipient: Recipient::from_string("recipient"),
         denom: "uusd".to_string(),
-        unbonding_duration: Duration::Height(UNBONDING_BLOCK_DURATION),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
     };

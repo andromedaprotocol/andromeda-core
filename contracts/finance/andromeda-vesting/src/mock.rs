@@ -9,7 +9,6 @@ use andromeda_testing::{
 };
 use cosmwasm_std::{Addr, Empty};
 use cw_multi_test::{Contract, ContractWrapper, Executor};
-use cw_utils::Duration;
 
 pub struct MockVestingContract(Addr);
 mock_ado!(MockVestingContract, ExecuteMsg, QueryMsg);
@@ -20,19 +19,12 @@ impl MockVestingContract {
         code_id: u64,
         sender: &Addr,
         app: &mut MockApp,
-        unbonding_duration: Duration,
         recipient: Recipient,
         denom: String,
         kernel_address: impl Into<String>,
         owner: Option<String>,
     ) -> MockVestingContract {
-        let msg = mock_vesting_instantiate_msg(
-            unbonding_duration,
-            recipient,
-            denom,
-            kernel_address,
-            owner,
-        );
+        let msg = mock_vesting_instantiate_msg(recipient, denom, kernel_address, owner);
         let addr = app
             .instantiate_contract(
                 code_id,
@@ -53,14 +45,12 @@ pub fn mock_andromeda_vesting() -> Box<dyn Contract<Empty>> {
 }
 
 pub fn mock_vesting_instantiate_msg(
-    unbonding_duration: Duration,
     recipient: Recipient,
     denom: String,
     kernel_address: impl Into<String>,
     owner: Option<String>,
 ) -> InstantiateMsg {
     InstantiateMsg {
-        unbonding_duration,
         recipient,
         denom,
         kernel_address: kernel_address.into(),

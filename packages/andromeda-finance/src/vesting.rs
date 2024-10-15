@@ -5,7 +5,6 @@ use andromeda_std::{
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
-use cw_utils::Duration;
 
 #[andr_instantiate]
 #[cw_serde]
@@ -14,8 +13,6 @@ pub struct InstantiateMsg {
     pub recipient: Recipient,
     /// The denom of the coin being vested.
     pub denom: String,
-    /// The unbonding duration of the native staking module.
-    pub unbonding_duration: Duration,
 }
 
 #[andr_exec]
