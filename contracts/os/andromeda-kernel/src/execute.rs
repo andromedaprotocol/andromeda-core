@@ -95,10 +95,29 @@ fn handle_ibc_transfer_funds_reply(
         .ok_or_else(|| ContractError::InvalidPacket {
             error: Some(format!("Direct channel not found for chain {}", chain)),
         })?;
+
+    #[cfg(target_arch = "wasm32")]
+    let adjusted_funds = Coin::new(
+        funds.amount.u128(),
+        hash_denom_trace(
+            format!(
+                "{}/{}/{}",
+                "transfer", msg.packet.dest.channel_id, funds.denom
+            )
+            .as_str(),
+        ),
+    );
+
+    // Funds are not correctly hashed when using cw-orchestrator so instead we construct the denom manually
+    #[cfg(not(target_arch = "wasm32"))]
+    let adjusted_funds = Coin::new(
+        ics20_packet_info.funds.amount.u128(),
+        format!("ibc/{}/{}", channel, ics20_packet_info.funds.denom),
+    );
     let kernel_msg = IbcExecuteMsg::SendMessageWithFunds {
         recipient: AndrAddr::from_string(ics20_packet_info.recipient.clone().get_raw_path()),
         message: ics20_packet_info.message.clone(),
-        funds: ics20_packet_info.funds,
+        funds: adjusted_funds,
     };
     let msg = IbcMsg::SendPacket {
         channel_id: channel.clone(),

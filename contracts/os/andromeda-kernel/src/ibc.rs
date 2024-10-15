@@ -1,5 +1,3 @@
-use std::fmt::format;
-
 use crate::ack::{make_ack_fail, make_ack_success};
 use crate::execute;
 use crate::proto::{DenomTrace, MsgTransfer, QueryDenomTraceRequest};
@@ -159,34 +157,10 @@ pub fn do_ibc_packet_receive(
             message,
             funds,
         } => {
-            // TODO: This adjusted funds should be done on the sending end, we don't know if the denom is unwrapping or wrapping when being sent across chains
-            #[cfg(target_arch = "wasm32")]
-            let adjusted_funds = Coin::new(
-                funds.amount.u128(),
-                hash_denom_trace(
-                    format!(
-                        "{}/{}/{}",
-                        "transfer", msg.packet.dest.channel_id, funds.denom
-                    )
-                    .as_str(),
-                ),
-            );
-
-            // Funds are not correctly hashed when using cw-orchestrator so instead we construct the denom manually
-            #[cfg(not(target_arch = "wasm32"))]
-            let adjusted_funds = Coin::new(
-                funds.amount.u128(),
-                format!("ibc/{}/{}", msg.packet.dest.channel_id, funds.denom),
-            );
-
-            let amp_msg = AMPMsg::new(
-                recipient,
-                message.clone(),
-                Some(vec![adjusted_funds.clone()]),
-            );
+            let amp_msg = AMPMsg::new(recipient, message.clone(), Some(vec![funds.clone()]));
 
             execute_env.info = MessageInfo {
-                funds: vec![adjusted_funds],
+                funds: vec![funds],
                 sender: Addr::unchecked("foreign_kernel"),
             };
             let res = execute::send(execute_env, amp_msg)?;
