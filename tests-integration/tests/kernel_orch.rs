@@ -22,7 +22,7 @@ use andromeda_std::{
     },
 };
 use andromeda_vfs::VFSContract;
-use cosmwasm_std::{to_json_binary, Addr, Binary, Decimal, Uint128, WasmQuery};
+use cosmwasm_std::{to_json_binary, Addr, Binary, Decimal, Uint128};
 use cw_orch::prelude::*;
 use cw_orch_interchain::{prelude::*, types::IbcPacketOutcome, InterchainEnv};
 use ibc_relayer_types::core::ics24_host::identifier::PortId;
@@ -737,7 +737,7 @@ fn test_kernel_ibc_funds_and_execute_msg() {
         .unwrap();
 
     // For testing a successful outcome of the first packet sent out in the tx, you can use:
-    if let IbcPacketOutcome::Success { ack, .. } = &packet_lifetime.packets[0].outcome {
+    if let IbcPacketOutcome::Success { .. } = &packet_lifetime.packets[0].outcome {
         // Construct an Execute msg from the kernel on juno inteded for the splitter on osmosis
         let kernel_juno_splitter_request = kernel_juno
             .execute(

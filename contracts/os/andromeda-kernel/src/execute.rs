@@ -50,7 +50,7 @@ pub fn transfer_reply(
             })?;
 
     let channel_info = CHAIN_TO_CHANNEL
-        .may_load(ctx.deps.storage, &chain)?
+        .may_load(ctx.deps.storage, chain)?
         .ok_or_else(|| ContractError::InvalidPacket {
             error: Some(format!("Channel not found for chain {}", chain)),
         })?;
