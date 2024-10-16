@@ -118,7 +118,6 @@ pub fn ibc_packet_ack(
     _env: Env,
     _msg: IbcPacketAckMsg,
 ) -> Result<IbcBasicResponse, ContractError> {
-    println!("ack received");
     Ok(IbcBasicResponse::new())
 }
 
@@ -127,12 +126,12 @@ pub fn do_ibc_packet_receive(
     env: Env,
     msg: IbcPacketReceiveMsg,
 ) -> Result<IbcReceiveResponse, ContractError> {
-    let channel = msg.packet.dest.channel_id;
+    let channel = msg.clone().packet.dest.channel_id;
     ensure!(
         CHANNEL_TO_CHAIN.has(deps.storage, channel.as_str()),
         ContractError::Unauthorized {}
     );
-    let msg: IbcExecuteMsg = from_json(&msg.packet.data)?;
+    let packet_msg: IbcExecuteMsg = from_json(&msg.packet.data)?;
     let mut execute_env = ExecuteContext {
         env: env.clone(),
         deps,
@@ -142,7 +141,7 @@ pub fn do_ibc_packet_receive(
         },
         amp_ctx: None,
     };
-    match msg {
+    match packet_msg {
         IbcExecuteMsg::SendMessage { recipient, message } => {
             let amp_msg = AMPMsg::new(recipient, message, None);
             let res = execute::send(execute_env, amp_msg)?;
@@ -158,7 +157,8 @@ pub fn do_ibc_packet_receive(
             message,
             funds,
         } => {
-            let amp_msg = AMPMsg::new(recipient, message, Some(vec![funds.clone()]));
+            let amp_msg = AMPMsg::new(recipient, message.clone(), Some(vec![funds.clone()]));
+
             execute_env.info = MessageInfo {
                 funds: vec![funds],
                 sender: Addr::unchecked("foreign_kernel"),

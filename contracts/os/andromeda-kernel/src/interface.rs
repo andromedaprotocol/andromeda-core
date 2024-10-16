@@ -1,4 +1,4 @@
-use crate::contract::{execute, instantiate, query};
+use crate::contract::{execute, instantiate, query, reply};
 use andromeda_std::os::kernel::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use cw_orch::{interface, prelude::*};
 pub const CONTRACT_ID: &str = "kernel_contract";
@@ -11,6 +11,7 @@ impl<Chain> Uploadable for KernelContract<Chain> {
     fn wrapper() -> Box<dyn MockContract<Empty>> {
         Box::new(
             ContractWrapper::new_with_empty(execute, instantiate, query)
+                .with_reply(reply)
                 .with_reply(crate::contract::reply)
                 .with_ibc(
                     crate::ibc::ibc_channel_open,

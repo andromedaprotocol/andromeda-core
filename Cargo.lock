@@ -329,6 +329,7 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-multi-test",
+ "cw-orch 0.23.0",
  "cw-storage-plus 1.2.0",
  "cw20",
 ]
@@ -4773,6 +4774,7 @@ dependencies = [
  "andromeda-cw20-staking",
  "andromeda-cw721",
  "andromeda-data-storage",
+ "andromeda-economics",
  "andromeda-ecosystem",
  "andromeda-finance",
  "andromeda-fungible-tokens",

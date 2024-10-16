@@ -199,7 +199,6 @@ pub fn ibc_packet_receive(
     _env: Env,
     msg: IbcPacketReceiveMsg,
 ) -> Result<IbcReceiveResponse, Never> {
-    println!("packet_received");
     let packet = msg.packet;
 
     do_ibc_packet_receive(deps, &packet).or_else(|err| {
@@ -305,7 +304,6 @@ pub fn ibc_packet_ack(
     _env: Env,
     msg: IbcPacketAckMsg,
 ) -> Result<IbcBasicResponse, ContractError> {
-    println!("packed_acknowledged");
     // Design decision: should we trap error like in receive?
     // TODO: unsure... as it is now a failed ack handling would revert the tx and would be
     // retried again and again. is that good?
