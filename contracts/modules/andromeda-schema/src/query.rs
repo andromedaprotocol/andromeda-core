@@ -26,7 +26,7 @@ pub fn validate_data(
             .map(|err| format!("{}", err)) // Assuming ValidationError implements Display or Debug
             .collect(); // Collect errors into a Vec<String>
 
-        return error_messages.join(", ");
+        error_messages.join(", ")
     });
 
     let is_valid = validate_res.is_ok();
