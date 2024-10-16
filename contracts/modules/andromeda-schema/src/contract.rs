@@ -11,6 +11,7 @@ use andromeda_std::{
     error::ContractError,
 };
 use cw_json::JSON;
+use serde_json::{from_str, Value};
 
 use crate::{execute::handle_execute, query::validate_data, state::SCHEMA};
 
@@ -40,7 +41,14 @@ pub fn instantiate(
     )?;
 
     let schema_json_string = msg.schema_json_string;
-    SCHEMA.save(deps.storage, &JSON::from(schema_json_string.as_str()))?;
+
+    let schema_json_value: Value =
+        from_str(schema_json_string.as_str()).map_err(|_| ContractError::CustomError {
+            msg: "Invalid JSON Schema".to_string(),
+        })?;
+    let schema_json = JSON::from(schema_json_value.to_string().as_str());
+
+    SCHEMA.save(deps.storage, &schema_json)?;
 
     Ok(resp)
 }
