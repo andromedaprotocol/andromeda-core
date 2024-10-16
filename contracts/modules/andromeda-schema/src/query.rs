@@ -33,9 +33,6 @@ pub fn validate_data(
 
     Ok(ValidateDataResponse {
         is_valid,
-        error: match is_valid {
-            true => None,
-            false => Some(validate_res.unwrap_err()),
-        },
+        error: validate_res.err(),
     })
 }
