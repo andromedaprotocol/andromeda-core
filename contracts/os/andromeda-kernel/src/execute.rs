@@ -2,7 +2,6 @@ use andromeda_std::ado_contract::ADOContract;
 use andromeda_std::amp::addresses::AndrAddr;
 use andromeda_std::amp::messages::{AMPCtx, AMPMsg, AMPPkt, IBCConfig};
 use andromeda_std::amp::{ADO_DB_KEY, VFS_KEY};
-
 use andromeda_std::common::context::ExecuteContext;
 use andromeda_std::common::has_coins_merged;
 use andromeda_std::common::reply::ReplyId;
@@ -10,13 +9,16 @@ use andromeda_std::error::ContractError;
 use andromeda_std::os::aos_querier::AOSQuerier;
 use andromeda_std::os::kernel::{ChannelInfo, IbcExecuteMsg, Ics20PacketInfo, InternalMsg};
 
+use crate::ibc::{generate_transfer_message, PACKET_LIFETIME};
 use andromeda_std::os::vfs::vfs_resolve_symlink;
 use cosmwasm_std::{
     attr, ensure, to_json_binary, Addr, BankMsg, Binary, Coin, ContractInfoResponse, CosmosMsg,
     DepsMut, Env, IbcMsg, MessageInfo, Response, StdError, SubMsg, WasmMsg,
 };
 
-use crate::ibc::{generate_transfer_message, PACKET_LIFETIME};
+#[cfg(target_arch = "wasm32")]
+use crate::ibc::hash_denom_trace;
+
 use crate::query;
 use crate::state::{
     IBCHooksPacketSendState, ADO_OWNER, CHAIN_TO_CHANNEL, CHANNEL_TO_CHAIN, CHANNEL_TO_EXECUTE_MSG,
@@ -95,14 +97,13 @@ fn handle_ibc_transfer_funds_reply(
         .ok_or_else(|| ContractError::InvalidPacket {
             error: Some(format!("Direct channel not found for chain {}", chain)),
         })?;
-
     #[cfg(target_arch = "wasm32")]
     let adjusted_funds = Coin::new(
-        funds.amount.u128(),
+        ics20_packet_info.funds.amount.u128(),
         hash_denom_trace(
             format!(
                 "{}/{}/{}",
-                "transfer", msg.packet.dest.channel_id, funds.denom
+                "transfer", channel, ics20_packet_info.funds.denom
             )
             .as_str(),
         ),
