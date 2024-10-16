@@ -14,12 +14,14 @@ pub fn validate_data(
     let schema = json!(SCHEMA.load(storage)?);
     let data_instance = json!(JSON::from(data.as_str()));
 
-    match Config::from_schema(&schema, Some(schemas::Draft::Draft7)).is_ok() {
+    let config_from_schema = Config::from_schema(&schema, Some(schemas::Draft::Draft7));
+
+    match config_from_schema.is_ok() {
         false => Err(ContractError::CustomError {
             msg: "Validation Error".to_string(),
         }),
         true => {
-            let cfg = Config::from_schema(&schema, Some(schemas::Draft::Draft7)).unwrap();
+            let cfg = config_from_schema.unwrap();
 
             if cfg.validate(&data_instance).is_ok() {
                 Ok(ValidateDataResponse { is_valid: true })
