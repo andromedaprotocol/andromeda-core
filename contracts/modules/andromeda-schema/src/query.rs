@@ -21,9 +21,8 @@ pub fn validate_data(
         }
     })?;
 
-    if config.validate(&data_instance).is_ok() {
-        Ok(ValidateDataResponse { is_valid: true })
-    } else {
-        Ok(ValidateDataResponse { is_valid: false })
-    }
+    let validate_res = config.validate(&data_instance);
+    let is_valid = validate_res.is_ok();
+
+    Ok(ValidateDataResponse { is_valid })
 }

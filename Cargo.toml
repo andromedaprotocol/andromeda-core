@@ -57,3 +57,5 @@ enum-repr = "0.2.6"
 cw-multi-test = { version = "1.0.0", features = ["cosmwasm_1_2"] }
 serde = { version = "1.0.127" }
 test-case = { version = "3.3.1" }
+jsonschema-valid = { version = "0.5.2"}
+serde_json = { version = "1.0.128" }
