@@ -166,7 +166,7 @@ fn test_valid_data_against_schema_instantiation_msg_schema() {
 }
 
 #[test]
-fn test_invalid_datas_against_schema_instantiation_msg_schema() {
+fn test_invalid_data_against_schema_instantiation_msg_schema() {
     let schema = SCHEMA_ADO_INSTANTIATION_MSG_SCHEMA;
     let (deps, _) = proper_initialization(schema.to_string());
 
