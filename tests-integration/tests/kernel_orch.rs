@@ -738,10 +738,21 @@ fn test_kernel_ibc_funds_and_execute_msg() {
 
     // For testing a successful outcome of the first packet sent out in the tx, you can use:
     if let IbcPacketOutcome::Success { .. } = &packet_lifetime.packets[0].outcome {
+        // Register trigger address
+        kernel_juno
+            .execute(
+                &ExecuteMsg::UpsertKeyAddress {
+                    key: "trigger_key".to_string(),
+                    value: sender,
+                },
+                None,
+            )
+            .unwrap();
+
         // Construct an Execute msg from the kernel on juno inteded for the splitter on osmosis
         let kernel_juno_splitter_request = kernel_juno
             .execute(
-                &ExecuteMsg::TransferReply {
+                &ExecuteMsg::TriggerRelay {
                     packet_sequence: "1".to_string(),
                 },
                 None,

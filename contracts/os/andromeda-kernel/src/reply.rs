@@ -95,7 +95,7 @@ pub fn on_reply_ibc_hooks_packet_send(
 }
 
 // Handles the reply from an ICS20 funds transfer
-pub fn on_reply_transfer_funds(
+pub fn on_reply_ibc_transfer(
     deps: DepsMut,
     _env: Env,
     msg: Reply,

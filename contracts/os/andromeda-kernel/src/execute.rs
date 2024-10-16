@@ -23,7 +23,7 @@ use crate::query;
 use crate::state::{
     IBCHooksPacketSendState, ADO_OWNER, CHAIN_TO_CHANNEL, CHANNEL_TO_CHAIN, CHANNEL_TO_EXECUTE_MSG,
     CURR_CHAIN, IBC_FUND_RECOVERY, KERNEL_ADDRESSES, OUTGOING_IBC_HOOKS_PACKETS,
-    PENDING_MSG_AND_FUNDS,
+    PENDING_MSG_AND_FUNDS, TRIGGER_KEY,
 };
 
 pub fn send(ctx: ExecuteContext, message: AMPMsg) -> Result<Response, ContractError> {
@@ -35,11 +35,16 @@ pub fn send(ctx: ExecuteContext, message: AMPMsg) -> Result<Response, ContractEr
     Ok(res)
 }
 
-pub fn transfer_reply(
+pub fn trigger_relay(
     ctx: ExecuteContext,
     packet_sequence: String,
 ) -> Result<Response, ContractError> {
     //TODO Only the authorized address to handle replies can call this function
+    ensure!(
+        ctx.info.sender == KERNEL_ADDRESSES.load(ctx.deps.storage, TRIGGER_KEY)?,
+        ContractError::Unauthorized {}
+    );
+
     let ics20_packet_info =
         CHANNEL_TO_EXECUTE_MSG.load(ctx.deps.storage, packet_sequence.clone())?;
 
@@ -97,13 +102,14 @@ fn handle_ibc_transfer_funds_reply(
         .ok_or_else(|| ContractError::InvalidPacket {
             error: Some(format!("Direct channel not found for chain {}", chain)),
         })?;
+
     #[cfg(target_arch = "wasm32")]
     let adjusted_funds = Coin::new(
         ics20_packet_info.funds.amount.u128(),
         hash_denom_trace(
             format!(
                 "{}/{}/{}",
-                "transfer", channel, ics20_packet_info.funds.denom
+                "transfer", ics20_packet_info.channel, ics20_packet_info.funds.denom
             )
             .as_str(),
         ),
@@ -692,6 +698,12 @@ impl MsgHandler {
                 error: Some(format!("Channel not found for chain {chain}")),
             });
         }?;
+        ensure!(
+            funds.len() == 1 && info.funds.len() == 1,
+            ContractError::InvalidFunds {
+                msg: "Number of funds should be exactly one".to_string()
+            }
+        );
         let coin = funds
             .first()
             .map_or_else(
@@ -725,7 +737,7 @@ impl MsgHandler {
                 },
             )?;
             resp = resp.add_submessage(SubMsg {
-                id: ReplyId::TransferFunds.repr(),
+                id: ReplyId::IBCTransfer.repr(),
                 msg: CosmosMsg::Ibc(msg),
                 gas_limit: None,
                 reply_on: cosmwasm_std::ReplyOn::Always,

@@ -41,7 +41,7 @@ pub enum ExecuteMsg {
     Send {
         message: AMPMsg,
     },
-    TransferReply {
+    TriggerRelay {
         packet_sequence: String,
     },
     /// Upserts a key address to the kernel, restricted to the owner of the kernel

@@ -3,6 +3,8 @@ use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Coin};
 use cw_storage_plus::{Item, Map};
 
+pub const TRIGGER_KEY: &str = "trigger_key";
+
 #[cw_serde]
 pub struct IBCHooksPacketSendState {
     pub channel_id: String,
