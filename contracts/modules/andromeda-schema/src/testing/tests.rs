@@ -28,10 +28,11 @@ pub const SCHEMA_ADO_INSTANTIATION_MSG_SCHEMA: &str = r#"
 
 pub const APP_CONTRACT_INSTANTIATION_MSG_SCHEMA: &str = r#"
 {
-    "$id": "app-contract",
     "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "http://json-schema.org/draft-07/schema#",
     "additionalProperties": false,
     "adoType": "app-contract",
+    "contractName": "my-app-contract",
     "class": "baseADO",
     "classifier": "",
     "description": "The App Contract component is an ADO that bundles a collection of other ADOs together for streamlined coordinated use.",
