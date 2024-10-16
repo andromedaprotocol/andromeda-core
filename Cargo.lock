@@ -578,6 +578,7 @@ dependencies = [
  "jsonschema-valid",
  "serde-cw-value",
  "serde_json",
+ "test-case",
 ]
 
 [[package]]

@@ -24,6 +24,7 @@ serde-cw-value = "0.7.0"
 cw-json = { git = "https://github.com/SlayerAnsh/cw-json.git" }
 jsonschema-valid = { version = "0.5.2"}
 serde_json = { version = "1.0.128" }
+test-case = { workspace = true }
 
 andromeda-std = { workspace = true }
 andromeda-modules = { workspace = true }
