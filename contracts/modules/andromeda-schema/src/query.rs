@@ -15,20 +15,15 @@ pub fn validate_data(
         msg: "Invalid data JSON".to_string(),
     })?;
 
-    let config_from_schema = Config::from_schema(&schema, Some(schemas::Draft::Draft7));
-
-    match config_from_schema.is_ok() {
-        false => Err(ContractError::CustomError {
+    let config = Config::from_schema(&schema, Some(schemas::Draft::Draft7)).map_err(|_| {
+        ContractError::CustomError {
             msg: "Validation Error".to_string(),
-        }),
-        true => {
-            let cfg = config_from_schema.unwrap();
-
-            if cfg.validate(&data_instance).is_ok() {
-                Ok(ValidateDataResponse { is_valid: true })
-            } else {
-                Ok(ValidateDataResponse { is_valid: false })
-            }
         }
+    })?;
+
+    if config.validate(&data_instance).is_ok() {
+        Ok(ValidateDataResponse { is_valid: true })
+    } else {
+        Ok(ValidateDataResponse { is_valid: false })
     }
 }
