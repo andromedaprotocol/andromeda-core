@@ -45,11 +45,15 @@ impl MockSchema {
         let msg = ExecuteMsg::UpdateSchema {
             new_schema_json_string,
         };
-        if let Some(funds) = funds {
-            app.execute_contract(sender, self.addr().clone(), &msg, &[funds])
-        } else {
-            app.execute_contract(sender, self.addr().clone(), &msg, &[])
-        }
+
+        // Conditionally build the funds vector
+        let funds_vec = match funds {
+            Some(funds) => vec![funds],
+            None => vec![],
+        };
+
+        // Call the method once
+        app.execute_contract(sender, self.addr().clone(), &msg, &funds_vec)
     }
 
     pub fn query_validate_data(&self, app: &mut MockApp, data: String) -> ValidateDataResponse {
