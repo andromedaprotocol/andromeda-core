@@ -4777,7 +4777,6 @@ dependencies = [
  "andromeda-finance",
  "andromeda-fungible-tokens",
  "andromeda-ibc-registry",
- "andromeda-ics20",
  "andromeda-kernel",
  "andromeda-lockdrop",
  "andromeda-marketplace",
