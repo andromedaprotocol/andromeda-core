@@ -1,4 +1,5 @@
 use super::mock::{proper_initialization, query_validate_data, update_schema};
+use andromeda_modules::schema::ValidateDataResponse;
 use test_case::test_case;
 
 pub const SCHEMA_ADO_INSTANTIATION_MSG_SCHEMA: &str = r#"
@@ -155,14 +156,22 @@ pub const APP_CONTRACT_INSTANTIATION_MSG_SCHEMA: &str = r#"
         "kernel_address": "0x123abc456",
         "owner": null,
         "schema_json_string": "{\"type\":\"object\", \"properties\": {\"name\": {\"type\":\"string\"}}}"
-    }"# => true;
+    }"#,
+    ValidateDataResponse {
+        is_valid: true,
+        error: None,
+    } ;
     "valid instantiation schema"
 )]
 #[test_case(
     SCHEMA_ADO_INSTANTIATION_MSG_SCHEMA,
     r#"{
         "owner": "0x789xyz"
-    }"# => false;
+    }"#,
+    ValidateDataResponse {
+        is_valid: false,
+        error: Some("Required properties \"kernel_address\", \"schema_json_string\" are missing\nAt instance path /:\n  {\n    \"owner\": \"0x789xyz\"\n  }\nAt schema path /required:\n  [\n    \"kernel_address\",\n    \"schema_json_string\"\n  ]\n".to_string()),
+    } ;
     "missing required fields"
 )]
 #[test_case(
@@ -170,7 +179,11 @@ pub const APP_CONTRACT_INSTANTIATION_MSG_SCHEMA: &str = r#"
     r#"{
         "kernel_address": ["invalid"],
         "schema_json_string": "{\"type\":\"object\"}"
-    }"# => false;
+    }"#,
+    ValidateDataResponse {
+        is_valid: false,
+        error: Some("Invalid type.\nAt instance path /kernel_address:\n  [\n    \"invalid\"\n  ]\nAt schema path /properties/kernel_address/type:\n  {\n    \"type\": \"string\"\n  }\n".to_string()),
+    } ;
     "invalid type for kernel_address"
 )]
 #[test_case(
@@ -179,13 +192,21 @@ pub const APP_CONTRACT_INSTANTIATION_MSG_SCHEMA: &str = r#"
         "kernel_address": "0x123abc456",
         "schema_json_string": "{\"type\":\"object\"}",
         "extra_property": "not allowed"
-    }"# => false;
+    }"#,
+    ValidateDataResponse {
+        is_valid: false,
+        error: Some("Additional properties are not allowed. Found \"extra_property\".\nAt instance path /:\n  {\n    \"extra_property\": \"not allowed\",\n    \"kernel_address\": \"0x123abc456\",\n    \"schema_json_string\": \"{\\\"type\\\":\\\"object\\\"}\"\n  }\nAt schema path /additionalProperties:\n  {\n    \"$schema\": \"http://json-schema.org/draft-07/schema#\",\n    \"additionalProperties\": false,\n    \"properties\": {\n      \"kernel_address\": {\n        \"type\": \"string\"\n      },\n      \"owner\": {\n        \"type\": [\n          \"string\",\n          \"null\"\n        ]\n      },\n      \"schema_json_string\": {\n        \"type\": \"string\"\n      }\n    },\n    \"required\": [\n      \"kernel_address\",\n      \"schema_json_string\"\n    ],\n    \"title\": \"InstantiateMsg\",\n    \"type\": \"object\"\n  }\n".to_string()),
+    } ;
     "extra properties not allowed"
 )]
-fn test_instantiation_schema_validation(schema: &str, data: &str) -> bool {
+fn test_instantiation_schema_validation_with_errors(
+    schema: &str,
+    data: &str,
+    expected_res: ValidateDataResponse,
+) {
     let (deps, _) = proper_initialization(schema.to_string());
     let query_res = query_validate_data(deps.as_ref(), data.to_string()).unwrap();
-    query_res.is_valid
+    assert_eq!(query_res, expected_res)
 }
 
 #[test_case(

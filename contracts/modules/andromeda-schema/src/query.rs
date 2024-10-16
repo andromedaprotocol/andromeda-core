@@ -11,18 +11,31 @@ pub fn validate_data(
     data: String,
 ) -> Result<ValidateDataResponse, ContractError> {
     let schema = json!(SCHEMA.load(storage)?);
-    let data_instance = from_str(data.as_str()).map_err(|_| ContractError::CustomError {
-        msg: "Invalid data JSON".to_string(),
+    let data_instance = from_str(data.as_str()).map_err(|e| ContractError::CustomError {
+        msg: format!("Invalid data JSON: {}", e),
     })?;
 
-    let config = Config::from_schema(&schema, Some(schemas::Draft::Draft7)).map_err(|_| {
+    let config = Config::from_schema(&schema, Some(schemas::Draft::Draft7)).map_err(|e| {
         ContractError::CustomError {
-            msg: "Validation Error".to_string(),
+            msg: format!("Validation Error: {}", e),
         }
     })?;
 
-    let validate_res = config.validate(&data_instance);
+    let validate_res = config.validate(&data_instance).map_err(|errors| {
+        let error_messages: Vec<String> = errors
+            .map(|err| format!("{}", err)) // Assuming ValidationError implements Display or Debug
+            .collect(); // Collect errors into a Vec<String>
+
+        return error_messages.join(", ");
+    });
+
     let is_valid = validate_res.is_ok();
 
-    Ok(ValidateDataResponse { is_valid })
+    Ok(ValidateDataResponse {
+        is_valid,
+        error: match is_valid {
+            true => None,
+            false => Some(validate_res.unwrap_err()),
+        },
+    })
 }

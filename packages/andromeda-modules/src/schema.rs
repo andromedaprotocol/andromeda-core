@@ -24,4 +24,5 @@ pub enum QueryMsg {
 #[cw_serde]
 pub struct ValidateDataResponse {
     pub is_valid: bool,
+    pub error: Option<String>,
 }
