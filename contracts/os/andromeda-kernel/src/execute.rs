@@ -697,7 +697,7 @@ impl MsgHandler {
             .map_or_else(
                 || {
                     Err(ContractError::InvalidPacket {
-                        error: Some("Rransfer funds must contain funds in the AMPMsg".to_string()),
+                        error: Some("Transfer funds must contain funds in the AMPMsg".to_string()),
                     })
                 },
                 Ok,
