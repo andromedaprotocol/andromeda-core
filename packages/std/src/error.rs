@@ -90,9 +90,6 @@ pub enum ContractError {
     #[error("RewardTooLow")]
     RewardTooLow {},
 
-    #[error("IncompleteUnbondingPeriod")]
-    IncompleteUnbondingPeriod {},
-
     #[error("LockedNFT")]
     LockedNFT {},
 
