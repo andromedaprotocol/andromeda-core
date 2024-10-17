@@ -1,8 +1,8 @@
 use crate::{
     proto::MsgTransferResponse,
     state::{
-        IBCHooksPacketSendState, OutgoingPacket, ADO_OWNER, OUTGOING_IBC_HOOKS_PACKETS,
-        OUTGOING_IBC_PACKETS,
+        IBCHooksPacketSendState, OutgoingPacket, ADO_OWNER, CHANNEL_TO_EXECUTE_MSG,
+        OUTGOING_IBC_HOOKS_PACKETS, OUTGOING_IBC_PACKETS, PENDING_MSG_AND_FUNDS,
     },
 };
 use andromeda_std::{
@@ -13,8 +13,8 @@ use andromeda_std::{
     os::aos_querier::AOSQuerier,
 };
 use cosmwasm_std::{
-    ensure, wasm_execute, Addr, DepsMut, Empty, Env, Reply, Response, SubMsg, SubMsgResponse,
-    SubMsgResult,
+    ensure, wasm_execute, Addr, CosmosMsg, DepsMut, Empty, Env, Reply, Response, SubMsg,
+    SubMsgResponse, SubMsgResult,
 };
 
 /// Handles the reply from an ADO creation
@@ -92,4 +92,76 @@ pub fn on_reply_ibc_hooks_packet_send(
         .add_attribute("channel_id", channel_id)
         .add_attribute("sequence", sequence.to_string())
         .add_attribute("recovery_addr", recovery_addr))
+}
+
+// Handles the reply from an ICS20 funds transfer
+pub fn on_reply_ibc_transfer(
+    deps: DepsMut,
+    _env: Env,
+    msg: Reply,
+) -> Result<Response, ContractError> {
+    if let Reply {
+        id: 106,
+        result: SubMsgResult::Ok(SubMsgResponse { events, .. }),
+    } = msg
+    {
+        if let Some(send_packet_event) = events.iter().find(|e| e.ty == "send_packet") {
+            let packet_data = send_packet_event
+                .attributes
+                .iter()
+                .find(|attr| attr.key == "packet_data")
+                .map(|attr| attr.value.clone())
+                .unwrap_or_default();
+            let packet_sequence = send_packet_event
+                .attributes
+                .iter()
+                .find(|attr| attr.key == "packet_sequence")
+                .map(|attr| attr.value.clone())
+                .unwrap_or_default();
+            let src_channel = send_packet_event
+                .attributes
+                .iter()
+                .find(|attr| attr.key == "packet_src_channel")
+                .map(|attr| attr.value.clone())
+                .unwrap_or_default();
+            let dst_channel = send_packet_event
+                .attributes
+                .iter()
+                .find(|attr| attr.key == "packet_dst_channel")
+                .map(|attr| attr.value.clone())
+                .unwrap_or_default();
+            let pending_execute_msg = PENDING_MSG_AND_FUNDS.load(deps.storage)?;
+            CHANNEL_TO_EXECUTE_MSG.save(
+                deps.storage,
+                packet_sequence.clone(),
+                &pending_execute_msg,
+            )?;
+            PENDING_MSG_AND_FUNDS.remove(deps.storage);
+            // You can now use these extracted values as needed
+            // For example, you might want to store them or include them in the response
+            return Ok(Response::new()
+                .add_attribute("action", "transfer_funds_reply")
+                .add_attribute("packet_data", packet_data)
+                .add_attribute("packet_sequence", packet_sequence)
+                .add_attribute("src_channel", src_channel)
+                .add_attribute("dst_channel", dst_channel));
+        }
+    }
+    // Refund original message sender
+    let ics20_packet_info = PENDING_MSG_AND_FUNDS.load(deps.storage)?;
+    let refund_recipient = ics20_packet_info.sender;
+    let refund_coin = ics20_packet_info.funds;
+    let refund_msg = CosmosMsg::Bank(cosmwasm_std::BankMsg::Send {
+        to_address: refund_recipient.clone(),
+        amount: vec![refund_coin.clone()],
+    });
+
+    // Clear data
+    PENDING_MSG_AND_FUNDS.remove(deps.storage);
+
+    Ok(Response::default()
+        .add_message(refund_msg)
+        .add_attribute("action", "refund")
+        .add_attribute("recipient", refund_recipient)
+        .add_attribute("amount_refunded", refund_coin.to_string()))
 }

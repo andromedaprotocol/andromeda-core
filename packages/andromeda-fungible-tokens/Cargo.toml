@@ -21,6 +21,6 @@ cw-utils = { workspace = true }
 cw20 = { workspace = true }
 cw20-base = { workspace = true }
 cw-asset = { workspace = true }
-
+cw-controllers = "=1.1.2"
 
 andromeda-std = { workspace = true }

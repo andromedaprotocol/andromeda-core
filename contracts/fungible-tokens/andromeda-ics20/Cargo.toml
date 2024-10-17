@@ -1,17 +1,8 @@
 [package]
-name = "andromeda-counter"
-version = "1.0.2"
-authors = ["Mitar Djakovic <mdjakovic0920@gmail.com>"]
+name = "andromeda-ics20"
+version = "1.0.0"
 edition = "2021"
 rust-version = "1.75.0"
-
-exclude = [
-  # Those files are rust-optimizer artifacts. You might want to commit them for convenience but they should not be part of the source code publication.
-  "contract.wasm",
-  "hash.txt",
-]
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [lib]
 crate-type = ["cdylib", "rlib"]
@@ -23,18 +14,28 @@ backtraces = ["cosmwasm-std/backtraces"]
 library = []
 testing = ["cw-multi-test", "andromeda-testing"]
 
+
 [dependencies]
 cosmwasm-std = { workspace = true }
 cosmwasm-schema = { workspace = true }
 cw-storage-plus = { workspace = true }
 cw-utils = { workspace = true }
 cw20 = { workspace = true }
+cw2 = { workspace = true }
+semver = { workspace = true }
+cw20-base = { workspace = true }
+cw-controllers = "=1.1.2"
+schemars = "0.8.21"
+serde = "1.0.203"
+thiserror = "1.0.61"
 cw-orch = "=0.23.0"
 
-andromeda-std = { workspace = true, features = ["rates"] }
-andromeda-data-storage = { workspace = true }
-
+andromeda-std = { workspace = true, features = ["rates"]}
+andromeda-fungible-tokens = { workspace = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 cw-multi-test = { workspace = true, optional = true }
 andromeda-testing = { workspace = true, optional = true }
+
+[dev-dependencies]
+andromeda-app = { workspace = true }

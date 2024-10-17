@@ -9,6 +9,7 @@ pub enum ReplyId {
     IBCHooksPacketSend = 103,
     Recovery = 104,
     RegisterUsername = 105,
+    IBCTransfer = 106,
     // App
     ClaimOwnership = 200,
     AssignApp = 201,
