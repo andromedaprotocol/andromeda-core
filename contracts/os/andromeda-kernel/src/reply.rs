@@ -39,7 +39,6 @@ pub fn on_reply_create_ado(deps: DepsMut, env: Env, msg: Reply) -> Result<Respon
     }
 
     Ok(res)
-    // .set_data(to_json_binary(&ado_addr)?)
 }
 
 use ::prost::Message;
@@ -94,7 +93,7 @@ pub fn on_reply_ibc_hooks_packet_send(
         .add_attribute("recovery_addr", recovery_addr))
 }
 
-// Handles the reply from an ICS20 funds transfer
+// Handles the reply from an ICS20 funds transfer that did inlcude a message
 pub fn on_reply_ibc_transfer(
     deps: DepsMut,
     _env: Env,
