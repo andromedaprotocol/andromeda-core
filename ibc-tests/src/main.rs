@@ -13,7 +13,7 @@ use cw_orch_daemon::{
     queriers::{Staking, StakingBondStatus},
     DaemonBase, Wallet,
 };
-use ibc_tests::contract_interface;
+use ibc_tests::{contract_interface, interfaces::app_interface::AppContract};
 
 use andromeda_app::app::{self, AppComponent};
 use andromeda_finance::validator_staking;
@@ -35,14 +35,6 @@ pub const LOCAL_TERRA: ChainInfo = ChainInfo {
     lcd_url: None,
     fcd_url: None,
 };
-
-contract_interface!(
-    AppContract,
-    andromeda_app_contract,
-    app,
-    "andromeda_app_contract",
-    "app_contract"
-);
 
 fn main() {
     println!("//=============================Prereparing test environment===================================//");
