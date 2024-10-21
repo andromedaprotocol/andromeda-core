@@ -83,9 +83,10 @@ pub fn execute(
             packet,
         ),
         ExecuteMsg::Send { message } => execute::send(execute_env, message),
-        ExecuteMsg::TriggerRelay { packet_sequence } => {
-            execute::trigger_relay(execute_env, packet_sequence)
-        }
+        ExecuteMsg::TriggerRelay {
+            packet_sequence,
+            pack_ack_msg,
+        } => execute::trigger_relay(execute_env, packet_sequence, pack_ack_msg),
         ExecuteMsg::UpsertKeyAddress { key, value } => {
             execute::upsert_key_address(execute_env, key, value)
         }

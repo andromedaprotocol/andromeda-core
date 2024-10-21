@@ -48,11 +48,8 @@ pub enum SudoMsg {
 pub fn ibc_packet_timeout(
     _deps: DepsMut,
     _env: Env,
-    msg: IbcPacketTimeoutMsg,
+    _msg: IbcPacketTimeoutMsg,
 ) -> Result<IbcBasicResponse, ContractError> {
-    let src_port_id = msg.packet.src.port_id;
-    println!("ibc packet timeout is: {src_port_id}");
-    // println!("the src port id is: {}", src_port_id);
     // As with ack above, nothing to do here. If we cared about
     // keeping track of state between the two chains then we'd want to
     // respond to this likely as it means that the packet in question
@@ -119,13 +116,10 @@ pub fn ibc_packet_receive(
 pub fn ibc_packet_ack(
     _deps: DepsMut,
     _env: Env,
-    msg: IbcPacketAckMsg,
+    _msg: IbcPacketAckMsg,
 ) -> Result<IbcBasicResponse, ContractError> {
-    let src_port_id = msg.original_packet.src.port_id;
-    println!("the src port id is: {}", src_port_id);
     Ok(IbcBasicResponse::new())
 }
-
 pub fn do_ibc_packet_receive(
     deps: DepsMut,
     env: Env,
