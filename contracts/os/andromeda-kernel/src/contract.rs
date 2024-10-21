@@ -11,7 +11,7 @@ use cosmwasm_std::{
 };
 
 use crate::ibc::{IBCLifecycleComplete, SudoMsg};
-use crate::reply::{on_reply_create_ado, on_reply_ibc_hooks_packet_send};
+use crate::reply::{on_reply_create_ado, on_reply_ibc_hooks_packet_send, on_reply_ibc_transfer};
 use crate::state::CURR_CHAIN;
 use crate::{execute, query, sudo};
 
@@ -56,6 +56,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
     match ReplyId::from_repr(msg.id) {
         Some(ReplyId::CreateADO) => on_reply_create_ado(deps, env, msg),
         Some(ReplyId::IBCHooksPacketSend) => on_reply_ibc_hooks_packet_send(deps, msg),
+        Some(ReplyId::IBCTransfer) => on_reply_ibc_transfer(deps, env, msg),
         _ => Ok(Response::default()),
     }
 }
@@ -82,6 +83,9 @@ pub fn execute(
             packet,
         ),
         ExecuteMsg::Send { message } => execute::send(execute_env, message),
+        ExecuteMsg::TriggerRelay { packet_sequence } => {
+            execute::trigger_relay(execute_env, packet_sequence)
+        }
         ExecuteMsg::UpsertKeyAddress { key, value } => {
             execute::upsert_key_address(execute_env, key, value)
         }

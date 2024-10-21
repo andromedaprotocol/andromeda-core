@@ -1,6 +1,8 @@
 use andromeda_std::{
     ado_contract::ADOContract,
-    common::{actions::call_action, context::ExecuteContext, withdraw::WithdrawalType},
+    common::{
+        actions::call_action, context::ExecuteContext, withdraw::WithdrawalType, Milliseconds,
+    },
     error::ContractError,
 };
 #[cfg(not(feature = "library"))]
@@ -34,7 +36,6 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     let config = Config {
-        is_multi_batch_enabled: msg.is_multi_batch_enabled,
         recipient: msg.recipient,
         denom: msg.denom,
     };
@@ -101,8 +102,8 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
 
 fn execute_create_batch(
     ctx: ExecuteContext,
-    lockup_duration: Option<u64>,
-    release_unit: u64,
+    lockup_duration: Option<Milliseconds>,
+    release_unit: Milliseconds,
     release_amount: WithdrawalType,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
@@ -114,7 +115,7 @@ fn execute_create_batch(
     );
 
     let config = CONFIG.load(deps.storage)?;
-    let current_time = env.block.time.seconds();
+    let current_time = Milliseconds::from_seconds(env.block.time.seconds());
 
     ensure!(
         info.funds.len() == 1,
@@ -133,7 +134,7 @@ fn execute_create_batch(
     );
 
     ensure!(
-        release_unit > 0 && !release_amount.is_zero(),
+        !release_unit.is_zero() && !release_amount.is_zero(),
         ContractError::InvalidZeroAmount {}
     );
     ensure!(
@@ -166,7 +167,7 @@ fn execute_create_batch(
     );
 
     let lockup_end = if let Some(duration) = lockup_duration {
-        current_time + duration
+        current_time.plus_milliseconds(duration)
     } else {
         current_time
     };
@@ -182,7 +183,7 @@ fn execute_create_batch(
         last_claimed_release_time: lockup_end,
     };
 
-    save_new_batch(deps.storage, batch, &config)?;
+    save_new_batch(deps.storage, batch)?;
 
     Ok(Response::new()
         .add_attribute("action", "create_batch")
@@ -238,7 +239,7 @@ fn execute_claim(
 fn execute_claim_all(
     ctx: ExecuteContext,
     limit: Option<u32>,
-    up_to_time: Option<u64>,
+    up_to_time: Option<Milliseconds>,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
         deps, info, env, ..
@@ -254,9 +255,12 @@ fn execute_claim_all(
 
     let config = CONFIG.load(deps.storage)?;
 
-    let current_time = env.block.time.seconds();
+    let current_time = Milliseconds::from_seconds(env.block.time.seconds());
     let batches_with_ids = get_claimable_batches_with_ids(deps.storage, current_time, limit)?;
-    let up_to_time = cmp::min(current_time, up_to_time.unwrap_or(current_time));
+    let up_to_time = Milliseconds(cmp::min(
+        current_time.milliseconds(),
+        up_to_time.unwrap_or(current_time).milliseconds(),
+    ));
 
     let mut total_amount_to_send = Uint128::zero();
     let last_batch_id = if !batches_with_ids.is_empty() {
@@ -267,8 +271,8 @@ fn execute_claim_all(
     for (batch_id, mut batch) in batches_with_ids {
         let key = batches().key(batch_id);
 
-        let elapsed_time = up_to_time - batch.last_claimed_release_time;
-        let num_available_claims = elapsed_time / batch.release_unit;
+        let elapsed_time = up_to_time.minus_milliseconds(batch.last_claimed_release_time);
+        let num_available_claims = elapsed_time.milliseconds() / batch.release_unit.milliseconds();
 
         let amount_to_send = claim_batch(
             &deps.querier,
@@ -306,7 +310,7 @@ fn claim_batch(
     config: &Config,
     number_of_claims: Option<u64>,
 ) -> Result<Uint128, ContractError> {
-    let current_time = env.block.time.seconds();
+    let current_time = Milliseconds::from_seconds(env.block.time.seconds());
     ensure!(
         batch.lockup_end <= current_time,
         ContractError::FundsAreLocked {}
@@ -314,8 +318,8 @@ fn claim_batch(
     let total_amount = AssetInfo::native(config.denom.to_owned())
         .query_balance(querier, env.contract.address.to_owned())?;
 
-    let elapsed_time = current_time - batch.last_claimed_release_time;
-    let num_available_claims = elapsed_time / batch.release_unit;
+    let elapsed_time = current_time.minus_milliseconds(batch.last_claimed_release_time);
+    let num_available_claims = elapsed_time.milliseconds() / batch.release_unit.milliseconds();
 
     let number_of_claims = cmp::min(
         number_of_claims.unwrap_or(num_available_claims),
@@ -336,19 +340,17 @@ fn claim_batch(
         batch.amount_claimed = batch.amount_claimed.checked_add(amount_to_send)?;
 
         // Safe math version
-        let claims_release_unit = number_of_claims.checked_mul(batch.release_unit);
-        if let Some(claims_release_unit) = claims_release_unit {
-            let new_claimed_release_time = batch
-                .last_claimed_release_time
-                .checked_add(claims_release_unit);
-            if let Some(new_claimed_release_time) = new_claimed_release_time {
-                batch.last_claimed_release_time = new_claimed_release_time;
-            } else {
-                return Err(ContractError::Overflow {});
-            }
-        } else {
+        let claims_release_unit = number_of_claims.checked_mul(batch.release_unit.milliseconds());
+        if claims_release_unit.is_none() {
             return Err(ContractError::Overflow {});
         }
+
+        let claims_release_unit = Milliseconds(claims_release_unit.unwrap());
+
+        batch.last_claimed_release_time = batch
+            .last_claimed_release_time
+            .plus_milliseconds(claims_release_unit);
+
         // The unsafe version
         // batch.last_claimed_release_time += number_of_claims * batch.release_unit;
     }
@@ -411,7 +413,7 @@ fn get_batch_response(
 ) -> Result<BatchResponse, ContractError> {
     let previous_amount = batch.amount_claimed;
     let previous_last_claimed_release_time = batch.last_claimed_release_time;
-    let amount_available_to_claim = if env.block.time.seconds() >= batch.lockup_end {
+    let amount_available_to_claim = if env.block.time.seconds() >= batch.lockup_end.seconds() {
         claim_batch(querier, env, &mut batch, config, None)?
     } else {
         Uint128::zero()
