@@ -79,10 +79,14 @@ pub fn trigger_relay(
         // This means that the funds have been returned to the contract, time to return the funds to the original sender
         AcknowledgementMsg::Error(_) => {
             let refund_msg = CosmosMsg::Bank(BankMsg::Send {
-                to_address: ics20_packet_info.sender,
-                amount: vec![ics20_packet_info.funds],
+                to_address: ics20_packet_info.sender.clone(),
+                amount: vec![ics20_packet_info.funds.clone()],
             });
-            Ok(Response::default().add_message(refund_msg))
+            Ok(Response::default()
+                .add_message(refund_msg)
+                .add_attribute("action", "refund")
+                .add_attribute("recipient", ics20_packet_info.sender)
+                .add_attribute("amount", ics20_packet_info.funds.to_string()))
         }
     }
 }
