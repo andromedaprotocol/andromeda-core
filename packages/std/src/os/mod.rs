@@ -10,6 +10,4 @@ pub const TRANSFER_PORT: &str = "transfer";
 pub const IBC_VERSION: &str = "andr-kernel-1";
 
 #[cfg(test)]
-pub mod aos_querier_test;
-#[cfg(test)]
-pub mod ibc_registry_test;
+mod tests;
