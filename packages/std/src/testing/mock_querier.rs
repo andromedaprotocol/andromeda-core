@@ -92,7 +92,7 @@ pub fn mock_dependencies_custom(
     let mut custom_querier: WasmMockQuerier =
         WasmMockQuerier::new(MockQuerier::new(&[(MOCK_CONTRACT_ADDR, contract_balance)]));
 
-    // Add IBC Channels to mocket
+    // Add IBC Channels to mock querier
     custom_querier.base.update_ibc(
         TRANSFER_PORT,
         &[IbcChannel::new(
@@ -355,9 +355,9 @@ impl MockAndromedaQuerier {
 
     /// Handles all IBC Registry queries.
     ///
-    /// Returns `"ADOType"` for `ADOType` queries with code ID 1 and an error otherwise.
+    /// Returns the denom info for `MOCK_OSMO_IBC_DENOM_ON_ANDR` and an error otherwise.
     ///
-    /// Returns an error for `CodeId` queries with key `FAKE_ADODB_KEY` and 1 otherwise.
+    /// Returns an error for any other denom.
     fn handle_ibc_registry_query(&self, msg: &Binary) -> QuerierResult {
         match from_json(msg).unwrap() {
             IBCRegistryQueryMsg::DenomInfo { denom } => match denom.as_str() {

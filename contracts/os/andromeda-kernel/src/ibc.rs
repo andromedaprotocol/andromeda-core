@@ -265,28 +265,32 @@ pub fn get_counterparty_denom(
 #[allow(clippy::too_many_arguments)]
 pub fn generate_ibc_hook_transfer_message(
     deps: &Deps,
-    recipient: AndrAddr,
-    message: Binary,
-    fund: Coin,
-    channel: String,
-    from_addr: String,
-    to_addr: String,
+    recipient: &AndrAddr,
+    message: &Binary,
+    fund: &Coin,
+    channel: &str,
+    from_addr: &str,
+    to_addr: &str,
     time: Timestamp,
 ) -> Result<MsgTransfer, ContractError> {
-    let (counterparty_denom, _) = get_counterparty_denom(deps, &fund.denom, &channel)?;
+    let (counterparty_denom, _) = get_counterparty_denom(deps, &fund.denom, channel)?;
     let new_coin = Coin::new(fund.amount.u128(), counterparty_denom);
 
-    let msg = AMPMsg::new(recipient.get_raw_path(), message, Some(vec![new_coin]));
-    let serialized = msg.to_ibc_hooks_memo(to_addr.clone(), from_addr.clone());
+    let msg = AMPMsg::new(
+        recipient.get_raw_path(),
+        message.clone(),
+        Some(vec![new_coin]),
+    );
+    let serialized = msg.to_ibc_hooks_memo(to_addr.to_string(), from_addr.to_string());
 
     let ts = time.plus_seconds(PACKET_LIFETIME);
 
     Ok(MsgTransfer {
         source_port: TRANSFER_PORT.into(),
-        source_channel: channel,
-        token: Some(fund.into()),
-        sender: from_addr,
-        receiver: to_addr,
+        source_channel: channel.to_string(),
+        token: Some(fund.clone().into()),
+        sender: from_addr.to_string(),
+        receiver: to_addr.to_string(),
         timeout_height: None,
         timeout_timestamp: Some(ts.nanos()),
         memo: serialized,

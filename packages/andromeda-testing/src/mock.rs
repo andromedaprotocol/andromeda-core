@@ -5,7 +5,10 @@ use andromeda_adodb::mock::mock_andromeda_adodb;
 use andromeda_economics::mock::mock_andromeda_economics;
 use andromeda_ibc_registry::mock::mock_andromeda_ibc_registry;
 use andromeda_kernel::mock::mock_andromeda_kernel;
-use andromeda_std::{amp::AndrAddr, os::adodb::ADOVersion};
+use andromeda_std::{
+    amp::{AndrAddr, ADO_DB_KEY, ECONOMICS_KEY, IBC_REGISTRY_KEY, VFS_KEY},
+    os::adodb::ADOVersion,
+};
 use andromeda_vfs::mock::mock_andromeda_vfs;
 use cosmwasm_std::{coin, Addr, BlockInfo, Coin, Decimal, Timestamp, Validator};
 use cw_multi_test::{
@@ -210,16 +213,16 @@ impl MockAndromeda {
             )
             .unwrap();
         kernel
-            .execute_store_key_address(app, admin_address.clone(), "adodb", adodb.addr().clone())
+            .execute_store_key_address(app, admin_address.clone(), ADO_DB_KEY, adodb.addr().clone())
             .unwrap();
         kernel
-            .execute_store_key_address(app, admin_address.clone(), "vfs", vfs.addr().clone())
+            .execute_store_key_address(app, admin_address.clone(), VFS_KEY, vfs.addr().clone())
             .unwrap();
         kernel
             .execute_store_key_address(
                 app,
                 admin_address.clone(),
-                "economics",
+                ECONOMICS_KEY,
                 economics.addr().clone(),
             )
             .unwrap();
@@ -227,7 +230,7 @@ impl MockAndromeda {
             .execute_store_key_address(
                 app,
                 admin_address.clone(),
-                "ibc-registry",
+                IBC_REGISTRY_KEY,
                 ibc_registry.addr().clone(),
             )
             .unwrap();

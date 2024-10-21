@@ -620,12 +620,12 @@ impl MsgHandler {
 
         let msg = generate_ibc_hook_transfer_message(
             &deps.as_ref(),
-            recipient.clone(),
-            message.clone(),
-            msg_funds.clone(),
-            channel.clone(),
-            env.contract.address.to_string(),
-            channel_info.kernel_address.clone(),
+            recipient,
+            message,
+            msg_funds,
+            &channel,
+            env.contract.address.as_str(),
+            &channel_info.kernel_address,
             env.block.time,
         )?;
         Ok(Response::default()
