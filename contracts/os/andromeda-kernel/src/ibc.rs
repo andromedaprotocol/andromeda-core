@@ -1,11 +1,12 @@
 use crate::ack::{make_ack_fail, make_ack_success};
 use crate::execute;
 use crate::proto::{DenomTrace, MsgTransfer, QueryDenomTraceRequest};
-use crate::state::{CHANNEL_TO_CHAIN, KERNEL_ADDRESSES};
+use crate::state::{CHANNEL_TO_CHAIN, KERNEL_ADDRESSES, REFUND_DATA};
 use andromeda_std::amp::VFS_KEY;
 use andromeda_std::common::context::ExecuteContext;
 use andromeda_std::common::reply::ReplyId;
 use andromeda_std::error::{ContractError, Never};
+use andromeda_std::os::kernel::Ics20PacketInfo;
 use andromeda_std::{
     amp::{messages::AMPMsg, AndrAddr},
     os::{kernel::IbcExecuteMsg, vfs::ExecuteMsg as VFSExecuteMsg},
@@ -121,7 +122,7 @@ pub fn ibc_packet_ack(
     Ok(IbcBasicResponse::new())
 }
 pub fn do_ibc_packet_receive(
-    deps: DepsMut,
+    mut deps: DepsMut,
     env: Env,
     msg: IbcPacketReceiveMsg,
 ) -> Result<IbcReceiveResponse, ContractError> {
@@ -133,7 +134,7 @@ pub fn do_ibc_packet_receive(
     let packet_msg: IbcExecuteMsg = from_json(&msg.packet.data)?;
     let mut execute_env = ExecuteContext {
         env: env.clone(),
-        deps,
+        deps: deps.branch(),
         info: MessageInfo {
             funds: vec![],
             sender: Addr::unchecked("foreign_kernel"),
@@ -155,19 +156,34 @@ pub fn do_ibc_packet_receive(
             recipient,
             message,
             funds,
+            original_sender,
         } => {
             let amp_msg = AMPMsg::new(recipient, message.clone(), Some(vec![funds.clone()]));
 
             execute_env.info = MessageInfo {
-                funds: vec![funds],
+                funds: vec![funds.clone()],
                 sender: Addr::unchecked("foreign_kernel"),
             };
             let res = execute::send(execute_env, amp_msg)?;
 
+            // Save refund info
+            REFUND_DATA.save(
+                deps.storage,
+                &Ics20PacketInfo {
+                    sender: original_sender,
+                    recipient: AndrAddr::from_string("addr".to_string()),
+                    message,
+                    funds,
+                    channel,
+                },
+            )?;
             Ok(IbcReceiveResponse::new()
                 .set_ack(make_ack_success())
                 .add_attributes(res.attributes)
-                .add_submessages(res.messages)
+                .add_submessage(SubMsg::reply_always(
+                    res.messages.first().unwrap().msg.clone(),
+                    ReplyId::SendFundsWithMsg.repr(),
+                ))
                 .add_events(res.events))
         }
         IbcExecuteMsg::CreateADO {

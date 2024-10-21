@@ -2,7 +2,7 @@ use crate::{
     proto::MsgTransferResponse,
     state::{
         IBCHooksPacketSendState, OutgoingPacket, ADO_OWNER, CHANNEL_TO_EXECUTE_MSG,
-        OUTGOING_IBC_HOOKS_PACKETS, OUTGOING_IBC_PACKETS, PENDING_MSG_AND_FUNDS,
+        OUTGOING_IBC_HOOKS_PACKETS, OUTGOING_IBC_PACKETS, PENDING_MSG_AND_FUNDS, REFUND_DATA,
     },
 };
 use andromeda_std::{
@@ -13,8 +13,8 @@ use andromeda_std::{
     os::aos_querier::AOSQuerier,
 };
 use cosmwasm_std::{
-    ensure, wasm_execute, Addr, CosmosMsg, DepsMut, Empty, Env, Reply, Response, SubMsg,
-    SubMsgResponse, SubMsgResult,
+    ensure, wasm_execute, Addr, CosmosMsg, DepsMut, Empty, Env, IbcMsg, IbcTimeout, Reply,
+    Response, SubMsg, SubMsgResponse, SubMsgResult, Timestamp,
 };
 
 /// Handles the reply from an ADO creation
@@ -163,4 +163,22 @@ pub fn on_reply_ibc_transfer(
         .add_attribute("action", "refund")
         .add_attribute("recipient", refund_recipient)
         .add_attribute("amount_refunded", refund_coin.to_string()))
+}
+
+// Handles the reply from an Execute Msg that was preceded by an ICS20 transfer
+pub fn on_reply_execute_msg_with_funds(
+    deps: DepsMut,
+    _env: Env,
+    _msg: Reply,
+) -> Result<Response, ContractError> {
+    let refund_data = REFUND_DATA.load(deps.storage)?;
+    // Construct the refund message
+    let refund_msg = IbcMsg::Transfer {
+        channel_id: refund_data.channel,
+        to_address: refund_data.sender,
+        amount: refund_data.funds,
+        timeout: IbcTimeout::with_timestamp(Timestamp::from_seconds(60 * 60)), // 1 hour timeout
+    };
+    REFUND_DATA.remove(deps.storage);
+    Ok(Response::default().add_message(refund_msg))
 }

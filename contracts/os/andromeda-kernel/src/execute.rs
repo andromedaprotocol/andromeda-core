@@ -143,6 +143,7 @@ fn handle_ibc_transfer_funds_reply(
         recipient: AndrAddr::from_string(ics20_packet_info.recipient.clone().get_raw_path()),
         message: ics20_packet_info.message.clone(),
         funds: adjusted_funds,
+        original_sender: ics20_packet_info.sender,
     };
     let msg = IbcMsg::SendPacket {
         channel_id: channel.clone(),

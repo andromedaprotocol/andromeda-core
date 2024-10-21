@@ -10,6 +10,7 @@ pub enum ReplyId {
     Recovery = 104,
     RegisterUsername = 105,
     IBCTransfer = 106,
+    SendFundsWithMsg = 107,
     // App
     ClaimOwnership = 200,
     AssignApp = 201,

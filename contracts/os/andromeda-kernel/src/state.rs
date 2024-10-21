@@ -44,3 +44,6 @@ pub const PENDING_MSG_AND_FUNDS: Item<Ics20PacketInfo> = Item::new("pending_exec
 
 /// Used to store sequence/channel against an ExecuteMsg, to be sent after an ack of ICS20
 pub const CHANNEL_TO_EXECUTE_MSG: Map<String, Ics20PacketInfo> = Map::new("channel_to_execute_msg");
+
+/// Used to temporarily store the most recent ExecuteMsg with the corresponding Coin to be sent in a reply for ICS20 transfer
+pub const REFUND_DATA: Item<Ics20PacketInfo> = Item::new("refund_data");
