@@ -82,7 +82,6 @@ impl AndrAddr {
         if !self.is_vfs_path() {
             return Ok(deps.api.addr_validate(&self.0)?);
         }
-
         let contract = ADOContract::default();
         let vfs_contract = contract.get_vfs_address(deps.storage, &deps.querier)?;
         self.get_raw_address_from_vfs(deps, vfs_contract)
@@ -194,10 +193,10 @@ impl AndrAddr {
             }
         }
     }
-
     /// Gets the raw path for a given AndrAddr by stripping away any protocols or chain declarations.
     ///
     /// E.g. `ibc://cosmoshub-4/user/app/component` would return `/user/app/component`
+    /// E.g. `ibc://cosmoshub-4/user` would return `user`
     ///
     /// Returns the human readable address if the address is not a VFS path.
     pub fn get_raw_path(&self) -> &str {
@@ -211,7 +210,16 @@ impl AndrAddr {
                     let end = self.0[start..]
                         .find('/')
                         .unwrap_or_else(|| self.0[start..].len());
-                    &self.0[start + end..]
+                    let raw_path = &self.0[start + end..];
+                    if let Some(path_without_leading_slash) = raw_path.strip_prefix('/') {
+                        if path_without_leading_slash.contains('/') {
+                            raw_path
+                        } else {
+                            path_without_leading_slash
+                        }
+                    } else {
+                        raw_path
+                    }
                 }
             }
         }

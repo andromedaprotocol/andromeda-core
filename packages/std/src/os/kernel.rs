@@ -5,6 +5,7 @@ use crate::amp::AndrAddr;
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Addr;
 use cosmwasm_std::Binary;
+use cosmwasm_std::Coin;
 
 #[cw_serde]
 pub struct ChannelInfo {
@@ -39,6 +40,9 @@ pub enum ExecuteMsg {
     /// Constructs an AMPPkt with a given AMPMsg and sends it to the recipient
     Send {
         message: AMPMsg,
+    },
+    TriggerRelay {
+        packet_sequence: String,
     },
     /// Upserts a key address to the kernel, restricted to the owner of the kernel
     UpsertKeyAddress {
@@ -127,6 +131,11 @@ pub enum IbcExecuteMsg {
         recipient: AndrAddr,
         message: Binary,
     },
+    SendMessageWithFunds {
+        recipient: AndrAddr,
+        message: Binary,
+        funds: Coin,
+    },
     CreateADO {
         instantiation_msg: Binary,
         owner: AndrAddr,
@@ -136,4 +145,15 @@ pub enum IbcExecuteMsg {
         username: String,
         address: String,
     },
+}
+
+#[cw_serde]
+pub struct Ics20PacketInfo {
+    // Can be used for refunds in case the first Transfer msg fails
+    pub sender: String,
+    pub recipient: AndrAddr,
+    pub message: Binary,
+    pub funds: Coin,
+    // The restricted wallet will probably already have access to this
+    pub channel: String,
 }

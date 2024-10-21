@@ -126,14 +126,14 @@ pub fn do_ibc_packet_receive(
     env: Env,
     msg: IbcPacketReceiveMsg,
 ) -> Result<IbcReceiveResponse, ContractError> {
-    let channel = msg.packet.dest.channel_id;
+    let channel = msg.clone().packet.dest.channel_id;
     ensure!(
         CHANNEL_TO_CHAIN.has(deps.storage, channel.as_str()),
         ContractError::Unauthorized {}
     );
-    let msg: IbcExecuteMsg = from_json(&msg.packet.data)?;
-    let execute_env = ExecuteContext {
-        env,
+    let packet_msg: IbcExecuteMsg = from_json(&msg.packet.data)?;
+    let mut execute_env = ExecuteContext {
+        env: env.clone(),
         deps,
         info: MessageInfo {
             funds: vec![],
@@ -141,9 +141,28 @@ pub fn do_ibc_packet_receive(
         },
         amp_ctx: None,
     };
-    match msg {
+    match packet_msg {
         IbcExecuteMsg::SendMessage { recipient, message } => {
             let amp_msg = AMPMsg::new(recipient, message, None);
+            let res = execute::send(execute_env, amp_msg)?;
+
+            Ok(IbcReceiveResponse::new()
+                .set_ack(make_ack_success())
+                .add_attributes(res.attributes)
+                .add_submessages(res.messages)
+                .add_events(res.events))
+        }
+        IbcExecuteMsg::SendMessageWithFunds {
+            recipient,
+            message,
+            funds,
+        } => {
+            let amp_msg = AMPMsg::new(recipient, message.clone(), Some(vec![funds.clone()]));
+
+            execute_env.info = MessageInfo {
+                funds: vec![funds],
+                sender: Addr::unchecked("foreign_kernel"),
+            };
             let res = execute::send(execute_env, amp_msg)?;
 
             Ok(IbcReceiveResponse::new()
@@ -213,7 +232,7 @@ pub fn validate_order_and_version(
         ContractError::OrderedChannel {}
     );
     ensure!(
-        channel.version == IBC_VERSION,
+        channel.version == IBC_VERSION || channel.version == "ics20-1",
         ContractError::InvalidVersion {
             actual: channel.version.to_string(),
             expected: IBC_VERSION.to_string(),
@@ -230,7 +249,7 @@ pub fn validate_order_and_version(
     // alright.
     if let Some(counterparty_version) = counterparty_version {
         ensure!(
-            counterparty_version == IBC_VERSION,
+            counterparty_version == IBC_VERSION || channel.version == "ics20-1",
             ContractError::InvalidVersion {
                 actual: counterparty_version.to_string(),
                 expected: IBC_VERSION.to_string(),

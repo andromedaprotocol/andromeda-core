@@ -91,6 +91,9 @@ andromeda-data-storage = { workspace = true }
 andromeda-primitive = { path = "../contracts/data-storage/andromeda-primitive", features = [
     "testing",
 ] }
+andromeda-counter = { path = "../contracts/data-storage/andromeda-counter", features = [
+    "testing",
+] }
 
 # #OS
 
@@ -99,6 +102,9 @@ andromeda-shunting = { path = "../contracts/modules/andromeda-shunting", feature
 ] }
 
 andromeda-kernel = { path = "../contracts/os/andromeda-kernel", features = [
+    "testing",
+] }
+andromeda-economics = { path = "../contracts/os/andromeda-economics", features = [
     "testing",
 ] }
 andromeda-ibc-registry = { path = "../contracts/os/andromeda-ibc-registry", features = [
@@ -124,6 +130,9 @@ cw721 = { workspace = true }
 cw20 = { workspace = true }
 cw-asset = { workspace = true }
 toml = "0.7"
+cw-orch = "=0.23.0"
+cw-orch-interchain = "=0.1.0"
+ibc-relayer-types = "=0.25.1"
 
 andromeda-std = { workspace = true }
 

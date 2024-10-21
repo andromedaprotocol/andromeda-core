@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added Expiry Enum [(#419)](https://github.com/andromedaprotocol/andromeda-core/pull/419)
 - Added Conditional Splitter [(#441)](https://github.com/andromedaprotocol/andromeda-core/pull/441)
 - Validator Staking: Added the option to set an amount while unstaking [(#458)](https://github.com/andromedaprotocol/andromeda-core/pull/458)
+- Added Curve ADO [(#515)](https://github.com/andromedaprotocol/andromeda-core/pull/515)
 - Set Amount Splitter [(#507)](https://github.com/andromedaprotocol/andromeda-core/pull/507)
 - Added String Storage ADO [(#512)](https://github.com/andromedaprotocol/andromeda-core/pull/512)
 - Boolean Storage ADO [(#513)](https://github.com/andromedaprotocol/andromeda-core/pull/513)
@@ -27,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added Denom Validation for Rates [(#568)](https://github.com/andromedaprotocol/andromeda-core/pull/568)
 - Added Denom Validation in IBC Registry ADO [(#571)](https://github.com/andromedaprotocol/andromeda-core/pull/571)
 - Include ADOBase Version in Schema  [(#574)](https://github.com/andromedaprotocol/andromeda-core/pull/574)
+- Added Kernel ICS20 Transfer with Optional ExecuteMsg [(#577)](https://github.com/andromedaprotocol/andromeda-core/pull/577)
 
 ### Changed
 
@@ -49,6 +51,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ADODB now supports pre-release tagging [(#560)](https://github.com/andromedaprotocol/andromeda-core/pull/560)
 - Updated Validator Staking: Updated according to shrelock audit [(#565)](https://github.com/andromedaprotocol/andromeda-core/pull/565)
 - Conditional Splitter: Change lock_time's type from MillisecondsDuration to Expiry [(#567)](https://github.com/andromedaprotocol/andromeda-core/pull/567)
+- Vesting: Changed to use Milliseconds instead of seconds and removed unnecessary is_multi_batch_enabled flag [(#567)](https://github.com/andromedaprotocol/andromeda-core/pull/578)
 
 ### Fixed
 
