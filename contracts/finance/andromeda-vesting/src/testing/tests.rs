@@ -1,3 +1,8 @@
+use crate::{
+    contract::{execute, instantiate, query},
+    state::{batches, Batch, CONFIG, NEXT_ID},
+    testing::mock_querier::mock_dependencies_custom,
+};
 use andromeda_std::{
     amp::Recipient,
     common::{withdraw::WithdrawalType, Milliseconds},
@@ -5,19 +10,14 @@ use andromeda_std::{
     testing::mock_querier::MOCK_KERNEL_CONTRACT,
 };
 use cosmwasm_std::{
-    coins, from_json,
+    coin, coins, from_json,
     testing::{mock_env, mock_info, MOCK_CONTRACT_ADDR},
     BankMsg, Decimal, DepsMut, Response, Uint128,
 };
 
-use crate::{
-    contract::{execute, instantiate, query},
-    state::{batches, Batch, CONFIG, NEXT_ID},
-    testing::mock_querier::mock_dependencies_custom,
-};
-
 use andromeda_finance::vesting::{BatchResponse, Config, ExecuteMsg, InstantiateMsg, QueryMsg};
 
+const MOCK_NATIVE_DENOM: &str = "uusd";
 fn init(deps: DepsMut) -> Response {
     let msg = InstantiateMsg {
         recipient: Recipient::from_string("recipient"),
@@ -49,8 +49,7 @@ fn create_batch(
 
 #[test]
 fn test_instantiate() {
-    let mut deps = mock_dependencies_custom(&[]);
-
+    let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
     let res = init(deps.as_mut());
 
     assert_eq!(
@@ -72,8 +71,45 @@ fn test_instantiate() {
 }
 
 #[test]
+fn test_instantiate_invalid_denom() {
+    let mut deps = mock_dependencies_custom(&[coin(100000, "uandr")]);
+
+    let msg = InstantiateMsg {
+        recipient: Recipient::from_string("recipient"),
+        denom: MOCK_NATIVE_DENOM.to_string(),
+        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+        owner: None,
+    };
+
+    let info = mock_info("owner", &[]);
+    let err = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap_err();
+    assert_eq!(
+        err,
+        ContractError::InvalidAsset {
+            asset: MOCK_NATIVE_DENOM.to_string()
+        }
+    )
+}
+
+#[test]
+fn test_instantiate_invalid_address() {
+    let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
+
+    let msg = InstantiateMsg {
+        recipient: Recipient::from_string("1"),
+        denom: MOCK_NATIVE_DENOM.to_string(),
+        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+        owner: None,
+    };
+
+    let info = mock_info("owner", &[]);
+    let err = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap_err();
+    assert_eq!(err, ContractError::InvalidAddress {})
+}
+//
+#[test]
 fn test_create_batch_unauthorized() {
-    let mut deps = mock_dependencies_custom(&[]);
+    let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
     init(deps.as_mut());
 
     let info = mock_info("not_owner", &[]);
@@ -91,7 +127,7 @@ fn test_create_batch_unauthorized() {
 
 #[test]
 fn test_create_batch_no_funds() {
-    let mut deps = mock_dependencies_custom(&[]);
+    let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
 
     init(deps.as_mut());
 
@@ -115,7 +151,7 @@ fn test_create_batch_no_funds() {
 
 #[test]
 fn test_create_batch_invalid_denom() {
-    let mut deps = mock_dependencies_custom(&[]);
+    let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
     init(deps.as_mut());
 
     let info = mock_info("owner", &coins(500, "uluna"));
@@ -138,7 +174,7 @@ fn test_create_batch_invalid_denom() {
 
 #[test]
 fn test_create_batch_valid_denom_zero_amount() {
-    let mut deps = mock_dependencies_custom(&[]);
+    let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
     init(deps.as_mut());
 
     let info = mock_info("owner", &coins(0, "uusd"));
@@ -156,7 +192,7 @@ fn test_create_batch_valid_denom_zero_amount() {
 
 #[test]
 fn test_create_batch_release_unit_zero() {
-    let mut deps = mock_dependencies_custom(&[]);
+    let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
     init(deps.as_mut());
 
     let info = mock_info("owner", &coins(100, "uusd"));
@@ -174,7 +210,7 @@ fn test_create_batch_release_unit_zero() {
 
 #[test]
 fn test_create_batch_release_amount_zero() {
-    let mut deps = mock_dependencies_custom(&[]);
+    let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
     init(deps.as_mut());
 
     let info = mock_info("owner", &coins(100, "uusd"));
@@ -192,7 +228,7 @@ fn test_create_batch_release_amount_zero() {
 
 #[test]
 fn test_create_batch() {
-    let mut deps = mock_dependencies_custom(&[]);
+    let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
     init(deps.as_mut());
 
     let info = mock_info("owner", &coins(100, "uusd"));
@@ -270,7 +306,7 @@ fn test_create_batch() {
 
 #[test]
 fn test_claim_batch_unauthorized() {
-    let mut deps = mock_dependencies_custom(&[]);
+    let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
     init(deps.as_mut());
 
     let info = mock_info("not_owner", &[]);
@@ -287,7 +323,7 @@ fn test_claim_batch_unauthorized() {
 
 #[test]
 fn test_claim_batch_still_locked() {
-    let mut deps = mock_dependencies_custom(&[]);
+    let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
     init(deps.as_mut());
     let info = mock_info("owner", &coins(100, "uusd"));
 
@@ -313,7 +349,7 @@ fn test_claim_batch_still_locked() {
 
 #[test]
 fn test_claim_batch_no_funds_available() {
-    let mut deps = mock_dependencies_custom(&[]);
+    let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
     init(deps.as_mut());
     let info = mock_info("owner", &coins(100, "uusd"));
 
@@ -340,7 +376,7 @@ fn test_claim_batch_no_funds_available() {
 
 #[test]
 fn test_claim_batch_single_claim() {
-    let mut deps = mock_dependencies_custom(&[]);
+    let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
     init(deps.as_mut());
     let info = mock_info("owner", &coins(100, "uusd"));
 
@@ -421,7 +457,7 @@ fn test_claim_batch_single_claim() {
 
 #[test]
 fn test_claim_batch_not_nice_numbers_single_release() {
-    let mut deps = mock_dependencies_custom(&[]);
+    let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
     init(deps.as_mut());
     let info = mock_info("owner", &coins(10, "uusd"));
 
@@ -482,7 +518,7 @@ fn test_claim_batch_not_nice_numbers_single_release() {
 
 #[test]
 fn test_claim_batch_not_nice_numbers_multiple_releases() {
-    let mut deps = mock_dependencies_custom(&[]);
+    let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
     init(deps.as_mut());
     let vesting_amount = 1_000_000_000_000_000_000u128;
     let info = mock_info("owner", &coins(vesting_amount, "uusd"));
@@ -574,7 +610,7 @@ fn test_claim_batch_not_nice_numbers_multiple_releases() {
 
 #[test]
 fn test_claim_batch_middle_of_interval() {
-    let mut deps = mock_dependencies_custom(&[]);
+    let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
     init(deps.as_mut());
     let info = mock_info("owner", &coins(100, "uusd"));
 
@@ -640,7 +676,7 @@ fn test_claim_batch_middle_of_interval() {
 
 #[test]
 fn test_claim_batch_multiple_claims() {
-    let mut deps = mock_dependencies_custom(&[]);
+    let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
     init(deps.as_mut());
     let info = mock_info("owner", &coins(100, "uusd"));
 
@@ -733,7 +769,7 @@ fn test_claim_batch_multiple_claims() {
 
 #[test]
 fn test_claim_batch_all_releases() {
-    let mut deps = mock_dependencies_custom(&[]);
+    let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
     init(deps.as_mut());
     let info = mock_info("owner", &coins(100, "uusd"));
 
@@ -799,7 +835,7 @@ fn test_claim_batch_all_releases() {
 
 #[test]
 fn test_claim_batch_too_high_of_claim() {
-    let mut deps = mock_dependencies_custom(&[]);
+    let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
     init(deps.as_mut());
     let info = mock_info("owner", &coins(100, "uusd"));
 
@@ -860,7 +896,7 @@ fn test_claim_batch_too_high_of_claim() {
 
 #[test]
 fn test_claim_all_unauthorized() {
-    let mut deps = mock_dependencies_custom(&[]);
+    let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
     init(deps.as_mut());
 
     let info = mock_info("not_owner", &[]);
@@ -877,7 +913,7 @@ fn test_claim_all_unauthorized() {
 
 #[test]
 fn test_claim_all() {
-    let mut deps = mock_dependencies_custom(&[]);
+    let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
     init(deps.as_mut());
 
     let release_unit = Milliseconds::from_seconds(10);
