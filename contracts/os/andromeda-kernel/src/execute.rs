@@ -724,12 +724,9 @@ impl MsgHandler {
         );
         let coin = funds
             .first()
-            .map_or(
-                Err(ContractError::InvalidPacket {
-                    error: Some("Transfer funds must contain funds in the AMPMsg".to_string()),
-                }),
-                Ok,
-            )?
+            .ok_or(ContractError::InvalidPacket {
+                error: Some("Transfer funds must contain funds in the AMPMsg".to_string()),
+            })?
             .clone();
 
         let msg = IbcMsg::Transfer {

@@ -1436,7 +1436,7 @@ fn test_kernel_ibc_funds_and_execute_msg_unhappy() {
             )
             .unwrap();
         // We call UpadeLock, a Msg that doesn't accept funds. So it will error and should trigger a refund from the destination chain
-        let _packet_lifetime = interchain
+        interchain
             .await_and_check_packets("juno", kernel_juno_splitter_request.clone())
             .unwrap();
 
