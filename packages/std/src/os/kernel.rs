@@ -45,7 +45,7 @@ pub enum ExecuteMsg {
     },
     TriggerRelay {
         packet_sequence: String,
-        pack_ack_msg: IbcPacketAckMsg,
+        packet_ack_msg: IbcPacketAckMsg,
     },
     /// Upserts a key address to the kernel, restricted to the owner of the kernel
     UpsertKeyAddress {

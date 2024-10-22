@@ -40,7 +40,7 @@ pub fn send(ctx: ExecuteContext, message: AMPMsg) -> Result<Response, ContractEr
 pub fn trigger_relay(
     ctx: ExecuteContext,
     packet_sequence: String,
-    pack_ack_msg: IbcPacketAckMsg,
+    packet_ack_msg: IbcPacketAckMsg,
 ) -> Result<Response, ContractError> {
     //TODO Only the authorized address to handle replies can call this function
     ensure!(
@@ -64,7 +64,7 @@ pub fn trigger_relay(
             error: Some(format!("Channel not found for chain {}", chain)),
         })?;
     let ack: AcknowledgementMsg<SendMessageWithFundsResponse> =
-        from_json(pack_ack_msg.acknowledgement.data)?;
+        from_json(packet_ack_msg.acknowledgement.data)?;
 
     match ack {
         AcknowledgementMsg::Ok(_) => handle_ibc_transfer_funds_reply(

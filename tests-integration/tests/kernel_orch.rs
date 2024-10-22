@@ -759,7 +759,7 @@ fn test_kernel_ibc_funds_and_execute_msg() {
             .execute(
                 &ExecuteMsg::TriggerRelay {
                     packet_sequence: "1".to_string(),
-                    pack_ack_msg: IbcPacketAckMsg::new(
+                    packet_ack_msg: IbcPacketAckMsg::new(
                         IbcAcknowledgement::new(
                             to_json_binary(
                                 &AcknowledgementMsg::<SendMessageWithFundsResponse>::Ok(
@@ -1054,7 +1054,7 @@ fn test_kernel_ibc_funds_only_unhappy() {
             .execute(
                 &ExecuteMsg::TriggerRelay {
                     packet_sequence: "1".to_string(),
-                    pack_ack_msg: IbcPacketAckMsg::new(
+                    packet_ack_msg: IbcPacketAckMsg::new(
                         IbcAcknowledgement::new(
                             to_json_binary(
                                 &AcknowledgementMsg::<SendMessageWithFundsResponse>::Error(
@@ -1406,7 +1406,7 @@ fn test_kernel_ibc_funds_and_execute_msg_unhappy() {
             .execute(
                 &ExecuteMsg::TriggerRelay {
                     packet_sequence: "1".to_string(),
-                    pack_ack_msg: IbcPacketAckMsg::new(
+                    packet_ack_msg: IbcPacketAckMsg::new(
                         IbcAcknowledgement::new(
                             to_json_binary(
                                 // It's Ok because the ics20 transfer is supposed to go through. We want the ExecuteMsg to fail
