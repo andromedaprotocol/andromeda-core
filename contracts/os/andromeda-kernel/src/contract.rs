@@ -12,8 +12,8 @@ use cosmwasm_std::{
 
 use crate::ibc::{IBCLifecycleComplete, SudoMsg};
 use crate::reply::{
-    on_reply_create_ado, on_reply_execute_msg_with_funds, on_reply_ibc_hooks_packet_send,
-    on_reply_ibc_transfer,
+    on_reply_create_ado, on_reply_ibc_hooks_packet_send, on_reply_ibc_transfer,
+    on_reply_refund_ibc_transfer_with_msg,
 };
 use crate::state::CURR_CHAIN;
 use crate::{execute, query, sudo};
@@ -50,8 +50,12 @@ pub fn instantiate(
 pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractError> {
     if msg.result.is_err() {
         match ReplyId::from_repr(msg.id) {
-            Some(ReplyId::SendFundsWithMsg) => {
-                return on_reply_execute_msg_with_funds(deps.branch(), env.clone(), msg.clone());
+            Some(ReplyId::IBCTransferWithMsg) => {
+                return on_reply_refund_ibc_transfer_with_msg(
+                    deps.branch(),
+                    env.clone(),
+                    msg.clone(),
+                );
             }
             _ => {
                 return Err(ContractError::Std(StdError::generic_err(format!(

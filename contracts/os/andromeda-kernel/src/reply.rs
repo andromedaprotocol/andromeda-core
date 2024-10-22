@@ -167,7 +167,7 @@ pub fn on_reply_ibc_transfer(
 }
 
 // Handles the reply from an Execute Msg that was preceded by an ICS20 transfer
-pub fn on_reply_execute_msg_with_funds(
+pub fn on_reply_refund_ibc_transfer_with_msg(
     deps: DepsMut,
     env: Env,
     _msg: Reply,
@@ -176,10 +176,16 @@ pub fn on_reply_execute_msg_with_funds(
     // Construct the refund message
     let refund_msg = IbcMsg::Transfer {
         channel_id: refund_data.channel,
-        to_address: refund_data.sender,
-        amount: refund_data.funds,
+        to_address: refund_data.original_sender.clone(),
+        amount: refund_data.funds.clone(),
         timeout: env.block.time.plus_seconds(PACKET_LIFETIME).into(),
     };
     REFUND_DATA.remove(deps.storage);
-    Ok(Response::default().add_message(refund_msg))
+    Ok(Response::default()
+        .add_message(refund_msg)
+        .add_attributes(vec![
+            ("action", "refund_ibc_transfer_with_msg"),
+            ("recipient", refund_data.original_sender.as_str()),
+            ("amount", refund_data.funds.to_string().as_str()),
+        ]))
 }

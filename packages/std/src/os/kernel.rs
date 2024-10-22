@@ -163,6 +163,13 @@ pub struct Ics20PacketInfo {
 }
 
 #[cw_serde]
+pub struct RefundData {
+    pub original_sender: String,
+    pub funds: Coin,
+    pub channel: String,
+}
+
+#[cw_serde]
 pub struct SendMessageWithFundsResponse {}
 
 #[cw_serde]

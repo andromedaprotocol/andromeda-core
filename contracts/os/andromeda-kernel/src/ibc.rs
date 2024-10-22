@@ -6,7 +6,7 @@ use andromeda_std::amp::VFS_KEY;
 use andromeda_std::common::context::ExecuteContext;
 use andromeda_std::common::reply::ReplyId;
 use andromeda_std::error::{ContractError, Never};
-use andromeda_std::os::kernel::Ics20PacketInfo;
+use andromeda_std::os::kernel::RefundData;
 use andromeda_std::{
     amp::{messages::AMPMsg, AndrAddr},
     os::{kernel::IbcExecuteMsg, vfs::ExecuteMsg as VFSExecuteMsg},
@@ -169,10 +169,8 @@ pub fn do_ibc_packet_receive(
             // Save refund info
             REFUND_DATA.save(
                 deps.storage,
-                &Ics20PacketInfo {
-                    sender: original_sender,
-                    recipient: AndrAddr::from_string("addr".to_string()),
-                    message,
+                &RefundData {
+                    original_sender,
                     funds,
                     channel,
                 },
@@ -182,7 +180,7 @@ pub fn do_ibc_packet_receive(
                 .add_attributes(res.attributes)
                 .add_submessage(SubMsg::reply_always(
                     res.messages.first().unwrap().msg.clone(),
-                    ReplyId::SendFundsWithMsg.repr(),
+                    ReplyId::IBCTransferWithMsg.repr(),
                 ))
                 .add_events(res.events))
         }
