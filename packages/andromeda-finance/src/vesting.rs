@@ -1,10 +1,11 @@
 use andromeda_std::{
     amp::Recipient,
     andr_exec, andr_instantiate, andr_query,
-    common::{withdraw::WithdrawalType, Milliseconds},
+    common::{denom::validate_native_denom, withdraw::WithdrawalType, Milliseconds},
+    error::ContractError,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::Uint128;
+use cosmwasm_std::{DepsMut, Uint128};
 
 #[andr_instantiate]
 #[cw_serde]
@@ -90,4 +91,11 @@ pub struct BatchResponse {
     pub release_amount: WithdrawalType,
     /// The time at which the last claim took place in seconds.
     pub last_claimed_release_time: Milliseconds,
+}
+
+impl InstantiateMsg {
+    pub fn validate(&self, deps: &DepsMut) -> Result<(), ContractError> {
+        validate_native_denom(deps.as_ref(), self.denom.clone())?;
+        self.recipient.validate(&deps.as_ref())
+    }
 }
