@@ -1,4 +1,5 @@
 use crate::{
+    ibc::PACKET_LIFETIME,
     proto::MsgTransferResponse,
     state::{
         IBCHooksPacketSendState, OutgoingPacket, ADO_OWNER, CHANNEL_TO_EXECUTE_MSG,
@@ -13,8 +14,8 @@ use andromeda_std::{
     os::aos_querier::AOSQuerier,
 };
 use cosmwasm_std::{
-    ensure, wasm_execute, Addr, CosmosMsg, DepsMut, Empty, Env, IbcMsg, IbcTimeout, Reply,
-    Response, SubMsg, SubMsgResponse, SubMsgResult, Timestamp,
+    ensure, wasm_execute, Addr, CosmosMsg, DepsMut, Empty, Env, IbcMsg, Reply, Response, SubMsg,
+    SubMsgResponse, SubMsgResult,
 };
 
 /// Handles the reply from an ADO creation
@@ -168,7 +169,7 @@ pub fn on_reply_ibc_transfer(
 // Handles the reply from an Execute Msg that was preceded by an ICS20 transfer
 pub fn on_reply_execute_msg_with_funds(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     _msg: Reply,
 ) -> Result<Response, ContractError> {
     let refund_data = REFUND_DATA.load(deps.storage)?;
@@ -177,7 +178,7 @@ pub fn on_reply_execute_msg_with_funds(
         channel_id: refund_data.channel,
         to_address: refund_data.sender,
         amount: refund_data.funds,
-        timeout: IbcTimeout::with_timestamp(Timestamp::from_seconds(60 * 60)), // 1 hour timeout
+        timeout: env.block.time.plus_seconds(PACKET_LIFETIME).into(),
     };
     REFUND_DATA.remove(deps.storage);
     Ok(Response::default().add_message(refund_msg))

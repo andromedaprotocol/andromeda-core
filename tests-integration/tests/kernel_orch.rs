@@ -1351,7 +1351,7 @@ fn test_kernel_ibc_funds_and_execute_msg_unhappy() {
                         "ibc://osmosis/{}",
                         splitter_osmosis.address().unwrap()
                     )),
-                    // Send invalid message to the splitter
+                    // Send invalid message to the splitter. It's invalid because we'll be attaching funds to it and the msg rejects funds
                     message: to_json_binary(&SplitterExecuteMsg::UpdateLock {
                         lock_time: andromeda_std::common::expiration::Expiry::AtTime(
                             Milliseconds::zero(),
@@ -1381,6 +1381,12 @@ fn test_kernel_ibc_funds_and_execute_msg_unhappy() {
     let packet_lifetime = interchain
         .await_packets("juno", kernel_juno_send_request)
         .unwrap();
+    // Make sure the sender's balance decreased by 100
+    let balances = juno.query_all_balances(sender.clone()).unwrap();
+    assert_eq!(balances.len(), 1);
+    assert_eq!(balances[0].denom, "juno");
+    // Original amount
+    assert_eq!(balances[0].amount, Uint128::new(100000000000000 - 100));
 
     // For testing a successful outcome of the first packet sent out in the tx, you can use:
     if let IbcPacketOutcome::Success { .. } = &packet_lifetime.packets[0].outcome {
@@ -1403,6 +1409,7 @@ fn test_kernel_ibc_funds_and_execute_msg_unhappy() {
                     pack_ack_msg: IbcPacketAckMsg::new(
                         IbcAcknowledgement::new(
                             to_json_binary(
+                                // It's Ok because the ics20 transfer is supposed to go through. We want the ExecuteMsg to fail
                                 &AcknowledgementMsg::<SendMessageWithFundsResponse>::Ok(
                                     SendMessageWithFundsResponse {},
                                 ),
@@ -1428,9 +1435,10 @@ fn test_kernel_ibc_funds_and_execute_msg_unhappy() {
                 None,
             )
             .unwrap();
-
-        let _packet_lifetime =
-            interchain.await_and_check_packets("juno", kernel_juno_splitter_request.clone());
+        // We call UpadeLock, a Msg that doesn't accept funds. So it will error and should trigger a refund from the destination chain
+        let _packet_lifetime = interchain
+            .await_and_check_packets("juno", kernel_juno_splitter_request.clone())
+            .unwrap();
 
         // Make sure kernel has no funds
         let balances = juno
