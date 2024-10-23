@@ -143,7 +143,8 @@ pub fn do_ibc_packet_receive(
     };
     match packet_msg {
         IbcExecuteMsg::SendMessage { recipient, message } => {
-            let amp_msg = AMPMsg::new(recipient, message, None);
+            let amp_msg = AMPMsg::new(recipient.clone(), message, None);
+            println!("the recipient is {:?}", recipient);
             let res = execute::send(execute_env, amp_msg)?;
 
             Ok(IbcReceiveResponse::new()

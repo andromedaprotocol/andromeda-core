@@ -684,7 +684,9 @@ impl MsgHandler {
             data: to_json_binary(&kernel_msg)?,
             timeout: env.block.time.plus_seconds(PACKET_LIFETIME).into(),
         };
-
+        println!("ibc direct recipient: {:?}", recipient);
+        println!("ibc direct message: {:?}", kernel_msg);
+        println!("ibc direct msg: {:?}", msg);
         Ok(Response::default()
             .add_attribute(format!("method:{sequence}"), "execute_send_message")
             .add_attribute(format!("channel:{sequence}"), channel)
