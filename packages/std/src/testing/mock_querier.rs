@@ -341,6 +341,7 @@ impl MockAndromedaQuerier {
     fn handle_adodb_query(&self, msg: &Binary) -> QuerierResult {
         match from_json(msg).unwrap() {
             ADODBQueryMsg::ADOType { code_id } => match code_id {
+                5 => SystemResult::Ok(ContractResult::Ok(to_json_binary(&"point").unwrap())),
                 3 => SystemResult::Ok(ContractResult::Ok(to_json_binary(&"app-contract").unwrap())),
                 1 => SystemResult::Ok(ContractResult::Ok(to_json_binary(&"ADOType").unwrap())),
                 _ => SystemResult::Ok(ContractResult::Err("Invalid Code ID".to_string())),
@@ -565,6 +566,8 @@ impl MockAndromedaQuerier {
                     SystemResult::Ok(ContractResult::Ok(to_json_binary("app-contract").unwrap()))
                 } else if key == "1" {
                     SystemResult::Ok(ContractResult::Ok(to_json_binary("ADOType").unwrap()))
+                } else if key == "5" {
+                    SystemResult::Ok(ContractResult::Ok(to_json_binary("point").unwrap()))
                 } else {
                     SystemResult::Ok(ContractResult::Ok(Binary::default()))
                 }
