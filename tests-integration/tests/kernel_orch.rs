@@ -422,13 +422,11 @@ fn test_kernel_ibc_execute_only_multi_hop() {
         .unwrap();
     let andromeda = interchain.get_chain("andromeda").unwrap();
     let kernel_andromeda = KernelContract::new(andromeda.clone());
-    kernel_andromeda.upload().unwrap();
-    // Move Andromeda-related code here for clarity //
-
     let counter_andromeda = CounterContract::new(andromeda.clone());
     let vfs_andromeda = VFSContract::new(andromeda.clone());
     let adodb_andromeda = ADODBContract::new(andromeda.clone());
 
+    kernel_andromeda.upload().unwrap();
     counter_andromeda.upload().unwrap();
     vfs_andromeda.upload().unwrap();
     adodb_andromeda.upload().unwrap();
@@ -464,6 +462,16 @@ fn test_kernel_ibc_execute_only_multi_hop() {
         )
         .unwrap();
 
+    kernel_andromeda
+        .execute(
+            &ExecuteMsg::UpsertKeyAddress {
+                key: "adodb".to_string(),
+                value: adodb_andromeda.address().unwrap().into_string(),
+            },
+            None,
+        )
+        .unwrap();
+
     // Set up channel from osmosis to andromeda
     let channel_receipt_2 = interchain
         .create_contract_channel(&kernel_osmosis, &kernel_andromeda, "andr-kernel-1", None)
@@ -493,7 +501,7 @@ fn test_kernel_ibc_execute_only_multi_hop() {
         .execute(
             &ExecuteMsg::AssignChannels {
                 ics20_channel_id: None,
-                direct_channel_id: Some(osmosis_channel.to_string()),
+                direct_channel_id: Some(juno_channel.to_string()),
                 chain: "osmosis".to_string(),
                 kernel_address: kernel_osmosis.address().unwrap().into_string(),
             },
@@ -542,17 +550,17 @@ fn test_kernel_ibc_execute_only_multi_hop() {
         .unwrap();
 
     let packet_lifetime = interchain
-        .await_packets("juno", kernel_juno_send_request.clone())
+        .await_and_check_packets("juno", kernel_juno_send_request.clone())
         .unwrap();
 
-    // For testing a successful outcome of the first packet sent out in the tx, you can use:
-    if let IbcPacketOutcome::Success { .. } = &packet_lifetime.packets[0].outcome {
-        // Packet has been successfully acknowledged and decoded, the transaction has gone through correctly
-    } else {
-        panic!("packet timed out");
-        // There was a decode error or the packet timed out
-        // Else the packet timed-out, you may have a relayer error or something is wrong in your application
-    };
+    // // For testing a successful outcome of the first packet sent out in the tx, you can use:
+    // if let IbcPacketOutcome::Success { .. } = &packet_lifetime.packets[0].outcome {
+    //     // Packet has been successfully acknowledged and decoded, the transaction has gone through correctly
+    // } else {
+    //     panic!("packet timed out");
+    //     // There was a decode error or the packet timed out
+    //     // Else the packet timed-out, you may have a relayer error or something is wrong in your application
+    // };
 
     // Send a message to the counter on andromeda
 
