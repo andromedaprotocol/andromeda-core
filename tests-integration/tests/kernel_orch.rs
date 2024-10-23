@@ -249,7 +249,12 @@ fn test_kernel_ibc_funds_only() {
     // Here `juno-1` is the chain-id and `juno` is the address prefix for this chain
     let sender = Addr::unchecked("sender_for_all_chains").into_string();
 
-    let interchain = MockInterchainEnv::new(vec![("juno", &sender), ("osmosis", &sender)]);
+    let interchain = MockInterchainEnv::new(vec![
+        ("juno", &sender),
+        ("osmosis", &sender),
+        // Dummy chain to create unequal ports to test counterparty denom properly
+        ("cosmoshub", &sender),
+    ]);
 
     let juno = interchain.get_chain("juno").unwrap();
     let osmosis = interchain.get_chain("osmosis").unwrap();
@@ -298,6 +303,19 @@ fn test_kernel_ibc_funds_only() {
         .get_chain("juno")
         .unwrap()
         .channel
+        .unwrap();
+
+    // Set up channel from osmosis to cosmoshub for ICS20 transfers so that channel-0 is used on osmosis
+    // Later when we create channel with juno, channel-1 will be used on osmosis
+    let _channel_receipt = interchain
+        .create_channel(
+            "osmosis",
+            "cosmoshub",
+            &PortId::transfer(),
+            &PortId::transfer(),
+            "ics20-1",
+            None,
+        )
         .unwrap();
 
     // Set up channel from juno to osmosis for ICS20 transfers
@@ -425,14 +443,13 @@ fn test_kernel_ibc_funds_only() {
         )
         .unwrap();
 
+    let recipient = "osmo1qzskhrca90qy2yjjxqzq4yajy842x7c50xq33d";
+
     let kernel_juno_send_request = kernel_juno
         .execute(
             &ExecuteMsg::Send {
                 message: AMPMsg {
-                    recipient: AndrAddr::from_string(format!(
-                        "ibc://osmosis/{}",
-                        kernel_osmosis.address().unwrap()
-                    )),
+                    recipient: AndrAddr::from_string(format!("ibc://osmosis/{}", recipient)),
                     message: Binary::default(),
                     funds: vec![Coin {
                         denom: "juno".to_string(),
@@ -458,21 +475,75 @@ fn test_kernel_ibc_funds_only() {
         .await_packets("juno", kernel_juno_send_request)
         .unwrap();
 
+    let ibc_denom = format!("ibc/{}/{}", channel.1.channel.unwrap().as_str(), "juno");
+
     // For testing a successful outcome of the first packet sent out in the tx, you can use:
     if let IbcPacketOutcome::Success { .. } = &packet_lifetime.packets[0].outcome {
         // Packet has been successfully acknowledged and decoded, the transaction has gone through correctly
+        // Check recipient balance
+        let balances = osmosis
+            .query_all_balances(kernel_osmosis.address().unwrap())
+            .unwrap();
+        assert_eq!(balances.len(), 1);
+        assert_eq!(balances[0].denom, ibc_denom);
+        assert_eq!(balances[0].amount.u128(), 100);
     } else {
         panic!("packet timed out");
         // There was a decode error or the packet timed out
         // Else the packet timed-out, you may have a relayer error or something is wrong in your application
     };
+
+    // Register trigger address
+    kernel_juno
+        .execute(
+            &ExecuteMsg::UpsertKeyAddress {
+                key: "trigger_key".to_string(),
+                value: sender,
+            },
+            None,
+        )
+        .unwrap();
+
+    // TODO: This is failing
+    // // Construct an Execute msg from the kernel on juno inteded for the splitter on osmosis
+    // let kernel_juno_trigger_request = kernel_juno
+    //     .execute(
+    //         &ExecuteMsg::TriggerRelay {
+    //             packet_sequence: "1".to_string(),
+    //         },
+    //         None,
+    //     )
+    //     .unwrap();
+
+    // let packet_lifetime = interchain
+    //     .wait_ibc("juno", kernel_juno_trigger_request)
+    //     .unwrap();
+
+    // // For testing a successful outcome of the first packet sent out in the tx, you can use:
+    // if let IbcPacketOutcome::Success { .. } = &packet_lifetime.packets[0].outcome {
+    //     // Packet has been successfully acknowledged and decoded, the transaction has gone through correctly
+
+    //     // Check recipient balance after trigger execute msg
+    //     let balances = osmosis.query_all_balances(recipient).unwrap();
+    //     assert_eq!(balances.len(), 1);
+    //     assert_eq!(balances[0].denom, ibc_denom);
+    //     assert_eq!(balances[0].amount.u128(), 100);
+    // } else {
+    //     panic!("packet timed out");
+    //     // There was a decode error or the packet timed out
+    //     // Else the packet timed-out, you may have a relayer error or something is wrong in your application
+    // };
 }
 #[test]
 fn test_kernel_ibc_funds_and_execute_msg() {
     // Here `juno-1` is the chain-id and `juno` is the address prefix for this chain
     let sender = Addr::unchecked("sender_for_all_chains").into_string();
 
-    let interchain = MockInterchainEnv::new(vec![("juno", &sender), ("osmosis", &sender)]);
+    let interchain = MockInterchainEnv::new(vec![
+        ("juno", &sender),
+        ("osmosis", &sender),
+        ("cosmoshub", &sender),
+    ]);
 
     let juno = interchain.get_chain("juno").unwrap();
     let osmosis = interchain.get_chain("osmosis").unwrap();
@@ -523,6 +594,19 @@ fn test_kernel_ibc_funds_and_execute_msg() {
         .get_chain("juno")
         .unwrap()
         .channel
+        .unwrap();
+
+    // Set up channel from juno to cosmoshub for ICS20 transfers so that channel-0 is used on osmosis
+    // Later when we create channel with juno, channel-1 will be used on juno
+    let _channel_receipt = interchain
+        .create_channel(
+            "osmosis",
+            "cosmoshub",
+            &PortId::transfer(),
+            &PortId::transfer(),
+            "ics20-1",
+            None,
+        )
         .unwrap();
 
     // Set up channel from juno to osmosis for ICS20 transfers
@@ -743,6 +827,15 @@ fn test_kernel_ibc_funds_and_execute_msg() {
 
     // For testing a successful outcome of the first packet sent out in the tx, you can use:
     if let IbcPacketOutcome::Success { .. } = &packet_lifetime.packets[0].outcome {
+        let ibc_denom = format!("ibc/{}/{}", channel.1.channel.unwrap().as_str(), "juno");
+        // Check kernel balance before trigger execute msg
+        let balances = osmosis
+            .query_all_balances(kernel_osmosis.address().unwrap())
+            .unwrap();
+        assert_eq!(balances.len(), 1);
+        assert_eq!(balances[0].denom, ibc_denom);
+        assert_eq!(balances[0].amount.u128(), 100);
+
         // Register trigger address
         kernel_juno
             .execute(
@@ -753,7 +846,6 @@ fn test_kernel_ibc_funds_and_execute_msg() {
                 None,
             )
             .unwrap();
-
         // Construct an Execute msg from the kernel on juno inteded for the splitter on osmosis
         let kernel_juno_splitter_request = kernel_juno
             .execute(
@@ -787,12 +879,6 @@ fn test_kernel_ibc_funds_and_execute_msg() {
                 None,
             )
             .unwrap();
-        let balances = osmosis
-            .query_all_balances(kernel_osmosis.address().unwrap())
-            .unwrap();
-        assert_eq!(balances.len(), 1);
-        assert_eq!(balances[0].denom, "ibc/channel-0/juno");
-        assert_eq!(balances[0].amount.u128(), 100);
 
         let packet_lifetime = interchain
             .await_packets("juno", kernel_juno_splitter_request)
@@ -801,6 +887,12 @@ fn test_kernel_ibc_funds_and_execute_msg() {
         // For testing a successful outcome of the first packet sent out in the tx, you can use:
         if let IbcPacketOutcome::Success { .. } = &packet_lifetime.packets[0].outcome {
             // Packet has been successfully acknowledged and decoded, the transaction has gone through correctly
+
+            // Check recipient balance after trigger execute msg
+            let balances = osmosis.query_all_balances(recipient).unwrap();
+            assert_eq!(balances.len(), 1);
+            assert_eq!(balances[0].denom, ibc_denom);
+            assert_eq!(balances[0].amount.u128(), 100);
         } else {
             panic!("packet timed out");
             // There was a decode error or the packet timed out
