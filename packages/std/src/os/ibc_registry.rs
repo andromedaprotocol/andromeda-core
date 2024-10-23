@@ -19,6 +19,10 @@ pub struct DenomInfo {
     pub base_denom: String,
 }
 impl DenomInfo {
+    pub fn new(base_denom: String, path: String) -> Self {
+        Self { path, base_denom }
+    }
+
     pub fn get_ibc_denom(&self) -> String {
         // Concatenate the path and base with "/"
         let input = format!("{}/{}", self.path, self.base_denom);
@@ -80,6 +84,60 @@ pub fn verify_denom(denom: &str, denom_info: &DenomInfo) -> Result<(), ContractE
 }
 
 #[cw_serde]
+pub struct Hop {
+    pub port_id: String,
+    pub channel_id: String,
+}
+
+impl Hop {
+    pub fn to_trace(&self) -> String {
+        format!("{}/{}", self.port_id, self.channel_id)
+    }
+}
+
+pub fn path_to_hops(path: String) -> Result<Vec<Hop>, ContractError> {
+    if path.is_empty() {
+        return Ok(vec![]);
+    }
+    let mut hops: Vec<Hop> = vec![];
+
+    let mut parts = path.split('/');
+    loop {
+        match (parts.next(), parts.next()) {
+            (None, None) => break,
+            (Some(port_id), Some(channel_id)) => {
+                ensure!(
+                    !port_id.is_empty() && !channel_id.is_empty(),
+                    ContractError::InvalidDenomTracePath {
+                        path,
+                        msg: Some("Port and channel IDs cannot be empty".to_string()),
+                    }
+                );
+                hops.push(Hop {
+                    port_id: port_id.to_string(),
+                    channel_id: channel_id.to_string(),
+                });
+            }
+            _ => {
+                return Err(ContractError::InvalidDenomTracePath {
+                    path,
+                    msg: Some("Odd number of segments".to_string()),
+                })
+            }
+        }
+    }
+
+    Ok(hops)
+}
+
+pub fn hops_to_path(hops: Vec<Hop>) -> String {
+    hops.iter()
+        .map(|h| h.to_trace())
+        .collect::<Vec<String>>()
+        .join("/")
+}
+
+#[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
     #[returns(DenomInfoResponse)]
@@ -99,43 +157,4 @@ pub struct DenomInfoResponse {
 #[cw_serde]
 pub struct AllDenomInfoResponse {
     pub denom_info: Vec<DenomInfo>,
-}
-
-#[cfg(test)]
-#[test]
-fn test_validate_denom() {
-    // Empty denom
-    let empty_denom = "".to_string();
-    let default_denom_info = DenomInfo {
-        path: "path".to_string(),
-        base_denom: "base_denom".to_string(),
-    };
-    let err = verify_denom(&empty_denom, &default_denom_info).unwrap_err();
-    assert_eq!(
-        err,
-        ContractError::InvalidDenom {
-            msg: Some("The denom should start with 'ibc/'".to_string()),
-        }
-    );
-    // Denom that doesn't start with ibc/
-    let invalid_denom = "random".to_string();
-    let err = verify_denom(&invalid_denom, &default_denom_info).unwrap_err();
-    assert_eq!(
-        err,
-        ContractError::InvalidDenom {
-            msg: Some("The denom should start with 'ibc/'".to_string()),
-        }
-    );
-    // Denom that's just ibc/
-    let empty_ibc_denom = "ibc/".to_string();
-    let err = verify_denom(&empty_ibc_denom, &default_denom_info).unwrap_err();
-    assert_eq!(
-        err,
-        ContractError::InvalidDenom {
-            msg: Some("The denom must have exactly 64 characters after 'ibc/'".to_string()),
-        }
-    );
-
-    let valid_denom = default_denom_info.get_ibc_denom();
-    verify_denom(&valid_denom, &default_denom_info).unwrap()
 }

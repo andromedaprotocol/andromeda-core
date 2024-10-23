@@ -7,17 +7,15 @@ use andromeda_std::common::has_coins_merged;
 use andromeda_std::common::reply::ReplyId;
 use andromeda_std::error::ContractError;
 use andromeda_std::os::aos_querier::AOSQuerier;
+use andromeda_std::os::ibc_registry::path_to_hops;
 use andromeda_std::os::kernel::{ChannelInfo, IbcExecuteMsg, Ics20PacketInfo, InternalMsg};
 
-use crate::ibc::{generate_transfer_message, PACKET_LIFETIME};
+use crate::ibc::{generate_ibc_hook_transfer_message, get_counterparty_denom, PACKET_LIFETIME};
 use andromeda_std::os::vfs::vfs_resolve_symlink;
 use cosmwasm_std::{
     attr, ensure, to_json_binary, Addr, BankMsg, Binary, Coin, ContractInfoResponse, CosmosMsg,
     DepsMut, Env, IbcMsg, MessageInfo, Response, StdError, SubMsg, WasmMsg,
 };
-
-#[cfg(target_arch = "wasm32")]
-use crate::ibc::hash_denom_trace;
 
 use crate::query;
 use crate::state::{
@@ -74,7 +72,7 @@ pub fn trigger_relay(
 }
 
 fn handle_ibc_transfer_funds_reply(
-    _deps: DepsMut,
+    deps: DepsMut,
     _info: MessageInfo,
     env: Env,
     _ctx: Option<AMPPkt>,
@@ -103,24 +101,37 @@ fn handle_ibc_transfer_funds_reply(
             error: Some(format!("Direct channel not found for chain {}", chain)),
         })?;
 
-    #[cfg(target_arch = "wasm32")]
-    let adjusted_funds = Coin::new(
+    // TODO: We should send denom info to the counterparty chain with amp message
+    let (counterparty_denom, _counterparty_denom_info) = get_counterparty_denom(
+        &deps.as_ref(),
+        &ics20_packet_info.funds.denom,
+        &ics20_packet_info.channel,
+    )?;
+    #[allow(unused_assignments)]
+    let mut adjusted_funds = Coin::new(
         ics20_packet_info.funds.amount.u128(),
-        hash_denom_trace(
-            format!(
-                "{}/{}/{}",
-                "transfer", ics20_packet_info.channel, ics20_packet_info.funds.denom
-            )
-            .as_str(),
-        ),
+        counterparty_denom.clone(),
     );
 
     // Funds are not correctly hashed when using cw-orchestrator so instead we construct the denom manually
     #[cfg(not(target_arch = "wasm32"))]
-    let adjusted_funds = Coin::new(
-        ics20_packet_info.funds.amount.u128(),
-        format!("ibc/{}/{}", channel, ics20_packet_info.funds.denom),
-    );
+    if counterparty_denom.starts_with("ibc/") {
+        let hops = path_to_hops(_counterparty_denom_info.path)?;
+        // cw-orch doesn't correctly hash the denom so we need to manually construct it
+        let adjusted_path = hops
+            .iter()
+            .map(|hop| hop.channel_id.clone())
+            .collect::<Vec<String>>()
+            .join("/");
+
+        adjusted_funds = Coin::new(
+            ics20_packet_info.funds.amount.u128(),
+            format!(
+                "ibc/{}/{}",
+                adjusted_path, _counterparty_denom_info.base_denom
+            ),
+        );
+    }
     let kernel_msg = IbcExecuteMsg::SendMessageWithFunds {
         recipient: AndrAddr::from_string(ics20_packet_info.recipient.clone().get_raw_path()),
         message: ics20_packet_info.message.clone(),
@@ -802,14 +813,14 @@ impl MsgHandler {
         outgoing_packets.push(outgoing_state);
         OUTGOING_IBC_HOOKS_PACKETS.save(deps.storage, &outgoing_packets)?;
 
-        let msg = generate_transfer_message(
+        let msg = generate_ibc_hook_transfer_message(
             &deps.as_ref(),
-            recipient.clone(),
-            message.clone(),
-            msg_funds.clone(),
-            channel.clone(),
-            env.contract.address.to_string(),
-            channel_info.kernel_address.clone(),
+            recipient,
+            message,
+            msg_funds,
+            &channel,
+            env.contract.address.as_str(),
+            &channel_info.kernel_address,
             env.block.time,
         )?;
         Ok(Response::default()

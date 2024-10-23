@@ -1,11 +1,14 @@
 use crate::ack::{make_ack_fail, make_ack_success};
 use crate::execute;
-use crate::proto::{DenomTrace, MsgTransfer, QueryDenomTraceRequest};
+use crate::proto::MsgTransfer;
 use crate::state::{CHANNEL_TO_CHAIN, KERNEL_ADDRESSES};
-use andromeda_std::amp::VFS_KEY;
+use andromeda_std::amp::{IBC_REGISTRY_KEY, VFS_KEY};
 use andromeda_std::common::context::ExecuteContext;
 use andromeda_std::common::reply::ReplyId;
 use andromeda_std::error::{ContractError, Never};
+use andromeda_std::os::aos_querier::AOSQuerier;
+use andromeda_std::os::ibc_registry::DenomInfo;
+use andromeda_std::os::{IBC_VERSION, TRANSFER_PORT};
 use andromeda_std::{
     amp::{messages::AMPMsg, AndrAddr},
     os::{kernel::IbcExecuteMsg, vfs::ExecuteMsg as VFSExecuteMsg},
@@ -19,10 +22,7 @@ use cosmwasm_std::{
     IbcChannelConnectMsg, IbcChannelOpenMsg, IbcOrder, IbcPacketAckMsg, IbcPacketReceiveMsg,
     IbcPacketTimeoutMsg, IbcReceiveResponse, MessageInfo, SubMsg, Timestamp, WasmMsg,
 };
-use itertools::Itertools;
-use sha256::digest;
 
-pub const IBC_VERSION: &str = "andr-kernel-1";
 pub const PACKET_LIFETIME: u64 = 604_800u64;
 
 #[cw_serde]
@@ -262,148 +262,59 @@ pub fn validate_order_and_version(
     }))
 }
 
-// IBC transfer port
-const TRANSFER_PORT: &str = "transfer";
+pub fn get_counterparty_denom(
+    deps: &Deps,
+    denom: &str,
+    src_channel: &str,
+) -> Result<(String, DenomInfo), ContractError> {
+    // if denom is ibc denom, get denom trace
+    let denom_trace = if denom.starts_with("ibc/") {
+        let ibc_registry_addr = KERNEL_ADDRESSES.load(deps.storage, IBC_REGISTRY_KEY)?;
+        AOSQuerier::denom_trace_getter(&deps.querier, &ibc_registry_addr, denom)?
+    } else {
+        // if not ibc denom, use base denom
+        DenomInfo::new(denom.to_string(), "".to_string())
+    };
 
-fn generate_ibc_denom(channel: String, denom: String) -> String {
-    let path = format!("{TRANSFER_PORT}/{channel}/{denom}");
-    format!("ibc/{}", digest(path).to_uppercase())
+    let (counterparty_denom, counterparty_denom_trace) =
+        AOSQuerier::get_counterparty_denom(&deps.querier, &denom_trace, src_channel)?;
+    Ok((counterparty_denom, counterparty_denom_trace))
 }
 
 #[allow(clippy::too_many_arguments)]
-pub fn generate_transfer_message(
+pub fn generate_ibc_hook_transfer_message(
     deps: &Deps,
-    recipient: AndrAddr,
-    message: Binary,
-    funds: Coin,
-    channel: String,
-    from_addr: String,
-    to_addr: String,
+    recipient: &AndrAddr,
+    message: &Binary,
+    fund: &Coin,
+    channel: &str,
+    from_addr: &str,
+    to_addr: &str,
     time: Timestamp,
 ) -> Result<MsgTransfer, ContractError> {
-    // Convert funds denom
-    let new_denom = if funds.denom.starts_with("ibc/") {
-        let hops = unwrap_denom_path(deps, &funds.denom)?;
-        /*
-        Hops are ordered from most recent hop to the first hop, we check if we're unwrapping by checking the channel of the most recent hop.
-        If the channels match we're unwrapping and the receiving denom is the local denom of the previous hop (hop[1]).
-        Otherwise we're wrapping and we proceed as expected.
-        */
-        if !hops[0].on.eq(&Some(channel.clone())) {
-            generate_ibc_denom(channel.clone(), hops[0].local_denom.clone())
-        } else {
-            hops[1].local_denom.clone()
-        }
-    } else {
-        generate_ibc_denom(channel.clone(), funds.clone().denom)
-    };
-    let new_coin = Coin::new(funds.amount.u128(), new_denom);
-    let msg = AMPMsg::new(recipient.get_raw_path(), message, Some(vec![new_coin]));
-    let serialized = msg.to_ibc_hooks_memo(to_addr.clone(), from_addr.clone());
+    let (counterparty_denom, _) = get_counterparty_denom(deps, &fund.denom, channel)?;
+    let new_coin = Coin::new(fund.amount.u128(), counterparty_denom);
+
+    let msg = AMPMsg::new(
+        recipient.get_raw_path(),
+        message.clone(),
+        Some(vec![new_coin]),
+    );
+    let serialized = msg.to_ibc_hooks_memo(to_addr.to_string(), from_addr.to_string());
 
     let ts = time.plus_seconds(PACKET_LIFETIME);
 
     Ok(MsgTransfer {
         source_port: TRANSFER_PORT.into(),
-        source_channel: channel,
-        token: Some(funds.into()),
-        sender: from_addr,
-        receiver: to_addr,
+        source_channel: channel.to_string(),
+        token: Some(fund.clone().into()),
+        sender: from_addr.to_string(),
+        receiver: to_addr.to_string(),
         timeout_height: None,
         timeout_timestamp: Some(ts.nanos()),
         memo: serialized,
     })
 }
 
-// Methods adapted from Osmosis Registry contract found here:
-// https://github.com/osmosis-labs/osmosis/blob/main/cosmwasm/packages/registry/src/registry.rs#L14
-#[cw_serde]
-pub struct MultiHopDenom {
-    pub local_denom: String,
-    pub on: Option<String>,
-}
-
-pub fn hash_denom_trace(unwrapped: &str) -> String {
-    format!("ibc/{}", sha256::digest(unwrapped))
-}
-
-pub fn unwrap_denom_path(deps: &Deps, denom: &str) -> Result<Vec<MultiHopDenom>, ContractError> {
-    // Check that the denom is an IBC denom
-    if !denom.starts_with("ibc/") {
-        return Ok(vec![MultiHopDenom {
-            local_denom: denom.to_string(),
-            on: None,
-        }]);
-    }
-
-    // Get the denom trace
-    let res = QueryDenomTraceRequest {
-        hash: denom.to_string(),
-    }
-    .query(&deps.querier)
-    .map_err(|_| ContractError::InvalidDenomTrace {
-        denom: denom.to_string(),
-    })?;
-
-    let DenomTrace { path, base_denom } = match res.denom_trace {
-        Some(denom_trace) => Ok(denom_trace),
-        None => Err(ContractError::InvalidDenomTrace {
-            denom: denom.into(),
-        }),
-    }?;
-
-    deps.api.debug(&format!("procesing denom trace {path}"));
-    // Let's iterate over the parts of the denom trace and extract the
-    // chain/channels into a more useful structure: MultiHopDenom
-    let mut hops: Vec<MultiHopDenom> = vec![];
-    let mut rest: &str = &path;
-    let parts = path.split('/');
-
-    for chunk in &parts.chunks(2) {
-        let Some((port, channel)) = chunk.take(2).collect_tuple() else {
-            return Err(ContractError::InvalidDenomTracePath {
-                path: path.clone(),
-                denom: denom.into(),
-            });
-        };
-
-        // Check that the port is "transfer"
-        if port != TRANSFER_PORT {
-            return Err(ContractError::InvalidTransferPort { port: port.into() });
-        }
-
-        // Check that the channel is valid
-        let full_trace = rest.to_owned() + "/" + &base_denom;
-        hops.push(MultiHopDenom {
-            local_denom: hash_denom_trace(&full_trace),
-            on: Some(channel.to_string()),
-        });
-
-        rest = rest
-            .trim_start_matches(&format!("{port}/{channel}"))
-            .trim_start_matches('/'); // hops other than first and last will have this slash
-    }
-
-    hops.push(MultiHopDenom {
-        local_denom: base_denom,
-        on: None,
-    });
-
-    Ok(hops)
-}
-
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_generate_ibc_denom() {
-        let channel = "channel-141";
-        let denom = "uosmo";
-
-        let expected = "ibc/14F9BC3E44B8A9C1BE1FB08980FAB87034C9905EF17CF2F5008FC085218811CC";
-        let res = generate_ibc_denom(channel.to_string(), denom.to_string());
-
-        assert_eq!(expected, res)
-    }
-}
+mod tests {}
