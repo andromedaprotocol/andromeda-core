@@ -98,12 +98,6 @@ fn handle_ibc_transfer_funds_reply(
     channel_info: ChannelInfo,
     ics20_packet_info: Ics20PacketInfo,
 ) -> Result<Response, ContractError> {
-    ensure!(
-        !Binary::default().eq(&ics20_packet_info.message),
-        ContractError::InvalidPacket {
-            error: Some("The transfer funds reply must contain a message".to_string())
-        }
-    );
     let ics20_packet_info = ics20_packet_info.clone();
     let chain =
         ics20_packet_info
