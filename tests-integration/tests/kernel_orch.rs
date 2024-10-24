@@ -549,7 +549,7 @@ fn test_kernel_ibc_execute_only_multi_hop() {
         )
         .unwrap();
 
-    let packet_lifetime = interchain
+    interchain
         .await_and_check_packets("juno", kernel_juno_send_request.clone())
         .unwrap();
 
