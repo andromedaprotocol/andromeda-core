@@ -28,7 +28,7 @@ cw-storage-plus = { workspace = true }
 andromeda-std = { workspace = true }
 semver = { workspace = true }
 cw-asset = { workspace = true }
-cw-orch = "=0.23.0"
+cw-orch = "=0.24.1"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 cw-multi-test = { workspace = true, optional = true }

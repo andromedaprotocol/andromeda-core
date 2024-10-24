@@ -101,7 +101,7 @@ dependencies = [
  "cosmwasm-std",
  "cw-asset",
  "cw-multi-test",
- "cw-orch 0.23.0",
+ "cw-orch 0.24.1",
  "cw-storage-plus 1.2.0",
  "semver",
 ]
@@ -188,7 +188,7 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-multi-test",
- "cw-orch 0.23.0",
+ "cw-orch 0.24.1",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
  "cw20",
@@ -345,7 +345,7 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-multi-test",
- "cw-orch 0.23.0",
+ "cw-orch 0.24.1",
  "cw-storage-plus 1.2.0",
  "cw20",
 ]
@@ -420,7 +420,7 @@ dependencies = [
  "cosmwasm-std",
  "cw-controllers",
  "cw-multi-test",
- "cw-orch 0.23.0",
+ "cw-orch 0.24.1",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
  "cw2 1.1.2",
@@ -440,7 +440,7 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-multi-test",
- "cw-orch 0.23.0",
+ "cw-orch 0.24.1",
  "cw-storage-plus 1.2.0",
  "hex",
  "itertools 0.10.5",
@@ -636,7 +636,7 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-multi-test",
- "cw-orch 0.23.0",
+ "cw-orch 0.24.1",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
 ]
@@ -803,7 +803,7 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-multi-test",
- "cw-orch 0.23.0",
+ "cw-orch 0.24.1",
  "cw-storage-plus 1.2.0",
  "serde",
 ]
@@ -1657,29 +1657,30 @@ dependencies = [
 
 [[package]]
 name = "cw-orch-interchain"
-version = "0.1.0"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f2fcf7defbb524e4db4fafd920732de1a7a9ef467b28116223b1e153971e5955"
+checksum = "ba25ad0bf28edb98a8eb00a4bb1a922f5e9555b52512c4017cae36a676d671ed"
 dependencies = [
  "cosmwasm-std",
  "cw-orch-interchain-core",
  "cw-orch-interchain-mock",
  "cw1",
  "cw1-whitelist",
+ "ibc-relayer-types",
  "speculoos",
 ]
 
 [[package]]
 name = "cw-orch-interchain-core"
-version = "0.2.2"
+version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "64ac27dd32926b7f529ed0905e7d5c610126d5eddd8381afd5918831b21c900d"
+checksum = "cbe966c1c30f655f704ab201b15219e4e5c01592465bbda8b39fb015e79873b2"
 dependencies = [
  "base64 0.21.7",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-orch-core",
- "cw-orch-mock 0.22.4",
+ "cw-orch-mock 0.23.2",
  "futures",
  "ibc-relayer-types",
  "log",
@@ -1693,16 +1694,16 @@ dependencies = [
 
 [[package]]
 name = "cw-orch-interchain-mock"
-version = "0.2.0"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e2042d10d65038139d8c2f0a1010ae050b67a43da9b6ee4f4fc2936b2d998b36"
+checksum = "94e03b82fb8ae2dd93f04fce878edeb688ba9ceaa7efc27d35f4213a8eadecfa"
 dependencies = [
  "anyhow",
  "cosmrs 0.15.0",
  "cosmwasm-std",
  "cw-orch-core",
  "cw-orch-interchain-core",
- "cw-orch-mock 0.22.4",
+ "cw-orch-mock 0.23.2",
  "cw-utils 1.0.3",
  "ibc-relayer-types",
  "log",
@@ -4849,7 +4850,7 @@ dependencies = [
  "cosmwasm-std",
  "cw-asset",
  "cw-multi-test",
- "cw-orch 0.23.0",
+ "cw-orch 0.24.1",
  "cw-orch-interchain",
  "cw20",
  "cw721 0.18.0",

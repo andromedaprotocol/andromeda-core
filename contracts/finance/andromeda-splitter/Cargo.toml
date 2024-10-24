@@ -20,7 +20,7 @@ cosmwasm-std = { workspace = true }
 cosmwasm-schema = { workspace = true }
 cw-storage-plus = { workspace = true }
 cw-utils = { workspace = true }
-cw-orch = "=0.23.0"
+cw-orch = "=0.24.1"
 
 andromeda-std = { workspace = true }
 andromeda-finance = { workspace = true }

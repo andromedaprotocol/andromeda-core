@@ -12,7 +12,6 @@ impl<Chain> Uploadable for KernelContract<Chain> {
         Box::new(
             ContractWrapper::new_with_empty(execute, instantiate, query)
                 .with_reply(reply)
-                .with_reply(crate::contract::reply)
                 .with_ibc(
                     crate::ibc::ibc_channel_open,
                     crate::ibc::ibc_channel_connect,
