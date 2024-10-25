@@ -3,7 +3,7 @@ pub mod aos;
 use aos::InterchainAOS;
 use cosmwasm_std::{Addr, Coin};
 use cw_orch::mock::MockBase;
-use cw_orch_interchain::{InterchainEnv, MockInterchainEnv};
+use cw_orch_interchain::{prelude::PortId, InterchainEnv, MockInterchainEnv};
 
 pub const DEFAULT_SENDER: &str = "sender_for_all_chains";
 
@@ -115,9 +115,26 @@ impl InterchainTestEnv {
                 None,
             )
             .unwrap();
+        let transfer_channel_receipt = self
+            .interchain
+            .create_channel(
+                &chain_one.chain_name,
+                &chain_two.chain_name,
+                &PortId::transfer(),
+                &PortId::transfer(),
+                "ics20-1",
+                None,
+            )
+            .unwrap();
 
         // Get the channel from the receipt for chain one
-        let channel = channel_receipt
+        let direct_channel = channel_receipt
+            .interchain_channel
+            .get_chain(&chain_one.chain_name)
+            .unwrap()
+            .channel
+            .unwrap();
+        let transfer_channel = transfer_channel_receipt
             .interchain_channel
             .get_chain(&chain_one.chain_name)
             .unwrap()
@@ -125,12 +142,20 @@ impl InterchainTestEnv {
             .unwrap();
 
         // Assign the channel to the kernel on chain one
-        chain_one
-            .aos
-            .assign_channels(channel.to_string(), chain_two.chain_name.clone());
+        chain_one.aos.assign_channels(
+            transfer_channel.to_string(),
+            direct_channel.to_string(),
+            chain_two.chain_name.clone(),
+        );
 
         // Get the channel from the receipt for chain two
-        let channel = channel_receipt
+        let direct_channel = channel_receipt
+            .interchain_channel
+            .get_chain(&chain_two.chain_name)
+            .unwrap()
+            .channel
+            .unwrap();
+        let transfer_channel = transfer_channel_receipt
             .interchain_channel
             .get_chain(&chain_two.chain_name)
             .unwrap()
@@ -138,9 +163,11 @@ impl InterchainTestEnv {
             .unwrap();
 
         // Assign the channel to the kernel on chain two
-        chain_two
-            .aos
-            .assign_channels(channel.to_string(), chain_one.chain_name.clone());
+        chain_two.aos.assign_channels(
+            transfer_channel.to_string(),
+            direct_channel.to_string(),
+            chain_one.chain_name.clone(),
+        );
     }
 }
 

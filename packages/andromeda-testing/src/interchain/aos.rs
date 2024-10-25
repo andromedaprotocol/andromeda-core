@@ -6,7 +6,7 @@ use andromeda_kernel::{
 };
 use andromeda_std::{
     amp::{ADO_DB_KEY, ECONOMICS_KEY, VFS_KEY},
-    os,
+    os::{self, kernel::ChannelInfoResponse},
 };
 use andromeda_vfs::{mock::mock_vfs_instantiate_message, VFSContract};
 use cw_orch::{mock::MockBase, prelude::*};
@@ -70,14 +70,27 @@ impl InterchainAOS {
         self.kernel.execute(&msg, None).unwrap();
     }
 
-    pub fn assign_channels(&self, channel_id: String, foreign_chain_name: String) {
+    pub fn assign_channels(
+        &self,
+        ics20_channel_id: String,
+        direct_channel_id: String,
+        foreign_chain_name: String,
+    ) {
         let msg = os::kernel::ExecuteMsg::AssignChannels {
-            ics20_channel_id: Some(String::from("transfer")),
-            direct_channel_id: Some(channel_id),
+            ics20_channel_id: Some(ics20_channel_id),
+            direct_channel_id: Some(direct_channel_id),
             chain: foreign_chain_name,
             kernel_address: self.kernel.address().unwrap().into_string(),
         };
 
         self.kernel.execute(&msg, None).unwrap();
+    }
+
+    pub fn get_aos_channel(&self, chain: impl Into<String>) -> Option<ChannelInfoResponse> {
+        self.kernel
+            .query(&os::kernel::QueryMsg::ChannelInfo {
+                chain: chain.into(),
+            })
+            .unwrap()
     }
 }
