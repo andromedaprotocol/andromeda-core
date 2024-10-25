@@ -702,6 +702,8 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-multi-test",
+ "cw-orch 0.24.1",
+ "cw-orch-interchain",
  "cw20",
  "cw721 0.18.0",
  "serde",

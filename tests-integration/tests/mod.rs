@@ -14,6 +14,9 @@ mod ibc_registry;
 mod kernel;
 
 #[cfg(test)]
+mod interchain;
+
+#[cfg(test)]
 mod cw20_staking;
 
 #[cfg(test)]

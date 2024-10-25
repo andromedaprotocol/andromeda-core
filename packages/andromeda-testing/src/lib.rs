@@ -15,6 +15,9 @@ pub mod mock_builder;
 pub mod vfs;
 
 #[cfg(not(target_arch = "wasm32"))]
+pub mod interchain;
+
+#[cfg(not(target_arch = "wasm32"))]
 pub mod mock;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod mock_contract;
@@ -22,6 +25,8 @@ pub mod mock_contract;
 pub use adodb::MockADODB;
 #[cfg(not(target_arch = "wasm32"))]
 pub use economics::MockEconomics;
+#[cfg(not(target_arch = "wasm32"))]
+pub use interchain::InterchainTestEnv;
 #[cfg(not(target_arch = "wasm32"))]
 pub use kernel::MockKernel;
 #[cfg(not(target_arch = "wasm32"))]

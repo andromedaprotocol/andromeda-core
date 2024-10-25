@@ -17,10 +17,13 @@ pub fn mock_andromeda_kernel() -> Box<dyn Contract<Empty>> {
     Box::new(contract)
 }
 
-pub fn mock_kernel_instantiate_message(owner: Option<String>) -> InstantiateMsg {
+pub fn mock_kernel_instantiate_message(
+    owner: Option<String>,
+    chain_name: impl Into<String>,
+) -> InstantiateMsg {
     InstantiateMsg {
         owner,
-        chain_name: "andromeda".to_string(),
+        chain_name: chain_name.into(),
     }
 }
 
