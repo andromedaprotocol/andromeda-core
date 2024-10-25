@@ -67,30 +67,29 @@ impl InterchainTestEnv {
             interchain,
         };
 
-        // Assign balances to default sender
-        interchain_test_env.set_balance(
-            "juno",
-            sender.to_string(),
-            vec![Coin::new(100000000000000, "juno")],
-        );
-        interchain_test_env.set_balance(
-            "osmosis",
-            sender.to_string(),
-            vec![Coin::new(100000000000000, "osmosis")],
-        );
-        interchain_test_env.set_balance(
-            "andromeda",
-            sender.to_string(),
-            vec![Coin::new(100000000000000, "andromeda")],
-        );
+        let chains = &[
+            &interchain_test_env.juno,
+            &interchain_test_env.osmosis,
+            &interchain_test_env.andromeda,
+        ];
 
-        // Create channels between chains
-        interchain_test_env
-            .create_aos_channel(&interchain_test_env.juno, &interchain_test_env.osmosis);
-        interchain_test_env
-            .create_aos_channel(&interchain_test_env.juno, &interchain_test_env.andromeda);
-        interchain_test_env
-            .create_aos_channel(&interchain_test_env.osmosis, &interchain_test_env.andromeda);
+        for (index, chain) in chains.iter().enumerate() {
+            // Assign balances to default sender
+            interchain_test_env.set_balance(
+                &chain.chain_name,
+                sender.to_string(),
+                vec![Coin::new(100000000000000, chain.chain_name.clone())],
+            );
+
+            // We only have to assign channels for the chains that are after the current chain
+            // This reduces redundancy as channels are two way
+            let other_chains = chains[index + 1..].to_vec();
+
+            // Create channels between the current chain and all other chains
+            for other_chain in other_chains {
+                interchain_test_env.create_aos_channel(chain, other_chain);
+            }
+        }
 
         interchain_test_env
     }
