@@ -35,6 +35,7 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
+    msg.validate(&deps)?;
     let config = Config {
         recipient: msg.recipient,
         denom: msg.denom,
