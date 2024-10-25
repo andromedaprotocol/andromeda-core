@@ -117,27 +117,21 @@ fn test_kernel_ibc_funds_only() {
 
     let recipient = "osmo1qzskhrca90qy2yjjxqzq4yajy842x7c50xq33d";
 
+    let andr_recipient = AndrAddr::from_string(format!("ibc://osmosis/{}", recipient));
+    let message = AMPMsg::new(
+        andr_recipient,
+        Binary::default(),
+        Some(vec![Coin {
+            denom: "juno".to_string(),
+            amount: Uint128::new(100),
+        }]),
+    );
+
     let kernel_juno_send_request = juno
         .aos
         .kernel
         .execute(
-            &os::kernel::ExecuteMsg::Send {
-                message: AMPMsg {
-                    recipient: AndrAddr::from_string(format!("ibc://osmosis/{}", recipient)),
-                    message: Binary::default(),
-                    funds: vec![Coin {
-                        denom: "juno".to_string(),
-                        amount: Uint128::new(100),
-                    }],
-                    config: AMPMsgConfig {
-                        reply_on: cosmwasm_std::ReplyOn::Always,
-                        exit_at_error: false,
-                        gas_limit: None,
-                        direct: true,
-                        ibc_config: None,
-                    },
-                },
-            },
+            &os::kernel::ExecuteMsg::Send { message },
             Some(&[Coin {
                 denom: "juno".to_string(),
                 amount: Uint128::new(100),
@@ -177,6 +171,27 @@ fn test_kernel_ibc_funds_only() {
         )
         .unwrap();
 
+    let ibc_endpoint = IbcEndpoint {
+        port_id: "port_id".to_string(),
+        channel_id: "channel_id".to_string(),
+    };
+    let packet_ack = IbcPacketAckMsg::new(
+        IbcAcknowledgement::new(
+            to_json_binary(&AcknowledgementMsg::<SendMessageWithFundsResponse>::Ok(
+                SendMessageWithFundsResponse {},
+            ))
+            .unwrap(),
+        ),
+        IbcPacket::new(
+            Binary::default(),
+            ibc_endpoint.clone(),
+            ibc_endpoint,
+            1,
+            IbcTimeout::with_timestamp(Timestamp::from_seconds(1)),
+        ),
+        Addr::unchecked("relayer"),
+    );
+
     // Construct an Execute msg from the kernel on juno inteded for the splitter on osmosis
     let kernel_juno_trigger_request = juno
         .aos
@@ -184,28 +199,7 @@ fn test_kernel_ibc_funds_only() {
         .execute(
             &os::kernel::ExecuteMsg::TriggerRelay {
                 packet_sequence: "1".to_string(),
-                packet_ack_msg: IbcPacketAckMsg::new(
-                    IbcAcknowledgement::new(
-                        to_json_binary(&AcknowledgementMsg::<SendMessageWithFundsResponse>::Ok(
-                            SendMessageWithFundsResponse {},
-                        ))
-                        .unwrap(),
-                    ),
-                    IbcPacket::new(
-                        Binary::default(),
-                        IbcEndpoint {
-                            port_id: "port_id".to_string(),
-                            channel_id: "channel_id".to_string(),
-                        },
-                        IbcEndpoint {
-                            port_id: "port_id".to_string(),
-                            channel_id: "channel_id".to_string(),
-                        },
-                        1,
-                        IbcTimeout::with_timestamp(Timestamp::from_seconds(1)),
-                    ),
-                    Addr::unchecked("relayer"),
-                ),
+                packet_ack_msg: packet_ack,
             },
             None,
         )
@@ -272,31 +266,25 @@ fn test_kernel_ibc_funds_and_execute_msg() {
         )
         .unwrap();
 
+    // Create the message to send to the kernel on juno
+    let osmosis_recipient = AndrAddr::from_string(format!(
+        "ibc://osmosis/{}",
+        splitter_osmosis.address().unwrap()
+    ));
+    let message = AMPMsg::new(
+        osmosis_recipient,
+        to_json_binary(&andromeda_finance::splitter::ExecuteMsg::Send {}).unwrap(),
+        Some(vec![Coin {
+            denom: "juno".to_string(),
+            amount: Uint128::new(100),
+        }]),
+    );
+
     let kernel_juno_send_request = juno
         .aos
         .kernel
         .execute(
-            &os::kernel::ExecuteMsg::Send {
-                message: AMPMsg {
-                    recipient: AndrAddr::from_string(format!(
-                        "ibc://osmosis/{}",
-                        splitter_osmosis.address().unwrap()
-                    )),
-                    message: to_json_binary(&andromeda_finance::splitter::ExecuteMsg::Send {})
-                        .unwrap(),
-                    funds: vec![Coin {
-                        denom: "juno".to_string(),
-                        amount: Uint128::new(100),
-                    }],
-                    config: AMPMsgConfig {
-                        reply_on: cosmwasm_std::ReplyOn::Always,
-                        exit_at_error: false,
-                        gas_limit: None,
-                        direct: true,
-                        ibc_config: None,
-                    },
-                },
-            },
+            &os::kernel::ExecuteMsg::Send { message },
             Some(&[Coin {
                 denom: "juno".to_string(),
                 amount: Uint128::new(100),
@@ -335,6 +323,28 @@ fn test_kernel_ibc_funds_and_execute_msg() {
             None,
         )
         .unwrap();
+
+    let ibc_endpoint = IbcEndpoint {
+        port_id: "port_id".to_string(),
+        channel_id: "channel_id".to_string(),
+    };
+    let packet_ack = IbcPacketAckMsg::new(
+        IbcAcknowledgement::new(
+            to_json_binary(&AcknowledgementMsg::<SendMessageWithFundsResponse>::Ok(
+                SendMessageWithFundsResponse {},
+            ))
+            .unwrap(),
+        ),
+        IbcPacket::new(
+            Binary::default(),
+            ibc_endpoint.clone(),
+            ibc_endpoint,
+            1,
+            IbcTimeout::with_timestamp(Timestamp::from_seconds(1)),
+        ),
+        Addr::unchecked("relayer"),
+    );
+
     // Construct an Execute msg from the kernel on juno inteded for the splitter on osmosis
     let kernel_juno_splitter_request = juno
         .aos
@@ -342,28 +352,7 @@ fn test_kernel_ibc_funds_and_execute_msg() {
         .execute(
             &os::kernel::ExecuteMsg::TriggerRelay {
                 packet_sequence: "1".to_string(),
-                packet_ack_msg: IbcPacketAckMsg::new(
-                    IbcAcknowledgement::new(
-                        to_json_binary(&AcknowledgementMsg::<SendMessageWithFundsResponse>::Ok(
-                            SendMessageWithFundsResponse {},
-                        ))
-                        .unwrap(),
-                    ),
-                    IbcPacket::new(
-                        Binary::default(),
-                        IbcEndpoint {
-                            port_id: "port_id".to_string(),
-                            channel_id: "channel_id".to_string(),
-                        },
-                        IbcEndpoint {
-                            port_id: "port_id".to_string(),
-                            channel_id: "channel_id".to_string(),
-                        },
-                        1,
-                        IbcTimeout::with_timestamp(Timestamp::from_seconds(1)),
-                    ),
-                    Addr::unchecked("relayer"),
-                ),
+                packet_ack_msg: packet_ack,
             },
             None,
         )
