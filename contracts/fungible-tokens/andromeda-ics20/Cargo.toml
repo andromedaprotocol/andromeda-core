@@ -28,7 +28,7 @@ cw-controllers = "=1.1.2"
 schemars = "0.8.21"
 serde = "1.0.203"
 thiserror = "1.0.61"
-cw-orch = "=0.24.1"
+cw-orch = { workspace = true }
 
 andromeda-std = { workspace = true, features = ["rates"]}
 andromeda-fungible-tokens = { workspace = true }
