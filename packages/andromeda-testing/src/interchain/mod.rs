@@ -3,7 +3,11 @@ pub mod aos;
 use aos::InterchainAOS;
 use cosmwasm_std::{Addr, Coin};
 use cw_orch::mock::MockBase;
-use cw_orch_interchain::{prelude::PortId, InterchainEnv, MockInterchainEnv};
+use cw_orch_interchain::{
+    prelude::PortId,
+    types::{IbcPacketOutcome, IbcTxAnalysis},
+    InterchainEnv, MockInterchainEnv,
+};
 
 pub const DEFAULT_SENDER: &str = "sender_for_all_chains";
 
@@ -174,5 +178,13 @@ impl InterchainTestEnv {
 impl Default for InterchainTestEnv {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+pub fn ensure_packet_success(packet_lifetime: IbcTxAnalysis<MockBase>) {
+    if let IbcPacketOutcome::Success { .. } = &packet_lifetime.packets[0].outcome {
+        // Packet has been successfully acknowledged and decoded, the transaction has gone through correctly
+    } else {
+        panic!("Packet failed when success was expected");
     }
 }
