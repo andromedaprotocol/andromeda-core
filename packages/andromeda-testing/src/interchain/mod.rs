@@ -27,7 +27,7 @@ impl InterchainChain {
 }
 
 /// The `InterchainTestEnv` struct represents an environment for testing interchain interactions.
-/// It contains two chains, `juno` and `osmosis`, each represented by an `InterchainChain` struct.
+/// It contains three chains, `juno`, `osmosis`, and `andromeda`, each represented by an `InterchainChain` struct.
 /// The `sender` field holds the address of the default sender for all chains.
 /// The `interchain` field holds an instance of `MockInterchainEnv` which simulates the interchain environment.
 pub struct InterchainTestEnv {
