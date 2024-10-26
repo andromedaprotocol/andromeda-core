@@ -13,7 +13,7 @@ use andromeda_std::{
         InstantiateMsg as BaseInstantiateMsg, MigrateMsg,
     },
     ado_contract::ADOContract,
-    amp::Recipient,
+    amp::{AndrAddr, Recipient},
     common::{
         actions::call_action,
         context::ExecuteContext,
@@ -79,15 +79,20 @@ pub fn instantiate(
         }
     }
 
-    if let Some(authorized_cw20_address) = msg.authorized_cw20_address {
-        ADOContract::default().permission_action(SEND_CW20_ACTION, deps.storage)?;
-        let addr = authorized_cw20_address.get_raw_address(&deps.as_ref())?;
-        ADOContract::set_permission(
-            deps.storage,
-            SEND_CW20_ACTION,
-            addr,
-            Permission::Local(LocalPermission::Whitelisted(None)),
-        )?;
+    if let Some(authorized_cw20_addresses) = msg.authorized_cw20_addresses {
+        if !authorized_cw20_addresses.is_empty() {
+            ADOContract::default().permission_action(SEND_CW20_ACTION, deps.storage)?;
+        }
+
+        for authorized_cw20_address in authorized_cw20_addresses {
+            let addr = authorized_cw20_address.get_raw_address(&deps.as_ref())?;
+            ADOContract::set_permission(
+                deps.storage,
+                SEND_CW20_ACTION,
+                addr,
+                Permission::Local(LocalPermission::Whitelisted(None)),
+            )?;
+        }
     }
 
     Ok(inst_resp)
@@ -138,6 +143,12 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
             token_id,
             token_address,
         } => execute_cancel(ctx, token_id, token_address),
+        ExecuteMsg::AuthorizeCw20Contract { addr, expiration } => {
+            execute_authorize_cw20_contract(ctx.deps, ctx.info, addr, expiration)
+        }
+        ExecuteMsg::DeauthorizeCw20Contract { addr } => {
+            execute_deauthorize_cw20_contract(ctx.deps, ctx.info, addr)
+        }
         _ => ADOContract::default().execute(ctx, msg),
     }?;
     Ok(res
@@ -658,6 +669,60 @@ fn execute_cancel(
         .add_attribute("token_contract", token_sale_state.token_address)
         .add_attribute("sale_id", token_sale_state.sale_id)
         .add_attribute("recipient", info.sender))
+}
+
+fn execute_authorize_cw20_contract(
+    deps: DepsMut,
+    info: MessageInfo,
+    cw20_address: AndrAddr,
+    expiration: Option<Expiry>,
+) -> Result<Response, ContractError> {
+    let contract = ADOContract::default();
+    ensure!(
+        contract.is_contract_owner(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {}
+    );
+
+    let addr = cw20_address.get_raw_address(&deps.as_ref())?;
+
+    let permission = expiration.map_or(
+        Permission::Local(LocalPermission::Whitelisted(None)),
+        |expiration| Permission::Local(LocalPermission::Whitelisted(Some(expiration))),
+    );
+
+    ADOContract::set_permission(
+        deps.storage,
+        SEND_CW20_ACTION,
+        addr.to_string(),
+        permission.clone(),
+    )?;
+
+    Ok(Response::default().add_attributes(vec![
+        attr("action", "authorize_cw20_contract"),
+        attr("cw20_address", addr),
+        attr("permission", permission.to_string()),
+    ]))
+}
+
+fn execute_deauthorize_cw20_contract(
+    deps: DepsMut,
+    info: MessageInfo,
+    cw20_address: AndrAddr,
+) -> Result<Response, ContractError> {
+    let contract = ADOContract::default();
+    ensure!(
+        contract.is_contract_owner(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {}
+    );
+
+    let addr = cw20_address.get_raw_address(&deps.as_ref())?;
+
+    ADOContract::remove_permission(deps.storage, SEND_CW20_ACTION, addr.to_string())?;
+
+    Ok(Response::default().add_attributes(vec![
+        attr("action", "deauthorize_cw20_contract"),
+        attr("cw20_address", addr),
+    ]))
 }
 
 fn purchase_token(

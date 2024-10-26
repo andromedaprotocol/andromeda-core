@@ -4,11 +4,14 @@ use andromeda_non_fungible_tokens::marketplace::{
     Cw20HookMsg, Cw721HookMsg, ExecuteMsg, InstantiateMsg, Status,
 };
 use andromeda_std::{
-    ado_base::rates::{LocalRate, LocalRateType, LocalRateValue, PercentRate, Rate},
+    ado_base::{
+        permissioning::{LocalPermission, Permission},
+        rates::{LocalRate, LocalRateType, LocalRateValue, PercentRate, Rate},
+    },
     ado_contract::ADOContract,
     amp::{AndrAddr, Recipient},
     common::{
-        denom::Asset,
+        denom::{Asset, SEND_CW20_ACTION},
         encode_binary,
         expiration::{expiration_from_milliseconds, Expiry, MILLISECONDS_TO_NANOSECONDS_RATIO},
         reply::ReplyId,
@@ -19,7 +22,7 @@ use andromeda_std::{
     testing::mock_querier::MOCK_CW20_CONTRACT,
 };
 use cosmwasm_std::{
-    coin, coins,
+    attr, coin, coins,
     testing::{mock_env, mock_info},
     to_json_binary, Addr, BankMsg, CosmosMsg, Decimal, Deps, DepsMut, Env, Response, SubMsg,
     Uint128, WasmMsg,
@@ -102,13 +105,13 @@ fn start_sale_future_start_with_duration(deps: DepsMut, env: Env) {
 
 fn init(
     deps: DepsMut,
-    authorized_cw20_address: Option<AndrAddr>,
+    authorized_cw20_addresses: Option<Vec<AndrAddr>>,
     authorized_token_addresses: Option<Vec<AndrAddr>>,
 ) -> Response {
     let msg = InstantiateMsg {
         owner: None,
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
-        authorized_cw20_address,
+        authorized_cw20_addresses,
         authorized_token_addresses,
     };
 
@@ -195,6 +198,47 @@ fn test_sale_instantiate() {
     let mut deps = mock_dependencies_custom(&[]);
     let res = init(deps.as_mut(), None, None);
     assert_eq!(0, res.messages.len());
+}
+
+#[test]
+fn test_instantiate_with_multiple_authorized_cw20_addresses() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let env = mock_env();
+    let info = mock_info("creator", &[]);
+
+    let authorized_cw20_addresses = vec![
+        AndrAddr::from_string("cw20_contract_1"),
+        AndrAddr::from_string("cw20_contract_2"),
+        AndrAddr::from_string("cw20_contract_3"),
+    ];
+
+    let msg = InstantiateMsg {
+        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+        owner: None,
+        authorized_token_addresses: None,
+        authorized_cw20_addresses: Some(authorized_cw20_addresses.clone()),
+    };
+
+    let res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
+    assert_eq!(0, res.messages.len());
+
+    // Check if each authorized CW20 address has the correct permission
+    for addr in authorized_cw20_addresses {
+        let raw_addr = addr.get_raw_address(&deps.as_ref()).unwrap();
+        let permission =
+            ADOContract::get_permission(deps.as_ref().storage, SEND_CW20_ACTION, raw_addr).unwrap();
+        assert_eq!(
+            permission,
+            Some(Permission::Local(LocalPermission::Whitelisted(None)))
+        );
+    }
+
+    // Check that a non-authorized address doesn't have permission
+    let non_authorized = "non_authorized_cw20".to_string();
+    let permission =
+        ADOContract::get_permission(deps.as_ref().storage, SEND_CW20_ACTION, non_authorized)
+            .unwrap();
+    assert_eq!(permission, None);
 }
 
 #[test]
@@ -285,7 +329,7 @@ fn test_sale_instantiate_future_start_cw20() {
     let mut deps = mock_dependencies_custom(&[]);
     let res = init(
         deps.as_mut(),
-        Some(AndrAddr::from_string(MOCK_CW20_CONTRACT)),
+        Some(vec![AndrAddr::from_string(MOCK_CW20_CONTRACT)]),
         None,
     );
     assert_eq!(0, res.messages.len());
@@ -402,7 +446,7 @@ fn test_execute_buy_token_owner_cannot_buy_cw20() {
 
     let _res = init(
         deps.as_mut(),
-        Some(AndrAddr::from_string(MOCK_CW20_CONTRACT)),
+        Some(vec![AndrAddr::from_string(MOCK_CW20_CONTRACT)]),
         None,
     );
 
@@ -490,7 +534,7 @@ fn test_execute_buy_invalid_coins_sent_cw20() {
 
     let _res = init(
         deps.as_mut(),
-        Some(AndrAddr::from_string(MOCK_CW20_CONTRACT)),
+        Some(vec![AndrAddr::from_string(MOCK_CW20_CONTRACT)]),
         None,
     );
 
@@ -552,7 +596,7 @@ fn test_execute_buy_works() {
 
     let _res = init(
         deps.as_mut(),
-        Some(AndrAddr::from_string(MOCK_CW20_CONTRACT)),
+        Some(vec![AndrAddr::from_string(MOCK_CW20_CONTRACT)]),
         None,
     );
 
@@ -577,7 +621,7 @@ fn test_execute_buy_works_cw20() {
 
     let _res = init(
         deps.as_mut(),
-        Some(AndrAddr::from_string(MOCK_CW20_CONTRACT)),
+        Some(vec![AndrAddr::from_string(MOCK_CW20_CONTRACT)]),
         None,
     );
 
@@ -774,7 +818,7 @@ fn test_execute_buy_with_tax_and_royalty_insufficient_funds_cw20() {
     let mut deps = mock_dependencies_custom(&[]);
     let _res = init(
         deps.as_mut(),
-        Some(AndrAddr::from_string(MOCK_CW20_CONTRACT)),
+        Some(vec![AndrAddr::from_string(MOCK_CW20_CONTRACT)]),
         None,
     );
 
@@ -932,4 +976,136 @@ fn test_execute_buy_with_tax_and_royalty_works() {
         ),
     ];
     assert_eq!(res.messages, expected)
+}
+#[test]
+fn test_execute_authorize_cw20_contract() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let _res = init(deps.as_mut(), None, None);
+
+    // Test unauthorized attempt
+    let unauthorized_info = mock_info("unauthorized", &[]);
+    let unauthorized_msg = ExecuteMsg::AuthorizeCw20Contract {
+        addr: AndrAddr::from_string("cw20_contract"),
+        expiration: None,
+    };
+    let unauthorized_result = execute(
+        deps.as_mut(),
+        mock_env(),
+        unauthorized_info,
+        unauthorized_msg,
+    );
+    assert_eq!(
+        unauthorized_result.unwrap_err(),
+        ContractError::Unauthorized {}
+    );
+
+    // Test successful authorization without expiration
+    let owner_info = mock_info("owner", &[]);
+    let msg = ExecuteMsg::AuthorizeCw20Contract {
+        addr: AndrAddr::from_string("cw20_contract"),
+        expiration: None,
+    };
+    let result = execute(deps.as_mut(), mock_env(), owner_info, msg).unwrap();
+
+    assert_eq!(
+        result.attributes,
+        vec![
+            attr("action", "authorize_cw20_contract"),
+            attr("cw20_address", "cw20_contract"),
+            attr("permission", "whitelisted"),
+        ]
+    );
+
+    // Verify the permission was set correctly
+    let permission =
+        ADOContract::get_permission(deps.as_ref().storage, SEND_CW20_ACTION, "cw20_contract")
+            .unwrap();
+    assert_eq!(
+        permission,
+        Some(Permission::Local(LocalPermission::Whitelisted(None)))
+    );
+
+    // Test successful authorization with expiration
+    let owner_info = mock_info("owner", &[]);
+    let expiration = Expiry::FromNow(Milliseconds(10000));
+    let msg = ExecuteMsg::AuthorizeCw20Contract {
+        addr: AndrAddr::from_string("cw20_contract_with_expiry"),
+        expiration: Some(expiration.clone()),
+    };
+    let result = execute(deps.as_mut(), mock_env(), owner_info, msg).unwrap();
+
+    assert_eq!(
+        result.attributes,
+        vec![
+            attr("action", "authorize_cw20_contract"),
+            attr("cw20_address", "cw20_contract_with_expiry"),
+            attr("permission", format!("whitelisted:{}", expiration)),
+        ]
+    );
+
+    // Verify the permission was set correctly with expiration
+    let permission = ADOContract::get_permission(
+        deps.as_ref().storage,
+        SEND_CW20_ACTION,
+        "cw20_contract_with_expiry",
+    )
+    .unwrap();
+    assert_eq!(
+        permission,
+        Some(Permission::Local(LocalPermission::Whitelisted(Some(
+            expiration
+        ))))
+    );
+}
+
+#[test]
+fn test_execute_deauthorize_cw20_contract() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let _res = init(deps.as_mut(), None, None);
+
+    // First, authorize a CW20 contract
+    let owner_info = mock_info("owner", &[]);
+    let msg = ExecuteMsg::AuthorizeCw20Contract {
+        addr: AndrAddr::from_string("cw20_contract"),
+        expiration: None,
+    };
+    let _res = execute(deps.as_mut(), mock_env(), owner_info.clone(), msg).unwrap();
+
+    // Verify the permission was set
+    let permission =
+        ADOContract::get_permission(deps.as_ref().storage, SEND_CW20_ACTION, "cw20_contract")
+            .unwrap();
+    assert_eq!(
+        permission,
+        Some(Permission::Local(LocalPermission::Whitelisted(None)))
+    );
+
+    // Now deauthorize the CW20 contract
+    let msg = ExecuteMsg::DeauthorizeCw20Contract {
+        addr: AndrAddr::from_string("cw20_contract"),
+    };
+    let res = execute(deps.as_mut(), mock_env(), owner_info, msg).unwrap();
+
+    // Check the response
+    assert_eq!(
+        res.attributes,
+        vec![
+            attr("action", "deauthorize_cw20_contract"),
+            attr("cw20_address", "cw20_contract"),
+        ]
+    );
+
+    // Verify the permission was removed
+    let permission =
+        ADOContract::get_permission(deps.as_ref().storage, SEND_CW20_ACTION, "cw20_contract")
+            .unwrap();
+    assert_eq!(permission, None);
+
+    // Test deauthorization by non-owner (should fail)
+    let non_owner_info = mock_info("not_owner", &[]);
+    let msg = ExecuteMsg::DeauthorizeCw20Contract {
+        addr: AndrAddr::from_string("cw20_contract"),
+    };
+    let err = execute(deps.as_mut(), mock_env(), non_owner_info, msg).unwrap_err();
+    assert_eq!(err, ContractError::Unauthorized {});
 }

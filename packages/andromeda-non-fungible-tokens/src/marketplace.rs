@@ -14,7 +14,7 @@ use std::fmt::{Display, Formatter, Result};
 #[cw_serde]
 #[serde(rename_all = "snake_case")]
 pub struct InstantiateMsg {
-    pub authorized_cw20_address: Option<AndrAddr>,
+    pub authorized_cw20_addresses: Option<Vec<AndrAddr>>,
     pub authorized_token_addresses: Option<Vec<AndrAddr>>,
 }
 
@@ -39,6 +39,15 @@ pub enum ExecuteMsg {
     CancelSale {
         token_id: String,
         token_address: String,
+    },
+    /// Restricted to owner
+    AuthorizeCw20Contract {
+        addr: AndrAddr,
+        expiration: Option<Expiry>,
+    },
+    /// Restricted to owner
+    DeauthorizeCw20Contract {
+        addr: AndrAddr,
     },
 }
 
