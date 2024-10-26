@@ -152,6 +152,12 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
         ExecuteMsg::DeauthorizeCw20Contract { addr } => {
             execute_deauthorize_cw20_contract(ctx.deps, ctx.info, addr)
         }
+        ExecuteMsg::AuthorizeTokenContract { addr, expiration } => {
+            execute_authorize_token_contract(ctx.deps, ctx.info, addr, expiration)
+        }
+        ExecuteMsg::DeauthorizeTokenContract { addr } => {
+            execute_deauthorize_token_contract(ctx.deps, ctx.info, addr)
+        }
         _ => ADOContract::default().execute(ctx, msg),
     }?;
     Ok(res
@@ -725,6 +731,56 @@ fn execute_deauthorize_cw20_contract(
     Ok(Response::default().add_attributes(vec![
         attr("action", "deauthorize_cw20_contract"),
         attr("cw20_address", addr),
+    ]))
+}
+
+fn execute_authorize_token_contract(
+    deps: DepsMut,
+    info: MessageInfo,
+    token_address: AndrAddr,
+    expiration: Option<Expiry>,
+) -> Result<Response, ContractError> {
+    let contract = ADOContract::default();
+    let addr = token_address.get_raw_address(&deps.as_ref())?;
+    ensure!(
+        contract.is_contract_owner(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {}
+    );
+    let permission = expiration.map_or(
+        Permission::Local(LocalPermission::Whitelisted(None)),
+        |expiration| Permission::Local(LocalPermission::Whitelisted(Some(expiration))),
+    );
+    ADOContract::set_permission(
+        deps.storage,
+        SEND_NFT_ACTION,
+        addr.to_string(),
+        permission.clone(),
+    )?;
+
+    Ok(Response::default().add_attributes(vec![
+        attr("action", "authorize_token_contract"),
+        attr("token_address", addr),
+        attr("permission", permission.to_string()),
+    ]))
+}
+
+fn execute_deauthorize_token_contract(
+    deps: DepsMut,
+    info: MessageInfo,
+    token_address: AndrAddr,
+) -> Result<Response, ContractError> {
+    let contract = ADOContract::default();
+    let addr = token_address.get_raw_address(&deps.as_ref())?;
+    ensure!(
+        contract.is_contract_owner(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {}
+    );
+
+    ADOContract::remove_permission(deps.storage, SEND_NFT_ACTION, addr.to_string())?;
+
+    Ok(Response::default().add_attributes(vec![
+        attr("action", "deauthorize_token_contract"),
+        attr("token_address", addr),
     ]))
 }
 

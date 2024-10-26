@@ -50,6 +50,16 @@ pub enum ExecuteMsg {
     DeauthorizeCw20Contract {
         addr: AndrAddr,
     },
+
+    /// Restricted to owner
+    AuthorizeTokenContract {
+        addr: AndrAddr,
+        expiration: Option<Expiry>,
+    },
+    /// Restricted to owner
+    DeauthorizeTokenContract {
+        addr: AndrAddr,
+    },
 }
 
 #[cw_serde]

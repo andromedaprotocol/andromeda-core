@@ -1154,3 +1154,92 @@ fn test_query_authorized_addresses() {
         vec!["nft_contract1".to_string(), "nft_contract2".to_string()]
     );
 }
+#[test]
+fn test_authorize_token_contract() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let _res = init(deps.as_mut(), None, None);
+
+    let owner_info = mock_info("owner", &[]);
+    let token_address = AndrAddr::from_string("nft_contract");
+    let expiration = Some(Expiry::FromNow(Milliseconds(100)));
+
+    // Test successful authorization
+    let msg = ExecuteMsg::AuthorizeTokenContract {
+        addr: token_address.clone(),
+        expiration: expiration.clone(),
+    };
+    let res = execute(deps.as_mut(), mock_env(), owner_info.clone(), msg).unwrap();
+    assert_eq!(
+        res.attributes,
+        vec![
+            attr("action", "authorize_token_contract"),
+            attr("token_address", "nft_contract"),
+            attr("permission", format!("whitelisted:{}", expiration.unwrap())),
+        ]
+    );
+
+    // Test unauthorized attempt
+    let non_owner_info = mock_info("non_owner", &[]);
+    let msg = ExecuteMsg::AuthorizeTokenContract {
+        addr: token_address.clone(),
+        expiration: None,
+    };
+    let err = execute(deps.as_mut(), mock_env(), non_owner_info, msg).unwrap_err();
+    assert_eq!(err, ContractError::Unauthorized {});
+
+    // Query to verify authorization
+    let query_msg = QueryMsg::AuthorizedAddresses {
+        action: SEND_NFT_ACTION.to_string(),
+        start_after: None,
+        limit: None,
+        order_by: None,
+    };
+    let res: AuthorizedAddressesResponse =
+        from_json(query(deps.as_ref(), mock_env(), query_msg).unwrap()).unwrap();
+    assert_eq!(res.addresses, vec!["nft_contract".to_string()]);
+}
+
+#[test]
+fn test_deauthorize_token_contract() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let _res = init(
+        deps.as_mut(),
+        None,
+        Some(vec![AndrAddr::from_string("nft_contract")]),
+    );
+
+    let owner_info = mock_info("owner", &[]);
+    let token_address = AndrAddr::from_string("nft_contract");
+
+    // Test successful deauthorization
+    let msg = ExecuteMsg::DeauthorizeTokenContract {
+        addr: token_address.clone(),
+    };
+    let res = execute(deps.as_mut(), mock_env(), owner_info.clone(), msg).unwrap();
+    assert_eq!(
+        res.attributes,
+        vec![
+            attr("action", "deauthorize_token_contract"),
+            attr("token_address", "nft_contract"),
+        ]
+    );
+
+    // Test unauthorized attempt
+    let non_owner_info = mock_info("non_owner", &[]);
+    let msg = ExecuteMsg::DeauthorizeTokenContract {
+        addr: token_address.clone(),
+    };
+    let err = execute(deps.as_mut(), mock_env(), non_owner_info, msg).unwrap_err();
+    assert_eq!(err, ContractError::Unauthorized {});
+
+    // Query to verify deauthorization
+    let query_msg = QueryMsg::AuthorizedAddresses {
+        action: SEND_NFT_ACTION.to_string(),
+        start_after: None,
+        limit: None,
+        order_by: None,
+    };
+    let res: AuthorizedAddressesResponse =
+        from_json(query(deps.as_ref(), mock_env(), query_msg).unwrap()).unwrap();
+    assert!(res.addresses.is_empty());
+}
