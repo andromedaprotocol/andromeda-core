@@ -87,6 +87,9 @@ pub enum ContractError {
     #[error("InvalidDelegation")]
     InvalidDelegation {},
 
+    #[error("Invalid action: {action}. Expected either SEND_NFT or SEND_CW20")]
+    InvalidAction { action: String },
+
     #[error("RewardTooLow")]
     RewardTooLow {},
 

@@ -1,5 +1,3 @@
-use std::vec;
-
 use andromeda_non_fungible_tokens::{
     auction::AuthorizedAddressesResponse,
     marketplace::{Cw20HookMsg, Cw721HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg, Status},
@@ -12,7 +10,7 @@ use andromeda_std::{
     ado_contract::ADOContract,
     amp::{AndrAddr, Recipient},
     common::{
-        denom::{Asset, SEND_CW20_ACTION, SEND_NFT_ACTION},
+        denom::{Asset, PermissionAction, SEND_CW20_ACTION, SEND_NFT_ACTION},
         encode_binary,
         expiration::{expiration_from_milliseconds, Expiry, MILLISECONDS_TO_NANOSECONDS_RATIO},
         reply::ReplyId,
@@ -985,7 +983,8 @@ fn test_execute_authorize_cw20_contract() {
 
     // Test unauthorized attempt
     let unauthorized_info = mock_info("unauthorized", &[]);
-    let unauthorized_msg = ExecuteMsg::AuthorizeCw20Contract {
+    let unauthorized_msg = ExecuteMsg::AuthorizeContract {
+        action: PermissionAction::SendCw20,
         addr: AndrAddr::from_string("cw20_contract"),
         expiration: None,
     };
@@ -1002,7 +1001,8 @@ fn test_execute_authorize_cw20_contract() {
 
     // Test successful authorization without expiration
     let owner_info = mock_info("owner", &[]);
-    let msg = ExecuteMsg::AuthorizeCw20Contract {
+    let msg = ExecuteMsg::AuthorizeContract {
+        action: PermissionAction::SendCw20,
         addr: AndrAddr::from_string("cw20_contract"),
         expiration: None,
     };
@@ -1011,8 +1011,8 @@ fn test_execute_authorize_cw20_contract() {
     assert_eq!(
         result.attributes,
         vec![
-            attr("action", "authorize_cw20_contract"),
-            attr("cw20_address", "cw20_contract"),
+            attr("action", "authorize_contract"),
+            attr("address", "cw20_contract"),
             attr("permission", "whitelisted"),
         ]
     );
@@ -1029,7 +1029,8 @@ fn test_execute_authorize_cw20_contract() {
     // Test successful authorization with expiration
     let owner_info = mock_info("owner", &[]);
     let expiration = Expiry::FromNow(Milliseconds(10000));
-    let msg = ExecuteMsg::AuthorizeCw20Contract {
+    let msg = ExecuteMsg::AuthorizeContract {
+        action: PermissionAction::SendCw20,
         addr: AndrAddr::from_string("cw20_contract_with_expiry"),
         expiration: Some(expiration.clone()),
     };
@@ -1038,8 +1039,8 @@ fn test_execute_authorize_cw20_contract() {
     assert_eq!(
         result.attributes,
         vec![
-            attr("action", "authorize_cw20_contract"),
-            attr("cw20_address", "cw20_contract_with_expiry"),
+            attr("action", "authorize_contract"),
+            attr("address", "cw20_contract_with_expiry"),
             attr("permission", format!("whitelisted:{}", expiration)),
         ]
     );
@@ -1066,7 +1067,8 @@ fn test_execute_deauthorize_cw20_contract() {
 
     // First, authorize a CW20 contract
     let owner_info = mock_info("owner", &[]);
-    let msg = ExecuteMsg::AuthorizeCw20Contract {
+    let msg = ExecuteMsg::AuthorizeContract {
+        action: PermissionAction::SendCw20,
         addr: AndrAddr::from_string("cw20_contract"),
         expiration: None,
     };
@@ -1082,7 +1084,8 @@ fn test_execute_deauthorize_cw20_contract() {
     );
 
     // Now deauthorize the CW20 contract
-    let msg = ExecuteMsg::DeauthorizeCw20Contract {
+    let msg = ExecuteMsg::DeauthorizeContract {
+        action: PermissionAction::SendCw20,
         addr: AndrAddr::from_string("cw20_contract"),
     };
     let res = execute(deps.as_mut(), mock_env(), owner_info, msg).unwrap();
@@ -1091,8 +1094,9 @@ fn test_execute_deauthorize_cw20_contract() {
     assert_eq!(
         res.attributes,
         vec![
-            attr("action", "deauthorize_cw20_contract"),
-            attr("cw20_address", "cw20_contract"),
+            attr("action", "deauthorize_contract"),
+            attr("address", "cw20_contract"),
+            attr("deauthorized_action", SEND_CW20_ACTION),
         ]
     );
 
@@ -1104,7 +1108,8 @@ fn test_execute_deauthorize_cw20_contract() {
 
     // Test deauthorization by non-owner (should fail)
     let non_owner_info = mock_info("not_owner", &[]);
-    let msg = ExecuteMsg::DeauthorizeCw20Contract {
+    let msg = ExecuteMsg::DeauthorizeContract {
+        action: PermissionAction::SendCw20,
         addr: AndrAddr::from_string("cw20_contract"),
     };
     let err = execute(deps.as_mut(), mock_env(), non_owner_info, msg).unwrap_err();
@@ -1128,7 +1133,7 @@ fn test_query_authorized_addresses() {
 
     // Query authorized addresses for CW20 action
     let cw20_query = QueryMsg::AuthorizedAddresses {
-        action: SEND_CW20_ACTION.to_string(),
+        action: PermissionAction::SendCw20,
         start_after: None,
         limit: None,
         order_by: None,
@@ -1142,7 +1147,7 @@ fn test_query_authorized_addresses() {
 
     // Query authorized addresses for NFT action
     let nft_query = QueryMsg::AuthorizedAddresses {
-        action: SEND_NFT_ACTION.to_string(),
+        action: PermissionAction::SendNft,
         start_after: None,
         limit: None,
         order_by: None,
@@ -1164,7 +1169,8 @@ fn test_authorize_token_contract() {
     let expiration = Some(Expiry::FromNow(Milliseconds(100)));
 
     // Test successful authorization
-    let msg = ExecuteMsg::AuthorizeTokenContract {
+    let msg = ExecuteMsg::AuthorizeContract {
+        action: PermissionAction::SendNft,
         addr: token_address.clone(),
         expiration: expiration.clone(),
     };
@@ -1172,15 +1178,16 @@ fn test_authorize_token_contract() {
     assert_eq!(
         res.attributes,
         vec![
-            attr("action", "authorize_token_contract"),
-            attr("token_address", "nft_contract"),
+            attr("action", "authorize_contract"),
+            attr("address", "nft_contract"),
             attr("permission", format!("whitelisted:{}", expiration.unwrap())),
         ]
     );
 
     // Test unauthorized attempt
     let non_owner_info = mock_info("non_owner", &[]);
-    let msg = ExecuteMsg::AuthorizeTokenContract {
+    let msg = ExecuteMsg::AuthorizeContract {
+        action: PermissionAction::SendNft,
         addr: token_address.clone(),
         expiration: None,
     };
@@ -1189,7 +1196,7 @@ fn test_authorize_token_contract() {
 
     // Query to verify authorization
     let query_msg = QueryMsg::AuthorizedAddresses {
-        action: SEND_NFT_ACTION.to_string(),
+        action: PermissionAction::SendNft,
         start_after: None,
         limit: None,
         order_by: None,
@@ -1212,21 +1219,24 @@ fn test_deauthorize_token_contract() {
     let token_address = AndrAddr::from_string("nft_contract");
 
     // Test successful deauthorization
-    let msg = ExecuteMsg::DeauthorizeTokenContract {
+    let msg = ExecuteMsg::DeauthorizeContract {
+        action: PermissionAction::SendNft,
         addr: token_address.clone(),
     };
     let res = execute(deps.as_mut(), mock_env(), owner_info.clone(), msg).unwrap();
     assert_eq!(
         res.attributes,
         vec![
-            attr("action", "deauthorize_token_contract"),
-            attr("token_address", "nft_contract"),
+            attr("action", "deauthorize_contract"),
+            attr("address", "nft_contract"),
+            attr("deauthorized_action", SEND_NFT_ACTION),
         ]
     );
 
     // Test unauthorized attempt
     let non_owner_info = mock_info("non_owner", &[]);
-    let msg = ExecuteMsg::DeauthorizeTokenContract {
+    let msg = ExecuteMsg::DeauthorizeContract {
+        action: PermissionAction::SendNft,
         addr: token_address.clone(),
     };
     let err = execute(deps.as_mut(), mock_env(), non_owner_info, msg).unwrap_err();
@@ -1234,7 +1244,7 @@ fn test_deauthorize_token_contract() {
 
     // Query to verify deauthorization
     let query_msg = QueryMsg::AuthorizedAddresses {
-        action: SEND_NFT_ACTION.to_string(),
+        action: PermissionAction::SendNft,
         start_after: None,
         limit: None,
         order_by: None,

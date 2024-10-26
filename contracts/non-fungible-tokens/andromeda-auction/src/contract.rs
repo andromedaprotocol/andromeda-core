@@ -12,10 +12,13 @@ use andromeda_std::{
         permissioning::{LocalPermission, Permission},
         InstantiateMsg as BaseInstantiateMsg, MigrateMsg,
     },
-    amp::{AndrAddr, Recipient},
+    amp::Recipient,
     common::{
         actions::call_action,
-        denom::{validate_native_denom, Asset, SEND_CW20_ACTION},
+        denom::{
+            execute_authorize_contract, execute_deauthorize_contract, validate_native_denom, Asset,
+            PermissionAction, SEND_CW20_ACTION,
+        },
         encode_binary,
         expiration::{expiration_from_milliseconds, get_and_validate_start_time, Expiry},
         Funds, Milliseconds, OrderBy,
@@ -159,11 +162,13 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
             token_id,
             token_address,
         } => execute_claim(ctx, token_id, token_address, action),
-        ExecuteMsg::AuthorizeTokenContract { addr, expiration } => {
-            execute_authorize_token_contract(ctx.deps, ctx.info, addr, expiration)
-        }
-        ExecuteMsg::DeauthorizeTokenContract { addr } => {
-            execute_deauthorize_token_contract(ctx.deps, ctx.info, addr)
+        ExecuteMsg::AuthorizeContract {
+            action,
+            addr,
+            expiration,
+        } => execute_authorize_contract(ctx.deps, ctx.info, action, addr, expiration),
+        ExecuteMsg::DeauthorizeContract { action, addr } => {
+            execute_deauthorize_contract(ctx.deps, ctx.info, action, addr)
         }
         _ => ADOContract::default().execute(ctx, msg),
     }?;
@@ -1109,57 +1114,6 @@ fn execute_claim(
     Ok(resp)
 }
 
-fn execute_authorize_token_contract(
-    deps: DepsMut,
-    info: MessageInfo,
-    token_address: AndrAddr,
-    expiration: Option<Expiry>,
-) -> Result<Response, ContractError> {
-    let contract = ADOContract::default();
-    let addr = token_address.get_raw_address(&deps.as_ref())?;
-    ensure!(
-        contract.is_contract_owner(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {}
-    );
-    let permission = if let Some(expiration) = expiration {
-        Permission::Local(LocalPermission::Whitelisted(Some(expiration)))
-    } else {
-        Permission::Local(LocalPermission::Whitelisted(None))
-    };
-    ADOContract::set_permission(
-        deps.storage,
-        SEND_NFT_ACTION,
-        addr.to_string(),
-        permission.clone(),
-    )?;
-
-    Ok(Response::default().add_attributes(vec![
-        attr("action", "authorize_token_contract"),
-        attr("token_address", addr),
-        attr("permission", permission.to_string()),
-    ]))
-}
-
-fn execute_deauthorize_token_contract(
-    deps: DepsMut,
-    info: MessageInfo,
-    token_address: AndrAddr,
-) -> Result<Response, ContractError> {
-    let contract = ADOContract::default();
-    let addr = token_address.get_raw_address(&deps.as_ref())?;
-    ensure!(
-        contract.is_contract_owner(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {}
-    );
-
-    ADOContract::remove_permission(deps.storage, SEND_NFT_ACTION, addr.to_string())?;
-
-    Ok(Response::default().add_attributes(vec![
-        attr("action", "deauthorize_token_contract"),
-        attr("token_address", addr),
-    ]))
-}
-
 fn purchase_token(
     deps: Deps,
     _info: &MessageInfo,
@@ -1296,11 +1250,13 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
             token_address,
         } => encode_binary(&query_is_closed(deps, env, token_id, token_address)?),
         QueryMsg::AuthorizedAddresses {
+            action,
             start_after,
             limit,
             order_by,
         } => encode_binary(&query_authorized_addresses(
             deps,
+            action,
             start_after,
             limit,
             order_by,
@@ -1443,13 +1399,14 @@ fn query_owner_of(
 
 fn query_authorized_addresses(
     deps: Deps,
+    action: PermissionAction,
     start_after: Option<String>,
     limit: Option<u32>,
     order_by: Option<OrderBy>,
 ) -> Result<AuthorizedAddressesResponse, ContractError> {
     let addresses = ADOContract::default().query_permissioned_actors(
         deps,
-        SEND_NFT_ACTION,
+        action.as_str(),
         start_after,
         limit,
         order_by,

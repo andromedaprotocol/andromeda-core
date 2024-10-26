@@ -1,7 +1,11 @@
 use andromeda_std::{
     amp::{AndrAddr, Recipient},
     andr_exec, andr_instantiate, andr_query,
-    common::{denom::Asset, expiration::Expiry, MillisecondsDuration, OrderBy},
+    common::{
+        denom::{Asset, PermissionAction},
+        expiration::Expiry,
+        MillisecondsDuration, OrderBy,
+    },
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
@@ -42,22 +46,14 @@ pub enum ExecuteMsg {
         token_address: String,
     },
     /// Restricted to owner
-    AuthorizeCw20Contract {
+    AuthorizeContract {
+        action: PermissionAction,
         addr: AndrAddr,
         expiration: Option<Expiry>,
     },
     /// Restricted to owner
-    DeauthorizeCw20Contract {
-        addr: AndrAddr,
-    },
-
-    /// Restricted to owner
-    AuthorizeTokenContract {
-        addr: AndrAddr,
-        expiration: Option<Expiry>,
-    },
-    /// Restricted to owner
-    DeauthorizeTokenContract {
+    DeauthorizeContract {
+        action: PermissionAction,
         addr: AndrAddr,
     },
 }
@@ -137,7 +133,7 @@ pub enum QueryMsg {
     },
     #[returns(AuthorizedAddressesResponse)]
     AuthorizedAddresses {
-        action: String,
+        action: PermissionAction,
         start_after: Option<String>,
         limit: Option<u32>,
         order_by: Option<OrderBy>,

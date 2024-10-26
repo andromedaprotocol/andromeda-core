@@ -1,5 +1,5 @@
 use andromeda_std::amp::{AndrAddr, Recipient};
-use andromeda_std::common::denom::Asset;
+use andromeda_std::common::denom::{Asset, PermissionAction};
 use andromeda_std::common::expiration::Expiry;
 use andromeda_std::common::{MillisecondsExpiration, OrderBy};
 use andromeda_std::error::ContractError;
@@ -54,12 +54,14 @@ pub enum ExecuteMsg {
         token_address: String,
     },
     /// Restricted to owner
-    AuthorizeTokenContract {
+    AuthorizeContract {
+        action: PermissionAction,
         addr: AndrAddr,
         expiration: Option<Expiry>,
     },
     /// Restricted to owner
-    DeauthorizeTokenContract {
+    DeauthorizeContract {
+        action: PermissionAction,
         addr: AndrAddr,
     },
 }
@@ -123,6 +125,7 @@ pub enum QueryMsg {
     /// Gets all of the authorized addresses for the auction
     #[returns(AuthorizedAddressesResponse)]
     AuthorizedAddresses {
+        action: PermissionAction,
         start_after: Option<String>,
         limit: Option<u32>,
         order_by: Option<OrderBy>,
