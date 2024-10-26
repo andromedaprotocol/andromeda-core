@@ -15,8 +15,9 @@ use andromeda_std::{
     common::{
         actions::call_action,
         denom::{
-            execute_authorize_contract, execute_deauthorize_contract, validate_native_denom, Asset,
-            AuthorizedAddressesResponse, PermissionAction, SEND_CW20_ACTION,
+            authorize_addresses, execute_authorize_contract, execute_deauthorize_contract,
+            validate_native_denom, Asset, AuthorizedAddressesResponse, PermissionAction,
+            SEND_CW20_ACTION,
         },
         encode_binary,
         expiration::{expiration_from_milliseconds, get_and_validate_start_time, Expiry},
@@ -42,7 +43,7 @@ const SEND_NFT_ACTION: &str = "SEND_NFT";
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
-    deps: DepsMut,
+    mut deps: DepsMut,
     env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
@@ -64,31 +65,11 @@ pub fn instantiate(
     )?;
 
     if let Some(authorized_token_addresses) = msg.authorized_token_addresses {
-        if !authorized_token_addresses.is_empty() {
-            ADOContract::default().permission_action(SEND_NFT_ACTION, deps.storage)?;
-        }
-
-        for token_address in authorized_token_addresses {
-            let addr = token_address.get_raw_address(&deps.as_ref())?;
-            ADOContract::set_permission(
-                deps.storage,
-                SEND_NFT_ACTION,
-                addr,
-                Permission::Local(LocalPermission::Whitelisted(None)),
-            )?;
-        }
+        authorize_addresses(&mut deps, SEND_NFT_ACTION, authorized_token_addresses)?;
     }
+
     if let Some(authorized_cw20_addresses) = msg.authorized_cw20_addresses {
-        for cw20_address in authorized_cw20_addresses {
-            let addr = cw20_address.get_raw_address(&deps.as_ref())?;
-            ADOContract::default().permission_action(SEND_CW20_ACTION, deps.storage)?;
-            ADOContract::set_permission(
-                deps.storage,
-                SEND_CW20_ACTION,
-                addr,
-                Permission::Local(LocalPermission::Whitelisted(None)),
-            )?;
-        }
+        authorize_addresses(&mut deps, SEND_CW20_ACTION, authorized_cw20_addresses)?;
     }
 
     Ok(resp)

@@ -124,6 +124,27 @@ pub struct AuthorizedAddressesResponse {
     pub addresses: Vec<String>,
 }
 
+pub fn authorize_addresses(
+    deps: &mut DepsMut,
+    action: &str,
+    addresses: Vec<AndrAddr>,
+) -> Result<(), ContractError> {
+    if !addresses.is_empty() {
+        ADOContract::default().permission_action(action, deps.storage)?;
+    }
+
+    for address in addresses {
+        let addr = address.get_raw_address(&deps.as_ref())?;
+        ADOContract::set_permission(
+            deps.storage,
+            action,
+            addr.to_string(),
+            Permission::Local(LocalPermission::Whitelisted(None)),
+        )?;
+    }
+    Ok(())
+}
+
 pub fn execute_authorize_contract(
     deps: DepsMut,
     info: MessageInfo,
