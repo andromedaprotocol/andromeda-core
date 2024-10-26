@@ -1134,7 +1134,7 @@ fn test_query_authorized_addresses() {
         order_by: None,
     };
     let cw20_res: AuthorizedAddressesResponse =
-        from_json(&query(deps.as_ref(), mock_env(), cw20_query).unwrap()).unwrap();
+        from_json(query(deps.as_ref(), mock_env(), cw20_query).unwrap()).unwrap();
     assert_eq!(
         cw20_res.addresses,
         vec!["cw20_contract1".to_string(), "cw20_contract2".to_string()]
@@ -1148,7 +1148,7 @@ fn test_query_authorized_addresses() {
         order_by: None,
     };
     let nft_res: AuthorizedAddressesResponse =
-        from_json(&query(deps.as_ref(), mock_env(), nft_query).unwrap()).unwrap();
+        from_json(query(deps.as_ref(), mock_env(), nft_query).unwrap()).unwrap();
     assert_eq!(
         nft_res.addresses,
         vec!["nft_contract1".to_string(), "nft_contract2".to_string()]
