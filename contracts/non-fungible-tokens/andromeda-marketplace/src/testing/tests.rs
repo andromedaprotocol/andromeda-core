@@ -1,7 +1,8 @@
 use std::vec;
 
-use andromeda_non_fungible_tokens::marketplace::{
-    Cw20HookMsg, Cw721HookMsg, ExecuteMsg, InstantiateMsg, Status,
+use andromeda_non_fungible_tokens::{
+    auction::AuthorizedAddressesResponse,
+    marketplace::{Cw20HookMsg, Cw721HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg, Status},
 };
 use andromeda_std::{
     ado_base::{
@@ -11,7 +12,7 @@ use andromeda_std::{
     ado_contract::ADOContract,
     amp::{AndrAddr, Recipient},
     common::{
-        denom::{Asset, SEND_CW20_ACTION},
+        denom::{Asset, SEND_CW20_ACTION, SEND_NFT_ACTION},
         encode_binary,
         expiration::{expiration_from_milliseconds, Expiry, MILLISECONDS_TO_NANOSECONDS_RATIO},
         reply::ReplyId,
@@ -22,7 +23,7 @@ use andromeda_std::{
     testing::mock_querier::MOCK_CW20_CONTRACT,
 };
 use cosmwasm_std::{
-    attr, coin, coins,
+    attr, coin, coins, from_json,
     testing::{mock_env, mock_info},
     to_json_binary, Addr, BankMsg, CosmosMsg, Decimal, Deps, DepsMut, Env, Response, SubMsg,
     Uint128, WasmMsg,
@@ -33,7 +34,7 @@ use cw_utils::Expiration;
 
 use super::mock_querier::MOCK_KERNEL_CONTRACT;
 use crate::{
-    contract::{execute, instantiate},
+    contract::{execute, instantiate, query},
     state::{sale_infos, SaleInfo, TokenSaleState, TOKEN_SALE_STATE},
     testing::mock_querier::{
         mock_dependencies_custom, MOCK_CW721_ADDR, MOCK_TOKEN_ADDR, MOCK_TOKEN_OWNER,
@@ -1108,4 +1109,48 @@ fn test_execute_deauthorize_cw20_contract() {
     };
     let err = execute(deps.as_mut(), mock_env(), non_owner_info, msg).unwrap_err();
     assert_eq!(err, ContractError::Unauthorized {});
+}
+
+#[test]
+fn test_query_authorized_addresses() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let _res = init(
+        deps.as_mut(),
+        Some(vec![
+            AndrAddr::from_string("cw20_contract1"),
+            AndrAddr::from_string("cw20_contract2"),
+        ]),
+        Some(vec![
+            AndrAddr::from_string("nft_contract1"),
+            AndrAddr::from_string("nft_contract2"),
+        ]),
+    );
+
+    // Query authorized addresses for CW20 action
+    let cw20_query = QueryMsg::AuthorizedAddresses {
+        action: SEND_CW20_ACTION.to_string(),
+        start_after: None,
+        limit: None,
+        order_by: None,
+    };
+    let cw20_res: AuthorizedAddressesResponse =
+        from_json(&query(deps.as_ref(), mock_env(), cw20_query).unwrap()).unwrap();
+    assert_eq!(
+        cw20_res.addresses,
+        vec!["cw20_contract1".to_string(), "cw20_contract2".to_string()]
+    );
+
+    // Query authorized addresses for NFT action
+    let nft_query = QueryMsg::AuthorizedAddresses {
+        action: SEND_NFT_ACTION.to_string(),
+        start_after: None,
+        limit: None,
+        order_by: None,
+    };
+    let nft_res: AuthorizedAddressesResponse =
+        from_json(&query(deps.as_ref(), mock_env(), nft_query).unwrap()).unwrap();
+    assert_eq!(
+        nft_res.addresses,
+        vec!["nft_contract1".to_string(), "nft_contract2".to_string()]
+    );
 }

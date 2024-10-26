@@ -1,14 +1,15 @@
 use andromeda_std::{
     amp::{AndrAddr, Recipient},
     andr_exec, andr_instantiate, andr_query,
-    common::expiration::Expiry,
-    common::{denom::Asset, MillisecondsDuration},
+    common::{denom::Asset, expiration::Expiry, MillisecondsDuration, OrderBy},
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
 use cw20::Cw20ReceiveMsg;
 use cw721::{Cw721ReceiveMsg, Expiration};
 use std::fmt::{Display, Formatter, Result};
+
+use crate::auction::AuthorizedAddressesResponse;
 
 #[andr_instantiate]
 #[cw_serde]
@@ -123,6 +124,13 @@ pub enum QueryMsg {
         token_address: String,
         start_after: Option<String>,
         limit: Option<u64>,
+    },
+    #[returns(AuthorizedAddressesResponse)]
+    AuthorizedAddresses {
+        action: String,
+        start_after: Option<String>,
+        limit: Option<u32>,
+        order_by: Option<OrderBy>,
     },
 }
 

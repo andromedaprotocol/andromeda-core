@@ -3,9 +3,12 @@ use crate::state::{
 };
 use std::vec;
 
-use andromeda_non_fungible_tokens::marketplace::{
-    Cw20HookMsg, Cw721HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg, SaleIdsResponse,
-    SaleStateResponse, Status,
+use andromeda_non_fungible_tokens::{
+    auction::AuthorizedAddressesResponse,
+    marketplace::{
+        Cw20HookMsg, Cw721HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg, SaleIdsResponse,
+        SaleStateResponse, Status,
+    },
 };
 use andromeda_std::{
     ado_base::{
@@ -21,7 +24,7 @@ use andromeda_std::{
         encode_binary,
         expiration::{expiration_from_milliseconds, get_and_validate_start_time, Expiry},
         rates::{get_tax_amount, get_tax_amount_cw20},
-        Funds, Milliseconds, MillisecondsDuration,
+        Funds, Milliseconds, MillisecondsDuration, OrderBy,
     },
     error::ContractError,
 };
@@ -880,6 +883,18 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
             start_after,
             limit,
         )?),
+        QueryMsg::AuthorizedAddresses {
+            action,
+            start_after,
+            limit,
+            order_by,
+        } => encode_binary(&query_authorized_addresses(
+            deps,
+            action,
+            start_after,
+            limit,
+            order_by,
+        )?),
         _ => ADOContract::default().query(deps, env, msg),
     }
 }
@@ -940,6 +955,23 @@ fn query_owner_of(
     }))?;
 
     Ok(res)
+}
+
+fn query_authorized_addresses(
+    deps: Deps,
+    action: String,
+    start_after: Option<String>,
+    limit: Option<u32>,
+    order_by: Option<OrderBy>,
+) -> Result<AuthorizedAddressesResponse, ContractError> {
+    let addresses = ADOContract::default().query_permissioned_actors(
+        deps,
+        action,
+        start_after,
+        limit,
+        order_by,
+    )?;
+    Ok(AuthorizedAddressesResponse { addresses })
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
