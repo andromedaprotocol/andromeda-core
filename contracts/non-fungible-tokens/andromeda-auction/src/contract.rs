@@ -79,15 +79,17 @@ pub fn instantiate(
             )?;
         }
     }
-    if let Some(authorized_cw20_address) = msg.authorized_cw20_address {
-        let addr = authorized_cw20_address.get_raw_address(&deps.as_ref())?;
-        ADOContract::default().permission_action(SEND_CW20_ACTION, deps.storage)?;
-        ADOContract::set_permission(
-            deps.storage,
-            SEND_CW20_ACTION,
-            addr,
-            Permission::Local(LocalPermission::Whitelisted(None)),
-        )?;
+    if let Some(authorized_cw20_addresses) = msg.authorized_cw20_addresses {
+        for cw20_address in authorized_cw20_addresses {
+            let addr = cw20_address.get_raw_address(&deps.as_ref())?;
+            ADOContract::default().permission_action(SEND_CW20_ACTION, deps.storage)?;
+            ADOContract::set_permission(
+                deps.storage,
+                SEND_CW20_ACTION,
+                addr,
+                Permission::Local(LocalPermission::Whitelisted(None)),
+            )?;
+        }
     }
 
     Ok(resp)

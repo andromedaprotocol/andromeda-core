@@ -47,7 +47,7 @@ fn init(deps: DepsMut) -> Response {
         owner: None,
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         authorized_token_addresses: Some(vec![AndrAddr::from_string(MOCK_TOKEN_ADDR)]),
-        authorized_cw20_address: None,
+        authorized_cw20_addresses: None,
     };
 
     let info = mock_info("owner", &[]);
@@ -59,7 +59,7 @@ fn init_cw20(deps: DepsMut, _modules: Option<Vec<Module>>) -> Response {
         owner: None,
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         authorized_token_addresses: Some(vec![AndrAddr::from_string(MOCK_TOKEN_ADDR)]),
-        authorized_cw20_address: Some(AndrAddr::from_string(MOCK_CW20_CONTRACT)),
+        authorized_cw20_addresses: Some(vec![AndrAddr::from_string(MOCK_CW20_CONTRACT)]),
     };
 
     let info = mock_info("owner", &[]);

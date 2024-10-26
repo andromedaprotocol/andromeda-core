@@ -14,7 +14,7 @@ use cw721::{Cw721ReceiveMsg, Expiration};
 #[cw_serde]
 pub struct InstantiateMsg {
     pub authorized_token_addresses: Option<Vec<AndrAddr>>,
-    pub authorized_cw20_address: Option<AndrAddr>,
+    pub authorized_cw20_addresses: Option<Vec<AndrAddr>>,
 }
 
 #[andr_exec]

@@ -168,13 +168,13 @@ pub fn mock_auction_instantiate_msg(
     kernel_address: impl Into<String>,
     owner: Option<String>,
     authorized_token_addresses: Option<Vec<AndrAddr>>,
-    authorized_cw20_address: Option<AndrAddr>,
+    authorized_cw20_addresses: Option<Vec<AndrAddr>>,
 ) -> InstantiateMsg {
     InstantiateMsg {
         kernel_address: kernel_address.into(),
         owner,
         authorized_token_addresses,
-        authorized_cw20_address,
+        authorized_cw20_addresses,
     }
 }
 
