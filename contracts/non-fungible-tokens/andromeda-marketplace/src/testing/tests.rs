@@ -1167,13 +1167,13 @@ fn test_authorize_token_contract() {
 
     let owner_info = mock_info("owner", &[]);
     let token_address = AndrAddr::from_string("nft_contract");
-    let expiration = Some(Expiry::FromNow(Milliseconds(100)));
+    let expiration = Expiry::FromNow(Milliseconds(100));
 
     // Test successful authorization
     let msg = ExecuteMsg::AuthorizeContract {
         action: PermissionAction::SendNft,
         addr: token_address.clone(),
-        expiration: expiration.clone(),
+        expiration: Some(expiration.clone()),
     };
     let res = execute(deps.as_mut(), mock_env(), owner_info.clone(), msg).unwrap();
     assert_eq!(
@@ -1181,7 +1181,7 @@ fn test_authorize_token_contract() {
         vec![
             attr("action", "authorize_contract"),
             attr("address", "nft_contract"),
-            attr("permission", format!("whitelisted:{}", expiration.unwrap())),
+            attr("permission", format!("whitelisted:{}", expiration)),
         ]
     );
 
