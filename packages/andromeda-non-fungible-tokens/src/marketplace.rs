@@ -2,7 +2,7 @@ use andromeda_std::{
     amp::{AndrAddr, Recipient},
     andr_exec, andr_instantiate, andr_query,
     common::{
-        denom::{Asset, PermissionAction},
+        denom::{Asset, AuthorizedAddressesResponse, PermissionAction},
         expiration::Expiry,
         MillisecondsDuration, OrderBy,
     },
@@ -12,8 +12,6 @@ use cosmwasm_std::Uint128;
 use cw20::Cw20ReceiveMsg;
 use cw721::{Cw721ReceiveMsg, Expiration};
 use std::fmt::{Display, Formatter, Result};
-
-use crate::auction::AuthorizedAddressesResponse;
 
 #[andr_instantiate]
 #[cw_serde]

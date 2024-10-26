@@ -1,5 +1,5 @@
 use andromeda_std::amp::{AndrAddr, Recipient};
-use andromeda_std::common::denom::{Asset, PermissionAction};
+use andromeda_std::common::denom::{Asset, AuthorizedAddressesResponse, PermissionAction};
 use andromeda_std::common::expiration::Expiry;
 use andromeda_std::common::{MillisecondsExpiration, OrderBy};
 use andromeda_std::error::ContractError;
@@ -284,11 +284,6 @@ pub struct AuctionStateResponse {
     pub is_cancelled: bool,
     pub owner: String,
     pub recipient: Option<Recipient>,
-}
-
-#[cw_serde]
-pub struct AuthorizedAddressesResponse {
-    pub addresses: Vec<String>,
 }
 
 #[cw_serde]

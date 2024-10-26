@@ -3,12 +3,9 @@ use crate::state::{
 };
 use std::vec;
 
-use andromeda_non_fungible_tokens::{
-    auction::AuthorizedAddressesResponse,
-    marketplace::{
-        Cw20HookMsg, Cw721HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg, SaleIdsResponse,
-        SaleStateResponse, Status,
-    },
+use andromeda_non_fungible_tokens::marketplace::{
+    Cw20HookMsg, Cw721HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg, SaleIdsResponse,
+    SaleStateResponse, Status,
 };
 use andromeda_std::{
     ado_base::{
@@ -21,8 +18,8 @@ use andromeda_std::{
         actions::call_action,
         context::ExecuteContext,
         denom::{
-            execute_authorize_contract, execute_deauthorize_contract, Asset, PermissionAction,
-            SEND_CW20_ACTION, SEND_NFT_ACTION,
+            execute_authorize_contract, execute_deauthorize_contract, Asset,
+            AuthorizedAddressesResponse, PermissionAction, SEND_CW20_ACTION, SEND_NFT_ACTION,
         },
         encode_binary,
         expiration::{expiration_from_milliseconds, get_and_validate_start_time, Expiry},

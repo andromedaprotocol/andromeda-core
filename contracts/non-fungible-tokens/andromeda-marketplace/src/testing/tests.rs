@@ -1,6 +1,5 @@
-use andromeda_non_fungible_tokens::{
-    auction::AuthorizedAddressesResponse,
-    marketplace::{Cw20HookMsg, Cw721HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg, Status},
+use andromeda_non_fungible_tokens::marketplace::{
+    Cw20HookMsg, Cw721HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg, Status,
 };
 use andromeda_std::{
     ado_base::{
@@ -10,7 +9,9 @@ use andromeda_std::{
     ado_contract::ADOContract,
     amp::{AndrAddr, Recipient},
     common::{
-        denom::{Asset, PermissionAction, SEND_CW20_ACTION, SEND_NFT_ACTION},
+        denom::{
+            Asset, AuthorizedAddressesResponse, PermissionAction, SEND_CW20_ACTION, SEND_NFT_ACTION,
+        },
         encode_binary,
         expiration::{expiration_from_milliseconds, Expiry, MILLISECONDS_TO_NANOSECONDS_RATIO},
         reply::ReplyId,
