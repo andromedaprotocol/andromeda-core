@@ -5,7 +5,7 @@ use andromeda_non_fungible_tokens::{
     },
     cw721::{ExecuteMsg as Cw721ExecuteMsg, TokenExtension},
 };
-
+use andromeda_std::common::expiration::Expiry;
 use andromeda_std::{
     common::{reply::ReplyId, MillisecondsExpiration},
     error::ContractError,
@@ -99,7 +99,7 @@ mod test {
     };
     use andromeda_std::{
         amp::{messages::AMPPkt, AndrAddr, Recipient},
-        common::{denom::Asset, encode_binary},
+        common::{denom::Asset, encode_binary, Milliseconds},
         testing::mock_querier::MOCK_CW20_CONTRACT,
     };
     use cosmwasm_std::{coin, coins, testing::MOCK_CONTRACT_ADDR, wasm_execute, BankMsg, Coin};
@@ -519,8 +519,8 @@ mod test {
         name: String,
         tiers: Vec<Tier>,
         presale: Option<Vec<PresaleTierOrder>>,
-        start_time: Option<MillisecondsExpiration>,
-        end_time: MillisecondsExpiration,
+        start_time: Option<Expiry>,
+        end_time: Expiry,
         expected_res: Result<Response, ContractError>,
         payee: String,
     }
@@ -547,13 +547,13 @@ mod test {
                 tiers: mock_campaign_tiers(),
                 presale: Some(valid_presale.clone()),
                 start_time: None,
-                end_time: MillisecondsExpiration::from_seconds(env.block.time.seconds() + 100),
+                end_time: Expiry::FromNow(Milliseconds::from_seconds(100)),
                 payee: MOCK_DEFAULT_OWNER.to_string(),
                 expected_res: Ok(Response::new()
                     .add_attribute("action", "start_campaign")
                     .add_attribute(
                         "end_time",
-                        MillisecondsExpiration::from_seconds(env.block.time.seconds() + 100),
+                        Expiry::FromNow(Milliseconds::from_seconds(100)).to_string(),
                     )
                     .add_submessage(SubMsg::reply_on_error(
                         CosmosMsg::Wasm(WasmMsg::Execute {
@@ -573,7 +573,7 @@ mod test {
                 tiers: mock_campaign_tiers(),
                 presale: Some(valid_presale.clone()),
                 start_time: None,
-                end_time: MillisecondsExpiration::from_seconds(env.block.time.seconds() + 100),
+                end_time: Expiry::FromNow(Milliseconds::from_seconds(100)),
                 payee: "owner1".to_string(),
                 expected_res: Err(ContractError::Unauthorized {}),
             },
@@ -582,7 +582,7 @@ mod test {
                 tiers: mock_campaign_tiers(),
                 presale: Some(invalid_presale.clone()),
                 start_time: None,
-                end_time: MillisecondsExpiration::from_seconds(env.block.time.seconds() + 100),
+                end_time: Expiry::FromNow(Milliseconds::from_seconds(100)),
                 payee: MOCK_DEFAULT_OWNER.to_string(),
                 expected_res: Err(ContractError::InvalidTier {
                     operation: "set_tier_orders".to_string(),
@@ -594,18 +594,16 @@ mod test {
                 tiers: mock_campaign_tiers(),
                 presale: Some(valid_presale.clone()),
                 start_time: None,
-                end_time: MillisecondsExpiration::from_seconds(env.block.time.seconds() - 100),
+                end_time: Expiry::AtTime(Milliseconds::from_seconds(0)),
                 payee: MOCK_DEFAULT_OWNER.to_string(),
-                expected_res: Err(ContractError::StartTimeAfterEndTime {}),
+                expected_res: Err(ContractError::InvalidExpiration {}),
             },
             StartCampaignTestCase {
                 name: "start_campaign with invalid start_time".to_string(),
                 tiers: mock_campaign_tiers(),
                 presale: Some(valid_presale.clone()),
-                start_time: Some(MillisecondsExpiration::from_seconds(
-                    env.block.time.seconds() + 1000,
-                )),
-                end_time: MillisecondsExpiration::from_seconds(env.block.time.seconds() + 500),
+                start_time: Some(Expiry::FromNow(Milliseconds::from_seconds(10000000))),
+                end_time: Expiry::FromNow(Milliseconds::from_seconds(500)),
                 payee: MOCK_DEFAULT_OWNER.to_string(),
                 expected_res: Err(ContractError::StartTimeAfterEndTime {}),
             },
@@ -621,8 +619,8 @@ mod test {
             let info = mock_info(&test.payee, &[]);
 
             let msg = ExecuteMsg::StartCampaign {
-                start_time: test.start_time,
-                end_time: test.end_time,
+                start_time: test.start_time.clone(),
+                end_time: test.end_time.clone(),
                 presale: test.presale.clone(),
             };
 
@@ -632,11 +630,11 @@ mod test {
             if res.is_ok() {
                 assert_eq!(
                     CAMPAIGN_DURATION.load(&deps.storage).unwrap().start_time,
-                    test.start_time
+                    test.start_time.map(|exp| exp.get_time(&env.block))
                 );
                 assert_eq!(
                     CAMPAIGN_DURATION.load(&deps.storage).unwrap().end_time,
-                    test.end_time
+                    test.end_time.get_time(&env.block)
                 );
                 assert_eq!(
                     CAMPAIGN_STAGE.load(&deps.storage).unwrap(),
