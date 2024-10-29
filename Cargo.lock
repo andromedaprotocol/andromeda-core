@@ -592,6 +592,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "andromeda-schema"
+version = "1.0.0"
+dependencies = [
+ "andromeda-app",
+ "andromeda-modules",
+ "andromeda-std",
+ "andromeda-testing",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-json",
+ "cw-multi-test",
+ "cw-storage-plus 1.2.0",
+ "cw-utils 1.0.3",
+ "jsonschema-valid",
+ "serde-cw-value",
+ "serde_json",
+ "test-case",
+]
+
+[[package]]
 name = "andromeda-set-amount-splitter"
 version = "1.0.3"
 dependencies = [
@@ -2909,6 +2929,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "187674a687eed5fe42285b40c6291f9a01517d415fad1c3cbc6a9f778af7fcd4"
 
 [[package]]
+name = "iri-string"
+version = "0.5.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bf071934ee7ee97e52fa1868a9540a7885eab75926bd70794030304a9797cea1"
+
+[[package]]
 name = "itertools"
 version = "0.10.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2948,6 +2974,33 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1868808506b929d7b0cfa8f75951347aa71bb21144b7791bae35d9bccfcfe37a"
 dependencies = [
  "wasm-bindgen",
+]
+
+[[package]]
+name = "json-pointer"
+version = "0.3.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5fe841b94e719a482213cee19dd04927cf412f26d8dc84c5a446c081e49c2997"
+dependencies = [
+ "serde_json",
+]
+
+[[package]]
+name = "jsonschema-valid"
+version = "0.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "998c0b6acd4e20747af58157c9d55878970f546088e17c9870f4b41bc8a032a3"
+dependencies = [
+ "chrono 0.4.38",
+ "iri-string",
+ "itertools 0.10.5",
+ "json-pointer",
+ "lazy_static",
+ "percent-encoding",
+ "regex",
+ "serde_json",
+ "textwrap",
+ "url",
 ]
 
 [[package]]
@@ -4148,9 +4201,9 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.127"
+version = "1.0.132"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8043c06d9f82bd7271361ed64f415fe5e12a77fdb52e573e7f06a516dea329ad"
+checksum = "d726bfaff4b320266d395898905d0eba0345aae23b54aee3a737e260fd46db03"
 dependencies = [
  "itoa",
  "memchr",
@@ -4800,6 +4853,12 @@ dependencies = [
  "rstest",
  "toml 0.7.8",
 ]
+
+[[package]]
+name = "textwrap"
+version = "0.16.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "23d434d3f8967a09480fb04132ebe0a3e088c173e6d0ee7897abbdf4eab0f8b9"
 
 [[package]]
 name = "thiserror"
