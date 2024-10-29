@@ -379,6 +379,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "andromeda-form"
+version = "1.0.0"
+dependencies = [
+ "andromeda-data-storage",
+ "andromeda-modules",
+ "andromeda-std",
+ "andromeda-testing",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-json",
+ "cw-multi-test",
+ "cw-storage-plus 1.2.0",
+ "cw-utils 1.0.3",
+ "cw20",
+ "serde",
+ "serde_json",
+ "test-case",
+]
+
+[[package]]
 name = "andromeda-fungible-tokens"
 version = "1.0.0"
 dependencies = [
