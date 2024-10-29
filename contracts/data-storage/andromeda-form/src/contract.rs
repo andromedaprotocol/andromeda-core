@@ -66,7 +66,7 @@ pub fn instantiate(
         Some(end_time) => {
             let time_res = get_and_validate_start_time(&env.clone(), Some(end_time));
             if time_res.is_ok() {
-                Some(milliseconds_from_expiration(time_res.unwrap().0.into())?)
+                Some(milliseconds_from_expiration(time_res.unwrap().0)?)
             } else {
                 let current_time = Milliseconds::from_nanos(env.block.time.nanos()).milliseconds();
                 let current_height = env.block.height;

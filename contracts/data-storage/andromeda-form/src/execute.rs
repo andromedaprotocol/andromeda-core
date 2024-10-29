@@ -128,7 +128,7 @@ pub fn execute_submit_form(
                         SUBMISSION_ID.save(ctx.deps.storage, &new_id)?;
                     } else {
                         return Err(ContractError::CustomError {
-                            msg: format!("Multiple submissions are not allowed"),
+                            msg: "Multiple submissions are not allowed".to_string(),
                         });
                     }
                 }
@@ -186,7 +186,7 @@ pub fn execute_edit_submission(
     ensure!(
         allow_edit_submission,
         ContractError::CustomError {
-            msg: format!("Edit submission is not allowed")
+            msg: "Edit submission is not allowed".to_string(),
         }
     );
     let (expiration, _) = get_and_validate_start_time(&ctx.env, None)?;
@@ -272,15 +272,13 @@ pub fn execute_open_form(ctx: ExecuteContext) -> Result<Response, ContractError>
             Some(saved_end_time) => {
                 if saved_start_time.gt(&start_time) {
                     START_TIME.save(ctx.deps.storage, &Some(start_time))?;
+                } else if saved_end_time.gt(&start_time) {
+                    return Err(ContractError::CustomError {
+                        msg: format!("Already opened. Opened time {:?}", saved_start_time),
+                    });
                 } else {
-                    if saved_end_time.gt(&start_time) {
-                        return Err(ContractError::CustomError {
-                            msg: format!("Already opened. Opened time {:?}", saved_start_time),
-                        });
-                    } else {
-                        START_TIME.save(ctx.deps.storage, &Some(start_time))?;
-                        END_TIME.save(ctx.deps.storage, &None)?;
-                    }
+                    START_TIME.save(ctx.deps.storage, &Some(start_time))?;
+                    END_TIME.save(ctx.deps.storage, &None)?;
                 }
             }
             None => {
@@ -330,19 +328,17 @@ pub fn execute_close_form(ctx: ExecuteContext) -> Result<Response, ContractError
                     return Err(ContractError::CustomError {
                         msg: format!("Not opened yet. Will be opend at {:?}", saved_start_time),
                     });
+                } else if saved_end_time.gt(&end_time) {
+                    END_TIME.save(ctx.deps.storage, &Some(end_time))?;
                 } else {
-                    if saved_end_time.gt(&end_time) {
-                        END_TIME.save(ctx.deps.storage, &Some(end_time))?;
-                    } else {
-                        return Err(ContractError::CustomError {
-                            msg: format!("Already closed. Closed at {:?}", saved_end_time),
-                        });
-                    }
+                    return Err(ContractError::CustomError {
+                        msg: format!("Already closed. Closed at {:?}", saved_end_time),
+                    });
                 }
             }
             None => {
                 return Err(ContractError::CustomError {
-                    msg: format!("Not opened yet"),
+                    msg: "Not opened yet".to_string(),
                 })
             }
         },
@@ -358,7 +354,7 @@ pub fn execute_close_form(ctx: ExecuteContext) -> Result<Response, ContractError
             }
             None => {
                 return Err(ContractError::CustomError {
-                    msg: format!("Not opened yet"),
+                    msg: "Not opened yet".to_string(),
                 })
             }
         },
@@ -375,7 +371,7 @@ pub fn milliseconds_from_expiration(expiration: Expiration) -> Result<Millisecon
     match expiration {
         Expiration::AtTime(time) => Ok(Milliseconds::from_nanos(time.nanos())),
         _ => Err(ContractError::CustomError {
-            msg: format!("Not supported expiration enum"),
+            msg: "Not supported expiration enum".to_string(),
         }),
     }
 }
@@ -402,7 +398,7 @@ pub fn validate_form_is_opened(
             Ok(())
         }
         None => Err(ContractError::CustomError {
-            msg: format!("Not opened yet. Start time is not set"),
+            msg: "Not opened yet. Start time is not set".to_string(),
         }),
     }
 }

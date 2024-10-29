@@ -34,7 +34,7 @@ impl<'a> IndexList<SubmissionInfo> for SubmissionIndexes<'a> {
 pub fn submissions<'a>() -> IndexedMap<'a, &'a (u64, Addr), SubmissionInfo, SubmissionIndexes<'a>> {
     let indexes = SubmissionIndexes {
         submission_id: MultiIndex::new(
-            |_pk: &[u8], r| r.submission_id.clone(),
+            |_pk: &[u8], r| r.submission_id,
             "submission",
             "submission_id_index",
         ),
