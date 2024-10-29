@@ -280,7 +280,7 @@ fn test_success_open_form(
     assert!(res.is_ok());
 
     let start_time = START_TIME.load(&deps.storage).unwrap();
-    let expected_saved_start_time = if let Some(_) = START_TIME.load(&deps.storage).unwrap() {
+    let expected_saved_start_time = if START_TIME.load(&deps.storage).unwrap().is_some() {
         Some(Milliseconds::from_nanos(execute_timestamp).plus_milliseconds(Milliseconds(1)))
     } else {
         None
@@ -313,10 +313,8 @@ fn test_success_open_form(
             Some(saved_end_time) => {
                 if saved_start_time.gt(&execute_time) {
                     assert_eq!(end_time, Some(saved_end_time))
-                } else {
-                    if saved_end_time.gt(&execute_time) {
-                        assert_eq!(end_time, None);
-                    }
+                } else if saved_end_time.gt(&execute_time) {
+                    assert_eq!(end_time, None);
                 }
             }
             None => {
@@ -375,7 +373,7 @@ fn test_success_open_form(
     500000000000_u64,
     4000000000000_u64,
     ContractError::CustomError {
-        msg: format!("Not opened yet"),
+        msg: "Not opened yet".to_string(),
     };
     "Invalid timestamp at execution with none start time"
 )]
@@ -403,7 +401,7 @@ fn test_success_open_form(
     500000000000_u64,
     1000000000000_u64,
     ContractError::CustomError {
-        msg: format!("Not opened yet"),
+        msg: "Not opened yet".to_string(),
     };
     "Invalid timestamp at execution with none start and end time"
 )]
@@ -503,14 +501,14 @@ fn test_submit_form_allowed_multiple_submission() {
     assert_eq!(
         err,
         ContractError::CustomError {
-            msg: format!("Invalid data against schema"),
+            msg: "Invalid data against schema".to_string(),
         }
     );
 
     let all_submissions = query_all_submissions(deps.as_ref())
         .unwrap()
         .all_submissions;
-    assert_eq!(all_submissions.len(), 7 as usize);
+    assert_eq!(all_submissions.len(), 7_usize);
 
     delete_submission(
         deps.as_mut(),
@@ -522,7 +520,7 @@ fn test_submit_form_allowed_multiple_submission() {
     let all_submissions = query_all_submissions(deps.as_ref())
         .unwrap()
         .all_submissions;
-    assert_eq!(all_submissions.len(), 6 as usize);
+    assert_eq!(all_submissions.len(), 6_usize);
 
     close_form(deps.as_mut(), info.sender.as_ref(), 90000000000_u64).unwrap();
 
@@ -581,7 +579,7 @@ fn test_submit_form_disallowed_multiple_submission_disallowed_edit() {
     assert_eq!(
         res,
         ContractError::CustomError {
-            msg: format!("Multiple submissions are not allowed"),
+            msg: "Multiple submissions are not allowed".to_string(),
         }
     );
 
@@ -596,7 +594,7 @@ fn test_submit_form_disallowed_multiple_submission_disallowed_edit() {
     assert_eq!(
         res,
         ContractError::CustomError {
-            msg: format!("Edit submission is not allowed"),
+            msg: "Edit submission is not allowed".to_string(),
         }
     );
 }

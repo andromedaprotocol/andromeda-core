@@ -76,11 +76,6 @@ impl WasmMockQuerier {
                     _ => MockAndromedaQuerier::default().handle_query(&self.base, request),
                 }
             }
-            QueryRequest::Wasm(WasmQuery::ContractInfo { contract_addr }) => {
-                match contract_addr.as_str() {
-                    _ => MockAndromedaQuerier::default().handle_query(&self.base, request),
-                }
-            }
             _ => MockAndromedaQuerier::default().handle_query(&self.base, request),
         }
     }
@@ -100,7 +95,7 @@ impl WasmMockQuerier {
                 }
                 false => {
                     let msg_response = ValidateDataResponse::Invalid {
-                        msg: format!("Invalid data against schema"),
+                        msg: "Invalid data against schema".to_string(),
                     };
                     SystemResult::Ok(ContractResult::Ok(to_json_binary(&msg_response).unwrap()))
                 }
