@@ -462,6 +462,19 @@ fn test_kernel_ibc_execute_only_multi_hop() {
         )
         .unwrap();
 
+    adodb_andromeda
+        .execute(
+            &os::adodb::ExecuteMsg::Publish {
+                code_id: 2,
+                ado_type: "counter".to_string(),
+                action_fees: None,
+                version: "1.0.2".to_string(),
+                publisher: None,
+            },
+            None,
+        )
+        .unwrap();
+
     kernel_andromeda
         .execute(
             &ExecuteMsg::UpsertKeyAddress {
