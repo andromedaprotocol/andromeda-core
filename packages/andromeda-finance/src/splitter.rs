@@ -121,7 +121,7 @@ pub fn validate_expiry_duration(
     lock_time: &Expiry,
     block: &BlockInfo,
 ) -> Result<Milliseconds, ContractError> {
-    let new_lock_time_expiration = lock_time.get_time(&block);
+    let new_lock_time_expiration = lock_time.get_time(block);
     // New lock time can't be too short
     ensure!(
         new_lock_time_expiration
