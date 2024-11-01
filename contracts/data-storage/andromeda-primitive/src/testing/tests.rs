@@ -242,7 +242,9 @@ fn test_set_value_invalid() {
         TestHandlePrimitive {
             name: "Empty coin denom",
             primitive: Primitive::Coin(coin(1_u128, "".to_string())),
-            expected_error: Some(ContractError::InvalidDenom {}),
+            expected_error: Some(ContractError::InvalidDenom {
+                msg: Some(String::from("Coin denom cannot be empty")),
+            }),
         },
         TestHandlePrimitive {
             name: "Empty Binary",
