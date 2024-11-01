@@ -7,7 +7,7 @@ defaults:
   pull_request_rules:
     - name: backport patches to v1.1.x branch
       conditions:
-        - base=main
+        - base=development
         - label=backport/v1.1.x
       actions:
         backport:
