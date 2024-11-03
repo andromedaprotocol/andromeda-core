@@ -1,7 +1,7 @@
 use std::env::current_dir;
 
 use andromeda_non_fungible_tokens::marketplace::{
-    Cw20HookMsg, Cw721HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg
+    Cw20HookMsg, Cw721HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg,
 };
 use cosmwasm_schema::{export_schema_with_title, schema_for, write_api};
 
