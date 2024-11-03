@@ -23,16 +23,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added Date Time ADO [(#519)](https://github.com/andromedaprotocol/andromeda-core/pull/519)
 - Added Authorized CW721 Addresses to Marketplace [(#542)](https://github.com/andromedaprotocol/andromeda-core/pull/542)
 - Added Denom Validation for Rates [(#568)](https://github.com/andromedaprotocol/andromeda-core/pull/568)
-<<<<<<< HEAD
 - Added BuyNow option for Auction [(#533)](https://github.com/andromedaprotocol/andromeda-core/pull/533)
 - Include ADOBase Version in Schema [(#574)](https://github.com/andromedaprotocol/andromeda-core/pull/574)
-=======
-- Added Denom Validation in IBC Registry ADO [(#571)](https://github.com/andromedaprotocol/andromeda-core/pull/571)
-- Include ADOBase Version in Schema  [(#574)](https://github.com/andromedaprotocol/andromeda-core/pull/574)
-- Added Kernel ICS20 Transfer with Optional ExecuteMsg [(#577)](https://github.com/andromedaprotocol/andromeda-core/pull/577)
-- Added IBC Denom Wrap/Unwrap [(#579)](https://github.com/andromedaprotocol/andromeda-core/pull/579)
 - Add CW20Receive schema for missing ado [(#594)](https://github.com/andromedaprotocol/andromeda-core/pull/594)
->>>>>>> cc51e269 (fix: add cw20 missing receive schema (#594))
 
 ### Changed
 
