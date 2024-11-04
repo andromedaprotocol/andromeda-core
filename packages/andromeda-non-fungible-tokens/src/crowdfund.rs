@@ -1,6 +1,7 @@
 use andromeda_std::amp::addresses::AndrAddr;
 use andromeda_std::amp::Recipient;
 use andromeda_std::common::denom::Asset;
+use andromeda_std::common::expiration::Expiry;
 use andromeda_std::common::{MillisecondsExpiration, OrderBy};
 use andromeda_std::error::ContractError;
 use andromeda_std::{andr_exec, andr_instantiate, andr_query};
@@ -30,8 +31,8 @@ pub enum ExecuteMsg {
     RemoveTier { level: Uint64 },
     /// Start the campaign
     StartCampaign {
-        start_time: Option<MillisecondsExpiration>,
-        end_time: MillisecondsExpiration,
+        start_time: Option<Expiry>,
+        end_time: Expiry,
         presale: Option<Vec<PresaleTierOrder>>,
     },
     /// Purchase tiers
