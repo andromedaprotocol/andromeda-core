@@ -489,12 +489,38 @@ fn test_crowdfund_app_native_with_ado_recipient(
         .query_balance(buyer_one.clone(), "uandr")
         .unwrap()
         .amount;
+
+    let tiers_pre_sale = crowdfund.query_tiers(&mut router, None, None, None);
     let _ = crowdfund.execute_purchase(
         buyer_one.clone(),
         &mut router,
-        orders,
+        orders.clone(),
         vec![coin(5000, "uandr")],
     );
+    let tiers_post_sale = crowdfund.query_tiers(&mut router, None, None, None);
+
+    // Verify each tier's amount_sold increased by the correct amount
+    for order in orders {
+        let pre_tier = tiers_pre_sale
+            .tiers
+            .iter()
+            .find(|t| t.tier.level == order.level)
+            .unwrap();
+        let post_tier = tiers_post_sale
+            .tiers
+            .iter()
+            .find(|t| t.tier.level == order.level)
+            .unwrap();
+
+        assert_eq!(
+            post_tier.sold_amount,
+            pre_tier.sold_amount + order.amount,
+            "Tier {} amount_sold should increase by {}",
+            order.level,
+            order.amount
+        );
+    }
+
     let buyer_one_balance = router
         .wrap()
         .query_balance(buyer_one.clone(), "uandr")
