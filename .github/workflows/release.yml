@@ -19,21 +19,21 @@ jobs:
 
       - name: Generate schemas
         run: |
-          ./scripts/build_schema.sh
+          ./build_schema.sh
           tar -czf schemas.tar.gz schemas/
 
       - name: Create artifacts archive
         run: tar -czf contracts.tar.gz artifacts/
 
       - name: Create Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2.0.9
         with:
           files: |
             contracts.tar.gz
             schemas.tar.gz
           body: |
             ## Changes
-            See the [CHANGELOG](./CHANGELOG.md) for details.
+            See the [CHANGELOG](https://github.com/andromedaprotocol/andromeda-core/blob/main/CHANGELOG.md) for details.
 
             ## Building the Contracts from Source
             To build the contracts from source, you can use the following commands:
