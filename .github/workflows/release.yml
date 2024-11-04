@@ -49,7 +49,9 @@ jobs:
             ## Generating Schemas
             To generate the schemas, you can use the following command:
             ```sh
-            ./scripts/build_schema.sh
+            git clone https://github.com/andromedaprotocol/andromeda-core.git
+            cd andromeda-core
+            ./build_schema.sh
             ```
           draft: false
           prerelease: false
