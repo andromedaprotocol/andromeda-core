@@ -1,6 +1,6 @@
 [package]
 name = "andromeda-shunting"
-version = "0.2.3"
+version = "0.2.3-beta"
 edition = "2021"
 
 [lib]
