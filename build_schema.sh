@@ -17,19 +17,19 @@ copy_schema () {
     local CONTRACT=$(basename $CONTRACT_PATH);
     echo "$CONTRACT"
     local VERSION_FILENAME=$(get_version_filename $CONTRACT);
-    rm -rf ./artifacts/$VERSION_FILENAME
-    mkdir ./artifacts/$VERSION_FILENAME
+    rm -rf ./schemas/$VERSION_FILENAME
+    mkdir ./schemas/$VERSION_FILENAME
     # Loop through all the schema for this contract
     for schema in $CONTRACT_PATH/schema/*.json; do
         local SCHEMA_NAME=$(basename $schema);
-        cp "$schema" "./artifacts/$VERSION_FILENAME/$SCHEMA_NAME"   
+        cp "$schema" "./schemas/$VERSION_FILENAME/$SCHEMA_NAME"   
 
     done
 
 }
 
-if [ ! -d "./artifacts" ]; then
-    mkdir artifacts;
+if [ ! -d "./schemas" ]; then
+    mkdir schemas;
 fi;
 
 for directory in contracts/*/; do

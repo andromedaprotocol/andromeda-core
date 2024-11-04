@@ -9,3 +9,4 @@ ci-scripts/localrelayer/template/
 **/.idea/
 .idea/
 **/schema/**/*.json
+schemas
