@@ -17,7 +17,7 @@ use andromeda_splitter::mock::{
 };
 use andromeda_std::{
     amp::{AndrAddr, Recipient},
-    common::{denom::Asset, encode_binary, Milliseconds},
+    common::{denom::Asset, encode_binary, expiration::Expiry, Milliseconds},
 };
 use andromeda_testing::{
     mock::{mock_app, MockApp},
@@ -265,7 +265,7 @@ fn test_successful_crowdfund_app_native(setup: TestCase) {
         owner.clone(),
         &mut router,
         start_time,
-        end_time,
+        Expiry::AtTime(end_time),
         Some(presale),
     );
     let summary = crowdfund.query_campaign_summary(&mut router);
@@ -361,7 +361,7 @@ fn test_crowdfund_app_native_discard(
         owner.clone(),
         &mut router,
         start_time,
-        end_time,
+        Expiry::AtTime(end_time),
         Some(presale),
     );
     let summary = crowdfund.query_campaign_summary(&mut router);
@@ -464,7 +464,7 @@ fn test_crowdfund_app_native_with_ado_recipient(
         owner.clone(),
         &mut router,
         start_time,
-        end_time,
+        Expiry::AtTime(end_time),
         Some(presale),
     );
     let summary = crowdfund.query_campaign_summary(&mut router);
@@ -552,7 +552,7 @@ fn test_failed_crowdfund_app_native(setup: TestCase) {
         owner.clone(),
         &mut router,
         start_time,
-        end_time,
+        Expiry::AtTime(end_time),
         Some(presale),
     );
     let summary = crowdfund.query_campaign_summary(&mut router);
@@ -646,7 +646,7 @@ fn test_successful_crowdfund_app_cw20(#[with(false)] setup: TestCase) {
         owner.clone(),
         &mut router,
         start_time,
-        end_time,
+        Expiry::AtTime(end_time),
         Some(presale),
     );
     let summary = crowdfund.query_campaign_summary(&mut router);
@@ -733,7 +733,7 @@ fn test_failed_crowdfund_app_cw20(#[with(false)] setup: TestCase) {
         owner.clone(),
         &mut router,
         start_time,
-        end_time,
+        Expiry::AtTime(end_time),
         Some(presale),
     );
     let summary = crowdfund.query_campaign_summary(&mut router);
