@@ -1,0 +1,34 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "cw20receive",
+  "oneOf": [
+    {
+      "description": "Stake the sent tokens. Address must match the `staking_token` given on instantiation. The user's pending rewards and indexes are updated for each additional reward token.",
+      "type": "object",
+      "required": [
+        "stake_tokens"
+      ],
+      "properties": {
+        "stake_tokens": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Updates the global reward index on deposit of a valid cw20 token.",
+      "type": "object",
+      "required": [
+        "update_global_index"
+      ],
+      "properties": {
+        "update_global_index": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  ]
+}

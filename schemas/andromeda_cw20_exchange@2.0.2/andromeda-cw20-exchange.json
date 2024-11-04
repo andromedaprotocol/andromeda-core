@@ -1,0 +1,1548 @@
+{
+  "contract_name": "andromeda-cw20-exchange",
+  "contract_version": "2.0.2",
+  "idl_version": "1.0.0",
+  "instantiate": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "InstantiateMsg",
+    "type": "object",
+    "required": [
+      "kernel_address",
+      "token_address"
+    ],
+    "properties": {
+      "kernel_address": {
+        "type": "string"
+      },
+      "owner": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "token_address": {
+        "description": "Address of the CW20 token to be sold",
+        "allOf": [
+          {
+            "$ref": "#/definitions/AndrAddr"
+          }
+        ]
+      }
+    },
+    "additionalProperties": false,
+    "definitions": {
+      "AndrAddr": {
+        "description": "An address that can be used within the Andromeda ecosystem. Inspired by the cosmwasm-std `Addr` type. https://github.com/CosmWasm/cosmwasm/blob/2a1c698520a1aacedfe3f4803b0d7d653892217a/packages/std/src/addresses.rs#L33\n\nThis address can be one of two things: 1. A valid human readable address e.g. `cosmos1...` 2. A valid Andromeda VFS path e.g. `/home/user/app/component`\n\nVFS paths can be local in the case of an app and can be done by referencing `./component` they can also contain protocols for cross chain communication. A VFS path is usually structured as so:\n\n`<protocol>://<chain (required if ibc used)>/<path>` or `ibc://cosmoshub-4/user/app/component`",
+        "type": "string",
+        "pattern": "(^((([A-Za-z0-9]+://)?([A-Za-z0-9.\\-_]{2,80}/)))?((~[a-z0-9]{2,}|(lib|home))(/[A-Za-z0-9.\\-_]{2,80}?)*(/)?)$)|(^(~[a-z0-9]{2,}|/(lib|home))(/[A-Za-z0-9.\\-_]{2,80}?)*(/)?$)|(^[a-z0-9]{2,}$)|(^\\.(/[A-Za-z0-9.\\-_]{2,40}?)*(/)?$)"
+      }
+    }
+  },
+  "execute": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "ExecuteMsg",
+    "oneOf": [
+      {
+        "description": "Cancels an ongoing sale",
+        "type": "object",
+        "required": [
+          "cancel_sale"
+        ],
+        "properties": {
+          "cancel_sale": {
+            "type": "object",
+            "required": [
+              "asset"
+            ],
+            "properties": {
+              "asset": {
+                "$ref": "#/definitions/AssetInfoBase_for_Addr"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Purchases tokens with native funds",
+        "type": "object",
+        "required": [
+          "purchase"
+        ],
+        "properties": {
+          "purchase": {
+            "type": "object",
+            "properties": {
+              "recipient": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Receive for CW20 tokens, used for purchasing and starting sales",
+        "type": "object",
+        "required": [
+          "receive"
+        ],
+        "properties": {
+          "receive": {
+            "$ref": "#/definitions/Cw20ReceiveMsg"
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "amp_receive"
+        ],
+        "properties": {
+          "amp_receive": {
+            "$ref": "#/definitions/AMPPkt"
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "ownership"
+        ],
+        "properties": {
+          "ownership": {
+            "$ref": "#/definitions/OwnershipMessage"
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "update_kernel_address"
+        ],
+        "properties": {
+          "update_kernel_address": {
+            "type": "object",
+            "required": [
+              "address"
+            ],
+            "properties": {
+              "address": {
+                "$ref": "#/definitions/Addr"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "update_app_contract"
+        ],
+        "properties": {
+          "update_app_contract": {
+            "type": "object",
+            "required": [
+              "address"
+            ],
+            "properties": {
+              "address": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "permissioning"
+        ],
+        "properties": {
+          "permissioning": {
+            "$ref": "#/definitions/PermissioningMessage"
+          }
+        },
+        "additionalProperties": false
+      }
+    ],
+    "definitions": {
+      "AMPCtx": {
+        "type": "object",
+        "required": [
+          "id",
+          "origin",
+          "previous_sender"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0.0
+          },
+          "origin": {
+            "type": "string"
+          },
+          "origin_username": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/AndrAddr"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "previous_sender": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "AMPMsg": {
+        "description": "This struct defines how the kernel parses and relays messages between ADOs If the desired recipient is via IBC then namespacing must be employed The attached message must be a binary encoded execute message for the receiving ADO Funds can be attached for an individual message and will be attached accordingly",
+        "type": "object",
+        "required": [
+          "config",
+          "funds",
+          "message",
+          "recipient"
+        ],
+        "properties": {
+          "config": {
+            "description": "When the message should reply, defaults to Always",
+            "allOf": [
+              {
+                "$ref": "#/definitions/AMPMsgConfig"
+              }
+            ]
+          },
+          "funds": {
+            "description": "Any funds to be attached to the message, defaults to an empty vector",
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Coin"
+            }
+          },
+          "message": {
+            "description": "The message to be sent to the recipient",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Binary"
+              }
+            ]
+          },
+          "recipient": {
+            "description": "The message recipient, can be a contract/wallet address or a namespaced URI",
+            "allOf": [
+              {
+                "$ref": "#/definitions/AndrAddr"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "AMPMsgConfig": {
+        "description": "The configuration of the message to be sent.\n\nUsed when a sub message is generated for the given AMP Msg (only used in the case of Wasm Messages).",
+        "type": "object",
+        "required": [
+          "direct",
+          "exit_at_error",
+          "reply_on"
+        ],
+        "properties": {
+          "direct": {
+            "description": "Whether to send the message directly to the given recipient",
+            "type": "boolean"
+          },
+          "exit_at_error": {
+            "description": "Determines whether the operation should terminate or proceed upon a failed message",
+            "type": "boolean"
+          },
+          "gas_limit": {
+            "description": "An optional imposed gas limit for the message",
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint64",
+            "minimum": 0.0
+          },
+          "ibc_config": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/IBCConfig"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reply_on": {
+            "description": "When the message should reply, defaults to Always",
+            "allOf": [
+              {
+                "$ref": "#/definitions/ReplyOn"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "AMPPkt": {
+        "description": "An Andromeda packet contains all message protocol related data, this is what is sent between ADOs when communicating It contains an original sender, if used for authorisation the sender must be authorised The previous sender is the one who sent the message A packet may contain several messages which allows for message batching",
+        "type": "object",
+        "required": [
+          "ctx",
+          "messages"
+        ],
+        "properties": {
+          "ctx": {
+            "$ref": "#/definitions/AMPCtx"
+          },
+          "messages": {
+            "description": "Any messages associated with the packet",
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/AMPMsg"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "Addr": {
+        "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+        "type": "string"
+      },
+      "AndrAddr": {
+        "description": "An address that can be used within the Andromeda ecosystem. Inspired by the cosmwasm-std `Addr` type. https://github.com/CosmWasm/cosmwasm/blob/2a1c698520a1aacedfe3f4803b0d7d653892217a/packages/std/src/addresses.rs#L33\n\nThis address can be one of two things: 1. A valid human readable address e.g. `cosmos1...` 2. A valid Andromeda VFS path e.g. `/home/user/app/component`\n\nVFS paths can be local in the case of an app and can be done by referencing `./component` they can also contain protocols for cross chain communication. A VFS path is usually structured as so:\n\n`<protocol>://<chain (required if ibc used)>/<path>` or `ibc://cosmoshub-4/user/app/component`",
+        "type": "string",
+        "pattern": "(^((([A-Za-z0-9]+://)?([A-Za-z0-9.\\-_]{2,80}/)))?((~[a-z0-9]{2,}|(lib|home))(/[A-Za-z0-9.\\-_]{2,80}?)*(/)?)$)|(^(~[a-z0-9]{2,}|/(lib|home))(/[A-Za-z0-9.\\-_]{2,80}?)*(/)?$)|(^[a-z0-9]{2,}$)|(^\\.(/[A-Za-z0-9.\\-_]{2,40}?)*(/)?$)"
+      },
+      "AssetInfoBase_for_Addr": {
+        "description": "Represents the type of an fungible asset.\n\nEach **asset info** instance can be one of three variants:\n\n- Native SDK coins. To create an **asset info** instance of this type, provide the denomination. - CW20 tokens. To create an **asset info** instance of this type, provide the contract address.",
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "native"
+            ],
+            "properties": {
+              "native": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "cw20"
+            ],
+            "properties": {
+              "cw20": {
+                "$ref": "#/definitions/Addr"
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      },
+      "Binary": {
+        "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+        "type": "string"
+      },
+      "Coin": {
+        "type": "object",
+        "required": [
+          "amount",
+          "denom"
+        ],
+        "properties": {
+          "amount": {
+            "$ref": "#/definitions/Uint128"
+          },
+          "denom": {
+            "type": "string"
+          }
+        }
+      },
+      "Cw20ReceiveMsg": {
+        "description": "Cw20ReceiveMsg should be de/serialized under `Receive()` variant in a ExecuteMsg",
+        "type": "object",
+        "required": [
+          "amount",
+          "msg",
+          "sender"
+        ],
+        "properties": {
+          "amount": {
+            "$ref": "#/definitions/Uint128"
+          },
+          "msg": {
+            "$ref": "#/definitions/Binary"
+          },
+          "sender": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "Expiry": {
+        "description": "The Expiry type is used to define an expiry time using milliseconds\n\nThere are two types: 1. FromNow(Milliseconds) - The expiry time is relative to the current time 2. AtTime(Milliseconds) - The expiry time is absolute",
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "from_now"
+            ],
+            "properties": {
+              "from_now": {
+                "$ref": "#/definitions/Milliseconds"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "at_time"
+            ],
+            "properties": {
+              "at_time": {
+                "$ref": "#/definitions/Milliseconds"
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      },
+      "IBCConfig": {
+        "type": "object",
+        "properties": {
+          "recovery_addr": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/AndrAddr"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "LocalPermission": {
+        "description": "An enum to represent a user's permission for an action\n\n- **Blacklisted** - The user cannot perform the action until after the provided expiration - **Limited** - The user can perform the action while uses are remaining and before the provided expiration **for a permissioned action** - **Whitelisted** - The user can perform the action until the provided expiration **for a permissioned action**\n\nExpiration defaults to `Never` if not provided",
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "blacklisted"
+            ],
+            "properties": {
+              "blacklisted": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Expiry"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "limited"
+            ],
+            "properties": {
+              "limited": {
+                "type": "object",
+                "required": [
+                  "uses"
+                ],
+                "properties": {
+                  "expiration": {
+                    "anyOf": [
+                      {
+                        "$ref": "#/definitions/Expiry"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "uses": {
+                    "type": "integer",
+                    "format": "uint32",
+                    "minimum": 0.0
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "whitelisted"
+            ],
+            "properties": {
+              "whitelisted": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Expiry"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      },
+      "Milliseconds": {
+        "description": "Represents time in milliseconds.",
+        "type": "integer",
+        "format": "uint64",
+        "minimum": 0.0
+      },
+      "OwnershipMessage": {
+        "oneOf": [
+          {
+            "type": "string",
+            "enum": [
+              "revoke_ownership_offer",
+              "accept_ownership",
+              "disown"
+            ]
+          },
+          {
+            "type": "object",
+            "required": [
+              "update_owner"
+            ],
+            "properties": {
+              "update_owner": {
+                "type": "object",
+                "required": [
+                  "new_owner"
+                ],
+                "properties": {
+                  "expiration": {
+                    "anyOf": [
+                      {
+                        "$ref": "#/definitions/Expiry"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "new_owner": {
+                    "$ref": "#/definitions/Addr"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      },
+      "Permission": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "local"
+            ],
+            "properties": {
+              "local": {
+                "$ref": "#/definitions/LocalPermission"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "contract"
+            ],
+            "properties": {
+              "contract": {
+                "$ref": "#/definitions/AndrAddr"
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      },
+      "PermissioningMessage": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "set_permission"
+            ],
+            "properties": {
+              "set_permission": {
+                "type": "object",
+                "required": [
+                  "action",
+                  "actors",
+                  "permission"
+                ],
+                "properties": {
+                  "action": {
+                    "type": "string"
+                  },
+                  "actors": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/definitions/AndrAddr"
+                    }
+                  },
+                  "permission": {
+                    "$ref": "#/definitions/Permission"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "remove_permission"
+            ],
+            "properties": {
+              "remove_permission": {
+                "type": "object",
+                "required": [
+                  "action",
+                  "actors"
+                ],
+                "properties": {
+                  "action": {
+                    "type": "string"
+                  },
+                  "actors": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/definitions/AndrAddr"
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "permission_action"
+            ],
+            "properties": {
+              "permission_action": {
+                "type": "object",
+                "required": [
+                  "action"
+                ],
+                "properties": {
+                  "action": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "disable_action_permissioning"
+            ],
+            "properties": {
+              "disable_action_permissioning": {
+                "type": "object",
+                "required": [
+                  "action"
+                ],
+                "properties": {
+                  "action": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      },
+      "ReplyOn": {
+        "description": "Use this to define when the contract gets a response callback. If you only need it for errors or success you can select just those in order to save gas.",
+        "oneOf": [
+          {
+            "description": "Always perform a callback after SubMsg is processed",
+            "type": "string",
+            "enum": [
+              "always"
+            ]
+          },
+          {
+            "description": "Only callback if SubMsg returned an error, no callback on success case",
+            "type": "string",
+            "enum": [
+              "error"
+            ]
+          },
+          {
+            "description": "Only callback if SubMsg was successful, no callback on error case",
+            "type": "string",
+            "enum": [
+              "success"
+            ]
+          },
+          {
+            "description": "Never make a callback - this is like the original CosmosMsg semantics",
+            "type": "string",
+            "enum": [
+              "never"
+            ]
+          }
+        ]
+      },
+      "Uint128": {
+        "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
+        "type": "string"
+      }
+    }
+  },
+  "query": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "QueryMsg",
+    "oneOf": [
+      {
+        "description": "Sale info for a given asset",
+        "type": "object",
+        "required": [
+          "sale"
+        ],
+        "properties": {
+          "sale": {
+            "type": "object",
+            "required": [
+              "asset"
+            ],
+            "properties": {
+              "asset": {
+                "$ref": "#/definitions/AssetInfoBase_for_Addr"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "The address of the token being purchased",
+        "type": "object",
+        "required": [
+          "token_address"
+        ],
+        "properties": {
+          "token_address": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "sale_assets"
+        ],
+        "properties": {
+          "sale_assets": {
+            "type": "object",
+            "properties": {
+              "limit": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "uint32",
+                "minimum": 0.0
+              },
+              "start_after": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "owner"
+        ],
+        "properties": {
+          "owner": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "ownership_request"
+        ],
+        "properties": {
+          "ownership_request": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "kernel_address"
+        ],
+        "properties": {
+          "kernel_address": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "app_contract"
+        ],
+        "properties": {
+          "app_contract": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "original_publisher"
+        ],
+        "properties": {
+          "original_publisher": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "block_height_upon_creation"
+        ],
+        "properties": {
+          "block_height_upon_creation": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "version"
+        ],
+        "properties": {
+          "version": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "examples": [
+          "ADO_BASE_VERSION:1.2.4"
+        ],
+        "type": "object",
+        "required": [
+          "a_d_o_base_version"
+        ],
+        "properties": {
+          "a_d_o_base_version": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "permissions"
+        ],
+        "properties": {
+          "permissions": {
+            "type": "object",
+            "required": [
+              "actor"
+            ],
+            "properties": {
+              "actor": {
+                "type": "string"
+              },
+              "limit": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "uint32",
+                "minimum": 0.0
+              },
+              "start_after": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "permissioned_actions"
+        ],
+        "properties": {
+          "permissioned_actions": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    ],
+    "definitions": {
+      "Addr": {
+        "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+        "type": "string"
+      },
+      "AssetInfoBase_for_Addr": {
+        "description": "Represents the type of an fungible asset.\n\nEach **asset info** instance can be one of three variants:\n\n- Native SDK coins. To create an **asset info** instance of this type, provide the denomination. - CW20 tokens. To create an **asset info** instance of this type, provide the contract address.",
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "native"
+            ],
+            "properties": {
+              "native": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "cw20"
+            ],
+            "properties": {
+              "cw20": {
+                "$ref": "#/definitions/Addr"
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      }
+    }
+  },
+  "migrate": null,
+  "sudo": null,
+  "responses": {
+    "a_d_o_base_version": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ADOBaseVersionResponse",
+      "type": "object",
+      "required": [
+        "version"
+      ],
+      "properties": {
+        "version": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "app_contract": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "AppContractResponse",
+      "type": "object",
+      "required": [
+        "app_contract"
+      ],
+      "properties": {
+        "app_contract": {
+          "$ref": "#/definitions/Addr"
+        }
+      },
+      "additionalProperties": false,
+      "definitions": {
+        "Addr": {
+          "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+          "type": "string"
+        }
+      }
+    },
+    "block_height_upon_creation": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "BlockHeightResponse",
+      "type": "object",
+      "required": [
+        "block_height"
+      ],
+      "properties": {
+        "block_height": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        }
+      },
+      "additionalProperties": false
+    },
+    "kernel_address": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "KernelAddressResponse",
+      "type": "object",
+      "required": [
+        "kernel_address"
+      ],
+      "properties": {
+        "kernel_address": {
+          "$ref": "#/definitions/Addr"
+        }
+      },
+      "additionalProperties": false,
+      "definitions": {
+        "Addr": {
+          "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+          "type": "string"
+        }
+      }
+    },
+    "original_publisher": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "PublisherResponse",
+      "type": "object",
+      "required": [
+        "original_publisher"
+      ],
+      "properties": {
+        "original_publisher": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "owner": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ContractOwnerResponse",
+      "type": "object",
+      "required": [
+        "owner"
+      ],
+      "properties": {
+        "owner": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ownership_request": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ContractPotentialOwnerResponse",
+      "type": "object",
+      "properties": {
+        "expiration": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Milliseconds"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "potential_owner": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Addr"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "definitions": {
+        "Addr": {
+          "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+          "type": "string"
+        },
+        "Milliseconds": {
+          "description": "Represents time in milliseconds.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        }
+      }
+    },
+    "permissioned_actions": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Array_of_String",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "permissions": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Array_of_PermissionInfo",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/PermissionInfo"
+      },
+      "definitions": {
+        "AndrAddr": {
+          "description": "An address that can be used within the Andromeda ecosystem. Inspired by the cosmwasm-std `Addr` type. https://github.com/CosmWasm/cosmwasm/blob/2a1c698520a1aacedfe3f4803b0d7d653892217a/packages/std/src/addresses.rs#L33\n\nThis address can be one of two things: 1. A valid human readable address e.g. `cosmos1...` 2. A valid Andromeda VFS path e.g. `/home/user/app/component`\n\nVFS paths can be local in the case of an app and can be done by referencing `./component` they can also contain protocols for cross chain communication. A VFS path is usually structured as so:\n\n`<protocol>://<chain (required if ibc used)>/<path>` or `ibc://cosmoshub-4/user/app/component`",
+          "type": "string",
+          "pattern": "(^((([A-Za-z0-9]+://)?([A-Za-z0-9.\\-_]{2,80}/)))?((~[a-z0-9]{2,}|(lib|home))(/[A-Za-z0-9.\\-_]{2,80}?)*(/)?)$)|(^(~[a-z0-9]{2,}|/(lib|home))(/[A-Za-z0-9.\\-_]{2,80}?)*(/)?$)|(^[a-z0-9]{2,}$)|(^\\.(/[A-Za-z0-9.\\-_]{2,40}?)*(/)?$)"
+        },
+        "Expiry": {
+          "description": "The Expiry type is used to define an expiry time using milliseconds\n\nThere are two types: 1. FromNow(Milliseconds) - The expiry time is relative to the current time 2. AtTime(Milliseconds) - The expiry time is absolute",
+          "oneOf": [
+            {
+              "type": "object",
+              "required": [
+                "from_now"
+              ],
+              "properties": {
+                "from_now": {
+                  "$ref": "#/definitions/Milliseconds"
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": [
+                "at_time"
+              ],
+              "properties": {
+                "at_time": {
+                  "$ref": "#/definitions/Milliseconds"
+                }
+              },
+              "additionalProperties": false
+            }
+          ]
+        },
+        "LocalPermission": {
+          "description": "An enum to represent a user's permission for an action\n\n- **Blacklisted** - The user cannot perform the action until after the provided expiration - **Limited** - The user can perform the action while uses are remaining and before the provided expiration **for a permissioned action** - **Whitelisted** - The user can perform the action until the provided expiration **for a permissioned action**\n\nExpiration defaults to `Never` if not provided",
+          "oneOf": [
+            {
+              "type": "object",
+              "required": [
+                "blacklisted"
+              ],
+              "properties": {
+                "blacklisted": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/definitions/Expiry"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": [
+                "limited"
+              ],
+              "properties": {
+                "limited": {
+                  "type": "object",
+                  "required": [
+                    "uses"
+                  ],
+                  "properties": {
+                    "expiration": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/definitions/Expiry"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "uses": {
+                      "type": "integer",
+                      "format": "uint32",
+                      "minimum": 0.0
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": [
+                "whitelisted"
+              ],
+              "properties": {
+                "whitelisted": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/definitions/Expiry"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "additionalProperties": false
+            }
+          ]
+        },
+        "Milliseconds": {
+          "description": "Represents time in milliseconds.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "Permission": {
+          "oneOf": [
+            {
+              "type": "object",
+              "required": [
+                "local"
+              ],
+              "properties": {
+                "local": {
+                  "$ref": "#/definitions/LocalPermission"
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": [
+                "contract"
+              ],
+              "properties": {
+                "contract": {
+                  "$ref": "#/definitions/AndrAddr"
+                }
+              },
+              "additionalProperties": false
+            }
+          ]
+        },
+        "PermissionInfo": {
+          "type": "object",
+          "required": [
+            "action",
+            "actor",
+            "permission"
+          ],
+          "properties": {
+            "action": {
+              "type": "string"
+            },
+            "actor": {
+              "type": "string"
+            },
+            "permission": {
+              "$ref": "#/definitions/Permission"
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    },
+    "sale": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "SaleResponse",
+      "type": "object",
+      "properties": {
+        "sale": {
+          "description": "The sale data if it exists",
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Sale"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "definitions": {
+        "Expiration": {
+          "description": "Expiration represents a point in time when some event happens. It can compare with a BlockInfo and will return is_expired() == true once the condition is hit (and for every block in the future)",
+          "oneOf": [
+            {
+              "description": "AtHeight will expire when `env.block.height` >= height",
+              "type": "object",
+              "required": [
+                "at_height"
+              ],
+              "properties": {
+                "at_height": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "description": "AtTime will expire when `env.block.time` >= time",
+              "type": "object",
+              "required": [
+                "at_time"
+              ],
+              "properties": {
+                "at_time": {
+                  "$ref": "#/definitions/Timestamp"
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "description": "Never will never expire. Used to express the empty variant",
+              "type": "object",
+              "required": [
+                "never"
+              ],
+              "properties": {
+                "never": {
+                  "type": "object",
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            }
+          ]
+        },
+        "Sale": {
+          "description": "Struct used to define a token sale. The asset used for the sale is defined as the key for the storage map.",
+          "type": "object",
+          "required": [
+            "amount",
+            "end_time",
+            "exchange_rate",
+            "recipient",
+            "start_amount",
+            "start_time"
+          ],
+          "properties": {
+            "amount": {
+              "description": "The amount for sale at the given rate",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Uint128"
+                }
+              ]
+            },
+            "end_time": {
+              "description": "The time when the sale ends",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Expiration"
+                }
+              ]
+            },
+            "exchange_rate": {
+              "description": "The rate at which to exchange tokens (amount of exchanged asset to purchase sale asset)",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Uint128"
+                }
+              ]
+            },
+            "recipient": {
+              "description": "The recipient of the sale proceeds",
+              "type": "string"
+            },
+            "start_amount": {
+              "description": "The amount for sale at the given rate at the start of the sale",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Uint128"
+                }
+              ]
+            },
+            "start_time": {
+              "description": "The time when the sale starts",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Expiration"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        "Timestamp": {
+          "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202); assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1); assert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202); assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Uint64"
+            }
+          ]
+        },
+        "Uint128": {
+          "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
+          "type": "string"
+        },
+        "Uint64": {
+          "description": "A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u64` to get the value out:\n\n``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);\n\nlet b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```",
+          "type": "string"
+        }
+      }
+    },
+    "sale_assets": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "SaleAssetsResponse",
+      "type": "object",
+      "required": [
+        "assets"
+      ],
+      "properties": {
+        "assets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "token_address": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "TokenAddressResponse",
+      "type": "object",
+      "required": [
+        "address"
+      ],
+      "properties": {
+        "address": {
+          "description": "The address of the token being sold",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "type": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "TypeResponse",
+      "type": "object",
+      "required": [
+        "ado_type"
+      ],
+      "properties": {
+        "ado_type": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "version": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "VersionResponse",
+      "type": "object",
+      "required": [
+        "version"
+      ],
+      "properties": {
+        "version": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}
