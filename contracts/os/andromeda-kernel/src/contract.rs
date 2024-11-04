@@ -11,7 +11,10 @@ use cosmwasm_std::{
 };
 
 use crate::ibc::{IBCLifecycleComplete, SudoMsg};
-use crate::reply::{on_reply_create_ado, on_reply_ibc_hooks_packet_send, on_reply_ibc_transfer};
+use crate::reply::{
+    on_reply_create_ado, on_reply_ibc_hooks_packet_send, on_reply_ibc_transfer,
+    on_reply_refund_ibc_transfer_with_msg,
+};
 use crate::state::CURR_CHAIN;
 use crate::{execute, query, sudo};
 
@@ -44,13 +47,24 @@ pub fn instantiate(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractError> {
+pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractError> {
     if msg.result.is_err() {
-        return Err(ContractError::Std(StdError::generic_err(format!(
-            "{}:{}",
-            msg.id,
-            msg.result.unwrap_err()
-        ))));
+        match ReplyId::from_repr(msg.id) {
+            Some(ReplyId::IBCTransferWithMsg) => {
+                return on_reply_refund_ibc_transfer_with_msg(
+                    deps.branch(),
+                    env.clone(),
+                    msg.clone(),
+                );
+            }
+            _ => {
+                return Err(ContractError::Std(StdError::generic_err(format!(
+                    "{}:{}",
+                    msg.id,
+                    msg.result.unwrap_err()
+                ))))
+            }
+        }
     }
 
     match ReplyId::from_repr(msg.id) {
@@ -83,9 +97,10 @@ pub fn execute(
             packet,
         ),
         ExecuteMsg::Send { message } => execute::send(execute_env, message),
-        ExecuteMsg::TriggerRelay { packet_sequence } => {
-            execute::trigger_relay(execute_env, packet_sequence)
-        }
+        ExecuteMsg::TriggerRelay {
+            packet_sequence,
+            packet_ack_msg,
+        } => execute::trigger_relay(execute_env, packet_sequence, packet_ack_msg),
         ExecuteMsg::UpsertKeyAddress { key, value } => {
             execute::upsert_key_address(execute_env, key, value)
         }
