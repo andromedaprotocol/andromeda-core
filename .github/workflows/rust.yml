@@ -114,5 +114,5 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: schema
-          path: ./artifacts/
+          path: ./schemas/
           if-no-files-found: error
