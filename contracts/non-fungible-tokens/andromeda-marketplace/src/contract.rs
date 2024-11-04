@@ -8,20 +8,20 @@ use andromeda_non_fungible_tokens::marketplace::{
     SaleStateResponse, Status,
 };
 use andromeda_std::{
-    ado_base::{
-        permissioning::{LocalPermission, Permission},
-        InstantiateMsg as BaseInstantiateMsg, MigrateMsg,
-    },
+    ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     ado_contract::ADOContract,
     amp::Recipient,
     common::{
         actions::call_action,
         context::ExecuteContext,
-        denom::{Asset, SEND_CW20_ACTION, SEND_NFT_ACTION},
+        denom::{
+            authorize_addresses, execute_authorize_contract, execute_deauthorize_contract, Asset,
+            AuthorizedAddressesResponse, PermissionAction, SEND_CW20_ACTION, SEND_NFT_ACTION,
+        },
         encode_binary,
         expiration::{expiration_from_milliseconds, get_and_validate_start_time, Expiry},
         rates::{get_tax_amount, get_tax_amount_cw20},
-        Funds, Milliseconds, MillisecondsDuration,
+        Funds, Milliseconds, MillisecondsDuration, OrderBy,
     },
     error::ContractError,
 };
@@ -43,7 +43,7 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[entry_point]
 pub fn instantiate(
-    deps: DepsMut,
+    mut deps: DepsMut,
     env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
@@ -64,30 +64,11 @@ pub fn instantiate(
     )?;
 
     if let Some(authorized_token_addresses) = msg.authorized_token_addresses {
-        if !authorized_token_addresses.is_empty() {
-            ADOContract::default().permission_action(SEND_NFT_ACTION, deps.storage)?;
-        }
-
-        for token_address in authorized_token_addresses {
-            let addr = token_address.get_raw_address(&deps.as_ref())?;
-            ADOContract::set_permission(
-                deps.storage,
-                SEND_NFT_ACTION,
-                addr,
-                Permission::Local(LocalPermission::Whitelisted(None)),
-            )?;
-        }
+        authorize_addresses(&mut deps, SEND_NFT_ACTION, authorized_token_addresses)?;
     }
 
-    if let Some(authorized_cw20_address) = msg.authorized_cw20_address {
-        ADOContract::default().permission_action(SEND_CW20_ACTION, deps.storage)?;
-        let addr = authorized_cw20_address.get_raw_address(&deps.as_ref())?;
-        ADOContract::set_permission(
-            deps.storage,
-            SEND_CW20_ACTION,
-            addr,
-            Permission::Local(LocalPermission::Whitelisted(None)),
-        )?;
+    if let Some(authorized_cw20_addresses) = msg.authorized_cw20_addresses {
+        authorize_addresses(&mut deps, SEND_CW20_ACTION, authorized_cw20_addresses)?;
     }
 
     Ok(inst_resp)
@@ -138,6 +119,16 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
             token_id,
             token_address,
         } => execute_cancel(ctx, token_id, token_address),
+        ExecuteMsg::AuthorizeContract {
+            action,
+            addr,
+            expiration,
+        } => execute_authorize_contract(ctx.deps, ctx.info, action, addr, expiration),
+
+        ExecuteMsg::DeauthorizeContract { action, addr } => {
+            execute_deauthorize_contract(ctx.deps, ctx.info, action, addr)
+        }
+
         _ => ADOContract::default().execute(ctx, msg),
     }?;
     Ok(res
@@ -815,6 +806,18 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
             start_after,
             limit,
         )?),
+        QueryMsg::AuthorizedAddresses {
+            action,
+            start_after,
+            limit,
+            order_by,
+        } => encode_binary(&query_authorized_addresses(
+            deps,
+            action,
+            start_after,
+            limit,
+            order_by,
+        )?),
         _ => ADOContract::default().query(deps, env, msg),
     }
 }
@@ -875,6 +878,23 @@ fn query_owner_of(
     }))?;
 
     Ok(res)
+}
+
+fn query_authorized_addresses(
+    deps: Deps,
+    action: PermissionAction,
+    start_after: Option<String>,
+    limit: Option<u32>,
+    order_by: Option<OrderBy>,
+) -> Result<AuthorizedAddressesResponse, ContractError> {
+    let addresses = ADOContract::default().query_permissioned_actors(
+        deps,
+        action.as_str(),
+        start_after,
+        limit,
+        order_by,
+    )?;
+    Ok(AuthorizedAddressesResponse { addresses })
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

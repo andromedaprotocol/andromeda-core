@@ -529,7 +529,10 @@ fn test_auction_app_cw20_restricted() {
             "./{}",
             cw721_component.name
         ))]),
-        Some(AndrAddr::from_string(format!("./{}", cw20_component.name))),
+        Some(vec![AndrAddr::from_string(format!(
+            "./{}",
+            cw20_component.name
+        ))]),
     );
     let auction_component = AppComponent::new(
         "auction".to_string(),
