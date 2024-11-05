@@ -16,7 +16,7 @@ jobs:
 
       - name: Generate schemas
         run: |
-          ./build_schema.sh
+          sudo ./build_schema.sh
           tar -czf schemas.tar.gz schemas/
 
       - name: Create artifacts archive
