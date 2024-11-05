@@ -55,6 +55,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Actions - build contracts and upload artifacts
     needs: [contract-tests]
+    if: github.event_name == 'pull_request'
     steps:
       - uses: actions-rs/toolchain@v1
         with:
@@ -75,35 +76,21 @@ jobs:
           chmod +x "${GITHUB_WORKSPACE}/.github/file-size.sh"
           "${GITHUB_WORKSPACE}/.github/file-size.sh"
       - name: Upload Artifacts
+        if: >
+          github.base_ref == 'development' || 
+          github.base_ref == 'main' || 
+          contains(github.event.pull_request.labels.*.name, 'ci: build')
         uses: actions/upload-artifact@v3
         with:
           name: contracts
           path: ./artifacts/
           if-no-files-found: error
 
-  # ibc-tests:
-  #   runs-on: ubuntu-latest
-  #   name: Post Build - IBC Tests
-  #   needs: build
-  #   steps:
-  #     - uses: actions/checkout@v2
-  #       with:
-  #         fetch-depth: 1
-  #     - name: Download Contracts
-  #       uses: actions/download-artifact@v2
-  #       with:
-  #         name: contracts
-  #         path: "./ibc-tests/contracts"
-  #     - name: Run IBC Tests
-  #       run: |
-  #         cd ./ibc-tests
-  #         npm i
-  #         npm test
-
   build-schemas:
     runs-on: ubuntu-latest
     name: Actions - build schemas
     needs: contract-tests
+    if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v2
       - name: Build Schema
@@ -111,6 +98,10 @@ jobs:
           chmod +x "${GITHUB_WORKSPACE}/build_schema.sh"
           "${GITHUB_WORKSPACE}/build_schema.sh"
       - name: Upload Artifacts
+        if: >
+          github.base_ref == 'development' || 
+          github.base_ref == 'main' || 
+          contains(github.event.pull_request.labels.*.name, 'ci: build')
         uses: actions/upload-artifact@v3
         with:
           name: schema
