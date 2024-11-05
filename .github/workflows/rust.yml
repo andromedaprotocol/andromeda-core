@@ -92,7 +92,7 @@ jobs:
     needs: contract-tests
     if: github.event_name == 'pull_request'
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Build Schema
         run: |
           chmod +x "${GITHUB_WORKSPACE}/build_schema.sh"
