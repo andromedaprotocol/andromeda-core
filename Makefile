@@ -27,9 +27,9 @@ build-category:
 # Builds all contracts and generates a version map
 build:
 	@echo "Building all contracts..."
-	@./scripts/build_all.sh
+	@./scripts/build_all.sh || exit 1
 	@echo "Build complete! \033[0;32m\xE2\x9C\x94\033[0m"
-	@./scripts/build_version_map.sh
+	@./scripts/build_version_map.sh || exit 1
 
 # Runs unit tests
 unit-test:
