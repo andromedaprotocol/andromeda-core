@@ -22,9 +22,13 @@ declare -a entries=()
 # Loop through all contracts and collect their versions
 for directory in $CONTRACTS_DIR/*/; do
     for contract_path in $directory/*/; do
-        contract_name=`basename $contract_path`;
+        contract_name=`basename $contract_path`
         version=$(cargo pkgid $contract_name | cut -d# -f2 | cut -d: -f2)
-        entries+=("\n\"$contract_name\": \"$version\"")
+        if [ ${#entries[@]} -eq 0 ]; then
+            entries+=("  \"$contract_name\": \"$version\"")
+        else
+            entries+=("\n  \"$contract_name\": \"$version\"")
+        fi
     done
 done
 
