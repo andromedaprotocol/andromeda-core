@@ -10,16 +10,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-
-      - name: Setup Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          override: true
-
-      - name: Generate schemas
+      - name: Build Schema
         run: |
-          sudo ./build_schema.sh
+          chmod +x "${GITHUB_WORKSPACE}/build_schema.sh"
+          "${GITHUB_WORKSPACE}/build_schema.sh"
           tar -czf schemas.tar.gz schemas/
 
       - name: Optimize contracts
