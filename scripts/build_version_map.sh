@@ -19,19 +19,18 @@ echo "{" > $OUTPUT_FILE
 # Create an array to store all entries
 declare -a entries=()
 
-# Collect all entries first
-while read -r file; do
-    contract_dir=$(dirname "$file")
-    
-    # Extract version and crate name from Cargo.toml
-    crate_name=$(grep -m 1 "^name = " "$contract_dir/Cargo.toml" | cut -d '"' -f 2)
-    version=$(cargo pkgid $crate_name | cut -d# -f2 | cut -d: -f2)
-    
-    entries+=("  \"$crate_name\": \"$version\"\n")
-done < <(find $CONTRACTS_DIR -type f -name "Cargo.toml")
+# Loop through all contracts and collect their versions
+for directory in $CONTRACTS_DIR/*/; do
+    for contract_path in $directory/*/; do
+        contract_name=`basename $contract_path`;
+        version=$(cargo pkgid $contract_name | cut -d# -f2 | cut -d: -f2)
+        entries+=("\n\"$contract_name\": \"$version\"")
+    done
+done
+
 
 # Join entries with comma and newline
-(IFS=$',\n'; echo "${entries[*]}") >> $OUTPUT_FILE
+(IFS=$',\n'; echo -e "${entries[*]}") >> $OUTPUT_FILE
 
 # Close JSON object
 echo "}" >> $OUTPUT_FILE
