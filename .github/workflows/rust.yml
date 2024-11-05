@@ -64,8 +64,8 @@ jobs:
       - uses: actions/checkout@v2
       - name: Install Binaryen
         run: |
-          chmod +x "${GITHUB_WORKSPACE}/ci-scripts/install_binaryen.sh"
-          "${GITHUB_WORKSPACE}/ci-scripts/install_binaryen.sh"
+          chmod +x "${GITHUB_WORKSPACE}/scripts/install_binaryen.sh"
+          "${GITHUB_WORKSPACE}/scripts/install_binaryen.sh"
       - name: Build
         run: |
           chmod +x "${GITHUB_WORKSPACE}/scripts/build.sh"
