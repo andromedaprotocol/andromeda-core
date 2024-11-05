@@ -5,7 +5,13 @@ CONTRACTS_DIR="contracts"
 OUTPUT_FILE="./artifacts/version_map.json"
 
 # Create artifacts directory if it doesn't exist
-mkdir -p $(dirname "$OUTPUT_FILE")
+mkdir -p "$(dirname "$OUTPUT_FILE")"
+
+# Ensure we can write to the output file
+if ! touch "$OUTPUT_FILE" 2>/dev/null; then
+    echo "Error: Cannot write to $OUTPUT_FILE" >&2
+    exit 1
+fi
 
 # Start JSON object
 echo "{" > $OUTPUT_FILE
