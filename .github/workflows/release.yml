@@ -11,13 +11,19 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Optimize contracts
-        run: docker run --rm -v "$(pwd)":/code --mount type=volume,source="$(basename "$(pwd)")_cache",target=/code/target --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry cosmwasm/workspace-optimizer:0.16.1
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
 
       - name: Generate schemas
         run: |
           sudo ./build_schema.sh
           tar -czf schemas.tar.gz schemas/
+
+      - name: Optimize contracts
+        run: docker run --rm -v "$(pwd)":/code --mount type=volume,source="$(basename "$(pwd)")_cache",target=/code/target --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry cosmwasm/workspace-optimizer:0.16.1
 
       - name: Create artifacts archive
         run: tar -czf contracts.tar.gz artifacts/
