@@ -18,10 +18,10 @@ while read -r file; do
     contract_dir=$(dirname "$file")
     
     # Extract version and crate name from Cargo.toml
-    version=$(grep -m 1 "^version = " "$contract_dir/Cargo.toml" | cut -d '"' -f 2)
     crate_name=$(grep -m 1 "^name = " "$contract_dir/Cargo.toml" | cut -d '"' -f 2)
+    version=$(cargo pkgid $crate_name | cut -d# -f2 | cut -d: -f2)
     
-    entries+=("  \"$crate_name\": \"$version\"")
+    entries+=("  \"$crate_name\": \"$version\"\n")
 done < <(find $CONTRACTS_DIR -type f -name "Cargo.toml")
 
 # Join entries with comma and newline
