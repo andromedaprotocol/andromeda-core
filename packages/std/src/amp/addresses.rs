@@ -195,7 +195,7 @@ impl AndrAddr {
     }
     /// Gets the raw path for a given AndrAddr by stripping away any protocols or chain declarations.
     ///
-    /// E.g. `ibc://cosmoshub-4/user/app/component` would return `/home/app/component`
+    /// E.g. `ibc://cosmoshub-4/user/app/component` would return `/user/app/component`
     /// E.g. `ibc://cosmoshub-4/cosmos1...` would return `cosmos1...`
     /// E.g. `ibc://chain/ibc://chain2/home/app/component` would return `ibc://chain2/home/app/component`
     ///
