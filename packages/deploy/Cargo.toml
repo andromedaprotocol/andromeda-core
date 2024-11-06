@@ -1,15 +1,10 @@
 [package]
-name = "andromeda-std"
-version = "1.2.4"
+name = "andromeda-deploy"
+version = "0.0.1"
 edition = "2021"
 rust-version = "1.75.0"
-description = "The standard library for creating an Andromeda Digital Object"
+description = "The deploy tool for aOS"
 license = "MIT"
-
-[features]
-primitive = []
-instantiate = []
-rates = ["andromeda-macros/rates"]
 
 [lib]
 crate-type = ["cdylib", "rlib"]
@@ -38,6 +33,25 @@ serde-json-wasm = "0.5.0"
 enum-repr = { workspace = true }
 sha2 = "0.10.8"
 cw-orch = { workspace = true }
+cw-orch-daemon = "0.24.2"
+andromeda-kernel = { version = "1.1.1", path = "../../contracts/os/andromeda-kernel", features = [
+    "testing",
+] }
+andromeda-adodb = { version = "1.1.1", path = "../../contracts/os/andromeda-adodb", features = [
+    "testing",
+] }
+andromeda-vfs = { version = "1.1.1", path = "../../contracts/os/andromeda-vfs", features = [
+    "testing",
+] }
+andromeda-economics = { version = "1.1.1", path = "../../contracts/os/andromeda-economics", features = [
+    "testing",
+] }
+andromeda-ibc-registry = { version = "1.0.1", path = "../../contracts/os/andromeda-ibc-registry", features = [
+    "testing",
+] }
+andromeda-std = { workspace = true }
+env_logger = "0.11.5" # or whatever the latest version is
+log = "0.4" # env_logger depends on the log crate
 
 [dev-dependencies]
 cw-multi-test = { version = "1.0.0" }
