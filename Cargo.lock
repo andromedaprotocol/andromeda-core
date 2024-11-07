@@ -348,6 +348,7 @@ dependencies = [
  "andromeda-macros",
  "andromeda-std",
  "andromeda-vfs",
+ "chrono 0.4.38",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-asset",
@@ -361,16 +362,19 @@ dependencies = [
  "cw20-base",
  "cw721 0.18.0",
  "cw721-base 0.18.0",
+ "dotenv",
  "enum-repr",
  "env_logger",
  "hex",
  "lazy_static",
  "log",
  "regex",
+ "reqwest 0.11.27",
  "schemars",
  "semver",
  "serde",
  "serde-json-wasm 0.5.2",
+ "serde_json",
  "sha2 0.10.8",
  "strum_macros",
  "thiserror",
@@ -2138,6 +2142,12 @@ dependencies = [
  "redox_users",
  "windows-sys 0.48.0",
 ]
+
+[[package]]
+name = "dotenv"
+version = "0.15.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "77c90badedccf4105eca100756a0b1289e191f6fcbdadd3cee1d2f614f97da8f"
 
 [[package]]
 name = "dyn-clone"

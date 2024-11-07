@@ -19,3 +19,13 @@ pub const ANDROMEDA_TESTNET: ChainInfo = ChainInfo {
     network_info: ANDROMEDA_NETWORK,
     kind: ChainKind::Testnet,
 };
+
+pub const ALL_CHAINS: &[ChainInfo] = &[ANDROMEDA_TESTNET];
+
+pub fn get_chain(chain: String) -> ChainInfo {
+    ALL_CHAINS
+        .iter()
+        .find(|c| c.chain_id == chain || c.network_info.chain_name == chain)
+        .unwrap()
+        .clone()
+}

@@ -5,7 +5,7 @@ use cw_orch::prelude::*;
 use cw_orch_daemon::{DaemonBase, DaemonBuilder, TxSender, Wallet};
 use kernel::{ExecuteMsgFns, QueryMsgFns};
 
-use crate::chains::ANDROMEDA_TESTNET;
+use crate::chains::{get_chain, ANDROMEDA_TESTNET};
 use crate::contracts::*;
 
 struct OperatingSystemDeployment {
@@ -18,8 +18,8 @@ struct OperatingSystemDeployment {
 }
 
 impl OperatingSystemDeployment {
-    pub fn new() -> Self {
-        let daemon = DaemonBuilder::new(ANDROMEDA_TESTNET).build().unwrap();
+    pub fn new(chain: ChainInfo) -> Self {
+        let daemon = DaemonBuilder::new(chain).build().unwrap();
         let kernel = KernelContract::new(daemon.clone());
         let adodb = ADODBContract::new(daemon.clone());
         let vfs = VFSContract::new(daemon.clone());
@@ -142,9 +142,10 @@ impl OperatingSystemDeployment {
     }
 }
 
-pub fn deploy(kernel_address: Option<String>) {
+pub fn deploy(chain: String, kernel_address: Option<String>) -> Result<String> {
     env_logger::init();
-    let os_deployment = OperatingSystemDeployment::new();
+    let chain = get_chain(chain);
+    let os_deployment = OperatingSystemDeployment::new(chain);
     os_deployment.upload();
     os_deployment.instantiate(kernel_address);
     os_deployment.register_modules();
