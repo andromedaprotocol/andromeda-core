@@ -1,0 +1,26 @@
+name: Deploy OS
+
+on:
+  workflow_dispatch:
+    inputs:
+      network:
+        description: "Network to deploy to"
+        required: true
+        type: string
+      kernel_address:
+        description: "Kernel address"
+        required: false
+        type: string
+
+jobs:
+  deploy:
+    if: contains('["crnbarr93", "SlayerAnsh", "joemonem", "DimitrijeDragasevic"]', github.actor)
+    runs-on: ubuntu-latest
+    env:
+      DEPLOYMENT_CHAIN: ${{ inputs.network }}
+      DEPLOYMENT_KERNEL_ADDRESS: ${{ inputs.kernel_address }}
+      SLACK_WEBHOOK_URL: "${{ secrets.DEPLOY_SLACK_WEBHOOK_URL }}"
+      TEST_MNEMONIC: "${{ secrets.DEPLOY_TEST_MNEMONIC }}"
+    steps:
+      - run: make build
+      - run: make deploy
