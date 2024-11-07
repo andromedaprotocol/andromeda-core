@@ -36,8 +36,8 @@ fn send_slack_notification(message: &str) -> Result<(), Box<dyn std::error::Erro
 fn main() {
     dotenv().ok();
 
-    let chain = env::var("CHAIN").expect("CHAIN must be set");
-    let kernel_address = env::var("KERNEL_ADDRESS").ok();
+    let chain = env::var("DEPLOYMENT_CHAIN").expect("DEPLOYMENT_CHAIN must be set");
+    let kernel_address = env::var("DEPLOYMENT_KERNEL_ADDRESS").ok();
     let timestamp = Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
 
     // Send start notification
@@ -52,7 +52,24 @@ fn main() {
         eprintln!("Failed to send Slack notification: {}", e);
     }
 
-    os::deploy(chain.clone(), kernel_address.clone());
+    let deploy_os_res = os::deploy(chain.clone(), kernel_address.clone());
+
+    if let Err(e) = deploy_os_res {
+        let error_message = format!(
+            "❌ *Deployment Failed*\n```\n| Chain          | {} |\n| Time           | {} |\n| Kernel Address | {} |\n| Error          | {} |```",
+            chain,
+            timestamp,
+            kernel_address.as_deref().unwrap_or("Not provided"),
+            e
+        );
+
+        if let Err(notification_error) = send_slack_notification(&error_message) {
+            eprintln!("Failed to send Slack notification: {}", notification_error);
+        }
+        std::process::exit(1);
+    }
+
+    let kernel_address = deploy_os_res.unwrap();
 
     // Send completion notification
     let completion_timestamp = Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
@@ -60,7 +77,7 @@ fn main() {
         "✅ *Deployment Completed*\n```\n| Chain          | {} |\n| Time           | {} |\n| Kernel Address | {} |```",
         chain,
         completion_timestamp,
-        kernel_address.as_deref().unwrap_or("Not provided")
+        kernel_address
     );
 
     if let Err(e) = send_slack_notification(&completion_message) {

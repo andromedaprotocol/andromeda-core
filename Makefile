@@ -47,4 +47,7 @@ integration-test:
 test: unit-test integration-test
 	@echo "All tests complete! \033[0;32m\xE2\x9C\x94\033[0m"
 
-
+deploy:
+	@echo "Deploying OS..."
+	@RUST_LOG=info cargo run --package andromeda-deploy
+	@echo "OS deployed! \033[0;32m\xE2\x9C\x94\033[0m"
