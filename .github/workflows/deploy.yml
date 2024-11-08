@@ -13,8 +13,14 @@ on:
         type: string
 
 jobs:
+  #   build_contracts:
+  #     if: contains('["crnbarr93", "SlayerAnsh", "joemonem", "DimitrijeDragasevic"]', github.actor)
+  #     runs-on: ubuntu-latest
+  #     steps:
+  #       - uses: actions/checkout@v4
+  #       - run: make build
+  #       - run: make version-map
   deploy:
-    if: contains('["crnbarr93", "SlayerAnsh", "joemonem", "DimitrijeDragasevic"]', github.actor)
     runs-on: ubuntu-latest
     env:
       DEPLOYMENT_CHAIN: ${{ inputs.network }}
@@ -29,6 +35,4 @@ jobs:
           components: rustfmt, clippy
           profile: minimal
           override: true
-      - run: make build
-      - run: sudo make version-map
-      - run: sudo make deploy
+      - run: cargo run --p andromeda-deploy
