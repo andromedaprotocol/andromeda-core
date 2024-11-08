@@ -40,6 +40,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: 1.76.0
+          components: rustfmt, clippy
+          profile: minimal
+          override: true
       - name: Download Contracts
         uses: actions/download-artifact@v3
         with:
