@@ -52,10 +52,13 @@ impl OperatingSystemDeployment {
     pub fn instantiate(&self, kernel_address: Option<String>) -> Result<(), DeployError> {
         let sender = self.daemon.sender().address();
 
+        let has_kernel_address =
+            kernel_address.is_some() && !kernel_address.clone().unwrap().is_empty();
         // If kernel address is provided, use it and migrate the contract to the new version
-        if let Some(address) = kernel_address {
+        if has_kernel_address {
             let code_id = self.kernel.code_id().unwrap();
-            self.kernel.set_address(&Addr::unchecked(address));
+            self.kernel
+                .set_address(&Addr::unchecked(kernel_address.unwrap()));
             self.kernel.migrate(&MigrateMsg {}, code_id)?;
         } else {
             let kernel_msg = kernel::InstantiateMsg {
