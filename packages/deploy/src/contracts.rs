@@ -9,7 +9,7 @@ contract_interface!(
     andromeda_kernel,
     kernel,
     "andromeda_kernel",
-    "andromeda_kernel@1.1.1.wasm"
+    "andromeda_kernel.wasm"
 );
 
 contract_interface!(
@@ -17,7 +17,7 @@ contract_interface!(
     andromeda_adodb,
     adodb,
     "andromeda_adodb",
-    "andromeda_adodb@1.1.2.wasm"
+    "andromeda_adodb.wasm"
 );
 
 contract_interface!(
@@ -25,7 +25,7 @@ contract_interface!(
     andromeda_vfs,
     vfs,
     "andromeda_vfs",
-    "andromeda_vfs@1.1.1.wasm"
+    "andromeda_vfs.wasm"
 );
 
 contract_interface!(
@@ -33,7 +33,7 @@ contract_interface!(
     andromeda_economics,
     economics,
     "andromeda_economics",
-    "andromeda_economics@1.1.1.wasm"
+    "andromeda_economics.wasm"
 );
 
 contract_interface!(
@@ -41,5 +41,5 @@ contract_interface!(
     andromeda_ibc_registry,
     ibc_registry,
     "andromeda_ibc_registry",
-    "andromeda_ibc_registry@1.0.1.wasm"
+    "andromeda_ibc_registry.wasm"
 );
