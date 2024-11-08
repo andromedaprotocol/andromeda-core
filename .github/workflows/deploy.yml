@@ -31,4 +31,4 @@ jobs:
           override: true
       - run: make build
       - run: sudo make version-map
-      - run: make deploy
+      - run: sudo make deploy
