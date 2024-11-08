@@ -27,6 +27,7 @@ jobs:
       DEPLOYMENT_KERNEL_ADDRESS: ${{ inputs.kernel_address }}
       SLACK_WEBHOOK_URL: "${{ secrets.DEPLOY_SLACK_WEBHOOK_URL }}"
       TEST_MNEMONIC: "${{ secrets.DEPLOY_TEST_MNEMONIC }}"
+      RUST_LOG: info
     steps:
       - uses: actions/checkout@v4
       - uses: actions-rs/toolchain@v1
@@ -35,4 +36,4 @@ jobs:
           components: rustfmt, clippy
           profile: minimal
           override: true
-      - run: cargo run --p andromeda-deploy
+      - run: cargo run -p andromeda-deploy
