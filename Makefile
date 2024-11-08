@@ -38,6 +38,12 @@ build-arm:
 	@echo "Build complete! \033[0;32m\xE2\x9C\x94\033[0m"
 	@./scripts/build_version_map.sh || exit 1
 
+# Attaches contract versions to the wasm files
+attach-contract-versions:
+	@echo "Attaching contract versions..."
+	@./scripts/attach_contract_versions.sh
+	@echo "Contract versions attached! \033[0;32m\xE2\x9C\x94\033[0m"
+
 # Runs unit tests
 unit-test:
 	@echo "Running unit tests..."

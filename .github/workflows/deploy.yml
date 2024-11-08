@@ -29,5 +29,5 @@ jobs:
           components: rustfmt, clippy
           profile: minimal
           override: true
-      - run: sudo make build
+      - run: make build
       - run: make deploy
