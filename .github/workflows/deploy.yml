@@ -13,13 +13,21 @@ on:
         type: string
 
 jobs:
-  #   build_contracts:
-  #     if: contains('["crnbarr93", "SlayerAnsh", "joemonem", "DimitrijeDragasevic"]', github.actor)
-  #     runs-on: ubuntu-latest
-  #     steps:
-  #       - uses: actions/checkout@v4
-  #       - run: make build
-  #       - run: make version-map
+  build_contracts:
+    if: contains('["crnbarr93", "SlayerAnsh", "joemonem", "DimitrijeDragasevic"]', github.actor)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Contracts
+        run: |
+          make build
+          make version-map
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: contracts
+          path: ./artifacts/
+          if-no-files-found: error
   deploy:
     runs-on: ubuntu-latest
     env:
@@ -31,9 +39,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions-rs/toolchain@v1
+      - name: Download Contracts
+        uses: actions/download-artifact@v2
         with:
-          toolchain: 1.75.0
-          components: rustfmt, clippy
-          profile: minimal
-          override: true
-      - run: cargo run -p andromeda-deploy
+          name: contracts
+          path: "./artifacts"
+      - name: Deploy
+        run: cargo run -p andromeda-deploy
