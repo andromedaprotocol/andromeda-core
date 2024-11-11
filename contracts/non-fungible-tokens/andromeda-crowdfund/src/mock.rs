@@ -5,7 +5,7 @@ use andromeda_non_fungible_tokens::crowdfund::{
     CampaignConfig, CampaignSummaryResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg,
     PresaleTierOrder, QueryMsg, SimpleTierOrder, Tier, TierMetaData, TiersResponse,
 };
-use andromeda_std::common::expiration::Expiry;
+use andromeda_std::common::{expiration::Expiry, OrderBy};
 use andromeda_testing::{
     mock::MockApp,
     mock_ado,
@@ -99,12 +99,23 @@ impl MockCrowdfund {
         self.query(app, msg)
     }
 
+<<<<<<< HEAD
     pub fn query_tiers(&self, app: &mut MockApp) -> TiersResponse {
         let msg = QueryMsg::Tiers {
             start_after: None,
             limit: None,
             order_by: None,
         };
+=======
+    pub fn query_tiers(
+        &self,
+        app: &mut MockApp,
+        start_after: Option<u64>,
+        limit: Option<u32>,
+        order_by: Option<OrderBy>,
+    ) -> TiersResponse {
+        let msg = mock_query_tiers_msg(start_after, limit, order_by);
+>>>>>>> 60d6ca65 (fix: amount sold incorrect for tiers with limits (#603))
         self.query(app, msg)
     }
 }
@@ -176,4 +187,16 @@ pub fn mock_claim_msg() -> ExecuteMsg {
 
 pub fn mock_purchase_cw20_msg(orders: Vec<SimpleTierOrder>) -> Cw20HookMsg {
     Cw20HookMsg::PurchaseTiers { orders }
+}
+
+pub fn mock_query_tiers_msg(
+    start_after: Option<u64>,
+    limit: Option<u32>,
+    order_by: Option<OrderBy>,
+) -> QueryMsg {
+    QueryMsg::Tiers {
+        start_after,
+        limit,
+        order_by,
+    }
 }
