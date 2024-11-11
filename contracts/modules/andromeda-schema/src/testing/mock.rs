@@ -1,5 +1,5 @@
 use andromeda_modules::schema::{
-    ExecuteMsg, GetSchemaResponse, InstantiateMsg, QueryMsg, ValidateDataResponse,
+    GetSchemaResponse, InstantiateMsg, QueryMsg, ValidateDataResponse,
 };
 use andromeda_std::{
     error::ContractError,
@@ -8,10 +8,10 @@ use andromeda_std::{
 use cosmwasm_std::{
     from_json,
     testing::{mock_env, mock_info, MockApi, MockStorage},
-    Deps, DepsMut, MessageInfo, OwnedDeps, Response,
+    Deps, MessageInfo, OwnedDeps,
 };
 
-use crate::contract::{execute, instantiate, query};
+use crate::contract::{instantiate, query};
 
 pub type MockDeps = OwnedDeps<MockStorage, MockApi, WasmMockQuerier>;
 
@@ -27,18 +27,6 @@ pub fn proper_initialization(schema_json_string: String) -> (MockDeps, MessageIn
     let res = instantiate(deps.as_mut(), env, info.clone(), msg).unwrap();
     assert_eq!(0, res.messages.len());
     (deps, info)
-}
-
-pub fn update_schema(
-    deps: DepsMut<'_>,
-    sender: &str,
-    new_schema_json_string: String,
-) -> Result<Response, ContractError> {
-    let msg = ExecuteMsg::UpdateSchema {
-        new_schema_json_string,
-    };
-    let info = mock_info(sender, &[]);
-    execute(deps, mock_env(), info, msg)
 }
 
 pub fn query_validate_data(
