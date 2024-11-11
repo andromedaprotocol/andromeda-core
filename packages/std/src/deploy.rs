@@ -1,5 +1,3 @@
-use cw_orch::prelude::Uploadable;
-
 #[macro_export]
 macro_rules! contract_interface {
     ($contract_name:ident, $contract_id:expr, $wasm_path:expr) => {
@@ -29,11 +27,11 @@ macro_rules! contract_interface {
         }
 
         impl<Chain> ADOMetadata for $contract_name<Chain> {
-            fn name(&self) -> String {
+            fn name() -> String {
                 $contract_id.to_string()
             }
 
-            fn version(&self) -> String {
+            fn version() -> String {
                 let version = env!("CARGO_PKG_VERSION");
                 version.to_string()
             }
@@ -42,8 +40,6 @@ macro_rules! contract_interface {
 }
 
 pub trait ADOMetadata {
-    fn name(&self) -> String;
-    fn version(&self) -> String;
+    fn name() -> String;
+    fn version() -> String;
 }
-
-pub trait ADOUploadable: ADOMetadata + Uploadable {}

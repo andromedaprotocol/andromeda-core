@@ -1,33 +1,30 @@
 use andromeda_splitter::SplitterContract;
 use andromeda_std::deploy::ADOMetadata;
 use andromeda_validator_staking::ValidatorStakingContract;
-use cw_orch::{anyhow::Chain, prelude::Uploadable};
+use cw_orch::prelude::*;
+use cw_orch_daemon::{DaemonBase, Wallet};
 
-pub enum AndromedaUploadable<Chain> {
-    Splitter(SplitterContract<Chain>),
-    ValidatorStaking(ValidatorStakingContract<Chain>),
+type UploadFn = Box<dyn FnOnce(&DaemonBase<Wallet>) -> Result<u64, CwOrchError>>;
+pub type DeployableContract = (String, String, UploadFn);
+
+/// Macro to create a tuple of (name, version, uploadFn) for a given contract.
+macro_rules! deployable {
+    ($contract_struct:ident) => {
+        (
+            $contract_struct::<DaemonBase<Wallet>>::name(),
+            $contract_struct::<DaemonBase<Wallet>>::version(),
+            Box::new(|chain: &DaemonBase<Wallet>| {
+                let contract = $contract_struct::<DaemonBase<Wallet>>::new(chain.clone());
+                contract.upload()?;
+                Ok(contract.code_id().unwrap())
+            }),
+        )
+    };
 }
 
-impl<Chain> Uploadable for AndromedaUploadable<Chain> {}
-impl<Chain> ADOMetadata for AndromedaUploadable<Chain> {
-    fn name(&self) -> String {
-        match self {
-            AndromedaUploadable::Splitter(contract) => contract.name(),
-            AndromedaUploadable::ValidatorStaking(contract) => contract.name(),
-        }
-    }
-
-    fn version(&self) -> String {
-        match self {
-            AndromedaUploadable::Splitter(contract) => contract.version(),
-            AndromedaUploadable::ValidatorStaking(contract) => contract.version(),
-        }
-    }
-}
-
-pub fn all_contracts(chain: Chain) -> Vec<AndromedaUploadable<Chain>> {
+pub fn all_contracts() -> Vec<DeployableContract> {
     vec![
-        AndromedaUploadable::Splitter(SplitterContract::new(chain.clone())),
-        AndromedaUploadable::ValidatorStaking(ValidatorStakingContract::new(chain)),
+        deployable!(SplitterContract),
+        deployable!(ValidatorStakingContract),
     ]
 }

@@ -2,6 +2,7 @@ use cw_orch::core::serde_json;
 use reqwest::blocking::Client;
 use std::env;
 
+use andromeda_deploy::adodb;
 use andromeda_deploy::os;
 use chrono::Local;
 use dotenv::dotenv;
@@ -55,6 +56,7 @@ fn main() {
     let deploy_os_res = os::deploy(chain.clone(), kernel_address.clone());
 
     if let Err(e) = deploy_os_res {
+        println!("Error deploying OS: {}", e);
         let error_message = format!(
             "❌ *Deployment Failed*\n```\n| Chain          | {} |\n| Time           | {} |\n| Kernel Address | {} |\n| Error          | {} |```",
             chain,
@@ -83,4 +85,6 @@ fn main() {
     if let Err(e) = send_slack_notification(&completion_message) {
         eprintln!("Failed to send Slack notification: {}", e);
     }
+
+    adodb::deploy(chain, kernel_address, None).unwrap();
 }

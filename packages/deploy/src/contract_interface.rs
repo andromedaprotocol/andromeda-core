@@ -24,11 +24,11 @@ macro_rules! contract_interface {
         }
 
         impl<Chain> ADOMetadata for $contract_name<Chain> {
-            fn name(&self) -> String {
+            fn name() -> String {
                 stringify!($contract_name).to_string()
             }
 
-            fn version(&self) -> String {
+            fn version() -> String {
                 let version = env!("CARGO_PKG_VERSION");
                 version.to_string()
             }

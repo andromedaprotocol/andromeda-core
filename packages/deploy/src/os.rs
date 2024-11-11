@@ -112,7 +112,7 @@ impl OperatingSystemDeployment {
             ("adodb", self.adodb.as_instance()),
             ("vfs", self.vfs.as_instance()),
             ("economics", self.economics.as_instance()),
-            ("ibc_registry", self.ibc_registry.as_instance()),
+            ("ibc-registry", self.ibc_registry.as_instance()),
         ];
 
         for (module_name, contract) in modules {
