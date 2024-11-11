@@ -49,7 +49,7 @@ pub fn instantiate(
         from_str(schema_json_string.as_str()).map_err(|_| ContractError::CustomError {
             msg: "Invalid JSON Schema".to_string(),
         })?;
-    let schema_json = JSON::from(schema_json_value.to_string().as_str());
+    let schema_json = JSON::try_from(schema_json_value.to_string().as_str()).unwrap();
 
     SCHEMA.save(deps.storage, &schema_json)?;
 

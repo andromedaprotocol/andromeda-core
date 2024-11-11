@@ -6,7 +6,7 @@ use serde_json::{from_str, json, Value};
 use crate::state::SCHEMA;
 
 pub fn get_schema(storage: &dyn Storage) -> Result<GetSchemaResponse, ContractError> {
-    let schema = SCHEMA.load(storage)?.into();
+    let schema = SCHEMA.load(storage)?.to_string();
     Ok(GetSchemaResponse { schema })
 }
 

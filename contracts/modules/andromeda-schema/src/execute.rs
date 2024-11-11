@@ -47,7 +47,7 @@ fn execute_update_schema(
         from_str(new_schema_json.as_str()).map_err(|_| ContractError::CustomError {
             msg: "Invalid JSON Schema".to_string(),
         })?;
-    let new_schema_json = JSON::from(new_schema_json_value.to_string().as_str());
+    let new_schema_json = JSON::try_from(new_schema_json_value.to_string().as_str()).unwrap();
 
     SCHEMA.save(ctx.deps.storage, &new_schema_json)?;
 
