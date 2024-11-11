@@ -63,7 +63,7 @@ impl OperatingSystemDeployment {
         } else {
             let kernel_msg = kernel::InstantiateMsg {
                 owner: Some(sender.to_string()),
-                chain_name: ANDROMEDA_TESTNET.network_info.chain_name.to_string(),
+                chain_name: self.daemon.chain().network_info.chain_name.to_string(),
             };
             self.kernel.instantiate(&kernel_msg, Some(&sender), None)?;
             println!("Kernel address: {}", self.kernel.address().unwrap());
