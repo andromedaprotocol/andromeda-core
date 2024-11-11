@@ -25,6 +25,12 @@ pub fn deploy(
     let all_contracts = all_contracts();
 
     let contracts_to_deploy = contracts.unwrap_or_default();
+    contracts_to_deploy.iter().for_each(|name| {
+        let contract = all_contracts.iter().find(|(n, _, _)| n == name);
+        if contract.is_none() {
+            log::warn!("Contract {} not found", name);
+        }
+    });
     for (name, version, upload) in all_contracts {
         if !contracts_to_deploy.is_empty() && !contracts_to_deploy.contains(&name) {
             continue;

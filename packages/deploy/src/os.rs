@@ -140,7 +140,6 @@ impl OperatingSystemDeployment {
 }
 
 pub fn deploy(chain: String, kernel_address: Option<String>) -> Result<String, DeployError> {
-    env_logger::init();
     let chain = get_chain(chain);
     let os_deployment = OperatingSystemDeployment::new(chain);
     log::info!("Starting OS deployment process");
