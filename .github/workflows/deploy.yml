@@ -11,6 +11,14 @@ on:
         description: "Kernel address"
         required: false
         type: string
+      deploy_os:
+        description: "Deploy OS"
+        required: false
+        type: boolean
+      contracts:
+        description: "Contracts to deploy (e.g. splitter, validator-staking)"
+        required: false
+        type: string
 
 jobs:
   build_contracts:
@@ -34,6 +42,8 @@ jobs:
     env:
       DEPLOYMENT_CHAIN: ${{ inputs.network }}
       DEPLOYMENT_KERNEL_ADDRESS: ${{ inputs.kernel_address }}
+      DEPLOY_OS: ${{ inputs.deploy_os }}
+      DEPLOY_CONTRACTS: ${{ inputs.contracts }}
       SLACK_WEBHOOK_URL: "${{ secrets.DEPLOY_SLACK_WEBHOOK_URL }}"
       TEST_MNEMONIC: "${{ secrets.DEPLOY_TEST_MNEMONIC }}"
       RUST_LOG: info
