@@ -84,7 +84,7 @@ impl WasmMockQuerier {
         match from_json(msg).unwrap() {
             SchemaQueryMsg::GetSchema {} => {
                 let msg_response = GetSchemaResponse {
-                    schema: "{\"$schema\":\"http://json-schema.org/draft-07/schema#\",\"additionalProperties\":false,\"properties\":{\"kernel_address\":{\"type\":\"string\"},\"owner\":{\"type\":[\"string\",\"null\"]},\"schema_json_string\":{\"type\":\"string\"}},\"required\":[\"kernel_address\",\"schema_json_string\"],\"title\":\"InstantiateMsg\",\"type\":\"object\"}".to_string(),
+                    schema: "{\"properties\":{\"age\":{\"type\":\"number\"},\"name\":{\"type\":\"string\"}},\"required\":[\"name\",\"age\"],\"type\":\"object\"}".to_string(),
                 };
                 SystemResult::Ok(ContractResult::Ok(to_json_binary(&msg_response).unwrap()))
             }

@@ -657,7 +657,7 @@ fn test_submit_form_disallowed_multiple_submission_allowed_edit() {
     assert_eq!(
         schema,
         GetSchemaResponse {
-            schema: "{\"$schema\":\"http://json-schema.org/draft-07/schema#\",\"additionalProperties\":false,\"properties\":{\"kernel_address\":{\"type\":\"string\"},\"owner\":{\"type\":[\"string\",\"null\"]},\"schema_json_string\":{\"type\":\"string\"}},\"required\":[\"kernel_address\",\"schema_json_string\"],\"title\":\"InstantiateMsg\",\"type\":\"object\"}".to_string(),
+            schema: "{\"properties\":{\"age\":{\"type\":\"number\"},\"name\":{\"type\":\"string\"}},\"required\":[\"name\",\"age\"],\"type\":\"object\"}".to_string(),
         }
     );
 }
