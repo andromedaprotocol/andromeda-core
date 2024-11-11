@@ -58,7 +58,16 @@ integration-test:
 test: unit-test integration-test
 	@echo "All tests complete! \033[0;32m\xE2\x9C\x94\033[0m"
 
-deploy:
+# Deploys OS to specified blockchain
+# Required env vars:
+#   DEPLOYMENT_CHAIN - Chain ID or name (e.g., galileo-4)
+#   TEST_MNEMONIC - Wallet mnemonic for deployment
+# Optional env vars:
+#   DEPLOYMENT_KERNEL_ADDRESS - For updating kernel address
+#   SLACK_WEBHOOK_URL - For Slack notifications
+deploy: build attach-contract-versions
 	@echo "Deploying OS..."
+	@test -n "$$DEPLOYMENT_CHAIN" || (echo "Error: DEPLOYMENT_CHAIN is required" && exit 1)
+	@test -n "$$TEST_MNEMONIC" || (echo "Error: TEST_MNEMONIC is required" && exit 1)
 	@RUST_LOG=info cargo run --package andromeda-deploy
 	@echo "OS deployed! \033[0;32m\xE2\x9C\x94\033[0m"
