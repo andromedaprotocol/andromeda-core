@@ -1,45 +1,33 @@
-use crate::contract_interface;
-use andromeda_std::ado_base::MigrateMsg;
-use andromeda_std::os::*;
-use cw_orch::interface;
-use cw_orch::prelude::*;
+use andromeda_splitter::SplitterContract;
+use andromeda_std::deploy::ADOMetadata;
+use andromeda_validator_staking::ValidatorStakingContract;
+use cw_orch::{anyhow::Chain, prelude::Uploadable};
 
-contract_interface!(
-    KernelContract,
-    andromeda_kernel,
-    kernel,
-    "andromeda_kernel",
-    "andromeda_kernel.wasm"
-);
+pub enum AndromedaUploadable<Chain> {
+    Splitter(SplitterContract<Chain>),
+    ValidatorStaking(ValidatorStakingContract<Chain>),
+}
 
-contract_interface!(
-    ADODBContract,
-    andromeda_adodb,
-    adodb,
-    "andromeda_adodb",
-    "andromeda_adodb.wasm"
-);
+impl<Chain> Uploadable for AndromedaUploadable<Chain> {}
+impl<Chain> ADOMetadata for AndromedaUploadable<Chain> {
+    fn name(&self) -> String {
+        match self {
+            AndromedaUploadable::Splitter(contract) => contract.name(),
+            AndromedaUploadable::ValidatorStaking(contract) => contract.name(),
+        }
+    }
 
-contract_interface!(
-    VFSContract,
-    andromeda_vfs,
-    vfs,
-    "andromeda_vfs",
-    "andromeda_vfs.wasm"
-);
+    fn version(&self) -> String {
+        match self {
+            AndromedaUploadable::Splitter(contract) => contract.version(),
+            AndromedaUploadable::ValidatorStaking(contract) => contract.version(),
+        }
+    }
+}
 
-contract_interface!(
-    EconomicsContract,
-    andromeda_economics,
-    economics,
-    "andromeda_economics",
-    "andromeda_economics.wasm"
-);
-
-contract_interface!(
-    IBCRegistryContract,
-    andromeda_ibc_registry,
-    ibc_registry,
-    "andromeda_ibc_registry",
-    "andromeda_ibc_registry.wasm"
-);
+pub fn all_contracts(chain: Chain) -> Vec<AndromedaUploadable<Chain>> {
+    vec![
+        AndromedaUploadable::Splitter(SplitterContract::new(chain.clone())),
+        AndromedaUploadable::ValidatorStaking(ValidatorStakingContract::new(chain)),
+    ]
+}

@@ -10,6 +10,7 @@ license = "MIT"
 primitive = []
 instantiate = []
 rates = ["andromeda-macros/rates"]
+deploy = []
 
 [lib]
 crate-type = ["cdylib", "rlib"]

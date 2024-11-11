@@ -1,18 +1,23 @@
+use cw_orch::prelude::Uploadable;
+
 #[macro_export]
 macro_rules! contract_interface {
-    ($contract_name:ident, $module_path:ident, $package_path:ident, $contract_id:expr, $wasm_path:expr) => {
-        #[interface($package_path::InstantiateMsg, $package_path::ExecuteMsg, $package_path::QueryMsg, MigrateMsg, id = $contract_id)]
+    ($contract_name:ident, $contract_id:expr, $wasm_path:expr) => {
+        use cw_orch::interface;
+        use cw_orch::prelude::*;
+
+        #[interface(InstantiateMsg, ExecuteMsg,QueryMsg, MigrateMsg, id = $contract_id)]
         pub struct $contract_name;
 
         impl<Chain> Uploadable for $contract_name<Chain> {
             fn wrapper() -> Box<dyn MockContract<Empty>> {
                 Box::new(
                     ContractWrapper::new_with_empty(
-                        $module_path::contract::execute,
-                        $module_path::contract::instantiate,
-                        $module_path::contract::query,
+                        crate::contract::execute,
+                        crate::contract::instantiate,
+                        crate::contract::query,
                     )
-                    .with_migrate($module_path::contract::migrate),
+                    .with_migrate(crate::contract::migrate),
                 )
             }
 
@@ -25,7 +30,7 @@ macro_rules! contract_interface {
 
         impl<Chain> ADOMetadata for $contract_name<Chain> {
             fn name(&self) -> String {
-                stringify!($contract_name).to_string()
+                $contract_id.to_string()
             }
 
             fn version(&self) -> String {
@@ -35,3 +40,10 @@ macro_rules! contract_interface {
         }
     };
 }
+
+pub trait ADOMetadata {
+    fn name(&self) -> String;
+    fn version(&self) -> String;
+}
+
+pub trait ADOUploadable: ADOMetadata + Uploadable {}

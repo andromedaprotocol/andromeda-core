@@ -7,7 +7,11 @@ use cw_orch_daemon::{DaemonBase, DaemonBuilder, TxSender, Wallet};
 use kernel::{ExecuteMsgFns, QueryMsgFns};
 
 use crate::chains::{get_chain, ANDROMEDA_TESTNET};
-use crate::contracts::*;
+use andromeda_adodb::ADODBContract;
+use andromeda_economics::EconomicsContract;
+use andromeda_ibc_registry::IBCRegistryContract;
+use andromeda_kernel::KernelContract;
+use andromeda_vfs::VFSContract;
 
 struct OperatingSystemDeployment {
     daemon: DaemonBase<Wallet>,
@@ -26,7 +30,6 @@ impl OperatingSystemDeployment {
         let vfs = VFSContract::new(daemon.clone());
         let economics = EconomicsContract::new(daemon.clone());
         let ibc_registry = IBCRegistryContract::new(daemon.clone());
-
         Self {
             daemon,
             kernel,
