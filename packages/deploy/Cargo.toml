@@ -34,30 +34,34 @@ enum-repr = { workspace = true }
 sha2 = "0.10.8"
 cw-orch = { workspace = true }
 cw-orch-daemon = "0.24.2"
-andromeda-kernel = { version = "1.1.1", path = "../../contracts/os/andromeda-kernel", features = [
-    "testing",
-] }
-andromeda-adodb = { version = "1.1.1", path = "../../contracts/os/andromeda-adodb", features = [
-    "testing",
-] }
-andromeda-vfs = { version = "1.1.1", path = "../../contracts/os/andromeda-vfs", features = [
-    "testing",
-] }
-andromeda-economics = { version = "1.1.1", path = "../../contracts/os/andromeda-economics", features = [
-    "testing",
-] }
-andromeda-ibc-registry = { version = "1.0.1", path = "../../contracts/os/andromeda-ibc-registry", features = [
-    "testing",
-] }
-andromeda-splitter = { path = "../../contracts/finance/andromeda-splitter", features = [
-    "testing",
-] }
-andromeda-validator-staking = { path = "../../contracts/finance/andromeda-validator-staking", features = [
-    "testing",
-] }
+
+# OS Contracts
+andromeda-kernel = { version = "1.1.1", path = "../../contracts/os/andromeda-kernel" }
+andromeda-adodb = { version = "1.1.1", path = "../../contracts/os/andromeda-adodb" }
+andromeda-vfs = { version = "1.1.1", path = "../../contracts/os/andromeda-vfs" }
+andromeda-economics = { version = "1.1.1", path = "../../contracts/os/andromeda-economics" }
+andromeda-ibc-registry = { version = "1.0.1", path = "../../contracts/os/andromeda-ibc-registry" }
+
+# Finance Contracts
+andromeda-splitter = { path = "../../contracts/finance/andromeda-splitter" }
+andromeda-validator-staking = { path = "../../contracts/finance/andromeda-validator-staking" }
+andromeda-vesting = { path = "../../contracts/finance/andromeda-vesting" }
+andromeda-timelock = { path = "../../contracts/finance/andromeda-timelock" }
+
+# Data Storage Contracts
+andromeda-counter = { path = "../../contracts/data-storage/andromeda-counter" }
+andromeda-primitive = { path = "../../contracts/data-storage/andromeda-primitive" }
+
+# Fungible Tokens Contracts
+andromeda-cw20-staking = { path = "../../contracts/fungible-tokens/andromeda-cw20-staking" }
+andromeda-cw20 = { path = "../../contracts/fungible-tokens/andromeda-cw20" }
+
+# Non-Fungible Tokens Contracts
+andromeda-cw721 = { path = "../../contracts/non-fungible-tokens/andromeda-cw721" }
+
 andromeda-std = { workspace = true }
-env_logger = "0.11.5" # or whatever the latest version is
-log = "0.4" # env_logger depends on the log crate
+env_logger = "0.11.5"                                           # or whatever the latest version is
+log = "0.4"                                                     # env_logger depends on the log crate
 dotenv = "0.15.0"
 reqwest = { version = "0.11", features = ["json", "blocking"] }
 serde_json = "1.0"

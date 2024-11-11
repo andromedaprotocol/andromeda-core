@@ -1,5 +1,8 @@
 use andromeda_std::{
-    ado_base::MigrateMsg, contract_interface, deploy::ADOMetadata, os::economics::*,
+    ado_base::MigrateMsg,
+    contract_interface,
+    deploy::ADOMetadata,
+    os::economics::{ExecuteMsg, InstantiateMsg, QueryMsg},
 };
 
 pub const CONTRACT_ID: &str = "economics";

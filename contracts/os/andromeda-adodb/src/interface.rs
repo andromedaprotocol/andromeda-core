@@ -1,4 +1,9 @@
-use andromeda_std::{ado_base::MigrateMsg, contract_interface, deploy::ADOMetadata, os::adodb::*};
+use andromeda_std::{
+    ado_base::MigrateMsg,
+    contract_interface,
+    deploy::ADOMetadata,
+    os::adodb::{ExecuteMsg, InstantiateMsg, QueryMsg},
+};
 
 pub const CONTRACT_ID: &str = "adodb";
 

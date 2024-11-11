@@ -1,6 +1,14 @@
+use andromeda_counter::CounterContract;
+use andromeda_cw20::CW20Contract;
+use andromeda_cw20_staking::CW20StakingContract;
+use andromeda_cw721::CW721Contract;
+use andromeda_primitive::PrimitiveContract;
 use andromeda_splitter::SplitterContract;
 use andromeda_std::deploy::ADOMetadata;
+use andromeda_timelock::TimelockContract;
 use andromeda_validator_staking::ValidatorStakingContract;
+use andromeda_vesting::VestingContract;
+
 use cw_orch::prelude::*;
 use cw_orch_daemon::{DaemonBase, Wallet};
 
@@ -26,5 +34,12 @@ pub fn all_contracts() -> Vec<DeployableContract> {
     vec![
         deployable!(SplitterContract),
         deployable!(ValidatorStakingContract),
+        deployable!(VestingContract),
+        deployable!(TimelockContract),
+        deployable!(CounterContract),
+        deployable!(PrimitiveContract),
+        deployable!(CW20Contract),
+        deployable!(CW20StakingContract),
+        deployable!(CW721Contract),
     ]
 }
