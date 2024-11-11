@@ -1,3 +1,4 @@
+#[allow(clippy::crate_in_macro_def)]
 #[macro_export]
 macro_rules! contract_interface {
     ($contract_name:ident, $contract_id:expr, $wasm_path:expr) => {
