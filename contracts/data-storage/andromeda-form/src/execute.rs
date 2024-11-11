@@ -161,7 +161,7 @@ pub fn execute_delete_submission(
         .load(ctx.deps.storage, &(submission_id, address.clone()))
         .map_err(|_| ContractError::CustomError {
             msg: format!(
-                "Submission is not existed - Submission_id {:?}, Wallet_address {:?}",
+                "Submission does not exist - Submission_id {:?}, Wallet_address {:?}",
                 submission_id, wallet_address
             ),
         })?;
