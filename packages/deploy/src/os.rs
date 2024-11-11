@@ -6,7 +6,7 @@ use cw_orch::prelude::*;
 use cw_orch_daemon::{DaemonBase, DaemonBuilder, TxSender, Wallet};
 use kernel::{ExecuteMsgFns, QueryMsgFns};
 
-use crate::chains::{get_chain, ANDROMEDA_TESTNET};
+use crate::chains::get_chain;
 use crate::contracts::*;
 
 struct OperatingSystemDeployment {
@@ -63,7 +63,7 @@ impl OperatingSystemDeployment {
         } else {
             let kernel_msg = kernel::InstantiateMsg {
                 owner: Some(sender.to_string()),
-                chain_name: self.daemon.chain().network_info.chain_name.to_string(),
+                chain_name: self.daemon.chain_info().network_info.chain_name.to_string(),
             };
             self.kernel.instantiate(&kernel_msg, Some(&sender), None)?;
             println!("Kernel address: {}", self.kernel.address().unwrap());
