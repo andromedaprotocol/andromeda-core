@@ -47,6 +47,7 @@ fn main() {
                 .to_lowercase()
                 .replace("andromeda_", "")
         })
+        .filter(|s| !s.is_empty())
         .collect::<Vec<String>>();
 
     let adodb_res = adodb::deploy(

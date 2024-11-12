@@ -56,6 +56,11 @@ pub fn deploy(
     let mut deployed_contracts: Vec<(String, String, u64)> = vec![];
     for (name, version, upload) in all_contracts {
         if !contracts_to_deploy.is_empty() && !contracts_to_deploy.contains(&name) {
+            log::info!(
+                "Skipping {} {} - not included in deploy list",
+                name,
+                version
+            );
             continue;
         }
 
