@@ -79,4 +79,6 @@ jobs:
           name: deploy
           path: "./"
       - name: Deploy
-        run: ./andromeda-deploy
+        run: |
+          chmod +x ./andromeda-deploy
+          ./andromeda-deploy
