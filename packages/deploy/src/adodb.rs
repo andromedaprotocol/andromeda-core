@@ -50,6 +50,7 @@ pub fn deploy(
     );
     send_notification(&deployment_msg).unwrap();
 
+    let mut deployed_contracts: Vec<(String, String, u64)> = vec![];
     for (name, version, upload) in all_contracts {
         if !contracts_to_deploy.is_empty() && !contracts_to_deploy.contains(&name) {
             continue;
@@ -57,8 +58,16 @@ pub fn deploy(
 
         println!("Deploying {} {}", name, version);
         let code_id = upload(&daemon)?;
-        adodb.publish(name, code_id, version, None, None)?;
+        adodb.publish(name.clone(), code_id, version.clone(), None, None)?;
+        deployed_contracts.push((name, version, code_id));
     }
+
+    let mut deployment_table = String::from("🚀 *Deployed Contracts*\n```\n| Name | Version | Code ID |\n|------|---------|---------|\n");
+    for (name, code_id, version) in &deployed_contracts {
+        deployment_table.push_str(&format!("| {} | {} | {} |\n", name, version, code_id));
+    }
+    deployment_table.push_str("```");
+    send_notification(&deployment_table).unwrap();
 
     Ok(())
 }

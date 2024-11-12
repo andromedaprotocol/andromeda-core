@@ -36,6 +36,19 @@ jobs:
           name: contracts
           path: ./artifacts/
           if-no-files-found: error
+  build_deploy_script:
+    if: contains('["crnbarr93", "SlayerAnsh", "joemonem", "DimitrijeDragasevic", "cowboy0015"]', github.actor)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Deploy Script
+        run: cargo build -p andromeda-deploy
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: deploy
+          path: ./target/release/andromeda-deploy
+          if-no-files-found: error
   deploy:
     runs-on: ubuntu-latest
     needs: build_contracts
@@ -60,5 +73,10 @@ jobs:
         with:
           name: contracts
           path: "./artifacts"
+      - name: Download Deploy Script
+        uses: actions/download-artifact@v3
+        with:
+          name: deploy
+          path: "./andromeda-deploy"
       - name: Deploy
-        run: cargo run -p andromeda-deploy
+        run: ./andromeda-deploy
