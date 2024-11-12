@@ -51,7 +51,7 @@ jobs:
           if-no-files-found: error
   deploy:
     runs-on: ubuntu-latest
-    needs: build_contracts
+    needs: [build_contracts, build_deploy_script]
     env:
       DEPLOYMENT_CHAIN: ${{ inputs.network }}
       DEPLOYMENT_KERNEL_ADDRESS: ${{ inputs.kernel_address }}
