@@ -42,7 +42,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build Deploy Script
-        run: cargo build -p andromeda-deploy
+        run: cargo build -p andromeda-deploy --release
       - name: Upload Artifacts
         uses: actions/upload-artifact@v3
         with:
