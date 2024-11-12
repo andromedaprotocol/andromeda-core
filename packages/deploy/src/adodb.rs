@@ -20,9 +20,9 @@ pub fn deploy(
     let kernel = KernelContract::new(daemon.clone());
     kernel.set_address(&Addr::unchecked(kernel_address.clone()));
 
-    log::info!("Setting ADODB address to {}", kernel_address);
     let adodb = ADODBContract::new(daemon.clone());
     let adodb_addr = kernel.key_address("adodb")?;
+    log::info!("Setting ADODB address to {}", adodb_addr);
     adodb.set_address(&adodb_addr);
 
     log::info!("Getting all contracts");
