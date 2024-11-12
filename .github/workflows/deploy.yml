@@ -77,6 +77,6 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: deploy
-          path: "./andromeda-deploy"
+          path: "./"
       - name: Deploy
         run: ./andromeda-deploy
