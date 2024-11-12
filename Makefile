@@ -65,7 +65,7 @@ test: unit-test integration-test
 # Optional env vars:
 #   DEPLOYMENT_KERNEL_ADDRESS - For updating kernel address
 #   SLACK_WEBHOOK_URL - For Slack notifications
-deploy: build attach-contract-versions
+deploy: build make-version-map
 	@echo "Deploying OS..."
 	@test -n "$$DEPLOYMENT_CHAIN" || (echo "Error: DEPLOYMENT_CHAIN is required" && exit 1)
 	@test -n "$$TEST_MNEMONIC" || (echo "Error: TEST_MNEMONIC is required" && exit 1)

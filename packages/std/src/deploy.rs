@@ -16,6 +16,7 @@ macro_rules! contract_interface {
                         crate::contract::instantiate,
                         crate::contract::query,
                     )
+                    .with_reply(crate::contract::reply)
                     .with_migrate(crate::contract::migrate),
                 )
             }

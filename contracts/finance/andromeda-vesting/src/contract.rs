@@ -8,8 +8,8 @@ use andromeda_std::{
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    ensure, Binary, Coin, Decimal, Deps, DepsMut, Env, MessageInfo, QuerierWrapper, Response,
-    Uint128,
+    ensure, Binary, Coin, Decimal, Deps, DepsMut, Env, MessageInfo, QuerierWrapper, Reply,
+    Response, StdError, Uint128,
 };
 use cw_asset::AssetInfo;
 use cw_utils::nonpayable;
@@ -437,4 +437,15 @@ fn get_batch_response(
     };
 
     Ok(res)
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
+    if msg.result.is_err() {
+        return Err(ContractError::Std(StdError::generic_err(
+            msg.result.unwrap_err(),
+        )));
+    }
+
+    Ok(Response::default())
 }
