@@ -12,7 +12,7 @@ pub fn deploy(
     chain: String,
     kernel_address: String,
     contracts: Option<Vec<String>>,
-) -> Result<(), DeployError> {
+) -> Result<Vec<(String, String, u64)>, DeployError> {
     let chain = get_chain(chain);
     let daemon = DaemonBuilder::new(chain.clone()).build().unwrap();
 
@@ -42,11 +42,15 @@ pub fn deploy(
     }
 
     log::info!("Filtering valid contracts");
-    let valid_contracts = contracts_to_deploy
-        .iter()
-        .filter(|name| all_contracts.iter().any(|(n, _, _)| &n == name))
-        .cloned()
-        .collect::<Vec<String>>();
+    let valid_contracts: Vec<String> = if contracts_to_deploy.is_empty() {
+        all_contracts.iter().map(|(n, _, _)| n.clone()).collect()
+    } else {
+        contracts_to_deploy
+            .iter()
+            .filter(|name| all_contracts.iter().any(|(n, _, _)| &n == name))
+            .cloned()
+            .collect()
+    };
 
     SlackNotification::ADODeploymentStarted(chain.chain_id.to_string(), valid_contracts.clone())
         .send()
@@ -70,9 +74,12 @@ pub fn deploy(
         deployed_contracts.push((name, version, code_id));
     }
 
-    SlackNotification::ADODeploymentCompleted(chain.chain_id.to_string(), valid_contracts.clone())
-        .send()
-        .unwrap();
+    SlackNotification::ADODeploymentCompleted(
+        chain.chain_id.to_string(),
+        deployed_contracts.clone(),
+    )
+    .send()
+    .unwrap();
 
-    Ok(())
+    Ok(deployed_contracts)
 }

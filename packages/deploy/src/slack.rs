@@ -36,7 +36,7 @@ pub enum SlackNotification {
     DeploymentCompleted(String, Option<String>),
     DeploymentFailed(String, Option<String>, DeployError),
     ADODeploymentStarted(String, Vec<String>),
-    ADODeploymentCompleted(String, Vec<String>),
+    ADODeploymentCompleted(String, Vec<(String, String, u64)>),
     ADODeploymentFailed(String, DeployError),
     ADOWarning(String, Vec<String>),
 }
@@ -66,7 +66,7 @@ impl std::fmt::Display for SlackNotification {
                 write!(f, "🚀 *ADO Library Deployment Started*\n```\n| Chain          | {} |\n| Contracts      | {} |```", chain, contracts.join(", "))
             }
             SlackNotification::ADODeploymentCompleted(chain, contracts) => {
-                write!(f, "✅ *ADO Library Deployment Completed*\n```\n| Chain          | {} |\n| Contracts      | {} |```", chain, contracts.join(", "))
+                write!(f, "✅ *ADO Library Deployment Completed*\n```\n| Chain          | {} |\n| Contracts      |\n| Name           | Version       | Code ID       |\n{}\n```", chain, contracts.iter().map(|(name, version, code_id)| format!("| {:<14} | {:<12} | {:<12} |", name, version, code_id)).collect::<Vec<String>>().join("\n"))
             }
             SlackNotification::ADODeploymentFailed(chain, error) => {
                 write!(f, "❌ *ADO Library Deployment Failed*\n```\n| Chain          | {} |\n| Error          | {} |```", chain, error)

@@ -1,3 +1,4 @@
+use andromeda_deploy::report::DeploymentReport;
 use andromeda_deploy::slack::SlackNotification;
 use std::env;
 
@@ -52,7 +53,7 @@ fn main() {
 
     let adodb_res = adodb::deploy(
         chain.clone(),
-        kernel_address.unwrap(),
+        kernel_address.clone().unwrap(),
         Some(contracts_to_deploy),
     );
     if let Err(e) = adodb_res {
@@ -62,4 +63,13 @@ fn main() {
             .unwrap();
         std::process::exit(1);
     }
+
+    let deployed_contracts = adodb_res.unwrap();
+    DeploymentReport {
+        chain_id: chain.clone(),
+        contracts: deployed_contracts,
+        kernel_address: kernel_address.unwrap(),
+    }
+    .write_to_json()
+    .unwrap();
 }
