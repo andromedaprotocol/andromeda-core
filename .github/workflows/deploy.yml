@@ -82,3 +82,9 @@ jobs:
         run: |
           chmod +x ./andromeda-deploy
           ./andromeda-deploy
+      - name: Upload Deployment Report
+        uses: actions/upload-artifact@v3
+        with:
+          name: deployment-report
+          path: ./deployment-reports/
+          if-no-files-found: error
