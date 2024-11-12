@@ -1,9 +1,8 @@
-use andromeda_deploy::slack::send_notification;
+use andromeda_deploy::slack::SlackNotification;
 use std::env;
 
 use andromeda_deploy::adodb;
 use andromeda_deploy::os;
-use chrono::Local;
 use dotenv::dotenv;
 
 fn main() {
@@ -12,19 +11,11 @@ fn main() {
 
     let chain = env::var("DEPLOYMENT_CHAIN").expect("DEPLOYMENT_CHAIN must be set");
     let mut kernel_address = env::var("DEPLOYMENT_KERNEL_ADDRESS").ok();
-    let timestamp = Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
 
     // Send start notification
-    let start_message = format!(
-        "🚀 *Deployment Started*\n```\n| Chain          | {} |\n| Time           | {} |\n| Kernel Address | {} |```",
-        chain,
-        timestamp,
-        kernel_address.as_deref().unwrap_or("Not provided")
-    );
-
-    if let Err(e) = send_notification(&start_message) {
-        eprintln!("Failed to send Slack notification: {}", e);
-    }
+    SlackNotification::DeploymentStarted(chain.clone(), kernel_address.clone())
+        .send()
+        .unwrap();
 
     let should_deploy_os = env::var("DEPLOY_OS").unwrap_or_default().to_lowercase() == "true";
     if should_deploy_os {
@@ -32,34 +23,18 @@ fn main() {
 
         if let Err(e) = deploy_os_res {
             println!("Error deploying OS: {}", e);
-            let error_message = format!(
-            "❌ *Deployment Failed*\n```\n| Chain          | {} |\n| Time           | {} |\n| Kernel Address | {} |\n| Error          | {} |```",
-            chain,
-            timestamp,
-            kernel_address.as_deref().unwrap_or("Not provided"),
-            e
-        );
-
-            if let Err(notification_error) = send_notification(&error_message) {
-                eprintln!("Failed to send Slack notification: {}", notification_error);
-            }
+            SlackNotification::DeploymentFailed(chain.clone(), kernel_address.clone(), e)
+                .send()
+                .unwrap();
             std::process::exit(1);
         }
 
         kernel_address = Some(deploy_os_res.unwrap());
 
         // Send completion notification
-        let completion_timestamp = Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
-        let completion_message = format!(
-        "✅ *Deployment Completed*\n```\n| Chain          | {} |\n| Time           | {} |\n| Kernel Address | {} |```",
-        chain,
-            completion_timestamp,
-            kernel_address.as_ref().unwrap()
-        );
-
-        if let Err(e) = send_notification(&completion_message) {
-            eprintln!("Failed to send Slack notification: {}", e);
-        }
+        SlackNotification::DeploymentCompleted(chain.clone(), kernel_address.clone())
+            .send()
+            .unwrap();
     }
 
     let contracts_to_deploy = env::var("DEPLOY_CONTRACTS")
@@ -74,5 +49,12 @@ fn main() {
         })
         .collect::<Vec<String>>();
 
-    adodb::deploy(chain, kernel_address.unwrap(), Some(contracts_to_deploy)).unwrap();
+    let adodb_res = adodb::deploy(chain, kernel_address.unwrap(), Some(contracts_to_deploy));
+    if let Err(e) = adodb_res {
+        println!("Error deploying ADODB: {}", e);
+        SlackNotification::ADODeploymentFailed(chain.clone(), e)
+            .send()
+            .unwrap();
+        std::process::exit(1);
+    }
 }

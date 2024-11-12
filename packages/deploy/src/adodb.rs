@@ -1,4 +1,4 @@
-use crate::slack::send_notification;
+use crate::slack::SlackNotification;
 use crate::{chains::get_chain, contracts::all_contracts, error::DeployError};
 use adodb::ExecuteMsgFns;
 use andromeda_adodb::ADODBContract;
@@ -31,11 +31,9 @@ pub fn deploy(
         .cloned()
         .collect::<Vec<String>>();
     if !invalid_contracts.is_empty() {
-        let error_message = format!(
-            "⚠️ *Deployment Warning*\n```\n| Invalid Contracts | {} |\n```",
-            invalid_contracts.join(", ")
-        );
-        send_notification(&error_message).unwrap();
+        SlackNotification::ADOWarning(chain.chain_id.to_string(), invalid_contracts.clone())
+            .send()
+            .unwrap();
     }
 
     let valid_contracts = contracts_to_deploy
@@ -44,11 +42,9 @@ pub fn deploy(
         .cloned()
         .collect::<Vec<String>>();
 
-    let deployment_msg = format!(
-        "🚀 *ADO Library Deployment Started*\n```\n| Chain          | {} |\n| Kernel Address | {} |\n| Contracts      | {} |```",
-        chain.chain_id, kernel_address, valid_contracts.join(", ")
-    );
-    send_notification(&deployment_msg).unwrap();
+    SlackNotification::ADODeploymentStarted(chain.chain_id.to_string(), valid_contracts.clone())
+        .send()
+        .unwrap();
 
     let mut deployed_contracts: Vec<(String, String, u64)> = vec![];
     for (name, version, upload) in all_contracts {
@@ -62,12 +58,9 @@ pub fn deploy(
         deployed_contracts.push((name, version, code_id));
     }
 
-    let mut deployment_table = String::from("🚀 *Deployed Contracts*\n```\n| Name | Version | Code ID |\n|------|---------|---------|\n");
-    for (name, code_id, version) in &deployed_contracts {
-        deployment_table.push_str(&format!("| {} | {} | {} |\n", name, version, code_id));
-    }
-    deployment_table.push_str("```");
-    send_notification(&deployment_table).unwrap();
+    SlackNotification::ADODeploymentCompleted(chain.chain_id.to_string(), valid_contracts.clone())
+        .send()
+        .unwrap();
 
     Ok(())
 }
