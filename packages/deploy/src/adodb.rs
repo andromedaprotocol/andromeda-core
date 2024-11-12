@@ -15,16 +15,21 @@ pub fn deploy(
 ) -> Result<(), DeployError> {
     let chain = get_chain(chain);
     let daemon = DaemonBuilder::new(chain.clone()).build().unwrap();
+
+    log::info!("Setting kernel address to {}", kernel_address);
     let kernel = KernelContract::new(daemon.clone());
     kernel.set_address(&Addr::unchecked(kernel_address.clone()));
 
+    log::info!("Setting ADODB address to {}", kernel_address);
     let adodb = ADODBContract::new(daemon.clone());
     let adodb_addr = kernel.key_address("adodb")?;
     adodb.set_address(&adodb_addr);
 
+    log::info!("Getting all contracts");
     let all_contracts = all_contracts();
 
     let contracts_to_deploy = contracts.unwrap_or_default();
+    log::info!("Checking for invalid contracts");
     let invalid_contracts = contracts_to_deploy
         .iter()
         .filter(|name| !all_contracts.iter().any(|(n, _, _)| &n == name))
@@ -36,6 +41,7 @@ pub fn deploy(
             .unwrap();
     }
 
+    log::info!("Filtering valid contracts");
     let valid_contracts = contracts_to_deploy
         .iter()
         .filter(|name| all_contracts.iter().any(|(n, _, _)| &n == name))
@@ -46,13 +52,14 @@ pub fn deploy(
         .send()
         .unwrap();
 
+    log::info!("Deploying contracts");
     let mut deployed_contracts: Vec<(String, String, u64)> = vec![];
     for (name, version, upload) in all_contracts {
         if !contracts_to_deploy.is_empty() && !contracts_to_deploy.contains(&name) {
             continue;
         }
 
-        println!("Deploying {} {}", name, version);
+        log::info!("Deploying {} {}", name, version);
         let code_id = upload(&daemon)?;
         adodb.publish(name.clone(), code_id, version.clone(), None, None)?;
         deployed_contracts.push((name, version, code_id));
