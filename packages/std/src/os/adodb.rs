@@ -126,7 +126,7 @@ pub struct ADOMetadata {
 }
 
 #[cw_serde]
-#[derive(QueryResponses)]
+#[derive(cw_orch::QueryFns, QueryResponses)]
 pub enum QueryMsg {
     #[returns(u64)]
     CodeId { key: String },
@@ -163,8 +163,9 @@ pub enum QueryMsg {
     // Base queries
     #[returns(crate::ado_base::version::VersionResponse)]
     Version {},
+    #[serde(rename = "type")]
     #[returns(crate::ado_base::ado_type::TypeResponse)]
-    Type {},
+    ContractType {},
     #[returns(crate::ado_base::ownership::ContractOwnerResponse)]
     Owner {},
     #[returns(crate::ado_base::kernel_address::KernelAddressResponse)]

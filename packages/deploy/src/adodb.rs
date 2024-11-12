@@ -1,6 +1,7 @@
 use crate::slack::SlackNotification;
 use crate::{chains::get_chain, contracts::all_contracts, error::DeployError};
 use adodb::ExecuteMsgFns;
+use adodb::QueryMsgFns as ADODBQueryMsgFns;
 use andromeda_adodb::ADODBContract;
 use andromeda_kernel::KernelContract;
 use andromeda_std::os::*;
@@ -67,10 +68,20 @@ pub fn deploy(
             );
             continue;
         }
+        let versions = adodb.ado_versions(&name, None, None)?;
+        log::info!("{} Versions: {:?}", name, versions);
+        if versions.contains(&format!("{}@{}", name, version)) {
+            log::info!("Skipping {} {} - already deployed", name, version);
+            continue;
+        }
 
         log::info!("Deploying {} {}", name, version);
         let code_id = upload(&daemon)?;
-        adodb.publish(name.clone(), code_id, version.clone(), None, None)?;
+        let res = adodb.publish(name.clone(), code_id, version.clone(), None, None);
+        if let Err(e) = res {
+            log::error!("Error deploying {}: {}", name, e);
+            continue;
+        }
         deployed_contracts.push((name, version, code_id));
     }
 
