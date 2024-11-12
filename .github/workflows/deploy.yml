@@ -22,7 +22,7 @@ on:
 
 jobs:
   build_contracts:
-    if: contains('["crnbarr93", "SlayerAnsh", "joemonem", "DimitrijeDragasevic"]', github.actor)
+    if: contains('["crnbarr93", "SlayerAnsh", "joemonem", "DimitrijeDragasevic", "cowboy0015"]', github.actor)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
