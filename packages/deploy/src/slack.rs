@@ -68,8 +68,8 @@ impl std::fmt::Display for SlackNotification {
             SlackNotification::ADODeploymentCompleted(chain, contracts) => {
                 write!(f, "✅ *ADO Library Deployment Completed*\n```\n| Chain          | {} |\n| Contracts      | {} |```", chain, contracts.join(", "))
             }
-            SlackNotification::ADODeploymentFailed(chain, contracts, error) => {
-                write!(f, "❌ *ADO Library Deployment Failed*\n```\n| Chain          | {} |\n| Contracts      | {} |\n| Error          | {} |```", chain, contracts.join(", "), error)
+            SlackNotification::ADODeploymentFailed(chain, error) => {
+                write!(f, "❌ *ADO Library Deployment Failed*\n```\n| Chain          | {} |\n| Error          | {} |```", chain, error)
             }
             SlackNotification::ADOWarning(chain, contracts) => {
                 write!(f, "⚠️ *Invalid Contracts*\n```\n| Chain          | {} |\n| Contracts      | {} |```", chain, contracts.join(", "))

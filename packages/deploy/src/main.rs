@@ -49,7 +49,11 @@ fn main() {
         })
         .collect::<Vec<String>>();
 
-    let adodb_res = adodb::deploy(chain, kernel_address.unwrap(), Some(contracts_to_deploy));
+    let adodb_res = adodb::deploy(
+        chain.clone(),
+        kernel_address.unwrap(),
+        Some(contracts_to_deploy),
+    );
     if let Err(e) = adodb_res {
         println!("Error deploying ADODB: {}", e);
         SlackNotification::ADODeploymentFailed(chain.clone(), e)
