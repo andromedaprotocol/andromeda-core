@@ -65,7 +65,7 @@ pub fn instantiate(
     for voter in msg.voters.iter() {
         let key = deps
             .api
-            .addr_validate(&voter.addr.get_raw_address(&deps.as_ref())?.as_str())?;
+            .addr_validate(voter.addr.get_raw_address(&deps.as_ref())?.as_str())?;
         VOTERS.save(deps.storage, &key, &voter.weight)?;
     }
 
