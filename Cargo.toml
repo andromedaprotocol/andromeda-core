@@ -29,7 +29,7 @@ panic = 'abort'
 strip = true
 
 [workspace.dependencies]
-andromeda-std = { path = "./packages/std", default-features = false, version = "1.0.0", features = [
+andromeda-std = { path = "./packages/std", default-features = false, features = [
     "deploy",
 ] }
 andromeda-macros = { path = "./packages/std/macros", default-features = false, version = "1.0.0" }
