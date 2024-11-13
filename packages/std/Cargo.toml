@@ -10,6 +10,7 @@ license = "MIT"
 primitive = []
 instantiate = []
 rates = ["andromeda-macros/rates"]
+deploy = []
 
 [lib]
 crate-type = ["cdylib", "rlib"]
@@ -37,6 +38,7 @@ cw721 = { workspace = true }
 serde-json-wasm = "0.5.0"
 enum-repr = { workspace = true }
 sha2 = "0.10.8"
+cw-orch = { workspace = true }
 
 [dev-dependencies]
 cw-multi-test = { version = "1.0.0" }

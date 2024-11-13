@@ -10,3 +10,4 @@ ci-scripts/localrelayer/template/
 .idea/
 **/schema/**/*.json
 schemas
+deployment-reports/
