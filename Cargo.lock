@@ -372,10 +372,31 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-utils 1.0.3",
+ "cw3",
+ "cw4",
  "cw721 0.18.0",
  "cw721-base 0.18.0",
  "schemars",
  "serde",
+]
+
+[[package]]
+name = "andromeda-fixed-multisig"
+version = "1.0.0"
+dependencies = [
+ "andromeda-app",
+ "andromeda-finance",
+ "andromeda-std",
+ "andromeda-testing",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-multi-test",
+ "cw-orch",
+ "cw-storage-plus 1.2.0",
+ "cw-utils 1.0.3",
+ "cw2 1.1.2",
+ "cw3",
+ "cw4",
 ]
 
 [[package]]
@@ -655,6 +676,7 @@ dependencies = [
  "cw2 1.1.2",
  "cw20",
  "cw20-base",
+ "cw3",
  "cw721 0.18.0",
  "cw721-base 0.18.0",
  "enum-repr",
@@ -1897,6 +1919,34 @@ dependencies = [
  "semver",
  "serde",
  "thiserror",
+]
+
+[[package]]
+name = "cw3"
+version = "1.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2967fbd073d4b626dd9e7148e05a84a3bebd9794e71342e12351110ffbb12395"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-utils 1.0.3",
+ "cw20",
+ "schemars",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
+name = "cw4"
+version = "1.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "24754ff6e45f2a1c60adc409d9b2eb87666012c44021329141ffaab3388fccd2"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-storage-plus 1.2.0",
+ "schemars",
+ "serde",
 ]
 
 [[package]]
