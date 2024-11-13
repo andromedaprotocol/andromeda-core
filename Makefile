@@ -29,7 +29,18 @@ build:
 	@echo "Building all contracts..."
 	@./scripts/build_all.sh || exit 1
 	@echo "Build complete! \033[0;32m\xE2\x9C\x94\033[0m"
-	@./scripts/build_version_map.sh || exit 1
+
+# Builds all contracts and generates a version map
+build-arm:
+	@echo "Building all contracts..."
+	@./scripts/build_all_arm.sh || exit 1
+	@echo "Build complete! \033[0;32m\xE2\x9C\x94\033[0m"
+
+# Attaches contract versions to the wasm files
+attach-contract-versions:
+	@echo "Attaching contract versions..."
+	@./scripts/attach_contract_versions.sh
+	@echo "Contract versions attached! \033[0;32m\xE2\x9C\x94\033[0m"
 
 # Runs unit tests
 unit-test:
@@ -47,4 +58,16 @@ integration-test:
 test: unit-test integration-test
 	@echo "All tests complete! \033[0;32m\xE2\x9C\x94\033[0m"
 
-
+# Deploys OS to specified blockchain
+# Required env vars:
+#   DEPLOYMENT_CHAIN - Chain ID or name (e.g., galileo-4)
+#   TEST_MNEMONIC - Wallet mnemonic for deployment
+# Optional env vars:
+#   DEPLOYMENT_KERNEL_ADDRESS - For updating kernel address
+#   SLACK_WEBHOOK_URL - For Slack notifications
+deploy: build make-version-map
+	@echo "Deploying OS..."
+	@test -n "$$DEPLOYMENT_CHAIN" || (echo "Error: DEPLOYMENT_CHAIN is required" && exit 1)
+	@test -n "$$TEST_MNEMONIC" || (echo "Error: TEST_MNEMONIC is required" && exit 1)
+	@RUST_LOG=info cargo run --package andromeda-deploy
+	@echo "OS deployed! \033[0;32m\xE2\x9C\x94\033[0m"

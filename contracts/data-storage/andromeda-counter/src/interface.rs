@@ -1,14 +1,6 @@
-use crate::contract::{execute, instantiate, query};
 use andromeda_data_storage::counter::{ExecuteMsg, InstantiateMsg, QueryMsg};
-use cw_orch::{interface, prelude::*};
-pub const CONTRACT_ID: &str = "counter_contract";
+use andromeda_std::{ado_base::MigrateMsg, contract_interface, deploy::ADOMetadata};
 
-#[interface(InstantiateMsg, ExecuteMsg, QueryMsg, Empty, id = CONTRACT_ID)]
-pub struct CounterContract<Chain: CwEnv>;
+pub const CONTRACT_ID: &str = "counter";
 
-// Implement the Uploadable trait so it can be uploaded to the mock.
-impl<Chain> Uploadable for CounterContract<Chain> {
-    fn wrapper() -> Box<dyn MockContract<Empty>> {
-        Box::new(ContractWrapper::new_with_empty(execute, instantiate, query))
-    }
-}
+contract_interface!(CounterContract, CONTRACT_ID, "andromeda_counter.wasm");

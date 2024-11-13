@@ -1,14 +1,6 @@
-use crate::contract::{execute, instantiate, query, reply};
 use andromeda_finance::splitter::{ExecuteMsg, InstantiateMsg, QueryMsg};
-use cw_orch::{interface, prelude::*};
-pub const CONTRACT_ID: &str = "splitter_contract";
+use andromeda_std::{ado_base::MigrateMsg, contract_interface, deploy::ADOMetadata};
 
-#[interface(InstantiateMsg, ExecuteMsg, QueryMsg, Empty, id = CONTRACT_ID)]
-pub struct SplitterContract<Chain: CwEnv>;
+pub const CONTRACT_ID: &str = "splitter";
 
-// Implement the Uploadable trait so it can be uploaded to the mock.
-impl<Chain> Uploadable for SplitterContract<Chain> {
-    fn wrapper() -> Box<dyn MockContract<Empty>> {
-        Box::new(ContractWrapper::new_with_empty(execute, instantiate, query).with_reply(reply))
-    }
-}
+contract_interface!(SplitterContract, CONTRACT_ID, "andromeda_splitter.wasm");
