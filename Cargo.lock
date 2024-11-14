@@ -811,7 +811,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-validator-staking"
-version = "0.2.3-b.1"
+version = "0.2.3-b.2"
 dependencies = [
  "andromeda-finance",
  "andromeda-std",
