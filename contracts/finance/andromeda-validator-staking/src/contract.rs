@@ -192,11 +192,12 @@ fn execute_unstake(
         amount: fund.clone(),
     });
 
-    let mut unstaking_queue = UNSTAKING_QUEUE.load(deps.storage).unwrap_or_default();
-    unstaking_queue.push(UnstakingTokens {
-        fund,
-        payout_at: Timestamp::default(),
-    });
+    let unstaking_queue = UNSTAKING_QUEUE
+        .load(deps.storage)
+        .unwrap_or(vec![UnstakingTokens {
+            fund,
+            payout_at: Timestamp::default(),
+        }]);
 
     UNSTAKING_QUEUE.save(deps.storage, &unstaking_queue)?;
 
