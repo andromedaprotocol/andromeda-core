@@ -371,7 +371,11 @@ pub fn on_validator_unstake(deps: DepsMut, msg: Reply) -> Result<Response, Contr
         let payout_at = Timestamp::from_seconds(seconds);
         payout_at.plus_nanos(nanos)
     } else {
-        let attributes = &res.events[0].attributes;
+        let attributes = &res
+            .events
+            .first()
+            .ok_or(ContractError::EmptyOptional {})?
+            .attributes;
         let mut payout_at = Timestamp::default();
         for attr in attributes {
             if attr.key == "completion_time" {
@@ -384,7 +388,9 @@ pub fn on_validator_unstake(deps: DepsMut, msg: Reply) -> Result<Response, Contr
         }
         payout_at
     };
-    let mut unstake_req = unstaking_queue.pop().unwrap();
+    let mut unstake_req = unstaking_queue
+        .pop()
+        .ok_or(ContractError::new("empty unstaking queue"))?;
     unstake_req.payout_at = payout_at;
 
     unstaking_queue.push(unstake_req);
