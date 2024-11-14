@@ -71,7 +71,8 @@ pub fn all_contracts() -> Vec<DeployableContract> {
         deployable!(MerkleAirdropContract),
         deployable!(AddressListContract),
         deployable!(CurveContract),
-        deployable!(DateTimeContract),
+        // Undeployable for now
+        // deployable!(DateTimeContract),
         deployable!(RatesContract),
         deployable!(ShuntingContract),
         deployable!(AuctionContract),
