@@ -10,7 +10,6 @@ use andromeda_cw20::CW20Contract;
 use andromeda_cw20_exchange::Cw20ExchangeContract;
 use andromeda_cw20_staking::CW20StakingContract;
 use andromeda_cw721::CW721Contract;
-use andromeda_date_time::DateTimeContract;
 use andromeda_lockdrop::LockdropContract;
 use andromeda_marketplace::MarketplaceContract;
 use andromeda_merkle_airdrop::MerkleAirdropContract;
