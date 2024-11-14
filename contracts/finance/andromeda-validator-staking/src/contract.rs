@@ -16,8 +16,9 @@ use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     ado_contract::ADOContract,
     amp::AndrAddr,
-    common::{context::ExecuteContext, encode_binary},
+    common::{context::ExecuteContext, distribution::MsgWithdrawDelegatorReward, encode_binary},
     error::ContractError,
+    os::aos_querier::AOSQuerier,
 };
 use enum_repr::EnumRepr;
 
@@ -247,10 +248,23 @@ fn execute_claim(ctx: ExecuteContext, validator: Option<Addr>) -> Result<Respons
         ContractError::InvalidClaim {}
     );
 
-    let res = Response::new()
-        .add_message(DistributionMsg::WithdrawDelegatorReward {
+    let kernel_addr = ADOContract::default().get_kernel_address(deps.storage)?;
+    let curr_chain = AOSQuerier::get_current_chain(&deps.querier, &kernel_addr)?;
+
+    let withdraw_msg: CosmosMsg = if curr_chain == "andromeda" {
+        MsgWithdrawDelegatorReward {
+            delegator_address: delegator.to_string(),
+            validator_address: validator.to_string(),
+        }
+        .into()
+    } else {
+        DistributionMsg::WithdrawDelegatorReward {
             validator: validator.to_string(),
-        })
+        }
+        .into()
+    };
+    let res = Response::new()
+        .add_message(withdraw_msg)
         .add_attribute("action", "validator-claim-reward")
         .add_attribute("validator", validator.to_string());
 

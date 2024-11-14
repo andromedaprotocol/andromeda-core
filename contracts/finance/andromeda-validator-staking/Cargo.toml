@@ -21,7 +21,7 @@ cw-storage-plus = { workspace = true }
 cw2 = { workspace = true }
 serde = { workspace = true }
 
-andromeda-std = { workspace = true }
+andromeda-std = { workspace = true, features = ["distribution"] }
 andromeda-finance = { workspace = true }
 enum-repr = { workspace = true }
 chrono = "0.3"
