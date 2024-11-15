@@ -84,6 +84,11 @@ pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
         ExecuteMsg::Stake { validator } => execute_stake(ctx, validator),
         ExecuteMsg::Unstake { validator, amount } => execute_unstake(ctx, validator, amount),
         ExecuteMsg::Claim { validator } => execute_claim(ctx, validator),
+        ExecuteMsg::Redelegate {
+            src_validator,
+            dst_validator,
+            amount,
+        } => execute_redelegate(ctx, src_validator, dst_validator, amount),
         ExecuteMsg::WithdrawFunds { denom, recipient } => {
             execute_withdraw_fund(ctx, denom, recipient)
         }
@@ -144,6 +149,56 @@ fn execute_stake(ctx: ExecuteContext, validator: Option<Addr>) -> Result<Respons
         .add_attribute("from", info.sender)
         .add_attribute("to", validator.to_string())
         .add_attribute("amount", funds.amount);
+
+    Ok(res)
+}
+
+fn execute_redelegate(
+    ctx: ExecuteContext,
+    src_validator: Option<Addr>,
+    dst_validator: Addr,
+    amount: Option<Uint128>,
+) -> Result<Response, ContractError> {
+    let ExecuteContext { deps, env, .. } = ctx;
+    let src_validator = src_validator.unwrap_or(DEFAULT_VALIDATOR.load(deps.storage)?);
+
+    // Check if the source and destination validators are valid
+    is_validator(&deps, &src_validator)?;
+    is_validator(&deps, &dst_validator)?;
+
+    // Get redelegation amount
+    let Some(full_delegation) = deps
+        .querier
+        .query_delegation(env.contract.address.to_string(), src_validator.to_string())?
+    else {
+        return Err(ContractError::InvalidValidatorOperation {
+            operation: "Redelegate".to_string(),
+            validator: src_validator.to_string(),
+        });
+    };
+    let redelegation_amount = match amount {
+        Some(amount) => {
+            if amount > full_delegation.amount.amount {
+                return Err(ContractError::InvalidRedelegationAmount {
+                    amount: amount.to_string(),
+                    max: full_delegation.amount.amount.to_string(),
+                });
+            }
+            amount
+        }
+        None => full_delegation.amount.amount,
+    };
+
+    let res = Response::new()
+        .add_message(StakingMsg::Redelegate {
+            src_validator: src_validator.clone().into_string(),
+            dst_validator: dst_validator.clone().into_string(),
+            amount: coin(redelegation_amount.u128(), full_delegation.amount.denom),
+        })
+        .add_attribute("action", "redelegation")
+        .add_attribute("from", src_validator.to_string())
+        .add_attribute("to", dst_validator.to_string())
+        .add_attribute("amount", redelegation_amount.to_string());
 
     Ok(res)
 }

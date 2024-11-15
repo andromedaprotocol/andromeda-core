@@ -20,6 +20,11 @@ pub enum ExecuteMsg {
         validator: Option<Addr>,
         amount: Option<Uint128>,
     },
+    Redelegate {
+        src_validator: Option<Addr>,
+        dst_validator: Addr,
+        amount: Option<Uint128>,
+    },
     Claim {
         validator: Option<Addr>,
     },

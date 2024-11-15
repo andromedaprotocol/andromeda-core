@@ -93,6 +93,9 @@ pub enum ContractError {
     #[error("RewardTooLow")]
     RewardTooLow {},
 
+    #[error("InvalidRedelegationAmount. Got {{amount}}, full delegation: {{max}}")]
+    InvalidRedelegationAmount { amount: String, max: String },
+
     #[error("LockedNFT")]
     LockedNFT {},
 
