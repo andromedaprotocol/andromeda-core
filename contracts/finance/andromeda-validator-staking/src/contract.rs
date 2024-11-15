@@ -9,7 +9,8 @@ use cosmwasm_std::{
 use cw2::set_contract_version;
 
 use andromeda_finance::validator_staking::{
-    is_validator, ExecuteMsg, InstantiateMsg, QueryMsg, UnstakingTokens,
+    is_validator, ExecuteMsg, GetDefaultValidatorResponse, InstantiateMsg, QueryMsg,
+    UnstakingTokens,
 };
 
 use andromeda_std::{
@@ -106,6 +107,8 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
             encode_binary(&query_staked_tokens(deps, env.contract.address, validator)?)
         }
         QueryMsg::UnstakedTokens {} => encode_binary(&query_unstaked_tokens(deps)?),
+
+        QueryMsg::DefaultValidator {} => encode_binary(&query_default_validator(deps)?),
 
         _ => ADOContract::default().query(deps, env, msg),
     }
@@ -367,6 +370,11 @@ fn query_staked_tokens(
 fn query_unstaked_tokens(deps: Deps) -> Result<Vec<UnstakingTokens>, ContractError> {
     let res = UNSTAKING_QUEUE.load(deps.storage)?;
     Ok(res)
+}
+
+fn query_default_validator(deps: Deps) -> Result<GetDefaultValidatorResponse, ContractError> {
+    let default_validator = DEFAULT_VALIDATOR.load(deps.storage)?;
+    Ok(GetDefaultValidatorResponse { default_validator })
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

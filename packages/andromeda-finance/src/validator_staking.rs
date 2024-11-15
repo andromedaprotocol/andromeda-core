@@ -47,6 +47,9 @@ pub enum QueryMsg {
 
     #[returns(Option<Vec<UnstakingTokens>>)]
     UnstakedTokens {},
+
+    #[returns(GetDefaultValidatorResponse)]
+    DefaultValidator {},
 }
 
 impl InstantiateMsg {
@@ -61,4 +64,9 @@ pub fn is_validator(deps: &DepsMut, validator: &Addr) -> Result<bool, ContractEr
         return Err(ContractError::InvalidValidator {});
     }
     Ok(true)
+}
+
+#[cw_serde]
+pub struct GetDefaultValidatorResponse {
+    pub default_validator: Addr,
 }
