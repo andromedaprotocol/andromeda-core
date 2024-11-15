@@ -397,7 +397,7 @@ pub fn on_validator_unstake(deps: DepsMut, msg: Reply) -> Result<Response, Contr
         let attributes = &res
             .events
             .first()
-            .ok_or(ContractError::EmptyOptional {})?
+            .ok_or(ContractError::EmptyEvents {})?
             .attributes;
         let mut payout_at = Timestamp::default();
         for attr in attributes {
@@ -413,7 +413,7 @@ pub fn on_validator_unstake(deps: DepsMut, msg: Reply) -> Result<Response, Contr
     };
     let mut unstake_req = unstaking_queue
         .pop()
-        .ok_or(ContractError::new("empty unstaking queue"))?;
+        .ok_or(ContractError::EmptyUnstakingQueue {})?;
     unstake_req.payout_at = payout_at;
 
     unstaking_queue.push(unstake_req);

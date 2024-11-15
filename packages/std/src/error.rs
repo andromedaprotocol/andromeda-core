@@ -126,6 +126,12 @@ pub enum ContractError {
     #[error("EmptyOptional")]
     EmptyOptional {},
 
+    #[error("EmptyEvents")]
+    EmptyEvents {},
+
+    #[error("EmptyUnstakingQueue")]
+    EmptyUnstakingQueue {},
+
     #[error("EmptyString")]
     EmptyString {},
 
