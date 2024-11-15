@@ -169,7 +169,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-conditional-splitter"
-version = "1.2.3"
+version = "1.2.3-beta"
 dependencies = [
  "andromeda-app",
  "andromeda-finance",
@@ -218,7 +218,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-crowdfund"
-version = "2.1.4"
+version = "2.1.4-beta"
 dependencies = [
  "andromeda-app",
  "andromeda-non-fungible-tokens",
@@ -647,7 +647,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-rate-limiting-withdrawals"
-version = "2.0.3"
+version = "2.0.3-beta"
 dependencies = [
  "andromeda-app",
  "andromeda-finance",
@@ -681,7 +681,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-set-amount-splitter"
-version = "1.0.3"
+version = "1.0.3-beta"
 dependencies = [
  "andromeda-app",
  "andromeda-finance",
@@ -875,7 +875,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-vesting"
-version = "3.0.3"
+version = "3.0.3-beta"
 dependencies = [
  "andromeda-app",
  "andromeda-finance",
@@ -905,7 +905,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-weighted-distribution-splitter"
-version = "2.0.3"
+version = "2.0.3-beta"
 dependencies = [
  "andromeda-app",
  "andromeda-finance",
