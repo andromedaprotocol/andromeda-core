@@ -20,7 +20,24 @@ pub const ANDROMEDA_TESTNET: ChainInfo = ChainInfo {
     kind: ChainKind::Testnet,
 };
 
-pub const ALL_CHAINS: &[ChainInfo] = &[ANDROMEDA_TESTNET];
+pub const OSMOSIS_DEVNET_NETWORK: NetworkInfo = NetworkInfo {
+    chain_name: "osmosis-devnet",
+    pub_address_prefix: "osmo",
+    coin_type: 118u32,
+};
+
+pub const OSMOSIS_DEVNET: ChainInfo = ChainInfo {
+    chain_id: "localosmosisa-1",
+    gas_denom: "uosmo",
+    fcd_url: None,
+    gas_price: 0.025,
+    grpc_urls: &["http://164.90.212.168:20321"],
+    lcd_url: Some("http://164.90.212.168:20221"),
+    network_info: ANDROMEDA_NETWORK,
+    kind: ChainKind::Testnet,
+};
+
+pub const ALL_CHAINS: &[ChainInfo] = &[ANDROMEDA_TESTNET, OSMOSIS_DEVNET];
 
 pub fn get_chain(chain: String) -> ChainInfo {
     ALL_CHAINS
