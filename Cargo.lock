@@ -542,7 +542,7 @@ dependencies = [
  "hex",
  "itertools 0.10.5",
  "osmosis-std",
- "osmosis-std-derive 0.15.3",
+ "osmosis-std-derive 0.26.0",
  "prost 0.11.9",
  "schemars",
  "serde",
@@ -780,7 +780,7 @@ dependencies = [
  "enum-repr",
  "hex",
  "lazy_static",
- "osmosis-std-derive 0.15.3",
+ "osmosis-std-derive 0.26.0",
  "prost 0.11.9",
  "regex",
  "schemars",
@@ -3519,12 +3519,13 @@ dependencies = [
 
 [[package]]
 name = "osmosis-std-derive"
-version = "0.15.3"
+version = "0.26.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f4d482a16be198ee04e0f94e10dd9b8d02332dcf33bc5ea4b255e7e25eedc5df"
+checksum = "8b0240fd030a4bbc79fa6cbea0b3eb0260a4b79075ebc039b93e2652bff8655b"
 dependencies = [
  "itertools 0.10.5",
  "proc-macro2",
+ "prost-types 0.11.9",
  "quote",
  "syn 1.0.109",
 ]
