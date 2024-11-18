@@ -184,22 +184,25 @@ fn execute_redelegate(
     };
     let redelegation_amount = match amount {
         Some(amount) => {
-            if amount > full_delegation.amount.amount {
+            if amount > full_delegation.can_redelegate.amount {
                 return Err(ContractError::InvalidRedelegationAmount {
                     amount: amount.to_string(),
-                    max: full_delegation.amount.amount.to_string(),
+                    max: full_delegation.can_redelegate.amount.to_string(),
                 });
             }
             amount
         }
-        None => full_delegation.amount.amount,
+        None => full_delegation.can_redelegate.amount,
     };
 
     let res = Response::new()
         .add_message(StakingMsg::Redelegate {
             src_validator: src_validator.clone().into_string(),
             dst_validator: dst_validator.clone().into_string(),
-            amount: coin(redelegation_amount.u128(), full_delegation.amount.denom),
+            amount: coin(
+                redelegation_amount.u128(),
+                full_delegation.can_redelegate.denom,
+            ),
         })
         .add_attribute("action", "redelegation")
         .add_attribute("from", src_validator.to_string())
