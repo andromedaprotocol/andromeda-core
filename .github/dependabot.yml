@@ -6,7 +6,7 @@ updates:
       interval: "weekly"
     open-pull-requests-limit: 10
     labels:
-      - "ci:skip-changelog"
+      - "ci: skip-changelog"
     ignore:
       - dependency-name: "cosmwasm-std"
         update-types:
@@ -17,4 +17,4 @@ updates:
       interval: daily
     open-pull-requests-limit: 10
     labels:
-      - "ci:skip-changelog"
+      - "ci: skip-changelog"
