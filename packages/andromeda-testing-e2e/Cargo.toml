@@ -38,7 +38,7 @@ andromeda-economics = { version = "1.0.0", path = "../../contracts/os/andromeda-
 ] }
 andromeda-std = { workspace = true }
 serde = { workspace = true }
-secp256k1 = "0.29.0"
+secp256k1 = "0.30.0"
 cosmrs = "0.18.0"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
