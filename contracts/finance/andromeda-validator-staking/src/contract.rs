@@ -160,7 +160,16 @@ fn execute_redelegate(
     dst_validator: Addr,
     amount: Option<Uint128>,
 ) -> Result<Response, ContractError> {
-    let ExecuteContext { deps, env, .. } = ctx;
+    let ExecuteContext {
+        deps, env, info, ..
+    } = ctx;
+
+    // Ensure sender is the contract owner
+    ensure!(
+        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {}
+    );
+
     let src_validator = match src_validator {
         Some(addr) => {
             is_validator(&deps, &addr)?;
