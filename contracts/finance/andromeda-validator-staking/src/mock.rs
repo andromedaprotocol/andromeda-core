@@ -109,7 +109,10 @@ pub fn mock_execute_unstake(validator: Option<Addr>, amount: Option<Uint128>) ->
 }
 
 pub fn mock_execute_claim_reward(validator: Option<Addr>) -> ExecuteMsg {
-    ExecuteMsg::Claim { validator }
+    ExecuteMsg::Claim {
+        validator,
+        restake: None,
+    }
 }
 
 pub fn mock_execute_withdraw_fund(

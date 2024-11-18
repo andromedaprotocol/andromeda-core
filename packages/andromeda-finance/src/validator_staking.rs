@@ -27,6 +27,8 @@ pub enum ExecuteMsg {
     },
     Claim {
         validator: Option<Addr>,
+        /// Defaults to false
+        restake: Option<bool>,
     },
     WithdrawFunds {
         denom: Option<String>,

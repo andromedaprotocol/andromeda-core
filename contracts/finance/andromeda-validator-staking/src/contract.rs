@@ -1,5 +1,5 @@
 use crate::{
-    state::{DEFAULT_VALIDATOR, UNSTAKING_QUEUE},
+    state::{DEFAULT_VALIDATOR, RESTAKING_QUEUE, UNSTAKING_QUEUE},
     util::decode_unstaking_response_data,
 };
 use cosmwasm_std::{
@@ -32,6 +32,7 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 pub enum ReplyId {
     ValidatorUnstake = 201,
     SetWithdrawAddress = 202,
+    RestakeReward = 203,
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -83,7 +84,7 @@ pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
     match msg {
         ExecuteMsg::Stake { validator } => execute_stake(ctx, validator),
         ExecuteMsg::Unstake { validator, amount } => execute_unstake(ctx, validator, amount),
-        ExecuteMsg::Claim { validator } => execute_claim(ctx, validator),
+        ExecuteMsg::Claim { validator, restake } => execute_claim(ctx, validator, restake),
         ExecuteMsg::Redelegate {
             src_validator,
             dst_validator,
@@ -160,10 +161,15 @@ fn execute_redelegate(
     amount: Option<Uint128>,
 ) -> Result<Response, ContractError> {
     let ExecuteContext { deps, env, .. } = ctx;
-    let src_validator = src_validator.unwrap_or(DEFAULT_VALIDATOR.load(deps.storage)?);
+    let src_validator = match src_validator {
+        Some(addr) => {
+            is_validator(&deps, &addr)?;
+            addr
+        }
+        None => DEFAULT_VALIDATOR.load(deps.storage)?,
+    };
 
-    // Check if the source and destination validators are valid
-    is_validator(&deps, &src_validator)?;
+    // Check if the destination validator is valid
     is_validator(&deps, &dst_validator)?;
 
     // Get redelegation amount
@@ -272,7 +278,11 @@ fn execute_unstake(
     Ok(res)
 }
 
-fn execute_claim(ctx: ExecuteContext, validator: Option<Addr>) -> Result<Response, ContractError> {
+fn execute_claim(
+    ctx: ExecuteContext,
+    validator: Option<Addr>,
+    restake: Option<bool>,
+) -> Result<Response, ContractError> {
     let ExecuteContext {
         deps, info, env, ..
     } = ctx;
@@ -321,11 +331,23 @@ fn execute_claim(ctx: ExecuteContext, validator: Option<Addr>) -> Result<Respons
         }
         .into()
     };
-    let res = Response::new()
-        .add_message(withdraw_msg)
-        .add_attribute("action", "validator-claim-reward")
-        .add_attribute("validator", validator.to_string());
-
+    let restake = restake.unwrap_or(false);
+    // Only one denom is allowed to be restaked at a time
+    let res = if restake && res.accumulated_rewards.len() == 1 {
+        RESTAKING_QUEUE.save(deps.storage, &res)?;
+        Response::new()
+            .add_submessage(SubMsg::reply_always(
+                withdraw_msg,
+                ReplyId::RestakeReward.repr(),
+            ))
+            .add_attribute("action", "validator-claim-reward")
+            .add_attribute("validator", validator.to_string())
+    } else {
+        Response::new()
+            .add_message(withdraw_msg)
+            .add_attribute("action", "validator-claim-reward")
+            .add_attribute("validator", validator.to_string())
+    };
     Ok(res)
 }
 
@@ -433,9 +455,10 @@ fn query_default_validator(deps: Deps) -> Result<GetDefaultValidatorResponse, Co
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
+pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractError> {
     match ReplyId::from_repr(msg.id) {
         Some(ReplyId::ValidatorUnstake) => on_validator_unstake(deps, msg),
+        Some(ReplyId::RestakeReward) => on_restake_reward(deps, env, msg),
         _ => Ok(Response::default()),
     }
 }
@@ -475,4 +498,31 @@ pub fn on_validator_unstake(deps: DepsMut, msg: Reply) -> Result<Response, Contr
     UNSTAKING_QUEUE.save(deps.storage, &unstaking_queue)?;
 
     Ok(Response::default())
+}
+
+fn on_restake_reward(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractError> {
+    match msg.result {
+        cosmwasm_std::SubMsgResult::Ok(_) => {
+            let restaking_queue = RESTAKING_QUEUE.load(deps.storage)?;
+            RESTAKING_QUEUE.remove(deps.storage);
+
+            let res = execute_stake(
+                ExecuteContext {
+                    deps,
+                    info: MessageInfo {
+                        sender: restaking_queue.delegator,
+                        funds: restaking_queue.accumulated_rewards,
+                    },
+                    env,
+                    amp_ctx: None,
+                },
+                Some(Addr::unchecked(restaking_queue.validator)),
+            )?;
+            Ok(res.add_attribute("action", "restake-reward"))
+        }
+        cosmwasm_std::SubMsgResult::Err(e) => {
+            RESTAKING_QUEUE.remove(deps.storage);
+            Err(ContractError::new(e.as_str()))
+        }
+    }
 }
