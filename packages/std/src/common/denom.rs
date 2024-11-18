@@ -1,12 +1,19 @@
 use std::fmt::{Display, Formatter, Result as StdResult};
 
-use crate::{ado_contract::ADOContract, amp::AndrAddr, error::ContractError};
+use crate::{
+    ado_base::permissioning::{LocalPermission, Permission},
+    ado_contract::ADOContract,
+    amp::AndrAddr,
+    error::ContractError,
+};
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
-    coin, ensure, to_json_binary, wasm_execute, BankMsg, Deps, DepsMut, Env, QueryRequest, SubMsg,
-    Uint128, WasmQuery,
+    attr, coin, ensure, to_json_binary, wasm_execute, BankMsg, Deps, DepsMut, Env, MessageInfo,
+    QueryRequest, Response, SubMsg, Uint128, WasmQuery,
 };
 use cw20::{Cw20ExecuteMsg, Cw20QueryMsg, TokenInfoResponse};
+
+use super::expiration::Expiry;
 pub const SEND_CW20_ACTION: &str = "SEND_CW20";
 pub const SEND_NFT_ACTION: &str = "SEND_NFT";
 
@@ -110,4 +117,142 @@ pub fn validate_native_denom(deps: Deps, denom: String) -> Result<(), ContractEr
     );
 
     Ok(())
+}
+
+#[cw_serde]
+pub struct AuthorizedAddressesResponse {
+    pub addresses: Vec<String>,
+}
+
+pub fn authorize_addresses(
+    deps: &mut DepsMut,
+    action: &str,
+    addresses: Vec<AndrAddr>,
+) -> Result<(), ContractError> {
+    if !addresses.is_empty() {
+        ADOContract::default().permission_action(action, deps.storage)?;
+    }
+
+    for address in addresses {
+        let addr = address.get_raw_address(&deps.as_ref())?;
+        ADOContract::set_permission(
+            deps.storage,
+            action,
+            addr.to_string(),
+            Permission::Local(LocalPermission::Whitelisted(None)),
+        )?;
+    }
+    Ok(())
+}
+
+pub fn execute_authorize_contract(
+    deps: DepsMut,
+    info: MessageInfo,
+    action: PermissionAction,
+    address: AndrAddr,
+    expiration: Option<Expiry>,
+) -> Result<Response, ContractError> {
+    let contract = ADOContract::default();
+    ensure!(
+        contract.is_contract_owner(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {}
+    );
+
+    let permission = expiration.map_or(
+        Permission::Local(LocalPermission::Whitelisted(None)),
+        |expiration| Permission::Local(LocalPermission::Whitelisted(Some(expiration))),
+    );
+
+    ADOContract::set_permission(
+        deps.storage,
+        action.as_str(),
+        address.to_string(),
+        permission.clone(),
+    )?;
+
+    Ok(Response::default().add_attributes(vec![
+        attr("action", "authorize_contract"),
+        attr("address", address),
+        attr("permission", permission.to_string()),
+    ]))
+}
+
+pub fn execute_deauthorize_contract(
+    deps: DepsMut,
+    info: MessageInfo,
+    action: PermissionAction,
+    address: AndrAddr,
+) -> Result<Response, ContractError> {
+    let contract = ADOContract::default();
+    ensure!(
+        contract.is_contract_owner(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {}
+    );
+
+    let raw_address = address.get_raw_address(&deps.as_ref())?;
+
+    ADOContract::remove_permission(deps.storage, action.as_str(), raw_address.to_string())?;
+
+    Ok(Response::default().add_attributes(vec![
+        attr("action", "deauthorize_contract"),
+        attr("address", raw_address),
+        attr("deauthorized_action", action.as_str()),
+    ]))
+}
+
+#[cw_serde]
+pub enum PermissionAction {
+    SendCw20,
+    SendNft,
+}
+
+impl PermissionAction {
+    pub fn as_str(&self) -> &str {
+        match self {
+            PermissionAction::SendCw20 => SEND_CW20_ACTION,
+            PermissionAction::SendNft => SEND_NFT_ACTION,
+        }
+    }
+}
+
+impl TryFrom<String> for PermissionAction {
+    type Error = ContractError;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        match value.as_str() {
+            SEND_CW20_ACTION => Ok(PermissionAction::SendCw20),
+            SEND_NFT_ACTION => Ok(PermissionAction::SendNft),
+            _ => Err(ContractError::InvalidAction { action: value }),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_permission_action() {
+        // Test as_str() method
+        assert_eq!(PermissionAction::SendCw20.as_str(), SEND_CW20_ACTION);
+        assert_eq!(PermissionAction::SendNft.as_str(), SEND_NFT_ACTION);
+        // Test TryFrom<String> implementation
+        assert_eq!(
+            PermissionAction::try_from(SEND_CW20_ACTION.to_string()),
+            Ok(PermissionAction::SendCw20)
+        );
+        assert_eq!(
+            PermissionAction::try_from(SEND_NFT_ACTION.to_string()),
+            Ok(PermissionAction::SendNft)
+        );
+
+        // Test invalid action
+        let invalid_action = "INVALID_ACTION".to_string();
+        assert_eq!(
+            PermissionAction::try_from(invalid_action.clone()),
+            Err(ContractError::InvalidAction {
+                action: invalid_action
+            })
+        );
+    }
 }

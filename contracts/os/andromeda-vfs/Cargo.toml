@@ -28,8 +28,9 @@ cw-storage-plus = { workspace = true }
 serde = { version = "1.0.127", default-features = false, features = ["derive"] }
 
 andromeda-std = { workspace = true }
-cw-orch = "=0.24.1"
+
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+cw-orch = { workspace = true }
 cw-multi-test = { workspace = true, optional = true }
 
 # [dev-dependencies]

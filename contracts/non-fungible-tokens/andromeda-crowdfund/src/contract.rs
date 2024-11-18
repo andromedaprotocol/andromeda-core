@@ -1,22 +1,27 @@
-use andromeda_non_fungible_tokens::crowdfund::{
-    CampaignConfig, CampaignStage, CampaignSummaryResponse, Cw20HookMsg, ExecuteMsg,
-    InstantiateMsg, PresaleTierOrder, QueryMsg, SimpleTierOrder, Tier, TierMetaData, TierOrder,
-    TierOrdersResponse, TiersResponse,
+use andromeda_non_fungible_tokens::{
+    crowdfund::{
+        CampaignConfig, CampaignStage, CampaignSummaryResponse, Cw20HookMsg, ExecuteMsg,
+        InstantiateMsg, PresaleTierOrder, QueryMsg, SimpleTierOrder, Tier, TierMetaData, TierOrder,
+        TierOrdersResponse, TiersResponse,
+    },
+    cw721::ExecuteMsg as Cw721ExecuteMsg,
 };
-
-use andromeda_non_fungible_tokens::cw721::ExecuteMsg as Cw721ExecuteMsg;
-use andromeda_std::ado_base::permissioning::{LocalPermission, Permission};
-use andromeda_std::amp::messages::AMPPkt;
-use andromeda_std::amp::{AndrAddr, Recipient};
-use andromeda_std::common::actions::call_action;
-use andromeda_std::common::denom::{Asset, SEND_CW20_ACTION};
-use andromeda_std::common::migration::ensure_compatibility;
-use andromeda_std::common::{Milliseconds, MillisecondsExpiration, OrderBy};
-use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
-
 use andromeda_std::{
-    ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
-    common::encode_binary,
+    ado_base::{
+        permissioning::{LocalPermission, Permission},
+        InstantiateMsg as BaseInstantiateMsg, MigrateMsg,
+    },
+    ado_contract::ADOContract,
+    amp::{messages::AMPPkt, AndrAddr, Recipient},
+    common::{
+        actions::call_action,
+        context::ExecuteContext,
+        denom::{Asset, SEND_CW20_ACTION},
+        encode_binary,
+        expiration::Expiry,
+        migration::ensure_compatibility,
+        Milliseconds, OrderBy,
+    },
     error::ContractError,
 };
 
@@ -247,8 +252,8 @@ fn execute_remove_tier(ctx: ExecuteContext, level: Uint64) -> Result<Response, C
 
 fn execute_start_campaign(
     ctx: ExecuteContext,
-    start_time: Option<MillisecondsExpiration>,
-    end_time: MillisecondsExpiration,
+    start_time: Option<Expiry>,
+    end_time: Expiry,
     presale: Option<Vec<PresaleTierOrder>>,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
@@ -265,9 +270,23 @@ fn execute_start_campaign(
     ensure!(is_valid_tiers(deps.storage), ContractError::InvalidTiers {});
 
     // Validate parameters
+    let start_time_milliseconds = start_time.clone().map(|exp| exp.get_time(&env.block));
+    let end_time_milliseconds = end_time.get_time(&env.block);
     ensure!(
-        !end_time.is_expired(&env.block) && start_time.unwrap_or(Milliseconds::zero()) < end_time,
-        ContractError::StartTimeAfterEndTime {}
+        !end_time_milliseconds.is_zero(),
+        ContractError::InvalidExpiration {}
+    );
+
+    // Validate start time is before end time if provided, otherwise validate end time is in future
+    let current_time = Milliseconds::from_seconds(env.block.time.seconds());
+    ensure!(
+        start_time_milliseconds.map_or(end_time_milliseconds > current_time, |start| start
+            <= end_time_milliseconds),
+        if start_time_milliseconds.is_some() {
+            ContractError::StartTimeAfterEndTime {}
+        } else {
+            ContractError::InvalidExpiration {}
+        }
     );
 
     // Campaign can only start on READY stage
@@ -288,8 +307,8 @@ fn execute_start_campaign(
 
     // Set start time and end time
     let duration = Duration {
-        start_time,
-        end_time,
+        start_time: start_time_milliseconds,
+        end_time: end_time_milliseconds,
     };
     set_duration(deps.storage, duration)?;
 
@@ -298,10 +317,10 @@ fn execute_start_campaign(
 
     let mut resp = Response::new()
         .add_attribute("action", "start_campaign")
-        .add_attribute("end_time", end_time);
+        .add_attribute("end_time", end_time.to_string());
 
     if start_time.is_some() {
-        resp = resp.add_attribute("start_time", start_time.unwrap());
+        resp = resp.add_attribute("start_time", start_time.unwrap().to_string());
     }
 
     Ok(resp)

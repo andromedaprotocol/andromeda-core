@@ -3,9 +3,9 @@
 use crate::contract::{execute, instantiate, query, reply};
 use andromeda_non_fungible_tokens::crowdfund::{
     CampaignConfig, CampaignSummaryResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg,
-    PresaleTierOrder, QueryMsg, SimpleTierOrder, Tier, TierMetaData,
+    PresaleTierOrder, QueryMsg, SimpleTierOrder, Tier, TierMetaData, TiersResponse,
 };
-use andromeda_std::common::Milliseconds;
+use andromeda_std::common::{expiration::Expiry, OrderBy};
 use andromeda_testing::{
     mock::MockApp,
     mock_ado,
@@ -60,8 +60,8 @@ impl MockCrowdfund {
         &self,
         sender: Addr,
         app: &mut MockApp,
-        start_time: Option<Milliseconds>,
-        end_time: Milliseconds,
+        start_time: Option<Expiry>,
+        end_time: Expiry,
         presale: Option<Vec<PresaleTierOrder>>,
     ) -> ExecuteResult {
         let msg = mock_start_campaign_msg(start_time, end_time, presale);
@@ -96,6 +96,17 @@ impl MockCrowdfund {
 
     pub fn query_campaign_summary(&self, app: &mut MockApp) -> CampaignSummaryResponse {
         let msg = QueryMsg::CampaignSummary {};
+        self.query(app, msg)
+    }
+
+    pub fn query_tiers(
+        &self,
+        app: &mut MockApp,
+        start_after: Option<u64>,
+        limit: Option<u32>,
+        order_by: Option<OrderBy>,
+    ) -> TiersResponse {
+        let msg = mock_query_tiers_msg(start_after, limit, order_by);
         self.query(app, msg)
     }
 }
@@ -138,8 +149,8 @@ pub fn mock_add_tier_msg(
 }
 
 pub fn mock_start_campaign_msg(
-    start_time: Option<Milliseconds>,
-    end_time: Milliseconds,
+    start_time: Option<Expiry>,
+    end_time: Expiry,
     presale: Option<Vec<PresaleTierOrder>>,
 ) -> ExecuteMsg {
     ExecuteMsg::StartCampaign {
@@ -167,4 +178,16 @@ pub fn mock_claim_msg() -> ExecuteMsg {
 
 pub fn mock_purchase_cw20_msg(orders: Vec<SimpleTierOrder>) -> Cw20HookMsg {
     Cw20HookMsg::PurchaseTiers { orders }
+}
+
+pub fn mock_query_tiers_msg(
+    start_after: Option<u64>,
+    limit: Option<u32>,
+    order_by: Option<OrderBy>,
+) -> QueryMsg {
+    QueryMsg::Tiers {
+        start_after,
+        limit,
+        order_by,
+    }
 }
