@@ -265,6 +265,20 @@ fn test_validator_redelegate() {
         }
     );
 
+    // Redelegate with invalid sender
+    let err = validator_staking
+        .execute_redelegate(
+            &mut router,
+            Addr::unchecked("other"),
+            None,
+            validator_2.clone(),
+            None,
+        )
+        .unwrap_err()
+        .downcast::<ContractError>()
+        .unwrap();
+    assert_eq!(err, ContractError::Unauthorized {});
+
     validator_staking
         .execute_redelegate(&mut router, owner.clone(), None, validator_2.clone(), None)
         .unwrap();
