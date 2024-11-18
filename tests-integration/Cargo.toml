@@ -129,7 +129,7 @@ cw721-base = { workspace = true }
 cw721 = { workspace = true }
 cw20 = { workspace = true }
 cw-asset = { workspace = true }
-toml = "0.7"
+toml = "0.8"
 cw-orch = { workspace = true }
 cw-orch-interchain = "=0.3.0"
 ibc-relayer-types = "=0.25.1"
