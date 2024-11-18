@@ -26,6 +26,18 @@ impl MockValidatorStaking {
         self.execute(app, &msg, sender, &funds)
     }
 
+    pub fn execute_redelegate(
+        &self,
+        app: &mut MockApp,
+        sender: Addr,
+        src_validator: Option<Addr>,
+        dst_validator: Addr,
+        amount: Option<Uint128>,
+    ) -> ExecuteResult {
+        let msg = mock_execute_redelegate(src_validator, dst_validator, amount);
+        self.execute(app, &msg, sender, &vec![])
+    }
+
     pub fn execute_unstake(
         &self,
         app: &mut MockApp,
@@ -102,6 +114,18 @@ pub fn mock_validator_staking_instantiate_msg(
 
 pub fn mock_execute_stake(validator: Option<Addr>) -> ExecuteMsg {
     ExecuteMsg::Stake { validator }
+}
+
+pub fn mock_execute_redelegate(
+    src_validator: Option<Addr>,
+    dst_validator: Addr,
+    amount: Option<Uint128>,
+) -> ExecuteMsg {
+    ExecuteMsg::Redelegate {
+        src_validator,
+        dst_validator,
+        amount,
+    }
 }
 
 pub fn mock_execute_unstake(validator: Option<Addr>, amount: Option<Uint128>) -> ExecuteMsg {
