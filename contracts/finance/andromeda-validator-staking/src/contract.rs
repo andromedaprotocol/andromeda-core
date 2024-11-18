@@ -345,6 +345,11 @@ fn execute_claim(
     let restake = restake.unwrap_or(false);
     // Only one denom is allowed to be restaked at a time
     let res = if restake && res.accumulated_rewards.len() == 1 {
+        // Only the contract owner can decide to restake
+        ensure!(
+            ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
+            ContractError::Unauthorized {}
+        );
         RESTAKING_QUEUE.save(deps.storage, &res)?;
         Response::new()
             .add_submessage(SubMsg::reply_always(
