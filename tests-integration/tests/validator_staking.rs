@@ -69,7 +69,7 @@ fn test_validator_stake() {
     // Testing when there is no reward to claim
     // TODO: These errors cant be downcast anymore?
     let _err = validator_staking
-        .execute_claim_reward(&mut router, owner.clone(), Some(validator_1.clone()))
+        .execute_claim_reward(&mut router, owner.clone(), Some(validator_1.clone()), None)
         .unwrap_err();
     // assert_eq!(may_err.unwrap(), &expected_err);
 
@@ -84,7 +84,7 @@ fn test_validator_stake() {
     });
 
     validator_staking
-        .execute_claim_reward(&mut router, owner.clone(), Some(validator_1))
+        .execute_claim_reward(&mut router, owner.clone(), Some(validator_1), None)
         .unwrap();
 
     // Default APR 10% by cw-multi-test -> StakingInfo
@@ -163,6 +163,77 @@ fn test_validator_stake() {
 }
 
 #[test]
+fn test_restake() {
+    let mut router = mock_app(Some(vec!["TOKEN"]));
+
+    let andr = MockAndromedaBuilder::new(&mut router, "admin")
+        .with_wallets(vec![("owner", vec![coin(1000, "TOKEN")])])
+        .with_contracts(vec![
+            ("app-contract", mock_andromeda_app()),
+            ("validator-staking", mock_andromeda_validator_staking()),
+        ])
+        .build(&mut router);
+    let owner = andr.get_wallet("owner");
+    let validator_1 = router.api().addr_make("validator1");
+
+    let validator_staking_init_msg = mock_validator_staking_instantiate_msg(
+        validator_1.clone(),
+        None,
+        andr.kernel.addr().to_string(),
+    );
+
+    let validator_staking_component = AppComponent::new(
+        "staking".to_string(),
+        "validator-staking".to_string(),
+        to_json_binary(&validator_staking_init_msg).unwrap(),
+    );
+
+    let app_components = vec![validator_staking_component.clone()];
+    let app = MockAppContract::instantiate(
+        andr.get_code_id(&mut router, "app-contract"),
+        owner,
+        &mut router,
+        "Validator Staking App",
+        app_components,
+        andr.kernel.addr(),
+        Some(owner.to_string()),
+    );
+
+    let validator_staking: MockValidatorStaking =
+        app.query_ado_by_component_name(&router, validator_staking_component.name);
+
+    let funds = vec![coin(1000, "TOKEN")];
+
+    validator_staking
+        .execute_stake(&mut router, owner.clone(), None, funds)
+        .unwrap();
+
+    let stake_info = validator_staking
+        .query_staked_tokens(&router, None)
+        .unwrap();
+    assert_eq!(stake_info.validator, validator_1.to_string());
+
+    // wait 1/2 year
+    router.set_block(BlockInfo {
+        height: router.block_info().height,
+        time: router
+            .block_info()
+            .time
+            .plus_seconds(60 * 60 * 24 * 365 / 2),
+        chain_id: router.block_info().chain_id,
+    });
+
+    validator_staking
+        .execute_claim_reward(&mut router, owner.clone(), Some(validator_1), Some(true))
+        .unwrap();
+
+    let stake_info = validator_staking
+        .query_staked_tokens(&router, None)
+        .unwrap();
+    assert_eq!(stake_info.amount, coin(1050, "TOKEN"));
+}
+
+#[test]
 fn test_validator_redelegate() {
     let mut router = mock_app(Some(vec!["TOKEN"]));
 
@@ -216,7 +287,7 @@ fn test_validator_redelegate() {
     // Testing when there is no reward to claim
     // TODO: These errors cant be downcast anymore?
     let _err = validator_staking
-        .execute_claim_reward(&mut router, owner.clone(), Some(validator_1.clone()))
+        .execute_claim_reward(&mut router, owner.clone(), Some(validator_1.clone()), None)
         .unwrap_err();
     // assert_eq!(may_err.unwrap(), &expected_err);
 
@@ -231,7 +302,7 @@ fn test_validator_redelegate() {
     });
 
     validator_staking
-        .execute_claim_reward(&mut router, owner.clone(), Some(validator_1))
+        .execute_claim_reward(&mut router, owner.clone(), Some(validator_1), None)
         .unwrap();
 
     // Default APR 10% by cw-multi-test -> StakingInfo
@@ -343,7 +414,7 @@ fn test_validator_stake_and_unstake_specific_amount() {
 
     // Testing when there is no reward to claim
     let _err = validator_staking
-        .execute_claim_reward(&mut router, owner.clone(), Some(validator_1.clone()))
+        .execute_claim_reward(&mut router, owner.clone(), Some(validator_1.clone()), None)
         .unwrap_err();
     // assert_eq!(may_err.unwrap(), &expected_err);
 
@@ -358,7 +429,7 @@ fn test_validator_stake_and_unstake_specific_amount() {
     });
 
     validator_staking
-        .execute_claim_reward(&mut router, owner.clone(), Some(validator_1))
+        .execute_claim_reward(&mut router, owner.clone(), Some(validator_1), None)
         .unwrap();
 
     // Default APR 10% by cw-multi-test -> StakingInfo
