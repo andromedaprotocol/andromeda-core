@@ -35,7 +35,7 @@ impl MockValidatorStaking {
         amount: Option<Uint128>,
     ) -> ExecuteResult {
         let msg = mock_execute_redelegate(src_validator, dst_validator, amount);
-        self.execute(app, &msg, sender, &vec![])
+        self.execute(app, &msg, sender, &[])
     }
 
     pub fn execute_unstake(
