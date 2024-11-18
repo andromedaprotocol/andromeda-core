@@ -1,6 +1,6 @@
 [package]
 name = "andromeda-std"
-version = "1.2.4"
+version = "1.2.4-b.1"
 edition = "2021"
 rust-version = "1.75.0"
 description = "The standard library for creating an Andromeda Digital Object"
@@ -11,6 +11,7 @@ primitive = []
 instantiate = []
 rates = ["andromeda-macros/rates"]
 deploy = []
+distribution = ["prost", "osmosis-std-derive"]
 
 [lib]
 crate-type = ["cdylib", "rlib"]
@@ -39,6 +40,10 @@ serde-json-wasm = "0.5.0"
 enum-repr = { workspace = true }
 sha2 = "0.10.8"
 cw-orch = { workspace = true }
+osmosis-std-derive = { version = "0.15.3", optional = true }
+prost = { version = "0.11.2", default-features = false, features = [
+    "prost-derive",
+], optional = true }
 
 [dev-dependencies]
 cw-multi-test = { version = "1.0.0" }
