@@ -449,6 +449,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "andromeda-graph"
+version = "1.1.0"
+dependencies = [
+ "andromeda-data-storage",
+ "andromeda-std",
+ "andromeda-testing",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-multi-test",
+ "cw-storage-plus 1.2.0",
+ "cw-utils 1.0.3",
+ "cw20",
+]
+
+[[package]]
 name = "andromeda-ibc-registry"
 version = "1.0.1"
 dependencies = [
@@ -597,6 +612,20 @@ dependencies = [
  "cw721 0.18.0",
  "cw721-base 0.18.0",
  "serde",
+]
+
+[[package]]
+name = "andromeda-point"
+version = "1.0.0"
+dependencies = [
+ "andromeda-data-storage",
+ "andromeda-std",
+ "andromeda-testing",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-multi-test",
+ "cw-storage-plus 1.2.0",
+ "cw-utils 1.0.3",
 ]
 
 [[package]]
