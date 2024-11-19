@@ -175,7 +175,7 @@ pub(crate) fn get_tiers(
         .take(limit)
         .map(|v| {
             let (level, tier) = v?;
-            let sold_amount = TIER_SALES.load(storage, level).unwrap_or_default();
+            let sold_amount = TIER_SALES.may_load(storage, level)?.unwrap_or_default();
             Ok(TierResponseItem { tier, sold_amount })
         })
         .collect()
