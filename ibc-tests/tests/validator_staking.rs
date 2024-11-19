@@ -91,6 +91,7 @@ fn test_validator_staking() {
 
     let claim_msg = validator_staking::ExecuteMsg::Claim {
         validator: Some(Addr::unchecked(default_validator.address.to_string())),
+        restake: None,
     };
     validator_staking_contract
         .execute(&claim_msg, None)
@@ -176,6 +177,7 @@ fn test_kicked_validator() {
 
     let claim_msg = validator_staking::ExecuteMsg::Claim {
         validator: Some(Addr::unchecked(kicked_validator.address.to_string())),
+        restake: None,
     };
     validator_staking_contract
         .execute(&claim_msg, None)
