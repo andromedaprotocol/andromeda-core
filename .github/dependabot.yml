@@ -11,6 +11,9 @@ updates:
       - dependency-name: "cosmwasm-std"
         update-types:
           ["version-update:semver-major", "version-update:semver-minor"]
+      - dependency-name: "chrono"
+        update-types:
+          ["version-update:semver-major", "version-update:semver-minor"]
   - package-ecosystem: github-actions
     directory: "/"
     schedule:
