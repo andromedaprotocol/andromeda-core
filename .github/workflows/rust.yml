@@ -81,7 +81,7 @@ jobs:
           (github.base_ref == 'development' || 
           github.base_ref == 'main' || 
           contains(github.event.pull_request.labels.*.name, 'ci: build')) && !contains(github.event.pull_request.labels.*.name, 'ci: skip-build')
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: contracts
           path: ./artifacts/
