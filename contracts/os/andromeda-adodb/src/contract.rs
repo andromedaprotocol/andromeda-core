@@ -131,7 +131,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractErr
         }
         // Base queries
         QueryMsg::Version {} => encode_binary(&ADOContract::default().query_version(deps)?),
-        QueryMsg::Type {} => encode_binary(&ADOContract::default().query_type(deps)?),
+        QueryMsg::ContractType {} => encode_binary(&ADOContract::default().query_type(deps)?),
         QueryMsg::Owner {} => encode_binary(&ADOContract::default().query_contract_owner(deps)?),
         QueryMsg::KernelAddress {} => {
             encode_binary(&ADOContract::default().query_kernel_address(deps)?)

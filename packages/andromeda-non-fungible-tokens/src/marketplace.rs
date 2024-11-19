@@ -1,8 +1,11 @@
 use andromeda_std::{
     amp::{AndrAddr, Recipient},
     andr_exec, andr_instantiate, andr_query,
-    common::expiration::Expiry,
-    common::{denom::Asset, MillisecondsDuration},
+    common::{
+        denom::{Asset, AuthorizedAddressesResponse, PermissionAction},
+        expiration::Expiry,
+        MillisecondsDuration, OrderBy,
+    },
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
@@ -14,7 +17,7 @@ use std::fmt::{Display, Formatter, Result};
 #[cw_serde]
 #[serde(rename_all = "snake_case")]
 pub struct InstantiateMsg {
-    pub authorized_cw20_address: Option<AndrAddr>,
+    pub authorized_cw20_addresses: Option<Vec<AndrAddr>>,
     pub authorized_token_addresses: Option<Vec<AndrAddr>>,
 }
 
@@ -39,6 +42,17 @@ pub enum ExecuteMsg {
     CancelSale {
         token_id: String,
         token_address: String,
+    },
+    /// Restricted to owner
+    AuthorizeContract {
+        action: PermissionAction,
+        addr: AndrAddr,
+        expiration: Option<Expiry>,
+    },
+    /// Restricted to owner
+    DeauthorizeContract {
+        action: PermissionAction,
+        addr: AndrAddr,
     },
 }
 
@@ -114,6 +128,13 @@ pub enum QueryMsg {
         token_address: String,
         start_after: Option<String>,
         limit: Option<u64>,
+    },
+    #[returns(AuthorizedAddressesResponse)]
+    AuthorizedAddresses {
+        action: PermissionAction,
+        start_after: Option<String>,
+        limit: Option<u32>,
+        order_by: Option<OrderBy>,
     },
 }
 

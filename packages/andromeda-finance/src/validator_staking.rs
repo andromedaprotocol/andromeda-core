@@ -4,6 +4,8 @@ use cosmwasm_std::{Addr, Coin, DepsMut, Timestamp, Uint128};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+pub const RESTAKING_ACTION: &str = "restake";
+
 #[andr_instantiate]
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -20,8 +22,15 @@ pub enum ExecuteMsg {
         validator: Option<Addr>,
         amount: Option<Uint128>,
     },
+    Redelegate {
+        src_validator: Option<Addr>,
+        dst_validator: Addr,
+        amount: Option<Uint128>,
+    },
     Claim {
         validator: Option<Addr>,
+        /// Defaults to false
+        restake: Option<bool>,
     },
     WithdrawFunds {
         denom: Option<String>,
@@ -47,6 +56,9 @@ pub enum QueryMsg {
 
     #[returns(Option<Vec<UnstakingTokens>>)]
     UnstakedTokens {},
+
+    #[returns(GetDefaultValidatorResponse)]
+    DefaultValidator {},
 }
 
 impl InstantiateMsg {
@@ -61,4 +73,9 @@ pub fn is_validator(deps: &DepsMut, validator: &Addr) -> Result<bool, ContractEr
         return Err(ContractError::InvalidValidator {});
     }
     Ok(true)
+}
+
+#[cw_serde]
+pub struct GetDefaultValidatorResponse {
+    pub default_validator: Addr,
 }

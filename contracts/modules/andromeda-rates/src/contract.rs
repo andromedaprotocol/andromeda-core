@@ -13,7 +13,8 @@ use andromeda_std::{
 };
 
 use cosmwasm_std::{
-    attr, coin, ensure, Binary, Coin, Deps, DepsMut, Env, Event, MessageInfo, Response, SubMsg,
+    attr, coin, ensure, Binary, Coin, Deps, DepsMut, Env, Event, MessageInfo, Reply, Response,
+    StdError, SubMsg,
 };
 use cosmwasm_std::{entry_point, from_json};
 use cw20::Cw20Coin;
@@ -93,7 +94,7 @@ fn execute_set_rate(
         ContractError::Unauthorized {}
     );
     // Validate the local rate's value
-    rate.value.validate()?;
+    rate.value.validate(deps.as_ref())?;
 
     // Set the sender as the recipient in case no recipients were provided
     if rate.recipients.is_empty() {
@@ -167,7 +168,7 @@ pub fn query_deducted_funds(
     if let Some(desc) = &local_rate.description {
         event = event.add_attribute("description", desc);
     }
-    local_rate.value.validate()?;
+    local_rate.value.validate(deps)?;
     let fee = calculate_fee(local_rate.value, &coin)?;
     for receiver in local_rate.recipients.iter() {
         if !local_rate.rate_type.is_additive() {
@@ -209,4 +210,15 @@ pub fn query_deducted_funds(
         },
         events,
     })
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
+    if msg.result.is_err() {
+        return Err(ContractError::Std(StdError::generic_err(
+            msg.result.unwrap_err(),
+        )));
+    }
+
+    Ok(Response::default())
 }

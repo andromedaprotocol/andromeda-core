@@ -303,6 +303,7 @@ impl AMPPkt {
     /// If the sender is not valid, an error is returned
     pub fn verify_origin(&self, info: &MessageInfo, deps: &Deps) -> Result<(), ContractError> {
         let kernel_address = ADOContract::default().get_kernel_address(deps.storage)?;
+
         if (info.sender == self.ctx.origin && info.sender == self.ctx.previous_sender)
             || info.sender == kernel_address
         {
@@ -319,7 +320,6 @@ impl AMPPkt {
                     }))?;
 
             let sender_code_id = contract_info.code_id;
-
             // We query the ADO type in the adodb, it will return an error if the sender's Code ID doesn't exist.
             AOSQuerier::verify_code_id(&deps.querier, &adodb_address, sender_code_id)
         }

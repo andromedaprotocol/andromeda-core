@@ -38,7 +38,7 @@ andromeda-economics = { version = "1.0.0", path = "../../contracts/os/andromeda-
 ] }
 andromeda-std = { workspace = true }
 serde = { workspace = true }
-secp256k1 = "0.29.0"
+secp256k1 = "0.30.0"
 cosmrs = "0.18.0"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
@@ -47,4 +47,4 @@ anyhow = "1.0.79"
 reqwest = { version = "0.12.5", features = ["json"] }
 tokio = "1.39.2"
 cw-orch-daemon = "0.24.3"
-cw-orch = "0.24.1"
+cw-orch = { workspace = true }

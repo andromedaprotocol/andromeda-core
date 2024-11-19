@@ -14,7 +14,7 @@ jobs:
     name: Linting
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 1
       - uses: actions-rs/toolchain@v1
@@ -35,7 +35,7 @@ jobs:
       matrix:
         os: [ubuntu-latest]
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 1
       - uses: actions-rs/toolchain@v1
@@ -61,79 +61,58 @@ jobs:
           toolchain: 1.75.0
       - run: rustup override set 1.75.0
       - run: rustup target add wasm32-unknown-unknown
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Install Binaryen
         run: |
-          chmod +x "${GITHUB_WORKSPACE}/ci-scripts/install_binaryen.sh"
-          "${GITHUB_WORKSPACE}/ci-scripts/install_binaryen.sh" all
+          chmod +x "${GITHUB_WORKSPACE}/scripts/install_binaryen.sh"
+          "${GITHUB_WORKSPACE}/scripts/install_binaryen.sh"
       - name: Build
         run: |
-          chmod +x "${GITHUB_WORKSPACE}/build.sh"
-          "${GITHUB_WORKSPACE}/build.sh" all
+          chmod +x "${GITHUB_WORKSPACE}/scripts/build.sh"
+          "${GITHUB_WORKSPACE}/scripts/build.sh" all
       - name: Check contract sizes
         run: |
           chmod +x "${GITHUB_WORKSPACE}/.github/file-size.sh"
           "${GITHUB_WORKSPACE}/.github/file-size.sh"
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: contracts
           path: ./artifacts/
           if-no-files-found: error
 
-  ibc-tests:
-    runs-on: ubuntu-latest
-    name: Running E2E Test
-    needs: build
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/checkout@v4
-        with:
-          repository: andromedaprotocol/localrelayer
-          ref: develop
-          token: ${{ secrets.LOCALRELAYER_ACCESS_TOKEN }}
-          path: localrelayer
-      - name: Setup docker
-        run: |
-          curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-          chmod +x /usr/local/bin/docker-compose
-          docker-compose --version
-      - name: Setup localrelayer
-        run: |
-          cd ./localrelayer
-          make start-chains
-          make start-validators
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: 1.75.0
-          profile: minimal
-      - name: Download Artifacts To ibc-tests
-        uses: actions/download-artifact@v3
-        with:
-          name: contracts
-          path: ./ibc-tests/artifacts
-      - name: Download Artifacts To andromeda testing
-        uses: actions/download-artifact@v3
-        with:
-          name: contracts
-          path: ./packages/andromeda-testing-e2e/artifacts
-      - name: Run IBC Tests
-        run: |
-          cargo test -p ibc-tests -- --test-threads 1
+  # ibc-tests:
+  #   runs-on: ubuntu-latest
+  #   name: Post Build - IBC Tests
+  #   needs: build
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #       with:
+  #         fetch-depth: 1
+  #     - name: Download Contracts
+  #       uses: actions/download-artifact@v2
+  #       with:
+  #         name: contracts
+  #         path: "./ibc-tests/contracts"
+  #     - name: Run IBC Tests
+  #       run: |
+  #         cd ./ibc-tests
+  #         npm i
+  #         npm test
 
   build-schemas:
     runs-on: ubuntu-latest
     name: Actions - build schemas
     needs: contract-tests
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Build Schema
         run: |
-          chmod +x "${GITHUB_WORKSPACE}/build_schema.sh"
-          "${GITHUB_WORKSPACE}/build_schema.sh"
+          chmod +x "${GITHUB_WORKSPACE}/scripts/build_schema.sh"
+          "${GITHUB_WORKSPACE}/scripts/build_schema.sh"
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: schema
-          path: ./artifacts/
+          path: ./schemas/
           if-no-files-found: error

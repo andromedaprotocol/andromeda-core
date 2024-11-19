@@ -2,7 +2,7 @@ use cosmwasm_std::{Addr, OverflowError, StdError};
 use cw20_base::ContractError as Cw20ContractError;
 use cw721_base::ContractError as Cw721ContractError;
 use cw_asset::AssetError;
-use cw_utils::{ParseReplyError, PaymentError};
+use cw_utils::{ParseReplyError, PaymentError, ThresholdError};
 use hex::FromHexError;
 use std::convert::From;
 use std::str::{ParseBoolError, Utf8Error};
@@ -24,6 +24,9 @@ pub enum ContractError {
 
     #[error("{0}")]
     ParseReplyError(#[from] ParseReplyError),
+
+    #[error("{0}")]
+    Threshold(#[from] ThresholdError),
 
     #[error("Unauthorized")]
     Unauthorized {},
@@ -87,11 +90,14 @@ pub enum ContractError {
     #[error("InvalidDelegation")]
     InvalidDelegation {},
 
+    #[error("Invalid action: {action}. Expected either SEND_NFT or SEND_CW20")]
+    InvalidAction { action: String },
+
     #[error("RewardTooLow")]
     RewardTooLow {},
 
-    #[error("IncompleteUnbondingPeriod")]
-    IncompleteUnbondingPeriod {},
+    #[error("InvalidRedelegationAmount. Got {{amount}}, full delegation: {{max}}")]
+    InvalidRedelegationAmount { amount: String, max: String },
 
     #[error("LockedNFT")]
     LockedNFT {},
@@ -125,6 +131,12 @@ pub enum ContractError {
 
     #[error("EmptyOptional")]
     EmptyOptional {},
+
+    #[error("EmptyEvents")]
+    EmptyEvents {},
+
+    #[error("EmptyUnstakingQueue")]
+    EmptyUnstakingQueue {},
 
     #[error("EmptyString")]
     EmptyString {},
@@ -716,8 +728,8 @@ pub enum ContractError {
     #[error("Invalid Denom Trace: {denom}")]
     InvalidDenomTrace { denom: String },
 
-    #[error("Invalid Denom Trace Path: {path} - {denom}")]
-    InvalidDenomTracePath { path: String, denom: String },
+    #[error("Invalid Denom Trace Path: {path}, msg: {msg:?}")]
+    InvalidDenomTracePath { path: String, msg: Option<String> },
 
     #[error("Invalid Expression: {msg}")]
     InvalidExpression { msg: String },
@@ -736,6 +748,12 @@ pub enum ContractError {
 
     #[error("Invalid tier for {operation} operation: {msg} ")]
     InvalidTier { operation: String, msg: String },
+}
+
+impl ContractError {
+    pub fn new(error: &str) -> Self {
+        ContractError::Std(StdError::generic_err(error))
+    }
 }
 
 impl From<Cw20ContractError> for ContractError {

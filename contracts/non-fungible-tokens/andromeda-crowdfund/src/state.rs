@@ -175,7 +175,7 @@ pub(crate) fn get_tiers(
         .take(limit)
         .map(|v| {
             let (level, tier) = v?;
-            let sold_amount = TIER_SALES.load(storage, level).unwrap_or_default();
+            let sold_amount = TIER_SALES.may_load(storage, level)?.unwrap_or_default();
             Ok(TierResponseItem { tier, sold_amount })
         })
         .collect()
@@ -183,9 +183,6 @@ pub(crate) fn get_tiers(
 
 pub(crate) fn is_valid_tiers(storage: &mut dyn Storage) -> bool {
     !TIERS.is_empty(storage)
-        && TIERS
-            .range_raw(storage, None, None, Order::Ascending)
-            .any(|res| res.unwrap().1.limit.is_none())
 }
 
 pub(crate) fn get_current_stage(storage: &dyn Storage) -> CampaignStage {
@@ -216,15 +213,12 @@ pub(crate) fn set_tier_orders(
         let mut sold_amount = TIER_SALES
             .load(storage, new_order.level.into())
             .unwrap_or_default();
-
         sold_amount = sold_amount.checked_add(new_order.amount)?;
         if let Some(limit) = tier.limit {
             ensure!(limit >= sold_amount, ContractError::PurchaseLimitReached {});
         }
-
         update_tier(storage, &tier)?;
         set_tier_sales(storage, new_order.level.into(), sold_amount)?;
-
         let mut order = TIER_ORDERS
             .load(storage, (new_order.orderer.clone(), new_order.level.into()))
             .unwrap_or_default();
