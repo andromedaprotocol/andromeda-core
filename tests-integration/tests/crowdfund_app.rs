@@ -272,7 +272,7 @@ fn test_successful_crowdfund_app_native(setup: TestCase) {
     assert_eq!(summary.current_capital, 0);
     assert_eq!(summary.current_stage, CampaignStage::ONGOING.to_string());
 
-    let tiers = crowdfund.query_tiers(&mut router).tiers;
+    let tiers = crowdfund.query_tiers(&mut router, None, None, None).tiers;
     assert_eq!(tiers.len(), 2);
 
     // Purchase tiers
@@ -679,7 +679,7 @@ fn test_successful_crowdfund_app_cw20(#[with(false)] setup: TestCase) {
     assert_eq!(summary.current_capital, 0);
     assert_eq!(summary.current_stage, CampaignStage::ONGOING.to_string());
 
-    let tiers = crowdfund.query_tiers(&mut router).tiers;
+    let tiers = crowdfund.query_tiers(&mut router, None, None, None).tiers;
     assert_eq!(tiers.len(), 2);
 
     // Purchase tiers

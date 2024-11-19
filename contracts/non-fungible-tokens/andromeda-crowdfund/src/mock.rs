@@ -99,14 +99,6 @@ impl MockCrowdfund {
         self.query(app, msg)
     }
 
-<<<<<<< HEAD
-    pub fn query_tiers(&self, app: &mut MockApp) -> TiersResponse {
-        let msg = QueryMsg::Tiers {
-            start_after: None,
-            limit: None,
-            order_by: None,
-        };
-=======
     pub fn query_tiers(
         &self,
         app: &mut MockApp,
@@ -115,7 +107,6 @@ impl MockCrowdfund {
         order_by: Option<OrderBy>,
     ) -> TiersResponse {
         let msg = mock_query_tiers_msg(start_after, limit, order_by);
->>>>>>> 60d6ca65 (fix: amount sold incorrect for tiers with limits (#603))
         self.query(app, msg)
     }
 }
