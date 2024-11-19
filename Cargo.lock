@@ -1939,16 +1939,25 @@ dependencies = [
 ]
 
 [[package]]
-name = "cw-asset"
-version = "3.0.0"
+name = "cw-address-like"
+version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "64e2cf17accdcafe71859a683b6ed3f18311634a769550aacf4829b50151b221"
+checksum = "73553ee4dad5b1678977ff603e72c3fdd41518ca2b0bd9b245b21e4c72eafa9e"
 dependencies = [
- "cosmwasm-schema 1.5.8",
- "cosmwasm-std 1.5.8",
- "cw-address-like",
- "cw-storage-plus 1.2.0",
- "cw20 1.1.2",
+ "cosmwasm-std 2.1.4",
+]
+
+[[package]]
+name = "cw-asset"
+version = "4.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7eaa5ed63f1d767d92c7bada3b883aa6ec90ff09e3f5bf72ff4514dcbeb9c4f2"
+dependencies = [
+ "cosmwasm-schema 2.1.4",
+ "cosmwasm-std 2.1.4",
+ "cw-address-like 2.0.0",
+ "cw-storage-plus 2.0.0",
+ "cw20 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "thiserror 1.0.69",
 ]
 
@@ -2207,7 +2216,7 @@ checksum = "093dfb4520c48b5848274dd88ea99e280a04bc08729603341c7fb0d758c74321"
 dependencies = [
  "cosmwasm-schema 1.5.8",
  "cosmwasm-std 1.5.8",
- "cw-address-like",
+ "cw-address-like 1.0.4",
  "cw-ownable-derive",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
@@ -2389,6 +2398,19 @@ dependencies = [
 [[package]]
 name = "cw20"
 version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a42212b6bf29bbdda693743697c621894723f35d3db0d5df930be22903d0e27c"
+dependencies = [
+ "cosmwasm-schema 2.1.4",
+ "cosmwasm-std 2.1.4",
+ "cw-utils 2.0.0",
+ "schemars",
+ "serde",
+]
+
+[[package]]
+name = "cw20"
+version = "2.0.0"
 source = "git+https://github.com/CosmWasm/cw-plus#17b1ac4d518ee9b546b82706a70b77cfff1b0ee3"
 dependencies = [
  "cosmwasm-schema 2.1.4",
@@ -2457,7 +2479,7 @@ dependencies = [
  "cosmwasm-schema 2.1.4",
  "cosmwasm-std 2.1.4",
  "cw-utils 2.0.0",
- "cw20 2.0.0",
+ "cw20 2.0.0 (git+https://github.com/CosmWasm/cw-plus)",
  "schemars",
  "serde",
  "thiserror 1.0.69",

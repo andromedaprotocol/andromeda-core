@@ -21,7 +21,7 @@ cw20-base = { workspace = true, features = ["library"] }
 cw721-base = { workspace = true }
 cw-utils = { workspace = true }
 cw2 = { workspace = true }
-cw-asset = { version = "3.0.0" }
+cw-asset = { version = "4.0.0" }
 thiserror = { version = "2.0.3" }
 lazy_static = "1"
 hex = "0.4"
