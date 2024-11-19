@@ -3,6 +3,7 @@
 use andromeda_app::app::AppComponent;
 use andromeda_app_contract::mock::{mock_andromeda_app, MockAppContract};
 
+use andromeda_std::amp::AndrAddr;
 use andromeda_testing::mock::mock_app;
 use andromeda_testing::mock_builder::MockAndromedaBuilder;
 use andromeda_validator_staking::mock::{
@@ -20,7 +21,10 @@ fn test_validator_stake() {
     let mut router = mock_app(Some(vec!["TOKEN"]));
 
     let andr = MockAndromedaBuilder::new(&mut router, "admin")
-        .with_wallets(vec![("owner", vec![coin(1000, "TOKEN")])])
+        .with_wallets(vec![
+            ("owner", vec![coin(1000, "TOKEN")]),
+            ("other", vec![coin(1000, "TOKEN")]),
+        ])
         .with_contracts(vec![
             ("app-contract", mock_andromeda_app()),
             ("validator-staking", mock_andromeda_validator_staking()),
@@ -82,6 +86,14 @@ fn test_validator_stake() {
             .plus_seconds(60 * 60 * 24 * 365 / 2),
         chain_id: router.block_info().chain_id,
     });
+    let other = andr.get_wallet("other");
+    // Unauthorized claim
+    let err: ContractError = validator_staking
+        .execute_claim_reward(&mut router, other.clone(), Some(validator_1.clone()), None)
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(err, ContractError::Unauthorized {});
 
     validator_staking
         .execute_claim_reward(&mut router, owner.clone(), Some(validator_1), None)
@@ -167,7 +179,11 @@ fn test_restake() {
     let mut router = mock_app(Some(vec!["TOKEN"]));
 
     let andr = MockAndromedaBuilder::new(&mut router, "admin")
-        .with_wallets(vec![("owner", vec![coin(1000, "TOKEN")])])
+        .with_wallets(vec![
+            ("owner", vec![coin(1000, "TOKEN")]),
+            ("permissioned_actor", vec![coin(1000, "TOKEN")]),
+            ("random_actor", vec![coin(1000, "TOKEN")]),
+        ])
         .with_contracts(vec![
             ("app-contract", mock_andromeda_app()),
             ("validator-staking", mock_andromeda_validator_staking()),
@@ -224,13 +240,73 @@ fn test_restake() {
     });
 
     validator_staking
-        .execute_claim_reward(&mut router, owner.clone(), Some(validator_1), Some(true))
+        .execute_claim_reward(
+            &mut router,
+            owner.clone(),
+            Some(validator_1.clone()),
+            Some(true),
+        )
         .unwrap();
 
     let stake_info = validator_staking
         .query_staked_tokens(&router, None)
         .unwrap();
     assert_eq!(stake_info.amount, coin(1050, "TOKEN"));
+
+    // wait 1/2 year
+    router.set_block(BlockInfo {
+        height: router.block_info().height,
+        time: router
+            .block_info()
+            .time
+            .plus_seconds(60 * 60 * 24 * 365 / 2),
+        chain_id: router.block_info().chain_id,
+    });
+
+    // Claim with a permissioned actor
+    let permissioned_actor = andr.get_wallet("permissioned_actor");
+    let random_actor = andr.get_wallet("random_actor");
+    validator_staking
+        .execute_permission_action(&mut router, owner.clone(), "restake".to_string())
+        .unwrap();
+    validator_staking
+        .execute_set_permission(
+            &mut router,
+            owner.clone(),
+            vec![AndrAddr::from_string(permissioned_actor.clone())],
+            "restake".to_string(),
+            andromeda_std::ado_base::permissioning::Permission::Local(
+                andromeda_std::ado_base::permissioning::LocalPermission::Whitelisted(None),
+            ),
+        )
+        .unwrap();
+
+    // Claim with random actor
+    let err: ContractError = validator_staking
+        .execute_claim_reward(
+            &mut router,
+            random_actor.clone(),
+            Some(validator_1.clone()),
+            Some(true),
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(err, ContractError::Unauthorized {});
+
+    validator_staking
+        .execute_claim_reward(
+            &mut router,
+            permissioned_actor.clone(),
+            Some(validator_1.clone()),
+            Some(true),
+        )
+        .unwrap();
+
+    let stake_info = validator_staking
+        .query_staked_tokens(&router, None)
+        .unwrap();
+    assert_eq!(stake_info.amount, coin(1102, "TOKEN"));
 }
 
 #[test]
