@@ -167,6 +167,7 @@ fn test_unauthorized_claim() {
 
     let msg = ExecuteMsg::Claim {
         validator: Some(valid_validator.clone()),
+        restake: None,
     };
 
     let info = mock_info(ANYONE, &[coin(100, "uandr")]);
