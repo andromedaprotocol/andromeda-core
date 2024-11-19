@@ -1,17 +1,20 @@
 use std::str::FromStr;
 
 use andromeda_app::app::AppComponent;
+use andromeda_app_contract::AppContract;
 use andromeda_finance::splitter::{self, AddressPercent};
-use andromeda_fungible_tokens::cw20 as andr_cw20;
+use andromeda_fungible_tokens::cw20::{self as andr_cw20, ExecuteMsgFns as Cw20ExecuteMsgFns};
 use andromeda_non_fungible_tokens::{
     crowdfund::{
-        self, CampaignConfig, CampaignStage, PresaleTierOrder, SimpleTierOrder, TierMetaData,
+        self, CampaignConfig, CampaignStage, Cw20HookMsg, ExecuteMsgFns as CrowdfundExecuteMsgFns,
+        PresaleTierOrder, SimpleTierOrder, Tier, TierMetaData,
     },
     cw721::{self, TokenExtension},
 };
 use andromeda_std::{
     amp::{AndrAddr, Recipient},
-    common::{denom::Asset, Milliseconds},
+    common::{denom::Asset, expiration::Expiry, Milliseconds},
+    os::adodb::ExecuteMsgFns as AdodbExecuteMsgFns,
 };
 use andromeda_testing_e2e::{
     faucet::fund,
@@ -21,26 +24,25 @@ use cosmwasm_std::{coin, to_json_binary, Decimal, Uint128, Uint64};
 use cw20::{Cw20Coin, MinterResponse};
 use cw_orch::prelude::*;
 use cw_orch_daemon::{DaemonBase, TxSender, Wallet};
-use ibc_tests::{
-    constants::{
-        LOCAL_TERRA, LOCAL_WASM, PURCHASER_MNEMONIC_1, RECIPIENT_MNEMONIC_1, RECIPIENT_MNEMONIC_2,
-        USER_MNEMONIC,
-    },
-    interfaces::{
-        app_interface,
-        crowdfund_interface::{self, purchase_cw20_msg, CrowdfundContract},
-        cw20_interface::{self, Cw20Contract},
-        cw721_interface::{self, Cw721Contract},
-        splitter_interface::{self, SplitterContract},
-    },
+use ibc_tests::constants::{
+    LOCAL_TERRA, LOCAL_WASM, PURCHASER_MNEMONIC_1, RECIPIENT_MNEMONIC_1, RECIPIENT_MNEMONIC_2,
+    USER_MNEMONIC,
 };
+
+use andromeda_crowdfund::CrowdfundContract;
+use andromeda_cw20::CW20Contract;
+use andromeda_cw721::CW721Contract;
+use andromeda_splitter::SplitterContract;
+
+use andromeda_app::app;
+
 use rstest::{fixture, rstest};
 
 struct TestCase {
     daemon: DaemonBase<Wallet>,
     crowdfund_contract: CrowdfundContract<DaemonBase<Wallet>>,
-    cw20_contract: Cw20Contract<DaemonBase<Wallet>>,
-    cw721_contract: Cw721Contract<DaemonBase<Wallet>>,
+    cw20_contract: CW20Contract<DaemonBase<Wallet>>,
+    cw721_contract: CW721Contract<DaemonBase<Wallet>>,
     splitter_contract: SplitterContract<DaemonBase<Wallet>>,
     presale: Vec<PresaleTierOrder>,
 }
@@ -54,11 +56,77 @@ fn setup(
     let daemon = mock_app(chain_info.clone(), USER_MNEMONIC);
     let mock_andromeda = MockAndromeda::new(&daemon);
 
-    let app_contract = app_interface::prepare(&daemon, &mock_andromeda);
-    let cw20_contract = cw20_interface::prepare(&daemon, &mock_andromeda);
-    let cw721_contract = cw721_interface::prepare(&daemon, &mock_andromeda);
-    let crowdfund_contract = crowdfund_interface::prepare(&daemon, &mock_andromeda);
-    let splitter_contract = splitter_interface::prepare(&daemon, &mock_andromeda);
+    // Preparing contracts
+    let app_contract = AppContract::new(daemon.clone());
+    app_contract.upload().unwrap();
+    mock_andromeda
+        .adodb_contract
+        .clone()
+        .publish(
+            "app-contract".to_string(),
+            app_contract.code_id().unwrap(),
+            "0.1.0".to_string(),
+            None,
+            None,
+        )
+        .unwrap();
+
+    let cw20_contract = CW20Contract::new(daemon.clone());
+    cw20_contract.upload().unwrap();
+    mock_andromeda
+        .adodb_contract
+        .clone()
+        .publish(
+            "cw20".to_string(),
+            cw20_contract.code_id().unwrap(),
+            "0.1.0".to_string(),
+            None,
+            None,
+        )
+        .unwrap();
+
+    let cw721_contract = CW721Contract::new(daemon.clone());
+    cw721_contract.upload().unwrap();
+    mock_andromeda
+        .adodb_contract
+        .clone()
+        .publish(
+            "cw721".to_string(),
+            cw721_contract.code_id().unwrap(),
+            "0.1.0".to_string(),
+            None,
+            None,
+        )
+        .unwrap();
+
+    let crowdfund_contract = CrowdfundContract::new(daemon.clone());
+    crowdfund_contract.upload().unwrap();
+    mock_andromeda
+        .adodb_contract
+        .clone()
+        .publish(
+            "crowdfund".to_string(),
+            crowdfund_contract.code_id().unwrap(),
+            "0.1.0".to_string(),
+            None,
+            None,
+        )
+        .unwrap();
+
+    let splitter_contract = SplitterContract::new(daemon.clone());
+    splitter_contract.upload().unwrap();
+    mock_andromeda
+        .adodb_contract
+        .clone()
+        .publish(
+            "splitter".to_string(),
+            splitter_contract.code_id().unwrap(),
+            "0.1.0".to_string(),
+            None,
+            None,
+        )
+        .unwrap();
+
     // Prepare App Components
     let recipient_1_daemon = daemon
         .rebuild()
@@ -188,18 +256,31 @@ fn setup(
     );
     app_components.push(crowdfund_component.clone());
 
-    app_contract.init(&mock_andromeda, "Crowdfund App", app_components, None);
-    let crowdfund_addr = app_contract.query_address_by_component_name(crowdfund_component.name);
+    app_contract
+        .instantiate(
+            &app::InstantiateMsg {
+                app_components,
+                name: "Crowdfund App".to_string(),
+                chain_info: None,
+                kernel_address: kernel_address.clone(),
+                owner: None,
+            },
+            None,
+            None,
+        )
+        .unwrap();
+
+    let crowdfund_addr = app_contract.get_address(crowdfund_component.name);
     crowdfund_contract.set_address(&Addr::unchecked(crowdfund_addr));
 
-    let cw721_addr = app_contract.query_address_by_component_name(cw721_component.name);
+    let cw721_addr = app_contract.get_address(cw721_component.name);
     cw721_contract.set_address(&Addr::unchecked(cw721_addr));
 
-    let splitter_addr = app_contract.query_address_by_component_name(splitter_component.name);
+    let splitter_addr = app_contract.get_address(splitter_component.name);
     splitter_contract.set_address(&Addr::unchecked(splitter_addr));
 
     if !use_native_token {
-        let cw20_addr = app_contract.query_address_by_component_name(cw20_component.unwrap().name);
+        let cw20_addr = app_contract.get_address(cw20_component.unwrap().name);
         cw20_contract.set_address(&Addr::unchecked(cw20_addr));
     }
 
@@ -209,20 +290,25 @@ fn setup(
             ..Default::default()
         },
     };
-    crowdfund_contract.execute_add_tier(
-        "Tier 1".to_string(),
-        Uint64::one(),
-        Uint128::new(10000),
-        None,
-        meta_data.clone(),
-    );
-    crowdfund_contract.execute_add_tier(
-        "Tier 2".to_string(),
-        Uint64::new(2u64),
-        Uint128::new(20000),
-        Some(Uint128::new(100)),
-        meta_data,
-    );
+    crowdfund_contract
+        .add_tier(Tier {
+            label: "Tier 1".to_string(),
+            level: Uint64::one(),
+            price: Uint128::new(10000),
+            limit: None,
+            metadata: meta_data.clone(),
+        })
+        .unwrap();
+
+    crowdfund_contract
+        .add_tier(Tier {
+            label: "Tier 2".to_string(),
+            level: Uint64::new(2u64),
+            price: Uint128::new(20000),
+            limit: Some(Uint128::new(100)),
+            metadata: meta_data,
+        })
+        .unwrap();
 
     let presale = vec![PresaleTierOrder {
         level: Uint64::one(),
@@ -277,10 +363,13 @@ fn test_successful_crowdfund_app_native(#[with(true, LOCAL_WASM)] setup: TestCas
 
     let start_time = None;
     let end_time = Milliseconds::from_nanos(daemon.block_info().unwrap().time.plus_days(1).nanos());
+    let end_time = Expiry::AtTime(end_time);
 
-    crowdfund_contract.execute_start_campaign(start_time, end_time, Some(presale));
+    crowdfund_contract
+        .start_campaign(end_time, Some(presale), start_time)
+        .unwrap();
 
-    let summary = crowdfund_contract.query_campaign_summary();
+    let summary = crowdfund_contract.campaign_summary();
     assert_eq!(summary.current_capital, 0);
     assert_eq!(summary.current_stage, CampaignStage::ONGOING.to_string());
 
@@ -302,12 +391,12 @@ fn test_successful_crowdfund_app_native(#[with(true, LOCAL_WASM)] setup: TestCas
         .unwrap();
     crowdfund_contract.set_sender(purchaser_1_daemon.sender());
     let funds = vec![coin(500000, LOCAL_WASM.gas_denom)];
-    crowdfund_contract.execute_purchase(orders, Some(&funds));
+    crowdfund_contract.purchase_tiers(orders, &funds).unwrap();
 
     crowdfund_contract.set_sender(daemon.sender());
-    crowdfund_contract.execute_end_campaign();
+    crowdfund_contract.end_campaign().unwrap();
 
-    let summary = crowdfund_contract.query_campaign_summary();
+    let summary = crowdfund_contract.campaign_summary();
     assert_eq!(summary.current_capital, 10 * 10000 + 20000 * 10);
     assert_eq!(summary.current_stage, CampaignStage::SUCCESS.to_string());
 
@@ -333,12 +422,12 @@ fn test_successful_crowdfund_app_native(#[with(true, LOCAL_WASM)] setup: TestCas
     assert_eq!(recipient_2_change.u128(), summary.current_capital * 4 / 5);
 
     crowdfund_contract.set_sender(purchaser_1_daemon.sender());
-    crowdfund_contract.execute_claim();
+    crowdfund_contract.claim().unwrap();
 
-    let owner_resp = cw721_contract.query_owner_of("0".to_string()).owner;
+    let owner_resp = cw721_contract.owner_of("0".to_string()).owner;
     assert_eq!(owner_resp, purchaser_1_daemon.sender_addr().into_string());
 
-    let owner_resp = cw721_contract.query_owner_of("29".to_string()).owner;
+    let owner_resp = cw721_contract.owner_of("29".to_string()).owner;
     assert_eq!(owner_resp, purchaser_1_daemon.sender_addr().into_string());
 }
 
@@ -356,15 +445,18 @@ fn test_successful_crowdfund_app_cw20(#[with(false)] setup: TestCase) {
 
     let start_time = None;
     let end_time = Milliseconds::from_nanos(daemon.block_info().unwrap().time.plus_days(1).nanos());
+    let end_time = Expiry::AtTime(end_time);
 
-    crowdfund_contract.execute_start_campaign(start_time, end_time, Some(presale));
+    crowdfund_contract
+        .start_campaign(end_time, Some(presale), start_time)
+        .unwrap();
 
-    let summary = crowdfund_contract.query_campaign_summary();
+    let summary = crowdfund_contract.campaign_summary();
     assert_eq!(summary.current_capital, 0);
     assert_eq!(summary.current_stage, CampaignStage::ONGOING.to_string());
 
     let recipient_balance = cw20_contract
-        .query_balance(splitter_contract.addr_str().unwrap())
+        .balance(splitter_contract.addr_str().unwrap())
         .balance;
 
     let orders = vec![
@@ -378,7 +470,7 @@ fn test_successful_crowdfund_app_cw20(#[with(false)] setup: TestCase) {
         },
     ];
 
-    let hook_msg = purchase_cw20_msg(orders);
+    let hook_msg = to_json_binary(&Cw20HookMsg::PurchaseTiers { orders }).unwrap();
 
     let purchaser_1_daemon = daemon
         .rebuild()
@@ -387,44 +479,46 @@ fn test_successful_crowdfund_app_cw20(#[with(false)] setup: TestCase) {
         .unwrap();
 
     let purchaser_1_balance = cw20_contract
-        .query_balance(purchaser_1_daemon.sender_addr())
+        .balance(purchaser_1_daemon.sender_addr())
         .balance;
 
     cw20_contract.set_sender(purchaser_1_daemon.sender());
-    cw20_contract.execute_send(
-        crowdfund_contract.addr_str().unwrap(),
-        Uint128::new(500000),
-        &hook_msg,
-    );
+    cw20_contract
+        .send(
+            Uint128::new(500000),
+            AndrAddr::from_string(crowdfund_contract.addr_str().unwrap()),
+            hook_msg,
+        )
+        .unwrap();
     cw20_contract.set_sender(daemon.sender());
 
     let purchaser_1_change = purchaser_1_balance
         - cw20_contract
-            .query_balance(purchaser_1_daemon.sender_addr())
+            .balance(purchaser_1_daemon.sender_addr())
             .balance;
 
     assert_eq!(purchaser_1_change, Uint128::new(10 * 10000 + 20000 * 10));
 
-    crowdfund_contract.execute_end_campaign();
+    crowdfund_contract.end_campaign().unwrap();
 
-    let summary = crowdfund_contract.query_campaign_summary();
+    let summary = crowdfund_contract.campaign_summary();
     assert_eq!(summary.current_capital, 10 * 10000 + 20000 * 10);
     assert_eq!(summary.current_stage, CampaignStage::SUCCESS.to_string());
 
     // Splitter is only working for native token, not for cw20 token
     let recipient_change = cw20_contract
-        .query_balance(splitter_contract.addr_str().unwrap())
+        .balance(splitter_contract.addr_str().unwrap())
         .balance
         - recipient_balance;
 
     assert_eq!(recipient_change.u128(), summary.current_capital);
 
     crowdfund_contract.set_sender(purchaser_1_daemon.sender());
-    crowdfund_contract.execute_claim();
+    crowdfund_contract.claim().unwrap();
 
-    let owner_resp = cw721_contract.query_owner_of("0".to_string()).owner;
+    let owner_resp = cw721_contract.owner_of("0".to_string()).owner;
     assert_eq!(owner_resp, purchaser_1_daemon.sender_addr().into_string());
 
-    let owner_resp = cw721_contract.query_owner_of("29".to_string()).owner;
+    let owner_resp = cw721_contract.owner_of("29".to_string()).owner;
     assert_eq!(owner_resp, purchaser_1_daemon.sender_addr().into_string());
 }

@@ -18,6 +18,7 @@ cosmwasm-std = { workspace = true, features = ["cosmwasm_1_2"] }
 cosmwasm-schema = { workspace = true }
 serde = { workspace = true }
 andromeda-std = { workspace = true }
+cw-orch = { workspace = true }
 
 [dev-dependencies]
 cw-multi-test = { version = "1.0.0" }

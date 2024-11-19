@@ -18,6 +18,7 @@ cosmwasm-std = { workspace = true, features = ["staking"] }
 cosmwasm-schema = { workspace = true }
 serde = { version = "1.0.215", default-features = false, features = ["derive"] }
 cw-utils = { workspace = true }
+cw-orch = { workspace = true }
 cw3 = { workspace = true }
 cw4 = { workspace = true }
 cw721 = { workspace = true }

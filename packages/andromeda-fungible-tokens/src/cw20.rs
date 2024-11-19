@@ -34,6 +34,7 @@ impl From<InstantiateMsg> for Cw20InstantiateMsg {
 
 #[andr_exec]
 #[cw_serde]
+#[derive(cw_orch::ExecuteFns)]
 pub enum ExecuteMsg {
     /// Transfer is a base message to move tokens to another account without triggering actions
     Transfer {

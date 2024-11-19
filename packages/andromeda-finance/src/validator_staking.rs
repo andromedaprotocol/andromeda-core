@@ -14,7 +14,9 @@ pub struct InstantiateMsg {
 
 #[andr_exec]
 #[cw_serde]
+#[derive(cw_orch::ExecuteFns)]
 pub enum ExecuteMsg {
+    #[cw_orch(payable)]
     Stake {
         validator: Option<Addr>,
     },
