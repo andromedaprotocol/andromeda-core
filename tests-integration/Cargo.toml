@@ -132,7 +132,7 @@ cw-asset = { workspace = true }
 toml = "0.8"
 cw-orch = { workspace = true }
 cw-orch-interchain = "=0.3.0"
-ibc-relayer-types = "=0.25.1"
+ibc-relayer-types = "=0.29.3"
 
 andromeda-std = { workspace = true }
 
