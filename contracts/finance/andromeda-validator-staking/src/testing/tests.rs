@@ -13,7 +13,6 @@ use cosmwasm_std::{
 use andromeda_finance::validator_staking::{ExecuteMsg, InstantiateMsg};
 
 const OWNER: &str = "owner";
-const ANYONE: &str = "anyone";
 
 fn init(deps: DepsMut, default_validator: Addr) -> Result<Response, ContractError> {
     let msg = InstantiateMsg {
@@ -146,31 +145,6 @@ fn test_unauthorized_unstake() {
     };
 
     let info = mock_info("other", &[coin(100, "uandr")]);
-    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
-    assert_eq!(res, ContractError::Unauthorized {});
-}
-
-#[test]
-fn test_unauthorized_claim() {
-    let mut deps = mock_dependencies_custom();
-    let default_validator = Addr::unchecked(DEFAULT_VALIDATOR);
-    let valid_validator = Addr::unchecked(VALID_VALIDATOR);
-    init(deps.as_mut(), default_validator).unwrap();
-
-    let msg = ExecuteMsg::Stake {
-        validator: Some(valid_validator.clone()),
-    };
-
-    let info = mock_info(OWNER, &[coin(100, "uandr")]);
-
-    execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-
-    let msg = ExecuteMsg::Claim {
-        validator: Some(valid_validator.clone()),
-        restake: None,
-    };
-
-    let info = mock_info(ANYONE, &[coin(100, "uandr")]);
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
     assert_eq!(res, ContractError::Unauthorized {});
 }

@@ -4,6 +4,8 @@ use cosmwasm_std::{Addr, Coin, DepsMut, Timestamp, Uint128};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+pub const RESTAKING_ACTION: &str = "restake";
+
 #[andr_instantiate]
 #[cw_serde]
 pub struct InstantiateMsg {

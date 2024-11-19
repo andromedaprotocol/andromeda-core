@@ -10,7 +10,7 @@ use cw2::set_contract_version;
 
 use andromeda_finance::validator_staking::{
     is_validator, ExecuteMsg, GetDefaultValidatorResponse, InstantiateMsg, QueryMsg,
-    UnstakingTokens,
+    UnstakingTokens, RESTAKING_ACTION,
 };
 
 use andromeda_std::{
@@ -295,7 +295,10 @@ fn execute_claim(
     restake: Option<bool>,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
-        deps, info, env, ..
+        mut deps,
+        info,
+        env,
+        ..
     } = ctx;
 
     let default_validator = DEFAULT_VALIDATOR.load(deps.storage)?;
@@ -304,13 +307,7 @@ fn execute_claim(
     // Check if the validator is valid before unstaking
     is_validator(&deps, &validator)?;
 
-    // Ensure msg sender is the contract owner
-    ensure!(
-        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {}
-    );
-
-    let delegator = env.contract.address;
+    let delegator = env.clone().contract.address;
     let Some(res) = deps
         .querier
         .query_delegation(delegator.to_string(), validator.to_string())?
@@ -345,11 +342,13 @@ fn execute_claim(
     let restake = restake.unwrap_or(false);
     // Only one denom is allowed to be restaked at a time
     let res = if restake && res.accumulated_rewards.len() == 1 {
-        // Only the contract owner can decide to restake
-        ensure!(
-            ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
-            ContractError::Unauthorized {}
-        );
+        // Only the contract owner and permissioned actors can restake
+        ADOContract::default().is_permissioned(
+            deps.branch(),
+            env,
+            RESTAKING_ACTION,
+            info.sender,
+        )?;
         RESTAKING_QUEUE.save(deps.storage, &res)?;
         Response::new()
             .add_submessage(SubMsg::reply_always(
@@ -359,6 +358,11 @@ fn execute_claim(
             .add_attribute("action", "validator-claim-reward")
             .add_attribute("validator", validator.to_string())
     } else {
+        // Ensure msg sender is the contract owner
+        ensure!(
+            ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
+            ContractError::Unauthorized {}
+        );
         Response::new()
             .add_message(withdraw_msg)
             .add_attribute("action", "validator-claim-reward")
