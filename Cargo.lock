@@ -906,7 +906,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-vesting"
-version = "3.0.3-beta"
+version = "3.0.4-beta"
 dependencies = [
  "andromeda-app",
  "andromeda-finance",
