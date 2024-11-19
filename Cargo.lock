@@ -508,7 +508,7 @@ dependencies = [
  "cosmwasm-schema 1.5.8",
  "cosmwasm-std 1.5.8",
  "cw-asset",
- "cw-controllers",
+ "cw-controllers 2.0.0",
  "cw-utils 1.0.3",
  "cw20 1.1.2",
  "cw20-base",
@@ -555,7 +555,7 @@ dependencies = [
  "andromeda-testing",
  "cosmwasm-schema 1.5.8",
  "cosmwasm-std 1.5.8",
- "cw-controllers",
+ "cw-controllers 2.0.0",
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus 1.2.0",
@@ -1968,6 +1968,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw-controllers"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "50c1804013d21060b994dea28a080f9eab78a3bcb6b617f05e7634b0600bf7b1"
+dependencies = [
+ "cosmwasm-schema 2.1.4",
+ "cosmwasm-std 2.1.4",
+ "cw-storage-plus 2.0.0",
+ "cw-utils 2.0.0",
+ "schemars",
+ "serde",
+ "thiserror 1.0.69",
+]
+
+[[package]]
 name = "cw-json"
 version = "0.1.1"
 source = "git+https://github.com/SlayerAnsh/cw-json.git#1a3ef8005bafdd30571dc4546ca52400e45fda8a"
@@ -2423,7 +2438,7 @@ checksum = "76221201da08fed611c857ea3aa21c031a4a7dc771a8b1750559ca987335dc02"
 dependencies = [
  "cosmwasm-schema 1.5.8",
  "cosmwasm-std 1.5.8",
- "cw-controllers",
+ "cw-controllers 1.1.2",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
  "cw2 1.1.2",
