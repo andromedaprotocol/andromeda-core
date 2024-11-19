@@ -35,10 +35,9 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    msg.validate(&deps)?;
     let config = Config {
-        recipient: msg.recipient,
-        denom: msg.denom,
+        recipient: msg.recipient.clone(),
+        denom: msg.denom.clone(),
     };
 
     CONFIG.save(deps.storage, &config)?;
@@ -52,10 +51,12 @@ pub fn instantiate(
         BaseInstantiateMsg {
             ado_type: CONTRACT_NAME.to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
-            kernel_address: msg.kernel_address,
-            owner: msg.owner,
+            kernel_address: msg.kernel_address.clone(),
+            owner: msg.owner.clone(),
         },
     )?;
+
+    msg.validate(&deps)?;
 
     Ok(inst_resp)
 }
