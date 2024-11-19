@@ -56,10 +56,10 @@ jobs:
     name: Actions - build contracts and upload artifacts
     needs: [contract-tests]
     if: >
-      github.event_name == 'pull_request' && (
+      !contains(github.event.pull_request.labels.*.name, 'ci: skip-build') && github.event_name == 'pull_request' && (
         (github.base_ref == 'development' || 
           github.base_ref == 'main' || 
-          contains(github.event.pull_request.labels.*.name, 'ci: build')) && !contains(github.event.pull_request.labels.*.name, 'ci: skip-build')
+          contains(github.event.pull_request.labels.*.name, 'ci: build')) 
       )
     steps:
       - uses: actions-rs/toolchain@v1
@@ -93,10 +93,10 @@ jobs:
     name: Actions - build schemas
     needs: contract-tests
     if: >
-      github.event_name == 'pull_request' && (
+      !contains(github.event.pull_request.labels.*.name, 'ci: skip-build') && github.event_name == 'pull_request' && (
         (github.base_ref == 'development' || 
           github.base_ref == 'main' || 
-          contains(github.event.pull_request.labels.*.name, 'ci: build')) && !contains(github.event.pull_request.labels.*.name, 'ci: skip-build')
+          contains(github.event.pull_request.labels.*.name, 'ci: build')) 
       )
     steps:
       - uses: actions/checkout@v4
