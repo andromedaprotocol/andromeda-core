@@ -55,7 +55,12 @@ jobs:
     runs-on: ubuntu-latest
     name: Actions - build contracts and upload artifacts
     needs: [contract-tests]
-    if: github.event_name == 'pull_request'
+    if: >
+      github.event_name == 'pull_request' && (
+        (github.base_ref == 'development' || 
+          github.base_ref == 'main' || 
+          contains(github.event.pull_request.labels.*.name, 'ci: build')) && !contains(github.event.pull_request.labels.*.name, 'ci: skip-build')
+      )
     steps:
       - uses: actions-rs/toolchain@v1
         with:
@@ -77,10 +82,6 @@ jobs:
           chmod +x "${GITHUB_WORKSPACE}/.github/file-size.sh"
           "${GITHUB_WORKSPACE}/.github/file-size.sh"
       - name: Upload Artifacts
-        if: >
-          (github.base_ref == 'development' || 
-          github.base_ref == 'main' || 
-          contains(github.event.pull_request.labels.*.name, 'ci: build')) && !contains(github.event.pull_request.labels.*.name, 'ci: skip-build')
         uses: actions/upload-artifact@v4
         with:
           name: contracts
@@ -91,7 +92,12 @@ jobs:
     runs-on: ubuntu-latest
     name: Actions - build schemas
     needs: contract-tests
-    if: github.event_name == 'pull_request'
+    if: >
+      github.event_name == 'pull_request' && (
+        (github.base_ref == 'development' || 
+          github.base_ref == 'main' || 
+          contains(github.event.pull_request.labels.*.name, 'ci: build')) && !contains(github.event.pull_request.labels.*.name, 'ci: skip-build')
+      )
     steps:
       - uses: actions/checkout@v4
       - name: Build Schema
@@ -99,10 +105,6 @@ jobs:
           chmod +x "${GITHUB_WORKSPACE}/scripts/build_schema.sh"
           make schemas
       - name: Upload Artifacts
-        if: >
-          (github.base_ref == 'development' || 
-          github.base_ref == 'main' || 
-          contains(github.event.pull_request.labels.*.name, 'ci: build')) && !contains(github.event.pull_request.labels.*.name, 'ci: skip-build')
         uses: actions/upload-artifact@v4
         with:
           name: schema
