@@ -59,7 +59,7 @@ cw-asset = "=3.0.0"
 cosmwasm-schema = "1.5.8"
 semver = "1.0.0"
 enum-repr = "0.2.6"
-cw-multi-test = { version = "1.0.0", features = ["cosmwasm_1_2"] }
+cw-multi-test = { version = "2.2.0", features = ["cosmwasm_1_2"] }
 serde = { version = "1.0.215" }
 test-case = { version = "3.3.1" }
 cw-orch = "=0.24.1"
