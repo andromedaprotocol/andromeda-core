@@ -11,6 +11,10 @@ use std::cmp::Ordering;
 
 use crate::state::{next_id, BALLOTS, CONFIG, PROPOSALS, VOTERS};
 
+// This contains functionality derived from the cw3-fixed-multisig contract.
+// Source: https://github.com/CosmWasm/cw-plus/blob/main/contracts/cw3-fixed-multisig
+// License: Apache-2.0
+
 pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     let action_response = call_action(
         &mut ctx.deps,

@@ -1,6 +1,6 @@
 use cosmwasm_std::{BlockInfo, Deps, Env, Order, StdResult};
 
-use andromeda_std::error::ContractError;
+use andromeda_std::{amp::AndrAddr, error::ContractError};
 use cw3::{
     Proposal, ProposalListResponse, ProposalResponse, VoteInfo, VoteListResponse, VoteResponse,
     VoterDetail, VoterListResponse, VoterResponse,
@@ -9,6 +9,10 @@ use cw_storage_plus::Bound;
 use cw_utils::ThresholdResponse;
 
 use crate::state::{BALLOTS, CONFIG, PROPOSALS, VOTERS};
+
+// This modules contains functionality derived from the cw3-fixed-multisig contract.
+// Source: https://github.com/CosmWasm/cw-plus/blob/main/contracts/cw3-fixed-multisig
+// License: Apache-2.0
 
 pub fn query_threshold(deps: Deps) -> Result<ThresholdResponse, ContractError> {
     let cfg = CONFIG.load(deps.storage)?;
@@ -35,9 +39,9 @@ pub fn query_proposal(deps: Deps, env: Env, id: u64) -> Result<ProposalResponse,
 pub fn query_vote(
     deps: Deps,
     proposal_id: u64,
-    voter: String,
+    voter: AndrAddr,
 ) -> Result<VoteResponse, ContractError> {
-    let voter = deps.api.addr_validate(&voter)?;
+    let voter = voter.get_raw_address(&deps)?;
     let ballot = BALLOTS.may_load(deps.storage, (proposal_id, &voter))?;
     let vote = ballot.map(|b| VoteInfo {
         proposal_id,
@@ -132,8 +136,8 @@ pub fn list_votes(
     Ok(VoteListResponse { votes })
 }
 
-pub fn query_voter(deps: Deps, voter: String) -> Result<VoterResponse, ContractError> {
-    let voter = deps.api.addr_validate(&voter)?;
+pub fn query_voter(deps: Deps, voter: AndrAddr) -> Result<VoterResponse, ContractError> {
+    let voter = voter.get_raw_address(&deps)?;
     let weight = VOTERS.may_load(deps.storage, &voter)?;
     Ok(VoterResponse { weight })
 }

@@ -43,6 +43,10 @@ pub fn instantiate(
         },
     )?;
 
+    // This contains functionality derived from the cw3-fixed-multisig contract.
+    // Source: https://github.com/CosmWasm/cw-plus/blob/main/contracts/cw3-fixed-multisig
+    // License: Apache-2.0
+
     if msg.voters.is_empty() {
         return Err(ContractError::CustomError {
             msg: "No voters".to_string(),

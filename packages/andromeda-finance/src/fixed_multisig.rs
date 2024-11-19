@@ -5,6 +5,10 @@ use cosmwasm_std::{CosmosMsg, Empty};
 use cw3::Vote;
 use cw_utils::{Duration, Expiration, Threshold};
 
+// This contains functionality derived from the cw3-fixed-multisig contract.
+// Source: https://github.com/CosmWasm/cw-plus/blob/main/contracts/cw3-fixed-multisig
+// License: Apache-2.0
+
 #[andr_instantiate]
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -59,7 +63,7 @@ pub enum QueryMsg {
         limit: Option<u32>,
     },
     #[returns(cw3::VoteResponse)]
-    Vote { proposal_id: u64, voter: String },
+    Vote { proposal_id: u64, voter: AndrAddr },
     #[returns(cw3::VoteListResponse)]
     ListVotes {
         proposal_id: u64,
@@ -67,7 +71,7 @@ pub enum QueryMsg {
         limit: Option<u32>,
     },
     #[returns(cw3::VoterResponse)]
-    Voter { address: String },
+    Voter { address: AndrAddr },
     #[returns(cw3::VoterListResponse)]
     ListVoters {
         start_after: Option<String>,
