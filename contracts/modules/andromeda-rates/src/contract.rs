@@ -13,7 +13,8 @@ use andromeda_std::{
 };
 
 use cosmwasm_std::{
-    attr, coin, ensure, Binary, Coin, Deps, DepsMut, Env, Event, MessageInfo, Response, SubMsg,
+    attr, coin, ensure, Binary, Coin, Deps, DepsMut, Env, Event, MessageInfo, Reply, Response,
+    StdError, SubMsg,
 };
 use cosmwasm_std::{entry_point, from_json};
 use cw20::Cw20Coin;
@@ -209,4 +210,15 @@ pub fn query_deducted_funds(
         },
         events,
     })
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
+    if msg.result.is_err() {
+        return Err(ContractError::Std(StdError::generic_err(
+            msg.result.unwrap_err(),
+        )));
+    }
+
+    Ok(Response::default())
 }

@@ -196,7 +196,8 @@ impl AndrAddr {
     /// Gets the raw path for a given AndrAddr by stripping away any protocols or chain declarations.
     ///
     /// E.g. `ibc://cosmoshub-4/user/app/component` would return `/user/app/component`
-    /// E.g. `ibc://cosmoshub-4/user` would return `user`
+    /// E.g. `ibc://cosmoshub-4/cosmos1...` would return `cosmos1...`
+    /// E.g. `ibc://chain/ibc://chain2/home/app/component` would return `ibc://chain2/home/app/component`
     ///
     /// Returns the human readable address if the address is not a VFS path.
     pub fn get_raw_path(&self) -> &str {
@@ -206,19 +207,25 @@ impl AndrAddr {
             match self.get_protocol() {
                 None => self.0.as_str(),
                 Some(..) => {
+                    // Find the first "://" to skip the protocol part
                     let start = self.0.find("://").unwrap() + 3;
-                    let end = self.0[start..]
-                        .find('/')
-                        .unwrap_or_else(|| self.0[start..].len());
-                    let raw_path = &self.0[start + end..];
-                    if let Some(path_without_leading_slash) = raw_path.strip_prefix('/') {
-                        if path_without_leading_slash.contains('/') {
-                            raw_path
+
+                    // Find the next '/' after the protocol+chain
+                    if let Some(path_start) = self.0[start..].find('/') {
+                        let path = &self.0[start + path_start + 1..];
+                        // Check if the path starts with another protocol
+                        if path.starts_with("ibc://") {
+                            path
+                        } else if path.contains('/') {
+                            // If it contains '/', return the path with a leading '/'
+                            &self.0[start + path_start..]
                         } else {
-                            path_without_leading_slash
+                            // If it doesn't contain '/', return it as is (e.g., "cosmos1...")
+                            path
                         }
                     } else {
-                        raw_path
+                        // If there's no further '/', just return the remaining part
+                        &self.0[start..]
                     }
                 }
             }
@@ -385,6 +392,12 @@ mod tests {
 
         let addr = AndrAddr("ibc://chain/home/app/component".to_string());
         assert_eq!(addr.get_raw_path(), "/home/app/component");
+
+        let addr = AndrAddr("ibc://chain/cosmos1...".to_string());
+        assert_eq!(addr.get_raw_path(), "cosmos1...");
+
+        let addr = AndrAddr("ibc://chain/ibc://chain2/home/app/component".to_string());
+        assert_eq!(addr.get_raw_path(), "ibc://chain2/home/app/component");
 
         let addr = AndrAddr("/chain/home/app/component".to_string());
         assert_eq!(addr.get_raw_path(), "/chain/home/app/component");

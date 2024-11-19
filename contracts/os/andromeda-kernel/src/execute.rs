@@ -656,9 +656,9 @@ impl MsgHandler {
     fn handle_ibc_direct(
         &self,
         _deps: DepsMut,
-        _info: MessageInfo,
+        info: MessageInfo,
         env: Env,
-        _ctx: Option<AMPPkt>,
+        ctx: Option<AMPPkt>,
         sequence: u64,
         channel_info: ChannelInfo,
     ) -> Result<Response, ContractError> {
@@ -679,11 +679,25 @@ impl MsgHandler {
                 error: Some(format!("Channel not found for chain {chain}")),
             });
         }?;
+        let ctx = ctx.map_or(
+            AMPPkt::new(
+                info.sender,
+                env.clone().contract.address,
+                vec![AMPMsg::new(
+                    recipient.clone().get_raw_path(),
+                    message.clone(),
+                    None,
+                )],
+            ),
+            |mut ctx| {
+                ctx.ctx.previous_sender = env.contract.address.to_string();
+                ctx.messages[0].recipient =
+                    AndrAddr::from_string(recipient.clone().get_raw_path().to_string());
+                ctx
+            },
+        );
+        let kernel_msg = IbcExecuteMsg::SendMessage { amp_packet: ctx };
 
-        let kernel_msg = IbcExecuteMsg::SendMessage {
-            recipient: AndrAddr::from_string(recipient.get_raw_path()),
-            message: message.clone(),
-        };
         let msg = IbcMsg::SendPacket {
             channel_id: channel.clone(),
             data: to_json_binary(&kernel_msg)?,

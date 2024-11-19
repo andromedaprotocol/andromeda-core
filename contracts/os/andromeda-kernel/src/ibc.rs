@@ -142,9 +142,10 @@ pub fn do_ibc_packet_receive(
         amp_ctx: None,
     };
     match packet_msg {
-        IbcExecuteMsg::SendMessage { recipient, message } => {
-            let amp_msg = AMPMsg::new(recipient, message, None);
-            let res = execute::send(execute_env, amp_msg)?;
+        IbcExecuteMsg::SendMessage { amp_packet } => {
+            execute_env.amp_ctx = Some(amp_packet.clone());
+
+            let res = execute::send(execute_env, amp_packet.messages.first().unwrap().clone())?;
 
             Ok(IbcReceiveResponse::new()
                 .set_ack(make_ack_success())

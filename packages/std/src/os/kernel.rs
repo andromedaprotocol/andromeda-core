@@ -1,13 +1,13 @@
-use crate::ado_base::ownership::OwnershipMessage;
-use crate::amp::messages::AMPMsg;
-use crate::amp::messages::AMPPkt;
-use crate::amp::AndrAddr;
-use crate::error::ContractError;
+use crate::{
+    ado_base::ownership::OwnershipMessage,
+    amp::{
+        messages::{AMPMsg, AMPPkt},
+        AndrAddr,
+    },
+    error::ContractError,
+};
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::Addr;
-use cosmwasm_std::Binary;
-use cosmwasm_std::Coin;
-use cosmwasm_std::IbcPacketAckMsg;
+use cosmwasm_std::{Addr, Binary, Coin, IbcPacketAckMsg};
 
 #[cw_serde]
 pub struct ChannelInfo {
@@ -133,8 +133,7 @@ pub struct VerifyAddressResponse {
 #[cw_serde]
 pub enum IbcExecuteMsg {
     SendMessage {
-        recipient: AndrAddr,
-        message: Binary,
+        amp_packet: AMPPkt,
     },
     SendMessageWithFunds {
         recipient: AndrAddr,

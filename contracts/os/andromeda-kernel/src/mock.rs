@@ -20,7 +20,7 @@ pub fn mock_andromeda_kernel() -> Box<dyn Contract<Empty>> {
 pub fn mock_kernel_instantiate_message(owner: Option<String>) -> InstantiateMsg {
     InstantiateMsg {
         owner,
-        chain_name: "andromeda".to_string(),
+        chain_name: "andromeda-local".to_string(),
     }
 }
 

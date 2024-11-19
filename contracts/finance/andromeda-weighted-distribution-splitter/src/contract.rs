@@ -18,7 +18,7 @@ use andromeda_std::{
 };
 use cosmwasm_std::{
     attr, ensure, entry_point, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
-    Response, SubMsg, Uint128,
+    Reply, Response, StdError, SubMsg, Uint128,
 };
 use cw_utils::nonpayable;
 
@@ -478,4 +478,15 @@ fn query_splitter(deps: Deps) -> Result<GetSplitterConfigResponse, ContractError
     let splitter = SPLITTER.load(deps.storage)?;
 
     Ok(GetSplitterConfigResponse { config: splitter })
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
+    if msg.result.is_err() {
+        return Err(ContractError::Std(StdError::generic_err(
+            msg.result.unwrap_err(),
+        )));
+    }
+
+    Ok(Response::default())
 }
