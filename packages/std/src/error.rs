@@ -2,7 +2,7 @@ use cosmwasm_std::{Addr, OverflowError, StdError};
 use cw20_base::ContractError as Cw20ContractError;
 use cw721_base::ContractError as Cw721ContractError;
 use cw_asset::AssetError;
-use cw_utils::{ParseReplyError, PaymentError};
+use cw_utils::{ParseReplyError, PaymentError, ThresholdError};
 use hex::FromHexError;
 use std::convert::From;
 use std::str::{ParseBoolError, Utf8Error};
@@ -24,6 +24,9 @@ pub enum ContractError {
 
     #[error("{0}")]
     ParseReplyError(#[from] ParseReplyError),
+
+    #[error("{0}")]
+    Threshold(#[from] ThresholdError),
 
     #[error("Unauthorized")]
     Unauthorized {},
