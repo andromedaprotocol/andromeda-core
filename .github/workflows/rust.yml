@@ -69,17 +69,18 @@ jobs:
           "${GITHUB_WORKSPACE}/scripts/install_binaryen.sh"
       - name: Build
         run: |
-          chmod +x "${GITHUB_WORKSPACE}/scripts/build.sh"
-          "${GITHUB_WORKSPACE}/scripts/build.sh" all
+          chmod +x "${GITHUB_WORKSPACE}/scripts/build_all.sh"
+          make build
+          sudo make version-map
       - name: Check contract sizes
         run: |
           chmod +x "${GITHUB_WORKSPACE}/.github/file-size.sh"
           "${GITHUB_WORKSPACE}/.github/file-size.sh"
       - name: Upload Artifacts
         if: >
-          github.base_ref == 'development' || 
+          (github.base_ref == 'development' || 
           github.base_ref == 'main' || 
-          contains(github.event.pull_request.labels.*.name, 'ci: build')
+          contains(github.event.pull_request.labels.*.name, 'ci: build')) && !contains(github.event.pull_request.labels.*.name, 'ci: skip-build')
         uses: actions/upload-artifact@v3
         with:
           name: contracts
@@ -96,12 +97,12 @@ jobs:
       - name: Build Schema
         run: |
           chmod +x "${GITHUB_WORKSPACE}/scripts/build_schema.sh"
-          "${GITHUB_WORKSPACE}/scripts/build_schema.sh"
+          make schemas
       - name: Upload Artifacts
         if: >
-          github.base_ref == 'development' || 
+          (github.base_ref == 'development' || 
           github.base_ref == 'main' || 
-          contains(github.event.pull_request.labels.*.name, 'ci: build')
+          contains(github.event.pull_request.labels.*.name, 'ci: build')) && !contains(github.event.pull_request.labels.*.name, 'ci: skip-build')
         uses: actions/upload-artifact@v4
         with:
           name: schema
