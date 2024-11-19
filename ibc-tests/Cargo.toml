@@ -12,7 +12,7 @@ name = "validator_staking"
 serde.workspace = true
 tokio = "1.39.3"
 cw-orch = { workspace = true }
-cw-orch-daemon = "0.24.2"
+cw-orch-daemon = "0.28.1"
 
 andromeda-testing-e2e = { workspace = true }
 
