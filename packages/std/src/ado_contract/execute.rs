@@ -139,7 +139,7 @@ impl<'a> ADOContract<'a> {
 
         // New version has to be newer/greater than the old version
         ensure!(
-            storage_version < version,
+            storage_version <= version,
             ContractError::CannotMigrate {
                 previous_contract: stored.version,
             }

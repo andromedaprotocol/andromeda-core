@@ -14,6 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added Denom Validation in IBC Registry ADO [(#571)](https://github.com/andromedaprotocol/andromeda-core/pull/571)
 - Added Kernel ICS20 Transfer with Optional ExecuteMsg [(#577)](https://github.com/andromedaprotocol/andromeda-core/pull/577)
 - Added IBC Denom Wrap/Unwrap [(#579)](https://github.com/andromedaprotocol/andromeda-core/pull/579)
+- Added deployment script/CI workflow for OS [(#616)](https://github.com/andromedaprotocol/andromeda-core/pull/616)
+- Added deployable interfaces to all ADOs [(#620)](https://github.com/andromedaprotocol/andromeda-core/pull/620)
 
 ### Changed
 
@@ -24,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Vesting: Added validation to the instantiation process [(#583)](https://github.com/andromedaprotocol/andromeda-core/pull/583)
 - Fix precision issue with vestings claim batch method [(#555)](https://github.com/andromedaprotocol/andromeda-core/pull/555)
+- (validator-staking) fix: validator staking distribution message for andromeda chain [(#618)](https://github.com/andromedaprotocol/andromeda-core/pull/618)
 
 ### Removed
 
@@ -42,12 +45,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added String Storage ADO [(#512)](https://github.com/andromedaprotocol/andromeda-core/pull/512)
 - Boolean Storage ADO [(#513)](https://github.com/andromedaprotocol/andromeda-core/pull/513)
 - Added Counter ADO [(#514)](https://github.com/andromedaprotocol/andromeda-core/pull/514)
+- Added Curve ADO [(#515)](https://github.com/andromedaprotocol/andromeda-core/pull/515)
 - Added Date Time ADO [(#519)](https://github.com/andromedaprotocol/andromeda-core/pull/519)
+- Added Graph ADO [(#526)](https://github.com/andromedaprotocol/andromeda-core/pull/526)
 - Added Authorized CW721 Addresses to Marketplace [(#542)](https://github.com/andromedaprotocol/andromeda-core/pull/542)
 - Added Denom Validation for Rates [(#568)](https://github.com/andromedaprotocol/andromeda-core/pull/568)
 - Added BuyNow option for Auction [(#533)](https://github.com/andromedaprotocol/andromeda-core/pull/533)
 - Include ADOBase Version in Schema [(#574)](https://github.com/andromedaprotocol/andromeda-core/pull/574)
-
+- Added multi-hop support for IBC [(#604)](https://github.com/andromedaprotocol/andromeda-core/pull/604)
+- Added Restake and Redelegate to Validator Staking [(#622)](https://github.com/andromedaprotocol/andromeda-core/pull/622)
 
 ### Changed
 
