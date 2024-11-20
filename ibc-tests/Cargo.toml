@@ -50,7 +50,7 @@ andromeda-app = { workspace = true }
 andromeda-fungible-tokens = { workspace = true }
 andromeda-non-fungible-tokens = { workspace = true }
 cosmwasm-std = { workspace = true, features = ["staking"] }
-cosmrs = "0.19.0"
+cosmrs = "0.21.0"
 prost-types = "0.13.1"
 cw20.workspace = true
 cw721.workspace = true
