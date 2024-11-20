@@ -45,13 +45,13 @@ attach-contract-versions:
 # Runs unit tests
 unit-test:
 	@echo "Running unit tests..."
-	@cargo unit-test --workspace
+	@cargo unit-test --workspace --quiet
 	@echo "Unit tests complete! \033[0;32m\xE2\x9C\x94\033[0m"
 
 # Runs integration tests
 integration-test:
 	@echo "Running integration tests..."
-	@cargo test -p tests-integration --verbose
+	@cargo test -p tests-integration --quiet
 	@echo "Integration tests complete! \033[0;32m\xE2\x9C\x94\033[0m"
 
 # Runs all tests
@@ -65,7 +65,7 @@ test: unit-test integration-test
 # Optional env vars:
 #   DEPLOYMENT_KERNEL_ADDRESS - For updating kernel address
 #   SLACK_WEBHOOK_URL - For Slack notifications
-deploy: build make-version-map
+deploy: build version-map
 	@echo "Deploying OS..."
 	@test -n "$$DEPLOYMENT_CHAIN" || (echo "Error: DEPLOYMENT_CHAIN is required" && exit 1)
 	@test -n "$$TEST_MNEMONIC" || (echo "Error: TEST_MNEMONIC is required" && exit 1)
