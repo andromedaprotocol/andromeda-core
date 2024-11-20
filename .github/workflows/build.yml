@@ -12,7 +12,7 @@ jobs:
     if: >
       !contains(github.event.pull_request.labels.*.name, 'ci: skip-build')
     steps:
-      - uses: actions-rs/toolchain@v1
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: 1.75.0
       - run: rustup override set 1.75.0
