@@ -45,13 +45,13 @@ attach-contract-versions:
 # Runs unit tests
 unit-test:
 	@echo "Running unit tests..."
-	@cargo unit-test --workspace
+	@cargo unit-test --workspace --quiet
 	@echo "Unit tests complete! \033[0;32m\xE2\x9C\x94\033[0m"
 
 # Runs integration tests
 integration-test:
 	@echo "Running integration tests..."
-	@cargo test -p tests-integration --verbose
+	@cargo test -p tests-integration --quiet
 	@echo "Integration tests complete! \033[0;32m\xE2\x9C\x94\033[0m"
 
 # Runs all tests

@@ -34,6 +34,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
+        test-type: ["integration-test", "unit-test"]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -42,14 +43,7 @@ jobs:
         with:
           toolchain: 1.75.0
           profile: minimal
-      - run: cargo fetch --verbose
-      - run: cargo build
-      - run: cargo test --verbose --all --lib
-        env:
-          RUST_BACKTRACE: 1
-      - run: cargo test -p tests-integration --verbose
-        env:
-          RUST_BACKTRACE: 1
+      - run: make ${{ matrix.test-type }}
 
   build:
     runs-on: ubuntu-latest
