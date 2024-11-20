@@ -20,7 +20,7 @@ resolver = "2"
 [profile.release]
 debug = false
 debug-assertions = false
-opt-level = 'z'
+opt-level = 's'
 codegen-units = 1
 rpath = false
 lto = true
