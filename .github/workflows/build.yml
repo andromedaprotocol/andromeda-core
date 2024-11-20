@@ -7,7 +7,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    name: Actions - build contracts and upload artifacts
+    name: Contracts
     if: >
       !contains(github.event.pull_request.labels.*.name, 'ci: skip-build') && (
         (github.base_ref == 'development' || 
@@ -43,7 +43,7 @@ jobs:
 
   build-schemas:
     runs-on: ubuntu-latest
-    name: Actions - build schemas
+    name: Schemas
     if: >
       !contains(github.event.pull_request.labels.*.name, 'ci: skip-build') && (
         (github.base_ref == 'development' || 
