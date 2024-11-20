@@ -580,7 +580,7 @@ dependencies = [
  "cw-orch",
  "cw-storage-plus 1.2.0",
  "hex",
- "itertools 0.10.5",
+ "itertools 0.13.0",
  "osmosis-std",
  "osmosis-std-derive 0.15.3",
  "prost 0.11.9",
