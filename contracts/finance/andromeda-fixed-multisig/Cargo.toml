@@ -20,7 +20,6 @@ cosmwasm-std = { workspace = true }
 cosmwasm-schema = { workspace = true }
 cw-storage-plus = { workspace = true }
 cw-utils = { workspace = true }
-cw-orch = { workspace = true }
 cw2 = { workspace = true }
 cw3 = { workspace = true }
 cw4 = { workspace = true }
@@ -30,6 +29,7 @@ andromeda-std = { workspace = true }
 andromeda-finance = { workspace = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+cw-orch = { workspace = true }
 cw-multi-test = { workspace = true, optional = true }
 andromeda-testing = { workspace = true, optional = true }
 

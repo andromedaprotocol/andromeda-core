@@ -40,11 +40,13 @@ cw721 = { workspace = true }
 serde-json-wasm = "0.5.0"
 enum-repr = { workspace = true }
 sha2 = "0.10.8"
-cw-orch = { workspace = true }
 osmosis-std-derive = { version = "0.15.3", optional = true }
 prost = { version = "0.11.2", default-features = false, features = [
     "prost-derive",
 ], optional = true }
 
 [dev-dependencies]
-cw-multi-test = { version = "1.0.0" }
+cw-multi-test = { workspace = true }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+cw-orch = { workspace = true }

@@ -8,6 +8,7 @@ license = "MIT"
 
 [features]
 backtraces = ["cosmwasm-std/backtraces"]
+testing = ["cw-multi-test"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [lib]
@@ -18,7 +19,7 @@ cosmwasm-std = { workspace = true, features = ["cosmwasm_1_2"] }
 cosmwasm-schema = { workspace = true }
 serde = { workspace = true }
 andromeda-std = { workspace = true }
-cw-orch = { workspace = true }
 
-[dev-dependencies]
-cw-multi-test = { version = "1.0.0" }
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+cw-orch = { workspace = true }
+cw-multi-test = { workspace = true, optional = true }
