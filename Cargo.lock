@@ -171,7 +171,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-boolean"
-version = "2.0.3"
+version = "0.1.0-beta"
 dependencies = [
  "andromeda-data-storage",
  "andromeda-std",
@@ -203,7 +203,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-counter"
-version = "1.0.2"
+version = "0.1.0-beta"
 dependencies = [
  "andromeda-data-storage",
  "andromeda-std",
@@ -254,7 +254,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-curve"
-version = "1.0.0"
+version = "0.1.0-beta"
 dependencies = [
  "andromeda-app",
  "andromeda-modules",
@@ -352,7 +352,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-date-time"
-version = "1.0.1"
+version = "0.1.0-beta"
 dependencies = [
  "andromeda-app",
  "andromeda-modules",
@@ -482,7 +482,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-fixed-multisig"
-version = "1.0.0"
+version = "0.1.0-beta"
 dependencies = [
  "andromeda-app",
  "andromeda-finance",
@@ -517,7 +517,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-graph"
-version = "1.1.0"
+version = "0.1.0-beta"
 dependencies = [
  "andromeda-data-storage",
  "andromeda-std",
@@ -686,7 +686,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-point"
-version = "1.0.0"
+version = "0.1.0-beta"
 dependencies = [
  "andromeda-data-storage",
  "andromeda-std",
@@ -835,7 +835,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-string-storage"
-version = "1.0.3"
+version = "0.1.0-beta"
 dependencies = [
  "andromeda-data-storage",
  "andromeda-std",
