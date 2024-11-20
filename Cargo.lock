@@ -173,7 +173,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-boolean"
-version = "2.0.3"
+version = "0.1.0-beta"
 dependencies = [
  "andromeda-data-storage",
  "andromeda-std",
@@ -205,7 +205,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-counter"
-version = "1.0.2"
+version = "0.1.0-beta"
 dependencies = [
  "andromeda-data-storage",
  "andromeda-std",
@@ -257,7 +257,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-curve"
-version = "1.0.0"
+version = "0.1.0-beta"
 dependencies = [
  "andromeda-app",
  "andromeda-modules",
@@ -357,7 +357,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-date-time"
-version = "1.0.1"
+version = "0.1.0-beta"
 dependencies = [
  "andromeda-app",
  "andromeda-modules",
@@ -489,7 +489,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-fixed-multisig"
-version = "1.0.0"
+version = "0.1.0-beta"
 dependencies = [
  "andromeda-app",
  "andromeda-finance",
@@ -526,7 +526,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-graph"
-version = "1.1.0"
+version = "0.1.0-beta"
 dependencies = [
  "andromeda-data-storage",
  "andromeda-std",
@@ -697,7 +697,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-point"
-version = "1.0.0"
+version = "0.1.0-beta"
 dependencies = [
  "andromeda-data-storage",
  "andromeda-std",
@@ -846,7 +846,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-string-storage"
-version = "1.0.3"
+version = "0.1.0-beta"
 dependencies = [
  "andromeda-data-storage",
  "andromeda-std",
@@ -5161,12 +5161,15 @@ dependencies = [
 
 [[package]]
 name = "sha256"
-version = "1.1.4"
+version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "08a975c1bc0941703000eaf232c4d8ce188d8d5408d6344b6b2c8c6262772828"
+checksum = "18278f6a914fa3070aa316493f7d2ddfb9ac86ebc06fa3b83bffda487e9065b0"
 dependencies = [
+ "async-trait",
+ "bytes",
  "hex",
  "sha2 0.10.8",
+ "tokio",
 ]
 
 [[package]]

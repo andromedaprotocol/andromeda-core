@@ -1,0 +1,53 @@
+name: Build Contracts & Schemas
+
+on:
+  pull_request:
+    branches: [main, development]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    name: Contracts
+    if: >
+      !contains(github.event.pull_request.labels.*.name, 'ci: skip-build')
+    steps:
+      - uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: 1.75.0
+      - run: rustup override set 1.75.0
+      - run: rustup target add wasm32-unknown-unknown
+      - uses: actions/checkout@v4
+      - name: Build
+        run: |
+          chmod +x "${GITHUB_WORKSPACE}/scripts/build_all.sh"
+          make build
+          sudo make version-map
+      - name: Check contract sizes
+        run: |
+          chmod +x "${GITHUB_WORKSPACE}/.github/file-size.sh"
+          "${GITHUB_WORKSPACE}/.github/file-size.sh"
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: contracts
+          path: ./artifacts/
+          if-no-files-found: error
+
+  build-schemas:
+    runs-on: ubuntu-latest
+    name: Schemas
+    if: >
+      !contains(github.event.pull_request.labels.*.name, 'ci: skip-build')
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Schema
+        run: |
+          chmod +x "${GITHUB_WORKSPACE}/scripts/build_schema.sh"
+          make schemas
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: schema
+          path: ./schemas/
+          if-no-files-found: error
