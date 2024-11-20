@@ -16,7 +16,7 @@ pub enum CurveRestriction {
 }
 
 #[cw_serde]
-pub enum CurveId {
+pub enum CurveType {
     Growth,
     Decay,
 }
@@ -24,7 +24,7 @@ pub enum CurveId {
 #[cw_serde]
 pub enum CurveConfig {
     ExpConfig {
-        curve_id: CurveId,
+        curve_type: CurveType,
         base_value: u64,
         multiple_variable_value: Option<u64>,
         constant_value: Option<u64>,
@@ -35,7 +35,7 @@ impl CurveConfig {
     pub fn validate(&self) -> Result<(), ContractError> {
         match self {
             CurveConfig::ExpConfig {
-                curve_id: _,
+                curve_type: _,
                 base_value,
                 multiple_variable_value: _,
                 constant_value: _,
@@ -94,7 +94,7 @@ mod test {
     #[test]
     fn test_validate_valid() {
         let curve_config = CurveConfig::ExpConfig {
-            curve_id: CurveId::Growth,
+            curve_type: CurveType::Growth,
             base_value: 4,
             multiple_variable_value: None,
             constant_value: None,
@@ -105,7 +105,7 @@ mod test {
     #[test]
     fn test_validate_invalid() {
         let curve_config = CurveConfig::ExpConfig {
-            curve_id: CurveId::Growth,
+            curve_type: CurveType::Growth,
             base_value: 0,
             multiple_variable_value: None,
             constant_value: None,

@@ -3,7 +3,7 @@ use crate::state::{
     CURVE_CONFIG, DEFAULT_CONSTANT_VALUE, DEFAULT_MULTIPLE_VARIABLE_VALUE, RESTRICTION,
 };
 use andromeda_modules::curve::{
-    CurveConfig, CurveId, CurveRestriction, ExecuteMsg, GetCurveConfigResponse,
+    CurveConfig, CurveRestriction, CurveType, ExecuteMsg, GetCurveConfigResponse,
     GetPlotYFromXResponse, GetRestrictionResponse, InstantiateMsg, QueryMsg,
 };
 use andromeda_std::{
@@ -185,14 +185,14 @@ pub fn query_plot_y_from_x(
 
     let y_value = match curve_config {
         CurveConfig::ExpConfig {
-            curve_id,
+            curve_type,
             base_value,
             multiple_variable_value,
             constant_value,
         } => {
-            let curve_id_f64 = match curve_id {
-                CurveId::Growth => 1_f64,
-                CurveId::Decay => -1_f64,
+            let curve_id_f64 = match curve_type {
+                CurveType::Growth => 1_f64,
+                CurveType::Decay => -1_f64,
             };
             let base_value_f64 = base_value as f64;
             let constant_value_f64 = constant_value.unwrap_or(DEFAULT_CONSTANT_VALUE) as f64;

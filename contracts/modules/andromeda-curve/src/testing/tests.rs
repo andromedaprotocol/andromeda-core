@@ -2,7 +2,7 @@ use super::mock::{
     error_initialization, proper_initialization, query_curve_config, query_plot_y_from_x,
     query_restriction, reset, update_curve_config, update_restriction,
 };
-use andromeda_modules::curve::{CurveConfig, CurveId, CurveRestriction};
+use andromeda_modules::curve::{CurveConfig, CurveRestriction, CurveType};
 use andromeda_std::error::ContractError;
 use cosmwasm_std::StdError;
 use test_case::test_case;
@@ -11,7 +11,7 @@ use test_case::test_case;
 fn test_instantiation() {
     proper_initialization(
         CurveConfig::ExpConfig {
-            curve_id: CurveId::Growth,
+            curve_type: CurveType::Growth,
             base_value: 2,
             multiple_variable_value: None,
             constant_value: None,
@@ -24,7 +24,7 @@ fn test_instantiation() {
 fn test_update_restriction() {
     let (mut deps, info) = proper_initialization(
         CurveConfig::ExpConfig {
-            curve_id: CurveId::Growth,
+            curve_type: CurveType::Growth,
             base_value: 2,
             multiple_variable_value: None,
             constant_value: None,
@@ -50,7 +50,7 @@ fn test_update_restriction() {
 fn test_reset() {
     let (mut deps, info) = proper_initialization(
         CurveConfig::ExpConfig {
-            curve_id: CurveId::Growth,
+            curve_type: CurveType::Growth,
             base_value: 2,
             multiple_variable_value: None,
             constant_value: None,
@@ -67,7 +67,7 @@ fn test_reset() {
 fn test_update_curve_config() {
     let (mut deps, info) = proper_initialization(
         CurveConfig::ExpConfig {
-            curve_id: CurveId::Growth,
+            curve_type: CurveType::Growth,
             base_value: 2,
             multiple_variable_value: None,
             constant_value: None,
@@ -77,7 +77,7 @@ fn test_update_curve_config() {
     update_curve_config(
         deps.as_mut(),
         CurveConfig::ExpConfig {
-            curve_id: CurveId::Growth,
+            curve_type: CurveType::Growth,
             base_value: 4,
             multiple_variable_value: None,
             constant_value: Some(2),
@@ -90,7 +90,7 @@ fn test_update_curve_config() {
     assert_eq!(
         res,
         CurveConfig::ExpConfig {
-            curve_id: CurveId::Growth,
+            curve_type: CurveType::Growth,
             base_value: 4,
             multiple_variable_value: None,
             constant_value: Some(2),
@@ -102,7 +102,7 @@ fn test_update_curve_config() {
 fn test_query_curve_config() {
     let (deps, _info) = proper_initialization(
         CurveConfig::ExpConfig {
-            curve_id: CurveId::Growth,
+            curve_type: CurveType::Growth,
             base_value: 2,
             multiple_variable_value: None,
             constant_value: None,
@@ -113,7 +113,7 @@ fn test_query_curve_config() {
     assert_eq!(
         res,
         CurveConfig::ExpConfig {
-            curve_id: CurveId::Growth,
+            curve_type: CurveType::Growth,
             base_value: 2,
             multiple_variable_value: None,
             constant_value: None,
@@ -125,7 +125,7 @@ fn test_query_curve_config() {
 fn test_query_curve_config_base_is_0() {
     let err_res = error_initialization(
         CurveConfig::ExpConfig {
-            curve_id: CurveId::Growth,
+            curve_type: CurveType::Growth,
             base_value: 0,
             multiple_variable_value: None,
             constant_value: None,
@@ -146,7 +146,7 @@ fn test_query_curve_config_base_is_0() {
 fn test_query_plot_y_from_x_base_2_growth(input_x: f64, expected_y: String) {
     let (deps, _info) = proper_initialization(
         CurveConfig::ExpConfig {
-            curve_id: CurveId::Growth,
+            curve_type: CurveType::Growth,
             base_value: 2,
             multiple_variable_value: None,
             constant_value: None,
@@ -164,7 +164,7 @@ fn test_query_plot_y_from_x_base_2_growth(input_x: f64, expected_y: String) {
 fn test_query_plot_y_from_x_base_3_growth(input_x: f64, expected_y: String) {
     let (deps, _info) = proper_initialization(
         CurveConfig::ExpConfig {
-            curve_id: CurveId::Growth,
+            curve_type: CurveType::Growth,
             base_value: 3,
             multiple_variable_value: None,
             constant_value: None,
@@ -182,7 +182,7 @@ fn test_query_plot_y_from_x_base_3_growth(input_x: f64, expected_y: String) {
 fn test_query_plot_y_from_x_base_2_decay(input_x: f64, expected_y: String) {
     let (deps, _info) = proper_initialization(
         CurveConfig::ExpConfig {
-            curve_id: CurveId::Decay,
+            curve_type: CurveType::Decay,
             base_value: 2,
             multiple_variable_value: None,
             constant_value: None,
