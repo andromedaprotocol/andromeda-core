@@ -26,11 +26,16 @@ build_contract () {
     fi
 
     local BUILD_TARGET=${CONTRACT//-/_}
-    local VERSION_FILENAME=$(get_version_filename $CONTRACT);
+    # local VERSION_FILENAME=$(get_version_filename $CONTRACT);
     
     local IN_FILE="./target/wasm32-unknown-unknown/release/$BUILD_TARGET.wasm"
-    local OUT_FILE="./artifacts/$VERSION_FILENAME.wasm"
+    local OUT_FILE="./artifacts/$BUILD_TARGET.wasm"
+    local OUT_FILE_IBC_TEST="./ibc-tests/artifacts/$BUILD_TARGET.wasm"
+    local OUT_FILE_PACKAGE="./packages/andromeda-testing-e2e/artifacts/$BUILD_TARGET.wasm"
+
     wasm-opt -Os $IN_FILE -o $OUT_FILE
+    cp $IN_FILE $OUT_FILE_IBC_TEST
+    cp $IN_FILE $OUT_FILE_PACKAGE
     
     # NOT SO IMPORTANT STEPS
     # Log wasm file sizes at the end of build process
@@ -84,7 +89,11 @@ export RUSTFLAGS="-C link-arg=-s"
 #Clear current builds
 rm -rf ./target
 rm -rf ./artifacts
+rm -rf ./packages/andromeda-testing-e2e/artifacts
+rm -rf ./ibc-tests/artifacts
 mkdir artifacts
+mkdir packages/andromeda-testing-e2e/artifacts
+mkdir ibc-tests/artifacts
 
 set -e
 for target in "$@"; do

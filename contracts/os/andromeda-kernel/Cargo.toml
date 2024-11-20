@@ -28,7 +28,6 @@ cw-storage-plus = { workspace = true }
 
 serde-json-wasm = "1.0.1"
 serde-cw-value = "0.7.0"
-sha256 = "=1.5.0"
 osmosis-std-derive = "0.15.3"
 osmosis-std = "0.1.4"
 prost = { version = "0.11.2", default-features = false, features = [

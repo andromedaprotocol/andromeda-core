@@ -12,6 +12,7 @@ backtraces = ["cosmwasm-std/backtraces"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [lib]
 crate-type = ["cdylib", "rlib"]
+testing = ["cw-multi-test"]
 
 [dependencies]
 cosmwasm-std = { workspace = true }
@@ -24,3 +25,7 @@ cw-asset = { workspace = true }
 cw-controllers = "=1.1.2"
 
 andromeda-std = { workspace = true }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+cw-orch = { workspace = true }
+cw-multi-test = { workspace = true, optional = true }

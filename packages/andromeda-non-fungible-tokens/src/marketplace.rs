@@ -2,7 +2,7 @@ use andromeda_std::{
     amp::{AndrAddr, Recipient},
     andr_exec, andr_instantiate, andr_query,
     common::{
-        denom::{Asset, AuthorizedAddressesResponse, PermissionAction},
+        denom::{Asset, PermissionAction},
         expiration::Expiry,
         MillisecondsDuration, OrderBy,
     },
@@ -129,7 +129,7 @@ pub enum QueryMsg {
         start_after: Option<String>,
         limit: Option<u64>,
     },
-    #[returns(AuthorizedAddressesResponse)]
+    #[returns(::andromeda_std::common::denom::AuthorizedAddressesResponse)]
     AuthorizedAddresses {
         action: PermissionAction,
         start_after: Option<String>,

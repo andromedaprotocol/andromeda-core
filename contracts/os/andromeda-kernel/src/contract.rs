@@ -137,7 +137,7 @@ pub fn execute(
     }
 }
 
-#[cfg_attr(not(feature = "imported"), entry_point)]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn sudo(deps: DepsMut, _env: Env, msg: SudoMsg) -> Result<Response, ContractError> {
     match msg {
         SudoMsg::IBCLifecycleComplete(IBCLifecycleComplete::IBCAck {

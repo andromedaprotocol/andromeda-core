@@ -15,7 +15,7 @@ pub struct InstantiateMsg {
 }
 
 #[cw_serde]
-#[derive(cw_orch::ExecuteFns)]
+#[cfg_attr(not(target_arch = "wasm32"), derive(cw_orch::ExecuteFns))]
 pub enum ExecuteMsg {
     Publish {
         code_id: u64,
@@ -126,7 +126,8 @@ pub struct ADOMetadata {
 }
 
 #[cw_serde]
-#[derive(cw_orch::QueryFns, QueryResponses)]
+#[cfg_attr(not(target_arch = "wasm32"), derive(cw_orch::QueryFns))]
+#[derive(QueryResponses)]
 pub enum QueryMsg {
     #[returns(u64)]
     CodeId { key: String },

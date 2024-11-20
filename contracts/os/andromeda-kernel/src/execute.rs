@@ -8,6 +8,7 @@ use andromeda_std::common::has_coins_merged;
 use andromeda_std::common::reply::ReplyId;
 use andromeda_std::error::ContractError;
 use andromeda_std::os::aos_querier::AOSQuerier;
+#[cfg(not(target_arch = "wasm32"))]
 use andromeda_std::os::ibc_registry::path_to_hops;
 use andromeda_std::os::kernel::{
     AcknowledgementMsg, ChannelInfo, IbcExecuteMsg, Ics20PacketInfo, InternalMsg,
@@ -119,7 +120,7 @@ fn handle_ibc_transfer_funds_reply(
         &ics20_packet_info.funds.denom,
         &ics20_packet_info.channel,
     )?;
-    #[allow(unused_assignments)]
+    #[allow(unused_assignments, unused_mut)]
     let mut adjusted_funds = Coin::new(
         ics20_packet_info.funds.amount.u128(),
         counterparty_denom.clone(),
