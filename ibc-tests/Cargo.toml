@@ -16,7 +16,7 @@ serde.workspace = true
 tokio = "1.39.3"
 cw-orch = { workspace = true }
 cw-orch-daemon = "0.24.2"
-rstest = "0.19.0"
+rstest = "0.23.0"
 
 andromeda-testing-e2e = { workspace = true }
 
