@@ -26,10 +26,10 @@ build_contract () {
     fi
 
     local BUILD_TARGET=${CONTRACT//-/_}
-    local VERSION_FILENAME=$(get_version_filename $CONTRACT);
+    # local VERSION_FILENAME=$(get_version_filename $CONTRACT);
     
     local IN_FILE="./target/wasm32-unknown-unknown/release/$BUILD_TARGET.wasm"
-    local OUT_FILE="./artifacts/$VERSION_FILENAME.wasm"
+    local OUT_FILE="./artifacts/$BUILD_TARGET.wasm"
     local OUT_FILE_IBC_TEST="./ibc-tests/artifacts/$BUILD_TARGET.wasm"
     local OUT_FILE_PACKAGE="./packages/andromeda-testing-e2e/artifacts/$BUILD_TARGET.wasm"
 
