@@ -1,4 +1,4 @@
-#![cfg(all(not(target_arch = "wasm32"), feature = "testing", feature = "rates"))]
+#![cfg(not(target_arch = "wasm32"))]
 
 use crate::contract::{execute, instantiate, query};
 use andromeda_non_fungible_tokens::marketplace::{
@@ -6,9 +6,9 @@ use andromeda_non_fungible_tokens::marketplace::{
 };
 use andromeda_std::ado_base::permissioning::Permission;
 use andromeda_std::ado_base::permissioning::PermissioningMessage;
+use andromeda_std::ado_base::rates::AllRatesResponse;
 use andromeda_std::ado_base::rates::Rate;
 use andromeda_std::ado_base::rates::RatesMessage;
-use andromeda_std::ado_base::rates::RatesQueryMessage;
 use andromeda_std::ado_base::version::VersionResponse;
 use andromeda_std::amp::messages::AMPPkt;
 
@@ -33,13 +33,13 @@ impl MockMarketplace {
         app: &mut MockApp,
         kernel_address: impl Into<String>,
         owner: Option<String>,
-        authorized_cw20_address: Option<AndrAddr>,
+        authorized_cw20_addresses: Option<Vec<AndrAddr>>,
         authorized_token_addresses: Option<Vec<AndrAddr>>,
     ) -> MockMarketplace {
         let msg = mock_marketplace_instantiate_msg(
             kernel_address.into(),
             owner,
-            authorized_cw20_address,
+            authorized_cw20_addresses,
             authorized_token_addresses,
         );
         let addr = app
@@ -109,6 +109,11 @@ impl MockMarketplace {
         let msg = mock_get_version();
         self.query(app, msg)
     }
+
+    pub fn query_all_rates(&self, app: &mut MockApp) -> AllRatesResponse {
+        let msg = mock_get_all_rates();
+        self.query(app, msg)
+    }
 }
 
 pub fn mock_andromeda_marketplace() -> Box<dyn Contract<Empty>> {
@@ -119,12 +124,14 @@ pub fn mock_andromeda_marketplace() -> Box<dyn Contract<Empty>> {
 pub fn mock_marketplace_instantiate_msg(
     kernel_address: String,
     owner: Option<String>,
-    authorized_cw20_address: Option<AndrAddr>,
+    authorized_cw20_addresses: Option<Vec<AndrAddr>>,
+    authorized_token_addresses: Option<Vec<AndrAddr>>,
 ) -> InstantiateMsg {
     InstantiateMsg {
         kernel_address,
         owner,
-        authorized_cw20_address,
+        authorized_cw20_addresses,
+        authorized_token_addresses,
     }
 }
 
@@ -175,12 +182,12 @@ pub fn mock_set_rates(action: impl Into<String>, rate: Rate) -> ExecuteMsg {
 }
 
 pub fn mock_set_permissions(
-    actor: AndrAddr,
+    actors: Vec<AndrAddr>,
     action: impl Into<String>,
     permission: Permission,
 ) -> ExecuteMsg {
     ExecuteMsg::Permissioning(PermissioningMessage::SetPermission {
-        actor,
+        actors,
         action: action.into(),
         permission,
     })
