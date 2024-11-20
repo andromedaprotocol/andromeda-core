@@ -14,9 +14,9 @@ pub struct InstantiateMsg {
 
 #[andr_exec]
 #[cw_serde]
-#[derive(cw_orch::ExecuteFns)]
+#[cfg_attr(not(target_arch = "wasm32"), derive(cw_orch::ExecuteFns))]
 pub enum ExecuteMsg {
-    #[cw_orch(payable)]
+    #[cfg_attr(not(target_arch = "wasm32"), cw_orch(payable))]
     Stake {
         validator: Option<Addr>,
     },
