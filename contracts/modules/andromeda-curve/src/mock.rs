@@ -75,7 +75,7 @@ impl MockCurve {
     }
 
     pub fn query_config(&self, app: &mut MockApp) -> GetCurveConfigResponse {
-        let msg = QueryMsg::GetConfigurationExp {};
+        let msg = QueryMsg::GetCurveConfig {};
         let res: GetCurveConfigResponse = self.query(app, msg);
         res
     }
