@@ -69,7 +69,7 @@ pub fn instantiate(
             deps.storage,
             SEND_CW20_ACTION,
             addr,
-            Permission::Local(LocalPermission::whitelisted(None)),
+            Permission::Local(LocalPermission::whitelisted(None, None)),
         )?;
     }
 

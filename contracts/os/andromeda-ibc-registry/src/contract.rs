@@ -57,7 +57,7 @@ pub fn instantiate(
         deps.storage,
         STORE_DENOM_INFO,
         service_address.clone(),
-        Permission::Local(LocalPermission::Whitelisted(None)),
+        Permission::Local(LocalPermission::whitelisted(None, None)),
     )?;
 
     Ok(resp.add_attribute("service_address", service_address))

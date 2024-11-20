@@ -49,36 +49,56 @@ pub struct PermissionedActionsResponse {
 /// Expiration defaults to `Never` if not provided
 #[cw_serde]
 pub enum LocalPermission {
-    Blacklisted(Option<Expiry>),
+    Blacklisted {
+        start: Option<Expiry>,
+        expiration: Option<Expiry>,
+    },
     Limited {
+        start: Option<Expiry>,
         expiration: Option<Expiry>,
         uses: u32,
     },
-    Whitelisted(Option<Expiry>),
+    Whitelisted {
+        start: Option<Expiry>,
+        expiration: Option<Expiry>,
+    },
 }
 
 impl std::default::Default for LocalPermission {
     fn default() -> Self {
-        Self::Whitelisted(None)
+        Self::Whitelisted {
+            start: None,
+            expiration: None,
+        }
     }
 }
 
 impl LocalPermission {
-    pub fn blacklisted(expiration: Option<Expiry>) -> Self {
-        Self::Blacklisted(expiration)
+    pub fn blacklisted(start: Option<Expiry>, expiration: Option<Expiry>) -> Self {
+        Self::Blacklisted { start, expiration }
     }
 
-    pub fn whitelisted(expiration: Option<Expiry>) -> Self {
-        Self::Whitelisted(expiration)
+    pub fn whitelisted(start: Option<Expiry>, expiration: Option<Expiry>) -> Self {
+        Self::Whitelisted { start, expiration }
     }
 
-    pub fn limited(expiration: Option<Expiry>, uses: u32) -> Self {
-        Self::Limited { expiration, uses }
+    pub fn limited(start: Option<Expiry>, expiration: Option<Expiry>, uses: u32) -> Self {
+        Self::Limited {
+            start,
+            expiration,
+            uses,
+        }
     }
 
     pub fn is_permissioned(&self, env: &Env, strict: bool) -> bool {
         match self {
-            Self::Blacklisted(expiration) => {
+            Self::Blacklisted { start, expiration } => {
+                // If start time hasn't started yet, then it should return true
+                if let Some(start) = start {
+                    if !start.get_time(&env.block).is_expired(&env.block) {
+                        return true;
+                    }
+                }
                 if let Some(expiration) = expiration {
                     if expiration.get_time(&env.block).is_expired(&env.block) {
                         return !strict;
@@ -86,7 +106,16 @@ impl LocalPermission {
                 }
                 false
             }
-            Self::Limited { expiration, uses } => {
+            Self::Limited {
+                start,
+                expiration,
+                uses,
+            } => {
+                if let Some(start) = start {
+                    if !start.get_time(&env.block).is_expired(&env.block) {
+                        return true;
+                    }
+                }
                 if let Some(expiration) = expiration {
                     if expiration.get_time(&env.block).is_expired(&env.block) {
                         return !strict;
@@ -97,7 +126,12 @@ impl LocalPermission {
                 }
                 true
             }
-            Self::Whitelisted(expiration) => {
+            Self::Whitelisted { start, expiration } => {
+                if let Some(start) = start {
+                    if !start.get_time(&env.block).is_expired(&env.block) {
+                        return !strict;
+                    }
+                }
                 if let Some(expiration) = expiration {
                     if expiration.get_time(&env.block).is_expired(&env.block) {
                         return !strict;
@@ -110,14 +144,26 @@ impl LocalPermission {
 
     pub fn get_expiration(&self, env: Env) -> MillisecondsExpiration {
         match self {
-            Self::Blacklisted(expiration) => {
+            Self::Blacklisted { expiration, .. } => {
                 expiration.clone().unwrap_or_default().get_time(&env.block)
             }
             Self::Limited { expiration, .. } => {
                 expiration.clone().unwrap_or_default().get_time(&env.block)
             }
-            Self::Whitelisted(expiration) => {
+            Self::Whitelisted { expiration, .. } => {
                 expiration.clone().unwrap_or_default().get_time(&env.block)
+            }
+        }
+    }
+
+    pub fn get_start_time(&self, env: Env) -> MillisecondsExpiration {
+        match self {
+            Self::Blacklisted { start, .. } => {
+                start.clone().unwrap_or_default().get_time(&env.block)
+            }
+            Self::Limited { start, .. } => start.clone().unwrap_or_default().get_time(&env.block),
+            Self::Whitelisted { start, .. } => {
+                start.clone().unwrap_or_default().get_time(&env.block)
             }
         }
     }
@@ -134,27 +180,28 @@ impl LocalPermission {
 impl fmt::Display for LocalPermission {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let self_as_string = match self {
-            Self::Blacklisted(expiration) => {
-                if let Some(expiration) = expiration {
-                    format!("blacklisted:{expiration}")
-                } else {
-                    "blacklisted".to_string()
-                }
-            }
-            Self::Limited { expiration, uses } => {
-                if let Some(expiration) = expiration {
-                    format!("limited:{expiration}:{uses}")
-                } else {
-                    format!("limited:{uses}")
-                }
-            }
-            Self::Whitelisted(expiration) => {
-                if let Some(expiration) = expiration {
-                    format!("whitelisted:{expiration}")
-                } else {
-                    "whitelisted".to_string()
-                }
-            }
+            Self::Blacklisted { start, expiration } => match (start, expiration) {
+                (Some(s), Some(e)) => format!("blacklisted starting from:{s} until:{e}"),
+                (Some(s), None) => format!("blacklisted starting from:{s}"),
+                (None, Some(e)) => format!("blacklisted until:{e}"),
+                (None, None) => "blacklisted".to_string(),
+            },
+            Self::Limited {
+                start,
+                expiration,
+                uses,
+            } => match (start, expiration) {
+                (Some(s), Some(e)) => format!("limited starting from:{s} until:{e} uses:{uses}"),
+                (Some(s), None) => format!("limited starting from:{s} uses:{uses}"),
+                (None, Some(e)) => format!("limited until:{e} uses:{uses}"),
+                (None, None) => format!("limited uses:{uses}"),
+            },
+            Self::Whitelisted { start, expiration } => match (start, expiration) {
+                (Some(s), Some(e)) => format!("whitelisted starting from:{s} until:{e}"),
+                (Some(s), None) => format!("whitelisted starting from:{s}"),
+                (None, Some(e)) => format!("whitelisted until:{e}"),
+                (None, None) => "whitelisted".to_string(),
+            },
         };
         write!(f, "{self_as_string}")
     }
