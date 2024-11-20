@@ -1,9 +1,9 @@
 use super::mock::{
-    error_initialization, proper_initialization, query_curve_config, query_plot_y_from_x,
-    query_restriction, reset, update_curve_config, update_restriction,
+    error_initialization, proper_initialization, query_curve_config, query_plot_y_from_x, reset,
+    update_curve_config,
 };
-use andromeda_modules::curve::{CurveConfig, CurveRestriction, CurveType};
-use andromeda_std::error::ContractError;
+use andromeda_modules::curve::{CurveConfig, CurveType};
+use andromeda_std::{amp::AndrAddr, error::ContractError};
 use cosmwasm_std::StdError;
 use test_case::test_case;
 
@@ -16,64 +16,55 @@ fn test_instantiation() {
             multiple_variable_value: None,
             constant_value: None,
         },
-        CurveRestriction::Private,
+        None,
     );
-}
-
-#[test]
-fn test_update_restriction() {
-    let (mut deps, info) = proper_initialization(
-        CurveConfig::ExpConfig {
-            curve_type: CurveType::Growth,
-            base_value: 2,
-            multiple_variable_value: None,
-            constant_value: None,
-        },
-        CurveRestriction::Private,
-    );
-    let external_user = "external".to_string();
-    let res =
-        update_restriction(deps.as_mut(), CurveRestriction::Private, &external_user).unwrap_err();
-    assert_eq!(res, ContractError::Unauthorized {});
-
-    update_restriction(
-        deps.as_mut(),
-        CurveRestriction::Public,
-        info.sender.as_ref(),
-    )
-    .unwrap();
-    let restriction = query_restriction(deps.as_ref()).unwrap().restriction;
-    assert_eq!(restriction, CurveRestriction::Public);
 }
 
 #[test]
 fn test_reset() {
-    let (mut deps, info) = proper_initialization(
+    let (mut deps, _) = proper_initialization(
         CurveConfig::ExpConfig {
             curve_type: CurveType::Growth,
             base_value: 2,
             multiple_variable_value: None,
             constant_value: None,
         },
-        CurveRestriction::Private,
+        Some(vec![AndrAddr::from_string("user1")]),
     );
 
-    reset(deps.as_mut(), info.sender.as_ref()).unwrap();
+    let err_res = reset(deps.as_mut(), "user2").unwrap_err();
+    assert_eq!(err_res, ContractError::Unauthorized {});
+
+    reset(deps.as_mut(), "user1").unwrap();
+
     let err_res = query_curve_config(deps.as_ref()).unwrap_err();
     assert_eq!(err_res, ContractError::Std(StdError::NotFound { kind: "type: andromeda_modules::curve::CurveConfig; key: [63, 75, 72, 76, 65, 5F, 63, 6F, 6E, 66, 69, 67]".to_string() }));
 }
 
 #[test]
 fn test_update_curve_config() {
-    let (mut deps, info) = proper_initialization(
+    let (mut deps, _) = proper_initialization(
         CurveConfig::ExpConfig {
             curve_type: CurveType::Growth,
             base_value: 2,
             multiple_variable_value: None,
             constant_value: None,
         },
-        CurveRestriction::Private,
+        Some(vec![AndrAddr::from_string("user1")]),
     );
+    let err_res = update_curve_config(
+        deps.as_mut(),
+        CurveConfig::ExpConfig {
+            curve_type: CurveType::Growth,
+            base_value: 4,
+            multiple_variable_value: None,
+            constant_value: Some(2),
+        },
+        "user2",
+    )
+    .unwrap_err();
+    assert_eq!(err_res, ContractError::Unauthorized {});
+
     update_curve_config(
         deps.as_mut(),
         CurveConfig::ExpConfig {
@@ -82,7 +73,7 @@ fn test_update_curve_config() {
             multiple_variable_value: None,
             constant_value: Some(2),
         },
-        info.sender.as_ref(),
+        "user1",
     )
     .unwrap();
 
@@ -107,7 +98,7 @@ fn test_query_curve_config() {
             multiple_variable_value: None,
             constant_value: None,
         },
-        CurveRestriction::Private,
+        None,
     );
     let res = query_curve_config(deps.as_ref()).unwrap().curve_config;
     assert_eq!(
@@ -130,7 +121,7 @@ fn test_query_curve_config_base_is_0() {
             multiple_variable_value: None,
             constant_value: None,
         },
-        CurveRestriction::Private,
+        None,
     );
     assert_eq!(
         err_res,
@@ -151,7 +142,7 @@ fn test_query_plot_y_from_x_base_2_growth(input_x: f64, expected_y: String) {
             multiple_variable_value: None,
             constant_value: None,
         },
-        CurveRestriction::Private,
+        None,
     );
 
     let res = query_plot_y_from_x(deps.as_ref(), input_x).unwrap().y_value;
@@ -169,7 +160,7 @@ fn test_query_plot_y_from_x_base_3_growth(input_x: f64, expected_y: String) {
             multiple_variable_value: None,
             constant_value: None,
         },
-        CurveRestriction::Private,
+        None,
     );
 
     let res = query_plot_y_from_x(deps.as_ref(), input_x).unwrap().y_value;
@@ -187,7 +178,7 @@ fn test_query_plot_y_from_x_base_2_decay(input_x: f64, expected_y: String) {
             multiple_variable_value: None,
             constant_value: None,
         },
-        CurveRestriction::Private,
+        None,
     );
 
     let res = query_plot_y_from_x(deps.as_ref(), input_x).unwrap().y_value;

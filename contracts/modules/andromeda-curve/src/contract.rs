@@ -1,21 +1,21 @@
 #[cfg(not(feature = "library"))]
-use crate::state::{
-    CURVE_CONFIG, DEFAULT_CONSTANT_VALUE, DEFAULT_MULTIPLE_VARIABLE_VALUE, RESTRICTION,
-};
+use crate::state::{CURVE_CONFIG, DEFAULT_CONSTANT_VALUE, DEFAULT_MULTIPLE_VARIABLE_VALUE};
 use andromeda_modules::curve::{
-    CurveConfig, CurveRestriction, CurveType, ExecuteMsg, GetCurveConfigResponse,
-    GetPlotYFromXResponse, GetRestrictionResponse, InstantiateMsg, QueryMsg,
+    CurveConfig, CurveType, ExecuteMsg, GetCurveConfigResponse, GetPlotYFromXResponse,
+    InstantiateMsg, QueryMsg,
 };
 use andromeda_std::{
-    ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
+    ado_base::{
+        permissioning::{LocalPermission, Permission},
+        InstantiateMsg as BaseInstantiateMsg, MigrateMsg,
+    },
     ado_contract::ADOContract,
     common::{actions::call_action, context::ExecuteContext, encode_binary},
     error::ContractError,
 };
 
 use cosmwasm_std::{
-    ensure, entry_point, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError,
-    Storage,
+    entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError, Storage,
 };
 
 use cw_utils::nonpayable;
@@ -23,6 +23,9 @@ use cw_utils::nonpayable;
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-curve";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
+
+pub const UPDATE_CURVE_CONFIG_ACTION: &str = "update_curve_config";
+pub const RESET_ACTION: &str = "reset";
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -45,9 +48,30 @@ pub fn instantiate(
         },
     )?;
 
-    msg.curve_config.validate()?;
+    if let Some(authorized_operator_addresses) = msg.authorized_operator_addresses {
+        if !authorized_operator_addresses.is_empty() {
+            ADOContract::default().permission_action(UPDATE_CURVE_CONFIG_ACTION, deps.storage)?;
+            ADOContract::default().permission_action(RESET_ACTION, deps.storage)?;
+        }
 
-    RESTRICTION.save(deps.storage, &msg.restriction)?;
+        for address in authorized_operator_addresses {
+            let addr = address.get_raw_address(&deps.as_ref())?;
+            ADOContract::set_permission(
+                deps.storage,
+                UPDATE_CURVE_CONFIG_ACTION,
+                addr.clone(),
+                Permission::Local(LocalPermission::Whitelisted(None)),
+            )?;
+            ADOContract::set_permission(
+                deps.storage,
+                RESET_ACTION,
+                addr.clone(),
+                Permission::Local(LocalPermission::Whitelisted(None)),
+            )?;
+        }
+    }
+
+    msg.curve_config.validate()?;
     CURVE_CONFIG.save(deps.storage, &msg.curve_config)?;
 
     Ok(resp)
@@ -82,9 +106,6 @@ fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
         ExecuteMsg::UpdateCurveConfig { curve_config } => {
             execute_update_curve_config(ctx, curve_config)
         }
-        ExecuteMsg::UpdateRestriction { restriction } => {
-            execute_update_restriction(ctx, restriction)
-        }
         ExecuteMsg::Reset {} => execute_reset(ctx),
         _ => ADOContract::default().execute(ctx, msg),
     }?;
@@ -96,15 +117,17 @@ fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
 }
 
 pub fn execute_update_curve_config(
-    ctx: ExecuteContext,
+    mut ctx: ExecuteContext,
     curve_config: CurveConfig,
 ) -> Result<Response, ContractError> {
     nonpayable(&ctx.info)?;
     let sender = ctx.info.sender.clone();
-    ensure!(
-        has_permission(ctx.deps.storage, &sender)?,
-        ContractError::Unauthorized {}
-    );
+    ADOContract::default().is_permissioned(
+        ctx.deps.branch(),
+        ctx.env.clone(),
+        UPDATE_CURVE_CONFIG_ACTION,
+        sender.clone(),
+    )?;
 
     curve_config.validate()?;
     CURVE_CONFIG.update(ctx.deps.storage, |_| {
@@ -116,50 +139,26 @@ pub fn execute_update_curve_config(
         .add_attribute("sender", sender))
 }
 
-pub fn execute_update_restriction(
-    ctx: ExecuteContext,
-    restriction: CurveRestriction,
-) -> Result<Response, ContractError> {
-    nonpayable(&ctx.info)?;
-    let sender = ctx.info.sender;
-    ensure!(
-        ADOContract::default().is_owner_or_operator(ctx.deps.storage, sender.as_ref())?,
-        ContractError::Unauthorized {}
-    );
-    RESTRICTION.save(ctx.deps.storage, &restriction)?;
-
-    Ok(Response::new()
-        .add_attribute("method", "update_restriction")
-        .add_attribute("sender", sender))
-}
-
-pub fn execute_reset(ctx: ExecuteContext) -> Result<Response, ContractError> {
+pub fn execute_reset(mut ctx: ExecuteContext) -> Result<Response, ContractError> {
     nonpayable(&ctx.info)?;
     let sender = ctx.info.sender.clone();
-    ensure!(
-        has_permission(ctx.deps.storage, &sender)?,
-        ContractError::Unauthorized {}
-    );
+    ADOContract::default().is_permissioned(
+        ctx.deps.branch(),
+        ctx.env.clone(),
+        RESET_ACTION,
+        sender.clone(),
+    )?;
 
     CURVE_CONFIG.remove(ctx.deps.storage);
 
     Ok(Response::new().add_attribute("method", "reset"))
 }
 
-pub fn has_permission(storage: &dyn Storage, addr: &Addr) -> Result<bool, ContractError> {
-    let is_operator = ADOContract::default().is_owner_or_operator(storage, addr.as_str())?;
-    let allowed = match RESTRICTION.load(storage)? {
-        CurveRestriction::Private => is_operator,
-        CurveRestriction::Public => true,
-    };
-    Ok(is_operator || allowed)
-}
-
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::GetCurveConfig {} => encode_binary(&query_curve_config(deps.storage)?),
-        QueryMsg::GetRestriction {} => encode_binary(&query_restriction(deps.storage)?),
+        // QueryMsg::GetRestriction {} => encode_binary(&query_restriction(deps.storage)?),
         QueryMsg::GetPlotYFromX { x_value } => {
             encode_binary(&query_plot_y_from_x(deps.storage, x_value)?)
         }
@@ -170,11 +169,6 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
 pub fn query_curve_config(storage: &dyn Storage) -> Result<GetCurveConfigResponse, ContractError> {
     let curve_config = CURVE_CONFIG.load(storage)?;
     Ok(GetCurveConfigResponse { curve_config })
-}
-
-pub fn query_restriction(storage: &dyn Storage) -> Result<GetRestrictionResponse, ContractError> {
-    let restriction = RESTRICTION.load(storage)?;
-    Ok(GetRestrictionResponse { restriction })
 }
 
 pub fn query_plot_y_from_x(

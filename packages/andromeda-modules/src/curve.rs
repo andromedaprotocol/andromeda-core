@@ -1,4 +1,4 @@
-use andromeda_std::{andr_exec, andr_instantiate, andr_query, error::ContractError};
+use andromeda_std::{amp::AndrAddr, andr_exec, andr_instantiate, andr_query, error::ContractError};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::ensure;
 
@@ -6,13 +6,7 @@ use cosmwasm_std::ensure;
 #[cw_serde]
 pub struct InstantiateMsg {
     pub curve_config: CurveConfig,
-    pub restriction: CurveRestriction,
-}
-
-#[cw_serde]
-pub enum CurveRestriction {
-    Private,
-    Public,
+    pub authorized_operator_addresses: Option<Vec<AndrAddr>>,
 }
 
 #[cw_serde]
@@ -56,7 +50,6 @@ impl CurveConfig {
 #[cw_serde]
 pub enum ExecuteMsg {
     UpdateCurveConfig { curve_config: CurveConfig },
-    UpdateRestriction { restriction: CurveRestriction },
     Reset {},
 }
 
@@ -66,8 +59,6 @@ pub enum ExecuteMsg {
 pub enum QueryMsg {
     #[returns(GetCurveConfigResponse)]
     GetCurveConfig {},
-    #[returns(GetRestrictionResponse)]
-    GetRestriction {},
     #[returns(GetPlotYFromXResponse)]
     GetPlotYFromX { x_value: f64 },
 }
@@ -80,11 +71,6 @@ pub struct GetCurveConfigResponse {
 #[cw_serde]
 pub struct GetPlotYFromXResponse {
     pub y_value: String,
-}
-
-#[cw_serde]
-pub struct GetRestrictionResponse {
-    pub restriction: CurveRestriction,
 }
 
 #[cfg(test)]
