@@ -18,10 +18,6 @@ jobs:
       - run: rustup override set 1.75.0
       - run: rustup target add wasm32-unknown-unknown
       - uses: actions/checkout@v4
-      - name: Install Binaryen
-        run: |
-          chmod +x "${GITHUB_WORKSPACE}/scripts/install_binaryen.sh"
-          "${GITHUB_WORKSPACE}/scripts/install_binaryen.sh"
       - name: Build
         run: |
           chmod +x "${GITHUB_WORKSPACE}/scripts/build_all.sh"
