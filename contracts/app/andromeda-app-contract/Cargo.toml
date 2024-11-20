@@ -25,3 +25,4 @@ cw-orch-daemon = "0.24.2"
 
 [features]
 testing = ["cw-multi-test", "andromeda-testing"]
+library = []

@@ -5,9 +5,6 @@ edition = "2021"
 rust-version = "1.75.0"
 publish = false
 
-[features]
-modules = []
-
 [dev-dependencies]
 #App
 andromeda-app = { workspace = true }
@@ -176,3 +173,12 @@ rstest = "0.23.0"
 
 # [[test]]
 # name = "kernel"
+
+[[test]]
+name = "set_amount_splitter"
+
+[[test]]
+name = "cw20_staking"
+
+[[test]]
+name = "ibc_registry"

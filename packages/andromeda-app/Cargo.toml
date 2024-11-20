@@ -9,6 +9,7 @@ license = "MIT"
 [features]
 backtraces = ["cosmwasm-std/backtraces"]
 testing = ["cw-multi-test"]
+library = []
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [lib]
