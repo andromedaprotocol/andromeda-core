@@ -167,7 +167,7 @@ dependencies = [
  "cw-orch",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
- "cw20 1.1.2",
+ "cw20 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "cw721 0.18.0",
 ]
 
@@ -184,7 +184,7 @@ dependencies = [
  "cw-orch",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
- "cw20 1.1.2",
+ "cw20 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -216,7 +216,7 @@ dependencies = [
  "cw-orch",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
- "cw20 1.1.2",
+ "cw20 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -251,7 +251,7 @@ dependencies = [
  "cw-orch-daemon",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
- "cw20 1.1.2",
+ "cw20 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "cw721 0.18.0",
 ]
 
@@ -287,7 +287,7 @@ dependencies = [
  "cw-orch-daemon",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
- "cw20 1.1.2",
+ "cw20 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "cw20-base",
 ]
 
@@ -305,7 +305,7 @@ dependencies = [
  "cw-orch",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
- "cw20 1.1.2",
+ "cw20 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -323,7 +323,7 @@ dependencies = [
  "cw-orch",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
- "cw20 1.1.2",
+ "cw20 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "cw20-base",
 ]
 
@@ -420,7 +420,7 @@ dependencies = [
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
  "cw2 1.1.2",
- "cw20 1.1.2",
+ "cw20 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "cw20-base",
  "cw721 0.18.0",
  "cw721-base 0.18.0",
@@ -452,7 +452,7 @@ dependencies = [
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus 1.2.0",
- "cw20 1.1.2",
+ "cw20 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -464,7 +464,7 @@ dependencies = [
  "cosmwasm-std 1.5.8",
  "cw-asset",
  "cw-storage-plus 1.2.0",
- "cw20 1.1.2",
+ "cw20 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "schemars",
  "serde",
 ]
@@ -519,7 +519,7 @@ dependencies = [
  "cw-multi-test",
  "cw-orch",
  "cw-utils 1.0.3",
- "cw20 1.1.2",
+ "cw20 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "cw20-base",
  "serde",
 ]
@@ -536,7 +536,7 @@ dependencies = [
  "cw-multi-test",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
- "cw20 1.1.2",
+ "cw20 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -551,7 +551,7 @@ dependencies = [
  "cw-orch",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
- "cw20 1.1.2",
+ "cw20 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -570,7 +570,7 @@ dependencies = [
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
  "cw2 1.1.2",
- "cw20 1.1.2",
+ "cw20 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "cw20-base",
  "schemars",
  "semver",
@@ -614,7 +614,7 @@ dependencies = [
  "cw-orch",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
- "cw20 1.1.2",
+ "cw20 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -640,7 +640,7 @@ dependencies = [
  "cw-orch",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
- "cw20 1.1.2",
+ "cw20 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "cw721 0.18.0",
 ]
 
@@ -659,7 +659,7 @@ dependencies = [
  "cw-orch",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
- "cw20 1.1.2",
+ "cw20 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "hex",
  "serde",
  "sha2 0.10.8",
@@ -688,7 +688,7 @@ dependencies = [
  "cw-multi-test",
  "cw-orch",
  "cw-utils 1.0.3",
- "cw20 1.1.2",
+ "cw20 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "cw721 0.18.0",
  "cw721-base 0.18.0",
  "serde",
@@ -721,7 +721,7 @@ dependencies = [
  "cw-orch",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
- "cw20 1.1.2",
+ "cw20 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -738,7 +738,7 @@ dependencies = [
  "cw-orch",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
- "cw20 1.1.2",
+ "cw20 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -755,7 +755,7 @@ dependencies = [
  "cw-orch",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
- "cw20 1.1.2",
+ "cw20 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -823,7 +823,7 @@ dependencies = [
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
  "cw2 1.1.2",
- "cw20 1.1.2",
+ "cw20 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "cw20-base",
  "cw3 1.1.2",
  "cw721 0.18.0",
@@ -856,7 +856,7 @@ dependencies = [
  "cw-orch",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
- "cw20 1.1.2",
+ "cw20 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -876,7 +876,7 @@ dependencies = [
  "cosmwasm-schema 1.5.8",
  "cosmwasm-std 1.5.8",
  "cw-multi-test",
- "cw20 1.1.2",
+ "cw20 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "cw721 0.18.0",
  "serde",
 ]
@@ -900,7 +900,7 @@ dependencies = [
  "cw-multi-test",
  "cw-orch",
  "cw-orch-daemon",
- "cw20 1.1.2",
+ "cw20 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "cw721 0.18.0",
  "reqwest 0.12.9",
  "secp256k1 0.30.0",
@@ -2369,6 +2369,19 @@ dependencies = [
 [[package]]
 name = "cw20"
 version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a42212b6bf29bbdda693743697c621894723f35d3db0d5df930be22903d0e27c"
+dependencies = [
+ "cosmwasm-schema 2.1.4",
+ "cosmwasm-std 2.1.4",
+ "cw-utils 2.0.0",
+ "schemars",
+ "serde",
+]
+
+[[package]]
+name = "cw20"
+version = "2.0.0"
 source = "git+https://github.com/CosmWasm/cw-plus#17b1ac4d518ee9b546b82706a70b77cfff1b0ee3"
 dependencies = [
  "cosmwasm-schema 2.1.4",
@@ -2437,7 +2450,7 @@ dependencies = [
  "cosmwasm-schema 2.1.4",
  "cosmwasm-std 2.1.4",
  "cw-utils 2.0.0",
- "cw20 2.0.0",
+ "cw20 2.0.0 (git+https://github.com/CosmWasm/cw-plus)",
  "schemars",
  "serde",
  "thiserror 1.0.69",
@@ -3513,7 +3526,7 @@ dependencies = [
  "cosmwasm-std 1.5.8",
  "cw-orch",
  "cw-orch-daemon",
- "cw20 1.1.2",
+ "cw20 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "cw721 0.18.0",
  "prost-types 0.13.3",
  "rstest",
@@ -5638,7 +5651,7 @@ dependencies = [
  "cw-multi-test",
  "cw-orch",
  "cw-orch-interchain",
- "cw20 1.1.2",
+ "cw20 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "cw721 0.18.0",
  "cw721-base 0.18.0",
  "ibc-relayer-types",
