@@ -3,17 +3,14 @@ name: Build Contracts & Schemas
 on:
   pull_request:
     branches: [main, development]
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
     name: Contracts
     if: >
-      !contains(github.event.pull_request.labels.*.name, 'ci: skip-build') && (
-        (github.base_ref == 'development' || 
-          github.base_ref == 'main' || 
-          contains(github.event.pull_request.labels.*.name, 'ci: build')) 
-      )
+      !contains(github.event.pull_request.labels.*.name, 'ci: skip-build')
     steps:
       - uses: actions-rs/toolchain@v1
         with:
@@ -45,11 +42,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Schemas
     if: >
-      !contains(github.event.pull_request.labels.*.name, 'ci: skip-build') && (
-        (github.base_ref == 'development' || 
-          github.base_ref == 'main' || 
-          contains(github.event.pull_request.labels.*.name, 'ci: build')) 
-      )
+      !contains(github.event.pull_request.labels.*.name, 'ci: skip-build')
     steps:
       - uses: actions/checkout@v4
       - name: Build Schema
