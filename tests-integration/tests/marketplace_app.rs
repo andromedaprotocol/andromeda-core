@@ -597,7 +597,7 @@ fn test_marketplace_app_cw20_restricted() {
             &mut router,
             owner.clone(),
             cw721.addr().clone(),
-            LocalPermission::whitelisted(None),
+            LocalPermission::whitelisted(None, None),
         )
         .unwrap();
 
@@ -606,7 +606,7 @@ fn test_marketplace_app_cw20_restricted() {
             &mut router,
             owner.clone(),
             cw20.addr().clone(),
-            LocalPermission::whitelisted(None),
+            LocalPermission::whitelisted(None, None),
         )
         .unwrap();
 
@@ -615,7 +615,7 @@ fn test_marketplace_app_cw20_restricted() {
             &mut router,
             owner.clone(),
             buyer.clone(),
-            LocalPermission::whitelisted(None),
+            LocalPermission::whitelisted(None, None),
         )
         .unwrap();
 
@@ -624,7 +624,7 @@ fn test_marketplace_app_cw20_restricted() {
             &mut router,
             owner.clone(),
             owner.clone(),
-            LocalPermission::whitelisted(None),
+            LocalPermission::whitelisted(None, None),
         )
         .unwrap();
 
@@ -900,7 +900,7 @@ fn test_marketplace_app_cw20_unrestricted() {
             &mut router,
             owner.clone(),
             cw721.addr().clone(),
-            LocalPermission::whitelisted(None),
+            LocalPermission::whitelisted(None, None),
         )
         .unwrap();
 
@@ -909,7 +909,7 @@ fn test_marketplace_app_cw20_unrestricted() {
             &mut router,
             owner.clone(),
             cw20.addr().clone(),
-            LocalPermission::whitelisted(None),
+            LocalPermission::whitelisted(None, None),
         )
         .unwrap();
 
@@ -918,7 +918,7 @@ fn test_marketplace_app_cw20_unrestricted() {
             &mut router,
             owner.clone(),
             second_cw20.addr().clone(),
-            LocalPermission::whitelisted(None),
+            LocalPermission::whitelisted(None, None),
         )
         .unwrap();
 
@@ -927,7 +927,7 @@ fn test_marketplace_app_cw20_unrestricted() {
             &mut router,
             owner.clone(),
             buyer.clone(),
-            LocalPermission::whitelisted(None),
+            LocalPermission::whitelisted(None, None),
         )
         .unwrap();
 
@@ -936,7 +936,7 @@ fn test_marketplace_app_cw20_unrestricted() {
             &mut router,
             owner.clone(),
             owner.clone(),
-            LocalPermission::whitelisted(None),
+            LocalPermission::whitelisted(None, None),
         )
         .unwrap();
 
