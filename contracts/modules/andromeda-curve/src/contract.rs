@@ -158,7 +158,6 @@ pub fn execute_reset(mut ctx: ExecuteContext) -> Result<Response, ContractError>
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::GetCurveConfig {} => encode_binary(&query_curve_config(deps.storage)?),
-        // QueryMsg::GetRestriction {} => encode_binary(&query_restriction(deps.storage)?),
         QueryMsg::GetPlotYFromX { x_value } => {
             encode_binary(&query_plot_y_from_x(deps.storage, x_value)?)
         }
