@@ -908,8 +908,11 @@ mod tests {
         let res = contract.is_permissioned(deps.as_mut(), env.clone(), action, actor);
         assert!(res.is_err());
 
+        env.block.time = MillisecondsExpiration::from_seconds(0).into();
+
         // Test interaction with disabled action permissioning
         ADOContract::default().disable_action_permission(action, deps.as_mut().storage);
+
         let res = contract.is_permissioned(deps.as_mut(), env, action, actor);
         assert!(res.is_ok());
     }
