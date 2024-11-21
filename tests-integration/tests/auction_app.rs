@@ -11,7 +11,7 @@ use andromeda_finance::splitter::AddressPercent;
 use andromeda_non_fungible_tokens::auction::{AuctionStateResponse, Cw20HookMsg};
 use andromeda_rates::mock::mock_andromeda_rates;
 use andromeda_splitter::mock::{
-    mock_andromeda_splitter, mock_splitter_instantiate_msg, mock_splitter_send_msg,
+    mock_andromeda_splitter, mock_splitter_instantiate_msg, mock_splitter_send_msg, MockSplitter,
 };
 use andromeda_std::{
     ado_base::{
@@ -79,8 +79,33 @@ fn test_auction_app_modules() {
         to_json_binary(&auction_init_msg).unwrap(),
     );
 
+    let splitter_init_msg = mock_splitter_instantiate_msg(
+        vec![
+            AddressPercent {
+                recipient: Recipient::new(recipient_one, None),
+                percent: Decimal::percent(50),
+            },
+            AddressPercent {
+                recipient: Recipient::new(recipient_two, None),
+                percent: Decimal::percent(50),
+            },
+        ],
+        andr.kernel.addr().to_string(),
+        None,
+        None,
+    );
+    let splitter_component = AppComponent::new(
+        "splitter".to_string(),
+        "splitter".to_string(),
+        to_json_binary(&splitter_init_msg).unwrap(),
+    );
+
     // Create App
-    let app_components = vec![cw721_component.clone(), auction_component.clone()];
+    let app_components = vec![
+        cw721_component.clone(),
+        auction_component.clone(),
+        splitter_component.clone(),
+    ];
     let app = MockAppContract::instantiate(
         andr.get_code_id(&mut router, "app-contract"),
         owner,
@@ -109,6 +134,9 @@ fn test_auction_app_modules() {
     // Send Token to Auction
     let auction: MockAuction = app.query_ado_by_component_name(&router, auction_component.name);
 
+    // Set up splitter to send funds to recipient one and two
+    let splitter: MockSplitter = app.query_ado_by_component_name(&router, splitter_component.name);
+
     // Set rates to auction
     auction
         .execute_add_rate(
@@ -117,9 +145,12 @@ fn test_auction_app_modules() {
             "Claim".to_string(),
             Rate::Local(LocalRate {
                 rate_type: LocalRateType::Deductive,
-                recipient: Recipient::new(recipient_one, None),
+                recipient: Recipient::new(
+                    splitter.addr(),
+                    Some(to_json_binary(&mock_splitter_send_msg()).unwrap()),
+                ),
                 value: LocalRateValue::Percent(PercentRate {
-                    percent: Decimal::percent(25),
+                    percent: Decimal::percent(50),
                 }),
                 description: None,
             }),
@@ -404,6 +435,7 @@ fn test_auction_app_recipient() {
         time: start_time.plus_milliseconds(Milliseconds(1000)).into(),
         chain_id: router.block_info().chain_id,
     });
+
     auction
         .execute_claim_auction(
             &mut router,

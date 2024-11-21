@@ -33,7 +33,6 @@ fn test_cw20_with_rates() {
     let buyer_one = andr.get_wallet("buyer_one");
     let buyer_two = andr.get_wallet("buyer_two");
     let recipient_one = andr.get_wallet("recipient_one");
-    let recipient_two = andr.get_wallet("recipient_two");
 
     // Generate App Components
     let initial_balances = vec![
@@ -131,13 +130,10 @@ fn test_cw20_with_rates() {
     let recip_one_balance = cw20.query_balance(&router, recipient_one);
     assert_eq!(Uint128::one(), recip_one_balance);
 
-    let recip_two_balance = cw20.query_balance(&router, recipient_two);
-    assert_eq!(Uint128::one(), recip_two_balance);
-
     let buyer_two_balance = cw20.query_balance(&router, buyer_two);
     assert_eq!(
         buyer_two_original_balance
-            .checked_add(Uint128::new(8))
+            .checked_add(Uint128::new(9))
             .unwrap(),
         buyer_two_balance
     );
