@@ -111,7 +111,7 @@ jobs:
       - name: Trigger Schema Parser
         uses: actions/github-script@v7
         with:
-          github-token: ${{ secrets.PAT_TOKEN }}
+          github-token: ${{ secrets.CI_PAT }}
           script: |
             try {
               await github.rest.actions.createWorkflowDispatch({
