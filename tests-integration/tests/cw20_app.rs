@@ -100,10 +100,7 @@ fn test_cw20_with_rates() {
         "TransferFrom".to_string(),
         Rate::Local(LocalRate {
             rate_type: LocalRateType::Deductive,
-            recipients: vec![
-                Recipient::new(recipient_one, None),
-                Recipient::new(recipient_two, None),
-            ],
+            recipient: Recipient::new(recipient_one, None),
             value: LocalRateValue::Percent(PercentRate {
                 percent: Decimal::percent(10),
             }),

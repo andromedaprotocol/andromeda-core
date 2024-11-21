@@ -127,7 +127,7 @@ impl LocalRateValue {
 #[cw_serde]
 pub struct LocalRate {
     pub rate_type: LocalRateType,
-    pub recipients: Vec<Recipient>,
+    pub recipient: Recipient,
     pub value: LocalRateValue,
     pub description: Option<String>,
 }
@@ -151,33 +151,35 @@ impl LocalRate {
             event = event.add_attribute("description", desc);
         }
         let fee = calculate_fee(self.value.clone(), &coin)?;
-        for receiver in self.recipients.iter() {
-            // If the rate type is deductive
-            if !self.rate_type.is_additive() {
-                deduct_funds(&mut leftover_funds, &fee)?;
-                event = event.add_attribute("deducted", fee.to_string());
-            }
-            event = event.add_attribute(
-                "payment",
-                PaymentAttribute {
-                    receiver: receiver.get_addr(),
-                    amount: fee.clone(),
-                }
-                .to_string(),
-            );
-            let msg = if is_native {
-                receiver.generate_direct_msg(&deps, vec![fee.clone()])?
-            } else {
-                receiver.generate_msg_cw20(
-                    &deps,
-                    Cw20Coin {
-                        amount: fee.amount,
-                        address: fee.denom.to_string(),
-                    },
-                )?
-            };
-            msgs.push(msg);
+
+        // If the rate type is deductive
+        if !self.rate_type.is_additive() {
+            deduct_funds(&mut leftover_funds, &fee)?;
+            event = event.add_attribute("deducted", fee.to_string());
         }
+        event = event.add_attribute(
+            "payment",
+            PaymentAttribute {
+                receiver: self.recipient.address.get_raw_address(&deps)?.to_string(),
+                amount: fee.clone(),
+            }
+            .to_string(),
+        );
+
+        let msg = if is_native {
+            self.recipient
+                .generate_direct_msg(&deps, vec![fee.clone()])?
+        } else {
+            self.recipient.generate_msg_cw20(
+                &deps,
+                Cw20Coin {
+                    amount: fee.amount,
+                    address: fee.denom.to_string(),
+                },
+            )?
+        };
+        msgs.push(msg);
+
         events.push(event);
         Ok((msgs, events, leftover_funds))
     }

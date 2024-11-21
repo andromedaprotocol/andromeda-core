@@ -68,7 +68,7 @@ fn test_marketplace_app() {
     // The sale recipient will not receive any funds because they're all going to the royalty recipient
     let local_rate = LocalRate {
         rate_type: LocalRateType::Deductive,
-        recipients: vec![Recipient::from_string(rates_receiver.to_string())],
+        recipient: Recipient::from_string(rates_receiver.to_string()),
         value: LocalRateValue::Flat(coin(100, "uandr")),
         description: None,
     };
@@ -567,7 +567,7 @@ fn test_marketplace_app_cw20_restricted() {
 
     let local_rate = LocalRate {
         rate_type: LocalRateType::Additive,
-        recipients: vec![Recipient::from_string(rates_receiver.to_string())],
+        recipient: Recipient::from_string(rates_receiver.to_string()),
         // This is the cw20's address
         value: LocalRateValue::Flat(coin(100, cw20.addr().to_string())),
         description: None,
@@ -796,7 +796,7 @@ fn test_marketplace_app_cw20_unrestricted() {
     // set rates for the second cw20 later
     let local_rate = LocalRate {
         rate_type: LocalRateType::Additive,
-        recipients: vec![Recipient::from_string(rates_receiver.to_string())],
+        recipient: Recipient::from_string(rates_receiver.to_string()),
         // This is the cw20's address
         value: LocalRateValue::Percent(PercentRate {
             percent: Decimal::percent(20),
@@ -918,7 +918,7 @@ fn test_marketplace_app_cw20_unrestricted() {
         .unwrap();
     let _local_rate2 = LocalRate {
         rate_type: LocalRateType::Additive,
-        recipients: vec![Recipient::from_string(rates_receiver.to_string())],
+        recipient: Recipient::from_string(rates_receiver.to_string()),
         // This is the cw20's address
         value: LocalRateValue::Flat(coin(
             100,
