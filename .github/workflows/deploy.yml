@@ -36,6 +36,21 @@ jobs:
           path: ./artifacts/
           if-no-files-found: error
 
+  build_schemas:
+    if: contains('["crnbarr93", "SlayerAnsh", "joemonem", "DimitrijeDragasevic", "cowboy0015"]', github.actor)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Schemas
+        run: |
+          make schemas
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: schemas
+          path: ./schemas/
+          if-no-files-found: error
+
   build_deploy_script:
     if: contains('["crnbarr93", "SlayerAnsh", "joemonem", "DimitrijeDragasevic", "cowboy0015"]', github.actor)
     runs-on: ubuntu-latest
