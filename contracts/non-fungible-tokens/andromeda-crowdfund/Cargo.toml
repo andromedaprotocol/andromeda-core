@@ -30,6 +30,7 @@ andromeda-non-fungible-tokens = { workspace = true }
 cw-multi-test = { workspace = true, optional = true }
 andromeda-testing = { workspace = true, optional = true }
 cw-orch = { workspace = true }
+cw-orch-daemon = "0.24.2"
 
 [dev-dependencies]
 andromeda-app = { workspace = true }

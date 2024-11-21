@@ -35,7 +35,7 @@ pub struct InstantiateMsg {
 }
 
 #[cw_serde]
-#[derive(cw_orch::ExecuteFns)]
+#[cfg_attr(not(target_arch = "wasm32"), derive(cw_orch::ExecuteFns))]
 pub enum ExecuteMsg {
     /// Receives an AMP Packet for relaying
     #[serde(rename = "amp_receive")]
@@ -103,7 +103,8 @@ pub struct ChainNameResponse {
 }
 
 #[cw_serde]
-#[derive(cw_orch::QueryFns, QueryResponses)]
+#[cfg_attr(not(target_arch = "wasm32"), derive(cw_orch::QueryFns))]
+#[derive(QueryResponses)]
 pub enum QueryMsg {
     #[returns(cosmwasm_std::Addr)]
     KeyAddress { key: String },

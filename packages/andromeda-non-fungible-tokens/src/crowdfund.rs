@@ -22,6 +22,7 @@ pub struct InstantiateMsg {
 
 #[andr_exec]
 #[cw_serde]
+#[cfg_attr(not(target_arch = "wasm32"), derive(cw_orch::ExecuteFns))]
 pub enum ExecuteMsg {
     /// Add a tier
     AddTier { tier: Tier },
@@ -36,6 +37,7 @@ pub enum ExecuteMsg {
         presale: Option<Vec<PresaleTierOrder>>,
     },
     /// Purchase tiers
+    #[cfg_attr(not(target_arch = "wasm32"), cw_orch(payable))]
     PurchaseTiers { orders: Vec<SimpleTierOrder> },
     /// Purchase tiers with cw20
     Receive(Cw20ReceiveMsg),

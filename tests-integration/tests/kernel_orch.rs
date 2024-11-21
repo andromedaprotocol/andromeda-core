@@ -1,4 +1,3 @@
-#![cfg(not(target_arch = "wasm32"))]
 use andromeda_adodb::ADODBContract;
 use andromeda_counter::CounterContract;
 use andromeda_data_storage::counter::{

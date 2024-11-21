@@ -29,7 +29,7 @@ regex = { version = "1.9.1", default-features = false }
 andromeda-macros = { workspace = true }
 strum_macros = { workspace = true }
 cw721 = { workspace = true }
-serde-json-wasm = "0.5.0"
+serde-json-wasm = "1.0.1"
 enum-repr = { workspace = true }
 sha2 = "0.10.8"
 cw-orch = { workspace = true }
@@ -85,7 +85,7 @@ andromeda-std = { workspace = true }
 env_logger = "0.11.5"
 log = "0.4"
 dotenv = "0.15.0"
-reqwest = { version = "0.11", features = ["json", "blocking"] }
+reqwest = { version = "0.12", features = ["json", "blocking"] }
 serde_json = "1.0"
 chrono = "0.4"
 

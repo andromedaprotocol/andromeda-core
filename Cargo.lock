@@ -133,6 +133,7 @@ dependencies = [
  "cosmwasm-schema 1.5.8",
  "cosmwasm-std 1.5.8",
  "cw-multi-test",
+ "cw-orch",
  "serde",
 ]
 
@@ -147,6 +148,7 @@ dependencies = [
  "cosmwasm-std 1.5.8",
  "cw-multi-test",
  "cw-orch",
+ "cw-orch-daemon",
  "cw-storage-plus 1.2.0",
  "enum-repr",
 ]
@@ -246,6 +248,7 @@ dependencies = [
  "cosmwasm-std 1.5.8",
  "cw-multi-test",
  "cw-orch",
+ "cw-orch-daemon",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
  "cw20 1.1.2",
@@ -281,6 +284,7 @@ dependencies = [
  "cosmwasm-std 1.5.8",
  "cw-multi-test",
  "cw-orch",
+ "cw-orch-daemon",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
  "cw20 1.1.2",
@@ -334,6 +338,7 @@ dependencies = [
  "cosmwasm-std 1.5.8",
  "cw-multi-test",
  "cw-orch",
+ "cw-orch-daemon",
  "cw-storage-plus 1.2.0",
  "cw721 0.18.0",
  "cw721-base 0.18.0",
@@ -426,11 +431,11 @@ dependencies = [
  "lazy_static",
  "log",
  "regex",
- "reqwest 0.11.27",
+ "reqwest 0.12.9",
  "schemars",
  "semver",
  "serde",
- "serde-json-wasm 0.5.2",
+ "serde-json-wasm 1.0.1",
  "serde_json",
  "sha2 0.10.8",
  "strum_macros",
@@ -471,6 +476,8 @@ dependencies = [
  "andromeda-std",
  "cosmwasm-schema 1.5.8",
  "cosmwasm-std 1.5.8",
+ "cw-multi-test",
+ "cw-orch",
  "cw-utils 1.0.3",
  "cw3 1.1.2",
  "cw4",
@@ -509,6 +516,8 @@ dependencies = [
  "cosmwasm-std 1.5.8",
  "cw-asset",
  "cw-controllers",
+ "cw-multi-test",
+ "cw-orch",
  "cw-utils 1.0.3",
  "cw20 1.1.2",
  "cw20-base",
@@ -580,7 +589,7 @@ dependencies = [
  "cw-orch",
  "cw-storage-plus 1.2.0",
  "hex",
- "itertools 0.10.5",
+ "itertools 0.13.0",
  "osmosis-std",
  "osmosis-std-derive 0.15.3",
  "prost 0.11.9",
@@ -588,7 +597,6 @@ dependencies = [
  "serde",
  "serde-cw-value",
  "serde-json-wasm 1.0.1",
- "sha256",
 ]
 
 [[package]]
@@ -677,6 +685,8 @@ dependencies = [
  "andromeda-std",
  "cosmwasm-schema 1.5.8",
  "cosmwasm-std 1.5.8",
+ "cw-multi-test",
+ "cw-orch",
  "cw-utils 1.0.3",
  "cw20 1.1.2",
  "cw721 0.18.0",
@@ -827,7 +837,7 @@ dependencies = [
  "schemars",
  "semver",
  "serde",
- "serde-json-wasm 0.5.2",
+ "serde-json-wasm 1.0.1",
  "sha2 0.10.8",
  "strum_macros",
  "thiserror 2.0.3",
@@ -884,7 +894,7 @@ dependencies = [
  "andromeda-std",
  "andromeda-vfs",
  "anyhow",
- "cosmrs 0.18.0",
+ "cosmrs 0.21.0",
  "cosmwasm-schema 1.5.8",
  "cosmwasm-std 1.5.8",
  "cw-multi-test",
@@ -926,6 +936,7 @@ dependencies = [
  "cosmwasm-std 1.5.8",
  "cw-multi-test",
  "cw-orch",
+ "cw-orch-daemon",
  "cw-storage-plus 1.2.0",
  "cw2 1.1.2",
  "enum-repr",
@@ -1569,23 +1580,12 @@ dependencies = [
 
 [[package]]
 name = "cosmos-sdk-proto"
-version = "0.23.0"
+version = "0.26.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8b2f63ab112b8c8e7b8a29c891adc48f43145beb21c0bfbf562957072c1e0beb"
+checksum = "462e1f6a8e005acc8835d32d60cbd7973ed65ea2a8d8473830e675f050956427"
 dependencies = [
  "prost 0.13.3",
- "prost-types 0.13.3",
- "tendermint-proto 0.38.1",
-]
-
-[[package]]
-name = "cosmos-sdk-proto"
-version = "0.24.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1d0afc4daf81936e6ef5a2cf76f00c913ba5bc385d58ae1e09644e25d16b0381"
-dependencies = [
- "prost 0.13.3",
- "tendermint-proto 0.39.1",
+ "tendermint-proto 0.40.0",
 ]
 
 [[package]]
@@ -1612,12 +1612,12 @@ dependencies = [
 
 [[package]]
 name = "cosmrs"
-version = "0.18.0"
+version = "0.21.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9f21bb63ec6a903510a3d01f44735dd4914724e5eccbe409e6da6833d17c7829"
+checksum = "210fbe6f98594963b46cc980f126a9ede5db9a3848ca65b71303bebdb01afcd9"
 dependencies = [
  "bip32",
- "cosmos-sdk-proto 0.23.0",
+ "cosmos-sdk-proto 0.26.1",
  "ecdsa",
  "eyre",
  "k256",
@@ -1626,27 +1626,7 @@ dependencies = [
  "serde_json",
  "signature",
  "subtle-encoding",
- "tendermint 0.38.1",
- "thiserror 1.0.69",
-]
-
-[[package]]
-name = "cosmrs"
-version = "0.19.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "af28a0ee4149da7cea0486fd7e3fbddea7dd81625279fdc521141ffb07fbd482"
-dependencies = [
- "bip32",
- "cosmos-sdk-proto 0.24.0",
- "ecdsa",
- "eyre",
- "k256",
- "rand_core 0.6.4",
- "serde",
- "serde_json",
- "signature",
- "subtle-encoding",
- "tendermint 0.39.1",
+ "tendermint 0.40.0",
  "thiserror 1.0.69",
 ]
 
@@ -3335,9 +3315,9 @@ dependencies = [
 
 [[package]]
 name = "hyper"
-version = "1.5.0"
+version = "1.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bbbff0a806a4728c99295b254c8838933b5b082d75e3cb70c8dab21fdfbcfa9a"
+checksum = "97818827ef4f364230e16705d4706e2897df2bb60617d6ca15d598025a3c481f"
 dependencies = [
  "bytes",
  "futures-channel",
@@ -3375,7 +3355,7 @@ checksum = "08afdbb5c31130e3034af566421053ab03787c640246a446327f550d11bcb333"
 dependencies = [
  "futures-util",
  "http 1.1.0",
- "hyper 1.5.0",
+ "hyper 1.5.1",
  "hyper-util",
  "rustls 0.23.17",
  "rustls-pki-types",
@@ -3417,7 +3397,7 @@ checksum = "70206fc6890eaca9fde8a0bf71caa2ddfc9fe045ac9e5c70df101a7dbde866e0"
 dependencies = [
  "bytes",
  "http-body-util",
- "hyper 1.5.0",
+ "hyper 1.5.1",
  "hyper-util",
  "native-tls",
  "tokio",
@@ -3436,7 +3416,7 @@ dependencies = [
  "futures-util",
  "http 1.1.0",
  "http-body 1.0.1",
- "hyper 1.5.0",
+ "hyper 1.5.1",
  "pin-project-lite",
  "socket2",
  "tokio",
@@ -3519,15 +3499,24 @@ version = "0.1.0"
 dependencies = [
  "andromeda-app",
  "andromeda-app-contract",
+ "andromeda-crowdfund",
+ "andromeda-cw20",
+ "andromeda-cw721",
  "andromeda-finance",
+ "andromeda-fungible-tokens",
+ "andromeda-non-fungible-tokens",
+ "andromeda-splitter",
  "andromeda-std",
  "andromeda-testing-e2e",
  "andromeda-validator-staking",
- "cosmrs 0.19.0",
+ "cosmrs 0.21.0",
  "cosmwasm-std 1.5.8",
  "cw-orch",
  "cw-orch-daemon",
+ "cw20 1.1.2",
+ "cw721 0.18.0",
  "prost-types 0.13.3",
+ "rstest",
  "serde",
  "tokio",
 ]
@@ -4614,13 +4603,14 @@ dependencies = [
  "base64 0.22.1",
  "bytes",
  "encoding_rs",
+ "futures-channel",
  "futures-core",
  "futures-util",
  "h2 0.4.6",
  "http 1.1.0",
  "http-body 1.0.1",
  "http-body-util",
- "hyper 1.5.0",
+ "hyper 1.5.1",
  "hyper-rustls 0.27.3",
  "hyper-tls 0.6.0",
  "hyper-util",
@@ -4729,9 +4719,9 @@ dependencies = [
 
 [[package]]
 name = "rustix"
-version = "0.38.40"
+version = "0.38.41"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "99e4ea3e1cdc4b559b8e5650f9c8e5998e3e5c1343b4eaf034565f32318d63c0"
+checksum = "d7f649912bc1495e167a6edee79151c84b1bad49748cb4f1f1167f459f6224f6"
 dependencies = [
  "bitflags 2.6.0",
  "errno",
@@ -4845,9 +4835,9 @@ dependencies = [
 
 [[package]]
 name = "schannel"
-version = "0.1.26"
+version = "0.1.27"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "01227be5826fa0690321a2ba6c5cd57a19cf3f6a09e76973b58e61de6ab9d1c1"
+checksum = "1f29ebaa345f945cec9fbbc532eb307f0fdad8161f281b6369539c8d84876b3d"
 dependencies = [
  "windows-sys 0.59.0",
 ]
@@ -5107,16 +5097,6 @@ dependencies = [
  "cfg-if",
  "cpufeatures",
  "digest 0.10.7",
-]
-
-[[package]]
-name = "sha256"
-version = "1.1.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "08a975c1bc0941703000eaf232c4d8ce188d8d5408d6344b6b2c8c6262772828"
-dependencies = [
- "hex",
- "sha2 0.10.8",
 ]
 
 [[package]]
@@ -5425,40 +5405,9 @@ dependencies = [
 
 [[package]]
 name = "tendermint"
-version = "0.38.1"
+version = "0.40.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "505d9d6ffeb83b1de47c307c6e0d2dff56c6256989299010ad03cd80a8491e97"
-dependencies = [
- "bytes",
- "digest 0.10.7",
- "ed25519",
- "ed25519-consensus",
- "flex-error",
- "futures",
- "k256",
- "num-traits",
- "once_cell",
- "prost 0.13.3",
- "prost-types 0.13.3",
- "ripemd",
- "serde",
- "serde_bytes",
- "serde_json",
- "serde_repr",
- "sha2 0.10.8",
- "signature",
- "subtle",
- "subtle-encoding",
- "tendermint-proto 0.38.1",
- "time 0.3.36",
- "zeroize",
-]
-
-[[package]]
-name = "tendermint"
-version = "0.39.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2f3afea7809ffaaf1e5d9c3c9997cb3a834df7e94fbfab2fad2bc4577f1cde41"
+checksum = "37d513ce7f9e41c67ab2dd3d554ef65f36fbcc61745af1e1f93eafdeefa1ce37"
 dependencies = [
  "bytes",
  "digest 0.10.7",
@@ -5479,7 +5428,7 @@ dependencies = [
  "signature",
  "subtle",
  "subtle-encoding",
- "tendermint-proto 0.39.1",
+ "tendermint-proto 0.40.0",
  "time 0.3.36",
  "zeroize",
 ]
@@ -5567,25 +5516,9 @@ dependencies = [
 
 [[package]]
 name = "tendermint-proto"
-version = "0.38.1"
+version = "0.40.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8ed14abe3b0502a3afe21ca74ca5cdd6c7e8d326d982c26f98a394445eb31d6e"
-dependencies = [
- "bytes",
- "flex-error",
- "prost 0.13.3",
- "prost-types 0.13.3",
- "serde",
- "serde_bytes",
- "subtle-encoding",
- "time 0.3.36",
-]
-
-[[package]]
-name = "tendermint-proto"
-version = "0.39.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bf3abf34ecf33125621519e9952688e7a59a98232d51538037ba21fbe526a802"
+checksum = "c81ba1b023ec00763c3bc4f4376c67c0047f185cccf95c416c7a2f16272c4cbb"
 dependencies = [
  "bytes",
  "flex-error",

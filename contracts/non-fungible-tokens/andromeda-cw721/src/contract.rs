@@ -1,4 +1,4 @@
-#[cfg(not(feature = "imported"))]
+#[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     attr, ensure, from_json, has_coins, to_json_binary, Addr, Api, BankMsg, Binary, Coin,
@@ -30,7 +30,7 @@ pub type AndrCW721Contract<'a> = Cw721Contract<'a, TokenExtension, Empty, Execut
 const CONTRACT_NAME: &str = "crates.io:andromeda-cw721";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-#[cfg_attr(not(feature = "imported"), entry_point)]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
     env: Env,
@@ -68,7 +68,7 @@ pub fn instantiate(
     Ok(resp.add_attributes(vec![attr("minter", msg.minter)]))
 }
 
-#[cfg_attr(not(feature = "imported"), entry_point)]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
     deps: DepsMut,
     env: Env,
@@ -473,7 +473,7 @@ fn execute_send_nft(
     Ok(contract.send_nft(deps, env, info, contract_addr, token_id, msg)?)
 }
 
-#[cfg_attr(not(feature = "imported"), entry_point)]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::IsArchived { token_id } => {
@@ -505,7 +505,7 @@ pub fn query_minter(deps: Deps) -> Result<Addr, ContractError> {
     minter.get_raw_address(&deps)
 }
 
-#[cfg_attr(not(feature = "imported"), entry_point)]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
     ADOContract::default().migrate(deps, CONTRACT_NAME, CONTRACT_VERSION)
 }
