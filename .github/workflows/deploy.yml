@@ -127,7 +127,7 @@ jobs:
                 owner: 'andromedaprotocol',
                 repo: 'schema-parser',
                 workflow_id: 'process-schema.yml',
-                ref: 'main',
+                ref: 'master',
                 inputs: {
                   kernel_address: '${{ inputs.kernel_address }}'
                 }
