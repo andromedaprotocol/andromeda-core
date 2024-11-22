@@ -1,3 +1,4 @@
+# deploy.yml
 name: Deploy OS
 on:
   workflow_dispatch:
@@ -44,11 +45,13 @@ jobs:
       - name: Build Schemas
         run: |
           make schemas
-      - name: Upload Artifacts
+      - name: Upload Schemas to Temp
         uses: actions/upload-artifact@v4
+        id: upload-schemas
         with:
-          name: schemas
+          name: temp-schemas
           path: ./schemas/
+          retention-days: 1
           if-no-files-found: error
 
   build_deploy_script:
@@ -76,6 +79,8 @@ jobs:
       SLACK_WEBHOOK_URL: "${{ secrets.DEPLOY_SLACK_WEBHOOK_URL }}"
       TEST_MNEMONIC: "${{ secrets.DEPLOY_TEST_MNEMONIC }}"
       RUST_LOG: info
+    outputs:
+      schema_artifact_url: ${{ steps.get-artifact-url.outputs.url }}
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@v1
@@ -90,7 +95,7 @@ jobs:
       - name: Download Schemas
         uses: actions/download-artifact@v4
         with:
-          name: schemas
+          name: temp-schemas
           path: "./schemas"
       - name: Download Deploy Script
         uses: actions/download-artifact@v4
@@ -101,22 +106,14 @@ jobs:
         run: |
           chmod +x ./andromeda-deploy
           ./andromeda-deploy
-      - name: Upload Deployment Report
-        uses: actions/upload-artifact@v4
-        with:
-          name: deployment-report
-          path: ./deployment-reports/
-          if-no-files-found: error
-          
+      - name: Get Artifact URL
+        id: get-artifact-url
+        run: echo "url=${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts" >> $GITHUB_OUTPUT
+
   trigger-schema-parser:
     needs: deploy
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v4
-        with:
-          name: schemas
-          path: "./schemas"
-
       - name: Trigger Schema Parser
         uses: actions/github-script@v7
         with:
@@ -129,7 +126,8 @@ jobs:
                 workflow_id: 'process-schema.yml',
                 ref: 'master',
                 inputs: {
-                  kernel_address: '${{ inputs.kernel_address }}'
+                  kernel_address: '${{ inputs.kernel_address }}',
+                  artifact_url: '${{ needs.deploy.outputs.schema_artifact_url }}'
                 }
               });
             } catch (error) {
