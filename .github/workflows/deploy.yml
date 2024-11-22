@@ -123,7 +123,7 @@ jobs:
                 ref: 'master',
                 inputs: {
                   kernel_address: '${{ inputs.kernel_address }}',
-                  artifact_url: '${{ needs.build_schemas.outputs.schema_url }}'
+                  artifact_url: '${{ needs.build_schemas.outputs.artifact_url }}'
                 }
               });
             } catch (error) {
