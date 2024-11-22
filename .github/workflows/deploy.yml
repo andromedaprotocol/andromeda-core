@@ -110,22 +110,65 @@ jobs:
     needs: [deploy, build_schemas]
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger Schema Parser
-        uses: actions/github-script@v7
+      - name: Checkout Schema Parser
+        uses: actions/checkout@v4
         with:
-          github-token: ${{ secrets.CI_PAT }}
-          script: |
-            try {
-              await github.rest.actions.createWorkflowDispatch({
-                owner: 'andromedaprotocol',
-                repo: 'schema-parser',
-                workflow_id: 'process-schema.yml',
-                ref: 'master',
-                inputs: {
-                  kernel_address: '${{ inputs.kernel_address }}',
-                  artifact_url: '${{ needs.build_schemas.outputs.artifact_url }}'
-                }
-              });
-            } catch (error) {
-              core.setFailed(`Failed to trigger schema parser workflow: ${error.message}`);
-            }
+          repository: andromedaprotocol/schema-parser
+          ref: master
+          token: ${{ secrets.CI_PAT }}
+
+      - name: Download Schemas
+        uses: actions/download-artifact@v4
+        with:
+          name: temp-schemas
+          path: "./packages/schema-parser/schema"
+
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'pnpm'
+
+      - name: Set Branch Based on Kernel
+        id: check-kernel
+        run: |
+          if [[ "${{ inputs.kernel_address }}" == "${{ vars.TESTNET_KERNELS }}" ]]; then
+            echo "branch=develop" >> $GITHUB_OUTPUT
+          elif [[ "${{ inputs.kernel_address }}" == "${{ vars.TESTNET_STAGING_KERNELS }}" ]]; then
+            echo "branch=testnet-staging" >> $GITHUB_OUTPUT
+          else
+            echo "Error: Kernel not found in known configurations"
+            exit 1
+          fi
+
+      - name: Checkout Correct Branch
+        uses: actions/checkout@v4
+        with:
+          repository: andromedaprotocol/schema-parser
+          ref: ${{ steps.check-kernel.outputs.branch }}
+          token: ${{ secrets.CI_PAT }}
+
+      - name: Process Schema
+        run: |
+          pnpm install
+          cd packages/schema-parser
+          pnpm install
+          npm run start
+          npm run flatten
+          npm run export
+
+      - name: Commit and Push Changes
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          
+          if [[ -n $(git status --porcelain) ]]; then
+            git add .
+            git commit -m "chore: Update schema for kernel: ${{ inputs.kernel_address }}"
+            git push
+          else
+            echo "No changes to commit"
+          fi
