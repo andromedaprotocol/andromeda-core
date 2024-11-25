@@ -142,12 +142,7 @@ jobs:
         - name: Process Schema
           working-directory: packages/schema-parser
           run: |
-            pnpm install
-            ls -a
-            cd packages/schema-parser
-            ls -a
-            unzip temp-schemas.zip
-            ls -a
+            pnpm install  
             npm run start
             npm run flatten
             npm run export
