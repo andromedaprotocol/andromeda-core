@@ -101,66 +101,66 @@ jobs:
           chmod +x ./andromeda-deploy
           ./andromeda-deploy
 
-trigger-schema-parser:
-    needs: [deploy, build_schemas]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Set Branch Based on Kernel
-        id: check-kernel
-        run: |
-          if [[ "${{ inputs.kernel_address }}" == "${{ vars.TESTNET_KERNELS }}" ]]; then
-            echo "branch=develop" >> $GITHUB_OUTPUT
-          elif [[ "${{ inputs.kernel_address }}" == "${{ vars.TESTNET_STAGING_KERNELS }}" ]]; then
-            echo "branch=testnet-staging" >> $GITHUB_OUTPUT
-          else
-            echo "Error: Kernel not found in known configurations"
-            exit 1
-          fi
+  trigger-schema-parser:
+      needs: [deploy, build_schemas]
+      runs-on: ubuntu-latest
+      steps:
+        - name: Set Branch Based on Kernel
+          id: check-kernel
+          run: |
+            if [[ "${{ inputs.kernel_address }}" == "${{ vars.TESTNET_KERNELS }}" ]]; then
+              echo "branch=develop" >> $GITHUB_OUTPUT
+            elif [[ "${{ inputs.kernel_address }}" == "${{ vars.TESTNET_STAGING_KERNELS }}" ]]; then
+              echo "branch=testnet-staging" >> $GITHUB_OUTPUT
+            else
+              echo "Error: Kernel not found in known configurations"
+              exit 1
+            fi
 
-      - name: Checkout Schema Parser
-        uses: actions/checkout@v4
-        with:
-          repository: andromedaprotocol/schema-parser
-          ref: ${{ steps.check-kernel.outputs.branch }}
-          token: ${{ secrets.CI_PAT }}
+        - name: Checkout Schema Parser
+          uses: actions/checkout@v4
+          with:
+            repository: andromedaprotocol/schema-parser
+            ref: ${{ steps.check-kernel.outputs.branch }}
+            token: ${{ secrets.CI_PAT }}
 
-      - name: Download Schemas
-        uses: actions/download-artifact@v4
-        with:
-          name: temp-schemas
-          path: "packages/schema-parser/"
+        - name: Download Schemas
+          uses: actions/download-artifact@v4
+          with:
+            name: temp-schemas
+            path: "packages/schema-parser/"
 
-      - uses: pnpm/action-setup@v2
-        with:
-          version: 8
+        - uses: pnpm/action-setup@v2
+          with:
+            version: 8
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-          cache: 'pnpm'
+        - uses: actions/setup-node@v4
+          with:
+            node-version: '18'
+            cache: 'pnpm'
 
-      - name: Process Schema
-        working-directory: packages/schema-parser
-        run: |
-          pnpm install
-          ls -a
-          cd packages/schema-parser
-          ls -a
-          unzip temp-schemas.zip
-          ls -a
-          npm run start
-          npm run flatten
-          npm run export
+        - name: Process Schema
+          working-directory: packages/schema-parser
+          run: |
+            pnpm install
+            ls -a
+            cd packages/schema-parser
+            ls -a
+            unzip temp-schemas.zip
+            ls -a
+            npm run start
+            npm run flatten
+            npm run export
 
-      - name: Commit and Push Changes
-        run: |
-          git config --global user.name 'github-actions[bot]'
-          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          
-          if [[ -n $(git status --porcelain) ]]; then
-            git add .
-            git commit -m "chore: Update schema for kernel: ${{ inputs.kernel_address }}"
-            git push
-          else
-            echo "No changes to commit"
-          fi
+        - name: Commit and Push Changes
+          run: |
+            git config --global user.name 'github-actions[bot]'
+            git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+            
+            if [[ -n $(git status --porcelain) ]]; then
+              git add .
+              git commit -m "chore: Update schema for kernel: ${{ inputs.kernel_address }}"
+              git push
+            else
+              echo "No changes to commit"
+            fi
