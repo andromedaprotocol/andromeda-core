@@ -142,7 +142,9 @@ jobs:
         - name: Process Schema
           working-directory: packages/schema-parser
           run: |
-            pnpm install  
+            pnpm install
+            ls -a
+            pwd
             npm run start
             npm run flatten
             npm run export
