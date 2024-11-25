@@ -128,7 +128,7 @@ jobs:
           uses: actions/download-artifact@v4
           with:
             name: temp-schemas
-            path: "packages/schema-parser/"
+            path: "packages/schema-parser/schema"
 
         - uses: pnpm/action-setup@v2
           with:
