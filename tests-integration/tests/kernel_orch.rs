@@ -617,7 +617,6 @@ fn test_kernel_ibc_funds_only() {
     let vfs_osmosis = VFSContract::new(osmosis.clone());
     let adodb_osmosis = ADODBContract::new(osmosis.clone());
     let splitter_osmosis = SplitterContract::new(osmosis.clone());
-    let economics_osmosis = EconomicsContract::new(osmosis.clone());
 
     kernel_juno.upload().unwrap();
     vfs_juno.upload().unwrap();
@@ -631,7 +630,7 @@ fn test_kernel_ibc_funds_only() {
     vfs_osmosis.upload().unwrap();
     adodb_osmosis.upload().unwrap();
     splitter_osmosis.upload().unwrap();
-    economics_osmosis.upload().unwrap();
+
     let init_msg_juno = &InstantiateMsg {
         owner: None,
         chain_name: "juno".to_string(),
@@ -754,32 +753,11 @@ fn test_kernel_ibc_funds_only() {
         )
         .unwrap();
 
-    economics_osmosis
-        .instantiate(
-            &os::economics::InstantiateMsg {
-                kernel_address: kernel_osmosis.address().unwrap().into_string(),
-                owner: None,
-            },
-            None,
-            None,
-        )
-        .unwrap();
-
     kernel_juno
         .execute(
             &ExecuteMsg::UpsertKeyAddress {
                 key: "economics".to_string(),
                 value: economics_juno.address().unwrap().into_string(),
-            },
-            None,
-        )
-        .unwrap();
-
-    kernel_osmosis
-        .execute(
-            &ExecuteMsg::UpsertKeyAddress {
-                key: "economics".to_string(),
-                value: economics_osmosis.address().unwrap().into_string(),
             },
             None,
         )
@@ -809,11 +787,34 @@ fn test_kernel_ibc_funds_only() {
         )
         .unwrap();
 
+    adodb_osmosis
+        .execute(
+            &os::adodb::ExecuteMsg::Publish {
+                code_id: 6,
+                ado_type: "economics".to_string(),
+                action_fees: None,
+                version: "1.1.1".to_string(),
+                publisher: None,
+            },
+            None,
+        )
+        .unwrap();
+
     kernel_juno
         .execute(
             &ExecuteMsg::UpsertKeyAddress {
                 key: "vfs".to_string(),
                 value: vfs_juno.address().unwrap().into_string(),
+            },
+            None,
+        )
+        .unwrap();
+
+    kernel_juno
+        .execute(
+            &ExecuteMsg::UpsertKeyAddress {
+                key: "adodb".to_string(),
+                value: adodb_juno.address().unwrap().into_string(),
             },
             None,
         )
