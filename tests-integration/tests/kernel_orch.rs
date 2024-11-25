@@ -730,6 +730,19 @@ fn test_kernel_ibc_funds_only() {
         )
         .unwrap();
 
+    adodb_juno
+        .execute(
+            &os::adodb::ExecuteMsg::Publish {
+                code_id: 4,
+                ado_type: "economics".to_string(),
+                action_fees: None,
+                version: "1.1.1".to_string(),
+                publisher: None,
+            },
+            None,
+        )
+        .unwrap();
+
     economics_juno
         .instantiate(
             &os::economics::InstantiateMsg {
