@@ -95,13 +95,13 @@ pub fn execute(
 pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     let action = msg.as_ref().to_string();
 
-    // let action_response = call_action(
-    //     &mut ctx.deps,
-    //     &ctx.info,
-    //     &ctx.env,
-    //     &ctx.amp_ctx,
-    //     msg.as_ref(),
-    // )?;
+    let action_response = call_action(
+        &mut ctx.deps,
+        &ctx.info,
+        &ctx.env,
+        &ctx.amp_ctx,
+        msg.as_ref(),
+    )?;
 
     let res = match msg {
         ExecuteMsg::ReceiveNft(msg) => handle_receive_cw721(ctx, msg),
@@ -154,11 +154,10 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
         }
         _ => ADOContract::default().execute(ctx, msg),
     }?;
-    Ok(
-        res, // .add_submessages(action_response.messages)
-            // .add_attributes(action_response.attributes)
-            // .add_events(action_response.events)
-    )
+    Ok(res
+        .add_submessages(action_response.messages)
+        .add_attributes(action_response.attributes)
+        .add_events(action_response.events))
 }
 
 fn handle_receive_cw721(
