@@ -145,6 +145,11 @@ impl<'a> ADOContract<'a> {
             }
         );
 
+        let permissioned_actions = self.query_permissioned_actions(deps.as_ref())?;
+        for action in permissioned_actions {
+            self.disable_action_permission(action, deps.storage);
+        }
+
         set_contract_version(deps.storage, contract_name, contract_version)?;
         Ok(Response::default())
     }
