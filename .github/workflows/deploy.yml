@@ -91,11 +91,6 @@ jobs:
         with:
           name: contracts
           path: "./artifacts"
-      - name: Download Schemas
-        uses: actions/download-artifact@v4
-        with:
-          name: temp-schemas
-          path: "./schemas"
       - name: Download Deploy Script
         uses: actions/download-artifact@v4
         with:
@@ -106,32 +101,10 @@ jobs:
           chmod +x ./andromeda-deploy
           ./andromeda-deploy
 
-  trigger-schema-parser:
+trigger-schema-parser:
     needs: [deploy, build_schemas]
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Schema Parser
-        uses: actions/checkout@v4
-        with:
-          repository: andromedaprotocol/schema-parser
-          ref: master
-          token: ${{ secrets.CI_PAT }}
-
-      - name: Download Schemas
-        uses: actions/download-artifact@v4
-        with:
-          name: temp-schemas
-          path: "./packages/schema-parser"
-
-      - uses: pnpm/action-setup@v2
-        with:
-          version: 8
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-          cache: 'pnpm'
-
       - name: Set Branch Based on Kernel
         id: check-kernel
         run: |
@@ -144,18 +117,34 @@ jobs:
             exit 1
           fi
 
-      - name: Checkout Correct Branch
+      - name: Checkout Schema Parser
         uses: actions/checkout@v4
         with:
           repository: andromedaprotocol/schema-parser
           ref: ${{ steps.check-kernel.outputs.branch }}
           token: ${{ secrets.CI_PAT }}
 
+      - name: Download Schemas
+        uses: actions/download-artifact@v4
+        with:
+          name: temp-schemas
+          path: "packages/schema-parser/"
+
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'pnpm'
+
       - name: Process Schema
+        working-directory: packages/schema-parser
         run: |
           pnpm install
           ls -a
-          cd packages/schema-parser/
+          cd packages/schema-parser
           ls -a
           unzip temp-schemas.zip
           ls -a
