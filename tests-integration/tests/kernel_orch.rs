@@ -1,4 +1,5 @@
 use andromeda_adodb::ADODBContract;
+use andromeda_auction::{mock::mock_start_auction, AuctionContract};
 use andromeda_counter::CounterContract;
 use andromeda_data_storage::counter::{
     CounterRestriction, ExecuteMsg as CounterExecuteMsg, GetCurrentAmountResponse,
@@ -9,14 +10,17 @@ use andromeda_finance::splitter::{
     AddressPercent, ExecuteMsg as SplitterExecuteMsg, InstantiateMsg as SplitterInstantiateMsg,
 };
 
+use andromeda_cw721::CW721Contract;
 use andromeda_kernel::KernelContract;
+use andromeda_non_fungible_tokens::cw721::TokenExtension;
 use andromeda_splitter::SplitterContract;
 use andromeda_std::{
+    ado_base::rates::{LocalRate, LocalRateType, LocalRateValue, PercentRate, Rate, RatesMessage},
     amp::{
         messages::{AMPMsg, AMPMsgConfig},
         AndrAddr, Recipient,
     },
-    common::Milliseconds,
+    common::{denom::Asset, expiration::Expiry, Milliseconds},
     os::{
         self,
         kernel::{AcknowledgementMsg, ExecuteMsg, InstantiateMsg, SendMessageWithFundsResponse},
@@ -24,7 +28,7 @@ use andromeda_std::{
 };
 use andromeda_vfs::VFSContract;
 use cosmwasm_std::{
-    to_json_binary, Addr, Binary, Decimal, IbcAcknowledgement, IbcEndpoint, IbcPacket,
+    coin, to_json_binary, Addr, Binary, Decimal, IbcAcknowledgement, IbcEndpoint, IbcPacket,
     IbcPacketAckMsg, IbcTimeout, Timestamp, Uint128,
 };
 use cw_orch::prelude::*;
@@ -586,6 +590,7 @@ fn test_kernel_ibc_execute_only_multi_hop() {
 fn test_kernel_ibc_funds_only() {
     // Here `juno-1` is the chain-id and `juno` is the address prefix for this chain
     let sender = Addr::unchecked("sender_for_all_chains").into_string();
+    let buyer = Addr::unchecked("buyer").into_string();
 
     let interchain = MockInterchainEnv::new(vec![
         ("juno", &sender),
@@ -596,12 +601,17 @@ fn test_kernel_ibc_funds_only() {
 
     let juno = interchain.get_chain("juno").unwrap();
     let osmosis = interchain.get_chain("osmosis").unwrap();
-
     juno.set_balance(sender.clone(), vec![Coin::new(100000000000000, "juno")])
+        .unwrap();
+    juno.set_balance(buyer.clone(), vec![Coin::new(100000000000000, "juno")])
         .unwrap();
 
     let kernel_juno = KernelContract::new(juno.clone());
     let vfs_juno = VFSContract::new(juno.clone());
+    let adodb_juno = ADODBContract::new(juno.clone());
+    let economics_juno = EconomicsContract::new(juno.clone());
+    let mut auction_juno = AuctionContract::new(juno.clone());
+    let cw721_juno = CW721Contract::new(juno.clone());
     let kernel_osmosis = KernelContract::new(osmosis.clone());
     let counter_osmosis = CounterContract::new(osmosis.clone());
     let vfs_osmosis = VFSContract::new(osmosis.clone());
@@ -610,6 +620,11 @@ fn test_kernel_ibc_funds_only() {
 
     kernel_juno.upload().unwrap();
     vfs_juno.upload().unwrap();
+    adodb_juno.upload().unwrap();
+    economics_juno.upload().unwrap();
+    auction_juno.upload().unwrap();
+    cw721_juno.upload().unwrap();
+
     kernel_osmosis.upload().unwrap();
     counter_osmosis.upload().unwrap();
     vfs_osmosis.upload().unwrap();
@@ -699,6 +714,38 @@ fn test_kernel_ibc_funds_only() {
                 owner: None,
             },
             None,
+            None,
+        )
+        .unwrap();
+
+    adodb_juno
+        .instantiate(
+            &os::adodb::InstantiateMsg {
+                kernel_address: kernel_juno.address().unwrap().into_string(),
+                owner: None,
+            },
+            None,
+            None,
+        )
+        .unwrap();
+
+    economics_juno
+        .instantiate(
+            &os::economics::InstantiateMsg {
+                kernel_address: kernel_juno.address().unwrap().into_string(),
+                owner: None,
+            },
+            None,
+            None,
+        )
+        .unwrap();
+
+    kernel_juno
+        .execute(
+            &ExecuteMsg::UpsertKeyAddress {
+                key: "economics".to_string(),
+                value: economics_juno.address().unwrap().into_string(),
+            },
             None,
         )
         .unwrap();
@@ -836,7 +883,7 @@ fn test_kernel_ibc_funds_only() {
         .execute(
             &ExecuteMsg::UpsertKeyAddress {
                 key: "trigger_key".to_string(),
-                value: sender,
+                value: sender.clone(),
             },
             None,
         )
@@ -887,6 +934,129 @@ fn test_kernel_ibc_funds_only() {
         assert_eq!(balances.len(), 1);
         assert_eq!(balances[0].denom, ibc_denom);
         assert_eq!(balances[0].amount.u128(), 100);
+    } else {
+        panic!("packet timed out");
+        // There was a decode error or the packet timed out
+        // Else the packet timed-out, you may have a relayer error or something is wrong in your application
+    };
+
+    // Set up cross chain rates recipient
+    auction_juno
+        .instantiate(
+            &andromeda_non_fungible_tokens::auction::InstantiateMsg {
+                authorized_token_addresses: None,
+                authorized_cw20_addresses: None,
+                kernel_address: kernel_juno.address().unwrap().into_string(),
+                owner: None,
+            },
+            None,
+            None,
+        )
+        .unwrap();
+
+    cw721_juno
+        .instantiate(
+            &andromeda_non_fungible_tokens::cw721::InstantiateMsg {
+                name: "test tokens".to_string(),
+                symbol: "TT".to_string(),
+                minter: AndrAddr::from_string(sender.clone()),
+                kernel_address: kernel_juno.address().unwrap().into_string(),
+                owner: None,
+            },
+            None,
+            None,
+        )
+        .unwrap();
+
+    auction_juno
+        .execute(
+            &andromeda_non_fungible_tokens::auction::ExecuteMsg::Rates(RatesMessage::SetRate {
+                action: "Claim".to_string(),
+                rate: Rate::Local(LocalRate {
+                    rate_type: LocalRateType::Deductive,
+                    recipient: Recipient::new(
+                        AndrAddr::from_string(format!("ibc://osmosis/{}", recipient)),
+                        None,
+                    ),
+                    value: LocalRateValue::Percent(PercentRate {
+                        percent: Decimal::percent(50),
+                    }),
+                    description: None,
+                }),
+            }),
+            None,
+        )
+        .unwrap();
+
+    cw721_juno
+        .execute(
+            &andromeda_non_fungible_tokens::cw721::ExecuteMsg::Mint {
+                token_id: "1".to_string(),
+                owner: sender.clone(),
+                token_uri: None,
+                extension: TokenExtension::default(),
+            },
+            None,
+        )
+        .unwrap();
+
+    let start_time = Milliseconds::from_nanos(juno.block_info().unwrap().time.nanos());
+    let receive_msg = mock_start_auction(
+        None,
+        Expiry::AtTime(start_time.plus_milliseconds(Milliseconds(10000))),
+        None,
+        Asset::NativeToken("juno".to_string()),
+        None,
+        None,
+        None,
+        None,
+    );
+    cw721_juno
+        .execute(
+            &andromeda_non_fungible_tokens::cw721::ExecuteMsg::SendNft {
+                contract: AndrAddr::from_string(auction_juno.address().unwrap()),
+                token_id: "1".to_string(),
+                msg: to_json_binary(&receive_msg).unwrap(),
+            },
+            None,
+        )
+        .unwrap();
+    juno.wait_seconds(1).unwrap();
+
+    auction_juno.set_sender(&Addr::unchecked(buyer.clone()));
+    auction_juno
+        .execute(
+            &andromeda_non_fungible_tokens::auction::ExecuteMsg::PlaceBid {
+                token_id: "1".to_string(),
+                token_address: cw721_juno.address().unwrap().into_string(),
+            },
+            Some(&[coin(50, "juno")]),
+        )
+        .unwrap();
+    juno.next_block().unwrap();
+    juno.next_block().unwrap();
+
+    // Claim
+    let claim_request = auction_juno
+        .execute(
+            &andromeda_non_fungible_tokens::auction::ExecuteMsg::Claim {
+                token_id: "1".to_string(),
+                token_address: cw721_juno.address().unwrap().into_string(),
+            },
+            None,
+        )
+        .unwrap();
+    let packet_lifetime = interchain.await_packets("juno", claim_request).unwrap();
+
+    // For testing a successful outcome of the first packet sent out in the tx, you can use:
+    if let IbcPacketOutcome::Success { .. } = &packet_lifetime.packets[0].outcome {
+        // Packet has been successfully acknowledged and decoded, the transaction has gone through correctly
+
+        // Check recipient balance after trigger execute msg
+        let balances = osmosis.query_all_balances(recipient).unwrap();
+        assert_eq!(balances.len(), 1);
+        assert_eq!(balances[0].denom, ibc_denom);
+        assert_eq!(balances[0].amount.u128(), 100 + 25);
     } else {
         panic!("packet timed out");
         // There was a decode error or the packet timed out

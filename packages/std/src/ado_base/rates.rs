@@ -1,14 +1,17 @@
 use crate::{
     ado_contract::ADOContract,
-    amp::{AndrAddr, Recipient},
+    amp::{
+        messages::{AMPMsg, AMPMsgConfig},
+        AndrAddr, Recipient,
+    },
     common::{deduct_funds, denom::validate_native_denom, Funds},
     error::ContractError,
     os::{adodb::ADOVersion, aos_querier::AOSQuerier},
 };
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
-    ensure, has_coins, to_json_binary, Coin, Decimal, Deps, Event, Fraction, QueryRequest, SubMsg,
-    WasmQuery,
+    ensure, has_coins, to_json_binary, Addr, Coin, Decimal, Deps, Event, Fraction, QueryRequest,
+    ReplyOn, SubMsg, WasmMsg, WasmQuery,
 };
 use cw20::{Cw20Coin, Cw20QueryMsg, TokenInfoResponse};
 
@@ -160,24 +163,53 @@ impl LocalRate {
         event = event.add_attribute(
             "payment",
             PaymentAttribute {
-                receiver: self.recipient.address.get_raw_address(&deps)?.to_string(),
+                receiver: self
+                    .recipient
+                    .address
+                    .get_raw_address(&deps)
+                    .unwrap_or(Addr::unchecked(self.recipient.address.to_string()))
+                    .to_string(),
                 amount: fee.clone(),
             }
             .to_string(),
         );
-
-        let msg = if is_native {
-            self.recipient
-                .generate_direct_msg(&deps, vec![fee.clone()])?
-        } else {
-            self.recipient.generate_msg_cw20(
-                &deps,
-                Cw20Coin {
-                    amount: fee.amount,
-                    address: fee.denom.to_string(),
+        let msg = if self.recipient.is_cross_chain() {
+            // Create a cross chain message to be sent to the kernel
+            let kernel_address = ADOContract::default().get_kernel_address(deps.storage)?;
+            let kernel_msg = crate::os::kernel::ExecuteMsg::Send {
+                message: AMPMsg {
+                    recipient: self.recipient.address.clone(),
+                    message: self.recipient.msg.clone().unwrap_or_default(),
+                    funds: vec![fee.clone()],
+                    config: AMPMsgConfig {
+                        reply_on: ReplyOn::Always,
+                        exit_at_error: false,
+                        gas_limit: None,
+                        direct: true,
+                        ibc_config: None,
+                    },
                 },
-            )?
+            };
+            SubMsg::new(WasmMsg::Execute {
+                contract_addr: kernel_address.to_string(),
+                msg: to_json_binary(&kernel_msg)?,
+                funds: vec![fee.clone()],
+            })
+        } else {
+            if is_native {
+                self.recipient
+                    .generate_direct_msg(&deps, vec![fee.clone()])?
+            } else {
+                self.recipient.generate_msg_cw20(
+                    &deps,
+                    Cw20Coin {
+                        amount: fee.amount,
+                        address: fee.denom.to_string(),
+                    },
+                )?
+            }
         };
+
         msgs.push(msg);
 
         events.push(event);
