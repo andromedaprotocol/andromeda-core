@@ -25,9 +25,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Set up Cargo
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
       - name: Build Contracts
         run: |
-          sudo make version-map
+          make version-map
           make build
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
@@ -35,6 +39,7 @@ jobs:
           name: contracts
           path: ./artifacts/
           if-no-files-found: error
+
 
   build_schemas:
     if: contains('["crnbarr93", "SlayerAnsh", "joemonem", "DimitrijeDragasevic", "cowboy0015"]', github.actor)
