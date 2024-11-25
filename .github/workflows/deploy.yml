@@ -121,7 +121,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: temp-schemas
-          path: "./packages/schema-parser/schema"
+          path: "./packages/schema-parser"
 
       - uses: pnpm/action-setup@v2
         with:
@@ -154,8 +154,11 @@ jobs:
       - name: Process Schema
         run: |
           pnpm install
-          cd packages/schema-parser
-          pnpm install
+          ls -a
+          cd packages/schema-parser/
+          ls -a
+          unzip temp-schemas.zip
+          ls -a
           npm run start
           npm run flatten
           npm run export
