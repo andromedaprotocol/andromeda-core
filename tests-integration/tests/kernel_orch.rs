@@ -829,6 +829,10 @@ fn test_kernel_ibc_funds_only() {
         .unwrap();
 
     let recipient = "osmo1qzskhrca90qy2yjjxqzq4yajy842x7c50xq33d";
+    println!(
+        "osmosis kernel address: {}",
+        kernel_osmosis.address().unwrap()
+    );
 
     let kernel_juno_send_request = kernel_juno
         .execute(
@@ -1047,6 +1051,59 @@ fn test_kernel_ibc_funds_only() {
         )
         .unwrap();
     let packet_lifetime = interchain.await_packets("juno", claim_request).unwrap();
+
+    // For testing a successful outcome of the first packet sent out in the tx, you can use:
+    if let IbcPacketOutcome::Success { .. } = &packet_lifetime.packets[0].outcome {
+        // Packet has been successfully acknowledged and decoded, the transaction has gone through correctly
+
+        // Check recipient balance after trigger execute msg
+        let balances = osmosis
+            .query_all_balances(kernel_osmosis.address().unwrap())
+            .unwrap();
+        assert_eq!(balances.len(), 1);
+        assert_eq!(balances[0].denom, ibc_denom);
+        assert_eq!(balances[0].amount.u128(), 25);
+    } else {
+        panic!("packet timed out");
+        // There was a decode error or the packet timed out
+        // Else the packet timed-out, you may have a relayer error or something is wrong in your application
+    };
+
+    // Construct an Execute msg from the kernel on juno inteded for the splitter on osmosis
+    let kernel_juno_trigger_request = kernel_juno
+        .execute(
+            &ExecuteMsg::TriggerRelay {
+                packet_sequence: "2".to_string(),
+                packet_ack_msg: IbcPacketAckMsg::new(
+                    IbcAcknowledgement::new(
+                        to_json_binary(&AcknowledgementMsg::<SendMessageWithFundsResponse>::Ok(
+                            SendMessageWithFundsResponse {},
+                        ))
+                        .unwrap(),
+                    ),
+                    IbcPacket::new(
+                        Binary::default(),
+                        IbcEndpoint {
+                            port_id: "port_id".to_string(),
+                            channel_id: "channel_id".to_string(),
+                        },
+                        IbcEndpoint {
+                            port_id: "port_id".to_string(),
+                            channel_id: "channel_id".to_string(),
+                        },
+                        1,
+                        IbcTimeout::with_timestamp(Timestamp::from_seconds(1)),
+                    ),
+                    Addr::unchecked("relayer"),
+                ),
+            },
+            None,
+        )
+        .unwrap();
+
+    let packet_lifetime = interchain
+        .await_packets("juno", kernel_juno_trigger_request)
+        .unwrap();
 
     // For testing a successful outcome of the first packet sent out in the tx, you can use:
     if let IbcPacketOutcome::Success { .. } = &packet_lifetime.packets[0].outcome {
