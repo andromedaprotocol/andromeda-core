@@ -39,22 +39,16 @@ pub fn instantiate(
         msg.recipients.len() <= 100,
         ContractError::ReachedRecipientLimit {}
     );
-    let splitter = match msg.lock_time {
-        Some(ref lock_time) => {
-            let time = validate_expiry_duration(lock_time, &env.block)?;
+    let lock = if let Some(ref lock_time) = msg.lock_time {
+        validate_expiry_duration(lock_time, &env.block)?
+    } else {
+        // If locking isn't desired upon instantiation, it's automatically set to 0
+        Milliseconds::default()
+    };
 
-            Splitter {
-                recipients: msg.recipients,
-                lock: time,
-            }
-        }
-        None => {
-            Splitter {
-                recipients: msg.recipients,
-                // If locking isn't desired upon instantiation, it's automatically set to 0
-                lock: Milliseconds::default(),
-            }
-        }
+    let splitter = Splitter {
+        recipients: msg.recipients,
+        lock,
     };
 
     SPLITTER.save(deps.storage, &splitter)?;

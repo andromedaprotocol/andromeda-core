@@ -36,31 +36,18 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    let splitter = match msg.lock_time {
-        Some(ref lock_time) => {
-            // New lock time can't be too short
-            ensure!(
-                lock_time.get_time(&env.block).seconds() >= ONE_DAY,
-                ContractError::LockTimeTooShort {}
-            );
+    let lock = if let Some(ref lock_time) = msg.lock_time {
+        let lock_seconds = lock_time.get_time(&env.block).seconds();
+        ensure!(lock_seconds >= ONE_DAY, ContractError::LockTimeTooShort {});
+        ensure!(lock_seconds <= ONE_YEAR, ContractError::LockTimeTooLong {});
+        lock_time.get_time(&env.block)
+    } else {
+        Milliseconds::default()
+    };
 
-            // New lock time can't be too long
-            ensure!(
-                lock_time.get_time(&env.block).seconds() <= ONE_YEAR,
-                ContractError::LockTimeTooLong {}
-            );
-            Splitter {
-                recipients: msg.recipients.clone(),
-                lock: lock_time.get_time(&env.block),
-            }
-        }
-        None => {
-            Splitter {
-                recipients: msg.recipients.clone(),
-                // If locking isn't desired upon instantiation, it's automatically set to 0
-                lock: Milliseconds::default(),
-            }
-        }
+    let splitter = Splitter {
+        recipients: msg.recipients.clone(),
+        lock,
     };
     // Save kernel address after validating it
 
