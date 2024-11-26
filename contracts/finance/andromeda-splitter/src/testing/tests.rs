@@ -35,6 +35,7 @@ fn init(deps: DepsMut) -> Response {
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         recipients: mock_recipient,
         lock_time: Some(Expiry::FromNow(Milliseconds(86400000))),
+        leftover_funds_recipient: None,
     };
 
     let info = mock_info("owner", &[]);
@@ -62,6 +63,7 @@ fn test_different_lock_times() {
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         recipients: vec![],
         lock_time: Some(lock_time),
+        leftover_funds_recipient: None,
     };
 
     let info = mock_info(OWNER, &[]);
@@ -77,6 +79,7 @@ fn test_different_lock_times() {
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         recipients: vec![],
         lock_time: Some(lock_time),
+        leftover_funds_recipient: None,
     };
 
     let err = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap_err();
@@ -94,6 +97,7 @@ fn test_different_lock_times() {
             percent: Decimal::percent(100),
         }],
         lock_time: Some(lock_time),
+        leftover_funds_recipient: None,
     };
 
     let info = mock_info(OWNER, &[]);
@@ -109,6 +113,7 @@ fn test_different_lock_times() {
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         recipients: vec![],
         lock_time: Some(lock_time),
+        leftover_funds_recipient: None,
     };
 
     let info = mock_info(OWNER, &[]);
@@ -123,6 +128,7 @@ fn test_different_lock_times() {
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         recipients: vec![],
         lock_time: Some(lock_time),
+        leftover_funds_recipient: None,
     };
 
     let info = mock_info(OWNER, &[]);
@@ -140,6 +146,7 @@ fn test_different_lock_times() {
             percent: Decimal::percent(100),
         }],
         lock_time: Some(lock_time),
+        leftover_funds_recipient: None,
     };
 
     let info = mock_info(OWNER, &[]);
@@ -162,6 +169,7 @@ fn test_execute_update_lock() {
     let splitter = Splitter {
         recipients: vec![],
         lock: Milliseconds::from_seconds(current_time - 1),
+        leftover_funds_recipient: Recipient::from_string(OWNER),
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -200,6 +208,7 @@ fn test_execute_update_recipients() {
     let splitter = Splitter {
         recipients: vec![],
         lock: Milliseconds::from_seconds(0),
+        leftover_funds_recipient: Recipient::from_string(OWNER),
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -308,6 +317,7 @@ fn test_execute_send() {
     let splitter = Splitter {
         recipients: recipient,
         lock: Milliseconds::default(),
+        leftover_funds_recipient: Recipient::from_string(OWNER),
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -383,6 +393,7 @@ fn test_execute_send_ado_recipient() {
     let splitter = Splitter {
         recipients: recipient,
         lock: Milliseconds::default(),
+        leftover_funds_recipient: Recipient::from_string(OWNER),
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -445,6 +456,7 @@ fn test_handle_packet_exit_with_error_true() {
     let splitter = Splitter {
         recipients: recipient,
         lock: Milliseconds::default(),
+        leftover_funds_recipient: Recipient::from_string(OWNER),
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -466,6 +478,7 @@ fn test_query_splitter() {
     let splitter = Splitter {
         recipients: vec![],
         lock: Milliseconds::default(),
+        leftover_funds_recipient: Recipient::from_string(OWNER),
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -519,6 +532,7 @@ fn test_execute_send_error() {
     let splitter = Splitter {
         recipients: recipient,
         lock: Milliseconds::default(),
+        leftover_funds_recipient: Recipient::from_string(OWNER),
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();

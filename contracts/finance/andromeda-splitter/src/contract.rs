@@ -5,7 +5,7 @@ use andromeda_finance::splitter::{
 };
 use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
-    amp::messages::AMPPkt,
+    amp::{messages::AMPPkt, Recipient},
     common::{actions::call_action, encode_binary, expiration::Expiry, Milliseconds},
     error::ContractError,
 };
@@ -27,23 +27,18 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    let splitter = match msg.lock_time {
-        Some(ref lock_time) => {
-            let time = validate_expiry_duration(lock_time, &env.block)?;
-            Splitter {
-                recipients: msg.recipients.clone(),
-                lock: time,
-            }
-        }
-        None => {
-            Splitter {
-                recipients: msg.recipients.clone(),
-                // If locking isn't desired upon instantiation, it's automatically set to 0
-                lock: Milliseconds::default(),
-            }
-        }
+    let lock = match msg.lock_time {
+        Some(ref lock_time) => validate_expiry_duration(lock_time, &env.block)?,
+        None => Milliseconds::default(),
     };
-    // Save kernel address after validating it
+    let splitter = Splitter {
+        recipients: msg.recipients.clone(),
+        lock,
+        leftover_funds_recipient: msg
+            .clone()
+            .leftover_funds_recipient
+            .unwrap_or(Recipient::from_string(info.sender.clone())),
+    };
 
     SPLITTER.save(deps.storage, &splitter)?;
 
@@ -103,9 +98,13 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
         msg.as_ref(),
     )?;
     let res = match msg {
+        ExecuteMsg::Send {} => execute_send(ctx),
         ExecuteMsg::UpdateRecipients { recipients } => execute_update_recipients(ctx, recipients),
         ExecuteMsg::UpdateLock { lock_time } => execute_update_lock(ctx, lock_time),
-        ExecuteMsg::Send {} => execute_send(ctx),
+        ExecuteMsg::UpdateLeftoverFundsRecipient {
+            leftover_funds_recipient,
+        } => execute_update_leftover_funds_recipient(ctx, leftover_funds_recipient),
+
         _ => ADOContract::default().execute(ctx, msg),
     }?;
     Ok(res
@@ -178,7 +177,11 @@ fn execute_send(ctx: ExecuteContext) -> Result<Response, ContractError> {
     // If so, should be documented
     if !remainder_funds.is_empty() {
         msgs.push(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-            to_address: info.sender.to_string(),
+            to_address: splitter
+                .leftover_funds_recipient
+                .address
+                .get_raw_address(&deps.as_ref())?
+                .into_string(),
             amount: remainder_funds,
         })));
     }
@@ -229,6 +232,29 @@ fn execute_update_recipients(
     SPLITTER.save(deps.storage, &splitter)?;
 
     Ok(Response::default().add_attributes(vec![attr("action", "update_recipients")]))
+}
+
+fn execute_update_leftover_funds_recipient(
+    ctx: ExecuteContext,
+    leftover_funds_recipient: Recipient,
+) -> Result<Response, ContractError> {
+    let ExecuteContext { deps, info, .. } = ctx;
+
+    nonpayable(&info)?;
+
+    ensure!(
+        ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {}
+    );
+
+    let mut splitter = SPLITTER.load(deps.storage)?;
+    splitter.leftover_funds_recipient = leftover_funds_recipient.clone();
+    SPLITTER.save(deps.storage, &splitter)?;
+
+    Ok(Response::default().add_attributes(vec![
+        attr("action", "update_leftover_funds_recipient"),
+        attr("recipient", leftover_funds_recipient.get_addr()),
+    ]))
 }
 
 fn execute_update_lock(ctx: ExecuteContext, lock_time: Expiry) -> Result<Response, ContractError> {

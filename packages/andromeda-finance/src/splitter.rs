@@ -28,6 +28,8 @@ pub struct Splitter {
     pub recipients: Vec<AddressPercent>,
     /// The lock's expiration time
     pub lock: MillisecondsExpiration,
+    /// The address that will receive any leftover funds
+    pub leftover_funds_recipient: Recipient,
 }
 
 #[andr_instantiate]
@@ -37,6 +39,7 @@ pub struct InstantiateMsg {
     /// sent the amount sent will be divided amongst these recipients depending on their assigned percentage.
     pub recipients: Vec<AddressPercent>,
     pub lock_time: Option<Expiry>,
+    pub leftover_funds_recipient: Option<Recipient>,
 }
 
 impl InstantiateMsg {
@@ -48,12 +51,14 @@ impl InstantiateMsg {
 #[andr_exec]
 #[cw_serde]
 pub enum ExecuteMsg {
+    /// Divides any attached funds to the message amongst the recipients list.
+    Send {},
     /// Update the recipients list. Only executable by the contract owner when the contract is not locked.
     UpdateRecipients { recipients: Vec<AddressPercent> },
     /// Used to lock/unlock the contract allowing the config to be updated.
     UpdateLock { lock_time: Expiry },
-    /// Divides any attached funds to the message amongst the recipients list.
-    Send {},
+    /// Update the leftover funds recipient. Only executable by the contract owner.
+    UpdateLeftoverFundsRecipient { leftover_funds_recipient: Recipient },
 }
 
 #[andr_query]

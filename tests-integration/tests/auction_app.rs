@@ -280,6 +280,7 @@ fn test_auction_app_recipient() {
         andr.kernel.addr(),
         None,
         None,
+        None,
     );
     let splitter_component = AppComponent::new(
         "splitter",

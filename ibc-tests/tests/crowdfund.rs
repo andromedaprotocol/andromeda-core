@@ -163,6 +163,7 @@ fn setup(
         lock_time: None,
         kernel_address: kernel_address.clone(),
         owner: None,
+        leftover_funds_recipient: None,
     };
 
     let splitter_component = AppComponent::new(
