@@ -1,6 +1,6 @@
 #![cfg(all(not(target_arch = "wasm32"), feature = "testing"))]
 use crate::contract::{execute, instantiate, query};
-use andromeda_modules::curve::{
+use andromeda_math::curve::{
     CurveConfig, ExecuteMsg, GetCurveConfigResponse, GetPlotYFromXResponse, InstantiateMsg,
     QueryMsg,
 };

@@ -1,4 +1,4 @@
-use andromeda_modules::date_time::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use andromeda_math::date_time::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use cosmwasm_schema::write_api;
 fn main() {
     write_api! {

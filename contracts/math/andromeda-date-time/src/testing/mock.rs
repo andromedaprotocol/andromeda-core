@@ -1,5 +1,5 @@
-use andromeda_modules::date_time::{GetDateTimeResponse, Timezone};
-use andromeda_modules::date_time::{InstantiateMsg, QueryMsg};
+use andromeda_math::date_time::{GetDateTimeResponse, Timezone};
+use andromeda_math::date_time::{InstantiateMsg, QueryMsg};
 use andromeda_std::{
     error::ContractError,
     testing::mock_querier::{mock_dependencies_custom, WasmMockQuerier, MOCK_KERNEL_CONTRACT},

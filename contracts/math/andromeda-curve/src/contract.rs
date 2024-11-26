@@ -1,6 +1,6 @@
 #[cfg(not(feature = "library"))]
 use crate::state::{CURVE_CONFIG, DEFAULT_CONSTANT_VALUE, DEFAULT_MULTIPLE_VARIABLE_VALUE};
-use andromeda_modules::curve::{
+use andromeda_math::curve::{
     CurveConfig, CurveType, ExecuteMsg, GetCurveConfigResponse, GetPlotYFromXResponse,
     InstantiateMsg, QueryMsg,
 };

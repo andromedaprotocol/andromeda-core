@@ -2,8 +2,8 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError};
 
-use andromeda_modules::date_time::GetDateTimeResponse;
-use andromeda_modules::date_time::{ExecuteMsg, InstantiateMsg, QueryMsg, Timezone};
+use andromeda_math::date_time::GetDateTimeResponse;
+use andromeda_math::date_time::{ExecuteMsg, InstantiateMsg, QueryMsg, Timezone};
 use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     ado_contract::ADOContract,

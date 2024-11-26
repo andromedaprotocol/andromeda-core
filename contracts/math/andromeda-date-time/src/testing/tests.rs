@@ -1,5 +1,5 @@
 use super::mock::{proper_initialization, query_date_time};
-use andromeda_modules::date_time::{GetDateTimeResponse, Timezone};
+use andromeda_math::date_time::{GetDateTimeResponse, Timezone};
 
 #[test]
 fn test_instantiation() {

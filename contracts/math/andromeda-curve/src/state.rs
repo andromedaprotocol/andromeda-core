@@ -1,4 +1,4 @@
-use andromeda_modules::curve::CurveConfig;
+use andromeda_math::curve::CurveConfig;
 use cw_storage_plus::Item;
 
 pub const CURVE_CONFIG: Item<CurveConfig> = Item::new("curve_config");

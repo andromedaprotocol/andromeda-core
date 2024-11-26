@@ -1,6 +1,6 @@
 [package]
-name = "andromeda-curve"
-version = "0.1.1-beta"
+name = "andromeda-date-time"
+version = "0.1.0-beta"
 edition = "2021"
 rust-version = "1.75.0"
 
@@ -20,10 +20,11 @@ cosmwasm-std = { workspace = true }
 cosmwasm-schema = { workspace = true }
 cw-storage-plus = { workspace = true }
 cw-utils = { workspace = true }
-test-case = { workspace = true }
 
-andromeda-std = { workspace = true, features = [] }
-andromeda-modules = { workspace = true }
+andromeda-std = { workspace = true }
+andromeda-math = { workspace = true }
+
+chrono = "0.4.38"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 cw-multi-test = { workspace = true, optional = true }

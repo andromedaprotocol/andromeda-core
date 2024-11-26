@@ -1,4 +1,4 @@
-use andromeda_modules::curve::{
+use andromeda_math::curve::{
     CurveConfig, ExecuteMsg, GetCurveConfigResponse, GetPlotYFromXResponse, InstantiateMsg,
     QueryMsg,
 };

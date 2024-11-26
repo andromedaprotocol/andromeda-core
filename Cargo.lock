@@ -270,7 +270,7 @@ name = "andromeda-curve"
 version = "0.1.1-beta"
 dependencies = [
  "andromeda-app",
- "andromeda-modules",
+ "andromeda-math",
  "andromeda-std",
  "andromeda-testing",
  "cosmwasm-schema 1.5.8",
@@ -370,7 +370,7 @@ name = "andromeda-date-time"
 version = "0.1.0-beta"
 dependencies = [
  "andromeda-app",
- "andromeda-modules",
+ "andromeda-math",
  "andromeda-std",
  "andromeda-testing",
  "chrono 0.4.38",

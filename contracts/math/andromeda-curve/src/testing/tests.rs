@@ -2,7 +2,7 @@ use super::mock::{
     error_initialization, proper_initialization, query_curve_config, query_plot_y_from_x, reset,
     update_curve_config,
 };
-use andromeda_modules::curve::{CurveConfig, CurveType};
+use andromeda_math::curve::{CurveConfig, CurveType};
 use andromeda_std::{amp::AndrAddr, error::ContractError};
 use cosmwasm_std::StdError;
 use test_case::test_case;
@@ -38,7 +38,7 @@ fn test_reset() {
     reset(deps.as_mut(), "user1").unwrap();
 
     let err_res = query_curve_config(deps.as_ref()).unwrap_err();
-    assert_eq!(err_res, ContractError::Std(StdError::NotFound { kind: "type: andromeda_modules::curve::CurveConfig; key: [63, 75, 72, 76, 65, 5F, 63, 6F, 6E, 66, 69, 67]".to_string() }));
+    assert_eq!(err_res, ContractError::Std(StdError::NotFound { kind: "type: andromeda_math::curve::CurveConfig; key: [63, 75, 72, 76, 65, 5F, 63, 6F, 6E, 66, 69, 67]".to_string() }));
 }
 
 #[test]
