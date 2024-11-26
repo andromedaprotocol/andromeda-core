@@ -1,6 +1,6 @@
 #![cfg(all(not(target_arch = "wasm32"), feature = "testing"))]
 use crate::contract::{execute, instantiate, query};
-use andromeda_data_storage::point::{
+use andromeda_math::point::{
     ExecuteMsg, GetDataOwnerResponse, InstantiateMsg, PointCoordinate, PointRestriction, QueryMsg,
 };
 use andromeda_std::ado_base::rates::{Rate, RatesMessage};

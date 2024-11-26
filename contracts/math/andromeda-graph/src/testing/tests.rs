@@ -1,6 +1,6 @@
 use crate::testing::mock_querier::MOCK_POINT_CONTRACT;
-use andromeda_data_storage::graph::{Coordinate, MapInfo, MapSize, StoredDate};
-use andromeda_data_storage::graph::{CoordinateInfo, GetMapInfoResponse};
+use andromeda_math::graph::{Coordinate, MapInfo, MapSize, StoredDate};
+use andromeda_math::graph::{CoordinateInfo, GetMapInfoResponse};
 use andromeda_std::amp::AndrAddr;
 use andromeda_std::error::ContractError;
 

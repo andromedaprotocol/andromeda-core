@@ -538,7 +538,7 @@ dependencies = [
 name = "andromeda-graph"
 version = "0.1.0-beta"
 dependencies = [
- "andromeda-data-storage",
+ "andromeda-math",
  "andromeda-std",
  "andromeda-testing",
  "cosmwasm-schema 1.5.8",
@@ -718,7 +718,7 @@ dependencies = [
 name = "andromeda-point"
 version = "0.1.0-beta"
 dependencies = [
- "andromeda-data-storage",
+ "andromeda-math",
  "andromeda-std",
  "andromeda-testing",
  "cosmwasm-schema 1.5.8",

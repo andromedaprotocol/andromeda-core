@@ -1,4 +1,4 @@
-use andromeda_data_storage::point::{ExecuteMsg, PointCoordinate, PointRestriction};
+use andromeda_math::point::{ExecuteMsg, PointCoordinate, PointRestriction};
 use andromeda_std::{
     ado_base::rates::{Rate, RatesMessage},
     ado_contract::ADOContract,

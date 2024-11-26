@@ -7,7 +7,7 @@ use crate::{
     query::{get_data_owner, get_point},
     state::RESTRICTION,
 };
-use andromeda_data_storage::point::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use andromeda_math::point::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     ado_contract::ADOContract,

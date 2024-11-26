@@ -1,4 +1,4 @@
-use andromeda_data_storage::point::{
+use andromeda_math::point::{
     ExecuteMsg, InstantiateMsg, PointCoordinate, PointRestriction, QueryMsg,
 };
 use andromeda_std::{

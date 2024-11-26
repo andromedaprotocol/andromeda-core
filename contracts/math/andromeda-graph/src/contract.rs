@@ -2,13 +2,11 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{attr, ensure, Binary, Deps, DepsMut, Env, MessageInfo, Response, Storage};
 
-use andromeda_data_storage::graph::{
+use andromeda_math::graph::{
     Coordinate, CoordinateInfo, ExecuteMsg, GetAllPointsResponse, GetMapInfoResponse,
     GetMaxPointNumberResponse, InstantiateMsg, MapInfo, QueryMsg, StoredDate,
 };
-use andromeda_data_storage::point::{
-    GetDataOwnerResponse, PointCoordinate, QueryMsg as PointQueryMsg,
-};
+use andromeda_math::point::{GetDataOwnerResponse, PointCoordinate, QueryMsg as PointQueryMsg};
 use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     ado_contract::ADOContract,

@@ -1,4 +1,4 @@
-use andromeda_data_storage::graph::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use andromeda_math::point::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use cosmwasm_schema::write_api;
 fn main() {
     write_api! {

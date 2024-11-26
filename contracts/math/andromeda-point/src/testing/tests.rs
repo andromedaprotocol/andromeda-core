@@ -1,5 +1,5 @@
 use crate::contract::{execute, query};
-use andromeda_data_storage::point::{
+use andromeda_math::point::{
     ExecuteMsg, GetDataOwnerResponse, PointCoordinate, PointRestriction, QueryMsg,
 };
 use cosmwasm_std::{

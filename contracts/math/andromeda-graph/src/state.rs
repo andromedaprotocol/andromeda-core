@@ -1,5 +1,5 @@
-use andromeda_data_storage::graph::{CoordinateInfo, MapInfo, StoredDate};
-use andromeda_data_storage::point::PointCoordinate;
+use andromeda_math::graph::{CoordinateInfo, MapInfo, StoredDate};
+use andromeda_math::point::PointCoordinate;
 use cosmwasm_std::Addr;
 use cw_storage_plus::{Item, Map};
 

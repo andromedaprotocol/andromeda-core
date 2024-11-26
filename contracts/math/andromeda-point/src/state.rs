@@ -1,4 +1,4 @@
-use andromeda_data_storage::point::{PointCoordinate, PointRestriction};
+use andromeda_math::point::{PointCoordinate, PointRestriction};
 use cosmwasm_std::Addr;
 use cw_storage_plus::Item;
 

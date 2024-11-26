@@ -1,6 +1,4 @@
-use andromeda_data_storage::point::{
-    GetDataOwnerResponse, PointCoordinate, QueryMsg as PointQueryMsg,
-};
+use andromeda_math::point::{GetDataOwnerResponse, PointCoordinate, QueryMsg as PointQueryMsg};
 use andromeda_std::amp::AndrAddr;
 use andromeda_std::testing::mock_querier::MockAndromedaQuerier;
 use andromeda_std::{

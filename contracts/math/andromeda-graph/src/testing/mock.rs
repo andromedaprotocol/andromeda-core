@@ -1,5 +1,5 @@
-use andromeda_data_storage::graph::{Coordinate, GetMapInfoResponse, MapInfo};
-use andromeda_data_storage::graph::{
+use andromeda_math::graph::{Coordinate, GetMapInfoResponse, MapInfo};
+use andromeda_math::graph::{
     CoordinateInfo, ExecuteMsg, GetAllPointsResponse, GetMaxPointNumberResponse, InstantiateMsg,
     QueryMsg,
 };

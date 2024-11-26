@@ -1,10 +1,10 @@
 #![cfg(all(not(target_arch = "wasm32"), feature = "testing"))]
 use crate::contract::{execute, instantiate, query};
-use andromeda_data_storage::graph::CoordinateInfo;
-use andromeda_data_storage::graph::{
+use andromeda_math::graph::CoordinateInfo;
+use andromeda_math::graph::{
     Coordinate, GetAllPointsResponse, GetMapInfoResponse, GetMaxPointNumberResponse, MapInfo,
 };
-use andromeda_data_storage::graph::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use andromeda_math::graph::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use andromeda_std::amp::AndrAddr;
 use andromeda_std::error::ContractError;
 use andromeda_testing::mock::MockApp;

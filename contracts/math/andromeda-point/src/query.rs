@@ -1,5 +1,5 @@
 use crate::state::{DATA, DATA_OWNER, RESTRICTION};
-use andromeda_data_storage::point::{GetDataOwnerResponse, PointCoordinate, PointRestriction};
+use andromeda_math::point::{GetDataOwnerResponse, PointCoordinate, PointRestriction};
 use andromeda_std::{ado_contract::ADOContract, amp::AndrAddr, error::ContractError};
 use cosmwasm_std::{Addr, Storage};
 
