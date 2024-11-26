@@ -5639,6 +5639,7 @@ dependencies = [
  "andromeda-kernel",
  "andromeda-lockdrop",
  "andromeda-marketplace",
+ "andromeda-math",
  "andromeda-modules",
  "andromeda-non-fungible-tokens",
  "andromeda-primitive",
