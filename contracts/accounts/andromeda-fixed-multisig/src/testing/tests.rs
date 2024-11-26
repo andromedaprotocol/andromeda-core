@@ -7,8 +7,8 @@ use cw2::{get_contract_version, ContractVersion};
 use cw3::{ProposalResponse, Status, Vote, VoteListResponse};
 use cw_utils::{Duration, Expiration, Threshold};
 
-use andromeda_finance::fixed_multisig::Voter;
-use andromeda_finance::fixed_multisig::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use andromeda_accounts::fixed_multisig::Voter;
+use andromeda_accounts::fixed_multisig::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use andromeda_std::{
     amp::AndrAddr,
     error::ContractError,

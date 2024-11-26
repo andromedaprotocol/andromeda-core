@@ -1,4 +1,4 @@
-use andromeda_finance::fixed_multisig::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use andromeda_accounts::fixed_multisig::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use cosmwasm_schema::write_api;
 
 fn main() {

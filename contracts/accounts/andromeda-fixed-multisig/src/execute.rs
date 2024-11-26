@@ -1,4 +1,4 @@
-use andromeda_finance::fixed_multisig::ExecuteMsg;
+use andromeda_accounts::fixed_multisig::ExecuteMsg;
 use andromeda_std::{
     ado_contract::ADOContract,
     common::{actions::call_action, context::ExecuteContext},
