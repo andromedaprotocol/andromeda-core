@@ -145,6 +145,19 @@ impl<'a> ADOContract<'a> {
             }
         );
 
+        let all_rates = self.get_all_rates(deps.as_ref())?;
+        if !all_rates.all_rates.is_empty() {
+            let all_actions: Vec<String> = all_rates
+                .all_rates
+                .iter()
+                .map(|(action, _)| action.clone())
+                .collect();
+
+            for action in all_actions {
+                self.remove_rates(deps.storage, &action)?;
+            }
+        }
+
         set_contract_version(deps.storage, contract_name, contract_version)?;
         Ok(Response::default())
     }
