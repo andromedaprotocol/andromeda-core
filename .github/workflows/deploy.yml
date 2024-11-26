@@ -25,8 +25,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Cargo
-        uses: actions-rs/toolchain@v1
+      - name: Set up Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable
       - name: Build Contracts
