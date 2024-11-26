@@ -3,7 +3,7 @@ use super::mock::{
     query_increase_amount, query_initial_amount, query_restriction, reset, set_decrease_amount,
     set_increase_amount, update_restriction,
 };
-use andromeda_data_storage::counter::{CounterRestriction, State};
+use andromeda_math::counter::{CounterRestriction, State};
 use andromeda_std::error::ContractError;
 use cosmwasm_std::Attribute;
 

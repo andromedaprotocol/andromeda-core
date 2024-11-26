@@ -1,9 +1,7 @@
 #![cfg(all(not(target_arch = "wasm32"), feature = "testing"))]
 use crate::contract::{execute, instantiate, query};
-use andromeda_data_storage::counter::{
-    CounterRestriction, ExecuteMsg, InstantiateMsg, QueryMsg, State,
-};
-use andromeda_data_storage::counter::{
+use andromeda_math::counter::{CounterRestriction, ExecuteMsg, InstantiateMsg, QueryMsg, State};
+use andromeda_math::counter::{
     GetCurrentAmountResponse, GetDecreaseAmountResponse, GetIncreaseAmountResponse,
     GetInitialAmountResponse, GetRestrictionResponse,
 };

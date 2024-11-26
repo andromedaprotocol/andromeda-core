@@ -11,6 +11,7 @@ members = [
     "contracts/modules/*",
     "contracts/os/*",
     "contracts/accounts/*",
+    "contracts/math/*",
 
     #Internal
     "tests-integration",
@@ -42,6 +43,7 @@ andromeda-modules = { path = "./packages/andromeda-modules", version = "2.0.0" }
 andromeda-app = { path = "./packages/andromeda-app", version = "1.0.0" }
 andromeda-ecosystem = { path = "./packages/andromeda-ecosystem", version = "1.0.0" }
 andromeda-accounts = { path = "./packages/andromeda-accounts", version = "1.0.0" }
+andromeda-math = { path = "./packages/andromeda-math", version = "1.0.0" }
 andromeda-testing = { path = "./packages/andromeda-testing", version = "1.0.0" }
 andromeda-testing-e2e = { path = "./packages/andromeda-testing-e2e", version = "1.0.0" }
 

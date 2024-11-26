@@ -88,7 +88,7 @@ andromeda-data-storage = { workspace = true }
 andromeda-primitive = { path = "../contracts/data-storage/andromeda-primitive", features = [
     "testing",
 ] }
-andromeda-counter = { path = "../contracts/data-storage/andromeda-counter", features = [
+andromeda-counter = { path = "../contracts/math/andromeda-counter", features = [
     "testing",
 ] }
 

@@ -1,5 +1,5 @@
-use andromeda_data_storage::counter::{CounterRestriction, ExecuteMsg, InstantiateMsg, QueryMsg};
-use andromeda_data_storage::counter::{
+use andromeda_math::counter::{CounterRestriction, ExecuteMsg, InstantiateMsg, QueryMsg};
+use andromeda_math::counter::{
     GetCurrentAmountResponse, GetDecreaseAmountResponse, GetIncreaseAmountResponse,
     GetInitialAmountResponse, GetRestrictionResponse, State,
 };

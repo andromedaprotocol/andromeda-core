@@ -4,8 +4,8 @@ use cosmwasm_std::{
     attr, ensure, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError, Storage,
 };
 
-use andromeda_data_storage::counter::{CounterRestriction, ExecuteMsg, InstantiateMsg, QueryMsg};
-use andromeda_data_storage::counter::{
+use andromeda_math::counter::{CounterRestriction, ExecuteMsg, InstantiateMsg, QueryMsg};
+use andromeda_math::counter::{
     GetCurrentAmountResponse, GetDecreaseAmountResponse, GetIncreaseAmountResponse,
     GetInitialAmountResponse, GetRestrictionResponse,
 };

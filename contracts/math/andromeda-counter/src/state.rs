@@ -1,4 +1,4 @@
-use andromeda_data_storage::counter::CounterRestriction;
+use andromeda_math::counter::CounterRestriction;
 use cw_storage_plus::Item;
 
 pub const INITIAL_AMOUNT: Item<u64> = Item::new("initial_amount");

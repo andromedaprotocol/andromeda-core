@@ -53,7 +53,7 @@ andromeda-set-amount-splitter = { path = "../../contracts/finance/andromeda-set-
 andromeda-weighted-distribution-splitter = { path = "../../contracts/finance/andromeda-weighted-distribution-splitter" }
 
 # Data Storage Contracts
-andromeda-counter = { path = "../../contracts/data-storage/andromeda-counter" }
+andromeda-counter = { path = "../../contracts/math/andromeda-counter" }
 andromeda-primitive = { path = "../../contracts/data-storage/andromeda-primitive" }
 andromeda-boolean = { path = "../../contracts/data-storage/andromeda-boolean" }
 andromeda-string-storage = { path = "../../contracts/data-storage/andromeda-string-storage" }
