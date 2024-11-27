@@ -124,7 +124,7 @@ fn execute_remove_rate(ctx: ExecuteContext, action: String) -> Result<Response, 
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-    ADOContract::default().migrate(deps,env, CONTRACT_NAME, CONTRACT_VERSION)
+    ADOContract::default().migrate(deps, env, CONTRACT_NAME, CONTRACT_VERSION)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

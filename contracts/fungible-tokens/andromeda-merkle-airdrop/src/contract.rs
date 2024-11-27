@@ -362,7 +362,7 @@ pub fn query_total_claimed(deps: Deps, stage: u8) -> Result<TotalClaimedResponse
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-    ADOContract::default().migrate(deps,env, CONTRACT_NAME, CONTRACT_VERSION)
+    ADOContract::default().migrate(deps, env, CONTRACT_NAME, CONTRACT_VERSION)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
