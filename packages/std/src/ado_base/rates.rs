@@ -1,14 +1,17 @@
 use crate::{
     ado_contract::ADOContract,
-    amp::{AndrAddr, Recipient},
+    amp::{
+        messages::{AMPMsg, AMPMsgConfig},
+        AndrAddr, Recipient,
+    },
     common::{deduct_funds, denom::validate_native_denom, Funds},
     error::ContractError,
     os::{adodb::ADOVersion, aos_querier::AOSQuerier},
 };
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
-    ensure, has_coins, to_json_binary, Coin, Decimal, Deps, Event, Fraction, QueryRequest, SubMsg,
-    WasmQuery,
+    ensure, has_coins, to_json_binary, Addr, Coin, Decimal, Deps, Event, Fraction, QueryRequest,
+    ReplyOn, SubMsg, WasmMsg, WasmQuery,
 };
 use cw20::{Cw20Coin, Cw20QueryMsg, TokenInfoResponse};
 
@@ -80,6 +83,20 @@ pub enum LocalRateValue {
     Flat(Coin),
 }
 impl LocalRateValue {
+    /// Used to see if the denom is potentially a cw20 address, if it is, it cannot be paired with a cross-chain recipient
+    pub fn is_valid_address(&self, deps: Deps) -> Result<bool, ContractError> {
+        match self {
+            LocalRateValue::Flat(coin) => {
+                let denom = coin.denom.clone();
+                let is_valid_address = deps.api.addr_validate(denom.as_str());
+                match is_valid_address {
+                    Ok(_) => Ok(true),
+                    Err(_) => Ok(false),
+                }
+            }
+            LocalRateValue::Percent(_) => Ok(false),
+        }
+    }
     pub fn validate(&self, deps: Deps) -> Result<(), ContractError> {
         match self {
             // If it's a coin, make sure it's non-zero
@@ -131,6 +148,18 @@ pub struct LocalRate {
     pub value: LocalRateValue,
     pub description: Option<String>,
 }
+impl LocalRate {
+    pub fn validate(&self, deps: Deps) -> Result<(), ContractError> {
+        if self.recipient.is_cross_chain() {
+            ensure!(
+                !self.value.is_valid_address(deps)?,
+                ContractError::InvalidCw20CrossChainRate {}
+            );
+        }
+        self.value.validate(deps)?;
+        Ok(())
+    }
+}
 // Created this because of the very complex return value warning.
 type LocalRateResponse = (Vec<SubMsg>, Vec<Event>, Vec<Coin>);
 
@@ -160,24 +189,54 @@ impl LocalRate {
         event = event.add_attribute(
             "payment",
             PaymentAttribute {
-                receiver: self.recipient.address.get_raw_address(&deps)?.to_string(),
+                receiver: self
+                    .recipient
+                    .address
+                    .get_raw_address(&deps)
+                    .unwrap_or(Addr::unchecked(self.recipient.address.to_string()))
+                    .to_string(),
                 amount: fee.clone(),
             }
             .to_string(),
         );
-
-        let msg = if is_native {
-            self.recipient
-                .generate_direct_msg(&deps, vec![fee.clone()])?
-        } else {
-            self.recipient.generate_msg_cw20(
-                &deps,
-                Cw20Coin {
-                    amount: fee.amount,
-                    address: fee.denom.to_string(),
+        let msg = if self.recipient.is_cross_chain() {
+            ensure!(is_native, ContractError::InvalidCw20CrossChainRate {});
+            // Create a cross chain message to be sent to the kernel
+            let kernel_address = ADOContract::default().get_kernel_address(deps.storage)?;
+            let kernel_msg = crate::os::kernel::ExecuteMsg::Send {
+                message: AMPMsg {
+                    recipient: self.recipient.address.clone(),
+                    message: self.recipient.msg.clone().unwrap_or_default(),
+                    funds: vec![fee.clone()],
+                    config: AMPMsgConfig {
+                        reply_on: ReplyOn::Always,
+                        exit_at_error: false,
+                        gas_limit: None,
+                        direct: true,
+                        ibc_config: None,
+                    },
                 },
-            )?
+            };
+            SubMsg::new(WasmMsg::Execute {
+                contract_addr: kernel_address.to_string(),
+                msg: to_json_binary(&kernel_msg)?,
+                funds: vec![fee.clone()],
+            })
+        } else {
+            if is_native {
+                self.recipient
+                    .generate_direct_msg(&deps, vec![fee.clone()])?
+            } else {
+                self.recipient.generate_msg_cw20(
+                    &deps,
+                    Cw20Coin {
+                        amount: fee.amount,
+                        address: fee.denom.to_string(),
+                    },
+                )?
+            }
         };
+
         msgs.push(msg);
 
         events.push(event);
@@ -215,8 +274,7 @@ impl Rate {
                 }
             }
             Rate::Local(local_rate) => {
-                // Validate the local rate value
-                local_rate.value.validate(deps)?;
+                local_rate.validate(deps)?;
                 Ok(())
             }
         }

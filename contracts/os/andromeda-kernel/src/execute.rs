@@ -774,7 +774,6 @@ impl MsgHandler {
             gas_limit: None,
             reply_on: cosmwasm_std::ReplyOn::Always,
         });
-
         Ok(resp
             .add_attribute(format!("method:{sequence}"), "execute_transfer_funds")
             .add_attribute(format!("channel:{sequence}"), channel)

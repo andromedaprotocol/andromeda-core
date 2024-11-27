@@ -88,8 +88,7 @@ fn execute_set_rate(
         ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {}
     );
-    // Validate the local rate's value
-    rate.value.validate(deps.as_ref())?;
+    rate.validate(deps.as_ref())?;
 
     RATES.save(deps.storage, &action, &rate)?;
 
