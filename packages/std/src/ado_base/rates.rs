@@ -83,6 +83,20 @@ pub enum LocalRateValue {
     Flat(Coin),
 }
 impl LocalRateValue {
+    /// Used to see if the denom is potentially a cw20 address, if it is, it cannot be paired with a cross-chain recipient
+    pub fn is_valid_address(&self, deps: Deps) -> Result<bool, ContractError> {
+        match self {
+            LocalRateValue::Flat(coin) => {
+                let denom = coin.denom.clone();
+                let is_valid_address = deps.api.addr_validate(denom.as_str());
+                match is_valid_address {
+                    Ok(_) => Ok(true),
+                    Err(_) => Ok(false),
+                }
+            }
+            LocalRateValue::Percent(_) => Ok(false),
+        }
+    }
     pub fn validate(&self, deps: Deps) -> Result<(), ContractError> {
         match self {
             // If it's a coin, make sure it's non-zero
@@ -247,6 +261,12 @@ impl Rate {
                 }
             }
             Rate::Local(local_rate) => {
+                if local_rate.recipient.is_cross_chain() {
+                    ensure!(
+                        !local_rate.value.is_valid_address(deps)?,
+                        ContractError::InvalidCw20CrossChainRate {}
+                    );
+                }
                 // Validate the local rate value
                 local_rate.value.validate(deps)?;
                 Ok(())
