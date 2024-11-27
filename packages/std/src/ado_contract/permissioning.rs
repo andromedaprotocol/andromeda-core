@@ -254,6 +254,12 @@ impl<'a> ADOContract<'a> {
         Ok(())
     }
 
+    /// Removes the permission for the given action and actor
+    pub fn clear_all_permissions(store: &mut dyn Storage) -> Result<(), ContractError> {
+        permissions().clear(store);
+        Ok(())
+    }
+
     /// Execute handler for setting permission
     ///
     /// **Whitelisted/Limited permissions will only work for permissioned actions**
@@ -335,6 +341,20 @@ impl<'a> ADOContract<'a> {
             ("actors", &actor_strs),
             ("action", action.as_str()),
         ]))
+    }
+
+    /// Execute handler for clearing all permissions
+    pub fn execute_clear_all_permissions(
+        &self,
+        ctx: ExecuteContext,
+    ) -> Result<Response, ContractError> {
+        ensure!(
+            Self::is_contract_owner(self, ctx.deps.storage, ctx.info.sender.as_str())?,
+            ContractError::Unauthorized {}
+        );
+        Self::clear_all_permissions(ctx.deps.storage)?;
+
+        Ok(Response::default().add_attributes(vec![("action", "clear_all_permissions")]))
     }
 
     /// Enables permissioning for a given action

@@ -113,7 +113,8 @@ impl<'a> ADOContract<'a> {
 
     pub fn migrate(
         &self,
-        deps: DepsMut,
+        mut deps: DepsMut,
+        env: Env,
         contract_name: &str,
         contract_version: &str,
     ) -> Result<Response, ContractError> {
@@ -144,11 +145,17 @@ impl<'a> ADOContract<'a> {
                 previous_contract: stored.version,
             }
         );
+        let owner = self.owner.load(deps.storage)?;
 
-        let permissioned_actions = self.query_permissioned_actions(deps.as_ref())?;
-        for action in permissioned_actions {
-            self.disable_action_permission(action, deps.storage);
-        }
+        // Clear all permissions
+        self.execute_clear_all_permissions(ExecuteContext::new(
+            deps.branch(),
+            MessageInfo {
+                sender: owner,
+                funds: vec![],
+            },
+            env,
+        ))?;
 
         set_contract_version(deps.storage, contract_name, contract_version)?;
         Ok(Response::default())
