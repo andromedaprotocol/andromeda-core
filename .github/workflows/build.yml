@@ -1,9 +1,25 @@
 name: Build Contracts & Schemas
-
 on:
   pull_request:
     branches: [main, development]
   workflow_dispatch:
+    inputs:
+      network:
+        description: "Network to deploy to"
+        required: true
+        type: string
+      kernel_address:
+        description: "Kernel address"
+        required: false
+        type: string
+      deploy_os:
+        description: "Deploy OS"
+        required: false
+        type: boolean
+      contracts:
+        description: "Contracts to deploy"
+        required: false
+        type: string
 
 jobs:
   build:
@@ -51,3 +67,30 @@ jobs:
           name: schema
           path: ./schemas/
           if-no-files-found: error
+
+  trigger-deploy:
+    needs: [build, build-schemas]
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Deploy Workflow
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.CI_PAT }}
+          script: |
+            try {
+              await github.rest.actions.createWorkflowDispatch({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                workflow_id: 'deploy.yml',
+                ref: github.ref,
+                inputs: {
+                  network: '${{ inputs.network }}',
+                  kernel_address: '${{ inputs.kernel_address }}',
+                  deploy_os: '${{ inputs.deploy_os }}',
+                  contracts: '${{ inputs.contracts }}'
+                }
+              });
+            } catch (error) {
+              core.setFailed(`Failed to trigger deploy workflow: ${error.message}`);
+            }
