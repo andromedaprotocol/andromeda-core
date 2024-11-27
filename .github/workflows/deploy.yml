@@ -50,7 +50,11 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build Schemas
         run: |
-          make schemas
+          set -eo pipefail
+          make schemas || {
+            echo "Schema build failed"
+            exit 1
+          }
       - name: Upload Schemas to Temp
         id: upload-schemas
         uses: actions/upload-artifact@v4
@@ -113,9 +117,13 @@ jobs:
         - name: Set Branch Based on Kernel
           id: check-kernel
           run: |
-            if [[ "${{ inputs.kernel_address }}" == "${{ vars.TESTNET_KERNELS }}" ]]; then
+            KERNEL_ADDRESS="${{ inputs.kernel_address }}"
+            TESTNET_KERNELS="${{ vars.TESTNET_KERNELS }}"
+            TESTNET_STAGING_KERNELS="${{ vars.TESTNET_STAGING_KERNELS }}"
+            
+            if [[ "${KERNEL_ADDRESS}" == "${TESTNET_KERNELS}" ]]; then
               echo "branch=develop" >> $GITHUB_OUTPUT
-            elif [[ "${{ inputs.kernel_address }}" == "${{ vars.TESTNET_STAGING_KERNELS }}" ]]; then
+            elif [[ "${KERNEL_ADDRESS}" == "${TESTNET_STAGING_KERNELS}" ]]; then
               echo "branch=testnet-staging" >> $GITHUB_OUTPUT
             else
               echo "Error: Kernel not found in known configurations"
@@ -147,12 +155,15 @@ jobs:
         - name: Process Schema
           working-directory: packages/schema-parser
           run: |
-            pnpm install
-            ls -a
-            pwd
-            npm run start
-            npm run flatten
-            npm run export
+            set -eo pipefail
+            echo "Installing dependencies..."
+              pnpm install
+            echo "Processing schema..."
+              npm run start
+            echo "Flattening schema..."
+              npm run flatten
+            echo "Exporting schema..."
+              npm run export
 
         - name: Commit and Push Changes
           run: |

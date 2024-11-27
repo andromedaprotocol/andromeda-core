@@ -83,7 +83,7 @@ jobs:
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 workflow_id: 'deploy.yml',
-                ref: 'CiWorkflow',
+                ref: github.ref,
                 inputs: {
                   network: '${{ inputs.network }}',
                   kernel_address: '${{ inputs.kernel_address }}',
