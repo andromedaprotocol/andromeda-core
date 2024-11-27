@@ -247,7 +247,10 @@ fn test_create_batch() {
             .add_attribute("action", "create_batch")
             .add_attribute("amount", "100")
             .add_attribute("lockup_end", current_time.to_string())
-            .add_attribute("release_duration", Milliseconds::from_seconds(10).to_string())
+            .add_attribute(
+                "release_duration",
+                Milliseconds::from_seconds(10).to_string()
+            )
             .add_attribute("release_amount", "Amount(Uint128(10))"),
         res
     );
@@ -282,7 +285,10 @@ fn test_create_batch() {
             .add_attribute("action", "create_batch")
             .add_attribute("amount", "100")
             .add_attribute("lockup_end", (current_time.plus_seconds(100)).to_string())
-            .add_attribute("release_duration", Milliseconds::from_seconds(10).to_string())
+            .add_attribute(
+                "release_duration",
+                Milliseconds::from_seconds(10).to_string()
+            )
             .add_attribute("release_amount", "Amount(Uint128(10))"),
         res
     );
@@ -920,7 +926,12 @@ fn test_claim_all() {
 
     let release_amount = WithdrawalType::Amount(Uint128::new(10));
     // Create batch.
-    create_batch(deps.as_mut(), None, release_duration, release_amount.clone());
+    create_batch(
+        deps.as_mut(),
+        None,
+        release_duration,
+        release_amount.clone(),
+    );
 
     // Create batch with half of the release_duration.
     create_batch(
