@@ -200,6 +200,7 @@ impl LocalRate {
             .to_string(),
         );
         let msg = if self.recipient.is_cross_chain() {
+            ensure!(is_native, ContractError::InvalidCw20CrossChainRate {});
             // Create a cross chain message to be sent to the kernel
             let kernel_address = ADOContract::default().get_kernel_address(deps.storage)?;
             let kernel_msg = crate::os::kernel::ExecuteMsg::Send {
