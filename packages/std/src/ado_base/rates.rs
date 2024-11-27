@@ -148,6 +148,18 @@ pub struct LocalRate {
     pub value: LocalRateValue,
     pub description: Option<String>,
 }
+impl LocalRate {
+    pub fn validate(&self, deps: Deps) -> Result<(), ContractError> {
+        if self.recipient.is_cross_chain() {
+            ensure!(
+                !self.value.is_valid_address(deps)?,
+                ContractError::InvalidCw20CrossChainRate {}
+            );
+        }
+        self.value.validate(deps)?;
+        Ok(())
+    }
+}
 // Created this because of the very complex return value warning.
 type LocalRateResponse = (Vec<SubMsg>, Vec<Event>, Vec<Coin>);
 
@@ -261,14 +273,7 @@ impl Rate {
                 }
             }
             Rate::Local(local_rate) => {
-                if local_rate.recipient.is_cross_chain() {
-                    ensure!(
-                        !local_rate.value.is_valid_address(deps)?,
-                        ContractError::InvalidCw20CrossChainRate {}
-                    );
-                }
-                // Validate the local rate value
-                local_rate.value.validate(deps)?;
+                local_rate.validate(deps)?;
                 Ok(())
             }
         }
