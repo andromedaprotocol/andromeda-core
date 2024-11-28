@@ -91,10 +91,6 @@ andromeda-primitive = { path = "../contracts/data-storage/andromeda-primitive", 
 
 # #OS
 
-andromeda-shunting = { path = "../contracts/modules/andromeda-shunting", features = [
-    "testing",
-] }
-
 andromeda-kernel = { path = "../contracts/os/andromeda-kernel", features = [
     "testing",
 ] }
@@ -114,6 +110,9 @@ andromeda-vfs = { path = "../contracts/os/andromeda-vfs", features = [
 # # Math
 andromeda-math = { workspace = true }
 andromeda-counter = { path = "../contracts/math/andromeda-counter", features = [
+    "testing",
+] }
+andromeda-shunting = { path = "../contracts/math/andromeda-shunting", features = [
     "testing",
 ] }
 

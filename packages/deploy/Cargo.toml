@@ -76,12 +76,12 @@ andromeda-app-contract = { path = "../../contracts/app/andromeda-app-contract" }
 # Modules Contracts
 andromeda-address-list = { path = "../../contracts/modules/andromeda-address-list" }
 andromeda-rates = { path = "../../contracts/modules/andromeda-rates" }
-andromeda-shunting = { path = "../../contracts/modules/andromeda-shunting" }
 
 # Math Contracts
 andromeda-counter = { path = "../../contracts/math/andromeda-counter" }
 andromeda-curve = { path = "../../contracts/math/andromeda-curve" }
 andromeda-date-time = { path = "../../contracts/math/andromeda-date-time" }
+andromeda-shunting = { path = "../../contracts/math/andromeda-shunting" }
 
 andromeda-std = { workspace = true }
 env_logger = "0.11.5"

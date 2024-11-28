@@ -1,6 +1,6 @@
-use andromeda_modules::shunting::ShuntingResponse;
+use andromeda_math::shunting::ShuntingResponse;
 #[cfg(not(feature = "library"))]
-use andromeda_modules::shunting::{
+use andromeda_math::shunting::{
     EvaluateParam, EvaluateRefParam, ExecuteMsg, InstantiateMsg, QueryMsg,
 };
 use andromeda_std::{

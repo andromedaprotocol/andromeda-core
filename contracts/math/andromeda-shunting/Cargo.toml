@@ -20,7 +20,7 @@ cw-utils = { workspace = true }
 cw2 = { workspace = true }
 cosmwasm-schema = { workspace = true }
 andromeda-std = { workspace = true, features = [] }
-andromeda-modules = { workspace = true }
+andromeda-math = { workspace = true }
 
 simple-shunting = "0.1.2"
 serde-cw-value = "0.7.0"

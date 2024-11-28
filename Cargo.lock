@@ -799,7 +799,7 @@ name = "andromeda-shunting"
 version = "0.2.3"
 dependencies = [
  "andromeda-app",
- "andromeda-modules",
+ "andromeda-math",
  "andromeda-std",
  "andromeda-testing",
  "cosmwasm-schema 1.5.8",

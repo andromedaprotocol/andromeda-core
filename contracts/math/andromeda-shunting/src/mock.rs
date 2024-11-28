@@ -1,7 +1,7 @@
 #![cfg(all(not(target_arch = "wasm32"), feature = "testing"))]
 
 use crate::contract::{execute, instantiate, query};
-use andromeda_modules::shunting::{
+use andromeda_math::shunting::{
     EvaluateParam, ExecuteMsg, InstantiateMsg, QueryMsg, ShuntingResponse,
 };
 use cosmwasm_std::{Addr, Empty};
