@@ -181,7 +181,13 @@ jobs:
   trigger-armour-workflow:      
     needs: [trigger-schema-parser]
     runs-on: ubuntu-latest
-    steps:       
+    steps:
+      - name: Wait for schema updates
+        run: |
+          echo "Waiting 6 minutes for schema updates to propagate..."
+          sleep 360
+          echo "Wait complete, proceeding with Armor workflow trigger"
+      
       - name: Download version-map
         uses: actions/download-artifact@v4
         with:
