@@ -220,7 +220,7 @@ jobs:
             try {
               await github.rest.actions.createWorkflowDispatch({
                 owner: 'andromedaprotocol',
-                repo: 'andromeda-armor',
+                repo: 'andromeda-armour',
                 workflow_id: workflowFile,
                 ref: 'main',
                 inputs: {
