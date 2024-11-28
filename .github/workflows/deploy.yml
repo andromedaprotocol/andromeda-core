@@ -1,5 +1,4 @@
 name: Deploy OS
-
 on:
   workflow_dispatch:
     inputs:
@@ -16,7 +15,7 @@ on:
         required: false
         type: boolean
       contracts:
-        description: "Contracts to deploy (e.g. splitter, validator-staking)"
+        description: "Contracts to deploy"
         required: false
         type: string
 
@@ -26,9 +25,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Set up Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
       - name: Build Contracts
         run: |
-          sudo make version-map
+          make version-map
           make build
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
@@ -36,6 +39,31 @@ jobs:
           name: contracts
           path: ./artifacts/
           if-no-files-found: error
+
+
+  build_schemas:
+    if: contains('["crnbarr93", "SlayerAnsh", "joemonem", "DimitrijeDragasevic", "cowboy0015"]', github.actor)
+    runs-on: ubuntu-latest
+    outputs:
+      schema_url: ${{ steps.upload-schemas.outputs.artifact-url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Schemas
+        run: |
+          set -eo pipefail
+          make schemas || {
+            echo "Schema build failed"
+            exit 1
+          }
+      - name: Upload Schemas to Temp
+        id: upload-schemas
+        uses: actions/upload-artifact@v4
+        with:
+          name: temp-schemas
+          path: ./schemas/
+          retention-days: 1
+          if-no-files-found: error
+
   build_deploy_script:
     if: contains('["crnbarr93", "SlayerAnsh", "joemonem", "DimitrijeDragasevic", "cowboy0015"]', github.actor)
     runs-on: ubuntu-latest
@@ -49,9 +77,10 @@ jobs:
           name: deploy
           path: ./target/release/andromeda-deploy
           if-no-files-found: error
+
   deploy:
     runs-on: ubuntu-latest
-    needs: [build_contracts, build_deploy_script]
+    needs: [build_contracts, build_schemas, build_deploy_script]
     env:
       DEPLOYMENT_CHAIN: ${{ inputs.network }}
       DEPLOYMENT_KERNEL_ADDRESS: ${{ inputs.kernel_address }}
@@ -80,9 +109,71 @@ jobs:
         run: |
           chmod +x ./andromeda-deploy
           ./andromeda-deploy
-      - name: Upload Deployment Report
-        uses: actions/upload-artifact@v4
-        with:
-          name: deployment-report
-          path: ./deployment-reports/
-          if-no-files-found: error
+
+  trigger-schema-parser:
+      needs: [deploy, build_schemas]
+      runs-on: ubuntu-latest
+      steps:
+        - name: Set Branch Based on Kernel
+          id: check-kernel
+          run: |
+            KERNEL_ADDRESS="${{ inputs.kernel_address }}"
+            TESTNET_KERNELS="${{ vars.TESTNET_KERNELS }}"
+            TESTNET_STAGING_KERNELS="${{ vars.TESTNET_STAGING_KERNELS }}"
+            
+            if [[ "${KERNEL_ADDRESS}" == "${TESTNET_KERNELS}" ]]; then
+              echo "branch=develop" >> $GITHUB_OUTPUT
+            elif [[ "${KERNEL_ADDRESS}" == "${TESTNET_STAGING_KERNELS}" ]]; then
+              echo "branch=testnet-staging" >> $GITHUB_OUTPUT
+            else
+              echo "Error: Kernel not found in known configurations"
+              exit 1
+            fi
+
+        - name: Checkout Schema Parser
+          uses: actions/checkout@v4
+          with:
+            repository: andromedaprotocol/schema-parser
+            ref: ${{ steps.check-kernel.outputs.branch }}
+            token: ${{ secrets.CI_PAT }}
+
+        - name: Download Schemas
+          uses: actions/download-artifact@v4
+          with:
+            name: temp-schemas
+            path: "packages/schema-parser/schema"
+
+        - uses: pnpm/action-setup@v2
+          with:
+            version: 8
+
+        - uses: actions/setup-node@v4
+          with:
+            node-version: '18'
+            cache: 'pnpm'
+
+        - name: Process Schema
+          working-directory: packages/schema-parser
+          run: |
+            set -eo pipefail
+            echo "Installing dependencies..."
+              pnpm install
+            echo "Processing schema..."
+              npm run start
+            echo "Flattening schema..."
+              npm run flatten
+            echo "Exporting schema..."
+              npm run export
+
+        - name: Commit and Push Changes
+          run: |
+            git config --global user.name 'github-actions[bot]'
+            git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+            
+            if [[ -n $(git status --porcelain) ]]; then
+              git add .
+              git commit -m "chore: Update schema for kernel: ${{ inputs.kernel_address }}"
+              git push
+            else
+              echo "No changes to commit"
+            fi

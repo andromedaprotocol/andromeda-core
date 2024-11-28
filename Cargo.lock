@@ -257,7 +257,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-curve"
-version = "0.1.0-beta"
+version = "0.1.1-beta"
 dependencies = [
  "andromeda-app",
  "andromeda-modules",
@@ -958,7 +958,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-vesting"
-version = "3.0.4-b.1"
+version = "3.0.4-b.2"
 dependencies = [
  "andromeda-app",
  "andromeda-finance",
