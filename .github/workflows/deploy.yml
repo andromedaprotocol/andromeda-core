@@ -178,91 +178,58 @@ jobs:
               echo "No changes to commit"
             fi
 
-        - name: Trigger Armor Workflow
-          uses: actions/github-script@v7
-          with:
-            github-token: ${{ secrets.CI_PAT }}
-            script: |
-              const kernelAddress = '${{ inputs.kernel_address }}';
-              const testnetKernels = '${{ vars.TESTNET_KERNELS }}';
-              const testnetStagingKernels = '${{ vars.TESTNET_STAGING_KERNELS }}';
-              
-              // Read the version map
-              const fs = require('fs');
-              const versionMap = fs.readFileSync('artifacts/version-map.json', 'utf8');
-              
-              let workflowFile;
-              if (kernelAddress === testnetKernels) {
-                workflowFile = 'develop.yml';
-              } else if (kernelAddress === testnetStagingKernels) {
-                workflowFile = 'staging.yml';
-              } else {
-                core.setFailed('Error: Kernel not found in known configurations');
-                return;
-              }
-              
-              try {
-                await github.rest.actions.createWorkflowDispatch({
-                  owner: 'andromedaprotocol',
-                  repo: 'andromeda-armor',
-                  workflow_id: workflowFile,
-                  ref: 'main',
-                  inputs: {
-                    version_map: versionMap
-                  }
-                });
-              } catch (error) {
-                core.setFailed(`Failed to trigger Armor workflow: ${error.message}`);
-              }
+  trigger-armour-workflow:      
+    needs: [build_contracts, build_schemas, build_deploy_script, deploy, trigger-schema-parser]
+    runs-on: ubuntu-latest
+    steps:       
+      - name: Download version-map
+        uses: actions/download-artifact@v4
+        with:
+          name: contracts
+          path: "artifacts"
 
-              - name: Download version-map
-              uses: actions/download-artifact@v4
-              with:
-                name: contracts
-                path: "artifacts"
+      - name: Extract version map
+        run: |
+          cd artifacts
+          ls -a
+          unzip -o contracts.zip
+          ls -a
+          cat version-map.json
+          cp version-map.json ../version-map.json  
+
+      - name: Trigger Armor Workflow
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.CI_PAT }}
+          script: |
+            const kernelAddress = '${{ inputs.kernel_address }}';
+            const testnetKernels = '${{ vars.TESTNET_KERNELS }}';
+            const testnetStagingKernels = '${{ vars.TESTNET_STAGING_KERNELS }}';
             
-        - name: Extract version map
-          run: |
-            cd artifacts
-            ls -a
-            unzip -o contracts.zip
-            ls -a
-            cat version-map.json
-            cp version-map.json ../version-map.json  
-        
-        - name: Trigger Armor Workflow
-          uses: actions/github-script@v7
-          with:
-            github-token: ${{ secrets.CI_PAT }}
-            script: |
-              const kernelAddress = '${{ inputs.kernel_address }}';
-              const testnetKernels = '${{ vars.TESTNET_KERNELS }}';
-              const testnetStagingKernels = '${{ vars.TESTNET_STAGING_KERNELS }}';
-              
-              // Read the version map
-              const fs = require('fs');
-              const versionMap = fs.readFileSync('version-map.json', 'utf8');
-              
-              let workflowFile;
-              if (kernelAddress === testnetKernels) {
-                workflowFile = 'develop.yml';
-              } else if (kernelAddress === testnetStagingKernels) {
-                workflowFile = 'staging.yml';
-              } else {
-                core.setFailed('Error: Kernel not found in known configurations');
-                return;
-              }
-              
-              try {
-                await github.rest.actions.createWorkflowDispatch({
-                  owner: 'andromedaprotocol',
-                  repo: 'andromeda-armor',
-                  workflow_id: workflowFile,
-                  ref: 'main',
-                  inputs: {
-                    version_map: versionMap
-                  }
-                });
-              } catch (error) {
-                core.setFailed(`Failed to trigger Armor workflow: ${error.message}`);
-              }
+            // Read the version map
+            const fs = require('fs');
+            const versionMap = fs.readFileSync('version-map.json', 'utf8');
+            
+            let workflowFile;
+            if (kernelAddress === testnetKernels) {
+              workflowFile = 'develop.yml';
+            } else if (kernelAddress === testnetStagingKernels) {
+              workflowFile = 'staging.yml';
+            } else {
+              core.setFailed('Error: Kernel not found in known configurations');
+              return;
+            }
+            
+            try {
+              await github.rest.actions.createWorkflowDispatch({
+                owner: 'andromedaprotocol',
+                repo: 'andromeda-armor',
+                workflow_id: workflowFile,
+                ref: 'main',
+                inputs: {
+                  version_map: versionMap
+                }
+              });
+            } catch (error) {
+              core.setFailed(`Failed to trigger Armor workflow: ${error.message}`);
+            }
