@@ -129,6 +129,14 @@ jobs:
               echo "Error: Kernel not found in known configurations"
               exit 1
             fi
+        - name: Download version-map
+          uses: actions/download-artifact@v4
+          with:
+            name: contracts
+            path: "artifacts"
+
+        - run: |
+            echo "version-map.json"
 
         - name: Checkout Schema Parser
           uses: actions/checkout@v4
@@ -177,3 +185,40 @@ jobs:
             else
               echo "No changes to commit"
             fi
+
+        - name: Trigger Armor Workflow
+          uses: actions/github-script@v7
+          with:
+            github-token: ${{ secrets.CI_PAT }}
+            script: |
+              const kernelAddress = '${{ inputs.kernel_address }}';
+              const testnetKernels = '${{ vars.TESTNET_KERNELS }}';
+              const testnetStagingKernels = '${{ vars.TESTNET_STAGING_KERNELS }}';
+              
+              // Read the version map
+              const fs = require('fs');
+              const versionMap = fs.readFileSync('artifacts/version-map.json', 'utf8');
+              
+              let workflowFile;
+              if (kernelAddress === testnetKernels) {
+                workflowFile = 'develop.yml';
+              } else if (kernelAddress === testnetStagingKernels) {
+                workflowFile = 'staging.yml';
+              } else {
+                core.setFailed('Error: Kernel not found in known configurations');
+                return;
+              }
+              
+              try {
+                await github.rest.actions.createWorkflowDispatch({
+                  owner: 'andromedaprotocol',
+                  repo: 'andromeda-armor',
+                  workflow_id: workflowFile,
+                  ref: 'main',
+                  inputs: {
+                    version_map: versionMap
+                  }
+                });
+              } catch (error) {
+                core.setFailed(`Failed to trigger Armor workflow: ${error.message}`);
+              }
