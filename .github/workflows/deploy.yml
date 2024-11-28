@@ -143,7 +143,7 @@ jobs:
             name: temp-schemas
             path: "packages/schema-parser/schema"
 
-        - uses: pnpm/action-setup@v2
+        - uses: pnpm/action-setup@v4
           with:
             version: 8
 
