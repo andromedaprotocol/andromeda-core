@@ -610,7 +610,7 @@ fn test_auction_app_cw20_restricted() {
     // Try to set permission with an empty vector of actors
     let actors = vec![];
     let action = "PlaceBid".to_string();
-    let permission = Permission::Local(LocalPermission::blacklisted(None));
+    let permission = Permission::Local(LocalPermission::blacklisted(None, None));
     let err: ContractError = auction
         .execute_set_permission(&mut router, owner.clone(), actors, action, permission)
         .unwrap_err()
@@ -625,7 +625,7 @@ fn test_auction_app_cw20_restricted() {
         AndrAddr::from_string(buyer_three.clone()),
     ];
     let action = "PlaceBid".to_string();
-    let permission = Permission::Local(LocalPermission::blacklisted(None));
+    let permission = Permission::Local(LocalPermission::blacklisted(None, None));
     auction
         .execute_set_permission(&mut router, owner.clone(), actors, action, permission)
         .unwrap();
@@ -661,7 +661,7 @@ fn test_auction_app_cw20_restricted() {
     // Now whitelist bidder one
     let actors = vec![AndrAddr::from_string(buyer_one.clone())];
     let action = "PlaceBid".to_string();
-    let permission = Permission::Local(LocalPermission::whitelisted(None));
+    let permission = Permission::Local(LocalPermission::whitelisted(None, None));
     auction
         .execute_set_permission(&mut router, owner.clone(), actors, action, permission)
         .unwrap();
