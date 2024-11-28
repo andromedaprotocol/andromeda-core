@@ -17,11 +17,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added deployment script/CI workflow for OS [(#616)](https://github.com/andromedaprotocol/andromeda-core/pull/616)
 - Added deployable interfaces to all ADOs [(#620)](https://github.com/andromedaprotocol/andromeda-core/pull/620)
 - Added MultiSig ADO [(#619)](https://github.com/andromedaprotocol/andromeda-core/pull/619)
+- Added andromeda-math package[(#672)](https://github.com/andromedaprotocol/andromeda-core/pull/672)
 
 ### Changed
 
 - Removed staking from vesting contract [(#554)](https://github.com/andromedaprotocol/andromeda-core/pull/554)
 - Vesting: Changed to use Milliseconds instead of seconds and removed unnecessary is_multi_batch_enabled flag [(#578)](https://github.com/andromedaprotocol/andromeda-core/pull/578)
+- Splits up ADOs: moved Counter, Curve, Date-Time, Graph, Point, Shunting ADOs to math[(#672)](https://github.com/andromedaprotocol/andromeda-core/pull/672)
 
 ### Fixed
 
