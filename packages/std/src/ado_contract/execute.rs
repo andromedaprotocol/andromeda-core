@@ -162,8 +162,9 @@ impl<'a> ADOContract<'a> {
                         {
                             // Clearing all rates assuming that if one needs to be removed then all of them should be removed
                             self.rates.clear(deps.storage);
-                            break;
                         }
+                        // One iteration is enough since the rates are either all valid or invalid
+                        break;
                     }
                     Rate::Contract(andr_addr) => {
                         let contract_addr = andr_addr.get_raw_address(&deps.as_ref())?;
@@ -182,8 +183,8 @@ impl<'a> ADOContract<'a> {
                                 .is_ok()
                                 {
                                     self.rates.clear(deps.storage);
-                                    break;
                                 }
+                                break;
                             }
                         }
                     }
