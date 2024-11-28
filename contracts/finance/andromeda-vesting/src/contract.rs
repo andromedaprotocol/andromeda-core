@@ -89,9 +89,9 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
     match msg {
         ExecuteMsg::CreateBatch {
             lockup_duration,
-            release_unit,
+            release_duration,
             release_amount,
-        } => execute_create_batch(ctx, lockup_duration, release_unit, release_amount),
+        } => execute_create_batch(ctx, lockup_duration, release_duration, release_amount),
         ExecuteMsg::Claim {
             number_of_claims,
             batch_id,
@@ -105,7 +105,7 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
 fn execute_create_batch(
     ctx: ExecuteContext,
     lockup_duration: Option<Milliseconds>,
-    release_unit: Milliseconds,
+    release_duration: Milliseconds,
     release_amount: WithdrawalType,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
@@ -136,7 +136,7 @@ fn execute_create_batch(
     );
 
     ensure!(
-        !release_unit.is_zero() && !release_amount.is_zero(),
+        !release_duration.is_zero() && !release_amount.is_zero(),
         ContractError::InvalidZeroAmount {}
     );
     ensure!(
@@ -180,7 +180,7 @@ fn execute_create_batch(
         amount: funds.amount,
         amount_claimed: Uint128::zero(),
         lockup_end,
-        release_unit,
+        release_duration,
         release_amount,
         last_claimed_release_time: lockup_end,
     };
@@ -191,7 +191,7 @@ fn execute_create_batch(
         .add_attribute("action", "create_batch")
         .add_attribute("amount", funds.amount)
         .add_attribute("lockup_end", lockup_end.to_string())
-        .add_attribute("release_unit", release_unit.to_string())
+        .add_attribute("release_duration", release_duration.to_string())
         .add_attribute("release_amount", release_amount_string))
 }
 
@@ -274,7 +274,8 @@ fn execute_claim_all(
         let key = batches().key(batch_id);
 
         let elapsed_time = up_to_time.minus_milliseconds(batch.last_claimed_release_time);
-        let num_available_claims = elapsed_time.milliseconds() / batch.release_unit.milliseconds();
+        let num_available_claims =
+            elapsed_time.milliseconds() / batch.release_duration.milliseconds();
 
         let amount_to_send = claim_batch(
             &deps.querier,
@@ -321,7 +322,7 @@ fn claim_batch(
         .query_balance(querier, env.contract.address.to_owned())?;
 
     let elapsed_time = current_time.minus_milliseconds(batch.last_claimed_release_time);
-    let num_available_claims = elapsed_time.milliseconds() / batch.release_unit.milliseconds();
+    let num_available_claims = elapsed_time.milliseconds() / batch.release_duration.milliseconds();
 
     let number_of_claims = cmp::min(
         number_of_claims.unwrap_or(num_available_claims),
@@ -342,19 +343,20 @@ fn claim_batch(
         batch.amount_claimed = batch.amount_claimed.checked_add(amount_to_send)?;
 
         // Safe math version
-        let claims_release_unit = number_of_claims.checked_mul(batch.release_unit.milliseconds());
-        if claims_release_unit.is_none() {
+        let claims_release_duration =
+            number_of_claims.checked_mul(batch.release_duration.milliseconds());
+        if claims_release_duration.is_none() {
             return Err(ContractError::Overflow {});
         }
 
-        let claims_release_unit = Milliseconds(claims_release_unit.unwrap());
+        let claims_release_duration = Milliseconds(claims_release_duration.unwrap());
 
         batch.last_claimed_release_time = batch
             .last_claimed_release_time
-            .plus_milliseconds(claims_release_unit);
+            .plus_milliseconds(claims_release_duration);
 
         // The unsafe version
-        // batch.last_claimed_release_time += number_of_claims * batch.release_unit;
+        // batch.last_claimed_release_time += number_of_claims * batch.release_duration;
     }
 
     Ok(amount_to_send)
@@ -433,7 +435,7 @@ fn get_batch_response(
         number_of_available_claims,
         lockup_end: batch.lockup_end,
         release_amount: batch.release_amount,
-        release_unit: batch.release_unit,
+        release_duration: batch.release_duration,
         last_claimed_release_time: previous_last_claimed_release_time,
     };
 

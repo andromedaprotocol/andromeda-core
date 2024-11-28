@@ -22,8 +22,8 @@ pub struct Batch {
     /// When the lockup ends.
     pub lockup_end: Milliseconds,
     /// How often releases occur.
-    pub release_unit: Milliseconds,
-    /// Specifies how much is to be released after each `release_unit`. If
+    pub release_duration: Milliseconds,
+    /// Specifies how much is to be released after each `release_duration`. If
     /// it is a percentage, it would be the percentage of the original amount.
     pub release_amount: WithdrawalType,
     /// The time at which the last claim took place in seconds.
@@ -140,7 +140,7 @@ mod tests {
             amount: Uint128::new(100),
             amount_claimed: Uint128::zero(),
             lockup_end: current_time.plus_seconds(10),
-            release_unit: Milliseconds::from_seconds(10),
+            release_duration: Milliseconds::from_seconds(10),
             release_amount: WithdrawalType::Amount(Uint128::new(10)),
             last_claimed_release_time: current_time.minus_seconds(1),
         };
@@ -149,7 +149,7 @@ mod tests {
             amount: Uint128::new(100),
             amount_claimed: Uint128::zero(),
             lockup_end: current_time.minus_seconds(1),
-            release_unit: Milliseconds::from_seconds(10),
+            release_duration: Milliseconds::from_seconds(10),
             release_amount: WithdrawalType::Amount(Uint128::new(10)),
             last_claimed_release_time: current_time.minus_seconds(1),
         };
@@ -158,7 +158,7 @@ mod tests {
             amount: Uint128::new(100),
             amount_claimed: Uint128::new(100),
             lockup_end: current_time.minus_seconds(1),
-            release_unit: Milliseconds::from_seconds(10),
+            release_duration: Milliseconds::from_seconds(10),
             release_amount: WithdrawalType::Amount(Uint128::new(10)),
             last_claimed_release_time: current_time.minus_seconds(1),
         };
