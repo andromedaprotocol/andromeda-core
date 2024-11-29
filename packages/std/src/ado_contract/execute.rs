@@ -1,10 +1,14 @@
-use std::ops::Deref;
+#[cfg(feature = "rates")]
+use {
+    crate::ado_base::rates::{LocalRate, Rate},
+    crate::amp::Recipient,
+    cw_storage_plus::Path,
+    std::ops::Deref,
+};
 
-use crate::ado_base::rates::{LocalRate, Rate};
 use crate::ado_contract::ADOContract;
 use crate::amp::addresses::AndrAddr;
 use crate::amp::messages::AMPPkt;
-use crate::amp::Recipient;
 use crate::common::context::ExecuteContext;
 use crate::common::reply::ReplyId;
 use crate::error::from_semver;
@@ -18,7 +22,7 @@ use cosmwasm_std::{
     DepsMut, Env, MessageInfo, QuerierWrapper, Response, StdError, Storage, SubMsg, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
-use cw_storage_plus::Path;
+
 use semver::Version;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
