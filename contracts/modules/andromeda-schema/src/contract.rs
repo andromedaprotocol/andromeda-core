@@ -1,5 +1,7 @@
 #[cfg(not(feature = "library"))]
-use cosmwasm_std::{entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Response};
+use cosmwasm_std::{
+    entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError,
+};
 
 use andromeda_modules::schema::{ExecuteMsg, InstantiateMsg, QueryMsg};
 
@@ -84,4 +86,15 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
     ADOContract::default().migrate(deps, CONTRACT_NAME, CONTRACT_VERSION)
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
+    if msg.result.is_err() {
+        return Err(ContractError::Std(StdError::generic_err(
+            msg.result.unwrap_err(),
+        )));
+    }
+
+    Ok(Response::default())
 }
