@@ -519,7 +519,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-form"
-version = "1.0.0"
+version = "0.1.0-beta"
 dependencies = [
  "andromeda-data-storage",
  "andromeda-modules",
@@ -800,7 +800,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-schema"
-version = "1.0.0"
+version = "0.1.0-beta"
 dependencies = [
  "andromeda-app",
  "andromeda-modules",
