@@ -57,6 +57,7 @@ pub fn execute_submit_form(
     mut ctx: ExecuteContext,
     data: String,
 ) -> Result<Response, ContractError> {
+    nonpayable(&ctx.info)?;
     let sender = ctx.info.sender;
     ADOContract::default().is_permissioned(
         ctx.deps.branch(),
@@ -150,6 +151,7 @@ pub fn execute_delete_submission(
     submission_id: u64,
     wallet_address: AndrAddr,
 ) -> Result<Response, ContractError> {
+    nonpayable(&ctx.info)?;
     let sender = ctx.info.sender;
     ensure!(
         ADOContract::default().is_owner_or_operator(ctx.deps.storage, sender.as_ref())?,
@@ -181,6 +183,7 @@ pub fn execute_edit_submission(
     wallet_address: AndrAddr,
     data: String,
 ) -> Result<Response, ContractError> {
+    nonpayable(&ctx.info)?;
     let sender = ctx.info.sender;
     let allow_edit_submission = ALLOW_EDIT_SUBMISSION.load(ctx.deps.storage)?;
     ensure!(
