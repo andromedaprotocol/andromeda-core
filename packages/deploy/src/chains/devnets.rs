@@ -28,7 +28,7 @@ pub const WASM_DEVNET_NETWORK: NetworkInfo = NetworkInfo {
 
 pub const WASM_DEVNET: ChainInfo = ChainInfo {
     chain_id: "localwasma-1",
-    gas_denom: "ustake",
+    gas_denom: "ubindo",
     fcd_url: None,
     gas_price: 0.025,
     grpc_urls: &["http://164.90.212.168:20341/"],
