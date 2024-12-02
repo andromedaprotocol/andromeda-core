@@ -1,16 +1,27 @@
 use andromeda_data_storage::form::SubmissionInfo;
 use andromeda_std::{amp::AndrAddr, common::MillisecondsExpiration};
+use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Uint64};
 use cw_storage_plus::{Index, IndexList, IndexedMap, Item, MultiIndex};
 
 pub const SCHEMA_ADO_ADDRESS: Item<AndrAddr> = Item::new("schema_ado_address");
-pub const START_TIME: Item<Option<MillisecondsExpiration>> = Item::new("start_time");
-pub const END_TIME: Item<Option<MillisecondsExpiration>> = Item::new("end_time");
 
-pub const ALLOW_MULTIPLE_SUBMISSIONS: Item<bool> = Item::new("allow_multiple_submissions");
-pub const ALLOW_EDIT_SUBMISSION: Item<bool> = Item::new("allow_edit_submission");
+// pub const START_TIME: Item<Option<MillisecondsExpiration>> = Item::new("start_time");
+// pub const END_TIME: Item<Option<MillisecondsExpiration>> = Item::new("end_time");
+// pub const ALLOW_MULTIPLE_SUBMISSIONS: Item<bool> = Item::new("allow_multiple_submissions");
+// pub const ALLOW_EDIT_SUBMISSION: Item<bool> = Item::new("allow_edit_submission");
+
+pub const CONFIG: Item<Config> = Item::new("config");
 
 pub const SUBMISSION_ID: Item<Uint64> = Item::new("submission_id");
+
+#[cw_serde]
+pub struct Config {
+    pub start_time: Option<MillisecondsExpiration>,
+    pub end_time: Option<MillisecondsExpiration>,
+    pub allow_multiple_submissions: bool,
+    pub allow_edit_submission: bool,
+}
 
 pub struct SubmissionIndexes<'a> {
     /// PK: submission_id + wallet_address

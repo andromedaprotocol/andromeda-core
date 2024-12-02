@@ -14,7 +14,7 @@ use cosmwasm_std::{testing::mock_env, Addr, Timestamp};
 use test_case::test_case;
 
 use crate::{
-    state::{END_TIME, START_TIME},
+    state::CONFIG,
     testing::mock::{delete_submission, edit_submission, submit_form},
 };
 
@@ -279,19 +279,16 @@ fn test_success_open_form(
     let res = open_form(deps.as_mut(), info.sender.as_ref(), execute_timestamp);
     assert!(res.is_ok());
 
-    let start_time = START_TIME.load(&deps.storage).unwrap();
-    let expected_saved_start_time = if START_TIME.load(&deps.storage).unwrap().is_some() {
+    let config = CONFIG.load(&deps.storage).unwrap();
+    let start_time = config.start_time;
+    let expected_saved_start_time = if start_time.is_some() {
         Some(Milliseconds::from_nanos(execute_timestamp).plus_milliseconds(Milliseconds(1)))
     } else {
         None
     };
     assert_eq!(expected_saved_start_time, start_time);
 
-    let end_time = END_TIME.load(&deps.storage).unwrap();
-    // println!(
-    //     "//====================     endtime: {:?}     ====================//",
-    //     end_time
-    // );
+    let end_time = config.end_time;
 
     let saved_start_time = if let Some(start_time) = form_config.start_time {
         let mut env = mock_env();

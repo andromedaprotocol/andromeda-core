@@ -14,10 +14,7 @@ use cw_utils::{nonpayable, Expiration};
 
 use crate::{
     contract::SUBMIT_FORM_ACTION,
-    state::{
-        submissions, ALLOW_EDIT_SUBMISSION, ALLOW_MULTIPLE_SUBMISSIONS, END_TIME,
-        SCHEMA_ADO_ADDRESS, START_TIME, SUBMISSION_ID,
-    },
+    state::{submissions, CONFIG, SCHEMA_ADO_ADDRESS, SUBMISSION_ID},
 };
 
 const MAX_LIMIT: u64 = 100u64;
@@ -68,8 +65,10 @@ pub fn execute_submit_form(
 
     let (expiration, _) = get_and_validate_start_time(&ctx.env, None)?;
     let current_time = milliseconds_from_expiration(expiration)?;
-    let saved_start_time = START_TIME.load(ctx.deps.storage)?;
-    let saved_end_time = END_TIME.load(ctx.deps.storage)?;
+
+    let config = CONFIG.load(ctx.deps.storage)?;
+    let saved_start_time = config.start_time;
+    let saved_end_time = config.end_time;
     // validate if the Form is opened
     validate_form_is_opened(current_time, saved_start_time, saved_end_time)?;
 
@@ -92,7 +91,7 @@ pub fn execute_submit_form(
 
     match validate_res {
         ValidateDataResponse::Valid => {
-            let allow_multiple_submissions = ALLOW_MULTIPLE_SUBMISSIONS.load(ctx.deps.storage)?;
+            let allow_multiple_submissions = config.allow_multiple_submissions;
             match allow_multiple_submissions {
                 true => {
                     submissions().save(
@@ -185,7 +184,9 @@ pub fn execute_edit_submission(
 ) -> Result<Response, ContractError> {
     nonpayable(&ctx.info)?;
     let sender = ctx.info.sender;
-    let allow_edit_submission = ALLOW_EDIT_SUBMISSION.load(ctx.deps.storage)?;
+
+    let config = CONFIG.load(ctx.deps.storage)?;
+    let allow_edit_submission = config.allow_edit_submission;
     ensure!(
         allow_edit_submission,
         ContractError::CustomError {
@@ -194,8 +195,8 @@ pub fn execute_edit_submission(
     );
     let (expiration, _) = get_and_validate_start_time(&ctx.env, None)?;
     let current_time = milliseconds_from_expiration(expiration)?;
-    let saved_start_time = START_TIME.load(ctx.deps.storage)?;
-    let saved_end_time = END_TIME.load(ctx.deps.storage)?;
+    let saved_start_time = config.start_time;
+    let saved_end_time = config.end_time;
     // validate if the Form is opened
     validate_form_is_opened(current_time, saved_start_time, saved_end_time)?;
 
@@ -265,28 +266,33 @@ pub fn execute_open_form(ctx: ExecuteContext) -> Result<Response, ContractError>
         ContractError::Unauthorized {}
     );
 
+    let mut config = CONFIG.load(ctx.deps.storage)?;
+
     let (start_expiration, _) = get_and_validate_start_time(&ctx.env, None)?;
     let start_time = milliseconds_from_expiration(start_expiration)?;
 
-    let saved_start_time = START_TIME.load(ctx.deps.storage)?;
-    let saved_end_time = END_TIME.load(ctx.deps.storage)?;
+    let saved_start_time = config.start_time;
+    let saved_end_time = config.end_time;
     match saved_start_time {
         Some(saved_start_time) => match saved_end_time {
             Some(saved_end_time) => {
                 if saved_start_time.gt(&start_time) {
-                    START_TIME.save(ctx.deps.storage, &Some(start_time))?;
+                    config.start_time = Some(start_time);
+                    CONFIG.save(ctx.deps.storage, &config)?;
                 } else if saved_end_time.gt(&start_time) {
                     return Err(ContractError::CustomError {
                         msg: format!("Already opened. Opened time {:?}", saved_start_time),
                     });
                 } else {
-                    START_TIME.save(ctx.deps.storage, &Some(start_time))?;
-                    END_TIME.save(ctx.deps.storage, &None)?;
+                    config.start_time = Some(start_time);
+                    config.end_time = None;
+                    CONFIG.save(ctx.deps.storage, &config)?;
                 }
             }
             None => {
                 if saved_start_time.gt(&start_time) {
-                    START_TIME.save(ctx.deps.storage, &Some(start_time))?;
+                    config.start_time = Some(start_time);
+                    CONFIG.save(ctx.deps.storage, &config)?;
                 } else {
                     return Err(ContractError::CustomError {
                         msg: format!("Already opened. Opened time {:?}", saved_start_time),
@@ -295,10 +301,12 @@ pub fn execute_open_form(ctx: ExecuteContext) -> Result<Response, ContractError>
             }
         },
         None => {
-            START_TIME.save(ctx.deps.storage, &Some(start_time))?;
+            config.start_time = Some(start_time);
+            CONFIG.save(ctx.deps.storage, &config)?;
             if let Some(saved_end_time) = saved_end_time {
                 if start_time.gt(&saved_end_time) {
-                    END_TIME.save(ctx.deps.storage, &None)?;
+                    config.end_time = None;
+                    CONFIG.save(ctx.deps.storage, &config)?;
                 }
             }
         }
@@ -322,8 +330,9 @@ pub fn execute_close_form(ctx: ExecuteContext) -> Result<Response, ContractError
     let (end_expiration, _) = get_and_validate_start_time(&ctx.env, None)?;
     let end_time = milliseconds_from_expiration(end_expiration)?;
 
-    let saved_start_time = START_TIME.load(ctx.deps.storage)?;
-    let saved_end_time = END_TIME.load(ctx.deps.storage)?;
+    let mut config = CONFIG.load(ctx.deps.storage)?;
+    let saved_start_time = config.start_time;
+    let saved_end_time = config.end_time;
     match saved_end_time {
         Some(saved_end_time) => match saved_start_time {
             Some(saved_start_time) => {
@@ -332,7 +341,8 @@ pub fn execute_close_form(ctx: ExecuteContext) -> Result<Response, ContractError
                         msg: format!("Not opened yet. Will be opend at {:?}", saved_start_time),
                     });
                 } else if saved_end_time.gt(&end_time) {
-                    END_TIME.save(ctx.deps.storage, &Some(end_time))?;
+                    config.end_time = Some(end_time);
+                    CONFIG.save(ctx.deps.storage, &config)?;
                 } else {
                     return Err(ContractError::CustomError {
                         msg: format!("Already closed. Closed at {:?}", saved_end_time),
@@ -352,7 +362,8 @@ pub fn execute_close_form(ctx: ExecuteContext) -> Result<Response, ContractError
                         msg: format!("Not opened yet. Will be opend at {:?}", saved_start_time),
                     });
                 } else {
-                    END_TIME.save(ctx.deps.storage, &Some(end_time))?;
+                    config.end_time = Some(end_time);
+                    CONFIG.save(ctx.deps.storage, &config)?;
                 }
             }
             None => {

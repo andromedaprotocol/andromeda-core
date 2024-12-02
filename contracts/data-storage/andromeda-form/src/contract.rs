@@ -20,10 +20,7 @@ use andromeda_std::{
 
 use crate::execute::{handle_execute, milliseconds_from_expiration};
 use crate::query::{get_all_submissions, get_form_status, get_schema, get_submission};
-use crate::state::{
-    ALLOW_EDIT_SUBMISSION, ALLOW_MULTIPLE_SUBMISSIONS, END_TIME, SCHEMA_ADO_ADDRESS, START_TIME,
-    SUBMISSION_ID,
-};
+use crate::state::{Config, CONFIG, SCHEMA_ADO_ADDRESS, SUBMISSION_ID};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-form";
@@ -90,14 +87,17 @@ pub fn instantiate(
         );
     }
 
-    START_TIME.save(deps.storage, &start_time)?;
-    END_TIME.save(deps.storage, &end_time)?;
-
     let allow_multiple_submissions = msg.form_config.allow_multiple_submissions;
-    ALLOW_MULTIPLE_SUBMISSIONS.save(deps.storage, &allow_multiple_submissions)?;
-
     let allow_edit_submission = msg.form_config.allow_edit_submission;
-    ALLOW_EDIT_SUBMISSION.save(deps.storage, &allow_edit_submission)?;
+
+    let config = Config {
+        start_time,
+        end_time,
+        allow_multiple_submissions,
+        allow_edit_submission,
+    };
+
+    CONFIG.save(deps.storage, &config)?;
 
     if let Some(authorized_addresses_for_submission) = msg.authorized_addresses_for_submission {
         if !authorized_addresses_for_submission.is_empty() {

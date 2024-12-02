@@ -12,7 +12,7 @@ use cosmwasm_std::{Deps, Env, Storage};
 use cosmwasm_std::{QueryRequest, WasmQuery};
 
 use crate::execute::{milliseconds_from_expiration, validate_form_is_opened};
-use crate::state::{submissions, END_TIME, SCHEMA_ADO_ADDRESS, START_TIME};
+use crate::state::{submissions, CONFIG, SCHEMA_ADO_ADDRESS};
 
 pub fn get_schema(deps: Deps) -> Result<GetSchemaResponse, ContractError> {
     let schema_ado_address = SCHEMA_ADO_ADDRESS.load(deps.storage)?;
@@ -30,8 +30,9 @@ pub fn get_form_status(
 ) -> Result<GetFormStatusResponse, ContractError> {
     let (expiration, _) = get_and_validate_start_time(&env, None)?;
     let current_time = milliseconds_from_expiration(expiration)?;
-    let saved_start_time = START_TIME.load(storage)?;
-    let saved_end_time = END_TIME.load(storage)?;
+    let config = CONFIG.load(storage)?;
+    let saved_start_time = config.start_time;
+    let saved_end_time = config.end_time;
     // validate if the Form is opened
     let res_validation = validate_form_is_opened(current_time, saved_start_time, saved_end_time);
     if res_validation.is_ok() {
