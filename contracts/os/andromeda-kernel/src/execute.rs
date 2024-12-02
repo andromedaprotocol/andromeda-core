@@ -8,6 +8,7 @@ use andromeda_std::common::has_coins_merged;
 use andromeda_std::common::reply::ReplyId;
 use andromeda_std::error::ContractError;
 use andromeda_std::os::aos_querier::AOSQuerier;
+#[cfg(not(target_arch = "wasm32"))]
 use andromeda_std::os::ibc_registry::path_to_hops;
 use andromeda_std::os::kernel::{
     AcknowledgementMsg, ChannelInfo, IbcExecuteMsg, Ics20PacketInfo, InternalMsg,
@@ -119,7 +120,7 @@ fn handle_ibc_transfer_funds_reply(
         &ics20_packet_info.funds.denom,
         &ics20_packet_info.channel,
     )?;
-    #[allow(unused_assignments)]
+    #[allow(unused_assignments, unused_mut)]
     let mut adjusted_funds = Coin::new(
         ics20_packet_info.funds.amount.u128(),
         counterparty_denom.clone(),
@@ -656,9 +657,9 @@ impl MsgHandler {
     fn handle_ibc_direct(
         &self,
         _deps: DepsMut,
-        _info: MessageInfo,
+        info: MessageInfo,
         env: Env,
-        _ctx: Option<AMPPkt>,
+        ctx: Option<AMPPkt>,
         sequence: u64,
         channel_info: ChannelInfo,
     ) -> Result<Response, ContractError> {
@@ -679,11 +680,25 @@ impl MsgHandler {
                 error: Some(format!("Channel not found for chain {chain}")),
             });
         }?;
+        let ctx = ctx.map_or(
+            AMPPkt::new(
+                info.sender,
+                env.clone().contract.address,
+                vec![AMPMsg::new(
+                    recipient.clone().get_raw_path(),
+                    message.clone(),
+                    None,
+                )],
+            ),
+            |mut ctx| {
+                ctx.ctx.previous_sender = env.contract.address.to_string();
+                ctx.messages[0].recipient =
+                    AndrAddr::from_string(recipient.clone().get_raw_path().to_string());
+                ctx
+            },
+        );
+        let kernel_msg = IbcExecuteMsg::SendMessage { amp_packet: ctx };
 
-        let kernel_msg = IbcExecuteMsg::SendMessage {
-            recipient: AndrAddr::from_string(recipient.get_raw_path()),
-            message: message.clone(),
-        };
         let msg = IbcMsg::SendPacket {
             channel_id: channel.clone(),
             data: to_json_binary(&kernel_msg)?,

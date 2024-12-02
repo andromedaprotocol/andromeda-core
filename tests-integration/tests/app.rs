@@ -1,5 +1,3 @@
-#![cfg(not(target_arch = "wasm32"))]
-
 use andromeda_app::app::AppComponent;
 use andromeda_app_contract::mock::{mock_andromeda_app, MockAppContract};
 use andromeda_cw721::mock::{mock_andromeda_cw721, mock_cw721_instantiate_msg};

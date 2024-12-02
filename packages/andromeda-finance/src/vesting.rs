@@ -37,8 +37,8 @@ pub enum ExecuteMsg {
         /// Specifying None would mean no lock up period and funds start vesting right away.
         lockup_duration: Option<Milliseconds>,
         /// How often releases occur in seconds.
-        release_unit: Milliseconds,
-        /// Specifies how much is to be released after each `release_unit`. If
+        release_duration: Milliseconds,
+        /// Specifies how much is to be released after each `release_duration`. If
         /// it is a percentage, it would be the percentage of the original amount.
         release_amount: WithdrawalType,
     },
@@ -85,8 +85,8 @@ pub struct BatchResponse {
     /// When the lockup ends.
     pub lockup_end: Milliseconds,
     /// How often releases occur.
-    pub release_unit: Milliseconds,
-    /// Specifies how much is to be released after each `release_unit`. If
+    pub release_duration: Milliseconds,
+    /// Specifies how much is to be released after each `release_duration`. If
     /// it is a percentage, it would be the percentage of the original amount.
     pub release_amount: WithdrawalType,
     /// The time at which the last claim took place in seconds.

@@ -33,7 +33,8 @@ use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, Cw721ReceiveMsg, OwnerOfResponse};
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     attr, coin, ensure, from_json, Addr, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
-    QuerierWrapper, QueryRequest, Response, Storage, SubMsg, Uint128, WasmMsg, WasmQuery,
+    QuerierWrapper, QueryRequest, Reply, Response, StdError, Storage, SubMsg, Uint128, WasmMsg,
+    WasmQuery,
 };
 
 use cw_utils::{nonpayable, Expiration};
@@ -101,6 +102,7 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
         &ctx.amp_ctx,
         msg.as_ref(),
     )?;
+
     let res = match msg {
         ExecuteMsg::ReceiveNft(msg) => handle_receive_cw721(ctx, msg),
         ExecuteMsg::Receive(msg) => handle_receive_cw20(ctx, msg),
@@ -900,4 +902,15 @@ fn query_authorized_addresses(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
     ADOContract::default().migrate(deps, CONTRACT_NAME, CONTRACT_VERSION)
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
+    if msg.result.is_err() {
+        return Err(ContractError::Std(StdError::generic_err(
+            msg.result.unwrap_err(),
+        )));
+    }
+
+    Ok(Response::default())
 }

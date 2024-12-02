@@ -3,9 +3,9 @@
 use crate::contract::{execute, instantiate, query, reply};
 use andromeda_non_fungible_tokens::crowdfund::{
     CampaignConfig, CampaignSummaryResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg,
-    PresaleTierOrder, QueryMsg, SimpleTierOrder, Tier, TierMetaData,
+    PresaleTierOrder, QueryMsg, SimpleTierOrder, Tier, TierMetaData, TiersResponse,
 };
-use andromeda_std::common::expiration::Expiry;
+use andromeda_std::common::{expiration::Expiry, OrderBy};
 use andromeda_testing::{
     mock::MockApp,
     mock_ado,
@@ -98,6 +98,17 @@ impl MockCrowdfund {
         let msg = QueryMsg::CampaignSummary {};
         self.query(app, msg)
     }
+
+    pub fn query_tiers(
+        &self,
+        app: &mut MockApp,
+        start_after: Option<u64>,
+        limit: Option<u32>,
+        order_by: Option<OrderBy>,
+    ) -> TiersResponse {
+        let msg = mock_query_tiers_msg(start_after, limit, order_by);
+        self.query(app, msg)
+    }
 }
 
 pub fn mock_andromeda_crowdfund() -> Box<dyn Contract<Empty>> {
@@ -167,4 +178,16 @@ pub fn mock_claim_msg() -> ExecuteMsg {
 
 pub fn mock_purchase_cw20_msg(orders: Vec<SimpleTierOrder>) -> Cw20HookMsg {
     Cw20HookMsg::PurchaseTiers { orders }
+}
+
+pub fn mock_query_tiers_msg(
+    start_after: Option<u64>,
+    limit: Option<u32>,
+    order_by: Option<OrderBy>,
+) -> QueryMsg {
+    QueryMsg::Tiers {
+        start_after,
+        limit,
+        order_by,
+    }
 }

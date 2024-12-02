@@ -15,6 +15,7 @@ pub struct InstantiateMsg {
 }
 
 #[cw_serde]
+#[cfg_attr(not(target_arch = "wasm32"), derive(cw_orch::ExecuteFns))]
 pub enum ExecuteMsg {
     Publish {
         code_id: u64,
@@ -125,6 +126,7 @@ pub struct ADOMetadata {
 }
 
 #[cw_serde]
+#[cfg_attr(not(target_arch = "wasm32"), derive(cw_orch::QueryFns))]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
     #[returns(u64)]
@@ -162,8 +164,9 @@ pub enum QueryMsg {
     // Base queries
     #[returns(crate::ado_base::version::VersionResponse)]
     Version {},
+    #[serde(rename = "type")]
     #[returns(crate::ado_base::ado_type::TypeResponse)]
-    Type {},
+    ContractType {},
     #[returns(crate::ado_base::ownership::ContractOwnerResponse)]
     Owner {},
     #[returns(crate::ado_base::kernel_address::KernelAddressResponse)]

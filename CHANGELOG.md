@@ -9,21 +9,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Added Curve ADO [(#515)](https://github.com/andromedaprotocol/andromeda-core/pull/515)
+### Changed
+
+### Fixed
+
+## Release 3
+
+### Added
+
 - Added IBC Registry ADO [(#566)](https://github.com/andromedaprotocol/andromeda-core/pull/566)
 - Added Denom Validation in IBC Registry ADO [(#571)](https://github.com/andromedaprotocol/andromeda-core/pull/571)
 - Added Kernel ICS20 Transfer with Optional ExecuteMsg [(#577)](https://github.com/andromedaprotocol/andromeda-core/pull/577)
 - Added IBC Denom Wrap/Unwrap [(#579)](https://github.com/andromedaprotocol/andromeda-core/pull/579)
+- Added deployment script/CI workflow for OS [(#616)](https://github.com/andromedaprotocol/andromeda-core/pull/616)
+- Added deployable interfaces to all ADOs [(#620)](https://github.com/andromedaprotocol/andromeda-core/pull/620)
+- Added MultiSig ADO [(#619)](https://github.com/andromedaprotocol/andromeda-core/pull/619)
+- Added Validator Staking ADO [(#330)](https://github.com/andromedaprotocol/andromeda-core/pull/330)
+- Added Restake and Redelegate to Validator Staking [(#622)](https://github.com/andromedaprotocol/andromeda-core/pull/622)
+- Added andromeda-math and andromeda-account packages[(#672)](https://github.com/andromedaprotocol/andromeda-core/pull/672)
+
 
 ### Changed
 
 - Removed staking from vesting contract [(#554)](https://github.com/andromedaprotocol/andromeda-core/pull/554)
 - Vesting: Changed to use Milliseconds instead of seconds and removed unnecessary is_multi_batch_enabled flag [(#578)](https://github.com/andromedaprotocol/andromeda-core/pull/578)
+- Splits up ADOs: moved Counter, Curve, Date-Time, Graph, Point, Shunting ADOs to math package and Fixed Multisig ADO to accounts package[(#672)](https://github.com/andromedaprotocol/andromeda-core/pull/672)
 
 ### Fixed
 
 - Vesting: Added validation to the instantiation process [(#583)](https://github.com/andromedaprotocol/andromeda-core/pull/583)
 - Fix precision issue with vestings claim batch method [(#555)](https://github.com/andromedaprotocol/andromeda-core/pull/555)
+- (validator-staking) fix: validator staking distribution message for andromeda chain [(#618)](https://github.com/andromedaprotocol/andromeda-core/pull/618)
 
 ### Removed
 
@@ -31,7 +47,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Added Validator Staking ADO [(#330)](https://github.com/andromedaprotocol/andromeda-core/pull/330)
 - Added `Asset` enum [(#415)](https://github.com/andromedaprotocol/andromeda-core/pull/415)
 - Added `ADOBaseVersion` query to all ADOs [(#416)](https://github.com/andromedaprotocol/andromeda-core/pull/416)
 - Staking: Added ability to remove/replace reward token [(#418)](https://github.com/andromedaprotocol/andromeda-core/pull/418)
@@ -42,15 +57,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added String Storage ADO [(#512)](https://github.com/andromedaprotocol/andromeda-core/pull/512)
 - Boolean Storage ADO [(#513)](https://github.com/andromedaprotocol/andromeda-core/pull/513)
 - Added Counter ADO [(#514)](https://github.com/andromedaprotocol/andromeda-core/pull/514)
+- Added Curve ADO [(#515)](https://github.com/andromedaprotocol/andromeda-core/pull/515)
 - Added Date Time ADO [(#519)](https://github.com/andromedaprotocol/andromeda-core/pull/519)
+- Added Graph ADO [(#526)](https://github.com/andromedaprotocol/andromeda-core/pull/526)
 - Added Authorized CW721 Addresses to Marketplace [(#542)](https://github.com/andromedaprotocol/andromeda-core/pull/542)
 - Added Denom Validation for Rates [(#568)](https://github.com/andromedaprotocol/andromeda-core/pull/568)
 - Added BuyNow option for Auction [(#533)](https://github.com/andromedaprotocol/andromeda-core/pull/533)
-- Added Denom Validation in IBC Registry ADO [(#571)](https://github.com/andromedaprotocol/andromeda-core/pull/571)
-- Include ADOBase Version in Schema  [(#574)](https://github.com/andromedaprotocol/andromeda-core/pull/574)
-- Added Kernel ICS20 Transfer with Optional ExecuteMsg [(#577)](https://github.com/andromedaprotocol/andromeda-core/pull/577)
-- Added IBC Denom Wrap/Unwrap [(#579)](https://github.com/andromedaprotocol/andromeda-core/pull/579)
-
+- Include ADOBase Version in Schema [(#574)](https://github.com/andromedaprotocol/andromeda-core/pull/574)
+- Added multi-hop support for IBC [(#604)](https://github.com/andromedaprotocol/andromeda-core/pull/604)
+- Added Schema and Form ADOs [(#591)](https://github.com/andromedaprotocol/andromeda-core/pull/591)
 
 ### Changed
 
@@ -79,6 +94,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - AMPPkt verify origin fix [(#552)](https://github.com/andromedaprotocol/andromeda-core/pull/552)
 - Fix permissioning limited use consumptions and blacklist bypass scenario [(#553)](https://github.com/andromedaprotocol/andromeda-core/pull/553)
 - Crowdfund: fixed error related to `QueryMsg::Tiers` message handler [(#563)](https://github.com/andromedaprotocol/andromeda-core/pull/563)
+- Vesting: Recipient validation for VFS paths [(#641)](https://github.com/andromedaprotocol/andromeda-core/pull/641)
 
 ### Removed
 

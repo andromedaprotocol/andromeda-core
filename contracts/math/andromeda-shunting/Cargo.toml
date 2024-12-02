@@ -1,0 +1,35 @@
+[package]
+name = "andromeda-shunting"
+version = "0.2.3"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+# for more explicit tests, cargo test --features=backtraces
+backtraces = ["cosmwasm-std/backtraces"]
+# use library feature to disable all instantiate/execute/query exports
+library = []
+testing = ["cw-multi-test"]
+
+[dependencies]
+cosmwasm-std = { workspace = true }
+cw-storage-plus = { workspace = true }
+cw-utils = { workspace = true }
+cw2 = { workspace = true }
+cosmwasm-schema = { workspace = true }
+andromeda-std = { workspace = true, features = [] }
+andromeda-math = { workspace = true }
+
+simple-shunting = "0.1.2"
+serde-cw-value = "0.7.0"
+cw-json = { git = "https://github.com/SlayerAnsh/cw-json.git" }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+cw-multi-test = { workspace = true, optional = true }
+andromeda-testing = { workspace = true }
+cw-orch = { workspace = true }
+
+[dev-dependencies]
+andromeda-app = { workspace = true }

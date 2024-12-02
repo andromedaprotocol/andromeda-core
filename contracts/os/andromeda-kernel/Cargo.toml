@@ -26,9 +26,8 @@ cosmwasm-std = { workspace = true, features = ["ibc3"] }
 cosmwasm-schema = { workspace = true }
 cw-storage-plus = { workspace = true }
 
-serde-json-wasm = "1.0.0"
+serde-json-wasm = "1.0.1"
 serde-cw-value = "0.7.0"
-sha256 = "=1.1.4"
 osmosis-std-derive = "0.15.3"
 osmosis-std = "0.1.4"
 prost = { version = "0.11.2", default-features = false, features = [
@@ -37,7 +36,7 @@ prost = { version = "0.11.2", default-features = false, features = [
 serde = { workspace = true }
 schemars = "0.8.10"
 hex = "0.4.3"
-itertools = "0.10"
+itertools = "0.13"
 
 
 andromeda-std = { workspace = true }

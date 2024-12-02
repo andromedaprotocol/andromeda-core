@@ -11,3 +11,6 @@ pub use strum_macros::AsRefStr;
 
 #[cfg(not(target_arch = "wasm32"))]
 pub mod testing;
+
+#[cfg(feature = "deploy")]
+pub mod deploy;

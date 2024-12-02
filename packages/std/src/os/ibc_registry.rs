@@ -41,6 +41,7 @@ pub struct IBCDenomInfo {
 
 #[cw_serde]
 #[derive(AsRefStr)]
+#[cfg_attr(not(target_arch = "wasm32"), derive(cw_orch::ExecuteFns))]
 pub enum ExecuteMsg {
     /// Receives an AMP Packet for relaying
     #[serde(rename = "amp_receive")]
