@@ -37,4 +37,21 @@ pub const WASM_DEVNET: ChainInfo = ChainInfo {
     kind: ChainKind::Testnet,
 };
 
-pub const DEVNET_CHAINS: &[ChainInfo] = &[OSMOSIS_DEVNET, WASM_DEVNET];
+pub const ANDROMEDA_DEVNET_NETWORK: NetworkInfo = NetworkInfo {
+    chain_name: "andromeda-devnet",
+    pub_address_prefix: "andr",
+    coin_type: 118u32,
+};
+
+pub const ANDROMEDA_DEVNET: ChainInfo = ChainInfo {
+    chain_id: "localandromedaa-1",
+    gas_denom: "uandr",
+    fcd_url: None,
+    gas_price: 0.025,
+    grpc_urls: &["http://164.90.212.168:20311/"],
+    lcd_url: Some("http://164.90.212.168:20211/"),
+    network_info: ANDROMEDA_DEVNET_NETWORK,
+    kind: ChainKind::Testnet,
+};
+
+pub const DEVNET_CHAINS: &[ChainInfo] = &[OSMOSIS_DEVNET, WASM_DEVNET, ANDROMEDA_DEVNET];
