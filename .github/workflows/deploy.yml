@@ -113,6 +113,8 @@ jobs:
   trigger-schema-parser:
       needs: [deploy]
       runs-on: ubuntu-latest
+      outputs:
+        should_continue: ${{ steps.check-kernel.outputs.should_continue }}
       steps:
         - name: Set Branch Based on Kernel
           id: check-kernel
@@ -123,11 +125,14 @@ jobs:
             
             if [[ "${KERNEL_ADDRESS}" == "${TESTNET_KERNELS}" ]]; then
               echo "branch=develop" >> $GITHUB_OUTPUT
+              echo "should_continue=true" >> $GITHUB_OUTPUT
             elif [[ "${KERNEL_ADDRESS}" == "${TESTNET_STAGING_KERNELS}" ]]; then
               echo "branch=testnet-staging" >> $GITHUB_OUTPUT
+              echo "should_continue=true" >> $GITHUB_OUTPUT
             else
-              echo "Error: Kernel not found in known configurations"
-              exit 1
+              echo "Skip: Kernel not found in known configurations"
+              echo "should_continue=false" >> $GITHUB_OUTPUT
+              exit 0
             fi
 
         - name: Checkout Schema Parser
@@ -179,9 +184,10 @@ jobs:
             fi
 
   trigger-armour-workflow:      
-    needs: [trigger-schema-parser]
-    runs-on: ubuntu-latest
-    steps:
+   needs: [trigger-schema-parser]
+   if: needs.trigger-schema-parser.outputs.should_continue == 'true'
+   runs-on: ubuntu-latest
+   steps:
       - name: Wait for schema updates
         run: |
           echo "Waiting 6 minutes for schema updates to propagate..."
