@@ -1514,7 +1514,7 @@ fn test_kernel_ibc_funds_and_execute_msg() {
                         "ibc://osmosis/{}",
                         splitter_osmosis.address().unwrap()
                     )),
-                    message: to_json_binary(&SplitterExecuteMsg::Send {}).unwrap(),
+                    message: to_json_binary(&SplitterExecuteMsg::Send { config: None }).unwrap(),
                     funds: vec![Coin {
                         denom: "juno".to_string(),
                         amount: Uint128::new(100),

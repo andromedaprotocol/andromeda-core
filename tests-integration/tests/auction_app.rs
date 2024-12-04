@@ -338,7 +338,7 @@ fn test_auction_app_recipient() {
         None,
         None,
         None,
-        Some(Recipient::from_string("./splitter").with_msg(mock_splitter_send_msg())),
+        Some(Recipient::from_string("./splitter").with_msg(mock_splitter_send_msg(None))),
     );
     cw721
         .execute_send_nft(

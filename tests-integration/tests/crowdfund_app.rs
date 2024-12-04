@@ -840,6 +840,6 @@ fn mock_recipient_with_invalid_msg(addr: &str) -> Recipient {
 fn mock_recipient_with_valid_msg(addr: &str) -> Recipient {
     Recipient::new(
         addr,
-        Some(to_json_binary(&mock_splitter_send_msg()).unwrap()),
+        Some(to_json_binary(&mock_splitter_send_msg(None)).unwrap()),
     )
 }

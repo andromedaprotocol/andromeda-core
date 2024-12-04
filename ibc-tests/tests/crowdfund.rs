@@ -227,7 +227,7 @@ fn setup(
 
     let withdrawal_recipient = Recipient::new(
         format!("./{}", splitter_component.name),
-        Some(to_json_binary(&splitter::ExecuteMsg::Send {}).unwrap()),
+        Some(to_json_binary(&splitter::ExecuteMsg::Send { config: None }).unwrap()),
     );
 
     let campaign_config = CampaignConfig {

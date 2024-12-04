@@ -271,8 +271,17 @@ fn test_execute_send() {
     let recip_address2 = "address2".to_string();
     let recip_percent2 = 20; // 20%
 
+    let recip_address3 = "address3".to_string();
+    let recip_percent3 = 50; // 50%
+
     let recip1 = Recipient::from_string(recip_address1);
     let recip2 = Recipient::from_string(recip_address2);
+    let recip3 = Recipient::from_string(recip_address3);
+
+    let config_recipient = vec![AddressPercent {
+        recipient: recip3.clone(),
+        percent: Decimal::percent(recip_percent3),
+    }];
 
     let recipient = vec![
         AddressPercent {
@@ -284,7 +293,7 @@ fn test_execute_send() {
             percent: Decimal::percent(recip_percent2),
         },
     ];
-    let msg = ExecuteMsg::Send {};
+    let msg = ExecuteMsg::Send { config: None };
 
     let amp_msg_1 = recip1
         .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(1000, "uluna")]))
@@ -312,7 +321,7 @@ fn test_execute_send() {
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
 
-    let res = execute(deps.as_mut(), env, info, msg).unwrap();
+    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
     let expected_res = Response::new()
         .add_submessages(vec![
@@ -321,6 +330,43 @@ fn test_execute_send() {
                 CosmosMsg::Bank(BankMsg::Send {
                     to_address: OWNER.to_string(),
                     amount: vec![Coin::new(7000, "uluna")], // 10000 * 0.7   remainder
+                }),
+            ),
+            amp_msg,
+        ])
+        .add_attributes(vec![attr("action", "send"), attr("sender", "creator")])
+        .add_submessage(generate_economics_message(OWNER, "Send"));
+
+    assert_eq!(res, expected_res);
+
+    // Test send with config
+    let msg = ExecuteMsg::Send {
+        config: Some(config_recipient),
+    };
+    let res = execute(deps.as_mut(), env, info, msg).unwrap();
+    let amp_msg_1 = recip3
+        .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(5000, "uluna")]))
+        .unwrap();
+
+    let amp_pkt = AMPPkt::new(
+        MOCK_CONTRACT_ADDR.to_string(),
+        MOCK_CONTRACT_ADDR.to_string(),
+        vec![amp_msg_1],
+    );
+    let amp_msg = amp_pkt
+        .to_sub_msg(
+            MOCK_KERNEL_CONTRACT,
+            Some(vec![Coin::new(5000, "uluna")]),
+            1,
+        )
+        .unwrap();
+    let expected_res = Response::new()
+        .add_submessages(vec![
+            SubMsg::new(
+                // refunds remainder to sender
+                CosmosMsg::Bank(BankMsg::Send {
+                    to_address: OWNER.to_string(),
+                    amount: vec![Coin::new(5000, "uluna")], // 10000 * 0.5   remainder
                 }),
             ),
             amp_msg,
@@ -359,7 +405,7 @@ fn test_execute_send_ado_recipient() {
             percent: Decimal::percent(recip_percent2),
         },
     ];
-    let msg = ExecuteMsg::Send {};
+    let msg = ExecuteMsg::Send { config: None };
 
     let amp_msg_1 = recip1
         .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(1000, "uluna")]))
@@ -436,7 +482,7 @@ fn test_handle_packet_exit_with_error_true() {
         "cosmos2contract",
         vec![AMPMsg::new(
             recip_address1,
-            to_json_binary(&ExecuteMsg::Send {}).unwrap(),
+            to_json_binary(&ExecuteMsg::Send { config: None }).unwrap(),
             Some(vec![Coin::new(0, "uluna")]),
         )],
     );
@@ -514,7 +560,7 @@ fn test_execute_send_error() {
             percent: Decimal::percent(recip_percent2),
         },
     ];
-    let msg = ExecuteMsg::Send {};
+    let msg = ExecuteMsg::Send { config: None };
 
     let splitter = Splitter {
         recipients: recipient,

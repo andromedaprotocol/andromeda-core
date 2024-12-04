@@ -105,7 +105,7 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
     let res = match msg {
         ExecuteMsg::UpdateRecipients { recipients } => execute_update_recipients(ctx, recipients),
         ExecuteMsg::UpdateLock { lock_time } => execute_update_lock(ctx, lock_time),
-        ExecuteMsg::Send {} => execute_send(ctx),
+        ExecuteMsg::Send { config } => execute_send(ctx, config),
         _ => ADOContract::default().execute(ctx, msg),
     }?;
     Ok(res
@@ -114,7 +114,10 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
         .add_events(action_response.events))
 }
 
-fn execute_send(ctx: ExecuteContext) -> Result<Response, ContractError> {
+fn execute_send(
+    ctx: ExecuteContext,
+    config: Option<Vec<AddressPercent>>,
+) -> Result<Response, ContractError> {
     let ExecuteContext { deps, info, .. } = ctx;
     ensure!(
         !info.funds.is_empty(),
@@ -131,7 +134,11 @@ fn execute_send(ctx: ExecuteContext) -> Result<Response, ContractError> {
         );
     }
 
-    let splitter = SPLITTER.load(deps.storage)?;
+    let splitter = if let Some(config) = config {
+        config
+    } else {
+        SPLITTER.load(deps.storage)?.recipients
+    };
 
     let mut msgs: Vec<SubMsg> = Vec::new();
     let mut amp_funds: Vec<Coin> = Vec::new();
@@ -148,7 +155,7 @@ fn execute_send(ctx: ExecuteContext) -> Result<Response, ContractError> {
 
     let mut pkt = AMPPkt::from_ctx(ctx.amp_ctx, ctx.env.contract.address.to_string());
 
-    for recipient_addr in &splitter.recipients {
+    for recipient_addr in &splitter {
         let recipient_percent = recipient_addr.percent;
         let mut vec_coin: Vec<Coin> = Vec::new();
         for (i, coin) in info.funds.clone().iter().enumerate() {
