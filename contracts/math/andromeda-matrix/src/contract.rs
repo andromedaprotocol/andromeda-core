@@ -176,7 +176,7 @@ pub fn delete_matrix(
     ADOContract::default().is_permissioned(
         ctx.deps.branch(),
         ctx.env.clone(),
-        STORE_MATRIX_ACTION,
+        DELETE_MATRIX_ACTION,
         sender.clone(),
     )?;
 
@@ -185,7 +185,7 @@ pub fn delete_matrix(
     MATRIX.remove(ctx.deps.storage, key);
     KEY_OWNER.remove(ctx.deps.storage, key);
     Ok(Response::new()
-        .add_attribute("method", "delete_value")
+        .add_attribute("method", "delete_matrix")
         .add_attribute("sender", sender)
         .add_attribute("key", key))
 }
