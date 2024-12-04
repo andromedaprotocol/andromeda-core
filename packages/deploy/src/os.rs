@@ -1,4 +1,5 @@
-use crate::error::DeployError;
+use crate::{contracts::os_contracts, error::DeployError};
+use adodb::{ExecuteMsgFns as ADODBExecuteMsgFns, QueryMsgFns as ADODBQueryMsgFns};
 use andromeda_std::ado_base::MigrateMsg;
 use andromeda_std::amp::AndrAddr;
 use andromeda_std::os::*;
@@ -107,7 +108,6 @@ impl OperatingSystemDeployment {
         // For each module we check if it's been instantiated already.
         // If it has, we migrate it to the new code id.
         // If it hasn't, we instantiate it.
-
         let modules: [(&str, &Contract<DaemonBase<Wallet>>); 4] = [
             ("adodb", self.adodb.as_instance()),
             ("vfs", self.vfs.as_instance()),
@@ -127,7 +127,7 @@ impl OperatingSystemDeployment {
             ("adodb", self.adodb.as_instance()),
             ("vfs", self.vfs.as_instance()),
             ("economics", self.economics.as_instance()),
-            ("ibc_registry", self.ibc_registry.as_instance()),
+            ("ibc-registry", self.ibc_registry.as_instance()),
         ];
 
         for (module_name, contract) in modules {
@@ -135,6 +135,34 @@ impl OperatingSystemDeployment {
                 .upsert_key_address(module_name, contract.address().unwrap())?;
         }
 
+        Ok(())
+    }
+
+    /// Publishes all OS ADOs with the created ADODB.
+    /// Skips publishing if the ADO version is already published.
+    fn publish(&self) -> Result<(), DeployError> {
+        let uploaded_contracts: [(&str, &Contract<DaemonBase<Wallet>>); 5] = [
+            ("kernel", self.kernel.as_instance()),
+            ("adodb", self.adodb.as_instance()),
+            ("vfs", self.vfs.as_instance()),
+            ("economics", self.economics.as_instance()),
+            ("ibc-registry", self.ibc_registry.as_instance()),
+        ];
+        let deployable = os_contracts();
+        for (name, contract) in uploaded_contracts {
+            let (_, version, _) = deployable.iter().find(|(n, _, _)| n == name).unwrap();
+            let versions = self.adodb.ado_versions(&name.to_string(), None, None)?;
+            if versions.contains(&format!("{}@{}", name, version)) {
+                log::info!(
+                    "Skipping publishing {} {} - already published",
+                    name,
+                    version
+                );
+                continue;
+            }
+            let code_id = contract.code_id().unwrap();
+            self.adodb.publish(name, code_id, version, None, None)?;
+        }
         Ok(())
     }
 }
@@ -152,6 +180,9 @@ pub fn deploy(chain: String, kernel_address: Option<String>) -> Result<String, D
 
     log::info!("Registering modules");
     os_deployment.register_modules()?;
+
+    log::info!("Publishing contracts");
+    os_deployment.publish()?;
 
     log::info!("OS deployment process completed");
     Ok(os_deployment.kernel.address().unwrap().to_string())
