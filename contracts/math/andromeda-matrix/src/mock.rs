@@ -1,13 +1,8 @@
 #![cfg(all(not(target_arch = "wasm32"), feature = "testing"))]
 
 use crate::contract::{execute, instantiate, query};
-use andromeda_data_storage::matrix::{
-    ExecuteMsg, GetMatrixResponse, InstantiateMsg, Matrix, MatrixRestriction, QueryMsg,
-};
-use andromeda_std::{
-    ado_base::rates::{Rate, RatesMessage},
-    amp::AndrAddr,
-};
+use andromeda_math::matrix::{ExecuteMsg, GetMatrixResponse, InstantiateMsg, Matrix, QueryMsg};
+use andromeda_std::amp::AndrAddr;
 use andromeda_testing::mock::MockApp;
 use andromeda_testing::{
     mock_ado,
@@ -26,9 +21,9 @@ impl MockMatrix {
         app: &mut MockApp,
         kernel_address: String,
         owner: Option<String>,
-        restriction: MatrixRestriction,
+        authorized_operator_addresses: Option<Vec<AndrAddr>>,
     ) -> MockMatrix {
-        let msg = mock_matrix_instantiate_msg(kernel_address, owner, restriction);
+        let msg = mock_matrix_instantiate_msg(kernel_address, owner, authorized_operator_addresses);
         let addr = app
             .instantiate_contract(
                 code_id,
@@ -56,25 +51,6 @@ impl MockMatrix {
         } else {
             app.execute_contract(sender, self.addr().clone(), &msg, &[])
         }
-    }
-
-    pub fn execute_add_rate(
-        &self,
-        app: &mut MockApp,
-        sender: Addr,
-        action: String,
-        rate: Rate,
-    ) -> ExecuteResult {
-        self.execute(app, &mock_set_rate_msg(action, rate), sender, &[])
-    }
-
-    pub fn execute_update_restriction(
-        &self,
-        app: &mut MockApp,
-        sender: Addr,
-        restriction: MatrixRestriction,
-    ) -> ExecuteResult {
-        self.execute(app, &mock_update_restriction_msg(restriction), sender, &[])
     }
 
     pub fn execute_delete_matrix(
@@ -113,12 +89,12 @@ pub fn mock_andromeda_matrix() -> Box<dyn Contract<Empty>> {
 pub fn mock_matrix_instantiate_msg(
     kernel_address: String,
     owner: Option<String>,
-    restriction: MatrixRestriction,
+    authorized_operator_addresses: Option<Vec<AndrAddr>>,
 ) -> InstantiateMsg {
     InstantiateMsg {
         kernel_address,
         owner,
-        restriction,
+        authorized_operator_addresses,
     }
 }
 
@@ -126,16 +102,8 @@ pub fn mock_store_matrix_msg(key: Option<String>, data: Matrix) -> ExecuteMsg {
     ExecuteMsg::StoreMatrix { key, data }
 }
 
-pub fn mock_update_restriction_msg(restriction: MatrixRestriction) -> ExecuteMsg {
-    ExecuteMsg::UpdateRestriction { restriction }
-}
-
 pub fn mock_delete_matrix_msg(key: Option<String>) -> ExecuteMsg {
     ExecuteMsg::DeleteMatrix { key }
-}
-
-pub fn mock_set_rate_msg(action: String, rate: Rate) -> ExecuteMsg {
-    ExecuteMsg::Rates(RatesMessage::SetRate { action, rate })
 }
 
 pub fn mock_matrix_get_matrix(key: Option<String>) -> QueryMsg {

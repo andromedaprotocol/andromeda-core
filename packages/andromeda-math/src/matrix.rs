@@ -4,14 +4,7 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 #[andr_instantiate]
 #[cw_serde]
 pub struct InstantiateMsg {
-    pub restriction: MatrixRestriction,
-}
-
-#[cw_serde]
-pub enum MatrixRestriction {
-    Private,
-    Public,
-    Restricted,
+    pub authorized_operator_addresses: Option<Vec<AndrAddr>>,
 }
 
 #[andr_exec]
@@ -19,7 +12,6 @@ pub enum MatrixRestriction {
 pub enum ExecuteMsg {
     StoreMatrix { key: Option<String>, data: Matrix },
     DeleteMatrix { key: Option<String> },
-    UpdateRestriction { restriction: MatrixRestriction },
 }
 
 #[andr_query]

@@ -666,14 +666,15 @@ dependencies = [
 
 [[package]]
 name = "andromeda-matrix"
-version = "1.0.0"
+version = "0.1.0-beta"
 dependencies = [
- "andromeda-data-storage",
+ "andromeda-math",
  "andromeda-std",
  "andromeda-testing",
  "cosmwasm-schema 1.5.8",
  "cosmwasm-std 1.5.8",
  "cw-multi-test",
+ "cw-orch",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
  "cw20 1.1.2",
