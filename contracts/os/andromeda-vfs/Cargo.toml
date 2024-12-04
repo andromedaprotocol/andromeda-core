@@ -1,6 +1,6 @@
 [package]
 name = "andromeda-vfs"
-version = "1.1.1"
+version = "1.1.2"
 authors = ["Connor Barr <crnbarr@gmail.com>"]
 edition = "2021"
 rust-version = "1.75.0"
