@@ -71,7 +71,7 @@ fn test_splitter() {
 
     let token = coin(1000, "uandr");
     splitter
-        .execute_send(&mut router, owner.clone(), &[token])
+        .execute_send(&mut router, owner.clone(), &[token], None)
         .unwrap();
 
     let balance_1 = router.wrap().query_balance(recipient_1, "uandr").unwrap();

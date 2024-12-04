@@ -176,9 +176,15 @@ fn test_execute_send() {
 
     let recip_address2 = "address2".to_string();
 
+    let recip_address3 = "address3".to_string();
+
     let recip1 = Recipient::from_string(recip_address1);
     let recip2 = Recipient::from_string(recip_address2);
-
+    let recip3 = Recipient::from_string(recip_address3);
+    let config_recipient = vec![AddressAmount {
+        recipient: recip3.clone(),
+        coins: vec![coin(1_u128, "uandr"), coin(30_u128, "usdc")],
+    }];
     let recipient = vec![
         AddressAmount {
             recipient: recip1.clone(),
@@ -189,7 +195,7 @@ fn test_execute_send() {
             coins: vec![coin(1_u128, "uandr"), coin(20_u128, "usdc")],
         },
     ];
-    let msg = ExecuteMsg::Send {};
+    let msg = ExecuteMsg::Send { config: None };
 
     let amp_msg_1 = recip1
         .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(1, "uandr")]))
@@ -230,7 +236,7 @@ fn test_execute_send() {
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
 
-    let res = execute(deps.as_mut(), env, info, msg).unwrap();
+    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
     let expected_res = Response::new()
         .add_submessages(vec![
@@ -245,6 +251,56 @@ fn test_execute_send() {
         ])
         .add_attributes(vec![attr("action", "send"), attr("sender", "creator")])
         .add_submessage(generate_economics_message(OWNER, "Send"));
+
+    assert_eq!(res, expected_res);
+
+    // Test with config
+    let msg = ExecuteMsg::Send {
+        config: Some(config_recipient),
+    };
+
+    let amp_msg_1 = recip3
+        .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(1, "uandr")]))
+        .unwrap();
+
+    let amp_msg_2 = recip3
+        .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(30, "usdc")]))
+        .unwrap();
+
+    let amp_pkt = AMPPkt::new(
+        MOCK_CONTRACT_ADDR.to_string(),
+        MOCK_CONTRACT_ADDR.to_string(),
+        vec![amp_msg_1, amp_msg_2],
+    );
+    let amp_msg = amp_pkt
+        .to_sub_msg(
+            MOCK_KERNEL_CONTRACT,
+            Some(vec![Coin::new(1, "uandr"), Coin::new(30, "usdc")]),
+            1,
+        )
+        .unwrap();
+
+    let expected_res = Response::new()
+        .add_submessages(vec![
+            SubMsg::new(
+                // refunds remainder to sender
+                CosmosMsg::Bank(BankMsg::Send {
+                    to_address: OWNER.to_string(),
+                    amount: vec![Coin::new(9999, "uandr")],
+                }),
+            ),
+            SubMsg::new(
+                // refunds remainder to sender
+                CosmosMsg::Bank(BankMsg::Send {
+                    to_address: OWNER.to_string(),
+                    amount: vec![Coin::new(20, "usdc")],
+                }),
+            ),
+            amp_msg,
+        ])
+        .add_attributes(vec![attr("action", "send"), attr("sender", "creator")])
+        .add_submessage(generate_economics_message(OWNER, "Send"));
+    let res = execute(deps.as_mut(), env, info, msg).unwrap();
 
     assert_eq!(res, expected_res);
 }
@@ -275,7 +331,7 @@ fn test_execute_send_ado_recipient() {
             coins: coins(1_u128, "uandr"),
         },
     ];
-    let msg = ExecuteMsg::Send {};
+    let msg = ExecuteMsg::Send { config: None };
 
     let amp_msg_1 = recip1
         .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(1, "uandr")]))
@@ -349,7 +405,7 @@ fn test_handle_packet_exit_with_error_true() {
         "cosmos2contract",
         vec![AMPMsg::new(
             recip_address1,
-            to_json_binary(&ExecuteMsg::Send {}).unwrap(),
+            to_json_binary(&ExecuteMsg::Send { config: None }).unwrap(),
             Some(vec![Coin::new(0, "uandr")]),
         )],
     );
@@ -425,7 +481,7 @@ fn test_execute_send_error() {
             coins: coins(1_u128, "uandr"),
         },
     ];
-    let msg = ExecuteMsg::Send {};
+    let msg = ExecuteMsg::Send { config: None };
 
     let splitter = Splitter {
         recipients: recipient,

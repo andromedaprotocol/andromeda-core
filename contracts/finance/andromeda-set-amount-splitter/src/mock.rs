@@ -29,8 +29,14 @@ impl MockSetAmountSplitter {
         Self(res.unwrap())
     }
 
-    pub fn execute_send(&self, app: &mut MockApp, sender: Addr, funds: &[Coin]) -> ExecuteResult {
-        let msg = mock_set_amount_splitter_send_msg();
+    pub fn execute_send(
+        &self,
+        app: &mut MockApp,
+        sender: Addr,
+        funds: &[Coin],
+        config: Option<Vec<AddressAmount>>,
+    ) -> ExecuteResult {
+        let msg = mock_set_amount_splitter_send_msg(config);
 
         self.execute(app, &msg, sender, funds)
     }
@@ -55,6 +61,6 @@ pub fn mock_set_amount_splitter_instantiate_msg(
     }
 }
 
-pub fn mock_set_amount_splitter_send_msg() -> ExecuteMsg {
-    ExecuteMsg::Send {}
+pub fn mock_set_amount_splitter_send_msg(config: Option<Vec<AddressAmount>>) -> ExecuteMsg {
+    ExecuteMsg::Send { config }
 }

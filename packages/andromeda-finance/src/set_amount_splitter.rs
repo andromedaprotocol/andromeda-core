@@ -56,7 +56,7 @@ pub enum ExecuteMsg {
         lock_time: Expiry,
     },
     /// Divides any attached funds to the message amongst the recipients list.
-    Send {},
+    Send { config: Option<Vec<AddressAmount>> },
 }
 
 #[andr_query]

@@ -124,7 +124,7 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
     let res = match msg {
         ExecuteMsg::UpdateRecipients { recipients } => execute_update_recipients(ctx, recipients),
         ExecuteMsg::UpdateLock { lock_time } => execute_update_lock(ctx, lock_time),
-        ExecuteMsg::Send {} => execute_send(ctx),
+        ExecuteMsg::Send { config } => execute_send(ctx, config),
         _ => ADOContract::default().execute(ctx, msg),
     }?;
     Ok(res
@@ -133,7 +133,10 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
         .add_events(action_response.events))
 }
 
-fn execute_send(ctx: ExecuteContext) -> Result<Response, ContractError> {
+fn execute_send(
+    ctx: ExecuteContext,
+    config: Option<Vec<AddressAmount>>,
+) -> Result<Response, ContractError> {
     let ExecuteContext { deps, info, .. } = ctx;
 
     ensure!(
@@ -159,7 +162,11 @@ fn execute_send(ctx: ExecuteContext) -> Result<Response, ContractError> {
         denom_set.insert(coin.denom);
     }
 
-    let splitter = SPLITTER.load(deps.storage)?;
+    let splitter = if let Some(config) = config {
+        config
+    } else {
+        SPLITTER.load(deps.storage)?.recipients
+    };
 
     let mut msgs: Vec<SubMsg> = Vec::new();
     let mut amp_funds: Vec<Coin> = Vec::new();
@@ -171,7 +178,7 @@ fn execute_send(ctx: ExecuteContext) -> Result<Response, ContractError> {
         let mut remainder_funds = coin.amount;
         let denom = coin.denom;
 
-        for recipient in &splitter.recipients {
+        for recipient in &splitter {
             // Find the recipient's corresponding denom for the current iteration of the sent funds
             let recipient_coin = recipient
                 .coins
