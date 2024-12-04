@@ -46,6 +46,7 @@ pub fn instantiate(
             Splitter {
                 recipients: msg.recipients,
                 lock: time,
+                default_recipient: msg.default_recipient,
             }
         }
         None => {
@@ -53,6 +54,7 @@ pub fn instantiate(
                 recipients: msg.recipients,
                 // If locking isn't desired upon instantiation, it's automatically set to 0
                 lock: Milliseconds::default(),
+                default_recipient: msg.default_recipient,
             }
         }
     };
@@ -215,6 +217,7 @@ pub fn execute_add_recipient(
     let new_splitter = Splitter {
         recipients: splitter.recipients,
         lock: splitter.lock,
+        default_recipient: splitter.default_recipient,
     };
     SPLITTER.save(deps.storage, &new_splitter)?;
 
@@ -238,25 +241,25 @@ fn execute_send(
         info.funds.len() < 5,
         ContractError::ExceedsMaxAllowedCoins {}
     );
-
-    let splitter = if let Some(config) = config {
+    let splitter = SPLITTER.load(deps.storage)?;
+    let splitter_recipients = if let Some(config) = config {
         config
     } else {
-        SPLITTER.load(deps.storage)?.recipients
+        splitter.recipients
     };
     let mut msgs: Vec<SubMsg> = Vec::new();
     let mut remainder_funds = info.funds.clone();
     let mut total_weight = Uint128::zero();
 
     // Calculate the total weight of all recipients
-    for recipient_addr in &splitter {
+    for recipient_addr in &splitter_recipients {
         let recipient_weight = recipient_addr.weight;
         total_weight = total_weight.checked_add(recipient_weight)?;
     }
 
     // Each recipient recieves the funds * (the recipient's weight / total weight of all recipients)
     // The remaining funds go to the sender of the function
-    for recipient_addr in &splitter {
+    for recipient_addr in &splitter_recipients {
         let recipient_weight = recipient_addr.weight;
         let mut vec_coin: Vec<Coin> = Vec::new();
         for (i, coin) in info.funds.iter().enumerate() {
@@ -275,8 +278,14 @@ fn execute_send(
     remainder_funds.retain(|x| x.amount > Uint128::zero());
 
     if !remainder_funds.is_empty() {
+        let remainder_recipient = splitter
+            .default_recipient
+            .unwrap_or(Recipient::new(info.sender.to_string(), None));
         msgs.push(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-            to_address: info.sender.to_string(),
+            to_address: remainder_recipient
+                .address
+                .get_raw_address(&deps.as_ref())?
+                .into_string(),
             amount: remainder_funds,
         })));
     }
@@ -400,6 +409,7 @@ fn execute_remove_recipient(
         let new_splitter = Splitter {
             recipients: splitter.recipients,
             lock: splitter.lock,
+            default_recipient: splitter.default_recipient,
         };
         SPLITTER.save(deps.storage, &new_splitter)?;
     };

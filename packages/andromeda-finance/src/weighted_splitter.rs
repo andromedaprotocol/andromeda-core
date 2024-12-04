@@ -19,6 +19,8 @@ pub struct Splitter {
     pub recipients: Vec<AddressWeight>,
     /// Whether or not the contract is currently locked. This restricts updating any config related fields.
     pub lock: MillisecondsExpiration,
+    /// The address that will receive any surplus funds, defaults to the message sender.
+    pub default_recipient: Option<Recipient>,
 }
 
 #[andr_instantiate]
@@ -28,6 +30,7 @@ pub struct InstantiateMsg {
     /// sent the amount sent will be divided amongst these recipients depending on their assigned weight.
     pub recipients: Vec<AddressWeight>,
     pub lock_time: Option<Expiry>,
+    pub default_recipient: Option<Recipient>,
 }
 
 #[andr_exec]

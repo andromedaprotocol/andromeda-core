@@ -28,6 +28,7 @@ pub struct Splitter {
     pub recipients: Vec<AddressPercent>,
     /// The lock's expiration time
     pub lock: MillisecondsExpiration,
+    /// The address that will receive any surplus funds, defaults to the message sender.
     pub default_recipient: Option<Recipient>,
 }
 
