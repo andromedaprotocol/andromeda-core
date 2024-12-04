@@ -1,5 +1,6 @@
 use andromeda_std::{
     ado_base::MigrateMsg,
+    deploy::ADOMetadata,
     os::kernel::{ExecuteMsg, InstantiateMsg, QueryMsg},
 };
 use cw_orch::{interface, prelude::*};
@@ -34,5 +35,16 @@ impl<Chain> Uploadable for KernelContract<Chain> {
         artifacts_dir_from_workspace!()
             .find_wasm_path("andromeda_kernel.wasm")
             .unwrap()
+    }
+}
+
+impl<Chain> ADOMetadata for KernelContract<Chain> {
+    fn name() -> String {
+        CONTRACT_ID.to_string()
+    }
+
+    fn version() -> String {
+        let version = env!("CARGO_PKG_VERSION");
+        version.to_string()
     }
 }
