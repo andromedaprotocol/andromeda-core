@@ -110,14 +110,9 @@ fn execute_submit_proof(
     hasher.update(&pow_nft.last_hash);
     hasher.update(&nonce.to_be_bytes());
     let hash = hasher.finalize();
-    println!("Hash: {:?}", Binary(hash.to_vec()));
-    println!("Last Hash: {:?}", pow_nft.last_hash);
 
     let hash_value = u128::from_be_bytes(hash[0..16].try_into().unwrap());
     let threshold = u128::MAX >> (pow_nft.difficulty as u32);
-    println!("Difficulty: {:?}", pow_nft.difficulty);
-    println!("Threshold: {:?}", threshold);
-    println!("Hash Value: {:?}", hash_value);
 
     if hash_value > threshold {
         return Err(ContractError::CustomError {
@@ -125,8 +120,22 @@ fn execute_submit_proof(
         });
     }
 
+    pow_nft.difficulty = if pow_nft.difficulty >= 2 {
+        let next_difficulty = (pow_nft.difficulty as f64 * 1.5) as u64;
+        if next_difficulty > 128 {
+            return Err(ContractError::CustomError {
+                msg: format!(
+                    "Max difficulty is 128. Next difficulty will be over 128. Current level: {:?}",
+                    pow_nft.level
+                ),
+            });
+        }
+        next_difficulty
+    } else {
+        2
+    };
+
     pow_nft.level += 1;
-    pow_nft.difficulty = (pow_nft.difficulty as f64 * 1.5) as u64;
 
     let block_height = ctx.env.block.height;
 
@@ -136,7 +145,6 @@ fn execute_submit_proof(
     hasher.update(&block_height.to_be_bytes());
     let hash = hasher.finalize();
     pow_nft.last_hash = Binary(hash.to_vec());
-    println!("Last Hash After Level Up: {:?}", pow_nft.last_hash);
 
     POW_NFT.save(ctx.deps.storage, token_id, &pow_nft)?;
 

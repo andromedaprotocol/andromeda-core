@@ -85,7 +85,6 @@ fn test_mint_pow_nft() {
     assert_eq!(owner_response.owner, ORIGIN_MINTER);
 
     let pow_nft = query_pow_nft(deps.as_ref(), "test_pow1".to_string()).unwrap();
-    println!("PoW NFT: {:?}", pow_nft);
     assert_eq!(pow_nft.nft_response.level, 1);
 }
 
@@ -112,7 +111,7 @@ fn test_submit_valid_proofs(token_id: &str, difficulty: u64, nonce: u128) {
 
     let pow_nft = query_pow_nft(deps.as_ref(), token_id.to_string()).unwrap();
 
-    println!("PoW NFT: {:?}", pow_nft);
+    println!("PoW NFT Level: {:?}", pow_nft.nft_response.level);
 }
 
 #[test_case("test_pow1", 20_u64, 58256_u128 ; "Difficulty: 20")]
