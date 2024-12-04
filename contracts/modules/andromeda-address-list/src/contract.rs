@@ -4,16 +4,18 @@ use andromeda_modules::address_list::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use andromeda_std::{
     ado_base::{permissioning::LocalPermission, InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     ado_contract::ADOContract,
+    amp::AndrAddr,
     common::{context::ExecuteContext, encode_binary},
     error::ContractError,
 };
 
 use cosmwasm_std::{
-    attr, ensure, entry_point, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Response,
+    attr, ensure, entry_point, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response,
+    StdError,
 };
 use cw_utils::nonpayable;
 
-use crate::state::{add_actor_permission, includes_actor, PERMISSIONS};
+use crate::state::{add_actors_permission, includes_actor, PERMISSIONS};
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-address-list";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -27,18 +29,21 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     // If the user provided an actor and permission, save them.
     if let Some(actor_permission) = msg.actor_permission {
-        let verified_address: Addr = deps.api.addr_validate(actor_permission.actor.as_str())?;
         // Permissions of type Limited local permissions aren't allowed in the address list contract
         if let LocalPermission::Limited { .. } = actor_permission.permission {
             return Err(ContractError::InvalidPermission {
                 msg: "Limited permission is not supported in address list contract".to_string(),
             });
         }
-        add_actor_permission(
-            deps.storage,
-            &verified_address,
-            &actor_permission.permission,
-        )?;
+        ensure!(
+            !actor_permission.actors.is_empty(),
+            ContractError::NoActorsProvided {}
+        );
+
+        for actor in actor_permission.actors {
+            let verified_actor = actor.get_raw_address(&deps.as_ref())?;
+            add_actors_permission(deps.storage, verified_actor, &actor_permission.permission)?;
+        }
     }
     let inst_resp = ADOContract::default().instantiate(
         deps.storage,
@@ -77,17 +82,17 @@ pub fn execute(
 
 pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::AddActorPermission { actor, permission } => {
-            execute_add_actor_permission(ctx, actor, permission)
+        ExecuteMsg::PermissionActors { actors, permission } => {
+            execute_permission_actors(ctx, actors, permission)
         }
-        ExecuteMsg::RemoveActorPermission { actor } => execute_remove_actor_permission(ctx, actor),
+        ExecuteMsg::RemovePermissions { actors } => execute_remove_permissions(ctx, actors),
         _ => ADOContract::default().execute(ctx, msg),
     }
 }
 
-fn execute_add_actor_permission(
+fn execute_permission_actors(
     ctx: ExecuteContext,
-    actor: Addr,
+    actors: Vec<AndrAddr>,
     permission: LocalPermission,
 ) -> Result<Response, ContractError> {
     let ExecuteContext { deps, info, .. } = ctx;
@@ -101,17 +106,26 @@ fn execute_add_actor_permission(
             msg: "Limited permission is not supported in address list contract".to_string(),
         });
     }
-    add_actor_permission(deps.storage, &actor, &permission)?;
+    ensure!(!actors.is_empty(), ContractError::NoActorsProvided {});
+    for actor in actors.clone() {
+        let verified_actor = actor.get_raw_address(&deps.as_ref())?;
+        add_actors_permission(deps.storage, verified_actor, &permission)?;
+    }
+    let actors_str = actors
+        .iter()
+        .map(|actor| actor.to_string())
+        .collect::<Vec<String>>()
+        .join(", ");
     Ok(Response::new().add_attributes(vec![
         attr("action", "add_actor_permission"),
-        attr("actor", actor),
+        attr("actor", actors_str),
         attr("permission", permission.to_string()),
     ]))
 }
 
-fn execute_remove_actor_permission(
+fn execute_remove_permissions(
     ctx: ExecuteContext,
-    actor: Addr,
+    actors: Vec<AndrAddr>,
 ) -> Result<Response, ContractError> {
     let ExecuteContext { deps, info, .. } = ctx;
     nonpayable(&info)?;
@@ -119,17 +133,26 @@ fn execute_remove_actor_permission(
         ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {}
     );
-    // Ensure that the actor is present in the permissions list
-    ensure!(
-        PERMISSIONS.has(deps.storage, &actor),
-        ContractError::ActorNotFound {}
-    );
+    ensure!(!actors.is_empty(), ContractError::NoActorsProvided {});
 
-    PERMISSIONS.remove(deps.storage, &actor);
+    for actor in actors.clone() {
+        let verified_actor = actor.get_raw_address(&deps.as_ref())?;
+        // Ensure that the actor is present in the permissions list
+        ensure!(
+            PERMISSIONS.has(deps.storage, &verified_actor),
+            ContractError::ActorNotFound {}
+        );
+        PERMISSIONS.remove(deps.storage, &verified_actor);
+    }
+    let actors_str = actors
+        .iter()
+        .map(|actor| actor.to_string())
+        .collect::<Vec<String>>()
+        .join(", ");
 
     Ok(Response::new().add_attributes(vec![
         attr("action", "remove_actor_permission"),
-        attr("actor", actor),
+        attr("actor", actors_str),
     ]))
 }
 
@@ -163,4 +186,15 @@ fn query_actor_permission(
     } else {
         Err(ContractError::ActorNotFound {})
     }
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
+    if msg.result.is_err() {
+        return Err(ContractError::Std(StdError::generic_err(
+            msg.result.unwrap_err(),
+        )));
+    }
+
+    Ok(Response::default())
 }

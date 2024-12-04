@@ -139,7 +139,7 @@ impl<'a> ADOContract<'a> {
 
         // New version has to be newer/greater than the old version
         ensure!(
-            storage_version < version,
+            storage_version <= version,
             ContractError::CannotMigrate {
                 previous_contract: stored.version,
             }
@@ -233,8 +233,9 @@ impl<'a> ADOContract<'a> {
         let ctx = ctx.with_ctx(packet.clone());
         let msg_opt = packet.messages.pop();
         if let Some(msg_opt) = msg_opt {
-            let msg: M = from_json(msg_opt.message)?;
+            let msg: M = from_json(msg_opt.clone().message)?;
             let response = handler(ctx, msg)?;
+
             Ok(response)
         } else {
             Err(ContractError::InvalidPacket {

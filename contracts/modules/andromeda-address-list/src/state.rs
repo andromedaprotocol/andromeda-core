@@ -11,10 +11,11 @@ pub fn includes_actor(storage: &dyn Storage, actor: &Addr) -> StdResult<bool> {
 }
 
 /// Add or update an actor's permission
-pub fn add_actor_permission(
+pub fn add_actors_permission(
     storage: &mut dyn Storage,
-    actor: &Addr,
+    actor: Addr,
     permission: &LocalPermission,
 ) -> StdResult<()> {
-    PERMISSIONS.save(storage, actor, permission)
+    PERMISSIONS.save(storage, &actor, permission)?;
+    Ok(())
 }

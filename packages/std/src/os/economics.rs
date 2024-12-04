@@ -80,6 +80,3 @@ pub enum QueryMsg {
 pub struct BalanceResponse {
     pub balance: Uint128,
 }
-
-#[cfg(test)]
-mod test {}

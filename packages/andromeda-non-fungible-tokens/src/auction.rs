@@ -1,11 +1,12 @@
 use andromeda_std::amp::{AndrAddr, Recipient};
-use andromeda_std::common::denom::Asset;
+use andromeda_std::common::denom::{Asset, PermissionAction};
 use andromeda_std::common::expiration::Expiry;
 use andromeda_std::common::{MillisecondsExpiration, OrderBy};
+use andromeda_std::error::ContractError;
 use andromeda_std::{andr_exec, andr_instantiate, andr_query};
 
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Addr, Uint128};
+use cosmwasm_std::{ensure, Addr, BlockInfo, MessageInfo, Uint128};
 use cw20::Cw20ReceiveMsg;
 use cw721::{Cw721ReceiveMsg, Expiration};
 
@@ -13,7 +14,7 @@ use cw721::{Cw721ReceiveMsg, Expiration};
 #[cw_serde]
 pub struct InstantiateMsg {
     pub authorized_token_addresses: Option<Vec<AndrAddr>>,
-    pub authorized_cw20_address: Option<AndrAddr>,
+    pub authorized_cw20_addresses: Option<Vec<AndrAddr>>,
 }
 
 #[andr_exec]
@@ -25,6 +26,10 @@ pub enum ExecuteMsg {
     /// Places a bid on the current auction for the given token_id. The previous largest bid gets
     /// automatically sent back to the bidder when they are outbid.
     PlaceBid {
+        token_id: String,
+        token_address: String,
+    },
+    BuyNow {
         token_id: String,
         token_address: String,
     },
@@ -49,12 +54,14 @@ pub enum ExecuteMsg {
         token_address: String,
     },
     /// Restricted to owner
-    AuthorizeTokenContract {
+    AuthorizeContract {
+        action: PermissionAction,
         addr: AndrAddr,
         expiration: Option<Expiry>,
     },
     /// Restricted to owner
-    DeauthorizeTokenContract {
+    DeauthorizeContract {
+        action: PermissionAction,
         addr: AndrAddr,
     },
 }
@@ -69,6 +76,7 @@ pub enum Cw721HookMsg {
         /// Duration in milliseconds
         end_time: Expiry,
         coin_denom: Asset,
+        buy_now_price: Option<Uint128>,
         min_bid: Option<Uint128>,
         min_raise: Option<Uint128>,
         whitelist: Option<Vec<Addr>>,
@@ -78,6 +86,10 @@ pub enum Cw721HookMsg {
 #[cw_serde]
 pub enum Cw20HookMsg {
     PlaceBid {
+        token_id: String,
+        token_address: String,
+    },
+    BuyNow {
         token_id: String,
         token_address: String,
     },
@@ -111,8 +123,9 @@ pub enum QueryMsg {
         limit: Option<u64>,
     },
     /// Gets all of the authorized addresses for the auction
-    #[returns(AuthorizedAddressesResponse)]
+    #[returns(::andromeda_std::common::denom::AuthorizedAddressesResponse)]
     AuthorizedAddresses {
+        action: PermissionAction,
         start_after: Option<String>,
         limit: Option<u32>,
         order_by: Option<OrderBy>,
@@ -191,6 +204,7 @@ pub struct TokenAuctionState {
     pub end_time: Expiration,
     pub high_bidder_addr: Addr,
     pub high_bidder_amount: Uint128,
+    pub buy_now_price: Option<Uint128>,
     pub coin_denom: String,
     pub auction_id: Uint128,
     pub whitelist: Option<Vec<Addr>>,
@@ -200,6 +214,7 @@ pub struct TokenAuctionState {
     pub token_id: String,
     pub token_address: String,
     pub is_cancelled: bool,
+    pub is_bought: bool,
     pub uses_cw20: bool,
     pub recipient: Option<Recipient>,
 }
@@ -209,6 +224,49 @@ pub struct Bid {
     pub bidder: String,
     pub amount: Uint128,
     pub timestamp: MillisecondsExpiration,
+}
+
+/// Checks against auctions that are: cancelled, not started, already bought, and ended.
+/// Also checks for token owner bidding and funds being exactly of one denomination
+pub fn validate_auction(
+    token_auction_state: TokenAuctionState,
+    info: MessageInfo,
+    block: &BlockInfo,
+) -> Result<(), ContractError> {
+    ensure!(
+        !token_auction_state.is_cancelled,
+        ContractError::AuctionCancelled {}
+    );
+
+    ensure!(
+        !token_auction_state.is_bought,
+        ContractError::AuctionBought {}
+    );
+
+    ensure!(
+        token_auction_state.start_time.is_expired(block),
+        ContractError::AuctionNotStarted {}
+    );
+    ensure!(
+        !token_auction_state.end_time.is_expired(block),
+        ContractError::AuctionEnded {}
+    );
+
+    ensure!(
+        token_auction_state.owner != info.sender.clone().into_string(),
+        ContractError::TokenOwnerCannotBid {}
+    );
+
+    if !token_auction_state.uses_cw20 {
+        ensure!(
+            info.funds.len() == 1,
+            ContractError::InvalidFunds {
+                msg: "One coin should be sent.".to_string(),
+            }
+        );
+    }
+
+    Ok(())
 }
 
 #[cw_serde]
@@ -226,11 +284,6 @@ pub struct AuctionStateResponse {
     pub is_cancelled: bool,
     pub owner: String,
     pub recipient: Option<Recipient>,
-}
-
-#[cw_serde]
-pub struct AuthorizedAddressesResponse {
-    pub addresses: Vec<String>,
 }
 
 #[cw_serde]

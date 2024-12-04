@@ -1,6 +1,6 @@
 use andromeda_std::{
     andr_exec, andr_instantiate, andr_query,
-    common::{expiration::Expiry, MillisecondsDuration, MillisecondsExpiration},
+    common::{expiration::Expiry, MillisecondsExpiration},
     error::ContractError,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
@@ -77,10 +77,7 @@ pub enum ExecuteMsg {
     /// Update the thresholds. Only executable by the contract owner when the contract is not locked.
     UpdateThresholds { thresholds: Vec<Threshold> },
     /// Used to lock/unlock the contract allowing the config to be updated.
-    UpdateLock {
-        // Milliseconds from current time
-        lock_time: MillisecondsDuration,
-    },
+    UpdateLock { lock_time: Expiry },
     /// Divides any attached funds to the message amongst the recipients list.
     Send {},
 }

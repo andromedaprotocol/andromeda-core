@@ -11,8 +11,8 @@ use andromeda_std::common::Milliseconds;
 use andromeda_std::{common::encode_binary, error::ContractError};
 
 use cosmwasm_std::{
-    ensure, entry_point, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
-    Response, Uint128,
+    ensure, entry_point, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply,
+    Response, StdError, Uint128,
 };
 
 use cw_utils::{nonpayable, one_coin};
@@ -257,4 +257,15 @@ fn query_account_details(deps: Deps, account: String) -> Result<AccountDetails, 
 fn query_coin_allowance_details(deps: Deps) -> Result<CoinAllowance, ContractError> {
     let details = ALLOWED_COIN.load(deps.storage)?;
     Ok(details)
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
+    if msg.result.is_err() {
+        return Err(ContractError::Std(StdError::generic_err(
+            msg.result.unwrap_err(),
+        )));
+    }
+
+    Ok(Response::default())
 }

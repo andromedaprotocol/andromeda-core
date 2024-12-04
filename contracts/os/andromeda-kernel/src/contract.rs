@@ -11,7 +11,10 @@ use cosmwasm_std::{
 };
 
 use crate::ibc::{IBCLifecycleComplete, SudoMsg};
-use crate::reply::{on_reply_create_ado, on_reply_ibc_hooks_packet_send};
+use crate::reply::{
+    on_reply_create_ado, on_reply_ibc_hooks_packet_send, on_reply_ibc_transfer,
+    on_reply_refund_ibc_transfer_with_msg,
+};
 use crate::state::CURR_CHAIN;
 use crate::{execute, query, sudo};
 
@@ -44,18 +47,30 @@ pub fn instantiate(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractError> {
+pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractError> {
     if msg.result.is_err() {
-        return Err(ContractError::Std(StdError::generic_err(format!(
-            "{}:{}",
-            msg.id,
-            msg.result.unwrap_err()
-        ))));
+        match ReplyId::from_repr(msg.id) {
+            Some(ReplyId::IBCTransferWithMsg) => {
+                return on_reply_refund_ibc_transfer_with_msg(
+                    deps.branch(),
+                    env.clone(),
+                    msg.clone(),
+                );
+            }
+            _ => {
+                return Err(ContractError::Std(StdError::generic_err(format!(
+                    "{}:{}",
+                    msg.id,
+                    msg.result.unwrap_err()
+                ))))
+            }
+        }
     }
 
     match ReplyId::from_repr(msg.id) {
         Some(ReplyId::CreateADO) => on_reply_create_ado(deps, env, msg),
         Some(ReplyId::IBCHooksPacketSend) => on_reply_ibc_hooks_packet_send(deps, msg),
+        Some(ReplyId::IBCTransfer) => on_reply_ibc_transfer(deps, env, msg),
         _ => Ok(Response::default()),
     }
 }
@@ -82,6 +97,10 @@ pub fn execute(
             packet,
         ),
         ExecuteMsg::Send { message } => execute::send(execute_env, message),
+        ExecuteMsg::TriggerRelay {
+            packet_sequence,
+            packet_ack_msg,
+        } => execute::trigger_relay(execute_env, packet_sequence, packet_ack_msg),
         ExecuteMsg::UpsertKeyAddress { key, value } => {
             execute::upsert_key_address(execute_env, key, value)
         }
@@ -118,7 +137,7 @@ pub fn execute(
     }
 }
 
-#[cfg_attr(not(feature = "imported"), entry_point)]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn sudo(deps: DepsMut, _env: Env, msg: SudoMsg) -> Result<Response, ContractError> {
     match msg {
         SudoMsg::IBCLifecycleComplete(IBCLifecycleComplete::IBCAck {
@@ -150,7 +169,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractErr
         QueryMsg::ChainName {} => encode_binary(&query::chain_name(deps)?),
         // Base queries
         QueryMsg::Version {} => encode_binary(&ADOContract::default().query_version(deps)?),
-        QueryMsg::Type {} => encode_binary(&ADOContract::default().query_type(deps)?),
+        QueryMsg::AdoType {} => encode_binary(&ADOContract::default().query_type(deps)?),
         QueryMsg::Owner {} => encode_binary(&ADOContract::default().query_contract_owner(deps)?),
     }
 }

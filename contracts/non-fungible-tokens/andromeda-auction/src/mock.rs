@@ -10,7 +10,7 @@ use andromeda_std::ado_base::rates::{Rate, RatesMessage};
 use andromeda_std::amp::messages::AMPPkt;
 use andromeda_std::amp::AndrAddr;
 use andromeda_std::amp::Recipient;
-use andromeda_std::common::denom::Asset;
+use andromeda_std::common::denom::{Asset, PermissionAction};
 use andromeda_std::common::expiration::Expiry;
 use andromeda_testing::mock::MockApp;
 use andromeda_testing::{
@@ -54,6 +54,7 @@ impl MockAuction {
         sender: Addr,
         start_time: Option<Expiry>,
         end_time: Expiry,
+        buy_now_price: Option<Uint128>,
         coin_denom: Asset,
         min_bid: Option<Uint128>,
         min_raise: Option<Uint128>,
@@ -61,7 +62,14 @@ impl MockAuction {
         recipient: Option<Recipient>,
     ) -> AppResponse {
         let msg = mock_start_auction(
-            start_time, end_time, coin_denom, min_bid, min_raise, whitelist, recipient,
+            start_time,
+            end_time,
+            buy_now_price,
+            coin_denom,
+            min_bid,
+            min_raise,
+            whitelist,
+            recipient,
         );
         app.execute_contract(sender, self.addr().clone(), &msg, &[])
             .unwrap()
@@ -160,19 +168,21 @@ pub fn mock_auction_instantiate_msg(
     kernel_address: impl Into<String>,
     owner: Option<String>,
     authorized_token_addresses: Option<Vec<AndrAddr>>,
-    authorized_cw20_address: Option<AndrAddr>,
+    authorized_cw20_addresses: Option<Vec<AndrAddr>>,
 ) -> InstantiateMsg {
     InstantiateMsg {
         kernel_address: kernel_address.into(),
         owner,
         authorized_token_addresses,
-        authorized_cw20_address,
+        authorized_cw20_addresses,
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn mock_start_auction(
     start_time: Option<Expiry>,
     end_time: Expiry,
+    buy_now_price: Option<Uint128>,
     coin_denom: Asset,
     min_bid: Option<Uint128>,
     min_raise: Option<Uint128>,
@@ -182,6 +192,7 @@ pub fn mock_start_auction(
     Cw721HookMsg::StartAuction {
         start_time,
         end_time,
+        buy_now_price,
         coin_denom,
         min_bid,
         min_raise,
@@ -198,7 +209,8 @@ pub fn mock_authorize_token_address(
     token_address: impl Into<String>,
     expiration: Option<Expiry>,
 ) -> ExecuteMsg {
-    ExecuteMsg::AuthorizeTokenContract {
+    ExecuteMsg::AuthorizeContract {
+        action: PermissionAction::SendNft,
         addr: AndrAddr::from_string(token_address.into()),
         expiration,
     }

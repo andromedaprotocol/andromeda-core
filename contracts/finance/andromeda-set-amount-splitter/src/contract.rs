@@ -1,14 +1,17 @@
 use std::collections::HashSet;
 
 use crate::state::SPLITTER;
-use andromeda_finance::set_amount_splitter::{
-    validate_recipient_list, AddressAmount, ExecuteMsg, GetSplitterConfigResponse, InstantiateMsg,
-    QueryMsg, Splitter,
+use andromeda_finance::{
+    set_amount_splitter::{
+        validate_recipient_list, AddressAmount, ExecuteMsg, GetSplitterConfigResponse,
+        InstantiateMsg, QueryMsg, Splitter,
+    },
+    splitter::validate_expiry_duration,
 };
 use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     amp::messages::AMPPkt,
-    common::{actions::call_action, encode_binary, Milliseconds, MillisecondsDuration},
+    common::{actions::call_action, encode_binary, expiration::Expiry, Milliseconds},
     error::ContractError,
 };
 use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
@@ -254,10 +257,7 @@ fn execute_update_recipients(
     Ok(Response::default().add_attributes(vec![attr("action", "update_recipients")]))
 }
 
-fn execute_update_lock(
-    ctx: ExecuteContext,
-    lock_time: MillisecondsDuration,
-) -> Result<Response, ContractError> {
+fn execute_update_lock(ctx: ExecuteContext, lock_time: Expiry) -> Result<Response, ContractError> {
     let ExecuteContext {
         deps, info, env, ..
     } = ctx;
@@ -277,23 +277,7 @@ fn execute_update_lock(
         ContractError::ContractLocked {}
     );
 
-    // Get current time
-    let current_time = Milliseconds::from_seconds(env.block.time.seconds());
-
-    // New lock time can't be too short
-    ensure!(
-        lock_time.seconds() >= ONE_DAY,
-        ContractError::LockTimeTooShort {}
-    );
-
-    // New lock time can't be unreasonably long
-    ensure!(
-        lock_time.seconds() <= ONE_YEAR,
-        ContractError::LockTimeTooLong {}
-    );
-
-    // Set new lock time
-    let new_expiration = current_time.plus_milliseconds(lock_time);
+    let new_expiration = validate_expiry_duration(&lock_time, &env.block)?;
 
     splitter.lock = new_expiration;
 

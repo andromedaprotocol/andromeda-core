@@ -1,12 +1,12 @@
 use crate::state::SPLITTER;
 use andromeda_finance::splitter::{
-    validate_recipient_list, AddressPercent, ExecuteMsg, GetSplitterConfigResponse, InstantiateMsg,
-    QueryMsg, Splitter,
+    validate_expiry_duration, validate_recipient_list, AddressPercent, ExecuteMsg,
+    GetSplitterConfigResponse, InstantiateMsg, QueryMsg, Splitter,
 };
 use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     amp::messages::AMPPkt,
-    common::{actions::call_action, encode_binary, Milliseconds, MillisecondsDuration},
+    common::{actions::call_action, encode_binary, expiration::Expiry, Milliseconds},
     error::ContractError,
 };
 use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
@@ -19,10 +19,6 @@ use cw_utils::nonpayable;
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-splitter";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
-// 1 day in milliseconds
-const ONE_DAY: u64 = 86_400_000;
-// 1 year in milliseconds
-const ONE_YEAR: u64 = 31_536_000_000;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -33,20 +29,7 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     let splitter = match msg.lock_time {
         Some(ref lock_time) => {
-            let time = lock_time.get_time(&env.block);
-            // New lock time can't be too short
-            ensure!(
-                time >= Milliseconds::from_seconds(env.block.time.seconds())
-                    .plus_milliseconds(Milliseconds(ONE_DAY)),
-                ContractError::LockTimeTooShort {}
-            );
-
-            // New lock time can't be too long
-            ensure!(
-                time <= Milliseconds::from_seconds(env.block.time.seconds())
-                    .plus_milliseconds(Milliseconds(ONE_YEAR)),
-                ContractError::LockTimeTooLong {}
-            );
+            let time = validate_expiry_duration(lock_time, &env.block)?;
             Splitter {
                 recipients: msg.recipients.clone(),
                 lock: time,
@@ -133,7 +116,6 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
 
 fn execute_send(ctx: ExecuteContext) -> Result<Response, ContractError> {
     let ExecuteContext { deps, info, .. } = ctx;
-
     ensure!(
         !info.funds.is_empty(),
         ContractError::InvalidFunds {
@@ -249,10 +231,7 @@ fn execute_update_recipients(
     Ok(Response::default().add_attributes(vec![attr("action", "update_recipients")]))
 }
 
-fn execute_update_lock(
-    ctx: ExecuteContext,
-    lock_time: MillisecondsDuration,
-) -> Result<Response, ContractError> {
+fn execute_update_lock(ctx: ExecuteContext, lock_time: Expiry) -> Result<Response, ContractError> {
     let ExecuteContext {
         deps, info, env, ..
     } = ctx;
@@ -272,31 +251,15 @@ fn execute_update_lock(
         ContractError::ContractLocked {}
     );
 
-    // Get current time
-    let current_time = Milliseconds::from_seconds(env.block.time.seconds());
-
-    // New lock time can't be too short
-    ensure!(
-        lock_time.seconds() >= ONE_DAY,
-        ContractError::LockTimeTooShort {}
-    );
-
-    // New lock time can't be unreasonably long
-    ensure!(
-        lock_time.seconds() <= ONE_YEAR,
-        ContractError::LockTimeTooLong {}
-    );
-
+    let new_lock_time_expiration = validate_expiry_duration(&lock_time, &env.block)?;
     // Set new lock time
-    let new_expiration = current_time.plus_milliseconds(lock_time);
-
-    splitter.lock = new_expiration;
+    splitter.lock = new_lock_time_expiration;
 
     SPLITTER.save(deps.storage, &splitter)?;
 
     Ok(Response::default().add_attributes(vec![
         attr("action", "update_lock"),
-        attr("locked", new_expiration.to_string()),
+        attr("locked", new_lock_time_expiration.to_string()),
     ]))
 }
 

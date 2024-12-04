@@ -1,5 +1,3 @@
-#![cfg(not(target_arch = "wasm32"))]
-
 use andromeda_app::app::AppComponent;
 use andromeda_app_contract::mock::{mock_andromeda_app, mock_claim_ownership_msg, MockAppContract};
 use andromeda_auction::mock::{
@@ -136,6 +134,7 @@ fn test_auction_app_modules() {
     let receive_msg = mock_start_auction(
         Some(Expiry::AtTime(start_time)),
         Expiry::AtTime(start_time.plus_milliseconds(Milliseconds(1000))),
+        None,
         Asset::NativeToken("uandr".to_string()),
         None,
         None,
@@ -334,6 +333,7 @@ fn test_auction_app_recipient() {
     let receive_msg = mock_start_auction(
         Some(Expiry::AtTime(start_time)),
         Expiry::AtTime(start_time.plus_milliseconds(Milliseconds(1000))),
+        None,
         Asset::NativeToken("uandr".to_string()),
         None,
         None,
@@ -527,7 +527,10 @@ fn test_auction_app_cw20_restricted() {
             "./{}",
             cw721_component.name
         ))]),
-        Some(AndrAddr::from_string(format!("./{}", cw20_component.name))),
+        Some(vec![AndrAddr::from_string(format!(
+            "./{}",
+            cw20_component.name
+        ))]),
     );
     let auction_component = AppComponent::new(
         "auction".to_string(),
@@ -579,6 +582,7 @@ fn test_auction_app_cw20_restricted() {
             &mock_start_auction(
                 Some(Expiry::AtTime(Milliseconds(start_time))),
                 Expiry::AtTime(Milliseconds(start_time + 2)),
+                None,
                 Asset::Cw20Token(AndrAddr::from_string(cw20.addr().to_string())),
                 None,
                 None,
@@ -758,6 +762,7 @@ fn test_auction_app_cw20_restricted() {
             &mock_start_auction(
                 Some(Expiry::AtTime(Milliseconds(start_time))),
                 Expiry::AtTime(Milliseconds(start_time + 2)),
+                None,
                 Asset::Cw20Token(AndrAddr::from_string(cw20.addr().to_string())),
                 None,
                 None,
@@ -1053,6 +1058,7 @@ fn test_auction_app_cw20_unrestricted() {
             &mock_start_auction(
                 Some(Expiry::AtTime(Milliseconds(start_time))),
                 Expiry::AtTime(Milliseconds(start_time + 2)),
+                None,
                 Asset::Cw20Token(AndrAddr::from_string(cw20.addr().to_string())),
                 None,
                 None,
@@ -1178,6 +1184,7 @@ fn test_auction_app_cw20_unrestricted() {
             &mock_start_auction(
                 Some(Expiry::AtTime(Milliseconds(start_time))),
                 Expiry::AtTime(Milliseconds(start_time + 2)),
+                None,
                 Asset::Cw20Token(AndrAddr::from_string(second_cw20.addr().to_string())),
                 None,
                 None,

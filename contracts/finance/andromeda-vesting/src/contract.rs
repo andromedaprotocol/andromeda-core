@@ -1,13 +1,15 @@
 use andromeda_std::{
     ado_contract::ADOContract,
-    common::{actions::call_action, context::ExecuteContext, withdraw::WithdrawalType},
+    common::{
+        actions::call_action, context::ExecuteContext, withdraw::WithdrawalType, Milliseconds,
+    },
     error::ContractError,
 };
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    ensure, Binary, Coin, CosmosMsg, Deps, DepsMut, DistributionMsg, Env, GovMsg, MessageInfo,
-    QuerierWrapper, Response, StakingMsg, Uint128, VoteOption,
+    ensure, Binary, Coin, Decimal, Deps, DepsMut, Env, MessageInfo, QuerierWrapper, Reply,
+    Response, StdError, Uint128,
 };
 use cw_asset::AssetInfo;
 use cw_utils::nonpayable;
@@ -34,10 +36,8 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     let config = Config {
-        is_multi_batch_enabled: msg.is_multi_batch_enabled,
-        recipient: msg.recipient,
-        denom: msg.denom,
-        unbonding_duration: msg.unbonding_duration,
+        recipient: msg.recipient.clone(),
+        denom: msg.denom.clone(),
     };
 
     CONFIG.save(deps.storage, &config)?;
@@ -51,10 +51,12 @@ pub fn instantiate(
         BaseInstantiateMsg {
             ado_type: CONTRACT_NAME.to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
-            kernel_address: msg.kernel_address,
-            owner: msg.owner,
+            kernel_address: msg.kernel_address.clone(),
+            owner: msg.owner.clone(),
         },
     )?;
+
+    msg.validate(&deps)?;
 
     Ok(inst_resp)
 }
@@ -87,28 +89,14 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
     match msg {
         ExecuteMsg::CreateBatch {
             lockup_duration,
-            release_unit,
+            release_duration,
             release_amount,
-            validator_to_delegate_to,
-        } => execute_create_batch(
-            ctx,
-            lockup_duration,
-            release_unit,
-            release_amount,
-            validator_to_delegate_to,
-        ),
+        } => execute_create_batch(ctx, lockup_duration, release_duration, release_amount),
         ExecuteMsg::Claim {
             number_of_claims,
             batch_id,
         } => execute_claim(ctx, number_of_claims, batch_id),
         ExecuteMsg::ClaimAll { limit, up_to_time } => execute_claim_all(ctx, limit, up_to_time),
-        ExecuteMsg::Delegate { amount, validator } => {
-            execute_delegate(ctx.deps, ctx.env, ctx.info, amount, validator)
-        }
-        ExecuteMsg::Redelegate { amount, from, to } => execute_redelegate(ctx, amount, from, to),
-        ExecuteMsg::Undelegate { amount, validator } => execute_undelegate(ctx, amount, validator),
-        ExecuteMsg::WithdrawRewards {} => execute_withdraw_rewards(ctx),
-        ExecuteMsg::Vote { proposal_id, vote } => execute_vote(ctx, proposal_id, vote),
 
         _ => ADOContract::default().execute(ctx, msg),
     }
@@ -116,10 +104,9 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
 
 fn execute_create_batch(
     ctx: ExecuteContext,
-    lockup_duration: Option<u64>,
-    release_unit: u64,
+    lockup_duration: Option<Milliseconds>,
+    release_duration: Milliseconds,
     release_amount: WithdrawalType,
-    validator_to_delegate_to: Option<String>,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
         deps, info, env, ..
@@ -130,7 +117,7 @@ fn execute_create_batch(
     );
 
     let config = CONFIG.load(deps.storage)?;
-    let current_time = env.block.time.seconds();
+    let current_time = Milliseconds::from_seconds(env.block.time.seconds());
 
     ensure!(
         info.funds.len() == 1,
@@ -149,7 +136,11 @@ fn execute_create_batch(
     );
 
     ensure!(
-        release_unit > 0 && !release_amount.is_zero(),
+        !release_duration.is_zero() && !release_amount.is_zero(),
+        ContractError::InvalidZeroAmount {}
+    );
+    ensure!(
+        !release_amount.get_amount(funds.amount)?.is_zero(),
         ContractError::InvalidZeroAmount {}
     );
 
@@ -178,7 +169,7 @@ fn execute_create_batch(
     );
 
     let lockup_end = if let Some(duration) = lockup_duration {
-        current_time + duration
+        current_time.plus_milliseconds(duration)
     } else {
         current_time
     };
@@ -189,29 +180,19 @@ fn execute_create_batch(
         amount: funds.amount,
         amount_claimed: Uint128::zero(),
         lockup_end,
-        release_unit,
+        release_duration,
         release_amount,
         last_claimed_release_time: lockup_end,
     };
 
-    save_new_batch(deps.storage, batch, &config)?;
+    save_new_batch(deps.storage, batch)?;
 
-    let mut response = Response::new()
+    Ok(Response::new()
         .add_attribute("action", "create_batch")
         .add_attribute("amount", funds.amount)
         .add_attribute("lockup_end", lockup_end.to_string())
-        .add_attribute("release_unit", release_unit.to_string())
-        .add_attribute("release_amount", release_amount_string);
-
-    if let Some(validator) = validator_to_delegate_to {
-        let delegate_response = execute_delegate(deps, env, info, Some(funds.amount), validator)?;
-        response = response
-            .add_attributes(delegate_response.attributes)
-            .add_submessages(delegate_response.messages)
-            .add_events(delegate_response.events);
-    }
-
-    Ok(response)
+        .add_attribute("release_duration", release_duration.to_string())
+        .add_attribute("release_amount", release_amount_string))
 }
 
 fn execute_claim(
@@ -260,7 +241,7 @@ fn execute_claim(
 fn execute_claim_all(
     ctx: ExecuteContext,
     limit: Option<u32>,
-    up_to_time: Option<u64>,
+    up_to_time: Option<Milliseconds>,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
         deps, info, env, ..
@@ -276,9 +257,12 @@ fn execute_claim_all(
 
     let config = CONFIG.load(deps.storage)?;
 
-    let current_time = env.block.time.seconds();
+    let current_time = Milliseconds::from_seconds(env.block.time.seconds());
     let batches_with_ids = get_claimable_batches_with_ids(deps.storage, current_time, limit)?;
-    let up_to_time = cmp::min(current_time, up_to_time.unwrap_or(current_time));
+    let up_to_time = Milliseconds(cmp::min(
+        current_time.milliseconds(),
+        up_to_time.unwrap_or(current_time).milliseconds(),
+    ));
 
     let mut total_amount_to_send = Uint128::zero();
     let last_batch_id = if !batches_with_ids.is_empty() {
@@ -289,8 +273,9 @@ fn execute_claim_all(
     for (batch_id, mut batch) in batches_with_ids {
         let key = batches().key(batch_id);
 
-        let elapsed_time = up_to_time - batch.last_claimed_release_time;
-        let num_available_claims = elapsed_time / batch.release_unit;
+        let elapsed_time = up_to_time.minus_milliseconds(batch.last_claimed_release_time);
+        let num_available_claims =
+            elapsed_time.milliseconds() / batch.release_duration.milliseconds();
 
         let amount_to_send = claim_batch(
             &deps.querier,
@@ -321,150 +306,6 @@ fn execute_claim_all(
         .add_attribute("last_batch_id_processed", last_batch_id))
 }
 
-fn execute_delegate(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    amount: Option<Uint128>,
-    validator: String,
-) -> Result<Response, ContractError> {
-    let sender = info.sender.to_string();
-    ensure!(
-        ADOContract::default().is_contract_owner(deps.storage, &sender)?,
-        ContractError::Unauthorized {}
-    );
-    let config = CONFIG.load(deps.storage)?;
-    let asset = AssetInfo::native(config.denom.clone());
-    let max_amount = asset.query_balance(&deps.querier, env.contract.address)?;
-    let amount = cmp::min(max_amount, amount.unwrap_or(max_amount));
-
-    ensure!(!amount.is_zero(), ContractError::InvalidZeroAmount {});
-
-    let msg: CosmosMsg = CosmosMsg::Staking(StakingMsg::Delegate {
-        validator: validator.clone(),
-        amount: Coin {
-            denom: config.denom,
-            amount,
-        },
-    });
-
-    Ok(Response::new()
-        .add_message(get_set_withdraw_address_msg(sender))
-        .add_message(msg)
-        .add_attribute("action", "delegate")
-        .add_attribute("validator", validator)
-        .add_attribute("amount", amount))
-}
-
-fn execute_redelegate(
-    ctx: ExecuteContext,
-    amount: Option<Uint128>,
-    from: String,
-    to: String,
-) -> Result<Response, ContractError> {
-    let ExecuteContext {
-        deps, info, env, ..
-    } = ctx;
-    let sender = info.sender.to_string();
-    ensure!(
-        ADOContract::default().is_contract_owner(deps.storage, &sender)?,
-        ContractError::Unauthorized {}
-    );
-    let config = CONFIG.load(deps.storage)?;
-    let max_amount = get_amount_delegated(
-        &deps.querier,
-        env.contract.address.to_string(),
-        from.clone(),
-    )?;
-    let amount = cmp::min(max_amount, amount.unwrap_or(max_amount));
-
-    ensure!(!amount.is_zero(), ContractError::InvalidZeroAmount {});
-
-    let msg: CosmosMsg = CosmosMsg::Staking(StakingMsg::Redelegate {
-        src_validator: from.clone(),
-        dst_validator: to.clone(),
-        amount: Coin {
-            denom: config.denom,
-            amount,
-        },
-    });
-
-    Ok(Response::new()
-        .add_message(get_set_withdraw_address_msg(sender))
-        .add_message(msg)
-        .add_attribute("action", "redelegate")
-        .add_attribute("from", from)
-        .add_attribute("to", to)
-        .add_attribute("amount", amount))
-}
-
-fn execute_undelegate(
-    ctx: ExecuteContext,
-    amount: Option<Uint128>,
-    validator: String,
-) -> Result<Response, ContractError> {
-    let ExecuteContext {
-        deps, info, env, ..
-    } = ctx;
-    let sender = info.sender.to_string();
-    ensure!(
-        ADOContract::default().is_contract_owner(deps.storage, &sender)?,
-        ContractError::Unauthorized {}
-    );
-    let config = CONFIG.load(deps.storage)?;
-    let max_amount = get_amount_delegated(
-        &deps.querier,
-        env.contract.address.to_string(),
-        validator.clone(),
-    )?;
-    let amount = cmp::min(max_amount, amount.unwrap_or(max_amount));
-
-    ensure!(!amount.is_zero(), ContractError::InvalidZeroAmount {});
-
-    let msg: CosmosMsg = CosmosMsg::Staking(StakingMsg::Undelegate {
-        validator: validator.clone(),
-        amount: Coin {
-            denom: config.denom,
-            amount,
-        },
-    });
-
-    Ok(Response::new()
-        .add_message(get_set_withdraw_address_msg(sender))
-        .add_message(msg)
-        .add_attribute("action", "undelegate")
-        .add_attribute("validator", validator)
-        .add_attribute("amount", amount))
-}
-
-fn execute_withdraw_rewards(ctx: ExecuteContext) -> Result<Response, ContractError> {
-    let ExecuteContext {
-        deps, info, env, ..
-    } = ctx;
-    nonpayable(&info)?;
-
-    let sender = info.sender.to_string();
-    ensure!(
-        ADOContract::default().is_contract_owner(deps.storage, &sender)?,
-        ContractError::Unauthorized {}
-    );
-    let withdraw_rewards_msgs: Vec<CosmosMsg> = deps
-        .querier
-        .query_all_delegations(env.contract.address)?
-        .into_iter()
-        .map(|d| {
-            CosmosMsg::Distribution(DistributionMsg::WithdrawDelegatorReward {
-                validator: d.validator,
-            })
-        })
-        .collect();
-
-    Ok(Response::new()
-        .add_attribute("action", "withdraw_rewards")
-        .add_message(get_set_withdraw_address_msg(sender))
-        .add_messages(withdraw_rewards_msgs))
-}
-
 fn claim_batch(
     querier: &QuerierWrapper,
     env: &Env,
@@ -472,25 +313,27 @@ fn claim_batch(
     config: &Config,
     number_of_claims: Option<u64>,
 ) -> Result<Uint128, ContractError> {
-    let current_time = env.block.time.seconds();
+    let current_time = Milliseconds::from_seconds(env.block.time.seconds());
     ensure!(
         batch.lockup_end <= current_time,
         ContractError::FundsAreLocked {}
     );
-    let amount_per_claim = batch.release_amount.get_amount(batch.amount)?;
-
     let total_amount = AssetInfo::native(config.denom.to_owned())
         .query_balance(querier, env.contract.address.to_owned())?;
 
-    let elapsed_time = current_time - batch.last_claimed_release_time;
-    let num_available_claims = elapsed_time / batch.release_unit;
+    let elapsed_time = current_time.minus_milliseconds(batch.last_claimed_release_time);
+    let num_available_claims = elapsed_time.milliseconds() / batch.release_duration.milliseconds();
 
     let number_of_claims = cmp::min(
         number_of_claims.unwrap_or(num_available_claims),
         num_available_claims,
     );
 
-    let amount_to_send = amount_per_claim.checked_mul(Uint128::from(number_of_claims))?;
+    let amount_per_claim = batch.release_amount.get_amount(batch.amount)?;
+
+    let amount_to_send = amount_per_claim
+        .checked_mul(Decimal::from_ratio(number_of_claims, Uint128::one()))?
+        .to_uint_floor();
     let amount_available = cmp::min(batch.amount - batch.amount_claimed, total_amount);
 
     let amount_to_send = cmp::min(amount_to_send, amount_available);
@@ -500,62 +343,23 @@ fn claim_batch(
         batch.amount_claimed = batch.amount_claimed.checked_add(amount_to_send)?;
 
         // Safe math version
-        let claims_release_unit = number_of_claims.checked_mul(batch.release_unit);
-        if let Some(claims_release_unit) = claims_release_unit {
-            let new_claimed_release_time = batch
-                .last_claimed_release_time
-                .checked_add(claims_release_unit);
-            if let Some(new_claimed_release_time) = new_claimed_release_time {
-                batch.last_claimed_release_time = new_claimed_release_time;
-            } else {
-                return Err(ContractError::Overflow {});
-            }
-        } else {
+        let claims_release_duration =
+            number_of_claims.checked_mul(batch.release_duration.milliseconds());
+        if claims_release_duration.is_none() {
             return Err(ContractError::Overflow {});
         }
+
+        let claims_release_duration = Milliseconds(claims_release_duration.unwrap());
+
+        batch.last_claimed_release_time = batch
+            .last_claimed_release_time
+            .plus_milliseconds(claims_release_duration);
+
         // The unsafe version
-        // batch.last_claimed_release_time += number_of_claims * batch.release_unit;
+        // batch.last_claimed_release_time += number_of_claims * batch.release_duration;
     }
 
     Ok(amount_to_send)
-}
-
-fn execute_vote(
-    ctx: ExecuteContext,
-    proposal_id: u64,
-    vote: VoteOption,
-) -> Result<Response, ContractError> {
-    let ExecuteContext { deps, info, .. } = ctx;
-    nonpayable(&info)?;
-    ensure!(
-        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {}
-    );
-    let msg: CosmosMsg = CosmosMsg::Gov(GovMsg::Vote {
-        proposal_id,
-        vote: vote.clone(),
-    });
-    Ok(Response::new()
-        .add_message(msg)
-        .add_attribute("action", "vote")
-        .add_attribute("proposal_id", proposal_id.to_string())
-        .add_attribute("vote", format!("{vote:?}")))
-}
-
-fn get_amount_delegated(
-    querier: &QuerierWrapper,
-    delegator: String,
-    validator: String,
-) -> Result<Uint128, ContractError> {
-    let res = querier.query_delegation(delegator, validator)?;
-    match res {
-        None => Ok(Uint128::zero()),
-        Some(full_delegation) => Ok(full_delegation.amount.amount),
-    }
-}
-
-fn get_set_withdraw_address_msg(address: String) -> CosmosMsg {
-    CosmosMsg::Distribution(DistributionMsg::SetWithdrawAddress { address })
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -613,13 +417,16 @@ fn get_batch_response(
 ) -> Result<BatchResponse, ContractError> {
     let previous_amount = batch.amount_claimed;
     let previous_last_claimed_release_time = batch.last_claimed_release_time;
-    let amount_available_to_claim = if env.block.time.seconds() >= batch.lockup_end {
+    let amount_available_to_claim = if env.block.time.seconds() >= batch.lockup_end.seconds() {
         claim_batch(querier, env, &mut batch, config, None)?
     } else {
         Uint128::zero()
     };
     let amount_per_release = batch.release_amount.get_amount(batch.amount)?;
-    let number_of_available_claims = amount_available_to_claim / amount_per_release;
+    let number_of_available_claims = Decimal::from_ratio(amount_available_to_claim, Uint128::one())
+        .checked_div(amount_per_release)
+        .unwrap()
+        .to_uint_floor();
     let res = BatchResponse {
         id: batch_id,
         amount: batch.amount,
@@ -628,9 +435,20 @@ fn get_batch_response(
         number_of_available_claims,
         lockup_end: batch.lockup_end,
         release_amount: batch.release_amount,
-        release_unit: batch.release_unit,
+        release_duration: batch.release_duration,
         last_claimed_release_time: previous_last_claimed_release_time,
     };
 
     Ok(res)
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
+    if msg.result.is_err() {
+        return Err(ContractError::Std(StdError::generic_err(
+            msg.result.unwrap_err(),
+        )));
+    }
+
+    Ok(Response::default())
 }

@@ -10,7 +10,8 @@ use andromeda_std::{
 };
 use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
 use cosmwasm_std::{
-    attr, ensure, entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Response, SubMsg,
+    attr, ensure, entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError,
+    SubMsg,
 };
 
 use crate::state::{escrows, get_key, get_keys_for_recipient};
@@ -248,4 +249,15 @@ fn query_held_funds(
 ) -> Result<GetLockedFundsResponse, ContractError> {
     let hold_funds = escrows().may_load(deps.storage, get_key(&owner, &recipient))?;
     Ok(GetLockedFundsResponse { funds: hold_funds })
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
+    if msg.result.is_err() {
+        return Err(ContractError::Std(StdError::generic_err(
+            msg.result.unwrap_err(),
+        )));
+    }
+
+    Ok(Response::default())
 }
