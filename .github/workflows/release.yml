@@ -11,16 +11,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Generate schemas
+        run: |
+          make schemas
+          tar -czf schemas.tar.gz schemas/
+
       - name: Create version map
         run: make version-map
 
       - name: Optimize contracts
         run: make build
-
-      - name: Generate schemas
-        run: |
-          make schemas
-          tar -czf schemas.tar.gz schemas/
 
       - name: Create artifacts archive
         run: tar -czf contracts.tar.gz artifacts/
