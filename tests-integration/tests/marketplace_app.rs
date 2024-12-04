@@ -326,6 +326,7 @@ fn test_marketplace_app_recipient() {
         andr.kernel.addr(),
         None,
         None,
+        None,
     );
     let splitter_component = AppComponent::new(
         "splitter",

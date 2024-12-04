@@ -28,6 +28,7 @@ pub struct Splitter {
     pub recipients: Vec<AddressPercent>,
     /// The lock's expiration time
     pub lock: MillisecondsExpiration,
+    pub default_recipient: Option<Recipient>,
 }
 
 #[andr_instantiate]
@@ -37,6 +38,7 @@ pub struct InstantiateMsg {
     /// sent the amount sent will be divided amongst these recipients depending on their assigned percentage.
     pub recipients: Vec<AddressPercent>,
     pub lock_time: Option<Expiry>,
+    pub default_recipient: Option<Recipient>,
 }
 
 impl InstantiateMsg {
@@ -52,6 +54,8 @@ pub enum ExecuteMsg {
     UpdateRecipients { recipients: Vec<AddressPercent> },
     /// Used to lock/unlock the contract allowing the config to be updated.
     UpdateLock { lock_time: Expiry },
+    /// Update the default recipient. Only executable by the contract owner when the contract is not locked.
+    UpdateDefaultRecipient { recipient: Recipient },
     /// Divides any attached funds to the message amongst the recipients list.
     Send { config: Option<Vec<AddressPercent>> },
 }

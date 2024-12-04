@@ -44,8 +44,13 @@ fn test_splitter() {
         },
     ];
 
-    let splitter_init_msg =
-        mock_splitter_instantiate_msg(splitter_recipients, andr.kernel.addr().clone(), None, None);
+    let splitter_init_msg = mock_splitter_instantiate_msg(
+        splitter_recipients,
+        andr.kernel.addr().clone(),
+        None,
+        None,
+        None,
+    );
     let splitter_app_component = AppComponent {
         name: "splitter".to_string(),
         component_type: ComponentType::new(splitter_init_msg),
