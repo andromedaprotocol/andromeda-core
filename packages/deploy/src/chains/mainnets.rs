@@ -4,7 +4,7 @@ use cw_orch::{
 };
 
 pub const ANDROMEDA_MAINNET_NETWORK: NetworkInfo = NetworkInfo {
-    chain_name: "andromeda-mainnet",
+    chain_name: "andromeda",
     pub_address_prefix: "andr",
     coin_type: 118u32,
 };
@@ -21,7 +21,7 @@ pub const ANDROMEDA_MAINNET: ChainInfo = ChainInfo {
 };
 
 pub const STARGAZE_MAINNET_NETWORK: NetworkInfo = NetworkInfo {
-    chain_name: "stargaze-mainnet",
+    chain_name: "stargaze",
     pub_address_prefix: "stars",
     coin_type: 118u32,
 };
@@ -38,7 +38,7 @@ pub const STARGAZE_MAINNET: ChainInfo = ChainInfo {
 };
 
 pub const NEUTRON_MAINNET_NETWORK: NetworkInfo = NetworkInfo {
-    chain_name: "neutron-mainnet",
+    chain_name: "neutron",
     pub_address_prefix: "neutron",
     coin_type: 118u32,
 };
@@ -55,7 +55,7 @@ pub const NEUTRON_MAINNET: ChainInfo = ChainInfo {
 };
 
 pub const MIGALOO_MAINNET_NETWORK: NetworkInfo = NetworkInfo {
-    chain_name: "migaloo-mainnet",
+    chain_name: "migaloo",
     pub_address_prefix: "migaloo",
     coin_type: 118u32,
 };
@@ -72,7 +72,7 @@ pub const MIGALOO_MAINNET: ChainInfo = ChainInfo {
 };
 
 pub const JUNO_MAINNET_NETWORK: NetworkInfo = NetworkInfo {
-    chain_name: "juno-mainnet",
+    chain_name: "juno",
     pub_address_prefix: "juno",
     coin_type: 118u32,
 };
@@ -89,13 +89,13 @@ pub const JUNO_MAINNET: ChainInfo = ChainInfo {
 };
 
 pub const DESMOS_MAINNET_NETWORK: NetworkInfo = NetworkInfo {
-    chain_name: "desmos-mainnet",
+    chain_name: "desmos",
     pub_address_prefix: "desmos",
     coin_type: 118u32,
 };
 
 pub const DESMOS_MAINNET: ChainInfo = ChainInfo {
-    chain_id: "desmos-mainnet",
+    chain_id: "desmos",
     gas_denom: "udsm",
     fcd_url: None,
     gas_price: 0.001,
@@ -106,7 +106,7 @@ pub const DESMOS_MAINNET: ChainInfo = ChainInfo {
 };
 
 pub const CHIHUAHUA_MAINNET_NETWORK: NetworkInfo = NetworkInfo {
-    chain_name: "chihuahua-mainnet",
+    chain_name: "chihuahua",
     pub_address_prefix: "chihuahua",
     coin_type: 118u32,
 };
@@ -123,7 +123,7 @@ pub const CHIHUAHUA_MAINNET: ChainInfo = ChainInfo {
 };
 
 pub const UMEE_MAINNET_NETWORK: NetworkInfo = NetworkInfo {
-    chain_name: "umee-mainnet",
+    chain_name: "umee",
     pub_address_prefix: "umee",
     coin_type: 118u32,
 };
@@ -140,7 +140,7 @@ pub const UMEE_MAINNET: ChainInfo = ChainInfo {
 };
 
 pub const NIBIRU_MAINNET_NETWORK: NetworkInfo = NetworkInfo {
-    chain_name: "nibiru-mainnet",
+    chain_name: "nibiru",
     pub_address_prefix: "nibi",
     coin_type: 118u32,
 };
@@ -157,13 +157,13 @@ pub const NIBIRU_MAINNET: ChainInfo = ChainInfo {
 };
 
 pub const COREUM_MAINNET_NETWORK: NetworkInfo = NetworkInfo {
-    chain_name: "coreum-mainnet",
+    chain_name: "coreum",
     pub_address_prefix: "core",
     coin_type: 118u32,
 };
 
 pub const COREUM_MAINNET: ChainInfo = ChainInfo {
-    chain_id: "coreum-mainnet-1",
+    chain_id: "coreum-1",
     gas_denom: "ucore",
     fcd_url: None,
     gas_price: 0.0625,
@@ -174,7 +174,7 @@ pub const COREUM_MAINNET: ChainInfo = ChainInfo {
 };
 
 pub const ARCHWAY_MAINNET_NETWORK: NetworkInfo = NetworkInfo {
-    chain_name: "archway-mainnet",
+    chain_name: "archway",
     pub_address_prefix: "archway",
     coin_type: 118u32,
 };
