@@ -58,7 +58,7 @@ jobs:
             cd andromeda-core
             make schemas
             ```
-          draft: false
-          prerelease: false
+          draft: true
+          prerelease: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

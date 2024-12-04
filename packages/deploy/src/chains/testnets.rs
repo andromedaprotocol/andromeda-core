@@ -4,7 +4,7 @@ use cw_orch::{
 };
 
 pub const ANDROMEDA_TESTNET_NETWORK: NetworkInfo = NetworkInfo {
-    chain_name: "andromeda",
+    chain_name: "andromeda-testnet",
     pub_address_prefix: "andr",
     coin_type: 118u32,
 };
@@ -21,7 +21,7 @@ pub const ANDROMEDA_TESTNET: ChainInfo = ChainInfo {
 };
 
 pub const STARGAZE_TESTNET_NETWORK: NetworkInfo = NetworkInfo {
-    chain_name: "stargaze",
+    chain_name: "stargaze-testnet",
     pub_address_prefix: "stars",
     coin_type: 118u32,
 };
