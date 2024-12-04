@@ -1,0 +1,146 @@
+use andromeda_non_fungible_tokens::{
+    cw721::{ExecuteMsg as AndrCw721ExecuteMsg, TokenExtension},
+    pow_cw721::{ExecuteMsg, PowNFTInfo},
+};
+use andromeda_std::{
+    ado_contract::ADOContract,
+    amp::AndrAddr,
+    common::{actions::call_action, context::ExecuteContext, encode_binary},
+    error::ContractError,
+};
+use cosmwasm_std::{Binary, CosmosMsg, Response, WasmMsg};
+use sha2::{Digest, Sha256};
+
+use crate::contract::MINT_POW_NFT_ACTION;
+use crate::state::{LINKED_CW721_ADDRESS, POW_NFT};
+
+pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+    let action_response = call_action(
+        &mut ctx.deps,
+        &ctx.info,
+        &ctx.env,
+        &ctx.amp_ctx,
+        msg.as_ref(),
+    )?;
+
+    let res = match msg {
+        ExecuteMsg::MintPowNFT {
+            owner,
+            token_id,
+            token_uri,
+            extension,
+            base_difficulty,
+        } => execute_mint_pow_nft(ctx, owner, token_id, token_uri, extension, base_difficulty),
+        ExecuteMsg::SubmitProof { token_id, nonce } => execute_submit_proof(ctx, token_id, nonce),
+        _ => ADOContract::default().execute(ctx, msg),
+    }?;
+
+    Ok(res
+        .add_submessages(action_response.messages)
+        .add_attributes(action_response.attributes)
+        .add_events(action_response.events))
+}
+
+fn execute_mint_pow_nft(
+    mut ctx: ExecuteContext,
+    owner: AndrAddr,
+    token_id: String,
+    token_uri: Option<String>,
+    extension: TokenExtension,
+    base_difficulty: u64,
+) -> Result<Response, ContractError> {
+    let sender = ctx.info.sender;
+
+    ADOContract::default().is_permissioned(
+        ctx.deps.branch(),
+        ctx.env.clone(),
+        MINT_POW_NFT_ACTION,
+        sender.clone(),
+    )?;
+
+    let owner_addr = owner.get_raw_address(&ctx.deps.as_ref())?;
+    let cw721_address = LINKED_CW721_ADDRESS.load(ctx.deps.storage)?;
+
+    let addr = cw721_address
+        .get_raw_address(&ctx.deps.as_ref())?
+        .to_string();
+    let mint_msg = CosmosMsg::Wasm(WasmMsg::Execute {
+        contract_addr: addr,
+        msg: encode_binary(&AndrCw721ExecuteMsg::Mint {
+            token_id: token_id.clone(),
+            owner: owner_addr.to_string(),
+            token_uri,
+            extension,
+        })?,
+        funds: vec![],
+    });
+
+    let block_height = ctx.env.block.height;
+
+    let mut hasher = Sha256::new();
+    hasher.update(block_height.to_be_bytes());
+    let last_hash = hasher.finalize().to_vec();
+
+    let pow_nft_info = PowNFTInfo {
+        owner: owner_addr,
+        level: 1_u64,
+        last_hash: Binary(last_hash),
+        difficulty: base_difficulty,
+    };
+
+    POW_NFT.save(ctx.deps.storage, token_id, &pow_nft_info)?;
+
+    Ok(Response::new()
+        .add_message(mint_msg)
+        .add_attribute("method", "mint_pow_nft")
+        .add_attribute("sender", sender))
+}
+
+fn execute_submit_proof(
+    ctx: ExecuteContext,
+    token_id: String,
+    nonce: u128,
+) -> Result<Response, ContractError> {
+    let sender = ctx.info.sender;
+    let mut pow_nft = POW_NFT
+        .load(ctx.deps.storage, token_id.clone())
+        .map_err(|_| ContractError::NFTNotFound {})?;
+
+    let mut hasher = Sha256::new();
+    hasher.update(&pow_nft.last_hash);
+    hasher.update(&nonce.to_be_bytes());
+    let hash = hasher.finalize();
+    println!("Hash: {:?}", Binary(hash.to_vec()));
+    println!("Last Hash: {:?}", pow_nft.last_hash);
+
+    let hash_value = u128::from_be_bytes(hash[0..16].try_into().unwrap());
+    let threshold = u128::MAX >> (pow_nft.difficulty as u32);
+    println!("Difficulty: {:?}", pow_nft.difficulty);
+    println!("Threshold: {:?}", threshold);
+    println!("Hash Value: {:?}", hash_value);
+
+    if hash_value > threshold {
+        return Err(ContractError::CustomError {
+            msg: "Proof does not meet difficulty".to_string(),
+        });
+    }
+
+    pow_nft.level += 1;
+    pow_nft.difficulty = (pow_nft.difficulty as f64 * 1.5) as u64;
+
+    let block_height = ctx.env.block.height;
+
+    let mut hasher = Sha256::new();
+    hasher.update(&pow_nft.last_hash);
+    hasher.update(&nonce.to_be_bytes());
+    hasher.update(&block_height.to_be_bytes());
+    let hash = hasher.finalize();
+    pow_nft.last_hash = Binary(hash.to_vec());
+    println!("Last Hash After Level Up: {:?}", pow_nft.last_hash);
+
+    POW_NFT.save(ctx.deps.storage, token_id, &pow_nft)?;
+
+    Ok(Response::new()
+        .add_attribute("method", "submit_proof")
+        .add_attribute("sender", sender))
+}
