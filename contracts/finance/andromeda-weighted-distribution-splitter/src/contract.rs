@@ -240,6 +240,8 @@ fn execute_send(
     );
 
     let splitter = if let Some(config) = config {
+        // Max 100 recipients
+        ensure!(config.len() <= 100, ContractError::ReachedRecipientLimit {});
         config
     } else {
         SPLITTER.load(deps.storage)?.recipients

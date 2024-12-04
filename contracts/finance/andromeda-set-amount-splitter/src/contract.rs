@@ -162,10 +162,11 @@ fn execute_send(
         denom_set.insert(coin.denom);
     }
 
-    let splitter = if let Some(config) = config {
+    let splitter = if let Some(ref config) = config {
+        validate_recipient_list(deps.as_ref(), config.clone())?;
         config
     } else {
-        SPLITTER.load(deps.storage)?.recipients
+        &SPLITTER.load(deps.storage)?.recipients
     };
 
     let mut msgs: Vec<SubMsg> = Vec::new();
@@ -178,7 +179,7 @@ fn execute_send(
         let mut remainder_funds = coin.amount;
         let denom = coin.denom;
 
-        for recipient in &splitter {
+        for recipient in splitter {
             // Find the recipient's corresponding denom for the current iteration of the sent funds
             let recipient_coin = recipient
                 .coins
