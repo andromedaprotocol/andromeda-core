@@ -110,7 +110,7 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
         ExecuteMsg::RemoveRecipient { recipient } => execute_remove_recipient(ctx, recipient),
         ExecuteMsg::UpdateLock { lock_time } => execute_update_lock(ctx, lock_time),
 
-        ExecuteMsg::Send {} => execute_send(ctx),
+        ExecuteMsg::Send { config } => execute_send(ctx, config),
 
         _ => ADOContract::default().execute(ctx, msg),
     }
@@ -221,7 +221,10 @@ pub fn execute_add_recipient(
     Ok(Response::default().add_attributes(vec![attr("action", "added_recipient")]))
 }
 
-fn execute_send(ctx: ExecuteContext) -> Result<Response, ContractError> {
+fn execute_send(
+    ctx: ExecuteContext,
+    config: Option<Vec<AddressWeight>>,
+) -> Result<Response, ContractError> {
     let ExecuteContext { deps, info, .. } = ctx;
     // Amount of coins sent should be at least 1
     ensure!(
@@ -236,20 +239,24 @@ fn execute_send(ctx: ExecuteContext) -> Result<Response, ContractError> {
         ContractError::ExceedsMaxAllowedCoins {}
     );
 
-    let splitter = SPLITTER.load(deps.storage)?;
+    let splitter = if let Some(config) = config {
+        config
+    } else {
+        SPLITTER.load(deps.storage)?.recipients
+    };
     let mut msgs: Vec<SubMsg> = Vec::new();
     let mut remainder_funds = info.funds.clone();
     let mut total_weight = Uint128::zero();
 
     // Calculate the total weight of all recipients
-    for recipient_addr in &splitter.recipients {
+    for recipient_addr in &splitter {
         let recipient_weight = recipient_addr.weight;
         total_weight = total_weight.checked_add(recipient_weight)?;
     }
 
     // Each recipient recieves the funds * (the recipient's weight / total weight of all recipients)
     // The remaining funds go to the sender of the function
-    for recipient_addr in &splitter.recipients {
+    for recipient_addr in &splitter {
         let recipient_weight = recipient_addr.weight;
         let mut vec_coin: Vec<Coin> = Vec::new();
         for (i, coin) in info.funds.iter().enumerate() {
