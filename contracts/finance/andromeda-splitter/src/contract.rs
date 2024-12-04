@@ -134,11 +134,11 @@ fn execute_send(
         );
     }
 
-    let splitter = if let Some(ref config) = config {
+    let splitter = if let Some(config) = config {
         validate_recipient_list(deps.as_ref(), config.clone())?;
         config
     } else {
-        &SPLITTER.load(deps.storage)?.recipients
+        SPLITTER.load(deps.storage)?.recipients
     };
 
     let mut msgs: Vec<SubMsg> = Vec::new();
