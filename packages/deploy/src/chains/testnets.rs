@@ -37,12 +37,4 @@ pub const STARGAZE_TESTNET: ChainInfo = ChainInfo {
     kind: ChainKind::Testnet,
 };
 
-pub const ALL_CHAINS: &[ChainInfo] = &[ANDROMEDA_TESTNET, STARGAZE_TESTNET];
-
-pub fn get_chain(chain: String) -> ChainInfo {
-    ALL_CHAINS
-        .iter()
-        .find(|c| c.chain_id == chain || c.network_info.chain_name == chain)
-        .unwrap()
-        .clone()
-}
+pub const TESTNET_CHAINS: &[ChainInfo] = &[ANDROMEDA_TESTNET, STARGAZE_TESTNET];
