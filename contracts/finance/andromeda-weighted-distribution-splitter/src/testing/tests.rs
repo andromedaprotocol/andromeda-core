@@ -5,12 +5,12 @@ use andromeda_std::{
     ado_base::InstantiateMsg as BaseInstantiateMsg, ado_contract::ADOContract,
     amp::recipient::Recipient, error::ContractError,
 };
-use cosmwasm_std::QuerierWrapper;
 use cosmwasm_std::{
     attr,
     testing::{mock_env, mock_info},
     Response, Uint128,
 };
+use cosmwasm_std::{BankMsg, Coin, CosmosMsg, DepsMut, QuerierWrapper, SubMsg};
 
 use crate::{
     contract::{execute, instantiate},
@@ -21,22 +21,23 @@ use cosmwasm_std::testing::mock_dependencies;
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 const MOCK_RECIPIENT1: &str = "recipient1";
 const MOCK_RECIPIENT2: &str = "recipient2";
+pub const OWNER: &str = "creator";
 
-// fn init(deps: DepsMut) -> Response {
-//     let mock_recipient: Vec<AddressWeight> = vec![AddressWeight {
-//         recipient: Recipient::from_string(String::from("some_address")),
-//         weight: Uint128::new(100),
-//     }];
-//     let msg = InstantiateMsg {
-//         owner: Some("OWNER".to_owned()),
-//         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
-//         recipients: mock_recipient,
-//         lock_time: Some(Expiry::FromNow(Milliseconds(86400000))),
-//     };
+fn init(deps: DepsMut) -> Response {
+    let mock_recipient: Vec<AddressWeight> = vec![AddressWeight {
+        recipient: Recipient::from_string(String::from("some_address")),
+        weight: Uint128::new(100),
+    }];
+    let msg = InstantiateMsg {
+        owner: Some(OWNER.to_owned()),
+        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+        recipients: mock_recipient,
+        lock_time: Some(Expiry::FromNow(Milliseconds(86400000))),
+    };
 
-//     let info = mock_info("owner", &[]);
-//     instantiate(deps, mock_env(), info, msg).unwrap()
-// }
+    let info = mock_info(OWNER, &[]);
+    instantiate(deps, mock_env(), info, msg).unwrap()
+}
 #[test]
 fn test_update_app_contract() {
     let mut deps = mock_dependencies_custom(&[]);
@@ -1518,125 +1519,104 @@ fn test_execute_update_recipients_unauthorized() {
     assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
 }
 
-// #[test]
-// fn test_execute_send() {
-//     let mut deps = mock_dependencies_custom(&[]);
-//     let env = mock_env();
-//     let _res: Response = init(deps.as_mut());
+#[test]
+fn test_execute_send() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let env = mock_env();
+    let _res: Response = init(deps.as_mut());
 
-//     let sender_funds_amount = 10000u128;
+    let sender_funds_amount = 10000u128;
 
-//     let info = mock_info("OWNER", &[Coin::new(sender_funds_amount, "uluna")]);
+    let info = mock_info(OWNER, &[Coin::new(sender_funds_amount, "uluna")]);
 
-//     let recip_address1 = "address1".to_string();
-//     let recip_percent1 = 10; // 10%
+    let recip_address1 = "address1".to_string();
+    let recip_weight1 = 10; // 10%
 
-//     let recip_address2 = "address2".to_string();
-//     let recip_percent2 = 20; // 20%
+    let recip_address2 = "address2".to_string();
+    let recip_weight2 = 20; // 20%
 
-//     let recip_address3 = "address3".to_string();
-//     let recip_percent3 = 50; // 50%
+    let recip_address3 = "address3".to_string();
+    let recip_weight3 = 50; // 50%
 
-//     let recip1 = Recipient::from_string(recip_address1);
-//     let recip2 = Recipient::from_string(recip_address2);
-//     let recip3 = Recipient::from_string(recip_address3);
+    let recip1 = Recipient::from_string(recip_address1.clone());
+    let recip2 = Recipient::from_string(recip_address2.clone());
+    let recip3 = Recipient::from_string(recip_address3.clone());
 
-//     let config_recipient = vec![AddressWeight {
-//         recipient: recip3.clone(),
-//         weight: Uint128::new(recip_percent3),
-//     }];
+    let config_recipient = vec![AddressWeight {
+        recipient: recip3.clone(),
+        weight: Uint128::new(recip_weight3),
+    }];
 
-//     let recipient = vec![
-//         AddressWeight {
-//             recipient: recip1.clone(),
-//             weight: Uint128::new(recip_percent1),
-//         },
-//         AddressWeight {
-//             recipient: recip2.clone(),
-//             weight: Uint128::new(recip_percent2),
-//         },
-//     ];
-//     let msg = ExecuteMsg::Send { config: None };
+    let recipient = vec![
+        AddressWeight {
+            recipient: recip1.clone(),
+            weight: Uint128::new(recip_weight1),
+        },
+        AddressWeight {
+            recipient: recip2.clone(),
+            weight: Uint128::new(recip_weight2),
+        },
+    ];
+    let msg = ExecuteMsg::Send { config: None };
 
-//     let amp_msg_1 = recip1
-//         .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(1000, "uluna")]))
-//         .unwrap();
-//     let amp_msg_2 = recip2
-//         .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(2000, "uluna")]))
-//         .unwrap();
-//     let amp_pkt = AMPPkt::new(
-//         MOCK_CONTRACT_ADDR.to_string(),
-//         MOCK_CONTRACT_ADDR.to_string(),
-//         vec![amp_msg_1, amp_msg_2],
-//     );
-//     let amp_msg = amp_pkt
-//         .to_sub_msg(
-//             MOCK_KERNEL_CONTRACT,
-//             Some(vec![Coin::new(1000, "uluna"), Coin::new(2000, "uluna")]),
-//             1,
-//         )
-//         .unwrap();
+    let splitter = Splitter {
+        recipients: recipient,
+        lock: Milliseconds::default(),
+    };
 
-//     let splitter = Splitter {
-//         recipients: recipient,
-//         lock: Milliseconds::default(),
-//     };
+    SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
 
-//     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
+    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
-//     let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+    let expected_res = Response::new()
+        .add_submessages(vec![
+            SubMsg::new(
+                // refunds remainder to sender
+                CosmosMsg::Bank(BankMsg::Send {
+                    to_address: recip_address1.clone(),
+                    amount: vec![Coin::new(3333, "uluna")],
+                }),
+            ),
+            SubMsg::new(
+                // refunds remainder to sender
+                CosmosMsg::Bank(BankMsg::Send {
+                    to_address: recip_address2.clone(),
+                    amount: vec![Coin::new(6666, "uluna")],
+                }),
+            ),
+            SubMsg::new(
+                // refunds remainder to sender
+                CosmosMsg::Bank(BankMsg::Send {
+                    to_address: OWNER.to_string(),
+                    amount: vec![Coin::new(1, "uluna")],
+                }),
+            ),
+        ])
+        .add_attributes(vec![attr("action", "send"), attr("sender", "creator")]);
 
-//     let expected_res = Response::new()
-//         .add_submessages(vec![
-//             SubMsg::new(
-//                 // refunds remainder to sender
-//                 CosmosMsg::Bank(BankMsg::Send {
-//                     to_address: OWNER.to_string(),
-//                     amount: vec![Coin::new(7000, "uluna")], // 10000 * 0.7   remainder
-//                 }),
-//             ),
-//             amp_msg,
-//         ])
-//         .add_attributes(vec![attr("action", "send"), attr("sender", "creator")]);
+    assert_eq!(res, expected_res);
 
-//     assert_eq!(res, expected_res);
+    // Test send with config
+    let msg = ExecuteMsg::Send {
+        config: Some(config_recipient),
+    };
+    let res = execute(deps.as_mut(), env, info, msg).unwrap();
 
-//     // Test send with config
-//     let msg = ExecuteMsg::Send {
-//         config: Some(config_recipient),
-//     };
-//     let res = execute(deps.as_mut(), env, info, msg).unwrap();
-//     let amp_msg_1 = recip3
-//         .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(5000, "uluna")]))
-//         .unwrap();
+    let expected_res = Response::new()
+        .add_submessages(vec![
+            SubMsg::new(
+                // refunds remainder to sender
+                CosmosMsg::Bank(BankMsg::Send {
+                    to_address: recip_address3,
+                    amount: vec![Coin::new(10000, "uluna")],
+                }),
+            ),
+            // amp_msg,
+        ])
+        .add_attributes(vec![attr("action", "send"), attr("sender", "creator")]);
 
-//     let amp_pkt = AMPPkt::new(
-//         MOCK_CONTRACT_ADDR.to_string(),
-//         MOCK_CONTRACT_ADDR.to_string(),
-//         vec![amp_msg_1],
-//     );
-//     let amp_msg = amp_pkt
-//         .to_sub_msg(
-//             MOCK_KERNEL_CONTRACT,
-//             Some(vec![Coin::new(5000, "uluna")]),
-//             1,
-//         )
-//         .unwrap();
-//     let expected_res = Response::new()
-//         .add_submessages(vec![
-//             SubMsg::new(
-//                 // refunds remainder to sender
-//                 CosmosMsg::Bank(BankMsg::Send {
-//                     to_address: OWNER.to_string(),
-//                     amount: vec![Coin::new(5000, "uluna")], // 10000 * 0.5   remainder
-//                 }),
-//             ),
-//             amp_msg,
-//         ])
-//         .add_attributes(vec![attr("action", "send"), attr("sender", "creator")]);
-
-//     assert_eq!(res, expected_res);
-// }
+    assert_eq!(res, expected_res);
+}
 
 // #[test]
 // fn test_query_splitter() {
