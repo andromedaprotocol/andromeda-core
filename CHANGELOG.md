@@ -26,11 +26,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added MultiSig ADO [(#619)](https://github.com/andromedaprotocol/andromeda-core/pull/619)
 - Added Validator Staking ADO [(#330)](https://github.com/andromedaprotocol/andromeda-core/pull/330)
 - Added Restake and Redelegate to Validator Staking [(#622)](https://github.com/andromedaprotocol/andromeda-core/pull/622)
+- Added andromeda-math and andromeda-account packages[(#672)](https://github.com/andromedaprotocol/andromeda-core/pull/672)
+
 
 ### Changed
 
 - Removed staking from vesting contract [(#554)](https://github.com/andromedaprotocol/andromeda-core/pull/554)
 - Vesting: Changed to use Milliseconds instead of seconds and removed unnecessary is_multi_batch_enabled flag [(#578)](https://github.com/andromedaprotocol/andromeda-core/pull/578)
+- Splits up ADOs: moved Counter, Curve, Date-Time, Graph, Point, Shunting ADOs to math package and Fixed Multisig ADO to accounts package[(#672)](https://github.com/andromedaprotocol/andromeda-core/pull/672)
 
 ### Fixed
 
