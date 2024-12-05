@@ -10,7 +10,7 @@ use andromeda_finance::{
 };
 use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
-    amp::messages::AMPPkt,
+    amp::{messages::AMPPkt, Recipient},
     common::{actions::call_action, encode_binary, expiration::Expiry, Milliseconds},
     error::ContractError,
 };
@@ -52,6 +52,7 @@ pub fn instantiate(
             Splitter {
                 recipients: msg.recipients.clone(),
                 lock: lock_time.get_time(&env.block),
+                default_recipient: msg.default_recipient.clone(),
             }
         }
         None => {
@@ -59,6 +60,7 @@ pub fn instantiate(
                 recipients: msg.recipients.clone(),
                 // If locking isn't desired upon instantiation, it's automatically set to 0
                 lock: Milliseconds::default(),
+                default_recipient: msg.default_recipient.clone(),
             }
         }
     };
@@ -124,6 +126,9 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
     let res = match msg {
         ExecuteMsg::UpdateRecipients { recipients } => execute_update_recipients(ctx, recipients),
         ExecuteMsg::UpdateLock { lock_time } => execute_update_lock(ctx, lock_time),
+        ExecuteMsg::UpdateDefaultRecipient { recipient } => {
+            execute_default_recipient(ctx, recipient)
+        }
         ExecuteMsg::Send { config } => execute_send(ctx, config),
         _ => ADOContract::default().execute(ctx, msg),
     }?;
@@ -131,6 +136,49 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
         .add_submessages(action_response.messages)
         .add_attributes(action_response.attributes)
         .add_events(action_response.events))
+}
+
+fn execute_default_recipient(
+    ctx: ExecuteContext,
+    recipient: Option<Recipient>,
+) -> Result<Response, ContractError> {
+    let ExecuteContext {
+        deps, info, env, ..
+    } = ctx;
+
+    nonpayable(&info)?;
+
+    ensure!(
+        ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {}
+    );
+
+    let mut splitter = SPLITTER.load(deps.storage)?;
+
+    // Can't call this function while the lock isn't expired
+    ensure!(
+        splitter.lock.is_expired(&env.block),
+        ContractError::ContractLocked {}
+    );
+
+    if let Some(ref recipient) = recipient {
+        recipient.validate(&deps.as_ref())?;
+    }
+    splitter.default_recipient = recipient;
+
+    SPLITTER.save(deps.storage, &splitter)?;
+
+    Ok(Response::default().add_attributes(vec![
+        attr("action", "update_default_recipient"),
+        attr(
+            "recipient",
+            splitter
+                .default_recipient
+                .map_or("no default recipient".to_string(), |r| {
+                    r.address.to_string()
+                }),
+        ),
+    ]))
 }
 
 fn execute_send(
@@ -162,10 +210,12 @@ fn execute_send(
         denom_set.insert(coin.denom);
     }
 
-    let splitter = if let Some(config) = config {
+    let splitter = SPLITTER.load(deps.storage)?;
+
+    let splitter_recipients = if let Some(config) = config {
         config
     } else {
-        SPLITTER.load(deps.storage)?.recipients
+        splitter.recipients
     };
 
     let mut msgs: Vec<SubMsg> = Vec::new();
@@ -178,7 +228,7 @@ fn execute_send(
         let mut remainder_funds = coin.amount;
         let denom = coin.denom;
 
-        for recipient in &splitter {
+        for recipient in &splitter_recipients {
             // Find the recipient's corresponding denom for the current iteration of the sent funds
             let recipient_coin = recipient
                 .coins
@@ -207,8 +257,15 @@ fn execute_send(
 
         // Refund message for sender
         if !remainder_funds.is_zero() {
+            let remainder_recipient = splitter
+                .default_recipient
+                .clone()
+                .unwrap_or(Recipient::new(info.sender.to_string(), None));
             let msg = SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-                to_address: info.sender.clone().into_string(),
+                to_address: remainder_recipient
+                    .address
+                    .get_raw_address(&deps.as_ref())?
+                    .into_string(),
                 amount: coins(remainder_funds.u128(), denom),
             }));
             msgs.push(msg);

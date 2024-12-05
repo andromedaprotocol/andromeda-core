@@ -48,6 +48,7 @@ fn test_splitter() {
         andr.kernel.addr().clone(),
         None,
         None,
+        None,
     );
     let splitter_app_component = AppComponent {
         name: "splitter".to_string(),
