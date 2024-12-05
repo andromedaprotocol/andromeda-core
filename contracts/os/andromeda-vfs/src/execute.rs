@@ -130,13 +130,22 @@ pub fn add_child(
     // Only add path method can override existing paths as its safe because only owner of the path can execute it
     match existing {
         None => {
-            add_pathname(deps.storage, parent_address, name, info.sender)?;
+            add_pathname(
+                deps.storage,
+                parent_address.clone(),
+                name.clone(),
+                info.sender,
+            )?;
         }
         Some(path) => {
             ensure!(path.address == info.sender, ContractError::Unauthorized {})
         }
     };
-    Ok(Response::default())
+    Ok(Response::default().add_attributes(vec![
+        attr("action", "add_child"),
+        attr("name", name),
+        attr("parent", parent_address),
+    ]))
 }
 
 const MAX_USERNAME_LENGTH: u64 = 30;

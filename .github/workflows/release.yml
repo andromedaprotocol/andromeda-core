@@ -6,21 +6,21 @@ on:
       - "release/[0-9]+"
 
 jobs:
-  optimize:
+  create-release:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Optimize contracts
-        run: make build
-
-      - name: Create version map
-        run: make version-map
 
       - name: Generate schemas
         run: |
           make schemas
           tar -czf schemas.tar.gz schemas/
+
+      - name: Create version map
+        run: make version-map
+
+      - name: Optimize contracts
+        run: make build
 
       - name: Create artifacts archive
         run: tar -czf contracts.tar.gz artifacts/
@@ -58,7 +58,7 @@ jobs:
             cd andromeda-core
             make schemas
             ```
-          draft: false
-          prerelease: false
+          draft: true
+          prerelease: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
