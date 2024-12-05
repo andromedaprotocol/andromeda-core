@@ -865,7 +865,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-string-storage"
-version = "0.1.0-beta"
+version = "1.0.4-beta"
 dependencies = [
  "andromeda-data-storage",
  "andromeda-std",
