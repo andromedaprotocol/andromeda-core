@@ -141,6 +141,7 @@ fn execute_send(
     let splitter = SPLITTER.load(deps.storage)?;
 
     let splitter_recipients = if let Some(config) = config {
+        validate_recipient_list(deps.as_ref(), config.clone())?;
         config
     } else {
         splitter.recipients
@@ -161,7 +162,7 @@ fn execute_send(
 
     let mut pkt = AMPPkt::from_ctx(ctx.amp_ctx, ctx.env.contract.address.to_string());
 
-    for recipient_addr in &splitter_recipients {
+    for recipient_addr in splitter_recipients {
         let recipient_percent = recipient_addr.percent;
         let mut vec_coin: Vec<Coin> = Vec::new();
         for (i, coin) in info.funds.clone().iter().enumerate() {

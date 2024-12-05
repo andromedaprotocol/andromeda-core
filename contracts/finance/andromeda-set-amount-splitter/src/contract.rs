@@ -209,10 +209,9 @@ fn execute_send(
         );
         denom_set.insert(coin.denom);
     }
-
     let splitter = SPLITTER.load(deps.storage)?;
-
     let splitter_recipients = if let Some(config) = config {
+        validate_recipient_list(deps.as_ref(), config.clone())?;
         config
     } else {
         splitter.recipients
@@ -228,7 +227,7 @@ fn execute_send(
         let mut remainder_funds = coin.amount;
         let denom = coin.denom;
 
-        for recipient in &splitter_recipients {
+        for recipient in splitter_recipients.clone() {
             // Find the recipient's corresponding denom for the current iteration of the sent funds
             let recipient_coin = recipient
                 .coins
