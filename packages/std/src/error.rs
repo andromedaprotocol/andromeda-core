@@ -74,6 +74,9 @@ pub enum ContractError {
     },
     #[error("Invalid Campaign Operation: {operation} on {stage}")]
     InvalidCampaignOperation { operation: String, stage: String },
+    
+    #[error("Soft Cap Not Reached: soft cap: {soft_cap}, current: {current_capital}")]
+    SoftcapNotMet { soft_cap: String, current_capital: String },
 
     #[error("No Staking Reward")]
     InvalidClaim {},
