@@ -370,7 +370,7 @@ fn handle_receive_cw20(
     }
 }
 
-fn execute_discard_campaign(ctx: ExecuteContext) -> Result<Response, ContractError> {
+fn execute_discard_campaign(mut ctx: ExecuteContext) -> Result<Response, ContractError> {
     nonpayable(&ctx.info)?;
     
     let ExecuteContext {
@@ -405,7 +405,7 @@ fn execute_discard_campaign(ctx: ExecuteContext) -> Result<Response, ContractErr
 }
 
 fn execute_end_campaign(
-    ctx: ExecuteContext
+    mut ctx: ExecuteContext
 ) -> Result<Response, ContractError> {
     nonpayable(&ctx.info)?;
 
@@ -436,24 +436,42 @@ fn execute_end_campaign(
     let current_capital = get_current_capital(deps.storage);
     let campaign_config = get_config(deps.storage)?;
     let soft_cap = campaign_config.soft_cap.unwrap_or(Uint128::one());
-    
-    // Check if campaign has expired
-    if !duration.end_time.is_expired(&env.block) {
-        return Err(ContractError::CampaignNotExpired {});
-    }
 
-    // Determine final stage based on soft cap
-    let final_stage = if current_capital >= soft_cap {
-        CampaignStage::SUCCESS
-    } else {
-        CampaignStage::FAILED
+    // Decide the next stage based on capital and expiry
+    let final_stage = match (duration.end_time.is_expired(&env.block), current_capital >= soft_cap) {
+        // Success if soft cap is met
+        (_, true) => CampaignStage::SUCCESS,
+        // Failed if expired and soft cap not met
+        (true, false) => CampaignStage::FAILED,
+        // Error only if not expired and soft cap not met
+        (false, false) => {
+            return Err(ContractError::CampaignNotExpired {});
+        }
     };
 
     set_current_stage(deps.storage, final_stage.clone())?;
 
-    Ok(Response::new()
+    let mut resp = Response::new()
         .add_attribute("action", "end_campaign")
-        .add_attribute("result", final_stage.to_string()))
+        .add_attribute("result", final_stage.to_string());
+
+    // If campaign is successful, withdraw funds to recipient
+    if final_stage == CampaignStage::SUCCESS {
+        let campaign_denom = match campaign_config.denom {
+            Asset::Cw20Token(ref cw20_token) => Asset::Cw20Token(AndrAddr::from_string(
+                cw20_token.get_raw_address(&deps.as_ref())?.to_string(),
+            )),
+            denom => denom,
+        };
+        resp = resp.add_submessage(withdraw_to_recipient(
+            ctx,
+            campaign_config.withdrawal_recipient,
+            current_capital,
+            campaign_denom,
+        )?);
+    }
+
+    Ok(resp)
 }
 
 fn purchase_tiers(
