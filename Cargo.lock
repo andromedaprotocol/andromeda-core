@@ -184,7 +184,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-boolean"
-version = "0.1.0-beta"
+version = "2.0.4-beta"
 dependencies = [
  "andromeda-data-storage",
  "andromeda-std",
