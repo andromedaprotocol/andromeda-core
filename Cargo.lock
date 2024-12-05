@@ -489,6 +489,7 @@ dependencies = [
  "cw-multi-test",
  "cw-orch",
  "cw-utils 1.0.3",
+ "cw20 1.1.2",
  "cw3 1.1.2",
  "cw4",
  "cw721 0.18.0",
@@ -828,6 +829,7 @@ dependencies = [
  "cw-orch",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
+ "cw20 1.1.2",
 ]
 
 [[package]]

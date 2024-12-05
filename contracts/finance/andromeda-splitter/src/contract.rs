@@ -1,6 +1,6 @@
 use crate::state::SPLITTER;
 use andromeda_finance::splitter::{
-    validate_expiry_duration, validate_recipient_list, AddressPercent, ExecuteMsg,
+    validate_expiry_duration, validate_recipient_list, AddressPercent, Cw20HookMsg, ExecuteMsg,
     GetSplitterConfigResponse, InstantiateMsg, QueryMsg, Splitter,
 };
 use andromeda_std::{
@@ -11,9 +11,10 @@ use andromeda_std::{
 };
 use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
 use cosmwasm_std::{
-    attr, ensure, entry_point, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
+    attr, coin, ensure, entry_point, from_json, Binary, Coin, Deps, DepsMut, Env, MessageInfo,
     Reply, Response, StdError, SubMsg, Uint128,
 };
+use cw20::{Cw20Coin, Cw20ReceiveMsg};
 use cw_utils::nonpayable;
 
 // version info for migration info
@@ -110,6 +111,7 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
         ExecuteMsg::UpdateDefaultRecipient { recipient } => {
             execute_default_recipient(ctx, recipient)
         }
+        ExecuteMsg::Receive(receive_msg) => handle_receive_cw20(ctx, receive_msg),
         ExecuteMsg::Send { config } => execute_send(ctx, config),
         _ => ADOContract::default().execute(ctx, msg),
     }?;
@@ -117,6 +119,45 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
         .add_submessages(action_response.messages)
         .add_attributes(action_response.attributes)
         .add_events(action_response.events))
+}
+
+pub fn handle_receive_cw20(
+    ctx: ExecuteContext,
+    receive_msg: Cw20ReceiveMsg,
+) -> Result<Response, ContractError> {
+    // let is_valid_cw20 = ADOContract::default()
+    //     .is_permissioned(
+    //         ctx.deps.branch(),
+    //         ctx.env.clone(),
+    //         SEND_CW20_ACTION,
+    //         ctx.info.sender.clone(),
+    //     )
+    //     .is_ok();
+
+    // ensure!(
+    //     is_valid_cw20,
+    //     ContractError::InvalidAsset {
+    //         asset: ctx.info.sender.into_string()
+    //     }
+    // );
+
+    let ExecuteContext { ref info, .. } = ctx;
+    nonpayable(info)?;
+
+    let asset_sent = info.sender.clone().into_string();
+    let amount_sent = receive_msg.amount;
+    // let sender = receive_msg.sender;
+
+    ensure!(
+        !amount_sent.is_zero(),
+        ContractError::InvalidFunds {
+            msg: "Cannot send a 0 amount".to_string()
+        }
+    );
+
+    match from_json(&receive_msg.msg)? {
+        Cw20HookMsg::Send { config } => execute_send_cw20(ctx, amount_sent, asset_sent, config),
+    }
 }
 
 fn execute_send(
@@ -194,14 +235,9 @@ fn execute_send(
         let remainder_recipient = splitter
             .default_recipient
             .unwrap_or(Recipient::new(info.sender.to_string(), None));
-
-        msgs.push(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-            to_address: remainder_recipient
-                .address
-                .get_raw_address(&deps.as_ref())?
-                .into_string(),
-            amount: remainder_funds,
-        })));
+        let native_msg =
+            remainder_recipient.generate_direct_msg(&deps.as_ref(), remainder_funds)?;
+        msgs.push(native_msg);
     }
     let kernel_address = ADOContract::default().get_kernel_address(deps.as_ref().storage)?;
 
@@ -213,6 +249,69 @@ fn execute_send(
     Ok(Response::new()
         .add_submessages(msgs)
         .add_attribute("action", "send")
+        .add_attribute("sender", info.sender.to_string()))
+}
+
+fn execute_send_cw20(
+    ctx: ExecuteContext,
+    amount: Uint128,
+    asset: String,
+    config: Option<Vec<AddressPercent>>,
+) -> Result<Response, ContractError> {
+    let ExecuteContext { deps, info, .. } = ctx;
+    let splitter = SPLITTER.load(deps.storage)?;
+
+    let splitter_recipients = if let Some(config) = config {
+        validate_recipient_list(deps.as_ref(), config.clone())?;
+        config
+    } else {
+        splitter.recipients
+    };
+
+    let mut msgs: Vec<SubMsg> = Vec::new();
+    let mut amp_funds: Vec<Coin> = Vec::new();
+    let mut remainder_funds = coin(amount.u128(), asset.clone());
+
+    for recipient_addr in splitter_recipients {
+        let recipient_percent = recipient_addr.percent;
+        let mut vec_coin: Vec<Coin> = Vec::new();
+        let coin = coin(amount.u128(), asset.clone());
+        let amount_owed = coin.amount.mul_floor(recipient_percent);
+
+        if !amount_owed.is_zero() {
+            let mut recip_coin: Coin = coin.clone();
+            recip_coin.amount = amount_owed;
+            remainder_funds.amount = remainder_funds.amount.checked_sub(recip_coin.amount)?;
+            vec_coin.push(recip_coin.clone());
+            amp_funds.push(recip_coin.clone());
+            let amp_msg = recipient_addr.recipient.generate_msg_cw20(
+                &deps.as_ref(),
+                Cw20Coin {
+                    address: recip_coin.denom.clone(),
+                    amount: recip_coin.amount,
+                },
+            )?;
+            msgs.push(amp_msg);
+        }
+    }
+
+    if !remainder_funds.amount.is_zero() {
+        let remainder_recipient = splitter
+            .default_recipient
+            .unwrap_or(Recipient::new(info.sender.to_string(), None));
+        let cw20_msg = remainder_recipient.generate_msg_cw20(
+            &deps.as_ref(),
+            Cw20Coin {
+                address: asset,
+                amount: remainder_funds.amount,
+            },
+        )?;
+        msgs.push(cw20_msg);
+    }
+
+    Ok(Response::new()
+        .add_submessages(msgs)
+        .add_attribute("action", "cw20_send")
         .add_attribute("sender", info.sender.to_string()))
 }
 
