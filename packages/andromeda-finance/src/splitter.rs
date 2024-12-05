@@ -56,7 +56,7 @@ pub enum ExecuteMsg {
     /// Used to lock/unlock the contract allowing the config to be updated.
     UpdateLock { lock_time: Expiry },
     /// Update the default recipient. Only executable by the contract owner when the contract is not locked.
-    UpdateDefaultRecipient { recipient: Recipient },
+    UpdateDefaultRecipient { recipient: Option<Recipient> },
     /// Divides any attached funds to the message amongst the recipients list.
     Send { config: Option<Vec<AddressPercent>> },
 }

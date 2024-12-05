@@ -285,7 +285,7 @@ fn execute_update_lock(ctx: ExecuteContext, lock_time: Expiry) -> Result<Respons
 
 fn execute_default_recipient(
     ctx: ExecuteContext,
-    recipient: Recipient,
+    recipient: Option<Recipient>,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
         deps, info, env, ..
@@ -306,14 +306,23 @@ fn execute_default_recipient(
         ContractError::ContractLocked {}
     );
 
-    recipient.validate(&deps.as_ref())?;
-    splitter.default_recipient = Some(recipient.clone());
+    if let Some(ref recipient) = recipient {
+        recipient.validate(&deps.as_ref())?;
+    }
+    splitter.default_recipient = recipient;
 
     SPLITTER.save(deps.storage, &splitter)?;
 
     Ok(Response::default().add_attributes(vec![
         attr("action", "update_default_recipient"),
-        attr("recipient", recipient.address.to_string()),
+        attr(
+            "recipient",
+            splitter
+                .default_recipient
+                .map_or("no default recipient".to_string(), |r| {
+                    r.address.to_string()
+                }),
+        ),
     ]))
 }
 

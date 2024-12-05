@@ -111,7 +111,9 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
         ExecuteMsg::AddRecipient { recipient } => execute_add_recipient(ctx, recipient),
         ExecuteMsg::RemoveRecipient { recipient } => execute_remove_recipient(ctx, recipient),
         ExecuteMsg::UpdateLock { lock_time } => execute_update_lock(ctx, lock_time),
-
+        ExecuteMsg::UpdateDefaultRecipient { recipient } => {
+            execute_default_recipient(ctx, recipient)
+        }
         ExecuteMsg::Send { config } => execute_send(ctx, config),
 
         _ => ADOContract::default().execute(ctx, msg),
@@ -163,6 +165,49 @@ pub fn execute_update_recipient_weight(
         SPLITTER.save(deps.storage, &splitter)?;
     };
     Ok(Response::default().add_attribute("action", "updated_recipient_weight"))
+}
+
+fn execute_default_recipient(
+    ctx: ExecuteContext,
+    recipient: Option<Recipient>,
+) -> Result<Response, ContractError> {
+    let ExecuteContext {
+        deps, info, env, ..
+    } = ctx;
+
+    nonpayable(&info)?;
+
+    ensure!(
+        ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {}
+    );
+
+    let mut splitter = SPLITTER.load(deps.storage)?;
+
+    // Can't call this function while the lock isn't expired
+    ensure!(
+        splitter.lock.is_expired(&env.block),
+        ContractError::ContractLocked {}
+    );
+
+    if let Some(ref recipient) = recipient {
+        recipient.validate(&deps.as_ref())?;
+    }
+    splitter.default_recipient = recipient;
+
+    SPLITTER.save(deps.storage, &splitter)?;
+
+    Ok(Response::default().add_attributes(vec![
+        attr("action", "update_default_recipient"),
+        attr(
+            "recipient",
+            splitter
+                .default_recipient
+                .map_or("no default recipient".to_string(), |r| {
+                    r.address.to_string()
+                }),
+        ),
+    ]))
 }
 
 pub fn execute_add_recipient(
