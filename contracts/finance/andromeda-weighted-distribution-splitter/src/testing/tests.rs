@@ -33,6 +33,7 @@ fn init(deps: DepsMut) -> Response {
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         recipients: mock_recipient,
         lock_time: Some(Expiry::FromNow(Milliseconds(86400000))),
+        default_recipient: None,
     };
 
     let info = mock_info(OWNER, &[]);
@@ -57,6 +58,7 @@ fn test_update_app_contract() {
         lock_time: None,
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
+        default_recipient: None,
     };
 
     let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
@@ -126,6 +128,7 @@ fn test_instantiate() {
         lock_time: None,
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
+        default_recipient: None,
     };
     let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
     assert_eq!(0, res.messages.len());
@@ -146,6 +149,7 @@ fn test_execute_update_lock() {
     let splitter = Splitter {
         recipients: vec![],
         lock: Milliseconds(current_time - 1),
+        default_recipient: None,
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -203,6 +207,7 @@ fn test_execute_update_lock_too_short() {
     let splitter = Splitter {
         recipients: vec![],
         lock: Milliseconds(current_time - 1),
+        default_recipient: None,
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -247,6 +252,7 @@ fn test_execute_update_lock_too_long() {
     let splitter = Splitter {
         recipients: vec![],
         lock: Milliseconds(current_time - 1),
+        default_recipient: None,
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -292,6 +298,7 @@ fn test_execute_update_lock_already_locked() {
     let splitter = Splitter {
         recipients: vec![],
         lock: Milliseconds::default().plus_seconds(current_time + 10_000),
+        default_recipient: None,
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -336,6 +343,7 @@ fn test_execute_update_lock_unauthorized() {
     let splitter = Splitter {
         recipients: vec![],
         lock: new_lock,
+        default_recipient: None,
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -414,6 +422,7 @@ fn test_execute_remove_recipient() {
     let splitter = Splitter {
         recipients: recipient,
         lock: Milliseconds::default(),
+        default_recipient: None,
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -439,6 +448,7 @@ fn test_execute_remove_recipient() {
             },
         ],
         lock: Milliseconds::default(),
+        default_recipient: None,
     };
     assert_eq!(expected_splitter, splitter);
     assert_eq!(
@@ -506,6 +516,7 @@ fn test_execute_remove_recipient_not_on_list() {
     let splitter = Splitter {
         recipients: recipient,
         lock: Milliseconds::default(),
+        default_recipient: None,
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -569,6 +580,7 @@ fn test_execute_remove_recipient_contract_locked() {
     let splitter = Splitter {
         recipients: recipient.clone(),
         lock: Milliseconds::default(),
+        default_recipient: None,
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -579,6 +591,7 @@ fn test_execute_remove_recipient_contract_locked() {
     let splitter = Splitter {
         recipients: recipient,
         lock: Milliseconds::default().plus_seconds(current_time + 10_000),
+        default_recipient: None,
     };
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
 
@@ -692,6 +705,7 @@ fn test_update_recipient_weight() {
     let splitter = Splitter {
         recipients: recipient.clone(),
         lock: Milliseconds::default(),
+        default_recipient: None,
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -702,6 +716,7 @@ fn test_update_recipient_weight() {
     let splitter = Splitter {
         recipients: recipient,
         lock: Milliseconds::default(),
+        default_recipient: None,
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -733,6 +748,7 @@ fn test_update_recipient_weight() {
             },
         ],
         lock: Milliseconds::default(),
+        default_recipient: None,
     };
     assert_eq!(expected_splitter, splitter);
 }
@@ -785,6 +801,7 @@ fn test_update_recipient_weight_locked_contract() {
     let splitter = Splitter {
         recipients: recipient.clone(),
         lock: Milliseconds(current_time - 1),
+        default_recipient: None,
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -795,6 +812,7 @@ fn test_update_recipient_weight_locked_contract() {
     let splitter = Splitter {
         recipients: recipient,
         lock: Milliseconds::default().plus_seconds(current_time + 1),
+        default_recipient: None,
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -862,6 +880,7 @@ fn test_update_recipient_weight_user_not_found() {
     let splitter = Splitter {
         recipients: recipient,
         lock: Milliseconds::default(),
+        default_recipient: None,
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -934,6 +953,7 @@ fn test_update_recipient_weight_invalid_weight() {
     let splitter = Splitter {
         recipients: recipient,
         lock: Milliseconds::default(),
+        default_recipient: None,
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -998,6 +1018,7 @@ fn test_execute_add_recipient() {
     let splitter = Splitter {
         recipients: recipient,
         lock: Milliseconds::default(),
+        default_recipient: None,
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -1040,6 +1061,7 @@ fn test_execute_add_recipient() {
             },
         ],
         lock: Milliseconds::default(),
+        default_recipient: None,
     };
     assert_eq!(expected_splitter, splitter);
 
@@ -1103,6 +1125,7 @@ fn test_execute_add_recipient_duplicate_recipient() {
     let splitter = Splitter {
         recipients: recipient,
         lock: Milliseconds::default(),
+        default_recipient: None,
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -1181,6 +1204,7 @@ fn test_execute_add_recipient_invalid_weight() {
     let splitter = Splitter {
         recipients: recipient,
         lock: Milliseconds::default(),
+        default_recipient: None,
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -1247,6 +1271,7 @@ fn test_execute_add_recipient_locked_contract() {
     let splitter = Splitter {
         recipients: recipient,
         lock: Milliseconds::default().plus_seconds(current_time + 1),
+        default_recipient: None,
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -1311,6 +1336,7 @@ fn test_execute_update_recipients() {
     let splitter = Splitter {
         recipients: vec![],
         lock: Milliseconds::default(),
+        default_recipient: None,
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -1382,6 +1408,7 @@ fn test_execute_update_recipients_invalid_weight() {
     let splitter = Splitter {
         recipients: vec![],
         lock: Milliseconds::default(),
+        default_recipient: None,
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -1437,6 +1464,7 @@ fn test_execute_update_recipients_contract_locked() {
     let splitter = Splitter {
         recipients: vec![],
         lock: Milliseconds::default().plus_seconds(current_time + 10),
+        default_recipient: None,
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -1490,6 +1518,7 @@ fn test_execute_update_recipients_unauthorized() {
     let splitter = Splitter {
         recipients: vec![],
         lock: Milliseconds::default(),
+        default_recipient: None,
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -1562,6 +1591,7 @@ fn test_execute_send() {
     let splitter = Splitter {
         recipients: recipient,
         lock: Milliseconds::default(),
+        default_recipient: None,
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();

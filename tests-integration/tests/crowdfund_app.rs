@@ -92,8 +92,13 @@ fn setup(
             percent: Decimal::from_str("0.8").unwrap(),
         },
     ];
-    let splitter_init_msg =
-        mock_splitter_instantiate_msg(splitter_recipients, andr.kernel.addr().clone(), None, None);
+    let splitter_init_msg = mock_splitter_instantiate_msg(
+        splitter_recipients,
+        andr.kernel.addr().clone(),
+        None,
+        None,
+        None,
+    );
     let splitter_component = AppComponent::new(
         "splitter".to_string(),
         "splitter".to_string(),
