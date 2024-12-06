@@ -1,5 +1,3 @@
-#![cfg(not(target_arch = "wasm32"))]
-
 use andromeda_app::app::AppComponent;
 use andromeda_app_contract::mock::{mock_andromeda_app, mock_claim_ownership_msg, MockAppContract};
 use andromeda_auction::mock::{
@@ -529,7 +527,10 @@ fn test_auction_app_cw20_restricted() {
             "./{}",
             cw721_component.name
         ))]),
-        Some(AndrAddr::from_string(format!("./{}", cw20_component.name))),
+        Some(vec![AndrAddr::from_string(format!(
+            "./{}",
+            cw20_component.name
+        ))]),
     );
     let auction_component = AppComponent::new(
         "auction".to_string(),

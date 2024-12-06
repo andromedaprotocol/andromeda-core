@@ -1,7 +1,10 @@
 use andromeda_finance::vesting::Config;
-use andromeda_std::{common::withdraw::WithdrawalType, error::ContractError};
+use andromeda_std::{
+    common::{withdraw::WithdrawalType, Milliseconds},
+    error::ContractError,
+};
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{ensure, Order, Storage, Uint128};
+use cosmwasm_std::{Order, Storage, Uint128};
 use cw_storage_plus::{Bound, Index, IndexList, IndexedMap, Item, MultiIndex};
 
 /// The config.
@@ -17,14 +20,14 @@ pub struct Batch {
     /// The amount of tokens that have been claimed.
     pub amount_claimed: Uint128,
     /// When the lockup ends.
-    pub lockup_end: u64,
+    pub lockup_end: Milliseconds,
     /// How often releases occur.
-    pub release_unit: u64,
-    /// Specifies how much is to be released after each `release_unit`. If
+    pub release_duration: Milliseconds,
+    /// Specifies how much is to be released after each `release_duration`. If
     /// it is a percentage, it would be the percentage of the original amount.
     pub release_amount: WithdrawalType,
     /// The time at which the last claim took place in seconds.
-    pub last_claimed_release_time: u64,
+    pub last_claimed_release_time: Milliseconds,
 }
 
 // Inspired by https://docs.cosmwasm.com/tutorials/storage/indexes/#storage-plus-indexing
@@ -49,7 +52,7 @@ pub fn batches<'a>() -> IndexedMap<'a, u64, Batch, BatchIndexes<'a>> {
                 let all_claimed = b.amount - b.amount_claimed == Uint128::zero();
                 // Allows us to skip batches that have been already fully claimed.
                 let all_claimed = u8::from(all_claimed);
-                (all_claimed, b.lockup_end)
+                (all_claimed, b.lockup_end.milliseconds())
             },
             "batch",
             "batch__promotion",
@@ -58,16 +61,9 @@ pub fn batches<'a>() -> IndexedMap<'a, u64, Batch, BatchIndexes<'a>> {
     IndexedMap::new("batch", indexes)
 }
 
-pub(crate) fn save_new_batch(
-    storage: &mut dyn Storage,
-    batch: Batch,
-    config: &Config,
-) -> Result<(), ContractError> {
+pub(crate) fn save_new_batch(storage: &mut dyn Storage, batch: Batch) -> Result<(), ContractError> {
     let next_id = NEXT_ID.may_load(storage)?.unwrap_or(1);
-    ensure!(
-        next_id == 1 || config.is_multi_batch_enabled,
-        ContractError::MultiBatchNotSupported {}
-    );
+
     batches().save(storage, next_id, &batch)?;
     NEXT_ID.save(storage, &(next_id + 1))?;
 
@@ -82,13 +78,13 @@ const MAX_LIMIT: u32 = 30;
 /// These are all eligible for fund claiming.
 pub(crate) fn get_claimable_batches_with_ids(
     storage: &dyn Storage,
-    current_time: u64,
+    current_time: Milliseconds,
     limit: Option<u32>,
 ) -> Result<Vec<(u64, Batch)>, ContractError> {
     let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
     // As we want to keep the last item (pk) unbounded, we increment time by 1 and use exclusive (below the next tick).
     // This ensures that we only consider batches that have started vesting.
-    let max_key = (current_time + 1, 0);
+    let max_key = (current_time.milliseconds() + 1, 0);
     let bound = Bound::exclusive(max_key);
 
     let batches_with_ids: Result<Vec<(u64, Batch)>, ContractError> = batches()
@@ -138,33 +134,33 @@ mod tests {
 
     #[test]
     fn test_get_claimable_batches_with_ids() {
-        let current_time = mock_env().block.time.seconds();
+        let current_time = Milliseconds::from_seconds(mock_env().block.time.seconds());
 
         let locked_batch = Batch {
             amount: Uint128::new(100),
             amount_claimed: Uint128::zero(),
-            lockup_end: current_time + 10,
-            release_unit: 10,
+            lockup_end: current_time.plus_seconds(10),
+            release_duration: Milliseconds::from_seconds(10),
             release_amount: WithdrawalType::Amount(Uint128::new(10)),
-            last_claimed_release_time: current_time - 1,
+            last_claimed_release_time: current_time.minus_seconds(1),
         };
 
         let unlocked_batch = Batch {
             amount: Uint128::new(100),
             amount_claimed: Uint128::zero(),
-            lockup_end: current_time - 1,
-            release_unit: 10,
+            lockup_end: current_time.minus_seconds(1),
+            release_duration: Milliseconds::from_seconds(10),
             release_amount: WithdrawalType::Amount(Uint128::new(10)),
-            last_claimed_release_time: current_time - 1,
+            last_claimed_release_time: current_time.minus_seconds(1),
         };
 
         let unlocked_but_empty_batch = Batch {
             amount: Uint128::new(100),
             amount_claimed: Uint128::new(100),
-            lockup_end: current_time - 1,
-            release_unit: 10,
+            lockup_end: current_time.minus_seconds(1),
+            release_duration: Milliseconds::from_seconds(10),
             release_amount: WithdrawalType::Amount(Uint128::new(10)),
-            last_claimed_release_time: current_time - 1,
+            last_claimed_release_time: current_time.minus_seconds(1),
         };
 
         let mut deps = mock_dependencies();

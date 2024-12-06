@@ -1,5 +1,5 @@
 use andromeda_std::amp::{AndrAddr, Recipient};
-use andromeda_std::common::denom::Asset;
+use andromeda_std::common::denom::{Asset, PermissionAction};
 use andromeda_std::common::expiration::Expiry;
 use andromeda_std::common::{MillisecondsExpiration, OrderBy};
 use andromeda_std::error::ContractError;
@@ -14,7 +14,7 @@ use cw721::{Cw721ReceiveMsg, Expiration};
 #[cw_serde]
 pub struct InstantiateMsg {
     pub authorized_token_addresses: Option<Vec<AndrAddr>>,
-    pub authorized_cw20_address: Option<AndrAddr>,
+    pub authorized_cw20_addresses: Option<Vec<AndrAddr>>,
 }
 
 #[andr_exec]
@@ -54,12 +54,14 @@ pub enum ExecuteMsg {
         token_address: String,
     },
     /// Restricted to owner
-    AuthorizeTokenContract {
+    AuthorizeContract {
+        action: PermissionAction,
         addr: AndrAddr,
         expiration: Option<Expiry>,
     },
     /// Restricted to owner
-    DeauthorizeTokenContract {
+    DeauthorizeContract {
+        action: PermissionAction,
         addr: AndrAddr,
     },
 }
@@ -121,8 +123,9 @@ pub enum QueryMsg {
         limit: Option<u64>,
     },
     /// Gets all of the authorized addresses for the auction
-    #[returns(AuthorizedAddressesResponse)]
+    #[returns(::andromeda_std::common::denom::AuthorizedAddressesResponse)]
     AuthorizedAddresses {
+        action: PermissionAction,
         start_after: Option<String>,
         limit: Option<u32>,
         order_by: Option<OrderBy>,
@@ -281,11 +284,6 @@ pub struct AuctionStateResponse {
     pub is_cancelled: bool,
     pub owner: String,
     pub recipient: Option<Recipient>,
-}
-
-#[cw_serde]
-pub struct AuthorizedAddressesResponse {
-    pub addresses: Vec<String>,
 }
 
 #[cw_serde]

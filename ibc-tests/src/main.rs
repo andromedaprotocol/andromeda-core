@@ -1,9 +1,10 @@
 use std::cmp;
 
-use andromeda_std::ado_base::MigrateMsg;
+use andromeda_app_contract::AppContract;
+use andromeda_std::os::adodb::ExecuteMsgFns as AdodbExecuteMsgFns;
 use andromeda_testing_e2e::mock::{mock_app, MockAndromeda};
+use andromeda_validator_staking::ValidatorStakingContract;
 use cosmwasm_std::{coin, to_json_binary, Uint128};
-use cw_orch::interface;
 use cw_orch::prelude::*;
 use cw_orch::{
     environment::{ChainKind, NetworkInfo},
@@ -13,10 +14,9 @@ use cw_orch_daemon::{
     queriers::{Staking, StakingBondStatus},
     DaemonBase, Wallet,
 };
-use ibc_tests::contract_interface;
 
 use andromeda_app::app::{self, AppComponent};
-use andromeda_finance::validator_staking;
+use andromeda_finance::validator_staking::{self, ExecuteMsgFns as ValidatorStakingExecuteMsgFns};
 
 const TESTNET_MNEMONIC: &str = "across left ignore gold echo argue track joy hire release captain enforce hotel wide flash hotel brisk joke midnight duck spare drop chronic stool";
 pub const TERRA_NETWORK: NetworkInfo = NetworkInfo {
@@ -35,14 +35,6 @@ pub const LOCAL_TERRA: ChainInfo = ChainInfo {
     lcd_url: None,
     fcd_url: None,
 };
-
-contract_interface!(
-    AppContract,
-    andromeda_app_contract,
-    app,
-    "andromeda_app_contract",
-    "app_contract"
-);
 
 fn main() {
     println!("//=============================Prereparing test environment===================================//");
@@ -75,24 +67,21 @@ fn main() {
     let app_contract = AppContract::new(daemon.clone());
     app_contract.upload().unwrap();
 
-    adodb_contract.clone().execute_publish(
-        app_contract.code_id().unwrap(),
-        "app-contract".to_string(),
-        "0.1.0".to_string(),
-    );
+    adodb_contract
+        .clone()
+        .publish(
+            "app-contract".to_string(),
+            app_contract.code_id().unwrap(),
+            "0.1.0".to_string(),
+            None,
+            None,
+        )
+        .unwrap();
     println!("app_contract->code_id:  {:?}", app_contract.code_id());
     println!("//==============================Base Test Environment Ready=================================//");
 
     prepare_validator_staking(&daemon, &mock_andromeda, &app_contract);
 }
-
-contract_interface!(
-    ValidatorStakingContract,
-    andromeda_validator_staking,
-    validator_staking,
-    "validator_staking_contract",
-    "validator_staking"
-);
 
 fn prepare_validator_staking(
     daemon: &DaemonBase<Wallet>,
@@ -110,11 +99,16 @@ fn prepare_validator_staking(
         adodb_contract,
         ..
     } = mock_andromeda;
-    adodb_contract.clone().execute_publish(
-        validator_staking_contract.code_id().unwrap(),
-        "validator-staking".to_string(),
-        "0.1.0".to_string(),
-    );
+    adodb_contract
+        .clone()
+        .publish(
+            "validator-staking".to_string(),
+            validator_staking_contract.code_id().unwrap(),
+            "0.1.0".to_string(),
+            None,
+            None,
+        )
+        .unwrap();
 
     println!("//================================Validator Staking Prepared-=================================//");
     println!(
@@ -158,14 +152,7 @@ fn prepare_validator_staking(
 
     app_contract.instantiate(&app_init_msg, None, None).unwrap();
 
-    let get_addr_message = app::QueryMsg::GetAddress {
-        name: validator_staking_component.name,
-    };
-
-    let validator_staking_addr: String = daemon
-        .wasm_querier()
-        .smart_query(app_contract.addr_str().unwrap(), &get_addr_message)
-        .unwrap();
+    let validator_staking_addr = app_contract.get_address(validator_staking_component.name);
 
     validator_staking_contract.set_address(&Addr::unchecked(validator_staking_addr));
 
@@ -184,16 +171,17 @@ fn prepare_validator_staking(
 
     println!("//===============================Processing Stake For testing=================================//");
     validators.into_iter().for_each(|validator| {
-        let stake_msg = validator_staking::ExecuteMsg::Stake {
-            validator: Some(Addr::unchecked(validator.address.to_string())),
-        };
         let balance = daemon
             .balance(daemon.sender_addr(), Some(denom.to_string()))
             .unwrap();
         let amount_to_send = cmp::min(balance[0].amount, Uint128::new(10000000000));
         validator_staking_contract
-            .execute(&stake_msg, Some(&[coin(amount_to_send.u128(), denom)]))
+            .stake(
+                Some(Addr::unchecked(validator.address.to_string())),
+                &[coin(amount_to_send.u128(), denom)],
+            )
             .unwrap();
+
         println!(
             "validator: {:?}, delegator: {:?}",
             validator.address,

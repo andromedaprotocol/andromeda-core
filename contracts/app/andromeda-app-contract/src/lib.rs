@@ -10,3 +10,8 @@ pub mod testing;
 mod execute;
 mod query;
 mod reply;
+
+#[cfg(not(target_arch = "wasm32"))]
+mod interface;
+#[cfg(not(target_arch = "wasm32"))]
+pub use crate::interface::AppContract;

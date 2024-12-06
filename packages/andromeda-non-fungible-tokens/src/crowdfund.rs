@@ -1,6 +1,7 @@
 use andromeda_std::amp::addresses::AndrAddr;
 use andromeda_std::amp::Recipient;
 use andromeda_std::common::denom::Asset;
+use andromeda_std::common::expiration::Expiry;
 use andromeda_std::common::{MillisecondsExpiration, OrderBy};
 use andromeda_std::error::ContractError;
 use andromeda_std::{andr_exec, andr_instantiate, andr_query};
@@ -21,6 +22,7 @@ pub struct InstantiateMsg {
 
 #[andr_exec]
 #[cw_serde]
+#[cfg_attr(not(target_arch = "wasm32"), derive(cw_orch::ExecuteFns))]
 pub enum ExecuteMsg {
     /// Add a tier
     AddTier { tier: Tier },
@@ -30,11 +32,12 @@ pub enum ExecuteMsg {
     RemoveTier { level: Uint64 },
     /// Start the campaign
     StartCampaign {
-        start_time: Option<MillisecondsExpiration>,
-        end_time: MillisecondsExpiration,
+        start_time: Option<Expiry>,
+        end_time: Expiry,
         presale: Option<Vec<PresaleTierOrder>>,
     },
     /// Purchase tiers
+    #[cfg_attr(not(target_arch = "wasm32"), cw_orch(payable))]
     PurchaseTiers { orders: Vec<SimpleTierOrder> },
     /// Purchase tiers with cw20
     Receive(Cw20ReceiveMsg),

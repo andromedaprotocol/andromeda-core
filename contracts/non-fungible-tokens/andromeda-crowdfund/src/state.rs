@@ -175,7 +175,7 @@ pub(crate) fn get_tiers(
         .take(limit)
         .map(|v| {
             let (level, tier) = v?;
-            let sold_amount = TIER_SALES.load(storage, level)?;
+            let sold_amount = TIER_SALES.may_load(storage, level)?.unwrap_or_default();
             Ok(TierResponseItem { tier, sold_amount })
         })
         .collect()
@@ -213,14 +213,12 @@ pub(crate) fn set_tier_orders(
         let mut sold_amount = TIER_SALES
             .load(storage, new_order.level.into())
             .unwrap_or_default();
+        sold_amount = sold_amount.checked_add(new_order.amount)?;
         if let Some(limit) = tier.limit {
-            sold_amount = sold_amount.checked_add(new_order.amount)?;
             ensure!(limit >= sold_amount, ContractError::PurchaseLimitReached {});
-
-            update_tier(storage, &tier)?;
-            set_tier_sales(storage, new_order.level.into(), sold_amount)?;
         }
-
+        update_tier(storage, &tier)?;
+        set_tier_sales(storage, new_order.level.into(), sold_amount)?;
         let mut order = TIER_ORDERS
             .load(storage, (new_order.orderer.clone(), new_order.level.into()))
             .unwrap_or_default();
