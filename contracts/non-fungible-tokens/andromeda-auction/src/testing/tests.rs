@@ -1293,11 +1293,11 @@ fn execute_claim_with_tax() {
 
     let rate: Rate = Rate::Local(LocalRate {
         rate_type: LocalRateType::Additive,
-        recipients: vec![Recipient {
+        recipient: Recipient {
             address: AndrAddr::from_string(tax_recipient.to_string()),
             msg: None,
             ibc_recovery_address: None,
-        }],
+        },
         value: LocalRateValue::Flat(coin(20_u128, "uusd")),
         description: None,
     });
@@ -1470,11 +1470,11 @@ fn execute_claim_with_royalty() {
 
     let rate: Rate = Rate::Local(LocalRate {
         rate_type: LocalRateType::Deductive,
-        recipients: vec![Recipient {
+        recipient: Recipient {
             address: AndrAddr::from_string(royalty_recipient.to_string()),
             msg: None,
             ibc_recovery_address: None,
-        }],
+        },
         value: LocalRateValue::Flat(coin(20_u128, "uusd")),
         description: None,
     });
@@ -1632,11 +1632,11 @@ fn execute_claim_cw20_with_tax() {
     let tax_recipient = "tax_recipient";
     let rate: Rate = Rate::Local(LocalRate {
         rate_type: LocalRateType::Additive,
-        recipients: vec![Recipient {
+        recipient: Recipient {
             address: AndrAddr::from_string(tax_recipient.to_string()),
             msg: None,
             ibc_recovery_address: None,
-        }],
+        },
         value: LocalRateValue::Percent(PercentRate {
             percent: Decimal::percent(20),
         }),

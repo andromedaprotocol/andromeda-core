@@ -84,7 +84,7 @@ fn test_primitive() {
             "PrimitiveSetValue".to_string(),
             Rate::Local(LocalRate {
                 rate_type: LocalRateType::Deductive,
-                recipients: vec![Recipient::new(recipient_one, None)],
+                recipient: Recipient::new(recipient_one, None),
                 value: LocalRateValue::Percent(PercentRate {
                     percent: Decimal::percent(25),
                 }),
@@ -104,7 +104,7 @@ fn test_primitive() {
             "SetValue".to_string(),
             Rate::Local(LocalRate {
                 rate_type: LocalRateType::Deductive,
-                recipients: vec![Recipient::new(recipient_one, None)],
+                recipient: Recipient::new(recipient_one, None),
                 value: LocalRateValue::Flat(coin(10_u128, "uandr")),
                 description: None,
             }),
