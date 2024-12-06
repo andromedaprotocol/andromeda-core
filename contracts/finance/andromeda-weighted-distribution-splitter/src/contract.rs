@@ -112,7 +112,7 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
         ExecuteMsg::RemoveRecipient { recipient } => execute_remove_recipient(ctx, recipient),
         ExecuteMsg::UpdateLock { lock_time } => execute_update_lock(ctx, lock_time),
         ExecuteMsg::UpdateDefaultRecipient { recipient } => {
-            execute_default_recipient(ctx, recipient)
+            execute_update_default_recipient(ctx, recipient)
         }
         ExecuteMsg::Send { config } => execute_send(ctx, config),
 
@@ -167,7 +167,7 @@ pub fn execute_update_recipient_weight(
     Ok(Response::default().add_attribute("action", "updated_recipient_weight"))
 }
 
-fn execute_default_recipient(
+fn execute_update_default_recipient(
     ctx: ExecuteContext,
     recipient: Option<Recipient>,
 ) -> Result<Response, ContractError> {
