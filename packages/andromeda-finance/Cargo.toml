@@ -23,6 +23,7 @@ cw3 = { workspace = true }
 cw4 = { workspace = true }
 cw721 = { workspace = true }
 cw721-base = { workspace = true }
+cw20 = { workspace = true }
 schemars = { version = "0.8.10" }
 
 andromeda-std = { workspace = true }
