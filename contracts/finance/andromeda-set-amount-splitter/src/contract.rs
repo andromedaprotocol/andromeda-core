@@ -16,8 +16,8 @@ use andromeda_std::{
 };
 use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
 use cosmwasm_std::{
-    attr, coins, ensure, entry_point, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env,
-    MessageInfo, Reply, Response, StdError, SubMsg,
+    attr, coins, ensure, entry_point, Binary, Coin, Deps, DepsMut, Env, MessageInfo, Reply,
+    Response, StdError, SubMsg,
 };
 use cw_utils::nonpayable;
 
@@ -260,14 +260,9 @@ fn execute_send(
                 .default_recipient
                 .clone()
                 .unwrap_or(Recipient::new(info.sender.to_string(), None));
-            let msg = SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-                to_address: remainder_recipient
-                    .address
-                    .get_raw_address(&deps.as_ref())?
-                    .into_string(),
-                amount: coins(remainder_funds.u128(), denom),
-            }));
-            msgs.push(msg);
+            let native_msg = remainder_recipient
+                .generate_direct_msg(&deps.as_ref(), coins(remainder_funds.u128(), denom))?;
+            msgs.push(native_msg);
         }
     }
 
