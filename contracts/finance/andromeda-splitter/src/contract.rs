@@ -108,7 +108,7 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
         ExecuteMsg::UpdateRecipients { recipients } => execute_update_recipients(ctx, recipients),
         ExecuteMsg::UpdateLock { lock_time } => execute_update_lock(ctx, lock_time),
         ExecuteMsg::UpdateDefaultRecipient { recipient } => {
-            execute_default_recipient(ctx, recipient)
+            execute_update_default_recipient(ctx, recipient)
         }
         ExecuteMsg::Send { config } => execute_send(ctx, config),
         _ => ADOContract::default().execute(ctx, msg),
@@ -284,7 +284,7 @@ fn execute_update_lock(ctx: ExecuteContext, lock_time: Expiry) -> Result<Respons
     ]))
 }
 
-fn execute_default_recipient(
+fn execute_update_default_recipient(
     ctx: ExecuteContext,
     recipient: Option<Recipient>,
 ) -> Result<Response, ContractError> {
