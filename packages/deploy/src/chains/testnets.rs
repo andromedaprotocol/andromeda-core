@@ -37,4 +37,21 @@ pub const STARGAZE_TESTNET: ChainInfo = ChainInfo {
     kind: ChainKind::Testnet,
 };
 
-pub const TESTNET_CHAINS: &[ChainInfo] = &[ANDROMEDA_TESTNET, STARGAZE_TESTNET];
+pub const OSMOSIS_TESTNET_NETWORK: NetworkInfo = NetworkInfo {
+    chain_name: "osmosis-testnet",
+    pub_address_prefix: "osmo",
+    coin_type: 118u32,
+};
+
+pub const OSMOSIS_TESTNET: ChainInfo = ChainInfo {
+    chain_id: "osmo-test-5",
+    gas_denom: "uosmo",
+    fcd_url: None,
+    gas_price: 0.025,
+    grpc_urls: &["https://grpc.osmotest5.osmosis.zone:443"],
+    lcd_url: Some("https://lcd.osmotest5.osmosis.zone:443"),
+    network_info: OSMOSIS_TESTNET_NETWORK,
+    kind: ChainKind::Testnet,
+};
+
+pub const TESTNET_CHAINS: &[ChainInfo] = &[ANDROMEDA_TESTNET, STARGAZE_TESTNET, OSMOSIS_TESTNET];
