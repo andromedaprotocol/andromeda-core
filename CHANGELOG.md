@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added Restake and Redelegate to Validator Staking [(#622)](https://github.com/andromedaprotocol/andromeda-core/pull/622)
 - Added andromeda-math and andromeda-account packages[(#672)](https://github.com/andromedaprotocol/andromeda-core/pull/672)
 - Added optional config for Send in Splitter contracts [(#686)](https://github.com/andromedaprotocol/andromeda-core/pull/686)
+- Added CW20 suppport in Splitter contracts [(#703)](https://github.com/andromedaprotocol/andromeda-core/pull/703)
 
 
 ### Changed
