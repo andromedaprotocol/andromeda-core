@@ -5,7 +5,7 @@ use andromeda_finance::splitter::{
 };
 use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
-    amp::messages::AMPPkt,
+    amp::{messages::AMPPkt, Recipient},
     common::{actions::call_action, encode_binary, expiration::Expiry, Milliseconds},
     error::ContractError,
 };
@@ -33,6 +33,7 @@ pub fn instantiate(
             Splitter {
                 recipients: msg.recipients.clone(),
                 lock: time,
+                default_recipient: msg.default_recipient.clone(),
             }
         }
         None => {
@@ -40,6 +41,7 @@ pub fn instantiate(
                 recipients: msg.recipients.clone(),
                 // If locking isn't desired upon instantiation, it's automatically set to 0
                 lock: Milliseconds::default(),
+                default_recipient: msg.default_recipient.clone(),
             }
         }
     };
@@ -105,6 +107,9 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
     let res = match msg {
         ExecuteMsg::UpdateRecipients { recipients } => execute_update_recipients(ctx, recipients),
         ExecuteMsg::UpdateLock { lock_time } => execute_update_lock(ctx, lock_time),
+        ExecuteMsg::UpdateDefaultRecipient { recipient } => {
+            execute_update_default_recipient(ctx, recipient)
+        }
         ExecuteMsg::Send { config } => execute_send(ctx, config),
         _ => ADOContract::default().execute(ctx, msg),
     }?;
@@ -133,12 +138,13 @@ fn execute_send(
             }
         );
     }
+    let splitter = SPLITTER.load(deps.storage)?;
 
-    let splitter = if let Some(config) = config {
+    let splitter_recipients = if let Some(config) = config {
         validate_recipient_list(deps.as_ref(), config.clone())?;
         config
     } else {
-        SPLITTER.load(deps.storage)?.recipients
+        splitter.recipients
     };
 
     let mut msgs: Vec<SubMsg> = Vec::new();
@@ -156,7 +162,7 @@ fn execute_send(
 
     let mut pkt = AMPPkt::from_ctx(ctx.amp_ctx, ctx.env.contract.address.to_string());
 
-    for recipient_addr in splitter {
+    for recipient_addr in splitter_recipients {
         let recipient_percent = recipient_addr.percent;
         let mut vec_coin: Vec<Coin> = Vec::new();
         for (i, coin) in info.funds.clone().iter().enumerate() {
@@ -185,8 +191,15 @@ fn execute_send(
     // From tests, it looks like owner of smart contract (Andromeda) will recieve the rest of funds.
     // If so, should be documented
     if !remainder_funds.is_empty() {
+        let remainder_recipient = splitter
+            .default_recipient
+            .unwrap_or(Recipient::new(info.sender.to_string(), None));
+
         msgs.push(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-            to_address: info.sender.to_string(),
+            to_address: remainder_recipient
+                .address
+                .get_raw_address(&deps.as_ref())?
+                .into_string(),
             amount: remainder_funds,
         })));
     }
@@ -268,6 +281,49 @@ fn execute_update_lock(ctx: ExecuteContext, lock_time: Expiry) -> Result<Respons
     Ok(Response::default().add_attributes(vec![
         attr("action", "update_lock"),
         attr("locked", new_lock_time_expiration.to_string()),
+    ]))
+}
+
+fn execute_update_default_recipient(
+    ctx: ExecuteContext,
+    recipient: Option<Recipient>,
+) -> Result<Response, ContractError> {
+    let ExecuteContext {
+        deps, info, env, ..
+    } = ctx;
+
+    nonpayable(&info)?;
+
+    ensure!(
+        ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {}
+    );
+
+    let mut splitter = SPLITTER.load(deps.storage)?;
+
+    // Can't call this function while the lock isn't expired
+    ensure!(
+        splitter.lock.is_expired(&env.block),
+        ContractError::ContractLocked {}
+    );
+
+    if let Some(ref recipient) = recipient {
+        recipient.validate(&deps.as_ref())?;
+    }
+    splitter.default_recipient = recipient;
+
+    SPLITTER.save(deps.storage, &splitter)?;
+
+    Ok(Response::default().add_attributes(vec![
+        attr("action", "update_default_recipient"),
+        attr(
+            "recipient",
+            splitter
+                .default_recipient
+                .map_or("no default recipient".to_string(), |r| {
+                    r.address.to_string()
+                }),
+        ),
     ]))
 }
 

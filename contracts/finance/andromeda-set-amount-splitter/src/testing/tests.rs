@@ -35,6 +35,7 @@ fn init(deps: DepsMut) -> Response {
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         recipients: mock_recipient,
         lock_time: Some(Expiry::AtTime(Milliseconds::from_seconds(100_000))),
+        default_recipient: None,
     };
 
     let info = mock_info("owner", &[]);
@@ -63,6 +64,7 @@ fn test_execute_update_lock() {
     let splitter = Splitter {
         recipients: vec![],
         lock: Milliseconds::from_seconds(current_time - 1),
+        default_recipient: None,
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -101,6 +103,7 @@ fn test_execute_update_recipients() {
     let splitter = Splitter {
         recipients: vec![],
         lock: Milliseconds::from_seconds(0),
+        default_recipient: None,
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -232,6 +235,7 @@ fn test_execute_send() {
     let splitter = Splitter {
         recipients: recipient,
         lock: Milliseconds::default(),
+        default_recipient: None,
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -355,6 +359,7 @@ fn test_execute_send_ado_recipient() {
     let splitter = Splitter {
         recipients: recipient,
         lock: Milliseconds::default(),
+        default_recipient: None,
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -414,6 +419,7 @@ fn test_handle_packet_exit_with_error_true() {
     let splitter = Splitter {
         recipients: recipient,
         lock: Milliseconds::default(),
+        default_recipient: None,
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -435,6 +441,7 @@ fn test_query_splitter() {
     let splitter = Splitter {
         recipients: vec![],
         lock: Milliseconds::default(),
+        default_recipient: None,
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -486,6 +493,7 @@ fn test_execute_send_error() {
     let splitter = Splitter {
         recipients: recipient,
         lock: Milliseconds::default(),
+        default_recipient: None,
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
