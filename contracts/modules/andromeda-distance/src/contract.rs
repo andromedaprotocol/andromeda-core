@@ -2,7 +2,7 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response};
 
-use andromeda_modules::distance::{Coordinate, DistanceType, ExecuteMsg, InstantiateMsg, QueryMsg};
+use andromeda_math::distance::{Coordinate, DistanceType, ExecuteMsg, InstantiateMsg, QueryMsg};
 use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     ado_contract::ADOContract,

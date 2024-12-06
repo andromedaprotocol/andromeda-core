@@ -1,5 +1,5 @@
 use super::mock::{proper_initialization, query_distance, query_manhattan_distance};
-use andromeda_modules::distance::Coordinate;
+use andromeda_math::distance::Coordinate;
 use andromeda_std::error::ContractError;
 
 #[test]

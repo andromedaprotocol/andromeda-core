@@ -1,5 +1,4 @@
-use andromeda_modules::distance::Coordinate;
-use andromeda_modules::distance::{InstantiateMsg, QueryMsg};
+use andromeda_math::distance::{Coordinate, InstantiateMsg, QueryMsg};
 use andromeda_std::{
     error::ContractError,
     testing::mock_querier::{mock_dependencies_custom, WasmMockQuerier, MOCK_KERNEL_CONTRACT},
