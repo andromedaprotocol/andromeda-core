@@ -453,6 +453,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "andromeda-distance"
+version = "0.1.0-beta.1"
+dependencies = [
+ "andromeda-app",
+ "andromeda-math",
+ "andromeda-std",
+ "andromeda-testing",
+ "cosmwasm-schema 1.5.8",
+ "cosmwasm-std 1.5.8",
+ "cw-multi-test",
+ "cw-storage-plus 1.2.0",
+ "cw-utils 1.0.3",
+]
+
+[[package]]
 name = "andromeda-economics"
 version = "1.1.1"
 dependencies = [
@@ -796,7 +811,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-set-amount-splitter"
-version = "1.0.3-beta"
+version = "1.1.0-beta"
 dependencies = [
  "andromeda-app",
  "andromeda-finance",
@@ -832,7 +847,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-splitter"
-version = "2.1.4"
+version = "2.2.0-beta.1"
 dependencies = [
  "andromeda-app",
  "andromeda-finance",
@@ -962,7 +977,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-validator-staking"
-version = "0.3.0"
+version = "1.0.0"
 dependencies = [
  "andromeda-finance",
  "andromeda-std",
@@ -1024,7 +1039,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-weighted-distribution-splitter"
-version = "2.0.3-beta"
+version = "2.1.0-beta"
 dependencies = [
  "andromeda-app",
  "andromeda-finance",

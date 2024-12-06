@@ -19,6 +19,8 @@ pub struct Splitter {
     pub recipients: Vec<AddressWeight>,
     /// Whether or not the contract is currently locked. This restricts updating any config related fields.
     pub lock: MillisecondsExpiration,
+    /// The address that will receive any surplus funds, defaults to the message sender.
+    pub default_recipient: Option<Recipient>,
 }
 
 #[andr_instantiate]
@@ -28,6 +30,7 @@ pub struct InstantiateMsg {
     /// sent the amount sent will be divided amongst these recipients depending on their assigned weight.
     pub recipients: Vec<AddressWeight>,
     pub lock_time: Option<Expiry>,
+    pub default_recipient: Option<Recipient>,
 }
 
 #[andr_exec]
@@ -37,6 +40,8 @@ pub enum ExecuteMsg {
     UpdateRecipients { recipients: Vec<AddressWeight> },
     /// Update a specific recipient's weight. Only executable by the contract owner when the contract is not locked.
     UpdateRecipientWeight { recipient: AddressWeight },
+    /// Update the default recipient. Only executable by the contract owner when the contract is not locked.
+    UpdateDefaultRecipient { recipient: Option<Recipient> },
     /// Add a single recipient to the recipient list. Only executable by the contract owner when the contract is not locked.
     AddRecipient { recipient: AddressWeight },
     /// Remove a single recipient from the recipient list. Only executable by the contract owner when the contract is not locked.
@@ -44,7 +49,7 @@ pub enum ExecuteMsg {
     /// Used to lock/unlock the contract allowing the config to be updated.
     UpdateLock { lock_time: Expiry },
     /// Divides any attached funds to the message amongst the recipients list.
-    Send {},
+    Send { config: Option<Vec<AddressWeight>> },
 }
 
 #[andr_query]

@@ -163,6 +163,7 @@ fn setup(
         lock_time: None,
         kernel_address: kernel_address.clone(),
         owner: None,
+        default_recipient: None,
     };
 
     let splitter_component = AppComponent::new(
@@ -227,7 +228,7 @@ fn setup(
 
     let withdrawal_recipient = Recipient::new(
         format!("./{}", splitter_component.name),
-        Some(to_json_binary(&splitter::ExecuteMsg::Send {}).unwrap()),
+        Some(to_json_binary(&splitter::ExecuteMsg::Send { config: None }).unwrap()),
     );
 
     let campaign_config = CampaignConfig {
