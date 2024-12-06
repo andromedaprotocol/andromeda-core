@@ -113,7 +113,10 @@ impl Matrix {
         for i in 0..rows {
             for j in 0..cols {
                 for k in 0..self.0[0].len() {
-                    data[i][j] += self.0[i][k].checked_mul(other.0[k][j]).unwrap();
+                    match self.0[i][k].checked_mul(other.0[k][j]) {
+                        Some(val) => data[i][j] += val,
+                        None => return Err(ContractError::Overflow {}),
+                    }
                 }
             }
         }
