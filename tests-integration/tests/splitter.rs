@@ -198,6 +198,7 @@ fn test_splitter_cw20() {
     let cw20_balance = cw20.query_balance(&router, recipient_2);
     assert_eq!(cw20_balance, Uint128::from(8u128));
 }
+
 #[test]
 fn test_splitter_cw20_with_remainder() {
     let mut router = mock_app(None);

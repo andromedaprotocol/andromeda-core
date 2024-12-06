@@ -112,6 +112,7 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
             execute_update_default_recipient(ctx, recipient)
         }
         ExecuteMsg::Send { config } => execute_send(ctx, config),
+        ExecuteMsg::Receive(receive_msg) => handle_receive_cw20(ctx, receive_msg),
         _ => ADOContract::default().execute(ctx, msg),
     }?;
     Ok(res
