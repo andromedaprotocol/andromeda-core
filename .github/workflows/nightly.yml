@@ -20,7 +20,7 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.name,
               workflow_id: 'deploy.yml',
-              ref: 'development',
+              ref: 'main',
               inputs: {
                 network: 'galileo-4',
                 kernel_address: 'andr1536hsxv4706s0wwmswcc7j7t7newvfu8tqx7fnm8hfvdznlc0dnsal669q',
