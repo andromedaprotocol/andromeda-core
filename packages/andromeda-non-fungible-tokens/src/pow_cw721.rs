@@ -23,7 +23,7 @@ pub enum ExecuteMsg {
     },
     SubmitProof {
         token_id: String,
-        nonce: u128,
+        solution: u128,
     },
 }
 

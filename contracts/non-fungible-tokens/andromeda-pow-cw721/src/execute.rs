@@ -31,7 +31,9 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
             extension,
             base_difficulty,
         } => execute_mint_pow_nft(ctx, owner, token_id, token_uri, extension, base_difficulty),
-        ExecuteMsg::SubmitProof { token_id, nonce } => execute_submit_proof(ctx, token_id, nonce),
+        ExecuteMsg::SubmitProof { token_id, solution } => {
+            execute_submit_proof(ctx, token_id, solution)
+        }
         _ => ADOContract::default().execute(ctx, msg),
     }?;
 
@@ -99,7 +101,7 @@ fn execute_mint_pow_nft(
 fn execute_submit_proof(
     ctx: ExecuteContext,
     token_id: String,
-    nonce: u128,
+    solution: u128,
 ) -> Result<Response, ContractError> {
     let sender = ctx.info.sender;
     let mut pow_nft = POW_NFT
@@ -108,7 +110,7 @@ fn execute_submit_proof(
 
     let mut hasher = Sha256::new();
     hasher.update(&pow_nft.last_hash);
-    hasher.update(&nonce.to_be_bytes());
+    hasher.update(&solution.to_be_bytes());
     let hash = hasher.finalize();
 
     let hash_value = u128::from_be_bytes(hash[0..16].try_into().unwrap());
@@ -141,7 +143,7 @@ fn execute_submit_proof(
 
     let mut hasher = Sha256::new();
     hasher.update(&pow_nft.last_hash);
-    hasher.update(&nonce.to_be_bytes());
+    hasher.update(&solution.to_be_bytes());
     hasher.update(&block_height.to_be_bytes());
     let hash = hasher.finalize();
     pow_nft.last_hash = Binary(hash.to_vec());

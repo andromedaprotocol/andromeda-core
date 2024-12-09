@@ -58,9 +58,9 @@ pub fn submit_proof(
     deps: DepsMut<'_>,
     sender: &str,
     token_id: String,
-    nonce: u128,
+    solution: u128,
 ) -> Result<Response, ContractError> {
-    let msg = ExecuteMsg::SubmitProof { token_id, nonce };
+    let msg = ExecuteMsg::SubmitProof { token_id, solution };
     let info = mock_info(sender, &[]);
     execute(deps, mock_env(), info, msg)
 }
