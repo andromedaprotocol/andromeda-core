@@ -19,7 +19,7 @@ jobs:
             try {
               await github.rest.actions.createWorkflowDispatch({
                 owner: context.repo.owner,
-                repo: context.repo.name,
+                repo: context.repo.repo,
                 workflow_id: 'deploy.yml',
                 ref: github.ref,
                 inputs: {
