@@ -21,7 +21,7 @@ jobs:
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 workflow_id: 'deploy.yml',
-                ref: github.ref,
+                ref: 'main',
                 inputs: {
                   network: 'galileo-4',
                   kernel_address: 'andr1536hsxv4706s0wwmswcc7j7t7newvfu8tqx7fnm8hfvdznlc0dnsal669q',
