@@ -146,7 +146,12 @@ fn execute_submit_proof(
     pow_nft.level += 1;
 
     let block_height = ctx.env.block.height;
-    let nonce = ctx.env.transaction.unwrap();
+    let nonce = ctx
+        .env
+        .transaction
+        .ok_or_else(|| ContractError::CustomError {
+            msg: "Transaction info not available".to_string(),
+        })?;
 
     let mut hasher = Sha256::new();
     hasher.update(&pow_nft.last_hash);
