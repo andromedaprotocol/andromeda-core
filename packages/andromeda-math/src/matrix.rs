@@ -37,6 +37,11 @@ pub struct Matrix(pub Vec<Vec<i64>>);
 
 impl Matrix {
     pub fn validate_matrix(&self) -> Result<(), ContractError> {
+        if self.0.is_empty() {
+            return Err(ContractError::CustomError {
+                msg: "Matrix must not be empty".to_string(),
+            });
+        }
         let row_length = self.0.first().map_or(0, |row| row.len());
         if !self.0.iter().all(|row| row.len() == row_length) {
             return Err(ContractError::CustomError {
@@ -47,6 +52,8 @@ impl Matrix {
     }
 
     pub fn validate_add_sub(&self, other: &Matrix) -> Result<(), ContractError> {
+        self.validate_matrix()?;
+        other.validate_matrix()?;
         if self.0.len() != other.0.len() || self.0[0].len() != other.0[0].len() {
             return Err(ContractError::CustomError {
                 msg: "Can not add or sub this matrix".to_string(),
@@ -56,6 +63,8 @@ impl Matrix {
     }
 
     pub fn validate_mul(&self, other: &Matrix) -> Result<(), ContractError> {
+        self.validate_matrix()?;
+        other.validate_matrix()?;
         if self.0[0].len() != other.0.len() {
             return Err(ContractError::CustomError {
                 msg: "Can not multiply this matrix".to_string(),
@@ -75,12 +84,12 @@ impl Matrix {
                 row_a
                     .iter()
                     .zip(row_b)
-                    .map(|(a, b)| a.checked_add(*b).unwrap())
-                    .collect()
+                    .map(|(a, b)| a.checked_add(*b).ok_or(ContractError::Overflow {}))
+                    .collect::<Result<Vec<_>, ContractError>>()
             })
-            .collect();
+            .collect::<Result<Vec<_>, ContractError>>();
 
-        Ok(Matrix(matrix_data))
+        matrix_data.map(Matrix)
     }
 
     pub fn sub(&self, other: &Matrix) -> Result<Matrix, ContractError> {
@@ -94,12 +103,12 @@ impl Matrix {
                 row_a
                     .iter()
                     .zip(row_b)
-                    .map(|(a, b)| a.checked_sub(*b).unwrap())
-                    .collect()
+                    .map(|(a, b)| a.checked_sub(*b).ok_or(ContractError::Overflow {}))
+                    .collect::<Result<Vec<_>, ContractError>>()
             })
-            .collect();
+            .collect::<Result<Vec<_>, ContractError>>();
 
-        Ok(Matrix(matrix_data))
+        matrix_data.map(Matrix)
     }
 
     #[allow(clippy::needless_range_loop)]
@@ -114,7 +123,12 @@ impl Matrix {
             for j in 0..cols {
                 for k in 0..self.0[0].len() {
                     match self.0[i][k].checked_mul(other.0[k][j]) {
-                        Some(val) => data[i][j] += val,
+                        Some(val) => {
+                            data[i][j] = match data[i][j].checked_add(val) {
+                                Some(sum) => sum,
+                                None => return Err(ContractError::Overflow {}),
+                            };
+                        }
                         None => return Err(ContractError::Overflow {}),
                     }
                 }
