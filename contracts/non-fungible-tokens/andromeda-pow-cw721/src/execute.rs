@@ -146,11 +146,13 @@ fn execute_submit_proof(
     pow_nft.level += 1;
 
     let block_height = ctx.env.block.height;
+    let nonce = ctx.env.transaction.unwrap();
 
     let mut hasher = Sha256::new();
     hasher.update(&pow_nft.last_hash);
     hasher.update(&solution.to_be_bytes());
     hasher.update(&block_height.to_be_bytes());
+    hasher.update(&nonce.index.to_be_bytes());
     let hash = hasher.finalize();
     pow_nft.last_hash = Binary(hash.to_vec());
 

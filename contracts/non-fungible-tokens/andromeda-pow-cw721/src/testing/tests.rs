@@ -111,7 +111,7 @@ fn test_submit_valid_proofs(token_id: &str, difficulty: u64, nonce: u128) {
 
     let pow_nft = query_pow_nft(deps.as_ref(), token_id.to_string()).unwrap();
 
-    println!("PoW NFT Level: {:?}", pow_nft.nft_response.level);
+    assert_eq!(2, pow_nft.nft_response.level);
 }
 
 #[test_case("test_pow1", 20_u64, 58256_u128 ; "Difficulty: 20")]
@@ -160,13 +160,10 @@ fn test_increase_level() {
     )
     .unwrap();
 
-    let nonces_to_submit = vec![19_u128, 18_u128, 28_u128, 44_u128, 217_u128, 5530_u128];
+    let nonces_to_submit = vec![19_u128, 5_u128, 0_u128, 50_u128, 1474_u128, 16440_u128];
 
     for nonce in nonces_to_submit.iter() {
         submit_proof(deps.as_mut(), "viewer", "test_pow1".to_string(), *nonce).unwrap();
-        let pow_nft = query_pow_nft(deps.as_ref(), "test_pow1".to_string()).unwrap();
-        println!("Level: {:?}", pow_nft.nft_response.level);
-        println!("<==============================<  CONTINUE  >==============================>");
     }
 
     let pow_nft = query_pow_nft(deps.as_ref(), "test_pow1".to_string()).unwrap();
