@@ -8,7 +8,7 @@ use andromeda_std::{
     common::{actions::call_action, context::ExecuteContext, encode_binary},
     error::ContractError,
 };
-use cosmwasm_std::{Binary, CosmosMsg, Response, WasmMsg};
+use cosmwasm_std::{Binary, CosmosMsg, Event, Response, WasmMsg};
 use sha2::{Digest, Sha256};
 
 use crate::contract::MINT_POW_NFT_ACTION;
@@ -170,9 +170,18 @@ fn execute_submit_proof(
     let hash = hasher.finalize();
     pow_nft.last_hash = Binary(hash.to_vec());
 
-    POW_NFT.save(ctx.deps.storage, token_id, &pow_nft)?;
+    POW_NFT.save(ctx.deps.storage, token_id.clone(), &pow_nft)?;
 
     Ok(Response::new()
         .add_attribute("method", "submit_proof")
-        .add_attribute("sender", sender))
+        .add_attribute("sender", sender)
+        .add_attribute("token_id", token_id.clone())
+        .add_attribute("new_level", pow_nft.level.to_string())
+        .add_attribute("new_difficulty", pow_nft.difficulty.to_string())
+        .add_event(
+            Event::new("pow_nft_level_up")
+                .add_attribute("token_id", token_id)
+                .add_attribute("new_level", pow_nft.level.to_string())
+                .add_attribute("new_difficulty", pow_nft.difficulty.to_string()),
+        ))
 }
