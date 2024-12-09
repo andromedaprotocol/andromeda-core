@@ -16,14 +16,18 @@ jobs:
         with:
           github-token: ${{ secrets.CI_PAT }}
           script: |
-            await github.rest.actions.createWorkflowDispatch({
-              owner: context.repo.owner,
-              repo: context.repo.name,
-              workflow_id: 'deploy.yml',
-              ref: 'main',
-              inputs: {
-                network: 'galileo-4',
-                kernel_address: 'andr1536hsxv4706s0wwmswcc7j7t7newvfu8tqx7fnm8hfvdznlc0dnsal669q',
-                deploy_os: 'true',
-              }
-            });
+            try {
+              await github.rest.actions.createWorkflowDispatch({
+                owner: context.repo.owner,
+                repo: context.repo.name,
+                workflow_id: 'deploy.yml',
+                ref: 'main',
+                inputs: {
+                  network: 'galileo-4',
+                  kernel_address: 'andr1536hsxv4706s0wwmswcc7j7t7newvfu8tqx7fnm8hfvdznlc0dnsal669q',
+                  deploy_os: 'true',
+                }
+              });
+            } catch (error) {
+              console.error('Error triggering deploy workflow:', error);
+            }
