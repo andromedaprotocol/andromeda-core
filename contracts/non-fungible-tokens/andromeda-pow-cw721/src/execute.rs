@@ -66,6 +66,15 @@ fn execute_mint_pow_nft(
         sender.clone(),
     )?;
 
+    if POW_NFT
+        .may_load(ctx.deps.storage, token_id.clone())?
+        .is_some()
+    {
+        return Err(ContractError::CustomError {
+            msg: format!("Token ID {} already exists", token_id),
+        });
+    }
+
     let owner_addr = owner.get_raw_address(&ctx.deps.as_ref())?;
     let cw721_address = LINKED_CW721_ADDRESS.load(ctx.deps.storage)?;
 
