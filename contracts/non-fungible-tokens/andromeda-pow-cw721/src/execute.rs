@@ -51,6 +51,12 @@ fn execute_mint_pow_nft(
     extension: TokenExtension,
     base_difficulty: u64,
 ) -> Result<Response, ContractError> {
+    if base_difficulty == 0 || base_difficulty > 128 {
+        return Err(ContractError::CustomError {
+            msg: "Base difficulty must be between 1 and 128".to_string(),
+        });
+    }
+
     let sender = ctx.info.sender;
 
     ADOContract::default().is_permissioned(
