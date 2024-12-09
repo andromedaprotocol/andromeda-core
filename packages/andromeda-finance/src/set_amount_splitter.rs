@@ -8,6 +8,7 @@ use andromeda_std::{
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{ensure, Coin, Deps};
+use cw20::Cw20ReceiveMsg;
 
 #[cw_serde]
 pub struct AddressAmount {
@@ -49,20 +50,32 @@ impl InstantiateMsg {
     }
 }
 
+#[cw_serde]
+pub enum Cw20HookMsg {
+    Send { config: Option<Vec<AddressAmount>> },
+}
+
 #[andr_exec]
 #[cw_serde]
 pub enum ExecuteMsg {
     /// Update the recipients list. Only executable by the contract owner when the contract is not locked.
-    UpdateRecipients { recipients: Vec<AddressAmount> },
+    UpdateRecipients {
+        recipients: Vec<AddressAmount>,
+    },
     /// Used to lock/unlock the contract allowing the config to be updated.
     UpdateLock {
         // Milliseconds from current time
         lock_time: Expiry,
     },
     /// Update the default recipient. Only executable by the contract owner when the contract is not locked.
-    UpdateDefaultRecipient { recipient: Option<Recipient> },
+    UpdateDefaultRecipient {
+        recipient: Option<Recipient>,
+    },
+    Receive(Cw20ReceiveMsg),
     /// Divides any attached funds to the message amongst the recipients list.
-    Send { config: Option<Vec<AddressAmount>> },
+    Send {
+        config: Option<Vec<AddressAmount>>,
+    },
 }
 
 #[andr_query]

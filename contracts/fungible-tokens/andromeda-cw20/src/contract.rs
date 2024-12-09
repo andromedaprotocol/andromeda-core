@@ -338,7 +338,6 @@ fn handle_send(
                     msg,
                 }
             };
-
             let cw20_resp = execute_cw20(deps, env, info, cw20_msg)?;
             Ok(cw20_resp)
         }
