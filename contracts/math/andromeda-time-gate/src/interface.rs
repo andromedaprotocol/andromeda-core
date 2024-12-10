@@ -3,4 +3,4 @@ use andromeda_std::{ado_base::MigrateMsg, contract_interface, deploy::ADOMetadat
 
 pub const CONTRACT_ID: &str = "time-gate";
 
-contract_interface!(TimeGateContract, CONTRACT_ID, "andromeda_matrix.wasm");
+contract_interface!(TimeGateContract, CONTRACT_ID, "andromeda_time_gate.wasm");
