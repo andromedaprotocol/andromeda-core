@@ -149,7 +149,7 @@ pub fn handle_receive_cw20(
 
     let asset_sent = info.sender.clone().into_string();
     let amount_sent = receive_msg.amount;
-    // let sender = receive_msg.sender;
+    let sender = receive_msg.sender;
 
     ensure!(
         !amount_sent.is_zero(),
@@ -159,12 +159,15 @@ pub fn handle_receive_cw20(
     );
 
     match from_json(&receive_msg.msg)? {
-        Cw20HookMsg::Send { config } => execute_send_cw20(ctx, amount_sent, asset_sent, config),
+        Cw20HookMsg::Send { config } => {
+            execute_send_cw20(ctx, sender, amount_sent, asset_sent, config)
+        }
     }
 }
 
 fn execute_send_cw20(
     ctx: ExecuteContext,
+    sender: String,
     amount: Uint128,
     asset: String,
     config: Option<Vec<AddressAmount>>,
@@ -174,6 +177,7 @@ fn execute_send_cw20(
     let coin = coin(amount.u128(), asset.clone());
 
     let splitter = SPLITTER.load(deps.storage)?;
+
     let splitter_recipients = if let Some(config) = config {
         validate_recipient_list(deps.as_ref(), config.clone())?;
         config
@@ -212,15 +216,18 @@ fn execute_send_cw20(
         }
     }
 
-    // Refund message for sender
     if !remainder_funds.is_zero() {
         let remainder_recipient = splitter
             .default_recipient
-            .clone()
-            .unwrap_or(Recipient::new(info.sender.to_string(), None));
-        let native_msg = remainder_recipient
-            .generate_direct_msg(&deps.as_ref(), coins(remainder_funds.u128(), asset))?;
-        msgs.push(native_msg);
+            .unwrap_or(Recipient::new(sender, None));
+        let cw20_msg = remainder_recipient.generate_msg_cw20(
+            &deps.as_ref(),
+            Cw20Coin {
+                address: asset,
+                amount: remainder_funds,
+            },
+        )?;
+        msgs.push(cw20_msg);
     }
 
     Ok(Response::new()
