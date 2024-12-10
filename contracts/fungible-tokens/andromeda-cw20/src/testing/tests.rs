@@ -113,11 +113,11 @@ fn test_transfer() {
 
     // Blacklist the sender who otherwise would have been able to call the function successfully
     let permission = Permission::Local(LocalPermission::blacklisted(None));
-    let actor = AndrAddr::from_string("sender");
+    let actors = vec![AndrAddr::from_string("sender")];
     let action = "Transfer";
     let ctx = ExecuteContext::new(deps.as_mut(), mock_info("owner", &[]), mock_env());
     ADOContract::default()
-        .execute_set_permission(ctx, actor, action, permission)
+        .execute_set_permission(ctx, actors, action, permission)
         .unwrap();
     let info = mock_info("sender", &[]);
     let err = execute(deps.as_mut(), mock_env(), info.clone(), msg.clone()).unwrap_err();
@@ -126,11 +126,11 @@ fn test_transfer() {
 
     // Now whitelist the sender, that should allow him to call the function successfully
     let permission = Permission::Local(LocalPermission::whitelisted(None));
-    let actor = AndrAddr::from_string("sender");
+    let actors = vec![AndrAddr::from_string("sender")];
     let action = "Transfer";
     let ctx = ExecuteContext::new(deps.as_mut(), mock_info("owner", &[]), mock_env());
     ADOContract::default()
-        .execute_set_permission(ctx, actor, action, permission)
+        .execute_set_permission(ctx, actors, action, permission)
         .unwrap();
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 

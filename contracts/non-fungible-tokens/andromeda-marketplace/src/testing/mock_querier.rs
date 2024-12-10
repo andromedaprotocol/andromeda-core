@@ -13,6 +13,7 @@ use cosmwasm_std::{
 use cw721::{Cw721QueryMsg, OwnerOfResponse};
 
 pub const MOCK_TOKEN_ADDR: &str = "token0001";
+pub const MOCK_CW721_ADDR: &str = "cw721_contract";
 pub const MOCK_TOKEN_OWNER: &str = "owner";
 pub const MOCK_UNCLAIMED_TOKEN: &str = "unclaimed_token";
 

@@ -1,0 +1,57 @@
+[package]
+name = "ibc-tests"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.75.0"
+publish = false
+
+# [[test]]
+# name = "validator_staking"
+
+[[test]]
+name = "crowdfund"
+
+[dependencies]
+serde.workspace = true
+tokio = "1.42.0"
+cw-orch = { workspace = true }
+cw-orch-daemon = "0.24.2"
+rstest = "0.23.0"
+
+andromeda-testing-e2e = { workspace = true }
+
+andromeda-app-contract = { path = "../contracts/app/andromeda-app-contract", features = [
+    "testing",
+] }
+
+andromeda-cw20 = { path = "../contracts/fungible-tokens/andromeda-cw20", features = [
+    "testing",
+] }
+
+andromeda-cw721 = { path = "../contracts/non-fungible-tokens/andromeda-cw721", features = [
+    "testing",
+] }
+
+andromeda-crowdfund = { path = "../contracts/non-fungible-tokens/andromeda-crowdfund", features = [
+    "testing",
+] }
+
+andromeda-splitter = { path = "../contracts/finance/andromeda-splitter", features = [
+    "testing",
+] }
+
+andromeda-validator-staking = { path = "../contracts/finance/andromeda-validator-staking", features = [
+    "testing",
+] }
+
+andromeda-finance = { workspace = true }
+andromeda-std = { workspace = true }
+andromeda-app = { workspace = true }
+andromeda-fungible-tokens = { workspace = true }
+andromeda-non-fungible-tokens = { workspace = true }
+cosmwasm-std = { workspace = true, features = ["staking"] }
+cosmrs = "0.21.0"
+prost-types = "0.13.4"
+cw20.workspace = true
+cw721.workspace = true
+

@@ -7,7 +7,6 @@ on:
     # as defined in the (optional) "skipLabels" property.
     types: [opened, synchronize, reopened, ready_for_review, labeled, unlabeled]
     branches:
-      - development
       - main
 jobs:
   changelog:

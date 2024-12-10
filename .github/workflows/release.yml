@@ -1,0 +1,64 @@
+name: Release Contracts
+
+on:
+  push:
+    tags:
+      - "release/[0-9]+"
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate schemas
+        run: |
+          make schemas
+          tar -czf schemas.tar.gz schemas/
+
+      - name: Create version map
+        run: make version-map
+
+      - name: Optimize contracts
+        run: make build
+
+      - name: Create artifacts archive
+        run: tar -czf contracts.tar.gz artifacts/
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2.1.0
+        with:
+          files: |
+            contracts.tar.gz
+            schemas.tar.gz
+          body: |
+            ## Changes
+            See the [CHANGELOG](https://github.com/andromedaprotocol/andromeda-core/blob/main/CHANGELOG.md) for details.
+
+            ## Building the Contracts from Source
+            To build the contracts from source, you can use the following commands:
+            ```sh
+            git clone https://github.com/andromedaprotocol/andromeda-core.git
+            cd andromeda-core
+            make build
+            ```
+
+            ## Building the Contracts from Source (arm-64)
+            To build the contracts from source, you can use the following commands:
+            ```sh
+            git clone https://github.com/andromedaprotocol/andromeda-core.git
+            cd andromeda-core
+            make build-arm
+            ```
+
+            ## Generating Schemas
+            To generate the schemas, you can use the following command:
+            ```sh
+            git clone https://github.com/andromedaprotocol/andromeda-core.git
+            cd andromeda-core
+            make schemas
+            ```
+          draft: true
+          prerelease: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

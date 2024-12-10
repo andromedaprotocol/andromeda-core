@@ -4,6 +4,8 @@ use cosmwasm_std::{Addr, Coin, DepsMut, Timestamp, Uint128};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+pub const RESTAKING_ACTION: &str = "restake";
+
 #[andr_instantiate]
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -12,7 +14,9 @@ pub struct InstantiateMsg {
 
 #[andr_exec]
 #[cw_serde]
+#[cfg_attr(not(target_arch = "wasm32"), derive(cw_orch::ExecuteFns))]
 pub enum ExecuteMsg {
+    #[cfg_attr(not(target_arch = "wasm32"), cw_orch(payable))]
     Stake {
         validator: Option<Addr>,
     },
@@ -20,11 +24,23 @@ pub enum ExecuteMsg {
         validator: Option<Addr>,
         amount: Option<Uint128>,
     },
+    Redelegate {
+        src_validator: Option<Addr>,
+        dst_validator: Addr,
+        amount: Option<Uint128>,
+    },
     Claim {
         validator: Option<Addr>,
+        /// Defaults to false
+        restake: Option<bool>,
+    },
+    WithdrawFunds {
+        denom: Option<String>,
         recipient: Option<AndrAddr>,
     },
-    WithdrawFunds {},
+    UpdateDefaultValidator {
+        validator: Addr,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -42,6 +58,9 @@ pub enum QueryMsg {
 
     #[returns(Option<Vec<UnstakingTokens>>)]
     UnstakedTokens {},
+
+    #[returns(GetDefaultValidatorResponse)]
+    DefaultValidator {},
 }
 
 impl InstantiateMsg {
@@ -56,4 +75,9 @@ pub fn is_validator(deps: &DepsMut, validator: &Addr) -> Result<bool, ContractEr
         return Err(ContractError::InvalidValidator {});
     }
     Ok(true)
+}
+
+#[cw_serde]
+pub struct GetDefaultValidatorResponse {
+    pub default_validator: Addr,
 }

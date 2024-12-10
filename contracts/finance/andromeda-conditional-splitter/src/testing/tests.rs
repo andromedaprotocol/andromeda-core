@@ -3,14 +3,15 @@ use andromeda_std::{
         messages::{AMPMsg, AMPPkt},
         recipient::Recipient,
     },
-    common::Milliseconds,
+    common::{expiration::Expiry, Milliseconds},
     error::ContractError,
 };
 use andromeda_testing::economics_msg::generate_economics_message;
 use cosmwasm_std::{
     attr, from_json,
     testing::{mock_env, mock_info, MOCK_CONTRACT_ADDR},
-    to_json_binary, BankMsg, Coin, CosmosMsg, Decimal, DepsMut, Response, SubMsg, Uint128,
+    to_json_binary, BankMsg, Coin, CosmosMsg, Decimal, DepsMut, Response, SubMsg, Timestamp,
+    Uint128,
 };
 pub const OWNER: &str = "creator";
 
@@ -49,7 +50,7 @@ fn init(deps: DepsMut) -> Response {
                 )],
             ),
         ],
-        lock_time: Some(Milliseconds::from_seconds(100_000)),
+        lock_time: Some(Expiry::FromNow(Milliseconds::from_seconds(100_000))),
     };
 
     let info = mock_info("owner", &[]);
@@ -64,18 +65,121 @@ fn test_instantiate() {
 }
 
 #[test]
+fn test_different_lock_times() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let mut env = mock_env();
+    // Current time
+    env.block.time = Timestamp::from_seconds(1724920577);
+    // Set a lock time that's less than 1 day in milliseconds
+    let mut lock_time = Expiry::FromNow(Milliseconds(60_000));
+
+    let msg = InstantiateMsg {
+        owner: Some(OWNER.to_owned()),
+        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+        thresholds: vec![],
+        lock_time: Some(lock_time),
+    };
+
+    let info = mock_info(OWNER, &[]);
+    let err = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap_err();
+
+    assert_eq!(err, ContractError::LockTimeTooShort {});
+
+    // Set a lock time that's more than 1 year in milliseconds
+    lock_time = Expiry::FromNow(Milliseconds(31_708_800_000));
+
+    let msg = InstantiateMsg {
+        owner: Some(OWNER.to_owned()),
+        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+        thresholds: vec![],
+        lock_time: Some(lock_time),
+    };
+
+    let err = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap_err();
+
+    assert_eq!(err, ContractError::LockTimeTooLong {});
+
+    // Set a lock time for 20 days in milliseconds
+    lock_time = Expiry::FromNow(Milliseconds(1728000000));
+
+    let msg = InstantiateMsg {
+        owner: Some(OWNER.to_owned()),
+        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+        thresholds: vec![Threshold::new(
+            Uint128::zero(),
+            vec![AddressPercent::new(
+                Recipient::from_string(String::from("some_address")),
+                Decimal::percent(100),
+            )],
+        )],
+        lock_time: Some(lock_time),
+    };
+
+    let info = mock_info(OWNER, &[]);
+    let res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+    assert_eq!(0, res.messages.len());
+
+    // Here we begin testing Expiry::AtTime
+    // Set a lock time that's less than 1 day from current time
+    lock_time = Expiry::AtTime(Milliseconds(1724934977000));
+
+    let msg = InstantiateMsg {
+        owner: Some(OWNER.to_owned()),
+        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+        thresholds: vec![],
+        lock_time: Some(lock_time),
+    };
+
+    let info = mock_info(OWNER, &[]);
+    let err = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap_err();
+    assert_eq!(err, ContractError::LockTimeTooShort {});
+
+    // Set a lock time that's more than 1 year from current time in milliseconds
+    lock_time = Expiry::AtTime(Milliseconds(1788006977000));
+
+    let msg = InstantiateMsg {
+        owner: Some(OWNER.to_owned()),
+        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+        thresholds: vec![],
+        lock_time: Some(lock_time),
+    };
+
+    let info = mock_info(OWNER, &[]);
+    let err = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap_err();
+    assert_eq!(err, ContractError::LockTimeTooLong {});
+
+    // Set a valid lock time
+    lock_time = Expiry::AtTime(Milliseconds(1725021377000));
+
+    let msg = InstantiateMsg {
+        owner: Some(OWNER.to_owned()),
+        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+        thresholds: vec![Threshold::new(
+            Uint128::zero(),
+            vec![AddressPercent::new(
+                Recipient::from_string(String::from("some_address")),
+                Decimal::percent(100),
+            )],
+        )],
+        lock_time: Some(lock_time),
+    };
+
+    let info = mock_info(OWNER, &[]);
+    let res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+    assert_eq!(0, res.messages.len());
+}
+
+#[test]
 fn test_execute_update_lock() {
     let mut deps = mock_dependencies_custom(&[]);
     let _res = init(deps.as_mut());
-
     let env = mock_env();
 
-    let current_time = env.block.time.seconds();
-    let lock_time = 100_000;
+    let lock_time = Expiry::FromNow(Milliseconds(172800000));
 
     // Start off with an expiration that's behind current time (expired)
     let splitter = ConditionalSplitter {
-        lock_time: Some(Milliseconds::from_seconds(current_time - 1)),
+        lock_time: Milliseconds::zero(),
         thresholds: vec![Threshold {
             min: Uint128::zero(),
             address_percent: vec![],
@@ -87,30 +191,32 @@ fn test_execute_update_lock() {
         .unwrap();
 
     let msg = ExecuteMsg::UpdateLock {
-        lock_time: Milliseconds::from_seconds(lock_time),
+        lock_time: lock_time.clone(),
     };
 
     let info = mock_info(OWNER, &[]);
     let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
-    let new_lock = Milliseconds::from_seconds(current_time + lock_time);
+
     assert_eq!(
         Response::default()
             .add_attributes(vec![
                 attr("action", "update_lock"),
-                attr("locked", new_lock.to_string())
+                attr("locked", lock_time.get_time(&env.block).to_string())
             ])
             .add_submessage(generate_economics_message(OWNER, "UpdateLock")),
         res
     );
 
+    // Three days in milliseconds
+    let new_lock_2 = Expiry::FromNow(Milliseconds::from_seconds(259200));
+
     //check result
     let splitter = CONDITIONAL_SPLITTER.load(deps.as_ref().storage).unwrap();
-    assert!(!splitter.lock_time.unwrap().is_expired(&env.block));
-    assert_eq!(new_lock, splitter.lock_time.unwrap());
+    assert!(!splitter.lock_time.is_expired(&env.block));
 
     // Shouldn't be able to update lock while current lock isn't expired
     let msg = ExecuteMsg::UpdateLock {
-        lock_time: Milliseconds::from_seconds(lock_time),
+        lock_time: new_lock_2.clone(),
     };
     let info = mock_info(OWNER, &[]);
     let err = execute(deps.as_mut(), env.clone(), info, msg).unwrap_err();
@@ -142,7 +248,7 @@ fn test_execute_update_thresholds() {
         ],
     )];
     let splitter = ConditionalSplitter {
-        lock_time: None,
+        lock_time: Milliseconds::zero(),
         thresholds: first_thresholds,
     };
 
@@ -279,7 +385,7 @@ fn test_execute_send() {
                 ],
             ),
         ],
-        lock_time: Some(Milliseconds::from_seconds(100_000)),
+        lock_time: Some(Expiry::FromNow(Milliseconds::from_seconds(100_000))),
     };
 
     let info = mock_info("owner", &[]);
@@ -453,7 +559,7 @@ fn test_execute_send_threshold_not_found() {
                 ],
             ),
         ],
-        lock_time: Some(Milliseconds::from_seconds(100_000)),
+        lock_time: Some(Expiry::FromNow(Milliseconds::from_seconds(100_000))),
     };
 
     let info = mock_info("owner", &[]);
@@ -589,7 +695,7 @@ fn test_handle_packet_exit_with_error_true() {
     let msg = ExecuteMsg::AMPReceive(pkt);
 
     let splitter = ConditionalSplitter {
-        lock_time: None,
+        lock_time: Milliseconds::zero(),
         thresholds: vec![Threshold::new(Uint128::zero(), address_percent)],
     };
 
@@ -612,7 +718,7 @@ fn test_query_splitter() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
     let splitter = ConditionalSplitter {
-        lock_time: None,
+        lock_time: Milliseconds::zero(),
         thresholds: vec![Threshold::new(Uint128::zero(), vec![])],
     };
 
@@ -668,7 +774,7 @@ fn test_execute_send_error() {
 
     let splitter = ConditionalSplitter {
         thresholds: vec![Threshold::new(Uint128::zero(), address_percent)],
-        lock_time: None,
+        lock_time: Milliseconds::zero(),
     };
 
     CONDITIONAL_SPLITTER

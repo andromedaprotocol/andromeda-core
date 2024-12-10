@@ -9,7 +9,11 @@ use andromeda_testing::{
 };
 use cw_multi_test::{Contract, ContractWrapper};
 
-use andromeda_std::{amp::AndrAddr, error::ContractError};
+use andromeda_std::{
+    ado_base::permissioning::{Permission, PermissioningMessage},
+    amp::AndrAddr,
+    error::ContractError,
+};
 
 pub struct MockValidatorStaking(Addr);
 mock_ado!(MockValidatorStaking, ExecuteMsg, QueryMsg);
@@ -24,6 +28,40 @@ impl MockValidatorStaking {
     ) -> ExecuteResult {
         let msg = mock_execute_stake(validator);
         self.execute(app, &msg, sender, &funds)
+    }
+
+    pub fn execute_set_permission(
+        &self,
+        app: &mut MockApp,
+        sender: Addr,
+        actors: Vec<AndrAddr>,
+        action: String,
+        permission: Permission,
+    ) -> ExecuteResult {
+        let msg = mock_set_permission(actors, action, permission);
+        self.execute(app, &msg, sender, &[])
+    }
+
+    pub fn execute_permission_action(
+        &self,
+        app: &mut MockApp,
+        sender: Addr,
+        action: String,
+    ) -> ExecuteResult {
+        let msg = mock_permission_action(action);
+        self.execute(app, &msg, sender, &[])
+    }
+
+    pub fn execute_redelegate(
+        &self,
+        app: &mut MockApp,
+        sender: Addr,
+        src_validator: Option<Addr>,
+        dst_validator: Addr,
+        amount: Option<Uint128>,
+    ) -> ExecuteResult {
+        let msg = mock_execute_redelegate(src_validator, dst_validator, amount);
+        self.execute(app, &msg, sender, &[])
     }
 
     pub fn execute_unstake(
@@ -42,14 +80,24 @@ impl MockValidatorStaking {
         app: &mut MockApp,
         sender: Addr,
         validator: Option<Addr>,
-        recipient: Option<AndrAddr>,
+        restake: Option<bool>,
     ) -> ExecuteResult {
-        let msg = mock_execute_claim_reward(validator, recipient);
+        let msg = mock_execute_claim_reward(validator, restake);
         self.execute(app, &msg, sender, &[])
     }
 
     pub fn execute_withdraw_fund(&self, app: &mut MockApp, sender: Addr) -> ExecuteResult {
-        let msg = mock_execute_withdraw_fund();
+        let msg = mock_execute_withdraw_fund(None, None);
+        self.execute(app, &msg, sender, &[])
+    }
+
+    pub fn execute_update_default_validator(
+        &self,
+        app: &mut MockApp,
+        sender: Addr,
+        validator: Addr,
+    ) -> ExecuteResult {
+        let msg = mock_execute_update_default_validator(validator);
         self.execute(app, &msg, sender, &[])
     }
 
@@ -95,24 +143,50 @@ pub fn mock_execute_stake(validator: Option<Addr>) -> ExecuteMsg {
     ExecuteMsg::Stake { validator }
 }
 
+pub fn mock_execute_redelegate(
+    src_validator: Option<Addr>,
+    dst_validator: Addr,
+    amount: Option<Uint128>,
+) -> ExecuteMsg {
+    ExecuteMsg::Redelegate {
+        src_validator,
+        dst_validator,
+        amount,
+    }
+}
+
 pub fn mock_execute_unstake(validator: Option<Addr>, amount: Option<Uint128>) -> ExecuteMsg {
     ExecuteMsg::Unstake { validator, amount }
 }
 
-pub fn mock_execute_claim_reward(
-    validator: Option<Addr>,
+pub fn mock_execute_claim_reward(validator: Option<Addr>, restake: Option<bool>) -> ExecuteMsg {
+    ExecuteMsg::Claim { validator, restake }
+}
+
+pub fn mock_execute_withdraw_fund(
+    denom: Option<String>,
     recipient: Option<AndrAddr>,
 ) -> ExecuteMsg {
-    ExecuteMsg::Claim {
-        validator,
-        recipient,
-    }
+    ExecuteMsg::WithdrawFunds { denom, recipient }
 }
 
-pub fn mock_execute_withdraw_fund() -> ExecuteMsg {
-    ExecuteMsg::WithdrawFunds {}
+pub fn mock_execute_update_default_validator(validator: Addr) -> ExecuteMsg {
+    ExecuteMsg::UpdateDefaultValidator { validator }
 }
-
+pub fn mock_set_permission(
+    actors: Vec<AndrAddr>,
+    action: String,
+    permission: Permission,
+) -> ExecuteMsg {
+    ExecuteMsg::Permissioning(PermissioningMessage::SetPermission {
+        actors,
+        action,
+        permission,
+    })
+}
+pub fn mock_permission_action(action: String) -> ExecuteMsg {
+    ExecuteMsg::Permissioning(PermissioningMessage::PermissionAction { action })
+}
 pub fn mock_get_staked_tokens(validator: Option<Addr>) -> QueryMsg {
     QueryMsg::StakedTokens { validator }
 }

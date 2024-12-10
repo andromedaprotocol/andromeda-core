@@ -1,7 +1,10 @@
-use andromeda_std::{amp::recipient::Recipient, andr_exec, andr_instantiate, andr_query};
+use andromeda_std::{
+    amp::recipient::Recipient,
+    andr_exec, andr_instantiate, andr_query,
+    common::{expiration::Expiry, MillisecondsExpiration},
+};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
-use cw_utils::Expiration;
 
 #[cw_serde]
 pub struct AddressWeight {
@@ -15,7 +18,9 @@ pub struct Splitter {
     /// The vector of recipients for the contract. Anytime a `Send` execute message is sent the amount sent will be divided amongst these recipients depending on their assigned weight.
     pub recipients: Vec<AddressWeight>,
     /// Whether or not the contract is currently locked. This restricts updating any config related fields.
-    pub lock: Expiration,
+    pub lock: MillisecondsExpiration,
+    /// The address that will receive any surplus funds, defaults to the message sender.
+    pub default_recipient: Option<Recipient>,
 }
 
 #[andr_instantiate]
@@ -24,7 +29,8 @@ pub struct InstantiateMsg {
     /// The vector of recipients for the contract. Anytime a `Send` execute message is
     /// sent the amount sent will be divided amongst these recipients depending on their assigned weight.
     pub recipients: Vec<AddressWeight>,
-    pub lock_time: Option<u64>,
+    pub lock_time: Option<Expiry>,
+    pub default_recipient: Option<Recipient>,
 }
 
 #[andr_exec]
@@ -34,14 +40,16 @@ pub enum ExecuteMsg {
     UpdateRecipients { recipients: Vec<AddressWeight> },
     /// Update a specific recipient's weight. Only executable by the contract owner when the contract is not locked.
     UpdateRecipientWeight { recipient: AddressWeight },
+    /// Update the default recipient. Only executable by the contract owner when the contract is not locked.
+    UpdateDefaultRecipient { recipient: Option<Recipient> },
     /// Add a single recipient to the recipient list. Only executable by the contract owner when the contract is not locked.
     AddRecipient { recipient: AddressWeight },
     /// Remove a single recipient from the recipient list. Only executable by the contract owner when the contract is not locked.
     RemoveRecipient { recipient: Recipient },
     /// Used to lock/unlock the contract allowing the config to be updated.
-    UpdateLock { lock_time: u64 },
+    UpdateLock { lock_time: Expiry },
     /// Divides any attached funds to the message amongst the recipients list.
-    Send {},
+    Send { config: Option<Vec<AddressWeight>> },
 }
 
 #[andr_query]

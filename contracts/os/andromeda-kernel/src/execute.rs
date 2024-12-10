@@ -1,26 +1,30 @@
+use crate::ibc::{get_counterparty_denom, PACKET_LIFETIME};
 use andromeda_std::ado_contract::ADOContract;
 use andromeda_std::amp::addresses::AndrAddr;
-use andromeda_std::amp::messages::{AMPCtx, AMPMsg, AMPPkt, IBCConfig};
+use andromeda_std::amp::messages::{AMPCtx, AMPMsg, AMPPkt};
 use andromeda_std::amp::{ADO_DB_KEY, VFS_KEY};
-
 use andromeda_std::common::context::ExecuteContext;
 use andromeda_std::common::has_coins_merged;
 use andromeda_std::common::reply::ReplyId;
 use andromeda_std::error::ContractError;
 use andromeda_std::os::aos_querier::AOSQuerier;
-use andromeda_std::os::kernel::{ChannelInfo, IbcExecuteMsg, InternalMsg};
-
+#[cfg(not(target_arch = "wasm32"))]
+use andromeda_std::os::ibc_registry::path_to_hops;
+use andromeda_std::os::kernel::{
+    AcknowledgementMsg, ChannelInfo, IbcExecuteMsg, Ics20PacketInfo, InternalMsg,
+    SendMessageWithFundsResponse,
+};
 use andromeda_std::os::vfs::vfs_resolve_symlink;
 use cosmwasm_std::{
-    attr, ensure, to_json_binary, Addr, BankMsg, Binary, Coin, ContractInfoResponse, CosmosMsg,
-    DepsMut, Env, IbcMsg, MessageInfo, Response, StdError, SubMsg, WasmMsg,
+    attr, ensure, from_json, to_json_binary, BankMsg, Binary, Coin, ContractInfoResponse,
+    CosmosMsg, DepsMut, Env, IbcMsg, IbcPacketAckMsg, MessageInfo, Response, StdError, SubMsg,
+    WasmMsg,
 };
 
-use crate::ibc::{generate_transfer_message, PACKET_LIFETIME};
 use crate::query;
 use crate::state::{
-    IBCHooksPacketSendState, ADO_OWNER, CHAIN_TO_CHANNEL, CHANNEL_TO_CHAIN, CURR_CHAIN,
-    IBC_FUND_RECOVERY, KERNEL_ADDRESSES, OUTGOING_IBC_HOOKS_PACKETS,
+    ADO_OWNER, CHAIN_TO_CHANNEL, CHANNEL_TO_CHAIN, CHANNEL_TO_EXECUTE_MSG, CURR_CHAIN,
+    IBC_FUND_RECOVERY, KERNEL_ADDRESSES, PENDING_MSG_AND_FUNDS, TRIGGER_KEY,
 };
 
 pub fn send(ctx: ExecuteContext, message: AMPMsg) -> Result<Response, ContractError> {
@@ -30,6 +34,135 @@ pub fn send(ctx: ExecuteContext, message: AMPMsg) -> Result<Response, ContractEr
     );
     let res = MsgHandler(message).handle(ctx.deps, ctx.info, ctx.env, ctx.amp_ctx, 0)?;
     Ok(res)
+}
+
+pub fn trigger_relay(
+    ctx: ExecuteContext,
+    packet_sequence: String,
+    packet_ack_msg: IbcPacketAckMsg,
+) -> Result<Response, ContractError> {
+    //TODO Only the authorized address to handle replies can call this function
+    ensure!(
+        ctx.info.sender == KERNEL_ADDRESSES.load(ctx.deps.storage, TRIGGER_KEY)?,
+        ContractError::Unauthorized {}
+    );
+    let ics20_packet_info =
+        CHANNEL_TO_EXECUTE_MSG.load(ctx.deps.storage, packet_sequence.clone())?;
+
+    let chain =
+        ics20_packet_info
+            .recipient
+            .get_chain()
+            .ok_or_else(|| ContractError::InvalidPacket {
+                error: Some("Chain not provided".to_string()),
+            })?;
+
+    let channel_info = CHAIN_TO_CHANNEL
+        .may_load(ctx.deps.storage, chain)?
+        .ok_or_else(|| ContractError::InvalidPacket {
+            error: Some(format!("Channel not found for chain {}", chain)),
+        })?;
+    let ack: AcknowledgementMsg<SendMessageWithFundsResponse> =
+        from_json(packet_ack_msg.acknowledgement.data)?;
+
+    match ack {
+        AcknowledgementMsg::Ok(_) => handle_ibc_transfer_funds_reply(
+            ctx.deps,
+            ctx.info,
+            ctx.env,
+            ctx.amp_ctx,
+            0,
+            channel_info,
+            ics20_packet_info,
+        ),
+        // This means that the funds have been returned to the contract, time to return the funds to the original sender
+        AcknowledgementMsg::Error(_) => {
+            let refund_msg = CosmosMsg::Bank(BankMsg::Send {
+                to_address: ics20_packet_info.sender.clone(),
+                amount: vec![ics20_packet_info.funds.clone()],
+            });
+            Ok(Response::default()
+                .add_message(refund_msg)
+                .add_attribute("action", "refund")
+                .add_attribute("recipient", ics20_packet_info.sender)
+                .add_attribute("amount", ics20_packet_info.funds.to_string()))
+        }
+    }
+}
+
+fn handle_ibc_transfer_funds_reply(
+    deps: DepsMut,
+    _info: MessageInfo,
+    env: Env,
+    _ctx: Option<AMPPkt>,
+    sequence: u64,
+    channel_info: ChannelInfo,
+    ics20_packet_info: Ics20PacketInfo,
+) -> Result<Response, ContractError> {
+    let ics20_packet_info = ics20_packet_info.clone();
+    let chain =
+        ics20_packet_info
+            .recipient
+            .get_chain()
+            .ok_or_else(|| ContractError::InvalidPacket {
+                error: Some("Chain not provided in recipient".to_string()),
+            })?;
+
+    let channel = channel_info
+        .direct_channel_id
+        .ok_or_else(|| ContractError::InvalidPacket {
+            error: Some(format!("Direct channel not found for chain {}", chain)),
+        })?;
+
+    // TODO: We should send denom info to the counterparty chain with amp message
+    let (counterparty_denom, _counterparty_denom_info) = get_counterparty_denom(
+        &deps.as_ref(),
+        &ics20_packet_info.funds.denom,
+        &ics20_packet_info.channel,
+    )?;
+    #[allow(unused_assignments, unused_mut)]
+    let mut adjusted_funds = Coin::new(
+        ics20_packet_info.funds.amount.u128(),
+        counterparty_denom.clone(),
+    );
+
+    // Funds are not correctly hashed when using cw-orchestrator so instead we construct the denom manually
+    #[cfg(not(target_arch = "wasm32"))]
+    if counterparty_denom.starts_with("ibc/") {
+        let hops = path_to_hops(_counterparty_denom_info.path)?;
+        // cw-orch doesn't correctly hash the denom so we need to manually construct it
+        let adjusted_path = hops
+            .iter()
+            .map(|hop| hop.channel_id.clone())
+            .collect::<Vec<String>>()
+            .join("/");
+
+        adjusted_funds = Coin::new(
+            ics20_packet_info.funds.amount.u128(),
+            format!(
+                "ibc/{}/{}",
+                adjusted_path, _counterparty_denom_info.base_denom
+            ),
+        );
+    }
+    let kernel_msg = IbcExecuteMsg::SendMessageWithFunds {
+        recipient: AndrAddr::from_string(ics20_packet_info.recipient.clone().get_raw_path()),
+        message: ics20_packet_info.message.clone(),
+        funds: adjusted_funds,
+        original_sender: ics20_packet_info.sender,
+    };
+    let msg = IbcMsg::SendPacket {
+        channel_id: channel.clone(),
+        data: to_json_binary(&kernel_msg)?,
+        timeout: env.block.time.plus_seconds(PACKET_LIFETIME).into(),
+    };
+
+    Ok(Response::default()
+        .add_message(CosmosMsg::Ibc(msg))
+        .add_attribute(format!("method:{sequence}"), "execute_send_message")
+        .add_attribute(format!("channel:{sequence}"), channel)
+        .add_attribute("receiving_kernel_address:{}", channel_info.kernel_address)
+        .add_attribute("chain:{}", chain))
 }
 
 pub fn amp_receive(
@@ -384,7 +517,6 @@ impl MsgHandler {
         };
         self.update_recipient(resolved_recipient);
         let protocol = self.message().recipient.get_protocol();
-
         match protocol {
             Some("ibc") => self.handle_ibc(deps, info, env, ctx, sequence),
             _ => self.handle_local(deps, info, env, ctx.map(|ctx| ctx.ctx), sequence),
@@ -415,9 +547,7 @@ impl MsgHandler {
             ..
         } = self.message();
         let recipient_addr = recipient.get_raw_address(&deps.as_ref())?;
-
         let adodb_addr = KERNEL_ADDRESSES.load(deps.storage, ADO_DB_KEY)?;
-
         // A default message is a bank message
         if Binary::default() == message.clone() {
             ensure!(
@@ -450,7 +580,6 @@ impl MsgHandler {
                 info.sender.to_string()
             };
             let previous_sender = info.sender.to_string();
-
             // Ensure recipient is a smart contract
             let ContractInfoResponse {
                 code_id: recipient_code_id,
@@ -514,7 +643,7 @@ impl MsgHandler {
                     });
                 }?;
             if !self.message().funds.is_empty() {
-                self.handle_ibc_hooks(deps, info, env, ctx, sequence, channel_info)
+                self.handle_ibc_transfer_funds(deps, info, env, ctx, sequence, channel_info)
             } else {
                 self.handle_ibc_direct(deps, info, env, ctx, sequence, channel_info)
             }
@@ -528,9 +657,9 @@ impl MsgHandler {
     fn handle_ibc_direct(
         &self,
         _deps: DepsMut,
-        _info: MessageInfo,
+        info: MessageInfo,
         env: Env,
-        _ctx: Option<AMPPkt>,
+        ctx: Option<AMPPkt>,
         sequence: u64,
         channel_info: ChannelInfo,
     ) -> Result<Response, ContractError> {
@@ -551,11 +680,25 @@ impl MsgHandler {
                 error: Some(format!("Channel not found for chain {chain}")),
             });
         }?;
+        let ctx = ctx.map_or(
+            AMPPkt::new(
+                info.sender,
+                env.clone().contract.address,
+                vec![AMPMsg::new(
+                    recipient.clone().get_raw_path(),
+                    message.clone(),
+                    None,
+                )],
+            ),
+            |mut ctx| {
+                ctx.ctx.previous_sender = env.contract.address.to_string();
+                ctx.messages[0].recipient =
+                    AndrAddr::from_string(recipient.clone().get_raw_path().to_string());
+                ctx
+            },
+        );
+        let kernel_msg = IbcExecuteMsg::SendMessage { amp_packet: ctx };
 
-        let kernel_msg = IbcExecuteMsg::SendMessage {
-            recipient: AndrAddr::from_string(recipient.get_raw_path()),
-            message: message.clone(),
-        };
         let msg = IbcMsg::SendPacket {
             channel_id: channel.clone(),
             data: to_json_binary(&kernel_msg)?,
@@ -570,12 +713,12 @@ impl MsgHandler {
             .add_message(msg))
     }
 
-    fn handle_ibc_hooks(
+    fn handle_ibc_transfer_funds(
         &self,
         deps: DepsMut,
         info: MessageInfo,
         env: Env,
-        ctx: Option<AMPPkt>,
+        _ctx: Option<AMPPkt>,
         sequence: u64,
         channel_info: ChannelInfo,
     ) -> Result<Response, ContractError> {
@@ -583,7 +726,6 @@ impl MsgHandler {
             recipient,
             message,
             funds,
-            config,
             ..
         } = self.message();
         let chain = recipient.get_chain().unwrap();
@@ -594,51 +736,49 @@ impl MsgHandler {
                 error: Some(format!("Channel not found for chain {chain}")),
             });
         }?;
-        let msg_funds = &funds[0].clone();
-        let recovery_addr = if let Some(IBCConfig {
-            recovery_addr: Some(recovery_addr),
-        }) = config.ibc_config.clone()
-        {
-            let addr = recovery_addr.get_raw_address(&deps.as_ref())?;
-            Ok::<Addr, ContractError>(addr)
-        } else if let Some(AMPPkt { ctx, .. }) = ctx {
-            Ok::<Addr, ContractError>(deps.api.addr_validate(&ctx.get_origin())?)
-        } else {
-            Ok::<Addr, ContractError>(info.sender)
-        }?;
-        let outgoing_state = IBCHooksPacketSendState {
+        ensure!(
+            funds.len() == 1 && info.funds.len() == 1,
+            ContractError::InvalidFunds {
+                msg: "Number of funds should be exactly one".to_string()
+            }
+        );
+        let coin = funds
+            .first()
+            .ok_or(ContractError::InvalidPacket {
+                error: Some("Transfer funds must contain funds in the AMPMsg".to_string()),
+            })?
+            .clone();
+
+        let msg = IbcMsg::Transfer {
             channel_id: channel.clone(),
-            amount: msg_funds.clone(),
-            recovery_addr,
+            to_address: channel_info.kernel_address.clone(),
+            amount: coin.clone(),
+            timeout: env.block.time.plus_seconds(PACKET_LIFETIME).into(),
         };
+        let mut resp = Response::default();
 
-        let mut outgoing_packets = OUTGOING_IBC_HOOKS_PACKETS
-            .load(deps.storage)
-            .unwrap_or_default();
-        outgoing_packets.push(outgoing_state);
-        OUTGOING_IBC_HOOKS_PACKETS.save(deps.storage, &outgoing_packets)?;
-
-        let msg = generate_transfer_message(
-            &deps.as_ref(),
-            recipient.clone(),
-            message.clone(),
-            msg_funds.clone(),
-            channel.clone(),
-            env.contract.address.to_string(),
-            channel_info.kernel_address.clone(),
-            env.block.time,
+        // Save execute msg, to be loaded in the reply
+        PENDING_MSG_AND_FUNDS.save(
+            deps.storage,
+            &Ics20PacketInfo {
+                sender: info.sender.into_string(),
+                recipient: recipient.clone(),
+                message: message.clone(),
+                funds: coin,
+                channel: channel.clone(),
+            },
         )?;
-        Ok(Response::default()
-            .add_submessage(SubMsg::reply_always(
-                msg,
-                ReplyId::IBCHooksPacketSend.repr(),
-            ))
-            .add_attribute(format!("method:{sequence}"), "execute_send_message")
+        resp = resp.add_submessage(SubMsg {
+            id: ReplyId::IBCTransfer.repr(),
+            msg: CosmosMsg::Ibc(msg),
+            gas_limit: None,
+            reply_on: cosmwasm_std::ReplyOn::Always,
+        });
+
+        Ok(resp
+            .add_attribute(format!("method:{sequence}"), "execute_transfer_funds")
             .add_attribute(format!("channel:{sequence}"), channel)
-            .add_attribute(
-                format!("receiving_kernel_address:{sequence}"),
-                channel_info.kernel_address,
-            )
-            .add_attribute(format!("chain:{sequence}"), chain))
+            .add_attribute("receiving_kernel_address:{}", channel_info.kernel_address)
+            .add_attribute("chain:{}", chain))
     }
 }

@@ -8,6 +8,9 @@ mod marketplace_app;
 mod auction_app;
 
 #[cfg(test)]
+mod ibc_registry;
+
+#[cfg(test)]
 mod kernel;
 
 #[cfg(test)]
@@ -21,3 +24,9 @@ mod validator_staking;
 
 #[cfg(test)]
 mod cw20_app;
+
+#[cfg(test)]
+mod set_amount_splitter;
+
+#[cfg(test)]
+mod shunting;

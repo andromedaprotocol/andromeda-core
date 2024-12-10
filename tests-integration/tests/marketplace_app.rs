@@ -1,5 +1,3 @@
-#![cfg(all(not(target_arch = "wasm32"), feature = "testing", feature = "rates"))]
-
 use andromeda_address_list::mock::{
     mock_address_list_instantiate_msg, mock_andromeda_address_list, MockAddressList,
 };
@@ -94,7 +92,7 @@ fn test_marketplace_app() {
     );
 
     let marketplace_init_msg =
-        mock_marketplace_instantiate_msg(andr.kernel.addr().to_string(), None, None);
+        mock_marketplace_instantiate_msg(andr.kernel.addr().to_string(), None, None, None);
     let marketplace_component = AppComponent::new(
         "marketplace".to_string(),
         "marketplace".to_string(),
@@ -145,10 +143,10 @@ fn test_marketplace_app() {
 
     assert_eq!(rate, Rate::Contract(AndrAddr::from_string(rates.addr())));
 
-    let rates: AllRatesResponse = marketplace.query_all_rates(&mut router).unwrap();
+    let all_rates: AllRatesResponse = marketplace.query_all_rates(&mut router);
 
     assert_eq!(
-        rates,
+        all_rates,
         AllRatesResponse {
             all_rates: vec![(
                 "Buy".to_string(),
@@ -188,7 +186,7 @@ fn test_marketplace_app() {
         Some(vec![coin(200, "uandr")]),
     );
 
-    let packet = AMPPkt::new(buyer.clone(), andr.kernel.addr().to_string(), vec![amp_msg]);
+    let packet = AMPPkt::new(buyer.clone(), buyer.clone(), vec![amp_msg]);
     let receive_packet_msg = mock_receive_packet(packet);
 
     let block_info = router.block_info();
@@ -203,7 +201,7 @@ fn test_marketplace_app() {
         .execute_actor_permission(
             &mut router,
             owner.clone(),
-            buyer.clone(),
+            vec![AndrAddr::from_string(buyer.clone())],
             LocalPermission::limited(None, 1),
         )
         .unwrap_err()
@@ -222,7 +220,7 @@ fn test_marketplace_app() {
         .execute_actor_permission(
             &mut router,
             owner.clone(),
-            buyer.clone(),
+            vec![AndrAddr::from_string(buyer.clone())],
             LocalPermission::blacklisted(None),
         )
         .unwrap();
@@ -232,7 +230,7 @@ fn test_marketplace_app() {
         .execute_set_permissions(
             &mut router,
             owner.clone(),
-            AndrAddr::from_string(buyer.clone()),
+            vec![AndrAddr::from_string(buyer.clone())],
             "Buy",
             Permission::Contract(AndrAddr::from_string(address_list.addr())),
         )
@@ -251,6 +249,15 @@ fn test_marketplace_app() {
         .downcast()
         .unwrap();
     assert_eq!(err, ContractError::Unauthorized {});
+
+    address_list
+        .execute_actor_permission(
+            &mut router,
+            owner.clone(),
+            vec![AndrAddr::from_string(buyer.clone())],
+            LocalPermission::whitelisted(None),
+        )
+        .unwrap();
 
     router
         .execute_contract(
@@ -319,6 +326,7 @@ fn test_marketplace_app_recipient() {
         andr.kernel.addr(),
         None,
         None,
+        None,
     );
     let splitter_component = AppComponent::new(
         "splitter",
@@ -327,7 +335,7 @@ fn test_marketplace_app_recipient() {
     );
 
     let marketplace_init_msg =
-        mock_marketplace_instantiate_msg(andr.kernel.addr().to_string(), None, None);
+        mock_marketplace_instantiate_msg(andr.kernel.addr().to_string(), None, None, None);
 
     let marketplace_component = AppComponent::new(
         "marketplace".to_string(),
@@ -379,7 +387,7 @@ fn test_marketplace_app_recipient() {
                 None,
                 Some(
                     Recipient::from_string(format!("./{}", splitter_component.name))
-                        .with_msg(mock_splitter_send_msg()),
+                        .with_msg(mock_splitter_send_msg(None)),
                 ),
             ),
         )
@@ -393,7 +401,7 @@ fn test_marketplace_app_recipient() {
         Some(vec![coin(200, "uandr")]),
     );
 
-    let packet = AMPPkt::new(buyer.clone(), andr.kernel.addr().to_string(), vec![amp_msg]);
+    let packet = AMPPkt::new(buyer.clone(), buyer.clone(), vec![amp_msg]);
     let receive_packet_msg = mock_receive_packet(packet);
 
     let block_info = router.block_info();
@@ -419,6 +427,7 @@ fn test_marketplace_app_recipient() {
     let balance = router.wrap().query_balance(receiver, "uandr").unwrap();
     assert_eq!(balance.amount, Uint128::from(100u128));
 }
+
 #[test]
 fn test_marketplace_app_cw20_restricted() {
     let mut router = mock_app(None);
@@ -503,26 +512,6 @@ fn test_marketplace_app_cw20_restricted() {
         to_json_binary(&second_cw20_init_msg).unwrap(),
     );
 
-    let local_rate = LocalRate {
-        rate_type: LocalRateType::Additive,
-        recipients: vec![Recipient::from_string(rates_receiver.to_string())],
-        // This is the cw20's address
-        value: LocalRateValue::Flat(coin(
-            100,
-            "andr1f5m2mm5gms637c06t0er56g454j5hznlefzavxm5cr7ex8xc5r0s4sfhu4",
-        )),
-        description: None,
-    };
-
-    let rates_init_msg = mock_rates_instantiate_msg(
-        "Buy".to_string(),
-        local_rate,
-        andr.kernel.addr().to_string(),
-        None,
-    );
-    let rates_component =
-        AppComponent::new("rates", "rates", to_json_binary(&rates_init_msg).unwrap());
-
     let address_list_init_msg =
         mock_address_list_instantiate_msg(andr.kernel.addr().to_string(), None, None);
 
@@ -535,7 +524,11 @@ fn test_marketplace_app_cw20_restricted() {
     let marketplace_init_msg = mock_marketplace_instantiate_msg(
         andr.kernel.addr().to_string(),
         None,
-        Some(AndrAddr::from_string(format!("./{}", cw20_component.name))),
+        Some(vec![AndrAddr::from_string(format!(
+            "./{}",
+            cw20_component.name
+        ))]),
+        None,
     );
     let marketplace_component = AppComponent::new(
         "marketplace".to_string(),
@@ -548,7 +541,6 @@ fn test_marketplace_app_cw20_restricted() {
         cw721_component.clone(),
         cw20_component.clone(),
         second_cw20_component.clone(),
-        rates_component.clone(),
         address_list_component.clone(),
         marketplace_component.clone(),
     ];
@@ -572,8 +564,29 @@ fn test_marketplace_app_cw20_restricted() {
         app.query_ado_by_component_name(&router, marketplace_component.name);
     let address_list: MockAddressList =
         app.query_ado_by_component_name(&router, address_list_component.name);
-    let rates: MockRates = app.query_ado_by_component_name(&router, rates_component.name);
     let cw20: MockCW20 = app.query_ado_by_component_name(&router, cw20_component.name);
+
+    let local_rate = LocalRate {
+        rate_type: LocalRateType::Additive,
+        recipients: vec![Recipient::from_string(rates_receiver.to_string())],
+        // This is the cw20's address
+        value: LocalRateValue::Flat(coin(100, cw20.addr().to_string())),
+        description: None,
+    };
+
+    let rates_init_msg = mock_rates_instantiate_msg(
+        "Buy".to_string(),
+        local_rate,
+        andr.kernel.addr().to_string(),
+        None,
+    );
+    let rates_component =
+        AppComponent::new("rates", "rates", to_json_binary(&rates_init_msg).unwrap());
+
+    app.execute_add_app_component(&mut router, owner.clone(), rates_component.clone())
+        .unwrap();
+
+    let rates: MockRates = app.query_ado_by_component_name(&router, rates_component.name);
 
     // Set contract rate linked to the above rates contract
     marketplace
@@ -596,34 +609,12 @@ fn test_marketplace_app_cw20_restricted() {
         .execute_actor_permission(
             &mut router,
             owner.clone(),
-            cw721.addr().clone(),
-            LocalPermission::whitelisted(None),
-        )
-        .unwrap();
-
-    address_list
-        .execute_actor_permission(
-            &mut router,
-            owner.clone(),
-            cw20.addr().clone(),
-            LocalPermission::whitelisted(None),
-        )
-        .unwrap();
-
-    address_list
-        .execute_actor_permission(
-            &mut router,
-            owner.clone(),
-            buyer.clone(),
-            LocalPermission::whitelisted(None),
-        )
-        .unwrap();
-
-    address_list
-        .execute_actor_permission(
-            &mut router,
-            owner.clone(),
-            owner.clone(),
+            vec![
+                AndrAddr::from_string(cw721.addr().clone()),
+                AndrAddr::from_string(cw20.addr().clone()),
+                AndrAddr::from_string(buyer.clone()),
+                AndrAddr::from_string(owner.clone()),
+            ],
             LocalPermission::whitelisted(None),
         )
         .unwrap();
@@ -833,7 +824,7 @@ fn test_marketplace_app_cw20_unrestricted() {
     );
 
     let marketplace_init_msg =
-        mock_marketplace_instantiate_msg(andr.kernel.addr().to_string(), None, None);
+        mock_marketplace_instantiate_msg(andr.kernel.addr().to_string(), None, None, None);
     let marketplace_component = AppComponent::new(
         "marketplace".to_string(),
         "marketplace".to_string(),
@@ -899,43 +890,13 @@ fn test_marketplace_app_cw20_unrestricted() {
         .execute_actor_permission(
             &mut router,
             owner.clone(),
-            cw721.addr().clone(),
-            LocalPermission::whitelisted(None),
-        )
-        .unwrap();
-
-    address_list
-        .execute_actor_permission(
-            &mut router,
-            owner.clone(),
-            cw20.addr().clone(),
-            LocalPermission::whitelisted(None),
-        )
-        .unwrap();
-
-    address_list
-        .execute_actor_permission(
-            &mut router,
-            owner.clone(),
-            second_cw20.addr().clone(),
-            LocalPermission::whitelisted(None),
-        )
-        .unwrap();
-
-    address_list
-        .execute_actor_permission(
-            &mut router,
-            owner.clone(),
-            buyer.clone(),
-            LocalPermission::whitelisted(None),
-        )
-        .unwrap();
-
-    address_list
-        .execute_actor_permission(
-            &mut router,
-            owner.clone(),
-            owner.clone(),
+            vec![
+                AndrAddr::from_string(cw721.addr().clone()),
+                AndrAddr::from_string(cw20.addr().clone()),
+                AndrAddr::from_string(second_cw20.addr().clone()),
+                AndrAddr::from_string(buyer.clone()),
+                AndrAddr::from_string(owner.clone()),
+            ],
             LocalPermission::whitelisted(None),
         )
         .unwrap();

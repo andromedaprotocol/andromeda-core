@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use andromeda_std::{
     amp::recipient::Recipient,
     andr_exec, andr_instantiate, andr_query,
-    common::{expiration::Expiry, MillisecondsDuration, MillisecondsExpiration},
+    common::{expiration::Expiry, MillisecondsExpiration},
     error::ContractError,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
@@ -28,6 +28,8 @@ pub struct Splitter {
     pub recipients: Vec<AddressAmount>,
     /// The lock's expiration time
     pub lock: MillisecondsExpiration,
+    /// The address that will receive any surplus funds, defaults to the message sender.
+    pub default_recipient: Option<Recipient>,
 }
 
 #[andr_instantiate]
@@ -37,6 +39,8 @@ pub struct InstantiateMsg {
     /// sent the amount sent will be divided amongst these recipients depending on their assigned amount.
     pub recipients: Vec<AddressAmount>,
     pub lock_time: Option<Expiry>,
+    /// The address that will receive any surplus funds, defaults to the message sender.
+    pub default_recipient: Option<Recipient>,
 }
 
 impl InstantiateMsg {
@@ -53,10 +57,12 @@ pub enum ExecuteMsg {
     /// Used to lock/unlock the contract allowing the config to be updated.
     UpdateLock {
         // Milliseconds from current time
-        lock_time: MillisecondsDuration,
+        lock_time: Expiry,
     },
+    /// Update the default recipient. Only executable by the contract owner when the contract is not locked.
+    UpdateDefaultRecipient { recipient: Option<Recipient> },
     /// Divides any attached funds to the message amongst the recipients list.
-    Send {},
+    Send { config: Option<Vec<AddressAmount>> },
 }
 
 #[andr_query]

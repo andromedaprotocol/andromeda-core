@@ -1,6 +1,6 @@
 [package]
 name = "andromeda-validator-staking"
-version = "0.2.0"
+version = "1.0.0"
 edition = "2021"
 rust-version = "1.75.0"
 
@@ -21,7 +21,7 @@ cw-storage-plus = { workspace = true }
 cw2 = { workspace = true }
 serde = { workspace = true }
 
-andromeda-std = { workspace = true }
+andromeda-std = { workspace = true, features = ["distribution"] }
 andromeda-finance = { workspace = true }
 enum-repr = { workspace = true }
 chrono = "0.3"
@@ -29,3 +29,5 @@ chrono = "0.3"
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 cw-multi-test = { workspace = true, optional = true }
 andromeda-testing = { workspace = true }
+cw-orch = { workspace = true }
+cw-orch-daemon = "0.24.2"

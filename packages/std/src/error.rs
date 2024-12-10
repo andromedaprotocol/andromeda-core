@@ -2,7 +2,7 @@ use cosmwasm_std::{Addr, OverflowError, StdError};
 use cw20_base::ContractError as Cw20ContractError;
 use cw721_base::ContractError as Cw721ContractError;
 use cw_asset::AssetError;
-use cw_utils::{ParseReplyError, PaymentError};
+use cw_utils::{ParseReplyError, PaymentError, ThresholdError};
 use hex::FromHexError;
 use std::convert::From;
 use std::str::{ParseBoolError, Utf8Error};
@@ -24,6 +24,9 @@ pub enum ContractError {
 
     #[error("{0}")]
     ParseReplyError(#[from] ParseReplyError),
+
+    #[error("{0}")]
+    Threshold(#[from] ThresholdError),
 
     #[error("Unauthorized")]
     Unauthorized {},
@@ -52,6 +55,12 @@ pub enum ContractError {
     #[error("InvalidOrigin")]
     InvalidOrigin {},
 
+    #[error("EmptyDenom")]
+    EmptyDenom {},
+
+    #[error("NoDenomInfoProvided")]
+    NoDenomInfoProvided {},
+
     #[error("InvalidAmount: {msg}")]
     InvalidAmount { msg: String },
 
@@ -75,14 +84,20 @@ pub enum ContractError {
     #[error("InvalidValidator")]
     InvalidValidator {},
 
+    #[error("NoActorsProvided")]
+    NoActorsProvided {},
+
     #[error("InvalidDelegation")]
     InvalidDelegation {},
+
+    #[error("Invalid action: {action}. Expected either SEND_NFT or SEND_CW20")]
+    InvalidAction { action: String },
 
     #[error("RewardTooLow")]
     RewardTooLow {},
 
-    #[error("IncompleteUnbondingPeriod")]
-    IncompleteUnbondingPeriod {},
+    #[error("InvalidRedelegationAmount. Got {{amount}}, full delegation: {{max}}")]
+    InvalidRedelegationAmount { amount: String, max: String },
 
     #[error("LockedNFT")]
     LockedNFT {},
@@ -95,6 +110,9 @@ pub enum ContractError {
 
     #[error("only unordered channels are supported")]
     OrderedChannel {},
+
+    #[error("Invalid Expiration Time")]
+    InvalidExpirationTime {},
 
     #[error("invalid IBC channel version - got ({actual}), expected ({expected})")]
     InvalidVersion { actual: String, expected: String },
@@ -114,6 +132,12 @@ pub enum ContractError {
     #[error("EmptyOptional")]
     EmptyOptional {},
 
+    #[error("EmptyEvents")]
+    EmptyEvents {},
+
+    #[error("EmptyUnstakingQueue")]
+    EmptyUnstakingQueue {},
+
     #[error("EmptyString")]
     EmptyString {},
 
@@ -122,6 +146,9 @@ pub enum ContractError {
 
     #[error("NoTokens")]
     NoTokens {},
+
+    #[error("NoBuyNowOption")]
+    NoBuyNowOption {},
 
     #[error("UnrecognisedReplyId")]
     UnrecognisedReplyId {},
@@ -303,6 +330,9 @@ pub enum ContractError {
     #[error("AuctionEnded")]
     AuctionEnded {},
 
+    #[error("AuctionBought")]
+    AuctionBought {},
+
     #[error("CampaignNotStarted")]
     CampaignNotStarted {},
 
@@ -381,6 +411,9 @@ pub enum ContractError {
     #[error("InvalidADOVersion: {msg:?}")]
     InvalidADOVersion { msg: Option<String> },
 
+    #[error("InvalidMinBid: {msg:?}")]
+    InvalidMinBid { msg: Option<String> },
+
     #[error("InvalidCodeID: {msg:?}")]
     InvalidCodeID { msg: Option<String> },
 
@@ -429,6 +462,9 @@ pub enum ContractError {
     #[error("DuplicateCoinDenoms")]
     DuplicateCoinDenoms {},
 
+    #[error("DuplicateDenoms: {denom}")]
+    DuplicateDenoms { denom: String },
+
     #[error("DuplicateThresholds")]
     DuplicateThresholds {},
 
@@ -445,8 +481,8 @@ pub enum ContractError {
     #[error("Invalid zero amount")]
     InvalidZeroAmount {},
 
-    #[error("Invalid Denom")]
-    InvalidDenom {},
+    #[error("Invalid Denom {msg:?}")]
+    InvalidDenom { msg: Option<String> },
 
     #[error("Allowance is expired")]
     Expired {},
@@ -677,9 +713,6 @@ pub enum ContractError {
     #[error("Not an assigned operator, {msg:?}")]
     NotAssignedOperator { msg: Option<String> },
 
-    #[error("Invalid Expiration Time")]
-    InvalidExpirationTime {},
-
     #[error("Invalid Parameter, {error:?}")]
     InvalidParameter { error: Option<String> },
 
@@ -695,8 +728,8 @@ pub enum ContractError {
     #[error("Invalid Denom Trace: {denom}")]
     InvalidDenomTrace { denom: String },
 
-    #[error("Invalid Denom Trace Path: {path} - {denom}")]
-    InvalidDenomTracePath { path: String, denom: String },
+    #[error("Invalid Denom Trace Path: {path}, msg: {msg:?}")]
+    InvalidDenomTracePath { path: String, msg: Option<String> },
 
     #[error("Invalid Expression: {msg}")]
     InvalidExpression { msg: String },
@@ -715,6 +748,12 @@ pub enum ContractError {
 
     #[error("Invalid tier for {operation} operation: {msg} ")]
     InvalidTier { operation: String, msg: String },
+}
+
+impl ContractError {
+    pub fn new(error: &str) -> Self {
+        ContractError::Std(StdError::generic_err(error))
+    }
 }
 
 impl From<Cw20ContractError> for ContractError {

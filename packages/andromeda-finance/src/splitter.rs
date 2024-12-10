@@ -3,11 +3,11 @@ use std::collections::HashSet;
 use andromeda_std::{
     amp::recipient::Recipient,
     andr_exec, andr_instantiate, andr_query,
-    common::{expiration::Expiry, MillisecondsDuration, MillisecondsExpiration},
+    common::{expiration::Expiry, Milliseconds, MillisecondsExpiration},
     error::ContractError,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{ensure, Decimal, Deps};
+use cosmwasm_std::{ensure, BlockInfo, Decimal, Deps};
 
 #[cw_serde]
 pub struct AddressPercent {
@@ -28,6 +28,8 @@ pub struct Splitter {
     pub recipients: Vec<AddressPercent>,
     /// The lock's expiration time
     pub lock: MillisecondsExpiration,
+    /// The address that will receive any surplus funds, defaults to the message sender.
+    pub default_recipient: Option<Recipient>,
 }
 
 #[andr_instantiate]
@@ -37,6 +39,7 @@ pub struct InstantiateMsg {
     /// sent the amount sent will be divided amongst these recipients depending on their assigned percentage.
     pub recipients: Vec<AddressPercent>,
     pub lock_time: Option<Expiry>,
+    pub default_recipient: Option<Recipient>,
 }
 
 impl InstantiateMsg {
@@ -51,12 +54,11 @@ pub enum ExecuteMsg {
     /// Update the recipients list. Only executable by the contract owner when the contract is not locked.
     UpdateRecipients { recipients: Vec<AddressPercent> },
     /// Used to lock/unlock the contract allowing the config to be updated.
-    UpdateLock {
-        // Milliseconds from current time
-        lock_time: MillisecondsDuration,
-    },
+    UpdateLock { lock_time: Expiry },
+    /// Update the default recipient. Only executable by the contract owner when the contract is not locked.
+    UpdateDefaultRecipient { recipient: Option<Recipient> },
     /// Divides any attached funds to the message amongst the recipients list.
-    Send {},
+    Send { config: Option<Vec<AddressPercent>> },
 }
 
 #[andr_query]
@@ -113,6 +115,34 @@ pub fn validate_recipient_list(
     }
 
     Ok(())
+}
+// 1 day in milliseconds
+const ONE_DAY: u64 = 86_400_000;
+// 1 year in milliseconds
+const ONE_YEAR: u64 = 31_536_000_000;
+
+/// Ensures the expiry is between one day and one year, also returns a Milliseconds representation of Expiry
+pub fn validate_expiry_duration(
+    lock_time: &Expiry,
+    block: &BlockInfo,
+) -> Result<Milliseconds, ContractError> {
+    let new_lock_time_expiration = lock_time.get_time(block);
+    // New lock time can't be too short
+    ensure!(
+        new_lock_time_expiration
+            >= Milliseconds::from_seconds(block.time.seconds())
+                .plus_milliseconds(Milliseconds(ONE_DAY)),
+        ContractError::LockTimeTooShort {}
+    );
+
+    // New lock time can't be too long
+    ensure!(
+        new_lock_time_expiration
+            <= Milliseconds::from_seconds(block.time.seconds())
+                .plus_milliseconds(Milliseconds(ONE_YEAR)),
+        ContractError::LockTimeTooLong {}
+    );
+    Ok(new_lock_time_expiration)
 }
 
 #[cfg(test)]

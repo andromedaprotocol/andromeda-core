@@ -1,14 +1,17 @@
 use std::collections::HashSet;
 
 use crate::state::SPLITTER;
-use andromeda_finance::set_amount_splitter::{
-    validate_recipient_list, AddressAmount, ExecuteMsg, GetSplitterConfigResponse, InstantiateMsg,
-    QueryMsg, Splitter,
+use andromeda_finance::{
+    set_amount_splitter::{
+        validate_recipient_list, AddressAmount, ExecuteMsg, GetSplitterConfigResponse,
+        InstantiateMsg, QueryMsg, Splitter,
+    },
+    splitter::validate_expiry_duration,
 };
 use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
-    amp::messages::AMPPkt,
-    common::{actions::call_action, encode_binary, Milliseconds, MillisecondsDuration},
+    amp::{messages::AMPPkt, Recipient},
+    common::{actions::call_action, encode_binary, expiration::Expiry, Milliseconds},
     error::ContractError,
 };
 use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
@@ -49,6 +52,7 @@ pub fn instantiate(
             Splitter {
                 recipients: msg.recipients.clone(),
                 lock: lock_time.get_time(&env.block),
+                default_recipient: msg.default_recipient.clone(),
             }
         }
         None => {
@@ -56,6 +60,7 @@ pub fn instantiate(
                 recipients: msg.recipients.clone(),
                 // If locking isn't desired upon instantiation, it's automatically set to 0
                 lock: Milliseconds::default(),
+                default_recipient: msg.default_recipient.clone(),
             }
         }
     };
@@ -121,7 +126,10 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
     let res = match msg {
         ExecuteMsg::UpdateRecipients { recipients } => execute_update_recipients(ctx, recipients),
         ExecuteMsg::UpdateLock { lock_time } => execute_update_lock(ctx, lock_time),
-        ExecuteMsg::Send {} => execute_send(ctx),
+        ExecuteMsg::UpdateDefaultRecipient { recipient } => {
+            execute_update_default_recipient(ctx, recipient)
+        }
+        ExecuteMsg::Send { config } => execute_send(ctx, config),
         _ => ADOContract::default().execute(ctx, msg),
     }?;
     Ok(res
@@ -130,7 +138,53 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
         .add_events(action_response.events))
 }
 
-fn execute_send(ctx: ExecuteContext) -> Result<Response, ContractError> {
+fn execute_update_default_recipient(
+    ctx: ExecuteContext,
+    recipient: Option<Recipient>,
+) -> Result<Response, ContractError> {
+    let ExecuteContext {
+        deps, info, env, ..
+    } = ctx;
+
+    nonpayable(&info)?;
+
+    ensure!(
+        ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {}
+    );
+
+    let mut splitter = SPLITTER.load(deps.storage)?;
+
+    // Can't call this function while the lock isn't expired
+    ensure!(
+        splitter.lock.is_expired(&env.block),
+        ContractError::ContractLocked {}
+    );
+
+    if let Some(ref recipient) = recipient {
+        recipient.validate(&deps.as_ref())?;
+    }
+    splitter.default_recipient = recipient;
+
+    SPLITTER.save(deps.storage, &splitter)?;
+
+    Ok(Response::default().add_attributes(vec![
+        attr("action", "update_default_recipient"),
+        attr(
+            "recipient",
+            splitter
+                .default_recipient
+                .map_or("no default recipient".to_string(), |r| {
+                    r.address.to_string()
+                }),
+        ),
+    ]))
+}
+
+fn execute_send(
+    ctx: ExecuteContext,
+    config: Option<Vec<AddressAmount>>,
+) -> Result<Response, ContractError> {
     let ExecuteContext { deps, info, .. } = ctx;
 
     ensure!(
@@ -155,8 +209,13 @@ fn execute_send(ctx: ExecuteContext) -> Result<Response, ContractError> {
         );
         denom_set.insert(coin.denom);
     }
-
     let splitter = SPLITTER.load(deps.storage)?;
+    let splitter_recipients = if let Some(config) = config {
+        validate_recipient_list(deps.as_ref(), config.clone())?;
+        config
+    } else {
+        splitter.recipients
+    };
 
     let mut msgs: Vec<SubMsg> = Vec::new();
     let mut amp_funds: Vec<Coin> = Vec::new();
@@ -168,7 +227,7 @@ fn execute_send(ctx: ExecuteContext) -> Result<Response, ContractError> {
         let mut remainder_funds = coin.amount;
         let denom = coin.denom;
 
-        for recipient in &splitter.recipients {
+        for recipient in splitter_recipients.clone() {
             // Find the recipient's corresponding denom for the current iteration of the sent funds
             let recipient_coin = recipient
                 .coins
@@ -197,8 +256,15 @@ fn execute_send(ctx: ExecuteContext) -> Result<Response, ContractError> {
 
         // Refund message for sender
         if !remainder_funds.is_zero() {
+            let remainder_recipient = splitter
+                .default_recipient
+                .clone()
+                .unwrap_or(Recipient::new(info.sender.to_string(), None));
             let msg = SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-                to_address: info.sender.clone().into_string(),
+                to_address: remainder_recipient
+                    .address
+                    .get_raw_address(&deps.as_ref())?
+                    .into_string(),
                 amount: coins(remainder_funds.u128(), denom),
             }));
             msgs.push(msg);
@@ -254,10 +320,7 @@ fn execute_update_recipients(
     Ok(Response::default().add_attributes(vec![attr("action", "update_recipients")]))
 }
 
-fn execute_update_lock(
-    ctx: ExecuteContext,
-    lock_time: MillisecondsDuration,
-) -> Result<Response, ContractError> {
+fn execute_update_lock(ctx: ExecuteContext, lock_time: Expiry) -> Result<Response, ContractError> {
     let ExecuteContext {
         deps, info, env, ..
     } = ctx;
@@ -277,23 +340,7 @@ fn execute_update_lock(
         ContractError::ContractLocked {}
     );
 
-    // Get current time
-    let current_time = Milliseconds::from_seconds(env.block.time.seconds());
-
-    // New lock time can't be too short
-    ensure!(
-        lock_time.seconds() >= ONE_DAY,
-        ContractError::LockTimeTooShort {}
-    );
-
-    // New lock time can't be unreasonably long
-    ensure!(
-        lock_time.seconds() <= ONE_YEAR,
-        ContractError::LockTimeTooLong {}
-    );
-
-    // Set new lock time
-    let new_expiration = current_time.plus_milliseconds(lock_time);
+    let new_expiration = validate_expiry_duration(&lock_time, &env.block)?;
 
     splitter.lock = new_expiration;
 

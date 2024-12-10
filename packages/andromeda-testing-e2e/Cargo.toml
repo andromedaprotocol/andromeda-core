@@ -1,0 +1,50 @@
+[package]
+name = "andromeda-testing-e2e"
+version = "1.0.0"
+authors = ["Albert Hu <web3pirate@outlook.com>"]
+edition = "2018"
+description = "E2E Testing utilities for Andromeda Digital Object Contracts"
+license = "MIT"
+
+[features]
+backtraces = ["cosmwasm-std/backtraces"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+cosmwasm-std = { workspace = true }
+cosmwasm-schema = { workspace = true }
+cw721 = { workspace = true }
+cw20 = { workspace = true }
+anyhow = "1.0.94"
+
+andromeda-non-fungible-tokens = { workspace = true }
+andromeda-app = { version = "1.0.0", path = "../andromeda-app" }
+andromeda-modules = { version = "2.0.0", path = "../andromeda-modules" }
+andromeda-adodb = { version = "1.0.0", path = "../../contracts/os/andromeda-adodb", features = [
+    "testing",
+] }
+andromeda-kernel = { version = "1.0.0", path = "../../contracts/os/andromeda-kernel", features = [
+    "testing",
+] }
+andromeda-vfs = { version = "1.0.0", path = "../../contracts/os/andromeda-vfs", features = [
+    "testing",
+] }
+andromeda-economics = { version = "1.0.0", path = "../../contracts/os/andromeda-economics", features = [
+    "testing",
+    "library",
+] }
+andromeda-std = { workspace = true }
+serde = { workspace = true }
+secp256k1 = "0.30.0"
+cosmrs = "0.21.0"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+cw-multi-test = { workspace = true }
+anyhow = "1.0.94"
+reqwest = { version = "0.12.9", features = ["json"] }
+tokio = "1.42.0"
+cw-orch-daemon = "0.24.3"
+cw-orch = { workspace = true }
