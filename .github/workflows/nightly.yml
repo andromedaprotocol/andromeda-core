@@ -1,0 +1,33 @@
+name: Nightly Testnet Staging Deployment
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Runs at 00:00 UTC every day
+    - cron: "0 0 * * *"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Trigger Deploy Workflow
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.CI_PAT }}
+          script: |
+            try {
+              await github.rest.actions.createWorkflowDispatch({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                workflow_id: 'deploy.yml',
+                ref: 'main',
+                inputs: {
+                  network: 'galileo-4',
+                  kernel_address: 'andr1536hsxv4706s0wwmswcc7j7t7newvfu8tqx7fnm8hfvdznlc0dnsal669q',
+                  deploy_os: 'true',
+                }
+              });
+            } catch (error) {
+              core.setFailed(`Failed to trigger deploy workflow: ${error.message}`);
+            }
