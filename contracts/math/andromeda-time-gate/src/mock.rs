@@ -40,8 +40,7 @@ impl MockTimeGate {
                 &[],
                 "Time Gate Contract",
                 Some(sender.to_string()),
-            )
-            .unwrap();
+            )?;
         MockTimeGate(Addr::unchecked(addr))
     }
 
