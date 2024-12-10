@@ -32,15 +32,14 @@ impl MockTimeGate {
             cycle_start_time,
             time_interval,
         );
-        let addr = app
-            .instantiate_contract(
-                code_id,
-                sender.clone(),
-                &msg,
-                &[],
-                "Time Gate Contract",
-                Some(sender.to_string()),
-            )?;
+        let addr = app.instantiate_contract(
+            code_id,
+            sender.clone(),
+            &msg,
+            &[],
+            "Time Gate Contract",
+            Some(sender.to_string()),
+        )?;
         MockTimeGate(Addr::unchecked(addr))
     }
 
