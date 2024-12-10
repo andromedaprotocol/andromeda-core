@@ -245,14 +245,33 @@ pub fn get_current_ado_path(deps: Deps, env: Env) -> Result<Addr, ContractError>
     let current_time_nanos = env.block.time.nanos();
     let cycle_start_nanos = cycle_start_time_milliseconds.nanos();
 
-    let time_interval_nanos = time_interval.checked_mul(1_000_000_000).unwrap();
+    let time_interval_nanos = match time_interval.checked_mul(1_000_000_000) {
+        Some(val) => val,
+        None => {
+            return Err(ContractError::Overflow {})
+        }
+    };
     let gate_length = gate_addresses.len() as u64;
-    let time_delta = current_time_nanos.checked_sub(cycle_start_nanos).unwrap();
-    let index = time_delta
-        .checked_div(time_interval_nanos)
-        .unwrap()
-        .checked_rem(gate_length)
-        .unwrap() as usize;
+    let time_delta = match current_time_nanos.checked_sub(cycle_start_nanos) {
+        Some(val) => val,
+        None => {
+            return Err(ContractError::Underflow {})
+        }
+    };
+
+    let index = match time_delta.checked_div(time_interval_nanos) {
+        Some(val) => val,
+        None => {
+            return Err(ContractError::CustomError { msg: "Division by zero in time delta".to_string() })
+        }
+    };
+    let index = match index.checked_rem(gate_length) {
+        Some(val) => val as usize,
+        None => {
+            return Err(ContractError::CustomError { msg: "Modulo by zero in gate length".to_string() })
+        }
+    };
+
     let current_ado_path = &gate_addresses[index];
     let result = current_ado_path.get_raw_address(&deps)?;
 
