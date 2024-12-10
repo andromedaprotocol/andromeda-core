@@ -632,7 +632,7 @@ fn execute_claim(ctx: ExecuteContext) -> Result<Response, ContractError> {
 
     let sub_response = match curr_stage {
         CampaignStage::SUCCESS => handle_successful_claim(deps.branch(), &info.sender)?,
-        CampaignStage::FAILED => handle_failed_claim(deps.branch(), &info.sender)?,
+        CampaignStage::FAILED | CampaignStage::DISCARDED => handle_failed_claim(deps.branch(), &info.sender)?,
         _ => {
             return Err(ContractError::InvalidCampaignOperation {
                 operation: "Claim".to_string(),

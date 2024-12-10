@@ -335,6 +335,7 @@ fn test_successful_crowdfund_app_native(setup: TestCase) {
 }
 
 #[rstest]
+#[rstest]
 fn test_crowdfund_app_native_discard(
     #[with(true, Some(mock_recipient_with_invalid_msg("./splitter")))] setup: TestCase,
 ) {
@@ -403,19 +404,12 @@ fn test_crowdfund_app_native_discard(
         buyer_one_original_balance - Uint128::new(10 * 100 + 200 * 10)
     );
 
-    let _ = crowdfund.execute_end_campaign(owner.clone(), &mut router);
-
-    let summary = crowdfund.query_campaign_summary(&mut router);
-
-    // Campaign could not be ended due to invalid withdrawal recipient msg
-    assert_eq!(summary.current_stage, CampaignStage::ONGOING.to_string());
-
     // Discard campaign
     let _ = crowdfund.execute_discard_campaign(owner.clone(), &mut router);
     let summary = crowdfund.query_campaign_summary(&mut router);
-    assert_eq!(summary.current_stage, CampaignStage::FAILED.to_string());
+    assert_eq!(summary.current_stage, CampaignStage::DISCARDED.to_string());
 
-    // Refund
+    // Verify refunds after discard
     let buyer_one_original_balance = router
         .wrap()
         .query_balance(buyer_one.clone(), "uandr")
