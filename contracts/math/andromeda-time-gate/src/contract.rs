@@ -48,7 +48,7 @@ pub fn instantiate(
         },
     )?;
 
-    let cycle_start_time_millisecons = match msg.cycle_start_time.clone() {
+    let cycle_start_time_milliseconds = match msg.cycle_start_time.clone() {
         None => Milliseconds::from_nanos(env.block.time.nanos()),
         Some(start_time) => start_time.get_time(&env.block),
     };
@@ -60,7 +60,7 @@ pub fn instantiate(
     GATE_ADDRESSES.save(deps.storage, &msg.gate_addresses)?;
     CYCLE_START_TIME.save(
         deps.storage,
-        &(cycle_start_time, cycle_start_time_millisecons),
+        &(cycle_start_time, cycle_start_time_milliseconds),
     )?;
     TIME_INTERVAL.save(deps.storage, &time_interval_seconds)?;
 
@@ -127,7 +127,7 @@ fn execute_update_cycle_start_time(
 
     let (new_cycle_start_time, _) =
         get_and_validate_start_time(&ctx.env, cycle_start_time.clone())?;
-    let new_cycle_start_time_millisecons = match cycle_start_time.clone() {
+    let new_cycle_start_time_milliseconds = match cycle_start_time.clone() {
         None => Milliseconds::from_nanos(ctx.env.block.time.nanos()),
         Some(start_time) => start_time.get_time(&ctx.env.block),
     };
@@ -143,7 +143,7 @@ fn execute_update_cycle_start_time(
 
     CYCLE_START_TIME.save(
         deps.storage,
-        &(new_cycle_start_time, new_cycle_start_time_millisecons),
+        &(new_cycle_start_time, new_cycle_start_time_milliseconds),
     )?;
 
     Ok(Response::new().add_attributes(vec![attr("action", action), attr("sender", info.sender)]))
