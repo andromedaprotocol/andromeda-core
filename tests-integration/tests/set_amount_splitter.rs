@@ -48,6 +48,7 @@ fn test_splitter() {
         andr.kernel.addr().clone(),
         None,
         None,
+        None,
     );
     let splitter_app_component = AppComponent {
         name: "splitter".to_string(),
@@ -71,7 +72,7 @@ fn test_splitter() {
 
     let token = coin(1000, "uandr");
     splitter
-        .execute_send(&mut router, owner.clone(), &[token])
+        .execute_send(&mut router, owner.clone(), &[token], None)
         .unwrap();
 
     let balance_1 = router.wrap().query_balance(recipient_1, "uandr").unwrap();
