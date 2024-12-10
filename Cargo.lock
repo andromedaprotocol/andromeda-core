@@ -964,12 +964,13 @@ name = "andromeda-time-gate"
 version = "2.0.0"
 dependencies = [
  "andromeda-app",
- "andromeda-modules",
+ "andromeda-math",
  "andromeda-std",
  "andromeda-testing",
- "cosmwasm-schema",
- "cosmwasm-std",
+ "cosmwasm-schema 1.5.8",
+ "cosmwasm-std 1.5.8",
  "cw-multi-test",
+ "cw-orch",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
 ]
