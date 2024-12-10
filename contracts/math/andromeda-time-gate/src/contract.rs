@@ -247,28 +247,28 @@ pub fn get_current_ado_path(deps: Deps, env: Env) -> Result<Addr, ContractError>
 
     let time_interval_nanos = match time_interval.checked_mul(1_000_000_000) {
         Some(val) => val,
-        None => {
-            return Err(ContractError::Overflow {})
-        }
+        None => return Err(ContractError::Overflow {}),
     };
     let gate_length = gate_addresses.len() as u64;
     let time_delta = match current_time_nanos.checked_sub(cycle_start_nanos) {
         Some(val) => val,
-        None => {
-            return Err(ContractError::Underflow {})
-        }
+        None => return Err(ContractError::Underflow {}),
     };
 
     let index = match time_delta.checked_div(time_interval_nanos) {
         Some(val) => val,
         None => {
-            return Err(ContractError::CustomError { msg: "Division by zero in time delta".to_string() })
+            return Err(ContractError::CustomError {
+                msg: "Division by zero in time delta".to_string(),
+            })
         }
     };
     let index = match index.checked_rem(gate_length) {
         Some(val) => val as usize,
         None => {
-            return Err(ContractError::CustomError { msg: "Modulo by zero in gate length".to_string() })
+            return Err(ContractError::CustomError {
+                msg: "Modulo by zero in gate length".to_string(),
+            })
         }
     };
 
