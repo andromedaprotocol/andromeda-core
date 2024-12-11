@@ -46,6 +46,18 @@ impl MockSetAmountSplitter {
 
         self.execute(app, &msg, sender, funds)
     }
+
+    pub fn execute_update_recipients(
+        &self,
+        app: &mut MockApp,
+        sender: Addr,
+        funds: &[Coin],
+        recipients: Vec<AddressAmount>,
+    ) -> ExecuteResult {
+        let msg = mock_set_amount_splitter_update_recipients_msg(recipients);
+
+        self.execute(app, &msg, sender, funds)
+    }
 }
 
 pub fn mock_andromeda_set_amount_splitter() -> Box<dyn Contract<Empty>> {
@@ -71,4 +83,10 @@ pub fn mock_set_amount_splitter_instantiate_msg(
 
 pub fn mock_set_amount_splitter_send_msg(config: Option<Vec<AddressAmount>>) -> ExecuteMsg {
     ExecuteMsg::Send { config }
+}
+
+pub fn mock_set_amount_splitter_update_recipients_msg(
+    recipients: Vec<AddressAmount>,
+) -> ExecuteMsg {
+    ExecuteMsg::UpdateRecipients { recipients }
 }

@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use crate::state::SPLITTER;
 use andromeda_finance::{
     set_amount_splitter::{
-        validate_recipient_list, AddressAmount, ExecuteMsg, GetSplitterConfigResponse,
+        validate_recipient_list, AddressAmount, Cw20HookMsg, ExecuteMsg, GetSplitterConfigResponse,
         InstantiateMsg, QueryMsg, Splitter,
     },
     splitter::validate_expiry_duration,
@@ -16,9 +16,10 @@ use andromeda_std::{
 };
 use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
 use cosmwasm_std::{
-    attr, coins, ensure, entry_point, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env,
-    MessageInfo, Reply, Response, StdError, SubMsg,
+    attr, coin, coins, ensure, entry_point, from_json, Binary, Coin, Deps, DepsMut, Env,
+    MessageInfo, Reply, Response, StdError, SubMsg, Uint128,
 };
+use cw20::{Cw20Coin, Cw20ReceiveMsg};
 use cw_utils::nonpayable;
 
 // version info for migration info
@@ -36,36 +37,21 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    let splitter = match msg.lock_time {
-        Some(ref lock_time) => {
-            // New lock time can't be too short
-            ensure!(
-                lock_time.get_time(&env.block).seconds() >= ONE_DAY,
-                ContractError::LockTimeTooShort {}
-            );
-
-            // New lock time can't be too long
-            ensure!(
-                lock_time.get_time(&env.block).seconds() <= ONE_YEAR,
-                ContractError::LockTimeTooLong {}
-            );
-            Splitter {
-                recipients: msg.recipients.clone(),
-                lock: lock_time.get_time(&env.block),
-                default_recipient: msg.default_recipient.clone(),
-            }
-        }
-        None => {
-            Splitter {
-                recipients: msg.recipients.clone(),
-                // If locking isn't desired upon instantiation, it's automatically set to 0
-                lock: Milliseconds::default(),
-                default_recipient: msg.default_recipient.clone(),
-            }
-        }
+    let lock = if let Some(ref lock_time) = msg.lock_time {
+        let lock_seconds = lock_time.get_time(&env.block).seconds();
+        ensure!(lock_seconds >= ONE_DAY, ContractError::LockTimeTooShort {});
+        ensure!(lock_seconds <= ONE_YEAR, ContractError::LockTimeTooLong {});
+        lock_time.get_time(&env.block)
+    } else {
+        Milliseconds::default()
     };
-    // Save kernel address after validating it
+    let splitter = Splitter {
+        recipients: msg.recipients.clone(),
+        lock,
+        default_recipient: msg.default_recipient.clone(),
+    };
 
+    // Save kernel address after validating it
     SPLITTER.save(deps.storage, &splitter)?;
 
     let inst_resp = ADOContract::default().instantiate(
@@ -129,6 +115,7 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
         ExecuteMsg::UpdateDefaultRecipient { recipient } => {
             execute_update_default_recipient(ctx, recipient)
         }
+        ExecuteMsg::Receive(receive_msg) => handle_receive_cw20(ctx, receive_msg),
         ExecuteMsg::Send { config } => execute_send(ctx, config),
         _ => ADOContract::default().execute(ctx, msg),
     }?;
@@ -136,6 +123,102 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
         .add_submessages(action_response.messages)
         .add_attributes(action_response.attributes)
         .add_events(action_response.events))
+}
+
+pub fn handle_receive_cw20(
+    ctx: ExecuteContext,
+    receive_msg: Cw20ReceiveMsg,
+) -> Result<Response, ContractError> {
+    let ExecuteContext { ref info, .. } = ctx;
+    nonpayable(info)?;
+
+    let asset_sent = info.sender.clone().into_string();
+    let amount_sent = receive_msg.amount;
+    let sender = receive_msg.sender;
+
+    ensure!(
+        !amount_sent.is_zero(),
+        ContractError::InvalidFunds {
+            msg: "Cannot send a 0 amount".to_string()
+        }
+    );
+
+    match from_json(&receive_msg.msg)? {
+        Cw20HookMsg::Send { config } => {
+            execute_send_cw20(ctx, sender, amount_sent, asset_sent, config)
+        }
+    }
+}
+
+fn execute_send_cw20(
+    ctx: ExecuteContext,
+    sender: String,
+    amount: Uint128,
+    asset: String,
+    config: Option<Vec<AddressAmount>>,
+) -> Result<Response, ContractError> {
+    let ExecuteContext { deps, info, .. } = ctx;
+
+    let coin = coin(amount.u128(), asset.clone());
+
+    let splitter = SPLITTER.load(deps.storage)?;
+
+    let splitter_recipients = if let Some(config) = config {
+        validate_recipient_list(deps.as_ref(), config.clone())?;
+        config
+    } else {
+        splitter.recipients
+    };
+
+    let mut msgs: Vec<SubMsg> = Vec::new();
+    let mut remainder_funds = coin.amount;
+
+    for recipient in splitter_recipients.clone() {
+        // Find the recipient's corresponding denom for the current iteration of the sent funds
+        let recipient_coin = recipient
+            .coins
+            .clone()
+            .into_iter()
+            .find(|coin| coin.denom == asset);
+
+        if let Some(recipient_coin) = recipient_coin {
+            // Deduct from total amount
+            remainder_funds = remainder_funds
+                .checked_sub(recipient_coin.amount)
+                .map_err(|_| ContractError::InsufficientFunds {})?;
+
+            let recipient_funds =
+                cosmwasm_std::coin(recipient_coin.amount.u128(), recipient_coin.denom);
+
+            let amp_msg = recipient.recipient.generate_msg_cw20(
+                &deps.as_ref(),
+                Cw20Coin {
+                    address: recipient_funds.denom.clone(),
+                    amount: recipient_funds.amount,
+                },
+            )?;
+            msgs.push(amp_msg);
+        }
+    }
+
+    if !remainder_funds.is_zero() {
+        let remainder_recipient = splitter
+            .default_recipient
+            .unwrap_or(Recipient::new(sender, None));
+        let cw20_msg = remainder_recipient.generate_msg_cw20(
+            &deps.as_ref(),
+            Cw20Coin {
+                address: asset,
+                amount: remainder_funds,
+            },
+        )?;
+        msgs.push(cw20_msg);
+    }
+
+    Ok(Response::new()
+        .add_submessages(msgs)
+        .add_attribute("action", "send")
+        .add_attribute("sender", info.sender.to_string()))
 }
 
 fn execute_update_default_recipient(
@@ -260,14 +343,9 @@ fn execute_send(
                 .default_recipient
                 .clone()
                 .unwrap_or(Recipient::new(info.sender.to_string(), None));
-            let msg = SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-                to_address: remainder_recipient
-                    .address
-                    .get_raw_address(&deps.as_ref())?
-                    .into_string(),
-                amount: coins(remainder_funds.u128(), denom),
-            }));
-            msgs.push(msg);
+            let native_msg = remainder_recipient
+                .generate_direct_msg(&deps.as_ref(), coins(remainder_funds.u128(), denom))?;
+            msgs.push(native_msg);
         }
     }
 
