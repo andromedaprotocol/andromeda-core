@@ -1,0 +1,35 @@
+[package]
+name = "andromeda-schema"
+version = "0.1.0-beta"
+edition = "2021"
+rust-version = "1.75.0"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+# for more explicit tests, cargo test --features=backtraces
+backtraces = ["cosmwasm-std/backtraces"]
+# use library feature to disable all instantiate/execute/query exports
+library = []
+testing = ["cw-multi-test", "andromeda-testing"]
+
+
+[dependencies]
+cosmwasm-std = { workspace = true }
+cosmwasm-schema = { workspace = true }
+cw-storage-plus = { workspace = true }
+cw-json = { git = "https://github.com/SlayerAnsh/cw-json.git" }
+serde_json = { workspace = true }
+test-case = { workspace = true }
+
+andromeda-std = { workspace = true }
+andromeda-modules = { workspace = true }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+cw-orch = { workspace = true }
+cw-multi-test = { workspace = true, optional = true }
+andromeda-testing = { workspace = true, optional = true }
+
+[dev-dependencies]
+andromeda-app = { workspace = true }
