@@ -37,36 +37,21 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    let splitter = match msg.lock_time {
-        Some(ref lock_time) => {
-            // New lock time can't be too short
-            ensure!(
-                lock_time.get_time(&env.block).seconds() >= ONE_DAY,
-                ContractError::LockTimeTooShort {}
-            );
-
-            // New lock time can't be too long
-            ensure!(
-                lock_time.get_time(&env.block).seconds() <= ONE_YEAR,
-                ContractError::LockTimeTooLong {}
-            );
-            Splitter {
-                recipients: msg.recipients.clone(),
-                lock: lock_time.get_time(&env.block),
-                default_recipient: msg.default_recipient.clone(),
-            }
-        }
-        None => {
-            Splitter {
-                recipients: msg.recipients.clone(),
-                // If locking isn't desired upon instantiation, it's automatically set to 0
-                lock: Milliseconds::default(),
-                default_recipient: msg.default_recipient.clone(),
-            }
-        }
+    let lock = if let Some(ref lock_time) = msg.lock_time {
+        let lock_seconds = lock_time.get_time(&env.block).seconds();
+        ensure!(lock_seconds >= ONE_DAY, ContractError::LockTimeTooShort {});
+        ensure!(lock_seconds <= ONE_YEAR, ContractError::LockTimeTooLong {});
+        lock_time.get_time(&env.block)
+    } else {
+        Milliseconds::default()
     };
-    // Save kernel address after validating it
+    let splitter = Splitter {
+        recipients: msg.recipients.clone(),
+        lock,
+        default_recipient: msg.default_recipient.clone(),
+    };
 
+    // Save kernel address after validating it
     SPLITTER.save(deps.storage, &splitter)?;
 
     let inst_resp = ADOContract::default().instantiate(

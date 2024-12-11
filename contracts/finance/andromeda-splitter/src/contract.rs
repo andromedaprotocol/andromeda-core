@@ -28,23 +28,15 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    let splitter = match msg.lock_time {
-        Some(ref lock_time) => {
-            let time = validate_expiry_duration(lock_time, &env.block)?;
-            Splitter {
-                recipients: msg.recipients.clone(),
-                lock: time,
-                default_recipient: msg.default_recipient.clone(),
-            }
-        }
-        None => {
-            Splitter {
-                recipients: msg.recipients.clone(),
-                // If locking isn't desired upon instantiation, it's automatically set to 0
-                lock: Milliseconds::default(),
-                default_recipient: msg.default_recipient.clone(),
-            }
-        }
+    let splitter = Splitter {
+        recipients: msg.recipients.clone(),
+        lock: msg
+            .clone()
+            .lock_time
+            .map(|lock_time| validate_expiry_duration(&lock_time, &env.block))
+            .transpose()?
+            .unwrap_or_default(),
+        default_recipient: msg.default_recipient.clone(),
     };
     // Save kernel address after validating it
 
