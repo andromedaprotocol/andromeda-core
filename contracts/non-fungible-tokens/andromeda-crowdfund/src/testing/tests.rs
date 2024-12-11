@@ -1205,7 +1205,7 @@ mod test {
                 expected_stage: CampaignStage::FAILED,
             },
             EndCampaignTestCase {
-                name: "Cannot end non-expired campaign".to_string(),  // Changed name to better reflect behavior
+                name: "Cannot end non-expired campaign".to_string(), // Changed name to better reflect behavior
                 stage: CampaignStage::ONGOING,
                 sender: MOCK_DEFAULT_OWNER.to_string(),
                 current_capital: Uint128::new(0u128),
@@ -1213,7 +1213,7 @@ mod test {
                 end_time: MillisecondsExpiration::from_seconds(env.block.time.seconds() + 1000),
                 denom: Asset::Cw20Token(AndrAddr::from_string(MOCK_CW20_CONTRACT.to_string())),
                 expected_res: Err(ContractError::CampaignNotExpired {}),
-                expected_stage: CampaignStage::ONGOING,  // Stage won't change on error
+                expected_stage: CampaignStage::ONGOING, // Stage won't change on error
             },
             EndCampaignTestCase {
                 name: "End campaign from unauthorized sender".to_string(),
@@ -1302,7 +1302,7 @@ mod test {
     #[test]
     fn test_execute_discard_campaign() {
         let env: Env = mock_env();
-        
+
         let test_cases: Vec<DiscardCampaign> = vec![
             DiscardCampaign {
                 name: "Discard campaign using native token".to_string(),

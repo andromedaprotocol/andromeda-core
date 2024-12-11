@@ -400,6 +400,7 @@ dependencies = [
  "andromeda-cw20-staking",
  "andromeda-cw721",
  "andromeda-date-time",
+ "andromeda-distance",
  "andromeda-economics",
  "andromeda-ibc-registry",
  "andromeda-kernel",
@@ -463,6 +464,7 @@ dependencies = [
  "cosmwasm-schema 1.5.8",
  "cosmwasm-std 1.5.8",
  "cw-multi-test",
+ "cw-orch",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
 ]

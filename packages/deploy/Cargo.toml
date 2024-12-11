@@ -80,6 +80,7 @@ andromeda-rates = { path = "../../contracts/modules/andromeda-rates" }
 # Math Contracts
 andromeda-counter = { path = "../../contracts/math/andromeda-counter" }
 andromeda-curve = { path = "../../contracts/math/andromeda-curve" }
+andromeda-distance = { path = "../../contracts/math/andromeda-distance" }
 andromeda-date-time = { path = "../../contracts/math/andromeda-date-time" }
 andromeda-shunting = { path = "../../contracts/math/andromeda-shunting" }
 
