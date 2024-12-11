@@ -8,8 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Unreleased
 
 ### Added
-- Added optional config for Send in Splitter contracts [(#686)](https://github.com/andromedaprotocol/andromeda-core/pull/686)
 
+- Added optional config for Send in Splitter contracts [(#686)](https://github.com/andromedaprotocol/andromeda-core/pull/686)
+- Added CW20 suppport in Splitter contracts [(#703)](https://github.com/andromedaprotocol/andromeda-core/pull/703)
+- Matrix ADO [(#539)](https://github.com/andromedaprotocol/andromeda-core/pull/539)
 - Added Distance ADO [(#570)](https://github.com/andromedaprotocol/andromeda-core/pull/570)
 
 ### Changed
