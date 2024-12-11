@@ -400,6 +400,7 @@ dependencies = [
  "andromeda-cw20-staking",
  "andromeda-cw721",
  "andromeda-date-time",
+ "andromeda-distance",
  "andromeda-economics",
  "andromeda-ibc-registry",
  "andromeda-kernel",

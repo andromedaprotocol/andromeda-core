@@ -16,6 +16,7 @@ use andromeda_ibc_registry::IBCRegistryContract;
 use andromeda_kernel::KernelContract;
 use andromeda_lockdrop::LockdropContract;
 use andromeda_marketplace::MarketplaceContract;
+use andromeda_distance::DistanceContract;
 use andromeda_merkle_airdrop::MerkleAirdropContract;
 use andromeda_primitive::PrimitiveContract;
 use andromeda_rate_limiting_withdrawals::RateLimitingWithdrawalsContract;
@@ -82,6 +83,7 @@ pub fn all_contracts() -> Vec<DeployableContract> {
         deployable!(AuctionContract),
         deployable!(CrowdfundContract),
         deployable!(MarketplaceContract),
+        deployable!(DistanceContract),
     ]
 }
 
