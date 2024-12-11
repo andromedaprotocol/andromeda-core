@@ -17,8 +17,8 @@ use andromeda_std::{
     error::ContractError,
 };
 use cosmwasm_std::{
-    attr, ensure, entry_point, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
-    Reply, Response, StdError, SubMsg, Uint128,
+    attr, ensure, entry_point, Binary, Coin, Deps, DepsMut, Env, MessageInfo, Reply, Response,
+    StdError, SubMsg, Uint128,
 };
 use cw_utils::nonpayable;
 
@@ -328,13 +328,9 @@ fn execute_send(
         let remainder_recipient = splitter
             .default_recipient
             .unwrap_or(Recipient::new(info.sender.to_string(), None));
-        msgs.push(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-            to_address: remainder_recipient
-                .address
-                .get_raw_address(&deps.as_ref())?
-                .into_string(),
-            amount: remainder_funds,
-        })));
+        let native_msg =
+            remainder_recipient.generate_direct_msg(&deps.as_ref(), remainder_funds)?;
+        msgs.push(native_msg);
     }
 
     // // Generates the SubMsg intended for the kernel
