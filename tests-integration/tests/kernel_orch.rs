@@ -1,12 +1,12 @@
 use andromeda_adodb::ADODBContract;
 use andromeda_counter::CounterContract;
-use andromeda_data_storage::counter::{
-    CounterRestriction, ExecuteMsg as CounterExecuteMsg, GetCurrentAmountResponse,
-    InstantiateMsg as CounterInstantiateMsg, State,
-};
 use andromeda_economics::EconomicsContract;
 use andromeda_finance::splitter::{
     AddressPercent, ExecuteMsg as SplitterExecuteMsg, InstantiateMsg as SplitterInstantiateMsg,
+};
+use andromeda_math::counter::{
+    CounterRestriction, ExecuteMsg as CounterExecuteMsg, GetCurrentAmountResponse,
+    InstantiateMsg as CounterInstantiateMsg, State,
 };
 
 use andromeda_kernel::KernelContract;
@@ -238,7 +238,7 @@ fn test_kernel_ibc_execute_only() {
     };
 
     let current_count: GetCurrentAmountResponse = counter_osmosis
-        .query(&andromeda_data_storage::counter::QueryMsg::GetCurrentAmount {})
+        .query(&andromeda_math::counter::QueryMsg::GetCurrentAmount {})
         .unwrap();
     assert_eq!(current_count.current_amount, 1);
 }
@@ -577,7 +577,7 @@ fn test_kernel_ibc_execute_only_multi_hop() {
     // Send a message to the counter on andromeda
 
     let current_count: GetCurrentAmountResponse = counter_andromeda
-        .query(&andromeda_data_storage::counter::QueryMsg::GetCurrentAmount {})
+        .query(&andromeda_math::counter::QueryMsg::GetCurrentAmount {})
         .unwrap();
     assert_eq!(current_count.current_amount, 1);
 }
@@ -1500,6 +1500,7 @@ fn test_kernel_ibc_funds_and_execute_msg() {
                 lock_time: None,
                 kernel_address: kernel_osmosis.address().unwrap().into_string(),
                 owner: None,
+                default_recipient: None,
             },
             None,
             None,
@@ -1514,7 +1515,7 @@ fn test_kernel_ibc_funds_and_execute_msg() {
                         "ibc://osmosis/{}",
                         splitter_osmosis.address().unwrap()
                     )),
-                    message: to_json_binary(&SplitterExecuteMsg::Send {}).unwrap(),
+                    message: to_json_binary(&SplitterExecuteMsg::Send { config: None }).unwrap(),
                     funds: vec![Coin {
                         denom: "juno".to_string(),
                         amount: Uint128::new(100),
@@ -2143,6 +2144,7 @@ fn test_kernel_ibc_funds_and_execute_msg_unhappy() {
                 lock_time: None,
                 kernel_address: kernel_osmosis.address().unwrap().into_string(),
                 owner: None,
+                default_recipient: None,
             },
             None,
             None,

@@ -18,7 +18,7 @@ fn test_splitter() {
     let mut router = mock_app(None);
     let andr = MockAndromedaBuilder::new(&mut router, "admin")
         .with_wallets(vec![
-            ("owner", vec![coin(1000, "uandr")]),
+            ("owner", vec![coin(10000, "uandr")]),
             ("recipient1", vec![]),
             ("recipient2", vec![]),
         ])
@@ -44,8 +44,13 @@ fn test_splitter() {
         },
     ];
 
-    let splitter_init_msg =
-        mock_splitter_instantiate_msg(splitter_recipients, andr.kernel.addr().clone(), None, None);
+    let splitter_init_msg = mock_splitter_instantiate_msg(
+        splitter_recipients,
+        andr.kernel.addr().clone(),
+        None,
+        None,
+        None,
+    );
     let splitter_app_component = AppComponent {
         name: "splitter".to_string(),
         component_type: ComponentType::new(splitter_init_msg),
@@ -68,7 +73,7 @@ fn test_splitter() {
 
     let token = coin(1000, "uandr");
     splitter
-        .execute_send(&mut router, owner.clone(), &[token])
+        .execute_send(&mut router, owner.clone(), &[token.clone()], None)
         .unwrap();
 
     let balance_1 = router.wrap().query_balance(recipient_1, "uandr").unwrap();
@@ -76,4 +81,21 @@ fn test_splitter() {
 
     assert_eq!(balance_1.amount, Uint128::from(200u128));
     assert_eq!(balance_2.amount, Uint128::from(800u128));
+
+    // Test with config
+    let custom_recipients = vec![AddressPercent {
+        recipient: Recipient::from_string(recipient_1.to_string()),
+        percent: Decimal::from_str("0.5").unwrap(),
+    }];
+
+    splitter
+        .execute_send(
+            &mut router,
+            owner.clone(),
+            &[token],
+            Some(custom_recipients),
+        )
+        .unwrap();
+    let balance_1 = router.wrap().query_balance(recipient_1, "uandr").unwrap();
+    assert_eq!(balance_1.amount, Uint128::from(200u128 + 500u128));
 }

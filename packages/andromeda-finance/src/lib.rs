@@ -1,6 +1,5 @@
 pub mod conditional_splitter;
 pub mod cross_chain_swap;
-pub mod fixed_multisig;
 pub mod rate_limiting_withdrawals;
 pub mod set_amount_splitter;
 pub mod splitter;
