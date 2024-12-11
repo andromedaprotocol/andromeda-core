@@ -119,7 +119,7 @@ pub enum CampaignStage {
     /// Stage when campaign failed to meet the target cap before expiration
     FAILED,
     /// Stage when campaign is discarded
-    DISCARDED
+    DISCARDED,
 }
 
 impl ToString for CampaignStage {
