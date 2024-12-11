@@ -11,6 +11,7 @@ use andromeda_cw20::CW20Contract;
 use andromeda_cw20_exchange::Cw20ExchangeContract;
 use andromeda_cw20_staking::CW20StakingContract;
 use andromeda_cw721::CW721Contract;
+use andromeda_distance::DistanceContract;
 use andromeda_economics::EconomicsContract;
 use andromeda_ibc_registry::IBCRegistryContract;
 use andromeda_kernel::KernelContract;
@@ -82,6 +83,7 @@ pub fn all_contracts() -> Vec<DeployableContract> {
         deployable!(AuctionContract),
         deployable!(CrowdfundContract),
         deployable!(MarketplaceContract),
+        deployable!(DistanceContract),
     ]
 }
 

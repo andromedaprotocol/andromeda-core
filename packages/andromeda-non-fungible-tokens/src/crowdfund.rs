@@ -118,6 +118,8 @@ pub enum CampaignStage {
     SUCCESS,
     /// Stage when campaign failed to meet the target cap before expiration
     FAILED,
+    /// Stage when campaign is discarded
+    DISCARDED,
 }
 
 impl ToString for CampaignStage {
@@ -128,6 +130,7 @@ impl ToString for CampaignStage {
             Self::ONGOING => "ONGOING".to_string(),
             Self::SUCCESS => "SUCCESS".to_string(),
             Self::FAILED => "FAILED".to_string(),
+            Self::DISCARDED => "DISCARDED".to_string(),
         }
     }
 }
