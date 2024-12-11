@@ -335,7 +335,6 @@ fn test_successful_crowdfund_app_native(setup: TestCase) {
 }
 
 #[rstest]
-#[rstest]
 fn test_crowdfund_app_native_discard(
     #[with(true, Some(mock_recipient_with_invalid_msg("./splitter")))] setup: TestCase,
 ) {
