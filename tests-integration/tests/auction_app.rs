@@ -93,6 +93,7 @@ fn test_auction_app_modules() {
         andr.kernel.addr().to_string(),
         None,
         None,
+        None,
     );
     let splitter_component = AppComponent::new(
         "splitter".to_string(),
@@ -147,7 +148,7 @@ fn test_auction_app_modules() {
                 rate_type: LocalRateType::Deductive,
                 recipient: Recipient::new(
                     splitter.addr(),
-                    Some(to_json_binary(&mock_splitter_send_msg()).unwrap()),
+                    Some(to_json_binary(&mock_splitter_send_msg(None)).unwrap()),
                 ),
                 value: LocalRateValue::Percent(PercentRate {
                     percent: Decimal::percent(50),
