@@ -17,8 +17,8 @@ use andromeda_std::{
     error::ContractError,
 };
 use cosmwasm_std::{
-    attr, ensure, entry_point, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
-    Reply, Response, StdError, SubMsg, Uint128,
+    attr, ensure, entry_point, Binary, Coin, Deps, DepsMut, Env, MessageInfo, Reply, Response,
+    StdError, SubMsg, Uint128,
 };
 use cw_utils::nonpayable;
 
@@ -46,6 +46,7 @@ pub fn instantiate(
             Splitter {
                 recipients: msg.recipients,
                 lock: time,
+                default_recipient: msg.default_recipient,
             }
         }
         None => {
@@ -53,6 +54,7 @@ pub fn instantiate(
                 recipients: msg.recipients,
                 // If locking isn't desired upon instantiation, it's automatically set to 0
                 lock: Milliseconds::default(),
+                default_recipient: msg.default_recipient,
             }
         }
     };
@@ -109,8 +111,10 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
         ExecuteMsg::AddRecipient { recipient } => execute_add_recipient(ctx, recipient),
         ExecuteMsg::RemoveRecipient { recipient } => execute_remove_recipient(ctx, recipient),
         ExecuteMsg::UpdateLock { lock_time } => execute_update_lock(ctx, lock_time),
-
-        ExecuteMsg::Send {} => execute_send(ctx),
+        ExecuteMsg::UpdateDefaultRecipient { recipient } => {
+            execute_update_default_recipient(ctx, recipient)
+        }
+        ExecuteMsg::Send { config } => execute_send(ctx, config),
 
         _ => ADOContract::default().execute(ctx, msg),
     }
@@ -161,6 +165,49 @@ pub fn execute_update_recipient_weight(
         SPLITTER.save(deps.storage, &splitter)?;
     };
     Ok(Response::default().add_attribute("action", "updated_recipient_weight"))
+}
+
+fn execute_update_default_recipient(
+    ctx: ExecuteContext,
+    recipient: Option<Recipient>,
+) -> Result<Response, ContractError> {
+    let ExecuteContext {
+        deps, info, env, ..
+    } = ctx;
+
+    nonpayable(&info)?;
+
+    ensure!(
+        ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {}
+    );
+
+    let mut splitter = SPLITTER.load(deps.storage)?;
+
+    // Can't call this function while the lock isn't expired
+    ensure!(
+        splitter.lock.is_expired(&env.block),
+        ContractError::ContractLocked {}
+    );
+
+    if let Some(ref recipient) = recipient {
+        recipient.validate(&deps.as_ref())?;
+    }
+    splitter.default_recipient = recipient;
+
+    SPLITTER.save(deps.storage, &splitter)?;
+
+    Ok(Response::default().add_attributes(vec![
+        attr("action", "update_default_recipient"),
+        attr(
+            "recipient",
+            splitter
+                .default_recipient
+                .map_or("no default recipient".to_string(), |r| {
+                    r.address.to_string()
+                }),
+        ),
+    ]))
 }
 
 pub fn execute_add_recipient(
@@ -215,13 +262,17 @@ pub fn execute_add_recipient(
     let new_splitter = Splitter {
         recipients: splitter.recipients,
         lock: splitter.lock,
+        default_recipient: splitter.default_recipient,
     };
     SPLITTER.save(deps.storage, &new_splitter)?;
 
     Ok(Response::default().add_attributes(vec![attr("action", "added_recipient")]))
 }
 
-fn execute_send(ctx: ExecuteContext) -> Result<Response, ContractError> {
+fn execute_send(
+    ctx: ExecuteContext,
+    config: Option<Vec<AddressWeight>>,
+) -> Result<Response, ContractError> {
     let ExecuteContext { deps, info, .. } = ctx;
     // Amount of coins sent should be at least 1
     ensure!(
@@ -235,21 +286,27 @@ fn execute_send(ctx: ExecuteContext) -> Result<Response, ContractError> {
         info.funds.len() < 5,
         ContractError::ExceedsMaxAllowedCoins {}
     );
-
     let splitter = SPLITTER.load(deps.storage)?;
+    let splitter_recipients = if let Some(config) = config {
+        // Max 100 recipients
+        ensure!(config.len() <= 100, ContractError::ReachedRecipientLimit {});
+        config
+    } else {
+        splitter.recipients
+    };
     let mut msgs: Vec<SubMsg> = Vec::new();
     let mut remainder_funds = info.funds.clone();
     let mut total_weight = Uint128::zero();
 
     // Calculate the total weight of all recipients
-    for recipient_addr in &splitter.recipients {
+    for recipient_addr in &splitter_recipients {
         let recipient_weight = recipient_addr.weight;
         total_weight = total_weight.checked_add(recipient_weight)?;
     }
 
     // Each recipient recieves the funds * (the recipient's weight / total weight of all recipients)
     // The remaining funds go to the sender of the function
-    for recipient_addr in &splitter.recipients {
+    for recipient_addr in &splitter_recipients {
         let recipient_weight = recipient_addr.weight;
         let mut vec_coin: Vec<Coin> = Vec::new();
         for (i, coin) in info.funds.iter().enumerate() {
@@ -268,10 +325,12 @@ fn execute_send(ctx: ExecuteContext) -> Result<Response, ContractError> {
     remainder_funds.retain(|x| x.amount > Uint128::zero());
 
     if !remainder_funds.is_empty() {
-        msgs.push(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-            to_address: info.sender.to_string(),
-            amount: remainder_funds,
-        })));
+        let remainder_recipient = splitter
+            .default_recipient
+            .unwrap_or(Recipient::new(info.sender.to_string(), None));
+        let native_msg =
+            remainder_recipient.generate_direct_msg(&deps.as_ref(), remainder_funds)?;
+        msgs.push(native_msg);
     }
 
     // // Generates the SubMsg intended for the kernel
@@ -393,6 +452,7 @@ fn execute_remove_recipient(
         let new_splitter = Splitter {
             recipients: splitter.recipients,
             lock: splitter.lock,
+            default_recipient: splitter.default_recipient,
         };
         SPLITTER.save(deps.storage, &new_splitter)?;
     };

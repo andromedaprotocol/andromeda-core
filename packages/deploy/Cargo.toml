@@ -22,7 +22,7 @@ cw721-base = { workspace = true }
 cw-utils = { workspace = true }
 cw2 = { workspace = true }
 cw-asset = { version = "3.0.0" }
-thiserror = { version = "2.0.3" }
+thiserror = { version = "2.0.6" }
 lazy_static = "1"
 hex = "0.4"
 regex = { version = "1.9.1", default-features = false }
@@ -80,6 +80,7 @@ andromeda-rates = { path = "../../contracts/modules/andromeda-rates" }
 # Math Contracts
 andromeda-counter = { path = "../../contracts/math/andromeda-counter" }
 andromeda-curve = { path = "../../contracts/math/andromeda-curve" }
+andromeda-distance = { path = "../../contracts/math/andromeda-distance" }
 andromeda-date-time = { path = "../../contracts/math/andromeda-date-time" }
 andromeda-shunting = { path = "../../contracts/math/andromeda-shunting" }
 

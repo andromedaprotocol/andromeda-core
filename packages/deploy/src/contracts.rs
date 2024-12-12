@@ -1,4 +1,5 @@
 use andromeda_address_list::AddressListContract;
+use andromeda_adodb::ADODBContract;
 use andromeda_app_contract::AppContract;
 use andromeda_auction::AuctionContract;
 use andromeda_boolean::BooleanContract;
@@ -10,6 +11,10 @@ use andromeda_cw20::CW20Contract;
 use andromeda_cw20_exchange::Cw20ExchangeContract;
 use andromeda_cw20_staking::CW20StakingContract;
 use andromeda_cw721::CW721Contract;
+use andromeda_distance::DistanceContract;
+use andromeda_economics::EconomicsContract;
+use andromeda_ibc_registry::IBCRegistryContract;
+use andromeda_kernel::KernelContract;
 use andromeda_lockdrop::LockdropContract;
 use andromeda_marketplace::MarketplaceContract;
 use andromeda_merkle_airdrop::MerkleAirdropContract;
@@ -24,6 +29,7 @@ use andromeda_string_storage::StringStorageContract;
 use andromeda_timelock::TimelockContract;
 use andromeda_validator_staking::ValidatorStakingContract;
 use andromeda_vesting::VestingContract;
+use andromeda_vfs::VFSContract;
 use andromeda_weighted_distribution_splitter::WeightedDistributionSplitterContract;
 
 use cw_orch::prelude::*;
@@ -77,5 +83,16 @@ pub fn all_contracts() -> Vec<DeployableContract> {
         deployable!(AuctionContract),
         deployable!(CrowdfundContract),
         deployable!(MarketplaceContract),
+        deployable!(DistanceContract),
+    ]
+}
+
+pub fn os_contracts() -> Vec<DeployableContract> {
+    vec![
+        deployable!(ADODBContract),
+        deployable!(KernelContract),
+        deployable!(VFSContract),
+        deployable!(EconomicsContract),
+        deployable!(IBCRegistryContract),
     ]
 }
