@@ -3,15 +3,11 @@ use andromeda_data_storage::form::{
     SubmissionInfo,
 };
 use andromeda_modules::schema::{GetSchemaResponse as SchemaResponse, QueryMsg as SchemaQueryMsg};
-use andromeda_std::{
-    amp::AndrAddr,
-    common::{encode_binary, expiration::get_and_validate_start_time},
-    error::ContractError,
-};
+use andromeda_std::{amp::AndrAddr, common::encode_binary, error::ContractError};
 use cosmwasm_std::{Deps, Env, Storage};
 use cosmwasm_std::{QueryRequest, WasmQuery};
 
-use crate::execute::{milliseconds_from_expiration, validate_form_is_opened};
+use crate::execute::validate_form_is_opened;
 use crate::state::{submissions, CONFIG, SCHEMA_ADO_ADDRESS};
 
 pub fn get_schema(deps: Deps) -> Result<GetSchemaResponse, ContractError> {
@@ -28,13 +24,9 @@ pub fn get_form_status(
     storage: &dyn Storage,
     env: Env,
 ) -> Result<GetFormStatusResponse, ContractError> {
-    let (expiration, _) = get_and_validate_start_time(&env, None)?;
-    let current_time = milliseconds_from_expiration(expiration)?;
     let config = CONFIG.load(storage)?;
-    let saved_start_time = config.start_time;
-    let saved_end_time = config.end_time;
     // validate if the Form is opened
-    let res_validation = validate_form_is_opened(current_time, saved_start_time, saved_end_time);
+    let res_validation = validate_form_is_opened(env, config);
     if res_validation.is_ok() {
         Ok(GetFormStatusResponse::Opened)
     } else {

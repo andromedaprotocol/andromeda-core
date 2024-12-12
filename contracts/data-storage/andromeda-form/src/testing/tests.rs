@@ -342,7 +342,7 @@ fn test_success_open_form(
     500000000000_u64,
     1000000000000_u64,
     ContractError::CustomError {
-        msg: format!("Not opened yet. Will be opend at {:?}", Milliseconds::from_nanos(2000000000000_u64)),
+        msg: format!("Not opened yet. Will be opened at {:?}", Milliseconds::from_nanos(2000000000000_u64)),
     };
     "Invalid timestamp at execution with saved start and end time-1"
 )]
@@ -384,7 +384,7 @@ fn test_success_open_form(
     500000000000_u64,
     1000000000000_u64,
     ContractError::CustomError {
-        msg: format!("Not opened yet. Will be opend at {:?}", Milliseconds::from_nanos(2000000000000_u64)),
+        msg: format!("Not opened yet. Will be opened at {:?}", Milliseconds::from_nanos(2000000000000_u64)),
     };
     "Invalid timestamp at execution with start time"
 )]

@@ -3,18 +3,15 @@ use andromeda_modules::schema::{QueryMsg as SchemaQueryMsg, ValidateDataResponse
 use andromeda_std::{
     ado_contract::ADOContract,
     amp::AndrAddr,
-    common::{
-        actions::call_action, context::ExecuteContext, encode_binary,
-        expiration::get_and_validate_start_time, Milliseconds,
-    },
+    common::{actions::call_action, context::ExecuteContext, encode_binary, Milliseconds},
     error::ContractError,
 };
-use cosmwasm_std::{ensure, QueryRequest, Response, Uint64, WasmQuery};
+use cosmwasm_std::{ensure, Env, QueryRequest, Response, Uint64, WasmQuery};
 use cw_utils::{nonpayable, Expiration};
 
 use crate::{
     contract::SUBMIT_FORM_ACTION,
-    state::{submissions, CONFIG, SCHEMA_ADO_ADDRESS, SUBMISSION_ID},
+    state::{submissions, Config, CONFIG, SCHEMA_ADO_ADDRESS, SUBMISSION_ID},
 };
 
 const MAX_LIMIT: u64 = 100u64;
@@ -63,14 +60,8 @@ pub fn execute_submit_form(
         sender.clone(),
     )?;
 
-    let (expiration, _) = get_and_validate_start_time(&ctx.env, None)?;
-    let current_time = milliseconds_from_expiration(expiration)?;
-
     let config = CONFIG.load(ctx.deps.storage)?;
-    let saved_start_time = config.start_time;
-    let saved_end_time = config.end_time;
-    // validate if the Form is opened
-    validate_form_is_opened(current_time, saved_start_time, saved_end_time)?;
+    validate_form_is_opened(ctx.env, config.clone())?;
 
     let schema_ado_address = SCHEMA_ADO_ADDRESS.load(ctx.deps.storage)?;
     let data_to_validate = data.clone();
@@ -193,12 +184,8 @@ pub fn execute_edit_submission(
             msg: "Edit submission is not allowed".to_string(),
         }
     );
-    let (expiration, _) = get_and_validate_start_time(&ctx.env, None)?;
-    let current_time = milliseconds_from_expiration(expiration)?;
-    let saved_start_time = config.start_time;
-    let saved_end_time = config.end_time;
     // validate if the Form is opened
-    validate_form_is_opened(current_time, saved_start_time, saved_end_time)?;
+    validate_form_is_opened(ctx.env, config.clone())?;
 
     let schema_ado_address = SCHEMA_ADO_ADDRESS.load(ctx.deps.storage)?;
     let data_to_validate = data.clone();
@@ -268,41 +255,57 @@ pub fn execute_open_form(ctx: ExecuteContext) -> Result<Response, ContractError>
 
     let mut config = CONFIG.load(ctx.deps.storage)?;
 
-    let (start_expiration, _) = get_and_validate_start_time(&ctx.env, None)?;
-    let start_time = milliseconds_from_expiration(start_expiration)?;
+    let current_time = Milliseconds::from_nanos(ctx.env.block.time.nanos());
+    let start_time = current_time.plus_milliseconds(Milliseconds(1));
 
     let saved_start_time = config.start_time;
     let saved_end_time = config.end_time;
     match saved_start_time {
+        // If a start time is already configured:
         Some(saved_start_time) => match saved_end_time {
+            // If both start time and end time are configured:
             Some(saved_end_time) => {
+                // If the start time is in the future, update the start time to the current start_time value.
                 if saved_start_time.gt(&start_time) {
                     config.start_time = Some(start_time);
                     CONFIG.save(ctx.deps.storage, &config)?;
-                } else if saved_end_time.gt(&start_time) {
+                }
+                // If the form is still open (end time is in the future), return an error as the form is already open.
+                else if saved_end_time.gt(&start_time) {
                     return Err(ContractError::CustomError {
                         msg: format!("Already opened. Opened time {:?}", saved_start_time),
                     });
-                } else {
+                }
+                // Otherwise, the form was closed. Update the start time to reopen the form and clear the end time.
+                else {
                     config.start_time = Some(start_time);
                     config.end_time = None;
                     CONFIG.save(ctx.deps.storage, &config)?;
                 }
             }
+
+            // If only the start time is configured (no end time):
             None => {
+                // Update the start time if the saved start time is in the future.
                 if saved_start_time.gt(&start_time) {
                     config.start_time = Some(start_time);
                     CONFIG.save(ctx.deps.storage, &config)?;
-                } else {
+                }
+                // Otherwise, the form is already open, return an error.
+                else {
                     return Err(ContractError::CustomError {
                         msg: format!("Already opened. Opened time {:?}", saved_start_time),
                     });
                 }
             }
         },
+        // If no start time is configured:
         None => {
+            // Set the start time to the current start_time value.
             config.start_time = Some(start_time);
             CONFIG.save(ctx.deps.storage, &config)?;
+
+            // If an end time exists and is in the past, clear it to reopen the form.
             if let Some(saved_end_time) = saved_end_time {
                 if start_time.gt(&saved_end_time) {
                     config.end_time = None;
@@ -327,49 +330,65 @@ pub fn execute_close_form(ctx: ExecuteContext) -> Result<Response, ContractError
         ContractError::Unauthorized {}
     );
 
-    let (end_expiration, _) = get_and_validate_start_time(&ctx.env, None)?;
-    let end_time = milliseconds_from_expiration(end_expiration)?;
+    let current_time = Milliseconds::from_nanos(ctx.env.block.time.nanos());
+    let end_time = current_time.plus_milliseconds(Milliseconds(1));
 
     let mut config = CONFIG.load(ctx.deps.storage)?;
     let saved_start_time = config.start_time;
     let saved_end_time = config.end_time;
     match saved_end_time {
+        // If an end time is configured:
         Some(saved_end_time) => match saved_start_time {
+            // If both start time and end time are configured:
             Some(saved_start_time) => {
+                // If the form start time is in the future, return an error indicating the form isn't open yet.
                 if saved_start_time.gt(&end_time) {
                     return Err(ContractError::CustomError {
-                        msg: format!("Not opened yet. Will be opend at {:?}", saved_start_time),
+                        msg: format!("Not opened yet. Will be opened at {:?}", saved_start_time),
                     });
-                } else if saved_end_time.gt(&end_time) {
+                }
+                // If the form is still open (end time is in the future), update the end time to the current end_time value.
+                else if saved_end_time.gt(&end_time) {
                     config.end_time = Some(end_time);
                     CONFIG.save(ctx.deps.storage, &config)?;
-                } else {
+                }
+                // Otherwise, the form has already been closed. Return an error.
+                else {
                     return Err(ContractError::CustomError {
                         msg: format!("Already closed. Closed at {:?}", saved_end_time),
                     });
                 }
             }
+            // If no start time is configured:
             None => {
+                // Return an error indicating the form has not been opened yet.
                 return Err(ContractError::CustomError {
                     msg: "Not opened yet".to_string(),
-                })
+                });
             }
         },
+        // If no end time is configured:
         None => match saved_start_time {
+            // If the start time exists:
             Some(saved_start_time) => {
+                // If the start time is in the future, return an error indicating the form isn't open yet.
                 if saved_start_time.gt(&end_time) {
                     return Err(ContractError::CustomError {
-                        msg: format!("Not opened yet. Will be opend at {:?}", saved_start_time),
+                        msg: format!("Not opened yet. Will be opened at {:?}", saved_start_time),
                     });
-                } else {
+                }
+                // Otherwise, set the end time to the current end_time value to close the form.
+                else {
                     config.end_time = Some(end_time);
                     CONFIG.save(ctx.deps.storage, &config)?;
                 }
             }
+            // If no start time exists:
             None => {
+                // Return an error indicating the form has not been opened yet.
                 return Err(ContractError::CustomError {
                     msg: "Not opened yet".to_string(),
-                })
+                });
             }
         },
     }
@@ -390,16 +409,15 @@ pub fn milliseconds_from_expiration(expiration: Expiration) -> Result<Millisecon
     }
 }
 
-pub fn validate_form_is_opened(
-    current_time: Milliseconds,
-    saved_start_time: Option<Milliseconds>,
-    saved_end_time: Option<Milliseconds>,
-) -> Result<(), ContractError> {
+pub fn validate_form_is_opened(env: Env, config: Config) -> Result<(), ContractError> {
+    let current_time = Milliseconds::from_nanos(env.block.time.nanos());
+    let saved_start_time = config.start_time;
+    let saved_end_time = config.end_time;
     match saved_start_time {
         Some(saved_start_time) => {
             if saved_start_time.gt(&current_time) {
                 return Err(ContractError::CustomError {
-                    msg: format!("Not opened yet. Will be opend at {:?}", saved_start_time),
+                    msg: format!("Not opened yet. Will be opened at {:?}", saved_start_time),
                 });
             }
             if let Some(saved_end_time) = saved_end_time {
