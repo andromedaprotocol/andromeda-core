@@ -1092,7 +1092,6 @@ mod test {
         soft_cap: Option<Uint128>,
         end_time: MillisecondsExpiration,
         denom: Asset,
-        is_discard: bool,
         expected_res: Result<Response, ContractError>,
         expected_stage: CampaignStage,
     }
@@ -1126,7 +1125,6 @@ mod test {
                 soft_cap: Some(Uint128::new(9000u128)),
                 end_time: MillisecondsExpiration::from_seconds(env.block.time.seconds()),
                 denom: Asset::NativeToken(MOCK_NATIVE_DENOM.to_string()),
-                is_discard: false,
                 expected_res: Ok(Response::new()
                     .add_attribute("action", "end_campaign")
                     .add_attribute("result", CampaignStage::SUCCESS.to_string())
@@ -1153,7 +1151,6 @@ mod test {
                 soft_cap: Some(Uint128::new(9000u128)),
                 end_time: MillisecondsExpiration::from_seconds(env.block.time.seconds()),
                 denom: Asset::Cw20Token(AndrAddr::from_string(MOCK_CW20_CONTRACT.to_string())),
-                is_discard: false,
                 expected_res: Ok(Response::new()
                     .add_attribute("action", "end_campaign")
                     .add_attribute("result", CampaignStage::SUCCESS.to_string())
@@ -1190,7 +1187,6 @@ mod test {
                 soft_cap: Some(Uint128::new(11000u128)),
                 end_time: MillisecondsExpiration::from_seconds(env.block.time.seconds()),
                 denom: Asset::Cw20Token(AndrAddr::from_string(MOCK_CW20_CONTRACT.to_string())),
-                is_discard: false,
                 expected_res: Ok(Response::new()
                     .add_attribute("action", "end_campaign")
                     .add_attribute("result", CampaignStage::FAILED.to_string())
@@ -1209,56 +1205,15 @@ mod test {
                 expected_stage: CampaignStage::FAILED,
             },
             EndCampaignTestCase {
-                name: "Discard campaign using native token".to_string(),
-                stage: CampaignStage::ONGOING,
-                sender: MOCK_DEFAULT_OWNER.to_string(),
-                current_capital: Uint128::new(10000u128),
-                soft_cap: Some(Uint128::new(9000u128)),
-                end_time: MillisecondsExpiration::from_seconds(env.block.time.seconds()),
-                denom: Asset::NativeToken(MOCK_NATIVE_DENOM.to_string()),
-                is_discard: true,
-                expected_res: Ok(Response::new()
-                    .add_attribute("action", "discard_campaign")
-                    .add_attribute("result", CampaignStage::FAILED.to_string())
-                    .add_submessage(SubMsg::reply_on_error(
-                        CosmosMsg::Wasm(WasmMsg::Execute {
-                            contract_addr: "economics_contract".to_string(),
-                            msg: to_json_binary(&EconomicsExecuteMsg::PayFee {
-                                payee: Addr::unchecked(MOCK_DEFAULT_OWNER.to_string()),
-                                action: "DiscardCampaign".to_string(),
-                            })
-                            .unwrap(),
-                            funds: vec![],
-                        }),
-                        ReplyId::PayFee.repr(),
-                    ))),
-                expected_stage: CampaignStage::FAILED,
-            },
-            EndCampaignTestCase {
-                name: "Pause campaign".to_string(),
+                name: "Cannot end non-expired campaign".to_string(), // Changed name to better reflect behavior
                 stage: CampaignStage::ONGOING,
                 sender: MOCK_DEFAULT_OWNER.to_string(),
                 current_capital: Uint128::new(0u128),
                 soft_cap: None,
                 end_time: MillisecondsExpiration::from_seconds(env.block.time.seconds() + 1000),
                 denom: Asset::Cw20Token(AndrAddr::from_string(MOCK_CW20_CONTRACT.to_string())),
-                is_discard: false,
-                expected_res: Ok(Response::new()
-                    .add_attribute("action", "end_campaign")
-                    .add_attribute("result", CampaignStage::READY.to_string())
-                    .add_submessage(SubMsg::reply_on_error(
-                        CosmosMsg::Wasm(WasmMsg::Execute {
-                            contract_addr: "economics_contract".to_string(),
-                            msg: to_json_binary(&EconomicsExecuteMsg::PayFee {
-                                payee: Addr::unchecked(MOCK_DEFAULT_OWNER.to_string()),
-                                action: "EndCampaign".to_string(),
-                            })
-                            .unwrap(),
-                            funds: vec![],
-                        }),
-                        ReplyId::PayFee.repr(),
-                    ))),
-                expected_stage: CampaignStage::READY,
+                expected_res: Err(ContractError::CampaignNotExpired {}),
+                expected_stage: CampaignStage::ONGOING, // Stage won't change on error
             },
             EndCampaignTestCase {
                 name: "End campaign from unauthorized sender".to_string(),
@@ -1268,7 +1223,6 @@ mod test {
                 soft_cap: None,
                 end_time: MillisecondsExpiration::from_seconds(env.block.time.seconds()),
                 denom: Asset::NativeToken(MOCK_NATIVE_DENOM.to_string()),
-                is_discard: false,
                 expected_res: Err(ContractError::Unauthorized {}),
                 expected_stage: CampaignStage::ONGOING,
             },
@@ -1280,7 +1234,6 @@ mod test {
                 soft_cap: None,
                 end_time: MillisecondsExpiration::from_seconds(env.block.time.seconds()),
                 denom: Asset::NativeToken(MOCK_NATIVE_DENOM.to_string()),
-                is_discard: false,
                 expected_res: Err(ContractError::InvalidCampaignOperation {
                     operation: "end_campaign".to_string(),
                     stage: CampaignStage::READY.to_string(),
@@ -1295,7 +1248,7 @@ mod test {
                 soft_cap: Some(Uint128::new(11000u128)),
                 end_time: MillisecondsExpiration::from_seconds(env.block.time.seconds() + 100),
                 denom: Asset::NativeToken(MOCK_NATIVE_DENOM.to_string()),
-                is_discard: false,
+
                 expected_res: Err(ContractError::CampaignNotExpired {}),
                 expected_stage: CampaignStage::ONGOING,
             },
@@ -1317,11 +1270,7 @@ mod test {
 
             set_campaign_config(deps.as_mut().storage, &mock_config);
             set_campaign_duration(deps.as_mut().storage, &duration);
-            let msg = if test.is_discard {
-                ExecuteMsg::DiscardCampaign {}
-            } else {
-                ExecuteMsg::EndCampaign {}
-            };
+            let msg = ExecuteMsg::EndCampaign {};
 
             let res = execute(deps.as_mut(), env.clone(), info, msg);
             assert_eq!(res, test.expected_res, "Test case: {}", test.name);
@@ -1330,6 +1279,123 @@ mod test {
                     CAMPAIGN_STAGE
                         .load(&deps.storage)
                         .unwrap_or(CampaignStage::SUCCESS),
+                    test.expected_stage,
+                    "Test case: {}",
+                    test.name
+                );
+            }
+        }
+    }
+
+    struct DiscardCampaign {
+        name: String,
+        stage: CampaignStage,
+        sender: String,
+        current_capital: Uint128,
+        soft_cap: Option<Uint128>,
+        end_time: MillisecondsExpiration,
+        denom: Asset,
+        expected_res: Result<Response, ContractError>,
+        expected_stage: CampaignStage,
+    }
+
+    #[test]
+    fn test_execute_discard_campaign() {
+        let env: Env = mock_env();
+
+        let test_cases: Vec<DiscardCampaign> = vec![
+            DiscardCampaign {
+                name: "Discard campaign using native token".to_string(),
+                stage: CampaignStage::READY,
+                sender: MOCK_DEFAULT_OWNER.to_string(),
+                current_capital: Uint128::zero(),
+                soft_cap: Some(Uint128::new(9000u128)),
+                end_time: MillisecondsExpiration::from_seconds(env.block.time.seconds()),
+                denom: Asset::NativeToken(MOCK_NATIVE_DENOM.to_string()),
+                expected_res: Ok(Response::new()
+                    .add_attribute("action", "discard_campaign")
+                    .add_attribute("result", "DISCARDED")
+                    .add_submessage(SubMsg::reply_on_error(
+                        CosmosMsg::Wasm(WasmMsg::Execute {
+                            contract_addr: "economics_contract".to_string(),
+                            msg: to_json_binary(&EconomicsExecuteMsg::PayFee {
+                                payee: Addr::unchecked(MOCK_DEFAULT_OWNER),
+                                action: "DiscardCampaign".to_string(),
+                            })
+                            .unwrap(),
+                            funds: vec![],
+                        }),
+                        ReplyId::PayFee.repr(),
+                    ))),
+                expected_stage: CampaignStage::DISCARDED,
+            },
+            DiscardCampaign {
+                name: "Cannot discard campaign in SUCCESS state".to_string(),
+                stage: CampaignStage::SUCCESS,
+                sender: MOCK_DEFAULT_OWNER.to_string(),
+                current_capital: Uint128::zero(),
+                soft_cap: Some(Uint128::new(9000u128)),
+                end_time: MillisecondsExpiration::from_seconds(env.block.time.seconds()),
+                denom: Asset::NativeToken(MOCK_NATIVE_DENOM.to_string()),
+                expected_res: Err(ContractError::InvalidCampaignOperation {
+                    operation: "discard_campaign".to_string(),
+                    stage: CampaignStage::SUCCESS.to_string(),
+                }),
+                expected_stage: CampaignStage::SUCCESS,
+            },
+            DiscardCampaign {
+                name: "Cannot discard campaign in FAILED state".to_string(),
+                stage: CampaignStage::FAILED,
+                sender: MOCK_DEFAULT_OWNER.to_string(),
+                current_capital: Uint128::zero(),
+                soft_cap: Some(Uint128::new(9000u128)),
+                end_time: MillisecondsExpiration::from_seconds(env.block.time.seconds()),
+                denom: Asset::NativeToken(MOCK_NATIVE_DENOM.to_string()),
+                expected_res: Err(ContractError::InvalidCampaignOperation {
+                    operation: "discard_campaign".to_string(),
+                    stage: CampaignStage::FAILED.to_string(),
+                }),
+                expected_stage: CampaignStage::FAILED,
+            },
+            DiscardCampaign {
+                name: "Cannot discard campaign with unauthorized sender".to_string(),
+                stage: CampaignStage::READY,
+                sender: "unauthorized".to_string(),
+                current_capital: Uint128::zero(),
+                soft_cap: Some(Uint128::new(9000u128)),
+                end_time: MillisecondsExpiration::from_seconds(env.block.time.seconds()),
+                denom: Asset::NativeToken(MOCK_NATIVE_DENOM.to_string()),
+                expected_res: Err(ContractError::Unauthorized {}),
+                expected_stage: CampaignStage::READY,
+            },
+        ];
+
+        for test in test_cases {
+            let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
+            let mut mock_config = mock_campaign_config(test.denom.clone());
+            let _ = init(deps.as_mut(), mock_config.clone(), vec![]);
+
+            let info = mock_info(&test.sender, &[]);
+            set_campaign_stage(deps.as_mut().storage, &test.stage);
+            set_current_capital(deps.as_mut().storage, &test.current_capital);
+
+            mock_config.soft_cap = test.soft_cap;
+            let duration = Duration {
+                start_time: None,
+                end_time: test.end_time,
+            };
+
+            set_campaign_config(deps.as_mut().storage, &mock_config);
+            set_campaign_duration(deps.as_mut().storage, &duration);
+            let msg = ExecuteMsg::DiscardCampaign {};
+
+            let res = execute(deps.as_mut(), env.clone(), info, msg);
+            assert_eq!(res, test.expected_res, "Test case: {}", test.name);
+            if res.is_ok() {
+                assert_eq!(
+                    CAMPAIGN_STAGE
+                        .load(&deps.storage)
+                        .unwrap_or(CampaignStage::DISCARDED),
                     test.expected_stage,
                     "Test case: {}",
                     test.name

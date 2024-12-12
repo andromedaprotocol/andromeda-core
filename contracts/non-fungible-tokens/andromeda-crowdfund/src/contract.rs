@@ -141,8 +141,8 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
         } => execute_start_campaign(ctx, start_time, end_time, presale),
         ExecuteMsg::PurchaseTiers { orders } => execute_purchase_tiers(ctx, orders),
         ExecuteMsg::Receive(msg) => handle_receive_cw20(ctx, msg),
-        ExecuteMsg::EndCampaign {} => execute_end_campaign(ctx, false),
-        ExecuteMsg::DiscardCampaign {} => execute_end_campaign(ctx, true),
+        ExecuteMsg::EndCampaign {} => execute_end_campaign(ctx),
+        ExecuteMsg::DiscardCampaign {} => execute_discard_campaign(ctx),
         ExecuteMsg::Claim {} => execute_claim(ctx),
         _ => ADOContract::default().execute(ctx, msg),
     }?;
@@ -370,10 +370,41 @@ fn handle_receive_cw20(
     }
 }
 
-fn execute_end_campaign(
-    mut ctx: ExecuteContext,
-    is_discard: bool,
-) -> Result<Response, ContractError> {
+fn execute_discard_campaign(mut ctx: ExecuteContext) -> Result<Response, ContractError> {
+    nonpayable(&ctx.info)?;
+
+    let ExecuteContext {
+        ref mut deps,
+        ref info,
+        ..
+    } = ctx;
+
+    // Only owner can discard the campaign
+    let contract = ADOContract::default();
+    ensure!(
+        contract.is_contract_owner(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {}
+    );
+
+    let curr_stage = get_current_stage(deps.storage);
+    // Ensure that the campaign is in ONGOING, or READY stage
+    ensure!(
+        curr_stage == CampaignStage::ONGOING || curr_stage == CampaignStage::READY,
+        ContractError::InvalidCampaignOperation {
+            operation: "discard_campaign".to_string(),
+            stage: curr_stage.to_string()
+        }
+    );
+
+    // Set to DISCARDED state
+    set_current_stage(deps.storage, CampaignStage::DISCARDED)?;
+
+    Ok(Response::new()
+        .add_attribute("action", "discard_campaign")
+        .add_attribute("result", CampaignStage::DISCARDED.to_string()))
+}
+
+fn execute_end_campaign(mut ctx: ExecuteContext) -> Result<Response, ContractError> {
     nonpayable(&ctx.info)?;
 
     let ExecuteContext {
@@ -390,66 +421,49 @@ fn execute_end_campaign(
         ContractError::Unauthorized {}
     );
 
-    // Campaign is finished already successfully
-    // NOTE: ending failed campaign has no effect and is ignored
     let curr_stage = get_current_stage(deps.storage);
-    let action = if is_discard {
-        "discard_campaign"
-    } else {
-        "end_campaign"
-    };
-
     ensure!(
-        curr_stage == CampaignStage::ONGOING
-            || (is_discard && curr_stage != CampaignStage::SUCCESS),
+        curr_stage == CampaignStage::ONGOING,
         ContractError::InvalidCampaignOperation {
-            operation: action.to_string(),
+            operation: "end_campaign".to_string(),
             stage: curr_stage.to_string()
         }
     );
 
+    let duration = get_duration(deps.storage)?;
     let current_capital = get_current_capital(deps.storage);
     let campaign_config = get_config(deps.storage)?;
-    let duration = get_duration(deps.storage)?;
     let soft_cap = campaign_config.soft_cap.unwrap_or(Uint128::one());
-    let end_time = duration.end_time;
 
-    // Decide the next stage
-    let next_stage = match (
-        is_discard,
+    // Decide the next stage based on capital and expiry
+    let final_stage = match (
+        duration.end_time.is_expired(&env.block),
         current_capital >= soft_cap,
-        end_time.is_expired(&env.block),
     ) {
-        // discard the campaign as there are some unexpected issues
-        (true, _, _) => CampaignStage::FAILED,
-        // Capital hit the target capital and thus campaign is successful
-        (false, true, _) => CampaignStage::SUCCESS,
-        // Capital did hit the target capital and is expired, failed
-        (false, false, true) => CampaignStage::FAILED,
-        // Capital did not hit the target capital and campaign is not expired
-        (false, false, false) => {
-            if current_capital != Uint128::zero() {
-                // Need to wait until campaign expires
-                return Err(ContractError::CampaignNotExpired {});
-            }
-            // No capital is gained and thus it can be paused and restart again
-            CampaignStage::READY
+        // Success if soft cap is met
+        (_, true) => CampaignStage::SUCCESS,
+        // Failed if expired and soft cap not met
+        (true, false) => CampaignStage::FAILED,
+        // Error only if not expired and soft cap not met
+        (false, false) => {
+            return Err(ContractError::CampaignNotExpired {});
         }
     };
 
-    set_current_stage(deps.storage, next_stage.clone())?;
+    set_current_stage(deps.storage, final_stage.clone())?;
 
     let mut resp = Response::new()
-        .add_attribute("action", action)
-        .add_attribute("result", next_stage.to_string());
-    if next_stage == CampaignStage::SUCCESS {
+        .add_attribute("action", "end_campaign")
+        .add_attribute("result", final_stage.to_string());
+
+    // If campaign is successful, withdraw funds to recipient
+    if final_stage == CampaignStage::SUCCESS {
         let campaign_denom = match campaign_config.denom {
             Asset::Cw20Token(ref cw20_token) => Asset::Cw20Token(AndrAddr::from_string(
                 cw20_token.get_raw_address(&deps.as_ref())?.to_string(),
             )),
             denom => denom,
         };
-
         resp = resp.add_submessage(withdraw_to_recipient(
             ctx,
             campaign_config.withdrawal_recipient,
@@ -457,6 +471,7 @@ fn execute_end_campaign(
             campaign_denom,
         )?);
     }
+
     Ok(resp)
 }
 
@@ -618,7 +633,9 @@ fn execute_claim(ctx: ExecuteContext) -> Result<Response, ContractError> {
 
     let sub_response = match curr_stage {
         CampaignStage::SUCCESS => handle_successful_claim(deps.branch(), &info.sender)?,
-        CampaignStage::FAILED => handle_failed_claim(deps.branch(), &info.sender)?,
+        CampaignStage::FAILED | CampaignStage::DISCARDED => {
+            handle_failed_claim(deps.branch(), &info.sender)?
+        }
         _ => {
             return Err(ContractError::InvalidCampaignOperation {
                 operation: "Claim".to_string(),
