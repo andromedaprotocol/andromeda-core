@@ -54,7 +54,11 @@ fn test_set_point_with_tax() {
         action: "PointSetPoint".to_string(),
         rate: Rate::Local(LocalRate {
             rate_type: LocalRateType::Additive,
-            recipients: vec![],
+            recipient: Recipient {
+                address: AndrAddr::from_string(String::default()),
+                msg: None,
+                ibc_recovery_address: None,
+            },
             value: LocalRateValue::Percent(PercentRate {
                 percent: Decimal::one(),
             }),
@@ -74,11 +78,11 @@ fn test_set_point_with_tax() {
 
     let rate: Rate = Rate::Local(LocalRate {
         rate_type: LocalRateType::Additive,
-        recipients: vec![Recipient {
+        recipient: Recipient {
             address: AndrAddr::from_string(tax_recipient.to_string()),
             msg: None,
             ibc_recovery_address: None,
-        }],
+        },
         value: LocalRateValue::Flat(coin(20_u128, "uandr")),
         description: None,
     });

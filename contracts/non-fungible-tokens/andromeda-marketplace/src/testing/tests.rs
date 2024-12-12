@@ -780,11 +780,11 @@ fn test_execute_buy_with_tax_and_royalty_insufficient_funds() {
 
     let rate = Rate::Local(LocalRate {
         rate_type: LocalRateType::Additive,
-        recipients: vec![Recipient {
+        recipient: Recipient {
             address: AndrAddr::from_string("tax_recipient".to_string()),
             msg: None,
             ibc_recovery_address: None,
-        }],
+        },
         value: LocalRateValue::Percent(PercentRate {
             percent: Decimal::percent(50),
         }),
@@ -836,11 +836,11 @@ fn test_execute_buy_with_tax_and_royalty_insufficient_funds_cw20() {
 
     let rate = Rate::Local(LocalRate {
         rate_type: LocalRateType::Additive,
-        recipients: vec![Recipient {
+        recipient: Recipient {
             address: AndrAddr::from_string("tax_recipient".to_string()),
             msg: None,
             ibc_recovery_address: None,
-        }],
+        },
         value: LocalRateValue::Percent(PercentRate {
             percent: Decimal::percent(50),
         }),
@@ -913,11 +913,11 @@ fn test_execute_buy_with_tax_and_royalty_works() {
 
     let rate = Rate::Local(LocalRate {
         rate_type: LocalRateType::Additive,
-        recipients: vec![Recipient {
+        recipient: Recipient {
             address: AndrAddr::from_string("tax_recipient".to_string()),
             msg: None,
             ibc_recovery_address: None,
-        }],
+        },
         value: LocalRateValue::Percent(PercentRate {
             percent: Decimal::percent(50),
         }),

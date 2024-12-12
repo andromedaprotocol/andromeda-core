@@ -89,11 +89,11 @@ fn test_transfer() {
     // Set a royalty of 10% to be paid to royalty_recipient
     let rate = Rate::Local(LocalRate {
         rate_type: LocalRateType::Deductive,
-        recipients: vec![Recipient {
+        recipient: Recipient {
             address: AndrAddr::from_string("royalty_recipient".to_string()),
             msg: None,
             ibc_recovery_address: None,
-        }],
+        },
         value: LocalRateValue::Percent(PercentRate {
             percent: Decimal::percent(10),
         }),
@@ -195,11 +195,11 @@ fn test_send() {
 
     let rate = Rate::Local(LocalRate {
         rate_type: LocalRateType::Additive,
-        recipients: vec![Recipient {
+        recipient: Recipient {
             address: AndrAddr::from_string("rates_recipient".to_string()),
             msg: None,
             ibc_recovery_address: None,
-        }],
+        },
         value: LocalRateValue::Percent(PercentRate {
             percent: Decimal::percent(10),
         }),
