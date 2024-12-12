@@ -764,7 +764,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-pow-cw721"
-version = "0.1.0-beta"
+version = "0.1.0-b.1"
 dependencies = [
  "andromeda-app",
  "andromeda-non-fungible-tokens",

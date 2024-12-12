@@ -1,6 +1,6 @@
 [package]
 name = "andromeda-pow-cw721"
-version = "0.1.0-beta"
+version = "0.1.0-b.1"
 authors = ["Mitar Djakovic <mdjakovic0920@gmail.com>"]
 edition = "2021"
 rust-version = "1.75.0"
