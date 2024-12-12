@@ -33,6 +33,7 @@ fn kernel() {
         andr.kernel.addr().clone(),
         None,
         None,
+        None,
     );
 
     let res = andr
@@ -75,7 +76,7 @@ fn kernel() {
             &mut router,
             owner.clone(),
             splitter.addr(),
-            mock_splitter_send_msg(),
+            mock_splitter_send_msg(None),
             vec![coin(100, "uandr")],
             None,
         )

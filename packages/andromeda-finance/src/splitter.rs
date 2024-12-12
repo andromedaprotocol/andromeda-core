@@ -8,6 +8,7 @@ use andromeda_std::{
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{ensure, BlockInfo, Decimal, Deps};
+use cw20::Cw20ReceiveMsg;
 
 #[cw_serde]
 pub struct AddressPercent {
@@ -28,6 +29,8 @@ pub struct Splitter {
     pub recipients: Vec<AddressPercent>,
     /// The lock's expiration time
     pub lock: MillisecondsExpiration,
+    /// The address that will receive any surplus funds, defaults to the message sender.
+    pub default_recipient: Option<Recipient>,
 }
 
 #[andr_instantiate]
@@ -37,6 +40,7 @@ pub struct InstantiateMsg {
     /// sent the amount sent will be divided amongst these recipients depending on their assigned percentage.
     pub recipients: Vec<AddressPercent>,
     pub lock_time: Option<Expiry>,
+    pub default_recipient: Option<Recipient>,
 }
 
 impl InstantiateMsg {
@@ -45,15 +49,31 @@ impl InstantiateMsg {
     }
 }
 
+#[cw_serde]
+pub enum Cw20HookMsg {
+    Send { config: Option<Vec<AddressPercent>> },
+}
+
 #[andr_exec]
 #[cw_serde]
 pub enum ExecuteMsg {
     /// Update the recipients list. Only executable by the contract owner when the contract is not locked.
-    UpdateRecipients { recipients: Vec<AddressPercent> },
+    UpdateRecipients {
+        recipients: Vec<AddressPercent>,
+    },
     /// Used to lock/unlock the contract allowing the config to be updated.
-    UpdateLock { lock_time: Expiry },
+    UpdateLock {
+        lock_time: Expiry,
+    },
+    /// Update the default recipient. Only executable by the contract owner when the contract is not locked.
+    UpdateDefaultRecipient {
+        recipient: Option<Recipient>,
+    },
+    Receive(Cw20ReceiveMsg),
     /// Divides any attached funds to the message amongst the recipients list.
-    Send {},
+    Send {
+        config: Option<Vec<AddressPercent>>,
+    },
 }
 
 #[andr_query]

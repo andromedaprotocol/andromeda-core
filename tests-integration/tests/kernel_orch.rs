@@ -1763,6 +1763,7 @@ fn test_kernel_ibc_funds_and_execute_msg() {
                 lock_time: None,
                 kernel_address: kernel_osmosis.address().unwrap().into_string(),
                 owner: None,
+                default_recipient: None,
             },
             None,
             None,
@@ -1777,7 +1778,7 @@ fn test_kernel_ibc_funds_and_execute_msg() {
                         "ibc://osmosis/{}",
                         splitter_osmosis.address().unwrap()
                     )),
-                    message: to_json_binary(&SplitterExecuteMsg::Send {}).unwrap(),
+                    message: to_json_binary(&SplitterExecuteMsg::Send { config: None }).unwrap(),
                     funds: vec![Coin {
                         denom: "juno".to_string(),
                         amount: Uint128::new(100),
@@ -2406,6 +2407,7 @@ fn test_kernel_ibc_funds_and_execute_msg_unhappy() {
                 lock_time: None,
                 kernel_address: kernel_osmosis.address().unwrap().into_string(),
                 owner: None,
+                default_recipient: None,
             },
             None,
             None,

@@ -75,6 +75,7 @@ pub enum ContractError {
         operation: String,
         validator: String,
     },
+
     #[error("Invalid Campaign Operation: {operation} on {stage}")]
     InvalidCampaignOperation { operation: String, stage: String },
 
