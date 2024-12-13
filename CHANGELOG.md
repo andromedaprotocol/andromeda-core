@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Matrix ADO [(#539)](https://github.com/andromedaprotocol/andromeda-core/pull/539)
 - Added Distance ADO [(#570)](https://github.com/andromedaprotocol/andromeda-core/pull/570)
 - Rates: Handle cross-chain recipients [(#671)](https://github.com/andromedaprotocol/andromeda-core/pull/671)
+- Permissions: Permissioned Actors in AndromedaQuery [(#717)](https://github.com/andromedaprotocol/andromeda-core/pull/717)
 
 ### Changed
 - Rates: Limit rates recipient to only one address [(#669)](https://github.com/andromedaprotocol/andromeda-core/pull/669)
