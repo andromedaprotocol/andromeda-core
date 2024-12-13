@@ -1,12 +1,13 @@
 use core::fmt;
 
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::Env;
+use cosmwasm_std::{Deps, Env};
 
 use crate::{
     amp::AndrAddr,
     common::{expiration::Expiry, MillisecondsExpiration},
     error::ContractError,
+    os::aos_querier::AOSQuerier,
 };
 
 #[cw_serde]
@@ -211,6 +212,23 @@ impl fmt::Display for LocalPermission {
 pub enum Permission {
     Local(LocalPermission),
     Contract(AndrAddr),
+}
+
+impl Permission {
+    pub fn get_permission(
+        &mut self,
+        deps: Deps,
+        actor: &str,
+    ) -> Result<LocalPermission, ContractError> {
+        match self {
+            Self::Local(local_permission) => Ok(local_permission.clone()),
+            Self::Contract(contract_address) => {
+                let addr = contract_address.get_raw_address(&deps)?;
+                let local_permission = AOSQuerier::get_permission(&deps.querier, &addr, actor)?;
+                Ok(local_permission)
+            }
+        }
+    }
 }
 
 impl fmt::Display for Permission {

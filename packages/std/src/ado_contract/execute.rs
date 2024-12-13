@@ -147,16 +147,41 @@ impl<'a> ADOContract<'a> {
         );
         let owner = self.owner.load(deps.storage)?;
 
-        // Clear all permissions
-        self.execute_clear_all_permissions(ExecuteContext::new(
-            deps.branch(),
-            MessageInfo {
-                sender: owner,
-                funds: vec![],
-            },
-            env,
-        ))?;
+        // Get all permissioned actions and actors in one pass
+        let permissioned_actions = self.query_permissioned_actions(deps.as_ref())?;
+        if !permissioned_actions.is_empty() {
+            // Take first action to check permission structure
+            let first_action = &permissioned_actions[0];
+            let first_actor = self
+                .query_permissioned_actors(deps.as_ref(), first_action.clone(), None, None, None)?
+                .first()
+                .cloned();
 
+            if let Some(actor) = first_actor {
+                // Check permission structure using first actor
+                let permissions = self.query_permissions(deps.as_ref(), &actor, None, None)?;
+                if let Some(permission) = permissions.first() {
+                    let local_permission = permission
+                        .permission
+                        .clone()
+                        .get_permission(deps.as_ref(), actor.as_str())?;
+
+                    // Check if using old permission structure (without 'start' variant)
+                    let json_str = String::from_utf8(to_json_binary(&local_permission)?.0)?;
+                    if !json_str.contains("start") {
+                        // Clear all permissions if using old structure
+                        self.execute_clear_all_permissions(ExecuteContext::new(
+                            deps.branch(),
+                            MessageInfo {
+                                sender: owner,
+                                funds: vec![],
+                            },
+                            env,
+                        ))?;
+                    }
+                }
+            }
+        }
         set_contract_version(deps.storage, contract_name, contract_version)?;
         Ok(Response::default())
     }
