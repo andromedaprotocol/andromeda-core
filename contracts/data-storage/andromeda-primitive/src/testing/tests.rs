@@ -72,7 +72,11 @@ fn test_set_value_with_tax() {
         action: "PrimitiveSetValue".to_string(),
         rate: Rate::Local(LocalRate {
             rate_type: LocalRateType::Additive,
-            recipients: vec![],
+            recipient: Recipient {
+                address: AndrAddr::from_string(String::default()),
+                msg: None,
+                ibc_recovery_address: None,
+            },
             value: LocalRateValue::Percent(PercentRate {
                 percent: Decimal::one(),
             }),
@@ -93,7 +97,11 @@ fn test_set_value_with_tax() {
     // Make sure sender is set as recipient when the recipients vector is empty
     let rate: Rate = Rate::Local(LocalRate {
         rate_type: LocalRateType::Additive,
-        recipients: vec![],
+        recipient: Recipient {
+            address: AndrAddr::from_string("creator".to_string()),
+            msg: None,
+            ibc_recovery_address: None,
+        },
         value: LocalRateValue::Flat(coin(20_u128, MOCK_CW20_CONTRACT)),
         description: None,
     });
@@ -111,7 +119,7 @@ fn test_set_value_with_tax() {
         queried_rates.unwrap(),
         Rate::Local(LocalRate {
             rate_type: LocalRateType::Additive,
-            recipients: vec![Recipient::new(AndrAddr::from_string("creator"), None)],
+            recipient: Recipient::new(AndrAddr::from_string("creator"), None),
             value: LocalRateValue::Flat(coin(20_u128, MOCK_CW20_CONTRACT)),
             description: None,
         })
@@ -119,11 +127,11 @@ fn test_set_value_with_tax() {
 
     let rate: Rate = Rate::Local(LocalRate {
         rate_type: LocalRateType::Additive,
-        recipients: vec![Recipient {
+        recipient: Recipient {
             address: AndrAddr::from_string(tax_recipient.to_string()),
             msg: None,
             ibc_recovery_address: None,
-        }],
+        },
         value: LocalRateValue::Flat(coin(20_u128, "uandr")),
         description: None,
     });

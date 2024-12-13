@@ -1178,6 +1178,7 @@ mod tests {
         contract.owner.save(ctx.deps.storage, &info.sender).unwrap();
 
         let actor = "actor";
+        let actor2 = "actor2";
         let action = "action";
         ADOContract::default()
             .execute_permission_action(ctx, action)
@@ -1190,11 +1191,19 @@ mod tests {
             Permission::Local(LocalPermission::default()),
         )
         .unwrap();
+        ADOContract::set_permission(
+            deps.as_mut().storage,
+            action,
+            actor2,
+            Permission::Local(LocalPermission::default()),
+        )
+        .unwrap();
         let actors = ADOContract::default()
             .query_permissioned_actors(deps.as_ref(), action, None, None, None)
             .unwrap();
 
-        assert_eq!(actors.len(), 1);
+        assert_eq!(actors.len(), 2);
         assert_eq!(actors[0], actor);
+        assert_eq!(actors[1], actor2);
     }
 }
