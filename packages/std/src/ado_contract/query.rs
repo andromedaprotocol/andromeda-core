@@ -55,6 +55,18 @@ impl<'a> ADOContract<'a> {
                 AndromedaQuery::PermissionedActions {} => {
                     encode_binary(&self.query_permissioned_actions(deps)?)
                 }
+                AndromedaQuery::PermissionedActors {
+                    action,
+                    start_after,
+                    limit,
+                    order_by,
+                } => encode_binary(&self.query_permissioned_actors(
+                    deps,
+                    action,
+                    start_after,
+                    limit,
+                    order_by,
+                )?),
                 #[cfg(feature = "rates")]
                 AndromedaQuery::Rates { action } => encode_binary(&self.get_rates(deps, action)?),
 
