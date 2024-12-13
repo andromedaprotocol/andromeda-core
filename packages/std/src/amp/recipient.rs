@@ -58,6 +58,14 @@ impl Recipient {
         self.msg.clone()
     }
 
+    pub fn is_cross_chain(&self) -> bool {
+        let protocol = self.address.get_protocol();
+        match protocol {
+            Some("ibc") => true,
+            _ => false,
+        }
+    }
+
     /// Generates a direct sub message for the given recipient.
     pub fn generate_direct_msg(
         &self,

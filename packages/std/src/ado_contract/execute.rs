@@ -1,3 +1,11 @@
+#[cfg(feature = "rates")]
+use {
+    crate::ado_base::rates::{LocalRate, Rate},
+    crate::amp::Recipient,
+    cw_storage_plus::Path,
+    std::ops::Deref,
+};
+
 use crate::ado_contract::ADOContract;
 use crate::amp::addresses::AndrAddr;
 use crate::amp::messages::AMPPkt;
@@ -14,6 +22,7 @@ use cosmwasm_std::{
     DepsMut, Env, MessageInfo, QuerierWrapper, Response, StdError, Storage, SubMsg, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
+
 use semver::Version;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -144,6 +153,48 @@ impl<'a> ADOContract<'a> {
                 previous_contract: stored.version,
             }
         );
+
+        #[cfg(feature = "rates")]
+        {
+            let all_rates = self.get_all_rates(deps.as_ref())?;
+            for (action, rate) in all_rates.all_rates {
+                match rate {
+                    Rate::Local(local_rate) => {
+                        // Remove if recipient is in old Vec<Recipient> format
+                        if from_json::<Vec<Recipient>>(&to_json_binary(&local_rate.recipient)?)
+                            .is_ok()
+                        {
+                            // Clearing all rates assuming that if one needs to be removed then all of them should be removed
+                            self.rates.clear(deps.storage);
+                        }
+                        // One iteration is enough since the rates are either all valid or invalid
+                        break;
+                    }
+                    Rate::Contract(andr_addr) => {
+                        let contract_addr = andr_addr.get_raw_address(&deps.as_ref())?;
+                        let key_path: Path<Vec<u8>> =
+                            Path::new("rates".as_bytes(), &[action.as_bytes()]);
+
+                        if let Some(remote_rate) = deps
+                            .querier
+                            .query_wasm_raw(&contract_addr, key_path.deref())?
+                        {
+                            // Remove if remote rate's recipient is in old Vec<Recipient> format
+                            if let Ok(local_rate) = from_json::<LocalRate>(&remote_rate) {
+                                if from_json::<Vec<Recipient>>(&to_json_binary(
+                                    &local_rate.recipient,
+                                )?)
+                                .is_ok()
+                                {
+                                    self.rates.clear(deps.storage);
+                                }
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
         set_contract_version(deps.storage, contract_name, contract_version)?;
         Ok(Response::default())
