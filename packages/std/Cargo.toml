@@ -21,7 +21,7 @@ cosmwasm-std = { workspace = true, features = ["ibc3", "cosmwasm_1_2"] }
 cosmwasm-schema = { workspace = true }
 cw-storage-plus = { workspace = true }
 schemars = "0.8.10"
-serde = { version = "1.0.215", default-features = false, features = ["derive"] }
+serde = { version = "1.0.216", default-features = false, features = ["derive"] }
 semver = { workspace = true }
 cw20 = { version = "1.0.1" }
 cw20-base = { workspace = true, features = ["library"] }
