@@ -365,11 +365,18 @@ impl AMPPkt {
         funds: Vec<Coin>,
         id: u64,
     ) -> Result<SubMsg, ContractError> {
+        let contract_addr = funds[0].denom.clone();
+        // Verify that all funds are of the same CW20 token by checking if each fund's denom matches the contract address
+        if !funds.iter().all(|c| c.denom == contract_addr) {
+            return Err(ContractError::InvalidFunds {
+                msg: "All funds must be of the same CW20 token".to_string(),
+            });
+        }
         // Collect total amount of funds
         let total_amount = funds.iter().map(|c| c.amount).sum::<Uint128>();
         let sub_msg = SubMsg::reply_always(
             WasmMsg::Execute {
-                contract_addr: funds[0].denom.clone(),
+                contract_addr,
                 msg: encode_binary(&Cw20ExecuteMsg::Send {
                     contract: address.into(),
                     amount: total_amount,

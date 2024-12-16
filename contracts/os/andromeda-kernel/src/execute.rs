@@ -630,8 +630,12 @@ impl MsgHandler {
 
         match protocol {
             None => self.handle_local_cw20(deps, info, env, ctx.map(|ctx| ctx.ctx), sequence),
-            Some("ibc") => todo!(),
-            _ => todo!(),
+            Some("ibc") => Err(ContractError::NotImplemented {
+                msg: Some("CW20 over IBC not supported".to_string()),
+            }),
+            _ => Err(ContractError::NotImplemented {
+                msg: Some("CW20 over IBC not supported".to_string()),
+            }),
         }
     }
 
