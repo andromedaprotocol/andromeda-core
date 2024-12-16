@@ -729,19 +729,6 @@ fn test_kernel_ibc_funds_only() {
         )
         .unwrap();
 
-    adodb_juno
-        .execute(
-            &os::adodb::ExecuteMsg::Publish {
-                code_id: 4,
-                ado_type: "economics".to_string(),
-                action_fees: None,
-                version: "1.1.1".to_string(),
-                publisher: None,
-            },
-            None,
-        )
-        .unwrap();
-
     economics_juno
         .instantiate(
             &os::economics::InstantiateMsg {
@@ -770,32 +757,6 @@ fn test_kernel_ibc_funds_only() {
                 owner: None,
             },
             None,
-            None,
-        )
-        .unwrap();
-
-    adodb_osmosis
-        .execute(
-            &os::adodb::ExecuteMsg::Publish {
-                code_id: 2,
-                ado_type: "counter".to_string(),
-                action_fees: None,
-                version: "1.0.2".to_string(),
-                publisher: None,
-            },
-            None,
-        )
-        .unwrap();
-
-    adodb_osmosis
-        .execute(
-            &os::adodb::ExecuteMsg::Publish {
-                code_id: 6,
-                ado_type: "economics".to_string(),
-                action_fees: None,
-                version: "1.1.1".to_string(),
-                publisher: None,
-            },
             None,
         )
         .unwrap();
@@ -1275,19 +1236,6 @@ fn test_kernel_ibc_funds_only_multi_hop() {
         )
         .unwrap();
 
-    adodb_osmosis
-        .execute(
-            &os::adodb::ExecuteMsg::Publish {
-                code_id: 2,
-                ado_type: "counter".to_string(),
-                action_fees: None,
-                version: "1.0.2".to_string(),
-                publisher: None,
-            },
-            None,
-        )
-        .unwrap();
-
     kernel_juno
         .execute(
             &ExecuteMsg::UpsertKeyAddress {
@@ -1662,19 +1610,6 @@ fn test_kernel_ibc_funds_and_execute_msg() {
                 ado_type: "splitter".to_string(),
                 action_fees: None,
                 version: "1.0.0".to_string(),
-                publisher: None,
-            },
-            None,
-        )
-        .unwrap();
-
-    adodb_osmosis
-        .execute(
-            &os::adodb::ExecuteMsg::Publish {
-                code_id: 2,
-                ado_type: "counter".to_string(),
-                action_fees: None,
-                version: "1.0.2".to_string(),
                 publisher: None,
             },
             None,
