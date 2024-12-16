@@ -222,19 +222,17 @@ impl LocalRate {
                 msg: to_json_binary(&kernel_msg)?,
                 funds: vec![fee.clone()],
             })
+        } else if is_native {
+            self.recipient
+                .generate_direct_msg(&deps, vec![fee.clone()])?
         } else {
-            if is_native {
-                self.recipient
-                    .generate_direct_msg(&deps, vec![fee.clone()])?
-            } else {
-                self.recipient.generate_msg_cw20(
-                    &deps,
-                    Cw20Coin {
-                        amount: fee.amount,
-                        address: fee.denom.to_string(),
-                    },
-                )?
-            }
+            self.recipient.generate_msg_cw20(
+                &deps,
+                Cw20Coin {
+                    amount: fee.amount,
+                    address: fee.denom.to_string(),
+                },
+            )?
         };
 
         msgs.push(msg);
