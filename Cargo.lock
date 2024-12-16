@@ -608,7 +608,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-kernel"
-version = "1.1.1"
+version = "1.2.0"
 dependencies = [
  "andromeda-std",
  "cosmwasm-schema 1.5.8",
@@ -816,7 +816,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-set-amount-splitter"
-version = "1.2.0-b.1"
+version = "1.2.0-b.2"
 dependencies = [
  "andromeda-app",
  "andromeda-finance",
@@ -853,7 +853,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-splitter"
-version = "2.3.0-b.1"
+version = "2.3.0-b.2"
 dependencies = [
  "andromeda-app",
  "andromeda-finance",
