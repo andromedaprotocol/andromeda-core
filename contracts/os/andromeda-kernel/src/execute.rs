@@ -176,7 +176,7 @@ pub fn handle_receive_cw20(
 
     let asset_sent = info.sender.clone().into_string();
     let amount_sent = receive_msg.amount;
-    let sender = receive_msg.sender;
+    let _sender = receive_msg.sender;
 
     ensure!(
         !amount_sent.is_zero(),
@@ -282,7 +282,6 @@ pub fn amp_receive_cw20(
             env.clone(),
             Some(packet.clone()),
             idx as u64,
-            received_funds.clone(),
         )?;
         res.messages.extend_from_slice(&msg_res.messages);
         res.attributes.extend_from_slice(&msg_res.attributes);
@@ -615,7 +614,6 @@ impl MsgHandler {
         env: Env,
         ctx: Option<AMPPkt>,
         sequence: u64,
-        received_funds: Vec<Coin>,
     ) -> Result<Response, ContractError> {
         let resolved_recipient = if self.message().recipient.is_vfs_path() {
             let vfs_address = KERNEL_ADDRESSES.load(deps.storage, VFS_KEY)?;
