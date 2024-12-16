@@ -41,8 +41,8 @@ pub fn get_all_submissions(
         .idx
         .submission_id
         .range(storage, None, None, cosmwasm_std::Order::Ascending)
-        .map(|r| r.unwrap().1) // Extract the `SubmissionInfo` from the result
-        .collect();
+        .map(|result| result.map(|(_, submission)| submission))
+        .collect::<StdResult<_>>()?;
     Ok(GetAllSubmissionsResponse { all_submissions })
 }
 
