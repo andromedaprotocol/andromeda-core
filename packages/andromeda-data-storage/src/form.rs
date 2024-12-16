@@ -52,6 +52,8 @@ pub enum QueryMsg {
         submission_id: u64,
         wallet_address: AndrAddr,
     },
+    #[returns(GetSubmissionIdsResponse)]
+    GetSubmissionIds { wallet_address: AndrAddr },
     #[returns(GetFormStatusResponse)]
     GetFormStatus {},
 }
@@ -69,6 +71,11 @@ pub struct GetAllSubmissionsResponse {
 #[cw_serde]
 pub struct GetSubmissionResponse {
     pub submission: Option<SubmissionInfo>,
+}
+
+#[cw_serde]
+pub struct GetSubmissionIdsResponse {
+    pub submission_ids: Vec<u64>,
 }
 
 #[cw_serde]

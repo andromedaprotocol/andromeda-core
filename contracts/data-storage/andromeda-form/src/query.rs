@@ -1,10 +1,10 @@
 use andromeda_data_storage::form::{
-    GetAllSubmissionsResponse, GetFormStatusResponse, GetSchemaResponse, GetSubmissionResponse,
-    SubmissionInfo,
+    GetAllSubmissionsResponse, GetFormStatusResponse, GetSchemaResponse, GetSubmissionIdsResponse,
+    GetSubmissionResponse, SubmissionInfo,
 };
 use andromeda_modules::schema::{GetSchemaResponse as SchemaResponse, QueryMsg as SchemaQueryMsg};
 use andromeda_std::{amp::AndrAddr, common::encode_binary, error::ContractError};
-use cosmwasm_std::{Deps, Env, Storage};
+use cosmwasm_std::{Deps, Env, StdResult, Storage};
 use cosmwasm_std::{QueryRequest, WasmQuery};
 
 use crate::execute::validate_form_is_opened;
@@ -55,4 +55,20 @@ pub fn get_submission(
     let submission =
         submissions().may_load(deps.storage, &(submission_id, wallet_address.clone()))?;
     Ok(GetSubmissionResponse { submission })
+}
+
+pub fn get_submission_ids(
+    deps: Deps,
+    wallet_address: AndrAddr,
+) -> Result<GetSubmissionIdsResponse, ContractError> {
+    let submissions_map = submissions();
+    let submission_ids: Vec<u64> = submissions_map
+        .idx
+        .wallet_address
+        .prefix(wallet_address.get_raw_address(&deps)?)
+        .range(deps.storage, None, None, cosmwasm_std::Order::Ascending)
+        .map(|result| result.map(|(_, submission)| submission.submission_id))
+        .collect::<StdResult<_>>()?;
+
+    Ok(GetSubmissionIdsResponse { submission_ids })
 }

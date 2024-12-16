@@ -19,7 +19,9 @@ use andromeda_std::{
 };
 
 use crate::execute::{handle_execute, milliseconds_from_expiration};
-use crate::query::{get_all_submissions, get_form_status, get_schema, get_submission};
+use crate::query::{
+    get_all_submissions, get_form_status, get_schema, get_submission, get_submission_ids,
+};
 use crate::state::{Config, CONFIG, SCHEMA_ADO_ADDRESS, SUBMISSION_ID};
 
 // version info for migration info
@@ -153,6 +155,9 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
             submission_id,
             wallet_address,
         } => encode_binary(&get_submission(deps, submission_id, wallet_address)?),
+        QueryMsg::GetSubmissionIds { wallet_address } => {
+            encode_binary(&get_submission_ids(deps, wallet_address)?)
+        }
         QueryMsg::GetFormStatus {} => encode_binary(&get_form_status(deps.storage, env)?),
         _ => ADOContract::default().query(deps, env, msg),
     }

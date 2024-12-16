@@ -1,7 +1,7 @@
 use andromeda_data_storage::form::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use andromeda_data_storage::form::{
     FormConfig, GetAllSubmissionsResponse, GetFormStatusResponse, GetSchemaResponse,
-    GetSubmissionResponse,
+    GetSubmissionIdsResponse, GetSubmissionResponse,
 };
 use andromeda_std::{
     amp::AndrAddr, error::ContractError, testing::mock_querier::MOCK_KERNEL_CONTRACT,
@@ -175,6 +175,21 @@ pub fn query_submission(
             submission_id,
             wallet_address,
         },
+    );
+    match res {
+        Ok(res) => Ok(from_json(res)?),
+        Err(err) => Err(err),
+    }
+}
+
+pub fn query_submission_ids(
+    deps: Deps,
+    wallet_address: AndrAddr,
+) -> Result<GetSubmissionIdsResponse, ContractError> {
+    let res = query(
+        deps,
+        mock_env(),
+        QueryMsg::GetSubmissionIds { wallet_address },
     );
     match res {
         Ok(res) => Ok(from_json(res)?),

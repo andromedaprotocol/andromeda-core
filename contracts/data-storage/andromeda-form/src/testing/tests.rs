@@ -1,6 +1,6 @@
 use super::mock::{
     close_form, invalid_initialization, open_form, query_all_submissions, query_form_status,
-    query_schema, query_submission, valid_initialization,
+    query_schema, query_submission, query_submission_ids, valid_initialization,
 };
 use andromeda_data_storage::form::{
     FormConfig, GetFormStatusResponse, GetSchemaResponse, SubmissionInfo,
@@ -506,6 +506,16 @@ fn test_submit_form_allowed_multiple_submission() {
         .unwrap()
         .all_submissions;
     assert_eq!(all_submissions.len(), 7_usize);
+
+    let submission_ids = query_submission_ids(deps.as_ref(), AndrAddr::from_string("user1"))
+        .unwrap()
+        .submission_ids;
+    assert_eq!(submission_ids.len(), 2_usize);
+
+    let submission_ids = query_submission_ids(deps.as_ref(), AndrAddr::from_string("user5"))
+        .unwrap()
+        .submission_ids;
+    assert_eq!(submission_ids.len(), 0_usize);
 
     delete_submission(
         deps.as_mut(),
