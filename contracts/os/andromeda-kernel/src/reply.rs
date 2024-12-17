@@ -174,10 +174,10 @@ pub fn on_reply_ibc_transfer(
     let ics20_packet_info = PENDING_MSG_AND_FUNDS.load(deps.storage)?;
     let refund_recipient = ics20_packet_info.sender;
     let refund_coin = ics20_packet_info.funds;
-    // let refund_msg = CosmosMsg::Bank(cosmwasm_std::BankMsg::Send {
-    //     to_address: refund_recipient.clone(),
-    //     amount: vec![refund_coin.clone()],
-    // });
+    let refund_msg = CosmosMsg::Bank(cosmwasm_std::BankMsg::Send {
+        to_address: refund_recipient.clone(),
+        amount: vec![refund_coin.clone()],
+    });
 
     // Clear data
     PENDING_MSG_AND_FUNDS.remove(deps.storage);
