@@ -108,7 +108,7 @@ impl AndrAddr {
                 match vfs_resolve_path(valid_vfs_path.clone(), vfs_addr, &deps.querier) {
                     Ok(addr) => Ok(addr),
                     Err(_) => {
-                        // If the path is a cross chain path then we return the path as is
+                        // If the path is cross-chain then we return it as is
                         if valid_vfs_path.get_protocol().is_some() {
                             Ok(Addr::unchecked(valid_vfs_path.into_string()))
                         } else {
