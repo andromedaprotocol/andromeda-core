@@ -14,8 +14,8 @@ use andromeda_std::{
     os::aos_querier::AOSQuerier,
 };
 use cosmwasm_std::{
-    ensure, to_json_string, wasm_execute, Addr, DepsMut, Empty, Env, IbcMsg, Reply, Response,
-    SubMsg, SubMsgResponse, SubMsgResult,
+    ensure, to_json_string, wasm_execute, Addr, CosmosMsg, DepsMut, Empty, Env, IbcMsg, Reply,
+    Response, SubMsg, SubMsgResponse, SubMsgResult,
 };
 
 /// Handles the reply from an ADO creation
@@ -183,7 +183,7 @@ pub fn on_reply_ibc_transfer(
     PENDING_MSG_AND_FUNDS.remove(deps.storage);
 
     Ok(Response::default()
-        // .add_message(refund_msg)
+        .add_message(refund_msg)
         .add_attribute("action", "refund")
         .add_attribute("recipient", refund_recipient)
         .add_attribute("amount_refunded", refund_coin.to_string())
