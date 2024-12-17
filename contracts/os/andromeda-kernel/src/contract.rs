@@ -171,5 +171,8 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractErr
         QueryMsg::Version {} => encode_binary(&ADOContract::default().query_version(deps)?),
         QueryMsg::AdoType {} => encode_binary(&ADOContract::default().query_type(deps)?),
         QueryMsg::Owner {} => encode_binary(&ADOContract::default().query_contract_owner(deps)?),
+        QueryMsg::ChainNameByChannel { channel } => {
+            encode_binary(&query::chain_name_by_channel(deps, channel)?)
+        }
     }
 }

@@ -112,6 +112,8 @@ pub enum QueryMsg {
     VerifyAddress { address: String },
     #[returns(Option<ChannelInfoResponse>)]
     ChannelInfo { chain: String },
+    #[returns(Option<String>)]
+    ChainNameByChannel { channel: String },
     #[returns(Vec<::cosmwasm_std::Coin>)]
     Recoveries { addr: Addr },
     #[returns(ChainNameResponse)]
