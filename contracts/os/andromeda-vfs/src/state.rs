@@ -25,7 +25,7 @@ pub struct PathIndices<'a> {
     pub parent: MultiIndex<'a, Addr, PathInfo, (Addr, String)>,
 }
 
-impl<'a> IndexList<PathInfo> for PathIndices<'a> {
+impl IndexList<PathInfo> for PathIndices<'_> {
     fn get_indexes(
         &'_ self,
     ) -> Box<dyn Iterator<Item = &'_ dyn cw_storage_plus::Index<PathInfo>> + '_> {

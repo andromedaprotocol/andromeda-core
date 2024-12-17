@@ -29,7 +29,7 @@ use serde::Serialize;
 
 type ExecuteContextFunction<M, E> = fn(ExecuteContext, M) -> Result<Response, E>;
 
-impl<'a> ADOContract<'a> {
+impl ADOContract<'_> {
     pub fn instantiate(
         &self,
         storage: &mut dyn Storage,
