@@ -10,15 +10,11 @@ use andromeda_std::error::ContractError;
 use andromeda_std::os::aos_querier::AOSQuerier;
 #[cfg(not(target_arch = "wasm32"))]
 use andromeda_std::os::ibc_registry::path_to_hops;
-use andromeda_std::os::kernel::{
-    AcknowledgementMsg, ChannelInfo, IbcExecuteMsg, Ics20PacketInfo, InternalMsg,
-    SendMessageWithFundsResponse,
-};
+use andromeda_std::os::kernel::{ChannelInfo, IbcExecuteMsg, Ics20PacketInfo, InternalMsg};
 use andromeda_std::os::vfs::vfs_resolve_symlink;
 use cosmwasm_std::{
     attr, ensure, from_json, to_json_binary, BankMsg, Binary, Coin, ContractInfoResponse,
-    CosmosMsg, DepsMut, Env, IbcMsg, IbcPacketAckMsg, MessageInfo, Response, StdError, SubMsg,
-    WasmMsg,
+    CosmosMsg, DepsMut, Env, IbcMsg, MessageInfo, Response, StdAck, StdError, SubMsg, WasmMsg,
 };
 
 use crate::query;
@@ -39,7 +35,7 @@ pub fn send(ctx: ExecuteContext, message: AMPMsg) -> Result<Response, ContractEr
 pub fn trigger_relay(
     ctx: ExecuteContext,
     packet_sequence: String,
-    packet_ack_msg: IbcPacketAckMsg,
+    packet_ack_msg: Binary,
 ) -> Result<Response, ContractError> {
     //TODO Only the authorized address to handle replies can call this function
     ensure!(
@@ -62,11 +58,10 @@ pub fn trigger_relay(
         .ok_or_else(|| ContractError::InvalidPacket {
             error: Some(format!("Channel not found for chain {}", chain)),
         })?;
-    let ack: AcknowledgementMsg<SendMessageWithFundsResponse> =
-        from_json(packet_ack_msg.acknowledgement.data)?;
+    let ack: StdAck = from_json(packet_ack_msg)?;
 
     match ack {
-        AcknowledgementMsg::Ok(_) => handle_ibc_transfer_funds_reply(
+        StdAck::Success(_) => handle_ibc_transfer_funds_reply(
             ctx.deps,
             ctx.info,
             ctx.env,
@@ -76,7 +71,7 @@ pub fn trigger_relay(
             ics20_packet_info,
         ),
         // This means that the funds have been returned to the contract, time to return the funds to the original sender
-        AcknowledgementMsg::Error(_) => {
+        StdAck::Error(_) => {
             let refund_msg = CosmosMsg::Bank(BankMsg::Send {
                 to_address: ics20_packet_info.sender.clone(),
                 amount: vec![ics20_packet_info.funds.clone()],

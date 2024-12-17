@@ -13,13 +13,10 @@ use andromeda_std::{
     amp::{AndrAddr, Recipient},
     os::{
         self,
-        kernel::{AcknowledgementMsg, ExecuteMsg, InstantiateMsg, SendMessageWithFundsResponse},
+        kernel::{ExecuteMsg, InstantiateMsg},
     },
 };
-use cosmwasm_std::{
-    coin, to_json_binary, Binary, Coin, Decimal, Empty, IbcAcknowledgement, IbcEndpoint, IbcPacket,
-    IbcPacketAckMsg, IbcTimeout, Timestamp, Uint128,
-};
+use cosmwasm_std::{coin, to_json_binary, Binary, Coin, Decimal, Empty, StdAck, Uint128};
 
 use andromeda_finance::splitter::{
     AddressPercent, Cw20HookMsg, ExecuteMsg as SplitterExecuteMsg,
@@ -688,28 +685,7 @@ fn test_splitter_cross_chain_recipient() {
         .execute(
             &ExecuteMsg::TriggerRelay {
                 packet_sequence: "1".to_string(),
-                packet_ack_msg: IbcPacketAckMsg::new(
-                    IbcAcknowledgement::new(
-                        to_json_binary(&AcknowledgementMsg::<SendMessageWithFundsResponse>::Ok(
-                            SendMessageWithFundsResponse {},
-                        ))
-                        .unwrap(),
-                    ),
-                    IbcPacket::new(
-                        Binary::default(),
-                        IbcEndpoint {
-                            port_id: "port_id".to_string(),
-                            channel_id: "channel_id".to_string(),
-                        },
-                        IbcEndpoint {
-                            port_id: "port_id".to_string(),
-                            channel_id: "channel_id".to_string(),
-                        },
-                        1,
-                        IbcTimeout::with_timestamp(Timestamp::from_seconds(1)),
-                    ),
-                    Addr::unchecked("relayer"),
-                ),
+                packet_ack_msg: to_json_binary(&StdAck::Success(Binary::default())).unwrap(),
             },
             None,
         )

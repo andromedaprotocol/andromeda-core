@@ -4,10 +4,9 @@ use crate::{
         messages::{AMPMsg, AMPPkt},
         AndrAddr,
     },
-    error::ContractError,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Addr, Binary, Coin, IbcPacketAckMsg};
+use cosmwasm_std::{Addr, Binary, Coin};
 
 #[cw_serde]
 pub struct ChannelInfo {
@@ -46,7 +45,7 @@ pub enum ExecuteMsg {
     },
     TriggerRelay {
         packet_sequence: String,
-        packet_ack_msg: IbcPacketAckMsg,
+        packet_ack_msg: Binary,
     },
     /// Upserts a key address to the kernel, restricted to the owner of the kernel
     UpsertKeyAddress {
@@ -171,31 +170,4 @@ pub struct RefundData {
     pub original_sender: String,
     pub funds: Coin,
     pub channel: String,
-}
-
-#[cw_serde]
-pub struct SendMessageWithFundsResponse {}
-
-#[cw_serde]
-pub enum AcknowledgementMsg<S> {
-    Ok(S),
-    Error(String),
-}
-
-impl<S> AcknowledgementMsg<S> {
-    pub fn unwrap(self) -> Result<S, ContractError> {
-        match self {
-            AcknowledgementMsg::Ok(data) => Ok(data),
-            AcknowledgementMsg::Error(err) => Err(ContractError::CustomError { msg: err }),
-        }
-    }
-
-    pub fn unwrap_err(self) -> Result<String, ContractError> {
-        match self {
-            AcknowledgementMsg::Ok(_) => Err(ContractError::CustomError {
-                msg: "Not an error".to_string(),
-            }),
-            AcknowledgementMsg::Error(err) => Ok(err),
-        }
-    }
 }

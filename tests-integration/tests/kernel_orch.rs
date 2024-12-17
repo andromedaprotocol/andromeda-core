@@ -23,14 +23,11 @@ use andromeda_std::{
     common::{denom::Asset, expiration::Expiry, Milliseconds},
     os::{
         self,
-        kernel::{AcknowledgementMsg, ExecuteMsg, InstantiateMsg, SendMessageWithFundsResponse},
+        kernel::{ExecuteMsg, InstantiateMsg},
     },
 };
 use andromeda_vfs::VFSContract;
-use cosmwasm_std::{
-    coin, to_json_binary, Addr, Binary, Decimal, IbcAcknowledgement, IbcEndpoint, IbcPacket,
-    IbcPacketAckMsg, IbcTimeout, Timestamp, Uint128,
-};
+use cosmwasm_std::{coin, to_json_binary, Addr, Binary, Decimal, StdAck, Uint128};
 use cw_orch::prelude::*;
 use cw_orch_interchain::{prelude::*, types::IbcPacketOutcome, InterchainEnv};
 use ibc_relayer_types::core::ics24_host::identifier::PortId;
@@ -895,28 +892,7 @@ fn test_kernel_ibc_funds_only() {
         .execute(
             &ExecuteMsg::TriggerRelay {
                 packet_sequence: "1".to_string(),
-                packet_ack_msg: IbcPacketAckMsg::new(
-                    IbcAcknowledgement::new(
-                        to_json_binary(&AcknowledgementMsg::<SendMessageWithFundsResponse>::Ok(
-                            SendMessageWithFundsResponse {},
-                        ))
-                        .unwrap(),
-                    ),
-                    IbcPacket::new(
-                        Binary::default(),
-                        IbcEndpoint {
-                            port_id: "port_id".to_string(),
-                            channel_id: "channel_id".to_string(),
-                        },
-                        IbcEndpoint {
-                            port_id: "port_id".to_string(),
-                            channel_id: "channel_id".to_string(),
-                        },
-                        1,
-                        IbcTimeout::with_timestamp(Timestamp::from_seconds(1)),
-                    ),
-                    Addr::unchecked("relayer"),
-                ),
+                packet_ack_msg: to_json_binary(&StdAck::Success(Binary::default())).unwrap(),
             },
             None,
         )
@@ -1071,28 +1047,7 @@ fn test_kernel_ibc_funds_only() {
         .execute(
             &ExecuteMsg::TriggerRelay {
                 packet_sequence: "2".to_string(),
-                packet_ack_msg: IbcPacketAckMsg::new(
-                    IbcAcknowledgement::new(
-                        to_json_binary(&AcknowledgementMsg::<SendMessageWithFundsResponse>::Ok(
-                            SendMessageWithFundsResponse {},
-                        ))
-                        .unwrap(),
-                    ),
-                    IbcPacket::new(
-                        Binary::default(),
-                        IbcEndpoint {
-                            port_id: "port_id".to_string(),
-                            channel_id: "channel_id".to_string(),
-                        },
-                        IbcEndpoint {
-                            port_id: "port_id".to_string(),
-                            channel_id: "channel_id".to_string(),
-                        },
-                        1,
-                        IbcTimeout::with_timestamp(Timestamp::from_seconds(1)),
-                    ),
-                    Addr::unchecked("relayer"),
-                ),
+                packet_ack_msg: to_json_binary(&StdAck::Success(Binary::default())).unwrap(),
             },
             None,
         )
@@ -1764,30 +1719,7 @@ fn test_kernel_ibc_funds_and_execute_msg() {
             .execute(
                 &ExecuteMsg::TriggerRelay {
                     packet_sequence: "1".to_string(),
-                    packet_ack_msg: IbcPacketAckMsg::new(
-                        IbcAcknowledgement::new(
-                            to_json_binary(
-                                &AcknowledgementMsg::<SendMessageWithFundsResponse>::Ok(
-                                    SendMessageWithFundsResponse {},
-                                ),
-                            )
-                            .unwrap(),
-                        ),
-                        IbcPacket::new(
-                            Binary::default(),
-                            IbcEndpoint {
-                                port_id: "port_id".to_string(),
-                                channel_id: "channel_id".to_string(),
-                            },
-                            IbcEndpoint {
-                                port_id: "port_id".to_string(),
-                                channel_id: "channel_id".to_string(),
-                            },
-                            1,
-                            IbcTimeout::with_timestamp(Timestamp::from_seconds(1)),
-                        ),
-                        Addr::unchecked("relayer"),
-                    ),
+                    packet_ack_msg: to_json_binary(&StdAck::Success(Binary::default())).unwrap(),
                 },
                 None,
             )
@@ -2059,30 +1991,7 @@ fn test_kernel_ibc_funds_only_unhappy() {
             .execute(
                 &ExecuteMsg::TriggerRelay {
                     packet_sequence: "1".to_string(),
-                    packet_ack_msg: IbcPacketAckMsg::new(
-                        IbcAcknowledgement::new(
-                            to_json_binary(
-                                &AcknowledgementMsg::<SendMessageWithFundsResponse>::Error(
-                                    "error".to_string(),
-                                ),
-                            )
-                            .unwrap(),
-                        ),
-                        IbcPacket::new(
-                            Binary::default(),
-                            IbcEndpoint {
-                                port_id: "port_id".to_string(),
-                                channel_id: "channel_id".to_string(),
-                            },
-                            IbcEndpoint {
-                                port_id: "port_id".to_string(),
-                                channel_id: "channel_id".to_string(),
-                            },
-                            1,
-                            IbcTimeout::with_timestamp(Timestamp::from_seconds(1)),
-                        ),
-                        Addr::unchecked("relayer"),
-                    ),
+                    packet_ack_msg: to_json_binary(&StdAck::Error("error".to_string())).unwrap(),
                 },
                 None,
             )
@@ -2412,31 +2321,7 @@ fn test_kernel_ibc_funds_and_execute_msg_unhappy() {
             .execute(
                 &ExecuteMsg::TriggerRelay {
                     packet_sequence: "1".to_string(),
-                    packet_ack_msg: IbcPacketAckMsg::new(
-                        IbcAcknowledgement::new(
-                            to_json_binary(
-                                // It's Ok because the ics20 transfer is supposed to go through. We want the ExecuteMsg to fail
-                                &AcknowledgementMsg::<SendMessageWithFundsResponse>::Ok(
-                                    SendMessageWithFundsResponse {},
-                                ),
-                            )
-                            .unwrap(),
-                        ),
-                        IbcPacket::new(
-                            Binary::default(),
-                            IbcEndpoint {
-                                port_id: "port_id".to_string(),
-                                channel_id: "channel_id".to_string(),
-                            },
-                            IbcEndpoint {
-                                port_id: "port_id".to_string(),
-                                channel_id: "channel_id".to_string(),
-                            },
-                            1,
-                            IbcTimeout::with_timestamp(Timestamp::from_seconds(1)),
-                        ),
-                        Addr::unchecked("relayer"),
-                    ),
+                    packet_ack_msg: to_json_binary(&StdAck::Success(Binary::default())).unwrap(),
                 },
                 None,
             )
