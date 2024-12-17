@@ -347,6 +347,37 @@ impl<'a> ADOContract<'a> {
     }
 }
 
+#[macro_export]
+macro_rules! unwrap_amp_msg {
+    ($deps:expr, $info:expr, $env:expr, $msg:expr) => {{
+        let mut ctx = ExecuteContext::new($deps, $info, $env);
+        let mut msg = $msg;
+
+        if let ExecuteMsg::AMPReceive(mut pkt) = msg {
+            ctx.info = MessageInfo {
+                sender: ctx.deps.api.addr_validate(
+                    pkt.get_verified_origin(&ctx.info.clone(), &ctx.deps.as_ref())
+                        .unwrap()
+                        .as_str(),
+                )?,
+                funds: ctx.info.funds,
+            };
+            msg = from_json(&pkt.messages.pop().unwrap().message)?;
+            ctx.amp_ctx = Some(pkt);
+        }
+
+        let action_response = call_action(
+            &mut ctx.deps,
+            &ctx.info,
+            &ctx.env,
+            &ctx.amp_ctx,
+            msg.as_ref(),
+        )?;
+
+        (ctx, msg, action_response)
+    }};
+}
+
 #[cfg(test)]
 
 mod tests {

@@ -8,6 +8,7 @@ use andromeda_std::{
     amp::{messages::AMPPkt, Recipient},
     common::{actions::call_action, encode_binary, expiration::Expiry},
     error::ContractError,
+    unwrap_amp_msg,
 };
 use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
 use cosmwasm_std::{
@@ -79,24 +80,8 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
-    let ctx = ExecuteContext::new(deps, info, env);
+    let (ctx, msg, resp) = unwrap_amp_msg!(deps, info, env, msg);
 
-    match msg {
-        ExecuteMsg::AMPReceive(pkt) => {
-            ADOContract::default().execute_amp_receive(ctx, pkt, handle_execute)
-        }
-        _ => handle_execute(ctx, msg),
-    }
-}
-
-pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
-    let action_response = call_action(
-        &mut ctx.deps,
-        &ctx.info,
-        &ctx.env,
-        &ctx.amp_ctx,
-        msg.as_ref(),
-    )?;
     let res = match msg {
         ExecuteMsg::UpdateRecipients { recipients } => execute_update_recipients(ctx, recipients),
         ExecuteMsg::UpdateLock { lock_time } => execute_update_lock(ctx, lock_time),
@@ -107,10 +92,11 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
         ExecuteMsg::Receive(receive_msg) => handle_receive_cw20(ctx, receive_msg),
         _ => ADOContract::default().execute(ctx, msg),
     }?;
+
     Ok(res
-        .add_submessages(action_response.messages)
-        .add_attributes(action_response.attributes)
-        .add_events(action_response.events))
+        .add_submessages(resp.messages)
+        .add_attributes(resp.attributes)
+        .add_events(resp.events))
 }
 
 pub fn handle_receive_cw20(
