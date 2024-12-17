@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Rates: Limit rates recipient to only one address [(#669)](https://github.com/andromedaprotocol/andromeda-core/pull/669)
+- Address Validation: Cross-chain recipients don't need to be registered in VFS [(#725)](https://github.com/andromedaprotocol/andromeda-core/pull/725)
 
 ### Fixed
 
