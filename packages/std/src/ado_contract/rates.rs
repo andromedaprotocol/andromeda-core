@@ -168,7 +168,6 @@ impl ADOContract<'_> {
 }
 #[cfg(test)]
 #[cfg(feature = "rates")]
-
 mod tests {
 
     use cosmwasm_std::{
