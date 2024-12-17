@@ -34,7 +34,8 @@ pub fn send(ctx: ExecuteContext, message: AMPMsg) -> Result<Response, ContractEr
 
 pub fn trigger_relay(
     ctx: ExecuteContext,
-    packet_sequence: String,
+    packet_sequence: u64,
+    channel_id: String,
     packet_ack_msg: Binary,
 ) -> Result<Response, ContractError> {
     //TODO Only the authorized address to handle replies can call this function
@@ -42,8 +43,9 @@ pub fn trigger_relay(
         ctx.info.sender == KERNEL_ADDRESSES.load(ctx.deps.storage, TRIGGER_KEY)?,
         ContractError::Unauthorized {}
     );
-    let ics20_packet_info =
-        CHANNEL_TO_EXECUTE_MSG.load(ctx.deps.storage, packet_sequence.clone())?;
+    let ics20_packet_info = CHANNEL_TO_EXECUTE_MSG
+        .load(ctx.deps.storage, (channel_id, packet_sequence))
+        .expect("No packet found for channel_id and sequence");
 
     let chain =
         ics20_packet_info

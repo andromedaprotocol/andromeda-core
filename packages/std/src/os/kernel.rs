@@ -44,8 +44,9 @@ pub enum ExecuteMsg {
         message: AMPMsg,
     },
     TriggerRelay {
-        packet_sequence: String,
-        packet_ack_msg: Binary,
+        packet_sequence: u64,
+        channel_id: String,
+        packet_ack: Binary,
     },
     /// Upserts a key address to the kernel, restricted to the owner of the kernel
     UpsertKeyAddress {

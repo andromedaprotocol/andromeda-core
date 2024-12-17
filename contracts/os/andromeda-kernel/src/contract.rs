@@ -99,8 +99,9 @@ pub fn execute(
         ExecuteMsg::Send { message } => execute::send(execute_env, message),
         ExecuteMsg::TriggerRelay {
             packet_sequence,
-            packet_ack_msg,
-        } => execute::trigger_relay(execute_env, packet_sequence, packet_ack_msg),
+            channel_id,
+            packet_ack,
+        } => execute::trigger_relay(execute_env, packet_sequence, channel_id, packet_ack),
         ExecuteMsg::UpsertKeyAddress { key, value } => {
             execute::upsert_key_address(execute_env, key, value)
         }

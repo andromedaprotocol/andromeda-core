@@ -100,8 +100,6 @@ pub fn on_reply_ibc_transfer(
     _env: Env,
     msg: Reply,
 ) -> Result<Response, ContractError> {
-    #[cfg(target_arch = "wasm32")]
-    // When the reply is from a wasm32 target, the reply is a SubMsgResponse
     if let SubMsgResult::Ok(SubMsgResponse { data: Some(b), .. }) = msg.result {
         let MsgTransferResponse { sequence } =
             MsgTransferResponse::decode(&b[..]).map_err(|_e| ContractError::InvalidPacket {
@@ -109,7 +107,11 @@ pub fn on_reply_ibc_transfer(
             })?;
 
         let pending_execute_msg = PENDING_MSG_AND_FUNDS.load(deps.storage)?;
-        CHANNEL_TO_EXECUTE_MSG.save(deps.storage, sequence.to_string(), &pending_execute_msg)?;
+        CHANNEL_TO_EXECUTE_MSG.save(
+            deps.storage,
+            (pending_execute_msg.channel.clone(), sequence),
+            &pending_execute_msg,
+        )?;
         PENDING_MSG_AND_FUNDS.remove(deps.storage);
         return Ok(Response::new()
             .add_attribute("action", "transfer_funds_reply")
@@ -151,7 +153,10 @@ pub fn on_reply_ibc_transfer(
             let pending_execute_msg = PENDING_MSG_AND_FUNDS.load(deps.storage)?;
             CHANNEL_TO_EXECUTE_MSG.save(
                 deps.storage,
-                packet_sequence.clone(),
+                (
+                    pending_execute_msg.channel.clone(),
+                    packet_sequence.parse().unwrap(),
+                ),
                 &pending_execute_msg,
             )?;
             PENDING_MSG_AND_FUNDS.remove(deps.storage);
