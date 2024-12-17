@@ -12,7 +12,7 @@ pub fn rates<'a>() -> Map<'a, &'a str, Rate> {
     Map::new("rates")
 }
 
-impl<'a> ADOContract<'a> {
+impl ADOContract<'_> {
     /// Sets rates
     pub fn set_rates(
         &self,

@@ -81,10 +81,6 @@ fn setup(
             recipient: Recipient::from_string(recipient_2.to_string()),
             percent: Decimal::from_ratio(Uint128::from(8u128), Uint128::from(10u128)),
         },
-        // AddressPercent {
-        //     recipient: Recipient::from_string("ibc://osmosis/recipient3".to_string()),
-        //     percent: Decimal::from_ratio(Uint128::from(8u128), Uint128::from(10u128)),
-        // },
     ];
     let splitter_init_msg = mock_splitter_instantiate_msg(
         splitter_recipients,

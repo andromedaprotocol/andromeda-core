@@ -22,7 +22,7 @@ pub struct PermissionsIndices<'a> {
     pub action: MultiIndex<'a, String, PermissionInfo, String>,
 }
 
-impl<'a> IndexList<PermissionInfo> for PermissionsIndices<'a> {
+impl IndexList<PermissionInfo> for PermissionsIndices<'_> {
     fn get_indexes(&'_ self) -> Box<dyn Iterator<Item = &'_ dyn Index<PermissionInfo>> + '_> {
         let v: Vec<&dyn Index<PermissionInfo>> = vec![&self.action, &self.actor];
         Box::new(v.into_iter())
@@ -44,7 +44,7 @@ pub fn permissions<'a>() -> IndexedMap<'a, &'a str, PermissionInfo, PermissionsI
     IndexedMap::new("andr_permissions", indexes)
 }
 
-impl<'a> ADOContract<'a> {
+impl ADOContract<'_> {
     pub fn execute_permissioning(
         &self,
         ctx: ExecuteContext,

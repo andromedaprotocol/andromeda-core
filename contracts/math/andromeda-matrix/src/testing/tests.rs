@@ -138,7 +138,7 @@ fn test_authorization() {
 
     // Store as external user
     // This should error
-    let err = store_matrix(deps.as_mut(), &key, &data, &UNAUTHORIZED_OPERATOR).unwrap_err();
+    let err = store_matrix(deps.as_mut(), &key, &data, UNAUTHORIZED_OPERATOR).unwrap_err();
     assert_eq!(err, ContractError::Unauthorized {});
 }
 

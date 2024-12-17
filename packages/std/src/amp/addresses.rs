@@ -121,13 +121,6 @@ impl AndrAddr {
                         }
                     }
                 }
-                // .ok()
-                // .ok_or(ContractError::InvalidPathname {
-                //     error: Some(format!(
-                //         "{:?} does not exist in the file system",
-                //         valid_vfs_path.0
-                //     )),
-                // })
             }
         }
     }
