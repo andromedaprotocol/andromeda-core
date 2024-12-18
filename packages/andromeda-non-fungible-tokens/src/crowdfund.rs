@@ -122,15 +122,14 @@ pub enum CampaignStage {
     DISCARDED,
 }
 
-impl ToString for CampaignStage {
-    #[inline]
-    fn to_string(&self) -> String {
+impl std::fmt::Display for CampaignStage {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::READY => "READY".to_string(),
-            Self::ONGOING => "ONGOING".to_string(),
-            Self::SUCCESS => "SUCCESS".to_string(),
-            Self::FAILED => "FAILED".to_string(),
-            Self::DISCARDED => "DISCARDED".to_string(),
+            Self::READY => write!(f, "READY"),
+            Self::ONGOING => write!(f, "ONGOING"),
+            Self::SUCCESS => write!(f, "SUCCESS"),
+            Self::FAILED => write!(f, "FAILED"),
+            Self::DISCARDED => write!(f, "DISCARDED"),
         }
     }
 }

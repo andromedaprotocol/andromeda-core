@@ -51,9 +51,9 @@ pub struct PaymentAttribute {
     pub receiver: String,
 }
 
-impl ToString for PaymentAttribute {
-    fn to_string(&self) -> String {
-        format!("{}<{}", self.receiver, self.amount)
+impl std::fmt::Display for PaymentAttribute {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}<{}", self.receiver, self.amount)
     }
 }
 
@@ -222,19 +222,17 @@ impl LocalRate {
                 msg: to_json_binary(&kernel_msg)?,
                 funds: vec![fee.clone()],
             })
+        } else if is_native {
+            self.recipient
+                .generate_direct_msg(&deps, vec![fee.clone()])?
         } else {
-            if is_native {
-                self.recipient
-                    .generate_direct_msg(&deps, vec![fee.clone()])?
-            } else {
-                self.recipient.generate_msg_cw20(
-                    &deps,
-                    Cw20Coin {
-                        amount: fee.amount,
-                        address: fee.denom.to_string(),
-                    },
-                )?
-            }
+            self.recipient.generate_msg_cw20(
+                &deps,
+                Cw20Coin {
+                    amount: fee.amount,
+                    address: fee.denom.to_string(),
+                },
+            )?
         };
 
         msgs.push(msg);

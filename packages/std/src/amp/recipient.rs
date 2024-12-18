@@ -60,10 +60,7 @@ impl Recipient {
 
     pub fn is_cross_chain(&self) -> bool {
         let protocol = self.address.get_protocol();
-        match protocol {
-            Some("ibc") => true,
-            _ => false,
-        }
+        matches!(protocol, Some("ibc"))
     }
 
     /// Generates a direct sub message for the given recipient.

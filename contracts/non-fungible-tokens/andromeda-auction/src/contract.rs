@@ -436,7 +436,7 @@ fn execute_update_auction(
 
     token_auction_state.start_time = start_expiration;
     token_auction_state.end_time = end_expiration;
-    token_auction_state.coin_denom = coin_denom.clone();
+    token_auction_state.coin_denom.clone_from(&coin_denom);
     token_auction_state.uses_cw20 = uses_cw20;
     token_auction_state.min_bid = min_bid;
     token_auction_state.min_raise = min_raise;
@@ -1182,8 +1182,8 @@ fn get_and_increment_next_auction_id(
     let mut auction_info = auction_infos().load(storage, &key).unwrap_or_default();
     auction_info.push(next_auction_id);
     if auction_info.token_address.is_empty() {
-        auction_info.token_address = token_address.to_owned();
-        auction_info.token_id = token_id.to_owned();
+        token_address.clone_into(&mut auction_info.token_address);
+        token_id.clone_into(&mut auction_info.token_id);
     }
     auction_infos().save(storage, &key, &auction_info)?;
     Ok(next_auction_id)
