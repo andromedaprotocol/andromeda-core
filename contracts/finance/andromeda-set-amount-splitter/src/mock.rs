@@ -13,6 +13,7 @@ pub struct MockSetAmountSplitter(Addr);
 mock_ado!(MockSetAmountSplitter, ExecuteMsg, QueryMsg);
 
 impl MockSetAmountSplitter {
+    #[allow(clippy::too_many_arguments)]
     pub fn instantiate(
         app: &mut MockApp,
         code_id: u64,

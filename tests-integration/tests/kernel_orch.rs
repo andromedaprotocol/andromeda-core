@@ -23,14 +23,11 @@ use andromeda_std::{
     common::{denom::Asset, expiration::Expiry, Milliseconds},
     os::{
         self,
-        kernel::{AcknowledgementMsg, ExecuteMsg, InstantiateMsg, SendMessageWithFundsResponse},
+        kernel::{ExecuteMsg, InstantiateMsg},
     },
 };
 use andromeda_vfs::VFSContract;
-use cosmwasm_std::{
-    coin, to_json_binary, Addr, Binary, Decimal, IbcAcknowledgement, IbcEndpoint, IbcPacket,
-    IbcPacketAckMsg, IbcTimeout, Timestamp, Uint128,
-};
+use cosmwasm_std::{coin, to_json_binary, Addr, Binary, Decimal, StdAck, Uint128};
 use cw_orch::prelude::*;
 use cw_orch_interchain::{prelude::*, types::IbcPacketOutcome, InterchainEnv};
 use ibc_relayer_types::core::ics24_host::identifier::PortId;
@@ -816,7 +813,7 @@ fn test_kernel_ibc_funds_only() {
     kernel_osmosis
         .execute(
             &ExecuteMsg::AssignChannels {
-                ics20_channel_id: Some(channel.0.channel.unwrap().to_string()),
+                ics20_channel_id: Some(channel.0.channel.clone().unwrap().to_string()),
                 direct_channel_id: Some(juno_channel.to_string()),
                 chain: "juno".to_string(),
                 kernel_address: kernel_juno.address().unwrap().into_string(),
@@ -894,29 +891,9 @@ fn test_kernel_ibc_funds_only() {
     let kernel_juno_trigger_request = kernel_juno
         .execute(
             &ExecuteMsg::TriggerRelay {
-                packet_sequence: "1".to_string(),
-                packet_ack_msg: IbcPacketAckMsg::new(
-                    IbcAcknowledgement::new(
-                        to_json_binary(&AcknowledgementMsg::<SendMessageWithFundsResponse>::Ok(
-                            SendMessageWithFundsResponse {},
-                        ))
-                        .unwrap(),
-                    ),
-                    IbcPacket::new(
-                        Binary::default(),
-                        IbcEndpoint {
-                            port_id: "port_id".to_string(),
-                            channel_id: "channel_id".to_string(),
-                        },
-                        IbcEndpoint {
-                            port_id: "port_id".to_string(),
-                            channel_id: "channel_id".to_string(),
-                        },
-                        1,
-                        IbcTimeout::with_timestamp(Timestamp::from_seconds(1)),
-                    ),
-                    Addr::unchecked("relayer"),
-                ),
+                packet_sequence: 1,
+                channel_id: channel.0.channel.clone().unwrap().to_string(),
+                packet_ack: to_json_binary(&StdAck::Success(Binary::default())).unwrap(),
             },
             None,
         )
@@ -1070,29 +1047,9 @@ fn test_kernel_ibc_funds_only() {
     let kernel_juno_trigger_request = kernel_juno
         .execute(
             &ExecuteMsg::TriggerRelay {
-                packet_sequence: "2".to_string(),
-                packet_ack_msg: IbcPacketAckMsg::new(
-                    IbcAcknowledgement::new(
-                        to_json_binary(&AcknowledgementMsg::<SendMessageWithFundsResponse>::Ok(
-                            SendMessageWithFundsResponse {},
-                        ))
-                        .unwrap(),
-                    ),
-                    IbcPacket::new(
-                        Binary::default(),
-                        IbcEndpoint {
-                            port_id: "port_id".to_string(),
-                            channel_id: "channel_id".to_string(),
-                        },
-                        IbcEndpoint {
-                            port_id: "port_id".to_string(),
-                            channel_id: "channel_id".to_string(),
-                        },
-                        1,
-                        IbcTimeout::with_timestamp(Timestamp::from_seconds(1)),
-                    ),
-                    Addr::unchecked("relayer"),
-                ),
+                packet_sequence: 2,
+                channel_id: channel.0.channel.clone().unwrap().to_string(),
+                packet_ack: to_json_binary(&StdAck::Success(Binary::default())).unwrap(),
             },
             None,
         )
@@ -1671,7 +1628,7 @@ fn test_kernel_ibc_funds_and_execute_msg() {
     kernel_osmosis
         .execute(
             &ExecuteMsg::AssignChannels {
-                ics20_channel_id: Some(channel.0.channel.unwrap().to_string()),
+                ics20_channel_id: Some(channel.0.channel.clone().unwrap().to_string()),
                 direct_channel_id: Some(juno_channel.to_string()),
                 chain: "juno".to_string(),
                 kernel_address: kernel_juno.address().unwrap().into_string(),
@@ -1763,31 +1720,9 @@ fn test_kernel_ibc_funds_and_execute_msg() {
         let kernel_juno_splitter_request = kernel_juno
             .execute(
                 &ExecuteMsg::TriggerRelay {
-                    packet_sequence: "1".to_string(),
-                    packet_ack_msg: IbcPacketAckMsg::new(
-                        IbcAcknowledgement::new(
-                            to_json_binary(
-                                &AcknowledgementMsg::<SendMessageWithFundsResponse>::Ok(
-                                    SendMessageWithFundsResponse {},
-                                ),
-                            )
-                            .unwrap(),
-                        ),
-                        IbcPacket::new(
-                            Binary::default(),
-                            IbcEndpoint {
-                                port_id: "port_id".to_string(),
-                                channel_id: "channel_id".to_string(),
-                            },
-                            IbcEndpoint {
-                                port_id: "port_id".to_string(),
-                                channel_id: "channel_id".to_string(),
-                            },
-                            1,
-                            IbcTimeout::with_timestamp(Timestamp::from_seconds(1)),
-                        ),
-                        Addr::unchecked("relayer"),
-                    ),
+                    packet_sequence: 1,
+                    channel_id: channel.0.channel.clone().unwrap().to_string(),
+                    packet_ack: to_json_binary(&StdAck::Success(Binary::default())).unwrap(),
                 },
                 None,
             )
@@ -1993,7 +1928,7 @@ fn test_kernel_ibc_funds_only_unhappy() {
     kernel_osmosis
         .execute(
             &ExecuteMsg::AssignChannels {
-                ics20_channel_id: Some(channel.0.channel.unwrap().to_string()),
+                ics20_channel_id: Some(channel.0.channel.clone().unwrap().to_string()),
                 direct_channel_id: Some(juno_channel.to_string()),
                 chain: "juno".to_string(),
                 kernel_address: kernel_juno.address().unwrap().into_string(),
@@ -2058,31 +1993,9 @@ fn test_kernel_ibc_funds_only_unhappy() {
         let kernel_juno_splitter_request = kernel_juno
             .execute(
                 &ExecuteMsg::TriggerRelay {
-                    packet_sequence: "1".to_string(),
-                    packet_ack_msg: IbcPacketAckMsg::new(
-                        IbcAcknowledgement::new(
-                            to_json_binary(
-                                &AcknowledgementMsg::<SendMessageWithFundsResponse>::Error(
-                                    "error".to_string(),
-                                ),
-                            )
-                            .unwrap(),
-                        ),
-                        IbcPacket::new(
-                            Binary::default(),
-                            IbcEndpoint {
-                                port_id: "port_id".to_string(),
-                                channel_id: "channel_id".to_string(),
-                            },
-                            IbcEndpoint {
-                                port_id: "port_id".to_string(),
-                                channel_id: "channel_id".to_string(),
-                            },
-                            1,
-                            IbcTimeout::with_timestamp(Timestamp::from_seconds(1)),
-                        ),
-                        Addr::unchecked("relayer"),
-                    ),
+                    packet_sequence: 1,
+                    channel_id: channel.0.channel.clone().unwrap().to_string(),
+                    packet_ack: to_json_binary(&StdAck::Error("error".to_string())).unwrap(),
                 },
                 None,
             )
@@ -2315,7 +2228,7 @@ fn test_kernel_ibc_funds_and_execute_msg_unhappy() {
     kernel_osmosis
         .execute(
             &ExecuteMsg::AssignChannels {
-                ics20_channel_id: Some(channel.0.channel.unwrap().to_string()),
+                ics20_channel_id: Some(channel.0.channel.clone().unwrap().to_string()),
                 direct_channel_id: Some(juno_channel.to_string()),
                 chain: "juno".to_string(),
                 kernel_address: kernel_juno.address().unwrap().into_string(),
@@ -2411,32 +2324,9 @@ fn test_kernel_ibc_funds_and_execute_msg_unhappy() {
         let kernel_juno_splitter_request = kernel_juno
             .execute(
                 &ExecuteMsg::TriggerRelay {
-                    packet_sequence: "1".to_string(),
-                    packet_ack_msg: IbcPacketAckMsg::new(
-                        IbcAcknowledgement::new(
-                            to_json_binary(
-                                // It's Ok because the ics20 transfer is supposed to go through. We want the ExecuteMsg to fail
-                                &AcknowledgementMsg::<SendMessageWithFundsResponse>::Ok(
-                                    SendMessageWithFundsResponse {},
-                                ),
-                            )
-                            .unwrap(),
-                        ),
-                        IbcPacket::new(
-                            Binary::default(),
-                            IbcEndpoint {
-                                port_id: "port_id".to_string(),
-                                channel_id: "channel_id".to_string(),
-                            },
-                            IbcEndpoint {
-                                port_id: "port_id".to_string(),
-                                channel_id: "channel_id".to_string(),
-                            },
-                            1,
-                            IbcTimeout::with_timestamp(Timestamp::from_seconds(1)),
-                        ),
-                        Addr::unchecked("relayer"),
-                    ),
+                    packet_sequence: 1,
+                    channel_id: channel.0.channel.clone().unwrap().to_string(),
+                    packet_ack: to_json_binary(&StdAck::Success(Binary::default())).unwrap(),
                 },
                 None,
             )

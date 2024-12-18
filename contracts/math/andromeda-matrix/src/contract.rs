@@ -126,7 +126,6 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
 }
 
 /// ============================== Execution Functions ============================== ///
-
 pub fn store_matrix(
     mut ctx: ExecuteContext,
     key: Option<String>,

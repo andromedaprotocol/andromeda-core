@@ -8,7 +8,9 @@ use andromeda_std::{
 };
 use cosmwasm_std::{Addr, Coin, Deps};
 
-use crate::state::{CHAIN_TO_CHANNEL, CURR_CHAIN, IBC_FUND_RECOVERY, KERNEL_ADDRESSES};
+use crate::state::{
+    CHAIN_TO_CHANNEL, CHANNEL_TO_CHAIN, CURR_CHAIN, IBC_FUND_RECOVERY, KERNEL_ADDRESSES,
+};
 
 pub fn key_address(deps: Deps, key: String) -> Result<Addr, ContractError> {
     Ok(KERNEL_ADDRESSES.load(deps.storage, &key)?)
@@ -48,6 +50,11 @@ pub fn channel_info(
         None
     };
     Ok(resp)
+}
+
+pub fn chain_name_by_channel(deps: Deps, channel: String) -> Result<Option<String>, ContractError> {
+    let info = CHANNEL_TO_CHAIN.may_load(deps.storage, &channel)?;
+    Ok(info)
 }
 
 pub fn recoveries(deps: Deps, addr: Addr) -> Result<Vec<Coin>, ContractError> {
