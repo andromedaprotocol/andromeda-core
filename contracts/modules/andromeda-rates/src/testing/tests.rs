@@ -32,7 +32,7 @@ fn test_instantiate_query() {
             msg: None,
             ibc_recovery_address: None,
         },
-        value: LocalRateValue::Flat(coin(100_u128, "uandr")),
+        value: LocalRateValue::Flat(coin(100_u128, MOCK_UANDR)),
         description: None,
     };
     let msg = InstantiateMsg {
