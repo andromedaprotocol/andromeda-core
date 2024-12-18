@@ -32,8 +32,6 @@ pub fn instantiate(
     let action = msg.action;
     let rate = msg.rate;
 
-    RATES.save(deps.storage, &action, &rate)?;
-
     let inst_resp = ADOContract::default().instantiate(
         deps.storage,
         env,
@@ -47,6 +45,9 @@ pub fn instantiate(
             owner: msg.owner,
         },
     )?;
+
+    let local_rate = rate.validate(deps.as_ref())?;
+    RATES.save(deps.storage, &action, &local_rate)?;
 
     Ok(inst_resp)
 }
