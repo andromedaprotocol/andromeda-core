@@ -151,7 +151,7 @@ impl OperatingSystemDeployment {
         let deployable = os_contracts();
         for (name, contract) in uploaded_contracts {
             let (_, version, _) = deployable.iter().find(|(n, _, _)| n == name).unwrap();
-            let versions = self.adodb.ado_versions(&name.to_string(), None, None)?;
+            let versions = self.adodb.ado_versions(name.to_string(), None, None)?;
             if versions.contains(&format!("{}@{}", name, version)) {
                 log::info!(
                     "Skipping publishing {} {} - already published",

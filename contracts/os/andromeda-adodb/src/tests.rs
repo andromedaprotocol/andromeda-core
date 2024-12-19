@@ -718,11 +718,9 @@ fn test_all_ado_types() {
 
     let mut code_id = 1;
 
-    let ados = vec![
-        ADOVersion::from_string("ado_type_1@0.1.0".to_string()),
+    let ados = [ADOVersion::from_string("ado_type_1@0.1.0".to_string()),
         ADOVersion::from_string("ado_type_1@0.1.1".to_string()),
-        ADOVersion::from_string("ado_type_2@0.1.0".to_string()),
-    ];
+        ADOVersion::from_string("ado_type_2@0.1.0".to_string())];
 
     ados.iter().for_each(|ado_version| {
         let msg = ExecuteMsg::Publish {
