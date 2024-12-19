@@ -16,7 +16,7 @@ use cosmwasm_std::{from_json, to_json_binary, Binary, Deps, Env};
 use cw2::get_contract_version;
 use serde::Serialize;
 
-impl<'a> ADOContract<'a> {
+impl ADOContract<'_> {
     #[allow(unreachable_patterns)]
     pub fn query(
         &self,
@@ -55,6 +55,18 @@ impl<'a> ADOContract<'a> {
                 AndromedaQuery::PermissionedActions {} => {
                     encode_binary(&self.query_permissioned_actions(deps)?)
                 }
+                AndromedaQuery::PermissionedActors {
+                    action,
+                    start_after,
+                    limit,
+                    order_by,
+                } => encode_binary(&self.query_permissioned_actors(
+                    deps,
+                    action,
+                    start_after,
+                    limit,
+                    order_by,
+                )?),
                 #[cfg(feature = "rates")]
                 AndromedaQuery::Rates { action } => encode_binary(&self.get_rates(deps, action)?),
 
@@ -68,7 +80,7 @@ impl<'a> ADOContract<'a> {
     }
 }
 
-impl<'a> ADOContract<'a> {
+impl ADOContract<'_> {
     #[inline]
     pub fn query_contract_owner(&self, deps: Deps) -> Result<ContractOwnerResponse, ContractError> {
         let owner = self.owner.load(deps.storage)?;

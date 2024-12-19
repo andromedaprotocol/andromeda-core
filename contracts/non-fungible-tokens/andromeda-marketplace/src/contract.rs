@@ -311,7 +311,7 @@ fn execute_update_sale(
     ensure!(price > Uint128::zero(), ContractError::InvalidZeroAmount {});
 
     token_sale_state.price = price;
-    token_sale_state.coin_denom = coin_denom.clone();
+    token_sale_state.coin_denom.clone_from(&coin_denom);
     token_sale_state.uses_cw20 = uses_cw20;
     token_sale_state.recipient = recipient;
     TOKEN_SALE_STATE.save(
@@ -779,8 +779,8 @@ fn get_and_increment_next_sale_id(
     let mut sale_info = sale_infos().load(storage, &key).unwrap_or_default();
     sale_info.push(next_sale_id);
     if sale_info.token_address.is_empty() {
-        sale_info.token_address = token_address.to_owned();
-        sale_info.token_id = token_id.to_owned();
+        token_address.clone_into(&mut sale_info.token_address);
+        token_id.clone_into(&mut sale_info.token_id);
     }
     sale_infos().save(storage, &key, &sale_info)?;
     Ok(next_sale_id)

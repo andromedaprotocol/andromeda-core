@@ -61,6 +61,9 @@ pub enum ContractError {
     #[error("NoDenomInfoProvided")]
     NoDenomInfoProvided {},
 
+    #[error("Cannot assign cw20 rate to cross-chain recipient")]
+    InvalidCw20CrossChainRate {},
+
     #[error("InvalidAmount: {msg}")]
     InvalidAmount { msg: String },
 
@@ -72,6 +75,7 @@ pub enum ContractError {
         operation: String,
         validator: String,
     },
+
     #[error("Invalid Campaign Operation: {operation} on {stage}")]
     InvalidCampaignOperation { operation: String, stage: String },
 
