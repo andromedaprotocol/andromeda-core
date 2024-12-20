@@ -815,6 +815,7 @@ fn test_auction_app_cw20_restricted() {
         Asset::Cw20Token(AndrAddr::from_string(second_cw20.addr().to_string())),
         None,
         None,
+        None,
         Some(vec![buyer_one.clone(), buyer_two.clone()]),
         Some(Recipient::from_string(buyer_one)),
     );

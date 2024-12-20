@@ -977,6 +977,7 @@ fn execute_update_auction_zero_start() {
         whitelist: None,
         min_bid: None,
         min_raise: None,
+        buy_now_price: None,
         recipient: None,
     };
     let mut env = mock_env();
@@ -1010,6 +1011,7 @@ fn execute_update_auction_zero_duration() {
         whitelist: None,
         min_bid: None,
         min_raise: None,
+        buy_now_price: None,
         recipient: None,
     };
     let mut env = mock_env();
@@ -1037,6 +1039,7 @@ fn execute_update_auction_unauthorized() {
         whitelist: Some(vec![Addr::unchecked("user")]),
         min_bid: None,
         min_raise: None,
+        buy_now_price: None,
         recipient: None,
     };
     let env = mock_env();
@@ -1062,6 +1065,7 @@ fn execute_update_auction_auction_started() {
         whitelist: Some(vec![Addr::unchecked("user")]),
         min_bid: None,
         min_raise: None,
+        buy_now_price: None,
         recipient: None,
     };
     let mut env = mock_env();
@@ -1089,6 +1093,7 @@ fn execute_update_auction() {
         whitelist: Some(vec![Addr::unchecked("user")]),
         min_bid: None,
         min_raise: None,
+        buy_now_price: Some(Uint128::from(100u128)),
         recipient: None,
     };
     let mut env = mock_env();
@@ -1104,7 +1109,7 @@ fn execute_update_auction() {
             high_bidder_addr: Addr::unchecked(""),
             high_bidder_amount: Uint128::zero(),
             coin_denom: "uusd".to_string(),
-            buy_now_price: None,
+            buy_now_price: Some(Uint128::from(100u128)),
             uses_cw20: false,
             auction_id: 1u128.into(),
             owner: MOCK_TOKEN_OWNER.to_string(),

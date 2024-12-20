@@ -47,6 +47,7 @@ pub enum ExecuteMsg {
         whitelist: Option<Vec<Addr>>,
         min_bid: Option<Uint128>,
         min_raise: Option<Uint128>,
+        buy_now_price: Option<Uint128>,
         recipient: Option<Recipient>,
     },
     CancelAuction {
