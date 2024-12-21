@@ -41,15 +41,24 @@ if [ $# -eq 0 ]; then
         done
     done
 else
-    # Process only specified contracts
-    for contract_name in "$@"; do
-        # Find the contract directory (searches in all subdirectories)
-        contract_path=$(find contracts -type d -name "$contract_name")
-        if [ -z "$contract_path" ]; then
-            echo "Warning: Contract '$contract_name' not found"
-            continue
+    # Process specified contracts or categories
+    for input in "$@"; do
+        # First check if it's a category (directory under contracts/)
+        if [ -d "contracts/$input" ]; then
+            echo "Processing category: $input"
+            for contract in contracts/$input/*/; do
+                ( cd "$contract" && cargo schema )
+                copy_schema "$contract"
+            done
+        else
+            # Try to find as individual contract
+            contract_path=$(find contracts -type d -name "$input")
+            if [ -z "$contract_path" ]; then
+                echo "Warning: Neither contract nor category '$input' found"
+                continue
+            fi
+            ( cd "$contract_path" && cargo schema )
+            copy_schema "$contract_path"
         fi
-        ( cd "$contract_path" && cargo schema )
-        copy_schema "$contract_path"
     done
 fi
