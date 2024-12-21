@@ -88,11 +88,6 @@ jobs:
         with:
           toolchain: 1.76.0
           components: rustfmt, clippy
-      - name: Download Contracts
-        uses: actions/download-artifact@v4
-        with:
-          name: contracts
-          path: "./artifacts"
       - name: Download Deploy Script
         uses: actions/download-artifact@v4
         with:
