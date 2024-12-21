@@ -7,7 +7,6 @@ use cosmwasm_std::{
 /// Alternative to `cosmwasm_std::testing::mock_dependencies` that allows us to respond to custom queries.
 ///
 /// Automatically assigns a kernel address as MOCK_KERNEL_CONTRACT.
-
 #[allow(dead_code)]
 pub struct WasmMockQuerier {
     pub base: MockQuerier,

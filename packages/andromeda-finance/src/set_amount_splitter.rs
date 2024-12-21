@@ -100,7 +100,6 @@ pub struct GetSplitterConfigResponse {
 /// * The recipient amount must be above zero
 /// * Each recipient can't have more than two coins assigned.
 /// * No duplicate coins
-
 pub fn validate_recipient_list(
     deps: Deps,
     recipients: Vec<AddressAmount>,
