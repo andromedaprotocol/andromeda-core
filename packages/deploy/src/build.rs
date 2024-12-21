@@ -19,16 +19,17 @@ fn get_contracts_to_build() -> Vec<String> {
 }
 
 pub fn build_schemas(contracts: Vec<String>) {
-    let status = Command::new("sh")
+    let output = Command::new("sh")
         .arg("./scripts/build_schema.sh")
         .args(contracts)
-        .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
-        .status()
+        .output()
         .expect("Failed to execute build schema script");
 
-    if !status.success() {
-        panic!("Build script failed with status: {}", status);
+    if !output.status.success() {
+        eprintln!("Schema build failed with error:");
+        eprintln!("stdout: {}", String::from_utf8_lossy(&output.stdout));
+        eprintln!("stderr: {}", String::from_utf8_lossy(&output.stderr));
+        panic!("Build script failed with status: {}", output.status);
     }
 }
 
