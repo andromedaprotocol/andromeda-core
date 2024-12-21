@@ -1,0 +1,98 @@
+use std::process::Command;
+
+fn get_contracts_to_build() -> Vec<String> {
+    let contracts_to_build = dotenv::var("DEPLOY_CONTRACTS").unwrap_or_default();
+    if contracts_to_build.is_empty() {
+        return vec![];
+    }
+    let mut contracts: Vec<String> = contracts_to_build
+        .split(",")
+        .map(|c| format!("andromeda-{}", c.to_string().trim()).to_string())
+        .filter(|c| !c.is_empty())
+        .collect();
+
+    if dotenv::var("DEPLOY_OS").unwrap_or_default() == "true" {
+        log::debug!("Adding OS contract to build list");
+        contracts.push("os".to_string());
+    }
+    contracts
+}
+
+pub fn build_schemas(contracts: Vec<String>) {
+    let status = Command::new("sh")
+        .arg("./scripts/build_schema.sh")
+        .args(contracts)
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .expect("Failed to execute build schema script");
+
+    if !status.success() {
+        panic!("Build script failed with status: {}", status);
+    }
+}
+
+pub fn build_contracts(contracts: Vec<String>) {
+    let status = Command::new("sh")
+        .arg("./scripts/build.sh")
+        .args(contracts)
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .expect("Failed to execute build script");
+
+    if !status.success() {
+        panic!("Build script failed with status: {}", status);
+    }
+}
+
+pub fn build_all_contracts() {
+    let status = Command::new("make")
+        .arg("build")
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .expect("Failed to execute make command");
+
+    if !status.success() {
+        panic!("Build command failed with status: {}", status);
+    }
+}
+
+/// Builds smart contracts based on environment variables configuration.
+///
+/// # Environment Variables
+/// - `DEPLOYMENT_SKIP_BUILD`: If "true", skips the build process entirely
+/// - `DEPLOY_CONTRACTS`: Comma-separated list of contracts to build
+/// - `DEPLOY_OS`: If "true", adds the OS contract to the build list
+///
+/// # Behavior
+/// - If no contracts are specified, builds all contracts
+/// - If specific contracts are listed, builds only those contracts
+/// - Automatically prefixes contract names with "andromeda-" if needed
+pub fn build() {
+    let should_skip_build =
+        dotenv::var("DEPLOYMENT_SKIP_BUILD").unwrap_or("false".to_string()) == "true";
+    if should_skip_build {
+        log::info!("Build process skipped due to DEPLOYMENT_SKIP_BUILD=true");
+        return;
+    }
+
+    let contracts_to_build = dotenv::var("DEPLOY_CONTRACTS").unwrap_or_default();
+    log::debug!(
+        "Contracts specified in DEPLOY_CONTRACTS: {}",
+        contracts_to_build
+    );
+
+    let named_contracts: Vec<String> = get_contracts_to_build();
+    log::info!("Building schemas...");
+    build_schemas(named_contracts.clone());
+    log::info!("Building contracts...");
+    if named_contracts.is_empty() {
+        log::info!("No specific contracts specified, building all contracts");
+        build_all_contracts();
+    } else {
+        log::info!("Building specific contracts: {:?}", named_contracts);
+        build_contracts(named_contracts);
+    }
+}

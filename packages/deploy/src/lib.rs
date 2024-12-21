@@ -1,4 +1,5 @@
 pub mod adodb;
+pub mod build;
 pub mod chains;
 pub mod contract_interface;
 pub mod contracts;

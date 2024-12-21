@@ -23,18 +23,33 @@ copy_schema () {
     for schema in $CONTRACT_PATH/schema/*.json; do
         local SCHEMA_NAME=$(basename $schema);
         cp "$schema" "./schemas/$VERSION_FILENAME/$SCHEMA_NAME"   
-
     done
-
 }
 
 if [ ! -d "./schemas" ]; then
     mkdir schemas;
 fi;
 
-for directory in contracts/*/; do
-    for contract in $directory/*/; do
-        ( cd $contract && cargo schema )
-        copy_schema $contract
+# Check if any arguments were provided
+if [ $# -eq 0 ]; then
+    echo "No contracts specified. Processing all contracts..."
+    # Original behavior: process all contracts
+    for directory in contracts/*/; do
+        for contract in $directory/*/; do
+            ( cd $contract && cargo schema )
+            copy_schema $contract
+        done
     done
-done
+else
+    # Process only specified contracts
+    for contract_name in "$@"; do
+        # Find the contract directory (searches in all subdirectories)
+        contract_path=$(find contracts -type d -name "$contract_name")
+        if [ -z "$contract_path" ]; then
+            echo "Warning: Contract '$contract_name' not found"
+            continue
+        fi
+        ( cd "$contract_path" && cargo schema )
+        copy_schema "$contract_path"
+    done
+fi
