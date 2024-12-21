@@ -127,12 +127,12 @@ pub fn do_ibc_packet_receive(
     msg: IbcPacketReceiveMsg,
 ) -> Result<IbcReceiveResponse, ContractError> {
     let channel = msg.clone().packet.dest.channel_id;
-    ensure!(
-        CHANNEL_TO_CHAIN.has(deps.storage, channel.as_str()),
-        ContractError::Unauthorized {}
-    );
-    let chain = CHANNEL_TO_CHAIN.load(deps.storage, channel.as_str())?;
-    let channel_info = CHAIN_TO_CHANNEL.load(deps.storage, chain.as_str())?;
+    let chain = CHANNEL_TO_CHAIN
+        .may_load(deps.storage, channel.as_str())?
+        .ok_or(ContractError::Unauthorized {})?;
+    let channel_info = CHAIN_TO_CHANNEL
+        .may_load(deps.storage, chain.as_str())?
+        .ok_or(ContractError::Unauthorized {})?;
 
     let packet_msg: IbcExecuteMsg = from_json(&msg.packet.data)?;
     let mut execute_env = ExecuteContext {
