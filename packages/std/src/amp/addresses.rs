@@ -105,14 +105,22 @@ impl AndrAddr {
                 let valid_vfs_path =
                     self.local_path_to_vfs_path(deps.storage, &deps.querier, vfs_contract.clone())?;
                 let vfs_addr = Addr::unchecked(vfs_contract);
-                vfs_resolve_path(valid_vfs_path.clone(), vfs_addr, &deps.querier)
-                    .ok()
-                    .ok_or(ContractError::InvalidPathname {
-                        error: Some(format!(
-                            "{:?} does not exist in the file system",
-                            valid_vfs_path.0
-                        )),
-                    })
+                match vfs_resolve_path(valid_vfs_path.clone(), vfs_addr, &deps.querier) {
+                    Ok(addr) => Ok(addr),
+                    Err(_) => {
+                        // If the path is cross-chain then we return it as is
+                        if valid_vfs_path.get_protocol().is_some() {
+                            Ok(Addr::unchecked(valid_vfs_path.into_string()))
+                        } else {
+                            Err(ContractError::InvalidPathname {
+                                error: Some(format!(
+                                    "{:?} does not exist in the file system",
+                                    valid_vfs_path.0
+                                )),
+                            })
+                        }
+                    }
+                }
             }
         }
     }

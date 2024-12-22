@@ -372,7 +372,7 @@ fn handle_receive_cw20(
 
 fn execute_discard_campaign(mut ctx: ExecuteContext) -> Result<Response, ContractError> {
     nonpayable(&ctx.info)?;
-    
+
     let ExecuteContext {
         ref mut deps,
         ref info,
@@ -389,7 +389,7 @@ fn execute_discard_campaign(mut ctx: ExecuteContext) -> Result<Response, Contrac
     let curr_stage = get_current_stage(deps.storage);
     // Ensure that the campaign is in ONGOING, or READY stage
     ensure!(
-        curr_stage == CampaignStage::ONGOING || curr_stage == CampaignStage::READY, 
+        curr_stage == CampaignStage::ONGOING || curr_stage == CampaignStage::READY,
         ContractError::InvalidCampaignOperation {
             operation: "discard_campaign".to_string(),
             stage: curr_stage.to_string()
@@ -404,9 +404,7 @@ fn execute_discard_campaign(mut ctx: ExecuteContext) -> Result<Response, Contrac
         .add_attribute("result", CampaignStage::DISCARDED.to_string()))
 }
 
-fn execute_end_campaign(
-    mut ctx: ExecuteContext
-) -> Result<Response, ContractError> {
+fn execute_end_campaign(mut ctx: ExecuteContext) -> Result<Response, ContractError> {
     nonpayable(&ctx.info)?;
 
     let ExecuteContext {
@@ -438,7 +436,10 @@ fn execute_end_campaign(
     let soft_cap = campaign_config.soft_cap.unwrap_or(Uint128::one());
 
     // Decide the next stage based on capital and expiry
-    let final_stage = match (duration.end_time.is_expired(&env.block), current_capital >= soft_cap) {
+    let final_stage = match (
+        duration.end_time.is_expired(&env.block),
+        current_capital >= soft_cap,
+    ) {
         // Success if soft cap is met
         (_, true) => CampaignStage::SUCCESS,
         // Failed if expired and soft cap not met
@@ -632,7 +633,9 @@ fn execute_claim(ctx: ExecuteContext) -> Result<Response, ContractError> {
 
     let sub_response = match curr_stage {
         CampaignStage::SUCCESS => handle_successful_claim(deps.branch(), &info.sender)?,
-        CampaignStage::FAILED | CampaignStage::DISCARDED => handle_failed_claim(deps.branch(), &info.sender)?,
+        CampaignStage::FAILED | CampaignStage::DISCARDED => {
+            handle_failed_claim(deps.branch(), &info.sender)?
+        }
         _ => {
             return Err(ContractError::InvalidCampaignOperation {
                 operation: "Claim".to_string(),

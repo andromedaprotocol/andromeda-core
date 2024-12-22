@@ -11,7 +11,7 @@ enum AppQueryMsg {
     GetAddress { name: String },
 }
 
-impl<'a> ADOContract<'a> {
+impl ADOContract<'_> {
     #[inline]
     pub fn get_app_contract(&self, storage: &dyn Storage) -> Result<Option<Addr>, ContractError> {
         Ok(self.app_contract.may_load(storage)?)

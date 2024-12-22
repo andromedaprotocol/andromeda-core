@@ -1,5 +1,4 @@
 use crate::ado_base::rates::{AllRatesResponse, Rate, RatesMessage, RatesResponse};
-use crate::amp::Recipient;
 use crate::common::{context::ExecuteContext, Funds};
 use crate::error::ContractError;
 use crate::os::aos_querier::AOSQuerier;
@@ -13,7 +12,7 @@ pub fn rates<'a>() -> Map<'a, &'a str, Rate> {
     Map::new("rates")
 }
 
-impl<'a> ADOContract<'a> {
+impl ADOContract<'_> {
     /// Sets rates
     pub fn set_rates(
         &self,
@@ -39,7 +38,7 @@ impl<'a> ADOContract<'a> {
         &self,
         ctx: ExecuteContext,
         action: impl Into<String>,
-        mut rate: Rate,
+        rate: Rate,
     ) -> Result<Response, ContractError> {
         ensure!(
             Self::is_contract_owner(self, ctx.deps.storage, ctx.info.sender.as_str())?,
@@ -49,17 +48,6 @@ impl<'a> ADOContract<'a> {
         // Validate rates
         rate.validate_rate(ctx.deps.as_ref())?;
 
-        let rate = match rate {
-            Rate::Local(ref mut local_rate) => {
-                if local_rate.recipients.is_empty() {
-                    local_rate.recipients = vec![Recipient::new(ctx.info.sender, None)];
-                    Rate::Local(local_rate.clone())
-                } else {
-                    rate
-                }
-            }
-            Rate::Contract(_) => rate,
-        };
         self.set_rates(ctx.deps.storage, action, rate)?;
 
         Ok(Response::default().add_attributes(vec![("action", "set_rates")]))
@@ -180,7 +168,6 @@ impl<'a> ADOContract<'a> {
 }
 #[cfg(test)]
 #[cfg(feature = "rates")]
-
 mod tests {
 
     use cosmwasm_std::{
@@ -207,11 +194,11 @@ mod tests {
 
         let expected_rate = Rate::Local(LocalRate {
             rate_type: LocalRateType::Additive,
-            recipients: vec![Recipient {
+            recipient: Recipient {
                 address: AndrAddr::from_string("owner".to_string()),
                 msg: None,
                 ibc_recovery_address: None,
-            }],
+            },
             value: LocalRateValue::Flat(coin(100_u128, "uandr")),
             description: None,
         });

@@ -11,7 +11,7 @@ pub struct EscrowIndexes<'a> {
     pub owner: MultiIndex<'a, String, Escrow, Vec<u8>>,
 }
 
-impl<'a> IndexList<Escrow> for EscrowIndexes<'a> {
+impl IndexList<Escrow> for EscrowIndexes<'_> {
     fn get_indexes(&'_ self) -> Box<dyn Iterator<Item = &'_ dyn Index<Escrow>> + '_> {
         let v: Vec<&dyn Index<Escrow>> = vec![&self.owner];
         Box::new(v.into_iter())
