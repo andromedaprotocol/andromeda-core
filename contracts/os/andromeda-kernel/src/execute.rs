@@ -604,12 +604,9 @@ impl MsgHandler {
                 self.message()
                     .generate_sub_msg_direct(recipient_addr.clone(), ReplyId::AMPMsg.repr())
             } else {
-                let amp_msg = AMPMsg {
-                    recipient: AndrAddr::from_string(recipient_addr.clone()),
-                    message: message.clone(),
-                    funds: funds.clone(),
-                    config: config.clone(), // Explicitly preserve the original configuration
-                };
+                let amp_msg =
+                    AMPMsg::new(recipient_addr.clone(), message.clone(), Some(funds.clone()))
+                        .with_config(config.clone());
 
                 let new_packet = AMPPkt::new(origin, previous_sender, vec![amp_msg]);
 
