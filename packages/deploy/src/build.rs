@@ -19,7 +19,7 @@ fn get_contracts_to_build() -> Vec<String> {
 }
 
 pub fn build_schemas(contracts: Vec<String>) {
-    let output = Command::new("sh")
+    let output = Command::new("bash")
         .arg("./scripts/build_schema.sh")
         .args(contracts)
         .output()
@@ -34,7 +34,7 @@ pub fn build_schemas(contracts: Vec<String>) {
 }
 
 pub fn build_contracts(contracts: Vec<String>) {
-    let output = Command::new("sh")
+    let output = Command::new("bash")
         .arg("./scripts/build.sh")
         .args(contracts)
         .output()
