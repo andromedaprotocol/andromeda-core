@@ -89,6 +89,10 @@ jobs:
           toolchain: 1.76.0
           targets: wasm32-unknown-unknown
           components: rustfmt, clippy
+      - name: Install Binaryen
+        run: |
+          chmod +x ./scripts/install-binaryen.sh
+          ./scripts/install-binaryen.sh
       - name: Download Deploy Script
         uses: actions/download-artifact@v4
         with:
