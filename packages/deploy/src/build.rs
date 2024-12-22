@@ -1,17 +1,22 @@
 use std::process::Command;
 
 fn get_contracts_to_build() -> Vec<String> {
+    let should_deploy_os = dotenv::var("DEPLOY_OS")
+        .unwrap_or("false".to_string())
+        .to_lowercase()
+        == "true";
     let contracts_to_build = dotenv::var("DEPLOY_CONTRACTS").unwrap_or_default();
-    if contracts_to_build.is_empty() {
+    if contracts_to_build.is_empty() && !should_deploy_os {
         return vec![];
     }
     let mut contracts: Vec<String> = contracts_to_build
         .split(",")
+        .filter(|c| !c.is_empty())
         .map(|c| format!("andromeda-{}", c.to_string().trim()).to_string())
         .filter(|c| !c.is_empty())
         .collect();
 
-    if dotenv::var("DEPLOY_OS").unwrap_or_default() == "true" {
+    if should_deploy_os {
         log::debug!("Adding OS contract to build list");
         contracts.push("os".to_string());
     }
@@ -72,11 +77,15 @@ pub fn build_all_contracts() {
 /// - If no contracts are specified, builds all contracts
 /// - If specific contracts are listed, builds only those contracts
 /// - Automatically prefixes contract names with "andromeda-" if needed
-pub fn build() {
+pub fn run() {
     let should_skip_build =
         dotenv::var("DEPLOYMENT_SKIP_BUILD").unwrap_or("false".to_string()) == "true";
-    if should_skip_build {
-        log::info!("Build process skipped due to DEPLOYMENT_SKIP_BUILD=true");
+    let deploy_os = dotenv::var("DEPLOY_OS")
+        .unwrap_or("false".to_string())
+        .to_lowercase()
+        == "true";
+    if should_skip_build && !deploy_os {
+        log::info!("Build process skipped due to DEPLOYMENT_SKIP_BUILD=true and DEPLOY_OS=false");
         return;
     }
 
@@ -90,7 +99,7 @@ pub fn build() {
     log::info!("Building schemas...");
     build_schemas(named_contracts.clone());
     log::info!("Building contracts...");
-    if named_contracts.is_empty() {
+    if named_contracts.is_empty() && !should_skip_build {
         log::info!("No specific contracts specified, building all contracts");
         build_all_contracts();
     } else {

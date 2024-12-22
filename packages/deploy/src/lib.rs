@@ -7,3 +7,4 @@ pub mod error;
 pub mod os;
 pub mod report;
 pub mod slack;
+pub mod validate;

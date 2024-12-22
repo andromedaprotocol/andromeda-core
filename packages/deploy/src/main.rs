@@ -1,6 +1,7 @@
 use andromeda_deploy::build;
 use andromeda_deploy::report::DeploymentReport;
 use andromeda_deploy::slack::SlackNotification;
+use andromeda_deploy::validate;
 use std::env;
 
 use andromeda_deploy::adodb;
@@ -11,7 +12,9 @@ fn main() {
     env_logger::init();
     dotenv().ok();
 
-    build::build();
+    validate::run();
+
+    build::run();
 
     let chain = env::var("DEPLOYMENT_CHAIN").expect("DEPLOYMENT_CHAIN must be set");
     let mut kernel_address = env::var("DEPLOYMENT_KERNEL_ADDRESS").ok();

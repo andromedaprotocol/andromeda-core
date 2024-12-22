@@ -10,6 +10,7 @@ license = "MIT"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
+cosmwasm-std = { workspace = true }
 serde = { version = "1.0.216", default-features = false, features = ["derive"] }
 cw-orch = { workspace = true }
 cw-orch-daemon = "0.24.2"

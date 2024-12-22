@@ -421,6 +421,7 @@ dependencies = [
  "andromeda-vfs",
  "andromeda-weighted-distribution-splitter",
  "chrono 0.4.39",
+ "cosmwasm-std 1.5.8",
  "cw-multi-test",
  "cw-orch",
  "cw-orch-daemon",
