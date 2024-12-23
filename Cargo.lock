@@ -1054,7 +1054,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-weighted-distribution-splitter"
-version = "2.1.0-beta"
+version = "2.1.0-b.2"
 dependencies = [
  "andromeda-app",
  "andromeda-finance",

@@ -232,11 +232,10 @@ pub fn execute_add_recipient(
     );
 
     // Check for duplicate recipients
-
-    let user_exists = splitter
-        .recipients
-        .iter()
-        .any(|x| x.recipient == recipient.recipient);
+    let user_exists = splitter.recipients.iter().any(|x| {
+        x.recipient.address.get_raw_address(&deps.as_ref())
+            == recipient.recipient.address.get_raw_address(&deps.as_ref())
+    });
 
     ensure!(!user_exists, ContractError::DuplicateRecipient {});
 
@@ -426,7 +425,10 @@ fn execute_remove_recipient(
     let recipient_idx = splitter
         .recipients
         .iter()
-        .position(|x| x.recipient.address == recipient)
+        .position(|x| {
+            x.recipient.address.get_raw_address(&deps.as_ref())
+                == recipient.get_raw_address(&deps.as_ref())
+        })
         .ok_or(ContractError::UserNotFound {})?;
 
     splitter.recipients.swap_remove(recipient_idx);
@@ -482,11 +484,14 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
     }
 }
 
-fn query_user_weight(deps: Deps, user: Recipient) -> Result<GetUserWeightResponse, ContractError> {
+fn query_user_weight(deps: Deps, user: AndrAddr) -> Result<GetUserWeightResponse, ContractError> {
     let splitter = SPLITTER.load(deps.storage)?;
     let recipients = splitter.recipients;
 
-    let addrs = recipients.iter().find(|&x| x.recipient == user);
+    let addrs = recipients
+        .iter()
+        .find(|&x| x.recipient.address.get_raw_address(&deps) == user.get_raw_address(&deps))
+        .ok_or(ContractError::AccountNotFound {})?;
 
     // Calculate the total weight
     let mut total_weight = Uint128::zero();
@@ -494,19 +499,10 @@ fn query_user_weight(deps: Deps, user: Recipient) -> Result<GetUserWeightRespons
         let recipient_weight = recipient_addr.weight;
         total_weight = total_weight.checked_add(recipient_weight)?;
     }
-
-    if let Some(i) = addrs {
-        let weight = i.weight;
-        Ok(GetUserWeightResponse {
-            weight,
-            total_weight,
-        })
-    } else {
-        Ok(GetUserWeightResponse {
-            weight: Uint128::zero(),
-            total_weight,
-        })
-    }
+    Ok(GetUserWeightResponse {
+        weight: addrs.weight,
+        total_weight,
+    })
 }
 
 fn query_splitter(deps: Deps) -> Result<GetSplitterConfigResponse, ContractError> {

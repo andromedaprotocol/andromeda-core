@@ -61,7 +61,7 @@ pub enum QueryMsg {
     GetSplitterConfig {},
     /// Gets user's allocated weight
     #[returns(GetUserWeightResponse)]
-    GetUserWeight { user: Recipient },
+    GetUserWeight { user: AndrAddr },
 }
 
 #[cw_serde]
