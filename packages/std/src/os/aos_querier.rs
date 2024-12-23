@@ -322,4 +322,14 @@ impl AOSQuerier {
         };
         Ok((new_denom_trace.get_ibc_denom(), new_denom_trace))
     }
+
+    pub fn get_env_variable(
+        querier: &QuerierWrapper,
+        kernel_addr: &Addr,
+        variable: &str,
+    ) -> Result<Option<String>, ContractError> {
+        let key = AOSQuerier::get_map_storage_key("kernel_env_variables", &[variable.as_bytes()])?;
+        let verify: Option<String> = AOSQuerier::query_storage(querier, kernel_addr, &key)?;
+        Ok(verify)
+    }
 }
