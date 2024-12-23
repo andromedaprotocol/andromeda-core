@@ -1,7 +1,9 @@
 use crate::{
     contract::{execute, instantiate},
     ibc::PACKET_LIFETIME,
-    state::{ADO_OWNER, CHAIN_TO_CHANNEL, CHANNEL_TO_CHAIN, CURR_CHAIN, KERNEL_ADDRESSES},
+    state::{
+        ADO_OWNER, CHAIN_TO_CHANNEL, CHANNEL_TO_CHAIN, CURR_CHAIN, ENV_VARIABLES, KERNEL_ADDRESSES,
+    },
 };
 use andromeda_std::{
     amp::{
@@ -19,6 +21,7 @@ use cosmwasm_std::{
     testing::{mock_dependencies, mock_env, mock_info},
     to_json_binary, Addr, Binary, CosmosMsg, IbcMsg,
 };
+use rstest::rstest;
 
 #[test]
 fn proper_initialization() {
@@ -389,4 +392,72 @@ fn test_handle_ibc_direct() {
     let res = execute(deps.as_mut(), env, info, msg);
     // * message fails even though it is a non-default binary message
     assert!(res.is_ok());
+}
+
+const CREATOR: &str = "creator";
+const REALLY_LONG_VALUE: &str = "reallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallylongvalue";
+
+#[rstest]
+#[case("test_var", Some("test_value"), CREATOR, None, None)]
+#[case("test_var", None, CREATOR, None, Some(ContractError::EnvironmentVariableNotFound { variable: "test_var".to_string() }))]
+#[case("test_var", Some("test_value"), "attacker", Some(ContractError::Unauthorized {}), None)]
+#[case("test_var", Some(REALLY_LONG_VALUE), CREATOR, Some(ContractError::InvalidEnvironmentVariable { msg: "Environment variable value length exceeds the maximum allowed length of 100 characters".to_string() }), None)]
+#[case(REALLY_LONG_VALUE, Some("test_val"), CREATOR, Some(ContractError::InvalidEnvironmentVariable { msg: "Environment variable name length exceeds the maximum allowed length of 100 characters".to_string() }), None)]
+fn test_set_unset_env(
+    #[case] variable: &str,
+    #[case] value: Option<&str>,
+    #[case] sender: &str,
+    #[case] expected_set_error: Option<ContractError>,
+    #[case] expected_unset_error: Option<ContractError>,
+) {
+    let mut deps = mock_dependencies_custom(&[]);
+    let info = mock_info(CREATOR, &[]);
+    let env = mock_env();
+    instantiate(
+        deps.as_mut(),
+        env.clone(),
+        info.clone(),
+        InstantiateMsg {
+            owner: None,
+            chain_name: "test".to_string(),
+        },
+    )
+    .unwrap();
+
+    let send_info = mock_info(sender, &[]);
+
+    if let Some(value) = value {
+        // Set environment variable
+        let set_env_msg = ExecuteMsg::SetEnv {
+            variable: variable.to_string(),
+            value: value.to_string(),
+        };
+        let res = execute(deps.as_mut(), env.clone(), send_info.clone(), set_env_msg);
+        if let Some(expected_error) = expected_set_error {
+            assert_eq!(res.unwrap_err(), expected_error);
+            return;
+        } else {
+            assert_eq!(res.unwrap().attributes[0].value, "set_env");
+        }
+
+        // Check if the variable is set
+        let stored_value = ENV_VARIABLES.load(&deps.storage, variable).unwrap();
+        assert_eq!(stored_value, value);
+    }
+
+    // Unset environment variable
+    let unset_env_msg = ExecuteMsg::UnsetEnv {
+        variable: variable.to_string(),
+    };
+    let res = execute(deps.as_mut(), env, send_info, unset_env_msg);
+    if let Some(expected_error) = expected_unset_error {
+        assert_eq!(res.unwrap_err(), expected_error);
+        return;
+    } else {
+        assert_eq!(res.unwrap().attributes[0].value, "unset_env");
+    }
+
+    // Check if the variable is unset
+    let stored_value = ENV_VARIABLES.may_load(&deps.storage, variable).unwrap();
+    assert!(stored_value.is_none());
 }

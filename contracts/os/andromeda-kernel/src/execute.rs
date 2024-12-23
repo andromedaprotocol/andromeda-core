@@ -484,6 +484,19 @@ pub fn set_env(
         ContractError::Unauthorized {}
     );
 
+    ensure!(
+        variable.len() <= 100,
+        ContractError::InvalidEnvironmentVariable {
+            msg: "Environment variable name length exceeds the maximum allowed length of 100 characters".to_string()
+        }
+    );
+    ensure!(
+        value.len() <= 100,
+        ContractError::InvalidEnvironmentVariable {
+            msg: "Environment variable value length exceeds the maximum allowed length of 100 characters".to_string()
+        }
+    );
+
     ENV_VARIABLES.save(execute_ctx.deps.storage, &variable, &value)?;
     Ok(Response::default()
         .add_attribute("action", "set_env")
@@ -498,6 +511,12 @@ pub fn unset_env(execute_ctx: ExecuteContext, variable: String) -> Result<Respon
         ContractError::Unauthorized {}
     );
 
+    ensure!(
+        ENV_VARIABLES
+            .may_load(execute_ctx.deps.storage, &variable)?
+            .is_some(),
+        ContractError::EnvironmentVariableNotFound { variable }
+    );
     ENV_VARIABLES.remove(execute_ctx.deps.storage, &variable);
     Ok(Response::default()
         .add_attribute("action", "unset_env")
