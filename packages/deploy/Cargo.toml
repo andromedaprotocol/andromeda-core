@@ -33,7 +33,7 @@ serde-json-wasm = "1.0.1"
 enum-repr = { workspace = true }
 sha2 = "0.10.8"
 cw-orch = { workspace = true }
-cw-orch-daemon = "0.24.2"
+cw-orch-daemon = "0.29.0"
 
 # OS Contracts
 andromeda-kernel = { version = "1.2.0-b.1", path = "../../contracts/os/andromeda-kernel" }
