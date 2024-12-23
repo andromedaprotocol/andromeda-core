@@ -170,7 +170,7 @@ pub fn amp_receive(
 ) -> Result<Response, ContractError> {
     // Only verified ADOs can access this function
     ensure!(
-        query::verify_address(deps.as_ref(), info.sender.to_string(),)?.verify_address,
+        query::verify_address(deps.as_ref(), info.sender.to_string())?.verify_address,
         ContractError::Unauthorized {}
     );
     ensure!(
@@ -536,16 +536,20 @@ impl MsgHandler {
         sequence: u64,
     ) -> Result<Response, ContractError> {
         let mut res = Response::default();
+
+        let original_msg = self.message();
         let AMPMsg {
             message,
             recipient,
             funds,
             config,
             ..
-        } = self.message();
+        } = original_msg;
+
         let recipient_addr = recipient.get_raw_address(&deps.as_ref())?;
+        
         let adodb_addr = KERNEL_ADDRESSES.load(deps.storage, ADO_DB_KEY)?;
-        // A default message is a bank message
+    
         if Binary::default() == message.clone() {
             ensure!(
                 !funds.is_empty(),
@@ -553,17 +557,18 @@ impl MsgHandler {
                     error: Some("No message or funds supplied".to_string())
                 }
             );
-
+    
             let sub_msg = BankMsg::Send {
                 to_address: recipient_addr.to_string(),
                 amount: funds.clone(),
             };
-
+    
             let mut attrs = vec![];
             for (idx, fund) in funds.iter().enumerate() {
                 attrs.push(attr(format!("funds:{sequence}:{idx}"), fund.to_string()));
             }
             attrs.push(attr(format!("recipient:{sequence}"), recipient_addr));
+    
             res = res
                 .add_submessage(SubMsg::reply_on_error(
                     CosmosMsg::Bank(sub_msg),
@@ -577,7 +582,7 @@ impl MsgHandler {
                 info.sender.to_string()
             };
             let previous_sender = info.sender.to_string();
-            // Ensure recipient is a smart contract
+
             let ContractInfoResponse {
                 code_id: recipient_code_id,
                 ..
@@ -593,12 +598,12 @@ impl MsgHandler {
                 || AOSQuerier::ado_type_getter(&deps.querier, &adodb_addr, recipient_code_id)?
                     .is_none()
             {
-                // Message is direct (no AMP Ctx)
                 self.message()
                     .generate_sub_msg_direct(recipient_addr.clone(), ReplyId::AMPMsg.repr())
             } else {
                 let amp_msg =
-                    AMPMsg::new(recipient_addr.clone(), message.clone(), Some(funds.clone()));
+                    AMPMsg::new(recipient_addr.clone(), message.clone(), Some(funds.clone()))
+                        .with_config(config.clone());
 
                 let new_packet = AMPPkt::new(origin, previous_sender, vec![amp_msg]);
 
@@ -608,7 +613,7 @@ impl MsgHandler {
                     ReplyId::AMPMsg.repr(),
                 )?
             };
-
+    
             res = res
                 .add_submessage(sub_msg)
                 .add_attributes(vec![attr(format!("recipient:{sequence}"), recipient_addr)]);
