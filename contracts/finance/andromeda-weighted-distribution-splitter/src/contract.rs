@@ -9,11 +9,8 @@ use andromeda_finance::{
 use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     ado_contract::ADOContract,
-    amp::Recipient,
-    common::{
-        actions::call_action, context::ExecuteContext, encode_binary, expiration::Expiry,
-        Milliseconds,
-    },
+    amp::{AndrAddr, Recipient},
+    common::{actions::call_action, context::ExecuteContext, encode_binary, expiration::Expiry},
     error::ContractError,
 };
 use cosmwasm_std::{
@@ -33,30 +30,22 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    let _app_contract = ADOContract::default().get_app_contract(deps.storage)?;
     // Max 100 recipients
     ensure!(
         msg.recipients.len() <= 100,
         ContractError::ReachedRecipientLimit {}
     );
-    let splitter = match msg.lock_time {
-        Some(ref lock_time) => {
-            let time = validate_expiry_duration(lock_time, &env.block)?;
 
-            Splitter {
-                recipients: msg.recipients,
-                lock: time,
-                default_recipient: msg.default_recipient,
-            }
-        }
-        None => {
-            Splitter {
-                recipients: msg.recipients,
-                // If locking isn't desired upon instantiation, it's automatically set to 0
-                lock: Milliseconds::default(),
-                default_recipient: msg.default_recipient,
-            }
-        }
+    let lock = msg
+        .lock_time
+        .map(|lock_time| validate_expiry_duration(&lock_time, &env.block))
+        .transpose()?
+        .unwrap_or_default();
+
+    let splitter = Splitter {
+        recipients: msg.recipients,
+        lock,
+        default_recipient: msg.default_recipient,
     };
 
     SPLITTER.save(deps.storage, &splitter)?;
@@ -414,7 +403,7 @@ fn execute_update_recipients(
 
 fn execute_remove_recipient(
     ctx: ExecuteContext,
-    recipient: Recipient,
+    recipient: AndrAddr,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
         deps, info, env, ..
@@ -428,34 +417,20 @@ fn execute_remove_recipient(
 
     let mut splitter = SPLITTER.load(deps.storage)?;
 
-    // Can't remove recipients while lock isn't expired
-
     ensure!(
         splitter.lock.is_expired(&env.block),
         ContractError::ContractLocked {}
     );
 
-    // Recipients are stored in a vector, we search for the desired recipient's index in the vector
-
-    let user_index = splitter
+    // Find and remove recipient in one pass
+    let recipient_idx = splitter
         .recipients
-        .clone()
-        .into_iter()
-        .position(|x| x.recipient == recipient);
+        .iter()
+        .position(|x| x.recipient.address == recipient)
+        .ok_or(ContractError::UserNotFound {})?;
 
-    // If the index exists, remove the element found in the index
-    // If the index doesn't exist, return an error
-    ensure!(user_index.is_some(), ContractError::UserNotFound {});
-
-    if let Some(i) = user_index {
-        splitter.recipients.swap_remove(i);
-        let new_splitter = Splitter {
-            recipients: splitter.recipients,
-            lock: splitter.lock,
-            default_recipient: splitter.default_recipient,
-        };
-        SPLITTER.save(deps.storage, &new_splitter)?;
-    };
+    splitter.recipients.swap_remove(recipient_idx);
+    SPLITTER.save(deps.storage, &splitter)?;
 
     Ok(Response::default().add_attributes(vec![attr("action", "removed_recipient")]))
 }

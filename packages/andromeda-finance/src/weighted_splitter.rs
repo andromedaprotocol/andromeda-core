@@ -1,5 +1,5 @@
 use andromeda_std::{
-    amp::recipient::Recipient,
+    amp::{recipient::Recipient, AndrAddr},
     andr_exec, andr_instantiate, andr_query,
     common::{expiration::Expiry, MillisecondsExpiration},
 };
@@ -45,7 +45,7 @@ pub enum ExecuteMsg {
     /// Add a single recipient to the recipient list. Only executable by the contract owner when the contract is not locked.
     AddRecipient { recipient: AddressWeight },
     /// Remove a single recipient from the recipient list. Only executable by the contract owner when the contract is not locked.
-    RemoveRecipient { recipient: Recipient },
+    RemoveRecipient { recipient: AndrAddr },
     /// Used to lock/unlock the contract allowing the config to be updated.
     UpdateLock { lock_time: Expiry },
     /// Divides any attached funds to the message amongst the recipients list.
