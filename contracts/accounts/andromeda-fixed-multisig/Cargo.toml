@@ -22,8 +22,6 @@ cw-storage-plus = { workspace = true }
 cw-utils = { workspace = true }
 cw2 = { workspace = true }
 cw3 = { workspace = true }
-cw4 = { workspace = true }
-cw3-fixed-multisig = { git = "https://github.com/CosmWasm/cw-plus" }
 
 andromeda-std = { workspace = true }
 andromeda-accounts = { workspace = true }
