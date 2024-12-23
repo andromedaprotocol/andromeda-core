@@ -26,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - feat: alterations to kernel for IBC [(#726)](https://github.com/andromedaprotocol/andromeda-core/pull/726)
+- Fixed handle_local amp message when a amp message is passed with custom config [(#729)](https://github.com/andromedaprotocol/andromeda-core/pull/729)
 
 ## Release 3
 
