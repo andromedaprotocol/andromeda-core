@@ -20,7 +20,7 @@ use cosmwasm_std::{
 use crate::query;
 use crate::state::{
     ADO_OWNER, CHAIN_TO_CHANNEL, CHANNEL_TO_CHAIN, CHANNEL_TO_EXECUTE_MSG, CURR_CHAIN,
-    IBC_FUND_RECOVERY, KERNEL_ADDRESSES, PENDING_MSG_AND_FUNDS, TRIGGER_KEY,
+    ENV_VARIABLES, IBC_FUND_RECOVERY, KERNEL_ADDRESSES, PENDING_MSG_AND_FUNDS, TRIGGER_KEY,
 };
 
 pub fn send(ctx: ExecuteContext, message: AMPMsg) -> Result<Response, ContractError> {
@@ -473,6 +473,37 @@ pub fn update_chain_name(
         .add_attribute("chain_name", chain_name))
 }
 
+pub fn set_env(
+    execute_ctx: ExecuteContext,
+    variable: String,
+    value: String,
+) -> Result<Response, ContractError> {
+    let contract = ADOContract::default();
+    ensure!(
+        contract.is_contract_owner(execute_ctx.deps.storage, execute_ctx.info.sender.as_str())?,
+        ContractError::Unauthorized {}
+    );
+
+    ENV_VARIABLES.save(execute_ctx.deps.storage, &variable, &value)?;
+    Ok(Response::default()
+        .add_attribute("action", "set_env")
+        .add_attribute("variable", variable)
+        .add_attribute("value", value))
+}
+
+pub fn unset_env(execute_ctx: ExecuteContext, variable: String) -> Result<Response, ContractError> {
+    let contract = ADOContract::default();
+    ensure!(
+        contract.is_contract_owner(execute_ctx.deps.storage, execute_ctx.info.sender.as_str())?,
+        ContractError::Unauthorized {}
+    );
+
+    ENV_VARIABLES.remove(execute_ctx.deps.storage, &variable);
+    Ok(Response::default()
+        .add_attribute("action", "unset_env")
+        .add_attribute("variable", variable))
+}
+
 /// Handles a given AMP message and returns a response
 ///
 /// Separated due to common functionality across multiple messages
@@ -547,9 +578,9 @@ impl MsgHandler {
         } = original_msg;
 
         let recipient_addr = recipient.get_raw_address(&deps.as_ref())?;
-        
+
         let adodb_addr = KERNEL_ADDRESSES.load(deps.storage, ADO_DB_KEY)?;
-    
+
         if Binary::default() == message.clone() {
             ensure!(
                 !funds.is_empty(),
@@ -557,18 +588,18 @@ impl MsgHandler {
                     error: Some("No message or funds supplied".to_string())
                 }
             );
-    
+
             let sub_msg = BankMsg::Send {
                 to_address: recipient_addr.to_string(),
                 amount: funds.clone(),
             };
-    
+
             let mut attrs = vec![];
             for (idx, fund) in funds.iter().enumerate() {
                 attrs.push(attr(format!("funds:{sequence}:{idx}"), fund.to_string()));
             }
             attrs.push(attr(format!("recipient:{sequence}"), recipient_addr));
-    
+
             res = res
                 .add_submessage(SubMsg::reply_on_error(
                     CosmosMsg::Bank(sub_msg),
@@ -613,7 +644,7 @@ impl MsgHandler {
                     ReplyId::AMPMsg.repr(),
                 )?
             };
-    
+
             res = res
                 .add_submessage(sub_msg)
                 .add_attributes(vec![attr(format!("recipient:{sequence}"), recipient_addr)]);

@@ -73,6 +73,13 @@ pub enum ExecuteMsg {
     UpdateChainName {
         chain_name: String,
     },
+    SetEnv {
+        variable: String,
+        value: String,
+    },
+    UnsetEnv {
+        variable: String,
+    },
     // Only accessible to key contracts
     Internal(InternalMsg),
     // Base message
