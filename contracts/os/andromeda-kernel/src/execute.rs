@@ -256,42 +256,49 @@ pub fn create(
         chain.is_none() || owner.is_some(),
         ContractError::Unauthorized {}
     );
-    if let Some(_chain) = chain {
-        Err(ContractError::CrossChainComponentsCurrentlyDisabled {})
-        // let channel_info = if let Some(channel_info) =
-        //     CHAIN_TO_CHANNEL.may_load(execute_ctx.deps.storage, &chain)?
-        // {
-        //     Ok::<ChannelInfo, ContractError>(channel_info)
-        // } else {
-        //     return Err(ContractError::InvalidPacket {
-        //         error: Some(format!("Channel not found for chain {chain}")),
-        //     });
-        // }?;
-        // let kernel_msg = IbcExecuteMsg::CreateADO {
-        //     instantiation_msg: msg.clone(),
-        //     owner: owner.clone().unwrap(),
-        //     ado_type: ado_type.clone(),
-        // };
-        // let ibc_msg = IbcMsg::SendPacket {
-        //     channel_id: channel_info.direct_channel_id.clone().unwrap(),
-        //     data: to_json_binary(&kernel_msg)?,
-        //     timeout: execute_ctx
-        //         .env
-        //         .block
-        //         .time
-        //         .plus_seconds(PACKET_LIFETIME)
-        //         .into(),
-        // };
-        // Ok(Response::default()
-        //     .add_message(ibc_msg)
-        //     .add_attributes(vec![
-        //         attr("action", "execute_create"),
-        //         attr("ado_type", ado_type),
-        //         attr("owner", owner.unwrap().to_string()),
-        //         attr("chain", chain),
-        //         attr("receiving_kernel_address", channel_info.kernel_address),
-        //         attr("msg", msg.to_string()),
-        //     ]))
+    if let Some(chain) = chain {
+        let cross_chain_components_enabled = ENV_VARIABLES
+            .may_load(execute_ctx.deps.storage, "cross_chain_components_enabled")?
+            .unwrap_or("false".to_string());
+        ensure!(
+            cross_chain_components_enabled == "true",
+            ContractError::CrossChainComponentsCurrentlyDisabled {}
+        );
+
+        let channel_info = if let Some(channel_info) =
+            CHAIN_TO_CHANNEL.may_load(execute_ctx.deps.storage, &chain)?
+        {
+            Ok::<ChannelInfo, ContractError>(channel_info)
+        } else {
+            return Err(ContractError::InvalidPacket {
+                error: Some(format!("Channel not found for chain {chain}")),
+            });
+        }?;
+        let kernel_msg = IbcExecuteMsg::CreateADO {
+            instantiation_msg: msg.clone(),
+            owner: owner.clone().unwrap(),
+            ado_type: ado_type.clone(),
+        };
+        let ibc_msg = IbcMsg::SendPacket {
+            channel_id: channel_info.direct_channel_id.clone().unwrap(),
+            data: to_json_binary(&kernel_msg)?,
+            timeout: execute_ctx
+                .env
+                .block
+                .time
+                .plus_seconds(PACKET_LIFETIME)
+                .into(),
+        };
+        Ok(Response::default()
+            .add_message(ibc_msg)
+            .add_attributes(vec![
+                attr("action", "execute_create"),
+                attr("ado_type", ado_type),
+                attr("owner", owner.unwrap().to_string()),
+                attr("chain", chain),
+                attr("receiving_kernel_address", channel_info.kernel_address),
+                attr("msg", msg.to_string()),
+            ]))
     } else {
         let vfs_addr = KERNEL_ADDRESSES.load(execute_ctx.deps.storage, VFS_KEY)?;
         let adodb_addr = KERNEL_ADDRESSES.load(execute_ctx.deps.storage, ADO_DB_KEY)?;
