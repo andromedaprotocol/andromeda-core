@@ -110,6 +110,11 @@ pub struct ChainNameResponse {
 }
 
 #[cw_serde]
+pub struct EnvResponse {
+    pub value: Option<String>,
+}
+
+#[cw_serde]
 #[cfg_attr(not(target_arch = "wasm32"), derive(cw_orch::QueryFns))]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
@@ -133,6 +138,8 @@ pub enum QueryMsg {
     AdoType {},
     #[returns(crate::ado_base::ownership::ContractOwnerResponse)]
     Owner {},
+    #[returns(EnvResponse)]
+    GetEnv { variable: String },
 }
 
 #[cw_serde]
