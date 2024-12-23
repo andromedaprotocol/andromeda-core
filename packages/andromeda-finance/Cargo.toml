@@ -12,7 +12,6 @@ backtraces = ["cosmwasm-std/backtraces"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [lib]
 crate-type = ["cdylib", "rlib"]
-testing = ["cw-multi-test"]
 
 [dependencies]
 cosmwasm-std = { workspace = true, features = ["staking"] }
