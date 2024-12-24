@@ -1,3 +1,4 @@
+use andromeda_std::unwrap_amp_msg;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
@@ -13,9 +14,9 @@ use andromeda_non_fungible_tokens::cw721::{
 use andromeda_std::common::rates::get_tax_amount;
 use andromeda_std::{
     ado_base::{AndromedaMsg, AndromedaQuery},
-    ado_contract::{permissioning::is_context_permissioned_strict, ADOContract},
+    ado_contract::{permissioning::is_context_permissioned, ADOContract},
     amp::AndrAddr,
-    common::{actions::call_action, context::ExecuteContext},
+    common::context::ExecuteContext,
 };
 
 use andromeda_std::{
@@ -29,6 +30,7 @@ use cw721_base::{state::TokenInfo, Cw721Contract, ExecuteMsg as Cw721ExecuteMsg}
 pub type AndrCW721Contract<'a> = Cw721Contract<'a, TokenExtension, Empty, ExecuteMsg, QueryMsg>;
 const CONTRACT_NAME: &str = "crates.io:andromeda-cw721";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
+const MINT_ACTION: &str = "Mint";
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -50,6 +52,8 @@ pub fn instantiate(
 
     let contract = ADOContract::default();
     ANDR_MINTER.save(deps.storage, &msg.minter)?;
+
+    contract.permission_action(deps.storage, MINT_ACTION)?;
 
     let resp = contract.instantiate(
         deps.storage,
@@ -75,29 +79,7 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
-    if let ExecuteMsg::AMPReceive(pkt) = msg {
-        ADOContract::default().execute_amp_receive(
-            ExecuteContext::new(deps, info, env),
-            pkt,
-            handle_execute,
-        )
-    } else {
-        let ctx = ExecuteContext::new(deps, info, env);
-        handle_execute(ctx, msg)
-    }
-}
-
-fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
-    let contract = ADOContract::default();
-    let action = msg.as_ref().to_string();
-
-    let action_response = call_action(
-        &mut ctx.deps,
-        &ctx.info,
-        &ctx.env,
-        &ctx.amp_ctx,
-        msg.as_ref(),
-    )?;
+    let (ctx, msg, action_response) = unwrap_amp_msg!(deps, info, env, msg);
 
     if let ExecuteMsg::Approve { token_id, .. } = &msg {
         ensure!(
@@ -112,12 +94,12 @@ fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
             token_uri,
             owner,
             extension,
-        } => execute_mint(ctx, token_id, token_uri, owner, extension, action),
-        ExecuteMsg::BatchMint { tokens } => execute_batch_mint(ctx, tokens, action),
+        } => execute_mint(ctx, token_id, token_uri, owner, extension),
+        ExecuteMsg::BatchMint { tokens } => execute_batch_mint(ctx, tokens),
         ExecuteMsg::TransferNft {
             recipient,
             token_id,
-        } => execute_transfer(ctx, recipient, token_id, &action),
+        } => execute_transfer(ctx, recipient, token_id),
         ExecuteMsg::TransferAgreement {
             token_id,
             agreement,
@@ -133,7 +115,7 @@ fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
             let serialized = to_json_binary(&msg)?;
 
             match from_json::<AndromedaMsg>(&serialized) {
-                Ok(msg) => contract.execute(ctx, msg),
+                Ok(msg) => ADOContract::default().execute(ctx, msg),
                 Err(_) => execute_cw721(ctx, msg.into()),
             }
         }
@@ -152,28 +134,36 @@ fn execute_cw721(
     Ok(contract.execute(ctx.deps, ctx.env, ctx.info, msg)?)
 }
 
+macro_rules! ensure_can_mint {
+    ($ctx:expr) => {
+        let minter = ANDR_MINTER
+            .load($ctx.deps.storage)?
+            .get_raw_address(&$ctx.deps.as_ref())?;
+
+        let is_minter = $ctx.info.sender == minter.as_str();
+        let has_mint_permission = is_context_permissioned(
+            &mut $ctx.deps,
+            &$ctx.info,
+            &$ctx.env,
+            &$ctx.amp_ctx,
+            MINT_ACTION,
+        )?;
+
+        ensure!(
+            is_minter || has_mint_permission,
+            ContractError::Unauthorized {}
+        );
+    };
+}
+
 fn execute_mint(
     mut ctx: ExecuteContext,
     token_id: String,
     token_uri: Option<String>,
     owner: String,
     extension: TokenExtension,
-    action: String,
 ) -> Result<Response, ContractError> {
-    let minter = ANDR_MINTER
-        .load(ctx.deps.storage)?
-        .get_raw_address(&ctx.deps.as_ref())?;
-    ensure!(
-        ctx.contains_sender(minter.as_str())
-            | is_context_permissioned_strict(
-                ctx.deps.branch(),
-                &ctx.info,
-                &ctx.env,
-                &ctx.amp_ctx,
-                action
-            )?,
-        ContractError::Unauthorized {}
-    );
+    ensure_can_mint!(ctx);
     mint(ctx, token_id, token_uri, owner, extension)
 }
 
@@ -211,23 +201,9 @@ fn mint(
 fn execute_batch_mint(
     mut ctx: ExecuteContext,
     tokens_to_mint: Vec<MintMsg>,
-    action: String,
 ) -> Result<Response, ContractError> {
     let mut resp = Response::default();
-    let minter = ANDR_MINTER
-        .load(ctx.deps.storage)?
-        .get_raw_address(&ctx.deps.as_ref())?;
-    ensure!(
-        ctx.contains_sender(minter.as_str())
-            | is_context_permissioned_strict(
-                ctx.deps.branch(),
-                &ctx.info,
-                &ctx.env,
-                &ctx.amp_ctx,
-                action
-            )?,
-        ContractError::Unauthorized {}
-    );
+    ensure_can_mint!(ctx);
     ensure!(
         !tokens_to_mint.is_empty(),
         ContractError::Std(cosmwasm_std::StdError::GenericErr {
@@ -254,7 +230,6 @@ fn execute_transfer(
     ctx: ExecuteContext,
     recipient: AndrAddr,
     token_id: String,
-    action: &str,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
         deps, info, env, ..
@@ -276,7 +251,7 @@ fn execute_transfer(
         let agreement_amount = get_transfer_agreement_amount(deps.api, &deps.querier, agreement)?;
         let transfer_response = base_contract.query_deducted_funds(
             deps.as_ref(),
-            action,
+            "Transfer",
             Funds::Native(agreement_amount.clone()),
         )?;
 

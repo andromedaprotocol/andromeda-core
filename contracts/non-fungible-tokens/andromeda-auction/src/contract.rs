@@ -308,7 +308,7 @@ fn execute_start_auction(
     BIDS.save(deps.storage, auction_id.u128(), &vec![])?;
 
     if let Some(ref whitelist) = whitelist {
-        ADOContract::default().permission_action(auction_id.to_string(), deps.storage)?;
+        ADOContract::default().permission_action(deps.storage, auction_id.to_string())?;
 
         for whitelisted_address in whitelist {
             ADOContract::set_permission(
@@ -431,7 +431,7 @@ fn execute_update_auction(
 
     if let Some(ref whitelist) = whitelist {
         ADOContract::default()
-            .permission_action(token_auction_state.auction_id.to_string(), deps.storage)?;
+            .permission_action(deps.storage, token_auction_state.auction_id.to_string())?;
 
         for whitelisted_address in whitelist {
             ADOContract::set_permission(

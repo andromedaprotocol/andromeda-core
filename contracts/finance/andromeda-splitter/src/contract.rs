@@ -6,7 +6,7 @@ use andromeda_finance::splitter::{
 use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     amp::{messages::AMPPkt, Recipient},
-    common::{actions::call_action, encode_binary, expiration::Expiry},
+    common::{encode_binary, expiration::Expiry},
     error::ContractError,
     unwrap_amp_msg,
 };

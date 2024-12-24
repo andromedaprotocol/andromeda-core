@@ -130,7 +130,7 @@ pub fn authorize_addresses(
     addresses: Vec<AndrAddr>,
 ) -> Result<(), ContractError> {
     if !addresses.is_empty() {
-        ADOContract::default().permission_action(action, deps.storage)?;
+        ADOContract::default().permission_action(deps.storage, action)?;
     }
 
     for address in addresses {

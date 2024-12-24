@@ -52,7 +52,7 @@ pub fn instantiate(
         .get_raw_address(&deps.as_ref())?
         .into_string();
 
-    ADOContract::default().permission_action(STORE_DENOM_INFO, deps.storage)?;
+    ADOContract::default().permission_action(deps.storage, STORE_DENOM_INFO)?;
     ADOContract::set_permission(
         deps.storage,
         STORE_DENOM_INFO,

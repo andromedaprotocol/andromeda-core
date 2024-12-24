@@ -103,7 +103,7 @@ pub fn instantiate(
 
     if let Some(authorized_addresses_for_submission) = msg.authorized_addresses_for_submission {
         if !authorized_addresses_for_submission.is_empty() {
-            ADOContract::default().permission_action(SUBMIT_FORM_ACTION, deps.storage)?;
+            ADOContract::default().permission_action(deps.storage, SUBMIT_FORM_ACTION)?;
         }
 
         for address in authorized_addresses_for_submission {
