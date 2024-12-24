@@ -72,6 +72,6 @@ pub fn chain_name(deps: Deps) -> Result<ChainNameResponse, ContractError> {
 
 pub fn get_env(deps: Deps, variable: String) -> Result<EnvResponse, ContractError> {
     Ok(EnvResponse {
-        value: ENV_VARIABLES.may_load(deps.storage, &variable)?,
+        value: ENV_VARIABLES.may_load(deps.storage, &variable.to_ascii_uppercase())?,
     })
 }

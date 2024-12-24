@@ -441,7 +441,9 @@ fn test_set_unset_env(
         }
 
         // Check if the variable is set
-        let stored_value = ENV_VARIABLES.load(&deps.storage, variable).unwrap();
+        let stored_value = ENV_VARIABLES
+            .load(&deps.storage, &variable.to_ascii_uppercase())
+            .unwrap();
         assert_eq!(stored_value, value);
     }
 
@@ -458,6 +460,8 @@ fn test_set_unset_env(
     }
 
     // Check if the variable is unset
-    let stored_value = ENV_VARIABLES.may_load(&deps.storage, variable).unwrap();
+    let stored_value = ENV_VARIABLES
+        .may_load(&deps.storage, &variable.to_ascii_uppercase())
+        .unwrap();
     assert!(stored_value.is_none());
 }
