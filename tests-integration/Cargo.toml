@@ -165,7 +165,7 @@ name = "validator_staking"
 name = "shunting"
 
 [dependencies]
-rstest = "0.23.0"
+rstest = { workspace = true }
 
 # [[test]]
 # name = "cw20_staking_app"

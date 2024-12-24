@@ -752,6 +752,12 @@ pub enum ContractError {
 
     #[error("Invalid tier for {operation} operation: {msg} ")]
     InvalidTier { operation: String, msg: String },
+
+    #[error("Environment variable not found: {variable}")]
+    EnvironmentVariableNotFound { variable: String },
+
+    #[error("Invalid environment variable length: {msg}")]
+    InvalidEnvironmentVariable { msg: String },
 }
 
 impl ContractError {

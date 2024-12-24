@@ -504,6 +504,22 @@ impl MockAndromedaQuerier {
                 "andromeda".to_string()
             };
             SystemResult::Ok(ContractResult::Ok(to_json_binary(&res).unwrap()))
+        } else if key_str.contains("kernel_env_variables") {
+            let split = key_str.split("kernel_env_variables");
+            let key = split.last();
+            if let Some(key) = key {
+                match key {
+                    "username_registration" => {
+                        SystemResult::Ok(ContractResult::Ok(to_json_binary(&!fake).unwrap()))
+                    }
+                    "andromeda_distribution" => {
+                        SystemResult::Ok(ContractResult::Ok(to_json_binary(&!fake).unwrap()))
+                    }
+                    _ => panic!("Invalid Kernel Address Key"),
+                }
+            } else {
+                panic!("Invalid Kernel Address Raw Query")
+            }
         } else if key_str.contains("channel") {
             SystemResult::Ok(ContractResult::Ok(
                 to_json_binary(&ChannelInfo {
