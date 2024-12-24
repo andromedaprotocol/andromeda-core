@@ -46,8 +46,7 @@ impl ADOContract<'_> {
         );
         let action: String = action.into();
         // Validate rates
-        rate.validate_rate(ctx.deps.as_ref())?;
-
+        let rate = rate.validate_rate(ctx.deps.as_ref())?;
         self.set_rates(ctx.deps.storage, action, rate)?;
 
         Ok(Response::default().add_attributes(vec![("action", "set_rates")]))

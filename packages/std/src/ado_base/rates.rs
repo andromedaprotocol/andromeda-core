@@ -97,15 +97,15 @@ impl LocalRateValue {
             LocalRateValue::Percent(_) => Ok(false),
         }
     }
-    pub fn validate(&self, deps: Deps) -> Result<(), ContractError> {
+    pub fn validate(&self, deps: Deps) -> Result<LocalRateValue, ContractError> {
         match self {
             // If it's a coin, make sure it's non-zero
             LocalRateValue::Flat(coin) => {
                 ensure!(!coin.amount.is_zero(), ContractError::InvalidRate {});
                 // Extract denom
-                let denom = coin.denom.clone();
-                // Check if it's a valid address
-                let is_valid_address = deps.api.addr_validate(denom.as_str());
+                let denom_andr_addr = AndrAddr::from_string(&coin.denom);
+
+                let is_valid_address = denom_andr_addr.get_raw_address(&deps);
                 match is_valid_address {
                     // Verify as CW20
                     Ok(cw20_address) => {
@@ -118,9 +118,18 @@ impl LocalRateValue {
                             !token_info_query.total_supply.is_zero(),
                             ContractError::InvalidZeroAmount {}
                         );
+                        // Return the resolved address since it could've originally been an AndrAddr
+                        Ok(LocalRateValue::Flat(Coin {
+                            denom: cw20_address.into_string(),
+                            amount: coin.amount,
+                        }))
                     }
+
                     // Verify as Native Asset
-                    Err(_) => validate_native_denom(deps, denom)?,
+                    Err(_) => {
+                        validate_native_denom(deps, coin.denom.clone())?;
+                        Ok(self.clone())
+                    }
                 }
             }
             // If it's a percentage, make sure it's greater than zero and less than or equal to 1 of type decimal (which represents 100%)
@@ -129,9 +138,9 @@ impl LocalRateValue {
                     !percent_rate.percent.is_zero() && percent_rate.percent <= Decimal::one(),
                     ContractError::InvalidRate {}
                 );
+                Ok(self.clone())
             }
         }
-        Ok(())
     }
     pub fn is_flat(&self) -> bool {
         match self {
@@ -149,15 +158,20 @@ pub struct LocalRate {
     pub description: Option<String>,
 }
 impl LocalRate {
-    pub fn validate(&self, deps: Deps) -> Result<(), ContractError> {
+    pub fn validate(&self, deps: Deps) -> Result<LocalRate, ContractError> {
         if self.recipient.is_cross_chain() {
             ensure!(
                 !self.value.is_valid_address(deps)?,
                 ContractError::InvalidCw20CrossChainRate {}
             );
         }
-        self.value.validate(deps)?;
-        Ok(())
+        let local_rate_value = self.value.validate(deps)?;
+        Ok(LocalRate {
+            rate_type: self.rate_type.clone(),
+            recipient: self.recipient.clone(),
+            value: local_rate_value,
+            description: self.description.clone(),
+        })
     }
 }
 // Created this because of the very complex return value warning.
@@ -250,7 +264,7 @@ pub enum Rate {
 
 impl Rate {
     // Makes sure that the contract address is that of a Rates contract verified by the ADODB and validates the local rate value
-    pub fn validate_rate(&self, deps: Deps) -> Result<(), ContractError> {
+    pub fn validate_rate(&self, deps: Deps) -> Result<Rate, ContractError> {
         match self {
             Rate::Contract(address) => {
                 let raw_address = address.get_raw_address(&deps)?;
@@ -266,14 +280,14 @@ impl Rate {
                     Some(ado_type) => {
                         let ado_type = ADOVersion::from_string(ado_type).get_type();
                         ensure!(ado_type == "rates", ContractError::InvalidAddress {});
-                        Ok(())
+                        Ok(self.clone())
                     }
                     None => Err(ContractError::InvalidAddress {}),
                 }
             }
             Rate::Local(local_rate) => {
-                local_rate.validate(deps)?;
-                Ok(())
+                let new_local_rate = local_rate.validate(deps)?;
+                Ok(Rate::Local(new_local_rate))
             }
         }
     }
