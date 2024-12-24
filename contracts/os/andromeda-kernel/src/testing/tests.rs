@@ -24,7 +24,7 @@ use andromeda_std::{
 use cosmwasm_std::{
     coin, from_json,
     testing::{mock_dependencies, mock_env, mock_info, MockApi, MockQuerier, MockStorage},
-    to_json_binary, Addr, Binary, CosmosMsg, Env, IbcMsg, OwnedDeps, Uint128,
+    to_json_binary, Addr, Binary, CosmosMsg, Env, IbcMsg, OwnedDeps,
 };
 use rstest::*;
 
