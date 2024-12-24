@@ -12,7 +12,7 @@ pub fn rates<'a>() -> Map<'a, &'a str, Rate> {
     Map::new("rates")
 }
 
-impl<'a> ADOContract<'a> {
+impl ADOContract<'_> {
     /// Sets rates
     pub fn set_rates(
         &self,
@@ -46,8 +46,7 @@ impl<'a> ADOContract<'a> {
         );
         let action: String = action.into();
         // Validate rates
-        rate.validate_rate(ctx.deps.as_ref())?;
-
+        let rate = rate.validate_rate(ctx.deps.as_ref())?;
         self.set_rates(ctx.deps.storage, action, rate)?;
 
         Ok(Response::default().add_attributes(vec![("action", "set_rates")]))
@@ -168,7 +167,6 @@ impl<'a> ADOContract<'a> {
 }
 #[cfg(test)]
 #[cfg(feature = "rates")]
-
 mod tests {
 
     use cosmwasm_std::{

@@ -29,7 +29,7 @@ use serde::Serialize;
 
 type ExecuteContextFunction<M, E> = fn(ExecuteContext, M) -> Result<Response, E>;
 
-impl<'a> ADOContract<'a> {
+impl ADOContract<'_> {
     pub fn instantiate(
         &self,
         storage: &mut dyn Storage,
@@ -348,7 +348,6 @@ impl<'a> ADOContract<'a> {
 }
 
 #[cfg(test)]
-
 mod tests {
     use super::*;
     use crate::testing::mock_querier::MOCK_KERNEL_CONTRACT;

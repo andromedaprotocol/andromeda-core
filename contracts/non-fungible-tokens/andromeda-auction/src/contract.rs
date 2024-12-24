@@ -115,6 +115,7 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
             whitelist,
             min_bid,
             min_raise,
+            buy_now_price,
             recipient,
         } => execute_update_auction(
             ctx,
@@ -126,6 +127,7 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
             whitelist,
             min_bid,
             min_raise,
+            buy_now_price,
             recipient,
         ),
         ExecuteMsg::PlaceBid {
@@ -364,6 +366,7 @@ fn execute_update_auction(
     whitelist: Option<Vec<Addr>>,
     min_bid: Option<Uint128>,
     min_raise: Option<Uint128>,
+    buy_now_price: Option<Uint128>,
     recipient: Option<Recipient>,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
@@ -418,6 +421,14 @@ fn execute_update_auction(
         ContractError::StartTimeAfterEndTime {}
     );
 
+    if let (Some(buy_now), Some(min)) = (buy_now_price, min_bid) {
+        if min >= buy_now {
+            return Err(ContractError::InvalidMinBid {
+                msg: Some("buy_now_price must be greater than the min_bid".to_string()),
+            });
+        }
+    }
+
     if let Some(ref whitelist) = whitelist {
         ADOContract::default()
             .permission_action(token_auction_state.auction_id.to_string(), deps.storage)?;
@@ -436,10 +447,11 @@ fn execute_update_auction(
 
     token_auction_state.start_time = start_expiration;
     token_auction_state.end_time = end_expiration;
-    token_auction_state.coin_denom = coin_denom.clone();
+    token_auction_state.coin_denom.clone_from(&coin_denom);
     token_auction_state.uses_cw20 = uses_cw20;
     token_auction_state.min_bid = min_bid;
     token_auction_state.min_raise = min_raise;
+    token_auction_state.buy_now_price = buy_now_price;
     token_auction_state.whitelist = whitelist;
     token_auction_state.recipient = recipient;
     TOKEN_AUCTION_STATE.save(
@@ -457,6 +469,7 @@ fn execute_update_auction(
         attr("whitelist", format!("{:?}", whitelist_str)),
         attr("min_bid", format!("{:?}", &min_bid)),
         attr("min_raise", format!("{:?}", &min_raise)),
+        attr("buy_now_price", format!("{:?}", &buy_now_price)),
     ]))
 }
 
@@ -1182,8 +1195,8 @@ fn get_and_increment_next_auction_id(
     let mut auction_info = auction_infos().load(storage, &key).unwrap_or_default();
     auction_info.push(next_auction_id);
     if auction_info.token_address.is_empty() {
-        auction_info.token_address = token_address.to_owned();
-        auction_info.token_id = token_id.to_owned();
+        token_address.clone_into(&mut auction_info.token_address);
+        token_id.clone_into(&mut auction_info.token_id);
     }
     auction_infos().save(storage, &key, &auction_info)?;
     Ok(next_auction_id)

@@ -1,50 +1,13 @@
-use andromeda_std::ado_base::InstantiateMsg;
-use andromeda_std::ado_contract::ADOContract;
 use andromeda_std::testing::mock_querier::MockAndromedaQuerier;
-use cosmwasm_std::testing::mock_info;
-use cosmwasm_std::QuerierWrapper;
 use cosmwasm_std::{
-    from_json,
-    testing::{mock_env, MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
-    Coin, OwnedDeps, Querier, QuerierResult, QueryRequest, SystemError, SystemResult, WasmQuery,
+    from_json, testing::MockQuerier, Querier, QuerierResult, QueryRequest, SystemError,
+    SystemResult, WasmQuery,
 };
-
-pub use andromeda_std::testing::mock_querier::MOCK_KERNEL_CONTRACT;
 
 /// Alternative to `cosmwasm_std::testing::mock_dependencies` that allows us to respond to custom queries.
 ///
 /// Automatically assigns a kernel address as MOCK_KERNEL_CONTRACT.
-pub fn mock_dependencies_custom(
-    contract_balance: &[Coin],
-) -> OwnedDeps<MockStorage, MockApi, WasmMockQuerier> {
-    let custom_querier: WasmMockQuerier =
-        WasmMockQuerier::new(MockQuerier::new(&[(MOCK_CONTRACT_ADDR, contract_balance)]));
-    let storage = MockStorage::default();
-    let mut deps = OwnedDeps {
-        storage,
-        api: MockApi::default(),
-        querier: custom_querier,
-        custom_query_type: std::marker::PhantomData,
-    };
-    ADOContract::default()
-        .instantiate(
-            &mut deps.storage,
-            mock_env(),
-            &deps.api,
-            &QuerierWrapper::new(&deps.querier),
-            mock_info("sender", &[]),
-            InstantiateMsg {
-                ado_type: "splitter".to_string(),
-                ado_version: "test".to_string(),
-
-                kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
-                owner: None,
-            },
-        )
-        .unwrap();
-    deps
-}
-
+#[allow(dead_code)]
 pub struct WasmMockQuerier {
     pub base: MockQuerier,
     pub contract_address: String,
@@ -78,14 +41,6 @@ impl WasmMockQuerier {
                 MockAndromedaQuerier::default().handle_query(&self.base, request)
             }
             _ => MockAndromedaQuerier::default().handle_query(&self.base, request),
-        }
-    }
-
-    pub fn new(base: MockQuerier) -> Self {
-        WasmMockQuerier {
-            base,
-            contract_address: mock_env().contract.address.to_string(),
-            tokens_left_to_burn: 2,
         }
     }
 }

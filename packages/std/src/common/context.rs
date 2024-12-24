@@ -8,7 +8,7 @@ pub struct ExecuteContext<'a> {
     pub amp_ctx: Option<AMPPkt>,
 }
 
-impl<'a> ExecuteContext<'a> {
+impl ExecuteContext<'_> {
     #[inline]
     pub fn new(deps: DepsMut, info: MessageInfo, env: Env) -> ExecuteContext {
         ExecuteContext {

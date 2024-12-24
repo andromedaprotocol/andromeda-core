@@ -29,7 +29,6 @@ cosmwasm-schema = { workspace = true }
 cw-storage-plus = { workspace = true }
 cw-utils = { workspace = true }
 cw20 = { workspace = true }
-cw-json = { git = "https://github.com/SlayerAnsh/cw-json.git" }
 serde_json = { workspace = true }
 serde = { workspace = true }
 test-case = { workspace = true }

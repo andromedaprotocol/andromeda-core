@@ -246,7 +246,6 @@ impl AMPCtx {
 /// It contains an original sender, if used for authorisation the sender must be authorised
 /// The previous sender is the one who sent the message
 /// A packet may contain several messages which allows for message batching
-
 pub struct AMPPkt {
     /// Any messages associated with the packet
     pub messages: Vec<AMPMsg>,
@@ -341,7 +340,6 @@ impl AMPPkt {
     }
 
     /// Generates a SubMsg to send the AMPPkt to the kernel
-
     pub fn to_sub_msg(
         &self,
         address: impl Into<String>,

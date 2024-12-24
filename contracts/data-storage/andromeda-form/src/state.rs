@@ -26,7 +26,7 @@ pub struct SubmissionIndexes<'a> {
     pub wallet_address: MultiIndex<'a, Addr, SubmissionInfo, (u64, Addr)>,
 }
 
-impl<'a> IndexList<SubmissionInfo> for SubmissionIndexes<'a> {
+impl IndexList<SubmissionInfo> for SubmissionIndexes<'_> {
     fn get_indexes(
         &'_ self,
     ) -> Box<dyn Iterator<Item = &'_ dyn cw_storage_plus::Index<SubmissionInfo>> + '_> {
