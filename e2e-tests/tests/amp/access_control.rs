@@ -37,8 +37,11 @@ fn setup_cw721() -> (App<BankKeeper, MockApiBech32>, MockAndromeda, MockCW721) {
         ])
         .build(&mut router);
 
+    // Set up wallets
     let owner = andr.get_wallet(CW721_OWNER);
     let user = andr.get_wallet(CW721_USER);
+
+    // Create the CW721 App
     let cw721_init_msg = mock_cw721_instantiate_msg(
         "Test Tokens".to_string(),
         "TT".to_string(),
@@ -68,19 +71,12 @@ fn setup_cw721() -> (App<BankKeeper, MockApiBech32>, MockAndromeda, MockCW721) {
 
     let cw721 = app.query_ado_by_component_name::<MockCW721>(&router, CW721_COMPONENT_NAME);
 
-    let permission_action_msg = ExecuteMsg::Permissioning(PermissioningMessage::PermissionAction {
-        action: CW721_MINT_ACTION.to_string(),
-    });
-    cw721
-        .execute(&mut router, &permission_action_msg, owner.clone(), &[])
-        .unwrap();
-
+    // Set up permissioning for the mint action
     let permission_msg = ExecuteMsg::Permissioning(PermissioningMessage::SetPermission {
         actors: vec![AndrAddr::from_string(user)],
         action: CW721_MINT_ACTION.to_string(),
         permission: Permission::Local(LocalPermission::whitelisted(None)),
     });
-
     cw721
         .execute(&mut router, &permission_msg, owner.clone(), &[])
         .unwrap();
@@ -88,29 +84,43 @@ fn setup_cw721() -> (App<BankKeeper, MockApiBech32>, MockAndromeda, MockCW721) {
     (router, andr, cw721)
 }
 
+// Tests permission-based access control for NFT minting operations
+// Tests three scenarios:
+// 1. Owner attempts to mint (should succeed)
+// 2. Whitelisted user attempts to mint (should succeed)
+// 3. Non-whitelisted user attempts to mint (should fail)
 #[rstest]
 #[case::owner(CW721_OWNER, true)]
 #[case::user(CW721_USER, true)]
 #[case::false_user(FALSE_USER, false)]
 fn test_mint_permission(
     setup_cw721: (App<BankKeeper, MockApiBech32>, MockAndromeda, MockCW721),
-    #[case] sender: &str,
-    #[case] expected_success: bool,
+    #[case] sender: &str,           // The address attempting to mint
+    #[case] expected_success: bool, // Whether the mint operation should succeed
 ) {
     let (mut router, andr, cw721) = setup_cw721;
 
+    // Attempt to mint token #1 to the sender's address
     let mint_msg = mock_quick_mint_msg(1, andr.get_wallet(sender).to_string());
+    let cw721_path = format!(
+        "/home/{}/{}/{}",
+        andr.get_wallet(CW721_OWNER),
+        CW721_APP_NAME,
+        CW721_COMPONENT_NAME,
+    );
     let res = andr.kernel.execute_send(
         &mut router,
         andr.get_wallet(sender).clone(),
-        cw721.addr().to_string(),
+        cw721_path,
         mint_msg,
         vec![],
         None,
     );
 
+    // Verify the operation succeeded/failed as expected
     assert_eq!(res.is_ok(), expected_success);
 
+    // If the mint was expected to succeed, verify ownership
     if expected_success {
         let owner = cw721.query_owner_of(&router, "0");
         assert_eq!(owner, andr.get_wallet(sender).to_string());
