@@ -45,6 +45,7 @@ pub fn mock_dependencies_custom(
     deps
 }
 
+#[allow(dead_code)]
 pub struct WasmMockQuerier {
     pub base: MockQuerier,
     pub contract_address: String,

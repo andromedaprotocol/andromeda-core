@@ -16,7 +16,7 @@ pub struct ADOContract<'a> {
     pub rates: Map<'a, &'a str, Rate>,
 }
 
-impl<'a> Default for ADOContract<'a> {
+impl Default for ADOContract<'_> {
     fn default() -> Self {
         ADOContract {
             owner: Item::new("owner"),

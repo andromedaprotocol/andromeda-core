@@ -1,6 +1,6 @@
 [package]
 name = "andromeda-std"
-version = "1.5.0-b.1"
+version = "1.5.0-b.3"
 edition = "2021"
 rust-version = "1.75.0"
 description = "The standard library for creating an Andromeda Digital Object"
@@ -28,9 +28,8 @@ cw20-base = { workspace = true, features = ["library"] }
 cw721-base = { workspace = true }
 cw-utils = { workspace = true }
 cw2 = { workspace = true }
-cw3 = { workspace = true }
 cw-asset = { version = "3.0.0" }
-thiserror = { version = "2.0.7" }
+thiserror = { version = "2.0.9" }
 lazy_static = "1"
 hex = "0.4"
 regex = { version = "1.9.1", default-features = false }

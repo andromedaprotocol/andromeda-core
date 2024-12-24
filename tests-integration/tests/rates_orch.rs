@@ -126,7 +126,7 @@ fn test_marketplace_migration() {
         kernel_address: kernel_juno.address().unwrap().into_string(),
         owner: Some(sender.clone().into_string().clone()),
     };
-    rates_juno.instantiate(&rates_init_msg, None, None).unwrap();
+    rates_juno.instantiate(rates_init_msg, None, None).unwrap();
 
     kernel_juno
         .execute(

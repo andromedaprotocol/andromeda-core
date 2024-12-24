@@ -1,3 +1,4 @@
+use andromeda_std::amp::AndrAddr;
 use andromeda_std::common::expiration::Expiry;
 use andromeda_std::common::Milliseconds;
 use andromeda_std::testing::mock_querier::{mock_dependencies_custom, MOCK_KERNEL_CONTRACT};
@@ -430,7 +431,7 @@ fn test_execute_remove_recipient() {
     let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
     let msg = ExecuteMsg::RemoveRecipient {
-        recipient: Recipient::from_string(String::from("addr1")),
+        recipient: AndrAddr::from_string("addr1"),
     };
     // Try removing a user that isn't in the list
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
@@ -525,7 +526,7 @@ fn test_execute_remove_recipient_not_on_list() {
 
     // Try removing a user that isn't in the list
     let msg = ExecuteMsg::RemoveRecipient {
-        recipient: Recipient::from_string(String::from("addr10")),
+        recipient: AndrAddr::from_string("addr10"),
     };
 
     let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
@@ -596,7 +597,7 @@ fn test_execute_remove_recipient_contract_locked() {
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
 
     let msg = ExecuteMsg::RemoveRecipient {
-        recipient: Recipient::from_string(String::from("addr1")),
+        recipient: AndrAddr::from_string("addr1"),
     };
 
     let err = execute(deps.as_mut(), env, info, msg).unwrap_err();

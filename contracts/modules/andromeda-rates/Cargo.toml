@@ -1,6 +1,6 @@
 [package]
 name = "andromeda-rates"
-version = "2.0.3"
+version = "2.0.4-b.1"
 edition = "2021"
 rust-version = "1.75.0"
 

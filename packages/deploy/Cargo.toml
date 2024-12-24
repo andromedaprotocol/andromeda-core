@@ -22,7 +22,7 @@ cw721-base = { workspace = true }
 cw-utils = { workspace = true }
 cw2 = { workspace = true }
 cw-asset = { version = "3.0.0" }
-thiserror = { version = "2.0.7" }
+thiserror = { version = "2.0.9" }
 lazy_static = "1"
 hex = "0.4"
 regex = { version = "1.9.1", default-features = false }
@@ -36,7 +36,7 @@ cw-orch = { workspace = true }
 cw-orch-daemon = "0.24.2"
 
 # OS Contracts
-andromeda-kernel = { version = "1.1.1", path = "../../contracts/os/andromeda-kernel" }
+andromeda-kernel = { version = "1.2.0-b.1", path = "../../contracts/os/andromeda-kernel" }
 andromeda-adodb = { version = "1.1.1", path = "../../contracts/os/andromeda-adodb" }
 andromeda-vfs = { version = "1.1.1", path = "../../contracts/os/andromeda-vfs" }
 andromeda-economics = { version = "1.1.1", path = "../../contracts/os/andromeda-economics" }
@@ -85,7 +85,7 @@ andromeda-date-time = { path = "../../contracts/math/andromeda-date-time" }
 andromeda-shunting = { path = "../../contracts/math/andromeda-shunting" }
 
 andromeda-std = { workspace = true }
-env_logger = "0.11.5"
+env_logger = "0.11.6"
 log = "0.4"
 dotenv = "0.15.0"
 reqwest = { version = "0.12", features = ["json", "blocking"] }
