@@ -103,6 +103,11 @@ pub struct ChainNameResponse {
 }
 
 #[cw_serde]
+pub struct PendingPacketResponse {
+    pub packets: Vec<Ics20PacketInfo>,
+}
+
+#[cw_serde]
 #[cfg_attr(not(target_arch = "wasm32"), derive(cw_orch::QueryFns))]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
@@ -126,6 +131,8 @@ pub enum QueryMsg {
     AdoType {},
     #[returns(crate::ado_base::ownership::ContractOwnerResponse)]
     Owner {},
+    #[returns(PendingPacketResponse)]
+    PendingPackets { channel_id: Option<String> },
 }
 
 #[cw_serde]

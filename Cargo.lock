@@ -618,6 +618,7 @@ dependencies = [
  "osmosis-std",
  "osmosis-std-derive 0.15.3",
  "prost 0.11.9",
+ "rstest",
  "schemars",
  "serde",
  "serde-json-wasm 1.0.1",
