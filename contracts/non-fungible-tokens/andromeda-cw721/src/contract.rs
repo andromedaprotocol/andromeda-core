@@ -141,18 +141,18 @@ macro_rules! ensure_can_mint {
             .get_raw_address(&$ctx.deps.as_ref())?;
 
         let is_minter = $ctx.info.sender == minter.as_str();
-        let has_mint_permission = is_context_permissioned(
-            &mut $ctx.deps,
-            &$ctx.info,
-            &$ctx.env,
-            &$ctx.amp_ctx,
-            MINT_ACTION,
-        )?;
+        // We check if the sender is the minter before checking if they have the mint permission
+        // to prevent consuming unnecessary limited permission usage.
+        let has_mint_permission = is_minter
+            || is_context_permissioned(
+                &mut $ctx.deps,
+                &$ctx.info,
+                &$ctx.env,
+                &$ctx.amp_ctx,
+                MINT_ACTION,
+            )?;
 
-        ensure!(
-            is_minter || has_mint_permission,
-            ContractError::Unauthorized {}
-        );
+        ensure!(has_mint_permission, ContractError::Unauthorized {});
     };
 }
 
