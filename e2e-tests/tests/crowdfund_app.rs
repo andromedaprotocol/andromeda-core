@@ -10,12 +10,13 @@ use andromeda_cw721::mock::{mock_andromeda_cw721, mock_cw721_instantiate_msg, Mo
 use andromeda_finance::splitter::AddressPercent;
 use andromeda_non_fungible_tokens::{
     crowdfund::{CampaignConfig, CampaignStage, PresaleTierOrder, SimpleTierOrder, TierMetaData},
-    cw721::TokenExtension,
+    cw721::{ExecuteMsg, TokenExtension},
 };
 use andromeda_splitter::mock::{
     mock_andromeda_splitter, mock_splitter_instantiate_msg, mock_splitter_send_msg,
 };
 use andromeda_std::{
+    ado_base::permissioning::{LocalPermission, Permission, PermissioningMessage},
     amp::{AndrAddr, Recipient},
     common::{denom::Asset, encode_binary, expiration::Expiry, Milliseconds},
 };
@@ -108,7 +109,7 @@ fn setup(
     let cw721_init_msg = mock_cw721_instantiate_msg(
         "Campaign Tier".to_string(),
         "CT".to_string(),
-        "./crowdfund".to_string(),
+        owner.to_string(),
         andr.kernel.addr().to_string(),
         None,
     );
@@ -236,6 +237,23 @@ fn setup(
         amount: Uint128::new(10u128),
         orderer: buyer_one.clone(),
     }];
+
+    let permission_action_msg = ExecuteMsg::Permissioning(PermissioningMessage::PermissionAction {
+        action: "Mint".to_string(),
+    });
+    cw721
+        .execute(&mut router, &permission_action_msg, owner.clone(), &[])
+        .unwrap();
+
+    let permission_msg = ExecuteMsg::Permissioning(PermissioningMessage::SetPermission {
+        actors: vec![AndrAddr::from_string(crowdfund.addr().to_string())],
+        action: "Mint".to_string(),
+        permission: Permission::Local(LocalPermission::whitelisted(None)),
+    });
+
+    cw721
+        .execute(&mut router, &permission_msg, owner.clone(), &[])
+        .unwrap();
 
     TestCase {
         router,
