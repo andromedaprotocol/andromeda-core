@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added Schema and Form ADOs [(#591)](https://github.com/andromedaprotocol/andromeda-core/pull/591)
 - Flat Rate denom can be a VFS path [(#727)](https://github.com/andromedaprotocol/andromeda-core/pull/727)
 - Auction ADO: Added buy_now_price option in Update Auction [(#730)](https://github.com/andromedaprotocol/andromeda-core/pull/730)
+- feat: added a query for pending packets to kernel [(#740)](https://github.com/andromedaprotocol/andromeda-core/pull/740)
 
 ### Changed
 

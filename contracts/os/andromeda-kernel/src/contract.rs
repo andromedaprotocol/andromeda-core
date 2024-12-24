@@ -175,5 +175,8 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractErr
         QueryMsg::ChainNameByChannel { channel } => {
             encode_binary(&query::chain_name_by_channel(deps, channel)?)
         }
+        QueryMsg::PendingPackets { channel_id } => {
+            encode_binary(&query::pending_packets(deps, channel_id)?)
+        }
     }
 }
