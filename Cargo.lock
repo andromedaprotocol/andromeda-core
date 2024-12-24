@@ -793,7 +793,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-rates"
-version = "2.0.3"
+version = "2.0.4-b.1"
 dependencies = [
  "andromeda-app",
  "andromeda-modules",
@@ -882,7 +882,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-std"
-version = "1.5.0-b.2"
+version = "1.5.0-b.3"
 dependencies = [
  "andromeda-macros",
  "cosmwasm-schema",
