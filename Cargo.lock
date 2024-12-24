@@ -2322,6 +2322,58 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0d6ef0072f8a535281e4876be788938b528e9a1d43900b82c2569af7da799125"
 
 [[package]]
+name = "e2e-tests"
+version = "1.0.0"
+dependencies = [
+ "andromeda-address-list",
+ "andromeda-adodb",
+ "andromeda-app",
+ "andromeda-app-contract",
+ "andromeda-auction",
+ "andromeda-conditional-splitter",
+ "andromeda-counter",
+ "andromeda-crowdfund",
+ "andromeda-cw20",
+ "andromeda-cw20-staking",
+ "andromeda-cw721",
+ "andromeda-data-storage",
+ "andromeda-economics",
+ "andromeda-ecosystem",
+ "andromeda-finance",
+ "andromeda-fungible-tokens",
+ "andromeda-ibc-registry",
+ "andromeda-kernel",
+ "andromeda-lockdrop",
+ "andromeda-marketplace",
+ "andromeda-math",
+ "andromeda-modules",
+ "andromeda-non-fungible-tokens",
+ "andromeda-primitive",
+ "andromeda-rates",
+ "andromeda-set-amount-splitter",
+ "andromeda-shunting",
+ "andromeda-splitter",
+ "andromeda-std",
+ "andromeda-testing",
+ "andromeda-validator-staking",
+ "andromeda-vault",
+ "andromeda-vesting",
+ "andromeda-vfs",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-asset",
+ "cw-multi-test",
+ "cw-orch",
+ "cw-orch-interchain",
+ "cw20",
+ "cw721 0.18.0",
+ "cw721-base 0.18.0",
+ "ibc-relayer-types",
+ "rstest",
+ "toml 0.8.19",
+]
+
+[[package]]
 name = "ecdsa"
 version = "0.16.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5064,58 +5116,6 @@ dependencies = [
  "quote",
  "syn 2.0.90",
  "test-case-core",
-]
-
-[[package]]
-name = "tests-integration"
-version = "1.0.0"
-dependencies = [
- "andromeda-address-list",
- "andromeda-adodb",
- "andromeda-app",
- "andromeda-app-contract",
- "andromeda-auction",
- "andromeda-conditional-splitter",
- "andromeda-counter",
- "andromeda-crowdfund",
- "andromeda-cw20",
- "andromeda-cw20-staking",
- "andromeda-cw721",
- "andromeda-data-storage",
- "andromeda-economics",
- "andromeda-ecosystem",
- "andromeda-finance",
- "andromeda-fungible-tokens",
- "andromeda-ibc-registry",
- "andromeda-kernel",
- "andromeda-lockdrop",
- "andromeda-marketplace",
- "andromeda-math",
- "andromeda-modules",
- "andromeda-non-fungible-tokens",
- "andromeda-primitive",
- "andromeda-rates",
- "andromeda-set-amount-splitter",
- "andromeda-shunting",
- "andromeda-splitter",
- "andromeda-std",
- "andromeda-testing",
- "andromeda-validator-staking",
- "andromeda-vault",
- "andromeda-vesting",
- "andromeda-vfs",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-asset",
- "cw-multi-test",
- "cw-orch",
- "cw-orch-interchain",
- "cw20",
- "cw721 0.18.0",
- "cw721-base 0.18.0",
- "ibc-relayer-types",
- "rstest",
- "toml 0.8.19",
 ]
 
 [[package]]

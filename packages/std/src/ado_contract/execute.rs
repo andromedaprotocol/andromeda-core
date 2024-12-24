@@ -354,6 +354,7 @@ macro_rules! unwrap_amp_msg {
         let mut msg = $msg;
 
         if let ExecuteMsg::AMPReceive(mut pkt) = msg {
+            ctx.deps.api.debug("Unwrapping AMP Packet");
             ctx.info = MessageInfo {
                 sender: ctx.deps.api.addr_validate(
                     pkt.get_verified_origin(&ctx.info.clone(), &ctx.deps.as_ref())
@@ -362,11 +363,18 @@ macro_rules! unwrap_amp_msg {
                 )?,
                 funds: ctx.info.funds,
             };
+
+            ctx.deps
+                .api
+                .debug(&format!("Set new sender: {}", ctx.info.sender));
             msg = from_json(&pkt.messages.pop().unwrap().message)?;
+            ctx.deps
+                .api
+                .debug(&format!("Unwrapped msg: {:?}", msg.as_ref()));
             ctx.amp_ctx = Some(pkt);
         }
 
-        let action_response = call_action(
+        let action_response = andromeda_std::common::actions::call_action(
             &mut ctx.deps,
             &ctx.info,
             &ctx.env,
