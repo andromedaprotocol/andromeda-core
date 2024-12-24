@@ -348,7 +348,6 @@ impl ADOContract<'_> {
 }
 
 #[cfg(test)]
-
 mod tests {
     use super::*;
     use crate::testing::mock_querier::MOCK_KERNEL_CONTRACT;

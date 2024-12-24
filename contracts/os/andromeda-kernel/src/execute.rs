@@ -10,15 +10,11 @@ use andromeda_std::error::ContractError;
 use andromeda_std::os::aos_querier::AOSQuerier;
 #[cfg(not(target_arch = "wasm32"))]
 use andromeda_std::os::ibc_registry::path_to_hops;
-use andromeda_std::os::kernel::{
-    AcknowledgementMsg, ChannelInfo, IbcExecuteMsg, Ics20PacketInfo, InternalMsg,
-    SendMessageWithFundsResponse,
-};
+use andromeda_std::os::kernel::{ChannelInfo, IbcExecuteMsg, Ics20PacketInfo, InternalMsg};
 use andromeda_std::os::vfs::vfs_resolve_symlink;
 use cosmwasm_std::{
     attr, ensure, from_json, to_json_binary, BankMsg, Binary, Coin, ContractInfoResponse,
-    CosmosMsg, DepsMut, Env, IbcMsg, IbcPacketAckMsg, MessageInfo, Response, StdError, SubMsg,
-    WasmMsg,
+    CosmosMsg, DepsMut, Env, IbcMsg, MessageInfo, Response, StdAck, StdError, SubMsg, WasmMsg,
 };
 
 use crate::query;
@@ -38,16 +34,18 @@ pub fn send(ctx: ExecuteContext, message: AMPMsg) -> Result<Response, ContractEr
 
 pub fn trigger_relay(
     ctx: ExecuteContext,
-    packet_sequence: String,
-    packet_ack_msg: IbcPacketAckMsg,
+    packet_sequence: u64,
+    channel_id: String,
+    packet_ack_msg: Binary,
 ) -> Result<Response, ContractError> {
     //TODO Only the authorized address to handle replies can call this function
     ensure!(
         ctx.info.sender == KERNEL_ADDRESSES.load(ctx.deps.storage, TRIGGER_KEY)?,
         ContractError::Unauthorized {}
     );
-    let ics20_packet_info =
-        CHANNEL_TO_EXECUTE_MSG.load(ctx.deps.storage, packet_sequence.clone())?;
+    let ics20_packet_info = CHANNEL_TO_EXECUTE_MSG
+        .load(ctx.deps.storage, (channel_id, packet_sequence))
+        .expect("No packet found for channel_id and sequence");
 
     let chain =
         ics20_packet_info
@@ -62,11 +60,10 @@ pub fn trigger_relay(
         .ok_or_else(|| ContractError::InvalidPacket {
             error: Some(format!("Channel not found for chain {}", chain)),
         })?;
-    let ack: AcknowledgementMsg<SendMessageWithFundsResponse> =
-        from_json(packet_ack_msg.acknowledgement.data)?;
+    let ack: StdAck = from_json(packet_ack_msg)?;
 
     match ack {
-        AcknowledgementMsg::Ok(_) => handle_ibc_transfer_funds_reply(
+        StdAck::Success(_) => handle_ibc_transfer_funds_reply(
             ctx.deps,
             ctx.info,
             ctx.env,
@@ -76,7 +73,7 @@ pub fn trigger_relay(
             ics20_packet_info,
         ),
         // This means that the funds have been returned to the contract, time to return the funds to the original sender
-        AcknowledgementMsg::Error(_) => {
+        StdAck::Error(_) => {
             let refund_msg = CosmosMsg::Bank(BankMsg::Send {
                 to_address: ics20_packet_info.sender.clone(),
                 amount: vec![ics20_packet_info.funds.clone()],
@@ -173,7 +170,7 @@ pub fn amp_receive(
 ) -> Result<Response, ContractError> {
     // Only verified ADOs can access this function
     ensure!(
-        query::verify_address(deps.as_ref(), info.sender.to_string(),)?.verify_address,
+        query::verify_address(deps.as_ref(), info.sender.to_string())?.verify_address,
         ContractError::Unauthorized {}
     );
     ensure!(
@@ -539,16 +536,20 @@ impl MsgHandler {
         sequence: u64,
     ) -> Result<Response, ContractError> {
         let mut res = Response::default();
+
+        let original_msg = self.message();
         let AMPMsg {
             message,
             recipient,
             funds,
             config,
             ..
-        } = self.message();
+        } = original_msg;
+
         let recipient_addr = recipient.get_raw_address(&deps.as_ref())?;
+        
         let adodb_addr = KERNEL_ADDRESSES.load(deps.storage, ADO_DB_KEY)?;
-        // A default message is a bank message
+    
         if Binary::default() == message.clone() {
             ensure!(
                 !funds.is_empty(),
@@ -556,17 +557,18 @@ impl MsgHandler {
                     error: Some("No message or funds supplied".to_string())
                 }
             );
-
+    
             let sub_msg = BankMsg::Send {
                 to_address: recipient_addr.to_string(),
                 amount: funds.clone(),
             };
-
+    
             let mut attrs = vec![];
             for (idx, fund) in funds.iter().enumerate() {
                 attrs.push(attr(format!("funds:{sequence}:{idx}"), fund.to_string()));
             }
             attrs.push(attr(format!("recipient:{sequence}"), recipient_addr));
+    
             res = res
                 .add_submessage(SubMsg::reply_on_error(
                     CosmosMsg::Bank(sub_msg),
@@ -580,7 +582,7 @@ impl MsgHandler {
                 info.sender.to_string()
             };
             let previous_sender = info.sender.to_string();
-            // Ensure recipient is a smart contract
+
             let ContractInfoResponse {
                 code_id: recipient_code_id,
                 ..
@@ -596,12 +598,12 @@ impl MsgHandler {
                 || AOSQuerier::ado_type_getter(&deps.querier, &adodb_addr, recipient_code_id)?
                     .is_none()
             {
-                // Message is direct (no AMP Ctx)
                 self.message()
                     .generate_sub_msg_direct(recipient_addr.clone(), ReplyId::AMPMsg.repr())
             } else {
                 let amp_msg =
-                    AMPMsg::new(recipient_addr.clone(), message.clone(), Some(funds.clone()));
+                    AMPMsg::new(recipient_addr.clone(), message.clone(), Some(funds.clone()))
+                        .with_config(config.clone());
 
                 let new_packet = AMPPkt::new(origin, previous_sender, vec![amp_msg]);
 
@@ -611,7 +613,7 @@ impl MsgHandler {
                     ReplyId::AMPMsg.repr(),
                 )?
             };
-
+    
             res = res
                 .add_submessage(sub_msg)
                 .add_attributes(vec![attr(format!("recipient:{sequence}"), recipient_addr)]);

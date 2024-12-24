@@ -13,13 +13,10 @@ use andromeda_std::{
     amp::{AndrAddr, Recipient},
     os::{
         self,
-        kernel::{AcknowledgementMsg, ExecuteMsg, InstantiateMsg, SendMessageWithFundsResponse},
+        kernel::{ExecuteMsg, InstantiateMsg},
     },
 };
-use cosmwasm_std::{
-    coin, to_json_binary, Binary, Coin, Decimal, Empty, IbcAcknowledgement, IbcEndpoint, IbcPacket,
-    IbcPacketAckMsg, IbcTimeout, Timestamp, Uint128,
-};
+use cosmwasm_std::{coin, to_json_binary, Binary, Coin, Decimal, Empty, StdAck, Uint128};
 
 use andromeda_finance::splitter::{
     AddressPercent, Cw20HookMsg, ExecuteMsg as SplitterExecuteMsg,
@@ -599,7 +596,7 @@ fn test_splitter_cross_chain_recipient() {
     kernel_osmosis
         .execute(
             &ExecuteMsg::AssignChannels {
-                ics20_channel_id: Some(channel.0.channel.unwrap().to_string()),
+                ics20_channel_id: Some(channel.0.channel.clone().unwrap().to_string()),
                 direct_channel_id: Some(juno_channel.to_string()),
                 chain: "juno".to_string(),
                 kernel_address: kernel_juno.address().unwrap().into_string(),
@@ -683,29 +680,9 @@ fn test_splitter_cross_chain_recipient() {
     let kernel_juno_trigger_request = kernel_juno
         .execute(
             &ExecuteMsg::TriggerRelay {
-                packet_sequence: "1".to_string(),
-                packet_ack_msg: IbcPacketAckMsg::new(
-                    IbcAcknowledgement::new(
-                        to_json_binary(&AcknowledgementMsg::<SendMessageWithFundsResponse>::Ok(
-                            SendMessageWithFundsResponse {},
-                        ))
-                        .unwrap(),
-                    ),
-                    IbcPacket::new(
-                        Binary::default(),
-                        IbcEndpoint {
-                            port_id: "port_id".to_string(),
-                            channel_id: "channel_id".to_string(),
-                        },
-                        IbcEndpoint {
-                            port_id: "port_id".to_string(),
-                            channel_id: "channel_id".to_string(),
-                        },
-                        1,
-                        IbcTimeout::with_timestamp(Timestamp::from_seconds(1)),
-                    ),
-                    Addr::unchecked("relayer"),
-                ),
+                packet_sequence: 1,
+                channel_id: channel.0.channel.clone().unwrap().to_string(),
+                packet_ack: to_json_binary(&StdAck::Success(Binary::default())).unwrap(),
             },
             None,
         )
