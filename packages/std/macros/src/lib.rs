@@ -1,6 +1,6 @@
 use proc_macro::TokenStream;
 use quote::{quote, ToTokens};
-use syn::{parse::Parser, parse_macro_input, DeriveInput};
+use syn::{parse::Parser, parse_macro_input, DeriveInput, ItemFn};
 
 /// Taken from: https://github.com/DA0-DA0/dao-contracts/blob/74bd3881fdd86829e5e8b132b9952dd64f2d0737/packages/dao-macros/src/lib.rs#L9
 /// Used to merge two enums together.
@@ -172,4 +172,36 @@ pub fn andr_query(_metadata: TokenStream, input: TokenStream) -> TokenStream {
         )
     }
     merged
+}
+
+#[proc_macro_attribute]
+pub fn andromeda_execute_fn(_attr: TokenStream, item: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(item as ItemFn);
+    let vis = &input.vis;
+    let body = &input.block;
+
+    let expanded = quote! {
+        #[cfg_attr(not(feature = "library"), entry_point)]
+        pub fn execute(
+            deps: DepsMut,
+            env: Env,
+            info: MessageInfo,
+            msg: ExecuteMsg,
+        ) -> Result<Response, ContractError> {
+            let (ctx, msg, resp) = ::andromeda_std::unwrap_amp_msg!(deps, info, env, msg);
+
+            let res = execute_inner(ctx, msg)?;
+
+            Ok(res
+                .add_submessages(resp.messages)
+                .add_attributes(resp.attributes)
+                .add_events(resp.events))
+        }
+
+        #vis fn execute_inner(ctx: ::andromeda_std::common::context::ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+            #body
+        }
+    };
+
+    TokenStream::from(expanded)
 }

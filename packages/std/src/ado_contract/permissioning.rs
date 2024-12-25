@@ -1132,12 +1132,7 @@ mod tests {
         let mut deps = mock_dependencies();
         let env = mock_env();
         let info = mock_info("owner", &[]);
-        let ctx = ExecuteContext {
-            deps: deps.as_mut(),
-            env,
-            info: info.clone(),
-            amp_ctx: None,
-        };
+        let ctx = ExecuteContext::new(deps.as_mut(), info.clone(), env);
 
         let contract = ADOContract::default();
 
@@ -1166,12 +1161,7 @@ mod tests {
         let mut deps = mock_dependencies();
         let env = mock_env();
         let info = mock_info("owner", &[]);
-        let ctx = ExecuteContext {
-            deps: deps.as_mut(),
-            env,
-            info: info.clone(),
-            amp_ctx: None,
-        };
+        let ctx = ExecuteContext::new(deps.as_mut(), info.clone(), env);
 
         let contract = ADOContract::default();
 

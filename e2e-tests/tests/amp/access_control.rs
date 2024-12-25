@@ -22,6 +22,7 @@ const CW721_USER: &str = "user1";
 const CW721_APP_NAME: &str = "app";
 const CW721_COMPONENT_NAME: &str = "cw721";
 const CW721_MINT_ACTION: &str = "Mint";
+
 #[fixture]
 fn setup_cw721() -> (App<BankKeeper, MockApiBech32>, MockAndromeda, MockCW721) {
     let mut router = mock_app(None);
@@ -84,7 +85,7 @@ fn setup_cw721() -> (App<BankKeeper, MockApiBech32>, MockAndromeda, MockCW721) {
     (router, andr, cw721)
 }
 
-// Tests permission-based access control for NFT minting operations
+// Tests permission-based access control for NFT minting operations via the Kernel using AMP
 // Tests three scenarios:
 // 1. Owner attempts to mint (should succeed)
 // 2. Whitelisted user attempts to mint (should succeed)

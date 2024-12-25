@@ -527,15 +527,14 @@ fn on_restake_reward(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, Co
             RESTAKING_QUEUE.remove(deps.storage);
 
             let res = execute_stake(
-                ExecuteContext {
+                ExecuteContext::new(
                     deps,
-                    info: MessageInfo {
+                    MessageInfo {
                         sender: restaking_queue.delegator,
                         funds: restaking_queue.accumulated_rewards,
                     },
                     env,
-                    amp_ctx: None,
-                },
+                ),
                 Some(Addr::unchecked(restaking_queue.validator)),
             )?;
             Ok(res.add_attribute("action", "restake-reward"))

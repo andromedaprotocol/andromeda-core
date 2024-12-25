@@ -6,9 +6,9 @@ use andromeda_finance::splitter::{
 use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     amp::{messages::AMPPkt, Recipient},
+    andromeda_execute_fn,
     common::{encode_binary, expiration::Expiry},
     error::ContractError,
-    unwrap_amp_msg,
 };
 use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
 use cosmwasm_std::{
@@ -73,15 +73,8 @@ pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, Contract
     Ok(Response::default())
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn execute(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    msg: ExecuteMsg,
-) -> Result<Response, ContractError> {
-    let (ctx, msg, resp) = unwrap_amp_msg!(deps, info, env, msg);
-
+#[andromeda_execute_fn]
+pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     let res = match msg {
         ExecuteMsg::UpdateRecipients { recipients } => execute_update_recipients(ctx, recipients),
         ExecuteMsg::UpdateLock { lock_time } => execute_update_lock(ctx, lock_time),
@@ -93,10 +86,7 @@ pub fn execute(
         _ => ADOContract::default().execute(ctx, msg),
     }?;
 
-    Ok(res
-        .add_submessages(resp.messages)
-        .add_attributes(resp.attributes)
-        .add_events(resp.events))
+    Ok(res)
 }
 
 pub fn handle_receive_cw20(
@@ -219,7 +209,7 @@ fn execute_send(
             remainder_recipient.generate_direct_msg(&deps.as_ref(), remainder_funds)?;
         msgs.push(native_msg);
     }
-    let kernel_address = ADOContract::default().get_kernel_address(deps.as_ref().storage)?;
+    let kernel_address = ctx.contract.get_kernel_address(deps.as_ref().storage)?;
 
     if !pkt.messages.is_empty() {
         let distro_msg = pkt.to_sub_msg(kernel_address, Some(amp_funds), 1)?;

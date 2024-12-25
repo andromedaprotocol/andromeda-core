@@ -1,4 +1,4 @@
-use andromeda_std::unwrap_amp_msg;
+use andromeda_std::andromeda_execute_fn;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
@@ -72,15 +72,8 @@ pub fn instantiate(
     Ok(resp.add_attributes(vec![attr("minter", msg.minter)]))
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn execute(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    msg: ExecuteMsg,
-) -> Result<Response, ContractError> {
-    let (ctx, msg, action_response) = unwrap_amp_msg!(deps, info, env, msg);
-
+#[andromeda_execute_fn]
+pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     if let ExecuteMsg::Approve { token_id, .. } = &msg {
         ensure!(
             !is_archived(ctx.deps.storage, token_id)?.is_archived,
@@ -120,10 +113,7 @@ pub fn execute(
             }
         }
     }?;
-    Ok(res
-        .add_submessages(action_response.messages)
-        .add_attributes(action_response.attributes)
-        .add_events(action_response.events))
+    Ok(res)
 }
 
 fn execute_cw721(
@@ -211,12 +201,8 @@ fn execute_batch_mint(
         })
     );
     for msg in tokens_to_mint {
-        let ctx = ExecuteContext {
-            deps: ctx.deps.branch(),
-            info: ctx.info.clone(),
-            env: ctx.env.clone(),
-            amp_ctx: ctx.amp_ctx.clone(),
-        };
+        let mut ctx = ExecuteContext::new(ctx.deps.branch(), ctx.info.clone(), ctx.env.clone());
+        ctx.amp_ctx = ctx.amp_ctx.clone();
         let mint_resp = mint(ctx, msg.token_id, msg.token_uri, msg.owner, msg.extension)?;
         resp = resp
             .add_attributes(mint_resp.attributes)
@@ -232,9 +218,12 @@ fn execute_transfer(
     token_id: String,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
-        deps, info, env, ..
+        deps,
+        info,
+        env,
+        contract: base_contract,
+        ..
     } = ctx;
-    let base_contract = ADOContract::default();
     // Reduce all responses into one.
     let mut resp = Response::new();
     let recipient_address = recipient.get_raw_address(&deps.as_ref())?.into_string();
