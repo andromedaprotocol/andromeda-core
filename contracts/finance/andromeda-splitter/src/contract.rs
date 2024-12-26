@@ -93,26 +93,10 @@ pub fn handle_receive_cw20(
     ctx: ExecuteContext,
     receive_msg: Cw20ReceiveMsg,
 ) -> Result<Response, ContractError> {
-    // let is_valid_cw20 = ADOContract::default()
-    //     .is_permissioned(
-    //         ctx.deps.branch(),
-    //         ctx.env.clone(),
-    //         SEND_CW20_ACTION,
-    //         ctx.info.sender.clone(),
-    //     )
-    //     .is_ok();
+    let ExecuteContext { ref raw_info, .. } = ctx;
+    nonpayable(raw_info)?;
 
-    // ensure!(
-    //     is_valid_cw20,
-    //     ContractError::InvalidAsset {
-    //         asset: ctx.info.sender.into_string()
-    //     }
-    // );
-
-    let ExecuteContext { ref info, .. } = ctx;
-    nonpayable(info)?;
-
-    let asset_sent = info.sender.clone().into_string();
+    let asset_sent = raw_info.sender.clone().into_string();
     let amount_sent = receive_msg.amount;
     let sender = receive_msg.sender;
 
