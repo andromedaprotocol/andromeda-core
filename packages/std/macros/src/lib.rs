@@ -1,6 +1,6 @@
 use proc_macro::TokenStream;
-use quote::{quote, ToTokens};
-use syn::{parse::Parser, parse_macro_input, DeriveInput, ItemFn};
+use quote::quote;
+use syn::{parse::Parser, parse_macro_input, parse_quote, DeriveInput, ItemFn};
 
 /// Taken from: https://github.com/DA0-DA0/dao-contracts/blob/74bd3881fdd86829e5e8b132b9952dd64f2d0737/packages/dao-macros/src/lib.rs#L9
 /// Used to merge two enums together.
@@ -26,6 +26,13 @@ fn merge_variants(left: TokenStream, right: TokenStream) -> TokenStream {
             .to_compile_error()
             .into()
     }
+}
+
+/// Attribute to mark execute message variants as non-payable
+#[proc_macro_attribute]
+pub fn nonpayable(_attr: TokenStream, input: TokenStream) -> TokenStream {
+    // Simply return the input unchanged - this attribute is just a marker
+    input
 }
 
 #[proc_macro_attribute]
@@ -69,19 +76,24 @@ pub fn andr_exec(_args: TokenStream, input: TokenStream) -> TokenStream {
             .into(),
         )
     }
-    let input = parse_macro_input!(merged);
-    TokenStream::from(andr_exec_derive(input).into_token_stream())
+
+    let input = parse_macro_input!(merged as DeriveInput);
+    let output = andr_exec_derive(input);
+
+    quote! {
+        #output
+    }
+    .into()
 }
 
-/// Derives the `AsRefStr` trait for a given enum allowing the use of `as_ref_str` to get the string representation of the enum.
-fn andr_exec_derive(input: DeriveInput) -> DeriveInput {
-    use syn::parse_quote;
-
-    match input.data {
-        syn::Data::Enum(_) => parse_quote! {
-            #[derive(::andromeda_std::AsRefStr)]
-            #input
-        },
+fn andr_exec_derive(input: DeriveInput) -> proc_macro2::TokenStream {
+    match &input.data {
+        syn::Data::Enum(_) => {
+            parse_quote! {
+                #[derive(::andromeda_std::AsRefStr, ::andromeda_std::Payable)]
+                #input
+            }
+        }
         _ => panic!("unions are not supported"),
     }
 }
@@ -188,7 +200,11 @@ pub fn andromeda_execute_fn(_attr: TokenStream, item: TokenStream) -> TokenStrea
             info: MessageInfo,
             msg: ExecuteMsg,
         ) -> Result<Response, ContractError> {
-            let (ctx, msg, resp) = ::andromeda_std::unwrap_amp_msg!(deps, info, env, msg);
+            let (ctx, msg, resp) = ::andromeda_std::unwrap_amp_msg!(deps, info.clone(), env, msg);
+
+            if !msg.is_payable() && !info.funds.is_empty() {
+                return Err(ContractError::Payment(andromeda_std::error::PaymentError::NonPayable {}));
+            }
 
             let res = execute_inner(ctx, msg)?;
 
@@ -204,4 +220,58 @@ pub fn andromeda_execute_fn(_attr: TokenStream, item: TokenStream) -> TokenStrea
     };
 
     TokenStream::from(expanded)
+}
+
+#[proc_macro_derive(Payable, attributes(nonpayable))]
+pub fn derive_payable(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+
+    match &input.data {
+        syn::Data::Enum(data_enum) => {
+            // Get list of non-payable variants (those marked with #[nonpayable])
+            let nonpayable_variants: Vec<String> = data_enum
+                .variants
+                .iter()
+                .filter(|variant| {
+                    variant
+                        .attrs
+                        .iter()
+                        .any(|attr| attr.path.is_ident("nonpayable"))
+                })
+                .map(|v| v.ident.to_string())
+                .collect();
+
+            // Generate match arms for is_payable implementation
+            let variant_matches = data_enum.variants.iter().map(|variant| {
+                let variant_name = &variant.ident;
+                let is_payable = !nonpayable_variants.contains(&variant_name.to_string());
+
+                match &variant.fields {
+                    syn::Fields::Named(_) => {
+                        quote! { Self::#variant_name { .. } => #is_payable }
+                    }
+                    syn::Fields::Unnamed(_) => {
+                        quote! { Self::#variant_name(..) => #is_payable }
+                    }
+                    syn::Fields::Unit => {
+                        quote! { Self::#variant_name => #is_payable }
+                    }
+                }
+            });
+
+            let name = &input.ident;
+            let expanded = quote! {
+                impl #name {
+                    pub fn is_payable(&self) -> bool {
+                        match self {
+                            #(#variant_matches,)*
+                        }
+                    }
+                }
+            };
+
+            TokenStream::from(expanded)
+        }
+        _ => panic!("Payable can only be derived for enums"),
+    }
 }

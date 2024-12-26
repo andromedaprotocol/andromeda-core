@@ -5,6 +5,7 @@ use andromeda_std::{
     andr_exec, andr_instantiate, andr_query,
     common::{expiration::Expiry, Milliseconds, MillisecondsExpiration},
     error::ContractError,
+    nonpayable,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{ensure, BlockInfo, Decimal, Deps};
@@ -58,22 +59,18 @@ pub enum Cw20HookMsg {
 #[cw_serde]
 pub enum ExecuteMsg {
     /// Update the recipients list. Only executable by the contract owner when the contract is not locked.
-    UpdateRecipients {
-        recipients: Vec<AddressPercent>,
-    },
+    #[nonpayable]
+    UpdateRecipients { recipients: Vec<AddressPercent> },
     /// Used to lock/unlock the contract allowing the config to be updated.
-    UpdateLock {
-        lock_time: Expiry,
-    },
+    #[nonpayable]
+    UpdateLock { lock_time: Expiry },
     /// Update the default recipient. Only executable by the contract owner when the contract is not locked.
-    UpdateDefaultRecipient {
-        recipient: Option<Recipient>,
-    },
+    #[nonpayable]
+    UpdateDefaultRecipient { recipient: Option<Recipient> },
+    #[nonpayable]
     Receive(Cw20ReceiveMsg),
     /// Divides any attached funds to the message amongst the recipients list.
-    Send {
-        config: Option<Vec<AddressPercent>>,
-    },
+    Send { config: Option<Vec<AddressPercent>> },
 }
 
 #[andr_query]
