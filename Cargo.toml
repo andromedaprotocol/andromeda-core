@@ -34,7 +34,7 @@ strip = true
 andromeda-std = { path = "./packages/std", default-features = false, features = [
     "deploy",
 ] }
-andromeda-macros = { path = "./packages/std/macros", default-features = false, version = "1.0.0" }
+andromeda-macros = { path = "./packages/std/macros", default-features = false, version = "1.0.1-b.1" }
 andromeda-non-fungible-tokens = { path = "./packages/andromeda-non-fungible-tokens", version = "1.0.0" }
 andromeda-fungible-tokens = { path = "./packages/andromeda-fungible-tokens", version = "1.0.0" }
 andromeda-finance = { path = "./packages/andromeda-finance", version = "1.0.0" }

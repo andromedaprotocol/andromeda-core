@@ -6,7 +6,7 @@ use andromeda_finance::splitter::{
 use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     amp::{messages::AMPPkt, Recipient},
-    andromeda_execute_fn,
+    andr_execute_fn,
     common::{encode_binary, expiration::Expiry},
     error::ContractError,
 };
@@ -73,7 +73,7 @@ pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, Contract
     Ok(Response::default())
 }
 
-#[andromeda_execute_fn]
+#[andr_execute_fn]
 pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     let res = match msg {
         ExecuteMsg::UpdateRecipients { recipients } => execute_update_recipients(ctx, recipients),
@@ -94,8 +94,6 @@ pub fn handle_receive_cw20(
     receive_msg: Cw20ReceiveMsg,
 ) -> Result<Response, ContractError> {
     let ExecuteContext { ref raw_info, .. } = ctx;
-    nonpayable(raw_info)?;
-
     let asset_sent = raw_info.sender.clone().into_string();
     let amount_sent = receive_msg.amount;
     let sender = receive_msg.sender;
@@ -274,16 +272,7 @@ fn execute_update_recipients(
     ctx: ExecuteContext,
     recipients: Vec<AddressPercent>,
 ) -> Result<Response, ContractError> {
-    let ExecuteContext {
-        deps, info, env, ..
-    } = ctx;
-
-    nonpayable(&info)?;
-
-    ensure!(
-        ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {}
-    );
+    let ExecuteContext { deps, env, .. } = ctx;
 
     validate_recipient_list(deps.as_ref(), recipients.clone())?;
 
@@ -343,15 +332,8 @@ fn execute_update_default_recipient(
     recipient: Option<Recipient>,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
-        deps, info, env, ..
+        deps, env, ..
     } = ctx;
-
-    nonpayable(&info)?;
-
-    ensure!(
-        ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {}
-    );
 
     let mut splitter = SPLITTER.load(deps.storage)?;
 

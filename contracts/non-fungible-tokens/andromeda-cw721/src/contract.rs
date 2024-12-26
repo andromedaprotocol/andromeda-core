@@ -1,4 +1,4 @@
-use andromeda_std::andromeda_execute_fn;
+use andromeda_std::andr_execute_fn;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
@@ -72,7 +72,7 @@ pub fn instantiate(
     Ok(resp.add_attributes(vec![attr("minter", msg.minter)]))
 }
 
-#[andromeda_execute_fn]
+#[andr_execute_fn]
 pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     if let ExecuteMsg::Approve { token_id, .. } = &msg {
         ensure!(
