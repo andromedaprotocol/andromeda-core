@@ -13,7 +13,7 @@ use andromeda_non_fungible_tokens::cw721::{
 };
 use andromeda_std::common::rates::get_tax_amount;
 use andromeda_std::{
-    ado_base::{AndromedaMsg, AndromedaQuery},
+    ado_base::AndromedaQuery,
     ado_contract::{permissioning::is_context_permissioned, ADOContract},
     amp::AndrAddr,
     common::context::ExecuteContext,
@@ -104,14 +104,12 @@ pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Contrac
             token_id,
             msg,
         } => execute_send_nft(ctx, token_id, contract, msg),
-        _ => {
-            let serialized = to_json_binary(&msg)?;
-
-            match from_json::<AndromedaMsg>(&serialized) {
-                Ok(msg) => ADOContract::default().execute(ctx, msg),
-                Err(_) => execute_cw721(ctx, msg.into()),
-            }
-        }
+        // Attempt to match the message as a cw721 message first, if it fails, fallback to the
+        // default ADO execute function.
+        _ => match msg.clone().try_into() {
+            Ok(cw721_msg) => execute_cw721(ctx, cw721_msg),
+            Err(_) => ADOContract::default().execute(ctx, msg),
+        },
     }?;
     Ok(res)
 }
