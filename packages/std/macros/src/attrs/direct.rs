@@ -2,28 +2,28 @@ use super::{handler::AttributeHandler, utils::generate_match_pattern};
 use quote::quote;
 
 /**
- * RestrictedAttribute is used to indicate that a message can only be executed by the owner **unless the message is permissioned**.
+ * DirectAttribute is used to indicate that a message cannot be received via an AMP packet.
  *
  * Example usage:
  * ```rust
  * #[andr_exec]
  * enum ExecuteMsg {
- *     #[attrs(restricted)]
+ *     #[attrs(direct)]
  *     MyMessage{..},
  * }
  * ```
  */
-pub struct RestrictedAttribute;
+pub struct DirectAttribute;
 
-impl AttributeHandler for RestrictedAttribute {
+impl AttributeHandler for DirectAttribute {
     fn check_attribute(&self, attr: &syn::Attribute) -> bool {
         if attr.path().is_ident("attrs") {
-            let mut is_restricted = false;
+            let mut is_direct = false;
             attr.parse_args_with(|input: syn::parse::ParseStream| {
                 while !input.is_empty() {
                     let ident: syn::Ident = input.parse()?;
-                    if ident == "restricted" {
-                        is_restricted = true;
+                    if ident == "direct" {
+                        is_direct = true;
                     }
                     if !input.is_empty() {
                         input.parse::<syn::Token![,]>()?;
@@ -32,7 +32,7 @@ impl AttributeHandler for RestrictedAttribute {
                 Ok(())
             })
             .unwrap_or(());
-            return is_restricted;
+            return is_direct;
         }
         false
     }
@@ -42,14 +42,14 @@ impl AttributeHandler for RestrictedAttribute {
         data_enum: &syn::DataEnum,
         variants: &[(syn::Ident, bool)],
     ) -> proc_macro2::TokenStream {
-        let match_arms = variants.iter().map(|(variant_name, is_restricted)| {
+        let match_arms = variants.iter().map(|(variant_name, is_direct)| {
             let pattern = generate_match_pattern(data_enum, variant_name);
-            quote! { #pattern => #is_restricted }
+            quote! { #pattern => #is_direct }
         });
 
         quote! {
             #[inline]
-            pub fn is_restricted(&self) -> bool {
+            pub fn must_be_direct(&self) -> bool {
                 match self {
                     #(#match_arms,)*
                 }

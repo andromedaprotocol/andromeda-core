@@ -1,9 +1,21 @@
 use super::{handler::AttributeHandler, utils::generate_match_pattern};
 use quote::quote;
 
-pub struct PayableAttribute;
+/**
+ * NonPayableAttribute is used to indicate that a message can receive funds.
+ *
+ * Example usage:
+ * ```rust
+ * #[andr_exec]
+ * enum ExecuteMsg {
+ *     #[attrs(nonpayable)]
+ *     MyMessage{..},
+ * }
+ * ```
+ */
+pub struct NonPayableAttribute;
 
-impl AttributeHandler for PayableAttribute {
+impl AttributeHandler for NonPayableAttribute {
     fn check_attribute(&self, attr: &syn::Attribute) -> bool {
         if attr.path().is_ident("attrs") {
             let mut is_nonpayable = false;
