@@ -16,7 +16,6 @@ use cosmwasm_std::{
     Reply, Response, StdError, SubMsg, Uint128,
 };
 use cw20::{Cw20Coin, Cw20ReceiveMsg};
-use cw_utils::nonpayable;
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-splitter";
@@ -296,16 +295,7 @@ fn execute_update_recipients(
 }
 
 fn execute_update_lock(ctx: ExecuteContext, lock_time: Expiry) -> Result<Response, ContractError> {
-    let ExecuteContext {
-        deps, info, env, ..
-    } = ctx;
-
-    nonpayable(&info)?;
-
-    ensure!(
-        ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {}
-    );
+    let ExecuteContext { deps, env, .. } = ctx;
 
     let mut splitter = SPLITTER.load(deps.storage)?;
 
@@ -331,9 +321,7 @@ fn execute_update_default_recipient(
     ctx: ExecuteContext,
     recipient: Option<Recipient>,
 ) -> Result<Response, ContractError> {
-    let ExecuteContext {
-        deps, env, ..
-    } = ctx;
+    let ExecuteContext { deps, env, .. } = ctx;
 
     let mut splitter = SPLITTER.load(deps.storage)?;
 
