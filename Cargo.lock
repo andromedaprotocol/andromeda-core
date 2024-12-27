@@ -903,6 +903,7 @@ dependencies = [
  "osmosis-std-derive 0.15.3",
  "prost 0.11.9",
  "regex",
+ "rstest",
  "schemars",
  "semver",
  "serde",

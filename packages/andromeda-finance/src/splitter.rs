@@ -58,13 +58,13 @@ pub enum Cw20HookMsg {
 #[cw_serde]
 pub enum ExecuteMsg {
     /// Update the recipients list. Only executable by the contract owner when the contract is not locked.
-    #[attrs(restricted, nonpayable)]
+    #[attrs(restricted, nonpayable, direct)]
     UpdateRecipients { recipients: Vec<AddressPercent> },
     /// Used to lock/unlock the contract allowing the config to be updated.
-    #[attrs(restricted, nonpayable)]
+    #[attrs(restricted, nonpayable, direct)]
     UpdateLock { lock_time: Expiry },
     /// Update the default recipient. Only executable by the contract owner when the contract is not locked.
-    #[attrs(restricted, nonpayable)]
+    #[attrs(restricted, nonpayable, direct)]
     UpdateDefaultRecipient { recipient: Option<Recipient> },
     #[attrs(nonpayable)]
     Receive(Cw20ReceiveMsg),

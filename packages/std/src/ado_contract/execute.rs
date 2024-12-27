@@ -368,6 +368,15 @@ macro_rules! unwrap_amp_msg {
                 .api
                 .debug(&format!("Set new sender: {}", ctx.info.sender));
             msg = from_json(&pkt.messages.pop().unwrap().message)?;
+            ::cosmwasm_std::ensure!(
+                !msg.must_be_direct(),
+                ContractError::InvalidPacket {
+                    error: Some(format!(
+                        "{} cannot be received via AMP packet",
+                        msg.as_ref()
+                    )),
+                }
+            );
             ctx.deps
                 .api
                 .debug(&format!("Unwrapped msg: {:?}", msg.as_ref()));
