@@ -367,7 +367,16 @@ macro_rules! unwrap_amp_msg {
             ctx.deps
                 .api
                 .debug(&format!("Set new sender: {}", ctx.info.sender));
-            msg = ::cosmwasm_std::from_json(&pkt.messages.pop().unwrap().message)?;
+            let maybe_amp_msg = pkt.messages.pop();
+
+            ::cosmwasm_std::ensure!(
+                maybe_amp_msg.is_some(),
+                ContractError::InvalidPacket {
+                    error: Some("AMP Packet received with no messages".to_string()),
+                }
+            );
+            let amp_msg = maybe_amp_msg.unwrap();
+            msg = ::cosmwasm_std::from_json(&amp_msg.message)?;
             ::cosmwasm_std::ensure!(
                 !msg.must_be_direct(),
                 ContractError::InvalidPacket {

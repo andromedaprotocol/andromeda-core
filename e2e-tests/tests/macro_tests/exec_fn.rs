@@ -165,11 +165,21 @@ fn test_unwrap_amp_msg() {
     let msg = ExecuteMsg::AMPReceive(amp_pkt);
     
     let (ctx, msg, _) = (|| -> Result<(ExecuteContext, ExecuteMsg, Response), ContractError> {
-        let (ctx, msg, resp) = unwrap_amp_msg!(deps.as_mut(), info, env, msg);
+        let (ctx, msg, resp) = unwrap_amp_msg!(deps.as_mut(), info.clone(), env.clone(), msg);
         Ok((ctx, msg, resp))
     })().unwrap();
 
     assert_eq!(ctx.info.sender, "sender");
     assert_eq!(ctx.raw_info.sender, MOCK_KERNEL_CONTRACT);
     assert_eq!(msg, sent_msg);
+
+    let empty_amp_pkt = AMPPkt::new("sender".to_string(), "sender".to_string(), vec![]);
+    let msg = ExecuteMsg::AMPReceive(empty_amp_pkt);
+    
+    let err = (|| -> Result<(), ContractError> {
+        let _ = unwrap_amp_msg!(deps.as_mut(), info, env, msg);
+        Ok(())
+    })().unwrap_err();
+
+    assert_eq!(err, ContractError::InvalidPacket { error: Some("AMP Packet received with no messages".to_string()) });
 }
