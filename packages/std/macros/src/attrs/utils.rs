@@ -10,7 +10,7 @@ pub(crate) fn generate_match_pattern(
         .variants
         .iter()
         .find(|v| v.ident == *variant_name)
-        .unwrap();
+        .expect("Variant not found. Make sure the variant name matches the enum definition.");
 
     match &variant.fields {
         syn::Fields::Named(_) => quote! { Self::#variant_name { .. } },
