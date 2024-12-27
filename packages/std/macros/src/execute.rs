@@ -65,19 +65,14 @@ pub(crate) fn fn_implementation(_attr: TokenStream, item: TokenStream) -> TokenS
     let body = &input.block;
 
     let expanded = quote! {
-        #[cfg_attr(not(feature = "library"), entry_point)]
+        #[cfg_attr(not(feature = "library"), ::cosmwasm_std::entry_point)]
         pub fn execute(
-            deps: DepsMut,
-            env: Env,
-            info: MessageInfo,
+            deps: ::cosmwasm_std::DepsMut,
+            env: ::cosmwasm_std::Env,
+            info: ::cosmwasm_std::MessageInfo,
             msg: ExecuteMsg,
-        ) -> Result<Response, ContractError> {
+        ) -> Result<::cosmwasm_std::Response, ContractError> {
             let (ctx, msg, resp) = ::andromeda_std::unwrap_amp_msg!(deps, info.clone(), env, msg);
-
-            // Check if the message is payable
-            if !msg.is_payable() {
-                ::cosmwasm_std::ensure!(info.funds.is_empty(), ContractError::Payment(andromeda_std::error::PaymentError::NonPayable {}));
-            }
 
             // Check if the message is restricted to the owner
             if msg.is_restricted() {
@@ -88,6 +83,12 @@ pub(crate) fn fn_implementation(_attr: TokenStream, item: TokenStream) -> TokenS
                 );
             }
 
+            // Check if the message is payable
+            if !msg.is_payable() {
+                ::cosmwasm_std::ensure!(info.funds.is_empty(), ContractError::Payment(andromeda_std::error::PaymentError::NonPayable {}));
+            }
+
+
             let res = execute_inner(ctx, msg)?;
 
             Ok(res
@@ -96,7 +97,7 @@ pub(crate) fn fn_implementation(_attr: TokenStream, item: TokenStream) -> TokenS
                 .add_events(resp.events))
         }
 
-        #vis fn execute_inner(ctx: ::andromeda_std::common::context::ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+        #vis fn execute_inner(ctx: ::andromeda_std::common::context::ExecuteContext, msg: ExecuteMsg) -> Result<::cosmwasm_std::Response, ContractError> {
             #body
         }
     };

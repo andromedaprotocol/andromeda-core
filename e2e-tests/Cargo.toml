@@ -128,6 +128,7 @@ cw721-base = { workspace = true }
 cw721 = { workspace = true }
 cw20 = { workspace = true }
 cw-asset = { workspace = true }
+cw-utils = { workspace = true }
 toml = "0.8"
 cw-orch = { workspace = true }
 cw-orch-interchain = "=0.3.0"

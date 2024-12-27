@@ -1,7 +1,7 @@
 use cosmwasm_schema::cw_serde;
 use rstest::*;
 
-use andromeda_macros::andr_exec;
+use andromeda_std::andr_exec;
 
 #[andr_exec]
 #[cw_serde]

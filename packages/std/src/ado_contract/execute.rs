@@ -350,7 +350,7 @@ impl ADOContract<'_> {
 #[macro_export]
 macro_rules! unwrap_amp_msg {
     ($deps:expr, $info:expr, $env:expr, $msg:expr) => {{
-        let mut ctx = ExecuteContext::new($deps, $info, $env);
+        let mut ctx = ::andromeda_std::common::context::ExecuteContext::new($deps, $info, $env);
         let mut msg = $msg;
 
         if let ExecuteMsg::AMPReceive(mut pkt) = msg {
@@ -367,7 +367,7 @@ macro_rules! unwrap_amp_msg {
             ctx.deps
                 .api
                 .debug(&format!("Set new sender: {}", ctx.info.sender));
-            msg = from_json(&pkt.messages.pop().unwrap().message)?;
+            msg = ::cosmwasm_std::from_json(&pkt.messages.pop().unwrap().message)?;
             ::cosmwasm_std::ensure!(
                 !msg.must_be_direct(),
                 ContractError::InvalidPacket {

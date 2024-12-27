@@ -33,3 +33,6 @@ mod shunting;
 
 #[cfg(test)]
 mod amp;
+
+#[cfg(test)]
+mod macro_tests;
