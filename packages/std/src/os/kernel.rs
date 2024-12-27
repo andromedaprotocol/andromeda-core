@@ -73,10 +73,15 @@ pub enum ExecuteMsg {
     UpdateChainName {
         chain_name: String,
     },
+    /// Sets an environment variable with the given name and value.
+    /// The variable name must be uppercase and can only contain letters, numbers, and underscores.
+    /// The value must be a valid UTF-8 string.
     SetEnv {
         variable: String,
         value: String,
     },
+    /// Removes an environment variable with the given name.
+    /// Returns success even if the variable doesn't exist.
     UnsetEnv {
         variable: String,
     },
