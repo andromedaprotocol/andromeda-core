@@ -1,6 +1,7 @@
 use super::{handler::AttributeHandler, utils::generate_match_pattern};
 use quote::quote;
 
+const ATTR_KEY: &str = "direct";
 /**
  * DirectAttribute is used to indicate that a message cannot be received via an AMP packet.
  *
@@ -22,7 +23,7 @@ impl AttributeHandler for DirectAttribute {
             attr.parse_args_with(|input: syn::parse::ParseStream| {
                 while !input.is_empty() {
                     let ident: syn::Ident = input.parse()?;
-                    if ident == "direct" {
+                    if ident == ATTR_KEY {
                         is_direct = true;
                     }
                     if !input.is_empty() {
@@ -37,7 +38,7 @@ impl AttributeHandler for DirectAttribute {
         false
     }
 
-    fn generate_match_impl(
+    fn generate_impl(
         &self,
         data_enum: &syn::DataEnum,
         variants: &[(syn::Ident, bool)],

@@ -56,18 +56,24 @@ pub fn andr_query(_metadata: TokenStream, input: TokenStream) -> TokenStream {
     query::enum_implementation(_metadata, input)
 }
 
-/// Derives the `ExecuteAttrs` trait for a given enum.
-///
-/// This trait is used to allow attributes to be attached to the enum variants.
-///
-/// Example usage:
-/// ```rust
-/// #[andr_exec]
-/// enum ExecuteMsg {
-///     #[attrs(nonpayable, restricted)]
-///     MyMessage{..},
-/// }
-/// ```
+/**
+ * Derives the `ExecuteAttrs` trait for a given enum.
+ *
+ * This trait is used to allow attributes to be attached to the enum variants.
+ * The following variants are supported:
+ * - `nonpayable` - The message cannot receive funds
+ * - `restricted` - The message can only be executed by the owner **unless the message is permissioned**
+ * - `direct` - The message cannot be received via an AMP packet
+ *
+ * Example usage:
+ * ```rust
+ * #[andr_exec]
+ * enum ExecuteMsg {
+ *     #[attrs(nonpayable, restricted)]
+ *     MyMessage{..},
+ * }
+ * ```
+ */
 #[proc_macro_derive(ExecuteAttrs, attributes(attrs))]
 pub fn derive_execute_attrs(input: TokenStream) -> TokenStream {
     attrs::derive_execute_attrs(input)

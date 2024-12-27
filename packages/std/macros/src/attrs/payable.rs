@@ -1,6 +1,7 @@
 use super::{handler::AttributeHandler, utils::generate_match_pattern};
 use quote::quote;
 
+const ATTR_KEY: &str = "nonpayable";
 /**
  * NonPayableAttribute is used to indicate that a message can receive funds.
  *
@@ -22,7 +23,7 @@ impl AttributeHandler for NonPayableAttribute {
             attr.parse_args_with(|input: syn::parse::ParseStream| {
                 while !input.is_empty() {
                     let ident: syn::Ident = input.parse()?;
-                    if ident == "nonpayable" {
+                    if ident == ATTR_KEY {
                         is_nonpayable = true;
                     }
                     if !input.is_empty() {
@@ -37,7 +38,7 @@ impl AttributeHandler for NonPayableAttribute {
         false
     }
 
-    fn generate_match_impl(
+    fn generate_impl(
         &self,
         data_enum: &syn::DataEnum,
         variants: &[(syn::Ident, bool)],
