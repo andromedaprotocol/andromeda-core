@@ -19,6 +19,7 @@ use cosmwasm_std::{
     attr, ensure, entry_point, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
     Reply, Response, StdError, SubMsg, Uint128,
 };
+use cw_utils::nonpayable;
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-conditional-splitter";
@@ -212,7 +213,16 @@ fn execute_update_thresholds(
     ctx: ExecuteContext,
     thresholds: Vec<Threshold>,
 ) -> Result<Response, ContractError> {
-    let ExecuteContext { deps, env, .. } = ctx;
+    let ExecuteContext {
+        deps, info, env, ..
+    } = ctx;
+
+    nonpayable(&info)?;
+
+    ensure!(
+        ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {}
+    );
 
     let conditional_splitter = CONDITIONAL_SPLITTER.load(deps.storage)?;
 
@@ -235,7 +245,16 @@ fn execute_update_thresholds(
 }
 
 fn execute_update_lock(ctx: ExecuteContext, lock_time: Expiry) -> Result<Response, ContractError> {
-    let ExecuteContext { deps, env, .. } = ctx;
+    let ExecuteContext {
+        deps, info, env, ..
+    } = ctx;
+
+    nonpayable(&info)?;
+
+    ensure!(
+        ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {}
+    );
 
     let mut conditional_splitter = CONDITIONAL_SPLITTER.load(deps.storage)?;
 
