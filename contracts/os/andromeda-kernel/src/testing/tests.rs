@@ -397,12 +397,57 @@ fn test_handle_ibc_direct() {
 const CREATOR: &str = "creator";
 const REALLY_LONG_VALUE: &str = "reallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallylongvalue";
 
+fn invalid_env_variable(msg: &str) -> ContractError {
+    ContractError::InvalidEnvironmentVariable {
+        msg: msg.to_string(),
+    }
+}
+
 #[rstest]
-#[case("test_var", Some("test_value"), CREATOR, None, None)]
-#[case("test_var", None, CREATOR, None, Some(ContractError::EnvironmentVariableNotFound { variable: "test_var".to_string() }))]
-#[case("test_var", Some("test_value"), "attacker", Some(ContractError::Unauthorized {}), None)]
-#[case("test_var", Some(REALLY_LONG_VALUE), CREATOR, Some(ContractError::InvalidEnvironmentVariable { msg: "Environment variable value length exceeds the maximum allowed length of 100 characters".to_string() }), None)]
-#[case(REALLY_LONG_VALUE, Some("test_val"), CREATOR, Some(ContractError::InvalidEnvironmentVariable { msg: "Environment variable name length exceeds the maximum allowed length of 100 characters".to_string() }), None)]
+#[case::valid("test_var", Some("test_value"), CREATOR, None, None)]
+#[case::not_found("test_var", None, CREATOR, None, Some(ContractError::EnvironmentVariableNotFound { variable: "test_var".to_string() }))]
+#[case::unauthorized("test_var", Some("test_value"), "attacker", Some(ContractError::Unauthorized {}), None)]
+#[case::long_value(
+    "test_var",
+    Some(REALLY_LONG_VALUE),
+    CREATOR,
+    Some(invalid_env_variable(
+        "Environment variable value length exceeds the maximum allowed length of 100 characters"
+    )),
+    None
+)]
+#[case::long_name(
+    REALLY_LONG_VALUE,
+    Some("test_val"),
+    CREATOR,
+    Some(invalid_env_variable(
+        "Environment variable name length exceeds the maximum allowed length of 100 characters"
+    )),
+    None
+)]
+#[case::empty_name(
+    "",
+    Some("test_value"),
+    CREATOR,
+    Some(invalid_env_variable("Environment variable name cannot be empty")),
+    None
+)]
+#[case::empty_value(
+    "test_var",
+    Some(""),
+    CREATOR,
+    Some(invalid_env_variable("Environment variable value cannot be empty")),
+    None
+)]
+#[case::nonalphanumeric(
+    "test-var",
+    Some("test_value"),
+    CREATOR,
+    Some(invalid_env_variable(
+        "Environment variable name can only contain alphanumeric characters and underscores"
+    )),
+    None
+)]
 fn test_set_unset_env(
     #[case] variable: &str,
     #[case] value: Option<&str>,

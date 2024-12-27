@@ -492,11 +492,37 @@ pub fn set_env(
     );
 
     ensure!(
+        !variable.is_empty(),
+        ContractError::InvalidEnvironmentVariable {
+            msg: "Environment variable name cannot be empty".to_string()
+        }
+    );
+
+    ensure!(
+        variable
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '_'),
+        ContractError::InvalidEnvironmentVariable {
+            msg:
+                "Environment variable name can only contain alphanumeric characters and underscores"
+                    .to_string()
+        }
+    );
+
+    ensure!(
         variable.len() <= 100,
         ContractError::InvalidEnvironmentVariable {
             msg: "Environment variable name length exceeds the maximum allowed length of 100 characters".to_string()
         }
     );
+
+    ensure!(
+        !value.is_empty(),
+        ContractError::InvalidEnvironmentVariable {
+            msg: "Environment variable value cannot be empty".to_string()
+        }
+    );
+
     ensure!(
         value.len() <= 100,
         ContractError::InvalidEnvironmentVariable {
