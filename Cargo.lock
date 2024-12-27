@@ -865,7 +865,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-splitter"
-version = "2.3.0-b.1"
+version = "2.3.0-b.2"
 dependencies = [
  "andromeda-app",
  "andromeda-finance",
