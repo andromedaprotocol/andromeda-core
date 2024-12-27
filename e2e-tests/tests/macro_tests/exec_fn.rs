@@ -1,5 +1,5 @@
 use andromeda_std::{
-    ado_base::InstantiateMsg, ado_contract::ADOContract, amp::messages::{AMPMsg, AMPPkt}, andr_exec, andr_execute_fn, error::ContractError, testing::mock_querier::{mock_dependencies_custom, WasmMockQuerier, MOCK_KERNEL_CONTRACT}
+    ado_base::InstantiateMsg, ado_contract::ADOContract, amp::messages::{AMPMsg, AMPPkt}, andr_exec, andr_execute_fn, common::context::ExecuteContext, error::ContractError, testing::mock_querier::{mock_dependencies_custom, WasmMockQuerier, MOCK_KERNEL_CONTRACT}, unwrap_amp_msg
 };
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
@@ -22,6 +22,8 @@ enum ExecuteMsg {
     RestrictedDirect,
     #[attrs(nonpayable, direct)]
     NonPayableDirect,
+    #[attrs(restricted)]
+    Restricted,
 }
 
 #[andr_execute_fn]
@@ -150,4 +152,24 @@ fn test_exec_fn_amp_receive(
         Some(expected) => assert_eq!(res_with_funds, Err(expected)),
         None => assert!(res_with_funds.is_ok()),
     }
+}
+
+#[test]
+fn test_unwrap_amp_msg() {
+    let (mut deps, env) = setup();
+    let info: MessageInfo = mock_info(MOCK_KERNEL_CONTRACT, &[]);
+
+    let sent_msg = ExecuteMsg::Restricted;
+    let amp_msg = AMPMsg::new("sender".to_string(), to_json_binary(&sent_msg).unwrap(), None);
+    let amp_pkt = AMPPkt::new("sender".to_string(), "sender".to_string(), vec![amp_msg]);
+    let msg = ExecuteMsg::AMPReceive(amp_pkt);
+    
+    let (ctx, msg, _) = (|| -> Result<(ExecuteContext, ExecuteMsg, Response), ContractError> {
+        let (ctx, msg, resp) = unwrap_amp_msg!(deps.as_mut(), info, env, msg);
+        Ok((ctx, msg, resp))
+    })().unwrap();
+
+    assert_eq!(ctx.info.sender, "sender");
+    assert_eq!(ctx.raw_info.sender, MOCK_KERNEL_CONTRACT);
+    assert_eq!(msg, sent_msg);
 }
