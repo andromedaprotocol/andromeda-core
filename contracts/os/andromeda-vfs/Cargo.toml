@@ -25,7 +25,7 @@ testing = ["cw-multi-test"]
 cosmwasm-std = { workspace = true }
 cosmwasm-schema = { workspace = true }
 cw-storage-plus = { workspace = true }
-serde = { version = "1.0.217", default-features = false, features = ["derive"] }
+serde = { workspace = true }
 
 andromeda-std = { workspace = true }
 
