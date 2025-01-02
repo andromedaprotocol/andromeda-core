@@ -115,6 +115,17 @@ pub struct ChainNameResponse {
 }
 
 #[cw_serde]
+pub struct PendingPacketResponse {
+    pub packets: Vec<PacketInfoAndSequence>,
+}
+
+#[cw_serde]
+pub struct PacketInfoAndSequence {
+    pub packet_info: Ics20PacketInfo,
+    pub sequence: u64,
+}
+
+#[cw_serde]
 pub struct EnvResponse {
     pub value: Option<String>,
 }
@@ -143,6 +154,8 @@ pub enum QueryMsg {
     AdoType {},
     #[returns(crate::ado_base::ownership::ContractOwnerResponse)]
     Owner {},
+    #[returns(PendingPacketResponse)]
+    PendingPackets { channel_id: Option<String> },
     #[returns(EnvResponse)]
     GetEnv { variable: String },
 }

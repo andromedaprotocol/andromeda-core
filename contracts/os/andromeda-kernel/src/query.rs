@@ -3,14 +3,17 @@ use andromeda_std::{
     error::ContractError,
     os::{
         aos_querier::AOSQuerier,
-        kernel::{ChainNameResponse, ChannelInfoResponse, EnvResponse, VerifyAddressResponse},
+        kernel::{
+            ChainNameResponse, ChannelInfoResponse, EnvResponse, Ics20PacketInfo,
+            PacketInfoAndSequence, PendingPacketResponse, VerifyAddressResponse,
+        },
     },
 };
-use cosmwasm_std::{Addr, Coin, Deps};
+use cosmwasm_std::{Addr, Coin, Deps, Order};
 
 use crate::state::{
-    CHAIN_TO_CHANNEL, CHANNEL_TO_CHAIN, CURR_CHAIN, ENV_VARIABLES, IBC_FUND_RECOVERY,
-    KERNEL_ADDRESSES,
+    CHAIN_TO_CHANNEL, CHANNEL_TO_CHAIN, CHANNEL_TO_EXECUTE_MSG, CURR_CHAIN, ENV_VARIABLES,
+    IBC_FUND_RECOVERY, KERNEL_ADDRESSES,
 };
 
 pub fn key_address(deps: Deps, key: String) -> Result<Addr, ContractError> {
@@ -68,6 +71,33 @@ pub fn chain_name(deps: Deps) -> Result<ChainNameResponse, ContractError> {
     Ok(ChainNameResponse {
         chain_name: CURR_CHAIN.may_load(deps.storage)?.unwrap_or_default(),
     })
+}
+
+pub fn pending_packets(
+    deps: Deps,
+    channel_id: Option<String>,
+) -> Result<PendingPacketResponse, ContractError> {
+    let packets: Vec<PacketInfoAndSequence> = if let Some(channel_id) = channel_id {
+        CHANNEL_TO_EXECUTE_MSG
+            .prefix(channel_id)
+            .range(deps.storage, None, None, Order::Ascending)
+            .filter_map(|item| item.ok())
+            .map(|(sequence, packet)| PacketInfoAndSequence {
+                packet_info: packet,
+                sequence,
+            })
+            .collect()
+    } else {
+        CHANNEL_TO_EXECUTE_MSG
+            .range(deps.storage, None, None, Order::Ascending)
+            .filter_map(|item| item.ok())
+            .map(|((_, sequence), packet)| PacketInfoAndSequence {
+                packet_info: packet,
+                sequence,
+            })
+            .collect()
+    };
+    Ok(PendingPacketResponse { packets })
 }
 
 pub fn get_env(deps: Deps, variable: String) -> Result<EnvResponse, ContractError> {

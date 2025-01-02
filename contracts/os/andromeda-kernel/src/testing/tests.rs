@@ -1,27 +1,32 @@
 use crate::{
-    contract::{execute, instantiate},
+    contract::{execute, instantiate, query},
     ibc::PACKET_LIFETIME,
     state::{
-        ADO_OWNER, CHAIN_TO_CHANNEL, CHANNEL_TO_CHAIN, CURR_CHAIN, ENV_VARIABLES, KERNEL_ADDRESSES,
+        ADO_OWNER, CHAIN_TO_CHANNEL, CHANNEL_TO_CHAIN, CHANNEL_TO_EXECUTE_MSG, CURR_CHAIN,
+        ENV_VARIABLES, KERNEL_ADDRESSES,
     },
 };
 use andromeda_std::{
     amp::{
         messages::{AMPMsg, AMPPkt},
-        ADO_DB_KEY, VFS_KEY,
+        AndrAddr, ADO_DB_KEY, VFS_KEY,
     },
     error::ContractError,
-    os::kernel::{ChannelInfo, ExecuteMsg, IbcExecuteMsg, InstantiateMsg, InternalMsg},
+    os::kernel::{
+        ChannelInfo, ExecuteMsg, IbcExecuteMsg, Ics20PacketInfo, InstantiateMsg, InternalMsg,
+        PendingPacketResponse, QueryMsg,
+    },
     testing::mock_querier::{
         mock_dependencies_custom, MOCK_ADODB_CONTRACT, MOCK_FAKE_KERNEL_CONTRACT,
         MOCK_KERNEL_CONTRACT, MOCK_VFS_CONTRACT,
     },
 };
 use cosmwasm_std::{
-    testing::{mock_dependencies, mock_env, mock_info},
-    to_json_binary, Addr, Binary, CosmosMsg, IbcMsg,
+    coin, from_json,
+    testing::{mock_dependencies, mock_env, mock_info, MockApi, MockQuerier, MockStorage},
+    to_json_binary, Addr, Binary, CosmosMsg, Env, IbcMsg, OwnedDeps,
 };
-use rstest::rstest;
+use rstest::*;
 
 #[test]
 fn proper_initialization() {
@@ -468,7 +473,6 @@ fn test_set_unset_env(
         },
     )
     .unwrap();
-
     let send_info = mock_info(sender, &[]);
 
     if let Some(value) = value {
@@ -509,4 +513,91 @@ fn test_set_unset_env(
         .may_load(&deps.storage, &variable.to_ascii_uppercase())
         .unwrap();
     assert!(stored_value.is_none());
+}
+
+#[fixture]
+fn setup_pending_packets() -> (OwnedDeps<MockStorage, MockApi, MockQuerier>, Env) {
+    let mut deps = mock_dependencies();
+    let env = mock_env();
+    let info = mock_info("sender", &[]);
+
+    // Instantiate contract
+    instantiate(
+        deps.as_mut(),
+        env.clone(),
+        info,
+        InstantiateMsg {
+            owner: None,
+            chain_name: "andromeda".to_string(),
+        },
+    )
+    .unwrap();
+    // Set up channel info for both channels
+    let channel_info = ChannelInfo {
+        kernel_address: MOCK_FAKE_KERNEL_CONTRACT.to_string(),
+        ics20_channel_id: Some("channel-1".to_string()),
+        direct_channel_id: Some("channel-2".to_string()),
+        supported_modules: vec![],
+    };
+    CHAIN_TO_CHANNEL
+        .save(deps.as_mut().storage, "andromeda", &channel_info)
+        .unwrap();
+
+    (deps, env)
+}
+
+#[rstest]
+#[case(None, 3)] // Query all channels
+#[case(Some("channel-1".to_string()), 2)] // Query channel-1 only
+#[case(Some("channel-2".to_string()), 1)] // Query channel-2 only
+fn test_query_pending_packets(
+    setup_pending_packets: (OwnedDeps<MockStorage, MockApi, MockQuerier>, Env),
+    #[case] channel_id: Option<String>,
+    #[case] expected_count: usize,
+) {
+    let (mut deps, env) = setup_pending_packets;
+
+    // Save multiple pending packets across different channels
+    let packets = vec![
+        ("channel-1", 1, "recipient1", 100),
+        ("channel-1", 2, "recipient2", 200),
+        ("channel-2", 1, "recipient3", 300),
+    ];
+
+    for (channel, sequence, recipient, amount) in packets {
+        let packet_info = Ics20PacketInfo {
+            sender: "sender".to_string(),
+            recipient: AndrAddr::from_string(recipient),
+            message: to_json_binary(&"test message").unwrap(),
+            funds: coin(amount, "ucosm"),
+            channel: channel.to_string(),
+        };
+        CHANNEL_TO_EXECUTE_MSG
+            .save(
+                deps.as_mut().storage,
+                (channel.to_string(), sequence),
+                &packet_info,
+            )
+            .unwrap();
+    }
+
+    // Query pending packets
+    let res = query(
+        deps.as_ref(),
+        env,
+        QueryMsg::PendingPackets {
+            channel_id: channel_id.clone(),
+        },
+    )
+    .unwrap();
+
+    let pending_packets: PendingPacketResponse = from_json(&res).unwrap();
+    assert_eq!(pending_packets.packets.len(), expected_count);
+
+    // Verify packets are from the correct channel if channel_id is specified
+    if let Some(channel) = channel_id {
+        for packet in pending_packets.packets {
+            assert_eq!(packet.packet_info.channel, channel);
+        }
+    }
 }
