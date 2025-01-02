@@ -24,7 +24,7 @@ cw20 = { workspace = true }
 cw-asset = { workspace = true }
 sha2 = "0.10.6"
 hex = "0.4.3"
-serde = "1.0.216"
+serde = { workspace = true }
 
 andromeda-std = { workspace = true }
 andromeda-fungible-tokens = { workspace = true }

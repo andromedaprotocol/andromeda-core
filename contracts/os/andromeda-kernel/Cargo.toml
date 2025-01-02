@@ -48,3 +48,4 @@ cw-orch = { workspace = true }
 [dev-dependencies]
 rstest = "0.23.0"
 # andromeda-testing = { workspace = true, optional = true }
+rstest = { workspace = true }

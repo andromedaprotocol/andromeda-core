@@ -90,3 +90,9 @@ pub fn pending_packets(
     };
     Ok(packets)
 }
+
+pub fn get_env(deps: Deps, variable: String) -> Result<EnvResponse, ContractError> {
+    Ok(EnvResponse {
+        value: ENV_VARIABLES.may_load(deps.storage, &variable.to_ascii_uppercase())?,
+    })
+}
