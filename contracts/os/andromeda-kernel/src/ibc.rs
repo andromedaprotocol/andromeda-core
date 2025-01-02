@@ -135,15 +135,14 @@ pub fn do_ibc_packet_receive(
         .ok_or(ContractError::Unauthorized {})?;
 
     let packet_msg: IbcExecuteMsg = from_json(&msg.packet.data)?;
-    let mut execute_env = ExecuteContext {
-        env: env.clone(),
-        deps: deps.branch(),
-        info: MessageInfo {
+    let mut execute_env = ExecuteContext::new(
+        deps.branch(),
+        MessageInfo {
             funds: vec![],
             sender: Addr::unchecked("foreign_kernel"),
         },
-        amp_ctx: None,
-    };
+        env.clone(),
+    );
     match packet_msg {
         IbcExecuteMsg::SendMessage { amp_packet } => {
             execute_env.amp_ctx = Some(amp_packet.clone());

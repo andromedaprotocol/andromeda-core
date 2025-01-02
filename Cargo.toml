@@ -14,7 +14,7 @@ members = [
     "contracts/math/*",
 
     #Internal
-    "tests-integration",
+    "e2e-tests",
     "ibc-tests",
 ]
 resolver = "2"
@@ -34,7 +34,7 @@ strip = true
 andromeda-std = { path = "./packages/std", default-features = false, features = [
     "deploy",
 ] }
-andromeda-macros = { path = "./packages/std/macros", default-features = false, version = "1.0.0" }
+andromeda-macros = { path = "./packages/std/macros", default-features = false }
 andromeda-non-fungible-tokens = { path = "./packages/andromeda-non-fungible-tokens", version = "1.0.0" }
 andromeda-fungible-tokens = { path = "./packages/andromeda-fungible-tokens", version = "1.0.0" }
 andromeda-finance = { path = "./packages/andromeda-finance", version = "1.0.0" }
@@ -67,5 +67,5 @@ cw-multi-test = { version = "1.0.0", features = ["cosmwasm_1_2"] }
 serde = { version = "1.0.217" }
 test-case = { version = "3.3.1" }
 cw-orch = "=0.24.1"
-jsonschema-valid = { version = "0.5.2"}
+jsonschema-valid = { version = "0.5.2" }
 serde_json = { version = "1.0.134" }

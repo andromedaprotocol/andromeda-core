@@ -2,7 +2,7 @@ use cosmwasm_std::{Addr, OverflowError, StdError};
 use cw20_base::ContractError as Cw20ContractError;
 use cw721_base::ContractError as Cw721ContractError;
 use cw_asset::AssetError;
-use cw_utils::{ParseReplyError, PaymentError, ThresholdError};
+pub use cw_utils::{ParseReplyError, PaymentError, ThresholdError};
 use hex::FromHexError;
 use std::convert::From;
 use std::str::{ParseBoolError, Utf8Error};

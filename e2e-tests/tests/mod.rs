@@ -30,3 +30,9 @@ mod set_amount_splitter;
 
 #[cfg(test)]
 mod shunting;
+
+#[cfg(test)]
+mod amp;
+
+#[cfg(test)]
+mod macro_tests;

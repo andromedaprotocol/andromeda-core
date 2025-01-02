@@ -64,7 +64,7 @@ pub fn instantiate(
     // Unless Cw20 is not identified as verified asset
     if let Asset::Cw20Token(addr) = msg.asset_info.clone() {
         let addr = addr.get_raw_address(&deps.as_ref())?;
-        ADOContract::default().permission_action(SEND_CW20_ACTION, deps.storage)?;
+        ADOContract::default().permission_action(deps.storage, SEND_CW20_ACTION)?;
         ADOContract::set_permission(
             deps.storage,
             SEND_CW20_ACTION,

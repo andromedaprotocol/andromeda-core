@@ -1104,7 +1104,7 @@ mod test {
             .generate_amp_msg(&deps.as_ref(), Some(coins(10000, MOCK_NATIVE_DENOM)))
             .unwrap();
         let amp_pkt = AMPPkt::new(
-            MOCK_CONTRACT_ADDR.to_string(),
+            MOCK_DEFAULT_OWNER.to_string(),
             MOCK_CONTRACT_ADDR.to_string(),
             vec![amp_msg],
         );

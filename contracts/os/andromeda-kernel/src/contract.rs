@@ -82,12 +82,7 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
-    let mut execute_env = ExecuteContext {
-        deps,
-        env,
-        info,
-        amp_ctx: None,
-    };
+    let mut execute_env = ExecuteContext::new(deps, info, env);
 
     match msg {
         ExecuteMsg::AMPReceive(packet) => execute::amp_receive(

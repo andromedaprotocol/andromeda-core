@@ -49,8 +49,8 @@ pub fn instantiate(
 
     if let Some(authorized_operator_addresses) = msg.authorized_operator_addresses {
         if !authorized_operator_addresses.is_empty() {
-            ADOContract::default().permission_action(STORE_MATRIX_ACTION, deps.storage)?;
-            ADOContract::default().permission_action(DELETE_MATRIX_ACTION, deps.storage)?;
+            ADOContract::default().permission_action(deps.storage, STORE_MATRIX_ACTION)?;
+            ADOContract::default().permission_action(deps.storage, DELETE_MATRIX_ACTION)?;
         }
 
         for address in authorized_operator_addresses {
