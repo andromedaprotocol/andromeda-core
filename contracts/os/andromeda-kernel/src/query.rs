@@ -5,7 +5,7 @@ use andromeda_std::{
         aos_querier::AOSQuerier,
         kernel::{
             ChainNameResponse, ChannelInfoResponse, EnvResponse, Ics20PacketInfo,
-            VerifyAddressResponse,
+            PacketInfoAndSequence, PendingPacketResponse, VerifyAddressResponse,
         },
     },
 };
@@ -76,22 +76,28 @@ pub fn chain_name(deps: Deps) -> Result<ChainNameResponse, ContractError> {
 pub fn pending_packets(
     deps: Deps,
     channel_id: Option<String>,
-) -> Result<Vec<Ics20PacketInfo>, ContractError> {
-    let packets: Vec<Ics20PacketInfo> = if let Some(channel_id) = channel_id {
+) -> Result<PendingPacketResponse, ContractError> {
+    let packets: Vec<PacketInfoAndSequence> = if let Some(channel_id) = channel_id {
         CHANNEL_TO_EXECUTE_MSG
             .prefix(channel_id)
             .range(deps.storage, None, None, Order::Ascending)
             .filter_map(|item| item.ok())
-            .map(|(_, packet)| packet)
+            .map(|(sequence, packet)| PacketInfoAndSequence {
+                packet_info: packet,
+                sequence,
+            })
             .collect()
     } else {
         CHANNEL_TO_EXECUTE_MSG
             .range(deps.storage, None, None, Order::Ascending)
             .filter_map(|item| item.ok())
-            .map(|(_, packet)| packet)
+            .map(|((_, sequence), packet)| PacketInfoAndSequence {
+                packet_info: packet,
+                sequence,
+            })
             .collect()
     };
-    Ok(packets)
+    Ok(PendingPacketResponse { packets })
 }
 
 pub fn get_env(deps: Deps, variable: String) -> Result<EnvResponse, ContractError> {

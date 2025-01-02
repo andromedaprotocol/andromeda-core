@@ -116,7 +116,13 @@ pub struct ChainNameResponse {
 
 #[cw_serde]
 pub struct PendingPacketResponse {
-    pub packets: Vec<Ics20PacketInfo>,
+    pub packets: Vec<PacketInfoAndSequence>,
+}
+
+#[cw_serde]
+pub struct PacketInfoAndSequence {
+    pub packet_info: Ics20PacketInfo,
+    pub sequence: u64,
 }
 
 #[cw_serde]
