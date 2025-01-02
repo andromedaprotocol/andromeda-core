@@ -14,7 +14,7 @@ use andromeda_std::{
     error::ContractError,
     os::kernel::{
         ChannelInfo, ExecuteMsg, IbcExecuteMsg, Ics20PacketInfo, InstantiateMsg, InternalMsg,
-        QueryMsg,
+        PendingPacketResponse, QueryMsg,
     },
     testing::mock_querier::{
         mock_dependencies_custom, MOCK_ADODB_CONTRACT, MOCK_FAKE_KERNEL_CONTRACT,
@@ -591,13 +591,13 @@ fn test_query_pending_packets(
     )
     .unwrap();
 
-    let pending_packets: Vec<Ics20PacketInfo> = from_json(&res).unwrap();
-    assert_eq!(pending_packets.len(), expected_count);
+    let pending_packets: PendingPacketResponse = from_json(&res).unwrap();
+    assert_eq!(pending_packets.packets.len(), expected_count);
 
     // Verify packets are from the correct channel if channel_id is specified
     if let Some(channel) = channel_id {
-        for packet in pending_packets {
-            assert_eq!(packet.channel, channel);
+        for packet in pending_packets.packets {
+            assert_eq!(packet.packet_info.channel, channel);
         }
     }
 }
