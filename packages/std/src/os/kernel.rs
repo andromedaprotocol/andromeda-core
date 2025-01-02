@@ -73,6 +73,18 @@ pub enum ExecuteMsg {
     UpdateChainName {
         chain_name: String,
     },
+    /// Sets an environment variable with the given name and value.
+    /// The variable name must be uppercase and can only contain letters, numbers, and underscores.
+    /// The value must be a valid UTF-8 string.
+    SetEnv {
+        variable: String,
+        value: String,
+    },
+    /// Removes an environment variable with the given name.
+    /// Returns success even if the variable doesn't exist.
+    UnsetEnv {
+        variable: String,
+    },
     // Only accessible to key contracts
     Internal(InternalMsg),
     // Base message
@@ -103,6 +115,11 @@ pub struct ChainNameResponse {
 }
 
 #[cw_serde]
+pub struct EnvResponse {
+    pub value: Option<String>,
+}
+
+#[cw_serde]
 #[cfg_attr(not(target_arch = "wasm32"), derive(cw_orch::QueryFns))]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
@@ -126,6 +143,8 @@ pub enum QueryMsg {
     AdoType {},
     #[returns(crate::ado_base::ownership::ContractOwnerResponse)]
     Owner {},
+    #[returns(EnvResponse)]
+    GetEnv { variable: String },
 }
 
 #[cw_serde]

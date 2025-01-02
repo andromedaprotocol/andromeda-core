@@ -127,8 +127,9 @@ pub fn execute(
         ExecuteMsg::UpdateChainName { chain_name } => {
             execute::update_chain_name(execute_env, chain_name)
         }
+        ExecuteMsg::SetEnv { variable, value } => execute::set_env(execute_env, variable, value),
+        ExecuteMsg::UnsetEnv { variable } => execute::unset_env(execute_env, variable),
         ExecuteMsg::Internal(msg) => execute::internal(execute_env, msg),
-        // Base message
         ExecuteMsg::Ownership(ownership_message) => ADOContract::default().execute_ownership(
             execute_env.deps,
             execute_env.env,
@@ -175,5 +176,6 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractErr
         QueryMsg::ChainNameByChannel { channel } => {
             encode_binary(&query::chain_name_by_channel(deps, channel)?)
         }
+        QueryMsg::GetEnv { variable } => encode_binary(&query::get_env(deps, variable)?),
     }
 }

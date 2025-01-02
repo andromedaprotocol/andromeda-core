@@ -67,5 +67,6 @@ cw-multi-test = { version = "1.0.0", features = ["cosmwasm_1_2"] }
 serde = { version = "1.0.217" }
 test-case = { version = "3.3.1" }
 cw-orch = "=0.24.1"
-jsonschema-valid = { version = "0.5.2"}
+jsonschema-valid = { version = "0.5.2" }
 serde_json = { version = "1.0.134" }
+rstest = "0.23.0"
