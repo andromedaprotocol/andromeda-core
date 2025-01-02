@@ -2,7 +2,8 @@ use crate::{
     contract::{execute, instantiate, query},
     ibc::PACKET_LIFETIME,
     state::{
-        ADO_OWNER, CHAIN_TO_CHANNEL, CHANNEL_TO_CHAIN, CURR_CHAIN, ENV_VARIABLES, KERNEL_ADDRESSES,
+        ADO_OWNER, CHAIN_TO_CHANNEL, CHANNEL_TO_CHAIN, CHANNEL_TO_EXECUTE_MSG, CURR_CHAIN,
+        ENV_VARIABLES, KERNEL_ADDRESSES,
     },
 };
 use andromeda_std::{

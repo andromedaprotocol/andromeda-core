@@ -3,14 +3,17 @@ use andromeda_std::{
     error::ContractError,
     os::{
         aos_querier::AOSQuerier,
-        kernel::{ChainNameResponse, ChannelInfoResponse, Ics20PacketInfo, VerifyAddressResponse},
+        kernel::{
+            ChainNameResponse, ChannelInfoResponse, EnvResponse, Ics20PacketInfo,
+            VerifyAddressResponse,
+        },
     },
 };
 use cosmwasm_std::{Addr, Coin, Deps, Order};
 
 use crate::state::{
-    CHAIN_TO_CHANNEL, CHANNEL_TO_CHAIN, CHANNEL_TO_EXECUTE_MSG, CURR_CHAIN, IBC_FUND_RECOVERY,
-    KERNEL_ADDRESSES,
+    CHAIN_TO_CHANNEL, CHANNEL_TO_CHAIN, CHANNEL_TO_EXECUTE_MSG, CURR_CHAIN, ENV_VARIABLES,
+    IBC_FUND_RECOVERY, KERNEL_ADDRESSES,
 };
 
 pub fn key_address(deps: Deps, key: String) -> Result<Addr, ContractError> {

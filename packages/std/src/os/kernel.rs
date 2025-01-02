@@ -119,6 +119,7 @@ pub struct PendingPacketResponse {
     pub packets: Vec<Ics20PacketInfo>,
 }
 
+#[cw_serde]
 pub struct EnvResponse {
     pub value: Option<String>,
 }
