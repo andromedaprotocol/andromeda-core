@@ -2361,6 +2361,7 @@ dependencies = [
  "andromeda-vault",
  "andromeda-vesting",
  "andromeda-vfs",
+ "andromeda-weighted-distribution-splitter",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-asset",
