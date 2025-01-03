@@ -75,8 +75,10 @@ pub struct InstantiateMsg {
 #[cw_serde]
 pub enum ExecuteMsg {
     /// Update the thresholds. Only executable by the contract owner when the contract is not locked.
+    #[attrs(restricted, nonpayable, direct)]
     UpdateThresholds { thresholds: Vec<Threshold> },
     /// Used to lock/unlock the contract allowing the config to be updated.
+    #[attrs(restricted, nonpayable, direct)]
     UpdateLock { lock_time: Expiry },
     /// Divides any attached funds to the message amongst the recipients list.
     Send {},
