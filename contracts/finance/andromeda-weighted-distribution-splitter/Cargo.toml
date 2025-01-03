@@ -12,7 +12,7 @@ crate-type = ["cdylib", "rlib"]
 backtraces = ["cosmwasm-std/backtraces"]
 # use library feature to disable all instantiate/execute/query exports
 library = []
-testing = ["cw-multi-test", "andromeda-testing"]
+testing = ["cw-multi-test"]
 
 
 [dependencies]
@@ -25,10 +25,10 @@ andromeda-std = { workspace = true }
 andromeda-finance = { workspace = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-andromeda-testing = { workspace = true, optional = true }
 cw-multi-test = { workspace = true, optional = true }
 cw-orch = { workspace = true }
 
 
 [dev-dependencies]
+andromeda-testing = { workspace = true }
 andromeda-app = { workspace = true }
