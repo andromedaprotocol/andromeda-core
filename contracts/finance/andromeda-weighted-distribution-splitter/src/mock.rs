@@ -1,4 +1,5 @@
 #![cfg(all(not(target_arch = "wasm32"), feature = "testing"))]
+
 use crate::contract::{execute, instantiate, query, reply};
 use andromeda_finance::weighted_splitter::{AddressWeight, ExecuteMsg, InstantiateMsg, QueryMsg};
 use andromeda_std::{amp::Recipient, common::expiration::Expiry};
