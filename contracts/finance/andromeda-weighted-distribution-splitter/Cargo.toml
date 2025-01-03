@@ -13,6 +13,7 @@ backtraces = ["cosmwasm-std/backtraces"]
 # use library feature to disable all instantiate/execute/query exports
 library = []
 testing = ["cw-multi-test", "andromeda-testing"]
+default = ["testing"]
 
 
 [dependencies]

@@ -74,7 +74,8 @@ fn test_update_app_contract() {
     assert_eq!(
         Response::new()
             .add_attribute("action", "update_app_contract")
-            .add_attribute("address", "app_contract"),
+            .add_attribute("address", "app_contract")
+            .add_submessage(generate_economics_message("owner", "UpdateAppContract")),
         res
     );
 }
@@ -1636,7 +1637,8 @@ fn test_execute_send() {
                 }),
             ),
         ])
-        .add_attributes(vec![attr("action", "send"), attr("sender", "creator")]);
+        .add_attributes(vec![attr("action", "send"), attr("sender", "creator")])
+        .add_submessage(generate_economics_message(OWNER, "Send"));
 
     assert_eq!(res, expected_res);
 
@@ -1657,7 +1659,8 @@ fn test_execute_send() {
             ),
             // amp_msg,
         ])
-        .add_attributes(vec![attr("action", "send"), attr("sender", "creator")]);
+        .add_attributes(vec![attr("action", "send"), attr("sender", "creator")])
+        .add_submessage(generate_economics_message(OWNER, "Send"));
 
     assert_eq!(res, expected_res);
 }
