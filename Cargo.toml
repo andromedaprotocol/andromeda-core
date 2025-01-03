@@ -49,7 +49,7 @@ andromeda-testing-e2e = { path = "./packages/andromeda-testing-e2e", version = "
 
 
 strum_macros = "0.24.3"
-cosmwasm-std = "1.5.8"
+cosmwasm-std = "1.5.9"
 cw-utils = "1.0.3"
 cw-storage-plus = "1.2.0"
 cw2 = "1.1.2"
