@@ -1,0 +1,28 @@
+name: Check Labels
+
+on:
+  pull_request:
+
+jobs:
+  check-labels:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Detect Changes
+        id: detect
+        run: |
+          CHANGED_FILES=$(git diff --name-only origin/main...HEAD)
+          echo "Changed files: $CHANGED_FILES"
+          if echo "$CHANGED_FILES" | grep -q '^packages/std/'; then
+            echo "std_changed=true" >> $GITHUB_ENV
+          else
+            echo "std_changed=false" >> $GITHUB_ENV
+          fi
+
+      - name: Add Std Label
+        if: env.std_changed == 'true'
+        uses: actions-ecosystem/action-add-labels@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          labels: packages/std
