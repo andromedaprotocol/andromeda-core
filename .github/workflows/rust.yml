@@ -21,6 +21,15 @@ jobs:
         with:
           toolchain: 1.75.0
           components: rustfmt, clippy
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - run: cargo fetch --quiet
       - name: Run linting checks
         run: |
@@ -43,4 +52,13 @@ jobs:
       - uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: 1.75.0
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - run: make ${{ matrix.test-type }}
