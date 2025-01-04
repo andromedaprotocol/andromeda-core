@@ -591,7 +591,7 @@ fn test_query_pending_packets(
     )
     .unwrap();
 
-    let pending_packets: PendingPacketResponse = from_json(&res).unwrap();
+    let pending_packets: PendingPacketResponse = from_json(res).unwrap();
     assert_eq!(pending_packets.packets.len(), expected_count);
 
     // Verify packets are from the correct channel if channel_id is specified
