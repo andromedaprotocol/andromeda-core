@@ -1,4 +1,4 @@
-name: Release Changed Crates
+name: Bump Changed Crates
 
 on:
   push:
