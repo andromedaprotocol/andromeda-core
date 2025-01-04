@@ -3,72 +3,49 @@ name: Deploy Crates
 on:
   push:
     branches:
-      - connor/ci-improvements
+      - main
     paths:
       - "**/Cargo.toml"
 
 jobs:
-  check-and-deploy:
+  test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
 
       - name: Install Rust
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo registry
+        uses: actions/cache@v3
         with:
-          profile: minimal
-          toolchain: stable
-          override: true
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: Make scripts executable
-        run: chmod +x ./scripts/check_crate_versions.sh
+      - name: Run tests
+        run: cargo unit-test --workspace
 
-      - name: Check Version Changes
-        id: check-crate-versions
-        run: ./scripts/check_crate_versions.sh
+  publish:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
 
-      - name: Login to crates.io
-        if: steps.check-crate-versions.outputs.macros_crate != '' || steps.check-crate-versions.outputs.std_crate != '' || steps.check-crate-versions.outputs.package_crates != '' || steps.check-crate-versions.outputs.contract_crates != ''
-        run: cargo login ${{ secrets.CRATES_IO_TOKEN }}
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
 
-      - name: Publish Macros (if changed)
-        if: steps.check-crate-versions.outputs.macros_crate != ''
-        run: |
-          cd ${{ steps.check-crate-versions.outputs.macros_crate }}
-          cargo publish
-          cd -
-          sleep 30
+      - name: Cache cargo registry
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: Publish Std (if changed)
-        if: steps.check-crate-versions.outputs.std_crate != ''
-        run: |
-          cd ${{ steps.check-crate-versions.outputs.std_crate }}
-          cargo publish
-          cd -
-          sleep 30
-
-      - name: Publish Other Packages
-        if: steps.check-crate-versions.outputs.package_crates != ''
-        run: |
-          IFS=' ' read -ra CRATES <<< "${{ steps.check-crate-versions.outputs.package_crates }}"
-          for crate in "${CRATES[@]}"; do
-            if [[ "$crate" != "packages/std/macros" && "$crate" != "packages/std" ]]; then
-              echo "Publishing package $crate"
-              cd $crate
-              cargo publish
-              cd -
-              sleep 30
-            fi
-          done
-
-      - name: Publish Contracts
-        if: steps.check-crate-versions.outputs.contract_crates != ''
-        run: |
-          IFS=' ' read -ra CRATES <<< "${{ steps.check-crate-versions.outputs.contract_crates }}"
-          for crate in "${CRATES[@]}"; do
-            echo "Publishing contract $crate"
-            cd $crate
-            cargo publish
-            cd -
-            sleep 30
-          done
+      - name: Publish Crates
+        uses: katyo/publish-crates@v2
+        with:
+          registry-token: ${{ secrets.CRATES_IO_TOKEN }}
+          ignore-unpublished-changes: true
