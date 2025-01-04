@@ -33,7 +33,7 @@ jobs:
       - run: cargo fetch --quiet
       - name: Run linting checks
         run: |
-          cargo clippy --quiet --all --all-targets -- -D warnings &
+          cargo clippy --quiet --workspace --all-targets --no-deps -- -D warnings &
           cargo fmt -- --check &
           wait
 
