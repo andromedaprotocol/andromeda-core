@@ -152,7 +152,7 @@ fn test_publish() {
     }
 
     // Test prelease
-    let ado_version = ADOVersion::from_type("ado_type_with_beta").with_version("0.1.0-b.1");
+    let ado_version = ADOVersion::from_type("ado_type_with_beta").with_version("0.1.0-beta.1");
     let code_id = 3;
     let msg = ExecuteMsg::Publish {
         ado_type: ado_version.get_type(),

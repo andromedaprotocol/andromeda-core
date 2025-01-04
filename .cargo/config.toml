@@ -3,3 +3,7 @@ wasm = "build --release --target wasm32-unknown-unknown"
 unit-test = "test --lib"
 schema = "run --example schema"
 lint = "clippy --all --all-targets -- -D warnings"
+
+[release]
+pre-release-commit-message = "chore: bump pre-release version"
+pre-release-replace = true

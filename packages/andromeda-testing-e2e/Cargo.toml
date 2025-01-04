@@ -26,7 +26,7 @@ andromeda-modules = { version = "2.0.0", path = "../andromeda-modules" }
 andromeda-adodb = { version = "1.0.0", path = "../../contracts/os/andromeda-adodb", features = [
     "testing",
 ] }
-andromeda-kernel = { version = "1.2.0-b.1", path = "../../contracts/os/andromeda-kernel", features = [
+andromeda-kernel = { version = "1.2.0-beta.1", path = "../../contracts/os/andromeda-kernel", features = [
     "testing",
 ] }
 andromeda-vfs = { version = "1.0.0", path = "../../contracts/os/andromeda-vfs", features = [
