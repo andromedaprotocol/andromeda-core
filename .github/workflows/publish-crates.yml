@@ -1,4 +1,4 @@
-name: Deploy Crates
+name: Publish Crates
 
 on:
   release:
