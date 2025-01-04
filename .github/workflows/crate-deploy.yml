@@ -1,0 +1,74 @@
+name: Deploy Crates
+
+on:
+  push:
+    branches:
+      - connor/ci-improvements
+    paths:
+      - "**/Cargo.toml"
+
+jobs:
+  check-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - name: Make scripts executable
+        run: chmod +x ./scripts/check_crate_versions.sh
+
+      - name: Check Version Changes
+        id: check-crate-versions
+        run: ./scripts/check_crate_versions.sh
+
+      - name: Login to crates.io
+        if: steps.check-crate-versions.outputs.macros_crate != '' || steps.check-crate-versions.outputs.std_crate != '' || steps.check-crate-versions.outputs.package_crates != '' || steps.check-crate-versions.outputs.contract_crates != ''
+        run: cargo login ${{ secrets.CRATES_IO_TOKEN }}
+
+      - name: Publish Macros (if changed)
+        if: steps.check-crate-versions.outputs.macros_crate != ''
+        run: |
+          cd ${{ steps.check-crate-versions.outputs.macros_crate }}
+          cargo publish
+          cd -
+          sleep 30
+
+      - name: Publish Std (if changed)
+        if: steps.check-crate-versions.outputs.std_crate != ''
+        run: |
+          cd ${{ steps.check-crate-versions.outputs.std_crate }}
+          cargo publish
+          cd -
+          sleep 30
+
+      - name: Publish Other Packages
+        if: steps.check-crate-versions.outputs.package_crates != ''
+        run: |
+          IFS=' ' read -ra CRATES <<< "${{ steps.check-crate-versions.outputs.package_crates }}"
+          for crate in "${CRATES[@]}"; do
+            if [[ "$crate" != "packages/std/macros" && "$crate" != "packages/std" ]]; then
+              echo "Publishing package $crate"
+              cd $crate
+              cargo publish
+              cd -
+              sleep 30
+            fi
+          done
+
+      - name: Publish Contracts
+        if: steps.check-crate-versions.outputs.contract_crates != ''
+        run: |
+          IFS=' ' read -ra CRATES <<< "${{ steps.check-crate-versions.outputs.contract_crates }}"
+          for crate in "${CRATES[@]}"; do
+            echo "Publishing contract $crate"
+            cd $crate
+            cargo publish
+            cd -
+            sleep 30
+          done
