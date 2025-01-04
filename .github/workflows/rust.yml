@@ -33,9 +33,8 @@ jobs:
       - run: cargo fetch --quiet
       - name: Run linting checks
         run: |
-          cargo clippy --quiet --workspace --all-targets --no-deps -- -D warnings &
-          cargo fmt -- --check &
-          wait
+          cargo fmt -- --check
+          cargo clippy --quiet --workspace --all-targets --no-deps -- -D warnings
 
   contract-tests:
     name: Contract Tests
