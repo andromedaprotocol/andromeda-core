@@ -49,7 +49,7 @@ andromeda-testing-e2e = { path = "./packages/andromeda-testing-e2e", version = "
 
 
 strum_macros = "0.24.3"
-cosmwasm-std = "1.5.8"
+cosmwasm-std = "1.5.9"
 cw-utils = "1.0.3"
 cw-storage-plus = "1.2.0"
 cw2 = "1.1.2"
@@ -60,12 +60,13 @@ cw4 = "1.1.2"
 cw721 = "0.18.0"
 cw721-base = { version = "0.18.0", features = ["library"] }
 cw-asset = "=3.0.0"
-cosmwasm-schema = "1.5.8"
+cosmwasm-schema = "1.5.9"
 semver = "1.0.24"
 enum-repr = "0.2.6"
 cw-multi-test = { version = "1.0.0", features = ["cosmwasm_1_2"] }
-serde = { version = "1.0.216" }
+serde = { version = "1.0.217" }
 test-case = { version = "3.3.1" }
 cw-orch = "=0.24.1"
-jsonschema-valid = { version = "0.5.2"}
+jsonschema-valid = { version = "0.5.2" }
 serde_json = { version = "1.0.134" }
+rstest = "0.24.0"

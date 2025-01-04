@@ -3,7 +3,7 @@ use crate::{
     ibc::PACKET_LIFETIME,
     state::{
         ADO_OWNER, CHAIN_TO_CHANNEL, CHANNEL_TO_CHAIN, CHANNEL_TO_EXECUTE_MSG, CURR_CHAIN,
-        KERNEL_ADDRESSES,
+        ENV_VARIABLES, KERNEL_ADDRESSES,
     },
 };
 use andromeda_std::{
@@ -14,7 +14,7 @@ use andromeda_std::{
     error::ContractError,
     os::kernel::{
         ChannelInfo, ExecuteMsg, IbcExecuteMsg, Ics20PacketInfo, InstantiateMsg, InternalMsg,
-        QueryMsg,
+        PendingPacketResponse, QueryMsg,
     },
     testing::mock_querier::{
         mock_dependencies_custom, MOCK_ADODB_CONTRACT, MOCK_FAKE_KERNEL_CONTRACT,
@@ -399,6 +399,122 @@ fn test_handle_ibc_direct() {
     assert!(res.is_ok());
 }
 
+const CREATOR: &str = "creator";
+const REALLY_LONG_VALUE: &str = "reallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallylongvalue";
+
+fn invalid_env_variable(msg: &str) -> ContractError {
+    ContractError::InvalidEnvironmentVariable {
+        msg: msg.to_string(),
+    }
+}
+
+#[rstest]
+#[case::valid("test_var", Some("test_value"), CREATOR, None, None)]
+#[case::not_found("test_var", None, CREATOR, None, Some(ContractError::EnvironmentVariableNotFound { variable: "test_var".to_string() }))]
+#[case::unauthorized("test_var", Some("test_value"), "attacker", Some(ContractError::Unauthorized {}), None)]
+#[case::long_value(
+    "test_var",
+    Some(REALLY_LONG_VALUE),
+    CREATOR,
+    Some(invalid_env_variable(
+        "Environment variable value length exceeds the maximum allowed length of 100 characters"
+    )),
+    None
+)]
+#[case::long_name(
+    REALLY_LONG_VALUE,
+    Some("test_val"),
+    CREATOR,
+    Some(invalid_env_variable(
+        "Environment variable name length exceeds the maximum allowed length of 100 characters"
+    )),
+    None
+)]
+#[case::empty_name(
+    "",
+    Some("test_value"),
+    CREATOR,
+    Some(invalid_env_variable("Environment variable name cannot be empty")),
+    None
+)]
+#[case::empty_value(
+    "test_var",
+    Some(""),
+    CREATOR,
+    Some(invalid_env_variable("Environment variable value cannot be empty")),
+    None
+)]
+#[case::nonalphanumeric(
+    "test-var",
+    Some("test_value"),
+    CREATOR,
+    Some(invalid_env_variable(
+        "Environment variable name can only contain alphanumeric characters and underscores"
+    )),
+    None
+)]
+fn test_set_unset_env(
+    #[case] variable: &str,
+    #[case] value: Option<&str>,
+    #[case] sender: &str,
+    #[case] expected_set_error: Option<ContractError>,
+    #[case] expected_unset_error: Option<ContractError>,
+) {
+    let mut deps = mock_dependencies_custom(&[]);
+    let info = mock_info(CREATOR, &[]);
+    let env = mock_env();
+    instantiate(
+        deps.as_mut(),
+        env.clone(),
+        info.clone(),
+        InstantiateMsg {
+            owner: None,
+            chain_name: "test".to_string(),
+        },
+    )
+    .unwrap();
+    let send_info = mock_info(sender, &[]);
+
+    if let Some(value) = value {
+        // Set environment variable
+        let set_env_msg = ExecuteMsg::SetEnv {
+            variable: variable.to_string(),
+            value: value.to_string(),
+        };
+        let res = execute(deps.as_mut(), env.clone(), send_info.clone(), set_env_msg);
+        if let Some(expected_error) = expected_set_error {
+            assert_eq!(res.unwrap_err(), expected_error);
+            return;
+        } else {
+            assert_eq!(res.unwrap().attributes[0].value, "set_env");
+        }
+
+        // Check if the variable is set
+        let stored_value = ENV_VARIABLES
+            .load(&deps.storage, &variable.to_ascii_uppercase())
+            .unwrap();
+        assert_eq!(stored_value, value);
+    }
+
+    // Unset environment variable
+    let unset_env_msg = ExecuteMsg::UnsetEnv {
+        variable: variable.to_string(),
+    };
+    let res = execute(deps.as_mut(), env, send_info, unset_env_msg);
+    if let Some(expected_error) = expected_unset_error {
+        assert_eq!(res.unwrap_err(), expected_error);
+        return;
+    } else {
+        assert_eq!(res.unwrap().attributes[0].value, "unset_env");
+    }
+
+    // Check if the variable is unset
+    let stored_value = ENV_VARIABLES
+        .may_load(&deps.storage, &variable.to_ascii_uppercase())
+        .unwrap();
+    assert!(stored_value.is_none());
+}
+
 #[fixture]
 fn setup_pending_packets() -> (OwnedDeps<MockStorage, MockApi, MockQuerier>, Env) {
     let mut deps = mock_dependencies();
@@ -416,7 +532,6 @@ fn setup_pending_packets() -> (OwnedDeps<MockStorage, MockApi, MockQuerier>, Env
         },
     )
     .unwrap();
-
     // Set up channel info for both channels
     let channel_info = ChannelInfo {
         kernel_address: MOCK_FAKE_KERNEL_CONTRACT.to_string(),
@@ -476,13 +591,13 @@ fn test_query_pending_packets(
     )
     .unwrap();
 
-    let pending_packets: Vec<Ics20PacketInfo> = from_json(&res).unwrap();
-    assert_eq!(pending_packets.len(), expected_count);
+    let pending_packets: PendingPacketResponse = from_json(&res).unwrap();
+    assert_eq!(pending_packets.packets.len(), expected_count);
 
     // Verify packets are from the correct channel if channel_id is specified
     if let Some(channel) = channel_id {
-        for packet in pending_packets {
-            assert_eq!(packet.channel, channel);
+        for packet in pending_packets.packets {
+            assert_eq!(packet.packet_info.channel, channel);
         }
     }
 }

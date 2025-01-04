@@ -73,6 +73,18 @@ pub enum ExecuteMsg {
     UpdateChainName {
         chain_name: String,
     },
+    /// Sets an environment variable with the given name and value.
+    /// The variable name must be uppercase and can only contain letters, numbers, and underscores.
+    /// The value must be a valid UTF-8 string.
+    SetEnv {
+        variable: String,
+        value: String,
+    },
+    /// Removes an environment variable with the given name.
+    /// Returns success even if the variable doesn't exist.
+    UnsetEnv {
+        variable: String,
+    },
     // Only accessible to key contracts
     Internal(InternalMsg),
     // Base message
@@ -104,7 +116,18 @@ pub struct ChainNameResponse {
 
 #[cw_serde]
 pub struct PendingPacketResponse {
-    pub packets: Vec<Ics20PacketInfo>,
+    pub packets: Vec<PacketInfoAndSequence>,
+}
+
+#[cw_serde]
+pub struct PacketInfoAndSequence {
+    pub packet_info: Ics20PacketInfo,
+    pub sequence: u64,
+}
+
+#[cw_serde]
+pub struct EnvResponse {
+    pub value: Option<String>,
 }
 
 #[cw_serde]
@@ -133,6 +156,8 @@ pub enum QueryMsg {
     Owner {},
     #[returns(PendingPacketResponse)]
     PendingPackets { channel_id: Option<String> },
+    #[returns(EnvResponse)]
+    GetEnv { variable: String },
 }
 
 #[cw_serde]
