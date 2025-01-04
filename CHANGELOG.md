@@ -17,15 +17,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Rates: Handle cross-chain recipients [(#671)](https://github.com/andromedaprotocol/andromeda-core/pull/671)
 - Permissions: Permissioned Actors in AndromedaQuery [(#717)](https://github.com/andromedaprotocol/andromeda-core/pull/717)
 - Added Schema and Form ADOs [(#591)](https://github.com/andromedaprotocol/andromeda-core/pull/591)
+- feat: kernel environment variables [#738](https://github.com/andromedaprotocol/andromeda-core/pull/738)
+- Flat Rate denom can be a VFS path [(#727)](https://github.com/andromedaprotocol/andromeda-core/pull/727)
+- Auction ADO: Added buy_now_price option in Update Auction [(#730)](https://github.com/andromedaprotocol/andromeda-core/pull/730)
+- feat: added a query for pending packets to kernel [(#740)](https://github.com/andromedaprotocol/andromeda-core/pull/740)
 
 ### Changed
 
 - Rates: Limit rates recipient to only one address [(#669)](https://github.com/andromedaprotocol/andromeda-core/pull/669)
 - Address Validation: Cross-chain recipients don't need to be registered in VFS [(#725)](https://github.com/andromedaprotocol/andromeda-core/pull/725)
+- Weighted Splitter: Replace Recipient with AndrAddr in RemoveRecipient and GetUserWeight [(#739)](https://github.com/andromedaprotocol/andromeda-core/pull/739)
 
 ### Fixed
 
 - feat: alterations to kernel for IBC [(#726)](https://github.com/andromedaprotocol/andromeda-core/pull/726)
+- Fixed handle_local amp message when a amp message is passed with custom config [(#729)](https://github.com/andromedaprotocol/andromeda-core/pull/729)
 
 ## Release 3
 
