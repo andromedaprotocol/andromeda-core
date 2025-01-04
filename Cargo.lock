@@ -148,7 +148,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-auction"
-version = "2.2.5-beta.1"
+version = "2.2.5-b.1"
 dependencies = [
  "andromeda-app",
  "andromeda-non-fungible-tokens",
@@ -437,7 +437,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-distance"
-version = "0.1.0-beta.1"
+version = "0.1.0-b.1"
 dependencies = [
  "andromeda-app",
  "andromeda-math",
@@ -605,7 +605,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-kernel"
-version = "1.2.0-beta.3"
+version = "1.2.0-b.3"
 dependencies = [
  "andromeda-std",
  "cosmwasm-schema",
@@ -794,7 +794,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-rates"
-version = "2.0.4-beta.1"
+version = "2.0.4-b.1"
 dependencies = [
  "andromeda-app",
  "andromeda-modules",
@@ -829,7 +829,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-set-amount-splitter"
-version = "1.2.0-beta.1"
+version = "1.2.0-b.1"
 dependencies = [
  "andromeda-app",
  "andromeda-finance",
@@ -866,7 +866,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-splitter"
-version = "2.3.0-beta.1"
+version = "2.3.0-b.1"
 dependencies = [
  "andromeda-app",
  "andromeda-finance",
@@ -883,7 +883,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-std"
-version = "1.5.0-beta.3"
+version = "1.5.0-b.3"
 dependencies = [
  "andromeda-macros",
  "cosmwasm-schema",
@@ -1055,7 +1055,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-weighted-distribution-splitter"
-version = "2.1.0-beta.2"
+version = "2.1.0-b.2"
 dependencies = [
  "andromeda-app",
  "andromeda-finance",

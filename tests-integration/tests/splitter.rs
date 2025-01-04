@@ -476,7 +476,7 @@ fn test_splitter_cross_chain_recipient() {
                 code_id: splitter_juno.code_id().unwrap(),
                 ado_type: "splitter".to_string(),
                 action_fees: None,
-                version: "2.3.0-beta.1".to_string(),
+                version: "2.3.0-b.1".to_string(),
                 publisher: None,
             },
             None,

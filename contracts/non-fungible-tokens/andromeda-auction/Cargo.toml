@@ -1,6 +1,6 @@
 [package]
 name = "andromeda-auction"
-version = "2.2.5-beta.1"
+version = "2.2.5-b.1"
 edition = "2021"
 rust-version = "1.75.0"
 
