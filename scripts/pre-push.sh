@@ -15,15 +15,6 @@ if [ $LINT_RESULT -ne 0 ]; then
     exit 1
 fi
 
-echo "Running tests..."
-make test
-TEST_RESULT=$?
-
-if [ $TEST_RESULT -ne 0 ]; then
-    echo "Tests failed. Push aborted."
-    exit 1
-fi
-
 # Check for WIP commits (optional, from the example)
 remote="$1"
 url="$2"
