@@ -25,6 +25,6 @@ jobs:
           for crate in ${{ env.changed_crates }}; do
             echo "Releasing $crate with pre-release tag 'b'"
             cd $crate
-            cargo release pre --pre-release b --no-publish
+            cargo release beta --no-publish
             cd -
           done
