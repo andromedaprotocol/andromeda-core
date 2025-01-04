@@ -6,6 +6,8 @@ on:
       - main
     paths:
       - "**/Cargo.toml"
+  # Allow manual triggering
+  workflow_dispatch:
 
 jobs:
   test:
@@ -25,7 +27,7 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Run tests
-        run: cargo unit-test --workspace
+        run: make test
 
   publish:
     needs: test
