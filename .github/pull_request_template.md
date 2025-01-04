@@ -25,4 +25,4 @@ Example:
 # Checklist
 
 - [ ] Versions bumped correctly and documented
-- [ ] Changelog entry added
+- [ ] Changelog entry added or label applied
