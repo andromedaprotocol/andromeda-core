@@ -2,7 +2,9 @@ name: Formatting Check & Test
 
 on:
   push:
-    paths: ["**.*"]
+    paths:
+      - "**/*.rs" # Trigger on changes to Rust files
+      - "**/Cargo.toml" # Trigger on changes to Cargo.toml files
   pull_request:
     branches: [main]
 
