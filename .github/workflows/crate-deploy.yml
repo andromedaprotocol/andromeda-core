@@ -1,13 +1,11 @@
 name: Deploy Crates
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - "**/Cargo.toml"
-  # Allow manual triggering
+  release:
+    types: [released]
   workflow_dispatch:
+  schedule:
+    - cron: "0 0 * * *" # Runs at 00:00 UTC every day
 
 jobs:
   test:
@@ -37,6 +35,26 @@ jobs:
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
+
+      - name: Install cargo-edit
+        run: cargo install cargo-edit
+
+      - name: Set version suffix for nightly
+        if: github.event_name == 'schedule'
+        run: |
+          NIGHTLY_VERSION="-nightly.$(date +'%Y%m%d')"
+          echo "VERSION_SUFFIX=${NIGHTLY_VERSION}" >> $GITHUB_ENV
+
+      - name: Update version for nightly builds
+        if: github.event_name == 'schedule'
+        run: |
+          for cargo_toml in $(find . -name "Cargo.toml"); do
+            # Get current version and replace any existing pre-release tag
+            CURRENT_VERSION=$(grep '^version = ' $cargo_toml | sed 's/version = "\(.*\)"/\1/')
+            BASE_VERSION=$(echo $CURRENT_VERSION | sed 's/\(-.*\)\?$//')  # Remove any existing pre-release tag
+            NEW_VERSION="${BASE_VERSION}${VERSION_SUFFIX}"
+            cargo set-version "${NEW_VERSION}" --manifest-path $cargo_toml
+          done
 
       - name: Cache cargo registry
         uses: actions/cache@v3
