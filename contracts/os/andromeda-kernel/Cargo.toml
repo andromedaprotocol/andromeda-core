@@ -35,7 +35,7 @@ prost = { version = "0.11.2", default-features = false, features = [
 serde = { workspace = true }
 schemars = "0.8.10"
 hex = "0.4.3"
-itertools = "0.13"
+itertools = "0.14"
 
 
 andromeda-std = { workspace = true }
