@@ -199,7 +199,6 @@ fn execute_send(
 
     for recipient_addr in splitter_recipients {
         let recipient_percent = recipient_addr.percent;
-        let mut vec_coin: Vec<Coin> = Vec::new();
         for (i, coin) in info.funds.clone().iter().enumerate() {
             let amount_owed = coin.amount.mul_floor(recipient_percent);
             if !amount_owed.is_zero() {
@@ -207,15 +206,13 @@ fn execute_send(
                 recip_coin.amount = amount_owed;
                 remainder_funds[i].amount =
                     remainder_funds[i].amount.checked_sub(recip_coin.amount)?;
-                vec_coin.push(recip_coin.clone());
-                amp_funds.push(recip_coin);
+                amp_funds.push(recip_coin.clone());
+
+                let amp_msg = recipient_addr
+                    .recipient
+                    .generate_amp_msg(&deps.as_ref(), Some(vec![recip_coin.clone()]))?;
+                pkt = pkt.add_message(amp_msg);
             }
-        }
-        if !vec_coin.is_empty() {
-            let amp_msg = recipient_addr
-                .recipient
-                .generate_amp_msg(&deps.as_ref(), Some(vec_coin))?;
-            pkt = pkt.add_message(amp_msg);
         }
     }
     remainder_funds.retain(|x| x.amount > Uint128::zero());

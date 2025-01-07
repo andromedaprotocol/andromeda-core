@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Rates: Limit rates recipient to only one address [(#669)](https://github.com/andromedaprotocol/andromeda-core/pull/669)
 - Address Validation: Cross-chain recipients don't need to be registered in VFS [(#725)](https://github.com/andromedaprotocol/andromeda-core/pull/725)
 - Weighted Splitter: Replace Recipient with AndrAddr in RemoveRecipient and GetUserWeight [(#739)](https://github.com/andromedaprotocol/andromeda-core/pull/739)
+- feat: IBC packet tracking adjustments [#748](https://github.com/andromedaprotocol/andromeda-core/pull/748)
 
 ### Fixed
 

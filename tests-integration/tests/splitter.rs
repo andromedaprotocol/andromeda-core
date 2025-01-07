@@ -614,14 +614,27 @@ fn test_splitter_cross_chain_recipient() {
     splitter_juno
         .instantiate(
             &SplitterInstantiateMsg {
-                recipients: vec![AddressPercent {
-                    recipient: Recipient {
-                        address: AndrAddr::from_string(format!("ibc://osmosis/{}", recipient)),
-                        msg: None,
-                        ibc_recovery_address: None,
+                recipients: vec![
+                    AddressPercent {
+                        recipient: Recipient {
+                            address: AndrAddr::from_string(format!("ibc://osmosis/{}", recipient)),
+                            msg: None,
+                            ibc_recovery_address: None,
+                        },
+                        percent: Decimal::from_ratio(Uint128::from(1u128), Uint128::from(2u128)),
                     },
-                    percent: Decimal::one(),
-                }],
+                    AddressPercent {
+                        recipient: Recipient {
+                            address: AndrAddr::from_string(format!(
+                                "ibc://osmosis/{}",
+                                kernel_osmosis.address().unwrap().into_string()
+                            )),
+                            msg: None,
+                            ibc_recovery_address: None,
+                        },
+                        percent: Decimal::from_ratio(Uint128::from(1u128), Uint128::from(2u128)),
+                    },
+                ],
                 lock_time: None,
                 kernel_address: kernel_osmosis.address().unwrap().into_string(),
                 owner: None,
@@ -638,7 +651,7 @@ fn test_splitter_cross_chain_recipient() {
             &SplitterExecuteMsg::Send { config: None },
             Some(&[Coin {
                 denom: "juno".to_string(),
-                amount: Uint128::new(100),
+                amount: Uint128::new(200),
             }]),
         )
         .unwrap();
@@ -658,7 +671,7 @@ fn test_splitter_cross_chain_recipient() {
             .unwrap();
         assert_eq!(balances.len(), 1);
         assert_eq!(balances[0].denom, ibc_denom);
-        assert_eq!(balances[0].amount.u128(), 100);
+        assert_eq!(balances[0].amount.u128(), 200);
     } else {
         panic!("packet timed out");
         // There was a decode error or the packet timed out
