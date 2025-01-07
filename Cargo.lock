@@ -166,7 +166,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-boolean"
-version = "0.1.0-beta"
+version = "0.1.0-b.1"
 dependencies = [
  "andromeda-data-storage",
  "andromeda-std",
@@ -198,7 +198,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-counter"
-version = "0.1.0-beta"
+version = "0.1.0-b.1"
 dependencies = [
  "andromeda-math",
  "andromeda-std",
@@ -249,7 +249,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-curve"
-version = "0.1.1-beta"
+version = "0.1.0-b.1"
 dependencies = [
  "andromeda-app",
  "andromeda-math",
@@ -349,7 +349,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-date-time"
-version = "0.1.0-beta"
+version = "0.1.0-b.1"
 dependencies = [
  "andromeda-app",
  "andromeda-math",
@@ -384,12 +384,14 @@ dependencies = [
  "andromeda-date-time",
  "andromeda-distance",
  "andromeda-economics",
+ "andromeda-graph",
  "andromeda-ibc-registry",
  "andromeda-kernel",
  "andromeda-lockdrop",
  "andromeda-macros",
  "andromeda-marketplace",
  "andromeda-merkle-airdrop",
+ "andromeda-point",
  "andromeda-primitive",
  "andromeda-rate-limiting-withdrawals",
  "andromeda-rates",
@@ -497,7 +499,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-fixed-multisig"
-version = "0.1.0-beta"
+version = "0.1.0-b.1"
 dependencies = [
  "andromeda-accounts",
  "andromeda-app",
@@ -515,7 +517,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-form"
-version = "0.1.0-beta"
+version = "0.1.0-b.1"
 dependencies = [
  "andromeda-data-storage",
  "andromeda-modules",
@@ -552,7 +554,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-graph"
-version = "0.1.0-beta"
+version = "0.1.0-b.1"
 dependencies = [
  "andromeda-math",
  "andromeda-std",
@@ -560,6 +562,7 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-multi-test",
+ "cw-orch",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
  "cw20",
@@ -681,7 +684,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-matrix"
-version = "0.1.0-beta"
+version = "0.1.0-b.1"
 dependencies = [
  "andromeda-math",
  "andromeda-std",
@@ -747,7 +750,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-point"
-version = "0.1.0-beta"
+version = "0.1.0-b.1"
 dependencies = [
  "andromeda-math",
  "andromeda-std",
@@ -755,6 +758,7 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-multi-test",
+ "cw-orch",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
 ]
@@ -811,7 +815,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-schema"
-version = "0.1.0-beta"
+version = "0.1.0-b.1"
 dependencies = [
  "andromeda-app",
  "andromeda-modules",
@@ -846,7 +850,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-shunting"
-version = "0.2.3"
+version = "0.1.0-b.1"
 dependencies = [
  "andromeda-app",
  "andromeda-math",
@@ -915,7 +919,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-string-storage"
-version = "0.1.0-beta"
+version = "0.1.0-b.1"
 dependencies = [
  "andromeda-data-storage",
  "andromeda-std",
