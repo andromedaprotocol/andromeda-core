@@ -54,14 +54,12 @@ pub fn publish(
     if let Some(ado_version) = current_ado_version {
         let current_version = semver::Version::parse(&ado_version.0).unwrap();
         ensure!(
-            new_version > current_version,
+            new_version != current_version,
             ContractError::InvalidADOVersion {
-                msg: Some("Version must be newer than the current version".to_string())
+                msg: Some("Version must be different than the current version".to_string())
             }
         );
     }
-
-    //TODO: Get Code ID info with cosmwasm 1.2
 
     let version = ADOVersion::from_type(ado_type).with_version(version);
     ensure!(
@@ -122,8 +120,6 @@ pub fn unpublish(
             msg: Some("Provided version is not valid semver".to_string())
         }
     );
-
-    //TODO: Get Code ID info with cosmwasm 1.2
 
     let ado_version = ADOVersion::from_type(ado_type.clone()).with_version(version.clone());
     ensure!(
