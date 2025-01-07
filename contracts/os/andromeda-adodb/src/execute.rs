@@ -1,6 +1,6 @@
 use crate::state::{
     read_code_id, remove_code_id, save_action_fees, store_code_id, ACTION_FEES, ADO_TYPE,
-    LATEST_VERSION, PUBLISHER, UNPUBLISHED_CODE_IDS, UNPUBLISHED_VERSIONS,
+    PUBLISHER, UNPUBLISHED_CODE_IDS, UNPUBLISHED_VERSIONS,
 };
 
 use andromeda_std::ado_contract::ADOContract;
@@ -43,23 +43,13 @@ pub fn publish(
             msg: Some("ado_type can't be an empty string".to_string())
         }
     );
-    let current_ado_version = LATEST_VERSION.may_load(deps.storage, &ado_type)?;
+
     ensure!(
         semver::Version::parse(&version).is_ok(),
         ContractError::InvalidADOVersion {
             msg: Some("Provided version is not valid semver".to_string())
         }
     );
-    let new_version = semver::Version::parse(&version).unwrap();
-    if let Some(ado_version) = current_ado_version {
-        let current_version = semver::Version::parse(&ado_version.0).unwrap();
-        ensure!(
-            new_version != current_version,
-            ContractError::InvalidADOVersion {
-                msg: Some("Version must be different than the current version".to_string())
-            }
-        );
-    }
 
     let version = ADOVersion::from_type(ado_type).with_version(version);
     ensure!(

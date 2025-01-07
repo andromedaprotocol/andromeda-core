@@ -37,14 +37,29 @@ pub fn store_code_id(
         .ok()
         .ok_or(ContractError::InvalidADOVersion { msg: None })?;
     let prerelease = version.pre.parse::<String>().unwrap_or_default();
+
     if prerelease.is_empty() {
-        LATEST_VERSION
-            .save(
-                storage,
-                &ado_version.get_type(),
-                &(ado_version.get_version(), code_id),
-            )
-            .unwrap();
+        let current_ado_version = LATEST_VERSION.may_load(storage, &ado_version.get_type())?;
+        if let Some(current_ado_version) = current_ado_version {
+            let current_version = semver::Version::parse(&current_ado_version.0).unwrap();
+            if version > current_version {
+                LATEST_VERSION
+                    .save(
+                        storage,
+                        &ado_version.get_type(),
+                        &(ado_version.get_version(), code_id),
+                    )
+                    .unwrap();
+            }
+        } else {
+            LATEST_VERSION
+                .save(
+                    storage,
+                    &ado_version.get_type(),
+                    &(ado_version.get_version(), code_id),
+                )
+                .unwrap();
+        }
     }
     CODE_ID
         .save(storage, ado_version.as_str(), &code_id)
