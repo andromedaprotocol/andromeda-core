@@ -4,6 +4,7 @@ use andromeda_std::{
 };
 use cosmwasm_std::{ensure, Api, StdResult, Storage};
 use cw_storage_plus::Map;
+use semver::Version;
 
 /// Stores a mapping from an ADO type/version to its code ID
 pub const CODE_ID: Map<&str, u64> = Map::new("code_id");
@@ -27,12 +28,11 @@ pub fn store_code_id(
 ) -> Result<(), ContractError> {
     let curr_type = ADO_TYPE.may_load(storage, &code_id.to_string())?;
     ensure!(
-        curr_type.is_none() || &curr_type.unwrap() == ado_version,
+        curr_type.is_none()
+            || &curr_type.unwrap_or(ADOVersion::from_string(String::default())) == ado_version,
         ContractError::Unauthorized {}
     );
-    ADO_TYPE
-        .save(storage, &code_id.to_string(), ado_version)
-        .unwrap();
+    ADO_TYPE.save(storage, &code_id.to_string(), ado_version)?;
     let version = semver::Version::parse(&ado_version.get_version())
         .ok()
         .ok_or(ContractError::InvalidADOVersion { msg: None })?;
@@ -40,30 +40,23 @@ pub fn store_code_id(
 
     if prerelease.is_empty() {
         let current_ado_version = LATEST_VERSION.may_load(storage, &ado_version.get_type())?;
-        if let Some(current_ado_version) = current_ado_version {
-            let current_version = semver::Version::parse(&current_ado_version.0).unwrap();
-            if version > current_version {
-                LATEST_VERSION
-                    .save(
-                        storage,
-                        &ado_version.get_type(),
-                        &(ado_version.get_version(), code_id),
-                    )
-                    .unwrap();
-            }
-        } else {
-            LATEST_VERSION
-                .save(
-                    storage,
-                    &ado_version.get_type(),
-                    &(ado_version.get_version(), code_id),
-                )
-                .unwrap();
+
+        let should_update = current_ado_version
+            .map(|(ver, _)| {
+                let current_version = semver::Version::parse(&ver).unwrap_or(Version::new(0, 0, 0));
+                version > current_version
+            })
+            .unwrap_or(true); // If there's no current version, we should update
+
+        if should_update {
+            LATEST_VERSION.save(
+                storage,
+                &ado_version.get_type(),
+                &(ado_version.get_version(), code_id),
+            )?;
         }
     }
-    CODE_ID
-        .save(storage, ado_version.as_str(), &code_id)
-        .unwrap();
+    CODE_ID.save(storage, ado_version.as_str(), &code_id)?;
 
     Ok(())
 }
@@ -75,7 +68,8 @@ pub fn remove_code_id(
 ) -> Result<(), ContractError> {
     let curr_type = ADO_TYPE.may_load(storage, &code_id.to_string())?;
     ensure!(
-        curr_type.is_none() || &curr_type.unwrap() == ado_version,
+        curr_type.is_none()
+            || &curr_type.unwrap_or(ADOVersion::from_string(String::default())) == ado_version,
         ContractError::Unauthorized {}
     );
     ADO_TYPE.remove(storage, &code_id.to_string());
@@ -84,16 +78,18 @@ pub fn remove_code_id(
         // This means that the code_id we're trying to unpublish is also the latest
         if version_code.1 == code_id {
             let mut penultimate_version = semver::Version::new(0, 0, 0);
-            let latest_version = semver::Version::parse(&ado_version.get_version()).unwrap();
+            let latest_version =
+                semver::Version::parse(&ado_version.get_version()).unwrap_or(Version::new(0, 0, 0));
             CODE_ID
                 .keys(storage, None, None, cosmwasm_std::Order::Descending)
-                .map(|v| v.unwrap())
+                .map(|v| v.unwrap_or_default())
                 // Filter out the keys by type first
                 .filter(|v| v.starts_with(&ado_version.get_type()))
                 // We want to get the penultimate version, since it will replace the latest version
                 .for_each(|v| {
                     if let Some((_, version)) = v.split_once('@') {
-                        let current_version = semver::Version::parse(version).unwrap();
+                        let current_version =
+                            semver::Version::parse(version).unwrap_or(Version::new(0, 0, 0));
                         if penultimate_version < current_version && current_version < latest_version
                         {
                             penultimate_version = current_version;
