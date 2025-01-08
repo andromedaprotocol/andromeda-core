@@ -564,13 +564,13 @@ fn test_marketplace_app_cw20_restricted() {
         app.query_ado_by_component_name(&router, marketplace_component.name);
     let address_list: MockAddressList =
         app.query_ado_by_component_name(&router, address_list_component.name);
-    let cw20: MockCW20 = app.query_ado_by_component_name(&router, cw20_component.name);
+    let cw20: MockCW20 = app.query_ado_by_component_name(&router, cw20_component.name.clone());
 
     let local_rate = LocalRate {
         rate_type: LocalRateType::Additive,
         recipient: Recipient::from_string(rates_receiver.to_string()),
         // This is the cw20's address
-        value: LocalRateValue::Flat(coin(100, cw20.addr().to_string())),
+        value: LocalRateValue::Flat(coin(100, format!("./{}", cw20_component.name))),
         description: None,
     };
 

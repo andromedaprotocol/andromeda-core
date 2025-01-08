@@ -13,6 +13,7 @@ use andromeda_cw20_staking::CW20StakingContract;
 use andromeda_cw721::CW721Contract;
 use andromeda_distance::DistanceContract;
 use andromeda_economics::EconomicsContract;
+use andromeda_graph::GraphContract;
 use andromeda_ibc_registry::IBCRegistryContract;
 use andromeda_kernel::KernelContract;
 use andromeda_lockdrop::LockdropContract;
@@ -31,6 +32,7 @@ use andromeda_validator_staking::ValidatorStakingContract;
 use andromeda_vesting::VestingContract;
 use andromeda_vfs::VFSContract;
 use andromeda_weighted_distribution_splitter::WeightedDistributionSplitterContract;
+use andromeda_point::PointContract;
 
 use cw_orch::prelude::*;
 use cw_orch_daemon::{DaemonBase, Wallet};
@@ -84,6 +86,8 @@ pub fn all_contracts() -> Vec<DeployableContract> {
         deployable!(CrowdfundContract),
         deployable!(MarketplaceContract),
         deployable!(DistanceContract),
+        deployable!(GraphContract),
+        deployable!(PointContract),
     ]
 }
 

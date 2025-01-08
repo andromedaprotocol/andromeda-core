@@ -102,7 +102,7 @@ fn test_ibc_registry() {
     let denom_info = DenomInfo { path, base_denom };
     assert_eq!(
         denom_info.get_ibc_denom(),
-        "ibc/eab02686416e4b155cfee9c247171e1c4196b218c6a254f765b0958b3af59d09".to_string()
+        "ibc/EAB02686416E4B155CFEE9C247171E1C4196B218C6A254F765B0958B3AF59D09".to_string()
     );
 
     // Test authorization

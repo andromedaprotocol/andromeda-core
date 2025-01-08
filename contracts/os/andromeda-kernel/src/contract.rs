@@ -99,8 +99,9 @@ pub fn execute(
         ExecuteMsg::Send { message } => execute::send(execute_env, message),
         ExecuteMsg::TriggerRelay {
             packet_sequence,
-            packet_ack_msg,
-        } => execute::trigger_relay(execute_env, packet_sequence, packet_ack_msg),
+            channel_id,
+            packet_ack,
+        } => execute::trigger_relay(execute_env, packet_sequence, channel_id, packet_ack),
         ExecuteMsg::UpsertKeyAddress { key, value } => {
             execute::upsert_key_address(execute_env, key, value)
         }
@@ -126,8 +127,9 @@ pub fn execute(
         ExecuteMsg::UpdateChainName { chain_name } => {
             execute::update_chain_name(execute_env, chain_name)
         }
+        ExecuteMsg::SetEnv { variable, value } => execute::set_env(execute_env, variable, value),
+        ExecuteMsg::UnsetEnv { variable } => execute::unset_env(execute_env, variable),
         ExecuteMsg::Internal(msg) => execute::internal(execute_env, msg),
-        // Base message
         ExecuteMsg::Ownership(ownership_message) => ADOContract::default().execute_ownership(
             execute_env.deps,
             execute_env.env,
@@ -171,5 +173,12 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractErr
         QueryMsg::Version {} => encode_binary(&ADOContract::default().query_version(deps)?),
         QueryMsg::AdoType {} => encode_binary(&ADOContract::default().query_type(deps)?),
         QueryMsg::Owner {} => encode_binary(&ADOContract::default().query_contract_owner(deps)?),
+        QueryMsg::ChainNameByChannel { channel } => {
+            encode_binary(&query::chain_name_by_channel(deps, channel)?)
+        }
+        QueryMsg::PendingPackets { channel_id } => {
+            encode_binary(&query::pending_packets(deps, channel_id)?)
+        }
+        QueryMsg::GetEnv { variable } => encode_binary(&query::get_env(deps, variable)?),
     }
 }
