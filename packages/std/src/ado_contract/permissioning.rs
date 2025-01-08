@@ -285,6 +285,7 @@ impl ADOContract<'_> {
             actor_addrs.push(actor_addr);
         }
 
+        permission.validate_times(&ctx.env)?;
         for actor_addr in actor_addrs.clone() {
             Self::set_permission(
                 ctx.deps.storage,

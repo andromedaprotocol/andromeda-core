@@ -181,6 +181,26 @@ impl LocalPermission {
 
         Ok(())
     }
+
+    pub fn validate_times(&self, env: &Env) -> Result<(), ContractError> {
+        let (start, expiration) = match self {
+            Self::Blacklisted { start, expiration }
+            | Self::Limited {
+                start, expiration, ..
+            }
+            | Self::Whitelisted { start, expiration } => (start, expiration),
+        };
+
+        if let (Some(start), Some(expiration)) = (start, expiration) {
+            let start_time = start.get_time(&env.block);
+            let exp_time = expiration.get_time(&env.block);
+
+            if start_time > exp_time {
+                return Err(ContractError::StartTimeAfterEndTime {});
+            }
+        }
+        Ok(())
+    }
 }
 
 impl fmt::Display for LocalPermission {
@@ -232,6 +252,12 @@ impl Permission {
                 let local_permission = AOSQuerier::get_permission(&deps.querier, &addr, actor)?;
                 Ok(local_permission)
             }
+        }
+    }
+    pub fn validate_times(&self, env: &Env) -> Result<(), ContractError> {
+        match self {
+            Self::Local(local_permission) => local_permission.validate_times(env),
+            Self::Contract(_) => Ok(()),
         }
     }
 }
