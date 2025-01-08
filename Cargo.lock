@@ -115,6 +115,7 @@ dependencies = [
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus 1.2.0",
+ "rstest",
  "semver",
 ]
 
