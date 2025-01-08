@@ -6,26 +6,24 @@ use {
     std::ops::Deref,
 };
 
-use crate::ado_contract::ADOContract;
-use crate::amp::addresses::AndrAddr;
-use crate::amp::messages::AMPPkt;
-use crate::common::context::ExecuteContext;
-use crate::common::reply::ReplyId;
-use crate::error::from_semver;
-use crate::os::{aos_querier::AOSQuerier, economics::ExecuteMsg as EconomicsExecuteMsg};
 use crate::{
-    ado_base::{AndromedaMsg, InstantiateMsg},
-    error::ContractError,
+    ado_base::{
+        permissioning::{LocalPermission, Permission},
+        AndromedaMsg, InstantiateMsg,
+    },
+    ado_contract::ADOContract,
+    amp::{addresses::AndrAddr, messages::AMPPkt},
+    common::{context::ExecuteContext, reply::ReplyId},
+    error::{from_semver, ContractError},
+    os::{aos_querier::AOSQuerier, economics::ExecuteMsg as EconomicsExecuteMsg},
 };
 use cosmwasm_std::{
     attr, ensure, from_json, to_json_binary, Addr, Api, ContractInfoResponse, CosmosMsg, Deps,
     DepsMut, Env, MessageInfo, QuerierWrapper, Response, StdError, Storage, SubMsg, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
-
 use semver::Version;
-use serde::de::DeserializeOwned;
-use serde::Serialize;
+use serde::{de::DeserializeOwned, Serialize};
 
 type ExecuteContextFunction<M, E> = fn(ExecuteContext, M) -> Result<Response, E>;
 
@@ -178,15 +176,48 @@ impl ADOContract<'_> {
                     // Check if using old permission structure (without 'start' variant)
                     let json_str = String::from_utf8(to_json_binary(&local_permission)?.0)?;
                     if !json_str.contains("start") {
-                        // Clear all permissions if using old structure
-                        self.execute_clear_all_permissions(ExecuteContext::new(
+                        let ctx = ExecuteContext::new(
                             deps.branch(),
                             MessageInfo {
                                 sender: owner,
                                 funds: vec![],
                             },
                             env,
-                        ))?;
+                        );
+
+                        // Determine permission type from JSON structure
+                        if json_str.contains("whitelist") {
+                            self.execute_set_permission(
+                                ctx,
+                                vec![AndrAddr::from_string(actor)],
+                                first_action.clone(),
+                                Permission::Local(LocalPermission::Whitelisted {
+                                    start: None,
+                                    expiration: None,
+                                }),
+                            )?;
+                        } else if json_str.contains("blacklist") {
+                            self.execute_set_permission(
+                                ctx,
+                                vec![AndrAddr::from_string(actor)],
+                                first_action.clone(),
+                                Permission::Local(LocalPermission::Blacklisted {
+                                    start: None,
+                                    expiration: None,
+                                }),
+                            )?;
+                        } else if json_str.contains("limited") {
+                            self.execute_set_permission(
+                                ctx,
+                                vec![AndrAddr::from_string(actor)],
+                                first_action.clone(),
+                                Permission::Local(LocalPermission::Limited {
+                                    start: None,
+                                    expiration: None,
+                                    uses: 0,
+                                }),
+                            )?;
+                        }
                     }
                 }
             }
@@ -224,7 +255,7 @@ impl ADOContract<'_> {
                                 )?)
                                 .is_ok()
                                 {
-                                    self.rates.clear(deps.storage);
+                                    self.rates.clear(deps.branch().storage);
                                 }
                                 break;
                             }
@@ -234,7 +265,7 @@ impl ADOContract<'_> {
             }
         }
 
-        set_contract_version(deps.storage, contract_name, contract_version)?;
+        set_contract_version(deps.branch().storage, contract_name, contract_version)?;
         Ok(Response::default())
     }
 

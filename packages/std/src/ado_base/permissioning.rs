@@ -195,6 +195,20 @@ impl LocalPermission {
             let start_time = start.get_time(&env.block);
             let exp_time = expiration.get_time(&env.block);
 
+            // Check if start time is after current time
+            if start_time.is_expired(&env.block) {
+                return Err(ContractError::StartTimeInThePast {
+                    current_time: env.block.time.seconds(),
+                    current_block: env.block.height,
+                });
+            }
+
+            // Check if expiration time is after current time
+            if exp_time.is_expired(&env.block) {
+                return Err(ContractError::ExpirationInPast {});
+            }
+
+            // Check if start time is before expiration time
             if start_time > exp_time {
                 return Err(ContractError::StartTimeAfterEndTime {});
             }
