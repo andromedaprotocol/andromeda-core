@@ -569,6 +569,7 @@ mod tests {
     };
 
     use super::*;
+    use rstest::*;
 
     #[test]
     fn test_permissioned_action() {
@@ -862,20 +863,63 @@ mod tests {
         assert!(res.is_ok());
     }
 
-    #[test]
-    fn test_permission_start_time() {
+    #[fixture]
+    fn contract<'a>() -> ADOContract<'a> {
+        ADOContract::default()
+    }
+
+    #[fixture]
+    fn action() -> &'static str {
+        "action"
+    }
+
+    #[fixture]
+    fn actor() -> &'static str {
+        "actor"
+    }
+
+    #[fixture]
+    fn start_time() -> u64 {
+        2
+    }
+
+    #[fixture]
+    fn start(start_time: u64) -> Option<Expiry> {
+        Some(Expiry::AtTime(MillisecondsExpiration::from_seconds(
+            start_time,
+        )))
+    }
+
+    #[rstest]
+    #[case(true, true, false, true)] // Whitelist, at start time, should succeed
+    #[case(true, false, false, false)] // Whitelist, before start time, should error
+    #[case(true, false, true, true)] // Whitelist, after start time, should succeed
+    #[case(false, false, false, true)] // Blacklist, before start time, should succeed
+    #[case(false, true, false, false)] // Blacklist, at start time, should error
+    #[case(false, false, true, false)] // Blacklist, after start time, should error
+    fn test_permission_start_time(
+        contract: ADOContract,
+        action: &str,
+        actor: &str,
+        start_time: u64,
+        start: Option<Expiry>,
+        #[case] is_whitelisted: bool,
+        #[case] is_at_start_time: bool,
+        #[case] is_after_start_time: bool,
+        #[case] expected_success: bool,
+    ) {
         let mut deps = mock_dependencies();
         let mut env = mock_env();
-        env.block.height = 0;
-        let action = "action";
-        let actor = "actor";
-        let contract = ADOContract::default();
-        let start_time = 2;
-        let start = Some(Expiry::AtTime(MillisecondsExpiration::from_seconds(
-            start_time,
-        )));
 
-        env.block.time = MillisecondsExpiration::from_seconds(0).into();
+        env.block.time = MillisecondsExpiration::from_seconds(if is_at_start_time {
+            start_time
+        } else if is_after_start_time {
+            start_time + 1
+        } else {
+            0
+        })
+        .into();
+
         contract
             .owner
             .save(deps.as_mut().storage, &Addr::unchecked("owner"))
@@ -885,56 +929,41 @@ mod tests {
             .permission_action(action, deps.as_mut().storage)
             .unwrap();
 
-        // Test Whitelist with start time
-        let permission = Permission::Local(LocalPermission::Whitelisted {
-            start: start.clone(),
-            expiration: None,
-        });
+        let permission = if is_whitelisted {
+            Permission::Local(LocalPermission::Whitelisted {
+                start,
+                expiration: None,
+            })
+        } else {
+            Permission::Local(LocalPermission::Blacklisted {
+                start,
+                expiration: None,
+            })
+        };
+
         ADOContract::set_permission(deps.as_mut().storage, action, actor, permission).unwrap();
 
-        // Before start time - should error
         let res = contract.is_permissioned(deps.as_mut(), env.clone(), action, actor);
-        assert!(res.is_err());
 
-        // At start time - should succeed
-        env.block.time = MillisecondsExpiration::from_seconds(start_time).into();
-        let res = contract.is_permissioned(deps.as_mut(), env.clone(), action, actor);
-        assert!(res.is_ok());
+        if expected_success {
+            assert!(res.is_ok());
+        } else {
+            assert!(res.is_err());
+        }
+    }
 
-        // After start time - should succeed
-        env.block.time = MillisecondsExpiration::from_seconds(start_time + 1).into();
-        let res = contract.is_permissioned(deps.as_mut(), env.clone(), action, actor);
-        assert!(res.is_ok());
-
-        // Test Blacklist with start time
-        env.block.time = MillisecondsExpiration::from_seconds(0).into();
-        let permission = Permission::Local(LocalPermission::Blacklisted {
-            start,
-            expiration: None,
-        });
-        ADOContract::set_permission(deps.as_mut().storage, action, actor, permission).unwrap();
-
-        // Before start time - should succeed (blacklist not active yet)
-        let res = contract.is_permissioned(deps.as_mut(), env.clone(), action, actor);
-        assert!(res.is_ok());
-
-        // At start time - should error (blacklist becomes active)
-        env.block.time = MillisecondsExpiration::from_seconds(start_time).into();
-        let res = contract.is_permissioned(deps.as_mut(), env.clone(), action, actor);
-        assert!(res.is_err());
-
-        // After start time - should error (blacklist remains active)
-        env.block.time = MillisecondsExpiration::from_seconds(start_time + 1).into();
-        let res = contract.is_permissioned(deps.as_mut(), env.clone(), action, actor);
-        assert!(res.is_err());
+    #[rstest]
+    fn test_permission_start_time_disabled_action(action: &str, actor: &str) {
+        let mut deps = mock_dependencies();
+        let mut env = mock_env();
+        let contract = ADOContract::default();
 
         env.block.time = MillisecondsExpiration::from_seconds(0).into();
 
-        // Test interaction with disabled action permissioning
         ADOContract::default().disable_action_permission(action, deps.as_mut().storage);
 
         let res = contract.is_permissioned(deps.as_mut(), env, action, actor);
-        assert!(res.is_ok());
+        assert!(res.is_err());
     }
 
     #[test]
