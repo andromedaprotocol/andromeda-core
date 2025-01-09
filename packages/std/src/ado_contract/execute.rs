@@ -157,66 +157,74 @@ impl ADOContract<'_> {
         // Get all permissioned actions and actors in one pass
         let permissioned_actions = self.query_permissioned_actions(deps.as_ref())?;
         if !permissioned_actions.is_empty() {
-            // Take first action to check permission structure
-            let first_action = &permissioned_actions[0];
-            let first_actor = self
-                .query_permissioned_actors(deps.as_ref(), first_action.clone(), None, None, None)?
-                .first()
-                .cloned();
+            // Iterate through all actions
+            for action in &permissioned_actions {
+                let actors = self.query_permissioned_actors(
+                    deps.as_ref(),
+                    action.clone(),
+                    None,
+                    None,
+                    None,
+                )?;
 
-            if let Some(actor) = first_actor {
-                // Check permission structure using first actor
-                let permissions = self.query_permissions(deps.as_ref(), &actor, None, None)?;
-                if let Some(permission) = permissions.first() {
-                    let local_permission = permission
-                        .permission
-                        .clone()
-                        .get_permission(deps.as_ref(), actor.as_str())?;
+                for actor in actors {
+                    // Check permission structure for each actor
+                    let permissions = self.query_permissions(deps.as_ref(), &actor, None, None)?;
+                    // Iterate through all permissions instead of just checking the first one
+                    for permission in permissions {
+                        let local_permission = permission
+                            .permission
+                            .clone()
+                            .get_permission(deps.as_ref(), &actor.as_str())?;
 
-                    // Check if using old permission structure (without 'start' variant)
-                    let json_str = String::from_utf8(to_json_binary(&local_permission)?.0)?;
-                    if !json_str.contains("start") {
-                        let ctx = ExecuteContext::new(
-                            deps.branch(),
-                            MessageInfo {
-                                sender: owner,
-                                funds: vec![],
-                            },
-                            env,
-                        );
+                        // Check if using old permission structure (without 'start' variant)
+                        let json_str = String::from_utf8(to_json_binary(&local_permission)?.0)?;
+                        if !json_str.contains("start") {
+                            let ctx = ExecuteContext::new(
+                                deps.branch(),
+                                MessageInfo {
+                                    sender: owner.clone(),
+                                    funds: vec![],
+                                },
+                                env.clone(),
+                            );
 
-                        // Determine permission type from JSON structure
-                        if json_str.contains("whitelist") {
-                            self.execute_set_permission(
-                                ctx,
-                                vec![AndrAddr::from_string(actor)],
-                                first_action.clone(),
-                                Permission::Local(LocalPermission::Whitelisted {
-                                    start: None,
-                                    expiration: None,
-                                }),
-                            )?;
-                        } else if json_str.contains("blacklist") {
-                            self.execute_set_permission(
-                                ctx,
-                                vec![AndrAddr::from_string(actor)],
-                                first_action.clone(),
-                                Permission::Local(LocalPermission::Blacklisted {
-                                    start: None,
-                                    expiration: None,
-                                }),
-                            )?;
-                        } else if json_str.contains("limited") {
-                            self.execute_set_permission(
-                                ctx,
-                                vec![AndrAddr::from_string(actor)],
-                                first_action.clone(),
-                                Permission::Local(LocalPermission::Limited {
-                                    start: None,
-                                    expiration: None,
-                                    uses: 0,
-                                }),
-                            )?;
+                            // Determine permission type from JSON structure
+                            if json_str.contains("whitelist") {
+                                self.execute_set_permission(
+                                    ctx,
+                                    vec![AndrAddr::from_string(actor.clone())],
+                                    action.clone(),
+                                    Permission::Local(LocalPermission::Whitelisted {
+                                        start: None,
+                                        expiration: None,
+                                    }),
+                                )?;
+                            } else if json_str.contains("blacklist") {
+                                self.execute_set_permission(
+                                    ctx,
+                                    vec![AndrAddr::from_string(actor.clone())],
+                                    action.clone(),
+                                    Permission::Local(LocalPermission::Blacklisted {
+                                        start: None,
+                                        expiration: None,
+                                    }),
+                                )?;
+                            } else if json_str.contains("limited") {
+                                self.execute_set_permission(
+                                    ctx,
+                                    vec![AndrAddr::from_string(actor.clone())],
+                                    action.clone(),
+                                    Permission::Local(LocalPermission::Limited {
+                                        start: None,
+                                        expiration: None,
+                                        uses: 0,
+                                    }),
+                                )?;
+                            }
+                        } else {
+                            // If one permission is up to date, we assume that all of them are
+                            break;
                         }
                     }
                 }
