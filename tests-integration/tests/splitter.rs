@@ -148,7 +148,7 @@ fn setup(
 }
 
 #[rstest]
-fn test_successful_set_amount_splitter_without_remainder_native(setup: TestCase) {
+fn test_successful_fixed_amount_splitter_without_remainder_native(setup: TestCase) {
     let TestCase {
         mut router,
         andr,
@@ -181,7 +181,7 @@ fn test_successful_set_amount_splitter_without_remainder_native(setup: TestCase)
 }
 
 #[rstest]
-fn test_successful_set_amount_splitter_with_remainder_native(setup: TestCase) {
+fn test_successful_fixed_amount_splitter_with_remainder_native(setup: TestCase) {
     let TestCase {
         mut router,
         andr,
@@ -237,7 +237,7 @@ fn test_successful_set_amount_splitter_with_remainder_native(setup: TestCase) {
 }
 
 #[rstest]
-fn test_successful_set_amount_splitter_cw20_without_remainder(setup: TestCase) {
+fn test_successful_fixed_amount_splitter_cw20_without_remainder(setup: TestCase) {
     let TestCase {
         mut router,
         andr,
@@ -267,7 +267,7 @@ fn test_successful_set_amount_splitter_cw20_without_remainder(setup: TestCase) {
 }
 
 #[rstest]
-fn test_successful_set_amount_splitter_cw20_with_remainder(setup: TestCase) {
+fn test_successful_fixed_amount_splitter_cw20_with_remainder(setup: TestCase) {
     let TestCase {
         mut router,
         andr,

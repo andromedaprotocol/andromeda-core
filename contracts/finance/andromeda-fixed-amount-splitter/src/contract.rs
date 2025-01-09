@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use crate::state::SPLITTER;
 use andromeda_finance::{
-    set_amount_splitter::{
+    fixed_amount_splitter::{
         validate_recipient_list, AddressAmount, Cw20HookMsg, ExecuteMsg, GetSplitterConfigResponse,
         InstantiateMsg, QueryMsg, Splitter,
     },
@@ -23,7 +23,7 @@ use cw20::{Cw20Coin, Cw20ReceiveMsg};
 use cw_utils::nonpayable;
 
 // version info for migration info
-const CONTRACT_NAME: &str = "crates.io:andromeda-set-amount-splitter";
+const CONTRACT_NAME: &str = "crates.io:andromeda-fixed-amount-splitter";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 // 1 day in seconds
 const ONE_DAY: u64 = 86_400;

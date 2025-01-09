@@ -1,7 +1,9 @@
 #![cfg(all(not(target_arch = "wasm32"), feature = "testing"))]
 
 use crate::contract::{execute, instantiate, query, reply};
-use andromeda_finance::set_amount_splitter::{AddressAmount, ExecuteMsg, InstantiateMsg, QueryMsg};
+use andromeda_finance::fixed_amount_splitter::{
+    AddressAmount, ExecuteMsg, InstantiateMsg, QueryMsg,
+};
 use andromeda_std::{amp::Recipient, common::expiration::Expiry};
 use andromeda_testing::{
     mock::MockApp, mock_ado, mock_contract::ExecuteResult, MockADO, MockContract,
@@ -9,10 +11,10 @@ use andromeda_testing::{
 use cosmwasm_std::{Addr, Coin, Empty};
 use cw_multi_test::{Contract, ContractWrapper, Executor};
 
-pub struct MockSetAmountSplitter(Addr);
-mock_ado!(MockSetAmountSplitter, ExecuteMsg, QueryMsg);
+pub struct MockFixedAmountSplitter(Addr);
+mock_ado!(MockFixedAmountSplitter, ExecuteMsg, QueryMsg);
 
-impl MockSetAmountSplitter {
+impl MockFixedAmountSplitter {
     #[allow(clippy::too_many_arguments)]
     pub fn instantiate(
         app: &mut MockApp,
@@ -24,7 +26,7 @@ impl MockSetAmountSplitter {
         owner: Option<String>,
         default_recipient: Option<Recipient>,
     ) -> Self {
-        let msg = mock_set_amount_splitter_instantiate_msg(
+        let msg = mock_fixed_amount_splitter_instantiate_msg(
             recipients,
             kernel_address,
             lock_time,
@@ -43,7 +45,7 @@ impl MockSetAmountSplitter {
         funds: &[Coin],
         config: Option<Vec<AddressAmount>>,
     ) -> ExecuteResult {
-        let msg = mock_set_amount_splitter_send_msg(config);
+        let msg = mock_fixed_amount_splitter_send_msg(config);
 
         self.execute(app, &msg, sender, funds)
     }
@@ -55,18 +57,18 @@ impl MockSetAmountSplitter {
         funds: &[Coin],
         recipients: Vec<AddressAmount>,
     ) -> ExecuteResult {
-        let msg = mock_set_amount_splitter_update_recipients_msg(recipients);
+        let msg = mock_fixed_amount_splitter_update_recipients_msg(recipients);
 
         self.execute(app, &msg, sender, funds)
     }
 }
 
-pub fn mock_andromeda_set_amount_splitter() -> Box<dyn Contract<Empty>> {
+pub fn mock_andromeda_fixed_amount_splitter() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new_with_empty(execute, instantiate, query).with_reply(reply);
     Box::new(contract)
 }
 
-pub fn mock_set_amount_splitter_instantiate_msg(
+pub fn mock_fixed_amount_splitter_instantiate_msg(
     recipients: Vec<AddressAmount>,
     kernel_address: impl Into<String>,
     lock_time: Option<Expiry>,
@@ -82,11 +84,11 @@ pub fn mock_set_amount_splitter_instantiate_msg(
     }
 }
 
-pub fn mock_set_amount_splitter_send_msg(config: Option<Vec<AddressAmount>>) -> ExecuteMsg {
+pub fn mock_fixed_amount_splitter_send_msg(config: Option<Vec<AddressAmount>>) -> ExecuteMsg {
     ExecuteMsg::Send { config }
 }
 
-pub fn mock_set_amount_splitter_update_recipients_msg(
+pub fn mock_fixed_amount_splitter_update_recipients_msg(
     recipients: Vec<AddressAmount>,
 ) -> ExecuteMsg {
     ExecuteMsg::UpdateRecipients { recipients }

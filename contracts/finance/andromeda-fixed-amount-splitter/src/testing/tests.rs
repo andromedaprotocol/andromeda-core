@@ -21,7 +21,7 @@ use crate::{
     state::SPLITTER,
     testing::mock_querier::mock_dependencies_custom,
 };
-use andromeda_finance::set_amount_splitter::{
+use andromeda_finance::fixed_amount_splitter::{
     AddressAmount, ExecuteMsg, GetSplitterConfigResponse, InstantiateMsg, QueryMsg, Splitter,
 };
 
