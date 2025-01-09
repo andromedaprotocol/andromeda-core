@@ -4,8 +4,8 @@ use andromeda_std::amp::addresses::AndrAddr;
 use andromeda_std::amp::messages::{AMPCtx, AMPMsg, AMPPkt};
 use andromeda_std::amp::{ADO_DB_KEY, VFS_KEY};
 use andromeda_std::common::context::ExecuteContext;
-use andromeda_std::common::has_coins_merged;
 use andromeda_std::common::reply::ReplyId;
+use andromeda_std::common::{has_coins_merged, merge_coins};
 use andromeda_std::error::ContractError;
 use andromeda_std::os::aos_querier::AOSQuerier;
 #[cfg(not(target_arch = "wasm32"))]
@@ -44,7 +44,7 @@ pub fn trigger_relay(
         ContractError::Unauthorized {}
     );
     let ics20_packet_info = CHANNEL_TO_EXECUTE_MSG
-        .load(ctx.deps.storage, (channel_id, packet_sequence))
+        .load(ctx.deps.storage, (channel_id.clone(), packet_sequence))
         .expect("No packet found for channel_id and sequence");
 
     let chain =
@@ -68,7 +68,7 @@ pub fn trigger_relay(
             ctx.info,
             ctx.env,
             ctx.amp_ctx,
-            0,
+            packet_sequence,
             channel_info,
             ics20_packet_info,
         ),
@@ -80,7 +80,11 @@ pub fn trigger_relay(
             });
             Ok(Response::default()
                 .add_message(refund_msg)
-                .add_attribute("action", "refund")
+                .add_attribute("action", "relay_packet")
+                .add_attribute("relay_outcome", "refund")
+                .add_attribute("relay_sequence", packet_sequence.to_string())
+                .add_attribute("relay_channel", channel_id)
+                .add_attribute("relay_chain", chain)
                 .add_attribute("recipient", ics20_packet_info.sender)
                 .add_attribute("amount", ics20_packet_info.funds.to_string()))
         }
@@ -156,10 +160,12 @@ fn handle_ibc_transfer_funds_reply(
 
     Ok(Response::default()
         .add_message(CosmosMsg::Ibc(msg))
-        .add_attribute(format!("method:{sequence}"), "execute_send_message")
-        .add_attribute(format!("channel:{sequence}"), channel)
-        .add_attribute("receiving_kernel_address:{}", channel_info.kernel_address)
-        .add_attribute("chain:{}", chain))
+        .add_attribute("action", "relay_packet")
+        .add_attribute("relay_outcome", "success")
+        .add_attribute("relay_sequence", sequence.to_string())
+        .add_attribute("relay_channel", ics20_packet_info.channel)
+        .add_attribute("relay_chain", chain)
+        .add_attribute("receiving_kernel_address", channel_info.kernel_address))
 }
 
 pub fn amp_receive(
@@ -170,7 +176,8 @@ pub fn amp_receive(
 ) -> Result<Response, ContractError> {
     // Only verified ADOs can access this function
     ensure!(
-        query::verify_address(deps.as_ref(), info.sender.to_string())?.verify_address,
+        info.sender == env.contract.address
+            || query::verify_address(deps.as_ref(), info.sender.to_string())?.verify_address,
         ContractError::Unauthorized {}
     );
     ensure!(
@@ -188,18 +195,39 @@ pub fn amp_receive(
         }
     );
 
+    let msg = packet.messages.first().unwrap();
+    let mut handler = MsgHandler::new(msg.clone());
+    let msg_res = handler.handle(
+        deps.branch(),
+        info.clone(),
+        env.clone(),
+        Some(packet.clone()),
+        0,
+    )?;
+
+    res.messages.extend_from_slice(&msg_res.messages);
+    res.attributes.extend_from_slice(&msg_res.attributes);
+    res.events.extend_from_slice(&msg_res.events);
+
+    let mut new_pkt = AMPPkt::from_ctx(Some(packet.clone()), env.contract.address.to_string());
+
     for (idx, message) in packet.messages.iter().enumerate() {
-        let mut handler = MsgHandler::new(message.clone());
-        let msg_res = handler.handle(
-            deps.branch(),
-            info.clone(),
-            env.clone(),
-            Some(packet.clone()),
-            idx as u64,
-        )?;
-        res.messages.extend_from_slice(&msg_res.messages);
-        res.attributes.extend_from_slice(&msg_res.attributes);
-        res.events.extend_from_slice(&msg_res.events);
+        if idx == 0 {
+            continue;
+        }
+        new_pkt = new_pkt.add_message(message.clone());
+    }
+
+    if !new_pkt.messages.is_empty() {
+        let new_funds = new_pkt
+            .messages
+            .iter()
+            .flat_map(|m| m.funds.clone())
+            .collect::<Vec<Coin>>();
+
+        let new_pkt_msg =
+            new_pkt.to_sub_msg(env.contract.address.to_string(), Some(new_funds), 0)?;
+        res.messages.extend_from_slice(&[new_pkt_msg]);
     }
 
     let message_funds = packet
@@ -825,8 +853,10 @@ impl MsgHandler {
                 error: Some(format!("Channel not found for chain {chain}")),
             });
         }?;
+        deps.api.debug(&format!("info.funds: {:?}", info.funds));
+        deps.api.debug(&format!("funds: {:?}", funds));
         ensure!(
-            funds.len() == 1 && info.funds.len() == 1,
+            funds.len() == 1,
             ContractError::InvalidFunds {
                 msg: "Number of funds should be exactly one".to_string()
             }
