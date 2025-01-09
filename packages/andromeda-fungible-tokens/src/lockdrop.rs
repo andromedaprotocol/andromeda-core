@@ -26,17 +26,17 @@ pub struct InstantiateMsg {
 #[andr_exec]
 #[cw_serde]
 pub enum ExecuteMsg {
+    #[attrs(nonpayable)]
     Receive(Cw20ReceiveMsg),
     /// Function to deposit native fund in the contract in exchange for recieving a proportion of the
     /// TOKEN.
     DepositNative {},
     /// Function to withdraw native fund from the lockup position.
-    WithdrawNative {
-        amount: Option<Uint128>,
-    },
+    WithdrawNative { amount: Option<Uint128> },
     /// Facilitates reward claim after claims are enabled.
     ClaimRewards {},
     /// Called by the bootstrap contract when liquidity is added to the TOKEN-NATIVE Pool to enable TOKEN withdrawals by users.
+    #[attrs(nonpayable)]
     EnableClaims {},
     // Called by the owner after the phase is over to withdraw all of the NATIVE token to the
     // given recipient, or themselves if not specified.

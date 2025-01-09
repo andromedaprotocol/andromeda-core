@@ -3,7 +3,8 @@ use std::{ops::Mul, str::FromStr};
 use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     ado_contract::ADOContract,
-    common::{actions::call_action, context::ExecuteContext, encode_binary, Milliseconds},
+    andr_execute_fn,
+    common::{context::ExecuteContext, encode_binary, Milliseconds},
     error::ContractError,
 };
 use cosmwasm_std::{
@@ -29,8 +30,6 @@ use andromeda_fungible_tokens::cw20_staking::{
     Config, Cw20HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg, RewardToken, RewardTokenUnchecked,
     RewardType, StakerResponse, State,
 };
-
-use cw_utils::nonpayable;
 
 // Version info, for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-cw20-staking";
@@ -105,33 +104,9 @@ pub fn instantiate(
     Ok(resp)
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn execute(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    msg: ExecuteMsg,
-) -> Result<Response, ContractError> {
-    let ctx = ExecuteContext::new(deps, info, env);
-
+#[andr_execute_fn]
+pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::AMPReceive(pkt) => {
-            ADOContract::default().execute_amp_receive(ctx, pkt, handle_execute)
-        }
-        _ => handle_execute(ctx, msg),
-    }
-}
-
-pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
-    let _contract = ADOContract::default();
-    let action_response = call_action(
-        &mut ctx.deps,
-        &ctx.info,
-        &ctx.env,
-        &ctx.amp_ctx,
-        msg.as_ref(),
-    )?;
-    let res = match msg {
         ExecuteMsg::Receive(msg) => receive_cw20(ctx, msg),
         ExecuteMsg::AddRewardToken { reward_token } => execute_add_reward_token(ctx, reward_token),
         ExecuteMsg::RemoveRewardToken { reward_token } => {
@@ -168,11 +143,7 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
         ExecuteMsg::UnstakeTokens { amount } => execute_unstake_tokens(ctx, amount),
         ExecuteMsg::ClaimRewards {} => execute_claim_rewards(ctx),
         _ => ADOContract::default().execute(ctx, msg),
-    }?;
-    Ok(res
-        .add_submessages(action_response.messages)
-        .add_attributes(action_response.attributes)
-        .add_events(action_response.events))
+    }
 }
 
 fn receive_cw20(ctx: ExecuteContext, msg: Cw20ReceiveMsg) -> Result<Response, ContractError> {
@@ -205,14 +176,7 @@ fn execute_add_reward_token(
     ctx: ExecuteContext,
     reward_token: RewardTokenUnchecked,
 ) -> Result<Response, ContractError> {
-    let ExecuteContext {
-        deps, info, env, ..
-    } = ctx;
-    let contract = ADOContract::default();
-    ensure!(
-        contract.is_owner_or_operator(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {}
-    );
+    let ExecuteContext { deps, env, .. } = ctx;
     let mut config = CONFIG.load(deps.storage)?;
 
     let new_number = config.number_of_reward_tokens.checked_add(1);
@@ -270,15 +234,7 @@ fn execute_remove_reward_token(
     ctx: ExecuteContext,
     reward_token_string: String,
 ) -> Result<Response, ContractError> {
-    let ExecuteContext {
-        deps, info, env, ..
-    } = ctx;
-    let contract = ADOContract::default();
-    ensure!(
-        contract.is_owner_or_operator(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {}
-    );
-
+    let ExecuteContext { deps, env, .. } = ctx;
     // Set reward token as inactive
     match REWARD_TOKENS.load(deps.storage, &reward_token_string) {
         Ok(mut reward_token) if reward_token.is_active => {
@@ -322,16 +278,7 @@ fn execute_replace_reward_token(
     origin_reward_token_string: String,
     reward_token: RewardTokenUnchecked,
 ) -> Result<Response, ContractError> {
-    let ExecuteContext {
-        deps, info, env, ..
-    } = ctx;
-    let contract = ADOContract::default();
-
-    // Only owner can replace reward token
-    ensure!(
-        contract.is_owner_or_operator(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {}
-    );
+    let ExecuteContext { deps, env, .. } = ctx;
     let config = CONFIG.load(deps.storage)?;
 
     // Validate token to be replaced
@@ -473,7 +420,6 @@ fn execute_unstake_tokens(
     let ExecuteContext {
         deps, info, env, ..
     } = ctx;
-    nonpayable(&info)?;
     let sender = info.sender.as_str();
 
     let staking_token = get_staking_token(deps.as_ref())?;
