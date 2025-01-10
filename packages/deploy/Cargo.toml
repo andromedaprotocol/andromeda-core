@@ -49,7 +49,7 @@ andromeda-vesting = { path = "../../contracts/finance/andromeda-vesting" }
 andromeda-timelock = { path = "../../contracts/finance/andromeda-timelock" }
 andromeda-conditional-splitter = { path = "../../contracts/finance/andromeda-conditional-splitter" }
 andromeda-rate-limiting-withdrawals = { path = "../../contracts/finance/andromeda-rate-limiting-withdrawals" }
-andromeda-set-amount-splitter = { path = "../../contracts/finance/andromeda-set-amount-splitter" }
+andromeda-fixed-amount-splitter = { path = "../../contracts/finance/andromeda-fixed-amount-splitter" }
 andromeda-weighted-distribution-splitter = { path = "../../contracts/finance/andromeda-weighted-distribution-splitter" }
 
 # Data Storage Contracts

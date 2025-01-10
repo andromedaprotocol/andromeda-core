@@ -385,6 +385,7 @@ dependencies = [
  "andromeda-date-time",
  "andromeda-distance",
  "andromeda-economics",
+ "andromeda-fixed-amount-splitter",
  "andromeda-graph",
  "andromeda-ibc-registry",
  "andromeda-kernel",
@@ -396,7 +397,6 @@ dependencies = [
  "andromeda-primitive",
  "andromeda-rate-limiting-withdrawals",
  "andromeda-rates",
- "andromeda-set-amount-splitter",
  "andromeda-shunting",
  "andromeda-splitter",
  "andromeda-std",
@@ -496,6 +496,23 @@ dependencies = [
  "cw721-base 0.18.0",
  "schemars",
  "serde",
+]
+
+[[package]]
+name = "andromeda-fixed-amount-splitter"
+version = "1.2.0-b.1"
+dependencies = [
+ "andromeda-app",
+ "andromeda-finance",
+ "andromeda-std",
+ "andromeda-testing",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-multi-test",
+ "cw-orch",
+ "cw-storage-plus 1.2.0",
+ "cw-utils 1.0.3",
+ "cw20",
 ]
 
 [[package]]
@@ -830,23 +847,6 @@ dependencies = [
  "cw-storage-plus 1.2.0",
  "serde_json",
  "test-case",
-]
-
-[[package]]
-name = "andromeda-set-amount-splitter"
-version = "1.2.0-b.1"
-dependencies = [
- "andromeda-app",
- "andromeda-finance",
- "andromeda-std",
- "andromeda-testing",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-multi-test",
- "cw-orch",
- "cw-storage-plus 1.2.0",
- "cw-utils 1.0.3",
- "cw20",
 ]
 
 [[package]]
@@ -5102,6 +5102,7 @@ dependencies = [
  "andromeda-economics",
  "andromeda-ecosystem",
  "andromeda-finance",
+ "andromeda-fixed-amount-splitter",
  "andromeda-fungible-tokens",
  "andromeda-ibc-registry",
  "andromeda-kernel",
@@ -5112,7 +5113,6 @@ dependencies = [
  "andromeda-non-fungible-tokens",
  "andromeda-primitive",
  "andromeda-rates",
- "andromeda-set-amount-splitter",
  "andromeda-shunting",
  "andromeda-splitter",
  "andromeda-std",

@@ -11,10 +11,10 @@ use andromeda_testing::{
 use andromeda_std::amp::Recipient;
 use cosmwasm_std::{coin, coins, to_json_binary, Coin, Empty, Uint128};
 
-use andromeda_finance::set_amount_splitter::{AddressAmount, Cw20HookMsg};
-use andromeda_set_amount_splitter::mock::{
-    mock_andromeda_set_amount_splitter, mock_set_amount_splitter_instantiate_msg,
-    MockSetAmountSplitter,
+use andromeda_finance::fixed_amount_splitter::{AddressAmount, Cw20HookMsg};
+use andromeda_fixed_amount_splitter::mock::{
+    mock_andromeda_fixed_amount_splitter, mock_fixed_amount_splitter_instantiate_msg,
+    MockFixedAmountSplitter,
 };
 use cw20::Cw20Coin;
 use cw_multi_test::Contract;
@@ -23,7 +23,7 @@ use rstest::{fixture, rstest};
 struct TestCase {
     router: MockApp,
     andr: MockAndromeda,
-    splitter: MockSetAmountSplitter,
+    splitter: MockFixedAmountSplitter,
     cw20: MockCW20,
 }
 
@@ -40,7 +40,10 @@ fn wallets() -> Vec<(&'static str, Vec<Coin>)> {
 fn contracts() -> Vec<(&'static str, Box<dyn Contract<Empty>>)> {
     vec![
         ("cw20", mock_andromeda_cw20()),
-        ("set-amount-splitter", mock_andromeda_set_amount_splitter()),
+        (
+            "fixed-amount-splitter",
+            mock_andromeda_fixed_amount_splitter(),
+        ),
         ("app-contract", mock_andromeda_app()),
     ]
 }
@@ -74,7 +77,7 @@ fn setup(
             coins: coins(100, "uandr"),
         },
     ];
-    let splitter_init_msg = mock_set_amount_splitter_instantiate_msg(
+    let splitter_init_msg = mock_fixed_amount_splitter_instantiate_msg(
         splitter_recipients,
         andr.kernel.addr().clone(),
         None,
@@ -82,8 +85,8 @@ fn setup(
         None,
     );
     let splitter_component = AppComponent::new(
-        "set-amount-splitter".to_string(),
-        "set-amount-splitter".to_string(),
+        "fixed-amount-splitter".to_string(),
+        "fixed-amount-splitter".to_string(),
         to_json_binary(&splitter_init_msg).unwrap(),
     );
 
@@ -127,7 +130,7 @@ fn setup(
         Some(owner.to_string()),
     );
 
-    let splitter: MockSetAmountSplitter =
+    let splitter: MockFixedAmountSplitter =
         app.query_ado_by_component_name(&router, splitter_component.name);
 
     let cw20: MockCW20 = app.query_ado_by_component_name(&router, cw20_component.name);
@@ -159,7 +162,7 @@ fn setup(
 }
 
 #[rstest]
-fn test_successful_set_amount_splitter_native(setup: TestCase) {
+fn test_successful_fixed_amount_splitter_native(setup: TestCase) {
     let TestCase {
         mut router,
         andr,
@@ -192,7 +195,7 @@ fn test_successful_set_amount_splitter_native(setup: TestCase) {
 }
 
 #[rstest]
-fn test_successful_set_amount_splitter_cw20_with_remainder(#[with(false)] setup: TestCase) {
+fn test_successful_fixed_amount_splitter_cw20_with_remainder(#[with(false)] setup: TestCase) {
     let TestCase {
         mut router,
         andr,
@@ -222,7 +225,7 @@ fn test_successful_set_amount_splitter_cw20_with_remainder(#[with(false)] setup:
 }
 
 #[rstest]
-fn test_successful_set_amount_splitter_cw20_without_remainder(#[with(false)] setup: TestCase) {
+fn test_successful_fixed_amount_splitter_cw20_without_remainder(#[with(false)] setup: TestCase) {
     let TestCase {
         mut router,
         andr,
