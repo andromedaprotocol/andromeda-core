@@ -499,7 +499,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-fixed-amount-splitter"
-version = "1.2.0-b.1"
+version = "1.2.0-b.2"
 dependencies = [
  "andromeda-app",
  "andromeda-finance",
@@ -870,7 +870,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-splitter"
-version = "2.3.0-b.2"
+version = "2.3.0-b.3"
 dependencies = [
  "andromeda-app",
  "andromeda-finance",
@@ -1059,7 +1059,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-weighted-distribution-splitter"
-version = "2.1.0-b.2"
+version = "2.1.0-b.3"
 dependencies = [
  "andromeda-app",
  "andromeda-finance",

@@ -43,8 +43,8 @@ pub enum ContractError {
     #[error("UnpublishedVersion")]
     UnpublishedVersion {},
 
-    #[error("ContractLocked")]
-    ContractLocked {},
+    #[error("ContractLocked: {msg:?}")]
+    ContractLocked { msg: Option<String> },
 
     #[error("UnidentifiedMsgID")]
     UnidentifiedMsgID {},

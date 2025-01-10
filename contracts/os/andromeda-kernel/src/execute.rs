@@ -4,8 +4,8 @@ use andromeda_std::amp::addresses::AndrAddr;
 use andromeda_std::amp::messages::{AMPCtx, AMPMsg, AMPPkt};
 use andromeda_std::amp::{ADO_DB_KEY, VFS_KEY};
 use andromeda_std::common::context::ExecuteContext;
+use andromeda_std::common::has_coins_merged;
 use andromeda_std::common::reply::ReplyId;
-use andromeda_std::common::{has_coins_merged, merge_coins};
 use andromeda_std::error::ContractError;
 use andromeda_std::os::aos_querier::AOSQuerier;
 #[cfg(not(target_arch = "wasm32"))]

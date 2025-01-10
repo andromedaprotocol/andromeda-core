@@ -220,7 +220,7 @@ fn test_execute_update_lock() {
     };
     let info = mock_info(OWNER, &[]);
     let err = execute(deps.as_mut(), env.clone(), info, msg).unwrap_err();
-    assert_eq!(err, ContractError::ContractLocked {});
+    assert_eq!(err, ContractError::ContractLocked { msg: None });
 }
 
 #[test]

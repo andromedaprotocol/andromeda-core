@@ -327,7 +327,7 @@ fn test_execute_update_lock_already_locked() {
 
     let info = mock_info(owner, &[]);
     let res = execute(deps.as_mut(), env, info, msg).unwrap_err();
-    assert_eq!(ContractError::ContractLocked {}, res);
+    assert_eq!(ContractError::ContractLocked { msg: None }, res);
 }
 
 #[test]
@@ -601,7 +601,7 @@ fn test_execute_remove_recipient_contract_locked() {
     };
 
     let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
-    assert_eq!(err, ContractError::ContractLocked {});
+    assert_eq!(err, ContractError::ContractLocked { msg: None });
 }
 
 #[test]
@@ -824,7 +824,7 @@ fn test_update_recipient_weight_locked_contract() {
         },
     };
     let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
-    assert_eq!(err, ContractError::ContractLocked {});
+    assert_eq!(err, ContractError::ContractLocked { msg: None });
 }
 
 #[test]
@@ -1277,7 +1277,10 @@ fn test_execute_add_recipient_locked_contract() {
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
     let res = execute(deps.as_mut(), env, info, msg);
-    assert_eq!(ContractError::ContractLocked {}, res.unwrap_err());
+    assert_eq!(
+        ContractError::ContractLocked { msg: None },
+        res.unwrap_err()
+    );
 }
 
 #[test]
@@ -1492,7 +1495,7 @@ fn test_execute_update_recipients_contract_locked() {
 
     let info = mock_info(owner, &[]);
     let res = execute(deps.as_mut(), env, info, msg).unwrap_err();
-    assert_eq!(res, ContractError::ContractLocked {});
+    assert_eq!(res, ContractError::ContractLocked { msg: None });
 }
 
 #[test]
