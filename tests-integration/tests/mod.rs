@@ -29,4 +29,7 @@ mod cw20_app;
 mod fixed_amount_splitter;
 
 #[cfg(test)]
+mod permissions_orch;
+
+#[cfg(test)]
 mod shunting;
