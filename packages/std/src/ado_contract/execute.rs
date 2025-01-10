@@ -190,7 +190,7 @@ impl ADOContract<'_> {
                             );
 
                             // Determine permission type from JSON structure
-                            if json_str.contains("whitelist") {
+                            if json_str.contains("whitelisted") {
                                 self.execute_set_permission(
                                     ctx,
                                     vec![AndrAddr::from_string(actor.clone())],
@@ -200,7 +200,7 @@ impl ADOContract<'_> {
                                         expiration: None,
                                     }),
                                 )?;
-                            } else if json_str.contains("blacklist") {
+                            } else if json_str.contains("blacklisted") {
                                 self.execute_set_permission(
                                     ctx,
                                     vec![AndrAddr::from_string(actor.clone())],
@@ -431,45 +431,96 @@ mod tests {
     use crate::testing::mock_querier::MOCK_KERNEL_CONTRACT;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 
-    #[test]
-    fn test_update_app_contract() {
-        let contract = ADOContract::default();
-        let mut deps = mock_dependencies();
+    mod app_contract {
+        use super::*;
 
-        let info = mock_info("owner", &[]);
-        let deps_mut = deps.as_mut();
-        contract
-            .instantiate(
-                deps_mut.storage,
-                mock_env(),
-                deps_mut.api,
-                &deps_mut.querier,
-                info.clone(),
-                InstantiateMsg {
-                    ado_type: "type".to_string(),
-                    ado_version: "version".to_string(),
+        #[test]
+        fn test_update_app_contract() {
+            let contract = ADOContract::default();
+            let mut deps = mock_dependencies();
 
-                    kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
-                    owner: None,
-                },
-            )
-            .unwrap();
+            let info = mock_info("owner", &[]);
+            let deps_mut = deps.as_mut();
+            contract
+                .instantiate(
+                    deps_mut.storage,
+                    mock_env(),
+                    deps_mut.api,
+                    &deps_mut.querier,
+                    info.clone(),
+                    InstantiateMsg {
+                        ado_type: "type".to_string(),
+                        ado_version: "version".to_string(),
+                        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+                        owner: None,
+                    },
+                )
+                .unwrap();
 
-        let address = String::from("address");
+            let address = String::from("address");
+            let msg = AndromedaMsg::UpdateAppContract {
+                address: address.clone(),
+            };
 
-        let msg = AndromedaMsg::UpdateAppContract {
-            address: address.clone(),
-        };
+            let res = contract
+                .execute(ExecuteContext::new(deps.as_mut(), info, mock_env()), msg)
+                .unwrap();
 
-        let res = contract
-            .execute(ExecuteContext::new(deps.as_mut(), info, mock_env()), msg)
-            .unwrap();
+            assert_eq!(
+                Response::new()
+                    .add_attribute("action", "update_app_contract")
+                    .add_attribute("address", address),
+                res
+            );
+        }
+    }
 
-        assert_eq!(
-            Response::new()
-                .add_attribute("action", "update_app_contract")
-                .add_attribute("address", address),
-            res
-        );
+    mod permissions {
+        use super::*;
+        use cosmwasm_schema::cw_serde;
+        use cosmwasm_std::to_json_binary;
+        use rstest::rstest;
+
+        // Old permission structure without 'start'
+        #[cw_serde]
+        enum OldLocalPermission {
+            Whitelisted { expiration: Option<u64> },
+            Blacklisted { expiration: Option<u64> },
+            Limited { expiration: Option<u64>, uses: u64 },
+        }
+
+        #[rstest]
+        #[case(
+            OldLocalPermission::Whitelisted { expiration: None },
+            LocalPermission::Whitelisted { start: None, expiration: None },
+            "whitelisted"
+        )]
+        #[case(
+            OldLocalPermission::Blacklisted { expiration: None },
+            LocalPermission::Blacklisted { start: None, expiration: None },
+            "blacklisted"
+        )]
+        #[case(
+            OldLocalPermission::Limited { expiration: None, uses: 5 },
+            LocalPermission::Limited { start: None, expiration: None, uses: 5 },
+            "limited"
+        )]
+        fn test_permission_formats(
+            #[case] old_permission: OldLocalPermission,
+            #[case] new_permission: LocalPermission,
+            #[case] permission_type: &str,
+        ) {
+            // Serialize old and new permissions to JSON
+            let old_json = String::from_utf8(to_json_binary(&old_permission).unwrap().0).unwrap();
+            let new_json = String::from_utf8(to_json_binary(&new_permission).unwrap().0).unwrap();
+
+            // Assert old format JSON
+            assert!(!old_json.contains("start"));
+            assert!(old_json.contains(permission_type));
+
+            // Assert new format JSON
+            assert!(new_json.contains("start"));
+            assert!(new_json.contains(permission_type));
+        }
     }
 }
