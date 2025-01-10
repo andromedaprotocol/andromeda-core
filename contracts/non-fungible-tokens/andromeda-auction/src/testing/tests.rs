@@ -450,7 +450,7 @@ fn execute_place_bid_whitelist_cw20() {
     });
 
     let invalid_asset = "invalid_asset";
-    let info = mock_info(invalid_asset, &coins(100, "uusd".to_string()));
+    let info = mock_info(invalid_asset, &[]);
     env.block.time = env.block.time.plus_seconds(1);
     let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
     assert_eq!(

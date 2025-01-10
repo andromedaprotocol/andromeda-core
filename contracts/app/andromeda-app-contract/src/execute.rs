@@ -34,11 +34,6 @@ pub fn handle_add_app_component(
         !matches!(component.component_type, ComponentType::CrossChain(..)),
         ContractError::CrossChainComponentsCurrentlyDisabled {}
     );
-    let contract = ADOContract::default();
-    ensure!(
-        contract.is_contract_owner(ctx.deps.storage, sender)?,
-        ContractError::Unauthorized {}
-    );
 
     let idx = add_app_component(ctx.deps.storage, &component)?;
     ensure!(idx < 50, ContractError::TooManyAppComponents {});

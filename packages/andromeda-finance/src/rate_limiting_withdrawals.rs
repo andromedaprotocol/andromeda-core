@@ -49,8 +49,13 @@ pub enum MinimumFrequency {
 #[andr_exec]
 #[cw_serde]
 pub enum ExecuteMsg {
-    Deposit { recipient: Option<String> },
-    Withdraw { amount: Uint128 },
+    Deposit {
+        recipient: Option<String>,
+    },
+    #[attrs(nonpayable)]
+    Withdraw {
+        amount: Uint128,
+    },
 }
 
 #[andr_query]

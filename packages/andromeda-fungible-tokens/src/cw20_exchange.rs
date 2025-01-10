@@ -20,10 +20,12 @@ pub struct InstantiateMsg {
 #[cw_serde]
 pub enum ExecuteMsg {
     /// Cancels an ongoing sale
+    #[attrs(restricted)]
     CancelSale { asset: AssetInfo },
     /// Purchases tokens with native funds
     Purchase { recipient: Option<String> },
     /// Receive for CW20 tokens, used for purchasing and starting sales
+    #[attrs(nonpayable)]
     Receive(Cw20ReceiveMsg),
 }
 

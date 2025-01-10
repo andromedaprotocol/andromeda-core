@@ -11,7 +11,9 @@ pub struct InstantiateMsg {
 #[andr_exec]
 #[cw_serde]
 pub enum ExecuteMsg {
+    #[attrs(restricted, nonpayable)]
     SetRate { action: String, rate: LocalRate },
+    #[attrs(restricted, nonpayable)]
     RemoveRate { action: String },
 }
 

@@ -1,59 +1,22 @@
-use andromeda_data_storage::primitive::{ExecuteMsg, Primitive, PrimitiveRestriction};
+use crate::{
+    query::{get_key_or_default, has_key_permission},
+    state::{DATA, KEY_OWNER, RESTRICTION},
+};
+use andromeda_data_storage::primitive::{Primitive, PrimitiveRestriction};
 use andromeda_std::{
-    ado_base::rates::{Rate, RatesMessage},
     ado_contract::ADOContract,
-    common::{actions::call_action, context::ExecuteContext, rates::get_tax_amount, Funds},
+    common::{context::ExecuteContext, rates::get_tax_amount, Funds},
     error::ContractError,
 };
 use cosmwasm_std::{
     coin, ensure, BankMsg, Coin, CosmosMsg, Deps, MessageInfo, Response, StdError, SubMsg, Uint128,
 };
-use cw_utils::nonpayable;
-
-use crate::{
-    query::{get_key_or_default, has_key_permission},
-    state::{DATA, KEY_OWNER, RESTRICTION},
-};
-
-pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
-    let action = msg.as_ref().to_string();
-    call_action(
-        &mut ctx.deps,
-        &ctx.info,
-        &ctx.env,
-        &ctx.amp_ctx,
-        msg.as_ref(),
-    )?;
-
-    match msg.clone() {
-        ExecuteMsg::UpdateRestriction { restriction } => update_restriction(ctx, restriction),
-        ExecuteMsg::SetValue { key, value } => set_value(ctx, key, value, action),
-        ExecuteMsg::DeleteValue { key } => delete_value(ctx, key),
-        ExecuteMsg::Rates(rates_message) => match rates_message {
-            RatesMessage::SetRate { rate, .. } => match rate {
-                Rate::Local(local_rate) => {
-                    // Percent rates aren't applicable in this case, so we enforce Flat rates
-                    ensure!(local_rate.value.is_flat(), ContractError::InvalidRate {});
-                    ADOContract::default().execute(ctx, msg)
-                }
-                Rate::Contract(_) => ADOContract::default().execute(ctx, msg),
-            },
-            RatesMessage::RemoveRate { .. } => ADOContract::default().execute(ctx, msg),
-        },
-        _ => ADOContract::default().execute(ctx, msg),
-    }
-}
 
 pub fn update_restriction(
     ctx: ExecuteContext,
     restriction: PrimitiveRestriction,
 ) -> Result<Response, ContractError> {
-    nonpayable(&ctx.info)?;
     let sender = ctx.info.sender;
-    ensure!(
-        ADOContract::default().is_owner_or_operator(ctx.deps.storage, sender.as_ref())?,
-        ContractError::Unauthorized {}
-    );
     RESTRICTION.save(ctx.deps.storage, &restriction)?;
     Ok(Response::new()
         .add_attribute("method", "update_restriction")
@@ -108,7 +71,6 @@ pub fn set_value(
 }
 
 pub fn delete_value(ctx: ExecuteContext, key: Option<String>) -> Result<Response, ContractError> {
-    nonpayable(&ctx.info)?;
     let sender = ctx.info.sender;
 
     let key = get_key_or_default(&key);

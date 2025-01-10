@@ -10,6 +10,7 @@ use andromeda_std::common::Funds;
 use andromeda_std::testing::mock_querier::{MOCK_CW20_CONTRACT, MOCK_UANDR};
 use andromeda_std::{amp::recipient::Recipient, common::encode_binary};
 
+use andromeda_testing::economics_msg::generate_economics_message;
 use cosmwasm_std::{attr, Event};
 use cosmwasm_std::{
     coin, coins,
@@ -83,7 +84,9 @@ fn test_andr_receive() {
 
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
     assert_eq!(
-        Response::new().add_attributes(vec![attr("action", "set_rate")]),
+        Response::new()
+            .add_attributes(vec![attr("action", "set_rate")])
+            .add_submessage(generate_economics_message("owner", "SetRate")),
         res
     );
 }

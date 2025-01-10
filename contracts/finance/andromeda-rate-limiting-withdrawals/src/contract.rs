@@ -2,20 +2,18 @@ use crate::state::{ACCOUNTS, ALLOWED_COIN};
 use andromeda_finance::rate_limiting_withdrawals::{
     AccountDetails, CoinAllowance, ExecuteMsg, InstantiateMsg, MinimumFrequency, QueryMsg,
 };
-
-use andromeda_std::ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg};
-use andromeda_std::ado_contract::ADOContract;
-use andromeda_std::common::actions::call_action;
-use andromeda_std::common::context::ExecuteContext;
-use andromeda_std::common::Milliseconds;
-use andromeda_std::{common::encode_binary, error::ContractError};
-
+use andromeda_std::{
+    ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
+    ado_contract::ADOContract,
+    andr_execute_fn,
+    common::{context::ExecuteContext, encode_binary, Milliseconds},
+    error::ContractError,
+};
 use cosmwasm_std::{
     ensure, entry_point, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply,
     Response, StdError, Uint128,
 };
-
-use cw_utils::{nonpayable, one_coin};
+use cw_utils::one_coin;
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-rate-limiting-withdrawals";
@@ -70,41 +68,13 @@ pub fn instantiate(
     Ok(inst_resp)
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn execute(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    msg: ExecuteMsg,
-) -> Result<Response, ContractError> {
-    let ctx = ExecuteContext::new(deps, info, env);
-
+#[andr_execute_fn]
+pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::AMPReceive(pkt) => {
-            ADOContract::default().execute_amp_receive(ctx, pkt, handle_execute)
-        }
-        _ => handle_execute(ctx, msg),
-    }
-}
-
-pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
-    let action_response = call_action(
-        &mut ctx.deps,
-        &ctx.info,
-        &ctx.env,
-        &ctx.amp_ctx,
-        msg.as_ref(),
-    )?;
-
-    let res = match msg {
         ExecuteMsg::Deposit { recipient } => execute_deposit(ctx, recipient),
         ExecuteMsg::Withdraw { amount } => execute_withdraw(ctx, amount),
         _ => ADOContract::default().execute(ctx, msg),
-    }?;
-    Ok(res
-        .add_submessages(action_response.messages)
-        .add_attributes(action_response.attributes)
-        .add_events(action_response.events))
+    }
 }
 
 fn execute_deposit(
@@ -168,8 +138,6 @@ fn execute_withdraw(ctx: ExecuteContext, amount: Uint128) -> Result<Response, Co
     let ExecuteContext {
         deps, info, env, ..
     } = ctx;
-
-    nonpayable(&info)?;
 
     // check if sender has an account
     let account = ACCOUNTS

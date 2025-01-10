@@ -5,7 +5,7 @@ use andromeda_ecosystem::vault::{
 use andromeda_std::ado_base::ownership::ContractOwnerResponse;
 use andromeda_std::ado_contract::ADOContract;
 use andromeda_std::amp::{AndrAddr, Recipient};
-use andromeda_std::common::actions::call_action;
+use andromeda_std::andr_execute_fn;
 use andromeda_std::common::context::ExecuteContext;
 use andromeda_std::common::encode_binary;
 use andromeda_std::{
@@ -19,8 +19,6 @@ use cosmwasm_std::{
     ContractResult, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Order, QueryRequest, Reply,
     ReplyOn, Response, StdError, SubMsg, SystemResult, Uint128, WasmMsg, WasmQuery,
 };
-use cw_utils::nonpayable;
-
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-vault";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -58,31 +56,8 @@ pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, Contract
     Ok(Response::default())
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn execute(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    msg: ExecuteMsg,
-) -> Result<Response, ContractError> {
-    let ctx = ExecuteContext::new(deps, info, env);
-
-    match msg {
-        ExecuteMsg::AMPReceive(pkt) => {
-            ADOContract::default().execute_amp_receive(ctx, pkt, handle_execute)
-        }
-        _ => handle_execute(ctx, msg),
-    }
-}
-
-pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
-    call_action(
-        &mut ctx.deps,
-        &ctx.info,
-        &ctx.env,
-        &ctx.amp_ctx,
-        msg.as_ref(),
-    )?;
+#[andr_execute_fn]
+pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::Deposit { recipient, msg } => execute_deposit(ctx, recipient, msg),
         ExecuteMsg::WithdrawVault {
@@ -216,8 +191,6 @@ pub fn execute_withdraw(
     strategy: Option<StrategyType>,
 ) -> Result<Response, ContractError> {
     let ExecuteContext { info, deps, .. } = ctx;
-    nonpayable(&info)?;
-
     ensure!(
         !withdrawals.is_empty(),
         ContractError::InvalidTokensToWithdraw {
@@ -339,13 +312,7 @@ fn execute_update_strategy(
     strategy: StrategyType,
     address: AndrAddr,
 ) -> Result<Response, ContractError> {
-    let ExecuteContext {
-        deps, env, info, ..
-    } = ctx;
-    ensure!(
-        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_ref())?,
-        ContractError::Unauthorized {}
-    );
+    let ExecuteContext { deps, env, .. } = ctx;
     let strategy_addr = address.get_raw_address(&deps.as_ref())?;
 
     //The vault contract must be an operator for the given contract in order to enable withdrawals
