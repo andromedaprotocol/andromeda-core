@@ -25,25 +25,20 @@ pub fn call_action(
     };
 
     let adodb_addr = ADOContract::default().get_adodb_address(deps.storage, &deps.querier)?;
-    let contract_info = deps
+    let code_id = deps
         .querier
-        .query_wasm_contract_info(env.contract.address.clone())?;
-    let code_id = contract_info.code_id;
-    // If ADO type is not found, return default response
-    let ado_type = AOSQuerier::ado_type_getter(&deps.querier, &adodb_addr, code_id)?;
-    if let Some(ado_type) = ado_type {
-        if AOSQuerier::action_fee_getter(&deps.querier, &adodb_addr, &ado_type, action)?.is_some() {
-            let fee_msg = ADOContract::default().pay_fee(
-                deps.storage,
-                &deps.querier,
-                action.to_owned(),
-                payee,
-            )?;
-            Ok(Response::default().add_submessage(fee_msg))
-        } else {
-            Ok(Response::default())
-        }
-    } else {
-        Ok(Response::default())
+        .query_wasm_contract_info(env.contract.address.clone())?
+        .code_id;
+
+    // Check ADO type and fees in one chain
+    match AOSQuerier::ado_type_getter(&deps.querier, &adodb_addr, code_id)?
+        .and_then(|ado_type| {
+            AOSQuerier::action_fee_getter(&deps.querier, &adodb_addr, &ado_type, action).ok()
+        })
+        .map(|_| {
+            ADOContract::default().pay_fee(deps.storage, &deps.querier, action.to_owned(), payee)
+        }) {
+        Some(fee_msg) => Ok(Response::default().add_submessage(fee_msg?)),
+        None => Ok(Response::default()),
     }
 }
