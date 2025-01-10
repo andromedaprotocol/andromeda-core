@@ -164,6 +164,12 @@ fn execute_send_cw20(
     let splitter = SPLITTER.load(deps.storage)?;
 
     let splitter_recipients = if let Some(config) = config {
+        ensure!(
+            splitter.lock.is_expired(&ctx.env.block),
+            ContractError::ContractLocked {
+                msg: Some("Config isn't allowed if the splitter is locked".to_string())
+            }
+        );
         validate_recipient_list(deps.as_ref(), config.clone())?;
         config
     } else {
