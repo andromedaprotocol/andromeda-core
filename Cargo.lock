@@ -106,7 +106,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-adodb"
-version = "1.1.2"
+version = "1.1.3-b.1"
 dependencies = [
  "andromeda-std",
  "cosmwasm-schema",
@@ -115,6 +115,7 @@ dependencies = [
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus 1.2.0",
+ "rstest",
  "semver",
 ]
 

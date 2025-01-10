@@ -1,6 +1,6 @@
 [package]
 name = "andromeda-adodb"
-version = "1.1.2"
+version = "1.1.3-b.1"
 authors = ["Connor Barr <crnbarr@gmail.com>"]
 edition = "2021"
 rust-version = "1.75.0"
@@ -32,3 +32,6 @@ cw-orch = { workspace = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 cw-multi-test = { workspace = true, optional = true }
+
+[dev-dependencies]
+rstest = { workspace = true }
