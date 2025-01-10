@@ -254,6 +254,12 @@ fn execute_send_cw20(
     let splitter = SPLITTER.load(deps.storage)?;
 
     let splitter_recipients = if let Some(config) = config {
+        ensure!(
+            splitter.lock.is_expired(&ctx.env.block),
+            ContractError::ContractLocked {
+                msg: Some("Config isn't allowed if the splitter is locked".to_string())
+            }
+        );
         validate_recipient_list(deps.as_ref(), config.clone())?;
         config
     } else {
@@ -329,7 +335,7 @@ fn execute_update_recipients(
 
     ensure!(
         splitter.lock.is_expired(&env.block),
-        ContractError::ContractLocked {}
+        ContractError::ContractLocked { msg: None }
     );
     // Max 100 recipients
     ensure!(
@@ -360,7 +366,7 @@ fn execute_update_lock(ctx: ExecuteContext, lock_time: Expiry) -> Result<Respons
     // Can't call this function while the lock isn't expired
     ensure!(
         splitter.lock.is_expired(&env.block),
-        ContractError::ContractLocked {}
+        ContractError::ContractLocked { msg: None }
     );
 
     let new_lock_time_expiration = validate_expiry_duration(&lock_time, &env.block)?;
@@ -395,7 +401,7 @@ fn execute_update_default_recipient(
     // Can't call this function while the lock isn't expired
     ensure!(
         splitter.lock.is_expired(&env.block),
-        ContractError::ContractLocked {}
+        ContractError::ContractLocked { msg: None }
     );
 
     if let Some(ref recipient) = recipient {

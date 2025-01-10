@@ -229,7 +229,7 @@ fn execute_update_thresholds(
     // Can't call this function while the lock isn't expired
     ensure!(
         conditional_splitter.lock_time.is_expired(&env.block),
-        ContractError::ContractLocked {}
+        ContractError::ContractLocked { msg: None }
     );
 
     let updated_conditional_splitter = ConditionalSplitter {
@@ -261,7 +261,7 @@ fn execute_update_lock(ctx: ExecuteContext, lock_time: Expiry) -> Result<Respons
     // Can't call this function while the lock isn't expired
     ensure!(
         conditional_splitter.lock_time.is_expired(&env.block),
-        ContractError::ContractLocked {}
+        ContractError::ContractLocked { msg: None }
     );
 
     let new_lock_time_expiration = lock_time.get_time(&env.block);
