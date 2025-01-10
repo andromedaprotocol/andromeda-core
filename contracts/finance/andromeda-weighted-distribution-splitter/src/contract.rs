@@ -279,7 +279,7 @@ fn execute_send(
         ensure!(
             splitter.lock.is_expired(&ctx.env.block),
             ContractError::ContractLocked {
-                msg: Some("Config isn't allowed if the splitter is locked".to_string())
+                msg: Some("Config isn't allowed while the splitter is locked".to_string())
             }
         );
         // Max 100 recipients

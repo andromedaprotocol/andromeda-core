@@ -167,7 +167,7 @@ fn execute_send_cw20(
         ensure!(
             splitter.lock.is_expired(&ctx.env.block),
             ContractError::ContractLocked {
-                msg: Some("Config isn't allowed if the splitter is locked".to_string())
+                msg: Some("Config isn't allowed while the splitter is locked".to_string())
             }
         );
         validate_recipient_list(deps.as_ref(), config.clone())?;
@@ -303,7 +303,7 @@ fn execute_send(
         ensure!(
             splitter.lock.is_expired(&ctx.env.block),
             ContractError::ContractLocked {
-                msg: Some("Config isn't allowed if the splitter is locked".to_string())
+                msg: Some("Config isn't allowed while the splitter is locked".to_string())
             }
         );
         validate_recipient_list(deps.as_ref(), config.clone())?;
