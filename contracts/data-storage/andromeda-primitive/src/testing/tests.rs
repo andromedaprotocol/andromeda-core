@@ -2,6 +2,7 @@ use crate::contract::{execute, query};
 use andromeda_data_storage::primitive::{
     ExecuteMsg, GetValueResponse, Primitive, PrimitiveRestriction, QueryMsg,
 };
+use andromeda_testing::economics_msg::generate_economics_message;
 use cosmwasm_std::{
     coin, from_json, testing::mock_env, BankMsg, Binary, CosmosMsg, Decimal, Response, SubMsg,
 };
@@ -160,7 +161,8 @@ fn test_set_value_with_tax() {
             ("sender", "creator"),
             ("key", "key"),
         ])
-        .add_attribute("value", format!("{value:?}"));
+        .add_attribute("value", format!("{value:?}"))
+        .add_submessage(generate_economics_message("creator", "SetValue"));
     assert_eq!(expected_response, res);
 
     // Sent less than amount required for tax
@@ -198,7 +200,8 @@ fn test_set_value_with_tax() {
             ("sender", "creator"),
             ("key", "key"),
         ])
-        .add_attribute("value", format!("{value:?}"));
+        .add_attribute("value", format!("{value:?}"))
+        .add_submessage(generate_economics_message("creator", "SetValue"));
     assert_eq!(expected_response, res);
 }
 

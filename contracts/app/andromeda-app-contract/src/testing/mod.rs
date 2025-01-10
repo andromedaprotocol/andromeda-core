@@ -12,6 +12,7 @@ use andromeda_std::testing::mock_querier::{
 
 use andromeda_std::{ado_base::AndromedaMsg, error::ContractError};
 
+use andromeda_testing::economics_msg::generate_economics_message;
 use cosmwasm_std::{
     attr,
     testing::{mock_env, mock_info},
@@ -331,7 +332,8 @@ fn test_claim_ownership_empty() {
     };
 
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
-    assert_eq!(0, res.messages.len());
+    // The message is for the economics contract
+    assert_eq!(1, res.messages.len());
 }
 
 #[test]
@@ -369,7 +371,8 @@ fn test_claim_ownership_all() {
     };
 
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
-    assert_eq!(2, res.messages.len());
+    // The 3rd message is for the economics contract
+    assert_eq!(3, res.messages.len());
 }
 
 #[test]
@@ -407,7 +410,8 @@ fn test_claim_ownership() {
     };
 
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
-    assert_eq!(1, res.messages.len());
+    // The 2nd message is for the economics contract
+    assert_eq!(2, res.messages.len());
 
     let exec_submsg: SubMsg<Empty> = SubMsg {
         id: 200,
@@ -425,7 +429,8 @@ fn test_claim_ownership() {
     };
     let expected = Response::new()
         .add_submessage(exec_submsg)
-        .add_attributes(vec![attr("method", "claim_ownership")]);
+        .add_attributes(vec![attr("method", "claim_ownership")])
+        .add_submessage(generate_economics_message("creator", "ClaimOwnership"));
 
     assert_eq!(expected, res)
 }
@@ -523,7 +528,8 @@ fn test_proxy_message() {
         .add_attributes(vec![
             attr("method", "app_message"),
             attr("recipient", "token"),
-        ]);
+        ])
+        .add_submessage(generate_economics_message("creator", "ProxyMessage"));
 
     assert_eq!(expected, res)
 }
