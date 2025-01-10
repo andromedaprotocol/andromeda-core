@@ -26,7 +26,7 @@ mod validator_staking;
 mod cw20_app;
 
 #[cfg(test)]
-mod set_amount_splitter;
+mod fixed_amount_splitter;
 
 #[cfg(test)]
 mod permissions_orch;
