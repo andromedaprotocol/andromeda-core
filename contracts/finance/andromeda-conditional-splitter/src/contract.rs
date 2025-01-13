@@ -197,8 +197,8 @@ fn execute_send(ctx: ExecuteContext) -> Result<Response, ContractError> {
             amount: remainder_funds,
         })));
     }
-    let kernel_address = ADOContract::default().get_kernel_address(deps.as_ref().storage)?;
     if !pkt.messages.is_empty() {
+        let kernel_address = ADOContract::default().get_kernel_address(deps.as_ref().storage)?;
         let distro_msg = pkt.to_sub_msg(kernel_address, Some(amp_funds), 1)?;
         msgs.push(distro_msg);
     }
