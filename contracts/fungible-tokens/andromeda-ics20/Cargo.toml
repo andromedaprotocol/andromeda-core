@@ -27,7 +27,7 @@ cw20-base = { workspace = true }
 cw-controllers = "=1.1.2"
 schemars = "0.8.21"
 serde = { workspace = true }
-thiserror = "2.0.9"
+thiserror = "2.0.11"
 
 andromeda-std = { workspace = true }
 andromeda-fungible-tokens = { workspace = true }

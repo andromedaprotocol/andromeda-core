@@ -1,19 +1,10 @@
 use andromeda_std::{
     amp::AndrAddr,
     error::ContractError,
-    os::vfs::{validate_path_name, SubDirBound},
+    os::vfs::{validate_path_name, PathInfo, SubDirBound},
 };
 use cosmwasm_std::{ensure, Addr, Api, Storage};
 use cw_storage_plus::{Bound, Index, IndexList, IndexedMap, Map, MultiIndex};
-use serde::{Deserialize, Serialize};
-
-#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
-pub struct PathInfo {
-    pub name: String,
-    pub address: Addr,
-    pub parent_address: Addr,
-    pub symlink: Option<AndrAddr>,
-}
 
 pub struct PathIndices<'a> {
     /// PK: parent_address + component_name
