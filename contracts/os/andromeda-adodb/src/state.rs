@@ -95,7 +95,11 @@ pub fn remove_code_id(
                     if let Some((_, version)) = v.split_once('@') {
                         let current_version =
                             semver::Version::parse(version).unwrap_or(Version::new(0, 0, 0));
-                        if penultimate_version < current_version && current_version < latest_version
+
+                        let prerelease = current_version.pre.parse::<String>().unwrap_or_default();
+                        if prerelease.is_empty()
+                            && penultimate_version < current_version
+                            && current_version < latest_version
                         {
                             penultimate_version = current_version;
                         };
