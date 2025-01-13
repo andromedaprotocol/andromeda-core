@@ -35,6 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - feat: alterations to kernel for IBC [(#726)](https://github.com/andromedaprotocol/andromeda-core/pull/726)
 - Fixed handle_local amp message when a amp message is passed with custom config [(#729)](https://github.com/andromedaprotocol/andromeda-core/pull/729)
 - Fixed wrong return attribute for SubDir Query [(#756)](https://github.com/andromedaprotocol/andromeda-core/pull/756)
+- Fixed Curve ADO to be able to update curve config after reset [(#762)](https://github.com/andromedaprotocol/andromeda-core/pull/762)
 
 ## Release 3
 
