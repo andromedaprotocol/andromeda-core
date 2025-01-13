@@ -1651,122 +1651,138 @@ fn test_execute_send() {
 
     assert_eq!(res, expected_res);
 }
+use rstest::*;
 
-// #[test]
-// fn test_query_splitter() {
-//     let mut deps = mock_dependencies_custom(&[]);
-//     let env = mock_env();
-//     let splitter = Splitter {
-//         recipients: vec![],
-//         lock: Milliseconds::default(),
-//     };
+#[fixture]
+fn locked_splitter() -> (DepsMut<'static>, Splitter) {
+    let deps = Box::leak(Box::new(mock_dependencies_custom(&[])));
+    let lock_time = mock_env().block.time.plus_seconds(86400);
 
-//     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
+    // Call instantiate with the recipients
+    let msg = InstantiateMsg {
+        recipients: vec![
+            AddressWeight {
+                recipient: Recipient::from_string("addr1".to_string()),
+                weight: Uint128::new(40), // 40% weight
+            },
+            AddressWeight {
+                recipient: Recipient::from_string("addr2".to_string()),
+                weight: Uint128::new(60), // 60% weight
+            },
+        ],
+        lock_time: Some(Expiry::AtTime(Milliseconds::from_seconds(
+            lock_time.seconds(),
+        ))),
+        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+        owner: None,
+        default_recipient: None,
+    };
 
-//     let query_msg = QueryMsg::GetSplitterConfig {};
-//     let res = query(deps.as_ref(), env, query_msg).unwrap();
-//     let val: GetSplitterConfigResponse = from_json(&res).unwrap();
+    let info = mock_info("owner", &[]);
+    instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-//     assert_eq!(val.config, splitter);
-// }
+    let splitter = SPLITTER.load(deps.as_ref().storage).unwrap();
+    (deps.as_mut(), splitter)
+}
 
-// #[test]
-// fn test_query_user_weight() {
-//     let mut deps = mock_dependencies_custom(&[]);
-//     let env = mock_env();
-//     let user1 = AddressWeight {
-//         recipient: Recipient::Addr("first".to_string()),
-//         weight: Uint128::new(5),
-//     };
-//     let user2 = AddressWeight {
-//         recipient: Recipient::Addr("second".to_string()),
-//         weight: Uint128::new(10),
-//     };
-//     let splitter = Splitter {
-//         recipients: vec![user1, user2],
-//         lock: Milliseconds::default(),
-//     };
+#[fixture]
+fn unlocked_splitter() -> (DepsMut<'static>, Splitter) {
+    let deps = Box::leak(Box::new(mock_dependencies_custom(&[])));
 
-//     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
+    // Call instantiate with the recipients
+    let msg = InstantiateMsg {
+        recipients: vec![
+            AddressWeight {
+                recipient: Recipient::from_string("addr1".to_string()),
+                weight: Uint128::new(40), // 40% weight
+            },
+            AddressWeight {
+                recipient: Recipient::from_string("addr2".to_string()),
+                weight: Uint128::new(60), // 60% weight
+            },
+        ],
+        lock_time: None,
+        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+        owner: None,
+        default_recipient: None,
+    };
 
-//     let query_msg = QueryMsg::GetUserWeight {
-//         user: Recipient::Addr("second".to_string()),
-//     };
-//     let res = query(deps.as_ref(), env, query_msg).unwrap();
-//     let val: GetUserWeightResponse = from_json(&res).unwrap();
+    let info = mock_info("owner", &[]);
+    instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-//     assert_eq!(val.weight, Uint128::new(10));
-//     assert_eq!(val.total_weight, Uint128::new(15));
-// }
+    let splitter = SPLITTER.load(deps.as_ref().storage).unwrap();
+    (deps.as_mut(), splitter)
+}
 
-// #[test]
-// fn test_execute_send_error() {
-//     // Send more than 5 coins
-//     let mut deps = mock_dependencies_custom(&[]);
-//     let env = mock_env();
+#[rstest]
+fn test_send_with_config_locked(locked_splitter: (DepsMut<'static>, Splitter)) {
+    let (deps, _) = locked_splitter;
 
-//     let sender_funds_amount = 10000u128;
-//     let owner = "creator";
+    let config = vec![AddressWeight {
+        recipient: Recipient::from_string("new_addr".to_string()),
+        weight: Uint128::new(100), // 100% weight
+    }];
 
-//     let recip_address1 = "address1".to_string();
-//     let recip_weight1 = Uint128::new(10); // Weight of 10
+    let msg = ExecuteMsg::Send {
+        config: Some(config),
+    };
 
-//     let recip_address2 = "address2".to_string();
-//     let recip_weight2 = Uint128::new(20); // Weight of 20
+    let info = mock_info("owner", &[Coin::new(10000, "uluna")]);
+    let res = execute(deps, mock_env(), info, msg);
 
-//     let recipient = vec![
-//         AddressWeight {
-//             recipient: Recipient::Addr(recip_address1),
-//             weight: recip_weight1,
-//         },
-//         AddressWeight {
-//             recipient: Recipient::Addr(recip_address2),
-//             weight: recip_weight2,
-//         },
-//     ];
-//     let msg = ExecuteMsg::Send {
-//         reply_gas_exit: None,
-//         packet: None,
-//     };
+    assert_eq!(
+        ContractError::ContractLocked {
+            msg: Some("Config isn't allowed while the splitter is locked".to_string())
+        },
+        res.unwrap_err()
+    );
+}
 
-//     let info = mock_info(
-//         owner,
-//         &vec![
-//             Coin::new(sender_funds_amount, "uluna"),
-//             Coin::new(sender_funds_amount, "uluna"),
-//             Coin::new(sender_funds_amount, "uluna"),
-//             Coin::new(sender_funds_amount, "uluna"),
-//             Coin::new(sender_funds_amount, "uluna"),
-//             Coin::new(sender_funds_amount, "uluna"),
-//         ],
-//     );
-//     let splitter = Splitter {
-//         recipients: recipient.clone(),
-//         lock: Milliseconds::default(),
-//     };
+#[rstest]
+fn test_send_with_config_unlocked(unlocked_splitter: (DepsMut<'static>, Splitter)) {
+    let (deps, _) = unlocked_splitter;
 
-//     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
+    let config = vec![AddressWeight {
+        recipient: Recipient::from_string("new_addr".to_string()),
+        weight: Uint128::new(100), // 100% weight
+    }];
 
-//     let res = execute(deps.as_mut(), env.clone(), info, msg.clone()).unwrap_err();
+    let msg = ExecuteMsg::Send {
+        config: Some(config),
+    };
 
-//     let expected_res = ContractError::ExceedsMaxAllowedCoins {};
+    let info = mock_info("owner", &[Coin::new(10000, "uluna")]);
+    let res = execute(deps, mock_env(), info, msg).unwrap();
 
-//     assert_eq!(res, expected_res);
+    // Verify response contains expected submessages and refund
+    assert_eq!(1, res.messages.len());
+    assert!(res.attributes.contains(&attr("action", "send")));
+}
 
-//     // Send 0 coins
-//     let info = mock_info(owner, &[]);
-//     let splitter = Splitter {
-//         recipients: recipient,
-//         lock: Milliseconds::default(),
-//     };
+#[rstest]
+fn test_send_without_config_locked(locked_splitter: (DepsMut<'static>, Splitter)) {
+    let (deps, _) = locked_splitter;
 
-//     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
+    let msg = ExecuteMsg::Send { config: None };
 
-//     let res = execute(deps.as_mut(), env, info, msg).unwrap_err();
+    let info = mock_info("owner", &[Coin::new(10000, "uluna")]);
+    let res = execute(deps, mock_env(), info, msg).unwrap();
 
-//     let expected_res = ContractError::InvalidFunds {
-//         msg: "ensure! at least one coin to be sent".to_string(),
-//     };
+    // Verify response contains expected submessages
+    assert_eq!(2, res.messages.len());
+    assert!(res.attributes.contains(&attr("action", "send")));
+}
 
-//     assert_eq!(res, expected_res);
-// }
+#[rstest]
+fn test_send_without_config_unlocked(unlocked_splitter: (DepsMut<'static>, Splitter)) {
+    let (deps, _) = unlocked_splitter;
+
+    let msg = ExecuteMsg::Send { config: None };
+
+    let info = mock_info("owner", &[Coin::new(10000, "uluna")]);
+    let res = execute(deps, mock_env(), info, msg).unwrap();
+
+    // Verify response contains expected submessages
+    assert_eq!(2, res.messages.len());
+    assert!(res.attributes.contains(&attr("action", "send")));
+}

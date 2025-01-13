@@ -32,3 +32,4 @@ andromeda-testing = { workspace = true, optional = true }
 
 [dev-dependencies]
 andromeda-app = { workspace = true }
+rstest = { workspace = true }
