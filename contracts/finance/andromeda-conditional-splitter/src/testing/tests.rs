@@ -824,3 +824,179 @@ fn test_update_app_contract_invalid_recipient() {
     let res = execute(deps.as_mut(), mock_env(), info, msg);
     assert!(res.is_err())
 }
+
+#[test]
+fn test_execute_send_with_multiple_thresholds() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let env = mock_env();
+
+    let addr1 = "andr12lm0kfn2g3gn39ulzvqnadwksss5ez8rc7rwq7";
+    let addr2 = "andr10dx5rcshf3fwpyw8jjrh5m25kv038xkqvngnls";
+
+    // Initialize contract with the given configuration
+    let msg = InstantiateMsg {
+        owner: Some(OWNER.to_owned()),
+        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+        thresholds: vec![
+            Threshold::new(
+                Uint128::new(10),
+                vec![
+                    AddressPercent::new(
+                        Recipient::from_string(addr1.to_string()),
+                        Decimal::percent(50),
+                    ),
+                    AddressPercent::new(
+                        Recipient::from_string(addr2.to_string()),
+                        Decimal::percent(50),
+                    ),
+                ],
+            ),
+            Threshold::new(
+                Uint128::new(5),
+                vec![
+                    AddressPercent::new(
+                        Recipient::from_string(addr2.to_string()),
+                        Decimal::percent(30),
+                    ),
+                    AddressPercent::new(
+                        Recipient::from_string(addr1.to_string()),
+                        Decimal::percent(70),
+                    ),
+                ],
+            ),
+        ],
+        lock_time: None,
+    };
+
+    let info = mock_info("owner", &[]);
+    instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    // Test sending 7 tokens (should use the 5 token threshold)
+    let info = mock_info(OWNER, &[Coin::new(7, "uandr")]);
+    let msg = ExecuteMsg::Send {};
+    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+    // For 7 tokens with 70%/30% split:
+    // addr1 should get 4 tokens (7 * 0.7 rounded down)
+    // addr2 should get 2 tokens (7 * 0.3 rounded down)
+    // 1 token should be returned to sender
+
+    let amp_msg_1 = Recipient::from_string(addr1.to_string())
+        .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(4, "uandr")]))
+        .unwrap();
+    let amp_msg_2 = Recipient::from_string(addr2.to_string())
+        .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(2, "uandr")]))
+        .unwrap();
+    let amp_pkt = AMPPkt::new(
+        MOCK_CONTRACT_ADDR.to_string(),
+        MOCK_CONTRACT_ADDR.to_string(),
+        vec![amp_msg_2, amp_msg_1],
+    );
+    let amp_msg = amp_pkt
+        .to_sub_msg(
+            MOCK_KERNEL_CONTRACT,
+            Some(vec![Coin::new(2, "uandr"), Coin::new(4, "uandr")]),
+            1,
+        )
+        .unwrap();
+
+    let expected_res = Response::new()
+        .add_submessages(vec![
+            SubMsg::new(
+                // refunds remainder to sender
+                CosmosMsg::Bank(BankMsg::Send {
+                    to_address: OWNER.to_string(),
+                    amount: vec![Coin::new(1, "uandr")], // Remainder
+                }),
+            ),
+            amp_msg,
+        ])
+        .add_attributes(vec![attr("action", "send"), attr("sender", "creator")])
+        .add_submessage(generate_economics_message(OWNER, "Send"));
+
+    assert_eq!(res, expected_res);
+
+    // Test sending 15 tokens (should use the 10 token threshold)
+    let info = mock_info(OWNER, &[Coin::new(15, "uandr")]);
+    let msg = ExecuteMsg::Send {};
+    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+    // For 15 tokens with 50%/50% split:
+    // addr1 should get 7 tokens (15 * 0.5 rounded down)
+    // addr2 should get 7 tokens (15 * 0.5 rounded down)
+    // 1 token should be returned to sender
+
+    let amp_msg_1 = Recipient::from_string(addr1.to_string())
+        .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(7, "uandr")]))
+        .unwrap();
+    let amp_msg_2 = Recipient::from_string(addr2.to_string())
+        .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(7, "uandr")]))
+        .unwrap();
+    let amp_pkt = AMPPkt::new(
+        MOCK_CONTRACT_ADDR.to_string(),
+        MOCK_CONTRACT_ADDR.to_string(),
+        vec![amp_msg_1, amp_msg_2],
+    );
+    let amp_msg = amp_pkt
+        .to_sub_msg(
+            MOCK_KERNEL_CONTRACT,
+            Some(vec![Coin::new(7, "uandr"), Coin::new(7, "uandr")]),
+            1,
+        )
+        .unwrap();
+
+    let expected_res = Response::new()
+        .add_submessages(vec![
+            SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+                to_address: OWNER.to_string(),
+                amount: vec![Coin::new(1, "uandr")], // Remainder
+            })),
+            amp_msg,
+        ])
+        .add_attributes(vec![attr("action", "send"), attr("sender", "creator")])
+        .add_submessage(generate_economics_message(OWNER, "Send"));
+
+    assert_eq!(res, expected_res);
+
+    // Test sending 6 tokens (should use the 5 token threshold)
+    let info = mock_info(OWNER, &[Coin::new(6, "uandr")]);
+    let msg = ExecuteMsg::Send {};
+    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+    // For 6 tokens with 70%/30% split:
+    // addr1 should get 4 tokens (6 * 0.7 rounded down)
+    // addr2 should get 1 token (6 * 0.3 rounded down)
+    // 1 token should be returned to sender
+
+    let amp_msg_1 = Recipient::from_string(addr1.to_string())
+        .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(4, "uandr")]))
+        .unwrap();
+    let amp_msg_2 = Recipient::from_string(addr2.to_string())
+        .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(1, "uandr")]))
+        .unwrap();
+    let amp_pkt = AMPPkt::new(
+        MOCK_CONTRACT_ADDR.to_string(),
+        MOCK_CONTRACT_ADDR.to_string(),
+        vec![amp_msg_2, amp_msg_1],
+    );
+    let amp_msg = amp_pkt
+        .to_sub_msg(
+            MOCK_KERNEL_CONTRACT,
+            Some(vec![Coin::new(1, "uandr"), Coin::new(4, "uandr")]),
+            1,
+        )
+        .unwrap();
+
+    let expected_res = Response::new()
+        .add_submessages(vec![
+            SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+                to_address: OWNER.to_string(),
+                amount: vec![Coin::new(1, "uandr")], // Remainder
+            })),
+            amp_msg,
+        ])
+        .add_attributes(vec![attr("action", "send"), attr("sender", "creator")])
+        .add_submessage(generate_economics_message(OWNER, "Send"));
+
+    assert_eq!(res, expected_res);
+}
