@@ -21,7 +21,7 @@ pub struct InstantiateMsg {
 pub enum ExecuteMsg {
     /// Claim the number of batches specified starting from the beginning. If not
     /// specified then the max will be claimed.
-    #[attrs(restricted, nonpayable)]
+    #[attrs(restricted)]
     Claim {
         number_of_claims: Option<u64>,
         batch_id: u64,

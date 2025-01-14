@@ -17,12 +17,13 @@ pub struct InstantiateMsg {
 #[cfg_attr(not(target_arch = "wasm32"), derive(cw_orch::ExecuteFns))]
 pub enum ExecuteMsg {
     #[cfg_attr(not(target_arch = "wasm32"), cw_orch(payable))]
-    Stake { validator: Option<Addr> },
+    Stake {
+        validator: Option<Addr>,
+    },
     Unstake {
         validator: Option<Addr>,
         amount: Option<Uint128>,
     },
-    #[attrs(restricted)]
     Redelegate {
         src_validator: Option<Addr>,
         dst_validator: Addr,
@@ -33,13 +34,13 @@ pub enum ExecuteMsg {
         /// Defaults to false
         restake: Option<bool>,
     },
-    #[attrs(restricted)]
     WithdrawFunds {
         denom: Option<String>,
         recipient: Option<AndrAddr>,
     },
-    #[attrs(restricted)]
-    UpdateDefaultValidator { validator: Addr },
+    UpdateDefaultValidator {
+        validator: Addr,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
