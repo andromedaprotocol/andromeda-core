@@ -8,7 +8,7 @@ Explain the details of the change.
 
 Examples:
 
-- Added new caching layer for frequently accessed validator states
+- Added validation checks for all inputs
 
 # Testing
 
