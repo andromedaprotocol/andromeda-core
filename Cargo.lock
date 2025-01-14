@@ -493,13 +493,14 @@ dependencies = [
  "cw20",
  "cw721 0.18.0",
  "cw721-base 0.18.0",
+ "rstest",
  "schemars",
  "serde",
 ]
 
 [[package]]
 name = "andromeda-fixed-amount-splitter"
-version = "1.2.0-b.1"
+version = "1.2.0-b.2"
 dependencies = [
  "andromeda-app",
  "andromeda-finance",
@@ -512,6 +513,7 @@ dependencies = [
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
  "cw20",
+ "rstest",
 ]
 
 [[package]]
@@ -870,7 +872,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-splitter"
-version = "2.3.0-b.2"
+version = "2.3.0-b.3"
 dependencies = [
  "andromeda-app",
  "andromeda-finance",
@@ -883,6 +885,7 @@ dependencies = [
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
  "cw20",
+ "rstest",
 ]
 
 [[package]]
@@ -1059,7 +1062,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-weighted-distribution-splitter"
-version = "2.1.0-b.2"
+version = "2.1.0-b.3"
 dependencies = [
  "andromeda-app",
  "andromeda-finance",
@@ -1070,6 +1073,7 @@ dependencies = [
  "cw-orch",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
+ "rstest",
 ]
 
 [[package]]

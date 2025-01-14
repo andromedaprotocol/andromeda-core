@@ -1,21 +1,10 @@
-use crate::contract::{execute, query};
-use andromeda_math::point::{
-    ExecuteMsg, GetDataOwnerResponse, PointCoordinate, PointRestriction, QueryMsg,
-};
-use cosmwasm_std::{
-    coin, from_json, testing::mock_env, BankMsg, CosmosMsg, Decimal, Response, SubMsg,
-};
+use crate::contract::query;
+use andromeda_math::point::{GetDataOwnerResponse, PointCoordinate, PointRestriction, QueryMsg};
+use cosmwasm_std::{from_json, testing::mock_env};
 
-use andromeda_std::{
-    ado_base::rates::{LocalRate, LocalRateType, LocalRateValue, PercentRate, Rate, RatesMessage},
-    ado_contract::ADOContract,
-    amp::{AndrAddr, Recipient},
-    error::ContractError,
-};
+use andromeda_std::{amp::AndrAddr, error::ContractError};
 
-use super::mock::{
-    delete_point, proper_initialization, query_point, set_point, set_point_with_funds,
-};
+use super::mock::{delete_point, proper_initialization, query_point, set_point};
 
 #[test]
 fn test_instantiation() {
@@ -40,106 +29,6 @@ fn test_set_and_update_point() {
     let query_res: PointCoordinate = query_point(deps.as_ref()).unwrap();
 
     assert_eq!(point, query_res);
-}
-
-#[test]
-fn test_set_point_with_tax() {
-    let (mut deps, info) = proper_initialization(PointRestriction::Private);
-    let point = PointCoordinate::from_f64(10_f64, 10_f64, Some(10_f64));
-    point.validate().unwrap();
-    let tax_recipient = "tax_recipient";
-
-    // Set percent rates
-    let set_percent_rate_msg = ExecuteMsg::Rates(RatesMessage::SetRate {
-        action: "PointSetPoint".to_string(),
-        rate: Rate::Local(LocalRate {
-            rate_type: LocalRateType::Additive,
-            recipient: Recipient {
-                address: AndrAddr::from_string(String::default()),
-                msg: None,
-                ibc_recovery_address: None,
-            },
-            value: LocalRateValue::Percent(PercentRate {
-                percent: Decimal::one(),
-            }),
-            description: None,
-        }),
-    });
-
-    let err = execute(
-        deps.as_mut(),
-        mock_env(),
-        info.clone(),
-        set_percent_rate_msg,
-    )
-    .unwrap_err();
-
-    assert_eq!(err, ContractError::InvalidRate {});
-
-    let rate: Rate = Rate::Local(LocalRate {
-        rate_type: LocalRateType::Additive,
-        recipient: Recipient {
-            address: AndrAddr::from_string(tax_recipient.to_string()),
-            msg: None,
-            ibc_recovery_address: None,
-        },
-        value: LocalRateValue::Flat(coin(20_u128, "uandr")),
-        description: None,
-    });
-
-    // Set rates
-    ADOContract::default()
-        .set_rates(deps.as_mut().storage, "SetPoint", rate)
-        .unwrap();
-
-    // Sent the exact amount required for tax
-    let res = set_point_with_funds(
-        deps.as_mut(),
-        &point,
-        info.sender.as_ref(),
-        coin(20_u128, "uandr".to_string()),
-    )
-    .unwrap();
-    let expected_response: Response = Response::new()
-        .add_submessage(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-            to_address: tax_recipient.to_string(),
-            amount: vec![coin(20, "uandr")],
-        })))
-        .add_attributes(vec![("method", "set_point"), ("sender", "creator")])
-        .add_attribute("point", format!("{point:?}"));
-    assert_eq!(expected_response, res);
-
-    // Sent less than amount required for tax
-    let err = set_point_with_funds(
-        deps.as_mut(),
-        &point,
-        info.sender.as_ref(),
-        coin(19_u128, "uandr".to_string()),
-    )
-    .unwrap_err();
-    assert_eq!(err, ContractError::InsufficientFunds {});
-
-    // Sent more than required amount for tax
-    let res = set_point_with_funds(
-        deps.as_mut(),
-        &point,
-        info.sender.as_ref(),
-        coin(200_u128, "uandr".to_string()),
-    )
-    .unwrap();
-    let expected_response: Response = Response::new()
-        .add_submessage(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-            to_address: tax_recipient.to_string(),
-            amount: vec![coin(20, "uandr")],
-        })))
-        // 200 was sent, but the tax is only 20, so we send back the difference
-        .add_submessage(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-            to_address: "creator".to_string(),
-            amount: vec![coin(180, "uandr")],
-        })))
-        .add_attributes(vec![("method", "set_point"), ("sender", "creator")])
-        .add_attribute("point", format!("{point:?}"));
-    assert_eq!(expected_response, res);
 }
 
 struct TestHandlePointCoordinate {

@@ -1,6 +1,6 @@
 [package]
 name = "andromeda-fixed-amount-splitter"
-version = "1.2.0-b.1"
+version = "1.2.0-b.2"
 edition = "2021"
 rust-version = "1.75.0"
 
@@ -32,3 +32,4 @@ cw-orch = { workspace = true }
 
 [dev-dependencies]
 andromeda-app = { workspace = true }
+rstest = { workspace = true }
