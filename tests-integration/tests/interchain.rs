@@ -1,6 +1,6 @@
 #![cfg(not(target_arch = "wasm32"))]
 use andromeda_counter::CounterContract;
-use andromeda_data_storage::counter::{
+use andromeda_math::counter::{
     CounterRestriction, GetCurrentAmountResponse, InstantiateMsg as CounterInstantiateMsg, State,
 };
 
@@ -9,12 +9,9 @@ use andromeda_std::{
     amp::{
         messages::{AMPMsg, AMPMsgConfig},
         AndrAddr, Recipient,
-    },
-    os::{
-        self,
-        kernel::{AcknowledgementMsg, SendMessageWithFundsResponse},
-    },
-};
+    }, os};
+
+use os;
 use andromeda_testing::{
     interchain::{ensure_packet_success, DEFAULT_SENDER},
     InterchainTestEnv,
@@ -101,7 +98,7 @@ fn test_kernel_ibc_execute_only() {
     ensure_packet_success(packet_lifetime);
 
     let current_count: GetCurrentAmountResponse = counter_osmosis
-        .query(&andromeda_data_storage::counter::QueryMsg::GetCurrentAmount {})
+        .query(&andromeda_math::counter::QueryMsg::GetCurrentAmount {})
         .unwrap();
     assert_eq!(current_count.current_amount, 1);
 }
