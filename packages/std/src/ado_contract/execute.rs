@@ -523,4 +523,129 @@ mod tests {
             assert!(new_json.contains(permission_type));
         }
     }
+    #[cfg(feature = "rates")]
+    mod rates {
+        use super::*;
+
+        use crate::ado_base::rates::{LocalRate, LocalRateType, PercentRate};
+        use cosmwasm_std::Decimal;
+
+        #[test]
+        fn test_rates_migration() {
+            let contract = ADOContract::default();
+            let mut deps = mock_dependencies();
+
+            // Setup initial contract state
+            let info = mock_info("owner", &[]);
+            let deps_mut = deps.as_mut();
+            contract
+                .instantiate(
+                    deps_mut.storage,
+                    mock_env(),
+                    deps_mut.api,
+                    &deps_mut.querier,
+                    info.clone(),
+                    InstantiateMsg {
+                        ado_type: "marketplace".to_string(),
+                        ado_version: "1.0.0".to_string(),
+                        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+                        owner: None,
+                    },
+                )
+                .unwrap();
+
+            // Set up a test rate
+            let rate = LocalRate {
+                rate_type: LocalRateType::Additive,
+                recipient: Recipient::from_string("recipient"),
+                value: crate::ado_base::rates::LocalRateValue::Percent(PercentRate {
+                    percent: Decimal::one(),
+                }),
+                description: None,
+            };
+
+            // Save the rate in storage
+            contract
+                .rates
+                .save(deps.as_mut().storage, "Claim", &Rate::Local(rate))
+                .unwrap();
+
+            // Verify rate is saved
+            let saved_rates = contract.get_all_rates(deps.as_ref()).unwrap();
+            assert_eq!(saved_rates.all_rates.len(), 1);
+
+            // Perform migration
+            contract
+                .migrate(deps.as_mut(), mock_env(), "marketplace", "2.0.0")
+                .unwrap();
+
+            // Verify rates were handled correctly during migration
+            let post_migration_rates = contract.get_all_rates(deps.as_ref()).unwrap();
+            assert_eq!(post_migration_rates.all_rates.len(), 1);
+        }
+    }
+
+    mod permissions_migration {
+        use super::*;
+        use crate::ado_base::permissioning::LocalPermission;
+
+        #[test]
+        fn test_permissions_migration() {
+            let contract = ADOContract::default();
+            let mut deps = mock_dependencies();
+
+            // Setup initial contract state
+            let info = mock_info("owner", &[]);
+            let deps_mut = deps.as_mut();
+            contract
+                .instantiate(
+                    deps_mut.storage,
+                    mock_env(),
+                    deps_mut.api,
+                    &deps_mut.querier,
+                    info.clone(),
+                    InstantiateMsg {
+                        ado_type: "marketplace".to_string(),
+                        ado_version: "1.0.0".to_string(),
+                        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+                        owner: None,
+                    },
+                )
+                .unwrap();
+
+            // Set up a test permission
+            let permission = Permission::Local(LocalPermission::Whitelisted {
+                start: None,
+                expiration: None,
+            });
+
+            // Save the permission in storage
+            let ctx = ExecuteContext::new(deps.as_mut(), info, mock_env());
+            contract
+                .execute_set_permission(
+                    ctx,
+                    vec![AndrAddr::from_string("actor")],
+                    "test_action".to_string(),
+                    permission,
+                )
+                .unwrap();
+
+            // Verify permission is saved
+            let saved_permissions = contract
+                .query_permissions(deps.as_ref(), "actor", None, None)
+                .unwrap();
+            assert_eq!(saved_permissions.len(), 1);
+
+            // Perform migration
+            contract
+                .migrate(deps.as_mut(), mock_env(), "marketplace", "2.0.0")
+                .unwrap();
+
+            // Verify permissions were handled correctly during migration
+            let post_migration_permissions = contract
+                .query_permissions(deps.as_ref(), "actor", None, None)
+                .unwrap();
+            assert_eq!(post_migration_permissions.len(), 1);
+        }
+    }
 }
