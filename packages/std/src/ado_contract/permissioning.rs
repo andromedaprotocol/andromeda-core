@@ -891,6 +891,7 @@ mod tests {
         )))
     }
 
+    #[allow(clippy::too_many_arguments)]
     #[rstest]
     #[case(true, true, false, true)] // Whitelist, at start time, should succeed
     #[case(true, false, false, false)] // Whitelist, before start time, should error

@@ -195,6 +195,9 @@ impl LocalPermission {
             let start_time = start.get_time(&env.block);
             let exp_time = expiration.get_time(&env.block);
 
+            println!("start_time: {:?}", start_time);
+            println!("exp_time: {:?}", exp_time);
+
             // Check if start time is after current time
             if start_time.is_expired(&env.block) {
                 return Err(ContractError::StartTimeInThePast {
@@ -283,5 +286,114 @@ impl fmt::Display for Permission {
             Self::Contract(address_list) => address_list.to_string(),
         };
         write!(f, "{self_as_string}")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::common::Milliseconds;
+    use cosmwasm_std::testing::mock_env;
+    use rstest::rstest;
+
+    #[rstest]
+    #[case::valid_future_times(1000, 2000)] // start in 100s, expire in 200s
+    #[case::same_start_and_end(1000, 1000)] // edge case: start and end at same time
+    #[case::far_future(10000, 20000)] // times far in the future
+    fn test_valid_time_combinations(#[case] start_offset: u64, #[case] exp_offset: u64) {
+        let env = mock_env();
+        let current_time = env.block.time.seconds();
+
+        let permission = LocalPermission::Whitelisted {
+            start: Some(Expiry::AtTime(
+                Milliseconds(start_offset).plus_seconds(current_time),
+            )),
+            expiration: Some(Expiry::AtTime(
+                Milliseconds(exp_offset).plus_seconds(current_time),
+            )),
+        };
+
+        let result = permission.validate_times(&env);
+        println!("result: {:?}", result);
+        assert!(result.is_ok());
+    }
+
+    #[rstest]
+    #[case::start_in_past(
+        0,  // start 100s in past
+        1000,   // expire 100s in future
+        ContractError::StartTimeInThePast { current_time: 1571797419, current_block: 12345 }
+    )]
+    #[case::expiration_in_past(
+        1000,   // start 100s in future
+        0,  // expire 100s in past
+        ContractError::ExpirationInPast {}
+    )]
+    #[case::start_after_end(
+        2000,   // start 200s in future
+        1000,   // expire 100s in future
+        ContractError::StartTimeAfterEndTime {}
+    )]
+    fn test_invalid_time_combinations(
+        #[case] start_offset: u64,
+        #[case] exp_offset: u64,
+        #[case] expected_error: ContractError,
+    ) {
+        let env = mock_env();
+        let current_time = env.block.time.seconds();
+
+        let permission = LocalPermission::Whitelisted {
+            start: Some(Expiry::AtTime(
+                Milliseconds(start_offset).plus_seconds(current_time),
+            )),
+            expiration: Some(Expiry::AtTime(
+                Milliseconds(exp_offset).plus_seconds(current_time),
+            )),
+        };
+
+        let result = permission.validate_times(&env);
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err().to_string(), expected_error.to_string());
+    }
+
+    #[rstest]
+    fn test_no_times_specified() {
+        let env = mock_env();
+
+        let permission = LocalPermission::Whitelisted {
+            start: None,
+            expiration: None,
+        };
+
+        let result = permission.validate_times(&env);
+        assert!(result.is_ok());
+    }
+
+    #[rstest]
+    fn test_only_start_time() {
+        let env = mock_env();
+        let current_time = env.block.time.seconds();
+
+        let permission = LocalPermission::Whitelisted {
+            start: Some(Expiry::AtTime(Milliseconds(current_time + 100))),
+            expiration: None,
+        };
+
+        let result = permission.validate_times(&env);
+        assert!(result.is_ok());
+    }
+
+    #[rstest]
+    fn test_only_expiration_time() {
+        let env = mock_env();
+        let current_time = env.block.time.seconds();
+
+        let permission = LocalPermission::Whitelisted {
+            start: None,
+            expiration: Some(Expiry::AtTime(Milliseconds(current_time + 100))),
+        };
+
+        let result = permission.validate_times(&env);
+        assert!(result.is_ok());
     }
 }
