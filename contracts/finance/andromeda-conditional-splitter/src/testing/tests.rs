@@ -572,6 +572,81 @@ fn test_execute_send_threshold_not_found() {
         }
     );
 }
+#[test]
+fn test_execute_send_ado_recipient() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let env = mock_env();
+    let _res: Response = init(deps.as_mut());
+
+    let sender_funds_amount = 10000u128;
+    let info = mock_info(OWNER, &[Coin::new(sender_funds_amount, "uluna")]);
+
+    let recip_address1 = "address1".to_string();
+    let recip_address2 = "address2".to_string();
+
+    let recip1 = Recipient::from_string(recip_address1);
+    let recip2 = Recipient::from_string(recip_address2);
+
+    let msg = ExecuteMsg::Send {};
+
+    let amp_msg_1 = recip1
+        .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(1000, "uluna")]))
+        .unwrap();
+    let amp_msg_2 = recip2
+        .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(2000, "uluna")]))
+        .unwrap();
+    let amp_pkt = AMPPkt::new(
+        MOCK_CONTRACT_ADDR.to_string(),
+        MOCK_CONTRACT_ADDR.to_string(),
+        vec![amp_msg_1, amp_msg_2],
+    );
+    let amp_msg = amp_pkt
+        .to_sub_msg(
+            MOCK_KERNEL_CONTRACT,
+            Some(vec![Coin::new(1000, "uluna"), Coin::new(2000, "uluna")]),
+            1,
+        )
+        .unwrap();
+
+    let splitter = ConditionalSplitter {
+        thresholds: vec![Threshold::new(
+            Uint128::zero(),
+            vec![
+                AddressPercent::new(
+                    recip1.clone(), // 10%
+                    Decimal::from_ratio(Uint128::one(), Uint128::new(10)),
+                ),
+                AddressPercent::new(
+                    recip2.clone(), // 20%
+                    Decimal::from_ratio(Uint128::one(), Uint128::new(5)),
+                ),
+            ],
+        )],
+        lock_time: Milliseconds::default(),
+    };
+
+    CONDITIONAL_SPLITTER
+        .save(deps.as_mut().storage, &splitter)
+        .unwrap();
+
+    let res = execute(deps.as_mut(), env, info.clone(), msg).unwrap();
+
+    let expected_res = Response::new()
+        .add_submessages(vec![
+            SubMsg::new(
+                // refunds remainder to sender
+                CosmosMsg::Bank(BankMsg::Send {
+                    to_address: info.sender.to_string(),
+                    amount: vec![Coin::new(7000, "uluna")], // 10000 * 0.7   remainder
+                }),
+            ),
+            amp_msg,
+        ])
+        .add_attribute("action", "send")
+        .add_attribute("sender", "creator");
+
+    assert_eq!(res, expected_res);
+}
 
 #[test]
 fn test_handle_packet_exit_with_error_true() {
