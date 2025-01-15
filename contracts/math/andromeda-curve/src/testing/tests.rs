@@ -39,6 +39,29 @@ fn test_reset() {
 
     let err_res = query_curve_config(deps.as_ref()).unwrap_err();
     assert_eq!(err_res, ContractError::Std(StdError::NotFound { kind: "type: andromeda_math::curve::CurveConfig; key: [63, 75, 72, 76, 65, 5F, 63, 6F, 6E, 66, 69, 67]".to_string() }));
+
+    update_curve_config(
+        deps.as_mut(),
+        CurveConfig::ExpConfig {
+            curve_type: CurveType::Growth,
+            base_value: 4,
+            multiple_variable_value: None,
+            constant_value: Some(2),
+        },
+        "user1",
+    )
+    .unwrap();
+
+    let res = query_curve_config(deps.as_ref()).unwrap().curve_config;
+    assert_eq!(
+        res,
+        CurveConfig::ExpConfig {
+            curve_type: CurveType::Growth,
+            base_value: 4,
+            multiple_variable_value: None,
+            constant_value: Some(2),
+        }
+    );
 }
 
 #[test]
