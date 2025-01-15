@@ -4,8 +4,8 @@ use andromeda_std::{
     os::{
         aos_querier::AOSQuerier,
         kernel::{
-            ChainNameResponse, ChannelInfoResponse, EnvResponse, Ics20PacketInfo,
-            PacketInfoAndSequence, PendingPacketResponse, VerifyAddressResponse,
+            ChainNameResponse, ChannelInfoResponse, EnvResponse, PacketInfoAndSequence,
+            PendingPacketResponse, VerifyAddressResponse,
         },
     },
 };

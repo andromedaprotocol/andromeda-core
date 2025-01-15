@@ -175,7 +175,7 @@ impl ADOContract<'_> {
                         let local_permission = permission
                             .permission
                             .clone()
-                            .get_permission(deps.as_ref(), &actor.as_str())?;
+                            .get_permission(deps.as_ref(), actor.as_str())?;
 
                         // Check if using old permission structure (without 'start' variant)
                         let json_str = String::from_utf8(to_json_binary(&local_permission)?.0)?;
