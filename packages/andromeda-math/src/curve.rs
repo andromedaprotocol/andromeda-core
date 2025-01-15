@@ -60,7 +60,7 @@ pub enum QueryMsg {
     #[returns(GetCurveConfigResponse)]
     GetCurveConfig {},
     #[returns(GetPlotYFromXResponse)]
-    GetPlotYFromX { x_value: f64 },
+    GetPlotYFromX { x_value: u64 },
 }
 
 #[cw_serde]
