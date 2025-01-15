@@ -44,13 +44,7 @@ pub fn store_code_id(
         let should_update = current_ado_version
             .map(|(ver, _)| {
                 let current_version = semver::Version::parse(&ver).unwrap_or(Version::new(0, 0, 0));
-                // Check each component separately to ensure proper semantic versioning rules
-                version.major > current_version.major
-                    || (version.major == current_version.major
-                        && version.minor > current_version.minor)
-                    || (version.major == current_version.major
-                        && version.minor == current_version.minor
-                        && version.patch > current_version.patch)
+                version > current_version
             })
             .unwrap_or(true); // If there's no current version, we should update
 
