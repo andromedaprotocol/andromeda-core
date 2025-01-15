@@ -14,7 +14,12 @@ mod ibc_registry;
 mod kernel;
 
 #[cfg(test)]
+#[path = "./tests-ibc/interchain.rs"]
 mod interchain;
+
+#[cfg(test)]
+#[path = "./tests-ibc/fixed_amount_splitter_ibc.rs"]
+mod fixed_amount_splitter_ibc;
 
 #[cfg(test)]
 mod cw20_staking;
