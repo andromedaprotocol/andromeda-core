@@ -17,7 +17,7 @@ use andromeda_splitter::mock::{
 };
 use andromeda_std::{
     amp::{AndrAddr, Recipient},
-    common::{denom::Asset, encode_binary, Milliseconds},
+    common::{denom::Asset, encode_binary, expiration::Expiry, Milliseconds},
 };
 use andromeda_testing::{
     mock::{mock_app, MockApp},
@@ -92,8 +92,13 @@ fn setup(
             percent: Decimal::from_str("0.8").unwrap(),
         },
     ];
-    let splitter_init_msg =
-        mock_splitter_instantiate_msg(splitter_recipients, andr.kernel.addr().clone(), None, None);
+    let splitter_init_msg = mock_splitter_instantiate_msg(
+        splitter_recipients,
+        andr.kernel.addr().clone(),
+        None,
+        None,
+        None,
+    );
     let splitter_component = AppComponent::new(
         "splitter".to_string(),
         "splitter".to_string(),
@@ -265,7 +270,7 @@ fn test_successful_crowdfund_app_native(setup: TestCase) {
         owner.clone(),
         &mut router,
         start_time,
-        end_time,
+        Expiry::AtTime(end_time),
         Some(presale),
     );
     let summary = crowdfund.query_campaign_summary(&mut router);
@@ -357,7 +362,7 @@ fn test_crowdfund_app_native_discard(
         owner.clone(),
         &mut router,
         start_time,
-        end_time,
+        Expiry::AtTime(end_time),
         Some(presale),
     );
     let summary = crowdfund.query_campaign_summary(&mut router);
@@ -403,19 +408,12 @@ fn test_crowdfund_app_native_discard(
         buyer_one_original_balance - Uint128::new(10 * 100 + 200 * 10)
     );
 
-    let _ = crowdfund.execute_end_campaign(owner.clone(), &mut router);
-
-    let summary = crowdfund.query_campaign_summary(&mut router);
-
-    // Campaign could not be ended due to invalid withdrawal recipient msg
-    assert_eq!(summary.current_stage, CampaignStage::ONGOING.to_string());
-
     // Discard campaign
     let _ = crowdfund.execute_discard_campaign(owner.clone(), &mut router);
     let summary = crowdfund.query_campaign_summary(&mut router);
-    assert_eq!(summary.current_stage, CampaignStage::FAILED.to_string());
+    assert_eq!(summary.current_stage, CampaignStage::DISCARDED.to_string());
 
-    // Refund
+    // Verify refunds after discard
     let buyer_one_original_balance = router
         .wrap()
         .query_balance(buyer_one.clone(), "uandr")
@@ -460,7 +458,7 @@ fn test_crowdfund_app_native_with_ado_recipient(
         owner.clone(),
         &mut router,
         start_time,
-        end_time,
+        Expiry::AtTime(end_time),
         Some(presale),
     );
     let summary = crowdfund.query_campaign_summary(&mut router);
@@ -489,12 +487,38 @@ fn test_crowdfund_app_native_with_ado_recipient(
         .query_balance(buyer_one.clone(), "uandr")
         .unwrap()
         .amount;
+
+    let tiers_pre_sale = crowdfund.query_tiers(&mut router, None, None, None);
     let _ = crowdfund.execute_purchase(
         buyer_one.clone(),
         &mut router,
-        orders,
+        orders.clone(),
         vec![coin(5000, "uandr")],
     );
+    let tiers_post_sale = crowdfund.query_tiers(&mut router, None, None, None);
+
+    // Verify each tier's amount_sold increased by the correct amount
+    for order in orders {
+        let pre_tier = tiers_pre_sale
+            .tiers
+            .iter()
+            .find(|t| t.tier.level == order.level)
+            .unwrap();
+        let post_tier = tiers_post_sale
+            .tiers
+            .iter()
+            .find(|t| t.tier.level == order.level)
+            .unwrap();
+
+        assert_eq!(
+            post_tier.sold_amount,
+            pre_tier.sold_amount + order.amount,
+            "Tier {} amount_sold should increase by {}",
+            order.level,
+            order.amount
+        );
+    }
+
     let buyer_one_balance = router
         .wrap()
         .query_balance(buyer_one.clone(), "uandr")
@@ -548,7 +572,7 @@ fn test_failed_crowdfund_app_native(setup: TestCase) {
         owner.clone(),
         &mut router,
         start_time,
-        end_time,
+        Expiry::AtTime(end_time),
         Some(presale),
     );
     let summary = crowdfund.query_campaign_summary(&mut router);
@@ -642,7 +666,7 @@ fn test_successful_crowdfund_app_cw20(#[with(false)] setup: TestCase) {
         owner.clone(),
         &mut router,
         start_time,
-        end_time,
+        Expiry::AtTime(end_time),
         Some(presale),
     );
     let summary = crowdfund.query_campaign_summary(&mut router);
@@ -726,7 +750,7 @@ fn test_failed_crowdfund_app_cw20(#[with(false)] setup: TestCase) {
         owner.clone(),
         &mut router,
         start_time,
-        end_time,
+        Expiry::AtTime(end_time),
         Some(presale),
     );
     let summary = crowdfund.query_campaign_summary(&mut router);
@@ -814,6 +838,6 @@ fn mock_recipient_with_invalid_msg(addr: &str) -> Recipient {
 fn mock_recipient_with_valid_msg(addr: &str) -> Recipient {
     Recipient::new(
         addr,
-        Some(to_json_binary(&mock_splitter_send_msg()).unwrap()),
+        Some(to_json_binary(&mock_splitter_send_msg(None)).unwrap()),
     )
 }

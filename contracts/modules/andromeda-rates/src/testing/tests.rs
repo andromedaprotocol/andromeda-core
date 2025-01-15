@@ -27,12 +27,12 @@ fn test_instantiate_query() {
     let action = "deposit".to_string();
     let rate = LocalRate {
         rate_type: LocalRateType::Additive,
-        recipients: vec![Recipient {
+        recipient: Recipient {
             address: AndrAddr::from_string("owner".to_string()),
             msg: None,
             ibc_recovery_address: None,
-        }],
-        value: LocalRateValue::Flat(coin(100_u128, "uandr")),
+        },
+        value: LocalRateValue::Flat(coin(100_u128, MOCK_UANDR)),
         description: None,
     };
     let msg = InstantiateMsg {
@@ -63,11 +63,11 @@ fn test_andr_receive() {
     let action: String = "deposit".to_string();
     let rate = LocalRate {
         rate_type: LocalRateType::Additive,
-        recipients: vec![Recipient {
+        recipient: Recipient {
             address: AndrAddr::from_string("owner".to_string()),
             msg: None,
             ibc_recovery_address: None,
-        }],
+        },
         value: LocalRateValue::Flat(coin(100_u128, MOCK_UANDR)),
         description: None,
     };
@@ -97,11 +97,11 @@ fn test_query_deducted_funds_native() {
     let payload = encode_binary(&action).unwrap();
     let rate = LocalRate {
         rate_type: LocalRateType::Additive,
-        recipients: vec![Recipient {
+        recipient: Recipient {
             address: AndrAddr::from_string("recipient1".to_string()),
             msg: None,
             ibc_recovery_address: None,
-        }],
+        },
         value: LocalRateValue::Flat(coin(20_u128, MOCK_UANDR)),
         description: None,
     };
@@ -153,11 +153,11 @@ fn test_query_deducted_funds_cw20() {
     let payload = encode_binary(&action).unwrap();
     let rate = LocalRate {
         rate_type: LocalRateType::Additive,
-        recipients: vec![Recipient {
+        recipient: Recipient {
             address: AndrAddr::from_string("recipient1".to_string()),
             msg: None,
             ibc_recovery_address: None,
-        }],
+        },
         value: LocalRateValue::Flat(coin(20_u128, MOCK_CW20_CONTRACT)),
         description: None,
     };

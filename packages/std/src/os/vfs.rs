@@ -149,6 +149,7 @@ impl PathDetails {
 }
 
 #[cw_serde]
+#[cfg_attr(not(target_arch = "wasm32"), derive(cw_orch::ExecuteFns))]
 pub enum ExecuteMsg {
     AddPath {
         #[schemars(regex = "COMPONENT_NAME_REGEX")]
@@ -198,11 +199,19 @@ impl From<SubDirBound> for (Addr, String) {
 }
 
 #[cw_serde]
+pub struct PathInfo {
+    pub name: String,
+    pub address: Addr,
+    pub parent_address: Addr,
+    pub symlink: Option<AndrAddr>,
+}
+
+#[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
     #[returns(Addr)]
     ResolvePath { path: AndrAddr },
-    #[returns(Vec<PathDetails>)]
+    #[returns(Vec<PathInfo>)]
     SubDir {
         path: AndrAddr,
         min: Option<SubDirBound>,

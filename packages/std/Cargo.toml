@@ -1,6 +1,6 @@
 [package]
 name = "andromeda-std"
-version = "1.2.4"
+version = "1.5.0-b.3"
 edition = "2021"
 rust-version = "1.75.0"
 description = "The standard library for creating an Andromeda Digital Object"
@@ -10,6 +10,8 @@ license = "MIT"
 primitive = []
 instantiate = []
 rates = ["andromeda-macros/rates"]
+deploy = []
+distribution = ["prost", "osmosis-std-derive"]
 
 [lib]
 crate-type = ["cdylib", "rlib"]
@@ -19,7 +21,7 @@ cosmwasm-std = { workspace = true, features = ["ibc3", "cosmwasm_1_2"] }
 cosmwasm-schema = { workspace = true }
 cw-storage-plus = { workspace = true }
 schemars = "0.8.10"
-serde = { version = "1.0.127", default-features = false, features = ["derive"] }
+serde = { workspace = true }
 semver = { workspace = true }
 cw20 = { version = "1.0.1" }
 cw20-base = { workspace = true, features = ["library"] }
@@ -27,16 +29,23 @@ cw721-base = { workspace = true }
 cw-utils = { workspace = true }
 cw2 = { workspace = true }
 cw-asset = { version = "3.0.0" }
-thiserror = { version = "1.0.21" }
+thiserror = { version = "2.0.11" }
 lazy_static = "1"
 hex = "0.4"
 regex = { version = "1.9.1", default-features = false }
 andromeda-macros = { workspace = true }
 strum_macros = { workspace = true }
 cw721 = { workspace = true }
-serde-json-wasm = "0.5.0"
+serde-json-wasm = "1.0.1"
 enum-repr = { workspace = true }
 sha2 = "0.10.8"
+osmosis-std-derive = { version = "0.15.3", optional = true }
+prost = { version = "0.11.2", default-features = false, features = [
+    "prost-derive",
+], optional = true }
 
 [dev-dependencies]
-cw-multi-test = { version = "1.0.0" }
+cw-multi-test = { workspace = true }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+cw-orch = { workspace = true }

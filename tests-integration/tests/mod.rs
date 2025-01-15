@@ -27,3 +27,9 @@ mod validator_staking;
 
 #[cfg(test)]
 mod cw20_app;
+
+#[cfg(test)]
+mod fixed_amount_splitter;
+
+#[cfg(test)]
+mod shunting;

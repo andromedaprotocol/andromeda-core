@@ -11,6 +11,7 @@ pub mod version;
 
 pub mod withdraw;
 use crate::amp::{messages::AMPPkt, AndrAddr};
+use crate::common::OrderBy;
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Addr;
 
@@ -74,6 +75,13 @@ pub enum AndromedaQuery {
     },
     #[returns(Vec<self::permissioning::PermissionedActionsResponse>)]
     PermissionedActions {},
+    #[returns(Vec<self::permissioning::PermissionedActorsResponse>)]
+    PermissionedActors {
+        action: String,
+        limit: Option<u32>,
+        start_after: Option<String>,
+        order_by: Option<OrderBy>,
+    },
 
     #[cfg(feature = "rates")]
     #[returns(Option<self::rates::Rate>)]

@@ -6,7 +6,7 @@ use andromeda_std::{
     common::{actions::call_action, context::ExecuteContext, encode_binary, Funds},
     error::ContractError,
 };
-use cosmwasm_std::entry_point;
+use cosmwasm_std::{entry_point, Reply, StdError};
 use cosmwasm_std::{
     from_json, to_json_binary, Addr, Api, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
     Response, StdResult, Storage, SubMsg, Uint128, WasmMsg,
@@ -338,7 +338,6 @@ fn handle_send(
                     msg,
                 }
             };
-
             let cw20_resp = execute_cw20(deps, env, info, cw20_msg)?;
             Ok(cw20_resp)
         }
@@ -400,4 +399,15 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
         Ok(msg) => ADOContract::default().query(deps, env, msg),
         _ => Ok(cw20_query(deps, env, msg.into())?),
     }
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
+    if msg.result.is_err() {
+        return Err(ContractError::Std(StdError::generic_err(
+            msg.result.unwrap_err(),
+        )));
+    }
+
+    Ok(Response::default())
 }

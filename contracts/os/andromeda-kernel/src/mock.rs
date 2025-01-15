@@ -23,7 +23,7 @@ pub fn mock_kernel_instantiate_message(
 ) -> InstantiateMsg {
     InstantiateMsg {
         owner,
-        chain_name: chain_name.into(),
+        chain_name: "andromeda-local".to_string(),
     }
 }
 

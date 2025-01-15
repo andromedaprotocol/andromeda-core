@@ -12,7 +12,7 @@ const POTENTIAL_OWNER: Item<Addr> = Item::new("andr_potential_owner");
 const POTENTIAL_OWNER_EXPIRATION: Item<MillisecondsExpiration> =
     Item::new("andr_potential_owner_expiration");
 
-impl<'a> ADOContract<'a> {
+impl ADOContract<'_> {
     pub fn execute_ownership(
         &self,
         deps: DepsMut,

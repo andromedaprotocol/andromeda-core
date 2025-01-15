@@ -29,8 +29,10 @@ impl DenomInfo {
 
         // Hash the concatenated string using SHA-256
         let hash = Sha256::digest(input.as_bytes());
+        let hash_str = format!("{:X}", hash);
         // Return the result in the format "ibc/<SHA-256 hash in hex>"
-        format!("ibc/{:X}", hash).to_lowercase()
+        // Denom hash must be uppercase
+        format!("ibc/{:}", hash_str.to_uppercase())
     }
 }
 #[cw_serde]
@@ -41,6 +43,7 @@ pub struct IBCDenomInfo {
 
 #[cw_serde]
 #[derive(AsRefStr)]
+#[cfg_attr(not(target_arch = "wasm32"), derive(cw_orch::ExecuteFns))]
 pub enum ExecuteMsg {
     /// Receives an AMP Packet for relaying
     #[serde(rename = "amp_receive")]

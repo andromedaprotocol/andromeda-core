@@ -1,13 +1,12 @@
-use crate::ado_base::ownership::OwnershipMessage;
-use crate::amp::messages::AMPMsg;
-use crate::amp::messages::AMPPkt;
-use crate::amp::AndrAddr;
-use crate::error::ContractError;
+use crate::{
+    ado_base::ownership::OwnershipMessage,
+    amp::{
+        messages::{AMPMsg, AMPPkt},
+        AndrAddr,
+    },
+};
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::Addr;
-use cosmwasm_std::Binary;
-use cosmwasm_std::Coin;
-use cosmwasm_std::IbcPacketAckMsg;
+use cosmwasm_std::{Addr, Binary, Coin};
 
 #[cw_serde]
 pub struct ChannelInfo {
@@ -35,6 +34,7 @@ pub struct InstantiateMsg {
 }
 
 #[cw_serde]
+#[cfg_attr(not(target_arch = "wasm32"), derive(cw_orch::ExecuteFns))]
 pub enum ExecuteMsg {
     /// Receives an AMP Packet for relaying
     #[serde(rename = "amp_receive")]
@@ -44,8 +44,9 @@ pub enum ExecuteMsg {
         message: AMPMsg,
     },
     TriggerRelay {
-        packet_sequence: String,
-        packet_ack_msg: IbcPacketAckMsg,
+        packet_sequence: u64,
+        channel_id: String,
+        packet_ack: Binary,
     },
     /// Upserts a key address to the kernel, restricted to the owner of the kernel
     UpsertKeyAddress {
@@ -71,6 +72,18 @@ pub enum ExecuteMsg {
     /// Update Current Chain
     UpdateChainName {
         chain_name: String,
+    },
+    /// Sets an environment variable with the given name and value.
+    /// The variable name must be uppercase and can only contain letters, numbers, and underscores.
+    /// The value must be a valid UTF-8 string.
+    SetEnv {
+        variable: String,
+        value: String,
+    },
+    /// Removes an environment variable with the given name.
+    /// Returns success even if the variable doesn't exist.
+    UnsetEnv {
+        variable: String,
     },
     // Only accessible to key contracts
     Internal(InternalMsg),
@@ -102,6 +115,23 @@ pub struct ChainNameResponse {
 }
 
 #[cw_serde]
+pub struct PendingPacketResponse {
+    pub packets: Vec<PacketInfoAndSequence>,
+}
+
+#[cw_serde]
+pub struct PacketInfoAndSequence {
+    pub packet_info: Ics20PacketInfo,
+    pub sequence: u64,
+}
+
+#[cw_serde]
+pub struct EnvResponse {
+    pub value: Option<String>,
+}
+
+#[cw_serde]
+#[cfg_attr(not(target_arch = "wasm32"), derive(cw_orch::QueryFns))]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
     #[returns(cosmwasm_std::Addr)]
@@ -110,6 +140,8 @@ pub enum QueryMsg {
     VerifyAddress { address: String },
     #[returns(Option<ChannelInfoResponse>)]
     ChannelInfo { chain: String },
+    #[returns(Option<String>)]
+    ChainNameByChannel { channel: String },
     #[returns(Vec<::cosmwasm_std::Coin>)]
     Recoveries { addr: Addr },
     #[returns(ChainNameResponse)]
@@ -118,9 +150,14 @@ pub enum QueryMsg {
     #[returns(crate::ado_base::version::VersionResponse)]
     Version {},
     #[returns(crate::ado_base::ado_type::TypeResponse)]
-    Type {},
+    #[serde(rename = "type")]
+    AdoType {},
     #[returns(crate::ado_base::ownership::ContractOwnerResponse)]
     Owner {},
+    #[returns(PendingPacketResponse)]
+    PendingPackets { channel_id: Option<String> },
+    #[returns(EnvResponse)]
+    GetEnv { variable: String },
 }
 
 #[cw_serde]
@@ -131,8 +168,7 @@ pub struct VerifyAddressResponse {
 #[cw_serde]
 pub enum IbcExecuteMsg {
     SendMessage {
-        recipient: AndrAddr,
-        message: Binary,
+        amp_packet: AMPPkt,
     },
     SendMessageWithFunds {
         recipient: AndrAddr,
@@ -167,31 +203,4 @@ pub struct RefundData {
     pub original_sender: String,
     pub funds: Coin,
     pub channel: String,
-}
-
-#[cw_serde]
-pub struct SendMessageWithFundsResponse {}
-
-#[cw_serde]
-pub enum AcknowledgementMsg<S> {
-    Ok(S),
-    Error(String),
-}
-
-impl<S> AcknowledgementMsg<S> {
-    pub fn unwrap(self) -> Result<S, ContractError> {
-        match self {
-            AcknowledgementMsg::Ok(data) => Ok(data),
-            AcknowledgementMsg::Error(err) => Err(ContractError::CustomError { msg: err }),
-        }
-    }
-
-    pub fn unwrap_err(self) -> Result<String, ContractError> {
-        match self {
-            AcknowledgementMsg::Ok(_) => Err(ContractError::CustomError {
-                msg: "Not an error".to_string(),
-            }),
-            AcknowledgementMsg::Error(err) => Ok(err),
-        }
-    }
 }

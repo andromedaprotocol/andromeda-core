@@ -8,20 +8,20 @@ use andromeda_non_fungible_tokens::marketplace::{
     SaleStateResponse, Status,
 };
 use andromeda_std::{
-    ado_base::{
-        permissioning::{LocalPermission, Permission},
-        InstantiateMsg as BaseInstantiateMsg, MigrateMsg,
-    },
+    ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     ado_contract::ADOContract,
     amp::Recipient,
     common::{
         actions::call_action,
         context::ExecuteContext,
-        denom::{Asset, SEND_CW20_ACTION, SEND_NFT_ACTION},
+        denom::{
+            authorize_addresses, execute_authorize_contract, execute_deauthorize_contract, Asset,
+            AuthorizedAddressesResponse, PermissionAction, SEND_CW20_ACTION, SEND_NFT_ACTION,
+        },
         encode_binary,
         expiration::{expiration_from_milliseconds, get_and_validate_start_time, Expiry},
         rates::{get_tax_amount, get_tax_amount_cw20},
-        Funds, Milliseconds, MillisecondsDuration,
+        Funds, Milliseconds, MillisecondsDuration, OrderBy,
     },
     error::ContractError,
 };
@@ -33,7 +33,8 @@ use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, Cw721ReceiveMsg, OwnerOfResponse};
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     attr, coin, ensure, from_json, Addr, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
-    QuerierWrapper, QueryRequest, Response, Storage, SubMsg, Uint128, WasmMsg, WasmQuery,
+    QuerierWrapper, QueryRequest, Reply, Response, StdError, Storage, SubMsg, Uint128, WasmMsg,
+    WasmQuery,
 };
 
 use cw_utils::{nonpayable, Expiration};
@@ -43,7 +44,7 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[entry_point]
 pub fn instantiate(
-    deps: DepsMut,
+    mut deps: DepsMut,
     env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
@@ -64,30 +65,11 @@ pub fn instantiate(
     )?;
 
     if let Some(authorized_token_addresses) = msg.authorized_token_addresses {
-        if !authorized_token_addresses.is_empty() {
-            ADOContract::default().permission_action(SEND_NFT_ACTION, deps.storage)?;
-        }
-
-        for token_address in authorized_token_addresses {
-            let addr = token_address.get_raw_address(&deps.as_ref())?;
-            ADOContract::set_permission(
-                deps.storage,
-                SEND_NFT_ACTION,
-                addr,
-                Permission::Local(LocalPermission::Whitelisted(None)),
-            )?;
-        }
+        authorize_addresses(&mut deps, SEND_NFT_ACTION, authorized_token_addresses)?;
     }
 
-    if let Some(authorized_cw20_address) = msg.authorized_cw20_address {
-        ADOContract::default().permission_action(SEND_CW20_ACTION, deps.storage)?;
-        let addr = authorized_cw20_address.get_raw_address(&deps.as_ref())?;
-        ADOContract::set_permission(
-            deps.storage,
-            SEND_CW20_ACTION,
-            addr,
-            Permission::Local(LocalPermission::Whitelisted(None)),
-        )?;
+    if let Some(authorized_cw20_addresses) = msg.authorized_cw20_addresses {
+        authorize_addresses(&mut deps, SEND_CW20_ACTION, authorized_cw20_addresses)?;
     }
 
     Ok(inst_resp)
@@ -120,6 +102,7 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
         &ctx.amp_ctx,
         msg.as_ref(),
     )?;
+
     let res = match msg {
         ExecuteMsg::ReceiveNft(msg) => handle_receive_cw721(ctx, msg),
         ExecuteMsg::Receive(msg) => handle_receive_cw20(ctx, msg),
@@ -138,6 +121,16 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
             token_id,
             token_address,
         } => execute_cancel(ctx, token_id, token_address),
+        ExecuteMsg::AuthorizeContract {
+            action,
+            addr,
+            expiration,
+        } => execute_authorize_contract(ctx.deps, ctx.info, action, addr, expiration),
+
+        ExecuteMsg::DeauthorizeContract { action, addr } => {
+            execute_deauthorize_contract(ctx.deps, ctx.info, action, addr)
+        }
+
         _ => ADOContract::default().execute(ctx, msg),
     }?;
     Ok(res
@@ -318,7 +311,7 @@ fn execute_update_sale(
     ensure!(price > Uint128::zero(), ContractError::InvalidZeroAmount {});
 
     token_sale_state.price = price;
-    token_sale_state.coin_denom = coin_denom.clone();
+    token_sale_state.coin_denom.clone_from(&coin_denom);
     token_sale_state.uses_cw20 = uses_cw20;
     token_sale_state.recipient = recipient;
     TOKEN_SALE_STATE.save(
@@ -786,8 +779,8 @@ fn get_and_increment_next_sale_id(
     let mut sale_info = sale_infos().load(storage, &key).unwrap_or_default();
     sale_info.push(next_sale_id);
     if sale_info.token_address.is_empty() {
-        sale_info.token_address = token_address.to_owned();
-        sale_info.token_id = token_id.to_owned();
+        token_address.clone_into(&mut sale_info.token_address);
+        token_id.clone_into(&mut sale_info.token_id);
     }
     sale_infos().save(storage, &key, &sale_info)?;
     Ok(next_sale_id)
@@ -814,6 +807,18 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
             token_address,
             start_after,
             limit,
+        )?),
+        QueryMsg::AuthorizedAddresses {
+            action,
+            start_after,
+            limit,
+            order_by,
+        } => encode_binary(&query_authorized_addresses(
+            deps,
+            action,
+            start_after,
+            limit,
+            order_by,
         )?),
         _ => ADOContract::default().query(deps, env, msg),
     }
@@ -877,7 +882,35 @@ fn query_owner_of(
     Ok(res)
 }
 
+fn query_authorized_addresses(
+    deps: Deps,
+    action: PermissionAction,
+    start_after: Option<String>,
+    limit: Option<u32>,
+    order_by: Option<OrderBy>,
+) -> Result<AuthorizedAddressesResponse, ContractError> {
+    let addresses = ADOContract::default().query_permissioned_actors(
+        deps,
+        action.as_str(),
+        start_after,
+        limit,
+        order_by,
+    )?;
+    Ok(AuthorizedAddressesResponse { addresses })
+}
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
     ADOContract::default().migrate(deps, CONTRACT_NAME, CONTRACT_VERSION)
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
+    if msg.result.is_err() {
+        return Err(ContractError::Std(StdError::generic_err(
+            msg.result.unwrap_err(),
+        )));
+    }
+
+    Ok(Response::default())
 }

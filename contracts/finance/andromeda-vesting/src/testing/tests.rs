@@ -1,3 +1,8 @@
+use crate::{
+    contract::{execute, instantiate, query},
+    state::{batches, Batch, CONFIG, NEXT_ID},
+    testing::mock_querier::mock_dependencies_custom,
+};
 use andromeda_std::{
     amp::Recipient,
     common::{withdraw::WithdrawalType, Milliseconds},
@@ -5,19 +10,14 @@ use andromeda_std::{
     testing::mock_querier::MOCK_KERNEL_CONTRACT,
 };
 use cosmwasm_std::{
-    coins, from_json,
+    coin, coins, from_json,
     testing::{mock_env, mock_info, MOCK_CONTRACT_ADDR},
     BankMsg, Decimal, DepsMut, Response, Uint128,
 };
 
-use crate::{
-    contract::{execute, instantiate, query},
-    state::{batches, Batch, CONFIG, NEXT_ID},
-    testing::mock_querier::mock_dependencies_custom,
-};
-
 use andromeda_finance::vesting::{BatchResponse, Config, ExecuteMsg, InstantiateMsg, QueryMsg};
 
+const MOCK_NATIVE_DENOM: &str = "uusd";
 fn init(deps: DepsMut) -> Response {
     let msg = InstantiateMsg {
         recipient: Recipient::from_string("recipient"),
@@ -33,13 +33,13 @@ fn init(deps: DepsMut) -> Response {
 fn create_batch(
     deps: DepsMut,
     lockup_duration: Option<Milliseconds>,
-    release_unit: Milliseconds,
+    release_duration: Milliseconds,
     release_amount: WithdrawalType,
 ) -> Response {
-    // Create batch with half of the release_unit.
+    // Create batch with half of the release_duration.
     let msg = ExecuteMsg::CreateBatch {
         lockup_duration,
-        release_unit,
+        release_duration,
         release_amount,
     };
 
@@ -49,8 +49,7 @@ fn create_batch(
 
 #[test]
 fn test_instantiate() {
-    let mut deps = mock_dependencies_custom(&[]);
-
+    let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
     let res = init(deps.as_mut());
 
     assert_eq!(
@@ -72,15 +71,52 @@ fn test_instantiate() {
 }
 
 #[test]
+fn test_instantiate_invalid_denom() {
+    let mut deps = mock_dependencies_custom(&[coin(100000, "uandr")]);
+
+    let msg = InstantiateMsg {
+        recipient: Recipient::from_string("recipient"),
+        denom: MOCK_NATIVE_DENOM.to_string(),
+        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+        owner: None,
+    };
+
+    let info = mock_info("owner", &[]);
+    let err = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap_err();
+    assert_eq!(
+        err,
+        ContractError::InvalidAsset {
+            asset: MOCK_NATIVE_DENOM.to_string()
+        }
+    )
+}
+
+#[test]
+fn test_instantiate_invalid_address() {
+    let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
+
+    let msg = InstantiateMsg {
+        recipient: Recipient::from_string("1"),
+        denom: MOCK_NATIVE_DENOM.to_string(),
+        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+        owner: None,
+    };
+
+    let info = mock_info("owner", &[]);
+    let err = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap_err();
+    assert_eq!(err, ContractError::InvalidAddress {})
+}
+//
+#[test]
 fn test_create_batch_unauthorized() {
-    let mut deps = mock_dependencies_custom(&[]);
+    let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
     init(deps.as_mut());
 
     let info = mock_info("not_owner", &[]);
 
     let msg = ExecuteMsg::CreateBatch {
         lockup_duration: None,
-        release_unit: Milliseconds::from_seconds(1),
+        release_duration: Milliseconds::from_seconds(1),
         release_amount: WithdrawalType::Amount(Uint128::zero()),
     };
 
@@ -91,7 +127,7 @@ fn test_create_batch_unauthorized() {
 
 #[test]
 fn test_create_batch_no_funds() {
-    let mut deps = mock_dependencies_custom(&[]);
+    let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
 
     init(deps.as_mut());
 
@@ -99,7 +135,7 @@ fn test_create_batch_no_funds() {
 
     let msg = ExecuteMsg::CreateBatch {
         lockup_duration: None,
-        release_unit: Milliseconds::from_seconds(1),
+        release_duration: Milliseconds::from_seconds(1),
         release_amount: WithdrawalType::Amount(Uint128::zero()),
     };
 
@@ -115,14 +151,14 @@ fn test_create_batch_no_funds() {
 
 #[test]
 fn test_create_batch_invalid_denom() {
-    let mut deps = mock_dependencies_custom(&[]);
+    let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
     init(deps.as_mut());
 
     let info = mock_info("owner", &coins(500, "uluna"));
 
     let msg = ExecuteMsg::CreateBatch {
         lockup_duration: None,
-        release_unit: Milliseconds::from_seconds(1),
+        release_duration: Milliseconds::from_seconds(1),
         release_amount: WithdrawalType::Amount(Uint128::zero()),
     };
 
@@ -138,14 +174,14 @@ fn test_create_batch_invalid_denom() {
 
 #[test]
 fn test_create_batch_valid_denom_zero_amount() {
-    let mut deps = mock_dependencies_custom(&[]);
+    let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
     init(deps.as_mut());
 
     let info = mock_info("owner", &coins(0, "uusd"));
 
     let msg = ExecuteMsg::CreateBatch {
         lockup_duration: None,
-        release_unit: Milliseconds::from_seconds(1),
+        release_duration: Milliseconds::from_seconds(1),
         release_amount: WithdrawalType::Amount(Uint128::zero()),
     };
 
@@ -155,15 +191,15 @@ fn test_create_batch_valid_denom_zero_amount() {
 }
 
 #[test]
-fn test_create_batch_release_unit_zero() {
-    let mut deps = mock_dependencies_custom(&[]);
+fn test_create_batch_release_duration_zero() {
+    let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
     init(deps.as_mut());
 
     let info = mock_info("owner", &coins(100, "uusd"));
 
     let msg = ExecuteMsg::CreateBatch {
         lockup_duration: None,
-        release_unit: Milliseconds::zero(),
+        release_duration: Milliseconds::zero(),
         release_amount: WithdrawalType::Amount(Uint128::zero()),
     };
 
@@ -174,14 +210,14 @@ fn test_create_batch_release_unit_zero() {
 
 #[test]
 fn test_create_batch_release_amount_zero() {
-    let mut deps = mock_dependencies_custom(&[]);
+    let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
     init(deps.as_mut());
 
     let info = mock_info("owner", &coins(100, "uusd"));
 
     let msg = ExecuteMsg::CreateBatch {
         lockup_duration: None,
-        release_unit: Milliseconds::from_seconds(10),
+        release_duration: Milliseconds::from_seconds(10),
         release_amount: WithdrawalType::Amount(Uint128::zero()),
     };
 
@@ -192,14 +228,14 @@ fn test_create_batch_release_amount_zero() {
 
 #[test]
 fn test_create_batch() {
-    let mut deps = mock_dependencies_custom(&[]);
+    let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
     init(deps.as_mut());
 
     let info = mock_info("owner", &coins(100, "uusd"));
 
     let msg = ExecuteMsg::CreateBatch {
         lockup_duration: None,
-        release_unit: Milliseconds::from_seconds(10),
+        release_duration: Milliseconds::from_seconds(10),
         release_amount: WithdrawalType::Amount(Uint128::new(10)),
     };
 
@@ -211,7 +247,10 @@ fn test_create_batch() {
             .add_attribute("action", "create_batch")
             .add_attribute("amount", "100")
             .add_attribute("lockup_end", current_time.to_string())
-            .add_attribute("release_unit", Milliseconds::from_seconds(10).to_string())
+            .add_attribute(
+                "release_duration",
+                Milliseconds::from_seconds(10).to_string()
+            )
             .add_attribute("release_amount", "Amount(Uint128(10))"),
         res
     );
@@ -223,7 +262,7 @@ fn test_create_batch() {
             amount: Uint128::new(100),
             amount_claimed: Uint128::zero(),
             lockup_end: current_time,
-            release_unit: Milliseconds::from_seconds(10),
+            release_duration: Milliseconds::from_seconds(10),
             release_amount: WithdrawalType::Amount(Uint128::new(10)),
             last_claimed_release_time: current_time,
         },
@@ -235,7 +274,7 @@ fn test_create_batch() {
     // Try to create another batch.
     let msg = ExecuteMsg::CreateBatch {
         lockup_duration: Some(Milliseconds::from_seconds(100)),
-        release_unit: Milliseconds::from_seconds(10),
+        release_duration: Milliseconds::from_seconds(10),
         release_amount: WithdrawalType::Amount(Uint128::new(10)),
     };
 
@@ -246,7 +285,10 @@ fn test_create_batch() {
             .add_attribute("action", "create_batch")
             .add_attribute("amount", "100")
             .add_attribute("lockup_end", (current_time.plus_seconds(100)).to_string())
-            .add_attribute("release_unit", Milliseconds::from_seconds(10).to_string())
+            .add_attribute(
+                "release_duration",
+                Milliseconds::from_seconds(10).to_string()
+            )
             .add_attribute("release_amount", "Amount(Uint128(10))"),
         res
     );
@@ -258,7 +300,7 @@ fn test_create_batch() {
             amount: Uint128::new(100),
             amount_claimed: Uint128::zero(),
             lockup_end: current_time.plus_seconds(100),
-            release_unit: Milliseconds::from_seconds(10),
+            release_duration: Milliseconds::from_seconds(10),
             release_amount: WithdrawalType::Amount(Uint128::new(10)),
             last_claimed_release_time: current_time.plus_seconds(100),
         },
@@ -270,7 +312,7 @@ fn test_create_batch() {
 
 #[test]
 fn test_claim_batch_unauthorized() {
-    let mut deps = mock_dependencies_custom(&[]);
+    let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
     init(deps.as_mut());
 
     let info = mock_info("not_owner", &[]);
@@ -287,14 +329,14 @@ fn test_claim_batch_unauthorized() {
 
 #[test]
 fn test_claim_batch_still_locked() {
-    let mut deps = mock_dependencies_custom(&[]);
+    let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
     init(deps.as_mut());
     let info = mock_info("owner", &coins(100, "uusd"));
 
     // Create batch.
     let msg = ExecuteMsg::CreateBatch {
         lockup_duration: Some(Milliseconds::from_seconds(100)),
-        release_unit: Milliseconds::from_seconds(10),
+        release_duration: Milliseconds::from_seconds(10),
         release_amount: WithdrawalType::Amount(Uint128::new(10)),
     };
 
@@ -313,14 +355,14 @@ fn test_claim_batch_still_locked() {
 
 #[test]
 fn test_claim_batch_no_funds_available() {
-    let mut deps = mock_dependencies_custom(&[]);
+    let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
     init(deps.as_mut());
     let info = mock_info("owner", &coins(100, "uusd"));
 
     // Create batch.
     let msg = ExecuteMsg::CreateBatch {
         lockup_duration: None,
-        release_unit: Milliseconds::from_seconds(10),
+        release_duration: Milliseconds::from_seconds(10),
         release_amount: WithdrawalType::Amount(Uint128::new(10)),
     };
 
@@ -340,16 +382,16 @@ fn test_claim_batch_no_funds_available() {
 
 #[test]
 fn test_claim_batch_single_claim() {
-    let mut deps = mock_dependencies_custom(&[]);
+    let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
     init(deps.as_mut());
     let info = mock_info("owner", &coins(100, "uusd"));
 
-    let release_unit = Milliseconds::from_seconds(10);
+    let release_duration = Milliseconds::from_seconds(10);
 
     // Create batch.
     let msg = ExecuteMsg::CreateBatch {
         lockup_duration: None,
-        release_unit,
+        release_duration,
         release_amount: WithdrawalType::Amount(Uint128::new(10)),
     };
 
@@ -362,7 +404,7 @@ fn test_claim_batch_single_claim() {
     // Skip time.
     let mut env = mock_env();
     // A single release is available.
-    env.block.time = env.block.time.plus_seconds(release_unit.seconds());
+    env.block.time = env.block.time.plus_seconds(release_duration.seconds());
 
     // Query created batch.
     let msg = QueryMsg::Batch { id: 1 };
@@ -377,7 +419,7 @@ fn test_claim_batch_single_claim() {
             amount_available_to_claim: Uint128::new(10),
             number_of_available_claims: Uint128::new(1),
             lockup_end,
-            release_unit,
+            release_duration,
             release_amount: WithdrawalType::Amount(Uint128::new(10)),
             last_claimed_release_time: lockup_end,
         },
@@ -411,9 +453,9 @@ fn test_claim_batch_single_claim() {
             amount: Uint128::new(100),
             amount_claimed: Uint128::new(10),
             lockup_end,
-            release_unit: Milliseconds::from_seconds(10),
+            release_duration: Milliseconds::from_seconds(10),
             release_amount: WithdrawalType::Amount(Uint128::new(10)),
-            last_claimed_release_time: lockup_end.plus_milliseconds(release_unit),
+            last_claimed_release_time: lockup_end.plus_milliseconds(release_duration),
         },
         batches().load(deps.as_ref().storage, 1u64).unwrap()
     );
@@ -421,16 +463,16 @@ fn test_claim_batch_single_claim() {
 
 #[test]
 fn test_claim_batch_not_nice_numbers_single_release() {
-    let mut deps = mock_dependencies_custom(&[]);
+    let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
     init(deps.as_mut());
     let info = mock_info("owner", &coins(10, "uusd"));
 
-    let release_unit = Milliseconds::from_seconds(10);
+    let release_duration = Milliseconds::from_seconds(10);
 
     // Create batch.
     let msg = ExecuteMsg::CreateBatch {
         lockup_duration: None,
-        release_unit,
+        release_duration,
         release_amount: WithdrawalType::Amount(Uint128::new(10)),
     };
 
@@ -443,7 +485,7 @@ fn test_claim_batch_not_nice_numbers_single_release() {
     // Skip time.
     let mut env = mock_env();
     // A single release is available.
-    env.block.time = env.block.time.plus_seconds(release_unit.seconds());
+    env.block.time = env.block.time.plus_seconds(release_duration.seconds());
 
     // Claim batch.
     let msg = ExecuteMsg::Claim {
@@ -472,9 +514,9 @@ fn test_claim_batch_not_nice_numbers_single_release() {
             amount: Uint128::new(10),
             amount_claimed: Uint128::new(7),
             lockup_end,
-            release_unit: Milliseconds::from_seconds(10),
+            release_duration: Milliseconds::from_seconds(10),
             release_amount: WithdrawalType::Amount(Uint128::new(10)),
-            last_claimed_release_time: lockup_end.plus_milliseconds(release_unit),
+            last_claimed_release_time: lockup_end.plus_milliseconds(release_duration),
         },
         batches().load(deps.as_ref().storage, 1u64).unwrap()
     );
@@ -482,19 +524,19 @@ fn test_claim_batch_not_nice_numbers_single_release() {
 
 #[test]
 fn test_claim_batch_not_nice_numbers_multiple_releases() {
-    let mut deps = mock_dependencies_custom(&[]);
+    let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
     init(deps.as_mut());
     let vesting_amount = 1_000_000_000_000_000_000u128;
     let info = mock_info("owner", &coins(vesting_amount, "uusd"));
 
-    let release_unit = Milliseconds::from_seconds(1); // 1 second
+    let release_duration = Milliseconds::from_seconds(1); // 1 second
     let duration: u64 = 60 * 60 * 24 * 365 * 5; // 5 years
     let percent_release = Decimal::from_ratio(Uint128::one(), Uint128::from(duration));
 
     // Create batch.
     let msg = ExecuteMsg::CreateBatch {
         lockup_duration: None,
-        release_unit,
+        release_duration,
         release_amount: WithdrawalType::Percentage(percent_release),
     };
 
@@ -507,7 +549,7 @@ fn test_claim_batch_not_nice_numbers_multiple_releases() {
     // Skip time.
     let mut env = mock_env();
     // Two releases are out.
-    env.block.time = env.block.time.plus_seconds(2 * release_unit.seconds());
+    env.block.time = env.block.time.plus_seconds(2 * release_duration.seconds());
 
     // Claim batch.
     let msg = ExecuteMsg::Claim {
@@ -536,9 +578,9 @@ fn test_claim_batch_not_nice_numbers_multiple_releases() {
             amount: Uint128::new(vesting_amount),
             amount_claimed: Uint128::new(12683916792),
             lockup_end,
-            release_unit: Milliseconds::from_seconds(1),
+            release_duration: Milliseconds::from_seconds(1),
             release_amount: WithdrawalType::Percentage(percent_release),
-            last_claimed_release_time: lockup_end.plus_seconds(2 * release_unit.seconds()),
+            last_claimed_release_time: lockup_end.plus_seconds(2 * release_duration.seconds()),
         },
         batches().load(deps.as_ref().storage, 1u64).unwrap()
     );
@@ -564,7 +606,7 @@ fn test_claim_batch_not_nice_numbers_multiple_releases() {
             amount: Uint128::new(vesting_amount),
             amount_claimed: Uint128::from(vesting_amount),
             lockup_end,
-            release_unit: Milliseconds::from_seconds(1),
+            release_duration: Milliseconds::from_seconds(1),
             release_amount: WithdrawalType::Percentage(percent_release),
             last_claimed_release_time: lockup_end.plus_seconds(duration + 2),
         },
@@ -574,16 +616,16 @@ fn test_claim_batch_not_nice_numbers_multiple_releases() {
 
 #[test]
 fn test_claim_batch_middle_of_interval() {
-    let mut deps = mock_dependencies_custom(&[]);
+    let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
     init(deps.as_mut());
     let info = mock_info("owner", &coins(100, "uusd"));
 
-    let release_unit = Milliseconds::from_seconds(10);
+    let release_duration = Milliseconds::from_seconds(10);
 
     // Create batch.
     let msg = ExecuteMsg::CreateBatch {
         lockup_duration: None,
-        release_unit,
+        release_duration,
         release_amount: WithdrawalType::Amount(Uint128::new(10)),
     };
 
@@ -601,14 +643,14 @@ fn test_claim_batch_middle_of_interval() {
 
     let mut env = mock_env();
     // Only halfway to first release.
-    env.block.time = env.block.time.plus_seconds(release_unit.seconds() / 2);
+    env.block.time = env.block.time.plus_seconds(release_duration.seconds() / 2);
 
     let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
 
     assert_eq!(ContractError::WithdrawalIsEmpty {}, res.unwrap_err());
 
     // First release available and halfway to second -> result is rounding down.
-    env.block.time = env.block.time.plus_seconds(release_unit.seconds());
+    env.block.time = env.block.time.plus_seconds(release_duration.seconds());
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
 
     assert_eq!(
@@ -630,9 +672,9 @@ fn test_claim_batch_middle_of_interval() {
             amount: Uint128::new(100),
             amount_claimed: Uint128::new(10),
             lockup_end,
-            release_unit: Milliseconds::from_seconds(10),
+            release_duration: Milliseconds::from_seconds(10),
             release_amount: WithdrawalType::Amount(Uint128::new(10)),
-            last_claimed_release_time: lockup_end.plus_milliseconds(release_unit),
+            last_claimed_release_time: lockup_end.plus_milliseconds(release_duration),
         },
         batches().load(deps.as_ref().storage, 1u64).unwrap()
     );
@@ -640,16 +682,16 @@ fn test_claim_batch_middle_of_interval() {
 
 #[test]
 fn test_claim_batch_multiple_claims() {
-    let mut deps = mock_dependencies_custom(&[]);
+    let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
     init(deps.as_mut());
     let info = mock_info("owner", &coins(100, "uusd"));
 
-    let release_unit = Milliseconds::from_seconds(10);
+    let release_duration = Milliseconds::from_seconds(10);
 
     // Create batch.
     let msg = ExecuteMsg::CreateBatch {
         lockup_duration: None,
-        release_unit,
+        release_duration,
         release_amount: WithdrawalType::Amount(Uint128::new(10)),
     };
 
@@ -662,7 +704,7 @@ fn test_claim_batch_multiple_claims() {
     let mut env = mock_env();
 
     // 4 releases are available.
-    env.block.time = env.block.time.plus_seconds(4 * release_unit.seconds());
+    env.block.time = env.block.time.plus_seconds(4 * release_duration.seconds());
 
     // Claim only the first release.
     let msg = ExecuteMsg::Claim {
@@ -690,9 +732,9 @@ fn test_claim_batch_multiple_claims() {
             amount: Uint128::new(100),
             amount_claimed: Uint128::new(10),
             lockup_end,
-            release_unit,
+            release_duration,
             release_amount: WithdrawalType::Amount(Uint128::new(10)),
-            last_claimed_release_time: lockup_end.plus_milliseconds(release_unit),
+            last_claimed_release_time: lockup_end.plus_milliseconds(release_duration),
         },
         batches().load(deps.as_ref().storage, 1u64).unwrap()
     );
@@ -723,9 +765,9 @@ fn test_claim_batch_multiple_claims() {
             amount: Uint128::new(100),
             amount_claimed: Uint128::new(40),
             lockup_end,
-            release_unit,
+            release_duration,
             release_amount: WithdrawalType::Amount(Uint128::new(10)),
-            last_claimed_release_time: lockup_end.plus_seconds(4 * release_unit.seconds()),
+            last_claimed_release_time: lockup_end.plus_seconds(4 * release_duration.seconds()),
         },
         batches().load(deps.as_ref().storage, 1u64).unwrap()
     );
@@ -733,16 +775,16 @@ fn test_claim_batch_multiple_claims() {
 
 #[test]
 fn test_claim_batch_all_releases() {
-    let mut deps = mock_dependencies_custom(&[]);
+    let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
     init(deps.as_mut());
     let info = mock_info("owner", &coins(100, "uusd"));
 
-    let release_unit = Milliseconds::from_seconds(10);
+    let release_duration = Milliseconds::from_seconds(10);
 
     // Create batch.
     let msg = ExecuteMsg::CreateBatch {
         lockup_duration: None,
-        release_unit,
+        release_duration,
         release_amount: WithdrawalType::Amount(Uint128::new(10)),
     };
 
@@ -754,9 +796,9 @@ fn test_claim_batch_all_releases() {
 
     let mut env = mock_env();
 
-    // All releases are available and then some (10 * release_unit would be when all releases
+    // All releases are available and then some (10 * release_duration would be when all releases
     // become available).
-    env.block.time = env.block.time.plus_seconds(15 * release_unit.seconds());
+    env.block.time = env.block.time.plus_seconds(15 * release_duration.seconds());
 
     // Claim only the first release.
     let msg = ExecuteMsg::Claim {
@@ -784,9 +826,9 @@ fn test_claim_batch_all_releases() {
             amount: Uint128::new(100),
             amount_claimed: Uint128::new(100),
             lockup_end,
-            release_unit,
+            release_duration,
             release_amount: WithdrawalType::Amount(Uint128::new(10)),
-            last_claimed_release_time: lockup_end.plus_seconds(15 * release_unit.seconds()),
+            last_claimed_release_time: lockup_end.plus_seconds(15 * release_duration.seconds()),
         },
         batches().load(deps.as_ref().storage, 1u64).unwrap()
     );
@@ -799,16 +841,16 @@ fn test_claim_batch_all_releases() {
 
 #[test]
 fn test_claim_batch_too_high_of_claim() {
-    let mut deps = mock_dependencies_custom(&[]);
+    let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
     init(deps.as_mut());
     let info = mock_info("owner", &coins(100, "uusd"));
 
-    let release_unit = Milliseconds::from_seconds(10);
+    let release_duration = Milliseconds::from_seconds(10);
 
     // Create batch.
     let msg = ExecuteMsg::CreateBatch {
         lockup_duration: None,
-        release_unit,
+        release_duration,
         release_amount: WithdrawalType::Amount(Uint128::new(10)),
     };
 
@@ -820,7 +862,7 @@ fn test_claim_batch_too_high_of_claim() {
 
     let mut env = mock_env();
     // A single release is available.
-    env.block.time = env.block.time.plus_seconds(release_unit.seconds());
+    env.block.time = env.block.time.plus_seconds(release_duration.seconds());
 
     // Try to claim 3 releases.
     let msg = ExecuteMsg::Claim {
@@ -850,9 +892,9 @@ fn test_claim_batch_too_high_of_claim() {
             amount: Uint128::new(100),
             amount_claimed: Uint128::new(10),
             lockup_end,
-            release_unit: Milliseconds::from_seconds(10),
+            release_duration: Milliseconds::from_seconds(10),
             release_amount: WithdrawalType::Amount(Uint128::new(10)),
-            last_claimed_release_time: lockup_end.plus_milliseconds(release_unit),
+            last_claimed_release_time: lockup_end.plus_milliseconds(release_duration),
         },
         batches().load(deps.as_ref().storage, 1u64).unwrap()
     );
@@ -860,7 +902,7 @@ fn test_claim_batch_too_high_of_claim() {
 
 #[test]
 fn test_claim_all_unauthorized() {
-    let mut deps = mock_dependencies_custom(&[]);
+    let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
     init(deps.as_mut());
 
     let info = mock_info("not_owner", &[]);
@@ -877,24 +919,29 @@ fn test_claim_all_unauthorized() {
 
 #[test]
 fn test_claim_all() {
-    let mut deps = mock_dependencies_custom(&[]);
+    let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
     init(deps.as_mut());
 
-    let release_unit = Milliseconds::from_seconds(10);
+    let release_duration = Milliseconds::from_seconds(10);
 
     let release_amount = WithdrawalType::Amount(Uint128::new(10));
     // Create batch.
-    create_batch(deps.as_mut(), None, release_unit, release_amount.clone());
-
-    // Create batch with half of the release_unit.
     create_batch(
         deps.as_mut(),
         None,
-        Milliseconds::from_seconds(release_unit.seconds() / 2),
+        release_duration,
         release_amount.clone(),
     );
 
-    // Create batch with a different release_unit scale (not a factor).
+    // Create batch with half of the release_duration.
+    create_batch(
+        deps.as_mut(),
+        None,
+        Milliseconds::from_seconds(release_duration.seconds() / 2),
+        release_amount.clone(),
+    );
+
+    // Create batch with a different release_duration scale (not a factor).
     create_batch(
         deps.as_mut(),
         None,
@@ -906,7 +953,7 @@ fn test_claim_all() {
     create_batch(
         deps.as_mut(),
         Some(Milliseconds::from_seconds(100)),
-        release_unit,
+        release_duration,
         release_amount.clone(),
     );
 
@@ -916,7 +963,7 @@ fn test_claim_all() {
 
     // Speed up time.
     let mut env = mock_env();
-    env.block.time = env.block.time.plus_seconds(release_unit.seconds() * 2);
+    env.block.time = env.block.time.plus_seconds(release_duration.seconds() * 2);
 
     // Query batches
     let msg = QueryMsg::Batches {
@@ -936,7 +983,7 @@ fn test_claim_all() {
                 amount_available_to_claim: Uint128::new(20),
                 number_of_available_claims: Uint128::new(2),
                 lockup_end,
-                release_unit,
+                release_duration,
                 release_amount: WithdrawalType::Amount(Uint128::new(10)),
                 last_claimed_release_time: lockup_end,
             },
@@ -947,7 +994,7 @@ fn test_claim_all() {
                 amount_available_to_claim: Uint128::new(40),
                 number_of_available_claims: Uint128::new(4),
                 lockup_end,
-                release_unit: Milliseconds::from_seconds(release_unit.seconds() / 2),
+                release_duration: Milliseconds::from_seconds(release_duration.seconds() / 2),
                 release_amount: WithdrawalType::Amount(Uint128::new(10)),
                 last_claimed_release_time: lockup_end,
             },
@@ -958,7 +1005,7 @@ fn test_claim_all() {
                 amount_available_to_claim: Uint128::new(10),
                 number_of_available_claims: Uint128::new(1),
                 lockup_end,
-                release_unit: Milliseconds::from_seconds(12),
+                release_duration: Milliseconds::from_seconds(12),
                 release_amount: WithdrawalType::Amount(Uint128::new(10)),
                 last_claimed_release_time: lockup_end,
             },
@@ -969,7 +1016,7 @@ fn test_claim_all() {
                 amount_available_to_claim: Uint128::zero(),
                 number_of_available_claims: Uint128::zero(),
                 lockup_end: lockup_end.plus_seconds(100),
-                release_unit,
+                release_duration,
                 release_amount: WithdrawalType::Amount(Uint128::new(10)),
                 last_claimed_release_time: lockup_end.plus_seconds(100),
             },
@@ -1004,9 +1051,9 @@ fn test_claim_all() {
             amount: Uint128::new(100),
             amount_claimed: Uint128::new(20),
             lockup_end,
-            release_unit,
+            release_duration,
             release_amount: release_amount.clone(),
-            last_claimed_release_time: lockup_end.plus_seconds(release_unit.seconds() * 2),
+            last_claimed_release_time: lockup_end.plus_seconds(release_duration.seconds() * 2),
         },
         batches().load(deps.as_ref().storage, 1u64).unwrap()
     );
@@ -1016,9 +1063,9 @@ fn test_claim_all() {
             amount: Uint128::new(100),
             amount_claimed: Uint128::new(40),
             lockup_end,
-            release_unit: Milliseconds::from_seconds(release_unit.seconds() / 2),
+            release_duration: Milliseconds::from_seconds(release_duration.seconds() / 2),
             release_amount: release_amount.clone(),
-            last_claimed_release_time: lockup_end.plus_seconds(release_unit.seconds() * 2),
+            last_claimed_release_time: lockup_end.plus_seconds(release_duration.seconds() * 2),
         },
         batches().load(deps.as_ref().storage, 2u64).unwrap()
     );
@@ -1028,7 +1075,7 @@ fn test_claim_all() {
             amount: Uint128::new(100),
             amount_claimed: Uint128::new(10),
             lockup_end,
-            release_unit: Milliseconds::from_seconds(12),
+            release_duration: Milliseconds::from_seconds(12),
             release_amount,
             last_claimed_release_time: lockup_end.plus_seconds(12),
         },

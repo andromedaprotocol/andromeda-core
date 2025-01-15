@@ -7,7 +7,7 @@ use andromeda_testing::{
 
 use cosmwasm_std::to_json_binary;
 
-use andromeda_modules::shunting::{EvaluateParam, EvaluateRefParam, ShuntingResponse};
+use andromeda_math::shunting::{EvaluateParam, EvaluateRefParam, ShuntingResponse};
 use andromeda_shunting::mock::{
     mock_andromeda_shunting, mock_shunting_evaluate, mock_shunting_instantiate_msg, MockShunting,
 };

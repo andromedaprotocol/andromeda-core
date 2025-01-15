@@ -1,3 +1,4 @@
+use andromeda_std::amp::AndrAddr;
 use andromeda_std::common::expiration::Expiry;
 use andromeda_std::common::Milliseconds;
 use andromeda_std::testing::mock_querier::{mock_dependencies_custom, MOCK_KERNEL_CONTRACT};
@@ -5,12 +6,12 @@ use andromeda_std::{
     ado_base::InstantiateMsg as BaseInstantiateMsg, ado_contract::ADOContract,
     amp::recipient::Recipient, error::ContractError,
 };
-use cosmwasm_std::QuerierWrapper;
 use cosmwasm_std::{
     attr,
     testing::{mock_env, mock_info},
     Response, Uint128,
 };
+use cosmwasm_std::{BankMsg, Coin, CosmosMsg, DepsMut, QuerierWrapper, SubMsg};
 
 use crate::{
     contract::{execute, instantiate},
@@ -21,7 +22,24 @@ use cosmwasm_std::testing::mock_dependencies;
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 const MOCK_RECIPIENT1: &str = "recipient1";
 const MOCK_RECIPIENT2: &str = "recipient2";
+pub const OWNER: &str = "creator";
 
+fn init(deps: DepsMut) -> Response {
+    let mock_recipient: Vec<AddressWeight> = vec![AddressWeight {
+        recipient: Recipient::from_string(String::from("some_address")),
+        weight: Uint128::new(100),
+    }];
+    let msg = InstantiateMsg {
+        owner: Some(OWNER.to_owned()),
+        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+        recipients: mock_recipient,
+        lock_time: Some(Expiry::FromNow(Milliseconds(86400000))),
+        default_recipient: None,
+    };
+
+    let info = mock_info(OWNER, &[]);
+    instantiate(deps, mock_env(), info, msg).unwrap()
+}
 #[test]
 fn test_update_app_contract() {
     let mut deps = mock_dependencies_custom(&[]);
@@ -41,6 +59,7 @@ fn test_update_app_contract() {
         lock_time: None,
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
+        default_recipient: None,
     };
 
     let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
@@ -110,6 +129,7 @@ fn test_instantiate() {
         lock_time: None,
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
+        default_recipient: None,
     };
     let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
     assert_eq!(0, res.messages.len());
@@ -130,6 +150,7 @@ fn test_execute_update_lock() {
     let splitter = Splitter {
         recipients: vec![],
         lock: Milliseconds(current_time - 1),
+        default_recipient: None,
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -187,6 +208,7 @@ fn test_execute_update_lock_too_short() {
     let splitter = Splitter {
         recipients: vec![],
         lock: Milliseconds(current_time - 1),
+        default_recipient: None,
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -231,6 +253,7 @@ fn test_execute_update_lock_too_long() {
     let splitter = Splitter {
         recipients: vec![],
         lock: Milliseconds(current_time - 1),
+        default_recipient: None,
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -276,6 +299,7 @@ fn test_execute_update_lock_already_locked() {
     let splitter = Splitter {
         recipients: vec![],
         lock: Milliseconds::default().plus_seconds(current_time + 10_000),
+        default_recipient: None,
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -303,7 +327,7 @@ fn test_execute_update_lock_already_locked() {
 
     let info = mock_info(owner, &[]);
     let res = execute(deps.as_mut(), env, info, msg).unwrap_err();
-    assert_eq!(ContractError::ContractLocked {}, res);
+    assert_eq!(ContractError::ContractLocked { msg: None }, res);
 }
 
 #[test]
@@ -320,6 +344,7 @@ fn test_execute_update_lock_unauthorized() {
     let splitter = Splitter {
         recipients: vec![],
         lock: new_lock,
+        default_recipient: None,
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -398,6 +423,7 @@ fn test_execute_remove_recipient() {
     let splitter = Splitter {
         recipients: recipient,
         lock: Milliseconds::default(),
+        default_recipient: None,
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -405,7 +431,7 @@ fn test_execute_remove_recipient() {
     let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
     let msg = ExecuteMsg::RemoveRecipient {
-        recipient: Recipient::from_string(String::from("addr1")),
+        recipient: AndrAddr::from_string("addr1"),
     };
     // Try removing a user that isn't in the list
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
@@ -423,6 +449,7 @@ fn test_execute_remove_recipient() {
             },
         ],
         lock: Milliseconds::default(),
+        default_recipient: None,
     };
     assert_eq!(expected_splitter, splitter);
     assert_eq!(
@@ -490,6 +517,7 @@ fn test_execute_remove_recipient_not_on_list() {
     let splitter = Splitter {
         recipients: recipient,
         lock: Milliseconds::default(),
+        default_recipient: None,
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -498,7 +526,7 @@ fn test_execute_remove_recipient_not_on_list() {
 
     // Try removing a user that isn't in the list
     let msg = ExecuteMsg::RemoveRecipient {
-        recipient: Recipient::from_string(String::from("addr10")),
+        recipient: AndrAddr::from_string("addr10"),
     };
 
     let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
@@ -553,6 +581,7 @@ fn test_execute_remove_recipient_contract_locked() {
     let splitter = Splitter {
         recipients: recipient.clone(),
         lock: Milliseconds::default(),
+        default_recipient: None,
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -563,15 +592,16 @@ fn test_execute_remove_recipient_contract_locked() {
     let splitter = Splitter {
         recipients: recipient,
         lock: Milliseconds::default().plus_seconds(current_time + 10_000),
+        default_recipient: None,
     };
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
 
     let msg = ExecuteMsg::RemoveRecipient {
-        recipient: Recipient::from_string(String::from("addr1")),
+        recipient: AndrAddr::from_string("addr1"),
     };
 
     let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
-    assert_eq!(err, ContractError::ContractLocked {});
+    assert_eq!(err, ContractError::ContractLocked { msg: None });
 }
 
 #[test]
@@ -676,6 +706,7 @@ fn test_update_recipient_weight() {
     let splitter = Splitter {
         recipients: recipient.clone(),
         lock: Milliseconds::default(),
+        default_recipient: None,
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -686,6 +717,7 @@ fn test_update_recipient_weight() {
     let splitter = Splitter {
         recipients: recipient,
         lock: Milliseconds::default(),
+        default_recipient: None,
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -717,6 +749,7 @@ fn test_update_recipient_weight() {
             },
         ],
         lock: Milliseconds::default(),
+        default_recipient: None,
     };
     assert_eq!(expected_splitter, splitter);
 }
@@ -769,6 +802,7 @@ fn test_update_recipient_weight_locked_contract() {
     let splitter = Splitter {
         recipients: recipient.clone(),
         lock: Milliseconds(current_time - 1),
+        default_recipient: None,
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -779,6 +813,7 @@ fn test_update_recipient_weight_locked_contract() {
     let splitter = Splitter {
         recipients: recipient,
         lock: Milliseconds::default().plus_seconds(current_time + 1),
+        default_recipient: None,
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -789,7 +824,7 @@ fn test_update_recipient_weight_locked_contract() {
         },
     };
     let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
-    assert_eq!(err, ContractError::ContractLocked {});
+    assert_eq!(err, ContractError::ContractLocked { msg: None });
 }
 
 #[test]
@@ -846,6 +881,7 @@ fn test_update_recipient_weight_user_not_found() {
     let splitter = Splitter {
         recipients: recipient,
         lock: Milliseconds::default(),
+        default_recipient: None,
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -918,6 +954,7 @@ fn test_update_recipient_weight_invalid_weight() {
     let splitter = Splitter {
         recipients: recipient,
         lock: Milliseconds::default(),
+        default_recipient: None,
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -982,6 +1019,7 @@ fn test_execute_add_recipient() {
     let splitter = Splitter {
         recipients: recipient,
         lock: Milliseconds::default(),
+        default_recipient: None,
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -1024,6 +1062,7 @@ fn test_execute_add_recipient() {
             },
         ],
         lock: Milliseconds::default(),
+        default_recipient: None,
     };
     assert_eq!(expected_splitter, splitter);
 
@@ -1087,6 +1126,7 @@ fn test_execute_add_recipient_duplicate_recipient() {
     let splitter = Splitter {
         recipients: recipient,
         lock: Milliseconds::default(),
+        default_recipient: None,
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -1165,6 +1205,7 @@ fn test_execute_add_recipient_invalid_weight() {
     let splitter = Splitter {
         recipients: recipient,
         lock: Milliseconds::default(),
+        default_recipient: None,
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -1231,11 +1272,15 @@ fn test_execute_add_recipient_locked_contract() {
     let splitter = Splitter {
         recipients: recipient,
         lock: Milliseconds::default().plus_seconds(current_time + 1),
+        default_recipient: None,
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
     let res = execute(deps.as_mut(), env, info, msg);
-    assert_eq!(ContractError::ContractLocked {}, res.unwrap_err());
+    assert_eq!(
+        ContractError::ContractLocked { msg: None },
+        res.unwrap_err()
+    );
 }
 
 #[test]
@@ -1295,6 +1340,7 @@ fn test_execute_update_recipients() {
     let splitter = Splitter {
         recipients: vec![],
         lock: Milliseconds::default(),
+        default_recipient: None,
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -1366,6 +1412,7 @@ fn test_execute_update_recipients_invalid_weight() {
     let splitter = Splitter {
         recipients: vec![],
         lock: Milliseconds::default(),
+        default_recipient: None,
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -1421,6 +1468,7 @@ fn test_execute_update_recipients_contract_locked() {
     let splitter = Splitter {
         recipients: vec![],
         lock: Milliseconds::default().plus_seconds(current_time + 10),
+        default_recipient: None,
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -1447,7 +1495,7 @@ fn test_execute_update_recipients_contract_locked() {
 
     let info = mock_info(owner, &[]);
     let res = execute(deps.as_mut(), env, info, msg).unwrap_err();
-    assert_eq!(res, ContractError::ContractLocked {});
+    assert_eq!(res, ContractError::ContractLocked { msg: None });
 }
 
 #[test]
@@ -1474,6 +1522,7 @@ fn test_execute_update_recipients_unauthorized() {
     let splitter = Splitter {
         recipients: vec![],
         lock: Milliseconds::default(),
+        default_recipient: None,
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -1503,196 +1552,237 @@ fn test_execute_update_recipients_unauthorized() {
     assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
 }
 
-// #[test]
-// fn test_execute_send() {
-//     let mut deps = mock_dependencies_custom(&[]);
-//     let env = mock_env();
+#[test]
+fn test_execute_send() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let env = mock_env();
+    let _res: Response = init(deps.as_mut());
 
-//     let owner = "creator";
+    let sender_funds_amount = 10000u128;
 
-//     let recip_address1 = "address1".to_string();
-//     let recip_weight1 = Uint128::new(10); // Weight of 10
+    let info = mock_info(OWNER, &[Coin::new(sender_funds_amount, "uluna")]);
 
-//     let recip_address2 = "address2".to_string();
-//     let recip_weight2 = Uint128::new(20); // Weight of 20
+    let recip_address1 = "address1".to_string();
+    let recip_weight1 = 10; // 10%
 
-//     let recipient = vec![
-//         AddressWeight {
-//             recipient: Recipient::Addr(recip_address1.clone()),
-//             weight: recip_weight1,
-//         },
-//         AddressWeight {
-//             recipient: Recipient::Addr(recip_address2.clone()),
-//             weight: recip_weight2,
-//         },
-//     ];
-//     let msg = ExecuteMsg::Send {};
+    let recip_address2 = "address2".to_string();
+    let recip_weight2 = 20; // 20%
 
-//     let splitter = Splitter {
-//         recipients: recipient,
-//         lock: Milliseconds::default(),
-//     };
+    let recip_address3 = "address3".to_string();
+    let recip_weight3 = 50; // 50%
 
-//     let info = mock_info(owner, &[Coin::new(10000_u128, "uluna")]);
-//     let deps_mut = deps.as_mut();
-//     ADOContract::default()
-//         .instantiate(
-//             deps_mut.storage,
-//             mock_env(),
-//             deps_mut.api,
-//             info.clone(),
-//             BaseInstantiateMsg {
-//                 ado_type: "splitter".to_string(),
-//                 ado_version: CONTRACT_VERSION.to_string(),
-//
-//                 kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
-//                 owner: None,
-//             },
-//         )
-//         .unwrap();
+    let recip1 = Recipient::from_string(recip_address1.clone());
+    let recip2 = Recipient::from_string(recip_address2.clone());
+    let recip3 = Recipient::from_string(recip_address3.clone());
 
-//     SPLITTER.save(deps_mut.storage, &splitter).unwrap();
+    let config_recipient = vec![AddressWeight {
+        recipient: recip3.clone(),
+        weight: Uint128::new(recip_weight3),
+    }];
 
-//     let res = execute(deps_mut, env, info, msg).unwrap();
+    let recipient = vec![
+        AddressWeight {
+            recipient: recip1.clone(),
+            weight: Uint128::new(recip_weight1),
+        },
+        AddressWeight {
+            recipient: recip2.clone(),
+            weight: Uint128::new(recip_weight2),
+        },
+    ];
+    let msg = ExecuteMsg::Send { config: None };
 
-//     let expected_res = Response::new()
-//         .add_submessages(vec![
-//             SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-//                 to_address: recip_address1,
-//                 amount: vec![Coin::new(3333, "uluna")], // 10000 * (10/30)
-//             })),
-//             SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-//                 to_address: recip_address2,
-//                 amount: vec![Coin::new(6666, "uluna")], // 10000 * (20/30)
-//             })),
-//             SubMsg::new(
-//                 // refunds remainder to sender
-//                 CosmosMsg::Bank(BankMsg::Send {
-//                     to_address: owner.to_string(),
-//                     amount: vec![Coin::new(1, "uluna")], // 10000 - (3333+6666)   remainder
-//                 }),
-//             ),
-//         ])
-//         .add_attributes(vec![attr("action", "send"), attr("sender", "creator")]);
+    let splitter = Splitter {
+        recipients: recipient,
+        lock: Milliseconds::default(),
+        default_recipient: None,
+    };
 
-//     assert_eq!(res, expected_res);
-// }
+    SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
 
-// #[test]
-// fn test_query_splitter() {
-//     let mut deps = mock_dependencies_custom(&[]);
-//     let env = mock_env();
-//     let splitter = Splitter {
-//         recipients: vec![],
-//         lock: Milliseconds::default(),
-//     };
+    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
-//     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
+    let expected_res = Response::new()
+        .add_submessages(vec![
+            SubMsg::new(
+                // refunds remainder to sender
+                CosmosMsg::Bank(BankMsg::Send {
+                    to_address: recip_address1.clone(),
+                    amount: vec![Coin::new(3333, "uluna")],
+                }),
+            ),
+            SubMsg::new(
+                // refunds remainder to sender
+                CosmosMsg::Bank(BankMsg::Send {
+                    to_address: recip_address2.clone(),
+                    amount: vec![Coin::new(6666, "uluna")],
+                }),
+            ),
+            SubMsg::new(
+                // refunds remainder to sender
+                CosmosMsg::Bank(BankMsg::Send {
+                    to_address: OWNER.to_string(),
+                    amount: vec![Coin::new(1, "uluna")],
+                }),
+            ),
+        ])
+        .add_attributes(vec![attr("action", "send"), attr("sender", "creator")]);
 
-//     let query_msg = QueryMsg::GetSplitterConfig {};
-//     let res = query(deps.as_ref(), env, query_msg).unwrap();
-//     let val: GetSplitterConfigResponse = from_json(&res).unwrap();
+    assert_eq!(res, expected_res);
 
-//     assert_eq!(val.config, splitter);
-// }
+    // Test send with config
+    let msg = ExecuteMsg::Send {
+        config: Some(config_recipient),
+    };
+    let res = execute(deps.as_mut(), env, info, msg).unwrap();
 
-// #[test]
-// fn test_query_user_weight() {
-//     let mut deps = mock_dependencies_custom(&[]);
-//     let env = mock_env();
-//     let user1 = AddressWeight {
-//         recipient: Recipient::Addr("first".to_string()),
-//         weight: Uint128::new(5),
-//     };
-//     let user2 = AddressWeight {
-//         recipient: Recipient::Addr("second".to_string()),
-//         weight: Uint128::new(10),
-//     };
-//     let splitter = Splitter {
-//         recipients: vec![user1, user2],
-//         lock: Milliseconds::default(),
-//     };
+    let expected_res = Response::new()
+        .add_submessages(vec![
+            SubMsg::new(
+                // refunds remainder to sender
+                CosmosMsg::Bank(BankMsg::Send {
+                    to_address: recip_address3,
+                    amount: vec![Coin::new(10000, "uluna")],
+                }),
+            ),
+            // amp_msg,
+        ])
+        .add_attributes(vec![attr("action", "send"), attr("sender", "creator")]);
 
-//     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
+    assert_eq!(res, expected_res);
+}
+use rstest::*;
 
-//     let query_msg = QueryMsg::GetUserWeight {
-//         user: Recipient::Addr("second".to_string()),
-//     };
-//     let res = query(deps.as_ref(), env, query_msg).unwrap();
-//     let val: GetUserWeightResponse = from_json(&res).unwrap();
+#[fixture]
+fn locked_splitter() -> (DepsMut<'static>, Splitter) {
+    let deps = Box::leak(Box::new(mock_dependencies_custom(&[])));
+    let lock_time = mock_env().block.time.plus_seconds(86400);
 
-//     assert_eq!(val.weight, Uint128::new(10));
-//     assert_eq!(val.total_weight, Uint128::new(15));
-// }
+    // Call instantiate with the recipients
+    let msg = InstantiateMsg {
+        recipients: vec![
+            AddressWeight {
+                recipient: Recipient::from_string("addr1".to_string()),
+                weight: Uint128::new(40), // 40% weight
+            },
+            AddressWeight {
+                recipient: Recipient::from_string("addr2".to_string()),
+                weight: Uint128::new(60), // 60% weight
+            },
+        ],
+        lock_time: Some(Expiry::AtTime(Milliseconds::from_seconds(
+            lock_time.seconds(),
+        ))),
+        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+        owner: None,
+        default_recipient: None,
+    };
 
-// #[test]
-// fn test_execute_send_error() {
-//     // Send more than 5 coins
-//     let mut deps = mock_dependencies_custom(&[]);
-//     let env = mock_env();
+    let info = mock_info("owner", &[]);
+    instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-//     let sender_funds_amount = 10000u128;
-//     let owner = "creator";
+    let splitter = SPLITTER.load(deps.as_ref().storage).unwrap();
+    (deps.as_mut(), splitter)
+}
 
-//     let recip_address1 = "address1".to_string();
-//     let recip_weight1 = Uint128::new(10); // Weight of 10
+#[fixture]
+fn unlocked_splitter() -> (DepsMut<'static>, Splitter) {
+    let deps = Box::leak(Box::new(mock_dependencies_custom(&[])));
 
-//     let recip_address2 = "address2".to_string();
-//     let recip_weight2 = Uint128::new(20); // Weight of 20
+    // Call instantiate with the recipients
+    let msg = InstantiateMsg {
+        recipients: vec![
+            AddressWeight {
+                recipient: Recipient::from_string("addr1".to_string()),
+                weight: Uint128::new(40), // 40% weight
+            },
+            AddressWeight {
+                recipient: Recipient::from_string("addr2".to_string()),
+                weight: Uint128::new(60), // 60% weight
+            },
+        ],
+        lock_time: None,
+        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+        owner: None,
+        default_recipient: None,
+    };
 
-//     let recipient = vec![
-//         AddressWeight {
-//             recipient: Recipient::Addr(recip_address1),
-//             weight: recip_weight1,
-//         },
-//         AddressWeight {
-//             recipient: Recipient::Addr(recip_address2),
-//             weight: recip_weight2,
-//         },
-//     ];
-//     let msg = ExecuteMsg::Send {
-//         reply_gas_exit: None,
-//         packet: None,
-//     };
+    let info = mock_info("owner", &[]);
+    instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-//     let info = mock_info(
-//         owner,
-//         &vec![
-//             Coin::new(sender_funds_amount, "uluna"),
-//             Coin::new(sender_funds_amount, "uluna"),
-//             Coin::new(sender_funds_amount, "uluna"),
-//             Coin::new(sender_funds_amount, "uluna"),
-//             Coin::new(sender_funds_amount, "uluna"),
-//             Coin::new(sender_funds_amount, "uluna"),
-//         ],
-//     );
-//     let splitter = Splitter {
-//         recipients: recipient.clone(),
-//         lock: Milliseconds::default(),
-//     };
+    let splitter = SPLITTER.load(deps.as_ref().storage).unwrap();
+    (deps.as_mut(), splitter)
+}
 
-//     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
+#[rstest]
+fn test_send_with_config_locked(locked_splitter: (DepsMut<'static>, Splitter)) {
+    let (deps, _) = locked_splitter;
 
-//     let res = execute(deps.as_mut(), env.clone(), info, msg.clone()).unwrap_err();
+    let config = vec![AddressWeight {
+        recipient: Recipient::from_string("new_addr".to_string()),
+        weight: Uint128::new(100), // 100% weight
+    }];
 
-//     let expected_res = ContractError::ExceedsMaxAllowedCoins {};
+    let msg = ExecuteMsg::Send {
+        config: Some(config),
+    };
 
-//     assert_eq!(res, expected_res);
+    let info = mock_info("owner", &[Coin::new(10000, "uluna")]);
+    let res = execute(deps, mock_env(), info, msg);
 
-//     // Send 0 coins
-//     let info = mock_info(owner, &[]);
-//     let splitter = Splitter {
-//         recipients: recipient,
-//         lock: Milliseconds::default(),
-//     };
+    assert_eq!(
+        ContractError::ContractLocked {
+            msg: Some("Config isn't allowed while the splitter is locked".to_string())
+        },
+        res.unwrap_err()
+    );
+}
 
-//     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
+#[rstest]
+fn test_send_with_config_unlocked(unlocked_splitter: (DepsMut<'static>, Splitter)) {
+    let (deps, _) = unlocked_splitter;
 
-//     let res = execute(deps.as_mut(), env, info, msg).unwrap_err();
+    let config = vec![AddressWeight {
+        recipient: Recipient::from_string("new_addr".to_string()),
+        weight: Uint128::new(100), // 100% weight
+    }];
 
-//     let expected_res = ContractError::InvalidFunds {
-//         msg: "ensure! at least one coin to be sent".to_string(),
-//     };
+    let msg = ExecuteMsg::Send {
+        config: Some(config),
+    };
 
-//     assert_eq!(res, expected_res);
-// }
+    let info = mock_info("owner", &[Coin::new(10000, "uluna")]);
+    let res = execute(deps, mock_env(), info, msg).unwrap();
+
+    // Verify response contains expected submessages and refund
+    assert_eq!(1, res.messages.len());
+    assert!(res.attributes.contains(&attr("action", "send")));
+}
+
+#[rstest]
+fn test_send_without_config_locked(locked_splitter: (DepsMut<'static>, Splitter)) {
+    let (deps, _) = locked_splitter;
+
+    let msg = ExecuteMsg::Send { config: None };
+
+    let info = mock_info("owner", &[Coin::new(10000, "uluna")]);
+    let res = execute(deps, mock_env(), info, msg).unwrap();
+
+    // Verify response contains expected submessages
+    assert_eq!(2, res.messages.len());
+    assert!(res.attributes.contains(&attr("action", "send")));
+}
+
+#[rstest]
+fn test_send_without_config_unlocked(unlocked_splitter: (DepsMut<'static>, Splitter)) {
+    let (deps, _) = unlocked_splitter;
+
+    let msg = ExecuteMsg::Send { config: None };
+
+    let info = mock_info("owner", &[Coin::new(10000, "uluna")]);
+    let res = execute(deps, mock_env(), info, msg).unwrap();
+
+    // Verify response contains expected submessages
+    assert_eq!(2, res.messages.len());
+    assert!(res.attributes.contains(&attr("action", "send")));
+}

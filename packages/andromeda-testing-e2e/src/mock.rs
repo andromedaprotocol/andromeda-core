@@ -1,10 +1,17 @@
+use andromeda_adodb::ADODBContract;
+use andromeda_economics::EconomicsContract;
+use andromeda_kernel::KernelContract;
+use andromeda_std::os::{
+    adodb::{self, ExecuteMsgFns},
+    economics,
+    kernel::{self, ExecuteMsgFns as KernelExecuteMsgFns},
+    vfs,
+};
+use andromeda_vfs::VFSContract;
 use cw_orch::prelude::*;
 use cw_orch_daemon::{Daemon, DaemonBase, Wallet};
 
-use crate::{
-    adodb::AdodbContract, economics::EconomicsContract, faucet::fund, kernel::KernelContract,
-    vfs::VfsContract,
-};
+use crate::faucet::fund;
 
 pub fn mock_app(chain: ChainInfo, mnemonic: &str) -> DaemonBase<Wallet> {
     let daemon = Daemon::builder(chain.clone()) // set the network to use
@@ -19,8 +26,8 @@ pub fn mock_app(chain: ChainInfo, mnemonic: &str) -> DaemonBase<Wallet> {
 
 pub struct MockAndromeda {
     pub kernel_contract: KernelContract<DaemonBase<Wallet>>,
-    pub adodb_contract: AdodbContract<DaemonBase<Wallet>>,
-    pub vfs_contract: VfsContract<DaemonBase<Wallet>>,
+    pub adodb_contract: ADODBContract<DaemonBase<Wallet>>,
+    pub vfs_contract: VFSContract<DaemonBase<Wallet>>,
     pub economics_contract: EconomicsContract<DaemonBase<Wallet>>,
 }
 
@@ -31,56 +38,110 @@ impl MockAndromeda {
         // Upload and instantiate os ADOs
         let kernel_contract = KernelContract::new(daemon.clone());
         kernel_contract.upload().unwrap();
-        kernel_contract.clone().init(chain_name);
+        kernel_contract
+            .clone()
+            .instantiate(
+                &kernel::InstantiateMsg {
+                    chain_name,
+                    owner: None,
+                },
+                None,
+                None,
+            )
+            .unwrap();
 
-        let adodb_contract = AdodbContract::new(daemon.clone());
+        let adodb_contract = ADODBContract::new(daemon.clone());
         adodb_contract.upload().unwrap();
         adodb_contract
             .clone()
-            .init(kernel_contract.addr_str().unwrap());
+            .instantiate(
+                &adodb::InstantiateMsg {
+                    kernel_address: kernel_contract.addr_str().unwrap(),
+                    owner: None,
+                },
+                None,
+                None,
+            )
+            .unwrap();
 
-        let vfs_contract = VfsContract::new(daemon.clone());
+        let vfs_contract = VFSContract::new(daemon.clone());
         vfs_contract.upload().unwrap();
         vfs_contract
             .clone()
-            .init(kernel_contract.addr_str().unwrap());
+            .instantiate(
+                &vfs::InstantiateMsg {
+                    kernel_address: kernel_contract.addr_str().unwrap(),
+                    owner: None,
+                },
+                None,
+                None,
+            )
+            .unwrap();
 
         let economics_contract = EconomicsContract::new(daemon.clone());
         economics_contract.upload().unwrap();
         economics_contract
             .clone()
-            .init(kernel_contract.addr_str().unwrap());
+            .instantiate(
+                &economics::InstantiateMsg {
+                    kernel_address: kernel_contract.addr_str().unwrap(),
+                    owner: None,
+                },
+                None,
+                None,
+            )
+            .unwrap();
 
-        // register code ids in ado db
-        adodb_contract.clone().execute_publish(
-            adodb_contract.code_id().unwrap(),
-            "adodb".to_string(),
-            "0.1.0".to_string(),
-        );
+        adodb_contract
+            .clone()
+            .publish(
+                "adodb".to_string(),
+                adodb_contract.code_id().unwrap(),
+                "0.1.0".to_string(),
+                None,
+                None,
+            )
+            .unwrap();
 
-        adodb_contract.clone().execute_publish(
-            vfs_contract.code_id().unwrap(),
-            "vfs".to_string(),
-            "0.1.0".to_string(),
-        );
+        adodb_contract
+            .clone()
+            .publish(
+                "vfs".to_string(),
+                vfs_contract.code_id().unwrap(),
+                "0.1.0".to_string(),
+                None,
+                None,
+            )
+            .unwrap();
 
-        adodb_contract.clone().execute_publish(
-            kernel_contract.code_id().unwrap(),
-            "kernel".to_string(),
-            "0.1.0".to_string(),
-        );
+        adodb_contract
+            .clone()
+            .publish(
+                "kernel".to_string(),
+                kernel_contract.code_id().unwrap(),
+                "0.1.0".to_string(),
+                None,
+                None,
+            )
+            .unwrap();
 
         // update kernel
         kernel_contract
             .clone()
-            .execute_store_key_address("adodb".to_string(), adodb_contract.addr_str().unwrap());
+            .upsert_key_address("adodb".to_string(), adodb_contract.addr_str().unwrap())
+            .unwrap();
+        // .upsert_key_address("adodb".to_string(), adodb_contract.addr_str().unwrap());
         kernel_contract
             .clone()
-            .execute_store_key_address("vfs".to_string(), vfs_contract.addr_str().unwrap());
-        kernel_contract.clone().execute_store_key_address(
-            "economics".to_string(),
-            economics_contract.addr_str().unwrap(),
-        );
+            .upsert_key_address("vfs".to_string(), vfs_contract.addr_str().unwrap())
+            .unwrap();
+        kernel_contract
+            .clone()
+            .upsert_key_address(
+                "economics".to_string(),
+                economics_contract.addr_str().unwrap(),
+            )
+            .unwrap();
 
         MockAndromeda {
             kernel_contract,

@@ -1,6 +1,7 @@
 use andromeda_std::amp::addresses::AndrAddr;
 use andromeda_std::amp::Recipient;
 use andromeda_std::common::denom::Asset;
+use andromeda_std::common::expiration::Expiry;
 use andromeda_std::common::{MillisecondsExpiration, OrderBy};
 use andromeda_std::error::ContractError;
 use andromeda_std::{andr_exec, andr_instantiate, andr_query};
@@ -21,6 +22,7 @@ pub struct InstantiateMsg {
 
 #[andr_exec]
 #[cw_serde]
+#[cfg_attr(not(target_arch = "wasm32"), derive(cw_orch::ExecuteFns))]
 pub enum ExecuteMsg {
     /// Add a tier
     AddTier { tier: Tier },
@@ -30,11 +32,12 @@ pub enum ExecuteMsg {
     RemoveTier { level: Uint64 },
     /// Start the campaign
     StartCampaign {
-        start_time: Option<MillisecondsExpiration>,
-        end_time: MillisecondsExpiration,
+        start_time: Option<Expiry>,
+        end_time: Expiry,
         presale: Option<Vec<PresaleTierOrder>>,
     },
     /// Purchase tiers
+    #[cfg_attr(not(target_arch = "wasm32"), cw_orch(payable))]
     PurchaseTiers { orders: Vec<SimpleTierOrder> },
     /// Purchase tiers with cw20
     Receive(Cw20ReceiveMsg),
@@ -115,16 +118,18 @@ pub enum CampaignStage {
     SUCCESS,
     /// Stage when campaign failed to meet the target cap before expiration
     FAILED,
+    /// Stage when campaign is discarded
+    DISCARDED,
 }
 
-impl ToString for CampaignStage {
-    #[inline]
-    fn to_string(&self) -> String {
+impl std::fmt::Display for CampaignStage {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::READY => "READY".to_string(),
-            Self::ONGOING => "ONGOING".to_string(),
-            Self::SUCCESS => "SUCCESS".to_string(),
-            Self::FAILED => "FAILED".to_string(),
+            Self::READY => write!(f, "READY"),
+            Self::ONGOING => write!(f, "ONGOING"),
+            Self::SUCCESS => write!(f, "SUCCESS"),
+            Self::FAILED => write!(f, "FAILED"),
+            Self::DISCARDED => write!(f, "DISCARDED"),
         }
     }
 }

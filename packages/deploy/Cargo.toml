@@ -1,0 +1,98 @@
+[package]
+name = "andromeda-deploy"
+version = "0.0.1"
+edition = "2021"
+rust-version = "1.75.0"
+description = "The deploy tool for aOS"
+license = "MIT"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+cosmwasm-std = { workspace = true, features = ["ibc3", "cosmwasm_1_2"] }
+cosmwasm-schema = { workspace = true }
+cw-storage-plus = { workspace = true }
+schemars = "0.8.10"
+serde = { workspace = true }
+semver = { workspace = true }
+cw20 = { version = "1.0.1" }
+cw20-base = { workspace = true, features = ["library"] }
+cw721-base = { workspace = true }
+cw-utils = { workspace = true }
+cw2 = { workspace = true }
+cw-asset = { version = "3.0.0" }
+thiserror = { version = "2.0.11" }
+lazy_static = "1"
+hex = "0.4"
+regex = { version = "1.9.1", default-features = false }
+andromeda-macros = { workspace = true }
+strum_macros = { workspace = true }
+cw721 = { workspace = true }
+serde-json-wasm = "1.0.1"
+enum-repr = { workspace = true }
+sha2 = "0.10.8"
+cw-orch = { workspace = true }
+cw-orch-daemon = "0.24.2"
+
+# OS Contracts
+andromeda-kernel = { version = "1.2.0-b.1", path = "../../contracts/os/andromeda-kernel" }
+andromeda-adodb = { version = "1.1.1", path = "../../contracts/os/andromeda-adodb" }
+andromeda-vfs = { version = "1.1.1", path = "../../contracts/os/andromeda-vfs" }
+andromeda-economics = { version = "1.1.1", path = "../../contracts/os/andromeda-economics" }
+andromeda-ibc-registry = { version = "1.0.1", path = "../../contracts/os/andromeda-ibc-registry" }
+
+# Finance Contracts
+andromeda-splitter = { path = "../../contracts/finance/andromeda-splitter" }
+andromeda-validator-staking = { path = "../../contracts/finance/andromeda-validator-staking" }
+andromeda-vesting = { path = "../../contracts/finance/andromeda-vesting" }
+andromeda-timelock = { path = "../../contracts/finance/andromeda-timelock" }
+andromeda-conditional-splitter = { path = "../../contracts/finance/andromeda-conditional-splitter" }
+andromeda-rate-limiting-withdrawals = { path = "../../contracts/finance/andromeda-rate-limiting-withdrawals" }
+andromeda-fixed-amount-splitter = { path = "../../contracts/finance/andromeda-fixed-amount-splitter" }
+andromeda-weighted-distribution-splitter = { path = "../../contracts/finance/andromeda-weighted-distribution-splitter" }
+
+# Data Storage Contracts
+andromeda-primitive = { path = "../../contracts/data-storage/andromeda-primitive" }
+andromeda-boolean = { path = "../../contracts/data-storage/andromeda-boolean" }
+andromeda-string-storage = { path = "../../contracts/data-storage/andromeda-string-storage" }
+
+# Fungible Tokens Contracts
+andromeda-cw20-staking = { path = "../../contracts/fungible-tokens/andromeda-cw20-staking" }
+andromeda-cw20 = { path = "../../contracts/fungible-tokens/andromeda-cw20" }
+andromeda-cw20-exchange = { path = "../../contracts/fungible-tokens/andromeda-cw20-exchange" }
+andromeda-lockdrop = { path = "../../contracts/fungible-tokens/andromeda-lockdrop" }
+andromeda-merkle-airdrop = { path = "../../contracts/fungible-tokens/andromeda-merkle-airdrop" }
+
+# Non-Fungible Tokens Contracts
+andromeda-cw721 = { path = "../../contracts/non-fungible-tokens/andromeda-cw721" }
+andromeda-auction = { path = "../../contracts/non-fungible-tokens/andromeda-auction" }
+andromeda-crowdfund = { path = "../../contracts/non-fungible-tokens/andromeda-crowdfund" }
+andromeda-marketplace = { path = "../../contracts/non-fungible-tokens/andromeda-marketplace" }
+
+# App Contracts
+andromeda-app-contract = { path = "../../contracts/app/andromeda-app-contract" }
+
+# Modules Contracts
+andromeda-address-list = { path = "../../contracts/modules/andromeda-address-list" }
+andromeda-rates = { path = "../../contracts/modules/andromeda-rates" }
+
+# Math Contracts
+andromeda-counter = { path = "../../contracts/math/andromeda-counter" }
+andromeda-curve = { path = "../../contracts/math/andromeda-curve" }
+andromeda-distance = { path = "../../contracts/math/andromeda-distance" }
+andromeda-date-time = { path = "../../contracts/math/andromeda-date-time" }
+andromeda-shunting = { path = "../../contracts/math/andromeda-shunting" }
+andromeda-graph = { path = "../../contracts/math/andromeda-graph" }
+andromeda-point = { path = "../../contracts/math/andromeda-point" }
+
+andromeda-std = { workspace = true }
+env_logger = "0.11.6"
+log = "0.4"
+dotenv = "0.15.0"
+reqwest = { version = "0.12", features = ["json", "blocking"] }
+serde_json = "1.0"
+chrono = "0.4"
+
+[dev-dependencies]
+cw-multi-test = { version = "1.0.0" }

@@ -97,7 +97,7 @@ mod tests {
 
     #[test]
     fn test_from_string() {
-        let cases = vec![(
+        let cases = [(
             StringStorage::String("String".to_string()),
             "String".to_string(),
         )];

@@ -21,7 +21,7 @@ pub struct AuctionIdIndices<'a> {
     pub token: MultiIndex<'a, String, AuctionInfo, String>,
 }
 
-impl<'a> IndexList<AuctionInfo> for AuctionIdIndices<'a> {
+impl IndexList<AuctionInfo> for AuctionIdIndices<'_> {
     fn get_indexes(&'_ self) -> Box<dyn Iterator<Item = &'_ dyn Index<AuctionInfo>> + '_> {
         let v: Vec<&dyn Index<AuctionInfo>> = vec![&self.token];
         Box::new(v.into_iter())

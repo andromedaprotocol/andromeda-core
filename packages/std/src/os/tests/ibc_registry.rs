@@ -45,7 +45,7 @@ mod tests {
                 denom: "ibc/1234567890123456789012345678901234567890123456789012345678901234"
                     .to_string(),
                 expected_res: Err(ContractError::InvalidDenom {
-                    msg: Some("Denom hash does not match. Expected: ibc/eab02686416e4b155cfee9c247171e1c4196b218c6a254f765b0958b3af59d09, Actual: ibc/1234567890123456789012345678901234567890123456789012345678901234".to_string()),
+                    msg: Some("Denom hash does not match. Expected: ibc/EAB02686416E4B155CFEE9C247171E1C4196B218C6A254F765B0958B3AF59D09, Actual: ibc/1234567890123456789012345678901234567890123456789012345678901234".to_string()),
                 }),
             },
             ValidateDenomTestCase {

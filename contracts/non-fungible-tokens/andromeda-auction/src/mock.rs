@@ -10,7 +10,7 @@ use andromeda_std::ado_base::rates::{Rate, RatesMessage};
 use andromeda_std::amp::messages::AMPPkt;
 use andromeda_std::amp::AndrAddr;
 use andromeda_std::amp::Recipient;
-use andromeda_std::common::denom::Asset;
+use andromeda_std::common::denom::{Asset, PermissionAction};
 use andromeda_std::common::expiration::Expiry;
 use andromeda_testing::mock::MockApp;
 use andromeda_testing::{
@@ -168,13 +168,13 @@ pub fn mock_auction_instantiate_msg(
     kernel_address: impl Into<String>,
     owner: Option<String>,
     authorized_token_addresses: Option<Vec<AndrAddr>>,
-    authorized_cw20_address: Option<AndrAddr>,
+    authorized_cw20_addresses: Option<Vec<AndrAddr>>,
 ) -> InstantiateMsg {
     InstantiateMsg {
         kernel_address: kernel_address.into(),
         owner,
         authorized_token_addresses,
-        authorized_cw20_address,
+        authorized_cw20_addresses,
     }
 }
 
@@ -209,7 +209,8 @@ pub fn mock_authorize_token_address(
     token_address: impl Into<String>,
     expiration: Option<Expiry>,
 ) -> ExecuteMsg {
-    ExecuteMsg::AuthorizeTokenContract {
+    ExecuteMsg::AuthorizeContract {
+        action: PermissionAction::SendNft,
         addr: AndrAddr::from_string(token_address.into()),
         expiration,
     }
@@ -224,6 +225,7 @@ pub fn mock_update_auction(
     coin_denom: Asset,
     min_bid: Option<Uint128>,
     min_raise: Option<Uint128>,
+    buy_now_price: Option<Uint128>,
     whitelist: Option<Vec<Addr>>,
     recipient: Option<Recipient>,
 ) -> ExecuteMsg {
@@ -236,6 +238,7 @@ pub fn mock_update_auction(
         whitelist,
         min_bid,
         min_raise,
+        buy_now_price,
         recipient,
     }
 }

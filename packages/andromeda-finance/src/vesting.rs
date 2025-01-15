@@ -1,10 +1,11 @@
 use andromeda_std::{
     amp::Recipient,
     andr_exec, andr_instantiate, andr_query,
-    common::{withdraw::WithdrawalType, Milliseconds},
+    common::{denom::validate_native_denom, withdraw::WithdrawalType, Milliseconds},
+    error::ContractError,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::Uint128;
+use cosmwasm_std::{DepsMut, Uint128};
 
 #[andr_instantiate]
 #[cw_serde]
@@ -36,8 +37,8 @@ pub enum ExecuteMsg {
         /// Specifying None would mean no lock up period and funds start vesting right away.
         lockup_duration: Option<Milliseconds>,
         /// How often releases occur in seconds.
-        release_unit: Milliseconds,
-        /// Specifies how much is to be released after each `release_unit`. If
+        release_duration: Milliseconds,
+        /// Specifies how much is to be released after each `release_duration`. If
         /// it is a percentage, it would be the percentage of the original amount.
         release_amount: WithdrawalType,
     },
@@ -84,10 +85,17 @@ pub struct BatchResponse {
     /// When the lockup ends.
     pub lockup_end: Milliseconds,
     /// How often releases occur.
-    pub release_unit: Milliseconds,
-    /// Specifies how much is to be released after each `release_unit`. If
+    pub release_duration: Milliseconds,
+    /// Specifies how much is to be released after each `release_duration`. If
     /// it is a percentage, it would be the percentage of the original amount.
     pub release_amount: WithdrawalType,
     /// The time at which the last claim took place in seconds.
     pub last_claimed_release_time: Milliseconds,
+}
+
+impl InstantiateMsg {
+    pub fn validate(&self, deps: &DepsMut) -> Result<(), ContractError> {
+        validate_native_denom(deps.as_ref(), self.denom.clone())?;
+        self.recipient.validate(&deps.as_ref())
+    }
 }

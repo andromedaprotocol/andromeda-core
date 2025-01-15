@@ -5,9 +5,6 @@ edition = "2021"
 rust-version = "1.75.0"
 publish = false
 
-[features]
-modules = []
-
 [dev-dependencies]
 #App
 andromeda-app = { workspace = true }
@@ -71,7 +68,7 @@ andromeda-finance = { workspace = true }
 andromeda-splitter = { path = "../contracts/finance/andromeda-splitter", features = [
     "testing",
 ] }
-andromeda-set-amount-splitter = { path = "../contracts/finance/andromeda-set-amount-splitter", features = [
+andromeda-fixed-amount-splitter = { path = "../contracts/finance/andromeda-fixed-amount-splitter", features = [
     "testing",
 ] }
 andromeda-conditional-splitter = { path = "../contracts/finance/andromeda-conditional-splitter", features = [
@@ -91,15 +88,8 @@ andromeda-data-storage = { workspace = true }
 andromeda-primitive = { path = "../contracts/data-storage/andromeda-primitive", features = [
     "testing",
 ] }
-andromeda-counter = { path = "../contracts/data-storage/andromeda-counter", features = [
-    "testing",
-] }
 
 # #OS
-
-andromeda-shunting = { path = "../contracts/modules/andromeda-shunting", features = [
-    "testing",
-] }
 
 andromeda-kernel = { path = "../contracts/os/andromeda-kernel", features = [
     "testing",
@@ -117,6 +107,15 @@ andromeda-vfs = { path = "../contracts/os/andromeda-vfs", features = [
     "testing",
 ] }
 
+# # Math
+andromeda-math = { workspace = true }
+andromeda-counter = { path = "../contracts/math/andromeda-counter", features = [
+    "testing",
+] }
+andromeda-shunting = { path = "../contracts/math/andromeda-shunting", features = [
+    "testing",
+] }
+
 
 #Other Crates
 # common = { version = "0.1.0", path = "../packages/common" }
@@ -129,8 +128,8 @@ cw721-base = { workspace = true }
 cw721 = { workspace = true }
 cw20 = { workspace = true }
 cw-asset = { workspace = true }
-toml = "0.7"
-cw-orch = "=0.24.1"
+toml = "0.8"
+cw-orch = { workspace = true }
 cw-orch-interchain = "=0.3.0"
 ibc-relayer-types = "=0.25.1"
 
@@ -166,7 +165,7 @@ name = "validator_staking"
 name = "shunting"
 
 [dependencies]
-rstest = "0.19.0"
+rstest = { workspace = true }
 
 # [[test]]
 # name = "cw20_staking_app"
@@ -176,3 +175,12 @@ rstest = "0.19.0"
 
 # [[test]]
 # name = "kernel"
+
+[[test]]
+name = "fixed_amount_splitter"
+
+[[test]]
+name = "cw20_staking"
+
+[[test]]
+name = "ibc_registry"

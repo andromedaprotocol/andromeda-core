@@ -10,16 +10,19 @@ members = [
     # "contracts/automation/*",
     "contracts/modules/*",
     "contracts/os/*",
+    "contracts/accounts/*",
+    "contracts/math/*",
 
     #Internal
-    "tests-integration", "ibc-tests",
+    "tests-integration",
+    "ibc-tests",
 ]
 resolver = "2"
 
 [profile.release]
 debug = false
 debug-assertions = false
-opt-level = 'z'
+opt-level = 's'
 codegen-units = 1
 rpath = false
 lto = true
@@ -28,7 +31,9 @@ panic = 'abort'
 strip = true
 
 [workspace.dependencies]
-andromeda-std = { path = "./packages/std", default-features = false, version = "1.0.0" }
+andromeda-std = { path = "./packages/std", default-features = false, features = [
+    "deploy",
+] }
 andromeda-macros = { path = "./packages/std/macros", default-features = false, version = "1.0.0" }
 andromeda-non-fungible-tokens = { path = "./packages/andromeda-non-fungible-tokens", version = "1.0.0" }
 andromeda-fungible-tokens = { path = "./packages/andromeda-fungible-tokens", version = "1.0.0" }
@@ -37,23 +42,31 @@ andromeda-data-storage = { path = "./packages/andromeda-data-storage", version =
 andromeda-modules = { path = "./packages/andromeda-modules", version = "2.0.0" }
 andromeda-app = { path = "./packages/andromeda-app", version = "1.0.0" }
 andromeda-ecosystem = { path = "./packages/andromeda-ecosystem", version = "1.0.0" }
+andromeda-accounts = { path = "./packages/andromeda-accounts", version = "1.0.0" }
+andromeda-math = { path = "./packages/andromeda-math", version = "1.0.0" }
 andromeda-testing = { path = "./packages/andromeda-testing", version = "1.0.0" }
 andromeda-testing-e2e = { path = "./packages/andromeda-testing-e2e", version = "1.0.0" }
 
 
 strum_macros = "0.24.3"
-cosmwasm-std = "1.5.2"
+cosmwasm-std = "1.5.9"
 cw-utils = "1.0.3"
 cw-storage-plus = "1.2.0"
 cw2 = "1.1.2"
 cw20 = "1.1.2"
 cw20-base = "1.1.2"
+cw3 = "1.1.2"
+cw4 = "1.1.2"
 cw721 = "0.18.0"
 cw721-base = { version = "0.18.0", features = ["library"] }
 cw-asset = "=3.0.0"
-cosmwasm-schema = "1.5.2"
-semver = "1.0.0"
+cosmwasm-schema = "1.5.9"
+semver = "1.0.24"
 enum-repr = "0.2.6"
 cw-multi-test = { version = "1.0.0", features = ["cosmwasm_1_2"] }
-serde = { version = "1.0.127" }
+serde = { version = "1.0.217" }
 test-case = { version = "3.3.1" }
+cw-orch = "=0.24.1"
+jsonschema-valid = { version = "0.5.2" }
+serde_json = { version = "1.0.135" }
+rstest = "0.24.0"

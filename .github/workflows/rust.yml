@@ -2,9 +2,11 @@ name: Formatting Check & Test
 
 on:
   push:
-    paths: ["**.*"]
+    paths:
+      - "**/*.rs" # Trigger on changes to Rust files
+      - "**/Cargo.toml" # Trigger on changes to Cargo.toml files
   pull_request:
-    branches: [main, development]
+    branches: [main]
 
 env:
   CARGO_TERM_COLOR: always
@@ -14,18 +16,19 @@ jobs:
     name: Linting
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 1
-      - uses: actions-rs/toolchain@v1
+      - uses: dtolnay/rust-toolchain@v1
         with:
-          toolchain: 1.75.0
+          toolchain: 1.81.0
           components: rustfmt, clippy
-          profile: minimal
-          override: true
-      - run: cargo fetch --verbose
-      - run: cargo clippy --all --all-targets -- -D warnings
-      - run: cargo fmt -- --check
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo fetch --quiet
+      - name: Run linting checks
+        run: |
+          cargo fmt -- --check
+          cargo clippy --quiet --workspace --all-targets --no-deps -- -D warnings
 
   contract-tests:
     name: Contract Tests
@@ -34,85 +37,13 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
+        test-type: ["integration-test", "unit-test"]
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 1
-      - uses: actions-rs/toolchain@v1
+      - uses: dtolnay/rust-toolchain@v1
         with:
-          toolchain: 1.75.0
-          profile: minimal
-      - run: cargo fetch --verbose
-      - run: cargo build
-      - run: cargo test --verbose --all --lib
-        env:
-          RUST_BACKTRACE: 1
-      - run: cargo test -p tests-integration --verbose
-        env:
-          RUST_BACKTRACE: 1
-
-  build:
-    runs-on: ubuntu-latest
-    name: Actions - build contracts and upload artifacts
-    needs: [contract-tests]
-    steps:
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: 1.75.0
-      - run: rustup override set 1.75.0
-      - run: rustup target add wasm32-unknown-unknown
-      - uses: actions/checkout@v2
-      - name: Install Binaryen
-        run: |
-          chmod +x "${GITHUB_WORKSPACE}/ci-scripts/install_binaryen.sh"
-          "${GITHUB_WORKSPACE}/ci-scripts/install_binaryen.sh" all
-      - name: Build
-        run: |
-          chmod +x "${GITHUB_WORKSPACE}/build.sh"
-          "${GITHUB_WORKSPACE}/build.sh" all
-      - name: Check contract sizes
-        run: |
-          chmod +x "${GITHUB_WORKSPACE}/.github/file-size.sh"
-          "${GITHUB_WORKSPACE}/.github/file-size.sh"
-      - name: Upload Artifacts
-        uses: actions/upload-artifact@v3
-        with:
-          name: contracts
-          path: ./artifacts/
-          if-no-files-found: error
-
-  # ibc-tests:
-  #   runs-on: ubuntu-latest
-  #   name: Post Build - IBC Tests
-  #   needs: build
-  #   steps:
-  #     - uses: actions/checkout@v2
-  #       with:
-  #         fetch-depth: 1
-  #     - name: Download Contracts
-  #       uses: actions/download-artifact@v2
-  #       with:
-  #         name: contracts
-  #         path: "./ibc-tests/contracts"
-  #     - name: Run IBC Tests
-  #       run: |
-  #         cd ./ibc-tests
-  #         npm i
-  #         npm test
-
-  build-schemas:
-    runs-on: ubuntu-latest
-    name: Actions - build schemas
-    needs: contract-tests
-    steps:
-      - uses: actions/checkout@v2
-      - name: Build Schema
-        run: |
-          chmod +x "${GITHUB_WORKSPACE}/build_schema.sh"
-          "${GITHUB_WORKSPACE}/build_schema.sh"
-      - name: Upload Artifacts
-        uses: actions/upload-artifact@v3
-        with:
-          name: schema
-          path: ./artifacts/
-          if-no-files-found: error
+          toolchain: 1.81.0
+      - uses: Swatinem/rust-cache@v2
+      - run: make ${{ matrix.test-type }}

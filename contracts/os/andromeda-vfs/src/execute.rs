@@ -130,13 +130,22 @@ pub fn add_child(
     // Only add path method can override existing paths as its safe because only owner of the path can execute it
     match existing {
         None => {
-            add_pathname(deps.storage, parent_address, name, info.sender)?;
+            add_pathname(
+                deps.storage,
+                parent_address.clone(),
+                name.clone(),
+                info.sender,
+            )?;
         }
         Some(path) => {
             ensure!(path.address == info.sender, ContractError::Unauthorized {})
         }
     };
-    Ok(Response::default())
+    Ok(Response::default().add_attributes(vec![
+        attr("action", "add_child"),
+        attr("name", name),
+        attr("parent", parent_address),
+    ]))
 }
 
 const MAX_USERNAME_LENGTH: u64 = 30;
@@ -158,10 +167,12 @@ pub fn register_user(
     );
     let username = username.to_lowercase();
     let kernel = &ADOContract::default().get_kernel_address(env.deps.storage)?;
-    let curr_chain = AOSQuerier::get_current_chain(&env.deps.querier, kernel)?;
+    let is_registration_enabled =
+        AOSQuerier::get_env_variable::<bool>(&env.deps.querier, kernel, "username_registration")?
+            .unwrap_or(false);
     // Can only register username directly on Andromeda chain
     ensure!(
-        curr_chain == "andromeda" || env.info.sender == kernel,
+        is_registration_enabled || env.info.sender == kernel,
         ContractError::Unauthorized {}
     );
     // If address is provided sender must be Kernel

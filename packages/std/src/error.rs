@@ -2,7 +2,7 @@ use cosmwasm_std::{Addr, OverflowError, StdError};
 use cw20_base::ContractError as Cw20ContractError;
 use cw721_base::ContractError as Cw721ContractError;
 use cw_asset::AssetError;
-use cw_utils::{ParseReplyError, PaymentError};
+use cw_utils::{ParseReplyError, PaymentError, ThresholdError};
 use hex::FromHexError;
 use std::convert::From;
 use std::str::{ParseBoolError, Utf8Error};
@@ -25,6 +25,9 @@ pub enum ContractError {
     #[error("{0}")]
     ParseReplyError(#[from] ParseReplyError),
 
+    #[error("{0}")]
+    Threshold(#[from] ThresholdError),
+
     #[error("Unauthorized")]
     Unauthorized {},
 
@@ -40,8 +43,8 @@ pub enum ContractError {
     #[error("UnpublishedVersion")]
     UnpublishedVersion {},
 
-    #[error("ContractLocked")]
-    ContractLocked {},
+    #[error("ContractLocked: {msg:?}")]
+    ContractLocked { msg: Option<String> },
 
     #[error("UnidentifiedMsgID")]
     UnidentifiedMsgID {},
@@ -58,6 +61,9 @@ pub enum ContractError {
     #[error("NoDenomInfoProvided")]
     NoDenomInfoProvided {},
 
+    #[error("Cannot assign cw20 rate to cross-chain recipient")]
+    InvalidCw20CrossChainRate {},
+
     #[error("InvalidAmount: {msg}")]
     InvalidAmount { msg: String },
 
@@ -69,6 +75,7 @@ pub enum ContractError {
         operation: String,
         validator: String,
     },
+
     #[error("Invalid Campaign Operation: {operation} on {stage}")]
     InvalidCampaignOperation { operation: String, stage: String },
 
@@ -87,8 +94,14 @@ pub enum ContractError {
     #[error("InvalidDelegation")]
     InvalidDelegation {},
 
+    #[error("Invalid action: {action}. Expected either SEND_NFT or SEND_CW20")]
+    InvalidAction { action: String },
+
     #[error("RewardTooLow")]
     RewardTooLow {},
+
+    #[error("InvalidRedelegationAmount. Got {{amount}}, full delegation: {{max}}")]
+    InvalidRedelegationAmount { amount: String, max: String },
 
     #[error("LockedNFT")]
     LockedNFT {},
@@ -122,6 +135,12 @@ pub enum ContractError {
 
     #[error("EmptyOptional")]
     EmptyOptional {},
+
+    #[error("EmptyEvents")]
+    EmptyEvents {},
+
+    #[error("EmptyUnstakingQueue")]
+    EmptyUnstakingQueue {},
 
     #[error("EmptyString")]
     EmptyString {},
@@ -733,6 +752,12 @@ pub enum ContractError {
 
     #[error("Invalid tier for {operation} operation: {msg} ")]
     InvalidTier { operation: String, msg: String },
+
+    #[error("Environment variable not found: {variable}")]
+    EnvironmentVariableNotFound { variable: String },
+
+    #[error("Invalid environment variable length: {msg}")]
+    InvalidEnvironmentVariable { msg: String },
 }
 
 impl ContractError {

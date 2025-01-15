@@ -18,7 +18,7 @@ cosmwasm-std = { workspace = true }
 cosmwasm-schema = { workspace = true }
 cw721 = { workspace = true }
 cw20 = { workspace = true }
-anyhow = "1.0.79"
+anyhow = "1.0.95"
 
 andromeda-non-fungible-tokens = { workspace = true }
 andromeda-app = { version = "1.0.0", path = "../andromeda-app" }
@@ -26,7 +26,7 @@ andromeda-modules = { version = "2.0.0", path = "../andromeda-modules" }
 andromeda-adodb = { version = "1.0.0", path = "../../contracts/os/andromeda-adodb", features = [
     "testing",
 ] }
-andromeda-kernel = { version = "1.0.0", path = "../../contracts/os/andromeda-kernel", features = [
+andromeda-kernel = { version = "1.2.0-b.1", path = "../../contracts/os/andromeda-kernel", features = [
     "testing",
 ] }
 andromeda-vfs = { version = "1.0.0", path = "../../contracts/os/andromeda-vfs", features = [
@@ -38,13 +38,10 @@ andromeda-economics = { version = "1.0.0", path = "../../contracts/os/andromeda-
 ] }
 andromeda-std = { workspace = true }
 serde = { workspace = true }
-secp256k1 = "0.29.0"
-cosmrs = "0.18.0"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 cw-multi-test = { workspace = true }
-anyhow = "1.0.79"
-reqwest = { version = "0.12.5", features = ["json"] }
-tokio = "1.39.2"
+anyhow = "1.0.95"
+tokio = "1.43.0"
 cw-orch-daemon = "0.24.3"
-cw-orch = "0.24.1"
+cw-orch = { workspace = true }

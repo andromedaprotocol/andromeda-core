@@ -8,22 +8,19 @@ use andromeda_std::common::has_coins_merged;
 use andromeda_std::common::reply::ReplyId;
 use andromeda_std::error::ContractError;
 use andromeda_std::os::aos_querier::AOSQuerier;
+#[cfg(not(target_arch = "wasm32"))]
 use andromeda_std::os::ibc_registry::path_to_hops;
-use andromeda_std::os::kernel::{
-    AcknowledgementMsg, ChannelInfo, IbcExecuteMsg, Ics20PacketInfo, InternalMsg,
-    SendMessageWithFundsResponse,
-};
+use andromeda_std::os::kernel::{ChannelInfo, IbcExecuteMsg, Ics20PacketInfo, InternalMsg};
 use andromeda_std::os::vfs::vfs_resolve_symlink;
 use cosmwasm_std::{
     attr, ensure, from_json, to_json_binary, BankMsg, Binary, Coin, ContractInfoResponse,
-    CosmosMsg, DepsMut, Env, IbcMsg, IbcPacketAckMsg, MessageInfo, Response, StdError, SubMsg,
-    WasmMsg,
+    CosmosMsg, DepsMut, Env, IbcMsg, MessageInfo, Response, StdAck, StdError, SubMsg, WasmMsg,
 };
 
 use crate::query;
 use crate::state::{
     ADO_OWNER, CHAIN_TO_CHANNEL, CHANNEL_TO_CHAIN, CHANNEL_TO_EXECUTE_MSG, CURR_CHAIN,
-    IBC_FUND_RECOVERY, KERNEL_ADDRESSES, PENDING_MSG_AND_FUNDS, TRIGGER_KEY,
+    ENV_VARIABLES, IBC_FUND_RECOVERY, KERNEL_ADDRESSES, PENDING_MSG_AND_FUNDS, TRIGGER_KEY,
 };
 
 pub fn send(ctx: ExecuteContext, message: AMPMsg) -> Result<Response, ContractError> {
@@ -37,16 +34,18 @@ pub fn send(ctx: ExecuteContext, message: AMPMsg) -> Result<Response, ContractEr
 
 pub fn trigger_relay(
     ctx: ExecuteContext,
-    packet_sequence: String,
-    packet_ack_msg: IbcPacketAckMsg,
+    packet_sequence: u64,
+    channel_id: String,
+    packet_ack_msg: Binary,
 ) -> Result<Response, ContractError> {
     //TODO Only the authorized address to handle replies can call this function
     ensure!(
         ctx.info.sender == KERNEL_ADDRESSES.load(ctx.deps.storage, TRIGGER_KEY)?,
         ContractError::Unauthorized {}
     );
-    let ics20_packet_info =
-        CHANNEL_TO_EXECUTE_MSG.load(ctx.deps.storage, packet_sequence.clone())?;
+    let ics20_packet_info = CHANNEL_TO_EXECUTE_MSG
+        .load(ctx.deps.storage, (channel_id.clone(), packet_sequence))
+        .expect("No packet found for channel_id and sequence");
 
     let chain =
         ics20_packet_info
@@ -61,28 +60,31 @@ pub fn trigger_relay(
         .ok_or_else(|| ContractError::InvalidPacket {
             error: Some(format!("Channel not found for chain {}", chain)),
         })?;
-    let ack: AcknowledgementMsg<SendMessageWithFundsResponse> =
-        from_json(packet_ack_msg.acknowledgement.data)?;
+    let ack: StdAck = from_json(packet_ack_msg)?;
 
     match ack {
-        AcknowledgementMsg::Ok(_) => handle_ibc_transfer_funds_reply(
+        StdAck::Success(_) => handle_ibc_transfer_funds_reply(
             ctx.deps,
             ctx.info,
             ctx.env,
             ctx.amp_ctx,
-            0,
+            packet_sequence,
             channel_info,
             ics20_packet_info,
         ),
         // This means that the funds have been returned to the contract, time to return the funds to the original sender
-        AcknowledgementMsg::Error(_) => {
+        StdAck::Error(_) => {
             let refund_msg = CosmosMsg::Bank(BankMsg::Send {
                 to_address: ics20_packet_info.sender.clone(),
                 amount: vec![ics20_packet_info.funds.clone()],
             });
             Ok(Response::default()
                 .add_message(refund_msg)
-                .add_attribute("action", "refund")
+                .add_attribute("action", "relay_packet")
+                .add_attribute("relay_outcome", "refund")
+                .add_attribute("relay_sequence", packet_sequence.to_string())
+                .add_attribute("relay_channel", channel_id)
+                .add_attribute("relay_chain", chain)
                 .add_attribute("recipient", ics20_packet_info.sender)
                 .add_attribute("amount", ics20_packet_info.funds.to_string()))
         }
@@ -119,7 +121,7 @@ fn handle_ibc_transfer_funds_reply(
         &ics20_packet_info.funds.denom,
         &ics20_packet_info.channel,
     )?;
-    #[allow(unused_assignments)]
+    #[allow(unused_assignments, unused_mut)]
     let mut adjusted_funds = Coin::new(
         ics20_packet_info.funds.amount.u128(),
         counterparty_denom.clone(),
@@ -158,10 +160,12 @@ fn handle_ibc_transfer_funds_reply(
 
     Ok(Response::default()
         .add_message(CosmosMsg::Ibc(msg))
-        .add_attribute(format!("method:{sequence}"), "execute_send_message")
-        .add_attribute(format!("channel:{sequence}"), channel)
-        .add_attribute("receiving_kernel_address:{}", channel_info.kernel_address)
-        .add_attribute("chain:{}", chain))
+        .add_attribute("action", "relay_packet")
+        .add_attribute("relay_outcome", "success")
+        .add_attribute("relay_sequence", sequence.to_string())
+        .add_attribute("relay_channel", ics20_packet_info.channel)
+        .add_attribute("relay_chain", chain)
+        .add_attribute("receiving_kernel_address", channel_info.kernel_address))
 }
 
 pub fn amp_receive(
@@ -172,7 +176,8 @@ pub fn amp_receive(
 ) -> Result<Response, ContractError> {
     // Only verified ADOs can access this function
     ensure!(
-        query::verify_address(deps.as_ref(), info.sender.to_string(),)?.verify_address,
+        info.sender == env.contract.address
+            || query::verify_address(deps.as_ref(), info.sender.to_string())?.verify_address,
         ContractError::Unauthorized {}
     );
     ensure!(
@@ -190,18 +195,39 @@ pub fn amp_receive(
         }
     );
 
+    let msg = packet.messages.first().unwrap();
+    let mut handler = MsgHandler::new(msg.clone());
+    let msg_res = handler.handle(
+        deps.branch(),
+        info.clone(),
+        env.clone(),
+        Some(packet.clone()),
+        0,
+    )?;
+
+    res.messages.extend_from_slice(&msg_res.messages);
+    res.attributes.extend_from_slice(&msg_res.attributes);
+    res.events.extend_from_slice(&msg_res.events);
+
+    let mut new_pkt = AMPPkt::from_ctx(Some(packet.clone()), env.contract.address.to_string());
+
     for (idx, message) in packet.messages.iter().enumerate() {
-        let mut handler = MsgHandler::new(message.clone());
-        let msg_res = handler.handle(
-            deps.branch(),
-            info.clone(),
-            env.clone(),
-            Some(packet.clone()),
-            idx as u64,
-        )?;
-        res.messages.extend_from_slice(&msg_res.messages);
-        res.attributes.extend_from_slice(&msg_res.attributes);
-        res.events.extend_from_slice(&msg_res.events);
+        if idx == 0 {
+            continue;
+        }
+        new_pkt = new_pkt.add_message(message.clone());
+    }
+
+    if !new_pkt.messages.is_empty() {
+        let new_funds = new_pkt
+            .messages
+            .iter()
+            .flat_map(|m| m.funds.clone())
+            .collect::<Vec<Coin>>();
+
+        let new_pkt_msg =
+            new_pkt.to_sub_msg(env.contract.address.to_string(), Some(new_funds), 0)?;
+        res.messages.extend_from_slice(&[new_pkt_msg]);
     }
 
     let message_funds = packet
@@ -258,42 +284,49 @@ pub fn create(
         chain.is_none() || owner.is_some(),
         ContractError::Unauthorized {}
     );
-    if let Some(_chain) = chain {
-        Err(ContractError::CrossChainComponentsCurrentlyDisabled {})
-        // let channel_info = if let Some(channel_info) =
-        //     CHAIN_TO_CHANNEL.may_load(execute_ctx.deps.storage, &chain)?
-        // {
-        //     Ok::<ChannelInfo, ContractError>(channel_info)
-        // } else {
-        //     return Err(ContractError::InvalidPacket {
-        //         error: Some(format!("Channel not found for chain {chain}")),
-        //     });
-        // }?;
-        // let kernel_msg = IbcExecuteMsg::CreateADO {
-        //     instantiation_msg: msg.clone(),
-        //     owner: owner.clone().unwrap(),
-        //     ado_type: ado_type.clone(),
-        // };
-        // let ibc_msg = IbcMsg::SendPacket {
-        //     channel_id: channel_info.direct_channel_id.clone().unwrap(),
-        //     data: to_json_binary(&kernel_msg)?,
-        //     timeout: execute_ctx
-        //         .env
-        //         .block
-        //         .time
-        //         .plus_seconds(PACKET_LIFETIME)
-        //         .into(),
-        // };
-        // Ok(Response::default()
-        //     .add_message(ibc_msg)
-        //     .add_attributes(vec![
-        //         attr("action", "execute_create"),
-        //         attr("ado_type", ado_type),
-        //         attr("owner", owner.unwrap().to_string()),
-        //         attr("chain", chain),
-        //         attr("receiving_kernel_address", channel_info.kernel_address),
-        //         attr("msg", msg.to_string()),
-        //     ]))
+    if let Some(chain) = chain {
+        let cross_chain_components_enabled = ENV_VARIABLES
+            .may_load(execute_ctx.deps.storage, "cross_chain_components_enabled")?
+            .unwrap_or("false".to_string());
+        ensure!(
+            cross_chain_components_enabled == "true",
+            ContractError::CrossChainComponentsCurrentlyDisabled {}
+        );
+
+        let channel_info = if let Some(channel_info) =
+            CHAIN_TO_CHANNEL.may_load(execute_ctx.deps.storage, &chain)?
+        {
+            Ok::<ChannelInfo, ContractError>(channel_info)
+        } else {
+            return Err(ContractError::InvalidPacket {
+                error: Some(format!("Channel not found for chain {chain}")),
+            });
+        }?;
+        let kernel_msg = IbcExecuteMsg::CreateADO {
+            instantiation_msg: msg.clone(),
+            owner: owner.clone().unwrap(),
+            ado_type: ado_type.clone(),
+        };
+        let ibc_msg = IbcMsg::SendPacket {
+            channel_id: channel_info.direct_channel_id.clone().unwrap(),
+            data: to_json_binary(&kernel_msg)?,
+            timeout: execute_ctx
+                .env
+                .block
+                .time
+                .plus_seconds(PACKET_LIFETIME)
+                .into(),
+        };
+        Ok(Response::default()
+            .add_message(ibc_msg)
+            .add_attributes(vec![
+                attr("action", "execute_create"),
+                attr("ado_type", ado_type),
+                attr("owner", owner.unwrap().to_string()),
+                attr("chain", chain),
+                attr("receiving_kernel_address", channel_info.kernel_address),
+                attr("msg", msg.to_string()),
+            ]))
     } else {
         let vfs_addr = KERNEL_ADDRESSES.load(execute_ctx.deps.storage, VFS_KEY)?;
         let adodb_addr = KERNEL_ADDRESSES.load(execute_ctx.deps.storage, ADO_DB_KEY)?;
@@ -475,6 +508,86 @@ pub fn update_chain_name(
         .add_attribute("chain_name", chain_name))
 }
 
+pub fn set_env(
+    execute_ctx: ExecuteContext,
+    variable: String,
+    value: String,
+) -> Result<Response, ContractError> {
+    let contract = ADOContract::default();
+    ensure!(
+        contract.is_contract_owner(execute_ctx.deps.storage, execute_ctx.info.sender.as_str())?,
+        ContractError::Unauthorized {}
+    );
+
+    ensure!(
+        !variable.is_empty(),
+        ContractError::InvalidEnvironmentVariable {
+            msg: "Environment variable name cannot be empty".to_string()
+        }
+    );
+
+    ensure!(
+        variable
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '_'),
+        ContractError::InvalidEnvironmentVariable {
+            msg:
+                "Environment variable name can only contain alphanumeric characters and underscores"
+                    .to_string()
+        }
+    );
+
+    ensure!(
+        variable.len() <= 100,
+        ContractError::InvalidEnvironmentVariable {
+            msg: "Environment variable name length exceeds the maximum allowed length of 100 characters".to_string()
+        }
+    );
+
+    ensure!(
+        !value.is_empty(),
+        ContractError::InvalidEnvironmentVariable {
+            msg: "Environment variable value cannot be empty".to_string()
+        }
+    );
+
+    ensure!(
+        value.len() <= 100,
+        ContractError::InvalidEnvironmentVariable {
+            msg: "Environment variable value length exceeds the maximum allowed length of 100 characters".to_string()
+        }
+    );
+
+    ENV_VARIABLES.save(
+        execute_ctx.deps.storage,
+        &variable.to_ascii_uppercase(),
+        &value,
+    )?;
+    Ok(Response::default()
+        .add_attribute("action", "set_env")
+        .add_attribute("variable", variable)
+        .add_attribute("value", value))
+}
+
+pub fn unset_env(execute_ctx: ExecuteContext, variable: String) -> Result<Response, ContractError> {
+    let contract = ADOContract::default();
+    ensure!(
+        contract.is_contract_owner(execute_ctx.deps.storage, execute_ctx.info.sender.as_str())?,
+        ContractError::Unauthorized {}
+    );
+
+    ensure!(
+        ENV_VARIABLES
+            .may_load(execute_ctx.deps.storage, &variable.to_ascii_uppercase())?
+            .is_some(),
+        ContractError::EnvironmentVariableNotFound { variable }
+    );
+    ENV_VARIABLES.remove(execute_ctx.deps.storage, &variable.to_ascii_uppercase());
+    Ok(Response::default()
+        .add_attribute("action", "unset_env")
+        .add_attribute("variable", variable))
+}
+
 /// Handles a given AMP message and returns a response
 ///
 /// Separated due to common functionality across multiple messages
@@ -538,16 +651,20 @@ impl MsgHandler {
         sequence: u64,
     ) -> Result<Response, ContractError> {
         let mut res = Response::default();
+
+        let original_msg = self.message();
         let AMPMsg {
             message,
             recipient,
             funds,
             config,
             ..
-        } = self.message();
+        } = original_msg;
+
         let recipient_addr = recipient.get_raw_address(&deps.as_ref())?;
+
         let adodb_addr = KERNEL_ADDRESSES.load(deps.storage, ADO_DB_KEY)?;
-        // A default message is a bank message
+
         if Binary::default() == message.clone() {
             ensure!(
                 !funds.is_empty(),
@@ -566,6 +683,7 @@ impl MsgHandler {
                 attrs.push(attr(format!("funds:{sequence}:{idx}"), fund.to_string()));
             }
             attrs.push(attr(format!("recipient:{sequence}"), recipient_addr));
+
             res = res
                 .add_submessage(SubMsg::reply_on_error(
                     CosmosMsg::Bank(sub_msg),
@@ -579,7 +697,7 @@ impl MsgHandler {
                 info.sender.to_string()
             };
             let previous_sender = info.sender.to_string();
-            // Ensure recipient is a smart contract
+
             let ContractInfoResponse {
                 code_id: recipient_code_id,
                 ..
@@ -595,12 +713,12 @@ impl MsgHandler {
                 || AOSQuerier::ado_type_getter(&deps.querier, &adodb_addr, recipient_code_id)?
                     .is_none()
             {
-                // Message is direct (no AMP Ctx)
                 self.message()
                     .generate_sub_msg_direct(recipient_addr.clone(), ReplyId::AMPMsg.repr())
             } else {
                 let amp_msg =
-                    AMPMsg::new(recipient_addr.clone(), message.clone(), Some(funds.clone()));
+                    AMPMsg::new(recipient_addr.clone(), message.clone(), Some(funds.clone()))
+                        .with_config(config.clone());
 
                 let new_packet = AMPPkt::new(origin, previous_sender, vec![amp_msg]);
 
@@ -656,9 +774,9 @@ impl MsgHandler {
     fn handle_ibc_direct(
         &self,
         _deps: DepsMut,
-        _info: MessageInfo,
+        info: MessageInfo,
         env: Env,
-        _ctx: Option<AMPPkt>,
+        ctx: Option<AMPPkt>,
         sequence: u64,
         channel_info: ChannelInfo,
     ) -> Result<Response, ContractError> {
@@ -679,11 +797,25 @@ impl MsgHandler {
                 error: Some(format!("Channel not found for chain {chain}")),
             });
         }?;
+        let ctx = ctx.map_or(
+            AMPPkt::new(
+                info.sender,
+                env.clone().contract.address,
+                vec![AMPMsg::new(
+                    recipient.clone().get_raw_path(),
+                    message.clone(),
+                    None,
+                )],
+            ),
+            |mut ctx| {
+                ctx.ctx.previous_sender = env.contract.address.to_string();
+                ctx.messages[0].recipient =
+                    AndrAddr::from_string(recipient.clone().get_raw_path().to_string());
+                ctx
+            },
+        );
+        let kernel_msg = IbcExecuteMsg::SendMessage { amp_packet: ctx };
 
-        let kernel_msg = IbcExecuteMsg::SendMessage {
-            recipient: AndrAddr::from_string(recipient.get_raw_path()),
-            message: message.clone(),
-        };
         let msg = IbcMsg::SendPacket {
             channel_id: channel.clone(),
             data: to_json_binary(&kernel_msg)?,
@@ -721,8 +853,10 @@ impl MsgHandler {
                 error: Some(format!("Channel not found for chain {chain}")),
             });
         }?;
+        deps.api.debug(&format!("info.funds: {:?}", info.funds));
+        deps.api.debug(&format!("funds: {:?}", funds));
         ensure!(
-            funds.len() == 1 && info.funds.len() == 1,
+            funds.len() == 1,
             ContractError::InvalidFunds {
                 msg: "Number of funds should be exactly one".to_string()
             }
@@ -759,7 +893,6 @@ impl MsgHandler {
             gas_limit: None,
             reply_on: cosmwasm_std::ReplyOn::Always,
         });
-
         Ok(resp
             .add_attribute(format!("method:{sequence}"), "execute_transfer_funds")
             .add_attribute(format!("channel:{sequence}"), channel)

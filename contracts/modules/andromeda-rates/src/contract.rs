@@ -7,13 +7,13 @@ use andromeda_std::{
         InstantiateMsg as BaseInstantiateMsg, MigrateMsg,
     },
     ado_contract::ADOContract,
-    amp::Recipient,
     common::{context::ExecuteContext, deduct_funds, encode_binary, Funds},
     error::ContractError,
 };
 
 use cosmwasm_std::{
-    attr, coin, ensure, Binary, Coin, Deps, DepsMut, Env, Event, MessageInfo, Response, SubMsg,
+    attr, coin, ensure, Binary, Coin, Deps, DepsMut, Env, Event, MessageInfo, Reply, Response,
+    StdError, SubMsg,
 };
 use cosmwasm_std::{entry_point, from_json};
 use cw20::Cw20Coin;
@@ -30,13 +30,7 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     let action = msg.action;
-    let mut rate = msg.rate;
-
-    if rate.recipients.is_empty() {
-        rate.recipients = vec![Recipient::new(info.sender.clone(), None)];
-    };
-
-    RATES.save(deps.storage, &action, &rate)?;
+    let rate = msg.rate;
 
     let inst_resp = ADOContract::default().instantiate(
         deps.storage,
@@ -51,6 +45,9 @@ pub fn instantiate(
             owner: msg.owner,
         },
     )?;
+
+    let local_rate = rate.validate(deps.as_ref())?;
+    RATES.save(deps.storage, &action, &local_rate)?;
 
     Ok(inst_resp)
 }
@@ -83,7 +80,7 @@ pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
 fn execute_set_rate(
     ctx: ExecuteContext,
     action: String,
-    mut rate: LocalRate,
+    rate: LocalRate,
 ) -> Result<Response, ContractError> {
     let ExecuteContext { deps, info, .. } = ctx;
     nonpayable(&info)?;
@@ -92,13 +89,7 @@ fn execute_set_rate(
         ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {}
     );
-    // Validate the local rate's value
-    rate.value.validate(deps.as_ref())?;
-
-    // Set the sender as the recipient in case no recipients were provided
-    if rate.recipients.is_empty() {
-        rate.recipients = vec![Recipient::new(info.sender, None)];
-    };
+    rate.validate(deps.as_ref())?;
 
     RATES.save(deps.storage, &action, &rate)?;
 
@@ -169,32 +160,38 @@ pub fn query_deducted_funds(
     }
     local_rate.value.validate(deps)?;
     let fee = calculate_fee(local_rate.value, &coin)?;
-    for receiver in local_rate.recipients.iter() {
-        if !local_rate.rate_type.is_additive() {
-            deduct_funds(&mut leftover_funds, &fee)?;
-            event = event.add_attribute("deducted", fee.to_string());
-        }
-        event = event.add_attribute(
-            "payment",
-            PaymentAttribute {
-                receiver: receiver.get_addr(),
-                amount: fee.clone(),
-            }
-            .to_string(),
-        );
-        let msg = if is_native {
-            receiver.generate_direct_msg(&deps, vec![fee.clone()])?
-        } else {
-            receiver.generate_msg_cw20(
-                &deps,
-                Cw20Coin {
-                    amount: fee.amount,
-                    address: fee.denom.to_string(),
-                },
-            )?
-        };
-        msgs.push(msg);
+
+    if !local_rate.rate_type.is_additive() {
+        deduct_funds(&mut leftover_funds, &fee)?;
+        event = event.add_attribute("deducted", fee.to_string());
     }
+    event = event.add_attribute(
+        "payment",
+        PaymentAttribute {
+            receiver: local_rate
+                .recipient
+                .address
+                .get_raw_address(&deps)?
+                .to_string(),
+            amount: fee.clone(),
+        }
+        .to_string(),
+    );
+    let msg = if is_native {
+        local_rate
+            .recipient
+            .generate_direct_msg(&deps, vec![fee.clone()])?
+    } else {
+        local_rate.recipient.generate_msg_cw20(
+            &deps,
+            Cw20Coin {
+                amount: fee.amount,
+                address: fee.denom.to_string(),
+            },
+        )?
+    };
+    msgs.push(msg);
+
     events.push(event);
 
     Ok(RatesResponse {
@@ -209,4 +206,15 @@ pub fn query_deducted_funds(
         },
         events,
     })
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
+    if msg.result.is_err() {
+        return Err(ContractError::Std(StdError::generic_err(
+            msg.result.unwrap_err(),
+        )));
+    }
+
+    Ok(Response::default())
 }
