@@ -198,10 +198,15 @@ pub fn query_plot_y_from_x(
                 .map_err(|_| ContractError::Overflow {})?
                 .atomics();
 
-            let exponent_u32 =
+            let exponent_u32 = if exponent_value.u128() > u128::from(u32::MAX) {
+                return Err(ContractError::CustomError {
+                    msg: "Exponent value exceeds u32::MAX.".to_string(),
+                });
+            } else {
                 u32::try_from(exponent_value.u128()).map_err(|_| ContractError::CustomError {
                     msg: "Failed to convert exponent to u32.".to_string(),
-                })?;
+                })?
+            };
 
             // The argument of the checked_pow() must be u32, can not be other types
             let res = constant_value_decimal
