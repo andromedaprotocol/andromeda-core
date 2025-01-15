@@ -249,7 +249,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-curve"
-version = "0.1.0-b.1"
+version = "0.1.0-b.2"
 dependencies = [
  "andromeda-app",
  "andromeda-math",

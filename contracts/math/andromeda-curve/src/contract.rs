@@ -130,9 +130,7 @@ pub fn execute_update_curve_config(
     )?;
 
     curve_config.validate()?;
-    CURVE_CONFIG.update(ctx.deps.storage, |_| {
-        Ok::<CurveConfig, ContractError>(curve_config)
-    })?;
+    CURVE_CONFIG.save(ctx.deps.storage, &curve_config)?;
 
     Ok(Response::new()
         .add_attribute("method", "update_curve_config")
