@@ -1,5 +1,6 @@
 #![cfg(not(target_arch = "wasm32"))]
 use andromeda_counter::CounterContract;
+use andromeda_kernel::ack::make_ack_success;
 use andromeda_math::counter::{
     CounterRestriction, GetCurrentAmountResponse, InstantiateMsg as CounterInstantiateMsg, State,
 };
@@ -9,17 +10,15 @@ use andromeda_std::{
     amp::{
         messages::{AMPMsg, AMPMsgConfig},
         AndrAddr, Recipient,
-    }, os};
+    },
+    os,
+};
 
-use os;
 use andromeda_testing::{
     interchain::{ensure_packet_success, DEFAULT_SENDER},
     InterchainTestEnv,
 };
-use cosmwasm_std::{
-    to_json_binary, Binary, Decimal, IbcAcknowledgement, IbcEndpoint, IbcPacket, IbcPacketAckMsg,
-    IbcTimeout, Timestamp, Uint128,
-};
+use cosmwasm_std::{to_json_binary, Binary, Decimal, Uint128};
 use cw_orch::prelude::*;
 use cw_orch_interchain::prelude::*;
 
@@ -168,35 +167,18 @@ fn test_kernel_ibc_funds_only() {
         )
         .unwrap();
 
-    let ibc_endpoint = IbcEndpoint {
-        port_id: "port_id".to_string(),
-        channel_id: "channel_id".to_string(),
-    };
-    let packet_ack = IbcPacketAckMsg::new(
-        IbcAcknowledgement::new(
-            to_json_binary(&AcknowledgementMsg::<SendMessageWithFundsResponse>::Ok(
-                SendMessageWithFundsResponse {},
-            ))
-            .unwrap(),
-        ),
-        IbcPacket::new(
-            Binary::default(),
-            ibc_endpoint.clone(),
-            ibc_endpoint,
-            1,
-            IbcTimeout::with_timestamp(Timestamp::from_seconds(1)),
-        ),
-        Addr::unchecked("relayer"),
-    );
+    let packet_ack = make_ack_success();
 
+    let channel_id = juno.aos.get_aos_channel("osmosis").unwrap().ics20.unwrap();
     // Construct an Execute msg from the kernel on juno inteded for the splitter on osmosis
     let kernel_juno_trigger_request = juno
         .aos
         .kernel
         .execute(
             &os::kernel::ExecuteMsg::TriggerRelay {
-                packet_sequence: "1".to_string(),
-                packet_ack_msg: packet_ack,
+                packet_sequence: 1,
+                packet_ack,
+                channel_id,
             },
             None,
         )
@@ -240,6 +222,7 @@ fn test_kernel_ibc_funds_and_execute_msg() {
                     },
                     percent: Decimal::one(),
                 }],
+                default_recipient: None,
                 lock_time: None,
                 kernel_address: osmosis.aos.kernel.address().unwrap().into_string(),
                 owner: None,
@@ -270,7 +253,7 @@ fn test_kernel_ibc_funds_and_execute_msg() {
     ));
     let message = AMPMsg::new(
         osmosis_recipient,
-        to_json_binary(&andromeda_finance::splitter::ExecuteMsg::Send {}).unwrap(),
+        to_json_binary(&andromeda_finance::splitter::ExecuteMsg::Send { config: None }).unwrap(),
         Some(vec![Coin {
             denom: "juno".to_string(),
             amount: Uint128::new(100),
@@ -321,35 +304,18 @@ fn test_kernel_ibc_funds_and_execute_msg() {
         )
         .unwrap();
 
-    let ibc_endpoint = IbcEndpoint {
-        port_id: "port_id".to_string(),
-        channel_id: "channel_id".to_string(),
-    };
-    let packet_ack = IbcPacketAckMsg::new(
-        IbcAcknowledgement::new(
-            to_json_binary(&AcknowledgementMsg::<SendMessageWithFundsResponse>::Ok(
-                SendMessageWithFundsResponse {},
-            ))
-            .unwrap(),
-        ),
-        IbcPacket::new(
-            Binary::default(),
-            ibc_endpoint.clone(),
-            ibc_endpoint,
-            1,
-            IbcTimeout::with_timestamp(Timestamp::from_seconds(1)),
-        ),
-        Addr::unchecked("relayer"),
-    );
+    let packet_ack = make_ack_success();
 
+    let channel_id = juno.aos.get_aos_channel("osmosis").unwrap().ics20.unwrap();
     // Construct an Execute msg from the kernel on juno inteded for the splitter on osmosis
     let kernel_juno_splitter_request = juno
         .aos
         .kernel
         .execute(
             &os::kernel::ExecuteMsg::TriggerRelay {
-                packet_sequence: "1".to_string(),
-                packet_ack_msg: packet_ack,
+                packet_sequence: 1,
+                packet_ack,
+                channel_id,
             },
             None,
         )
