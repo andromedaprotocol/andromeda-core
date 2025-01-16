@@ -574,7 +574,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-graph"
-version = "0.1.0"
+version = "0.1.0-a.1"
 dependencies = [
  "andromeda-math",
  "andromeda-std",
