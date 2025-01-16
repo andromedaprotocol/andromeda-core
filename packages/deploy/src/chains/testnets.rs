@@ -54,7 +54,6 @@ pub const OSMOSIS_TESTNET: ChainInfo = ChainInfo {
     kind: ChainKind::Testnet,
 };
 
-
 pub const ARCHWAY_TESTNET_NETWORK: NetworkInfo = NetworkInfo {
     chain_name: "archway-testnet",
     pub_address_prefix: "archway",
@@ -72,4 +71,9 @@ pub const ARCHWAY_TESTNET: ChainInfo = ChainInfo {
     kind: ChainKind::Testnet,
 };
 
-pub const TESTNET_CHAINS: &[ChainInfo] = &[ANDROMEDA_TESTNET, STARGAZE_TESTNET, OSMOSIS_TESTNET, ARCHWAY_TESTNET];
+pub const TESTNET_CHAINS: &[ChainInfo] = &[
+    ANDROMEDA_TESTNET,
+    STARGAZE_TESTNET,
+    OSMOSIS_TESTNET,
+    ARCHWAY_TESTNET,
+];
