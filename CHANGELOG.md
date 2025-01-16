@@ -32,6 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ref: Rename Set Amount Splitter to Fixed Amount Splitter [(#754)](https://github.com/andromedaprotocol/andromeda-core/pull/754)
 - Point ADO: remove Rates module from the contract[(#761)](https://github.com/andromedaprotocol/andromeda-core/pull/761)
 - feat: SignedDecimal for Distance [(#774)](https://github.com/andromedaprotocol/andromeda-core/pull/774)
+- feat: SignedDecimal for Graph [(#778)](https://github.com/andromedaprotocol/andromeda-core/pull/778)
 
 ### Fixed
 
