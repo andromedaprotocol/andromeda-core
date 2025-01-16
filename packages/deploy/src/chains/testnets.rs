@@ -54,4 +54,22 @@ pub const OSMOSIS_TESTNET: ChainInfo = ChainInfo {
     kind: ChainKind::Testnet,
 };
 
-pub const TESTNET_CHAINS: &[ChainInfo] = &[ANDROMEDA_TESTNET, STARGAZE_TESTNET, OSMOSIS_TESTNET];
+
+pub const ARCHWAY_TESTNET_NETWORK: NetworkInfo = NetworkInfo {
+    chain_name: "archway-testnet",
+    pub_address_prefix: "archway",
+    coin_type: 118u32,
+};
+
+pub const ARCHWAY_TESTNET: ChainInfo = ChainInfo {
+    chain_id: "constantine-3",
+    gas_denom: "aconst",
+    fcd_url: None,
+    gas_price: 140000000000,
+    grpc_urls: &["http://grpc.constantine.archway.io:443/"],
+    lcd_url: Some("https://api.constantine.archway.io/"),
+    network_info: ARCHWAY_TESTNET_NETWORK,
+    kind: ChainKind::Testnet,
+};
+
+pub const TESTNET_CHAINS: &[ChainInfo] = &[ANDROMEDA_TESTNET, STARGAZE_TESTNET, OSMOSIS_TESTNET, ARCHWAY_TESTNET];
