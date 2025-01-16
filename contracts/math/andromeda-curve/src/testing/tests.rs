@@ -4,7 +4,7 @@ use super::mock::{
 };
 use andromeda_math::curve::{CurveConfig, CurveType};
 use andromeda_std::{amp::AndrAddr, error::ContractError};
-use cosmwasm_std::{Decimal, StdError};
+use cosmwasm_std::StdError;
 use test_case::test_case;
 
 #[test]
@@ -158,7 +158,6 @@ fn test_query_curve_config_base_is_0() {
 #[test_case(3, "8".to_string() ; "exp(2, 3)")]
 #[test_case(4, "16".to_string() ; "exp(2, 4)")]
 fn test_query_plot_y_from_x_base_2_growth(input_x: u64, expected_y: String) {
-    let input_x = Decimal::from_atomics(input_x, 18).unwrap();
     let (deps, _info) = proper_initialization(
         CurveConfig::ExpConfig {
             curve_type: CurveType::Growth,
@@ -177,7 +176,6 @@ fn test_query_plot_y_from_x_base_2_growth(input_x: u64, expected_y: String) {
 #[test_case(3, "27".to_string() ; "exp(3, 3)")]
 #[test_case(4, "81".to_string() ; "exp(3, 4)")]
 fn test_query_plot_y_from_x_base_3_growth(input_x: u64, expected_y: String) {
-    let input_x = Decimal::from_atomics(input_x, 18).unwrap();
     let (deps, _info) = proper_initialization(
         CurveConfig::ExpConfig {
             curve_type: CurveType::Growth,
@@ -196,7 +194,6 @@ fn test_query_plot_y_from_x_base_3_growth(input_x: u64, expected_y: String) {
 #[test_case(3, "128".to_string() ; "exp(4, 3)")]
 #[test_case(4, "512".to_string() ; "exp(4, 4)")]
 fn test_query_plot_y_from_x_base_4_growth_constant_2(input_x: u64, expected_y: String) {
-    let input_x = Decimal::from_atomics(input_x, 18).unwrap();
     let (deps, _info) = proper_initialization(
         CurveConfig::ExpConfig {
             curve_type: CurveType::Growth,
@@ -215,7 +212,6 @@ fn test_query_plot_y_from_x_base_4_growth_constant_2(input_x: u64, expected_y: S
 #[test_case(3, "0.125".to_string() ; "exp(1/2, 3)")]
 #[test_case(4, "0.0625".to_string() ; "exp(1/2, 4)")]
 fn test_query_plot_y_from_x_base_2_decay(input_x: u64, expected_y: String) {
-    let input_x = Decimal::from_atomics(input_x, 18).unwrap();
     let (deps, _info) = proper_initialization(
         CurveConfig::ExpConfig {
             curve_type: CurveType::Decay,

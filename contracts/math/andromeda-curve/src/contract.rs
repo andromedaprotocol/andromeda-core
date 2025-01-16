@@ -171,7 +171,7 @@ pub fn query_curve_config(storage: &dyn Storage) -> Result<GetCurveConfigRespons
 
 pub fn query_plot_y_from_x(
     storage: &dyn Storage,
-    x_value: Decimal,
+    x_value: u64,
 ) -> Result<GetPlotYFromXResponse, ContractError> {
     let curve_config = CURVE_CONFIG.load(storage)?;
 
@@ -190,7 +190,11 @@ pub fn query_plot_y_from_x(
             );
 
             let exponent_value = multiple_variable_value_decimal
-                .checked_mul(x_value)
+                .checked_mul(Decimal::from_atomics(x_value, 18).map_err(|e| {
+                    ContractError::CustomError {
+                        msg: format!("Failed to create decimal for the exponent_value: {:?}", e),
+                    }
+                })?)
                 .map_err(|_| ContractError::Overflow {})?
                 .atomics();
 
