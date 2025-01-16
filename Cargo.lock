@@ -167,7 +167,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-boolean"
-version = "0.1.0"
+version = "0.1.0-a.1"
 dependencies = [
  "andromeda-data-storage",
  "andromeda-std",
@@ -199,7 +199,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-counter"
-version = "0.1.0"
+version = "0.1.0-a.1"
 dependencies = [
  "andromeda-math",
  "andromeda-std",
@@ -923,7 +923,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-string-storage"
-version = "0.1.0"
+version = "0.1.0-a.1"
 dependencies = [
  "andromeda-data-storage",
  "andromeda-std",
