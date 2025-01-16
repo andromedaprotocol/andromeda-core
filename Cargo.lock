@@ -106,7 +106,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-adodb"
-version = "1.1.3-b.1"
+version = "1.1.3"
 dependencies = [
  "andromeda-std",
  "cosmwasm-schema",
@@ -149,7 +149,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-auction"
-version = "2.2.5-b.1"
+version = "2.2.5"
 dependencies = [
  "andromeda-app",
  "andromeda-non-fungible-tokens",
@@ -167,7 +167,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-boolean"
-version = "0.1.0-b.1"
+version = "0.1.0-a.1"
 dependencies = [
  "andromeda-data-storage",
  "andromeda-std",
@@ -199,7 +199,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-counter"
-version = "0.1.0-b.1"
+version = "0.1.0-a.1"
 dependencies = [
  "andromeda-math",
  "andromeda-std",
@@ -250,7 +250,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-curve"
-version = "0.2.0-b.1"
+version = "0.2.0"
 dependencies = [
  "andromeda-app",
  "andromeda-math",
@@ -350,7 +350,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-date-time"
-version = "0.1.0-b.1"
+version = "0.1.0-a.1"
 dependencies = [
  "andromeda-app",
  "andromeda-math",
@@ -440,7 +440,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-distance"
-version = "0.1.0-b.1"
+version = "0.1.0-a.1"
 dependencies = [
  "andromeda-app",
  "andromeda-math",
@@ -501,7 +501,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-fixed-amount-splitter"
-version = "1.2.0-b.2"
+version = "1.2.0"
 dependencies = [
  "andromeda-app",
  "andromeda-finance",
@@ -519,7 +519,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-fixed-multisig"
-version = "0.1.0-b.1"
+version = "0.1.0-a.1"
 dependencies = [
  "andromeda-accounts",
  "andromeda-app",
@@ -537,7 +537,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-form"
-version = "0.1.0-b.1"
+version = "0.1.0-a.1"
 dependencies = [
  "andromeda-data-storage",
  "andromeda-modules",
@@ -574,7 +574,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-graph"
-version = "0.1.0-b.1"
+version = "0.1.0"
 dependencies = [
  "andromeda-math",
  "andromeda-std",
@@ -628,7 +628,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-kernel"
-version = "1.2.0-b.4"
+version = "1.2.0"
 dependencies = [
  "andromeda-std",
  "cosmwasm-schema",
@@ -704,7 +704,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-matrix"
-version = "0.1.0-b.1"
+version = "0.1.0-a.1"
 dependencies = [
  "andromeda-math",
  "andromeda-std",
@@ -770,7 +770,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-point"
-version = "0.1.0-b.1"
+version = "0.1.0"
 dependencies = [
  "andromeda-math",
  "andromeda-std",
@@ -818,7 +818,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-rates"
-version = "2.0.4-b.1"
+version = "2.0.4"
 dependencies = [
  "andromeda-app",
  "andromeda-modules",
@@ -835,7 +835,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-schema"
-version = "0.1.0-b.1"
+version = "0.1.0-a.1"
 dependencies = [
  "andromeda-app",
  "andromeda-modules",
@@ -853,7 +853,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-shunting"
-version = "0.1.0-b.1"
+version = "0.1.0-a.1"
 dependencies = [
  "andromeda-app",
  "andromeda-math",
@@ -873,7 +873,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-splitter"
-version = "2.3.0-b.3"
+version = "2.3.0"
 dependencies = [
  "andromeda-app",
  "andromeda-finance",
@@ -891,7 +891,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-std"
-version = "1.5.0-b.3"
+version = "1.5.0"
 dependencies = [
  "andromeda-macros",
  "cosmwasm-schema",
@@ -923,7 +923,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-string-storage"
-version = "0.1.0-b.1"
+version = "0.1.0-a.1"
 dependencies = [
  "andromeda-data-storage",
  "andromeda-std",
@@ -1063,7 +1063,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-weighted-distribution-splitter"
-version = "2.1.0-b.3"
+version = "2.1.0-a.1"
 dependencies = [
  "andromeda-app",
  "andromeda-finance",
