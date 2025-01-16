@@ -864,34 +864,6 @@ mod tests {
         assert!(res.is_ok());
     }
 
-    #[fixture]
-    fn contract<'a>() -> ADOContract<'a> {
-        ADOContract::default()
-    }
-
-    #[fixture]
-    fn action() -> &'static str {
-        "action"
-    }
-
-    #[fixture]
-    fn actor() -> &'static str {
-        "actor"
-    }
-
-    #[fixture]
-    fn start_time() -> u64 {
-        2
-    }
-
-    #[fixture]
-    fn start(start_time: u64) -> Option<Expiry> {
-        Some(Expiry::AtTime(MillisecondsExpiration::from_seconds(
-            start_time,
-        )))
-    }
-
-    #[allow(clippy::too_many_arguments)]
     #[rstest]
     #[case(true, true, false, true)] // Whitelist, at start time, should succeed
     #[case(true, false, false, false)] // Whitelist, before start time, should error
@@ -900,16 +872,19 @@ mod tests {
     #[case(false, true, false, false)] // Blacklist, at start time, should error
     #[case(false, false, true, false)] // Blacklist, after start time, should error
     fn test_permission_start_time(
-        contract: ADOContract,
-        action: &str,
-        actor: &str,
-        start_time: u64,
-        start: Option<Expiry>,
         #[case] is_whitelisted: bool,
         #[case] is_at_start_time: bool,
         #[case] is_after_start_time: bool,
         #[case] expected_success: bool,
     ) {
+        let contract = ADOContract::default();
+        let action = "action";
+        let actor = "actor";
+        let start_time = 2;
+        let start = Some(Expiry::AtTime(MillisecondsExpiration::from_seconds(
+            start_time,
+        )));
+
         let mut deps = mock_dependencies();
         let mut env = mock_env();
 
@@ -955,10 +930,12 @@ mod tests {
     }
 
     #[rstest]
-    fn test_permission_start_time_disabled_action(action: &str, actor: &str) {
+    fn test_permission_start_time_disabled_action() {
         let mut deps = mock_dependencies();
         let mut env = mock_env();
         let contract = ADOContract::default();
+        let action = "action";
+        let actor = "actor";
 
         env.block.time = MillisecondsExpiration::from_seconds(0).into();
 
