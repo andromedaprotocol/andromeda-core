@@ -78,7 +78,7 @@ pub fn query_curve_config(deps: Deps) -> Result<GetCurveConfigResponse, Contract
 
 pub fn query_plot_y_from_x(
     deps: Deps,
-    x_value: f64,
+    x_value: u64,
 ) -> Result<GetPlotYFromXResponse, ContractError> {
     let res = query(deps, mock_env(), QueryMsg::GetPlotYFromX { x_value });
     match res {
