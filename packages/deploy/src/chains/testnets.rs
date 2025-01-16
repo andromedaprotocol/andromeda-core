@@ -64,7 +64,7 @@ pub const ARCHWAY_TESTNET: ChainInfo = ChainInfo {
     chain_id: "constantine-3",
     gas_denom: "aconst",
     fcd_url: None,
-    gas_price: 140000000000,
+    gas_price: 140000000000.0,
     grpc_urls: &["http://grpc.constantine.archway.io:443/"],
     lcd_url: Some("https://api.constantine.archway.io/"),
     network_info: ARCHWAY_TESTNET_NETWORK,
