@@ -1,7 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, ensure, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError, Storage,
+    attr, ensure, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, SignedDecimal,
+    StdError, Storage,
 };
 
 use andromeda_math::graph::{
@@ -153,29 +154,55 @@ pub fn execute_store_coordinate(
         allow_negative,
         map_decimal,
     } = map;
-    let x_length = map_size.x_width as f64;
-    let y_length = map_size.y_width as f64;
-    let z_length = map_size.z_width.map(|z| z as f64);
+
+    let x_length = SignedDecimal::percent((map_size.x_width * 100).try_into().map_err(|e| {
+        ContractError::CustomError {
+            msg: format!("Failed to create x_length as Decimal: {:?}", e),
+        }
+    })?);
+    let y_length = SignedDecimal::percent((map_size.y_width * 100).try_into().map_err(|e| {
+        ContractError::CustomError {
+            msg: format!("Failed to create y_length as Decimal: {:?}", e),
+        }
+    })?);
+    let z_length = match map_size.z_width {
+        Some(z) => Some(SignedDecimal::percent((z * 100).try_into().map_err(
+            |e| ContractError::CustomError {
+                msg: format!("Failed to create z_length as Decimal: {:?}", e),
+            },
+        )?)),
+        None => None,
+    };
 
     let is_z_allowed = z_length.is_some();
 
-    let scale = 10_f64.powf(map_decimal as f64);
-    let x_coordinate = (coordinate.x_coordinate * scale)
-        .min(i64::MAX as f64) // Ensuring it doesn't exceed i64 bounds
-        .max(i64::MIN as f64); // Ensuring it doesn't underflow
-    let x_coordinate = (x_coordinate as i64) as f64 / scale;
+    let x_coordinate = coordinate
+        .x_coordinate
+        .checked_mul(SignedDecimal::percent(1000).pow(map_decimal as u32))
+        .map_err(|_| ContractError::Overflow {})?
+        .floor()
+        .checked_div(SignedDecimal::percent(1000).pow(map_decimal as u32))
+        .map_err(|_| ContractError::Underflow {})?;
 
-    let y_coordinate = (coordinate.y_coordinate * scale)
-        .min(i64::MAX as f64) // Ensuring it doesn't exceed i64 bounds
-        .max(i64::MIN as f64); // Ensuring it doesn't underflow
-    let y_coordinate = (y_coordinate as i64) as f64 / scale;
+    let y_coordinate = coordinate
+        .y_coordinate
+        .checked_mul(SignedDecimal::percent(1000).pow(map_decimal as u32))
+        .map_err(|_| ContractError::Overflow {})?
+        .floor()
+        .checked_div(SignedDecimal::percent(1000).pow(map_decimal as u32))
+        .map_err(|_| ContractError::Underflow {})?;
 
-    let z_coordinate = coordinate.z_coordinate.map(|z| {
-        let z_scaled = (z * scale)
-            .min(i64::MAX as f64) // Clamp the value to prevent overflow
-            .max(i64::MIN as f64); // Clamp the value to prevent underflow
-        (z_scaled as i64) as f64 / scale
-    });
+    let z_coordinate = match coordinate.z_coordinate {
+        Some(z_coordinate) => Some(
+            z_coordinate
+                .checked_mul(SignedDecimal::percent(1000).pow(map_decimal as u32))
+                .map_err(|_| ContractError::Overflow {})?
+                .floor()
+                .checked_div(SignedDecimal::percent(1000).pow(map_decimal as u32))
+                .map_err(|_| ContractError::Underflow {})?,
+        ),
+        None => None,
+    };
 
     ensure!(
         z_coordinate.is_some() == is_z_allowed,
@@ -191,14 +218,32 @@ pub fn execute_store_coordinate(
     match allow_negative {
         true => {
             ensure!(
-                x_coordinate >= -(x_length / 2_f64) && x_coordinate <= x_length / 2_f64,
+                x_coordinate.ge(&SignedDecimal::negative_one()
+                    .checked_mul(
+                        x_length
+                            .checked_div(SignedDecimal::percent(200))
+                            .map_err(|_| ContractError::Underflow {})?
+                    )
+                    .map_err(|_| ContractError::Underflow {})?)
+                    && x_coordinate.le(&x_length
+                        .checked_div(SignedDecimal::percent(200))
+                        .map_err(|_| ContractError::Underflow {})?),
                 ContractError::InvalidParameter {
                     error: Some("Wrong X Coordinate Range".to_string())
                 }
             );
 
             ensure!(
-                y_coordinate >= -(y_length / 2_f64) && y_coordinate <= y_length / 2_f64,
+                y_coordinate.ge(&SignedDecimal::negative_one()
+                    .checked_mul(
+                        y_length
+                            .checked_div(SignedDecimal::percent(200))
+                            .map_err(|_| ContractError::Underflow {})?
+                    )
+                    .map_err(|_| ContractError::Underflow {})?)
+                    && y_coordinate.le(&y_length
+                        .checked_div(SignedDecimal::percent(200))
+                        .map_err(|_| ContractError::Underflow {})?),
                 ContractError::InvalidParameter {
                     error: Some("Wrong Y Coordinate Range".to_string())
                 }
@@ -207,8 +252,18 @@ pub fn execute_store_coordinate(
             if is_z_allowed {
                 if let Some(z_coordinate) = z_coordinate {
                     ensure!(
-                        z_coordinate >= -(z_length.unwrap() / 2_f64)
-                            && z_coordinate <= z_length.unwrap() / 2_f64,
+                        z_coordinate.ge(&SignedDecimal::negative_one()
+                            .checked_mul(
+                                z_length
+                                    .unwrap()
+                                    .checked_div(SignedDecimal::percent(200))
+                                    .map_err(|_| ContractError::Underflow {})?
+                            )
+                            .map_err(|_| ContractError::Underflow {})?)
+                            && z_coordinate.le(&z_length
+                                .unwrap()
+                                .checked_div(SignedDecimal::percent(200))
+                                .map_err(|_| ContractError::Underflow {})?),
                         ContractError::InvalidParameter {
                             error: Some("Wrong Z Coordinate Range".to_string())
                         }
@@ -218,14 +273,14 @@ pub fn execute_store_coordinate(
         }
         false => {
             ensure!(
-                x_coordinate >= 0_f64 && x_coordinate <= x_length,
+                x_coordinate.ge(&SignedDecimal::zero()) && x_coordinate.le(&x_length),
                 ContractError::InvalidParameter {
                     error: Some("Wrong X Coordinate Range".to_string())
                 }
             );
 
             ensure!(
-                y_coordinate >= 0_f64 && y_coordinate <= y_length,
+                y_coordinate.ge(&SignedDecimal::zero()) && y_coordinate.le(&y_length),
                 ContractError::InvalidParameter {
                     error: Some("Wrong Y Coordinate Range".to_string())
                 }
@@ -234,7 +289,8 @@ pub fn execute_store_coordinate(
             if is_z_allowed {
                 if let Some(z_coordinate) = z_coordinate {
                     ensure!(
-                        z_coordinate >= 0_f64 && z_coordinate <= z_length.unwrap(),
+                        z_coordinate.ge(&SignedDecimal::zero())
+                            && z_coordinate.le(&z_length.unwrap()),
                         ContractError::InvalidParameter {
                             error: Some("Wrong Z Coordinate Range".to_string())
                         }
