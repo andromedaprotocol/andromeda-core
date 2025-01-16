@@ -36,8 +36,8 @@ cw-orch = { workspace = true }
 cw-orch-daemon = "0.24.2"
 
 # OS Contracts
-andromeda-kernel = { version = "1.2.0-b.1", path = "../../contracts/os/andromeda-kernel" }
-andromeda-adodb = { version = "1.1.3-b.1", path = "../../contracts/os/andromeda-adodb" }
+andromeda-kernel = { version = "1.2.0", path = "../../contracts/os/andromeda-kernel" }
+andromeda-adodb = { version = "1.1.3", path = "../../contracts/os/andromeda-adodb" }
 andromeda-vfs = { version = "1.1.1", path = "../../contracts/os/andromeda-vfs" }
 andromeda-economics = { version = "1.1.1", path = "../../contracts/os/andromeda-economics" }
 andromeda-ibc-registry = { version = "1.0.1", path = "../../contracts/os/andromeda-ibc-registry" }
