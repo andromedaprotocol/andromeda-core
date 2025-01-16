@@ -350,7 +350,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-date-time"
-version = "0.1.0-beta"
+version = "0.1.0-a.1"
 dependencies = [
  "andromeda-app",
  "andromeda-math",
@@ -440,7 +440,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-distance"
-version = "0.1.0-beta"
+version = "0.1.0-a.1"
 dependencies = [
  "andromeda-app",
  "andromeda-math",
@@ -519,7 +519,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-fixed-multisig"
-version = "0.1.0-beta"
+version = "0.1.0-a.1"
 dependencies = [
  "andromeda-accounts",
  "andromeda-app",
@@ -537,7 +537,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-form"
-version = "0.1.0-beta"
+version = "0.1.0-a.1"
 dependencies = [
  "andromeda-data-storage",
  "andromeda-modules",
@@ -704,7 +704,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-matrix"
-version = "0.1.0-beta"
+version = "0.1.0-a.1"
 dependencies = [
  "andromeda-math",
  "andromeda-std",
@@ -835,7 +835,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-schema"
-version = "0.1.0"
+version = "0.1.0-a.1"
 dependencies = [
  "andromeda-app",
  "andromeda-modules",
@@ -853,7 +853,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-shunting"
-version = "0.1.0-beta"
+version = "0.1.0-a.1"
 dependencies = [
  "andromeda-app",
  "andromeda-math",
