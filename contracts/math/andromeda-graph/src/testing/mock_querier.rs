@@ -91,9 +91,9 @@ impl WasmMockQuerier {
         match from_json(msg).unwrap() {
             PointQueryMsg::GetPoint {} => {
                 let msg_response = PointCoordinate {
-                    x_coordinate: SignedDecimal::percent(1000),
-                    y_coordinate: SignedDecimal::percent(1000),
-                    z_coordinate: Some(SignedDecimal::percent(1000)),
+                    x_coordinate: SignedDecimal::from_ratio(10, 1),
+                    y_coordinate: SignedDecimal::from_ratio(10, 1),
+                    z_coordinate: Some(SignedDecimal::from_ratio(10, 1)),
                 };
                 SystemResult::Ok(ContractResult::Ok(to_json_binary(&msg_response).unwrap()))
             }
