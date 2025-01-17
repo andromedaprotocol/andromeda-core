@@ -15,9 +15,9 @@ fn test_instantiation() {
 fn test_set_and_update_point() {
     let (mut deps, info) = proper_initialization(PointRestriction::Private);
     let point = PointCoordinate {
-        x_coordinate: SignedDecimal::percent(1000),
-        y_coordinate: SignedDecimal::percent(1000),
-        z_coordinate: Some(SignedDecimal::percent(1000)),
+        x_coordinate: SignedDecimal::from_ratio(10, 1),
+        y_coordinate: SignedDecimal::from_ratio(10, 1),
+        z_coordinate: Some(SignedDecimal::from_ratio(10, 1)),
     };
 
     set_point(deps.as_mut(), &point, info.sender.as_ref()).unwrap();
@@ -27,9 +27,9 @@ fn test_set_and_update_point() {
     assert_eq!(point, query_res);
 
     let point = PointCoordinate {
-        x_coordinate: SignedDecimal::percent(500),
-        y_coordinate: SignedDecimal::percent(500),
-        z_coordinate: Some(SignedDecimal::percent(500)),
+        x_coordinate: SignedDecimal::from_ratio(5, 1),
+        y_coordinate: SignedDecimal::from_ratio(5, 1),
+        z_coordinate: Some(SignedDecimal::from_ratio(5, 1)),
     };
 
     set_point(deps.as_mut(), &point, info.sender.as_ref()).unwrap();
@@ -43,9 +43,9 @@ fn test_set_and_update_point() {
 fn test_delete_point() {
     let (mut deps, info) = proper_initialization(PointRestriction::Private);
     let point = PointCoordinate {
-        x_coordinate: SignedDecimal::percent(1000),
-        y_coordinate: SignedDecimal::percent(1000),
-        z_coordinate: Some(SignedDecimal::percent(1000)),
+        x_coordinate: SignedDecimal::from_ratio(10, 1),
+        y_coordinate: SignedDecimal::from_ratio(10, 1),
+        z_coordinate: Some(SignedDecimal::from_ratio(10, 1)),
     };
 
     set_point(deps.as_mut(), &point, info.sender.as_ref()).unwrap();
@@ -58,9 +58,9 @@ fn test_restriction_private() {
     let (mut deps, info) = proper_initialization(PointRestriction::Private);
 
     let point = PointCoordinate {
-        x_coordinate: SignedDecimal::percent(1000),
-        y_coordinate: SignedDecimal::percent(1000),
-        z_coordinate: Some(SignedDecimal::percent(1000)),
+        x_coordinate: SignedDecimal::from_ratio(10, 1),
+        y_coordinate: SignedDecimal::from_ratio(10, 1),
+        z_coordinate: Some(SignedDecimal::from_ratio(10, 1)),
     };
     let external_user = "external".to_string();
 
@@ -87,9 +87,9 @@ fn test_restriction_public() {
     let (mut deps, info) = proper_initialization(PointRestriction::Public);
 
     let point = PointCoordinate {
-        x_coordinate: SignedDecimal::percent(1000),
-        y_coordinate: SignedDecimal::percent(1000),
-        z_coordinate: Some(SignedDecimal::percent(1000)),
+        x_coordinate: SignedDecimal::from_ratio(10, 1),
+        y_coordinate: SignedDecimal::from_ratio(10, 1),
+        z_coordinate: Some(SignedDecimal::from_ratio(10, 1)),
     };
     let external_user = "external".to_string();
 
@@ -118,14 +118,14 @@ fn test_restriction_restricted() {
     let (mut deps, info) = proper_initialization(PointRestriction::Restricted);
 
     let point = PointCoordinate {
-        x_coordinate: SignedDecimal::percent(1000),
-        y_coordinate: SignedDecimal::percent(1000),
-        z_coordinate: Some(SignedDecimal::percent(1000)),
+        x_coordinate: SignedDecimal::from_ratio(10, 1),
+        y_coordinate: SignedDecimal::from_ratio(10, 1),
+        z_coordinate: Some(SignedDecimal::from_ratio(10, 1)),
     };
     let point2 = PointCoordinate {
-        x_coordinate: SignedDecimal::percent(500),
-        y_coordinate: SignedDecimal::percent(500),
-        z_coordinate: Some(SignedDecimal::percent(500)),
+        x_coordinate: SignedDecimal::from_ratio(5, 1),
+        y_coordinate: SignedDecimal::from_ratio(5, 1),
+        z_coordinate: Some(SignedDecimal::from_ratio(5, 1)),
     };
     let external_user = "external".to_string();
     let external_user2 = "external2".to_string();
@@ -172,9 +172,9 @@ fn test_query_data_owner() {
     let external_user = "external".to_string();
     let external_user2 = "external2".to_string();
     let point = PointCoordinate {
-        x_coordinate: SignedDecimal::percent(1000),
-        y_coordinate: SignedDecimal::percent(1000),
-        z_coordinate: Some(SignedDecimal::percent(1000)),
+        x_coordinate: SignedDecimal::from_ratio(10, 1),
+        y_coordinate: SignedDecimal::from_ratio(10, 1),
+        z_coordinate: Some(SignedDecimal::from_ratio(10, 1)),
     };
     set_point(deps.as_mut(), &point, &external_user.clone()).unwrap();
 
