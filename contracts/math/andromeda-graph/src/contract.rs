@@ -207,33 +207,46 @@ pub fn execute_store_coordinate(
 
     match allow_negative {
         true => {
+            // x_ge = - (x_length / 2)
+            let x_ge = SignedDecimal::negative_one()
+                .checked_mul(
+                    x_length
+                        .checked_div(SignedDecimal::from_ratio(2, 1))
+                        .map_err(|_| ContractError::Underflow {})?,
+                )
+                .map_err(|_| ContractError::Underflow {})?;
+
+            // x_le = x_length / 2
+            let x_le = x_length
+                .checked_div(SignedDecimal::from_ratio(2, 1))
+                .map_err(|_| ContractError::Underflow {})?;
+
+            // Validate the x_coordinate
+            // x_coordinate must be between - (x_length / 2) and x_length / 2
             ensure!(
-                x_coordinate.ge(&SignedDecimal::negative_one()
-                    .checked_mul(
-                        x_length
-                            .checked_div(SignedDecimal::percent(200))
-                            .map_err(|_| ContractError::Underflow {})?
-                    )
-                    .map_err(|_| ContractError::Underflow {})?)
-                    && x_coordinate.le(&x_length
-                        .checked_div(SignedDecimal::percent(200))
-                        .map_err(|_| ContractError::Underflow {})?),
+                validate_coordinate(x_coordinate, x_ge, x_le),
                 ContractError::InvalidParameter {
                     error: Some("Wrong X Coordinate Range".to_string())
                 }
             );
 
+            // y_ge = - (y_length / 2)
+            let y_ge = SignedDecimal::negative_one()
+                .checked_mul(
+                    y_length
+                        .checked_div(SignedDecimal::from_ratio(2, 1))
+                        .map_err(|_| ContractError::Underflow {})?,
+                )
+                .map_err(|_| ContractError::Underflow {})?;
+            // y_le = y_length / 2
+            let y_le = y_length
+                .checked_div(SignedDecimal::from_ratio(2, 1))
+                .map_err(|_| ContractError::Underflow {})?;
+
+            // Validate the y_coordinate
+            // y_coordinate must be between - (y_length / 2) and y_length / 2
             ensure!(
-                y_coordinate.ge(&SignedDecimal::negative_one()
-                    .checked_mul(
-                        y_length
-                            .checked_div(SignedDecimal::percent(200))
-                            .map_err(|_| ContractError::Underflow {})?
-                    )
-                    .map_err(|_| ContractError::Underflow {})?)
-                    && y_coordinate.le(&y_length
-                        .checked_div(SignedDecimal::percent(200))
-                        .map_err(|_| ContractError::Underflow {})?),
+                validate_coordinate(y_coordinate, y_ge, y_le),
                 ContractError::InvalidParameter {
                     error: Some("Wrong Y Coordinate Range".to_string())
                 }
@@ -241,19 +254,25 @@ pub fn execute_store_coordinate(
 
             if is_z_allowed {
                 if let Some(z_coordinate) = z_coordinate {
-                    ensure!(
-                        z_coordinate.ge(&SignedDecimal::negative_one()
-                            .checked_mul(
-                                z_length
-                                    .unwrap()
-                                    .checked_div(SignedDecimal::percent(200))
-                                    .map_err(|_| ContractError::Underflow {})?
-                            )
-                            .map_err(|_| ContractError::Underflow {})?)
-                            && z_coordinate.le(&z_length
+                    // z_ge = - (z_length / 2)
+                    let z_ge = SignedDecimal::negative_one()
+                        .checked_mul(
+                            z_length
                                 .unwrap()
-                                .checked_div(SignedDecimal::percent(200))
-                                .map_err(|_| ContractError::Underflow {})?),
+                                .checked_div(SignedDecimal::from_ratio(2, 1))
+                                .map_err(|_| ContractError::Underflow {})?,
+                        )
+                        .map_err(|_| ContractError::Underflow {})?;
+                    // z_le = z_length / 2
+                    let z_le = z_length
+                        .unwrap()
+                        .checked_div(SignedDecimal::from_ratio(2, 1))
+                        .map_err(|_| ContractError::Underflow {})?;
+
+                    // Validate the z_coordinate
+                    // z_coordinate must be between - (z_length / 2) and z_length / 2
+                    ensure!(
+                        validate_coordinate(z_coordinate, z_ge, z_le),
                         ContractError::InvalidParameter {
                             error: Some("Wrong Z Coordinate Range".to_string())
                         }
@@ -262,15 +281,17 @@ pub fn execute_store_coordinate(
             }
         }
         false => {
+            // x_coordinate must be between 0 and x_length
             ensure!(
-                x_coordinate.ge(&SignedDecimal::zero()) && x_coordinate.le(&x_length),
+                validate_coordinate(x_coordinate, SignedDecimal::zero(), x_length),
                 ContractError::InvalidParameter {
                     error: Some("Wrong X Coordinate Range".to_string())
                 }
             );
 
+            // y_coordinate must be between 0 and y_length
             ensure!(
-                y_coordinate.ge(&SignedDecimal::zero()) && y_coordinate.le(&y_length),
+                validate_coordinate(y_coordinate, SignedDecimal::zero(), y_length),
                 ContractError::InvalidParameter {
                     error: Some("Wrong Y Coordinate Range".to_string())
                 }
@@ -278,9 +299,9 @@ pub fn execute_store_coordinate(
 
             if is_z_allowed {
                 if let Some(z_coordinate) = z_coordinate {
+                    // z_coordinate must be between 0 and z_length
                     ensure!(
-                        z_coordinate.ge(&SignedDecimal::zero())
-                            && z_coordinate.le(&z_length.unwrap()),
+                        validate_coordinate(z_coordinate, SignedDecimal::zero(), z_length.unwrap()),
                         ContractError::InvalidParameter {
                             error: Some("Wrong Z Coordinate Range".to_string())
                         }
@@ -391,6 +412,14 @@ pub fn execute_delete_user_coordinate(
         attr("method", "delete_user_coordinate"),
         attr("sender", sender),
     ]))
+}
+
+pub fn validate_coordinate(
+    coordinate: SignedDecimal,
+    ge: SignedDecimal, // greater equal
+    le: SignedDecimal, // less equal
+) -> bool {
+    coordinate.ge(&ge) && coordinate.le(&le)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
