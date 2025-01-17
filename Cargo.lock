@@ -770,7 +770,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-point"
-version = "0.1.0"
+version = "0.1.0-a.1"
 dependencies = [
  "andromeda-math",
  "andromeda-std",
