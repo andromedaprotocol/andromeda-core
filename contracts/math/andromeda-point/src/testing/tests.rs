@@ -1,6 +1,6 @@
 use crate::contract::query;
 use andromeda_math::point::{GetDataOwnerResponse, PointCoordinate, PointRestriction, QueryMsg};
-use cosmwasm_std::{from_json, testing::mock_env};
+use cosmwasm_std::{from_json, testing::mock_env, SignedDecimal};
 
 use andromeda_std::{amp::AndrAddr, error::ContractError};
 
@@ -14,83 +14,40 @@ fn test_instantiation() {
 #[test]
 fn test_set_and_update_point() {
     let (mut deps, info) = proper_initialization(PointRestriction::Private);
-    let point = PointCoordinate::from_f64(10_f64, 10_f64, Some(10_f64));
-    point.validate().unwrap();
+    let point = PointCoordinate {
+        x_coordinate: SignedDecimal::percent(1000),
+        y_coordinate: SignedDecimal::percent(1000),
+        z_coordinate: Some(SignedDecimal::percent(1000)),
+    };
+
     set_point(deps.as_mut(), &point, info.sender.as_ref()).unwrap();
 
     let query_res: PointCoordinate = query_point(deps.as_ref()).unwrap();
 
     assert_eq!(point, query_res);
 
-    let point = PointCoordinate::from_f64(5_f64, 5_f64, Some(5_f64));
-    point.validate().unwrap();
+    let point = PointCoordinate {
+        x_coordinate: SignedDecimal::percent(500),
+        y_coordinate: SignedDecimal::percent(500),
+        z_coordinate: Some(SignedDecimal::percent(500)),
+    };
+
     set_point(deps.as_mut(), &point, info.sender.as_ref()).unwrap();
 
     let query_res: PointCoordinate = query_point(deps.as_ref()).unwrap();
 
     assert_eq!(point, query_res);
-}
-
-struct TestHandlePointCoordinate {
-    name: &'static str,
-    point_coordinate: PointCoordinate,
-    expected_error: Option<ContractError>,
-}
-
-#[test]
-fn test_set_point_invalid() {
-    let test_cases = vec![
-        TestHandlePointCoordinate {
-            name: "Invalid x_coordinate",
-            point_coordinate: PointCoordinate {
-                x_coordinate: "10.abc".to_string(),
-                y_coordinate: "10".to_string(),
-                z_coordinate: Some("10".to_string()),
-            },
-            expected_error: Some(ContractError::ParsingError {
-                err: "x_coordinate: can not parse to f64".to_string(),
-            }),
-        },
-        TestHandlePointCoordinate {
-            name: "Invalid y_coordinate",
-            point_coordinate: PointCoordinate {
-                x_coordinate: "10".to_string(),
-                y_coordinate: "10.abc".to_string(),
-                z_coordinate: None,
-            },
-            expected_error: Some(ContractError::ParsingError {
-                err: "y_coordinate: can not parse to f64".to_string(),
-            }),
-        },
-        TestHandlePointCoordinate {
-            name: "Invalid z_coordinate",
-            point_coordinate: PointCoordinate {
-                x_coordinate: "10".to_string(),
-                y_coordinate: "10".to_string(),
-                z_coordinate: Some("10.abc".to_string()),
-            },
-            expected_error: Some(ContractError::ParsingError {
-                err: "z_coordinate: can not parse to f64".to_string(),
-            }),
-        },
-    ];
-
-    for test in test_cases {
-        let res = test.point_coordinate.validate();
-
-        if let Some(err) = test.expected_error {
-            assert_eq!(res.unwrap_err(), err, "{}", test.name);
-            continue;
-        }
-
-        assert!(res.is_ok())
-    }
 }
 
 #[test]
 fn test_delete_point() {
     let (mut deps, info) = proper_initialization(PointRestriction::Private);
-    let point = PointCoordinate::from_f64(10_f64, 10_f64, Some(10_f64));
+    let point = PointCoordinate {
+        x_coordinate: SignedDecimal::percent(1000),
+        y_coordinate: SignedDecimal::percent(1000),
+        z_coordinate: Some(SignedDecimal::percent(1000)),
+    };
+
     set_point(deps.as_mut(), &point, info.sender.as_ref()).unwrap();
     delete_point(deps.as_mut(), info.sender.as_ref()).unwrap();
     query_point(deps.as_ref()).unwrap_err();
@@ -100,7 +57,11 @@ fn test_delete_point() {
 fn test_restriction_private() {
     let (mut deps, info) = proper_initialization(PointRestriction::Private);
 
-    let point = PointCoordinate::from_f64(10_f64, 10_f64, Some(10_f64));
+    let point = PointCoordinate {
+        x_coordinate: SignedDecimal::percent(1000),
+        y_coordinate: SignedDecimal::percent(1000),
+        z_coordinate: Some(SignedDecimal::percent(1000)),
+    };
     let external_user = "external".to_string();
 
     // Set Point as owner
@@ -125,7 +86,11 @@ fn test_restriction_private() {
 fn test_restriction_public() {
     let (mut deps, info) = proper_initialization(PointRestriction::Public);
 
-    let point = PointCoordinate::from_f64(10_f64, 10_f64, Some(10_f64));
+    let point = PointCoordinate {
+        x_coordinate: SignedDecimal::percent(1000),
+        y_coordinate: SignedDecimal::percent(1000),
+        z_coordinate: Some(SignedDecimal::percent(1000)),
+    };
     let external_user = "external".to_string();
 
     // Set Point as owner
@@ -152,8 +117,16 @@ fn test_restriction_public() {
 fn test_restriction_restricted() {
     let (mut deps, info) = proper_initialization(PointRestriction::Restricted);
 
-    let point = PointCoordinate::from_f64(10_f64, 10_f64, Some(10_f64));
-    let point2 = PointCoordinate::from_f64(5_f64, 5_f64, Some(5_f64));
+    let point = PointCoordinate {
+        x_coordinate: SignedDecimal::percent(1000),
+        y_coordinate: SignedDecimal::percent(1000),
+        z_coordinate: Some(SignedDecimal::percent(1000)),
+    };
+    let point2 = PointCoordinate {
+        x_coordinate: SignedDecimal::percent(500),
+        y_coordinate: SignedDecimal::percent(500),
+        z_coordinate: Some(SignedDecimal::percent(500)),
+    };
     let external_user = "external".to_string();
     let external_user2 = "external2".to_string();
 
@@ -198,7 +171,11 @@ fn test_query_data_owner() {
     let (mut deps, _) = proper_initialization(PointRestriction::Restricted);
     let external_user = "external".to_string();
     let external_user2 = "external2".to_string();
-    let point = PointCoordinate::from_f64(10_f64, 10_f64, Some(10_f64));
+    let point = PointCoordinate {
+        x_coordinate: SignedDecimal::percent(1000),
+        y_coordinate: SignedDecimal::percent(1000),
+        z_coordinate: Some(SignedDecimal::percent(1000)),
+    };
     set_point(deps.as_mut(), &point, &external_user.clone()).unwrap();
 
     let res: GetDataOwnerResponse =

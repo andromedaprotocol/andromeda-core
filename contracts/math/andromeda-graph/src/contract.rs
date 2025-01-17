@@ -309,8 +309,6 @@ pub fn execute_store_user_coordinate(
                 let user: AndrAddr = user_res.owner;
                 let user_addr = user.get_raw_address(&ctx.deps.as_ref())?;
 
-                user_point_coordinate.validate()?;
-
                 USER_COORDINATE.save(ctx.deps.storage, user_addr, &user_point_coordinate)?;
             } else {
                 return Err(ContractError::InvalidADOType {
@@ -412,9 +410,9 @@ pub fn get_user_coordinate(deps: Deps, user: AndrAddr) -> Result<CoordinateInfo,
     let user_coordinate = USER_COORDINATE.load(deps.storage, user_addr)?;
 
     Ok(CoordinateInfo {
-        x: user_coordinate.x_coordinate,
-        y: user_coordinate.y_coordinate,
-        z: user_coordinate.z_coordinate,
+        x: user_coordinate.x_coordinate.to_string(),
+        y: user_coordinate.y_coordinate.to_string(),
+        z: user_coordinate.z_coordinate.map(|z| z.to_string()),
     })
 }
 

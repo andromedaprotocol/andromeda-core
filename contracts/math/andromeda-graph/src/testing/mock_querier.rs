@@ -9,8 +9,8 @@ use cosmwasm_std::QuerierWrapper;
 use cosmwasm_std::{
     from_json,
     testing::{mock_env, mock_info, MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
-    Coin, ContractInfoResponse, OwnedDeps, Querier, QuerierResult, QueryRequest, SystemError,
-    SystemResult, WasmQuery,
+    Coin, ContractInfoResponse, OwnedDeps, Querier, QuerierResult, QueryRequest, SignedDecimal,
+    SystemError, SystemResult, WasmQuery,
 };
 use cosmwasm_std::{to_json_binary, Binary, ContractResult};
 
@@ -91,9 +91,9 @@ impl WasmMockQuerier {
         match from_json(msg).unwrap() {
             PointQueryMsg::GetPoint {} => {
                 let msg_response = PointCoordinate {
-                    x_coordinate: "10".to_string(),
-                    y_coordinate: "10".to_string(),
-                    z_coordinate: Some("10".to_string()),
+                    x_coordinate: SignedDecimal::percent(1000),
+                    y_coordinate: SignedDecimal::percent(1000),
+                    z_coordinate: Some(SignedDecimal::percent(1000)),
                 };
                 SystemResult::Ok(ContractResult::Ok(to_json_binary(&msg_response).unwrap()))
             }

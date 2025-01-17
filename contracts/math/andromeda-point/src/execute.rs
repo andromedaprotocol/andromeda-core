@@ -57,8 +57,6 @@ pub fn set_point(ctx: ExecuteContext, point: PointCoordinate) -> Result<Response
         ContractError::Unauthorized {}
     );
 
-    point.validate()?;
-
     DATA.save(ctx.deps.storage, &point.clone())?;
     DATA_OWNER.save(ctx.deps.storage, &sender)?;
 
