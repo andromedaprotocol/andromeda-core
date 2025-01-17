@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
@@ -155,50 +157,38 @@ pub fn execute_store_coordinate(
         map_decimal,
     } = map;
 
-    let x_length = SignedDecimal::percent((map_size.x_width * 100).try_into().map_err(|e| {
-        ContractError::CustomError {
-            msg: format!("Failed to create x_length as Decimal: {:?}", e),
-        }
-    })?);
-    let y_length = SignedDecimal::percent((map_size.y_width * 100).try_into().map_err(|e| {
-        ContractError::CustomError {
-            msg: format!("Failed to create y_length as Decimal: {:?}", e),
-        }
-    })?);
-    let z_length = match map_size.z_width {
-        Some(z) => Some(SignedDecimal::percent((z * 100).try_into().map_err(
-            |e| ContractError::CustomError {
-                msg: format!("Failed to create z_length as Decimal: {:?}", e),
-            },
-        )?)),
-        None => None,
-    };
+    let x_length = SignedDecimal::from_ratio(map_size.x_width, 1);
+    let y_length = SignedDecimal::from_ratio(map_size.y_width, 1);
+    let z_length = map_size.z_width.map(|z| SignedDecimal::from_ratio(z, 1));
 
     let is_z_allowed = z_length.is_some();
 
+    // Convert x-coordinate to map_decimal precision
     let x_coordinate = coordinate
         .x_coordinate
-        .checked_mul(SignedDecimal::percent(1000).pow(map_decimal as u32))
+        .checked_mul(SignedDecimal::from_str("10")?.pow(map_decimal as u32)) // Multiply the x-coordinate by 10 ^ map_decimal
         .map_err(|_| ContractError::Overflow {})?
-        .floor()
-        .checked_div(SignedDecimal::percent(1000).pow(map_decimal as u32))
+        .floor() // Floor the result
+        .checked_div(SignedDecimal::from_str("10")?.pow(map_decimal as u32)) // Divide the result by 10 ^ map_decimal
         .map_err(|_| ContractError::Underflow {})?;
 
+    // Convert y-coordinate to map_decimal precision
     let y_coordinate = coordinate
         .y_coordinate
-        .checked_mul(SignedDecimal::percent(1000).pow(map_decimal as u32))
+        .checked_mul(SignedDecimal::from_str("10")?.pow(map_decimal as u32)) // Multiply the y-coordinate by 10 ^ map_decimal
         .map_err(|_| ContractError::Overflow {})?
-        .floor()
-        .checked_div(SignedDecimal::percent(1000).pow(map_decimal as u32))
+        .floor() // Floor the result
+        .checked_div(SignedDecimal::from_str("10")?.pow(map_decimal as u32)) // Divide the result by 10 ^ map_decimal
         .map_err(|_| ContractError::Underflow {})?;
 
+    // Convert z-coordinate to map_decimal precision
     let z_coordinate = match coordinate.z_coordinate {
         Some(z_coordinate) => Some(
             z_coordinate
-                .checked_mul(SignedDecimal::percent(1000).pow(map_decimal as u32))
+                .checked_mul(SignedDecimal::from_str("10")?.pow(map_decimal as u32)) // Multiply the z-coordinate by 10 ^ map_decimal
                 .map_err(|_| ContractError::Overflow {})?
-                .floor()
-                .checked_div(SignedDecimal::percent(1000).pow(map_decimal as u32))
+                .floor() // Floor the result
+                .checked_div(SignedDecimal::from_str("10")?.pow(map_decimal as u32)) // Divide the result by 10 ^ map_decimal
                 .map_err(|_| ContractError::Underflow {})?,
         ),
         None => None,
