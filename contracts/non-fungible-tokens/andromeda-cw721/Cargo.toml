@@ -38,4 +38,4 @@ andromeda-std = { workspace = true, features = ["rates"] }
 cw-multi-test = { workspace = true, optional = true }
 cw-orch = { workspace = true }
 andromeda-testing = { workspace = true, optional = true }
-cw-orch-daemon = "0.24.2"
+cw-orch-daemon = "0.29.1"

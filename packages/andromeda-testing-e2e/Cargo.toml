@@ -43,5 +43,5 @@ serde = { workspace = true }
 cw-multi-test = { workspace = true }
 anyhow = "1.0.95"
 tokio = "1.43.0"
-cw-orch-daemon = "0.24.3"
+cw-orch-daemon = "0.29.1"
 cw-orch = { workspace = true }

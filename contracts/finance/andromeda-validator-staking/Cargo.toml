@@ -30,4 +30,4 @@ chrono = "0.3"
 cw-multi-test = { workspace = true, optional = true }
 andromeda-testing = { workspace = true }
 cw-orch = { workspace = true }
-cw-orch-daemon = "0.24.2"
+cw-orch-daemon = "0.29.1"
