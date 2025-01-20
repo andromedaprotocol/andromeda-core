@@ -197,8 +197,8 @@ fn execute_send(ctx: ExecuteContext) -> Result<Response, ContractError> {
             amount: remainder_funds,
         })));
     }
-    let kernel_address = ADOContract::default().get_kernel_address(deps.as_ref().storage)?;
     if !pkt.messages.is_empty() {
+        let kernel_address = ADOContract::default().get_kernel_address(deps.as_ref().storage)?;
         let distro_msg = pkt.to_sub_msg(kernel_address, Some(amp_funds), 1)?;
         msgs.push(distro_msg);
     }
@@ -229,7 +229,7 @@ fn execute_update_thresholds(
     // Can't call this function while the lock isn't expired
     ensure!(
         conditional_splitter.lock_time.is_expired(&env.block),
-        ContractError::ContractLocked {}
+        ContractError::ContractLocked { msg: None }
     );
 
     let updated_conditional_splitter = ConditionalSplitter {
@@ -261,7 +261,7 @@ fn execute_update_lock(ctx: ExecuteContext, lock_time: Expiry) -> Result<Respons
     // Can't call this function while the lock isn't expired
     ensure!(
         conditional_splitter.lock_time.is_expired(&env.block),
-        ContractError::ContractLocked {}
+        ContractError::ContractLocked { msg: None }
     );
 
     let new_lock_time_expiration = lock_time.get_time(&env.block);

@@ -13,7 +13,7 @@ name = "crowdfund"
 
 [dependencies]
 serde.workspace = true
-tokio = "1.42.0"
+tokio = "1.43.0"
 cw-orch = { workspace = true }
 cw-orch-daemon = "0.24.2"
 rstest = { workspace = true }

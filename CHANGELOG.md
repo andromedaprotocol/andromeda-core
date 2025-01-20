@@ -28,12 +28,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Address Validation: Cross-chain recipients don't need to be registered in VFS [(#725)](https://github.com/andromedaprotocol/andromeda-core/pull/725)
 - Weighted Splitter: Replace Recipient with AndrAddr in RemoveRecipient and GetUserWeight [(#739)](https://github.com/andromedaprotocol/andromeda-core/pull/739)
 - feat: IBC packet tracking adjustments [#748](https://github.com/andromedaprotocol/andromeda-core/pull/748)
+- ADODB: Version Validation during Publish ensures different, not greater, version [(#752)](https://github.com/andromedaprotocol/andromeda-core/pull/752)
 - ref: Rename Set Amount Splitter to Fixed Amount Splitter [(#754)](https://github.com/andromedaprotocol/andromeda-core/pull/754)
+- Point ADO: remove Rates module from the contract[(#761)](https://github.com/andromedaprotocol/andromeda-core/pull/761)
+- feat: SignedDecimal for Distance [(#774)](https://github.com/andromedaprotocol/andromeda-core/pull/774)
 
 ### Fixed
 
 - feat: alterations to kernel for IBC [(#726)](https://github.com/andromedaprotocol/andromeda-core/pull/726)
 - Fixed handle_local amp message when a amp message is passed with custom config [(#729)](https://github.com/andromedaprotocol/andromeda-core/pull/729)
+- Fixed wrong return attribute for SubDir Query [(#756)](https://github.com/andromedaprotocol/andromeda-core/pull/756)
+- fix: Prevent bypassing splitter lock via config [(#757)](https://github.com/andromedaprotocol/andromeda-core/pull/757)
+- Fixed Curve ADO to be able to update curve config after reset [(#762)](https://github.com/andromedaprotocol/andromeda-core/pull/762)
+- Fixed Curve ADO's query error caused by Float data type [(#767)](https://github.com/andromedaprotocol/andromeda-core/pull/767)
 
 ## Release 3
 

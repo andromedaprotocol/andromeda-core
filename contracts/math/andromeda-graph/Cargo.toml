@@ -1,6 +1,6 @@
 [package]
 name = "andromeda-graph"
-version = "0.1.0-b.1"
+version = "0.1.0-a.1"
 edition = "2021"
 rust-version = "1.75.0"
 
@@ -36,4 +36,3 @@ andromeda-math = { workspace = true }
 cw-orch = { workspace = true }
 cw-multi-test = { workspace = true, optional = true }
 andromeda-testing = { workspace = true, optional = true }
-

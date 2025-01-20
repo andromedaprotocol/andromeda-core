@@ -1,0 +1,40 @@
+name: Publish Crates
+
+on:
+  release:
+    types: [released]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Run tests
+        run: make test
+
+  publish:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install cargo-edit
+        run: cargo install cargo-edit
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Publish Crates
+        uses: katyo/publish-crates@v2
+        with:
+          registry-token: ${{ secrets.CRATES_IO_TOKEN }}
+          ignore-unpublished-changes: true
