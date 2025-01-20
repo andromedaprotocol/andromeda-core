@@ -68,5 +68,5 @@ serde = { version = "1.0.217" }
 test-case = { version = "3.3.1" }
 cw-orch = "=0.24.1"
 jsonschema-valid = { version = "0.5.2" }
-serde_json = { version = "1.0.135" }
+serde_json = { version = "1.0.137" }
 rstest = "0.24.0"
