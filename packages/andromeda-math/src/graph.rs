@@ -1,6 +1,7 @@
 use andromeda_std::amp::AndrAddr;
 use andromeda_std::{andr_exec, andr_instantiate, andr_query};
 use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_std::SignedDecimal;
 
 #[andr_instantiate]
 #[cw_serde]
@@ -42,9 +43,9 @@ pub enum ExecuteMsg {
 
 #[cw_serde]
 pub struct Coordinate {
-    pub x_coordinate: f64,
-    pub y_coordinate: f64,
-    pub z_coordinate: Option<f64>,
+    pub x_coordinate: SignedDecimal,
+    pub y_coordinate: SignedDecimal,
+    pub z_coordinate: Option<SignedDecimal>,
 }
 
 #[andr_query]
