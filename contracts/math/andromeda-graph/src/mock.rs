@@ -6,7 +6,6 @@ use andromeda_math::graph::{
 };
 use andromeda_math::graph::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use andromeda_std::amp::AndrAddr;
-use andromeda_std::error::ContractError;
 use andromeda_testing::mock::MockApp;
 use andromeda_testing::{
     mock_ado,
