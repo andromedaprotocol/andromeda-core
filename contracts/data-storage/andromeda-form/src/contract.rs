@@ -11,14 +11,15 @@ use andromeda_std::{
         InstantiateMsg as BaseInstantiateMsg, MigrateMsg,
     },
     ado_contract::ADOContract,
-    common::{
-        context::ExecuteContext, encode_binary, expiration::get_and_validate_start_time,
-        Milliseconds,
-    },
+    andr_execute_fn,
+    common::{encode_binary, expiration::get_and_validate_start_time, Milliseconds},
     error::ContractError,
 };
 
-use crate::execute::{handle_execute, milliseconds_from_expiration};
+use crate::execute::{
+    execute_close_form, execute_delete_submission, execute_edit_submission, execute_open_form,
+    execute_submit_form, milliseconds_from_expiration,
+};
 use crate::query::{
     get_all_submissions, get_form_status, get_schema, get_submission, get_submission_ids,
 };
@@ -130,19 +131,22 @@ pub fn instantiate(
     Ok(response)
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn execute(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    msg: ExecuteMsg,
-) -> Result<Response, ContractError> {
-    let ctx = ExecuteContext::new(deps, info, env);
+#[andr_execute_fn]
+pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::AMPReceive(pkt) => {
-            ADOContract::default().execute_amp_receive(ctx, pkt, handle_execute)
-        }
-        _ => handle_execute(ctx, msg),
+        ExecuteMsg::SubmitForm { data } => execute_submit_form(ctx, data),
+        ExecuteMsg::DeleteSubmission {
+            submission_id,
+            wallet_address,
+        } => execute_delete_submission(ctx, submission_id, wallet_address),
+        ExecuteMsg::EditSubmission {
+            submission_id,
+            wallet_address,
+            data,
+        } => execute_edit_submission(ctx, submission_id, wallet_address, data),
+        ExecuteMsg::OpenForm {} => execute_open_form(ctx),
+        ExecuteMsg::CloseForm {} => execute_close_form(ctx),
+        _ => ADOContract::default().execute(ctx, msg),
     }
 }
 

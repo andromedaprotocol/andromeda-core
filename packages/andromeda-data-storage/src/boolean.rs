@@ -10,9 +10,15 @@ pub struct InstantiateMsg {
 #[andr_exec]
 #[cw_serde]
 pub enum ExecuteMsg {
-    SetValue { value: bool },
+    SetValue {
+        value: bool,
+    },
+    #[attrs(nonpayable)]
     DeleteValue {},
-    UpdateRestriction { restriction: BooleanRestriction },
+    #[attrs(nonpayable, restricted)]
+    UpdateRestriction {
+        restriction: BooleanRestriction,
+    },
 }
 
 #[andr_query]

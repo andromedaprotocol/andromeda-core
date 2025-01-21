@@ -23,19 +23,22 @@ pub struct FormConfig {
 #[andr_exec]
 #[cw_serde]
 pub enum ExecuteMsg {
-    SubmitForm {
-        data: String,
-    },
+    #[attrs(nonpayable)]
+    SubmitForm { data: String },
+    #[attrs(nonpayable, restricted)]
     DeleteSubmission {
         submission_id: u64,
         wallet_address: AndrAddr,
     },
+    #[attrs(nonpayable)]
     EditSubmission {
         submission_id: u64,
         wallet_address: AndrAddr,
         data: String,
     },
+    #[attrs(nonpayable, restricted)]
     OpenForm {},
+    #[attrs(nonpayable, restricted)]
     CloseForm {},
 }
 
