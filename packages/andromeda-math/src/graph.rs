@@ -25,19 +25,17 @@ pub struct MapSize {
 #[andr_exec]
 #[cw_serde]
 pub enum ExecuteMsg {
-    UpdateMap {
-        map_info: MapInfo,
-    },
+    #[attrs(restricted)]
+    UpdateMap { map_info: MapInfo },
+    #[attrs(restricted)]
     StoreCoordinate {
         coordinate: Coordinate,
         is_timestamp_allowed: bool,
     },
-    StoreUserCoordinate {
-        user_location_paths: Vec<AndrAddr>,
-    },
-    DeleteUserCoordinate {
-        user: AndrAddr,
-    },
+    #[attrs(restricted)]
+    StoreUserCoordinate { user_location_paths: Vec<AndrAddr> },
+    #[attrs(restricted)]
+    DeleteUserCoordinate { user: AndrAddr },
 }
 
 #[cw_serde]

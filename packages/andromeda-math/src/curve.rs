@@ -49,7 +49,9 @@ impl CurveConfig {
 #[andr_exec]
 #[cw_serde]
 pub enum ExecuteMsg {
+    #[attrs(nonpayable)]
     UpdateCurveConfig { curve_config: CurveConfig },
+    #[attrs(nonpayable)]
     Reset {},
 }
 

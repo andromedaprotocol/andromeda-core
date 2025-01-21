@@ -1,3 +1,4 @@
+use andromeda_std::andr_execute_fn;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{attr, ensure, Binary, Deps, DepsMut, Env, MessageInfo, Response, Storage};
@@ -11,7 +12,7 @@ use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     ado_contract::ADOContract,
     amp::AndrAddr,
-    common::{actions::call_action, context::ExecuteContext, encode_binary},
+    common::{context::ExecuteContext, encode_binary},
     error::ContractError,
     os::aos_querier::AOSQuerier,
 };
@@ -49,32 +50,9 @@ pub fn instantiate(
     Ok(resp)
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn execute(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    msg: ExecuteMsg,
-) -> Result<Response, ContractError> {
-    let ctx = ExecuteContext::new(deps, info, env);
+#[andr_execute_fn]
+pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::AMPReceive(pkt) => {
-            ADOContract::default().execute_amp_receive(ctx, pkt, handle_execute)
-        }
-        _ => handle_execute(ctx, msg),
-    }
-}
-
-fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
-    let action_response = call_action(
-        &mut ctx.deps,
-        &ctx.info,
-        &ctx.env,
-        &ctx.amp_ctx,
-        msg.as_ref(),
-    )?;
-
-    let res = match msg {
         ExecuteMsg::UpdateMap { map_info } => execute_update_map(ctx, map_info),
         ExecuteMsg::StoreCoordinate {
             coordinate,
@@ -85,12 +63,7 @@ fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
         } => execute_store_user_coordinate(ctx, user_location_paths),
         ExecuteMsg::DeleteUserCoordinate { user } => execute_delete_user_coordinate(ctx, user),
         _ => ADOContract::default().execute(ctx, msg),
-    }?;
-
-    Ok(res
-        .add_submessages(action_response.messages)
-        .add_attributes(action_response.attributes)
-        .add_events(action_response.events))
+    }
 }
 
 pub fn execute_update_map(
@@ -98,10 +71,6 @@ pub fn execute_update_map(
     map_info: MapInfo,
 ) -> Result<Response, ContractError> {
     let sender = ctx.info.sender;
-    ensure!(
-        ADOContract::default().is_owner_or_operator(ctx.deps.storage, sender.as_ref())?,
-        ContractError::Unauthorized {}
-    );
 
     let map = MAP_INFO
         .load(ctx.deps.storage)
@@ -135,11 +104,6 @@ pub fn execute_store_coordinate(
     is_timestamp_allowed: bool,
 ) -> Result<Response, ContractError> {
     let sender = ctx.info.sender;
-    ensure!(
-        ADOContract::default().is_owner_or_operator(ctx.deps.storage, sender.as_ref())?,
-        ContractError::Unauthorized {}
-    );
-
     let map = MAP_INFO
         .load(ctx.deps.storage)
         .map_err(|_| ContractError::InvalidParameter {
@@ -276,10 +240,6 @@ pub fn execute_store_user_coordinate(
     user_location_paths: Vec<AndrAddr>,
 ) -> Result<Response, ContractError> {
     let sender = ctx.info.sender;
-    ensure!(
-        ADOContract::default().is_owner_or_operator(ctx.deps.storage, sender.as_ref())?,
-        ContractError::Unauthorized {}
-    );
     for user_location_path in user_location_paths {
         let address = user_location_path.get_raw_address(&ctx.deps.as_ref())?;
         let contract_info = ctx.deps.querier.query_wasm_contract_info(address.clone());
@@ -331,10 +291,6 @@ pub fn execute_delete_user_coordinate(
     user: AndrAddr,
 ) -> Result<Response, ContractError> {
     let sender = ctx.info.sender;
-    ensure!(
-        ADOContract::default().is_owner_or_operator(ctx.deps.storage, sender.as_ref())?,
-        ContractError::Unauthorized {}
-    );
     let user_addr = user.get_raw_address(&ctx.deps.as_ref())?;
 
     USER_COORDINATE.remove(ctx.deps.storage, user_addr);

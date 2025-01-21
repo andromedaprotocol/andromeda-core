@@ -10,15 +10,14 @@ use andromeda_std::{
         InstantiateMsg as BaseInstantiateMsg, MigrateMsg,
     },
     ado_contract::ADOContract,
-    common::{actions::call_action, context::ExecuteContext, encode_binary},
+    andr_execute_fn,
+    common::{context::ExecuteContext, encode_binary},
     error::ContractError,
 };
 
 use cosmwasm_std::{
     entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError, Storage,
 };
-
-use cw_utils::nonpayable;
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-curve";
@@ -77,50 +76,21 @@ pub fn instantiate(
     Ok(resp)
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn execute(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    msg: ExecuteMsg,
-) -> Result<Response, ContractError> {
-    let ctx = ExecuteContext::new(deps, info, env);
-    match msg {
-        ExecuteMsg::AMPReceive(pkt) => {
-            ADOContract::default().execute_amp_receive(ctx, pkt, handle_execute)
-        }
-        _ => handle_execute(ctx, msg),
-    }
-}
-
-fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
-    let action_response = call_action(
-        &mut ctx.deps,
-        &ctx.info,
-        &ctx.env,
-        &ctx.amp_ctx,
-        msg.as_ref(),
-    )?;
-
-    let res = match msg.clone() {
+#[andr_execute_fn]
+pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+    match msg.clone() {
         ExecuteMsg::UpdateCurveConfig { curve_config } => {
             execute_update_curve_config(ctx, curve_config)
         }
         ExecuteMsg::Reset {} => execute_reset(ctx),
         _ => ADOContract::default().execute(ctx, msg),
-    }?;
-
-    Ok(res
-        .add_submessages(action_response.messages)
-        .add_attributes(action_response.attributes)
-        .add_events(action_response.events))
+    }
 }
 
 pub fn execute_update_curve_config(
     mut ctx: ExecuteContext,
     curve_config: CurveConfig,
 ) -> Result<Response, ContractError> {
-    nonpayable(&ctx.info)?;
     let sender = ctx.info.sender.clone();
     ADOContract::default().is_permissioned(
         ctx.deps.branch(),
@@ -140,7 +110,6 @@ pub fn execute_update_curve_config(
 }
 
 pub fn execute_reset(mut ctx: ExecuteContext) -> Result<Response, ContractError> {
-    nonpayable(&ctx.info)?;
     let sender = ctx.info.sender.clone();
     ADOContract::default().is_permissioned(
         ctx.deps.branch(),
