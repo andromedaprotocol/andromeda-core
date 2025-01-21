@@ -12,6 +12,7 @@ use andromeda_std::os::aos_querier::AOSQuerier;
 use andromeda_std::os::ibc_registry::path_to_hops;
 use andromeda_std::os::kernel::{ChannelInfo, IbcExecuteMsg, Ics20PacketInfo, InternalMsg};
 use andromeda_std::os::vfs::vfs_resolve_symlink;
+use andromeda_std::os::vfs::QueryMsg as VFSQueryMsg;
 use cosmwasm_std::{
     attr, ensure, from_json, to_json_binary, BankMsg, Binary, Coin, ContractInfoResponse,
     CosmosMsg, DepsMut, Env, IbcMsg, MessageInfo, Response, StdAck, StdError, SubMsg, WasmMsg,
@@ -773,7 +774,7 @@ impl MsgHandler {
 
     fn handle_ibc_direct(
         &self,
-        _deps: DepsMut,
+        deps: DepsMut,
         info: MessageInfo,
         env: Env,
         ctx: Option<AMPPkt>,
@@ -797,16 +798,47 @@ impl MsgHandler {
                 error: Some(format!("Channel not found for chain {chain}")),
             });
         }?;
-        let ctx = ctx.map_or(
-            AMPPkt::new(
-                info.sender,
-                env.clone().contract.address,
-                vec![AMPMsg::new(
-                    recipient.clone().get_raw_path(),
-                    message.clone(),
-                    None,
-                )],
-            ),
+        let ctx = ctx.map_or_else(
+            || {
+                // Check if sender has username
+                let vfs_address = KERNEL_ADDRESSES.load(deps.storage, VFS_KEY).unwrap();
+                let msg = VFSQueryMsg::GetUsername {
+                    address: info.sender.clone(),
+                };
+                let username_addr =
+                    deps.querier
+                        .query::<String>(&cosmwasm_std::QueryRequest::Wasm(
+                            cosmwasm_std::WasmQuery::Smart {
+                                contract_addr: vfs_address.to_string(),
+                                msg: to_json_binary(&msg).unwrap(),
+                            },
+                        ));
+
+                match username_addr {
+                    Ok(username) => AMPPkt {
+                        messages: vec![AMPMsg::new(
+                            recipient.clone().get_raw_path(),
+                            message.clone(),
+                            None,
+                        )],
+                        ctx: AMPCtx::new(
+                            info.sender,
+                            env.clone().contract.address,
+                            0,
+                            Some(AndrAddr::from_string(username)),
+                        ),
+                    },
+                    Err(_) => AMPPkt::new(
+                        info.sender,
+                        env.clone().contract.address,
+                        vec![AMPMsg::new(
+                            recipient.clone().get_raw_path(),
+                            message.clone(),
+                            None,
+                        )],
+                    ),
+                }
+            },
             |mut ctx| {
                 ctx.ctx.previous_sender = env.contract.address.to_string();
                 ctx.messages[0].recipient =
@@ -814,6 +846,7 @@ impl MsgHandler {
                 ctx
             },
         );
+
         let kernel_msg = IbcExecuteMsg::SendMessage { amp_packet: ctx };
 
         let msg = IbcMsg::SendPacket {
