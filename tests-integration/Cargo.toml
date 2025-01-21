@@ -115,6 +115,12 @@ andromeda-counter = { path = "../contracts/math/andromeda-counter", features = [
 andromeda-shunting = { path = "../contracts/math/andromeda-shunting", features = [
     "testing",
 ] }
+andromeda-curve = { path = "../contracts/math/andromeda-curve", features = [
+    "testing",
+] }
+andromeda-graph = { path = "../contracts/math/andromeda-graph", features = [
+    "testing",
+] }
 
 
 #Other Crates
