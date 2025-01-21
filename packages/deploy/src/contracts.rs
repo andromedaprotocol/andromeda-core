@@ -13,15 +13,17 @@ use andromeda_cw20_staking::CW20StakingContract;
 use andromeda_cw721::CW721Contract;
 use andromeda_distance::DistanceContract;
 use andromeda_economics::EconomicsContract;
+use andromeda_fixed_amount_splitter::FixedAmountSplitterContract;
+use andromeda_graph::GraphContract;
 use andromeda_ibc_registry::IBCRegistryContract;
 use andromeda_kernel::KernelContract;
 use andromeda_lockdrop::LockdropContract;
 use andromeda_marketplace::MarketplaceContract;
 use andromeda_merkle_airdrop::MerkleAirdropContract;
+use andromeda_point::PointContract;
 use andromeda_primitive::PrimitiveContract;
 use andromeda_rate_limiting_withdrawals::RateLimitingWithdrawalsContract;
 use andromeda_rates::RatesContract;
-use andromeda_set_amount_splitter::SetAmountSplitterContract;
 use andromeda_shunting::ShuntingContract;
 use andromeda_splitter::SplitterContract;
 use andromeda_std::deploy::ADOMetadata;
@@ -69,7 +71,7 @@ pub fn all_contracts() -> Vec<DeployableContract> {
         deployable!(StringStorageContract),
         deployable!(ConditionalSplitterContract),
         deployable!(RateLimitingWithdrawalsContract),
-        deployable!(SetAmountSplitterContract),
+        deployable!(FixedAmountSplitterContract),
         deployable!(WeightedDistributionSplitterContract),
         deployable!(Cw20ExchangeContract),
         deployable!(LockdropContract),
@@ -84,6 +86,8 @@ pub fn all_contracts() -> Vec<DeployableContract> {
         deployable!(CrowdfundContract),
         deployable!(MarketplaceContract),
         deployable!(DistanceContract),
+        deployable!(GraphContract),
+        deployable!(PointContract),
     ]
 }
 

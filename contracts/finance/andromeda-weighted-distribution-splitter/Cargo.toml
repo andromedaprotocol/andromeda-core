@@ -1,6 +1,6 @@
 [package]
 name = "andromeda-weighted-distribution-splitter"
-version = "2.1.0-b.2"
+version = "2.1.0-a.1"
 edition = "2021"
 rust-version = "1.75.0"
 
@@ -30,3 +30,4 @@ cw-orch = { workspace = true }
 
 [dev-dependencies]
 andromeda-app = { workspace = true }
+rstest = { workspace = true }

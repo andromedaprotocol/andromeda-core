@@ -68,7 +68,7 @@ andromeda-finance = { workspace = true }
 andromeda-splitter = { path = "../contracts/finance/andromeda-splitter", features = [
     "testing",
 ] }
-andromeda-set-amount-splitter = { path = "../contracts/finance/andromeda-set-amount-splitter", features = [
+andromeda-fixed-amount-splitter = { path = "../contracts/finance/andromeda-fixed-amount-splitter", features = [
     "testing",
 ] }
 andromeda-conditional-splitter = { path = "../contracts/finance/andromeda-conditional-splitter", features = [
@@ -166,7 +166,7 @@ name = "validator_staking"
 name = "shunting"
 
 [dependencies]
-rstest = "0.23.0"
+rstest = { workspace = true }
 
 # [[test]]
 # name = "cw20_staking_app"
@@ -178,7 +178,7 @@ rstest = "0.23.0"
 # name = "kernel"
 
 [[test]]
-name = "set_amount_splitter"
+name = "fixed_amount_splitter"
 
 [[test]]
 name = "cw20_staking"

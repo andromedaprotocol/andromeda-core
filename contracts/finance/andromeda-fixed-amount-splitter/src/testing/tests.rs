@@ -21,7 +21,7 @@ use crate::{
     state::SPLITTER,
     testing::mock_querier::mock_dependencies_custom,
 };
-use andromeda_finance::set_amount_splitter::{
+use andromeda_finance::fixed_amount_splitter::{
     AddressAmount, ExecuteMsg, GetSplitterConfigResponse, InstantiateMsg, QueryMsg, Splitter,
 };
 
@@ -558,4 +558,122 @@ fn test_update_app_contract_invalid_recipient() {
     //     res.unwrap_err()
     // );
     assert!(res.is_err())
+}
+
+use rstest::*;
+
+#[fixture]
+fn locked_splitter() -> (DepsMut<'static>, Splitter) {
+    let deps = Box::leak(Box::new(mock_dependencies_custom(&[])));
+    let lock_time = mock_env().block.time.plus_seconds(86400);
+    let splitter = Splitter {
+        recipients: vec![
+            AddressAmount {
+                recipient: Recipient::from_string("addr1".to_string()),
+                coins: coins(40_u128, "uluna"),
+            },
+            AddressAmount {
+                recipient: Recipient::from_string("addr2".to_string()),
+                coins: coins(60_u128, "uluna"),
+            },
+        ],
+        lock: Milliseconds::from_seconds(lock_time.seconds()),
+        default_recipient: None,
+    };
+    SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
+    (deps.as_mut(), splitter)
+}
+
+#[fixture]
+fn unlocked_splitter() -> (DepsMut<'static>, Splitter) {
+    let deps = Box::leak(Box::new(mock_dependencies_custom(&[])));
+    let splitter = Splitter {
+        recipients: vec![
+            AddressAmount {
+                recipient: Recipient::from_string("addr1".to_string()),
+                coins: coins(40_u128, "uluna"),
+            },
+            AddressAmount {
+                recipient: Recipient::from_string("addr2".to_string()),
+                coins: coins(60_u128, "uluna"),
+            },
+        ],
+        lock: Milliseconds::default(),
+        default_recipient: None,
+    };
+    SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
+    (deps.as_mut(), splitter)
+}
+
+#[rstest]
+fn test_send_with_config_locked(locked_splitter: (DepsMut<'static>, Splitter)) {
+    let (deps, _) = locked_splitter;
+
+    let config = vec![AddressAmount {
+        recipient: Recipient::from_string("new_addr".to_string()),
+        coins: coins(100_u128, "uluna"),
+    }];
+
+    let msg = ExecuteMsg::Send {
+        config: Some(config),
+    };
+
+    let info = mock_info("owner", &[Coin::new(10000, "uluna")]);
+    let res = execute(deps, mock_env(), info, msg);
+
+    assert_eq!(
+        ContractError::ContractLocked {
+            msg: Some("Config isn't allowed while the splitter is locked".to_string())
+        },
+        res.unwrap_err()
+    );
+}
+
+#[rstest]
+fn test_send_with_config_unlocked(unlocked_splitter: (DepsMut<'static>, Splitter)) {
+    let (deps, _) = unlocked_splitter;
+
+    let config = vec![AddressAmount {
+        recipient: Recipient::from_string("new_addr".to_string()),
+        coins: coins(100_u128, "uluna"),
+    }];
+
+    let msg = ExecuteMsg::Send {
+        config: Some(config),
+    };
+
+    let info = mock_info("owner", &[Coin::new(10000, "uluna")]);
+    let res = execute(deps, mock_env(), info, msg).unwrap();
+
+    // Verify response contains expected submessages and refund
+    assert_eq!(3, res.messages.len()); // 1 for refund, 1 for transfer, 1 for economics
+    assert!(res.attributes.contains(&attr("action", "send")));
+}
+
+#[rstest]
+fn test_send_without_config_locked(locked_splitter: (DepsMut<'static>, Splitter)) {
+    let (deps, _) = locked_splitter;
+
+    let msg = ExecuteMsg::Send { config: None };
+
+    let info = mock_info("owner", &[Coin::new(10000, "uluna")]);
+    let res = execute(deps, mock_env(), info, msg).unwrap();
+
+    // Verify response contains expected submessages and refund
+    assert_eq!(3, res.messages.len()); // 1 for refund, 1 for transfers, 1 for economics
+    assert!(res.attributes.contains(&attr("action", "send")));
+}
+
+#[rstest]
+fn test_send_without_config_unlocked(unlocked_splitter: (DepsMut<'static>, Splitter)) {
+    let (deps, _) = unlocked_splitter;
+
+    let msg = ExecuteMsg::Send { config: None };
+
+    let info = mock_info("owner", &[Coin::new(10000, "uluna")]);
+    let res = execute(deps, mock_env(), info, msg).unwrap();
+
+    // Verify response contains expected submessages and refund
+    assert_eq!(3, res.messages.len()); // 1 for refund, 1 for transfers, 1 for economics
+    assert!(res.attributes.contains(&attr("action", "send")));
 }

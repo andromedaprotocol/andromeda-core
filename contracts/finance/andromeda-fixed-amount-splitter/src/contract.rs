@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use crate::state::SPLITTER;
 use andromeda_finance::{
-    set_amount_splitter::{
+    fixed_amount_splitter::{
         validate_recipient_list, AddressAmount, Cw20HookMsg, ExecuteMsg, GetSplitterConfigResponse,
         InstantiateMsg, QueryMsg, Splitter,
     },
@@ -23,7 +23,7 @@ use cw20::{Cw20Coin, Cw20ReceiveMsg};
 use cw_utils::nonpayable;
 
 // version info for migration info
-const CONTRACT_NAME: &str = "crates.io:andromeda-set-amount-splitter";
+const CONTRACT_NAME: &str = "crates.io:andromeda-fixed-amount-splitter";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 // 1 day in seconds
 const ONE_DAY: u64 = 86_400;
@@ -164,6 +164,12 @@ fn execute_send_cw20(
     let splitter = SPLITTER.load(deps.storage)?;
 
     let splitter_recipients = if let Some(config) = config {
+        ensure!(
+            splitter.lock.is_expired(&ctx.env.block),
+            ContractError::ContractLocked {
+                msg: Some("Config isn't allowed while the splitter is locked".to_string())
+            }
+        );
         validate_recipient_list(deps.as_ref(), config.clone())?;
         config
     } else {
@@ -241,7 +247,7 @@ fn execute_update_default_recipient(
     // Can't call this function while the lock isn't expired
     ensure!(
         splitter.lock.is_expired(&env.block),
-        ContractError::ContractLocked {}
+        ContractError::ContractLocked { msg: None }
     );
 
     if let Some(ref recipient) = recipient {
@@ -294,6 +300,12 @@ fn execute_send(
     }
     let splitter = SPLITTER.load(deps.storage)?;
     let splitter_recipients = if let Some(config) = config {
+        ensure!(
+            splitter.lock.is_expired(&ctx.env.block),
+            ContractError::ContractLocked {
+                msg: Some("Config isn't allowed while the splitter is locked".to_string())
+            }
+        );
         validate_recipient_list(deps.as_ref(), config.clone())?;
         config
     } else {
@@ -384,7 +396,7 @@ fn execute_update_recipients(
 
     ensure!(
         splitter.lock.is_expired(&env.block),
-        ContractError::ContractLocked {}
+        ContractError::ContractLocked { msg: None }
     );
     // Max 100 recipients
     ensure!(
@@ -415,7 +427,7 @@ fn execute_update_lock(ctx: ExecuteContext, lock_time: Expiry) -> Result<Respons
     // Can't call this function while the lock isn't expired
     ensure!(
         splitter.lock.is_expired(&env.block),
-        ContractError::ContractLocked {}
+        ContractError::ContractLocked { msg: None }
     );
 
     let new_expiration = validate_expiry_duration(&lock_time, &env.block)?;
@@ -431,8 +443,8 @@ fn execute_update_lock(ctx: ExecuteContext, lock_time: Expiry) -> Result<Respons
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-    ADOContract::default().migrate(deps, CONTRACT_NAME, CONTRACT_VERSION)
+pub fn migrate(deps: DepsMut, env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    ADOContract::default().migrate(deps, env, CONTRACT_NAME, CONTRACT_VERSION)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

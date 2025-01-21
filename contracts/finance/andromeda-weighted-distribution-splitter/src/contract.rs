@@ -134,7 +134,7 @@ pub fn execute_update_recipient_weight(
 
     ensure!(
         splitter.lock.is_expired(&env.block),
-        ContractError::ContractLocked {}
+        ContractError::ContractLocked { msg: None }
     );
 
     // Recipients are stored in a vector, we search for the desired recipient's index in the vector
@@ -176,7 +176,7 @@ fn execute_update_default_recipient(
     // Can't call this function while the lock isn't expired
     ensure!(
         splitter.lock.is_expired(&env.block),
-        ContractError::ContractLocked {}
+        ContractError::ContractLocked { msg: None }
     );
 
     if let Some(ref recipient) = recipient {
@@ -222,7 +222,7 @@ pub fn execute_add_recipient(
 
     ensure!(
         splitter.lock.is_expired(&env.block),
-        ContractError::ContractLocked {}
+        ContractError::ContractLocked { msg: None }
     );
 
     // Can't set weight to 0
@@ -276,6 +276,12 @@ fn execute_send(
     );
     let splitter = SPLITTER.load(deps.storage)?;
     let splitter_recipients = if let Some(config) = config {
+        ensure!(
+            splitter.lock.is_expired(&ctx.env.block),
+            ContractError::ContractLocked {
+                msg: Some("Config isn't allowed while the splitter is locked".to_string())
+            }
+        );
         // Max 100 recipients
         ensure!(config.len() <= 100, ContractError::ReachedRecipientLimit {});
         config
@@ -380,7 +386,7 @@ fn execute_update_recipients(
     // Can't update recipients while lock isn't expired
     ensure!(
         splitter.lock.is_expired(&env.block),
-        ContractError::ContractLocked {}
+        ContractError::ContractLocked { msg: None }
     );
 
     // Maximum number of recipients is 100
@@ -418,7 +424,7 @@ fn execute_remove_recipient(
 
     ensure!(
         splitter.lock.is_expired(&env.block),
-        ContractError::ContractLocked {}
+        ContractError::ContractLocked { msg: None }
     );
 
     // Find and remove recipient in one pass
@@ -455,7 +461,7 @@ fn execute_update_lock(ctx: ExecuteContext, lock_time: Expiry) -> Result<Respons
 
     ensure!(
         splitter.lock.is_expired(&env.block),
-        ContractError::ContractLocked {}
+        ContractError::ContractLocked { msg: None }
     );
 
     let new_lock_time_expiration = validate_expiry_duration(&lock_time, &env.block)?;
@@ -471,8 +477,8 @@ fn execute_update_lock(ctx: ExecuteContext, lock_time: Expiry) -> Result<Respons
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-    ADOContract::default().migrate(deps, CONTRACT_NAME, CONTRACT_VERSION)
+pub fn migrate(deps: DepsMut, env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    ADOContract::default().migrate(deps, env, CONTRACT_NAME, CONTRACT_VERSION)
 }
 
 #[entry_point]

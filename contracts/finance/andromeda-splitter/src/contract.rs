@@ -133,6 +133,12 @@ fn execute_send(
     let splitter = SPLITTER.load(deps.storage)?;
 
     let splitter_recipients = if let Some(config) = config {
+        ensure!(
+            splitter.lock.is_expired(&ctx.env.block),
+            ContractError::ContractLocked {
+                msg: Some("Config isn't allowed while the splitter is locked".to_string())
+            }
+        );
         validate_recipient_list(deps.as_ref(), config.clone())?;
         config
     } else {
@@ -156,7 +162,6 @@ fn execute_send(
 
     for recipient_addr in splitter_recipients {
         let recipient_percent = recipient_addr.percent;
-        let mut vec_coin: Vec<Coin> = Vec::new();
         for (i, coin) in info.funds.clone().iter().enumerate() {
             let amount_owed = coin.amount.mul_floor(recipient_percent);
             if !amount_owed.is_zero() {
@@ -164,15 +169,13 @@ fn execute_send(
                 recip_coin.amount = amount_owed;
                 remainder_funds[i].amount =
                     remainder_funds[i].amount.checked_sub(recip_coin.amount)?;
-                vec_coin.push(recip_coin.clone());
-                amp_funds.push(recip_coin);
+                amp_funds.push(recip_coin.clone());
+
+                let amp_msg = recipient_addr
+                    .recipient
+                    .generate_amp_msg(&deps.as_ref(), Some(vec![recip_coin.clone()]))?;
+                pkt = pkt.add_message(amp_msg);
             }
-        }
-        if !vec_coin.is_empty() {
-            let amp_msg = recipient_addr
-                .recipient
-                .generate_amp_msg(&deps.as_ref(), Some(vec_coin))?;
-            pkt = pkt.add_message(amp_msg);
         }
     }
     remainder_funds.retain(|x| x.amount > Uint128::zero());
@@ -214,6 +217,12 @@ fn execute_send_cw20(
     let splitter = SPLITTER.load(deps.storage)?;
 
     let splitter_recipients = if let Some(config) = config {
+        ensure!(
+            splitter.lock.is_expired(&ctx.env.block),
+            ContractError::ContractLocked {
+                msg: Some("Config isn't allowed while the splitter is locked".to_string())
+            }
+        );
         validate_recipient_list(deps.as_ref(), config.clone())?;
         config
     } else {
@@ -280,7 +289,7 @@ fn execute_update_recipients(
 
     ensure!(
         splitter.lock.is_expired(&env.block),
-        ContractError::ContractLocked {}
+        ContractError::ContractLocked { msg: None }
     );
     // Max 100 recipients
     ensure!(
@@ -302,7 +311,7 @@ fn execute_update_lock(ctx: ExecuteContext, lock_time: Expiry) -> Result<Respons
     // Can't call this function while the lock isn't expired
     ensure!(
         splitter.lock.is_expired(&env.block),
-        ContractError::ContractLocked {}
+        ContractError::ContractLocked { msg: None }
     );
 
     let new_lock_time_expiration = validate_expiry_duration(&lock_time, &env.block)?;
@@ -328,7 +337,7 @@ fn execute_update_default_recipient(
     // Can't call this function while the lock isn't expired
     ensure!(
         splitter.lock.is_expired(&env.block),
-        ContractError::ContractLocked {}
+        ContractError::ContractLocked { msg: None }
     );
 
     if let Some(ref recipient) = recipient {
@@ -352,8 +361,8 @@ fn execute_update_default_recipient(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-    ADOContract::default().migrate(deps, CONTRACT_NAME, CONTRACT_VERSION)
+pub fn migrate(deps: DepsMut, env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    ADOContract::default().migrate(deps, env, CONTRACT_NAME, CONTRACT_VERSION)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
