@@ -234,6 +234,11 @@ impl AMPCtx {
         self.origin.clone()
     }
 
+    /// Gets the username of the original sender
+    pub fn get_origin_username(&self) -> Option<AndrAddr> {
+        self.origin_username.clone()
+    }
+
     /// Gets the previous sender of a message
     pub fn get_previous_sender(&self) -> String {
         self.previous_sender.clone()

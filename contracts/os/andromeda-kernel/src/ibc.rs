@@ -2,6 +2,7 @@ use crate::ack::{make_ack_fail, make_ack_success};
 use crate::execute;
 use crate::proto::MsgTransfer;
 use crate::state::{CHAIN_TO_CHANNEL, CHANNEL_TO_CHAIN, KERNEL_ADDRESSES, REFUND_DATA};
+use andromeda_std::amp::messages::AMPPkt;
 use andromeda_std::amp::{IBC_REGISTRY_KEY, VFS_KEY};
 use andromeda_std::common::context::ExecuteContext;
 use andromeda_std::common::reply::ReplyId;
@@ -12,7 +13,7 @@ use andromeda_std::os::kernel::RefundData;
 use andromeda_std::os::{IBC_VERSION, TRANSFER_PORT};
 use andromeda_std::{
     amp::{messages::AMPMsg, AndrAddr},
-    os::{kernel::IbcExecuteMsg, vfs::ExecuteMsg as VFSExecuteMsg},
+    os::{kernel::IbcExecuteMsg, vfs::ExecuteMsg as VFSExecuteMsg, vfs::QueryMsg as VFSQueryMsg},
 };
 use cosmwasm_schema::cw_serde;
 #[cfg(not(feature = "library"))]
@@ -135,6 +136,7 @@ pub fn do_ibc_packet_receive(
         .ok_or(ContractError::Unauthorized {})?;
 
     let packet_msg: IbcExecuteMsg = from_json(&msg.packet.data)?;
+
     let mut execute_env = ExecuteContext {
         env: env.clone(),
         deps: deps.branch(),
@@ -146,7 +148,40 @@ pub fn do_ibc_packet_receive(
     };
     match packet_msg {
         IbcExecuteMsg::SendMessage { amp_packet } => {
-            execute_env.amp_ctx = Some(amp_packet.clone());
+            // Try to pull the username's address from the packet
+            match amp_packet.ctx.get_origin_username() {
+                Some(username) => {
+                    // Check if username is registered
+                    let vfs_address = KERNEL_ADDRESSES.load(execute_env.deps.storage, VFS_KEY)?;
+                    let msg = VFSQueryMsg::ResolvePath { path: username };
+                    let username_addr =
+                        execute_env
+                            .deps
+                            .querier
+                            .query::<Addr>(&cosmwasm_std::QueryRequest::Wasm(
+                                cosmwasm_std::WasmQuery::Smart {
+                                    contract_addr: vfs_address.to_string(),
+                                    msg: to_json_binary(&msg)?,
+                                },
+                            ));
+                    match username_addr {
+                        // If available, set that address as origin
+                        Ok(addr) => {
+                            let new_amp_packet = AMPPkt::new(
+                                addr,
+                                env.contract.address,
+                                amp_packet.clone().messages,
+                            );
+                            execute_env.amp_ctx = Some(new_amp_packet.clone());
+                        }
+                        // Otherwise, drop AMP Ctx and send the message directly as if coming from the kernel
+                        Err(_) => {}
+                    }
+                }
+                None => {
+                    execute_env.amp_ctx = Some(amp_packet.clone());
+                }
+            }
 
             let res = execute::send(execute_env, amp_packet.messages.first().unwrap().clone())?;
 
