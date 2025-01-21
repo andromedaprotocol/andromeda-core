@@ -111,28 +111,46 @@ fn test_curve_app() {
     let curve: MockCurve = app.query_ado_by_component_name(&router, curve_component.name);
     let graph: MockGraph = app.query_ado_by_component_name(&router, graph_component.name);
 
-    let mut num = 0;
-    while num < 5 {
+    while counter.query_current_amount(&mut router).current_amount <= 10 {
         let x_coordinate = counter.query_current_amount(&mut router).current_amount;
         let y_coordinate = curve.query_plot_y_from_x(&mut router, x_coordinate).y_value;
-        graph
-            .execute_store_coordinate(
-                &mut router,
-                owner.clone(),
-                Coordinate {
-                    x_coordinate: SignedDecimal::from_ratio(x_coordinate, 1),
-                    y_coordinate: SignedDecimal::from_str(&y_coordinate).unwrap(),
-                    z_coordinate: None,
-                },
-                false,
-                None,
-            )
-            .unwrap();
+        let y_decimal = SignedDecimal::from_str(&y_coordinate).unwrap();
 
+        if y_decimal > SignedDecimal::from_ratio(1000, 1) {
+            // Expect an error when y_coordinate is greater than 1000
+            // If x_coordinate = 10, the y_coordinate is 1024. It will return err
+            graph
+                .execute_store_coordinate(
+                    &mut router,
+                    owner.clone(),
+                    Coordinate {
+                        x_coordinate: SignedDecimal::from_ratio(x_coordinate, 1),
+                        y_coordinate: y_decimal,
+                        z_coordinate: None,
+                    },
+                    false,
+                    None,
+                )
+                .unwrap_err(); // Expect an error and ensure it fails as intended
+        } else {
+            // Normal flow when y_coordinate is within bounds
+            graph
+                .execute_store_coordinate(
+                    &mut router,
+                    owner.clone(),
+                    Coordinate {
+                        x_coordinate: SignedDecimal::from_ratio(x_coordinate, 1),
+                        y_coordinate: y_decimal,
+                        z_coordinate: None,
+                    },
+                    false,
+                    None,
+                )
+                .unwrap(); // Expect success when within bounds
+        }
         counter
             .execute_increment(&mut router, owner.clone(), None)
             .unwrap();
-        num += 1;
     }
     let all_coordinates = graph.query_all_points(&mut router, None, None).points;
 
@@ -175,6 +193,38 @@ fn test_curve_app() {
                 CoordinateInfo {
                     x: "5".to_string(),
                     y: "32".to_string(),
+                    z: None,
+                },
+                StoredDate { timestamp: None }
+            ),
+            (
+                CoordinateInfo {
+                    x: "6".to_string(),
+                    y: "64".to_string(),
+                    z: None,
+                },
+                StoredDate { timestamp: None }
+            ),
+            (
+                CoordinateInfo {
+                    x: "7".to_string(),
+                    y: "128".to_string(),
+                    z: None,
+                },
+                StoredDate { timestamp: None }
+            ),
+            (
+                CoordinateInfo {
+                    x: "8".to_string(),
+                    y: "256".to_string(),
+                    z: None,
+                },
+                StoredDate { timestamp: None }
+            ),
+            (
+                CoordinateInfo {
+                    x: "9".to_string(),
+                    y: "512".to_string(),
                     z: None,
                 },
                 StoredDate { timestamp: None }
