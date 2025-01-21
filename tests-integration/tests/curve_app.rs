@@ -17,7 +17,7 @@ use cosmwasm_std::{to_json_binary, Addr, SignedDecimal};
 use cw_multi_test::Executor;
 
 #[test]
-fn test_auction_app_modules() {
+fn test_curve_app() {
     let mut router = mock_app(None);
     let andr = MockAndromedaBuilder::new(&mut router, "admin")
         .with_wallets(vec![("owner", vec![])])
