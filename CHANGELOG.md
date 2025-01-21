@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+### Changed
+
+### Fixed
+
+## Release 4
+
+### Added
+
 - Crowdfund, added additional state [(#715)](https://github.com/andromedaprotocol/andromeda-core/pull/715)
 - Added optional config for Send in Splitter contracts [(#686)](https://github.com/andromedaprotocol/andromeda-core/pull/686)
 - Added CW20 suppport in Splitter contracts [(#703)](https://github.com/andromedaprotocol/andromeda-core/pull/703)
