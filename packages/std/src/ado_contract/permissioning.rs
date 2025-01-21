@@ -903,7 +903,7 @@ mod tests {
             .unwrap();
 
         ADOContract::default()
-            .permission_action(action, deps.as_mut().storage)
+            .permission_action(deps.as_mut().storage, action)
             .unwrap();
 
         let permission = if is_whitelisted {

@@ -76,7 +76,7 @@ fn setup_cw721() -> (App<BankKeeper, MockApiBech32>, MockAndromeda, MockCW721) {
     let permission_msg = ExecuteMsg::Permissioning(PermissioningMessage::SetPermission {
         actors: vec![AndrAddr::from_string(user)],
         action: CW721_MINT_ACTION.to_string(),
-        permission: Permission::Local(LocalPermission::whitelisted(None)),
+        permission: Permission::Local(LocalPermission::whitelisted(None, None)),
     });
     cw721
         .execute(&mut router, &permission_msg, owner.clone(), &[])

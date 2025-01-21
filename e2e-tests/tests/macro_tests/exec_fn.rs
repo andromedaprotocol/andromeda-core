@@ -1,9 +1,18 @@
 use andromeda_std::{
-    ado_base::InstantiateMsg, ado_contract::ADOContract, amp::messages::{AMPMsg, AMPPkt}, andr_exec, andr_execute_fn, common::context::ExecuteContext, error::ContractError, testing::mock_querier::{mock_dependencies_custom, WasmMockQuerier, MOCK_KERNEL_CONTRACT}, unwrap_amp_msg
+    ado_base::InstantiateMsg,
+    ado_contract::ADOContract,
+    amp::messages::{AMPMsg, AMPPkt},
+    andr_exec, andr_execute_fn,
+    common::context::ExecuteContext,
+    error::ContractError,
+    testing::mock_querier::{mock_dependencies_custom, WasmMockQuerier, MOCK_KERNEL_CONTRACT},
+    unwrap_amp_msg,
 };
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
-    coin, testing::{mock_env, mock_info, MockApi, MockStorage}, to_json_binary, Env, MessageInfo, OwnedDeps, QuerierWrapper, Response
+    coin,
+    testing::{mock_env, mock_info, MockApi, MockStorage},
+    to_json_binary, Env, MessageInfo, OwnedDeps, QuerierWrapper, Response,
 };
 use cw_utils::PaymentError;
 use rstest::*;
@@ -65,26 +74,36 @@ fn test_exec_fn_direct(
         // AllAttrs (restricted, nonpayable, direct)
         (ExecuteMsg::AllAttrs, OWNER, None, Some(ContractError::Payment(PaymentError::NonPayable {}))),
         (ExecuteMsg::AllAttrs, ATTACKER, Some(ContractError::Unauthorized {}), Some(ContractError::Unauthorized {})),
-        
+
         // RestrictedNonPayable (restricted, nonpayable)
         (ExecuteMsg::RestrictedNonPayable, OWNER, None, Some(ContractError::Payment(PaymentError::NonPayable {}))),
         (ExecuteMsg::RestrictedNonPayable, ATTACKER, Some(ContractError::Unauthorized {}), Some(ContractError::Unauthorized {})),
-        
+
         // RestrictedDirect (restricted, direct)
         (ExecuteMsg::RestrictedDirect, OWNER, None, None),
         (ExecuteMsg::RestrictedDirect, ATTACKER, Some(ContractError::Unauthorized {}), Some(ContractError::Unauthorized {})),
-        
+
         // NonPayableDirect (nonpayable, direct)
         (ExecuteMsg::NonPayableDirect, OWNER, None, Some(ContractError::Payment(PaymentError::NonPayable {}))),
         (ExecuteMsg::NonPayableDirect, ATTACKER, None, Some(ContractError::Payment(PaymentError::NonPayable {})))
     )]
-    case: (ExecuteMsg, &str, Option<ContractError>, Option<ContractError>),
+    case: (
+        ExecuteMsg,
+        &str,
+        Option<ContractError>,
+        Option<ContractError>,
+    ),
 ) {
     let (mut deps, env) = setup;
 
     // Test case with no funds
     let send_info_no_funds = mock_info(case.1, &[]);
-    let res_no_funds = execute(deps.as_mut(), env.clone(), send_info_no_funds, case.0.clone());
+    let res_no_funds = execute(
+        deps.as_mut(),
+        env.clone(),
+        send_info_no_funds,
+        case.0.clone(),
+    );
 
     match case.2 {
         Some(expected) => assert_eq!(res_no_funds, Err(expected)),
@@ -102,7 +121,9 @@ fn test_exec_fn_direct(
 }
 
 fn direct_msg_error(msg: &str) -> Option<ContractError> {
-    Some(ContractError::InvalidPacket { error: Some(format!("{} cannot be received via AMP packet", msg)) })
+    Some(ContractError::InvalidPacket {
+        error: Some(format!("{} cannot be received via AMP packet", msg)),
+    })
 }
 
 /// Tests calling the execute entry point via AMP packet on each enum variant
@@ -114,28 +135,46 @@ fn test_exec_fn_amp_receive(
         // AllAttrs (restricted, nonpayable, direct)
         (ExecuteMsg::AllAttrs, OWNER, direct_msg_error("AllAttrs"), direct_msg_error("AllAttrs")),
         (ExecuteMsg::AllAttrs, ATTACKER, direct_msg_error("AllAttrs"), direct_msg_error("AllAttrs")),
-        
+
         // RestrictedNonPayable (restricted, nonpayable)
         (ExecuteMsg::RestrictedNonPayable, OWNER, None, Some(ContractError::Payment(PaymentError::NonPayable {}))),
         (ExecuteMsg::RestrictedNonPayable, ATTACKER, Some(ContractError::Unauthorized {}), Some(ContractError::Unauthorized {})),
-        
+
         // RestrictedDirect (restricted, direct)
         (ExecuteMsg::RestrictedDirect, OWNER, direct_msg_error("RestrictedDirect"), direct_msg_error("RestrictedDirect")),
         (ExecuteMsg::RestrictedDirect, ATTACKER, direct_msg_error("RestrictedDirect"), direct_msg_error("RestrictedDirect")),
-        
+
         // NonPayableDirect (nonpayable, direct)
         (ExecuteMsg::NonPayableDirect, OWNER, direct_msg_error("NonPayableDirect"), direct_msg_error("NonPayableDirect")),
         (ExecuteMsg::NonPayableDirect, ATTACKER, direct_msg_error("NonPayableDirect"), direct_msg_error("NonPayableDirect"))
     )]
-    case: (ExecuteMsg, &str, Option<ContractError>, Option<ContractError>),
+    case: (
+        ExecuteMsg,
+        &str,
+        Option<ContractError>,
+        Option<ContractError>,
+    ),
 ) {
     let (mut deps, env) = setup;
 
     // Test case with no funds
     let send_info_no_funds = mock_info(case.1, &[]);
-    let amp_msg_no_funds = AMPMsg::new(env.contract.address.clone(), to_json_binary(&case.0.clone()).unwrap(), None);
-    let amp_pkt_no_funds = AMPPkt::new(case.1.to_string(), case.1.to_string(), vec![amp_msg_no_funds]);
-    let res_no_funds = execute(deps.as_mut(), env.clone(), send_info_no_funds, ExecuteMsg::AMPReceive(amp_pkt_no_funds));
+    let amp_msg_no_funds = AMPMsg::new(
+        env.contract.address.clone(),
+        to_json_binary(&case.0.clone()).unwrap(),
+        None,
+    );
+    let amp_pkt_no_funds = AMPPkt::new(
+        case.1.to_string(),
+        case.1.to_string(),
+        vec![amp_msg_no_funds],
+    );
+    let res_no_funds = execute(
+        deps.as_mut(),
+        env.clone(),
+        send_info_no_funds,
+        ExecuteMsg::AMPReceive(amp_pkt_no_funds),
+    );
 
     match case.2 {
         Some(expected) => assert_eq!(res_no_funds, Err(expected)),
@@ -144,9 +183,22 @@ fn test_exec_fn_amp_receive(
 
     // Test case with funds
     let send_info_with_funds = mock_info(case.1, &[coin(100, "uatom")]);
-    let amp_msg_with_funds = AMPMsg::new(env.contract.address.clone(), to_json_binary(&case.0.clone()).unwrap(), Some(vec![coin(100, "uatom")]));
-    let amp_pkt_with_funds = AMPPkt::new(case.1.to_string(), case.1.to_string(), vec![amp_msg_with_funds]);
-    let res_with_funds = execute(deps.as_mut(), env, send_info_with_funds, ExecuteMsg::AMPReceive(amp_pkt_with_funds));
+    let amp_msg_with_funds = AMPMsg::new(
+        env.contract.address.clone(),
+        to_json_binary(&case.0.clone()).unwrap(),
+        Some(vec![coin(100, "uatom")]),
+    );
+    let amp_pkt_with_funds = AMPPkt::new(
+        case.1.to_string(),
+        case.1.to_string(),
+        vec![amp_msg_with_funds],
+    );
+    let res_with_funds = execute(
+        deps.as_mut(),
+        env,
+        send_info_with_funds,
+        ExecuteMsg::AMPReceive(amp_pkt_with_funds),
+    );
 
     match case.3 {
         Some(expected) => assert_eq!(res_with_funds, Err(expected)),
@@ -160,14 +212,19 @@ fn test_unwrap_amp_msg() {
     let info: MessageInfo = mock_info(MOCK_KERNEL_CONTRACT, &[]);
 
     let sent_msg = ExecuteMsg::Restricted;
-    let amp_msg = AMPMsg::new("sender".to_string(), to_json_binary(&sent_msg).unwrap(), None);
+    let amp_msg = AMPMsg::new(
+        "sender".to_string(),
+        to_json_binary(&sent_msg).unwrap(),
+        None,
+    );
     let amp_pkt = AMPPkt::new("sender".to_string(), "sender".to_string(), vec![amp_msg]);
     let msg = ExecuteMsg::AMPReceive(amp_pkt);
-    
+
     let (ctx, msg, _) = (|| -> Result<(ExecuteContext, ExecuteMsg, Response), ContractError> {
         let (ctx, msg, resp) = unwrap_amp_msg!(deps.as_mut(), info.clone(), env.clone(), msg);
         Ok((ctx, msg, resp))
-    })().unwrap();
+    })()
+    .unwrap();
 
     assert_eq!(ctx.info.sender, "sender");
     assert_eq!(ctx.raw_info.sender, MOCK_KERNEL_CONTRACT);
@@ -175,11 +232,17 @@ fn test_unwrap_amp_msg() {
 
     let empty_amp_pkt = AMPPkt::new("sender".to_string(), "sender".to_string(), vec![]);
     let msg = ExecuteMsg::AMPReceive(empty_amp_pkt);
-    
+
     let err = (|| -> Result<(), ContractError> {
         let _ = unwrap_amp_msg!(deps.as_mut(), info, env, msg);
         Ok(())
-    })().unwrap_err();
+    })()
+    .unwrap_err();
 
-    assert_eq!(err, ContractError::InvalidPacket { error: Some("AMP Packet received with no messages".to_string()) });
+    assert_eq!(
+        err,
+        ContractError::InvalidPacket {
+            error: Some("AMP Packet received with no messages".to_string())
+        }
+    );
 }
