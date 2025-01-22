@@ -1,14 +1,16 @@
-use crate::reply::on_component_instantiation;
-use crate::state::{add_app_component, create_cross_chain_message, ADO_ADDRESSES, APP_NAME};
+use crate::{
+    reply::on_component_instantiation,
+    state::{add_app_component, create_cross_chain_message, ADO_ADDRESSES, APP_NAME},
+};
 use andromeda_app::app::{ExecuteMsg, InstantiateMsg, QueryMsg};
-use andromeda_std::ado_contract::ADOContract;
-use andromeda_std::amp::AndrAddr;
-use andromeda_std::common::context::ExecuteContext;
-use andromeda_std::common::reply::ReplyId;
-use andromeda_std::os::vfs::{convert_component_name, ExecuteMsg as VFSExecuteMsg};
 use andromeda_std::{
-    ado_base::InstantiateMsg as BaseInstantiateMsg, ado_base::MigrateMsg, common::encode_binary,
+    ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
+    ado_contract::ADOContract,
+    amp::AndrAddr,
+    andr_execute_fn,
+    common::{encode_binary, reply::ReplyId},
     error::ContractError,
+    os::vfs::{convert_component_name, ExecuteMsg as VFSExecuteMsg},
 };
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
@@ -165,23 +167,8 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
     }
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn execute(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    msg: ExecuteMsg,
-) -> Result<Response, ContractError> {
-    let ctx = ExecuteContext::new(deps, info, env);
-    match msg {
-        ExecuteMsg::AMPReceive(pkt) => {
-            ADOContract::default().execute_amp_receive(ctx, pkt, handle_execute)
-        }
-        _ => handle_execute(ctx, msg),
-    }
-}
-
-pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+#[andr_execute_fn]
+pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::AddAppComponent { component } => {
             execute::handle_add_app_component(ctx, component)

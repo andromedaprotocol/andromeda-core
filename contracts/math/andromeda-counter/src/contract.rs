@@ -1,3 +1,4 @@
+use andromeda_std::andr_execute_fn;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
@@ -15,7 +16,6 @@ use andromeda_std::{
     common::{context::ExecuteContext, encode_binary},
     error::ContractError,
 };
-use cw_utils::nonpayable;
 
 use crate::state::{CURRENT_AMOUNT, DECREASE_AMOUNT, INCREASE_AMOUNT, INITIAL_AMOUNT, RESTRICTION};
 
@@ -72,34 +72,10 @@ pub fn instantiate(
     Ok(resp)
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn execute(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    msg: ExecuteMsg,
-) -> Result<Response, ContractError> {
-    let ctx = ExecuteContext::new(deps, info, env);
-    match msg {
-        ExecuteMsg::AMPReceive(pkt) => {
-            ADOContract::default().execute_amp_receive(ctx, pkt, handle_execute)
-        }
-        _ => handle_execute(ctx, msg),
-    }
-}
-
-fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+#[andr_execute_fn]
+pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     let action = msg.as_ref().to_string();
-
-    // let action_response = call_action(
-    //     &mut ctx.deps,
-    //     &ctx.info,
-    //     &ctx.env,
-    //     &ctx.amp_ctx,
-    //     msg.as_ref(),
-    // )?;
-
-    let res = match msg {
+    match msg {
         ExecuteMsg::Increment {} => execute_increment(ctx, action),
         ExecuteMsg::Decrement {} => execute_decrement(ctx, action),
         ExecuteMsg::Reset {} => execute_reset(ctx, action),
@@ -113,18 +89,10 @@ fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Cont
             execute_set_decrease_amount(ctx, decrease_amount, action)
         }
         _ => ADOContract::default().execute(ctx, msg),
-    }?;
-
-    Ok(
-        res, // .add_submessages(action_response.messages)
-            // .add_attributes(action_response.attributes)
-            // .add_events(action_response.events))
-    )
+    }
 }
 
 pub fn execute_increment(ctx: ExecuteContext, action: String) -> Result<Response, ContractError> {
-    nonpayable(&ctx.info)?;
-
     let sender = ctx.info.sender.clone();
     ensure!(
         has_permission(ctx.deps.storage, &sender)?,
@@ -147,8 +115,6 @@ pub fn execute_increment(ctx: ExecuteContext, action: String) -> Result<Response
 }
 
 pub fn execute_decrement(ctx: ExecuteContext, action: String) -> Result<Response, ContractError> {
-    nonpayable(&ctx.info)?;
-
     let sender = ctx.info.sender.clone();
     ensure!(
         has_permission(ctx.deps.storage, &sender)?,
@@ -191,12 +157,7 @@ pub fn execute_update_restriction(
     restriction: CounterRestriction,
     action: String,
 ) -> Result<Response, ContractError> {
-    nonpayable(&ctx.info)?;
     let sender = ctx.info.sender;
-    ensure!(
-        ADOContract::default().is_owner_or_operator(ctx.deps.storage, sender.as_ref())?,
-        ContractError::Unauthorized {}
-    );
     RESTRICTION.save(ctx.deps.storage, &restriction)?;
 
     Ok(Response::new().add_attributes(vec![attr("action", action), attr("sender", sender)]))
@@ -208,11 +169,6 @@ pub fn execute_set_increase_amount(
     action: String,
 ) -> Result<Response, ContractError> {
     let sender = ctx.info.sender;
-    ensure!(
-        ADOContract::default().is_owner_or_operator(ctx.deps.storage, sender.as_ref())?,
-        ContractError::Unauthorized {}
-    );
-
     INCREASE_AMOUNT.save(ctx.deps.storage, &increase_amount)?;
 
     Ok(Response::new().add_attributes(vec![
@@ -228,11 +184,6 @@ pub fn execute_set_decrease_amount(
     action: String,
 ) -> Result<Response, ContractError> {
     let sender = ctx.info.sender;
-    ensure!(
-        ADOContract::default().is_owner_or_operator(ctx.deps.storage, sender.as_ref())?,
-        ContractError::Unauthorized {}
-    );
-
     DECREASE_AMOUNT.save(ctx.deps.storage, &decrease_amount)?;
 
     Ok(Response::new().add_attributes(vec![
