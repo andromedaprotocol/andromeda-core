@@ -804,11 +804,7 @@ impl MsgHandler {
 
                 match username {
                     Ok(username) => {
-                        let origin_username = if let Some(username) = username {
-                            Some(AndrAddr::from_string(username))
-                        } else {
-                            None
-                        };
+                        let origin_username = username.map(AndrAddr::from_string);
                         AMPPkt {
                             messages: vec![AMPMsg::new(
                                 recipient.clone().get_raw_path(),
