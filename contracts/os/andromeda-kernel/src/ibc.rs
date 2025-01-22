@@ -165,18 +165,10 @@ pub fn do_ibc_packet_receive(
                                     msg: to_json_binary(&msg)?,
                                 },
                             ));
-                    match username_addr {
-                        // If available, set that address as origin
-                        Ok(addr) => {
-                            let new_amp_packet = AMPPkt::new(
-                                addr,
-                                env.contract.address,
-                                amp_packet.clone().messages,
-                            );
-                            execute_env.amp_ctx = Some(new_amp_packet.clone());
-                        }
-                        // Otherwise, drop AMP Ctx and send the message directly as if coming from the kernel
-                        Err(_) => {}
+                    if let Ok(addr) = username_addr {
+                        let new_amp_packet =
+                            AMPPkt::new(addr, env.contract.address, amp_packet.clone().messages);
+                        execute_env.amp_ctx = Some(new_amp_packet.clone());
                     }
                 }
                 None => {
