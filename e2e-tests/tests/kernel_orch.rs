@@ -51,13 +51,16 @@ fn test_kernel_ibc_execute_only() {
     let counter_osmosis = CounterContract::new(osmosis.clone());
     let vfs_osmosis = VFSContract::new(osmosis.clone());
     let adodb_osmosis = ADODBContract::new(osmosis.clone());
+    let economics_osmosis = EconomicsContract::new(osmosis.clone());
 
     kernel_juno.upload().unwrap();
     vfs_juno.upload().unwrap();
+
     kernel_osmosis.upload().unwrap();
     counter_osmosis.upload().unwrap();
     vfs_osmosis.upload().unwrap();
     adodb_osmosis.upload().unwrap();
+    economics_osmosis.upload().unwrap();
 
     let init_msg_juno = &InstantiateMsg {
         owner: None,
@@ -132,6 +135,17 @@ fn test_kernel_ibc_execute_only() {
         )
         .unwrap();
 
+    economics_osmosis
+        .instantiate(
+            &os::economics::InstantiateMsg {
+                kernel_address: kernel_osmosis.address().unwrap().into_string(),
+                owner: None,
+            },
+            None,
+            None,
+        )
+        .unwrap();
+
     kernel_juno
         .execute(
             &ExecuteMsg::UpsertKeyAddress {
@@ -157,6 +171,16 @@ fn test_kernel_ibc_execute_only() {
             &ExecuteMsg::UpsertKeyAddress {
                 key: "adodb".to_string(),
                 value: adodb_osmosis.address().unwrap().into_string(),
+            },
+            None,
+        )
+        .unwrap();
+
+    kernel_osmosis
+        .execute(
+            &ExecuteMsg::UpsertKeyAddress {
+                key: "economics".to_string(),
+                value: economics_osmosis.address().unwrap().into_string(),
             },
             None,
         )
@@ -425,11 +449,13 @@ fn test_kernel_ibc_execute_only_multi_hop() {
     let counter_andromeda = CounterContract::new(andromeda.clone());
     let vfs_andromeda = VFSContract::new(andromeda.clone());
     let adodb_andromeda = ADODBContract::new(andromeda.clone());
+    let economics_andromeda = EconomicsContract::new(andromeda.clone());
 
     kernel_andromeda.upload().unwrap();
     counter_andromeda.upload().unwrap();
     vfs_andromeda.upload().unwrap();
     adodb_andromeda.upload().unwrap();
+    economics_andromeda.upload().unwrap();
 
     let init_msg_andromeda = &InstantiateMsg {
         owner: None,
@@ -462,6 +488,17 @@ fn test_kernel_ibc_execute_only_multi_hop() {
         )
         .unwrap();
 
+    economics_andromeda
+        .instantiate(
+            &os::economics::InstantiateMsg {
+                kernel_address: kernel_andromeda.address().unwrap().into_string(),
+                owner: None,
+            },
+            None,
+            None,
+        )
+        .unwrap();
+
     adodb_andromeda
         .execute(
             &os::adodb::ExecuteMsg::Publish {
@@ -480,6 +517,16 @@ fn test_kernel_ibc_execute_only_multi_hop() {
             &ExecuteMsg::UpsertKeyAddress {
                 key: "adodb".to_string(),
                 value: adodb_andromeda.address().unwrap().into_string(),
+            },
+            None,
+        )
+        .unwrap();
+
+    kernel_andromeda
+        .execute(
+            &ExecuteMsg::UpsertKeyAddress {
+                key: "economics".to_string(),
+                value: economics_andromeda.address().unwrap().into_string(),
             },
             None,
         )

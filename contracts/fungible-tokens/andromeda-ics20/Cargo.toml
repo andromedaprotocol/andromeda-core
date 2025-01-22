@@ -1,6 +1,6 @@
 [package]
 name = "andromeda-ics20"
-version = "1.0.0"
+version = "1.1.0"
 edition = "2021"
 rust-version = "1.75.0"
 
@@ -26,8 +26,8 @@ semver = { workspace = true }
 cw20-base = { workspace = true }
 cw-controllers = "=1.1.2"
 schemars = "0.8.21"
-serde = "1.0.216"
-thiserror = "2.0.9"
+serde = { workspace = true }
+thiserror = "2.0.11"
 
 andromeda-std = { workspace = true }
 andromeda-fungible-tokens = { workspace = true }

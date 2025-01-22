@@ -39,7 +39,7 @@ pub fn instantiate(
             !actor_permission.actors.is_empty(),
             ContractError::NoActorsProvided {}
         );
-
+        actor_permission.permission.validate_times(&env)?;
         for actor in actor_permission.actors {
             let verified_actor = actor.get_raw_address(&deps.as_ref())?;
             add_actors_permission(deps.storage, verified_actor, &actor_permission.permission)?;
@@ -78,13 +78,14 @@ fn execute_permission_actors(
     actors: Vec<AndrAddr>,
     permission: LocalPermission,
 ) -> Result<Response, ContractError> {
-    let ExecuteContext { deps, .. } = ctx;
+    let ExecuteContext { deps, env, .. } = ctx;
     if let LocalPermission::Limited { .. } = permission {
         return Err(ContractError::InvalidPermission {
             msg: "Limited permission is not supported in address list contract".to_string(),
         });
     }
     ensure!(!actors.is_empty(), ContractError::NoActorsProvided {});
+    permission.validate_times(&env)?;
     for actor in actors.clone() {
         let verified_actor = actor.get_raw_address(&deps.as_ref())?;
         add_actors_permission(deps.storage, verified_actor, &permission)?;
@@ -130,8 +131,8 @@ fn execute_remove_permissions(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-    ADOContract::default().migrate(deps, CONTRACT_NAME, CONTRACT_VERSION)
+pub fn migrate(deps: DepsMut, env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    ADOContract::default().migrate(deps, env, CONTRACT_NAME, CONTRACT_VERSION)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

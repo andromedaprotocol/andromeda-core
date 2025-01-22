@@ -1,6 +1,6 @@
 [package]
 name = "andromeda-merkle-airdrop"
-version = "2.0.2"
+version = "2.1.0"
 edition = "2021"
 rust-version = "1.75.0"
 
@@ -23,7 +23,7 @@ cw20 = { workspace = true }
 cw-asset = { workspace = true }
 sha2 = "0.10.6"
 hex = "0.4.3"
-serde = "1.0.216"
+serde = { workspace = true }
 
 andromeda-std = { workspace = true }
 andromeda-fungible-tokens = { workspace = true }

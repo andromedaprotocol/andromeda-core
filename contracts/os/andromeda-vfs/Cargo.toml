@@ -1,6 +1,6 @@
 [package]
 name = "andromeda-vfs"
-version = "1.1.2"
+version = "1.2.0"
 authors = ["Connor Barr <crnbarr@gmail.com>"]
 edition = "2021"
 rust-version = "1.75.0"
@@ -25,7 +25,7 @@ testing = ["cw-multi-test"]
 cosmwasm-std = { workspace = true }
 cosmwasm-schema = { workspace = true }
 cw-storage-plus = { workspace = true }
-serde = { version = "1.0.216", default-features = false, features = ["derive"] }
+serde = { workspace = true }
 
 andromeda-std = { workspace = true }
 

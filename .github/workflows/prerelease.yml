@@ -1,0 +1,50 @@
+name: Convert Pre-release to Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      label:
+        description: "Label to add to the PR"
+        required: true
+        type: string
+
+jobs:
+  update-versions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Find and update version numbers
+        id: version-update
+        run: |
+          # Find all Cargo.toml files and process them
+          while IFS= read -r file; do
+          echo "Checking file: $file"
+          # Match any version field with a prerelease tag
+          if grep -q 'version = ".*-[a-zA-Z0-9.]\+"' "$file"; then
+              echo "Found prerelease version in $file"
+              # Show the version lines before change
+              grep 'version = ".*-[a-zA-Z0-9.]\+"' "$file"
+              # Linux version
+              sed -i 's/\(version = "[0-9.]*\)-[a-zA-Z0-9.]*"/\1"/' "$file"
+              
+              # Show the version lines after change
+              echo "After change:"
+              grep 'version = ".*"' "$file"
+              
+              echo "Updated $file"
+          fi
+          done < <(find . -name "Cargo.toml" -type f)
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v7
+        with:
+          commit-message: "chore: convert pre-release versions to release versions"
+          title: "Convert pre-release versions to release versions"
+          body: |
+            Automatically removing `-b.x` suffix from version numbers to prepare for release.
+
+            This PR was automatically generated.
+          branch: convert-prerelease-versions
+          delete-branch: true
+          labels: |
+            ${{ github.event.inputs.label }}

@@ -1,6 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError};
+use cosmwasm_std::{
+    Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, SignedDecimal, StdError,
+};
 
 use andromeda_math::distance::{Coordinate, DistanceType, ExecuteMsg, InstantiateMsg, QueryMsg};
 use andromeda_std::{
@@ -92,15 +94,15 @@ fn calculate_distance(
     decimal: u16,
     distance_type: DistanceType,
 ) -> Result<String, ContractError> {
-    let delta_x = (point_1.x_coordinate - point_2.x_coordinate).abs();
-    let delta_y = (point_1.y_coordinate - point_2.y_coordinate).abs();
-    let z_1 = point_1.z_coordinate.unwrap_or(0_f64);
-    let z_2 = point_2.z_coordinate.unwrap_or(0_f64);
-    let delta_z = (z_1 - z_2).abs();
+    let delta_x = point_1.x_coordinate.abs_diff(point_2.x_coordinate);
+    let delta_y = point_1.y_coordinate.abs_diff(point_2.y_coordinate);
+    let z_1 = point_1.z_coordinate.unwrap_or(SignedDecimal::zero());
+    let z_2 = point_2.z_coordinate.unwrap_or(SignedDecimal::zero());
+    let delta_z = z_1.abs_diff(z_2);
 
     match distance_type {
         DistanceType::Straight => {
-            let distance = (delta_x.powf(2_f64) + delta_y.powf(2_f64) + delta_z.powf(2_f64)).sqrt();
+            let distance = (delta_x.pow(2) + delta_y.pow(2) + delta_z.pow(2)).sqrt();
             let distance_decimal = format!("{:.*}", decimal as usize, distance)
                 .parse::<f64>()
                 .map_err(|_| ContractError::ParsingError {
@@ -132,8 +134,8 @@ fn decimal_validate(decimal: u16) -> Result<(), ContractError> {
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-    ADOContract::default().migrate(deps, CONTRACT_NAME, CONTRACT_VERSION)
+pub fn migrate(deps: DepsMut, env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    ADOContract::default().migrate(deps, env, CONTRACT_NAME, CONTRACT_VERSION)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

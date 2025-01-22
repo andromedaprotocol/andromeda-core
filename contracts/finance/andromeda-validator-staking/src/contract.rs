@@ -87,8 +87,8 @@ pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Contrac
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-    ADOContract::default().migrate(deps, CONTRACT_NAME, CONTRACT_VERSION)
+pub fn migrate(deps: DepsMut, env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    ADOContract::default().migrate(deps, env, CONTRACT_NAME, CONTRACT_VERSION)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -296,9 +296,15 @@ fn execute_claim(
     );
 
     let kernel_addr = ADOContract::default().get_kernel_address(deps.storage)?;
-    let curr_chain = AOSQuerier::get_current_chain(&deps.querier, &kernel_addr)?;
 
-    let withdraw_msg: CosmosMsg = if curr_chain == "andromeda" {
+    let is_andromeda_distribution = AOSQuerier::get_env_variable::<bool>(
+        &deps.querier,
+        &kernel_addr,
+        "andromeda_distribution",
+    )?
+    .unwrap_or(false);
+
+    let withdraw_msg: CosmosMsg = if is_andromeda_distribution {
         MsgWithdrawDelegatorReward {
             delegator_address: delegator.to_string(),
             validator_address: validator.to_string(),

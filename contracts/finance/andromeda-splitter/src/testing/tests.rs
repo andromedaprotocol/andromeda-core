@@ -672,3 +672,119 @@ fn test_update_app_contract_invalid_recipient() {
     // );
     assert!(res.is_err())
 }
+
+use rstest::*;
+
+#[fixture]
+fn locked_splitter() -> (DepsMut<'static>, Splitter) {
+    let deps = Box::leak(Box::new(mock_dependencies_custom(&[])));
+    let lock_time = mock_env().block.time.plus_seconds(86400);
+    let splitter = Splitter {
+        recipients: vec![
+            AddressPercent {
+                recipient: Recipient::from_string("addr1".to_string()),
+                percent: Decimal::percent(40),
+            },
+            AddressPercent {
+                recipient: Recipient::from_string("addr2".to_string()),
+                percent: Decimal::percent(60),
+            },
+        ],
+        lock: Milliseconds::from_seconds(lock_time.seconds()),
+        default_recipient: None,
+    };
+    SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
+    (deps.as_mut(), splitter)
+}
+
+#[fixture]
+fn unlocked_splitter() -> (DepsMut<'static>, Splitter) {
+    let deps = Box::leak(Box::new(mock_dependencies_custom(&[])));
+    let splitter = Splitter {
+        recipients: vec![
+            AddressPercent {
+                recipient: Recipient::from_string("addr1".to_string()),
+                percent: Decimal::percent(40),
+            },
+            AddressPercent {
+                recipient: Recipient::from_string("addr2".to_string()),
+                percent: Decimal::percent(60),
+            },
+        ],
+        lock: Milliseconds::default(),
+        default_recipient: None,
+    };
+    SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
+    (deps.as_mut(), splitter)
+}
+
+#[rstest]
+fn test_send_with_config_locked(locked_splitter: (DepsMut<'static>, Splitter)) {
+    let (deps, _) = locked_splitter;
+
+    let config = vec![AddressPercent {
+        recipient: Recipient::from_string("new_addr".to_string()),
+        percent: Decimal::percent(100),
+    }];
+
+    let msg = ExecuteMsg::Send {
+        config: Some(config),
+    };
+
+    let info = mock_info("owner", &[Coin::new(10000, "uluna")]);
+    let res = execute(deps, mock_env(), info, msg);
+
+    assert_eq!(
+        ContractError::ContractLocked {
+            msg: Some("Config isn't allowed while the splitter is locked".to_string())
+        },
+        res.unwrap_err()
+    );
+}
+
+#[rstest]
+fn test_send_with_config_unlocked(unlocked_splitter: (DepsMut<'static>, Splitter)) {
+    let (deps, _) = unlocked_splitter;
+
+    let config = vec![AddressPercent {
+        recipient: Recipient::from_string("new_addr".to_string()),
+        percent: Decimal::percent(100),
+    }];
+
+    let msg = ExecuteMsg::Send {
+        config: Some(config),
+    };
+
+    let info = mock_info("owner", &[Coin::new(10000, "uluna")]);
+    let res = execute(deps, mock_env(), info, msg).unwrap();
+
+    // Verify response contains expected submessages
+    assert_eq!(1, res.messages.len());
+    assert!(res.attributes.contains(&attr("action", "send")));
+}
+
+#[rstest]
+fn test_send_without_config_locked(locked_splitter: (DepsMut<'static>, Splitter)) {
+    let (deps, _) = locked_splitter;
+
+    let msg = ExecuteMsg::Send { config: None };
+
+    let info = mock_info("owner", &[Coin::new(10000, "uluna")]);
+    let res = execute(deps, mock_env(), info, msg).unwrap();
+
+    // Verify response contains expected submessages
+    assert!(res.attributes.contains(&attr("action", "send")));
+}
+
+#[rstest]
+fn test_send_without_config_unlocked(unlocked_splitter: (DepsMut<'static>, Splitter)) {
+    let (deps, _) = unlocked_splitter;
+
+    let msg = ExecuteMsg::Send { config: None };
+
+    let info = mock_info("owner", &[Coin::new(10000, "uluna")]);
+    let res = execute(deps, mock_env(), info, msg).unwrap();
+
+    // Verify response contains expected submessages
+    assert!(res.attributes.contains(&attr("action", "send")));
+}
