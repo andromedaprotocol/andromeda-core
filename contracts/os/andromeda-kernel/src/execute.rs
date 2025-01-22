@@ -815,7 +815,7 @@ impl MsgHandler {
                         ));
                 match username_addr {
                     Ok(username) => {
-                        if username != info.sender.to_string() {
+                        if username != info.sender {
                             AMPPkt {
                                 messages: vec![AMPMsg::new(
                                     recipient.clone().get_raw_path(),
