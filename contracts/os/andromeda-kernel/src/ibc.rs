@@ -13,7 +13,7 @@ use andromeda_std::os::kernel::RefundData;
 use andromeda_std::os::{IBC_VERSION, TRANSFER_PORT};
 use andromeda_std::{
     amp::{messages::AMPMsg, AndrAddr},
-    os::{kernel::IbcExecuteMsg, vfs::ExecuteMsg as VFSExecuteMsg, vfs::QueryMsg as VFSQueryMsg},
+    os::{kernel::IbcExecuteMsg, vfs::ExecuteMsg as VFSExecuteMsg},
 };
 use cosmwasm_schema::cw_serde;
 #[cfg(not(feature = "library"))]
@@ -152,19 +152,12 @@ pub fn do_ibc_packet_receive(
             match amp_packet.ctx.get_origin_username() {
                 Some(username) => {
                     // Check if username is registered
-                    let vfs_address = KERNEL_ADDRESSES.load(execute_env.deps.storage, VFS_KEY)?;
-                    let msg = VFSQueryMsg::ResolvePath { path: username };
-                    let username_addr =
-                        execute_env
-                            .deps
-                            .querier
-                            .query::<Addr>(&cosmwasm_std::QueryRequest::Wasm(
-                                cosmwasm_std::WasmQuery::Smart {
-                                    contract_addr: vfs_address.to_string(),
-                                    msg: to_json_binary(&msg)?,
-                                },
-                            ));
-                    if let Ok(addr) = username_addr {
+                    let username_addr = AOSQuerier::get_address_from_username(
+                        &execute_env.deps.querier,
+                        &env.contract.address,
+                        username.as_str(),
+                    )?;
+                    if let Some(addr) = username_addr {
                         let new_amp_packet =
                             AMPPkt::new(addr, env.contract.address, amp_packet.clone().messages);
                         execute_env.amp_ctx = Some(new_amp_packet.clone());
