@@ -1,47 +1,10 @@
-use andromeda_accounts::fixed_multisig::ExecuteMsg;
-use andromeda_std::{
-    ado_contract::ADOContract,
-    common::{actions::call_action, context::ExecuteContext},
-    error::ContractError,
-};
+use andromeda_std::{common::context::ExecuteContext, error::ContractError};
 use cosmwasm_std::{CosmosMsg, Empty, Response};
 use cw3::{Ballot, Proposal, Status, Vote, Votes};
 use cw_utils::Expiration;
 use std::cmp::Ordering;
 
 use crate::state::{next_id, BALLOTS, CONFIG, PROPOSALS, VOTERS};
-
-// This contains functionality derived from the cw3-fixed-multisig contract.
-// Source: https://github.com/CosmWasm/cw-plus/blob/main/contracts/cw3-fixed-multisig
-// License: Apache-2.0
-
-pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
-    let action_response = call_action(
-        &mut ctx.deps,
-        &ctx.info,
-        &ctx.env,
-        &ctx.amp_ctx,
-        msg.as_ref(),
-    )?;
-
-    let res = match msg {
-        ExecuteMsg::Propose {
-            title,
-            description,
-            msgs,
-            latest,
-        } => execute_propose(ctx, title, description, msgs, latest),
-        ExecuteMsg::Vote { proposal_id, vote } => execute_vote(ctx, proposal_id, vote),
-        ExecuteMsg::Execute { proposal_id } => execute_execute(ctx, proposal_id),
-        ExecuteMsg::Close { proposal_id } => execute_close(ctx, proposal_id),
-        _ => ADOContract::default().execute(ctx, msg),
-    }?;
-
-    Ok(res
-        .add_submessages(action_response.messages)
-        .add_attributes(action_response.attributes)
-        .add_events(action_response.events))
-}
 
 pub fn execute_propose(
     ctx: ExecuteContext,

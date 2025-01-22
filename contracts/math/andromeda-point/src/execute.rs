@@ -1,49 +1,16 @@
-use andromeda_math::point::{ExecuteMsg, PointCoordinate, PointRestriction};
-use andromeda_std::{
-    ado_contract::ADOContract,
-    common::{actions::call_action, context::ExecuteContext},
-    error::ContractError,
-};
-use cosmwasm_std::{ensure, Response};
-use cw_utils::nonpayable;
-
 use crate::{
     query::has_permission,
     state::{DATA, DATA_OWNER, RESTRICTION},
 };
-
-pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
-    let action_response = call_action(
-        &mut ctx.deps,
-        &ctx.info,
-        &ctx.env,
-        &ctx.amp_ctx,
-        msg.as_ref(),
-    )?;
-
-    let res = match msg.clone() {
-        ExecuteMsg::UpdateRestriction { restriction } => update_restriction(ctx, restriction),
-        ExecuteMsg::SetPoint { point } => set_point(ctx, point),
-        ExecuteMsg::DeletePoint {} => delete_point(ctx),
-        _ => ADOContract::default().execute(ctx, msg),
-    }?;
-
-    Ok(res
-        .add_submessages(action_response.messages)
-        .add_attributes(action_response.attributes)
-        .add_events(action_response.events))
-}
+use andromeda_math::point::{PointCoordinate, PointRestriction};
+use andromeda_std::{common::context::ExecuteContext, error::ContractError};
+use cosmwasm_std::{ensure, Response};
 
 pub fn update_restriction(
     ctx: ExecuteContext,
     restriction: PointRestriction,
 ) -> Result<Response, ContractError> {
-    nonpayable(&ctx.info)?;
     let sender = ctx.info.sender;
-    ensure!(
-        ADOContract::default().is_owner_or_operator(ctx.deps.storage, sender.as_ref())?,
-        ContractError::Unauthorized {}
-    );
     RESTRICTION.save(ctx.deps.storage, &restriction)?;
     Ok(Response::new()
         .add_attribute("method", "update_restriction")
@@ -69,7 +36,6 @@ pub fn set_point(ctx: ExecuteContext, point: PointCoordinate) -> Result<Response
 }
 
 pub fn delete_point(ctx: ExecuteContext) -> Result<Response, ContractError> {
-    nonpayable(&ctx.info)?;
     let sender = ctx.info.sender;
     ensure!(
         has_permission(ctx.deps.storage, &sender)?,

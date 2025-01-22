@@ -5,8 +5,8 @@ use andromeda_fungible_tokens::cw20_exchange::{
 use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     ado_contract::ADOContract,
+    andr_execute_fn,
     common::{
-        actions::call_action,
         context::ExecuteContext,
         expiration::{expiration_from_milliseconds, get_and_validate_start_time, Expiry},
         Milliseconds, MillisecondsDuration,
@@ -20,7 +20,7 @@ use cosmwasm_std::{
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use cw_asset::AssetInfo;
 use cw_storage_plus::Bound;
-use cw_utils::{nonpayable, one_coin, Expiration};
+use cw_utils::{one_coin, Expiration};
 
 use crate::state::{SALE, TOKEN_ADDRESS};
 
@@ -73,41 +73,14 @@ pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, Contract
     Ok(Response::default())
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn execute(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    msg: ExecuteMsg,
-) -> Result<Response, ContractError> {
-    let ctx = ExecuteContext::new(deps, info, env);
-
+#[andr_execute_fn]
+pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::AMPReceive(pkt) => {
-            ADOContract::default().execute_amp_receive(ctx, pkt, handle_execute)
-        }
-        _ => handle_execute(ctx, msg),
-    }
-}
-
-pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
-    let action_response = call_action(
-        &mut ctx.deps,
-        &ctx.info,
-        &ctx.env,
-        &ctx.amp_ctx,
-        msg.as_ref(),
-    )?;
-    let res = match msg {
         ExecuteMsg::CancelSale { asset } => execute_cancel_sale(ctx, asset),
         ExecuteMsg::Purchase { recipient } => execute_purchase_native(ctx, recipient),
         ExecuteMsg::Receive(cw20_msg) => execute_receive(ctx, cw20_msg),
         _ => ADOContract::default().execute(ctx, msg),
-    }?;
-    Ok(res
-        .add_submessages(action_response.messages)
-        .add_attributes(action_response.attributes)
-        .add_events(action_response.events))
+    }
 }
 
 pub fn execute_receive(
@@ -115,8 +88,6 @@ pub fn execute_receive(
     receive_msg: Cw20ReceiveMsg,
 ) -> Result<Response, ContractError> {
     let ExecuteContext { ref info, .. } = ctx;
-    nonpayable(info)?;
-
     let asset_sent = AssetInfo::Cw20(info.sender.clone());
     let amount_sent = receive_msg.amount;
     let sender = receive_msg.sender;
@@ -382,12 +353,6 @@ pub fn execute_cancel_sale(
     asset: AssetInfo,
 ) -> Result<Response, ContractError> {
     let ExecuteContext { deps, info, .. } = ctx;
-
-    let contract = ADOContract::default();
-    ensure!(
-        contract.is_contract_owner(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {}
-    );
 
     let Some(sale) = SALE.may_load(deps.storage, &asset.to_string())? else {
         return Err(ContractError::NoOngoingSale {});

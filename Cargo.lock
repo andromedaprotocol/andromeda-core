@@ -177,7 +177,6 @@ dependencies = [
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus 1.2.0",
- "cw-utils 1.0.3",
  "cw20",
 ]
 
@@ -209,7 +208,6 @@ dependencies = [
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus 1.2.0",
- "cw-utils 1.0.3",
 ]
 
 [[package]]
@@ -261,7 +259,6 @@ dependencies = [
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus 1.2.0",
- "cw-utils 1.0.3",
  "test-case",
 ]
 
@@ -315,7 +312,6 @@ dependencies = [
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus 1.2.0",
- "cw-utils 1.0.3",
  "cw20",
  "cw20-base",
 ]
@@ -661,7 +657,6 @@ dependencies = [
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus 1.2.0",
- "cw-utils 1.0.3",
  "cw20",
 ]
 
@@ -714,7 +709,6 @@ dependencies = [
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus 1.2.0",
- "cw-utils 1.0.3",
  "cw20",
 ]
 
@@ -732,7 +726,6 @@ dependencies = [
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus 1.2.0",
- "cw-utils 1.0.3",
  "cw20",
  "hex",
  "serde",
@@ -780,7 +773,6 @@ dependencies = [
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus 1.2.0",
- "cw-utils 1.0.3",
 ]
 
 [[package]]
@@ -795,7 +787,6 @@ dependencies = [
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus 1.2.0",
- "cw-utils 1.0.3",
  "cw20",
 ]
 
@@ -865,7 +856,6 @@ dependencies = [
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus 1.2.0",
- "cw-utils 1.0.3",
  "cw2 1.1.2",
  "serde-cw-value",
  "simple-shunting",
@@ -934,7 +924,6 @@ dependencies = [
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus 1.2.0",
- "cw-utils 1.0.3",
  "cw20",
 ]
 
@@ -1029,7 +1018,6 @@ dependencies = [
  "cosmwasm-std",
  "cw-multi-test",
  "cw-storage-plus 1.2.0",
- "cw-utils 1.0.3",
 ]
 
 [[package]]
@@ -1069,6 +1057,7 @@ dependencies = [
  "andromeda-app",
  "andromeda-finance",
  "andromeda-std",
+ "andromeda-testing",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-multi-test",

@@ -3,8 +3,8 @@ use andromeda_app_contract::mock::{mock_andromeda_app, MockAppContract};
 
 use andromeda_testing::{mock::mock_app, mock_builder::MockAndromedaBuilder, MockContract};
 
-use andromeda_std::amp::Recipient;
-use cosmwasm_std::{coin, Decimal, Uint128};
+use andromeda_std::{amp::Recipient, os::adodb::ActionFee};
+use cosmwasm_std::{attr, coin, Decimal, Uint128};
 
 use andromeda_conditional_splitter::mock::{
     mock_andromeda_conditional_splitter, mock_conditional_splitter_instantiate_msg,
@@ -23,6 +23,7 @@ fn test_conditional_splitter() {
             ("recipient1", vec![]),
             ("recipient2", vec![]),
             ("recipient3", vec![]),
+            ("recipient4", vec![coin(100000000, "uandr")]),
         ])
         .with_contracts(vec![
             ("app-contract", mock_andromeda_app()),
@@ -124,7 +125,7 @@ fn test_conditional_splitter() {
     // Third batch
     let token2 = coin(50_000, "uandr");
     splitter
-        .execute_send(&mut router, owner.clone(), &[token2])
+        .execute_send(&mut router, owner.clone(), &[token2.clone()])
         .unwrap();
 
     let balance_1 = router.wrap().query_balance(recipient_1, "uandr").unwrap();
@@ -173,6 +174,60 @@ fn test_conditional_splitter() {
 
     assert_eq!(uusd_balance_1.amount, Uint128::from(20u128));
     assert_eq!(uusd_balance_2.amount, Uint128::from(80u128));
+
+    // Economics Msg
+    andr.adodb
+        .execute(
+            &mut router,
+            &andromeda_std::os::adodb::ExecuteMsg::UpdateActionFees {
+                ado_type: "conditional-splitter".to_string(),
+                action_fees: vec![ActionFee {
+                    action: "UpdateThresholds".to_string(),
+                    asset: "native:uandr".to_string(),
+                    amount: Uint128::from(10u128),
+                    receiver: Some(owner.clone()),
+                }],
+            },
+            andr.get_wallet("admin").clone(),
+            &[],
+        )
+        .unwrap();
+
+    andr.economics
+        .execute(
+            &mut router,
+            &andromeda_std::os::economics::ExecuteMsg::Deposit { address: None },
+            owner.clone(),
+            &[coin(500, "uandr")],
+        )
+        .unwrap();
+
+    let res = splitter
+        .execute(
+            &mut router,
+            &andromeda_finance::conditional_splitter::ExecuteMsg::UpdateThresholds {
+                thresholds: vec![Threshold::new(
+                    Uint128::new(20),
+                    vec![
+                        AddressPercent::new(
+                            Recipient::from_string(recipient_2.to_string()), // 20%
+                            Decimal::from_ratio(Uint128::one(), Uint128::new(5)),
+                        ),
+                        AddressPercent::new(
+                            Recipient::from_string(recipient_3.to_string()), // 10%
+                            Decimal::from_ratio(Uint128::one(), Uint128::new(10)),
+                        ),
+                    ],
+                )],
+            },
+            owner.clone(),
+            &[],
+        )
+        .unwrap();
+    assert!(res
+        .events
+        .iter()
+        .any(|e| e.attributes.contains(&attr("paid_fee", "10native:uandr"))));
 }
 
 #[test]

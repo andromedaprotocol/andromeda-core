@@ -6,7 +6,6 @@ use cosmwasm_std::{
     attr, ensure, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError,
     StdResult, Uint128,
 };
-use cw_utils::nonpayable;
 use sha2::Digest;
 use std::convert::TryInto;
 
@@ -24,8 +23,8 @@ use andromeda_std::{
         InstantiateMsg as BaseInstantiateMsg, MigrateMsg,
     },
     ado_contract::ADOContract,
+    andr_execute_fn,
     common::{
-        actions::call_action,
         context::ExecuteContext,
         denom::{Asset, SEND_CW20_ACTION},
         encode_binary,
@@ -88,32 +87,9 @@ pub fn instantiate(
     Ok(resp)
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn execute(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    msg: ExecuteMsg,
-) -> Result<Response, ContractError> {
-    let ctx = ExecuteContext::new(deps, info, env);
-
+#[andr_execute_fn]
+pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::AMPReceive(pkt) => {
-            ADOContract::default().execute_amp_receive(ctx, pkt, handle_execute)
-        }
-        _ => handle_execute(ctx, msg),
-    }
-}
-
-pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
-    let action_response = call_action(
-        &mut ctx.deps,
-        &ctx.info,
-        &ctx.env,
-        &ctx.amp_ctx,
-        msg.as_ref(),
-    )?;
-    let res = match msg {
         ExecuteMsg::RegisterMerkleRoot {
             merkle_root,
             expiration,
@@ -126,11 +102,7 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
         } => execute_claim(ctx, stage, amount, proof),
         ExecuteMsg::Burn { stage } => execute_burn(ctx, stage),
         _ => ADOContract::default().execute(ctx, msg),
-    }?;
-    Ok(res
-        .add_submessages(action_response.messages)
-        .add_attributes(action_response.attributes)
-        .add_events(action_response.events))
+    }
 }
 
 pub fn execute_register_merkle_root(
@@ -139,15 +111,7 @@ pub fn execute_register_merkle_root(
     expiration: Option<Expiry>,
     total_amount: Option<Uint128>,
 ) -> Result<Response, ContractError> {
-    let ExecuteContext {
-        deps, info, env, ..
-    } = ctx;
-    nonpayable(&info)?;
-
-    ensure!(
-        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {}
-    );
+    let ExecuteContext { deps, env, .. } = ctx;
 
     // check merkle root length
     let mut root_buf: [u8; 32] = [0; 32];
@@ -187,8 +151,6 @@ pub fn execute_claim(
     let ExecuteContext {
         deps, info, env, ..
     } = ctx;
-    nonpayable(&info)?;
-
     // Ensure that the stage expiration (if it exists) isn't expired
     let expiration_milliseconds = STAGE_EXPIRATION.load(deps.storage, stage)?;
     if let Some(expiration_milliseconds) = expiration_milliseconds {
@@ -256,11 +218,6 @@ pub fn execute_burn(ctx: ExecuteContext, stage: u8) -> Result<Response, Contract
     let ExecuteContext {
         deps, info, env, ..
     } = ctx;
-    ensure!(
-        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {}
-    );
-
     // make sure is expired
     let expiration = STAGE_EXPIRATION.load(deps.storage, stage)?;
     if let Some(expiration) = expiration {
