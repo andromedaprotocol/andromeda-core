@@ -109,6 +109,9 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractErr
         } => encode_binary(&query::subdir(deps, path, min, max, limit)?),
         QueryMsg::Paths { addr } => encode_binary(&query::paths(deps, addr)?),
         QueryMsg::GetUsername { address } => encode_binary(&query::get_username(deps, address)?),
+        QueryMsg::GetAddressFromUsername { username } => {
+            encode_binary(&query::get_address_from_username(deps, username)?)
+        }
         QueryMsg::GetLibrary { address } => encode_binary(&query::get_library_name(deps, address)?),
         QueryMsg::ResolveSymlink { path } => encode_binary(&query::get_symlink(deps, path)?),
         // Base queries

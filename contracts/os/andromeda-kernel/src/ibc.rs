@@ -10,6 +10,7 @@ use andromeda_std::error::{ContractError, Never};
 use andromeda_std::os::aos_querier::AOSQuerier;
 use andromeda_std::os::ibc_registry::DenomInfo;
 use andromeda_std::os::kernel::RefundData;
+use andromeda_std::os::vfs::QueryMsg as VFSQueryMsg;
 use andromeda_std::os::{IBC_VERSION, TRANSFER_PORT};
 use andromeda_std::{
     amp::{messages::AMPMsg, AndrAddr},
@@ -152,15 +153,30 @@ pub fn do_ibc_packet_receive(
             match amp_packet.ctx.get_origin_username() {
                 Some(username) => {
                     // Check if username is registered
-                    let username_addr = AOSQuerier::get_address_from_username(
-                        &execute_env.deps.querier,
-                        &env.contract.address,
-                        username.as_str(),
-                    )?;
-                    if let Some(addr) = username_addr {
-                        let new_amp_packet =
-                            AMPPkt::new(addr, env.contract.address, amp_packet.clone().messages);
-                        execute_env.amp_ctx = Some(new_amp_packet.clone());
+                    let vfs_address = KERNEL_ADDRESSES.load(execute_env.deps.storage, VFS_KEY)?;
+                    let msg = VFSQueryMsg::GetAddressFromUsername { username };
+                    let username_addr =
+                        execute_env
+                            .deps
+                            .querier
+                            .query::<Addr>(&cosmwasm_std::QueryRequest::Wasm(
+                                cosmwasm_std::WasmQuery::Smart {
+                                    contract_addr: vfs_address.to_string(),
+                                    msg: to_json_binary(&msg)?,
+                                },
+                            ));
+                    match username_addr {
+                        // If available, set that address as origin
+                        Ok(addr) => {
+                            let new_amp_packet = AMPPkt::new(
+                                addr,
+                                env.contract.address,
+                                amp_packet.clone().messages,
+                            );
+                            execute_env.amp_ctx = Some(new_amp_packet.clone());
+                        }
+                        // Otherwise, drop AMP Ctx and send the message directly as if coming from the kernel
+                        Err(_) => {}
                     }
                 }
                 None => {

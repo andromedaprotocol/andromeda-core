@@ -240,33 +240,33 @@ impl AOSQuerier {
         }
     }
 
-    pub fn get_username(
-        querier: &QuerierWrapper,
-        vfs_addr: &Addr,
-        address: &Addr,
-    ) -> Result<Option<String>, ContractError> {
-        let key = AOSQuerier::get_map_storage_key("address_username", &[address.as_bytes()])?;
-        let username: Option<String> = AOSQuerier::query_storage(querier, vfs_addr, key.as_str())?;
-        Ok(username.and_then(|username| {
-            if username.to_lowercase() == address.to_string().to_lowercase() {
-                None
-            } else {
-                Some(username)
-            }
-        }))
-    }
+    // pub fn get_username(
+    //     querier: &QuerierWrapper,
+    //     vfs_addr: &Addr,
+    //     address: &Addr,
+    // ) -> Result<Option<String>, ContractError> {
+    //     let key = AOSQuerier::get_map_storage_key("address_username", &[address.as_bytes()])?;
+    //     let username: Option<String> = AOSQuerier::query_storage(querier, vfs_addr, key.as_str())?;
+    //     Ok(username.and_then(|username| {
+    //         if username.to_lowercase() == address.to_string().to_lowercase() {
+    //             None
+    //         } else {
+    //             Some(username)
+    //         }
+    //     }))
+    // }
 
-    pub fn get_address_from_username(
-        querier: &QuerierWrapper,
-        kernel_addr: &Addr,
-        username: &str,
-    ) -> Result<Option<Addr>, ContractError> {
-        let vfs_addr = AOSQuerier::vfs_address_getter(querier, kernel_addr)?;
-        let key = AOSQuerier::get_map_storage_key("users", &[username.as_bytes()])?;
-        let address: Option<Addr> = AOSQuerier::query_storage(querier, &vfs_addr, key.as_str())?;
+    // pub fn get_address_from_username(
+    //     querier: &QuerierWrapper,
+    //     kernel_addr: &Addr,
+    //     username: &str,
+    // ) -> Result<Option<Addr>, ContractError> {
+    //     let vfs_addr = AOSQuerier::vfs_address_getter(querier, kernel_addr)?;
+    //     let key = AOSQuerier::get_map_storage_key("users", &[username.as_bytes()])?;
+    //     let address: Option<Addr> = AOSQuerier::query_storage(querier, &vfs_addr, key.as_str())?;
 
-        Ok(address)
-    }
+    //     Ok(address)
+    // }
 
     #[cfg(feature = "rates")]
     /// Queries the rates contract

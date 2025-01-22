@@ -4,6 +4,7 @@ use cosmwasm_std::{Addr, Deps};
 
 use crate::state::{
     get_paths, get_subdir, resolve_pathname, resolve_symlink, ADDRESS_LIBRARY, ADDRESS_USERNAME,
+    USERS,
 };
 
 pub fn resolve_path(deps: Deps, path: AndrAddr) -> Result<Addr, ContractError> {
@@ -34,6 +35,11 @@ pub fn get_username(deps: Deps, addr: Addr) -> Result<String, ContractError> {
         .may_load(deps.storage, addr.to_string().as_str())?
         .unwrap_or(addr.to_string());
     Ok(username)
+}
+
+pub fn get_address_from_username(deps: Deps, username: AndrAddr) -> Result<Addr, ContractError> {
+    let address = USERS.load(deps.storage, username.as_str())?;
+    Ok(address)
 }
 
 pub fn get_library_name(deps: Deps, addr: Addr) -> Result<String, ContractError> {
