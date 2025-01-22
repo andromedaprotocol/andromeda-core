@@ -2334,6 +2334,7 @@ dependencies = [
  "andromeda-conditional-splitter",
  "andromeda-counter",
  "andromeda-crowdfund",
+ "andromeda-curve",
  "andromeda-cw20",
  "andromeda-cw20-staking",
  "andromeda-cw721",
@@ -2343,6 +2344,7 @@ dependencies = [
  "andromeda-finance",
  "andromeda-fixed-amount-splitter",
  "andromeda-fungible-tokens",
+ "andromeda-graph",
  "andromeda-ibc-registry",
  "andromeda-kernel",
  "andromeda-lockdrop",
@@ -4319,9 +4321,9 @@ dependencies = [
 
 [[package]]
 name = "rustix"
-version = "0.38.43"
+version = "0.38.44"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a78891ee6bf2340288408954ac787aa063d8e8817e9f53abb37c695c6d834ef6"
+checksum = "fdb5bc1ae2baa591800df16c9ca78619bf65c0488b41b96ccec5d11220d8c154"
 dependencies = [
  "bitflags 2.8.0",
  "errno",
