@@ -1,6 +1,5 @@
 use crate::state::REGISTRY;
 use andromeda_std::ado_base::permissioning::{LocalPermission, Permission};
-use andromeda_std::common::actions::call_action;
 use andromeda_std::os::ibc_registry::{
     verify_denom, AllDenomInfoResponse, DenomInfo, DenomInfoResponse, ExecuteMsg, IBCDenomInfo,
     InstantiateMsg, QueryMsg,
@@ -72,40 +71,15 @@ pub fn execute(
 ) -> Result<Response, ContractError> {
     let ctx = ExecuteContext::new(deps, info, env);
     match msg {
-        ExecuteMsg::AMPReceive(pkt) => {
-            ADOContract::default().execute_amp_receive(ctx, pkt, handle_execute)
-        }
-        _ => handle_execute(ctx, msg),
-    }
-}
-
-fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
-    let action = msg.as_ref().to_string();
-
-    let action_response = call_action(
-        &mut ctx.deps,
-        &ctx.info,
-        &ctx.env,
-        &ctx.amp_ctx,
-        msg.as_ref(),
-    )?;
-
-    let res = match msg {
         ExecuteMsg::StoreDenomInfo { ibc_denom_info } => {
-            execute_store_denom_info(ctx, action, ibc_denom_info)
+            execute_store_denom_info(ctx, ibc_denom_info)
         }
         _ => ADOContract::default().execute(ctx, msg),
-    }?;
-
-    Ok(res
-        .add_submessages(action_response.messages)
-        .add_attributes(action_response.attributes)
-        .add_events(action_response.events))
+    }
 }
 
 pub fn execute_store_denom_info(
     mut ctx: ExecuteContext,
-    action: String,
     ibc_denom_info: Vec<IBCDenomInfo>,
 ) -> Result<Response, ContractError> {
     let sender = ctx.info.sender.clone();
@@ -113,7 +87,7 @@ pub fn execute_store_denom_info(
     ADOContract::default().is_permissioned_strict(
         ctx.deps.branch(),
         ctx.env.clone(),
-        action,
+        "StoreDenomInfo",
         sender.clone(),
     )?;
 
