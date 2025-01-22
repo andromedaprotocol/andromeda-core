@@ -425,6 +425,63 @@ impl ADOContract<'_> {
     }
 }
 
+#[macro_export]
+macro_rules! unwrap_amp_msg {
+    ($deps:expr, $info:expr, $env:expr, $msg:expr) => {{
+        let mut ctx = ::andromeda_std::common::context::ExecuteContext::new($deps, $info, $env);
+        let mut msg = $msg;
+
+        if let ExecuteMsg::AMPReceive(mut pkt) = msg {
+            ctx.deps.api.debug("Unwrapping AMP Packet");
+            ctx.info = MessageInfo {
+                sender: ctx.deps.api.addr_validate(
+                    pkt.get_verified_origin(&ctx.info.clone(), &ctx.deps.as_ref())
+                        .unwrap()
+                        .as_str(),
+                )?,
+                funds: ctx.info.funds,
+            };
+
+            ctx.deps
+                .api
+                .debug(&format!("Set new sender: {}", ctx.info.sender));
+            let maybe_amp_msg = pkt.messages.pop();
+
+            ::cosmwasm_std::ensure!(
+                maybe_amp_msg.is_some(),
+                ContractError::InvalidPacket {
+                    error: Some("AMP Packet received with no messages".to_string()),
+                }
+            );
+            let amp_msg = maybe_amp_msg.unwrap();
+            msg = ::cosmwasm_std::from_json(&amp_msg.message)?;
+            ::cosmwasm_std::ensure!(
+                !msg.must_be_direct(),
+                ContractError::InvalidPacket {
+                    error: Some(format!(
+                        "{} cannot be received via AMP packet",
+                        msg.as_ref()
+                    )),
+                }
+            );
+            ctx.deps
+                .api
+                .debug(&format!("Unwrapped msg: {:?}", msg.as_ref()));
+            ctx.amp_ctx = Some(pkt);
+        }
+
+        let action_response = andromeda_std::common::actions::call_action(
+            &mut ctx.deps,
+            &ctx.info,
+            &ctx.env,
+            &ctx.amp_ctx,
+            msg.as_ref(),
+        )?;
+
+        (ctx, msg, action_response)
+    }};
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

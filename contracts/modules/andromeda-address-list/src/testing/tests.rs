@@ -1,19 +1,19 @@
-use crate::contract::{execute, instantiate, query};
-use crate::state::PERMISSIONS;
-use crate::testing::mock_querier::{mock_dependencies_custom, MOCK_KERNEL_CONTRACT};
+use crate::{
+    contract::{execute, instantiate, query},
+    state::PERMISSIONS,
+    testing::mock_querier::{mock_dependencies_custom, MOCK_KERNEL_CONTRACT},
+};
 use andromeda_modules::address_list::{
     ActorPermission, ActorPermissionResponse, ExecuteMsg, IncludesActorResponse, InstantiateMsg,
     QueryMsg,
 };
-use andromeda_std::ado_base::permissioning::LocalPermission;
-
-use andromeda_std::amp::AndrAddr;
-use andromeda_std::error::ContractError;
-
-use cosmwasm_std::{attr, from_json, Addr, DepsMut, MessageInfo};
+use andromeda_std::{
+    ado_base::permissioning::LocalPermission, amp::AndrAddr, error::ContractError,
+};
 use cosmwasm_std::{
+    attr, from_json,
     testing::{mock_env, mock_info},
-    Response,
+    Addr, DepsMut, MessageInfo, Response,
 };
 
 fn init(deps: DepsMut, info: MessageInfo) {

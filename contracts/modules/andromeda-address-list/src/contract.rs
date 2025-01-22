@@ -5,6 +5,7 @@ use andromeda_std::{
     ado_base::{permissioning::LocalPermission, InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     ado_contract::ADOContract,
     amp::AndrAddr,
+    andr_execute_fn,
     common::{context::ExecuteContext, encode_binary},
     error::ContractError,
 };
@@ -13,7 +14,6 @@ use cosmwasm_std::{
     attr, ensure, entry_point, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response,
     StdError,
 };
-use cw_utils::nonpayable;
 
 use crate::state::{add_actors_permission, includes_actor, PERMISSIONS};
 // version info for migration info
@@ -62,25 +62,8 @@ pub fn instantiate(
     Ok(inst_resp)
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn execute(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    msg: ExecuteMsg,
-) -> Result<Response, ContractError> {
-    let _contract = ADOContract::default();
-    let ctx = ExecuteContext::new(deps, info, env);
-
-    match msg {
-        ExecuteMsg::AMPReceive(pkt) => {
-            ADOContract::default().execute_amp_receive(ctx, pkt, handle_execute)
-        }
-        _ => handle_execute(ctx, msg),
-    }
-}
-
-pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+#[andr_execute_fn]
+pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::PermissionActors { actors, permission } => {
             execute_permission_actors(ctx, actors, permission)
@@ -95,14 +78,7 @@ fn execute_permission_actors(
     actors: Vec<AndrAddr>,
     permission: LocalPermission,
 ) -> Result<Response, ContractError> {
-    let ExecuteContext {
-        deps, env, info, ..
-    } = ctx;
-    nonpayable(&info)?;
-    ensure!(
-        ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {}
-    );
+    let ExecuteContext { deps, env, .. } = ctx;
     if let LocalPermission::Limited { .. } = permission {
         return Err(ContractError::InvalidPermission {
             msg: "Limited permission is not supported in address list contract".to_string(),
@@ -130,12 +106,7 @@ fn execute_remove_permissions(
     ctx: ExecuteContext,
     actors: Vec<AndrAddr>,
 ) -> Result<Response, ContractError> {
-    let ExecuteContext { deps, info, .. } = ctx;
-    nonpayable(&info)?;
-    ensure!(
-        ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {}
-    );
+    let ExecuteContext { deps, .. } = ctx;
     ensure!(!actors.is_empty(), ContractError::NoActorsProvided {});
 
     for actor in actors.clone() {

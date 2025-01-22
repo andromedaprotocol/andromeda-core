@@ -75,6 +75,11 @@ pub fn deploy(
             continue;
         }
 
+        if version.contains("-a.") {
+            log::info!("Skipping {} {} - alpha version", name, version);
+            continue;
+        }
+
         log::info!("Deploying {} {}", name, version);
         let code_id = upload(&daemon)?;
         let res = adodb.publish(name.clone(), code_id, version.clone(), None, None);

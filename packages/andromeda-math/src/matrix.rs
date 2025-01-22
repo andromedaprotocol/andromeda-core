@@ -10,7 +10,9 @@ pub struct InstantiateMsg {
 #[andr_exec]
 #[cw_serde]
 pub enum ExecuteMsg {
+    #[attrs(nonpayable)]
     StoreMatrix { key: Option<String>, data: Matrix },
+    #[attrs(nonpayable)]
     DeleteMatrix { key: Option<String> },
 }
 

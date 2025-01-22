@@ -1,24 +1,22 @@
-use andromeda_std::amp::AndrAddr;
-use andromeda_std::common::expiration::Expiry;
-use andromeda_std::common::Milliseconds;
-use andromeda_std::testing::mock_querier::{mock_dependencies_custom, MOCK_KERNEL_CONTRACT};
+use andromeda_finance::weighted_splitter::{AddressWeight, ExecuteMsg, InstantiateMsg, Splitter};
 use andromeda_std::{
-    ado_base::InstantiateMsg as BaseInstantiateMsg, ado_contract::ADOContract,
-    amp::recipient::Recipient, error::ContractError,
+    ado_base::InstantiateMsg as BaseInstantiateMsg,
+    ado_contract::ADOContract,
+    amp::{recipient::Recipient, AndrAddr},
+    common::{expiration::Expiry, Milliseconds},
+    error::ContractError,
+    testing::mock_querier::{mock_dependencies_custom, MOCK_KERNEL_CONTRACT},
 };
 use cosmwasm_std::{
     attr,
-    testing::{mock_env, mock_info},
-    Response, Uint128,
+    testing::{mock_dependencies, mock_env, mock_info},
+    BankMsg, Coin, CosmosMsg, DepsMut, QuerierWrapper, Response, SubMsg, Uint128,
 };
-use cosmwasm_std::{BankMsg, Coin, CosmosMsg, DepsMut, QuerierWrapper, SubMsg};
 
 use crate::{
     contract::{execute, instantiate},
     state::SPLITTER,
 };
-use andromeda_finance::weighted_splitter::{AddressWeight, ExecuteMsg, InstantiateMsg, Splitter};
-use cosmwasm_std::testing::mock_dependencies;
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 const MOCK_RECIPIENT1: &str = "recipient1";
 const MOCK_RECIPIENT2: &str = "recipient2";

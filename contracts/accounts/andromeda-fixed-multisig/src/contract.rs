@@ -6,12 +6,13 @@ use andromeda_accounts::fixed_multisig::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     ado_contract::ADOContract,
-    common::{context::ExecuteContext, encode_binary},
+    andr_execute_fn,
+    common::encode_binary,
     error::ContractError,
 };
 use cw2::set_contract_version;
 
-use crate::execute::handle_execute;
+use crate::execute::{execute_close, execute_execute, execute_propose, execute_vote};
 use crate::query::{
     list_proposals, list_voters, list_votes, query_proposal, query_threshold, query_vote,
     query_voter, reverse_proposals,
@@ -87,19 +88,22 @@ pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, Contract
     Ok(Response::default())
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn execute(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    msg: ExecuteMsg,
-) -> Result<Response, ContractError> {
-    let ctx = ExecuteContext::new(deps, info, env);
+// This contains functionality derived from the cw3-fixed-multisig contract.
+// Source: https://github.com/CosmWasm/cw-plus/blob/main/contracts/cw3-fixed-multisig
+// License: Apache-2.0
+#[andr_execute_fn]
+pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::AMPReceive(pkt) => {
-            ADOContract::default().execute_amp_receive(ctx, pkt, handle_execute)
-        }
-        _ => handle_execute(ctx, msg),
+        ExecuteMsg::Propose {
+            title,
+            description,
+            msgs,
+            latest,
+        } => execute_propose(ctx, title, description, msgs, latest),
+        ExecuteMsg::Vote { proposal_id, vote } => execute_vote(ctx, proposal_id, vote),
+        ExecuteMsg::Execute { proposal_id } => execute_execute(ctx, proposal_id),
+        ExecuteMsg::Close { proposal_id } => execute_close(ctx, proposal_id),
+        _ => ADOContract::default().execute(ctx, msg),
     }
 }
 
