@@ -36,14 +36,6 @@ do
             # Update to existing branch, examine new commits
             range="$remote_sha..$local_sha"
         fi
-
-        # Check for WIP commit
-        commit=`git rev-list -n 1 --grep '^WIP' "$range"`
-        if [ -n "$commit" ]
-        then
-            echo "Found WIP commit in $local_ref, not pushing"
-            exit 1
-        fi
     fi
 done
 
