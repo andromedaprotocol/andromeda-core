@@ -798,7 +798,6 @@ impl MsgHandler {
                 error: Some(format!("Channel not found for chain {chain}")),
             });
         }?;
-        println!("step1");
         let ctx = ctx.map_or_else(
             || {
                 // Check if sender has username
@@ -815,19 +814,33 @@ impl MsgHandler {
                             },
                         ));
                 match username_addr {
-                    Ok(username) => AMPPkt {
-                        messages: vec![AMPMsg::new(
-                            recipient.clone().get_raw_path(),
-                            message.clone(),
-                            None,
-                        )],
-                        ctx: AMPCtx::new(
-                            info.sender,
-                            env.clone().contract.address,
-                            0,
-                            Some(AndrAddr::from_string(username)),
-                        ),
-                    },
+                    Ok(username) => {
+                        if username != info.sender.to_string() {
+                            AMPPkt {
+                                messages: vec![AMPMsg::new(
+                                    recipient.clone().get_raw_path(),
+                                    message.clone(),
+                                    None,
+                                )],
+                                ctx: AMPCtx::new(
+                                    info.sender,
+                                    env.clone().contract.address,
+                                    0,
+                                    Some(AndrAddr::from_string(username)),
+                                ),
+                            }
+                        } else {
+                            AMPPkt::new(
+                                info.sender,
+                                env.clone().contract.address,
+                                vec![AMPMsg::new(
+                                    recipient.clone().get_raw_path(),
+                                    message.clone(),
+                                    None,
+                                )],
+                            )
+                        }
+                    }
                     Err(_) => AMPPkt::new(
                         info.sender,
                         env.clone().contract.address,
@@ -840,14 +853,12 @@ impl MsgHandler {
                 }
             },
             |mut ctx| {
-                println!("here3");
                 ctx.ctx.previous_sender = env.contract.address.to_string();
                 ctx.messages[0].recipient =
                     AndrAddr::from_string(recipient.clone().get_raw_path().to_string());
                 ctx
             },
         );
-        println!("ctx: {:?}", ctx);
 
         let kernel_msg = IbcExecuteMsg::SendMessage { amp_packet: ctx };
 
