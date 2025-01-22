@@ -57,11 +57,6 @@ andromeda-address-list = { path = "../contracts/modules/andromeda-address-list",
     "testing",
 ] }
 
-# #Ecosystem
-andromeda-ecosystem = { workspace = true }
-andromeda-vault = { path = "../contracts/ecosystem/andromeda-vault", features = [
-    "testing",
-] }
 
 # #Finance
 andromeda-finance = { workspace = true }

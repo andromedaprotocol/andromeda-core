@@ -3,7 +3,6 @@ members = [
     "packages/*",
     "contracts/fungible-tokens/*",
     "contracts/non-fungible-tokens/*",
-    "contracts/ecosystem/*",
     "contracts/data-storage/*",
     "contracts/app/*",
     "contracts/finance/*",
