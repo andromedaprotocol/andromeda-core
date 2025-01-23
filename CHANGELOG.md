@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- feat: Handle username on IBC packets [(#791)](https://github.com/andromedaprotocol/andromeda-core/pull/791)
+
 ### Changed
 
 - feat: Improved macros and execution flow for AMP [(#741)](https://github.com/andromedaprotocol/andromeda-core/pull/741)
