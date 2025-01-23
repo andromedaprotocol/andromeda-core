@@ -806,7 +806,7 @@ impl MsgHandler {
 
                 let amp_msg = AMPMsg::new(recipient.clone().get_raw_path(), message.clone(), None);
                 match username_addr {
-                    Ok(Some(username)) if username != info.sender.to_string() => AMPPkt {
+                    Ok(Some(username)) if username != info.sender => AMPPkt {
                         messages: vec![amp_msg],
                         ctx: AMPCtx::new(
                             info.sender,

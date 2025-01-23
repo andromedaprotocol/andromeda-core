@@ -255,8 +255,7 @@ impl AOSQuerier {
         username: &str,
     ) -> Result<Option<Addr>, ContractError> {
         let key = AOSQuerier::get_map_storage_key("users", &[username.as_bytes()])?;
-        let address: Option<Addr> = AOSQuerier::query_storage(querier, &vfs_addr, key.as_str())?;
-
+        let address: Option<Addr> = AOSQuerier::query_storage(querier, vfs_addr, key.as_str())?;
         Ok(address)
     }
 
