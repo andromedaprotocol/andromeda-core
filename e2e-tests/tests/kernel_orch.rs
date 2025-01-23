@@ -467,7 +467,7 @@ fn test_kernel_ibc_execute_only_with_username() {
         .call_as(&kernel_juno.address().unwrap())
         .execute(
             &os::vfs::ExecuteMsg::RegisterUser {
-                username: "an".to_string(),
+                username: "az".to_string(),
                 address: Some(kernel_juno.address().unwrap()),
             },
             None,
@@ -478,7 +478,7 @@ fn test_kernel_ibc_execute_only_with_username() {
         .call_as(&kernel_osmosis.address().unwrap())
         .execute(
             &os::vfs::ExecuteMsg::RegisterUser {
-                username: "an".to_string(),
+                username: "az".to_string(),
                 address: Some(kernel_osmosis.address().unwrap()),
             },
             None,
@@ -518,7 +518,7 @@ fn test_kernel_ibc_execute_only_with_username() {
         let username = receive_tx
             .event_attr_value("recv_packet", "packet_data")
             .unwrap();
-        assert!(username.contains("an"));
+        assert!(username.contains("az"));
         // println!("success_packets: {:?}", success_packets);
         // Packet has been successfully acknowledged and decoded, the transaction has gone through correctly
     } else {

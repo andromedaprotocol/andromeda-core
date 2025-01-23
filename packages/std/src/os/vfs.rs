@@ -222,8 +222,6 @@ pub enum QueryMsg {
     Paths { addr: Addr },
     #[returns(String)]
     GetUsername { address: Addr },
-    #[returns(Addr)]
-    GetAddressFromUsername { username: AndrAddr },
     #[returns(String)]
     GetLibrary { address: Addr },
     #[returns(AndrAddr)]
