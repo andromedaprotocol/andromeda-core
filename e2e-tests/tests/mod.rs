@@ -30,3 +30,12 @@ mod fixed_amount_splitter;
 
 #[cfg(test)]
 mod shunting;
+
+#[cfg(test)]
+mod amp;
+
+#[cfg(test)]
+mod macro_tests;
+
+#[cfg(test)]
+mod curve_app;

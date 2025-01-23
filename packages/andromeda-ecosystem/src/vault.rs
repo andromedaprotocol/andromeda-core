@@ -101,11 +101,13 @@ pub struct InstantiateMsg {}
 #[andr_exec]
 #[cw_serde]
 pub enum ExecuteMsg {
+    #[attrs(nonpayable)]
     WithdrawVault {
         recipient: Option<Recipient>,
         withdrawals: Vec<Withdrawal>,
         strategy: Option<StrategyType>,
     },
+    #[attrs(restriced)]
     UpdateStrategy {
         strategy: StrategyType,
         address: AndrAddr,

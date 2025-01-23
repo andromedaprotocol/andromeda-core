@@ -21,6 +21,7 @@ pub struct InstantiateMsg {
 pub enum ExecuteMsg {
     /// Claim the number of batches specified starting from the beginning. If not
     /// specified then the max will be claimed.
+    #[attrs(restricted, nonpayable)]
     Claim {
         number_of_claims: Option<u64>,
         batch_id: u64,
@@ -28,11 +29,13 @@ pub enum ExecuteMsg {
     /// Claims tokens from all batches using a paginated approach. If `up_to_time`
     /// is specified then it will only claim up to a specific time, otherwise it
     /// it will claim to the most recent release.
+    #[attrs(restricted, nonpayable)]
     ClaimAll {
         up_to_time: Option<Milliseconds>,
         limit: Option<u32>,
     },
     /// Creates a new batch
+    #[attrs(restricted)]
     CreateBatch {
         /// Specifying None would mean no lock up period and funds start vesting right away.
         lockup_duration: Option<Milliseconds>,

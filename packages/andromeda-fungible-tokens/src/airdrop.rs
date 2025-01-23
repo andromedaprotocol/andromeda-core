@@ -14,6 +14,7 @@ pub struct InstantiateMsg {
 #[andr_exec]
 #[cw_serde]
 pub enum ExecuteMsg {
+    #[attrs(restricted, nonpayable)]
     RegisterMerkleRoot {
         /// MerkleRoot is hex-encoded merkle root.
         merkle_root: String,
@@ -21,6 +22,7 @@ pub enum ExecuteMsg {
         total_amount: Option<Uint128>,
     },
     /// Claim does not check if contract has enough funds, owner must ensure it.
+    #[attrs(nonpayable)]
     Claim {
         stage: u8,
         amount: Uint128,
@@ -28,6 +30,7 @@ pub enum ExecuteMsg {
         proof: Vec<String>,
     },
     /// Burn the remaining tokens after expire time (only owner)
+    #[attrs(restricted)]
     Burn { stage: u8 },
 }
 

@@ -269,6 +269,12 @@ impl AMPPkt {
         }
     }
 
+    pub fn with_origin(&self, origin: impl Into<String>) -> AMPPkt {
+        let mut pkt = self.clone();
+        pkt.ctx.origin = origin.into();
+        pkt
+    }
+
     /// Adds a message to the current AMP Packet
     pub fn add_message(mut self, message: AMPMsg) -> Self {
         self.messages.push(message);

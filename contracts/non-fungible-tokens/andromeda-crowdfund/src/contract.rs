@@ -13,8 +13,8 @@ use andromeda_std::{
     },
     ado_contract::ADOContract,
     amp::{messages::AMPPkt, AndrAddr, Recipient},
+    andr_execute_fn,
     common::{
-        actions::call_action,
         context::ExecuteContext,
         denom::{Asset, SEND_CW20_ACTION},
         encode_binary,
@@ -70,12 +70,12 @@ pub fn instantiate(
     let tiers: Vec<Tier> = msg.tiers.into_iter().collect();
     if let Asset::Cw20Token(addr) = campaign_config.denom.clone() {
         let addr = addr.get_raw_address(&deps.as_ref())?;
-        ADOContract::default().permission_action(SEND_CW20_ACTION, deps.storage)?;
+        ADOContract::default().permission_action(deps.storage, SEND_CW20_ACTION)?;
         ADOContract::set_permission(
             deps.storage,
             SEND_CW20_ACTION,
             addr,
-            Permission::Local(LocalPermission::Whitelisted(None)),
+            Permission::Local(LocalPermission::whitelisted(None, None)),
         )?;
     }
 
@@ -99,38 +99,14 @@ pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, Contract
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+pub fn migrate(deps: DepsMut, env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
     ensure_compatibility(&deps.as_ref(), "1.1.0")?;
-    ADOContract::default().migrate(deps, CONTRACT_NAME, CONTRACT_VERSION)
+    ADOContract::default().migrate(deps, env, CONTRACT_NAME, CONTRACT_VERSION)
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn execute(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    msg: ExecuteMsg,
-) -> Result<Response, ContractError> {
-    let ctx = ExecuteContext::new(deps, info, env);
-
+#[andr_execute_fn]
+pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::AMPReceive(pkt) => {
-            ADOContract::default().execute_amp_receive(ctx, pkt, handle_execute)
-        }
-        _ => handle_execute(ctx, msg),
-    }
-}
-
-pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
-    let action_response = call_action(
-        &mut ctx.deps,
-        &ctx.info,
-        &ctx.env,
-        &ctx.amp_ctx,
-        msg.as_ref(),
-    )?;
-
-    let res = match msg {
         ExecuteMsg::AddTier { tier } => execute_add_tier(ctx, tier),
         ExecuteMsg::UpdateTier { tier } => execute_update_tier(ctx, tier),
         ExecuteMsg::RemoveTier { level } => execute_remove_tier(ctx, level),
@@ -145,22 +121,11 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
         ExecuteMsg::DiscardCampaign {} => execute_discard_campaign(ctx),
         ExecuteMsg::Claim {} => execute_claim(ctx),
         _ => ADOContract::default().execute(ctx, msg),
-    }?;
-
-    Ok(res
-        .add_submessages(action_response.messages)
-        .add_attributes(action_response.attributes)
-        .add_events(action_response.events))
+    }
 }
 
 fn execute_add_tier(ctx: ExecuteContext, tier: Tier) -> Result<Response, ContractError> {
-    let ExecuteContext { deps, info, .. } = ctx;
-
-    let contract = ADOContract::default();
-    ensure!(
-        contract.is_contract_owner(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {}
-    );
+    let ExecuteContext { deps, .. } = ctx;
 
     tier.validate()?;
 
@@ -189,13 +154,7 @@ fn execute_add_tier(ctx: ExecuteContext, tier: Tier) -> Result<Response, Contrac
 }
 
 fn execute_update_tier(ctx: ExecuteContext, tier: Tier) -> Result<Response, ContractError> {
-    let ExecuteContext { deps, info, .. } = ctx;
-
-    let contract = ADOContract::default();
-    ensure!(
-        contract.is_contract_owner(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {}
-    );
+    let ExecuteContext { deps, .. } = ctx;
 
     tier.validate()?;
 
@@ -224,13 +183,7 @@ fn execute_update_tier(ctx: ExecuteContext, tier: Tier) -> Result<Response, Cont
 }
 
 fn execute_remove_tier(ctx: ExecuteContext, level: Uint64) -> Result<Response, ContractError> {
-    let ExecuteContext { deps, info, .. } = ctx;
-
-    let contract = ADOContract::default();
-    ensure!(
-        contract.is_contract_owner(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {}
-    );
+    let ExecuteContext { deps, .. } = ctx;
 
     let curr_stage = get_current_stage(deps.storage);
     ensure!(
@@ -256,16 +209,7 @@ fn execute_start_campaign(
     end_time: Expiry,
     presale: Option<Vec<PresaleTierOrder>>,
 ) -> Result<Response, ContractError> {
-    let ExecuteContext {
-        deps, info, env, ..
-    } = ctx;
-
-    // Only owner can start the campaign
-    let contract = ADOContract::default();
-    ensure!(
-        contract.is_contract_owner(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {}
-    );
+    let ExecuteContext { deps, env, .. } = ctx;
 
     ensure!(is_valid_tiers(deps.storage), ContractError::InvalidTiers {});
 
@@ -373,18 +317,7 @@ fn handle_receive_cw20(
 fn execute_discard_campaign(mut ctx: ExecuteContext) -> Result<Response, ContractError> {
     nonpayable(&ctx.info)?;
 
-    let ExecuteContext {
-        ref mut deps,
-        ref info,
-        ..
-    } = ctx;
-
-    // Only owner can discard the campaign
-    let contract = ADOContract::default();
-    ensure!(
-        contract.is_contract_owner(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {}
-    );
+    let ExecuteContext { ref mut deps, .. } = ctx;
 
     let curr_stage = get_current_stage(deps.storage);
     // Ensure that the campaign is in ONGOING, or READY stage
@@ -409,17 +342,9 @@ fn execute_end_campaign(mut ctx: ExecuteContext) -> Result<Response, ContractErr
 
     let ExecuteContext {
         ref mut deps,
-        ref info,
         ref env,
         ..
     } = ctx;
-
-    // Only owner can end the campaign
-    let contract = ADOContract::default();
-    ensure!(
-        contract.is_contract_owner(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {}
-    );
 
     let curr_stage = get_current_stage(deps.storage);
     ensure!(
@@ -605,7 +530,9 @@ fn withdraw_to_recipient(
             let kernel_address =
                 ADOContract::default().get_kernel_address(ctx.deps.as_ref().storage)?;
 
-            let mut pkt = AMPPkt::from_ctx(ctx.amp_ctx, ctx.env.contract.address.to_string());
+            let owner = ADOContract::default().owner(ctx.deps.as_ref().storage)?;
+            let mut pkt = AMPPkt::from_ctx(ctx.amp_ctx, ctx.env.contract.address.to_string())
+                .with_origin(owner);
             let amp_msg = recipient.generate_amp_msg(
                 &ctx.deps.as_ref(),
                 Some(vec![coin(amount.u128(), denom.clone())]),

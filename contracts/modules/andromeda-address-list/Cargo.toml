@@ -25,8 +25,8 @@ andromeda-std = { workspace = true, features = [] }
 andromeda-modules = { workspace = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-cw-multi-test = { workspace = true, optional = true }
 andromeda-testing = { workspace = true, optional = true }
+cw-multi-test = { workspace = true, optional = true }
 cw-orch = { workspace = true }
 
 [dev-dependencies]

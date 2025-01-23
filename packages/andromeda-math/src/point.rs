@@ -11,9 +11,15 @@ pub struct InstantiateMsg {
 #[andr_exec]
 #[cw_serde]
 pub enum ExecuteMsg {
-    SetPoint { point: PointCoordinate },
+    SetPoint {
+        point: PointCoordinate,
+    },
+    #[attrs(nonpayable)]
     DeletePoint {},
-    UpdateRestriction { restriction: PointRestriction },
+    #[attrs(restricted, nonpayable)]
+    UpdateRestriction {
+        restriction: PointRestriction,
+    },
 }
 
 #[cw_serde]

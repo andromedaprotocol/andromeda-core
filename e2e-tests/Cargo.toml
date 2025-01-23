@@ -1,5 +1,5 @@
 [package]
-name = "tests-integration"
+name = "e2e-tests"
 version = "1.0.0"
 edition = "2021"
 rust-version = "1.75.0"
@@ -115,6 +115,12 @@ andromeda-counter = { path = "../contracts/math/andromeda-counter", features = [
 andromeda-shunting = { path = "../contracts/math/andromeda-shunting", features = [
     "testing",
 ] }
+andromeda-curve = { path = "../contracts/math/andromeda-curve", features = [
+    "testing",
+] }
+andromeda-graph = { path = "../contracts/math/andromeda-graph", features = [
+    "testing",
+] }
 
 
 #Other Crates
@@ -128,6 +134,7 @@ cw721-base = { workspace = true }
 cw721 = { workspace = true }
 cw20 = { workspace = true }
 cw-asset = { workspace = true }
+cw-utils = { workspace = true }
 toml = "0.8"
 cw-orch = { workspace = true }
 cw-orch-interchain = "=0.3.0"

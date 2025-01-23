@@ -7,17 +7,17 @@ use andromeda_std::{
         InstantiateMsg as BaseInstantiateMsg, MigrateMsg,
     },
     ado_contract::ADOContract,
+    andr_execute_fn,
     common::{context::ExecuteContext, deduct_funds, encode_binary, Funds},
     error::ContractError,
 };
 
 use cosmwasm_std::{
-    attr, coin, ensure, Binary, Coin, Deps, DepsMut, Env, Event, MessageInfo, Reply, Response,
-    StdError, SubMsg,
+    attr, coin, Binary, Coin, Deps, DepsMut, Env, Event, MessageInfo, Reply, Response, StdError,
+    SubMsg,
 };
 use cosmwasm_std::{entry_point, from_json};
 use cw20::Cw20Coin;
-use cw_utils::nonpayable;
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-rates";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -52,24 +52,8 @@ pub fn instantiate(
     Ok(inst_resp)
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn execute(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    msg: ExecuteMsg,
-) -> Result<Response, ContractError> {
-    let ctx = ExecuteContext::new(deps, info, env);
-
-    match msg {
-        ExecuteMsg::AMPReceive(pkt) => {
-            ADOContract::default().execute_amp_receive(ctx, pkt, handle_execute)
-        }
-        _ => handle_execute(ctx, msg),
-    }
-}
-
-pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+#[andr_execute_fn]
+pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::SetRate { action, rate } => execute_set_rate(ctx, action, rate),
         ExecuteMsg::RemoveRate { action } => execute_remove_rate(ctx, action),
@@ -82,13 +66,8 @@ fn execute_set_rate(
     action: String,
     rate: LocalRate,
 ) -> Result<Response, ContractError> {
-    let ExecuteContext { deps, info, .. } = ctx;
-    nonpayable(&info)?;
+    let ExecuteContext { deps, .. } = ctx;
 
-    ensure!(
-        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {}
-    );
     rate.validate(deps.as_ref())?;
 
     RATES.save(deps.storage, &action, &rate)?;
@@ -97,13 +76,8 @@ fn execute_set_rate(
 }
 
 fn execute_remove_rate(ctx: ExecuteContext, action: String) -> Result<Response, ContractError> {
-    let ExecuteContext { deps, info, .. } = ctx;
-    nonpayable(&info)?;
+    let ExecuteContext { deps, .. } = ctx;
 
-    ensure!(
-        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {}
-    );
     if RATES.has(deps.storage, &action) {
         RATES.remove(deps.storage, &action);
         Ok(Response::new().add_attributes(vec![attr("action", "remove_rates")]))
@@ -113,8 +87,8 @@ fn execute_remove_rate(ctx: ExecuteContext, action: String) -> Result<Response, 
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-    ADOContract::default().migrate(deps, CONTRACT_NAME, CONTRACT_VERSION)
+pub fn migrate(deps: DepsMut, env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    ADOContract::default().migrate(deps, env, CONTRACT_NAME, CONTRACT_VERSION)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
