@@ -514,7 +514,12 @@ fn test_kernel_ibc_execute_only_with_username() {
         .unwrap();
 
     // For testing a successful outcome of the first packet sent out in the tx, you can use:
-    if let IbcPacketOutcome::Success { .. } = &packet_lifetime.packets[0].outcome {
+    if let IbcPacketOutcome::Success { receive_tx, .. } = &packet_lifetime.packets[0].outcome {
+        let username = receive_tx
+            .event_attr_value("recv_packet", "packet_data")
+            .unwrap();
+        assert!(username.contains("an"));
+        // println!("success_packets: {:?}", success_packets);
         // Packet has been successfully acknowledged and decoded, the transaction has gone through correctly
     } else {
         panic!("packet timed out");
