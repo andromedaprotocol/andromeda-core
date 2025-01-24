@@ -556,6 +556,123 @@ pub fn is_context_permissioned_strict(
     }
 }
 
+pub mod migrate {
+    use cosmwasm_schema::cw_serde;
+    use cw_storage_plus::Map;
+
+    use crate::common::expiration::Expiry;
+
+    use super::*;
+
+    #[cw_serde]
+    pub enum PermissionV1 {
+        Whitelisted(Option<Expiry>),
+        Limited(Option<Expiry>, u32),
+        Blacklisted(Option<Expiry>),
+    }
+
+    #[cw_serde]
+    enum WrappedPermissionV1 {
+        Local(PermissionV1),
+        Contract(AndrAddr),
+    }
+
+    #[cw_serde]
+    struct PermissionV1Info {
+        actor: String,
+        action: String,
+        permission: WrappedPermissionV1,
+    }
+
+    impl TryFrom<PermissionV1Info> for PermissionInfo {
+        type Error = ContractError;
+
+        fn try_from(value: PermissionV1Info) -> Result<Self, Self::Error> {
+            let new_permission = match value.permission {
+                WrappedPermissionV1::Local(permission) => {
+                    let new_permission = LocalPermission::try_from(permission)?;
+                    Permission::Local(new_permission)
+                }
+                WrappedPermissionV1::Contract(contract) => Permission::Contract(contract),
+            };
+
+            Ok(PermissionInfo {
+                actor: value.actor,
+                action: value.action,
+                permission: new_permission,
+            })
+        }
+    }
+
+    impl TryFrom<PermissionV1> for LocalPermission {
+        type Error = ContractError;
+
+        fn try_from(value: PermissionV1) -> Result<Self, Self::Error> {
+            match value {
+                PermissionV1::Whitelisted(exp) => Ok(Self::whitelisted(None, exp)),
+                PermissionV1::Limited(exp, uses) => Ok(Self::limited(None, exp, uses)),
+                PermissionV1::Blacklisted(exp) => Ok(Self::blacklisted(None, exp)),
+            }
+        }
+    }
+
+    const PERMISSIONS_V1: Map<String, PermissionV1Info> = Map::new("andr_permissions");
+
+    pub fn migrate(storage: &mut dyn Storage) -> Result<(), ContractError> {
+        migrate_permissions_v1(storage)?;
+        Ok(())
+    }
+
+    fn migrate_permissions_v1(storage: &mut dyn Storage) -> Result<(), ContractError> {
+        let old_permissions = PERMISSIONS_V1
+            .range(storage, None, None, Order::Ascending)
+            .filter_map(|p| p.ok())
+            .collect::<Vec<(String, PermissionV1Info)>>();
+        for (key, old_permission) in old_permissions {
+            let new_permission = PermissionInfo::try_from(old_permission)?;
+            permissions().replace(storage, &key, Some(&new_permission), None)?;
+        }
+        Ok(())
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use cosmwasm_std::testing::mock_dependencies;
+
+        use super::*;
+
+        #[test]
+        pub fn test_migrate_permissions_v1() {
+            let mut deps = mock_dependencies();
+            let permission_v1 = PermissionV1Info {
+                actor: "actor".to_string(),
+                action: "action".to_string(),
+                permission: WrappedPermissionV1::Local(PermissionV1::Whitelisted(None)),
+            };
+            PERMISSIONS_V1
+                .save(
+                    deps.as_mut().storage,
+                    permission_v1.actor.clone(),
+                    &permission_v1,
+                )
+                .unwrap();
+
+            migrate_permissions_v1(deps.as_mut().storage).unwrap();
+
+            let permission = permissions().load(deps.as_ref().storage, "actor").unwrap();
+            assert_eq!(permission.action, "action");
+            assert_eq!(permission.actor, "actor");
+            assert_eq!(
+                permission.permission,
+                Permission::Local(LocalPermission::Whitelisted {
+                    start: None,
+                    expiration: None,
+                })
+            );
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use cosmwasm_std::{
