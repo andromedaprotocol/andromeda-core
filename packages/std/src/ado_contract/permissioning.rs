@@ -573,7 +573,10 @@ pub mod migrate {
     #[cw_serde]
     pub enum PermissionV1 {
         Whitelisted(Option<Expiry>),
-        Limited(Option<Expiry>, u32),
+        Limited {
+            expiration: Option<Expiry>,
+            uses: u32,
+        },
         Blacklisted(Option<Expiry>),
     }
 
@@ -624,7 +627,9 @@ pub mod migrate {
         fn try_from(value: PermissionV1) -> Result<Self, Self::Error> {
             match value {
                 PermissionV1::Whitelisted(exp) => Ok(Self::whitelisted(None, exp)),
-                PermissionV1::Limited(exp, uses) => Ok(Self::limited(None, exp, uses)),
+                PermissionV1::Limited { expiration, uses } => {
+                    Ok(Self::limited(None, expiration, uses))
+                }
                 PermissionV1::Blacklisted(exp) => Ok(Self::blacklisted(None, exp)),
             }
         }
@@ -671,7 +676,10 @@ pub mod migrate {
                 PermissionV1Info {
                     actor: "actor2".to_string(),
                     action: "action".to_string(),
-                    permission: PermissionTypeV1::Local(PermissionV1::Limited(None, 1)),
+                    permission: PermissionTypeV1::Local(PermissionV1::Limited {
+                        expiration: None,
+                        uses: 1,
+                    }),
                 },
                 PermissionV1Info {
                     actor: "actor3".to_string(),
