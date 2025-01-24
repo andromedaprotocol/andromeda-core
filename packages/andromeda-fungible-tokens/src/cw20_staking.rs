@@ -21,16 +21,16 @@ pub struct InstantiateMsg {
 #[andr_exec]
 #[cw_serde]
 pub enum ExecuteMsg {
+    #[attrs(nonpayable)]
     Receive(Cw20ReceiveMsg),
     /// Add `reward_token` as another reward token. Owner only.
-    AddRewardToken {
-        reward_token: RewardTokenUnchecked,
-    },
+    #[attrs(restricted)]
+    AddRewardToken { reward_token: RewardTokenUnchecked },
     /// Remove `reward_token`. Owner only.
-    RemoveRewardToken {
-        reward_token: String,
-    },
+    #[attrs(restricted)]
+    RemoveRewardToken { reward_token: String },
     /// Replace `reward_token` as another reward token. Owner only.
+    #[attrs(restricted)]
     ReplaceRewardToken {
         origin_reward_token: String,
         reward_token: RewardTokenUnchecked,
@@ -38,9 +38,8 @@ pub enum ExecuteMsg {
 
     /// Unstakes the specified amount of assets, or all if not specified. The user's pending
     /// rewards and indexes are updated for each additional reward token.
-    UnstakeTokens {
-        amount: Option<Uint128>,
-    },
+    #[attrs(nonpayable)]
+    UnstakeTokens { amount: Option<Uint128> },
     /// Claims any outstanding rewards from the addtional reward tokens.
     ClaimRewards {},
     /// Updates the global reward index for the specified reward tokens or all of the specified ones if

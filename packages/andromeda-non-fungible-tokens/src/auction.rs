@@ -22,6 +22,7 @@ pub struct InstantiateMsg {
 pub enum ExecuteMsg {
     ReceiveNft(Cw721ReceiveMsg),
     // for cw20
+    #[attrs(nonpayable)]
     Receive(Cw20ReceiveMsg),
     /// Places a bid on the current auction for the given token_id. The previous largest bid gets
     /// automatically sent back to the bidder when they are outbid.
@@ -38,6 +39,7 @@ pub enum ExecuteMsg {
         token_id: String,
         token_address: String,
     },
+    #[attrs(nonpayable)]
     UpdateAuction {
         token_id: String,
         token_address: String,
@@ -50,6 +52,7 @@ pub enum ExecuteMsg {
         buy_now_price: Option<Uint128>,
         recipient: Option<Recipient>,
     },
+    #[attrs(nonpayable)]
     CancelAuction {
         token_id: String,
         token_address: String,

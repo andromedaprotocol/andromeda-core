@@ -3,7 +3,6 @@ members = [
     "packages/*",
     "contracts/fungible-tokens/*",
     "contracts/non-fungible-tokens/*",
-    "contracts/ecosystem/*",
     "contracts/data-storage/*",
     "contracts/app/*",
     "contracts/finance/*",
@@ -14,7 +13,7 @@ members = [
     "contracts/math/*",
 
     #Internal
-    "tests-integration",
+    "e2e-tests",
     "ibc-tests",
 ]
 resolver = "2"
@@ -34,7 +33,7 @@ strip = true
 andromeda-std = { path = "./packages/std", default-features = false, features = [
     "deploy",
 ] }
-andromeda-macros = { path = "./packages/std/macros", default-features = false, version = "1.0.0" }
+andromeda-macros = { path = "./packages/std/macros", default-features = false }
 andromeda-non-fungible-tokens = { path = "./packages/andromeda-non-fungible-tokens", version = "1.0.0" }
 andromeda-fungible-tokens = { path = "./packages/andromeda-fungible-tokens", version = "1.0.0" }
 andromeda-finance = { path = "./packages/andromeda-finance", version = "1.0.0" }
@@ -49,7 +48,7 @@ andromeda-testing-e2e = { path = "./packages/andromeda-testing-e2e", version = "
 
 
 strum_macros = "0.24.3"
-cosmwasm-std = "1.5.8"
+cosmwasm-std = "1.5.9"
 cw-utils = "1.0.3"
 cw-storage-plus = "1.2.0"
 cw2 = "1.1.2"
@@ -60,12 +59,13 @@ cw4 = "1.1.2"
 cw721 = "0.18.0"
 cw721-base = { version = "0.18.0", features = ["library"] }
 cw-asset = "=3.0.0"
-cosmwasm-schema = "1.5.8"
-semver = "1.0.24"
+cosmwasm-schema = "1.5.9"
+semver = "1.0.25"
 enum-repr = "0.2.6"
 cw-multi-test = { version = "1.0.0", features = ["cosmwasm_1_2"] }
-serde = { version = "1.0.216" }
+serde = { version = "1.0.217" }
 test-case = { version = "3.3.1" }
 cw-orch = "=0.24.1"
-jsonschema-valid = { version = "0.5.2"}
-serde_json = { version = "1.0.134" }
+jsonschema-valid = { version = "0.5.2" }
+serde_json = { version = "1.0.137" }
+rstest = "0.24.0"

@@ -14,7 +14,9 @@ pub enum ExecuteMsg {
     SetValue {
         value: StringStorage,
     },
+    #[attrs(nonpayable)]
     DeleteValue {},
+    #[attrs(nonpayable, restricted)]
     UpdateRestriction {
         restriction: StringStorageRestriction,
     },

@@ -182,7 +182,6 @@ impl AOSQuerier {
             &[ado_type.as_bytes(), action.as_bytes()],
         )?;
         let fee: Option<ActionFee> = AOSQuerier::query_storage(querier, adodb_addr, &key)?;
-
         Ok(fee)
     }
 
@@ -321,5 +320,15 @@ impl AOSQuerier {
             base_denom: denom_trace.base_denom.clone(),
         };
         Ok((new_denom_trace.get_ibc_denom(), new_denom_trace))
+    }
+
+    pub fn get_env_variable<T: DeserializeOwned>(
+        querier: &QuerierWrapper,
+        kernel_addr: &Addr,
+        variable: &str,
+    ) -> Result<Option<T>, ContractError> {
+        let key = AOSQuerier::get_map_storage_key("kernel_env_variables", &[variable.as_bytes()])?;
+        let verify: Option<T> = AOSQuerier::query_storage(querier, kernel_addr, &key)?;
+        Ok(verify)
     }
 }

@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- CW20 support for kernel routing [(#723)](https://github.com/andromedaprotocol/andromeda-core/pull/723)
+
+### Changed
+
+- feat: Improved macros and execution flow for AMP [(#741)](https://github.com/andromedaprotocol/andromeda-core/pull/741)
+- chore: remove unused contracts & code [(#790)](https://github.com/andromedaprotocol/andromeda-core/pull/790)
+
+### Fixed
+
+## Release 4
+
+### Added
+
 - Crowdfund, added additional state [(#715)](https://github.com/andromedaprotocol/andromeda-core/pull/715)
 - Added optional config for Send in Splitter contracts [(#686)](https://github.com/andromedaprotocol/andromeda-core/pull/686)
 - Added CW20 suppport in Splitter contracts [(#703)](https://github.com/andromedaprotocol/andromeda-core/pull/703)
@@ -17,20 +30,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Rates: Handle cross-chain recipients [(#671)](https://github.com/andromedaprotocol/andromeda-core/pull/671)
 - Permissions: Permissioned Actors in AndromedaQuery [(#717)](https://github.com/andromedaprotocol/andromeda-core/pull/717)
 - Added Schema and Form ADOs [(#591)](https://github.com/andromedaprotocol/andromeda-core/pull/591)
-- CW20 support for kernel routing [(#723)](https://github.com/andromedaprotocol/andromeda-core/pull/723)
+- feat: kernel environment variables [#738](https://github.com/andromedaprotocol/andromeda-core/pull/738)
 - Flat Rate denom can be a VFS path [(#727)](https://github.com/andromedaprotocol/andromeda-core/pull/727)
 - Auction ADO: Added buy_now_price option in Update Auction [(#730)](https://github.com/andromedaprotocol/andromeda-core/pull/730)
+- feat: added a query for pending packets to kernel [(#740)](https://github.com/andromedaprotocol/andromeda-core/pull/740)
 
 ### Changed
 
 - Rates: Limit rates recipient to only one address [(#669)](https://github.com/andromedaprotocol/andromeda-core/pull/669)
 - Address Validation: Cross-chain recipients don't need to be registered in VFS [(#725)](https://github.com/andromedaprotocol/andromeda-core/pull/725)
 - Weighted Splitter: Replace Recipient with AndrAddr in RemoveRecipient and GetUserWeight [(#739)](https://github.com/andromedaprotocol/andromeda-core/pull/739)
+- feat: IBC packet tracking adjustments [#748](https://github.com/andromedaprotocol/andromeda-core/pull/748)
+- ADODB: Version Validation during Publish ensures different, not greater, version [(#752)](https://github.com/andromedaprotocol/andromeda-core/pull/752)
+- ref: Rename Set Amount Splitter to Fixed Amount Splitter [(#754)](https://github.com/andromedaprotocol/andromeda-core/pull/754)
+- Point ADO: remove Rates module from the contract[(#761)](https://github.com/andromedaprotocol/andromeda-core/pull/761)
+- feat: SignedDecimal for Distance [(#774)](https://github.com/andromedaprotocol/andromeda-core/pull/774)
+- feat: SignedDecimal for Point [(#779)](https://github.com/andromedaprotocol/andromeda-core/pull/779)
+- feat: SignedDecimal for Graph [(#778)](https://github.com/andromedaprotocol/andromeda-core/pull/778)
 
 ### Fixed
 
 - feat: alterations to kernel for IBC [(#726)](https://github.com/andromedaprotocol/andromeda-core/pull/726)
 - Fixed handle_local amp message when a amp message is passed with custom config [(#729)](https://github.com/andromedaprotocol/andromeda-core/pull/729)
+- Fixed wrong return attribute for SubDir Query [(#756)](https://github.com/andromedaprotocol/andromeda-core/pull/756)
+- fix: Prevent bypassing splitter lock via config [(#757)](https://github.com/andromedaprotocol/andromeda-core/pull/757)
+- Fixed Curve ADO to be able to update curve config after reset [(#762)](https://github.com/andromedaprotocol/andromeda-core/pull/762)
+- Fixed Curve ADO's query error caused by Float data type [(#767)](https://github.com/andromedaprotocol/andromeda-core/pull/767)
 
 ## Release 3
 
@@ -103,6 +128,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ADODB now supports pre-release tagging [(#560)](https://github.com/andromedaprotocol/andromeda-core/pull/560)
 - Validator Staking: Updated according to audit [(#565)](https://github.com/andromedaprotocol/andromeda-core/pull/565)
 - Conditional Splitter: Change lock_time's type from MillisecondsDuration to Expiry [(#567)](https://github.com/andromedaprotocol/andromeda-core/pull/567)
+- Permissions now have an optional start time [(#668)](https://github.com/andromedaprotocol/andromeda-core/pull/668)
 
 ### Fixed
 

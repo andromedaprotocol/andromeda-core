@@ -11,6 +11,7 @@ pub struct InstantiateMsg {
 #[andr_exec]
 #[cw_serde]
 pub enum ExecuteMsg {
+    #[attrs(nonpayable, restricted)]
     UpdateExpressions { expressions: Vec<String> },
 }
 
