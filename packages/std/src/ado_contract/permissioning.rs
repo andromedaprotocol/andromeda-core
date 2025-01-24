@@ -623,12 +623,15 @@ pub mod migrate {
         Ok(())
     }
 
+    /// Migrates permissions from the v1 format to the modern format
     fn migrate_permissions_v1(storage: &mut dyn Storage) -> Result<(), ContractError> {
         let old_permissions = PERMISSIONS_V1
             .range(storage, None, None, Order::Ascending)
+            // We only care about permissions that match the v1 format
             .filter_map(|p| p.ok())
             .collect::<Vec<(String, PermissionV1Info)>>();
         for (key, old_permission) in old_permissions {
+            // Map old permission format to new permission format
             let new_permission = PermissionInfo::try_from(old_permission)?;
             permissions().replace(storage, &key, Some(&new_permission), None)?;
         }
@@ -644,31 +647,64 @@ pub mod migrate {
         #[test]
         pub fn test_migrate_permissions_v1() {
             let mut deps = mock_dependencies();
-            let permission_v1 = PermissionV1Info {
-                actor: "actor".to_string(),
+            let old_permissions = vec![
+                PermissionV1Info {
+                    actor: "actor1".to_string(),
+                    action: "action".to_string(),
+                    permission: WrappedPermissionV1::Local(PermissionV1::Whitelisted(None)),
+                },
+                PermissionV1Info {
+                    actor: "actor2".to_string(),
+                    action: "action".to_string(),
+                    permission: WrappedPermissionV1::Local(PermissionV1::Limited(None, 1)),
+                },
+                PermissionV1Info {
+                    actor: "actor3".to_string(),
+                    action: "action".to_string(),
+                    permission: WrappedPermissionV1::Local(PermissionV1::Blacklisted(None)),
+                },
+            ];
+            for permission in old_permissions.clone() {
+                PERMISSIONS_V1
+                    .save(deps.as_mut().storage, permission.actor.clone(), &permission)
+                    .unwrap();
+            }
+
+            // We also want to check that modern permissions are not migrated
+            let modern_permission = PermissionInfo {
+                actor: "actor4".to_string(),
                 action: "action".to_string(),
-                permission: WrappedPermissionV1::Local(PermissionV1::Whitelisted(None)),
+                permission: Permission::Local(LocalPermission::Whitelisted {
+                    start: None,
+                    expiration: None,
+                }),
             };
-            PERMISSIONS_V1
+            permissions()
                 .save(
                     deps.as_mut().storage,
-                    permission_v1.actor.clone(),
-                    &permission_v1,
+                    modern_permission.actor.as_str(),
+                    &modern_permission,
                 )
                 .unwrap();
 
             migrate_permissions_v1(deps.as_mut().storage).unwrap();
 
-            let permission = permissions().load(deps.as_ref().storage, "actor").unwrap();
-            assert_eq!(permission.action, "action");
-            assert_eq!(permission.actor, "actor");
-            assert_eq!(
-                permission.permission,
-                Permission::Local(LocalPermission::Whitelisted {
-                    start: None,
-                    expiration: None,
-                })
-            );
+            // Check that the permissions have been migrated
+            for permission in old_permissions {
+                let migrated_permission = permissions()
+                    .load(deps.as_ref().storage, permission.actor.as_str())
+                    .unwrap();
+                assert_eq!(migrated_permission.action, permission.action);
+                assert_eq!(migrated_permission.actor, permission.actor);
+                assert_eq!(
+                    migrated_permission,
+                    PermissionInfo::try_from(permission).unwrap(),
+                );
+            }
+            let post_modern_permission = permissions()
+                .load(deps.as_ref().storage, modern_permission.actor.as_str())
+                .unwrap();
+            assert_eq!(post_modern_permission, modern_permission);
         }
     }
 }
