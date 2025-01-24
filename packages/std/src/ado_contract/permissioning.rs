@@ -564,6 +564,12 @@ pub mod migrate {
 
     use super::*;
 
+    /**
+     * To migrate from v1 to modern we need to be able to convert the old permission format to the new permission format.
+     * We have several wrappers around the raw permission format itself so we must be able to convert each of these to the new format.
+     * First we must be able to convert from the raw permission format to the modern raw permission format.
+     * Then we must be able to convert the old permission info format to the new permission info format.
+     */
     #[cw_serde]
     pub enum PermissionV1 {
         Whitelisted(Option<Expiry>),
@@ -572,7 +578,7 @@ pub mod migrate {
     }
 
     #[cw_serde]
-    enum WrappedPermissionV1 {
+    enum PermissionTypeV1 {
         Local(PermissionV1),
         Contract(AndrAddr),
     }
@@ -581,19 +587,23 @@ pub mod migrate {
     struct PermissionV1Info {
         actor: String,
         action: String,
-        permission: WrappedPermissionV1,
+        permission: PermissionTypeV1,
     }
 
+    /**
+     * Converts a v1 permission info to a modern permission info
+     */
     impl TryFrom<PermissionV1Info> for PermissionInfo {
         type Error = ContractError;
 
+        /// Converts a v1 permission to a modern permission
         fn try_from(value: PermissionV1Info) -> Result<Self, Self::Error> {
             let new_permission = match value.permission {
-                WrappedPermissionV1::Local(permission) => {
+                PermissionTypeV1::Local(permission) => {
                     let new_permission = LocalPermission::try_from(permission)?;
                     Permission::Local(new_permission)
                 }
-                WrappedPermissionV1::Contract(contract) => Permission::Contract(contract),
+                PermissionTypeV1::Contract(contract) => Permission::Contract(contract),
             };
 
             Ok(PermissionInfo {
@@ -604,9 +614,13 @@ pub mod migrate {
         }
     }
 
+    /**
+     * Converts a v1 permission to a modern permission
+     */
     impl TryFrom<PermissionV1> for LocalPermission {
         type Error = ContractError;
 
+        /// Converts a v1 permission to a modern permission
         fn try_from(value: PermissionV1) -> Result<Self, Self::Error> {
             match value {
                 PermissionV1::Whitelisted(exp) => Ok(Self::whitelisted(None, exp)),
@@ -647,23 +661,26 @@ pub mod migrate {
         #[test]
         pub fn test_migrate_permissions_v1() {
             let mut deps = mock_dependencies();
+            // Validate each permission is migrated correctly
             let old_permissions = vec![
                 PermissionV1Info {
                     actor: "actor1".to_string(),
                     action: "action".to_string(),
-                    permission: WrappedPermissionV1::Local(PermissionV1::Whitelisted(None)),
+                    permission: PermissionTypeV1::Local(PermissionV1::Whitelisted(None)),
                 },
                 PermissionV1Info {
                     actor: "actor2".to_string(),
                     action: "action".to_string(),
-                    permission: WrappedPermissionV1::Local(PermissionV1::Limited(None, 1)),
+                    permission: PermissionTypeV1::Local(PermissionV1::Limited(None, 1)),
                 },
                 PermissionV1Info {
                     actor: "actor3".to_string(),
                     action: "action".to_string(),
-                    permission: WrappedPermissionV1::Local(PermissionV1::Blacklisted(None)),
+                    permission: PermissionTypeV1::Local(PermissionV1::Blacklisted(None)),
                 },
             ];
+
+            // Save old permissions
             for permission in old_permissions.clone() {
                 PERMISSIONS_V1
                     .save(deps.as_mut().storage, permission.actor.clone(), &permission)
@@ -679,6 +696,7 @@ pub mod migrate {
                     expiration: None,
                 }),
             };
+            // Save modern permission
             permissions()
                 .save(
                     deps.as_mut().storage,
@@ -687,6 +705,7 @@ pub mod migrate {
                 )
                 .unwrap();
 
+            // Migrate permissions
             migrate_permissions_v1(deps.as_mut().storage).unwrap();
 
             // Check that the permissions have been migrated
@@ -701,6 +720,8 @@ pub mod migrate {
                     PermissionInfo::try_from(permission).unwrap(),
                 );
             }
+
+            // Check that modern permission is not affected
             let post_modern_permission = permissions()
                 .load(deps.as_ref().storage, modern_permission.actor.as_str())
                 .unwrap();
