@@ -260,7 +260,7 @@ impl AOSQuerier {
         denom: &str,
     ) -> Result<DenomInfo, ContractError> {
         let query = IBCRegistryQueryMsg::DenomInfo {
-            denom: denom.to_string(),
+            denom: denom.to_lowercase(),
         };
         let denom_info_response: DenomInfoResponse =
             querier.query_wasm_smart(ibc_registry_addr, &query)?;
