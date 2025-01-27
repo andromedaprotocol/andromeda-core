@@ -95,4 +95,4 @@ serde_json = "1.0"
 chrono = "0.4"
 
 [dev-dependencies]
-cw-multi-test = { version = "1.0.0" }
+cw-multi-test = { version = "2.3.1" }
