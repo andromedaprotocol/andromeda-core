@@ -810,6 +810,7 @@ impl MsgHandler {
                     env.contract.address.clone(),
                     0,
                     vec![amp_msg],
+                    None,
                 )
             },
             |ctx| {
@@ -821,7 +822,9 @@ impl MsgHandler {
                     env.contract.address.clone(),
                     ctx.ctx.id,
                     ctx.messages.clone(),
+                    ctx.ctx.get_origin_username(),
                 );
+
                 amp_packet.messages[0].recipient =
                     AndrAddr::from_string(recipient.clone().get_raw_path().to_string());
                 amp_packet
@@ -851,20 +854,24 @@ impl MsgHandler {
         contract_address: Addr,
         id: u64,
         messages: Vec<AMPMsg>,
+        username: Option<AndrAddr>,
     ) -> AMPPkt {
-        let username_addr = AOSQuerier::get_username(querier, vfs_address, origin);
-
-        match username_addr {
-            Ok(Some(username)) if username != *origin => AMPPkt {
-                messages,
-                ctx: AMPCtx::new(
-                    origin.clone(),
-                    contract_address,
-                    id,
-                    Some(AndrAddr::from_string(username)),
-                ),
-            },
-            _ => AMPPkt::new(origin.clone(), contract_address, messages),
+        if username.is_none() {
+            let username_addr = AOSQuerier::get_username(querier, vfs_address, origin);
+            match username_addr {
+                Ok(Some(username)) if username != *origin => AMPPkt {
+                    messages,
+                    ctx: AMPCtx::new(
+                        origin.clone(),
+                        contract_address,
+                        id,
+                        Some(AndrAddr::from_string(username)),
+                    ),
+                },
+                _ => AMPPkt::new(origin.clone(), contract_address, messages),
+            }
+        } else {
+            AMPPkt::new(origin.clone(), contract_address, messages)
         }
     }
 
