@@ -13,8 +13,9 @@ use andromeda_std::os::ibc_registry::path_to_hops;
 use andromeda_std::os::kernel::{ChannelInfo, IbcExecuteMsg, Ics20PacketInfo, InternalMsg};
 use andromeda_std::os::vfs::vfs_resolve_symlink;
 use cosmwasm_std::{
-    attr, ensure, from_json, to_json_binary, BankMsg, Binary, Coin, ContractInfoResponse,
-    CosmosMsg, DepsMut, Env, IbcMsg, MessageInfo, Response, StdAck, StdError, SubMsg, WasmMsg,
+    attr, ensure, from_json, to_json_binary, Addr, BankMsg, Binary, Coin, ContractInfoResponse,
+    CosmosMsg, DepsMut, Env, IbcMsg, MessageInfo, QuerierWrapper, Response, StdAck, StdError,
+    SubMsg, WasmMsg,
 };
 
 use crate::query;
@@ -797,36 +798,38 @@ impl MsgHandler {
                 error: Some(format!("Channel not found for chain {chain}")),
             });
         }?;
+        let vfs_address = KERNEL_ADDRESSES.load(deps.storage, VFS_KEY).unwrap();
         let ctx = ctx.map_or_else(
             || {
-                // Check if sender has username
-                let vfs_address = KERNEL_ADDRESSES.load(deps.storage, VFS_KEY).unwrap();
-                let username_addr =
-                    AOSQuerier::get_username(&deps.querier, &vfs_address, &info.sender);
-
+                // Case when ctx is None
+                let origin = info.sender.clone();
                 let amp_msg = AMPMsg::new(recipient.clone().get_raw_path(), message.clone(), None);
-                match username_addr {
-                    Ok(Some(username)) if username != info.sender => AMPPkt {
-                        messages: vec![amp_msg],
-                        ctx: AMPCtx::new(
-                            info.sender,
-                            env.contract.address.clone(),
-                            0,
-                            Some(AndrAddr::from_string(username)),
-                        ),
-                    },
-                    _ => AMPPkt::new(
-                        info.sender.clone(),
-                        env.contract.address.clone(),
-                        vec![amp_msg.clone()],
-                    ),
-                }
+                Self::create_amp_packet(
+                    &deps.querier,
+                    &vfs_address,
+                    &origin,
+                    env.contract.address.clone(),
+                    0,
+                    vec![amp_msg],
+                )
             },
-            |mut ctx| {
-                ctx.ctx.previous_sender = env.contract.address.to_string();
-                ctx.messages[0].recipient =
+            |ctx| {
+                // Case when ctx is Some
+                let origin = deps
+                    .api
+                    .addr_validate(&ctx.ctx.get_origin())
+                    .unwrap_or(Addr::unchecked(""));
+                let mut amp_packet = Self::create_amp_packet(
+                    &deps.querier,
+                    &vfs_address,
+                    &origin,
+                    env.contract.address.clone(),
+                    ctx.ctx.id,
+                    ctx.messages.clone(),
+                );
+                amp_packet.messages[0].recipient =
                     AndrAddr::from_string(recipient.clone().get_raw_path().to_string());
-                ctx
+                amp_packet
             },
         );
 
@@ -844,6 +847,30 @@ impl MsgHandler {
             .add_attribute("receiving_kernel_address:{}", channel_info.kernel_address)
             .add_attribute("chain:{}", chain)
             .add_message(msg))
+    }
+
+    fn create_amp_packet(
+        querier: &QuerierWrapper,
+        vfs_address: &Addr,
+        origin: &Addr,
+        contract_address: Addr,
+        id: u64,
+        messages: Vec<AMPMsg>,
+    ) -> AMPPkt {
+        let username_addr = AOSQuerier::get_username(querier, vfs_address, origin);
+
+        match username_addr {
+            Ok(Some(username)) if username != *origin => AMPPkt {
+                messages,
+                ctx: AMPCtx::new(
+                    origin.clone(),
+                    contract_address,
+                    id,
+                    Some(AndrAddr::from_string(username)),
+                ),
+            },
+            _ => AMPPkt::new(origin.clone(), contract_address, messages),
+        }
     }
 
     fn handle_ibc_transfer_funds(

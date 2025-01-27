@@ -315,7 +315,7 @@ fn test_kernel_ibc_execute_only_with_username() {
     juno.set_balance(sender.clone(), vec![Coin::new(100000000000000, "juno")])
         .unwrap();
 
-    let kernel_juno = KernelContract::new(juno.clone());
+    let mut kernel_juno = KernelContract::new(juno.clone());
     let vfs_juno = VFSContract::new(juno.clone());
     let kernel_osmosis = KernelContract::new(osmosis.clone());
     let counter_osmosis = CounterContract::new(osmosis.clone());
@@ -565,6 +565,46 @@ fn test_kernel_ibc_execute_only_with_username() {
         .query(&andromeda_math::counter::QueryMsg::GetCurrentAmount {})
         .unwrap();
     assert_eq!(current_count.current_amount, 1);
+
+    // Send the message to the kernel from an ADO so that it's an AMP packet
+    kernel_juno.set_sender(&kernel_juno.address().unwrap());
+    let kernel_juno_send_request = kernel_juno
+        .execute(
+            &ExecuteMsg::AMPReceive(AMPPkt::new(
+                kernel_juno.address().unwrap(),
+                vfs_juno.address().unwrap(),
+                vec![AMPMsg::new(
+                    format!("ibc://osmosis/{}", counter_osmosis.address().unwrap()),
+                    to_json_binary(&CounterExecuteMsg::Increment {}).unwrap(),
+                    None,
+                )],
+            )),
+            None,
+        )
+        .unwrap();
+
+    let packet_lifetime = interchain
+        .await_packets("juno", kernel_juno_send_request)
+        .unwrap();
+
+    // For testing a successful outcome of the first packet sent out in the tx, you can use:
+    if let IbcPacketOutcome::Success { receive_tx, .. } = &packet_lifetime.packets[0].outcome {
+        let username = receive_tx
+            .event_attr_value("recv_packet", "packet_data")
+            .unwrap();
+        assert!(username.contains("az"));
+        // println!("success_packets: {:?}", success_packets);
+        // Packet has been successfully acknowledged and decoded, the transaction has gone through correctly
+    } else {
+        panic!("packet timed out");
+        // There was a decode error or the packet timed out
+        // Else the packet timed-out, you may have a relayer error or something is wrong in your application
+    };
+
+    let current_count: GetCurrentAmountResponse = counter_osmosis
+        .query(&andromeda_math::counter::QueryMsg::GetCurrentAmount {})
+        .unwrap();
+    assert_eq!(current_count.current_amount, 2);
 }
 
 #[test]
