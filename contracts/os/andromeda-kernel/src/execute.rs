@@ -801,7 +801,6 @@ impl MsgHandler {
         let vfs_address = KERNEL_ADDRESSES.load(deps.storage, VFS_KEY).unwrap();
         let ctx = ctx.map_or_else(
             || {
-                // Case when ctx is None
                 let origin = info.sender.clone();
                 let amp_msg = AMPMsg::new(recipient.clone().get_raw_path(), message.clone(), None);
                 Self::create_amp_packet(
@@ -814,11 +813,7 @@ impl MsgHandler {
                 )
             },
             |ctx| {
-                // Case when ctx is Some
-                let origin = deps
-                    .api
-                    .addr_validate(&ctx.ctx.get_origin())
-                    .unwrap_or(Addr::unchecked(""));
+                let origin = Addr::unchecked(ctx.ctx.get_origin());
                 let mut amp_packet = Self::create_amp_packet(
                     &deps.querier,
                     &vfs_address,
