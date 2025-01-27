@@ -1,23 +1,22 @@
 use andromeda_adodb::ADODBContract;
 use andromeda_auction::{mock::mock_start_auction, AuctionContract};
 use andromeda_counter::CounterContract;
+use andromeda_cw721::CW721Contract;
 use andromeda_economics::EconomicsContract;
 use andromeda_finance::splitter::{
     AddressPercent, ExecuteMsg as SplitterExecuteMsg, InstantiateMsg as SplitterInstantiateMsg,
 };
+use andromeda_kernel::KernelContract;
 use andromeda_math::counter::{
     CounterRestriction, ExecuteMsg as CounterExecuteMsg, GetCurrentAmountResponse,
     InstantiateMsg as CounterInstantiateMsg, State,
 };
-
-use andromeda_cw721::CW721Contract;
-use andromeda_kernel::KernelContract;
 use andromeda_non_fungible_tokens::cw721::TokenExtension;
 use andromeda_splitter::SplitterContract;
 use andromeda_std::{
     ado_base::rates::{LocalRate, LocalRateType, LocalRateValue, PercentRate, Rate, RatesMessage},
     amp::{
-        messages::{AMPMsg, AMPMsgConfig},
+        messages::{AMPMsg, AMPMsgConfig, AMPPkt},
         AndrAddr, Recipient,
     },
     common::{denom::Asset, expiration::Expiry, Milliseconds},
@@ -45,7 +44,7 @@ fn test_kernel_ibc_execute_only() {
     juno.set_balance(sender.clone(), vec![Coin::new(100000000000000, "juno")])
         .unwrap();
 
-    let kernel_juno = KernelContract::new(juno.clone());
+    let mut kernel_juno = KernelContract::new(juno.clone());
     let vfs_juno = VFSContract::new(juno.clone());
     let kernel_osmosis = KernelContract::new(osmosis.clone());
     let counter_osmosis = CounterContract::new(osmosis.clone());
@@ -266,6 +265,41 @@ fn test_kernel_ibc_execute_only() {
         .query(&andromeda_math::counter::QueryMsg::GetCurrentAmount {})
         .unwrap();
     assert_eq!(current_count.current_amount, 1);
+
+    // Send the message to the kernel from an ADO so that it's an AMP packet
+    kernel_juno.set_sender(&kernel_juno.address().unwrap());
+    let kernel_juno_send_request = kernel_juno
+        .execute(
+            &ExecuteMsg::AMPReceive(AMPPkt::new(
+                vfs_juno.address().unwrap(),
+                vfs_juno.address().unwrap(),
+                vec![AMPMsg::new(
+                    format!("ibc://osmosis/{}", counter_osmosis.address().unwrap()),
+                    to_json_binary(&CounterExecuteMsg::Increment {}).unwrap(),
+                    None,
+                )],
+            )),
+            None,
+        )
+        .unwrap();
+
+    let packet_lifetime = interchain
+        .await_packets("juno", kernel_juno_send_request)
+        .unwrap();
+
+    // For testing a successful outcome of the first packet sent out in the tx, you can use:
+    if let IbcPacketOutcome::Success { .. } = &packet_lifetime.packets[0].outcome {
+        // Packet has been successfully acknowledged and decoded, the transaction has gone through correctly
+    } else {
+        panic!("packet timed out");
+        // There was a decode error or the packet timed out
+        // Else the packet timed-out, you may have a relayer error or something is wrong in your application
+    };
+
+    let current_count: GetCurrentAmountResponse = counter_osmosis
+        .query(&andromeda_math::counter::QueryMsg::GetCurrentAmount {})
+        .unwrap();
+    assert_eq!(current_count.current_amount, 2);
 }
 
 #[test]
