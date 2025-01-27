@@ -468,6 +468,12 @@ impl MockAndromedaQuerier {
             ));
         }
 
+        if key_str.contains("address") {
+            return SystemResult::Ok(ContractResult::Ok(
+                to_json_binary(&Addr::unchecked("owner".to_string())).unwrap(),
+            ));
+        }
+
         panic!("Unsupported query for contract: {contract_addr}")
     }
 
