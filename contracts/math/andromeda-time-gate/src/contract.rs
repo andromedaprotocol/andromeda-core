@@ -11,8 +11,8 @@ use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     ado_contract::ADOContract,
     amp::AndrAddr,
+    andr_execute_fn,
     common::{
-        actions::call_action,
         context::ExecuteContext,
         encode_binary,
         expiration::{get_and_validate_start_time, Expiry},
@@ -67,56 +67,25 @@ pub fn instantiate(
     Ok(resp)
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn execute(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    msg: ExecuteMsg,
-) -> Result<Response, ContractError> {
-    let ctx = ExecuteContext::new(deps, info, env);
-    match msg {
-        ExecuteMsg::AMPReceive(pkt) => {
-            ADOContract::default().execute_amp_receive(ctx, pkt, handle_execute)
-        }
-        _ => handle_execute(ctx, msg),
-    }
-}
-
-fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
-    let action = msg.as_ref().to_string();
-
-    let action_response = call_action(
-        &mut ctx.deps,
-        &ctx.info,
-        &ctx.env,
-        &ctx.amp_ctx,
-        msg.as_ref(),
-    )?;
-
-    let res = match msg {
+#[andr_execute_fn]
+pub fn execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+    match msg.clone() {
         ExecuteMsg::UpdateCycleStartTime { cycle_start_time } => {
-            execute_update_cycle_start_time(ctx, cycle_start_time, action)
+            execute_update_cycle_start_time(ctx, cycle_start_time)
         }
         ExecuteMsg::UpdateGateAddresses { new_gate_addresses } => {
-            execute_update_gate_addresses(ctx, new_gate_addresses, action)
+            execute_update_gate_addresses(ctx, new_gate_addresses)
         }
         ExecuteMsg::UpdateTimeInterval { time_interval } => {
-            execute_update_time_interval(ctx, time_interval, action)
+            execute_update_time_interval(ctx, time_interval)
         }
         _ => ADOContract::default().execute(ctx, msg),
-    }?;
-
-    Ok(res
-        .add_submessages(action_response.messages)
-        .add_attributes(action_response.attributes)
-        .add_events(action_response.events))
+    }
 }
 
 fn execute_update_cycle_start_time(
     ctx: ExecuteContext,
     cycle_start_time: Option<Expiry>,
-    action: String,
 ) -> Result<Response, ContractError> {
     let ExecuteContext { deps, info, .. } = ctx;
 
@@ -146,13 +115,15 @@ fn execute_update_cycle_start_time(
         &(new_cycle_start_time, new_cycle_start_time_milliseconds),
     )?;
 
-    Ok(Response::new().add_attributes(vec![attr("action", action), attr("sender", info.sender)]))
+    Ok(Response::new().add_attributes(vec![
+        attr("method", "update_cycle_start_time"),
+        attr("sender", info.sender),
+    ]))
 }
 
 fn execute_update_gate_addresses(
     ctx: ExecuteContext,
     new_gate_addresses: Vec<AndrAddr>,
-    action: String,
 ) -> Result<Response, ContractError> {
     let ExecuteContext { deps, info, .. } = ctx;
 
@@ -172,13 +143,15 @@ fn execute_update_gate_addresses(
 
     GATE_ADDRESSES.save(deps.storage, &new_gate_addresses)?;
 
-    Ok(Response::new().add_attributes(vec![attr("action", action), attr("sender", info.sender)]))
+    Ok(Response::new().add_attributes(vec![
+        attr("method", "update_gate_addresses"),
+        attr("sender", info.sender),
+    ]))
 }
 
 fn execute_update_time_interval(
     ctx: ExecuteContext,
     time_interval: u64,
-    action: String,
 ) -> Result<Response, ContractError> {
     let ExecuteContext { deps, info, .. } = ctx;
 
@@ -198,7 +171,10 @@ fn execute_update_time_interval(
 
     TIME_INTERVAL.save(deps.storage, &time_interval)?;
 
-    Ok(Response::new().add_attributes(vec![attr("action", action), attr("sender", info.sender)]))
+    Ok(Response::new().add_attributes(vec![
+        attr("method", "update_time_interval"),
+        attr("sender", info.sender),
+    ]))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -279,8 +255,8 @@ pub fn get_current_ado_path(deps: Deps, env: Env) -> Result<Addr, ContractError>
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-    ADOContract::default().migrate(deps, CONTRACT_NAME, CONTRACT_VERSION)
+pub fn migrate(deps: DepsMut, env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    ADOContract::default().migrate(deps, env, CONTRACT_NAME, CONTRACT_VERSION)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
