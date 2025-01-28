@@ -305,7 +305,7 @@ impl AMPPkt {
     }
 
     /// Creates a new AMPPkt with an optional username, it tries to find the username of the origin and if it exists and is not the same as the origin, it will set the username in the context.
-    pub fn update_optional_username(
+    pub fn new_with_resolved_username(
         querier: &QuerierWrapper,
         vfs_address: &Addr,
         origin: &Addr,

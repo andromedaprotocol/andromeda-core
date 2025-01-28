@@ -803,7 +803,7 @@ impl MsgHandler {
             || {
                 let origin = info.sender.clone();
                 let amp_msg = AMPMsg::new(recipient.clone().get_raw_path(), message.clone(), None);
-                AMPPkt::update_optional_username(
+                AMPPkt::new_with_resolved_username(
                     &deps.querier,
                     &vfs_address,
                     &origin,
@@ -823,7 +823,7 @@ impl MsgHandler {
             },
             |ctx| {
                 let origin = Addr::unchecked(ctx.ctx.get_origin());
-                let mut amp_packet = AMPPkt::update_optional_username(
+                let mut amp_packet = AMPPkt::new_with_resolved_username(
                     &deps.querier,
                     &vfs_address,
                     &origin,
