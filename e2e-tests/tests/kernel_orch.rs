@@ -1,23 +1,22 @@
 use andromeda_adodb::ADODBContract;
 use andromeda_auction::{mock::mock_start_auction, AuctionContract};
 use andromeda_counter::CounterContract;
+use andromeda_cw721::CW721Contract;
 use andromeda_economics::EconomicsContract;
 use andromeda_finance::splitter::{
     AddressPercent, ExecuteMsg as SplitterExecuteMsg, InstantiateMsg as SplitterInstantiateMsg,
 };
+use andromeda_kernel::KernelContract;
 use andromeda_math::counter::{
     CounterRestriction, ExecuteMsg as CounterExecuteMsg, GetCurrentAmountResponse,
     InstantiateMsg as CounterInstantiateMsg, State,
 };
-
-use andromeda_cw721::CW721Contract;
-use andromeda_kernel::KernelContract;
 use andromeda_non_fungible_tokens::cw721::TokenExtension;
 use andromeda_splitter::SplitterContract;
 use andromeda_std::{
     ado_base::rates::{LocalRate, LocalRateType, LocalRateValue, PercentRate, Rate, RatesMessage},
     amp::{
-        messages::{AMPMsg, AMPMsgConfig},
+        messages::{AMPMsg, AMPMsgConfig, AMPPkt},
         AndrAddr, Recipient,
     },
     common::{denom::Asset, expiration::Expiry, Milliseconds},
@@ -45,7 +44,7 @@ fn test_kernel_ibc_execute_only() {
     juno.set_balance(sender.clone(), vec![Coin::new(100000000000000, "juno")])
         .unwrap();
 
-    let kernel_juno = KernelContract::new(juno.clone());
+    let mut kernel_juno = KernelContract::new(juno.clone());
     let vfs_juno = VFSContract::new(juno.clone());
     let kernel_osmosis = KernelContract::new(osmosis.clone());
     let counter_osmosis = CounterContract::new(osmosis.clone());
@@ -266,6 +265,346 @@ fn test_kernel_ibc_execute_only() {
         .query(&andromeda_math::counter::QueryMsg::GetCurrentAmount {})
         .unwrap();
     assert_eq!(current_count.current_amount, 1);
+
+    // Send the message to the kernel from an ADO so that it's an AMP packet
+    kernel_juno.set_sender(&kernel_juno.address().unwrap());
+    let kernel_juno_send_request = kernel_juno
+        .execute(
+            &ExecuteMsg::AMPReceive(AMPPkt::new(
+                vfs_juno.address().unwrap(),
+                vfs_juno.address().unwrap(),
+                vec![AMPMsg::new(
+                    format!("ibc://osmosis/{}", counter_osmosis.address().unwrap()),
+                    to_json_binary(&CounterExecuteMsg::Increment {}).unwrap(),
+                    None,
+                )],
+            )),
+            None,
+        )
+        .unwrap();
+
+    let packet_lifetime = interchain
+        .await_packets("juno", kernel_juno_send_request)
+        .unwrap();
+
+    // For testing a successful outcome of the first packet sent out in the tx, you can use:
+    if let IbcPacketOutcome::Success { .. } = &packet_lifetime.packets[0].outcome {
+        // Packet has been successfully acknowledged and decoded, the transaction has gone through correctly
+    } else {
+        panic!("packet timed out");
+        // There was a decode error or the packet timed out
+        // Else the packet timed-out, you may have a relayer error or something is wrong in your application
+    };
+
+    let current_count: GetCurrentAmountResponse = counter_osmosis
+        .query(&andromeda_math::counter::QueryMsg::GetCurrentAmount {})
+        .unwrap();
+    assert_eq!(current_count.current_amount, 2);
+}
+
+#[test]
+fn test_kernel_ibc_execute_only_with_username() {
+    // Here `juno-1` is the chain-id and `juno` is the address prefix for this chain
+    let sender = Addr::unchecked("sender_for_all_chains").into_string();
+
+    let interchain = MockInterchainEnv::new(vec![("juno", &sender), ("osmosis", &sender)]);
+
+    let juno = interchain.get_chain("juno").unwrap();
+    let osmosis = interchain.get_chain("osmosis").unwrap();
+
+    juno.set_balance(sender.clone(), vec![Coin::new(100000000000000, "juno")])
+        .unwrap();
+
+    let mut kernel_juno = KernelContract::new(juno.clone());
+    let vfs_juno = VFSContract::new(juno.clone());
+    let kernel_osmosis = KernelContract::new(osmosis.clone());
+    let counter_osmosis = CounterContract::new(osmosis.clone());
+    let vfs_osmosis = VFSContract::new(osmosis.clone());
+    let adodb_osmosis = ADODBContract::new(osmosis.clone());
+    let economics_osmosis = EconomicsContract::new(osmosis.clone());
+
+    kernel_juno.upload().unwrap();
+    vfs_juno.upload().unwrap();
+    kernel_osmosis.upload().unwrap();
+    counter_osmosis.upload().unwrap();
+    vfs_osmosis.upload().unwrap();
+    adodb_osmosis.upload().unwrap();
+    economics_osmosis.upload().unwrap();
+
+    let init_msg_juno = &InstantiateMsg {
+        owner: None,
+        chain_name: "juno".to_string(),
+    };
+    let init_msg_osmosis = &InstantiateMsg {
+        owner: None,
+        chain_name: "osmosis".to_string(),
+    };
+
+    kernel_juno.instantiate(init_msg_juno, None, None).unwrap();
+    kernel_osmosis
+        .instantiate(init_msg_osmosis, None, None)
+        .unwrap();
+
+    // Set up channel from juno to osmosis
+    let channel_receipt = interchain
+        .create_contract_channel(&kernel_juno, &kernel_osmosis, "andr-kernel-1", None)
+        .unwrap();
+
+    // After channel creation is complete, we get the channel id, which is necessary for ICA remote execution
+    let juno_channel = channel_receipt
+        .interchain_channel
+        .get_chain("juno")
+        .unwrap()
+        .channel
+        .unwrap();
+
+    vfs_juno
+        .instantiate(
+            &os::vfs::InstantiateMsg {
+                kernel_address: kernel_juno.address().unwrap().into_string(),
+                owner: None,
+            },
+            None,
+            None,
+        )
+        .unwrap();
+
+    vfs_osmosis
+        .instantiate(
+            &os::vfs::InstantiateMsg {
+                kernel_address: kernel_osmosis.address().unwrap().into_string(),
+                owner: None,
+            },
+            None,
+            None,
+        )
+        .unwrap();
+
+    adodb_osmosis
+        .instantiate(
+            &os::adodb::InstantiateMsg {
+                kernel_address: kernel_osmosis.address().unwrap().into_string(),
+                owner: None,
+            },
+            None,
+            None,
+        )
+        .unwrap();
+
+    economics_osmosis
+        .instantiate(
+            &os::economics::InstantiateMsg {
+                kernel_address: kernel_osmosis.address().unwrap().into_string(),
+                owner: None,
+            },
+            None,
+            None,
+        )
+        .unwrap();
+
+    adodb_osmosis
+        .execute(
+            &os::adodb::ExecuteMsg::Publish {
+                code_id: 2,
+                ado_type: "counter".to_string(),
+                action_fees: None,
+                version: "1.0.2".to_string(),
+                publisher: None,
+            },
+            None,
+        )
+        .unwrap();
+
+    kernel_juno
+        .execute(
+            &ExecuteMsg::UpsertKeyAddress {
+                key: "vfs".to_string(),
+                value: vfs_juno.address().unwrap().into_string(),
+            },
+            None,
+        )
+        .unwrap();
+
+    kernel_osmosis
+        .execute(
+            &ExecuteMsg::UpsertKeyAddress {
+                key: "vfs".to_string(),
+                value: vfs_osmosis.address().unwrap().into_string(),
+            },
+            None,
+        )
+        .unwrap();
+
+    kernel_osmosis
+        .execute(
+            &ExecuteMsg::UpsertKeyAddress {
+                key: "adodb".to_string(),
+                value: adodb_osmosis.address().unwrap().into_string(),
+            },
+            None,
+        )
+        .unwrap();
+
+    kernel_osmosis
+        .execute(
+            &ExecuteMsg::UpsertKeyAddress {
+                key: "economics".to_string(),
+                value: economics_osmosis.address().unwrap().into_string(),
+            },
+            None,
+        )
+        .unwrap();
+
+    kernel_juno
+        .execute(
+            &ExecuteMsg::AssignChannels {
+                ics20_channel_id: None,
+                direct_channel_id: Some(juno_channel.to_string()),
+                chain: "osmosis".to_string(),
+                kernel_address: kernel_osmosis.address().unwrap().into_string(),
+            },
+            None,
+        )
+        .unwrap();
+
+    kernel_osmosis
+        .execute(
+            &ExecuteMsg::AssignChannels {
+                ics20_channel_id: None,
+                direct_channel_id: Some(juno_channel.to_string()),
+                chain: "juno".to_string(),
+                kernel_address: kernel_juno.address().unwrap().into_string(),
+            },
+            None,
+        )
+        .unwrap();
+
+    counter_osmosis
+        .instantiate(
+            &CounterInstantiateMsg {
+                restriction: CounterRestriction::Public,
+                initial_state: State {
+                    initial_amount: None,
+                    increase_amount: Some(1),
+                    decrease_amount: None,
+                },
+                kernel_address: kernel_osmosis.address().unwrap().into_string(),
+                owner: None,
+            },
+            None,
+            None,
+        )
+        .unwrap();
+
+    // Register username for sender
+    vfs_juno
+        .call_as(&kernel_juno.address().unwrap())
+        .execute(
+            &os::vfs::ExecuteMsg::RegisterUser {
+                username: "az".to_string(),
+                address: Some(kernel_juno.address().unwrap()),
+            },
+            None,
+        )
+        .unwrap();
+
+    vfs_osmosis
+        .call_as(&kernel_osmosis.address().unwrap())
+        .execute(
+            &os::vfs::ExecuteMsg::RegisterUser {
+                username: "az".to_string(),
+                address: Some(kernel_osmosis.address().unwrap()),
+            },
+            None,
+        )
+        .unwrap();
+
+    let kernel_juno_send_request = kernel_juno
+        .call_as(&kernel_juno.address().unwrap())
+        .execute(
+            &ExecuteMsg::Send {
+                message: AMPMsg {
+                    recipient: AndrAddr::from_string(format!(
+                        "ibc://osmosis/{}",
+                        counter_osmosis.address().unwrap()
+                    )),
+                    message: to_json_binary(&CounterExecuteMsg::Increment {}).unwrap(),
+                    funds: vec![],
+                    config: AMPMsgConfig {
+                        reply_on: cosmwasm_std::ReplyOn::Always,
+                        exit_at_error: false,
+                        gas_limit: None,
+                        direct: true,
+                        ibc_config: None,
+                    },
+                },
+            },
+            None,
+        )
+        .unwrap();
+
+    let packet_lifetime = interchain
+        .await_packets("juno", kernel_juno_send_request)
+        .unwrap();
+
+    // For testing a successful outcome of the first packet sent out in the tx, you can use:
+    if let IbcPacketOutcome::Success { receive_tx, .. } = &packet_lifetime.packets[0].outcome {
+        let username = receive_tx
+            .event_attr_value("recv_packet", "packet_data")
+            .unwrap();
+        assert!(username.contains("az"));
+        // println!("success_packets: {:?}", success_packets);
+        // Packet has been successfully acknowledged and decoded, the transaction has gone through correctly
+    } else {
+        panic!("packet timed out");
+        // There was a decode error or the packet timed out
+        // Else the packet timed-out, you may have a relayer error or something is wrong in your application
+    };
+
+    let current_count: GetCurrentAmountResponse = counter_osmosis
+        .query(&andromeda_math::counter::QueryMsg::GetCurrentAmount {})
+        .unwrap();
+    assert_eq!(current_count.current_amount, 1);
+
+    // Send the message to the kernel from an ADO so that it's an AMP packet
+    kernel_juno.set_sender(&kernel_juno.address().unwrap());
+    let kernel_juno_send_request = kernel_juno
+        .execute(
+            &ExecuteMsg::AMPReceive(AMPPkt::new(
+                kernel_juno.address().unwrap(),
+                vfs_juno.address().unwrap(),
+                vec![AMPMsg::new(
+                    format!("ibc://osmosis/{}", counter_osmosis.address().unwrap()),
+                    to_json_binary(&CounterExecuteMsg::Increment {}).unwrap(),
+                    None,
+                )],
+            )),
+            None,
+        )
+        .unwrap();
+
+    let packet_lifetime = interchain
+        .await_packets("juno", kernel_juno_send_request)
+        .unwrap();
+
+    // For testing a successful outcome of the first packet sent out in the tx, you can use:
+    if let IbcPacketOutcome::Success { receive_tx, .. } = &packet_lifetime.packets[0].outcome {
+        let username = receive_tx
+            .event_attr_value("recv_packet", "packet_data")
+            .unwrap();
+        assert!(username.contains("az"));
+        // println!("success_packets: {:?}", success_packets);
+        // Packet has been successfully acknowledged and decoded, the transaction has gone through correctly
+    } else {
+        panic!("packet timed out");
+        // There was a decode error or the packet timed out
+        // Else the packet timed-out, you may have a relayer error or something is wrong in your application
+    };
+
+    let current_count: GetCurrentAmountResponse = counter_osmosis
+        .query(&andromeda_math::counter::QueryMsg::GetCurrentAmount {})
+        .unwrap();
+    assert_eq!(current_count.current_amount, 2);
 }
 
 #[test]

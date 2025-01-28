@@ -197,10 +197,6 @@ impl LocalPermission {
         if let (Some(start), Some(expiration)) = (start, expiration) {
             let start_time = start.get_time(&env.block);
             let exp_time = expiration.get_time(&env.block);
-
-            println!("start_time: {:?}", start_time);
-            println!("exp_time: {:?}", exp_time);
-
             // Check if start time is after current time
             if start_time.is_expired(&env.block) {
                 return Err(ContractError::StartTimeInThePast {
