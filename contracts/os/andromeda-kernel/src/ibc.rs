@@ -157,8 +157,12 @@ pub fn do_ibc_packet_receive(
                         username.as_str(),
                     )?;
                     if let Some(addr) = username_addr {
-                        let new_amp_packet =
-                            AMPPkt::new(addr, env.contract.address, amp_packet.clone().messages);
+                        let new_amp_packet = AMPPkt::new(
+                            addr,
+                            env.contract.address,
+                            amp_packet.messages.clone(),
+                            amp_packet.previous_hops,
+                        );
                         execute_env.amp_ctx = Some(new_amp_packet.clone());
                     }
                 }

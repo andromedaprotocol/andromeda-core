@@ -56,6 +56,7 @@ fn test_handle_local() {
                     to_json_binary(&true).unwrap(),
                     None,
                 )],
+                vec![],
             )
             .to_sub_msg(MOCK_APP_CONTRACT, None, ReplyId::AMPMsg.repr())
             .unwrap(),
@@ -74,6 +75,7 @@ fn test_handle_local() {
                     to_json_binary(&true).unwrap(),
                     None,
                 )],
+                vec![],
             )
             .to_sub_msg(MOCK_APP_CONTRACT, None, ReplyId::AMPMsg.repr())
             .unwrap(),
@@ -96,6 +98,7 @@ fn test_handle_local() {
                     to_json_binary(&true).unwrap(),
                     Some(vec![coin(100, "denom"), coin(200, "denom_two")]),
                 )],
+                vec![],
             )
             .to_sub_msg(
                 MOCK_APP_CONTRACT,
@@ -219,6 +222,7 @@ fn test_handle_local() {
                 "sender",
                 "sender",
                 vec![create_test_msg_with_config(config)],
+                vec![],
             )
             .to_sub_msg(MOCK_APP_CONTRACT, None, ReplyId::AMPMsg.repr())
             .unwrap(),

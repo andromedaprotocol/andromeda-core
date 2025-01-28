@@ -392,7 +392,7 @@ fn test_handle_ibc_direct() {
         to_json_binary(&dummy_msg).unwrap(),
         None,
     );
-    let packet = AMPPkt::new("user", "user", vec![amp_msg]);
+    let packet = AMPPkt::new("user", "user", vec![amp_msg], vec![]);
     let msg = ExecuteMsg::AMPReceive(packet);
     let res = execute(deps.as_mut(), env, info, msg);
     // * message fails even though it is a non-default binary message

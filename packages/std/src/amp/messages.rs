@@ -258,7 +258,7 @@ pub struct Hop {
     /// Any funds that were attached to this hop
     pub funds: Vec<Coin>,
     /// The IBC channels used for this hop
-    pub channels: Vec<String>,
+    pub channel: String,
 }
 
 #[cw_serde]
@@ -295,10 +295,12 @@ impl AMPPkt {
         messages: Vec<AMPMsg>,
         username: Option<AndrAddr>,
         id: Option<u64>,
+        previous_hops: Vec<Hop>,
     ) -> AMPPkt {
         AMPPkt {
             messages,
             ctx: AMPCtx::new(origin, previous_sender, id.unwrap_or(0), username),
+            previous_hops,
         }
     }
 
@@ -311,23 +313,42 @@ impl AMPPkt {
         id: Option<u64>,
         messages: Vec<AMPMsg>,
         username: Option<AndrAddr>,
+        mut previous_hops: Vec<Hop>,
     ) -> AMPPkt {
         if username.is_none() {
             let username_addr = AOSQuerier::get_username(querier, vfs_address, origin);
             match username_addr {
-                Ok(Some(username)) if username != *origin => AMPPkt::new_with_username(
+                Ok(Some(username)) if username != *origin => {
+                    if !previous_hops.is_empty() {
+                        previous_hops[0].username = Some(AndrAddr::from_string(username.clone()));
+                    }
+                    AMPPkt::new_with_username(
+                        origin.clone(),
+                        contract_address,
+                        messages,
+                        Some(AndrAddr::from_string(username)),
+                        id,
+                        previous_hops,
+                    )
+                }
+                _ => AMPPkt::new_with_username(
                     origin.clone(),
                     contract_address,
                     messages,
-                    Some(AndrAddr::from_string(username)),
+                    None,
                     id,
+                    previous_hops,
                 ),
-                _ => {
-                    AMPPkt::new_with_username(origin.clone(), contract_address, messages, None, id)
-                }
             }
         } else {
-            AMPPkt::new_with_username(origin.clone(), contract_address, messages, username, id)
+            AMPPkt::new_with_username(
+                origin.clone(),
+                contract_address,
+                messages,
+                username,
+                id,
+                previous_hops,
+            )
         }
     }
 
