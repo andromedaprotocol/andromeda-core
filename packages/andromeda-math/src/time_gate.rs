@@ -18,8 +18,11 @@ pub struct InstantiateMsg {
 #[andr_exec]
 #[cw_serde]
 pub enum ExecuteMsg {
+    #[attrs(restricted)]
     UpdateCycleStartTime { cycle_start_time: Option<Expiry> },
+    #[attrs(restricted)]
     UpdateGateAddresses { new_gate_addresses: Vec<AndrAddr> },
+    #[attrs(restricted)]
     UpdateTimeInterval { time_interval: u64 },
 }
 

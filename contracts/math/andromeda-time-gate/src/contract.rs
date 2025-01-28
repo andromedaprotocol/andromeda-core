@@ -89,11 +89,6 @@ fn execute_update_cycle_start_time(
 ) -> Result<Response, ContractError> {
     let ExecuteContext { deps, info, .. } = ctx;
 
-    ensure!(
-        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {}
-    );
-
     let (new_cycle_start_time, _) =
         get_and_validate_start_time(&ctx.env, cycle_start_time.clone())?;
     let new_cycle_start_time_milliseconds = match cycle_start_time.clone() {
@@ -127,11 +122,6 @@ fn execute_update_gate_addresses(
 ) -> Result<Response, ContractError> {
     let ExecuteContext { deps, info, .. } = ctx;
 
-    ensure!(
-        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {}
-    );
-
     let old_gate_addresses = GATE_ADDRESSES.load(deps.storage)?;
 
     ensure!(
@@ -154,11 +144,6 @@ fn execute_update_time_interval(
     time_interval: u64,
 ) -> Result<Response, ContractError> {
     let ExecuteContext { deps, info, .. } = ctx;
-
-    ensure!(
-        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {}
-    );
 
     let old_time_interval = TIME_INTERVAL.load(deps.storage)?;
 
