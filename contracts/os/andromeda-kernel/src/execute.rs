@@ -14,8 +14,12 @@ use andromeda_std::os::kernel::{ChannelInfo, IbcExecuteMsg, Ics20PacketInfo, Int
 use andromeda_std::os::vfs::vfs_resolve_symlink;
 use cosmwasm_std::{
     attr, ensure, from_json, to_json_binary, Addr, BankMsg, Binary, Coin, ContractInfoResponse,
+<<<<<<< HEAD
     CosmosMsg, Deps, DepsMut, Env, IbcMsg, MessageInfo, QuerierWrapper, Response, StdAck, StdError,
     SubMsg, WasmMsg,
+=======
+    CosmosMsg, DepsMut, Env, IbcMsg, MessageInfo, Response, StdAck, StdError, SubMsg, WasmMsg,
+>>>>>>> main
 };
 
 use crate::query;
@@ -803,28 +807,26 @@ impl MsgHandler {
             || {
                 let origin = info.sender.clone();
                 let amp_msg = AMPMsg::new(recipient.clone().get_raw_path(), message.clone(), None);
-                Self::create_amp_packet(
-                    deps.as_ref(),
+                AMPPkt::update_optional_username(
+                    &deps.querier,
                     &vfs_address,
                     &origin,
                     env.contract.address.clone(),
-                    0,
+                    None,
                     vec![amp_msg],
                     None,
-                    vec![],
                 )
             },
             |ctx| {
                 let origin = Addr::unchecked(ctx.ctx.get_origin());
-                let mut amp_packet = Self::create_amp_packet(
-                    deps.as_ref(),
+                let mut amp_packet = AMPPkt::update_optional_username(
+                    &deps.querier,
                     &vfs_address,
                     &origin,
                     env.contract.address.clone(),
-                    ctx.ctx.id,
+                    Some(ctx.ctx.id),
                     ctx.messages.clone(),
                     ctx.ctx.get_origin_username(),
-                    ctx.previous_hops.clone(),
                 );
 
                 amp_packet.messages[0].recipient =
