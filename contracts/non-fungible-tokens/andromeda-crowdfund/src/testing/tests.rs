@@ -1032,6 +1032,7 @@ mod test {
             MOCK_DEFAULT_OWNER.to_string(),
             MOCK_CONTRACT_ADDR.to_string(),
             vec![amp_msg],
+            vec![],
         );
         let amp_msg = amp_pkt
             .to_sub_msg(

@@ -168,6 +168,7 @@ fn test_exec_fn_amp_receive(
         case.1.to_string(),
         case.1.to_string(),
         vec![amp_msg_no_funds],
+        vec![],
     );
     let res_no_funds = execute(
         deps.as_mut(),
@@ -192,6 +193,7 @@ fn test_exec_fn_amp_receive(
         case.1.to_string(),
         case.1.to_string(),
         vec![amp_msg_with_funds],
+        vec![],
     );
     let res_with_funds = execute(
         deps.as_mut(),
@@ -217,7 +219,12 @@ fn test_unwrap_amp_msg() {
         to_json_binary(&sent_msg).unwrap(),
         None,
     );
-    let amp_pkt = AMPPkt::new("sender".to_string(), "sender".to_string(), vec![amp_msg]);
+    let amp_pkt = AMPPkt::new(
+        "sender".to_string(),
+        "sender".to_string(),
+        vec![amp_msg],
+        vec![],
+    );
     let msg = ExecuteMsg::AMPReceive(amp_pkt);
 
     let (ctx, msg, _) = (|| -> Result<(ExecuteContext, ExecuteMsg, Response), ContractError> {
@@ -230,7 +237,7 @@ fn test_unwrap_amp_msg() {
     assert_eq!(ctx.raw_info.sender, MOCK_KERNEL_CONTRACT);
     assert_eq!(msg, sent_msg);
 
-    let empty_amp_pkt = AMPPkt::new("sender".to_string(), "sender".to_string(), vec![]);
+    let empty_amp_pkt = AMPPkt::new("sender".to_string(), "sender".to_string(), vec![], vec![]);
     let msg = ExecuteMsg::AMPReceive(empty_amp_pkt);
 
     let err = (|| -> Result<(), ContractError> {

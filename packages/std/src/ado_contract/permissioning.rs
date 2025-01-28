@@ -1194,7 +1194,7 @@ mod tests {
         )
         .unwrap());
 
-        let amp_ctx = AMPPkt::new("mock_actor", actor, vec![]);
+        let amp_ctx = AMPPkt::new("mock_actor", actor, vec![], vec![]);
         let mut context =
             ExecuteContext::new(deps.as_mut(), unauth_info.clone(), env.clone()).with_ctx(amp_ctx);
 
@@ -1207,7 +1207,7 @@ mod tests {
         )
         .unwrap());
 
-        let amp_ctx = AMPPkt::new(actor, "mock_actor", vec![]);
+        let amp_ctx = AMPPkt::new(actor, "mock_actor", vec![], vec![]);
         let mut context =
             ExecuteContext::new(deps.as_mut(), unauth_info.clone(), env.clone()).with_ctx(amp_ctx);
 
@@ -1220,7 +1220,7 @@ mod tests {
         )
         .unwrap());
 
-        let amp_ctx = AMPPkt::new("mock_actor", "mock_actor", vec![]);
+        let amp_ctx = AMPPkt::new("mock_actor", "mock_actor", vec![], vec![]);
         let mut context =
             ExecuteContext::new(deps.as_mut(), unauth_info.clone(), env.clone()).with_ctx(amp_ctx);
 
@@ -1233,7 +1233,7 @@ mod tests {
         )
         .unwrap());
 
-        let amp_ctx = AMPPkt::new("owner", "mock_actor", vec![]);
+        let amp_ctx = AMPPkt::new("owner", "mock_actor", vec![], vec![]);
         let mut context =
             ExecuteContext::new(deps.as_mut(), unauth_info.clone(), env.clone()).with_ctx(amp_ctx);
 
@@ -1246,7 +1246,7 @@ mod tests {
         )
         .unwrap());
 
-        let amp_ctx = AMPPkt::new("mock_actor", "owner", vec![]);
+        let amp_ctx = AMPPkt::new("mock_actor", "owner", vec![], vec![]);
         let mut context =
             ExecuteContext::new(deps.as_mut(), unauth_info.clone(), env.clone()).with_ctx(amp_ctx);
 
@@ -1261,7 +1261,7 @@ mod tests {
 
         let previous_sender = "previous_sender";
         let mut context = ExecuteContext::new(deps.as_mut(), info.clone(), env.clone())
-            .with_ctx(AMPPkt::new(info.sender, previous_sender, vec![]));
+            .with_ctx(AMPPkt::new(info.sender, previous_sender, vec![], vec![]));
         let permission = Permission::Local(LocalPermission::Limited {
             start: None,
             expiration: None,
@@ -1347,7 +1347,7 @@ mod tests {
         )
         .unwrap());
 
-        let amp_ctx = AMPPkt::new("mock_actor", actor, vec![]);
+        let amp_ctx = AMPPkt::new("mock_actor", actor, vec![], vec![]);
         let context =
             ExecuteContext::new(deps.as_mut(), unauth_info.clone(), env.clone()).with_ctx(amp_ctx);
 
@@ -1360,7 +1360,7 @@ mod tests {
         )
         .unwrap());
 
-        let amp_ctx = AMPPkt::new(actor, "mock_actor", vec![]);
+        let amp_ctx = AMPPkt::new(actor, "mock_actor", vec![], vec![]);
         let context =
             ExecuteContext::new(deps.as_mut(), unauth_info.clone(), env.clone()).with_ctx(amp_ctx);
 
@@ -1373,7 +1373,7 @@ mod tests {
         )
         .unwrap());
 
-        let amp_ctx = AMPPkt::new("mock_actor", "mock_actor", vec![]);
+        let amp_ctx = AMPPkt::new("mock_actor", "mock_actor", vec![], vec![]);
         let context = ExecuteContext::new(deps.as_mut(), unauth_info, env).with_ctx(amp_ctx);
 
         assert!(!is_context_permissioned_strict(

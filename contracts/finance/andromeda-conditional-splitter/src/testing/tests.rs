@@ -412,6 +412,7 @@ fn test_execute_send() {
         MOCK_CONTRACT_ADDR.to_string(),
         MOCK_CONTRACT_ADDR.to_string(),
         vec![amp_msg_1, amp_msg_2],
+        vec![],
     );
     let amp_msg = amp_pkt
         .to_sub_msg(
@@ -453,6 +454,7 @@ fn test_execute_send() {
         MOCK_CONTRACT_ADDR.to_string(),
         MOCK_CONTRACT_ADDR.to_string(),
         vec![amp_msg_1, amp_msg_2],
+        vec![],
     );
     let amp_msg = amp_pkt
         .to_sub_msg(
@@ -494,6 +496,7 @@ fn test_execute_send() {
         MOCK_CONTRACT_ADDR.to_string(),
         MOCK_CONTRACT_ADDR.to_string(),
         vec![amp_msg_1, amp_msg_2],
+        vec![],
     );
     let amp_msg = amp_pkt
         .to_sub_msg(
@@ -599,6 +602,7 @@ fn test_execute_send_ado_recipient() {
         MOCK_CONTRACT_ADDR.to_string(),
         MOCK_CONTRACT_ADDR.to_string(),
         vec![amp_msg_1, amp_msg_2],
+        vec![],
     );
     let amp_msg = amp_pkt
         .to_sub_msg(
@@ -680,6 +684,7 @@ fn test_handle_packet_exit_with_error_true() {
             to_json_binary(&ExecuteMsg::Send {}).unwrap(),
             Some(vec![Coin::new(0, "uluna")]),
         )],
+        vec![],
     );
     let msg = ExecuteMsg::AMPReceive(pkt);
 
@@ -879,6 +884,7 @@ fn test_execute_send_with_multiple_thresholds() {
         MOCK_CONTRACT_ADDR.to_string(),
         MOCK_CONTRACT_ADDR.to_string(),
         vec![amp_msg_2, amp_msg_1],
+        vec![],
     );
     let amp_msg = amp_pkt
         .to_sub_msg(
@@ -923,6 +929,7 @@ fn test_execute_send_with_multiple_thresholds() {
         MOCK_CONTRACT_ADDR.to_string(),
         MOCK_CONTRACT_ADDR.to_string(),
         vec![amp_msg_1, amp_msg_2],
+        vec![],
     );
     let amp_msg = amp_pkt
         .to_sub_msg(
@@ -964,6 +971,7 @@ fn test_execute_send_with_multiple_thresholds() {
         MOCK_CONTRACT_ADDR.to_string(),
         MOCK_CONTRACT_ADDR.to_string(),
         vec![amp_msg_2, amp_msg_1],
+        vec![],
     );
     let amp_msg = amp_pkt
         .to_sub_msg(
