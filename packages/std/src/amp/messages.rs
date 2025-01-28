@@ -247,8 +247,18 @@ impl AMPCtx {
 
 #[cw_serde]
 pub struct Hop {
-    pub chain: String,
-    pub kernel_address: String,
+    /// The username of the sender at this hop (if available)
+    pub username: Option<AndrAddr>,
+    /// The address of the sender at this hop
+    pub address: String,
+    /// The chain this hop originated from
+    pub from_chain: String,
+    /// The chain this hop was directed to
+    pub to_chain: String,
+    /// Any funds that were attached to this hop
+    pub funds: Vec<Coin>,
+    /// The IBC channels used for this hop
+    pub channels: Vec<String>,
 }
 
 #[cw_serde]
