@@ -280,7 +280,7 @@ impl AOSQuerier {
         denom: &str,
     ) -> Result<DenomInfo, ContractError> {
         let query = IBCRegistryQueryMsg::DenomInfo {
-            denom: denom.to_string(),
+            denom: denom.to_lowercase(),
         };
         let denom_info_response: DenomInfoResponse =
             querier.query_wasm_smart(ibc_registry_addr, &query)?;
@@ -347,7 +347,10 @@ impl AOSQuerier {
         kernel_addr: &Addr,
         variable: &str,
     ) -> Result<Option<T>, ContractError> {
-        let key = AOSQuerier::get_map_storage_key("kernel_env_variables", &[variable.as_bytes()])?;
+        let key = AOSQuerier::get_map_storage_key(
+            "kernel_env_variables",
+            &[variable.to_ascii_uppercase().as_bytes()],
+        )?;
         let verify: Option<T> = AOSQuerier::query_storage(querier, kernel_addr, &key)?;
         Ok(verify)
     }

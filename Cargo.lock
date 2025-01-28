@@ -211,23 +211,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "andromeda-cross-chain-swap"
-version = "1.2.0"
-dependencies = [
- "andromeda-app",
- "andromeda-finance",
- "andromeda-std",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-multi-test",
- "cw-storage-plus 1.2.0",
- "cw-utils 1.0.3",
- "schemars",
- "semver",
- "serde",
-]
-
-[[package]]
 name = "andromeda-crowdfund"
 version = "2.2.0-beta"
 dependencies = [
@@ -464,20 +447,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "andromeda-ecosystem"
-version = "1.0.0"
-dependencies = [
- "andromeda-std",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-asset",
- "cw-storage-plus 1.2.0",
- "cw20",
- "schemars",
- "serde",
-]
-
-[[package]]
 name = "andromeda-finance"
 version = "1.0.0"
 dependencies = [
@@ -586,7 +555,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-ibc-registry"
-version = "1.1.0"
+version = "1.1.1-b.1"
 dependencies = [
  "andromeda-std",
  "cosmwasm-schema",
@@ -596,30 +565,6 @@ dependencies = [
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
  "cw20",
-]
-
-[[package]]
-name = "andromeda-ics20"
-version = "1.1.0"
-dependencies = [
- "andromeda-app",
- "andromeda-fungible-tokens",
- "andromeda-std",
- "andromeda-testing",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-controllers",
- "cw-multi-test",
- "cw-orch",
- "cw-storage-plus 1.2.0",
- "cw-utils 1.0.3",
- "cw2 1.1.2",
- "cw20",
- "cw20-base",
- "schemars",
- "semver",
- "serde",
- "thiserror 2.0.11",
 ]
 
 [[package]]
@@ -633,7 +578,6 @@ dependencies = [
  "cw-orch",
  "cw-storage-plus 1.2.0",
  "hex",
- "itertools 0.14.0",
  "osmosis-std",
  "osmosis-std-derive 0.15.3",
  "prost 0.11.9",
@@ -881,7 +825,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-std"
-version = "1.5.1-b.1"
+version = "1.5.1-b.3"
 dependencies = [
  "andromeda-macros",
  "cosmwasm-schema",
@@ -991,7 +935,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-validator-staking"
-version = "1.1.0"
+version = "1.1.1-b.1"
 dependencies = [
  "andromeda-finance",
  "andromeda-std",
@@ -1006,18 +950,6 @@ dependencies = [
  "cw2 1.1.2",
  "enum-repr",
  "serde",
-]
-
-[[package]]
-name = "andromeda-vault"
-version = "1.2.0"
-dependencies = [
- "andromeda-ecosystem",
- "andromeda-std",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-multi-test",
- "cw-storage-plus 1.2.0",
 ]
 
 [[package]]
@@ -1039,7 +971,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-vfs"
-version = "1.2.0"
+version = "1.2.1-b.1"
 dependencies = [
  "andromeda-std",
  "cosmwasm-schema",
@@ -1052,7 +984,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-weighted-distribution-splitter"
-version = "2.1.0-a.1"
+version = "2.1.0"
 dependencies = [
  "andromeda-app",
  "andromeda-finance",
@@ -2340,7 +2272,6 @@ dependencies = [
  "andromeda-cw721",
  "andromeda-data-storage",
  "andromeda-economics",
- "andromeda-ecosystem",
  "andromeda-finance",
  "andromeda-fixed-amount-splitter",
  "andromeda-fungible-tokens",
@@ -2359,7 +2290,6 @@ dependencies = [
  "andromeda-std",
  "andromeda-testing",
  "andromeda-validator-staking",
- "andromeda-vault",
  "andromeda-vesting",
  "andromeda-vfs",
  "cosmwasm-schema",
@@ -3422,15 +3352,6 @@ name = "itertools"
 version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "413ee7dfc52ee1a4949ceeb7dbc8a33f2d6c088194d9f922fb8318faf1f01186"
-dependencies = [
- "either",
-]
-
-[[package]]
-name = "itertools"
-version = "0.14.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2b192c782037fadd9cfa75548310488aabdbf3d2da73885b31bd0abd03351285"
 dependencies = [
  "either",
 ]

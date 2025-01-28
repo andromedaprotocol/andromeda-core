@@ -556,6 +556,188 @@ pub fn is_context_permissioned_strict(
     }
 }
 
+pub mod migrate {
+    use cosmwasm_schema::cw_serde;
+    use cw_storage_plus::Map;
+
+    use crate::common::expiration::Expiry;
+
+    use super::*;
+
+    /**
+     * To migrate from v1 to modern we need to be able to convert the old permission format to the new permission format.
+     * We have several wrappers around the raw permission format itself so we must be able to convert each of these to the new format.
+     * First we must be able to convert from the raw permission format to the modern raw permission format.
+     * Then we must be able to convert the old permission info format to the new permission info format.
+     */
+    #[cw_serde]
+    pub enum PermissionV1 {
+        Whitelisted(Option<Expiry>),
+        Limited {
+            expiration: Option<Expiry>,
+            uses: u32,
+        },
+        Blacklisted(Option<Expiry>),
+    }
+
+    #[cw_serde]
+    enum PermissionTypeV1 {
+        Local(PermissionV1),
+        Contract(AndrAddr),
+    }
+
+    #[cw_serde]
+    struct PermissionV1Info {
+        actor: String,
+        action: String,
+        permission: PermissionTypeV1,
+    }
+
+    /**
+     * Converts a v1 permission info to a modern permission info
+     */
+    impl TryFrom<PermissionV1Info> for PermissionInfo {
+        type Error = ContractError;
+
+        /// Converts a v1 permission to a modern permission
+        fn try_from(value: PermissionV1Info) -> Result<Self, Self::Error> {
+            let new_permission = match value.permission {
+                PermissionTypeV1::Local(permission) => {
+                    let new_permission = LocalPermission::try_from(permission)?;
+                    Permission::Local(new_permission)
+                }
+                PermissionTypeV1::Contract(contract) => Permission::Contract(contract),
+            };
+
+            Ok(PermissionInfo {
+                actor: value.actor,
+                action: value.action,
+                permission: new_permission,
+            })
+        }
+    }
+
+    /**
+     * Converts a v1 permission to a modern permission
+     */
+    impl TryFrom<PermissionV1> for LocalPermission {
+        type Error = ContractError;
+
+        /// Converts a v1 permission to a modern permission
+        fn try_from(value: PermissionV1) -> Result<Self, Self::Error> {
+            match value {
+                PermissionV1::Whitelisted(exp) => Ok(Self::whitelisted(None, exp)),
+                PermissionV1::Limited { expiration, uses } => {
+                    Ok(Self::limited(None, expiration, uses))
+                }
+                PermissionV1::Blacklisted(exp) => Ok(Self::blacklisted(None, exp)),
+            }
+        }
+    }
+
+    const PERMISSIONS_V1: Map<String, PermissionV1Info> = Map::new("andr_permissions");
+
+    pub fn migrate(storage: &mut dyn Storage) -> Result<(), ContractError> {
+        migrate_permissions_v1(storage)?;
+        Ok(())
+    }
+
+    /// Migrates permissions from the v1 format to the modern format
+    fn migrate_permissions_v1(storage: &mut dyn Storage) -> Result<(), ContractError> {
+        let old_permissions = PERMISSIONS_V1
+            .range(storage, None, None, Order::Ascending)
+            // We only care about permissions that match the v1 format
+            .filter_map(|p| p.ok())
+            .collect::<Vec<(String, PermissionV1Info)>>();
+        for (key, old_permission) in old_permissions {
+            // Map old permission format to new permission format
+            let new_permission = PermissionInfo::try_from(old_permission)?;
+            permissions().replace(storage, &key, Some(&new_permission), None)?;
+        }
+        Ok(())
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use cosmwasm_std::testing::mock_dependencies;
+
+        use super::*;
+
+        #[test]
+        pub fn test_migrate_permissions_v1() {
+            let mut deps = mock_dependencies();
+            // Validate each permission is migrated correctly
+            let old_permissions = vec![
+                PermissionV1Info {
+                    actor: "actor1".to_string(),
+                    action: "action".to_string(),
+                    permission: PermissionTypeV1::Local(PermissionV1::Whitelisted(None)),
+                },
+                PermissionV1Info {
+                    actor: "actor2".to_string(),
+                    action: "action".to_string(),
+                    permission: PermissionTypeV1::Local(PermissionV1::Limited {
+                        expiration: None,
+                        uses: 1,
+                    }),
+                },
+                PermissionV1Info {
+                    actor: "actor3".to_string(),
+                    action: "action".to_string(),
+                    permission: PermissionTypeV1::Local(PermissionV1::Blacklisted(None)),
+                },
+            ];
+
+            // Save old permissions
+            for permission in old_permissions.clone() {
+                PERMISSIONS_V1
+                    .save(deps.as_mut().storage, permission.actor.clone(), &permission)
+                    .unwrap();
+            }
+
+            // We also want to check that modern permissions are not migrated
+            let modern_permission = PermissionInfo {
+                actor: "actor4".to_string(),
+                action: "action".to_string(),
+                permission: Permission::Local(LocalPermission::Whitelisted {
+                    start: None,
+                    expiration: None,
+                }),
+            };
+            // Save modern permission
+            permissions()
+                .save(
+                    deps.as_mut().storage,
+                    modern_permission.actor.as_str(),
+                    &modern_permission,
+                )
+                .unwrap();
+
+            // Migrate permissions
+            migrate_permissions_v1(deps.as_mut().storage).unwrap();
+
+            // Check that the permissions have been migrated
+            for permission in old_permissions {
+                let migrated_permission = permissions()
+                    .load(deps.as_ref().storage, permission.actor.as_str())
+                    .unwrap();
+                assert_eq!(migrated_permission.action, permission.action);
+                assert_eq!(migrated_permission.actor, permission.actor);
+                assert_eq!(
+                    migrated_permission,
+                    PermissionInfo::try_from(permission).unwrap(),
+                );
+            }
+
+            // Check that modern permission is not affected
+            let post_modern_permission = permissions()
+                .load(deps.as_ref().storage, modern_permission.actor.as_str())
+                .unwrap();
+            assert_eq!(post_modern_permission, modern_permission);
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use cosmwasm_std::{

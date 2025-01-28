@@ -515,12 +515,12 @@ impl MockAndromedaQuerier {
             let key = split.last();
             if let Some(key) = key {
                 match key {
-                    "username_registration" => {
-                        SystemResult::Ok(ContractResult::Ok(to_json_binary(&!fake).unwrap()))
-                    }
-                    "andromeda_distribution" => {
-                        SystemResult::Ok(ContractResult::Ok(to_json_binary(&!fake).unwrap()))
-                    }
+                    "USERNAME_REGISTRATION" => SystemResult::Ok(ContractResult::Ok(
+                        to_json_binary(&(!fake).to_string()).unwrap(),
+                    )),
+                    "ANDROMEDA_DISTRIBUTION" => SystemResult::Ok(ContractResult::Ok(
+                        to_json_binary(&(!fake).to_string()).unwrap(),
+                    )),
                     _ => panic!("Invalid Kernel Address Key"),
                 }
             } else {
