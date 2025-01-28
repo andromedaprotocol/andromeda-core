@@ -1,7 +1,7 @@
 use crate::ibc::{get_counterparty_denom, PACKET_LIFETIME};
 use andromeda_std::ado_contract::ADOContract;
 use andromeda_std::amp::addresses::AndrAddr;
-use andromeda_std::amp::messages::{AMPCtx, AMPMsg, AMPPkt};
+use andromeda_std::amp::messages::{AMPCtx, AMPMsg, AMPPkt, Hop};
 use andromeda_std::amp::{ADO_DB_KEY, VFS_KEY};
 use andromeda_std::common::context::ExecuteContext;
 use andromeda_std::common::has_coins_merged;
@@ -14,7 +14,7 @@ use andromeda_std::os::kernel::{ChannelInfo, IbcExecuteMsg, Ics20PacketInfo, Int
 use andromeda_std::os::vfs::vfs_resolve_symlink;
 use cosmwasm_std::{
     attr, ensure, from_json, to_json_binary, Addr, BankMsg, Binary, Coin, ContractInfoResponse,
-    CosmosMsg, DepsMut, Env, IbcMsg, MessageInfo, QuerierWrapper, Response, StdAck, StdError,
+    CosmosMsg, Deps, DepsMut, Env, IbcMsg, MessageInfo, QuerierWrapper, Response, StdAck, StdError,
     SubMsg, WasmMsg,
 };
 
@@ -721,7 +721,7 @@ impl MsgHandler {
                     AMPMsg::new(recipient_addr.clone(), message.clone(), Some(funds.clone()))
                         .with_config(config.clone());
 
-                let new_packet = AMPPkt::new(origin, previous_sender, vec![amp_msg]);
+                let new_packet = AMPPkt::new(origin, previous_sender, vec![amp_msg], vec![]);
 
                 new_packet.to_sub_msg(
                     recipient_addr.clone(),
@@ -804,25 +804,27 @@ impl MsgHandler {
                 let origin = info.sender.clone();
                 let amp_msg = AMPMsg::new(recipient.clone().get_raw_path(), message.clone(), None);
                 Self::create_amp_packet(
-                    &deps.querier,
+                    deps.as_ref(),
                     &vfs_address,
                     &origin,
                     env.contract.address.clone(),
                     0,
                     vec![amp_msg],
                     None,
+                    vec![],
                 )
             },
             |ctx| {
                 let origin = Addr::unchecked(ctx.ctx.get_origin());
                 let mut amp_packet = Self::create_amp_packet(
-                    &deps.querier,
+                    deps.as_ref(),
                     &vfs_address,
                     &origin,
                     env.contract.address.clone(),
                     ctx.ctx.id,
                     ctx.messages.clone(),
                     ctx.ctx.get_origin_username(),
+                    ctx.previous_hops.clone(),
                 );
 
                 amp_packet.messages[0].recipient =
@@ -848,30 +850,38 @@ impl MsgHandler {
     }
 
     fn create_amp_packet(
-        querier: &QuerierWrapper,
+        deps: Deps,
         vfs_address: &Addr,
         origin: &Addr,
         contract_address: Addr,
         id: u64,
         messages: Vec<AMPMsg>,
         username: Option<AndrAddr>,
+        mut previous_hops: Vec<Hop>,
     ) -> AMPPkt {
+        // Add hop
+        previous_hops.push(Hop {
+            chain: CURR_CHAIN.load(deps.storage).unwrap(),
+            kernel_address: contract_address.to_string(),
+        });
+
         if username.is_none() {
-            let username_addr = AOSQuerier::get_username(querier, vfs_address, origin);
+            let username_addr = AOSQuerier::get_username(&deps.querier, vfs_address, origin);
             match username_addr {
                 Ok(Some(username)) if username != *origin => AMPPkt {
                     messages,
                     ctx: AMPCtx::new(
                         origin.clone(),
-                        contract_address,
+                        contract_address.clone(),
                         id,
                         Some(AndrAddr::from_string(username)),
                     ),
+                    previous_hops,
                 },
-                _ => AMPPkt::new(origin.clone(), contract_address, messages),
+                _ => AMPPkt::new(origin.clone(), contract_address, messages, previous_hops),
             }
         } else {
-            AMPPkt::new(origin.clone(), contract_address, messages)
+            AMPPkt::new(origin.clone(), contract_address, messages, previous_hops)
         }
     }
 
