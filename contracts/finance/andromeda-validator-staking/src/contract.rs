@@ -297,11 +297,13 @@ fn execute_claim(
 
     let kernel_addr = ADOContract::default().get_kernel_address(deps.storage)?;
 
-    let is_andromeda_distribution = AOSQuerier::get_env_variable::<bool>(
+    let is_andromeda_distribution = AOSQuerier::get_env_variable::<String>(
         &deps.querier,
         &kernel_addr,
         "andromeda_distribution",
     )?
+    .unwrap_or("false".to_string())
+    .parse::<bool>()
     .unwrap_or(false);
 
     let withdraw_msg: CosmosMsg = if is_andromeda_distribution {

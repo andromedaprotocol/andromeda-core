@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - fix: permission migration [(#792)](https://github.com/andromedaprotocol/andromeda-core/pull/792)
+- fix: IBC denom casing [(#795)](https://github.com/andromedaprotocol/andromeda-core/pull/795)
 
 ## Release 4
 
