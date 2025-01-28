@@ -200,11 +200,19 @@ fn test_query_current_ado_path() {
     let res = query_current_ado_path(deps.as_ref(), env.clone()).unwrap();
     assert_eq!(res, "mock_ado_1".to_string());
 
-    env.block.time = env.block.time.plus_seconds(6000);
+    env.block.time = env.block.time.plus_seconds(3600);
     let res = query_current_ado_path(deps.as_ref(), env.clone()).unwrap();
     assert_eq!(res, "mock_ado_2".to_string());
 
-    env.block.time = env.block.time.plus_seconds(3600 * 3);
+    env.block.time = env.block.time.plus_seconds(3600);
+    let res = query_current_ado_path(deps.as_ref(), env.clone()).unwrap();
+    assert_eq!(res, "mock_ado_3".to_string());
+
+    env.block.time = env.block.time.plus_seconds(3600);
+    let res = query_current_ado_path(deps.as_ref(), env.clone()).unwrap();
+    assert_eq!(res, "mock_ado_4".to_string());
+
+    env.block.time = env.block.time.plus_seconds(3600);
     let res = query_current_ado_path(deps.as_ref(), env.clone()).unwrap();
     assert_eq!(res, "mock_ado_5".to_string());
 
