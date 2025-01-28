@@ -2,7 +2,7 @@ use cosmwasm_std::{Addr, OverflowError, StdError};
 use cw20_base::ContractError as Cw20ContractError;
 use cw721_base::ContractError as Cw721ContractError;
 use cw_asset::AssetError;
-use cw_utils::{ParseReplyError, PaymentError, ThresholdError};
+pub use cw_utils::{ParseReplyError, PaymentError, ThresholdError};
 use hex::FromHexError;
 use std::convert::From;
 use std::str::{ParseBoolError, Utf8Error};
@@ -43,8 +43,8 @@ pub enum ContractError {
     #[error("UnpublishedVersion")]
     UnpublishedVersion {},
 
-    #[error("ContractLocked")]
-    ContractLocked {},
+    #[error("ContractLocked: {msg:?}")]
+    ContractLocked { msg: Option<String> },
 
     #[error("UnidentifiedMsgID")]
     UnidentifiedMsgID {},
@@ -60,6 +60,9 @@ pub enum ContractError {
 
     #[error("NoDenomInfoProvided")]
     NoDenomInfoProvided {},
+
+    #[error("Cannot assign cw20 rate to cross-chain recipient")]
+    InvalidCw20CrossChainRate {},
 
     #[error("InvalidAmount: {msg}")]
     InvalidAmount { msg: String },
@@ -749,6 +752,12 @@ pub enum ContractError {
 
     #[error("Invalid tier for {operation} operation: {msg} ")]
     InvalidTier { operation: String, msg: String },
+
+    #[error("Environment variable not found: {variable}")]
+    EnvironmentVariableNotFound { variable: String },
+
+    #[error("Invalid environment variable length: {msg}")]
+    InvalidEnvironmentVariable { msg: String },
 }
 
 impl ContractError {

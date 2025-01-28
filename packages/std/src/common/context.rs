@@ -1,4 +1,4 @@
-use crate::amp::messages::AMPPkt;
+use crate::{ado_contract::ADOContract, amp::messages::AMPPkt};
 use cosmwasm_std::{DepsMut, Env, MessageInfo};
 
 pub struct ExecuteContext<'a> {
@@ -6,16 +6,20 @@ pub struct ExecuteContext<'a> {
     pub info: MessageInfo,
     pub env: Env,
     pub amp_ctx: Option<AMPPkt>,
+    pub contract: ADOContract<'a>,
+    pub raw_info: MessageInfo,
 }
 
-impl<'a> ExecuteContext<'a> {
+impl ExecuteContext<'_> {
     #[inline]
     pub fn new(deps: DepsMut, info: MessageInfo, env: Env) -> ExecuteContext {
         ExecuteContext {
             deps,
-            info,
+            info: info.clone(),
             env,
             amp_ctx: None,
+            contract: ADOContract::default(),
+            raw_info: info,
         }
     }
 

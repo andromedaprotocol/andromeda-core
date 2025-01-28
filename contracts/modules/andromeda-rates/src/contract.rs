@@ -7,18 +7,17 @@ use andromeda_std::{
         InstantiateMsg as BaseInstantiateMsg, MigrateMsg,
     },
     ado_contract::ADOContract,
-    amp::Recipient,
+    andr_execute_fn,
     common::{context::ExecuteContext, deduct_funds, encode_binary, Funds},
     error::ContractError,
 };
 
 use cosmwasm_std::{
-    attr, coin, ensure, Binary, Coin, Deps, DepsMut, Env, Event, MessageInfo, Reply, Response,
-    StdError, SubMsg,
+    attr, coin, Binary, Coin, Deps, DepsMut, Env, Event, MessageInfo, Reply, Response, StdError,
+    SubMsg,
 };
 use cosmwasm_std::{entry_point, from_json};
 use cw20::Cw20Coin;
-use cw_utils::nonpayable;
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-rates";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -31,13 +30,7 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     let action = msg.action;
-    let mut rate = msg.rate;
-
-    if rate.recipients.is_empty() {
-        rate.recipients = vec![Recipient::new(info.sender.clone(), None)];
-    };
-
-    RATES.save(deps.storage, &action, &rate)?;
+    let rate = msg.rate;
 
     let inst_resp = ADOContract::default().instantiate(
         deps.storage,
@@ -53,27 +46,14 @@ pub fn instantiate(
         },
     )?;
 
+    let local_rate = rate.validate(deps.as_ref())?;
+    RATES.save(deps.storage, &action, &local_rate)?;
+
     Ok(inst_resp)
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn execute(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    msg: ExecuteMsg,
-) -> Result<Response, ContractError> {
-    let ctx = ExecuteContext::new(deps, info, env);
-
-    match msg {
-        ExecuteMsg::AMPReceive(pkt) => {
-            ADOContract::default().execute_amp_receive(ctx, pkt, handle_execute)
-        }
-        _ => handle_execute(ctx, msg),
-    }
-}
-
-pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+#[andr_execute_fn]
+pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::SetRate { action, rate } => execute_set_rate(ctx, action, rate),
         ExecuteMsg::RemoveRate { action } => execute_remove_rate(ctx, action),
@@ -84,22 +64,11 @@ pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
 fn execute_set_rate(
     ctx: ExecuteContext,
     action: String,
-    mut rate: LocalRate,
+    rate: LocalRate,
 ) -> Result<Response, ContractError> {
-    let ExecuteContext { deps, info, .. } = ctx;
-    nonpayable(&info)?;
+    let ExecuteContext { deps, .. } = ctx;
 
-    ensure!(
-        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {}
-    );
-    // Validate the local rate's value
-    rate.value.validate(deps.as_ref())?;
-
-    // Set the sender as the recipient in case no recipients were provided
-    if rate.recipients.is_empty() {
-        rate.recipients = vec![Recipient::new(info.sender, None)];
-    };
+    rate.validate(deps.as_ref())?;
 
     RATES.save(deps.storage, &action, &rate)?;
 
@@ -107,13 +76,8 @@ fn execute_set_rate(
 }
 
 fn execute_remove_rate(ctx: ExecuteContext, action: String) -> Result<Response, ContractError> {
-    let ExecuteContext { deps, info, .. } = ctx;
-    nonpayable(&info)?;
+    let ExecuteContext { deps, .. } = ctx;
 
-    ensure!(
-        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {}
-    );
     if RATES.has(deps.storage, &action) {
         RATES.remove(deps.storage, &action);
         Ok(Response::new().add_attributes(vec![attr("action", "remove_rates")]))
@@ -123,8 +87,8 @@ fn execute_remove_rate(ctx: ExecuteContext, action: String) -> Result<Response, 
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-    ADOContract::default().migrate(deps, CONTRACT_NAME, CONTRACT_VERSION)
+pub fn migrate(deps: DepsMut, env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    ADOContract::default().migrate(deps, env, CONTRACT_NAME, CONTRACT_VERSION)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -170,32 +134,38 @@ pub fn query_deducted_funds(
     }
     local_rate.value.validate(deps)?;
     let fee = calculate_fee(local_rate.value, &coin)?;
-    for receiver in local_rate.recipients.iter() {
-        if !local_rate.rate_type.is_additive() {
-            deduct_funds(&mut leftover_funds, &fee)?;
-            event = event.add_attribute("deducted", fee.to_string());
-        }
-        event = event.add_attribute(
-            "payment",
-            PaymentAttribute {
-                receiver: receiver.get_addr(),
-                amount: fee.clone(),
-            }
-            .to_string(),
-        );
-        let msg = if is_native {
-            receiver.generate_direct_msg(&deps, vec![fee.clone()])?
-        } else {
-            receiver.generate_msg_cw20(
-                &deps,
-                Cw20Coin {
-                    amount: fee.amount,
-                    address: fee.denom.to_string(),
-                },
-            )?
-        };
-        msgs.push(msg);
+
+    if !local_rate.rate_type.is_additive() {
+        deduct_funds(&mut leftover_funds, &fee)?;
+        event = event.add_attribute("deducted", fee.to_string());
     }
+    event = event.add_attribute(
+        "payment",
+        PaymentAttribute {
+            receiver: local_rate
+                .recipient
+                .address
+                .get_raw_address(&deps)?
+                .to_string(),
+            amount: fee.clone(),
+        }
+        .to_string(),
+    );
+    let msg = if is_native {
+        local_rate
+            .recipient
+            .generate_direct_msg(&deps, vec![fee.clone()])?
+    } else {
+        local_rate.recipient.generate_msg_cw20(
+            &deps,
+            Cw20Coin {
+                amount: fee.amount,
+                address: fee.denom.to_string(),
+            },
+        )?
+    };
+    msgs.push(msg);
+
     events.push(event);
 
     Ok(RatesResponse {

@@ -17,6 +17,7 @@ use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     ado_contract::ADOContract,
     amp::AndrAddr,
+    andr_execute_fn,
     common::{context::ExecuteContext, distribution::MsgWithdrawDelegatorReward, encode_binary},
     error::ContractError,
     os::aos_querier::AOSQuerier,
@@ -63,24 +64,8 @@ pub fn instantiate(
     Ok(inst_resp)
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn execute(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    msg: ExecuteMsg,
-) -> Result<Response, ContractError> {
-    let ctx = ExecuteContext::new(deps, info, env);
-
-    match msg {
-        ExecuteMsg::AMPReceive(pkt) => {
-            ADOContract::default().execute_amp_receive(ctx, pkt, handle_execute)
-        }
-        _ => handle_execute(ctx, msg),
-    }
-}
-
-pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+#[andr_execute_fn]
+pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::Stake { validator } => execute_stake(ctx, validator),
         ExecuteMsg::Unstake { validator, amount } => execute_unstake(ctx, validator, amount),
@@ -102,8 +87,8 @@ pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-    ADOContract::default().migrate(deps, CONTRACT_NAME, CONTRACT_VERSION)
+pub fn migrate(deps: DepsMut, env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    ADOContract::default().migrate(deps, env, CONTRACT_NAME, CONTRACT_VERSION)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -160,15 +145,7 @@ fn execute_redelegate(
     dst_validator: Addr,
     amount: Option<Uint128>,
 ) -> Result<Response, ContractError> {
-    let ExecuteContext {
-        deps, env, info, ..
-    } = ctx;
-
-    // Ensure sender is the contract owner
-    ensure!(
-        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {}
-    );
+    let ExecuteContext { deps, env, .. } = ctx;
 
     let src_validator = match src_validator {
         Some(addr) => {
@@ -231,12 +208,6 @@ fn execute_unstake(
     } = ctx;
 
     let delegator = env.contract.address;
-    // Ensure sender is the contract owner
-    ensure!(
-        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {}
-    );
-
     let default_validator = DEFAULT_VALIDATOR.load(deps.storage)?;
     let validator = validator.unwrap_or(default_validator);
 
@@ -325,9 +296,17 @@ fn execute_claim(
     );
 
     let kernel_addr = ADOContract::default().get_kernel_address(deps.storage)?;
-    let curr_chain = AOSQuerier::get_current_chain(&deps.querier, &kernel_addr)?;
 
-    let withdraw_msg: CosmosMsg = if curr_chain == "andromeda" {
+    let is_andromeda_distribution = AOSQuerier::get_env_variable::<String>(
+        &deps.querier,
+        &kernel_addr,
+        "andromeda_distribution",
+    )?
+    .unwrap_or("false".to_string())
+    .parse::<bool>()
+    .unwrap_or(false);
+
+    let withdraw_msg: CosmosMsg = if is_andromeda_distribution {
         MsgWithdrawDelegatorReward {
             delegator_address: delegator.to_string(),
             validator_address: validator.to_string(),
@@ -380,12 +359,6 @@ fn execute_withdraw_fund(
         deps, info, env, ..
     } = ctx;
 
-    // Ensure sender is the contract owner
-    ensure!(
-        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {}
-    );
-
     let recipient = recipient.map_or(Ok(info.sender), |r| r.get_raw_address(&deps.as_ref()))?;
     let funds = denom.map_or(
         deps.querier
@@ -426,12 +399,7 @@ fn execute_update_default_validator(
     ctx: ExecuteContext,
     validator: Addr,
 ) -> Result<Response, ContractError> {
-    let ExecuteContext { deps, info, .. } = ctx;
-
-    ensure!(
-        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {}
-    );
+    let ExecuteContext { deps, .. } = ctx;
 
     // Check if the validator is valid before setting to default validator
     is_validator(&deps, &validator)?;
@@ -527,15 +495,14 @@ fn on_restake_reward(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, Co
             RESTAKING_QUEUE.remove(deps.storage);
 
             let res = execute_stake(
-                ExecuteContext {
+                ExecuteContext::new(
                     deps,
-                    info: MessageInfo {
+                    MessageInfo {
                         sender: restaking_queue.delegator,
                         funds: restaking_queue.accumulated_rewards,
                     },
                     env,
-                    amp_ctx: None,
-                },
+                ),
                 Some(Addr::unchecked(restaking_queue.validator)),
             )?;
             Ok(res.add_attribute("action", "restake-reward"))

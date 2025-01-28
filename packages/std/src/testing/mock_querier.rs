@@ -468,6 +468,12 @@ impl MockAndromedaQuerier {
             ));
         }
 
+        if key_str.contains("address") {
+            return SystemResult::Ok(ContractResult::Ok(
+                to_json_binary(&Addr::unchecked("owner".to_string())).unwrap(),
+            ));
+        }
+
         panic!("Unsupported query for contract: {contract_addr}")
     }
 
@@ -504,6 +510,22 @@ impl MockAndromedaQuerier {
                 "andromeda".to_string()
             };
             SystemResult::Ok(ContractResult::Ok(to_json_binary(&res).unwrap()))
+        } else if key_str.contains("kernel_env_variables") {
+            let split = key_str.split("kernel_env_variables");
+            let key = split.last();
+            if let Some(key) = key {
+                match key {
+                    "USERNAME_REGISTRATION" => SystemResult::Ok(ContractResult::Ok(
+                        to_json_binary(&(!fake).to_string()).unwrap(),
+                    )),
+                    "ANDROMEDA_DISTRIBUTION" => SystemResult::Ok(ContractResult::Ok(
+                        to_json_binary(&(!fake).to_string()).unwrap(),
+                    )),
+                    _ => panic!("Invalid Kernel Address Key"),
+                }
+            } else {
+                panic!("Invalid Kernel Address Raw Query")
+            }
         } else if key_str.contains("channel") {
             SystemResult::Ok(ContractResult::Ok(
                 to_json_binary(&ChannelInfo {

@@ -6,7 +6,7 @@ use crate::os::kernel::ExecuteMsg as KernelExecuteMsg;
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
     to_json_binary, wasm_execute, Addr, Binary, Coin, ContractInfoResponse, CosmosMsg, Deps, Empty,
-    MessageInfo, QueryRequest, ReplyOn, SubMsg, WasmMsg, WasmQuery,
+    MessageInfo, QuerierWrapper, QueryRequest, ReplyOn, SubMsg, WasmMsg, WasmQuery,
 };
 
 use super::addresses::AndrAddr;
@@ -234,6 +234,11 @@ impl AMPCtx {
         self.origin.clone()
     }
 
+    /// Gets the username of the original sender
+    pub fn get_origin_username(&self) -> Option<AndrAddr> {
+        self.origin_username.clone()
+    }
+
     /// Gets the previous sender of a message
     pub fn get_previous_sender(&self) -> String {
         self.previous_sender.clone()
@@ -245,7 +250,6 @@ impl AMPCtx {
 /// It contains an original sender, if used for authorisation the sender must be authorised
 /// The previous sender is the one who sent the message
 /// A packet may contain several messages which allows for message batching
-
 pub struct AMPPkt {
     /// Any messages associated with the packet
     pub messages: Vec<AMPMsg>,
@@ -263,6 +267,55 @@ impl AMPPkt {
             messages,
             ctx: AMPCtx::new(origin, previous_sender, 0, None),
         }
+    }
+
+    /// Creates a new AMP Packet
+    pub fn new_with_username(
+        origin: impl Into<String>,
+        previous_sender: impl Into<String>,
+        messages: Vec<AMPMsg>,
+        username: Option<AndrAddr>,
+        id: Option<u64>,
+    ) -> AMPPkt {
+        AMPPkt {
+            messages,
+            ctx: AMPCtx::new(origin, previous_sender, id.unwrap_or(0), username),
+        }
+    }
+
+    /// Creates a new AMPPkt with an optional username, it tries to find the username of the origin and if it exists and is not the same as the origin, it will set the username in the context.
+    pub fn update_optional_username(
+        querier: &QuerierWrapper,
+        vfs_address: &Addr,
+        origin: &Addr,
+        contract_address: Addr,
+        id: Option<u64>,
+        messages: Vec<AMPMsg>,
+        username: Option<AndrAddr>,
+    ) -> AMPPkt {
+        if username.is_none() {
+            let username_addr = AOSQuerier::get_username(querier, vfs_address, origin);
+            match username_addr {
+                Ok(Some(username)) if username != *origin => AMPPkt::new_with_username(
+                    origin.clone(),
+                    contract_address,
+                    messages,
+                    Some(AndrAddr::from_string(username)),
+                    id,
+                ),
+                _ => {
+                    AMPPkt::new_with_username(origin.clone(), contract_address, messages, None, id)
+                }
+            }
+        } else {
+            AMPPkt::new_with_username(origin.clone(), contract_address, messages, username, id)
+        }
+    }
+
+    pub fn with_origin(&self, origin: impl Into<String>) -> AMPPkt {
+        let mut pkt = self.clone();
+        pkt.ctx.origin = origin.into();
+        pkt
     }
 
     /// Adds a message to the current AMP Packet
@@ -340,7 +393,6 @@ impl AMPPkt {
     }
 
     /// Generates a SubMsg to send the AMPPkt to the kernel
-
     pub fn to_sub_msg(
         &self,
         address: impl Into<String>,

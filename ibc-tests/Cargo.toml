@@ -13,10 +13,10 @@ name = "crowdfund"
 
 [dependencies]
 serde.workspace = true
-tokio = "1.42.0"
+tokio = "1.43.0"
 cw-orch = { workspace = true }
 cw-orch-daemon = "0.24.2"
-rstest = "0.23.0"
+rstest = { workspace = true }
 
 andromeda-testing-e2e = { workspace = true }
 
@@ -50,8 +50,5 @@ andromeda-app = { workspace = true }
 andromeda-fungible-tokens = { workspace = true }
 andromeda-non-fungible-tokens = { workspace = true }
 cosmwasm-std = { workspace = true, features = ["staking"] }
-cosmrs = "0.21.0"
-prost-types = "0.13.4"
 cw20.workspace = true
 cw721.workspace = true
-

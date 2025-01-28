@@ -38,7 +38,7 @@ pub struct BatchIndexes<'a> {
     pub claim_time: MultiIndex<'a, (u8, u64), Batch, u64>,
 }
 
-impl<'a> IndexList<Batch> for BatchIndexes<'a> {
+impl IndexList<Batch> for BatchIndexes<'_> {
     fn get_indexes(&'_ self) -> Box<dyn Iterator<Item = &'_ dyn Index<Batch>> + '_> {
         let v: Vec<&dyn Index<Batch>> = vec![&self.claim_time];
         Box::new(v.into_iter())

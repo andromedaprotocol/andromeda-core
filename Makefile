@@ -1,4 +1,4 @@
-.PHONY: version-map schemas build-contract build-category build-all unit-test integration-test test
+.PHONY: version-map schemas build-contract build-category build-all unit-test integration-test test lint
 
 # Generates a mapping between each contract and its version
 version-map:
@@ -49,13 +49,13 @@ unit-test:
 	@echo "Unit tests complete! \033[0;32m\xE2\x9C\x94\033[0m"
 
 # Runs integration tests
-integration-test:
+e2e-test:
 	@echo "Running integration tests..."
-	@cargo test -p tests-integration --quiet
+	@cargo test -p e2e-tests --quiet
 	@echo "Integration tests complete! \033[0;32m\xE2\x9C\x94\033[0m"
 
 # Runs all tests
-test: unit-test integration-test
+test: unit-test e2e-test
 	@echo "All tests complete! \033[0;32m\xE2\x9C\x94\033[0m"
 
 # Deploys OS to specified blockchain
@@ -71,3 +71,8 @@ deploy: build version-map
 	@test -n "$$TEST_MNEMONIC" || (echo "Error: TEST_MNEMONIC is required" && exit 1)
 	@RUST_LOG=info cargo run --package andromeda-deploy
 	@echo "OS deployed! \033[0;32m\xE2\x9C\x94\033[0m"
+
+# Runs lint checks
+lint:
+	cargo fmt --all
+	cargo clippy --workspace -- -D warnings

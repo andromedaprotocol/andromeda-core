@@ -14,7 +14,9 @@ pub enum ExecuteMsg {
     SetValue {
         value: StringStorage,
     },
+    #[attrs(nonpayable)]
     DeleteValue {},
+    #[attrs(nonpayable, restricted)]
     UpdateRestriction {
         restriction: StringStorageRestriction,
     },
@@ -97,7 +99,7 @@ mod tests {
 
     #[test]
     fn test_from_string() {
-        let cases = vec![(
+        let cases = [(
             StringStorage::String("String".to_string()),
             "String".to_string(),
         )];

@@ -25,6 +25,7 @@ pub struct InstantiateMsg {
 #[cw_serde]
 pub enum ExecuteMsg {
     ReceiveNft(Cw721ReceiveMsg),
+    #[attrs(nonpayable)]
     Receive(Cw20ReceiveMsg),
     /// Transfers NFT to buyer and sends funds to seller
     Buy {
@@ -32,6 +33,7 @@ pub enum ExecuteMsg {
         token_address: String,
     },
     /// Updates the sale's price, demomination, and whitelist
+    #[attrs(nonpayable)]
     UpdateSale {
         token_id: String,
         token_address: String,
@@ -39,6 +41,7 @@ pub enum ExecuteMsg {
         coin_denom: Asset,
         recipient: Option<Recipient>,
     },
+    #[attrs(nonpayable)]
     CancelSale {
         token_id: String,
         token_address: String,

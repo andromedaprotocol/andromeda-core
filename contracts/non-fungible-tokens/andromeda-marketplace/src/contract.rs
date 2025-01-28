@@ -11,8 +11,8 @@ use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     ado_contract::ADOContract,
     amp::Recipient,
+    andr_execute_fn,
     common::{
-        actions::call_action,
         context::ExecuteContext,
         denom::{
             authorize_addresses, execute_authorize_contract, execute_deauthorize_contract, Asset,
@@ -37,7 +37,7 @@ use cosmwasm_std::{
     WasmQuery,
 };
 
-use cw_utils::{nonpayable, Expiration};
+use cw_utils::Expiration;
 
 const CONTRACT_NAME: &str = "crates.io:andromeda-marketplace";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -75,35 +75,10 @@ pub fn instantiate(
     Ok(inst_resp)
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn execute(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    msg: ExecuteMsg,
-) -> Result<Response, ContractError> {
-    let ctx = ExecuteContext::new(deps, info, env);
-
-    match msg {
-        ExecuteMsg::AMPReceive(pkt) => {
-            ADOContract::default().execute_amp_receive(ctx, pkt, handle_execute)
-        }
-        _ => handle_execute(ctx, msg),
-    }
-}
-
-pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+#[andr_execute_fn]
+pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     let action = msg.as_ref().to_string();
-
-    let action_response = call_action(
-        &mut ctx.deps,
-        &ctx.info,
-        &ctx.env,
-        &ctx.amp_ctx,
-        msg.as_ref(),
-    )?;
-
-    let res = match msg {
+    match msg {
         ExecuteMsg::ReceiveNft(msg) => handle_receive_cw721(ctx, msg),
         ExecuteMsg::Receive(msg) => handle_receive_cw20(ctx, msg),
         ExecuteMsg::UpdateSale {
@@ -132,11 +107,7 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
         }
 
         _ => ADOContract::default().execute(ctx, msg),
-    }?;
-    Ok(res
-        .add_submessages(action_response.messages)
-        .add_attributes(action_response.attributes)
-        .add_events(action_response.events))
+    }
 }
 
 fn handle_receive_cw721(
@@ -183,7 +154,6 @@ pub fn handle_receive_cw20(
         ctx.info.sender.clone(),
     )?;
     let ExecuteContext { ref info, .. } = ctx;
-    nonpayable(info)?;
 
     let asset_sent = info.sender.clone();
     let amount_sent = receive_msg.amount;
@@ -296,7 +266,6 @@ fn execute_update_sale(
         ..
     } = ctx;
     let (coin_denom, uses_cw20) = coin_denom.get_verified_asset(deps.branch(), env)?;
-    nonpayable(&info)?;
 
     let mut token_sale_state =
         get_existing_token_sale_state(deps.storage, &token_id, &token_address)?;
@@ -311,7 +280,7 @@ fn execute_update_sale(
     ensure!(price > Uint128::zero(), ContractError::InvalidZeroAmount {});
 
     token_sale_state.price = price;
-    token_sale_state.coin_denom = coin_denom.clone();
+    token_sale_state.coin_denom.clone_from(&coin_denom);
     token_sale_state.uses_cw20 = uses_cw20;
     token_sale_state.recipient = recipient;
     TOKEN_SALE_STATE.save(
@@ -611,7 +580,6 @@ fn execute_cancel(
     token_address: String,
 ) -> Result<Response, ContractError> {
     let ExecuteContext { deps, info, .. } = ctx;
-    nonpayable(&info)?;
 
     let mut token_sale_state =
         get_existing_token_sale_state(deps.storage, &token_id, &token_address)?;
@@ -779,8 +747,8 @@ fn get_and_increment_next_sale_id(
     let mut sale_info = sale_infos().load(storage, &key).unwrap_or_default();
     sale_info.push(next_sale_id);
     if sale_info.token_address.is_empty() {
-        sale_info.token_address = token_address.to_owned();
-        sale_info.token_id = token_id.to_owned();
+        token_address.clone_into(&mut sale_info.token_address);
+        token_id.clone_into(&mut sale_info.token_id);
     }
     sale_infos().save(storage, &key, &sale_info)?;
     Ok(next_sale_id)
@@ -900,8 +868,8 @@ fn query_authorized_addresses(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-    ADOContract::default().migrate(deps, CONTRACT_NAME, CONTRACT_VERSION)
+pub fn migrate(deps: DepsMut, env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    ADOContract::default().migrate(deps, env, CONTRACT_NAME, CONTRACT_VERSION)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

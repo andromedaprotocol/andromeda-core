@@ -75,8 +75,10 @@ pub struct InstantiateMsg {
 #[cw_serde]
 pub enum ExecuteMsg {
     /// Update the thresholds. Only executable by the contract owner when the contract is not locked.
+    #[attrs(restricted, nonpayable, direct)]
     UpdateThresholds { thresholds: Vec<Threshold> },
     /// Used to lock/unlock the contract allowing the config to be updated.
+    #[attrs(restricted, nonpayable, direct)]
     UpdateLock { lock_time: Expiry },
     /// Divides any attached funds to the message amongst the recipients list.
     Send {},
@@ -159,6 +161,7 @@ mod tests {
     use super::*;
     use andromeda_std::amp::{AndrAddr, Recipient};
     use cosmwasm_std::testing::mock_dependencies;
+    use rstest::rstest;
 
     struct TestThresholdValidation {
         name: &'static str,
@@ -308,6 +311,125 @@ mod tests {
                 continue;
             } else {
                 assert!(res.is_ok())
+            }
+        }
+    }
+
+    #[rstest]
+    #[case(
+        // Single threshold, amount matches
+        vec![Threshold::new(
+            Uint128::new(100),
+            vec![AddressPercent::new(
+                Recipient::new(AndrAddr::from_string("recipient"), None),
+                Decimal::one(),
+            )],
+        )],
+        Uint128::new(100),
+        Ok(0) // Expected to match threshold at index 0
+    )]
+    #[case(
+        // Single threshold, amount exceeds
+        vec![Threshold::new(
+            Uint128::new(100),
+            vec![AddressPercent::new(
+                Recipient::new(AndrAddr::from_string("recipient"), None),
+                Decimal::one(),
+            )],
+        )],
+        Uint128::new(150),
+        Ok(0)
+    )]
+    #[case(
+        // Single threshold, amount too low
+        vec![Threshold::new(
+            Uint128::new(100),
+            vec![AddressPercent::new(
+                Recipient::new(AndrAddr::from_string("recipient"), None),
+                Decimal::one(),
+            )],
+        )],
+        Uint128::new(50),
+        Err(ContractError::InvalidAmount {
+            msg: "The amount sent does not meet any threshold".to_string(),
+        })
+    )]
+    #[case(
+        // Multiple thresholds, should match highest applicable
+        vec![
+            Threshold::new(
+                Uint128::new(100),
+                vec![AddressPercent::new(
+                    Recipient::new(AndrAddr::from_string("recipient1"), None),
+                    Decimal::one(),
+                )],
+            ),
+            Threshold::new(
+                Uint128::new(200),
+                vec![AddressPercent::new(
+                    Recipient::new(AndrAddr::from_string("recipient2"), None),
+                    Decimal::one(),
+                )],
+            ),
+        ],
+        Uint128::new(250),
+        Ok(1) // Should match the 200 threshold (index 1 in original array)
+    )]
+    #[case(
+        // Multiple thresholds, amount between thresholds
+        vec![
+            Threshold::new(
+                Uint128::new(100),
+                vec![AddressPercent::new(
+                    Recipient::new(AndrAddr::from_string("recipient1"), None),
+                    Decimal::one(),
+                )],
+            ),
+            Threshold::new(
+                Uint128::new(200),
+                vec![AddressPercent::new(
+                    Recipient::new(AndrAddr::from_string("recipient2"), None),
+                    Decimal::one(),
+                )],
+            ),
+        ],
+        Uint128::new(150),
+        Ok(0) // Should match the 100 threshold (index 0) since 150 > 100 but < 200
+    )]
+    #[case(
+        // Multiple thresholds, amount between thresholds
+        vec![
+            Threshold::new(
+                Uint128::new(10),
+                vec![AddressPercent::new(
+                    Recipient::new(AndrAddr::from_string("recipient1"), None),
+                    Decimal::one(),
+                )],
+            ),
+            Threshold::new(
+                Uint128::new(5),
+                vec![AddressPercent::new(
+                    Recipient::new(AndrAddr::from_string("recipient2"), None),
+                    Decimal::one(),
+                )],
+            ),
+        ],
+        Uint128::new(6),
+        Ok(1) // Should match the 100 threshold (index 0) since 150 > 100 but < 200
+    )]
+    fn test_get_threshold(
+        #[case] thresholds: Vec<Threshold>,
+        #[case] amount: Uint128,
+        #[case] expected: Result<usize, ContractError>,
+    ) {
+        let result = get_threshold(&thresholds, amount);
+
+        match expected {
+            Ok(expected_index) => {
+                assert_eq!(result.unwrap().min, thresholds[expected_index].min);
+            }
+            Err(expected_error) => {
+                assert_eq!(result.unwrap_err(), expected_error);
             }
         }
     }

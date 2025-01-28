@@ -1,24 +1,32 @@
 use crate::{
-    contract::{execute, instantiate},
+    contract::{execute, instantiate, query},
     ibc::PACKET_LIFETIME,
-    state::{ADO_OWNER, CHAIN_TO_CHANNEL, CHANNEL_TO_CHAIN, CURR_CHAIN, KERNEL_ADDRESSES},
+    state::{
+        ADO_OWNER, CHAIN_TO_CHANNEL, CHANNEL_TO_CHAIN, CHANNEL_TO_EXECUTE_MSG, CURR_CHAIN,
+        ENV_VARIABLES, KERNEL_ADDRESSES,
+    },
 };
 use andromeda_std::{
     amp::{
         messages::{AMPMsg, AMPPkt},
-        ADO_DB_KEY, VFS_KEY,
+        AndrAddr, ADO_DB_KEY, VFS_KEY,
     },
     error::ContractError,
-    os::kernel::{ChannelInfo, ExecuteMsg, IbcExecuteMsg, InstantiateMsg, InternalMsg},
+    os::kernel::{
+        ChannelInfo, ExecuteMsg, IbcExecuteMsg, Ics20PacketInfo, InstantiateMsg, InternalMsg,
+        PendingPacketResponse, QueryMsg,
+    },
     testing::mock_querier::{
         mock_dependencies_custom, MOCK_ADODB_CONTRACT, MOCK_FAKE_KERNEL_CONTRACT,
         MOCK_KERNEL_CONTRACT, MOCK_VFS_CONTRACT,
     },
 };
 use cosmwasm_std::{
-    testing::{mock_dependencies, mock_env, mock_info},
-    to_json_binary, Addr, Binary, CosmosMsg, IbcMsg,
+    coin, from_json,
+    testing::{mock_dependencies, mock_env, mock_info, MockApi, MockQuerier, MockStorage},
+    to_json_binary, Addr, Binary, CosmosMsg, Env, IbcMsg, OwnedDeps,
 };
+use rstest::*;
 
 #[test]
 fn proper_initialization() {
@@ -389,4 +397,207 @@ fn test_handle_ibc_direct() {
     let res = execute(deps.as_mut(), env, info, msg);
     // * message fails even though it is a non-default binary message
     assert!(res.is_ok());
+}
+
+const CREATOR: &str = "creator";
+const REALLY_LONG_VALUE: &str = "reallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallylongvalue";
+
+fn invalid_env_variable(msg: &str) -> ContractError {
+    ContractError::InvalidEnvironmentVariable {
+        msg: msg.to_string(),
+    }
+}
+
+#[rstest]
+#[case::valid("test_var", Some("test_value"), CREATOR, None, None)]
+#[case::not_found("test_var", None, CREATOR, None, Some(ContractError::EnvironmentVariableNotFound { variable: "test_var".to_string() }))]
+#[case::unauthorized("test_var", Some("test_value"), "attacker", Some(ContractError::Unauthorized {}), None)]
+#[case::long_value(
+    "test_var",
+    Some(REALLY_LONG_VALUE),
+    CREATOR,
+    Some(invalid_env_variable(
+        "Environment variable value length exceeds the maximum allowed length of 100 characters"
+    )),
+    None
+)]
+#[case::long_name(
+    REALLY_LONG_VALUE,
+    Some("test_val"),
+    CREATOR,
+    Some(invalid_env_variable(
+        "Environment variable name length exceeds the maximum allowed length of 100 characters"
+    )),
+    None
+)]
+#[case::empty_name(
+    "",
+    Some("test_value"),
+    CREATOR,
+    Some(invalid_env_variable("Environment variable name cannot be empty")),
+    None
+)]
+#[case::empty_value(
+    "test_var",
+    Some(""),
+    CREATOR,
+    Some(invalid_env_variable("Environment variable value cannot be empty")),
+    None
+)]
+#[case::nonalphanumeric(
+    "test-var",
+    Some("test_value"),
+    CREATOR,
+    Some(invalid_env_variable(
+        "Environment variable name can only contain alphanumeric characters and underscores"
+    )),
+    None
+)]
+fn test_set_unset_env(
+    #[case] variable: &str,
+    #[case] value: Option<&str>,
+    #[case] sender: &str,
+    #[case] expected_set_error: Option<ContractError>,
+    #[case] expected_unset_error: Option<ContractError>,
+) {
+    let mut deps = mock_dependencies_custom(&[]);
+    let info = mock_info(CREATOR, &[]);
+    let env = mock_env();
+    instantiate(
+        deps.as_mut(),
+        env.clone(),
+        info.clone(),
+        InstantiateMsg {
+            owner: None,
+            chain_name: "test".to_string(),
+        },
+    )
+    .unwrap();
+    let send_info = mock_info(sender, &[]);
+
+    if let Some(value) = value {
+        // Set environment variable
+        let set_env_msg = ExecuteMsg::SetEnv {
+            variable: variable.to_string(),
+            value: value.to_string(),
+        };
+        let res = execute(deps.as_mut(), env.clone(), send_info.clone(), set_env_msg);
+        if let Some(expected_error) = expected_set_error {
+            assert_eq!(res.unwrap_err(), expected_error);
+            return;
+        } else {
+            assert_eq!(res.unwrap().attributes[0].value, "set_env");
+        }
+
+        // Check if the variable is set
+        let stored_value = ENV_VARIABLES
+            .load(&deps.storage, &variable.to_ascii_uppercase())
+            .unwrap();
+        assert_eq!(stored_value, value);
+    }
+
+    // Unset environment variable
+    let unset_env_msg = ExecuteMsg::UnsetEnv {
+        variable: variable.to_string(),
+    };
+    let res = execute(deps.as_mut(), env, send_info, unset_env_msg);
+    if let Some(expected_error) = expected_unset_error {
+        assert_eq!(res.unwrap_err(), expected_error);
+        return;
+    } else {
+        assert_eq!(res.unwrap().attributes[0].value, "unset_env");
+    }
+
+    // Check if the variable is unset
+    let stored_value = ENV_VARIABLES
+        .may_load(&deps.storage, &variable.to_ascii_uppercase())
+        .unwrap();
+    assert!(stored_value.is_none());
+}
+
+#[fixture]
+fn setup_pending_packets() -> (OwnedDeps<MockStorage, MockApi, MockQuerier>, Env) {
+    let mut deps = mock_dependencies();
+    let env = mock_env();
+    let info = mock_info("sender", &[]);
+
+    // Instantiate contract
+    instantiate(
+        deps.as_mut(),
+        env.clone(),
+        info,
+        InstantiateMsg {
+            owner: None,
+            chain_name: "andromeda".to_string(),
+        },
+    )
+    .unwrap();
+    // Set up channel info for both channels
+    let channel_info = ChannelInfo {
+        kernel_address: MOCK_FAKE_KERNEL_CONTRACT.to_string(),
+        ics20_channel_id: Some("channel-1".to_string()),
+        direct_channel_id: Some("channel-2".to_string()),
+        supported_modules: vec![],
+    };
+    CHAIN_TO_CHANNEL
+        .save(deps.as_mut().storage, "andromeda", &channel_info)
+        .unwrap();
+
+    (deps, env)
+}
+
+#[rstest]
+#[case(None, 3)] // Query all channels
+#[case(Some("channel-1".to_string()), 2)] // Query channel-1 only
+#[case(Some("channel-2".to_string()), 1)] // Query channel-2 only
+fn test_query_pending_packets(
+    setup_pending_packets: (OwnedDeps<MockStorage, MockApi, MockQuerier>, Env),
+    #[case] channel_id: Option<String>,
+    #[case] expected_count: usize,
+) {
+    let (mut deps, env) = setup_pending_packets;
+
+    // Save multiple pending packets across different channels
+    let packets = vec![
+        ("channel-1", 1, "recipient1", 100),
+        ("channel-1", 2, "recipient2", 200),
+        ("channel-2", 1, "recipient3", 300),
+    ];
+
+    for (channel, sequence, recipient, amount) in packets {
+        let packet_info = Ics20PacketInfo {
+            sender: "sender".to_string(),
+            recipient: AndrAddr::from_string(recipient),
+            message: to_json_binary(&"test message").unwrap(),
+            funds: coin(amount, "ucosm"),
+            channel: channel.to_string(),
+        };
+        CHANNEL_TO_EXECUTE_MSG
+            .save(
+                deps.as_mut().storage,
+                (channel.to_string(), sequence),
+                &packet_info,
+            )
+            .unwrap();
+    }
+
+    // Query pending packets
+    let res = query(
+        deps.as_ref(),
+        env,
+        QueryMsg::PendingPackets {
+            channel_id: channel_id.clone(),
+        },
+    )
+    .unwrap();
+
+    let pending_packets: PendingPacketResponse = from_json(res).unwrap();
+    assert_eq!(pending_packets.packets.len(), expected_count);
+
+    // Verify packets are from the correct channel if channel_id is specified
+    if let Some(channel) = channel_id {
+        for packet in pending_packets.packets {
+            assert_eq!(packet.packet_info.channel, channel);
+        }
+    }
 }

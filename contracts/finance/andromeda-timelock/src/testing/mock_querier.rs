@@ -19,7 +19,7 @@ pub fn mock_dependencies_custom(
     let custom_querier: WasmMockQuerier =
         WasmMockQuerier::new(MockQuerier::new(&[(MOCK_CONTRACT_ADDR, contract_balance)]));
     let storage = MockStorage::default();
-    let mut deps = OwnedDeps {
+    let mut deps: OwnedDeps<cosmwasm_std::MemoryStorage, MockApi, WasmMockQuerier> = OwnedDeps {
         storage,
         api: MockApi::default(),
         querier: custom_querier,
@@ -44,6 +44,7 @@ pub fn mock_dependencies_custom(
     deps
 }
 
+#[allow(dead_code)]
 pub struct WasmMockQuerier {
     pub base: MockQuerier,
     pub contract_address: String,

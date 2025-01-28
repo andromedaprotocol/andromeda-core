@@ -1,7 +1,9 @@
+use andromeda_std::andr_execute_fn;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError, Storage};
 
+use crate::state::{DEFAULT_KEY, KEY_OWNER, MATRIX};
 use andromeda_math::matrix::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use andromeda_math::matrix::{GetMatrixResponse, Matrix};
 use andromeda_std::{
@@ -11,13 +13,9 @@ use andromeda_std::{
     },
     ado_contract::ADOContract,
     amp::AndrAddr,
-    common::{actions::call_action, context::ExecuteContext, encode_binary},
+    common::{context::ExecuteContext, encode_binary},
     error::ContractError,
 };
-
-use cw_utils::nonpayable;
-
-use crate::state::{DEFAULT_KEY, KEY_OWNER, MATRIX};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-matrix";
@@ -49,8 +47,8 @@ pub fn instantiate(
 
     if let Some(authorized_operator_addresses) = msg.authorized_operator_addresses {
         if !authorized_operator_addresses.is_empty() {
-            ADOContract::default().permission_action(STORE_MATRIX_ACTION, deps.storage)?;
-            ADOContract::default().permission_action(DELETE_MATRIX_ACTION, deps.storage)?;
+            ADOContract::default().permission_action(deps.storage, STORE_MATRIX_ACTION)?;
+            ADOContract::default().permission_action(deps.storage, DELETE_MATRIX_ACTION)?;
         }
 
         for address in authorized_operator_addresses {
@@ -59,13 +57,13 @@ pub fn instantiate(
                 deps.storage,
                 STORE_MATRIX_ACTION,
                 addr.clone(),
-                Permission::Local(LocalPermission::Whitelisted(None)),
+                Permission::Local(LocalPermission::whitelisted(None, None)),
             )?;
             ADOContract::set_permission(
                 deps.storage,
                 DELETE_MATRIX_ACTION,
                 addr.clone(),
-                Permission::Local(LocalPermission::Whitelisted(None)),
+                Permission::Local(LocalPermission::whitelisted(None, None)),
             )?;
         }
     }
@@ -73,19 +71,12 @@ pub fn instantiate(
     Ok(resp)
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn execute(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    msg: ExecuteMsg,
-) -> Result<Response, ContractError> {
-    let ctx = ExecuteContext::new(deps, info, env);
-    match msg {
-        ExecuteMsg::AMPReceive(pkt) => {
-            ADOContract::default().execute_amp_receive(ctx, pkt, handle_execute)
-        }
-        _ => handle_execute(ctx, msg),
+#[andr_execute_fn]
+pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+    match msg.clone() {
+        ExecuteMsg::StoreMatrix { key, data } => store_matrix(ctx, key, data),
+        ExecuteMsg::DeleteMatrix { key } => delete_matrix(ctx, key),
+        _ => ADOContract::default().execute(ctx, msg),
     }
 }
 
@@ -100,39 +91,16 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-    ADOContract::default().migrate(deps, CONTRACT_NAME, CONTRACT_VERSION)
-}
-
-pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
-    let action_response = call_action(
-        &mut ctx.deps,
-        &ctx.info,
-        &ctx.env,
-        &ctx.amp_ctx,
-        msg.as_ref(),
-    )?;
-
-    let res = match msg.clone() {
-        ExecuteMsg::StoreMatrix { key, data } => store_matrix(ctx, key, data),
-        ExecuteMsg::DeleteMatrix { key } => delete_matrix(ctx, key),
-        _ => ADOContract::default().execute(ctx, msg),
-    }?;
-
-    Ok(res
-        .add_submessages(action_response.messages)
-        .add_attributes(action_response.attributes)
-        .add_events(action_response.events))
+pub fn migrate(deps: DepsMut, env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    ADOContract::default().migrate(deps, env, CONTRACT_NAME, CONTRACT_VERSION)
 }
 
 /// ============================== Execution Functions ============================== ///
-
 pub fn store_matrix(
     mut ctx: ExecuteContext,
     key: Option<String>,
     data: Matrix,
 ) -> Result<Response, ContractError> {
-    nonpayable(&ctx.info)?;
     let sender = ctx.info.sender.clone();
 
     ADOContract::default().is_permissioned(
@@ -170,7 +138,6 @@ pub fn delete_matrix(
     mut ctx: ExecuteContext,
     key: Option<String>,
 ) -> Result<Response, ContractError> {
-    nonpayable(&ctx.info)?;
     let sender = ctx.info.sender;
 
     ADOContract::default().is_permissioned(

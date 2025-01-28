@@ -12,8 +12,8 @@ use andromeda_std::{
         InstantiateMsg as BaseInstantiateMsg, MigrateMsg,
     },
     amp::Recipient,
+    andr_execute_fn,
     common::{
-        actions::call_action,
         denom::{
             authorize_addresses, execute_authorize_contract, execute_deauthorize_contract,
             validate_native_denom, Asset, AuthorizedAddressesResponse, PermissionAction,
@@ -34,7 +34,6 @@ use cosmwasm_std::{
 };
 use cw20::{Cw20Coin, Cw20ExecuteMsg, Cw20ReceiveMsg};
 use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, Cw721ReceiveMsg, OwnerOfResponse};
-use cw_utils::nonpayable;
 
 const CONTRACT_NAME: &str = "crates.io:andromeda-auction";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -75,35 +74,10 @@ pub fn instantiate(
     Ok(resp)
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn execute(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    msg: ExecuteMsg,
-) -> Result<Response, ContractError> {
-    let ctx = ExecuteContext::new(deps, info, env);
-
-    match msg {
-        ExecuteMsg::AMPReceive(pkt) => {
-            ADOContract::default().execute_amp_receive(ctx, pkt, handle_execute)
-        }
-        _ => handle_execute(ctx, msg),
-    }
-}
-
-pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+#[andr_execute_fn]
+pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     let action = msg.as_ref().to_string();
-
-    let action_response = call_action(
-        &mut ctx.deps,
-        &ctx.info,
-        &ctx.env,
-        &ctx.amp_ctx,
-        msg.as_ref(),
-    )?;
-
-    let res = match msg {
+    match msg {
         ExecuteMsg::ReceiveNft(msg) => handle_receive_cw721(ctx, msg),
         ExecuteMsg::Receive(msg) => handle_receive_cw20(ctx, msg),
         ExecuteMsg::UpdateAuction {
@@ -115,6 +89,7 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
             whitelist,
             min_bid,
             min_raise,
+            buy_now_price,
             recipient,
         } => execute_update_auction(
             ctx,
@@ -126,6 +101,7 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
             whitelist,
             min_bid,
             min_raise,
+            buy_now_price,
             recipient,
         ),
         ExecuteMsg::PlaceBid {
@@ -153,11 +129,7 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
             execute_deauthorize_contract(ctx.deps, ctx.info, action, addr)
         }
         _ => ADOContract::default().execute(ctx, msg),
-    }?;
-    Ok(res
-        .add_submessages(action_response.messages)
-        .add_attributes(action_response.attributes)
-        .add_events(action_response.events))
+    }
 }
 
 fn handle_receive_cw721(
@@ -217,7 +189,6 @@ pub fn handle_receive_cw20(
     );
 
     let ExecuteContext { ref info, .. } = ctx;
-    nonpayable(info)?;
 
     let asset_sent = info.sender.clone().into_string();
     let amount_sent = receive_msg.amount;
@@ -306,14 +277,14 @@ fn execute_start_auction(
     BIDS.save(deps.storage, auction_id.u128(), &vec![])?;
 
     if let Some(ref whitelist) = whitelist {
-        ADOContract::default().permission_action(auction_id.to_string(), deps.storage)?;
+        ADOContract::default().permission_action(deps.storage, auction_id.to_string())?;
 
         for whitelisted_address in whitelist {
             ADOContract::set_permission(
                 deps.storage,
                 auction_id.to_string(),
                 whitelisted_address,
-                Permission::Local(LocalPermission::Whitelisted(None)),
+                Permission::Local(LocalPermission::whitelisted(None, None)),
             )?;
         }
     };
@@ -364,6 +335,7 @@ fn execute_update_auction(
     whitelist: Option<Vec<Addr>>,
     min_bid: Option<Uint128>,
     min_raise: Option<Uint128>,
+    buy_now_price: Option<Uint128>,
     recipient: Option<Recipient>,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
@@ -372,7 +344,6 @@ fn execute_update_auction(
         env,
         ..
     } = ctx;
-    nonpayable(&info)?;
     let (coin_denom, uses_cw20) = coin_denom.get_verified_asset(deps.branch(), env.clone())?;
 
     if uses_cw20 {
@@ -418,16 +389,24 @@ fn execute_update_auction(
         ContractError::StartTimeAfterEndTime {}
     );
 
+    if let (Some(buy_now), Some(min)) = (buy_now_price, min_bid) {
+        if min >= buy_now {
+            return Err(ContractError::InvalidMinBid {
+                msg: Some("buy_now_price must be greater than the min_bid".to_string()),
+            });
+        }
+    }
+
     if let Some(ref whitelist) = whitelist {
         ADOContract::default()
-            .permission_action(token_auction_state.auction_id.to_string(), deps.storage)?;
+            .permission_action(deps.storage, token_auction_state.auction_id.to_string())?;
 
         for whitelisted_address in whitelist {
             ADOContract::set_permission(
                 deps.storage,
                 token_auction_state.auction_id.to_string(),
                 whitelisted_address,
-                Permission::Local(LocalPermission::Whitelisted(None)),
+                Permission::Local(LocalPermission::whitelisted(None, None)),
             )?;
         }
     };
@@ -436,10 +415,11 @@ fn execute_update_auction(
 
     token_auction_state.start_time = start_expiration;
     token_auction_state.end_time = end_expiration;
-    token_auction_state.coin_denom = coin_denom.clone();
+    token_auction_state.coin_denom.clone_from(&coin_denom);
     token_auction_state.uses_cw20 = uses_cw20;
     token_auction_state.min_bid = min_bid;
     token_auction_state.min_raise = min_raise;
+    token_auction_state.buy_now_price = buy_now_price;
     token_auction_state.whitelist = whitelist;
     token_auction_state.recipient = recipient;
     TOKEN_AUCTION_STATE.save(
@@ -457,6 +437,7 @@ fn execute_update_auction(
         attr("whitelist", format!("{:?}", whitelist_str)),
         attr("min_bid", format!("{:?}", &min_bid)),
         attr("min_raise", format!("{:?}", &min_raise)),
+        attr("buy_now_price", format!("{:?}", &buy_now_price)),
     ]))
 }
 
@@ -576,10 +557,7 @@ fn execute_buy_now(
     action: String,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
-        mut deps,
-        info,
-        env,
-        ..
+        deps, info, env, ..
     } = ctx;
     let mut token_auction_state =
         get_existing_token_auction_state(deps.storage, &token_id, &token_address)?;
@@ -588,13 +566,6 @@ fn execute_buy_now(
     let buy_now_price = token_auction_state
         .buy_now_price
         .map_or_else(|| Err(ContractError::NoBuyNowOption {}), Ok)?;
-
-    ADOContract::default().is_permissioned(
-        deps.branch(),
-        env.clone(),
-        token_auction_state.auction_id,
-        info.sender.clone(),
-    )?;
 
     validate_auction(token_auction_state.clone(), info.clone(), &env.block)?;
 
@@ -943,7 +914,6 @@ fn execute_cancel(
     let ExecuteContext {
         deps, info, env, ..
     } = ctx;
-    nonpayable(&info)?;
 
     let mut token_auction_state =
         get_existing_token_auction_state(deps.storage, &token_id, &token_address)?;
@@ -1182,8 +1152,8 @@ fn get_and_increment_next_auction_id(
     let mut auction_info = auction_infos().load(storage, &key).unwrap_or_default();
     auction_info.push(next_auction_id);
     if auction_info.token_address.is_empty() {
-        auction_info.token_address = token_address.to_owned();
-        auction_info.token_id = token_id.to_owned();
+        token_address.clone_into(&mut auction_info.token_address);
+        token_id.clone_into(&mut auction_info.token_id);
     }
     auction_infos().save(storage, &key, &auction_info)?;
     Ok(next_auction_id)
@@ -1396,8 +1366,8 @@ fn query_authorized_addresses(
     Ok(AuthorizedAddressesResponse { addresses })
 }
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-    ADOContract::default().migrate(deps, CONTRACT_NAME, CONTRACT_VERSION)
+pub fn migrate(deps: DepsMut, env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    ADOContract::default().migrate(deps, env, CONTRACT_NAME, CONTRACT_VERSION)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

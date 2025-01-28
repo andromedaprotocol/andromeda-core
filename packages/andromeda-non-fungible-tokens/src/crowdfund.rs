@@ -25,12 +25,16 @@ pub struct InstantiateMsg {
 #[cfg_attr(not(target_arch = "wasm32"), derive(cw_orch::ExecuteFns))]
 pub enum ExecuteMsg {
     /// Add a tier
+    #[attrs(restricted, nonpayable)]
     AddTier { tier: Tier },
     /// Update an existing tier
+    #[attrs(restricted, nonpayable)]
     UpdateTier { tier: Tier },
     /// Remove a tier
+    #[attrs(restricted, nonpayable)]
     RemoveTier { level: Uint64 },
     /// Start the campaign
+    #[attrs(restricted)]
     StartCampaign {
         start_time: Option<Expiry>,
         end_time: Expiry,
@@ -40,12 +44,15 @@ pub enum ExecuteMsg {
     #[cfg_attr(not(target_arch = "wasm32"), cw_orch(payable))]
     PurchaseTiers { orders: Vec<SimpleTierOrder> },
     /// Purchase tiers with cw20
+    #[attrs(nonpayable)]
     Receive(Cw20ReceiveMsg),
     /// End the campaign
+    #[attrs(restricted, nonpayable)]
     EndCampaign {},
     /// Claim tiers or get refunded based on the campaign result
     Claim {},
     /// Discard the campaign
+    #[attrs(restricted, nonpayable)]
     DiscardCampaign {},
 }
 
@@ -122,15 +129,14 @@ pub enum CampaignStage {
     DISCARDED,
 }
 
-impl ToString for CampaignStage {
-    #[inline]
-    fn to_string(&self) -> String {
+impl std::fmt::Display for CampaignStage {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::READY => "READY".to_string(),
-            Self::ONGOING => "ONGOING".to_string(),
-            Self::SUCCESS => "SUCCESS".to_string(),
-            Self::FAILED => "FAILED".to_string(),
-            Self::DISCARDED => "DISCARDED".to_string(),
+            Self::READY => write!(f, "READY"),
+            Self::ONGOING => write!(f, "ONGOING"),
+            Self::SUCCESS => write!(f, "SUCCESS"),
+            Self::FAILED => write!(f, "FAILED"),
+            Self::DISCARDED => write!(f, "DISCARDED"),
         }
     }
 }
