@@ -555,7 +555,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-ibc-registry"
-version = "1.1.0"
+version = "1.1.1-b.1"
 dependencies = [
  "andromeda-std",
  "cosmwasm-schema",
@@ -569,7 +569,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-kernel"
-version = "1.2.0"
+version = "1.2.1-b.1"
 dependencies = [
  "andromeda-std",
  "cosmwasm-schema",
@@ -827,7 +827,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-std"
-version = "1.5.1-b.1"
+version = "1.5.1-b.4"
 dependencies = [
  "andromeda-macros",
  "cosmwasm-schema",
@@ -937,7 +937,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-validator-staking"
-version = "1.1.0"
+version = "1.1.1-b.1"
 dependencies = [
  "andromeda-finance",
  "andromeda-std",
@@ -973,7 +973,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-vfs"
-version = "1.2.0"
+version = "1.2.1-b.1"
 dependencies = [
  "andromeda-std",
  "cosmwasm-schema",
@@ -986,7 +986,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-weighted-distribution-splitter"
-version = "2.1.0-a.1"
+version = "2.1.0"
 dependencies = [
  "andromeda-app",
  "andromeda-finance",

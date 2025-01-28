@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - CW20 support for kernel routing [(#723)](https://github.com/andromedaprotocol/andromeda-core/pull/723)
+- feat: Handle username on IBC packets [(#791)](https://github.com/andromedaprotocol/andromeda-core/pull/791)
 
 ### Changed
 
@@ -17,6 +18,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - chore: remove unused contracts & code [(#790)](https://github.com/andromedaprotocol/andromeda-core/pull/790)
 
 ### Fixed
+
+- fix: permission migration [(#792)](https://github.com/andromedaprotocol/andromeda-core/pull/792)
+- fix: IBC denom casing [(#795)](https://github.com/andromedaprotocol/andromeda-core/pull/795)
 
 ## Release 4
 
