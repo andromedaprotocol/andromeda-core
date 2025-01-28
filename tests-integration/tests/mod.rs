@@ -22,6 +22,10 @@ mod interchain;
 mod fixed_amount_splitter_ibc;
 
 #[cfg(test)]
+#[path = "./tests-ibc/splitter_ibc.rs"]
+mod splitter_ibc;
+
+#[cfg(test)]
 mod cw20_staking;
 
 #[cfg(test)]

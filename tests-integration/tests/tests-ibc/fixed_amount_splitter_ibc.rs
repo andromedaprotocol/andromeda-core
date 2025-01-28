@@ -40,7 +40,7 @@ fn test_fixed_amount_splitter_ibc() {
                         msg: None,
                         ibc_recovery_address: None,
                     },coins: vec![Coin {
-                        denom: "juno".to_string(),
+                        denom: "ibc/channel-0/juno".to_string(),
                         amount: Uint128::new(100),
                     }],
                 }],

@@ -17,15 +17,44 @@ pub struct InterchainChain {
     pub chain: MockBase,
     pub chain_name: String,
     pub aos: InterchainAOS,
+    pub denom: String,
+    pub addresses: Vec<String>,
 }
 
 impl InterchainChain {
     pub fn new(chain: MockBase, chain_name: String) -> Self {
         let aos = InterchainAOS::new(chain.clone(), chain_name.clone());
+        let (denom, addresses) = match chain_name.as_str() {
+            "juno" => (
+                "juno".to_string(),
+                vec![
+                    "juno12lm0kfn2g3gn39ulzvqnadwksss5ez8rk8ghm0".to_string(),
+                    "juno10dx5rcshf3fwpyw8jjrh5m25kv038xkqz2r2yp".to_string(),
+                ],
+            ),
+            "osmosis" => (
+                "osmosis".to_string(),
+                vec![
+                    "osmo1qzskhrca90qy2yjjxqzq4yajy842x7c50xq33d".to_string(),
+                    "osmo1v9jxgu33ta047h6lxa803d0j3qqwq2p4k0ahvu".to_string(),
+                ],
+            ),
+            "andromeda" => (
+                "andromeda".to_string(),
+                vec![
+                    "andr10dx5rcshf3fwpyw8jjrh5m25kv038xkqvngnls".to_string(),
+                    "andr12lm0kfn2g3gn39ulzvqnadwksss5ez8rc7rwq7".to_string(),
+                ],
+            ),
+            _ => ("utoken".to_string(), vec![]),
+        };
+
         Self {
             chain,
             chain_name,
             aos,
+            denom,
+            addresses,
         }
     }
 }
