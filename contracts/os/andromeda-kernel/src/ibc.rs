@@ -179,23 +179,28 @@ pub fn do_ibc_packet_receive(
                 .add_submessages(res.messages)
                 .add_events(res.events))
         }
-        IbcExecuteMsg::SendMessageWithFunds {
-            recipient,
-            message,
-            funds,
-            original_sender,
-        } => {
-            let amp_msg = AMPMsg::new(
-                recipient.clone(),
-                message.clone(),
-                Some(vec![funds.clone()]),
+        IbcExecuteMsg::SendMessageWithFunds { amp_packet } => {
+            ensure!(
+                !amp_packet.messages.is_empty(),
+                ContractError::InvalidPacket {
+                    error: Some("amp_packet messages is empty".to_string())
+                }
             );
 
+            // Ensure the first message has funds
+            let first_message = &amp_packet.messages[0];
+            ensure!(
+                !first_message.funds.is_empty(),
+                ContractError::InvalidPacket {
+                    error: Some("message funds is empty".to_string())
+                }
+            );
+            let funds = first_message.funds[0].clone();
             execute_env.info = MessageInfo {
                 funds: vec![funds.clone()],
                 sender: env.contract.address,
             };
-            let res = execute::send(execute_env, amp_msg)?;
+            let res = execute::send(execute_env, first_message.clone())?;
 
             // Refunds must be done via the ICS20 channel
             let ics20_channel_id = channel_info
@@ -205,14 +210,14 @@ pub fn do_ibc_packet_receive(
             REFUND_DATA.save(
                 deps.storage,
                 &RefundData {
-                    original_sender,
+                    original_sender: amp_packet.ctx.get_origin(),
                     funds,
                     channel: ics20_channel_id,
                 },
             )?;
             Ok(IbcReceiveResponse::new()
                 .set_ack(make_ack_success())
-                .add_attribute("recipient", recipient.as_str())
+                .add_attribute("recipient", first_message.recipient.as_str())
                 .add_attributes(res.attributes)
                 .add_submessage(SubMsg::reply_always(
                     res.messages.first().unwrap().msg.clone(),

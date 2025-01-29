@@ -102,7 +102,7 @@ fn handle_ibc_transfer_funds_reply(
 ) -> Result<Response, ContractError> {
     let ics20_packet_info = ics20_packet_info.clone();
     let chain =
-        ics20_packet_info
+        &ics20_packet_info
             .recipient
             .get_chain()
             .ok_or_else(|| ContractError::InvalidPacket {
@@ -146,12 +146,18 @@ fn handle_ibc_transfer_funds_reply(
             ),
         );
     }
-    let kernel_msg = IbcExecuteMsg::SendMessageWithFunds {
-        recipient: AndrAddr::from_string(ics20_packet_info.recipient.clone().get_raw_path()),
-        message: ics20_packet_info.message.clone(),
-        funds: adjusted_funds,
-        original_sender: ics20_packet_info.sender,
-    };
+    let amp_msg = AMPMsg::new(
+        ics20_packet_info.recipient.get_raw_path(),
+        ics20_packet_info.message,
+        Some(vec![adjusted_funds]),
+    );
+    let amp_packet = AMPPkt::new(
+        ics20_packet_info.sender,
+        env.contract.address,
+        vec![amp_msg],
+        vec![],
+    );
+    let kernel_msg = IbcExecuteMsg::SendMessageWithFunds { amp_packet };
     let msg = IbcMsg::SendPacket {
         channel_id: channel.clone(),
         data: to_json_binary(&kernel_msg)?,
@@ -164,7 +170,7 @@ fn handle_ibc_transfer_funds_reply(
         .add_attribute("relay_outcome", "success")
         .add_attribute("relay_sequence", sequence.to_string())
         .add_attribute("relay_channel", ics20_packet_info.channel)
-        .add_attribute("relay_chain", chain)
+        .add_attribute("relay_chain", chain.to_string())
         .add_attribute("receiving_kernel_address", channel_info.kernel_address))
 }
 

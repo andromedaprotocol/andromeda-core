@@ -171,10 +171,7 @@ pub enum IbcExecuteMsg {
         amp_packet: AMPPkt,
     },
     SendMessageWithFunds {
-        recipient: AndrAddr,
-        message: Binary,
-        funds: Coin,
-        original_sender: String,
+        amp_packet: AMPPkt,
     },
     CreateADO {
         instantiation_msg: Binary,
