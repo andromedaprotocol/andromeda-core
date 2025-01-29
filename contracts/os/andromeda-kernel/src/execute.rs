@@ -149,13 +149,24 @@ fn handle_ibc_transfer_funds_reply(
     let amp_msg = AMPMsg::new(
         ics20_packet_info.recipient.get_raw_path(),
         ics20_packet_info.message,
-        Some(vec![adjusted_funds]),
+        Some(vec![adjusted_funds.clone()]),
     );
-    let amp_packet = AMPPkt::new(
-        ics20_packet_info.sender,
+    let amp_packet = AMPPkt::new_with_resolved_username(
+        &deps.querier,
+        &KERNEL_ADDRESSES.load(deps.storage, VFS_KEY)?,
+        &Addr::unchecked(ics20_packet_info.sender.clone()),
         env.contract.address,
+        None,
         vec![amp_msg],
-        vec![],
+        None,
+        vec![Hop {
+            username: None,
+            address: ics20_packet_info.sender.clone(),
+            from_chain: CURR_CHAIN.load(deps.storage)?,
+            to_chain: chain.to_string(),
+            funds: vec![adjusted_funds],
+            channel: channel.clone(),
+        }],
     );
     let kernel_msg = IbcExecuteMsg::SendMessageWithFunds { amp_packet };
     let msg = IbcMsg::SendPacket {
