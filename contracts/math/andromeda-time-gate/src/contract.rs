@@ -57,6 +57,13 @@ pub fn instantiate(
 
     let time_interval_seconds = msg.time_interval.unwrap_or(DEFAULT_TIME_INTERVAL);
 
+    ensure!(
+        time_interval_seconds.gt(&0),
+        ContractError::InvalidParameter {
+            error: Some("Time interval must be greater than zero".to_string())
+        }
+    );
+
     GATE_ADDRESSES.save(deps.storage, &msg.gate_addresses)?;
     CYCLE_START_TIME.save(
         deps.storage,
@@ -144,6 +151,13 @@ fn execute_update_time_interval(
     time_interval: u64,
 ) -> Result<Response, ContractError> {
     let ExecuteContext { deps, info, .. } = ctx;
+
+    ensure!(
+        time_interval.gt(&0),
+        ContractError::InvalidParameter {
+            error: Some("Time interval must be greater than zero".to_string())
+        }
+    );
 
     let old_time_interval = TIME_INTERVAL.load(deps.storage)?;
 
