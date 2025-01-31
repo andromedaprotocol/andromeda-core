@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - feat: Handle username on IBC packets [(#791)](https://github.com/andromedaprotocol/andromeda-core/pull/791)
+- Added Time Gate ADO [(#529)](https://github.com/andromedaprotocol/andromeda-core/pull/529)
 
 ### Changed
 
