@@ -167,7 +167,7 @@ fn handle_ibc_transfer_funds_reply(
 
     // Create a new hop to be appended to the context
     let hop = CrossChainHop {
-        username: potential_username.map(|username| AndrAddr::from_string(username)),
+        username: potential_username.map(AndrAddr::from_string),
         address: ics20_packet_info.sender.clone(),
         from_chain: CURR_CHAIN.load(deps.storage)?,
         to_chain: chain.to_string(),
@@ -839,7 +839,7 @@ impl MsgHandler {
 
                 // Create a new hop to be appended to the context
                 let hop = CrossChainHop {
-                    username: potential_username.map(|username| AndrAddr::from_string(username)),
+                    username: potential_username.map(AndrAddr::from_string),
                     address: ctx.get_origin(),
                     from_chain: current_chain.to_string(),
                     to_chain: destination_chain.to_string(),
@@ -859,7 +859,7 @@ impl MsgHandler {
 
                 // Create a new hop to be appended to the context
                 let hop = CrossChainHop {
-                    username: potential_username.map(|username| AndrAddr::from_string(username)),
+                    username: potential_username.map(AndrAddr::from_string),
                     address: ctx.ctx.get_origin(),
                     from_chain: current_chain.to_string(),
                     to_chain: destination_chain.to_string(),
