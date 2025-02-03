@@ -278,7 +278,6 @@ fn test_kernel_ibc_execute_only() {
                     to_json_binary(&CounterExecuteMsg::Increment {}).unwrap(),
                     None,
                 )],
-                vec![],
             )),
             None,
         )
@@ -579,7 +578,6 @@ fn test_kernel_ibc_execute_only_with_username() {
                     to_json_binary(&CounterExecuteMsg::Increment {}).unwrap(),
                     None,
                 )],
-                vec![],
             )),
             None,
         )

@@ -186,7 +186,7 @@ fn test_marketplace_app() {
         Some(vec![coin(200, "uandr")]),
     );
 
-    let packet = AMPPkt::new(buyer.clone(), buyer.clone(), vec![amp_msg], vec![]);
+    let packet = AMPPkt::new(buyer.clone(), buyer.clone(), vec![amp_msg]);
     let receive_packet_msg = mock_receive_packet(packet);
 
     let block_info = router.block_info();
@@ -401,7 +401,7 @@ fn test_marketplace_app_recipient() {
         Some(vec![coin(200, "uandr")]),
     );
 
-    let packet = AMPPkt::new(buyer.clone(), buyer.clone(), vec![amp_msg], vec![]);
+    let packet = AMPPkt::new(buyer.clone(), buyer.clone(), vec![amp_msg]);
     let receive_packet_msg = mock_receive_packet(packet);
 
     let block_info = router.block_info();

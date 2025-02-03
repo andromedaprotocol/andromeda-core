@@ -1,7 +1,7 @@
 use crate::ibc::{get_counterparty_denom, PACKET_LIFETIME};
 use andromeda_std::ado_contract::ADOContract;
 use andromeda_std::amp::addresses::AndrAddr;
-use andromeda_std::amp::messages::{AMPCtx, AMPMsg, AMPPkt, Hop};
+use andromeda_std::amp::messages::{AMPCtx, AMPMsg, AMPPkt, CrossChainHop};
 use andromeda_std::amp::{ADO_DB_KEY, VFS_KEY};
 use andromeda_std::common::context::ExecuteContext;
 use andromeda_std::common::has_coins_merged;
@@ -159,7 +159,7 @@ fn handle_ibc_transfer_funds_reply(
         None,
         vec![amp_msg],
         None,
-        vec![Hop {
+        vec![CrossChainHop {
             username: None,
             address: ics20_packet_info.sender.clone(),
             from_chain: CURR_CHAIN.load(deps.storage)?,
@@ -737,7 +737,7 @@ impl MsgHandler {
                     AMPMsg::new(recipient_addr.clone(), message.clone(), Some(funds.clone()))
                         .with_config(config.clone());
 
-                let new_packet = AMPPkt::new(origin, previous_sender, vec![amp_msg], vec![]);
+                let new_packet = AMPPkt::new(origin, previous_sender, vec![amp_msg]);
 
                 new_packet.to_sub_msg(
                     recipient_addr.clone(),
@@ -828,7 +828,7 @@ impl MsgHandler {
                     None,
                     vec![amp_msg],
                     None,
-                    vec![Hop {
+                    vec![CrossChainHop {
                         username: None,
                         address: origin.to_string(),
                         from_chain: current_chain.to_string(),
@@ -848,7 +848,7 @@ impl MsgHandler {
                     Some(ctx.ctx.id),
                     ctx.messages.clone(),
                     ctx.ctx.get_origin_username(),
-                    ctx.previous_hops,
+                    ctx.ctx.previous_hops,
                 );
 
                 amp_packet.messages[0].recipient =

@@ -136,7 +136,7 @@ impl AMPMsg {
         id: u64,
     ) -> Result<SubMsg, ContractError> {
         let contract_addr = self.recipient.get_raw_address(deps)?;
-        let pkt = AMPPkt::new(origin, previous_sender, vec![self.clone()], vec![]);
+        let pkt = AMPPkt::new(origin, previous_sender, vec![self.clone()]);
         let msg = to_json_binary(&ExecuteMsg::AMPReceive(pkt))?;
         Ok(SubMsg {
             id,
@@ -211,6 +211,7 @@ pub struct AMPCtx {
     origin_username: Option<AndrAddr>,
     pub previous_sender: String,
     pub id: u64,
+    pub previous_hops: Vec<CrossChainHop>,
 }
 
 impl AMPCtx {
@@ -226,6 +227,7 @@ impl AMPCtx {
             origin_username,
             previous_sender: previous_sender.into(),
             id,
+            previous_hops: vec![],
         }
     }
 
@@ -246,7 +248,7 @@ impl AMPCtx {
 }
 
 #[cw_serde]
-pub struct Hop {
+pub struct CrossChainHop {
     /// The username of the sender at this hop (if available)
     pub username: Option<AndrAddr>,
     /// The address of the sender at this hop
@@ -270,7 +272,6 @@ pub struct AMPPkt {
     /// Any messages associated with the packet
     pub messages: Vec<AMPMsg>,
     pub ctx: AMPCtx,
-    pub previous_hops: Vec<Hop>,
 }
 
 impl AMPPkt {
@@ -279,12 +280,10 @@ impl AMPPkt {
         origin: impl Into<String>,
         previous_sender: impl Into<String>,
         messages: Vec<AMPMsg>,
-        previous_hops: Vec<Hop>,
     ) -> AMPPkt {
         AMPPkt {
             messages,
             ctx: AMPCtx::new(origin, previous_sender, 0, None),
-            previous_hops,
         }
     }
 
@@ -295,12 +294,10 @@ impl AMPPkt {
         messages: Vec<AMPMsg>,
         username: Option<AndrAddr>,
         id: Option<u64>,
-        previous_hops: Vec<Hop>,
     ) -> AMPPkt {
         AMPPkt {
             messages,
             ctx: AMPCtx::new(origin, previous_sender, id.unwrap_or(0), username),
-            previous_hops,
         }
     }
 
@@ -314,7 +311,7 @@ impl AMPPkt {
         id: Option<u64>,
         messages: Vec<AMPMsg>,
         username: Option<AndrAddr>,
-        mut previous_hops: Vec<Hop>,
+        mut previous_hops: Vec<CrossChainHop>,
     ) -> AMPPkt {
         if username.is_none() {
             let username_addr = AOSQuerier::get_username(querier, vfs_address, origin);
@@ -329,27 +326,14 @@ impl AMPPkt {
                         messages,
                         Some(AndrAddr::from_string(username)),
                         id,
-                        previous_hops,
                     )
                 }
-                _ => AMPPkt::new_with_username(
-                    origin.clone(),
-                    contract_address,
-                    messages,
-                    None,
-                    id,
-                    previous_hops,
-                ),
+                _ => {
+                    AMPPkt::new_with_username(origin.clone(), contract_address, messages, None, id)
+                }
             }
         } else {
-            AMPPkt::new_with_username(
-                origin.clone(),
-                contract_address,
-                messages,
-                username,
-                id,
-                previous_hops,
-            )
+            AMPPkt::new_with_username(origin.clone(), contract_address, messages, username, id)
         }
     }
 
@@ -499,7 +483,6 @@ impl AMPPkt {
         Self {
             messages: vec![],
             ctx,
-            previous_hops: vec![],
         }
     }
 }
@@ -525,7 +508,6 @@ mod tests {
             "origin",
             "previoussender",
             vec![AMPMsg::new("test", Binary::default(), None)],
-            vec![],
         ));
         assert_eq!(sub_msg.id, 1);
         assert_eq!(sub_msg.reply_on, ReplyOn::Always);
@@ -545,7 +527,7 @@ mod tests {
         let msg = AMPMsg::new("test", Binary::default(), None);
         let msg2 = AMPMsg::new("test2", Binary::default(), None);
 
-        let mut pkt = AMPPkt::new("origin", "previoussender", vec![msg, msg2], vec![]);
+        let mut pkt = AMPPkt::new("origin", "previoussender", vec![msg, msg2]);
 
         let recipients = pkt.get_unique_recipients();
         assert_eq!(recipients.len(), 2);
@@ -564,7 +546,7 @@ mod tests {
         let msg = AMPMsg::new("test", Binary::default(), None);
         let msg2 = AMPMsg::new("test2", Binary::default(), None);
 
-        let mut pkt = AMPPkt::new("origin", "previoussender", vec![msg, msg2], vec![]);
+        let mut pkt = AMPPkt::new("origin", "previoussender", vec![msg, msg2]);
 
         let messages = pkt.get_messages_for_recipient("test".to_string());
         assert_eq!(messages.len(), 1);
@@ -586,7 +568,7 @@ mod tests {
         let deps = mock_dependencies_custom(&[]);
         let msg = AMPMsg::new("test", Binary::default(), None);
 
-        let pkt = AMPPkt::new("origin", "previoussender", vec![msg.clone()], vec![]);
+        let pkt = AMPPkt::new("origin", "previoussender", vec![msg.clone()]);
 
         let info = mock_info("validaddress", &[]);
         let res = pkt.verify_origin(&info, &deps.as_ref());
@@ -597,17 +579,12 @@ mod tests {
         assert!(res.is_err());
 
         // Previous sender and origin set correctly
-        let direct_pkt_valid = AMPPkt::new(
-            INVALID_CONTRACT,
-            INVALID_CONTRACT,
-            vec![msg.clone()],
-            vec![],
-        );
+        let direct_pkt_valid = AMPPkt::new(INVALID_CONTRACT, INVALID_CONTRACT, vec![msg.clone()]);
         let res = direct_pkt_valid.verify_origin(&info, &deps.as_ref());
         assert!(res.is_ok());
 
         // Previous sender and origin set incorrectly
-        let direct_pkt_invalid = AMPPkt::new(INVALID_CONTRACT, "notvalid", vec![msg], vec![]);
+        let direct_pkt_invalid = AMPPkt::new(INVALID_CONTRACT, "notvalid", vec![msg]);
         let res = direct_pkt_invalid.verify_origin(&info, &deps.as_ref());
         assert!(res.is_err());
     }
@@ -616,12 +593,12 @@ mod tests {
     fn test_to_sub_msg() {
         let msg = AMPMsg::new("test", Binary::default(), None);
 
-        let pkt = AMPPkt::new("origin", "previoussender", vec![msg.clone()], vec![]);
+        let pkt = AMPPkt::new("origin", "previoussender", vec![msg.clone()]);
 
         let sub_msg = pkt.to_sub_msg("kernel", None, 1).unwrap();
 
         let expected_msg =
-            ExecuteMsg::AMPReceive(AMPPkt::new("origin", "previoussender", vec![msg], vec![]));
+            ExecuteMsg::AMPReceive(AMPPkt::new("origin", "previoussender", vec![msg]));
         assert_eq!(sub_msg.id, 1);
         assert_eq!(sub_msg.reply_on, ReplyOn::Always);
         assert_eq!(sub_msg.gas_limit, None);
@@ -636,7 +613,7 @@ mod tests {
     }
     #[test]
     fn test_to_json() {
-        let msg = AMPPkt::new("origin", "previoussender", vec![], vec![]);
+        let msg = AMPPkt::new("origin", "previoussender", vec![]);
 
         let memo = msg.to_json();
         assert_eq!(memo, "{\"messages\":[],\"ctx\":{\"origin\":\"origin\",\"origin_username\":null,\"previous_sender\":\"previoussender\",\"id\":0},\"previous_hops\":[]}".to_string());
@@ -644,7 +621,7 @@ mod tests {
 
     #[test]
     fn test_to_ibc_hooks_memo() {
-        let msg = AMPPkt::new("origin", "previoussender", vec![], vec![]);
+        let msg = AMPPkt::new("origin", "previoussender", vec![]);
         let contract_addr = "contractaddr";
         let memo = msg.to_ibc_hooks_memo(contract_addr.to_string(), "callback".to_string());
         assert_eq!(memo, "{\"wasm\":{\"contract\":\"contractaddr\",\"msg\":{\"amp_receive\":{\"messages\":[],\"ctx\":{\"origin\":\"origin\",\"origin_username\":null,\"previous_sender\":\"previoussender\",\"id\":0},\"previous_hops\":[]}}},\"ibc_callback\":\"callback\"}".to_string());
