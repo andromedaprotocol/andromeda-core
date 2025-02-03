@@ -13,7 +13,7 @@ use andromeda_std::os::ibc_registry::path_to_hops;
 use andromeda_std::os::kernel::{ChannelInfo, IbcExecuteMsg, Ics20PacketInfo, InternalMsg};
 use andromeda_std::os::vfs::vfs_resolve_symlink;
 use cosmwasm_std::{
-    attr, ensure, from_json, to_json_binary, Addr, BankMsg, Binary, Coin, ContractInfoResponse,
+    attr, ensure, from_json, to_json_binary, BankMsg, Binary, Coin, ContractInfoResponse,
     CosmosMsg, DepsMut, Env, IbcMsg, MessageInfo, Response, StdAck, StdError, SubMsg, WasmMsg,
 };
 
@@ -151,23 +151,35 @@ fn handle_ibc_transfer_funds_reply(
         ics20_packet_info.message,
         Some(vec![adjusted_funds.clone()]),
     );
-    let amp_packet = AMPPkt::new_with_resolved_username(
+
+    let mut ctx = AMPCtx::new(
+        ics20_packet_info.sender.clone(),
+        env.contract.address,
+        0,
+        None,
+    );
+
+    // Add the orginal sender's username if it exists
+    let potential_username = ctx.try_add_origin_username(
         &deps.querier,
         &KERNEL_ADDRESSES.load(deps.storage, VFS_KEY)?,
-        &Addr::unchecked(ics20_packet_info.sender.clone()),
-        env.contract.address,
-        None,
-        vec![amp_msg],
-        None,
-        vec![CrossChainHop {
-            username: None,
-            address: ics20_packet_info.sender.clone(),
-            from_chain: CURR_CHAIN.load(deps.storage)?,
-            to_chain: chain.to_string(),
-            funds: vec![adjusted_funds],
-            channel: channel.clone(),
-        }],
     );
+
+    // Create a new hop to be appended to the context
+    let hop = CrossChainHop {
+        username: potential_username.map(|username| AndrAddr::from_string(username)),
+        address: ics20_packet_info.sender.clone(),
+        from_chain: CURR_CHAIN.load(deps.storage)?,
+        to_chain: chain.to_string(),
+        funds: vec![adjusted_funds],
+        channel: channel.clone(),
+    };
+
+    // Add the new hop to the context
+    ctx.add_hop(hop);
+
+    let amp_packet = AMPPkt::new_with_ctx(ctx, vec![amp_msg]);
+
     let kernel_msg = IbcExecuteMsg::SendMessageWithFunds { amp_packet };
     let msg = IbcMsg::SendPacket {
         channel_id: channel.clone(),
@@ -816,44 +828,52 @@ impl MsgHandler {
         }?;
         let vfs_address = KERNEL_ADDRESSES.load(deps.storage, VFS_KEY).unwrap();
         let current_chain = CURR_CHAIN.load(deps.storage)?;
+
         let ctx = ctx.map_or_else(
             || {
-                let origin = info.sender.clone();
                 let amp_msg = AMPMsg::new(recipient.clone().get_raw_path(), message.clone(), None);
-                AMPPkt::new_with_resolved_username(
-                    &deps.querier,
-                    &vfs_address,
-                    &origin,
-                    env.contract.address.clone(),
-                    None,
-                    vec![amp_msg],
-                    None,
-                    vec![CrossChainHop {
-                        username: None,
-                        address: origin.to_string(),
-                        from_chain: current_chain.to_string(),
-                        to_chain: destination_chain.to_string(),
-                        funds: vec![],
-                        channel: channel.clone(),
-                    }],
-                )
-            },
-            |ctx| {
-                let origin = Addr::unchecked(ctx.ctx.get_origin());
-                let mut amp_packet = AMPPkt::new_with_resolved_username(
-                    &deps.querier,
-                    &vfs_address,
-                    &origin,
-                    env.contract.address.clone(),
-                    Some(ctx.ctx.id),
-                    ctx.messages.clone(),
-                    ctx.ctx.get_origin_username(),
-                    ctx.ctx.previous_hops,
-                );
+                let mut ctx = AMPCtx::new(info.sender, env.contract.address, 0, None);
 
-                amp_packet.messages[0].recipient =
+                // Add the orginal sender's username if it exists
+                let potential_username = ctx.try_add_origin_username(&deps.querier, &vfs_address);
+
+                // Create a new hop to be appended to the context
+                let hop = CrossChainHop {
+                    username: potential_username.map(|username| AndrAddr::from_string(username)),
+                    address: ctx.get_origin(),
+                    from_chain: current_chain.to_string(),
+                    to_chain: destination_chain.to_string(),
+                    funds: vec![],
+                    channel: channel.clone(),
+                };
+
+                // Add the new hop to the context
+                ctx.add_hop(hop);
+
+                AMPPkt::new_with_ctx(ctx, vec![amp_msg])
+            },
+            |mut ctx| {
+                // Add the orginal sender's username if it exists
+                let potential_username =
+                    ctx.ctx.try_add_origin_username(&deps.querier, &vfs_address);
+
+                // Create a new hop to be appended to the context
+                let hop = CrossChainHop {
+                    username: potential_username.map(|username| AndrAddr::from_string(username)),
+                    address: ctx.ctx.get_origin(),
+                    from_chain: current_chain.to_string(),
+                    to_chain: destination_chain.to_string(),
+                    funds: vec![],
+                    channel: channel.clone(),
+                };
+
+                // Add the new hop to the context
+                ctx.ctx.add_hop(hop);
+
+                // Remove the recipient's prepended chain reference
+                ctx.messages[0].recipient =
                     AndrAddr::from_string(recipient.clone().get_raw_path().to_string());
-                amp_packet
+                ctx
             },
         );
 

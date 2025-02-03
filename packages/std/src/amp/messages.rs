@@ -245,6 +245,31 @@ impl AMPCtx {
     pub fn get_previous_sender(&self) -> String {
         self.previous_sender.clone()
     }
+
+    /// Adds a cross-chain hop to the context's previous hops
+    pub fn add_hop(&mut self, hop: CrossChainHop) {
+        self.previous_hops.push(hop);
+    }
+
+    /// Adds a username
+    pub fn add_username(&mut self, username: AndrAddr) {
+        self.origin_username = Some(username);
+    }
+
+    pub fn try_add_origin_username(
+        &mut self,
+        querier: &QuerierWrapper,
+        vfs_address: &Addr,
+    ) -> Option<String> {
+        let origin = Addr::unchecked(self.get_origin());
+        if let Ok(Some(username)) = AOSQuerier::get_username(querier, vfs_address, &origin) {
+            if username != origin {
+                self.add_username(AndrAddr::from_string(username.clone()));
+                return Some(username);
+            }
+        }
+        None
+    }
 }
 
 #[cw_serde]
@@ -288,53 +313,8 @@ impl AMPPkt {
     }
 
     /// Creates a new AMP Packet
-    pub fn new_with_username(
-        origin: impl Into<String>,
-        previous_sender: impl Into<String>,
-        messages: Vec<AMPMsg>,
-        username: Option<AndrAddr>,
-        id: Option<u64>,
-    ) -> AMPPkt {
-        AMPPkt {
-            messages,
-            ctx: AMPCtx::new(origin, previous_sender, id.unwrap_or(0), username),
-        }
-    }
-
-    /// Creates a new AMPPkt with an optional username, it tries to find the username of the origin and if it exists and is not the same as the origin, it will set the username in the context.
-    #[allow(clippy::too_many_arguments)]
-    pub fn new_with_resolved_username(
-        querier: &QuerierWrapper,
-        vfs_address: &Addr,
-        origin: &Addr,
-        contract_address: Addr,
-        id: Option<u64>,
-        messages: Vec<AMPMsg>,
-        username: Option<AndrAddr>,
-        mut previous_hops: Vec<CrossChainHop>,
-    ) -> AMPPkt {
-        if username.is_none() {
-            let username_addr = AOSQuerier::get_username(querier, vfs_address, origin);
-            match username_addr {
-                Ok(Some(username)) if username != *origin => {
-                    if !previous_hops.is_empty() {
-                        previous_hops[0].username = Some(AndrAddr::from_string(username.clone()));
-                    }
-                    AMPPkt::new_with_username(
-                        origin.clone(),
-                        contract_address,
-                        messages,
-                        Some(AndrAddr::from_string(username)),
-                        id,
-                    )
-                }
-                _ => {
-                    AMPPkt::new_with_username(origin.clone(), contract_address, messages, None, id)
-                }
-            }
-        } else {
-            AMPPkt::new_with_username(origin.clone(), contract_address, messages, username, id)
-        }
+    pub fn new_with_ctx(ctx: AMPCtx, messages: Vec<AMPMsg>) -> AMPPkt {
+        AMPPkt { messages, ctx }
     }
 
     pub fn with_origin(&self, origin: impl Into<String>) -> AMPPkt {
