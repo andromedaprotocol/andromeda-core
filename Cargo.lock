@@ -5117,6 +5117,7 @@ dependencies = [
  "andromeda-modules",
  "andromeda-non-fungible-tokens",
  "andromeda-primitive",
+ "andromeda-rate-limiting-withdrawals",
  "andromeda-rates",
  "andromeda-shunting",
  "andromeda-splitter",

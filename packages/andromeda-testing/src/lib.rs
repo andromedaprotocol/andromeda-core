@@ -18,6 +18,9 @@ pub mod vfs;
 pub mod interchain;
 
 #[cfg(not(target_arch = "wasm32"))]
+pub mod macros;
+
+#[cfg(not(target_arch = "wasm32"))]
 pub mod mock;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod mock_contract;

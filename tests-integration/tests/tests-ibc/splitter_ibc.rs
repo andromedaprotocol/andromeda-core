@@ -1,27 +1,24 @@
 #![cfg(not(target_arch = "wasm32"))]
 
 use std::vec;
-
+use rstest::*;
 use andromeda_splitter::SplitterContract;
 use cosmwasm_std::{to_json_binary, Coin, Decimal, Uint128};
 use cw_orch::mock::MockBase;
 use andromeda_std::{
-    amp::{messages::AMPMsg, recipient::{self, Recipient}, AndrAddr},
+    amp::{messages::AMPMsg, recipient::Recipient, AndrAddr},
     os
 };
 use andromeda_kernel::ack::make_ack_success;
-use andromeda_testing::{
+use andromeda_testing::{ado_deployer, 
     interchain::{ensure_packet_success, InterchainChain, DEFAULT_SENDER},
     InterchainTestEnv,
+    
 };
 use cw_orch::prelude::*;
 use cw_orch_interchain::prelude::*;
 use andromeda_finance::splitter::{InstantiateMsg, AddressPercent};
-use tests_integration::ado_deployer;
 
-pub struct ChainMap<'a> {
-    pub chains: Vec<(&'a InterchainChain, &'a InterchainChain)>,
-}
 
 ado_deployer!(
     deploy_splitter,
@@ -29,8 +26,13 @@ ado_deployer!(
     SplitterContract<MockBase>,
     &InstantiateMsg
 );
-#[test]
-fn run_splitter_test_on_multiple_combos() {
+
+
+#[rstest]
+#[case::osmosis_to_juno("osmosis", "juno")]
+#[case::juno_to_osmosis("juno", "osmosis")]
+#[case::andromeda_to_juno("andromeda", "juno")]
+fn run_splitter_test_on_multiple_combos(#[case] chain1_name: &str, #[case] chain2_name: &str) {
     let InterchainTestEnv {
         juno,
         osmosis,
@@ -39,15 +41,21 @@ fn run_splitter_test_on_multiple_combos() {
         ..
     } = InterchainTestEnv::new();
 
-    let chain_combos = ChainMap {
-        chains: vec![
-            (&osmosis, &juno),
-            (&juno, &osmosis),
-            (&andromeda, &juno),
-        ],
+    let chain1 = match chain1_name {
+        "juno" => &juno,
+        "osmosis" => &osmosis,
+        "andromeda" => &andromeda,
+        _ => panic!("Unknown chain: {}", chain1_name),
+    };
+    
+    let chain2 = match chain2_name {
+        "juno" => &juno,
+        "osmosis" => &osmosis,
+        "andromeda" => &andromeda,
+        _ => panic!("Unknown chain: {}", chain2_name),
     };
 
-    for (chain1, chain2) in &chain_combos.chains {
+    
         println!("Running test for chain1: {} and chain2: {} combo", 
                 chain1.chain_name, chain2.chain_name);
 
@@ -167,8 +175,8 @@ fn run_splitter_test_on_multiple_combos() {
         assert_eq!(balance2[0].denom, ibc_denom);
         assert_eq!(balance1[0].amount, Uint128::new(60)); // 60%
         assert_eq!(balance2[0].amount, Uint128::new(40)); // 40%
-    }
-}
+}   
+
 
 
 

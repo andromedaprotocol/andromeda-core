@@ -82,6 +82,10 @@ andromeda-validator-staking = { path = "../contracts/finance/andromeda-validator
     "testing",
 ] }
 
+andromeda-rate-limiting-withdrawals = { path = "../contracts/finance/andromeda-rate-limiting-withdrawals", features = [
+    "testing"
+] }
+
 
 # Data Storage
 andromeda-data-storage = { workspace = true }

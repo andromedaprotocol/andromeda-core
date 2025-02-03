@@ -26,6 +26,10 @@ mod fixed_amount_splitter_ibc;
 mod splitter_ibc;
 
 #[cfg(test)]
+#[path = "./tests-ibc/rate_limiting_ibc.rs"]
+mod rate_limiting_ibc;
+
+#[cfg(test)]
 mod cw20_staking;
 
 #[cfg(test)]
