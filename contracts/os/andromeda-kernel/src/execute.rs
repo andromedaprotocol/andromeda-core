@@ -146,11 +146,6 @@ fn handle_ibc_transfer_funds_reply(
             ),
         );
     }
-    let amp_msg = AMPMsg::new(
-        ics20_packet_info.recipient.get_raw_path(),
-        ics20_packet_info.message,
-        Some(vec![adjusted_funds.clone()]),
-    );
 
     let mut ctx = AMPCtx::new(
         ics20_packet_info.sender.clone(),
@@ -167,20 +162,25 @@ fn handle_ibc_transfer_funds_reply(
 
     // Create a new hop to be appended to the context
     let hop = CrossChainHop {
-        username: potential_username.map(AndrAddr::from_string),
+        username: potential_username.as_ref().map(AndrAddr::from_string),
         address: ics20_packet_info.sender.clone(),
         from_chain: CURR_CHAIN.load(deps.storage)?,
         to_chain: chain.to_string(),
-        funds: vec![adjusted_funds],
+        funds: vec![adjusted_funds.clone()],
         channel: channel.clone(),
     };
 
     // Add the new hop to the context
     ctx.add_hop(hop);
 
-    let amp_packet = AMPPkt::new_with_ctx(ctx, vec![amp_msg]);
-
-    let kernel_msg = IbcExecuteMsg::SendMessageWithFunds { amp_packet };
+    let kernel_msg = IbcExecuteMsg::SendMessageWithFunds {
+        recipient: AndrAddr::from_string(ics20_packet_info.recipient.clone().get_raw_path()),
+        message: ics20_packet_info.message,
+        funds: adjusted_funds,
+        original_sender: ics20_packet_info.sender,
+        original_sender_username: potential_username.map(AndrAddr::from_string),
+        previous_hops: ctx.previous_hops,
+    };
     let msg = IbcMsg::SendPacket {
         channel_id: channel.clone(),
         data: to_json_binary(&kernel_msg)?,

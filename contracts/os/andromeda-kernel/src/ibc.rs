@@ -2,7 +2,7 @@ use crate::ack::{make_ack_fail, make_ack_success};
 use crate::execute;
 use crate::proto::MsgTransfer;
 use crate::state::{CHAIN_TO_CHANNEL, CHANNEL_TO_CHAIN, KERNEL_ADDRESSES, REFUND_DATA};
-use andromeda_std::amp::messages::AMPPkt;
+use andromeda_std::amp::messages::{AMPCtx, AMPPkt};
 use andromeda_std::amp::{IBC_REGISTRY_KEY, VFS_KEY};
 use andromeda_std::common::context::ExecuteContext;
 use andromeda_std::common::reply::ReplyId;
@@ -175,28 +175,43 @@ pub fn do_ibc_packet_receive(
                 .add_submessages(res.messages)
                 .add_events(res.events))
         }
-        IbcExecuteMsg::SendMessageWithFunds { amp_packet } => {
-            ensure!(
-                !amp_packet.messages.is_empty(),
-                ContractError::InvalidPacket {
-                    error: Some("amp_packet messages is empty".to_string())
-                }
-            );
-
+        IbcExecuteMsg::SendMessageWithFunds {
+            recipient,
+            message,
+            funds,
+            original_sender,
+            original_sender_username,
+            previous_hops,
+        } => {
             // Ensure the first message has funds
-            let first_message = &amp_packet.messages[0];
-            ensure!(
-                !first_message.funds.is_empty(),
-                ContractError::InvalidPacket {
-                    error: Some("message funds is empty".to_string())
-                }
-            );
-            let funds = first_message.funds[0].clone();
+            ensure!(!funds.amount.is_zero(), ContractError::InvalidZeroAmount {});
             execute_env.info = MessageInfo {
                 funds: vec![funds.clone()],
-                sender: env.contract.address,
+                sender: env.contract.address.clone(),
             };
-            let res = execute::send(execute_env, first_message.clone())?;
+            // Add potential username to the context
+            let mut ctx = AMPCtx::new(
+                original_sender.clone(),
+                env.contract.address,
+                0,
+                original_sender_username,
+            );
+            // Add previous hops to the context
+            for hop in previous_hops {
+                ctx.add_hop(hop);
+            }
+
+            let amp_packet = AMPPkt::new_with_ctx(
+                ctx,
+                vec![AMPMsg::new(
+                    recipient.clone(),
+                    message,
+                    Some(vec![funds.clone()]),
+                )],
+            );
+            execute_env.amp_ctx = Some(amp_packet.clone());
+
+            let res = execute::send(execute_env, amp_packet.messages.first().unwrap().clone())?;
 
             // Refunds must be done via the ICS20 channel
             let ics20_channel_id = channel_info
@@ -206,14 +221,14 @@ pub fn do_ibc_packet_receive(
             REFUND_DATA.save(
                 deps.storage,
                 &RefundData {
-                    original_sender: amp_packet.ctx.get_origin(),
+                    original_sender,
                     funds,
                     channel: ics20_channel_id,
                 },
             )?;
             Ok(IbcReceiveResponse::new()
                 .set_ack(make_ack_success())
-                .add_attribute("recipient", first_message.recipient.as_str())
+                .add_attribute("recipient", recipient.as_str())
                 .add_attributes(res.attributes)
                 .add_submessage(SubMsg::reply_always(
                     res.messages.first().unwrap().msg.clone(),

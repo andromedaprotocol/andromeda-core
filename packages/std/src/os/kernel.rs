@@ -1,7 +1,7 @@
 use crate::{
     ado_base::ownership::OwnershipMessage,
     amp::{
-        messages::{AMPMsg, AMPPkt},
+        messages::{AMPMsg, AMPPkt, CrossChainHop},
         AndrAddr,
     },
 };
@@ -171,7 +171,12 @@ pub enum IbcExecuteMsg {
         amp_packet: AMPPkt,
     },
     SendMessageWithFunds {
-        amp_packet: AMPPkt,
+        recipient: AndrAddr,
+        message: Binary,
+        funds: Coin,
+        original_sender: String,
+        original_sender_username: Option<AndrAddr>,
+        previous_hops: Vec<CrossChainHop>,
     },
     CreateADO {
         instantiation_msg: Binary,
