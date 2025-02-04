@@ -371,7 +371,7 @@ macro_rules! unwrap_amp_msg {
 
             ::cosmwasm_std::ensure!(
                 maybe_amp_msg.is_some(),
-                ContractError::InvalidPacket {
+                ::andromeda_std::error::ContractError::InvalidPacket {
                     error: Some("AMP Packet received with no messages".to_string()),
                 }
             );
@@ -379,7 +379,7 @@ macro_rules! unwrap_amp_msg {
             msg = ::cosmwasm_std::from_json(&amp_msg.message)?;
             ::cosmwasm_std::ensure!(
                 !msg.must_be_direct(),
-                ContractError::InvalidPacket {
+                ::andromeda_std::error::ContractError::InvalidPacket {
                     error: Some(format!(
                         "{} cannot be received via AMP packet",
                         msg.as_ref()
