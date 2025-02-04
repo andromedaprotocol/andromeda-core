@@ -32,15 +32,13 @@ use cosmwasm_std::{
     MessageInfo, Reply, Response, StdError, Storage, SubMsg, Uint128, Uint64, WasmMsg,
 };
 
-use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
-use cw_utils::nonpayable;
-
 use crate::state::{
     add_tier, clear_user_orders, get_and_increase_tier_token_id, get_config, get_current_capital,
     get_current_stage, get_duration, get_tier, get_tiers, get_user_orders, is_valid_tiers,
     remove_tier, set_config, set_current_capital, set_current_stage, set_duration, set_tier_orders,
     set_tiers, update_tier, Duration,
 };
+use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 
 const CONTRACT_NAME: &str = "crates.io:andromeda-crowdfund";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -315,8 +313,6 @@ fn handle_receive_cw20(
 }
 
 fn execute_discard_campaign(mut ctx: ExecuteContext) -> Result<Response, ContractError> {
-    nonpayable(&ctx.info)?;
-
     let ExecuteContext { ref mut deps, .. } = ctx;
 
     let curr_stage = get_current_stage(deps.storage);
@@ -338,8 +334,6 @@ fn execute_discard_campaign(mut ctx: ExecuteContext) -> Result<Response, Contrac
 }
 
 fn execute_end_campaign(mut ctx: ExecuteContext) -> Result<Response, ContractError> {
-    nonpayable(&ctx.info)?;
-
     let ExecuteContext {
         ref mut deps,
         ref env,
