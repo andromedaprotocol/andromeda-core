@@ -34,12 +34,8 @@ jobs:
       - run: rustup override set 1.81.0
       - run: rustup target add wasm32-unknown-unknown
       - uses: actions/checkout@v4
-      - name: Set up Clang
-        run: | 
-          sudo apt update && sudo apt install -y clang
       - name: Build
         run: |
-          clang -v
           chmod +x "${GITHUB_WORKSPACE}/scripts/build_all.sh"
           make build
           sudo make version-map
