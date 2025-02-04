@@ -22,7 +22,6 @@ use andromeda_finance::splitter::{InstantiateMsg, AddressPercent};
 
 ado_deployer!(
     deploy_splitter,
-    InterchainChain,
     SplitterContract<MockBase>,
     &InstantiateMsg
 );
@@ -40,20 +39,14 @@ fn run_splitter_test_on_multiple_combos(#[case] chain1_name: &str, #[case] chain
         interchain,
         ..
     } = InterchainTestEnv::new();
+    let chains = [
+        ("juno", &juno),
+        ("osmosis", &osmosis),
+        ("andromeda", &andromeda),
+    ].into_iter().collect::<std::collections::HashMap<_, _>>();
 
-    let chain1 = match chain1_name {
-        "juno" => &juno,
-        "osmosis" => &osmosis,
-        "andromeda" => &andromeda,
-        _ => panic!("Unknown chain: {}", chain1_name),
-    };
-    
-    let chain2 = match chain2_name {
-        "juno" => &juno,
-        "osmosis" => &osmosis,
-        "andromeda" => &andromeda,
-        _ => panic!("Unknown chain: {}", chain2_name),
-    };
+    let chain1 = chains.get(chain1_name).unwrap();
+    let chain2 = chains.get(chain2_name).unwrap();
 
     
         println!("Running test for chain1: {} and chain2: {} combo", 
@@ -63,7 +56,6 @@ fn run_splitter_test_on_multiple_combos(#[case] chain1_name: &str, #[case] chain
         
         let deployed_contract = deploy_splitter!(
             contract,
-            chain1,
             &InstantiateMsg {
                 recipients: vec![
                     AddressPercent {
