@@ -54,7 +54,22 @@ fn run_splitter_test_on_multiple_combos(#[case] chain1_name: &str, #[case] chain
         chain1.chain_name, chain2.chain_name
     );
 
+    let chain1_sender = chain1.chain.addr_make(DEFAULT_SENDER);
+    let chain2_sender = chain2.chain.addr_make(DEFAULT_SENDER);
+    println!(
+        "Chain1 balance: {:?} {:?}",
+        chain1_sender,
+        chain1.chain.query_all_balances(&chain1_sender).unwrap()
+    );
+    println!(
+        "Chain2 balance: {:?} {:?}",
+        chain2_sender,
+        chain2.chain.query_all_balances(&chain2_sender).unwrap()
+    );
     let contract = SplitterContract::new(chain1.chain.clone());
+
+    let recipient1 = chain1.chain.addr_make("recipient1");
+    let recipient2 = chain1.chain.addr_make("recipient2");
 
     let deployed_contract = deploy_splitter!(
         contract,
@@ -62,7 +77,7 @@ fn run_splitter_test_on_multiple_combos(#[case] chain1_name: &str, #[case] chain
             recipients: vec![
                 AddressPercent {
                     recipient: Recipient {
-                        address: AndrAddr::from_string(chain1.addresses[0].clone()),
+                        address: AndrAddr::from_string(recipient1.clone()),
                         msg: None,
                         ibc_recovery_address: None,
                     },
@@ -70,7 +85,7 @@ fn run_splitter_test_on_multiple_combos(#[case] chain1_name: &str, #[case] chain
                 },
                 AddressPercent {
                     recipient: Recipient {
-                        address: AndrAddr::from_string(chain1.addresses[1].clone()),
+                        address: AndrAddr::from_string(recipient2.clone()),
                         msg: None,
                         ibc_recovery_address: None,
                     },
@@ -137,7 +152,7 @@ fn run_splitter_test_on_multiple_combos(#[case] chain1_name: &str, #[case] chain
         .execute(
             &os::kernel::ExecuteMsg::UpsertKeyAddress {
                 key: "trigger_key".to_string(),
-                value: DEFAULT_SENDER.to_string(),
+                value: chain2.chain.sender.to_string(),
             },
             None,
         )
@@ -173,11 +188,11 @@ fn run_splitter_test_on_multiple_combos(#[case] chain1_name: &str, #[case] chain
     // Verify split amounts
     let balance1 = chain1
         .chain
-        .query_all_balances(&chain1.chain.addr_make(chain1.addresses[0].clone()))
+        .query_all_balances(&chain1.chain.addr_make(recipient1.clone()))
         .unwrap();
     let balance2 = chain1
         .chain
-        .query_all_balances(&chain1.chain.addr_make(chain1.addresses[1].clone()))
+        .query_all_balances(&chain1.chain.addr_make(recipient2.clone()))
         .unwrap();
 
     assert_eq!(balance1[0].denom, ibc_denom);

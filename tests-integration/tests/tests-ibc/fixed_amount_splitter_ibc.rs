@@ -23,7 +23,7 @@ fn test_fixed_amount_splitter_ibc() {
         ..
     } = InterchainTestEnv::new();
 
-    let recipient = "osmo1qzskhrca90qy2yjjxqzq4yajy842x7c50xq33d";
+    let recipient = osmosis.chain.addr_make("recipient");
 
     let splitter_osmosis = FixedAmountSplitterContract::new(osmosis.chain.clone());
     splitter_osmosis.upload().unwrap();
@@ -33,7 +33,7 @@ fn test_fixed_amount_splitter_ibc() {
             &andromeda_finance::fixed_amount_splitter::InstantiateMsg {
                 recipients: vec![andromeda_finance::fixed_amount_splitter::AddressAmount {
                     recipient: Recipient {
-                        address: AndrAddr::from_string(recipient),
+                        address: AndrAddr::from_string(recipient.clone()),
                         msg: None,
                         ibc_recovery_address: None,
                     },

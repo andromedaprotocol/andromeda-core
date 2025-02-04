@@ -83,14 +83,31 @@ impl InterchainTestEnv {
         // Setup Juno Chain
         let juno_chain = interchain.get_chain("juno").unwrap();
         let juno = InterchainChain::new(juno_chain, "juno".to_string());
+        juno.chain
+            .set_balance(&juno.chain.sender, vec![Coin::new(100000000000000, "juno")])
+            .unwrap();
 
         // Setup Osmosis Chain
         let osmosis_chain = interchain.get_chain("osmosis").unwrap();
         let osmosis = InterchainChain::new(osmosis_chain, "osmosis".to_string());
+        osmosis
+            .chain
+            .set_balance(
+                &osmosis.chain.sender,
+                vec![Coin::new(100000000000000, "osmosis")],
+            )
+            .unwrap();
 
         // Setup Andromeda Chain
         let andromeda_chain = interchain.get_chain("andromeda").unwrap();
         let andromeda = InterchainChain::new(andromeda_chain, "andromeda".to_string());
+        andromeda
+            .chain
+            .set_balance(
+                &andromeda.chain.sender,
+                vec![Coin::new(100000000000000, "andromeda")],
+            )
+            .unwrap();
 
         let interchain_test_env = Self {
             juno,
@@ -129,8 +146,7 @@ impl InterchainTestEnv {
 
     pub fn set_balance(&self, chain: &str, address: String, amount: Vec<Coin>) {
         let chain = self.interchain.get_chain(chain).unwrap();
-        let addr = chain.addr_make(address);
-        chain.set_balance(&addr, amount).unwrap();
+        chain.addr_make_with_balance(address, amount).unwrap();
     }
 
     // Creates a contract channel between two kernels on the provided chains
