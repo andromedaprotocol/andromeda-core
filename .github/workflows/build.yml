@@ -35,7 +35,9 @@ jobs:
       - run: rustup target add wasm32-unknown-unknown
       - uses: actions/checkout@v4
       - name: Set up Clang
-        run: sudo apt update && sudo apt install -y clang
+        run: | 
+          sudo apt update && sudo apt install -y clang
+          clang -v
       - name: Build
         run: |
           chmod +x "${GITHUB_WORKSPACE}/scripts/build_all.sh"
