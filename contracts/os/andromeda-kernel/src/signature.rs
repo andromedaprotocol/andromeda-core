@@ -1,7 +1,4 @@
-use andromeda_std::{
-    common::context::ExecuteContext,
-    error::ContractError,
-};
+use andromeda_std::{common::context::ExecuteContext, error::ContractError};
 use bech32::{ToBase32, Variant};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::ensure;
@@ -19,7 +16,12 @@ pub fn verify_signature(
     address_prefix: String,
 ) -> Result<bool, ContractError> {
     let address = derive_address(&address_prefix, public_key).unwrap();
-    ensure!(address == signer_addr, ContractError::InvalidSigner { signer: signer_addr });
+    ensure!(
+        address == signer_addr,
+        ContractError::InvalidSigner {
+            signer: signer_addr
+        }
+    );
 
     let message_hash: [u8; 32] = Sha256::new().chain(&msg).finalize().into();
 
@@ -44,7 +46,8 @@ pub fn derive_address(prefix: &str, public_key_bytes: &[u8]) -> Result<String, C
     let ripemd160_hash = Ripemd160::digest(sha256_hash);
 
     // Encode with bech32
-    bech32::encode(prefix, ripemd160_hash.to_base32(), Variant::Bech32).map_err(|_| ContractError::InvalidAddress {  })
+    bech32::encode(prefix, ripemd160_hash.to_base32(), Variant::Bech32)
+        .map_err(|_| ContractError::InvalidAddress {})
 }
 
 #[cfg(test)]
@@ -79,6 +82,14 @@ mod tests {
         let address = derive_address("neutron", public_key_bytes).unwrap();
 
         let ctx = ExecuteContext::new(deps.as_mut(), info, env);
-        assert!(verify_signature(ctx, msg.clone(), &signature.to_bytes(), public_key_bytes, address.clone(), "neutron".to_string()).unwrap());
+        assert!(verify_signature(
+            ctx,
+            msg.clone(),
+            &signature.to_bytes(),
+            public_key_bytes,
+            address.clone(),
+            "neutron".to_string()
+        )
+        .unwrap());
     }
 }

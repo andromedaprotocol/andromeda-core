@@ -7,9 +7,9 @@ pub mod mock;
 mod proto;
 mod query;
 pub mod reply;
+mod signature;
 mod state;
 mod sudo;
-mod signature;
 
 #[cfg(test)]
 mod testing;
