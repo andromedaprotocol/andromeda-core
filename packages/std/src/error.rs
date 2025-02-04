@@ -85,6 +85,9 @@ pub enum ContractError {
     #[error("InvalidSender")]
     InvalidSender {},
 
+    #[error("InvalidSigner")]
+    InvalidSigner { signer: String },
+
     #[error("InvalidValidator")]
     InvalidValidator {},
 
