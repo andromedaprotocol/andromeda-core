@@ -34,6 +34,11 @@ jobs:
       - run: rustup override set 1.81.0
       - run: rustup target add wasm32-unknown-unknown
       - uses: actions/checkout@v4
+      - name: Set up Clang
+        uses: egor-tensin/setup-clang@v1
+        with:
+          version: latest
+          platform: x64
       - name: Build
         run: |
           chmod +x "${GITHUB_WORKSPACE}/scripts/build_all.sh"
