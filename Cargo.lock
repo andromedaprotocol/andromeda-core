@@ -212,7 +212,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-crowdfund"
-version = "2.2.0-beta"
+version = "2.2.1-b.1"
 dependencies = [
  "andromeda-app",
  "andromeda-non-fungible-tokens",
@@ -690,7 +690,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-non-fungible-tokens"
-version = "1.0.0"
+version = "1.0.1-b.1"
 dependencies = [
  "andromeda-std",
  "cosmwasm-schema",
@@ -824,7 +824,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-std"
-version = "1.5.1-b.4"
+version = "1.5.1-b.5"
 dependencies = [
  "andromeda-macros",
  "cosmwasm-schema",
