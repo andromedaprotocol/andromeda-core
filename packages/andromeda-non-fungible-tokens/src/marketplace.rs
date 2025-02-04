@@ -46,13 +46,13 @@ pub enum ExecuteMsg {
         token_id: String,
         token_address: String,
     },
-    /// Restricted to owner
+    #[attrs(nonpayable, restricted)]
     AuthorizeContract {
         action: PermissionAction,
         addr: AndrAddr,
         expiration: Option<Expiry>,
     },
-    /// Restricted to owner
+    #[attrs(nonpayable, restricted)]
     DeauthorizeContract {
         action: PermissionAction,
         addr: AndrAddr,

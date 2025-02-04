@@ -147,17 +147,11 @@ pub fn authorize_addresses(
 
 pub fn execute_authorize_contract(
     deps: DepsMut,
-    info: MessageInfo,
+    _info: MessageInfo,
     action: PermissionAction,
     address: AndrAddr,
     expiration: Option<Expiry>,
 ) -> Result<Response, ContractError> {
-    let contract = ADOContract::default();
-    ensure!(
-        contract.is_contract_owner(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {}
-    );
-
     let permission = expiration.map_or(
         Permission::Local(LocalPermission::whitelisted(None, None)),
         |expiration| Permission::Local(LocalPermission::whitelisted(None, Some(expiration))),
@@ -179,16 +173,10 @@ pub fn execute_authorize_contract(
 
 pub fn execute_deauthorize_contract(
     deps: DepsMut,
-    info: MessageInfo,
+    _info: MessageInfo,
     action: PermissionAction,
     address: AndrAddr,
 ) -> Result<Response, ContractError> {
-    let contract = ADOContract::default();
-    ensure!(
-        contract.is_contract_owner(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {}
-    );
-
     let raw_address = address.get_raw_address(&deps.as_ref())?;
 
     ADOContract::remove_permission(deps.storage, action.as_str(), raw_address.to_string())?;
