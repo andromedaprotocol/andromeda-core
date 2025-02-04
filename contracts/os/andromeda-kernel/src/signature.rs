@@ -37,7 +37,9 @@ pub fn verify_signature(
 
 #[allow(dead_code)]
 pub fn derive_address(prefix: &str, public_key_bytes: &[u8]) -> Result<String, ContractError> {
-    let pub_key_compressed = &PublicKey::from_slice(public_key_bytes).unwrap().serialize();
+    let pub_key_compressed = &PublicKey::from_slice(public_key_bytes)
+        .map_err(|_| ContractError::InvalidPublickey {})?
+        .serialize();
 
     // Hash with SHA-256
     let sha256_hash = Sha256::digest(pub_key_compressed);

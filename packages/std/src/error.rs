@@ -184,6 +184,9 @@ pub enum ContractError {
     #[error("InvalidPrimitive")]
     InvalidPrimitive {},
 
+    #[error("InvalidPublickey")]
+    InvalidPublickey {},
+
     #[error("StillBonded")]
     StillBonded {},
 
