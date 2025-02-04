@@ -37,9 +37,9 @@ jobs:
       - name: Set up Clang
         run: | 
           sudo apt update && sudo apt install -y clang
-          clang -v
       - name: Build
         run: |
+          clang -v
           chmod +x "${GITHUB_WORKSPACE}/scripts/build_all.sh"
           make build
           sudo make version-map
