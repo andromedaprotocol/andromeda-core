@@ -1,32 +1,32 @@
 #![cfg(not(target_arch = "wasm32"))]
 
+use andromeda_app::app::{AppComponent, InstantiateMsg as AppInstantiateMsg};
+use andromeda_app_contract::AppContract;
 use andromeda_auction::AuctionContract;
+use andromeda_cw721::CW721Contract;
+use andromeda_finance::rate_limiting_withdrawals::{
+    CoinAndLimit, InstantiateMsg, MinimumFrequency,
+};
+use andromeda_kernel::ack::make_ack_success;
 use andromeda_non_fungible_tokens::{
     auction::{ExecuteMsg, InstantiateMsg as AuctionInstantiateMsg},
     cw721::InstantiateMsg as CW721InstantiateMsg,
 };
-use andromeda_app::app::{AppComponent, InstantiateMsg as AppInstantiateMsg};
-use andromeda_app_contract::AppContract;
-use andromeda_cw721::CW721Contract;
 use andromeda_rate_limiting_withdrawals::RateLimitingWithdrawalsContract;
-use cosmwasm_std::{to_json_binary, Coin, Uint128};
-use cw_orch::mock::MockBase;
 use andromeda_std::{
     amp::{messages::AMPMsg, AndrAddr},
-    os,
     common::Milliseconds,
+    os,
 };
-use andromeda_kernel::ack::make_ack_success;
 use andromeda_testing::{
     ado_deployer,
-    register_ado,
     interchain::{ensure_packet_success, InterchainChain, DEFAULT_SENDER},
-    InterchainTestEnv,
+    register_ado, InterchainTestEnv,
 };
+use cosmwasm_std::{to_json_binary, Coin, Uint128};
+use cw_orch::mock::cw_multi_test::MockApiBech32;
+use cw_orch::mock::MockBase;
 use cw_orch::prelude::*;
-use cw_orch_interchain::prelude::*;
-use andromeda_finance::rate_limiting_withdrawals::{InstantiateMsg, CoinAndLimit, MinimumFrequency};
-use ibc_relayer_types::applications::ics27_ica::msgs::register;
 use rstest::*;
 
 pub struct ChainMap<'a> {
@@ -34,7 +34,7 @@ pub struct ChainMap<'a> {
 }
 ado_deployer!(
     deploy_app,
-    AppContract<MockBase>,
+    AppContract<MockBase<MockApiBech32>>,
     &AppInstantiateMsg
 );
 
@@ -44,18 +44,13 @@ ado_deployer!(
     &AuctionInstantiateMsg
 );
 
-ado_deployer!(
-    deploy_cw721,
-    CW721Contract<MockBase>,
-    &CW721InstantiateMsg
-);
+ado_deployer!(deploy_cw721, CW721Contract<MockBase>, &CW721InstantiateMsg);
 
 ado_deployer!(
     deploy_rate_limiting,
     RateLimitingWithdrawalsContract<MockBase>,
     &InstantiateMsg
 );
-
 
 #[rstest]
 #[case::osmosis_to_juno("osmosis", "juno")]
@@ -73,7 +68,9 @@ fn test_rate_limiting_withdrawals_ibc(#[case] chain1_name: &str, #[case] chain2_
         ("juno", &juno),
         ("osmosis", &osmosis),
         ("andromeda", &andromeda),
-    ].into_iter().collect::<std::collections::HashMap<_, _>>();
+    ]
+    .into_iter()
+    .collect::<std::collections::HashMap<_, _>>();
 
     let chain1 = chains.get(chain1_name).unwrap();
     let chain2 = chains.get(chain2_name).unwrap();
@@ -87,7 +84,7 @@ fn test_rate_limiting_withdrawals_ibc(#[case] chain1_name: &str, #[case] chain2_
     rate_limiting.upload().unwrap();
     let app = AppContract::new(chain1.chain.clone());
     app.upload().unwrap();
-         
+
     // Register all contracts
     register_ado!(chain1, auction, "auction");
     register_ado!(chain1, cw721, "cw721");
@@ -108,7 +105,8 @@ fn test_rate_limiting_withdrawals_ibc(#[case] chain1_name: &str, #[case] chain2_
                         symbol: "TEST".to_string(),
                         kernel_address: chain1.aos.kernel.address().unwrap().into_string(),
                         owner: None
-                    }).unwrap()
+                    })
+                    .unwrap()
                 ),
                 // AppComponent::new(
                 //     "auction",

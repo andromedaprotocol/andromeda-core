@@ -149,7 +149,7 @@ fn test_kernel_ibc_funds_only() {
 
     let balances = osmosis
         .chain
-        .query_all_balances(osmosis.aos.kernel.address().unwrap())
+        .query_all_balances(&osmosis.aos.kernel.address().unwrap())
         .unwrap();
     assert_eq!(balances.len(), 1);
     assert_eq!(balances[0].denom, ibc_denom);
@@ -189,7 +189,10 @@ fn test_kernel_ibc_funds_only() {
         .unwrap();
     ensure_packet_success(packet_lifetime);
 
-    let balances = osmosis.chain.query_all_balances(recipient).unwrap();
+    let balances = osmosis
+        .chain
+        .query_all_balances(&osmosis.chain.addr_make(recipient))
+        .unwrap();
     assert_eq!(balances.len(), 1);
     assert_eq!(balances[0].denom, ibc_denom);
     assert_eq!(balances[0].amount.u128(), 100);
@@ -286,7 +289,7 @@ fn test_kernel_ibc_funds_and_execute_msg() {
     // Check kernel balance before trigger execute msg
     let balances = osmosis
         .chain
-        .query_all_balances(osmosis.aos.kernel.address().unwrap())
+        .query_all_balances(&osmosis.aos.kernel.address().unwrap())
         .unwrap();
     assert_eq!(balances.len(), 1);
     assert_eq!(balances[0].denom, ibc_denom);
@@ -327,7 +330,10 @@ fn test_kernel_ibc_funds_and_execute_msg() {
     ensure_packet_success(packet_lifetime);
 
     // Check recipient balance after trigger execute msg
-    let balances = osmosis.chain.query_all_balances(recipient).unwrap();
+    let balances = osmosis
+        .chain
+        .query_all_balances(&osmosis.chain.addr_make(recipient))
+        .unwrap();
     assert_eq!(balances.len(), 1);
     assert_eq!(balances[0].denom, ibc_denom);
     assert_eq!(balances[0].amount.u128(), 100);

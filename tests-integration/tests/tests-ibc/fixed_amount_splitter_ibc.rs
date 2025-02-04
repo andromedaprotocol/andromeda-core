@@ -1,19 +1,16 @@
 #![cfg(not(target_arch = "wasm32"))]
 
 use andromeda_fixed_amount_splitter::FixedAmountSplitterContract;
-use cosmwasm_std::{to_json_binary, Coin, Uint128};
+use andromeda_kernel::ack::make_ack_success;
 use andromeda_std::{
-    amp::{
-        messages::AMPMsg,
-        AndrAddr, Recipient,
-    },
+    amp::{messages::AMPMsg, AndrAddr, Recipient},
     os,
 };
-use andromeda_kernel::ack::make_ack_success;
 use andromeda_testing::{
     interchain::{ensure_packet_success, DEFAULT_SENDER},
     InterchainTestEnv,
 };
+use cosmwasm_std::{to_json_binary, Coin, Uint128};
 use cw_orch::prelude::*;
 use cw_orch_interchain::prelude::*;
 
@@ -39,7 +36,8 @@ fn test_fixed_amount_splitter_ibc() {
                         address: AndrAddr::from_string(recipient),
                         msg: None,
                         ibc_recovery_address: None,
-                    },coins: vec![Coin {
+                    },
+                    coins: vec![Coin {
                         denom: "ibc/channel-0/juno".to_string(),
                         amount: Uint128::new(100),
                     }],
@@ -75,7 +73,10 @@ fn test_fixed_amount_splitter_ibc() {
     ));
     let message = AMPMsg::new(
         osmosis_recipient,
-        to_json_binary(&andromeda_finance::fixed_amount_splitter::ExecuteMsg::Send { config: None }).unwrap(),
+        to_json_binary(
+            &andromeda_finance::fixed_amount_splitter::ExecuteMsg::Send { config: None },
+        )
+        .unwrap(),
         Some(vec![Coin {
             denom: "juno".to_string(),
             amount: Uint128::new(100),
@@ -108,7 +109,7 @@ fn test_fixed_amount_splitter_ibc() {
     // Check kernel balance before trigger execute msg
     let balances = osmosis
         .chain
-        .query_all_balances(osmosis.aos.kernel.address().unwrap())
+        .query_all_balances(&osmosis.aos.kernel.address().unwrap())
         .unwrap();
     assert_eq!(balances.len(), 1);
     assert_eq!(balances[0].denom, ibc_denom);
@@ -149,7 +150,10 @@ fn test_fixed_amount_splitter_ibc() {
     ensure_packet_success(packet_lifetime);
 
     // Check recipient balance after trigger execute msg
-    let balances = osmosis.chain.query_all_balances(recipient).unwrap();
+    let balances = osmosis
+        .chain
+        .query_all_balances(&osmosis.chain.addr_make(recipient))
+        .unwrap();
     assert_eq!(balances.len(), 1);
     assert_eq!(balances[0].denom, ibc_denom);
     assert_eq!(balances[0].amount.u128(), 100);

@@ -2,11 +2,11 @@ pub mod aos;
 
 use aos::InterchainAOS;
 use cosmwasm_std::{Addr, Coin};
-use cw_orch::mock::MockBase;
+use cw_orch::mock::{cw_multi_test::MockApiBech32, MockBase};
 use cw_orch_interchain::{
     prelude::PortId,
     types::{IbcPacketOutcome, IbcTxAnalysis},
-    InterchainEnv, MockInterchainEnv,
+    InterchainEnv, MockBech32InterchainEnv,
 };
 
 pub const DEFAULT_SENDER: &str = "sender_for_all_chains";
@@ -14,7 +14,7 @@ pub const DEFAULT_SENDER: &str = "sender_for_all_chains";
 /// The `InterchainChain` struct represents a chain in the interchain environment.
 /// It contains a `MockBase` instance representing the chain, a `String` for the chain name, and an `InterchainAOS` instance.
 pub struct InterchainChain {
-    pub chain: MockBase,
+    pub chain: MockBase<MockApiBech32>,
     pub chain_name: String,
     pub aos: InterchainAOS,
     pub denom: String,
@@ -22,7 +22,7 @@ pub struct InterchainChain {
 }
 
 impl InterchainChain {
-    pub fn new(chain: MockBase, chain_name: String) -> Self {
+    pub fn new(chain: MockBase<MockApiBech32>, chain_name: String) -> Self {
         let aos = InterchainAOS::new(chain.clone(), chain_name.clone());
         let (denom, addresses) = match chain_name.as_str() {
             "juno" => (
@@ -68,16 +68,16 @@ pub struct InterchainTestEnv {
     pub osmosis: InterchainChain,
     pub andromeda: InterchainChain,
     pub sender: Addr,
-    pub interchain: MockInterchainEnv,
+    pub interchain: MockBech32InterchainEnv,
 }
 
 impl InterchainTestEnv {
     pub fn new() -> Self {
         let sender = Addr::unchecked(DEFAULT_SENDER);
-        let interchain = MockInterchainEnv::new(vec![
-            ("juno", DEFAULT_SENDER),
-            ("osmosis", DEFAULT_SENDER),
-            ("andromeda", DEFAULT_SENDER),
+        let interchain = MockBech32InterchainEnv::new(vec![
+            ("juno", "juno"),
+            ("osmosis", "osmo"),
+            ("andromeda", "andr"),
         ]);
 
         // Setup Juno Chain
@@ -129,7 +129,8 @@ impl InterchainTestEnv {
 
     pub fn set_balance(&self, chain: &str, address: String, amount: Vec<Coin>) {
         let chain = self.interchain.get_chain(chain).unwrap();
-        chain.set_balance(address, amount).unwrap();
+        let addr = chain.addr_make(address);
+        chain.set_balance(&addr, amount).unwrap();
     }
 
     // Creates a contract channel between two kernels on the provided chains
@@ -210,7 +211,7 @@ impl Default for InterchainTestEnv {
     }
 }
 
-pub fn ensure_packet_success(packet_lifetime: IbcTxAnalysis<MockBase>) {
+pub fn ensure_packet_success(packet_lifetime: IbcTxAnalysis<MockBase<MockApiBech32>>) {
     if let IbcPacketOutcome::Success { .. } = &packet_lifetime.packets[0].outcome {
         // Packet has been successfully acknowledged and decoded, the transaction has gone through correctly
     } else {

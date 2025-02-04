@@ -9,17 +9,20 @@ use andromeda_std::{
     os::{self, kernel::ChannelInfoResponse},
 };
 use andromeda_vfs::{mock::mock_vfs_instantiate_message, VFSContract};
-use cw_orch::{mock::MockBase, prelude::*};
+use cw_orch::{
+    mock::{cw_multi_test::MockApiBech32, MockBase},
+    prelude::*,
+};
 
 pub struct InterchainAOS {
-    pub kernel: KernelContract<MockBase>,
-    pub economics: EconomicsContract<MockBase>,
-    pub adodb: ADODBContract<MockBase>,
-    pub vfs: VFSContract<MockBase>,
+    pub kernel: KernelContract<MockBase<MockApiBech32>>,
+    pub economics: EconomicsContract<MockBase<MockApiBech32>>,
+    pub adodb: ADODBContract<MockBase<MockApiBech32>>,
+    pub vfs: VFSContract<MockBase<MockApiBech32>>,
 }
 
 impl InterchainAOS {
-    pub fn new(chain: MockBase, chain_name: String) -> Self {
+    pub fn new(chain: MockBase<MockApiBech32>, chain_name: String) -> Self {
         let kernel = KernelContract::new(chain.clone());
         let economics = EconomicsContract::new(chain.clone());
         let adodb = ADODBContract::new(chain.clone());
