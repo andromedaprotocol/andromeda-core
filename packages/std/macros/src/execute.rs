@@ -79,13 +79,13 @@ pub(crate) fn fn_implementation(_attr: TokenStream, item: TokenStream) -> TokenS
                 let is_owner = ctx.contract.is_contract_owner(ctx.deps.storage, info.sender.as_str())?;
                 ::cosmwasm_std::ensure!(
                     is_owner,
-                    ContractError::Unauthorized {}
+                    ::andromeda_std::error::ContractError::Unauthorized {}
                 );
             }
 
             // Check if the message is payable
             if !msg.is_payable() {
-                ::cosmwasm_std::ensure!(info.funds.is_empty(), ContractError::Payment(andromeda_std::error::PaymentError::NonPayable {}));
+                ::cosmwasm_std::ensure!(info.funds.is_empty(), ::andromeda_std::error::ContractError::Payment(::andromeda_std::error::PaymentError::NonPayable {}));
             }
 
 
