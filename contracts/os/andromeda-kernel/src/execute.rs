@@ -810,7 +810,10 @@ impl MsgHandler {
         channel_info: ChannelInfo,
     ) -> Result<Response, ContractError> {
         let AMPMsg {
-            recipient, message, ..
+            recipient,
+            message,
+            funds,
+            ..
         } = self.message();
         ensure!(
             !Binary::default().eq(message),
@@ -843,7 +846,7 @@ impl MsgHandler {
                     address: ctx.get_origin(),
                     from_chain: current_chain.to_string(),
                     to_chain: destination_chain.to_string(),
-                    funds: vec![],
+                    funds: funds.to_vec(),
                     channel: channel.clone(),
                 };
 
@@ -863,7 +866,7 @@ impl MsgHandler {
                     address: ctx.ctx.get_origin(),
                     from_chain: current_chain.to_string(),
                     to_chain: destination_chain.to_string(),
-                    funds: vec![],
+                    funds: funds.to_vec(),
                     channel: channel.clone(),
                 };
 
