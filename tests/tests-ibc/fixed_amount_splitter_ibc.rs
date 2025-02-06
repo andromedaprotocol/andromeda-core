@@ -1,3 +1,4 @@
+
 #![cfg(not(target_arch = "wasm32"))]
 
 use andromeda_fixed_amount_splitter::FixedAmountSplitterContract;
@@ -13,6 +14,7 @@ use andromeda_testing::{
 use cosmwasm_std::{to_json_binary, Coin, Uint128};
 use cw_orch::prelude::*;
 use cw_orch_interchain::prelude::*;
+
 
 #[test]
 fn test_fixed_amount_splitter_ibc() {
@@ -71,6 +73,9 @@ fn test_fixed_amount_splitter_ibc() {
         "ibc://osmosis/{}",
         splitter_osmosis.address().unwrap()
     ));
+
+    println!("channels {:?}", osmosis.aos.get_aos_channel("juno").unwrap());
+
     let message = AMPMsg::new(
         osmosis_recipient,
         to_json_binary(
@@ -95,10 +100,14 @@ fn test_fixed_amount_splitter_ibc() {
         )
         .unwrap();
 
-    let packet_lifetime = interchain
-        .await_packets("juno", kernel_juno_send_request)
-        .unwrap();
-    ensure_packet_success(packet_lifetime);
+        let packet_lifetime = match interchain.await_packets("juno", kernel_juno_send_request) {
+            Ok(pl) => pl,
+            Err(e) => {
+                eprintln!("Error awaiting packets: {:?}", e);
+                panic!("Detailed error: {:?}", e);
+            }
+        };
+        ensure_packet_success(packet_lifetime);
 
     let ibc_denom = format!(
         "ibc/{}/{}",

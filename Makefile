@@ -51,7 +51,7 @@ unit-test:
 # Runs integration tests
 integration-test:
 	@echo "Running integration tests..."
-	@cargo test -p tests-integration --quiet
+	@cargo test -p tests --quiet
 	@echo "Integration tests complete! \033[0;32m\xE2\x9C\x94\033[0m"
 
 # Runs all tests

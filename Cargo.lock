@@ -5089,7 +5089,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "tests-integration"
+name = "tests"
 version = "1.0.0"
 dependencies = [
  "andromeda-address-list",
@@ -5139,6 +5139,30 @@ dependencies = [
  "ibc-relayer-types",
  "rstest",
  "toml 0.8.19",
+]
+
+[[package]]
+name = "tests-ibc"
+version = "1.0.0"
+dependencies = [
+ "andromeda-app",
+ "andromeda-app-contract",
+ "andromeda-auction",
+ "andromeda-counter",
+ "andromeda-cw721",
+ "andromeda-finance",
+ "andromeda-fixed-amount-splitter",
+ "andromeda-kernel",
+ "andromeda-math",
+ "andromeda-non-fungible-tokens",
+ "andromeda-rate-limiting-withdrawals",
+ "andromeda-splitter",
+ "andromeda-std",
+ "andromeda-testing",
+ "cosmwasm-std",
+ "cw-orch",
+ "cw-orch-interchain",
+ "rstest",
 ]
 
 [[package]]

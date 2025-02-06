@@ -108,31 +108,31 @@ fn test_rate_limiting_withdrawals_ibc(#[case] chain1_name: &str, #[case] chain2_
                     })
                     .unwrap()
                 ),
-                // AppComponent::new(
-                //     "auction",
-                //     "auction",
-                //     to_json_binary(&AuctionInstantiateMsg {
-                //         authorized_token_addresses: None,
-                //         authorized_cw20_addresses: None,
-                //         kernel_address: chain1.aos.kernel.address().unwrap().into_string(),
-                //         owner: None,
-                //     }).unwrap()
-                // ),
-                // AppComponent::new(
-                //     "rate-limiting",
-                //     "rate-limiting-withdrawals",
-                //     to_json_binary(&InstantiateMsg {
-                //         allowed_coin: CoinAndLimit {
-                //             coin: chain1.denom.clone(),
-                //             limit: Uint128::new(100),
-                //         },
-                //         minimal_withdrawal_frequency: MinimumFrequency::Time {
-                //             time: Milliseconds::from_seconds(1),
-                //         },
-                //         kernel_address: chain1.aos.kernel.address().unwrap().into_string(),
-                //         owner: None,
-                //     }).unwrap()
-                // )
+                AppComponent::new(
+                    "auction",
+                    "auction",
+                    to_json_binary(&AuctionInstantiateMsg {
+                        authorized_token_addresses: None,
+                        authorized_cw20_addresses: None,
+                        kernel_address: chain1.aos.kernel.address().unwrap().into_string(),
+                        owner: None,
+                    }).unwrap()
+                ),
+                AppComponent::new(
+                    "rate-limiting",
+                    "rate-limiting-withdrawals",
+                    to_json_binary(&InstantiateMsg {
+                        allowed_coin: CoinAndLimit {
+                            coin: chain1.denom.clone(),
+                            limit: Uint128::new(100),
+                        },
+                        minimal_withdrawal_frequency: MinimumFrequency::Time {
+                            time: Milliseconds::from_seconds(1),
+                        },
+                        kernel_address: chain1.aos.kernel.address().unwrap().into_string(),
+                        owner: None,
+                    }).unwrap()
+                )
             ],
             name: "test_app".to_string(),
             chain_info: None,

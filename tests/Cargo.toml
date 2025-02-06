@@ -1,5 +1,5 @@
 [package]
-name = "tests-integration"
+name = "tests"
 version = "1.0.0"
 edition = "2021"
 rust-version = "1.75.0"
@@ -11,6 +11,7 @@ andromeda-app = { workspace = true }
 andromeda-app-contract = { path = "../contracts/app/andromeda-app-contract", features = [
     "testing",
 ] }
+rstest = "0.24.0"
 
 #Non-Fungible Tokens
 andromeda-non-fungible-tokens = { workspace = true }
@@ -146,45 +147,40 @@ cw-multi-test = { workspace = true }
 
 [[test]]
 name = "app"
-
-# [[test]]
-# name = "cw721"
+path = "app.rs"
 
 [[test]]
 name = "crowdfund_app"
+path = "crowdfund_app.rs"
 
 [[test]]
 name = "auction_app"
+path = "auction_app.rs"
 
 [[test]]
 name = "marketplace_app"
+path = "marketplace_app.rs"
 
 [[test]]
 name = "splitter"
+path = "splitter.rs"
 
 [[test]]
 name = "validator_staking"
+path = "validator_staking.rs"
 
 [[test]]
 name = "shunting"
-
-[dependencies]
-rstest = { workspace = true }
-
-# [[test]]
-# name = "cw20_staking_app"
-
-# [[test]]
-# name = "wrapped_cw721_app"
-
-# [[test]]
-# name = "kernel"
+path = "shunting.rs"
 
 [[test]]
 name = "fixed_amount_splitter"
+path = "fixed_amount_splitter.rs"
 
 [[test]]
 name = "cw20_staking"
+path = "cw20_staking.rs"
 
 [[test]]
 name = "ibc_registry"
+path = "ibc_registry.rs"

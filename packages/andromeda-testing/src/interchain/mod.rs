@@ -2,7 +2,7 @@ pub mod aos;
 
 use aos::InterchainAOS;
 use cosmwasm_std::{Addr, Coin};
-use cw_orch::mock::{cw_multi_test::MockApiBech32, MockBase};
+use cw_orch::mock::{cw_multi_test::MockApiBech32, MockBase, MockBech32};
 use cw_orch_interchain::{
     prelude::PortId,
     types::{IbcPacketOutcome, IbcTxAnalysis},

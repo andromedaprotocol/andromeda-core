@@ -1,0 +1,62 @@
+[package]
+name = "tests-ibc"
+version = "1.0.0"
+edition = "2021"
+rust-version = "1.75.0"
+publish = false
+
+
+[[test]]
+name = "fixed-amount-splitter-ibc"
+path = "fixed_amount_splitter_ibc.rs"
+
+[[test]]
+name = "interchain"
+path = "interchain.rs"
+
+[[test]]
+name = "rate-limiting-ibc"
+path = "rate_limiting_ibc.rs"
+
+[[test]]
+name = "splitter-ibc"
+path = "splitter_ibc.rs"
+
+
+
+[dev-dependencies]
+andromeda-kernel = {path = "../../contracts/os/andromeda-kernel", features = [
+    "testing",
+] }
+andromeda-fixed-amount-splitter = { path = "../../contracts/finance/andromeda-fixed-amount-splitter", features = [
+    "testing",
+] }
+andromeda-app = { workspace = true }
+andromeda-std = { workspace = true }
+andromeda-testing = { workspace = true }
+andromeda-finance = { workspace = true }
+andromeda-math = { workspace = true }
+andromeda-counter = { path = "../../contracts/math/andromeda-counter", features = [
+    "testing",
+] }
+andromeda-splitter = { path = "../../contracts/finance/andromeda-splitter", features = [
+    "testing",
+] }
+andromeda-app-contract = { path = "../../contracts/app/andromeda-app-contract", features = [
+    "testing",
+] }
+andromeda-auction = { path = "../../contracts/non-fungible-tokens/andromeda-auction", features = [
+    "testing",
+] }
+andromeda-cw721 = { path = "../../contracts/non-fungible-tokens/andromeda-cw721", features = [
+    "testing",
+] }
+andromeda-rate-limiting-withdrawals = { path = "../../contracts/finance/andromeda-rate-limiting-withdrawals", features = [
+    "testing"
+] }
+andromeda-non-fungible-tokens = { workspace = true }
+cosmwasm-std = { workspace = true, features = ["staking"] }
+cw-orch = { workspace = true }
+cw-orch-interchain = "=0.3.0"
+rstest = "0.24.0"
+
