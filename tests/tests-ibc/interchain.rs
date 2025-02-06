@@ -111,9 +111,9 @@ fn test_kernel_ibc_funds_only() {
         ..
     } = InterchainTestEnv::new();
 
-    let recipient = "osmo1qzskhrca90qy2yjjxqzq4yajy842x7c50xq33d";
+    let recipient = osmosis.chain.addr_make("recipient");
 
-    let andr_recipient = AndrAddr::from_string(format!("ibc://osmosis/{}", recipient));
+    let andr_recipient = AndrAddr::from_string(format!("ibc://osmosis/{}", recipient.to_string()));
     let message = AMPMsg::new(
         andr_recipient,
         Binary::default(),
@@ -161,7 +161,7 @@ fn test_kernel_ibc_funds_only() {
         .execute(
             &os::kernel::ExecuteMsg::UpsertKeyAddress {
                 key: "trigger_key".to_string(),
-                value: DEFAULT_SENDER.to_string(),
+                value: juno.chain.sender.to_string(),
             },
             None,
         )
@@ -191,7 +191,7 @@ fn test_kernel_ibc_funds_only() {
 
     let balances = osmosis
         .chain
-        .query_all_balances(&osmosis.chain.addr_make(recipient))
+        .query_all_balances(&recipient)
         .unwrap();
     assert_eq!(balances.len(), 1);
     assert_eq!(balances[0].denom, ibc_denom);
@@ -207,7 +207,7 @@ fn test_kernel_ibc_funds_and_execute_msg() {
         ..
     } = InterchainTestEnv::new();
 
-    let recipient = "osmo1qzskhrca90qy2yjjxqzq4yajy842x7c50xq33d";
+    let recipient = osmosis.chain.addr_make("recipient");
 
     let splitter_osmosis = SplitterContract::new(osmosis.chain.clone());
     splitter_osmosis.upload().unwrap();
@@ -219,7 +219,7 @@ fn test_kernel_ibc_funds_and_execute_msg() {
             &andromeda_finance::splitter::InstantiateMsg {
                 recipients: vec![andromeda_finance::splitter::AddressPercent {
                     recipient: Recipient {
-                        address: AndrAddr::from_string(recipient),
+                        address: AndrAddr::from_string(recipient.to_string()),
                         msg: None,
                         ibc_recovery_address: None,
                     },
@@ -301,7 +301,7 @@ fn test_kernel_ibc_funds_and_execute_msg() {
         .execute(
             &os::kernel::ExecuteMsg::UpsertKeyAddress {
                 key: "trigger_key".to_string(),
-                value: DEFAULT_SENDER.to_string(),
+                value: juno.chain.sender.to_string(),
             },
             None,
         )
@@ -332,7 +332,7 @@ fn test_kernel_ibc_funds_and_execute_msg() {
     // Check recipient balance after trigger execute msg
     let balances = osmosis
         .chain
-        .query_all_balances(&osmosis.chain.addr_make(recipient))
+        .query_all_balances(&recipient)
         .unwrap();
     assert_eq!(balances.len(), 1);
     assert_eq!(balances[0].denom, ibc_denom);
