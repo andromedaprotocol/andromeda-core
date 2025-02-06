@@ -216,9 +216,9 @@ fn test_splitter_ibc_update_recipients() {
         ..
     } = InterchainTestEnv::new();
 
-    let recipient1 = "osmo1qzskhrca90qy2yjjxqzq4yajy842x7c50xq33d";
-    let recipient2 = "osmo1v9jxgu33ta047h6lxa803d0j3qqwq2p4k0ahvu";
-
+    let recipient1 = osmosis.chain.addr_make("recipient_1").to_string();
+    let recipient2 = osmosis.chain.addr_make("recipient_2").to_string();
+    
     let splitter_osmosis = SplitterContract::new(osmosis.chain.clone());
     splitter_osmosis.upload().unwrap();
 
@@ -228,7 +228,7 @@ fn test_splitter_ibc_update_recipients() {
                 recipients: vec![
                     AddressPercent {
                         recipient: Recipient {
-                            address: AndrAddr::from_string(recipient1),
+                            address: AndrAddr::from_string(&recipient1),
                             msg: None,
                             ibc_recovery_address: None,
                         },
@@ -236,7 +236,7 @@ fn test_splitter_ibc_update_recipients() {
                     },
                     AddressPercent {
                         recipient: Recipient {
-                            address: AndrAddr::from_string(recipient2),
+                            address: AndrAddr::from_string(&recipient2),
                             msg: None,
                             ibc_recovery_address: None,
                         },
