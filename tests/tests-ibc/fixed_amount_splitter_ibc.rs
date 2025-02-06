@@ -8,7 +8,7 @@ use andromeda_std::{
     os,
 };
 use andromeda_testing::{
-    interchain::{ensure_packet_success, DEFAULT_SENDER},
+    interchain::ensure_packet_success,
     InterchainTestEnv,
 };
 use cosmwasm_std::{to_json_binary, Coin, Uint128};
@@ -130,7 +130,7 @@ fn test_fixed_amount_splitter_ibc() {
         .execute(
             &os::kernel::ExecuteMsg::UpsertKeyAddress {
                 key: "trigger_key".to_string(),
-                value: DEFAULT_SENDER.to_string(),
+                value: juno.chain.sender.to_string(),
             },
             None,
         )
@@ -161,7 +161,7 @@ fn test_fixed_amount_splitter_ibc() {
     // Check recipient balance after trigger execute msg
     let balances = osmosis
         .chain
-        .query_all_balances(&osmosis.chain.addr_make(recipient))
+        .query_all_balances(&recipient)
         .unwrap();
     assert_eq!(balances.len(), 1);
     assert_eq!(balances[0].denom, ibc_denom);

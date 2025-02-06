@@ -78,12 +78,13 @@ impl InterchainAOS {
         ics20_channel_id: String,
         direct_channel_id: String,
         foreign_chain_name: String,
+        foreign_kernel_address: String,
     ) {
         let msg = os::kernel::ExecuteMsg::AssignChannels {
             ics20_channel_id: Some(ics20_channel_id),
             direct_channel_id: Some(direct_channel_id),
             chain: foreign_chain_name,
-            kernel_address: self.kernel.address().unwrap().into_string(),
+            kernel_address: foreign_kernel_address,
         };
 
         self.kernel.execute(&msg, None).unwrap();

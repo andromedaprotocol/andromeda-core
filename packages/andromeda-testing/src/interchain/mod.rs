@@ -2,13 +2,14 @@ pub mod aos;
 
 use aos::InterchainAOS;
 use cosmwasm_std::{Addr, Coin};
-use cw_orch::mock::{cw_multi_test::MockApiBech32, MockBase, MockBech32};
+use cw_orch::mock::{cw_multi_test::MockApiBech32, MockBase};
 use cw_orch_interchain::{
     prelude::PortId,
     types::{IbcPacketOutcome, IbcTxAnalysis},
     InterchainEnv, MockBech32InterchainEnv,
 };
 
+use cw_orch::prelude::*;
 pub const DEFAULT_SENDER: &str = "sender_for_all_chains";
 
 /// The `InterchainChain` struct represents a chain in the interchain environment.
@@ -196,6 +197,7 @@ impl InterchainTestEnv {
             transfer_channel.to_string(),
             direct_channel.to_string(),
             chain_two.chain_name.clone(),
+            chain_two.aos.kernel.address().unwrap().into_string(),
         );
 
         // Get the channel from the receipt for chain two
@@ -217,6 +219,7 @@ impl InterchainTestEnv {
             transfer_channel.to_string(),
             direct_channel.to_string(),
             chain_one.chain_name.clone(),
+            chain_one.aos.kernel.address().unwrap().into_string(),
         );
     }
 }
