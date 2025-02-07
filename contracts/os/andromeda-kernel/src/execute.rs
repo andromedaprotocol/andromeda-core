@@ -96,6 +96,7 @@ pub fn trigger_relay(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn handle_ibc_transfer_funds_reply(
     deps: DepsMut,
     _info: MessageInfo,

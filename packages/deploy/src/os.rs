@@ -87,9 +87,7 @@ impl OperatingSystemDeployment {
     pub fn instantiate(&self, kernel_address: Option<String>) -> Result<(), DeployError> {
         let sender = self.daemon.sender().address();
 
-        let has_kernel_address = kernel_address
-            .as_ref()
-            .map_or(false, |addr| !addr.is_empty());
+        let has_kernel_address = kernel_address.as_ref().is_some_and(|addr| !addr.is_empty());
         // If kernel address is provided, use it and migrate the contract to the new version
         if has_kernel_address {
             let code_id = self.kernel.code_id().unwrap();
