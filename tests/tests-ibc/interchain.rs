@@ -18,7 +18,7 @@ use andromeda_testing::{
     interchain::{ensure_packet_success, DEFAULT_SENDER},
     InterchainTestEnv,
 };
-use cosmwasm_std::{to_json_binary, Binary, Decimal, Uint128, CosmosMsg};
+use cosmwasm_std::{to_json_binary, Binary, Decimal, Uint128};
 use cw_orch::prelude::*;
 use cw_orch_interchain::prelude::*;
 
