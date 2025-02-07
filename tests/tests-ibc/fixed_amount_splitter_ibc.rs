@@ -115,7 +115,7 @@ fn test_fixed_amount_splitter_ibc() {
     let ibc_denom = format!(
         "ibc/{}/{}",
         osmosis.aos.get_aos_channel(&juno.chain_name).unwrap().direct.unwrap(),
-        juno.chain_name
+        juno.denom.clone()
     );
 
     // Check balances
@@ -125,7 +125,7 @@ fn test_fixed_amount_splitter_ibc() {
         .unwrap();
     assert_eq!(balances.len(), 1);
     assert_eq!(balances[0].denom, ibc_denom);
-    assert_eq!(balances[0].amount.u128(), 100);
+    assert_eq!(balances[0].amount.u128(), 100000000);
 
     // Setup trigger
     juno.aos

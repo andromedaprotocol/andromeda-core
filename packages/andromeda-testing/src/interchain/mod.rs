@@ -1,9 +1,7 @@
 pub mod aos;
 
-use andromeda_adodb::mock;
-use anyhow::Chain;
 use aos::InterchainAOS;
-use cosmwasm_std::{Addr, Coin};
+use cosmwasm_std::Coin;
 use cw_orch::mock::{cw_multi_test::MockApiBech32, MockBase};
 use cw_orch_interchain::{
     prelude::PortId,

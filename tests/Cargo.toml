@@ -186,5 +186,17 @@ name = "ibc_registry"
 path = "ibc_registry.rs"
 
 [[test]]
-name = "kernel_orch"
-path = 
+name = "kernel_cw_orch"
+path = "kernel_orch.rs"
+
+[[test]]
+name = "conditional_splitter"
+path = "conditional_splitter.rs"
+
+[[test]]
+name = "cw20_app"
+path = "cw20_app.rs"
+
+[[test]]
+name = "kernel"
+path = "kernel.rs"
