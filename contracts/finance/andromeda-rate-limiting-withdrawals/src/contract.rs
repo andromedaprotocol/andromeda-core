@@ -14,8 +14,8 @@ use andromeda_std::{
     error::ContractError,
 };
 use cosmwasm_std::{
-    ensure, entry_point, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo,
-    Reply, Response, StdError, SubMsg, Uint128,
+    ensure, entry_point, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply,
+    Response, StdError, SubMsg, Uint128,
 };
 use cw_utils::one_coin;
 

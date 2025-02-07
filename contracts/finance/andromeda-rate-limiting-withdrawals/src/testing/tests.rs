@@ -1,5 +1,5 @@
 use andromeda_std::{
-    amp::{messages::AMPPkt, AndrAddr, Recipient},
+    amp::{AndrAddr, Recipient},
     common::Milliseconds,
     error::ContractError,
 };
