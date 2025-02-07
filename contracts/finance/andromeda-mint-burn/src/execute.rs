@@ -297,9 +297,7 @@ fn complete_order(
     for requirement in &order.requirements {
         for (user, amount) in &requirement.deposits {
             if amount.gt(&Uint128::zero()) {
-                let is_burning = *user
-                    == original_sender
-                        .get_raw_address(&ctx.deps.as_ref())?;
+                let is_burning = *user == original_sender.get_raw_address(&ctx.deps.as_ref())?;
                 let burn_or_refund_msg = generate_burn_or_refund_msg(
                     ctx.deps.as_ref(),
                     requirement,
