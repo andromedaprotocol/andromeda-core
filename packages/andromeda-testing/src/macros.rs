@@ -6,8 +6,6 @@ macro_rules! ado_deployer {
             ($contract:expr, $msg_expr:expr, $ado_name:expr) => {{
                 let contract: $contract_type = $contract;
                 let msg: $msg_type = $msg_expr;
-
-                contract.upload().unwrap();
                 contract.instantiate(msg, None, None).unwrap();
                 contract
             }};

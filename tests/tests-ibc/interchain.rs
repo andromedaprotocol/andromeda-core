@@ -92,7 +92,7 @@ fn test_kernel_ibc_execute_only() {
         .unwrap();
 
     let packet_lifetime = interchain
-        .await_packets("juno", kernel_juno_send_request)
+        .await_packets("juno-1", kernel_juno_send_request)
         .unwrap();
 
     ensure_packet_success(packet_lifetime);
