@@ -175,7 +175,7 @@ pub fn execute_fill_order(
     for requirement in &mut order.requirements {
         match &requirement.resource {
             Resource::Cw20Token { cw20_addr } => {
-                if cw20_addr.clone().get_raw_address(&ctx.deps.as_ref())? == &contract_addr {
+                if cw20_addr.clone().get_raw_address(&ctx.deps.as_ref())? == contract_addr {
                     let user_deposit = requirement
                         .deposits
                         .entry(original_sender_str.clone())
@@ -195,7 +195,7 @@ pub fn execute_fill_order(
                 cw721_addr,
                 token_id,
             } => {
-                if cw721_addr.get_raw_address(&ctx.deps.as_ref())? == &contract_addr {
+                if cw721_addr.get_raw_address(&ctx.deps.as_ref())? == contract_addr {
                     if let Some(received_token_id) = received_token_id.clone() {
                         if token_id == &received_token_id {
                             // Allow deposit of any required NFT from the same contract
@@ -299,8 +299,7 @@ fn complete_order(
             if amount.gt(&Uint128::zero()) {
                 let is_burning = *user
                     == original_sender
-                        .get_raw_address(&ctx.deps.as_ref())?
-                        .to_string();
+                        .get_raw_address(&ctx.deps.as_ref())?;
                 let burn_or_refund_msg = generate_burn_or_refund_msg(
                     ctx.deps.as_ref(),
                     requirement,
