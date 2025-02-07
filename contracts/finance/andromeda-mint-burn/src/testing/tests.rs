@@ -156,7 +156,7 @@ fn test_fill_order_with_cw20() {
         if let Resource::Cw20Token { cw20_addr } = requirement.resource {
             if cw20_addr == AndrAddr::from_string(MOCK_CW20_CONTRACT) {
                 for (user, amount) in requirement.deposits {
-                    if user == "origin_cw20_sender".to_string() {
+                    if user == "origin_cw20_sender" {
                         assert_eq!(amount, Uint128::new(5000));
                         continue;
                     }
@@ -183,7 +183,7 @@ fn test_fill_order_with_cw20() {
         if let Resource::Cw20Token { cw20_addr } = requirement.resource {
             if cw20_addr == AndrAddr::from_string(MOCK_CW20_CONTRACT) {
                 for (user, amount) in requirement.deposits {
-                    if user == "origin_cw20_sender".to_string() {
+                    if user == "origin_cw20_sender" {
                         assert_eq!(amount, Uint128::new(10000));
                         continue;
                     }
@@ -210,7 +210,7 @@ fn test_fill_order_with_cw20() {
         if let Resource::Cw20Token { cw20_addr } = requirement.resource {
             if cw20_addr == AndrAddr::from_string(MOCK_CW20_CONTRACT_2) {
                 for (user, amount) in requirement.deposits {
-                    if user == "origin_cw20_sender".to_string() {
+                    if user == "origin_cw20_sender" {
                         assert_eq!(amount, Uint128::new(20000));
                         continue;
                     }
