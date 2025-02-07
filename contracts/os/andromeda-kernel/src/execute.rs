@@ -75,6 +75,7 @@ pub fn trigger_relay(
             packet_sequence,
             channel_info,
             ics20_packet_info,
+            channel_id,
         ),
         // This means that the funds have been returned to the contract, time to return the funds to the original sender
         StdAck::Error(_) => {
@@ -103,8 +104,9 @@ fn handle_ibc_transfer_funds_reply(
     sequence: u64,
     channel_info: ChannelInfo,
     ics20_packet_info: Ics20PacketInfo,
+    channel_id: String,
 ) -> Result<Response, ContractError> {
-    let ics20_packet_info = ics20_packet_info.clone();
+    let mut ics20_packet_info = ics20_packet_info.clone();
     let chain =
         &ics20_packet_info
             .recipient
@@ -112,6 +114,16 @@ fn handle_ibc_transfer_funds_reply(
             .ok_or_else(|| ContractError::InvalidPacket {
                 error: Some("Chain not provided in recipient".to_string()),
             })?;
+
+    ensure!(
+        !ics20_packet_info.pending,
+        ContractError::InvalidPacket {
+            error: Some("Packet is pending".to_string()),
+        }
+    );
+
+    ics20_packet_info.pending = true;
+    CHANNEL_TO_EXECUTE_MSG.save(deps.storage, (channel_id, sequence), &ics20_packet_info)?;
 
     let channel = channel_info
         .direct_channel_id
@@ -1183,6 +1195,7 @@ impl MsgHandler {
                 message: message.clone(),
                 funds: coin,
                 channel: channel.clone(),
+                pending: false,
             },
         )?;
         resp = resp.add_submessage(SubMsg {
