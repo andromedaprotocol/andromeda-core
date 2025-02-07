@@ -168,7 +168,6 @@ pub fn execute_fill_order(
         });
     }
 
-    // let mut user_fulfilled = false;
     let mut excess_amount = Uint128::zero();
     let mut refund_nft: Option<String> = None; // To handle NFT refunds
     let order_clone = order.clone();
@@ -182,10 +181,8 @@ pub fn execute_fill_order(
                         .deposits
                         .entry(original_sender_str.clone())
                         .or_insert(Uint128::zero());
-                    // println!("user_deposit: {:?}", user_deposit);
 
                     let remaining = requirement.amount.checked_sub(*user_deposit)?;
-                    // println!("remaining: {:?}", remaining);
 
                     if amount.le(&remaining) {
                         *user_deposit = user_deposit.checked_add(amount)?;
@@ -231,9 +228,6 @@ pub fn execute_fill_order(
             }
         }
     }
-
-    println!("contract_addr: {:?}", contract_addr);
-    println!("excess_amount: {:?}", excess_amount);
 
     let user_fulfilled = order.requirements.iter().all(|r| {
         r.deposits

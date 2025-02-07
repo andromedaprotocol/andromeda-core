@@ -311,9 +311,6 @@ fn test_two_users_fill_order_with_cw20() {
     let order_status = created_order.order_status;
     assert_eq!(order_status, OrderStatus::NotCompleted);
 
-    // let res = cancel_order(deps.as_mut(), Uint128::one(), "creator").unwrap();
-    // println!("cancel_order_msgs: {:?}", res.messages);
-
     let cw20_receive_msg = Cw20ReceiveMsg {
         sender: "origin_cw20_sender".to_string(),
         amount: Uint128::new(24000),
@@ -382,8 +379,6 @@ fn test_fill_order_with_nft() {
 
     let created_order: GetOrderInfoResponse =
         query_order_info(deps.as_ref(), Uint128::one()).unwrap();
-
-    println!("created_order: {:?}", created_order.requirements);
 
     let order_status = created_order.order_status;
     assert_eq!(order_status, OrderStatus::NotCompleted);
