@@ -184,3 +184,7 @@ path = "cw20_staking.rs"
 [[test]]
 name = "ibc_registry"
 path = "ibc_registry.rs"
+
+[[test]]
+name = "kernel_orch"
+path = 

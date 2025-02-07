@@ -18,7 +18,7 @@ use andromeda_testing::{
     interchain::{ensure_packet_success, DEFAULT_SENDER},
     InterchainTestEnv,
 };
-use cosmwasm_std::{to_json_binary, Binary, Decimal, Uint128};
+use cosmwasm_std::{to_json_binary, Binary, Decimal, Uint128, CosmosMsg};
 use cw_orch::prelude::*;
 use cw_orch_interchain::prelude::*;
 
@@ -64,6 +64,7 @@ fn test_kernel_ibc_execute_only() {
             None,
         )
         .unwrap();
+    
     let kernel_juno_send_request = juno
         .aos
         .kernel
@@ -89,9 +90,10 @@ fn test_kernel_ibc_execute_only() {
             None,
         )
         .unwrap();
-
+    
+    println!("Kernel Juno Send Request: {:?}", &kernel_juno_send_request);
     let packet_lifetime = interchain
-        .await_packets("juno", kernel_juno_send_request)
+        .await_packets("juno-1", kernel_juno_send_request)
         .unwrap();
 
     ensure_packet_success(packet_lifetime);
@@ -114,12 +116,13 @@ fn test_kernel_ibc_funds_only() {
     let recipient = osmosis.chain.addr_make("recipient");
 
     let andr_recipient = AndrAddr::from_string(format!("ibc://osmosis/{}", recipient.to_string()));
+
     let message = AMPMsg::new(
-        andr_recipient,
+        osmosis_recipient,
         Binary::default(),
         Some(vec![Coin {
-            denom: "juno".to_string(),
-            amount: Uint128::new(100),
+            amount: Uint128::new(100000),
+            denom: "ujuno".to_string(),
         }]),
     );
 
@@ -129,14 +132,16 @@ fn test_kernel_ibc_funds_only() {
         .execute(
             &os::kernel::ExecuteMsg::Send { message },
             Some(&[Coin {
-                denom: "juno".to_string(),
-                amount: Uint128::new(100),
+                amount: Uint128::new(100000),
+                denom: "ujuno".to_string(),
             }]),
         )
         .unwrap();
 
+    println!("Kernel Juno Send Request: {:?}", &kernel_juno_send_request);
+    
     let packet_lifetime = interchain
-        .await_packets("juno", kernel_juno_send_request)
+        .await_packets("juno-1", kernel_juno_send_request)
         .unwrap();
 
     ensure_packet_success(packet_lifetime);
