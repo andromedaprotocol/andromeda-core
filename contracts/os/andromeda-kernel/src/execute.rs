@@ -1,21 +1,25 @@
 use crate::ibc::{get_counterparty_denom, PACKET_LIFETIME};
 use andromeda_std::ado_contract::ADOContract;
 use andromeda_std::amp::addresses::AndrAddr;
-use andromeda_std::amp::messages::{AMPCtx, AMPMsg, AMPPkt};
+use andromeda_std::amp::messages::{AMPCtx, AMPMsg, AMPPkt, CrossChainHop};
 use andromeda_std::amp::{ADO_DB_KEY, VFS_KEY};
 use andromeda_std::common::context::ExecuteContext;
-use andromeda_std::common::has_coins_merged;
 use andromeda_std::common::reply::ReplyId;
+use andromeda_std::common::{encode_binary, has_coins_merged};
 use andromeda_std::error::ContractError;
 use andromeda_std::os::aos_querier::AOSQuerier;
 #[cfg(not(target_arch = "wasm32"))]
 use andromeda_std::os::ibc_registry::path_to_hops;
-use andromeda_std::os::kernel::{ChannelInfo, IbcExecuteMsg, Ics20PacketInfo, InternalMsg};
+use andromeda_std::os::kernel::{
+    ChannelInfo, Cw20HookMsg, IbcExecuteMsg, Ics20PacketInfo, InternalMsg,
+};
 use andromeda_std::os::vfs::vfs_resolve_symlink;
 use cosmwasm_std::{
     attr, ensure, from_json, to_json_binary, BankMsg, Binary, Coin, ContractInfoResponse,
     CosmosMsg, DepsMut, Env, IbcMsg, MessageInfo, Response, StdAck, StdError, SubMsg, WasmMsg,
 };
+use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
+use cw_utils::nonpayable;
 
 use crate::query;
 use crate::state::{
@@ -102,7 +106,7 @@ fn handle_ibc_transfer_funds_reply(
 ) -> Result<Response, ContractError> {
     let ics20_packet_info = ics20_packet_info.clone();
     let chain =
-        ics20_packet_info
+        &ics20_packet_info
             .recipient
             .get_chain()
             .ok_or_else(|| ContractError::InvalidPacket {
@@ -146,11 +150,40 @@ fn handle_ibc_transfer_funds_reply(
             ),
         );
     }
+
+    let mut ctx = AMPCtx::new(
+        ics20_packet_info.sender.clone(),
+        env.contract.address,
+        0,
+        None,
+    );
+
+    // Add the orginal sender's username if it exists
+    let potential_username = ctx.try_add_origin_username(
+        &deps.querier,
+        &KERNEL_ADDRESSES.load(deps.storage, VFS_KEY)?,
+    );
+
+    // Create a new hop to be appended to the context
+    let hop = CrossChainHop {
+        username: potential_username.as_ref().map(AndrAddr::from_string),
+        address: ics20_packet_info.sender.clone(),
+        from_chain: CURR_CHAIN.load(deps.storage)?,
+        to_chain: chain.to_string(),
+        funds: vec![adjusted_funds.clone()],
+        channel: channel.clone(),
+    };
+
+    // Add the new hop to the context
+    ctx.add_hop(hop);
+
     let kernel_msg = IbcExecuteMsg::SendMessageWithFunds {
         recipient: AndrAddr::from_string(ics20_packet_info.recipient.clone().get_raw_path()),
-        message: ics20_packet_info.message.clone(),
+        message: ics20_packet_info.message,
         funds: adjusted_funds,
         original_sender: ics20_packet_info.sender,
+        original_sender_username: potential_username.map(AndrAddr::from_string),
+        previous_hops: ctx.previous_hops,
     };
     let msg = IbcMsg::SendPacket {
         channel_id: channel.clone(),
@@ -164,8 +197,35 @@ fn handle_ibc_transfer_funds_reply(
         .add_attribute("relay_outcome", "success")
         .add_attribute("relay_sequence", sequence.to_string())
         .add_attribute("relay_channel", ics20_packet_info.channel)
-        .add_attribute("relay_chain", chain)
+        .add_attribute("relay_chain", chain.to_string())
         .add_attribute("receiving_kernel_address", channel_info.kernel_address))
+}
+
+pub fn handle_receive_cw20(
+    mut ctx: ExecuteContext,
+    receive_msg: Cw20ReceiveMsg,
+) -> Result<Response, ContractError> {
+    let ExecuteContext { ref info, .. } = ctx;
+    nonpayable(info)?;
+
+    let asset_sent = info.sender.clone().into_string();
+    let amount_sent = receive_msg.amount;
+    let _sender = receive_msg.sender;
+
+    ensure!(
+        !amount_sent.is_zero(),
+        ContractError::InvalidFunds {
+            msg: "Cannot send a 0 amount".to_string()
+        }
+    );
+
+    let received_funds = vec![Coin::new(amount_sent.u128(), asset_sent)];
+
+    match from_json(&receive_msg.msg)? {
+        Cw20HookMsg::AmpReceive(packet) => {
+            amp_receive_cw20(&mut ctx.deps, ctx.info, ctx.env, packet, received_funds)
+        }
+    }
 }
 
 pub fn amp_receive(
@@ -237,6 +297,60 @@ pub fn amp_receive(
         .collect::<Vec<Coin>>();
     ensure!(
         has_coins_merged(info.funds.as_slice(), message_funds.as_slice()),
+        ContractError::InsufficientFunds {}
+    );
+
+    Ok(res.add_attribute("action", "handle_amp_packet"))
+}
+
+pub fn amp_receive_cw20(
+    deps: &mut DepsMut,
+    info: MessageInfo,
+    env: Env,
+    packet: AMPPkt,
+    received_funds: Vec<Coin>,
+) -> Result<Response, ContractError> {
+    // Only verified ADOs can access this function
+    ensure!(
+        query::verify_address(deps.as_ref(), info.sender.to_string(),)?.verify_address,
+        ContractError::Unauthorized {}
+    );
+    ensure!(
+        packet.ctx.id == 0,
+        ContractError::InvalidPacket {
+            error: Some("Packet ID cannot be provided from outside the Kernel".into())
+        }
+    );
+
+    let mut res = Response::default();
+    ensure!(
+        !packet.messages.is_empty(),
+        ContractError::InvalidPacket {
+            error: Some("No messages supplied".to_string())
+        }
+    );
+
+    for (idx, message) in packet.messages.iter().enumerate() {
+        let mut handler = MsgHandler::new(message.clone());
+        let msg_res = handler.handle_cw20(
+            deps.branch(),
+            info.clone(),
+            env.clone(),
+            Some(packet.clone()),
+            idx as u64,
+        )?;
+        res.messages.extend_from_slice(&msg_res.messages);
+        res.attributes.extend_from_slice(&msg_res.attributes);
+        res.events.extend_from_slice(&msg_res.events);
+    }
+
+    let message_funds = packet
+        .messages
+        .iter()
+        .flat_map(|m| m.funds.clone())
+        .collect::<Vec<Coin>>();
+    ensure!(
+        has_coins_merged(received_funds.as_slice(), message_funds.as_slice()),
         ContractError::InsufficientFunds {}
     );
 
@@ -635,6 +749,39 @@ impl MsgHandler {
         }
     }
 
+    #[inline]
+    pub fn handle_cw20(
+        &mut self,
+        deps: DepsMut,
+        info: MessageInfo,
+        env: Env,
+        ctx: Option<AMPPkt>,
+        sequence: u64,
+    ) -> Result<Response, ContractError> {
+        let resolved_recipient = if self.message().recipient.is_vfs_path() {
+            let vfs_address = KERNEL_ADDRESSES.load(deps.storage, VFS_KEY)?;
+            vfs_resolve_symlink(
+                self.message().recipient.clone(),
+                vfs_address.to_string(),
+                &deps.querier,
+            )?
+        } else {
+            self.message().recipient.clone()
+        };
+        self.update_recipient(resolved_recipient);
+        let protocol = self.message().recipient.get_protocol();
+
+        match protocol {
+            None => self.handle_local_cw20(deps, info, env, ctx.map(|ctx| ctx.ctx), sequence),
+            Some("ibc") => Err(ContractError::NotImplemented {
+                msg: Some("CW20 over IBC not supported".to_string()),
+            }),
+            _ => Err(ContractError::NotImplemented {
+                msg: Some("CW20 over IBC not supported".to_string()),
+            }),
+        }
+    }
+
     /**
     Handles a local AMP Message, that is a message that has no defined protocol in its recipient VFS path. There are two different situations for a local message that are defined by the binary message provided.
     Situation 1 is that the message provided is empty or `Binary::default` in which case the message must be a `BankMsg::Send` message and the funds must be provided.
@@ -736,6 +883,120 @@ impl MsgHandler {
         Ok(res)
     }
 
+    pub fn handle_local_cw20(
+        &self,
+        deps: DepsMut,
+        info: MessageInfo,
+        _env: Env,
+        ctx: Option<AMPCtx>,
+        sequence: u64,
+    ) -> Result<Response, ContractError> {
+        let mut res = Response::default();
+        let AMPMsg {
+            message,
+            recipient,
+            funds,
+            config,
+            ..
+        } = self.message();
+        let recipient_addr = recipient.get_raw_address(&deps.as_ref())?;
+        let adodb_addr = KERNEL_ADDRESSES.load(deps.storage, ADO_DB_KEY)?;
+        // A default message is a bank message
+        if Binary::default() == message.clone() {
+            ensure!(
+                !funds.is_empty(),
+                ContractError::InvalidPacket {
+                    error: Some("No message or funds supplied".to_string())
+                }
+            );
+
+            let sub_msg = SubMsg::reply_on_error(
+                WasmMsg::Execute {
+                    contract_addr: funds[0].denom.clone(),
+                    msg: encode_binary(&Cw20ExecuteMsg::Transfer {
+                        recipient: recipient_addr.to_string(),
+                        amount: funds[0].amount,
+                    })?,
+                    funds: vec![],
+                },
+                ReplyId::AMPMsg.repr(),
+            );
+
+            let mut attrs = vec![];
+            for (idx, fund) in funds.iter().enumerate() {
+                attrs.push(attr(format!("funds:{sequence}:{idx}"), fund.to_string()));
+            }
+            attrs.push(attr(format!("recipient:{sequence}"), recipient_addr));
+            res = res.add_submessage(sub_msg).add_attributes(attrs);
+        } else {
+            let origin = if let Some(amp_ctx) = ctx {
+                amp_ctx.get_origin()
+            } else {
+                info.sender.to_string()
+            };
+            let previous_sender = info.sender.to_string();
+            // Ensure recipient is a smart contract
+            let ContractInfoResponse {
+                code_id: recipient_code_id,
+                ..
+            } = deps
+                .querier
+                .query_wasm_contract_info(recipient_addr.clone())
+                .ok()
+                .ok_or(ContractError::InvalidPacket {
+                    error: Some("Recipient is not a contract".to_string()),
+                })?;
+
+            let sub_msg = if config.direct
+                || AOSQuerier::ado_type_getter(&deps.querier, &adodb_addr, recipient_code_id)?
+                    .is_none()
+            {
+                // Message is direct (no AMP Ctx)
+                // self.message()
+                //     .generate_sub_msg_direct(recipient_addr.clone(), ReplyId::AMPMsg.repr())
+                SubMsg {
+                    id: ReplyId::AMPMsg.repr(),
+                    reply_on: self.message().config.reply_on.clone(),
+                    gas_limit: self.message().config.gas_limit,
+                    msg: CosmosMsg::Wasm(WasmMsg::Execute {
+                        contract_addr: funds[0].denom.clone(),
+                        msg: encode_binary(&Cw20ExecuteMsg::Send {
+                            contract: recipient_addr.to_string(),
+                            amount: funds[0].amount,
+                            msg: message.clone(),
+                        })?,
+                        funds: vec![],
+                    }),
+                }
+            } else {
+                let amp_msg =
+                    AMPMsg::new(recipient_addr.clone(), message.clone(), Some(funds.clone()));
+
+                let new_packet = AMPPkt::new(origin, previous_sender, vec![amp_msg]);
+
+                SubMsg {
+                    id: ReplyId::AMPMsg.repr(),
+                    reply_on: self.message().config.reply_on.clone(),
+                    gas_limit: self.message().config.gas_limit,
+                    msg: CosmosMsg::Wasm(WasmMsg::Execute {
+                        contract_addr: funds[0].denom.clone(),
+                        msg: encode_binary(&Cw20ExecuteMsg::Send {
+                            contract: recipient_addr.to_string(),
+                            amount: funds[0].amount,
+                            msg: encode_binary(&Cw20HookMsg::AmpReceive(new_packet))?,
+                        })?,
+                        funds: vec![],
+                    }),
+                }
+            };
+
+            res = res
+                .add_submessage(sub_msg)
+                .add_attributes(vec![attr(format!("recipient:{sequence}"), recipient_addr)]);
+        }
+        Ok(res)
+    }
+
     /**
     Handles an IBC AMP Message. An IBC AMP Message is defined by adding the `ibc://<chain>` protocol definition to the start of the VFS path.
     The `chain` is the chain ID of the destination chain and an appropriate channel must be present for the given chain.
@@ -773,7 +1034,7 @@ impl MsgHandler {
 
     fn handle_ibc_direct(
         &self,
-        _deps: DepsMut,
+        deps: DepsMut,
         info: MessageInfo,
         env: Env,
         ctx: Option<AMPPkt>,
@@ -781,7 +1042,10 @@ impl MsgHandler {
         channel_info: ChannelInfo,
     ) -> Result<Response, ContractError> {
         let AMPMsg {
-            recipient, message, ..
+            recipient,
+            message,
+            funds,
+            ..
         } = self.message();
         ensure!(
             !Binary::default().eq(message),
@@ -789,31 +1053,65 @@ impl MsgHandler {
                 error: Some("Cannot send an empty message without funds via IBC".to_string())
             }
         );
-        let chain = recipient.get_chain().unwrap();
+        let destination_chain = recipient.get_chain().unwrap();
         let channel = if let Some(direct_channel) = channel_info.direct_channel_id {
             Ok::<String, ContractError>(direct_channel)
         } else {
             return Err(ContractError::InvalidPacket {
-                error: Some(format!("Channel not found for chain {chain}")),
+                error: Some(format!("Channel not found for chain {destination_chain}")),
             });
         }?;
-        let ctx = ctx.map_or(
-            AMPPkt::new(
-                info.sender,
-                env.clone().contract.address,
-                vec![AMPMsg::new(
-                    recipient.clone().get_raw_path(),
-                    message.clone(),
-                    None,
-                )],
-            ),
+        let vfs_address = KERNEL_ADDRESSES.load(deps.storage, VFS_KEY).unwrap();
+        let current_chain = CURR_CHAIN.load(deps.storage)?;
+
+        let ctx = ctx.map_or_else(
+            || {
+                let amp_msg = AMPMsg::new(recipient.clone().get_raw_path(), message.clone(), None);
+                let mut ctx = AMPCtx::new(info.sender, env.contract.address, 0, None);
+
+                // Add the orginal sender's username if it exists
+                let potential_username = ctx.try_add_origin_username(&deps.querier, &vfs_address);
+
+                // Create a new hop to be appended to the context
+                let hop = CrossChainHop {
+                    username: potential_username.map(AndrAddr::from_string),
+                    address: ctx.get_origin(),
+                    from_chain: current_chain.to_string(),
+                    to_chain: destination_chain.to_string(),
+                    funds: funds.to_vec(),
+                    channel: channel.clone(),
+                };
+
+                // Add the new hop to the context
+                ctx.add_hop(hop);
+
+                AMPPkt::new_with_ctx(ctx, vec![amp_msg])
+            },
             |mut ctx| {
-                ctx.ctx.previous_sender = env.contract.address.to_string();
+                // Add the orginal sender's username if it exists
+                let potential_username =
+                    ctx.ctx.try_add_origin_username(&deps.querier, &vfs_address);
+
+                // Create a new hop to be appended to the context
+                let hop = CrossChainHop {
+                    username: potential_username.map(AndrAddr::from_string),
+                    address: ctx.ctx.get_origin(),
+                    from_chain: current_chain.to_string(),
+                    to_chain: destination_chain.to_string(),
+                    funds: funds.to_vec(),
+                    channel: channel.clone(),
+                };
+
+                // Add the new hop to the context
+                ctx.ctx.add_hop(hop);
+
+                // Remove the recipient's prepended chain reference
                 ctx.messages[0].recipient =
                     AndrAddr::from_string(recipient.clone().get_raw_path().to_string());
                 ctx
             },
         );
+
         let kernel_msg = IbcExecuteMsg::SendMessage { amp_packet: ctx };
 
         let msg = IbcMsg::SendPacket {
@@ -826,7 +1124,7 @@ impl MsgHandler {
             .add_attribute(format!("method:{sequence}"), "execute_send_message")
             .add_attribute(format!("channel:{sequence}"), channel)
             .add_attribute("receiving_kernel_address:{}", channel_info.kernel_address)
-            .add_attribute("chain:{}", chain)
+            .add_attribute("chain:{}", destination_chain)
             .add_message(msg))
     }
 

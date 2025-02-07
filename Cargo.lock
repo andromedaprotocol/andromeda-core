@@ -211,25 +211,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "andromeda-cross-chain-swap"
-version = "1.2.0"
-dependencies = [
- "andromeda-app",
- "andromeda-finance",
- "andromeda-std",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-multi-test",
- "cw-storage-plus 1.2.0",
- "cw-utils 1.0.3",
- "schemars",
- "semver",
- "serde",
-]
-
-[[package]]
 name = "andromeda-crowdfund"
-version = "2.2.0-beta"
+version = "2.2.1-b.1"
 dependencies = [
  "andromeda-app",
  "andromeda-non-fungible-tokens",
@@ -241,7 +224,6 @@ dependencies = [
  "cw-orch",
  "cw-orch-daemon",
  "cw-storage-plus 1.2.0",
- "cw-utils 1.0.3",
  "cw20",
  "cw721 0.18.0",
 ]
@@ -464,20 +446,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "andromeda-ecosystem"
-version = "1.0.0"
-dependencies = [
- "andromeda-std",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-asset",
- "cw-storage-plus 1.2.0",
- "cw20",
- "schemars",
- "serde",
-]
-
-[[package]]
 name = "andromeda-finance"
 version = "1.0.0"
 dependencies = [
@@ -497,7 +465,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-fixed-amount-splitter"
-version = "1.2.0"
+version = "1.2.1-b.1"
 dependencies = [
  "andromeda-app",
  "andromeda-finance",
@@ -586,7 +554,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-ibc-registry"
-version = "1.1.0"
+version = "1.1.1-b.1"
 dependencies = [
  "andromeda-std",
  "cosmwasm-schema",
@@ -596,35 +564,11 @@ dependencies = [
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
  "cw20",
-]
-
-[[package]]
-name = "andromeda-ics20"
-version = "1.1.0"
-dependencies = [
- "andromeda-app",
- "andromeda-fungible-tokens",
- "andromeda-std",
- "andromeda-testing",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-controllers",
- "cw-multi-test",
- "cw-orch",
- "cw-storage-plus 1.2.0",
- "cw-utils 1.0.3",
- "cw2 1.1.2",
- "cw20",
- "cw20-base",
- "schemars",
- "semver",
- "serde",
- "thiserror 2.0.11",
 ]
 
 [[package]]
 name = "andromeda-kernel"
-version = "1.2.0"
+version = "1.2.1-b.2"
 dependencies = [
  "andromeda-std",
  "cosmwasm-schema",
@@ -632,8 +576,9 @@ dependencies = [
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus 1.2.0",
+ "cw-utils 1.0.3",
+ "cw20",
  "hex",
- "itertools 0.14.0",
  "osmosis-std",
  "osmosis-std-derive 0.15.3",
  "prost 0.11.9",
@@ -767,7 +712,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-non-fungible-tokens"
-version = "1.0.0"
+version = "1.0.1-b.1"
 dependencies = [
  "andromeda-std",
  "cosmwasm-schema",
@@ -883,7 +828,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-splitter"
-version = "2.3.0"
+version = "2.3.1-b.1"
 dependencies = [
  "andromeda-app",
  "andromeda-finance",
@@ -901,7 +846,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-std"
-version = "1.5.1-b.1"
+version = "1.5.1-b.5"
 dependencies = [
  "andromeda-macros",
  "cosmwasm-schema",
@@ -994,6 +939,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "andromeda-time-gate"
+version = "0.1.0-b.1"
+dependencies = [
+ "andromeda-app",
+ "andromeda-math",
+ "andromeda-std",
+ "andromeda-testing",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-multi-test",
+ "cw-orch",
+ "cw-storage-plus 1.2.0",
+ "cw-utils 1.0.3",
+]
+
+[[package]]
 name = "andromeda-timelock"
 version = "2.1.0"
 dependencies = [
@@ -1011,7 +972,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-validator-staking"
-version = "1.1.0"
+version = "1.1.1-b.1"
 dependencies = [
  "andromeda-finance",
  "andromeda-std",
@@ -1026,18 +987,6 @@ dependencies = [
  "cw2 1.1.2",
  "enum-repr",
  "serde",
-]
-
-[[package]]
-name = "andromeda-vault"
-version = "1.2.0"
-dependencies = [
- "andromeda-ecosystem",
- "andromeda-std",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-multi-test",
- "cw-storage-plus 1.2.0",
 ]
 
 [[package]]
@@ -1059,7 +1008,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-vfs"
-version = "1.2.0"
+version = "1.2.1-b.1"
 dependencies = [
  "andromeda-std",
  "cosmwasm-schema",
@@ -1072,7 +1021,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-weighted-distribution-splitter"
-version = "2.1.0-a.1"
+version = "2.1.0"
 dependencies = [
  "andromeda-app",
  "andromeda-finance",
@@ -1626,9 +1575,9 @@ dependencies = [
 
 [[package]]
 name = "crunchy"
-version = "0.2.2"
+version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7a81dae078cea95a014a339291cec439d2f232ebe854a9d672b796c6afafa9b7"
+checksum = "43da5946c66ffcc7745f48db692ffbb10a83bfe0afd96235c5c2a4fb23994929"
 
 [[package]]
 name = "crypto-bigint"
@@ -2360,7 +2309,6 @@ dependencies = [
  "andromeda-cw721",
  "andromeda-data-storage",
  "andromeda-economics",
- "andromeda-ecosystem",
  "andromeda-finance",
  "andromeda-fixed-amount-splitter",
  "andromeda-fungible-tokens",
@@ -2379,7 +2327,6 @@ dependencies = [
  "andromeda-std",
  "andromeda-testing",
  "andromeda-validator-staking",
- "andromeda-vault",
  "andromeda-vesting",
  "andromeda-vfs",
  "cosmwasm-schema",
@@ -3447,15 +3394,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "itertools"
-version = "0.14.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2b192c782037fadd9cfa75548310488aabdbf3d2da73885b31bd0abd03351285"
-dependencies = [
- "either",
-]
-
-[[package]]
 name = "itoa"
 version = "1.0.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3772,9 +3710,9 @@ dependencies = [
 
 [[package]]
 name = "openssl-probe"
-version = "0.1.5"
+version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ff011a302c396a5197692431fc1948019154afc178baf7d8e37367442a4601cf"
+checksum = "d05e27ee213611ffe7d6348b942e8f942b37114c00cc03cec254295a4a17852e"
 
 [[package]]
 name = "openssl-sys"
@@ -4635,9 +4573,9 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.137"
+version = "1.0.138"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "930cfb6e6abf99298aaad7d29abbef7a9999a9a8806a40088f55f0dcec03146b"
+checksum = "d434192e7da787e94a6ea7e9670b26a036d0ca41e0b7efb2676dd32bae872949"
 dependencies = [
  "itoa",
  "memchr",
@@ -5549,9 +5487,9 @@ dependencies = [
 
 [[package]]
 name = "unicode-ident"
-version = "1.0.14"
+version = "1.0.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "adb9e6ca4f869e1180728b7950e35922a7fc6397f7b641499e8f3ef06e50dc83"
+checksum = "11cd88e12b17c6494200a9c1b683a04fcac9573ed74cd1b62aeb2727c5592243"
 
 [[package]]
 name = "unicode-segmentation"

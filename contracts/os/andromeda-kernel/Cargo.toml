@@ -1,6 +1,6 @@
 [package]
 name = "andromeda-kernel"
-version = "1.2.0"
+version = "1.2.1-b.2"
 authors = ["Connor Barr <crnbarr@gmail.com>"]
 edition = "2021"
 rust-version = "1.65.0"
@@ -25,7 +25,8 @@ testing = ["cw-multi-test"]
 cosmwasm-std = { workspace = true, features = ["ibc3"] }
 cosmwasm-schema = { workspace = true }
 cw-storage-plus = { workspace = true }
-
+cw20 = { workspace = true }
+cw-utils = { workspace = true }
 serde-json-wasm = "1.0.1"
 osmosis-std-derive = "0.15.3"
 osmosis-std = "0.1.4"
@@ -35,7 +36,6 @@ prost = { version = "0.11.2", default-features = false, features = [
 serde = { workspace = true }
 schemars = "0.8.10"
 hex = "0.4.3"
-itertools = "0.14"
 
 
 andromeda-std = { workspace = true }

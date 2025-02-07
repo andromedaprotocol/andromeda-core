@@ -99,7 +99,7 @@ pub fn execute_store_denom_info(
 
     let mut seen_denoms = HashSet::new(); // To track unique denoms
     for info in ibc_denom_info {
-        let denom = info.denom;
+        let denom = info.denom.to_lowercase();
         verify_denom(&denom, &info.denom_info)?;
 
         // Check for duplicates
@@ -131,7 +131,7 @@ pub fn get_denom_info(
     storage: &dyn Storage,
     denom: String,
 ) -> Result<DenomInfoResponse, ContractError> {
-    let denom_info = REGISTRY.load(storage, denom)?;
+    let denom_info = REGISTRY.load(storage, denom.to_lowercase())?;
     Ok(DenomInfoResponse { denom_info })
 }
 

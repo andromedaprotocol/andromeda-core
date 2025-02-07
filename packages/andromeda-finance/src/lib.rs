@@ -1,5 +1,4 @@
 pub mod conditional_splitter;
-pub mod cross_chain_swap;
 pub mod fixed_amount_splitter;
 pub mod mint_burn;
 pub mod rate_limiting_withdrawals;

@@ -9,11 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- CW20 support for kernel routing [(#723)](https://github.com/andromedaprotocol/andromeda-core/pull/723)
+- feat: Handle username on IBC packets [(#791)](https://github.com/andromedaprotocol/andromeda-core/pull/791)
+- Added Time Gate ADO [(#529)](https://github.com/andromedaprotocol/andromeda-core/pull/529)
+- feat: Add previous hops to AMP packets [(#796)](https://github.com/andromedaprotocol/andromeda-core/pull/796)
+
 ### Changed
 
 - feat: Improved macros and execution flow for AMP [(#741)](https://github.com/andromedaprotocol/andromeda-core/pull/741)
+- chore: remove unused contracts & code [(#790)](https://github.com/andromedaprotocol/andromeda-core/pull/790)
 
 ### Fixed
+
+- fix: permission migration [(#792)](https://github.com/andromedaprotocol/andromeda-core/pull/792)
+- fix: IBC denom casing [(#795)](https://github.com/andromedaprotocol/andromeda-core/pull/795)
+- fix: macro error crate references [(#799)](https://github.com/andromedaprotocol/andromeda-core/pull/799)
 
 ## Release 4
 

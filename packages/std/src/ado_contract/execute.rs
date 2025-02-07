@@ -7,11 +7,8 @@ use {
 };
 
 use crate::{
-    ado_base::{
-        permissioning::{LocalPermission, Permission},
-        AndromedaMsg, InstantiateMsg,
-    },
-    ado_contract::ADOContract,
+    ado_base::{AndromedaMsg, InstantiateMsg},
+    ado_contract::{permissioning, ADOContract},
     amp::{addresses::AndrAddr, messages::AMPPkt},
     common::{context::ExecuteContext, reply::ReplyId},
     error::{from_semver, ContractError},
@@ -121,7 +118,7 @@ impl ADOContract<'_> {
     pub fn migrate(
         &self,
         mut deps: DepsMut,
-        env: Env,
+        _env: Env,
         contract_name: &str,
         contract_version: &str,
     ) -> Result<Response, ContractError> {
@@ -152,84 +149,9 @@ impl ADOContract<'_> {
                 previous_contract: stored.version,
             }
         );
-        let owner = self.owner.load(deps.storage)?;
 
-        // Get all permissioned actions and actors in one pass
-        let permissioned_actions = self.query_permissioned_actions(deps.as_ref())?;
-        if !permissioned_actions.is_empty() {
-            // Iterate through all actions
-            for action in &permissioned_actions {
-                let actors = self.query_permissioned_actors(
-                    deps.as_ref(),
-                    action.clone(),
-                    None,
-                    None,
-                    None,
-                )?;
-
-                for actor in actors {
-                    // Check permission structure for each actor
-                    let permissions = self.query_permissions(deps.as_ref(), &actor, None, None)?;
-                    // Iterate through all permissions instead of just checking the first one
-                    for permission in permissions {
-                        let local_permission = permission
-                            .permission
-                            .clone()
-                            .get_permission(deps.as_ref(), actor.as_str())?;
-
-                        // Check if using old permission structure (without 'start' variant)
-                        let json_str = String::from_utf8(to_json_binary(&local_permission)?.0)?;
-                        if !json_str.contains("start") {
-                            let ctx = ExecuteContext::new(
-                                deps.branch(),
-                                MessageInfo {
-                                    sender: owner.clone(),
-                                    funds: vec![],
-                                },
-                                env.clone(),
-                            );
-
-                            // Determine permission type from JSON structure
-                            if json_str.contains("whitelisted") {
-                                self.execute_set_permission(
-                                    ctx,
-                                    vec![AndrAddr::from_string(actor.clone())],
-                                    action.clone(),
-                                    Permission::Local(LocalPermission::Whitelisted {
-                                        start: None,
-                                        expiration: None,
-                                    }),
-                                )?;
-                            } else if json_str.contains("blacklisted") {
-                                self.execute_set_permission(
-                                    ctx,
-                                    vec![AndrAddr::from_string(actor.clone())],
-                                    action.clone(),
-                                    Permission::Local(LocalPermission::Blacklisted {
-                                        start: None,
-                                        expiration: None,
-                                    }),
-                                )?;
-                            } else if json_str.contains("limited") {
-                                self.execute_set_permission(
-                                    ctx,
-                                    vec![AndrAddr::from_string(actor.clone())],
-                                    action.clone(),
-                                    Permission::Local(LocalPermission::Limited {
-                                        start: None,
-                                        expiration: None,
-                                        uses: 0,
-                                    }),
-                                )?;
-                            }
-                        } else {
-                            // If one permission is up to date, we assume that all of them are
-                            break;
-                        }
-                    }
-                }
-            }
-        }
+        // Migrate from old permissioning format to new
+        permissioning::migrate::migrate(deps.storage)?;
 
         #[cfg(feature = "rates")]
         {
@@ -449,7 +371,7 @@ macro_rules! unwrap_amp_msg {
 
             ::cosmwasm_std::ensure!(
                 maybe_amp_msg.is_some(),
-                ContractError::InvalidPacket {
+                ::andromeda_std::error::ContractError::InvalidPacket {
                     error: Some("AMP Packet received with no messages".to_string()),
                 }
             );
@@ -457,7 +379,7 @@ macro_rules! unwrap_amp_msg {
             msg = ::cosmwasm_std::from_json(&amp_msg.message)?;
             ::cosmwasm_std::ensure!(
                 !msg.must_be_direct(),
-                ContractError::InvalidPacket {
+                ::andromeda_std::error::ContractError::InvalidPacket {
                     error: Some(format!(
                         "{} cannot be received via AMP packet",
                         msg.as_ref()
@@ -532,54 +454,6 @@ mod tests {
         }
     }
 
-    mod permissions {
-        use super::*;
-        use cosmwasm_schema::cw_serde;
-        use cosmwasm_std::to_json_binary;
-        use rstest::rstest;
-
-        // Old permission structure without 'start'
-        #[cw_serde]
-        enum OldLocalPermission {
-            Whitelisted { expiration: Option<u64> },
-            Blacklisted { expiration: Option<u64> },
-            Limited { expiration: Option<u64>, uses: u64 },
-        }
-
-        #[rstest]
-        #[case(
-            OldLocalPermission::Whitelisted { expiration: None },
-            LocalPermission::Whitelisted { start: None, expiration: None },
-            "whitelisted"
-        )]
-        #[case(
-            OldLocalPermission::Blacklisted { expiration: None },
-            LocalPermission::Blacklisted { start: None, expiration: None },
-            "blacklisted"
-        )]
-        #[case(
-            OldLocalPermission::Limited { expiration: None, uses: 5 },
-            LocalPermission::Limited { start: None, expiration: None, uses: 5 },
-            "limited"
-        )]
-        fn test_permission_formats(
-            #[case] old_permission: OldLocalPermission,
-            #[case] new_permission: LocalPermission,
-            #[case] permission_type: &str,
-        ) {
-            // Serialize old and new permissions to JSON
-            let old_json = String::from_utf8(to_json_binary(&old_permission).unwrap().0).unwrap();
-            let new_json = String::from_utf8(to_json_binary(&new_permission).unwrap().0).unwrap();
-
-            // Assert old format JSON
-            assert!(!old_json.contains("start"));
-            assert!(old_json.contains(permission_type));
-
-            // Assert new format JSON
-            assert!(new_json.contains("start"));
-            assert!(new_json.contains(permission_type));
-        }
-    }
     #[cfg(feature = "rates")]
     mod rates {
         use super::*;
@@ -644,7 +518,7 @@ mod tests {
 
     mod permissions_migration {
         use super::*;
-        use crate::ado_base::permissioning::LocalPermission;
+        use crate::ado_base::permissioning::{LocalPermission, Permission};
 
         #[test]
         fn test_permissions_migration() {
