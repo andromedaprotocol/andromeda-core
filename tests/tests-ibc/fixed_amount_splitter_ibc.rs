@@ -100,14 +100,14 @@ fn test_fixed_amount_splitter_ibc() {
         )
         .unwrap();
 
-        let packet_lifetime = match interchain.await_packets("juno", kernel_juno_send_request) {
-            Ok(pl) => pl,
-            Err(e) => {
-                eprintln!("Error awaiting packets: {:?}", e);
-                panic!("Detailed error: {:?}", e);
-            }
-        };
-        ensure_packet_success(packet_lifetime);
+    let packet_lifetime = match interchain.await_packets("juno", kernel_juno_send_request) {
+        Ok(pl) => pl,
+        Err(e) => {
+            eprintln!("Error awaiting packets: {:?}", e);
+            panic!("Detailed error: {:?}", e);
+        }
+    };
+    ensure_packet_success(packet_lifetime);
 
     let ibc_denom = format!(
         "ibc/{}/{}",

@@ -138,73 +138,73 @@ fn run_splitter_test_on_multiple_combos(#[case] chain1_name: &str, #[case] chain
         .await_packets(&chain2.chain_name, chain2_send_request)
         .unwrap();
     println!("packet_lifetime {:?}", &packet_lifetime);
-    // ensure_packet_success(packet_lifetime);
+    ensure_packet_success(packet_lifetime);
 
-    // let ibc_denom = format!(
-    //     "ibc/{}/{}",
-    //     chain1
-    //         .aos
-    //         .get_aos_channel(&chain2.chain_name)
-    //         .unwrap()
-    //         .direct
-    //         .unwrap(),
-    //     chain2.chain_name.clone()
-    // );
+    let ibc_denom = format!(
+        "ibc/{}/{}",
+        chain1
+            .aos
+            .get_aos_channel(&chain2.chain_name)
+            .unwrap()
+            .direct
+            .unwrap(),
+        chain2.chain_name.clone()
+    );
 
-    // // Setup trigger
-    // chain2
-    //     .aos
-    //     .kernel
-    //     .execute(
-    //         &os::kernel::ExecuteMsg::UpsertKeyAddress {
-    //             key: "trigger_key".to_string(),
-    //             value: chain2.chain.sender.to_string(),
-    //         },
-    //         None,
-    //     )
-    //     .unwrap();
+    // Setup trigger
+    chain2
+        .aos
+        .kernel
+        .execute(
+            &os::kernel::ExecuteMsg::UpsertKeyAddress {
+                key: "trigger_key".to_string(),
+                value: chain2.chain.sender.to_string(),
+            },
+            None,
+        )
+        .unwrap();
 
-    // let packet_ack = make_ack_success();
-    // let channel_id = chain2
-    //     .aos
-    //     .get_aos_channel(chain1.chain_name.clone())
-    //     .unwrap()
-    //     .ics20
-    //     .unwrap();
+    let packet_ack = make_ack_success();
+    let channel_id = chain2
+        .aos
+        .get_aos_channel(chain1.chain_name.clone())
+        .unwrap()
+        .ics20
+        .unwrap();
 
-    // // Trigger split execution
-    // let kernel_chain2_splitter = chain2
-    //     .aos
-    //     .kernel
-    //     .execute(
-    //         &os::kernel::ExecuteMsg::TriggerRelay {
-    //             packet_sequence: 1,
-    //             packet_ack,
-    //             channel_id,
-    //         },
-    //         None,
-    //     )
-    //     .unwrap();
+    // Trigger split execution
+    let kernel_chain2_splitter = chain2
+        .aos
+        .kernel
+        .execute(
+            &os::kernel::ExecuteMsg::TriggerRelay {
+                packet_sequence: 1,
+                packet_ack,
+                channel_id,
+            },
+            None,
+        )
+        .unwrap();
 
-    // let packet_lifetime = interchain
-    //     .await_packets(&chain2.chain_name, kernel_chain2_splitter)
-    //     .unwrap();
-    // ensure_packet_success(packet_lifetime);
+    let packet_lifetime = interchain
+        .await_packets(&chain2.chain_name, kernel_chain2_splitter)
+        .unwrap();
+    ensure_packet_success(packet_lifetime);
 
-    // // Verify split amounts
-    // let balance1 = chain1
-    //     .chain
-    //     .query_all_balances(&chain1.chain.addr_make(recipient1.clone()))
-    //     .unwrap();
-    // let balance2 = chain1
-    //     .chain
-    //     .query_all_balances(&chain1.chain.addr_make(recipient2.clone()))
-    //     .unwrap();
+    // Verify split amounts
+    let balance1 = chain1
+        .chain
+        .query_all_balances(&chain1.chain.addr_make(recipient1.clone()))
+        .unwrap();
+    let balance2 = chain1
+        .chain
+        .query_all_balances(&chain1.chain.addr_make(recipient2.clone()))
+        .unwrap();
 
-    // assert_eq!(balance1[0].denom, ibc_denom);
-    // assert_eq!(balance2[0].denom, ibc_denom);
-    // assert_eq!(balance1[0].amount, Uint128::new(60)); // 60%
-    // assert_eq!(balance2[0].amount, Uint128::new(40)); // 40%
+    assert_eq!(balance1[0].denom, ibc_denom);
+    assert_eq!(balance2[0].denom, ibc_denom);
+    assert_eq!(balance1[0].amount, Uint128::new(60)); // 60%
+    assert_eq!(balance2[0].amount, Uint128::new(40)); // 40%
 }
 
 #[test]
