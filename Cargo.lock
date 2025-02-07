@@ -737,7 +737,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-rate-limiting-withdrawals"
-version = "2.1.0-beta"
+version = "2.1.1-b.1"
 dependencies = [
  "andromeda-app",
  "andromeda-finance",
