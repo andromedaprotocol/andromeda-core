@@ -51,19 +51,18 @@ pub fn trigger_relay(
         .load(ctx.deps.storage, (channel_id.clone(), packet_sequence))
         .expect("No packet found for channel_id and sequence");
 
-    let chain =
-        ics20_packet_info
-            .recipient
-            .get_chain()
-            .ok_or_else(|| ContractError::InvalidPacket {
-                error: Some("Chain not provided".to_string()),
-            })?;
-
-    let channel_info = CHAIN_TO_CHANNEL
-        .may_load(ctx.deps.storage, chain)?
-        .ok_or_else(|| ContractError::InvalidPacket {
-            error: Some(format!("Channel not found for chain {}", chain)),
+    let chain = ics20_packet_info
+        .recipient
+        .get_chain()
+        .ok_or(ContractError::InvalidPacket {
+            error: Some("Chain not provided".to_string()),
         })?;
+
+    let channel_info = CHAIN_TO_CHANNEL.may_load(ctx.deps.storage, chain)?.ok_or(
+        ContractError::InvalidPacket {
+            error: Some(format!("Channel not found for chain {}", chain)),
+        },
+    )?;
     let ack: StdAck = from_json(packet_ack_msg)?;
 
     match ack {
@@ -108,13 +107,12 @@ fn handle_ibc_transfer_funds_reply(
     channel_id: String,
 ) -> Result<Response, ContractError> {
     let mut ics20_packet_info = ics20_packet_info.clone();
-    let chain =
-        &ics20_packet_info
-            .recipient
-            .get_chain()
-            .ok_or_else(|| ContractError::InvalidPacket {
-                error: Some("Chain not provided in recipient".to_string()),
-            })?;
+    let chain = &ics20_packet_info
+        .recipient
+        .get_chain()
+        .ok_or(ContractError::InvalidPacket {
+            error: Some("Chain not provided in recipient".to_string()),
+        })?;
 
     ensure!(
         !ics20_packet_info.pending,
@@ -128,7 +126,7 @@ fn handle_ibc_transfer_funds_reply(
 
     let channel = channel_info
         .direct_channel_id
-        .ok_or_else(|| ContractError::InvalidPacket {
+        .ok_or(ContractError::InvalidPacket {
             error: Some(format!("Direct channel not found for chain {}", chain)),
         })?;
 
