@@ -15,10 +15,10 @@ use andromeda_std::{
 };
 
 use andromeda_testing::{
-    interchain::{ensure_packet_success, DEFAULT_SENDER},
+    interchain::ensure_packet_success,
     InterchainTestEnv,
 };
-use cosmwasm_std::{to_json_binary, Binary, Decimal, Uint128, CosmosMsg};
+use cosmwasm_std::{to_json_binary, Binary, Decimal, Uint128};
 use cw_orch::prelude::*;
 use cw_orch_interchain::prelude::*;
 
@@ -92,7 +92,7 @@ fn test_kernel_ibc_execute_only() {
         .unwrap();
 
     let packet_lifetime = interchain
-        .await_packets("juno-1", kernel_juno_send_request)
+        .await_packets(&juno.chain_id, kernel_juno_send_request)
         .unwrap();
 
     ensure_packet_success(packet_lifetime);
@@ -120,7 +120,7 @@ fn test_kernel_ibc_funds_only() {
         andr_recipient,
         Binary::default(),
         Some(vec![Coin {
-            denom: "juno".to_string(),
+            denom: juno.denom.clone(),
             amount: Uint128::new(100),
         }]),
     );
@@ -131,14 +131,14 @@ fn test_kernel_ibc_funds_only() {
         .execute(
             &os::kernel::ExecuteMsg::Send { message },
             Some(&[Coin {
-                denom: "juno".to_string(),
+                denom: juno.denom.clone(),
                 amount: Uint128::new(100),
             }]),
         )
         .unwrap();
 
     let packet_lifetime = interchain
-        .await_packets("juno", kernel_juno_send_request)
+        .await_packets(&juno.chain_id, kernel_juno_send_request)
         .unwrap();
 
     ensure_packet_success(packet_lifetime);
@@ -146,7 +146,7 @@ fn test_kernel_ibc_funds_only() {
     let ibc_denom: String = format!(
         "ibc/{}/{}",
         osmosis.aos.get_aos_channel("juno").unwrap().direct.unwrap(),
-        "juno"
+        juno.denom.clone()
     );
 
     let balances = osmosis
@@ -187,7 +187,7 @@ fn test_kernel_ibc_funds_only() {
         .unwrap();
 
     let packet_lifetime = interchain
-        .await_packets("juno", kernel_juno_trigger_request)
+        .await_packets(&juno.chain_id, kernel_juno_trigger_request)
         .unwrap();
     ensure_packet_success(packet_lifetime);
 
@@ -260,7 +260,7 @@ fn test_kernel_ibc_funds_and_execute_msg() {
         osmosis_recipient,
         to_json_binary(&andromeda_finance::splitter::ExecuteMsg::Send { config: None }).unwrap(),
         Some(vec![Coin {
-            denom: "juno".to_string(),
+            denom: juno.denom.clone(),
             amount: Uint128::new(100),
         }]),
     );
@@ -271,14 +271,14 @@ fn test_kernel_ibc_funds_and_execute_msg() {
         .execute(
             &os::kernel::ExecuteMsg::Send { message },
             Some(&[Coin {
-                denom: "juno".to_string(),
+                denom: juno.denom.clone(),
                 amount: Uint128::new(100),
             }]),
         )
         .unwrap();
 
     let packet_lifetime = interchain
-        .await_packets("juno", kernel_juno_send_request)
+        .await_packets(&juno.chain_id, kernel_juno_send_request)
         .unwrap();
     ensure_packet_success(packet_lifetime);
 
@@ -286,7 +286,7 @@ fn test_kernel_ibc_funds_and_execute_msg() {
     let ibc_denom = format!(
         "ibc/{}/{}",
         osmosis.aos.get_aos_channel("juno").unwrap().direct.unwrap(),
-        "juno"
+        juno.denom.clone()
     );
     // Check kernel balance before trigger execute msg
     let balances = osmosis
@@ -327,7 +327,7 @@ fn test_kernel_ibc_funds_and_execute_msg() {
         .unwrap();
 
     let packet_lifetime = interchain
-        .await_packets("juno", kernel_juno_splitter_request)
+        .await_packets(&juno.chain_id, kernel_juno_splitter_request)
         .unwrap();
     ensure_packet_success(packet_lifetime);
 
