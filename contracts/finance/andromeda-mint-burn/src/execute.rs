@@ -131,7 +131,7 @@ pub fn execute_create_order(
 
     Ok(Response::new()
         .add_attribute("method", "create_order")
-        .add_attribute("order_id", order_id.clone())
+        .add_attribute("order_id", order_id)
         .add_attribute("sender", sender))
 }
 
@@ -175,8 +175,7 @@ pub fn execute_fill_order(
     for requirement in &mut order.requirements {
         match &requirement.resource {
             Resource::Cw20Token { cw20_addr } => {
-                if cw20_addr.clone().get_raw_address(&ctx.deps.as_ref())? == &contract_addr.clone()
-                {
+                if cw20_addr.clone().get_raw_address(&ctx.deps.as_ref())? == &contract_addr {
                     let user_deposit = requirement
                         .deposits
                         .entry(original_sender_str.clone())
@@ -196,7 +195,7 @@ pub fn execute_fill_order(
                 cw721_addr,
                 token_id,
             } => {
-                if cw721_addr.get_raw_address(&ctx.deps.as_ref())? == &contract_addr.clone() {
+                if cw721_addr.get_raw_address(&ctx.deps.as_ref())? == &contract_addr {
                     if let Some(received_token_id) = received_token_id.clone() {
                         if token_id == &received_token_id {
                             // Allow deposit of any required NFT from the same contract
@@ -281,7 +280,7 @@ pub fn execute_fill_order(
     response = response
         .clone()
         .add_attribute("method", "fill_order")
-        .add_attribute("order_id", order_id.clone())
+        .add_attribute("order_id", order_id)
         .add_attribute("contract_addr", contract_addr.clone());
 
     Ok(response)
@@ -298,14 +297,14 @@ fn complete_order(
     for requirement in &order.requirements {
         for (user, amount) in &requirement.deposits {
             if amount.gt(&Uint128::zero()) {
-                let is_burning = (*user)
+                let is_burning = *user
                     == original_sender
                         .get_raw_address(&ctx.deps.as_ref())?
                         .to_string();
                 let burn_or_refund_msg = generate_burn_or_refund_msg(
                     ctx.deps.as_ref(),
                     requirement,
-                    user,
+                    user.to_string(),
                     amount,
                     is_burning,
                 )?;
@@ -363,7 +362,7 @@ fn generate_mint_msg(
 fn generate_burn_or_refund_msg(
     deps: Deps,
     requirement: &ResourceRequirement,
-    user: &String,
+    user: String,
     amount: &Uint128,
     is_burning: bool,
 ) -> Result<CosmosMsg, ContractError> {
@@ -438,7 +437,7 @@ pub fn execute_cancel_order(
                 let refund_msg = generate_burn_or_refund_msg(
                     ctx.deps.as_ref(),
                     requirement,
-                    user,
+                    user.to_string(),
                     amount,
                     false,
                 )?;
@@ -455,6 +454,6 @@ pub fn execute_cancel_order(
     Ok(Response::new()
         .add_messages(messages)
         .add_attribute("method", "cancel_order")
-        .add_attribute("order_id", order_id.clone())
+        .add_attribute("order_id", order_id)
         .add_attribute("sender", sender))
 }
