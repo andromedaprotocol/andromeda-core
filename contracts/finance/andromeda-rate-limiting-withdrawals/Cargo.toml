@@ -33,3 +33,4 @@ cw-orch = { workspace = true }
 
 [dev-dependencies]
 andromeda-app = { workspace = true }
+rstest = { workspace = true }

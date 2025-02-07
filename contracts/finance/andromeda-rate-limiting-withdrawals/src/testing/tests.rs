@@ -1,8 +1,12 @@
-use andromeda_std::{common::Milliseconds, error::ContractError};
+use andromeda_std::{
+    amp::{messages::AMPPkt, AndrAddr, Recipient},
+    common::Milliseconds,
+    error::ContractError,
+};
 use cosmwasm_std::{
-    coin,
+    coin, from_json,
     testing::{mock_env, mock_info},
-    DepsMut, Response, Uint128,
+    BankMsg, Binary, CosmosMsg, DepsMut, Response, Uint128, WasmMsg,
 };
 pub const OWNER: &str = "creator";
 
@@ -16,6 +20,8 @@ use crate::{
 use andromeda_finance::rate_limiting_withdrawals::{
     AccountDetails, CoinAndLimit, ExecuteMsg, InstantiateMsg, MinimumFrequency,
 };
+
+use rstest::*;
 
 fn init(deps: DepsMut) -> Response {
     let msg = InstantiateMsg {
@@ -136,6 +142,7 @@ fn test_withdraw_account_not_found() {
     let info = mock_info("random", &[]);
     let exec = ExecuteMsg::Withdraw {
         amount: Uint128::from(19_u16),
+        recipient: None,
     };
     let err = execute(deps.as_mut(), mock_env(), info, exec).unwrap_err();
     assert_eq!(err, ContractError::AccountNotFound {});
@@ -157,6 +164,7 @@ fn test_withdraw_over_account_limit() {
     let info = mock_info("andromedauser", &[]);
     let exec = ExecuteMsg::Withdraw {
         amount: Uint128::from(31_u16),
+        recipient: None,
     };
     let err = execute(deps.as_mut(), mock_env(), info, exec).unwrap_err();
     assert_eq!(err, ContractError::InsufficientFunds {});
@@ -178,12 +186,14 @@ fn test_withdraw_funds_locked() {
     let info = mock_info("andromedauser", &[]);
     let exec = ExecuteMsg::Withdraw {
         amount: Uint128::from(10_u16),
+        recipient: None,
     };
     let _res = execute(deps.as_mut(), mock_env(), info, exec).unwrap();
 
     let info = mock_info("andromedauser", &[]);
     let exec = ExecuteMsg::Withdraw {
         amount: Uint128::from(10_u16),
+        recipient: None,
     };
 
     let err = execute(deps.as_mut(), mock_env(), info, exec).unwrap_err();
@@ -219,13 +229,16 @@ fn test_withdraw_over_allowed_limit() {
     let info = mock_info("andromedauser", &[]);
     let exec = ExecuteMsg::Withdraw {
         amount: Uint128::from(21_u16),
+        recipient: None,
     };
     let err = execute(deps.as_mut(), mock_env(), info, exec).unwrap_err();
     assert_eq!(err, ContractError::WithdrawalLimitExceeded {});
 }
 
-#[test]
-fn test_withdraw_works() {
+#[rstest]
+#[case::direct(None, "andromedauser")] // Withdraw to self
+#[case::with_recipient(Some(Recipient::new("recipient".to_string(), Some(Binary::default()))), "recipient")] // Withdraw to different recipient
+fn test_withdraw_works(#[case] recipient: Option<Recipient>, #[case] expected_recipient: &str) {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
     let info = mock_info("creator", &[]);
@@ -246,14 +259,45 @@ fn test_withdraw_works() {
     };
 
     let info = mock_info("creator", &[coin(30, "junox")]);
-
     let _res = execute(deps.as_mut(), mock_env(), info, exec).unwrap();
 
     let info = mock_info("andromedauser", &[]);
     let exec = ExecuteMsg::Withdraw {
         amount: Uint128::from(10_u16),
+        recipient: recipient.clone(),
     };
-    let _res = execute(deps.as_mut(), mock_env(), info, exec).unwrap();
+    let res = execute(deps.as_mut(), mock_env(), info, exec).unwrap();
+    let sub_msg = res.messages[0].msg.clone();
+
+    if recipient.is_some() {
+        if let CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr,
+            funds,
+            msg,
+        }) = sub_msg
+        {
+            assert_eq!(contract_addr, MOCK_KERNEL_CONTRACT);
+            assert_eq!(funds, vec![coin(10, "junox")]);
+            let msg: ExecuteMsg = from_json(&msg).unwrap_or_else(|e| {
+                panic!("Failed to deserialize pkt: {}", e);
+            });
+
+            if let ExecuteMsg::AMPReceive(pkt) = msg {
+                let amp_msg = pkt.messages[0].clone();
+                assert_eq!(amp_msg.recipient, AndrAddr::from_string(expected_recipient));
+                assert_eq!(amp_msg.message, Binary::default());
+            } else {
+                panic!("Message is not a AMPReceive");
+            }
+        } else {
+            panic!("SubMsg is not a WasmMsg::Execute");
+        }
+    } else if let CosmosMsg::Bank(BankMsg::Send { to_address, amount }) = sub_msg {
+        assert_eq!(to_address, expected_recipient.to_string());
+        assert_eq!(amount, vec![coin(10, "junox")]);
+    } else {
+        panic!("SubMsg is not a BankMsg::Send");
+    }
 
     let expected_balance = AccountDetails {
         balance: Uint128::from(20_u16),

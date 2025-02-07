@@ -5,13 +5,17 @@ use andromeda_finance::rate_limiting_withdrawals::{
 use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     ado_contract::ADOContract,
+    amp::{
+        messages::{AMPCtx, AMPPkt},
+        Recipient,
+    },
     andr_execute_fn,
     common::{context::ExecuteContext, encode_binary, Milliseconds},
     error::ContractError,
 };
 use cosmwasm_std::{
-    ensure, entry_point, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply,
-    Response, StdError, Uint128,
+    ensure, entry_point, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo,
+    Reply, Response, StdError, SubMsg, Uint128,
 };
 use cw_utils::one_coin;
 
@@ -72,7 +76,7 @@ pub fn instantiate(
 pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::Deposit { recipient } => execute_deposit(ctx, recipient),
-        ExecuteMsg::Withdraw { amount } => execute_withdraw(ctx, amount),
+        ExecuteMsg::Withdraw { amount, recipient } => execute_withdraw(ctx, amount, recipient),
         _ => ADOContract::default().execute(ctx, msg),
     }
 }
@@ -134,9 +138,18 @@ fn execute_deposit(
     Ok(res)
 }
 
-fn execute_withdraw(ctx: ExecuteContext, amount: Uint128) -> Result<Response, ContractError> {
+fn execute_withdraw(
+    ctx: ExecuteContext,
+    amount: Uint128,
+    recipient: Option<Recipient>,
+) -> Result<Response, ContractError> {
     let ExecuteContext {
-        deps, info, env, ..
+        deps,
+        info,
+        env,
+        amp_ctx,
+        contract,
+        ..
     } = ctx;
 
     // check if sender has an account
@@ -186,12 +199,34 @@ fn execute_withdraw(ctx: ExecuteContext, amount: Uint128) -> Result<Response, Co
         amount,
     };
 
+    let message: SubMsg = if let Some(recipient) = recipient {
+        let amp_msg = recipient.generate_amp_msg(&deps.as_ref(), Some(vec![coin.clone()]))?;
+        let ctx = if let Some(pkt) = amp_ctx {
+            pkt.ctx
+        } else {
+            AMPCtx::new(
+                info.sender.to_string(),
+                env.contract.address.to_string(),
+                0,
+                None,
+            )
+        };
+        let amp_pkt = AMPPkt::new_with_ctx(ctx, vec![amp_msg]);
+        let kernel_address = contract.get_kernel_address(deps.storage)?;
+        amp_pkt.to_sub_msg(kernel_address, Some(vec![coin.clone()]), 0)?
+    } else {
+        SubMsg::reply_always(
+            CosmosMsg::Bank(BankMsg::Send {
+                to_address: info.sender.to_string(),
+                amount: vec![coin.clone()],
+            }),
+            0,
+        )
+    };
+
     // Transfer funds
     let res = Response::new()
-        .add_message(CosmosMsg::Bank(BankMsg::Send {
-            to_address: info.sender.to_string(),
-            amount: vec![coin.clone()],
-        }))
+        .add_submessage(message)
         .add_attribute("action", "withdrew funds")
         .add_attribute("coin", coin.to_string());
     Ok(res)
