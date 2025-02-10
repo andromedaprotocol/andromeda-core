@@ -59,7 +59,7 @@ cw4 = "1.1.2"
 cw721 = "0.18.0"
 cw721-base = { version = "0.18.0", features = ["library"] }
 cw-asset = "=3.0.0"
-cosmwasm-schema = "1.5.9"
+cosmwasm-schema = "1.5.10"
 semver = "1.0.25"
 enum-repr = "0.2.6"
 cw-multi-test = { version = "1.0.0", features = ["cosmwasm_1_2"] }
