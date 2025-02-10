@@ -10,6 +10,7 @@ use cosmwasm_std::{
     entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError,
 };
 
+use crate::execute::handle_receive_cw20;
 use crate::ibc::{IBCLifecycleComplete, SudoMsg};
 use crate::reply::{
     on_reply_create_ado, on_reply_ibc_hooks_packet_send, on_reply_ibc_transfer,
@@ -82,12 +83,7 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
-    let mut execute_env = ExecuteContext {
-        deps,
-        env,
-        info,
-        amp_ctx: None,
-    };
+    let mut execute_env = ExecuteContext::new(deps, info, env);
 
     match msg {
         ExecuteMsg::AMPReceive(packet) => execute::amp_receive(
@@ -96,6 +92,7 @@ pub fn execute(
             execute_env.env,
             packet,
         ),
+        ExecuteMsg::Receive(msg) => handle_receive_cw20(execute_env, msg),
         ExecuteMsg::Send { message } => execute::send(execute_env, message),
         ExecuteMsg::TriggerRelay {
             packet_sequence,
@@ -155,8 +152,8 @@ pub fn sudo(deps: DepsMut, _env: Env, msg: SudoMsg) -> Result<Response, Contract
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-    ADOContract::default().migrate(deps, CONTRACT_NAME, CONTRACT_VERSION)
+pub fn migrate(deps: DepsMut, env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    ADOContract::default().migrate(deps, env, CONTRACT_NAME, CONTRACT_VERSION)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

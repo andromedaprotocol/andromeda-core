@@ -11,7 +11,8 @@ use andromeda_finance::{
 use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     amp::{messages::AMPPkt, Recipient},
-    common::{actions::call_action, encode_binary, expiration::Expiry, Milliseconds},
+    andr_execute_fn,
+    common::{encode_binary, expiration::Expiry, Milliseconds},
     error::ContractError,
 };
 use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
@@ -20,7 +21,6 @@ use cosmwasm_std::{
     MessageInfo, Reply, Response, StdError, SubMsg, Uint128,
 };
 use cw20::{Cw20Coin, Cw20ReceiveMsg};
-use cw_utils::nonpayable;
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-fixed-amount-splitter";
@@ -84,32 +84,9 @@ pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, Contract
     Ok(Response::default())
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn execute(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    msg: ExecuteMsg,
-) -> Result<Response, ContractError> {
-    let ctx = ExecuteContext::new(deps, info, env);
-
+#[andr_execute_fn]
+pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::AMPReceive(pkt) => {
-            ADOContract::default().execute_amp_receive(ctx, pkt, handle_execute)
-        }
-        _ => handle_execute(ctx, msg),
-    }
-}
-
-pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
-    let action_response = call_action(
-        &mut ctx.deps,
-        &ctx.info,
-        &ctx.env,
-        &ctx.amp_ctx,
-        msg.as_ref(),
-    )?;
-    let res = match msg {
         ExecuteMsg::UpdateRecipients { recipients } => execute_update_recipients(ctx, recipients),
         ExecuteMsg::UpdateLock { lock_time } => execute_update_lock(ctx, lock_time),
         ExecuteMsg::UpdateDefaultRecipient { recipient } => {
@@ -118,11 +95,7 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
         ExecuteMsg::Receive(receive_msg) => handle_receive_cw20(ctx, receive_msg),
         ExecuteMsg::Send { config } => execute_send(ctx, config),
         _ => ADOContract::default().execute(ctx, msg),
-    }?;
-    Ok(res
-        .add_submessages(action_response.messages)
-        .add_attributes(action_response.attributes)
-        .add_events(action_response.events))
+    }
 }
 
 pub fn handle_receive_cw20(
@@ -130,8 +103,6 @@ pub fn handle_receive_cw20(
     receive_msg: Cw20ReceiveMsg,
 ) -> Result<Response, ContractError> {
     let ExecuteContext { ref info, .. } = ctx;
-    nonpayable(info)?;
-
     let asset_sent = info.sender.clone().into_string();
     let amount_sent = receive_msg.amount;
     let sender = receive_msg.sender;
@@ -177,8 +148,10 @@ fn execute_send_cw20(
     };
 
     let mut msgs: Vec<SubMsg> = Vec::new();
+    let mut amp_funds: Vec<Coin> = Vec::new();
     let mut remainder_funds = coin.amount;
 
+    let mut pkt = AMPPkt::from_ctx(ctx.amp_ctx, ctx.env.contract.address.to_string());
     for recipient in splitter_recipients.clone() {
         // Find the recipient's corresponding denom for the current iteration of the sent funds
         let recipient_coin = recipient
@@ -196,14 +169,12 @@ fn execute_send_cw20(
             let recipient_funds =
                 cosmwasm_std::coin(recipient_coin.amount.u128(), recipient_coin.denom);
 
-            let amp_msg = recipient.recipient.generate_msg_cw20(
-                &deps.as_ref(),
-                Cw20Coin {
-                    address: recipient_funds.denom.clone(),
-                    amount: recipient_funds.amount,
-                },
-            )?;
-            msgs.push(amp_msg);
+            amp_funds.push(recipient_funds.clone());
+
+            let amp_msg = recipient
+                .recipient
+                .generate_amp_msg(&deps.as_ref(), Some(vec![recipient_funds.clone()]))?;
+            pkt = pkt.add_message(amp_msg);
         }
     }
 
@@ -221,6 +192,12 @@ fn execute_send_cw20(
         msgs.push(cw20_msg);
     }
 
+    let kernel_address = ADOContract::default().get_kernel_address(deps.as_ref().storage)?;
+    if !pkt.messages.is_empty() && !amp_funds.is_empty() {
+        let distro_msg = pkt.to_sub_msg_cw20(kernel_address, amp_funds.clone(), 1)?;
+        msgs.push(distro_msg.clone());
+    }
+
     Ok(Response::new()
         .add_submessages(msgs)
         .add_attribute("action", "send")
@@ -231,17 +208,7 @@ fn execute_update_default_recipient(
     ctx: ExecuteContext,
     recipient: Option<Recipient>,
 ) -> Result<Response, ContractError> {
-    let ExecuteContext {
-        deps, info, env, ..
-    } = ctx;
-
-    nonpayable(&info)?;
-
-    ensure!(
-        ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {}
-    );
-
+    let ExecuteContext { deps, env, .. } = ctx;
     let mut splitter = SPLITTER.load(deps.storage)?;
 
     // Can't call this function while the lock isn't expired
@@ -378,16 +345,7 @@ fn execute_update_recipients(
     ctx: ExecuteContext,
     recipients: Vec<AddressAmount>,
 ) -> Result<Response, ContractError> {
-    let ExecuteContext {
-        deps, info, env, ..
-    } = ctx;
-
-    nonpayable(&info)?;
-
-    ensure!(
-        ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {}
-    );
+    let ExecuteContext { deps, env, .. } = ctx;
 
     validate_recipient_list(deps.as_ref(), recipients.clone())?;
 
@@ -411,16 +369,7 @@ fn execute_update_recipients(
 }
 
 fn execute_update_lock(ctx: ExecuteContext, lock_time: Expiry) -> Result<Response, ContractError> {
-    let ExecuteContext {
-        deps, info, env, ..
-    } = ctx;
-
-    nonpayable(&info)?;
-
-    ensure!(
-        ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {}
-    );
+    let ExecuteContext { deps, env, .. } = ctx;
 
     let mut splitter = SPLITTER.load(deps.storage)?;
 
@@ -443,8 +392,8 @@ fn execute_update_lock(ctx: ExecuteContext, lock_time: Expiry) -> Result<Respons
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-    ADOContract::default().migrate(deps, CONTRACT_NAME, CONTRACT_VERSION)
+pub fn migrate(deps: DepsMut, env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    ADOContract::default().migrate(deps, env, CONTRACT_NAME, CONTRACT_VERSION)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

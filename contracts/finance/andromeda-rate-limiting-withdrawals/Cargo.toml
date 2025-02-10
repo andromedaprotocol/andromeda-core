@@ -1,6 +1,6 @@
 [package]
 name = "andromeda-rate-limiting-withdrawals"
-version = "2.0.3-beta"
+version = "2.1.1-b.1"
 edition = "2021"
 rust-version = "1.75.0"
 
@@ -33,3 +33,4 @@ cw-orch = { workspace = true }
 
 [dev-dependencies]
 andromeda-app = { workspace = true }
+rstest = { workspace = true }

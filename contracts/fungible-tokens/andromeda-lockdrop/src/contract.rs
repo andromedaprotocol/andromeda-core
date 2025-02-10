@@ -8,9 +8,10 @@ use andromeda_fungible_tokens::lockdrop::{
 use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     ado_contract::ADOContract,
+    andr_execute_fn,
     common::{
-        actions::call_action, context::ExecuteContext, encode_binary,
-        expiration::MILLISECONDS_TO_NANOSECONDS_RATIO, Milliseconds, MillisecondsExpiration,
+        context::ExecuteContext, encode_binary, expiration::MILLISECONDS_TO_NANOSECONDS_RATIO,
+        Milliseconds, MillisecondsExpiration,
     },
     error::ContractError,
 };
@@ -22,8 +23,6 @@ use cw_asset::Asset;
 
 use crate::state::{Config, State, CONFIG, STATE, USER_INFO};
 use cw20::Cw20ReceiveMsg;
-
-use cw_utils::nonpayable;
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-lockdrop";
@@ -89,34 +88,9 @@ pub fn instantiate(
     Ok(inst_resp)
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn execute(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    msg: ExecuteMsg,
-) -> Result<Response, ContractError> {
-    let ctx = ExecuteContext::new(deps, info, env);
-
+#[andr_execute_fn]
+pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::AMPReceive(pkt) => {
-            ADOContract::default().execute_amp_receive(ctx, pkt, handle_execute)
-        }
-        _ => handle_execute(ctx, msg),
-    }
-}
-
-pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
-    let _contract = ADOContract::default();
-    let action_response = call_action(
-        &mut ctx.deps,
-        &ctx.info,
-        &ctx.env,
-        &ctx.amp_ctx,
-        msg.as_ref(),
-    )?;
-
-    let res = match msg {
         ExecuteMsg::Receive(msg) => receive_cw20(ctx, msg),
         ExecuteMsg::DepositNative {} => execute_deposit_native(ctx),
         ExecuteMsg::WithdrawNative { amount } => execute_withdraw_native(ctx, amount),
@@ -124,16 +98,12 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
         ExecuteMsg::ClaimRewards {} => execute_claim_rewards(ctx),
         // ExecuteMsg::WithdrawProceeds { recipient } => execute_withdraw_proceeds(ctx, recipient),
         _ => ADOContract::default().execute(ctx, msg),
-    }?;
-    Ok(res
-        .add_submessages(action_response.messages)
-        .add_attributes(action_response.attributes)
-        .add_events(action_response.events))
+    }
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-    ADOContract::default().migrate(deps, CONTRACT_NAME, CONTRACT_VERSION)
+pub fn migrate(deps: DepsMut, env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    ADOContract::default().migrate(deps, env, CONTRACT_NAME, CONTRACT_VERSION)
 }
 
 pub fn receive_cw20(
@@ -343,10 +313,7 @@ pub fn execute_withdraw_native(
 /// Called along-with Bootstrap contract's LP Pool provide liquidity tx. If it is not
 /// specified then anyone can execute this when the phase has ended.
 pub fn execute_enable_claims(ctx: ExecuteContext) -> Result<Response, ContractError> {
-    let ExecuteContext {
-        deps, env, info, ..
-    } = ctx;
-    nonpayable(&info)?;
+    let ExecuteContext { deps, env, .. } = ctx;
 
     // let contract = ADOContract::default();
     let config = CONFIG.load(deps.storage)?;

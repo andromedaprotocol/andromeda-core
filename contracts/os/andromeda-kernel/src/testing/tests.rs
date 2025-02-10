@@ -571,6 +571,7 @@ fn test_query_pending_packets(
             message: to_json_binary(&"test message").unwrap(),
             funds: coin(amount, "ucosm"),
             channel: channel.to_string(),
+            pending: true,
         };
         CHANNEL_TO_EXECUTE_MSG
             .save(

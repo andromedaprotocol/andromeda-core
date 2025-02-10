@@ -3,7 +3,8 @@ use andromeda_std::{
     ado_base::{AndromedaMsg, AndromedaQuery, InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     ado_contract::ADOContract,
     amp::AndrAddr,
-    common::{actions::call_action, context::ExecuteContext, encode_binary, Funds},
+    andr_execute_fn,
+    common::{context::ExecuteContext, encode_binary, Funds},
     error::ContractError,
 };
 use cosmwasm_std::{entry_point, Reply, StdError};
@@ -50,36 +51,10 @@ pub fn instantiate(
         .add_attributes(cw20_resp.attributes))
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn execute(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    msg: ExecuteMsg,
-) -> Result<Response, ContractError> {
-    let ctx = ExecuteContext::new(deps, info, env);
-
-    match msg {
-        ExecuteMsg::AMPReceive(pkt) => {
-            ADOContract::default().execute_amp_receive(ctx, pkt, handle_execute)
-        }
-        _ => handle_execute(ctx, msg),
-    }
-}
-
-pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+#[andr_execute_fn]
+pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     let action = msg.as_ref().to_string();
-
-    let _contract = ADOContract::default();
-    let action_response = call_action(
-        &mut ctx.deps,
-        &ctx.info,
-        &ctx.env,
-        &ctx.amp_ctx,
-        msg.as_ref(),
-    )?;
-
-    let res = match msg {
+    match msg {
         ExecuteMsg::Transfer { recipient, amount } => {
             execute_transfer(ctx, recipient, amount, action)
         }
@@ -108,11 +83,7 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
                 _ => Ok(execute_cw20(ctx.deps, ctx.env, ctx.info, msg.into())?),
             }
         }
-    }?;
-    Ok(res
-        .add_submessages(action_response.messages)
-        .add_attributes(action_response.attributes)
-        .add_events(action_response.events))
+    }
 }
 
 fn execute_transfer(
@@ -388,8 +359,8 @@ fn filter_out_cw20_messages(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-    ADOContract::default().migrate(deps, CONTRACT_NAME, CONTRACT_VERSION)
+pub fn migrate(deps: DepsMut, env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    ADOContract::default().migrate(deps, env, CONTRACT_NAME, CONTRACT_VERSION)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

@@ -10,15 +10,15 @@ use andromeda_std::{
         InstantiateMsg as BaseInstantiateMsg, MigrateMsg,
     },
     ado_contract::ADOContract,
-    common::{actions::call_action, context::ExecuteContext, encode_binary},
+    andr_execute_fn,
+    common::{context::ExecuteContext, encode_binary},
     error::ContractError,
 };
 
 use cosmwasm_std::{
-    entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError, Storage,
+    entry_point, Binary, Decimal, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError,
+    Storage,
 };
-
-use cw_utils::nonpayable;
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-curve";
@@ -50,8 +50,8 @@ pub fn instantiate(
 
     if let Some(authorized_operator_addresses) = msg.authorized_operator_addresses {
         if !authorized_operator_addresses.is_empty() {
-            ADOContract::default().permission_action(UPDATE_CURVE_CONFIG_ACTION, deps.storage)?;
-            ADOContract::default().permission_action(RESET_ACTION, deps.storage)?;
+            ADOContract::default().permission_action(deps.storage, UPDATE_CURVE_CONFIG_ACTION)?;
+            ADOContract::default().permission_action(deps.storage, RESET_ACTION)?;
         }
 
         for address in authorized_operator_addresses {
@@ -60,13 +60,13 @@ pub fn instantiate(
                 deps.storage,
                 UPDATE_CURVE_CONFIG_ACTION,
                 addr.clone(),
-                Permission::Local(LocalPermission::Whitelisted(None)),
+                Permission::Local(LocalPermission::whitelisted(None, None)),
             )?;
             ADOContract::set_permission(
                 deps.storage,
                 RESET_ACTION,
                 addr.clone(),
-                Permission::Local(LocalPermission::Whitelisted(None)),
+                Permission::Local(LocalPermission::whitelisted(None, None)),
             )?;
         }
     }
@@ -77,50 +77,21 @@ pub fn instantiate(
     Ok(resp)
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn execute(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    msg: ExecuteMsg,
-) -> Result<Response, ContractError> {
-    let ctx = ExecuteContext::new(deps, info, env);
-    match msg {
-        ExecuteMsg::AMPReceive(pkt) => {
-            ADOContract::default().execute_amp_receive(ctx, pkt, handle_execute)
-        }
-        _ => handle_execute(ctx, msg),
-    }
-}
-
-fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
-    let action_response = call_action(
-        &mut ctx.deps,
-        &ctx.info,
-        &ctx.env,
-        &ctx.amp_ctx,
-        msg.as_ref(),
-    )?;
-
-    let res = match msg.clone() {
+#[andr_execute_fn]
+pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+    match msg.clone() {
         ExecuteMsg::UpdateCurveConfig { curve_config } => {
             execute_update_curve_config(ctx, curve_config)
         }
         ExecuteMsg::Reset {} => execute_reset(ctx),
         _ => ADOContract::default().execute(ctx, msg),
-    }?;
-
-    Ok(res
-        .add_submessages(action_response.messages)
-        .add_attributes(action_response.attributes)
-        .add_events(action_response.events))
+    }
 }
 
 pub fn execute_update_curve_config(
     mut ctx: ExecuteContext,
     curve_config: CurveConfig,
 ) -> Result<Response, ContractError> {
-    nonpayable(&ctx.info)?;
     let sender = ctx.info.sender.clone();
     ADOContract::default().is_permissioned(
         ctx.deps.branch(),
@@ -130,9 +101,7 @@ pub fn execute_update_curve_config(
     )?;
 
     curve_config.validate()?;
-    CURVE_CONFIG.update(ctx.deps.storage, |_| {
-        Ok::<CurveConfig, ContractError>(curve_config)
-    })?;
+    CURVE_CONFIG.save(ctx.deps.storage, &curve_config)?;
 
     Ok(Response::new()
         .add_attribute("method", "update_curve_config")
@@ -140,7 +109,6 @@ pub fn execute_update_curve_config(
 }
 
 pub fn execute_reset(mut ctx: ExecuteContext) -> Result<Response, ContractError> {
-    nonpayable(&ctx.info)?;
     let sender = ctx.info.sender.clone();
     ADOContract::default().is_permissioned(
         ctx.deps.branch(),
@@ -172,7 +140,7 @@ pub fn query_curve_config(storage: &dyn Storage) -> Result<GetCurveConfigRespons
 
 pub fn query_plot_y_from_x(
     storage: &dyn Storage,
-    x_value: f64,
+    x_value: u64,
 ) -> Result<GetPlotYFromXResponse, ContractError> {
     let curve_config = CURVE_CONFIG.load(storage)?;
 
@@ -183,18 +151,49 @@ pub fn query_plot_y_from_x(
             multiple_variable_value,
             constant_value,
         } => {
-            let curve_id_f64 = match curve_type {
-                CurveType::Growth => 1_f64,
-                CurveType::Decay => -1_f64,
-            };
-            let base_value_f64 = base_value as f64;
-            let constant_value_f64 = constant_value.unwrap_or(DEFAULT_CONSTANT_VALUE) as f64;
-            let multiple_variable_value_f64 =
-                multiple_variable_value.unwrap_or(DEFAULT_MULTIPLE_VARIABLE_VALUE) as f64;
+            let base_value_decimal = Decimal::percent(base_value * 100);
+            let constant_value_decimal =
+                Decimal::percent(constant_value.unwrap_or(DEFAULT_CONSTANT_VALUE) * 100);
+            let multiple_variable_value_decimal = Decimal::percent(
+                multiple_variable_value.unwrap_or(DEFAULT_MULTIPLE_VARIABLE_VALUE) * 100,
+            );
 
-            (constant_value_f64
-                * base_value_f64.powf(curve_id_f64 * multiple_variable_value_f64 * x_value))
-            .to_string()
+            let exponent_value = multiple_variable_value_decimal
+                .checked_mul(Decimal::from_atomics(x_value, 18).map_err(|e| {
+                    ContractError::CustomError {
+                        msg: format!("Failed to create decimal for the exponent_value: {:?}", e),
+                    }
+                })?)
+                .map_err(|_| ContractError::Overflow {})?
+                .atomics();
+
+            let exponent_u32 = if exponent_value.u128() > u128::from(u32::MAX) {
+                return Err(ContractError::CustomError {
+                    msg: "Exponent value exceeds u32::MAX.".to_string(),
+                });
+            } else {
+                u32::try_from(exponent_value.u128()).map_err(|_| ContractError::CustomError {
+                    msg: "Failed to convert exponent to u32.".to_string(),
+                })?
+            };
+
+            // The argument of the checked_pow() must be u32, can not be other types
+            let res = constant_value_decimal
+                .checked_mul(
+                    base_value_decimal
+                        .checked_pow(exponent_u32)
+                        .map_err(|_| ContractError::Overflow {})?,
+                )
+                .map_err(|_| ContractError::Overflow {})?;
+
+            let res_by_curve_type = match curve_type {
+                CurveType::Growth => res,
+                CurveType::Decay => Decimal::one()
+                    .checked_div(res)
+                    .map_err(|_| ContractError::Underflow {})?,
+            };
+
+            res_by_curve_type.to_string()
         }
     };
 
@@ -202,8 +201,8 @@ pub fn query_plot_y_from_x(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-    ADOContract::default().migrate(deps, CONTRACT_NAME, CONTRACT_VERSION)
+pub fn migrate(deps: DepsMut, env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    ADOContract::default().migrate(deps, env, CONTRACT_NAME, CONTRACT_VERSION)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

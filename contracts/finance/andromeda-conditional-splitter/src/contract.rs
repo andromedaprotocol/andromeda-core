@@ -8,10 +8,8 @@ use std::vec;
 use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     amp::messages::AMPPkt,
-    common::{
-        actions::call_action, encode_binary, expiration::Expiry, Milliseconds,
-        MillisecondsExpiration,
-    },
+    andr_execute_fn,
+    common::{encode_binary, expiration::Expiry, Milliseconds, MillisecondsExpiration},
     error::ContractError,
 };
 use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
@@ -19,7 +17,6 @@ use cosmwasm_std::{
     attr, ensure, entry_point, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
     Reply, Response, StdError, SubMsg, Uint128,
 };
-use cw_utils::nonpayable;
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-conditional-splitter";
@@ -94,41 +91,14 @@ pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, Contract
     Ok(Response::default())
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn execute(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    msg: ExecuteMsg,
-) -> Result<Response, ContractError> {
-    let ctx = ExecuteContext::new(deps, info, env);
-
+#[andr_execute_fn]
+pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::AMPReceive(pkt) => {
-            ADOContract::default().execute_amp_receive(ctx, pkt, handle_execute)
-        }
-        _ => handle_execute(ctx, msg),
-    }
-}
-
-pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
-    let action_response = call_action(
-        &mut ctx.deps,
-        &ctx.info,
-        &ctx.env,
-        &ctx.amp_ctx,
-        msg.as_ref(),
-    )?;
-    let res = match msg {
         ExecuteMsg::UpdateThresholds { thresholds } => execute_update_thresholds(ctx, thresholds),
         ExecuteMsg::UpdateLock { lock_time } => execute_update_lock(ctx, lock_time),
         ExecuteMsg::Send {} => execute_send(ctx),
         _ => ADOContract::default().execute(ctx, msg),
-    }?;
-    Ok(res
-        .add_submessages(action_response.messages)
-        .add_attributes(action_response.attributes)
-        .add_events(action_response.events))
+    }
 }
 
 fn execute_send(ctx: ExecuteContext) -> Result<Response, ContractError> {
@@ -213,16 +183,7 @@ fn execute_update_thresholds(
     ctx: ExecuteContext,
     thresholds: Vec<Threshold>,
 ) -> Result<Response, ContractError> {
-    let ExecuteContext {
-        deps, info, env, ..
-    } = ctx;
-
-    nonpayable(&info)?;
-
-    ensure!(
-        ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {}
-    );
+    let ExecuteContext { deps, env, .. } = ctx;
 
     let conditional_splitter = CONDITIONAL_SPLITTER.load(deps.storage)?;
 
@@ -245,16 +206,7 @@ fn execute_update_thresholds(
 }
 
 fn execute_update_lock(ctx: ExecuteContext, lock_time: Expiry) -> Result<Response, ContractError> {
-    let ExecuteContext {
-        deps, info, env, ..
-    } = ctx;
-
-    nonpayable(&info)?;
-
-    ensure!(
-        ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {}
-    );
+    let ExecuteContext { deps, env, .. } = ctx;
 
     let mut conditional_splitter = CONDITIONAL_SPLITTER.load(deps.storage)?;
 
@@ -292,8 +244,8 @@ fn execute_update_lock(ctx: ExecuteContext, lock_time: Expiry) -> Result<Respons
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-    ADOContract::default().migrate(deps, CONTRACT_NAME, CONTRACT_VERSION)
+pub fn migrate(deps: DepsMut, env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    ADOContract::default().migrate(deps, env, CONTRACT_NAME, CONTRACT_VERSION)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

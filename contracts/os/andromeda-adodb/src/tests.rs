@@ -9,6 +9,7 @@ use andromeda_std::error::ContractError;
 use andromeda_std::os::adodb::{ADOVersion, ActionFee, ExecuteMsg, InstantiateMsg, QueryMsg};
 
 use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
+use rstest::rstest;
 
 #[test]
 fn proper_initialization() {
@@ -748,4 +749,91 @@ fn test_all_ado_types() {
         "ado_type_2@0.1.0".to_string(),
     ];
     assert_eq!(value, expected);
+}
+
+#[rstest]
+#[case("1.0.0-b.1", "1.0.0-b.2", false, true)] // Beta version increment
+#[case("1.0.0-b.1", "1.0.1", true, true)] // Patch increment from beta
+#[case("1.0.0-b.1", "1.0.1-b.1", false, true)] // Patch increment with beta
+#[case("1.0.0-b.1", "1.1.0", true, true)] // Minor increment from beta
+#[case("1.0.0-b.1", "1.1.0-b.1", false, true)] // Minor increment with beta
+#[case("1.0.0-b.1", "2.0.0", true, true)] // Major increment from beta
+#[case("1.0.0-b.1", "2.0.0-b.1", false, true)] // Major increment with beta
+#[case("1.0.0-b.2", "1.0.0-b.1", false, true)] // Lower beta version
+#[case("1.0.0", "1.0.1", true, false)] // Regular patch increment
+#[case("1.0.0", "1.0.1-b.1", false, false)] // Regular to beta patch
+#[case("1.0.0", "1.1.0", true, false)] // Regular minor increment
+#[case("1.0.0", "1.1.0-b.1", false, false)] // Regular to beta minor
+#[case("1.0.0", "2.0.0", true, false)] // Regular major increment
+#[case("1.0.0", "2.0.0-b.1", false, false)] // Regular to beta major
+#[case("1.1.0", "1.0.0", false, false)] // Lower version
+#[case("1.1.0", "1.1.0-b.1", false, false)] // Regular to beta same version
+fn test_version_updates(
+    #[case] initial_version: &str,
+    #[case] new_version: &str,
+    #[case] should_update_latest_version: bool,
+    #[case] initial_is_beta: bool,
+) {
+    let owner = String::from("owner");
+    let mut deps = mock_dependencies_custom(&[]);
+    let env = mock_env();
+    let info = mock_info(&owner, &[]);
+
+    // Initialize contract
+    instantiate(
+        deps.as_mut(),
+        mock_env(),
+        mock_info(&owner, &[]),
+        InstantiateMsg {
+            kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+            owner: None,
+        },
+    )
+    .unwrap();
+
+    // Publish initial version
+    let ado_version = ADOVersion::from_type("test_ado").with_version(initial_version);
+    let msg = ExecuteMsg::Publish {
+        ado_type: ado_version.get_type(),
+        version: ado_version.get_version(),
+        code_id: 1,
+        action_fees: None,
+        publisher: Some(owner.clone()),
+    };
+    execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+    // Publish new version
+    let new_ado_version = ADOVersion::from_type("test_ado").with_version(new_version);
+    let msg = ExecuteMsg::Publish {
+        ado_type: new_ado_version.get_type(),
+        version: new_ado_version.get_version(),
+        code_id: 2,
+        action_fees: None,
+        publisher: Some(owner.clone()),
+    };
+    execute(deps.as_mut(), env.clone(), info, msg).unwrap();
+
+    if should_update_latest_version {
+        let latest = LATEST_VERSION
+            .load(deps.as_ref().storage, "test_ado")
+            .unwrap();
+        assert_eq!(latest.0, new_version);
+        assert_eq!(latest.1, 2u64);
+    } else if initial_is_beta {
+        let latest = LATEST_VERSION
+            .may_load(deps.as_ref().storage, "test_ado")
+            .unwrap();
+        assert!(latest.is_none());
+    } else {
+        let latest = LATEST_VERSION
+            .load(deps.as_ref().storage, "test_ado")
+            .unwrap();
+        assert_eq!(latest.0, initial_version);
+        assert_eq!(latest.1, 1u64);
+    }
+
+    let code_id = CODE_ID
+        .load(deps.as_ref().storage, new_ado_version.as_str())
+        .unwrap();
+    assert_eq!(code_id, 2u64);
 }
