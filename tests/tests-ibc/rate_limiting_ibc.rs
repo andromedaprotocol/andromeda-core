@@ -8,19 +8,12 @@ use andromeda_finance::rate_limiting_withdrawals::{
     CoinAndLimit, InstantiateMsg, MinimumFrequency,
 };
 use andromeda_non_fungible_tokens::{
-    auction::InstantiateMsg as AuctionInstantiateMsg,
-    cw721::InstantiateMsg as CW721InstantiateMsg,
+    auction::InstantiateMsg as AuctionInstantiateMsg, cw721::InstantiateMsg as CW721InstantiateMsg,
 };
 use andromeda_rate_limiting_withdrawals::RateLimitingWithdrawalsContract;
-use andromeda_std::{
-    amp::AndrAddr,
-    common::Milliseconds,
-    os,
-};
+use andromeda_std::{amp::AndrAddr, common::Milliseconds, os};
 use andromeda_testing::{
-    ado_deployer,
-    interchain::InterchainChain,
-    register_ado, InterchainTestEnv,
+    ado_deployer, interchain::InterchainChain, register_ado, InterchainTestEnv,
 };
 use cosmwasm_std::{to_json_binary, Uint128};
 use cw_orch::mock::cw_multi_test::MockApiBech32;
