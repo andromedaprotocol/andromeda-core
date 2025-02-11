@@ -70,7 +70,10 @@ fn run_splitter_test_on_multiple_combos(#[case] chain1_name: &str, #[case] chain
     let recipient1 = chain1.chain.addr_make("recipient1");
     let recipient2 = chain1.chain.addr_make("recipient2");
 
-    println!("KERNEL ADDRESS: {:?}", &chain1.aos.kernel.address().unwrap());
+    println!(
+        "KERNEL ADDRESS: {:?}",
+        &chain1.aos.kernel.address().unwrap()
+    );
 
     let deployed_contract = deploy_splitter!(
         contract,
@@ -100,7 +103,6 @@ fn run_splitter_test_on_multiple_combos(#[case] chain1_name: &str, #[case] chain
         },
         "splitter"
     );
-
 
     // Now use deployed_contract for the address
     let chain1_recipient = AndrAddr::from_string(format!(
@@ -218,7 +220,7 @@ fn test_splitter_ibc_update_recipients() {
 
     let recipient1 = osmosis.chain.addr_make("recipient_1").to_string();
     let recipient2 = osmosis.chain.addr_make("recipient_2").to_string();
-    
+
     let splitter_osmosis = SplitterContract::new(osmosis.chain.clone());
     splitter_osmosis.upload().unwrap();
 

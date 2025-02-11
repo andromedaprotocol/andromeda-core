@@ -77,7 +77,7 @@ pub struct InterchainTestEnv {
 impl InterchainTestEnv {
     pub fn new() -> Self {
         // let sender = Addr::unchecked(DEFAULT_SENDER);
-       
+
         let interchain = MockBech32InterchainEnv::new(vec![
             ("juno-1", "juno"),
             ("osmosis-1", "osmo"),
@@ -89,7 +89,7 @@ impl InterchainTestEnv {
         let juno = InterchainChain::new(juno_chain, "juno".to_string(), "juno-1".to_string());
 
         let mock = MockBech32::new("juno");
-        let sender_juno= mock.addr_make("sender");
+        let sender_juno = mock.addr_make("sender");
 
         juno.chain
             .set_balance(&sender_juno, vec![Coin::new(100000000000000, "ujuno")])
@@ -97,32 +97,34 @@ impl InterchainTestEnv {
 
         // Setup Osmosis Chain
         let osmosis_chain = interchain.get_chain("osmosis-1").unwrap();
-        let osmosis = InterchainChain::new(osmosis_chain, "osmosis".to_string(), "osmosis-1".to_string());
+        let osmosis = InterchainChain::new(
+            osmosis_chain,
+            "osmosis".to_string(),
+            "osmosis-1".to_string(),
+        );
 
         let mock_two = MockBech32::new("osmosis");
         let sender_osmosis = mock_two.addr_make("sender");
 
         osmosis
             .chain
-            .set_balance(
-                &sender_osmosis,
-                vec![Coin::new(100000000000000, "uosmo")],
-            )
+            .set_balance(&sender_osmosis, vec![Coin::new(100000000000000, "uosmo")])
             .unwrap();
 
         // Setup Andromeda Chain
         let andromeda_chain = interchain.get_chain("andromeda-1").unwrap();
-        let andromeda = InterchainChain::new(andromeda_chain, "andromeda".to_string(), "andromeda-1".to_string());
+        let andromeda = InterchainChain::new(
+            andromeda_chain,
+            "andromeda".to_string(),
+            "andromeda-1".to_string(),
+        );
 
         let mock_three = MockBech32::new("andromeda");
         let sender_andromeda = mock_three.addr_make("sender");
 
         andromeda
             .chain
-            .set_balance(
-                &sender_andromeda,
-                vec![Coin::new(100000000000000, "uandr")],
-            )
+            .set_balance(&sender_andromeda, vec![Coin::new(100000000000000, "uandr")])
             .unwrap();
 
         let interchain_test_env = Self {

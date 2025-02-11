@@ -116,7 +116,8 @@ fn test_rate_limiting_withdrawals_ibc(#[case] chain1_name: &str, #[case] chain2_
                         authorized_cw20_addresses: None,
                         kernel_address: chain1.aos.kernel.address().unwrap().into_string(),
                         owner: None,
-                    }).unwrap()
+                    })
+                    .unwrap()
                 ),
                 AppComponent::new(
                     "rate-limiting",
@@ -131,7 +132,8 @@ fn test_rate_limiting_withdrawals_ibc(#[case] chain1_name: &str, #[case] chain2_
                         },
                         kernel_address: chain1.aos.kernel.address().unwrap().into_string(),
                         owner: None,
-                    }).unwrap()
+                    })
+                    .unwrap()
                 )
             ],
             name: "test_app".to_string(),

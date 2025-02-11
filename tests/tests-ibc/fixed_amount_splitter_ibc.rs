@@ -6,10 +6,7 @@ use andromeda_std::{
     amp::{messages::AMPMsg, AndrAddr, Recipient},
     os,
 };
-use andromeda_testing::{
-    interchain::ensure_packet_success,
-    InterchainTestEnv,
-};
+use andromeda_testing::{interchain::ensure_packet_success, InterchainTestEnv};
 use cosmwasm_std::{to_json_binary, Coin, Uint128};
 use cw_orch::prelude::*;
 use cw_orch_interchain::prelude::*;
@@ -41,7 +38,12 @@ fn test_fixed_amount_splitter_ibc() {
                     coins: vec![Coin {
                         denom: format!(
                             "ibc/{}/{}",
-                            osmosis.aos.get_aos_channel(&juno.chain_name).unwrap().direct.unwrap(),
+                            osmosis
+                                .aos
+                                .get_aos_channel(&juno.chain_name)
+                                .unwrap()
+                                .direct
+                                .unwrap(),
                             juno.denom
                         ),
                         amount: Uint128::new(100),
@@ -91,7 +93,7 @@ fn test_fixed_amount_splitter_ibc() {
             denom: juno.denom.clone(),
         }]),
     );
-    
+
     // Execute IBC transfer from Juno
     let kernel_juno_send_request = juno
         .aos
@@ -114,7 +116,12 @@ fn test_fixed_amount_splitter_ibc() {
     // Verify IBC transfer
     let ibc_denom = format!(
         "ibc/{}/{}",
-        osmosis.aos.get_aos_channel(&juno.chain_name).unwrap().direct.unwrap(),
+        osmosis
+            .aos
+            .get_aos_channel(&juno.chain_name)
+            .unwrap()
+            .direct
+            .unwrap(),
         juno.denom.clone()
     );
 
@@ -140,7 +147,12 @@ fn test_fixed_amount_splitter_ibc() {
         .unwrap();
 
     let packet_ack = make_ack_success();
-    let channel_id = juno.aos.get_aos_channel(&osmosis.chain_name).unwrap().ics20.unwrap();
+    let channel_id = juno
+        .aos
+        .get_aos_channel(&osmosis.chain_name)
+        .unwrap()
+        .ics20
+        .unwrap();
 
     // Execute trigger relay
     let kernel_juno_splitter_request = juno
@@ -162,10 +174,7 @@ fn test_fixed_amount_splitter_ibc() {
     ensure_packet_success(packet_lifetime);
 
     // Verify final recipient balance
-    let balances = osmosis
-        .chain
-        .query_all_balances(&recipient)
-        .unwrap();
+    let balances = osmosis.chain.query_all_balances(&recipient).unwrap();
     assert_eq!(balances.len(), 1);
     assert_eq!(balances[0].denom, ibc_denom);
     assert_eq!(balances[0].amount.u128(), 100);

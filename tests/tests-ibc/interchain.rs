@@ -14,10 +14,7 @@ use andromeda_std::{
     os,
 };
 
-use andromeda_testing::{
-    interchain::ensure_packet_success,
-    InterchainTestEnv,
-};
+use andromeda_testing::{interchain::ensure_packet_success, InterchainTestEnv};
 use cosmwasm_std::{to_json_binary, Binary, Decimal, Uint128};
 use cw_orch::prelude::*;
 use cw_orch_interchain::prelude::*;
@@ -64,7 +61,7 @@ fn test_kernel_ibc_execute_only() {
             None,
         )
         .unwrap();
-    
+
     let kernel_juno_send_request = juno
         .aos
         .kernel
@@ -115,7 +112,7 @@ fn test_kernel_ibc_funds_only() {
     let recipient = osmosis.chain.addr_make("recipient");
 
     let andr_recipient = AndrAddr::from_string(format!("ibc://osmosis/{}", recipient.to_string()));
-    
+
     let message = AMPMsg::new(
         andr_recipient,
         Binary::default(),
@@ -191,10 +188,7 @@ fn test_kernel_ibc_funds_only() {
         .unwrap();
     ensure_packet_success(packet_lifetime);
 
-    let balances = osmosis
-        .chain
-        .query_all_balances(&recipient)
-        .unwrap();
+    let balances = osmosis.chain.query_all_balances(&recipient).unwrap();
     assert_eq!(balances.len(), 1);
     assert_eq!(balances[0].denom, ibc_denom);
     assert_eq!(balances[0].amount.u128(), 100);
@@ -332,10 +326,7 @@ fn test_kernel_ibc_funds_and_execute_msg() {
     ensure_packet_success(packet_lifetime);
 
     // Check recipient balance after trigger execute msg
-    let balances = osmosis
-        .chain
-        .query_all_balances(&recipient)
-        .unwrap();
+    let balances = osmosis.chain.query_all_balances(&recipient).unwrap();
     assert_eq!(balances.len(), 1);
     assert_eq!(balances[0].denom, ibc_denom);
     assert_eq!(balances[0].amount.u128(), 100);
