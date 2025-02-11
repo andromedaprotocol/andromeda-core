@@ -50,7 +50,6 @@ impl InterchainChain {
             ),
             _ => ("utoken".to_string(), vec![]),
         };
-        let chain_id = chain_id;
 
         Self {
             chain,
