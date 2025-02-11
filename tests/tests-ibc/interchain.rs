@@ -111,7 +111,7 @@ fn test_kernel_ibc_funds_only() {
 
     let recipient = osmosis.chain.addr_make("recipient");
 
-    let andr_recipient = AndrAddr::from_string(format!("ibc://osmosis/{}", recipient.to_string()));
+    let andr_recipient = AndrAddr::from_string(format!("ibc://osmosis/{}", recipient));
 
     let message = AMPMsg::new(
         andr_recipient,
