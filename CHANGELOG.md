@@ -19,12 +19,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - feat: Improved macros and execution flow for AMP [(#741)](https://github.com/andromedaprotocol/andromeda-core/pull/741)
 - chore: remove unused contracts & code [(#790)](https://github.com/andromedaprotocol/andromeda-core/pull/790)
+- feat: Recipient in rate limiting withdrawals [(#804)](https://github.com/andromedaprotocol/andromeda-core/pull/804)
 
 ### Fixed
 
 - fix: permission migration [(#792)](https://github.com/andromedaprotocol/andromeda-core/pull/792)
 - fix: IBC denom casing [(#795)](https://github.com/andromedaprotocol/andromeda-core/pull/795)
 - fix: macro error crate references [(#799)](https://github.com/andromedaprotocol/andromeda-core/pull/799)
+- fix: Prevent duplicate relay in Kernel [(#802)](https://github.com/andromedaprotocol/andromeda-core/pull/802)
+
 
 ## Release 4
 

@@ -206,6 +206,7 @@ pub struct Ics20PacketInfo {
     pub funds: Coin,
     // The restricted wallet will probably already have access to this
     pub channel: String,
+    pub pending: bool,
 }
 
 #[cw_serde]
