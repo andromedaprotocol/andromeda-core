@@ -691,7 +691,6 @@ dependencies = [
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus 1.2.0",
- "cw-utils 1.0.3",
  "cw20",
  "cw721 0.18.0",
  "cw721-base 0.18.0",
