@@ -315,5 +315,5 @@ fn test_splitter_ibc_update_recipients() {
 
     let packets = interchain.await_packets("juno", kernel_tx).unwrap_err();
 
-    assert_eq!(format!("{:?}", packets).contains("error"), true);
+    assert!(format!("{:?}", packets).contains("error"));
 }

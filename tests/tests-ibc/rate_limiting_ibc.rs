@@ -7,23 +7,22 @@ use andromeda_cw721::CW721Contract;
 use andromeda_finance::rate_limiting_withdrawals::{
     CoinAndLimit, InstantiateMsg, MinimumFrequency,
 };
-use andromeda_kernel::ack::make_ack_success;
 use andromeda_non_fungible_tokens::{
-    auction::{ExecuteMsg, InstantiateMsg as AuctionInstantiateMsg},
+    auction::InstantiateMsg as AuctionInstantiateMsg,
     cw721::InstantiateMsg as CW721InstantiateMsg,
 };
 use andromeda_rate_limiting_withdrawals::RateLimitingWithdrawalsContract;
 use andromeda_std::{
-    amp::{messages::AMPMsg, AndrAddr},
+    amp::AndrAddr,
     common::Milliseconds,
     os,
 };
 use andromeda_testing::{
     ado_deployer,
-    interchain::{ensure_packet_success, InterchainChain, DEFAULT_SENDER},
+    interchain::InterchainChain,
     register_ado, InterchainTestEnv,
 };
-use cosmwasm_std::{to_json_binary, Coin, Uint128};
+use cosmwasm_std::{to_json_binary, Uint128};
 use cw_orch::mock::cw_multi_test::MockApiBech32;
 use cw_orch::mock::MockBase;
 use cw_orch::prelude::*;
@@ -61,7 +60,6 @@ fn test_rate_limiting_withdrawals_ibc(#[case] chain1_name: &str, #[case] chain2_
         juno,
         osmosis,
         andromeda,
-        interchain,
         ..
     } = InterchainTestEnv::new();
     let chains = [
@@ -73,7 +71,7 @@ fn test_rate_limiting_withdrawals_ibc(#[case] chain1_name: &str, #[case] chain2_
     .collect::<std::collections::HashMap<_, _>>();
 
     let chain1 = chains.get(chain1_name).unwrap();
-    let chain2 = chains.get(chain2_name).unwrap();
+    let _chain2 = chains.get(chain2_name).unwrap();
 
     // Upload all contracts first
     let auction = AuctionContract::new(chain1.chain.clone());
@@ -92,7 +90,7 @@ fn test_rate_limiting_withdrawals_ibc(#[case] chain1_name: &str, #[case] chain2_
     register_ado!(chain1, app, "app-contract");
 
     // Deploy the app with all components
-    let app_contract = deploy_app!(
+    let _app_contract = deploy_app!(
         app,
         &AppInstantiateMsg {
             app_components: vec![
