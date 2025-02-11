@@ -15,7 +15,6 @@ members = [
     #Internal
     "tests",
     "tests/tests-ibc",
-    "e2e-tests",
     "ibc-tests",
 ]
 resolver = "2"

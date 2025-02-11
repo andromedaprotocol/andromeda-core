@@ -141,6 +141,4 @@ fn test_rate_limiting_withdrawals_ibc(#[case] chain1_name: &str, #[case] chain2_
         },
         "app"
     );
-    println!("App deployed at: {}", app_contract.address().unwrap());
-    // The rest of your test continues here...
 }

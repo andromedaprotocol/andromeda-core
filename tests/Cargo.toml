@@ -202,3 +202,11 @@ path = "cw20_app.rs"
 [[test]]
 name = "kernel"
 path = "kernel.rs"
+
+[[test]]
+name = "cruve"
+path = "curve_app.rs"
+
+[[test]]
+name = "set_amount_splitter"
+path = "set_amount_splitter.rs"

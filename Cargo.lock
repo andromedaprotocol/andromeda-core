@@ -2275,60 +2275,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0d6ef0072f8a535281e4876be788938b528e9a1d43900b82c2569af7da799125"
 
 [[package]]
-name = "e2e-tests"
-version = "1.0.0"
-dependencies = [
- "andromeda-address-list",
- "andromeda-adodb",
- "andromeda-app",
- "andromeda-app-contract",
- "andromeda-auction",
- "andromeda-conditional-splitter",
- "andromeda-counter",
- "andromeda-crowdfund",
- "andromeda-curve",
- "andromeda-cw20",
- "andromeda-cw20-staking",
- "andromeda-cw721",
- "andromeda-data-storage",
- "andromeda-economics",
- "andromeda-finance",
- "andromeda-fixed-amount-splitter",
- "andromeda-fungible-tokens",
- "andromeda-graph",
- "andromeda-ibc-registry",
- "andromeda-kernel",
- "andromeda-lockdrop",
- "andromeda-marketplace",
- "andromeda-math",
- "andromeda-modules",
- "andromeda-non-fungible-tokens",
- "andromeda-primitive",
- "andromeda-rate-limiting-withdrawals",
- "andromeda-rates",
- "andromeda-shunting",
- "andromeda-splitter",
- "andromeda-std",
- "andromeda-testing",
- "andromeda-validator-staking",
- "andromeda-vesting",
- "andromeda-vfs",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-asset",
- "cw-multi-test",
- "cw-orch",
- "cw-orch-interchain",
- "cw-utils 1.0.3",
- "cw20",
- "cw721 0.18.0",
- "cw721-base 0.18.0",
- "ibc-relayer-types",
- "rstest",
- "toml 0.8.20",
-]
-
-[[package]]
 name = "ecdsa"
 version = "0.16.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
