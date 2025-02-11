@@ -1,9 +1,5 @@
 [package]
-<<<<<<<< HEAD:tests/Cargo.toml
-name = "tests"
-========
 name = "e2e-tests"
->>>>>>>> main:e2e-tests/Cargo.toml
 version = "1.0.0"
 edition = "2021"
 rust-version = "1.75.0"
