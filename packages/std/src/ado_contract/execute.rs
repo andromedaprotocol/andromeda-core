@@ -392,6 +392,21 @@ macro_rules! unwrap_amp_msg {
             ctx.amp_ctx = Some(pkt);
         }
 
+        if let ExecuteMsg::Permissioning(msg) = msg {
+            // Extract action from the permissioning message (all of them have an action field)
+            let action = match msg {
+                PermissioningMessage::SetPermission { action, .. } => action,
+                PermissioningMessage::RemovePermission { action, .. } => action,
+                PermissioningMessage::PermissionAction { action } => action,
+                PermissioningMessage::DisableActionPermissioning { action } => action,
+            };
+            // Find the ExecuteMsg corresponding to the action
+
+            // Check if the ExecuteMsg is permissionless
+
+            // Return error if it is permissionless
+        }
+
         let action_response = andromeda_std::common::actions::call_action(
             &mut ctx.deps,
             &ctx.info,
