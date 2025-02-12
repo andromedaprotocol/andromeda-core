@@ -130,7 +130,12 @@ fn execute_send(ctx: ExecuteContext) -> Result<Response, ContractError> {
 
     let mut remainder_funds = info.funds.clone();
 
-    let mut pkt = AMPPkt::from_ctx(ctx.amp_ctx, ctx.env.contract.address.to_string());
+    let id = if let Some(ref amp_ctx) = ctx.amp_ctx {
+        amp_ctx.id.clone()
+    } else {
+        None
+    };
+    let mut pkt = AMPPkt::from_ctx(ctx.amp_ctx, ctx.env.contract.address.to_string(), id);
 
     for (i, coin) in info.funds.clone().iter().enumerate() {
         // Find the relevant threshold

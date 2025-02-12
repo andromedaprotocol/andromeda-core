@@ -298,6 +298,7 @@ pub struct AMPPkt {
     /// Any messages associated with the packet
     pub messages: Vec<AMPMsg>,
     pub ctx: AMPCtx,
+    pub id: Option<String>,
 }
 
 impl AMPPkt {
@@ -310,12 +311,17 @@ impl AMPPkt {
         AMPPkt {
             messages,
             ctx: AMPCtx::new(origin, previous_sender, 0, None),
+            id: None,
         }
     }
 
     /// Creates a new AMP Packet
     pub fn new_with_ctx(ctx: AMPCtx, messages: Vec<AMPMsg>) -> AMPPkt {
-        AMPPkt { messages, ctx }
+        AMPPkt {
+            messages,
+            ctx,
+            id: None,
+        }
     }
 
     pub fn with_origin(&self, origin: impl Into<String>) -> AMPPkt {
@@ -484,7 +490,7 @@ impl AMPPkt {
     }
 
     /// Generates an AMP Packet from context
-    pub fn from_ctx(ctx: Option<AMPPkt>, current_address: String) -> Self {
+    pub fn from_ctx(ctx: Option<AMPPkt>, current_address: String, id: Option<String>) -> Self {
         let mut ctx = if let Some(pkt) = ctx {
             pkt.ctx
         } else {
@@ -495,6 +501,7 @@ impl AMPPkt {
         Self {
             messages: vec![],
             ctx,
+            id,
         }
     }
 }

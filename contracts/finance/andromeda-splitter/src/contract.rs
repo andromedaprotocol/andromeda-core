@@ -158,7 +158,12 @@ fn execute_send(
         ContractError::ExceedsMaxAllowedCoins {}
     );
 
-    let mut pkt = AMPPkt::from_ctx(ctx.amp_ctx, ctx.env.contract.address.to_string());
+    let id = if let Some(ref amp_ctx) = ctx.amp_ctx {
+        amp_ctx.id.clone()
+    } else {
+        None
+    };
+    let mut pkt = AMPPkt::from_ctx(ctx.amp_ctx, ctx.env.contract.address.to_string(), id);
 
     for recipient_addr in splitter_recipients {
         let recipient_percent = recipient_addr.percent;
@@ -233,7 +238,12 @@ fn execute_send_cw20(
     let mut amp_funds: Vec<Coin> = Vec::new();
     let mut remainder_funds = coin(amount.u128(), asset.clone());
 
-    let mut pkt = AMPPkt::from_ctx(ctx.amp_ctx, ctx.env.contract.address.to_string());
+    let id = if let Some(ref amp_ctx) = ctx.amp_ctx {
+        amp_ctx.id.clone()
+    } else {
+        None
+    };
+    let mut pkt = AMPPkt::from_ctx(ctx.amp_ctx, ctx.env.contract.address.to_string(), id);
     for recipient_addr in splitter_recipients {
         let recipient_percent = recipient_addr.percent;
         let mut vec_coin: Vec<Coin> = Vec::new();

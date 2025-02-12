@@ -151,7 +151,12 @@ fn execute_send_cw20(
     let mut amp_funds: Vec<Coin> = Vec::new();
     let mut remainder_funds = coin.amount;
 
-    let mut pkt = AMPPkt::from_ctx(ctx.amp_ctx, ctx.env.contract.address.to_string());
+    let id = if let Some(ref amp_ctx) = ctx.amp_ctx {
+        amp_ctx.id.clone()
+    } else {
+        None
+    };
+    let mut pkt = AMPPkt::from_ctx(ctx.amp_ctx, ctx.env.contract.address.to_string(), id);
     for recipient in splitter_recipients.clone() {
         // Find the recipient's corresponding denom for the current iteration of the sent funds
         let recipient_coin = recipient
@@ -282,7 +287,12 @@ fn execute_send(
     let mut msgs: Vec<SubMsg> = Vec::new();
     let mut amp_funds: Vec<Coin> = Vec::new();
 
-    let mut pkt = AMPPkt::from_ctx(ctx.amp_ctx, ctx.env.contract.address.to_string());
+    let id = if let Some(ref amp_ctx) = ctx.amp_ctx {
+        amp_ctx.id.clone()
+    } else {
+        None
+    };
+    let mut pkt = AMPPkt::from_ctx(ctx.amp_ctx, ctx.env.contract.address.to_string(), id);
 
     // Iterate through the sent funds
     for coin in info.funds {

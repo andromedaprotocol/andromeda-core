@@ -1,4 +1,9 @@
 use crate::ibc::{get_counterparty_denom, PACKET_LIFETIME};
+use crate::query;
+use crate::state::{
+    ADO_OWNER, CHAIN_TO_CHANNEL, CHANNEL_TO_CHAIN, CHANNEL_TO_EXECUTE_MSG, CURR_CHAIN,
+    ENV_VARIABLES, IBC_FUND_RECOVERY, KERNEL_ADDRESSES, NONCE, PENDING_MSG_AND_FUNDS, TRIGGER_KEY,
+};
 use andromeda_std::ado_contract::ADOContract;
 use andromeda_std::amp::addresses::AndrAddr;
 use andromeda_std::amp::messages::{AMPCtx, AMPMsg, AMPPkt, CrossChainHop};
@@ -16,16 +21,12 @@ use andromeda_std::os::kernel::{
 use andromeda_std::os::vfs::vfs_resolve_symlink;
 use cosmwasm_std::{
     attr, ensure, from_json, to_json_binary, BankMsg, Binary, Coin, ContractInfoResponse,
-    CosmosMsg, DepsMut, Env, IbcMsg, MessageInfo, Response, StdAck, StdError, SubMsg, WasmMsg,
+    CosmosMsg, DepsMut, Env, IbcMsg, MessageInfo, Response, StdAck, StdError, SubMsg, Uint128,
+    WasmMsg,
 };
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use cw_utils::nonpayable;
-
-use crate::query;
-use crate::state::{
-    ADO_OWNER, CHAIN_TO_CHANNEL, CHANNEL_TO_CHAIN, CHANNEL_TO_EXECUTE_MSG, CURR_CHAIN,
-    ENV_VARIABLES, IBC_FUND_RECOVERY, KERNEL_ADDRESSES, PENDING_MSG_AND_FUNDS, TRIGGER_KEY,
-};
+use sha2::{Digest, Sha256};
 
 pub fn send(ctx: ExecuteContext, message: AMPMsg) -> Result<Response, ContractError> {
     ensure!(
@@ -280,7 +281,18 @@ pub fn amp_receive(
     res.attributes.extend_from_slice(&msg_res.attributes);
     res.events.extend_from_slice(&msg_res.events);
 
-    let mut new_pkt = AMPPkt::from_ctx(Some(packet.clone()), env.contract.address.to_string());
+    let nonce = NONCE.load(deps.storage)?;
+    let id = packet.id.clone().or_else(|| {
+        Some(generate_unique_id(
+            nonce,
+            env.contract.address.as_ref(),
+            &env.block.height,
+            &env.block.chain_id,
+        ))
+    });
+    NONCE.save(deps.storage, &nonce.checked_add(Uint128::one())?)?;
+
+    let mut new_pkt = AMPPkt::from_ctx(Some(packet.clone()), env.contract.address.to_string(), id);
 
     for (idx, message) in packet.messages.iter().enumerate() {
         if idx == 0 {
@@ -711,6 +723,17 @@ pub fn unset_env(execute_ctx: ExecuteContext, variable: String) -> Result<Respon
     Ok(Response::default()
         .add_attribute("action", "unset_env")
         .add_attribute("variable", variable))
+}
+
+pub fn generate_unique_id(nonce: Uint128, origin: &str, block: &u64, chain_id: &str) -> String {
+    // Create a unique string combining block, origin and a nonce
+    let combined = format!("{}{}{}", block, origin, nonce);
+    // Calculate SHA256 hash
+    let mut hasher = Sha256::new();
+    hasher.update(combined.as_bytes());
+    let hash = hex::encode(hasher.finalize());
+    // Create final ID in format: chain-id-hash
+    format!("{}-{}", chain_id, hash)
 }
 
 /// Handles a given AMP message and returns a response
