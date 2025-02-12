@@ -725,7 +725,7 @@ pub fn unset_env(execute_ctx: ExecuteContext, variable: String) -> Result<Respon
         .add_attribute("variable", variable))
 }
 
-pub fn generate_unique_id(nonce: Uint128, origin: &str, block: &u64, chain_id: &str) -> String {
+fn generate_unique_id(nonce: Uint128, origin: &str, block: &u64, chain_id: &str) -> String {
     // Create a unique string combining block, origin and a nonce
     let combined = format!("{}{}{}", block, origin, nonce);
     // Calculate SHA256 hash
