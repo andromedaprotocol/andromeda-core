@@ -281,18 +281,20 @@ pub fn amp_receive(
     res.attributes.extend_from_slice(&msg_res.attributes);
     res.events.extend_from_slice(&msg_res.events);
 
-    let nonce = NONCE.load(deps.storage)?;
-    let id = packet.id.clone().or_else(|| {
-        Some(generate_unique_id(
-            nonce,
+    let mut new_pkt = AMPPkt::from_ctx(Some(packet.clone()), env.contract.address.to_string());
+
+    // Generate unique ID if the packet doesn't already have one
+    let id = match packet.id.clone() {
+        Some(id) => id,
+        None => generate_unique_id(
+            deps,
             env.contract.address.as_ref(),
             &env.block.height,
             &env.block.chain_id,
-        ))
-    });
-    NONCE.save(deps.storage, &nonce.checked_add(Uint128::one())?)?;
-
-    let mut new_pkt = AMPPkt::from_ctx(Some(packet.clone()), env.contract.address.to_string(), id);
+        )?,
+    };
+    // Set the new ID
+    new_pkt.id = Some(id);
 
     for (idx, message) in packet.messages.iter().enumerate() {
         if idx == 0 {
@@ -725,15 +727,22 @@ pub fn unset_env(execute_ctx: ExecuteContext, variable: String) -> Result<Respon
         .add_attribute("variable", variable))
 }
 
-fn generate_unique_id(nonce: Uint128, origin: &str, block: &u64, chain_id: &str) -> String {
+fn generate_unique_id(
+    deps: &mut DepsMut,
+    origin: &str,
+    block: &u64,
+    chain_id: &str,
+) -> Result<String, ContractError> {
     // Create a unique string combining block, origin and a nonce
+    let nonce = NONCE.load(deps.storage)?;
     let combined = format!("{}{}{}", block, origin, nonce);
     // Calculate SHA256 hash
     let mut hasher = Sha256::new();
     hasher.update(combined.as_bytes());
     let hash = hex::encode(hasher.finalize());
+    NONCE.save(deps.storage, &nonce.checked_add(Uint128::one())?)?;
     // Create final ID in format: chain-id-hash
-    format!("{}-{}", chain_id, hash)
+    Ok(format!("{}-{}", chain_id, hash))
 }
 
 /// Handles a given AMP message and returns a response

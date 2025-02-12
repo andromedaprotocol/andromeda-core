@@ -490,11 +490,14 @@ impl AMPPkt {
     }
 
     /// Generates an AMP Packet from context
-    pub fn from_ctx(ctx: Option<AMPPkt>, current_address: String, id: Option<String>) -> Self {
-        let mut ctx = if let Some(pkt) = ctx {
-            pkt.ctx
+    pub fn from_ctx(ctx: Option<AMPPkt>, current_address: String) -> Self {
+        let (mut ctx, id) = if let Some(pkt) = ctx {
+            (pkt.ctx, pkt.id)
         } else {
-            AMPCtx::new(current_address.clone(), current_address.clone(), 0, None)
+            (
+                AMPCtx::new(current_address.clone(), current_address.clone(), 0, None),
+                None,
+            )
         };
         ctx.previous_sender = current_address;
 
