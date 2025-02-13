@@ -7,7 +7,9 @@ use andromeda_std::{
     common::denom::{SEND_CW20_ACTION, SEND_NFT_ACTION},
     error::ContractError,
 };
-use cosmwasm_std::{from_json, to_json_binary, CosmosMsg, Deps, Response, Uint128, WasmMsg};
+use cosmwasm_std::{
+    ensure, from_json, to_json_binary, CosmosMsg, Deps, Response, Uint128, WasmMsg,
+};
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use cw721::{Cw721ExecuteMsg, Cw721ReceiveMsg};
 use cw721_base::ExecuteMsg as BaseCw721ExecuteMsg;
@@ -147,19 +149,12 @@ pub fn execute_fill_order(
             msg: "Not existed order".to_string(),
         })?;
 
-    match order.status {
-        OrderStatus::Completed => {
-            return Err(ContractError::CustomError {
-                msg: "Already completed order".to_string(),
-            });
+    ensure!(
+        order.status == OrderStatus::NotCompleted,
+        ContractError::CustomError {
+            msg: format!("Already {:?} order", order.status)
         }
-        OrderStatus::Cancelled => {
-            return Err(ContractError::CustomError {
-                msg: "Already cancelled order".to_string(),
-            });
-        }
-        _ => {}
-    }
+    );
 
     let mut excess_amount = Uint128::zero();
     let mut refund_nft: Option<String> = None; // To handle NFT refunds
@@ -413,19 +408,12 @@ pub fn execute_cancel_order(
             msg: "Not existed order".to_string(),
         })?;
 
-    match order.status {
-        OrderStatus::Completed => {
-            return Err(ContractError::CustomError {
-                msg: "Already completed order".to_string(),
-            });
+    ensure!(
+        order.status == OrderStatus::NotCompleted,
+        ContractError::CustomError {
+            msg: format!("Already {:?} order", order.status)
         }
-        OrderStatus::Cancelled => {
-            return Err(ContractError::CustomError {
-                msg: "Already cancelled order".to_string(),
-            });
-        }
-        _ => {}
-    }
+    );
 
     let mut messages: Vec<CosmosMsg> = vec![];
 

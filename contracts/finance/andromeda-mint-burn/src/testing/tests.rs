@@ -487,6 +487,15 @@ fn test_cancel_order() {
         }
     );
 
+    let err_res: ContractError =
+        cancel_order(deps.as_mut(), Uint128::one(), "creator").unwrap_err();
+    assert_eq!(
+        err_res,
+        ContractError::CustomError {
+            msg: "Already Cancelled order".to_string(),
+        }
+    );
+
     let _cancelled_order: GetOrdersByStatusResponse =
         query_orders_by_status(deps.as_ref(), OrderStatus::Cancelled, None).unwrap();
 
