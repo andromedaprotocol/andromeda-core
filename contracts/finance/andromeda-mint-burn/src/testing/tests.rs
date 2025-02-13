@@ -95,7 +95,7 @@ fn test_create_order() {
     let order = ORDERS.load(&deps.storage, 1).unwrap();
     assert_eq!(order.requirements, requirements);
     assert_eq!(order.output, output);
-    assert_eq!(order.order_status, OrderStatus::NotCompleted);
+    assert_eq!(order.status, OrderStatus::NotCompleted);
     assert_eq!(order.output_recipient, None);
 }
 

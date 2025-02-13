@@ -110,7 +110,7 @@ pub fn execute_create_order(
     let new_order = OrderInfo {
         requirements: initialized_requirements,
         output,
-        order_status: OrderStatus::NotCompleted,
+        status: OrderStatus::NotCompleted,
         output_recipient: None,
     };
 
@@ -147,7 +147,7 @@ pub fn execute_fill_order(
             msg: "Not existed order".to_string(),
         })?;
 
-    match order.order_status {
+    match order.status {
         OrderStatus::Completed => {
             return Err(ContractError::CustomError {
                 msg: "Already completed order".to_string(),
@@ -264,7 +264,7 @@ pub fn execute_fill_order(
             None => original_sender.clone(),
         };
 
-        order.order_status = OrderStatus::Completed;
+        order.status = OrderStatus::Completed;
         order.output_recipient = Some(mint_recipient.clone());
         ORDERS.save(ctx.deps.storage, order_id.clone().u128(), &order)?;
         let complete_order_msgs = complete_order(ctx, order.clone(), mint_recipient.clone())?;
@@ -412,16 +412,19 @@ pub fn execute_cancel_order(
         .map_err(|_| ContractError::CustomError {
             msg: "Not existed order".to_string(),
         })?;
-    if order.order_status == OrderStatus::Completed {
-        return Err(ContractError::CustomError {
-            msg: "Already completed order".to_string(),
-        });
-    }
 
-    if order.order_status == OrderStatus::Cancelled {
-        return Err(ContractError::CustomError {
-            msg: "Already cancelled order".to_string(),
-        });
+    match order.status {
+        OrderStatus::Completed => {
+            return Err(ContractError::CustomError {
+                msg: "Already completed order".to_string(),
+            });
+        }
+        OrderStatus::Cancelled => {
+            return Err(ContractError::CustomError {
+                msg: "Already cancelled order".to_string(),
+            });
+        }
+        _ => {}
     }
 
     let mut messages: Vec<CosmosMsg> = vec![];
@@ -441,7 +444,7 @@ pub fn execute_cancel_order(
         }
     }
 
-    order.order_status = OrderStatus::Cancelled;
+    order.status = OrderStatus::Cancelled;
     ORDERS.save(ctx.deps.storage, order_id.clone().u128(), &order)?;
 
     let sender = ctx.info.sender.clone();

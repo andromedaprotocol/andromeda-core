@@ -67,7 +67,7 @@ impl ExecuteMsg {
 pub struct OrderInfo {
     pub requirements: Vec<ResourceRequirement>,
     pub output: Resource,
-    pub order_status: OrderStatus,
+    pub status: OrderStatus,
     pub output_recipient: Option<AndrAddr>,
 }
 
