@@ -15,9 +15,9 @@ pub fn verify_signature(
     signer_addr: String,
     address_prefix: String,
 ) -> Result<bool, ContractError> {
-    let address = derive_address(&address_prefix, public_key).unwrap();
+    let address = derive_address(&address_prefix, public_key)?;
     ensure!(
-        address == signer_addr,
+        address.to_lowercase() == signer_addr.to_lowercase(),
         ContractError::InvalidSigner {
             signer: signer_addr
         }
