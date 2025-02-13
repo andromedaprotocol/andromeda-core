@@ -89,26 +89,8 @@ pub fn execute_create_order(
     // Initialize all resource requirements with empty deposit tracking
     let mut initialized_requirements = Vec::new();
     for reqirement in requirements {
-        reqirement.validate()?;
-        match reqirement.clone().resource {
-            Resource::Cw20Token { cw20_addr } => {
-                ADOContract::default().is_permissioned(
-                    deps.branch(),
-                    env.clone(),
-                    SEND_CW20_ACTION,
-                    cw20_addr,
-                )?;
-            }
-            Resource::Nft { cw721_addr, .. } => {
-                ADOContract::default().is_permissioned(
-                    deps.branch(),
-                    env.clone(),
-                    SEND_NFT_ACTION,
-                    cw721_addr,
-                )?;
-            }
-        }
-
+        reqirement.validate(deps.branch(), env.clone())?;
+        
         let new_req = ResourceRequirement {
             resource: reqirement.clone().resource,
             amount: reqirement.amount,

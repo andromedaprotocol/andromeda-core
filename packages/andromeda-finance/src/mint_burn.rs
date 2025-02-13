@@ -1,12 +1,16 @@
 use andromeda_std::{
+    ado_contract::ADOContract,
     amp::AndrAddr,
-    common::{denom::PermissionAction, OrderBy},
+    common::{
+        denom::{PermissionAction, SEND_CW20_ACTION, SEND_NFT_ACTION},
+        OrderBy,
+    },
     error::ContractError,
 };
 use andromeda_std::{andr_exec, andr_instantiate, andr_query};
 
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{ensure, Uint128};
+use cosmwasm_std::{ensure, DepsMut, Env, Uint128};
 use cw20::Cw20ReceiveMsg;
 use cw721::Cw721ReceiveMsg;
 use std::collections::HashMap;
@@ -129,9 +133,15 @@ pub struct GetUserDepositedOrdersReponse {
 }
 
 impl ResourceRequirement {
-    pub fn validate(&self) -> Result<(), ContractError> {
-        match self.resource {
-            Resource::Nft { .. } => {
+    pub fn validate(&self, mut deps: DepsMut, env: Env) -> Result<(), ContractError> {
+        match &self.resource {
+            Resource::Nft { cw721_addr, .. } => {
+                ADOContract::default().is_permissioned(
+                    deps,
+                    env.clone(),
+                    SEND_NFT_ACTION,
+                    cw721_addr,
+                )?;
                 ensure!(
                     self.amount == Uint128::one(),
                     ContractError::CustomError {
@@ -140,7 +150,13 @@ impl ResourceRequirement {
                 );
                 Ok(())
             }
-            Resource::Cw20Token { .. } => {
+            Resource::Cw20Token { cw20_addr } => {
+                ADOContract::default().is_permissioned(
+                    deps.branch(),
+                    env.clone(),
+                    SEND_CW20_ACTION,
+                    cw20_addr,
+                )?;
                 ensure!(
                     self.amount != Uint128::zero(),
                     ContractError::CustomError {
