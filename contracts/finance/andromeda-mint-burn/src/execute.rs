@@ -164,19 +164,12 @@ pub fn execute_fill_order(
         match &requirement.resource {
             Resource::Cw20Token { cw20_addr } => {
                 if cw20_addr.clone().get_raw_address(&ctx.deps.as_ref())? == contract_addr {
-                    let user_deposit = requirement
-                        .deposits
-                        .entry(original_sender_str.clone())
-                        .or_insert(Uint128::zero());
-
-                    let remaining = requirement.amount.checked_sub(*user_deposit)?;
-
-                    if amount.le(&remaining) {
-                        *user_deposit = user_deposit.checked_add(amount)?;
-                    } else {
-                        *user_deposit = requirement.amount;
-                        excess_amount = amount.checked_sub(remaining)?;
-                    }
+                    process_cw20_deposit(
+                        requirement,
+                        original_sender_str.clone(),
+                        amount,
+                        &mut excess_amount,
+                    )?;
                 }
             }
             Resource::Nft {
@@ -196,19 +189,12 @@ pub fn execute_fill_order(
                                 });
                             }
 
-                            let user_deposit = requirement
-                                .deposits
-                                .entry(original_sender_str.clone())
-                                .or_insert(Uint128::zero());
-
-                            let remaining = requirement.amount.checked_sub(*user_deposit)?;
-
-                            if amount.le(&remaining) {
-                                *user_deposit = user_deposit.checked_add(Uint128::one())?;
-                            } else {
-                                *user_deposit = requirement.amount;
-                                refund_nft = Some(token_id.to_string());
-                            }
+                            process_nft_deposit(
+                                requirement,
+                                original_sender_str.clone(),
+                                received_token_id,
+                                &mut refund_nft,
+                            )?;
                         }
                     }
                 }
@@ -216,12 +202,7 @@ pub fn execute_fill_order(
         }
     }
 
-    let user_fulfilled = order.requirements.iter().all(|r| {
-        r.deposits
-            .get(&original_sender_str.clone())
-            .unwrap_or(&Uint128::zero())
-            .ge(&r.amount)
-    });
+    let user_fulfilled = check_order_fulfillment(&order, &original_sender_str);
 
     // Save the updated order if not complete
     ORDERS.save(ctx.deps.storage, order_id.clone().u128(), &order)?;
@@ -277,6 +258,54 @@ pub fn execute_fill_order(
         .add_attribute("contract_addr", contract_addr.clone());
 
     Ok(response)
+}
+
+fn process_cw20_deposit(
+    requirement: &mut ResourceRequirement,
+    sender: String,
+    amount: Uint128,
+    excess_amount: &mut Uint128,
+) -> Result<(), ContractError> {
+    let user_deposit = requirement
+        .deposits
+        .entry(sender.clone())
+        .or_insert(Uint128::zero());
+    let remaining = requirement.amount.checked_sub(*user_deposit)?;
+
+    if amount.le(&remaining) {
+        *user_deposit = user_deposit.checked_add(amount)?;
+    } else {
+        *user_deposit = requirement.amount;
+        *excess_amount = amount.checked_sub(remaining)?;
+    }
+    Ok(())
+}
+
+fn process_nft_deposit(
+    requirement: &mut ResourceRequirement,
+    sender: String,
+    received_token_id: String,
+    refund_nft: &mut Option<String>,
+) -> Result<(), ContractError> {
+    let user_deposit = requirement
+        .deposits
+        .entry(sender.clone())
+        .or_insert(Uint128::zero());
+    let remaining = requirement.amount.checked_sub(*user_deposit)?;
+
+    if remaining.gt(&Uint128::zero()) {
+        *user_deposit = user_deposit.checked_add(Uint128::one())?;
+    } else {
+        *refund_nft = Some(received_token_id.clone());
+    }
+    Ok(())
+}
+
+fn check_order_fulfillment(order: &OrderInfo, sender: &String) -> bool {
+    order
+        .requirements
+        .iter()
+        .all(|r| r.deposits.get(sender).unwrap_or(&Uint128::zero()) >= &r.amount)
 }
 
 // Complete an order (burn resources and mint output)
