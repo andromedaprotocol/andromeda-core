@@ -105,12 +105,18 @@ pub enum Resource {
 
 #[cw_serde]
 pub enum Cw721HookMsg {
-    FillOrder { order_id: Uint128 },
+    FillOrder {
+        order_id: Uint128,
+        recipient: Option<AndrAddr>,
+    },
 }
 
 #[cw_serde]
 pub enum Cw20HookMsg {
-    FillOrder { order_id: Uint128 },
+    FillOrder {
+        order_id: Uint128,
+        recipient: Option<AndrAddr>,
+    },
 }
 
 #[andr_query]

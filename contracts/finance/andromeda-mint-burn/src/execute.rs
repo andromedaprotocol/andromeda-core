@@ -31,10 +31,14 @@ pub fn handle_receive_cw721(
     let original_sender = AndrAddr::from_string(receive_msg.sender);
 
     match from_json(&receive_msg.msg)? {
-        Cw721HookMsg::FillOrder { order_id } => execute_fill_order(
+        Cw721HookMsg::FillOrder {
+            order_id,
+            recipient,
+        } => execute_fill_order(
             ctx,
             order_id,
             original_sender,
+            recipient,
             Uint128::one(),
             Some(received_token_id),
         ),
@@ -56,9 +60,10 @@ pub fn handle_receive_cw20(
     let cw20_amount = receive_msg.amount;
 
     match from_json(&receive_msg.msg)? {
-        Cw20HookMsg::FillOrder { order_id } => {
-            execute_fill_order(ctx, order_id, original_sender, cw20_amount, None)
-        }
+        Cw20HookMsg::FillOrder {
+            order_id,
+            recipient,
+        } => execute_fill_order(ctx, order_id, original_sender, recipient, cw20_amount, None),
     }
 }
 
@@ -91,12 +96,12 @@ pub fn execute_create_order(
 
     // Initialize all resource requirements with empty deposit tracking
     let mut initialized_requirements = Vec::new();
-    for reqirement in requirements {
-        reqirement.validate(deps.branch(), env.clone())?;
+    for requirement in requirements {
+        requirement.validate(deps.branch(), env.clone())?;
 
         let new_req = ResourceRequirement {
-            resource: reqirement.clone().resource,
-            amount: reqirement.amount,
+            resource: requirement.clone().resource,
+            amount: requirement.amount,
             deposits: HashMap::new(), // No deposits yet
         };
         initialized_requirements.push(new_req);
@@ -124,6 +129,7 @@ pub fn execute_fill_order(
     ctx: ExecuteContext,
     order_id: Uint128,
     original_sender: AndrAddr,
+    recipient: Option<AndrAddr>,
     amount: Uint128,
     received_token_id: Option<String>,
 ) -> Result<Response, ContractError> {
@@ -251,10 +257,15 @@ pub fn execute_fill_order(
 
     // If the order is fully filled, burn tokens/NFTs and mint the output
     if user_fulfilled {
+        let mint_recipient = match recipient {
+            Some(recipient) => recipient,
+            None => original_sender.clone(),
+        };
+
         order.order_status = OrderStatus::Completed;
-        order.output_recipient = Some(original_sender.clone());
+        order.output_recipient = Some(mint_recipient.clone());
         ORDERS.save(ctx.deps.storage, order_id.clone().u128(), &order)?;
-        let complete_order_msgs = complete_order(ctx, order.clone(), original_sender.clone())?;
+        let complete_order_msgs = complete_order(ctx, order.clone(), mint_recipient.clone())?;
 
         response = response
             .clone()
@@ -275,14 +286,14 @@ pub fn execute_fill_order(
 fn complete_order(
     ctx: ExecuteContext,
     order: OrderInfo,
-    original_sender: AndrAddr,
+    recipient: AndrAddr,
 ) -> Result<Vec<CosmosMsg>, ContractError> {
     let mut messages = vec![];
 
     for requirement in &order.requirements {
         for (user, amount) in &requirement.deposits {
             if amount.gt(&Uint128::zero()) {
-                let is_burning = *user == original_sender.get_raw_address(&ctx.deps.as_ref())?;
+                let is_burning = *user == recipient.get_raw_address(&ctx.deps.as_ref())?;
                 let burn_or_refund_msg = generate_burn_or_refund_msg(
                     ctx.deps.as_ref(),
                     requirement,
@@ -297,7 +308,7 @@ fn complete_order(
     }
 
     // Mint the output resource
-    let mint_msg = generate_mint_msg(ctx.deps.as_ref(), order, original_sender)?;
+    let mint_msg = generate_mint_msg(ctx.deps.as_ref(), order, recipient)?;
     messages.push(mint_msg);
 
     Ok(messages)

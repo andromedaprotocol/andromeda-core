@@ -141,6 +141,7 @@ fn test_fill_order_with_cw20() {
 
     let hook_msg = Cw20HookMsg::FillOrder {
         order_id: Uint128::one(),
+        recipient: None,
     };
     let cw20_receive_msg = Cw20ReceiveMsg {
         sender: "origin_cw20_sender".to_string(),
@@ -266,6 +267,7 @@ fn test_two_users_fill_order_with_cw20() {
 
     let hook_msg = Cw20HookMsg::FillOrder {
         order_id: Uint128::one(),
+        recipient: None,
     };
     let cw20_receive_msg = Cw20ReceiveMsg {
         sender: "origin_cw20_sender".to_string(),
@@ -368,6 +370,7 @@ fn test_fill_order_with_nft() {
 
     let hook_msg = Cw721HookMsg::FillOrder {
         order_id: Uint128::one(),
+        recipient: None,
     };
     let cw721_receive_msg = Cw721ReceiveMsg {
         sender: "origin_nft_sender".to_string(),
@@ -443,6 +446,7 @@ fn test_cancel_order() {
 
     let hook_msg = Cw20HookMsg::FillOrder {
         order_id: Uint128::one(),
+        recipient: None,
     };
     let cw20_receive_msg = Cw20ReceiveMsg {
         sender: "origin_cw20_sender".to_string(),
