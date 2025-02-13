@@ -2,7 +2,6 @@ use andromeda_finance::mint_burn::{
     Cw20HookMsg, Cw721HookMsg, ExecuteMsg, OrderInfo, OrderStatus, Resource, ResourceRequirement,
 };
 use andromeda_std::{
-    ado_contract::ADOContract,
     amp::AndrAddr,
     common::context::ExecuteContext,
     common::denom::{SEND_CW20_ACTION, SEND_NFT_ACTION},
@@ -20,7 +19,7 @@ pub fn handle_receive_cw721(
     mut ctx: ExecuteContext,
     receive_msg: Cw721ReceiveMsg,
 ) -> Result<Response, ContractError> {
-    ADOContract::default().is_permissioned(
+    ctx.contract.is_permissioned(
         ctx.deps.branch(),
         ctx.env.clone(),
         SEND_NFT_ACTION,
@@ -49,7 +48,7 @@ pub fn handle_receive_cw20(
     mut ctx: ExecuteContext,
     receive_msg: Cw20ReceiveMsg,
 ) -> Result<Response, ContractError> {
-    ADOContract::default().is_permissioned(
+    ctx.contract.is_permissioned(
         ctx.deps.branch(),
         ctx.env.clone(),
         SEND_CW20_ACTION,
@@ -77,6 +76,7 @@ pub fn execute_create_order(
         mut deps,
         info,
         env,
+        contract,
         ..
     } = ctx;
     let sender = info.sender.clone();
@@ -97,7 +97,7 @@ pub fn execute_create_order(
     // Initialize all resource requirements with empty deposit tracking
     let mut initialized_requirements = Vec::new();
     for requirement in requirements {
-        requirement.validate(deps.branch(), env.clone())?;
+        requirement.validate(deps.branch(), env.clone(), &contract)?;
 
         let new_requirement = ResourceRequirement {
             resource: requirement.clone().resource,

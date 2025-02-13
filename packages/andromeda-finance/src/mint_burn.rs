@@ -44,20 +44,17 @@ impl ExecuteMsg {
 
     // Validates the `CreateOrder` message.
     pub fn requirements_number_validate(&self) -> Result<(), ContractError> {
-        match self {
-            ExecuteMsg::CreateOrder { requirements, .. } => {
-                // Ensure that the number of requirements does not exceed the allowed limit
-                ensure!(
-                    requirements.len() <= Self::MAX_REQUIREMENTS,
-                    ContractError::CustomError {
-                        msg: format!(
-                            "Too many requirements. Maximum allowed is {}.",
-                            Self::MAX_REQUIREMENTS
-                        )
-                    }
-                );
-            }
-            _ => {}
+        if let ExecuteMsg::CreateOrder { requirements, .. } = self {
+            // Ensure that the number of requirements does not exceed the allowed limit
+            ensure!(
+                requirements.len() <= Self::MAX_REQUIREMENTS,
+                ContractError::CustomError {
+                    msg: format!(
+                        "Too many requirements. Maximum allowed is {}.",
+                        Self::MAX_REQUIREMENTS
+                    )
+                }
+            );
         }
         Ok(())
     }
@@ -164,15 +161,15 @@ pub struct GetUserDepositedOrdersReponse {
 }
 
 impl ResourceRequirement {
-    pub fn validate(&self, mut deps: DepsMut, env: Env) -> Result<(), ContractError> {
+    pub fn validate(
+        &self,
+        mut deps: DepsMut,
+        env: Env,
+        ado_contract: &ADOContract,
+    ) -> Result<(), ContractError> {
         match &self.resource {
             Resource::Nft { cw721_addr, .. } => {
-                ADOContract::default().is_permissioned(
-                    deps,
-                    env.clone(),
-                    SEND_NFT_ACTION,
-                    cw721_addr,
-                )?;
+                ado_contract.is_permissioned(deps, env.clone(), SEND_NFT_ACTION, cw721_addr)?;
                 ensure!(
                     self.amount == Uint128::one(),
                     ContractError::CustomError {
@@ -182,7 +179,7 @@ impl ResourceRequirement {
                 Ok(())
             }
             Resource::Cw20Token { cw20_addr } => {
-                ADOContract::default().is_permissioned(
+                ado_contract.is_permissioned(
                     deps.branch(),
                     env.clone(),
                     SEND_CW20_ACTION,
