@@ -38,6 +38,31 @@ pub enum ExecuteMsg {
     ReceiveNft(Cw721ReceiveMsg),
 }
 
+impl ExecuteMsg {
+    // The maximum number of different resources that can be required in an order.
+    const MAX_REQUIREMENTS: usize = 10;
+
+    // Validates the `CreateOrder` message.
+    pub fn requirements_number_validate(&self) -> Result<(), ContractError> {
+        match self {
+            ExecuteMsg::CreateOrder { requirements, .. } => {
+                // Ensure that the number of requirements does not exceed the allowed limit
+                ensure!(
+                    requirements.len() <= Self::MAX_REQUIREMENTS,
+                    ContractError::CustomError {
+                        msg: format!(
+                            "Too many requirements. Maximum allowed is {}.",
+                            Self::MAX_REQUIREMENTS
+                        )
+                    }
+                );
+            }
+            _ => {}
+        }
+        Ok(())
+    }
+}
+
 #[cw_serde]
 pub struct OrderInfo {
     pub requirements: Vec<ResourceRequirement>,

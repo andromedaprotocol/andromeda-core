@@ -1,5 +1,5 @@
 use andromeda_finance::mint_burn::{
-    Cw20HookMsg, Cw721HookMsg, OrderInfo, OrderStatus, Resource, ResourceRequirement,
+    Cw20HookMsg, Cw721HookMsg, ExecuteMsg, OrderInfo, OrderStatus, Resource, ResourceRequirement,
 };
 use andromeda_std::{
     ado_contract::ADOContract,
@@ -64,6 +64,7 @@ pub fn handle_receive_cw20(
 
 pub fn execute_create_order(
     ctx: ExecuteContext,
+    msg: ExecuteMsg,
     requirements: Vec<ResourceRequirement>,
     output: Resource,
 ) -> Result<Response, ContractError> {
@@ -74,6 +75,8 @@ pub fn execute_create_order(
         ..
     } = ctx;
     let sender = info.sender.clone();
+
+    msg.requirements_number_validate()?;
 
     let order_id = NEXT_ORDER_ID.load(deps.storage)?;
 
@@ -90,7 +93,7 @@ pub fn execute_create_order(
     let mut initialized_requirements = Vec::new();
     for reqirement in requirements {
         reqirement.validate(deps.branch(), env.clone())?;
-        
+
         let new_req = ResourceRequirement {
             resource: reqirement.clone().resource,
             amount: reqirement.amount,
