@@ -99,12 +99,12 @@ pub fn execute_create_order(
     for requirement in requirements {
         requirement.validate(deps.branch(), env.clone())?;
 
-        let new_req = ResourceRequirement {
+        let new_requirement = ResourceRequirement {
             resource: requirement.clone().resource,
             amount: requirement.amount,
             deposits: HashMap::new(), // No deposits yet
         };
-        initialized_requirements.push(new_req);
+        initialized_requirements.push(new_requirement);
     }
 
     let new_order = OrderInfo {
