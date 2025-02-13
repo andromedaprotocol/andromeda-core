@@ -52,3 +52,4 @@ cw-orch = { workspace = true }
 # andromeda-testing = { workspace = true, optional = true }
 rstest = { workspace = true }
 k256 = "0.13.4"
+base64 = "0.22.1"

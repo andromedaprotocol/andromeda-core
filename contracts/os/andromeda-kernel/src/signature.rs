@@ -56,6 +56,7 @@ pub fn derive_address(prefix: &str, public_key_bytes: &[u8]) -> Result<String, C
 mod tests {
     use super::{derive_address, verify_signature};
     use andromeda_std::common::context::ExecuteContext;
+    use base64::{engine::general_purpose, Engine};
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
     use k256::{ecdsa::SigningKey, elliptic_curve::rand_core::OsRng};
     use sha2::{digest::Update, Digest, Sha256};
@@ -91,6 +92,31 @@ mod tests {
             public_key_bytes,
             address.clone(),
             "neutron".to_string()
+        )
+        .unwrap());
+    }
+    #[test]
+    fn test_verify_signature_external() {
+        let pubkey_str = "AucHWqEkLOXBklk9duey4AnI1EDVE41DTHHDGZDWTxnd";
+        let public_key_bytes = general_purpose::STANDARD.decode(pubkey_str).unwrap();
+
+        let signature_str = "wKvArb+paL5OJVZOF127WBrERyOUkDnUq8IiJqgRzip3Td1Jf6pC4k/klUj3SE8LVoTh/DzRX/5qoDZMpOi5WQ==";
+        let signature_bytes = general_purpose::STANDARD.decode(signature_str).unwrap();
+        let msg = "{\"account_number\":\"0\",\"chain_id\":\"\",\"fee\":{\"amount\":[],\"gas\":\"0\"},\"memo\":\"\",\"msgs\":[{\"type\":\"sign/MsgSignData\",\"value\":{\"data\":\"dGVzdA==\",\"signer\":\"andr10dx5rcshf3fwpyw8jjrh5m25kv038xkqvngnls\"}}],\"sequence\":\"0\"}".to_string();
+
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = mock_info("owner", &[]);
+        let address = derive_address("andr", &public_key_bytes).unwrap();
+        let ctx = ExecuteContext::new(deps.as_mut(), info, env);
+
+        assert!(verify_signature(
+            ctx,
+            msg,
+            &signature_bytes,
+            &public_key_bytes,
+            address.clone(),
+            "andr".to_string()
         )
         .unwrap());
     }
