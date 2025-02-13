@@ -147,16 +147,18 @@ pub fn execute_fill_order(
             msg: "Not existed order".to_string(),
         })?;
 
-    if order.order_status == OrderStatus::Completed {
-        return Err(ContractError::CustomError {
-            msg: "Already completed order".to_string(),
-        });
-    }
-
-    if order.order_status == OrderStatus::Cancelled {
-        return Err(ContractError::CustomError {
-            msg: "Already cancelled order".to_string(),
-        });
+    match order.order_status {
+        OrderStatus::Completed => {
+            return Err(ContractError::CustomError {
+                msg: "Already completed order".to_string(),
+            });
+        }
+        OrderStatus::Cancelled => {
+            return Err(ContractError::CustomError {
+                msg: "Already cancelled order".to_string(),
+            });
+        }
+        _ => {}
     }
 
     let mut excess_amount = Uint128::zero();
