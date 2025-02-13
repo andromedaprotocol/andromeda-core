@@ -49,10 +49,17 @@ pub enum OrderStatus {
     Cancelled,
 }
 
+// Represents a requirement for a specific resource (CW20 or CW721) in an order.
+// This struct defines what must be deposited to fulfill an order.
 #[cw_serde]
 pub struct ResourceRequirement {
+    // The type of resource required (CW20 token or CW721 NFT).
     pub resource: Resource,
+    // The total amount of this resource required to complete the order.
     pub amount: Uint128,
+    // A mapping of user addresses to the amount they have deposited towards this requirement.
+    // - **Key:** User address (`String`)
+    // - **Value:** Amount of the resource deposited (`Uint128`)
     pub deposits: HashMap<String, Uint128>,
 }
 
