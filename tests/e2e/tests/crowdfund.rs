@@ -24,7 +24,7 @@ use cosmwasm_std::{coin, to_json_binary, Decimal, Uint128, Uint64};
 use cw20::{Cw20Coin, MinterResponse};
 use cw_orch::prelude::*;
 use cw_orch_daemon::{DaemonBase, TxSender, Wallet};
-use ibc_tests::constants::{
+use e2e::constants::{
     LOCAL_TERRA, LOCAL_WASM, PURCHASER_MNEMONIC_1, RECIPIENT_MNEMONIC_1, RECIPIENT_MNEMONIC_2,
     USER_MNEMONIC,
 };

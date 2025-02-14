@@ -18,7 +18,7 @@ use andromeda_fixed_amount_splitter::mock::{
 };
 use cw20::Cw20Coin;
 use cw_multi_test::Contract;
-use rstest::{fixture, rstest};
+use rstest::*;
 
 struct TestCase {
     router: MockApp,

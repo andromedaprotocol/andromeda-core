@@ -48,14 +48,13 @@ unit-test:
 	@cargo unit-test --workspace --quiet
 	@echo "Unit tests complete! \033[0;32m\xE2\x9C\x94\033[0m"
 
-# Runs integration tests
-e2e-test:
+test-integration:
 	@echo "Running integration tests..."
-	@cargo test -p e2e-tests --quiet
+	@cargo test -p tests --quiet
 	@echo "Integration tests complete! \033[0;32m\xE2\x9C\x94\033[0m"
 
 # Runs all tests
-test: unit-test e2e-test
+test: unit-test test-integration
 	@echo "All tests complete! \033[0;32m\xE2\x9C\x94\033[0m"
 
 # Deploys OS to specified blockchain

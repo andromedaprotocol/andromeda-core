@@ -21,7 +21,7 @@ impl MockKernel {
         admin: Option<String>,
         owner: Option<String>,
     ) -> Self {
-        let msg = mock_kernel_instantiate_message(owner);
+        let msg = mock_kernel_instantiate_message(owner, "andromeda");
         let res = app.instantiate_contract(
             code_id,
             sender.clone(),
