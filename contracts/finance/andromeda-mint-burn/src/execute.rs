@@ -160,10 +160,15 @@ pub fn execute_fill_order(
     let mut refund_nft: Option<String> = None; // To handle NFT refunds
     let order_clone = order.clone();
 
+    let mut valid_cw20_token = false;
+    let mut valid_nft_token = false;
+
     for requirement in &mut order.requirements {
         match &requirement.resource {
             Resource::Cw20Token { cw20_addr } => {
                 if cw20_addr.clone().get_raw_address(&ctx.deps.as_ref())? == contract_addr {
+                    valid_cw20_token = true;
+
                     process_cw20_deposit(
                         requirement,
                         original_sender_str.clone(),
@@ -177,6 +182,8 @@ pub fn execute_fill_order(
                 token_id,
             } => {
                 if cw721_addr.get_raw_address(&ctx.deps.as_ref())? == contract_addr {
+                    valid_nft_token = true;
+
                     if let Some(received_token_id) = received_token_id.clone() {
                         if token_id == &received_token_id {
                             // Allow deposit of any required NFT from the same contract
@@ -200,6 +207,23 @@ pub fn execute_fill_order(
                 }
             }
         }
+    }
+
+    // If a CW20 deposit was made, but the token was incorrect, throw an error
+    if received_token_id.is_none() && amount > Uint128::zero() && !valid_cw20_token {
+        return Err(ContractError::CustomError {
+            msg: "Invalid CW20 token sent".to_string(),
+        });
+    }
+
+    // If an NFT was sent but was not required, throw an error
+    if received_token_id.is_some() && !valid_nft_token {
+        return Err(ContractError::CustomError {
+            msg: format!(
+                "Invalid CW721 token sent: {:?} is not part of this order",
+                contract_addr
+            ),
+        });
     }
 
     let user_fulfilled = check_order_fulfillment(&order, &original_sender_str);
