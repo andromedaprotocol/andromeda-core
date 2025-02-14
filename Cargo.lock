@@ -2275,6 +2275,32 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0d6ef0072f8a535281e4876be788938b528e9a1d43900b82c2569af7da799125"
 
 [[package]]
+name = "e2e"
+version = "0.1.0"
+dependencies = [
+ "andromeda-app",
+ "andromeda-app-contract",
+ "andromeda-crowdfund",
+ "andromeda-cw20",
+ "andromeda-cw721",
+ "andromeda-finance",
+ "andromeda-fungible-tokens",
+ "andromeda-non-fungible-tokens",
+ "andromeda-splitter",
+ "andromeda-std",
+ "andromeda-testing-e2e",
+ "andromeda-validator-staking",
+ "cosmwasm-std",
+ "cw-orch",
+ "cw-orch-daemon",
+ "cw20",
+ "cw721 0.18.0",
+ "rstest",
+ "serde",
+ "tokio",
+]
+
+[[package]]
 name = "ecdsa"
 version = "0.16.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3059,28 +3085,26 @@ dependencies = [
 
 [[package]]
 name = "ibc-tests"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "andromeda-app",
  "andromeda-app-contract",
- "andromeda-crowdfund",
- "andromeda-cw20",
+ "andromeda-auction",
+ "andromeda-counter",
  "andromeda-cw721",
  "andromeda-finance",
- "andromeda-fungible-tokens",
+ "andromeda-fixed-amount-splitter",
+ "andromeda-kernel",
+ "andromeda-math",
  "andromeda-non-fungible-tokens",
+ "andromeda-rate-limiting-withdrawals",
  "andromeda-splitter",
  "andromeda-std",
- "andromeda-testing-e2e",
- "andromeda-validator-staking",
+ "andromeda-testing",
  "cosmwasm-std",
  "cw-orch",
- "cw-orch-daemon",
- "cw20",
- "cw721 0.18.0",
+ "cw-orch-interchain",
  "rstest",
- "serde",
- "tokio",
 ]
 
 [[package]]
@@ -5073,30 +5097,6 @@ dependencies = [
  "ibc-relayer-types",
  "rstest",
  "toml 0.8.20",
-]
-
-[[package]]
-name = "tests-ibc"
-version = "1.0.0"
-dependencies = [
- "andromeda-app",
- "andromeda-app-contract",
- "andromeda-auction",
- "andromeda-counter",
- "andromeda-cw721",
- "andromeda-finance",
- "andromeda-fixed-amount-splitter",
- "andromeda-kernel",
- "andromeda-math",
- "andromeda-non-fungible-tokens",
- "andromeda-rate-limiting-withdrawals",
- "andromeda-splitter",
- "andromeda-std",
- "andromeda-testing",
- "cosmwasm-std",
- "cw-orch",
- "cw-orch-interchain",
- "rstest",
 ]
 
 [[package]]

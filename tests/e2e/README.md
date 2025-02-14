@@ -3,7 +3,7 @@ This package is designed for end-to-end (e2e) testing of ADOs. It supports deplo
 
 # Prerequisites
 1. Ensure that the necessary artifacts are available in the following directories:
-    - `ibc-tests/artifacts`
+    - `tests/e2e/artifacts`
     - `packages/andromeda-testing-e2e/artifacts`
 
     The `build.sh` script has been updated to automatically copy artifacts to the required locations in building process.
@@ -32,7 +32,7 @@ fn <test_name>(#[with(<setup_params>)] setup: TestCase)
 In the `setup_params`, you can specify parameters that will be passed to the setup function. For the `crowdfund` test cases, you can include parameters such as `use_native_token`, `chain_info`, and `purchaser_balance`. If any parameters are omitted, they will default to predefined values.
 
 ## Custom chain informations
-Chain configurations are defined in `ibc-tests/src/constants.rs`. You can add or customize new chain information as needed.
+Chain configurations are defined in `tests/e2e/src/constants.rs`. You can add or customize new chain information as needed.
 
 ## Custom Interfaces
-To test ADOs, their uploadable interfaces should be defined within `ibc-tests/src/interfaces`.
+To test ADOs, their uploadable interfaces should be defined within `tests/e2e/src/interfaces`.

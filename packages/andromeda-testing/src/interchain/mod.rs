@@ -140,13 +140,6 @@ impl InterchainTestEnv {
         ];
 
         for (index, chain) in chains.iter().enumerate() {
-            // Assign balances to default sender
-            // interchain_test_env.set_balance(
-            //     &chain.chain_name,
-            //     sender.to_string(),
-            //     vec![Coin::new(100000000000000, chain.chain_name.clone())],
-            // );
-
             // We only have to assign channels for the chains that are after the current chain
             // This reduces redundancy as channels are two way
             let other_chains = chains[index + 1..].to_vec();

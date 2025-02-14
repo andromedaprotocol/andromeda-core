@@ -14,8 +14,8 @@ members = [
 
     #Internal
     "tests",
-    "tests/tests-ibc",
-    "ibc-tests",
+    "tests/ibc-tests",
+    "tests/e2e",
 ]
 resolver = "2"
 
