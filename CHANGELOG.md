@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - feat: Handle username on IBC packets [(#791)](https://github.com/andromedaprotocol/andromeda-core/pull/791)
 - Added Time Gate ADO [(#529)](https://github.com/andromedaprotocol/andromeda-core/pull/529)
 - feat: Add previous hops to AMP packets [(#796)](https://github.com/andromedaprotocol/andromeda-core/pull/796)
+- Mint Burn ADO [(#803)](https://github.com/andromedaprotocol/andromeda-core/pull/803)
 
 ### Changed
 
