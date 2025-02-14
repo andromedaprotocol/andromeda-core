@@ -18,6 +18,10 @@ on:
         description: "Contracts to deploy"
         required: false
         type: string
+      schema_parser:
+        description: "Schema parser environment variable"
+        required: false
+        type: string
 
 jobs:
   build_contracts:
@@ -112,40 +116,16 @@ jobs:
   trigger-schema-parser:
     needs: [deploy]
     runs-on: ubuntu-latest
+    env:
+      ENV: ${{ inputs.schema_parser }}
     outputs:
-      should_continue: ${{ steps.check-kernel.outputs.should_continue }}
+      should_continue: ${{ steps.set-output.outputs.should_continue }}
     steps:
-      - name: Set Branch Based on Kernel
-        id: check-kernel
-        run: |
-          KERNEL_ADDRESS="${{ inputs.kernel_address }}"
-          IFS=',' read -ra TESTNET_KERNELS_ARR <<< "${{ vars.TESTNET_KERNELS }}"
-          IFS=',' read -ra TESTNET_STAGING_KERNELS_ARR <<< "${{ vars.TESTNET_STAGING_KERNELS }}"
-
-          for kernel in "${TESTNET_KERNELS_ARR[@]}"; do
-            if [[ "${KERNEL_ADDRESS}" == "${kernel}" ]]; then
-              echo "branch=develop" >> $GITHUB_OUTPUT
-              echo "should_continue=true" >> $GITHUB_OUTPUT
-              exit 0
-            fi
-          done
-
-          for kernel in "${TESTNET_STAGING_KERNELS_ARR[@]}"; do
-            if [[ "${KERNEL_ADDRESS}" == "${kernel}" ]]; then
-              echo "branch=testnet-staging" >> $GITHUB_OUTPUT
-              echo "should_continue=true" >> $GITHUB_OUTPUT
-              exit 0
-            fi
-          done
-
-          echo "Skip: Kernel not found in known configurations"
-          echo "should_continue=false" >> $GITHUB_OUTPUT
-
       - name: Checkout Schema Parser
         uses: actions/checkout@v4
         with:
           repository: andromedaprotocol/schema-parser
-          ref: ${{ steps.check-kernel.outputs.branch }}
+          ref: feat/master-schema
           token: ${{ secrets.CI_PAT }}
 
       - name: Download Schemas
@@ -175,12 +155,12 @@ jobs:
             npm run flatten
           echo "Exporting schema..."
             npm run export
+          echo "Using ENV variable: $ENV"
 
       - name: Commit and Push Changes
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-
           if [[ -n $(git status --porcelain) ]]; then
             git add .
             git commit -m "chore: Update schema for kernel: ${{ inputs.kernel_address }}"
@@ -188,6 +168,10 @@ jobs:
           else
             echo "No changes to commit"
           fi
+
+      - name: Set should_continue output
+        id: set-output
+        run: echo "should_continue=true" >> $GITHUB_OUTPUT
 
   trigger-armour-workflow:
     needs: [trigger-schema-parser]
