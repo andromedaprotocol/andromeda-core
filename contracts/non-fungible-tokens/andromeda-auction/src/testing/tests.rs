@@ -1190,7 +1190,7 @@ fn execute_claim_permission() {
     );
 
     let info = mock_info("owner", &[]);
-    let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
+    let _res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
     let msg = ExecuteMsg::Claim {
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
