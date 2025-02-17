@@ -16,6 +16,7 @@ use andromeda_non_fungible_tokens::{
 use andromeda_std::{
     ado_base::{
         modules::Module,
+        permissioning::{LocalPermission, Permission},
         rates::{LocalRate, LocalRateType, LocalRateValue, PercentRate, Rate},
     },
     ado_contract::ADOContract,
@@ -1147,6 +1148,58 @@ fn execute_claim_no_bids() {
 
     let info = mock_info("any_user", &[]);
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
+    assert_eq!(
+        Response::new()
+            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: MOCK_TOKEN_ADDR.to_owned(),
+                msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
+                    recipient: AndrAddr::from_string(MOCK_TOKEN_OWNER.to_owned()),
+                    token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
+                })
+                .unwrap(),
+                funds: vec![],
+            }))
+            .add_attribute("action", "claim")
+            .add_attribute("token_id", MOCK_UNCLAIMED_TOKEN)
+            .add_attribute("token_contract", MOCK_TOKEN_ADDR)
+            .add_attribute("recipient", MOCK_TOKEN_OWNER)
+            .add_attribute("winning_bid_amount", Uint128::zero())
+            .add_attribute("auction_id", "1"),
+        res
+    );
+}
+
+#[test]
+fn execute_claim_permission() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let mut env = mock_env();
+    let _res = init(deps.as_mut());
+
+    start_auction(deps.as_mut(), None, None, None, None);
+
+    // Auction ended by that time
+    env.block.time = env.block.time.plus_days(1);
+
+    // Try to set a permission for the claim action
+    let msg = ExecuteMsg::Permissioning(
+        andromeda_std::ado_base::permissioning::PermissioningMessage::SetPermission {
+            actors: vec![AndrAddr::from_string("owner".to_string())],
+            action: "Claim".to_string(),
+            permission: Permission::Local(LocalPermission::blacklisted(None, None)),
+        },
+    );
+
+    let info = mock_info("owner", &[]);
+    let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
+
+    let msg = ExecuteMsg::Claim {
+        token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
+        token_address: MOCK_TOKEN_ADDR.to_string(),
+    };
+
+    let info = mock_info("any_user", &[]);
+    let res = execute(deps.as_mut(), env, info, msg).unwrap();
+
     assert_eq!(
         Response::new()
             .add_message(CosmosMsg::Wasm(WasmMsg::Execute {

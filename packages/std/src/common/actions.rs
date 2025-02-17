@@ -1,10 +1,8 @@
 use crate::{
-    ado_contract::{permissioning::is_context_permissioned, ADOContract},
-    amp::messages::AMPPkt,
-    error::ContractError,
+    ado_contract::ADOContract, amp::messages::AMPPkt, error::ContractError,
     os::aos_querier::AOSQuerier,
 };
-use cosmwasm_std::{ensure, DepsMut, Env, MessageInfo, Response};
+use cosmwasm_std::{DepsMut, Env, MessageInfo, Response};
 
 pub fn call_action(
     deps: &mut DepsMut,
@@ -13,11 +11,6 @@ pub fn call_action(
     amp_ctx: &Option<AMPPkt>,
     action: &str,
 ) -> Result<Response, ContractError> {
-    ensure!(
-        is_context_permissioned(deps, info, env, amp_ctx, action)?,
-        ContractError::Unauthorized {}
-    );
-
     let payee = if let Some(amp_ctx) = amp_ctx.clone() {
         deps.api.addr_validate(amp_ctx.ctx.get_origin().as_str())?
     } else {

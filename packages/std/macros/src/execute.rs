@@ -88,12 +88,6 @@ pub(crate) fn fn_implementation(_attr: TokenStream, item: TokenStream) -> TokenS
                 ::cosmwasm_std::ensure!(info.funds.is_empty(), ::andromeda_std::error::ContractError::Payment(::andromeda_std::error::PaymentError::NonPayable {}));
             }
 
-            // Check if the message is permissionless
-            if msg.is_permissionless() {
-                // Make sure the message is not a Permission Message
-
-            }
-
             let res = execute_inner(ctx, msg)?;
 
             Ok(res

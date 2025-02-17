@@ -45,7 +45,7 @@ impl AttributeHandler for PermissionlessAttribute {
     ) -> proc_macro2::TokenStream {
         let match_arms = variants.iter().map(|(variant_name, is_permissionless)| {
             let pattern = generate_match_pattern(data_enum, variant_name);
-            quote! { #pattern => !#is_permissionless }
+            quote! { #pattern => #is_permissionless }
         });
 
         quote! {

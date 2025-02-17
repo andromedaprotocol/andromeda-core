@@ -386,25 +386,24 @@ macro_rules! unwrap_amp_msg {
                     )),
                 }
             );
+
             ctx.deps
                 .api
                 .debug(&format!("Unwrapped msg: {:?}", msg.as_ref()));
             ctx.amp_ctx = Some(pkt);
         }
 
-        if let ExecuteMsg::Permissioning(msg) = msg {
-            // Extract action from the permissioning message (all of them have an action field)
-            let action = match msg {
-                PermissioningMessage::SetPermission { action, .. } => action,
-                PermissioningMessage::RemovePermission { action, .. } => action,
-                PermissioningMessage::PermissionAction { action } => action,
-                PermissioningMessage::DisableActionPermissioning { action } => action,
-            };
-            // Find the ExecuteMsg corresponding to the action
-
-            // Check if the ExecuteMsg is permissionless
-
-            // Return error if it is permissionless
+        if !msg.is_permissionless() {
+            ::cosmwasm_std::ensure!(
+                ::andromeda_std::ado_contract::permissioning::is_context_permissioned(
+                    &mut ctx.deps,
+                    &ctx.info,
+                    &ctx.env,
+                    &ctx.amp_ctx,
+                    msg.as_ref(),
+                )?,
+                ::andromeda_std::error::ContractError::Unauthorized {}
+            );
         }
 
         let action_response = andromeda_std::common::actions::call_action(
