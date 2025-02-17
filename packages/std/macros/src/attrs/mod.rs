@@ -1,12 +1,14 @@
 mod direct;
 mod handler;
 mod payable;
+mod permissionless;
 mod restricted;
 mod utils;
 
 use direct::DirectAttribute;
 use handler::AttributeHandler;
 use payable::NonPayableAttribute;
+use permissionless::PermissionlessAttribute;
 use proc_macro::TokenStream;
 use quote::quote;
 use restricted::RestrictedAttribute;
@@ -25,6 +27,7 @@ pub fn derive_execute_attrs(input: TokenStream) -> TokenStream {
                 Box::new(NonPayableAttribute),
                 Box::new(RestrictedAttribute),
                 Box::new(DirectAttribute),
+                Box::new(PermissionlessAttribute),
             ];
 
             // Process variants and generate implementations for each handler
