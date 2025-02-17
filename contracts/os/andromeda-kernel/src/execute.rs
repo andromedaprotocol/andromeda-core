@@ -285,6 +285,7 @@ pub fn amp_receive(
 
     // Generate unique ID if the packet doesn't already have one
     let id = match packet.id.clone() {
+        //TODO if id exists, it needs to be validateds
         Some(id) => id,
         None => generate_unique_id(
             deps,
