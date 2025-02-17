@@ -253,7 +253,7 @@ pub fn amp_receive(
         ContractError::Unauthorized {}
     );
     ensure!(
-        packet.ctx.id == "0".to_string(),
+        packet.ctx.id == *"0",
         ContractError::InvalidPacket {
             error: Some("Packet ID cannot be provided from outside the Kernel".into())
         }
@@ -342,7 +342,7 @@ pub fn amp_receive_cw20(
         ContractError::Unauthorized {}
     );
     ensure!(
-        packet.ctx.id == "0".to_string(),
+        packet.ctx.id == *"0",
         ContractError::InvalidPacket {
             error: Some("Packet ID cannot be provided from outside the Kernel".into())
         }
