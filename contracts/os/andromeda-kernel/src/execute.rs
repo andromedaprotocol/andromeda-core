@@ -166,7 +166,7 @@ fn handle_ibc_transfer_funds_reply(
     let mut ctx = AMPCtx::new(
         ics20_packet_info.sender.clone(),
         env.contract.address,
-        0,
+        "0".to_string(),
         None,
     );
 
@@ -253,7 +253,7 @@ pub fn amp_receive(
         ContractError::Unauthorized {}
     );
     ensure!(
-        packet.ctx.id == 0,
+        packet.ctx.id == "0".to_string(),
         ContractError::InvalidPacket {
             error: Some("Packet ID cannot be provided from outside the Kernel".into())
         }
@@ -342,7 +342,7 @@ pub fn amp_receive_cw20(
         ContractError::Unauthorized {}
     );
     ensure!(
-        packet.ctx.id == 0,
+        packet.ctx.id == "0".to_string(),
         ContractError::InvalidPacket {
             error: Some("Packet ID cannot be provided from outside the Kernel".into())
         }
@@ -1111,7 +1111,7 @@ impl MsgHandler {
         let ctx = ctx.map_or_else(
             || {
                 let amp_msg = AMPMsg::new(recipient.clone().get_raw_path(), message.clone(), None);
-                let mut ctx = AMPCtx::new(info.sender, env.contract.address, 0, None);
+                let mut ctx = AMPCtx::new(info.sender, env.contract.address, "0".to_string(), None);
 
                 // Add the orginal sender's username if it exists
                 let potential_username = ctx.try_add_origin_username(&deps.querier, &vfs_address);

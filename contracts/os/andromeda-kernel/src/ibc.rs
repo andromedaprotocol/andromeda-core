@@ -193,7 +193,7 @@ pub fn do_ibc_packet_receive(
             let mut ctx = AMPCtx::new(
                 original_sender.clone(),
                 env.contract.address,
-                0,
+                "0".to_string(),
                 original_sender_username,
             );
             // Add previous hops to the context

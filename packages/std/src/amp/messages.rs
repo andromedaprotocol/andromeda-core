@@ -211,7 +211,7 @@ pub struct AMPCtx {
     origin: String,
     origin_username: Option<AndrAddr>,
     pub previous_sender: String,
-    pub id: u64,
+    pub id: String,
     pub previous_hops: Vec<CrossChainHop>,
 }
 
@@ -220,7 +220,7 @@ impl AMPCtx {
     pub fn new(
         origin: impl Into<String>,
         previous_sender: impl Into<String>,
-        id: u64,
+        id: String,
         origin_username: Option<AndrAddr>,
     ) -> AMPCtx {
         AMPCtx {
@@ -310,7 +310,7 @@ impl AMPPkt {
     ) -> AMPPkt {
         AMPPkt {
             messages,
-            ctx: AMPCtx::new(origin, previous_sender, 0, None),
+            ctx: AMPCtx::new(origin, previous_sender, "0".to_string(), None),
             id: None,
         }
     }
@@ -454,7 +454,7 @@ impl AMPPkt {
     }
 
     ///  Attaches an ID to the current packet
-    pub fn with_id(&self, id: u64) -> AMPPkt {
+    pub fn with_id(&self, id: String) -> AMPPkt {
         let mut new = self.clone();
         new.ctx.id = id;
         new
@@ -495,7 +495,12 @@ impl AMPPkt {
             (pkt.ctx, pkt.id)
         } else {
             (
-                AMPCtx::new(current_address.clone(), current_address.clone(), 0, None),
+                AMPCtx::new(
+                    current_address.clone(),
+                    current_address.clone(),
+                    "0".to_string(),
+                    None,
+                ),
                 None,
             )
         };
@@ -638,7 +643,7 @@ mod tests {
         let msg = AMPPkt::new("origin", "previoussender", vec![]);
 
         let memo = msg.to_json();
-        assert_eq!(memo, "{\"messages\":[],\"ctx\":{\"origin\":\"origin\",\"origin_username\":null,\"previous_sender\":\"previoussender\",\"id\":0,\"previous_hops\":[]},\"id\":null}".to_string());
+        assert_eq!(memo, "{\"messages\":[],\"ctx\":{\"origin\":\"origin\",\"origin_username\":null,\"previous_sender\":\"previoussender\",\"id\":\"0\",\"previous_hops\":[]},\"id\":null}".to_string());
     }
 
     #[test]
@@ -646,6 +651,6 @@ mod tests {
         let msg = AMPPkt::new("origin", "previoussender", vec![]);
         let contract_addr = "contractaddr";
         let memo = msg.to_ibc_hooks_memo(contract_addr.to_string(), "callback".to_string());
-        assert_eq!(memo, "{\"wasm\":{\"contract\":\"contractaddr\",\"msg\":{\"amp_receive\":{\"messages\":[],\"ctx\":{\"origin\":\"origin\",\"origin_username\":null,\"previous_sender\":\"previoussender\",\"id\":0,\"previous_hops\":[]},\"id\":null}}},\"ibc_callback\":\"callback\"}".to_string());
+        assert_eq!(memo, "{\"wasm\":{\"contract\":\"contractaddr\",\"msg\":{\"amp_receive\":{\"messages\":[],\"ctx\":{\"origin\":\"origin\",\"origin_username\":null,\"previous_sender\":\"previoussender\",\"id\":\"0\",\"previous_hops\":[]},\"id\":null}}},\"ibc_callback\":\"callback\"}".to_string());
     }
 }
