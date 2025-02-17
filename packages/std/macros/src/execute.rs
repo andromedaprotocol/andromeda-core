@@ -88,7 +88,6 @@ pub(crate) fn fn_implementation(_attr: TokenStream, item: TokenStream) -> TokenS
                 ::cosmwasm_std::ensure!(info.funds.is_empty(), ::andromeda_std::error::ContractError::Payment(::andromeda_std::error::PaymentError::NonPayable {}));
             }
 
-
             let res = execute_inner(ctx, msg)?;
 
             Ok(res
