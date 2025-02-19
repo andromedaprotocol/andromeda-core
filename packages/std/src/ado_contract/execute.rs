@@ -386,11 +386,24 @@ macro_rules! unwrap_amp_msg {
                     )),
                 }
             );
+
             ctx.deps
                 .api
                 .debug(&format!("Unwrapped msg: {:?}", msg.as_ref()));
             ctx.amp_ctx = Some(pkt);
         }
+
+        ::cosmwasm_std::ensure!(
+            msg.is_permissionless()
+                || ::andromeda_std::ado_contract::permissioning::is_context_permissioned(
+                    &mut ctx.deps,
+                    &ctx.info,
+                    &ctx.env,
+                    &ctx.amp_ctx,
+                    msg.as_ref(),
+                )?,
+            ::andromeda_std::error::ContractError::Unauthorized {}
+        );
 
         let action_response = andromeda_std::common::actions::call_action(
             &mut ctx.deps,
