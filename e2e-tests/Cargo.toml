@@ -77,6 +77,10 @@ andromeda-validator-staking = { path = "../contracts/finance/andromeda-validator
     "testing",
 ] }
 
+andromeda-mint-burn = { path = "../contracts/finance/andromeda-mint-burn", features = [
+    "testing",
+] }
+
 
 # Data Storage
 andromeda-data-storage = { workspace = true }

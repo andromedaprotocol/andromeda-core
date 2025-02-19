@@ -693,7 +693,6 @@ dependencies = [
  "cw-storage-plus 1.2.0",
  "cw20",
  "cw721 0.18.0",
- "cw721-base 0.18.0",
 ]
 
 [[package]]
@@ -2318,6 +2317,7 @@ dependencies = [
  "andromeda-lockdrop",
  "andromeda-marketplace",
  "andromeda-math",
+ "andromeda-mint-burn",
  "andromeda-modules",
  "andromeda-non-fungible-tokens",
  "andromeda-primitive",

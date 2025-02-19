@@ -167,7 +167,7 @@ fn test_fill_order_with_cw20() {
         }
     }
 
-    let order_status = created_order.order_status;
+    let order_status = created_order.status;
     assert_eq!(order_status, OrderStatus::NotCompleted);
 
     let cw20_receive_msg = Cw20ReceiveMsg {
@@ -194,7 +194,7 @@ fn test_fill_order_with_cw20() {
         }
     }
 
-    let order_status = created_order.order_status;
+    let order_status = created_order.status;
     assert_eq!(order_status, OrderStatus::NotCompleted);
 
     let cw20_receive_msg = Cw20ReceiveMsg {
@@ -221,7 +221,7 @@ fn test_fill_order_with_cw20() {
         }
     }
 
-    let order_status = created_order.order_status;
+    let order_status = created_order.status;
     assert_eq!(order_status, OrderStatus::Completed);
 }
 
@@ -288,7 +288,7 @@ fn test_two_users_fill_order_with_cw20() {
     let created_order: GetOrderInfoResponse =
         query_order_info(deps.as_ref(), Uint128::one()).unwrap();
 
-    let order_status = created_order.order_status;
+    let order_status = created_order.status;
     assert_eq!(order_status, OrderStatus::NotCompleted);
 
     let cw20_receive_msg = Cw20ReceiveMsg {
@@ -310,7 +310,7 @@ fn test_two_users_fill_order_with_cw20() {
     let created_order: GetOrderInfoResponse =
         query_order_info(deps.as_ref(), Uint128::one()).unwrap();
 
-    let order_status = created_order.order_status;
+    let order_status = created_order.status;
     assert_eq!(order_status, OrderStatus::NotCompleted);
 
     let cw20_receive_msg = Cw20ReceiveMsg {
@@ -324,7 +324,7 @@ fn test_two_users_fill_order_with_cw20() {
     let created_order: GetOrderInfoResponse =
         query_order_info(deps.as_ref(), Uint128::one()).unwrap();
 
-    let order_status = created_order.order_status;
+    let order_status = created_order.status;
     assert_eq!(order_status, OrderStatus::Completed);
 
     let recipient = created_order.output_recipient.unwrap();
@@ -383,7 +383,7 @@ fn test_fill_order_with_nft() {
     let created_order: GetOrderInfoResponse =
         query_order_info(deps.as_ref(), Uint128::one()).unwrap();
 
-    let order_status = created_order.order_status;
+    let order_status = created_order.status;
     assert_eq!(order_status, OrderStatus::NotCompleted);
 
     let cw721_receive_msg = Cw721ReceiveMsg {
@@ -397,7 +397,7 @@ fn test_fill_order_with_nft() {
     let created_order: GetOrderInfoResponse =
         query_order_info(deps.as_ref(), Uint128::one()).unwrap();
 
-    let order_status = created_order.order_status;
+    let order_status = created_order.status;
     assert_eq!(order_status, OrderStatus::Completed);
 
     let recipient = created_order.output_recipient.unwrap();
@@ -467,7 +467,7 @@ fn test_cancel_order() {
     let created_order: GetOrderInfoResponse =
         query_order_info(deps.as_ref(), Uint128::one()).unwrap();
 
-    let order_status = created_order.order_status;
+    let order_status = created_order.status;
     assert_eq!(order_status, OrderStatus::NotCompleted);
 
     cancel_order(deps.as_mut(), Uint128::one(), "creator").unwrap();
@@ -475,7 +475,7 @@ fn test_cancel_order() {
     let created_order: GetOrderInfoResponse =
         query_order_info(deps.as_ref(), Uint128::one()).unwrap();
 
-    let order_status = created_order.order_status;
+    let order_status = created_order.status;
     assert_eq!(order_status, OrderStatus::Cancelled);
 
     let err_res: ContractError =

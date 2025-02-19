@@ -74,7 +74,7 @@ pub fn receive_cw20(
     cw20_receive_msg: Cw20ReceiveMsg,
     sender: &str,
 ) -> Result<Response, ContractError> {
-    let msg = ExecuteMsg::ReceiveCw20(cw20_receive_msg);
+    let msg = ExecuteMsg::Receive(cw20_receive_msg);
     let info = mock_info(sender, &[]);
     execute(deps, mock_env(), info, msg)
 }

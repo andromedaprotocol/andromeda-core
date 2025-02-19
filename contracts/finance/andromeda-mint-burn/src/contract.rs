@@ -70,7 +70,7 @@ pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Contrac
         } => execute_create_order(ctx, msg, requirements, output),
         ExecuteMsg::CancelOrder { order_id } => execute_cancel_order(ctx, order_id),
         ExecuteMsg::ReceiveNft(msg) => handle_receive_cw721(ctx, msg),
-        ExecuteMsg::ReceiveCw20(msg) => handle_receive_cw20(ctx, msg),
+        ExecuteMsg::Receive(msg) => handle_receive_cw20(ctx, msg),
         _ => ADOContract::default().execute(ctx, msg),
     }
 }

@@ -103,7 +103,7 @@ impl MockMintBurn {
         msg: Cw20ReceiveMsg,
         funds: Option<Coin>,
     ) -> ExecuteResult {
-        let msg = ExecuteMsg::ReceiveCw20(msg);
+        let msg = ExecuteMsg::Receive(msg);
         if let Some(funds) = funds {
             app.execute_contract(sender, self.addr().clone(), &msg, &[funds])
         } else {

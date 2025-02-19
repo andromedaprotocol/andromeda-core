@@ -34,7 +34,7 @@ pub enum ExecuteMsg {
     CancelOrder {
         order_id: Uint128,
     },
-    ReceiveCw20(Cw20ReceiveMsg),
+    Receive(Cw20ReceiveMsg),
     ReceiveNft(Cw721ReceiveMsg),
 }
 
@@ -146,7 +146,7 @@ pub struct GetOrderInfoResponse {
     pub order_id: Uint128,
     pub requirements: Vec<ResourceRequirement>,
     pub output: Resource,
-    pub order_status: OrderStatus,
+    pub status: OrderStatus,
     pub output_recipient: Option<AndrAddr>,
 }
 

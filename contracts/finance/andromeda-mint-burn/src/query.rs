@@ -32,7 +32,7 @@ pub fn query_order_info(
         order_id,
         requirements: order.requirements,
         output: order.output,
-        order_status: order.status,
+        status: order.status,
         output_recipient: order.output_recipient,
     };
     Ok(response)
@@ -61,7 +61,7 @@ pub fn query_orders_by_status(
             order_id: Uint128::new(order.0),
             requirements: order.1.requirements,
             output: order.1.output,
-            order_status: order.1.status,
+            status: order.1.status,
             output_recipient: order.1.output_recipient,
         };
         res.push(order_info);
@@ -97,7 +97,7 @@ pub fn query_user_deposited_orders(
             order_id: Uint128::new(order.0),
             requirements: order.1.requirements,
             output: order.1.output,
-            order_status: order.1.status,
+            status: order.1.status,
             output_recipient: order.1.output_recipient,
         };
         res.push(order_info);

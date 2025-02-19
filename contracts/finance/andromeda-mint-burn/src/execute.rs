@@ -1,6 +1,7 @@
 use andromeda_finance::mint_burn::{
     Cw20HookMsg, Cw721HookMsg, ExecuteMsg, OrderInfo, OrderStatus, Resource, ResourceRequirement,
 };
+use andromeda_non_fungible_tokens::cw721::TokenExtension;
 use andromeda_std::{
     amp::AndrAddr,
     common::context::ExecuteContext,
@@ -12,7 +13,6 @@ use cosmwasm_std::{
 };
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use cw721::{Cw721ExecuteMsg, Cw721ReceiveMsg};
-use cw721_base::ExecuteMsg as BaseCw721ExecuteMsg;
 use std::collections::HashMap;
 
 use crate::state::{NEXT_ORDER_ID, ORDERS};
@@ -152,7 +152,7 @@ pub fn execute_fill_order(
     ensure!(
         order.status == OrderStatus::NotCompleted,
         ContractError::CustomError {
-            msg: format!("Already {:?} order", order.status)
+            msg: format!("Already {:?} Order", order.status)
         }
     );
 
@@ -210,7 +210,7 @@ pub fn execute_fill_order(
     }
 
     // If a CW20 deposit was made, but the token was incorrect, throw an error
-    if received_token_id.is_none() && amount > Uint128::zero() && !valid_cw20_token {
+    if received_token_id.is_none() && amount.gt(&Uint128::zero()) && !valid_cw20_token {
         return Err(ContractError::CustomError {
             msg: "Invalid CW20 token sent".to_string(),
         });
@@ -267,7 +267,12 @@ pub fn execute_fill_order(
         order.status = OrderStatus::Completed;
         order.output_recipient = Some(mint_recipient.clone());
         ORDERS.save(ctx.deps.storage, order_id.clone().u128(), &order)?;
-        let complete_order_msgs = complete_order(ctx, order.clone(), mint_recipient.clone())?;
+        let complete_order_msgs = complete_order(
+            ctx,
+            order.clone(),
+            mint_recipient.clone(),
+            original_sender.clone(),
+        )?;
 
         response = response
             .clone()
@@ -326,24 +331,27 @@ fn process_nft_deposit(
 }
 
 fn check_order_fulfillment(order: &OrderInfo, sender: &String) -> bool {
-    order
-        .requirements
-        .iter()
-        .all(|r| r.deposits.get(sender).unwrap_or(&Uint128::zero()) >= &r.amount)
+    order.requirements.iter().all(|r| {
+        r.deposits
+            .get(sender)
+            .unwrap_or(&Uint128::zero())
+            .ge(&r.amount)
+    })
 }
 
 // Complete an order (burn resources and mint output)
 fn complete_order(
     ctx: ExecuteContext,
     order: OrderInfo,
-    recipient: AndrAddr,
+    mint_recipient: AndrAddr,
+    original_sender: AndrAddr,
 ) -> Result<Vec<CosmosMsg>, ContractError> {
     let mut messages = vec![];
 
     for requirement in &order.requirements {
         for (user, amount) in &requirement.deposits {
             if amount.gt(&Uint128::zero()) {
-                let is_burning = *user == recipient.get_raw_address(&ctx.deps.as_ref())?;
+                let is_burning = *user == original_sender.get_raw_address(&ctx.deps.as_ref())?;
                 let burn_or_refund_msg = generate_burn_or_refund_msg(
                     ctx.deps.as_ref(),
                     requirement,
@@ -358,7 +366,7 @@ fn complete_order(
     }
 
     // Mint the output resource
-    let mint_msg = generate_mint_msg(ctx.deps.as_ref(), order, recipient)?;
+    let mint_msg = generate_mint_msg(ctx.deps.as_ref(), order, mint_recipient)?;
     messages.push(mint_msg);
 
     Ok(messages)
@@ -389,11 +397,13 @@ fn generate_mint_msg(
             let mint_token_id = token_id.clone();
             CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: cw721_addr.get_raw_address(&deps)?.to_string(),
-                msg: to_json_binary(&BaseCw721ExecuteMsg::<String, ()>::Mint {
+                msg: to_json_binary(&andromeda_non_fungible_tokens::cw721::ExecuteMsg::Mint {
                     token_id: mint_token_id.clone(),
                     owner: recipient.get_raw_address(&deps)?.to_string(),
                     token_uri: None, // Add a URI if needed
-                    extension: "Andromeda".to_string(),
+                    extension: TokenExtension {
+                        publisher: "ado_publisher".to_string(),
+                    },
                 })?,
                 funds: vec![],
             })
@@ -464,7 +474,7 @@ pub fn execute_cancel_order(
     ensure!(
         order.status == OrderStatus::NotCompleted,
         ContractError::CustomError {
-            msg: format!("Already {:?} order", order.status)
+            msg: format!("Already {:?} Order", order.status)
         }
     );
 
