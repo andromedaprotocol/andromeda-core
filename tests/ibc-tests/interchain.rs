@@ -142,7 +142,7 @@ fn test_kernel_ibc_funds_only() {
 
     let ibc_denom: String = format!(
         "ibc/{}/{}",
-        osmosis.aos.get_aos_channel("juno").unwrap().direct.unwrap(),
+        osmosis.aos.get_aos_channel("juno").unwrap().ics20.unwrap(),
         juno.denom.clone()
     );
 

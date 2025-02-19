@@ -7,9 +7,7 @@ use andromeda_std::{
     os,
 };
 use andromeda_testing::{
-    ado_deployer,
-    interchain::{ensure_packet_success, DEFAULT_SENDER},
-    InterchainTestEnv,
+    ado_deployer, interchain::ensure_packet_success, register_ado, InterchainTestEnv,
 };
 use cosmwasm_std::{to_json_binary, Coin, Decimal, Uint128};
 use cw_orch::mock::cw_multi_test::MockApiBech32;
@@ -37,6 +35,7 @@ fn run_splitter_test_on_multiple_combos(#[case] chain1_name: &str, #[case] chain
         interchain,
         ..
     } = InterchainTestEnv::new();
+
     let chains = [
         ("juno", &juno),
         ("osmosis", &osmosis),
@@ -48,32 +47,12 @@ fn run_splitter_test_on_multiple_combos(#[case] chain1_name: &str, #[case] chain
     let chain1 = chains.get(chain1_name).unwrap();
     let chain2 = chains.get(chain2_name).unwrap();
 
-    println!(
-        "Running test for chain1: {} and chain2: {} combo",
-        chain1.chain_name, chain2.chain_name
-    );
-
-    let chain1_sender = chain1.chain.addr_make(DEFAULT_SENDER);
-    let chain2_sender = chain2.chain.addr_make(DEFAULT_SENDER);
-    println!(
-        "Chain1 balance: {:?} {:?}",
-        chain1_sender,
-        chain1.chain.query_all_balances(&chain1_sender).unwrap()
-    );
-    println!(
-        "Chain2 balance: {:?} {:?}",
-        chain2_sender,
-        chain2.chain.query_all_balances(&chain2_sender).unwrap()
-    );
     let contract = SplitterContract::new(chain1.chain.clone());
+    contract.upload().unwrap();
+    register_ado!(chain1, contract, "splitter");
 
     let recipient1 = chain1.chain.addr_make("recipient1");
     let recipient2 = chain1.chain.addr_make("recipient2");
-
-    println!(
-        "KERNEL ADDRESS: {:?}",
-        &chain1.aos.kernel.address().unwrap()
-    );
 
     let deployed_contract = deploy_splitter!(
         contract,
@@ -120,10 +99,6 @@ fn run_splitter_test_on_multiple_combos(#[case] chain1_name: &str, #[case] chain
         }]),
     );
 
-    println!("================================================");
-    println!("message {:?}", &message);
-    println!("================================================");
-
     // Send funds from chain2
     let chain2_send_request = chain2
         .aos
@@ -137,9 +112,8 @@ fn run_splitter_test_on_multiple_combos(#[case] chain1_name: &str, #[case] chain
         )
         .unwrap();
     let packet_lifetime = interchain
-        .await_packets(&chain2.chain_name, chain2_send_request)
+        .await_packets(&chain2.chain_id, chain2_send_request)
         .unwrap();
-    println!("packet_lifetime {:?}", &packet_lifetime);
     ensure_packet_success(packet_lifetime);
 
     let ibc_denom = format!(
@@ -148,10 +122,12 @@ fn run_splitter_test_on_multiple_combos(#[case] chain1_name: &str, #[case] chain
             .aos
             .get_aos_channel(&chain2.chain_name)
             .unwrap()
-            .direct
+            .ics20
             .unwrap(),
-        chain2.chain_name.clone()
+        chain2.denom.clone()
     );
+
+    println!("IBCDenom: {:?}", &ibc_denom);
 
     // Setup trigger
     chain2
@@ -189,19 +165,14 @@ fn run_splitter_test_on_multiple_combos(#[case] chain1_name: &str, #[case] chain
         .unwrap();
 
     let packet_lifetime = interchain
-        .await_packets(&chain2.chain_name, kernel_chain2_splitter)
+        .await_packets(&chain2.chain_id, kernel_chain2_splitter)
         .unwrap();
     ensure_packet_success(packet_lifetime);
 
     // Verify split amounts
-    let balance1 = chain1
-        .chain
-        .query_all_balances(&chain1.chain.addr_make(recipient1.clone()))
-        .unwrap();
-    let balance2 = chain1
-        .chain
-        .query_all_balances(&chain1.chain.addr_make(recipient2.clone()))
-        .unwrap();
+    let balance1 = chain1.chain.query_all_balances(&recipient1).unwrap();
+
+    let balance2 = chain1.chain.query_all_balances(&recipient2).unwrap();
 
     assert_eq!(balance1[0].denom, ibc_denom);
     assert_eq!(balance2[0].denom, ibc_denom);
@@ -313,7 +284,6 @@ fn test_splitter_ibc_update_recipients() {
         )
         .unwrap();
 
-    let packets = interchain.await_packets("juno", kernel_tx).unwrap_err();
-
-    assert!(format!("{:?}", packets).contains("error"));
+    let packets = interchain.await_packets("juno-1", kernel_tx).unwrap_err();
+    assert!(packets.to_string().contains("error"));
 }

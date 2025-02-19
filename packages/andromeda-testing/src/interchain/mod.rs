@@ -87,11 +87,11 @@ impl InterchainTestEnv {
         let juno_chain = interchain.get_chain("juno-1").unwrap();
         let juno = InterchainChain::new(juno_chain, "juno".to_string(), "juno-1".to_string());
 
-        let mock = MockBech32::new("juno");
-        let sender_juno = mock.addr_make("sender");
-
         juno.chain
-            .set_balance(&sender_juno, vec![Coin::new(100000000000000, "ujuno")])
+            .set_balance(
+                &juno.chain.sender,
+                vec![Coin::new(100000000000000, "ujuno")],
+            )
             .unwrap();
 
         // Setup Osmosis Chain
@@ -102,12 +102,12 @@ impl InterchainTestEnv {
             "osmosis-1".to_string(),
         );
 
-        let mock_two = MockBech32::new("osmosis");
-        let sender_osmosis = mock_two.addr_make("sender");
-
         osmosis
             .chain
-            .set_balance(&sender_osmosis, vec![Coin::new(100000000000000, "uosmo")])
+            .set_balance(
+                &osmosis.chain.sender,
+                vec![Coin::new(100000000000000, "uosmo")],
+            )
             .unwrap();
 
         // Setup Andromeda Chain
@@ -118,12 +118,12 @@ impl InterchainTestEnv {
             "andromeda-1".to_string(),
         );
 
-        let mock_three = MockBech32::new("andromeda");
-        let sender_andromeda = mock_three.addr_make("sender");
-
         andromeda
             .chain
-            .set_balance(&sender_andromeda, vec![Coin::new(100000000000000, "uandr")])
+            .set_balance(
+                &andromeda.chain.sender,
+                vec![Coin::new(100000000000000, "uandr")],
+            )
             .unwrap();
 
         let interchain_test_env = Self {
@@ -140,8 +140,6 @@ impl InterchainTestEnv {
         ];
 
         for (index, chain) in chains.iter().enumerate() {
-            // We only have to assign channels for the chains that are after the current chain
-            // This reduces redundancy as channels are two way
             let other_chains = chains[index + 1..].to_vec();
 
             // Create channels between the current chain and all other chains
