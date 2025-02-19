@@ -42,7 +42,7 @@ fn test_fixed_amount_splitter_ibc() {
                                 .aos
                                 .get_aos_channel(&juno.chain_name)
                                 .unwrap()
-                                .direct
+                                .ics20
                                 .unwrap(),
                             juno.denom
                         ),
@@ -120,7 +120,7 @@ fn test_fixed_amount_splitter_ibc() {
             .aos
             .get_aos_channel(&juno.chain_name)
             .unwrap()
-            .direct
+            .ics20
             .unwrap(),
         juno.denom.clone()
     );
