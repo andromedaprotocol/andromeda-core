@@ -2,7 +2,7 @@ use crate::ibc::{get_counterparty_denom, PACKET_LIFETIME};
 use crate::query;
 use crate::state::{
     ADO_OWNER, CHAIN_TO_CHANNEL, CHANNEL_TO_CHAIN, CHANNEL_TO_EXECUTE_MSG, CURR_CHAIN,
-    ENV_VARIABLES, IBC_FUND_RECOVERY, KERNEL_ADDRESSES, NONCE, PENDING_MSG_AND_FUNDS, TRIGGER_KEY,
+    ENV_VARIABLES, IBC_FUND_RECOVERY, KERNEL_ADDRESSES, PENDING_MSG_AND_FUNDS, TRIGGER_KEY,
 };
 use andromeda_std::ado_contract::ADOContract;
 use andromeda_std::amp::addresses::AndrAddr;
@@ -21,12 +21,10 @@ use andromeda_std::os::kernel::{
 use andromeda_std::os::vfs::vfs_resolve_symlink;
 use cosmwasm_std::{
     attr, ensure, from_json, to_json_binary, BankMsg, Binary, Coin, ContractInfoResponse,
-    CosmosMsg, DepsMut, Env, IbcMsg, MessageInfo, Response, StdAck, StdError, SubMsg, Uint128,
-    WasmMsg,
+    CosmosMsg, DepsMut, Env, IbcMsg, MessageInfo, Response, StdAck, StdError, SubMsg, WasmMsg,
 };
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use cw_utils::nonpayable;
-use sha2::{Digest, Sha256};
 
 pub fn send(ctx: ExecuteContext, message: AMPMsg) -> Result<Response, ContractError> {
     ensure!(
@@ -283,16 +281,18 @@ pub fn amp_receive(
 
     let mut new_pkt = AMPPkt::from_ctx(Some(packet.clone()), env.contract.address.to_string());
 
-    // Generate unique ID if the packet doesn't already have one
+    let tx_index = env
+        .transaction
+        .map(|tx| tx.index)
+        .ok_or(ContractError::InvalidPacket {
+            error: Some("Transaction index not available".to_string()),
+        })?;
+
     let id = match packet.id.clone() {
-        //TODO if id exists, it needs to be validateds
-        Some(id) => id,
-        None => generate_unique_id(
-            deps,
-            env.contract.address.as_ref(),
-            &env.block.height,
-            &env.block.chain_id,
-        )?,
+        // Generate unique ID if the packet doesn't already have one
+        Some(id) => validate_id(&id, &env.block.chain_id, tx_index)?,
+        // Not using "-" as a separator since chain id can contain it
+        None => format!("{}.{}", env.block.chain_id, tx_index),
     };
     // Set the new ID
     new_pkt.id = Some(id);
@@ -728,22 +728,41 @@ pub fn unset_env(execute_ctx: ExecuteContext, variable: String) -> Result<Respon
         .add_attribute("variable", variable))
 }
 
-fn generate_unique_id(
-    deps: &mut DepsMut,
-    origin: &str,
-    block: &u64,
-    chain_id: &str,
+/// Validates the existing ID of a packet
+fn validate_id(
+    id: &str,
+    current_chain_id: &str,
+    current_index: u32,
 ) -> Result<String, ContractError> {
-    // Create a unique string combining block, origin and a nonce
-    let nonce = NONCE.load(deps.storage)?;
-    let combined = format!("{}{}{}", block, origin, nonce);
-    // Calculate SHA256 hash
-    let mut hasher = Sha256::new();
-    hasher.update(combined.as_bytes());
-    let hash = hex::encode(hasher.finalize());
-    NONCE.save(deps.storage, &nonce.checked_add(Uint128::one())?)?;
-    // Create final ID in format: chain-id-hash
-    Ok(format!("{}-{}", chain_id, hash))
+    // Split the ID into chain_id and index parts at first occurrence of '.'
+    let (chain_id, index_str) = id
+        .split_once('.')
+        .ok_or_else(|| ContractError::InvalidPacket {
+            error: Some("Invalid packet ID format. Expected: chain_id.index".to_string()),
+        })?;
+
+    // Validate chain_id
+    if chain_id.is_empty() {
+        return Err(ContractError::InvalidPacket {
+            error: Some("Chain ID cannot be empty".to_string()),
+        });
+    }
+
+    // Parse and validate index
+    let index = index_str
+        .parse::<u32>()
+        .map_err(|_| ContractError::InvalidPacket {
+            error: Some("Invalid transaction index format".to_string()),
+        })?;
+
+    //TODO discuss validation for cross chain packets
+    if chain_id == current_chain_id && index != current_index {
+        return Err(ContractError::InvalidPacket {
+            error: Some("Transaction index does not match the current index".to_string()),
+        });
+    }
+
+    Ok(id.to_string())
 }
 
 /// Handles a given AMP message and returns a response
