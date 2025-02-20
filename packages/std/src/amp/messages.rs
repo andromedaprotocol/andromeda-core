@@ -5,7 +5,7 @@ use crate::os::aos_querier::AOSQuerier;
 use crate::os::kernel::{Cw20HookMsg, ExecuteMsg as KernelExecuteMsg};
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
-    to_json_binary, wasm_execute, Addr, Binary, Coin, ContractInfoResponse, CosmosMsg, Deps, Empty,
+    to_json_binary, Addr, Binary, Coin, ContractInfoResponse, CosmosMsg, Deps, Empty,
     MessageInfo, QuerierWrapper, QueryRequest, ReplyOn, SubMsg, Uint128, WasmMsg, WasmQuery,
 };
 use cw20::Cw20ExecuteMsg;
@@ -152,11 +152,18 @@ impl AMPMsg {
     }
 
     pub fn generate_sub_msg_direct(&self, addr: Addr, id: u64) -> SubMsg<Empty> {
+
+        let message:WasmMsg  = WasmMsg::Execute {
+            contract_addr: addr.to_string(),
+            msg: self.message.clone(),
+            funds: self.funds.clone(),
+        };
+
         SubMsg {
             id,
             reply_on: self.config.reply_on.clone(),
             gas_limit: self.config.gas_limit,
-            msg: CosmosMsg::Wasm(wasm_execute(addr, &self.message, self.funds.to_vec()).unwrap()),
+            msg: CosmosMsg::Wasm(message),
         }
     }
 

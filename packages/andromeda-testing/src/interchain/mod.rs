@@ -75,7 +75,6 @@ pub struct InterchainTestEnv {
 
 impl InterchainTestEnv {
     pub fn new() -> Self {
-        // let sender = Addr::unchecked(DEFAULT_SENDER);
 
         let interchain = MockBech32InterchainEnv::new(vec![
             ("juno-1", "juno"),
