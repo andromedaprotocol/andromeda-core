@@ -75,7 +75,6 @@ pub struct InterchainTestEnv {
 
 impl InterchainTestEnv {
     pub fn new() -> Self {
-
         let interchain = MockBech32InterchainEnv::new(vec![
             ("juno-1", "juno"),
             ("osmosis-1", "osmo"),

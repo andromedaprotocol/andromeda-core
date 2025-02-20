@@ -72,7 +72,8 @@ fn test_kernel_ibc_execute_only() {
                         "ibc://osmosis/{}",
                         counter_osmosis.address().unwrap()
                     )),
-                    message: to_json_binary(&andromeda_counter::mock::mock_execute_increment_msg()).unwrap(),
+                    message: to_json_binary(&andromeda_counter::mock::mock_execute_increment_msg())
+                        .unwrap(),
                     funds: vec![],
                     config: AMPMsgConfig {
                         reply_on: cosmwasm_std::ReplyOn::Always,

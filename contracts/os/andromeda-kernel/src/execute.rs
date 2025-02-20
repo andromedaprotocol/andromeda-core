@@ -1077,7 +1077,8 @@ impl MsgHandler {
         let current_chain = CURR_CHAIN.load(deps.storage)?;
         let ctx = ctx.map_or_else(
             || {
-                let amp_msg = AMPMsg::new(recipient.clone().get_raw_path(), message.clone(), None).with_config(config.clone());
+                let amp_msg = AMPMsg::new(recipient.clone().get_raw_path(), message.clone(), None)
+                    .with_config(config.clone());
                 let mut ctx = AMPCtx::new(info.sender, env.contract.address, 0, None);
 
                 // Add the orginal sender's username if it exists
