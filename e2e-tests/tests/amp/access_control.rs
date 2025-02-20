@@ -123,7 +123,7 @@ fn test_mint_permission(
 
     // If the mint was expected to succeed, verify ownership
     if expected_success {
-        let owner = cw721.query_owner_of(&router, "0");
+        let owner = cw721.query_owner_of(&router, "1");
         assert_eq!(owner, andr.get_wallet(sender).to_string());
     }
 }
