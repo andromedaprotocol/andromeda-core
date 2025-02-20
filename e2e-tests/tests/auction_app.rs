@@ -175,7 +175,7 @@ fn test_auction_app_modules() {
             &mut router,
             owner.clone(),
             auction.addr(),
-            "0",
+            "1",
             &receive_msg,
         )
         .unwrap();
@@ -188,7 +188,7 @@ fn test_auction_app_modules() {
 
     // Query Auction State
     let auction_ids: Vec<Uint128> =
-        auction.query_auction_ids(&mut router, "0".to_string(), cw721.addr().to_string());
+        auction.query_auction_ids(&mut router, "1".to_string(), cw721.addr().to_string());
 
     assert_eq!(auction_ids.len(), 1);
 
@@ -202,7 +202,7 @@ fn test_auction_app_modules() {
     auction.execute_place_bid(
         &mut router,
         buyer_one.clone(),
-        "0".to_string(),
+        "1".to_string(),
         cw721.addr().to_string(),
         &[coin(50, "uandr")],
     );
@@ -218,7 +218,7 @@ fn test_auction_app_modules() {
     auction.execute_place_bid(
         &mut router,
         buyer_two.clone(),
-        "0".to_string(),
+        "1".to_string(),
         cw721.addr().to_string(),
         &[coin(100, "uandr")],
     );
@@ -241,13 +241,13 @@ fn test_auction_app_modules() {
         .execute_claim_auction(
             &mut router,
             buyer_two.clone(),
-            "0".to_string(),
+            "1".to_string(),
             cw721.addr().to_string(),
         )
         .unwrap();
 
     // Check Final State
-    let token_owner = cw721.query_owner_of(&router, "0");
+    let token_owner = cw721.query_owner_of(&router, "1");
     assert_eq!(token_owner, buyer_two);
     let owner_balance = router.wrap().query_balance(owner, "uandr").unwrap();
     assert_eq!(owner_balance.amount, Uint128::from(50u128));
@@ -375,7 +375,7 @@ fn test_auction_app_recipient() {
             &mut router,
             owner.clone(),
             auction.addr(),
-            "0",
+            "1",
             &receive_msg,
         )
         .unwrap();
@@ -388,7 +388,7 @@ fn test_auction_app_recipient() {
 
     // Query Auction State
     let auction_ids: Vec<Uint128> =
-        auction.query_auction_ids(&mut router, "0".to_string(), cw721.addr().to_string());
+        auction.query_auction_ids(&mut router, "1".to_string(), cw721.addr().to_string());
 
     assert_eq!(auction_ids.len(), 1);
 
@@ -402,7 +402,7 @@ fn test_auction_app_recipient() {
     auction.execute_place_bid(
         &mut router,
         buyer_one.clone(),
-        "0".to_string(),
+        "1".to_string(),
         cw721.addr().to_string(),
         &[coin(50, "uandr")],
     );
@@ -418,7 +418,7 @@ fn test_auction_app_recipient() {
     auction.execute_place_bid(
         &mut router,
         buyer_two.clone(),
-        "0".to_string(),
+        "1".to_string(),
         cw721.addr().to_string(),
         &[coin(100, "uandr")],
     );
@@ -442,13 +442,13 @@ fn test_auction_app_recipient() {
         .execute_claim_auction(
             &mut router,
             buyer_two.clone(),
-            "0".to_string(),
+            "1".to_string(),
             cw721.addr().to_string(),
         )
         .unwrap();
 
     // Check Final State
-    let token_owner = cw721.query_owner_of(&router, "0");
+    let token_owner = cw721.query_owner_of(&router, "1");
     assert_eq!(token_owner, buyer_two);
     let owner_balance = router.wrap().query_balance(owner, "uandr").unwrap();
     assert_eq!(owner_balance.amount, Uint128::zero());
@@ -609,7 +609,7 @@ fn test_auction_app_cw20_restricted() {
             &mut router,
             owner.clone(),
             AndrAddr::from_string("./auction".to_string()),
-            "0",
+            "1",
             &mock_start_auction(
                 Some(Expiry::AtTime(Milliseconds(start_time))),
                 Expiry::AtTime(Milliseconds(start_time + 2)),
@@ -631,7 +631,7 @@ fn test_auction_app_cw20_restricted() {
 
     // Query Auction State
     let auction_ids =
-        auction.query_auction_ids(&mut router, "0".to_string(), cw721.addr().to_string());
+        auction.query_auction_ids(&mut router, "1".to_string(), cw721.addr().to_string());
     assert_eq!(auction_ids.len(), 1);
 
     let auction_id = auction_ids.first().unwrap();
@@ -661,7 +661,7 @@ fn test_auction_app_cw20_restricted() {
         .execute_set_permission(&mut router, owner.clone(), actors, action, permission)
         .unwrap();
 
-    let bid_msg = mock_place_bid("0".to_string(), cw721.addr().to_string());
+    let bid_msg = mock_place_bid("1".to_string(), cw721.addr().to_string());
 
     // Bid should be rejected because we blacklisted bidder one
     let err: ContractError = router
@@ -699,169 +699,9 @@ fn test_auction_app_cw20_restricted() {
 
     // Try bidding again
     let hook_msg = Cw20HookMsg::PlaceBid {
-        token_id: "0".to_owned(),
-        token_address: cw721.addr().clone().to_string(),
-    };
-    cw20.execute_send(
-        &mut router,
-        buyer_one.clone(),
-        auction.addr(),
-        Uint128::new(50),
-        &hook_msg,
-    )
-    .unwrap();
-
-    // Check Bid Status One
-    let bids_resp = auction.query_bids(&mut router, *auction_id);
-    assert_eq!(bids_resp.len(), 1);
-
-    let bid = bids_resp.first().unwrap();
-    assert_eq!(bid.bidder, buyer_one.to_string());
-    assert_eq!(bid.amount, Uint128::from(50u128));
-
-    // Second bid by buyer_two
-    cw20.execute_send(
-        &mut router,
-        buyer_two.clone(),
-        auction.addr(),
-        Uint128::new(100),
-        &hook_msg,
-    )
-    .unwrap();
-
-    // Check Bid Status One
-    let bids_resp = auction.query_bids(&mut router, *auction_id);
-    assert_eq!(bids_resp.len(), 2);
-
-    let bid_two = bids_resp.get(1).unwrap();
-    assert_eq!(bid_two.bidder, buyer_two.to_string());
-    assert_eq!(bid_two.amount, Uint128::from(100u128));
-
-    // Forward time
-    router.set_block(BlockInfo {
-        height: router.block_info().height,
-        time: Timestamp::from_nanos((start_time + 1001) * MILLISECONDS_TO_NANOSECONDS_RATIO),
-        chain_id: router.block_info().chain_id,
-    });
-
-    // End Auction
-    auction
-        .execute_claim_auction(
-            &mut router,
-            buyer_two.clone(),
-            "0".to_string(),
-            cw721.addr().to_string(),
-        )
-        .unwrap();
-
-    // Check Final State
-    let owner_resp = cw721.query_owner_of(&router, "0".to_string());
-    assert_eq!(owner_resp, buyer_two.to_string());
-
-    // The auction's owner sold the NFT for 100, so the balance should increase by 100
-    let cw20_balance = cw20.query_balance(&router, owner);
-    assert_eq!(
-        cw20_balance,
-        owner_original_balance
-            .checked_add(Uint128::new(100))
-            .unwrap()
-    );
-
-    // Buyer two won the auction with a bid of 100, the balance should be 100 less than the original balance
-    let cw20_balance = cw20.query_balance(&router, buyer_two);
-    assert_eq!(
-        cw20_balance,
-        buyer_two_original_balance
-            .checked_sub(Uint128::new(100))
-            .unwrap()
-    );
-
-    // Buyer one was outbid, so the balance should remain unchanged
-    let cw20_balance = cw20.query_balance(&router, buyer_one);
-    assert_eq!(cw20_balance, buyer_one_original_balance);
-
-    // Now try holding an auction with a recipient
-
-    // Send Token to Auction
-    let start_time = router.block_info().time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO + 100;
-    cw721
-        .execute_send_nft(
-            &mut router,
-            owner.clone(),
-            AndrAddr::from_string("./auction".to_string()),
-            "1",
-            &mock_start_auction(
-                Some(Expiry::AtTime(Milliseconds(start_time))),
-                Expiry::AtTime(Milliseconds(start_time + 2)),
-                None,
-                Asset::Cw20Token(AndrAddr::from_string(cw20.addr().to_string())),
-                None,
-                None,
-                Some(vec![buyer_one.clone(), buyer_two.clone()]),
-                Some(Recipient::from_string(buyer_one)),
-            ),
-        )
-        .unwrap();
-
-    // Try updating denom to another unpermissioned cw20, shouldn't work since this a restricted cw20 auction
-    let second_cw20: MockCW20 =
-        app.query_ado_by_component_name(&router, second_cw20_component.name);
-    let update_auction_msg = mock_update_auction(
-        "0".to_string(),
-        cw721.addr().to_string(),
-        Some(Expiry::AtTime(Milliseconds(start_time))),
-        Expiry::AtTime(Milliseconds(start_time + 2)),
-        // This cw20 hasn't been permissioned
-        Asset::Cw20Token(AndrAddr::from_string(second_cw20.addr().to_string())),
-        None,
-        None,
-        None,
-        Some(vec![buyer_one.clone(), buyer_two.clone()]),
-        Some(Recipient::from_string(buyer_one)),
-    );
-
-    let err: ContractError = router
-        .execute_contract(
-            owner.clone(),
-            auction.addr().clone(),
-            &update_auction_msg,
-            &[],
-        )
-        .unwrap_err()
-        .downcast()
-        .unwrap();
-    assert_eq!(
-        err,
-        ContractError::InvalidFunds {
-            msg: format!(
-                "Non-permissioned CW20 asset '{}' set as denom.",
-                second_cw20.addr()
-            )
-        }
-    );
-
-    router.set_block(BlockInfo {
-        height: router.block_info().height,
-        time: Timestamp::from_nanos(start_time * MILLISECONDS_TO_NANOSECONDS_RATIO),
-        chain_id: router.block_info().chain_id,
-    });
-
-    // Query Auction State
-    let auction_ids =
-        auction.query_auction_ids(&mut router, "1".to_string(), cw721.addr().to_string());
-    assert_eq!(auction_ids.len(), 1);
-
-    let auction_id = auction_ids.first().unwrap();
-    let auction_state: AuctionStateResponse = auction.query_auction_state(&mut router, *auction_id);
-    assert_eq!(auction_state.coin_denom, cw20.addr().to_string());
-
-    // Place Bid One
-    // Whitelisted buyer one at the start of the auction
-    let hook_msg = Cw20HookMsg::PlaceBid {
         token_id: "1".to_owned(),
         token_address: cw721.addr().clone().to_string(),
     };
-
     cw20.execute_send(
         &mut router,
         buyer_one.clone(),
@@ -916,6 +756,166 @@ fn test_auction_app_cw20_restricted() {
 
     // Check Final State
     let owner_resp = cw721.query_owner_of(&router, "1".to_string());
+    assert_eq!(owner_resp, buyer_two.to_string());
+
+    // The auction's owner sold the NFT for 100, so the balance should increase by 100
+    let cw20_balance = cw20.query_balance(&router, owner);
+    assert_eq!(
+        cw20_balance,
+        owner_original_balance
+            .checked_add(Uint128::new(100))
+            .unwrap()
+    );
+
+    // Buyer two won the auction with a bid of 100, the balance should be 100 less than the original balance
+    let cw20_balance = cw20.query_balance(&router, buyer_two);
+    assert_eq!(
+        cw20_balance,
+        buyer_two_original_balance
+            .checked_sub(Uint128::new(100))
+            .unwrap()
+    );
+
+    // Buyer one was outbid, so the balance should remain unchanged
+    let cw20_balance = cw20.query_balance(&router, buyer_one);
+    assert_eq!(cw20_balance, buyer_one_original_balance);
+
+    // Now try holding an auction with a recipient
+
+    // Send Token to Auction
+    let start_time = router.block_info().time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO + 100;
+    cw721
+        .execute_send_nft(
+            &mut router,
+            owner.clone(),
+            AndrAddr::from_string("./auction".to_string()),
+            "2",
+            &mock_start_auction(
+                Some(Expiry::AtTime(Milliseconds(start_time))),
+                Expiry::AtTime(Milliseconds(start_time + 2)),
+                None,
+                Asset::Cw20Token(AndrAddr::from_string(cw20.addr().to_string())),
+                None,
+                None,
+                Some(vec![buyer_one.clone(), buyer_two.clone()]),
+                Some(Recipient::from_string(buyer_one)),
+            ),
+        )
+        .unwrap();
+
+    // Try updating denom to another unpermissioned cw20, shouldn't work since this a restricted cw20 auction
+    let second_cw20: MockCW20 =
+        app.query_ado_by_component_name(&router, second_cw20_component.name);
+    let update_auction_msg = mock_update_auction(
+        "1".to_string(),
+        cw721.addr().to_string(),
+        Some(Expiry::AtTime(Milliseconds(start_time))),
+        Expiry::AtTime(Milliseconds(start_time + 2)),
+        // This cw20 hasn't been permissioned
+        Asset::Cw20Token(AndrAddr::from_string(second_cw20.addr().to_string())),
+        None,
+        None,
+        None,
+        Some(vec![buyer_one.clone(), buyer_two.clone()]),
+        Some(Recipient::from_string(buyer_one)),
+    );
+
+    let err: ContractError = router
+        .execute_contract(
+            owner.clone(),
+            auction.addr().clone(),
+            &update_auction_msg,
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(
+        err,
+        ContractError::InvalidFunds {
+            msg: format!(
+                "Non-permissioned CW20 asset '{}' set as denom.",
+                second_cw20.addr()
+            )
+        }
+    );
+
+    router.set_block(BlockInfo {
+        height: router.block_info().height,
+        time: Timestamp::from_nanos(start_time * MILLISECONDS_TO_NANOSECONDS_RATIO),
+        chain_id: router.block_info().chain_id,
+    });
+
+    // Query Auction State
+    let auction_ids =
+        auction.query_auction_ids(&mut router, "2".to_string(), cw721.addr().to_string());
+    assert_eq!(auction_ids.len(), 1);
+
+    let auction_id = auction_ids.first().unwrap();
+    let auction_state: AuctionStateResponse = auction.query_auction_state(&mut router, *auction_id);
+    assert_eq!(auction_state.coin_denom, cw20.addr().to_string());
+
+    // Place Bid One
+    // Whitelisted buyer one at the start of the auction
+    let hook_msg = Cw20HookMsg::PlaceBid {
+        token_id: "2".to_owned(),
+        token_address: cw721.addr().clone().to_string(),
+    };
+
+    cw20.execute_send(
+        &mut router,
+        buyer_one.clone(),
+        auction.addr(),
+        Uint128::new(50),
+        &hook_msg,
+    )
+    .unwrap();
+
+    // Check Bid Status One
+    let bids_resp = auction.query_bids(&mut router, *auction_id);
+    assert_eq!(bids_resp.len(), 1);
+
+    let bid = bids_resp.first().unwrap();
+    assert_eq!(bid.bidder, buyer_one.to_string());
+    assert_eq!(bid.amount, Uint128::from(50u128));
+
+    // Second bid by buyer_two
+    cw20.execute_send(
+        &mut router,
+        buyer_two.clone(),
+        auction.addr(),
+        Uint128::new(100),
+        &hook_msg,
+    )
+    .unwrap();
+
+    // Check Bid Status One
+    let bids_resp = auction.query_bids(&mut router, *auction_id);
+    assert_eq!(bids_resp.len(), 2);
+
+    let bid_two = bids_resp.get(1).unwrap();
+    assert_eq!(bid_two.bidder, buyer_two.to_string());
+    assert_eq!(bid_two.amount, Uint128::from(100u128));
+
+    // Forward time
+    router.set_block(BlockInfo {
+        height: router.block_info().height,
+        time: Timestamp::from_nanos((start_time + 1001) * MILLISECONDS_TO_NANOSECONDS_RATIO),
+        chain_id: router.block_info().chain_id,
+    });
+
+    // End Auction
+    auction
+        .execute_claim_auction(
+            &mut router,
+            buyer_two.clone(),
+            "2".to_string(),
+            cw721.addr().to_string(),
+        )
+        .unwrap();
+
+    // Check Final State
+    let owner_resp = cw721.query_owner_of(&router, "2".to_string());
     assert_eq!(owner_resp, buyer_two.to_string());
 
     // The auction's owner sold the NFT for 100, but has buyer_one set as recipient. So the balance shouldn't change since the previous auction
@@ -1086,7 +1086,7 @@ fn test_auction_app_cw20_unrestricted() {
             &mut router,
             owner.clone(),
             AndrAddr::from_string("./auction".to_string()),
-            "0",
+            "1",
             &mock_start_auction(
                 Some(Expiry::AtTime(Milliseconds(start_time))),
                 Expiry::AtTime(Milliseconds(start_time + 2)),
@@ -1108,7 +1108,7 @@ fn test_auction_app_cw20_unrestricted() {
 
     // Query Auction State
     let auction_ids =
-        auction.query_auction_ids(&mut router, "0".to_string(), cw721.addr().to_string());
+        auction.query_auction_ids(&mut router, "1".to_string(), cw721.addr().to_string());
     assert_eq!(auction_ids.len(), 1);
 
     let auction_id = auction_ids.first().unwrap();
@@ -1117,7 +1117,7 @@ fn test_auction_app_cw20_unrestricted() {
 
     // Place Bid One
     let hook_msg = Cw20HookMsg::PlaceBid {
-        token_id: "0".to_owned(),
+        token_id: "1".to_owned(),
         token_address: cw721.addr().clone().to_string(),
     };
     cw20.execute_send(
@@ -1165,13 +1165,13 @@ fn test_auction_app_cw20_unrestricted() {
         .execute_claim_auction(
             &mut router,
             buyer_two.clone(),
-            "0".to_string(),
+            "1".to_string(),
             cw721.addr().to_string(),
         )
         .unwrap();
 
     // Check Final State
-    let owner_resp = cw721.query_owner_of(&router, "0".to_string());
+    let owner_resp = cw721.query_owner_of(&router, "1".to_string());
     assert_eq!(owner_resp, buyer_two.to_string());
 
     // The auction's owner sold the NFT for 100, so the balance should increase by 100
@@ -1212,7 +1212,7 @@ fn test_auction_app_cw20_unrestricted() {
             &mut router,
             owner.clone(),
             AndrAddr::from_string("./auction".to_string()),
-            "1",
+            "2",
             &mock_start_auction(
                 Some(Expiry::AtTime(Milliseconds(start_time))),
                 Expiry::AtTime(Milliseconds(start_time + 2)),
@@ -1234,7 +1234,7 @@ fn test_auction_app_cw20_unrestricted() {
 
     // Query Auction State
     let auction_ids =
-        auction.query_auction_ids(&mut router, "1".to_string(), cw721.addr().to_string());
+        auction.query_auction_ids(&mut router, "2".to_string(), cw721.addr().to_string());
     assert_eq!(auction_ids.len(), 1);
 
     let auction_id = auction_ids.first().unwrap();
@@ -1243,7 +1243,7 @@ fn test_auction_app_cw20_unrestricted() {
 
     // Place Bid One
     let hook_msg = Cw20HookMsg::PlaceBid {
-        token_id: "1".to_owned(),
+        token_id: "2".to_owned(),
         token_address: cw721.addr().clone().to_string(),
     };
     second_cw20
@@ -1293,13 +1293,13 @@ fn test_auction_app_cw20_unrestricted() {
         .execute_claim_auction(
             &mut router,
             buyer_two.clone(),
-            "1".to_string(),
+            "2".to_string(),
             cw721.addr().to_string(),
         )
         .unwrap();
 
     // Check Final State
-    let owner_resp = cw721.query_owner_of(&router, "1".to_string());
+    let owner_resp = cw721.query_owner_of(&router, "2".to_string());
     assert_eq!(owner_resp, buyer_two.to_string());
 
     // The auction's owner sold the NFT for 100, so the balance should increase by 100
