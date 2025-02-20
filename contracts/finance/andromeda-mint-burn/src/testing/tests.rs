@@ -483,7 +483,7 @@ fn test_cancel_order() {
     assert_eq!(
         err_res,
         ContractError::CustomError {
-            msg: "Already Cancelled order".to_string(),
+            msg: "Already Cancelled Order".to_string(),
         }
     );
 
@@ -492,7 +492,7 @@ fn test_cancel_order() {
     assert_eq!(
         err_res,
         ContractError::CustomError {
-            msg: "Already Cancelled order".to_string(),
+            msg: "Already Cancelled Order".to_string(),
         }
     );
 
