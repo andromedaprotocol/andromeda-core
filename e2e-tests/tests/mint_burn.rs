@@ -301,7 +301,7 @@ fn test_nft_and_cw20_to_nft(setup: TestCase) {
             ResourceRequirement {
                 resource: Resource::Nft {
                     cw721_addr: AndrAddr::from_string(cw721.addr().to_string()),
-                    token_id: "0".to_string(),
+                    token_id: "1".to_string(),
                 },
                 amount: Uint128::one(),
                 deposits: Default::default(),
@@ -334,7 +334,7 @@ fn test_nft_and_cw20_to_nft(setup: TestCase) {
             &mut router,
             user1.clone(),
             mint_burn.addr(),
-            "0".to_string(),
+            "1".to_string(),
             &nft_hook_msg,
         )
         .unwrap();
@@ -382,7 +382,7 @@ fn test_nft_and_cw20_to_cw20(setup: TestCase) {
             ResourceRequirement {
                 resource: Resource::Nft {
                     cw721_addr: AndrAddr::from_string(cw721.addr().to_string()),
-                    token_id: "0".to_string(),
+                    token_id: "1".to_string(),
                 },
                 amount: Uint128::one(),
                 deposits: Default::default(),
@@ -414,7 +414,7 @@ fn test_nft_and_cw20_to_cw20(setup: TestCase) {
             &mut router,
             user1.clone(),
             mint_burn.addr(),
-            "0".to_string(),
+            "1".to_string(),
             &nft_hook_msg,
         )
         .unwrap();
@@ -505,12 +505,12 @@ fn test_nft_to_cw20(setup: TestCase) {
         .execute_quick_mint(&mut router, owner.clone(), 1, user1.to_string())
         .unwrap();
 
-    // Create order: Burn NFT → Mint 1,000,000 CW20
+    // Create order: Burn NFT → Mint CW20
     let order_msg = ExecuteMsg::CreateOrder {
         requirements: vec![ResourceRequirement {
             resource: Resource::Nft {
                 cw721_addr: AndrAddr::from_string(cw721.addr().to_string()),
-                token_id: "0".to_string(),
+                token_id: "1".to_string(),
             },
             amount: Uint128::one(),
             deposits: Default::default(),
@@ -534,7 +534,7 @@ fn test_nft_to_cw20(setup: TestCase) {
             &mut router,
             user1.clone(),
             mint_burn.addr(),
-            "0".to_string(),
+            "1".to_string(),
             &nft_hook_msg,
         )
         .unwrap();
