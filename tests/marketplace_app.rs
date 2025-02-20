@@ -159,7 +159,7 @@ fn test_marketplace_app() {
     cw721
         .execute_quick_mint(&mut router, owner.clone(), 1, owner.to_string())
         .unwrap();
-    let token_id = "0";
+    let token_id = "1";
 
     // Send Token to Marketplace
     cw721
@@ -371,7 +371,7 @@ fn test_marketplace_app_recipient() {
     cw721
         .execute_quick_mint(&mut router, owner.clone(), 1, owner.to_string())
         .unwrap();
-    let token_id = "0";
+    let token_id = "1";
 
     // Send Token to Marketplace
     cw721
@@ -602,7 +602,7 @@ fn test_marketplace_app_cw20_restricted() {
     cw721
         .execute_quick_mint(&mut router, owner.clone(), 1, owner.to_string())
         .unwrap();
-    let token_id = "0";
+    let token_id = "1";
 
     // Whitelist
     address_list
@@ -879,7 +879,7 @@ fn test_marketplace_app_cw20_unrestricted() {
         .execute_quick_mint(&mut router, owner.clone(), 1, owner.to_string())
         .unwrap();
 
-    let token_id = "0";
+    let token_id = "1";
 
     // Whitelist
 
